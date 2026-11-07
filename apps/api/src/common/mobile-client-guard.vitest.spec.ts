@@ -19,7 +19,11 @@ describe('mobile app HTTP clients', () => {
     for (const app of APPS) {
       const s = code(src(app));
       expect(s, app).not.toMatch(/build(Api)?Url\(BASE\b/);
-      expect(s, app).toMatch(/buildApiUrl\(apiBase\(\)/);   // BUILD_PLAN Phase 12: and every call is /api/v1/<path>
+      // BUILD_PLAN Phase 12: every call is /api/v1/<path>. Since Nov 5 2026 the apps build on the ONE mobile transport:
+      // the client hands it the apiBase FUNCTION, and the transport calls buildApiUrl(cfg.apiBase(), …) per request.
+      const viaTransport = /createTransport\(\{[\s\S]{0,120}\bapiBase\b/.test(s)
+        && /buildApiUrl\(cfg\.apiBase\(\)/.test(readFileSync(join(APPS_ROOT, '..', 'packages', 'mobile-sdk', 'src', 'network', 'transport.ts'), 'utf8'));
+      expect(viaTransport || /buildApiUrl\(apiBase\(\)/.test(s), app).toBe(true);
       expect(s, app).not.toMatch(/\bbuildUrl\(/);
     }
   });

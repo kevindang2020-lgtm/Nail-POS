@@ -7,8 +7,8 @@ android {
         applicationId "com.powersalon.owner"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.6.0"
+        versionCode 8
+        versionName "1.7.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // BUILD_PLAN Phase 13 D: the App Links host (the API serves /.well-known/assetlinks.json there). Override per build with
         // -PAPS_APP_LINKS_HOST=<host> (or gradle.properties) — see docs/mobile/MOBILE_RELEASE_SETUP.md.

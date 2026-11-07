@@ -25,7 +25,9 @@ export const usesCaptcha = (code) => /challenges\.cloudflare\.com\/turnstile/.te
 // Developer merge (Oct 6 2026): browser push. The Firebase JS SDK (bundled, never a CDN script) talks to exactly these two
 // Google endpoints to mint a web token; the worker is same-origin. Allowed only for an app whose code uses the ONE client.
 const WEB_PUSH_CONNECT = ['https://fcmregistrations.googleapis.com', 'https://firebaseinstallations.googleapis.com'];
-export const usesWebPush = (code) => /@aipowersalon\/web-push/.test(code);
+// Nov 5 2026: owner, tech and customer get push from @aipowersalon/mobile-sdk/web-push (one hook for native + browser).
+// In a browser build that hook mints an FCM web token too, so those apps need the same two endpoints.
+export const usesWebPush = (code) => /@aipowersalon\/(mobile-sdk\/)?web-push/.test(code);
 
 /** sha256 of each INLINE <script> block — the single-file HTML apps run one, and `script-src 'self'` alone blocked it
  *  (Phase 4: found while building the public link's code step; every plain-HTML page was dead under its own policy).

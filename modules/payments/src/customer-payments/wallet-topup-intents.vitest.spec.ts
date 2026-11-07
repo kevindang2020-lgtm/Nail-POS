@@ -13,7 +13,8 @@ const methods = () => ({
   resolveCustomerId: async () => 'c1',
   getToken: async (_t: string, _c: string, id: string) => (id === 'pm1' ? { token: '9418594164541111', expMonth: 12, expYear: 2030 } : null),
 } as any);
-const resolverWith = (processor: any) => ({ resolve: async () => ({ processor, configured: !!processor }) } as any);
+// merged Nov 7: a top-up charges through the EFFECTIVE merchant (Fiserv §8D) and a merchant-bound card; Verify still asks resolve()
+const resolverWith = (processor: any) => ({ resolve: async () => ({ processor, configured: !!processor }), effectiveMerchant: async () => ({ configured: !!processor, processor, merchantIdHash: processor ? 'mid-hash' : null, scope: 'tenant', merchantAccountId: null, environment: 'sandbox' }) } as any);
 
 /** A fake processor that remembers what it was asked and can answer each way; inquireByOrderId replays its own record. */
 function proc(answer: 'approve' | 'decline' | 'retry' | 'unknown' | 'throw', opts: { recordAs?: 'approved' | 'declined' | 'none' | 'two' } = {}) {

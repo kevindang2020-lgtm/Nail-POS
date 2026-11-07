@@ -8,6 +8,7 @@ const navMock = vi.fn();
 const authState = vi.hoisted(() => ({ principal: { branchId: 'br1' } as any }));
 vi.mock('react-router-dom', () => ({ useParams: () => ({ slug: 'jane-nails' }), useNavigate: () => navMock }));
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => authState }));
+vi.mock('@aipowersalon/ui', async (orig) => ({ ...(await orig<object>()), useEscapeKey: () => {} }));
 vi.mock('../api/customerApi', () => ({ customerApi: { techProfile: vi.fn(), techFavorites: vi.fn(), addTechFavorite: vi.fn(), removeTechFavorite: vi.fn() } }));
 
 import { customerApi } from '../api/customerApi';

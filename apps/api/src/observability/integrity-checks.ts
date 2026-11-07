@@ -68,7 +68,9 @@ export const INVARIANTS: readonly Invariant[] = [
   { id: 'merchant_account_branch', child: 'payment_merchant_accounts', column: 'branch_id', parent: 'branches', why: 'a merchant account mapped to another salon\'s branch' },
   { id: 'tee_technician', child: 'technician_employment_events', column: 'technician_id', parent: 'technicians', why: 'an employment-history row for another salon\'s technician' },
   { id: 'tee_branch', child: 'technician_employment_events', column: 'branch_id', parent: 'branches', why: 'an employment-history row at another salon\'s branch' },
-  { id: 'mobile_pay_device_branch', child: 'mobile_pay_devices', column: 'branch_id', parent: 'branches', why: 'a payment phone registered to another salon\'s branch' },
+  { id: 'mobile_pay_device_branch', child: 'mobile_pay_devices', column: 'branch_id', parent: 'branches', why: 'a payment phone registered to another salon\'s branch' },  // Nov 5 2026 (migration 674, platform POS announcements): the triggers existed; the detection side did not.
+  { id: 'platform_notice_targets__branch_id', child: 'platform_notice_targets', column: 'branch_id', parent: 'branches', why: 'an announcement targeted at another salon\'s branch' },
+  { id: 'platform_notice_receipts__branch_id', child: 'platform_notice_receipts', column: 'branch_id', parent: 'branches', why: 'an announcement receipt recorded against another salon\'s branch' },
 ];
 
 export const integrityViolations = registry.gauge('aipowersalon_integrity_violations', 'Rows violating a tenant-consistency invariant (capped)', ['invariant']);

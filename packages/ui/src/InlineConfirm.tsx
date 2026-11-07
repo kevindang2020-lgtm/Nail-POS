@@ -10,11 +10,16 @@
 //     stray Enter never destroys anything)
 //   • Escape cancels; the backdrop is inert so a mis-tap outside can't be read as approval
 //   • full question text is shown, wrapped, at readable size on a touch screen
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 /** title: an optional heading above the question (the developer's Sep 2026 addition, used by the Owner App). */
-type ConfirmOpts = { title?: string; confirmLabel?: string; destructive?: boolean };
+type ConfirmOpts = {
+  title?: string; confirmLabel?: string; destructive?: boolean;
+  /** Extra content under the question (e.g. the sign-out "Also turn off Face ID" choice). Keeps its own state.
+   *  Merged Nov 7 2026 from the developer tree's owner-app copy of this component. */
+  extra?: ReactNode;
+};
 type Pending = { question: string; onConfirm: () => void; opts: ConfirmOpts };
 
 export function useInlineConfirm(): { confirm: (question: string, onConfirm: () => void, opts?: ConfirmOpts) => void; confirmUi: JSX.Element | null } {
@@ -50,6 +55,7 @@ export function useInlineConfirm(): { confirm: (question: string, onConfirm: () 
           }}>
             {pending.opts.title ? <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink, #2A2118)', marginBottom: 6 }}>{pending.opts.title}</div> : null}
             <div style={{ fontSize: pending.opts.title ? 13 : 13.5, lineHeight: 1.45, color: 'var(--ink, #2A2118)', whiteSpace: 'pre-wrap', marginBottom: 14 }}>{pending.question}</div>
+            {pending.opts.extra ? <div style={{ marginTop: -6, marginBottom: 14 }}>{pending.opts.extra}</div> : null}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               {/* Cancel holds focus on purpose: a reflexive Enter must never confirm a destructive action. */}
               <button ref={cancelRef} type="button" className="btn ghost" onClick={close}>Cancel</button>

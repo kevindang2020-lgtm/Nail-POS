@@ -4,7 +4,6 @@
 import type { ProfilePostCard, ProfileVisibility } from '@aipowersalon/api-contracts/customer';   // the wire contract (Constitution 13 §15)
 import { api } from './client';
 
-
 export interface MySocialProfile {
   customerId: string; publicDisplayName: string | null; avatarUrl: string | null; bio: string | null;
   profileVisibility: ProfileVisibility; isPublicProfile: boolean;

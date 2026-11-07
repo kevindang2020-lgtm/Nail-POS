@@ -76,7 +76,9 @@ function server() {
     if (u.includes('/pos/me/locale')) return ok({ language: 'en', salonDefault: null, timeZone: 'America/New_York' });
     if (u.includes('/pos/me/language')) return ok({ language: (body as { language?: string })?.language });
     // checkout — the card charge's answer is lost: the outcome is UNKNOWN
-    if (u.includes('/pos/checkout/tickets/') && /\/pay\/card$/.test(u)) return ok({ status: 'processing' });
+    // merged Nov 7 2026: Card goes to the Clover Compact (…/pay/terminal); the terminal's answer is UNKNOWN
+    if (/\/pos\/checkout\/terminals$/.test(u)) return ok([{ id: 'term1', label: 'Front desk Compact', stationId: null, disabled: false, lastSeenAt: null, hsnConfigured: true }]);
+    if (u.includes('/pos/checkout/tickets/') && /\/pay\/terminal$/.test(u)) return ok({ status: 'unknown', next: 'verify', message: '' });
     if (u.includes('/pos/checkout/tickets/') && /\/verify/.test(u)) return ok({ status: 'pending', retryAfterSeconds: 60 });
     if (/\/pos\/checkout\/tickets\/[^/?]+$/.test(u)) return ok(ticketDetail);
     if (u.includes('/pos/checkout/state')) return ok(checkoutState);
@@ -226,7 +228,7 @@ describe('language switch keeps the operator\'s work (§6/§7/§116)', () => {
     expect(screen.getByTestId('payment-unknown-banner')).toBe(banner);                           // same banner node, not rebuilt
     expect(banner.textContent).toContain('Trạng thái thanh toán chưa xác định. Không thanh toán lại. Hãy kiểm tra giao dịch trước.');
     expect(complete.isConnected && complete.disabled).toBe(true);                                // still blocked, same button
-    expect(screen.getByTestId('checkout-note').textContent).toBe(t('pos.payment_status_unknown_the_card_may_1gy2')); // the note re-reads in VI
+    expect(screen.getByTestId('checkout-note').textContent).toBe(t('payment.terminal.unknown', { reason: '' })); // the Compact's UNKNOWN note re-reads in VI
     fireEvent.click(complete);                                                                   // a disabled button sends nothing
     await switchTo('en');
     await switchTo('vi');

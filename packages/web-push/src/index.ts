@@ -2,4 +2,5 @@
 // Developer merge (Oct 6 2026) — replaces his three useWebPush.ts + firebase-messaging-sw.js copies. See web-push.ts.
 export { createWebPushClient, webPushConfigFromEnv, WEB_PUSH_SW_PATH, WEB_PUSH_SW_SCOPE } from './web-push';
 export { WebPushToast } from './toast';
+export { usePushPrompt } from './prompt';
 export type { WebPushClient, WebPushClientOptions, WebPushAppId, WebPushConfig, WebPushHttp, WebPushMessage, WebPushEnv, MessagingSdk } from './web-push';

@@ -1,9 +1,9 @@
 // The read-only Screen Check rules (SUNMI FLEX 3 mandates): PASS / WARN / FAIL decided from measurements only.
 import { describe, expect, it } from 'vitest';
 import { analyzeScreen, overallVerdict, peerRows, registryPageFor, REGISTRY, type Collected } from './screenCheck';
-import type { DisplayProfile } from './displayProfile';
+import type { PosDisplayProfile } from './displayProfile';
 
-const prof = (w = 1920, h = 945, extra: Partial<DisplayProfile> = {}): DisplayProfile => ({ innerW: w, innerH: h, vvW: w, vvH: h, vvTop: 0, dpr: 1, screenW: 1920, screenH: 1080, orientation: 'landscape', displayMode: 'browser', touch: true, keyboardOpen: false, contentW: w - 248, contentH: h - 64, headerH: 64, sidebarW: 248, density: w >= 1700 && h >= 900 ? 'compact' : 'tight', measuredAt: 0, ...extra });
+const prof = (w = 1920, h = 945, extra: Partial<PosDisplayProfile> = {}): PosDisplayProfile => ({ innerW: w, innerH: h, vvW: w, vvH: h, vvTop: 0, dpr: 1, screenW: 1920, screenH: 1080, orientation: 'landscape', displayMode: 'browser', touch: true, keyboardOpen: false, contentW: w - 248, contentH: h - 64, headerH: 64, sidebarW: 248, density: w >= 1700 && h >= 900 ? 'compact' : 'tight', measuredAt: 0, ...extra });
 const base = (over: Partial<Collected> = {}): Collected => ({
   route: '/overview', page: registryPageFor('/overview'), profile: prof(),
   scroll: { docY: 0, docX: 0, mainY: 0, mainX: 0, rootY: 0, rootX: 0 },

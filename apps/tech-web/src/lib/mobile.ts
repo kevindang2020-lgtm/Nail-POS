@@ -17,7 +17,12 @@ export function TechMobileRoutes(): null {
     queue: () => nav.openQueue(),
     'queue-ticket': (r) => (r.params.techQueueTicketId ? nav.openTicket(r.params.techQueueTicketId) : nav.openQueue()),
     schedule: () => { nav.back(); nav.go('schedule'); },
+    // merged Nov 7 2026 (the developer tree's route table): appointment links open the schedule; alerts and deals their screens
+    appointments: () => { nav.back(); nav.go('schedule'); },
+    appointment: () => { nav.back(); nav.go('schedule'); },
     payroll: () => nav.openPayroll(),
+    alerts: () => nav.openNotifications(),
+    deals: () => nav.openMyDeals(),
     security: () => nav.openSettings(),
   });
   return null;

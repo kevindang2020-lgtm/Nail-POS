@@ -5,6 +5,8 @@ import { describe, it, expect } from 'vitest';
 import { AuthController } from './auth.controller';
 import { RefreshSessionService, InMemoryRefreshRepository } from './refresh-session';
 import { InMemoryAuthEvents } from './auth-events';
+// merged Nov 7 2026: these pin the STRICT reuse rule (any reuse burns the family) — no grace window here
+process.env.REFRESH_REUSE_GRACE_SECONDS = '0';
 
 describe('C13 — refresh-token reuse is attributed and alerted', () => {
   it('records userId + sessionId on the auth event and a HIGH security event', async () => {

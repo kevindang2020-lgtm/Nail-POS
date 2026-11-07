@@ -1,11 +1,11 @@
 // refresh-session.vitest.spec.ts — Constitution 3 §7–12 / §170 (Step 2): rotation, replay detection, family burn,
 // expiry, revoked sessions. In-memory here; the same on real Postgres in refresh-session.postgres.vitest.spec.ts.
 import { describe, it, expect } from 'vitest';
-import { RefreshSessionService, InMemoryRefreshRepository, hashRefreshToken } from './refresh-session';
+import { RefreshSessionService, InMemoryRefreshRepository, hashRefreshToken, refreshReuseGraceMs } from './refresh-session';
 import { accessTtlSeconds } from './auth.http';
 
 const sessions = () => { const revoked = new Set<string>(); return { revoked, store: { revoke: async (id: string) => { revoked.add(id); }, isRevoked: async (id: string) => revoked.has(id) } }; };
-const mk = (nowMs = 1_000_000) => { const repo = new InMemoryRefreshRepository(); const s = sessions(); let t = nowMs; const svc = new RefreshSessionService(repo, s.store, () => t); return { repo, s, svc, tick: (ms: number) => { t += ms; } }; };
+const mk = (nowMs = 1_000_000, graceMs = 30_000) => { const s = sessions(); let t = nowMs; const repo = new InMemoryRefreshRepository(() => t); const svc = new RefreshSessionService(repo, s.store, () => t, undefined, graceMs); return { repo, s, svc, tick: (ms: number) => { t += ms; } }; };
 
 describe('refresh rotation', () => {
   it('issues an opaque token, stores only its hash, and rotates it: the old one is superseded, the new one works', async () => {
@@ -20,10 +20,11 @@ describe('refresh rotation', () => {
     expect(r2.ok).toBe(true);
   });
   it('§170: presenting an already-rotated token burns the family — every token revoked and the session too', async () => {
-    const { repo, s, svc } = mk();
+    const { repo, s, svc, tick } = mk();
     const { refreshToken } = await svc.issue('sid1', 'u1', 3600);
     const r1 = await svc.rotate(refreshToken);
     const fam = repo.rows[0].familyId;
+    tick(31_000);   // past the 30 s grace window (Nov 6 2026): no longer "the same device racing itself"
     expect(await svc.rotate(refreshToken)).toEqual({ ok: false, reason: 'reused', sessionId: 'sid1', userId: 'u1', familyId: fam });   // the OLD token again — C13: naming the burned session, its account and (M6-6) the family
     expect(s.revoked.has('sid1')).toBe(true);
     expect(repo.rows.every((r) => r.revokedAt)).toBe(true);
@@ -51,9 +52,9 @@ describe('refresh rotation', () => {
 // Secure Tap to Pay M6-6 (§2 / §14 / §16 / §61 / §69): a named refresh family, and a session opened on a payment phone is
 // extended only while the phone is in good standing (REFRESH_DEVICE_GUARD, answered by the payment module).
 describe('M6-6 — refresh family + payment-device binding', () => {
-  const withGuard = (answer: (q: any) => Promise<any>) => {
+  const withGuard = (answer: (q: any) => Promise<any>, graceMs = 0) => {
     const repo = new InMemoryRefreshRepository(); const s = sessions(); const asked: any[] = [];
-    const svc = new RefreshSessionService(repo, s.store, () => 1_000_000, () => ({ refreshBlock: async (q) => { asked.push(q); return answer(q); } }));
+    const svc = new RefreshSessionService(repo, s.store, () => 1_000_000, () => ({ refreshBlock: async (q) => { asked.push(q); return answer(q); } }), graceMs);
     return { repo, s, svc, asked };
   };
   it('login issues a family root; every rotation inherits it; two logins are two families', async () => {
@@ -64,7 +65,7 @@ describe('M6-6 — refresh family + payment-device binding', () => {
     expect(repo.rows.filter((r) => r.sessionId === 'sid1').map((r) => r.familyId)).toEqual([a.familyId, a.familyId, a.familyId]);
   });
   it('§69: reuse of a rotated token revokes the WHOLE family (every generation) and names it', async () => {
-    const { repo, svc } = mk();
+    const { repo, svc } = mk(1_000_000, 0);   // strict (no grace window): the clock does not move here
     const a = await svc.issue('sid1', 'u1', 3600); const other = await svc.issue('sid2', 'u1', 3600);
     const r1: any = await svc.rotate(a.refreshToken); const r2: any = await svc.rotate(r1.refreshToken);
     const reuse: any = await svc.rotate(r1.refreshToken);
@@ -110,5 +111,71 @@ describe('M6-6 — refresh family + payment-device binding', () => {
     repo.sessionDevices.set('sid1', { tenantId: 't1', deviceId: 'dev-1' });
     const a = await svc.issue('sid1', 'u1', 3600);
     expect((await svc.rotate(a.refreshToken)).ok).toBe(true);
+  });
+});
+
+// Nov 6 2026 — busy-day sign-outs: two POS tabs share one cookie and renew at the same moment, and a reply lost on salon
+// Wi-Fi leaves the device holding the old token. Within the grace window that is the same device racing itself.
+describe('refresh reuse grace window', () => {
+  it('two tabs renewing at once: the second gets a fresh token, the session lives, and the fresh token works', async () => {
+    const { s, svc, tick } = mk();
+    const { refreshToken } = await svc.issue('sid1', 'u1', 3600);
+    const tabA = await svc.rotate(refreshToken);
+    tick(2_000);
+    const tabB = await svc.rotate(refreshToken);   // tab B sent the cookie it had
+    expect(tabB).toMatchObject({ ok: true, sessionId: 'sid1', userId: 'u1' });
+    expect((tabB as any).refreshToken).not.toBe((tabA as any).refreshToken);
+    expect(s.revoked.has('sid1')).toBe(false);
+    // whichever reply the browser keeps last, the cookie renews later — even long after the grace window
+    tick(15 * 60_000);
+    expect((await svc.rotate((tabB as any).refreshToken)).ok).toBe(true);
+    expect((await svc.rotate((tabA as any).refreshToken)).ok).toBe(true);
+  });
+  it('a lost reply: the device retries with its old token a moment later and stays signed in', async () => {
+    const { svc, tick } = mk();
+    const { refreshToken } = await svc.issue('sid1', 'u1', 3600);
+    await svc.rotate(refreshToken);   // the server rotated; the reply never arrived
+    tick(10_000);
+    expect((await svc.rotate(refreshToken)).ok).toBe(true);
+  });
+  it('outside the window it is still theft; grace 0 restores the strict rule; an expired session gets no grace', async () => {
+    const late = mk();
+    const t1 = (await late.svc.issue('sid1', 'u1', 3600)).refreshToken;
+    await late.svc.rotate(t1); late.tick(30_001);
+    expect(await late.svc.rotate(t1)).toMatchObject({ ok: false, reason: 'reused' });
+    expect(late.s.revoked.has('sid1')).toBe(true);
+    const strict = mk(1_000_000, 0);
+    const t2 = (await strict.svc.issue('sid2', 'u1', 3600)).refreshToken;
+    await strict.svc.rotate(t2);
+    expect(await strict.svc.rotate(t2)).toMatchObject({ ok: false, reason: 'reused' });
+    const revoked = mk();
+    const t3 = (await revoked.svc.issue('sid3', 'u1', 3600)).refreshToken;
+    await revoked.svc.rotate(t3); revoked.s.revoked.add('sid3');
+    expect(await revoked.svc.rotate(t3)).toMatchObject({ ok: false, reason: 'reused' });
+  });
+  it('REFRESH_REUSE_GRACE_SECONDS: default 30 s, 0 turns it off, capped at 120 s, junk falls back', () => {
+    expect(refreshReuseGraceMs({})).toBe(30_000);
+    expect(refreshReuseGraceMs({ REFRESH_REUSE_GRACE_SECONDS: '0' })).toBe(0);
+    expect(refreshReuseGraceMs({ REFRESH_REUSE_GRACE_SECONDS: '600' })).toBe(120_000);
+    expect(refreshReuseGraceMs({ REFRESH_REUSE_GRACE_SECONDS: 'soon' })).toBe(30_000);
+  });
+  it('merged Nov 7: the grace path still asks the payment-device guard — a revoked phone gets no extra token', async () => {
+    const repo = new InMemoryRefreshRepository(() => 1_000_000); const s = sessions();
+    let answer: any = null;
+    const svc = new RefreshSessionService(repo, s.store, () => 1_000_000, () => ({ refreshBlock: async () => answer }), 30_000);
+    repo.sessionDevices.set('sid1', { tenantId: 't1', deviceId: 'd1' });
+    const a = await svc.issue('sid1', 'u1', 3600);
+    expect((await svc.rotate(a.refreshToken)).ok).toBe(true);
+    answer = { code: 'DEVICE_REVOKED', endSession: true };
+    expect(await svc.rotate(a.refreshToken)).toMatchObject({ ok: false, reason: 'device_revoked', sessionId: 'sid1', deviceId: 'd1' });
+    expect(s.revoked.has('sid1')).toBe(true);
+    expect(repo.rows.every((r) => r.revokedAt)).toBe(true);
+  });
+  it('merged Nov 7: a grace sibling stays in the same family', async () => {
+    const { repo, svc, tick } = mk();
+    const a = await svc.issue('sid1', 'u1', 3600);
+    await svc.rotate(a.refreshToken); tick(1_000);
+    expect((await svc.rotate(a.refreshToken)).ok).toBe(true);
+    expect(repo.rows.map((r) => r.familyId)).toEqual([a.familyId, a.familyId, a.familyId]);
   });
 });

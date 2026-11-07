@@ -1656,12 +1656,26 @@
    "sent_to_customer",
    "succeeded"
   ],
+  "payment_merchant_accounts.onboarding_status": [
+   "approved",
+   "declined",
+   "not_started",
+   "submitted",
+   "under_review"
+  ],
   "payment_merchant_accounts.status": [
    "active",
    "disabled",
    "error",
    "paused",
    "pending"
+  ],
+  "payment_platform_validations.status": [
+   "approved",
+   "changes_requested",
+   "revoked",
+   "submitted",
+   "testing"
   ],
   "payment_refunds.status": [
    "cancelled",

@@ -14,6 +14,7 @@ import { EventsCoreModule } from '@aipowersalon/events/nest';
 import { Module } from '@nestjs/common';
 import { CustomerDisplayController } from './customer-display.controller';
 import { DisplayDevicesController } from './display-devices.controller';
+import { PosTerminalPayController } from './pos-terminal-pay.controller';
 import { CustomerDisplayService } from './customer-display.service';
 import { DisplayDevicesService } from './display-devices.service';
 import { InMemoryDisplayRepository, KyselyDisplayRepository, type DisplayDataPort } from './customer-display.repository';
@@ -27,7 +28,7 @@ import { decryptSecret } from '../common/mfa-enc';
 
 @Module({
   imports: [EventsCoreModule, GoCheckInModule, DisplayAdvertisingModule, CheckoutModule, CustomerPhoneModule],   // CustomerPhoneModule: the phone-change code on the display (Phase 3)
-  controllers: [CustomerDisplayController, DisplayDevicesController, POSTerminalCancelController],
+  controllers: [CustomerDisplayController, DisplayDevicesController, POSTerminalCancelController, PosTerminalPayController],   // Fiserv §8B: front-desk Pay on Clover Compact
   providers: [
     { provide: 'DisplayDataPort', useFactory: (db: AppDatabase): DisplayDataPort => (db ? new KyselyDisplayRepository(db) : new InMemoryDisplayRepository()), inject: [DATABASE] },
     // 23-inch spec §8–§12, §86: one in-memory store backs BOTH ports without a database (a claimed code is a listed display)

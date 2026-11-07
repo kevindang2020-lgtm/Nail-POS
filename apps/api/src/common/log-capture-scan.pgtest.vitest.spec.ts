@@ -75,7 +75,9 @@ beforeAll(async () => {
   // the "processor": answers every call with an error that echoes the request (headers included), as real gateways do
   processor = createServer((req, res) => { let body = ''; req.on('data', (c) => { body += c; }); req.on('end', () => { res.writeHead(req.url?.includes('refund') ? 502 : 500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: 'bad request', echo: body, authorization: req.headers.authorization })); }); });
   await new Promise<void>((r) => processor.listen(0, '127.0.0.1', () => r()));
-  Object.assign(process.env, { AUTH_SESSION_SECRET: 'log-capture-session-secret-0123456789abcdef', CARDPOINTE_BASE_URL: `http://127.0.0.1:${processor.address().port}`, CARDPOINTE_MERCHID: '496160873888', CARDPOINTE_USERNAME: CP_USER, CARDPOINTE_PASSWORD: CP_PASS, LOG_LEVEL: 'debug' });
+  Object.assign(process.env, { AUTH_SESSION_SECRET: 'log-capture-session-secret-0123456789abcdef', CARDPOINTE_BASE_URL: `http://127.0.0.1:${processor.address().port}`, CARDPOINTE_MERCHID: '496160873888', CARDPOINTE_USERNAME: CP_USER, CARDPOINTE_PASSWORD: CP_PASS, LOG_LEVEL: 'debug',
+    // merged Nov 7 2026: the strict reuse rule (no grace window) so the replayed token takes the reuse path and its log is scanned
+    REFRESH_REUSE_GRACE_SECONDS: '0' });
   captureWrites();
   const server = express(); server.set('trust proxy', 1); server.use(express.json());
   const dest = new Writable({ write(chunk, _e, cb) { captured.push(String(chunk)); cb(); } });
@@ -89,7 +91,7 @@ beforeAll(async () => {
   await app.listen(0, '127.0.0.1');
   base = `http://127.0.0.1:${app.getHttpServer().address().port}`;
 }, 180_000);
-afterAll(async () => { for (const r of restore.reverse()) r(); await app?.close(); processor?.close(); for (const k of ['CARDPOINTE_BASE_URL', 'CARDPOINTE_MERCHID', 'CARDPOINTE_USERNAME', 'CARDPOINTE_PASSWORD', 'LOG_LEVEL']) delete process.env[k]; });
+afterAll(async () => { for (const r of restore.reverse()) r(); await app?.close(); processor?.close(); for (const k of ['CARDPOINTE_BASE_URL', 'CARDPOINTE_MERCHID', 'CARDPOINTE_USERNAME', 'CARDPOINTE_PASSWORD', 'LOG_LEVEL', 'REFRESH_REUSE_GRACE_SECONDS']) delete process.env[k]; });
 
 const post = (path: string, body: unknown, headers: Record<string, string> = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
 

@@ -53,6 +53,7 @@ describe('Serving / Service Done in Vietnamese (WP-C1)', () => {
     globalThis.fetch = byUrl({ '/pos/serving': serving, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     const { container } = render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
     await screen.findAllByText('Nguyễn Thị Hương');
+    // The staff table no longer has a Next Available column (Soon / Now), so those words are not on screen.
     for (const vi of ['Kiểm tra chất lượng', 'Đang hong khô', '1 dịch vụ đã quá thời gian dự kiến', 'Quản lý nên ghé xem Nguyễn Thị Hương', 'Xem ngay', 'Mở hồ sơ', 'Đã dùng 50% công suất'])
       expect(screen.getAllByText(vi).length, vi).toBeGreaterThan(0);
     // The staff table no longer has a "next available" column (Soon → "Sắp rảnh" / Now → "Ngay bây giờ"); it shows each

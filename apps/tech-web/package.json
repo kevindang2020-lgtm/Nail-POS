@@ -1,7 +1,7 @@
 {
   "name": "aipowersalon-tech-web",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,6 +16,7 @@
     "@aipowersalon/mobile-sdk": "*",
     "@aipowersalon/money": "*",
     "@aipowersalon/realtime-contracts": "*",
+    "@aipowersalon/realtime-client": "*",
     "@aipowersalon/ui": "*",
     "@capacitor/android": "^8.4.3",
     "@capacitor/app": "^8.1.1",

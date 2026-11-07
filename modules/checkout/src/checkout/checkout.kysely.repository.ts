@@ -627,7 +627,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         .where('tenant_id', '=', ctx.tenantId).where('card_number_hash', '=', hash).where('status', '=', 'available').where(canMoveToSql(GIFT_CARD_STOCK, 'activated') as any).executeTakeFirst();
       if (Number(claim?.numUpdatedRows ?? 0) === 0) return null;
       // Create the pending sale on the pre-printed number (worthless until the ticket is paid, exactly like a digital sale).
-      const ins: any = await trx.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: (ctx as any).branchId ?? null, code: req.code, card_number_hash: hash, card_number_last4: lastFour(req.cardNumber), card_pin_hash: req.pin ? hashCardPin(req.code, req.pin) : null, initial_balance_cents: req.amountCents, balance_cents: 0, purchased_cents: req.amountCents, status: 'pending_payment', customer_id: req.customerId || null, issued_by_user_id: ctx.userId, sale_ticket_id: req.ticketId, reference: req.reference } as any).returning(['id']).executeTakeFirstOrThrow();
+      const ins: any = await trx.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: (ctx as any).branchId ?? null, code: req.code, card_number_hash: hash, card_number_last4: lastFour(req.cardNumber), card_pin_hash: req.pin ? hashCardPin(req.code, req.pin) : null, initial_balance_cents: req.amountCents, balance_cents: 0, purchased_cents: req.amountCents, status: 'pending_payment', customer_id: req.customerId || null, issued_by_user_id: ctx.userId || null, sale_ticket_id: req.ticketId, reference: req.reference } as any).returning(['id']).executeTakeFirstOrThrow();
       await trx.updateTable('gift_card_stock').set({ gift_card_id: String(ins.id), updated_at: new Date() } as any).where('tenant_id', '=', ctx.tenantId).where('card_number_hash', '=', hash).execute();
       await this.writeGiftCardRecipient(trx as unknown as Kysely<DB>, ctx.tenantId, String(ins.id), req.recipient);
       return { code: req.code, reference: req.reference };
@@ -719,7 +719,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         card_number_hash: hashCardNumber(newNumber), card_number_last4: lastFour(newNumber),
         initial_balance_cents: bal, balance_cents: bal, purchased_cents: Number(old.purchased_cents || bal),
         status: 'active', customer_id: old.customer_id, program_id: old.program_id, design_id: old.design_id,
-        issued_by_user_id: ctx.userId, replacement_of_card_id: old.id,
+        issued_by_user_id: ctx.userId || null, replacement_of_card_id: old.id,
       } as any).returning(['id']).executeTakeFirstOrThrow();
       const newId = String(ins.id);
       // Move the value: a 'transfer' credit onto the new card and a matching debit off the old (not a new issuance).
@@ -1591,6 +1591,12 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   async setFinalTotals(ctx: CheckoutContext, ticketId: string, t: { subtotalCents: number; taxCents: number; surchargeCents: number; totalCents: number }): Promise<void> {
     await this.scoped(this.db.updateTable('tickets'), ctx).set({ subtotal_cents: t.subtotalCents, tax_cents: t.taxCents, surcharge_cents: t.surchargeCents, total_cents: t.totalCents, updated_at: sql`now()` } as any)
       .where('id', '=', ticketId).execute();
+  }
+  async recordProviderSurcharge(ctx: CheckoutContext, paymentId: string, feeCents: number): Promise<void> {
+    if (!(feeCents > 0)) return;
+    await this.scoped(this.db.updateTable('payments'), ctx)
+      .set({ surcharge_cents: feeCents, amount_cents: sql<number>`amount_cents + ${feeCents}` })
+      .where('id', '=', paymentId).where('surcharge_cents', '=', 0).executeTakeFirst();
   }
   async paidBreakdown(ctx: CheckoutContext, ticketId: string): Promise<{ totalCents: number; surchargeCents: number }> {
     const r = await this.scoped(this.db.selectFrom('payments'), ctx).where('ticket_id', '=', ticketId).where('status', 'in', ['approved', 'partial'])

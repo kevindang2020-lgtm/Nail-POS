@@ -7,14 +7,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { FitDialog } from '../components/FitKit';
-import { DISPLAY_PROFILES, displayProfile, measureDisplay, densityFor } from './displayProfile';
-import { analyzeScreen, collectScreen, overallVerdict, type Finding, type Collected } from './screenCheck';
+import { DISPLAY_PROFILES, displayProfile, measureDisplay, densityFor, onDisplayProfile } from './displayProfile';
+import { analyzeScreen, collectScreen, overallVerdict, type ScreenFinding, type Collected } from './screenCheck';
 import { REALTIME_RECONCILE, realtimeStatus } from '../realtime/realtime-client';
 import { syncStatus } from '../realtime/useRealtime';
 
 const TONE: Record<string, string> = { PASS: '#1F7A3F', WARN: '#A96F22', FAIL: '#B3261E', NOT_TESTED: '#6B6257' };
 
-function run(): { collected: Collected; findings: Finding[] } {
+function run(): { collected: Collected; findings: ScreenFinding[] } {
   const prof = displayProfile() ?? measureDisplay();
   const snap = syncStatus.snapshot();
   const collected = collectScreen(document, window.location.pathname, prof, { status: realtimeStatus(), lastSyncedAt: snap.lastSyncedAt, lastErrorAt: snap.lastErrorAt });
@@ -26,6 +26,8 @@ export function ScreenCheckDialog({ onClose }: { onClose: () => void }) {
   const [note, setNote] = useState<string | null>(null);
   const rerun = useCallback(() => { setNote(null); requestAnimationFrame(() => setRes(run())); }, []);
   useEffect(() => { const id = setTimeout(rerun, 400); return () => clearTimeout(id); }, [rerun]);   // after the screen settles
+  // the window was resized / rotated / the keyboard opened while the overlay is open: measure again (the shell's own listener)
+  useEffect(() => onDisplayProfile(() => rerun()), [rerun]);
   const verdict = overallVerdict(res.findings);
   const p = res.collected.profile;
   const refreshNow = () => { window.dispatchEvent(new CustomEvent(REALTIME_RECONCILE, { detail: { reason: 'manual' } })); setNote(tx('sunmi.refreshAsked')); setTimeout(rerun, 1500); };
@@ -66,7 +68,7 @@ export function ScreenCheckDialog({ onClose }: { onClose: () => void }) {
         <tbody>
           {DISPLAY_PROFILES.map((d) => {
             const here = d.w === p.innerW && d.h === p.innerH;
-            return <tr key={d.id} style={here ? { fontWeight: 700 } : undefined}><td>{d.note}{here ? ` — ${tx('sunmi.thisScreen')}` : ''}</td><td>{d.w} × {d.h}</td><td>{tx('sunmi.density.' + densityFor(d.w, d.h))}</td></tr>;
+            return <tr key={d.id} style={here ? { fontWeight: 700 } : undefined}><td>{tx('sunmi.profile.' + d.id)}{here ? ` — ${tx('sunmi.thisScreen')}` : ''}</td><td>{d.w} × {d.h}</td><td>{tx('sunmi.density.' + densityFor(d.w, d.h))}</td></tr>;
           })}
         </tbody>
       </table>

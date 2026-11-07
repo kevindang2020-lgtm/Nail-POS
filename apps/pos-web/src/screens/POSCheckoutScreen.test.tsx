@@ -99,6 +99,7 @@ const coFetch = (opts: { payResult?: any; detailOver?: any } = {}) => {
     let body: any; try { body = init?.body ? JSON.parse(init.body) : undefined; } catch { /* */ }
     calls.push({ url: u, method, body });
     const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
+    if (u.includes('/pos/checkout/terminals')) return ok([{ id: 'term_1', label: 'Front Compact', stationId: null, disabled: false, lastSeenAt: null, hsnConfigured: true }]);
     if (u.includes('/pos/checkout/tickets/') && /\/pay\//.test(u)) return ok(opts.payResult ?? { status: 'submitted' });
     if (u.includes('/pos/checkout/tickets/') && /\/(apply-tip|apply-discount|recalculate|receipt)/.test(u)) return ok({ ok: true });
     if (u.match(/\/pos\/checkout\/tickets\/[^/?]+$/)) return ok(detail(opts.detailOver));
@@ -196,7 +197,7 @@ describe('POSCheckoutScreen — money-path workspace (auto-selected ticket)', ()
   });
 
   it('Functional Decision 22: a card charge whose answer was lost shows "Verify Payment" (never "pay again"), and shows the processor\'s answer', async () => {
-    const f = coFetch({ payResult: { status: 'processing' } }); globalThis.fetch = f as any;
+    const f = coFetch({ payResult: { status: 'unknown', next: 'verify', message: 'the terminal did not answer' } }); globalThis.fetch = f as any;
     const base = f.getMockImplementation()!;
     f.mockImplementation(async (url: any, init?: any) => {
       if (String(url).includes('/pay/card/verify')) {
@@ -209,17 +210,17 @@ describe('POSCheckoutScreen — money-path workspace (auto-selected ticket)', ()
     await screen.findByText('Checkout');
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.match(/\/tickets\/t1$/))).toBe(true));
     fireEvent.click(await screen.findByText('Complete Checkout'));
-    expect(await screen.findByText(/Payment status unknown/)).toBeInTheDocument();
+    expect(await screen.findByText(/UNKNOWN — VERIFY/)).toBeInTheDocument();
     const verify = await screen.findByText('Verify Payment');
-    const charges = (f as any).calls.filter((c: any) => /\/pay\/card$/.test(c.url)).length;
+    const charges = (f as any).calls.filter((c: any) => /\/pay\/(card|terminal)$/.test(c.url)).length;
     fireEvent.click(verify);
     expect(await screen.findByText(/confirms the payment was APPROVED/)).toBeInTheDocument();
-    expect((f as any).calls.filter((c: any) => /\/pay\/card$/.test(c.url)).length).toBe(charges);   // verifying never charged again
+    expect((f as any).calls.filter((c: any) => /\/pay\/(card|terminal)$/.test(c.url)).length).toBe(charges);   // verifying never charged again
     await waitFor(() => expect(screen.queryByText('Verify Payment')).toBeNull());
   });
 
-  it('card payment surfaces configured:false honestly (no fake capture)', async () => {
-    const f = coFetch({ payResult: { configured: false, disabledReason: 'Card processor is not configured yet.' } });
+  it('card payment surfaces an unconfigured processor honestly (no fake capture)', async () => {
+    const f = coFetch({ payResult: { status: 'unavailable', next: 'retry', message: 'Card processor is not configured yet.' } });
     globalThis.fetch = f as any;
     render(<MemoryRouter><POSCheckoutScreen /></MemoryRouter>);
     await screen.findByText('Checkout');
@@ -227,7 +228,7 @@ describe('POSCheckoutScreen — money-path workspace (auto-selected ticket)', ()
     const pay = await screen.findByText('Complete Checkout');
     fireEvent.click(pay);
     await waitFor(() => {
-      expect((f as any).calls.some((c: any) => c.url.includes('/tickets/t1/pay/card') && c.method === 'POST')).toBe(true);
+      expect((f as any).calls.some((c: any) => c.url.includes('/tickets/t1/pay/terminal') && c.method === 'POST')).toBe(true);
     });
     expect(await screen.findByText(/not configured yet/)).toBeInTheDocument();
   });

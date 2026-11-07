@@ -19,7 +19,7 @@ export const SKIP_LINE_STRANDED_MS = 15 * 60_000; // lets a manager confirm cash
 
 export class SkipLineCheckoutService {
   constructor(private readonly repo: SkipLineCheckoutRepository, private readonly realtime?: RealtimeEmitter,
-              private readonly gateway?: { resolve(tenantId: string, branchId?: string | null): Promise<{ processor?: PaymentProcessor }> }) {}
+              private readonly gateway?: { resolve(tenantId: string, branchId?: string | null): Promise<{ processor?: PaymentProcessor; merchantAccountId?: string | null }> }) {}
   /** B-81 (Oct 23 2026): the SAME per-ticket checkout lock the POS takes while it records a tender. The guest's app charge
    *  holds it from the unsettled-tender check to the recorded answer, so a POS cash / card / split on the same bill and the
    *  guest's card can never interleave (the database allows one active lock per ticket). Absent (tests) → no lock. */
@@ -34,11 +34,11 @@ export class SkipLineCheckoutService {
    * tenant's processor, else a clearly-labeled sandbox only when PAYMENTS_SANDBOX=1, else the server-wide processor only
    * when PAYMENTS_ALLOW_ENV_FALLBACK=1 (the resolver's own dev rule), else none (honest "not configured").
    */
-  private async resolveProcessor(tenantId: string, branchId?: string | null): Promise<{ processor?: PaymentProcessor; sandbox: boolean }> {
+  private async resolveProcessor(tenantId: string, branchId?: string | null): Promise<{ processor?: PaymentProcessor; sandbox: boolean; merchantAccountId?: string | null }> {
     const sandbox = process.env.PAYMENTS_SANDBOX === '1' || process.env.PAYMENTS_SANDBOX === 'true';
     if (this.gateway) {
       const g = await this.gateway.resolve(tenantId, branchId ?? null);   // wave 3 §13: tenant + branch → merchant account
-      if (g.processor) return { processor: g.processor, sandbox: false };
+      if (g.processor) return { processor: g.processor, sandbox: false, merchantAccountId: g.merchantAccountId ?? null };
       if (sandbox) return { processor: new SandboxPaymentProcessor(), sandbox: true };
       if (process.env.PAYMENTS_ALLOW_ENV_FALLBACK === '1') { const env = processorFromEnv(); if (env) return { processor: env, sandbox: false }; }
       return { sandbox: false };
@@ -74,7 +74,7 @@ export class SkipLineCheckoutService {
   }
 
   // ================= CUSTOMER =================
-  async customerActiveBill(ctx: SLCtx): Promise<{ bill: Bill | null; enabledMethods: string[]; settings: SkipLineSettings }> {
+  async customerActiveBill(ctx: SLCtx): Promise<{ bill: Bill | null; enabledMethods: string[]; settings: SkipLineSettings; surcharge: { applies: boolean; ratePercent: number } }> {
     const customerId = await this.repo.resolveCustomerId(ctx);
     if (!customerId) throw withCode(new SkipLineError('not_a_customer', 'Not a customer account.', 403), 'PERMISSION_DENIED');
     const settings = await this.repo.getSettings(ctx.tenantId);
@@ -85,7 +85,9 @@ export class SkipLineCheckoutService {
     // Cash-to-technician is the ONLY way a customer settles without the front desk (card payments are started
     // by the front desk via sendAppPayment). So "require front desk approval" means exactly: do not offer it.
     if (settings.allowCashToTechnician && !settings.requireFrontDeskApproval) enabledMethods.push('cash_to_technician');
-    return { bill, enabledMethods, settings };
+    // Payment master build §9.4 / N.J.S.A. 56:8-156.2: the app must show the conditional credit-card surcharge BEFORE payment
+    const surcharge = bill && this.repo.cardSurchargeDisclosure ? await this.repo.cardSurchargeDisclosure(ctx.tenantId, bill.ticketId) : { applies: false, ratePercent: 0 };
+    return { bill, enabledMethods, settings, surcharge };
   }
 
   /** Customer chooses to pay cash to their technician. Creates the intent + a pending cash-confirmation for the tech. */
@@ -268,7 +270,7 @@ export class SkipLineCheckoutService {
     const method = this.cardMethods.has(String(body?.method)) ? String(body.method) : 'card';
     // wave 3 PAYI §29–§31 (P0 PCI): a raw card number is never accepted as a "token" — refused before anything is created
     if (looksLikeRawPan(String(body?.token ?? body?.account ?? ''))) throw withCode(new SkipLineError('raw_card_rejected', 'Card numbers are never accepted directly — enter the card in the secure card form.', 400), 'CARD_NUMBER_NOT_ACCEPTED');
-    const { processor } = await this.resolveProcessor(ctx.tenantId, ctx.branchId ?? null);
+    const { processor, merchantAccountId } = await this.resolveProcessor(ctx.tenantId, ctx.branchId ?? null);
     // locate the start() intent or create one. The customer tip comes from the INTENT (chosen at start) — the
     // confirm body cannot change it; only the no-intent path validates a body tip, exactly once.
     let intentId = '';
@@ -293,7 +295,9 @@ export class SkipLineCheckoutService {
     if (!processor) return { configured: false, disabledReason: 'Card processor is not configured yet.', intentId, status: 'requires_action' };
     // resolve a tokenized card: client-tokenized (hosted fields / wallet) or a saved method
     let token = body?.token || body?.account; let expiry = body?.expiry; let savedCard = false;
-    if (!token && body?.paymentMethodId) { const saved = await this.repo.savedCardToken(ctx, customerId, String(body.paymentMethodId)); if (saved) { savedCard = true; token = saved.token; expiry = expiry || saved.expiry; } }
+    // Payment master build §8D: a saved card is chargeable only where it was provider-verified (same merchant account), with recorded
+    // consent and not revoked — the repository refuses anything else (legacy / synthetic rows included).
+    if (!token && body?.paymentMethodId) { const saved = await this.repo.savedCardToken(ctx, customerId, String(body.paymentMethodId), merchantAccountId ?? null); if (saved) { savedCard = true; token = saved.token; expiry = expiry || saved.expiry; } }
     if (!token) throw new SkipLineError('card_token_required', 'A tokenized card is required (hosted fields or a saved method).', 400);
     const lockSession = 'skip-line:' + randomUUID();
     if (this.locks) {
@@ -348,14 +352,22 @@ export class SkipLineCheckoutService {
       await this.repo.audit(ctx, 'skip_line_app_payment_unknown_answer', ticketId, { intentId, respstat: auth.respstat, respText: auth.respText, retref: auth.retref ?? null });
       throw withCode(new SkipLineError('payment_status_unknown', 'We could not confirm your payment with the card processor. Please do not pay again — the salon will confirm it.', 409), 'PAYMENT_STATUS_UNKNOWN');
     }
+    // Payment master build §7.3 / §9 (Nov 4 2026): an approval with no retref, or for an amount other than the request plus the
+    // provider-assessed surcharge, is not "paid" — it stays 'processing' (charged) for Verify / the sweep, never closed as paid.
+    const providerFee = Math.max(0, auth.surchargeCents ?? 0);
+    if (auth.approved && (!auth.retref || (auth.amountCents != null && auth.amountCents !== amount + providerFee))) {
+      await this.repo.audit(ctx, 'skip_line_app_payment_amount_mismatch', ticketId, { intentId, requestedCents: amount, providerFeeCents: providerFee, approvedCents: auth.amountCents ?? null, retref: auth.retref ?? null });
+      throw withCode(new SkipLineError('payment_status_unknown', 'We could not confirm your payment with the card processor. Please do not pay again — the salon will confirm it.', 409), 'PAYMENT_STATUS_UNKNOWN');
+    }
     if (!auth.approved) return this.recordDeclined(ctx, ticketId, intentId, customerId, method, amount, bill.tipCents + customerTip, auth.retref ?? null, idem, auth.respText ?? null, 'charge');
-    return this.recordApproved(ctx, ticketId, intentId, customerId, method, amount, bill.tipCents + customerTip, auth.retref ?? null, idem, 'charge');
+    return this.recordApproved(ctx, ticketId, intentId, customerId, method, amount, bill.tipCents + customerTip, auth.retref ?? null, idem, 'charge', providerFee);
   }
 
   /** The one place an approved app charge becomes a paid ticket — the live answer AND a later Verify / sweep go through
    *  it. The payment row is idempotent on the intent key; the intent settle is conditional; both are safe to repeat. */
-  private async recordApproved(ctx: SLCtx, ticketId: string, intentId: string, customerId: string | null, method: string, amount: number, tipCents: number, retref: string | null, idem: string, by: 'charge' | 'verify' | 'sweep'): Promise<any> {
-    const { paymentId } = await this.repo.recordPaymentAndCloseTicket(ctx, ticketId, method, amount, tipCents, { processorTxnId: retref, idempotencyKey: idem });
+  private async recordApproved(ctx: SLCtx, ticketId: string, intentId: string, customerId: string | null, method: string, amount: number, tipCents: number, retref: string | null, idem: string, by: 'charge' | 'verify' | 'sweep', surchargeCents = 0): Promise<any> {
+    // the provider-assessed card surcharge (payment master build §9) is recorded on the payment and is part of what was collected
+    const { paymentId } = await this.repo.recordPaymentAndCloseTicket(ctx, ticketId, method, amount + surchargeCents, tipCents, { processorTxnId: retref, idempotencyKey: idem, surchargeCents });
     await this.repo.settleChargedIntent(ctx, intentId, { status: 'succeeded', processorRef: retref, settledBy: by });
     await this.repo.audit(ctx, by === 'charge' ? 'skip_line_app_payment_succeeded' : 'skip_line_app_payment_verified_approved', ticketId, { intentId, paymentId, amountCents: amount, method, by });
     if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, SLC_EVENTS.paymentSucceeded, { ticketId, paymentId });   // §343: else the projection delivers payment.captured

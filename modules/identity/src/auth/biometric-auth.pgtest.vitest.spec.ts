@@ -8,6 +8,7 @@ import { KyselyAuthDevices } from './auth-devices';
 import { KyselyBiometricCredentials, hashBiometricSecret } from './biometric-credentials';
 import { BiometricAuth, BiometricHttpError } from './biometric-auth';
 import { verifySession } from './auth-session-token';
+import { sql } from 'kysely';
 
 let pg: any; let db: any;
 const T = 'b1b1b1b1-0000-4000-8000-0000000000a1';
@@ -160,5 +161,39 @@ describe('revocation — every path that ends trust ends Face ID', () => {
     await pg.query(`UPDATE users SET status = 'suspended' WHERE id = $1`, [TECH]);
     try { await expectCode(core().login({ credentialId: e.credentialId, deviceId: DEV, secret: e.secret }, REQ), 'BIOMETRIC_CREDENTIAL_INVALID', 401); }
     finally { await pg.query(`UPDATE users SET status = 'active' WHERE id = $1`, [TECH]); }
+  });
+});
+
+// Nov 5 2026 (Kevin; changes Constitution 6 §37) — migration 841: a normal sign-out on the phone KEEPS Face ID; every other
+// way a session is revoked ends it (the trigger on sessions), so a remotely signed-out phone cannot sign back in by face.
+describe('Face ID and sign-out (migration 841)', () => {
+  const status = async (id: string) => (await pg.query(`SELECT status, revoked_reason FROM device_biometric_credentials WHERE id = $1`, [id])).rows[0];
+  it('the phone\'s own sign-out (aps.keep_face_id) keeps the credential, and Face ID signs back in', async () => {
+    const e = await enrolled();
+    const sid = await session(TECH);
+    await db.transaction().execute(async (trx: any) => {
+      await sql`select set_config('aps.keep_face_id', 'on', true)`.execute(trx);   // exactly what POST /auth/logout does
+      await sql`update sessions set status = 'revoked', revoked_at = now() where id = ${sid}`.execute(trx);
+    });
+    expect(await status(e.credentialId)).toEqual({ status: 'active', revoked_reason: null });
+    await expect(core().login({ credentialId: e.credentialId, deviceId: DEV, secret: e.secret }, REQ)).resolves.toBeTruthy();
+  });
+  it('the flag is transaction-local: a later revoke on the same connection still ends Face ID', async () => {
+    const e = await enrolled();
+    await new KyselySessionStore(db).revoke(await session(TECH));
+    expect(await status(e.credentialId)).toEqual({ status: 'revoked', revoked_reason: 'session_revoked' });
+  });
+  it('a session revoked from elsewhere (sign out other devices, Super Admin, theft) ends Face ID on that phone', async () => {
+    const e = await enrolled();
+    const sid = await session(TECH);
+    await pg.query(`UPDATE sessions SET status = 'revoked', revoked_at = now() WHERE id = $1`, [sid]);
+    expect(await status(e.credentialId)).toEqual({ status: 'revoked', revoked_reason: 'session_revoked' });
+    await expectCode(core().login({ credentialId: e.credentialId, deviceId: DEV, secret: e.secret }, REQ), 'BIOMETRIC_CREDENTIAL_INVALID', 401);
+  });
+  it('revoking a session on ANOTHER phone leaves this phone\'s Face ID alone', async () => {
+    const e = await enrolled();
+    const other = (await new KyselySessionStore(db).create({ userId: TECH, tenantId: T, branchId: null, deviceId: OTHER_DEV, platform: 'ios', ttlSeconds: 3600 } as any))!;
+    await pg.query(`UPDATE sessions SET status = 'revoked', revoked_at = now() WHERE id = $1`, [other]);
+    expect(await status(e.credentialId)).toEqual({ status: 'active', revoked_reason: null });
   });
 });

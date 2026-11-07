@@ -1,20 +1,7 @@
 // SuperAdminTechProfileModerationScreen.tsx — Super Admin → Business Management → Tech Profiles
 // Centralized oversight of technician profiles: verification decisions, badge provisioning, and DM abuse moderation.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  FiAward,
-  FiCheckCircle,
-  FiShield,
-  FiAlertTriangle,
-  FiStar,
-  FiImage,
-  FiCheck,
-  FiX,
-  FiRefreshCw,
-  FiSlash,
-  FiSearch,
-  FiInfo,
-} from 'react-icons/fi';
+import { FiAward, FiCheckCircle, FiShield, FiAlertTriangle, FiStar, FiImage, FiCheck, FiX, FiRefreshCw, FiSlash, FiSearch, FiInfo } from 'react-icons/fi';
 import {
   superAdminTechProfileApi,
   type SaTechVerification,

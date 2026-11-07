@@ -95,6 +95,17 @@ describe('skip-line customer tip', () => {
     });
   }
 
+  // Fiserv master build §7.3 (merged Nov 7): an approval for a different amount is held — never recorded as paid; the guest
+  // is told not to pay again (409), the same answer as any unknown outcome.
+  it('an approval for a different amount is held, not recorded as paid', async () => {
+    const { svc, repo } = harness();
+    const start = await svc.startAppPayment(ctx, 'tk1', { method: 'card' });
+    (svc as any).resolveProcessor = () => ({ processor: { name: 'sbx', authorizeAndCapture: async () => ({ approved: true, declined: false, respstat: 'A', retref: 'R', amountCents: 1 }) }, sandbox: true });
+    await expect(svc.confirmAppPayment(ctx, 'tk1', { intentId: start.intentId, method: 'card', token: 'tok_1' })).rejects.toMatchObject({ code: 'payment_status_unknown', httpStatus: 409 });
+    expect(repo.recordPaymentAndCloseTicket).not.toHaveBeenCalled();
+    expect(repo.recordDeclinedPayment).not.toHaveBeenCalled();
+  });
+
   it('POS-set tip and customer tip COMBINE on the payment row', async () => {
     const { svc, repo } = harness();
     repo.billForTicket.mockResolvedValue({ ...BILL, tipCents: 300, totalDueCents: 8950 });

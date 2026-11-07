@@ -55,7 +55,9 @@ export class CustomerTechController {
   }
 
   @Get('techs/:publicSlug') @AnonRateLimit(30, 60_000, { bucket: 'customer-techs' })
-  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+  // Nov 5 2026 (merged Nov 7): the profile is VIEWER-SPECIFIC (a customer who booked this tech sees the booked_only links),
+  // so it never sits in a shared cache — it would hand those links to the next viewer.
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
   profile(@Req() r: any, @Param('publicSlug') slug: string) {
     gate(r);
     return run(() => this.svc.customerPublicProfile(ctxFrom(r), slug));

@@ -28,7 +28,7 @@
  */
 export type Density = 'comfortable' | 'compact' | 'tight' | 'fallback';
 
-export interface DisplayProfile {
+export interface PosDisplayProfile {
   innerW: number; innerH: number;
   vvW: number; vvH: number; vvTop: number;
   dpr: number;
@@ -57,28 +57,29 @@ export function keyboardOpenFor(innerH: number, vvH: number): boolean {
   return lost >= 150 && lost >= innerH * 0.2;
 }
 
-/** The certified test profiles (the e2e matrix and the Screen Check "profile preview" read these). */
-export const DISPLAY_PROFILES: { id: string; w: number; h: number; note: string }[] = [
-  { id: 'windows-1080-browser', w: 1920, h: 945, note: 'Windows 1920×1080, Edge/Chrome tabs + address bar + taskbar visible (primary)' },
-  { id: 'sunmi-flex3-chrome', w: 1920, h: 952, note: 'SUNMI FLEX 3 27″, Android 13 Chrome, status + toolbar + navigation bars (DPR 1)' },
-  { id: 'sunmi-flex3-kiosk', w: 1920, h: 1032, note: 'SUNMI FLEX 3 27″, kiosk / installed web app, navigation bar visible (DPR 1)' },
-  { id: 'sunmi-flex3-full', w: 1920, h: 1080, note: 'SUNMI FLEX 3 27″, immersive full screen (DPR 1)' },
-  { id: 'desktop-1440p', w: 2560, h: 1440, note: '2560×1440 desktop (comfortable)' },
-  { id: 'desktop-900p', w: 1600, h: 900, note: '1600×900 (tight)' },
-  { id: 'laptop-768', w: 1366, h: 768, note: '1366×768 (tight fallback)' },
-  { id: 'sunmi-flex3-dpr15-chrome', w: 1280, h: 592, note: 'SUNMI FLEX 3 if the panel runs at DPR 1.5: 1280×720 minus the Android bars (fallback report)' },
+/** The certified test profiles (the e2e matrix and the Screen Check "profile preview" read these). The words for each
+ *  profile live in the sunmi namespace ('sunmi.profile.<id>'), so the Screen Check table reads in the POS language. */
+export const DISPLAY_PROFILES: { id: string; w: number; h: number }[] = [
+  { id: 'windows-1080-browser', w: 1920, h: 945 },
+  { id: 'sunmi-flex3-chrome', w: 1920, h: 952 },
+  { id: 'sunmi-flex3-kiosk', w: 1920, h: 1032 },
+  { id: 'sunmi-flex3-full', w: 1920, h: 1080 },
+  { id: 'desktop-1440p', w: 2560, h: 1440 },
+  { id: 'desktop-900p', w: 1600, h: 900 },
+  { id: 'laptop-768', w: 1366, h: 768 },
+  { id: 'sunmi-flex3-dpr15-chrome', w: 1280, h: 592 },
 ];
 
-let current: DisplayProfile | null = null;
-const listeners = new Set<(p: DisplayProfile) => void>();
+let current: PosDisplayProfile | null = null;
+const listeners = new Set<(p: PosDisplayProfile) => void>();
 
 /** The last measurement (null before the shell mounted). */
-export function displayProfile(): DisplayProfile | null { return current; }
+export function displayProfile(): PosDisplayProfile | null { return current; }
 /** Subscribe to profile changes (the Screen Check overlay); returns the unsubscribe. */
-export function onDisplayProfile(fn: (p: DisplayProfile) => void): () => void { listeners.add(fn); return () => listeners.delete(fn); }
+export function onDisplayProfile(fn: (p: PosDisplayProfile) => void): () => void { listeners.add(fn); return () => listeners.delete(fn); }
 
 /** Measure the document now. Exported for the Screen Check overlay and tests. */
-export function measureDisplay(doc: Document = document, win: Window & typeof globalThis = window): DisplayProfile {
+export function measureDisplay(doc: Document = document, win: Window & typeof globalThis = window): PosDisplayProfile {
   const vv = win.visualViewport;
   const innerW = win.innerWidth, innerH = win.innerHeight;
   const vvW = vv ? Math.round(vv.width) : innerW, vvH = vv ? Math.round(vv.height) : innerH, vvTop = vv ? Math.round(vv.offsetTop) : 0;
@@ -91,7 +92,7 @@ export function measureDisplay(doc: Document = document, win: Window & typeof gl
   const contentH = mainR ? Math.round(mainR.height) - headerH : innerH - headerH;
   const sidebarW = sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 0;
   const mm = (q: string) => { try { return win.matchMedia?.(q).matches ?? false; } catch { return false; } };
-  const displayMode: DisplayProfile['displayMode'] = doc.fullscreenElement || mm('(display-mode: fullscreen)') ? 'fullscreen' : mm('(display-mode: standalone)') ? 'standalone' : 'browser';
+  const displayMode: PosDisplayProfile['displayMode'] = doc.fullscreenElement || mm('(display-mode: fullscreen)') ? 'fullscreen' : mm('(display-mode: standalone)') ? 'standalone' : 'browser';
   return {
     innerW, innerH, vvW, vvH, vvTop,
     dpr: Math.round((win.devicePixelRatio || 1) * 100) / 100,
@@ -106,7 +107,7 @@ export function measureDisplay(doc: Document = document, win: Window & typeof gl
   };
 }
 
-function apply(p: DisplayProfile, root: HTMLElement): void {
+function apply(p: PosDisplayProfile, root: HTMLElement): void {
   const set = (k: string, v: string) => { if (root.getAttribute(k) !== v) root.setAttribute(k, v); };
   set('data-density', p.density);
   set('data-keyboard', p.keyboardOpen ? 'open' : 'closed');
@@ -116,7 +117,7 @@ function apply(p: DisplayProfile, root: HTMLElement): void {
   root.style.setProperty('--pos-kb-inset', `${Math.max(0, p.innerH - p.vvH - p.vvTop)}px`);
 }
 
-const same = (a: DisplayProfile | null, b: DisplayProfile) => !!a && a.innerW === b.innerW && a.innerH === b.innerH && a.vvW === b.vvW && a.vvH === b.vvH
+const same = (a: PosDisplayProfile | null, b: PosDisplayProfile) => !!a && a.innerW === b.innerW && a.innerH === b.innerH && a.vvW === b.vvW && a.vvH === b.vvH
   && a.vvTop === b.vvTop && a.dpr === b.dpr && a.contentW === b.contentW && a.contentH === b.contentH && a.displayMode === b.displayMode && a.headerH === b.headerH && a.sidebarW === b.sidebarW;
 
 /**
@@ -168,7 +169,7 @@ export function startDisplayProfile(win: Window & typeof globalThis = window): (
  * the keyboard closes — the page returns to exactly its original geometry.
  */
 const shifted = new Map<HTMLElement, { top: number; left: number }>();
-function keepFocusVisible(doc: Document, p: DisplayProfile, target?: Element | null): void {
+function keepFocusVisible(doc: Document, p: PosDisplayProfile, target?: Element | null): void {
   const el = (target ?? doc.activeElement) as HTMLElement | null;
   if (!el || !el.matches?.('input, textarea, select, [contenteditable="true"]')) return;
   const r = el.getBoundingClientRect();

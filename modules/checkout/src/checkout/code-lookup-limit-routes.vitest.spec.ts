@@ -19,6 +19,7 @@ const TK = 'tk_2042';
 const UNKNOWN = '9999888877776666';
 
 const CODE_ROUTES: Record<string, string> = {
+  // (the old direct POST gift-cards/:code/reload is gone: it added balance with no payment — a reload is sold on a ticket, giftReload)
   giftLookup: 'gift_card', giftBalance: 'gift_card', voidGift: 'gift_card', giftReplace: 'gift_card',
   payGift: 'gift_card', paySplit: 'gift_card', giftReload: 'gift_card', applyRewardCode: 'reward_code', applyPromotion: 'coupon', applyOffer: 'coupon',
 };
@@ -34,6 +35,9 @@ describe('every lookup-by-code POS route is limited', () => {
   it('a route that takes no code is not limited (a sale, a cash payment)', () => {
     expect(Reflect.getMetadata(CODE_LOOKUP_KIND, (CheckoutController.prototype as any).giftSale)).toBeUndefined();
     expect(Reflect.getMetadata(CODE_LOOKUP_KIND, (CheckoutController.prototype as any).payCash)).toBeUndefined();
+  });
+  it('there is no unpaid direct reload route (a gift card is reloaded only by selling the reload on a ticket)', () => {
+    expect((CheckoutController.prototype as any).reloadGift).toBeUndefined();
   });
 });
 

@@ -17,6 +17,8 @@ export * from './faceid';
 // webauthn.ts is the WEB passkey flow; faceid.ts wraps it per platform and is the public entry. Only the
 // non-overlapping web helpers are exported from it.
 export { isFaceIdAvailable as isWebAuthnAvailable, isFaceIdAvailable } from './webauthn';
+// The raw web passkey ceremonies, for the apps whose own faceid.ts picks the platform (one copy instead of four api/webauthn.ts).
+export { enrollFaceId as enrollWebAuthn, signInWithFaceId as signInWithWebAuthn } from './webauthn';
 export { initNative, type NativeCapabilities } from './native-bootstrap';
 export { isNativePlatform, makeSecureStore, makeBiometrics, toBiometryKind, CapacitorSecureStore, CapacitorBiometrics } from './capacitor-adapters';
 // BUILD_PLAN Phase 13 (agent A): the ONE mobile transport + NetworkState (+ native realtime stream tickets)

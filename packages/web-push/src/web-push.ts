@@ -33,7 +33,7 @@ export interface WebPushEnv {
   storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
 }
 /** the desktop POS registers as 'pos': it receives only uncategorized pushes (no typed category targets the front desk) */
-export type WebPushAppId = PushAppId | 'pos';
+export type WebPushAppId = PushAppId | 'pos' | 'admin';
 export interface WebPushClientOptions {
   app: WebPushAppId;
   config: WebPushConfig | null;
@@ -48,6 +48,10 @@ export interface WebPushClient {
   resume(): Promise<void>;
   /** the person's own sign-in (or another deliberate action): asks once if never asked; registers when granted. */
   noteMeaningfulAction(): Promise<void>;
+  /** Nov 6 2026: the permission as it stands, without prompting ('unsupported' when push is not configured / available). */
+  permission(): 'granted' | 'prompt' | 'denied' | 'unsupported';
+  /** Nov 6 2026: the "Turn on notifications" tap — asks (the browser needs the person's click), registers when allowed. */
+  enable(): Promise<boolean>;
   /** sign-out, BEFORE the session is cleared: hands the token back; a failed hand-back keeps it for next time. */
   unregister(): Promise<void>;
   /** a push that arrived while the page is open (the worker posts it instead of showing it) — show an in-app toast */
@@ -135,6 +139,19 @@ export function createWebPushClient(o: WebPushClientOptions): WebPushClient {
       let granted = false;
       try { granted = (await env.notification!.requestPermission()) === 'granted'; } catch { granted = false; }
       if (granted) await register();
+    },
+    permission() {
+      if (!supported) return 'unsupported';
+      const p = env.notification!.permission;
+      return p === 'granted' ? 'granted' : p === 'denied' ? 'denied' : 'prompt';
+    },
+    async enable() {
+      if (!supported) return false;
+      let granted = env.notification!.permission === 'granted';
+      if (!granted) { try { granted = (await env.notification!.requestPermission()) === 'granted'; } catch { granted = false; } }
+      set(ASKED_KEY, '1');
+      if (granted) await register();
+      return granted;
     },
     async unregister() {
       const token = get(TOKEN_KEY);

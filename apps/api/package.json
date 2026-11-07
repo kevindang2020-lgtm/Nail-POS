@@ -89,6 +89,7 @@
     "check:actor-stamp": "node scripts/gen-actor-columns.mjs --check",
     "db:ownership": "node scripts/db-ownership.mjs --write",
     "db:preflight": "node scripts/db-preflight.mjs",
+    "check:unassigned-terminals": "node scripts/check-unassigned-terminals.mjs --strict",
     "db:measure": "node scripts/db-measure.mjs",
     "openapi": "node scripts/openapi.mjs",
     "openapi:manifest": "node scripts/openapi.mjs --manifest"

@@ -6,7 +6,14 @@
 // (the same one Profile → Payment Methods uses): the number / expiry / CVV are typed on the gateway's own page and only a
 // token comes back by postMessage from that origin. Apple Pay / Google Pay are not offered here: there is no wallet sheet in
 // the web app, and the old button sent a made-up token (a fake control).
-import { useEffect, useRef, useState } from 'react';
+//
+// Fiserv master build §8D (P0, Nov 4 2026): the new-card path used to keep the card number + CVV in React state and send
+// the raw digits as the "token"; Apple/Google Pay sent an invented `apple_pay_token_<time>`. Now a new card is entered in
+// the salon's Fiserv-hosted iFrame (one-time token, card-not-present), saving a card happens only on Payment Methods with
+// its own consent, the wallet buttons are hidden until a real Apple/Google Pay integration exists, and an unconfirmed
+// result is shown as "verifying — do not pay again", never as a decline.
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { HostedCardFrame, type HostedCardToken } from '../payments/HostedCardFrame';
 import { useNavigate } from 'react-router-dom';
 import { skipLineApi, type ActiveBillResponse, type ConfirmResult } from '../api/skipLineApi';
 import { customerApi, type CustomerPaymentMethod } from '../api/customerApi';
@@ -54,10 +61,8 @@ export function PayScreen() {
   const tipToCharge = Number.isInteger(chosenTipCents) && chosenTipCents > 0 ? chosenTipCents : 0;
   const [result, setResult] = useState<{ amountCents: number; method: string; ref?: string | null } | null>(null);
   const [cash, setCash] = useState<{ technicianName: string; amountCents: number; intentId: string } | null>(null);
-  const [saveCard, setSaveCard] = useState(false);
-  // the salon's hosted tokenizer; null = not loaded; available:false = no card gateway yet
-  const [tok, setTok] = useState<{ available: boolean; url?: string; origin?: string } | null>(null);
-  const [pending, setPending] = useState<{ token: string; expMonth?: number; expYear?: number } | null>(null);
+  const [newCard, setNewCard] = useState<HostedCardToken | null>(null);
+  const onHostedToken = useCallback((t: HostedCardToken | null) => setNewCard(t), []);
   const [savedCards, setSavedCards] = useState<CustomerPaymentMethod[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
@@ -79,27 +84,17 @@ export function PayScreen() {
       .catch((e: any) => { setErr(e?.message || 'Could not load your bill.'); setStep('error'); }); 
   };
   useEffect(() => { load(); return stopPoll; }, []);
-  const needTokenizer = step === 'card' && showNewCard;
-  useEffect(() => {
-    if (!needTokenizer || tok) return;
-    customerApi.paymentTokenizer().then(setTok).catch(() => setTok({ available: false }));
-  }, [needTokenizer, tok]);
-  // CardSecure posts {"message": "<token>", "expiry": "YYYYMM"} to the parent window — accepted ONLY from the gateway origin
-  useEffect(() => {
-    if (!needTokenizer || !tok?.available || !tok.origin) return;
-    const onMsg = (e: MessageEvent) => {
-      if (e.origin !== tok.origin) return;
-      let d: any = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
-      const token = String(d?.message ?? ''); if (!/^9\d{12,18}$/.test(token)) return;   // a CardSecure token, never a card number
-      const m = /^(\d{4})(\d{2})$/.exec(String(d?.expiry ?? ''));
-      setMsg(null); setPending({ token, ...(m ? { expYear: Number(m[1]), expMonth: Number(m[2]) } : {}) });
-    };
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, [needTokenizer, tok]);
+  // the hosted card frame (HostedCardFrame) loads the tokenizer and validates its messages itself (exact origin + frame)
 
   const bill = data?.bill || null;
   const totalWithTip = (bill?.totalDueCents ?? 0) + tipToCharge;
+  // Fiserv §9.4 / N.J.S.A. 56:8-156.2: conditional credit-card surcharge, disclosed BEFORE payment. The processor
+  // decides per card (credit only) and the receipt shows what was actually charged — no fee is shown as already assessed.
+  const surchargeNote = data?.surcharge?.applies && data.surcharge.ratePercent > 0
+    ? <div role="note" data-testid="surcharge-disclosure" className="cust-sub" style={{ fontSize: 12, fontWeight: 700 }}>
+        Credit cards only: a {data.surcharge.ratePercent}% surcharge may be added by the card processor. Debit and prepaid cards are never surcharged. Your receipt shows the exact amount charged.
+      </div>
+    : null;
   const methods = (data?.enabledMethods || []).filter((m) => APP_METHODS.includes(m));
 
   const handleConfirm = (r: ConfirmResult, m: string) => {
@@ -121,12 +116,9 @@ export function PayScreen() {
       if (!showNewCard && selectedCardId) {
         r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: 'card', paymentMethodId: selectedCardId });
       } else {
-        if (!pending) throw new Error('Enter your card in the secure card form first.');
-        const expiry = pending.expMonth && pending.expYear ? String(pending.expMonth).padStart(2, '0') + String(pending.expYear % 100).padStart(2, '0') : undefined;
-        if (saveCard) {
-          await customerApi.addPaymentMethod({ token: pending.token, brand: 'Card', last4: pending.token.slice(-4), expMonth: pending.expMonth, expYear: pending.expYear }).catch(() => {});
-        }
-        r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: 'card', token: pending.token, ...(expiry ? { expiry } : {}) });
+        // one-time hosted-iFrame token (card-not-present); the card number / CVV never reached this app
+        if (!newCard) throw new Error('Enter your card in the secure card form first.');
+        r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: 'card', token: newCard.token, ...(newCard.expiry ? { expiry: newCard.expiry } : {}) });
       }
       handleConfirm(r, 'card');
     } catch (e: any) {
@@ -272,21 +264,16 @@ export function PayScreen() {
 
         {showNewCard && (
           <>
-            {tok === null ? <div className="cust-sub">Loading the secure card form…</div>
-              : !tok.available ? <div className="cust-sub">Card entry isn’t available for this salon yet. Choose a saved card or another way to pay.</div>
-              : <iframe title="Secure card entry" src={tok.url} sandbox="allow-scripts allow-same-origin allow-forms" style={{ width: '100%', height: 150, border: 0 }} />}
-            {pending ? <div className="cust-sub" style={{ fontSize: 12 }}>Card ending {pending.token.slice(-4)} ready.</div> : null}
-            <div className="cust-sub" style={{ fontSize: 11.5 }}>Your card is entered on your salon’s payment provider’s secure form — we never see or store the full number.</div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-              <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} /> Save card for faster checkout
-            </label>
+            <HostedCardFrame onToken={onHostedToken} />
+            <div className="cust-sub" style={{ fontSize: 12 }}>To save a card for next time, add it in Profile → Payment Methods.</div>
           </>
         )}
       </div>
+      {surchargeNote}
       {msg ? <div className="cust-sub" style={{ color: 'var(--customer-red)' }}>{msg}</div> : null}
       {unconfirmed
         ? <button onClick={checkStatus} disabled={busy} className="cust-btn" style={{ height: 52 }}>{busy ? 'Checking…' : 'Check payment status'}</button>
-        : <button onClick={payCard} disabled={busy} className="cust-btn" style={{ height: 52 }}>{busy ? 'Processing…' : `Pay ${money2(totalWithTip)}`}</button>}
+        : <button onClick={payCard} disabled={busy || (showNewCard && !newCard)} className="cust-btn" style={{ height: 52 }}>{busy ? 'Processing…' : `Pay ${money2(totalWithTip)}`}</button>}
       <SecureNote />
     </>
   );
@@ -348,6 +335,7 @@ export function PayScreen() {
         {Number.isInteger(chosenTipCents) && chosenTipCents > 0 ? <Row label="Your tip" value={money2(chosenTipCents)} /> : null}
         <Row label="Total" value={money2(totalWithTip)} strong />
       </div>
+      {surchargeNote}
       {msg ? <div className="cust-sub" style={{ color: 'var(--customer-red)' }}>{msg}</div> : null}
       <button onClick={() => { if (!tipValid) { setMsg('Enter a valid tip amount, or choose a preset.'); return; } setMsg(null); setStep('method'); }} className="cust-btn" style={{ height: 52 }}>Pay Now</button>
       {methods.includes('cash_to_technician') ? <button onClick={() => setStep('cashConfirm')} className="cust-btn cust-btn-ghost" style={{ height: 50 }}>Pay Cash to Technician</button> : null}

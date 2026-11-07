@@ -19,7 +19,7 @@ describe.skipIf(!url)('refresh rotation on real Postgres', () => {
   });
   afterAll(async () => { await sql`delete from refresh_tokens where user_id = ${U}`.execute(db).catch(() => undefined); await sql`delete from sessions where user_id = ${U}`.execute(db).catch(() => undefined); await db?.destroy(); });
 
-  it('ten concurrent uses of ONE refresh token: exactly one rotates, the replays burn the family', async () => {
+  it('grace OFF (REFRESH_REUSE_GRACE_SECONDS=0): ten concurrent uses of ONE refresh token — exactly one rotates, the replays burn the family', async () => {
     const sessions = new KyselySessionStore(db as any);
     const sid = (await sessions.create({ userId: U, tenantId: T, branchId: B, ttlSeconds: 3600 } as any))!;
     // A REAL race: every caller reads the row before any of them supersedes it (a barrier in findByHash), so only the
@@ -28,7 +28,7 @@ describe.skipIf(!url)('refresh rotation on real Postgres', () => {
     let waiting = 0; let release!: () => void; const gate = new Promise<void>((r) => { release = r; });
     const racing: any = Object.create(repo);
     racing.findByHash = async (h: string) => { const row = await repo.findByHash(h); if (++waiting === 10) release(); await gate; return row; };
-    const svc = new RefreshSessionService(racing, sessions);
+    const svc = new RefreshSessionService(racing, sessions, undefined, undefined, 0);   // merged Nov 7: the 4th argument is the payment-device guard
     const { refreshToken } = await svc.issue(sid, U, 3600);
     const results = await Promise.all(Array.from({ length: 10 }, () => svc.rotate(refreshToken)));
     expect(results.filter((r) => r.ok)).toHaveLength(1);
@@ -37,6 +37,24 @@ describe.skipIf(!url)('refresh rotation on real Postgres', () => {
     const winner: any = results.find((r) => r.ok);
     expect(await svc.rotate(winner.refreshToken)).toEqual({ ok: false, reason: 'invalid' });
     expect(await sessions.isRevoked(sid)).toBe(true);
+  });
+  // Nov 6 2026: two POS tabs share one cookie and renew at the very same instant (a real race through the SQL
+  // compare-and-set). With the default grace window both stay signed in, and both tokens keep renewing later.
+  it('grace ON (default): two tabs renewing at the same instant both stay signed in; both tokens renew later', async () => {
+    const sessions = new KyselySessionStore(db as any);
+    const sid = (await sessions.create({ userId: U, tenantId: T, branchId: B, ttlSeconds: 3600 } as any))!;
+    const repo = new KyselyRefreshRepository(db);
+    let waiting = 0; let release!: () => void; const gate = new Promise<void>((r) => { release = r; });
+    const racing: any = Object.create(repo);
+    racing.findByHash = async (h: string) => { const row = await repo.findByHash(h); if (++waiting === 2) release(); await gate; return row; };
+    const svc = new RefreshSessionService(racing, sessions);
+    const { refreshToken } = await svc.issue(sid, U, 3600);
+    const [a, b]: any[] = await Promise.all([svc.rotate(refreshToken), svc.rotate(refreshToken)]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(await sessions.isRevoked(sid)).toBe(false);
+    const plain = new RefreshSessionService(repo, sessions);
+    expect((await plain.rotate(a.refreshToken)).ok).toBe(true);
+    expect((await plain.rotate(b.refreshToken)).ok).toBe(true);
   });
   it('a clean chain rotates three times; sign-out revokes the family', async () => {
     const sessions = new KyselySessionStore(db as any);

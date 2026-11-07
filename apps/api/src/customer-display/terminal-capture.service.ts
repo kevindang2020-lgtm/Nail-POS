@@ -62,6 +62,8 @@ export type TerminalDeviceFactory = (cfg: BoltConfig) => TerminalDevicePort;
 /** How long the display's terminal charge may hold the ticket: the terminal waits for the customer's card (Bolt blocks),
  *  so longer than a front-desk payment; a lock left by a crash still expires. */
 const TICKET_LOCK_MS = 4 * 60_000;
+/** Pseudo display-session id prefix for a front-desk (POS) terminal attempt. */
+const POS_ROW_PREFIX = 'pos:';
 
 export class TerminalCaptureService implements TerminalCapturePort {
   constructor(
@@ -87,16 +89,20 @@ export class TerminalCaptureService implements TerminalCapturePort {
     private readonly terminalRoute?: { resolveTerminalConfig(tenantId: string, branchId: string | null, merchantAccountId?: string | null): Promise<{ config: { baseUrl: string; apiKey: string; merchantId: string } | null; reason?: string }> },
   ) {
     this.checkoutWriter = new KyselyCheckoutRepository(db, outbox);
-    this.leases = leases ?? new KyselyTerminalLeases(db as any);
-    this.ticketLocks = ticketLocks ?? new CheckoutLockService(new KyselyCheckoutLockRepository(db as any), TICKET_LOCK_MS);
+    this.leases = leases ?? new KyselyTerminalLeases(db);
+    this.ticketLocks = ticketLocks ?? new CheckoutLockService(new KyselyCheckoutLockRepository(db), TICKET_LOCK_MS);
   }
   private readonly leases: TerminalLeasePort;
   private readonly ticketLocks: CheckoutLockService;
   private readonly checkoutWriter: KyselyCheckoutRepository;
 
   private emit(row: DisplaySessionRow, event: EventName, payload: Record<string, unknown>): void {
+    // A front-desk (POS) attempt has no display session: it never addresses a display and never sends the display-only
+    // "payment requested" / signature events; the POS learns its outcome from the HTTP answer + paid/approved events.
+    const isPos = String(row.id).startsWith(POS_ROW_PREFIX);
+    if (isPos && (event === EVENTS.customerDisplayPaymentRequested || event === EVENTS.customerDisplaySignatureCaptured)) return;
     try {
-      this.emitter?.toCustomerDisplay?.(row.id, event, payload);
+      if (!isPos) this.emitter?.toCustomerDisplay?.(row.id, event, payload);
       if (row.branchId) this.emitter?.toTenant?.({ tenantId: row.tenantId, branchId: row.branchId }, event, payload);
     } catch { /* realtime must never break the money path */ }
   }
@@ -104,8 +110,9 @@ export class TerminalCaptureService implements TerminalCapturePort {
   /** One attempt key per display session — the payments.idempotency_key unique partial index enforces it in the DB. */
   private idemKey(row: DisplaySessionRow): string { return `termcap_${row.id}`; }
 
-  /** the prompts in progress, by display session — what cancel() needs to reach the right terminal */
-  private readonly inFlight = new Map<string, { tenantId: string; device: TerminalDevicePort; hsn: string; cancelled: boolean }>();
+  /** the prompts in progress (per process), by display session — what cancel() and the POS Cancel need to reach the right
+   *  terminal. Merged Nov 7 2026: one map for both (the developer tree kept its own, keyed tenant|ticket). */
+  private readonly inFlight = new Map<string, { tenantId: string; ticketId: string; branchId: string; device: TerminalDevicePort; hsn: string; cancelled: boolean }>();
   /** Oct 21 2026: the front desk calls off a prompt in progress (the guest walked away / chose cash). Only this salon's
    *  own prompt; nothing in progress is a plain no (no terminal call). The capture itself then ends 'cancelled'. */
   async cancel(tenantId: string, sessionId: string): Promise<{ cancelled: true } | { cancelled: false; reason: 'NOTHING_IN_PROGRESS' | 'TERMINAL_UNREACHABLE' | 'NOT_SUPPORTED' }> {
@@ -130,7 +137,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
     // ---- idempotency: one charge attempt per session ----
     const idem = this.idemKey(row);
     const existing: any = await this.db.selectFrom('payments').select(['id', 'status'])
-      .where('tenant_id', '=', row.tenantId as any).where('idempotency_key' as any, '=', idem)
+      .where('tenant_id', '=', row.tenantId).where('idempotency_key', '=', idem)
       .executeTakeFirst().catch(() => undefined);
     if (existing) return { outcome: 'duplicate', paymentId: String(existing.id) };
 
@@ -156,7 +163,98 @@ export class TerminalCaptureService implements TerminalCapturePort {
     finally { await this.ticketLocks.release(row.tenantId, ticketId, lockSession, 'display_payment_done').catch(() => undefined); }
   }
 
-  private async captureLocked(row: DisplaySessionRow & { ticketId: string; branchId: string }, idem: string): Promise<TerminalCaptureOutcome> {
+  /**
+   * Fiserv master build §7 / §8B (Nov 4 2026): the FRONT DESK "Pay on Clover Compact" button. Before this, the POS Card
+   * button posted /pay/card with no terminal and no token, so it could never reach the Compact. This drives the SAME path
+   * the customer display uses — ticket lock, one-transaction-per-terminal lease, the provider router (branch-scoped
+   * merchant + allowlisted Bolt host + production gates), Bolt authCard, amount/retref reconciliation, the canonical paid
+   * transaction, signature and post-payment work — so there is exactly one terminal money path.
+   *
+   *   • idempotent per attempt: `attemptKey` (generated by the POS once per tender) becomes the payment's idempotency key;
+   *     a retry of a lost response returns the recorded outcome instead of charging again;
+   *   • the terminal is the one the cashier picked, else the one tied to this register, else the branch's only one — always
+   *     a terminal assigned to THIS branch;
+   *   • the ticket must belong to this branch; the amount is the server's ticket total less what is already paid.
+   */
+  async captureForPos(scope: { tenantId: string; branchId: string; userId?: string | null }, ticketId: string, opts: { attemptKey: string; terminalId?: string | null; stationId?: string | null }): Promise<TerminalCaptureOutcome & { idempotencyKey?: string }> {
+    if (!scope.tenantId || !scope.branchId) return { outcome: 'skipped', reason: 'choose a location before taking a card payment' };
+    // the ticket lock names the staff member who is taking the payment (checkout_locks.user_id is a user uuid)
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(scope.userId || ''))) return { outcome: 'skipped', reason: 'sign in as a staff member to take a card payment' };
+    if (!/^[A-Za-z0-9_-]{8,80}$/.test(String(opts.attemptKey || ''))) return { outcome: 'skipped', reason: 'a payment attempt key is required' };
+    const idem = `termcap_pos_${opts.attemptKey}`;
+    const existing: any = await this.db.selectFrom('payments').select(['id', 'status', 'amount_cents', 'processor_transaction_id'])
+      .where('tenant_id', '=', scope.tenantId).where('idempotency_key', '=', idem).executeTakeFirst();   // a read error must fail the charge, never look like "no prior attempt" (merged Nov 7)
+    if (existing) {
+      const st = String(existing.status);
+      if (st === 'approved') return { outcome: 'approved', paymentId: String(existing.id), retref: existing.processor_transaction_id ?? undefined, amountCents: Number(existing.amount_cents), idempotencyKey: idem };
+      if (st === 'processing') return { outcome: 'unknown', paymentId: String(existing.id), reason: 'this payment is still being verified — use Verify with processor before charging again', idempotencyKey: idem };
+      return { outcome: 'duplicate', paymentId: String(existing.id), idempotencyKey: idem };
+    }
+    const tk: any = await this.db.selectFrom('tickets').select(['id', 'branch_id', 'customer_id'])
+      .where('id', '=', ticketId).where('tenant_id', '=', scope.tenantId).executeTakeFirst();
+    if (!tk) return { outcome: 'skipped', reason: 'the ticket was not found' };
+    if (String(tk.branch_id) !== String(scope.branchId)) return { outcome: 'skipped', reason: 'this ticket belongs to another location' };
+    const row = {
+      id: POS_ROW_PREFIX + opts.attemptKey, tenantId: scope.tenantId, branchId: scope.branchId, ticketId, state: 'payment_processing', ticketNumber: null,
+      customerId: tk.customer_id ?? null, publicTokenHash: null, selectedTipCents: 0, subtotalCents: 0, paymentMethod: 'card', expiresAt: null, closedAt: null,
+      ticketStatus: null, lastPaymentStatus: null,
+    } as unknown as DisplaySessionRow & { ticketId: string; branchId: string };
+    const lockSession = 'pos-terminal:' + opts.attemptKey + ':' + randomUUID();
+    try {
+      await this.ticketLocks.acquire({ tenantId: scope.tenantId, branchId: scope.branchId, ticketId, userId: String(scope.userId), sessionId: lockSession, source: 'pos' });
+    } catch (e: unknown) {
+      if (e instanceof LockHeldElsewhereError) return { outcome: 'ticket_busy', reason: 'PAYMENT_IN_PROGRESS', heldBy: e.heldBy.source };
+      throw e;
+    }
+    try { return { ...(await this.captureLocked(row, idem, { terminalId: opts.terminalId ?? null, stationId: opts.stationId ?? null })), idempotencyKey: idem }; }
+    finally { await this.ticketLocks.release(scope.tenantId, ticketId, lockSession, 'pos_terminal_payment_done').catch((e) => this.log.error(`ticket lock release for ${ticketId} failed (it expires on its own): ${(e as Error)?.message}`)); }
+  }
+
+  /** Cancel the prompt on the terminal that is charging this ticket (POS "Cancel"). Fiserv: a cancel cannot stop an
+   *  authorization already sent to the Gateway — the attempt's outcome still comes from the terminal / Verify. */
+  async cancelForPos(scope: { tenantId: string; branchId: string }, ticketId: string): Promise<{ cancelled: boolean; relayed?: boolean; reason?: string }> {
+    if (!scope.tenantId || !scope.branchId) return { cancelled: false, reason: 'no location' };
+    // 1. the charge runs in THIS process: cancel on its session now
+    const live = [...this.inFlight.values()].find((f) => f.tenantId === scope.tenantId && f.ticketId === ticketId);
+    if (live && live.branchId === scope.branchId) {
+      if (!live.device.cancel) return { cancelled: false, reason: 'this terminal cannot be cancelled from the POS' };
+      live.cancelled = true;   // a non-approval that follows is 'cancelled', not a decline (no attempt key spent)
+      try { await live.device.cancel(live.hsn); recordPaymentEvent('cancelled'); return { cancelled: true }; }
+      catch (e) { live.cancelled = false; return { cancelled: false, reason: (e as Error).message.slice(0, 200) }; }
+    }
+    // 2. it runs on another API server: record the cancel on its lease (this branch's terminals only); that server sends it
+    if (!this.leases.requestCancel) return { cancelled: false, reason: 'no terminal prompt is running for this ticket' };
+    const mine = (await this.terminalsForPos(scope)).map((t) => t.id);
+    const at = await this.leases.requestCancel(scope.tenantId, ticketId, mine).catch((e) => { this.log.error(`terminal cancel relay for ticket ${ticketId} could not be recorded: ${(e as Error)?.message}`); return null; });
+    return at ? { cancelled: true, relayed: true } : { cancelled: false, reason: 'no terminal prompt is running for this ticket' };
+  }
+
+  /** Poll this charge's own lease for a cancel recorded by another server; send it once. Returns the stop function. */
+  private watchForCancel(tenantId: string, terminalId: string, holder: string, device: TerminalDevicePort, hsn: string, flight?: { cancelled: boolean }): () => void {
+    if (!this.leases.cancelRequested || !device.cancel) return () => undefined;
+    let done = false; let busy = false;
+    const timer = setInterval(async () => {
+      if (done || busy) return; busy = true;
+      try {
+        if (await this.leases.cancelRequested!(tenantId, terminalId, holder)) { done = true; clearInterval(timer); if (flight) flight.cancelled = true; await device.cancel!(hsn).catch((e) => this.log.error(`relayed terminal cancel did not reach the terminal: ${(e as Error)?.message}`)); }
+      } catch (e) { this.log.error(`cancel poll failed (retrying): ${(e as Error)?.message}`); } finally { busy = false; }
+    }, this.cancelPollMs);
+    (timer).unref?.();
+    return () => { done = true; clearInterval(timer); };
+  }
+  /** How often a running charge checks for a cross-server cancel (tests shorten it). */
+  cancelPollMs = 1500;
+
+  /** Terminals the front desk may pick for this branch (never another branch's; disabled ones are listed as such). */
+  async terminalsForPos(scope: { tenantId: string; branchId: string }): Promise<Array<{ id: string; label: string; stationId: string | null; disabled: boolean; lastSeenAt: string | null; hsnConfigured: boolean }>> {
+    if (!scope.tenantId || !scope.branchId) return [];
+    const rows: any[] = await this.db.selectFrom('pos_payment_terminals').select(['id', 'label', 'station_id', 'disabled_at', 'last_seen_at', 'hsn'])
+      .where('tenant_id', '=', scope.tenantId).where('branch_id', '=', scope.branchId).where('status', '=', 'paired').orderBy('label').execute();   // a read error is an error, not "no terminals"
+    return rows.map((r) => ({ id: String(r.id), label: String(r.label || 'Terminal'), stationId: r.station_id ? String(r.station_id) : null, disabled: !!r.disabled_at,
+      lastSeenAt: r.last_seen_at ? new Date(r.last_seen_at).toISOString() : null, hsnConfigured: !!r.hsn }));
+  }
+
+  private async captureLocked(row: DisplaySessionRow & { ticketId: string; branchId: string }, idem: string, pick?: { terminalId?: string | null; stationId?: string | null }): Promise<TerminalCaptureOutcome> {
 
     // ---- amount: server-recomputed from the session (never client-supplied) ----
     // 23-inch spec §35 — one authoritative checkout: the terminal is asked for exactly what the POS's payCard would
@@ -166,7 +264,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
     // A ticket the front desk has already settled (cash, say) is never charged again. The card total carries the card
     // fee, so "card total − paid" was still a few dollars after a full cash payment — and the terminal asked for them
     // (found Oct 6 2026 by the one-payment-per-ticket test).
-    const tk: any = await this.db.selectFrom('tickets').select(['status', 'paid_at'] as any).where('id', '=', row.ticketId as any).where('tenant_id', '=', row.tenantId as any).executeTakeFirst().catch(() => undefined);
+    const tk: any = await this.db.selectFrom('tickets').select(['status', 'paid_at']).where('id', '=', row.ticketId).where('tenant_id', '=', row.tenantId).executeTakeFirst().catch(() => undefined);
     if (tk && (tk.status === 'paid' || tk.paid_at)) return { outcome: 'skipped', reason: 'the ticket is already paid' };
     const checkout = new KyselyCheckoutRepository(this.db);
     const cctx = { tenantId: row.tenantId, branchId: row.branchId, userId: 'customer-display:' + row.id, role: 'CUSTOMER', permissions: [] } as Parameters<KyselyCheckoutRepository['totalsFor']>[0];
@@ -180,19 +278,30 @@ export class TerminalCaptureService implements TerminalCapturePort {
     // Payment Terminals guide (Nov 4 2026): a DISABLED terminal is not a candidate — the same rule the Capture Routing screen
     // shows (terminals-screen routing). It used to count here: with one live and one disabled terminal the location had
     // no "only terminal", and a register's disabled terminal was chosen and then failed.
+    // Fiserv master build §5.2: only a terminal EXPLICITLY assigned to this branch may charge this branch's ticket. A
+    // terminal with no branch (branch_id NULL) used to match every branch of the tenant — it now matches none; assign it
+    // to its location in Devices first.
     const allTerms: any[] = await this.db.selectFrom('pos_payment_terminals').selectAll()
-      .where('tenant_id', '=', row.tenantId as any).where('status', '=', 'paired')
-      .where((eb: any) => eb.or([eb('branch_id', '=', row.branchId as any), eb('branch_id', 'is', null)]))
+      .where('tenant_id', '=', row.tenantId).where('status', '=', 'paired')
+      .where('branch_id', '=', row.branchId)
       .execute().catch(() => []);
-    const sessRow: any = await this.db.selectFrom('customer_display_sessions').select(['pos_station_id'])
-      .where('id', '=', row.id as any).executeTakeFirst().catch(() => undefined);
-    const stationId = sessRow?.pos_station_id ? String(sessRow.pos_station_id) : null;
+    let stationId: string | null;
+    if (pick) stationId = pick.stationId ?? null;
+    else {
+      const sessRow: any = await this.db.selectFrom('customer_display_sessions').select(['pos_station_id'])
+        .where('id', '=', row.id).where('tenant_id', '=', row.tenantId).executeTakeFirst().catch(() => undefined);
+      stationId = sessRow?.pos_station_id ? String(sessRow.pos_station_id) : null;
+    }
     const terms = allTerms.filter((t) => !t.disabled_at);
-    const term = (stationId && terms.find((t) => t.station_id === stationId)) || (terms.length === 1 ? terms[0] : null);
+    // the cashier's explicit pick (POS) must be a live terminal of THIS branch — allTerms is already branch-scoped
+    const picked = pick?.terminalId ? allTerms.find((t) => String(t.id) === String(pick.terminalId)) : null;
+    if (pick?.terminalId && !picked) return this.fail(row, idem, totals.totalDueCents, 'that terminal is not paired at this location');
+    if (picked?.disabled_at) return this.fail(row, idem, totals.totalDueCents, `terminal "${picked.label}" is disabled (TERMINAL_DISABLED)`);
+    const term = picked || (stationId && terms.find((t) => t.station_id === stationId)) || (terms.length === 1 ? terms[0] : null);
     // nothing live to charge, and the terminal this charge would have used is disabled: say so (not 'no terminal')
     const ownDisabled = term ? null : stationId ? allTerms.find((t) => t.station_id === stationId && t.disabled_at) : terms.length === 0 && allTerms.length === 1 ? allTerms[0] : null;
     if (ownDisabled) return this.fail(row, idem, totals.totalDueCents, `terminal "${ownDisabled.label}" is disabled (TERMINAL_DISABLED)`);
-    if (!term) return this.fail(row, idem, totals.totalDueCents, terms.length === 0 ? 'no paired terminal for this branch' : stationId ? 'no terminal is tied to this register (Devices → the terminal\'s register)' : 'several terminals are paired and this display serves no register');
+    if (!term) return this.fail(row, idem, totals.totalDueCents, terms.length === 0 ? 'no paired terminal for this branch' : stationId ? 'no terminal is tied to this register (Devices → the terminal\'s register)' : pick ? 'several terminals are paired here — choose one' : 'several terminals are paired and this display serves no register');
     if (!term.hsn) return this.fail(row, idem, totals.totalDueCents, `terminal "${term.label}" has no HSN configured`);
 
     // ---- resolve the Bolt config through the provider router (terminal's merchant → branch merchant → tenant default) ----
@@ -200,12 +309,12 @@ export class TerminalCaptureService implements TerminalCapturePort {
     let bolt: { baseUrl: string; apiKey: string; merchantId: string };
     if (this.terminalRoute) {
       const r = await this.terminalRoute.resolveTerminalConfig(row.tenantId, row.branchId, term.merchant_account_id ? String(term.merchant_account_id) : null);
-      if (!r.config) return this.fail(row, idem, totals.totalDueCents, r.reason === 'MERCHANT_SUSPENDED' ? 'card payments for this location are paused (MERCHANT_SUSPENDED)' : r.reason === 'SECRET_UNREADABLE' ? 'Bolt api key could not be decrypted' : 'Bolt terminal API is not configured for this location (TERMINAL_NOT_CONFIGURED)');
+      if (!r.config) return this.fail(row, idem, totals.totalDueCents, terminalRouteRefusal(r.reason));
       bolt = r.config;
     } else {
       // legacy path (no router injected — unit harnesses): the tenant default row, opened with the injected decrypt
       const cfg: any = await this.db.selectFrom('tenant_payment_config').select(['merchant_id', 'bolt_base_url', 'bolt_api_key_enc'])
-        .where('tenant_id', '=', row.tenantId as any).executeTakeFirst().catch(() => undefined);
+        .where('tenant_id', '=', row.tenantId).executeTakeFirst().catch(() => undefined);
       if (!cfg?.bolt_base_url || !cfg?.bolt_api_key_enc || !cfg?.merchant_id) {
         return this.fail(row, idem, totals.totalDueCents, 'Bolt terminal API is not configured for this tenant');
       }
@@ -219,7 +328,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
 
     // ---- Functional Decision 34: ONE transaction at a time on a shared terminal (database lease, migration 485) ----
     const holder = 'display:' + row.id;
-    if (!(await this.leases.acquire(row.tenantId, String(term.id), holder))) {
+    if (!(await this.leases.acquire(row.tenantId, String(term.id), holder, undefined, row.ticketId))) {
       this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, terminalBusy: true });
       recordPaymentEvent('terminal_busy');
       return { outcome: 'terminal_busy', terminalId: String(term.id), reason: 'TERMINAL_BUSY' };   // nothing charged, nothing recorded
@@ -229,12 +338,16 @@ export class TerminalCaptureService implements TerminalCapturePort {
     const device = this.deviceFactory(bolt);
     let auth;
     recordPaymentEvent('attempt');
-    const flight = { tenantId: row.tenantId, device, hsn: String(term.hsn), cancelled: false };
+    const flight = { tenantId: row.tenantId, ticketId: row.ticketId, branchId: row.branchId, device, hsn: String(term.hsn), cancelled: false };
     this.inFlight.set(row.id, flight);
+    // A POS Cancel that reached ANOTHER API server is recorded on this lease (migration 839, was 703): watch for it while
+    // the customer is at the terminal and send it on OUR session — the only session Bolt accepts a cancel on.
+    const stopWatch = this.watchForCancel(row.tenantId, String(term.id), holder, device, String(term.hsn), flight);
     try {
       auth = await device.authCard({ hsn: String(term.hsn), amountCents: totals.totalDueCents, orderId: row.ticketId });
       await this.stampTerminal(row.tenantId, String(term.id), true);
     } catch (e) {
+      stopWatch();
       this.inFlight.delete(row.id);
       await this.stampTerminal(row.tenantId, String(term.id), false);
       recordPaymentEvent('terminal_offline'); recordPaymentEvent('unknown');   // the terminal did not answer: outcome unknown
@@ -247,6 +360,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
       this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, unknown: true });
       return { outcome: 'unknown', paymentId, reason: `the terminal did not answer (${(e as Error).message}) — verify with the processor before charging again` };
     }
+    stopWatch();
     this.inFlight.delete(row.id);
     await this.leases.release(row.tenantId, String(term.id), holder).catch(() => undefined);   // the terminal is free for the next POS
 
@@ -258,6 +372,14 @@ export class TerminalCaptureService implements TerminalCapturePort {
       return { outcome: 'cancelled' };
     }
 
+    // Fiserv master build §7.2: "Paid" only when the provider approval, retref and amount reconcile. An approval with no
+    // retref or a different amount is contradictory — kept 'processing' for Verify with processor, never closed as paid.
+    if (auth.approved && (!auth.retref || (auth.amountCents != null && auth.amountCents !== totals.totalDueCents))) {
+      this.log.error(`terminal capture: approval does not reconcile (retref ${auth.retref ?? 'none'}, approved ${auth.amountCents ?? '?'} vs requested ${totals.totalDueCents} cents) — ticket ${row.ticketId} left 'processing'`);
+      const paymentId = await this.recordPayment(row, idem, totals.totalDueCents, totals.tipCents, 'processing', auth.retref).catch((e) => { this.log.error(`terminal capture: the 'processing' record for ticket ${row.ticketId} failed: ${(e as Error)?.message}`); return undefined; });
+      this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, unknown: true });
+      return { outcome: 'unknown', paymentId, reason: 'the terminal approval does not match the requested amount — verify with the processor before charging again' };
+    }
     if (auth.approved) {
       // Phase 15 round 2: the canonical POS paid path — the payment row (payment.captured), the ticket's paid state
       // (checkout.completed, visit.completed) in ONE transaction, once per display session. The card IS charged here: if
@@ -301,8 +423,8 @@ export class TerminalCaptureService implements TerminalCapturePort {
   /** §50 terminal health: the registry remembers when the terminal last answered / last transacted (migration 638). */
   private async stampTerminal(tenantId: string, terminalId: string, answered: boolean): Promise<void> {
     await this.db.updateTable('pos_payment_terminals')
-      .set(answered ? ({ last_seen_at: sql`now()`, last_transaction_at: sql`now()`, last_ping_ok: true } as any) : ({ last_ping_at: sql`now()`, last_ping_ok: false } as any))
-      .where('tenant_id', '=', tenantId as any).where('id', '=', terminalId as any).execute().catch(() => undefined);
+      .set(answered ? ({ last_seen_at: sql`now()`, last_transaction_at: sql`now()`, last_ping_ok: true }) : ({ last_ping_at: sql`now()`, last_ping_ok: false }))
+      .where('tenant_id', '=', tenantId).where('id', '=', terminalId).execute().catch(() => undefined);
   }
 
   private async keepSignature(row: DisplaySessionRow, paymentId: string, raw: string | undefined): Promise<void> {
@@ -312,7 +434,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
       const r: any = await this.db.insertInto('payment_signatures').values({
         tenant_id: row.tenantId, branch_id: row.branchId, payment_id: paymentId, ticket_id: row.ticketId,
         signature_png: image, captured_on: 'terminal',
-      } as any).onConflict((oc: any) => oc.columns(['tenant_id', 'payment_id']).doNothing()).executeTakeFirst();
+      }).onConflict((oc: any) => oc.columns(['tenant_id', 'payment_id']).doNothing()).executeTakeFirst();
       if (Number(r?.numInsertedOrUpdatedRows ?? 0) > 0) this.emit(row, EVENTS.customerDisplaySignatureCaptured, { sessionId: row.id, paymentId, ticketId: row.ticketId, source: 'terminal' });
     } catch { /* the payment stands; only the copy of the signature is missing */ }
   }
@@ -329,14 +451,14 @@ export class TerminalCaptureService implements TerminalCapturePort {
     const ctx = { tenantId: row.tenantId, branchId: row.branchId, userId: undefined, role: 'CUSTOMER', permissions: [] } as unknown as Parameters<KyselyCheckoutRepository['setStatus']>[0];
     return this.db.transaction().execute(async (trx) => {
       const k = trx as unknown as Kysely<DB>;
-      const tk = await k.selectFrom('tickets').select(['id']).where('id', '=', row.ticketId as any).where('tenant_id', '=', row.tenantId as any).forUpdate().executeTakeFirst();
+      const tk = await k.selectFrom('tickets').select(['id']).where('id', '=', row.ticketId).where('tenant_id', '=', row.tenantId).forUpdate().executeTakeFirst();
       if (!tk) throw new Error('ticket not found');
-      const prior: any = await k.selectFrom('payments').select(['id']).where('tenant_id', '=', row.tenantId as any).where('idempotency_key' as any, '=', idem).executeTakeFirst();
+      const prior: any = await k.selectFrom('payments').select(['id']).where('tenant_id', '=', row.tenantId).where('idempotency_key', '=', idem).executeTakeFirst();
       if (prior) return { paymentId: String(prior.id), duplicate: true };
       const rec = await this.checkoutWriter.recordPayment(ctx, { paymentId: '', ticketId: row.ticketId, method: 'card', amountCents, tipCents, status: 'approved',
         ...(retref ? { processorTransactionId: retref } : {}), idempotencyKey: idem, createdAt: new Date().toISOString(),
         // Payment Terminals mandate §12/§17 (Oct 29 2026): the capture device — the paired terminal that took the card
-        ...(terminalId ? { paymentSurface: 'cardpointe_terminal', deviceId: terminalId } : {}) } as any, k);
+        ...(terminalId ? { paymentSurface: 'cardpointe_terminal', deviceId: terminalId } : {}) }, k);
       if (!(await this.checkoutWriter.setStatus(ctx, row.ticketId, 'paid', k))) throw new Error('ticket not found');
       return { paymentId: String(rec.paymentId), duplicate: false };
     });
@@ -367,5 +489,17 @@ export class TerminalCaptureService implements TerminalCapturePort {
       ...(retref ? { processor_transaction_id: retref } : {}), idempotency_key: idem,
     } as any).returning('id' as any).executeTakeFirst();
     return String(r?.id ?? '');
+  }
+}
+
+/** Human-readable refusal for the terminal route (no secrets, no MID). */
+export function terminalRouteRefusal(reason?: string): string {
+  switch (reason) {
+    case 'MERCHANT_SUSPENDED': return 'card payments for this location are paused (MERCHANT_SUSPENDED)';
+    case 'SECRET_UNREADABLE': return 'Bolt api key could not be decrypted';
+    case 'MERCHANT_BRANCH_MISMATCH': return 'this terminal belongs to a different location\'s merchant account (MERCHANT_BRANCH_MISMATCH)';
+    case 'HOST_NOT_ALLOWED': return 'the terminal API address is not an approved Fiserv host for this environment (HOST_NOT_ALLOWED)';
+    case 'PRODUCTION_NOT_APPROVED': return 'live card payments are not approved for this merchant yet (PRODUCTION_NOT_APPROVED)';
+    default: return 'Bolt terminal API is not configured for this location (TERMINAL_NOT_CONFIGURED)';
   }
 }

@@ -4,6 +4,21 @@ import { customerApi, type CustomerProfile } from '../api/customerApi';
 
 // Settings — communication preferences backed by the real customer record. Current values load from /customer/profile;
 // toggling persists immediately via PATCH /customer/profile (SMS → marketing_sms_opt_in, Email → marketing_email_opt_in).
+// Module scope: defined inside the screen it was a new component type every render, so each toggle remounted.
+const Toggle = ({ label, desc, on, onChange, busy }: { label: string; desc: string; on: boolean; onChange: (v: boolean) => void; busy: boolean }) => (
+  <div className="cust-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontWeight: 700 }}>{label}</div>
+      <div className="cust-sub" style={{ fontSize: 13 }}>{desc}</div>
+    </div>
+    <label style={{ position: 'relative', display: 'inline-block', width: 46, height: 28, flex: '0 0 auto' }}>
+      <input type="checkbox" aria-label={label} checked={on} disabled={busy} onChange={(e) => onChange(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+      <span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 999, transition: '.2s', background: on ? 'var(--customer-primary)' : 'var(--customer-border)' }} />
+      <span aria-hidden style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: '#fff', transition: '.2s' }} />
+    </label>
+  </div>
+);
+
 export function SettingsScreen() {
   const nav = useNavigate();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
@@ -28,20 +43,6 @@ export function SettingsScreen() {
     catch (e: any) { setError(e?.message || 'Could not save.'); if (key === 'sms') setSms(!value); else if (key === 'email') setEmailOpt(!value); else setMarketing(!value); }
     finally { setSaving(null); }
   };
-
-  const Toggle = ({ label, desc, on, onChange, busy }: { label: string; desc: string; on: boolean; onChange: (v: boolean) => void; busy: boolean }) => (
-    <div className="cust-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700 }}>{label}</div>
-        <div className="cust-sub" style={{ fontSize: 13 }}>{desc}</div>
-      </div>
-      <label style={{ position: 'relative', display: 'inline-block', width: 46, height: 28, flex: '0 0 auto' }}>
-        <input type="checkbox" aria-label={label} checked={on} disabled={busy} onChange={(e) => onChange(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
-        <span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 999, transition: '.2s', background: on ? 'var(--customer-primary)' : 'var(--customer-border)' }} />
-        <span aria-hidden style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 999, background: '#fff', transition: '.2s' }} />
-      </label>
-    </div>
-  );
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>

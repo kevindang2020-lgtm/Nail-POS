@@ -53,6 +53,8 @@ COPY --from=build /app/apps/api/scripts/migrate.mjs ./scripts/migrate.mjs
 # Phase 10: migrate.mjs imports the shared migration rules; the DB pre-flight runs before it (the pre-deploy step).
 COPY --from=build /app/apps/api/db/migration-sql.mjs ./db/migration-sql.mjs
 COPY --from=build /app/apps/api/scripts/db-preflight.mjs ./scripts/db-preflight.mjs
+# Nov 5 2026: after migrate, list paired card terminals with no location (warn only; see the script header)
+COPY --from=build /app/apps/api/scripts/check-unassigned-terminals.mjs ./scripts/check-unassigned-terminals.mjs
 COPY --from=build /app/apps/api/package.json ./package.json
 # Phase 11 (E8): the app code stays ROOT-owned and read-only to the process (a compromised process cannot rewrite its own
 # code); only the directories the app writes at runtime belong to `node`. Local media (MEDIA_STORE unset) and private

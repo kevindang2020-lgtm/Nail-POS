@@ -12,6 +12,8 @@ export type TerminalRegistryRow = {
   operationalStatus?: 'ONLINE' | 'OFFLINE' | 'BUSY' | 'PROCESSING' | 'DEGRADED' | 'DISABLED' | 'UNKNOWN'; operationalLabel?: string;
   lastSeenAt?: string | null; lastTransactionAt?: string | null; lastPingAt?: string | null; lastPingOk?: boolean | null;
   disabledAt?: string | null; disabledReason?: string | null;
+  /** Fiserv §5.2: paired with no location — takes no card payments until assigned. */
+  unassigned?: boolean;
 };
 
 
@@ -32,6 +34,8 @@ export const posDevicesApi = {
   renameTerminal: (id: string, b: { label?: string; terminalType?: string | null; serialNumber?: string | null; connectionType?: string | null }) => api.post<TerminalRegistryRow>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/rename`, b),
   disableTerminal: (id: string, reason: string) => api.post<TerminalRegistryRow>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/disable`, { reason }),
   enableTerminal: (id: string) => api.post<TerminalRegistryRow>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/enable`, {}),
+  /** Fiserv §5.2: give an unassigned terminal to the location this POS is signed in to. */
+  assignTerminalLocation: (id: string) => api.post<TerminalRegistryRow>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/assign-location`, {}),
   unpairTerminal: (id: string) => api.post(`/pos/settings/payments-checkout/terminals/${id}/unpair`, {}),
   pairTerminal: (b: { code: string; label: string; stationId?: string; hsn?: string; merchantAccountId?: string; idempotencyKey?: string }) => api.post<{ id: string; status: string; duplicate?: boolean; provider?: string | null; verification?: { probed: boolean; reachable: boolean; detail: string } }>(`/pos/settings/payments-checkout/terminals/pair`, b),
   /** Payment Terminals guide (Nov 4 2026) §07 step 1: this location's processor accounts (no secrets) */

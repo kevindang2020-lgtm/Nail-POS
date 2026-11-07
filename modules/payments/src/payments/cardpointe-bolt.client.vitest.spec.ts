@@ -29,10 +29,11 @@ describe('CardPointeBoltClient', () => {
   it('connects first, carries the session key, and sends authCard per the documented contract', async () => {
     const t = transport({
       '/api/v2/connect': () => ({ body: {}, sessionKey: 'SK123;10.0.0.5' }),
-      '/api/v2/authCard': (body) => {
+      '/api/v3/authCard': (body) => {
         expect(body.merchantId).toBe(cfg.merchantId);          // Bolt uses camelCase merchantId (gateway uses merchid)
         expect(body.hsn).toBe('1234567890');
-        expect(body.amount).toBe('110.98');                    // decimal-dollar string, never integer cents
+        expect(body.amount).toBe('11098');                      // Fiserv docs: two implied decimals ("1000" = $10.00)
+        expect(body.force).toBeUndefined();
         expect(body.capture).toBe('true');
         expect(body.includeSignature).toBe('true');               // Kevin, Oct 6 2026: the cardholder signs on the Clover
         expect(body.orderId).toBe('tkt_1');
@@ -53,7 +54,7 @@ describe('CardPointeBoltClient', () => {
   it('maps respstat C to a decline (never an exception)', async () => {
     const t = transport({
       '/api/v2/connect': () => ({ body: {}, sessionKey: 'SK1' }),
-      '/api/v2/authCard': () => ({ body: { respstat: 'C', resptext: 'Insufficient funds' } }),
+      '/api/v3/authCard': () => ({ body: { respstat: 'C', resptext: 'Insufficient funds' } }),
     });
     const r = await new CardPointeBoltClient(cfg, t.fetch).authCard({ hsn: 'h', amountCents: 500 });
     expect(r.approved).toBe(false);
@@ -84,9 +85,9 @@ const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a
 describe('the signature the Clover terminal takes (Kevin, Oct 6 2026: sign once, on the terminal)', () => {
   it('authCard hands back the signature the terminal returned, untouched; none when it sent none', async () => {
     const sig = gzipSync(BMP).toString('base64');
-    const t = transport({ '/api/v2/connect': () => ({ body: {}, sessionKey: 'SK1' }), '/api/v2/authCard': () => ({ body: { respstat: 'A', retref: 'R', signature: sig } }) });
+    const t = transport({ '/api/v2/connect': () => ({ body: {}, sessionKey: 'SK1' }), '/api/v3/authCard': () => ({ body: { respstat: 'A', retref: 'R', signature: sig } }) });
     expect((await new CardPointeBoltClient(cfg, t.fetch).authCard({ hsn: 'h', amountCents: 100 })).signature).toBe(sig);
-    const t2 = transport({ '/api/v2/connect': () => ({ body: {}, sessionKey: 'SK1' }), '/api/v2/authCard': () => ({ body: { respstat: 'A', retref: 'R' } }) });
+    const t2 = transport({ '/api/v2/connect': () => ({ body: {}, sessionKey: 'SK1' }), '/api/v3/authCard': () => ({ body: { respstat: 'A', retref: 'R' } }) });
     expect((await new CardPointeBoltClient(cfg, t2.fetch).authCard({ hsn: 'h', amountCents: 100 })).signature).toBeUndefined();
   });
   it('terminalSignatureDataUrl: a gzip-compressed bitmap (CardPointe\'s format), a plain bitmap, PNG or JPEG become a viewable image', () => {

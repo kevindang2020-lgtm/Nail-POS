@@ -58,7 +58,7 @@ describe('PaymentGatewayResolver — D2 write + build checks', () => {
     expect(g.status).toBe('error');
     const t = await resolver().resolveTerminalConfig(T, null);
     expect(t.config).toBeNull();
-    expect(t.reason).toBe('TERMINAL_NOT_CONFIGURED');
+    expect(t.reason).toBe('HOST_NOT_ALLOWED');   // merged Nov 7: the Fiserv host allowlist answers first (it names the reason)
     const tc = await resolver().testConnection(T);
     expect(tc.tested).toBe(false);
     // and a stored Clover row with an attacker host is refused the same way

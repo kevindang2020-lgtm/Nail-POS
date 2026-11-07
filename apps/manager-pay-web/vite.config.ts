@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';import { fileURLToPath, URL } from 'node:url';
+import { appVersion } from '../../tooling/vite/app-version.mjs';
 import react from '@vitejs/plugin-react';
 import { contractsFromSource } from '../../tooling/vite/contracts-from-source.mjs';
 import { appVersion } from '../../tooling/vite/app-version.mjs';

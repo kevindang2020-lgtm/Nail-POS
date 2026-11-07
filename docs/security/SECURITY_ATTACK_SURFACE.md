@@ -2,21 +2,21 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3968 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3973 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3968 |
+| all HTTP routes | 3973 |
 | realm `customer` | 165 |
 | realm `shared` | 284 |
-| realm `staff` | 2327 |
-| realm `super_admin` | 1192 |
+| realm `staff` | 2331 |
+| realm `super_admin` | 1193 |
 | public (no session; each one reviewed by `check:public`) | 126 |
 | integration key / OAuth (`auth=api_key`) | 13 |
-| with `@RequireStepUp` (fresh password + code) | 191 |
+| with `@RequireStepUp` (fresh password + code) | 193 |
 | with an idempotency contract | 58 |
 | webhooks | 9 |
 | multipart uploads | 9 |
@@ -52,12 +52,12 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/auth/biometric/login` | modules/identity/src/auth/biometric.controller.ts:68 | public | AnonRateLimit 120 / 5 min per IP (bucket auth-biometric-login) |
 | GET | `/auth/biometric/status` | modules/identity/src/auth/biometric.controller.ts:52 | public | AnonRateLimit 300 / 5 min per IP |
 | POST | `/auth/change-temporary-password` | modules/identity/src/auth/system-reset.controller.ts:84 | public | Postgres attempt budget: 5 failures / 15 min per account (auth-attempt-budget.ts) |
-| POST | `/auth/login` | modules/identity/src/auth/auth.controller.ts:90 | public | login throttle 5 / 15 min per (portal, salon, identifier, IP) + credential-stuffing detector (LOGIN_THROTTLE_STORE) |
-| POST | `/auth/logout` | modules/identity/src/auth/auth.controller.ts:287 | public | AnonRateLimit 600 / 5 min per IP (bucket auth-logout) |
+| POST | `/auth/login` | modules/identity/src/auth/auth.controller.ts:91 | public | login throttle 5 / 15 min per (portal, salon, identifier, IP) + credential-stuffing detector (LOGIN_THROTTLE_STORE) |
+| POST | `/auth/logout` | modules/identity/src/auth/auth.controller.ts:288 | public | AnonRateLimit 600 / 5 min per IP (bucket auth-logout) |
 | POST | `/auth/password-reset/complete` | modules/identity/src/auth/password-reset.controller.ts:26 | public | reset counts in Postgres per identifier + IP |
 | POST | `/auth/password-reset/request` | modules/identity/src/auth/password-reset.controller.ts:16 | public | reset counts in Postgres per identifier + IP |
 | POST | `/auth/password-reset/temp-login` | modules/identity/src/auth/password-reset.controller.ts:21 | public | reset counts in Postgres per identifier + IP |
-| POST | `/auth/refresh` | modules/identity/src/auth/auth.controller.ts:213 | public | AnonRateLimit 600 / 5 min per IP (bucket auth-refresh) |
+| POST | `/auth/refresh` | modules/identity/src/auth/auth.controller.ts:214 | public | AnonRateLimit 600 / 5 min per IP (bucket auth-refresh) |
 | POST | `/auth/super-admin/forgot-password` | modules/identity/src/auth/system-reset.controller.ts:24 | public | reset counts in Postgres per identifier + IP |
 | POST | `/auth/temp-password-login` | modules/identity/src/auth/system-reset.controller.ts:59 | public | Postgres attempt budget: 5 failures / 15 min per account (auth-attempt-budget.ts) |
 | POST | `/auth/webauthn/authenticate/begin` | modules/identity/src/auth/webauthn.controller.ts:108 | public | AnonRateLimit 120 / 5 min per IP (bucket auth-webauthn-authenticate) |
@@ -97,10 +97,10 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/customer/deals/public/{id}/estimate` | modules/deals/src/deals/deals.customer.controller.ts:64 | public | AnonRateLimit 60 / 1 min per IP (bucket customer-deals-guest) |
 | GET | `/customer/salons/{salonId}` | modules/customers/src/customer-salons/customer-salons.controller.ts:47 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-salons) |
 | GET | `/customer/salons/{salonId}/services` | modules/customers/src/customer-salons/customer-salons.controller.ts:54 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-salons) |
-| GET | `/customer/salons/{salonId}/services/{serviceId}/technicians` | modules/workforce/src/tech-profile/customer-tech.controller.ts:73 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
-| GET | `/customer/salons/{salonId}/technicians` | modules/workforce/src/tech-profile/customer-tech.controller.ts:66 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
+| GET | `/customer/salons/{salonId}/services/{serviceId}/technicians` | modules/workforce/src/tech-profile/customer-tech.controller.ts:75 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
+| GET | `/customer/salons/{salonId}/technicians` | modules/workforce/src/tech-profile/customer-tech.controller.ts:68 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
 | GET | `/customer/salons/nearby` | modules/customers/src/customer-salons/customer-salons.controller.ts:32 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-salons) |
-| GET | `/customer/techs/{publicSlug}` | modules/workforce/src/tech-profile/customer-tech.controller.ts:59 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
+| GET | `/customer/techs/{publicSlug}` | modules/workforce/src/tech-profile/customer-tech.controller.ts:61 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
 | GET | `/customer/techs/nearby` | modules/workforce/src/tech-profile/customer-tech.controller.ts:50 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
 | GET | `/go-check-in/{slug}/config` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:32 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
 | POST | `/go-check-in/{slug}/start-session` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:33 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
@@ -296,6 +296,7 @@ Service callers present a short-lived scoped service token (`SERVICE_TOKEN_SECRE
 | POST | `/pos/payroll/periods/{id}/reopen` | staff |
 | POST | `/pos/security/access-reviews/{id}/decisions` | staff |
 | PATCH | `/pos/settings/payments-checkout` | staff |
+| POST | `/pos/settings/payments-checkout/terminals/{id}/assign-location` | staff |
 | POST | `/pos/settings/payments-checkout/terminals/{id}/disable` | staff |
 | POST | `/pos/settings/payments-checkout/terminals/{id}/enable` | staff |
 | POST | `/pos/settings/payments-checkout/terminals/{id}/register` | staff |
@@ -364,6 +365,7 @@ Service callers present a short-lived scoped service token (`SERVICE_TOKEN_SECRE
 | POST | `/super-admin/merchant-accounts/{tenantId}/funding-update` | super_admin |
 | POST | `/super-admin/merchant-accounts/{tenantId}/mid-assignment` | super_admin |
 | POST | `/super-admin/merchant-accounts/{tenantId}/rates` | super_admin |
+| POST | `/super-admin/merchant-accounts/{tenantId}/surcharge-enrollment` | super_admin |
 | POST | `/super-admin/merchant-accounts/{tenantId}/suspension` | super_admin |
 | POST | `/super-admin/merchant-accounts/{tenantId}/terminals` | super_admin |
 | PUT | `/super-admin/mobile-versions/{app}/{platform}` | super_admin |

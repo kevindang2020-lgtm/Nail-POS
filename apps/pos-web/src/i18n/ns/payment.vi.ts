@@ -119,4 +119,23 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   'payment.customerTips.state.CONFIRMED': 'Đã xác nhận',
   'payment.customerTips.state.LOCKED': 'Đã xác nhận · đang thanh toán',
   'payment.customerTips.state.SUPERSEDED': 'Quầy đã thay đổi',
+  'payment.terminal.label': 'Máy Clover Compact',
+  'payment.terminal.none': 'Chi nhánh này chưa kết nối máy thanh toán. Hãy kết nối trong mục Thiết bị.',
+  'payment.terminal.disabled': '(đã tắt)',
+  'payment.terminal.amountOnDevice': 'Khách xác nhận {amount} trên máy thanh toán.',
+  'payment.terminal.waiting': 'Đang chờ khách chạm, cắm hoặc quẹt thẻ trên {terminal}…',
+  'payment.terminal.cancel': 'Hủy trên máy',
+  'payment.terminal.cancelSent': 'Đã gửi lệnh hủy. Nếu thẻ đã được gửi đi duyệt, hãy bấm Kiểm tra trước khi tính tiền lại.',
+  'payment.terminal.cancelFailed': 'Không hủy được trên máy: {reason}',
+  'payment.terminal.approved': 'ĐÃ DUYỆT — {amount} trên máy thanh toán.',
+  'payment.terminal.declined': 'BỊ TỪ CHỐI — {reason}. Có thể thử thẻ khác.',
+  'payment.terminal.unavailable': 'TẠM THỜI KHÔNG DÙNG ĐƯỢC — {reason}',
+  'payment.terminal.inProgress': 'ĐANG XỬ LÝ — {reason}',
+  'payment.terminal.cancelled': 'ĐÃ HỦY trên máy — chưa trừ tiền. Bạn có thể thanh toán lại.',   // DRAFT — Kevin reviews
+  'payment.terminal.unknown': 'CHƯA RÕ — CẦN KIỂM TRA. {reason}',
+  'payment.terminal.unassignedWarning': 'Chưa có chi nhánh — máy này không nhận thanh toán thẻ cho đến khi được gán.',
+  'payment.terminal.assignHere': 'Gán cho chi nhánh này',
+  'payment.terminal.noLocation': 'Chưa có địa điểm',   // DRAFT — Kevin reviews
+  'payment.terminal.assigned': '{label} đã được gán cho chi nhánh này.',
+  'payment.surcharge.disclosure': 'Chỉ áp dụng cho thẻ tín dụng: đơn vị xử lý thẻ có thể cộng thêm phụ phí {rate}%. Thẻ ghi nợ và thẻ trả trước không bao giờ bị tính phụ phí. Biên lai ghi rõ số tiền thực tế đã thu.',
 };

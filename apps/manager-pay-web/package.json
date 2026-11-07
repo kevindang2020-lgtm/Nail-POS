@@ -16,6 +16,7 @@
     "@aipowersalon/mobile-sdk": "*",
     "@aipowersalon/money": "*",
     "@aipowersalon/realtime-contracts": "*",
+    "@aipowersalon/realtime-client": "*",
     "@aipowersalon/ui": "*",
     "@capacitor/android": "^8.4.3",
     "@capacitor/app": "^8.1.1",

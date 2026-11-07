@@ -40,8 +40,12 @@ describe('every native-shipped app can authenticate on a phone', () => {
     it(`${app}: has the secure-token module`, () => {
       expect(existsSync(nativeAuth), 'packages/mobile-sdk/src/native-auth.ts is missing').toBe(true);
       const main = code(join(APPS_ROOT, app, 'src/main.tsx'));
+      // Nov 5 2026: the wiring may sit in src/api/client.ts — it runs at module load, which every app reaches through its
+      // import graph before main.tsx's body runs (ES imports evaluate first). Either place is "at start-up".
+      const client = code(join(APPS_ROOT, app, 'src/api/client.ts'));
+      const wired = (f: string) => /from '@aipowersalon\/mobile-sdk'/.test(f) && /configureMobileSdk\(/.test(f);
       expect(
-        /from '@aipowersalon\/mobile-sdk'/.test(main) && /configureMobileSdk\(/.test(main),
+        wired(main) || wired(client),
         `${app} does not wire @aipowersalon/mobile-sdk at start-up. On a native build its session cookie is never sent ` +
         `(origin is capacitor://localhost → cross-site), so it can NEVER authenticate on a phone — while its ` +
         `browser tests all pass.`,
@@ -142,18 +146,39 @@ describe('Face ID in all four apps is the device credential (BUILD_PLAN Phase 13
       expect('@capgo/capacitor-native-biometric' in deps, `${app} has Face ID but no biometric plugin — the native path would have no implementation.`).toBe(true);
     }
   });
-  it('a 401 and a sign-out clear the Face ID credential too, in every app (bug 2: they cleared only the token)', () => {
-    const where: Record<string, string[]> = {
-      'customer-web': ['src/auth/AuthContext.tsx'], 'tech-web': ['src/auth/AuthContext.tsx'], 'owner-web': ['src/auth/AuthContext.tsx'],
-      'manager-pay-web': ['src/App.tsx', 'src/screens/AccountScreen.tsx'],
-    };
-    for (const [app, files] of Object.entries(where)) {
-      const src = files.map((f) => code(join(APPS_ROOT, app, f))).join('\n');
+  // Nov 5 2026 (Kevin; changes Constitution 6 §37): Face ID SURVIVES a normal sign-out and a 401 in customer / tech / owner
+  // — the person signs back in with their face; the server ends the credential whenever trust ends (migration 841 +
+  // biometric-auth.pgtest). Turning it off is an explicit choice at sign-out. Manager Pay (a phone often shared at the
+  // front desk) keeps the strict rule: a 401 and a sign-out end Face ID there.
+  it('customer, tech, owner: a 401 keeps Face ID; sign-out ends it only when the person chose to', () => {
+    for (const app of ['customer-web', 'tech-web', 'owner-web']) {
+      const src = code(join(APPS_ROOT, app, 'src/auth/AuthContext.tsx'));
       const at = src.indexOf("'aps:unauthorized'");
       expect(at, `${app}: no aps:unauthorized handler`).toBeGreaterThan(-1);
-      expect(/clearFaceId/.test(src.slice(Math.max(0, at - 600), at + 200)), `${app}: the 401 handler does not clear the Face ID credential`).toBe(true);
-      expect((src.match(/clearFaceId\(/g) ?? []).length, `${app}: sign-out does not clear the Face ID credential`).toBeGreaterThanOrEqual(2);
+      expect(/clearFaceId|disableFaceId/.test(src.slice(Math.max(0, at - 600), at)), `${app}: the 401 handler must not end Face ID`).toBe(false);
+      expect(/if \(opts\?\.endFaceId\)[^\n]*disableFaceId\(\)/.test(src), `${app}: sign-out must turn Face ID off (server revoke) when the person chose to`).toBe(true);
+      expect(src.indexOf('disableFaceId()'), `${app}: the server revoke must run while the session still exists`).toBeLessThan(src.indexOf('authApi.logout()'));
+      expect(/^\s*await clearFaceId\(\);/m.test(src), `${app}: an unconditional clearFaceId() on sign-out would end Face ID every time`).toBe(false);
     }
+  });
+  it('manager-pay: a 401 and a sign-out end Face ID (server revoke before the session ends)', () => {
+    const app = code(join(APPS_ROOT, 'manager-pay-web', 'src/App.tsx'));
+    const at = app.indexOf("'aps:unauthorized'");
+    expect(/clearFaceId/.test(app.slice(Math.max(0, at - 600), at + 200)), 'manager-pay: the 401 handler does not clear the Face ID credential').toBe(true);
+    const acct = code(join(APPS_ROOT, 'manager-pay-web', 'src/screens/AccountScreen.tsx'));
+    const signOut = acct.slice(acct.indexOf('const onSignOut'));
+    expect(signOut.indexOf('disableFaceId()')).toBeGreaterThan(-1);
+    expect(signOut.indexOf('disableFaceId()')).toBeLessThan(signOut.indexOf('authApi.logout()'));
+    expect(/clearFaceId\(\)/.test(signOut)).toBe(true);
+  });
+  it('the server: a normal sign-out keeps Face ID; every other revoke ends it (migration 841)', () => {
+    const ctl = readFileSync(join(APPS_ROOT, '..', 'modules/identity/src/auth/auth.controller.ts'), 'utf8');
+    const logout = ctl.slice(ctl.indexOf("@Post('logout')"), ctl.indexOf("@Get('branches')"));
+    expect(logout).toMatch(/set_config\('aps\.keep_face_id', 'on', true\)/);
+    expect(logout).not.toMatch(/revokeForDevice/);
+    const mig = readFileSync(join(APPS_ROOT, 'api/db/migrations/841_face_id_survives_sign_out.sql'), 'utf8');
+    expect(mig).toMatch(/AFTER UPDATE OF status ON sessions/);
+    expect(mig).toMatch(/current_setting\('aps\.keep_face_id', true\)/);
   });
   it('no app reads the never-set aps_bio_login_success flag any more (bug 14)', () => {
     for (const app of NATIVE_APPS) for (const f of ['src/screens/SettingsScreen.tsx', 'src/screens/OwnerSettingScreen.tsx', 'src/screens/ProfileSecurityScreen.tsx', 'src/screens/LoginScreen.tsx']) {

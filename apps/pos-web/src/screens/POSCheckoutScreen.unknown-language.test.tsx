@@ -38,6 +38,8 @@ function server(opts: { tickets?: ReturnType<typeof row>[]; verify?: unknown } =
     const ok = (j: unknown) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => j, text: async () => JSON.stringify(j) }) as unknown as Response;
     if (/\/pay\/card\/verify/.test(u)) return ok(opts.verify ?? { status: 'pending', retryAfterSeconds: 45 });
     if (/\/pay\/card$/.test(u)) return ok({ status: 'processing' });             // the answer was lost: UNKNOWN
+    if (/\/pay\/terminal$/.test(u)) return ok({ status: 'unknown', next: 'verify', message: '' });   // Card → Compact: same
+    if (u.includes('/pos/checkout/terminals')) return ok([{ id: 'term_1', label: 'Front Compact', stationId: null, disabled: false, lastSeenAt: null, hsnConfigured: true }]);
     const m = /\/pos\/checkout\/tickets\/([^/?]+)$/.exec(u);
     if (m) return ok(detail(m[1], names[m[1]] ?? m[1]));
     if (u.includes('/pos/checkout/state')) return ok({ kpisFull: kpis, tickets: { items: opts.tickets ?? [row('t1', 'Jessica Miller'), row('t2', 'Nguyễn Thị Hương')], pagination: { totalItems: 2 } }, paymentSettings: settings, customerDisplay: { pairedDevices: [], activeSession: null } });

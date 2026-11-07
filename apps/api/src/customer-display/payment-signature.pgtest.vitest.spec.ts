@@ -64,7 +64,7 @@ async function paying(): Promise<any> {
 }
 const terminal = (answer: Record<string, unknown>) => {
   const asked: any[] = [];
-  const svc = new TerminalCaptureService(db as any, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { asked.push(i); return { approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'RR' + n, amountCents: 5000, ...answer }; } }) as any, (x) => x, undefined, new InMemoryTerminalLeases());
+  const svc = new TerminalCaptureService(db as any, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { asked.push(i); return { approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'RR' + n, amountCents: i.amountCents, ...answer }; } }) as any, (x) => x, undefined, new InMemoryTerminalLeases());
   return { svc, asked };
 };
 const sigRows = (ticketId: string) => q(`select payment_id, captured_on, signature_png from payment_signatures where tenant_id = $1 and ticket_id = $2`, [T, ticketId]);
@@ -85,7 +85,7 @@ beforeAll(async () => {
   await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Gel Manicure',45,5000)`, [SVC, T, BR, cat]);
   await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'payments-checkout', $2::jsonb)`, [T, JSON.stringify({ customerDisplayCaptureMode: 'terminal' })]);
   await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn) values (gen_random_uuid(),$1,$2,'Clover Flex','paired','HSN1')`, [T, BR]);
-  await q(`insert into tenant_payment_config (tenant_id, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,'M1','https://bolt.cardpointe.com','enc')`, [T]);
+  await q(`insert into tenant_payment_config (tenant_id, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,'M1','https://bolt-uat.cardpointe.com/api','enc')`, [T]);
 }, 180000);
 
 describe('the signature is taken once, on the Clover terminal, and kept on the payment', () => {

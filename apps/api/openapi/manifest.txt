@@ -575,6 +575,7 @@ GET /pos/checkout/kpis  realm=staff  auth=session  domain=checkout  perm=pos.che
 GET /pos/checkout/settings  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/skip-line/state  realm=staff  auth=session  domain=checkout  perm=checkout.view  resource=BRANCH/permission
 GET /pos/checkout/state  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/checkout/terminals  realm=staff  auth=session  domain=operations  perm=pos.checkout.take_payment  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/offers  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -2726,6 +2727,8 @@ POST /pos/checkout/tickets/{ticketId}/pay/cash  realm=staff  auth=session  domai
 POST /pos/checkout/tickets/{ticketId}/pay/gift-card  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  resource=BRANCH/records  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/pay/rewards  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  resource=BRANCH/records  idempotency=required  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/pay/split  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  resource=BRANCH/records  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/checkout/tickets/{ticketId}/pay/terminal  realm=staff  auth=session  domain=operations  perm=pos.checkout.take_payment  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/checkout/tickets/{ticketId}/pay/terminal/cancel  realm=staff  auth=session  domain=operations  perm=pos.checkout.take_payment  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/rating  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/recalculate  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/receipt/app  realm=staff  auth=session  domain=checkout  perm=pos.receipts.send  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -3083,6 +3086,7 @@ POST /pos/settings/online-google-ai-booking/ai  realm=staff  auth=session  domai
 POST /pos/settings/online-google-ai-booking/connect-google  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/online-google-ai-booking/disconnect-google  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/pair  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  step-up  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/settings/payments-checkout/terminals/{id}/assign-location  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/records  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/{id}/disable  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/records  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/{id}/enable  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/records  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/{id}/register  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/records  step-up  guards=RolePermissionGuard,TenantAuthGuard
@@ -3421,6 +3425,7 @@ POST /super-admin/merchant-accounts/{tenantId}/deactivation  realm=super_admin  
 POST /super-admin/merchant-accounts/{tenantId}/funding-update  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/mid-assignment  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/rates  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
+POST /super-admin/merchant-accounts/{tenantId}/surcharge-enrollment  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/suspension  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/terminals  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
 POST /super-admin/onboarding/applications  realm=super_admin  auth=session  domain=support  derived=super_admin.onboarding.manage  resource=PLATFORM/realm  guards=SuperAdminGuard

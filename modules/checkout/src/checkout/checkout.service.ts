@@ -170,6 +170,9 @@ export class CheckoutService {
   useTipSelectionReader(fn: ((ctx: CheckoutContext, ticketId: string) => Promise<unknown>) | null | undefined): this { this.tipView = fn ?? null; return this; }
   /** G4: the customer's per-technician tip choice for the POS screen (null when none / no database) */
   async tipSelection(ctx: CheckoutContext, id: string): Promise<unknown> { this.need(ctx, 'pos.checkout.view'); await this.ticketOr404(ctx, id); return this.tipView ? this.tipView(ctx, id) : null; }
+  /** Merged Nov 7 2026: the POS Card → Clover Compact tender (apps/api pos-terminal-pay.controller) runs outside this
+   *  service; it asks the same tip question here before the terminal is prompted. */
+  async assertTipsConfirmed(ctx: CheckoutContext, id: string, staff: unknown): Promise<void> { this.need(ctx, 'pos.checkout.take_payment'); await this.guardTips(ctx, id, staff); }
   /** Before a NEW front-desk tender: the customer's per-technician tips must be confirmed (or confirmed on their behalf, attributed). */
   private async guardTips(ctx: CheckoutContext, id: string, staff: unknown): Promise<void> {
     if (!this.tipGuard) return;
@@ -979,10 +982,19 @@ export class CheckoutService {
         this.log(ctx, 'pos_checkout_card_payment_declined', 'pos_payment', claim.paymentId, undefined, dp, { processor: processor.name, respstat: auth.respstat, respText: auth.respText });
         return { paymentId: claim.paymentId, ticketId: id, status: 'declined', processorTransactionId: auth.retref };
       }
+      // Fiserv §9: the only surcharge is the one the PROVIDER assessed (fee_amount). The approved amount must equal what
+      // we asked for plus that fee; anything else is contradictory → stays 'processing' for reconciliation, never "paid".
+      const providerFee = Math.max(0, auth.surchargeCents ?? 0);
+      if (auth.amountCents != null && auth.amountCents !== due + providerFee) {
+        recordPaymentEvent('unknown');
+        this.log(ctx, 'pos_checkout_card_amount_mismatch', 'pos_payment', claim.paymentId, undefined, undefined, { processor: processor.name, requestedCents: due, providerFeeCents: providerFee, approvedCents: auth.amountCents, retref: auth.retref });
+        return { paymentId: claim.paymentId, ticketId: id, status: 'processing', processorTransactionId: auth.retref, message: 'Approved amount does not match — verify with the processor before closing this ticket' };
+      }
+      if (providerFee > 0 && this.repo.recordProviderSurcharge) await this.repo.recordProviderSurcharge(ctx, claim.paymentId, providerFee, { feeType: auth.feeType, feeValue: auth.feeValue });
       // the card is charged; if recording it fails the attempt stays 'processing' (logged) — the POS shows "verify", never "paid"
-      if ((await this.completeApprovedCard(ctx, id, claim.paymentId, auth.retref, due, processor.name, 'live', auth.authCode)) === null) { recordPaymentEvent('unknown'); return { paymentId: claim.paymentId, ticketId: id, status: 'processing' }; }
+      if ((await this.completeApprovedCard(ctx, id, claim.paymentId, auth.retref, due + providerFee, processor.name, 'live', auth.authCode)) === null) { recordPaymentEvent('unknown'); return { paymentId: claim.paymentId, ticketId: id, status: 'processing' }; }
       recordPaymentEvent('approved');
-      return { paymentId: claim.paymentId, ticketId: id, status: 'approved', processorTransactionId: auth.retref, approvedAmountCents: due };
+      return { paymentId: claim.paymentId, ticketId: id, status: 'approved', processorTransactionId: auth.retref, approvedAmountCents: due + providerFee };
     }
     if (!cardProcessingEnabled(status)) {
       // honest: never fake an approval when no processor is wired
@@ -1217,11 +1229,12 @@ export class CheckoutService {
     }
     const settings = await this.repo.settings(ctx);
     const { processor, status: fs } = await this.payProc(ctx, settings);
-    // Option A — surcharge the CARD PORTION of the split. The segments above sum to the base due (surcharge-free); the
-    // card dollars carry the same surcharge they would as a straight card payment, added on top of the base and collected
-    // on the card segment. Cash/gift dollars are never surcharged, so a fully cash/gift split owes nothing extra.
+    // Fiserv master build §9 (P0 fix, Nov 4 2026): the card segment is authorized at its BASE amount only. The former
+    // "Option A" added a locally computed 3% to the authorization (even for unknown funding), which an enrolled MID would
+    // then surcharge AGAIN. Now the card-portion surcharge is whatever the provider assessed on that authorization
+    // (fee_amount; 0 for debit/prepaid/not enrolled). Cash/gift dollars are never surcharged.
     const cardBaseCents = body.segments.filter((seg) => seg.method === 'card').reduce((a, seg) => a + (seg.amountCents || 0), 0);
-    const cardSurchargeCents = splitCardSurchargeCents(cardBaseCents, settings.cardSurchargeEnabled, settings.cardSurchargePercent);
+    let cardSurchargeCents = 0;
     const hasCard = body.segments.some((seg) => seg.method === 'card');
     if (hasCard && !cardProcessingEnabled(fs)) {
       this.log(ctx, 'pos_checkout_card_payment_attempted', 'pos_payment', id, undefined, undefined, { split: true });
@@ -1254,8 +1267,7 @@ export class CheckoutService {
       if (!body.cardToken) return { configured: false, disabledReason: 'A card token is required to charge a card.' };
       if (looksLikeRawPan(body.cardToken)) throw new ValidationError('Card numbers are never accepted directly — use the terminal or the secure card form.', 'CARD_NUMBER_NOT_ACCEPTED');   // wave 3 PAYI §31 (P0 PCI)
       const cardSeg = body.segments.find((seg) => seg.method === 'card')!;
-      const cardChargeCents = cardSeg.amountCents + cardSurchargeCents;
-      if (cardSurchargeCents > 0) this.log(ctx, 'pos_checkout_split_card_surcharge_applied', 'pos_payment', id, undefined, undefined, { cardBaseCents, cardSurchargeCents, cardChargeCents, percent: settings.cardSurchargePercent });
+      const cardChargeCents = cardSeg.amountCents;   // base only — never base + a local fee
       // Idempotency key on the split's card capture (keyed on the exact card charge) — passed to the processor so
       // Fiserv/CardPointe can dedupe, AND used to claim an app-level reservation BEFORE charging. The split settles
       // atomically via recordSplitAtomic, so it uses the dedicated payment_attempts table as the reservation lock
@@ -1290,6 +1302,14 @@ export class CheckoutService {
         this.log(ctx, 'pos_checkout_split_card_unknown_answer', 'pos_payment', id, undefined, undefined, { processor: processor.name, respstat: auth.respstat, respText: auth.respText, retref: auth.retref ?? null });
         throw new ValidationError('PAYMENT_STATUS_UNKNOWN');
       }
+      cardSurchargeCents = Math.max(0, auth.surchargeCents ?? 0);
+      if (auth.amountCents != null && auth.amountCents !== cardChargeCents + cardSurchargeCents) {
+        // Contradictory processor amount: keep the reservation held (a retry says "already being processed") and leave it
+        // for reconciliation — never record a split as paid on an amount we did not ask for.
+        this.log(ctx, 'pos_checkout_split_card_amount_mismatch', 'pos_payment', id, undefined, undefined, { requestedCents: cardChargeCents, providerFeeCents: cardSurchargeCents, approvedCents: auth.amountCents, retref: auth.retref });
+        throw withCode(new ValidationError('The card was approved for a different amount than requested — verify with the processor before closing this ticket'), 'PAYMENT_STATUS_UNKNOWN');
+      }
+      if (cardSurchargeCents > 0) this.log(ctx, 'pos_checkout_split_card_provider_surcharge', 'pos_payment', id, undefined, undefined, { cardBaseCents, providerFeeCents: cardSurchargeCents, feeType: auth.feeType, feeValue: auth.feeValue, retref: auth.retref });
       cardRetref = auth.retref;
     }
     // Settle all segments atomically: gift decrements + payment rows + paid status commit together (or roll back).

@@ -72,3 +72,4 @@ export const api = {
   patch: <T>(p: string, body?: Record<string, unknown>, opts?: Opts) => withDeviceRules(() => transport.patch<T>(p, body, opts)),
   del: <T>(p: string, opts?: Opts) => withDeviceRules(() => transport.del<T>(p, opts)),
 };
+

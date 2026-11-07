@@ -4,7 +4,6 @@
 import type { MyConsentedPhoto } from '@aipowersalon/api-contracts/customer';   // the wire contract (Constitution 13 §15)
 import { api } from './client';
 
-
 export const customerPhotoConsentApi = {
   list: () => api.get<{ photos: MyConsentedPhoto[] }>('/customer/my-photo-consents'),
   withdraw: (photoId: string) => api.post<{ ok: boolean; photoId: string }>(`/customer/my-photo-consents/${encodeURIComponent(photoId)}/withdraw`, {}),

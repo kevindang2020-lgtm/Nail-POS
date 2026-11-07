@@ -77,14 +77,31 @@ describe('payment provider router — tenant + branch → merchant account', () 
     expect(g3.configVersion).toBe(2);
   });
   it('§13/§17 terminal route: the branch merchant\'s Bolt key drives the Clover at that branch; the tenant default elsewhere', async () => {
-    await pg.query(`UPDATE payment_merchant_accounts SET bolt_base_url = 'https://bolt-branch.cardpointe.com', bolt_api_key_enc = 'enc:bolt-branch' WHERE branch_id = $1`, [A_CH]);
-    await pg.query(`UPDATE tenant_payment_config SET bolt_base_url = 'https://bolt-default.cardpointe.com', bolt_api_key_enc = 'enc:bolt-default' WHERE tenant_id = $1`, [A]);
+    // Fiserv master build §5.3: Bolt hosts must be allowlisted Fiserv hosts matching the row's environment (sandbox → UAT)
+    await pg.query(`UPDATE payment_merchant_accounts SET bolt_base_url = 'https://branch-uat.bolt.cardpointe.com', bolt_api_key_enc = 'enc:bolt-branch' WHERE branch_id = $1`, [A_CH]);
+    await pg.query(`UPDATE tenant_payment_config SET bolt_base_url = 'https://default-uat.bolt.cardpointe.com', bolt_api_key_enc = 'enc:bolt-default' WHERE tenant_id = $1`, [A]);
     const br = await resolver().resolveTerminalConfig(A, A_CH);
-    expect(br.config).toEqual({ baseUrl: 'https://bolt-branch.cardpointe.com', apiKey: 'bolt-branch', merchantId: 'MID-1001' });
+    expect(br.config).toEqual({ baseUrl: 'https://branch-uat.bolt.cardpointe.com', apiKey: 'bolt-branch', merchantId: 'MID-1001' });
     expect(br.scope).toBe('branch');
     const main = await resolver().resolveTerminalConfig(A, A_MAIN);
-    expect(main.config).toEqual({ baseUrl: 'https://bolt-default.cardpointe.com', apiKey: 'bolt-default', merchantId: 'MID-A-DEFAULT' });
+    expect(main.config).toEqual({ baseUrl: 'https://default-uat.bolt.cardpointe.com', apiKey: 'bolt-default', merchantId: 'MID-A-DEFAULT' });
     expect(main.scope).toBe('tenant');
+  });
+  it('Fiserv §5.3: a non-Fiserv Bolt host, or a production host on a sandbox merchant, is refused (HOST_NOT_ALLOWED) — no key handed out', async () => {
+    await pg.query(`UPDATE tenant_payment_config SET bolt_base_url = 'https://bolt-default.example', bolt_api_key_enc = 'enc:bolt-default' WHERE tenant_id = $1`, [A]);
+    const r1 = await resolver().resolveTerminalConfig(A, A_MAIN);
+    expect(r1.config).toBeNull(); expect(r1.reason).toBe('HOST_NOT_ALLOWED');
+    await pg.query(`UPDATE tenant_payment_config SET bolt_base_url = 'https://mysite.bolt.cardpointe.com' WHERE tenant_id = $1`, [A]);
+    const r2 = await resolver().resolveTerminalConfig(A, A_MAIN);
+    expect(r2.config).toBeNull(); expect(r2.reason).toBe('HOST_NOT_ALLOWED');
+  });
+  it('Fiserv §5.2: a terminal bound to branch Cherry Hill\'s merchant account cannot charge from another branch', async () => {
+    await pg.query(`UPDATE payment_merchant_accounts SET bolt_base_url = 'https://branch-uat.bolt.cardpointe.com', bolt_api_key_enc = 'enc:bolt-branch' WHERE branch_id = $1`, [A_CH]);
+    const acct: any = (await pg.query(`SELECT id FROM payment_merchant_accounts WHERE branch_id = $1`, [A_CH])).rows[0];
+    const r = await resolver().resolveTerminalConfig(A, A_MAIN, String(acct.id));
+    expect(r.config).toBeNull(); expect(r.reason).toBe('MERCHANT_BRANCH_MISMATCH');
+    const ok = await resolver().resolveTerminalConfig(A, A_CH, String(acct.id));
+    expect(ok.config?.merchantId).toBe('MID-1001');
   });
   it('terminal route: a paused branch merchant answers MERCHANT_SUSPENDED (no fall back); no Bolt key → TERMINAL_NOT_CONFIGURED', async () => {
     await pg.query(`UPDATE payment_merchant_accounts SET status = 'paused' WHERE branch_id = $1`, [A_CH]);

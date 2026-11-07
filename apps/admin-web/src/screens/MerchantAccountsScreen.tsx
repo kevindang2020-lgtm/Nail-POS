@@ -136,7 +136,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 const SUPER_ADMIN_ACTIONS = [
   'Start merchant onboarding', 'Review merchant documents', 'Submit merchant information', 'Activate or deactivate processing',
-  'Track underwriting', 'Update funding information', 'Assign an MID to a branch', 'Assign terminals',
+  'Track underwriting', 'Update funding information', 'Assign an MID to a branch', 'Assign terminals', 'Record surcharge enrollment',
   'Configure processing rates', 'Review merchant-account errors', 'Manage processor connections',
 ];
 
@@ -170,6 +170,12 @@ export default function MerchantAccountsScreen() {
   const [midErr, setMidErr] = useState<string | null>(null);
   const [midResult, setMidResult] = useState<MAMidAssignResult | null>(null);
   const [termForm, setTermForm] = useState<{ tenantId: string; merchantId: string } | null>(null);
+  // Fiserv §9.2 (merged Nov 7 2026): the surcharge enrollment Fiserv confirmed in writing — the POS never invents a rate
+  const [surForm, setSurForm] = useState<{ tenantId: string; merchantId: string } | null>(null);
+  const [surFields, setSurFields] = useState({ enrolled: true, ratePct: '', reference: '', branchId: '', reason: '' });
+  const [surBusy, setSurBusy] = useState(false);
+  const [surErr, setSurErr] = useState<string | null>(null);
+  const [surDone, setSurDone] = useState<string | null>(null);
   const [termFields, setTermFields] = useState({ terminalId: '', branchId: '', reason: '' });
   const [termBusy, setTermBusy] = useState(false);
   const [termErr, setTermErr] = useState<string | null>(null);
@@ -229,6 +235,11 @@ export default function MerchantAccountsScreen() {
       else setActionModal('Select a merchant account first');
       return;
     }
+    if (label === 'Record surcharge enrollment') {
+      if (sel) { setSurFields({ enrolled: true, ratePct: '', reference: '', branchId: '', reason: '' }); setSurErr(null); setSurDone(null); setSurForm({ tenantId: sel.tenantId, merchantId: sel.merchantId }); }
+      else setActionModal('Select a merchant account first');
+      return;
+    }
     if (label === 'Assign terminals') {
       if (sel) { setTermFields({ terminalId: '', branchId: '', reason: '' }); setTermErr(null); setTermResult(null); setTermForm({ tenantId: sel.tenantId, merchantId: sel.merchantId }); }
       else setActionModal('Select a merchant account first');
@@ -257,6 +268,20 @@ export default function MerchantAccountsScreen() {
       .then((r) => { setMidResult(r); const ac = new AbortController(); load(ac.signal); })
       .catch((e: unknown) => setMidErr(e instanceof Error ? e.message : 'MID assignment failed'))
       .finally(() => setMidBusy(false));
+  };
+
+  const submitSurcharge = () => {
+    if (!surForm) return;
+    const pct = Number(surFields.ratePct);
+    const rateBps = Math.round(pct * 100);
+    if (surFields.enrolled && (!Number.isFinite(pct) || rateBps < 100 || rateBps > 300)) { setSurErr('Enter Fiserv\'s enrolled rate between 1.00% and 3.00%.'); return; }
+    if (surFields.enrolled && !surFields.reference.trim()) { setSurErr('Enter Fiserv\'s written enrollment reference.'); return; }
+    if (!surFields.reason.trim()) { setSurErr('A reason is required.'); return; }
+    setSurBusy(true); setSurErr(null);
+    superAdminMerchantAccountsApi.setSurchargeEnrollment(surForm.tenantId, { enrolled: surFields.enrolled, rateBps: surFields.enrolled ? rateBps : null, reference: surFields.enrolled ? surFields.reference.trim() : null, branchId: surFields.branchId.trim() || null, reason: surFields.reason.trim() })
+      .then((r) => { setSurDone(r.enrolled ? `Enrolled at ${((r.rateBps ?? 0) / 100).toFixed(2)}%.` : 'Surcharge enrollment withdrawn.'); const ac = new AbortController(); load(ac.signal); })
+      .catch((e: unknown) => setSurErr(e instanceof Error ? e.message : 'Saving the enrollment failed'))
+      .finally(() => setSurBusy(false));
   };
 
   const submitFunding = () => {
@@ -830,6 +855,40 @@ export default function MerchantAccountsScreen() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                   <button className="btn ghost" onClick={() => setMidForm(null)}>Cancel</button>
                   <button className="btn" onClick={submitMid} disabled={midBusy}>{midBusy ? 'Assigning…' : 'Assign MID'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SURCHARGE ENROLLMENT MODAL (Fiserv §9.2) */}
+      {surForm && (
+        <div role="dialog" aria-label="Record surcharge enrollment" onClick={() => setSurForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(20, 16, 10, 0.65)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{ background: '#FFFDF8', borderRadius: 14, padding: 20, width: 460, maxWidth: '92vw', boxShadow: '0 24px 70px rgba(0,0,0,0.45)', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--line)', paddingBottom: 10, marginBottom: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Record Surcharge Enrollment</h2>
+              <button className="btn ghost sm" aria-label="Close" onClick={() => setSurForm(null)}>✕</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>Enter only what Fiserv enrolled in writing for this merchant. Credit cards only; Fiserv adds the surcharge on the authorization.</div>
+            {surDone ? (
+              <div>
+                <div style={{ fontSize: 13, color: '#1F9254', fontWeight: 700, marginBottom: 8 }}>{surDone}</div>
+                <div style={{ marginTop: 14, textAlign: 'right' }}><button className="btn" onClick={() => setSurForm(null)}>Done</button></div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" aria-label="Enrolled in the Merchant Surcharge Program" checked={surFields.enrolled} onChange={(e) => setSurFields((f) => ({ ...f, enrolled: e.target.checked }))} /> Enrolled (uncheck to withdraw)</label>
+                {surFields.enrolled ? <>
+                  <label style={{ fontSize: 12, color: 'var(--muted)' }}>Enrolled rate (%)<input aria-label="Enrolled rate percent" inputMode="decimal" value={surFields.ratePct} onChange={(e) => setSurFields((f) => ({ ...f, ratePct: e.target.value }))} placeholder="e.g. 3.00" style={{ display: 'block', width: '100%', marginTop: 4 }} /></label>
+                  <label style={{ fontSize: 12, color: 'var(--muted)' }}>Fiserv reference<input aria-label="Fiserv enrollment reference" value={surFields.reference} onChange={(e) => setSurFields((f) => ({ ...f, reference: e.target.value }))} style={{ display: 'block', width: '100%', marginTop: 4 }} /></label>
+                </> : null}
+                <label style={{ fontSize: 12, color: 'var(--muted)' }}>Branch ID (optional — blank = the salon default merchant)<input aria-label="Surcharge branch ID (optional)" value={surFields.branchId} onChange={(e) => setSurFields((f) => ({ ...f, branchId: e.target.value }))} style={{ display: 'block', width: '100%', marginTop: 4 }} /></label>
+                <label style={{ fontSize: 12, color: 'var(--muted)' }}>Reason<input aria-label="Surcharge reason" value={surFields.reason} onChange={(e) => setSurFields((f) => ({ ...f, reason: e.target.value }))} style={{ display: 'block', width: '100%', marginTop: 4 }} /></label>
+                {surErr && <div role="alert" style={{ fontSize: 12, color: SEMANTIC.bad }}>{surErr}</div>}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                  <button className="btn ghost" onClick={() => setSurForm(null)}>Cancel</button>
+                  <button className="btn" onClick={submitSurcharge} disabled={surBusy}>{surBusy ? 'Saving…' : 'Save enrollment'}</button>
                 </div>
               </div>
             )}

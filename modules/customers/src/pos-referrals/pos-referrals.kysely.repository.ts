@@ -50,7 +50,7 @@ export class KyselyReferralsRepository implements ReferralsRepositoryPort {
       SELECT cr.customer_id, c.full_name
       FROM customer_referrals cr
       LEFT JOIN customers c ON c.id = cr.customer_id AND c.tenant_id = cr.tenant_id
-      WHERE cr.tenant_id = ${ctx.tenantId} AND lower(cr.code) = lower(${code}) LIMIT 1
+      WHERE cr.tenant_id = ${ctx.tenantId} AND lower(cr.code) = lower(${code}) LIMIT 1   -- a code only counts at its own salon
     `.execute(this.db).catch(() => ({ rows: [] }));
     const r = res.rows?.[0];
     return r ? { customerId: String(r.customer_id), customerName: r.full_name ?? null } : null;

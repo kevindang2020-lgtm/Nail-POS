@@ -293,7 +293,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                   {typeof detail.customer?.loyaltyPoints === 'number' ? ` · ${detail.customer.loyaltyPoints} pts` : ''}
                 </div>
               </div>
-              {/* No status badge: the ticket detail the API serves has never carried a status (only the queue row does), so this badge always rendered empty. Follow-up: carry status on CheckoutTicketDetail (checkout module). */}
+              {/* The wire has no status: a ticket here is either still owing or fully paid. */}
+              <span className={`pay-badge ${(detail.balanceDueCents ?? detail.totals.totalDueCents) > 0 ? 'ready' : 'neutral'}`}>{(detail.balanceDueCents ?? detail.totals.totalDueCents) > 0 ? 'Ready' : 'Paid'}</span>
             </div>
           </div>
 

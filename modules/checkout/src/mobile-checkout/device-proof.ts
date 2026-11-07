@@ -28,10 +28,10 @@ export function canonicalDeviceRequest(p: { method: string; path: string; device
 /** Parse a registered public key: SPKI DER in base64 / base64url, P-256 only. Throws on anything else. */
 export function parseDevicePublicKey(spkiB64: string): KeyObject {
   const der = Buffer.from(String(spkiB64 ?? '').replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-  if (der.length < 60 || der.length > 200) throw new Error('not an EC public key');
+  if (der.length < 60 || der.length > 200) throw new Error('not an EC P-256 public key');
   const key = createPublicKey({ key: der, format: 'der', type: 'spki' });
   const d = key.asymmetricKeyDetails as { namedCurve?: string } | undefined;
-  if (key.asymmetricKeyType !== 'ec' || d?.namedCurve !== 'prime256v1') throw new Error('the payment device key must be ECDSA P-256');
+  if (key.asymmetricKeyType !== 'ec' || (d?.namedCurve !== 'prime256v1' && d?.namedCurve !== 'P-256')) throw new Error('the payment device key must be ECDSA P-256');
   return key;
 }
 /** The platform-wide identity of a key (UNIQUE): sha256 of its SPKI DER. */
@@ -63,7 +63,8 @@ export interface ParsedProof { deviceId: string; ts: string; nonce: string; sig:
 
 /** The proof headers of a request, or null when it carries none (the request is then an unsigned one). */
 export function readProof(headers: DeviceProofInput['headers']): ParsedProof | null {
-  const h = (k: string) => { const v = headers?.[k]; return Array.isArray(v) ? v[0] : v; };
+  // header names are case-insensitive (Node lowercases them; a hand-built map may not)
+  const h = (k: string) => { const v = headers?.[k] ?? Object.entries(headers ?? {}).find(([n]) => n.toLowerCase() === k)?.[1]; return Array.isArray(v) ? v[0] : v; };
   const deviceId = h(DEVICE_PROOF_HEADERS.id); const ts = h(DEVICE_PROOF_HEADERS.ts); const nonce = h(DEVICE_PROOF_HEADERS.nonce); const sig = h(DEVICE_PROOF_HEADERS.sig);
   if (!deviceId && !sig) return null;
   return { deviceId: String(deviceId ?? ''), ts: String(ts ?? ''), nonce: String(nonce ?? ''), sig: String(sig ?? '') };
@@ -73,8 +74,28 @@ export function readProof(headers: DeviceProofInput['headers']): ParsedProof | n
 export function checkProof(input: DeviceProofInput, proof: ParsedProof, publicKey: string): { ok: true } | { ok: false; reason: string } {
   const now = input.now ?? Date.now();
   const ts = Number(proof.ts);
-  if (!proof.deviceId || !proof.nonce || proof.nonce.length < 16 || proof.nonce.length > 128 || !/^[A-Za-z0-9_-]+$/.test(proof.nonce)) return { ok: false, reason: 'malformed proof' };
+  // merged Nov 7 2026: the developer tree's shape checks — device id, millisecond timestamp, nonce, base64url signature
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(proof.deviceId) || !/^\d{1,16}$/.test(proof.ts) || !/^[A-Za-z0-9_-]{16,128}$/.test(proof.nonce) || !/^[A-Za-z0-9_-]{60,100}$/.test(proof.sig)) return { ok: false, reason: 'malformed proof' };
   if (!Number.isFinite(ts) || Math.abs(now - ts) > DEVICE_PROOF_WINDOW_MS) return { ok: false, reason: 'timestamp outside the window' };
   const signed = canonicalDeviceRequest({ method: input.method, path: input.path, deviceId: proof.deviceId, ts: proof.ts, nonce: proof.nonce, bodySha256: bodyHash(input.rawBody) });
   return verifyDeviceSignature(publicKey, signed, proof.sig) ? { ok: true } : { ok: false, reason: 'bad signature' };
+}
+
+// Merged Nov 7 2026 (developer tree, Nov 5): the pure-verifier names its own spec and callers use. The guard above
+// (device-proof.guard.ts) records nonces in Postgres (mobile_pay_device_nonces); this in-memory store is for tests and
+// for a single-process tool that verifies proofs outside the API.
+export type DeviceProof = ParsedProof;
+export type ProofCheck = { ok: true } | { ok: false; reason: string };
+/** Replay protection: each (device, nonce) is accepted once within the window. */
+export interface DeviceNonceStore { firstUse(deviceId: string, nonce: string, ttlMs: number): Promise<boolean> }
+export class InMemoryDeviceNonceStore implements DeviceNonceStore {
+  private seen = new Map<string, number>();
+  constructor(private readonly now: () => number = Date.now) {}
+  async firstUse(deviceId: string, nonce: string, ttlMs: number): Promise<boolean> {
+    const t = this.now();
+    for (const [k, exp] of this.seen) if (exp <= t) this.seen.delete(k);
+    const k = deviceId + '\u0000' + nonce;
+    if (this.seen.has(k)) return false;
+    this.seen.set(k, t + ttlMs); return true;
+  }
 }

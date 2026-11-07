@@ -23,12 +23,14 @@ const bodies: unknown[] = [];
 let selection: unknown = null;
 function server() {
   const fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
-    const u = String(url); const method = (init?.method as string) || 'GET';
+    const u = String(url); const method = (init?.method as string) || 'GET'; if (process.env.DBG) console.log('FETCH', method, u);
     const ok = (j: unknown, status = 200) => ({ ok: status < 400, status, headers: { get: () => null }, json: async () => j, text: async () => JSON.stringify(j) }) as unknown as Response;
-    if (method === 'POST' && /\/pay\/card$/.test(u)) {
+    // merged Nov 7 2026: Card goes to the salon's Clover Compact (POST …/pay/terminal) — one live terminal at the desk
+    if (/\/pos\/checkout\/terminals$/.test(u)) return ok([{ id: 'term1', label: 'Front desk Compact', stationId: null, disabled: false, lastSeenAt: null, hsnConfigured: true }]);
+    if (method === 'POST' && /\/pay\/terminal$/.test(u)) {
       const b = JSON.parse(String(init?.body ?? '{}')); bodies.push(b);
       if (!b.staffTipConfirmation) return ok({ code: 'TECH_TIPS_NOT_CONFIRMED', message: 'The customer has not confirmed the tips on the display yet.' }, 409);
-      return ok({ status: 'approved', payment: { status: 'approved' } });
+      return ok({ status: 'approved', amountCents: 12840 });
     }
     if (/\/tip-selection$/.test(u)) return ok({ selection: selection });
     const m = /\/pos\/checkout\/tickets\/([^/?]+)$/.exec(u);

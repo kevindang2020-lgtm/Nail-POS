@@ -12,10 +12,10 @@
  *
  * Split in two so the rules are unit-tested without a browser: collectScreen() reads the DOM, analyzeScreen() judges.
  */
-import { densityFor, type DisplayProfile } from './displayProfile';
+import { densityFor, type PosDisplayProfile } from './displayProfile';
 import registry from './module-registry.json';
 
-export type Verdict = 'PASS' | 'WARN' | 'FAIL' | 'NOT_TESTED';
+export type ScreenVerdict = 'PASS' | 'WARN' | 'FAIL' | 'NOT_TESTED';
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface RegistryModule { id: string; label: string; minItems?: number; items?: string }
 export interface RegistryPage { key: string; title: string; routes: string[]; screens: string[]; guide: string; modules: RegistryModule[]; scroll?: 'page'; scrollReason?: string }
@@ -23,14 +23,14 @@ export interface CollectedModule { id: string; label: string; present: boolean; 
 export interface Collected {
   route: string;
   page: RegistryPage | null;
-  profile: DisplayProfile;
+  profile: PosDisplayProfile;
   scroll: { docY: number; docX: number; mainY: number; mainX: number; rootY: number; rootX: number };
   modules: CollectedModule[];
   smallTargets: { text: string; w: number; h: number }[];
   clipped: { text: string }[];
   realtime: { status: string; lastSyncedAt: number | null; lastErrorAt: number | null };
 }
-export interface Finding { id: string; verdict: Verdict; title: string; detail: string; remedy?: string; modules?: string[] }
+export interface ScreenFinding { id: string; verdict: ScreenVerdict; title: string; detail: string; remedy?: string; modules?: string[] }
 
 export const REGISTRY = registry as unknown as { pages: RegistryPage[] };
 
@@ -57,8 +57,8 @@ export function peerRows(mods: { id: string; rect: Rect }[]): { ids: string[]; m
 }
 
 /** Judge a collected screen. Pure. `t` turns a key into the POS language (defaults to the key for tests). */
-export function analyzeScreen(c: Collected, t: (k: string, v?: Record<string, string>) => string = (k) => k): Finding[] {
-  const out: Finding[] = [];
+export function analyzeScreen(c: Collected, t: (k: string, v?: Record<string, string>) => string = (k) => k): ScreenFinding[] {
+  const out: ScreenFinding[] = [];
   const density = c.profile.density ?? densityFor(c.profile.innerW, c.profile.innerH);
   const certified = density === 'compact' || density === 'comfortable';
   const kb = c.profile.keyboardOpen;
@@ -124,14 +124,14 @@ export function analyzeScreen(c: Collected, t: (k: string, v?: Record<string, st
 }
 
 /** The overall verdict: any FAIL → FAIL, else any WARN → WARN, else PASS. */
-export function overallVerdict(f: Finding[]): Verdict {
+export function overallVerdict(f: ScreenFinding[]): ScreenVerdict {
   if (f.some((x) => x.verdict === 'FAIL')) return 'FAIL';
   if (f.some((x) => x.verdict === 'WARN')) return 'WARN';
   return 'PASS';
 }
 
 /** Read the open screen from the DOM (browser only). */
-export function collectScreen(doc: Document, route: string, profile: DisplayProfile, realtime: Collected['realtime']): Collected {
+export function collectScreen(doc: Document, route: string, profile: PosDisplayProfile, realtime: Collected['realtime']): Collected {
   const page = registryPageFor(route);
   const main = doc.querySelector('.main') as HTMLElement | null;
   const top = doc.querySelector('.main > .topbar') as HTMLElement | null;

@@ -58,7 +58,9 @@ export interface BookingServiceTech {
 // Customer's own rating for a tech on a ticket (customerMyTechRating) — drives the 7-day edit-window UI.
 export type MyTechRating = { exists: false } | { exists: true; ratingId: string; rating: number; reviewText: string | null; tags: string[]; isPublic: boolean; editable: boolean; editableUntil: string };
 export interface CreateAddressBody { label?: string; line1: string; line2?: string; city?: string; state?: string; zip?: string; isDefault?: boolean }
-export interface AddPaymentMethodBody { token: string; brand?: string; last4?: string; expMonth?: number; expYear?: number; isDefault?: boolean }
+export interface AddPaymentMethodBody { token: string; brand?: string; last4?: string; expMonth?: number; expYear?: number; isDefault?: boolean; cardholderName?: string; zipCode?: string; cardType?: string; consent: boolean; consentVersion: string }
+/** The salon's Fiserv hosted card tokenizer (CardSecure iFrame). available:false → card saving is unavailable. */
+export interface CardTokenizerConfig { available: boolean; url?: string; origin?: string; reason?: string; consentVersion?: string }
 export interface CustomerWalletTxn { id: string; amountCents: number; type: string; reference: string | null; createdAt: string }
 export interface CustomerWalletState { balanceCents: number; currency: string; transactions: CustomerWalletTxn[] }
 
@@ -158,7 +160,7 @@ export const customerApi = {
   /** D11: the deposit the salon asked for at booking — its status, and paying it with the hosted tokenizer's token */
   bookingDeposit: (appointmentId: string) => api.get<BookingDepositView>(`/customer/booking/appointments/${encodeURIComponent(appointmentId)}/deposit`),
   payBookingDeposit: (appointmentId: string, body: { cardToken: string; expiry?: string; cardholderName?: string }) => api.post<BookingDepositView>(`/customer/booking/appointments/${encodeURIComponent(appointmentId)}/deposit`, body),
-  paymentTokenizer: () => api.get<{ available: boolean; url?: string; origin?: string; reason?: string }>('/customer/payment-methods/tokenizer'),
+  paymentTokenizer: () => api.get<CardTokenizerConfig>('/customer/payment-methods/tokenizer'),
   addPaymentMethod: (b: AddPaymentMethodBody) => api.post<CustomerPaymentMethod>('/customer/payment-methods', b as unknown as Record<string, unknown>),
   deletePaymentMethod: (id: string) => api.del<{ ok: boolean }>(`/customer/payment-methods/${id}`),
   setDefaultPaymentMethod: (id: string) => api.post<{ ok: boolean }>(`/customer/payment-methods/${id}/default`, {}),

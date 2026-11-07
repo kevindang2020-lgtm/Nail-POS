@@ -35,7 +35,7 @@ export class KyselyAnalyticsGapRepo implements AnalyticsGapRepo {
   // Daily revenue + approved transaction count for the last `days` days (captured/approved payments only).
   async dailySeries(sid: string | undefined, days: number): Promise<DailyPoint[]> {
     const rows: any[] = await scoped(
-      (this.db as any).selectFrom('payments').where('approved_at', 'is not', null)
+      (this.db as any).selectFrom('payments').where('is_test', '=', false).where('approved_at', 'is not', null)
         .where('created_at', '>=', sql`current_date - (${days - 1} || ' days')::interval`),
       sid,
     ).select([
@@ -49,7 +49,7 @@ export class KyselyAnalyticsGapRepo implements AnalyticsGapRepo {
   // Revenue + transactions by US state (payments ⋈ branches.state). Branch carries the state.
   async revenueByState(sid: string | undefined): Promise<StateRevenue[]> {
     const rows: any[] = await scoped(
-      this.db.selectFrom('payments as p').innerJoin('branches as b', 'b.id', 'p.branch_id')
+      this.db.selectFrom('payments as p').innerJoin('branches as b', 'b.id', 'p.branch_id').where('p.is_test', '=', false)   // Nov 4 2026 (migration 840): UAT test payments never count
         .where('p.approved_at', 'is not', null).where('b.state', 'is not', null),
       sid, 'p.tenant_id',
     ).select([
@@ -63,7 +63,7 @@ export class KyselyAnalyticsGapRepo implements AnalyticsGapRepo {
   // Demand matrix: approved transaction counts by day-of-week (0=Sun) × hour-of-day.
   async demandMatrix(sid: string | undefined): Promise<DemandCell[]> {
     const rows: any[] = await scoped(
-      this.db.selectFrom('payments').where('approved_at', 'is not', null),
+      this.db.selectFrom('payments').where('is_test', '=', false).where('approved_at', 'is not', null),
       sid,
     ).select([
       sql`extract(dow from created_at)::int`.as('dow'),

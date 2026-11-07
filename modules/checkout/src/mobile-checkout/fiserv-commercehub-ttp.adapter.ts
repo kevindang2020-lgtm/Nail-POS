@@ -46,8 +46,17 @@ export class FiservCommerceHubTtpAdapter implements TapToPaySessionPort {
     // Charge the captured PaymentSession server-side (input.processorRef carries the sessionId the device SDK returned).
     const res = await client.authorizeAndCapture({ account: input.processorRef, amountCents: input.amountCents, idempotencyKey: input.idempotencyKey });
     // the client's own three-way reading (§232): only an explicit DECLINED / FAILED is a decline — anything else that is not
-    // approved is 'unknown' and goes to verification (M6-5: a 200 PENDING was recorded as a decline)
-    return { verified: res.approved, outcome: res.outcome === 'retry' ? 'unknown' : res.outcome, processorRef: res.retref ?? input.processorRef, capturedAmountCents: res.amountCents, respText: res.respText };
+    // approved is 'unknown' and goes to verification (M6-5: a 200 PENDING was recorded as a decline).
+    // Fiserv master build §8C (Nov 4 2026): verified only when the PROVIDER approved AND confirmed the exact amount; an
+    // approval without a matching amount is not paid — it is 'unknown' (provider inquiry / manual review).
+    const amountMatches = res.amountCents === input.amountCents;
+    const outcome = res.approved && !amountMatches ? 'unknown' : res.outcome === 'retry' ? 'unknown' : res.outcome;
+    return {
+      verified: res.approved && amountMatches, outcome,
+      processorRef: res.retref ?? input.processorRef,
+      capturedAmountCents: res.amountCents,
+      respText: res.approved && !amountMatches ? `Provider approved ${res.amountCents ?? 'an unconfirmed amount'} cents, expected ${input.amountCents}; held for review` : res.respText,
+    };
   }
 
   /**

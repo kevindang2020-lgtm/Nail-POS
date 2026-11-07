@@ -15,9 +15,12 @@ const MONEY = ['status', 'state', 'capturedCents', 'refundedCents', ...RAW_CARD]
  *  expiry is bounded loosely on purpose: customer-web PayScreen sends parseInt of a typed 'MM/YY', i.e. a 2-digit year. */
 export const ADD_CUSTOMER_PAYMENT_METHOD_BODY: BodySchema = S.object({
   token: scalar(4096), brand: str(32), last4: scalar(4), expMonth: S.nullable(S.integer({ minimum: 0, maximum: 99 })), expYear: S.nullable(S.integer({ minimum: 0, maximum: 9999 })), isDefault: S.nullable(S.boolean()),
+  cardholderName: str(200), zipCode: str(32), cardType: str(32),
+  // Fiserv §8D: explicit stored-credential consent (the service refuses without consent === true + the current version)
+  consent: S.nullable(S.boolean()), consentVersion: str(64),
 }, [], { 'x-forbidden': RAW_CARD });
-/** POST /customer/wallet/top-up — { amountCents, paymentMethodId } */
-export const WALLET_TOP_UP_BODY: BodySchema = S.object({ amountCents: S.nullable(S.number()), paymentMethodId: scalar(64), clientKey: scalar(64) }, [], { 'x-forbidden': MONEY });   // clientKey (Oct 23 2026, B-79): one intent per tap
+/** POST /customer/wallet/top-up — { amountCents, paymentMethodId, clientKey? | idempotencyKey? } */
+export const WALLET_TOP_UP_BODY: BodySchema = S.object({ amountCents: S.nullable(S.number()), paymentMethodId: scalar(64), clientKey: scalar(64), idempotencyKey: str(100) }, [], { 'x-forbidden': MONEY });   // clientKey (Oct 23 2026, B-79): one intent per tap; idempotencyKey: the same key as the developer tree's app sends it (Nov 4)
 /** POST /owner/hardware-payment/payment-method — { gatewayPaymentMethodToken | token, brand, last4, expMonth, expYear } */
 export const HARDWARE_PAYMENT_METHOD_BODY: BodySchema = S.object({
   gatewayPaymentMethodToken: scalar(4096), token: scalar(4096), gatewayCustomerId: str(200), brand: str(32), last4: scalar(4),

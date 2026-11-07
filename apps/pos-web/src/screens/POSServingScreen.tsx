@@ -173,8 +173,14 @@ export function POSServingScreen() {
   useEffect(() => {
     if (!s) return;
     if (selId && !detail && detailFor.current !== selId) { loadDetail(selId); return; }
-    if (!selId && s.tickets.items.length) selectTicket(s.tickets.items[0].ticketId);
-  }, [s, selId, detail, selectTicket, loadDetail]);
+    if (!selId && s.tickets.items.length) {
+      // Pick the first guest once. Re-requesting its detail on every pass made a detail ⇄ effect loop (a frozen board)
+      // whenever the selection had not landed yet; the detail request is single-flight per ticket via detailFor.
+      const first = s.tickets.items[0].ticketId;
+      setSelId((cur) => cur ?? first);
+      if (detailFor.current !== first) loadDetail(first);
+    }
+  }, [s, selId, detail, loadDetail]);
 
   const loadFull = async () => { try { const d = await posServingApi.state({ ...filters(), pageSize: 100 }) as ServingState; setFull(d.tickets.items); } catch { setFull([]); } };
   const { open: openIPad } = useIPadView();

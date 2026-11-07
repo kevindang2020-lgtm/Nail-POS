@@ -21,6 +21,14 @@ export const SUNMI_VI: Record<string, string> = {
   'sunmi.col.size': 'Kích thước CSS',
   'sunmi.col.density': 'Mật độ',
   'sunmi.profiles': 'Các cấu hình màn hình đã chứng nhận',
+  'sunmi.profile.windows-1080-browser': 'Windows 1920×1080, có thanh tab, thanh địa chỉ của Edge/Chrome và thanh tác vụ (chính)',   // DRAFT — Kevin reviews
+  'sunmi.profile.sunmi-flex3-chrome': 'SUNMI FLEX 3 27″, Chrome Android 13, có thanh trạng thái, thanh công cụ và thanh điều hướng (DPR 1)',   // DRAFT — Kevin reviews
+  'sunmi.profile.sunmi-flex3-kiosk': 'SUNMI FLEX 3 27″, chế độ kiosk / ứng dụng web đã cài, có thanh điều hướng (DPR 1)',   // DRAFT — Kevin reviews
+  'sunmi.profile.sunmi-flex3-full': 'SUNMI FLEX 3 27″, toàn màn hình (DPR 1)',   // DRAFT — Kevin reviews
+  'sunmi.profile.desktop-1440p': 'Màn hình 2560×1440 (rộng rãi)',   // DRAFT — Kevin reviews
+  'sunmi.profile.desktop-900p': '1600×900 (chật)',   // DRAFT — Kevin reviews
+  'sunmi.profile.laptop-768': '1366×768 (chật, dự phòng)',   // DRAFT — Kevin reviews
+  'sunmi.profile.sunmi-flex3-dpr15-chrome': 'SUNMI FLEX 3 nếu màn hình chạy DPR 1.5: 1280×720 trừ các thanh Android (báo cáo dự phòng)',   // DRAFT — Kevin reviews
   'sunmi.thisScreen': 'màn hình này',
   'sunmi.deviceNote': 'Kích thước là điểm ảnh CSS mà trình duyệt thực sự dành cho POS, không phải điểm ảnh vật lý của tấm nền. Kiểm tra trên trình duyệt máy tính không thay cho thử nghiệm trên chính thiết bị SUNMI.',
   'sunmi.density.comfortable': 'Thoáng',

@@ -24,6 +24,10 @@ export function OwnerMobileRoutes(): null {
     payroll: (r) => nav.openPayroll(r.params.periodId),
     security: () => nav.openSettings(),
     appointments: () => nav.openBookings(),
+    // merged Nov 7 2026 (the developer tree's route table)
+    appointment: () => nav.openBookings(),
+    queue: () => nav.go('live'),
+    receipts: () => nav.openPayments(),
   });
   return null;
 }

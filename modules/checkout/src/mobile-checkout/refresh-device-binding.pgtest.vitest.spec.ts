@@ -8,6 +8,8 @@ import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { RefreshSessionService, KyselyRefreshRepository, KyselySessionStore } from '@aipowersalon/identity';
 import { KyselyMobilePayDeviceStore } from './mobile-pay-device.kysely';
 import { refreshBlockFor } from './mobile-pay-device';
+// merged Nov 7 2026: these pin the STRICT reuse rule (any reuse burns the family) — no grace window here
+process.env.REFRESH_REUSE_GRACE_SECONDS = '0';
 
 let pg: any; let db: any; let devices: KyselyMobilePayDeviceStore; let sessions: KyselySessionStore; let svc: RefreshSessionService;
 const T = 'd6890000-0000-4000-8000-00000000000a', B = 'd6891000-0000-4000-8000-00000000000a';

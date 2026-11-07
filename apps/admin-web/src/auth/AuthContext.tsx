@@ -8,9 +8,16 @@ import { authApi, type Principal } from '../api/authApi';
 interface AuthShape { principal: Principal | null; loading: boolean; setPrincipal: (p: Principal | null) => void; logout: () => Promise<void>; }
 const AuthCtx = createContext<AuthShape>({ principal: null, loading: true, setPrincipal: () => {}, logout: async () => {} });
 
+import { webPush } from '../lib/webPush';
+import { WebPushToast } from '@aipowersalon/web-push';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Nov 6 2026: registers silently when notifications are already allowed; never prompts (AdminLayout's banner asks from a tap)
+  const signedInUserId = principal?.userId;
+  useEffect(() => { if (signedInUserId) void webPush.resume(); }, [signedInUserId]);
 
   useEffect(() => {
     let alive = true;
@@ -28,8 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('aps:unauthorized', onUnauthorized);
     return () => window.removeEventListener('aps:unauthorized', onUnauthorized);
   }, []);
-  const logout = async () => { try { await authApi.logout(); } catch { /* ignore */ } setPrincipal(null); };
+  // the push token goes back FIRST — /push/unregister needs the session
+  const logout = async () => { await webPush.unregister(); try { await authApi.logout(); } catch { /* ignore */ } setPrincipal(null); };
 
-  return <AuthCtx.Provider value={{ principal, loading, setPrincipal, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ principal, loading, setPrincipal, logout }}>{children}<WebPushToast client={webPush} /></AuthCtx.Provider>;
 }
 export const useAuth = () => useContext(AuthCtx);

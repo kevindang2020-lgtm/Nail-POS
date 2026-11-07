@@ -2,19 +2,7 @@
 // audited support-mode per-tenant drill-down (a reason is required). No cross-tenant customer data is shown.
 import { useEffect, useState } from "react";
 import { superAdminAiCheckoutUpsellApi as saApi } from "../api/superAdminAiCheckoutUpsellApi";
-import {
-  FiActivity,
-  FiAlertCircle,
-  FiBarChart2,
-  FiCheckCircle,
-  FiEye,
-  FiInfo,
-  FiPercent,
-  FiTrendingUp,
-  FiUserCheck,
-  FiUserX,
-  FiUsers,
-} from "react-icons/fi";
+import { FiActivity, FiAlertCircle, FiBarChart2, FiCheckCircle, FiEye, FiInfo, FiPercent, FiTrendingUp, FiUserCheck, FiUserX, FiUsers } from "react-icons/fi";
 
 const dash = (v: any) => (v == null ? "—" : v);
 

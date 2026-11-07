@@ -5,7 +5,6 @@ import type { NSCommentStatus, NSEligibility, NSFeedResult, NSFeedScope, NSFeedS
 export type { NSCommentStatus, NSEligibility, NSFeedResult, NSFeedScope, NSFeedSort, NSPhotoView, NSPostStatus, NSPostType, NSPostView, NSReactionType, NSVisibility };   // the API's own contract (Constitution 13 §15) — never re-declare it here
 import { api } from './client';
 
-
 export interface NSComment { id: string; postId: string; displayName: string; commentText: string; status: NSCommentStatus; isMine: boolean; createdAt: string }
 
 export interface NSFeedParams {

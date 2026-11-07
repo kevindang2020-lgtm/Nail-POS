@@ -235,6 +235,9 @@ export interface CheckoutRepositoryPort {
   setFinalTotals?(ctx: CheckoutContext, ticketId: string, t: { subtotalCents: number; taxCents: number; surchargeCents: number; totalCents: number }): Promise<void>;
   /** What was actually charged (approved + partial payments) and the card surcharge inside it — a receipt states these. */
   paidBreakdown(ctx: CheckoutContext, ticketId: string): Promise<{ totalCents: number; surchargeCents: number }>;
+  /** Fiserv §9: record the provider-assessed surcharge (fee_amount) on an approved card payment — the payment's amount
+   *  grows by the fee the processor actually added; nothing is recomputed locally. */
+  recordProviderSurcharge?(ctx: CheckoutContext, paymentId: string, feeCents: number, meta?: { feeType?: string; feeValue?: string }): Promise<void>;
   /** 23-inch spec §97: a receipt was already sent for this ticket (the display does not ask again). */
   hasReceipt(ctx: CheckoutContext, ticketId: string): Promise<boolean>;
   devices(ctx: CheckoutContext): Promise<POSCustomerDisplayDevice[]>;
@@ -569,7 +572,7 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
         // Option A: the card segment carries the card-portion surcharge (already captured on the gateway by the service),
         // so its recorded amount = base card dollars + surcharge. Non-card segments are recorded at their base amount.
         const recordedAmount = seg.method === 'card' ? seg.amountCents + surcharge : seg.amountCents;
-        const rec: PaymentRecord = { paymentId: 'pay_split_' + Math.random().toString(36).slice(2, 9), ticketId, method: seg.method, amountCents: recordedAmount, tipCents: 0, status: 'approved', ...(opts.cardRetref && seg.method === 'card' ? { processorTransactionId: opts.cardRetref } : {}), createdAt: new Date().toISOString() };
+        const rec: PaymentRecord = { paymentId: 'pay_split_' + Math.random().toString(36).slice(2, 9), ticketId, method: seg.method, amountCents: recordedAmount, tipCents: 0, surchargeCents: seg.method === 'card' ? surcharge : 0, status: 'approved', ...(opts.cardRetref && seg.method === 'card' ? { processorTransactionId: opts.cardRetref } : {}), createdAt: new Date().toISOString() };   // same shape as the Kysely recorder
         out.push(await this.recordPayment(ctx, rec));
       }
       await this.setStatus(ctx, ticketId, 'paid');
@@ -703,6 +706,10 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
   async paidBreakdown(ctx: CheckoutContext, ticketId: string) {
     const paid = this.P(ctx).filter((p) => p.ticketId === ticketId && (p.status === 'approved' || p.status === 'partial'));
     return { totalCents: paid.reduce((a, p) => a + (Number(p.amountCents) || 0), 0), surchargeCents: paid.reduce((a, p) => a + (Number(p.surchargeCents) || 0), 0) };
+  }
+  async recordProviderSurcharge(ctx: CheckoutContext, paymentId: string, feeCents: number): Promise<void> {
+    const p = this.P(ctx).find((x) => x.paymentId === paymentId);
+    if (p && feeCents > 0) { p.surchargeCents = feeCents; p.amountCents = Number(p.amountCents) + feeCents; }
   }
   async hasReceipt(ctx: CheckoutContext, ticketId: string) { return !!this.receiptTickets.get(ctx.tenantId)?.has(ticketId); }
 

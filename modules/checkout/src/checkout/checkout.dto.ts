@@ -48,7 +48,7 @@ export interface CheckoutTicketDetail {
 }
 export interface CheckoutKpis { readyForCheckoutCount: number; subtotalTodayCents: Money; tipsTodayCents: Money; cardSurchargeCollectedCents: Money; }
 
-export interface PaymentResult { paymentId: string; ticketId: string; status: "approved" | "declined" | "processing" | "cancelled"; processorTransactionId?: string; approvedAmountCents?: Money; }
+export interface PaymentResult { paymentId: string; ticketId: string; status: "approved" | "declined" | "processing" | "cancelled"; processorTransactionId?: string; approvedAmountCents?: Money; /** a held / unknown outcome says why (Fiserv §7.2 amount mismatch) */ message?: string; }
 
 // ===== pure helpers (unit-testable) =====
 

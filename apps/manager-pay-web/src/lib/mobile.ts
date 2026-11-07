@@ -18,6 +18,9 @@ export function PayMobileRoutes(): null {
     checkout: () => nav.resetToCheckout(),
     alerts: () => nav.resetToCheckout(),
     security: () => nav.go('account'),
+    // merged Nov 7 2026 (the developer tree's route table)
+    queue: () => nav.resetToCheckout(),
+    receipts: () => nav.go('history'),
   });
   // §58 timing: the first completed payment is the manager's first meaningful action — the moment the app asks for push
   const paid = nav.top?.kind === 'success';

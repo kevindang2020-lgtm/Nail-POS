@@ -3,18 +3,7 @@
 // a tenant's receipts, vendors, line items, amounts, or files — so nothing here renders document content.
 import { useEffect, useState } from 'react';
 import { superAdminAiOcrReceiptApi as saApi } from '../api/superAdminAiOcrReceiptApi';
-import {
-  FiAlertCircle,
-  FiBarChart2,
-  FiClock,
-  FiDatabase,
-  FiEye,
-  FiFileText,
-  FiHardDrive,
-  FiShield,
-  FiUsers,
-  FiXCircle,
-} from "react-icons/fi";
+import { FiAlertCircle, FiBarChart2, FiClock, FiDatabase, FiEye, FiFileText, FiHardDrive, FiShield, FiUsers, FiXCircle } from "react-icons/fi";
 
 const LINE = 'var(--line,#E7DBC6)';
 const MUTED = 'var(--muted,#7A6C57)';

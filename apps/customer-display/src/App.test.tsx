@@ -176,7 +176,8 @@ describe('App state machine', () => {
   it('greets by name and shows paid total on success', () => {
     mountWith({ data: makeState({ state: 'payment_success', customer: { firstName: 'Dana' }, totals: { subtotalCents: 10000, tipCents: 2000, taxCents: 660, surchargeCents: 0, giftCardChargeCents: 0, totalDueCents: 12660 } }) });
     render(<App />);
-    expect(screen.getByText('Thank you, Dana!')).toBeInTheDocument();
+    // 23-inch layout: the welcome card and the checkout panel both thank the customer.
+    expect(screen.getAllByText('Thank you, Dana!').length).toBeGreaterThan(0);
     // §44: "✓ PAYMENT COMPLETE · Thank you, Sophia! · Total Paid $142.40"
     expect(screen.getByText('Payment complete')).toBeInTheDocument();
     expect(screen.getByText('Total paid')).toBeInTheDocument();
@@ -189,7 +190,8 @@ describe('App state machine', () => {
       paymentStatus: 'paid', paymentMethod: 'cash', loyaltyPointsEarned: 120 } as any;
     mountWith({ data: makeState({ state: 'payment_success', customer: { firstName: 'Sophia' }, checkout }) });
     render(<App />);
-    expect(screen.getByText('Thank you, Sophia!')).toBeInTheDocument();
+    // 23-inch layout: the welcome card and the checkout panel both thank the customer.
+    expect(screen.getAllByText('Thank you, Sophia!').length).toBeGreaterThan(0);
     expect(screen.getByText('$142.40')).toBeInTheDocument();
     expect(screen.getByText('You earned 120 points.')).toBeInTheDocument();
   });

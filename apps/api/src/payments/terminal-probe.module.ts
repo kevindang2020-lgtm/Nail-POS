@@ -23,6 +23,9 @@ export function terminalProbe(router: Pick<PaymentGatewayResolver, 'resolveTermi
         const detail = r.reason === 'MERCHANT_SUSPENDED' ? 'card payments for this location are paused (MERCHANT_SUSPENDED)'
           : r.reason === 'SECRET_UNREADABLE' ? 'the terminal API key could not be opened — ask AIPowerSalon support to re-enter it'
           : r.reason === 'MERCHANT_NOT_CONFIGURED' ? 'no active merchant account for this location (MERCHANT_NOT_CONFIGURED)'
+          : r.reason === 'MERCHANT_BRANCH_MISMATCH' ? 'this terminal belongs to a different location\'s merchant account (MERCHANT_BRANCH_MISMATCH)'
+          : r.reason === 'HOST_NOT_ALLOWED' ? 'the terminal API address is not an approved Fiserv host for this environment (HOST_NOT_ALLOWED)'
+          : r.reason === 'PRODUCTION_NOT_APPROVED' ? 'live card payments are not approved for this merchant yet (PRODUCTION_NOT_APPROVED)'
           : 'the terminal API (Bolt) is not configured for this location (TERMINAL_NOT_CONFIGURED)';
         return { probed: false, reachable: false, detail };
       }

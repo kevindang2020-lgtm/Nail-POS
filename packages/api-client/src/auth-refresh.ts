@@ -16,7 +16,12 @@ export interface NativeTokenStore {
   loadRefresh(): Promise<string | null>;
   save(access: string | null, refresh: string | null): Promise<void>;
 }
-export interface AuthRefreshOptions { apiBase?: string; native?: NativeTokenStore | null }
+export interface AuthRefreshOptions {
+  apiBase?: string; native?: NativeTokenStore | null;
+  /** Nov 6 2026: waits before retrying a renewal that never got an answer (Wi-Fi blip) or got a 5xx. Default 1 s, 3 s. */
+  retryDelaysMs?: number[];
+  sleep?: (ms: number) => Promise<void>;
+}
 
 const NO_REFRESH = /\/(auth\/(login|refresh|logout|mfa|password-reset|webauthn|biometric\/login|super-admin|select-branch)|customer\/auth|public)\b/;   // Phase 13 D: a refused Face ID credential is an answer, not an expired session
 /** Does this request go to our API (relative, or under apiBase) and is it a route a refresh may rescue? */
@@ -38,7 +43,18 @@ export function installAuthRefresh(win: { fetch: typeof fetch }, opts: AuthRefre
   let inflight: Promise<boolean> | null = null;
   let dead = false;   // a refresh failed: stay quiet until a sign-in succeeds
 
+  // Nov 6 2026 — busy days on salon Wi-Fi: a renewal that never got an answer (network error) or got a 5xx (a server
+  // restart, a database hiccup) is NOT a "no". It is retried before giving up; only a clear 4xx answer ends the session.
+  const delays = opts.retryDelaysMs ?? [1000, 3000];
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const doRefresh = async (): Promise<boolean> => {
+    for (let attempt = 0; ; attempt++) {
+      const r = await refreshAttempt();
+      if (r !== 'retry' || attempt >= delays.length) return r === true;
+      await sleep(delays[attempt]);
+    }
+  };
+  const refreshAttempt = async (): Promise<boolean | 'retry'> => {
     try {
       const nativeRefresh = opts.native ? await opts.native.loadRefresh() : null;
       const nativeAccess = opts.native ? await opts.native.loadAccess() : null;
@@ -47,13 +63,13 @@ export function installAuthRefresh(win: { fetch: typeof fetch }, opts: AuthRefre
         headers: { 'Content-Type': 'application/json', ...(nativeAccess ? { Authorization: `Bearer ${nativeAccess}` } : {}) },
         body: JSON.stringify(nativeRefresh ? { refreshToken: nativeRefresh } : {}),
       });
-      if (!res.ok) return false;
+      if (!res.ok) return res.status >= 500 ? 'retry' : false;
       if (opts.native) {
         const j: any = await res.json().catch(() => ({}));
         if (typeof j?.accessToken === 'string') await opts.native.save(j.accessToken, typeof j.refreshToken === 'string' ? j.refreshToken : null);
       }
       return true;
-    } catch { return false; }
+    } catch { return 'retry'; }   // no answer at all: the network, not the session
   };
   const refreshOnce = (): Promise<boolean> => {
     // Cleared as soon as it settles: callers that arrived while it ran already hold this promise (single flight); a 401

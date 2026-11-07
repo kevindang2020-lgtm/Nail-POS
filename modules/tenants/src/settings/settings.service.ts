@@ -276,6 +276,14 @@ export class PosSettingsService {
     if (typeof stationId !== 'string' || !this.terminals.registerName || !(await this.terminals.registerName(ctx, stationId))) throw withCode(new ValidationError('Choose one of this location\'s registers.'), 'REGISTER_NOT_AT_LOCATION');
     return stationId;
   }
+  /** Fiserv master build §5.2: an unassigned terminal (paired before a location was chosen) is given to this location. */
+  async assignTerminalLocation(ctx: SettingsContext, id: string): Promise<Terminal> {
+    this.assertEdit(ctx, 'payments-checkout');
+    if (!this.terminals.assignToLocation) throw withCode(new ValidationError('Assigning a terminal to a location is not available here.'), 'FEATURE_UNAVAILABLE');
+    const t = await this.terminals.assignToLocation(ctx, id);
+    await this.audit(ctx, 'pos_settings_terminal_location_assigned', 'payments_checkout', { id, branchId: ctx.branchId ?? null });
+    return t;
+  }
   async unpairTerminal(ctx: SettingsContext, id: string) {
     this.assertEdit(ctx, 'payments-checkout');
     const r = await this.terminals.unpair(ctx, id);

@@ -23,3 +23,4 @@ export * from './oncall';   // BUILD_PLAN Phase 14 C: On-call & monitoring + SLO
 export * from './tap-to-pay';   // wave 3 TTP: Super Admin → Tap to Pay (safe onboarding status + payment phones)
 export * from './platform-announcements';   // Oct 22 2026: Platform Announcements on the POS top bar
 export * from './platform-devices';   // S-A13: trusted device for platform sign-in
+export * from './surcharge-enrollment';   // Fiserv master build §9.2 (Nov 2026): Merchant Surcharge Program enrollment

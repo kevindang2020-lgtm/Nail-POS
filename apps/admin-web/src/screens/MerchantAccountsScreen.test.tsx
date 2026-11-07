@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const { mockOverview, mockConfigureRates, mockActivate, mockDeactivate, mockUpdateFunding, mockAssignMid, mockAssignTerminal, mockExport } = vi.hoisted(() => ({ mockOverview: vi.fn(), mockConfigureRates: vi.fn(), mockActivate: vi.fn(), mockDeactivate: vi.fn(), mockUpdateFunding: vi.fn(), mockAssignMid: vi.fn(), mockAssignTerminal: vi.fn(), mockExport: vi.fn() }));
-vi.mock('../api/superAdminMerchantAccountsApi', () => ({ superAdminMerchantAccountsApi: { overview: (q: any) => mockOverview(q), list: (q: any) => mockOverview(q), exportReport: (q: any) => mockExport(q), configureRates: (t: string, b: any) => mockConfigureRates(t, b), activate: (t: string, r: string) => mockActivate(t, r), deactivate: (t: string, r: string) => mockDeactivate(t, r), updateFunding: (t: string, b: any) => mockUpdateFunding(t, b), assignMid: (t: string, b: any) => mockAssignMid(t, b), assignTerminal: (t: string, b: any) => mockAssignTerminal(t, b) } }));
+const { mockOverview, mockConfigureRates, mockActivate, mockDeactivate, mockUpdateFunding, mockAssignMid, mockAssignTerminal, mockExport, mockSurcharge } = vi.hoisted(() => ({ mockSurcharge: vi.fn(), mockOverview: vi.fn(), mockConfigureRates: vi.fn(), mockActivate: vi.fn(), mockDeactivate: vi.fn(), mockUpdateFunding: vi.fn(), mockAssignMid: vi.fn(), mockAssignTerminal: vi.fn(), mockExport: vi.fn() }));
+vi.mock('../api/superAdminMerchantAccountsApi', () => ({ superAdminMerchantAccountsApi: { overview: (q: any) => mockOverview(q), list: (q: any) => mockOverview(q), exportReport: (q: any) => mockExport(q), configureRates: (t: string, b: any) => mockConfigureRates(t, b), activate: (t: string, r: string) => mockActivate(t, r), deactivate: (t: string, r: string) => mockDeactivate(t, r), updateFunding: (t: string, b: any) => mockUpdateFunding(t, b), assignMid: (t: string, b: any) => mockAssignMid(t, b), assignTerminal: (t: string, b: any) => mockAssignTerminal(t, b), setSurchargeEnrollment: (t: string, b: any) => mockSurcharge(t, b) } }));
 
 import MerchantAccountsScreen from './MerchantAccountsScreen';
 
@@ -31,7 +31,7 @@ const overview = (over: Partial<any> = {}) => ({
   recentActivity: [], alerts: { available: false, total: 0, items: [] }, topFundingIssues: { available: false, items: [] }, highRiskAccounts: { available: false, total: 0, items: [] }, ...over,
 });
 const renderScreen = (path = '/merchant-accounts') => render(<MemoryRouter initialEntries={[path]}><MerchantAccountsScreen /></MemoryRouter>);
-beforeEach(() => { mockOverview.mockReset(); mockConfigureRates.mockReset(); mockActivate.mockReset(); mockDeactivate.mockReset(); mockUpdateFunding.mockReset(); mockAssignMid.mockReset(); mockAssignTerminal.mockReset(); mockExport.mockReset(); });
+beforeEach(() => { mockOverview.mockReset(); mockConfigureRates.mockReset(); mockActivate.mockReset(); mockDeactivate.mockReset(); mockUpdateFunding.mockReset(); mockAssignMid.mockReset(); mockAssignTerminal.mockReset(); mockExport.mockReset(); mockSurcharge.mockReset(); });
 
 describe('MerchantAccountsScreen', () => {
   it('renders header, 8 KPIs (with honest unavailable), and the directory', async () => {
@@ -215,6 +215,32 @@ describe('MerchantAccountsScreen', () => {
     await waitFor(() => expect(mockUpdateFunding).toHaveBeenCalledWith('t1', expect.objectContaining({ stepUpConfirmed: true, routingNumber: '021000021', reason: 'owner change' })));
     await waitFor(() => expect(screen.getByText('Funding updated — re-verification pending.')).toBeInTheDocument());
     expect(screen.getByText(/•••• 6789/)).toBeInTheDocument();
+  });
+
+  it('records the Fiserv surcharge enrollment: rate 1–3%, a written reference and a reason are required (merged Nov 7 2026)', async () => {
+    mockOverview.mockResolvedValueOnce(overview());
+    mockOverview.mockResolvedValue(overview({ selectedMerchant: { ...row(), funding: { available: false, note: 'x' } } }));
+    mockSurcharge.mockResolvedValue({ ok: true, enrolled: true, rateBps: 300, branchId: null });
+    renderScreen();
+    await waitFor(() => expect(screen.getByText('MID-202605-001')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('MID-202605-001'));
+    await waitFor(() => expect(screen.getByText('Record surcharge enrollment')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Record surcharge enrollment'));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Record surcharge enrollment' })).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('Enrolled rate percent'), { target: { value: '4' } });
+    fireEvent.click(screen.getByText('Save enrollment'));
+    expect(screen.getByText(/between 1.00% and 3.00%/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Enrolled rate percent'), { target: { value: '3' } });
+    fireEvent.click(screen.getByText('Save enrollment'));
+    expect(screen.getByText(/written enrollment reference/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Fiserv enrollment reference'), { target: { value: 'MSP-123' } });
+    fireEvent.click(screen.getByText('Save enrollment'));
+    expect(screen.getByText('A reason is required.')).toBeInTheDocument();
+    expect(mockSurcharge).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Surcharge reason'), { target: { value: 'Fiserv letter received' } });
+    fireEvent.click(screen.getByText('Save enrollment'));
+    await waitFor(() => expect(mockSurcharge).toHaveBeenCalledWith('t1', { enrolled: true, rateBps: 300, reference: 'MSP-123', branchId: null, reason: 'Fiserv letter received' }));
+    await waitFor(() => expect(screen.getByText('Enrolled at 3.00%.')).toBeInTheDocument());
   });
 
   it('assigns a MID with validation and a required reason', async () => {

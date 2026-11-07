@@ -44,6 +44,7 @@ describe('Phase 14 — realtime projection (§112–113)', () => {
   it('maps domain events to the EXISTING client vocabulary, ids only', () => {
     const p = projectToClient(createDomainEvent({ eventType: DOMAIN_EVENTS.APPOINTMENT_CANCELED, tenantId: T, aggregateType: 'appointment', aggregateId: 'a-1', payload: { appointmentId: 'a-1', customerName: 'leak?' } }));
     expect(p).toEqual([{ event: EVENTS.appointmentCancelled, payload: { appointmentId: 'a-1' } }]);   // nothing but the id crosses
+    expect(JSON.stringify(p)).not.toMatch(/leak/);
     expect(projectToClient(createDomainEvent({ eventType: DOMAIN_EVENTS.SMS_SENT, tenantId: T, aggregateType: 'sms', aggregateId: 's', payload: {} }))).toEqual([]);   // no client screen cares → no projection
     // Smooth Refresh spec §3/§17: a check-in is a 0–1 s change — it reaches Check-In/Queue/Tech Queue (customer_checked_in)
     // AND the Booking board (appointment_updated). Before Sep 30 2026 a POS check-in emitted nothing.
@@ -246,8 +247,10 @@ describe('push consumer — appointment facts (customer + technician)', () => {
     // own reference so neither push dedupes the other
     const mine = all.filter((p) => p.userId === U), tech = all.filter((p) => p.userId === 'tech-user-1');
     expect(all).toHaveLength(2);
-    expect(mine).toHaveLength(1); expect(tech).toHaveLength(1);
+    expect(mine).toHaveLength(1);                                          // the customer: exactly once
+    expect(tech).toHaveLength(1);                                          // and the appointment's technician, once
     expect(tech[0].msg.reference).toMatch(/^tech_cancelled:/);
+    for (const p of all) expect(p.msg.body).not.toMatch(/Sophia|2:30|Oct/);
     expect(mine[0]).toMatchObject({ userId: U, msg: { title: 'Appointment cancelled', category: 'BOOKING_CHANGE', reference: `appointment_cancelled:${e.eventId}` } });
     expect(mine[0].msg.body).not.toMatch(/Sophia|2:30|Oct/);
     expect((await runner.run(registry.get('notifications.push')!, e)).status).toBe('duplicate');

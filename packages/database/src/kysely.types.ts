@@ -18,6 +18,7 @@ export interface PaymentsTable {
   stranded_at: TsNull;   // migration 549 (Phase 11): the stranded-attempt sweep could not verify this card charge
   payment_surface: string | null; device_id: string | null; card_brand: string | null; card_last4: string | null;   // migration 660 (Tap to Pay: surface dimension + safe card metadata)
   register_id: string | null;   // types sync (Nov 5 2026)
+  is_test: Generated<boolean>;   // (migration 840, was the developer tree's 704) a UAT/sandbox card charge — excluded from platform money totals
 }
 
 export interface PaymentSignaturesTable {
@@ -144,6 +145,7 @@ export interface PosPaymentTerminalsTable {
   last_seen_at: TsNull; last_ping_at: TsNull; last_ping_ok: boolean | null; last_transaction_at: TsNull;
   updated_at: TsNull; updated_by: string | null;
   pair_request_key: string | null;   // types sync (Nov 5 2026)
+  provisioned_hsn: string | null; verified_at: TsNull;   // (migration 837, was 701) the HSN Bolt reported, and when it was last proved
 }
 export interface TenantSettingsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; category: string; settings_json: unknown;
@@ -7438,6 +7440,7 @@ export interface DB {
   payment_refunds: PaymentRefundsTable;
   payment_settlements: PaymentSettlementsTable;
   payment_terminal_leases: PaymentTerminalLeasesTable;
+  payment_platform_validations: PaymentPlatformValidationsTable;
   customer_duplicate_decisions: CustomerDuplicateDecisionsTable;
   customer_duplicate_events: CustomerDuplicateEventsTable;
   customer_duplicate_groups: CustomerDuplicateGroupsTable;
@@ -8359,6 +8362,10 @@ export interface DailyFollowUpSettingsTable {
 export interface CustomerPaymentMethodsTable {
   id: Generated<string>; tenant_id: string; customer_id: string; gateway: string; token: string; brand: string | null;
   last4: string | null; exp_month: number | null; exp_year: number | null; is_default: boolean; created_at: Ts;
+  cardholder_name: string | null; zip_code: string | null; card_type: string | null;   // (migration 836, was 700)
+  // (migration 837, was 701) merchant binding + stored-credential consent (hosted iFrame cards only)
+  merchant_account_id: string | null; merchant_id_hash: string | null; provider_profile_id: string | null; provider_acct_id: string | null;
+  token_source: string | null; verified_at: TsNull; consent_version: string | null; consent_scope: string | null; consent_at: TsNull; revoked_at: TsNull;
 }
 export interface CustomerAddressesTable {
   id: Generated<string>; tenant_id: string; customer_id: string; label: string | null; line1: string; line2: string | null;
@@ -8667,6 +8674,9 @@ export interface TenantPaymentConfigTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   config_version: Generated<number>;   // migration 638 (wave 3 PAYI §168)
   tap_to_pay_merchant_id: string | null; tap_to_pay_terminal_id: string | null;   // migration 704 (Tap to Pay per location)
+  // migration 837 (was 701 — Fiserv production gates)
+  fiserv_boarding_reference: string | null; credentials_verified_at: TsNull; production_enabled_at: TsNull; production_enabled_by: string | null;
+  surcharge_enrolled: Generated<boolean>; surcharge_rate_bps: number | null; surcharge_reference: string | null;
 }
 /** A branch's own merchant account (migration 638, wave 3 PAYI §7/§10) — the tenant default stays tenant_payment_config. */
 export interface PaymentMerchantAccountsTable {
@@ -8677,6 +8687,16 @@ export interface PaymentMerchantAccountsTable {
   last_validated_at: TsNull; last_validation_error: string | null; created_by: string | null; updated_by: string | null;
   created_at: Generated<Date>; updated_at: Generated<Date>;
   tap_to_pay_merchant_id: string | null; tap_to_pay_terminal_id: string | null;   // migration 704 (Tap to Pay per location)
+  onboarding_status: Generated<string>;
+  // migration 837 (was 701 — Fiserv production gates)
+  fiserv_boarding_reference: string | null; credentials_verified_at: TsNull; production_enabled_at: TsNull; production_enabled_by: string | null;
+  surcharge_enrolled: Generated<boolean>; surcharge_rate_bps: number | null; surcharge_reference: string | null;
+}
+/** (migration 837, was 701) Fiserv written platform validation, append-only (the production gate reads the latest approved row) */
+export interface PaymentPlatformValidationsTable {
+  id: Generated<string>; provider: string; scope_version: string; environment: string; status: string;
+  fiserv_reference: string | null; evidence_ref: string | null; code_sha: string | null; validated_at: TsNull;
+  approved_by: string | null; recorded_by: string | null; created_at: Generated<Ts>;
 }
 export interface PaymentGatewayEventsTable {
   id: Generated<string>; tenant_id: string | null; branch_id: string | null; payment_gateway_id: string | null;
@@ -8733,6 +8753,8 @@ export interface PaymentTerminalLeasesTable {
   holder: string;
   acquired_at: Ts;
   expires_at: Ts;
+  ticket_id: string | null;           // (migration 839, was the developer tree's 703) the ticket being charged
+  cancel_requested_at: TsNull;        // (migration 839) POS Cancel recorded; the holding server sends it to the terminal
 }
 
 export interface PaymentSettlementsTable {

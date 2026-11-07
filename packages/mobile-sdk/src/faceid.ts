@@ -50,7 +50,9 @@ export async function signInWithFaceId(revalidate: (token: string) => Promise<an
   return revalidate('');
 }
 
-/** Sign-out, a dead session (401), an account switch: remove the credential and the session token. */
+/** Remove the credential AND the session token on this phone. Since Nov 5 2026 a normal sign-out and a 401 do NOT call
+ *  this in customer / tech / owner (Face ID survives sign-out; the server ends it when trust ends — migration 841);
+ *  manager-pay, a phone often shared at the front desk, still does. */
 export const clearFaceId = clearNativeFaceId;
 /** "Face ID" toggle off: the server revokes the credential; the session stays. */
 export const disableFaceId = disableNativeFaceId;

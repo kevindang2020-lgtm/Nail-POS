@@ -17,15 +17,15 @@ const APPS = ['pos-web', 'admin-web', 'owner-web', 'tech-web', 'customer-web', '
 
 describe('app versions', () => {
   it('every app reports its package.json version (semver) — for a store app that IS the store version', () => {
-    expect(resolveAppVersion(app('manager-pay-web'), {})).toBe('1.0.0');
-    expect(resolveAppVersion(app('customer-web'), {})).toBe('1.6.0');
-    expect(resolveAppVersion(app('tech-web'), {})).toBe('1.6.0');
-    // Oct 23 2026 merge: the owner + tech store apps shipped as 1.6.0 (the developer tree's store builds; sync-versions keeps them aligned)
-    expect(resolveAppVersion(app('owner-web'), {})).toBe('1.6.0');
-    expect(resolveAppVersion(app('pos-web'), {})).toMatch(/^\d+\.\d+\.\d+$/);
+    // Nov 5 2026: compared with each package.json instead of literals — the store releases bump them (customer 1.10.0, …).
+    for (const a of APPS) {
+      const v = JSON.parse(readFileSync(resolve(app(a), 'package.json'), 'utf8')).version;
+      expect(v, a).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(resolveAppVersion(app(a), {}), a).toBe(v);
+    }
   });
   it('an explicit VITE_APP_VERSION (a CI build number) wins', () => {
-    expect(resolveAppVersion(app('tech-web'), { VITE_APP_VERSION: '1.4.0+512' })).toBe('1.4.0+512');
+    expect(resolveAppVersion(app('tech-web'), { VITE_APP_VERSION: '1.7.0+512' })).toBe('1.7.0+512');
   });
   it('every app\'s Vite config stamps it', () => {
     for (const a of APPS) expect(readFileSync(resolve(app(a), 'vite.config.ts'), 'utf8'), a).toMatch(/appVersion\(\)/);

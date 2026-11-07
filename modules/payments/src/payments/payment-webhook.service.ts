@@ -110,6 +110,8 @@ export function settlementTxnIds(body: any, txnId: string | null | undefined): s
   return [...out].slice(0, 5000);
 }
 
+/** Payment statuses a verified webhook may move FROM (all are provider-approved states). */
+export const WEBHOOK_MOVABLE_FROM = ['approved', 'captured', 'completed', 'succeeded', 'partial', 'settled', 'partially_refunded'] as const;
 function mapStatus(eventType: string): string | null {
   const e = eventType.toLowerCase();
   if (e.includes('void')) return 'voided';
@@ -250,7 +252,7 @@ export class PaymentWebhookService {
       // §45: a re-delivery after a processing failure is attempt n+1 on a fresh claim (the failed row released its claim)
       processing_attempts: 1,
       ...(row.last_error ? { last_error: String(row.last_error).slice(0, 500) } : {}),   // §110: why a signed delivery was refused (field names only)
-    } as any).returning('id').executeTakeFirst().then((r: any) => String(r?.id ?? 'claimed'), (e: any) => { if (e?.code === '23505' && row.processed_at) return false; throw e; });
+    }).returning('id').executeTakeFirst().then((r: any) => String(r?.id ?? 'claimed'), (e: any) => { if (e?.code === '23505' && row.processed_at) return false; throw e; });
   }
 
   /** §45 / §158: business processing failed AFTER the claim. The row keeps the delivery (payload, attempt count, the error)
@@ -355,8 +357,13 @@ export class PaymentWebhookService {
     if (newStatus) {
       // Phase 12 (#27): through the PAYMENT machine — a late "settled" callback never overwrites a refunded / voided
       // payment (the event is still recorded above; statusApplied says whether the row moved)
+      // Fiserv master build §11 (Nov 4 2026): a webhook never settles a payment whose authorization we have not recorded.
+      // An event may only move a payment that is ALREADY provider-approved (approved / captured / … / settled); a
+      // 'processing' (unknown-outcome) row is resolved only by the authenticated provider inquiry (Verify with processor),
+      // never by a pushed event.
       const moved: any = await this.db.updateTable('payments').set({ status: newStatus, updated_at: sql`now()` })
-        .where('tenant_id', '=', tenant.tenantId).where('processor_transaction_id', '=', txnId).where(canMoveToSql(PAYMENT, newStatus) as RawBuilder<SqlBool>).executeTakeFirst();
+        .where('tenant_id', '=', tenant.tenantId).where('processor_transaction_id', '=', txnId).where(canMoveToSql(PAYMENT, newStatus) as RawBuilder<SqlBool>)
+        .where('status', 'in', WEBHOOK_MOVABLE_FROM).executeTakeFirst();
       if (Number(moved?.numUpdatedRows ?? 0) > 0) statusApplied = newStatus;
     }
 
@@ -426,7 +433,7 @@ export class PaymentWebhookService {
           reason_code: pick(body, ['reasonCode', 'reason_code']), reason: pick(body, ['reason', 'reasonDescription', 'reason_description']),
           amount_cents: centsFrom(body, ['amountCents', 'chargebackCents', 'disputeCents'], ['amount']) ?? 0, currency: 'USD',
           status: cbStatus, event_id: eventId, payload_json_safe: JSON.stringify(payload), opened_at: sql`now()`, resolved_at: resolvedAt,
-        } as any).execute().catch((e: any) => { if (e?.code !== '23505') throw e; });
+        }).execute().catch((e: any) => { if (e?.code !== '23505') throw e; });
       }
       recordedChargeback = true;
     }

@@ -213,7 +213,7 @@ export class SuperAdminMerchantAccountsRepository {
     const r = (await sql`select id::text as id from merchant_rate_schedules
       where tenant_id = ${tenantId} and effective_at = ${effectiveAtIso}::timestamptz
         and percentage_basis_points = ${bps} and per_txn_fee_minor = ${fee}
-      order by created_at desc limit 1`.execute(this.db as any)).rows[0] as { id: string } | undefined;
+      order by created_at desc limit 1`.execute(this.db!)).rows[0] as { id: string } | undefined;
     return r ?? null;
   }
 
@@ -222,20 +222,20 @@ export class SuperAdminMerchantAccountsRepository {
     const r = (await sql`insert into merchant_rate_schedules
       (tenant_id, pricing_plan_id, percentage_basis_points, per_txn_fee_minor, monthly_fee_minor, refund_fee_minor, chargeback_fee_minor, effective_at, status, change_reason, created_by)
       values (${tenantId}, ${i.planId}, ${i.bps}, ${i.fee}, ${i.monthly}, ${i.refund}, ${i.chargeback}, ${i.effectiveAtIso}::timestamptz, ${i.status}, ${i.changeReason}, ${i.createdBy})
-      returning id::text as id`.execute(this.db as any)).rows[0] as { id: string };
+      returning id::text as id`.execute(this.db!)).rows[0] as { id: string };
     return r;
   }
 
   /** Terminal lookup for assignment validation (tenant ownership, current branch). */
   async terminalById(terminalId: string): Promise<{ tenant_id: string; branch_id: string | null; status: string | null; label: string | null } | null> {
-    const r = (await sql`select tenant_id, branch_id, status, label from pos_payment_terminals where id = ${terminalId} limit 1`.execute(this.db as any)).rows[0] as { tenant_id: string; branch_id: string | null; status: string | null; label: string | null } | undefined;
+    const r = (await sql`select tenant_id, branch_id, status, label from pos_payment_terminals where id = ${terminalId} limit 1`.execute(this.db!)).rows[0] as { tenant_id: string; branch_id: string | null; status: string | null; label: string | null } | undefined;
     return r ?? null;
   }
 
   /** Assign a terminal to a branch and mark it active. Non-swallowing. Prior branch is preserved in the audit. */
   async assignTerminal(terminalId: string, branchId: string, status: string): Promise<{ updated: number }> {
     const r = await sql`update pos_payment_terminals set branch_id = ${branchId}, status = ${status}, paired_at = now()
-      where id = ${terminalId}`.execute(this.db as any);
+      where id = ${terminalId}`.execute(this.db!);
     return { updated: Number(r.numAffectedRows ?? 0) };
   }
 
@@ -243,34 +243,48 @@ export class SuperAdminMerchantAccountsRepository {
   async midOwner(merchantId: string): Promise<{ tenant_id: string } | null> {
     // wave 3 PAYI §5/§10: a MID may also belong to a branch merchant account — both tables decide who holds it
     const r = (await sql`select tenant_id::text as tenant_id from tenant_payment_config where merchant_id = ${merchantId}
-      union all select tenant_id::text from payment_merchant_accounts where merchant_id = ${merchantId} limit 1`.execute(this.db as any)).rows[0] as { tenant_id: string } | undefined;
+      union all select tenant_id::text from payment_merchant_accounts where merchant_id = ${merchantId} limit 1`.execute(this.db!)).rows[0] as { tenant_id: string } | undefined;
     return r ?? null;
   }
 
   /** True when the branch belongs to the tenant (branch-ownership / cross-tenant guard). */
   async branchBelongsToTenant(branchId: string, tenantId: string): Promise<boolean> {
-    const r = (await sql`select 1 as ok from branches where id = ${branchId} and tenant_id = ${tenantId} limit 1`.execute(this.db as any)).rows[0] as { ok: number } | undefined;
+    const r = (await sql`select 1 as ok from branches where id = ${branchId} and tenant_id = ${tenantId} limit 1`.execute(this.db!)).rows[0] as { ok: number } | undefined;
     return !!r;
   }
 
   /** Assign/update the MID (merchant_id) on the merchant account. Non-swallowing. Prior MID is preserved in the audit. */
   async assignMid(tenantId: string, merchantId: string, updatedBy: string | null): Promise<{ updated: number }> {
     const r = await sql`update tenant_payment_config set merchant_id = ${merchantId}, config_version = config_version + 1, updated_at = now(), updated_by_user_id = ${updatedBy}
-      where tenant_id = ${tenantId}`.execute(this.db as any);
+      where tenant_id = ${tenantId}`.execute(this.db!);
     return { updated: Number(r.numAffectedRows ?? 0) };
+  }
+
+  /** §9.2 surcharge enrollment on the merchant that charges this branch (its own row) or the tenant default. Returns the
+   *  previous values for the audit; null when that merchant row does not exist. Non-swallowing. */
+  async setSurchargeEnrollment(tenantId: string, branchId: string | null, v: { enrolled: boolean; rateBps: number | null; reference: string | null }, updatedBy: string | null)
+    : Promise<{ previous: { enrolled: boolean; rateBps: number | null; reference: string | null } } | null> {
+    const table = branchId ? sql`payment_merchant_accounts` : sql`tenant_payment_config`;
+    const where = branchId ? sql`tenant_id = ${tenantId} and branch_id = ${branchId}` : sql`tenant_id = ${tenantId}`;
+    const actor = branchId ? sql`updated_by = ${updatedBy}` : sql`updated_by_user_id = ${updatedBy}`;
+    const prev = (await sql`select surcharge_enrolled, surcharge_rate_bps, surcharge_reference from ${table} where ${where} limit 1`.execute(this.db!)).rows[0] as { surcharge_enrolled: boolean | null; surcharge_rate_bps: number | null; surcharge_reference: string | null } | undefined;
+    if (!prev) return null;
+    await sql`update ${table} set surcharge_enrolled = ${v.enrolled}, surcharge_rate_bps = ${v.rateBps}, surcharge_reference = ${v.reference},
+      config_version = config_version + 1, updated_at = now(), ${actor} where ${where}`.execute(this.db!);
+    return { previous: { enrolled: !!prev.surcharge_enrolled, rateBps: prev.surcharge_rate_bps == null ? null : Number(prev.surcharge_rate_bps), reference: prev.surcharge_reference ?? null } };
   }
 
   /** Update a merchant account's processing status (lifecycle transition — never a delete). Non-swallowing. */
   async updateProcessingStatus(tenantId: string, status: string, updatedBy: string | null): Promise<{ updated: number }> {
     const r = await sql`update tenant_payment_config set status = ${status}, config_version = config_version + 1, updated_at = now(), updated_by_user_id = ${updatedBy}
-      where tenant_id = ${tenantId} and ${canMoveToSql(PAYMENT_GATEWAY, status)}`.execute(this.db as any);
+      where tenant_id = ${tenantId} and ${canMoveToSql(PAYMENT_GATEWAY, status)}`.execute(this.db!);
     return { updated: Number(r.numAffectedRows ?? 0) };
   }
 
   /** Supersede the current funding profile (history-preserving) — prior masked/enc values are retained on the old row. */
   async supersedeCurrentFunding(tenantId: string): Promise<void> {
     await sql`update merchant_funding_profiles set superseded_at = now()
-      where tenant_id = ${tenantId} and superseded_at is null`.execute(this.db as any);
+      where tenant_id = ${tenantId} and superseded_at is null`.execute(this.db!);
   }
 
   /** Append a new current funding profile. Full numbers live ONLY in the *_enc columns; masked columns hold last4 only. */
@@ -278,13 +292,13 @@ export class SuperAdminMerchantAccountsRepository {
     const r = (await sql`insert into merchant_funding_profiles
       (tenant_id, funding_schedule, bank_verification_status, bank_name, account_type, account_last4, routing_last4, bank_account_enc, routing_number_enc, has_funding_issue, effective_at, superseded_at, created_by)
       values (${tenantId}, ${i.fundingSchedule}, ${i.bankVerificationStatus}, ${i.bankName}, ${i.accountType}, ${i.accountLast4}, ${i.routingLast4}, ${i.bankAccountEnc}, ${i.routingEnc}, false, now(), null, ${i.createdBy})
-      returning id::text as id`.execute(this.db as any)).rows[0] as { id: string };
+      returning id::text as id`.execute(this.db!)).rows[0] as { id: string };
     return r;
   }
 
   /** Validate a pricing plan id exists (returns its name) — null when the id is unknown. */
   async pricingPlanName(planId: string): Promise<{ name: string } | null> {
-    const r = (await sql`select name from merchant_pricing_plans where id = ${planId} limit 1`.execute(this.db as any)).rows[0] as { name: string } | undefined;
+    const r = (await sql`select name from merchant_pricing_plans where id = ${planId} limit 1`.execute(this.db!)).rows[0] as { name: string } | undefined;
     return r ?? null;
   }
 
@@ -295,7 +309,7 @@ export class SuperAdminMerchantAccountsRepository {
     const actorId = actor.userId && uuid.test(actor.userId) ? actor.userId : null;
     try {
       await sql`insert into audit_events (tenant_id, occurred_at, actor_user_id, actor_name, module, action, resource_type, summary, status, severity, ip, metadata)
-        values (${scope.tenantId}, now(), ${actorId}, ${actor.email ?? 'super_admin'}, 'merchant-accounts', ${action}, 'merchant_account', ${summary}, 'ok', 'info', ${actor.ip ?? null}, ${JSON.stringify(metadata ?? {})}::jsonb)`.execute(this.db as any);
+        values (${scope.tenantId}, now(), ${actorId}, ${actor.email ?? 'super_admin'}, 'merchant-accounts', ${action}, 'merchant_account', ${summary}, 'ok', 'info', ${actor.ip ?? null}, ${JSON.stringify(metadata ?? {})}::jsonb)`.execute(this.db!);
     } catch { /* audit is best-effort; never break the read */ }
   }
 }

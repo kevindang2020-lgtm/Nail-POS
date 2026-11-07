@@ -59,6 +59,8 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.PAYMENT_ALREADY_CAPTURED': 'Thanh toán này đã hoàn tất.',
   'errors.PAYMENT_IN_PROGRESS': 'Đang có một thanh toán cho hóa đơn này. Hãy chờ thanh toán đó xong.',
   'errors.TERMINAL_NOT_FOUND': 'Không tìm thấy máy thanh toán đó.',
+  // Reviewed and approved by Kevin (Nov 6 2026).
+  'errors.PROVIDER_HOST_NOT_ALLOWED': 'Địa chỉ nhà cung cấp này chưa được phép dùng trong môi trường này.',
   'errors.REFUND_EXCEEDS_AVAILABLE_AMOUNT': 'Số tiền hoàn lớn hơn số tiền có thể hoàn.',
   'errors.PAYMENT_PROVIDER_NOT_CONFIGURED': 'Chi nhánh này chưa thiết lập thanh toán thẻ. Hãy thu tiền mặt hoặc liên hệ chủ tiệm.',
   'errors.MERCHANT_NOT_CONFIGURED': 'Chi nhánh này chưa có tài khoản merchant. Không thể thanh toán thẻ ở đây.',

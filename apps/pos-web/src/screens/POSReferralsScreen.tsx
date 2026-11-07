@@ -330,7 +330,7 @@ function ReferralDialog({ id, canManage, onClose, onChanged, onBook, onProfile }
             {w.issueError ? <><dt>{tx('rfp.f.error')}</dt><dd>{w.issueError}</dd></> : null}
             {w.reversedAt ? <><dt>{tx('rfp.f.reversed')}</dt><dd>{when(w.reversedAt)} · {w.reversalReason}{w.reversalShortfall ? ' · ' + tx('rfp.f.shortfall', { n: nf(w.reversalShortfall) }) : ''}</dd></> : null}</dl> : <Empty title={d.qualifiedAt ? tx('rfp.noRewardYet') : tx('rfp.notQualifiedYet')} />) : null}
           {tab === 'communication' ? (d.communication.items.length ? <>
-            <table className="fk-table" data-testid="rfp-comm"><tbody>{d.communication.items.map((m: any) => <tr key={m.id}><td>{fmtDateTime(m.at)}</td><td>{tx('rfp.comm.' + m.who)}</td><td>{m.channel}</td><td>{m.status}</td><td>{m.preview}</td></tr>)}</tbody></table>
+            <table className="fk-table" data-testid="rfp-comm"><tbody>{d.communication.items.map((m: any) => <tr key={m.id}><td>{fmtDateTime(m.at)}</td><td>{tx('rfp.comm.' + m.who)}</td><td>{statusLabel('channel', m.channel)}</td><td>{statusLabel(['notification', 'status'], m.status)}</td><td>{m.preview}</td></tr>)}</tbody></table>
             <div className="fk-hint">{d.communication.note}</div></> : <Empty title={tx('rfp.comm.none')}>{d.communication.note}</Empty>) : null}
           {tab === 'audit' ? <ol className="rfp-audit" data-testid="rfp-audit">{d.audit.map((e: any, i: number) => <li key={i}><b>{tx('rfp.ev.' + e.type) !== 'rfp.ev.' + e.type ? tx('rfp.ev.' + e.type) : e.type}</b> · {when(e.at)}{e.actor ? ' · ' + e.actor : ''}{e.to ? ' → ' + stLabel(e.to) : ''}{e.reason ? <div className="fk-muted">{e.reason}</div> : null}</li>)}</ol> : null}
         </div>

@@ -86,8 +86,8 @@ const [refreshing, setRefreshing] = useState(false);
 
       {error ? <div className="tech-state" role="alert" style={{ color: 'var(--tech-danger)' }}>{error}</div>
         : !rows ? (
-          <div style={{ display: 'grid', gap: 12 }} role="status" aria-busy="true">
-            <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Loading your tickets…</span>
+          <div style={{ display: 'grid', gap: 12 }} aria-busy="true">
+            <span role="status" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Loading your tickets…</span>
             {[1, 2, 3].map(i => (
               <div key={i} className="tech-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

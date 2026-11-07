@@ -137,7 +137,9 @@ describe('Sidebar ↔ route wiring invariant (every nav target resolves to a reg
 
   it('every routed screen is reachable from the sidebar (no orphan modules)', () => {
     // Aliases/redirects + destinations reached from chrome outside the sidebar (profile menu) are exempt.
-    const exempt = new Set(['/', '/billing', '/products', '/memberships', '/appointments', '/customers', '/account', '/help-center']);
+    const exempt = new Set(['/', '/billing', '/products', '/memberships', '/appointments', '/customers', '/account', '/help-center',
+      '/platform-announcements', // legacy alias → <Navigate> to /communications/platform-announcements
+    ]);
     const navTargets = new Set<string>();
     for (const g of NAV_GROUPS) for (const it of g.items) {
       navTargets.add(it.to.split('?')[0]);

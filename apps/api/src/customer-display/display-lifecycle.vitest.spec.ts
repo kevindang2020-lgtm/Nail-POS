@@ -238,14 +238,16 @@ describe('every number on the display comes from the ticket (§35, §38)', () =>
     expect(s.selectedTipCents).toBe(800);
     expect(s.state).toBe('tip_selected');
   });
-  it('the customer\'s card/cash choice becomes the ticket\'s method, so the display total drops the card surcharge', async () => {
+  // Fiserv master build §9 (Nov 4 2026): no local card fee exists before the card is read (funding unknown; an enrolled
+  // merchant's surcharge is provider-assessed), so card and cash show the same total until a provider fee is recorded.
+  it('the customer\'s card/cash choice becomes the ticket\'s method; no local card fee — the totals match', async () => {
     const h = harness(row());
     const before = await h.svc.getDeviceState(DEVICE_TOKEN);
     const after = await h.svc.submitMethodForDevice(DEVICE_TOKEN, 'cash');
     expect(h.writes).toEqual(['session.method=cash', 'ticket.method=cash']);
-    expect(before.checkout!.customerFeeCents).toBeGreaterThan(0);
+    expect(before.checkout!.customerFeeCents).toBe(0);
     expect(after.checkout!.customerFeeCents).toBe(0);
-    expect(after.totals.totalDueCents).toBe(before.totals.totalDueCents - before.checkout!.customerFeeCents);
+    expect(after.totals.totalDueCents).toBe(before.totals.totalDueCents);
   });
   it('the idle state carries no checkout at all', async () => {
     const s = await harness(null).svc.getDeviceState(DEVICE_TOKEN);

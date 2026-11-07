@@ -84,7 +84,7 @@ export function OwnerCashSummaryScreen() {
           <button className="owner-chip" style={{ padding: '6px 12px' }} onClick={load}>Refresh</button>
         </div>
 
-        {err ? <div className="owner-chartcard" style={{ margin: '8px 0', padding: 12, color: '#c0392b' }}>{err}</div> : null}
+        {err ? <div className="owner-chartcard" role="alert" style={{ margin: '8px 0', padding: 12, color: '#c0392b' }}>{err}</div> : null}
 
         {/* Sep 2026 merge: without data (a failed load) the redesign dereferenced null and the whole screen crashed */}
         {!data && !loading ? null : <>
@@ -96,9 +96,9 @@ export function OwnerCashSummaryScreen() {
                   <div className="owner-skel" style={{ width: 80, height: 36 }} />
                   <span style={{ fontSize: 15, opacity: 0.55 }}> / <div className="owner-skel" style={{ width: 60, height: 18, display: 'inline-block' }} /></span>
                 </>
-              ) : (
-                <>{money(data!.total.countedCents)}<span style={{ fontSize: 15, opacity: 0.55 }}> / {money(data!.total.expectedCents)}</span></>
-              )}
+              ) : data ? (
+                <>{money(data.total.countedCents)}<span style={{ fontSize: 15, opacity: 0.55 }}> / {money(data.total.expectedCents)}</span></>
+              ) : <span aria-hidden>—</span>}
             </div>
             <div style={{ fontSize: 14, fontWeight: 700, color: tv === 0 ? '#2e7d32' : '#c0392b' }}>
               {loading && !data ? <div className="owner-skel" style={{ width: 200, height: 18, margin: '0 auto' }} /> : (tv === 0 ? 'Balanced — counted matches expected' : `${tv > 0 ? 'Over' : 'Short'} ${money(Math.abs(tv))}`)}

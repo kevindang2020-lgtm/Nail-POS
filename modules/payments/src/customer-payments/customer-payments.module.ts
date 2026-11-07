@@ -16,7 +16,7 @@ import { DATABASE, type AppDatabase } from '@aipowersalon/database';
   providers: [
     { provide: PaymentGatewayResolver, useFactory: (db: AppDatabase, secrets: PaymentSecrets) => new PaymentGatewayResolver(db, secrets), inject: [DATABASE, PAYMENT_SECRETS] },
     { provide: 'CustomerPaymentMethodsPort', useFactory: (db: AppDatabase): CustomerPaymentMethodsPort => (db ? new KyselyCustomerPaymentMethodsRepository(db) : new InMemoryCustomerPaymentMethodsRepository()), inject: [DATABASE] },
-    { provide: CustomerPaymentMethodsService, useFactory: (repo: CustomerPaymentMethodsPort) => new CustomerPaymentMethodsService(repo), inject: ['CustomerPaymentMethodsPort'] },
+    { provide: CustomerPaymentMethodsService, useFactory: (repo: CustomerPaymentMethodsPort, resolver: PaymentGatewayResolver) => new CustomerPaymentMethodsService(repo, resolver), inject: ['CustomerPaymentMethodsPort', PaymentGatewayResolver] },
     { provide: WalletTopupService, useFactory: (resolver: PaymentGatewayResolver, repo: CustomerPaymentMethodsPort, ledger: WalletLedgerService, db: AppDatabase) => new WalletTopupService(resolver, repo, ledger, db ? new KyselyWalletTopupIntentStore(db) : new InMemoryWalletTopupIntentStore()), inject: [PaymentGatewayResolver, 'CustomerPaymentMethodsPort', WalletLedgerService, DATABASE] },
   ],
   exports: [WalletTopupService],   // the stranded sweep (modules/checkout) settles open top-ups in the same tick (B-79)

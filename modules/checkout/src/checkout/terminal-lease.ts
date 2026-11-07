@@ -7,20 +7,26 @@ import { sql, type Kysely } from 'kysely';
 export const TERMINAL_LEASE_TTL_SECONDS = 180;
 
 export interface TerminalLeasePort {
-  /** true = this holder now owns the terminal (or already did); false = another transaction is active on it. */
-  acquire(tenantId: string, terminalId: string, holder: string, ttlSeconds?: number): Promise<boolean>;
+  /** true = this holder now owns the terminal (or already did); false = another transaction is active on it.
+   *  `ticketId` names the ticket being charged (POS Cancel finds the lease by it); a fresh acquire clears any old cancel. */
+  acquire(tenantId: string, terminalId: string, holder: string, ttlSeconds?: number, ticketId?: string | null): Promise<boolean>;
   /** Releases ONLY if `holder` still owns it — never frees a lease another transaction took over after expiry. */
   release(tenantId: string, terminalId: string, holder: string): Promise<void>;
+  /** POS "Cancel on terminal" from ANY API server: record a cancel on the live lease charging `ticketId`, limited to the
+   *  given terminals (the caller's branch). Returns the terminal it was recorded on, or null if nothing is in flight. */
+  requestCancel?(tenantId: string, ticketId: string, terminalIds: string[]): Promise<string | null>;
+  /** The server holding the charge asks: has a cancel been recorded on MY lease? */
+  cancelRequested?(tenantId: string, terminalId: string, holder: string): Promise<boolean>;
 }
 
 export class KyselyTerminalLeases implements TerminalLeasePort {
   constructor(private readonly db: Kysely<any>) {}
-  async acquire(tenantId: string, terminalId: string, holder: string, ttlSeconds = TERMINAL_LEASE_TTL_SECONDS): Promise<boolean> {
+  async acquire(tenantId: string, terminalId: string, holder: string, ttlSeconds = TERMINAL_LEASE_TTL_SECONDS, ticketId: string | null = null): Promise<boolean> {
     const r = await sql<{ holder: string }>`
-      insert into payment_terminal_leases (tenant_id, terminal_id, holder, acquired_at, expires_at)
-      values (${tenantId}, ${terminalId}, ${holder}, now(), now() + make_interval(secs => ${ttlSeconds}))
+      insert into payment_terminal_leases (tenant_id, terminal_id, holder, acquired_at, expires_at, ticket_id, cancel_requested_at)
+      values (${tenantId}, ${terminalId}, ${holder}, now(), now() + make_interval(secs => ${ttlSeconds}), ${ticketId}, null)
       on conflict (tenant_id, terminal_id) do update
-        set holder = excluded.holder, acquired_at = now(), expires_at = excluded.expires_at
+        set holder = excluded.holder, acquired_at = now(), expires_at = excluded.expires_at, ticket_id = excluded.ticket_id, cancel_requested_at = null
         where payment_terminal_leases.expires_at <= now() or payment_terminal_leases.holder = excluded.holder
       returning holder`.execute(this.db);
     return r.rows.length === 1;
@@ -28,18 +34,43 @@ export class KyselyTerminalLeases implements TerminalLeasePort {
   async release(tenantId: string, terminalId: string, holder: string): Promise<void> {
     await sql`delete from payment_terminal_leases where tenant_id = ${tenantId} and terminal_id = ${terminalId} and holder = ${holder}`.execute(this.db);
   }
+  async requestCancel(tenantId: string, ticketId: string, terminalIds: string[]): Promise<string | null> {
+    if (!terminalIds.length) return null;
+    const r = await sql<{ terminal_id: string }>`
+      update payment_terminal_leases set cancel_requested_at = now()
+      where tenant_id = ${tenantId} and ticket_id = ${ticketId} and expires_at > now()
+        and terminal_id in (${sql.join(terminalIds)})
+      returning terminal_id`.execute(this.db);
+    return r.rows[0]?.terminal_id ?? null;
+  }
+  async cancelRequested(tenantId: string, terminalId: string, holder: string): Promise<boolean> {
+    const r = await sql<{ x: number }>`
+      select 1 as x from payment_terminal_leases
+      where tenant_id = ${tenantId} and terminal_id = ${terminalId} and holder = ${holder} and cancel_requested_at is not null`.execute(this.db);
+    return r.rows.length > 0;
+  }
 }
 
 /** In-memory twin with the same rules (tests, and repositories without a database). */
 export class InMemoryTerminalLeases implements TerminalLeasePort {
-  private rows = new Map<string, { holder: string; expiresAt: number }>();
+  private rows = new Map<string, { holder: string; expiresAt: number; ticketId: string | null; cancel: boolean }>();
   constructor(private readonly now: () => number = Date.now) {}
-  async acquire(tenantId: string, terminalId: string, holder: string, ttlSeconds = TERMINAL_LEASE_TTL_SECONDS): Promise<boolean> {
+  async acquire(tenantId: string, terminalId: string, holder: string, ttlSeconds = TERMINAL_LEASE_TTL_SECONDS, ticketId: string | null = null): Promise<boolean> {
     const k = tenantId + '::' + terminalId; const cur = this.rows.get(k);
     if (cur && cur.expiresAt > this.now() && cur.holder !== holder) return false;
-    this.rows.set(k, { holder, expiresAt: this.now() + ttlSeconds * 1000 }); return true;
+    this.rows.set(k, { holder, expiresAt: this.now() + ttlSeconds * 1000, ticketId, cancel: false }); return true;
   }
   async release(tenantId: string, terminalId: string, holder: string): Promise<void> {
     const k = tenantId + '::' + terminalId; if (this.rows.get(k)?.holder === holder) this.rows.delete(k);
+  }
+  async requestCancel(tenantId: string, ticketId: string, terminalIds: string[]): Promise<string | null> {
+    for (const id of terminalIds) {
+      const r = this.rows.get(tenantId + '::' + id);
+      if (r && r.ticketId === ticketId && r.expiresAt > this.now()) { r.cancel = true; return id; }
+    }
+    return null;
+  }
+  async cancelRequested(tenantId: string, terminalId: string, holder: string): Promise<boolean> {
+    const r = this.rows.get(tenantId + '::' + terminalId); return !!r && r.holder === holder && r.cancel;
   }
 }

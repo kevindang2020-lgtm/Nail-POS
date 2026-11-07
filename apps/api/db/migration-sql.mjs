@@ -190,4 +190,13 @@ export const MIGRATION_RENAMES = Object.freeze({
   // Oct 23 2026 merge of the developer's GitHub main: its 664 (SMS pricing tiers) is 682 here — a database that applied it
   // under the developer's number keeps it applied (664 here is payment_refunds_unknown_state, a different file)
   '664_sms_pricing_tiers_guide.sql': '682_sms_pricing_tiers_guide.sql',
+  // Power-Salon-main merge (Nov 7 2026): the developer tree (Nov 4–6) numbered its six migrations 700–705, which
+  // collide with this line's own 700–705. They alter disjoint columns/tables, so they append after 835. These aliases
+  // keep a database that already applied the developer tree's numbers from running them again.
+  '700_customer_payment_methods_cardholder_zip.sql': '836_customer_payment_methods_cardholder_zip.sql',
+  '701_fiserv_production_gates_and_saved_card_consent.sql': '837_fiserv_production_gates_and_saved_card_consent.sql',
+  '702_assign_unassigned_terminals_single_location.sql': '838_assign_unassigned_terminals_single_location.sql',
+  '703_terminal_lease_cancel_request.sql': '839_terminal_lease_cancel_request.sql',
+  '704_payments_is_test.sql': '840_payments_is_test.sql',
+  '705_face_id_survives_sign_out.sql': '841_face_id_survives_sign_out.sql',
 });

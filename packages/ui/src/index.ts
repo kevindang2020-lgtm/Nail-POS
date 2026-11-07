@@ -18,3 +18,4 @@ export { ProfileAvatarWithPreview, resolveAvatarUrl, setAvatarPreviewTitle } fro
 // 23-inch dual-screen spec §47–§57: one advertisement renderer for the customer display AND the POS preview
 export { DisplayAdSlide, AdRotator, AdFallbackPanel, AdQrCode, qrPath, AD_PANEL_FRACTION, AD_CROSSFADE_MS, type AdSlideContent, type AdSlideImage, type RotatingAd } from './DisplayAdSlide';
 export { useEventCallback, useStableValue } from './stable-hooks';   // exhaustive-deps → 0 (Oct 27 2026): latest-closure callbacks + structurally stable values
+export { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt, PUSH_PROMPT_DISMISS_KEY, PUSH_PROMPT_SNOOZE_MS, BANNER_TEXT_EN, type EnableNotificationsBannerProps, type BannerText } from './EnableNotificationsBanner';   // Nov 6 2026: notification permission from a tap

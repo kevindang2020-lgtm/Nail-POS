@@ -90,7 +90,8 @@ describe('Phase 9: behaviour preserved, route by route (real manifest)', () => {
     ['GET /owner/staff/{technicianId}/earnings', 'owner.staff.earnings.view', ['OWNER']],
     ['GET /owner/reports/{reportId}/export', 'owner.reports.export', ['OWNER']],
     ['POST /owner/alerts/{alertId}/resolve', 'owner.alerts.resolve', ['OWNER']],
-    ['POST /owner/expenses', 'owner.expenses.manage', MGMT],   // finance mandate (Oct 21 2026): a manager records and approves expenses at their own branch
+    // Receipt/Expense mandate §77 / §82 (Oct 21 2026): a manager records expenses of their own branch (rbac.ts MANAGER)
+    ['POST /owner/expenses', 'owner.expenses.manage', MGMT],
     ['POST /owner/payroll/periods/{id}/approve', 'payroll.manage', MGMT],
     // role === 'OWNER' service checks → an owner-only key
     ['POST /owner/security/access-code', 'owner.settings.edit', ['OWNER']],

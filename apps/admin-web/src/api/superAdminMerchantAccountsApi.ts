@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Semantic } from '@aipowersalon/api-contracts/platform';   // the wire contract (Constitution 13 §15)
+import type { Semantic, SurchargeEnrollmentResult } from '@aipowersalon/api-contracts/platform';   // the wire contract (Constitution 13 §15)
 
 // superAdminMerchantAccountsApi — Super Admin → Payments & Revenue → Merchant Accounts (read spine). Mirrors the live
 // aggregate at GET /super-admin/merchant-accounts/overview. Every section carries honest availability so the UI can
@@ -85,6 +85,10 @@ export const superAdminMerchantAccountsApi = {
   deactivate: (tenantId: string, reason: string) => api.post<MAStatusResult>(`/super-admin/merchant-accounts/${tenantId}/deactivation`, { reason }),
   updateFunding: (tenantId: string, body: MAFundingUpdateBody) => api.post<MAFundingUpdateResult>(`/super-admin/merchant-accounts/${tenantId}/funding-update`, body as unknown as Record<string, unknown>),
   assignMid: (tenantId: string, body: { merchantId: string; branchId?: string; reason: string }) => api.post<MAMidAssignResult>(`/super-admin/merchant-accounts/${tenantId}/mid-assignment`, body),
+  /** Fiserv §9.2: record (or withdraw) the merchant's Merchant Surcharge Program enrollment — rate in basis points (100–300)
+   *  and Fiserv's written reference. Step-up protected; audited. */
+  setSurchargeEnrollment: (tenantId: string, body: { enrolled: boolean; rateBps?: number | null; reference?: string | null; branchId?: string | null; reason: string }) =>
+    api.post<SurchargeEnrollmentResult>(`/super-admin/merchant-accounts/${tenantId}/surcharge-enrollment`, body),
   assignTerminal: (tenantId: string, body: { terminalId: string; branchId: string; reason: string }) => api.post<MATerminalAssignResult>(`/super-admin/merchant-accounts/${tenantId}/terminals`, body),
 };
 export type { Semantic };

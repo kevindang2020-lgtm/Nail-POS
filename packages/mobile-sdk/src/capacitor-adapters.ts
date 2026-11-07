@@ -86,8 +86,9 @@ export function makeSecureStore(): SecureStore | null {
 /** Map the plugin's biometry type to ours. Anything unrecognised is still "some biometric". */
 export function toBiometryKind(t: unknown): BiometryKind {
   const v = String(t ?? '').toLowerCase();
-  if (v.includes('face') || v === '2') return 'face';
-  if (v.includes('touch') || v.includes('finger') || v === '1') return 'fingerprint';
+  // Numeric values follow the plugin's BiometryType: 1 TOUCH_ID, 2 FACE_ID, 3 FINGERPRINT, 4 FACE_AUTHENTICATION.
+  if (v.includes('face') || v === '2' || v === '4') return 'face';
+  if (v.includes('touch') || v.includes('finger') || v === '1' || v === '3') return 'fingerprint';
   return 'none';
 }
 

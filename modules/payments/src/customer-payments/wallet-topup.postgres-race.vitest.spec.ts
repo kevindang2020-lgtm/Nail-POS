@@ -28,7 +28,7 @@ function processor(answer: 'throw' | 'approve') {
     async inquireByOrderId(orderId: string) { inquiries.push(orderId); return { transactions: [{ retref: 'RT-INQ', approved: true, declined: false, amountCents: 5000 }] }; },
   } };
 }
-const svcFor = (p: any) => new WalletTopupService({ resolve: async () => ({ processor: p }) } as any, methods,
+const svcFor = (p: any) => new WalletTopupService({ resolve: async () => ({ processor: p }), effectiveMerchant: async () => ({ configured: true, processor: p, merchantIdHash: 'mid-hash', scope: 'tenant', merchantAccountId: null, environment: 'sandbox' }) } as any, methods,
   new WalletLedgerService(new KyselyWalletLedgerRepository(db as any)), new KyselyWalletTopupIntentStore(db as any), { strandedMs: 15 * 60_000 });
 const credits = async () => Number(((await sql<any>`select count(*)::int n, coalesce(sum(amount_cents),0)::int s from customer_wallet_ledger where tenant_id = ${T} and customer_id = ${C}`.execute(db)).rows[0] as any).n);
 const balance = async () => Number(((await sql<any>`select coalesce(sum(amount_cents),0)::int s from customer_wallet_ledger where tenant_id = ${T} and customer_id = ${C}`.execute(db)).rows[0] as any).s);

@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "preDeployCommand": ["sh -c \"node scripts/db-preflight.mjs && node scripts/migrate.mjs\""],
+    "preDeployCommand": ["sh -c \"node scripts/db-preflight.mjs && node scripts/migrate.mjs && node scripts/check-unassigned-terminals.mjs\""],
     "startCommand": "node dist/main.js",
     "healthcheckPath": "/health/ready",
     "healthcheckTimeout": 120,

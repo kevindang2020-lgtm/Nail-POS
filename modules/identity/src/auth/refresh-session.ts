@@ -9,6 +9,10 @@
 // extended while that phone is in good standing: the REFRESH_DEVICE_GUARD port (refresh-device-guard.ts, provided by the
 // module that owns mobile_pay_devices) answers DEVICE_REVOKED (the session + family end — §16 / §61) or DEVICE_SUSPENDED
 // (this refresh is refused). A guard that cannot answer fails the refresh closed.
+//
+// Nov 6 2026 (merged Nov 7): a short grace window (REFRESH_REUSE_GRACE_SECONDS) lets the same device race itself — two
+// POS tabs renewing together, or a reply lost on salon Wi-Fi — without that reading as theft. The grace path still asks
+// the payment-device guard first, so a revoked phone never gets an extra token.
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import type { RefreshDeviceGuardPort } from './refresh-device-guard';
@@ -29,6 +33,17 @@ export interface RefreshRepository {
   revokeAllForSession(sessionId: string): Promise<void>;
   /** M6-6: every live token of the family (a reuse of any one of them burns them all). Optional for older repositories. */
   revokeFamily?(familyId: string): Promise<void>;
+  /** When the token `id` was created (ms) — for a superseded token, its successor's creation is the moment it was rotated. */
+  createdAtMs(id: string): Promise<number | null>;
+}
+
+/** Nov 6 2026: how long after a rotation the PREVIOUS token is still accepted (REFRESH_REUSE_GRACE_SECONDS, default 30,
+ *  0 turns it off, max 120). Two POS tabs share one cookie and renew at the same moment; a reply lost on salon Wi-Fi
+ *  leaves the device holding the old token. Without a grace window both looked like theft and signed the person out. */
+export function refreshReuseGraceMs(env: Record<string, string | undefined> = process.env): number {
+  const n = Number(env.REFRESH_REUSE_GRACE_SECONDS);
+  const s = Number.isFinite(n) && env.REFRESH_REUSE_GRACE_SECONDS !== undefined && env.REFRESH_REUSE_GRACE_SECONDS !== '' ? n : 30;
+  return Math.min(Math.max(Math.floor(s), 0), 120) * 1000;
 }
 export const hashRefreshToken = (raw: string) => createHash('sha256').update(raw).digest('hex');
 const newRawToken = () => 'rt_' + randomBytes(32).toString('base64url');
@@ -50,6 +65,8 @@ export class RefreshSessionService {
     private readonly now: () => number = () => Date.now(),
     /** M6-6: the payment-device registry's answer, resolved per call (null = this API has no payment module) */
     private readonly deviceGuard: () => RefreshDeviceGuardPort | null = () => null,
+    /** Nov 6 2026: the reuse grace window in ms (0 = off) */
+    private readonly graceMs: number = refreshReuseGraceMs(),
   ) {}
 
   /** At login: a refresh token living as long as the session — the ROOT of a new family. The raw token is returned ONCE
@@ -66,32 +83,56 @@ export class RefreshSessionService {
     if (!row || row.revokedAt) return { ok: false, reason: 'invalid' };
     const familyId = row.familyId ?? row.sessionId;
     if (row.supersededById) {   // §170: a token that was already rotated is being presented again — a replay or a theft
+      // Nov 6 2026: …unless it was rotated a moment ago — the same device racing itself (a second tab, a lost reply). Then
+      // this caller gets an extra valid token for the SAME session and family and nothing is retired. The family is not
+      // burned. The payment-device guard still answers first (a revoked phone gets nothing).
+      const rotatedAt = this.graceMs > 0 ? await this.repo.createdAtMs(row.supersededById) : null;
+      if (rotatedAt !== null && this.now() - rotatedAt <= this.graceMs && row.expiresAtMs > this.now()
+          && !(this.sessions && await this.sessions.isRevoked(row.sessionId))) {
+        const blocked = await this.deviceBlock(row, familyId);
+        if (blocked) return blocked;
+        return this.sibling(row, familyId);
+      }
       await this.burn(row.sessionId, familyId);
       return { ok: false, reason: 'reused', sessionId: row.sessionId, userId: row.userId, familyId };
     }
     if (row.expiresAtMs <= this.now()) return { ok: false, reason: 'expired' };
     if (this.sessions && await this.sessions.isRevoked(row.sessionId)) return { ok: false, reason: 'session_revoked' };
-    // M6-6 (§16 / §61): a session opened on a payment phone lives only as long as that phone is in good standing
-    const guard = row.deviceId && row.tenantId ? this.deviceGuard() : null;
-    if (guard && row.deviceId && row.tenantId) {
-      const who = { sessionId: row.sessionId, userId: row.userId, tenantId: row.tenantId, deviceId: row.deviceId };
-      let block: Awaited<ReturnType<RefreshDeviceGuardPort['refreshBlock']>>;
-      try { block = await guard.refreshBlock({ tenantId: row.tenantId, userId: row.userId, deviceId: row.deviceId, sessionId: row.sessionId }); }
-      catch (e) {
-        console.warn('[refresh] payment-device check failed — refresh refused (fail closed):', (e as Error)?.message);
-        return { ok: false, reason: 'device_check_failed', ...who };
-      }
-      if (block) {
-        if (block.endSession) await this.burn(row.sessionId, familyId);
-        return { ok: false, reason: block.code === 'DEVICE_REVOKED' ? 'device_revoked' : 'device_suspended', ...who };
-      }
-    }
+    const blocked = await this.deviceBlock(row, familyId);
+    if (blocked) return blocked;
     const next = newRawToken();
     const newId = await this.repo.insert({ sessionId: row.sessionId, userId: row.userId, tokenHash: hashRefreshToken(next), expiresAtMs: row.expiresAtMs, rotatedFromId: row.id, familyId });
     if (!(await this.repo.supersede(row.id, newId))) {   // lost the race to a concurrent use of the same token: replay
+      // Nov 6 2026: two tabs renewing at the very same instant land here too — the same device racing itself. With the
+      // grace window on, the token just inserted stays valid as an extra token for the session (nothing retired).
+      if (this.graceMs > 0) return { ok: true, sessionId: row.sessionId, userId: row.userId, refreshToken: next, expiresAtMs: row.expiresAtMs };
       await this.burn(row.sessionId, familyId);
       return { ok: false, reason: 'reused', sessionId: row.sessionId, userId: row.userId, familyId };
     }
+    return { ok: true, sessionId: row.sessionId, userId: row.userId, refreshToken: next, expiresAtMs: row.expiresAtMs };
+  }
+
+  /** M6-6 (§16 / §61): a session opened on a payment phone lives only as long as that phone is in good standing.
+   *  Returns the refusal, or null when the refresh may go on. */
+  private async deviceBlock(row: RefreshTokenRow, familyId: string): Promise<RotateResult | null> {
+    const guard = row.deviceId && row.tenantId ? this.deviceGuard() : null;
+    if (!guard || !row.deviceId || !row.tenantId) return null;
+    const who = { sessionId: row.sessionId, userId: row.userId, tenantId: row.tenantId, deviceId: row.deviceId };
+    let block: Awaited<ReturnType<RefreshDeviceGuardPort['refreshBlock']>>;
+    try { block = await guard.refreshBlock({ tenantId: row.tenantId, userId: row.userId, deviceId: row.deviceId, sessionId: row.sessionId }); }
+    catch (e) {
+      console.warn('[refresh] payment-device check failed — refresh refused (fail closed):', (e as Error)?.message);
+      return { ok: false, reason: 'device_check_failed', ...who };
+    }
+    if (!block) return null;
+    if (block.endSession) await this.burn(row.sessionId, familyId);
+    return { ok: false, reason: block.code === 'DEVICE_REVOKED' ? 'device_revoked' : 'device_suspended', ...who };
+  }
+
+  /** Grace path: an extra valid token for the same session and family, ending when the session ends; nothing is retired. */
+  private async sibling(row: RefreshTokenRow, familyId: string): Promise<RotateResult> {
+    const next = newRawToken();
+    await this.repo.insert({ sessionId: row.sessionId, userId: row.userId, tokenHash: hashRefreshToken(next), expiresAtMs: row.expiresAtMs, rotatedFromId: row.id, familyId });
     return { ok: true, sessionId: row.sessionId, userId: row.userId, refreshToken: next, expiresAtMs: row.expiresAtMs };
   }
 
@@ -129,13 +170,19 @@ export class KyselyRefreshRepository implements RefreshRepository {
   async revokeFamily(familyId: string): Promise<void> {
     await sql`update refresh_tokens set revoked_at = now() where (family_id = ${familyId}::uuid or (family_id is null and session_id = ${familyId}::uuid)) and revoked_at is null`.execute(this.db);
   }
+  async createdAtMs(id: string): Promise<number | null> {
+    const res: any = await sql`select created_at from refresh_tokens where id = ${id}::uuid`.execute(this.db);
+    return res.rows[0] ? new Date(res.rows[0].created_at).getTime() : null;
+  }
 }
 
 export class InMemoryRefreshRepository implements RefreshRepository {
-  rows: (RefreshTokenRow & { tokenHash: string })[] = [];
+  rows: (RefreshTokenRow & { tokenHash: string; createdAtMs: number })[] = [];
+  constructor(private readonly clock: () => number = () => Date.now()) {}
   /** tests: the (tenant, device) a session was opened on — what the sessions row says in Postgres */
   sessionDevices = new Map<string, { tenantId: string; deviceId: string }>();
-  async insert(r: { sessionId: string; userId: string; tokenHash: string; expiresAtMs: number; rotatedFromId?: string | null; familyId?: string | null }) { const id = 'rt' + (this.rows.length + 1); this.rows.push({ id, sessionId: r.sessionId, userId: r.userId, tokenHash: r.tokenHash, expiresAtMs: r.expiresAtMs, revokedAt: null, supersededById: null, familyId: r.familyId ?? r.sessionId }); return id; }
+  async insert(r: { sessionId: string; userId: string; tokenHash: string; expiresAtMs: number; rotatedFromId?: string | null; familyId?: string | null }) { const id = 'rt' + (this.rows.length + 1); this.rows.push({ id, sessionId: r.sessionId, userId: r.userId, tokenHash: r.tokenHash, expiresAtMs: r.expiresAtMs, revokedAt: null, supersededById: null, familyId: r.familyId ?? r.sessionId, createdAtMs: this.clock() }); return id; }
+  async createdAtMs(id: string) { return this.rows.find((x) => x.id === id)?.createdAtMs ?? null; }
   async findByHash(h: string) { const r = this.rows.find((x) => x.tokenHash === h); if (!r) return null; const d = this.sessionDevices.get(r.sessionId); return { ...r, tenantId: d?.tenantId ?? null, deviceId: d?.deviceId ?? null }; }
   async supersede(id: string, newId: string) { const r = this.rows.find((x) => x.id === id); if (!r || r.supersededById || r.revokedAt) return false; r.supersededById = newId; return true; }
   async revokeAllForSession(sid: string) { for (const r of this.rows) if (r.sessionId === sid && !r.revokedAt) r.revokedAt = new Date().toISOString(); }

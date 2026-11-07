@@ -97,7 +97,7 @@ export function LoginScreen() {
       if (principal && principal.__outcome === 'MFA_REQUIRED') {
         setMfaNeeded(true); setErr('Enter your 6-digit verification code to continue.'); return;
       }
-      if (principal && principal.__outcome === 'BRANCH_SELECTION_REQUIRED') {
+      if (principal && (principal.__outcome === 'BRANCH_SELECTION_REQUIRED' || principal.needsBranchSelection)) {
         await loadBranches(); return;
       }
       if (principal) { setPrincipal(principal); return; }

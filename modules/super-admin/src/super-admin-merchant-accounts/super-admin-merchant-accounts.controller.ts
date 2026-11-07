@@ -3,11 +3,12 @@
 // activation, funding update, terminal assignment) are permissioned, audited operations added in later units — they
 // are NOT receptionist/checkout actions and never appear here.
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import type { SurchargeEnrollmentResult } from '@aipowersalon/api-contracts/platform';   // wire contract (typing ratchet)
 import { safeInet, ListQueries } from '@aipowersalon/database';
 import { SuperAdminGuard, AsyncExport, ValidatedBody, RequireStepUp } from '@aipowersalon/permissions/guards';
 import { SuperAdminMerchantAccountsService, type AdminCtx } from './super-admin-merchant-accounts.service';
 import { SuperAdminMerchantAccountsControllerListQueries } from './super-admin-merchant-accounts.list-queries';
-import { MA_FUNDING_BODY, MA_MID_BODY, MA_RATES_BODY, MA_REASON_BODY, MA_TERMINAL_BODY } from '../request-schemas-programs';   // BUILD_PLAN Phase 12 (#17)
+import { MA_FUNDING_BODY, MA_MID_BODY, MA_RATES_BODY, MA_REASON_BODY, MA_SURCHARGE_BODY, MA_TERMINAL_BODY } from '../request-schemas-programs';   // BUILD_PLAN Phase 12 (#17)
 
 function ctxFrom(req: any): AdminCtx { return { userId: req?.ctx?.userId, email: req?.ctx?.email, ip: safeInet(req?.ip) ?? undefined }; }
 
@@ -67,5 +68,11 @@ export class SuperAdminMerchantAccountsController {
   @RequireStepUp()
   @Post(':tenantId/terminals') assignTerminal(@Req() r: any, @Param('tenantId') tenantId: string, @Body(ValidatedBody(MA_TERMINAL_BODY)) body: any) {
     return this.svc.assignTerminal(ctxFrom(r), tenantId, body || {});
+  }
+
+  // Fiserv master build §9.2: record what Fiserv enrolled for surcharging (rate + written reference), or withdraw it. Audited.
+  @RequireStepUp()   // merged Nov 7 2026: a pricing change on the merchant — the same fresh step-up as rates / MID / funding
+  @Post(':tenantId/surcharge-enrollment') setSurcharge(@Req() r: any, @Param('tenantId') tenantId: string, @Body(ValidatedBody(MA_SURCHARGE_BODY, { strict: true })) body: any): Promise<SurchargeEnrollmentResult> {
+    return this.svc.setSurchargeEnrollment(ctxFrom(r), tenantId, body || {});
   }
 }

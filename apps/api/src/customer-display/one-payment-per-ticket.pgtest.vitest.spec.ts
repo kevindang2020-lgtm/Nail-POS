@@ -64,7 +64,7 @@ beforeAll(async () => {
   await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Gel Manicure',45,5000)`, [SVC, T, BR, cat]);
   await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'payments-checkout', $2::jsonb)`, [T, JSON.stringify({ customerDisplayCaptureMode: 'terminal' })]);
   await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn) values (gen_random_uuid(),$1,$2,'Clover Flex','paired','HSN1')`, [T, BR]);
-  await q(`insert into tenant_payment_config (tenant_id, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,'M1','https://bolt.cardpointe.com','enc')`, [T]);
+  await q(`insert into tenant_payment_config (tenant_id, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,'M1','https://bolt-uat.cardpointe.com/api','enc')`, [T]);
 }, 180000);
 
 const PERMS = ['pos.checkout.view', 'pos.checkout.take_payment', 'pos.checkout.cash_payment'];
@@ -77,7 +77,7 @@ const activeLock = async (ticketId: string) => (await q(`select source from chec
 function slowTerminal() {
   let answer!: (a: any) => void; let asked = 0;
   const pending = new Promise<any>((r) => { answer = r; });
-  const svc = new TerminalCaptureService(db as any, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async () => { asked++; return pending; } }) as any, (x) => x, undefined, new InMemoryTerminalLeases());
+  const svc = new TerminalCaptureService(db as any, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { asked++; const a = await pending; return a && a.approved && a.amountCents === 5000 ? { ...a, amountCents: i.amountCents } : a; } }) as any, (x) => x, undefined, new InMemoryTerminalLeases());
   return { svc, approve: () => answer({ approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'RR' + n, amountCents: 5000 }), asked: () => asked };
 }
 
@@ -128,7 +128,7 @@ describe('the display\'s charge goes to the terminal tied to its register (Oct 6
     const [front, back, bare] = (await q(`insert into pos_stations (tenant_id, branch_id, name) values ($1,$2,'Front Desk'), ($1,$2,'Back Register'), ($1,$2,'Pedicure Bar') returning id`, [T, BR])).map((r: any) => String(r.id));
     await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn, station_id) values ('term_front',$1,$2,'Front Clover','paired','HSN-FRONT',$3), ('term_back',$1,$2,'Back Clover','paired','HSN-BACK',$4)`, [T, BR, front, back]);
     const asked: string[] = [];
-    const svc = new TerminalCaptureService(db as any, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { asked.push(i.hsn); return { approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'R' + asked.length, amountCents: 5000 }; } }) as any, (x) => x, undefined, new InMemoryTerminalLeases());
+    const svc = new TerminalCaptureService(db as any, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { asked.push(i.hsn); return { approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'R' + asked.length, amountCents: i.amountCents }; } }) as any, (x) => x, undefined, new InMemoryTerminalLeases());
     const atRegister = async (reg: string) => { const row = await paying(); await q(`update customer_display_sessions set pos_station_id = $1 where id = $2`, [reg, row.id]); return row; };
     expect(await svc.capture(await atRegister(back) as any)).toMatchObject({ outcome: 'approved' });
     expect(await svc.capture(await atRegister(front) as any)).toMatchObject({ outcome: 'approved' });

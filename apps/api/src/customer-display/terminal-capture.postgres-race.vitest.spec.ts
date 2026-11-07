@@ -27,7 +27,7 @@ async function session(): Promise<any> {
 }
 const payment = async (ticketId: string) => ((await sql`select status, amount_cents, processor_transaction_id from payments where ticket_id = ${ticketId}::uuid`.execute(db)).rows as any[]);
 const ticketStatus = async (ticketId: string) => ((await sql`select status from tickets where id = ${ticketId}::uuid`.execute(db)).rows[0] as any).status;
-const device = (auth: () => Promise<any>) => () => ({ authCard: auth } as any);
+const device = (auth: (a?: any) => Promise<any>) => () => ({ authCard: auth } as any);
 
 describe.skipIf(!url)('TerminalCaptureService on real Postgres', () => {
   beforeAll(async () => {
@@ -50,11 +50,21 @@ describe.skipIf(!url)('TerminalCaptureService on real Postgres', () => {
   });
   let leases: InMemoryTerminalLeases;
   beforeEach(() => { leases = new InMemoryTerminalLeases(); });
-  const svc = (auth: () => Promise<any>) => new TerminalCaptureService(db as any, device(auth), (x) => x, undefined, leases);
+  const svc = (auth: (a?: any) => Promise<any>) => new TerminalCaptureService(db as any, device(auth), (x) => x, undefined, leases);
+
+  // Nov 5 2026 (Fiserv master build: a payment counts only when the approved amount matches exactly): a partial
+  // approval is NOT a paid ticket — the outcome is unknown and the ticket stays unpaid until verified.
+  it('an approval for a different amount than requested is unknown, never approved', async () => {
+    const row = await session();
+    const r = await svc(async (a: any) => ({ approved: true, retref: 'RR-PART', amountCents: a.amountCents - 100, respstat: 'A' })).capture(row);
+    expect(r).toMatchObject({ outcome: 'unknown' });
+    expect((await payment(row.ticketId)).some((p: any) => p.status === 'approved')).toBe(false);
+  });
 
   it('approved → an approved card payment with the retref, and the ticket is paid; a second tap is a duplicate (no second charge)', async () => {
     const row = await session(); let calls = 0;
-    const s = svc(async () => { calls++; return { approved: true, retref: 'RR1', amountCents: 5000, respstat: 'A' }; });
+    // the terminal approves exactly what it was asked for (the ticket's total due, tax included)
+    const s = svc(async (a: any) => { calls++; return { approved: true, retref: 'RR1', amountCents: a.amountCents, respstat: 'A' }; });
     expect(await s.capture(row)).toMatchObject({ outcome: 'approved', retref: 'RR1' });
     expect(await payment(row.ticketId)).toEqual([expect.objectContaining({ status: 'approved', processor_transaction_id: 'RR1' })]);
     expect(await ticketStatus(row.ticketId)).toBe('paid');

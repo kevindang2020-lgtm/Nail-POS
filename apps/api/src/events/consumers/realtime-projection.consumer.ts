@@ -79,7 +79,7 @@ function paycheckClients(e: DomainEvent<any>, action: string): Client[] {
 function announcementClients(e: DomainEvent<any>): Client[] {
   const p = e.payload ?? {};
   return [{ event: EVENTS.platformAnnouncementUpdated, payload: { announcementId: p.announcementId ?? e.aggregateId, version: p.version ?? null, action: p.action ?? null },
-    scope: 'salon', branchIds: Array.isArray(p.branchIds) ? p.branchIds.map(String) : [] }];
+    scope: 'salon', branchIds: Array.isArray(p.branchIds) ? p.branchIds.map(String).filter((b: string) => UUID_RE.test(b)) : [] }];   // only real branch ids name a room
 }
 /** BUILD_PLAN Phase 7 — the scheduling optimizer. A branch-scoped schedule.* event goes to that branch's room; a salon-wide
  *  one (no branch on the envelope) to the owner's room. Only ids + status cross; the screens refetch. */

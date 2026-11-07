@@ -11,7 +11,7 @@ export * from './cash-drawer/cash-drawer.dto';
 export { drawerCtx, drawerRun } from './cash-drawer/cash-drawer.http';   // used by the API today
 export { CashDrawerService } from './cash-drawer/cash-drawer.service';   // used by the API today
 export { CheckoutSettings, CustomerDisplayState, DEFAULT_CHECKOUT_SETTINGS, DisplayState, PaymentMethod, computeTotals, tipForPercent, tipOptions, validateCustomTip } from './checkout/checkout-display.dto';   // used by the API today
-export { resolveCheckoutSettings } from './checkout/checkout-settings.resolver';   // used by the API today
+export { resolveCheckoutSettings, resolveSurchargeEnrollment } from './checkout/checkout-settings.resolver';   // used by the API today
 export { KyselyCheckoutRepository } from './checkout/checkout.kysely.repository';   // used by the API today
 export { buildCustomerDisplayCheckout, type CustomerDisplayProjectionInput } from './checkout/customer-display-projection';   // 23-inch display: the customer-safe checkout (used by the API's customer display)
 export { refundThresholds } from './checkout/refund-approval';   // used by the API today

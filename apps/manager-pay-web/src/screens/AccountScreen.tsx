@@ -71,6 +71,9 @@ export function AccountScreen() {
     // Hand the PUSH token back FIRST — /push/unregister is authenticated, so it must run while the session still
     // exists; logging out first would leave this device registered (and receiving payment pushes) forever.
     await mobile.push.unregister();
+    // Manager Pay keeps the strict rule (Nov 5 2026): a Tap to Pay phone is often shared at the front desk, so signing out
+    // ends Face ID on it. The server no longer does that on logout (migration 841) — revoke it here while the session lives.
+    try { await disableFaceId(); } catch { /* clearFaceId below still wipes it locally */ }
     try { await authApi.logout(); } catch { /* best-effort */ }
     // Wipe the Keychain bearer token immediately — a token left behind outlives the sign-out and is resent on every
     // later request (exactly what someone with the device would look for); don't wait for a future 401 to clear it.

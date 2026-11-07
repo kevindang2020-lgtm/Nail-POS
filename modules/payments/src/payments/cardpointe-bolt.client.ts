@@ -11,15 +11,16 @@
 //   sess  none                                POST /api/v2/connect -> X-CardConnect-SessionKey header, echoed on calls
 //
 // Documented flow implemented here:
-//   POST {base}/api/v2/connect   { merchantId, hsn, force:true }      -> session key in X-CardConnect-SessionKey header
-//   POST {base}/api/v2/authCard  { merchantId, hsn, amount:"110.98",  -> gateway-style auth body (respstat/retref/...)
+//   POST {base}/api/v2/connect   { merchantId, hsn, force:false }     -> session key in X-CardConnect-SessionKey header
+//   POST {base}/api/v3/authCard  { merchantId, hsn, amount:"11098",   -> gateway-style auth body (respstat/retref/...)
 //                                  capture:"true", includeSignature:"true", includeAmountDisplay:"true",
 //                                  beep:"true", orderId }                (blocks while the customer taps/inserts)
 //   POST {base}/api/v2/disconnect{ merchantId, hsn }                  -> release the session
 //   POST {base}/api/v2/ping      { merchantId, hsn }                  -> connectivity check
 //   POST {base}/api/v2/display   { merchantId, hsn, text }            -> show a message on the terminal screen
-// Amounts are decimal strings in the major unit ("110.98"); respstat "A" approved / "B" retry / "C" declined — the
-// same response vocabulary the gateway probe validated.
+// Fiserv master build §6 (Nov 4 2026): authCard amounts use Fiserv's documented implied-decimal format ("11098" = $110.98);
+// the response amount must equal the request (TerminalCaptureService refuses "paid" otherwise). respstat "A" approved /
+// "B" retry / "C" declined. connect never forces (no session stealing). cancel / disconnect / listTerminals added.
 //
 // ── CONFIRMED ON BOLT UAT (Sep 27 2026, https://bolt-uat.cardpointe.com/api, the UAT MID) ──
 //   • Authorization header = the RAW key Fiserv issues (no prefix); the base is https://bolt-uat.cardpointe.com/api
@@ -34,6 +35,7 @@
 //     signature authCard returns — terminalSignatureDataUrl() accepts a gzip-compressed or plain bitmap / PNG / JPEG
 // The transport is injected (FetchLike) so the request building + response parsing ARE fully verified here against a
 // Bolt-shaped local server; only the physical-device leg needs a live terminal.
+import { withCode } from '@aipowersalon/api-contracts';
 import { gunzipSync } from 'node:zlib';
 import { ProcessorError } from './payment-processor.port';
 import type { FetchLike, FetchResponseLike } from './cardpointe.client';
@@ -44,6 +46,13 @@ export interface BoltConfig {
   /** Bolt Authorization api key (per-tenant, encrypted at rest in tenant_payment_config.bolt_api_key_enc). */
   apiKey: string;
   merchantId: string;
+  /** authCard amount wire format. Fiserv's published Terminal API docs: "two implied decimal places (for example, enter
+   *  "1000" to specify "$10.00")" → 'implied_decimal' (default). 'decimal' ("10.00") exists ONLY as an escape hatch if
+   *  Fiserv UAT proves otherwise — WAITING_FOR_FISERV: confirm with Ryan using $1.00 / $9.00 / $1,000.12 on the Compact. */
+  amountFormat?: 'implied_decimal' | 'decimal';
+  /** authCard API version. Fiserv's public Terminal API docs show /api/v3/authCard (default). The Nov 4 2026 Postman
+   *  starter uses /api/v4/authCard for the surcharge flow — switch only when Ryan confirms v4 for the Compact. */
+  authCardVersion?: 'v3' | 'v4';
 }
 
 export interface TerminalAuthInput {
@@ -76,6 +85,22 @@ export interface TerminalDevicePort {
 }
 
 function toDollars(cents: number): string { return (cents / 100).toFixed(2); }
+
+/** Integer cents → the authCard wire amount. Refuses anything that is not a positive whole number of cents. */
+export function boltWireAmount(cents: number, format: 'implied_decimal' | 'decimal' = 'implied_decimal'): string {
+  if (!Number.isInteger(cents) || cents <= 0) throw withCode(new ProcessorError(`Bolt amount must be a positive whole number of cents (got ${cents})`), 'VALIDATION_FAILED', { field: 'amountCents' });
+  return format === 'decimal' ? toDollars(cents) : String(cents);
+}
+
+/** The authCard response amount → integer cents. A value with a decimal point is major units ("10.00", and declines
+ *  answer "0.00"); a bare integer is implied-decimal cents ("1000" = $10.00). Anything else → undefined (never guessed). */
+export function boltResponseAmountCents(v: unknown): number | undefined {
+  if (v == null || v === '') return undefined;
+  const s = String(v).trim();
+  if (/^\d+\.\d{1,2}$/.test(s)) { const [a, b] = s.split('.'); return Number(a) * 100 + Number(b.padEnd(2, '0')); }
+  if (/^\d+$/.test(s)) return Number(s);
+  return undefined;
+}
 
 export class CardPointeBoltClient implements TerminalDevicePort {
   readonly name = 'cardpointe_bolt';
@@ -115,10 +140,13 @@ export class CardPointeBoltClient implements TerminalDevicePort {
     return { body, res };
   }
 
-  /** Establish a session with the physical terminal; Bolt returns the key in the X-CardConnect-SessionKey header. */
+  /** Establish a session with the physical terminal; Bolt returns the key in the X-CardConnect-SessionKey header.
+   *  force:false (Fiserv master build §6 + Fiserv docs: force:true "destroys any existing sessions and cancels in-flight
+   *  operations"). A terminal already in use by another register answers an error → the caller reports TERMINAL_BUSY;
+   *  we never steal another register's session or cancel its in-flight charge. */
   private async connect(hsn: string): Promise<void> {
-    const { res } = await this.post('/api/v2/connect', { merchantId: this.cfg.merchantId, hsn, force: true });
-    const key = res.headers?.get?.('x-cardconnect-sessionkey') || res.headers?.get?.('X-CardConnect-SessionKey') || null;
+    const { res } = await this.post('/api/v2/connect', { merchantId: this.cfg.merchantId, hsn, force: false });
+    const key = (res).headers?.get?.('x-cardconnect-sessionkey') || (res).headers?.get?.('X-CardConnect-SessionKey') || null;
     // Bolt returns the key with a ;ip suffix sometimes; keep only the key part.
     this.sessionKey = key ? String(key).split(';')[0] : null;
     if (!this.sessionKey) throw new ProcessorError('Bolt connect did not return a session key (X-CardConnect-SessionKey header missing).');
@@ -137,19 +165,35 @@ export class CardPointeBoltClient implements TerminalDevicePort {
     await this.post('/api/v2/display', { merchantId: this.cfg.merchantId, hsn, text });
   }
 
-  /** Bolt /api/v2/cancel: ends the request the terminal is showing (authCard returns with resptext "Cancelled"). */
+  /** POST /api/v2/listTerminals — the HSNs Fiserv has provisioned for this merchant (use THESE, not a printed serial). */
+  async listTerminals(): Promise<string[]> {
+    const { body } = await this.post('/api/v2/listTerminals', { merchantId: this.cfg.merchantId });
+    const list = Array.isArray(body?.terminals) ? body.terminals : Array.isArray(body) ? body : [];
+    return list.map((x: unknown) => String(x)).filter(Boolean);
+  }
+
+  /** POST /api/v2/cancel — stop an in-flight terminal prompt. Fiserv: a cancel cannot stop an authorization the terminal
+   *  service already sent to the Gateway, so the caller must still inquire by order id before any retry. */
   async cancel(hsn: string): Promise<void> {
-    if (!this.sessionKey) await this.connect(hsn);
+    if (!this.sessionKey) return;   // nothing of ours is in flight
     await this.post('/api/v2/cancel', { merchantId: this.cfg.merchantId, hsn });
   }
 
-  /** Prompt the terminal for a card and authorize+capture the amount. Blocks while the customer taps/inserts. */
+  /** POST /api/v2/disconnect — release OUR session (does not cancel an in-flight transaction). */
+  async disconnect(hsn: string): Promise<void> {
+    if (!this.sessionKey) return;
+    try { await this.post('/api/v2/disconnect', { merchantId: this.cfg.merchantId, hsn }); } finally { this.sessionKey = null; }
+  }
+
+  /** Prompt the terminal for a card and authorize+capture the amount. Blocks while the customer taps/inserts.
+   *  POST /api/v3/authCard (the version Fiserv documents); amount in the configured wire format (implied decimals). */
   async authCard(input: TerminalAuthInput): Promise<TerminalAuthResult> {
+    const amount = boltWireAmount(input.amountCents, this.cfg.amountFormat ?? 'implied_decimal');
     if (!this.sessionKey) await this.connect(input.hsn);
-    const { body: r } = await this.post('/api/v2/authCard', {
+    const { body: r } = await this.post(`/api/${this.cfg.authCardVersion === 'v4' ? 'v4' : 'v3'}/authCard`, {
       merchantId: this.cfg.merchantId,
       hsn: input.hsn,
-      amount: toDollars(input.amountCents),
+      amount,
       capture: 'true',
       // Kevin, Oct 6 2026: the cardholder signs ONCE, here on the Clover terminal (the customer display no longer asks).
       includeSignature: 'true',
@@ -158,7 +202,7 @@ export class CardPointeBoltClient implements TerminalDevicePort {
       ...(input.orderId ? { orderId: input.orderId } : {}),
     });
     const respstat = String(r?.respstat ?? '');
-    const amountCents = r?.amount != null && r?.amount !== '' ? Math.round(parseFloat(String(r.amount)) * 100) : undefined;
+    const amountCents = boltResponseAmountCents(r?.amount);
     return {
       approved: respstat === 'A',
       declined: respstat === 'C',

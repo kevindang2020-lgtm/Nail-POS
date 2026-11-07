@@ -4,6 +4,7 @@
 // tenant-scoped audit. Read-only; no secrets. Processors surfaced are Fiserv/CardPointe/Clover only.
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { parseScope, type OverviewScope } from '@aipowersalon/database';
+import { withCode } from '@aipowersalon/api-contracts';
 import type { ProviderSecrets } from '@aipowersalon/security';
 import { last4 } from './funding-display';
 import { merchantAccountsExportCsv, merchantAccountsExportFilename } from './merchant-accounts-export-core';
@@ -281,6 +282,34 @@ export class SuperAdminMerchantAccountsService {
     await this.repo.assignMid(tenantId, merchantId, this.validUuid(ctx.userId));
     await this.repo.writeAudit(ctx, 'mid_assigned', parseScope(tenantId), `MID assigned → ${merchantId}`, { previousMid, newMid: merchantId, branchId, reason });
     return { ok: true, idempotent: false, merchantId, previousMid, branchId };
+  }
+
+  /** Fiserv master build §9.2 — record a merchant's Fiserv Merchant Surcharge Program enrollment. AI PowerSalon cannot turn
+   *  surcharging on for a salon by itself: this records what FISERV enrolled (rate fixed per MID, 1.00%–3.00%) with
+   *  Fiserv's written reference. Checkout then surcharges only when the salon's own switch is on AND this is recorded;
+   *  the fee itself is still assessed by the provider on each authorization (never added locally). Audited. */
+  async setSurchargeEnrollment(ctx: AdminCtx, tenantId: string, body: any) {
+    const unscoped: OverviewScope = parseScope(undefined);
+    const merchant = await this.repo.merchantByTenant(unscoped, tenantId);
+    if (!merchant) throw withCode(new NotFoundException('Merchant account not found'), 'RESOURCE_NOT_FOUND');
+    const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
+    if (!reason) throw withCode(new BadRequestException('reason is required'), 'VALIDATION_FAILED', { field: 'reason' });
+    const enrolled = body?.enrolled === true;
+    const reference = typeof body?.reference === 'string' && body.reference.trim() ? body.reference.trim().slice(0, 200) : null;
+    let rateBps: number | null = null;
+    if (enrolled) {
+      rateBps = Number(body?.rateBps);
+      if (!Number.isInteger(rateBps) || rateBps < 100 || rateBps > 300) throw withCode(new BadRequestException('rateBps must be Fiserv\'s enrolled rate in basis points, 100–300 (1.00%–3.00%)'), 'VALIDATION_FAILED', { field: 'rateBps' });
+      if (!reference) throw withCode(new BadRequestException('reference (Fiserv\'s written enrollment confirmation) is required to enroll'), 'VALIDATION_FAILED', { field: 'reference' });
+    }
+    const branchId = typeof body?.branchId === 'string' && body.branchId ? body.branchId : null;
+    if (branchId && !(await this.repo.branchBelongsToTenant(branchId, tenantId))) throw withCode(new BadRequestException('branch does not belong to this tenant'), 'BRANCH_ACCESS_DENIED');
+    const r = await this.repo.setSurchargeEnrollment(tenantId, branchId, { enrolled, rateBps, reference: enrolled ? reference : null }, this.validUuid(ctx.userId));
+    if (!r) throw new NotFoundException(branchId ? 'This branch has no merchant account of its own' : 'Merchant account not found');
+    await this.repo.writeAudit(ctx, enrolled ? 'surcharge_enrollment_recorded' : 'surcharge_enrollment_withdrawn', parseScope(tenantId),
+      enrolled ? `Surcharge enrollment recorded at ${(rateBps! / 100).toFixed(2)}%` : 'Surcharge enrollment withdrawn',
+      { previous: r.previous, enrolled, rateBps, reference: enrolled ? reference : null, branchId, reason });
+    return { ok: true as const, enrolled, rateBps, branchId: branchId as string | null };
   }
 
   private validUuid(id?: string | null): string | null {

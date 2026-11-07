@@ -378,7 +378,7 @@ function TerminalDialog({ id, canEdit, registers, onClose, onChanged, onActivity
     finally { setBusy(null); }
   };
   return (
-    <FitDialog wide title={t ? t.label || t.id : tx('pt.terminal')} subtitle={t ? `${t.model ? lbl('pt.model.' + t.model, t.model) : tx('finance.notSet')} · ${t.branchName ?? tx('pt.allLocations')}` : undefined} onClose={onClose} busy={!!busy} testId="terminal-dialog"
+    <FitDialog wide title={t ? t.label || t.id : tx('pt.terminal')} subtitle={t ? `${t.model ? lbl('pt.model.' + t.model, t.model) : tx('finance.notSet')} · ${t.branchName ?? tx('payment.terminal.noLocation')}` : undefined} onClose={onClose} busy={!!busy} testId="terminal-dialog"
       footer={t ? <>
         <button type="button" className="fk-btn" onClick={() => d.reload()} disabled={!!busy} data-testid="refresh-status">{tx('pt.refreshStatus')}</button>
         {canEdit && t.paired && t.status !== 'DISABLED' ? <button type="button" className="fk-btn" onClick={test} disabled={!!busy} data-testid="test-connection">{busy === 'test' ? tx('pt.testing') : tx('pos.test_connection')}</button> : null}
@@ -387,9 +387,12 @@ function TerminalDialog({ id, canEdit, registers, onClose, onChanged, onActivity
         {canEdit ? <button type="button" className="fk-btn" onClick={() => setAsk({ kind: 'rename', value: t.label })} disabled={!!busy}>{tx('pos.rename')}</button> : null}
         {canEdit ? (t.status === 'DISABLED' ? <button type="button" className="fk-btn" disabled={!!busy} onClick={() => run('enable', () => posDevicesApi.enableTerminal(t.id), tx('pt.enabled', { label: t.label }))} data-testid="enable">{tx('pos.enable')}</button>
           : <button type="button" className="fk-btn danger" disabled={!!busy} onClick={() => setAsk({ kind: 'disable', value: '' })} data-testid="disable">{tx('pos.disable')}</button>) : null}
+        {/* Fiserv §5.2 (merged Nov 7 2026): a terminal paired with no location takes NO card payments anywhere until assigned */}
+        {canEdit && t.paired && !t.branchId ? <button type="button" className="fk-btn primary" disabled={!!busy} onClick={() => run('assign', () => posDevicesApi.assignTerminalLocation(t.id), tx('payment.terminal.assigned', { label: t.label }))} data-testid="assign-location">{tx('payment.terminal.assignHere')}</button> : null}
         {canEdit && t.paired ? <button type="button" className="fk-btn danger" disabled={!!busy} onClick={() => setAsk({ kind: 'unpair', value: '' })} data-testid="unpair">{tx('pos.unpair')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !t ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        {!t.branchId ? <div className="fk-preview bad" data-testid="unassigned-warning">{tx('payment.terminal.unassignedWarning')}</div> : null}
         <div className="fn-statusline"><StatusChip t={t} /><span className="fk-hint">{tx('pt.statusSource', { m: String(d.data.freshnessMinutes) })}</span></div>
         {t.attention.length ? <div className="fk-preview bad" data-testid="troubleshoot">{t.attention.map((a) => <div key={a}><b>{tx('pt.why.' + a)}</b> — {tx('pt.fix.' + a)}</div>)}</div> : null}
         <div className="fn-cols2">

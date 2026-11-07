@@ -68,7 +68,7 @@ export class KyselyAppointmentOversightGapRepo implements AppointmentOversightGa
       const r: any = await sql<{ cents: number }>`
         select coalesce(sum(amount_cents) filter (where approved_at is not null and approved_at::date = current_date), 0)::bigint as cents
         from payments
-        where ${sid ? sql`tenant_id = ${sid}` : sql`true`}
+        where not is_test and ${sid ? sql`tenant_id = ${sid}` : sql`true`}
       `.execute(this.db);
       return Number(r.rows?.[0]?.cents || 0);
     } catch { return 0; }

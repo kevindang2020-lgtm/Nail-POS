@@ -68,3 +68,43 @@ describe('installAuthRefresh', () => {
     expect(refreshableUrl('/api/v1/auth/biometric/enroll', '', 'https://pos.test')).toBe(true);
   });
 });
+
+// Nov 6 2026 — busy days on salon Wi-Fi: a renewal that got no answer or a 5xx is retried; only a clear "no" signs out.
+describe('installAuthRefresh: a network blip during renewal is not a sign-out', () => {
+  const server = (refreshAnswers: Array<'net' | number>) => {
+    let n = 0; let renewed = false; const calls: string[] = [];
+    const fetchImpl = vi.fn(async (input: any) => {
+      const url = typeof input === 'string' ? input : input.url; calls.push(url);
+      if (url.endsWith('/auth/refresh')) {
+        const a = refreshAnswers[Math.min(n++, refreshAnswers.length - 1)];
+        if (a === 'net') throw new TypeError('Failed to fetch');
+        if (a === 200) renewed = true;
+        return new Response('{}', { status: a });
+      }
+      return new Response('{}', { status: renewed ? 200 : 401 });
+    });
+    return { fetchImpl, calls, refreshes: () => n };
+  };
+  const sleeps: number[] = [];
+  const opts = { apiBase: 'https://api.test', sleep: async (ms: number) => { sleeps.push(ms); } };
+  it('no answer, then 503, then OK → still signed in (two retries, 1 s and 3 s apart)', async () => {
+    sleeps.length = 0;
+    const s = server(['net', 503, 200]); const win: any = { fetch: s.fetchImpl };
+    installAuthRefresh(win, opts);
+    expect((await win.fetch('https://api.test/pos/x')).status).toBe(200);
+    expect(s.refreshes()).toBe(3);
+    expect(sleeps).toEqual([1000, 3000]);
+  });
+  it('a clear 401 from the renewal is final at once — no retries, the app shows sign-in', async () => {
+    const s = server([401]); const win: any = { fetch: s.fetchImpl };
+    installAuthRefresh(win, opts);
+    expect((await win.fetch('https://api.test/pos/x')).status).toBe(401);
+    expect(s.refreshes()).toBe(1);
+  });
+  it('the network stays down through every retry → the original 401 is returned (nothing loops)', async () => {
+    const s = server(['net']); const win: any = { fetch: s.fetchImpl };
+    installAuthRefresh(win, opts);
+    expect((await win.fetch('https://api.test/pos/x')).status).toBe(401);
+    expect(s.refreshes()).toBe(3);
+  });
+});
