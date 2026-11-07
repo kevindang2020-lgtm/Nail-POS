@@ -279,7 +279,11 @@ export function parseListQuery(raw: Record<string, any> | null | undefined, spec
 
   // ── sort: `a,-b` or the legacy `field` + direction pair
   const sorts = spec.sorts ?? {};
-  const sortHit = first(q0, ['sort', ...(spec.sortParams ?? DEFAULT_SORT_PARAMS)]);   // the canonical `sort` is always accepted
+  // the canonical `sort` is accepted — unless the screen declares its own `sort` FILTER (a named order such as newest / a-z /
+  // last order, read by the repository): then `sort` is that filter's value, never a column list. Fixed Nov 7 2026: the
+  // Supplier Directory (and 14 other screens with a sort filter) answered INVALID_SORT "newest is not a sort order here".
+  const sortParamNames = declared.sort ? (spec.sortParams ?? DEFAULT_SORT_PARAMS).filter((n) => n !== 'sort') : ['sort', ...(spec.sortParams ?? DEFAULT_SORT_PARAMS)];
+  const sortHit = first(q0, sortParamNames);
   let sortKeys: Array<{ field: string; direction: 'asc' | 'desc' }>;
   if (sortHit) {
     if (typeof sortHit.value !== 'string') throw new ListQueryError('INVALID_SORT', 'sort must be text', { field: sortHit.name });

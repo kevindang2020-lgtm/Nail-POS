@@ -1038,6 +1038,336 @@
    ],
    "scroll": "page",
    "scrollReason": "Customer Directory SUNMI addendum §01: \"Retain the original intentional vertical page scroll\" — the directory is too information-rich for one screen. No sideways scroll; every module present."
+  },
+  {
+   "key": "services",
+   "title": "Services & Products",
+   "routes": [
+    "/services"
+   ],
+   "screens": [
+    "POSServicesScreen"
+   ],
+   "guide": "AI_PowerSalon_SERVICES__PRODUCTS_2",
+   "scroll": "page",
+   "scrollReason": "Services & Products SUNMI addendum §01: \"a long dashboard intentionally uses ONE main vertical scroll, with independent pagination in the two catalog lists\" — no sideways scroll; every module present.",
+   "modules": [
+    {
+     "id": "toolbar",
+     "label": "Search with scope + period / date field"
+    },
+    {
+     "id": "kpis",
+     "label": "KPI row 1: Total Services, Active Products, Online Bookable, Low Stock Alerts, Avg. Service Price",
+     "minItems": 5
+    },
+    {
+     "id": "kpis-2",
+     "label": "KPI row 2: Retail Revenue Today, Service Mix Margin, Top Category, Package Sales, Add-On Conversion",
+     "minItems": 5
+    },
+    {
+     "id": "service-menu",
+     "label": "Service Menu (paged, View All)"
+    },
+    {
+     "id": "product-catalog",
+     "label": "Retail Product Catalog (paged, View All)"
+    },
+    {
+     "id": "bundles",
+     "label": "Bundles / Packages / Membership Add-ons"
+    },
+    {
+     "id": "insights",
+     "label": "AI Pricing & Menu Insights"
+    },
+    {
+     "id": "inventory-alerts",
+     "label": "Inventory Alerts (canonical Stock Alerts)"
+    },
+    {
+     "id": "detail",
+     "label": "Service / Product Detail"
+    },
+    {
+     "id": "branches",
+     "label": "Branch Overrides"
+    },
+    {
+     "id": "charts",
+     "label": "Service Mix, Retail Mix, Category Revenue, Add-On Conversion",
+     "minItems": 4
+    },
+    {
+     "id": "quick-actions",
+     "label": "Eight Quick Actions",
+     "items": "button",
+     "minItems": 8
+    },
+    {
+     "id": "export",
+     "label": "Header: Export Data"
+    },
+    {
+     "id": "add-new",
+     "label": "Header: Add New"
+    }
+   ]
+  },
+  {
+   "key": "svc-categories",
+   "title": "Service Categories",
+   "routes": [
+    "/tenant/services/categories"
+   ],
+   "screens": [
+    "POSServiceCategoriesScreen"
+   ],
+   "guide": "AI_PowerSalon_SERVICE_CATEGORIES",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Categories + Total Services (equal cards)",
+     "minItems": 2
+    },
+    {
+     "id": "toolbar",
+     "label": "Search categories / services, filters, From / To"
+    },
+    {
+     "id": "new-category",
+     "label": "New Category"
+    },
+    {
+     "id": "chart",
+     "label": "Services per Category"
+    },
+    {
+     "id": "breakdown",
+     "label": "Breakdown: Category / Services / Share"
+    },
+    {
+     "id": "directory",
+     "label": "Category Directory (records, actions, numbered pages)"
+    }
+   ]
+  },
+  {
+   "key": "svc-pricing",
+   "title": "Service Pricing",
+   "routes": [
+    "/tenant/services/pricing"
+   ],
+   "screens": [
+    "POSServicePricingScreen"
+   ],
+   "guide": "AI_PowerSalon_SERVICE_PRICING",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Services, Average Price, Lowest, Highest (one row of four)",
+     "minItems": 4
+    },
+    {
+     "id": "toolbar",
+     "label": "Catalog search + category / status filters + period"
+    },
+    {
+     "id": "pricing-tabs",
+     "label": "Price List | Price History | Customer History",
+     "items": "[role=tab]",
+     "minItems": 3
+    },
+    {
+     "id": "price-list",
+     "label": "Service / Category / Duration / Price table with pager"
+    }
+   ]
+  },
+  {
+   "key": "svc-addons",
+   "title": "Add-Ons Management",
+   "routes": [
+    "/tenant/services/add-ons"
+   ],
+   "screens": [
+    "POSServiceAddOnsScreen"
+   ],
+   "guide": "AI_PowerSalon_ADD-ONS_MANAGEMENT",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Total Add-Ons, Active, Services Offering, Avg Price",
+     "minItems": 4
+    },
+    {
+     "id": "new-add-on",
+     "label": "+ New Add-On"
+    },
+    {
+     "id": "toolbar",
+     "label": "Search add-ons + All statuses + period"
+    },
+    {
+     "id": "add-ons-list",
+     "label": "All Add-Ons: ADD-ON, SERVICE, CATEGORY, PRICE, + TIME, TAXABLE, STATUS, ACTIONS"
+    },
+    {
+     "id": "nav-links",
+     "label": "Back to Services / Categories / Pricing"
+    }
+   ]
+  },
+  {
+   "key": "discounts",
+   "title": "Discounts Management",
+   "routes": [
+    "/tenant/services/discounts"
+   ],
+   "screens": [
+    "POSDiscountsScreen"
+   ],
+   "guide": "AI_PowerSalon__Discounts_Management",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Active Discounts, Percent-Off, Fixed-Amount, Redemptions, Expiring Soon",
+     "minItems": 5
+    },
+    {
+     "id": "manage-promotions",
+     "label": "Manage in Promotions"
+    },
+    {
+     "id": "toolbar",
+     "label": "Search coupon / customer / phone / ticket + dates + status / type"
+    },
+    {
+     "id": "discounts-list",
+     "label": "Live & Scheduled Discounts: seven original columns + pager"
+    }
+   ]
+  },
+  {
+   "key": "products",
+   "title": "Products Management",
+   "routes": [
+    "/tenant/products"
+   ],
+   "screens": [
+    "POSProductsScreen"
+   ],
+   "guide": "AI_PowerSalon_Products_Management",
+   "scroll": "page",
+   "scrollReason": "Products SUNMI addendum §02: \"Keep vertical scrolling for long records\" — no sideways scroll; every module present.",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Products, Need Reorder, Retail Value",
+     "minItems": 3
+    },
+    {
+     "id": "new-product",
+     "label": "Gold + New Product"
+    },
+    {
+     "id": "toolbar",
+     "label": "Universal search + period + filters"
+    },
+    {
+     "id": "products-list",
+     "label": "Product / SKU / Brand-Category / On Hand / Status / Retail + Add Stock / Archive + pager"
+    }
+   ]
+  },
+  {
+   "key": "inventory",
+   "title": "Inventory Management",
+   "routes": [
+    "/tenant/inventory"
+   ],
+   "screens": [
+    "TenantInventoryScreen"
+   ],
+   "guide": "AI_PowerSalon_Inventory_Management",
+   "scroll": "page",
+   "scrollReason": "Inventory SUNMI addendum §01: \"maintain vertical page scrolling and eight functional tabs\" — the inventory list scrolls vertically; no sideways page scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "scan-receipt",
+     "label": "Scan Receipt"
+    },
+    {
+     "id": "add-product",
+     "label": "+ Add Product"
+    },
+    {
+     "id": "kpis",
+     "label": "Products, Bottles / Units, Open, Unopened, Low Stock, Out of Stock, Expiring Soon, Pending Imports + Inventory Value",
+     "minItems": 9
+    },
+    {
+     "id": "inv-ai",
+     "label": "AI Inventory Assistant (entitlement banner)"
+    },
+    {
+     "id": "inv-tabs",
+     "label": "Eight tabs: All Inventory, Technician Reports, Purchase Orders, Transfers, Counts, Catalog, Recipes, Alerts",
+     "items": "[role=tab]",
+     "minItems": 8
+    },
+    {
+     "id": "inv-products",
+     "label": "All Inventory list (Add Stock / Bottles / Edit) + pager"
+    }
+   ]
+  },
+  {
+   "key": "cash-drawer",
+   "title": "Cash Drawer",
+   "routes": [
+    "/cash-drawer"
+   ],
+   "screens": [
+    "POSCashDrawerScreen"
+   ],
+   "guide": "AI_PowerSalon_CASH_DRAWER",
+   "modules": [
+    {
+     "id": "cdr-session",
+     "label": "Session header: date, register, status, Refresh, Export"
+    },
+    {
+     "id": "kpis",
+     "label": "Opening Float, Cash Sales, Refunds, Expected in Drawer, Variance",
+     "minItems": 5
+    },
+    {
+     "id": "panel-float",
+     "label": "Opening Float / Set Float"
+    },
+    {
+     "id": "panel-moves",
+     "label": "Cash In / Cash Out / Record"
+    },
+    {
+     "id": "panel-count",
+     "label": "Count & Reconcile / Reconcile"
+    },
+    {
+     "id": "drawer-activity",
+     "label": "Cash Drawer Activity (search, period, pages) + Drawer History"
+    },
+    {
+     "id": "cdr-ai",
+     "label": "AI Fraud / Money Protection (bottom)"
+    }
+   ]
   }
  ]
 }

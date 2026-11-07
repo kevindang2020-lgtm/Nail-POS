@@ -149,6 +149,50 @@ export class CashDrawerRepository {
       total, page, pageSize: f.pageSize, pages };
   }
 
+  /** Cash Drawer Activity (SUNMI Cash Drawer addendum §08, Nov 7 2026): every cash event of one register over a period of
+   *  the BRANCH's business days, newest first — opening floats, cash sales, cash refunds and cash in / out — read from the
+   *  SAME rows and filters the drawer's own math uses (computeRegisterCash / computeMovements), so the ledger always adds
+   *  up to the cards. A customer appears only through Ticket → Customer (never guessed from an amount); the phone is
+   *  matched on its digits but never returned. Read-only. */
+  async activity(ctx: DrawerCtx, branchId: string, registerId: string, f: { from: string; to: string; kind: string | null; q: string; page: number; pageSize: number }) {
+    const T = ctx.tenantId; const tz = await this.zone(ctx, branchId);
+    const q = f.q.trim().slice(0, 100); const ql = q.toLowerCase(); const like = '%' + ql.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
+    const digits = q.replace(/\D/g, ''); const ticketNo = /^#?\d+$/.test(q) ? q.replace(/^#/, '') : '';
+    const day = sql`(p.created_at at time zone ${tz})::date`;
+    const pay = sql`p.tenant_id = ${T} and p.branch_id = ${branchId} and p.method = 'cash' and ${day} between ${f.from}::date and ${f.to}::date and ${this.registerFilter(ctx, branchId, registerId)}`;
+    const ev = sql`
+      select 'sale'::text as kind, p.id::text as id, to_char(${day}, 'YYYY-MM-DD') as bdate, p.created_at as at, p.amount_cents::bigint as cin, 0::bigint as cout,
+             p.status::text as state, p.ticket_id, p.created_by_user_id as actor, null::text as reason
+        from payments p where ${pay} and p.status in (${sql.join([...REVENUE_BEARING_STATUSES])})
+         and (p.ticket_id is null or not exists (select 1 from cash_payment_confirmations c where c.ticket_id = p.ticket_id and c.tenant_id = ${T} and c.status = 'confirmed'))
+      union all
+      select 'refund', p.id::text, to_char(${day}, 'YYYY-MM-DD'), p.created_at, 0, p.amount_cents, p.status, p.ticket_id, p.created_by_user_id, null
+        from payments p where ${pay} and p.status = 'refunded'
+      union all
+      select case when m.direction = 'in' then 'cash_in' else 'cash_out' end, m.id::text, to_char(m.business_date, 'YYYY-MM-DD'), m.created_at,
+             case when m.direction = 'in' then m.amount_cents else 0 end, case when m.direction = 'out' then m.amount_cents else 0 end,
+             case when m.voided_at is null then 'recorded' else 'voided' end, null::uuid, m.created_by_user_id, coalesce(nullif(m.reason, ''), m.note)
+        from cash_drawer_movements m where m.tenant_id = ${T} and m.branch_id = ${branchId} and m.register_id = ${registerId} and m.business_date between ${f.from}::date and ${f.to}::date
+      union all
+      select 'float', s.id::text, to_char(s.business_date, 'YYYY-MM-DD'), coalesce(s.opened_at, s.created_at), s.opening_float_cents, 0, s.status, null::uuid, s.opened_by_user_id, null
+        from cash_drawer_sessions s where s.tenant_id = ${T} and s.branch_id = ${branchId} and s.register_id = ${registerId} and s.business_date between ${f.from}::date and ${f.to}::date and s.opened_at is not null`;
+    const from = sql`from (${ev}) e left join tickets t on t.id = e.ticket_id and t.tenant_id = ${T}
+      left join customers cu on cu.id = t.customer_id and cu.tenant_id = ${T} left join users u on u.id = e.actor and u.tenant_id = ${T}`;
+    const w = sql`(${f.kind}::text is null or e.kind = ${f.kind}) and (${q} = ''
+      or lower(coalesce(cu.full_name, '')) like ${like} or lower(coalesce(u.full_name, u.email, '')) like ${like} or lower(coalesce(e.reason, '')) like ${like}
+      or (${ticketNo} <> '' and t.ticket_number = ${ticketNo})
+      or (length(${digits}) >= 4 and regexp_replace(coalesce(cu.normalized_phone, ''), '\D', '', 'g') like ${'%' + digits + '%'}))`;
+    const agg = (await sql<{ n: number; cin: number; cout: number }>`select count(*)::int as n, coalesce(sum(e.cin) filter (where e.state <> 'voided'), 0)::bigint as cin,
+        coalesce(sum(e.cout) filter (where e.state <> 'voided'), 0)::bigint as cout ${from} where ${w}`.execute(this.db)).rows[0];
+    const total = num(agg?.n); const pages = Math.max(1, Math.ceil(total / f.pageSize)); const page = Math.min(Math.max(1, f.page), pages);
+    const rows = (await sql<any>`select e.kind, e.id, e.bdate, e.at, e.cin, e.cout, e.state, e.reason, e.ticket_id, t.ticket_number, cu.full_name as customer, coalesce(u.full_name, u.email) as actor
+      ${from} where ${w} order by e.at desc, e.id desc limit ${f.pageSize} offset ${(page - 1) * f.pageSize}`.execute(this.db)).rows;
+    return { items: rows.map((r: any) => ({ kind: String(r.kind), id: String(r.id), businessDate: String(r.bdate), at: r.at ? new Date(r.at).toISOString() : null,
+        cashInCents: num(r.cin), cashOutCents: num(r.cout), state: String(r.state), reason: r.reason ?? null, ticketId: r.ticket_id ?? null, ticketNumber: r.ticket_number ?? null,
+        customer: r.customer ?? null, employee: r.actor ?? null })),
+      totals: { cashInCents: num(agg?.cin), cashOutCents: num(agg?.cout) }, from: f.from, to: f.to, total, page, pageSize: f.pageSize, pages };
+  }
+
   /** Set/adjust the opening float. Doesn't downgrade an already-reconciled drawer's status. */
   async open(ctx: DrawerCtx, branchId: string, registerId: string, date: string, floatCents: number): Promise<void> {
     await this.db.transaction().execute(async (trx) => {
@@ -273,7 +317,7 @@ export class CashDrawerRepository {
   async listMovements(ctx: DrawerCtx, branchId: string, registerId: string, date: string): Promise<CashMovement[]> {
     const rows = await this.db.selectFrom('cash_drawer_movements').selectAll()
       .where('tenant_id', '=', ctx.tenantId).where('branch_id', '=', branchId).where('register_id', '=', registerId).where('business_date', '=', date)
-      .orderBy('created_at', 'desc').execute().catch(() => [] as any[]);
+      .orderBy('created_at', 'desc').execute();   // a failed read fails (it read as "no movements" — Nov 7 2026)
     return rows.map((r: any) => ({ id: r.id, direction: r.direction, amountCents: num(r.amount_cents), reason: r.reason, note: r.note, createdAt: r.created_at ? new Date(r.created_at).toISOString() : null, voided: !!r.voided_at }));
   }
 

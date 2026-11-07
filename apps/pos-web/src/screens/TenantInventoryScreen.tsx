@@ -111,9 +111,9 @@ export function TenantInventoryScreen() {
           : kpis.map((k) => <KpiCard key={k.id} testId={'kpi-' + k.id} label={k.label} value={k.value} sub={k.sub} tone={k.tone} onClick={k.onClick} />)}
       </div>
       {m?.stockDrift ? <div className="fk-note warn" role="status" data-testid="drift-note"><span>{tx('inv.driftBanner', { n: fmtNumber(m.stockDrift) })}</span></div> : null}
-      <div className="inv2-ai"><AiAssistantPanel packageCode="ai_inventory_assistant" cta={tx('pos.suggest_reorders')} action="reorder" buildPrompt={() => tx('pos.nail_salon_inventory_v0_items_needing_14tm', { v0: m ? tx('pos.lowstock_low_outofstock_out_of_stock', { lowStock: String(m.lowStock), outOfStock: String(m.outOfStock) }) : '', v1: tx('pos.none_currently') })} /></div>
+      <div className="inv2-ai" data-module-id="inv-ai"><AiAssistantPanel packageCode="ai_inventory_assistant" cta={tx('pos.suggest_reorders')} action="reorder" buildPrompt={() => tx('pos.nail_salon_inventory_v0_items_needing_14tm', { v0: m ? tx('pos.lowstock_low_outofstock_out_of_stock', { lowStock: String(m.lowStock), outOfStock: String(m.outOfStock) }) : '', v1: tx('pos.none_currently') })} /></div>
       <div className="inv2-tabs" ref={listTop}>
-        <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('inv.tabs')}>
+        <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('inv.tabs')} data-module-id="inv-tabs">
           {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={'tab-' + x}>
             {tx('inv.tab.' + x)}{x === 'reports' && m?.pendingReports ? <span className="inv2-count">{m.pendingReports}</span> : x === 'alerts' && m?.openAlerts ? <span className="inv2-count bad">{m.openAlerts}</span> : null}</button>)}
         </div>

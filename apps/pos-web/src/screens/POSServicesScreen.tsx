@@ -291,7 +291,7 @@ export function POSServicesScreen() {
           {([['addService', () => setDialog({ kind: 'service', service: null }), 'services.edit'], ['addProduct', () => setDialog({ kind: 'product' }), 'inventory.create'], ['editPricing', () => nav('/tenant/services/pricing'), 'services.view'],
             ['createBundle', () => setDialog({ kind: 'bundle' }), 'services.edit'], ['manageInventory', () => nav('/tenant/inventory'), 'inventory.view'], ['updateBooking', () => nav('/tenant/services/pricing?online=true'), 'services.view'],
             ['importCatalog', () => setDialog({ kind: 'import' }), 'services.edit'], ['viewReports', () => nav('/tenant/reports/services'), 'services.view']] as const).map(([key, fn, perm]) =>
-            <button key={key} type="button" className="fk-btn ghost cg-qa" onClick={fn} disabled={!can(perm)} data-testid={'qa-' + key}>{tx('cg.qa.' + key)}</button>)}
+            <button key={key} type="button" className="fk-btn ghost cg-qa" onClick={fn} disabled={!can(perm)} title={!can(perm) ? tx('people.fit.noPermission') : undefined} data-testid={'qa-' + key}>{tx('cg.qa.' + key)}</button>)}
         </div>
       </FitPanel>
 

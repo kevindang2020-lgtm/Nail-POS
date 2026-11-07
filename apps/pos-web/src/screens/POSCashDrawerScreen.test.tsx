@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
-vi.mock('../api/posCashDrawerApi', async (orig) => ({ ...(await orig<typeof import('../api/posCashDrawerApi')>()), posCashDrawerApi: { registers: vi.fn(), state: vi.fn(), open: vi.fn(), reconcile: vi.fn(), movement: vi.fn(), movements: vi.fn(), voidMovement: vi.fn(), approve: vi.fn(), history: vi.fn() } }));
+vi.mock('../api/posCashDrawerApi', async (orig) => ({ ...(await orig<typeof import('../api/posCashDrawerApi')>()), posCashDrawerApi: { registers: vi.fn(), state: vi.fn(), open: vi.fn(), reconcile: vi.fn(), movement: vi.fn(), movements: vi.fn(), voidMovement: vi.fn(), approve: vi.fn(), history: vi.fn(), activity: vi.fn() } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 vi.mock('../components/AiAssistantPanel', () => ({ AiAssistantPanel: () => <div data-testid="money-protection" /> }));
 import { posCashDrawerApi } from '../api/posCashDrawerApi';
@@ -16,6 +16,9 @@ const drawer = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const activity = (items: any[], over: Record<string, unknown> = {}) => ({ preset: 'session', from: TODAY, to: TODAY, items, totals: { cashInCents: items.reduce((a, r) => a + (r.state === 'voided' ? 0 : r.cashInCents), 0), cashOutCents: items.reduce((a, r) => a + (r.state === 'voided' ? 0 : r.cashOutCents), 0) }, total: items.length, page: 1, pageSize: 3, pages: 1, ...over });
+const row = (over: Record<string, unknown>) => ({ kind: 'sale', id: 'r1', businessDate: TODAY, at: '2026-06-16T15:00:00Z', cashInCents: 0, cashOutCents: 0, state: 'approved', reason: null, ticketId: null, ticketNumber: null, customer: null, employee: null, ...over });
+
 describe('POSCashDrawerScreen (register reconciliation)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -23,6 +26,7 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     (posCashDrawerApi.voidMovement as any).mockResolvedValue(drawer());
     (posCashDrawerApi.registers as any).mockResolvedValue({ registers: [{ registerId: 'main', name: 'Main register' }] });
     (posCashDrawerApi.history as any).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10, pages: 1 });
+    (posCashDrawerApi.activity as any).mockResolvedValue(activity([]));
   });
 
   it('shows the expected-cash breakdown', async () => {
@@ -46,10 +50,10 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
 
   it('voids a movement from the list', async () => {
     (posCashDrawerApi.state as any).mockResolvedValue(drawer());
-    (posCashDrawerApi.movements as any).mockResolvedValue({ businessDate: '2026-06-16', movements: [{ id: 'mv1', direction: 'out', amountCents: 500, reason: 'petty', note: null, createdAt: null, voided: false }] });
+    (posCashDrawerApi.activity as any).mockResolvedValue(activity([row({ kind: 'cash_out', id: 'mv1', cashOutCents: 500, state: 'recorded', reason: 'petty', employee: 'Fran Desk' })]));
     (posCashDrawerApi.voidMovement as any).mockResolvedValue(drawer());
     render(<POSCashDrawerScreen />);
-    fireEvent.click(await screen.findByText('Void'));
+    fireEvent.click(await screen.findByTestId('act-void'));
     await waitFor(() => expect(posCashDrawerApi.voidMovement).toHaveBeenCalledWith('mv1', TODAY, 'main'));
   });
 
@@ -58,7 +62,7 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     (posCashDrawerApi.movement as any).mockResolvedValue(drawer({ paidOutCents: 500, expectedCashCents: 17150 }));
     render(<POSCashDrawerScreen />);
     await screen.findByText('Cash Drawer');
-    fireEvent.click(screen.getByText('Cash out'));                        // direction
+    fireEvent.click(screen.getByRole('button', { name: 'Cash out' }));                        // direction
     fireEvent.change(await screen.findByLabelText(/Amount/), { target: { value: '5.00' } });
     fireEvent.click(screen.getByText('Record'));
     await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledWith('out', 500, undefined, undefined, TODAY, expect.any(String), 'main'));
@@ -70,7 +74,7 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     (posCashDrawerApi.movement as any).mockRejectedValueOnce(new Error('network')).mockResolvedValue(drawer({ paidOutCents: 500, expectedCashCents: 17150 }));
     render(<POSCashDrawerScreen />);
     await screen.findByText('Cash Drawer');
-    fireEvent.click(screen.getByText('Cash out'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cash out' }));
     fireEvent.change(await screen.findByLabelText(/Amount/), { target: { value: '5.00' } });
     fireEvent.click(screen.getByText('Record'));
     await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledTimes(1));
@@ -94,7 +98,7 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     expect(screen.getByText('Cash with no register')).toBeTruthy();
     fireEvent.change(pick, { target: { value: 'st-front' } });
     await waitFor(() => expect(posCashDrawerApi.state).toHaveBeenCalledWith(TODAY, 'st-front'));
-    await waitFor(() => expect(posCashDrawerApi.movements).toHaveBeenCalledWith(TODAY, 'st-front'));
+    await waitFor(() => expect(posCashDrawerApi.activity).toHaveBeenCalledWith(expect.objectContaining({ registerId: 'st-front', date: TODAY })));   // the register's own ledger
     fireEvent.change(await screen.findByLabelText(/Counted cash/), { target: { value: '176.50' } });
     fireEvent.click(screen.getByText('Reconcile'));
     await waitFor(() => expect(posCashDrawerApi.reconcile).toHaveBeenCalledWith(17650, undefined, TODAY, expect.any(String), 'st-front', expect.objectContaining({ expectedCashCents: 17650 })));
@@ -113,11 +117,13 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     (posCashDrawerApi.approve as any).mockResolvedValue(drawer({ countedCents: 12000, varianceCents: -5650, status: 'discrepancy', approvalRequired: true, approvedAt: '2026-06-16T22:00:00Z', approvedBy: 'Mo Manager', approvalNote: 'Change given twice' }));
     (posCashDrawerApi.history as any).mockResolvedValue({ items: [{ businessDate: '2026-06-15', registerId: 'main', register: null, status: 'reconciled', openingFloatCents: 10000, expectedCashCents: 15000, countedCents: 15000, varianceCents: 0, countedAt: null, countedBy: 'Fran Desk', notes: 'all good', approvalRequired: false, approvedAt: null, approvedBy: null, approvalNote: null, denominations: null }], total: 11, page: 1, pageSize: 10, pages: 2 });
     render(<POSCashDrawerScreen />);
+    fireEvent.click(await screen.findByTestId('tab-history'));
     expect(await screen.findByTestId('hist-row')).toHaveTextContent('Fran Desk');
-    expect(screen.getByTestId('hist-pager').querySelectorAll('button')).toHaveLength(2);
+    expect(screen.getByTestId('hist-pager').querySelector('[aria-current="page"]')).toHaveTextContent('1');
     fireEvent.click(screen.getByTestId('by-denom'));
     fireEvent.change(screen.getByTestId('denom-10000'), { target: { value: '1' } });
     fireEvent.change(screen.getByTestId('denom-1000'), { target: { value: '2' } });
+    fireEvent.click(screen.getByTestId('denom-use'));
     expect((screen.getByTestId('count-input') as HTMLInputElement).value).toBe('120.00');
     fireEvent.click(screen.getByText('Reconcile'));
     await waitFor(() => expect(posCashDrawerApi.reconcile).toHaveBeenCalledWith(12000, undefined, TODAY, expect.any(String), 'main', { expectedCashCents: 17650, denominations: { '10000': 1, '1000': 2 } }));
@@ -134,6 +140,7 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     (posCashDrawerApi.history as any).mockResolvedValue({ items: [{ businessDate: '2026-06-15', registerId: 'main', register: null, status: 'discrepancy', openingFloatCents: 10000, expectedCashCents: 15000, countedCents: 12000, varianceCents: -3000, countedAt: null, countedBy: 'Fran Desk', notes: null, approvalRequired: true, approvedAt: '2026-06-15T23:00:00Z', approvedBy: 'Mo Manager', approvalNote: 'Change given twice', denominations: { '10000': 1, '1000': 2 } }], total: 1, page: 1, pageSize: 10, pages: 1 });
     (posCashDrawerApi.movements as any).mockImplementation(async (date?: string) => ({ businessDate: date, movements: date === '2026-06-15' ? [{ id: 'm1', direction: 'out', amountCents: 2000, reason: 'Supplies', note: null, createdAt: null, voided: false }] : [] }));
     const { container } = render(<POSCashDrawerScreen />);
+    fireEvent.click(await screen.findByTestId('tab-history'));
     fireEvent.click(await screen.findByTestId('hist-row'));
     const ov = await screen.findByTestId('hist-overlay');
     expect(ov).toHaveTextContent('Mo Manager'); expect(ov).toHaveTextContent('$100 × 1');
@@ -142,6 +149,54 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     fireEvent.click(screen.getByTestId('hist-overlay-close'));
     expect(screen.queryByTestId('hist-overlay')).toBeNull();
     const work = container.querySelector('.work')!;
-    expect(work.lastElementChild?.getAttribute('data-testid')).toBe('money-protection');
+    expect(work.lastElementChild?.firstElementChild?.getAttribute('data-testid')).toBe('money-protection');   // the AI strip is the screen's last block
+  });
+
+  it('SUNMI addendum (Nov 7 2026): Variance reads "Pending count" until the drawer is counted — never a verified $0.00', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    render(<POSCashDrawerScreen />);
+    expect(await screen.findByTestId('kpi-variance')).toHaveTextContent('Pending count');
+  });
+
+  it('SUNMI addendum §08: the Cash Drawer Activity ledger lists every cash event with its customer, employee and ticket; a row opens its details', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    (posCashDrawerApi.activity as any).mockResolvedValue(activity([
+      row({ id: 'p1', cashInCents: 4500, ticketNumber: '1042', customer: 'Nina Ortiz', employee: 'Rosa Front' }),
+      row({ kind: 'float', id: 's1', cashInCents: 10000, state: 'open', employee: 'Rosa Front' }),
+    ]));
+    render(<POSCashDrawerScreen />);
+    const rows = await screen.findAllByTestId('act-row');
+    expect(rows[0]).toHaveTextContent('Cash sale'); expect(rows[0]).toHaveTextContent('Nina Ortiz'); expect(rows[0]).toHaveTextContent('#1042'); expect(rows[0]).toHaveTextContent('$45.00');
+    expect(rows[1]).toHaveTextContent('Opening float');
+    expect(screen.getByTestId('act-totals')).toHaveTextContent('net $145.00');
+    await waitFor(() => expect(posCashDrawerApi.activity).toHaveBeenCalledWith(expect.objectContaining({ registerId: 'main', preset: 'session', date: TODAY, page: 1 })));
+    fireEvent.click(rows[0]);
+    expect(await screen.findByTestId('act-overlay')).toHaveTextContent('Rosa Front');
+  });
+
+  it('SUNMI addendum §09: one search box and a period — each re-asks the server from page 1', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    render(<POSCashDrawerScreen />);
+    await screen.findByTestId('act-search');
+    fireEvent.change(screen.getByTestId('act-search'), { target: { value: '#1042' } });
+    await waitFor(() => expect(posCashDrawerApi.activity).toHaveBeenLastCalledWith(expect.objectContaining({ q: '#1042', page: 1 })));
+    fireEvent.click(screen.getByTestId('preset-week'));
+    await waitFor(() => expect(posCashDrawerApi.activity).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'week', q: '#1042' })));
+    fireEvent.change(screen.getByTestId('act-kind'), { target: { value: 'cash_out' } });
+    await waitFor(() => expect(posCashDrawerApi.activity).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'cash_out' })));
+  });
+
+  it('a ledger that fails to load says so — it never reads as "no movements"', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    (posCashDrawerApi.activity as any).mockRejectedValue(new Error('db down'));
+    render(<POSCashDrawerScreen />);
+    expect(await screen.findByText('db down')).toBeTruthy();
+  });
+
+  it('AI Fraud / Money Protection sits after the activity ledger (original guide: moved to the bottom)', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    render(<POSCashDrawerScreen />);
+    const ledger = await screen.findByTestId('drawer-activity'); const ai = screen.getByTestId('money-protection');
+    expect(ledger.compareDocumentPosition(ai) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -177,4 +177,29 @@ export class CashDrawerService {
     const pageSize = [10, 20, 50].includes(Number(q?.pageSize)) ? Number(q.pageSize) : 10;
     return this.repo.history(ctx, branchId, { from: ymd(q?.from), to: ymd(q?.to), registerId, status: typeof q?.status === 'string' ? q.status : undefined, q: typeof q?.q === 'string' ? q.q : undefined, page: Math.max(1, parseInt(q?.page, 10) || 1), pageSize });
   }
+
+  /** Cash Drawer Activity (SUNMI addendum §08–§09): one register's cash events over a period of business days — the session
+   *  day by default, or today / week / month / year / custom — searched by customer, phone, #ticket, employee or reason. */
+  async activity(ctx: DrawerCtx, q: any) {
+    if (!this.canView(ctx)) throw withCode(new CashDrawerError('forbidden', 'Not allowed.', 403), 'PERMISSION_DENIED');
+    const branchId = this.branchOf(ctx);
+    const registerId = await this.registerOf(ctx, branchId, typeof q?.registerId === 'string' && q.registerId ? q.registerId : 'main');
+    const ymd = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    const today = await this.repo.today(ctx);
+    const preset = ['session', 'today', 'week', 'month', 'year', 'custom'].includes(String(q?.preset)) ? String(q.preset) : 'session';
+    let from: string, to: string;
+    if (preset === 'custom') {
+      from = ymd(q?.from) ?? ''; to = ymd(q?.to) ?? from;
+      if (!from || !to || to < from) throw withCode(new CashDrawerError('bad_request', 'The start date must be on or before the end date.', 400), 'DATE_RANGE_INVALID');
+    } else if (preset === 'session') { from = to = ymd(q?.date) ?? today; }
+    else {
+      const [y, m, d] = today.split('-').map(Number); const base = new Date(Date.UTC(y, m - 1, d));
+      const start = preset === 'today' ? base : preset === 'week' ? new Date(base.getTime() - ((base.getUTCDay() + 6) % 7) * 86400000)
+        : preset === 'month' ? new Date(Date.UTC(y, m - 1, 1)) : new Date(Date.UTC(y, 0, 1));
+      from = start.toISOString().slice(0, 10); to = today;
+    }
+    const kinds = ['sale', 'refund', 'cash_in', 'cash_out', 'float'];
+    const pageSize = [5, 6, 8, 10, 20, 50].includes(Number(q?.pageSize)) ? Number(q.pageSize) : 10;
+    return { preset, ...(await this.repo.activity(ctx, branchId, registerId, { from, to, kind: kinds.includes(String(q?.kind)) ? String(q.kind) : null, q: typeof q?.q === 'string' ? q.q : '', page: Math.max(1, parseInt(q?.page, 10) || 1), pageSize })) };
+  }
 }

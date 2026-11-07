@@ -29,6 +29,11 @@ export const posCashDrawerApi = {
     return http<DrawerHistory>(`/pos/cash-drawer/history${p.toString() ? '?' + p.toString() : ''}`);
   },
   movement: (direction: 'in' | 'out', amountCents: number, reason?: string, note?: string, date?: string, idempotencyKey?: string, registerId?: string) => http<DrawerState>('/pos/cash-drawer/movement', { method: 'POST', body: JSON.stringify({ direction, amountCents, ...(reason ? { reason } : {}), ...(note ? { note } : {}), ...(date ? { date } : {}), ...reg(registerId) }), ...idem(idempotencyKey) }),
+  /** SUNMI Cash Drawer addendum §08 (Nov 7 2026): the register's cash events over a period (default: the drawer's own day) */
+  activity: (q: { registerId?: string; date?: string; preset?: string; from?: string; to?: string; kind?: string; q?: string; page?: number; pageSize?: number }) => {
+    const p = new URLSearchParams(); for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '' && v !== null) p.set(k, String(v));
+    return http<DrawerActivity>(`/pos/cash-drawer/activity?${p.toString()}`);
+  },
   movements: (date?: string, registerId?: string) => http<MovementList>(`/pos/cash-drawer/movements${rq(date, registerId)}`),
   voidMovement: (movementId: string, date?: string, registerId?: string) => http<DrawerState>('/pos/cash-drawer/movement/void', { method: 'POST', body: JSON.stringify({ movementId, ...(date ? { date } : {}), ...reg(registerId) }) }),
 };
@@ -36,3 +41,8 @@ export type { CashMovement, MovementList };
 export interface DrawerHistoryRow { businessDate: string; registerId: string; register: string | null; status: string; openingFloatCents: number; expectedCashCents: number | null; countedCents: number | null; varianceCents: number | null;
   countedAt: string | null; countedBy: string | null; notes: string | null; approvalRequired: boolean; approvedAt: string | null; approvedBy: string | null; approvalNote: string | null; denominations: Record<string, number> | null }
 export interface DrawerHistory { items: DrawerHistoryRow[]; total: number; page: number; pageSize: number; pages: number }
+
+/** One cash event of a register (Cash Drawer Activity). A customer appears only through Ticket → Customer; the phone is never sent. */
+export interface DrawerActivityRow { kind: 'sale' | 'refund' | 'cash_in' | 'cash_out' | 'float'; id: string; businessDate: string; at: string | null; cashInCents: number; cashOutCents: number;
+  state: string; reason: string | null; ticketId: string | null; ticketNumber: string | null; customer: string | null; employee: string | null }
+export interface DrawerActivity { preset: string; from: string; to: string; items: DrawerActivityRow[]; totals: { cashInCents: number; cashOutCents: number }; total: number; page: number; pageSize: number; pages: number }

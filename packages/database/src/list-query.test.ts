@@ -96,6 +96,13 @@ describe('sorting (§50)', () => {
     expect(parseListQuery({ sort: 'a', direction: 'asc' }, D).sort[0].direction).toBe('asc');
     expect(parseListQuery({ sort: '-b' }, D).sort[0].direction).toBe('desc');
   });
+  it('a screen that declares its own `sort` FILTER (a named order) owns the `sort` param — no INVALID_SORT (Nov 7 2026)', () => {
+    const S: ListQuerySpec = { filters: { sort: { type: 'enum', values: ['newest', 'name', 'last_order'] } } };
+    const r = parseListQuery({ sort: 'newest' }, S);
+    expect(r.filters.sort).toBe('newest'); expect(r.sort).toEqual([]);
+    expect(code(() => parseListQuery({ sort: 'password_hash' }, S))).toBe('INVALID_FILTER:sort');   // still validated, as a filter
+    expect(code(() => parseListQuery({ sort: 'name' }, SPEC))).toBe('ok');                               // column sorts unchanged elsewhere
+  });
   it('an undeclared field is INVALID_SORT — including SQL in the sort parameter', () => {
     expect(code(() => parseListQuery({ sort: 'password_hash' }, SPEC))).toBe('INVALID_SORT:password_hash');
     expect(code(() => parseListQuery({ sort: 'name; drop table customers' }, SPEC))).toMatch(/^INVALID_SORT/);

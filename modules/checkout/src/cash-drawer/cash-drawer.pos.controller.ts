@@ -26,6 +26,7 @@ export class CashDrawerPosController {
   @RequirePermission('pos.checkout.view') @Get('cash-drawer/movements') movements(@Req() r: any, @Query('date') date?: string, @Query('registerId') registerId?: string) { return drawerRun(() => this.svc.listMovements(drawerCtx(r), date, registerId)); }
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement/void') voidMovement(@Req() r: any, @Body(ValidatedBody(DRAWER_VOID_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.voidMovement(drawerCtx(r), b || {})); }
   // D15 gaps (Nov 5 2026): the drawer history (dates, register, status, search, pages) and a manager's sign-off of a large difference
+  @RequirePermission('pos.checkout.view') @Get('cash-drawer/activity') activity(@Req() r: any, @Query() q: any) { return drawerRun(() => this.svc.activity(drawerCtx(r), q)); }
   @RequirePermission('pos.checkout.view') @Get('cash-drawer/history') history(@Req() r: any, @Query() q: any) { return drawerRun(() => this.svc.history(drawerCtx(r), q)); }
   @Idempotent() @RequirePermission('checkout.manage_overrides') @Post('cash-drawer/approve') approve(@Req() r: any, @Body(ValidatedBody(DRAWER_APPROVE_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.approveCount(drawerCtx(r), b || {})); }
 }

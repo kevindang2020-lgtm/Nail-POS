@@ -58,7 +58,7 @@ export const VIEWPORTS = [PRIMARY, ...SUNMI, [2560, 1440], [1920, 1080], [1600, 
 const isCertified = (w, h) => CERTIFIED.some(([cw, ch]) => cw === w && ch === h);
 /** The module registry (apps/pos-web/src/shell/module-registry.json): page key → registered modules. */
 export const REGISTRY = JSON.parse(readFileSync(new URL('../../apps/pos-web/src/shell/module-registry.json', import.meta.url), 'utf8'));
-/** The finance and customer pages of the SUNMI guides (MODULE_SET=all on the CLI adds them to the nine). */
+/** The finance and customer pages of the first SUNMI guides (MODULE_SET=extra; MODULE_SET=all adds them to the nine). */
 export const EXTRA_MODULES = [
   { key: 'payroll', path: '/tenant/team/payroll', label: 'WEEKLY PAYCHECK' },
   { key: 'expenses', path: '/tenant/payments/expenses', label: 'EXPENSES' },
@@ -71,6 +71,28 @@ export const EXTRA_MODULES = [
   { key: 'retention', path: '/tenant/customers/retention', label: 'RETENTION' },
   { key: 'memberships', path: '/tenant/customers/memberships', label: 'MEMBERSHIPS' },
   { key: 'customers', path: '/customers', label: 'CUSTOMERS' },
+];
+/** SUNMI batch 2 (Kevin's Nov 7 2026 PDFs): catalog, inventory and money pages (MODULE_SET=batch2; MODULE_SET=all adds them too). */
+export const BATCH2_MODULES = [
+  { key: 'services', path: '/services', label: 'SERVICES & PRODUCTS' },
+  { key: 'svc-categories', path: '/tenant/services/categories', label: 'SERVICE CATEGORIES' },
+  { key: 'svc-pricing', path: '/tenant/services/pricing', label: 'SERVICE PRICING' },
+  { key: 'svc-addons', path: '/tenant/services/add-ons', label: 'ADD-ONS' },
+  { key: 'discounts', path: '/tenant/services/discounts', label: 'DISCOUNTS' },
+  { key: 'products', path: '/tenant/products', label: 'PRODUCTS' },
+  { key: 'inventory', path: '/tenant/inventory', label: 'INVENTORY' },
+  { key: 'purchase-orders', path: '/tenant/inventory/purchase-orders', label: 'PURCHASE ORDERS' },
+  { key: 'suppliers', path: '/tenant/inventory/vendors', label: 'SUPPLIERS' },
+  { key: 'stock-alerts', path: '/tenant/inventory/alerts', label: 'STOCK ALERTS' },
+  { key: 'payments', path: '/tenant/payments/overview', label: 'PAYMENTS & MONEY' },
+  { key: 'transactions', path: '/tenant/payments/transactions', label: 'TRANSACTIONS' },
+  { key: 'cash-drawer', path: '/cash-drawer', label: 'CASH DRAWER' },
+  { key: 'eod-cash', path: '/cash-handoffs', label: 'END-OF-DAY CASH' },
+  { key: 'refunds', path: '/tenant/payments/refunds-voids', label: 'REFUNDS & VOIDS' },
+  { key: 'split', path: '/tenant/payments/split-payments', label: 'SPLIT PAYMENTS' },
+  { key: 'tips', path: '/tenant/payments/tips', label: 'TIPS & GRATUITY' },
+  { key: 'gift-cards', path: '/tenant/customers/gift-cards', label: 'GIFT CARDS' },
+  { key: 'terminals', path: '/tenant/devices/payment-terminals', label: 'PAYMENT TERMINALS' },
 ];
 /** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
 export const measureRegistry = (page, key) => {
@@ -366,9 +388,12 @@ export async function runOneScreenMatrix({ newPage, setLanguage, base, shots, st
         const registry = await measureRegistry(page, m.key);
         const t0 = Date.now(); const hit = await measureHitAreas(page); if (hit) hit.ms = Date.now() - t0;
         const leftovers = lang === 'vi' ? await englishLeftovers(page, [...allow, ...VI_WORDS]) : [];
+        // a panel that failed to load (StateBlock / FitKit error box) — a layout pass must not hide a broken screen (Nov 7 2026:
+        // the Supplier Directory showed "newest is not a sort order here" while every layout check passed)
+        const panelErrors = await page.evaluate(() => [...document.querySelectorAll('.main .fk-error')].map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 90)));
         const file = `${state}-${m.key}-${lang}-${w}x${h}.png`;
         await page.screenshot({ path: join(shots, file) });
-        rows.push({ state, module: m.key, label: m.label, lang, w, h, ...meas, registry, hit, leftovers, file, pageErrors: errors.splice(0) });
+        rows.push({ state, module: m.key, label: m.label, lang, w, h, ...meas, registry, hit, leftovers, panelErrors, file, pageErrors: errors.splice(0) });
         log(`${state} ${m.label} ${lang} ${w}x${h} v${meas.vScroll} h${meas.hScroll} doc${meas.docScrollY}/${meas.docScrollX} clip${meas.clippedCount} cut${meas.cutOffCount} ovl${meas.overlapCount} minBtn${meas.minButton} hit:${hit ? `${hit.full}f/${hit.neighbour}n/${hit.edge}e/${hit.short}s ${hit.ms}ms${hit.layoutSame ? '' : ' LAYOUT-CHANGED'}` : '-'} font:${meas.font.hanken ? 'Hanken' : 'FALLBACK'}`);
       }
     }
@@ -396,6 +421,7 @@ export function judge(rows) {
     if (missing.length) reasons.push(`${missing.length} registered module(s) missing: ${missing.slice(0, 4).map((x) => x.id).join(', ')}`);
     if (certified && !pageScroll && outside.length) reasons.push(`${outside.length} registered module(s) outside the viewport: ${outside.slice(0, 4).map((x) => x.id).join(', ')}`);
     if (few.length) reasons.push(`incomplete set(s): ${few.map((x) => `${x.id} ${x.children}/${x.minChildren}`).join(', ')}`);
+    if (r.panelErrors?.length) reasons.push(`${r.panelErrors.length} panel(s) failed to load: ${r.panelErrors.slice(0, 3).join(' | ')}`);
     if (r.clippedCount) reasons.push(`${r.clippedCount} clipped / spilling control text (${r.clipped.slice(0, 2).map((c) => JSON.stringify(c.text)).join(', ')})`);
     if (r.cutOffCount) reasons.push(`${r.cutOffCount} controls / status pills cut off sideways by their card (${r.cutOff.slice(0, 2).map((c) => JSON.stringify(c.text)).join(', ')})`);
     if (r.overlapCount) reasons.push(`${r.overlapCount} overlapping controls (${r.overlaps.slice(0, 2).map((o) => `${o.a}×${o.b}`).join(', ')})`);
@@ -464,7 +490,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

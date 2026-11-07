@@ -110,7 +110,7 @@ export function POSServicePricingScreen() {
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div>
       <div className="inv2-tabs mos-tabs">
-        <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('cg.pricingTabs')}>
+        <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('cg.pricingTabs')} data-module-id="pricing-tabs">
           {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t} disabled={t === 'customers' && !can('customers.view')}>{tx('cg.ptab.' + t)}</button>)}
         </div>
       </div>
