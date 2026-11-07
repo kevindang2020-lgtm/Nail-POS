@@ -193,7 +193,7 @@ export function POSCashDrawerScreen() {
       <div className="fk-kpis five" data-testid="kpis">
         <KpiCard testId="kpi-float" label={t('pos.opening_float')} value={d ? money(d.openingFloatCents) : '—'} loading={!d && !error} sub={d ? t('cdr.kpi.floatSub', { day: d.businessDate ?? date }) : undefined} />
         <KpiCard testId="kpi-sales" label={t('pos.cash_sales')} value={d ? money(d.expectedSalesCents) : '—'} loading={!d && !error} sub={t('cdr.kpi.salesSub')} />
-        <KpiCard testId="kpi-refunds" label={t('pos.refunds')} value={d ? '−' + money(d.refundsCents) : '—'} loading={!d && !error} sub={t('cdr.kpi.refundsSub')} />
+        <KpiCard testId="kpi-refunds" label={t('pos.refunds')} value={d ? (d.refundsCents ? '−' + money(d.refundsCents) : money(0)) : '—'} loading={!d && !error} sub={t('cdr.kpi.refundsSub')} />
         <KpiCard testId="kpi-expected" tone="gold" label={t('pos.expected_in_drawer')} value={d ? money(d.expectedCashCents) : '—'} loading={!d && !error}
           sub={d && (d.paidInCents || d.paidOutCents) ? t('cdr.kpi.expectedMoves', { in: money(d.paidInCents), out: money(d.paidOutCents) }) : t('cdr.kpi.expectedSub')} />
         <KpiCard testId="kpi-variance" tone={v == null ? undefined : v === 0 ? 'ok' : 'bad'} label={t('pos.variance')} loading={!d && !error}
