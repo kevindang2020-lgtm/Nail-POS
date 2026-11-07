@@ -5,6 +5,7 @@ import { useTechNav } from '../shell/nav';
 import { CashPendingBanner } from '../components/CashPendingBanner';
 import { HelpRequestsCard } from '../components/HelpRequestsCard';
 import { TimeClockCard } from '../components/TimeClockCard';
+import { MyMetricsCard } from '../components/MyMetricsCard';
 import { money2, elapsed, greeting, longDate, statusLabel, statusKind, clock } from '../lib/tech';
 import { useTechStream } from '../lib/useTechStream';
 import { TODAY_FILTER } from '../lib/techRelevance';
@@ -95,6 +96,7 @@ export function TechDashboardScreen() {
 
       <CashPendingBanner />
       <TimeClockCard ready={Boolean(d)} />
+      <MyMetricsCard />
       <HelpRequestsCard />
       {note ? <div className="tech-card" style={{ marginBottom: 12, padding: 12, fontSize: 13 }} role="status">{note}</div> : null}
 

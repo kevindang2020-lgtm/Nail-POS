@@ -224,6 +224,10 @@
     "modules/analytics/src/ai-business/business-center.controller.ts#BusinessCenterController.branchExplain": {
       "kind": "not-a-list",
       "reason": "A3 Branch Comparison (Nov 6 2026): ONE explanation of the difference between two branches (?a/b name them, ?preset/from/to the period)"
+    },
+    "modules/queue/src/tech/tech.controller.ts#TechController.metrics": {
+      "kind": "not-a-list",
+      "reason": "F5 §73 (Nov 6 2026): ONE metrics card (clocked / break / service / ready minutes, turn units) for the signed-in technician; ?period picks today / week / month, never a filter of rows"
     }
   }
 }

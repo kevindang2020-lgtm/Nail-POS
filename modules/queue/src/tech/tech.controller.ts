@@ -22,7 +22,7 @@ import type { TechContext } from './tech.repository';
 import { ListQueries } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';   // BUILD_PLAN Phase 13: one Idempotency-Key per start / complete (the app's offline journal replays with it)
 import { TechControllerListQueries } from './tech.list-queries';
-import type { TechPayout, TechPayrollInquiry, TechPayrollInquiryRequest, TechPayStatements, TechPayStatementDetail, PaycheckPayout, PaycheckDisputeRequest, PaycheckAckRequest, PayStubQuery } from '@aipowersalon/api-contracts/tenant';
+import type { TechMetricsResponse, TechPayout, TechPayrollInquiry, TechPayrollInquiryRequest, TechPayStatements, TechPayStatementDetail, PaycheckPayout, PaycheckDisputeRequest, PaycheckAckRequest, PayStubQuery } from '@aipowersalon/api-contracts/tenant';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 function ctxFrom(req: any): TechContext {
@@ -60,6 +60,8 @@ export class TechController {
   }
 
   @RequirePermission('tech.dashboard.view') @Get() dashboard(@Req() r: any) { return run(() => this.svc.getDashboard(ctxFrom(r))); }
+  /** F5 §73: Today / Week / Month — clocked, break, service, ready minutes, turn units, services (the technician's own) */
+  @RequirePermission('tech.earnings.view') @Get('metrics') metrics(@Req() r: any, @Query('period') period?: string): Promise<TechMetricsResponse> { return run(() => this.svc.getMetrics(ctxFrom(r), period)); }
   @RequirePermission('tech.earnings.view') @Get('earnings') earnings(@Req() r: any) { return run(() => this.svc.getEarnings(ctxFrom(r))); }
   @RequirePermission('tech.payroll.view') @Get('payroll') payroll(@Req() r: any) { return run(() => this.svc.getPayroll(ctxFrom(r))); }
   // Payroll wave 2 (§89 payout history, §152 questions about an earning) — the technician's OWN rows only

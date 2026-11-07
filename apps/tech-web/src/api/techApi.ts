@@ -1,3 +1,4 @@
+import type { TechMetricsResponse } from '@aipowersalon/api-contracts/tenant';
 // techApi.ts — Technician app client for the real @Controller('tech') routes. Same-origin, session cookie; the server
 // derives the technician from the session (no ids sent from the client). Reads return server-truth; payment/earnings
 // values are whatever the backend computes (no fabrication).
@@ -82,6 +83,8 @@ export const techApi = {
   disputeCash: (payoutId: string, reason: string) => api.post<PaycheckPayout>(`/tech/payroll/cash-payouts/${encodeURIComponent(payoutId)}/dispute`, { reason }),
   dashboard: () => api.get<TechDashboardState>('/tech'),
   earnings: () => api.get<TechEarningsSnapshot>('/tech/earnings'),
+  /** F5 §73 (Nov 6 2026): my Today / Week / Month metrics — clocked, break, service, ready minutes and turn units */
+  metrics: (period: 'today' | 'week' | 'month' = 'today') => api.get<TechMetricsResponse>(`/tech/metrics?period=${period}`),
   schedule: (date?: string) => api.get<TechScheduleItem[]>(`/tech/schedule${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   earningsCanonical: (period: string = 'day', date?: string, dateTo?: string, payPeriodId?: string) => api.get<TechCanonicalEarnings>(`/tech/earnings/canonical?period=${period}${date ? `&date=${encodeURIComponent(date)}` : ''}${dateTo ? `&dateTo=${encodeURIComponent(dateTo)}` : ''}${payPeriodId ? `&payPeriodId=${encodeURIComponent(payPeriodId)}` : ''}`),
   tickets: () => api.get<TechTicketListItem[]>('/tech/tickets'),

@@ -1,3 +1,4 @@
+import { loadTechMetrics, type TechMetrics, type TechMetricPeriod } from '@aipowersalon/workforce';
 /**
  * tech.kysely.repository.ts — Postgres (Kysely) TechDataPort.
  *
@@ -97,6 +98,10 @@ function servicesTotalCents(json: unknown): number {
 const iso = (v: any): string => (v instanceof Date ? v.toISOString() : v == null ? '' : String(v));
 
 export class KyselyTechRepository implements TechDataPort {
+  /** F5 §73: one metrics surface (packages the workforce reader) */
+  techMetrics(ctx: TechContext, technicianId: string, period: TechMetricPeriod): Promise<TechMetrics> {
+    return loadTechMetrics(this.db as unknown as Kysely<any>, { tenantId: ctx.tenantId, branchId: ctx.branchId || null }, technicianId, period);
+  }
   constructor(private readonly db: Kysely<DB>, private readonly outbox?: OutboxWriter) {}
   /**
    * The technician's "today" — the BRANCH's day (Oct 6 2026). It was the server's UTC day, so after 8 pm in New York

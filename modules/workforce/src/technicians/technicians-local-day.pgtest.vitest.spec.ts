@@ -68,3 +68,17 @@ describe('a technician\'s cash hand-off is the branch\'s business day', () => {
     expect((await h.listForDay(ctx, '2026-10-05')).map((x: any) => x.expectedCents)).toEqual([3500]);
   });
 });
+
+describe('F5 §32 (Nov 6 2026): a technician schedule edit is version-checked', () => {
+  it('two editors read version N; the first save wins, the second gets VERSION_CONFLICT and nothing is overwritten', async () => {
+    const day = (start: string) => ({ isWorking: true, startTime: start, endTime: '18:00' } as any);
+    const v0 = (await repo.getSchedule(ctx, TECH))!.version ?? 0;
+    await repo.setSchedule(ctx, TECH, { weekly: { monday: day('09:00') }, unavailableDates: [], expectedVersion: v0 });
+    const after = (await repo.getSchedule(ctx, TECH))!;
+    expect(after.weekly.monday?.startTime.slice(0, 5)).toBe('09:00');
+    await expect(repo.setSchedule(ctx, TECH, { weekly: { monday: day('11:00') }, unavailableDates: [], expectedVersion: v0 })).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+    expect((await repo.getSchedule(ctx, TECH))!.weekly.monday?.startTime.slice(0, 5)).toBe('09:00');
+    await repo.setSchedule(ctx, TECH, { weekly: { monday: day('11:00') }, unavailableDates: [], expectedVersion: after.version });
+    expect((await repo.getSchedule(ctx, TECH))!.weekly.monday?.startTime.slice(0, 5)).toBe('11:00');
+  });
+});

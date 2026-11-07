@@ -32,3 +32,13 @@ nothing locks the only Super Admin out, and every choice can be undone from a se
 | Item | Pick | Why |
 |---|---|---|
 | A3 "All my salons" across separate legal entities (P4) | **Not built.** One login belongs to one salon; within a salon, every branch is compared. | Cross-salon views need an owner identity that spans tenants (and consent from each salon's owner); building it as a screen would quietly widen tenant isolation. |
+
+## F5 §215 — server-state cache in pos-web / admin-web (Nov 6, picked under "pick best")
+
+**Decision.** pos-web and admin-web keep per-screen fetch plus the shared realtime client, with targeted invalidation as in the
+Smooth Refresh spec. No react-query cache is added to them.
+
+**Why.**
+- Each POS screen is a single-owner view that realtime events already refresh in place.
+- A query cache would be a second invalidation system next to the realtime one.
+- owner-, tech-, customer- and manager-pay-web already use `@tanstack/react-query` and stay as they are.

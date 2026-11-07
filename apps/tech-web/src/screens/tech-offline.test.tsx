@@ -7,7 +7,7 @@ import { MobileQueryProvider, MemoryKvStore, createAppQueryClient, persistNow, s
 
 vi.mock('../shell/nav', () => ({ useTechNav: () => ({ back: vi.fn(), openTicket: vi.fn(), openQueue: vi.fn(), push: vi.fn(), setTab: vi.fn() }) }));
 vi.mock('../lib/useTechStream', () => ({ useTechStream: () => {} }));
-vi.mock('../api/techApi', () => ({ techApi: { queue: vi.fn(), ticket: vi.fn(), ticketMembership: vi.fn(), startService: vi.fn(), dashboard: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn(), earningsCanonical: vi.fn(), cashPending: vi.fn() } }));
+vi.mock('../api/techApi', () => ({ techApi: { metrics: vi.fn().mockResolvedValue({ period: 'today', clockedMinutes: 0, breakMinutes: 0, serviceMinutes: 0, readyMinutes: 0, turnUnits: 0, services: 0 }), queue: vi.fn(), ticket: vi.fn(), ticketMembership: vi.fn(), startService: vi.fn(), dashboard: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn(), earningsCanonical: vi.fn(), cashPending: vi.fn() } }));
 
 import { techApi } from '../api/techApi';
 import { QueueScreen } from './QueueScreen';

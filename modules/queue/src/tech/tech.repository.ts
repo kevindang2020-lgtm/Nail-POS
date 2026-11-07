@@ -1,3 +1,4 @@
+import type { TechMetrics, TechMetricPeriod } from '@aipowersalon/workforce';
 /**
  * tech.repository.ts — data port for the Technician-mobile surface (and an honest empty in-memory fallback).
  *
@@ -90,6 +91,8 @@ export interface TechDashboardRaw {
 
 export interface TechDataPort {
   resolveTechnicianId(ctx: TechContext): Promise<string | null>;
+  /** F5 §73 (Nov 6 2026): the technician's Today / Week / Month metrics (clocked, break, service, ready minutes, turn units) */
+  techMetrics?(ctx: TechContext, technicianId: string, period: TechMetricPeriod): Promise<TechMetrics>;
   /** §26 platform kill switch (tenant_app_flags.technician_app). */
   technicianAppEnabled(ctx: TechContext): Promise<boolean>;
   /** Per-technician switch (technician_app_settings.app_enabled). Optional so existing fakes still type-check; the

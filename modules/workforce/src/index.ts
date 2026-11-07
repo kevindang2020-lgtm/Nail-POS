@@ -31,6 +31,7 @@ export { tchCtx, tchRun } from './tech-cash-handoff/tech-cash-handoff.http';   /
 export { TechCashHandoffService } from './tech-cash-handoff/tech-cash-handoff.service';   // used by the API today
 export { recommendTechnician, scoreTechnician, skillMatch } from './tech-recommendation/tech-recommendation';   // used by the API today
 export { loadTechUtilization } from './tech-utilization/tech-utilization';   // used by the API today
+export { loadTechMetrics, TECH_METRIC_PERIODS, type TechMetrics, type TechMetricPeriod } from './tech-utilization/tech-metrics';   // F5 §73
 export { InMemoryClockPinRepository } from './technician-clock-pin/technician-clock-pin.repository';   // used by the API today
 export { TechnicianClockPinService, KioskPinLockedError } from './technician-clock-pin/technician-clock-pin.service';   // used by the API today; the kiosk lockout error by go-check-in
 export { InMemoryTimeClockRepository } from './time-clock/time-clock.repository';   // used by the API today

@@ -1834,6 +1834,7 @@ GET /tech/me/cash-handoff  realm=staff  auth=session  domain=payments  perm=tech
 GET /tech/me/cash-pending  realm=staff  auth=session  domain=checkout  perm=tech.cash.manage  resource=OWN/path
 GET /tech/me/locale  realm=staff  auth=session  domain=identity  perm=self.profile.view  resource=OWN/path
 GET /tech/me/privacy-export  realm=staff  auth=session  domain=identity  perm=self.profile.view  resource=OWN/path  async=tech.privacy-export
+GET /tech/metrics  realm=staff  auth=session  domain=workforce  perm=tech.earnings.view  resource=OWN/path
 GET /tech/more/state  realm=staff  auth=session  domain=workforce  perm=tech.dashboard.view  resource=OWN/path
 GET /tech/notifications  realm=staff  auth=session  domain=communications  perm=tech.notifications.manage  resource=OWN/path
 GET /tech/operations  realm=staff  auth=session  domain=operations  perm=self.operations.view  resource=OWN/path  guards=TenantAuthGuard

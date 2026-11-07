@@ -21,7 +21,7 @@ export interface CompensationEarningsPort {
   linesByTechnicianPeriod?(tenantId: string, technicianId: string, fromIso: string, toIso: string): Promise<{ serviceName: string; lineTotalCents: number; commissionCents: number; completedAt: string; ticketId: string; ruleSource: string | null }[]>;
 }
 import { buildTechDashboardState } from './tech-dashboard.core';
-import { TimeClockValidationError, TimeClockForbiddenError } from '@aipowersalon/workforce';
+import { TimeClockValidationError, TimeClockForbiddenError, TECH_METRIC_PERIODS, type TechMetricPeriod } from '@aipowersalon/workforce';
 import type { TechContext, TechDataPort, TechTicketView, ServiceDoneBody, TechTicketListItem, TechQueueState, TechMoreState, NoteBody, CancelRequestBody, DeclineBody, TechAuditAction, AuditMeta, TechWorkingHoursDay, TechSkillsView, SkillChangeBody, SkillChangeRequest, PendingSkillChangeRequest, TechPayrollView, SkillReviewDecision } from './tech.repository';
 import { SKILL_REVIEW_DECISIONS } from './tech.repository';
 
@@ -303,6 +303,14 @@ export class TechService {
     return state;
   }
 
+  /** F5 §73 (Nov 6 2026): the signed-in technician's Today / Week / Month metrics — their own only */
+  async getMetrics(ctx: TechContext, period: unknown) {
+    const technicianId = await this.requireTechnician(ctx);
+    this.require(ctx, 'tech.earnings.view');
+    const p = (TECH_METRIC_PERIODS as readonly string[]).includes(String(period)) ? String(period) as TechMetricPeriod : 'today';
+    if (!this.repo.techMetrics) throw withCode(new TechError('invalid_state', 'This is temporarily unavailable. Please try again shortly.'), 'SERVICE_UNAVAILABLE');
+    return this.repo.techMetrics(ctx, technicianId, p);
+  }
   async getEarnings(ctx: TechContext): Promise<TechEarningsSnapshot> {
     const technicianId = await this.requireTechnician(ctx);
     this.require(ctx, 'tech.earnings.view');

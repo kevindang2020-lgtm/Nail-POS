@@ -133,6 +133,7 @@ export const PATH_RULES = [
 /** Whole-path rules, before the realm prefix is removed (a realm's own root, internal job triggers). */
 export const FULL_PATH_RULES = [
   ['WORKFORCE', /^\/tech\/?$/],                 // the technician app's home state
+  ['WORKFORCE', /^\/tech\/metrics$/],          // F5 §73: the technician's Today / Week / Month metrics
   ['OPERATIONS', /^\/internal\//],              // service-token job triggers
 ];
 const REALM_PREFIX = /^\/(super-admin\/platform|super-admin|pos|owner|tenant|tech|customer|mobile-checkout|auth|public|api\/v1|api)(?=\/|$)/;

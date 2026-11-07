@@ -5,7 +5,7 @@ import { render, screen } from '@testing-library/react';
 
 vi.mock('../api/techApi', async (orig) => ({
   ...(await orig<typeof import('../api/techApi')>()),
-  techApi: { dashboard: vi.fn(), accept: vi.fn(), startService: vi.fn(), cashPending: vi.fn().mockResolvedValue({ items: [] }) },
+  techApi: { dashboard: vi.fn(), accept: vi.fn(), startService: vi.fn(), cashPending: vi.fn().mockResolvedValue({ items: [] }), metrics: vi.fn().mockResolvedValue({ period: 'today', from: '', to: '', timezone: 'UTC', clockedMinutes: 0, breakMinutes: 0, serviceMinutes: 0, readyMinutes: 0, turnUnits: 0, services: 0 }) },
 }));
 import { techApi } from '../api/techApi';
 import { TechDashboardScreen } from './TechDashboardScreen';

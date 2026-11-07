@@ -88,3 +88,7 @@ export interface ReferralFilterOptions { creators: { id: string; name: string }[
 
 /** A19 Nov 6: Win-Back — picked customers saved as an unsent audience draft */
 export interface WinbackPickedResult { draftId: string; status: string; channel: string; selected: number; eligible: number; excluded: number; sends: number; duplicate: boolean }
+
+/** F5 §73 (Nov 6 2026): the technician's Today / Week / Month metrics */
+export interface TechMetricsResponse { period: 'today' | 'week' | 'month'; from: string; to: string; timezone: string;
+  clockedMinutes: number | null; breakMinutes: number | null; serviceMinutes: number | null; readyMinutes: number | null; turnUnits: number | null; services: number | null }
