@@ -1,4 +1,33 @@
-# ARCHITECTURE_STATUS.md — every domain, one row (mandate §238 / §250; 130-section §122), Oct 20 2026
+# ARCHITECTURE_STATUS.md — every domain, one row (mandate §238 / §250; 130-section §122), Oct 20 2026 (updated Nov 6 2026)
+
+## Nov 6 2026 update — what changed Oct 23 → Nov 6 (migrations 672–833, HEAD `merge-github-main`)
+
+Each line names the authority that changed and the migration(s). No domain gained a second system; new screens extend the
+existing module. The full per-section truth is `docs/mandates/status/PLATFORM_ARCHITECTURE_AUDIT_STATUS.md`; route
+changes are listed in `docs/api/API_CHANGES_SINCE_2026-11-02.md`; tables per domain in `docs/DATABASE_MATRIX_2026-11-06.md`.
+
+| Domain | Change | Migrations / proof |
+|---|---|---|
+| Identity & devices | device identity + shared payment devices, refresh-token families, platform device approval, network-policy security events, clock-PIN lookup | 683, 686–689, 692, 698; `check:*` auth gates |
+| Tenants & settings | POS language authority (EN/VI), setup health, branch settings, business closures | 695, 729, 728, 830 |
+| Customers | Vietnamese search fold, language normalize, search / duplicate / timeline / intelligence centers, SQL directory (100k customers p95 1.33 s) | 694, 697, 760–767, 822; F1 busy-salon run |
+| Booking | booking drafts, verification center, reminder center, AI calendar, AI booking center | 676, 743, 747, 758, 790 |
+| Queue / Fair Turn | AI queue health runs; tech metrics read (`GET /tech/metrics`: clocked, break, service, ready, turns) | 789; `tech-metrics.pgtest` |
+| Workforce | weekly days off + skills catalog, onboarding / birthdays / training, commission reviews, shift overrides | 716, 719, 727, 816 |
+| Checkout & payments | checkout lock version, payment intents recovery, payments register, terminal pairing key, Tap to Pay per-location merchant, tip selections + staff confirmation | 680, 690, 704, 788, 799, 817, 820; `ttp-location-merchant.vitest` |
+| Payroll | paychecks + closeout | 673, 701 |
+| Finance | expenses, shared-cost policy, one-screen finance, OCR close, invoices / credits / deliveries, expense permission split | 672, 681, 700, 711–712, 793, 797–798, 825 |
+| Inventory & catalog | product usage ledger, suppliers, catalog change log, PO pack size / damaged, transfers in transit, recipe fractions, price schedules, vendor normalized name | 716–718, 801–802, 808, 810–811, 821 |
+| Gift cards | issue route retired (410), ledger atomic | 713–714; `checkout-giftcard-ledger-atomic.pgtest` |
+| Loyalty & memberships | earning basis, reward rules, tiers, bonus approvals, dual control, global rewards network; membership SMS reminders (was in-app only) | 675, 733–734, 785, 795–796, 814, 824; `membership-renewal.scheduler.vitest` |
+| Marketing & retention | segments, coupon assistant, promotion eligibility, campaigns, templates, win-back, birthdays, referrals + vouchers, reviews / reputation + request sender, platform advertising policy | 709, 720, 724, 735–740, 749–752, 768–769, 812–813, 815, 818, 823, 831–832 |
+| Communications | sender route, number owner lock, readiness checks, registration sync, inbox, phone management, email center + sender identity, offboarding of platform numbers | 678, 684, 705, 721, 725, 730–731, 742, 744, 748, 803, 805–806 |
+| AI | receptionist (English only, settings versions, consent approval + checks), calls / front desk / copilot / follow-up centers, business reports + alerts, usage limits + health | 706, 723, 753–759, 771–784, 826–829 |
+| Platform | announcements (EN/VI), backup & recovery catalog, audit no-truncate, tenant consistency, NOT VALID checks validated, tenant indexes on 7 tables | 674, 696, 699, 703, 786–787, 819, 833 |
+
+Gates on HEAD (Nov 6): every `apps/api` `check:*` script passes (`checks failed: 0`); the OpenAPI build now refuses an
+UNSCOPED / INVALID route (§11).
+
 
 ## Oct 22 2026 update — domains whose chain changed (one authority each, no second system)
 
@@ -33,7 +62,7 @@ Status vocabulary: **PASS** (the full chain UI → API → auth → tenant/branc
 | Inventory & catalog | `inventory`, `catalog` | PARTIAL | `inventory_products`, `inventory_location_stock`, `inventory_stock_movements`, `services`, `service_categories`, `service_add_ons` | `/pos/inventory/*`, `/pos/catalog/*` | `inventory.low_stock` | — | POS, Owner | B-17 stock at payment; K-01 add-ons; no branch price override |
 | Gift cards | `gift-cards`, `checkout` | PASS | `gift_cards`, `gift_card_transactions` (ledger) | `/pos/checkout/gift-cards/*`, `/customer/gift-cards/*` | `gift_card.*` | — | POS, Customer | B-02 fixed Oct 20 |
 | Loyalty | `customers` (loyalty) | PASS | `loyalty_ledger`, `loyalty_point_earnings` | `/pos/loyalty/*`, `/customer/rewards/*` | `loyalty.*` | — | POS, Customer | K-02 earning basis |
-| Memberships | `memberships` | PASS | `customer_memberships`, `membership_renewals` | `/pos/memberships/*`, `/customer/membership/*` | `membership.*` | — | POS, Customer | renewals need the two env switches; SMS messages in-app only |
+| Memberships | `memberships` | PASS | `customer_memberships`, `membership_renewals` | `/pos/memberships/*`, `/customer/membership/*` | `membership.*` | — | POS, Customer | renewals need the two env switches; renewal / expiry SMS built Oct 28 (`cf4af25b`) |
 | Deals / promotions | `deals` | PASS | `deals`, `deal_holds`, coupons | `/pos/deals/*`, `/customer/deals/*` | `deal.*` | — | POS, Customer | — |
 | Communications (SMS, e-mail, push, in-app) | `communications`, `packages/notifications` | PARTIAL | `notification_delivery_logs`, `tenant_messaging_*`, `inbound_messages`, `notification_opt_outs` | `/pos/communications/*`, `/webhooks/twilio/*` | consumers of `*.sent` | — | all | providers BLOCKED_EXTERNAL; B-16 platform-managed provisioning built (A2P on its service + offboarding not built) |
 | Customer display & advertising | `marketing` (display-advertising), `checkout` (display) | PASS | `customer_display_devices/sessions`, `display_ads`, `display_ad_branches` | `/pos/display/*`, `/public/display/*` | `display.*` | display device room | display, POS | real 23" monitor test external |

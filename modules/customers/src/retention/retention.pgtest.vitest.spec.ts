@@ -41,7 +41,7 @@ beforeAll(async () => {
   await cust(I, T, B, 'Ivy', '+12155550110', true); await cust(J, T, B, 'Jo', '+12155550101', true); await cust(X, T2, B2, 'Xena', '+12155550199', true);
   await q(`insert into notification_opt_outs (tenant_id, channel, address) values ($1,'sms','+1 (215) 555-0103')`, [T]);
   const tk = async (tid: string, tenant: string, branch: string, cid: string, daysAgo: number, cents: number, status = 'closed') =>
-    q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, created_at) values ($1,$2,$3,$4,$5,$6, date_trunc('day', now()) - make_interval(days => $7) + interval '12 hours')`, [tid, tenant, branch, cid, status, cents, daysAgo]);
+    q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, created_at) values ($1,$2,$3,$4,$5,$6, (((now() at time zone 'America/New_York')::date)::timestamp at time zone 'America/New_York') - make_interval(days => $7) + interval '12 hours')`, [tid, tenant, branch, cid, status, cents, daysAgo]);
   await tk(id('d01'), T, B, A, 400, 10000); await tk(id('d02'), T, B, Bc, 310, 5000); await tk(id('d03'), T, B, C, 220, 4000); await tk(id('d04'), T, B, D, 90, 3000);
   await tk(id('d05'), T, B, E, 61, 2000); await tk(id('d06'), T, B, E2, 61, 2500); await tk(id('d07'), T, B, G, 10, 6000); await tk(id('d08'), T, B, H, 120, 4500);
   await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, created_at) values ($1,$2,$3,$4,'closed',3500, now() - interval '1 minute')`, [id('d09'), T, B, H]);

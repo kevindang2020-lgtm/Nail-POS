@@ -1,5 +1,31 @@
 # REALTIME_INVENTORY.md — events, channels, consumers, workers (mandate §241–§242 / 130-section §123), Oct 20 2026
 
+> **Nov 6 2026 (F5 §247):** `audit-event-producers.mjs` reads **214 domain events**, all produced through the outbox (0 reserved,
+> 3 retired); the realtime registry (`packages/realtime-contracts/src/realtime-core.ts`) has **118 versioned client events**
+> (`REALTIME_EVENT_CATALOG.md`, gate-generated). Two changes since the Oct 20 map, below.
+>
+> **Resource version (§43).** Every projected frame carries `resourceType / resourceId / resourceVersion /
+> resourceVersionSource` (`realtime-projection.consumer.ts:438`). `resourceVersionSource` is `aggregate` when the outbox
+> row has an `aggregateVersion`, `payload` when the version came from the event payload, else `null`. The client
+> (`packages/realtime-client/src/client.ts:123`, `EventTracker.shouldApply` in `core.ts`) drops a frame whose
+> **aggregate** version is older than one it already applied for the same resource; payload versions are not trusted for
+> ordering. Proof: `client.test.ts` "§43 stale frames by resourceVersion".
+>
+> | Column | Value on the wire | Client use |
+> |---|---|---|
+> | `resourceType` | outbox `aggregate_type` | key for the stale check |
+> | `resourceId` | outbox `aggregate_id` | key for the stale check |
+> | `resourceVersion` | `aggregateVersion`, else the payload's version | compared only when the source is `aggregate` |
+> | `resourceVersionSource` | `aggregate` · `payload` · `null` | gate for the comparison |
+>
+> **Lanes and per-aggregate order (Oct 24–26, 200-technician §90 / §38).** The outbox publisher runs `lanes: 2`
+> (`outbox-publisher.ts:48`); `laneKey()` = tenant + aggregate type + aggregate id, so every event of one aggregate stays
+> in one lane and in `occurred_at` order, while different aggregates publish in parallel (`lanes = 1` restores the serial
+> publisher). A failed publish now holds the rest of that aggregate's events until it succeeds — before the fix a later
+> event could overtake it (`outbox-aggregate-order.pgtest`, found by `outbox-lanes.postgres-race`). The realtime-first lane
+> (§90) sends client frames before the slower consumers on a claimed batch (`outbox-realtime-first.pgtest`); the claim is
+> 250 rows when that lane is on, 100 otherwise.
+
 > **Oct 27 2026 (Remaining Production INTERNAL round):** `audit-event-producers.mjs` reads **213 domain events**, all produced through the outbox (0 reserved, 3 retired), and `REALTIME_EVENT_CATALOG.md` **114 client events** (versioned, 8 channels). This round added **no** event, channel or consumer: the wallet top-up webhook leg settles an existing intent row and credits through the existing wallet ledger (`payment_gateway_events` keeps the delivery, as before); the split / refund recovery and the reconnect behaviour are refusals or settles of rows that already existed. One worker changed: the stranded payment-attempt sweep (`payments.stranded_attempts`, critical, single owner) may tick faster than every 5 minutes OUTSIDE production when `PAYMENT_ATTEMPT_SWEEP_EVERY_MS` is set (the pilot day uses 15 s); production is unchanged.
 
 > **Oct 22 2026 (hand-back):** the generated catalogs now read **210 domain events**, every one produced through the outbox (0 reserved, 3 retired — `node apps/api/scripts/audit-event-producers.mjs`: OK) and **114 client events** in `REALTIME_EVENT_CATALOG.md` (the Oct 21 rebuild added them; the counts below are Oct 20's). The Oct 22 fixes added **no** event, channel, consumer or worker: the unsettled-card guard, the pay-period overlap refusal and the paycheck submit rule refuse BEFORE anything is written (nothing is emitted for a refused request); the SMS sender route is two columns on the row `communication.sms_sent` already describes; the OCR settings save writes an audit row (`settings.saved`), not an event. Live: `live-event-wiring` (final run) and the 24 live proofs (`tooling/ci/live-proofs.sh`).

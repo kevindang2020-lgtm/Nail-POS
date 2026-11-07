@@ -118,6 +118,11 @@ export const SEGMENT_FIXTURES = [
   // Nov 3 2026 — the centers / screens added by the recent builds (each: the table its by-id read looks up)
   ['/pos/ai-business/center/alerts/events/{id}', F('ai_business_alert_events')],   // AI Business Center: alert explain
   ['/pos/ai-business/center/reports/{id}', F('ai_business_report_jobs')],
+  // Nov 6 2026 — Batch A extras (A2 incidents / delivery, A5 assistant history, A12 closures)
+  ['/pos/ai-business/center/alerts/incidents/{id}', F('ai_business_alert_events')],   // an incident is an alert event row
+  ['/pos/ai-business/center/alerts/{id}', F('ai_business_alerts')],                   // delivery settings of one alert rule
+  ['/pos/ai-business/center/assistant/history/{id}', F('ai_business_conversations')],
+  ['/pos/ai/business-setup/closures/{id}', F('business_closures')],
   ['/pos/ai/business-setup/faqs/{id}', F('ai_receptionist_faqs')],                 // Business Setup Center
   ['/pos/ai/calendar-center/appointments/{id}', F('pos_tech_appointments')],       // AI Calendar Center
   // AI Calls / Receptionist Center: `ref` is the call's provider_call_id (its row id is accepted too)
@@ -229,7 +234,7 @@ export const BRANCH_TABLES = {
   pos_tech_appointments: 'branch', pos_queue_items: 'branch', pos_tech_queue_tickets: 'branch', tickets: 'branch', payments: 'branch',
   payment_attempts: 'branch', booking_holds: 'branch', pos_payment_terminals: 'branch', mobile_pay_devices: 'branch',
   // Nov 3 2026: the new centers' by-id reads filter on the caller's location (branch_id = it, or a salon-wide null row)
-  ai_business_alert_events: 'branch', ai_receptionist_follow_ups: 'branch', service_add_ons: 'branch', service_categories: 'branch',
+  ai_business_alert_events: 'branch', ai_business_alerts: 'branch', ai_receptionist_follow_ups: 'branch', service_add_ons: 'branch', service_categories: 'branch',
   commission_discrepancy_reviews: 'branch', pos_message_templates: 'branch', payment_refunds: 'branch', referral_redemptions: 'branch',
   ai_booking_conversion_events: 'branch',   // A7 (Nov 4 2026): a location user reads its own location's requests; the owner with no location reads all
   team_data_alerts: 'branch', product_usage_events: 'branch',

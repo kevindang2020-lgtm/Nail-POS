@@ -46,8 +46,8 @@ beforeAll(async () => {
   const tk = async (tenant: string, branch: string, cid: string, daysAgo: number, cents: number, o: { removed?: boolean; noPaid?: boolean; minutes?: number } = {}) => {
     const tid = id('d' + String(++n).padStart(3, '0'));
     await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, ticket_number, created_at, paid_at, removed_at)
-      values ($1,$2,$3,$4,'closed',$5,$6, date_trunc('day', now()) - make_interval(days => $7) + interval '15 hours' + make_interval(mins => $8),
-              case when $9::boolean then null else date_trunc('day', now()) - make_interval(days => $7) + interval '15 hours' + make_interval(mins => $8) end, case when $10::boolean then now() end)`,
+      values ($1,$2,$3,$4,'closed',$5,$6, (((now() at time zone 'America/New_York')::date)::timestamp at time zone 'America/New_York') - make_interval(days => $7) + interval '15 hours' + make_interval(mins => $8),
+              case when $9::boolean then null else (((now() at time zone 'America/New_York')::date)::timestamp at time zone 'America/New_York') - make_interval(days => $7) + interval '15 hours' + make_interval(mins => $8) end, case when $10::boolean then now() end)`,
       [tid, tenant, branch, cid, cents, String(74000 + n), daysAgo, o.minutes ?? 0, !!o.noPaid, !!o.removed]);
     return tid;
   };

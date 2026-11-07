@@ -47,7 +47,7 @@ beforeAll(async () => {
   const tk = async (tenant: string, branch: string, cid: string, daysAgo: number, cents: number, status = 'closed', removed = false) => {
     const tid = id('d' + String(++n).padStart(3, '0'));
     await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, ticket_number, created_at, paid_at, removed_at)
-      values ($1,$2,$3,$4,$5,$6,$7, date_trunc('day', now()) - make_interval(days => $8) + interval '15 hours', date_trunc('day', now()) - make_interval(days => $8) + interval '15 hours',
+      values ($1,$2,$3,$4,$5,$6,$7, (((now() at time zone 'America/New_York')::date)::timestamp at time zone 'America/New_York') - make_interval(days => $8) + interval '15 hours', (((now() at time zone 'America/New_York')::date)::timestamp at time zone 'America/New_York') - make_interval(days => $8) + interval '15 hours',
               case when $9::boolean then now() end)`, [tid, tenant, branch, cid, status, cents, String(70000 + n), daysAgo, removed]);
     return tid;
   };

@@ -70,7 +70,6 @@
   "POST /pos/ai-booking/recovery/{caseKey}/dismiss",
   "POST /pos/ai-booking/recovery/{caseKey}/request-approval",
   "POST /pos/ai-business/alerts/{id}/evaluate",
-  "POST /pos/ai-business/center/alerts/{id}/evaluate",
   "POST /pos/ai-business/saved-questions/{id}/use",
   "POST /pos/ai-checkout-upsell/checkout/{checkoutId}/addons/{addOnId}/add",
   "POST /pos/ai-checkout-upsell/checkout/{checkoutId}/loyalty/{rewardId}/redeem",
