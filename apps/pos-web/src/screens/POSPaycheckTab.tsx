@@ -268,10 +268,11 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
 }
 
 function useWideWorkspace(): boolean {
-  const q = '(min-width: 1536px) and (min-height: 820px)';
-  const get = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(q).matches;
+  // the same breakpoint as styles.css's .pc-week block (≥ 1536 × 820)
+  const mq = (): MediaQueryList | null => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1536px) and (min-height: 820px)') : null);
+  const get = () => !!mq()?.matches;
   const [on, setOn] = useState(get);
-  useEffect(() => { if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return; const m = window.matchMedia(q); const f = () => setOn(m.matches); m.addEventListener?.('change', f); return () => m.removeEventListener?.('change', f); }, []);
+  useEffect(() => { const m = mq(); if (!m) return; const f = () => setOn(m.matches); m.addEventListener?.('change', f); return () => m.removeEventListener?.('change', f); }, []);
   return on;
 }
 

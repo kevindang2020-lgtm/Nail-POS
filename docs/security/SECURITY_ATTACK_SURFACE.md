@@ -53,7 +53,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | GET | `/auth/biometric/status` | modules/identity/src/auth/biometric.controller.ts:52 | public | AnonRateLimit 300 / 5 min per IP |
 | POST | `/auth/change-temporary-password` | modules/identity/src/auth/system-reset.controller.ts:84 | public | Postgres attempt budget: 5 failures / 15 min per account (auth-attempt-budget.ts) |
 | POST | `/auth/login` | modules/identity/src/auth/auth.controller.ts:91 | public | login throttle 5 / 15 min per (portal, salon, identifier, IP) + credential-stuffing detector (LOGIN_THROTTLE_STORE) |
-| POST | `/auth/logout` | modules/identity/src/auth/auth.controller.ts:288 | public | AnonRateLimit 600 / 5 min per IP (bucket auth-logout) |
+| POST | `/auth/logout` | modules/identity/src/auth/auth.controller.ts:317 | public | AnonRateLimit 600 / 5 min per IP (bucket auth-logout) |
 | POST | `/auth/password-reset/complete` | modules/identity/src/auth/password-reset.controller.ts:26 | public | reset counts in Postgres per identifier + IP |
 | POST | `/auth/password-reset/request` | modules/identity/src/auth/password-reset.controller.ts:16 | public | reset counts in Postgres per identifier + IP |
 | POST | `/auth/password-reset/temp-login` | modules/identity/src/auth/password-reset.controller.ts:21 | public | reset counts in Postgres per identifier + IP |

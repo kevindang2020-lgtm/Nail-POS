@@ -263,10 +263,10 @@ export class AuthController {
     // lock; 7-day hard cap (posSessionRenewal). Other apps keep their fixed lifetime. A failed read never ends a session.
     let sessionEndMs = rotated.expiresAtMs;
     try {
-      const pos = await this.renewPosSession(rotated.sessionId);
+      const pos = await this.renewPosSession(rotated.sessionId, claims.tenantId ?? null);
       if (pos === 'ended') {
         await this.refresh.revokeSession(rotated.sessionId);
-        if (this.sessions) { try { await this.sessions.revoke(rotated.sessionId); } catch { /* refresh tokens are already gone */ } }
+        if (this.sessions) { try { await this.sessions.revoke(rotated.sessionId); } catch (e) { console.warn('[refresh] POS session limit: session row revoke failed (its refresh tokens are already gone):', (e as Error)?.message); } }
         this.ev(req, { type: 'SESSION_ENDED_ACCESS_CHANGED', outcome: 'info', userId: claims.userId ?? null, tenantId: claims.tenantId ?? null, sessionId: rotated.sessionId, reason: 'pos_session_limit' });
         res.status(401).json({ ok: false, code: 'SESSION_ENDED', reason: 'pos_session_limit' }); return;
       }
@@ -287,16 +287,16 @@ export class AuthController {
 
   /** posSessionRenewal on the session row (client_app = 'pos' only). Returns the new end (ms) when it moved — the live
    *  refresh token moves with it — 'ended' when the POS limit is reached, or null for any other session. */
-  private async renewPosSession(sessionId: string): Promise<number | 'ended' | null> {
-    if (!this.db) return null;
-    const row = await this.db.selectFrom('sessions').select(['client_app', 'created_at', 'expires_at', 'locked_at']).where('id', '=', sessionId).executeTakeFirst();
+  private async renewPosSession(sessionId: string, tenantId: string | null): Promise<number | 'ended' | null> {
+    if (!this.db || !tenantId) return null;   // a POS session always belongs to a salon
+    const row = await this.db.selectFrom('sessions').select(['client_app', 'created_at', 'expires_at', 'locked_at']).where('id', '=', sessionId).where('tenant_id', '=', tenantId).executeTakeFirst();
     if (!row || row.client_app !== 'pos') return null;
     const ms = (v: unknown) => (v == null ? null : new Date(v as string).getTime());
     const d = posSessionRenewal({ createdAtMs: ms(row.created_at)!, expiresAtMs: ms(row.expires_at)!, lockedAtMs: ms(row.locked_at) }, Date.now());
     if (d.ended) return 'ended';
     if (!d.changed) return d.expiresAtMs;
     const at = new Date(d.expiresAtMs);
-    await this.db.updateTable('sessions').set({ expires_at: at }).where('id', '=', sessionId).where('status', '=', 'active').execute();
+    await this.db.updateTable('sessions').set({ expires_at: at }).where('id', '=', sessionId).where('tenant_id', '=', tenantId).where('status', '=', 'active').execute();
     await this.db.updateTable('refresh_tokens').set({ expires_at: at }).where('session_id', '=', sessionId).where('revoked_at', 'is', null).where('superseded_by_token_id', 'is', null).execute();
     return d.expiresAtMs;
   }
