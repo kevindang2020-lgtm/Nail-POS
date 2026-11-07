@@ -337,7 +337,7 @@ export function POSServiceDoneScreen() {
       </div>
 
       {/* 9 KPIs (§15–§17) */}
-      <div className="co-kpis">
+      <div className="co-kpis" data-module-id="service-done-kpis">
         {kpis.map((c) => { const tr = c.noTrend ? undefined : trend(c.key); const ic = ICONS[c.ico]; return (
           <div key={c.key} className="co-card co-kpi">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -483,7 +483,7 @@ export function POSServiceDoneScreen() {
 
       {/* Analytics row — fixed height, compact (§60–§64) */}
       <div className="co-ana">
-        <section className="co-card">
+        <section className="co-card" data-module-id="sd-ana-completion-trend">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.completion_trend')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {(() => { const pts = trendPts; if (!pts.length) return <div style={{ height: 'var(--co-chart)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11 }}>{tx('pos.no_completions_yet')}</div>; const w = 230, h = 80, max = Math.max(1, ...pts.map((p) => p.count)); const xs = (i: number) => pts.length === 1 ? w / 2 : (i / (pts.length - 1)) * w; const ys = (v: number) => h - (v / max) * (h - 10) - 4; const dd = pts.map((p, i) => `${i ? 'L' : 'M'}${xs(i).toFixed(1)} ${ys(p.count).toFixed(1)}`).join(' '); return (
             <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: 'var(--co-chart)', marginTop: 4 }}>
@@ -493,15 +493,15 @@ export function POSServiceDoneScreen() {
             </svg>
           ); })()}
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sd-ana-service-mix">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.service_mix')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           <Donut items={serviceMix.map((m) => ({ label: m.category, count: m.count }))} />
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sd-ana-add-on-mix">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.add_on_mix')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           <Donut items={addOnMix.map((m) => ({ label: m.label, count: m.count }))} />
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sd-ana-completion-funnel">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.completion_funnel')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {(() => { const steps = [{ l: tx('pos.service_completed'), v: funnel.completed }, { l: tx('pos.in_review_2'), v: funnel.inReview }, { l: tx('pos.ready_for_checkout'), v: funnel.readyForCheckout }, { l: tx('pos.sent_to_front_desk'), v: funnel.sentToFrontDesk }]; const base = Math.max(1, funnel.completed); const shades = ['#D9963F', '#C98326', '#B5701A', '#9A5C10']; return (
             <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -515,7 +515,7 @@ export function POSServiceDoneScreen() {
           ); })()}
         </section>
         {/* §63–§64: awaiting collection — never settled revenue */}
-        <section className="co-card">
+        <section className="co-card" data-module-id="sd-ana-potential-revenue-ready-for-checkout">
           <h2 style={h2}>{tx('pos.potential_revenue_ready_for_checkout')}</h2>
           <div style={{ font: '700 17px/1 "Playfair Display",serif', color: '#1F7A3F', margin: '4px 0 2px' }}>{money2(pot.totalCents)}</div>
           <div style={{ display: 'flex', flexDirection: 'column', fontSize: 10.5, lineHeight: 1.35 }}>

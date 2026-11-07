@@ -8,6 +8,7 @@ import { ProfileAvatarWithPreview, resolveAvatarUrl } from '@aipowersalon/ui';
 import type { Badges } from './tenant-access';
 import { Trash2 } from "lucide-react";
 import { POSSecuritySettingsModal } from './POSSecuritySettingsModal';
+import { ScreenCheckDialog } from './ScreenCheckDialog';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 
@@ -44,6 +45,7 @@ export function ProfileMenu({ badges }: { badges?: Badges }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [screenCheckOpen, setScreenCheckOpen] = useState(false);   // SUNMI mandates: the read-only Screen Check
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +186,11 @@ export function ProfileMenu({ badges }: { badges?: Badges }) {
               <Icon name="management" /> {t('pos.salon_settings_2')}
             </button>
           )}
+          {hasSettingsView && (
+            <button className="who-item" role="menuitem" data-testid="open-screen-check" onClick={() => { setMenuOpen(false); setScreenCheckOpen(true); }}>
+              <Icon name="management" /> {t('sunmi.menu')}
+            </button>
+          )}
           <div className="who-sep" />
           <button className="who-item" role="menuitem" onClick={pickPhoto}>
             <Icon name="account" /> {avatarUrl ? t('pos.change_photo') : t('pos.add_photo')}
@@ -231,6 +238,7 @@ export function ProfileMenu({ badges }: { badges?: Badges }) {
       )}
 
       {securityModalOpen && <POSSecuritySettingsModal onClose={() => setSecurityModalOpen(false)} />}
+      {screenCheckOpen && <ScreenCheckDialog onClose={() => setScreenCheckOpen(false)} />}
     </div>
   );
 }

@@ -510,7 +510,7 @@ export function POSCheckoutScreen() {
       </div>
 
       {/* 9 KPI cards */}
-      <div className="co-kpis">
+      <div className="co-kpis" data-module-id="checkout-kpis">
         {kpis.map((c) => { const tr = trend(c.key); return (
           <div key={c.key} className="co-card co-kpi">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -527,7 +527,7 @@ export function POSCheckoutScreen() {
 
       <div className="co-main">
         {/* Checkout Queue — fixed height, internal scroll (§17) */}
-        <section className="co-card co-panel co-q">
+        <section className="co-card co-panel co-q" data-module-id="checkout-queue">
           <div className="co-head"><h2 style={h2}>{tx('pos.checkout_queue')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{items.length}</span></div>
           <div className="co-scroll">{queueTable(items)}</div>
           <button style={{ ...linkBtn, alignSelf: 'flex-start', marginTop: 4 }} onClick={() => setOverlay('queue')}>{tx('payment.board.viewFullQueue', { count: String(s.tickets.pagination?.totalItems ?? items.length) })}</button>
@@ -1095,7 +1095,7 @@ export function POSCheckoutScreen() {
         </section>
 
         {/* RIGHT — AI insights (advisory, 3–5) + the customer display and payment phones, in one fixed panel (§54) */}
-        <section className="co-card co-panel co-right">
+        <section className="co-card co-panel co-right" data-module-id="checkout-ai-insights">
           <div className="co-head"><h2 style={h2}>{tx('pos.ai_checkout_insights')}</h2><span style={{ background: '#EFEAFA', color: '#6E59C7', borderRadius: 6, padding: '1px 7px', fontSize: 9.5, fontWeight: 800 }}>{tx('pos.new')}</span></div>
           <div className="co-scroll">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1120,7 +1120,7 @@ export function POSCheckoutScreen() {
         </section>
 
         {/* Staff / Ready Technicians — compact: ≤ 8 rows + counts (§61) */}
-        <section className="co-card co-panel co-staff">
+        <section className="co-card co-panel co-staff" data-module-id="checkout-staff">
           <div className="co-head"><h2 style={h2}>{tx('pos.available_front_desk_ready_technicians')}</h2></div>
           {staffSum ? <div style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 4, flex: 'none' }} data-testid="checkout-staff-summary">{tx('payment.staff.summary', { ready: String(staffSum.ready), busy: String(staffSum.busy), onBreak: String(staffSum.onBreak), shown: String(staffSum.shown), total: String(staffSum.total) })}</div> : null}
           <div className="co-scroll">
@@ -1145,7 +1145,7 @@ export function POSCheckoutScreen() {
       {/* Analytics row — fixed height */}
       <div className="co-ana">
         {/* Revenue Trend */}
-        <section style={anaCard}>
+        <section style={anaCard} data-module-id="co-ana-revenue-trend">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.revenue_trend')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           <div style={{ font: '700 18px/1 "Playfair Display",serif', marginTop: 4 }}>{money(a.revenueTodayCents ?? k.subtotalCents)}</div>
           {a.revenueTrendDeltaPercent != null ? <div style={{ fontSize: 10.5, color: '#2E9E54', fontWeight: 700 }}>▲ {a.revenueTrendDeltaPercent}{tx('pos.vs_yesterday_2')}</div> : <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_s_settled_revenue')}</div>}
@@ -1158,7 +1158,7 @@ export function POSCheckoutScreen() {
           ); })()}
         </section>
         {/* Payment Mix */}
-        <section style={anaCard}>
+        <section style={anaCard} data-module-id="co-ana-payment-mix">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.payment_mix')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {mixTotal === 0 ? <div style={{ height: 'var(--co-chart)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11 }}>{tx('pos.no_payments_yet')}</div> : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -1168,7 +1168,7 @@ export function POSCheckoutScreen() {
           )}
         </section>
         {/* Conversion gauge */}
-        <section style={anaCard}>
+        <section style={anaCard} data-module-id="co-ana-checkout-conversion">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.checkout_conversion')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {conv == null ? <div style={{ height: 'var(--co-chart)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11 }}>{tx('pos.no_data_yet')}</div> : (() => { const pct = Math.max(0, Math.min(100, conv)); const R = 42, C = Math.PI * R; const dash = (pct / 100) * C; return (
             <div style={{ textAlign: 'center', marginTop: 6 }}>
@@ -1183,7 +1183,7 @@ export function POSCheckoutScreen() {
           ); })()}
         </section>
         {/* Upsell Mix */}
-        <section style={anaCard}>
+        <section style={anaCard} data-module-id="co-ana-upsell-mix">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.upsell_mix')}</h2><span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {upsell.length === 0 ? <div style={{ height: 'var(--co-chart)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11, textAlign: 'center', padding: '0 6px' }}>{tx('pos.upsell_categories_need_a_line_category_1oua')}</div> : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -1193,7 +1193,7 @@ export function POSCheckoutScreen() {
           )}
         </section>
         {/* Potential Revenue */}
-        <section style={anaCard}>
+        <section style={anaCard} data-module-id="co-ana-potential-revenue-in-queue">
           <h2 style={h2}>{tx('pos.potential_revenue_in_queue')}</h2>
           <div style={{ font: '700 18px/1 "Playfair Display",serif', margin: '4px 0' }}>{money(pot.totalCents)}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: 10.5, lineHeight: 1.35 }}>

@@ -22,6 +22,7 @@ import { OfflineDraftsPanel } from '../components/OfflineDraftsPanel';
 import { useSafetySync } from '../realtime/useRealtime';
 import { CommunityEmergencyBanner } from '../screens/community/CommunityEmergencyBanner';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { startDisplayProfile } from './displayProfile';
 
 const OPEN_KEY = 'aps.pos.nav.open.v1';
 const COLLAPSE_KEY = 'aps.pos.nav.collapsed.v1';
@@ -306,6 +307,10 @@ export function POSLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const salonName = access.salonName || tx('pos.your_salon');
+
+  // SUNMI FLEX 3 mandates (Nov 6 2026): measure the real CSS viewport once the shell is on screen — density, soft
+  // keyboard and visual-viewport attributes on <html> (shell/displayProfile.ts). Attributes only: no re-render, no zoom.
+  useEffect(() => startDisplayProfile(), []);
 
   useEffect(() => { localStorage.setItem(OPEN_KEY, JSON.stringify(open)); }, [open]);
   useEffect(() => { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); }, [collapsed]);

@@ -733,7 +733,7 @@ export function POSQueueScreen() {
 
       {/* Analytics row — six compact cards; detail lives in Reports (§37–§42) */}
       <div className="co-ana">
-        <section className="co-card">
+        <section className="co-card" data-module-id="cq-ana-queue-trend-today">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}><h2 style={h2}>{tx('pos.queue_trend_today')}</h2><span style={{ fontSize: 11, fontWeight: 700, flex: 'none' }}>{k.waitingGuests}</span></div>
           {(() => { const pts = qTrend; if (!pts.length) return <div style={{ height: 'var(--co-chart)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11 }}>{tx('pos.no_data_yet')}</div>; const w = 220, h = 70, max = Math.max(1, ...pts.map((p) => p.count)); const xs = (i: number) => pts.length === 1 ? w / 2 : (i / (pts.length - 1)) * w; const ys = (v: number) => h - (v / max) * (h - 10) - 4; const dd = pts.map((p, i) => `${i ? 'L' : 'M'}${xs(i).toFixed(1)} ${ys(p.count).toFixed(1)}`).join(' '); return (
             <svg className="co-chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ marginTop: 4 }}>
@@ -742,9 +742,9 @@ export function POSQueueScreen() {
             </svg>
           ); })()}
         </section>
-        <section className="co-card"><h2 style={h2}>{tx('pos.customer_type_mix')}</h2><Donut items={ctMix.map((m) => ({ label: mixLabel(m.label), count: m.count }))} /></section>
-        <section className="co-card"><h2 style={h2}>{tx('pos.visit_source_mix')}</h2><Donut items={vsMix.map((m) => ({ label: mixLabel(m.label), count: m.count }))} /></section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="cq-ana-customer-type-mix"><h2 style={h2}>{tx('pos.customer_type_mix')}</h2><Donut items={ctMix.map((m) => ({ label: mixLabel(m.label), count: m.count }))} /></section>
+        <section className="co-card" data-module-id="cq-ana-visit-source-mix"><h2 style={h2}>{tx('pos.visit_source_mix')}</h2><Donut items={vsMix.map((m) => ({ label: mixLabel(m.label), count: m.count }))} /></section>
+        <section className="co-card" data-module-id="cq-ana-top-waiting-services">
           <h2 style={{ ...h2, marginBottom: 3 }}>{tx('pos.top_waiting_services')}</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {topSvc.slice(0, 4).map((b) => (
@@ -756,7 +756,7 @@ export function POSQueueScreen() {
             {topSvc.length === 0 ? <div style={{ fontSize: 11, color: 'var(--muted)' }}>{tx('pos.no_data_yet')}</div> : null}
           </div>
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="cq-ana-queue-conversion">
           <h2 style={h2}>{tx('pos.queue_conversion')}</h2>
           {(() => { const pct = conv.percent; const shown = pct != null ? pct : 0; const ang = Math.PI * (1 - shown / 100); const cx = 60, cy = 58, r = 46; const x = cx + r * Math.cos(ang), y = cy - r * Math.sin(ang); return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -773,7 +773,7 @@ export function POSQueueScreen() {
             </div>
           ); })()}
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="cq-ana-potential-revenue-by-queue">
           {/* §42: projected value of the guests waiting — approved overrides, cancelled visits excluded — NOT earned revenue */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 }}><h2 style={h2}>{tx('pos.potential_revenue_by_queue')}</h2><b style={{ font: '700 15px/1 "Playfair Display",serif', color: '#1F7A3F', flex: 'none' }}>{m0(a?.potentialRevenueTotalCents)}</b></div>
           <div style={{ fontSize: 9.5, color: 'var(--muted)', marginBottom: 2 }}>{tx('ops.queue.projected')}</div>

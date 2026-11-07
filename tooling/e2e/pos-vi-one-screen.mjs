@@ -48,7 +48,48 @@ export const MODULES = [
 // chrome and the Windows taskbar visible — the page itself gets 1920 × 945 (1080 − Chrome's tab strip + address bar ≈ 87 px −
 // the Windows 11 taskbar 48 px). 1920 × 1080 (a kiosk / full-screen browser) and the smaller screens are report rows.
 export const PRIMARY = [1920, 945];
-export const VIEWPORTS = [PRIMARY, [2560, 1440], [1920, 1080], [1600, 900], [1366, 768], [1280, 800]];
+// SUNMI FLEX 3 27″ (Nov 6 2026 mandates): Android 13 Chrome at DPR 1 gives ≈1920 × 952 (status + toolbar + navigation
+// bars) and ≈1920 × 1032 as a kiosk / installed web app with the navigation bar; full screen is 1920 × 1080. These are
+// CERTIFIED like the primary: no vertical page scroll, every registered module inside the viewport. The physical device
+// itself stays NOT_TESTED until it is in front of us.
+export const SUNMI = [[1920, 952], [1920, 1032]];
+export const CERTIFIED = [PRIMARY, ...SUNMI, [1920, 1080]];
+export const VIEWPORTS = [PRIMARY, ...SUNMI, [2560, 1440], [1920, 1080], [1600, 900], [1366, 768], [1280, 800]];
+const isCertified = (w, h) => CERTIFIED.some(([cw, ch]) => cw === w && ch === h);
+/** The module registry (apps/pos-web/src/shell/module-registry.json): page key → registered modules. */
+export const REGISTRY = JSON.parse(readFileSync(new URL('../../apps/pos-web/src/shell/module-registry.json', import.meta.url), 'utf8'));
+/** The finance and customer pages of the SUNMI guides (MODULE_SET=all on the CLI adds them to the nine). */
+export const EXTRA_MODULES = [
+  { key: 'payroll', path: '/tenant/team/payroll', label: 'WEEKLY PAYCHECK' },
+  { key: 'expenses', path: '/tenant/payments/expenses', label: 'EXPENSES' },
+  { key: 'invoices', path: '/tenant/payments/invoices', label: 'INVOICES' },
+  { key: 'settlements', path: '/tenant/payments/settlements', label: 'DEPOSITS & SETTLEMENTS' },
+  { key: 'deposit-recon', path: '/tenant/payments/deposit-reconciliation', label: 'DEPOSIT RECONCILIATION' },
+  { key: 'receipt-review', path: '/tenant/ai/ocr-receipt', label: 'RECEIPT REVIEW' },
+  { key: 'receipt-scanner', path: '/tenant/ai/receipt-scanner', label: 'RECEIPT SCANNER' },
+  { key: 'loyalty', path: '/tenant/customers/loyalty', label: 'LOYALTY' },
+  { key: 'retention', path: '/tenant/customers/retention', label: 'RETENTION' },
+  { key: 'memberships', path: '/tenant/customers/memberships', label: 'MEMBERSHIPS' },
+  { key: 'customers', path: '/customers', label: 'CUSTOMERS' },
+];
+/** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
+export const measureRegistry = (page, key) => {
+  const reg = REGISTRY.pages.find((p) => p.key === key)?.modules ?? [];
+  return page.evaluate((mods) => {
+    const main = document.querySelector('.main'); const top = document.querySelector('.main > .topbar');
+    if (!main) return mods.map((m) => ({ id: m.id, present: false }));
+    const mr = main.getBoundingClientRect();
+    const box = { l: mr.left, t: top ? top.getBoundingClientRect().bottom : mr.top, r: mr.right, b: Math.min(mr.bottom, innerHeight) };
+    const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+    return mods.map((m) => {
+      const el = main.querySelector(`[data-module-id="${m.id}"]`) || main.querySelector(`[data-testid="${m.id}"]`);
+      if (!el) return { id: m.id, label: m.label, present: false, inView: false };
+      const r = el.getBoundingClientRect();
+      return { id: m.id, label: m.label, present: true, visible: vis(el), inView: vis(el) && r.left >= box.l - 1 && r.right <= box.r + 1 && r.top >= box.t - 1 && r.bottom <= box.b + 1,
+        children: [...el.children].filter(vis).length, minChildren: m.minChildren ?? null, rect: [r.left, r.top, r.width, r.height].map(Math.round) };
+    });
+  }, reg);
+};
 // VIEWPORTS=primary → the primary only; VIEWPORTS=1920x945,1366x768 → exactly those
 const parseViewports = (v) => (v === 'primary' ? [PRIMARY] : v.split(',').map((x) => x.trim().split('x').map(Number)).filter(([w, h]) => w > 0 && h > 0));
 
@@ -88,7 +129,11 @@ export const measureOneScreen = (page) => page.evaluate(async () => {
   const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05; };
   const se = document.scrollingElement;
   const main = document.querySelector('.main');
-  const root = main?.firstElementChild ?? null;
+  // the SCREEN's root: the tallest child of .main that is not the top bar / alert slot. (Until Nov 7 2026 this read
+  // main.firstElementChild — the top bar — so a screen that scrolls inside its own root, e.g. Tech Queue's 761 px, was never
+  // measured: a false PASS found by the SUNMI module inventory.)
+  const root = [...(main?.children ?? [])].filter((c) => !c.classList.contains('topbar') && !c.classList.contains('community-alert-slot') && c.getBoundingClientRect().height > 0)
+    .sort((a, b) => b.getBoundingClientRect().height - a.getBoundingClientRect().height)[0] ?? null;
   // the module's scroll owner: the shell's .main, or a screen root that scrolls itself (h-full overflow-auto)
   const owners = [main, root, ...(root ? [...root.children].filter((c) => c.clientHeight >= (main?.clientHeight ?? 0) * 0.9) : [])].filter(Boolean);
   const scrollOf = (el) => { const cs = getComputedStyle(el); const canY = /auto|scroll/.test(cs.overflowY) || el === main; const canX = /auto|scroll/.test(cs.overflowX) || el === main; return { y: canY ? Math.max(0, el.scrollHeight - el.clientHeight) : 0, x: canX ? Math.max(0, el.scrollWidth - el.clientWidth) : 0 }; };
@@ -318,11 +363,12 @@ export async function runOneScreenMatrix({ newPage, setLanguage, base, shots, st
         for (let i = 0; i < 40; i++) { const tx = await page.locator('.main').first().innerText().catch(() => ''); if (tx.length > 80 && !/^\s*(Loading|Đang tải)/m.test(tx.slice(0, 200))) break; await sleep(250); }
         await sleep(settleMs);
         const meas = await measureOneScreen(page);
+        const registry = await measureRegistry(page, m.key);
         const t0 = Date.now(); const hit = await measureHitAreas(page); if (hit) hit.ms = Date.now() - t0;
         const leftovers = lang === 'vi' ? await englishLeftovers(page, [...allow, ...VI_WORDS]) : [];
         const file = `${state}-${m.key}-${lang}-${w}x${h}.png`;
         await page.screenshot({ path: join(shots, file) });
-        rows.push({ state, module: m.key, label: m.label, lang, w, h, ...meas, hit, leftovers, file, pageErrors: errors.splice(0) });
+        rows.push({ state, module: m.key, label: m.label, lang, w, h, ...meas, registry, hit, leftovers, file, pageErrors: errors.splice(0) });
         log(`${state} ${m.label} ${lang} ${w}x${h} v${meas.vScroll} h${meas.hScroll} doc${meas.docScrollY}/${meas.docScrollX} clip${meas.clippedCount} cut${meas.cutOffCount} ovl${meas.overlapCount} minBtn${meas.minButton} hit:${hit ? `${hit.full}f/${hit.neighbour}n/${hit.edge}e/${hit.short}s ${hit.ms}ms${hit.layoutSame ? '' : ' LAYOUT-CHANGED'}` : '-'} font:${meas.font.hanken ? 'Hanken' : 'FALLBACK'}`);
       }
     }
@@ -338,10 +384,17 @@ export function judge(rows) {
   const by = new Map(rows.map((r) => [key(r), r]));
   for (const r of rows) {
     const primary = r.w === PRIMARY[0] && r.h === PRIMARY[1];
+    const certified = isCertified(r.w, r.h);
     const en = by.get(`${r.module}|en|${r.w}x${r.h}`);
     const reasons = [];
     if (r.docScrollX > 1 || r.hScroll > 1) reasons.push(`horizontal scroll ${Math.max(r.docScrollX, r.hScroll)}px`);
-    if (primary && (r.vScroll > 1 || r.docScrollY > 1)) reasons.push(`vertical scroll ${Math.max(r.vScroll, r.docScrollY)}px at ${PRIMARY[0]}×${PRIMARY[1]}`);
+    if (certified && (r.vScroll > 1 || r.docScrollY > 1)) reasons.push(`vertical scroll ${Math.max(r.vScroll, r.docScrollY)}px at ${r.w}×${r.h}`);
+    // the SUNMI module registry: every registered module present (any viewport) and inside the viewport (certified sizes)
+    const reg = r.registry || [];
+    const missing = reg.filter((x) => !x.present), outside = reg.filter((x) => x.present && !x.inView), few = reg.filter((x) => x.present && x.minChildren != null && x.children < x.minChildren);
+    if (missing.length) reasons.push(`${missing.length} registered module(s) missing: ${missing.slice(0, 4).map((x) => x.id).join(', ')}`);
+    if (certified && outside.length) reasons.push(`${outside.length} registered module(s) outside the viewport: ${outside.slice(0, 4).map((x) => x.id).join(', ')}`);
+    if (few.length) reasons.push(`incomplete set(s): ${few.map((x) => `${x.id} ${x.children}/${x.minChildren}`).join(', ')}`);
     if (r.clippedCount) reasons.push(`${r.clippedCount} clipped / spilling control text (${r.clipped.slice(0, 2).map((c) => JSON.stringify(c.text)).join(', ')})`);
     if (r.cutOffCount) reasons.push(`${r.cutOffCount} controls / status pills cut off sideways by their card (${r.cutOff.slice(0, 2).map((c) => JSON.stringify(c.text)).join(', ')})`);
     if (r.overlapCount) reasons.push(`${r.overlapCount} overlapping controls (${r.overlaps.slice(0, 2).map((o) => `${o.a}×${o.b}`).join(', ')})`);
@@ -410,16 +463,20 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const mods = ONLY ? MODULES.filter((m) => ONLY.includes(m.key)) : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : MODULES;
+    const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');
     writeFileSync(OUT, JSON.stringify(verdicts, null, 1));
     const prim = verdicts.filter((v) => v.primary);
     console.log('\n' + prim.map((v) => `${v.pass ? 'PASS' : 'FAIL'}  ${v.label} ${v.lang.toUpperCase()} (${STATE}, ${PRIMARY[0]}×${PRIMARY[1]} page = 1920×1080 screen with browser chrome + taskbar)${v.reasons.length ? ' — ' + v.reasons.join('; ') : ''}`).join('\n'));
-    const resp = verdicts.filter((v) => !v.primary && !v.pass);
+    const cert = verdicts.filter((v) => isCertified(v.w, v.h));
+    const certFail = cert.filter((v) => !v.primary && !v.pass);
+    if (certFail.length) console.log('\ncertified SUNMI / full-HD rows that FAIL:\n' + certFail.map((v) => `  ${v.label} ${v.lang} ${v.w}x${v.h}: ${v.reasons.join('; ')}`).join('\n'));
+    const resp = verdicts.filter((v) => !isCertified(v.w, v.h) && !v.pass);
     if (resp.length) console.log('\nresponsive (report) issues:\n' + resp.map((v) => `  ${v.label} ${v.lang} ${v.w}x${v.h}: ${v.reasons.join('; ')}`).join('\n'));
-    console.log(`\n${prim.filter((v) => v.pass).length}/${prim.length} primary checks passed · ${verdicts.filter((v) => v.pass).length}/${verdicts.length} incl. responsive · ${SHOTS}`);
-    code = prim.every((v) => v.pass) ? 0 : 1;
+    console.log(`\n${cert.filter((v) => v.pass).length}/${cert.length} certified checks passed (primary ${prim.filter((v) => v.pass).length}/${prim.length}) · ${verdicts.filter((v) => v.pass).length}/${verdicts.length} incl. responsive · ${SHOTS}`);
+    code = cert.every((v) => v.pass) ? 0 : 1;
   } catch (e) { console.error(String(e?.stack || e)); code = 1; }
   finally { await browser?.close().catch(() => undefined); apiProc.kill('SIGTERM'); web.close(); await pool.end().catch(() => undefined); }
   process.exit(code);

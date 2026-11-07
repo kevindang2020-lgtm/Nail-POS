@@ -634,7 +634,7 @@ export function POSServingScreen() {
 
       {/* Analytics row — compact operational charts; detail lives in Reports (§63–§67) */}
       <div className="co-ana">
-        <section className="co-card">
+        <section className="co-card" data-module-id="sv-ana-service-time-trend">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.service_time_trend')}</h2><span style={{ fontSize: 10, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {(() => { const pts = trendPts; if (!pts.length) return <div style={{ height: 'var(--co-chart)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 11 }}>{tx('pos.no_data_yet')}</div>; const w = 230, h = 70, max = Math.max(1, ...pts.map((p) => p.minutes)); const xs = (i: number) => (pts.length === 1 ? w / 2 : (i / (pts.length - 1)) * w); const ys = (v: number) => h - (v / max) * (h - 10) - 4; const dd = pts.map((p, i) => `${i ? 'L' : 'M'}${xs(i).toFixed(1)} ${ys(p.minutes).toFixed(1)}`).join(' '); return (
             <svg className="co-chart" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ marginTop: 4 }}>
@@ -643,15 +643,15 @@ export function POSServingScreen() {
             </svg>
           ); })()}
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sv-ana-service-mix">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.service_mix')}</h2><span style={{ fontSize: 10, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           <Donut items={serviceMix.slice(0, 5).map((m) => ({ label: m.category, count: m.count }))} />
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sv-ana-add-on-mix">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.add_on_mix')}</h2><span style={{ fontSize: 10, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           <Donut items={addOnMix.map((m) => ({ label: m.label, count: m.count }))} />
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sv-ana-completion-funnel">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><h2 style={h2}>{tx('pos.completion_funnel')}</h2><span style={{ fontSize: 10, color: 'var(--muted)' }}>{tx('pos.today_6')}</span></div>
           {(() => { const base = Math.max(1, funnel.started); const steps = [{ l: tx('pos.started_2'), v: funnel.started }, { l: tx('pos.finishing'), v: funnel.finishing }, { l: tx('pos.service_done'), v: funnel.serviceDone }]; const shades = ['#C77F2E', '#A96F22', '#4E9C78']; return (
             <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -665,7 +665,7 @@ export function POSServingScreen() {
             </div>
           ); })()}
         </section>
-        <section className="co-card">
+        <section className="co-card" data-module-id="sv-ana-potential-revenue-in-progress">
           {/* §52: projected value of the work on the floor — NOT settled revenue */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 }}><h2 style={h2}>{tx('pos.potential_revenue_in_progress')}</h2><b style={{ font: '700 15px/1 "Playfair Display",serif', color: '#1F7A3F', flex: 'none' }}>{m2(pot.totalCents)}</b></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, fontSize: 10.5, marginTop: 3 }}>

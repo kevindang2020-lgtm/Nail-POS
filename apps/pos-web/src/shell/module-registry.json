@@ -1,0 +1,877 @@
+{
+ "$comment": "SUNMI FLEX 3 mandates (Nov 6 2026): the POS module preservation registry. Every listed module must stay PRESENT in its screen source (apps/api check:pos-module-registry) and VISIBLE inside the content viewport at the primary certified viewport (tooling/e2e/pos-vi-one-screen.mjs). Removing an entry needs an owner-approved reason in docs/sunmi/MODULE_INVENTORY.md.",
+ "pages": [
+  {
+   "key": "overview",
+   "title": "Overview",
+   "routes": [
+    "/overview",
+    "/tenant/overview"
+   ],
+   "screens": [
+    "POSOverviewScreen"
+   ],
+   "guide": "AI_PowerSalon_Overview",
+   "modules": [
+    {
+     "id": "overview-kpis",
+     "label": "8 KPI cards"
+    },
+    {
+     "id": "ov-arrivals",
+     "label": "Arrivals & Check-In Queue"
+    },
+    {
+     "id": "ov-techq",
+     "label": "Live Tech Queue"
+    },
+    {
+     "id": "ov-flow",
+     "label": "Service Flow Overview"
+    },
+    {
+     "id": "ov-appts",
+     "label": "Today's Appointments"
+    },
+    {
+     "id": "ov-comms",
+     "label": "Customer Communications"
+    },
+    {
+     "id": "ov-insights",
+     "label": "AI Insights"
+    },
+    {
+     "id": "ov-revenue",
+     "label": "Revenue Trend"
+    },
+    {
+     "id": "ov-perf",
+     "label": "Technician Performance"
+    },
+    {
+     "id": "ov-retention",
+     "label": "Customer Retention"
+    },
+    {
+     "id": "ov-paymix",
+     "label": "Payment Mix"
+    },
+    {
+     "id": "ov-inventory",
+     "label": "Inventory Alerts"
+    },
+    {
+     "id": "overview-quick-actions",
+     "label": "9 Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "live-ops",
+   "title": "Live Operations",
+   "routes": [
+    "/live-operations",
+    "/dashboard",
+    "/tenant/dashboard"
+   ],
+   "screens": [
+    "POSDashboardScreen"
+   ],
+   "guide": "AI_PowerSalonLive_Operations",
+   "modules": [
+    {
+     "id": "live-ops-kpis",
+     "label": "9 KPI cards"
+    },
+    {
+     "id": "lo-snapshot",
+     "label": "Today's Operations Snapshot"
+    },
+    {
+     "id": "lo-activity",
+     "label": "Live Salon Activity"
+    },
+    {
+     "id": "lo-ai",
+     "label": "AI Insights"
+    },
+    {
+     "id": "lo-trend",
+     "label": "Revenue & Appointments Trend"
+    },
+    {
+     "id": "lo-techs",
+     "label": "Top Technicians Today"
+    },
+    {
+     "id": "lo-services",
+     "label": "Top Services Today"
+    },
+    {
+     "id": "lo-retention",
+     "label": "Customer Retention"
+    },
+    {
+     "id": "lo-paymix",
+     "label": "Payment Mix"
+    },
+    {
+     "id": "lo-locations",
+     "label": "Multi-Location Snapshot"
+    },
+    {
+     "id": "live-ops-quick-actions",
+     "label": "Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "check-in",
+   "title": "Check-In",
+   "routes": [
+    "/check-in"
+   ],
+   "screens": [
+    "POSCheckInScreen"
+   ],
+   "guide": "AI_PowerSalon_Check-In",
+   "modules": [
+    {
+     "id": "check-in-kpis",
+     "label": "9 KPI cards"
+    },
+    {
+     "id": "ci-queue",
+     "label": "Live Check-In Queue"
+    },
+    {
+     "id": "ci-quick",
+     "label": "Quick Check-In (Existing / New / Walk-In)"
+    },
+    {
+     "id": "ci-insights",
+     "label": "Front Desk Insights"
+    },
+    {
+     "id": "ci-arriving",
+     "label": "Today's Appointments Arriving"
+    },
+    {
+     "id": "ci-lounge",
+     "label": "Waiting Lounge & Assignment"
+    },
+    {
+     "id": "ci-techs",
+     "label": "Available Technicians"
+    },
+    {
+     "id": "ci-trend",
+     "label": "Arrival Trend"
+    },
+    {
+     "id": "ci-source",
+     "label": "Check-In Source Mix"
+    },
+    {
+     "id": "ci-ctype",
+     "label": "Customer Type"
+    },
+    {
+     "id": "ci-perf",
+     "label": "Daily Front Desk Performance"
+    },
+    {
+     "id": "check-in-quick-actions",
+     "label": "9 Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "booking",
+   "title": "Booking",
+   "routes": [
+    "/booking"
+   ],
+   "screens": [
+    "POSBookingScreen"
+   ],
+   "guide": "AI_PowerSalon_Full-System_Engineering_Upgrade",
+   "modules": []
+  },
+  {
+   "key": "tech-queue",
+   "title": "Tech Queue",
+   "routes": [
+    "/tech-queue"
+   ],
+   "screens": [
+    "POSTechQueueScreen"
+   ],
+   "guide": "AI_PowerSalon_Tech_Queue",
+   "modules": [
+    {
+     "id": "toolbar",
+     "label": "Toolbar: search, filters, live / refresh"
+    },
+    {
+     "id": "kpis",
+     "label": "KPI / status cards"
+    },
+    {
+     "id": "live-queue",
+     "label": "Live technician turn order"
+    },
+    {
+     "id": "ai-insights",
+     "label": "AI insights"
+    },
+    {
+     "id": "workload",
+     "label": "Workload"
+    },
+    {
+     "id": "assigned-tickets",
+     "label": "Assigned tickets"
+    },
+    {
+     "id": "waiting-guests",
+     "label": "Waiting guests"
+    },
+    {
+     "id": "tech-performance",
+     "label": "Technician performance"
+    },
+    {
+     "id": "available-technicians",
+     "label": "Available technicians"
+    },
+    {
+     "id": "quick-actions",
+     "label": "Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "queue",
+   "title": "Customer Queue",
+   "routes": [
+    "/queue"
+   ],
+   "screens": [
+    "POSQueueScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Queue",
+   "modules": [
+    {
+     "id": "queue-kpis",
+     "label": "KPI cards"
+    },
+    {
+     "id": "cq-queue",
+     "label": "Live Customer Queue"
+    },
+    {
+     "id": "cq-board",
+     "label": "Guest Flow Board"
+    },
+    {
+     "id": "cq-insights",
+     "label": "AI Guest Insights"
+    },
+    {
+     "id": "cq-priority",
+     "label": "Waiting Guests by Priority"
+    },
+    {
+     "id": "cq-profile",
+     "label": "Customer Profile Preview"
+    },
+    {
+     "id": "cq-staff",
+     "label": "Available Technicians for Queue"
+    },
+    {
+     "id": "cq-ana-queue-trend-today",
+     "label": "Queue Trend Today"
+    },
+    {
+     "id": "cq-ana-customer-type-mix",
+     "label": "Customer Type Mix"
+    },
+    {
+     "id": "cq-ana-visit-source-mix",
+     "label": "Visit Source Mix"
+    },
+    {
+     "id": "cq-ana-top-waiting-services",
+     "label": "Top Waiting Services"
+    },
+    {
+     "id": "cq-ana-queue-conversion",
+     "label": "Queue Conversion / Readiness"
+    },
+    {
+     "id": "cq-ana-potential-revenue-by-queue",
+     "label": "Potential Revenue by Queue"
+    },
+    {
+     "id": "queue-quick-actions",
+     "label": "Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "serving",
+   "title": "Serving",
+   "routes": [
+    "/serving"
+   ],
+   "screens": [
+    "POSServingScreen"
+   ],
+   "guide": "AI_PowerSalon_Serving",
+   "modules": [
+    {
+     "id": "serving-kpis",
+     "label": "KPI cards"
+    },
+    {
+     "id": "sv-floor",
+     "label": "Live Service Floor"
+    },
+    {
+     "id": "sv-board",
+     "label": "Service Progress Board"
+    },
+    {
+     "id": "sv-insights",
+     "label": "AI Service Insights"
+    },
+    {
+     "id": "sv-tech-perf",
+     "label": "Technician Service Performance"
+    },
+    {
+     "id": "sv-guest",
+     "label": "Guest Service Details"
+    },
+    {
+     "id": "sv-staff",
+     "label": "Available / Finishing Technicians"
+    },
+    {
+     "id": "sv-ana-service-time-trend",
+     "label": "Service Time Trend"
+    },
+    {
+     "id": "sv-ana-service-mix",
+     "label": "Service Mix"
+    },
+    {
+     "id": "sv-ana-add-on-mix",
+     "label": "Add-On Mix"
+    },
+    {
+     "id": "sv-ana-completion-funnel",
+     "label": "Completion Funnel"
+    },
+    {
+     "id": "sv-ana-potential-revenue-in-progress",
+     "label": "Potential Revenue in Progress"
+    },
+    {
+     "id": "serving-quick-actions",
+     "label": "Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "service-done",
+   "title": "Service Done",
+   "routes": [
+    "/service-done"
+   ],
+   "screens": [
+    "POSServiceDoneScreen"
+   ],
+   "guide": "AI_PowerSalon_Service_Done",
+   "modules": [
+    {
+     "id": "service-done-kpis",
+     "label": "9 KPI cards"
+    },
+    {
+     "id": "sd-queue",
+     "label": "Completed Service Queue"
+    },
+    {
+     "id": "sd-board",
+     "label": "Service Done Board"
+    },
+    {
+     "id": "sd-insights",
+     "label": "AI Service Done Insights"
+    },
+    {
+     "id": "sd-tech-perf",
+     "label": "Technician Completion Performance"
+    },
+    {
+     "id": "sd-guest",
+     "label": "Guest Completion Details"
+    },
+    {
+     "id": "sd-staff",
+     "label": "Ready / Finishing Technicians"
+    },
+    {
+     "id": "sd-ana-completion-trend",
+     "label": "Completion Trend"
+    },
+    {
+     "id": "sd-ana-service-mix",
+     "label": "Service Mix"
+    },
+    {
+     "id": "sd-ana-add-on-mix",
+     "label": "Add-On Mix"
+    },
+    {
+     "id": "sd-ana-completion-funnel",
+     "label": "Completion Funnel"
+    },
+    {
+     "id": "sd-ana-potential-revenue-ready-for-checkout",
+     "label": "Potential Revenue Ready for Checkout"
+    },
+    {
+     "id": "service-done-quick-actions",
+     "label": "7 Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "checkout",
+   "title": "Checkout",
+   "routes": [
+    "/checkout"
+   ],
+   "screens": [
+    "POSCheckoutScreen"
+   ],
+   "guide": "AI_PowerSalon_CheckOut",
+   "modules": [
+    {
+     "id": "checkout-kpis",
+     "label": "9 KPI cards"
+    },
+    {
+     "id": "checkout-queue",
+     "label": "Checkout Queue"
+    },
+    {
+     "id": "checkout-workspace",
+     "label": "Checkout Workspace"
+    },
+    {
+     "id": "checkout-ai-insights",
+     "label": "AI Checkout Insights"
+    },
+    {
+     "id": "checkout-attention",
+     "label": "Transactions Needing Attention"
+    },
+    {
+     "id": "checkout-staff",
+     "label": "Available Front Desk / Ready Technicians"
+    },
+    {
+     "id": "co-ana-revenue-trend",
+     "label": "Revenue Trend"
+    },
+    {
+     "id": "co-ana-payment-mix",
+     "label": "Payment Mix"
+    },
+    {
+     "id": "co-ana-checkout-conversion",
+     "label": "Checkout Conversion"
+    },
+    {
+     "id": "co-ana-upsell-mix",
+     "label": "Upsell Mix"
+    },
+    {
+     "id": "co-ana-potential-revenue-in-queue",
+     "label": "Potential Revenue in Queue"
+    },
+    {
+     "id": "checkout-quick-actions",
+     "label": "9 Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "payroll",
+   "title": "Weekly Technician Paycheck",
+   "routes": [
+    "/tenant/team/payroll"
+   ],
+   "screens": [
+    "POSPayrollScreen",
+    "POSPaycheckTab"
+   ],
+   "guide": "AI_PowerSalon_Weekly_Technician_Paycheck",
+   "modules": []
+  },
+  {
+   "key": "expenses",
+   "title": "Expenses Management",
+   "routes": [
+    "/tenant/payments/expenses"
+   ],
+   "screens": [
+    "POSExpensesScreen"
+   ],
+   "guide": "AI_PowerSalon_Expenses_Management",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Expense KPI cards"
+    },
+    {
+     "id": "expenses",
+     "label": "Expenses list"
+    },
+    {
+     "id": "search",
+     "label": "Search vendor / description / invoice / amount"
+    },
+    {
+     "id": "category",
+     "label": "Category filter"
+    },
+    {
+     "id": "method",
+     "label": "Payment method filter"
+    },
+    {
+     "id": "sort",
+     "label": "Sort"
+    },
+    {
+     "id": "add-expense",
+     "label": "Add Expense"
+    },
+    {
+     "id": "upload-receipt",
+     "label": "Upload receipt"
+    },
+    {
+     "id": "export-csv",
+     "label": "Export CSV"
+    }
+   ]
+  },
+  {
+   "key": "invoices",
+   "title": "Invoices Management",
+   "routes": [
+    "/tenant/payments/invoices"
+   ],
+   "screens": [
+    "POSInvoicesScreen"
+   ],
+   "guide": "AI_PowerSalon_Invoices_Management",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Invoice KPI cards"
+    },
+    {
+     "id": "invoices",
+     "label": "Invoices list"
+    },
+    {
+     "id": "search",
+     "label": "Search"
+    },
+    {
+     "id": "sort",
+     "label": "Sort"
+    },
+    {
+     "id": "new-invoice",
+     "label": "New invoice"
+    }
+   ]
+  },
+  {
+   "key": "settlements",
+   "title": "Deposits & Settlements",
+   "routes": [
+    "/tenant/payments/settlements"
+   ],
+   "screens": [
+    "POSSettlementsScreen"
+   ],
+   "guide": "AI_PowerSalon_DEPOSITS__SETTLEMENTS",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Settlement KPI cards"
+    },
+    {
+     "id": "recon-strip",
+     "label": "Reconciliation strip"
+    },
+    {
+     "id": "records",
+     "label": "Settlement records"
+    },
+    {
+     "id": "search",
+     "label": "Search"
+    },
+    {
+     "id": "status",
+     "label": "Status filter"
+    },
+    {
+     "id": "open-recon",
+     "label": "Open Deposit Reconciliation"
+    }
+   ]
+  },
+  {
+   "key": "deposit-recon",
+   "title": "AI Deposit Reconciliation",
+   "routes": [
+    "/tenant/payments/deposit-reconciliation"
+   ],
+   "screens": [
+    "POSDepositReconScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Deposit_Reconciliation",
+   "modules": [
+    {
+     "id": "kpis",
+     "label": "Reconciliation KPI cards"
+    },
+    {
+     "id": "settlements-deposits",
+     "label": "Settlements ↔ deposits"
+    },
+    {
+     "id": "bank-accounts",
+     "label": "Bank accounts"
+    },
+    {
+     "id": "unmatched-deposits",
+     "label": "Unmatched deposits"
+    },
+    {
+     "id": "record-deposit",
+     "label": "Record deposit"
+    },
+    {
+     "id": "search",
+     "label": "Search"
+    }
+   ]
+  },
+  {
+   "key": "receipt-review",
+   "title": "Receipt / OCR review",
+   "routes": [
+    "/tenant/ai/ocr-receipt"
+   ],
+   "screens": [
+    "POSAIOcrReceiptScreen"
+   ],
+   "guide": "AI_PowerSalon_Receipt_Expense_OCR_Accounting",
+   "modules": []
+  },
+  {
+   "key": "receipt-scanner",
+   "title": "AI OCR Receipt Scanner",
+   "routes": [
+    "/tenant/ai/receipt-scanner"
+   ],
+   "screens": [
+    "POSAIReceiptScannerScreen"
+   ],
+   "guide": "AI_PowerSalon_Receipt_Expense_OCR_Accounting",
+   "modules": [
+    {
+     "id": "pkg-cards",
+     "label": "AI package state"
+    },
+    {
+     "id": "rcsx-kpis",
+     "label": "Scanner KPI cards"
+    },
+    {
+     "id": "rcsx-dashboard",
+     "label": "Scanner dashboard"
+    },
+    {
+     "id": "rcsx-history",
+     "label": "Scan history"
+    },
+    {
+     "id": "rcsx-check",
+     "label": "Check OCR System"
+    },
+    {
+     "id": "rcsx-open-review",
+     "label": "Open Receipt Review"
+    }
+   ]
+  },
+  {
+   "key": "loyalty",
+   "title": "Loyalty & Rewards",
+   "routes": [
+    "/tenant/customers/loyalty"
+   ],
+   "screens": [
+    "POSLoyaltyScreen"
+   ],
+   "guide": "AI_PowerSalon_Loyalty__Rewards",
+   "modules": [
+    {
+     "id": "loyalty-kpis",
+     "label": "Five KPI cards"
+    },
+    {
+     "id": "panel-tiers",
+     "label": "Members by Tier"
+    },
+    {
+     "id": "panel-catalog",
+     "label": "Rewards catalog"
+    },
+    {
+     "id": "panel-members",
+     "label": "Members"
+    },
+    {
+     "id": "panel-redemptions",
+     "label": "Points activity / redemptions"
+    },
+    {
+     "id": "loyalty-quick",
+     "label": "Quick Actions"
+    },
+    {
+     "id": "loyalty-health-open",
+     "label": "Loyalty health check"
+    }
+   ]
+  },
+  {
+   "key": "retention",
+   "title": "Customer Retention",
+   "routes": [
+    "/tenant/customers/retention"
+   ],
+   "screens": [
+    "POSRetentionScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Retention",
+   "modules": [
+    {
+     "id": "retention-kpis",
+     "label": "Retention KPI cards"
+    },
+    {
+     "id": "panel-winback",
+     "label": "Win-back / campaigns"
+    },
+    {
+     "id": "selection-bar",
+     "label": "Selection + bulk SMS bar"
+    },
+    {
+     "id": "rt-search",
+     "label": "Search"
+    },
+    {
+     "id": "open-health",
+     "label": "Retention health check"
+    },
+    {
+     "id": "create-winback",
+     "label": "Create win-back"
+    }
+   ]
+  },
+  {
+   "key": "memberships",
+   "title": "Membership Overview",
+   "routes": [
+    "/tenant/customers/memberships"
+   ],
+   "screens": [
+    "POSMembershipsScreen"
+   ],
+   "guide": "AI_PowerSalon_Membership_Overview",
+   "modules": [
+    {
+     "id": "membership-kpis",
+     "label": "Membership KPI cards"
+    },
+    {
+     "id": "toolbar",
+     "label": "Search + tabs"
+    },
+    {
+     "id": "panel-plans",
+     "label": "Plans"
+    },
+    {
+     "id": "panel-members",
+     "label": "Members"
+    },
+    {
+     "id": "panel-activity",
+     "label": "Activity"
+    },
+    {
+     "id": "ana-revenue",
+     "label": "Revenue analytics"
+    },
+    {
+     "id": "ana-status",
+     "label": "Status analytics"
+    },
+    {
+     "id": "ana-plans",
+     "label": "Plan analytics"
+    },
+    {
+     "id": "ana-services",
+     "label": "Service analytics"
+    },
+    {
+     "id": "membership-quick",
+     "label": "10 Quick Actions"
+    }
+   ]
+  },
+  {
+   "key": "customers",
+   "title": "Customers",
+   "routes": [
+    "/customers"
+   ],
+   "screens": [
+    "POSCustomersScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer",
+   "modules": []
+  }
+ ]
+}
