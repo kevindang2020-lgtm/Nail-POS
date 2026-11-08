@@ -135,9 +135,11 @@ describe('Customer Timeline — search, dates, pages', () => {
   it('SD-02 date ranges in the salon\'s days; appointment-date dimension; reversed range refused', async () => {
     expect(tlPresetRange('last_90', '2026-11-02')).toEqual({ from: '2026-08-05', to: '2026-11-02' });
     // "today" is the salon's day of the clock: pinned to a minute after TK1's completion (the fixtures are "hours ago", so
-    // between midnight and ~2 am New York the real clock's today did not contain them — a clock-dependent test, Nov 6 2026)
-    const doneMs = Number((await q(sql`select extract(epoch from service_done_at) * 1000 as ms from tickets where id = ${TK1}`))[0].ms);
-    const today = await new CustomerTimelineCenter(db, () => doneMs + 60_000).events(owner(), HANG, { preset: 'today', pageSize: 100 }, full);
+    // between midnight and ~2 am New York the real clock's today did not contain them — a clock-dependent test, Nov 6 2026).
+    // Pinned to EXACTLY the later of its done / paid times ("completed" is dated by the payment, 10 minutes after service done):
+    // any offset can push the clock past midnight while the event stays before it (seen at about 2 AM, Nov 8 2026)
+    const doneMs = Number((await q(sql`select extract(epoch from greatest(service_done_at, paid_at)) * 1000 as ms from tickets where id = ${TK1}`))[0].ms);
+    const today = await new CustomerTimelineCenter(db, () => doneMs).events(owner(), HANG, { preset: 'today', pageSize: 100 }, full);
     expect(today.items.map((e: any) => e.id)).not.toContain(`ticket:${TK_OLD}:completed`);
     expect(today.items.map((e: any) => e.id)).toContain(`ticket:${TK1}:completed`);
     const old = await tl.events(owner(), HANG, { preset: 'custom', from: '2020-01-01', to: '2025-12-31', pageSize: 100 }, full);

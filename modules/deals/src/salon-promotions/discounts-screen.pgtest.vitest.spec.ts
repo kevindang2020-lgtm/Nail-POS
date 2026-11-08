@@ -49,9 +49,9 @@ beforeAll(async () => {
   const red = (n: string, deal: string, cust: string, tk: string, status: string, cents: number, at: string, tenant = T, br = B) =>
     q(`insert into deal_redemptions (id, deal_id, tenant_id, branch_id, customer_id, ticket_id, amount_discounted_cents, deal_version, status, kind, applied_at, redeemed_at, created_at)
        values ($1,$2,$3,$4,$5,$6,$7,1,$8,'coupon', ${at}, ${status === 'redeemed' || status === 'reversed' ? at : 'null'}, ${at})`, [id(n), id(deal), tenant, br, id(cust), id(tk), cents, status]);
-  await red('ae1', 'd1', 'c1', '7a1', 'redeemed', 2000, "now() - interval '2 hours'");
-  await red('ae2', 'd1', 'c2', '7a2', 'redeemed', 2000, "now() - interval '1 hour'");
-  await red('ae3', 'd6', 'c1', '7a3', 'applied', 2500, "now() - interval '10 minutes'");          // on an unpaid ticket: pending, never counted
+  await red('ae1', 'd1', 'c1', '7a1', 'redeemed', 2000, "greatest(now() - interval '2 hours', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '1 seconds')");
+  await red('ae2', 'd1', 'c2', '7a2', 'redeemed', 2000, "greatest(now() - interval '1 hour', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '2 seconds')");
+  await red('ae3', 'd6', 'c1', '7a3', 'applied', 2500, "greatest(now() - interval '10 minutes', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '3 seconds')");          // on an unpaid ticket: pending, never counted
   await red('ae4', 'd5', 'c2', '7a4', 'reversed', 2500, "now() - interval '30 days'");
   await red('ae9', 'd9', 'c9', '7a9', 'redeemed', 1800, 'now()', T2, B2);
   repo = new DiscountsScreenRepository(kyselyFor(pg) as never);

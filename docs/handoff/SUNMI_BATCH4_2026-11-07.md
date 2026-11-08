@@ -116,3 +116,11 @@ about, so it reported a missed midnight checkpoint for a past time once the real
 measured from `now` (real PG16 query run). Backup Center tests pass 32/32; the rest of that API run passed: 3278 tests,
 1 failure (this one, fixed and re-run on its own).
 
+
+### Full re-run at HEAD in the overnight window (Nov 8, 01:20–02:40 New York)
+
+- API suite: 3279 / 3279 pass, including the Backup Center fix.
+- Module suites: every suite passed except two more clock-window fixtures, both now fixed:
+  - **Deals Discounts screen:** redemptions "2 h / 1 h / 10 min ago" were asserted as today. They are now pinned to the local day.
+  - **Customer Timeline SD-02:** this test was already pinned to "service done + 1 min". But "completed" is dated by the payment, 10 minutes later, so at about 2 AM the pin and the event fell on different days. It now pins to exactly the later of the two. Checked at 06:59:50Z, 06:59:59Z, 07:00:00Z and 07:00:30Z (the midnight crossing), and at 12:00Z and 20:00Z.
+- Customers suite: 500 pass. Workforce: 1302 pass. Gates: 57 + 25 audits.
