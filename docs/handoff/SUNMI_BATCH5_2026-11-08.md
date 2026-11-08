@@ -97,7 +97,7 @@ preservation-matrix gate and the registry gate.
 
 - Batch 5 at 1920×945 / 952 / 1032, EN + VI: 120/120.
 - Batch 5 at 1536×864 / 1440×900 / 1366×768 / 1280×720: 158/160 at first; the 2 optimizer-tab items were fixed, then 14/14 on re-run.
-- Before this batch: all pages at HEAD 432/432.
+- After the commit, all 92 registered pages at the three SUNMI sizes ran 546/552. The 6 misses were AI Branch Comparison only: that run used a POS build made before the sixth KPI card. Rebuilt and re-run, batch 5 at all seven sizes: 120/120 certified, 280/280 including the smaller sizes.
 - marketing-center pgtest: 12 / 12, including the new SD-03:
   - offers: approved only, never another salon;
   - quiet hours;
