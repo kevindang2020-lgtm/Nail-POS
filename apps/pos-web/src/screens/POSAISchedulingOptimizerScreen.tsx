@@ -45,7 +45,7 @@ const isTab = (t: string | null): t is Tab => !!t && TABS.some(([k]) => k === t)
 const page: React.CSSProperties = { height: '100%', overflow: 'auto', background: 'var(--aps-page, #F7EFE3)', fontFamily: 'var(--aps-font-body, Hanken Grotesk)' };
 const header: React.CSSProperties = { display: 'flex', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--line)', background: '#FFFCF6', flexWrap: 'wrap', alignItems: 'center' };
 const title: React.CSSProperties = { fontWeight: 800, fontSize: 18, fontFamily: 'var(--aps-font-head, Playfair Display)', color: '#2C2A27', margin: 0 };
-const tabBtn = (on: boolean): React.CSSProperties => ({ height: 32, padding: '0 12px', borderRadius: 8, border: `1px solid ${on ? '#A96F22' : 'var(--line)'}`, background: on ? '#A96F22' : '#fff', color: on ? '#fff' : '#4A4744', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' });
+const tabBtn = (on: boolean): React.CSSProperties => ({ height: 32, padding: '0 12px', borderRadius: 8, border: `1px solid ${on ? '#A96F22' : 'var(--line)'}`, background: on ? '#A96F22' : '#fff', color: on ? '#fff' : '#4A4744', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap' });
 
 // 200-technician §2 (Oct 26 2026): the day WITHOUT the roster — technicians are picked through the server-paged picker and
 // their names resolved on demand (the day's appointments name theirs; any other id is one server lookup)
@@ -102,14 +102,14 @@ export function POSAISchedulingOptimizerScreen() {
           <h2 style={title}>{tx('pos.ai_scheduling_optimizer')}</h2>
           <span style={muted}>{tx('pos.suggestions_only_nothing_changes_a_confirmed_194k')}</span>
         </div>
-        <button className="btn whitespace-nowrap !h-8" style={{ marginLeft: 'auto' }} onClick={bump}>{tx('pos.refresh')}</button>
+        <button className="btn whitespace-nowrap !h-8" style={{ marginLeft: 'auto' }} onClick={bump} data-testid="sched-refresh">{tx('pos.refresh')}</button>
       </div>
       {/* Scheduling Optimizer guide: the four counters, server-computed, on every tab; a counter opens its queue */}
       <div style={{ padding: '12px 20px 0' }}><SchedCounters tick={tick} onDrill={(g) => { setQueueGroup(g); setSelected(null); setTab('recs'); }} /></div>
-      <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }} role="tablist" aria-label={tx('pos.optimizer_sections')}>
+      <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }} role="tablist" aria-label={tx('pos.optimizer_sections')} data-testid="sched-tabs">
         {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} style={tabBtn(tab === k)} onClick={() => setTab(k)}>{tx(l)}</button>)}
       </div>
-      <div style={{ padding: 20, display: 'grid', gap: 16 }}>
+      <div style={{ padding: 20, display: 'grid', gap: 16 }} data-testid="sched-body">
         {tab === 'overview' && <SchedOverviewCard {...props} date={date} settings={settings} onOpenRun={openRun} onSelectRec={select} />}
         {tab === 'recs' && <>
           {selected ? <SchedRecommendationDetail id={selected} tick={tick} can={can} techName={techName} onChanged={bump} onClose={() => select(null)} /> : null}

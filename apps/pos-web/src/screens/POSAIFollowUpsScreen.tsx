@@ -106,7 +106,7 @@ export function POSAIFollowUpsScreen() {
       </div>
       {data && period.preset !== 'all' ? <div className="sub aifu-basis" data-testid="aifu-basis-note">{tx('aifu.basisNote', { basis: tx(`aifu.basis.${data.filters.basis}`), tz: data.filters.period.tz })}</div> : null}
       <div className="aifu-body">
-        <section className="panel aifu-list" aria-busy={loading}>
+        <section className="panel aifu-list" aria-busy={loading} data-testid="aifu-list">
           {err ? <ErrorRetry message={err} onRetry={load} />
             : !data ? <div className="state">{tx('aifu.loading')}</div>
             : data.items.length === 0 ? <Empty title={filtered ? tx('aifu.emptyFiltered') : tx('aifu.empty', { status: tx(`aifu.chip.${status}`) })}>

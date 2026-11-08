@@ -190,7 +190,7 @@ export function POSDevicesScreen() {
 
       {/* Row 1: Device Fleet · Payment & POS Hardware · Integration Center */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
-        <section style={panel}>
+        <section style={panel} data-testid="dev-fleet">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={headStyle}>{tx('pos.device_fleet_overview')}</span>{ov ? <span className="pill">{ov.fleet.length} {tx('pos.devices')}</span> : null}</div>
           {!ov && !ovErr ? <div className="state">{tx('pos.loading_devices')}</div> : ov && ov.fleet.length === 0 ? (
             <div className="muted">{tx('pos.no_devices_registered_yet_pair_a_1ma0')}</div>
@@ -223,7 +223,7 @@ export function POSDevicesScreen() {
           <button className="btn ghost whitespace-nowrap w-fit" style={{ alignSelf: 'center', marginTop: 8 }} onClick={() => nav('/tenant/devices/health')}>{tx('pos.view_all_devices')}</button>
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-payment-hw">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><span style={headStyle}>{tx('pos.payment_pos_hardware')}</span><span className={'pill ' + (gwConnected ? 'ok' : '')} style={{ marginLeft: 'auto' }}>{gwConnected ? tx('pos.healthy') : gwStatus ? statusLabel('gateway', gwStatus) : tx('admin.devices.check')}</span></div>
           <div className="list">
             <div className="row"><div className="t" style={{ flex: 1 }}>{processorName}</div><span className={'pill ' + (gwConnected ? 'ok' : 'warn')}>{gwConnected ? tx('pos.connected_2') : gwStatus ? statusLabel('gateway', gwStatus) : tx('admin.devices.setup')}</span></div>
@@ -260,7 +260,7 @@ export function POSDevicesScreen() {
           <button className="btn ghost whitespace-nowrap w-fit" style={{ alignSelf: 'center', marginTop: 8 }} onClick={() => nav('/tenant/devices/payment-terminals')}>{tx('pos.manage_payment_hardware')}</button>
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-integrations">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><span style={headStyle}>{tx('pos.integration_center')}</span><button className="btn ghost whitespace-nowrap w-fit" style={{ marginLeft: 'auto', padding: '3px 9px', fontSize: 11.5 }} onClick={() => nav('/tenant/integrations/api-webhooks')}>{tx('pos.manage_all')}</button></div>
           <div className="list">
             <div className="row"><div className="t" style={{ flex: 1 }}>{tx('pos.payment_gateway_fiserv_clover')}</div><span className={'pill ' + (gwConnected ? 'ok' : 'warn')}>{gwConnected ? tx('pos.connected_2') : gwStatus ? statusLabel('gateway', gwStatus) : tx('admin.devices.check')}</span></div>
@@ -273,7 +273,7 @@ export function POSDevicesScreen() {
 
       {/* Row 2: AI/Comm · Deployment · Connection/Sync Insights */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
-        <section style={panel}>
+        <section style={panel} data-testid="dev-ai-comms">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><span style={headStyle}>{tx('pos.ai_communication_integrations')}</span><span className="s" style={{ marginLeft: 'auto', color: '#8A7A66' }}>{comm.length}</span></div>
           {!pkgs ? <div className="state">{tx('pos.loading')}</div> : comm.length === 0 ? <div className="muted">{tx('pos.no_ai_communication_assistants_available')}</div> : (
             <div className="list">
@@ -285,7 +285,7 @@ export function POSDevicesScreen() {
           <button className="btn ghost whitespace-nowrap w-fit" style={{ alignSelf: 'center', marginTop: 8 }} onClick={() => nav('/tenant/ai/command-center')}>{tx('pos.configure_ai_communication')}</button>
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-deploy">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><span style={headStyle}>{tx('pos.deployment_update_control')}</span>{dep && dep.summary.pending ? <span className="pill warn" style={{ marginLeft: 8 }}>{dep.summary.pending} {tx('pos.pending')}</span> : null}</div>
           {!dep ? <div className="state">{tx('pos.loading')}</div> : dep.deployments.length === 0 ? <div className="muted">{tx('pos.no_components_tracked_yet')}</div> : (
             <div className="overflow-x-auto w-full">
@@ -304,7 +304,7 @@ export function POSDevicesScreen() {
           <button className="btn ghost whitespace-nowrap w-fit" style={{ alignSelf: 'center', marginTop: 'auto' }} onClick={() => nav('/tenant/devices/assignments')}>{tx('pos.manage_updates_rollouts')}</button>
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-sync">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><span style={headStyle}>{tx('pos.connection_sync_insights')}</span></div>
           <div className="muted">{tx('pos.per_device_wi_fi_firmware_re_1cik')}{' '}<span style={{ color: 'var(--danger, #B4673B)' }}>{tx('pos.not_connected')}</span></div>
           <button className="btn ghost whitespace-nowrap w-fit" style={{ alignSelf: 'center', marginTop: 'auto' }} onClick={() => nav('/tenant/devices/logs')}>{tx('pos.view_all_insights')}</button>
@@ -313,7 +313,7 @@ export function POSDevicesScreen() {
 
       {/* Row 3: charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
-        <section style={panel}>
+        <section style={panel} data-testid="dev-status-mix">
           <div style={headStyle}>{tx('pos.device_status_mix')}</div>
           <div className="s" style={{ color: '#8A7A66', marginBottom: 6 }}>{ov ? tx('pos.length_total_devices', { length: String(ov.fleet.length) }) : dash}</div>
           {mix ? (
@@ -328,17 +328,17 @@ export function POSDevicesScreen() {
           ) : <div className="state">{tx('pos.loading')}</div>}
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-int-health">
           <div style={headStyle}>{tx('pos.integration_health')}</div>
           <div className="muted" style={{ marginTop: 6 }}>{tx('pos.needs_a_connector_registry')}{' '}<span style={{ color: 'var(--danger, #B4673B)' }}>{dash}</span></div>
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-sync-rate">
           <div style={headStyle}>{tx('pos.sync_success_rate_7_days')}</div>
           <div className="muted" style={{ marginTop: 6 }}>{tx('pos.no_sync_operation_log_yet')}{' '}<span style={{ color: 'var(--danger, #B4673B)' }}>{dash}</span></div>
         </section>
 
-        <section style={panel}>
+        <section style={panel} data-testid="dev-by-branch">
           <div style={headStyle}>{tx('pos.devices_by_branch')}</div>
           <div className="s" style={{ color: '#8A7A66', marginBottom: 6 }}>{ov ? tx('pos.length_total', { length: String(ov.fleet.length) }) : dash}</div>
           {byBranch.length === 0 ? <div className="muted">{tx('pos.no_devices_yet')}</div> : (
@@ -354,7 +354,7 @@ export function POSDevicesScreen() {
         </section>
       </div>
 
-      <section style={panel}>
+      <section style={panel} data-testid="dev-quick">
         <div style={{ ...headStyle, marginBottom: 8 }}>{tx('pos.quick_actions_2')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {quickActions.map(([label, fn]) => <button key={label} className="btn ghost whitespace-nowrap w-fit" onClick={fn}>{label}</button>)}

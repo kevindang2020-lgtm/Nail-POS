@@ -135,7 +135,7 @@ export function POSSecurityScreen() {
       </div>
 
       <div style={grid2}>
-        <section style={cardBox}>
+        <section style={cardBox} data-testid="sec-mfa">
           {headRow(t('pos.two_factor_authentication'))}
           {mfa === null ? <div className="muted">{t('pos.checking')}</div> : replacing && !enroll ? (
             <div data-testid="mfa-replace">
@@ -166,7 +166,7 @@ export function POSSecurityScreen() {
           <Msg m={mfaMsg} />
         </section>
 
-        <section style={cardBox}>
+        <section style={cardBox} data-testid="sec-password">
           {headRow(t('pos.change_password'))}
           <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 10 }}>{t('pos.last_changed')}{' '}{me?.passwordChangedAt ? fmtDate(me.passwordChangedAt) : '—'}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -181,7 +181,7 @@ export function POSSecurityScreen() {
       </div>
 
       <div style={grid2}>
-        <section style={cardBox}>
+        <section style={cardBox} data-testid="sec-sessions">
           {headRow(t('pos.active_sessions'), sessions && sessions.some((s) => s.active) ? <button className="btn ghost" onClick={revokeAll} disabled={allBusy}>{allBusy ? t('pos.signing_out') : t('pos.sign_out_all')}</button> : undefined)}
           {sessions === null ? <div className="muted">{t('pos.loading')}</div> : sessions.length === 0 ? <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{t('pos.no_sessions_found')}</div> : (
             <div className="list" style={{ maxHeight: 300 }}>
@@ -197,7 +197,7 @@ export function POSSecurityScreen() {
           <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8 }}>{t('pos.sign_out_all_ends_every_session_jpwt')}</div>
         </section>
 
-        <section style={cardBox}>
+        <section style={cardBox} data-testid="sec-activity">
           {headRow(t('pos.recent_security_activity'), <button className="btn ghost" onClick={() => nav('/tenant/account/activity-logs')}>{t('pos.view_full_log')}</button>)}
           {activity === null ? <div className="muted">{t('pos.loading')}</div> : activity.length === 0 ? <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{t('pos.no_recent_security_activity')}</div> : (
             <div className="list" style={{ maxHeight: 300 }}>

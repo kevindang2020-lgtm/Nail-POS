@@ -64,7 +64,7 @@ export function POSAiReportsScreen() {
 
       <section className="panel" style={{ padding: 12 }}>
         <div className="p-h">{bt('bzx.r.generate')}</div>
-        <div className="rvw-actions">{TYPES.map((t) => <button key={t} type="button" className="btn" data-testid={`bzx-gen-${t}`} onClick={() => setGen(t)}>{bt('bzx.type.' + t)}</button>)}</div>
+        <div className="rvw-actions" data-testid="bzx-gen-types">{TYPES.map((t) => <button key={t} type="button" className="btn" data-testid={`bzx-gen-${t}`} onClick={() => setGen(t)}>{bt('bzx.type.' + t)}</button>)}</div>
       </section>
 
       <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="bzx-r-history">

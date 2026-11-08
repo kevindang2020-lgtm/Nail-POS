@@ -1016,7 +1016,7 @@ copy — the same column and the same CHECK under another constraint name; the r
 | drill-restore | **12 / 12** (both pilot databases) |
 | e2e-html | both single-file HTML apps (kiosk, public booking link) complete their journeys in Chromium |
 
-**Live proofs** — `PG_URL=postgres://postgres:…@localhost:5432 PROOF_TZ=Asia/Tokyo CHROMIUM_PATH=/opt/pw-browsers/chromium bash
+**Live proofs** — `PG_URL=postgres://postgres:<password>@localhost:5432 PROOF_TZ=Asia/Tokyo CHROMIUM_PATH=/opt/pw-browsers/chromium bash
 tooling/ci/live-proofs.sh` (24 proofs, each on its own migrated + PILOT01-seeded database): **24 / 24, 606 checks**.
 checkout-one-payment 32 · display-ads 42 · display-23in-browser 37 · display-ads-browser 14 (first pass 13 / 14: the badge
 reads "Active" since the status labels went through `statusLabel` — harness, `7d7787dd`) · display-checkin-browser 39 ·

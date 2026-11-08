@@ -110,7 +110,7 @@ export function POSAISettingsScreen() {
           <div className="sub">{t('aist.checkNote')}</div>
         </section>) : null}
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="aist-general">
         <div style={headStyle}>{t('pos.general')}</div>
         <Toggle label={t('pos.enable_ai_receptionist')} checked={s.enabled} onChange={(v) => set({ enabled: v })} />
         {/* Kevin (Oct 28 2026): the AI receptionist speaks English only — callers are the salon's customers */}
@@ -118,14 +118,14 @@ export function POSAISettingsScreen() {
         <Row label={t('pos.after_hours_behavior')}><select style={inputStyle} value={s.afterHoursBehavior} onChange={(e) => set({ afterHoursBehavior: e.target.value as ReceptionistSettings['afterHoursBehavior'] })}><option value="ai_answers">{t('pos.ai_answers')}</option><option value="handoff">{t('pos.hand_off_to_human')}</option><option value="voicemail">{t('pos.voicemail')}</option></select></Row>
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="aist-conversation">
         <div style={headStyle}>{t('pos.conversation')}</div>
         <Toggle label={t('pos.allow_caller_to_interrupt')} checked={s.allowInterruptions} onChange={(v) => set({ allowInterruptions: v })} />
         <Row label={t('pos.silence_timeout_seconds')}><input type="number" min={2} max={30} style={{ ...inputStyle, width: 90 }} value={s.silenceTimeoutSeconds} onChange={(e) => set({ silenceTimeoutSeconds: Number(e.target.value) })} /></Row>
         <Row label={t('pos.max_call_duration_seconds')}><input type="number" min={60} max={3600} style={{ ...inputStyle, width: 90 }} value={s.maxCallDurationSeconds} onChange={(e) => set({ maxCallDurationSeconds: Number(e.target.value) })} /></Row>
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="aist-recording">
         <div style={headStyle}>{t('pos.recording_consent')}</div>
         <Toggle label={t('pos.enable_call_recording')} checked={s.recordingEnabled} onChange={(v) => set({ recordingEnabled: v })} />
         <label style={{ fontSize: 12, display: 'block', marginTop: 8 }}>{t('pos.consent_message_played_to_callers')}<textarea style={{ ...inputStyle, width: '100%', height: 52, padding: 8 }} value={s.recordingConsentMessage} onChange={(e) => set({ recordingConsentMessage: e.target.value })} /></label>
@@ -139,7 +139,7 @@ export function POSAISettingsScreen() {
         <div style={{ fontSize: 11.5, color: '#9B6B1E', marginTop: 6 }}>{t('pos.recording_activates_only_when_a_provider_2g59')}</div>
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="aist-uses">
         <div style={headStyle}>{t('pos.uses_your_existing_settings')}</div>
         <div style={{ fontSize: 12, color: '#8A7A66', marginBottom: 8 }}>{t('pos.the_receptionist_reads_these_from_their_2ar9')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>

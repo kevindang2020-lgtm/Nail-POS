@@ -81,6 +81,7 @@ export function POSAiBranchCompareScreen() {
         <KpiCard testId="bcx-k-net" label={bt('bcx.k.net')} value={T ? (fin ? money(T.netSalesCents) : '—') : '—'} loading={!s && !error} />
         <KpiCard testId="bcx-k-avg" label={bt('bcx.k.avg')} value={T ? (fin ? na(T.averageTicketCents == null ? null : money(T.averageTicketCents)) : '—') : '—'} loading={!s && !error} />
         <KpiCard testId="bcx-k-bookings" label={bt('bcx.k.bookings')} value={T ? bzNum(T.totalBookings) : '—'} loading={!s && !error} />
+        <KpiCard testId="bcx-k-completed" label={bt('bcx.k.completed')} value={T ? bzNum(T.completed) : '—'} loading={!s && !error} />
         <KpiCard testId="bcx-k-completion" label={bt('bcx.k.completion')} value={T ? pct(T.completionRate) : '—'} loading={!s && !error} />
         <KpiCard testId="bcx-k-branches" label={bt('bcx.k.branches')} value={T ? bzNum(T.branches) : '—'} sub={s?.inactiveHidden ? bt('bcx.inactiveHidden', { n: s.inactiveHidden }) : undefined} loading={!s && !error} />
       </div>
@@ -115,7 +116,7 @@ export function POSAiBranchCompareScreen() {
       </section>
 
       <BranchInsightsPanel period={period} tick={tick} />
-      {s ? <div className="sub" style={{ marginTop: 10 }}><Link to={s.drilldownRoute} style={{ color: 'var(--aps-orange)' }}>{bt('pos.open_the_sales_report')}</Link></div> : null}
+      {s ? <div className="sub" style={{ marginTop: 10 }}><Link className="link-44" to={s.drilldownRoute} style={{ color: 'var(--aps-orange)' }}>{bt('pos.open_the_sales_report')}</Link></div> : null}
       {s?.notes.length ? <ul className="sub" style={{ marginTop: 10, paddingLeft: 18 }}>{s.notes.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}</ul> : null}
 
       {open ? <FitDialog testId="bcx-detail" title={open.branchName} onClose={() => setOpen(null)} footer={<><Link className="btn ghost" to={s?.drilldownRoute ?? '/tenant/reports/sales'}>{bt('pos.open_the_sales_report')}</Link><button className="btn ghost" onClick={() => setOpen(null)}>{bt('bzx.close')}</button></>}>

@@ -3384,6 +3384,686 @@
      "label": "Create win-back"
     }
    ]
+  },
+  {
+   "key": "money-protection",
+   "title": "AI Money Protection",
+   "routes": [
+    "/tenant/ai/money-protection"
+   ],
+   "screens": [
+    "POSAIMoneyProtectionScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_MONEY_PROTECTION_5",
+   "scroll": "page",
+   "scrollReason": "Money Protection SUNMI addendum: alerts and investigations get more room; long lists scroll within their panels or the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "mpx-run",
+     "label": "Run detection"
+    },
+    {
+     "id": "mpx-check",
+     "label": "Check Money Protection"
+    },
+    {
+     "id": "mpx-kpis",
+     "label": "Seven KPI cards",
+     "minItems": 7,
+     "items": "[data-testid^=mpx-kpi-]"
+    },
+    {
+     "id": "mpx-bycat",
+     "label": "Alerts by category"
+    },
+    {
+     "id": "mpx-runs",
+     "label": "Detection runs"
+    }
+   ]
+  },
+  {
+   "key": "ai-marketing",
+   "title": "AI Marketing Assistant",
+   "routes": [
+    "/tenant/ai/marketing"
+   ],
+   "screens": [
+    "POSAIMarketingScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Marketing_Assistant",
+   "scroll": "page",
+   "scrollReason": "AI Marketing addendum: recommendations expand below the first screen with normal vertical scrolling.",
+   "modules": [
+    {
+     "id": "amk-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "amk-kpis",
+     "label": "Seven KPI cards",
+     "minItems": 7,
+     "items": "[data-testid^=amk-kpi-]"
+    },
+    {
+     "id": "amk-reach",
+     "label": "Reach & Consent"
+    },
+    {
+     "id": "amk-recs",
+     "label": "Recommendations"
+    }
+   ]
+  },
+  {
+   "key": "campaign-builder",
+   "title": "Campaign Builder",
+   "routes": [
+    "/tenant/ai/marketing/builder"
+   ],
+   "screens": [
+    "POSAICampaignBuilderScreen"
+   ],
+   "guide": "AI_PowerSalon_Campaign_Builder",
+   "scroll": "page",
+   "scrollReason": "Campaign Builder addendum: long step content may scroll; Back / Next / Save stay reachable; no sideways scroll.",
+   "modules": [
+    {
+     "id": "amk-builder",
+     "label": "Builder"
+    },
+    {
+     "id": "amk-b-next",
+     "label": "Next"
+    },
+    {
+     "id": "amk-steps",
+     "label": "Six steps: Goal · Audience · Message · Offer · Schedule · Review",
+     "minItems": 6,
+     "items": "[role=tab]"
+    }
+   ]
+  },
+  {
+   "key": "campaign-results",
+   "title": "Campaign Results",
+   "routes": [
+    "/tenant/ai/marketing/results"
+   ],
+   "screens": [
+    "POSAICampaignResultsScreen"
+   ],
+   "guide": "AI_PowerSalon_Campaign_Results",
+   "scroll": "page",
+   "scrollReason": "Campaign Results addendum: campaign list and results scroll within their regions or the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "amk-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "amk-res-kpis",
+     "label": "Period KPI cards"
+    },
+    {
+     "id": "amk-campaigns",
+     "label": "Campaigns list (search, status, channel, pages)"
+    }
+   ]
+  },
+  {
+   "key": "ai-business",
+   "title": "AI Business Assistant",
+   "routes": [
+    "/tenant/ai/business"
+   ],
+   "screens": [
+    "POSAiBusinessScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Business_Assistant",
+   "scroll": "page",
+   "scrollReason": "Business Assistant addendum: answers and history scroll within the workspace.",
+   "modules": [
+    {
+     "id": "aib-period",
+     "label": "Period"
+    },
+    {
+     "id": "aib-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "aib-snapshot",
+     "label": "Business snapshot"
+    },
+    {
+     "id": "aib-composer",
+     "label": "Ask the assistant"
+    }
+   ]
+  },
+  {
+   "key": "ai-reports",
+   "title": "AI Business Reports",
+   "routes": [
+    "/tenant/ai/business/reports"
+   ],
+   "screens": [
+    "POSAiReportsScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Business_Reports",
+   "scroll": "page",
+   "scrollReason": "Business Reports addendum: report history and content scroll within bounds.",
+   "modules": [
+    {
+     "id": "bzx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "bzx-r-kpis",
+     "label": "Report KPIs",
+     "minItems": 5,
+     "items": "[data-testid^=bzx-r-]"
+    },
+    {
+     "id": "bzx-gen-types",
+     "label": "Generate report (by type)"
+    },
+    {
+     "id": "bzx-r-history",
+     "label": "Report history"
+    }
+   ]
+  },
+  {
+   "key": "ai-alerts",
+   "title": "AI Business Alerts",
+   "routes": [
+    "/tenant/ai/business/alerts"
+   ],
+   "screens": [
+    "POSAiAlertsScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_BUSINESS_ALERTS",
+   "scroll": "page",
+   "scrollReason": "Business Alerts addendum: sections scroll vertically when needed.",
+   "modules": [
+    {
+     "id": "bzx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "bzx-a-kpis",
+     "label": "Alert KPIs"
+    },
+    {
+     "id": "bzx-a-new",
+     "label": "New alert rule"
+    },
+    {
+     "id": "bzx-a-rules",
+     "label": "Alert rules"
+    },
+    {
+     "id": "bzx-a-history",
+     "label": "Alert history"
+    },
+    {
+     "id": "bzx-incidents",
+     "label": "Incidents"
+    }
+   ]
+  },
+  {
+   "key": "ai-branches",
+   "title": "AI Branch Comparison",
+   "routes": [
+    "/tenant/ai/business/branches"
+   ],
+   "screens": [
+    "POSAiBranchCompareScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_BRANCH_COMPARISON",
+   "scroll": "page",
+   "scrollReason": "Branch Comparison addendum: tables scroll within their region.",
+   "modules": [
+    {
+     "id": "bcx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "bcx-period",
+     "label": "Period"
+    },
+    {
+     "id": "bcx-kpis",
+     "label": "Six KPI cards: net sales, ticket, bookings, completed, completion, branches",
+     "minItems": 6,
+     "items": "[data-testid^=bcx-k-]"
+    },
+    {
+     "id": "bcx-table",
+     "label": "Branch table"
+    },
+    {
+     "id": "bcx-scorecard",
+     "label": "Scorecard + explanations"
+    }
+   ]
+  },
+  {
+   "key": "scheduling-optimizer",
+   "title": "AI Scheduling Optimizer",
+   "routes": [
+    "/tenant/ai/scheduling-optimizer"
+   ],
+   "screens": [
+    "POSAISchedulingOptimizerScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Scheduling_Optimizer",
+   "scroll": "page",
+   "scrollReason": "Scheduling Optimizer addendum: section content scrolls within the page; tabs keep every module reachable.",
+   "modules": [
+    {
+     "id": "sched-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "scx-counters",
+     "label": "Four counters"
+    },
+    {
+     "id": "sched-tabs",
+     "label": "Optimizer sections (tabs)",
+     "minItems": 8,
+     "items": "[role=tab]"
+    },
+    {
+     "id": "sched-body",
+     "label": "Section content"
+    }
+   ]
+  },
+  {
+   "key": "ai-queue",
+   "title": "AI Queue Assignment",
+   "routes": [
+    "/tenant/ai/queue"
+   ],
+   "screens": [
+    "POSAIQueueAssignmentScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Queue_Assignment",
+   "scroll": "page",
+   "scrollReason": "Queue Assignment addendum: internal scrolling or normal page scroll instead of tiny text.",
+   "modules": [
+    {
+     "id": "aq-check",
+     "label": "Check AI queue"
+    },
+    {
+     "id": "aq-overview",
+     "label": "Overview counters"
+    },
+    {
+     "id": "aq-history",
+     "label": "Assignment history"
+    }
+   ]
+  },
+  {
+   "key": "ai-booking",
+   "title": "AI Booking Assistant",
+   "routes": [
+    "/tenant/ai/booking"
+   ],
+   "screens": [
+    "POSAIBookingScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Booking_Assistant",
+   "scroll": "page",
+   "scrollReason": "Booking Assistant addendum: one obvious scrollable main workspace; long tables scroll inside.",
+   "modules": [
+    {
+     "id": "bk-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "bk-check",
+     "label": "Check"
+    },
+    {
+     "id": "bk-open-booking",
+     "label": "Open Booking"
+    },
+    {
+     "id": "bk-ops",
+     "label": "Operations summary"
+    },
+    {
+     "id": "bk-recovery",
+     "label": "Recovery cases"
+    },
+    {
+     "id": "bk-activity",
+     "label": "Activity + search + pages"
+    }
+   ]
+  },
+  {
+   "key": "ai-rcp-settings",
+   "title": "AI Receptionist Settings",
+   "routes": [
+    "/tenant/ai/receptionist/settings"
+   ],
+   "screens": [
+    "POSAISettingsScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Receptionist_Settings",
+   "scroll": "page",
+   "scrollReason": "Receptionist Settings addendum: vertical scroll allowed for large content.",
+   "modules": [
+    {
+     "id": "aist-check",
+     "label": "Check settings"
+    },
+    {
+     "id": "aist-general",
+     "label": "General"
+    },
+    {
+     "id": "aist-conversation",
+     "label": "Conversation"
+    },
+    {
+     "id": "aist-recording",
+     "label": "Recording consent"
+    },
+    {
+     "id": "aist-uses",
+     "label": "Uses your existing settings"
+    },
+    {
+     "id": "aist-history",
+     "label": "Version history + restore"
+    }
+   ]
+  },
+  {
+   "key": "ai-calls",
+   "title": "AI Calls & Voice Intelligence",
+   "routes": [
+    "/tenant/ai/receptionist/calls"
+   ],
+   "screens": [
+    "POSAICallsScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Calls__Voice_Intelligence_Management_Center",
+   "scroll": "page",
+   "scrollReason": "Calls addendum: call table scrolls within its region.",
+   "modules": [
+    {
+     "id": "aic-check",
+     "label": "Check"
+    },
+    {
+     "id": "aic-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "aic-kpis",
+     "label": "KPIs"
+    },
+    {
+     "id": "aic-calls",
+     "label": "Calls: search, filters, calendar, table"
+    }
+   ]
+  },
+  {
+   "key": "ai-calendar",
+   "title": "AI Calendar",
+   "routes": [
+    "/tenant/ai/receptionist/calendar"
+   ],
+   "screens": [
+    "POSAICalendarScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Calendar",
+   "scroll": "page",
+   "scrollReason": "AI Calendar addendum: day grid and list scroll within their regions.",
+   "modules": [
+    {
+     "id": "aic-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "aic-open-booking",
+     "label": "Open Booking"
+    },
+    {
+     "id": "aic-kpi-appointments",
+     "label": "Appointments KPI"
+    },
+    {
+     "id": "aic-day",
+     "label": "Day grid"
+    },
+    {
+     "id": "aic-views",
+     "label": "Day / Week / Month / List views",
+     "minItems": 4,
+     "items": "[role=tab]"
+    }
+   ]
+  },
+  {
+   "key": "ai-business-setup",
+   "title": "AI Business Setup",
+   "routes": [
+    "/tenant/ai/receptionist/business-setup"
+   ],
+   "screens": [
+    "POSAIBusinessSetupScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_BUSINESS_SETUP",
+   "scroll": "page",
+   "scrollReason": "Business Setup addendum: long content expands or scrolls; one scroll owner per panel.",
+   "modules": [
+    {
+     "id": "ais-check",
+     "label": "Check"
+    },
+    {
+     "id": "ais-readiness",
+     "label": "Readiness"
+    },
+    {
+     "id": "ais-faq-form",
+     "label": "Add FAQ"
+    },
+    {
+     "id": "ais-list",
+     "label": "FAQ list"
+    }
+   ]
+  },
+  {
+   "key": "ai-follow-ups",
+   "title": "AI Follow-Ups & Human Handoff",
+   "routes": [
+    "/tenant/ai/receptionist/follow-ups"
+   ],
+   "screens": [
+    "POSAIFollowUpsScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Follow_Ups_Human_Handoff",
+   "scroll": "page",
+   "scrollReason": "Follow-Ups addendum: the work table scrolls within its region.",
+   "modules": [
+    {
+     "id": "aifu-new",
+     "label": "New follow-up"
+    },
+    {
+     "id": "aifu-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "aifu-health",
+     "label": "Health"
+    },
+    {
+     "id": "aifu-kpis",
+     "label": "Six KPIs",
+     "minItems": 6,
+     "items": "[data-testid^=aifu-k-]"
+    },
+    {
+     "id": "aifu-list",
+     "label": "Follow-up list (table or empty state)"
+    }
+   ]
+  },
+  {
+   "key": "reception-copilot",
+   "title": "Reception Copilot (AI Center route)",
+   "routes": [
+    "/tenant/ai/reception-copilot"
+   ],
+   "screens": [
+    "POSReceptionCopilotScreen"
+   ],
+   "guide": "AI_PowerSalon_Reception_Copilot",
+   "scroll": "page",
+   "scrollReason": "Reception Copilot addendum: long history, forms and overlays scroll; no page-wide horizontal scroll.",
+   "modules": [
+    {
+     "id": "rc-views",
+     "label": "Views"
+    },
+    {
+     "id": "rcc-ops",
+     "label": "Ops bar"
+    },
+    {
+     "id": "rc-lookup",
+     "label": "Caller Lookup"
+    },
+    {
+     "id": "rc-cancel",
+     "label": "Cancel"
+    },
+    {
+     "id": "rc-text",
+     "label": "Text"
+    },
+    {
+     "id": "rc-book",
+     "label": "Book"
+    },
+    {
+     "id": "rc-reschedule",
+     "label": "Reschedule"
+    },
+    {
+     "id": "rcc-workspace",
+     "label": "Workspace"
+    }
+   ]
+  },
+  {
+   "key": "account-security",
+   "title": "Account Security",
+   "routes": [
+    "/tenant/account/security"
+   ],
+   "screens": [
+    "POSSecurityScreen"
+   ],
+   "guide": "AI_PowerSalon_Full_Security_Deep_Scan",
+   "scroll": "page",
+   "scrollReason": "Security addendum: one main workspace; tables scroll within their containers; no forced body scrollbar (the shell main region scrolls).",
+   "modules": [
+    {
+     "id": "sec-mfa",
+     "label": "Two-factor authentication"
+    },
+    {
+     "id": "sec-password",
+     "label": "Change password"
+    },
+    {
+     "id": "sec-sessions",
+     "label": "Active sessions"
+    },
+    {
+     "id": "sec-activity",
+     "label": "Recent security activity"
+    }
+   ]
+  },
+  {
+   "key": "access-governance",
+   "title": "Access Governance",
+   "routes": [
+    "/tenant/security/access"
+   ],
+   "screens": [
+    "access/POSAccessGovernanceScreen"
+   ],
+   "guide": "AI_PowerSalon_Full_Security_Deep_Scan",
+   "scroll": "page",
+   "scrollReason": "Security addendum: findings and history tables scroll within the main workspace.",
+   "modules": [
+    {
+     "id": "ag-reviews",
+     "label": "Access reviews"
+    }
+   ]
+  },
+  {
+   "key": "devices",
+   "title": "Devices (Tap to Pay pairing, terminals)",
+   "routes": [
+    "/tenant/devices/overview"
+   ],
+   "screens": [
+    "POSDevicesScreen"
+   ],
+   "guide": "AI_PowerSalon_Secure_Tap_to_Pay",
+   "scroll": "page",
+   "scrollReason": "Secure Tap to Pay addendum: visible overview and primary actions first; data panels scroll in the main workspace.",
+   "modules": [
+    {
+     "id": "dev-fleet",
+     "label": "Device fleet overview"
+    },
+    {
+     "id": "dev-payment-hw",
+     "label": "Payment & POS hardware"
+    },
+    {
+     "id": "dev-integrations",
+     "label": "Integration center"
+    },
+    {
+     "id": "dev-ai-comms",
+     "label": "AI & communication integrations"
+    },
+    {
+     "id": "dev-deploy",
+     "label": "Deployment & update control"
+    },
+    {
+     "id": "dev-sync",
+     "label": "Connection & sync insights"
+    },
+    {
+     "id": "dev-quick",
+     "label": "Quick actions"
+    }
+   ]
   }
  ]
 }

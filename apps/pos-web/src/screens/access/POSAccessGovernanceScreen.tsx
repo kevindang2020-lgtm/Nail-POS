@@ -88,7 +88,7 @@ function ReviewsTab() {
   return (
     <>
       {prompt}
-      <section className="panel" aria-label={t('pos.access_reviews')}>
+      <section className="panel" aria-label={t('pos.access_reviews')} data-testid="ag-reviews">
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
           <h2 style={{ margin: 0, flex: 1 }}>{t('pos.access_reviews')}</h2>
           {manage && <><input type="date" aria-label={t('pos.review_due_date')} value={dueAt} onChange={(e) => setDueAt(e.target.value)} /><button className="btn primary" disabled={busy === 'start'} onClick={() => void start()}>{t('pos.start_a_review')}</button></>}
@@ -150,7 +150,7 @@ function HighRiskTab() {
   if (error) return <div className="err" role="alert">{error}</div>;
   if (!r) return <div className="state">{t('pos.loading')}</div>;
   return (
-    <section className="panel" aria-label={t('pos.high_risk_access')}>
+    <section className="panel" aria-label={t('pos.high_risk_access')} data-testid="ag-high-risk">
       <div className="sub" style={{ marginBottom: 6 }}>{t('pos.generated_2')}{' '}{fmtWhen(r.generatedAt)} · {r.rows.length} {t('pos.people_hold_high_risk_or_critical_aw77')}</div>
       {r.rows.length === 0 ? <div className="muted">{t('pos.nobody_holds_a_high_risk_permission')}</div> : (
         <div className="w-full overflow-x-auto"><table className="tbl min-w-[640px]">
@@ -172,7 +172,7 @@ function DormantTab() {
   useEffect(() => { setR(null); posAccessGovernanceApi.dormant(days).then(setR).catch((e) => setError(reportError(e, t('admin.access.noun.dormant')))); }, [days]);
   if (error) return <div className="err" role="alert">{error}</div>;
   return (
-    <section className="panel" aria-label={t('pos.dormant_accounts')}>
+    <section className="panel" aria-label={t('pos.dormant_accounts')} data-testid="ag-dormant">
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
         <span className="sub">{t('pos.active_accounts_with_no_sign_in_h07w')}</span>
         <select aria-label={t('pos.dormant_after')} value={days} onChange={(e) => setDays(Number(e.target.value))}>{[30, 60, 90, 180].map((d) => <option key={d} value={d}>{d} {t('pos.days')}</option>)}</select>
@@ -196,7 +196,7 @@ function DenialsTab() {
   useEffect(() => { setR(null); posAccessGovernanceApi.denials({ from, to }).then(setR).catch((e) => setError(reportError(e, t('admin.access.noun.denials')))); }, [from, to]);
   if (error) return <div className="err" role="alert">{error}</div>;
   return (
-    <section className="panel" aria-label={t('pos.denials')}>
+    <section className="panel" aria-label={t('pos.denials')} data-testid="ag-denials">
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
         <input type="date" aria-label={t('pos.from')} value={from} onChange={(e) => setFrom(e.target.value)} /><input type="date" aria-label={t('pos.to_2')} value={to} onChange={(e) => setTo(e.target.value)} />
         {r && <span className="sub" data-testid="denials-total">{r.total} {t('pos.refused_request')}{enPlural(r.total === 1 ? '' : 's')}</span>}

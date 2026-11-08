@@ -5,6 +5,7 @@
 // AP = the old AI approve route cannot schedule an unapproved campaign · HL = Check AI Marketing System.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { clearBranchTimeZoneCache } from '@aipowersalon/database';
 import { CampaignCenter, CampaignsService, KyselyCampaignsRepository } from '@aipowersalon/communications';
 import { WinBackCenter } from '@aipowersalon/customers';
 import { MarketingCenter, MarketingCenterError, toCampaignText } from './marketing-center';
@@ -129,6 +130,47 @@ describe('AI Marketing — drafts and approval', () => {
     expect(await code(mc.saveDraft(ctx(), { kind: 'birthday', message: 'x', idempotencyKey: 'key-win-0003' }))).toBe('MKC_KIND_INVALID');
     // a Message Studio draft with a per-customer token would go out as literal text — refused, nothing saved
     expect(await code(mc.saveDraft(ctx(), { kind: 'winback', message: 'Hi {{customer_first_name}}!', idempotencyKey: 'key-win-0004' }))).toBe('MKC_TOKENS_UNSUPPORTED');
+  });
+  it('SD-03 Campaign Builder Steps 4 + 5 (SUNMI, Nov 8 2026): approved offers only; a checked proposed send time; both carried on the draft', async () => {
+    const D = id(901), DX = id(902), DOLD = id(903), DOTHER = id(904);
+    const deal = (did: string, tenant: string, status: string, endsSql: string, title: string) => q(`insert into deals (id, tenant_id, owner_type, title, discount_type, discount_percent, status, ends_at, kind)
+      values ($1,$2,'salon',$3,'percent',15,$4, ${endsSql}, 'coupon')`, [did, tenant, title, status]);
+    await deal(D, T, 'active', "now() + interval '60 days'", 'Winter 15%');
+    await deal(DX, T, 'draft', "now() + interval '60 days'", 'Not approved');
+    await deal(DOLD, T, 'active', "now() + interval '2 days'", 'Ends soon');
+    await deal(DOTHER, X, 'active', "now() + interval '60 days'", 'Other salon');
+    const offers = await mc.offers(ctx());
+    expect(offers.items.map((o) => o.title).sort()).toEqual(['Ends soon', 'Winter 15%']);   // never a draft, never another salon
+    expect(offers.items.find((o) => o.id === D)).toMatchObject({ kind: 'coupon', discount: { type: 'percent', percent: 15 } });
+    // the proposal, checked in the branch's zone (UTC here): quiet hours 21→8 refuse 22:00; a time 10 days out at 11:00 is fine
+    await q(`insert into campaign_limits (quiet_hours_start, quiet_hours_end, active) values (21, 8, true)`);
+    const day = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const quiet = await mc.scheduleCheck(ctx(), { date: day, time: '22:00' });
+    expect(quiet.ok).toBe(false); expect(quiet.checks.find((c) => c.key === 'quiet_hours')?.state).toBe('block');
+    const fine = await mc.scheduleCheck(ctx(), { date: day, time: '11:00', dealId: D });
+    expect(fine).toMatchObject({ ok: true, sendAt: `${day}T11:00:00.000Z` });
+    expect((await mc.scheduleCheck(ctx(), { date: day, time: '11:00', dealId: DOLD })).checks.find((c) => c.key === 'offer_valid')?.state).toBe('block');   // ends before the send
+    expect(await code(mc.scheduleCheck(ctx(), { date: day, time: '11:00', dealId: DOTHER }))).toBe('PROMOTION_NOT_FOUND');
+    // DST in the branch's zone: 02:30 on a spring-forward day does not exist; 01:30 on a fall-back day happens twice
+    await q(`update branches set timezone = 'America/New_York' where id = $1`, [B]); clearBranchTimeZoneCache();
+    const fixed = new MarketingCenter(db, new WinBackCenter(db), new CampaignCenter(db), { AI_MARKETING_SEND_SWEEP_ENABLED: '' } as any, () => Date.parse('2027-01-02T15:00:00Z'));
+    const gap = await fixed.scheduleCheck(ctx(), { date: '2027-03-14', time: '02:30' });
+    expect(gap.ok).toBe(false); expect(gap.sendAt).toBeNull(); expect(gap.checks.find((c) => c.key === 'local_time')?.state).toBe('block');
+    const twice = await fixed.scheduleCheck(ctx(), { date: '2027-11-07', time: '01:30' });
+    expect(twice.checks.find((c) => c.key === 'ambiguous_time')?.state).toBe('warn');
+    expect((await fixed.scheduleCheck(ctx(), { date: '2027-03-15', time: '10:00' })).sendAt).toBe('2027-03-15T14:00:00.000Z');   // EDT
+    await q(`update branches set timezone = 'UTC' where id = $1`, [B]); clearBranchTimeZoneCache();
+    // save: a blocked proposal or an unapproved offer saves NOTHING; a good one is carried on the Campaign Center draft
+    const before = (await q(`select count(*)::int as n from campaigns where tenant_id = $1`, [T]))[0].n;
+    expect(await code(mc.saveDraft(ctx(), { kind: 'winback', channel: 'sms', message: 'Back soon {offer}', idempotencyKey: 'key-off-0001', dealId: D, sendDate: day, sendTime: '22:00' }))).toBe('MKC_SCHEDULE_INVALID');
+    expect(await code(mc.saveDraft(ctx(), { kind: 'winback', channel: 'sms', message: 'Back soon {offer}', idempotencyKey: 'key-off-0002', dealId: DX }))).toBe('MKC_OFFER_INVALID');
+    expect((await q(`select count(*)::int as n from campaigns where tenant_id = $1`, [T]))[0].n).toBe(before);
+    const ok: any = await mc.saveDraft(ctx(), { kind: 'winback', channel: 'sms', message: 'Back soon {offer}', idempotencyKey: 'key-off-0003', dealId: D, sendDate: day, sendTime: '11:00' });
+    const [c] = await q(`select status, deal_id, proposed_send_at, scheduled_at, approved_at from campaigns where id = $1`, [ok.campaignId]);
+    expect({ status: c.status, deal: c.deal_id, proposed: new Date(c.proposed_send_at).toISOString(), scheduled: c.scheduled_at, approved: c.approved_at })
+      .toEqual({ status: 'draft', deal: D, proposed: `${day}T11:00:00.000Z`, scheduled: null, approved: null });   // a proposal, never a schedule
+    const detail: any = await new CampaignCenter(db).detail({ tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: [...VIEW, 'pos.marketing.manage'] } as any, ok.campaignId);
+    expect(detail).toMatchObject({ proposedSendAt: `${day}T11:00:00.000Z`, proposedSendLocal: `${day}T11:00`, dealId: D });
   });
   it('SD-02 Message Studio tokens: the two Campaign Center can fill are mapped, the rest are listed', () => {
     expect(toCampaignText('{{salon_name}}: {{promotion_name}} for {{customer_first_name}} {{booking_link}} {branch}')).toEqual({

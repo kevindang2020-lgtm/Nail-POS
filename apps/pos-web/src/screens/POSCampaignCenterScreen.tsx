@@ -343,7 +343,7 @@ function WizardDialog({ id: initialId, defaultChannel, onClose }: { id?: string;
   const [d, setD] = useState<any>(null); const [sources, setSources] = useState<any[] | null>(null); const [pv, setPv] = useState<any>(null);
   const [when2, setWhen2] = useState<'now' | 'later'>('now'); const [at, setAt] = useState('');
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<{ t: string; tone: 'ok' | 'bad' } | null>(null);
-  const reload = useCallback(async (cid: string) => { const x = await posCampaignCenterApi.detail(cid); setD(x); setF((o) => ({ ...o, name: x.name, goal: x.goal ?? '', description: x.description ?? '', channel: x.channel, offer: x.offer ?? '', messageBody: x.messageBody ?? '', emailSubject: x.emailSubject ?? '', budget: x.budgetCents ? String(x.budgetCents / 100) : '' })); return x; }, []);
+  const reload = useCallback(async (cid: string) => { const x = await posCampaignCenterApi.detail(cid); setD(x); if (x.proposedSendLocal) { setWhen2('later'); setAt((o) => o || x.proposedSendLocal); } setF((o) => ({ ...o, name: x.name, goal: x.goal ?? '', description: x.description ?? '', channel: x.channel, offer: x.offer ?? '', messageBody: x.messageBody ?? '', emailSubject: x.emailSubject ?? '', budget: x.budgetCents ? String(x.budgetCents / 100) : '' })); return x; }, []);
   useEffect(() => { if (initialId) void reload(initialId).catch((e) => setMsg({ t: errText(e), tone: 'bad' })); }, [initialId, reload]);
   useEffect(() => { if (step === 'audience') posCampaignCenterApi.audienceSources(f.channel).then((r) => setSources(r.items)).catch(() => setSources([])); if ((step === 'review' || step === 'content') && id) posCampaignCenterApi.preview(id).then(setPv).catch(() => setPv(null)); }, [step, id, f.channel]);
   const run = async (fn: () => Promise<unknown>, ok?: string) => { setBusy(true); setMsg(null); try { await fn(); if (ok) setMsg({ t: ok, tone: 'ok' }); return true; } catch (e) { setMsg({ t: errText(e), tone: 'bad' }); return false; } finally { setBusy(false); } };
@@ -390,6 +390,7 @@ function WizardDialog({ id: initialId, defaultChannel, onClose }: { id?: string;
         <label className="cc-radio"><input type="radio" checked={when2 === 'now'} onChange={() => setWhen2('now')} /> {tx('cc.w.sendNow')}</label>
         <label className="cc-radio"><input type="radio" checked={when2 === 'later'} onChange={() => setWhen2('later')} /> {tx('cc.w.sendLater')}</label>
         {when2 === 'later' ? <input type="datetime-local" className="fk-input" value={at} onChange={(e) => setAt(e.target.value)} data-testid="cc-w-at" /> : null}
+        {d?.proposedSendLocal ? <div className="fk-hint" data-testid="cc-w-proposed">{tx('cc.w.proposed', { at: d.proposedSendLocal.replace('T', ' ') })}</div> : null}
         <div className="fk-hint">{tx('cc.w.scheduleNote')}</div>
       </div> : null}
       {step === 'review' ? (!pv ? <div className="fk-loading">{tx('pos.loading')}</div> : <div data-testid="cc-w-review">

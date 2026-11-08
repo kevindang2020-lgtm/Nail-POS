@@ -568,7 +568,7 @@ export interface AuditEventsTable {
 export interface CampaignsTable {
   occasion: string | null;   // 'birthday' = one birthday message per customer per occasion year (migration 750)
   id: Generated<string>; tenant_id: string; branch_id: string | null; name: string; offer: string | null;
-  channel: string; audience_label: string | null; audience_size: number; status: string; scheduled_at: TsNull;
+  channel: string; audience_label: string | null; audience_size: number; status: string; scheduled_at: TsNull; proposed_send_at: TsNull;
   sent_count: number; open_count: number; click_count: number; reply_count: number; booking_count: number;
   revenue_cents: number; cost_cents: number; created_by: string | null; created_at: Ts; updated_at: Ts; started_at: TsNull;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)

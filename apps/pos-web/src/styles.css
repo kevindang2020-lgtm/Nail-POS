@@ -3999,3 +3999,17 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .rt2>.fk-head>.fk-head-actions{flex:0 1 auto;min-width:0}
 @media (max-width:1700px){.rt2 .rt-chips{flex-wrap:wrap;overflow:visible;row-gap:4px}}
 .rfp-owe{margin:6px 0 2px}
+/* SUNMI batch 5 (Nov 8 2026): an inline text link that is the only way to its destination keeps a 44 px touch target */
+.link-44{display:inline-flex;align-items:center;min-height:44px;padding:0 2px}
+/* Campaign Builder six steps (SUNMI batch 5, Nov 8 2026): Offer = card list + terms panel (~1/3); Schedule = form + readiness */
+.amk-offer{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:12px;align-items:start}
+.amk-offer-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;align-content:start}
+.amk-offer-card{display:flex;flex-direction:column;gap:4px;text-align:left;min-height:88px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#FFFEFB;cursor:pointer}
+.amk-offer-card.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,164,106,.25)}
+.amk-offer-terms{padding:12px;max-height:min(60vh,520px);overflow:auto}
+.amk-dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:8px 0}.amk-dl dt{color:#8A7A66}.amk-dl dd{margin:0}
+.amk-sched{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,1fr);gap:12px;align-items:start}
+.amk-sched-main{display:flex;flex-direction:column;gap:8px}.amk-sched-side{padding:12px}
+.amk-checks{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:4px}
+.amk-ck b{display:inline-block;min-width:88px}.amk-ck.ok b{color:var(--aps-ok,#2E7D32)}.amk-ck.warn b{color:var(--aps-warn,#A66A00)}.amk-ck.block b{color:var(--aps-danger,#B3261E)}
+@media (max-width:1279px){.amk-offer,.amk-sched{grid-template-columns:minmax(0,1fr)}}

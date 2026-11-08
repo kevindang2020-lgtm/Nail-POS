@@ -22,8 +22,12 @@ export const posAIMarketingApi = {
     recommendations: (channel: 'sms' | 'email' = 'sms') => api.get<any>('/pos/ai-marketing/center/recommendations', { channel }),
     eligibility: (kind: MkKind, channel: 'sms' | 'email' | 'both') => api.post<any>('/pos/ai-marketing/center/eligibility', { kind, channel }),
     estimate: (b: { channel: 'sms' | 'email'; body: string; recipients: number; budgetCents?: number | null }) => api.post<any>('/pos/ai-marketing/center/estimate', b),
-    saveDraft: (b: { kind: 'rebooking' | 'winback'; channel: 'sms' | 'email'; name?: string | null; message: string; subject?: string | null; budgetCents?: number | null; idempotencyKey: string }) =>
+    saveDraft: (b: { kind: 'rebooking' | 'winback'; channel: 'sms' | 'email'; name?: string | null; message: string; subject?: string | null; budgetCents?: number | null; idempotencyKey: string; dealId?: string | null; sendDate?: string | null; sendTime?: string | null }) =>
       api.post<any>('/pos/ai-marketing/center/save-draft', b),
+    /** Campaign Builder Step 4: approved Deals & Promotions offers (read-only) */
+    offers: () => api.get<any>('/pos/ai-marketing/center/offers'),
+    /** Campaign Builder Step 5: check a PROPOSED send time (salon date + time); never schedules */
+    scheduleCheck: (b: { date: string; time: string; dealId?: string | null }) => api.post<any>('/pos/ai-marketing/center/schedule-check', b),
     check: () => api.post<any>('/pos/ai-marketing/center/check', {}),
   },
 };

@@ -263,4 +263,5 @@ export const CAMPAIGNS_EN = {
   "cc.a.liveCount": "Customers who could receive it now:",
   "cc.a.when": "Suggested timing:",
   "cc.a.saveDraft": "Save as draft",
+  "cc.w.proposed": "Campaign Builder proposed {at} (salon time) — filled in below. Nothing is scheduled until you launch.",
 };

@@ -1,10 +1,11 @@
 // marketing-center.controller.ts — AI Marketing Assistant family guides (Nov 3 2026): `/pos/ai-marketing/center/*`.
 // Guards: TenantAuthGuard + RolePermissionGuard; tenant / branch from req.ctx, never the client.
-//   pos.marketing.view    summary · recommendations · eligibility · estimate · check
+//   pos.marketing.view    summary · recommendations · eligibility · estimate · check · offers · schedule-check
 //   pos.marketing.manage  save-draft (an UNSENT audience + an UNAPPROVED Campaign Center draft)
 // Nothing here sends, schedules or approves a campaign — that stays in Campaign Center.
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
+import type { McOffersResponse, McScheduleCheckRequest, McScheduleCheckResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
@@ -15,7 +16,8 @@ const str = (max: number): BodySchema => S.nullable(S.string({ maxLength: max })
 export const MKC_EMPTY_BODY: BodySchema = S.object({});
 export const MKC_ELIGIBILITY_BODY: BodySchema = S.object({ kind: str(20), channel: str(10) });
 export const MKC_ESTIMATE_BODY: BodySchema = S.object({ channel: str(10), body: str(1600), recipients: S.nullable(S.integer({ minimum: 0, maximum: 1000000 })), budgetCents: S.nullable(S.cents()) });
-export const MKC_SAVE_BODY: BodySchema = S.object({ kind: str(20), channel: str(10), name: str(120), message: str(1600), subject: str(200), budgetCents: S.nullable(S.cents()), idempotencyKey: str(100) });
+export const MKC_SAVE_BODY: BodySchema = S.object({ kind: str(20), channel: str(10), name: str(120), message: str(1600), subject: str(200), budgetCents: S.nullable(S.cents()), idempotencyKey: str(100), dealId: str(40), sendDate: str(10), sendTime: str(5) });
+export const MKC_SCHEDULE_BODY: BodySchema = S.object({ date: str(10), time: str(5), dealId: str(40) });
 function ctxFrom(req: any): McCtx {
   const c = req?.ctx || {};
   return { tenantId: c.tenantId, branchId: c.branchId ?? null, userId: c.userId, role: c.role, permissions: c.permissions || [], salonName: c.salonName,
@@ -59,6 +61,14 @@ export class MarketingCenterController {
   /** save a rebooking / win-back recommendation as an unsent audience + an unapproved Campaign Center draft */
   @Post('save-draft') @RequirePermission('pos.marketing.manage')
   saveDraft(@Req() q: any, @Body(ValidatedBody(MKC_SAVE_BODY, { strict: true })) b: any) { const c = ctxFrom(q); authed(c); return run(() => this.c().saveDraft(c, b ?? {})); }
+
+  /** Campaign Builder Step 4: the approved Deals & Promotions offers a campaign may carry (read-only) */
+  @Get('offers') @RequirePermission('pos.marketing.view')
+  offers(@Req() q: any): Promise<McOffersResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().offers(c)); }
+
+  /** Campaign Builder Step 5: check a PROPOSED send time (salon date + time) — DST, quiet hours, offer dates. Read-only. */
+  @Post('schedule-check') @RequirePermission('pos.marketing.view')
+  scheduleCheck(@Req() q: any, @Body(ValidatedBody(MKC_SCHEDULE_BODY, { strict: true })) b: McScheduleCheckRequest): Promise<McScheduleCheckResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().scheduleCheck(c, b ?? {})); }
 
   /** Check AI Marketing System — read-only */
   @Post('check') @RequirePermission('pos.marketing.view')

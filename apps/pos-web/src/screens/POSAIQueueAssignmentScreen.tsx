@@ -83,7 +83,7 @@ export function POSAIQueueAssignmentScreen() {
 
       <div style={body}>
         {/* Overview */}
-        <section aria-label={tx('pos.overview')} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+        <section aria-label={tx('pos.overview')} data-testid="aq-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
           {ovErr && !ov ? <div style={errText}>{ovErr}</div> : null}
           {ov ? <>
             <Stat label={tx('pos.waiting_2')} value={String(ov.waiting)} />

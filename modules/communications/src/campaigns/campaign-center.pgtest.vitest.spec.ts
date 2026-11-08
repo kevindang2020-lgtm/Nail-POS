@@ -174,6 +174,14 @@ describe('§08 wizard: details → audience snapshot → message → preview →
     await cc.launch(owner, cA, { confirm: true, at });
     expect((await q(sql`select string_agg(action, ',' order by occurred_at, id) as a from audit_events where tenant_id = ${T} and resource_id = ${cA}`))[0].a)
       .toBe('campaign.created,campaign.audience_set,campaign.approval_requested,campaign.approved,campaign.updated,campaign.approved,campaign.launched,campaign.unscheduled,campaign.launched');
+    // Nov 8 2026: the launch dialog's datetime-local value has no zone — it is SALON time (New York), not the server's UTC
+    expect(await cc.unschedule(owner, cA)).toMatchObject({ status: 'draft' });
+    const local = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10);
+    const r: any = await cc.launch(owner, cA, { confirm: true, at: `${local}T10:00` });
+    const ny = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(r.scheduledAt));
+    expect(ny.replace(',', '')).toBe(`${local} 10:00`);   // 10:00 in the salon, whatever the server's zone
+    expect(await cc.unschedule(owner, cA)).toMatchObject({ status: 'draft' });
+    await cc.launch(owner, cA, { confirm: true, at });   // back to the original (due) time for the executor tests below
   });
 });
 

@@ -25,7 +25,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Kysely } from 'kysely';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { estimateSmsSegments, withCode, LARGE_CAMPAIGN_RECIPIENTS, type ApiErrorCode } from '@aipowersalon/api-contracts';
-import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
+import { tenantTimeZone, branchTimeZone, canMoveToSql } from '@aipowersalon/database';
+import { localDateTimeToEpochMs, zonedParts } from '@aipowersalon/date-time';
 import { hasPermission } from '@aipowersalon/permissions';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { CAMPAIGN } from '../communications-lifecycles';
@@ -56,6 +57,11 @@ export const CC_SEARCH_SCOPES = ['campaigns', 'recipients'] as const;
 export const CC_VARIABLES = ['{salon_name}', '{offer}'] as const;   // no booking-link generator exists, so no {booking_link}
 
 export interface CcPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
+/** Campaign Builder's proposed send time (migration 842): a valid future instant within a year, else null. A proposal only. */
+const proposedAt = (v: unknown): string | null => {
+  if (typeof v !== 'string' || !v) return null; const t = Date.parse(v);
+  return Number.isFinite(t) && t > Date.now() && t < Date.now() + 366 * 86_400_000 ? new Date(t).toISOString() : null;
+};
 export class CampaignCenterError extends Error {
   code: string; status: number; extra: Record<string, unknown>;
   constructor(msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) { super(msg); this.name = 'CampaignCenterError'; this.code = code; this.status = status; this.extra = extra; }
@@ -192,7 +198,7 @@ export class CampaignCenter {
   private async rows(ctx: CampaignsContext, where: any, order: any, limit: number, offset: number) {
     const T = ctx.tenantId;
     return (await sql<any>`with ${countsCte(T)}
-      select c.id, c.tenant_id, c.branch_id, c.name, c.offer, c.channel, c.audience_label, c.audience_size, c.status, c.scheduled_at, c.sent_count, c.revenue_cents, c.cost_cents, c.created_by, c.created_at, c.updated_at, c.started_at, c.goal, c.description, c.deal_id, c.message_body, c.email_subject, c.message_version, c.audience_source, c.audience_draft_id, c.snapshot_version, c.content_hash, c.origin, c.submitted_by_user_id, c.submitted_at, c.approved_by_user_id, c.approved_at, c.approved_content_hash, c.completed_at, c.revenue_cents as legacy_revenue, coalesce(snap.selected, 0) as selected, coalesce(snap.eligible, 0) as eligible,
+      select c.id, c.tenant_id, c.branch_id, c.name, c.offer, c.channel, c.audience_label, c.audience_size, c.status, c.scheduled_at, c.proposed_send_at, c.sent_count, c.revenue_cents, c.cost_cents, c.created_by, c.created_at, c.updated_at, c.started_at, c.goal, c.description, c.deal_id, c.message_body, c.email_subject, c.message_version, c.audience_source, c.audience_draft_id, c.snapshot_version, c.content_hash, c.origin, c.submitted_by_user_id, c.submitted_at, c.approved_by_user_id, c.approved_at, c.approved_content_hash, c.completed_at, c.revenue_cents as legacy_revenue, coalesce(snap.selected, 0) as selected, coalesce(snap.eligible, 0) as eligible,
         coalesce(led.ledger_rows, 0) as ledger_rows, coalesce(led.queued, 0) as queued, coalesce(led.attempted, 0) as attempted, coalesce(led.submitted, 0) as submitted,
         coalesce(led.skipped_at_send, 0) as skipped_at_send, coalesce(led.failed_send, 0) as failed_send, coalesce(led.delivered, 0) as delivered,
         coalesce(led.failed_delivery, 0) as failed_delivery, coalesce(led.simulated, 0) as simulated, coalesce(led.cost_micros, 0) as cost_micros, coalesce(led.costed, 0) as costed,
@@ -213,7 +219,7 @@ export class CampaignCenter {
       status: r.status, displayStatus: ds.key, outcome: ds.outcome, origin: r.origin ?? 'manual',
       audienceLabel: r.audience_label ?? null, audienceSource: r.audience_source ?? 'manual_estimate', snapshotVersion: N(r.snapshot_version),
       dealId: r.deal_id ?? null, dealName: r.deal_name ?? null, messageBody: r.message_body ?? null, emailSubject: r.email_subject ?? null, messageVersion: N(r.message_version) || 1,
-      budgetCents: N(r.cost_cents), createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), scheduledAt: iso(r.scheduled_at), startedAt: iso(r.started_at), completedAt: iso(r.completed_at),
+      budgetCents: N(r.cost_cents), createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), scheduledAt: iso(r.scheduled_at), proposedSendAt: iso(r.proposed_send_at), startedAt: iso(r.started_at), completedAt: iso(r.completed_at),
       createdBy: r.creator_name ?? null, submittedAt: iso(r.submitted_at), approvedAt: iso(r.approved_at), approvedBy: r.approver_name ?? null,
       approvalCurrent: !!r.approved_at && !!r.approved_content_hash && r.approved_content_hash === r.content_hash,
       counts,
@@ -354,8 +360,12 @@ export class CampaignCenter {
     const providerErrors = (await sql<any>`select coalesce(n.provider_error_code, n.failure_reason, 'unknown') as code, count(*)::int as n from ai_marketing_campaign_sends s
         join notifications n on n.tenant_id = s.tenant_id and n.provider_id = s.provider_id where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id} and n.status = 'failed' group by 1 order by n desc`.execute(this.db)).rows;
     const readiness = r.status === 'draft' ? await campaignSendReadiness(this.db, ctx.tenantId, id) : null;
+    // the Campaign Builder's proposal in SALON time ("YYYY-MM-DDTHH:MM") so the launch dialog can start from it (migration 842)
+    let proposedSendLocal: string | null = null;
+    if (r.proposed_send_at) { const tz = await branchTimeZone(this.db, ctx.tenantId, r.branch_id ?? ctx.branchId ?? null); const p = zonedParts(new Date(r.proposed_send_at), tz);
+      proposedSendLocal = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}T${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`; }
     return {
-      ...v, exclusionReasons: reasons.map((x) => ({ reason: x.reason, count: N(x.n) })), sendTimeReasons: sendReasons.map((x) => ({ reason: x.reason, count: N(x.n) })),
+      ...v, proposedSendLocal, exclusionReasons: reasons.map((x) => ({ reason: x.reason, count: N(x.n) })), sendTimeReasons: sendReasons.map((x) => ({ reason: x.reason, count: N(x.n) })),
       providerErrors: providerErrors.map((x) => ({ code: x.code, count: N(x.n) })),
       readiness: readiness ? (readiness.ok ? { ok: true, eligible: readiness.eligible } : { ok: false, code: readiness.code, message: readiness.message }) : null,
       definitions: {
@@ -441,7 +451,7 @@ export class CampaignCenter {
   // ── §08 wizard: create / edit / audience / preview / submit / approve / launch / unschedule ──────────────────────────
   private async loadRow(db: Kysely<any>, ctx: CampaignsContext, id: string, lock = false) {
     if (!UUID.test(id)) throw err('Campaign not found.', 'CAMPAIGN_NOT_FOUND', 404);
-    const r = (await sql<any>`select c.id, c.tenant_id, c.branch_id, c.name, c.offer, c.channel, c.audience_label, c.audience_size, c.status, c.scheduled_at, c.sent_count, c.revenue_cents, c.cost_cents, c.created_by, c.created_at, c.updated_at, c.started_at, c.goal, c.description, c.deal_id, c.message_body, c.email_subject, c.message_version, c.audience_source, c.audience_draft_id, c.snapshot_version, c.content_hash, c.origin, c.submitted_by_user_id, c.submitted_at, c.approved_by_user_id, c.approved_at, c.approved_content_hash, c.completed_at from campaigns c where c.tenant_id = ${ctx.tenantId} and c.id = ${id} and ${this.branchW(ctx)} ${lock ? sql`for update` : sql``}`.execute(db)).rows[0];
+    const r = (await sql<any>`select c.id, c.tenant_id, c.branch_id, c.name, c.offer, c.channel, c.audience_label, c.audience_size, c.status, c.scheduled_at, c.proposed_send_at, c.sent_count, c.revenue_cents, c.cost_cents, c.created_by, c.created_at, c.updated_at, c.started_at, c.goal, c.description, c.deal_id, c.message_body, c.email_subject, c.message_version, c.audience_source, c.audience_draft_id, c.snapshot_version, c.content_hash, c.origin, c.submitted_by_user_id, c.submitted_at, c.approved_by_user_id, c.approved_at, c.approved_content_hash, c.completed_at from campaigns c where c.tenant_id = ${ctx.tenantId} and c.id = ${id} and ${this.branchW(ctx)} ${lock ? sql`for update` : sql``}`.execute(db)).rows[0];
     if (!r) throw err('Campaign not found.', 'CAMPAIGN_NOT_FOUND', 404);
     return r;
   }
@@ -471,9 +481,9 @@ export class CampaignCenter {
     return this.db.transaction().execute(async (trx) => {
       const dealId = await this.checkDeal(trx, ctx.tenantId, b.dealId);
       const origin = b.origin === 'assistant' ? 'assistant' : 'manual';
-      const r = (await sql<any>`insert into campaigns (tenant_id, branch_id, name, offer, channel, audience_label, audience_size, status, cost_cents, created_by, updated_by, goal, description, deal_id, message_body, email_subject, origin)
+      const r = (await sql<any>`insert into campaigns (tenant_id, branch_id, name, offer, channel, audience_label, audience_size, status, cost_cents, created_by, updated_by, goal, description, deal_id, message_body, email_subject, origin, proposed_send_at)
           values (${ctx.tenantId}, ${branchId}, ${name}, ${this.cleanText(b.offer, 200)}, ${channel}, null, 0, 'draft', ${Math.max(0, Math.trunc(N(b.budgetCents)))}, ${this.actorId(ctx)}, ${this.actorId(ctx)},
-            ${this.cleanText(b.goal, 200)}, ${this.cleanText(b.description, 1000)}, ${dealId}, ${this.cleanText(b.messageBody, 1600)}, ${channel === 'email' ? this.cleanText(b.emailSubject, 200) : null}, ${origin})
+            ${this.cleanText(b.goal, 200)}, ${this.cleanText(b.description, 1000)}, ${dealId}, ${this.cleanText(b.messageBody, 1600)}, ${channel === 'email' ? this.cleanText(b.emailSubject, 200) : null}, ${origin}, ${proposedAt(b.proposedSendAt)})
           returning id`.execute(trx)).rows[0];
       await this.rehash(trx, ctx.tenantId, String(r.id));
       await this.audit1(trx, ctx, String(r.id), 'campaign.created', `Campaign "${name}" created as a draft`, { channel, origin });
@@ -618,7 +628,17 @@ export class CampaignCenter {
   /** Launch: approved + unchanged + ≥ 1 eligible → 'scheduled' at `at` (now when omitted). The sweep sends from there. */
   async launch(ctx: CampaignsContext, id: string, b: Record<string, any>) {
     this.need(ctx, 'pos.marketing.manage');
-    const at = b.at ? new Date(String(b.at)) : new Date();
+    // The launch dialog sends a datetime-local value ("2026-11-10T10:00", no zone). It is SALON time — new Date() would have read it in
+    // the SERVER's zone (UTC in production: a 10:00 New York send became 05:00) — so a zone-less value is converted with the
+    // campaign's branch time zone (DST-aware). A value with Z / an offset is an instant already.
+    const raw = b.at ? String(b.at) : '';
+    let at = raw ? new Date(raw) : new Date();
+    const naive = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?$/.exec(raw);
+    if (naive) {
+      const br = (await sql<any>`select branch_id from campaigns where tenant_id = ${ctx.tenantId} and id = ${id}`.execute(this.db)).rows[0];
+      const tz = await branchTimeZone(this.db, ctx.tenantId, br?.branch_id ?? ctx.branchId ?? null);
+      at = new Date(localDateTimeToEpochMs(naive[1], naive[2], tz));
+    }
     if (Number.isNaN(at.getTime())) throw err('Choose a valid send time.', 'CAMPAIGN_TIME_INVALID');
     if (at.getTime() > Date.now() + 366 * 86_400_000) throw err('A campaign can be scheduled up to one year ahead.', 'CAMPAIGN_TIME_INVALID');
     if (b.confirm !== true) throw err('Confirm the send first.', 'CAMPAIGN_CONFIRMATION_REQUIRED', 409);

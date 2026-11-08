@@ -515,4 +515,5 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "aib.rerun": "Run again for {p}",
   "aib.savedSearch": "Search saved questions",
   "aib.sessionLog": "This session's questions ({n}) — also saved in your history below",
+  "bcx.k.completed": "Completed",
 };

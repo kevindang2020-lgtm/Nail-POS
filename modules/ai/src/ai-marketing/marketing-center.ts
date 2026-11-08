@@ -25,10 +25,11 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { estimateSmsSegments } from '@aipowersalon/api-contracts';
+import type { McOffersResponse, McScheduleCheckResponse } from '@aipowersalon/api-contracts/tenant';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import type { CampaignCenter, CampaignsContext } from '@aipowersalon/communications';
 import type { WinBackCenter, RetentionContext } from '@aipowersalon/customers';
-import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
+import { addDays as addYmdDays, localDateTimeToEpochMs, zonedParts } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface McCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[]; salonName?: string; authz?: { scope?: string | null; branchIds?: readonly string[] | null } | null }
@@ -306,7 +307,7 @@ export class MarketingCenter {
   }
 
   // ── Campaign Builder: save the recommendation as an UNSENT audience + an UNAPPROVED Campaign Center draft ─────────────────────
-  async saveDraft(ctx: McCtx, b: { kind?: unknown; channel?: unknown; name?: unknown; message?: unknown; subject?: unknown; budgetCents?: unknown; idempotencyKey?: unknown }) {
+  async saveDraft(ctx: McCtx, b: { kind?: unknown; channel?: unknown; name?: unknown; message?: unknown; subject?: unknown; budgetCents?: unknown; idempotencyKey?: unknown; dealId?: unknown; sendDate?: unknown; sendTime?: unknown }) {
     this.need(ctx, 'pos.marketing.manage');
     const kind = b.kind === 'rebooking' || b.kind === 'winback' ? b.kind : null;
     if (!kind) throw new MarketingCenterError('Only rebooking and win-back drafts are made here; birthday campaigns are made in Birthday Campaigns.', 'MKC_KIND_INVALID');
@@ -318,6 +319,21 @@ export class MarketingCenter {
     if (channel === 'email' && !subject) throw new MarketingCenterError('An email needs a subject.', 'MKC_SUBJECT_REQUIRED');
     const key = String(b.idempotencyKey ?? '');
     if (key.length < 8 || key.length > 100) throw new MarketingCenterError('An idempotency key is required.', 'IDEMPOTENCY_KEY_REQUIRED');
+    // Steps 4 + 5 (Nov 8 2026): the chosen offer and the proposed send time are checked BEFORE anything is saved
+    let dealId: string | null = null; let proposedSendAt: string | null = null;
+    if ((b.sendDate != null && b.sendDate !== '') || (b.dealId != null && b.dealId !== '')) {
+      if (b.sendDate != null && b.sendDate !== '') {
+        const sc = await this.scheduleCheck(ctx, { date: b.sendDate, time: b.sendTime, dealId: b.dealId });
+        const block = sc.checks.find((c) => c.state === 'block');
+        if (block) throw new MarketingCenterError(block.detail, block.key === 'offer_valid' ? 'MKC_OFFER_INVALID' : 'MKC_SCHEDULE_INVALID');
+        proposedSendAt = sc.sendAt;
+      }
+      if (b.dealId != null && b.dealId !== '') {
+        const ok = (await this.offers(ctx)).items.find((o) => o.id === String(b.dealId));
+        if (!ok) throw new MarketingCenterError('Only an approved, unexpired Deals & Promotions offer can be attached.', 'MKC_OFFER_INVALID');
+        dealId = ok.id;
+      }
+    }
     const rc = this.rctx(ctx);
     const actor = { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: ctx.userId ?? null, role: ctx.role ?? null };
     const draft: any = await this.winback.saveAudience(rc, { goal: GOAL[kind], channel, message, idempotencyKey: `aimkt:${key}` },
@@ -327,10 +343,85 @@ export class MarketingCenter {
     const name = typeof b.name === 'string' && b.name.trim() ? b.name.trim().slice(0, 120) : (kind === 'winback' ? 'We miss you' : 'Time for your next visit');
     const budgetCents = b.budgetCents == null ? 0 : Math.max(0, Math.trunc(N(b.budgetCents)));
     const cctx: CampaignsContext = { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: String(ctx.userId), role: String(ctx.role ?? ''), permissions: ctx.permissions ?? [] };
-    const c = await this.cc.createDraft(cctx, { name, channel, goal: kind === 'winback' ? 'AI Marketing: win back customers' : 'AI Marketing: rebooking due', messageBody: message, emailSubject: subject, budgetCents, origin: 'assistant' });
+    const c = await this.cc.createDraft(cctx, { name, channel, goal: kind === 'winback' ? 'AI Marketing: win back customers' : 'AI Marketing: rebooking due', messageBody: message, emailSubject: subject, budgetCents, origin: 'assistant', dealId, proposedSendAt });
     const set = await this.cc.setAudience(cctx, c.id, { draftId: draft.draftId });
-    return { duplicate: false, draftId: draft.draftId, campaignId: c.id, selected: set.selected, eligible: set.eligible, excluded: set.excluded, sent: 0,
+    return { duplicate: false, draftId: draft.draftId, campaignId: c.id, selected: set.selected, eligible: set.eligible, excluded: set.excluded, sent: 0, dealId, proposedSendAt,
       next: 'Review, approve and launch it in Campaign Center. Nothing has been sent.' };
+  }
+
+  // ── Campaign Builder Step 4 "Offer" (SUNMI addendum, Nov 8 2026): the approved offers a campaign may carry ──────────
+  /** Deals & Promotions offers a campaign may attach (approved / scheduled / active, not expired), with their terms. Read-only:
+   *  nothing is created, reserved or redeemed here. "No offer" is always allowed. */
+  async offers(ctx: McCtx): Promise<McOffersResponse> {
+    this.need(ctx);
+    const B = this.branch(ctx);
+    const rows = (await sql<Row>`select d.id, d.title, d.kind, d.status, d.discount_type, d.discount_percent, d.discount_cents, d.max_discount_cents, d.starts_at, d.ends_at,
+        d.min_spend_cents, d.max_redemptions, d.max_per_customer, d.redemption_count, d.stackable, d.new_customers_only, d.member_only, d.requires_code, d.terms,
+        d.budget_cents, d.branch_id, d.days_of_week, d.valid_from_minute, d.valid_to_minute
+      from deals d where d.tenant_id = ${ctx.tenantId} and d.owner_type = 'salon' and d.status in ('approved', 'scheduled', 'active')
+        and coalesce(d.kind, 'deal') in ('deal', 'coupon', 'automatic') and (d.ends_at is null or d.ends_at > now())
+        and ${B ? sql`(d.branch_id = ${B}::uuid or d.branch_id is null)` : sql`true`}
+      order by d.status = 'active' desc, d.ends_at asc nulls last, d.title asc limit 100`.execute(this.db)).rows;
+    return { items: rows.map((d) => ({
+      id: String(d.id), title: d.title, kind: d.kind ?? 'deal', status: d.status,
+      discount: d.discount_type === 'percent' ? { type: 'percent' as const, percent: N(d.discount_percent), maxCents: d.max_discount_cents == null ? null : N(d.max_discount_cents) } : { type: 'fixed' as const, cents: N(d.discount_cents) },
+      startsAt: iso(d.starts_at), endsAt: iso(d.ends_at), minSpendCents: d.min_spend_cents == null ? null : N(d.min_spend_cents),
+      maxRedemptions: d.max_redemptions == null ? null : N(d.max_redemptions), redeemed: N(d.redemption_count), maxPerCustomer: d.max_per_customer == null ? null : N(d.max_per_customer),
+      stackable: !!d.stackable, newCustomersOnly: !!d.new_customers_only, memberOnly: !!d.member_only, requiresCode: !!d.requires_code, terms: d.terms ?? null,
+      budgetCents: d.budget_cents == null ? null : N(d.budget_cents), allBranches: d.branch_id == null,
+      daysOfWeek: Array.isArray(d.days_of_week) ? d.days_of_week.map(Number) : null, validFromMinute: d.valid_from_minute == null ? null : N(d.valid_from_minute), validToMinute: d.valid_to_minute == null ? null : N(d.valid_to_minute),
+    })), note: 'Approved Deals & Promotions offers only. Attaching one never redeems, reserves or changes it; Checkout applies its rules at payment.' };
+  }
+
+  // ── Campaign Builder Step 5 "Schedule": a PROPOSED send time, checked — never scheduled here ───────────────────────────────
+  /** The proposal (salon-local date + time) → an instant in the branch's zone, with every check the approver needs: future and within
+   *  a year, a time that exists on that day (spring-forward gap) or is ambiguous (fall-back hour), the platform quiet hours, and the
+   *  chosen offer's validity at that moment. Read-only. */
+  async scheduleCheck(ctx: McCtx, b: { date?: unknown; time?: unknown; dealId?: unknown }): Promise<McScheduleCheckResponse> {
+    this.need(ctx);
+    const date = typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.date) ? b.date : null;
+    const time = typeof b.time === 'string' && /^\d{2}:\d{2}$/.test(b.time) ? b.time : null;
+    if (!date || !time) throw new MarketingCenterError('Choose a send date and time.', 'MKC_SCHEDULE_INVALID');
+    const tz = await branchTimeZone(this.db, ctx.tenantId, this.branch(ctx));
+    const ms = localDateTimeToEpochMs(date, time, tz);
+    const p = zonedParts(new Date(ms), tz);
+    const two = (n: number) => String(n).padStart(2, '0');
+    const back = `${p.year}-${two(p.month)}-${two(p.day)} ${two(p.hour)}:${two(p.minute)}`;
+    type Ck = { key: string; state: 'ok' | 'warn' | 'block'; detail: string };
+    const checks: Ck[] = [];
+    const exists = back === `${date} ${time}`;
+    checks.push(exists ? { key: 'local_time', state: 'ok', detail: `${date} ${time} (${tz})` }
+      : { key: 'local_time', state: 'block', detail: `${date} ${time} does not exist in ${tz} (the clocks skip that hour). Choose another time.` });
+    const lbl = (q: ReturnType<typeof zonedParts>) => `${q.year}-${two(q.month)}-${two(q.day)} ${two(q.hour)}:${two(q.minute)}`;
+    const twiceBefore = lbl(zonedParts(new Date(ms - 3_600_000), tz)) === back; const twiceAfter = lbl(zonedParts(new Date(ms + 3_600_000), tz)) === back;
+    if (exists && (twiceBefore || twiceAfter))
+      checks.push({ key: 'ambiguous_time', state: 'warn', detail: `${time} happens twice on ${date} (clocks go back). The ${twiceAfter ? 'first' : 'second'} one is used.` });
+    const now = this.now();
+    checks.push(ms <= now + 5 * 60_000 ? { key: 'future', state: 'block', detail: 'The send time must be at least 5 minutes from now.' }
+      : ms > now + 366 * 86_400_000 ? { key: 'future', state: 'block', detail: 'A campaign can be proposed up to one year ahead.' } : { key: 'future', state: 'ok', detail: 'In the future, within one year.' });
+    let quiet: { start: number | null; end: number | null } | null = null;
+    try { const l = (await sql<Row>`select quiet_hours_start, quiet_hours_end from campaign_limits where active = true limit 1`.execute(this.db)).rows[0]; if (l) quiet = { start: l.quiet_hours_start == null ? null : N(l.quiet_hours_start), end: l.quiet_hours_end == null ? null : N(l.quiet_hours_end) }; }
+    catch { quiet = null; checks.push({ key: 'quiet_hours', state: 'warn', detail: 'Quiet hours could not be read; Campaign Center checks them again at launch.' }); }
+    if (quiet) {
+      const inQ = quiet.start != null && quiet.end != null && quiet.start !== quiet.end && (quiet.start < quiet.end ? p.hour >= quiet.start && p.hour < quiet.end : p.hour >= quiet.start || p.hour < quiet.end);
+      checks.push(inQ ? { key: 'quiet_hours', state: 'block', detail: `${time} is inside the quiet hours (${two(quiet.start!)}:00–${two(quiet.end!)}:00 salon time).` }
+        : { key: 'quiet_hours', state: 'ok', detail: quiet.start == null || quiet.start === quiet.end ? 'No quiet hours are set.' : `Outside the quiet hours (${two(quiet.start!)}:00–${two(quiet.end!)}:00).` });
+    }
+    let offer: Row | null = null;
+    if (b.dealId != null && b.dealId !== '') {
+      if (!isUuid(b.dealId)) throw new MarketingCenterError('Offer not found.', 'PROMOTION_NOT_FOUND', 404);
+      offer = (await sql<Row>`select id, title, status, starts_at, ends_at from deals where tenant_id = ${ctx.tenantId} and id = ${String(b.dealId)}`.execute(this.db)).rows[0] ?? null;
+      if (!offer) throw new MarketingCenterError('Offer not found.', 'PROMOTION_NOT_FOUND', 404);
+      const s0 = offer.starts_at ? new Date(offer.starts_at).getTime() : null; const e0 = offer.ends_at ? new Date(offer.ends_at).getTime() : null;
+      checks.push(!['approved', 'scheduled', 'active'].includes(String(offer.status)) ? { key: 'offer_valid', state: 'block', detail: `The offer "${offer.title}" is ${offer.status}; only approved offers can be attached.` }
+        : e0 != null && e0 <= ms ? { key: 'offer_valid', state: 'block', detail: `The offer "${offer.title}" ends before this send time.` }
+        : s0 != null && s0 > ms ? { key: 'offer_valid', state: 'warn', detail: `The offer "${offer.title}" starts after this send time; customers could not use it yet.` }
+        : e0 != null && e0 - ms < 3 * 86_400_000 ? { key: 'offer_valid', state: 'warn', detail: `The offer "${offer.title}" ends within 3 days of the send.` }
+        : { key: 'offer_valid', state: 'ok', detail: `The offer "${offer.title}" is valid at the send time.` });
+    }
+    const blocked = checks.some((c) => c.state === 'block');
+    return { timeZone: tz, date, time, sendAt: exists ? new Date(ms).toISOString() : null, ok: !blocked, checks,
+      note: 'A proposal only. Campaign Center launches it after approval and re-checks consent, opt-outs, quiet hours and limits at send time.' };
   }
 
   // ── Check AI Marketing System — read-only ─────────────────────────────────────────────────────────────────────────────────────

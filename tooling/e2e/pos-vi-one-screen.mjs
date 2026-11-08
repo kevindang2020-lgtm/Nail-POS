@@ -133,6 +133,29 @@ export const BATCH4_MODULES = [
   { key: 'notifications', path: '/tenant/communications/notifications', label: 'CUSTOMER NOTIFICATIONS' },
   { key: 'phone-management', path: '/tenant/customers/phone-management', label: 'PHONE NUMBER MANAGEMENT' },
 ];
+// SUNMI batch 5 (Nov 8 2026): AI money protection, marketing, business intelligence, scheduling, queue, booking, receptionist
+export const BATCH5_MODULES = [
+  { key: 'money-protection', path: '/tenant/ai/money-protection', label: 'AI MONEY PROTECTION' },
+  { key: 'ai-marketing', path: '/tenant/ai/marketing', label: 'AI MARKETING ASSISTANT' },
+  { key: 'campaign-builder', path: '/tenant/ai/marketing/builder', label: 'CAMPAIGN BUILDER' },
+  { key: 'campaign-results', path: '/tenant/ai/marketing/results', label: 'CAMPAIGN RESULTS' },
+  { key: 'ai-business', path: '/tenant/ai/business', label: 'AI BUSINESS ASSISTANT' },
+  { key: 'ai-reports', path: '/tenant/ai/business/reports', label: 'AI BUSINESS REPORTS' },
+  { key: 'ai-alerts', path: '/tenant/ai/business/alerts', label: 'AI BUSINESS ALERTS' },
+  { key: 'ai-branches', path: '/tenant/ai/business/branches', label: 'AI BRANCH COMPARISON' },
+  { key: 'scheduling-optimizer', path: '/tenant/ai/scheduling-optimizer', label: 'AI SCHEDULING OPTIMIZER' },
+  { key: 'ai-queue', path: '/tenant/ai/queue', label: 'AI QUEUE ASSIGNMENT' },
+  { key: 'ai-booking', path: '/tenant/ai/booking', label: 'AI BOOKING ASSISTANT' },
+  { key: 'ai-rcp-settings', path: '/tenant/ai/receptionist/settings', label: 'AI RECEPTIONIST SETTINGS' },
+  { key: 'ai-calls', path: '/tenant/ai/receptionist/calls', label: 'AI CALLS & VOICE' },
+  { key: 'ai-calendar', path: '/tenant/ai/receptionist/calendar', label: 'AI CALENDAR' },
+  { key: 'ai-business-setup', path: '/tenant/ai/receptionist/business-setup', label: 'AI BUSINESS SETUP' },
+  { key: 'ai-follow-ups', path: '/tenant/ai/receptionist/follow-ups', label: 'AI FOLLOW-UPS & HANDOFF' },
+  { key: 'reception-copilot', path: '/tenant/ai/reception-copilot', label: 'RECEPTION COPILOT (AI CENTER)' },
+  { key: 'account-security', path: '/tenant/account/security', label: 'ACCOUNT SECURITY' },
+  { key: 'access-governance', path: '/tenant/security/access', label: 'ACCESS GOVERNANCE' },
+  { key: 'devices', path: '/tenant/devices/overview', label: 'DEVICES (TAP TO PAY / PAIRING)' },
+];
 /** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
 export const measureRegistry = (page, key) => {
   const reg = REGISTRY.pages.find((p) => p.key === key)?.modules ?? [];
@@ -529,7 +552,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

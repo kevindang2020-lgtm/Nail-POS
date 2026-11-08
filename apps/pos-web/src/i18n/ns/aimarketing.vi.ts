@@ -303,5 +303,52 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.health.d.tenant_isolation.PASSED": "Mọi bản ghi gửi đều thuộc chiến dịch của tiệm này.",
   "amk.health.d.tenant_isolation.FAILED": "Có bản ghi gửi trỏ tới chiến dịch của tiệm khác. Hãy báo ngay.",
   "amk.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
-  "amk.health.d.no_side_effects.PASSED": "Việc kiểm tra không gửi tin, không tạo chiến dịch, không đổi sự đồng ý hay thanh toán."
+  "amk.health.d.no_side_effects.PASSED": "Việc kiểm tra không gửi tin, không tạo chiến dịch, không đổi sự đồng ý hay thanh toán.",
+  "amk.b.step.offer": "Ưu đãi",   // DRAFT — Kevin reviews
+  "amk.b.step.schedule": "Lịch gửi",   // DRAFT — Kevin reviews
+  "amk.b.gate.offer": "Ưu đãi đó không còn dùng được. Hãy chọn ưu đãi khác hoặc Không ưu đãi.",   // DRAFT — Kevin reviews
+  "amk.b.gate.schedule": "Hãy sửa giờ gửi (xem Sẵn sàng) hoặc xóa đi để người duyệt chọn giờ.",   // DRAFT — Kevin reviews
+  "amk.b.offer.none": "Không ưu đãi",   // DRAFT — Kevin reviews
+  "amk.b.offer.noneDesc": "Gửi tin nhắn không kèm giảm giá.",   // DRAFT — Kevin reviews
+  "amk.b.offer.noneTerms": "Chưa gắn ưu đãi. Chọn một ưu đãi đã duyệt để xem điều kiện tại đây.",   // DRAFT — Kevin reviews
+  "amk.b.offer.pct": "Giảm {p}%",   // DRAFT — Kevin reviews
+  "amk.b.offer.off": "Giảm {v}",   // DRAFT — Kevin reviews
+  "amk.b.offer.status.active": "Đang chạy",   // DRAFT — Kevin reviews
+  "amk.b.offer.status.approved": "Đã duyệt",   // DRAFT — Kevin reviews
+  "amk.b.offer.status.scheduled": "Đã lên lịch",   // DRAFT — Kevin reviews
+  "amk.b.offer.ends": "Kết thúc {d}",   // DRAFT — Kevin reviews
+  "amk.b.offer.noEnd": "Không có ngày kết thúc",   // DRAFT — Kevin reviews
+  "amk.b.offer.empty": "Chưa có ưu đãi nào được duyệt. Ưu đãi được tạo và duyệt trong Ưu đãi & Khuyến mãi.",   // DRAFT — Kevin reviews
+  "amk.b.offer.openPromos": "Mở Khuyến mãi",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.valid": "Hiệu lực",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.min": "Chi tiêu tối thiểu",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.caps": "Lượt dùng",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.capsV": "Đã dùng {u} / {m}",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.noCap": "Không giới hạn",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.perCust": "{n} lần mỗi khách",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.who": "Ai được dùng",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.new": "Chỉ khách mới",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.members": "Chỉ hội viên",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.allBranches": "Tất cả chi nhánh",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.thisBranch": "Chi nhánh này",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.stack": "Kết hợp",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.stackYes": "Được dùng chung với ưu đãi khác",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.stackNo": "Không dùng chung với ưu đãi khác",   // DRAFT — Kevin reviews
+  "amk.b.offer.t.code": "Cần mã khi thanh toán",   // DRAFT — Kevin reviews
+  "amk.b.offer.exposure": "Giảm giá được Thanh toán áp dụng theo các điều kiện này khi khách trả tiền; đó là chi phí của ưu đãi, tách riêng với chi phí tin nhắn. Gắn ở đây không thay đổi gì.",   // DRAFT — Kevin reviews
+  "amk.b.sched.date": "Ngày gửi đề xuất",   // DRAFT — Kevin reviews
+  "amk.b.sched.time": "Giờ (giờ tiệm)",   // DRAFT — Kevin reviews
+  "amk.b.sched.clear": "Xóa ngày",   // DRAFT — Kevin reviews
+  "amk.b.sched.none": "Không chọn ngày: chủ tiệm hoặc quản lý sẽ chọn giờ gửi khi bắt đầu chiến dịch trong Trung tâm chiến dịch.",   // DRAFT — Kevin reviews
+  "amk.b.sched.proposalNote": "Chỉ là đề xuất. Chưa có gì được lên lịch cho đến khi chiến dịch được duyệt và bắt đầu trong Trung tâm chiến dịch.",   // DRAFT — Kevin reviews
+  "amk.b.sched.readiness": "Sẵn sàng",   // DRAFT — Kevin reviews
+  "amk.b.sched.readinessNone": "Chọn ngày để kiểm tra giờ gửi với giờ yên lặng, đổi giờ mùa hè và ngày của ưu đãi.",   // DRAFT — Kevin reviews
+  "amk.b.sched.zone": "Múi giờ của tiệm: {tz}",   // DRAFT — Kevin reviews
+  "amk.b.sched.ck.ok": "Được",   // DRAFT — Kevin reviews
+  "amk.b.sched.ck.warn": "Cần xem",   // DRAFT — Kevin reviews
+  "amk.b.sched.ck.block": "Không được",   // DRAFT — Kevin reviews
+  "amk.b.r.offer": "Ưu đãi",   // DRAFT — Kevin reviews
+  "amk.b.r.when": "Giờ gửi đề xuất",   // DRAFT — Kevin reviews
+  "amk.b.r.whenV": "{d} {t} ({tz})",   // DRAFT — Kevin reviews
+  "amk.b.r.whenNone": "Chọn khi bắt đầu trong Trung tâm chiến dịch",   // DRAFT — Kevin reviews
 };

@@ -85,7 +85,7 @@ export function POSAICalendarScreen() {
           <button className="btn" onClick={() => step(1)} disabled={!date} data-testid="aic-next">{t('aical.next')}</button>
           <input type="date" value={date} aria-label={t('aical.pickDay')} onChange={(e) => DATE.test(e.target.value) && setDate(e.target.value)} className="aic-date" data-testid="aic-date" />
           <span className="aic-muted" data-testid="aic-dayname">{day(date)}</span>
-          <div className="aic-seg" role="tablist" aria-label={t('aical.views')}>
+          <div className="aic-seg" role="tablist" aria-label={t('aical.views')} data-testid="aic-views">
             {(['day', 'week', 'month', 'list'] as AicView[]).map((v) => (
               <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)} data-testid={`aic-view-${v}`}>{t(`aical.view.${v}`)}</button>
             ))}

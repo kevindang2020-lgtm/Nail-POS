@@ -18,7 +18,7 @@ export interface CcCampaign {
   id: string; name: string; goal: string | null; description: string | null; offer: string | null; channel: 'sms' | 'email' | 'push'; branchId: string | null;
   status: string; displayStatus: string; outcome: string | null; origin: string; audienceLabel: string | null; audienceSource: string; snapshotVersion: number;
   dealId: string | null; dealName: string | null; messageBody: string | null; emailSubject: string | null; messageVersion: number; budgetCents: number;
-  createdAt: string; updatedAt: string; scheduledAt: string | null; startedAt: string | null; completedAt: string | null;
+  createdAt: string; updatedAt: string; scheduledAt: string | null; proposedSendAt?: string | null; startedAt: string | null; completedAt: string | null;
   createdBy: string | null; submittedAt: string | null; approvedAt: string | null; approvedBy: string | null; approvalCurrent: boolean; counts: CcCounts;
 }
 interface CcPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
