@@ -52,3 +52,11 @@ Five_Unfinished_Features F1–F5 all exist in code (commissionReview.tsx, report
 
 - Real SUNMI hardware / Android WebView CSS viewport — still needs a physical unit.
 - No live Twilio, SMS, email or token purchase was run (staging rules).
+
+## Follow-up (same day): preservation matrix
+
+The addenda require a preservation matrix (feature → route → component → API → status → regression test).
+`tooling/e2e/pos-preservation-matrix.mjs` generates `docs/handoff/SUNMI_PRESERVATION_MATRIX.md` from the registry:
+54 pages, 436 rows, 0 missing. Its `--check` mode is a gate, so the matrix cannot go stale. Touch targets: the screen
+check already fails any control whose hit area is under 44 px; batch 3 has 0 such controls (smaller visible buttons
+carry padded hit areas). Gates: 57 + 24 audits pass.

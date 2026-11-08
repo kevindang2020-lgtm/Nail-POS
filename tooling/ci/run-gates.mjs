@@ -149,6 +149,8 @@ const AUDITS = [
   // Nov 7 2026: SUNMI module preservation registry — every registered module id stays in its screen source and the
   // reviewed id baseline never shrinks silently (was standalone; two stale ids slipped past batch 2)
   ['pos module registry', 'node', ['tooling/ci/check-pos-module-registry.mjs']],
+  // Nov 7 2026: the SUNMI addenda's required preservation matrix is generated from the registry and must stay current
+  ['pos preservation matrix', 'node', ['tooling/e2e/pos-preservation-matrix.mjs', '--check']],
   // Oct 6 2026: six web apps no longer built for production while tsc and vitest stayed green — build every app
   ['frontend builds', 'node', ['tooling/ci/check-frontend-builds.mjs']],
   // Oct 6 2026: Vite builds strip types without checking them — admin-web's tsc had been failing unseen
