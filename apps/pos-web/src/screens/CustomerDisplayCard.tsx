@@ -190,9 +190,9 @@ export function CustomerDisplayCard({ m, ticketId, ticketPaid, onChanged }: {
       <div style={{ fontSize: 12, color: 'var(--text)', marginBottom: modeLabel ? 2 : 8 }} data-testid="customer-display-detail">{status.detail}</div>
       {modeLabel ? <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }} data-testid="customer-display-mode">{t('pos.current_mode')}{' '}{modeLabel}</div> : null}
       {stations.length ? (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
+        <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)', marginBottom: 8, minWidth: 0 }}>
           {t('pos.this_pos_is')}
-          <select aria-label={t('pos.this_pos_s_register')} value={m.register ?? ''} onChange={(e) => m.chooseRegister(e.target.value || null)} style={select}>
+          <select aria-label={t('pos.this_pos_s_register')} value={m.register ?? ''} onChange={(e) => m.chooseRegister(e.target.value || null)} style={{ ...select, maxWidth: '100%', minWidth: 0 }}>
             <option value="">{t('pos.no_register_use_a_shared_display')}</option>
             {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>

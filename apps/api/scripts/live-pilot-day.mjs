@@ -182,6 +182,7 @@ await new Promise((r) => chFake.listen(CH_PORT, '127.0.0.1', r));
 // ── the card processor fake: a loopback CardPointe gateway (the shape of scripts/cardpointe-mock-server.mjs). The Super
 // Admin points the salon's gateway at it, so POS card payments, refunds and the gateway test run the REAL CardPointeClient.
 const CP_PORT = PORT + 101; const cpCalls = []; let cpN = 0;
+const cpProfiles = new Map();   // CardPointe profile id → the CardSecure token it stores (Fiserv §8D saved cards)
 const CP_TOKENS = { decline: '9400000000000101', hostRetry: '9400000000000202', unknown: '9400000000000303', dropped: '9400000000000404', lostApproved: '9400000000000505' };
 const cpUnknownOrders = new Map(); const cpDroppedOrders = new Set();
 // phase 14 (§68, Oct 27 2026): 'lostApproved' = the processor APPROVES the charge and then the connection is cut (the answer
@@ -197,9 +198,14 @@ const cpFake = createServer((req, res) => {
     res.setHeader('content-type', 'application/json');
     if (!basic) { res.statusCode = 401; return res.end('{}'); }
     const u = req.url || ''; cpN++;
+    // Fiserv §8D (master build, Nov 4 2026): a saved card is a CardPointe PROFILE — store the CardSecure token under a profile id
+    // and answer like the gateway; an auth with { profile: "pid/acct" } then resolves to the stored token (so the phase-10/14
+    // test tokens keep their behaviour when charged as saved cards)
+    if (req.method === 'PUT' && u.endsWith('/cardconnect/rest/profile')) { const pid = `9${String(100000000 + cpN)}`; cpProfiles.set(pid, String(b.account ?? '')); return res.end(JSON.stringify({ respstat: 'A', profileid: pid, acctid: '1', token: b.account, expiry: b.expiry ?? '1230', accttype: 'VISA', resptext: 'Profile Saved', merchid: b.merchid })); }
+    if (req.method === 'DELETE' && u.includes('/cardconnect/rest/profile/')) return res.end(JSON.stringify({ respstat: 'A', resptext: 'Profile Deleted' }));
     if (req.method === 'PUT' && u.endsWith('/cardconnect/rest/auth')) {
       // phase 10 (mandate §27 card failure modes): CardSecure-style test tokens that make the gateway answer each way
-      const acct = String(b.account ?? '');
+      const acct = String(b.account || cpProfiles.get(String(b.profile ?? '').split('/')[0]) || '');
       if (acct === CP_TOKENS.decline) return res.end(JSON.stringify({ respstat: 'C', retref: `CP-DECL-${cpN}`, amount: b.amount, resptext: 'Insufficient funds', respcode: '51', merchid: b.merchid }));
       if (acct === CP_TOKENS.hostRetry) return res.end(JSON.stringify({ respstat: 'B', retref: `CP-RETRY-${cpN}`, resptext: 'Host unavailable, retry', respcode: '91', merchid: b.merchid }));
       if (acct === CP_TOKENS.unknown) { cpUnknownOrders.set(String(b.orderid), b.amount); return res.end(JSON.stringify({ retref: `CP-UNK-${cpN}`, resptext: 'Pending', merchid: b.merchid })); }
@@ -1575,7 +1581,9 @@ try {
   if (SKIP.has('13')) info('PILOT_SKIP=13: the Vietnamese POS phase was skipped in this run');
   else await sub('13 vietnamese pos', async () => {
     const vEnv = { own, rec, mgr, sa, pub, session, tenantLogin, check, info, q, numbers, ctx, B, T, tag, STAFF_PW, OWNER_PW, short, ok2, API, SCREENS, sleep, d,
-      openLive, ensureBrowser, ensureApp, CP_TOKENS, shotsDir: SHOTS, saStepUp: async () => (await sa.post('/auth/step-up', { password: SA_PASSWORD, code: await nextTotp() })).status, adminPort: fsExists(APPS_DIR + 'admin-web/dist/index.html') ? screenApps['admin-web'] : null };
+      openLive, ensureBrowser, ensureApp, CP_TOKENS, shotsDir: SHOTS, saStepUp: async () => (await sa.post('/auth/step-up', { password: SA_PASSWORD, code: await nextTotp() })).status,
+      // the Super Admin console signs an idle admin out (the session that started the day is long idle by phase 13): sign in again
+      saRelogin: async () => (await sa.post('/auth/login', { portal: 'super-admin', identifier: SA_EMAIL, password: SA_PASSWORD, mfaCode: await nextTotp() })).status, adminPort: fsExists(APPS_DIR + 'admin-web/dist/index.html') ? screenApps['admin-web'] : null };
     await vietnamesePhase(vEnv);
     rec = vEnv.rec ?? rec;   // the receptionist's live session after phase 13's sign-out / sign-in (harness fix, Oct 27 final pass)
   });

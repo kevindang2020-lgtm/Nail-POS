@@ -4013,3 +4013,23 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .amk-checks{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:4px}
 .amk-ck b{display:inline-block;min-width:88px}.amk-ck.ok b{color:var(--aps-ok,#2E7D32)}.amk-ck.warn b{color:var(--aps-warn,#A66A00)}.amk-ck.block b{color:var(--aps-danger,#B3261E)}
 @media (max-width:1279px){.amk-offer,.amk-sched{grid-template-columns:minmax(0,1fr)}}
+.who-btn{min-height:44px}
+/* Tech Queue with 200 technicians (pilot phase 13, Nov 8 2026): long service / customer / "next" text pushed the Details column
+   out of its card. Long cells clip with an ellipsis (full text on hover/long-press title) so Details always stays in view. */
+.tq-table td.tq-clip{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.tq-table .tq-who b{display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+@media (max-width:1700px){.tq-table td.tq-clip{max-width:150px}.tq-table .tq-who b{max-width:120px}}
+/* Checkout queue with a busy salon (pilot phase 13, 200 technicians, Nov 8 2026): long guest / technician names widened the
+   table past its card at ≤ 1600 px and pushed Open / Full View out. Cells clip earlier there; the actions cell never clips. */
+@media (max-width:1700px){.co-tbl td{max-width:120px}.co-tbl td:nth-child(3){max-width:84px}}
+@media (max-width:1400px){.co-tbl td{max-width:96px}.co-tbl td:nth-child(3){max-width:64px}}
+/* Busy-salon fit by the width of the CARD, not the window (pilot phase 13, 200 technicians, Nov 8 2026): the Live Technician
+   Queue card and the Checkout queue card are only ~45 % / ~26 % of the screen, so window media queries cannot see them. Each is
+   a size container; when the card is narrow the optional columns step aside (Specialties + Tips; Services) and the row actions
+   never wrap or clip. Every value stays reachable: the technician's Details and the ticket itself show them. */
+.tq-scroll{container-type:inline-size}
+@container (max-width:1060px){.tq-table .t-opt{display:none}}
+@container (max-width:860px){.tq-table td.tq-clip{max-width:120px}}
+.co-scroll{container-type:inline-size}
+.co-tbl td.co-acts{white-space:nowrap}
+@container (max-width:560px){.co-tbl .co-svc{display:none}}

@@ -486,16 +486,16 @@ export function POSCheckoutScreen() {
   const queueTable = (rows: Row[]) => (
     <table className="co-tbl">
       <thead><tr>{/* §79 one-screen (Nov 6 2026): the technician sits under the guest (as on Service Done) — a column of its own pushed the
-          row's actions past the card */}{[tx('pos.time'), tx('pos.guest'), tx('pos.services'), tx('pos.total'), tx('pos.status'), 'Actions'].map((hh, i) => <th key={i} style={{ textAlign: i === 3 ? 'right' : 'left' }}>{hh === 'Actions' ? <span className="sr-only">{tx('pos.actions')}</span> : hh}</th>)}</tr></thead>
+          row's actions past the card */}{[tx('pos.time'), tx('pos.guest'), tx('pos.services'), tx('pos.total'), tx('pos.status'), 'Actions'].map((hh, i) => <th key={i} className={i === 2 ? 'co-svc' : undefined} style={{ textAlign: i === 3 ? 'right' : 'left' }}>{hh === 'Actions' ? <span className="sr-only">{tx('pos.actions')}</span> : hh}</th>)}</tr></thead>
       <tbody>
         {rows.map((r) => { const sel = r.ticketId === selId; const tone = r.isVip ? STATUS_TONE.vip : STATUS_TONE[r.status] || STATUS_TONE.ready_for_payment; return (
           <tr key={r.ticketId} className="co-row" onClick={() => { selectTicket(r.ticketId); setOverlay(null); }} style={{ background: sel ? '#FCF3E4' : 'transparent' }}>
             <td style={{ color: 'var(--muted)' }}>{hhmm(r.finishedAt || r.completedAt)}</td>
             <td><div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}><span style={{ width: 18, height: 18, borderRadius: 99, background: '#ECE3D5', color: 'var(--g7)', fontSize: 8, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{initials(r.customerName)}</span><span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}><span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.customerName}</span><span style={{ fontSize: 10, color: 'var(--soft)', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.primaryTechnicianName || undefined}>{r.primaryTechnicianName || tx('pos.any_tech_2')}</span></span></div></td>
-            <td style={{ color: 'var(--soft)', maxWidth: 120 }} title={r.servicesLabel || undefined}>{r.servicesLabel || tx('pos.servicecount_svc', { serviceCount: String(r.serviceCount) })}</td>
+            <td className="co-svc" style={{ color: 'var(--soft)', maxWidth: 120 }} title={r.servicesLabel || undefined}>{r.servicesLabel || tx('pos.servicecount_svc', { serviceCount: String(r.serviceCount) })}</td>
             <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(r.totalDueCents)}</td>
             <td>{chip(boardLabel(r.status, r.isVip), tone)}</td>
-            <td style={{ maxWidth: 'none' }}><button style={{ ...ghostBtn, minHeight: 32 }} onClick={(e) => { e.stopPropagation(); selectTicket(r.ticketId); setOverlay(null); }}>{actionLabel(r.status, r.isVip)}</button> <button style={{ ...ghostBtn, minHeight: 32, width: 32, padding: 0 }} title={tx('pos.open_full_ipad_view')} aria-label={tx('pos.full_view')} data-testid="co-row-full-view" onClick={(e) => { e.stopPropagation(); openIPad(checkoutTicketRequest({ ticketId: r.ticketId, ticketNumber: r.ticketNumber, customer: { fullName: r.customerName, isVip: r.isVip, phone: r.customerPhone }, totals: { totalDueCents: r.totalDueCents } })); }}><FaExpand aria-hidden="true" /></button></td>
+            <td className="co-acts" style={{ maxWidth: 'none' }}><button style={{ ...ghostBtn, minHeight: 32 }} onClick={(e) => { e.stopPropagation(); selectTicket(r.ticketId); setOverlay(null); }}>{actionLabel(r.status, r.isVip)}</button> <button style={{ ...ghostBtn, minHeight: 32, width: 32, padding: 0 }} title={tx('pos.open_full_ipad_view')} aria-label={tx('pos.full_view')} data-testid="co-row-full-view" onClick={(e) => { e.stopPropagation(); openIPad(checkoutTicketRequest({ ticketId: r.ticketId, ticketNumber: r.ticketNumber, customer: { fullName: r.customerName, isVip: r.isVip, phone: r.customerPhone }, totals: { totalDueCents: r.totalDueCents } })); }}><FaExpand aria-hidden="true" /></button></td>
           </tr>
         ); })}
         {rows.length === 0 ? <tr><td colSpan={6} style={{ padding: 14, textAlign: 'center', color: 'var(--muted)' }}>{tx('pos.no_guests_ready_for_checkout')}</td></tr> : null}
@@ -946,12 +946,13 @@ export function POSCheckoutScreen() {
                             border: '1px solid var(--line)',
                             background: 'var(--card)',
                             borderRadius: 9,
-                            padding: '7px 0',
+                            padding: '7px 2px',
                             cursor: 'pointer',
                             textAlign: 'center',
+                            minWidth: 0,
                           }}
                         >
-                          <div style={{ fontWeight: 800, fontSize: 12 }}>{tx('pos.custom_2')}</div>
+                          <div style={{ fontWeight: 800, fontSize: 'clamp(10.5px, 0.75vw, 12px)', overflowWrap: 'anywhere' }}>{tx('pos.custom_2')}</div>
                           <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>✎</div>
                         </button>
                       </div>

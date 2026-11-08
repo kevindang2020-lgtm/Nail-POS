@@ -32,7 +32,10 @@ export async function recoveryPhase(env) {
   if (!ok2(cl.status) || !customerId) info(`recovery customer: register ${reg.status} ${short(reg.body)} login ${cl.status} customer ${customerId}`);
 
   // ── 14a WALLET TOP-UP: lost answer → staff Verify → one credit ─────────────────────────────────────────────────────
-  const pm = await cust.post('/customer/payment-methods', { token: CP_TOKENS.lostApproved, brand: 'visa', last4: '0505', expMonth: 12, expYear: 2030, isDefault: true });
+  // Fiserv §8D (Nov 4 2026): saving a card needs the customer's explicit stored-credential consent for the CURRENT terms version
+  // (the app reads it from the tokenizer endpoint) — the card is then stored as a CardPointe profile by the salon's own gateway
+  const consentVersion = (await cust.get('/customer/payment-methods/tokenizer')).body?.consentVersion;
+  const pm = await cust.post('/customer/payment-methods', { token: CP_TOKENS.lostApproved, brand: 'visa', last4: '0505', expMonth: 12, expYear: 2030, isDefault: true, consent: true, consentVersion });
   const pmId = pm.body?.id ?? pm.body?.paymentMethodId;
   const a0 = auths();
   const tu = await cust.post('/customer/wallet/top-up', { amountCents: 5000, paymentMethodId: pmId, clientKey: `pilot-topup-${tag}` });
@@ -46,7 +49,7 @@ export async function recoveryPhase(env) {
   const walletAfter = (await cust.get('/customer/wallet')).body?.balanceCents;
   const credits = (await q(`select count(*)::int n, coalesce(sum(amount_cents), 0)::int s from customer_wallet_ledger where tenant_id = $1 and customer_id = $2 and idempotency_key = $3`, [T, customerId, `topup:${intentId}`]))[0];
   const intentRow = intentId ? (await q(`select status, settled_by, attempt from wallet_topup_intents where id = $1`, [intentId]))[0] : null;
-  R.topUp = { add: pm.status, topUp: [tu.status, tu.body?.status, tu.body?.declined ?? null], retry: [tuAgain.status, tuAgain.body?.status], processorCalls: a1 - a0, walletBefore, verify: [ver.status, ver.body?.status], verify2: [ver2.status, ver2.body?.status], customerCheck: [check2.status, check2.body?.status], walletAfter, credits, intent: intentRow };
+  R.topUp = { add: pm.status, addError: ok2(pm.status) ? undefined : (pm.body?.code ?? pm.body?.error?.code),  topUp: [tu.status, tu.body?.status, tu.body?.declined ?? null], retry: [tuAgain.status, tuAgain.body?.status], processorCalls: a1 - a0, walletBefore, verify: [ver.status, ver.body?.status], verify2: [ver2.status, ver2.body?.status], customerCheck: [check2.status, check2.body?.status], walletAfter, credits, intent: intentRow };
   check('WALLET TOP-UP RECOVERY (§15/§16/§68): the charge went through but its answer was lost → "being confirmed" (UNKNOWN, never declined); the same tap again reaches the processor 0 more times; the front desk\'s Verify finds the approval → the wallet is credited $50.00 ONCE; a second Verify and the customer\'s Check status add nothing',
     ok2(pm.status) && tu.body?.status === 'UNKNOWN' && !tu.body?.declined && tuAgain.body?.status === 'UNKNOWN' && a1 - a0 === 1 && walletBefore === 0
       && ok2(ver.status) && ver.body?.status === 'APPROVED' && ver2.body?.status === 'APPROVED' && check2.body?.status === 'APPROVED'

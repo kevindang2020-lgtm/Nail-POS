@@ -367,6 +367,9 @@ export async function vietnamesePhase(env) {
   // ── 13g. a platform announcement with a reviewed Vietnamese version ────────────────────────────────────────────────
   await sec('13g announcement vi', async () => {
     const EN = `Card payments pause 11:00–11:15 PM tonight (${tag}).`, VI = `Thanh toán thẻ tạm dừng 23:00–23:15 tối nay (${tag}).`;
+    // the Super Admin who started the day has been idle for most of it — the console has signed her out (idle timeout); sign in again
+    let relogin = null;
+    if (env.saRelogin && (await sa.get('/super-admin/communications/platform-announcements')).status === 401) relogin = await env.saRelogin();
     const cr = await sa.post('/super-admin/communications/platform-announcements', { title: `Maintenance ${tag}`, message: EN, titleVi: `Bảo trì ${tag}`, messageVi: VI, viReviewed: true, type: 'maintenance', priority: 'high', audience: 'selected_tenants', tenantIds: [T], dismissible: true,
       startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 3 * 3600_000).toISOString() });
     const su = saStepUp ? await saStepUp() : 0;   // publish / archive need a fresh Super Admin step-up (§137)
@@ -382,7 +385,7 @@ export async function vietnamesePhase(env) {
     // GET /pos/me/locale answers, so "contains the tag" alone would read the bar before the switch
     const bar = async (sess, want) => { const p = await live('/overview', sess); if (!p) return null; await waitFor(async () => (await p.page.locator('[data-testid="platform-announcement-text"]').first().innerText().catch(() => '')).includes(want), 20000, 200); const t = await p.page.locator('[data-testid="platform-announcement-text"]').first().innerText().catch(() => ''); await p.shot(`announcement-${sess === env.mgr ? 'vi' : 'en'}`); await p.close(); return t; };
     const viBar = await bar(env.mgr, VI), enBar = await bar(env.rec, EN);
-    V.announcement = { create: cr.status, stepUp: su, publish: pb.status, publishError: pb.status >= 300 ? pb.body : undefined, snapshotHasVi: item?.messageVi === VI, viBar, enBar };
+    V.announcement = { relogin, create: cr.status, stepUp: su, publish: pb.status, publishError: pb.status >= 300 ? pb.body : undefined, snapshotHasVi: item?.messageVi === VI, viBar, enBar };
     check('ANNOUNCEMENT EN / VI (§56–§57): a maintenance notice with a REVIEWED Vietnamese version, published to this salon: the Vietnamese manager\'s POS bar shows the Vietnamese text, the English receptionist\'s the English one (one snapshot carries both)',
       ok2(cr.status) && ok2(pb.status) && V.announcement.snapshotHasVi && (viBar ?? '').includes(VI) && (enBar ?? '').includes(EN), short(V.announcement));
     if (cr.body?.id) { const cur = (await q(`select version from platform_notices where id = $1`, [cr.body.id]))[0]; await sa.post(`/super-admin/communications/platform-announcements/${cr.body.id}/archive`, { expectedVersion: Number(cur?.version) }).catch(() => undefined); }

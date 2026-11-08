@@ -416,8 +416,8 @@ export function POSTechQueueScreen() {
                     <td className="t-opt fk-muted">{r.specialties.join(', ')}</td>
                     <td>{chip(st(r.status).label, TONE[r.status])}{r.status === 'hold' && r.holdReason ? <span className="fk-li-s">{codeLabel('tq.hold.' + r.holdReason, r.holdReason)}</span> : null}</td>
                     <td className="num">{r.guests}</td>
-                    <td>{r.currentServiceName ? `${r.currentServiceName} — ${r.currentServiceCustomer || ''}` : '—'}</td>
-                    <td>{nextLabel(r)}</td>
+                    <td className="tq-clip" title={r.currentServiceName ? `${r.currentServiceName} — ${r.currentServiceCustomer || ''}` : undefined}>{r.currentServiceName ? `${r.currentServiceName} — ${r.currentServiceCustomer || ''}` : '—'}</td>
+                    <td className="tq-clip" title={String(nextLabel(r) ?? '')}>{nextLabel(r)}</td>
                     <td className="num">{r.utilizationPercent != null ? `${r.utilizationPercent}%` : '—'}</td>
                     <td className="num t-opt">{m2(r.tipsTodayCents)}</td>
                     <td className="num"><b>{m2(r.revenueTodayCents)}</b></td>

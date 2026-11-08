@@ -116,3 +116,29 @@ The addenda's optional "additional recommendations" were triaged with the batch-
 already checks it). The money and safety ones are covered: Money Protection's own checks, AI cost/entitlement
 reconcile, coupon/deal exposure, payroll validation, the screen check on every page.
 - Final full run on the current build (Nov 8, 11:30): all 92 registered pages at 1920×945 / 952 / 1032, EN + VI: **552/552**.
+
+## Full pilot day re-run (Nov 8, after batch 5): 239/242 → 242/242
+
+The day was first run with all 15 phases (phases 12–15 had not run since Nov 6). 3 checks failed, all fixed:
+
+1. **Phase 14, wallet top-up recovery: test harness was stale.**
+   - Since the Fiserv master build (§8D), saving a card needs explicit stored-credential consent (current terms version), and the card is stored as a CardPointe PROFILE.
+   - Fix: the pilot now reads the consent version from `GET /customer/payment-methods/tokenizer` and sends `consent: true`. The loopback gateway answers `PUT /cardconnect/rest/profile` and resolves `{ profile }` auths to the stored token.
+   - Result: one $50.00 credit, processor reached once.
+2. **Phase 13, EN / VI announcement: test harness was stale.**
+   - The Super Admin who signed in at the start of the day was idle-signed-out by phase 13 (Super Admin idle policy ≤ 30 min), so the publish got 401.
+   - Fix: the pilot signs in again (TOTP) when the console answers 401.
+3. **Phase 13, one screen with 200 technicians: real layout bugs.** The demo-data screen check could not see these.
+   - **Tech Queue:** the Live Technician Queue card had 11 columns, and Details went out of the card at every size (EN + VI). The card and the Checkout queue card are now **size containers**:
+     - when the card is narrow, Specialties + Tips step aside;
+     - long service / customer / next cells clip with an ellipsis (full text in the title).
+   - **Checkout:** the queue card's Open / Full View wrapped and clipped at ≤ 1600 px. Services steps aside when the card is under 560 px, and the actions never wrap.
+   - **Checkout Custom tip:** the label spilled at 1366 / 1280.
+   - **Customer Display:** the "This POS is …" register picker spilled at 1280.
+   - **Header user button:** it was 74×41 at ≤ 1366; it now has a 44 px minimum.
+   - **Customer Queue:** "Any" (requested technician) was 38 px wide at 2560; it now has a 44 px hit area.
+
+**After the fixes:**
+- Pilot day 242/242, on a fresh PG16 database (780 migrations).
+- All 92 pages at the three SUNMI sizes, EN + VI: 552/552.
+- Gates 57 + 25 audits; touched-screen POS tests 109/109.
