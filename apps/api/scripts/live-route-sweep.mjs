@@ -334,6 +334,15 @@ const EXPLAINED = [
   [/^\/super-admin\/(billing\/exports\/jobs|scheduled-reports\/runs\/\{runId\}\/download|communications\/templates\/\{id\}|memberships\/members|gift-cards\/settlement)/, 'the seeded row is not in the state / table this read expects (export not produced, template kept elsewhere)'],
   [/^\/super-admin\/platform\/branches\/\{id\}\/transfer-preflight/, 'needs ?toTenantId= (a destination salon)'],
   [/^\/super-admin\/customer-data-oversight\/sync\/merge-preview|^\/super-admin\/smart-reminders\/plan-features\/evaluate/, 'needs specific ids in the query (two global customers / a tenant)'],
+  // Nov 8 2026 (full run): screen routes added by the SUNMI batches and the Nov 4–7 developer merge. Each answered its own
+  // named validation / not-found contract (no 5xx, no SQL error); the screens and module tests prove the served path.
+  [/^\/pos\/(ai-business\/center\/branches\/explain|live-schedule-screen\/shift-impact|loyalty\/bonus-requests\/preview|tech-appointments-screen\/conflicts|team-members-screen\/(customer-links|preferred-check)|ai\/calendar-center\/range|retention\/snapshots\/compare)$/, 'needs a screen-specific query the common bundle does not carry (two branches / techId+weekday / view=week / a snapshot date / a 2+ letter customer search) — the 400/404/422 names the missing input'],
+  [/^\/pos\/payments\/(money\/search|refunds-voids\/find)$/, 'search needs 2+ characters of a real ticket / customer (the bundle sends q=a) — 400 is the contract'],
+  [/^\/pos\/(ai-analytics\/center\/run|ai-voice-transcription\/(calls\/detail|follow-ups\/items\/history)|money-protection-center\/(alerts\/detail|investigations\/timeline))$/, 'detail read keyed by a query id (?id= / ?runId=) of a row the generic seeder does not make (forecast run, transcribed call, follow-up item, money alert / investigation)'],
+  [/^\/pos\/(ai-business\/center\/alerts\/\{id\}\/delivery|ai-scheduling-optimizer\/recommendations\/\{id\}\/day|customer-phone-center\/requests\/\{id\}|customer-timeline\/customers\/\{id\}\/events\/\{eventId\}|memberships\/members\/\{membershipId\}\/detail|payments\/(cash-handoffs|refunds-voids|tips|split-payments\/\{ticketId\})\/|service-recommendations\/recommendations\/\{id\}|skills-catalog\/technician\/\{technicianId\}\/removal-impact)/, 'the seeded row is not in the shape this read needs (alert with a delivery, a move recommendation, a phone-update request, a timeline event id, an active membership, a hand-off / reversal / tip record, a split-tender ticket (the newest seeded ticket is one only sometimes), a skill assignment of that technician)'],
+  [/^\/pos\/catalog\/add-ons\/\{key\}|^\/tenant\/ai\/usage-screen\/packages\/\{code\}/, 'a catalog key, not a row (unknown key → 404 is the contract)'],
+  [/^\/tenant\/inventory\/stock-alerts\/events\/\{eventId\}/, 'no product-use event in the seed (inventory usage is proved by the inventory module tests)'],
+  [/^\/public\/email\/unsubscribe/, 'needs a signed unsubscribe token — without one the page answers 400 "Link not valid" by design'],
 ];
 function explain4xx(r) {
   for (const [re, why] of BY_DESIGN) if (re.test(r.body ?? '')) return why;
@@ -392,9 +401,13 @@ try {
     const opt = { unversioned: r.unversioned };
     const res = await call(r.auth === 'public' || r.auth === 'api_key' ? null : who[principal], 'GET', url, undefined, opt);
     rec.status = res.status; rec.ms = res.ms; rec.body = res.text.slice(0, 300);
-    if (res.status === 400 && !rec.skip) {   // a required query: retry once with the common query bundle
+    // a required query: retry once with the common query bundle. Nov 8 2026: a query-only route (no path params) may answer a
+    // missing query id with its own 404 ("That technician is not in this salon.") or 422 (search too short) — retry those too,
+    // and keep the retry only when it is served (a 404/422 → 4xx retry keeps the first answer)
+    const queryOnly = names.length === 0 && !url.includes('?');
+    if (!rec.skip && (res.status === 400 || (queryOnly && (res.status === 404 || res.status === 422)))) {
       const res2 = await call(r.auth === 'public' ? null : who[principal], 'GET', `${url}${url.includes('?') ? '&' : '?'}${subst(QUERY_BUNDLE)}`, undefined, opt);
-      rec.retried = res2.status; rec.retryBody = res2.text.slice(0, 200); if (res2.status !== 400) { rec.status = res2.status; rec.ms = res2.ms; rec.body = res2.text.slice(0, 300); res.text = res2.text; res.ct = res2.ct; }
+      rec.retried = res2.status; rec.retryBody = res2.text.slice(0, 200); if (res.status === 400 ? res2.status !== 400 : res2.status < 400) { rec.status = res2.status; rec.ms = res2.ms; rec.body = res2.text.slice(0, 300); res.text = res2.text; res.ct = res2.ct; }
     }
     rec.mounted = !(res.status === 404 && /Cannot GET/.test(res.text));
     if (res.status >= 200 && res.status < 300 && /json/.test(res.ct)) {

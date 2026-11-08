@@ -98,8 +98,11 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
    *  "month" or "year" (the Sales Report screen, the AI Business Assistant tools, its alerts and its reports) got the last 7 days.
    *  A preset is now turned into the salon-local days it names; explicit from/to still win. */
   private async withPresetRange(ctx: ReportsContext, f: ReportFilters): Promise<ReportFilters> {
-    if (f.from || f.to || !f.preset || f.preset === 'custom') return f;
+    if (f.from || f.to || f.preset === 'custom') return f;
     const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null);
+    // Nov 8 2026 (full run, pilot salon at GMT+14): with no preset and no dates the default "last 7 days" was counted from the
+    // SERVER's UTC day, so a salon already on tomorrow saw an empty Reports screen. The default now ends on the salon's day.
+    if (!f.preset) return { ...f, ...defaultRange(new Date(), tz) };
     return { ...f, ...(f.period === 'previous' ? previousPeriodRange(f.preset, new Date(), tz) : presetRange(f.preset, new Date(), tz)) };
   }
 
@@ -140,6 +143,14 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
 
 // cast a TIMESTAMPTZ column to ::date for an inclusive day-range comparison
 function sqlDate(eb: any, col: string) { return eb.fn('date', [eb.ref(col)]); }
+
+/** the default report window (no preset, no dates): the salon's day and the 7 days before it — the same span the shared
+ *  builder's daysAgo(7)..daysAgo(0) default names, counted on the salon's calendar instead of the server's */
+export function defaultRange(now: Date, tz: string): { from: string; to: string } {
+  const to = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  const d = new Date(`${to}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 7);
+  return { from: d.toISOString().slice(0, 10), to };
+}
 
 /** the salon-local days a report preset names (inclusive), for `now` in `tz`; weeks start on Monday */
 export function presetRange(preset: string, now: Date, tz: string): { from: string; to: string } {

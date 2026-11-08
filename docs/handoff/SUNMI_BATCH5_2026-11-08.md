@@ -142,3 +142,14 @@ The day was first run with all 15 phases (phases 12–15 had not run since Nov 6
 - Pilot day 242/242, on a fresh PG16 database (780 migrations).
 - All 92 pages at the three SUNMI sizes, EN + VI: 552/552.
 - Gates 57 + 25 audits; touched-screen POS tests 109/109.
+
+## Full run, Nov 8 2026 (after all 80 guides): failures found and fixed
+
+| Lane | Found | Fix | Re-verified |
+|---|---|---|---|
+| harnesses — verify-terminal-capture (7 red) | the harness's fake Bolt still answered the old `/api/v2/authCard` with decimal amounts; the client follows Fiserv's documented `/api/v3/authCard` with implied-decimal cents (since 02cbb1fa) | harness fake + assertions moved to the documented contract (product unchanged) | 17/17 |
+| harnesses — verify-live-socket (1 red) | expected a flat 3 % pre-auth card surcharge (13158) — the fee is provider-assessed, the display total is 12775 with surchargeCents 0 | assertion updated (no flat 3 % surcharge, per standing rule) | 26/26; all harnesses 9 pass / 0 fail |
+| live-route-sweep (1 check red, 31 routes) | new screen routes answered their own named 400/404/422 (missing screen-specific query, or a seeded row not in the needed shape); no 5xx, no SQL error | query-bundle retry also for a query-only 404/422; each remaining route listed with its reason (sweep's EXPLAINED pattern) | full sweep 3894 routes, every check PASS |
+| live-pilot-day (241/242) — **product bug** | POS Reports' default window (no preset) ended on the SERVER's UTC day: a salon already on tomorrow (pilot at GMT+14) saw $0 | `defaultRange()` — the last 7 days ending on the salon's local day (reports.kysely.repository.ts) + unit test | reports 63/63, pilot 242/242 |
+
+All other lanes rc=0 in the same run: migrations, builds, typecheck, lint (0/0), gates 57 + 25, packages/modules/apps/API tests (API 3279, POS 2122, tech 205), race lane 427, live API harnesses, event wiring 19/19, display lifecycle 30/30, drill-restore, e2e-html.

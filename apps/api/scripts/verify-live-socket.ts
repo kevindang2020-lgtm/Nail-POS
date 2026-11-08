@@ -121,7 +121,10 @@ function reqJson(method: string, path: string, body: any, headers: http.Outgoing
     ok('SSE handshake: "connected" received over the socket', sse.received().includes('connected'), sse.received().slice(0, 70).replace(/\n/g, ' '));
 
     const r = await post(`/customer-display/checkout/${S}/tip`);
-    ok('tip POST over HTTP -> 200 with recomputed total 13158', ( r.status === 201 || r.status === 200 ) && r.body.includes("13158"), `${r.status} ${r.body.slice(0, 60)}`);
+    // the card fee is provider-assessed on the authorization (Fiserv master build §9; no flat 3% pre-auth surcharge): the
+    // display's card total is $100 + $7.75 tax + $20 tip = 12775 with surchargeCents 0
+    const tipTotals = (() => { try { return JSON.parse(r.body).totals; } catch { return null; } })();
+    ok('tip POST over HTTP -> 200 with recomputed total 12775 (no pre-auth surcharge)', ( r.status === 201 || r.status === 200 ) && tipTotals?.totalDueCents === 12775 && tipTotals?.tipCents === 2000 && tipTotals?.surchargeCents === 0, `${r.status} ${JSON.stringify(tipTotals)}`);
 
     let got = false;
     for (let i = 0; i < 25 && !got; i++) { if (sse.received().includes('customer_display_tip_selected')) got = true; else await sleep(150); }
@@ -129,7 +132,7 @@ function reqJson(method: string, path: string, body: any, headers: http.Outgoing
 
     // customer picks cash on the iPad: route must be excluded from session middleware (else 401) and the surcharge drops
     const meth = await postJson(`/customer-display/checkout/${S}/method`, { method: 'cash' });
-    ok('method POST over HTTP -> 200 (route excluded from session middleware), cash removes surcharge (12775)', (meth.status === 201 || meth.status === 200) && meth.body.includes('12775'), `${meth.status} ${meth.body.slice(0, 60)}`);
+    ok('method POST over HTTP -> 200 (route excluded from session middleware), cash total stays 12775', (meth.status === 201 || meth.status === 200) && meth.body.includes('12775'), `${meth.status} ${meth.body.slice(0, 60)}`);
 
     ok('valid token -> 200 over HTTP', (await getStatus(`/customer-display/checkout/${S}?token=${token}`)) === 200);
     ok('forged token -> 403 over HTTP', (await getStatus(`/customer-display/checkout/${S}?token=wrong`)) === 403);

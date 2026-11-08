@@ -52,7 +52,7 @@ const boltServer = http.createServer((req, res) => {
       res.setHeader('content-type', 'application/json');
       return res.end('{}');
     }
-    if (req.url === '/api/v2/authCard') {
+    if (req.url === '/api/v3/authCard') {   // Fiserv's documented Terminal API path (client default since 02cbb1fa)
       if (req.headers['x-cardconnect-sessionkey'] !== 'SESS42') { res.statusCode = 401; return res.end('{"error":"no session"}'); }
       res.setHeader('content-type', 'application/json');
       if (nextRespstat === 'A') return res.end(JSON.stringify({ respstat: 'A', retref: 'RR777', authcode: 'OK1', resptext: 'Approval', amount: body.amount, ...(body.includeSignature === 'true' ? { signature: gzipSync(SIG_BMP).toString('base64') } : {}) }));
@@ -113,9 +113,9 @@ const boltServer = http.createServer((req, res) => {
   const pay1: any = await k.selectFrom('payments').selectAll().where('ticket_id', '=', TK1 as any).executeTakeFirst();
   // the amount is the TICKET's card total (its $100 line + the 3% card surcharge + tax — Unit 2, §35), exactly what the
   // terminal was asked for
-  const asked = boltLog.find((l) => l.path === '/api/v2/authCard')?.body?.amount;
+  const asked = boltLog.find((l) => l.path === '/api/v3/authCard')?.body?.amount;
   ok('payments row: approved, the ticket\'s card total (what the terminal was asked for, surcharge included), retref RR777, idempotency key set',
-    pay1?.status === 'approved' && pay1?.processor_transaction_id === 'RR777' && String(pay1?.idempotency_key) === `termcap_${S1}` && Number(pay1?.amount_cents) > 10000 && Number(pay1?.amount_cents) === Math.round(parseFloat(String(asked)) * 100),
+    pay1?.status === 'approved' && pay1?.processor_transaction_id === 'RR777' && String(pay1?.idempotency_key) === `termcap_${S1}` && Number(pay1?.amount_cents) > 10000 && Number(pay1?.amount_cents) === Number(asked),
     `${pay1?.status}/${pay1?.processor_transaction_id}/${pay1?.idempotency_key}/${pay1?.amount_cents}`);
   const kiosk1: any = await svc.getState(S1, tok(1));
   ok('kiosk reflects payment_success', kiosk1?.state === 'payment_success', String(kiosk1?.state));
@@ -127,12 +127,12 @@ const boltServer = http.createServer((req, res) => {
 
   // ── 2. THE WIRE: contract checks against what the Bolt-shaped server actually received ──
   const connect = boltLog.find((l) => l.path === '/api/v2/connect');
-  const auth = boltLog.find((l) => l.path === '/api/v2/authCard');
+  const auth = boltLog.find((l) => l.path === '/api/v3/authCard');
   ok('connect hit /api/v2/connect with merchantId + hsn + raw api key Authorization',
     !!connect && connect.auth === 'bolt-test-key' && connect.body?.merchantId === '496160873888' && connect.body?.hsn === '1234567890',
     JSON.stringify(connect?.body));
-  ok('authCard carried the session key and the documented payload (decimal amount string, capture true, the terminal asks for the signature)',
-    !!auth && auth.sess === 'SESS42' && typeof auth.body?.amount === 'string' && auth.body?.amount?.includes('.') && auth.body?.capture === 'true' && auth.body?.includeSignature === 'true' && auth.body?.orderId === TK1,
+  ok('authCard carried the session key and the documented payload (implied-decimal cents string, capture true, the terminal asks for the signature)',
+    !!auth && auth.sess === 'SESS42' && typeof auth.body?.amount === 'string' && /^\d+$/.test(auth.body.amount) && auth.body?.capture === 'true' && auth.body?.includeSignature === 'true' && auth.body?.orderId === TK1,
     `${auth?.sess} ${JSON.stringify(auth?.body)}`);
 
   // ── 3. DECLINED: respstat C -> declined payments row -> kiosk payment_failed (never paid) ──
