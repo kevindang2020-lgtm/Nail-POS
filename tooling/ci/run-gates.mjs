@@ -151,6 +151,8 @@ const AUDITS = [
   ['pos module registry', 'node', ['tooling/ci/check-pos-module-registry.mjs']],
   // Nov 7 2026: the SUNMI addenda's required preservation matrix is generated from the registry and must stay current
   ['pos preservation matrix', 'node', ['tooling/e2e/pos-preservation-matrix.mjs', '--check']],
+  // Nov 7 2026: Kevin's Vietnamese review sheet (docs/handoff/VI_DRAFT_REVIEW.md) always lists every DRAFT string
+  ['vi draft review sheet', 'node', ['tooling/i18n/vi-drafts.mjs', '--check']],
   // Oct 6 2026: six web apps no longer built for production while tsc and vitest stayed green — build every app
   ['frontend builds', 'node', ['tooling/ci/check-frontend-builds.mjs']],
   // Oct 6 2026: Vite builds strip types without checking them — admin-web's tsc had been failing unseen

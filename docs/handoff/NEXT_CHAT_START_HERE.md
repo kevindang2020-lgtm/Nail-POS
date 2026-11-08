@@ -62,7 +62,8 @@ PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 fi
 
 ## 5. Open — what is NOT done
 
-**Waiting on Kevin**
+**Waiting on Kevin** — every item prepared step by step in `docs/handoff/OWNER_ACTIONS_2026-11-07.md`
+(Vietnamese review sheet: `docs/handoff/VI_DRAFT_REVIEW.md`, applied with `tooling/i18n/vi-drafts.mjs`).
 - The picks in `docs/handoff/MERGE_2026-11-07.md` (session limit built as recommended; Manager Pay keeps ending Face ID
   at sign-out; old saved cards must be re-added) — change any of them by saying so.
 - Review the Vietnamese DRAFT strings: `pos.pushPrompt.*`, `payment.terminal.*`, `sunmi.profile.*`, `sunmi.pay.*`,

@@ -5,13 +5,13 @@ export const NAV_VI: Record<keyof typeof NAV_EN, string> = {
   'nav.language.menu': 'Ngôn ngữ: {current}',
   'nav.section.team': 'NHÂN VIÊN',
   'nav.language.saveFailed': 'Không lưu được ngôn ngữ của bạn. Đã chuyển lại {previous}.',
-  // DRAFT (Nov 6 2026) — Kevin to review: the "Turn on notifications" banner (shell/POSLayout.tsx PosPushPrompt)
-  'pos.pushPrompt.title': 'Bật thông báo',
-  'pos.pushPrompt.reason': 'Nhận thông báo tại quầy lễ tân khi khách check-in, khi phiếu sẵn sàng thanh toán và khi có thanh toán.',
-  'pos.pushPrompt.turnOn': 'Bật',
-  'pos.pushPrompt.notNow': 'Để sau',
-  'pos.pushPrompt.blocked': 'Thông báo đang bị chặn. Bạn có thể cho phép trong phần cài đặt của trình duyệt.',
-  'pos.pushPrompt.ok': 'Đã hiểu',
+  // Nov 6 2026: the "Turn on notifications" banner (shell/POSLayout.tsx PosPushPrompt)
+  'pos.pushPrompt.title': 'Bật thông báo',   // DRAFT — Kevin reviews
+  'pos.pushPrompt.reason': 'Nhận thông báo tại quầy lễ tân khi khách check-in, khi phiếu sẵn sàng thanh toán và khi có thanh toán.',   // DRAFT — Kevin reviews
+  'pos.pushPrompt.turnOn': 'Bật',   // DRAFT — Kevin reviews
+  'pos.pushPrompt.notNow': 'Để sau',   // DRAFT — Kevin reviews
+  'pos.pushPrompt.blocked': 'Thông báo đang bị chặn. Bạn có thể cho phép trong phần cài đặt của trình duyệt.',   // DRAFT — Kevin reviews
+  'pos.pushPrompt.ok': 'Đã hiểu',   // DRAFT — Kevin reviews
   // Reception Copilot view tabs and pickers (moved out of the frozen catalog, Nov 7 2026 — keys unchanged)
   'pos.copilot_view': 'Chế độ xem Copilot',
   'pos.copilot_view_all': 'Tất cả',
