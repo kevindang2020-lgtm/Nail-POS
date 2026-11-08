@@ -65,7 +65,9 @@ PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 fi
 **Waiting on Kevin**
 - The picks in `docs/handoff/MERGE_2026-11-07.md` (session limit built as recommended; Manager Pay keeps ending Face ID
   at sign-out; old saved cards must be re-added) — change any of them by saying so.
-- Review the Vietnamese DRAFT strings: `pos.pushPrompt.*`, `payment.terminal.*`, `sunmi.profile.*`, `sunmi.pay.*`.
+- Review the Vietnamese DRAFT strings: `pos.pushPrompt.*`, `payment.terminal.*`, `sunmi.profile.*`, `sunmi.pay.*`,
+  `bv.hs.unchecked`, `bv.hd.*` (batch 3, `i18n/ns/bookverify.vi.ts`).
+- SUNMI: confirm the CSS viewport on a physical FLEX 3 (Android browser); approve staging-only live Twilio / email / token tests.
 
 ~~Needs the lost "AI-PowerSalon POS 12" package~~ — closed: `check:crosswire` and `check:unreached` pass since the
 Nov 7 merge.
