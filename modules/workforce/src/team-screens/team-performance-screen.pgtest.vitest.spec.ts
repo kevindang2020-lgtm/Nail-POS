@@ -27,7 +27,7 @@ beforeAll(async () => {
   let n = 0;
   const ticket = async (lines: { tech: string; kind?: string; addOn?: boolean; removed?: boolean; name?: string }[], number?: string) => {
     n++; const tk = id('f' + n);
-    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, ticket_number, paid_at) values ($1,$2,$3,$4,'paid',$5, now() - interval '2 hours')`, [tk, T, B, CU, number ?? `P-${100 + n}`]);
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, ticket_number, paid_at) values ($1,$2,$3,$4,'paid',$5, greatest(now() - interval '2 hours', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '1 seconds'))`, [tk, T, B, CU, number ?? `P-${100 + n}`]);
     for (const l of lines) await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, technician_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, line_kind, is_add_on, removed_at, status)
       values ($1,$2,$3,$4,$9,$5,5000,45,5000,$6,$7,$8,'completed')`, [T, B, tk, l.tech, l.name ?? 'Gel Manicure', l.kind ?? 'service', !!l.addOn, l.removed ? new Date() : null, id('d1')]);
     return tk;

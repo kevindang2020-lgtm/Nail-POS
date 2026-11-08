@@ -462,8 +462,10 @@ export class BackupCenterService {
   }
 
   /** §34 alert input for the health tick: the missed midnight checkpoint, once the catalog has ever been fed. */
+  // the 3-day window is measured from `now` (the clock the caller asked about), not the database's own now() — it read the
+  // wrong window whenever the two differ (the §34 test began failing once the real date passed Nov 8)
   async midnightCheckpointStatus(now = this.clock()) {
-    const rows = (await sql<any>`select recovery_timestamp from backup_recovery_points where scope = 'platform' and verification_status <> 'FAILED' and recovery_timestamp > now() - interval '3 days' order by recovery_timestamp desc limit 20`.execute(this.db)).rows;
+    const rows = (await sql<any>`select recovery_timestamp from backup_recovery_points where scope = 'platform' and verification_status <> 'FAILED' and recovery_timestamp > ${new Date(now - 3 * 86_400_000)} order by recovery_timestamp desc limit 20`.execute(this.db)).rows;
     const ever = (await sql<any>`select 1 from backup_recovery_points where scope = 'platform' limit 1`.execute(this.db)).rows.length > 0;
     if (!ever) return null;
     return missedMidnightCheckpoint(now, rows.map((x) => new Date(x.recovery_timestamp).getTime()));

@@ -136,6 +136,8 @@ describe('record → qualify → approve → issue ONCE (T03, T06–T13)', () =>
     expect((await rp.qualifyForTicket(T, t, 'checkout.completed:e2')).outcome).toBe('pending_approval');
     expect((await ref(C.pia)).state).toBe('REWARD_PENDING_APPROVAL');
     expect((await reward(r.id)).state).toBe('PENDING_APPROVAL');
+    // Financial Liability Preview (SUNMI batch 4): the 50 points waiting for a manager are OWED, not issued
+    expect((await rp.summary(ctx())).liability).toMatchObject({ pointsOwed: 50, pointsRewards: 1, cashOwedCents: 0 });
     expect((await rp.list(ctx(), {}, { approvals: true })).items.map((x: any) => x.id)).toContain(r.id);
     // Nov 3 audit: a reward waiting for approval is in Needs review only, not also in Qualified
     expect((await rp.list(ctx(), { tab: 'review' })).items.map((x: any) => x.id)).toContain(r.id);
@@ -180,6 +182,8 @@ describe('record → qualify → approve → issue ONCE (T03, T06–T13)', () =>
     expect((await rp.qualifyForTicket(T, await ticket(C.quinn, 7000), 'e3')).outcome).toBe('auto_approved');
     expect((await reward((await ref(C.quinn)).id)).state).toBe('BLOCKED_EXTERNAL');
     const s = await rp.summary(ctx()); expect({ cash: s.cashPaidCents, blocked: s.blockedPayouts }).toEqual({ cash: 0, blocked: 1 });
+    // the blocked $10.00 is owed (no payout provider), so it is in the liability — and the issued / reversed points are not
+    expect(s.liability).toMatchObject({ cashOwedCents: 1000, cashRewards: 1, pointsOwed: 0, moneyOwedCents: 1000 });
   });
   it('a card the referrer used pays the referred customer\'s first visit → UNDER_REVIEW, reward waits for a person', async () => {
     await setPolicy({ rewardType: 'loyalty_points', rewardPoints: 30, requiresApproval: false });

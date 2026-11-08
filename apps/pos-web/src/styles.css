@@ -3998,3 +3998,4 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 @media (max-width:1535px){.rt2 .rt-periodrow{flex-wrap:wrap}.rt2 .fn-period{flex-wrap:wrap}}
 .rt2>.fk-head>.fk-head-actions{flex:0 1 auto;min-width:0}
 @media (max-width:1700px){.rt2 .rt-chips{flex-wrap:wrap;overflow:visible;row-gap:4px}}
+.rfp-owe{margin:6px 0 2px}

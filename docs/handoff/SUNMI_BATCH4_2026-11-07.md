@@ -64,21 +64,55 @@ Every addendum allows the page to scroll down and forbids sideways scroll, CSS s
 - Pilot day (fresh PG16 database, 779 migrations):
   - phases 0–10: 104/104;
   - large salon: 79/79, including the SUNMI FIT check — the board at 1920×945 with 200 technicians, no sideways scroll, 12 columns of at least 170 px, page strip, Add Walk-In and New Booking in view.
-- Registry: 71 pages, 559 modules. Preservation matrix: 559 rows, 0 missing.
-
-## Not built: the addenda's "additional recommendations"
-
-Each addendum ends with 4–16 optional recommendations, about 190 in all (copilot R1–R10, referral liability preview,
-template Smart Variable Assistant, …). Batch 2 set the rule (Kevin's "you pick best"): build one only where a wrong
-number costs money and nothing else checks it.
-
-Copilot's two P0 recommendations are already covered:
-
-- **R1:** the activity log has pending / succeeded / failed / unknown states, and the status strip shows failed actions in the last 24 h.
-- **R2:** profile menu → **Check this screen**.
-
-The rest are listed as a decision.
+- Registry: 71 pages, 560 modules (incl. the referral liability strip). Preservation matrix: 560 rows, 0 missing.
 - All 72 registered pages at the three SUNMI sizes, EN + VI: 432/432.
-- Gates: 57 + 25 audits pass. POS suite: 386 files / 2120 tests pass. No module or API source changed in this batch
-  (only screens, CSS, e2e tooling and the pilot script), so the module / API suites were not re-run; they last passed on
-  `14cdcbd5`.
+- Gates: 57 + 25 audits pass. POS suite: see the commit. Customers module referral tests: 34 pass. The only server change
+  is the referral summary's read-only `liability` block (run on real PG16 through the live screen check).
+
+## The addenda's "additional recommendations": triage (Nov 7, Kevin: "continue")
+
+The addenda end with 4–16 optional recommendations each, about 190 in all. I used the batch-2 rule (Kevin's "you pick
+best"): build a recommendation only where a wrong number costs money, or safety is at stake, and nothing already checks
+it. Here is every money / safety recommendation and where it stands:
+
+| Recommendation (guide) | Status |
+|---|---|
+| **Referral P0 Financial Liability Preview** | **BUILT.** `GET /pos/referral-program/summary` now returns `liability`, read from the reward and voucher rows. It covers: points approved or waiting but not issued; cash rewards not paid (blocked = owed, because no payout provider is approved); vouchers issued but not redeemed, plus those expiring within 30 days; and vouchers that open after the friend's paid first visit. A "Still owed" strip sits above the KPIs. pgtest T11 / T15 assertions; a screen test; real PG16 run on the live stack (6/6 + 8/8). VI text marked DRAFT. |
+| Referral P0 Integrity & Duplicate Reward Checker | Already built. Referral health covers duplicate codes, orphan codes, referred twice, self-referral, a reward not matching the ledger, ticket linkage and failed issuance. |
+| AI Center Critical 1 / 2: entitlement auditor, cost-to-outcome | Already built: the P0 reconcile panel, the gate check (Check AI System) and AI Usage cost lines. |
+| Coupons 03 / Deals 04: discount exposure | Already built: coupon exposure (max discount if repeated) and deal exposure (per use / max total) on approvals. |
+| Coupons 04 / Deals 05: duplicate redemption | Already built: idempotent checkout redemption and the deal / coupon health checks. |
+| Large salon 14: payroll accuracy checker | Already built: payroll validation (reconciliation drift, duplicate snapshot keys, deduction over cap, missing rules, open time entries), the per-technician evidence and the preparation report. |
+| Copilot R1 (P0): action accuracy | Already built: activity states pending / succeeded / failed / unknown, and failed actions in the last 24 h on the status strip. |
+| Copilot R2 (P0) and every "layout / screen-fit checker" | Already built: profile menu → **Check this screen** on every page. |
+| Phone Number 1: verification health checker | Already built: Booking Phone Verification → Check Verification System. |
+| Reviews 1 / Marketing 2: accuracy dashboards | Already built: the Reviews and Marketing health checks. |
+
+The rest are product features with no money or safety risk: saved audiences, heatmaps, comparisons, sandboxes, ROI
+reports, presets and so on. They stay unbuilt and are listed for Kevin. Nothing in them is required by the guides, which
+call them "additive recommendations".
+
+## Found while re-running the suites after midnight (Nov 8, 00:30 New York)
+
+Four workforce pgtests failed in the window between local midnight and about 2 AM:
+
+- Live Technician Schedule activity;
+- Team Management profile tabs;
+- Team Performance D1;
+- Tech Queue LIVE / HISTORY.
+
+Their fixtures put events "1–2 hours ago" and then asserted **today**, so before 2 AM those events fell on yesterday.
+The product code is right: periods are salon-local days. The fixtures are now pinned to the local day:
+
+- `greatest(now() − interval, start of the local day + n s)`, which keeps the order;
+- Tech Queue runs in an `Etc/GMT±N` zone where it is about noon.
+
+Verified now (00:30 local) and with the clock shifted +7 h / +12 h / +15 h / +19 h (a test-only Date shim); the
+workforce suite passes 1302/1302.
+
+The API suite (run after midnight) had one more date failure, and this one was a **product bug**. Backup Center's
+`midnightCheckpointStatus(now)` measured its 3-day window from the database's `now()` instead of the `now` it was asked
+about, so it reported a missed midnight checkpoint for a past time once the real date moved on. The window is now
+measured from `now` (real PG16 query run). Backup Center tests pass 32/32; the rest of that API run passed: 3278 tests,
+1 failure (this one, fixed and re-run on its own).
+

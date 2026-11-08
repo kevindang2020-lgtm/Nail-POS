@@ -2935,6 +2935,10 @@
     {
      "id": "rfp-alerts",
      "label": "Fraud / risk alerts"
+    },
+    {
+     "id": "rfp-liability",
+     "label": "Financial Liability Preview (points / cash / vouchers still owed)"
     }
    ]
   },

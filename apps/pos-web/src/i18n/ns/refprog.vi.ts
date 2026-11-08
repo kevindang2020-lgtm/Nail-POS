@@ -307,4 +307,12 @@ export const REFPROG_VI: Record<string, string> = {
   'rfp.ev.reward_reversed': 'Đã thu hồi thưởng',
   'rfp.ev.refund_noted': 'Ghi nhận hoàn tiền một phần',
   'rfp.ev.refund_review': 'Hoàn tiền — chuyển xem xét',
+  "rfp.owe.title": "Còn nợ:",   // DRAFT — Kevin reviews
+  "rfp.owe.points": "{n} điểm đang chờ cấp ({r} phần thưởng)",   // DRAFT — Kevin reviews
+  "rfp.owe.cash": "{v} tiền mặt chưa trả ({r} phần thưởng — chưa có nhà cung cấp chi trả được duyệt)",   // DRAFT — Kevin reviews
+  "rfp.owe.vouchers": "{v} trong {n} phiếu quà đang mở",   // DRAFT — Kevin reviews
+  "rfp.owe.expiring": "{n} phiếu hết hạn trong 30 ngày",   // DRAFT — Kevin reviews
+  "rfp.owe.pending": "{v} trong {n} phiếu quà sẽ mở sau lần ghé đầu đã thanh toán",   // DRAFT — Kevin reviews
+  "rfp.owe.none": "không có — không có phần thưởng chưa cấp và không có phiếu quà đang mở.",   // DRAFT — Kevin reviews
+  "rfp.owe.def": "Đọc từ hồ sơ phần thưởng và phiếu quà: điểm đã duyệt hoặc đang chờ nhưng chưa cấp, thưởng tiền mặt chưa trả, phiếu quà đã cấp nhưng chưa dùng, và phiếu quà đang chờ lần ghé đầu đã thanh toán của người được giới thiệu.",   // DRAFT — Kevin reviews
 };

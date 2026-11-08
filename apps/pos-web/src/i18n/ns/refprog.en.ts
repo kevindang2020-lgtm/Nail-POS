@@ -307,4 +307,12 @@ export const REFPROG_EN: Record<string, string> = {
   'rfp.ev.reward_reversed': 'Reward reversed',
   'rfp.ev.refund_noted': 'Partial refund noted',
   'rfp.ev.refund_review': 'Refund — sent to review',
+  "rfp.owe.title": "Still owed:",
+  "rfp.owe.points": "{n} points waiting to be issued ({r} rewards)",
+  "rfp.owe.cash": "{v} cash not paid ({r} rewards — no payout provider is approved)",
+  "rfp.owe.vouchers": "{v} in {n} open vouchers",
+  "rfp.owe.expiring": "{n} expire within 30 days",
+  "rfp.owe.pending": "{v} in {n} vouchers that open after a paid first visit",
+  "rfp.owe.none": "nothing — no unissued rewards and no open vouchers.",
+  "rfp.owe.def": "Read from the reward and voucher records: points approved or waiting but not issued, cash rewards not paid, vouchers issued but not redeemed, and vouchers waiting for the friend's paid first visit.",
 };

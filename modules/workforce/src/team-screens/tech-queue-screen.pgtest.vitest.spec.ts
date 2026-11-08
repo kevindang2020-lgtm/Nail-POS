@@ -17,7 +17,10 @@ const q = (s: string, p: unknown[] = []) => pg.query(s, p);
 beforeAll(async () => {
   pg = await migratedPglite();
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Pilot LLC','Pilot','tq-a','TQA001','active'), ($2,'Other LLC','Other','tq-b','TQB001','active')`, [T, T2]);
-  await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','America/New_York'), ($3,$4,'Elsewhere','active','America/New_York')`, [B, T, BX, T2]);
+  // The fixture places tickets up to 2 h before now and asserts "today" — run in a zone where it is about noon right now,
+  // so the test does not fail between local midnight and 2 AM (it did on Nov 8 at 00:30 New York time).
+  const off = 12 - new Date().getUTCHours(); const NOON_TZ = off === 0 ? 'Etc/GMT' : off > 0 ? `Etc/GMT-${off}` : `Etc/GMT+${-off}`;
+  await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active',$5), ($3,$4,'Elsewhere','active',$5)`, [B, T, BX, T2, NOON_TZ]);
   for (const [tid, n, tenant, br] of [[VISHAL, 'Vishal verma', T, B], [KEVIN, 'Kevin Dang', T, B], [CD, 'CD T6805', T, B], [OTHER, 'Other Tech', T2, BX]])
     await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active, role_label) values ($1,$2,$3,$4,'x',$4,'active',true,'Technician')`, [tid, tenant, br, n]);
   await q(`insert into technician_workforce_state (tenant_id, branch_id, technician_id, clock_status, shift_status, queue_status) values ($1,$2,$3,'CLOCKED_IN','ON_SHIFT','AVAILABLE'), ($1,$2,$4,'ON_BREAK','ON_SHIFT','BREAK')`, [T, B, VISHAL, KEVIN]);

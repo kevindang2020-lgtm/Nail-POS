@@ -38,9 +38,9 @@ beforeAll(async () => {
   const nw = (await q(`select to_char($1::date + 7, 'YYYY-MM-DD') as d`, [today])).rows[0].d;
   await ap(id('f4'), VISHAL, nw, '12:00', '12:45', 45, 'confirmed', 'Tina Vo', '+18565552222');
   await ap(id('f5'), VISHAL, nw, '16:00', '16:45', 45, 'confirmed', 'Lan Ng', '+18565556666');
-  await q(`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, actor_type, actor_id, source, created_at) values ($1,$2,$3,'rescheduled','start_time','09:30','10:00','staff',$4,'pos', now() - interval '2 hours')`, [T, B, id('f1'), U]);
-  await q(`insert into technician_status_events (tenant_id, branch_id, technician_id, old_status, new_status, reason, created_at) values ($1,$2,$3,'available','on_break','lunch', now() - interval '1 hour')`, [T, B, KEVIN]);
-  await q(`insert into technician_blocked_times (tenant_id, branch_id, technician_id, block_date, start_time, end_time, reason, created_at) values ($1,$2,$3,$4::date,'15:00','16:00','training', now() - interval '30 minutes')`, [T, B, CD, today]);
+  await q(`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, actor_type, actor_id, source, created_at) values ($1,$2,$3,'rescheduled','start_time','09:30','10:00','staff',$4,'pos', greatest(now() - interval '2 hours', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '1 seconds'))`, [T, B, id('f1'), U]);
+  await q(`insert into technician_status_events (tenant_id, branch_id, technician_id, old_status, new_status, reason, created_at) values ($1,$2,$3,'available','on_break','lunch', greatest(now() - interval '1 hour', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '2 seconds'))`, [T, B, KEVIN]);
+  await q(`insert into technician_blocked_times (tenant_id, branch_id, technician_id, block_date, start_time, end_time, reason, created_at) values ($1,$2,$3,$4::date,'15:00','16:00','training', greatest(now() - interval '30 minutes', (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York') + interval '3 seconds'))`, [T, B, CD, today]);
   repo = new LiveScheduleScreenRepository(kyselyFor(pg) as never);
 }, 180_000);
 

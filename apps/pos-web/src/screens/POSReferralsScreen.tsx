@@ -100,6 +100,7 @@ export function POSReferralsScreen() {
       </div>
 
       {k?.budget ? <div className={`fk-hint${k.budget.exhausted || k.budget.warn ? ' warn' : ''}`} data-testid="rfp-budget">{k.budget.exhausted ? tx('rfp.budget.exhausted') : tx('rfp.budget.line', { used: fmtMoney(k.budget.committedCents), total: fmtMoney(k.budget.totalCents ?? 0), left: fmtMoney(k.budget.remainingCents ?? 0), redeemed: fmtMoney(k.budget.redeemedCents) })}</div> : null}
+      {k?.liability ? <LiabilityStrip l={k.liability} /> : null}
       <div className="fk-kpis six" data-testid="rfp-kpis">
         <KpiCard label={tx('rfp.kpi.codes')} value={nf(k?.codes)} sub={k ? tx('rfp.kpi.codesSub', { n: nf(k.codesActive) }) : undefined} loading={!k} onClick={() => setDlg({ kind: 'codes' })} testId="rfp-kpi-codes" />
         <KpiCard label={tx('rfp.kpi.total')} value={nf(k?.totalReferrals)} sub={k ? tx('rfp.kpi.totalSub', { n: nf(k.waitingForVisit) }) : undefined} loading={!k} onClick={() => setTab('all')} testId="rfp-kpi-total" />
@@ -475,3 +476,20 @@ function AssistantDialog({ onClose, onOpenCampaigns }: { onClose: () => void; on
     </FitDialog>
   );
 }
+
+// SUNMI batch 4 — Referral addendum P0 "Financial Liability Preview": what the program still owes, read-only, from the
+// reward and voucher rows (server summary.liability). Points not yet issued, cash not yet paid, vouchers issued but not
+// redeemed, and vouchers that will open if their friend's paid first visit qualifies. Never an estimate.
+function LiabilityStrip({ l }: { l: any }) {
+  const parts: string[] = [];
+  if (l.pointsRewards) parts.push(tx('rfp.owe.points', { n: nf(l.pointsOwed), r: nf(l.pointsRewards) }));
+  if (l.cashRewards) parts.push(tx('rfp.owe.cash', { v: fmtMoney(l.cashOwedCents), r: nf(l.cashRewards) }));
+  if (l.vouchersOpen) parts.push(tx('rfp.owe.vouchers', { v: fmtMoney(l.vouchersOpenCents), n: nf(l.vouchersOpen) }) + (l.vouchersExpiring30d ? ` (${tx('rfp.owe.expiring', { n: nf(l.vouchersExpiring30d) })})` : ''));
+  if (l.vouchersPending) parts.push(tx('rfp.owe.pending', { v: fmtMoney(l.vouchersPendingCents), n: nf(l.vouchersPending) }));
+  return (
+    <div className={'fk-hint rfp-owe' + (l.moneyOwedCents || l.pointsOwed ? ' warn' : '')} data-testid="rfp-liability" title={tx('rfp.owe.def')}>
+      <b>{tx('rfp.owe.title')}</b>{' '}{parts.length ? parts.join(' · ') : tx('rfp.owe.none')}
+    </div>
+  );
+}
+

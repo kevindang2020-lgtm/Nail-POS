@@ -91,4 +91,17 @@ describe('POSReferralsScreen', () => {
     fireEvent.change(screen.getByTestId('rfp-f-reviewer'), { target: { value: 'u2' } });
     await waitFor(() => expect(api.referrals).toHaveBeenLastCalledWith(expect.objectContaining({ eligibility: 'flagged', branch: 'b2', creator: 'u1', reviewer: 'u2', page: 1 })));
   });
+  it('Financial Liability Preview: shows what is still owed (points, unpaid cash, open + pending vouchers) and "nothing" when clear', async () => {
+    api.summary.mockResolvedValue({ ...SUM, liability: { pointsOwed: 50, pointsRewards: 1, cashOwedCents: 1000, cashRewards: 1, vouchersOpenCents: 2000, vouchersOpen: 2, vouchersExpiring30d: 1, vouchersPendingCents: 1000, vouchersPending: 1, moneyOwedCents: 3000 } });
+    const v = mount();
+    const strip = await screen.findByTestId('rfp-liability');
+    expect(strip).toHaveTextContent('50 points waiting to be issued (1 rewards)');
+    expect(strip).toHaveTextContent('$10.00 cash not paid');
+    expect(strip).toHaveTextContent('$20.00 in 2 open vouchers (1 expire within 30 days)');
+    expect(strip).toHaveTextContent('$10.00 in 1 vouchers that open after a paid first visit');
+    v.unmount();
+    api.summary.mockResolvedValue({ ...SUM, liability: { pointsOwed: 0, pointsRewards: 0, cashOwedCents: 0, cashRewards: 0, vouchersOpenCents: 0, vouchersOpen: 0, vouchersExpiring30d: 0, vouchersPendingCents: 0, vouchersPending: 0, moneyOwedCents: 0 } });
+    mount();
+    expect(await screen.findByTestId('rfp-liability')).toHaveTextContent('nothing — no unissued rewards and no open vouchers.');
+  });
 });

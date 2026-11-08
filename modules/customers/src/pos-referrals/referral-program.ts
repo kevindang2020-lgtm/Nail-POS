@@ -749,8 +749,33 @@ export class ReferralProgram {
     const rev = (await sql<any>`select coalesce(sum(t.total_cents - coalesce((select sum(rf.amount_cents) from payment_refunds rf join payments p on p.id = rf.payment_id and p.tenant_id = rf.tenant_id
         where rf.tenant_id = t.tenant_id and p.ticket_id = t.id and rf.status = 'refunded'), 0)), 0)::bigint as v
       from referral_redemptions rr join tickets t on t.id = rr.qualifying_ticket_id and t.tenant_id = rr.tenant_id where rr.tenant_id = ${T} and ${this.branchW(ctx)} and rr.state not in ('REVERSED', 'REJECTED')`.execute(this.db)).rows[0];
+    // SUNMI batch 4 (Referral addendum P0 "Financial Liability Preview"): what the program still OWES — read-only, from the
+    // same reward / voucher rows the ledgers use. Points not yet issued, cash rewards not yet paid (no payout provider is
+    // approved, so blocked cash is owed, not paid), vouchers issued but not redeemed, vouchers waiting for the friend's
+    // paid first visit. Nothing here is an estimate.
+    const owe = (await sql<any>`select
+        coalesce(sum(rw.points) filter (where rw.reward_type = 'loyalty_points' and rw.state = any(${PENDING_REWARD_STATES}::text[])), 0)::bigint as points_owed,
+        count(*) filter (where rw.reward_type = 'loyalty_points' and rw.state = any(${PENDING_REWARD_STATES}::text[]))::int as points_rewards,
+        coalesce(sum(rw.amount_cents) filter (where rw.reward_type = 'cash_payout' and rw.state in ('PENDING_APPROVAL', 'APPROVED', 'BLOCKED_EXTERNAL', 'FAILED')), 0)::bigint as cash_owed,
+        count(*) filter (where rw.reward_type = 'cash_payout' and rw.state in ('PENDING_APPROVAL', 'APPROVED', 'BLOCKED_EXTERNAL', 'FAILED'))::int as cash_rewards
+      from referral_rewards rw join referral_redemptions rr on rr.id = rw.referral_id and rr.tenant_id = rw.tenant_id where rw.tenant_id = ${T} and ${this.branchW(ctx)}`.execute(this.db)).rows[0];
+    const vou = (await sql<any>`select
+        coalesce(sum(v.face_cents) filter (where v.state = 'AVAILABLE'), 0)::bigint as open_cents, count(*) filter (where v.state = 'AVAILABLE')::int as open_n,
+        count(*) filter (where v.state = 'AVAILABLE' and v.expires_at is not null and v.expires_at <= now() + interval '30 days')::int as expiring_n,
+        coalesce(sum(v.face_cents) filter (where v.state = 'PENDING'), 0)::bigint as pending_cents, count(*) filter (where v.state = 'PENDING')::int as pending_n
+      from referral_vouchers v join referral_redemptions rr on rr.id = v.referral_id and rr.tenant_id = v.tenant_id where v.tenant_id = ${T} and ${this.branchW(ctx)}`.execute(this.db)).rows[0];
+    const liability = {
+      pointsOwed: N(owe.points_owed), pointsRewards: N(owe.points_rewards),
+      cashOwedCents: N(owe.cash_owed), cashRewards: N(owe.cash_rewards),
+      vouchersOpenCents: N(vou.open_cents), vouchersOpen: N(vou.open_n), vouchersExpiring30d: N(vou.expiring_n),
+      vouchersPendingCents: N(vou.pending_cents), vouchersPending: N(vou.pending_n),
+      /** money the salon may still give away: unpaid cash + open vouchers (+ pending vouchers if their visits qualify) */
+      moneyOwedCents: N(owe.cash_owed) + N(vou.open_cents), moneyIfPendingQualifyCents: N(owe.cash_owed) + N(vou.open_cents) + N(vou.pending_cents),
+      asOf: new Date().toISOString(),
+    };
     const policy = await this.settings(ctx);
     return {
+      liability,
       codes: N(s.codes), codesActive: N(s.codes_active), totalReferrals: N(s.total), waitingForVisit: N(s.waiting), qualified: N(s.qualified), underReview: N(s.under_review),
       pendingApproval: N(s.pending_approval),
       /** "Pending Reward" (guide §15): rewards requested / approved but NOT issued (Pending Approval + Approved + Failed) */
