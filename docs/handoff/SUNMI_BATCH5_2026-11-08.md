@@ -115,3 +115,4 @@ preservation-matrix gate and the registry gate.
 The addenda's optional "additional recommendations" were triaged with the batch-2 rule (money or safety, and nothing
 already checks it). The money and safety ones are covered: Money Protection's own checks, AI cost/entitlement
 reconcile, coupon/deal exposure, payroll validation, the screen check on every page.
+- Final full run on the current build (Nov 8, 11:30): all 92 registered pages at 1920×945 / 952 / 1032, EN + VI: **552/552**.
