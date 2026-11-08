@@ -113,6 +113,26 @@ export const BATCH3_MODULES = [
   { key: 'ai-usage', path: '/tenant/ai/usage', label: 'AI USAGE & LIMITS' },
   { key: 'setup-health', path: '/tenant/management/setup-health', label: 'SETUP HEALTH' },
 ];
+// SUNMI batch 4 (Nov 7 2026): AI, marketing, notifications, templates and phone-number pages
+export const BATCH4_MODULES = [
+  { key: 'command-center', path: '/tenant/ai/command-center', label: 'AI COMMAND CENTER' },
+  { key: 'ai-receptionist', path: '/tenant/ai/receptionist', label: 'AI RECEPTIONIST' },
+  { key: 'ai-front-desk', path: '/tenant/ai/receptionist/front-desk', label: 'AI FRONT DESK' },
+  { key: 'copilot', path: '/tenant/ai/copilot', label: 'RECEPTION COPILOT' },
+  { key: 'reviews', path: '/tenant/marketing/reviews', label: 'REVIEWS & REPUTATION' },
+  { key: 'referrals', path: '/tenant/marketing/referrals', label: 'REFERRAL PROGRAM' },
+  { key: 'win-back', path: '/tenant/marketing/win-back', label: 'RETENTION & WIN-BACK' },
+  { key: 'birthdays', path: '/tenant/marketing/birthdays', label: 'BIRTHDAY CAMPAIGNS' },
+  { key: 'segments', path: '/tenant/marketing/segments', label: 'CUSTOMER SEGMENTS' },
+  { key: 'coupons', path: '/tenant/marketing/coupons', label: 'COUPONS & PROMOTIONS' },
+  { key: 'deals', path: '/tenant/marketing/deals', label: 'DEALS & OFFERS' },
+  { key: 'promotions', path: '/tenant/marketing/promotions', label: 'PROMOTIONS MANAGEMENT' },
+  { key: 'campaigns', path: '/tenant/marketing/campaigns', label: 'CAMPAIGN CENTER' },
+  { key: 'marketing', path: '/tenant/marketing', label: 'MARKETING & GROWTH' },
+  { key: 'templates', path: '/tenant/communications/templates', label: 'MESSAGE TEMPLATES' },
+  { key: 'notifications', path: '/tenant/communications/notifications', label: 'CUSTOMER NOTIFICATIONS' },
+  { key: 'phone-management', path: '/tenant/customers/phone-management', label: 'PHONE NUMBER MANAGEMENT' },
+];
 /** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
 export const measureRegistry = (page, key) => {
   const reg = REGISTRY.pages.find((p) => p.key === key)?.modules ?? [];
@@ -509,7 +529,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

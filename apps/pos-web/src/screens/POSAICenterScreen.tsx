@@ -109,9 +109,9 @@ export function POSAICenterScreen() {
     <div className="work">
       <div className="vh flex justify-between gap-3 flex-col sm:flex-row" style={{ display: 'flex', alignItems: 'flex-start' }}><div><h1>{t('pos.ai_center')}</h1>
         <div className="sub mb-3">{t('pos.manage_ai_assistants_automations_and_intelligence_1tgd')}</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/plans')}>{t('pos.view_plans_bundles')}</button>
-          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setTick((x) => x + 1)}>{t('aic.refresh')}</button>
-          <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck}>{checking ? t('aic.checking') : t('aic.check')}</button>
+          <button className="btn w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/plans')} data-testid="aic-plans">{t('pos.view_plans_bundles')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setTick((x) => x + 1)} data-testid="aic-refresh">{t('aic.refresh')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck} data-testid="aic-run-check">{checking ? t('aic.checking') : t('aic.check')}</button>
           <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setDlg({ kind: 'history' })} data-testid="aic-history">{t('aic.history')}</button>
         </div></div>
 
@@ -137,10 +137,10 @@ export function POSAICenterScreen() {
         </section>
       ) : null}
 
-      <div className="kpis">{kpis.map((c) => (<div className="kpi" key={c.l}><div className="l">{c.l}</div><div className="v" style={(c as any).note ? { color: '#8A7A66' } : undefined}>{c.v}</div>{(c as any).note ? <div className="s" style={{ color: '#8A7A66' }}>{t('pos.activity_feed_pending')}</div> : null}</div>))}</div>
+      <div className="kpis" data-testid="aic-kpis">{kpis.map((c) => (<div className="kpi" key={c.l}><div className="l">{c.l}</div><div className="v" style={(c as any).note ? { color: '#8A7A66' } : undefined}>{c.v}</div>{(c as any).note ? <div className="s" style={{ color: '#8A7A66' }}>{t('pos.activity_feed_pending')}</div> : null}</div>))}</div>
 
       {/* AI Command Center — real assistants by area */}
-      <section style={cardBox} className='mb-3'>
+      <section style={cardBox} className='mb-3' data-testid="aic-directory">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           <div style={headStyle}>{t('pos.ai_command_center')}</div>
           <span className="pill ok" >{rc ? rc.now.canRunNow : active.length + trialing.length} {t('pos.running')}</span>
@@ -191,7 +191,7 @@ export function POSAICenterScreen() {
       </div>
 
       {/* Recent AI Activity Log — real rows from ai_usage_logs (empty state is honest, not invented) */}
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-activity">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           <div style={headStyle}>{t('pos.recent_ai_activity_log')}</div>
           <span className="pill" style={{ color: '#8A7A66' }}>{ov ? t('growth.aiCenter.logged', { count: String(ov.activity.length) }) : '—'}</span>
@@ -238,7 +238,7 @@ export function POSAICenterScreen() {
       </section>
 
       {/* AI Receptionist & Call Intelligence — real summary from call_intelligence_events (honest empty states) */}
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-calls">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={headStyle}>{t('pos.ai_receptionist_call_intelligence')}</div>
           <span className="pill" style={{ color: '#8A7A66' }}>{ci ? t('pos.totaltoday_calls_today', { totalToday: String(ci.totalToday) }) : '—'}</span>
@@ -280,7 +280,7 @@ export function POSAICenterScreen() {
       </section>
 
       {/* AI Booking Assistant — real headline from appointments */}
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="aic-booking">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={headStyle}>{t('pos.ai_booking_assistant')}</div>
           <span className="pill" style={{ color: '#8A7A66' }}>{t('pos.today_2')}</span>
@@ -302,7 +302,7 @@ export function POSAICenterScreen() {
       </section>
 
       {/* Automation Workflows — Appointment Reminders is real (appointment_reminder_attempts); others honestly pending */}
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-workflows">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 }}><div style={headStyle}>{t('pos.automation_workflows')}</div></div>
         {ov ? (
           <div className="overflow-x-auto w-full">
@@ -327,7 +327,7 @@ export function POSAICenterScreen() {
       </section>
 
       {/* AI Control Modes — the human-controlled operating model (§3), enforced on the backend */}
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-modes">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 }}><div style={headStyle}>{t('pos.ai_control_modes')}</div><span className="pill" style={{ color: '#8A7A66' }}>{t('pos.backend_enforced')}</span></div>
         {modes ? (
           <div className="overflow-x-auto w-full"><div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, max-content) 180px', gap: '6px 24px', fontSize: 12, justifyContent: 'start', minWidth: 'max-content' }}>
@@ -354,7 +354,7 @@ export function POSAICenterScreen() {
         <div style={{ fontSize: 10.5, color: '#8A7A66', marginTop: 6 }}>{t('pos.owners_set_each_assistant_s_mode_jazd')}</div>
       </section>
 
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-revenue">
         <div style={headStyle}>{t('pos.ai_attributed_revenue')}</div>
         {rev ? (
           <>
@@ -371,7 +371,7 @@ export function POSAICenterScreen() {
         ) : <div style={{ fontSize: 11.5, color: '#8A7A66' }}>{t('pos.revenue_attribution_unavailable')}</div>}
       </section>
 
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-runs">
         <div style={headStyle}>{t('pos.automation_runs_today')}</div>
         {runs && Object.keys(runs).length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" style={{ gap: 10 }}>
@@ -386,7 +386,7 @@ export function POSAICenterScreen() {
         ) : <div style={{ fontSize: 11.5, color: '#8A7A66' }}>{t('pos.no_automation_runs_recorded_today_yet')}</div>}
       </section>
 
-      <section className='mb-3' style={cardBox}>
+      <section className='mb-3' style={cardBox} data-testid="aic-quick">
         <div style={headStyle}>{t('pos.ai_quick_actions')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {[

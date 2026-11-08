@@ -279,7 +279,10 @@ export async function largeSalonM5Phase(env, L) {
   let board = null;
   await sec('11k booking board', async () => {
     if (!SCREENS) { info('NOT_TESTED 11k (PILOT_SCREENS=0): the board memory / off-screen invalidation proofs need Chromium'); return; }
-    board = await openLive('pos-web', '/booking', rec, { viewport: { width: 1600, height: 1000 } });
+    // SUNMI FLEX 3 large-salon addendum (Nov 7 2026): the board is proven at the primary SUNMI certification viewport —
+    // 1920 × 945 CSS (1920 × 1080 with browser chrome + bars). PILOT_BOARD_VIEWPORT=WxH overrides (e.g. a device's report).
+    const [bw, bh] = String(process.env.PILOT_BOARD_VIEWPORT ?? '1920x945').split('x').map(Number);
+    board = await openLive('pos-web', '/booking', rec, { viewport: { width: bw || 1920, height: bh || 945 } });
     if (!board) { check('BOARD in Chromium opened', false, 'pos-web/dist missing'); return; }
     const pg = board.page;
     const label = () => pg.getByTestId('tech-page-label').innerText().catch(() => '');
@@ -313,6 +316,23 @@ export async function largeSalonM5Phase(env, L) {
     ck('memory', `BROWSER MEMORY (§91): the POS Booking board (Chromium, the busy tomorrow) paged through all 17 pages 3 times (48 page changes): JS heap ${r1.heapMB} → ${r3.heapMB} MB, DOM nodes ${r1.nodes} → ${r3.nodes}, listeners ${r1.listeners} → ${r3.listeners} (round 1 → round 3 — no growth); never more than ${M.board.memory.maxColumns} columns in the DOM (page 17: ${colCounts[15]}); perceived page change p50 ${M.board.memory.pageChange.p50} / p95 ${M.board.memory.pageChange.p95} ms`,
       r3.heapMB <= r1.heapMB * 1.25 + 2 && r3.nodes <= r1.nodes * 1.15 + 200 && r3.listeners <= r1.listeners * 1.15 + 50 && M.board.memory.maxColumns === 12 && colCounts[15] === 8 && labels.every((l, i) => l.includes(`Page ${(i % 16) + 2} of 17`)) && M.board.memory.pageChange.p95 < 1500 && !board.pageErrors.length,
       short(M.board.memory));
+    // SUNMI fit (large-salon addendum §2–§4): with 200 technicians on 17 pages, at 100% zoom the document never scrolls
+    // sideways, the 12 columns each keep a readable width, the page strip and Add Walk-In / New Booking stay inside the
+    // viewport, and only the calendar scrolls internally.
+    const fit = await pg.evaluate(() => {
+      const se = document.scrollingElement || document.documentElement;
+      const colsEls = [...document.querySelectorAll('[data-technician-column]:not([data-technician-column="__none__"])')];
+      const widths = colsEls.map((c) => Math.round(c.getBoundingClientRect().width));
+      const inView = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1; };
+      const pager = document.querySelector('[aria-label="Technician pages"]');
+      const btn = (re) => [...document.querySelectorAll('button')].find((b) => re.test((b.textContent || '').trim()));
+      return { vw: innerWidth, vh: innerHeight, docScrollX: Math.max(0, se.scrollWidth - innerWidth), columns: widths.length, minCol: widths.length ? Math.min(...widths) : 0,
+        pagerInView: inView(pager), walkInInView: inView(btn(/walk-?in/i)), newBookingInView: inView(btn(/new booking/i)) };
+    });
+    M.board.sunmiFit = fit;
+    ck('sunmiFit', `SUNMI FIT (large-salon addendum): Booking board at ${fit.vw}×${fit.vh} with 200 technicians — no sideways document scroll (${fit.docScrollX}px), ${fit.columns} columns ≥ 110 px each (min ${fit.minCol}px), page strip + Add Walk-In + New Booking inside the viewport`,
+      fit.docScrollX === 0 && fit.columns === 12 && fit.minCol >= 110 && fit.pagerInView && fit.walkInInView && fit.newBookingInView, short(fit));
+    await pg.screenshot({ path: process.env.PILOT_SHOTS ? `${process.env.PILOT_SHOTS}/11k-board-sunmi-${fit.vw}x${fit.vh}.png` : '/tmp/11k-board-sunmi.png' }).catch(() => undefined);
     await cdp.detach().catch(() => undefined);
   });
 

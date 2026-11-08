@@ -174,7 +174,7 @@ export function POSDealsScreen() {
         basis={tab === 'library' ? basis : redBasis} onBasis={tab === 'library' ? setBasis : setRedBasis}
         basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('do.basis.' + b) })) : ['redeemed', 'applied', 'finalized'].map((b) => ({ value: b, label: tx(b === 'redeemed' ? 'dsc.df.redeemed' : 'cp.redBasis.' + b) }))} /> : null}
 
-      <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('pos.deals_offers')}>
+      <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('pos.deals_offers')} data-testid="do-tabs">
         {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>
           {tx('do.tab.' + t)}{t === 'approvals' && k && k.pendingApproval ? <span className="do-count">{nf(k.pendingApproval)}</span> : null}</button>)}
       </div>

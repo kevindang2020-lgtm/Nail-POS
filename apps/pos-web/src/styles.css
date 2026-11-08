@@ -3987,3 +3987,14 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .cdr-checks li .fk-li-s{display:block;margin-top:2px}
 
 .fuq-status-tabs{display:inline-flex;margin:8px 0 2px}.fuq-status-tabs button{min-height:44px;min-width:96px}
+/* SUNMI batch 4 (Nov 7 2026) — Retention & Win-Back at the fallback sizes (1536 → 1280): the Contacted / Delivered strip
+   (.wb-strip) is a seventh child the fit grid had no row for, so the table's 1fr row landed on the period toolbar and the
+   segment chips were pushed into a tall empty band; and the header let 9 actions squeeze the title to nothing. One row per
+   child (note / strip optional), and the title keeps its own line when the actions need the width. */
+.work.fit.rt.rt2:has(>.wb-strip){grid-template-rows:auto var(--fk-kpi) auto auto auto minmax(0,1fr) auto}
+.work.fit.rt.rt2:has(>.fk-note):has(>.wb-strip){grid-template-rows:auto auto var(--fk-kpi) auto auto auto minmax(0,1fr) auto}
+.rt2>.fk-head{flex-wrap:wrap;row-gap:6px}
+.rt2>.fk-head>.vh{flex:1 0 auto;min-width:min(260px,100%)}
+@media (max-width:1535px){.rt2 .rt-periodrow{flex-wrap:wrap}.rt2 .fn-period{flex-wrap:wrap}}
+.rt2>.fk-head>.fk-head-actions{flex:0 1 auto;min-width:0}
+@media (max-width:1700px){.rt2 .rt-chips{flex-wrap:wrap;overflow:visible;row-gap:4px}}

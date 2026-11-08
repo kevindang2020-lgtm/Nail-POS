@@ -357,8 +357,8 @@ Object.assign(env, { AI_QUEUE_OPS_JOBS: 'off', AI_SCHEDULING_JOBS: 'off', COMMUN
 const TWILIO_LOG = process.env.PILOT_TWILIO_LOOPBACK === '0' || EXTERNAL_API ? null : `${createRequire(import.meta.url)('node:os').tmpdir()}/pilot-twilio-${tag}.jsonl`;
 if (TWILIO_LOG) Object.assign(env, { TWILIO_LOOPBACK_LOG: TWILIO_LOG, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import ${new URL('./lib/twilio-loopback.mjs', import.meta.url).pathname}`.trim() });
 // Security Deep Scan D2: the salon's gateway base URL must be https on an allow-listed processor host — the proof registers
-// https://pilot-loopback.cardconnect.com and the proof-only preload (lib/processor-loopback.mjs) forwards it to the fake.
-const CP_HOST = 'pilot-loopback.cardconnect.com';
+// https://pilot-loopback-uat.cardconnect.com and the proof-only preload (lib/processor-loopback.mjs) forwards it to the fake.
+const CP_HOST = 'pilot-loopback-uat.cardconnect.com';   // a UAT-marked host: a sandbox merchant may only name a UAT host (Fiserv §5.3 guard)
 if (!EXTERNAL_API) Object.assign(env, { PROCESSOR_LOOPBACK_HOST: CP_HOST, PROCESSOR_LOOPBACK_TARGET: `http://127.0.0.1:${CP_PORT}`, NODE_OPTIONS: `${env.NODE_OPTIONS ?? ''} --import ${new URL('./lib/processor-loopback.mjs', import.meta.url).pathname}`.trim() });
 // the screens' origins (each app served on its own loopback port, same-origin with the API through its proxy) are this
 // run's app origins — as app.aipowersalon.com:<port> is in production — so a credentialed realtime stream is accepted

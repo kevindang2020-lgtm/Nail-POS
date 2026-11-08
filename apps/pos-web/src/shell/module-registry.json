@@ -2605,6 +2605,781 @@
      "label": "Rule history (every version)"
     }
    ]
+  },
+  {
+   "key": "command-center",
+   "title": "AI Center & AI Command Center",
+   "routes": [
+    "/tenant/ai/command-center"
+   ],
+   "screens": [
+    "POSAICenterScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Command_Center",
+   "scroll": "page",
+   "scrollReason": "AI Command Center SUNMI addendum: all 15 assistants and deeper logs remain accessible through normal vertical scrolling; never shrink the UI to force every module onto one screen; no sideways scroll.",
+   "modules": [
+    {
+     "id": "aic-plans",
+     "label": "View Plans & Bundles"
+    },
+    {
+     "id": "aic-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "aic-run-check",
+     "label": "Check AI System"
+    },
+    {
+     "id": "aic-history",
+     "label": "Usage & history"
+    },
+    {
+     "id": "aic-recon",
+     "label": "P0 honest status reconcile (0 Active / 11 Trial / 11 Running explained)"
+    },
+    {
+     "id": "aic-kpis",
+     "label": "Eight KPI concepts",
+     "minItems": 8,
+     "items": ".kpi"
+    },
+    {
+     "id": "aic-directory",
+     "label": "15 assistants in 5 categories",
+     "minItems": 15,
+     "items": "[data-testid^=aic-card-]"
+    },
+    {
+     "id": "aic-activity",
+     "label": "Recent AI Activity Log"
+    },
+    {
+     "id": "aic-calls",
+     "label": "AI Receptionist call intelligence"
+    },
+    {
+     "id": "aic-booking",
+     "label": "AI Booking Assistant"
+    },
+    {
+     "id": "aic-workflows",
+     "label": "Automation workflows"
+    },
+    {
+     "id": "aic-modes",
+     "label": "AI control modes"
+    },
+    {
+     "id": "aic-revenue",
+     "label": "AI-attributed revenue"
+    },
+    {
+     "id": "aic-runs",
+     "label": "Automation runs today"
+    },
+    {
+     "id": "aic-quick",
+     "label": "AI quick actions"
+    }
+   ]
+  },
+  {
+   "key": "ai-receptionist",
+   "title": "AI Receptionist",
+   "routes": [
+    "/tenant/ai/receptionist"
+   ],
+   "screens": [
+    "POSAIReceptionistScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Receptionist",
+   "scroll": "page",
+   "scrollReason": "AI Receptionist SUNMI addendum: no browser-wide horizontal scrolling; deliberate vertical scrolling for long records and lower operational sections.",
+   "modules": [
+    {
+     "id": "rcp-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "rcp-check",
+     "label": "Check system (redacted provider checks)"
+    },
+    {
+     "id": "rcp-kpis",
+     "label": "Five KPI cards + period",
+     "minItems": 5,
+     "items": ".rcp-kpi-row > *"
+    },
+    {
+     "id": "rcp-checklist",
+     "label": "8-step setup checklist from evidence"
+    },
+    {
+     "id": "rcp-connections",
+     "label": "Twilio / Retell / Integration key / Booking handoff readiness"
+    },
+    {
+     "id": "rcp-controls",
+     "label": "Activation controls"
+    },
+    {
+     "id": "rcp-quick",
+     "label": "Quick actions"
+    },
+    {
+     "id": "rcp-calls",
+     "label": "Call history: search, filters, calendar, table"
+    }
+   ]
+  },
+  {
+   "key": "ai-front-desk",
+   "title": "AI Front Desk",
+   "routes": [
+    "/tenant/ai/receptionist/front-desk"
+   ],
+   "screens": [
+    "POSAIFrontDeskScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Front_Desk",
+   "scroll": "page",
+   "scrollReason": "AI Front Desk SUNMI addendum: at smaller effective viewports vertical scrolling preserves access (SUN-15); no sideways scroll.",
+   "modules": [
+    {
+     "id": "fd-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "fd-check",
+     "label": "Check readiness"
+    },
+    {
+     "id": "fd-create",
+     "label": "+ Create Agent (8-step wizard)"
+    },
+    {
+     "id": "fd-summary",
+     "label": "Summary tiles"
+    },
+    {
+     "id": "fd-directory",
+     "label": "Agent directory: All / Draft / Paused / Archived + readiness tabs, search, table"
+    },
+    {
+     "id": "fd-monitor",
+     "label": "Live Routing Monitor"
+    },
+    {
+     "id": "fd-alerts",
+     "label": "Alerts + health"
+    },
+    {
+     "id": "fd-history",
+     "label": "Activation history"
+    }
+   ]
+  },
+  {
+   "key": "copilot",
+   "title": "Reception Copilot",
+   "routes": [
+    "/tenant/ai/copilot"
+   ],
+   "screens": [
+    "POSReceptionCopilotScreen"
+   ],
+   "guide": "AI_PowerSalon_Reception_Copilot",
+   "scroll": "page",
+   "scrollReason": "Reception Copilot SUNMI addendum: page/overlay may vertically scroll; allow the main workspace to scroll vertically; prevent horizontal document overflow.",
+   "modules": [
+    {
+     "id": "rc-views",
+     "label": "Copilot view tabs"
+    },
+    {
+     "id": "rcc-ops",
+     "label": "Ops status bar + check"
+    },
+    {
+     "id": "rcc-priorities",
+     "label": "Priority assistant"
+    },
+    {
+     "id": "rc-lookup",
+     "label": "Caller Lookup"
+    },
+    {
+     "id": "rc-openings",
+     "label": "Find open times"
+    },
+    {
+     "id": "rc-conflicts",
+     "label": "Check for conflicts"
+    },
+    {
+     "id": "rc-cancel",
+     "label": "Cancel Appointment (prepare → confirm)"
+    },
+    {
+     "id": "rc-text",
+     "label": "Send a Text Message"
+    },
+    {
+     "id": "rc-book",
+     "label": "Book Appointment"
+    },
+    {
+     "id": "rc-reschedule",
+     "label": "Reschedule Appointment"
+    },
+    {
+     "id": "rcc-workspace",
+     "label": "Workspace: search + activity history"
+    }
+   ]
+  },
+  {
+   "key": "reviews",
+   "title": "Reviews & Reputation",
+   "routes": [
+    "/tenant/marketing/reviews"
+   ],
+   "screens": [
+    "POSReviewsScreen"
+   ],
+   "guide": "AI_PowerSalon_Reviews__Reputation",
+   "scroll": "page",
+   "scrollReason": "Reviews SUNMI addendum: long history panels may scroll vertically; overlays have their own scroll; no sideways scroll.",
+   "modules": [
+    {
+     "id": "rvw-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "rvw-check",
+     "label": "Check reputation system"
+    },
+    {
+     "id": "rvw-assistant",
+     "label": "Reputation assistant"
+    },
+    {
+     "id": "rvw-kpis",
+     "label": "Five original KPI cards (+ attention)",
+     "minItems": 5,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "rvw-dist",
+     "label": "Rating Distribution"
+    },
+    {
+     "id": "rvw-glance",
+     "label": "At a Glance"
+    },
+    {
+     "id": "rvw-filters",
+     "label": "Search, dates, filters"
+    },
+    {
+     "id": "rvw-feed",
+     "label": "Review feed + pages"
+    }
+   ]
+  },
+  {
+   "key": "referrals",
+   "title": "Referral Program",
+   "routes": [
+    "/tenant/marketing/referrals"
+   ],
+   "screens": [
+    "POSReferralsScreen"
+   ],
+   "guide": "AI_PowerSalon_Referral_Program",
+   "scroll": "page",
+   "scrollReason": "Referral SUNMI addendum: lower full-width Referral History and supporting performance/fraud/health sections are available by page scroll.",
+   "modules": [
+    {
+     "id": "rfp-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "rfp-health",
+     "label": "Health check"
+    },
+    {
+     "id": "rfp-kpis",
+     "label": "Four original KPI cards (+ revenue, qualified)",
+     "minItems": 4,
+     "items": "[data-testid^=rfp-kpi-]"
+    },
+    {
+     "id": "rfp-record",
+     "label": "Record a Referral: code, new customer search, Record Referral"
+    },
+    {
+     "id": "rfp-results",
+     "label": "Referral history: tabs, filters, pages"
+    },
+    {
+     "id": "rfp-performance",
+     "label": "Performance"
+    },
+    {
+     "id": "rfp-approvals",
+     "label": "Approvals"
+    },
+    {
+     "id": "rfp-alerts",
+     "label": "Fraud / risk alerts"
+    }
+   ]
+  },
+  {
+   "key": "birthdays",
+   "title": "Birthday Campaigns",
+   "routes": [
+    "/tenant/marketing/birthdays"
+   ],
+   "screens": [
+    "POSBirthdaysScreen"
+   ],
+   "guide": "AI_PowerSalon_BIRTHDAY_CAMPAIGNS",
+   "scroll": "page",
+   "scrollReason": "Birthday SUNMI addendum: content can scroll vertically; never squeeze content by shrinking text.",
+   "modules": [
+    {
+     "id": "bd-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "bd-history",
+     "label": "History"
+    },
+    {
+     "id": "bd-settings",
+     "label": "Settings"
+    },
+    {
+     "id": "bd-create",
+     "label": "Create campaign"
+    },
+    {
+     "id": "bd-kpis",
+     "label": "Six KPI cards",
+     "minItems": 6,
+     "items": "[data-testid^=bd-kpi-]"
+    },
+    {
+     "id": "bd-results",
+     "label": "Birthday list: month, presets, scope, search, pages"
+    }
+   ]
+  },
+  {
+   "key": "segments",
+   "title": "Customer Segments",
+   "routes": [
+    "/tenant/marketing/segments"
+   ],
+   "screens": [
+    "POSSegmentsScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Segments",
+   "scroll": "page",
+   "scrollReason": "Segments SUNMI addendum: main content may scroll vertically; no page-wide horizontal scrolling.",
+   "modules": [
+    {
+     "id": "sg-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "sg-open-history",
+     "label": "History"
+    },
+    {
+     "id": "sg-open-health",
+     "label": "Health"
+    },
+    {
+     "id": "sg-kpis",
+     "label": "KPI cards"
+    },
+    {
+     "id": "sg-search",
+     "label": "Search"
+    },
+    {
+     "id": "sg-results",
+     "label": "Segment list"
+    }
+   ]
+  },
+  {
+   "key": "coupons",
+   "title": "Coupons & Promotions",
+   "routes": [
+    "/tenant/marketing/coupons"
+   ],
+   "screens": [
+    "POSCouponsScreen"
+   ],
+   "guide": "AI_PowerSalon_Coupons__Promotions",
+   "scroll": "page",
+   "scrollReason": "Coupons SUNMI addendum: large histories, forms and analytics may use internal vertical scrolling, pagination or overlays.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "kpis",
+     "label": "Six KPI cards",
+     "minItems": 6,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "toolbar",
+     "label": "Search, status, filters"
+    },
+    {
+     "id": "coupons-list",
+     "label": "Coupon list + pages"
+    },
+    {
+     "id": "cp-tabs",
+     "label": "Library / Redemptions / Health tabs",
+     "minItems": 3,
+     "items": "[role=tab]"
+    }
+   ]
+  },
+  {
+   "key": "deals",
+   "title": "Deals & Offers",
+   "routes": [
+    "/tenant/marketing/deals"
+   ],
+   "screens": [
+    "POSDealsScreen"
+   ],
+   "guide": "AI_PowerSalon_Deals__Offers",
+   "scroll": "page",
+   "scrollReason": "Deals SUNMI addendum: content area may scroll vertically; no page-level horizontal scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "kpis",
+     "label": "KPI cards"
+    },
+    {
+     "id": "toolbar",
+     "label": "Search, filters"
+    },
+    {
+     "id": "deals-list",
+     "label": "Deal list + pages"
+    },
+    {
+     "id": "do-tabs",
+     "label": "Library / Approvals / Redemptions / Performance / Health / Settings tabs",
+     "minItems": 6,
+     "items": "[role=tab]"
+    }
+   ]
+  },
+  {
+   "key": "promotions",
+   "title": "Promotions Management",
+   "routes": [
+    "/tenant/marketing/promotions"
+   ],
+   "screens": [
+    "POSPromotionsScreen"
+   ],
+   "guide": "AI_PowerSalon_Promotions_Management",
+   "scroll": "page",
+   "scrollReason": "Promotions SUNMI addendum: allow vertical scrolling when necessary; keep modules discoverable via scrolling and tabs.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "view-history",
+     "label": "History"
+    },
+    {
+     "id": "kpis",
+     "label": "Five KPI cards",
+     "minItems": 5,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "toolbar",
+     "label": "Search, filters"
+    },
+    {
+     "id": "promotions-list",
+     "label": "Promotion table + pages"
+    },
+    {
+     "id": "scope",
+     "label": "Library / Redemptions / Checks / Insights / Health tabs",
+     "minItems": 5,
+     "items": "[role=tab]"
+    }
+   ]
+  },
+  {
+   "key": "campaigns",
+   "title": "Campaign Center",
+   "routes": [
+    "/tenant/marketing/campaigns",
+    "/tenant/marketing/sms"
+   ],
+   "screens": [
+    "POSCampaignCenterScreen"
+   ],
+   "guide": "AI_PowerSalon_Campaign_Center",
+   "scroll": "page",
+   "scrollReason": "Campaign Center SUNMI addendum: contained vertical scrolling while module entry points stay discoverable; never cut content to claim no scroll.",
+   "modules": [
+    {
+     "id": "cc-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "cc-open-health",
+     "label": "Health"
+    },
+    {
+     "id": "cc-new",
+     "label": "Create Campaign"
+    },
+    {
+     "id": "cc-kpis",
+     "label": "Six KPI cards"
+    },
+    {
+     "id": "cc-search",
+     "label": "Search"
+    },
+    {
+     "id": "cc-table",
+     "label": "Campaign table"
+    },
+    {
+     "id": "cc-quick",
+     "label": "Seven quick actions",
+     "minItems": 7,
+     "items": "button"
+    }
+   ]
+  },
+  {
+   "key": "marketing",
+   "title": "Marketing & Growth",
+   "routes": [
+    "/tenant/marketing"
+   ],
+   "screens": [
+    "POSMarketingLandingScreen"
+   ],
+   "guide": "AI_PowerSalon_Marketing_Growth",
+   "scroll": "page",
+   "scrollReason": "Marketing SUNMI addendum: deep sections scroll vertically within clear bounds; no full-page horizontal scroll.",
+   "modules": [
+    {
+     "id": "mg-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "mg-kpis",
+     "label": "Six KPI cards"
+    },
+    {
+     "id": "mg-filters",
+     "label": "Filters"
+    },
+    {
+     "id": "mg-activity",
+     "label": "Activity history"
+    },
+    {
+     "id": "mg-quick",
+     "label": "Five Quick Actions",
+     "minItems": 5,
+     "items": "button"
+    },
+    {
+     "id": "mg-search",
+     "label": "Search across marketing"
+    }
+   ]
+  },
+  {
+   "key": "templates",
+   "title": "Message Templates & Automation",
+   "routes": [
+    "/tenant/communications/templates"
+   ],
+   "screens": [
+    "POSMessageTemplatesScreen"
+   ],
+   "guide": "AI_PowerSalon_MESSAGE_TEMPLATES__AUTOMATION",
+   "scroll": "page",
+   "scrollReason": "Templates SUNMI addendum: long template text, tables and history use their own scroll areas; no body-level horizontal scrolling.",
+   "modules": [
+    {
+     "id": "mt-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "mt-new",
+     "label": "New template"
+    },
+    {
+     "id": "mt-open-health",
+     "label": "Health"
+    },
+    {
+     "id": "mt-kpis",
+     "label": "Six KPI cards"
+    },
+    {
+     "id": "mt-search",
+     "label": "Search"
+    },
+    {
+     "id": "mt-library",
+     "label": "Your templates (table or truthful empty state)"
+    },
+    {
+     "id": "mt-usage",
+     "label": "Usage history"
+    }
+   ]
+  },
+  {
+   "key": "notifications",
+   "title": "Customer Notifications",
+   "routes": [
+    "/tenant/communications/notifications"
+   ],
+   "screens": [
+    "POSNotificationsScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Notifications",
+   "scroll": "page",
+   "scrollReason": "Customer Notifications SUNMI addendum: long records use internal panel scrolling, pagination or detail overlays; no page-wide horizontal scroll.",
+   "modules": [
+    {
+     "id": "cn-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "cn-open-health",
+     "label": "Health"
+    },
+    {
+     "id": "cn-open-alerts",
+     "label": "Alerts"
+    },
+    {
+     "id": "cn-kpis",
+     "label": "Six KPI cards"
+    },
+    {
+     "id": "cn-search-panel",
+     "label": "Search"
+    },
+    {
+     "id": "cn-health-panel",
+     "label": "Channel health"
+    },
+    {
+     "id": "cn-activity",
+     "label": "Notification activity"
+    }
+   ]
+  },
+  {
+   "key": "phone-management",
+   "title": "Phone Number Management",
+   "routes": [
+    "/tenant/customers/phone-management"
+   ],
+   "screens": [
+    "PhoneManagementCenter"
+   ],
+   "guide": "AI_PowerSalon_PHONE_NUMBER_MANAGEMENT_4",
+   "scroll": "page",
+   "scrollReason": "Phone Number Management SUNMI addendum: rows, overlays and numbered pages scroll within their region; no horizontal page scroll.",
+   "modules": [
+    {
+     "id": "pm-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "pm-check-health",
+     "label": "Check health"
+    },
+    {
+     "id": "pm-kpis",
+     "label": "Six KPI cards"
+    },
+    {
+     "id": "pm-health",
+     "label": "Health"
+    },
+    {
+     "id": "pm-search",
+     "label": "Customer phone search"
+    },
+    {
+     "id": "phone-settings",
+     "label": "Phone settings"
+    }
+   ]
+  },
+  {
+   "key": "win-back",
+   "title": "Retention & Win-Back",
+   "routes": [
+    "/tenant/marketing/win-back"
+   ],
+   "screens": [
+    "POSRetentionScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Retention__Win-Back",
+   "scroll": "page",
+   "scrollReason": "Retention SUNMI addendum: allow appropriate vertical scrolling for additional modules and details.",
+   "modules": [
+    {
+     "id": "retention-kpis",
+     "label": "Five original summary cards",
+     "minItems": 5
+    },
+    {
+     "id": "panel-winback",
+     "label": "Win-back list"
+    },
+    {
+     "id": "rt-search",
+     "label": "Search"
+    },
+    {
+     "id": "create-winback",
+     "label": "Create win-back"
+    }
+   ]
   }
  ]
 }

@@ -141,7 +141,7 @@ export function POSCouponsScreen() {
         basis={tab === 'library' ? basis : redBasis} onBasis={tab === 'library' ? setBasis : setRedBasis}
         basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('cp.basis.' + b) })) : ['redeemed', 'applied', 'finalized'].map((b) => ({ value: b, label: tx(b === 'redeemed' ? 'dsc.df.redeemed' : 'cp.redBasis.' + b) }))} /> : null}
 
-      <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('cp.title')}>
+      <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('cp.title')} data-testid="cp-tabs">
         {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>{tx('cp.tab.' + t)}</button>)}
       </div>
 

@@ -379,7 +379,7 @@ export function POSReceptionCopilotScreen() {
       <ServiceExplainerPanel />
       <WaitlistPanel />
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-lookup">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.caller_lookup')}</div>
         <div className='flex flex-col sm:flex-row gap-3 w-full shrink-0'>
           <input className='!flex-auto' type="tel" inputMode="tel" style={inputStyle} value={lookupPhone} onChange={(e) => setLookupPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookup(); }} placeholder={tx('pos.caller_phone_number_u2026')} disabled={ctxBusy} />
@@ -424,7 +424,7 @@ export function POSReceptionCopilotScreen() {
 
       </>)}
       {show('actions') && (<>
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-openings">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.find_open_times')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input style={inputStyle} type="date" aria-label={tx('pos.date_to_check')} value={availDate} onChange={(e) => setAvailDate(e.target.value)} disabled={availBusy} />
@@ -480,7 +480,7 @@ export function POSReceptionCopilotScreen() {
         )}
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-conflicts">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.check_for_conflicts')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <NamePicker scope="technicians" value={cf.technicianId} onPick={(id) => setCf((c) => ({ ...c, technicianId: id }))} placeholder={tx('pos.copilot_pick_technician')} disabled={cfBusy} testId="rc-cf-tech" />
@@ -500,7 +500,7 @@ export function POSReceptionCopilotScreen() {
         )}
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-cancel">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.cancel_an_appointment')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <NamePicker scope="appointments" value={cxApptId} onPick={setCxApptId} placeholder={tx('pos.copilot_pick_appointment')} disabled={cxActing} testId="rc-cx-appt" />
@@ -534,7 +534,7 @@ export function POSReceptionCopilotScreen() {
       </>)}
 
       {show('actions') && (<>
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-text">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.send_a_text_message')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           {([['reminder', tx('growth.copilot.message.reminder')], ['running_late', tx('growth.copilot.message.running_late')], ['ready_now', tx('growth.copilot.message.ready_now')], ['thank_you', tx('growth.copilot.message.thank_you')], ['reschedule_offer', tx('growth.copilot.message.reschedule_offer')]] as [string, string][]).map(([k, label]) => (
@@ -551,7 +551,7 @@ export function POSReceptionCopilotScreen() {
         <ActionOutcome h={mgA} testId="rcc-msg-outcome" />
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-book">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.book_an_appointment')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input style={{ ...inputStyle, minWidth: 130 }} value={bk.customerName} onChange={(e) => setBk({ ...bk, customerName: e.target.value })} placeholder={tx('pos.customer_name_2')} disabled={bkActing} />
@@ -564,7 +564,7 @@ export function POSReceptionCopilotScreen() {
         <ActionOutcome h={bkA} testId="rcc-book-outcome" />
       </section>
 
-      <section style={cardBox}>
+      <section style={cardBox} data-testid="rc-reschedule">
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.reschedule_an_appointment')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input style={{ ...inputStyle, minWidth: 150 }} value={rs.appointmentId} onChange={(e) => setRs({ ...rs, appointmentId: e.target.value })} placeholder={tx('pos.appt_id_to_move')} disabled={rsActing} />

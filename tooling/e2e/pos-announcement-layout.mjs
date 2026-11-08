@@ -205,7 +205,7 @@ try {
   check('§164 another salon\'s critical notice is not shown (tenant isolation)', !html.includes('Other salon only'));
 
   // §104–§110 responsive, with the long message live
-  for (const [w, h] of [[1920, 1080], [1600, 900], [1366, 768], [1280, 800]]) {
+  for (const [w, h] of [[1920, 1080], [1920, 1032], [1920, 952], [1920, 945], [1600, 900], [1366, 768], [1280, 800]]) {
     await page.setViewportSize({ width: w, height: h }); await sleep(700);
     m = await measure(page);
     const tag = `${w}×${h}`;
