@@ -7,7 +7,7 @@
 # publishes this image: .github/workflows/build-image.yml.
 
 # ---- build ----
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 # Copy the whole repo (a .dockerignore keeps node_modules/dist/.git out of the build context).
 COPY . .
@@ -28,7 +28,7 @@ RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules modules/*/no
            node_modules/@esbuild node_modules/rollup node_modules/@rollup node_modules/lightningcss* node_modules/playwright*
 
 # ---- run ----
-FROM node:22-slim AS run
+FROM node:26-slim AS run
 # Phase 11: take the base image's Debian security fixes now, not at the next upstream node:22-slim rebuild.
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
