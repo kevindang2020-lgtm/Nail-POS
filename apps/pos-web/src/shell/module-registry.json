@@ -1517,8 +1517,10 @@
      "label": "Universal search (customer, phone, email, ticket, reference, technician, amount)"
     },
     {
-     "id": "preset-today",
-     "label": "Today / This Week / This Month / This Year / Custom Range"
+     "id": "period-presets",
+     "label": "Today / This Week / This Month / This Year / Custom Range",
+     "minItems": 4,
+     "items": "button"
     },
     {
      "id": "ledger",
@@ -1605,8 +1607,10 @@
      "label": "Universal search + type / status / method / sort"
     },
     {
-     "id": "preset-today",
-     "label": "Today / This Week / This Month / This Year / Custom + date field"
+     "id": "period-presets",
+     "label": "Today / This Week / This Month / This Year / Custom + date field",
+     "minItems": 4,
+     "items": "button"
     },
     {
      "id": "ledger",
@@ -1773,6 +1777,832 @@
     {
      "id": "physical",
      "label": "Physical Terminals registry + pager"
+    }
+   ]
+  },
+  {
+   "key": "phone-verification",
+   "title": "Booking Phone Verification",
+   "routes": [
+    "/tenant/communications/phone-verification"
+   ],
+   "screens": [
+    "POSBookingVerificationScreen"
+   ],
+   "guide": "AI_PowerSalon_BOOKING_PHONE_VERIFICATION_3",
+   "scroll": "page",
+   "scrollReason": "Booking Phone Verification SUNMI addendum §03: allow the main content to scroll vertically; never truncate OTP / hold alerts to fit one screen. No sideways scroll; every module present.",
+   "modules": [
+    {
+     "id": "bv-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "bv-check",
+     "label": "Check Verification System"
+    },
+    {
+     "id": "bv-kpis",
+     "label": "Pending, Verified, Failed / Expired, Active Holds, SMS Health, Success %",
+     "minItems": 6
+    },
+    {
+     "id": "bv-settings",
+     "label": "Settings: main toggle, six booking sources, 24 h trust, three re-verify rules, 10-minute hold"
+    },
+    {
+     "id": "bv-health",
+     "label": "SMS & system health (six readiness checks)"
+    },
+    {
+     "id": "bv-live",
+     "label": "Live verification & slot holds"
+    },
+    {
+     "id": "bv-history",
+     "label": "Verification history: search, filters, From / To, page size, pages"
+    }
+   ]
+  },
+  {
+   "key": "messaging-setup",
+   "title": "Text Messaging Setup & SMS Readiness",
+   "routes": [
+    "/tenant/communications/messaging-setup"
+   ],
+   "screens": [
+    "POSMessagingSetupScreen"
+   ],
+   "guide": "AI_PowerSalon_TEXT_MESSAGING_SETUP__SMS_READINESS",
+   "scroll": "page",
+   "scrollReason": "Text Messaging Setup SUNMI addendum §02: keep the shell fitted; overflow only inside list regions, tabs or overlays — the setup forms and history continue below. No sideways scroll; every module present.",
+   "modules": [
+    {
+     "id": "ms-open-wizard",
+     "label": "Setup Wizard"
+    },
+    {
+     "id": "pm-run-check",
+     "label": "Check SMS System"
+    },
+    {
+     "id": "pm-summary",
+     "label": "Status strip: Twilio Connection, Assigned Number, Carrier Registration, Messaging Readiness"
+    },
+    {
+     "id": "ms-readiness",
+     "label": "SMS readiness: Account, Sender, Registration, Inbound, Delivery, Booking Verify"
+    },
+    {
+     "id": "pm-credentials",
+     "label": "Account credentials"
+    },
+    {
+     "id": "pm-registration",
+     "label": "Registration & Messaging Service"
+    }
+   ]
+  },
+  {
+   "key": "followup-settings",
+   "title": "End-of-Day Follow-Ups",
+   "routes": [
+    "/settings/follow-ups"
+   ],
+   "screens": [
+    "EndOfDayFollowUpSettings"
+   ],
+   "guide": "AI_PowerSalon_END-OF-DAY_FOLLOW-UPS",
+   "scroll": "page",
+   "scrollReason": "End-of-Day Follow-Ups SUNMI addendum: showing all sections without any vertical scrolling is neither necessary nor usable — internal paging and the main scroll keep every module. No sideways scroll.",
+   "modules": [
+    {
+     "id": "eod-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "eod-kpis",
+     "label": "Automation, Next Run, Pending, Sent Today, Failed / Expired, Booked After Follow-Up",
+     "minItems": 6
+    },
+    {
+     "id": "eod-settings",
+     "label": "Seven settings + contact protection + Save Settings"
+    },
+    {
+     "id": "eod-health",
+     "label": "Automation & messaging health + Preview Tonight’s Follow-Ups"
+    },
+    {
+     "id": "eod-runs",
+     "label": "Generation runs"
+    },
+    {
+     "id": "eod-activity",
+     "label": "Follow-up activity: search, filters, dates, pages"
+    }
+   ]
+  },
+  {
+   "key": "follow-ups",
+   "title": "Follow-Up Queue",
+   "routes": [
+    "/follow-ups"
+   ],
+   "screens": [
+    "POSFollowUpsScreen"
+   ],
+   "guide": "AI_PowerSalon_FOLLOW-UP_QUEUE",
+   "scroll": "page",
+   "scrollReason": "Follow-Up Queue SUNMI addendum: long tasks, history and messages scroll inside predictable panels; health and results continue below the queue. No sideways scroll; every module present.",
+   "modules": [
+    {
+     "id": "fuq-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "fuq-generate",
+     "label": "Generate Now"
+    },
+    {
+     "id": "fuq-kpis",
+     "label": "Pending, Sent, Skipped, Rebooked, Total Today",
+     "minItems": 5
+    },
+    {
+     "id": "fuq-status-tabs",
+     "label": "Status tabs: All / Pending / Sent / Skipped",
+     "items": "[role=tab]",
+     "minItems": 4
+    },
+    {
+     "id": "fuq-search",
+     "label": "Search + filters + From / To"
+    },
+    {
+     "id": "fuq-list",
+     "label": "Follow-up tasks (After-Service / Missed Call, queue / history) + pages"
+    },
+    {
+     "id": "fuq-health",
+     "label": "Automation & delivery health"
+    },
+    {
+     "id": "fuq-results",
+     "label": "Follow-up results & rebooking"
+    }
+   ]
+  },
+  {
+   "key": "reminders",
+   "title": "Appointment Reminders",
+   "routes": [
+    "/tenant/communications/reminders"
+   ],
+   "screens": [
+    "POSRemindersScreen"
+   ],
+   "guide": "AI_PowerSalon_Appointment_Reminders",
+   "scroll": "page",
+   "scrollReason": "Appointment Reminders SUNMI addendum: fit means a complete, readable shell with intentional vertical scrolling for long content. No sideways scroll; every module present.",
+   "modules": [
+    {
+     "id": "rmc-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "rmc-kpis",
+     "label": "Six counters: Today, Scheduled, Sent, Delivered, Failed, Cancelled",
+     "minItems": 6
+    },
+    {
+     "id": "rmc-settings",
+     "label": "Enabled, Lead Time 24 h, Send Window 60 min, Channel, Save Reminders"
+    },
+    {
+     "id": "rmc-health",
+     "label": "Scheduler / Twilio / email / booking-sync / delivery health"
+    },
+    {
+     "id": "rmc-list",
+     "label": "Reminder queue / history: search, filters, From / To, pages"
+    }
+   ]
+  },
+  {
+   "key": "email",
+   "title": "Email Management & Delivery Center",
+   "routes": [
+    "/tenant/communications/email"
+   ],
+   "screens": [
+    "POSEmailScreen"
+   ],
+   "guide": "AI_PowerSalon_Email_Management__Delivery_Center",
+   "scroll": "page",
+   "scrollReason": "Email Center SUNMI addendum: full fit keeps the shell and critical actions in reach; it does not mean every history row fits one screen — history uses internal or page scroll. No sideways scroll.",
+   "modules": [
+    {
+     "id": "emc-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "emc-compose",
+     "label": "Compose"
+    },
+    {
+     "id": "emc-kpis",
+     "label": "Six email status indicators",
+     "minItems": 6
+    },
+    {
+     "id": "emc-settings",
+     "label": "Sender name, Booking Confirmation, Email Receipts, Save Email Settings"
+    },
+    {
+     "id": "emc-health",
+     "label": "Provider health + Send test"
+    },
+    {
+     "id": "emc-history",
+     "label": "Email history: search, filters, calendar, pages, details"
+    }
+   ]
+  },
+  {
+   "key": "sms-inbox",
+   "title": "Communications — SMS Inbox",
+   "routes": [
+    "/tenant/communications/sms"
+   ],
+   "screens": [
+    "POSCommunicationsScreen"
+   ],
+   "guide": "AI_PowerSalon_Communications__SMS_Inbox",
+   "scroll": "page",
+   "scrollReason": "Communications SUNMI addendum: six reporting modules and seven Quick Actions sit below the fold and are reached by vertical scroll; list and thread scroll independently; no sideways scroll.",
+   "modules": [
+    {
+     "id": "ci-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "ci-new",
+     "label": "New Message"
+    },
+    {
+     "id": "ci-kpis",
+     "label": "13 KPIs (6 + 7)",
+     "minItems": 13,
+     "items": ".ci-kpi"
+    },
+    {
+     "id": "ci-tools",
+     "label": "Search, channel, status, assignee, sort, dates"
+    },
+    {
+     "id": "ci-list",
+     "label": "Conversation list + pager"
+    },
+    {
+     "id": "ci-conv",
+     "label": "Selected thread + composer + Book"
+    },
+    {
+     "id": "ci-mods",
+     "label": "Six lower modules",
+     "minItems": 6,
+     "items": ".ci-card"
+    },
+    {
+     "id": "ci-quick",
+     "label": "Seven Quick Actions",
+     "minItems": 7,
+     "items": "button"
+    }
+   ]
+  },
+  {
+   "key": "phone",
+   "title": "Phone & Messaging Number",
+   "routes": [
+    "/tenant/communications/phone"
+   ],
+   "screens": [
+    "POSPhoneScreen"
+   ],
+   "guide": "AI_PowerSalon_Phone__Messaging__Text_Messaging_Setup",
+   "scroll": "page",
+   "scrollReason": "Phone & Messaging SUNMI addendum: natural scrolling within appropriate content areas; diagnostics and number detail may sit below the fold; no sideways scroll.",
+   "modules": [
+    {
+     "id": "pm-run-check",
+     "label": "Run check"
+    },
+    {
+     "id": "pm-cards",
+     "label": "Number, Twilio account, registration, SMS readiness",
+     "minItems": 4,
+     "items": "[data-testid^=pm-card-]"
+    },
+    {
+     "id": "pm-progress",
+     "label": "Setup progress + next action"
+    },
+    {
+     "id": "pm-verify",
+     "label": "Verify ready (independent)"
+    },
+    {
+     "id": "pm-voice",
+     "label": "Voice ready (independent)"
+    },
+    {
+     "id": "pm-diagnostics",
+     "label": "Diagnostics checks + tests"
+    },
+    {
+     "id": "pm-number-detail",
+     "label": "Number detail + masked account"
+    }
+   ]
+  },
+  {
+   "key": "team",
+   "title": "Team Management",
+   "routes": [
+    "/tenant/team/members"
+   ],
+   "screens": [
+    "POSTeamScreen"
+   ],
+   "guide": "AI_PowerSalon_TEAM_MANAGEMENT",
+   "scroll": "page",
+   "scrollReason": "Team Management SUNMI mandate: page content stays naturally vertically scrollable; eight lower panels sit two-wide below the directory; no sideways scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export"
+    },
+    {
+     "id": "add-member",
+     "label": "Add Team Member"
+    },
+    {
+     "id": "open-finder",
+     "label": "Find Qualified & Available Staff"
+    },
+    {
+     "id": "open-date-shift",
+     "label": "One-Day Shift Editor"
+    },
+    {
+     "id": "open-alerts",
+     "label": "Data Accuracy Alerts"
+    },
+    {
+     "id": "kpis",
+     "label": "KPI row 1",
+     "minItems": 4,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "kpis-2",
+     "label": "KPI row 2",
+     "minItems": 4,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "directory",
+     "label": "Employee directory: role tabs, filters, table, pager"
+    },
+    {
+     "id": "attendance",
+     "label": "Team Attendance Today"
+    },
+    {
+     "id": "performance",
+     "label": "Performance Overview"
+    },
+    {
+     "id": "top-performers",
+     "label": "Top Performers"
+    },
+    {
+     "id": "shift-overview",
+     "label": "Today's Shift Overview"
+    },
+    {
+     "id": "productivity",
+     "label": "Team Productivity"
+    },
+    {
+     "id": "approvals",
+     "label": "Pending Approvals"
+    },
+    {
+     "id": "birthdays",
+     "label": "Upcoming Birthdays"
+    },
+    {
+     "id": "training",
+     "label": "Training & Certifications"
+    }
+   ]
+  },
+  {
+   "key": "technicians",
+   "title": "Technicians Management Center",
+   "routes": [
+    "/technicians"
+   ],
+   "screens": [
+    "POSTechniciansScreen"
+   ],
+   "guide": "AI_PowerSalon_TECHNICIANS_MANAGEMENT_CENTER",
+   "scroll": "page",
+   "scrollReason": "Technicians SUNMI addendum: clear vertical page flow; every module stays reachable by scrolling; no sideways scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "new-technician",
+     "label": "New Technician"
+    },
+    {
+     "id": "cta-profile",
+     "label": "Profile Overlay"
+    },
+    {
+     "id": "cta-finder",
+     "label": "Qualified & Available Finder"
+    },
+    {
+     "id": "cta-mapping",
+     "label": "Service Mapping Assistant"
+    },
+    {
+     "id": "kpis",
+     "label": "KPI row 1",
+     "minItems": 4,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "kpis-2",
+     "label": "KPI row 2",
+     "minItems": 4,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "insights",
+     "label": "AI Team Insights"
+    },
+    {
+     "id": "attendance",
+     "label": "Team Attendance Today"
+    },
+    {
+     "id": "performance",
+     "label": "Performance Overview"
+    },
+    {
+     "id": "top-performers",
+     "label": "Top Performers"
+    },
+    {
+     "id": "directory",
+     "label": "Directory: tabs, search, filters, roster"
+    },
+    {
+     "id": "productivity",
+     "label": "Productivity"
+    },
+    {
+     "id": "shift-overview",
+     "label": "Shift Overview"
+    },
+    {
+     "id": "birthdays",
+     "label": "Birthdays"
+    },
+    {
+     "id": "certifications",
+     "label": "Training & Certifications"
+    }
+   ]
+  },
+  {
+   "key": "tech-appointments",
+   "title": "Tech Appointments",
+   "routes": [
+    "/tech-appointments"
+   ],
+   "screens": [
+    "POSTechAppointmentsScreen"
+   ],
+   "guide": "AI_PowerSalon_TECH_APPOINTMENTS",
+   "scroll": "page",
+   "scrollReason": "Tech Appointments SUNMI addendum: schedule is the dominant full-width panel with its own time scrolling; lists and history sit below the fold with pagination; no page-wide sideways scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "new-appointment",
+     "label": "New Appointment"
+    },
+    {
+     "id": "open-finder",
+     "label": "Find next available"
+    },
+    {
+     "id": "kpis",
+     "label": "Nine KPIs",
+     "minItems": 9,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "toolbar",
+     "label": "Calendar / search toolbar"
+    },
+    {
+     "id": "tech-cards",
+     "label": "Technician cards"
+    },
+    {
+     "id": "board",
+     "label": "Day / Week schedule"
+    },
+    {
+     "id": "appointments-list",
+     "label": "Appointments list"
+    },
+    {
+     "id": "history",
+     "label": "Appointment history"
+    }
+   ]
+  },
+  {
+   "key": "tech-schedule",
+   "title": "Live Technician Schedule",
+   "routes": [
+    "/technicians/schedule"
+   ],
+   "screens": [
+    "POSLiveTechnicianScheduleScreen"
+   ],
+   "guide": "AI_PowerSalon_LIVE_TECHNICIAN_SCHEDULE",
+   "scroll": "page",
+   "scrollReason": "Live Technician Schedule SUNMI addendum: page retains natural vertical scrolling when a full day or many technicians cannot fit above the fold; timeline scrolls internally; no page-wide sideways scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "open-finder",
+     "label": "Find next available"
+    },
+    {
+     "id": "kpis",
+     "label": "Six KPIs",
+     "minItems": 6,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "toolbar",
+     "label": "Date, search, status, skill"
+    },
+    {
+     "id": "board",
+     "label": "Live timeline"
+    },
+    {
+     "id": "selected",
+     "label": "Selected technician detail"
+    },
+    {
+     "id": "activity",
+     "label": "Schedule activity"
+    }
+   ]
+  },
+  {
+   "key": "commission",
+   "title": "Commission Report",
+   "routes": [
+    "/tenant/reports/commission"
+   ],
+   "screens": [
+    "POSCommissionReportScreen"
+   ],
+   "guide": "AI_PowerSalon_COMMISSION_REPORT",
+   "scroll": "page",
+   "scrollReason": "Commission Report SUNMI addendum: bounded table-only overflow, never page sideways scroll; reconciliation and payout history sit below the fold.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export (audited)"
+    },
+    {
+     "id": "kpis",
+     "label": "Five KPIs",
+     "minItems": 5,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "toolbar",
+     "label": "Date presets, search, sort"
+    },
+    {
+     "id": "payout-table",
+     "label": "7-column payout table + pager"
+    },
+    {
+     "id": "reconciliation",
+     "label": "Financial discrepancy check"
+    },
+    {
+     "id": "payout-history",
+     "label": "Payout history"
+    },
+    {
+     "id": "discrepancies",
+     "label": "F1/F2 persisted discrepancy review (opens detail overlay)"
+    },
+    {
+     "id": "export-history",
+     "label": "F3 CSV export audit history"
+    }
+   ]
+  },
+  {
+   "key": "performance",
+   "title": "Team Performance",
+   "routes": [
+    "/tenant/team/performance"
+   ],
+   "screens": [
+    "POSTeamPerformanceScreen"
+   ],
+   "guide": "AI_PowerSalon_TEAM_PERFORMANCE_3",
+   "scroll": "page",
+   "scrollReason": "Team Performance SUNMI addendum: directory takes full width below the operational row; detail and history may be below the fold; no sideways scroll.",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export"
+    },
+    {
+     "id": "score-rule",
+     "label": "F5: 0–5 rating vs versioned 0–100 composite rule"
+    },
+    {
+     "id": "kpis",
+     "label": "Three KPIs",
+     "minItems": 3,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "distribution",
+     "label": "Performance Distribution (4 tiers)"
+    },
+    {
+     "id": "top-performers",
+     "label": "Top Performers"
+    },
+    {
+     "id": "directory",
+     "label": "Technician directory"
+    }
+   ]
+  },
+  {
+   "key": "ai-usage",
+   "title": "AI Usage & Limits",
+   "routes": [
+    "/tenant/ai/usage"
+   ],
+   "screens": [
+    "POSAiUsageScreen"
+   ],
+   "guide": "AI_PowerSalon_Unfinished_POS_Modules_Setup",
+   "scroll": "page",
+   "scrollReason": "Unfinished POS modules guide: AI usage packages, cost and history may extend below the fold; no sideways scroll.",
+   "modules": [
+    {
+     "id": "aiu-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "aiu-kpis",
+     "label": "Four KPIs",
+     "minItems": 4,
+     "items": "[data-testid^=aiu-kpi-]"
+    },
+    {
+     "id": "aiu-packages",
+     "label": "AI packages"
+    },
+    {
+     "id": "aiu-kpi-cost",
+     "label": "Cost KPI (opens cost breakdown)"
+    },
+    {
+     "id": "aiu-check",
+     "label": "Run health check"
+    },
+    {
+     "id": "aiu-open-history",
+     "label": "History"
+    }
+   ]
+  },
+  {
+   "key": "setup-health",
+   "title": "Setup Health",
+   "routes": [
+    "/tenant/management/setup-health"
+   ],
+   "screens": [
+    "POSSetupHealthScreen"
+   ],
+   "guide": "AI_PowerSalon_Unfinished_POS_Modules_Setup",
+   "scroll": "page",
+   "scrollReason": "Unfinished POS modules guide: per-branch checks and nightly verification history may extend below the fold; no sideways scroll.",
+   "modules": [
+    {
+     "id": "hs-run",
+     "label": "Run checks now"
+    },
+    {
+     "id": "hs-overall",
+     "label": "Overall health"
+    },
+    {
+     "id": "hs-summary",
+     "label": "Summary"
+    },
+    {
+     "id": "hs-nightly",
+     "label": "Nightly verification"
+    },
+    {
+     "id": "hs-history",
+     "label": "Nightly run history"
+    }
+   ]
+  },
+  {
+   "key": "loyalty-network",
+   "title": "Global Loyalty — Rewards Network & Earning Rules",
+   "routes": [
+    "/tenant/customers/loyalty?view=network"
+   ],
+   "screens": [
+    "loyalty/RewardsNetworkPanel"
+   ],
+   "guide": "AI_PowerSalon_GLOBAL_LOYALTY__REWARDS + Global__Tenant_Earning_Rules",
+   "scroll": "page",
+   "scrollReason": "Earning Rules SUNMI section: main content scrolls vertically when needed; bounded inner-panel scrolling for history and long tables; no page-wide sideways scroll.",
+   "modules": [
+    {
+     "id": "rn-kpis",
+     "label": "Network KPIs",
+     "minItems": 5,
+     "items": "[data-testid^=rn-kpi-]"
+    },
+    {
+     "id": "rn-earning",
+     "label": "Earning rule: GLOBAL / CUSTOM, draft, scheduled"
+    },
+    {
+     "id": "rn-wallet",
+     "label": "Token wallet + Buy Tokens"
+    },
+    {
+     "id": "rn-ledger",
+     "label": "Token ledger"
+    },
+    {
+     "id": "rn-history",
+     "label": "Rule history (every version)"
     }
    ]
   }

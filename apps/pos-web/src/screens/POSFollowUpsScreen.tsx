@@ -164,6 +164,13 @@ export function POSFollowUpsScreen() {
           {type === 'after_service' ? (['queue', 'history'] as const).map((v) => (
             <button key={v} type="button" className={'btn sm' + (filters.view === v ? '' : ' ghost')} onClick={() => setF({ view: v, basis: v === 'queue' ? 'due' : 'created' })} data-testid={`fuq-view-${v}`}>{tx(`fuq.view.${v}`)}</button>)) : null}
         </div>
+        {/* Follow-Up Queue guide + SUNMI addendum §03 (Nov 7 2026): the original status tabs All / Pending / Sent / Skipped stay as
+            tabs (the same filters the KPI cards apply); the select beside the search keeps the full status list */}
+        {type === 'after_service' ? <div className="fk-seg fuq-status-tabs" role="tablist" aria-label={tx('fuq.f.status')} data-testid="fuq-status-tabs">
+          {([['', 'fuq.f.allStatuses', null], ['unsent', 'fuq.kpi.pending', 'queue'], ['sent', 'fuq.kpi.sent', 'history'], ['skipped', 'fuq.kpi.skipped', 'history']] as const).map(([v, label, view]) => (
+            <button key={v || 'all'} type="button" role="tab" aria-selected={filters.status === v} className={filters.status === v ? 'on' : ''}
+              onClick={() => setF(view ? { view, status: v, basis: view === 'queue' ? 'due' : 'created' } : { status: v })} data-testid={`fuq-tab-${v || 'all'}`}>{tx(label)}</button>))}
+        </div> : null}
         <div className="eod-filters">
           <input className="fk-input eod-search" type="search" value={search} onChange={(e) => { setSearch(e.target.value); setF({}); }} placeholder={tx('fuq.searchPh')} aria-label={tx('fuq.searchPh')} data-testid="fuq-search" />
           {type === 'after_service' ? <>

@@ -259,7 +259,7 @@ export function POSBookingVerificationScreen() {
 
       </>}>
       {pending ? (
-        <section className="panel" data-testid="pending-verifications" style={{ maxWidth: 640, marginTop: 14 }}>
+        <section className="panel" data-testid="pending-verifications" style={{ marginTop: 14 }}>
           <div className="p-h">{t('pos.waiting_for_a_code')}</div>
           <div className="sub" style={{ fontSize: 12, marginBottom: 10 }}>
             {t('pos.remote_bookings_that_asked_for_a_pxah')}{' '}<strong>{t('pos.that_one_booking')}</strong>{t('pos.it_is_recorded_with_your_reason_cp3r')}
@@ -288,7 +288,7 @@ export function POSBookingVerificationScreen() {
       ) : null}
 
       {usage ? (
-        <section className="panel" data-testid="verification-usage" style={{ maxWidth: 640, marginTop: 14 }}>
+        <section className="panel" data-testid="verification-usage" style={{ marginTop: 14 }}>
           <div className="p-h">{t('pos.last')}{' '}{usage.days} {t('pos.days')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, margin: '6px 0 12px' }}>
             {([
@@ -448,7 +448,19 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
         <div className="bv-col">{settingsPanel}</div>
         <section className="panel bv-health" data-testid="bv-health">
           <div className="p-h">{t('bv.health')}</div>
-          {!health ? <div className="sub" style={{ fontSize: 13 }}>{t('bv.health.never')}</div> : (
+          {/* SUNMI addendum §04–§05 (Nov 7 2026): before a check runs, the column still says WHAT it checks — the six readiness
+              items, each "Not checked yet" — so Settings and Health carry equal weight instead of an empty right half */}
+          {!health ? <>
+            <div className="sub" style={{ fontSize: 13, marginBottom: 8 }}>{t('bv.health.never')}</div>
+            <ul className="bv-checks" data-testid="bv-checks-pending">
+              {(['twilio_identity', 'verify_service', 'sender', 'policy', 'recent_errors', 'integration'] as const).map((k) => (
+                <li key={k} data-testid={'bv-pending-' + k}>
+                  <div className="bv-check-top"><strong>{t('bv.hk.' + k)}</strong><span className="pm-chip">{t('bv.hs.unchecked')}</span></div>
+                  <div className="sub" style={{ fontSize: 12 }}>{t('bv.hd.' + k)}</div>
+                </li>))}
+            </ul>
+            <button type="button" className="btn" style={{ marginTop: 10, minHeight: 44 }} onClick={check} disabled={checking} data-testid="bv-check-inline">{checking ? t('bv.checking') : t('bv.check')}</button>
+          </> : (
             <>
               <div className="sub" style={{ fontSize: 12, marginBottom: 8 }}>{t('bv.health.checkedAt', { time: when(health.checkedAt) })}</div>
               <ul className="bv-checks">

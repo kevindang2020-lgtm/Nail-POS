@@ -39,7 +39,7 @@ export function TechnicianPickerButton({ value, valueName, onChange, emptyLabel,
     <div ref={box} style={{ position: 'relative', display: 'inline-flex' }}>
       <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label={ariaLabel} data-testid="technician-picker-button"
         onClick={() => setOpen((o) => !o)}
-        style={{ font: 'inherit', fontSize: 13, height: 36, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#FFFDF8', cursor: 'pointer', textAlign: 'left', minWidth: 160, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...style }}>
+        style={{ font: 'inherit', fontSize: 13, height: 44, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#FFFDF8', cursor: 'pointer', textAlign: 'left', minWidth: 160, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...style }}>
         {shown} ▾
       </button>
       {open ? (

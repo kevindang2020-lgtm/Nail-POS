@@ -110,5 +110,12 @@ export const BOOKVERIFY_VI = {
   "bv.d.resendOther": "Chưa gửi: {msg}",
   "bv.d.noCode": "Mã không bao giờ hiển thị — chỉ điện thoại của khách nhận được.",
   "bv.close": "Đóng",
-  "bv.noPermission": "Bạn không có quyền xem hoạt động xác minh đặt lịch."
+  "bv.noPermission": "Bạn không có quyền xem hoạt động xác minh đặt lịch.",
+  "bv.hs.unchecked": "Chưa kiểm tra",   // DRAFT — Kevin reviews
+  "bv.hd.twilio_identity": "Tài khoản Twilio của tiệm đã kết nối và phản hồi.",   // DRAFT — Kevin reviews
+  "bv.hd.verify_service": "Dịch vụ Verify gửi mã đang tồn tại và hoạt động.",   // DRAFT — Kevin reviews
+  "bv.hd.sender": "Số điện thoại hoặc tên người gửi mã.",   // DRAFT — Kevin reviews
+  "bv.hd.policy": "Điều đang được áp dụng cho từng nguồn đặt lịch ngay lúc này.",   // DRAFT — Kevin reviews
+  "bv.hd.recent_errors": "Lỗi từ nhà cung cấp trong 24 giờ qua.",   // DRAFT — Kevin reviews
+  "bv.hd.integration": "Giữ chỗ hết hạn đúng giờ và không lịch hẹn nào bỏ qua bước kiểm tra.",   // DRAFT — Kevin reviews
 } as const;

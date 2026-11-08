@@ -53,4 +53,14 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     await waitFor(() => expect(screen.getAllByText('Unknown').length).toBeGreaterThan(0));
     expect(screen.getByText(/They are not zero/)).toBeInTheDocument();
   });
+  it('the original status tabs All / Pending / Sent / Skipped stay as tabs and filter the server list (SUNMI addendum §03, Nov 7 2026)', async () => {
+    window.history.replaceState(null, '', '/follow-ups');   // an earlier test leaves ?type=missed_call (the screen reads its filters from the address)
+    const f = mockFetch(); globalThis.fetch = f as any;
+    view();
+    const tabs = await screen.findByTestId('fuq-status-tabs');
+    expect(tabs.querySelectorAll('[role="tab"]')).toHaveLength(4);
+    fireEvent.click(screen.getByTestId('fuq-tab-sent'));
+    await waitFor(() => expect(f.mock.calls.map((c: any[]) => String(c[0])).some((u) => u.includes('/follow-up-queue/tasks') && u.includes('status=sent') && u.includes('view=history'))).toBe(true));
+    expect(screen.getByTestId('fuq-tab-sent').getAttribute('aria-selected')).toBe('true');
+  });
 });

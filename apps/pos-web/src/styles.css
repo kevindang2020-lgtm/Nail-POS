@@ -3311,7 +3311,7 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .emc-next{font-size:12.5px;font-weight:600;margin-top:4px}
 .emc-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:#F2EDE4;color:#5B5348;white-space:nowrap}
 .emc-badge.ok{background:#E3F4E8;color:#1F7A3E}.emc-badge.warn{background:#FFF3D6;color:#8A5A00}.emc-badge.bad{background:#FBE4E1;color:#A6372B}
-.emc-test{margin-top:12px}.emc-test input{width:100%;padding:8px 10px;min-height:40px;margin-top:8px}
+.emc-test{margin-top:12px}.emc-test input{width:100%;padding:8px 10px;min-height:44px;margin-top:8px}.emc-test .btn{min-height:44px}
 .emc-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
 .emc-search{flex:1 1 320px;min-width:220px}
 .emc-table-wrap{overflow-x:auto}
@@ -3985,3 +3985,5 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .cdr-checks li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:start;font-size:13.5px}
 .cdr-checks li .fk-chip{justify-self:start}
 .cdr-checks li .fk-li-s{display:block;margin-top:2px}
+
+.fuq-status-tabs{display:inline-flex;margin:8px 0 2px}.fuq-status-tabs button{min-height:44px;min-width:96px}

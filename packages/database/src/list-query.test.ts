@@ -96,6 +96,13 @@ describe('sorting (§50)', () => {
     expect(parseListQuery({ sort: 'a', direction: 'asc' }, D).sort[0].direction).toBe('asc');
     expect(parseListQuery({ sort: '-b' }, D).sort[0].direction).toBe('desc');
   });
+  it('the named-order shape `sort: { allowed, default }` is honoured — "newest" is a sort there (Nov 7 2026)', () => {
+    const S: ListQuerySpec = { filters: {}, sort: { allowed: ['newest', 'oldest'], default: 'newest' } };
+    expect(parseListQuery({ sort: 'newest' }, S).sort.map((k) => k.field)).toEqual(['newest']);
+    expect(parseListQuery({}, S).sort.map((k) => k.field)).toEqual(['newest']);            // the default applies
+    expect(code(() => parseListQuery({ sort: 'password_hash' }, S))).toBe('INVALID_SORT:password_hash');   // still allow-listed
+    expect(() => assertListQuerySpec({ sort: { allowed: ['a'], default: 'b' } })).toThrow();
+  });
   it('a screen that declares its own `sort` FILTER (a named order) owns the `sort` param — no INVALID_SORT (Nov 7 2026)', () => {
     const S: ListQuerySpec = { filters: { sort: { type: 'enum', values: ['newest', 'name', 'last_order'] } } };
     const r = parseListQuery({ sort: 'newest' }, S);

@@ -174,7 +174,7 @@ export function PeriodBar({ value, onChange, server, basis, basisOptions, onBasi
   }, [open]);
   return (
     <div className={'fn-period' + (compact ? ' compact' : '')} ref={wrap} role="group" aria-label={tx('finance.period.label')}>
-      <div className="fk-seg fn-presets">
+      <div className="fk-seg fn-presets" data-testid="period-presets">
         {presets.map((p) => (
           <button type="button" key={p} className={value.preset === p ? 'on' : ''} aria-pressed={value.preset === p} onClick={() => { setOpen(false); onChange({ preset: p }); }} data-testid={'preset-' + p}>
             {tx('finance.period.' + p)}

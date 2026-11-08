@@ -146,6 +146,9 @@ const AUDITS = [
   // Oct 6 2026 (Phase 1): seven services wired the audit trail through `audit as any` and called record() with one object —
   // every one of their audits was silently dropped; audit handles are typed (AuditSink) and never cast away
   ['audit wiring', 'node', ['tooling/ci/check-audit-wiring.mjs']],
+  // Nov 7 2026: SUNMI module preservation registry — every registered module id stays in its screen source and the
+  // reviewed id baseline never shrinks silently (was standalone; two stale ids slipped past batch 2)
+  ['pos module registry', 'node', ['tooling/ci/check-pos-module-registry.mjs']],
   // Oct 6 2026: six web apps no longer built for production while tsc and vitest stayed green — build every app
   ['frontend builds', 'node', ['tooling/ci/check-frontend-builds.mjs']],
   // Oct 6 2026: Vite builds strip types without checking them — admin-web's tsc had been failing unseen

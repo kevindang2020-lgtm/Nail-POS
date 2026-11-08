@@ -71,6 +71,10 @@ export interface ListQuerySpec {
   sorts?: Record<string, string | null>;
   /** e.g. '-createdAt' or 'name,-createdAt'. */
   defaultSort?: string;
+  /** The named-order shape 19 endpoints were written with: `sort: { allowed: ['newest', 'oldest'], default: 'newest' }` — each
+   *  allowed name is a sort the handler applies itself (= `sorts: { newest: null, … }`). It was never read, so every one of those
+   *  endpoints answered INVALID_SORT to its own screen's sort (found Nov 7 2026: End-of-Day Follow-Ups "newest"). */
+  sort?: { allowed: readonly string[]; default?: string };
   /** A unique column appended to every ORDER BY so pages are stable (§46), e.g. 'id'. */
   tiebreaker?: string;
   /** Legacy parameter names for the sort field and direction (defaults: sort / dir, direction, sortDir, order). */
@@ -147,6 +151,8 @@ export function assertListQuerySpec(spec: ListQuerySpec, where = 'list query'): 
     for (const a of s.aliases ?? []) if (!FIELD.test(a)) fail(`filter "${f}" alias "${a}" is not a plain parameter name`);
   }
   for (const [f, c] of Object.entries(spec.sorts ?? {})) { if (!FIELD.test(f)) fail(`sort field "${f}" is not a plain field name`); col(c, `sort "${f}"`); }
+  for (const f of spec.sort?.allowed ?? []) if (!FIELD.test(f)) fail(`sort name "${f}" is not a plain field name`);
+  if (spec.sort?.default && !(spec.sort.allowed ?? []).includes(spec.sort.default)) fail(`sort default "${spec.sort.default}" is not an allowed sort`);
   if (spec.defaultSort) for (const k of splitSort(spec.defaultSort)) if (!(k.field in (spec.sorts ?? {}))) fail(`defaultSort "${k.field}" is not a declared sort`);
   col(spec.tiebreaker, 'tiebreaker');
   if (spec.search) for (const c of spec.search.columns ?? []) col(c, 'search');
@@ -278,7 +284,7 @@ export function parseListQuery(raw: Record<string, any> | null | undefined, spec
   }
 
   // ── sort: `a,-b` or the legacy `field` + direction pair
-  const sorts = spec.sorts ?? {};
+  const sorts: Record<string, string | null> = spec.sorts ?? (spec.sort?.allowed ? Object.fromEntries(spec.sort.allowed.map((k) => [k, null])) : {});
   // the canonical `sort` is accepted — unless the screen declares its own `sort` FILTER (a named order such as newest / a-z /
   // last order, read by the repository): then `sort` is that filter's value, never a column list. Fixed Nov 7 2026: the
   // Supplier Directory (and 14 other screens with a sort filter) answered INVALID_SORT "newest is not a sort order here".
@@ -297,7 +303,7 @@ export function parseListQuery(raw: Record<string, any> | null | undefined, spec
       sortKeys[0].direction = d;
     }
     for (const k of sortKeys) if (!Object.prototype.hasOwnProperty.call(sorts, k.field)) throw new ListQueryError('INVALID_SORT', `"${k.field}" is not a sort order here`, { field: k.field, allowed: Object.keys(sorts) });
-  } else sortKeys = spec.defaultSort ? splitSort(spec.defaultSort) : [];
+  } else sortKeys = spec.defaultSort ? splitSort(spec.defaultSort) : spec.sort?.default ? splitSort(spec.sort.default) : [];
   const sort: ListOrder[] = sortKeys.map((k) => ({ field: k.field, column: sorts[k.field] ?? null, direction: k.direction }));
 
   // ── limit / cursor

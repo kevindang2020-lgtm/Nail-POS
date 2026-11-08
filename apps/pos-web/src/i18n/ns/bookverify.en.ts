@@ -110,5 +110,12 @@ export const BOOKVERIFY_EN = {
   "bv.d.resendOther": "Not sent: {msg}",
   "bv.d.noCode": "The code itself is never shown — only the customer's phone receives it.",
   "bv.close": "Close",
-  "bv.noPermission": "You do not have permission to view booking verification activity."
+  "bv.noPermission": "You do not have permission to view booking verification activity.",
+  "bv.hs.unchecked": "Not checked yet",
+  "bv.hd.twilio_identity": "Your own Twilio account is connected and answers.",
+  "bv.hd.verify_service": "The Verify Service that sends the codes exists and is active.",
+  "bv.hd.sender": "The phone number or sender the codes come from.",
+  "bv.hd.policy": "What is actually enforced for each booking source right now.",
+  "bv.hd.recent_errors": "Provider errors in the last 24 hours.",
+  "bv.hd.integration": "Slot holds expire on time and no booking skips the check.",
 } as const;

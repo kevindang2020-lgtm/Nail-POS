@@ -211,7 +211,7 @@ export function POSCommunicationsScreen() {
       </div>
 
       {/* 13 KPI tiles — six activity metrics (their own sources, '—' when the source is absent) + seven conversation counts (SQL) */}
-      <section className="ci-kpis" aria-label={tx('ci.kpis')}>
+      <section className="ci-kpis" aria-label={tx('ci.kpis')} data-testid="ci-kpis">
         <div className="ci-kpi-row six">
         <Metric testId="kpi-sent-today" label={tx('pos.messages_sent_today')} value={sum ? sum.sentToday.total.toLocaleString() : metricText(act?.messagesSentToday)}
           sub={sum ? tx('ci.kpi.sentSplit', { d: String(sum.sentToday.delivered), f: String(sum.sentToday.failed) }) : tx('ci.kpi.today')} title={tx('ci.def.sentToday')} />
@@ -233,7 +233,7 @@ export function POSCommunicationsScreen() {
       </section>
 
       {/* search + filters (server-side; page 1 on every change; the search text never goes in the URL) */}
-      <section className="ci-tools" aria-label={tx('ci.filters')}>
+      <section className="ci-tools" aria-label={tx('ci.filters')} data-testid="ci-tools">
         <input className="ci-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('ci.searchPh')} aria-label={tx('ci.searchPh')} data-testid="ci-search" />
         {branches.length > 1 ? <select className="ci-sel" value={st.branch} onChange={(e) => setFilter({ branch: e.target.value })} aria-label={tx('ci.f.branch')} data-testid="ci-branch">
           <option value="">{tx('ci.f.allBranches')}</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
@@ -312,7 +312,7 @@ export function POSCommunicationsScreen() {
       </section>
 
       {/* lower modules (kept) */}
-      <section className="ci-mods">
+      <section className="ci-mods" data-testid="ci-mods">
         <div className="ci-card">
           <div className="ci-card-t">{tx('pos.channel_mix')}</div>
           <ChannelMix items={(sum?.channelMix ?? []).map((x) => ({ label: tx('ci.ch.' + x.channel), count: x.count }))} loading={sum === undefined} />

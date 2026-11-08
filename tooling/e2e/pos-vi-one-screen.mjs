@@ -93,6 +93,26 @@ export const BATCH2_MODULES = [
   { key: 'gift-cards', path: '/tenant/customers/gift-cards', label: 'GIFT CARDS' },
   { key: 'terminals', path: '/tenant/devices/payment-terminals', label: 'PAYMENT TERMINALS' },
 ];
+/** SUNMI batch 3 (Kevin's Nov 7 2026 evening PDFs): communications, follow-ups and team pages (MODULE_SET=batch3; =all adds them). */
+export const BATCH3_MODULES = [
+  { key: 'phone-verification', path: '/tenant/communications/phone-verification', label: 'BOOKING PHONE VERIFICATION' },
+  { key: 'loyalty-network', path: '/tenant/customers/loyalty?view=network', label: 'GLOBAL LOYALTY & EARNING RULES' },
+  { key: 'messaging-setup', path: '/tenant/communications/messaging-setup', label: 'TEXT MESSAGING SETUP' },
+  { key: 'followup-settings', path: '/settings/follow-ups', label: 'END-OF-DAY FOLLOW-UPS' },
+  { key: 'follow-ups', path: '/follow-ups', label: 'FOLLOW-UP QUEUE' },
+  { key: 'reminders', path: '/tenant/communications/reminders', label: 'APPOINTMENT REMINDERS' },
+  { key: 'email', path: '/tenant/communications/email', label: 'EMAIL CENTER' },
+  { key: 'sms-inbox', path: '/tenant/communications/sms', label: 'SMS INBOX' },
+  { key: 'phone', path: '/tenant/communications/phone', label: 'PHONE & MESSAGING' },
+  { key: 'team', path: '/tenant/team/members', label: 'TEAM MANAGEMENT' },
+  { key: 'technicians', path: '/technicians', label: 'TECHNICIANS CENTER' },
+  { key: 'tech-appointments', path: '/tech-appointments', label: 'TECH APPOINTMENTS' },
+  { key: 'tech-schedule', path: '/technicians/schedule', label: 'LIVE TECHNICIAN SCHEDULE' },
+  { key: 'commission', path: '/tenant/reports/commission', label: 'COMMISSION REPORT' },
+  { key: 'performance', path: '/tenant/team/performance', label: 'TEAM PERFORMANCE' },
+  { key: 'ai-usage', path: '/tenant/ai/usage', label: 'AI USAGE & LIMITS' },
+  { key: 'setup-health', path: '/tenant/management/setup-health', label: 'SETUP HEALTH' },
+];
 /** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
 export const measureRegistry = (page, key) => {
   const reg = REGISTRY.pages.find((p) => p.key === key)?.modules ?? [];
@@ -489,7 +509,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');
