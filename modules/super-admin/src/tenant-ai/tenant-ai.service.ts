@@ -122,8 +122,15 @@ export class TenantAiService {
       const trialAvailable = !subscribed && !planRow && pkgs.some((p) => p.trialDays > 0 && !subByCode.has(p.code));
       const state = lapsed ? 'trial_expired' : planSub ? (planSub.status === 'trialing' ? 'trialing' : planSub.status === 'active' ? 'active' : planSub.status === 'past_due' || planSub.status === 'unpaid' ? 'past_due' : String(planSub.status))
         : memberActive ? 'active' : planRow?.status === 'cancelled' ? 'cancelled' : trialAvailable ? 'trial_available' : 'available';
+      // AI Plans SUNMI addendum (Nov 8 2026) "purchase overlap preview": before a plan is started, the member assistants this salon
+      // ALREADY has on their own (live: active, or a trial not yet ended). Starting the plan leaves those subscriptions as they are,
+      // so the owner sees what could be paid twice. Read-only; money = integer cents (the subscription's own price).
+      const owned = subscribed ? [] : pkgs.flatMap((p) => { const m = subByCode.get(p.code); if (!m) return [];
+        const live = m.status === 'active' || (m.status === 'trialing' && !(m.trialEndsAt && new Date(m.trialEndsAt).getTime() < Date.now()));
+        return live ? [{ code: p.code, name: p.name, status: m.status, monthlyPriceCents: Number(m.priceCents) || p.monthlyPriceCents }] : []; });
       return {
         code: pl.code, name: pl.name, description: pl.description, essential: !!pl.essential,
+        overlap: { owned, ownedMonthlyCents: owned.reduce((a, x) => a + (x.status === 'active' ? x.monthlyPriceCents : 0), 0) },
         fullCents, discountCents, effectiveCents,
         subscribed, status: planSub?.status ?? (subscribed ? 'active' : null), trialAvailable,
         state, trialEndsAt: trialEndsAt ? trialEndsAt.toISOString() : null, cancelledAt: planRow?.cancelled_at ? new Date(planRow.cancelled_at).toISOString() : null,

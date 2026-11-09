@@ -163,5 +163,7 @@ export const VOICESETTINGS_EN: Record<string, string> = {
   "vsx.health.d.tenant_isolation.PASSED": "Every transcript belongs to this salon.",
   "vsx.health.d.tenant_isolation.FAILED": "A transcript links to another salon. Report this immediately.",
   "vsx.health.k.no_side_effects": "Nothing changed by this check",
-  "vsx.health.d.no_side_effects.PASSED": "This page and this check never place a call, transcribe, delete or send a message."
+  "vsx.health.d.no_side_effects.PASSED": "This page and this check never place a call, transcribe, delete or send a message.",
+  "vsx.entitlement": "Voice Transcription is not active for this salon (no subscription). The saved policy is shown read-only; nothing can be changed until it is subscribed.",
+  "vsx.openPlans": "Open AI Plans",
 };

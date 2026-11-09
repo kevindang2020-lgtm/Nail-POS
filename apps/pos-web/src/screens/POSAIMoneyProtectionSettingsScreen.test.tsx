@@ -37,4 +37,16 @@ describe('POSAIMoneyProtectionSettingsScreen', () => {
     const h = await screen.findByTestId('mpx-hist-row');
     expect(h).toHaveTextContent('On · High → Off · High'); expect(h).toHaveTextContent('Weaker'); expect(h).toHaveTextContent('Owner Kim'); expect(h).toHaveTextContent('Split tenders');
   });
+  it('SUNMI: the status row counts the rules below — running, not running, overridden — and invents no Pending card', async () => {
+    mc.rules.mockResolvedValue({ rules: [rule, { ...rule, id: 'MP_DUP_CHARGE_EXACT', thresholds: { windowSeconds: 300 } }, { ...rule, id: 'MP_CASH_DRAWER_VARIANCE', severityOverridden: true, severity: 'LOW', layerOn: false, effective: false },
+      { ...rule, id: 'MP_REVERSAL_RATE_OUTLIER', enabled: false, effective: false }], canEdit: true });
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    await screen.findAllByTestId('mpx-set-row');
+    expect(screen.getByTestId('mpx-set-kpis').children).toHaveLength(5);
+    expect(screen.getByTestId('mpx-sk-total')).toHaveTextContent('4'); expect(screen.getByTestId('mpx-sk-enabled')).toHaveTextContent('3');
+    expect(screen.getByTestId('mpx-sk-running')).toHaveTextContent('2'); expect(screen.getByTestId('mpx-sk-errors')).toHaveTextContent('1');
+    expect(screen.getByTestId('mpx-sk-overrides')).toHaveTextContent('2');
+    expect(screen.queryByText(/pending/i)).toBeNull();
+  });
 });
+

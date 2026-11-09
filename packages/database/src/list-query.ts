@@ -296,7 +296,9 @@ export function parseListQuery(raw: Record<string, any> | null | undefined, spec
     sortKeys = splitSort(sortHit.value);
     if (spec.unsignedDirection === 'desc') for (const k of sortKeys) if (!sortHit.value.includes('-' + k.field) && !sortHit.value.includes('+' + k.field)) k.direction = 'desc';
     if (sortKeys.length > 5) throw new ListQueryError('INVALID_SORT', 'sort takes at most 5 fields', { field: sortHit.name });
-    const dirHit = first(q0, spec.dirParams ?? DEFAULT_DIR_PARAMS);
+    // a parameter the route declares as its own FILTER is that filter's value, never a sort direction (Nov 8 2026: Voice Call
+    // History's inbound / outbound `direction` filter answered INVALID_SORT "direction must be asc or desc" on every load)
+    const dirHit = first(q0, (spec.dirParams ?? DEFAULT_DIR_PARAMS).filter((n) => !Object.prototype.hasOwnProperty.call(declared, n)));
     if (dirHit && sortKeys.length === 1 && !sortHit.value.trim().startsWith('-')) {
       const d = String(dirHit.value).toLowerCase();
       if (d !== 'asc' && d !== 'desc') throw new ListQueryError('INVALID_SORT', `${dirHit.name} must be asc or desc`, { field: dirHit.name, allowed: ['asc', 'desc'] });

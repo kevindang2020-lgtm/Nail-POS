@@ -195,3 +195,22 @@ describe('Check Voice Transcription System', () => {
     expect(k.redaction.lastPassedAt).not.toBeNull();
   });
 });
+
+describe('Voice calls — SUNMI addenda counters (Nov 8 2026)', () => {
+  it('SU-08 Call History eight / Search four: direction, missed (call log), transcribed, failed, open follow-ups — scoped, deltas exact', async () => {
+    const before = (await vc.summary(ctx()) as any).counters;
+    await call({ dir: 'inbound', status: 'completed', items: [{ type: 'callback', priority: 'high' }] });   // transcribed + an open follow-up
+    await call({ dir: 'outbound', status: 'failed', summary: null });
+    await call({ dir: 'inbound', status: 'low_confidence', summary: null });                                  // a transcript that needs review = transcribed
+    await call({ dir: 'inbound', status: 'processing', summary: null });
+    await call({ t: X, b: BX, cust: CX, dir: 'outbound', status: 'failed', summary: null });                 // other salon: never counted
+    await q(`insert into call_intelligence_events (tenant_id, branch_id, provider_call_id, status) values ($1,$2,'m-1','missed'), ($1,$2,'m-2','answered_ai'), ($3,$4,'m-x','missed')`, [T, B, X, BX]);
+    const c = (await vc.summary(ctx()) as any).counters;
+    expect(c.calls - before.calls).toBe(4);
+    expect(c.inbound - before.inbound).toBe(3); expect(c.outbound - before.outbound).toBe(1);
+    expect(c.transcribed - before.transcribed).toBe(2);
+    expect(c.failed - before.failed).toBe(1);
+    expect(c.followUpsOpen - before.followUpsOpen).toBe(1);
+    expect(c.missed - before.missed).toBe(1);
+  });
+});

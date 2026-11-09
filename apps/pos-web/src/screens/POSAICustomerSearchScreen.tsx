@@ -22,7 +22,7 @@ const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, wi
 const URL_KEYS = ['status', 'booking', 'technician', 'service', 'branch', 'dateField', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
 const STATE_TONE: Record<string, 'ok' | 'warn' | 'bad' | undefined> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', UNKNOWN: undefined };
 const LIFE_TONE: Record<string, string> = { active: 'ok', inactive: 'warn', never: '', archived: 'bad', unknown: '' };
-const STATUSES = ['active', 'inactive', 'new', 'returning', 'never', 'duplicate', 'archived'];
+const STATUSES = ['active', 'inactive', 'new', 'returning', 'never', 'duplicate', 'churn_watch', 'rebooking', 'archived'];   // churn_watch + rebooking: SUNMI §09 (source = Customer Intelligence)
 const BOOKING = ['upcoming', 'completed', 'canceled', 'no_show'];
 const DATE_FIELDS = ['created', 'updated', 'last_visit', 'first_visit', 'appointment', 'booking_created', 'service_completed'];
 const SORTS = ['relevance', 'newest', 'oldest', 'name', 'last_visit', 'visits'];

@@ -9,7 +9,7 @@
 // upgrade restores it. Units are never mixed; unlimited / not-metered show no invented percentage. Paid upgrades and
 // reactivation are not self-serve here — they open Billing; this page never charges a card.
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiUsageScreenApi } from '../api/posAiUsageApi';
 import { errorTextOf } from '../i18n/error-text';
@@ -85,7 +85,15 @@ export function POSAiUsageScreen() {
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
   const [search, setSearch] = useState(''); const q = useDebounced(search, 300);
-  const [status, setStatus] = useState<string>('all'); const [category, setCategory] = useState(''); const [sort, setSort] = useState('catalog');
+  // AI Plans' five tabs (SUNMI addendum, Nov 8 2026) open this screen at a view: ?view=catalog | subscriptions | billing | usage
+  const [params] = useSearchParams(); const view = params.get('view');
+  const [status, setStatus] = useState<string>(view === 'subscriptions' ? 'active' : 'all'); const [category, setCategory] = useState(''); const [sort, setSort] = useState('catalog');
+  useEffect(() => {
+    const target = view === 'catalog' || view === 'subscriptions' ? 'aiu-packages' : null;   // billing: the cost & invoices dialog (below)
+    if (!target) return;
+    let tries = 0; const id = setInterval(() => { const el = document.querySelector(`[data-testid="${target}"]`); if (el || ++tries > 40) { clearInterval(id); el?.scrollIntoView?.({ block: 'start' }); } }, 100);
+    return () => clearInterval(id);
+  }, [view]);
   const [page, setPage] = useState(1);
   const grid = useGridCols(); const pageSize = grid.cols * 2;
   const [list, setList] = useState<ListResp | null>(null); const [listErr, setListErr] = useState<unknown>(null);
@@ -192,6 +200,8 @@ export function POSAiUsageScreen() {
 
       {dlg?.kind === 'detail' ? <DetailDialog code={dlg.code} onClose={() => setDlg(null)} onChanged={(text) => { setNote({ tone: 'ok', text }); refresh(); }}
         openHistory={(code) => setDlg({ kind: 'history', code })} openModule={(r) => nav(r)} openBilling={() => nav('/tenant/account/subscription')} /> : null}
+      {/* AI Plans → Billing History: open the cost & invoices dialog once the summary is here (only when the role may see cost) */}
+      <BillingDeepLink open={view === 'billing' && !!cost?.visible} onOpen={() => setDlg({ kind: 'cost' })} />
       {dlg?.kind === 'cost' && cost?.visible ? <CostDialog cost={cost} onClose={() => setDlg(null)} openPackage={(code) => setDlg({ kind: 'detail', code })} /> : null}
       {dlg?.kind === 'history' ? <HistoryDialog initialCode={dlg.code} canExport={can('reports.export') || can('subscription.manage')} onClose={() => setDlg(null)} /> : null}
     </div>
@@ -319,6 +329,12 @@ export function DetailDialog({ code, onClose, onChanged, openHistory, openModule
 }
 
 // ── verified monthly cost (owner priority 1) ────────────────────────────────────────────────────────────────────────────
+function BillingDeepLink({ open, onOpen }: { open: boolean; onOpen: () => void }) {
+  const done = useRef(false);
+  useEffect(() => { if (open && !done.current) { done.current = true; onOpen(); } }, [open, onOpen]);
+  return null;
+}
+
 function CostDialog({ cost, onClose, openPackage }: { cost: Extract<Summary['cost'], { visible: true }>; onClose: () => void; openPackage: (code: string) => void }) {
   return (
     <FitDialog wide title={tx('aiu.kpi.cost')} subtitle={tx('aiu.basis.' + cost.basis)} onClose={onClose} testId="aiu-cost"

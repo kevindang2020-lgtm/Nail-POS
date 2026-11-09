@@ -73,7 +73,7 @@ function MpShell({ title, sub, tab, children, onChanged }: { title: string; sub:
         <button className="btn ghost" data-testid="mpx-run" disabled={busy} onClick={runDetection}>{busy ? t('mpx.running') : t('mpx.run')}</button>
         <button className="btn ghost" data-testid="mpx-check" onClick={runCheck}>{t('mpx.check')}</button>
       </div>
-      <nav style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 8 }} aria-label={t('mpx.tab.overview')}>
+      <nav style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }} aria-label={t('mpx.tab.overview')} data-testid="mpx-nav">
         {TABS.map(([k, to]) => <Link key={k} to={to} className={'btn ghost' + (k === tab ? ' on' : '')} aria-current={k === tab ? 'page' : undefined} data-testid={`mpx-tab-${k}`}>{t('mpx.tab.' + k)}</Link>)}
       </nav>
       <p className="sub" data-testid="mpx-safety">{t('mpx.safety')}</p>
@@ -388,18 +388,41 @@ export function MpRules() {
   return (
     <MpShell title={tx('pos.money_protection_rules_detection')} sub={t('mpx.rules.note')} tab="rules" onChanged={() => setTick((n) => n + 1)}>
       {err ? <ErrorRetry message={err} onRetry={load} /> : !r ? <div className="state">{t('mpx.loading')}</div> : (
+        <>
+        {/* SUNMI addendum (Nov 8 2026): seven even summary tiles over the rule table, counted from the rules this page shows —
+            Total · Enabled · Disabled · Exact comparison · Normal levels · Reconciliation · Not running (switched on, layer off) */}
+        {(() => {
+          const rs: any[] = r.rules; const n = (f: (x: any) => boolean) => fmtNumber(rs.filter(f).length);
+          const off = rs.filter((x) => x.enabled && !x.effective).length;
+          return <div className="rvw-kpis mpx-rule-kpis" data-testid="mpx-rule-kpis">
+            <KpiCard testId="mpx-rk-total" label={t('mpx.rk.total')} value={fmtNumber(rs.length)} />
+            <KpiCard testId="mpx-rk-enabled" label={t('mpx.rk.enabled')} value={n((x) => x.enabled)} tone="ok" />
+            <KpiCard testId="mpx-rk-disabled" label={t('mpx.rk.disabled')} value={n((x) => !x.enabled)} />
+            <KpiCard testId="mpx-rk-deterministic" label={t('mpx.layer.deterministic')} value={n((x) => x.layer === 'deterministic')} />
+            <KpiCard testId="mpx-rk-baseline" label={t('mpx.layer.baseline')} value={n((x) => x.layer === 'baseline')} />
+            <KpiCard testId="mpx-rk-reconciliation" label={t('mpx.layer.reconciliation')} value={n((x) => x.layer === 'reconciliation')} />
+            <KpiCard testId="mpx-rk-errors" label={t('mpx.rk.errors')} value={fmtNumber(off)} tone={off ? 'bad' : 'ok'} sub={t('mpx.rk.errorsSub')} />
+          </div>;
+        })()}
         <section className="panel" style={{ padding: 12 }} data-testid="mpx-rules"><div className="p-h">{t('mpx.rules.title')}</div>
-          <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th>{t('mpx.rules.col.layer')}</th><th>{t('mpx.rules.col.state')}</th><th>{t('mpx.rules.col.alerts')}</th><th>{t('mpx.rules.col.last')}</th><th /></tr></thead>
+          <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th>{t('mpx.rules.col.category')}</th><th>{t('mpx.rules.col.layer')}</th><th>{t('mpx.rules.col.severity')}</th><th>{t('mpx.rules.col.mode')}</th><th>{t('mpx.rules.col.thresholds')}</th><th>{t('mpx.rules.col.review')}</th><th>{t('mpx.rules.col.state')}</th><th>{t('mpx.rules.col.alerts')}</th><th /></tr></thead>
             <tbody>{r.rules.map((x: any) => (
               <tr key={x.id} data-testid="mpx-rule-row">
-                <td><b>{ruleName(x.id, x.name)}</b><div className="sub">{catName(x.category)} · <span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span></div></td>
-                <td>{t('mpx.layer.' + x.layer)}{Object.keys(x.thresholds).length ? <div className="sub">{Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</div> : null}</td><td><RuleState x={x} /></td>
-                <td>{fmtNumber(x.alerts30d)}{x.dismissed90d ? <div className="sub">{t('mpx.rules.dismissed', { n: fmtNumber(x.dismissed90d) })}</div> : null}</td>
-                <td>{when(x.lastAlertAt)}</td>
-                <td className="nowrap"><button className="btn ghost sm" data-testid="mpx-rule-view" onClick={() => setOpen(x)}>{t('mpx.view')}</button>{' '}
-                  <Link className="btn ghost sm" to={`/tenant/ai/money-protection/alerts?rule=${x.id}`}>{t('mpx.rules.seeAlerts')}</Link></td>
+                {/* SUNMI addendum (Nov 8 2026): the original guide's eight columns — Rule · Category · Layer · Severity · Mode · Thresholds ·
+                    Human review · Status — then the alert counts (last alert under them) and the actions */}
+                <td><b>{ruleName(x.id, x.name)}</b></td>
+                <td>{catName(x.category)}</td>
+                <td>{t('mpx.layer.' + x.layer)}</td>
+                <td><span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span>{x.severityOverridden ? <div className="sub">{t('mpx.rules.default', { s: t('mpx.sev.' + x.defaultSeverity) })}</div> : null}</td>
+                <td>{['realtime', 'near_realtime', 'batch'].includes(x.mode) ? t('mpx.mode.' + x.mode) : '—'}</td>
+                <td className="sub">{Object.keys(x.thresholds).length ? Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ') : '—'}</td>
+                <td>{x.humanReview ? t('mpx.rules.reviewYes') : t('mpx.rules.reviewNo')}</td>
+                <td><RuleState x={x} /></td>
+                <td>{fmtNumber(x.alerts30d)}<div className="sub">{t('mpx.rules.col.last')}: {when(x.lastAlertAt)}</div>{x.dismissed90d ? <div className="sub">{t('mpx.rules.dismissed', { n: fmtNumber(x.dismissed90d) })}</div> : null}</td>
+                <td className="mpx-acts"><div className="mpx-act-stack"><button className="btn ghost sm" data-testid="mpx-rule-view" onClick={() => setOpen(x)}>{t('mpx.view')}</button>
+                  <Link className="btn ghost sm" to={`/tenant/ai/money-protection/alerts?rule=${x.id}`}>{t('mpx.rules.seeAlerts')}</Link></div></td>
               </tr>))}</tbody></table></div>
-        </section>)}
+        </section></>)}
       {open ? <FitDialog wide testId="mpx-rule" title={ruleName(open.id, open.name)} onClose={() => setOpen(null)} footer={<button className="btn ghost" onClick={() => setOpen(null)}>{t('mpx.close')}</button>}>
         <p>{open.description}</p>
         <div className="sub">{catName(open.category)} · {t('mpx.layer.' + open.layer)} · {t('mpx.rules.default', { s: t('mpx.sev.' + open.defaultSeverity) })}</div>
@@ -419,13 +442,28 @@ export function MpSettings() {
   return (
     <MpShell title={tx('pos.money_protection_settings')} sub={tx('pos.enable_disable_rules_adjust_severity_and_1pnq')} tab="settings" onChanged={() => setTick((n) => n + 1)}>
       {err ? <ErrorRetry message={err} onRetry={load} /> : !r ? <div className="state">{t('mpx.loading')}</div> : (
+        <>
+        {/* SUNMI addendum (Nov 8 2026): the status row, every number from the rules listed below — Rules · Enabled · Running ·
+            Not running (on, layer off) · Overridden (severity or a threshold differs from its default). There is no "pending" state
+            (changes save at once, audited), so no Pending card is invented. */}
+        {(() => {
+          const rs: any[] = r.rules; const over = rs.filter((x) => x.severityOverridden || Object.entries(x.thresholds ?? {}).some(([k, v]) => x.defaultThresholds?.[k] !== v)).length;
+          const off = rs.filter((x) => x.enabled && !x.effective).length;
+          return <div className="rvw-kpis mpx-set-kpis" data-testid="mpx-set-kpis">
+            <KpiCard testId="mpx-sk-total" label={t('mpx.rk.total')} value={fmtNumber(rs.length)} />
+            <KpiCard testId="mpx-sk-enabled" label={t('mpx.rk.enabled')} value={fmtNumber(rs.filter((x) => x.enabled).length)} />
+            <KpiCard testId="mpx-sk-running" label={t('mpx.sk.running')} value={fmtNumber(rs.filter((x) => x.effective).length)} tone="ok" />
+            <KpiCard testId="mpx-sk-errors" label={t('mpx.rk.errors')} value={fmtNumber(off)} tone={off ? 'bad' : 'ok'} sub={t('mpx.rk.errorsSub')} />
+            <KpiCard testId="mpx-sk-overrides" label={t('mpx.sk.overrides')} value={fmtNumber(over)} tone={over ? 'gold' : undefined} sub={t('mpx.sk.overridesSub')} />
+          </div>;
+        })()}
         <section className="panel" style={{ padding: 12 }} data-testid="mpx-settings"><div className="p-h">{t('mpx.set.title')}</div>
-          <div className="rvw-table-wrap"><table className="tbl rvw-table"><tbody>{r.rules.map((x: any) => (
+          <div className="rvw-table-wrap mpx-set-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th>{t('mpx.sk.colEnabled')}</th><th>{t('mpx.sk.colSeverity')}</th><th>{t('mpx.rules.col.thresholds')}</th><th /></tr></thead><tbody>{r.rules.map((x: any) => (
             <tr key={x.id} data-testid="mpx-set-row"><td><b>{ruleName(x.id, x.name)}</b><div className="sub">{t('mpx.rules.default', { s: t('mpx.sev.' + x.defaultSeverity) })}</div></td>
               <td><RuleState x={x} /></td><td><span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span></td>
               <td className="sub">{Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</td>
-              <td>{r.canEdit ? <button className="btn ghost sm" data-testid="mpx-rule-edit" onClick={() => setEdit(x)}>{t('mpx.rules.edit')}</button> : null}</td></tr>))}</tbody></table></div>
-        </section>)}
+              <td className="mpx-acts">{r.canEdit ? <button className="btn ghost sm" data-testid="mpx-rule-edit" onClick={() => setEdit(x)}>{t('mpx.rules.edit')}</button> : null}</td></tr>))}</tbody></table></div>
+        </section></>)}
       <ListFrame testId="mpx-history" f={H.f} set={H.set} period={H.period} setPer={H.setPer} today={H.list?.period?.today} list={H.list} err={H.err} onRetry={H.load} total={H.list?.total}
         searchPh={t('mpx.set.history')} empty={t('mpx.set.noHistory')} filters={null}>
         <div className="p-h">{t('mpx.set.history')}</div>

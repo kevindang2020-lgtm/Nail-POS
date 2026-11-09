@@ -103,4 +103,30 @@ export const AIPLANS_VI: Record<string, string> = {
   "aic.check.title": "Kiểm tra hệ thống AI",
   "aic.check.close": "Đóng",
   "aic.openDetails": "Mở chi tiết {name}",
+  "plx.tabs": "Các mục Gói AI",   // DRAFT — Kevin reviews
+  "plx.tab.packages": "Gói",   // DRAFT — Kevin reviews
+  "plx.tab.individual": "Từng trợ lý riêng",   // DRAFT — Kevin reviews
+  "plx.tab.subscriptions": "Gói đã đăng ký",   // DRAFT — Kevin reviews
+  "plx.tab.billing": "Lịch sử hóa đơn",   // DRAFT — Kevin reviews
+  "plx.tab.usage": "Sử dụng & giới hạn",   // DRAFT — Kevin reviews,
+  "fcx.daysN": "{n} ngày",   // DRAFT — Kevin reviews
+  "fcx.noHistory": "Chưa có dữ liệu",   // DRAFT — Kevin reviews
+  "fcx.r.available": "Dữ liệu hiện có",   // DRAFT — Kevin reviews
+  "fcx.r.required": "Dữ liệu cần có",   // DRAFT — Kevin reviews
+  "fcx.r.requiredSub": "Tối thiểu trước khi dự báo",   // DRAFT — Kevin reviews
+  "fcx.r.valid": "Bản ghi hợp lệ",   // DRAFT — Kevin reviews
+  "fcx.r.validSub": "Số ngày có hoạt động",   // DRAFT — Kevin reviews
+  "fcx.r.ready": "Sẵn sàng dự báo",   // DRAFT — Kevin reviews
+  "fcx.r.readyYes": "Sẵn sàng",   // DRAFT — Kevin reviews
+  "fcx.r.readyNo": "Chưa sẵn sàng",   // DRAFT — Kevin reviews
+  "fcx.r.last": "Dự báo gần nhất",   // DRAFT — Kevin reviews
+  "fcx.r.lastSub": "Lần chạy dự báo gần nhất",   // DRAFT — Kevin reviews
+  "fcx.r.lastUnknown": "Không đọc được lịch sử dự báo",   // DRAFT — Kevin reviews
+  "fcx.r.quality": "Chất lượng dữ liệu",   // DRAFT — Kevin reviews
+  "fcx.r.gaps": "{n} ngày không có dữ liệu",   // DRAFT — Kevin reviews
+  "fcx.r.noGaps": "Không có ngày trống",   // DRAFT — Kevin reviews
+  "fcx.r.lastDay": "Bản ghi cuối {d}",   // DRAFT — Kevin reviews,
+  "plx.overlap": "Tiệm đã có riêng {n} trợ lý trong gói này: {names}.",   // DRAFT — Kevin reviews
+  "plx.overlapPaid": "Hiện đang trả {price}/tháng cho chúng.",   // DRAFT — Kevin reviews
+  "plx.overlapConfirm": "Bắt đầu gói này không hủy các trợ lý tiệm đã đăng ký riêng — chúng vẫn tính giá riêng. Hãy xem Sử dụng & giới hạn AI để không trả tiền hai lần.",   // DRAFT — Kevin reviews
 };

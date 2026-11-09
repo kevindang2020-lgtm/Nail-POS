@@ -28,4 +28,19 @@ describe('POSAIMoneyProtectionRulesScreen', () => {
     fireEvent.click(screen.getAllByTestId('mpx-rule-view')[0]);
     expect(await screen.findByTestId('mpx-rule')).toHaveTextContent('Same ticket, amount and method');
   });
+  it('SUNMI: seven even tiles counted from the rules; the eight named columns (incl. Mode and Human review) are in the table', async () => {
+    mc.rules.mockResolvedValue({ rules: [rule(), rule({ id: 'MP_CASH_DRAWER_VARIANCE', layer: 'reconciliation', mode: 'batch', humanReview: false, layerOn: false, effective: false, thresholds: {} }),
+      rule({ id: 'MP_REVERSAL_RATE_OUTLIER', layer: 'baseline', enabled: false, effective: false })], canEdit: false });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    await screen.findAllByTestId('mpx-rule-row');
+    expect(screen.getByTestId('mpx-rule-kpis').children).toHaveLength(7);
+    expect(screen.getByTestId('mpx-rk-total')).toHaveTextContent('3'); expect(screen.getByTestId('mpx-rk-enabled')).toHaveTextContent('2');
+    expect(screen.getByTestId('mpx-rk-disabled')).toHaveTextContent('1'); expect(screen.getByTestId('mpx-rk-baseline')).toHaveTextContent('1');
+    expect(screen.getByTestId('mpx-rk-errors')).toHaveTextContent(/Not running.*1/);   // on, but its layer is off (a disabled rule is not an error)
+    const head = Array.from(document.querySelectorAll('section[data-testid="mpx-rules"] th')).map((th) => th.textContent);
+    expect(head.slice(0, 8)).toEqual(['Rule', 'Category', 'How it checks', 'Severity', 'Mode', 'Thresholds', 'Human review', 'State']);
+    const rows = screen.getAllByTestId('mpx-rule-row');
+    expect(rows[1]).toHaveTextContent('Scheduled batch'); expect(rows[1]).toHaveTextContent('Not required'); expect(rows[0]).toHaveTextContent('Required');
+  });
 });
+

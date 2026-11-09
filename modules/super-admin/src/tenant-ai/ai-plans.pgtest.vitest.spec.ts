@@ -54,4 +54,17 @@ describe('AI Plans', () => {
   it('PL-05 cancelling a plan with nothing live is an error, not "ok"', async () => {
     expect(await code(svc.cancelPlan(ctx, 'plan_booking_calls'))).toBe('subscription_not_found');
   });
+  it('PL-06 SUNMI purchase-overlap preview: members the salon already has on their own, with their price (live only; read-only)', async () => {
+    await q(sql`insert into tenant_ai_subscriptions (id, tenant_id, package_code, status, billing_period, price_cents, currency, usage_limit, overage_enabled)
+      values (gen_random_uuid(), ${T}, 'ai_customer_profile_assistant', 'active', 'monthly', 3900, 'usd', 0, false)`);
+    await q(sql`insert into tenant_ai_subscriptions (id, tenant_id, package_code, status, billing_period, price_cents, currency, usage_limit, overage_enabled, trial_ends_at)
+      values (gen_random_uuid(), ${T}, 'ai_checkout_upsell_assistant', 'trialing', 'monthly', 4900, 'usd', 0, false, now() + interval '5 days')`);
+    const p = await plan('plan_client_growth');
+    expect(p.subscribed).toBe(false);
+    expect(p.overlap.owned.map((x: any) => [x.code, x.status, x.monthlyPriceCents]).sort()).toEqual([['ai_checkout_upsell_assistant', 'trialing', 4900], ['ai_customer_profile_assistant', 'active', 3900]]);
+    expect(p.overlap.ownedMonthlyCents).toBe(3900);   // a trial is not yet paid
+    // a plan already live has nothing "to buy", so no overlap is shown
+    expect((await plan('plan_money_owner')).overlap).toEqual({ owned: [], ownedMonthlyCents: 0 });
+  });
 });
+

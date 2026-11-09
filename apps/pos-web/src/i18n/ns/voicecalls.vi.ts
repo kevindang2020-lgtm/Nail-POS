@@ -211,5 +211,18 @@ export const VOICECALLS_VI: Record<string, string> = {
   "vcx.health.d.tenant_isolation.PASSED": "Mọi dòng chép lời đều thuộc cuộc gọi của tiệm này.",
   "vcx.health.d.tenant_isolation.FAILED": "Có dòng chép lời trỏ tới cuộc gọi của tiệm khác. Hãy báo ngay.",
   "vcx.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
-  "vcx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không gọi điện, nhắn tin, đặt lịch, hoàn tiền hay đổi cài đặt nhà cung cấp."
+  "vcx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không gọi điện, nhắn tin, đặt lịch, hoàn tiền hay đổi cài đặt nhà cung cấp.",
+  "vcx.kpi.total": "Tổng cuộc gọi",   // DRAFT — Kevin reviews
+  "vcx.kpi.sub7": "{n} trong 7 ngày qua",   // DRAFT — Kevin reviews
+  "vcx.kpi.inbound": "Gọi đến",   // DRAFT — Kevin reviews
+  "vcx.kpi.outbound": "Gọi đi",   // DRAFT — Kevin reviews
+  "vcx.kpi.missed": "Gọi nhỡ",   // DRAFT — Kevin reviews
+  "vcx.kpi.subMissed": "Từ nhật ký cuộc gọi (không có bản chép)",   // DRAFT — Kevin reviews
+  "vcx.kpi.completedTx": "Đã chép lời xong",   // DRAFT — Kevin reviews
+  "vcx.kpi.transcribed": "Đã chép lời",   // DRAFT — Kevin reviews
+  "vcx.kpi.subNotTx": "{n} không chép lời (đồng ý / chính sách)",   // DRAFT — Kevin reviews
+  "vcx.kpi.failedTx": "Chép lời thất bại",   // DRAFT — Kevin reviews
+  "vcx.kpi.followUps": "Cần theo dõi",   // DRAFT — Kevin reviews
+  "vcx.kpi.pendingFailed": "Đang xử lý / thất bại",   // DRAFT — Kevin reviews
+  "vcx.kpi.subPf": "{p} đang xử lý · {f} thất bại",   // DRAFT — Kevin reviews
 };

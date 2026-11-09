@@ -57,19 +57,16 @@ export function POSAiInventoryScreen() {
           <h1>{tx('pos.ai_inventory_assistant')}</h1>
         <div className="sub mb-3">{tx('pos.forecasts_low_stock_reorder_and_slow_1e9j')}</div>
         </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-        {TABS().map(([id, label]) => (
-          <button className={"btn w-fit whitespace-nowrap " + (tab === id ? "active" : "")} key={id} aria-pressed={tab === id}
-            onClick={() => setTab(id)}>{label}</button>
-        ))}
-      </div>
       </div>
 
 
+
+      <InventoryCenterPanel showDetail={tab === 'command'} actions={TABS().map(([id, label]) => (
+        <button className={"btn w-fit whitespace-nowrap " + (tab === id ? "active" : "")} key={id} aria-pressed={tab === id} data-testid={`inv-tab-${id}`}
+          onClick={() => setTab(id)}>{label}</button>
+      ))} />
       {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
-      {loading && <div className="state">{tx('pos.loading')}</div>}
-
-      {tab === 'command' ? <InventoryCenterPanel /> : null}
+      {loading && tab !== 'command' && <div className="state">{tx('pos.loading')}</div>}
 
       {!loading && !error && tab === 'low' && low && (
         low.items.length === 0 ? <div className="state">{tx('pos.nothing_below_its_reorder_point_right_1dw9')}</div> : (

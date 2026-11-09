@@ -41,6 +41,24 @@ const vcPage = (items: any[], o: any = {}) => ({ items, total: items.length, pag
 const wrap = (el: any) => render(<MemoryRouter>{el}</MemoryRouter>);
 
 describe('Call History', () => {
+  it('SUNMI: Call History has the eight cards, Search the four; cards filter the list', async () => {
+    const full = { calls: 12, calls7d: 5, processing: 2, failed7d: 1, notTranscribed: 3, inbound: 9, outbound: 3, missed: 4, transcribed: 6, failed: 1, followUpsOpen: 2 };
+    vc.summary.mockResolvedValue(vcSum({ counters: full })); vc.list.mockResolvedValue(vcPage([vcRow()]));
+    const h = wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    await waitFor(() => expect(screen.getByTestId('vcx-kpi-missed')).toHaveTextContent('4'));
+    expect(screen.getByTestId('vcx-kpis').children).toHaveLength(8);
+    expect(screen.getByTestId('vcx-kpi-calls')).toHaveTextContent(/Total calls.*12.*5 in the last 7 days/);
+    expect(screen.getByTestId('vcx-kpi-inbound')).toHaveTextContent('9'); expect(screen.getByTestId('vcx-kpi-outbound')).toHaveTextContent('3');
+    expect(screen.getByTestId('vcx-kpi-transcribed')).toHaveTextContent(/Completed transcriptions.*6.*3 not transcribed/);
+    expect(screen.getByTestId('vcx-kpi-followups')).toHaveTextContent('2');
+    fireEvent.click(screen.getByTestId('vcx-kpi-outbound'));
+    await waitFor(() => expect(vc.list).toHaveBeenLastCalledWith(expect.objectContaining({ direction: 'outbound' })));
+    h.unmount();
+    wrap(<POSAIVoiceTranscriptionSearchScreen />);
+    await waitFor(() => expect(screen.getByTestId('vcx-kpi-pending')).toHaveTextContent(/3.*2 processing · 1 failed/));
+    expect(screen.getByTestId('vcx-kpis').children).toHaveLength(4);
+    expect(screen.queryByTestId('vcx-kpi-missed')).toBeNull();
+  });
   it('lists calls newest first from the start, with customer, status, follow-up; no old list call', async () => {
     vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([vcRow()]));
     wrap(<POSAIVoiceTranscriptionHistoryScreen />);
@@ -229,6 +247,17 @@ describe('Settings', () => {
     c.records.mockResolvedValue(page([{ kind: 'settings', id: 'h1', at: '2026-11-01T10:00:00Z', what: 'retentionDays', actor: 'Manager Lan', role: 'MANAGER', changes: [{ key: 'retentionDays', before: 730, after: 365 }] },
       { kind: 'deletion', id: 'd1', at: '2026-11-01T03:00:00Z', what: 'retention_expired', actor: 'system:retention', role: null, transcriptId: '12345678-1', providerConfirmed: false, changes: [] }]));
     c.check.mockResolvedValue({ id: 'h', overall: 'FAILED', reused: false, checkedAt: '2026-11-02T14:00:00Z', checks: [{ key: 'retention_sweep', state: 'FAILED', count: 2 }, { key: 'no_side_effects', state: 'PASSED' }] });
+  });
+  it('SUNMI: no subscription is labelled as such (not "no access"); the saved policy shows read-only, records and the check stay reachable', async () => {
+    (m as any).getSettings.mockRejectedValue(Object.assign(new Error('AI_VOICE_TRANSCRIPTION_DISABLED'), { status: 403, code: 'PERMISSION_DENIED', body: { message: 'AI_VOICE_TRANSCRIPTION_DISABLED' } }));
+    c.summary.mockResolvedValue({ ...summary, entitled: false, transcription: { ...summary.transcription, state: 'subscription_restricted' } });
+    renderSettings();
+    expect(await screen.findByTestId('vsx-entitlement')).toBeTruthy();
+    expect(screen.getByTestId('vsx-plans').getAttribute('href')).toBe('/tenant/ai/plans');
+    expect(screen.queryByText(/do not have access/i)).toBeNull();
+    expect((screen.getByTestId('vsx-form') as HTMLFieldSetElement).disabled).toBe(true);
+    expect(screen.getByTestId('vsx-check')).toBeTruthy();
+    await waitFor(() => expect(c.records).toHaveBeenCalled());
   });
   it('a non-sensitive save sends only the changed field + the version it read', async () => {
     (m as any).updateSettings.mockResolvedValue({ ...saved, retentionDays: 400, version: 4 });

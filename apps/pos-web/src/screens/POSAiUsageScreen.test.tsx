@@ -3,7 +3,7 @@
 // opens Package Details while the card's button keeps its own action, start trial needs a confirmation and sends an
 // idempotency key, the 80/90/100 % alert strip, and the numbered pager asks the server for the next page.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), packages: vi.fn(), detail: vi.fn(), history: vi.fn(), exportHistory: vi.fn(), startTrial: vi.fn(), cancel: vi.fn(), acknowledge: vi.fn(), check: vi.fn() } }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: api, posAiUsageApi: {} }));
 import { MemoryRouter } from 'react-router-dom';
@@ -70,4 +70,16 @@ describe('POSAiUsageScreen', () => {
     expect(screen.getByTestId('chk-trial_rows_current')).toHaveTextContent(/still stored as "trialing"/);
     expect(api.check).toHaveBeenCalledTimes(1);
   });
+  it('AI Plans tabs (SUNMI §07): ?view=subscriptions lists active subscriptions; ?view=billing opens cost & invoices — only for a role that may see cost', async () => {
+    const { unmount } = render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=subscriptions']}><Screen /></MemoryRouter>);
+    await waitFor(() => expect(api.packages).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' })));
+    unmount();
+    render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=billing']}><Screen /></MemoryRouter>);
+    expect(await screen.findByTestId('aiu-cost')).toBeInTheDocument();
+    cleanup();
+    api.summary.mockResolvedValue({ ...SUM, cost: { visible: false }, canSeeBilling: false });
+    render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=billing']}><Screen /></MemoryRouter>);
+    await screen.findByTestId('aiu-kpis'); expect(screen.queryByTestId('aiu-cost')).toBeNull();
+  });
 });
+

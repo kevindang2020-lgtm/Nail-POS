@@ -156,6 +156,30 @@ export const BATCH5_MODULES = [
   { key: 'access-governance', path: '/tenant/security/access', label: 'ACCESS GOVERNANCE' },
   { key: 'devices', path: '/tenant/devices/overview', label: 'DEVICES (TAP TO PAY / PAIRING)' },
 ];
+/** SUNMI batch 6 (Kevin's Nov 8 2026 evening PDFs): Customer AI, AI analytics / plans / OCR, voice transcription, reviews,
+ *  inventory, checkout upsell and the Money Protection family (MODULE_SET=batch6; =all adds the pages not already in batch 5). */
+export const BATCH6_MODULES = [
+  { key: 'cust-recs', path: '/tenant/ai/customer-profile/recommendations', label: 'SERVICE RECOMMENDATIONS' },
+  { key: 'cust-rebooking', path: '/tenant/ai/customer-profile/rebooking', label: 'REBOOKING OPPORTUNITIES' },
+  { key: 'cust-ai-search', path: '/tenant/ai/customer-profile/search', label: 'CUSTOMER SEARCH' },
+  { key: 'cust-dupes', path: '/tenant/ai/customer-profile/duplicates', label: 'DUPLICATE REVIEW' },
+  { key: 'cust-ai-overview', path: '/tenant/ai/customer-profile', label: 'CUSTOMER INTELLIGENCE' },
+  { key: 'ai-plans', path: '/tenant/ai/plans', label: 'AI PLANS & PACKAGES' },
+  { key: 'ai-forecasting', path: '/tenant/ai/analytics', label: 'AI ANALYTICS & FORECASTING' },
+  { key: 'receipt-scanner', path: '/tenant/ai/receipt-scanner', label: 'OCR RECEIPT SCANNER' },
+  { key: 'voice-settings', path: '/tenant/ai/voice-transcription/settings', label: 'VOICE TRANSCRIPTION SETTINGS' },
+  { key: 'voice-search', path: '/tenant/ai/voice-transcription/search', label: 'VOICE TRANSCRIPTION SEARCH' },
+  { key: 'voice-history', path: '/tenant/ai/voice-transcription/history', label: 'VOICE CALL HISTORY' },
+  { key: 'ai-reviews', path: '/tenant/ai/reviews', label: 'REVIEW & REPUTATION' },
+  { key: 'ai-inventory', path: '/tenant/ai/inventory', label: 'AI INVENTORY ASSISTANT' },
+  { key: 'ai-fraud', path: '/tenant/ai/fraud-protection', label: 'AI FRAUD & MONEY PROTECTION' },
+  { key: 'checkout-upsell', path: '/tenant/ai/checkout-upsell', label: 'CHECKOUT UPSELL' },
+  { key: 'cust-insights', path: '/tenant/ai/customer-insights', label: 'CUSTOMER PROFILE ASSISTANT' },
+  { key: 'mp-settings', path: '/tenant/ai/money-protection/settings', label: 'MONEY PROTECTION SETTINGS' },
+  { key: 'mp-rules', path: '/tenant/ai/money-protection/rules', label: 'MONEY PROTECTION RULES' },
+  { key: 'mp-alerts', path: '/tenant/ai/money-protection/alerts', label: 'MONEY PROTECTION ALERTS' },
+  { key: 'money-protection', path: '/tenant/ai/money-protection', label: 'AI MONEY PROTECTION' },
+];
 /** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
 export const measureRegistry = (page, key) => {
   const reg = REGISTRY.pages.find((p) => p.key === key)?.modules ?? [];
@@ -371,6 +395,9 @@ export const measureHitAreas = (page) => page.evaluate(async () => {
     const own = (x, y) => { const h = document.elementFromPoint(x, y); return h && (h === el || el.contains(h)); };
     const why = (x, y, band) => {
       if (x < lim.L || x > lim.R || y < lim.T || y > lim.B) return 'edge';
+      // the browser window itself is an edge too (Nov 8 2026: a pager ending flush with the bottom of a 952 px window was "short"
+      // because elementFromPoint answers null outside the window — and on its last sub-pixel row)
+      if (x < 0 || y < 0 || x >= innerWidth - 0.5 || y >= innerHeight - 0.5 || !document.elementFromPoint(x, y)) return 'edge';
       const h = document.elementFromPoint(x, y); const c = h?.closest?.(CTRL);
       if (c && c !== el && !el.contains(c)) return 'neighbour';
       // a list's pinned (sticky) header painted over the first row is the top edge of the list
@@ -552,7 +579,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES] : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

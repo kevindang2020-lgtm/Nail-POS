@@ -46,17 +46,26 @@ export function POSAIVoiceTranscriptionSettingsScreen() {
   const [confirm, setConfirm] = useState<{ impact: any; patch: Record<string, unknown> } | null>(null);
   const [sum, setSum] = useState<any>(null);
   const [health, setHealth] = useState<any | 'loading' | null>(null);
+  // SUNMI addendum (Nov 8 2026): "blocked-by-entitlement" is labelled on its own — the salon has no Voice Transcription
+  // subscription (server: AI_VOICE_TRANSCRIPTION_DISABLED) is not "you do not have access". The page stays readable
+  // (summary, records, health) with the saved policy shown read-only from the summary; saving is off until subscribed.
+  const [blocked, setBlocked] = useState(false);
   const [tick, setTick] = useState(0);
 
   const loadSum = useCallback(() => { api.center.summary().then(setSum).catch(() => setSum(null)); }, []);
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try { const d = await api.getSettings() as Settings; setBase(d); setS(d); }
-    catch (e: any) { setError(isForbidden(e) ? t('vsx.err.forbidden') : reportError(e, tx('growth.noun.settings'))); }
+    catch (e: any) {
+      const msg = (e as { body?: { message?: string }; message?: string } | null);
+      if ((msg?.body?.message ?? msg?.message) === 'AI_VOICE_TRANSCRIPTION_DISABLED') { setBlocked(true); }
+      else setError(isForbidden(e) ? t('vsx.err.forbidden') : reportError(e, tx('growth.noun.settings')));
+    }
     finally { setLoading(false); }
     loadSum();
   }, [loadSum]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (blocked && sum?.settings && !s) { setBase(sum.settings); setS(sum.settings); } }, [blocked, sum, s]);
 
   const changed = s && base ? FIELDS.filter((k) => s[k] !== base[k]) : [];
   const send = async (patch: Record<string, unknown>, confirmed: boolean) => {
@@ -82,7 +91,8 @@ export function POSAIVoiceTranscriptionSettingsScreen() {
   const runCheck = () => { setHealth('loading'); api.center.check().then((d) => { setHealth(d); loadSum(); }).catch((e) => setHealth({ error: isForbidden(e) ? t('vsx.err.forbidden') : errorTextOf(e, t('vsx.loadFailed')) })); };
 
   if (loading) return <div className="work"><div className="state">{tx('pos.loading_settings')}</div></div>;
-  if (!s) return <div className="work"><div className="vh"><h1>{tx('pos.voice_transcription_settings')}</h1></div><ErrorRetry message={error ?? tx('pos.no_settings')} onRetry={load} /></div>;
+  if (!s && !blocked) return <div className="work"><div className="vh"><h1>{tx('pos.voice_transcription_settings')}</h1></div><ErrorRetry message={error ?? tx('pos.no_settings')} onRetry={load} /></div>;
+  if (!s) return <div className="work"><div className="state">{tx('pos.loading')}</div></div>;
   const tr = sum?.transcription; const rt = sum?.retention; const rd = sum?.redaction; const raw = sum?.raw; const cons = sum?.consent;
 
   return (
@@ -106,11 +116,15 @@ export function POSAIVoiceTranscriptionSettingsScreen() {
           sub={raw?.stored ? t('vsx.rawStored', { n: raw.stored }) : undefined} />
       </div> : null}
 
+      {blocked ? <div className="warn" role="status" data-testid="vsx-entitlement" style={{ marginBottom: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+        <span style={{ flex: '1 1 320px' }}>{t('vsx.entitlement')}</span>
+        <Link className="btn ghost" to="/tenant/ai/plans" data-testid="vsx-plans">{t('vsx.openPlans')}</Link>
+      </div> : null}
       {error && <div className="err" role="alert" style={{ marginBottom: 10 }}>{error}</div>}
       {notice && <div className="ok" role="status" style={{ marginBottom: 10 }}>{notice}</div>}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-        <div className="panel" style={{ flex: '1 1 420px', maxWidth: 640 }} data-testid="vsx-form">
+        <fieldset className="panel" style={{ flex: '1 1 420px', maxWidth: 640, margin: 0, minWidth: 0 }} data-testid="vsx-form" disabled={blocked}>
           <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '8px 0', minHeight: 44 }}>
             <input type="checkbox" checked={s.transcriptionEnabled} onChange={(e) => setS({ ...s, transcriptionEnabled: e.target.checked })} style={{ width: 18, height: 18 }} />
             <span><strong>{tx('pos.transcription_enabled')}</strong><div className="sub">{tx('pos.when_off_new_calls_are_not_bwws')}</div></span>
@@ -144,7 +158,7 @@ export function POSAIVoiceTranscriptionSettingsScreen() {
             {changed.length ? <span className="sub" data-testid="vsx-unsaved">{t('vsx.unsaved', { n: changed.length })}</span> : null}
             <span className="sub" data-testid="vsx-version">{base?.saved ? t('vsx.savedVersion', { v: base.version ?? 0, at: when(base.updatedAt) }) : t('vsx.defaults')}</span>
           </div>
-        </div>
+        </fieldset>
 
         {sum ? <div className="panel" style={{ flex: '1 1 320px' }} data-testid="vsx-status">
           <h4 style={{ marginTop: 0 }}>{t('vsx.st.title')}</h4>
@@ -159,10 +173,10 @@ export function POSAIVoiceTranscriptionSettingsScreen() {
               {cons.used30d.map((v: any, i: number) => <li key={i}>{v.version ?? t('vsx.st.noVersion')} · {fmtNumber(v.calls)}</li>)}</ul>}
             {cons?.mismatched30d ? <p className="err" role="status">{t('vsx.st.mismatch', { n: cons.mismatched30d, v: cons.configured ?? '—' })}</p> : null}
           </div>
-          <p className="sub" style={{ marginTop: 8 }}>
-            <Link to="/tenant/ai/voice-transcription/history">{t('vsx.link.history')}</Link>{' · '}
-            <Link to="/tenant/ai/voice-transcription/search">{t('vsx.link.search')}</Link>{' · '}
-            <Link to="/tenant/ai/voice-transcription/unresolved">{t('vsx.link.followups')}</Link>
+          <p className="sub" style={{ marginTop: 8 }} data-testid="vsx-links">
+            <Link className="link-44" to="/tenant/ai/voice-transcription/history">{t('vsx.link.history')}</Link>{' · '}
+            <Link className="link-44" to="/tenant/ai/voice-transcription/search">{t('vsx.link.search')}</Link>{' · '}
+            <Link className="link-44" to="/tenant/ai/voice-transcription/unresolved">{t('vsx.link.followups')}</Link>
           </p>
         </div> : null}
       </div>
@@ -239,7 +253,7 @@ function RecordsCard({ tick }: { tick: number }) {
                 {r.transcriptId ? <div className="sub">#{String(r.transcriptId).slice(0, 8)}</div> : null}</td>
               <td>{r.kind === 'deletion' ? t(String(r.actor ?? '').startsWith('system') ? 'vsx.actor.system' : 'vsx.actor.staff') : (r.actor ?? '—')}{r.role ? <div className="sub">{statusLabel('role', r.role)}</div> : null}</td>
             </tr>))}</tbody></table></div>)}
-      <div className="rvw-pager">
+      <div className="rvw-pager vsx-pager">
         <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => set({ page: p }, true)} />
         <label className="rvw-f"><span>{t('vsx.rows')}</span><select value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
       </div>

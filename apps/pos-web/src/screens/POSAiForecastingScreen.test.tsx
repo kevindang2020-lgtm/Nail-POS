@@ -39,9 +39,18 @@ describe('POSAiForecastingScreen', () => {
     readyMock.mockResolvedValue({ appointments: { domain: 'appointments', historyDays: 9, minimum: 14, ready: false, daysShort: 5, firstDay: '2026-10-24', lastDay: '2026-11-01', zeroDays: 2 },
       revenue: { domain: 'revenue', restricted: true }, sources: { appointments: 'booking_calendar', revenue: 'sales_report' } });
     render(<POSAiForecastingScreen />);
-    expect(await screen.findByTestId('fcx-ready-appointments')).toHaveTextContent('9 of 14 days of history');
-    expect(screen.getByTestId('fcx-ready-appointments')).toHaveTextContent(/5 more day\(s\) needed/);
-    expect(screen.getByTestId('fcx-ready-appointments')).toHaveTextContent(/booking calendar/);
-    expect(screen.getByTestId('fcx-ready-revenue')).toHaveTextContent(/cannot see revenue/);
+    // SUNMI addendum (Nov 8 2026): the six readiness cards of the selected mode — real numbers only
+    expect(await screen.findByTestId('fcx-r-available')).toHaveTextContent('9 days');
+    expect(screen.getByTestId('fcx-r-available')).toHaveTextContent('from 2026-10-24');
+    expect(screen.getByTestId('fcx-r-required')).toHaveTextContent('14 days');
+    expect(screen.getByTestId('fcx-r-valid')).toHaveTextContent('7 days');   // 9 days, 2 of them with no record
+    expect(screen.getByTestId('fcx-r-ready')).toHaveTextContent(/Not ready.*5 more day\(s\) needed/);
+    expect(screen.getByTestId('fcx-r-quality')).toHaveTextContent(/2 days with no records.*Last record 2026-11-01/);
+    expect(screen.getByTestId('fcx-r-last')).toHaveTextContent(/Never/i);
+    expect(screen.getByTestId('fcx-readiness')).toHaveTextContent(/booking calendar/);
+    expect(screen.getByTestId('fcx-ready-cards').children).toHaveLength(6);
+    // Revenue: a role without the financial permission is told so, not shown zeros
+    fireEvent.click(screen.getByRole('button', { name: /^Revenue$/ }));
+    expect(await screen.findByTestId('fcx-restricted')).toHaveTextContent(/cannot see revenue/);
   });
 });

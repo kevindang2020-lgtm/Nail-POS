@@ -223,4 +223,13 @@ describe('declaration', () => {
     expect(listQuerySpecOf(Bc.prototype.other)).toEqual({ filters: {} });
     expect(() => { @ListQueries({ nope: {} }) class C { x() { return 1; } } return C; }).toThrow(/not a method/);
   });
+  it('a declared `direction` FILTER is the filter, never a sort direction (Voice Call History, Nov 8 2026)', () => {
+    const spec = { filters: { direction: { type: 'enum', values: ['all', 'inbound', 'outbound'] } }, sorts: { newest: null, oldest: null } } as const;
+    const r = parseListQuery({ direction: 'inbound', sort: 'newest' }, spec as any);
+    expect(r.filters).toEqual({ direction: 'inbound' });
+    expect(r.sort).toEqual([expect.objectContaining({ field: 'newest', direction: 'asc' })]);
+    // a route WITHOUT that filter still reads `direction` as the legacy sort direction
+    expect(parseListQuery({ direction: 'desc', sort: 'newest' }, { sorts: { newest: null } } as any).sort).toEqual([expect.objectContaining({ field: 'newest', direction: 'desc' })]);
+  });
 });
+

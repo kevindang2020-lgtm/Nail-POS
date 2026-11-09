@@ -3,7 +3,7 @@
 // ask for confirmation first; a re-trial refusal says the free trial was already used.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 const { api } = vi.hoisted(() => ({ api: { plans: vi.fn(), startPlanTrial: vi.fn(), cancelPlan: vi.fn() } }));
 vi.mock('../api/posAiApi', () => ({ posAiApi: api }));
 import { POSAIPlansScreen } from './POSAIPlansScreen';
@@ -40,4 +40,24 @@ describe('POSAIPlansScreen', () => {
     fireEvent.click(screen.getByTestId('plan-confirm-go-plan_money_owner'));
     expect(await screen.findByText(/free trial was already used/)).toBeInTheDocument();
   });
+  it('SUNMI §07: five tabs — Packages here; the other four open the ONE AI Usage screen at their view', async () => {
+    api.plans.mockResolvedValue({ plans: [plan()] });
+    const Where = () => <div data-testid="where">{useLocation().pathname + useLocation().search}</div>;
+    render(<MemoryRouter initialEntries={['/tenant/ai/plans']}><Routes><Route path="/tenant/ai/plans" element={<POSAIPlansScreen />} /><Route path="*" element={<Where />} /></Routes></MemoryRouter>);
+    const tabs = await screen.findAllByRole('tab');
+    expect(tabs.map((x) => x.textContent)).toEqual(['Packages', 'Individual AI', 'My Subscriptions', 'Billing History', 'Usage & Limits']);
+    expect(screen.getByTestId('plx-tab-packages')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('plan-card-plan_money_owner')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('plx-tab-billing'));
+    expect(await screen.findByTestId('where')).toHaveTextContent('/tenant/ai/usage?view=billing');
+  });
+  it('SUNMI purchase-overlap preview: assistants already owned on their own are named with their price, and Start trial warns before confirming', async () => {
+    api.plans.mockResolvedValue({ plans: [plan({ overlap: { owned: [{ code: 'ai_ocr_receipt_scanner', name: 'AI OCR Receipt Scanner', status: 'active', monthlyPriceCents: 2900 }], ownedMonthlyCents: 2900 } })] });
+    mount();
+    expect(await screen.findByTestId('plan-overlap-plan_money_owner')).toHaveTextContent(/already have 1 of these assistants on their own: AI OCR Receipt Scanner\. They cost \$29\/mo now/);
+    fireEvent.click(screen.getByTestId('plan-trial-start-plan_money_owner'));
+    expect(await screen.findByTestId('plan-confirm-overlap-plan_money_owner')).toHaveTextContent(/does not cancel/);
+    expect(api.startPlanTrial).not.toHaveBeenCalled();
+  });
 });
+

@@ -144,15 +144,23 @@ export class VoiceCallsCenter {
         count(*) filter (where status = any(${VC_GROUP.processing}::text[]) or (redaction_status in ('pending', 'processing') and status in ('completed', 'low_confidence')))::int as processing,
         count(*) filter (where status = any(${VC_GROUP.failed}::text[]) and created_at > now() - interval '7 days')::int as failed7,
         count(*) filter (where status = any(${VC_GROUP.not_transcribed}::text[]))::int as not_transcribed,
-        count(*) filter (where created_at > now() - interval '7 days')::int as calls7
+        count(*) filter (where created_at > now() - interval '7 days')::int as calls7,
+        count(*) filter (where direction = 'inbound')::int as inbound, count(*) filter (where direction = 'outbound')::int as outbound,
+        count(*) filter (where status = any(${[...VC_GROUP.completed, ...VC_GROUP.review]}::text[]))::int as transcribed,
+        count(*) filter (where status = any(${VC_GROUP.failed}::text[]))::int as failed
       from call_transcripts where tenant_id = ${T} and deleted_at is null and ${this.scope(sql`branch_id`, ctx).w}`.execute(this.db)).rows[0] ?? {};
+    // SUNMI addenda (Nov 8 2026): Call History's eight cards / Search's four. Follow-ups needed = calls with an open (unreviewed or
+    // reopened) item — the same rule as the Follow-up filter; missed calls come from the call log (they have no transcript).
+    const fu = (await sql<Row>`select count(*) filter (where open_items > 0)::int as open from ${this.calls(ctx)}`.execute(this.db)).rows[0] ?? {};
+    const missed = (await sql<Row>`select count(*)::int as n from call_intelligence_events where tenant_id = ${T} and status = 'missed' and ${this.scope(sql`branch_id`, ctx).w}`.execute(this.db)).rows[0] ?? {};
     const s = (await sql<Row>`select transcription_enabled from voice_transcription_settings where tenant_id = ${T} limit 1`.execute(this.db)).rows[0];
     const disabled = s ? s.transcription_enabled === false : false;
     const calls = N(p.calls);
     const emptyReason = calls ? null : disabled ? 'disabled' : 'no_calls';
     return {
       asOf: new Date(this.now()).toISOString(),
-      counters: { calls, calls7d: N(p.calls7), processing: N(p.processing), failed7d: N(p.failed7), notTranscribed: N(p.not_transcribed) },
+      counters: { calls, calls7d: N(p.calls7), processing: N(p.processing), failed7d: N(p.failed7), notTranscribed: N(p.not_transcribed),
+        inbound: N(p.inbound), outbound: N(p.outbound), missed: N(missed.n), transcribed: N(p.transcribed), failed: N(p.failed), followUpsOpen: N(fu.open) },
       lastCallAt: iso(p.last_call), transcriptionEnabled: !disabled, emptyReason,
       customersVisible: has(ctx, 'customers.view'),
       search: { source: 'live_redacted_tables', rawTextSearched: false },

@@ -9,6 +9,8 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtInZone } from '../i18n/format';
 import { errorTextOf } from '../i18n/error-text';
 
+const PLAN_TABS: Array<[string, string | null]> = [['packages', null], ['individual', '/tenant/ai/usage?view=catalog'], ['subscriptions', '/tenant/ai/usage?view=subscriptions'],
+  ['billing', '/tenant/ai/usage?view=billing'], ['usage', '/tenant/ai/usage']];
 const money = (c: number) => `$${(c / 100).toFixed(c % 100 === 0 ? 0 : 2)}`;
 
 export function POSAIPlansScreen() {
@@ -53,13 +55,20 @@ export function POSAIPlansScreen() {
           <button className="btn w-fit whitespace-nowrap"   onClick={() => nav('/tenant/ai/command-center')}>{t('pos.ai_center_2')}</button>
         </div>
       </div>
+      {/* SUNMI addendum (Nov 8 2026) §07: the guide's five tabs. Packages is this page; the other four are views of the ONE
+          authoritative AI Usage & Limits screen (catalog of the 15 assistants, subscriptions, cost & invoices, usage) — opened
+          at that view, never a second copy of billing data. */}
+      <div className="rvw-tabs" role="tablist" aria-label={t('plx.tabs')} data-testid="plx-tabs">
+        {PLAN_TABS.map(([k, to]) => <button key={k} type="button" role="tab" aria-selected={k === 'packages'} className={'btn ghost' + (k === 'packages' ? ' on' : '')}
+          data-testid={`plx-tab-${k}`} onClick={() => { if (to) nav(to); }}>{t('plx.tab.' + k)}</button>)}
+      </div>
       {error ? <div className="err">{error}</div> : null}
       {note ? <div className="state" style={{ color: '#1B7E4B' }}>{note}</div> : null}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" style={{gap: 14 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" style={{gap: 14 }} data-testid="plx-cards">
         {plans.map((p) => {
           const discounted = p.discountCents > 0;
           return (
-            <section key={p.code} style={card}>
+            <section key={p.code} style={card} data-testid={`plan-card-${p.code}`}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                 <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 19, fontWeight: 700, color: '#2B2118' }}>{p.name}</div>
                 {p.essential ? <span style={essTag}>{t('pos.daily_essential')}</span> : null}
@@ -75,6 +84,10 @@ export function POSAIPlansScreen() {
               {p.state === 'trialing' && p.trialEndsAt ? <div className="sub" data-testid={`plan-trial-${p.code}`}>{t('plx.trialEnds', { d: fmtInZone(p.trialEndsAt, { month: 'short', day: 'numeric', year: 'numeric' }) })}</div> : null}
               {p.state === 'trial_expired' && p.trialEndsAt ? <div className="sub" data-testid={`plan-trial-${p.code}`}>{t('plx.trialEnded', { d: fmtInZone(p.trialEndsAt, { month: 'short', day: 'numeric', year: 'numeric' }) })} {t('aiu.nextStep.trial_expired')}</div> : null}
               {!discounted ? <div className="sub" data-testid={`plan-nodiscount-${p.code}`}>{t('plx.noDiscount')}</div> : null}
+              {p.overlap?.owned.length ? <div className="warn" data-testid={`plan-overlap-${p.code}`} style={{ marginTop: 8, fontSize: 12.5 }}>
+                {t('plx.overlap', { n: String(p.overlap.owned.length), names: p.overlap.owned.map((x) => x.name).join(', ') })}
+                {p.overlap.ownedMonthlyCents ? ` ${t('plx.overlapPaid', { price: money(p.overlap.ownedMonthlyCents) })}` : ''}
+              </div> : null}
               <div style={{ borderTop: '1px solid #EFE4D2', margin: '12px 0', paddingTop: 10 }}>
                 {p.packages.map((pk) => (
                   <div key={pk.code} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#4A4034', padding: '3px 0' }}>
@@ -86,6 +99,7 @@ export function POSAIPlansScreen() {
               {confirm?.plan.code === p.code ? (
                 <div className="panel" style={{ padding: 10 }} data-testid={`plan-confirm-${p.code}`}>
                   <p style={{ fontSize: 13 }}>{confirm.action === 'cancel' ? t('plx.confirmCancel', { name: p.name }) : t('plx.confirmTrial', { name: p.name, price: money(p.effectiveCents) })}</p>
+                  {confirm.action === 'trial' && p.overlap?.owned.length ? <p className="warn" style={{ fontSize: 13 }} data-testid={`plan-confirm-overlap-${p.code}`}>{t('plx.overlapConfirm')}</p> : null}
                   <div style={{ display: 'flex', gap: 8 }}><button className="btn ghost" onClick={() => setConfirm(null)}>{t('pos.cancel')}</button>
                     <button className="btn" data-testid={`plan-confirm-go-${p.code}`} disabled={busy === p.code} onClick={() => { setConfirm(null); if (confirm.action === 'cancel') cancel(p); else startTrial(p); }}>{confirm.action === 'cancel' ? t('pos.cancel_plan') : t('pos.start_plan_trial')}</button></div>
                 </div>

@@ -67,4 +67,16 @@ describe('POSAiInventoryScreen', () => {
     const actual = await vi.importActual<any>('../api/posAiInventoryApi');
     expect(actual.posAiInventoryApi.context).toBeUndefined();
   });
+  it('SUNMI: the six KPI cards and the four buttons stay visible together on every tab; the Command Center detail only on its tab', async () => {
+    render(<POSAiInventoryScreen />);
+    await waitFor(() => expect(screen.getByTestId('icx-card-critical')).toHaveTextContent('11'));
+    expect(screen.getByTestId('icx-kpis').children).toHaveLength(6);
+    expect(screen.getByTestId('icx-actions').querySelectorAll('button')).toHaveLength(4);
+    fireEvent.click(screen.getByTestId('inv-tab-low'));
+    expect(await screen.findByText('Acetone')).toBeInTheDocument();
+    expect(screen.getByTestId('icx-kpis').children).toHaveLength(6);
+    expect(screen.getByTestId('icx-actions').querySelectorAll('button')).toHaveLength(4);
+    expect(screen.queryByTestId('icx-reasons')).toBeNull();
+  });
 });
+

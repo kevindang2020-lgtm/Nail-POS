@@ -803,15 +803,17 @@
    "screens": [
     "POSAIReceiptScannerScreen"
    ],
-   "guide": "AI_PowerSalon_Receipt_Expense_OCR_Accounting",
+   "guide": "AI_PowerSalon_Receipt_Expense_OCR_Accounting; SUNMI: AI_PowerSalon_OCR_Receipt_Scanner",
    "modules": [
     {
      "id": "pkg-cards",
-     "label": "AI package state"
+     "label": "Price / usage / status subscription cards"
     },
     {
      "id": "rcsx-kpis",
-     "label": "Scanner KPI cards"
+     "label": "Four KPI cards: Scanned / Needs review / Duplicates / Approved",
+     "minItems": 4,
+     "items": "[data-testid^=kpi-]"
     },
     {
      "id": "rcsx-dashboard",
@@ -4062,6 +4064,945 @@
     {
      "id": "dev-quick",
      "label": "Quick actions"
+    }
+   ]
+  },
+  {
+   "key": "cust-recs",
+   "title": "Service Recommendations",
+   "routes": [
+    "/tenant/ai/customer-profile/recommendations"
+   ],
+   "screens": [
+    "POSAICustomerRecommendationsScreen"
+   ],
+   "guide": "AI_PowerSalon_Service_Recommendations_5",
+   "scroll": "page",
+   "scrollReason": "Service Recommendations SUNMI addendum: queue, filters and history keep their full height; long lists scroll in the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "srx-freshness",
+     "label": "Freshness / data version"
+    },
+    {
+     "id": "srx-check",
+     "label": "Health Checker"
+    },
+    {
+     "id": "srx-catalog",
+     "label": "Services Catalog link"
+    },
+    {
+     "id": "srx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "srx-metrics",
+     "label": "Six KPI cards",
+     "minItems": 6,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "srx-search",
+     "label": "Search by name / phone / email"
+    },
+    {
+     "id": "srx-search-btn",
+     "label": "Search"
+    },
+    {
+     "id": "srx-tabs",
+     "label": "Needs review / Reviewed / Booked / All / Superseded / History / Scans",
+     "minItems": 7,
+     "items": "[role=tab]"
+    },
+    {
+     "id": "srx-filters",
+     "label": "Type / service / sort filters"
+    },
+    {
+     "id": "srx-dates",
+     "label": "From / To calendar and presets"
+    },
+    {
+     "id": "srx-results",
+     "label": "Recommendation queue"
+    }
+   ]
+  },
+  {
+   "key": "cust-rebooking",
+   "title": "Rebooking Opportunities",
+   "routes": [
+    "/tenant/ai/customer-profile/rebooking"
+   ],
+   "screens": [
+    "POSAICustomerRebookingScreen"
+   ],
+   "guide": "AI_PowerSalon_Rebooking_Opportunities",
+   "scroll": "page",
+   "scrollReason": "Rebooking SUNMI addendum: the opportunity list keeps its full height and scrolls in the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "rbx-freshness",
+     "label": "Freshness"
+    },
+    {
+     "id": "rbx-check",
+     "label": "Health Checker"
+    },
+    {
+     "id": "rbx-calendar",
+     "label": "Booking Calendar link"
+    },
+    {
+     "id": "rbx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "rbx-metrics",
+     "label": "Four tiles: Opportunities / Due for review / Already booked / Reviewed",
+     "minItems": 4,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "rbx-search",
+     "label": "Search by name / phone / email"
+    },
+    {
+     "id": "rbx-search-btn",
+     "label": "Search"
+    },
+    {
+     "id": "rbx-tabs",
+     "label": "Due for review / Coming due / Reviewed / Booked / Insufficient / All / History"
+    },
+    {
+     "id": "rbx-filters",
+     "label": "Service / sort filters"
+    },
+    {
+     "id": "rbx-dates",
+     "label": "From / To calendar and presets"
+    },
+    {
+     "id": "rbx-results",
+     "label": "Opportunity list"
+    }
+   ]
+  },
+  {
+   "key": "cust-ai-search",
+   "title": "Customer Search",
+   "routes": [
+    "/tenant/ai/customer-profile/search"
+   ],
+   "screens": [
+    "POSAICustomerSearchScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Search",
+   "scroll": "page",
+   "scrollReason": "Customer Search SUNMI addendum: the result table gets the largest area and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "csx-updated",
+     "label": "Freshness"
+    },
+    {
+     "id": "csx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "csx-check",
+     "label": "Health Checker"
+    },
+    {
+     "id": "csx-search",
+     "label": "Search by name / phone / email / ID"
+    },
+    {
+     "id": "csx-search-btn",
+     "label": "Search"
+    },
+    {
+     "id": "csx-kpis",
+     "label": "Summary cards",
+     "minItems": 6,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "csx-filters",
+     "label": "Status (incl. Churn Watch / Rebooking) / booking / technician / service / branch / sort"
+    },
+    {
+     "id": "csx-dates",
+     "label": "Date dimension + From / To calendar"
+    },
+    {
+     "id": "csx-results",
+     "label": "Customer results"
+    }
+   ]
+  },
+  {
+   "key": "cust-dupes",
+   "title": "Duplicate Review",
+   "routes": [
+    "/tenant/ai/customer-profile/duplicates"
+   ],
+   "screens": [
+    "POSAICustomerDuplicateReviewScreen"
+   ],
+   "guide": "AI_PowerSalon_Duplicate_Review",
+   "scroll": "page",
+   "scrollReason": "Duplicate Review SUNMI addendum: the candidate queue keeps its full height and scrolls in the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dup-freshness",
+     "label": "Last scan / freshness"
+    },
+    {
+     "id": "dup-scan",
+     "label": "Run scan"
+    },
+    {
+     "id": "dup-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dup-check",
+     "label": "Health Checker"
+    },
+    {
+     "id": "dup-search",
+     "label": "Search"
+    },
+    {
+     "id": "dup-search-btn",
+     "label": "Search button"
+    },
+    {
+     "id": "dup-kpis",
+     "label": "Status tiles (Open / High confidence / Deferred / Kept separate / Merged / Failed)",
+     "minItems": 6,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "dup-filters",
+     "label": "Status / confidence / sort filters"
+    },
+    {
+     "id": "dup-dates",
+     "label": "Date dimension + From / To calendar"
+    },
+    {
+     "id": "dup-results",
+     "label": "Candidate queue"
+    }
+   ]
+  },
+  {
+   "key": "cust-ai-overview",
+   "title": "Customer Intelligence",
+   "routes": [
+    "/tenant/ai/customer-profile"
+   ],
+   "screens": [
+    "POSAICustomerProfileOverviewScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Intelligence",
+   "scroll": "page",
+   "scrollReason": "Customer Intelligence SUNMI addendum: six KPI cards stay at the top; the customer list keeps its full height and scrolls in the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "cix-freshness",
+     "label": "Freshness"
+    },
+    {
+     "id": "cix-search-shortcut",
+     "label": "Customer Search shortcut"
+    },
+    {
+     "id": "cix-check",
+     "label": "Health Checker"
+    },
+    {
+     "id": "cix-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "cix-cards",
+     "label": "Six KPI cards",
+     "minItems": 6,
+     "items": "[data-testid^=kpi-]"
+    },
+    {
+     "id": "cix-views",
+     "label": "Customers / Duplicates / Churn / Rebooking / Recommendations / History",
+     "minItems": 6,
+     "items": "[data-testid^=view-]"
+    },
+    {
+     "id": "cix-search",
+     "label": "Search"
+    },
+    {
+     "id": "cix-search-btn",
+     "label": "Search button"
+    },
+    {
+     "id": "cix-filters",
+     "label": "Filters + sort"
+    },
+    {
+     "id": "cix-dates",
+     "label": "Date dimension + From / To calendar"
+    },
+    {
+     "id": "cix-customers",
+     "label": "Customer list"
+    }
+   ]
+  },
+  {
+   "key": "ai-plans",
+   "title": "AI Plans & Packages",
+   "routes": [
+    "/tenant/ai/plans"
+   ],
+   "screens": [
+    "POSAIPlansScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Plans_Packages",
+   "scroll": "page",
+   "scrollReason": "AI Plans SUNMI addendum: five equal package cards; descriptions expand and the page scrolls vertically; no sideways scroll.",
+   "modules": [
+    {
+     "id": "plx-individual",
+     "label": "Individual assistants"
+    },
+    {
+     "id": "plx-tabs",
+     "label": "Packages / Individual AI / My Subscriptions / Billing History / Usage & Limits",
+     "minItems": 5,
+     "items": "[role=tab]"
+    },
+    {
+     "id": "plx-cards",
+     "label": "Five package cards",
+     "minItems": 5,
+     "items": "[data-testid^=plan-card-]"
+    }
+   ]
+  },
+  {
+   "key": "ai-forecasting",
+   "title": "AI Analytics & Forecasting",
+   "routes": [
+    "/tenant/ai/analytics"
+   ],
+   "screens": [
+    "POSAiForecastingScreen",
+    "ForecastHistory"
+   ],
+   "guide": "AI_PowerSalon_AI_Analytics_Forecasting",
+   "scroll": "page",
+   "scrollReason": "AI Analytics & Forecasting SUNMI addendum: charts and the history list keep meaningful height; explicit page scrolling is allowed; no sideways scroll.",
+   "modules": [
+    {
+     "id": "fcx-modes",
+     "label": "Appointments / Revenue / No-Show Risk + Check",
+     "minItems": 3,
+     "items": "[data-testid^=fcx-mode-]"
+    },
+    {
+     "id": "fch-check",
+     "label": "Check forecasting system"
+    },
+    {
+     "id": "fcx-readiness",
+     "label": "Data readiness"
+    },
+    {
+     "id": "fcx-ready-cards",
+     "label": "Six readiness cards",
+     "minItems": 6,
+     "items": "[data-testid^=fcx-r-]"
+    },
+    {
+     "id": "fch-history",
+     "label": "Forecast history"
+    },
+    {
+     "id": "fch-kpis",
+     "label": "History counters"
+    }
+   ]
+  },
+  {
+   "key": "voice-history",
+   "title": "Voice Call History",
+   "routes": [
+    "/tenant/ai/voice-transcription/history"
+   ],
+   "screens": [
+    "POSAIVoiceTranscriptionHistoryScreen",
+    "VoiceCallsWorkspace"
+   ],
+   "guide": "AI_PowerSalon_Voice_Call_History",
+   "scroll": "page",
+   "scrollReason": "Voice Call History SUNMI addendum: 4 × 2 KPI cards, compact filters; the call list keeps its height and scrolls in the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "vcx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "vcx-check",
+     "label": "Check Voice Transcription System"
+    },
+    {
+     "id": "vcx-privacy",
+     "label": "Privacy line"
+    },
+    {
+     "id": "vcx-kpis",
+     "label": "Eight KPI cards (Total / Incoming / Outgoing / Missed / Completed / Processing / Failed / Follow-ups)",
+     "minItems": 8,
+     "items": "[data-testid^=vcx-kpi-]"
+    },
+    {
+     "id": "vcx-search",
+     "label": "Search"
+    },
+    {
+     "id": "vcx-status",
+     "label": "Status filter"
+    },
+    {
+     "id": "vcx-direction",
+     "label": "Direction filter"
+    },
+    {
+     "id": "vcx-intent",
+     "label": "Caller request filter"
+    },
+    {
+     "id": "vcx-follow",
+     "label": "Follow-up filter"
+    },
+    {
+     "id": "vcx-datefield",
+     "label": "Which date + From / To"
+    },
+    {
+     "id": "vcx-sort",
+     "label": "Sort"
+    }
+   ]
+  },
+  {
+   "key": "voice-search",
+   "title": "Voice Transcription Search",
+   "routes": [
+    "/tenant/ai/voice-transcription/search"
+   ],
+   "screens": [
+    "POSAIVoiceTranscriptionSearchScreen",
+    "VoiceCallsWorkspace"
+   ],
+   "guide": "AI_PowerSalon_Voice_Transcription_Search_Call_History",
+   "scroll": "page",
+   "scrollReason": "Voice Search SUNMI addendum: four status cards and the filter row; results keep their height and scroll in the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "vcx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "vcx-check",
+     "label": "Check Voice Transcription System"
+    },
+    {
+     "id": "vcx-privacy",
+     "label": "Privacy line"
+    },
+    {
+     "id": "vcx-kpis",
+     "label": "Four cards (Total / Transcribed / Pending-Failed / Needs follow-up)",
+     "minItems": 4,
+     "items": "[data-testid^=vcx-kpi-]"
+    },
+    {
+     "id": "vcx-search",
+     "label": "Search transcripts"
+    },
+    {
+     "id": "vcx-search-btn",
+     "label": "Search button"
+    },
+    {
+     "id": "vcx-status",
+     "label": "Status filter"
+    },
+    {
+     "id": "vcx-direction",
+     "label": "Direction filter"
+    },
+    {
+     "id": "vcx-datefield",
+     "label": "Which date + From / To"
+    }
+   ]
+  },
+  {
+   "key": "voice-settings",
+   "title": "Voice Transcription Settings",
+   "routes": [
+    "/tenant/ai/voice-transcription/settings"
+   ],
+   "screens": [
+    "POSAIVoiceTranscriptionSettingsScreen"
+   ],
+   "guide": "AI_PowerSalon_Voice_Transcription_Settings",
+   "scroll": "page",
+   "scrollReason": "Voice Settings SUNMI addendum: policy form, status and records stack in balanced columns; the records list scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "vsx-check",
+     "label": "Check Voice Transcription System"
+    },
+    {
+     "id": "vsx-kpis",
+     "label": "Transcription / Redaction / Retention / Raw text cards",
+     "minItems": 4,
+     "items": "[data-testid^=vsx-kpi-]"
+    },
+    {
+     "id": "vsx-form",
+     "label": "Policy form: enabled / redaction (locked) / retention / raw / consent"
+    },
+    {
+     "id": "vsx-redaction",
+     "label": "Sensitive-data redaction: always on"
+    },
+    {
+     "id": "vsx-save",
+     "label": "Save settings"
+    },
+    {
+     "id": "vsx-version",
+     "label": "Saved version"
+    },
+    {
+     "id": "vsx-status",
+     "label": "Effective status"
+    },
+    {
+     "id": "vsx-records",
+     "label": "Settings / deletion / failure / raw-access records"
+    }
+   ]
+  },
+  {
+   "key": "ai-reviews",
+   "title": "AI Review / Reputation Assistant",
+   "routes": [
+    "/tenant/ai/reviews"
+   ],
+   "screens": [
+    "POSAIReviewAssistantScreen"
+   ],
+   "guide": "AI_PowerSalon_Review_Reputation",
+   "scroll": "page",
+   "scrollReason": "AI Review / Reputation Assistant SUNMI addendum: three equal subscription cards, then the assistant dashboard; its list keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "pkg-cards",
+     "label": "Price / usage / status cards",
+     "minItems": 3,
+     "items": "[data-testid=pkg-price],[data-testid=pkg-usage],[data-testid=pkg-access]"
+    },
+    {
+     "id": "rax-dashboard",
+     "label": "Assistant dashboard"
+    },
+    {
+     "id": "as-check",
+     "label": "Health check"
+    },
+    {
+     "id": "as-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "as-kpis",
+     "label": "Reviews / Avg rating / Negative / Awaiting approval / Serious / Response rate",
+     "minItems": 6,
+     "items": "[data-testid^=as-kpi-]"
+    },
+    {
+     "id": "as-search",
+     "label": "Search"
+    },
+    {
+     "id": "as-sort",
+     "label": "Sort"
+    },
+    {
+     "id": "as-list",
+     "label": "History list + pages"
+    },
+    {
+     "id": "as-open",
+     "label": "Open the owning module"
+    }
+   ]
+  },
+  {
+   "key": "ai-fraud",
+   "title": "AI Fraud & Money Protection",
+   "routes": [
+    "/tenant/ai/fraud-protection"
+   ],
+   "screens": [
+    "POSAIFraudProtectionAssistantScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Fraud_Money_Protection",
+   "scroll": "page",
+   "scrollReason": "AI Fraud & Money Protection SUNMI addendum: three equal subscription cards, then the assistant dashboard; its list keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "pkg-cards",
+     "label": "Price / usage / status cards",
+     "minItems": 3,
+     "items": "[data-testid=pkg-price],[data-testid=pkg-usage],[data-testid=pkg-access]"
+    },
+    {
+     "id": "fpx-dashboard",
+     "label": "Assistant dashboard"
+    },
+    {
+     "id": "as-check",
+     "label": "Health check"
+    },
+    {
+     "id": "as-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "as-kpis",
+     "label": "Monitoring / New / Critical / Value under review / Investigations / Dismissed",
+     "minItems": 6,
+     "items": "[data-testid^=as-kpi-]"
+    },
+    {
+     "id": "as-search",
+     "label": "Search"
+    },
+    {
+     "id": "as-sort",
+     "label": "Sort"
+    },
+    {
+     "id": "as-list",
+     "label": "History list + pages"
+    },
+    {
+     "id": "as-open",
+     "label": "Open the owning module"
+    }
+   ]
+  },
+  {
+   "key": "checkout-upsell",
+   "title": "AI Checkout + Upsell Assistant",
+   "routes": [
+    "/tenant/ai/checkout-upsell"
+   ],
+   "screens": [
+    "POSAICheckoutUpsellAssistantScreen"
+   ],
+   "guide": "AI_PowerSalon_Checkout_Upsell",
+   "scroll": "page",
+   "scrollReason": "AI Checkout + Upsell Assistant SUNMI addendum: three equal subscription cards, then the assistant dashboard; its list keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "pkg-cards",
+     "label": "Price / usage / status cards",
+     "minItems": 3,
+     "items": "[data-testid=pkg-price],[data-testid=pkg-usage],[data-testid=pkg-access]"
+    },
+    {
+     "id": "cux-dashboard",
+     "label": "Assistant dashboard"
+    },
+    {
+     "id": "as-check",
+     "label": "Health check"
+    },
+    {
+     "id": "as-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "as-kpis",
+     "label": "Six insight & result cards",
+     "minItems": 6,
+     "items": "[data-testid^=as-kpi-]"
+    },
+    {
+     "id": "as-search",
+     "label": "Search"
+    },
+    {
+     "id": "as-list",
+     "label": "History list + pages"
+    },
+    {
+     "id": "as-open",
+     "label": "Open the owning module"
+    }
+   ]
+  },
+  {
+   "key": "cust-insights",
+   "title": "AI Customer Profile Assistant",
+   "routes": [
+    "/tenant/ai/customer-insights"
+   ],
+   "screens": [
+    "POSAICustomerProfileAssistantScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Profile_Assistant",
+   "scroll": "page",
+   "scrollReason": "AI Customer Profile Assistant SUNMI addendum: three equal subscription cards, then the assistant dashboard; its list keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "pkg-cards",
+     "label": "Price / usage / status cards",
+     "minItems": 3,
+     "items": "[data-testid=pkg-price],[data-testid=pkg-usage],[data-testid=pkg-access]"
+    },
+    {
+     "id": "cpx-dashboard",
+     "label": "Assistant dashboard"
+    },
+    {
+     "id": "as-check",
+     "label": "Health check"
+    },
+    {
+     "id": "as-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "as-kpis",
+     "label": "Six customer-insight cards",
+     "minItems": 6,
+     "items": "[data-testid^=as-kpi-]"
+    },
+    {
+     "id": "as-search",
+     "label": "Search"
+    },
+    {
+     "id": "as-sort",
+     "label": "Sort"
+    },
+    {
+     "id": "as-list",
+     "label": "History list + pages"
+    },
+    {
+     "id": "as-open",
+     "label": "Open the owning module"
+    }
+   ]
+  },
+  {
+   "key": "ai-inventory",
+   "title": "AI Inventory Assistant",
+   "routes": [
+    "/tenant/ai/inventory"
+   ],
+   "screens": [
+    "POSAiInventoryScreen",
+    "InventoryCenterPanel"
+   ],
+   "guide": "AI_PowerSalon_AI_Inventory_Assistant",
+   "scroll": "page",
+   "scrollReason": "AI Inventory SUNMI addendum: six KPIs and four actions stay together at the top; long product / activity lists scroll in a bounded region of the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "icx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "icx-check",
+     "label": "Check Inventory System"
+    },
+    {
+     "id": "icx-kpis",
+     "label": "Six KPI cards: Products / In Stock / Low / Critical / Out of Stock / Overstock",
+     "minItems": 6,
+     "items": "[data-testid^=icx-card-]"
+    },
+    {
+     "id": "icx-actions",
+     "label": "Command Center / Low Stock / Reorder / Slow-Moving",
+     "minItems": 4,
+     "items": "[data-testid^=inv-tab-]"
+    },
+    {
+     "id": "icx-reasons",
+     "label": "Reasons behind Critical / no levels / ledger mismatch"
+    },
+    {
+     "id": "icx-products",
+     "label": "Product list"
+    },
+    {
+     "id": "icx-activity",
+     "label": "Stock activity"
+    }
+   ]
+  },
+  {
+   "key": "mp-alerts",
+   "title": "Money Protection Alerts",
+   "routes": [
+    "/tenant/ai/money-protection/alerts"
+   ],
+   "screens": [
+    "POSAIMoneyProtectionAlertsScreen",
+    "MoneyProtectionWorkspace"
+   ],
+   "guide": "AI_PowerSalon_MONEY_PROTECTION_ALERTS",
+   "scroll": "page",
+   "scrollReason": "Money Protection Alerts SUNMI addendum: the summary tiles and filters stay on top; the table keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "mpx-run",
+     "label": "Run detection"
+    },
+    {
+     "id": "mpx-check",
+     "label": "Check Money Protection"
+    },
+    {
+     "id": "mpx-nav",
+     "label": "Overview / Alerts / Investigations / Rules / Settings",
+     "minItems": 5,
+     "items": "[data-testid^=mpx-tab-]"
+    },
+    {
+     "id": "mpx-safety",
+     "label": "Safety line (never moves money)"
+    },
+    {
+     "id": "mpx-severity",
+     "label": "Severity selector (incl. All)"
+    },
+    {
+     "id": "mpx-category",
+     "label": "Category filter"
+    },
+    {
+     "id": "mpx-sort",
+     "label": "Sort"
+    },
+    {
+     "id": "mpx-datefield",
+     "label": "Which date + From / To"
+    }
+   ]
+  },
+  {
+   "key": "mp-rules",
+   "title": "Money Protection Rules",
+   "routes": [
+    "/tenant/ai/money-protection/rules"
+   ],
+   "screens": [
+    "POSAIMoneyProtectionRulesScreen",
+    "MoneyProtectionWorkspace"
+   ],
+   "guide": "AI_PowerSalon_Money_Protection_Rules",
+   "scroll": "page",
+   "scrollReason": "Money Protection Rules SUNMI addendum: the summary tiles and filters stay on top; the table keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "mpx-run",
+     "label": "Run detection"
+    },
+    {
+     "id": "mpx-check",
+     "label": "Check Money Protection"
+    },
+    {
+     "id": "mpx-nav",
+     "label": "Overview / Alerts / Investigations / Rules / Settings",
+     "minItems": 5,
+     "items": "[data-testid^=mpx-tab-]"
+    },
+    {
+     "id": "mpx-safety",
+     "label": "Safety line (never moves money)"
+    },
+    {
+     "id": "mpx-rule-kpis",
+     "label": "Total / Enabled / Disabled / Exact / Normal levels / Reconciliation / Not running",
+     "minItems": 7,
+     "items": "[data-testid^=mpx-rk-]"
+    }
+   ]
+  },
+  {
+   "key": "mp-settings",
+   "title": "Money Protection Settings",
+   "routes": [
+    "/tenant/ai/money-protection/settings"
+   ],
+   "screens": [
+    "POSAIMoneyProtectionSettingsScreen",
+    "MoneyProtectionWorkspace"
+   ],
+   "guide": "AI_PowerSalon_Money_Protection_Settings",
+   "scroll": "page",
+   "scrollReason": "Money Protection Settings SUNMI addendum: the summary tiles and filters stay on top; the table keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "mpx-run",
+     "label": "Run detection"
+    },
+    {
+     "id": "mpx-check",
+     "label": "Check Money Protection"
+    },
+    {
+     "id": "mpx-nav",
+     "label": "Overview / Alerts / Investigations / Rules / Settings",
+     "minItems": 5,
+     "items": "[data-testid^=mpx-tab-]"
+    },
+    {
+     "id": "mpx-safety",
+     "label": "Safety line (never moves money)"
+    },
+    {
+     "id": "mpx-set-kpis",
+     "label": "Rules / Enabled / Running / Not running / Overridden",
+     "minItems": 5,
+     "items": "[data-testid^=mpx-sk-]"
+    },
+    {
+     "id": "mpx-settings",
+     "label": "Rule configuration (enabled / severity / thresholds / edit)"
+    },
+    {
+     "id": "mpx-history",
+     "label": "Change history"
     }
    ]
   }

@@ -211,5 +211,7 @@ export const CSEARCH_VI: Record<string, string> = {
   "csx.health.d.ai_profile.WARNING": "Gói Hồ sơ khách hàng AI chưa hoạt động ({status}). Tìm kiếm khách vẫn hoạt động; hãy gia hạn để dùng bảng hồ sơ AI.",
   "csx.health.d.ai_profile.UNKNOWN": "Chưa có gói Hồ sơ khách hàng AI. Tìm kiếm vẫn hoạt động.",
   "csx.health.d.freshness.READY": "Tìm kiếm đọc trực tiếp hồ sơ (thay đổi gần nhất {at}); không có chỉ mục riêng nào bị cũ.",
-  "csx.health.d.freshness.UNKNOWN": "Chưa có hồ sơ khách nào."
+  "csx.health.d.freshness.UNKNOWN": "Chưa có hồ sơ khách nào.",
+  "csx.status.churn_watch": "Có nguy cơ rời bỏ",   // DRAFT — Kevin reviews
+  "csx.status.rebooking": "Cần đặt lại lịch",   // DRAFT — Kevin reviews
 };

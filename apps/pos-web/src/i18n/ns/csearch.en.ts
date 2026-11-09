@@ -211,5 +211,7 @@ export const CSEARCH_EN: Record<string, string> = {
   "csx.health.d.ai_profile.WARNING": "The AI Customer Profile package is not active ({status}). Customer Search keeps working; renew it to use the AI profile panel.",
   "csx.health.d.ai_profile.UNKNOWN": "No AI Customer Profile package on file. Search works without it.",
   "csx.health.d.freshness.READY": "Search reads the live records (newest change {at}); there is no separate index to go stale.",
-  "csx.health.d.freshness.UNKNOWN": "No customer records yet."
+  "csx.health.d.freshness.UNKNOWN": "No customer records yet.",
+  "csx.status.churn_watch": "Churn Watch",
+  "csx.status.rebooking": "Rebooking opportunity",
 };

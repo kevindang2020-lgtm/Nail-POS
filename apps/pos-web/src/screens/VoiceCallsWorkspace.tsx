@@ -83,13 +83,29 @@ export function VoiceCallsWorkspace({ mode }: { mode: 'search' | 'history' }) {
       </div>
       <p className="sub" data-testid="vcx-privacy">{t('vcx.privacy')} {t('vcx.safety')}</p>
       {sumErr ? <ErrorRetry message={sumErr} onRetry={loadSum} /> : null}
-      <div className="rvw-kpis" data-testid="vcx-kpis">
-        <KpiCard testId="vcx-kpi-calls" label={t('vcx.kpi.calls')} value={c ? fmtNumber(c.calls) : '—'} loading={!sum && !sumErr} />
-        <KpiCard testId="vcx-kpi-7" label={t('vcx.kpi.calls7')} value={c ? fmtNumber(c.calls7d) : '—'} loading={!sum && !sumErr} />
-        <KpiCard testId="vcx-kpi-processing" label={t('vcx.kpi.processing')} value={c ? fmtNumber(c.processing) : '—'} loading={!sum && !sumErr} tone={c?.processing ? 'warn' : undefined} onClick={() => set({ status: 'processing' })} />
-        <KpiCard testId="vcx-kpi-failed" label={t('vcx.kpi.failed')} value={c ? fmtNumber(c.failed7d) : '—'} loading={!sum && !sumErr} tone={c?.failed7d ? 'bad' : undefined} onClick={() => set({ status: 'failed' })} />
-        <KpiCard testId="vcx-kpi-nottx" label={t('vcx.kpi.notTranscribed')} value={c ? fmtNumber(c.notTranscribed) : '—'} loading={!sum && !sumErr} onClick={() => set({ status: 'not_transcribed' })} />
-      </div>
+      {/* SUNMI addenda (Nov 8 2026): Call History = eight equal cards (4 × 2) — Total, Incoming, Outgoing, Missed, Completed
+          transcriptions, Processing, Failed, Follow-ups needed; Search = four — Total, Transcribed, Pending / Failed, Needs follow-up.
+          The earlier figures stay as sub-lines (last 7 days, not transcribed, failed in 7 days); every card that maps to a filter is one. */}
+      {(() => {
+        const L = !sum && !sumErr; const v = (n: number | undefined) => (c && n != null ? fmtNumber(n) : '—');
+        const total = <KpiCard key="calls" testId="vcx-kpi-calls" label={t('vcx.kpi.total')} value={v(c?.calls)} loading={L} sub={c ? t('vcx.kpi.sub7', { n: fmtNumber(c.calls7d) }) : undefined} onClick={() => set({ status: 'all', direction: 'all', followUp: 'all' })} />;
+        const transcribed = <KpiCard key="tx" testId="vcx-kpi-transcribed" label={mode === 'history' ? t('vcx.kpi.completedTx') : t('vcx.kpi.transcribed')} value={v(c?.transcribed)} loading={L} tone="ok"
+          sub={c ? t('vcx.kpi.subNotTx', { n: fmtNumber(c.notTranscribed) }) : undefined} onClick={() => set({ status: 'completed' })} />;
+        const follow = <KpiCard key="fu" testId="vcx-kpi-followups" label={t('vcx.kpi.followUps')} value={v(c?.followUpsOpen)} loading={L} tone={c?.followUpsOpen ? 'warn' : undefined} onClick={() => set({ followUp: 'open' })} />;
+        const cards = mode === 'history' ? [total,
+          <KpiCard key="in" testId="vcx-kpi-inbound" label={t('vcx.kpi.inbound')} value={v(c?.inbound)} loading={L} onClick={() => set({ direction: 'inbound' })} />,
+          <KpiCard key="out" testId="vcx-kpi-outbound" label={t('vcx.kpi.outbound')} value={v(c?.outbound)} loading={L} onClick={() => set({ direction: 'outbound' })} />,
+          <KpiCard key="missed" testId="vcx-kpi-missed" label={t('vcx.kpi.missed')} value={v(c?.missed)} loading={L} tone={c?.missed ? 'warn' : undefined} sub={t('vcx.kpi.subMissed')} />,
+          transcribed,
+          <KpiCard key="proc" testId="vcx-kpi-processing" label={t('vcx.kpi.processing')} value={v(c?.processing)} loading={L} tone={c?.processing ? 'warn' : undefined} onClick={() => set({ status: 'processing' })} />,
+          <KpiCard key="failed" testId="vcx-kpi-failed" label={t('vcx.kpi.failedTx')} value={v(c?.failed)} loading={L} tone={c?.failed7d ? 'bad' : undefined} sub={c ? t('vcx.kpi.sub7', { n: fmtNumber(c.failed7d) }) : undefined} onClick={() => set({ status: 'failed' })} />,
+          follow]
+          : [total, transcribed,
+            <KpiCard key="pf" testId="vcx-kpi-pending" label={t('vcx.kpi.pendingFailed')} value={c ? fmtNumber((c.processing ?? 0) + (c.failed ?? 0)) : '—'} loading={L} tone={c?.failed ? 'bad' : c?.processing ? 'warn' : undefined}
+              sub={c ? t('vcx.kpi.subPf', { p: fmtNumber(c.processing), f: fmtNumber(c.failed) }) : undefined} onClick={() => set({ status: c && !c.processing && c.failed ? 'failed' : 'processing' })} />,
+            follow];
+        return <div className={'rvw-kpis vcx-kpis ' + (mode === 'history' ? 'vcx-k8' : 'vcx-k4')} data-testid="vcx-kpis">{cards}</div>;
+      })()}
 
       <section className="panel rvw-feed" style={{ padding: 12, marginTop: 10 }}>
         <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); submit(); }}>

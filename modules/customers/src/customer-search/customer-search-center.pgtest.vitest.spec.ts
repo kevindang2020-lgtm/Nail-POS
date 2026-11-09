@@ -133,6 +133,17 @@ describe('search (SR-01 … SR-07)', () => {
     expect(names(await cs.search(owner(), { technician: MAI }, full)).sort()).toEqual(['Bo Tran', 'Nguyễn Thị Hằng']);
     expect(names(await cs.search(owner(), { service: SVC2 }, full))).toEqual(['Nguyễn Thị Hằng']);
   });
+  it('SUNMI §09: Churn Watch / Rebooking Opportunity statuses read the Customer Intelligence snapshot (flagged levels only; archived stays out)', async () => {
+    const [scan] = await q(sql`insert into customer_intelligence_scans (tenant_id, rule_version, status) values (${T}, 'ci-test', 'completed') returning id`);
+    const snap = (cid: string, churn: string | null, rebooking: boolean) => q(sql`insert into customer_intelligence_snapshots (tenant_id, customer_id, scan_id, status, churn_level, rebooking)
+      values (${T}, ${cid}, ${scan.id}, 'active', ${churn}, ${rebooking}) on conflict (tenant_id, customer_id) do update set churn_level = excluded.churn_level, rebooking = excluded.rebooking`);
+    await snap(C.old, 'elevated', false); await snap(C.bo, 'possible', true); await snap(C.ana, 'low', false); await snap(C.hang, 'insufficient', true); await snap(C.arch, 'high', true);
+    expect(names(await cs.search(owner(), { status: 'churn_watch' }, full)).sort()).toEqual(['Bo Tran', 'Olga Old']);   // low / insufficient are not on watch; archived stays out
+    expect(names(await cs.search(owner(), { status: 'rebooking' }, full)).sort()).toEqual(['Bo Tran', 'Nguyễn Thị Hằng']);
+    expect((await cs.search(owner(), { status: 'rebooking', q: 'Olga' }, full)).total).toBe(0);
+    expect((await cs.options(owner())).statuses).toEqual(expect.arrayContaining(['churn_watch', 'rebooking']));
+    await q(sql`delete from customer_intelligence_snapshots where tenant_id = ${T}`);
+  });
   it('status + booking filters use the canonical definitions', async () => {
     expect(names(await cs.search(owner(), { status: 'inactive' }, full))).toEqual(['Olga Old']);
     expect(names(await cs.search(owner(), { status: 'returning' }, full))).toEqual(['Nguyễn Thị Hằng']);

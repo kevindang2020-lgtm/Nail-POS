@@ -30,7 +30,10 @@ function errText(e: unknown) {
 }
 type Period = { preset?: string; from?: string; to?: string };
 
-export function InventoryCenterPanel() {
+// SUNMI addendum (Nov 8 2026): the six KPI cards and the four action buttons (Command Center · Low Stock · Reorder · Slow-Moving)
+// stay visible together on every tab — the screen passes its buttons as `actions`; the Command Center detail (reasons, products,
+// activity) shows only on that tab.
+export function InventoryCenterPanel({ actions, showDetail = true }: { actions?: ReactNode; showDetail?: boolean } = {}) {
   const [s, setS] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -48,7 +51,7 @@ export function InventoryCenterPanel() {
         <button className="btn ghost" data-testid="icx-check" onClick={runCheck}>{t('icx.check')}</button>
       </div>
       {err ? <ErrorRetry message={err} onRetry={load} /> : null}
-      <div className="kpis">
+      <div className="kpis icx-kpis" data-testid="icx-kpis">
         <Card id="products" label={tx('pos.products')} value={c?.products} def={t('icx.def.products')} />
         <Card id="in_stock" label={tx('pos.in_stock')} value={c?.inStock} def={t('icx.def.inStock')} />
         <Card id="low" label={tx('pos.low')} value={c?.low} def={t('icx.def.low')} color={ST_COLOR.low} />
@@ -56,14 +59,15 @@ export function InventoryCenterPanel() {
         <Card id="out_of_stock" label={tx('pos.out_of_stock')} value={c?.outOfStock} def={t('icx.def.outOfStock')} color={ST_COLOR.out_of_stock} />
         <Card id="overstock" label={tx('pos.overstock')} value={c?.overstock} def={t('icx.def.overstock')} />
       </div>
-      {s ? <div className="panel" data-testid="icx-reasons" style={{ padding: 10, marginTop: 8 }}>
+      {actions ? <div className="icx-actions" data-testid="icx-actions">{actions}</div> : null}
+      {showDetail && s ? <div className="panel" data-testid="icx-reasons" style={{ padding: 10, marginTop: 8 }}>
         <div className="sub">{t('icx.scope.' + s.scope)} {t('icx.readOnly')}</div>
         {c?.critical ? <div>{t('icx.reasons', { e: fmtNumber(r.criticalExplicit), d: fmtNumber(r.criticalDerived) })}</div> : null}
         {r?.noThreshold ? <div className="warn">{t('icx.noThreshold', { n: fmtNumber(r.noThreshold) })}</div> : null}
         {r?.ledgerMismatch ? <div className="bad">{t('icx.mismatch', { n: fmtNumber(r.ledgerMismatch) })}</div> : null}
       </div> : null}
-      <ProductsList tick={tick} />
-      <ActivityList tick={tick} />
+      {showDetail ? <><ProductsList tick={tick} />
+      <ActivityList tick={tick} /></> : null}
       {health ? <FitDialog wide testId="icx-health" title={t('icx.check')} onClose={() => setHealth(null)}
         subtitle={health !== 'loading' && !health.error ? t('icx.health.overall', { s: t('icx.health.' + health.overall), at: when(health.checkedAt) }) : undefined}
         footer={<button className="btn ghost" onClick={() => setHealth(null)}>{t('icx.close')}</button>}>

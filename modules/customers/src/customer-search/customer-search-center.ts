@@ -30,7 +30,11 @@ export class CustomerSearchError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details: Record<string, unknown> = {}) { super(message); }
 }
 
-export const CS_STATUSES = ['all', 'active', 'inactive', 'new', 'returning', 'never', 'duplicate', 'archived'] as const;
+export const CS_STATUSES = ['all', 'active', 'inactive', 'new', 'returning', 'never', 'duplicate', 'churn_watch', 'rebooking', 'archived'] as const;
+// SUNMI addendum (Nov 8 2026) §09 status list: Churn Watch and Rebooking Opportunity "when source-backed" — the source is the
+// Customer Intelligence snapshot those two screens read (churn_level possible / elevated / high = Churn Watch's FLAGGED set;
+// rebooking = an open Rebooking opportunity). A customer with no snapshot is simply not in either list (never assumed).
+const CHURN_FLAGGED = ['possible', 'elevated', 'high'];
 export const CS_BOOKING = ['any', 'upcoming', 'completed', 'canceled', 'no_show'] as const;
 export const CS_DATE_FIELDS = ['created', 'updated', 'last_visit', 'first_visit', 'appointment', 'booking_created', 'service_completed'] as const;
 export const CS_PRESETS = ['all', 'today', 'week', 'month', 'year', 'custom'] as const;
@@ -181,6 +185,9 @@ export class CustomerSearchCenter {
     if (status === 'new') where.push(sql`v.visits = 1`);
     if (status === 'returning') where.push(sql`v.visits >= 2`);
     if (status === 'duplicate') where.push(this.dupPred(T));
+    const snap = (cond: any) => sql`exists (select 1 from customer_intelligence_snapshots sn where sn.tenant_id = ${T} and sn.customer_id = c.id and ${cond})`;
+    if (status === 'churn_watch') where.push(snap(sql`sn.churn_level = any(${CHURN_FLAGGED}::text[])`));
+    if (status === 'rebooking') where.push(snap(sql`sn.rebooking`));
     const appt = (cond: any) => sql`exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = c.id and ${this.tPred(scope, 'a')} and ${cond})`;
     if (booking === 'upcoming') where.push(appt(sql`a.appt_date >= ${p.today}::date and a.status = any(${ACTIVE_APPT}::text[])`));
     if (booking === 'completed') where.push(appt(sql`a.status = 'completed'`));

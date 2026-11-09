@@ -31,6 +31,8 @@ export interface PosAiPlan {
   subscribed: boolean; status: string | null; trialAvailable: boolean;
   /** AI Plans guide (Nov 2 2026): the one honest state (trial_expired is never 'trialing'), trial end, whether Cancel applies */
   state: string; trialEndsAt: string | null; cancelledAt: string | null; canCancel: boolean;
+  /** members this salon already has on their own (SUNMI purchase-overlap preview); absent from older servers */
+  overlap?: { owned: { code: string; name: string; status: string; monthlyPriceCents: number }[]; ownedMonthlyCents: number };
   packages: PosAiPlanPkg[];
 }
 

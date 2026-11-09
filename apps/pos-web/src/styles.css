@@ -4033,3 +4033,29 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .co-scroll{container-type:inline-size}
 .co-tbl td.co-acts{white-space:nowrap}
 @container (max-width:560px){.co-tbl .co-svc{display:none}}
+/* SUNMI batch 6 (Nov 8 2026): Money Protection Rules row actions (View / See its alerts) — 44 px hit area inside the taller row */
+.mpx-acts .btn.sm{position:relative;display:inline-flex;white-space:nowrap}
+.mpx-acts .mpx-act-stack{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+:root:not([data-hitslop="off"]) .mpx-acts .btn.sm::after{content:'';position:absolute;inset:-7px 0}
+/* SUNMI batch 6: AI Analytics & Forecasting — six even readiness cards (3 × 2; 2 × 3 on a narrow main area) */
+.fcx-ready6{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fcx-ready6>*{min-width:0}
+@container (max-width:760px){.fcx-ready6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fcx-ready-panel{container-type:inline-size}
+/* SUNMI batch 6: Voice Call History = 4 × 2 equal KPI cards; Voice Search = 4 equal cards (2 columns on a narrow main area) */
+.rvw-kpis.vcx-k8,.rvw-kpis.vcx-k4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1100px){.rvw-kpis.vcx-k8,.rvw-kpis.vcx-k4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* SUNMI batch 6: AI Inventory Assistant — six equal KPI cards, then the four equal action buttons, on every tab */
+.icx-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.icx-kpis>.kpi{min-width:0;margin:0}
+.icx-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.icx-actions>.btn{width:100%;justify-content:center;min-height:44px}
+@media (max-width:1280px){.icx-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* SUNMI batch 6: Money Protection Rules — seven even tiles in one row (4 + 3 on a narrower main area) */
+.rvw-kpis.mpx-rule-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));margin-bottom:12px}
+@media (max-width:1439px){.rvw-kpis.mpx-rule-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.rvw-kpis.mpx-set-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:12px}
+@media (max-width:1439px){.rvw-kpis.mpx-set-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* SUNMI batch 6: Voice Settings records pager — when the Vietnamese range wraps the row, keep 44 px of hit room above the Rows picker */
+.rvw-pager.vsx-pager{row-gap:18px}
+.rvw-table-wrap.mpx-set-wrap{padding-bottom:8px}
