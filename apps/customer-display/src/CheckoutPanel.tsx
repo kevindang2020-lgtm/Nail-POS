@@ -149,9 +149,10 @@ export function TechnicianTipsPanel({ tt, s, a }: { tt: DisplayTechnicianTips; s
     <section className="kiosk-tip" data-testid="ttip-cards">
       <div className="kiosk-tip-title serif">{t('ttip.title')}</div>
       <div className="kiosk-tip-sub">{tt.stale ? t('ttip.stale') : t('ttip.sub')}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto' }}>
+      {/* Individual Tipping SUNMI guide (Nov 9 2026): equal-size technician cards that reflow by the screen's width; the list scrolls when long */}
+      <div className="ttip-grid" data-testid="ttip-grid">
         {tt.recipients.map((r) => (
-          <button key={r.technicianId} className="kiosk-method" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', minHeight: 72 }} disabled={a.submitting}
+          <button key={r.technicianId} className="kiosk-method ttip-card" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', minHeight: 88 }} disabled={a.submitting}
             onClick={() => setOpen(r.technicianId)} data-testid={`ttip-card-${r.technicianId}`}>
             {r.avatarUrl ? <img src={r.avatarUrl} alt="" style={{ width: 48, height: 48, borderRadius: 24, objectFit: 'cover' }} /> : <span aria-hidden style={{ width: 48, height: 48, borderRadius: 24, display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.08)', fontWeight: 800 }}>{r.name.slice(0, 1)}</span>}
             <span style={{ flex: 1 }}><span className="m-name">{r.name}</span><span className="m-hint" style={{ display: 'block' }}>{r.services.join(', ')}</span></span>

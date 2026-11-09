@@ -267,5 +267,15 @@ export const CTIMELINE_VI: Record<string, string> = {
   "tlx.health.d.duplicates.PASSED": "Không có nhóm trùng lặp nào cần xem.",
   "tlx.health.d.duplicates.WARNING": "Một số hồ sơ có thể là cùng một khách; lịch sử bị tách cho đến khi xem ở Rà soát trùng lặp. Không tự động gộp.",
   "tlx.health.d.duplicates.INSUFFICIENT_DATA": "Rà soát trùng lặp chưa quét lần nào.",
-  "tlx.health.d.duplicates.UNAVAILABLE": "Rà soát trùng lặp không phản hồi."
+  "tlx.health.d.duplicates.UNAVAILABLE": "Rà soát trùng lặp không phản hồi.",
+  "tlx.kpi.identity": "Khách hàng",   // DRAFT — Kevin reviews
+  "tlx.kpi.since": "Khách từ {d}",   // DRAFT — Kevin reviews
+  "tlx.kpi.lastVisit": "Lần ghé gần nhất",   // DRAFT — Kevin reviews
+  "tlx.kpi.completedVisits": "{n} lần ghé đã hoàn tất",   // DRAFT — Kevin reviews
+  "tlx.kpi.benefits": "Quyền lợi",   // DRAFT — Kevin reviews
+  "tlx.readOnly": "chỉ xem",   // DRAFT — Kevin reviews
+  "tlx.howto.1": "Tìm theo tên, số điện thoại hoặc email (có dấu hay không dấu đều được).",   // DRAFT — Kevin reviews
+  "tlx.howto.2": "Chọn đúng khách — số điện thoại dùng chung được liệt kê riêng, không bao giờ gộp.",   // DRAFT — Kevin reviews
+  "tlx.howto.3": "Xem lịch sử mới nhất trước: lịch hẹn, lần ghé, thanh toán, quyền lợi và tin nhắn, mỗi mục lấy từ hệ thống quản lý nó.",   // DRAFT — Kevin reviews
+  "tlx.howto.privacy": "Không hiển thị gì cho tới khi bạn tìm — không tải sẵn hồ sơ khách nào.",   // DRAFT — Kevin reviews
 };

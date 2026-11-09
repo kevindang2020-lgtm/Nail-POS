@@ -32,6 +32,8 @@ export { CustomersService } from './customers/customers.service';   // used by t
 // joined by --into (reviews, wallet):
 export { ReviewsModule } from './reviews/reviews.module';
 export { CustomerSearchModule } from './customer-search/customer-search.module';   // Customer Search guide (Nov 1 2026): /pos/customer-search/*
+export { CustomerNotesModule } from './customer-notes/customer-notes.module';   // Customer Notes SUNMI guide (Nov 9 2026): /pos/customer-notes/*
+export { AppointmentHistoryModule } from './appointment-history/appointment-history.module';   // Appointment History SUNMI guide (Nov 9 2026): /pos/appointment-history/*
 export { CustomerTimelineModule } from './customer-timeline/customer-timeline.module';   // Customer Timeline guide (Nov 1 2026): /pos/customer-timeline/*
 export { tlPresetRange as salonPresetRange } from './customer-timeline/customer-timeline-center';   // shared salon-local date presets
 export { DuplicateReviewModule } from './duplicate-review/duplicate-review.module';   // Duplicate Review guides (Nov 1 2026): /pos/duplicate-review/*

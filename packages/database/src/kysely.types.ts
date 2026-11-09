@@ -499,6 +499,7 @@ export interface CustomersTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   search_fold: string | null;   // types sync (Nov 5 2026)
   search_digits: string | null;   // types sync (Nov 5 2026)
+  notes_updated_at: TsNull;   // 843 — when the notes object was last saved (Customer Notes workspace)
 }
 export interface OauthClientsTable { id: Generated<string>; client_id: string; name: string; redirect_uris: string[]; client_secret_hash: string | null; allowed_scopes: Generated<string[]>; disabled_at: TsNull; created_at: Generated<Ts>; }   // 501
 export interface OauthGrantsTable { id: Generated<string>; client_id: string; tenant_id: string; approved_by: string | null; scopes: string[]; created_at: Generated<Ts>; revoked_at: TsNull; }   // 501
@@ -4932,6 +4933,10 @@ export interface CustomerIntelligenceScansTable {   // migration 763 — Custome
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
 }
+export interface CustomerNoteReviewsTable {   // migration 843 — Review & Accuracy of safety notes (append-only; tied to the text's sha256)
+  id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; decision: string; reason: string | null;
+  reviewer_user_id: string | null; created_at: Generated<Ts>;
+}
 export interface CustomerIntelligenceSnapshotsTable {   // migration 763 — latest per-customer classification (derived, rebuildable)
   tenant_id: string; customer_id: string; scan_id: string; status: string; completed_visits: Generated<number>; first_visit_at: Ts | null; last_visit_at: Ts | null;
   typical_interval_days: number | null; days_since_last: number | null; has_upcoming: Generated<boolean>; next_appointment_date: string | null; churn_watch: Generated<boolean>;
@@ -8039,6 +8044,7 @@ export interface DB {
   customer_intelligence_health_runs: CustomerIntelligenceHealthRunsTable;
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
+  customer_note_reviews: CustomerNoteReviewsTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;

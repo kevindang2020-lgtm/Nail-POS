@@ -331,4 +331,5 @@ export const FINANCE_VI: Record<string, string> = {
   // moved from the frozen catalog.vi.ts (Nov 6 2026) — keys unchanged
   'pos.cash_drawer_register': 'Quầy',
   'pos.cash_drawer_unassigned': 'Tiền mặt chưa gán quầy',
+  "gc.clearingOpen": "Bảng đầy đủ · chọn ngày",   // DRAFT — Kevin reviews
 };

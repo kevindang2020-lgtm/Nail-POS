@@ -228,6 +228,10 @@
     "modules/queue/src/tech/tech.controller.ts#TechController.metrics": {
       "kind": "not-a-list",
       "reason": "F5 §73 (Nov 6 2026): ONE metrics card (clocked / break / service / ready minutes, turn units) for the signed-in technician; ?period picks today / week / month, never a filter of rows"
+    },
+    "modules/checkout/src/payment-channels/payment-channels.controller.ts#PaymentChannelsController.channels": {
+      "kind": "fixed-size",
+      "reason": "Three Ways to Pay (Nov 9 2026): always exactly three payment channels of this location (+ the one open ticket named by ?ticketId); never a filter or page of rows"
     }
   }
 }

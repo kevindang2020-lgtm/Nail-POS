@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 965,
+  "tables": 966,
   "ownership": {
-   "tenant_owned": 643,
+   "tenant_owned": 644,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 161,
    "tenant_branch_owned": 92,
@@ -28,7 +28,7 @@
    "BOOKING": 43,
    "PAYMENTS": 60,
    "WORKFORCE": 76,
-   "CUSTOMERS": 59,
+   "CUSTOMERS": 60,
    "CATALOG": 21,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 14,
@@ -42,7 +42,7 @@
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 144,
-   "CONFIDENTIAL": 166,
+   "CONFIDENTIAL": 167,
    "SECURITY_SECRET": 39,
    "INTERNAL": 534,
    "PAYMENT_RESTRICTED": 76,
@@ -3171,6 +3171,18 @@
    "delete_policy": "never",
    "has_tenant_id": true,
    "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "customer_note_reviews": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"
   },

@@ -267,5 +267,15 @@ export const CTIMELINE_EN: Record<string, string> = {
   "tlx.health.d.duplicates.PASSED": "No open duplicate groups.",
   "tlx.health.d.duplicates.WARNING": "Some profiles may be the same customer; their history is split until reviewed in Duplicate Review. Nothing is merged automatically.",
   "tlx.health.d.duplicates.INSUFFICIENT_DATA": "Duplicate Review has not scanned yet.",
-  "tlx.health.d.duplicates.UNAVAILABLE": "Duplicate Review did not answer."
+  "tlx.health.d.duplicates.UNAVAILABLE": "Duplicate Review did not answer.",
+  "tlx.kpi.identity": "Customer",
+  "tlx.kpi.since": "Customer since {d}",
+  "tlx.kpi.lastVisit": "Last visit",
+  "tlx.kpi.completedVisits": "{n} completed visits",
+  "tlx.kpi.benefits": "Benefits",
+  "tlx.readOnly": "read-only",
+  "tlx.howto.1": "Search by name, phone or email (Vietnamese accents optional).",
+  "tlx.howto.2": "Pick the right customer — shared phone numbers are listed separately, never merged.",
+  "tlx.howto.3": "Read the history newest first: appointments, visits, payments, benefits and messages, each from the system that owns it.",
+  "tlx.howto.privacy": "Nothing is shown until you search — no customer profiles are preloaded.",
 };

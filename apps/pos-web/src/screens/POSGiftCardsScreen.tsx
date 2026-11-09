@@ -78,6 +78,28 @@ export function GiftCardBranchLiability() {
   );
 }
 
+/** Gift Cards SUNMI guide (Nov 9 2026) zone C: the Branch Liability & Clearing context ON the page — each branch's net position
+ *  for the default period, from the same report as the full table (which opens with its From / To / Update). An internal
+ *  obligation, never a bank movement. No reports permission → nothing (the full panel hides itself the same way). */
+function GiftCardClearingStrip({ onOpen, tick }: { onOpen: () => void; tick: number }) {
+  const [r, setR] = useState<GiftCardLiabilityReport | null>(null); const [hidden, setHidden] = useState(false); const [err, setErr] = useState(false);
+  useEffect(() => { setErr(false); posGiftCardsApi.liability().then(setR).catch((e: any) => { if (e?.status === 403) setHidden(true); else setErr(true); }); }, [tick]);
+  if (hidden) return null;
+  const owed = (c: number) => c > 0 ? tx('pos.is_owed_c', { c: String(money(c)) }) : c < 0 ? tx('pos.owes_v0', { v0: String(money(-c)) }) : tx('admin.giftCards.even');
+  const rows = (r?.branches ?? []).filter((b) => b.branchId !== null);
+  return (
+    <div className="gc-clearing" data-testid="gc-clearing" data-module-id="gc-clearing">
+      <b>{tx('pos.branch_liability_clearing')}</b>
+      {err ? <span className="fk-muted">{tx('pos.could_not_load_branch_liability')}</span>
+        : !r ? <span className="fk-muted">{tx('pos.loading')}</span>
+        : rows.length === 0 ? <span className="fk-muted">{tx('pos.no_gift_card_activity_in_this_dcys')}</span>
+        : rows.slice(0, 4).map((b) => <span key={b.branchId} className="gc-clr-item">{b.branchName}: <b>{owed(b.netClearingCents)}</b></span>)}
+      {r ? <span className="fk-muted">{r.from} → {r.to}</span> : null}
+      <button type="button" className="fk-link" onClick={onOpen} data-testid="gc-clearing-open">{tx('gc.clearingOpen')}</button>
+    </div>
+  );
+}
+
 type Person = { id?: string; customerId?: string | null; name: string | null; phone: string | null; email: string | null };
 type Card = { id: string; card: string; reference: string | null; status: string; spendable: boolean; originalCents: number; balanceCents: number; issuedAt: string | null; createdAt: string | null;
   lastActivityAt: string | null; lastRedeemedAt: string | null; expiresAt: string | null; purchaser: Person | null; recipient: Person | null; delivery: 'digital' | 'physical'; hasPin: boolean; branch: string | null;
@@ -170,6 +192,7 @@ export function POSGiftCardsScreen() {
         </>}
       </div>
 
+      <GiftCardClearingStrip onOpen={() => setDlg({ kind: 'liability' })} tick={tick} />
       <div className="fn-tabsrow gc-toolbar">
         <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('finance.status')} data-module-id="gc-status">
           {(['', 'active', 'redeemed', 'pending', 'frozen', 'void'] as Group[]).map((g) => <button key={g || 'all'} type="button" role="tab" aria-selected={group === g} className={group === g ? 'on' : ''} onClick={() => setGroup(g)} data-testid={'tab-' + (g || 'all')}>{tx('gc.tab.' + (g || 'all'))}</button>)}

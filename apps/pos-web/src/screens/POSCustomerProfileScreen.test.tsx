@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 const { searchMock, detailMock } = vi.hoisted(() => ({ searchMock: vi.fn(), detailMock: vi.fn() }));
 const phoneStatusMock = vi.hoisted(() => vi.fn());
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: searchMock, getDetail: detailMock, phoneStatus: phoneStatusMock } }));
+vi.mock('../api/posCustomerSearchApi', () => ({ posCustomerSearchApi: { summary: vi.fn().mockResolvedValue({ kpis: { customers: 0, active: 0, sharedContactProfiles: 0 } }), customers: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25, pageCount: 1 }), check: vi.fn() } }));
 import { POSCustomerProfileScreen } from './POSCustomerProfileScreen';
 beforeEach(() => { searchMock.mockReset(); detailMock.mockReset(); phoneStatusMock.mockReset().mockRejectedValue(new Error('no status')); });
 
@@ -23,6 +24,7 @@ describe('POSCustomerProfileScreen', () => {
     render(<MemoryRouter><POSCustomerProfileScreen /></MemoryRouter>);
     fireEvent.change(screen.getByPlaceholderText(/Search by name/i), { target: { value: 'Ana' } });
     fireEvent.click(await screen.findByText('Ana Rivera'));
+    fireEvent.click(await screen.findByTestId('cpx-full'));
     await waitFor(() => expect(detailMock).toHaveBeenCalledWith('c1'));
     expect(await screen.findByText('$840.00')).toBeInTheDocument();   // lifetime spend
     expect(screen.getByText(/VIP MEMBER/)).toBeInTheDocument();   // Sep 2026 redesign: '★ VIP MEMBER' badge
@@ -36,6 +38,7 @@ describe('POSCustomerProfileScreen', () => {
     render(<MemoryRouter><POSCustomerProfileScreen /></MemoryRouter>);
     fireEvent.change(screen.getByPlaceholderText(/Search by name/i), { target: { value: 'Ana' } });
     fireEvent.click(await screen.findByText('Ana Rivera'));
+    fireEvent.click(await screen.findByTestId('cpx-full'));
     expect(await screen.findByText('No active membership plan on record.')).toBeInTheDocument();   // redesign wording
     expect(screen.getByText('No active gift cards associated with this profile.')).toBeInTheDocument();   // redesign wording
   });
@@ -50,6 +53,7 @@ describe('Phase 3: the phone\u2019s real proof', () => {
     render(<MemoryRouter><POSCustomerProfileScreen /></MemoryRouter>);
     fireEvent.change(screen.getByPlaceholderText(/Search by name/i), { target: { value: 'Ana' } });
     fireEvent.click(await screen.findByText('Ana Rivera'));
+    fireEvent.click(await screen.findByTestId('cpx-full'));
     expect(await screen.findByTestId('phone-proof')).toHaveTextContent('Manually confirmed — OTP not completed');
     expect(screen.getByTestId('change-phone')).toBeTruthy();
   });

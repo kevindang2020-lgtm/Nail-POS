@@ -5,14 +5,14 @@ export const AIUSAGE_VI = {
   'aiu.refresh': 'Làm mới',
   'aiu.history': 'Lịch sử sử dụng',
   'aiu.loadFailed': 'Không tải được dữ liệu sử dụng AI.',
-  'aiu.kpi.total': 'Tổng số gói AI',
+  'aiu.kpi.total': 'Có sẵn',   // DRAFT — Kevin reviews
   'aiu.kpi.totalSub': 'Theo danh mục AI',
-  'aiu.kpi.active': 'Gói đang hoạt động',
+  'aiu.kpi.active': 'Tiện ích AI đang dùng',   // DRAFT — Kevin reviews
   'aiu.kpi.activeSub': 'Đã trả phí và còn hiệu lực',
   'aiu.kpi.activeSubPastDue': '+ {n} quá hạn thanh toán (không tính)',
   'aiu.kpi.trials': 'Dùng thử / Chờ xử lý',
   'aiu.kpi.trialsSub': '{t} đang dùng thử · {e} hết hạn dùng thử · {p} quá hạn',
-  'aiu.kpi.cost': 'Chi phí AI hằng tháng (đã xác minh)',
+  'aiu.kpi.cost': 'Chi phí AI hằng tháng',   // DRAFT — Kevin reviews
   'aiu.kpi.costRestricted': 'Chỉ vai trò quản lý thanh toán của chủ tiệm mới xem chi phí',
   'aiu.restricted': 'Bị giới hạn',
   'aiu.basis.reconciled': 'Khớp với các khoản đã thanh toán trong kỳ',

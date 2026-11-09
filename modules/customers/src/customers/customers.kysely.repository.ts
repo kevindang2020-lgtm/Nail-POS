@@ -658,8 +658,9 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   async setNotes(ctx: CustomersContext, id: string, n: CustomerNotes): Promise<CustomerNotes | null> {
     // Persist the complete object in notes_json; mirror salonNotes + warnings to the legacy columns so
     // existing readers of customers.notes / customers.safety_notes stay consistent.
+    // migration 843: notes_updated_at is the Customer Notes workspace's "Updated" date
     const res = await this.scoped(this.db.updateTable('customers'), ctx).set({
-      notes: n.salonNotes, safety_notes: n.warnings, notes_json: JSON.stringify(n), updated_at: sql`now()`,
+      notes: n.salonNotes, safety_notes: n.warnings, notes_json: JSON.stringify(n), updated_at: sql`now()`, notes_updated_at: sql`now()`,
     }).where('id', '=', id).executeTakeFirst();
     if (!Number(res?.numUpdatedRows ?? 0)) return null;
     return n;

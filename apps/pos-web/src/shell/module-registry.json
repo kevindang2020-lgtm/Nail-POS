@@ -528,6 +528,10 @@
      "minItems": 9
     },
     {
+     "id": "checkout-three-ways",
+     "label": "Three Ways to Pay — Clover Compact / Staff iPhone / Customer App (opens the three equal channel cards)"
+    },
+    {
      "id": "checkout-queue",
      "label": "Checkout Queue"
     },
@@ -1725,6 +1729,10 @@
      "id": "kpis",
      "label": "Outstanding Liability, Active Cards, Total Issued, Redeemed Value, Total Cards",
      "minItems": 5
+    },
+    {
+     "id": "gc-clearing",
+     "label": "Branch Liability & Clearing (each branch's net position + full table with From / To / Update)"
     },
     {
      "id": "gc-status",
@@ -5003,6 +5011,285 @@
     {
      "id": "mpx-history",
      "label": "Change history"
+    }
+   ]
+  },
+  {
+   "key": "cust-notes",
+   "title": "Customer Notes",
+   "routes": [
+    "/tenant/customers/notes"
+   ],
+   "screens": [
+    "POSCustomerNotesScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Notes_6",
+   "scroll": "page",
+   "scrollReason": "Customer Notes SUNMI guide: four cards, search and filters stay on top; the notes table keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "cnx-find",
+     "label": "Find a customer to edit their notes (original search)"
+    },
+    {
+     "id": "cnx-check",
+     "label": "Check Customer Notes System"
+    },
+    {
+     "id": "cnx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "cnx-kpis",
+     "label": "Customers with notes / Safety warnings / Preferences recorded / Needs review",
+     "minItems": 4,
+     "items": "[data-testid^=cnx-kpi-]"
+    },
+    {
+     "id": "cnx-search",
+     "label": "Search name / phone / note words"
+    },
+    {
+     "id": "cnx-category",
+     "label": "Category (six types)"
+    },
+    {
+     "id": "cnx-review",
+     "label": "Review state"
+    },
+    {
+     "id": "cnx-dates",
+     "label": "Which date + presets + From / To"
+    },
+    {
+     "id": "cnx-results",
+     "label": "Notes table + pages"
+    }
+   ]
+  },
+  {
+   "key": "appt-history",
+   "title": "Appointment History",
+   "routes": [
+    "/tenant/customers/appointment-history"
+   ],
+   "screens": [
+    "POSAppointmentHistoryScreen"
+   ],
+   "guide": "AI_PowerSalon_Appointment_History",
+   "scroll": "page",
+   "scrollReason": "Appointment History SUNMI guide: six cards and the filters stay on top; the appointments table keeps its height and scrolls with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "ahx-find",
+     "label": "Find a customer to see their history with money details (original search)"
+    },
+    {
+     "id": "ahx-check",
+     "label": "Check Appointment History System"
+    },
+    {
+     "id": "ahx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "ahx-kpis",
+     "label": "Appointments / Upcoming / Completed / Canceled / No-shows / Rescheduled",
+     "minItems": 6,
+     "items": "[data-testid^=ahx-kpi-]"
+    },
+    {
+     "id": "ahx-search",
+     "label": "Search customer / phone / service / technician"
+    },
+    {
+     "id": "ahx-status",
+     "label": "Status"
+    },
+    {
+     "id": "ahx-technician",
+     "label": "Technician"
+    },
+    {
+     "id": "ahx-sort",
+     "label": "Sort"
+    },
+    {
+     "id": "ahx-dates",
+     "label": "Which date + presets + From / To"
+    },
+    {
+     "id": "ahx-results",
+     "label": "Appointments table + pages"
+    }
+   ]
+  },
+  {
+   "key": "cust-timeline",
+   "title": "Customer Timeline",
+   "routes": [
+    "/tenant/ai/customer-profile/timeline"
+   ],
+   "screens": [
+    "POSAICustomerTimelineScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Timeline",
+   "scroll": "page",
+   "scrollReason": "Customer Timeline SUNMI guide §03: long timelines scroll vertically; the header, search and the first useful content fit; no sideways scroll.",
+   "modules": [
+    {
+     "id": "tlx-check",
+     "label": "Check Customer Timeline System"
+    },
+    {
+     "id": "tlx-search",
+     "label": "Search name / phone / email"
+    },
+    {
+     "id": "tlx-search-btn",
+     "label": "Search"
+    },
+    {
+     "id": "tlx-howto",
+     "label": "Search-first guidance (no customer selected)"
+    }
+   ]
+  },
+  {
+   "key": "upsell-settings",
+   "title": "Checkout Upsell Assistant Settings",
+   "routes": [
+    "/tenant/ai/checkout-upsell/settings"
+   ],
+   "screens": [
+    "AICheckoutUpsellSettingsScreen"
+   ],
+   "guide": "AI_PowerSalon_Checkout_Upsell_Assistant_Settings",
+   "scroll": "page",
+   "scrollReason": "Checkout Upsell Settings SUNMI guide: status strip and the two equal configuration cards on top; the Suggestion Activity / Settings History / System Health tabs scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "ucx-status",
+     "label": "Assistant status + enable / disable"
+    },
+    {
+     "id": "ucx-kpis",
+     "label": "Effective state / Enabled categories / Limits / Health",
+     "minItems": 4,
+     "items": "[data-testid^=ucx-kpi-]"
+    },
+    {
+     "id": "ucx-cats",
+     "label": "Suggestion categories (seven switches)"
+    },
+    {
+     "id": "ucx-limits",
+     "label": "Limits (three numbers)"
+    },
+    {
+     "id": "ucx-activity",
+     "label": "Suggestion Activity / Settings History / System Health tabs"
+    }
+   ]
+  },
+  {
+   "key": "cust-profiles",
+   "title": "Customer Profiles",
+   "routes": [
+    "/tenant/customers/profiles"
+   ],
+   "screens": [
+    "POSCustomerProfileScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Profiles",
+   "scroll": "page",
+   "scrollReason": "Customer Profiles SUNMI guide §08: metrics, search and filters stay on top; the customer cards page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "cpx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "cpx-check",
+     "label": "Check Customer Profile System"
+    },
+    {
+     "id": "cpx-kpis",
+     "label": "Total Customers / Recently Active / Needs Review",
+     "minItems": 3,
+     "items": "[data-testid^=cpx-kpi-]"
+    },
+    {
+     "id": "cpx-views",
+     "label": "All / Recently Active / Newly Added / Needs Review"
+    },
+    {
+     "id": "cpx-dates",
+     "label": "Which date + presets + From / To"
+    },
+    {
+     "id": "cpx-sort",
+     "label": "Sort"
+    },
+    {
+     "id": "cpx-results",
+     "label": "Customer cards (four across) + pages"
+    }
+   ]
+  },
+  {
+   "key": "community",
+   "title": "Safety Community",
+   "routes": [
+    "/community"
+   ],
+   "screens": [
+    "community/CommunityFeedScreen"
+   ],
+   "guide": "AI_PowerSalon_Safety_Community",
+   "scroll": "page",
+   "scrollReason": "Safety Community SUNMI guide: heading, overview cards, the six equal module tabs and filters on top; the advisory list (25 per page) scrolls with the page.",
+   "modules": [
+    {
+     "id": "cmx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "cmx-check",
+     "label": "Health Check (read-only)"
+    },
+    {
+     "id": "cmx-kpis",
+     "label": "Verified overview cards (active advisories, following, drafts, awaiting approval, private incidents — per role)",
+     "minItems": 2,
+     "items": "[data-testid^=cmx-kpi-]"
+    },
+    {
+     "id": "cmx-tabs",
+     "label": "Feed / New advisory / My advisories / Approvals / Private incidents / Settings (equal cells)",
+     "minItems": 2,
+     "items": "a"
+    }
+   ]
+  },
+  {
+   "key": "approvals",
+   "title": "Approvals",
+   "routes": [
+    "/approvals"
+   ],
+   "screens": [
+    "approvals/POSApprovalsScreen"
+   ],
+   "guide": "AI_PowerSalon_Approvals_Management_Authorization_Center",
+   "scroll": "page",
+   "scrollReason": "Approvals SUNMI guide: four summary cards and the five tabs on top; long request lists scroll with the page.",
+   "modules": [
+    {
+     "id": "apx-kpis",
+     "label": "Pending Decisions / Awaiting Owner / Urgent / Completed",
+     "minItems": 4,
+     "items": "[data-testid^=apx-kpi-]"
     }
    ]
   }

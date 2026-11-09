@@ -1,0 +1,83 @@
+// appointment-history-center.pgtest — Appointment History SUNMI guide (Nov 9 2026) on the REAL schema.
+// AH = cards / list / scope / dates / health. Every appointment below is a FIXTURE.
+import { describe, it, expect, beforeAll } from 'vitest';
+import { sql } from 'kysely';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { AppointmentHistoryCenter, AppointmentHistoryError } from './appointment-history-center';
+
+const P = 'c8440000-0000-4000-8000-';
+const id = (n: number) => P + String(n).padStart(12, '0');
+const T = id(1), B = id(2), B2 = id(3), X = id(4), BX = id(5), OWNER = id(10), LAN = id(20), MAI = id(21), XT = id(22);
+const C = { hang: id(101), bo: id(102), xena: id(103) };
+let db: any; let ah: AppointmentHistoryCenter;
+const q = async (s: any) => (await s.execute(db)).rows as any[];
+const owner = () => ({ tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: ['pos.customers.view'] }) as any;
+const confinedB2 = () => ({ tenantId: T, branchId: B2, userId: OWNER, role: 'FRONT_DESK', permissions: ['pos.customers.view'], authz: { scope: 'BRANCH', branchIds: [B2] } }) as any;
+async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e) { return e instanceof AppointmentHistoryError ? e.code : (e as Error).message; } }
+let n = 0;
+async function appt(o: { cust?: string; tech?: string; days: number; status?: string; branch?: string; tenant?: string; createdDaysAgo?: number; service?: string }) {
+  const aid = id(500 + ++n);
+  await q(sql`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status, services, created_at)
+    values (${aid}, ${o.tenant ?? T}, ${o.branch ?? B}, ${o.tech ?? LAN}, ${o.cust ?? C.hang}, 'x', (now() at time zone 'America/New_York')::date + ${o.days}::int, '10:00', '11:00', ${o.status ?? 'booked'},
+      ${JSON.stringify([{ name: o.service ?? 'Gel Manicure' }])}::jsonb, now() - (${String(o.createdDaysAgo ?? 0)} || ' days')::interval)`);
+  return aid;
+}
+
+beforeAll(async () => {
+  db = kyselyFor(await migratedPglite()); ah = new AppointmentHistoryCenter(db);
+  await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T}, 'S', 'Pilot', 'ah-844', 'AH844', 'active'), (${X}, 'X', 'Other', 'ah-844x', 'AH844X', 'active')`);
+  await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B}, ${T}, 'Main', 'America/New_York'), (${B2}, ${T}, 'Second', 'America/New_York'), (${BX}, ${X}, 'Other', 'America/New_York')`);
+  await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values (${LAN}, ${T}, ${B}, 'Lan', 'Tran', 'Lan Tran'), (${MAI}, ${T}, ${B2}, 'Mai', 'Ho', 'Mai Ho'), (${XT}, ${X}, ${BX}, 'Xavier', 'X', 'Xavier X')`);
+  for (const [cid, name, tenant] of [[C.hang, 'Nguyễn Thị Hằng', T], [C.bo, 'Bo Tran', T], [C.xena, 'Xena Other', X]] as const)
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status) values (${cid}, ${tenant}, ${tenant === T ? B : BX}, 'a', 'b', ${name}, ${'+1609555' + cid.slice(-4)}, 'active')`);
+  const a1 = await appt({ days: 3 });                                           // upcoming
+  await appt({ days: -2, status: 'completed', createdDaysAgo: 10 });           // completed
+  const a3 = await appt({ days: -1, status: 'cancelled', cust: C.bo, createdDaysAgo: 5 });
+  await appt({ days: -4, status: 'no_show', cust: C.bo, createdDaysAgo: 8, service: 'Pedicure' });
+  await appt({ days: -6, status: 'booked', createdDaysAgo: 9 });               // past but still booked: NOT a no-show, NOT upcoming
+  await appt({ days: 1, branch: B2, tech: MAI, cust: C.bo });                   // the second branch
+  await appt({ days: 2, tenant: X, branch: BX, tech: XT, cust: C.xena });       // another salon
+  await q(sql`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value) values
+    (${T}, ${B}, ${a1}, 'rescheduled', 'start_time', '09:00', '10:00'), (${T}, ${B}, ${a1}, 'rescheduled', 'appt_date', 'x', 'y'),
+    (${T}, ${B}, ${a3}, 'status_changed', 'status', 'booked', 'cancelled')`);
+}, 180_000);
+
+describe('Appointment History workspace', () => {
+  it('AH-01 the six cards: explicit statuses only; a past "booked" is neither upcoming nor a no-show; a move is rescheduled, not canceled', async () => {
+    const s = await ah.summary(owner());
+    expect(s.cards).toEqual({ appointments: 6, upcoming: 2, completed: 1, canceled: 1, noShows: 1, rescheduled: 1 });
+  });
+  it('AH-02 the table: newest created first, services named, technician named, reschedule count; another salon never appears', async () => {
+    const r = await ah.list(owner(), {});
+    expect(r.total).toBe(6);
+    expect(r.items.map((i) => i.createdAt!).every((v, i, a) => i === 0 || a[i - 1] >= v)).toBe(true);
+    const first = r.items.find((i) => i.rescheduled === 2)!;
+    expect(first).toMatchObject({ services: 'Gel Manicure', technician: 'Lan Tran', status: 'booked', customer: 'Nguyễn Thị Hằng' });
+    expect(r.items.every((i) => i.phone == null || i.phone.startsWith('(•••)'))).toBe(true);
+  });
+  it('AH-03 status / search / technician filters; upcoming sorts soonest first', async () => {
+    expect((await ah.list(owner(), { status: 'no_show' })).items.map((i) => i.services)).toEqual(['Pedicure']);
+    expect((await ah.list(owner(), { status: 'rescheduled' })).total).toBe(1);
+    expect((await ah.list(owner(), { q: 'hang' })).total).toBe(3);                       // accent-insensitive (Hằng's three)
+    expect((await ah.list(owner(), { q: 'pedicure' })).total).toBe(1);
+    expect((await ah.list(owner(), { technician: MAI })).total).toBe(1);
+    const up = await ah.list(owner(), { status: 'upcoming', sort: 'upcoming' });
+    expect(up.items.map((i) => i.date)).toEqual([...up.items.map((i) => i.date)].sort());
+    expect(await code(ah.list(owner(), { q: 'a' }))).toBe('APPOINTMENT_HISTORY_SEARCH_TOO_SHORT');
+  });
+  it('AH-04 which date: scheduled vs created vs canceled; the cards follow the same filters', async () => {
+    expect((await ah.summary(owner(), { preset: 'today', dateField: 'created' })).cards.appointments).toBe(2);   // created today: the upcoming one + B2
+    expect((await ah.list(owner(), { preset: 'today', dateField: 'canceled' })).items.map((i) => i.status)).toEqual(['cancelled']);
+    expect(await code(ah.list(owner(), { preset: 'custom', from: '2026-11-09', to: '2026-11-01' }))).toBe('APPOINTMENT_HISTORY_INVALID_PERIOD');
+  });
+  it('AH-05 a branch-confined role sees only its branch', async () => {
+    const s = await ah.summary(confinedB2());
+    expect(s.cards.appointments).toBe(1);
+    expect((await ah.list(confinedB2(), {})).items.map((i) => i.technician)).toEqual(['Mai Ho']);
+  });
+  it('AH-06 the health check is read-only and names a past appointment still open', async () => {
+    const h = await ah.check(owner());
+    expect(h.checks.find((c) => c.key === 'past_open_appointments')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(h.checks.map((c) => c.key)).toContain('no_side_effects');
+  });
+});

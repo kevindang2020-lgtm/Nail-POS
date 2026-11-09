@@ -4059,3 +4059,110 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 /* SUNMI batch 6: Voice Settings records pager — when the Vietnamese range wraps the row, keep 44 px of hit room above the Rows picker */
 .rvw-pager.vsx-pager{row-gap:18px}
 .rvw-table-wrap.mpx-set-wrap{padding-bottom:8px}
+/* SUNMI batch 7: Customer Notes workspace — header search, four equal cards, the notes table, the detail / editor dialogs */
+.cnx-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px}
+.cnx-find{position:relative;flex:0 1 420px;min-width:260px}
+.cnx-find .rvw-search{width:100%}
+.cnx-find-list{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #EADBB6;border-radius:12px;box-shadow:0 12px 28px rgba(0,0,0,.08);padding:6px;max-height:360px;overflow:auto}
+.cnx-find-item{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:44px;padding:8px 10px;border:0;background:none;border-radius:8px;text-align:left;cursor:pointer}
+.cnx-find-item:hover,.cnx-find-item:focus-visible{background:#FBF5EA}
+.rvw-kpis.cnx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1180px){.rvw-kpis.cnx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cnx-searchrow{display:flex;gap:8px;flex:1 1 100%;min-width:0}
+.cnx-searchrow .rvw-search{flex:1 1 auto;min-width:0}
+.cnx-preview{max-width:520px;overflow-wrap:anywhere}
+.cnx-acts .btn.sm{position:relative}
+:root:not([data-hitslop="off"]) .cnx-acts .btn.sm::after{content:'';position:absolute;inset:-7px 0}
+.cnx-entry{padding:10px 12px;margin-bottom:10px}
+.cnx-entry-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cnx-text{margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.cnx-review-acts,.cnx-correct{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.cnx-correct .rvw-f{flex:1 1 280px}
+.cnx-field{display:block;margin-bottom:12px}
+.cnx-field textarea{width:100%;margin-top:6px;padding:10px 12px;border:1px solid #EFEAE1;border-radius:10px;resize:vertical;font:inherit}
+.cnx-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.cnx-two{grid-template-columns:minmax(0,1fr)}}
+.cnx-visible{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 12px;border:1px solid #EFEAE1;border-radius:10px;background:#FAFAF9}
+.cnx-visible input{width:22px;height:22px}
+/* Appointment History workspace (Nov 9 2026) */
+.rvw-kpis.ahx-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.ahx-services{max-width:360px;overflow-wrap:anywhere}
+.ahx-dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0 0 12px}
+.ahx-dl dt{color:#7A6A4F;font-weight:600}
+.ahx-dl dd{margin:0;overflow-wrap:anywhere}
+/* Three Ways to Pay (Nov 9 2026) — three equal channel cards; reflow 3 → 2 → 1 by the dialog's own width */
+.pcw-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(12px,1vw,20px);align-items:stretch;container-type:inline-size}
+@container (max-width:900px){.pcw-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container (max-width:560px){.pcw-cards{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1100px){.pcw-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.pcw-cards{grid-template-columns:minmax(0,1fr)}}
+.pcw-card{min-width:0;display:flex;flex-direction:column;gap:8px;border:1px solid #EADBB6;border-radius:14px;background:#fff;padding:16px;min-height:300px}
+.pcw-card.bad{border-color:#F2C4BD}.pcw-card.warn{border-color:#F1D9A6}.pcw-card.info{border-color:#C9DAF0}
+.pcw-card-h{display:flex;gap:10px;align-items:flex-start}
+.pcw-card-h h3{margin:0;font-size:16px;line-height:1.25;overflow-wrap:anywhere}
+.pcw-ico{width:40px;height:40px;flex:none;border-radius:10px;background:#FBF5EA;color:#B5821F;display:inline-flex;align-items:center;justify-content:center}
+.pcw-status{display:flex;flex-wrap:wrap;gap:6px}
+.pcw-reason{margin:0;font-size:14px;overflow-wrap:anywhere}
+.pcw-facts{margin:0;display:grid;gap:4px}
+.pcw-facts div{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.pcw-facts dt{color:#7A6A4F}.pcw-facts dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.pcw-actions{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+.pcw-primary{min-height:48px;width:100%}
+.pcw-devs{display:flex;flex-direction:column;gap:6px}
+.pcw-actions .btn.ghost{min-height:44px}
+.pcw-ticket{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;border:1px solid #EADBB6;border-radius:12px;padding:12px 16px;margin-bottom:12px;background:#FFFCF6}
+.pcw-ticket.bad{border-color:#C0392B;background:#FBEAE8}
+.pcw-money{font-size:20px;white-space:nowrap}
+.pcw-warn{flex:1 1 100%;margin:0;font-size:14px}
+.pcw-foot{margin-top:10px}
+.pcw-health{margin-top:12px;border-top:1px solid #EADBB6;padding-top:10px}
+.pcw-health h3{margin:0 0 6px;font-size:15px}
+.pcw-checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pcw-checks li{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
+/* Customer Timeline SUNMI (Nov 9 2026): four equal Customer 360 cards; matches (1/3) beside the history (2/3) on wide screens */
+.rvw-kpis.tlx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1280px){.rvw-kpis.tlx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tlx-body{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
+.tlx-body.with-matches{grid-template-columns:minmax(360px,1fr) minmax(0,2fr)}
+@media (max-width:1280px){.tlx-body.with-matches{grid-template-columns:minmax(0,1fr)}}
+.tlx-left,.tlx-right{min-width:0;display:flex;flex-direction:column;gap:12px}
+.tlx-left .rvw-table th:nth-child(5),.tlx-left .rvw-table td:nth-child(5),.tlx-left .rvw-table th:nth-child(4),.tlx-left .rvw-table td:nth-child(4){display:none}
+.tlx-left tr.on{background:var(--cream,#faf6ee)}
+.tlx-howto{padding:16px}
+.tlx-steps{margin:8px 0;padding-left:22px;display:grid;gap:6px;font-size:16px}
+/* Checkout Upsell Assistant Settings SUNMI (Nov 9 2026): four status tiles across; two equal configuration cards */
+.rvw-kpis.ucx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.ucx-config{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
+@media (max-width:1100px){.ucx-config{grid-template-columns:minmax(0,1fr)}}
+/* Customer Profiles SUNMI (Nov 9 2026): three balanced metrics; equal customer cards four across (3 → 2 → 1) */
+.rvw-kpis.cpx-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.cpx-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:stretch;margin-bottom:12px}
+@media (max-width:1500px){.cpx-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1150px){.cpx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.cpx-grid{grid-template-columns:minmax(0,1fr)}}
+.cpx-card{display:flex;gap:12px;align-items:flex-start;min-width:0;min-height:132px;padding:14px;border:1px solid #EFEAE1;border-radius:16px;background:#fff;text-align:left;cursor:pointer}
+.cpx-card:hover,.cpx-card:focus-visible{border-color:#EADBB6;box-shadow:0 8px 20px rgba(181,130,31,.08)}
+.cpx-av{width:48px;height:48px;flex:none;border-radius:50%;background:linear-gradient(135deg,#EADBB6 0%,#C49A54 100%);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+.cpx-card-b{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.cpx-name{font-size:16px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.cpx-meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:14px}
+.cpx-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
+.cpx-qtabs{position:sticky;top:0;background:#fff;z-index:1;overflow-x:auto;flex-wrap:nowrap}
+.cpx-qbody{padding-top:10px}
+.cpx-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.cpx-two{grid-template-columns:minmax(0,1fr)}}
+.cpx-wide{grid-column:1/-1}
+.cpx-dl{margin:0;display:grid;gap:8px}
+.cpx-f{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:8px;font-size:15px}
+.cpx-f dt{color:#7A6A4F}.cpx-f dd{margin:0;overflow-wrap:anywhere}
+/* Gift Cards SUNMI (Nov 9 2026): Branch Liability & Clearing context on the page */
+.gc-clearing{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:8px 12px;margin:0 0 8px;border:1px solid #EADBB6;border-radius:10px;background:#FFFCF6;font-size:14px;flex:none}
+.gc-clr-item{white-space:nowrap}
+/* Safety Community SUNMI (Nov 9 2026): verified overview cards share the row equally */
+.rvw-kpis.cmx-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));grid-auto-flow:column}
+/* Approvals SUNMI (Nov 9 2026): four equal summary cards */
+.rvw-kpis.apx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:12px}
+.cpx-qtabs{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr))}
+.cpx-qtabs .btn{white-space:normal;min-height:44px}
+.sox-how{margin:0;padding-left:22px;display:grid;gap:10px;font-size:16px;line-height:1.45}
+.rvw-kpis.casx-strip3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}

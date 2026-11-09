@@ -149,13 +149,13 @@ export function POSAiUsageScreen() {
 
       <div className="fk-kpis" data-testid="aiu-kpis">
         {sumErr ? <ErrorRetry message={errText(sumErr, tx('aiu.loadFailed'))} onRetry={loadSummary} /> : <>
-          <KpiCard testId="aiu-kpi-total" label={tx('aiu.kpi.total')} loading={!k} value={k ? nf(k.totalPackages) : ''} sub={tx('aiu.kpi.totalSub')} onClick={() => { clear(); }} />
           <KpiCard testId="aiu-kpi-active" label={tx('aiu.kpi.active')} loading={!k} tone="ok" value={k ? nf(k.activeSubscriptions) : ''} sub={k ? (k.pastDue ? tx('aiu.kpi.activeSubPastDue', { n: nf(k.pastDue) }) : tx('aiu.kpi.activeSub')) : ''} onClick={() => setStatus('active')} />
-          <KpiCard testId="aiu-kpi-trials" label={tx('aiu.kpi.trials')} loading={!k} tone={k && k.trialsAndPending ? 'warn' : undefined} value={k ? nf(k.trialsAndPending) : ''}
-            sub={k ? tx('aiu.kpi.trialsSub', { t: nf(k.trialing), e: nf(k.trialExpired), p: nf(k.pastDue) }) : ''} onClick={() => setStatus('trialing')} />
           <KpiCard testId="aiu-kpi-cost" label={tx('aiu.kpi.cost')} loading={!sum} tone="gold"
             value={!cost ? '' : !cost.visible ? tx('aiu.restricted') : `${fmtMoney(cost.recurringMonthlyCents)}`}
             sub={!cost ? '' : !cost.visible ? tx('aiu.kpi.costRestricted') : tx('aiu.basis.' + cost.basis)} onClick={cost?.visible ? () => setDlg({ kind: 'cost' }) : undefined} />
+          <KpiCard testId="aiu-kpi-total" label={tx('aiu.kpi.total')} loading={!k} value={k ? nf(k.totalPackages) : ''} sub={tx('aiu.kpi.totalSub')} onClick={() => { clear(); }} />
+          <KpiCard testId="aiu-kpi-trials" label={tx('aiu.kpi.trials')} loading={!k} tone={k && k.trialsAndPending ? 'warn' : undefined} value={k ? nf(k.trialsAndPending) : ''}
+            sub={k ? tx('aiu.kpi.trialsSub', { t: nf(k.trialing), e: nf(k.trialExpired), p: nf(k.pastDue) }) : ''} onClick={() => setStatus('trialing')} />
         </>}
       </div>
 

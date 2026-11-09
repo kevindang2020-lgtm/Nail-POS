@@ -213,5 +213,271 @@ export const CSEARCH_VI: Record<string, string> = {
   "csx.health.d.freshness.READY": "Tìm kiếm đọc trực tiếp hồ sơ (thay đổi gần nhất {at}); không có chỉ mục riêng nào bị cũ.",
   "csx.health.d.freshness.UNKNOWN": "Chưa có hồ sơ khách nào.",
   "csx.status.churn_watch": "Có nguy cơ rời bỏ",   // DRAFT — Kevin reviews
-  "csx.status.rebooking": "Cần đặt lại lịch",   // DRAFT — Kevin reviews
+  "csx.status.rebooking": "Cần đặt lại lịch",   // DRAFT — Kevin reviews,
+  "cnx.check": "Kiểm tra hệ thống ghi chú khách",   // DRAFT — Kevin reviews
+  "cnx.refresh": "Làm mới",   // DRAFT — Kevin reviews
+  "cnx.findLabel": "Tìm khách để sửa ghi chú",   // DRAFT — Kevin reviews
+  "cnx.loadFailed": "Không tải được ghi chú khách.",   // DRAFT — Kevin reviews
+  "cnx.kpi.customers": "Khách có ghi chú",   // DRAFT — Kevin reviews
+  "cnx.kpi.customersSub": "Số khách có ít nhất một ghi chú",   // DRAFT — Kevin reviews
+  "cnx.kpi.warnings": "Cảnh báo an toàn",   // DRAFT — Kevin reviews
+  "cnx.kpi.warningsSub": "Cảnh báo dịch vụ quan trọng đã ghi",   // DRAFT — Kevin reviews
+  "cnx.kpi.preferences": "Sở thích đã ghi",   // DRAFT — Kevin reviews
+  "cnx.kpi.preferencesSub": "Sở thích dịch vụ và thợ",   // DRAFT — Kevin reviews
+  "cnx.kpi.review": "Cần xem lại",   // DRAFT — Kevin reviews
+  "cnx.kpi.reviewSub": "Ghi chú an toàn chưa được xem lại",   // DRAFT — Kevin reviews
+  "cnx.kpi.reviewSubCorr": "{n} cần sửa",   // DRAFT — Kevin reviews
+  "cnx.searchPh": "Tìm tên khách, số điện thoại hoặc nội dung ghi chú",   // DRAFT — Kevin reviews
+  "cnx.search": "Tìm",   // DRAFT — Kevin reviews
+  "cnx.f.category": "Loại",   // DRAFT — Kevin reviews
+  "cnx.f.review": "Xem lại",   // DRAFT — Kevin reviews
+  "cnx.f.sort": "Sắp xếp",   // DRAFT — Kevin reviews
+  "cnx.f.dateField": "Theo ngày",   // DRAFT — Kevin reviews
+  "cnx.cat.all": "Tất cả loại",   // DRAFT — Kevin reviews
+  "cnx.cat.general": "Ghi chú chung của tiệm",   // DRAFT — Kevin reviews
+  "cnx.cat.service_preference": "Sở thích dịch vụ",   // DRAFT — Kevin reviews
+  "cnx.cat.technician_preference": "Thợ yêu thích",   // DRAFT — Kevin reviews
+  "cnx.cat.allergy": "Dị ứng / nhạy cảm",   // DRAFT — Kevin reviews
+  "cnx.cat.warning": "Cảnh báo dịch vụ quan trọng",   // DRAFT — Kevin reviews
+  "cnx.cat.visit": "Ghi chú lần làm",   // DRAFT — Kevin reviews
+  "cnx.rv.all": "Mọi trạng thái",   // DRAFT — Kevin reviews
+  "cnx.rv.needs_review": "Cần xem lại",   // DRAFT — Kevin reviews
+  "cnx.rv.reviewed": "Đã xem lại",   // DRAFT — Kevin reviews
+  "cnx.rv.needs_correction": "Cần sửa",   // DRAFT — Kevin reviews
+  "cnx.rv.not_required": "Không cần xem lại",   // DRAFT — Kevin reviews
+  "cnx.sort.newest": "Mới nhất trước",   // DRAFT — Kevin reviews
+  "cnx.sort.oldest": "Cũ nhất trước",   // DRAFT — Kevin reviews
+  "cnx.sort.name": "Tên khách A–Z",   // DRAFT — Kevin reviews
+  "cnx.date.updated": "Ngày sửa ghi chú",   // DRAFT — Kevin reviews
+  "cnx.date.reviewed": "Ngày xem lại",   // DRAFT — Kevin reviews
+  "cnx.preset.all": "Mọi thời gian",   // DRAFT — Kevin reviews
+  "cnx.preset.today": "Hôm nay",   // DRAFT — Kevin reviews
+  "cnx.preset.week": "Tuần này",   // DRAFT — Kevin reviews
+  "cnx.preset.month": "Tháng này",   // DRAFT — Kevin reviews
+  "cnx.preset.year": "Năm nay",   // DRAFT — Kevin reviews
+  "cnx.preset.custom": "Tùy chọn",   // DRAFT — Kevin reviews
+  "cnx.clear": "Xóa bộ lọc",   // DRAFT — Kevin reviews
+  "cnx.list": "Ghi chú khách",   // DRAFT — Kevin reviews
+  "cnx.count": "{n} ghi chú · mới nhất trước",   // DRAFT — Kevin reviews
+  "cnx.loading": "Đang tải ghi chú…",   // DRAFT — Kevin reviews
+  "cnx.noMatch": "Không có ghi chú nào khớp bộ lọc.",   // DRAFT — Kevin reviews
+  "cnx.empty": "Chưa có khách nào có ghi chú.",   // DRAFT — Kevin reviews
+  "cnx.col.customer": "Khách",   // DRAFT — Kevin reviews
+  "cnx.col.category": "Loại",   // DRAFT — Kevin reviews
+  "cnx.col.note": "Ghi chú",   // DRAFT — Kevin reviews
+  "cnx.col.review": "Xem lại",   // DRAFT — Kevin reviews
+  "cnx.col.updated": "Cập nhật",   // DRAFT — Kevin reviews
+  "cnx.visitTicket": "Từ lần làm (Hoàn tất dịch vụ)",   // DRAFT — Kevin reviews
+  "cnx.view": "Xem",   // DRAFT — Kevin reviews
+  "cnx.edit": "Sửa",   // DRAFT — Kevin reviews
+  "cnx.rows": "Số dòng",   // DRAFT — Kevin reviews
+  "cnx.footNote": "Ghi chú là thông tin nhạy cảm. Dị ứng và cảnh báo là điều khách báo hoặc nhân viên thấy — không phải chẩn đoán. Việc mở ghi chú của khách được ghi lại.",   // DRAFT — Kevin reviews
+  "cnx.detail": "Ghi chú khách",   // DRAFT — Kevin reviews
+  "cnx.updatedAt": "ghi chú lưu lúc {at}",   // DRAFT — Kevin reviews
+  "cnx.editNotes": "Sửa ghi chú",   // DRAFT — Kevin reviews
+  "cnx.noNotes": "Khách này chưa có ghi chú.",   // DRAFT — Kevin reviews
+  "cnx.confirm": "Xác nhận nội dung này",   // DRAFT — Kevin reviews
+  "cnx.needsCorrection": "Cần sửa",   // DRAFT — Kevin reviews
+  "cnx.markCorrect": "Đánh dấu cần sửa",   // DRAFT — Kevin reviews
+  "cnx.correctWhy": "Cần sửa điều gì?",   // DRAFT — Kevin reviews
+  "cnx.reviewNote": "Lần xem lại chỉ áp dụng cho đúng nội dung này; sửa ghi chú sẽ cần xem lại lần nữa.",   // DRAFT — Kevin reviews
+  "cnx.history": "Lịch sử xem lại",   // DRAFT — Kevin reviews
+  "cnx.noHistory": "Chưa có lần xem lại nào.",   // DRAFT — Kevin reviews
+  "cnx.dec.confirmed": "Đã xác nhận",   // DRAFT — Kevin reviews
+  "cnx.dec.needs_correction": "Đánh dấu cần sửa",   // DRAFT — Kevin reviews
+  "cnx.olderText": "cho nội dung cũ",   // DRAFT — Kevin reviews
+  "cnx.saved": "Đã lưu ghi chú.",   // DRAFT — Kevin reviews
+  "cnx.safetyEditNote": "Sửa dị ứng hoặc cảnh báo sẽ đưa ghi chú về trạng thái cần xem lại.",   // DRAFT — Kevin reviews
+  "cnx.health.overall": "{s} · kiểm tra lúc {at}",   // DRAFT — Kevin reviews
+  "cnx.health.running": "Đang kiểm tra…",   // DRAFT — Kevin reviews
+  "cnx.health.readOnly": "Chỉ đọc: việc kiểm tra không sửa ghi chú hay lần xem lại nào.",   // DRAFT — Kevin reviews
+  "cnx.health.READY": "Đạt",   // DRAFT — Kevin reviews
+  "cnx.health.WARNING": "Cảnh báo",   // DRAFT — Kevin reviews
+  "cnx.health.FAILED": "Lỗi",   // DRAFT — Kevin reviews
+  "cnx.health.k.notes_readable": "Đọc được ghi chú",   // DRAFT — Kevin reviews
+  "cnx.health.k.legacy_mirror": "Cột ghi chú cũ khớp",   // DRAFT — Kevin reviews
+  "cnx.health.k.safety_review_backlog": "Ghi chú an toàn chờ quá 7 ngày",   // DRAFT — Kevin reviews
+  "cnx.health.k.corrections_open": "Ghi chú cần sửa",   // DRAFT — Kevin reviews
+  "cnx.health.k.no_side_effects": "Không thay đổi gì",   // DRAFT — Kevin reviews
+  "cnx.health.d.notes_readable.READY": "Ghi chú của mọi khách đều đọc được.",   // DRAFT — Kevin reviews
+  "cnx.health.d.notes_readable.FAILED": "Ghi chú của một số khách bị lưu sai dạng, không đọc được.",   // DRAFT — Kevin reviews
+  "cnx.health.d.legacy_mirror.READY": "Cột ghi chú tiệm và cảnh báo cũ khớp với ghi chú.",   // DRAFT — Kevin reviews
+  "cnx.health.d.legacy_mirror.WARNING": "Một số cột ghi chú cũ khác với ghi chú; màn hình cũ có thể hiện nội dung cũ.",   // DRAFT — Kevin reviews
+  "cnx.health.d.safety_review_backlog.READY": "Không có ghi chú an toàn nào chờ xem lại quá 7 ngày.",   // DRAFT — Kevin reviews
+  "cnx.health.d.safety_review_backlog.WARNING": "Một số ghi chú an toàn đã chờ xem lại quá 7 ngày.",   // DRAFT — Kevin reviews
+  "cnx.health.d.corrections_open.READY": "Không có ghi chú nào cần sửa.",   // DRAFT — Kevin reviews
+  "cnx.health.d.corrections_open.WARNING": "Một số ghi chú được đánh dấu cần sửa nhưng chưa sửa.",   // DRAFT — Kevin reviews
+  "cnx.health.d.no_side_effects.READY": "Việc kiểm tra không thay đổi gì.",   // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_CHANGED": "Ghi chú đã bị sửa sau khi bạn mở. Hãy đọc lại trước khi xác nhận.",   // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_REASON_REQUIRED": "Hãy ghi cần sửa điều gì.",   // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_INVALID_PERIOD": "Chọn ngày bắt đầu và kết thúc (bắt đầu không sau kết thúc).",   // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_SEARCH_TOO_SHORT": "Gõ ít nhất 2 ký tự để tìm.",   // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_NOT_FOUND": "Không tìm thấy khách này.",   // DRAFT — Kevin reviews
+  "cnx.err.forbidden": "Vai trò của bạn không được xem ghi chú khách.",   // DRAFT — Kevin reviews,
+  "ahx.subtitle": "Mọi lịch hẹn của tiệm — sắp tới, đã xong, đã hủy và vắng mặt. Chỉ xem: không thay đổi lịch hẹn nào.",   // DRAFT — Kevin reviews
+  "ahx.findLabel": "Tìm khách để xem lịch sử",   // DRAFT — Kevin reviews
+  "ahx.check": "Kiểm tra hệ thống lịch sử lịch hẹn",   // DRAFT — Kevin reviews
+  "ahx.refresh": "Làm mới",   // DRAFT — Kevin reviews
+  "ahx.unavailable": "Không có dữ liệu",   // DRAFT — Kevin reviews
+  "ahx.loadFailed": "Không tải được lịch sử lịch hẹn.",   // DRAFT — Kevin reviews
+  "ahx.kpi.appointments": "Lịch hẹn",   // DRAFT — Kevin reviews
+  "ahx.kpi.upcoming": "Sắp tới",   // DRAFT — Kevin reviews
+  "ahx.kpi.completed": "Đã hoàn tất",   // DRAFT — Kevin reviews
+  "ahx.kpi.canceled": "Đã hủy",   // DRAFT — Kevin reviews
+  "ahx.kpi.noShows": "Vắng mặt",   // DRAFT — Kevin reviews
+  "ahx.kpi.rescheduled": "Đã dời lịch",   // DRAFT — Kevin reviews
+  "ahx.searchPh": "Khách, số điện thoại, dịch vụ hoặc thợ",   // DRAFT — Kevin reviews
+  "ahx.search": "Tìm",   // DRAFT — Kevin reviews
+  "ahx.clearSearch": "Xóa tìm kiếm",   // DRAFT — Kevin reviews
+  "ahx.f.status": "Trạng thái",   // DRAFT — Kevin reviews
+  "ahx.f.technician": "Thợ",   // DRAFT — Kevin reviews
+  "ahx.f.sort": "Sắp xếp",   // DRAFT — Kevin reviews
+  "ahx.f.dateField": "Theo ngày",   // DRAFT — Kevin reviews
+  "ahx.anyTech": "Mọi thợ",   // DRAFT — Kevin reviews
+  "ahx.st.all": "Tất cả",   // DRAFT — Kevin reviews
+  "ahx.st.upcoming": "Sắp tới",   // DRAFT — Kevin reviews
+  "ahx.st.completed": "Đã hoàn tất",   // DRAFT — Kevin reviews
+  "ahx.st.canceled": "Đã hủy",   // DRAFT — Kevin reviews
+  "ahx.st.no_show": "Vắng mặt",   // DRAFT — Kevin reviews
+  "ahx.st.rescheduled": "Đã dời lịch",   // DRAFT — Kevin reviews
+  "ahx.sort.newest": "Mới nhất trước",   // DRAFT — Kevin reviews
+  "ahx.sort.scheduled": "Theo ngày hẹn",   // DRAFT — Kevin reviews
+  "ahx.sort.upcoming": "Sắp tới trước",   // DRAFT — Kevin reviews
+  "ahx.sort.updated": "Cập nhật gần đây",   // DRAFT — Kevin reviews
+  "ahx.date.scheduled": "Ngày hẹn",   // DRAFT — Kevin reviews
+  "ahx.date.created": "Ngày đặt",   // DRAFT — Kevin reviews
+  "ahx.date.updated": "Cập nhật lần cuối",   // DRAFT — Kevin reviews
+  "ahx.date.completed": "Ngày hoàn tất",   // DRAFT — Kevin reviews
+  "ahx.date.canceled": "Ngày hủy",   // DRAFT — Kevin reviews
+  "ahx.err.APPOINTMENT_HISTORY_INVALID_PERIOD": "Khoảng ngày không hợp lệ — chọn ngày bắt đầu trước hoặc bằng ngày kết thúc.",   // DRAFT — Kevin reviews
+  "ahx.err.APPOINTMENT_HISTORY_SEARCH_TOO_SHORT": "Nhập ít nhất 2 chữ, hoặc 4 số điện thoại.",   // DRAFT — Kevin reviews
+  "ahx.err.forbidden": "Vai trò của bạn không xem được lịch sử lịch hẹn. Hãy hỏi chủ tiệm hoặc quản lý.",   // DRAFT — Kevin reviews
+  "ahx.count": "{n} lịch hẹn · {order}",   // DRAFT — Kevin reviews
+  "ahx.noMatch": "Không có lịch hẹn nào khớp bộ lọc.",   // DRAFT — Kevin reviews
+  "ahx.empty": "Chưa có lịch hẹn nào.",   // DRAFT — Kevin reviews
+  "ahx.col.customer": "Khách",   // DRAFT — Kevin reviews
+  "ahx.col.services": "Dịch vụ",   // DRAFT — Kevin reviews
+  "ahx.col.created": "Đã đặt",   // DRAFT — Kevin reviews
+  "ahx.minutes": "{n} phút",   // DRAFT — Kevin reviews
+  "ahx.anyTechnician": "Thợ nào rảnh",   // DRAFT — Kevin reviews
+  "ahx.moved": "Dời {n} lần",   // DRAFT — Kevin reviews
+  "ahx.view": "Xem",   // DRAFT — Kevin reviews
+  "ahx.footNote": "Giờ theo giờ của tiệm. Tiền của từng lần ghé nằm trong lịch sử riêng của khách.",   // DRAFT — Kevin reviews
+  "ahx.customerHistory": "Lịch sử của khách",   // DRAFT — Kevin reviews
+  "ahx.updated": "Cập nhật lần cuối",   // DRAFT — Kevin reviews
+  "ahx.completedAt": "Hoàn tất lúc",   // DRAFT — Kevin reviews
+  "ahx.canceledAt": "Hủy lúc",   // DRAFT — Kevin reviews
+  "ahx.never": "Chưa lần nào",   // DRAFT — Kevin reviews
+  "ahx.detailNote": "Muốn thay đổi lịch hẹn này, hãy mở trên Lịch.",   // DRAFT — Kevin reviews
+  "ahx.visits": "{n} lần ghé",   // DRAFT — Kevin reviews
+  "ahx.onRecord": "{n} lịch hẹn đã ghi",   // DRAFT — Kevin reviews
+  "ahx.health.readOnly": "Kiểm tra này chỉ đọc — không thay đổi lịch hẹn nào.",   // DRAFT — Kevin reviews
+  "ahx.health.k.appointments_readable": "Đọc được lịch hẹn",   // DRAFT — Kevin reviews
+  "ahx.health.d.appointments_readable.READY": "Tải được lịch hẹn của tiệm.",   // DRAFT — Kevin reviews
+  "ahx.health.d.appointments_readable.WARNING": "Một số lịch hẹn không đọc được.",   // DRAFT — Kevin reviews
+  "ahx.health.d.appointments_readable.FAILED": "Không đọc được lịch hẹn.",   // DRAFT — Kevin reviews
+  "ahx.health.k.lifecycle_history": "Lịch sử thay đổi",   // DRAFT — Kevin reviews
+  "ahx.health.d.lifecycle_history.READY": "Dời lịch, hoàn tất và hủy đều được ghi lại.",   // DRAFT — Kevin reviews
+  "ahx.health.d.lifecycle_history.WARNING": "Một số lịch hẹn đã xong hoặc đã hủy không có bản ghi thay đổi.",   // DRAFT — Kevin reviews
+  "ahx.health.d.lifecycle_history.FAILED": "Không đọc được lịch sử thay đổi.",   // DRAFT — Kevin reviews
+  "ahx.health.k.customer_links": "Liên kết khách",   // DRAFT — Kevin reviews
+  "ahx.health.d.customer_links.READY": "Mọi lịch hẹn đều gắn với khách có hồ sơ.",   // DRAFT — Kevin reviews
+  "ahx.health.d.customer_links.WARNING": "Một số lịch hẹn không gắn với khách nào (khách vãng lai hoặc hồ sơ đã xóa).",   // DRAFT — Kevin reviews
+  "ahx.health.d.customer_links.FAILED": "Không kiểm tra được liên kết khách.",   // DRAFT — Kevin reviews
+  "ahx.health.k.past_open_appointments": "Lịch hẹn cũ chưa đóng",   // DRAFT — Kevin reviews
+  "ahx.health.d.past_open_appointments.READY": "Không có lịch hẹn cũ nào còn mở.",   // DRAFT — Kevin reviews
+  "ahx.health.d.past_open_appointments.WARNING": "Một số lịch hẹn trước hôm nay vẫn đang đặt hoặc đang làm — hãy hoàn tất, hủy hoặc đánh vắng mặt trên Lịch.",   // DRAFT — Kevin reviews
+  "ahx.health.d.past_open_appointments.FAILED": "Không kiểm tra được lịch hẹn cũ còn mở.",   // DRAFT — Kevin reviews
+  "ahx.health.k.no_side_effects": "Chỉ đọc",   // DRAFT — Kevin reviews
+  "ahx.health.d.no_side_effects.READY": "Trang này không thay đổi lịch hẹn, phiếu hay thanh toán nào.",   // DRAFT — Kevin reviews
+  "ahx.health.d.no_side_effects.WARNING": "Kiểm tra quyền truy cập của trang.",   // DRAFT — Kevin reviews
+  "ahx.health.d.no_side_effects.FAILED": "Bảo vệ chỉ đọc bị lỗi.",   // DRAFT — Kevin reviews,
+  "cpf.act.book": "+ Đặt lịch",   // DRAFT — Kevin reviews
+  "cpf.act.close": "Đóng",   // DRAFT — Kevin reviews
+  "cpf.act.editNotes": "Sửa ghi chú trong Ghi chú khách hàng",   // DRAFT — Kevin reviews
+  "cpf.act.full": "Xem đầy đủ",   // DRAFT — Kevin reviews
+  "cpf.act.history": "Lịch sử lịch hẹn",   // DRAFT — Kevin reviews
+  "cpf.act.message": "Tin nhắn",   // DRAFT — Kevin reviews
+  "cpf.bonusHint": "Điểm thưởng được yêu cầu ở trang Xem đầy đủ (chủ tiệm duyệt, được bảo vệ).",   // DRAFT — Kevin reviews
+  "cpf.check": "Kiểm tra hệ thống hồ sơ khách",   // DRAFT — Kevin reviews
+  "cpf.refresh": "Làm mới",   // DRAFT — Kevin reviews
+  "cpf.col.date": "Ngày",   // DRAFT — Kevin reviews
+  "cpf.col.service": "Dịch vụ",   // DRAFT — Kevin reviews
+  "cpf.col.tech": "Thợ",   // DRAFT — Kevin reviews
+  "cpf.col.total": "Tổng",   // DRAFT — Kevin reviews
+  "cpf.count": "{n} khách · {order}",   // DRAFT — Kevin reviews
+  "cpf.empty": "Không có khách nào khớp chế độ xem này.",   // DRAFT — Kevin reviews
+  "cpf.err.forbidden": "Vai trò của bạn không xem được hồ sơ khách.",   // DRAFT — Kevin reviews
+  "cpf.loadFailed": "Không tải được danh sách khách.",   // DRAFT — Kevin reviews
+  "cpf.loading": "Đang tải…",   // DRAFT — Kevin reviews
+  "cpf.f.allergies": "Dị ứng / nhạy cảm",   // DRAFT — Kevin reviews
+  "cpf.f.avg": "Hóa đơn trung bình",   // DRAFT — Kevin reviews
+  "cpf.f.birthday": "Sinh nhật",   // DRAFT — Kevin reviews
+  "cpf.f.consent": "Đồng ý nhận tin",   // DRAFT — Kevin reviews
+  "cpf.f.dateField": "Theo ngày",   // DRAFT — Kevin reviews
+  "cpf.f.earned": "Tổng điểm đã nhận",   // DRAFT — Kevin reviews
+  "cpf.f.email": "Email",   // DRAFT — Kevin reviews
+  "cpf.f.giftCards": "Thẻ quà tặng",   // DRAFT — Kevin reviews
+  "cpf.f.last": "Lần ghé gần nhất",   // DRAFT — Kevin reviews
+  "cpf.f.membership": "Gói thành viên",   // DRAFT — Kevin reviews
+  "cpf.f.next": "Lịch hẹn tới",   // DRAFT — Kevin reviews
+  "cpf.f.phone": "Điện thoại",   // DRAFT — Kevin reviews
+  "cpf.f.points": "Điểm",   // DRAFT — Kevin reviews
+  "cpf.f.prefService": "Dịch vụ ưa thích",   // DRAFT — Kevin reviews
+  "cpf.f.prefStyle": "Kiểu ưa thích",   // DRAFT — Kevin reviews
+  "cpf.f.prefTech": "Thợ ưa thích",   // DRAFT — Kevin reviews
+  "cpf.f.redeemed": "Đã đổi",   // DRAFT — Kevin reviews
+  "cpf.f.salonNotes": "Ghi chú của tiệm",   // DRAFT — Kevin reviews
+  "cpf.f.sort": "Sắp xếp",   // DRAFT — Kevin reviews
+  "cpf.f.spend": "Tổng chi tiêu",   // DRAFT — Kevin reviews
+  "cpf.f.tags": "Nhãn",   // DRAFT — Kevin reviews
+  "cpf.f.tier": "Hạng",   // DRAFT — Kevin reviews
+  "cpf.f.visits": "Lần ghé đã hoàn tất",   // DRAFT — Kevin reviews
+  "cpf.f.warnings": "Cảnh báo an toàn",   // DRAFT — Kevin reviews
+  "cpf.kpi.total": "Tổng số khách",   // DRAFT — Kevin reviews
+  "cpf.kpi.active": "Mới hoạt động",   // DRAFT — Kevin reviews
+  "cpf.kpi.activeSub": "đã ghé trong {d} ngày qua",   // DRAFT — Kevin reviews
+  "cpf.kpi.review": "Cần xem lại",   // DRAFT — Kevin reviews
+  "cpf.kpi.reviewSub": "dùng chung số điện thoại hoặc email — kiểm tra trùng",   // DRAFT — Kevin reviews
+  "cpf.lastVisit": "Ghé lần cuối {d}",   // DRAFT — Kevin reviews
+  "cpf.marketing": "Tiếp thị",   // DRAFT — Kevin reviews
+  "cpf.member": "Thành viên",   // DRAFT — Kevin reviews
+  "cpf.next": "Hẹn tới {d}",   // DRAFT — Kevin reviews
+  "cpf.noConsent": "Chưa ghi nhận đồng ý",   // DRAFT — Kevin reviews
+  "cpf.noPhone": "Chưa có số điện thoại",   // DRAFT — Kevin reviews
+  "cpf.noVisitYet": "Chưa có lần ghé hoàn tất",   // DRAFT — Kevin reviews
+  "cpf.noVisits": "Chưa có lần ghé nào.",   // DRAFT — Kevin reviews
+  "cpf.none": "Không có",   // DRAFT — Kevin reviews
+  "cpf.shared": "Dùng chung liên hệ ×{n}",   // DRAFT — Kevin reviews
+  "cpf.unavailable": "Không có dữ liệu",   // DRAFT — Kevin reviews
+  "cpf.unnamed": "Khách chưa có tên",   // DRAFT — Kevin reviews
+  "cpf.visits": "{n} lần ghé",   // DRAFT — Kevin reviews
+  "cpf.date.created": "Ngày tạo",   // DRAFT — Kevin reviews
+  "cpf.date.updated": "Ngày cập nhật",   // DRAFT — Kevin reviews
+  "cpf.date.last_visit": "Lần ghé hoàn tất gần nhất",   // DRAFT — Kevin reviews
+  "cpf.date.appointment": "Lịch hẹn tới",   // DRAFT — Kevin reviews
+  "cpf.life.active": "Đang hoạt động",   // DRAFT — Kevin reviews
+  "cpf.life.inactive": "Không hoạt động",   // DRAFT — Kevin reviews
+  "cpf.life.never": "Chưa ghé",   // DRAFT — Kevin reviews
+  "cpf.life.archived": "Đã lưu trữ",   // DRAFT — Kevin reviews
+  "cpf.life.unknown": "Chưa rõ",   // DRAFT — Kevin reviews
+  "cpf.sort.newest": "Mới tạo nhất",   // DRAFT — Kevin reviews
+  "cpf.sort.last_visit": "Mới hoạt động",   // DRAFT — Kevin reviews
+  "cpf.sort.name": "Tên A–Z",   // DRAFT — Kevin reviews
+  "cpf.sort.visits": "Ghé nhiều nhất",   // DRAFT — Kevin reviews
+  "cpf.status.active": "Đang hoạt động",   // DRAFT — Kevin reviews
+  "cpf.status.inactive": "Không hoạt động",   // DRAFT — Kevin reviews
+  "cpf.status.archived": "Đã lưu trữ",   // DRAFT — Kevin reviews
+  "cpf.status.blocked": "Bị chặn",   // DRAFT — Kevin reviews
+  "cpf.status.vip": "VIP",   // DRAFT — Kevin reviews
+  "cpf.status.new": "Mới",   // DRAFT — Kevin reviews
+  "cpf.tab.overview": "Tổng quan",   // DRAFT — Kevin reviews
+  "cpf.tab.loyalty": "Tích điểm & Thành viên",   // DRAFT — Kevin reviews
+  "cpf.tab.visits": "Lần ghé",   // DRAFT — Kevin reviews
+  "cpf.tab.notes": "Ghi chú & Sở thích",   // DRAFT — Kevin reviews
+  "cpf.view.all": "Tất cả khách",   // DRAFT — Kevin reviews
+  "cpf.view.active": "Mới hoạt động",   // DRAFT — Kevin reviews
+  "cpf.view.new": "Mới thêm",   // DRAFT — Kevin reviews
+  "cpf.view.review": "Cần xem lại",   // DRAFT — Kevin reviews,
+  "cpf.vip": "VIP",   // DRAFT — Kevin reviews
 };

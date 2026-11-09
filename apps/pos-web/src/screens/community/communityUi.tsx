@@ -130,8 +130,8 @@ export function StatusPill({ s }: { s: CommunityPostStatus }) {
 }
 
 const tabStyle = ({ isActive }: { isActive: boolean }): React.CSSProperties => ({
-  height: 32, padding: '0 12px', borderRadius: 8, border: `1px solid ${isActive ? '#A96F22' : 'var(--line)'}`, background: isActive ? '#A96F22' : '#fff',
-  color: isActive ? '#fff' : '#4A4744', fontSize: 12.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', textDecoration: 'none',
+  minHeight: 44, padding: '0 12px', borderRadius: 8, border: `1px solid ${isActive ? '#A96F22' : 'var(--line)'}`, background: isActive ? '#A96F22' : '#fff',
+  color: isActive ? '#fff' : '#4A4744', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', textDecoration: 'none', minWidth: 0,
 });
 /** the Safety Community's own section links — each hidden by the permission its page needs */
 export function CommunitySubNav({ can }: { can: Can }) {
@@ -140,7 +140,8 @@ export function CommunitySubNav({ can }: { can: Can }) {
     ['/community/approvals', tx('growth.community.nav.approvals'), P.approve], ['/community/incidents', tx('growth.community.nav.incidents'), P.incident], ['/community/settings', tx('growth.community.nav.settings'), P.view],
   ];
   return (
-    <nav aria-label={tx('pos.safety_community_sections')} style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+    // Safety Community SUNMI guide (Nov 9 2026): every module the role may open gets an EQUAL cell of the row (one-sixth for six)
+    <nav aria-label={tx('pos.safety_community_sections')} className="cmx-tabs" data-testid="cmx-tabs" style={{ padding: '12px 20px 0', display: 'grid', gridTemplateColumns: `repeat(${links.filter(([, , p]) => can(p)).length || 1}, minmax(0, 1fr))`, gap: 6 }}>
       {links.filter(([, , p]) => can(p)).map(([to, l]) => <NavLink key={to} to={to} end style={tabStyle}>{l}</NavLink>)}
     </nav>
   );

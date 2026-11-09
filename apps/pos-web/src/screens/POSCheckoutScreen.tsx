@@ -18,7 +18,8 @@ import { getThisRegister } from '../api/posCustomerDisplaysApi';
 import { useAuth } from '../auth/AuthContext';
 import { CheckoutDealsPanel, type DiscountItem } from '../components/CheckoutDealsPanel';
 import { CustomerDisplayCard, useCustomerDisplays } from './CustomerDisplayCard';
-import { MobilePaymentsCard } from '../components/MobilePaymentsCard';   // TTP mandate §45/§149–§151: phone claim + Mobile Payments + Send to phone
+import { MobilePaymentsCard } from '../components/MobilePaymentsCard';
+import { PaymentChannelsDialog } from '../components/PaymentChannelsDialog';   // Three Ways to Pay (SUNMI, Nov 9 2026): the three channels, read-only status + the existing actions   // TTP mandate §45/§149–§151: phone claim + Mobile Payments + Send to phone
 import { useIPadView } from '../components/IPadViewProvider';
 import { checkoutTicketRequest } from '../components/ipad-modules';
 import { MembershipCoveragePanel } from './MembershipCoveragePanel';
@@ -98,6 +99,7 @@ export function POSCheckoutScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTicket = searchParams.get('ticket');
   const [method, setMethod] = useState<PaymentMethod>('card');
+  const [waysOpen, setWaysOpen] = useState(false);   // Three Ways to Pay dialog
   const [cashStr, setCashStr] = useState('');
   const [giftCode, setGiftCode] = useState('');
   const [giftPin, setGiftPin] = useState('');
@@ -550,6 +552,7 @@ export function POSCheckoutScreen() {
       {/* §12: notes float over the board — they never push the layout down */}
       {note ? <div role="status" className="co-toast"><span data-testid="checkout-note" style={{ flex: 1 }}>{renderMsg(note)}</span><button aria-label={tx('pos.close')} onClick={() => setNote(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--muted)', minWidth: 32, minHeight: 32 }}>×</button></div> : null}
 
+      {waysOpen ? <PaymentChannelsDialog ticketId={selId} onClose={() => { setWaysOpen(false); void refreshAll(); }} onUseClover={() => { if (method !== 'card') changeMethod('card'); }} /> : null}
       {/* Title + search / filters / live */}
       <div className="co-title">
         <h1>{tx('pos.checkout')}</h1>
@@ -561,6 +564,8 @@ export function POSCheckoutScreen() {
           <select aria-label={tx('pos.filter_by_status')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ border: '1px solid var(--line)', borderRadius: 9, padding: '0 8px', fontSize: 12, background: 'var(--card)', color: 'var(--text)' }}><option value="">{tx('pos.active_checkout')}</option><option value="ready_for_payment">{tx('pos.ready')}</option><option value="waiting_payment">{tx('pos.waiting_payment')}</option><option value="split">{tx('pos.split_payment')}</option><option value="paid">{tx('pos.completed_2')}</option><option value="failed">{tx('pos.failed_2')}</option><option value="on_hold">{tx('pos.on_hold')}</option></select>
           <span data-testid="checkout-live" data-live={live} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: LIVE_TONE[live], fontWeight: 700, whiteSpace: 'nowrap' }}><span style={{ width: 8, height: 8, borderRadius: 99, background: LIVE_TONE[live] }} />{tx(`payment.board.live.${live}`)}</span>
           <button aria-pressed={autoRefresh} data-testid="checkout-auto-refresh" title={tx('payment.board.autoRefreshHint')} onClick={toggleAutoRefresh} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: `1px solid ${autoRefresh ? O : 'var(--line)'}`, borderRadius: 9, padding: '0 10px', fontSize: 12, background: autoRefresh ? '#FCF3E4' : 'var(--card)', color: autoRefresh ? O : 'var(--muted)', cursor: 'pointer', fontWeight: 600 }}><span aria-hidden style={{ width: 26, height: 14, borderRadius: 99, background: autoRefresh ? O : '#D8CFC2', position: 'relative', flex: 'none' }}><span style={{ position: 'absolute', top: 2, left: autoRefresh ? 14 : 2, width: 10, height: 10, borderRadius: 99, background: '#fff' }} /></span>{tx('pos.auto_refresh')}</button>
+          {/* Three Ways to Pay (SUNMI Nov 9 2026): Clover Compact · Staff iPhone · Customer App — status and hand-off, never a card form */}
+          <button data-testid="co-ways-btn" data-module-id="checkout-three-ways" onClick={() => setWaysOpen(true)} title={tx('ways.btnHint')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--line)', borderRadius: 9, padding: '0 12px', minHeight: 38, background: 'var(--card)', color: 'var(--text)', cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{tx('ways.btn')}</button>
           <button aria-label={tx('pos.refresh')} title={tx('pos.refresh')} onClick={() => { void refreshAll(); }} style={{ border: '1px solid var(--line)', borderRadius: 9, width: 38, background: 'var(--card)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke={O} strokeWidth="1.8"><path d="M4 10a6 6 0 0110-4.5M16 10a6 6 0 01-10 4.5M14 3v3h-3M6 17v-3h3" /></svg></button>
         </div>
       </div>

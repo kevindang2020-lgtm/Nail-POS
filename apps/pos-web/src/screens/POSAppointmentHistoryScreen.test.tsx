@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 const { searchMock, apptMock } = vi.hoisted(() => ({ searchMock: vi.fn(), apptMock: vi.fn() }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: searchMock, appointments: apptMock } }));
+vi.mock('../api/posAppointmentHistoryApi', () => ({ posAppointmentHistoryApi: { summary: vi.fn().mockResolvedValue({ cards: { appointments: 0, upcoming: 0, completed: 0, canceled: 0, noShows: 0, rescheduled: 0 } }), list: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25, totalPages: 0, applied: { q: null, status: 'all', dateField: 'scheduled', sort: 'newest', preset: 'all', from: null, to: null }, period: { today: '2026-11-09', timeZone: 'UTC' } }), options: vi.fn().mockResolvedValue({ technicians: [] }), check: vi.fn() } }));
 import { POSAppointmentHistoryScreen } from './POSAppointmentHistoryScreen';
 beforeEach(() => { searchMock.mockReset(); apptMock.mockReset(); });
 
@@ -19,9 +20,10 @@ describe('POSAppointmentHistoryScreen', () => {
     const hit = await screen.findByText('Ana Rivera');
     fireEvent.click(hit);
     await waitFor(() => expect(apptMock).toHaveBeenCalledWith('c1'));
-    expect(await screen.findByText('Gel Manicure')).toBeInTheDocument();
-    expect(screen.getByText('Pedicure')).toBeInTheDocument();
-    expect(screen.getByText('Completed')).toBeInTheDocument();
+    const dlg = await screen.findByTestId('ahx-customer');
+    expect(await within(dlg).findByText('Gel Manicure')).toBeInTheDocument();
+    expect(within(dlg).getByText('Pedicure')).toBeInTheDocument();
+    expect(within(dlg).getByText('Completed')).toBeInTheDocument();
   });
   it('shows empty state when the customer has no appointments', async () => {
     searchMock.mockResolvedValue({ items: [cust] }); apptMock.mockResolvedValue([]);

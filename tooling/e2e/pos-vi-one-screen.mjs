@@ -180,6 +180,29 @@ export const BATCH6_MODULES = [
   { key: 'mp-alerts', path: '/tenant/ai/money-protection/alerts', label: 'MONEY PROTECTION ALERTS' },
   { key: 'money-protection', path: '/tenant/ai/money-protection', label: 'AI MONEY PROTECTION' },
 ];
+/** SUNMI batch 7 (Kevin's Nov 9 2026 PDFs): customers, community, approvals, checkout / tipping / three ways to pay, loyalty,
+ *  referrals, team, AI usage / reputation / OCR / upsell / scheduling / churn / customer AI settings (MODULE_SET=batch7). */
+export const BATCH7_MODULES = [
+  { key: 'cust-notes', path: '/tenant/customers/notes', label: 'CUSTOMER NOTES' },
+  { key: 'gift-cards', path: '/tenant/customers/gift-cards', label: 'GIFT CARDS' },
+  { key: 'appt-history', path: '/tenant/customers/appointment-history', label: 'APPOINTMENT HISTORY' },
+  { key: 'cust-profiles', path: '/tenant/customers/profiles', label: 'CUSTOMER PROFILES' },
+  { key: 'community', path: '/community', label: 'SAFETY COMMUNITY' },
+  { key: 'approvals', path: '/approvals', label: 'APPROVALS' },
+  { key: 'checkout', path: '/checkout', label: 'CHECKOUT (THREE WAYS TO PAY / TIPPING)' },
+  { key: 'loyalty-network', path: '/tenant/customers/loyalty?view=network', label: 'GLOBAL LOYALTY' },
+  { key: 'referrals', path: '/tenant/marketing/referrals', label: 'REFER A FRIEND' },
+  { key: 'team', path: '/tenant/team/members', label: 'TEAM MANAGEMENT' },
+  { key: 'cust-timeline', path: '/tenant/ai/customer-profile/timeline', label: 'CUSTOMER TIMELINE' },
+  { key: 'ai-usage', path: '/tenant/ai/usage', label: 'AI USAGE & LIMITS' },
+  { key: 'rep-settings', path: '/tenant/ai/reputation/settings', label: 'REVIEW & REPUTATION SETTINGS' },
+  { key: 'receipt-review', path: '/tenant/ai/ocr-receipt', label: 'RECEIPT DOCUMENT RECOGNITION' },
+  { key: 'upsell-settings', path: '/tenant/ai/checkout-upsell/settings', label: 'CHECKOUT UPSELL SETTINGS' },
+  { key: 'scheduling-optimizer', path: '/tenant/ai/scheduling-optimizer', label: 'AI SCHEDULING OPTIMIZER' },
+  { key: 'ai-reputation', path: '/tenant/ai/reputation', label: 'AI REVIEW & REPUTATION' },
+  { key: 'churn-watch', path: '/tenant/ai/customer-profile/churn', label: 'CHURN WATCH' },
+  { key: 'cust-ai-settings', path: '/tenant/ai/customer-profile/settings', label: 'CUSTOMER AI SETTINGS' },
+];
 /** Every registered module of a page: present, visible, fully inside the content viewport at scroll 0, child count. */
 export const measureRegistry = (page, key) => {
   const reg = REGISTRY.pages.find((p) => p.key === key)?.modules ?? [];
@@ -579,7 +602,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES, ...BATCH7_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'batch7' ? BATCH7_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

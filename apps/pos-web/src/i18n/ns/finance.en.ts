@@ -334,4 +334,5 @@ export const FINANCE_EN = {
   // moved from the frozen catalog.en.ts (Nov 6 2026) — keys unchanged
   'pos.cash_drawer_register': 'Register',
   'pos.cash_drawer_unassigned': 'Cash with no register',
+  "gc.clearingOpen": "Full table · dates",
 };

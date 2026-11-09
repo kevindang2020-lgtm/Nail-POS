@@ -41,3 +41,4 @@ export { TipsScreenRepository } from './finance-screens/tips-screen.repository';
 export { SplitPaymentsScreenRepository } from './finance-screens/split-payments-screen.repository';   // Split Payments mandate (Oct 29 2026)   // Gift Cards mandate (Oct 29 2026): the screen read model (checkout's gift-card tests read through it)
 export { CashHandoffsScreenRepository } from './finance-screens/cash-handoffs-screen.repository';   // End-of-Day Cash mandate (Oct 29 2026)
 export { RefundsVoidsScreenRepository } from './finance-screens/refunds-voids-screen.repository';   // Refunds & Voids mandate (Oct 29 2026)
+export { SURFACE_CARD_TERMINAL, SURFACE_CLOVER_COMPACT, SURFACE_TAP_TO_PAY_IPHONE, TERMINAL_SURFACES, DEVICE_SURFACES, isTerminalSurface } from './payments/payment-surfaces';   // Three Ways to Pay (Nov 9 2026): one place for the device surface names

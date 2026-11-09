@@ -32,6 +32,7 @@ import { SchedSettingsCard } from './ai-scheduling/SchedSettingsCard';
 import { SchedUsageCard } from './ai-scheduling/SchedUsageCard';
 import { SchedCounters, SchedQueueCard, SchedEventTrailCard, SC_GROUPS } from './ai-scheduling/SchedCenter';
 import { useTechnicianNames } from '../components/useTechnicianNames';
+import { FitDialog } from '../components/FitKit';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 type Tab = 'overview' | 'recs' | 'find' | 'gaps' | 'approvals' | 'insights' | 'inputs' | 'settings' | 'usage' | 'history';
@@ -58,6 +59,7 @@ export function POSAISchedulingOptimizerScreen() {
   const [tab, setTabState] = useState<Tab>(recParam ? 'recs' : isTab(params.get('tab')) ? (params.get('tab') as Tab) : 'overview');
   const [selected, setSelected] = useState<string | null>(recParam);
   const [runId, setRunId] = useState<string | null>(null);
+  const [howOpen, setHowOpen] = useState(false);
   const [queueGroup, setQueueGroup] = useState<(typeof SC_GROUPS)[number]>('all');
   const [tick, setTick] = useState(0);
   const bump = useCallback(() => setTick((t) => t + 1), []);
@@ -102,13 +104,18 @@ export function POSAISchedulingOptimizerScreen() {
           <h2 style={title}>{tx('pos.ai_scheduling_optimizer')}</h2>
           <span style={muted}>{tx('pos.suggestions_only_nothing_changes_a_confirmed_194k')}</span>
         </div>
-        <button className="btn whitespace-nowrap !h-8" style={{ marginLeft: 'auto' }} onClick={bump} data-testid="sched-refresh">{tx('pos.refresh')}</button>
+        <button className="btn ghost whitespace-nowrap !h-8" style={{ marginLeft: 'auto' }} onClick={() => setHowOpen(true)} data-testid="sched-how">{tx('sox.how.btn')}</button>
+        <button className="btn whitespace-nowrap !h-8" onClick={bump} data-testid="sched-refresh">{tx('pos.refresh')}</button>
       </div>
       {/* Scheduling Optimizer guide: the four counters, server-computed, on every tab; a counter opens its queue */}
       <div style={{ padding: '12px 20px 0' }}><SchedCounters tick={tick} onDrill={(g) => { setQueueGroup(g); setSelected(null); setTab('recs'); }} /></div>
       <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }} role="tablist" aria-label={tx('pos.optimizer_sections')} data-testid="sched-tabs">
         {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} style={tabBtn(tab === k)} onClick={() => setTab(k)}>{tx(l)}</button>)}
       </div>
+      {/* Scheduling Optimizer SUNMI guide (Nov 9 2026): "How this works" — plain words, no data, nothing changes */}
+      {howOpen ? <FitDialog testId="sched-how-dialog" title={tx('sox.how.title')} onClose={() => setHowOpen(false)} footer={<button className="btn ghost" onClick={() => setHowOpen(false)}>{tx('pos.close')}</button>}>
+        <ol className="sox-how">{[1, 2, 3, 4, 5].map((n) => <li key={n}>{tx('sox.how.' + n)}</li>)}</ol>
+      </FitDialog> : null}
       <div style={{ padding: 20, display: 'grid', gap: 16 }} data-testid="sched-body">
         {tab === 'overview' && <SchedOverviewCard {...props} date={date} settings={settings} onOpenRun={openRun} onSelectRec={select} />}
         {tab === 'recs' && <>

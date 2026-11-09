@@ -42,3 +42,4 @@ export { MobileCheckoutService } from './mobile-checkout/mobile-checkout.service
 export { MobileAttemptRecoveryWorker, type MobileRecoveryReport } from './mobile-checkout/mobile-attempt-recovery';
 export { KyselyMobilePayDeviceStore } from './mobile-checkout/mobile-pay-device.kysely';   // the API's termination consumer revokes a user's payment phones through the ONE store (mandate §140)
 export { KyselyMobilePaymentAttemptRepository } from './mobile-checkout/mobile-payment-attempt.repository';   // SD-21: the cross-branch suite reads the attempt-by-key predicate on the real repository
+export { PaymentChannelsCenter, PaymentChannelsError } from './payment-channels/payment-channels-center';   // Three Ways to Pay (Nov 9 2026)

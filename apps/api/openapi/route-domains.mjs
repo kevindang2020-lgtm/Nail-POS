@@ -46,7 +46,7 @@ export const SOURCE_DOMAINS = {
   'inventory:inventory.controller.ts': 'INVENTORY', 'inventory:technician-inventory.controller.ts': 'INVENTORY',
   // modules/checkout, payments, gift-cards
   'checkout:ai-checkout-upsell': 'CHECKOUT', 'checkout:cash-drawer': 'PAYMENTS', 'checkout:checkout': 'CHECKOUT',
-  'checkout:mobile-checkout': 'CHECKOUT', 'checkout:skip-line-checkout': 'CHECKOUT', 'checkout:ticket-history': 'CHECKOUT',
+  'checkout:mobile-checkout': 'CHECKOUT', 'checkout:payment-channels': 'PAYMENTS', 'checkout:skip-line-checkout': 'CHECKOUT', 'checkout:ticket-history': 'CHECKOUT',
   'payments:customer-payments': 'PAYMENTS', 'payments:deposit-reconciliation': 'PAYMENTS', 'payments:hardware-payment': 'PAYMENTS',
   'payments:invoices': 'FINANCE', 'payments:payments': 'PAYMENTS', 'payments:refunds-voids': 'PAYMENTS', 'payments:split-payments': 'PAYMENTS',
   'gift-cards:gift-card-stock': 'PAYMENTS', 'gift-cards:gift-cards': 'PAYMENTS',
@@ -57,7 +57,7 @@ export const SOURCE_DOMAINS = {
   'communications:sms-packages': 'COMMUNICATIONS', 'communications:tenant-a2p': 'COMMUNICATIONS', 'communications:tenant-messaging': 'COMMUNICATIONS',
   // modules/customers, loyalty, memberships, deals, marketing
   'customers:customer-salons': 'CUSTOMERS', 'customers:customers': 'CUSTOMERS', 'customers:pos-referrals': 'LOYALTY',
-  'customers:reviews': 'CUSTOMERS', 'customers:wallet': 'PAYMENTS', 'customers:customer-search': 'CUSTOMERS', 'customers:duplicate-review': 'CUSTOMERS', 'customers:customer-timeline': 'CUSTOMERS',
+  'customers:reviews': 'CUSTOMERS', 'customers:wallet': 'PAYMENTS', 'customers:customer-search': 'CUSTOMERS', 'customers:duplicate-review': 'CUSTOMERS', 'customers:customer-timeline': 'CUSTOMERS', 'customers:customer-notes': 'CUSTOMERS', 'customers:appointment-history': 'CUSTOMERS',
   'loyalty:loyalty.controller.ts': 'LOYALTY',
   // Oct 30 – Nov 3 2026 guide builds (each directory is one domain)
   'catalog:catalog-screens': 'CATALOG', 'communications:email': 'COMMUNICATIONS', 'communications:inbox': 'COMMUNICATIONS',

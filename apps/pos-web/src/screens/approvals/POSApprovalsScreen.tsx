@@ -17,7 +17,27 @@ import { useRealtime } from '../../realtime/useRealtime';
 import { posApprovalsApi as api, WHY_NOT, approvalErrorText, isConflict } from '../../api/posApprovalsApi';
 import { useStepUp, Tabs } from '../access/accessUi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { fmtMoney, fmtInZone } from '../../i18n/format';
+import { fmtMoney, fmtInZone, fmtNumber } from '../../i18n/format';
+import { KpiCard } from '../../components/FitKit';
+
+/** Approvals SUNMI guide (Nov 9 2026): the four summary categories, each from the server's own list and status —
+ *   Pending Decisions  every pending request this person may see
+ *   Awaiting Owner     pending requests this person cannot decide because they need a higher approver (over the limit /
+ *                      missing the approval key) — the server's own canDecide / whyNot
+ *   Urgent             pending requests that expire within 24 hours
+ *   Completed          requests carried out (executed)
+ *  Counted over the newest 100 pending (the server's page cap); more than that is said, never hidden. */
+type Summary = { pending: number; awaitingOwner: number; urgent: number; completed: number | null; capped: boolean };
+async function readSummary(now = Date.now()): Promise<Summary> {
+  const [p, done] = await Promise.all([api.list({ status: 'pending', pageSize: 100 }), api.list({ status: 'executed', pageSize: 1 }).catch(() => null)]);
+  const items = p.items;
+  return {
+    pending: p.total,
+    awaitingOwner: items.filter((r) => !r.canDecide && (r.whyNot === 'over_your_limit' || r.whyNot === 'missing_permission')).length,
+    urgent: items.filter((r) => r.expiresAt && Date.parse(r.expiresAt) - now <= 24 * 3600_000).length,
+    completed: done ? done.total : null, capped: p.total > items.length,
+  };
+}
 
 type Tab = 'inbox' | 'mine' | 'history' | 'rules' | 'ask';
 const money = (c: number | null | undefined) => (c == null ? '' : fmtMoney(c));
@@ -50,6 +70,10 @@ export function POSApprovalsScreen() {
   const [noteFor, setNoteFor] = useState<{ id: string; decision: 'approve' | 'reject' | 'cancel' } | null>(null);
   const [note, setNote] = useState('');
   const stepUp = useStepUp();
+  const [sum, setSum] = useState<Summary | null>(null); const [sumErr, setSumErr] = useState(false);
+  const loadSummary = useCallback(() => { setSumErr(false); readSummary().then(setSum).catch(() => setSumErr(true)); }, []);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+  useRealtime(['approvals'], loadSummary);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +115,12 @@ export function POSApprovalsScreen() {
   return (
     <div className="work">
       <div className="vh" style={{ marginBottom: 10 }}><h1>{tx('pos.approvals')}</h1><div className="sub">{tx('pos.refunds_over_the_limit_deals_purchase_14qh')}</div></div>
+      <div className="rvw-kpis apx-kpis" data-testid="apx-kpis">
+        {([['pending', 'apx.kpi.pending', sum?.pending, 'inbox'], ['owner', 'apx.kpi.owner', sum?.awaitingOwner, 'inbox'], ['urgent', 'apx.kpi.urgent', sum?.urgent, 'inbox'], ['completed', 'apx.kpi.completed', sum?.completed, 'history']] as const).map(([k, label, v, go]) =>
+          <KpiCard key={k} testId={`apx-kpi-${k}`} label={tx(label)} loading={!sum && !sumErr} tone={k === 'urgent' && v ? 'bad' : k === 'owner' && v ? 'warn' : k === 'completed' ? 'ok' : undefined}
+            value={sum ? (v == null ? '—' : `${fmtNumber(v)}${sum.capped && k !== 'pending' && k !== 'completed' ? '+' : ''}`) : sumErr ? '—' : ''}
+            sub={tx(label + 'Sub')} onClick={tabs.some((x) => x.id === go) ? () => { setTab(go); setNotice(null); } : undefined} />)}
+      </div>
       <Tabs tabs={tabs} value={tab} onChange={(t) => { setTab(t); setNotice(null); }} label={tx('pos.approvals')} />
       {notice ? <div role="status" className="s" style={{ marginBottom: 8, fontWeight: 600 }} data-testid="approval-notice">{notice}</div> : null}
       {error ? <div role="alert" className="err" style={{ marginBottom: 8 }}>{error}</div> : null}

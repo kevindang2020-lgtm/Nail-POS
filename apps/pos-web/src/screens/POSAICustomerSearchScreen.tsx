@@ -191,7 +191,7 @@ export function POSAICustomerSearchScreen() {
         onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)}
         onBooking={(day) => nav(`/booking?date=${encodeURIComponent(day)}`)}
         onDuplicates={() => nav('/tenant/ai/customer-profile/duplicates')} /> : null}
-      {health ? <HealthDialog data={health} onClose={() => setHealth(null)} /> : null}
+      {health ? <HealthDialog data={health} onClose={() => setHealth(null)} testId="csx-health" /> : null}
     </div>
   );
 }
@@ -260,9 +260,10 @@ function ProfileOverlay({ id, onClose, onBook, onCustomer, onBooking, onDuplicat
   );
 }
 
-function HealthDialog({ data, onClose }: { data: any; onClose: () => void }) {
+/** exported for Customer Profiles (SUNMI Nov 9 2026): the same read-only check over the same customer data, its own title */
+export function HealthDialog({ data, onClose, title, testId = 'csx-health' }: { data: any; onClose: () => void; title?: string; testId?: string }) {
   return (
-    <FitDialog wide testId="csx-health" title={t('csx.check')} subtitle={data && data !== 'loading' && !data.error ? t('csx.health.overall', { s: t('csx.health.' + data.overall), at: when(data.checkedAt, true) }) : undefined} onClose={onClose}
+    <FitDialog wide testId={testId} title={title ?? t('csx.check')} subtitle={data && data !== 'loading' && !data.error ? t('csx.health.overall', { s: t('csx.health.' + data.overall), at: when(data.checkedAt, true) }) : undefined} onClose={onClose}
       footer={<button className="btn ghost" onClick={onClose}>{t('csx.close')}</button>}>
       {data === 'loading' ? <div className="state">{t('csx.health.running')}</div> : data.error ? <div className="err">{data.error}</div> : <>
         <p className="sub">{t('csx.health.readOnly')}{data.rateLimited ? ` ${t('csx.health.recent')}` : ''}</p>

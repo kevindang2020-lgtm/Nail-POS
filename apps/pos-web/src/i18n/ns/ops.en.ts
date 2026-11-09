@@ -578,4 +578,11 @@ export const OPS_EN = {
   'pos.copilot_conflict_check_failed': 'The conflict check could not run right now — nothing was decided. Try again.',
   'pos.copilot_phone_unavailable': "AI phone activity can't be shown: the AI receptionist isn't set up here, or its calls could not be read.",
   'pos.copilot_choose_branch_for_service': 'Choose a branch first — services and prices are set per branch.',
+  "sox.how.btn": "How this works",
+  "sox.how.title": "How the Scheduling Optimizer works",
+  "sox.how.1": "It reads the real calendar, technician schedules, skills and service lengths — nothing is invented.",
+  "sox.how.2": "It suggests better times, gap fills and conflict fixes. A suggestion never changes a confirmed appointment by itself.",
+  "sox.how.3": "When a change needs the customer, it is sent for their approval first; only their answer moves the booking.",
+  "sox.how.4": "Automatic optimization stays off unless the owner turns it on, and even then follows the salon’s rules and limits.",
+  "sox.how.5": "Every suggestion, approval and change is kept in History so you can see who decided what, and when.",
 };

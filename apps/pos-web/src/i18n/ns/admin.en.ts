@@ -512,4 +512,12 @@ export const ADMIN_EN = {
   'admin.cash.count': 'Count',
   'admin.cash.recount': 'Recount',
   'admin.payments.monitor': 'Monitor',
+  "apx.kpi.pending": "Pending Decisions",
+  "apx.kpi.pendingSub": "waiting for a decision",
+  "apx.kpi.owner": "Awaiting Owner",
+  "apx.kpi.ownerSub": "needs a higher approver than you",
+  "apx.kpi.urgent": "Urgent",
+  "apx.kpi.urgentSub": "expires within 24 hours",
+  "apx.kpi.completed": "Completed",
+  "apx.kpi.completedSub": "approved and carried out",
 };

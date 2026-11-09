@@ -38,6 +38,8 @@ import { DeviceProofGuard } from './device-proof.guard';
 import { KyselyDevicePairingStore, InMemoryDevicePairingStore } from './device-pairing';
 import { DeviceSecuritySignals } from './device-security-signals';
 import { SecurityEvents } from '@aipowersalon/security-center';
+import { PaymentChannelsController, PAYMENT_CHANNELS_CENTER } from '../payment-channels/payment-channels.controller';   // Three Ways to Pay (Nov 9 2026)
+import { PaymentChannelsCenter } from '../payment-channels/payment-channels-center';
 
 /** §17 / §184: the session's step-up stamp — the same sessions row apps/api StepUpGuard reads. Fail closed. */
 export class KyselyStepUpRead implements StepUpReadPort {
@@ -70,7 +72,7 @@ function sessionStoreOf(moduleRef: ModuleRef): DeviceSessionRevoker | null {
 
 @Module({
   imports: [ServingModule, CheckoutModule, CheckoutLockModule, EventsCoreModule, PushModule],
-  controllers: [MobileCheckoutController, TtpOnboardingAdminController, PaymentDeviceOversightController],
+  controllers: [MobileCheckoutController, TtpOnboardingAdminController, PaymentDeviceOversightController, PaymentChannelsController],
   providers: [
     { provide: PaymentGatewayResolver, useFactory: (db: AppDatabase, secrets: PaymentSecrets) => new PaymentGatewayResolver(db, secrets), inject: [DATABASE, PAYMENT_SECRETS] },
     { provide: 'MobilePaymentAttemptPort', useFactory: (db: AppDatabase): MobilePaymentAttemptPort => (db ? new KyselyMobilePaymentAttemptRepository(db) : new InMemoryMobilePaymentAttemptRepository()), inject: [DATABASE] },
@@ -99,6 +101,8 @@ function sessionStoreOf(moduleRef: ModuleRef): DeviceSessionRevoker | null {
       inject: [DATABASE, PaymentGatewayResolver, CheckoutService, CheckoutLockService, 'MobilePaymentAttemptPort', 'TtpOnboardingStore', 'MobilePayDeviceStore', 'TapToPaySessionPort', ServingService,
         'CheckoutRepositoryPort', REALTIME, OutboxWriter, 'TapToPayKillSwitchPort', 'DeviceSecuritySignals', { token: AuditService, optional: true }, { token: PushService, optional: true }, { token: ENTITLEMENT_SERVICE, optional: true }],
     },
+    // Three Ways to Pay: the read-only channel view (the router + the Tap to Pay facts this module already owns)
+    { provide: PAYMENT_CHANNELS_CENTER, useFactory: (db: AppDatabase, gw: PaymentGatewayResolver, svc: MobileCheckoutService) => (db ? new PaymentChannelsCenter(db, gw, svc) : null), inject: [DATABASE, PaymentGatewayResolver, MobileCheckoutService] },
     MobileAttemptRecoveryScheduler,
     DeviceProofGuard,
     { provide: REFRESH_DEVICE_GUARD_TOKEN, useFactory: (devices: MobilePayDeviceStore) => ({ refreshBlock: async (q: { tenantId: string; deviceId: string }) => refreshBlockFor(await devices.get(q.tenantId, q.deviceId)) }), inject: ['MobilePayDeviceStore'] },

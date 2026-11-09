@@ -16,6 +16,7 @@ import { fmtNumber, fmtInZone, fmtMoney } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
@@ -126,6 +127,26 @@ export function POSAICustomerTimelineScreen() {
     return null;
   };
   const p = profile?.identity;
+  const matchesPanel = found ? (
+        <section className="panel rvw-feed" data-testid="tlx-matches">
+          <div className="p-h">{t('tlx.matches')}<span className="sub rvw-scope">{t('tlx.matchCount', { n: fmtNumber(found.total) })}</span></div>
+          {found.items.length === 0 ? <Empty title={t('tlx.noMatches')} /> : (
+            <div className="rvw-table-wrap"><table className="tbl rvw-table">
+              <thead><tr><th>{t('tlx.col.customer')}</th><th>{t('tlx.col.contact')}</th><th>{t('tlx.col.lastVisit')}</th><th>{t('tlx.col.visits')}</th><th>{t('tlx.col.created')}</th><th /></tr></thead>
+              <tbody>{found.items.map((c: any) => (
+                <tr key={c.id} data-testid="tlx-match" tabIndex={0} aria-selected={c.id === customerId} className={c.id === customerId ? 'on' : undefined} onClick={() => setF({ customer: c.id })} onKeyDown={(e) => { if (e.key === 'Enter') setF({ customer: c.id }); }}>
+                  <td><b>{c.name || '—'}</b>{c.sharedContactProfiles ? <span className="chip warn" title={t('tlx.sharedHint')}>{t('tlx.shared', { n: c.sharedContactProfiles })}</span> : null}</td>
+                  <td className="nowrap">{c.phone ?? t('tlx.notProvided')}<div className="sub">{c.email ?? ''}</div></td>
+                  <td className="nowrap">{when(c.lastVisitAt)}</td><td className="num">{fmtNumber(c.visits)}</td>
+                  <td className="nowrap">{when(c.createdAt)}<div className="sub mono">{String(c.id).slice(0, 8)}</div></td>
+                  <td><button className="btn ghost sm" data-testid="tlx-select" onClick={(e) => { e.stopPropagation(); setF({ customer: c.id }); }}>{t('tlx.viewTimeline')}</button></td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
+          <div className="rvw-pager"><Pager info={{ page: findPage, pageSize: 10, totalItems: found.total, totalPages: found.pageCount ?? Math.max(1, Math.ceil(found.total / 10)) }} onPage={(pg) => void find(term.current, pg)} /></div>
+        </section>
+  ) : null;
   const anyFilter = ['family', 'dateField', 'preset', 'sort'].some((k) => f[k]) || !!innerQ;
 
   return (
@@ -144,28 +165,13 @@ export function POSAICustomerTimelineScreen() {
       </form>
       {findErr ? <p className="err" role="alert" data-testid="tlx-find-err">{findErr}</p> : null}
 
-      {found && !customerId ? (
-        <section className="panel rvw-feed" data-testid="tlx-matches">
-          <div className="p-h">{t('tlx.matches')}<span className="sub rvw-scope">{t('tlx.matchCount', { n: fmtNumber(found.total) })}</span></div>
-          {found.items.length === 0 ? <Empty title={t('tlx.noMatches')} /> : (
-            <div className="rvw-table-wrap"><table className="tbl rvw-table">
-              <thead><tr><th>{t('tlx.col.customer')}</th><th>{t('tlx.col.contact')}</th><th>{t('tlx.col.lastVisit')}</th><th>{t('tlx.col.visits')}</th><th>{t('tlx.col.created')}</th><th /></tr></thead>
-              <tbody>{found.items.map((c: any) => (
-                <tr key={c.id} data-testid="tlx-match" tabIndex={0} onClick={() => setF({ customer: c.id })} onKeyDown={(e) => { if (e.key === 'Enter') setF({ customer: c.id }); }}>
-                  <td><b>{c.name || '—'}</b>{c.sharedContactProfiles ? <span className="chip warn" title={t('tlx.sharedHint')}>{t('tlx.shared', { n: c.sharedContactProfiles })}</span> : null}</td>
-                  <td className="nowrap">{c.phone ?? t('tlx.notProvided')}<div className="sub">{c.email ?? ''}</div></td>
-                  <td className="nowrap">{when(c.lastVisitAt)}</td><td className="num">{fmtNumber(c.visits)}</td>
-                  <td className="nowrap">{when(c.createdAt)}<div className="sub mono">{String(c.id).slice(0, 8)}</div></td>
-                  <td><button className="btn ghost sm" data-testid="tlx-select" onClick={(e) => { e.stopPropagation(); setF({ customer: c.id }); }}>{t('tlx.viewTimeline')}</button></td>
-                </tr>
-              ))}</tbody>
-            </table></div>
-          )}
-          <div className="rvw-pager"><Pager info={{ page: findPage, pageSize: 10, totalItems: found.total, totalPages: found.pageCount ?? Math.max(1, Math.ceil(found.total / 10)) }} onPage={(pg) => void find(term.current, pg)} /></div>
-        </section>
-      ) : null}
+      {found && !customerId ? matchesPanel : null}
 
-      {!customerId && !found ? <Empty title={t('tlx.searchFirst')} /> : null}
+      {!customerId && !found ? <section className="panel tlx-howto" data-testid="tlx-howto">
+        <Empty title={t('tlx.searchFirst')} />
+        <ol className="tlx-steps"><li>{t('tlx.howto.1')}</li><li>{t('tlx.howto.2')}</li><li>{t('tlx.howto.3')}</li></ol>
+        <p className="sub">{t('tlx.howto.privacy')}</p>
+      </section> : null}
 
       {customerId ? <>
         {profileErr ? <ErrorRetry message={profileErr} onRetry={() => setF({ customer: customerId })} /> : null}
@@ -177,19 +183,26 @@ export function POSAICustomerTimelineScreen() {
                 <button className="btn ghost sm" data-testid="tlx-open-customer" onClick={() => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(p.id)}`)}>{t('tlx.openCustomer')}</button>
                 {!p.archivedAt ? <button className="btn ghost sm" data-testid="tlx-book" onClick={() => nav(`/booking/new?customerId=${encodeURIComponent(p.id)}&from=customer-timeline`)}>{t('tlx.newBooking')}</button> : null}
               </span></div>
-            <div className="rvw-kpis">
-              <KpiCard testId="tlx-kpi-visits" label={t('tlx.kpi.visits')} value={profile.visits ? fmtNumber(profile.visits.completed) : t('tlx.unavailable')} sub={profile.visits?.lastAt ? t('tlx.kpi.last', { d: when(profile.visits.lastAt) }) : undefined} />
-              <KpiCard testId="tlx-kpi-first" label={t('tlx.kpi.first')} value={profile.visits ? when(profile.visits.firstAt) : t('tlx.unavailable')} />
-              <KpiCard testId="tlx-kpi-upcoming" label={t('tlx.kpi.upcoming')} value={fmtNumber(profile.appointments.upcoming.length)} sub={profile.appointments.upcoming[0] ? `${profile.appointments.upcoming[0].date} ${profile.appointments.upcoming[0].time ?? ''}` : t('tlx.none')} />
-              <KpiCard testId="tlx-kpi-tech" label={t('tlx.kpi.prefTech')} value={profile.preferences.technician?.name ?? t('tlx.noneRecorded')} />
-              <KpiCard testId="tlx-kpi-points" label={t('tlx.kpi.points')} value={profile.sources.loyalty === 'unavailable' ? t('tlx.unavailable') : !profile.loyalty?.enrolled ? t('tlx.notEnrolled') : fmtNumber(profile.loyalty.points)} sub={profile.loyalty?.tier ?? undefined} />
-              <KpiCard testId="tlx-kpi-member" label={t('tlx.kpi.membership')} value={profile.sources.memberships === 'unavailable' ? t('tlx.unavailable') : profile.memberships.find((m: any) => m.status === 'active')?.plan ?? t('tlx.none')} />
+            {/* Customer Timeline SUNMI guide §05/§07: the Customer 360 summary — four equal cards, every earlier fact kept inside */}
+            <div className="rvw-kpis tlx-kpis" data-testid="tlx-kpis">
+              <KpiCard testId="tlx-kpi-identity" label={t('tlx.kpi.identity')} value={p.name || '—'}
+                sub={<>{t('tlx.kpi.since', { d: when(p.createdAt) })}{p.homeBranch?.name ? ` · ${p.homeBranch.name}` : ''}<span data-testid="tlx-kpi-tech"> · {t('tlx.kpi.prefTech')}: {profile.preferences.technician?.name ?? t('tlx.noneRecorded')}</span></>} />
+              <KpiCard testId="tlx-kpi-visits" label={t('tlx.kpi.lastVisit')} value={profile.visits ? (profile.visits.lastAt ? when(profile.visits.lastAt) : t('tlx.none')) : t('tlx.unavailable')}
+                sub={profile.visits ? <>{t('tlx.kpi.completedVisits', { n: fmtNumber(profile.visits.completed) })}<span data-testid="tlx-kpi-first"> · {t('tlx.kpi.first')}: {when(profile.visits.firstAt)}</span></> : undefined} />
+              <KpiCard testId="tlx-kpi-upcoming" label={t('tlx.kpi.upcoming')} value={fmtNumber(profile.appointments.upcoming.length)}
+                sub={profile.appointments.upcoming[0] ? `${profile.appointments.upcoming[0].date} ${profile.appointments.upcoming[0].time ?? ''} · ${statusLabel('appointment', profile.appointments.upcoming[0].status)}${profile.appointments.upcoming[0].source ? ` · ${profile.appointments.upcoming[0].source}` : ''}` : t('tlx.none')} />
+              <KpiCard testId="tlx-kpi-benefits" label={t('tlx.kpi.benefits')}
+                value={<span data-testid="tlx-kpi-points">{profile.sources.loyalty === 'unavailable' ? t('tlx.unavailable') : !profile.loyalty?.enrolled ? t('tlx.notEnrolled') : t('tlx.points', { n: fmtNumber(profile.loyalty.points) })}</span>}
+                sub={<span data-testid="tlx-kpi-member">{profile.loyalty?.tier ? `${profile.loyalty.tier} · ` : ''}{t('tlx.kpi.membership')}: {profile.sources.memberships === 'unavailable' ? t('tlx.unavailable') : profile.memberships.find((m: any) => m.status === 'active')?.plan ?? t('tlx.none')} · {t('tlx.readOnly')}</span>} />
             </div>
             {Object.entries(profile.sources as Record<string, string>).some(([, v]) => v === 'unavailable')
               ? <p className="warn" data-testid="tlx-partial">{t('tlx.partial', { list: Object.entries(profile.sources as Record<string, string>).filter(([, v]) => v === 'unavailable').map(([k]) => t('tlx.src.' + k)).join(', ') })}</p> : null}
           </>}
         </section>
 
+        <div className={'tlx-body' + (matchesPanel ? ' with-matches' : '')} data-testid="tlx-body">
+        {matchesPanel ? <div className="tlx-left">{matchesPanel}</div> : null}
+        <div className="tlx-right">
         <section className="panel rvw-filters" data-testid="tlx-filters">
           <div className="rvw-tabs" role="tablist">
             <button role="tab" aria-selected={!f.family} className={'btn ghost' + (!f.family ? ' on' : '')} data-testid="fam-all" onClick={() => setF({ family: null })}>{t('tlx.family.all')}</button>
@@ -251,6 +264,8 @@ export function POSAICustomerTimelineScreen() {
           </div>
           {list ? <p className="sub" data-testid="tlx-foot">{t('tlx.liveSources', { at: when(list.freshness?.readAt, true) })}{!list.visibility?.money ? ` · ${t('tlx.moneyHidden')}` : ''}</p> : null}
         </section>
+        </div>
+        </div>
       </> : null}
 
       {openEvent && customerId ? <EventOverlay customerId={customerId} eventId={openEvent} onClose={() => setOpenEvent(null)} nav={nav} /> : null}

@@ -114,6 +114,8 @@ export function POSAIOcrReceiptScreen() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => setTick((n) => n + 1)} style={btn(GOLD, false)} data-testid="rrx-refresh">{tx('rrx.refresh')}</button>
           <button onClick={() => setTab('upload')} style={btn(GOLD, false)}>{tx('pos.upload')}</button>
+          {/* Receipt Recognition SUNMI guide (Nov 9 2026): the header's Manual Entry — opens the documents waiting to be keyed in */}
+          <button onClick={() => { setTab('manual'); setSelected(null); setF((x) => ({ ...x, page: 1 })); }} style={btn(GOLD, false)} data-testid="rrx-manual">{tx('pos.manual_entry')}</button>
           <button onClick={() => { setHealth('loading'); rc.check().then(setHealth).catch((e) => setHealth({ error: errorTextOf(e, tx('rrx.loadFailed')) })); }} style={btn(GOLD, true)} data-testid="rrx-check">{tx('rrx.check')}</button>
         </div>
       </div>

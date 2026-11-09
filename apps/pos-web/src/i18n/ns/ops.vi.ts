@@ -577,4 +577,11 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   'pos.copilot_conflict_check_failed': 'Chưa kiểm tra trùng lịch được — chưa có gì được quyết định. Hãy thử lại.',
   'pos.copilot_phone_unavailable': 'Không hiển thị được cuộc gọi AI: lễ tân AI chưa được thiết lập ở đây hoặc không đọc được cuộc gọi.',
   'pos.copilot_choose_branch_for_service': 'Hãy chọn chi nhánh trước — dịch vụ và giá được đặt theo từng chi nhánh.',
+  "sox.how.btn": "Cách hoạt động",   // DRAFT — Kevin reviews
+  "sox.how.title": "Cách Tối ưu lịch hẹn hoạt động",   // DRAFT — Kevin reviews
+  "sox.how.1": "Hệ thống đọc lịch thật, lịch làm của thợ, kỹ năng và thời lượng dịch vụ — không bịa ra gì.",   // DRAFT — Kevin reviews
+  "sox.how.2": "Hệ thống gợi ý giờ tốt hơn, lấp khoảng trống và sửa trùng lịch. Gợi ý không tự thay đổi lịch hẹn đã xác nhận.",   // DRAFT — Kevin reviews
+  "sox.how.3": "Khi cần khách đồng ý, gợi ý được gửi cho khách trước; chỉ câu trả lời của khách mới dời lịch.",   // DRAFT — Kevin reviews
+  "sox.how.4": "Tối ưu tự động luôn tắt trừ khi chủ tiệm bật, và khi bật vẫn theo quy định và giới hạn của tiệm.",   // DRAFT — Kevin reviews
+  "sox.how.5": "Mọi gợi ý, phê duyệt và thay đổi đều lưu trong Lịch sử để biết ai quyết định gì và khi nào.",   // DRAFT — Kevin reviews
 };

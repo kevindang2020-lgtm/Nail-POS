@@ -272,6 +272,8 @@ export class MobileCheckoutService {
   }
 
   /** the kill switch's answer, else the rollout flag's (§208) — null when Tap to Pay may run for this salon */
+  /** Three Ways to Pay (Nov 9 2026): the same kill-switch / rollout answer, read-only, for the POS channel card. */
+  async tapToPayOffReason(tenantId: string): Promise<'platform' | 'provider' | 'rollout' | null> { return this.tapToPayDisabledReason(tenantId); }
   private async tapToPayDisabledReason(tenantId: string): Promise<'platform' | 'provider' | 'rollout' | null> {
     // a kill switch that cannot be read fails CLOSED like the rollout flag below (Oct 28 2026 mandate audit — it answered null = on)
     const killed = this.x.killSwitch ? await this.x.killSwitch.disabledReason(this.port().provider).catch(() => 'platform' as const) : null;

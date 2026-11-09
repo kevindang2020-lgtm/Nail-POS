@@ -74,11 +74,12 @@ export function POSAICustomerSettingsScreen() {
             {manage ? <button className="btn sm:ml-auto ml-0" data-testid="casx-toggle" onClick={() => setConfirm(!on)}>{on ? t('pos.disable_for_this_salon') : t('pos.enable_for_this_salon')}</button>
               : <span className="sub sm:ml-auto">{t('casx.notAllowed')}</span>}
           </div>
-          <div className="rvw-kpis" style={{ marginTop: 12 }} data-testid="casx-strip">
-            <div className="kpi"><div className="l">{t('casx.strip.salon')}</div><div className="v" style={{ fontSize: 15 }}>{t('casx.salon.' + a.salon)}</div></div>
+          {/* Customer AI Settings SUNMI guide (Nov 9 2026): three equal status cards — the salon switch now sits with the effective state */}
+          <div className="rvw-kpis casx-strip3" style={{ marginTop: 12 }} data-testid="casx-strip">
             <div className="kpi" data-testid="casx-package"><div className="l">{t('casx.strip.package')}</div><div className="v" style={{ fontSize: 15 }}>{t('casx.ent.' + e.reason)}</div>
               <div className="sub">{t('casx.mode.' + e.enforcement)}</div></div>
             <div className="kpi" data-testid="casx-effective"><div className="l">{t('casx.strip.effective')}</div><div className="v" style={{ fontSize: 15 }}>{t('casx.op.' + a.operational)}</div>
+              <div className="sub" data-testid="casx-salon">{t('casx.strip.salon')}: <b>{t('casx.salon.' + a.salon)}</b></div>
               {a.disabledAtLevel ? <div className="sub">{t('casx.disabledAt', { l: t('casx.level.' + a.disabledAtLevel) })}</div> : null}
               {a.branchOverride === 'disabled' ? <div className="sub">{t('casx.branchOff')}</div> : null}
               {a.userOverride === 'disabled' ? <div className="sub">{t('casx.userOff')}</div> : null}</div>

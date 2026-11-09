@@ -13,8 +13,15 @@ import {
   authorText, body, btnGhost, btnGold, card, communityErrorText, errText, input, muted, page, row, when,
 } from './communityUi';
 import { t, enPlural } from '@aipowersalon/mobile-sdk/i18n';
+import { KpiCard, Pager, FitDialog } from '../../components/FitKit';
+import { fmtNumber } from '../../i18n/format';
 
-const PAGE_SIZE = 20;
+/** Safety Community SUNMI guide (Nov 9 2026): verified overview cards — each one a real count the role may read, "—" when it
+ *  cannot be read (never a guessed 0) and absent when the role has no access to that module. */
+type Overview = { active: number | null; following: number | null; drafts: number | null; awaiting: number | null; incidents: number | null };
+const count = (p: Promise<{ total?: number } | unknown[]>) => p.then((r) => (Array.isArray(r) ? r.length : Number((r as { total?: number }).total ?? 0))).catch(() => null);
+
+const PAGE_SIZE = 25;   // SUNMI guide (Nov 9 2026): 25 per page, newest first, numbered pages
 type Sort = NonNullable<CommunityFeedQuery['sort']>;
 type StatusFilter = NonNullable<CommunityFeedQuery['status']>;
 
@@ -34,6 +41,25 @@ export function CommunityFeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const canView = can(P.view);
+  const [ov, setOv] = useState<Overview | null>(null);
+  const [health, setHealth] = useState<null | 'loading' | { key: string; ok: boolean | null }[]>(null);
+  const canDraft = can(P.draft), canApprove = can(P.approve), canIncident = can(P.incident);   // booleans: stable effect deps
+  const loadOverview = useCallback(() => {
+    if (!canView) return;
+    Promise.all([
+      count(api.feed({ status: 'active', page: 1, pageSize: 1 })), count(api.follows()),
+      canDraft ? count(api.mine('drafts', 1, 1)) : Promise.resolve(null), canApprove ? count(api.mine('awaiting_approval', 1, 1)) : Promise.resolve(null),
+      canIncident ? count(api.incidents(1)) : Promise.resolve(null),
+    ]).then(([active, following, drafts, awaiting, incidents]) => setOv({ active, following, drafts, awaiting, incidents }));
+  }, [canView, canDraft, canApprove, canIncident]);
+  useEffect(() => { loadOverview(); }, [loadOverview]);
+  /** read-only: which Community services answer for this role right now — nothing is posted, approved or changed */
+  const runHealth = () => {
+    setHealth('loading');
+    const probe = (key: string, p: Promise<unknown>) => p.then(() => ({ key, ok: true as boolean | null })).catch((e: any) => ({ key, ok: e?.status === 403 ? null : false }));
+    Promise.all([probe('feed', api.feed({ page: 1, pageSize: 1 })), probe('settings', api.settings()), probe('alerts', api.activeAlerts()), probe('follows', api.follows()),
+      can(P.incident) ? probe('incidents', api.incidents(1)) : Promise.resolve({ key: 'incidents', ok: null })]).then(setHealth);
+  };
 
   const load = useCallback(() => {
     if (!canView) return Promise.resolve();
@@ -57,8 +83,17 @@ export function CommunityFeedScreen() {
   return (
     <div style={page}>
       <CommunityHeader title={t('pos.safety_community')} sub={t('pos.sanitized_safety_advisories_shared_by_salons_1jv1')}>
+        <button style={btnGhost} data-testid="cmx-refresh" onClick={() => { void load(); loadOverview(); }}>{t('cmx.refresh')}</button>
+        <button style={btnGhost} data-testid="cmx-check" onClick={runHealth}>{t('cmx.check')}</button>
         {can(P.draft) ? <button style={btnGold} onClick={() => nav('/community/new')}>{t('pos.new_advisory')}</button> : null}
       </CommunityHeader>
+      <div className="rvw-kpis cmx-kpis" data-testid="cmx-kpis" style={{ margin: '12px 20px 0' }}>
+        <KpiCard testId="cmx-kpi-active" label={t('cmx.kpi.active')} value={ov ? (ov.active == null ? '—' : fmtNumber(ov.active)) : '—'} loading={!ov} onClick={() => { setStatus('active'); setFollowingOnly(false); reset(); }} />
+        <KpiCard testId="cmx-kpi-following" label={t('cmx.kpi.following')} value={ov ? (ov.following == null ? '—' : fmtNumber(ov.following)) : '—'} loading={!ov} onClick={() => { setFollowingOnly(true); reset(); }} />
+        {can(P.draft) ? <KpiCard testId="cmx-kpi-drafts" label={t('cmx.kpi.drafts')} value={ov ? (ov.drafts == null ? '—' : fmtNumber(ov.drafts)) : '—'} loading={!ov} onClick={() => nav('/community/drafts')} /> : null}
+        {can(P.approve) ? <KpiCard testId="cmx-kpi-awaiting" label={t('cmx.kpi.awaiting')} value={ov ? (ov.awaiting == null ? '—' : fmtNumber(ov.awaiting)) : '—'} loading={!ov} tone={ov?.awaiting ? 'warn' : undefined} onClick={() => nav('/community/approvals')} /> : null}
+        {can(P.incident) ? <KpiCard testId="cmx-kpi-incidents" label={t('cmx.kpi.incidents')} value={ov ? (ov.incidents == null ? '—' : fmtNumber(ov.incidents)) : '—'} loading={!ov} onClick={() => nav('/community/incidents')} /> : null}
+      </div>
       <CommunitySubNav can={can} />
       <div style={body}>
         <div style={card}>
@@ -109,13 +144,19 @@ export function CommunityFeedScreen() {
           </ul>
         )}
         {data && (data.page > 1 || data.hasMore) ? (
-          <div style={row} aria-label={t('pos.pages')}>
-            <button style={btnGhost} disabled={data.page <= 1} onClick={() => setPageNo((n) => Math.max(1, n - 1))}>{t('pos.previous_page')}</button>
-            <span style={muted}>{t('pos.page')}{' '}{data.page} · {data.total} {t('pos.advisor')}{enPlural(data.total === 1 ? 'y' : 'ies')}</span>
-            <button style={btnGhost} disabled={!data.hasMore} onClick={() => setPageNo((n) => n + 1)}>{t('pos.next_page')}</button>
+          <div className="rvw-pager" aria-label={t('pos.pages')} data-testid="cmx-pager">
+            <Pager info={{ page: data.page, pageSize: PAGE_SIZE, totalItems: data.total, totalPages: Math.max(data.page + (data.hasMore ? 1 : 0), Math.ceil(data.total / PAGE_SIZE)) }} onPage={setPageNo} />
+            <span style={muted}>{data.total} {t('pos.advisor')}{enPlural(data.total === 1 ? 'y' : 'ies')}</span>
           </div>
         ) : null}
       </div>
+      {health ? <FitDialog testId="cmx-health" title={t('cmx.check')} onClose={() => setHealth(null)} footer={<button style={btnGhost} onClick={() => setHealth(null)}>{t('pos.close')}</button>}>
+        {health === 'loading' ? <div style={muted}>{t('cmx.health.running')}</div> : <>
+          <p style={muted}>{t('cmx.health.readOnly')}</p>
+          {health.map((h) => <div key={h.key} className="rvw-check" data-testid={`cmx-chk-${h.key}`}>
+            <span className={'chip ' + (h.ok ? 'ok' : h.ok === null ? '' : 'bad')}>{t(h.ok ? 'cmx.health.ok' : h.ok === null ? 'cmx.health.noAccess' : 'cmx.health.failed')}</span> <b>{t('cmx.health.k.' + h.key)}</b></div>)}
+        </>}
+      </FitDialog> : null}
     </div>
   );
 }

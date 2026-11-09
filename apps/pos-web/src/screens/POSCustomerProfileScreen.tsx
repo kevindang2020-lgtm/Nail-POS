@@ -16,6 +16,9 @@ import { t as i18nText } from '@aipowersalon/mobile-sdk/i18n';
 import { customerLanguageName } from '../components/customerLanguage';
 import { codeLabel } from '../components/peopleLabels';
 import { CustomerInvoicesPanel } from '../components/CustomerInvoicesPanel';
+import { CustomerProfilesDirectory, CustomerQuickView, type CpxCard } from '../components/CustomerProfilesDirectory';   // SUNMI Nov 9 2026: browse + Customer 360 Quick View
+import { posCustomerSearchApi } from '../api/posCustomerSearchApi';
+import { HealthDialog } from './POSAICustomerSearchScreen';
 
 type CustomerItem = { customerId: string; fullName: string; phone: string; visitsCount: number; avatarUrl?: string };
 type Visit = { visitId: string; date: string; serviceName: string; technicianName: string; totalCents: number; tipCents: number };
@@ -77,8 +80,12 @@ export function POSCustomerProfileScreen() {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const can = useCan();
   const timer = useRef<any>(null);
+  const [quick, setQuick] = useState<CpxCard | null>(null);   // Customer 360 Quick View (same customer id as the Full View)
+  const [health, setHealth] = useState<any>(null);
+  const [dirKey, setDirKey] = useState(0);   // Refresh re-reads the directory
 
   const runSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setResults([]); return; }   // no term → the Directory below (server pages, newest first)
     setSearching(true); setError(null);
     try { const r = await posCustomersApi.quickSearch(q); setResults((r?.items || []) as CustomerItem[]); }
     catch (e: any) { setError(reportError(e, 'customers')); }
@@ -166,19 +173,28 @@ export function POSCustomerProfileScreen() {
             ) : null}
 
           </div>
-        </div>      </div>
+        </div>
+        <div className="flex gap-2 items-start">
+          <button className="btn ghost" data-testid="cpx-refresh" onClick={() => { setDirKey((x) => x + 1); if (selectedId) posCustomersApi.getDetail(selectedId).then((d) => setDetail(d as Detail)).catch(() => undefined); }}>{i18nText('cpf.refresh')}</button>
+          <button className="btn" data-testid="cpx-check" onClick={() => { setHealth('loading'); posCustomerSearchApi.check().then(setHealth).catch((e: any) => setHealth({ error: reportError(e, 'customers') })); }}>{i18nText('cpf.check')}</button>
+        </div>
+      </div>
+
+      {!selectedId && !query.trim() ? <CustomerProfilesDirectory key={dirKey} onOpen={setQuick} /> : null}
+      {quick ? <CustomerQuickView customer={quick} onClose={() => setQuick(null)} onFullView={() => { const c = quick; setQuick(null); void pick({ customerId: c.id, fullName: c.name, phone: '', visitsCount: 0 }); }} /> : null}
+      {health ? <HealthDialog data={health} onClose={() => setHealth(null)} title={i18nText('cpf.check')} testId="cpx-health" /> : null}
 
       {error ? <div className="err" style={{ marginBottom: 24, textAlign: 'center', background: '#FDF0EE', color: '#C0392B', padding: 16, borderRadius: 12, border: '1px solid #FADEDC' }}>{error}</div> : null}
 
       {/* Default State / Search Results Grid */}
-      {!selectedId && results.length > 0 ? (
+      {!selectedId && query.trim() && results.length > 0 ? (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
           <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: 18, color: '#2C2A29', marginBottom: 20, borderBottom: '1px solid #EADBB6', paddingBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
             {!query.trim() ? i18nText('pos.recently_active_customers') : i18nText('pos.search_results')}
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+          <div className="cpx-grid" data-testid="cpx-search-results">
             {results.map((c) => (
-              <button key={c.customerId} onClick={() => pick(c)} style={{
+              <button key={c.customerId} data-testid="cpx-result" onClick={() => setQuick({ id: c.customerId, name: c.fullName })} style={{
                 display: 'flex', alignItems: 'center', gap: 16, width: '100%', padding: '20px',
                 background: '#FFFFFF', border: '1px solid #EFEAE1', borderRadius: 20,
                 boxShadow: '0 4px 16px rgba(0,0,0,0.03)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'

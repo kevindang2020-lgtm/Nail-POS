@@ -19,17 +19,18 @@ const renderFeed = () => render(<MemoryRouter initialEntries={['/community']}><R
 beforeEach(() => { perms.deny = new Set(); routes = defaults(); installFetch(routes); });
 
 describe('Safety Community feed', () => {
-  it('first load asks for the active feed, newest first, page 1 of 20', async () => {
+  it('first load asks for the active feed, newest first, page 1 of 25 (SUNMI Nov 9 2026)', async () => {
     renderFeed();
     expect((await screen.findAllByTestId('community-post-row')).length).toBe(2);
-    expect(Object.fromEntries(sent('GET', `${B}/feed`)[0].query)).toEqual({ status: 'active', sort: 'newest', page: '1', pageSize: '20' });
+    // the overview card's count read asks for pageSize 1; the feed itself is the 25-per-page read
+    expect(Object.fromEntries(sent('GET', `${B}/feed`).find((c) => c.query.get('pageSize') !== '1')!.query)).toEqual({ status: 'active', sort: 'newest', page: '1', pageSize: '25' });
     expect(screen.getByText('Fake gift card balance call')).toBeTruthy();
     expect(screen.getAllByTestId('community-post-row')[1].textContent).toContain('you follow this');
   });
   it('filters, sort and following-only go to the server as query params and reset to page 1', async () => {
     renderFeed();
     await screen.findAllByTestId('community-post-row');
-    fireEvent.click(screen.getByText('Next page'));
+    fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
     await waitFor(() => expect(sent('GET', `${B}/feed`).some((c) => c.query.get('page') === '2')).toBe(true));
     fireEvent.change(screen.getByLabelText('Filter by category'), { target: { value: 'phone_scam' } });
     fireEvent.change(screen.getByLabelText('Filter by severity'), { target: { value: 'critical' } });
@@ -38,7 +39,7 @@ describe('Safety Community feed', () => {
     fireEvent.click(screen.getByLabelText('Following only'));
     await waitFor(() => {
       const l = sent('GET', `${B}/feed`).slice(-1)[0];
-      expect(Object.fromEntries(l.query)).toEqual({ category: 'phone_scam', severity: 'critical', sort: 'severity', status: 'resolved', followingOnly: 'true', page: '1', pageSize: '20' });
+      expect(Object.fromEntries(l.query)).toEqual({ category: 'phone_scam', severity: 'critical', sort: 'severity', status: 'resolved', followingOnly: 'true', page: '1', pageSize: '25' });
     });
   });
   it('a text search uses /community/search; an identifier is refused in plain words', async () => {

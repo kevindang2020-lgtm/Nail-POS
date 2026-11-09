@@ -582,3 +582,6 @@ img.gci-appt-logo.salon-logo { width: auto; height: 74px; max-width: 240px; bord
 .d23-companion-line .tech { font-size: calc(var(--u) * 16); color: #7A6852; margin-top: 2px; }
 .d23-companion-line .amt { font-weight: 800; font-size: calc(var(--u) * 21); color: #2C2118; }
 .d23-companion-pill { display: inline-flex; align-items: center; gap: 8px; padding: calc(var(--u) * 8) calc(var(--u) * 20); border-radius: 999px; background: rgba(169, 111, 34, .08); color: #8B5A18; font-size: calc(var(--u) * 17); font-weight: 700; }
+/* Individual Tipping SUNMI (Nov 9 2026): equal technician cards, 1 → 2 → 3 across by width; scroll inside when there are many */
+.ttip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; align-items: stretch; max-height: 50vh; overflow-y: auto; }
+.ttip-card { min-width: 0; height: 100%; }

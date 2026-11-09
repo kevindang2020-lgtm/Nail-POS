@@ -1,7 +1,18 @@
-// POSAppointmentHistoryScreen.tsx — Customers → Appointment History. Search a customer, then view their
-// appointment history. Reuses /pos/customers/search + /pos/customers/:id/appointments (pos.customers.view).
+// POSAppointmentHistoryScreen.tsx — Customers → Appointment History (/tenant/customers/appointment-history). Appointment History
+// SUNMI guide (Nov 9 2026). The salon-wide workspace (from /pos/appointment-history/*, read-only):
+//   • six cards over the table's filters — appointments · upcoming · completed · canceled · no-shows · rescheduled (tap = filter)
+//   • search (customer · phone · service · technician) · status · technician · which date + presets / From–To · sort · pages
+//   • an appointment's details · Check Appointment History System
+// The original page (search a customer → their history with the money details per row) stays: the header search opens it as a
+// dialog, and so does "Customer history" on any appointment's details.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { fmtInZone } from '../i18n/format';
+import { posAppointmentHistoryApi, type AppointmentHistoryQuery } from '../api/posAppointmentHistoryApi';
+import type { AhListResponse, AhSummaryResponse, AhCheckResponse } from '@aipowersalon/api-contracts/tenant';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
+import { RangeCalendar, isForbidden } from '../components/FinanceKit';
+import { errorTextOf } from '../i18n/error-text';
+import { deviceToday } from '../lib/deviceToday';
+import { fmtInZone, fmtInTz, fmtNumber } from '../i18n/format';
 import { posCustomersApi } from '../api/posCustomersApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -18,7 +29,7 @@ type Appt = {
   giftCardUsageCents?: number; membershipBenefitUsage?: string; refundStatus?: string; rebooked?: boolean;
 };
 
-const SearchIcon = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+const _SearchIcon = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 
 // F1 §46 (Nov 6 2026): the location's time zone (the salon's day and hour), not the device's
 const fmtDateTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
@@ -37,150 +48,30 @@ const statusChip = (status: string) => {
   return <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: m.bg, color: m.fg, border: `1px solid ${m.border}` }}>{label}</span>;
 };
 
-export function POSAppointmentHistoryScreen() {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<CustomerItem[]>([]);
-  const [selected, setSelected] = useState<CustomerItem | null>(null);
+const tt = (k: string, v?: Record<string, string | number>) => t(k, v as Parameters<typeof t>[1]);
+const STATUSES = ['all', 'upcoming', 'completed', 'canceled', 'no_show', 'rescheduled'] as const;
+const DATE_FIELDS = ['scheduled', 'created', 'updated', 'completed', 'canceled'] as const;
+const SORTS = ['newest', 'scheduled', 'upcoming', 'updated'] as const;
+const errText = (e: unknown) => {
+  const x = e as { code?: string; body?: { code?: string }; details?: { code?: string } } | null; const c = x?.body?.code ?? x?.details?.code ?? x?.code;
+  if (c && ['APPOINTMENT_HISTORY_INVALID_PERIOD', 'APPOINTMENT_HISTORY_SEARCH_TOO_SHORT'].includes(c)) return tt('ahx.err.' + c);
+  if (isForbidden(e)) return tt('ahx.err.forbidden');
+  return errorTextOf(e, tt('ahx.loadFailed'));
+};
+const day = (d: string, time?: string | null) => `${fmtInTz(`${d}T12:00:00Z`, 'UTC', { month: 'short', day: '2-digit', year: 'numeric' }) || d}${time ? ` · ${time}` : ''}`;
+
+/** the original per-customer history (money details on each row) — unchanged, now in a dialog */
+function CustomerHistory({ customer, onClose }: { customer: CustomerItem; onClose: () => void }) {
   const [appts, setAppts] = useState<Appt[] | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const timer = useRef<any>(null);
-
-  const runSearch = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults([]); return; }
-    setSearching(true); setError(null);
-    try { const r = await posCustomersApi.quickSearch(q); setResults((r?.items || []) as CustomerItem[]); }
-    catch (e: any) { setError(reportError(e, 'customers')); }
-    finally { setSearching(false); }
-  }, []);
-
-  useEffect(() => {
-    if (timer.current) clearTimeout(timer.current);
-    if (selected) return; // don't re-search while viewing a customer
-    timer.current = setTimeout(() => runSearch(query), 250);
-    return () => timer.current && clearTimeout(timer.current);
-  }, [query, selected, runSearch]);
-
-  const pick = async (c: CustomerItem) => {
-    setSelected(c); setResults([]); setQuery(c.fullName); setLoading(true); setError(null); setAppts(null);
-    try { setAppts((await posCustomersApi.appointments(c.customerId)) as Appt[]); }
-    catch (e: any) { setError(reportError(e, t('admin.history.noun'))); }
-    finally { setLoading(false); }
-  };
-  const reset = () => { setSelected(null); setAppts(null); setQuery(''); setResults([]); setError(null); };
-
+  useEffect(() => { posCustomersApi.appointments(customer.customerId).then((a) => setAppts(a as Appt[])).catch((e) => setError(reportError(e, t('admin.history.noun')))); }, [customer.customerId]);
   return (
-    <div className="work no-scrollbar" style={{ width: '100%', maxWidth: 1600, margin: '0 auto', padding: '32px 40px', background: 'transparent' }}>
-      {/* Header */}
-      <div className="mb-6 flex flex-col xl:flex-row gap-3 justify-between ">
-        <div >
-          <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 24, color: '#2C2A29', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: '#DCAB39', fontSize: 24 }}>★</span> {t('pos.appointment_history')}{' '}<span style={{ color: '#DCAB39', fontSize: 24 }}>★</span>
-          </h1>
-          <div style={{ color: '#8A7A6D', fontSize: 16 }}>{t('pos.look_up_a_customer_s_past_6lwd')}</div>
-        </div>
-        {/* Search Bar */}
-        <div className="flex " style={{ position: 'relative' }}>
-          <div className="relative w-full max-w-[500px]">
-            <div className="absolute left-3 top-6 z-10 -translate-y-1/2 text-[#B5821F]">
-              <SearchIcon />
-            </div>
-            <ImeSafeInput
-              type="search"
-              autoFocus
-              value={query}
-              onValue={(v) => {
-                setSelected(null);
-                setQuery(v);
-              }}
-              placeholder={t('pos.search_by_name_phone_or_email_2')}
-              className="w-full rounded-[20px] border border-[#EADBB6] bg-white px-10 py-[10px] pr-12 text-[16px] text-[#2C2A29] shadow-[0_8px_32px_rgba(181,130,31,0.08)] outline-none transition-all duration-200 focus:shadow-[0_12px_40px_rgba(181,130,31,0.15)]"
-            />
-            {selected || query ? (
-              <button
-                onClick={reset}
-                className="absolute right-3 top-6 -translate-y-1/2 cursor-pointer rounded-[20px] border border-[#EFEAE1] bg-[#F8F6F3] px-2 py-1 text-[13px] font-semibold text-[#8A7A6D] transition-colors duration-200 hover:bg-[#F1ECE4]"
-              >
-                {t('pos.clear')}
-              </button>
-            ) : null}
-            {searching ? <span style={{ position: 'absolute', right: '65px', top: '50%', transform: 'translateY(-50%)', color: '#8A7A6D', fontSize: 12 }}>{t('pos.searching')}</span> : null}
-          </div>
-        </div>
-      </div>
-
-      {/* Search Results Grid */}
-      {!selected && results.length > 0 ? (
-        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-          <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: 18, color: '#2C2A29', marginBottom: 20, borderBottom: '1px solid #EADBB6', paddingBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {!query.trim() ? t('pos.recently_active_customers') : t('pos.search_results')}
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-            {results.map((c) => (
-              <button key={c.customerId} onClick={() => pick(c)} style={{
-                display: 'flex', alignItems: 'center', gap: 16, width: '100%', padding: '20px',
-                background: '#FFFFFF', border: '1px solid #EFEAE1', borderRadius: 20,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.03)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-              }}
-                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(181,130,31,0.08)'; e.currentTarget.style.borderColor = '#EADBB6'; }}
-                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#EFEAE1'; }}
-              >
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, #FDFBF7 0%, #F5E5C6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B5821F', fontWeight: 800, fontSize: 24, border: '1px solid #EADBB6', flexShrink: 0 }}>
-                  {c.fullName?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontWeight: 700, color: '#2C2A29', fontSize: 17, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.fullName || t('pos.unnamed_customer')}</div>
-                  <div style={{ color: '#8A7A6D', fontSize: 14 }}>{c.phone || t('pos.no_phone_on_file')} <span style={{ margin: '0 6px', color: '#D2C4B3' }}>|</span> <span style={{ fontWeight: 600, color: '#B5821F' }}>{c.visitsCount ?? 0} {t('pos.visits')}</span></div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {!selected && !searching && query.trim() && results.length === 0 && !error ? (
-        <div style={{ textAlign: 'center', padding: '80px 20px', background: '#FFFFFF', borderRadius: 24, border: '1px dashed #D2C4B3', boxShadow: '0 4px 16px rgba(0,0,0,0.02)' }}>
-          <div style={{ color: '#D4AF37', marginBottom: 16, opacity: 0.6, transform: 'scale(1.5)' }}><SearchIcon /></div>
-          <div style={{ fontFamily: '"Playfair Display", serif', fontSize: 24, fontWeight: 600, color: '#2C2A29', marginBottom: 8 }}>{t('pos.no_profiles_found')}</div>
-          <div style={{ color: '#8A7A6D', fontSize: 16 }}>{t('pos.we_couldn_t_find_anyone_matching')}{query}{t('pos.try_searching_with_a_different_name_ec2s')}</div>
-        </div>
-      ) : null}
-
-      {error ? <div style={{ background: '#FDF0EE', color: '#C0392B', padding: '16px 24px', borderRadius: 16, margin: '24px auto', maxWidth: 640, textAlign: 'center', fontWeight: 600, border: '1px solid #FCA5A5' }}>{error}</div> : null}
-
-      {selected && (
-        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-            <button onClick={reset} style={{ background: '#FFFFFF', border: '1px solid #EADBB6', borderRadius: 24, padding: '10px 24px', fontSize: 14, fontWeight: 700, color: '#2C2A29', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#FDFCFB'} onMouseOut={e => e.currentTarget.style.background = '#FFFFFF'}>
-              <span style={{ color: '#B5821F' }}>←</span> {t('pos.search_another_customer')}
-            </button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
-            {[
-              { l: t('pos.customer_name_3'), v: selected.fullName, d: selected.phone || t('pos.no_phone'), c: '#2C2A29', bg: '#FFFFFF' },
-              { l: t('pos.lifetime_visits'), v: selected.visitsCount ?? 0, d: t('pos.total_salon_check_ins'), c: '#2C2A29', bg: '#FFFFFF' },
-              { l: t('pos.appointments_on_record'), v: appts ? appts.length : '—', d: t('pos.past_upcoming'), c: '#B5821F', bg: '#FDFBF7' }
-            ].map((k, i) => (
-              <div key={i} style={{ background: k.bg, padding: '24px 20px', borderRadius: 20, border: '1px solid #F1ECE4', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', textAlign: 'center' }}>
-                <div style={{ color: '#8A7A6D', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>{k.l}</div>
-                <div style={{ color: k.c, fontSize: 24, fontWeight: 700, fontFamily: '"Playfair Display", serif', marginBottom: 4 }}>{k.v}</div>
-                <div style={{ color: '#A09388', fontSize: 13 }}>{k.d}</div>
-              </div>
-            ))}
-          </div>
-
-          <section style={{ background: '#FFFFFF', borderRadius: 24, border: '1px solid #F1ECE4', boxShadow: '0 8px 24px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
-            <div style={{ fontFamily: '"Playfair Display", serif', fontSize: 24, color: '#2C2A29', padding: '32px 32px 24px', borderBottom: '1px solid #EFEAE1', background: '#FAFAF9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <span>{t('pos.appointment_history')}</span>
-            </div>
-
-            {loading ? <div style={{ padding: 60, textAlign: 'center', color: '#8A7A6D', fontSize: 16 }}>{t('pos.loading_history')}</div>
-              : !appts || appts.length === 0 ? <div style={{ padding: 60, textAlign: 'center', color: '#8A7A6D', fontSize: 16 }}>{t('pos.no_appointments_on_record_for_this_13o5')}</div>
-              : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <FitDialog wide testId="ahx-customer" title={customer.fullName || t('pos.unnamed_customer')} subtitle={`${customer.phone || t('pos.no_phone')} · ${tt('ahx.visits', { n: customer.visitsCount ?? 0 })}${appts ? ` · ${tt('ahx.onRecord', { n: appts.length })}` : ''}`}
+      onClose={onClose} footer={<button className="btn ghost" onClick={onClose}>{t('pos.close')}</button>}>
+      {error ? <div className="err">{error}</div> : !appts ? <div className="state">{t('pos.loading_history')}</div>
+        : appts.length === 0 ? <div className="state">{t('pos.no_appointments_on_record_for_this_13o5')}</div>
+        : <div className="rvw-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#FFFFFF', color: '#A09388', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #F1ECE4' }}>
                     <th style={{ padding: '20px 32px', textAlign: 'left', fontWeight: 600 }}>{t('pos.date_time')}</th>
@@ -249,14 +140,167 @@ export function POSAppointmentHistoryScreen() {
                     )}
                   </React.Fragment>
                 ))}</tbody>
-              </table>
-            )}
-          </section>
+              </table></div>}
+    </FitDialog>
+  );
+}
+
+export function POSAppointmentHistoryScreen() {
+  // ── the original "look up a customer" search (header) ──
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<CustomerItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [findErr, setFindErr] = useState<string | null>(null);
+  const [searchedFor, setSearchedFor] = useState('');
+  const [customer, setCustomer] = useState<CustomerItem | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runSearch = useCallback((q: string) => {
+    if (!q.trim()) { setResults([]); return; }
+    setSearching(true); setFindErr(null);
+    posCustomersApi.quickSearch(q).then((r) => { setResults((r?.items || []) as CustomerItem[]); setSearchedFor(q); }).catch((e) => { setResults([]); setFindErr(reportError(e, 'customers')); }).finally(() => setSearching(false));
+  }, []);
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => runSearch(query), 250);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [query, runSearch]);
+
+  // ── the workspace ──
+  const [f, setFState] = useState<AppointmentHistoryQuery>({ page: 1, pageSize: 25, sort: 'newest', status: 'all' });
+  const [draft, setDraft] = useState('');
+  const [sum, setSum] = useState<AhSummaryResponse | null>(null); const [sumErr, setSumErr] = useState<string | null>(null);
+  const [list, setList] = useState<AhListResponse | null>(null); const [listErr, setListErr] = useState<string | null>(null);
+  const [techs, setTechs] = useState<{ id: string; name: string }[]>([]);
+  const [cal, setCal] = useState(false);
+  const [open, setOpen] = useState<AhListResponse['items'][number] | null>(null);
+  const [health, setHealth] = useState<AhCheckResponse | 'loading' | { error: string } | null>(null);
+  const seq = useRef(0);
+  const setF = (p: Partial<AppointmentHistoryQuery>, keepPage = false) => setFState((cur) => ({ ...cur, ...p, page: keepPage ? (p.page ?? cur.page) : 1 }));
+  const filterKey = JSON.stringify({ q: f.q, technician: f.technician, dateField: f.dateField, preset: f.preset, from: f.from, to: f.to });
+  const loadSum = useCallback(() => { setSumErr(null); posAppointmentHistoryApi.summary(JSON.parse(filterKey)).then(setSum).catch((e) => setSumErr(errText(e))); }, [filterKey]);
+  const loadList = useCallback(() => {
+    const my = ++seq.current; setListErr(null);
+    posAppointmentHistoryApi.list(f).then((d) => { if (my === seq.current) setList(d); }).catch((e) => { if (my === seq.current) setListErr(errText(e)); });
+  }, [f]);
+  useEffect(loadSum, [loadSum]);
+  useEffect(loadList, [loadList]);
+  useEffect(() => { posAppointmentHistoryApi.options().then((o) => setTechs(o.technicians ?? [])).catch(() => setTechs([])); }, []);
+  const refresh = () => { loadSum(); loadList(); };
+  const runCheck = () => { setHealth('loading'); posAppointmentHistoryApi.check().then(setHealth).catch((e) => setHealth({ error: errText(e) })); };
+  const c = sum?.cards;
+  const anyFilter = !!(f.q || f.technician || f.preset || (f.status && f.status !== 'all'));
+  const card = (key: string, label: string, v: number | undefined, status: string, tone?: 'ok' | 'warn' | 'bad' | 'gold') =>
+    <KpiCard key={key} testId={`ahx-kpi-${key}`} label={label} value={c ? fmtNumber(v ?? 0) : sumErr ? tt('ahx.unavailable') : '—'} loading={!sum && !sumErr} tone={tone}
+      onClick={() => setF({ status, sort: status === 'upcoming' ? 'upcoming' : f.sort === 'upcoming' ? 'newest' : f.sort })} />;
+
+  return (
+    <div className="work" data-testid="ahx-screen">
+      <div className="vh cnx-head">
+        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+          <h1>{t('pos.appointment_history')}</h1>
+          <div className="sub">{tt('ahx.subtitle')}</div>
         </div>
-      )}
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+        <div className="cnx-find">
+          <ImeSafeInput type="search" className="rvw-search" data-testid="ahx-find" value={query} onValue={(v) => setQuery(v)} placeholder={t('pos.search_by_name_phone_or_email_2')} aria-label={tt('ahx.findLabel')} />
+          {searching ? <span className="sub">{t('pos.searching')}</span> : null}
+          {results.length ? <div className="cnx-find-list" role="listbox" data-testid="ahx-find-list">
+            {results.map((r) => <button key={r.customerId} type="button" role="option" aria-selected={false} className="cnx-find-item" data-testid="ahx-find-item" onClick={() => { setCustomer(r); setQuery(''); setResults([]); }}>
+              <b>{r.fullName || t('pos.unnamed_customer')}</b><span className="sub">{r.phone || t('pos.no_phone_on_file')} · {tt('ahx.visits', { n: r.visitsCount ?? 0 })}</span></button>)}
+          </div> : findErr ? <div className="cnx-find-list err" role="alert">{findErr}</div>
+            : query.trim() && !searching && searchedFor === query ? <div className="cnx-find-list sub">{t('pos.no_profiles_found')}</div> : null}
+        </div>
+        <button className="btn ghost" data-testid="ahx-check" onClick={runCheck}>{tt('ahx.check')}</button>
+        <button className="btn ghost" data-testid="ahx-refresh" onClick={refresh}>{tt('ahx.refresh')}</button>
+      </div>
+
+      {sumErr ? <ErrorRetry message={sumErr} onRetry={loadSum} /> : null}
+      <div className="rvw-kpis ahx-kpis" data-testid="ahx-kpis">
+        {card('appointments', tt('ahx.kpi.appointments'), c?.appointments, 'all', 'gold')}
+        {card('upcoming', tt('ahx.kpi.upcoming'), c?.upcoming, 'upcoming')}
+        {card('completed', tt('ahx.kpi.completed'), c?.completed, 'completed', 'ok')}
+        {card('canceled', tt('ahx.kpi.canceled'), c?.canceled, 'canceled', c?.canceled ? 'warn' : undefined)}
+        {card('noshows', tt('ahx.kpi.noShows'), c?.noShows, 'no_show', c?.noShows ? 'bad' : undefined)}
+        {card('rescheduled', tt('ahx.kpi.rescheduled'), c?.rescheduled, 'rescheduled')}
+      </div>
+
+      <section className="panel rvw-filters" data-testid="ahx-filters">
+        <form className="cnx-searchrow" onSubmit={(e) => { e.preventDefault(); setF({ q: draft.trim() || undefined }); }}>
+          <input className="rvw-search" type="search" data-testid="ahx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tt('ahx.searchPh')} aria-label={tt('ahx.searchPh')} />
+          <button className="btn" type="submit" data-testid="ahx-search-btn">{tt('ahx.search')}</button>
+          {f.q ? <button className="btn ghost" type="button" data-testid="ahx-search-clear" onClick={() => { setDraft(''); setF({ q: undefined }); }}>{tt('ahx.clearSearch')}</button> : null}
+        </form>
+        <label className="rvw-f"><span>{tt('ahx.f.status')}</span>
+          <select data-testid="ahx-status" value={f.status ?? 'all'} onChange={(e) => setF({ status: e.target.value })}>{STATUSES.map((k) => <option key={k} value={k}>{tt('ahx.st.' + k)}</option>)}</select></label>
+        <label className="rvw-f"><span>{tt('ahx.f.technician')}</span>
+          <select data-testid="ahx-technician" value={f.technician ?? ''} onChange={(e) => setF({ technician: e.target.value || undefined })}>
+            <option value="">{tt('ahx.anyTech')}</option>{techs.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <label className="rvw-f"><span>{tt('ahx.f.sort')}</span>
+          <select data-testid="ahx-sort" value={f.sort ?? 'newest'} onChange={(e) => setF({ sort: e.target.value })}>{SORTS.map((k) => <option key={k} value={k}>{tt('ahx.sort.' + k)}</option>)}</select></label>
+        <div className="rvw-dates" data-testid="ahx-dates">
+          <label className="rvw-f"><span>{tt('ahx.f.dateField')}</span>
+            <select data-testid="ahx-datefield" value={f.dateField ?? 'scheduled'} onChange={(e) => setF({ dateField: e.target.value === 'scheduled' ? undefined : e.target.value })}>
+              {DATE_FIELDS.map((k) => <option key={k} value={k}>{tt('ahx.date.' + k)}</option>)}</select></label>
+          <button className={'btn ghost' + (!f.preset ? ' on' : '')} data-testid="ahx-preset-all" onClick={() => setF({ preset: undefined, from: undefined, to: undefined })}>{tt('cnx.preset.all')}</button>
+          {(['today', 'week', 'month', 'year'] as const).map((p) => <button key={p} className={'btn ghost' + (f.preset === p ? ' on' : '')} data-testid={`ahx-preset-${p}`} onClick={() => setF({ preset: p, from: undefined, to: undefined })}>{tt('cnx.preset.' + p)}</button>)}
+          <button className={'btn ghost' + (f.preset === 'custom' ? ' on' : '')} data-testid="ahx-preset-custom" onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : tt('cnx.preset.custom')}</button>
+        </div>
+        {anyFilter ? <button className="btn ghost" data-testid="ahx-clear" onClick={() => { setDraft(''); setFState({ page: 1, pageSize: f.pageSize, sort: 'newest', status: 'all' }); }}>{tt('cnx.clear')}</button> : null}
+        {cal ? <div className="rvw-cal" data-testid="ahx-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period.today ?? deviceToday()}
+          onApply={(r) => { setF({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setF({ preset: undefined, from: undefined, to: undefined }); setCal(false); }} /></div> : null}
+      </section>
+
+      <section className="panel rvw-feed" data-testid="ahx-results">
+        <div className="p-h">{t('pos.appointment_history')}<span className="sub rvw-scope" data-testid="ahx-count">{list ? tt('ahx.count', { n: fmtNumber(list.total), order: tt('ahx.sort.' + (list.applied.sort || 'newest')) }) : ''}</span></div>
+        {listErr ? <ErrorRetry message={listErr} onRetry={loadList} />
+          : !list ? <div className="state">{t('pos.loading_history')}</div>
+          : list.items.length === 0 ? <Empty title={anyFilter ? tt('ahx.noMatch') : tt('ahx.empty')} />
+          : <div className="rvw-table-wrap"><table className="tbl rvw-table ahx-table">
+            <thead><tr><th>{t('pos.date_time')}</th><th>{tt('ahx.col.customer')}</th><th>{tt('ahx.col.services')}</th><th>{t('pos.technician')}</th><th>{t('pos.status')}</th><th>{tt('ahx.col.created')}</th><th /></tr></thead>
+            <tbody>{list.items.map((r) => (
+              <tr key={r.id} data-testid="ahx-row">
+                <td className="nowrap">{day(r.date, r.startTime)}{r.durationMinutes ? <div className="sub">{tt('ahx.minutes', { n: r.durationMinutes })}</div> : null}</td>
+                <td><b>{r.customer ?? t('pos.unnamed_customer')}</b>{r.phone ? <div className="sub">{r.phone}</div> : null}</td>
+                <td className="ahx-services">{r.services ?? '—'}</td>
+                <td>{r.technician ?? (r.anyTechnician ? tt('ahx.anyTechnician') : '—')}{r.branch ? <div className="sub">{r.branch}</div> : null}</td>
+                <td>{statusChip(r.status)}{r.rescheduled ? <div className="sub" data-testid="ahx-row-moved">{tt('ahx.moved', { n: r.rescheduled })}</div> : null}</td>
+                <td className="sub">{fmtDateTime(r.createdAt)}</td>
+                <td className="nowrap cnx-acts"><button className="btn ghost sm" data-testid="ahx-view" onClick={() => setOpen(r)}>{tt('ahx.view')}</button></td>
+              </tr>))}</tbody></table></div>}
+        <div className="rvw-pager">
+          <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => setF({ page: p }, true)} />
+          <label className="rvw-f"><span>{tt('cnx.rows')}</span><select data-testid="ahx-pagesize" value={String(f.pageSize ?? 25)} onChange={(e) => setF({ pageSize: Number(e.target.value) })}>
+            {['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+        </div>
+        <p className="sub">{tt('ahx.footNote')}</p>
+      </section>
+
+      {open ? <FitDialog wide testId="ahx-detail" title={open.customer ?? t('pos.unnamed_customer')} subtitle={`${day(open.date, open.startTime)}${open.endTime ? `–${open.endTime}` : ''}`} onClose={() => setOpen(null)}
+        footer={<>{open.customerId ? <button className="btn" data-testid="ahx-detail-customer" onClick={() => { setCustomer({ customerId: open.customerId!, fullName: open.customer ?? '', phone: open.phone ?? '', visitsCount: 0 }); setOpen(null); }}>{tt('ahx.customerHistory')}</button> : null}
+          <button className="btn ghost" onClick={() => setOpen(null)}>{t('pos.close')}</button></>}>
+        <dl className="ahx-dl">
+          <dt>{tt('ahx.col.services')}</dt><dd>{open.services ?? '—'}</dd>
+          <dt>{t('pos.technician')}</dt><dd>{open.technician ?? (open.anyTechnician ? tt('ahx.anyTechnician') : '—')}</dd>
+          <dt>{t('pos.status')}</dt><dd>{statusChip(open.status)}</dd>
+          <dt>{t('pos.branch_2')}</dt><dd>{open.branch ?? '—'}</dd>
+          <dt>{t('pos.source_2')}</dt><dd>{open.source ?? '—'}</dd>
+          <dt>{tt('ahx.col.created')}</dt><dd>{fmtDateTime(open.createdAt)}</dd>
+          <dt>{tt('ahx.updated')}</dt><dd>{fmtDateTime(open.updatedAt)}</dd>
+          {open.completedAt ? <><dt>{tt('ahx.completedAt')}</dt><dd>{fmtDateTime(open.completedAt)}</dd></> : null}
+          {open.canceledAt ? <><dt>{tt('ahx.canceledAt')}</dt><dd>{fmtDateTime(open.canceledAt)}</dd></> : null}
+          <dt>{tt('ahx.kpi.rescheduled')}</dt><dd>{open.rescheduled ? tt('ahx.moved', { n: open.rescheduled }) : tt('ahx.never')}</dd>
+        </dl>
+        <p className="sub">{tt('ahx.detailNote')}</p>
+      </FitDialog> : null}
+      {customer ? <CustomerHistory customer={customer} onClose={() => setCustomer(null)} /> : null}
+      {health ? <FitDialog wide testId="ahx-health" title={tt('ahx.check')} onClose={() => setHealth(null)} footer={<button className="btn ghost" onClick={() => setHealth(null)}>{t('pos.close')}</button>}
+        subtitle={health !== 'loading' && !('error' in health) ? tt('cnx.health.overall', { s: tt('cnx.health.' + health.overall), at: fmtDateTime(health.checkedAt) }) : undefined}>
+        {health === 'loading' ? <div className="state">{tt('cnx.health.running')}</div> : 'error' in health ? <div className="err">{health.error}</div> : <>
+          <p className="sub">{tt('ahx.health.readOnly')}</p>
+          {health.checks.map((x) => <div key={x.key} className="rvw-check" data-testid={`ahx-chk-${x.key}`}>
+            <div><span className={'chip ' + (x.state === 'READY' ? 'ok' : x.state === 'WARNING' ? 'warn' : 'bad')}>{tt('cnx.health.' + x.state)}</span> <b>{tt('ahx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
+            <div className="sub">{tt('ahx.health.d.' + x.key + '.' + x.state)}</div></div>)}
+        </>}
+      </FitDialog> : null}
     </div>
   );
 }

@@ -117,7 +117,7 @@ export function AICheckoutUpsellSettingsScreen() {
         </button>
       </div>
 
-      {sum ? <div className="rvw-kpis" data-testid="ucx-kpis" style={{ marginBottom: 16 }}>
+      {sum ? <div className="rvw-kpis ucx-kpis" data-testid="ucx-kpis" style={{ marginBottom: 16 }}>
         <KpiCard testId="ucx-kpi-effective" label={t('ucx.kpi.effective')} value={t('ucx.eff.' + (eff ?? 'unknown'))} tone={EFF_TONE[eff ?? 'unknown']} />
         <KpiCard testId="ucx-kpi-categories" label={t('ucx.kpi.categories')} value={t('ucx.kpi.catValue', { on: (sum.categories ?? []).filter((c: any) => c.on).length, live: (sum.categories ?? []).filter((c: any) => c.on && c.wired).length })} />
         <KpiCard testId="ucx-kpi-limits" label={t('ucx.kpi.limits')} value={sum.limits ? `${sum.limits.maxTotal ?? '—'} / ${sum.limits.maxAddOn ?? '—'} / ${sum.limits.maxProduct ?? '—'}` : '—'} />
@@ -125,8 +125,9 @@ export function AICheckoutUpsellSettingsScreen() {
       </div> : null}
       {sum?.subscription && !sum.subscription.allowed ? <div className="err" role="status" data-testid="ucx-sub" style={{ marginBottom: 12 }}>{t('ucx.subRestricted')}</div> : null}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-        <section className="panel" style={{ flex: '1 1 300px', padding: 0, overflow: 'hidden' }}>
+      {/* SUNMI guide Addendum 5: two equal configuration cards (seven switches | three limits), same height, stacked when narrow */}
+      <div className="ucx-config" data-testid="ucx-config">
+        <section className="panel" data-testid="ucx-cats" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 16px', background: '#F9FAFB', borderBottom: '1px solid var(--line)', fontWeight: 600, fontSize: 14, color: '#111827' }}>{tx('pos.suggestion_categories')}</div>
           <div style={{ padding: '0 16px' }}>
             {CATEGORIES.map((c, i) => (
@@ -140,7 +141,7 @@ export function AICheckoutUpsellSettingsScreen() {
           </div>
         </section>
 
-        <section className="panel" style={{ flex: '1 1 300px', padding: 0, overflow: 'hidden', alignSelf: 'flex-start' }}>
+        <section className="panel" data-testid="ucx-limits" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 16px', background: '#F9FAFB', borderBottom: '1px solid var(--line)', fontWeight: 600, fontSize: 14, color: '#111827' }}>{tx('pos.limits')}</div>
           <div style={{ padding: '0 16px' }}>
             {/* Functional Decision 27: suggestions may add at most the LOWER of these two to a visit (defaults $30 / 30%). */}
