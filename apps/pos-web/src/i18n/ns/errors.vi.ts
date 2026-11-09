@@ -665,6 +665,12 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.BRANCH_STATUS_CHANGED': 'Trạng thái chi nhánh đã thay đổi — hãy làm mới rồi thử lại.',
   'errors.ONLY_OWNER_LEFT': 'Đây là chủ tiệm duy nhất. Hãy đặt người khác làm chủ tiệm trước.',
   'errors.ROLE_ALREADY_HELD': 'Người dùng này đã có vai trò đó.',
+  'errors.ACCESS_REQUEST_DUPLICATE': 'Bạn đã có một yêu cầu đang mở cho vai trò đó.',   // DRAFT — Kevin reviews
+  'errors.LOGS_INVALID_PERIOD': 'Hãy chọn ngày bắt đầu trước hoặc bằng ngày kết thúc.',   // DRAFT — Kevin reviews
+  'errors.LOCATIONS_INVALID_FILTER': 'Bộ lọc hoặc cách sắp xếp đó không có sẵn.',   // DRAFT — Kevin reviews
+  'errors.LOCATIONS_INVALID_PERIOD': 'Hãy chọn ngày Từ trước hoặc bằng ngày Đến.',   // DRAFT — Kevin reviews
+  'errors.LOCATIONS_SEARCH_TOO_SHORT': 'Hãy nhập ít nhất 2 ký tự để tìm.',   // DRAFT — Kevin reviews
+  'errors.NOTIFICATION_PREFS_SAVE_FAILED': 'Không lưu được tùy chọn thông báo của bạn. Hãy thử lại.',   // DRAFT — Kevin reviews
   'errors.OWN_ROLE_CHANGE': 'Bạn không thể đổi vai trò của chính mình.',
   'errors.OWN_ACCOUNT_DISABLE': 'Bạn không thể vô hiệu hóa tài khoản của chính mình.',
   'errors.PLATFORM_ACCOUNTS_ELSEWHERE': 'Tài khoản nền tảng do đội ngũ nền tảng quản lý, không quản lý ở đây.',

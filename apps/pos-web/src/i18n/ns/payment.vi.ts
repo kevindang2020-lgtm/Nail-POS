@@ -298,5 +298,42 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "ways.reason.generic.setup_required": "Cần cài đặt ({code}).",   // DRAFT — Kevin reviews
   "ways.reason.generic.provider_pending": "Đang chờ bên cung cấp ({code}).",   // DRAFT — Kevin reviews
   "ways.reason.generic.blocked": "Bị chặn để an toàn ({code}).",   // DRAFT — Kevin reviews
-  "ways.reason.generic.unavailable": "Hiện không dùng được ({code}).",   // DRAFT — Kevin reviews
+  "ways.reason.generic.unavailable": "Hiện không dùng được ({code}).",   // DRAFT — Kevin reviews,
+  "pgx.checked": "kiểm tra lúc {at}",   // DRAFT — Kevin reviews
+  "pgx.toTerminals": "Máy thanh toán",   // DRAFT — Kevin reviews
+  "pgx.check": "Kiểm tra cổng thanh toán",   // DRAFT — Kevin reviews
+  "pgx.sandboxBanner": "Sandbox (UAT) — chỉ thanh toán thử. Không có tiền thật, và đây không phải chứng nhận của Fiserv.",   // DRAFT — Kevin reviews
+  "pgx.selected": "Đã chọn {p}",   // DRAFT — Kevin reviews
+  "pgx.statusMeans": "hồ sơ người bán đang hoạt động — chưa phải duyệt thanh toán thật",   // DRAFT — Kevin reviews
+  "pgx.connector": "Kết nối",   // DRAFT — Kevin reviews
+  "pgx.terminalKey": "Khóa máy quẹt thẻ",   // DRAFT — Kevin reviews
+  "pgx.terminalHost": "Địa chỉ dịch vụ máy quẹt",   // DRAFT — Kevin reviews
+  "pgx.ttpMerchant": "Người bán Tap to Pay",   // DRAFT — Kevin reviews
+  "pgx.livePayments": "Thanh toán thẻ thật",   // DRAFT — Kevin reviews
+  "pgx.stored": "Đã lưu trên máy chủ (không hiển thị)",   // DRAFT — Kevin reviews
+  "pgx.notStored": "Chưa cài",   // DRAFT — Kevin reviews
+  "pgx.on": "Bật",   // DRAFT — Kevin reviews
+  "pgx.offUntilCert": "Tắt cho tới khi Fiserv chứng nhận",   // DRAFT — Kevin reviews
+  "pgx.billingNote": "Đây là cách tiệm nhận thanh toán thẻ của khách. Phí dịch vụ AI PowerSalon là riêng (Tài khoản → Thanh toán).",   // DRAFT — Kevin reviews
+  "pgx.channels": "Kênh thanh toán",   // DRAFT — Kevin reviews
+  "pgx.readiness": "Danh sách sẵn sàng",   // DRAFT — Kevin reviews
+  "pgx.done": "Xong",   // DRAFT — Kevin reviews
+  "pgx.notYet": "Chưa",   // DRAFT — Kevin reviews
+  "pgx.unknown": "Chưa rõ",   // DRAFT — Kevin reviews
+  "pgx.readinessNote": "Mỗi dòng là một thông tin riêng. Đã kết nối hoặc hồ sơ người bán đang hoạt động không có nghĩa là đã được duyệt thanh toán thật.",   // DRAFT — Kevin reviews
+  "pgx.history": "Lịch sử máy quẹt & kết nối",   // DRAFT — Kevin reviews
+  "pgx.line.provider": "Đã chọn nhà cung cấp: {p}",   // DRAFT — Kevin reviews
+  "pgx.line.noProvider": "Chưa chọn nhà cung cấp thanh toán",   // DRAFT — Kevin reviews
+  "pgx.line.merchant": "Đã có tài khoản người bán ({mid})",   // DRAFT — Kevin reviews
+  "pgx.line.noMerchant": "Chưa có tài khoản người bán",   // DRAFT — Kevin reviews
+  "pgx.line.sandbox": "Môi trường: sandbox (chỉ thử UAT)",   // DRAFT — Kevin reviews
+  "pgx.line.production": "Môi trường: thật",   // DRAFT — Kevin reviews
+  "pgx.line.onboarding": "Hồ sơ người bán: {s}",   // DRAFT — Kevin reviews
+  "pgx.line.terminalKey": "Đã lưu khóa máy quẹt (Clover Compact)",   // DRAFT — Kevin reviews
+  "pgx.line.noTerminalKey": "Chưa cài khóa máy quẹt",   // DRAFT — Kevin reviews
+  "pgx.line.ttp": "Đã gán người bán Tap to Pay ({mid})",   // DRAFT — Kevin reviews
+  "pgx.line.noTtp": "Chưa gán người bán Tap to Pay",   // DRAFT — Kevin reviews
+  "pgx.line.live": "Đã bật thanh toán thẻ thật",   // DRAFT — Kevin reviews
+  "pgx.line.notLive": "Thanh toán thẻ thật tắt cho tới khi Fiserv chứng nhận",   // DRAFT — Kevin reviews
+  "pgx.line.liveUnknown": "Chưa đọc được trạng thái thanh toán thật",   // DRAFT — Kevin reviews
 };

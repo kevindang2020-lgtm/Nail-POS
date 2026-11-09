@@ -27,6 +27,7 @@ type SettingsState = {
   tax: { enabled: boolean; taxRatePercent: number; taxLabel: string; mode: string; appliesToServices: boolean; appliesToProducts: boolean };
   notifications: { smsConfirmation: boolean; emailConfirmation: boolean; pushConfirmation: boolean; reminderHours: number[]; receiptDelivery: string[]; senderBrand: string; a2pStatus: string };
   onlineGoogleAiBooking: { onlineBookingEnabled: boolean; tenantSlug: string; googleBookingLink?: string; aiPhoneEnabled: boolean; aiActions: { findAvailability: boolean; create: boolean; reschedule: boolean; cancel: boolean; sendReminder: boolean } };
+  storeHoursAutoLogout?: { autoLogoutEnabled: boolean; warningMinutes: number[]; gracePeriodMinutes: number; afterCloseExtensionMinutes: number; exemptRoles?: string[]; timezone?: string };
   sectionStatuses: Section[];
   moduleStatus?: { completionPercent: number; status: string; missingReasons: string[]; goLivePending?: string[] };
 };
@@ -194,12 +195,12 @@ export function POSSettingsScreen() {
     setNote(null);
     try {
       const q = await posSettingsApi.getCategory('store-hours-auto-logout') as any;
-      setLgEnabled(!!q.autoLogoutEnabled); setLgGrace(String(q.gracePeriodMinutes ?? 5)); setLgExt(String(q.afterCloseExtensionMinutes ?? 0)); setLgWarn((q.warningMinutes || []).join(','));
+      setLgEnabled(!!q.autoLogoutEnabled); setLgGrace(q.gracePeriodMinutes != null ? String(q.gracePeriodMinutes) : ''); setLgExt(q.afterCloseExtensionMinutes != null ? String(q.afterCloseExtensionMinutes) : ''); setLgWarn((q.warningMinutes || []).join(','));
       setEdit('logout');
     } catch (e: any) { setNote(e?.message || i18nText('pos.could_not_load_auto_logout_settings')); }
   };
   const saveLogout = async () => {
-    const grace = Number(lgGrace); const ext = Number(lgExt);
+    const grace = lgGrace.trim() === '' ? NaN : Number(lgGrace); const ext = lgExt.trim() === '' ? NaN : Number(lgExt);
     if (!Number.isFinite(grace) || grace < 0) { setNote(i18nText('pos.grace_minutes_must_be_a_non_1woa')); return; }
     if (!Number.isFinite(ext) || ext < 0) { setNote(i18nText('pos.after_close_extension_must_be_a_8mqb')); return; }
     const warn = lgWarn.split(',').map((x) => parseInt(x.trim(), 10)).filter((n) => Number.isFinite(n) && n > 0);
@@ -475,9 +476,19 @@ export function POSSettingsScreen() {
               <button className="btn" disabled={busy === 'logout'} onClick={saveLogout}>{busy === 'logout' ? i18nText('pos.saving_2') : i18nText('pos.save_auto_logout')}</button>
             </div>
           ) : (
-            <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 6 }}>
+            <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 6 }} data-testid="alg-summary">
               <div className="muted">{i18nText('pos.idle_auto_logout_grace_period_after_1ks2')}</div>
-              <div style={{ marginTop: 4 }}>{i18nText('pos.click_edit_to_load_and_change_owm9')}</div>
+              {/* Auto-Logout guide (Nov 9 2026) §6–7: the SAVED policy, not an illustrative number — "Unable to verify" when not loaded */}
+              {(() => { const a = s.storeHoursAutoLogout; if (!a) return <div className="sub" data-testid="alg-unverified">{i18nText('alg.unverified')}</div>;
+                return <div className="alg-grid">
+                  <span>{i18nText('alg.status')}</span><b data-testid="alg-enabled">{onoff(!!a.autoLogoutEnabled, a.autoLogoutEnabled ? i18nText('pos.enabled') : i18nText('pos.disabled'))}</b>
+                  <span>{i18nText('alg.grace')}</span><b data-testid="alg-grace">{a.gracePeriodMinutes != null ? i18nText('alg.min', { n: String(a.gracePeriodMinutes) }) : '—'}</b>
+                  <span>{i18nText('alg.afterClose')}</span><b data-testid="alg-ext">{a.afterCloseExtensionMinutes != null ? i18nText('alg.min', { n: String(a.afterCloseExtensionMinutes) }) : '—'}</b>
+                  <span>{i18nText('alg.warnings')}</span><b data-testid="alg-warn">{a.warningMinutes?.length ? a.warningMinutes.map((m) => i18nText('alg.min', { n: String(m) })).join(' · ') : i18nText('alg.none')}</b>
+                  <span>{i18nText('alg.exempt')}</span><b>{a.exemptRoles?.length ? a.exemptRoles.map((r) => statusLabel('role', r)).join(', ') : i18nText('alg.none')}</b>
+                  <span>{i18nText('alg.tz')}</span><b>{a.timezone || '—'}</b>
+                </div>; })()}
+              <div className="sub" style={{ marginTop: 4 }}>{i18nText('alg.serverNote')}</div>
             </div>
           )}
         </section>

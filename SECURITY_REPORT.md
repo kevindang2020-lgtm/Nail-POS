@@ -1,6 +1,6 @@
 # AI PowerSalon — Security Audit Report
 
-Mode: **full** · Generated: 2026-11-09T09:51:38.412Z · Duration: 1475s
+Mode: **full** · Generated: 2026-11-09T19:48:33.774Z · Duration: 1570s
 Result: **NO FAILED CHECKS** — PASSED 32 · FAILED 0 · NOT VERIFIED 4
 
 > Honesty rule (spec §19): a green run means "these listed checks passed", never "everything is secure".
@@ -24,7 +24,7 @@ Result: **NO FAILED CHECKS** — PASSED 32 · FAILED 0 · NOT VERIFIED 4
 - ✅ **PASSED** — check:no-print — Removed print features stay removed (schedule/queue/service ticket)
 - ✅ **PASSED** — check:boot — API boots — real Nest AppModule instantiation
 ## Committed secrets
-- ✅ **PASSED** — Secret scan (10277 files, values never printed) — 22 pattern hit(s) confined to test/fixture files (INFORMATIONAL)
+- ✅ **PASSED** — Secret scan (10291 files, values never printed) — 22 pattern hit(s) confined to test/fixture files (INFORMATIONAL)
 ## Security test suites
 - ✅ **PASSED** — Deny-path census (RBAC-deny + tenant/branch scope-denial assertions) — RBAC-deny 20 (floor 15) · scope-denial 36 (floor 25); enforcement mechanism unit-proven in security-core; per-route exhaustive deny E2E: NOT TESTED
 - ✅ **PASSED** — Auth/session core (quick lane) — modules/identity — 19 passed
@@ -34,7 +34,7 @@ Result: **NO FAILED CHECKS** — PASSED 32 · FAILED 0 · NOT VERIFIED 4
 - ✅ **PASSED** — Full test battery shard 1/4 (includes all real-schema pgtest isolation suites) — 919 passed, 43 skipped
 - ✅ **PASSED** — Full test battery shard 2/4 (includes all real-schema pgtest isolation suites) — 708 passed, 24 skipped
 - ✅ **PASSED** — Full test battery shard 3/4 (includes all real-schema pgtest isolation suites) — 921 passed, 31 skipped
-- ✅ **PASSED** — Full test battery shard 4/4 (includes all real-schema pgtest isolation suites) — 731 passed, 40 skipped
+- ✅ **PASSED** — Full test battery shard 4/4 (includes all real-schema pgtest isolation suites) — 734 passed, 40 skipped
 ## Dependencies
 - ✅ **PASSED** — npm audit — apps/api — runtime critical:0 high:1 [kysely] · incl. dev: critical:2 high:2 (semver-safe fixes applied; major-version fixes deferred per §13 — no auto-upgrades)
 - ✅ **PASSED** — npm audit — apps/pos-web — runtime critical:0 high:1 [re2js] · incl. dev: critical:2 high:2 (semver-safe fixes applied; major-version fixes deferred per §13 — no auto-upgrades)

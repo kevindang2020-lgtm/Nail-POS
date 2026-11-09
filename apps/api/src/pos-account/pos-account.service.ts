@@ -2,13 +2,14 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { LanguageService } from '../account/language.controller';
 import { buildAccountOverview, type AccountRows, type PosAccountOverview } from './pos-account-overview.core';
+import { QuotaService } from '../common/tenant-quotas';
 
 export type AccountContext = { tenantId: string; branchId?: string | null; userId: string; role: string };
 
 /** The signed-in user's own account, their salon, their branches — every read scoped to their tenant. */
 @Injectable()
 export class PosAccountService {
-  constructor(@Optional() @Inject(DATABASE) private readonly db?: AppDatabase) {}
+  constructor(@Optional() @Inject(DATABASE) private readonly db?: AppDatabase, @Optional() private readonly quotas?: QuotaService) {}
 
   async getOverview(ctx: AccountContext): Promise<PosAccountOverview> {
     const empty: AccountRows = { user: null, tenant: null, branch: null, subscription: null, branches: [], roleCounts: [], activeBranchCount: 0 };
@@ -31,11 +32,29 @@ export class PosAccountService {
       new LanguageService(db).posLocale({ userId: ctx.userId, tenantId: t, branchId: ctx.branchId ?? null })
         .catch((e: unknown) => { new Logger('PosAccountService').warn(`language read failed: ${String((e as Error)?.message ?? e)}`); return null; }),
     ]);
-    return buildAccountOverview({
+    const usage = await this.storageUsage(t);
+    const out = buildAccountOverview({
       user: user ?? null, tenant: tenant ?? null, branch: branch ?? null, subscription: subscription ?? null,
       branches: (branches as any[]) ?? [], roleCounts: ((roleCounts as any[]) ?? []).map((r) => ({ role: String(r.role ?? ''), n: Number(r.n ?? 0) })),
       activeBranchCount: Number(activeBranches?.n ?? 0),
       language: locale?.language ?? null,
     });
+    return { ...out, usage };
+  }
+
+  /** read-only: bytes recorded by the upload pipeline + the storage quota the guard enforces (tenant → plan → platform) */
+  private async storageUsage(tenantId: string): Promise<NonNullable<PosAccountOverview['usage']>> {
+    const db: any = this.db;
+    const log = new Logger('PosAccountService');
+    const row = await db.selectFrom('tenant_storage_usage').where('tenant_id', '=', tenantId).select(['bytes_used', 'updated_at']).executeTakeFirst()
+      .catch((e: unknown) => { log.warn(`storage usage read failed: ${String((e as Error)?.message ?? e)}`); return false as const; });
+    const lim = this.quotas ? await this.quotas.limitFor(tenantId, 'storage_bytes')
+      .catch((e: unknown) => { log.warn(`storage quota read failed: ${String((e as Error)?.message ?? e)}`); return undefined; }) : undefined;
+    return {
+      // no row yet = nothing uploaded (the table is written on first upload); a failed read stays null
+      storageBytesUsed: row === false ? null : row ? Number(row.bytes_used) : 0,
+      storageLimitBytes: lim ? lim.limit : null, storageLimitSource: lim ? lim.source : null,
+      storageUpdatedAt: row && row.updated_at ? new Date(row.updated_at).toISOString() : null,
+    };
   }
 }

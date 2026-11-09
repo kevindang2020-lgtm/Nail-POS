@@ -3,6 +3,7 @@
 // id taken from the session (never the client), so a user can only change their own photo.
 // Framework-free on purpose (validation lives in avatar-validate.ts); the controller maps
 // AvatarError.status onto an HttpException.
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { validateAvatarDataUrl, sniffAvatarType } from './avatar-validate';
@@ -31,10 +32,8 @@ export class AvatarError extends Error {
 // ---- Login-alert preferences (Account → Security, §19). Per-user, tenant-scoped like the avatar store,
 // accessed via raw sql (no kysely.types entry needed). Defaults are security-forward (every alert on);
 // the pure helpers below are unit-tested directly so the mapping/merge logic is covered without a live db. ----
-export interface LoginAlertPrefs {
-  enabled: boolean; newDevice: boolean; newLocation: boolean; passwordChanged: boolean; emailChanged: boolean;
-  phoneChanged: boolean; twofaChanged: boolean; recoveryCodesChanged: boolean; sessionRevoked: boolean; suspiciousBlocked: boolean;
-}
+import type { LoginAlertPrefs, NotificationPrefs } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
+export type { LoginAlertPrefs, NotificationPrefs };
 export const DEFAULT_LOGIN_ALERTS: LoginAlertPrefs = {
   enabled: true, newDevice: true, newLocation: true, passwordChanged: true, emailChanged: true,
   phoneChanged: true, twofaChanged: true, recoveryCodesChanged: true, sessionRevoked: true, suspiciousBlocked: true,
@@ -66,10 +65,6 @@ export function mergeLoginAlerts(base: LoginAlertPrefs, patch: Partial<LoginAler
 // ---- Notification preferences (Account → Notifications, §20). The user's own personal alert
 // channels/categories — per-user, tenant-scoped, distinct from salon customer-comms config (§21).
 // Same raw-sql + pure-helper shape as login alerts; helpers are unit-tested directly. ----
-export interface NotificationPrefs {
-  smsNotifications: boolean; emailNotifications: boolean; pushNotifications: boolean; missedCallAlerts: boolean;
-  bookingAlerts: boolean; lowStockAlerts: boolean; payrollApprovals: boolean; weeklyReportSummaries: boolean;
-}
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   smsNotifications: true, emailNotifications: true, pushNotifications: true, missedCallAlerts: true,
   bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true,
@@ -402,7 +397,9 @@ export class ProfileService {
           payroll_approvals = EXCLUDED.payroll_approvals, weekly_report_summaries = EXCLUDED.weekly_report_summaries, updated_at = now()
       `.execute(this.db);
     } catch {
-      /* fail-soft like the rest of the service */
+      // Notification Preferences guide (Nov 9 2026): a toggle is only "saved" when the row is — the screen must not
+      // show success for a write that never happened (it used to fail soft and return the unsaved values)
+      throw withCode(new HttpException('Your notification preferences could not be saved. Try again.', HttpStatus.SERVICE_UNAVAILABLE), 'NOTIFICATION_PREFS_SAVE_FAILED');
     }
     return next;
   }

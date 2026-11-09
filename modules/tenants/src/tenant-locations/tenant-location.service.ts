@@ -8,6 +8,7 @@ import { MapsGeocodingProvider } from './maps-geocoding.provider';
 import type { EntitlementsService } from '@aipowersalon/platform';
 import {
   LocationRow, publishReadiness, validCoords, detectDuplicate, toPublicLocation, summarize, accuracyAfterDrag,
+  queryLocations, LocationQueryError, type LocQuery,
 } from './location-core';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
@@ -19,7 +20,7 @@ const SELECT_COLS = `id, tenant_id, name, public_display_name, salon_code, descr
   latitude, longitude, map_accuracy, map_pin_confirmed_at, timezone, status, verification_status,
   is_public, is_online_booking_enabled, accepts_walk_ins, show_phone_publicly, show_address_publicly,
   show_prices_publicly, booking_lead_minutes, published_at, verified_at, updated_at,
-  manager_name, manager_phone, manager_email, internal_notes`;
+  manager_name, manager_phone, manager_email, internal_notes, created_at`;
 
 const WRITABLE = new Set([
   'name', 'public_display_name', 'salon_code', 'description', 'phone', 'public_email', 'website',
@@ -47,9 +48,18 @@ export class TenantLocationService {
     return loc;
   }
 
-  async list(ctx: LocCtx) {
+  async list(ctx: LocCtx, q?: LocQuery) {
     const r = await sql<LocationRow>`SELECT ${sql.raw(SELECT_COLS)} FROM branches WHERE tenant_id = ${ctx.tenantId} AND deleted_at IS NULL ORDER BY name`.execute(this.need());
-    return { locations: r.rows, summary: summarize(r.rows) };
+    // no page asked = the original response (every caller that lists all branches keeps working)
+    if (!q || q.page == null) return { locations: r.rows, summary: summarize(r.rows) };
+    const tz = r.rows.find((x) => x.timezone)?.timezone || 'UTC';
+    try {
+      const p = queryLocations(r.rows, q, tz);
+      return { locations: p.items, summary: summarize(r.rows), page: p.page, pageSize: p.pageSize, total: p.total, totalPages: p.totalPages };
+    } catch (e) {
+      if (e instanceof LocationQueryError) throw new LocationError(400, e.message, { code: (e as LocationQueryError & { apiCode?: string }).apiCode });
+      throw e;
+    }
   }
 
   async get(ctx: LocCtx, id: string) { return { location: await this.row(ctx, id) }; }

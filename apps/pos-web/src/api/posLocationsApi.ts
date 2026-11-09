@@ -18,9 +18,13 @@ export interface SalonLocation {
   manager_name?: string | null; manager_phone?: string | null; manager_email?: string | null; internal_notes?: string | null;
 }
 export interface LocationSummary { total: number; active: number; published: number; unverified: number; missingPins: number; acceptingBookings: number }
+/** Salon Locations guide (Nov 9 2026): server search / filters / From–To / sort / pages (summary stays over every branch) */
+export interface LocationQuery { q?: string; status?: string; map?: string; booking?: string; dateField?: string; from?: string; to?: string; sort?: string; page: number; pageSize: number }
+export interface LocationPage { locations: SalonLocation[]; summary: LocationSummary; page: number; pageSize: number; total: number; totalPages: number }
 
 export const posLocationsApi = {
   list: () => api.get<{ locations: SalonLocation[]; summary: LocationSummary }>('/tenant/locations'),
+  page: (q: LocationQuery) => api.get<LocationPage>('/tenant/locations', Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '' && v !== 'all'))),
   get: (id: string) => api.get<{ location: SalonLocation }>(`/tenant/locations/${id}`),
   create: (body: Partial<SalonLocation>) => api.post<{ location: SalonLocation; warning?: string }>('/tenant/locations', body as any),
   update: (id: string, body: Partial<SalonLocation>) => api.patch<{ location: SalonLocation }>(`/tenant/locations/${id}`, body as any),

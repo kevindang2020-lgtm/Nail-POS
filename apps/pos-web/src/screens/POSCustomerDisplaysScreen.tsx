@@ -15,6 +15,11 @@ import { DISPLAY_PAIRING_CODE_DIGITS, formatPairingCode, normalizePairingCode, t
 import { posCustomerDisplaysApi, type PosCustomerDisplaysState, type PosDisplayDeviceView } from '../api/posCustomerDisplaysApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { DisplaySettingsCard } from './display-settings/DisplaySettingsCard';
+import { FleetHistory } from './POSDeviceFleetScreen';
+import { reportError } from './reportsCommon';
+import { posDeviceFleetApi } from '../api/posDeviceFleetApi';
+import type { DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
+import { FitDialog } from '../components/FitKit';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/codeLabel';
 import { fmtDate } from '../i18n/format';
@@ -55,6 +60,8 @@ export function POSCustomerDisplaysScreen() {
   // inline rename (no native dialogs): a display or a register being renamed in place
   const [editing, setEditing] = useState<{ kind: 'display' | 'register'; id: string; name: string } | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [find, setFind] = useState('');   // SUNMI batch 8: find a display in the roster (name · branch · register · type)
+  const [health, setHealth] = useState<DfCheckResponse | 'loading' | { error: string } | null>(null);
   const { confirm, confirmUi } = useInlineConfirm();
 
   useEffect(() => {
@@ -83,6 +90,8 @@ export function POSCustomerDisplaysScreen() {
   const manage = st.canManage;
   const registers = st.stations;
   const onlineCount = st.devices.filter((d) => d.online).length;
+  const f = find.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const shown = !f ? st.devices : st.devices.filter((d) => [d.name, d.branchName, d.stationName, d.deviceId].some((v) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(f)));
   const activeCheckouts = st.devices.filter((d) => d.session != null).length;
 
   const submitPair = () => {
@@ -134,12 +143,13 @@ export function POSCustomerDisplaysScreen() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
           <button className="btn ghost whitespace-nowrap w-fit" style={{ height: 32, padding: '0 12px', fontSize: 12 }} onClick={() => { void load(); }}>{t('pos.refresh')}</button>
+          <button className="btn ghost whitespace-nowrap w-fit" data-testid="cdx-check" style={{ height: 32, padding: '0 12px', fontSize: 12 }} onClick={() => { setHealth('loading'); posDeviceFleetApi.check('display').then(setHealth).catch((e) => setHealth({ error: reportError(e, 'devices') })); }}>{t('cdx.check')}</button>
           {manage ? <button className="btn primary whitespace-nowrap w-fit" style={{ height: 32, padding: '0 14px', fontSize: 12, fontWeight: 800 }} onClick={() => setPairing({ code: '', name: '', stationId: '' })}>{t('pos.pair_a_display')}</button> : null}
         </div>
       </div>
 
       {/* KPI strip (the Devices screen's) */}
-      <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', margin: '2px 0 6px' }} data-testid="customer-displays-kpis">
+      <div className="kpis cdx-kpis" style={{ margin: '2px 0 6px' }} data-testid="customer-displays-kpis">
         <div className="kpi">
           <div className="l">{t('pos.customer_displays')}</div>
           <div className="v">{st.devices.length}</div>
@@ -207,6 +217,7 @@ export function POSCustomerDisplaysScreen() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={headStyle}>{t('pos.displays')}</span>
             <span className="pill">{st.devices.length}</span>
+            <input type="search" className="rvw-search cdx-find" data-testid="cdx-find" value={find} onChange={(e) => setFind(e.target.value)} placeholder={t('cdx.findPh')} aria-label={t('cdx.findPh')} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#8A7A66' }}>
@@ -229,7 +240,7 @@ export function POSCustomerDisplaysScreen() {
                 </tr>
               </thead>
               <tbody>
-                {st.devices.map((d) => {
+                {shown.map((d) => {
                   const s = STATE_LABEL[d.state];
                   return (
                     <tr key={d.deviceId} style={{ height: 46 }} data-testid="display-row">
@@ -312,6 +323,14 @@ export function POSCustomerDisplaysScreen() {
 
       {/* Dual-Screen mandate §118: what the displays offer guests, and their languages (the owner) */}
       {manage ? <DisplaySettingsCard /> : null}
+      {/* SUNMI batch 8: the displays' history (pairing, renames, removals) from the canonical audit log — newest first, dated, paged */}
+      <section data-testid="cdx-history-panel"><div style={{ ...headStyle, margin: '6px 0' }}>{t('cdx.history')}</div><FleetHistory cls="display" /></section>
+      {health ? <FitDialog wide testId="cdx-health" title={t('cdx.check')} onClose={() => setHealth(null)} footer={<button className="btn ghost" onClick={() => setHealth(null)}>{t('pos.close')}</button>}>
+        {health === 'loading' ? <div className="state">{t('dfx.checking')}</div> : 'error' in health ? <div className="err">{health.error}</div> : <>
+          <p className="sub">{t('dfx.readOnly')}</p>
+          {health.checks.map((c) => <div key={c.key} className="rvw-check" data-testid={`cdx-chk-${c.key}`}><span className={'chip ' + (c.state === 'READY' ? 'ok' : c.state === 'WARNING' ? 'warn' : c.state === 'FAILED' ? 'bad' : '')}>{t('dfx.hs.' + c.state)}</span> <b>{t('dfx.hk.' + c.key)}</b>{c.count != null ? <span className="sub"> · {c.count}</span> : null}</div>)}
+        </>}
+      </FitDialog> : null}
     </div>
   );
 }

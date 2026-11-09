@@ -4033,49 +4033,6 @@
    ]
   },
   {
-   "key": "devices",
-   "title": "Devices (Tap to Pay pairing, terminals)",
-   "routes": [
-    "/tenant/devices/overview"
-   ],
-   "screens": [
-    "POSDevicesScreen"
-   ],
-   "guide": "AI_PowerSalon_Secure_Tap_to_Pay",
-   "scroll": "page",
-   "scrollReason": "Secure Tap to Pay addendum: visible overview and primary actions first; data panels scroll in the main workspace.",
-   "modules": [
-    {
-     "id": "dev-fleet",
-     "label": "Device fleet overview"
-    },
-    {
-     "id": "dev-payment-hw",
-     "label": "Payment & POS hardware"
-    },
-    {
-     "id": "dev-integrations",
-     "label": "Integration center"
-    },
-    {
-     "id": "dev-ai-comms",
-     "label": "AI & communication integrations"
-    },
-    {
-     "id": "dev-deploy",
-     "label": "Deployment & update control"
-    },
-    {
-     "id": "dev-sync",
-     "label": "Connection & sync insights"
-    },
-    {
-     "id": "dev-quick",
-     "label": "Quick actions"
-    }
-   ]
-  },
-  {
    "key": "cust-recs",
    "title": "Service Recommendations",
    "routes": [
@@ -5290,6 +5247,515 @@
      "label": "Pending Decisions / Awaiting Owner / Urgent / Completed",
      "minItems": 4,
      "items": "[data-testid^=apx-kpi-]"
+    }
+   ]
+  },
+  {
+   "key": "reception-pos",
+   "title": "Reception POS",
+   "routes": [
+    "/tenant/devices/reception-pos"
+   ],
+   "screens": [
+    "POSDeviceFleetScreen"
+   ],
+   "guide": "AI_PowerSalon_Reception_POS",
+   "scroll": "page",
+   "scrollReason": "Reception POS SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dfx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dfx-check",
+     "label": "Check system (read-only)"
+    },
+    {
+     "id": "dfx-kpis",
+     "label": "Four summary cards",
+     "minItems": 4,
+     "items": "[data-testid^=dfx-kpi-]"
+    },
+    {
+     "id": "dfx-tabs",
+     "label": "Devices / History tabs"
+    },
+    {
+     "id": "dfx-results",
+     "label": "Device list (six columns) or the true empty state"
+    }
+   ]
+  },
+  {
+   "key": "kiosks",
+   "title": "Check-In Kiosks",
+   "routes": [
+    "/tenant/devices/check-in-kiosk"
+   ],
+   "screens": [
+    "POSDeviceFleetScreen"
+   ],
+   "guide": "AI_PowerSalon_CheckIn_Kiosks",
+   "scroll": "page",
+   "scrollReason": "Check-In Kiosks SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dfx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dfx-check",
+     "label": "Check system (read-only)"
+    },
+    {
+     "id": "dfx-kpis",
+     "label": "Four summary cards",
+     "minItems": 4,
+     "items": "[data-testid^=dfx-kpi-]"
+    },
+    {
+     "id": "dfx-tabs",
+     "label": "Devices / History tabs"
+    },
+    {
+     "id": "dfx-results",
+     "label": "Device list (six columns) or the true empty state"
+    }
+   ]
+  },
+  {
+   "key": "tablets",
+   "title": "iPads & Tablets",
+   "routes": [
+    "/tenant/devices/tablets"
+   ],
+   "screens": [
+    "POSDeviceFleetScreen"
+   ],
+   "guide": "AI_PowerSalon_Tablets",
+   "scroll": "page",
+   "scrollReason": "iPads & Tablets SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dfx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dfx-check",
+     "label": "Check system (read-only)"
+    },
+    {
+     "id": "dfx-kpis",
+     "label": "Four summary cards",
+     "minItems": 4,
+     "items": "[data-testid^=dfx-kpi-]"
+    },
+    {
+     "id": "dfx-tabs",
+     "label": "Devices / History tabs"
+    },
+    {
+     "id": "dfx-results",
+     "label": "Device list (six columns) or the true empty state"
+    }
+   ]
+  },
+  {
+   "key": "receipt-devices",
+   "title": "Receipt Devices",
+   "routes": [
+    "/tenant/devices/receipt-devices"
+   ],
+   "screens": [
+    "POSDeviceFleetScreen"
+   ],
+   "guide": "AI_PowerSalon_Receipt_Devices",
+   "scroll": "page",
+   "scrollReason": "Receipt Devices SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dfx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dfx-check",
+     "label": "Check system (read-only)"
+    },
+    {
+     "id": "dfx-kpis",
+     "label": "Four summary cards",
+     "minItems": 4,
+     "items": "[data-testid^=dfx-kpi-]"
+    },
+    {
+     "id": "dfx-tabs",
+     "label": "Devices / History tabs"
+    },
+    {
+     "id": "dfx-results",
+     "label": "Device list (six columns) or the true empty state"
+    }
+   ]
+  },
+  {
+   "key": "dev-assignments",
+   "title": "Device Assignments",
+   "routes": [
+    "/tenant/devices/assignments"
+   ],
+   "screens": [
+    "POSDeviceFleetScreen"
+   ],
+   "guide": "AI_PowerSalon_Device_Assignments",
+   "scroll": "page",
+   "scrollReason": "Device Assignments SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dfx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dfx-check",
+     "label": "Check system (read-only)"
+    },
+    {
+     "id": "dfx-kpis",
+     "label": "Four summary cards",
+     "minItems": 4,
+     "items": "[data-testid^=dfx-kpi-]"
+    },
+    {
+     "id": "dfx-tabs",
+     "label": "Devices / History tabs"
+    },
+    {
+     "id": "dfx-results",
+     "label": "Device list (six columns) or the true empty state"
+    }
+   ]
+  },
+  {
+   "key": "dev-health",
+   "title": "Device Health",
+   "routes": [
+    "/tenant/devices/health"
+   ],
+   "screens": [
+    "POSDeviceFleetScreen"
+   ],
+   "guide": "AI_PowerSalon_Device_Health",
+   "scroll": "page",
+   "scrollReason": "Device Health SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.",
+   "modules": [
+    {
+     "id": "dfx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "dfx-check",
+     "label": "Check system (read-only)"
+    },
+    {
+     "id": "dfx-kpis",
+     "label": "Four summary cards",
+     "minItems": 4,
+     "items": "[data-testid^=dfx-kpi-]"
+    },
+    {
+     "id": "dfx-tabs",
+     "label": "Devices / History tabs"
+    },
+    {
+     "id": "dfx-results",
+     "label": "Device list (six columns) or the true empty state"
+    }
+   ]
+  },
+  {
+   "key": "dev-logs",
+   "title": "Device & Integration Logs",
+   "routes": [
+    "/tenant/devices/logs"
+   ],
+   "screens": [
+    "TenantLogsScreen"
+   ],
+   "guide": "AI_PowerSalon_Device_Integration_Logs",
+   "scroll": "page",
+   "scrollReason": "Device Logs SUNMI guide: cards and filters on top; the event list pages (numbered) and scrolls with the page.",
+   "modules": [
+    {
+     "id": "lgx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "lgx-health",
+     "label": "Device Health link"
+    },
+    {
+     "id": "lgx-kpis",
+     "label": "Events / Warnings / Errors / Device / Integration",
+     "minItems": 5,
+     "items": "[data-testid^=lgx-kpi-]"
+    },
+    {
+     "id": "lgx-filters",
+     "label": "All categories / All severities / Search / From–To"
+    },
+    {
+     "id": "lgx-results",
+     "label": "Events (newest first) + pages"
+    }
+   ]
+  },
+  {
+   "key": "cust-displays",
+   "title": "Customer Displays",
+   "routes": [
+    "/tenant/devices/customer-displays"
+   ],
+   "screens": [
+    "POSCustomerDisplaysScreen"
+   ],
+   "guide": "AI_PowerSalon_Customer_Displays",
+   "scroll": "page",
+   "scrollReason": "Customer Displays SUNMI guide: four KPI cards and the roster on top; registers, guest check-in settings and the display history follow down the page.",
+   "modules": [
+    {
+     "id": "customer-displays-kpis",
+     "label": "Customer displays / Online / Registers / Active checkouts",
+     "minItems": 4,
+     "items": ".kpi"
+    },
+    {
+     "id": "cdx-check",
+     "label": "Check Display System"
+    },
+    {
+     "id": "cdx-find",
+     "label": "Find a display"
+    },
+    {
+     "id": "displays-table-panel",
+     "label": "Display roster"
+    },
+    {
+     "id": "cdx-history-panel",
+     "label": "Display history (dated, paged)"
+    }
+   ]
+  },
+  {
+   "key": "pay-gateway",
+   "title": "Payment Gateway",
+   "routes": [
+    "/tenant/integrations/payment-gateway"
+   ],
+   "screens": [
+    "POSPaymentGatewayScreen"
+   ],
+   "guide": "AI_PowerSalon_Fiserv_Payment_Gateway",
+   "scroll": "page",
+   "scrollReason": "Payment Gateway SUNMI guide: status, merchant and connector cards on top; channels, readiness checklist and history follow down the page.",
+   "modules": [
+    {
+     "id": "pgx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "pgx-check",
+     "label": "Check Payment Gateway (read-only)"
+    },
+    {
+     "id": "pgx-merchant",
+     "label": "Merchant: processor / environment / masked MID / status / onboarding"
+    },
+    {
+     "id": "pgx-connector",
+     "label": "Connector: terminal key / Tap to Pay merchant / live payments"
+    },
+    {
+     "id": "pgx-channels",
+     "label": "Clover Compact / Staff iPhone / Customer App"
+    },
+    {
+     "id": "pgx-readiness",
+     "label": "Readiness checklist"
+    },
+    {
+     "id": "pgx-history",
+     "label": "Terminal & connection history"
+    }
+   ]
+  },
+  {
+   "key": "devices",
+   "title": "Devices Overview (Tap to Pay pairing, terminals, AI & Communication, fleet registry)",
+   "routes": [
+    "/tenant/devices/overview"
+   ],
+   "screens": [
+    "POSDevicesScreen"
+   ],
+   "guide": "AI_PowerSalon_Devices_Integrations",
+   "scroll": "page",
+   "scrollReason": "Devices & Integrations + AI & Communication SUNMI guides (Nov 9 2026): KPIs and the three panel rows first; the fleet registry, its filters and newest-first history continue in the main workspace scroll.",
+   "modules": [
+    {
+     "id": "dev-fleet",
+     "label": "Device fleet overview"
+    },
+    {
+     "id": "dev-payment-hw",
+     "label": "Payment & POS hardware"
+    },
+    {
+     "id": "dev-integrations",
+     "label": "Integration center"
+    },
+    {
+     "id": "dev-ai-comms",
+     "label": "AI & communication integrations"
+    },
+    {
+     "id": "aic-check",
+     "label": "Check AI Communication"
+    },
+    {
+     "id": "aic-metrics",
+     "label": "AI metrics (4)"
+    },
+    {
+     "id": "dev-deploy",
+     "label": "Deployment & update control"
+    },
+    {
+     "id": "dev-sync",
+     "label": "Connection & sync insights"
+    },
+    {
+     "id": "dev-quick",
+     "label": "Quick actions"
+    },
+    {
+     "id": "dev-registry",
+     "label": "Fleet registry, filters & history"
+    }
+   ]
+  },
+  {
+   "key": "account",
+   "title": "Account Overview",
+   "routes": [
+    "/tenant/account/overview"
+   ],
+   "screens": [
+    "POSAccountScreen"
+   ],
+   "guide": "AI_PowerSalon_Account_Claude_Guide",
+   "scroll": "page",
+   "scrollReason": "Account Overview SUNMI guides (Nov 9 2026): eight KPIs (4 x 2) and the profile / business / security panels first; notification, billing, access, activity, health and SMS panels continue in the main workspace scroll; long histories open in dialogs.",
+   "modules": [
+    {
+     "id": "acx-kpis",
+     "label": "8 KPI cards",
+     "minItems": 8
+    },
+    {
+     "id": "acx-notif",
+     "label": "Notification Preferences (8 switches)"
+    },
+    {
+     "id": "acx-notif-manage",
+     "label": "Manage All"
+    },
+    {
+     "id": "acx-login-alerts",
+     "label": "Login alerts"
+    },
+    {
+     "id": "acx-trusted",
+     "label": "Trusted devices"
+    },
+    {
+     "id": "acx-brand-colors",
+     "label": "Brand colours"
+    }
+   ]
+  },
+  {
+   "key": "settings",
+   "title": "Settings (Auto-Logout & session security)",
+   "routes": [
+    "/settings"
+   ],
+   "screens": [
+    "POSSettingsScreen"
+   ],
+   "guide": "AI_PowerSalon_Auto_Logout_8",
+   "scroll": "page",
+   "scrollReason": "Auto-Logout SUNMI guide (Nov 9 2026): the Settings page is intentionally scrollable (the second screenshot shows it scrolled); two balanced columns, every Edit action kept.",
+   "modules": [
+    {
+     "id": "alg-summary",
+     "label": "Auto-Logout saved policy"
+    }
+   ]
+  },
+  {
+   "key": "locations",
+   "title": "Salon Locations",
+   "routes": [
+    "/tenant/management/locations"
+   ],
+   "screens": [
+    "TenantLocationsScreen"
+   ],
+   "guide": "AI_PowerSalon_Salon_Locations",
+   "scroll": "page",
+   "scrollReason": "Salon Locations SUNMI guide (Nov 9 2026): heading, six KPIs and the visible search / filters / From-To first; the paged location list continues in the main workspace scroll.",
+   "modules": [
+    {
+     "id": "loc-kpis",
+     "label": "6 KPI cards",
+     "minItems": 6
+    },
+    {
+     "id": "loc-filters",
+     "label": "Search, filters, From-To, sort"
+    },
+    {
+     "id": "loc-pager",
+     "label": "Numbered pages"
+    }
+   ]
+  },
+  {
+   "key": "features",
+   "title": "Features (Feature Access)",
+   "routes": [
+    "/tenant/management/features"
+   ],
+   "screens": [
+    "POSFeaturesScreen"
+   ],
+   "guide": "AI_PowerSalon_Features",
+   "scroll": "page",
+   "scrollReason": "Features SUNMI guide (Nov 9 2026): Current Plan / Enabled / Available / Needs attention and the search toolbar first; the feature catalogue continues in the main workspace scroll.",
+   "modules": [
+    {
+     "id": "ftx-kpis",
+     "label": "4 KPI cards",
+     "minItems": 4
+    },
+    {
+     "id": "ftx-refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "ftx-subscription",
+     "label": "Subscription link"
     }
    ]
   }

@@ -11,7 +11,11 @@ export interface StoredLog {
 export interface LogsRepositoryPort {
   insert(ctx: LogWriteCtx, e: LogEntryInput): Promise<StoredLog>;
   query(ctx: LogsContext, f: LogFilters): Promise<StoredLog[]>;
+  /** SUNMI batch 8 (Nov 9 2026): dated, numbered pages + the range's counts (optional — the in-memory store pages in the service) */
+  page?(ctx: LogsContext, f: LogPageFilters): Promise<{ rows: StoredLog[]; total: number; summary: LogSummary }>;
 }
+export interface LogPageFilters extends LogFilters { from?: string; to?: string; page: number; pageSize: number }
+export interface LogSummary { events: number; warnings: number; errors: number; device: number; integration: number }
 
 const SEED = 'luxe001';
 let seq = 1;

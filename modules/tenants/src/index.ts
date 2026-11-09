@@ -24,3 +24,4 @@ export { TenantNavigationModule } from './tenant-navigation/tenant-navigation.mo
 // joined by --into (pos-social):
 export { SocialModule } from './pos-social/pos-social.module';
 export * from './pos-social/pos-social.dto';
+export { DeviceFleetCenter, DeviceFleetError } from './devices/device-fleet-center';   // SUNMI batch 8

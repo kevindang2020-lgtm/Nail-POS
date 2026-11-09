@@ -182,6 +182,23 @@ export const BATCH6_MODULES = [
 ];
 /** SUNMI batch 7 (Kevin's Nov 9 2026 PDFs): customers, community, approvals, checkout / tipping / three ways to pay, loyalty,
  *  referrals, team, AI usage / reputation / OCR / upsell / scheduling / churn / customer AI settings (MODULE_SET=batch7). */
+export const BATCH8_MODULES = [
+  { key: 'settings', path: '/settings', label: 'SETTINGS' },
+  { key: 'locations', path: '/tenant/management/locations', label: 'SALON LOCATIONS' },
+  { key: 'features', path: '/tenant/management/features', label: 'FEATURES' },
+  { key: 'devices', path: '/tenant/devices/overview', label: 'DEVICES & INTEGRATIONS' },
+  { key: 'reception-pos', path: '/tenant/devices/reception-pos', label: 'RECEPTION POS' },
+  { key: 'kiosks', path: '/tenant/devices/check-in-kiosk', label: 'CHECK-IN KIOSKS' },
+  { key: 'cust-displays', path: '/tenant/devices/customer-displays', label: 'CUSTOMER DISPLAYS' },
+  { key: 'terminals', path: '/tenant/devices/payment-terminals', label: 'PAYMENT TERMINALS' },
+  { key: 'tablets', path: '/tenant/devices/tablets', label: 'TABLETS' },
+  { key: 'receipt-devices', path: '/tenant/devices/receipt-devices', label: 'RECEIPT DEVICES' },
+  { key: 'dev-assignments', path: '/tenant/devices/assignments', label: 'DEVICE ASSIGNMENTS' },
+  { key: 'dev-health', path: '/tenant/devices/health', label: 'DEVICE HEALTH' },
+  { key: 'dev-logs', path: '/tenant/devices/logs', label: 'DEVICE LOGS' },
+  { key: 'pay-gateway', path: '/tenant/integrations/payment-gateway', label: 'PAYMENT GATEWAY' },
+  { key: 'account', path: '/tenant/account/overview', label: 'ACCOUNT OVERVIEW' },
+];
 export const BATCH7_MODULES = [
   { key: 'cust-notes', path: '/tenant/customers/notes', label: 'CUSTOMER NOTES' },
   { key: 'gift-cards', path: '/tenant/customers/gift-cards', label: 'GIFT CARDS' },
@@ -602,7 +619,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES, ...BATCH7_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'batch7' ? BATCH7_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES, ...BATCH7_MODULES, ...BATCH8_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'batch7' ? BATCH7_MODULES : process.env.MODULE_SET === 'batch8' ? BATCH8_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

@@ -39,9 +39,12 @@ describe('AccessRequestPanel', () => {
     expect(submit).toBeDisabled();                               // reason too short
     fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Cover the front desk on weekends' } });
     fireEvent.change(screen.getByLabelText('Duration in days'), { target: { value: '14' } });
+    expect(submit).toBeDisabled();                               // an open MANAGER request already exists — no duplicate
+    expect(screen.getByTestId('arq-dup')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Requested role'), { target: { value: 'FRONT_DESK' } });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
-    await waitFor(() => expect(posMeAccessRequestsApi.create as any).toHaveBeenCalledWith({ requestedRole: 'MANAGER', reason: 'Cover the front desk on weekends', requestedDurationDays: 14 }));
+    await waitFor(() => expect(posMeAccessRequestsApi.create as any).toHaveBeenCalledWith({ requestedRole: 'FRONT_DESK', reason: 'Cover the front desk on weekends', requestedDurationDays: 14 }));
     const payload = (posMeAccessRequestsApi.create as any).mock.calls[0][0];
     expect(payload).not.toHaveProperty('requestingUserId');     // identity is server-derived
     expect(payload).not.toHaveProperty('tenantId');

@@ -4,9 +4,11 @@
 import { hasPermission } from '@aipowersalon/permissions';
 import { normalizeFilters, isSeverity, type LogSeverity } from './logs-core';
 import type { LogsContext, LogWriteCtx, LogEntryInput, LogEntryView, LogSink } from './logs.dto';
-import type { LogsRepositoryPort, StoredLog } from './logs.repository';
+import type { LogsRepositoryPort, StoredLog, LogSummary } from './logs.repository';
+import { matchesFilters } from './logs-core';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
+export class ValidationError extends Error { constructor(readonly code: string) { super(code); this.name = 'ValidationError'; } }
 
 const SENSITIVE = /secret|password|token|signing|api[_-]?key|authorization|cookie/i;
 function sanitize(meta?: Record<string, unknown>): Record<string, unknown> | undefined {
@@ -30,10 +32,26 @@ export class LogsService implements LogSink {
     } catch { /* logging must never break the caller */ }
   }
 
-  async query(ctx: LogsContext, raw: { category?: string; severity?: string; source?: string; search?: string; limit?: unknown }): Promise<{ logs: LogEntryView[] }> {
+  async query(ctx: LogsContext, raw: { category?: string; severity?: string; source?: string; search?: string; limit?: unknown; from?: string; to?: string; page?: unknown; pageSize?: unknown }): Promise<{ logs: LogEntryView[]; total?: number; page?: number; pageSize?: number; totalPages?: number; summary?: LogSummary }> {
     if (!ctx?.userId || !ctx?.tenantId) throw new ForbiddenError('Not authenticated');
     if (!hasPermission(ctx as any, 'pos.logs.view')) throw new ForbiddenError('Missing pos.logs.view');
-    const rows = await this.repo.query(ctx, normalizeFilters(raw));
-    return { logs: rows.map((r) => this.view(r)) };
+    const f = normalizeFilters(raw);
+    if (raw.page === undefined) { const rows = await this.repo.query(ctx, f); return { logs: rows.map((r) => this.view(r)) }; }   // the legacy shape, unchanged
+    // SUNMI batch 8 (Nov 9 2026): dated, numbered pages (newest first) + the range's counts
+    const ymd = /^\d{4}-\d{2}-\d{2}$/;
+    const from = raw.from && ymd.test(String(raw.from)) ? String(raw.from) : undefined; const to = raw.to && ymd.test(String(raw.to)) ? String(raw.to) : undefined;
+    if ((raw.from && !from) || (raw.to && !to) || (from && to && from > to)) throw new ValidationError('LOGS_INVALID_PERIOD');
+    const pageSize = [10, 25, 50, 100].includes(Number(raw.pageSize)) ? Number(raw.pageSize) : 25;
+    const page = Math.max(1, Math.min(100000, Math.trunc(Number(raw.page)) || 1));
+    let rows: StoredLog[]; let total: number; let summary: LogSummary;
+    if (this.repo.page) ({ rows, total, summary } = await this.repo.page(ctx, { ...f, from, to, page, pageSize }));
+    else {
+      const lo = from ? Date.parse(`${from}T00:00:00Z`) : -Infinity; const hi = to ? Date.parse(`${to}T23:59:59.999Z`) : Infinity;
+      const all = (await this.repo.query(ctx, { ...f, limit: 500 })).filter((r) => matchesFilters(r, f) && r.createdMs >= lo && r.createdMs <= hi);
+      total = all.length; rows = all.slice((page - 1) * pageSize, page * pageSize);
+      summary = { events: total, warnings: all.filter((r) => r.severity === 'warning').length, errors: all.filter((r) => r.severity === 'error' || r.severity === 'critical').length,
+        device: all.filter((r) => r.category === 'device').length, integration: all.filter((r) => r.category === 'integration').length };
+    }
+    return { logs: rows.map((r) => this.view(r)), total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), summary };
   }
 }

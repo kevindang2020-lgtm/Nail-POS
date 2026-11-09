@@ -28,6 +28,8 @@ export type PosAccountOverview = {
   };
   billing: {
     plan: string | null;
+    /** tenant_subscriptions.status (Account guide Nov 9 2026 §14: the billing KPI reads the authoritative row, not the settings template) */
+    status?: string | null;
     renewal: string | null;           // ISO date of the current period's end
     renewalShort: string | null;
     method: string | null;            // card details live with the processor, never here -> null
@@ -45,4 +47,7 @@ export type PosAccountOverview = {
   };
   backup: { last: string | null; status: string | null; next: string | null };   // no backup telemetry source -> null
   notifications: { l: string; d: string }[];   // the preference categories (labels, not data)
+  /** Account Overview guide (Nov 9 2026) §14: storage from tenant_storage_usage + the resolved storage quota. null = no
+   *  source answered (the screen shows "—"); storageLimitBytes null with a source of 'none' = no limit is set. Never AI tokens. */
+  usage?: { storageBytesUsed: number | null; storageLimitBytes: number | null; storageLimitSource: string | null; storageUpdatedAt: string | null };
 };

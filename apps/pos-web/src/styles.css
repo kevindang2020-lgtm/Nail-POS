@@ -4166,3 +4166,82 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .cpx-qtabs .btn{white-space:normal;min-height:44px}
 .sox-how{margin:0;padding-left:22px;display:grid;gap:10px;font-size:16px;line-height:1.45}
 .rvw-kpis.casx-strip3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Devices sub-pages SUNMI batch 8 (Nov 9 2026): four equal cards; tabs; true empty state */
+.rvw-kpis.dfx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1350px){.rvw-kpis.dfx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.dfx-head{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.dfx-tabs{margin:12px 0}
+.dfx-empty{padding:16px}
+.dfx-steps{margin:8px 0;padding-left:22px;display:grid;gap:6px;font-size:15px}
+.dfx-reason{font-size:13px}
+.dfx-hfilters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;position:relative}
+.dfx-h3{margin:14px 0 6px;font-size:16px}
+.rvw-kpis.lgx-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1350px){.rvw-kpis.lgx-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* Customer Displays SUNMI batch 8: four equal KPI cards (2×2, then 1) */
+.kpis.cdx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1350px){.kpis.cdx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cdx-find{max-width:260px;height:36px}
+/* Payment Gateway SUNMI batch 8: two equal cards, three channel cards, readiness list */
+.pgx-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
+@media (max-width:1100px){.pgx-two{grid-template-columns:minmax(0,1fr)}}
+.pgx-banner{padding:10px 14px;border:1px solid #C9DAF0;background:#F2F7FD;border-radius:10px;margin-bottom:12px;font-size:15px}
+.pgx-ch{min-height:180px}
+.pgx-ch h3{margin:0;font-size:16px}
+.pgx-lines{list-style:none;margin:8px 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;font-size:15px}
+@media (max-width:1100px){.pgx-lines{grid-template-columns:minmax(0,1fr)}}
+
+/* Devices Overview — AI & Communication three-axis status + embedded fleet registry (Nov 9 2026) */
+.aic-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.aic-m { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; display: flex; flex-direction: column; min-width: 0; }
+.aic-m b { font-size: 16px; line-height: 1.2; }
+.aic-m span { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aic-row { align-items: center; gap: 8px; }
+.aic-axes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.aic-axes .pill { font-size: 10.5px; }
+.dfx-embed { display: flex; flex-direction: column; gap: 10px; }
+.dfx-embed .panel { box-shadow: none; border: 1px solid var(--line); }
+.dfx-embed-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Account Overview (Nov 9 2026): 4 x 2 KPIs, real switches, notification workspace */
+.acx-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+@media (max-width: 1100px) { .acx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+.acx-h { font-weight: 800; font-size: 13.5px; font-family: 'Playfair Display', serif; }
+.acx-switch { width: 44px; height: 26px; border-radius: 999px; background: #D8CDBA; border: 0; position: relative; flex: 0 0 auto; cursor: pointer; padding: 0; }
+.acx-switch span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .15s; }
+.acx-switch.on { background: #08A64B; }
+.acx-switch.on span { left: 21px; }
+.acx-switch:disabled { opacity: .55; cursor: default; }
+.acx-switch:focus-visible { outline: 2px solid var(--g7, #A96F22); outline-offset: 2px; }
+.acx-nrow { align-items: center; gap: 8px; }
+.acx-ngrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1200px) { .acx-ngrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.acx-ncard { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; min-height: 96px; }
+.acx-eff { font-size: 11px; margin-top: 4px; color: var(--muted); }
+.acx-eff.on { color: #3F8F6B; } .acx-eff.blocked { color: #9a6a12; }
+.acx-afilters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; position: relative; }
+
+/* Settings — Auto-Logout saved-policy summary (Nov 9 2026) */
+.alg-grid { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 2px 14px; margin-top: 6px; font-size: 12.5px; }
+.alg-grid > span { color: var(--muted); }
+
+/* Salon Locations (Nov 9 2026): visible search / filters / From–To, clickable KPIs, pager */
+.loc-filters { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; margin: 10px 0; position: relative; }
+.loc-search { display: flex; gap: 6px; flex: 1 1 320px; min-width: 0; }
+.loc-search input { flex: 1; min-width: 0; height: 40px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; background: #FFFDF8; }
+.lf-s { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.lf-s select { height: 40px; border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; background: #FFFDF8; color: var(--text); }
+button.loc-kpi { border: 0; text-align: left; cursor: pointer; font: inherit; }
+.loc-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+
+/* Features (Nov 9 2026): header actions, 4 balanced KPIs, filters */
+.ftx-head { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ftx-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; margin-bottom: 12px; }
+@media (max-width: 1100px) { .ftx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+.ftx-filters { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; }
+.dfx-embed { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+
+/* Device Logs (Nov 9 2026 harness): the column must not squeeze the results panel under the pager / back button */
+[data-testid="lgx-screen"] > * { flex-shrink: 0; }
+[data-testid="lgx-screen"] .cnx-searchrow { flex: 1 1 420px; }
+[data-testid="lgx-results"] .fk-empty { height: auto; min-height: 160px; }

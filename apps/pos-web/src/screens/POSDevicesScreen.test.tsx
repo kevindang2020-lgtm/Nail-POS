@@ -29,8 +29,20 @@ vi.mock('../api/posCustomerDisplaysApi', () => ({ posCustomerDisplaysApi: { stat
 vi.mock('../api/posAiApi', () => ({
   posAiApi: { packages: vi.fn().mockResolvedValue({ packages: [
     { code: 'ai_phone_call_assistant', name: 'AI Phone Call Assistant', description: '', usageUnit: 'calls', subscription: { status: 'active', usageLimit: 500 }, used: 0, remainingUsage: 500, accessible: true, lockReason: null, lockLabel: null, trialAvailable: false },
+    { code: 'ai_booking_assistant', name: 'AI Booking Assistant', description: '', usageUnit: 'messages', subscription: { status: 'cancelled', usageLimit: 0 }, used: 0, remainingUsage: 0, accessible: false, lockReason: 'cancelled', lockLabel: 'This AI package was cancelled', trialAvailable: false },
+    { code: 'ai_voice_transcription', name: 'AI Voice Transcription', description: '', usageUnit: 'minutes', subscription: { status: 'trialing', usageLimit: 0 }, used: 0, remainingUsage: 0, accessible: false, lockReason: 'trial_expired', lockLabel: 'Your free trial has ended', trialAvailable: false },
   ] }) },
 }));
+vi.mock('../api/posPhoneApi', () => ({ posPhoneApi: {
+  readiness: vi.fn().mockResolvedValue({ account: { state: 'connected', lastCheckedAt: null }, voice: { numberVoiceCapable: true, fixLink: '' }, outbound: { state: 'ready_to_attempt' } }),
+  healthCheck: vi.fn().mockRejectedValue(Object.assign(new Error('forbidden'), { status: 403 })),
+} }));
+vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: {
+  summary: vi.fn().mockResolvedValue({ class: 'all', registered: 0, online: 0, attention: 0, unassigned: 0, disabled: 0, retired: 0, extra: {}, checkedAt: '2026-11-09T10:00:00Z' }),
+  devices: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 25, total: 0, totalPages: 0 }),
+  history: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 25, total: 0, totalPages: 0 }),
+  check: vi.fn(),
+} }));
 vi.mock('../api/posSettingsApi', () => ({
   posSettingsApi: { gatewayStatus: vi.fn().mockResolvedValue({ processorType: 'Clover (Fiserv)', environment: 'production', merchantIdMasked: '••••6789', status: 'active', configured: true }) },
 }));
@@ -49,7 +61,7 @@ describe('POSDevicesScreen', () => {
   it('renders the 1:1 command center wired to the real overview aggregate', async () => {
     render(<MemoryRouter><POSDevicesScreen /></MemoryRouter>);
     expect(await screen.findByText('Devices & Integrations')).toBeInTheDocument();
-    expect(screen.getByText('Connected Devices')).toBeInTheDocument();
+    expect(screen.getAllByText('Registered devices').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('42').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Device Fleet Overview')).toBeInTheDocument();
     expect(await screen.findByText('Reception iMac 24"')).toBeInTheDocument();
@@ -66,6 +78,18 @@ describe('POSDevicesScreen', () => {
     expect(screen.getAllByText(/Not connected/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Quick Actions')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add Device' })).toBeInTheDocument();
+  });
+
+  it('AI & Communication shows subscription, provider and readiness separately — a connected provider never makes a cancelled package operable', async () => {
+    render(<MemoryRouter><POSDevicesScreen /></MemoryRouter>);
+    const rows = await screen.findAllByTestId('aic-row');
+    expect(rows.map((r) => r.getAttribute('data-code'))).toEqual(['ai_booking_assistant', 'ai_phone_call_assistant', 'ai_voice_transcription']);
+    const st = (r: HTMLElement, id: string) => r.querySelector(`[data-testid="${id}"]`)!.getAttribute('data-state');
+    expect([st(rows[0], 'aic-ent'), st(rows[0], 'aic-prov'), st(rows[0], 'aic-ready')]).toEqual(['cancelled', 'connected', 'not_permitted']);
+    expect([st(rows[1], 'aic-ent'), st(rows[1], 'aic-ready')]).toEqual(['active', 'ready']);
+    expect(st(rows[2], 'aic-ent')).toBe('trial_expired');
+    expect(screen.getByTestId('aic-m-entitled').textContent).toContain('1');
+    expect(screen.getByTestId('dev-registry')).toBeInTheDocument();
   });
 
   it('shows an honest empty fleet when no devices are registered', async () => {

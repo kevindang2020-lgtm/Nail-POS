@@ -3,6 +3,7 @@
 // public-shape projection, and coordinate validation. Unit-tested in location-core.spec.ts.
 // Distance math is reused from the existing salon-directory-core (haversineMiles).
 import { haversineMiles } from '@aipowersalon/customers';
+import { withCode } from '@aipowersalon/api-contracts';
 
 export type VerificationStatus =
   | 'draft' | 'manager_confirmed' | 'pending_review' | 'verified' | 'rejected' | 'suspended' | 'unpublished';
@@ -152,4 +153,57 @@ export function summarize(rows: LocationRow[]) {
     missingPins: active.filter((r) => !validCoords(r.latitude, r.longitude)).length,
     acceptingBookings: active.filter((r) => r.is_online_booking_enabled !== false).length,
   };
+}
+
+// ---- Salon Locations SUNMI guide (Nov 9 2026): server-side search / filters / From–To / sort / pages ----
+// Runs over the tenant's own branches (the query above is tenant-scoped); summary KPIs stay over ALL authorized rows.
+export const LOC_STATUS_FILTERS = ['all', 'active', 'inactive', 'draft', 'unverified', 'verified', 'published'] as const;
+export const LOC_MAP_FILTERS = ['all', 'pin_set', 'pin_confirmed', 'missing_pin'] as const;
+export const LOC_BOOKING_FILTERS = ['all', 'accepting', 'disabled'] as const;
+export const LOC_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc', 'updated'] as const;
+export interface LocQuery { q?: string; status?: string; map?: string; booking?: string; dateField?: string; from?: string; to?: string; sort?: string; page?: number | string; pageSize?: number | string }
+export class LocationQueryError extends Error {}
+const foldLoc = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase();
+const digits = (s: unknown) => String(s ?? '').replace(/\D/g, '');
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const KNOWN_ZONES = new Set<string>((Intl as unknown as { supportedValuesOf: (k: 'timeZone') => string[] }).supportedValuesOf('timeZone'));
+/** local calendar day (YYYY-MM-DD) of an instant in a zone — inclusive day filters use the salon's own day */
+function localDay(iso: unknown, tz: string): string | null {
+  if (!iso) return null; const d = new Date(iso as string); if (Number.isNaN(d.getTime())) return null;
+  if (tz !== 'UTC' && !KNOWN_ZONES.has(tz)) return null;   // an unknown zone matches nothing rather than the UTC day
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+export function queryLocations<R extends LocationRow & { created_at?: unknown }>(rows: R[], q: LocQuery, tz = 'UTC') {
+  const pick = <T extends readonly string[]>(v: unknown, list: T): T[number] => { const s = String(v ?? list[0]); if (!(list as readonly string[]).includes(s)) throw withCode(new LocationQueryError('That filter or sort is not available.'), 'LOCATIONS_INVALID_FILTER'); return s as T[number]; };
+  const status = pick(q.status, LOC_STATUS_FILTERS);
+  const map = pick(q.map, LOC_MAP_FILTERS);
+  const booking = pick(q.booking, LOC_BOOKING_FILTERS);
+  const sort = pick(q.sort, LOC_SORTS);
+  const dateField = pick(q.dateField, ['created', 'updated'] as const);
+  const from = q.from ? String(q.from) : undefined; const to = q.to ? String(q.to) : undefined;
+  if ((from && !DAY.test(from)) || (to && !DAY.test(to)) || (from && to && from > to)) throw withCode(new LocationQueryError('Pick a From date on or before the To date.'), 'LOCATIONS_INVALID_PERIOD');
+  const term = String(q.q ?? '').trim();
+  if (term && term.length < 2) throw withCode(new LocationQueryError('Type at least 2 characters to search.'), 'LOCATIONS_SEARCH_TOO_SHORT');
+  const pageSize = [10, 25, 50].includes(Number(q.pageSize)) ? Number(q.pageSize) : 10;
+  let out = rows.filter((r) => (r.status || 'active') !== 'archived');
+  if (term) {
+    const f = foldLoc(term); const dg = digits(term);
+    out = out.filter((r) => [r.name, r.public_display_name, r.salon_code, r.address, r.city, r.state, r.zip, r.formatted_address, r.manager_name].some((v) => foldLoc(v).includes(f))
+      || (dg.length >= 3 && [r.phone, r.manager_phone].some((v) => digits(v).includes(dg))));
+  }
+  const pub = (r: R) => r.verification_status === 'verified' && r.is_public === true;
+  if (status !== 'all') out = out.filter((r) => status === 'published' ? pub(r) : status === 'verified' ? r.verification_status === 'verified' : status === 'unverified' ? r.verification_status !== 'verified'
+    : status === 'draft' ? r.verification_status === 'draft' : (r.status || 'active') === status);
+  if (map !== 'all') out = out.filter((r) => map === 'missing_pin' ? !validCoords(r.latitude, r.longitude) : map === 'pin_confirmed' ? validCoords(r.latitude, r.longitude) && !!r.map_pin_confirmed_at : validCoords(r.latitude, r.longitude));
+  if (booking !== 'all') out = out.filter((r) => booking === 'accepting' ? r.is_online_booking_enabled !== false : r.is_online_booking_enabled === false);
+  if (from || to) out = out.filter((r) => { const d = localDay(dateField === 'updated' ? r.updated_at : r.created_at, tz); return !!d && (!from || d >= from) && (!to || d <= to); });
+  const t = (v: unknown) => (v ? new Date(v as string).getTime() || 0 : 0);
+  const name = (r: R) => foldLoc(r.public_display_name || r.name);
+  out = [...out].sort((a, b) => sort === 'oldest' ? t(a.created_at) - t(b.created_at) || a.id.localeCompare(b.id)
+    : sort === 'name_asc' ? name(a).localeCompare(name(b)) : sort === 'name_desc' ? name(b).localeCompare(name(a))
+    : sort === 'updated' ? t(b.updated_at) - t(a.updated_at) || b.id.localeCompare(a.id)
+    : t(b.created_at) - t(a.created_at) || b.id.localeCompare(a.id));
+  const total = out.length; const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(Math.max(1, Math.floor(Number(q.page) || 1)), totalPages);
+  return { items: out.slice((page - 1) * pageSize, page * pageSize), page, pageSize, total, totalPages };
 }

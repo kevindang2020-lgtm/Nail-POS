@@ -58,7 +58,7 @@ export function buildAccountOverview(rows: AccountRows): PosAccountOverview {
     },
     security: { passwordChanged: iso(user?.password_changed_at), loginAlerts: null, trustedDevices: null },
     billing: {
-      plan: subscription?.plan_name ?? subscription?.plan_code ?? null, renewal, renewalShort: renewal ? `Next: ${renewal.slice(0, 10)}` : null,
+      plan: subscription?.plan_name ?? subscription?.plan_code ?? null, status: subscription?.status ?? null, renewal, renewalShort: renewal ? `Next: ${renewal.slice(0, 10)}` : null,
       method: null, expires: null, fee: money(subscription?.monthly_price_cents),
       locations: String(rows.activeBranchCount), users: String(activeUsers), features: [],
     },

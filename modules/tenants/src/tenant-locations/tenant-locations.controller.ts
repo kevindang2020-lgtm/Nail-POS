@@ -1,7 +1,9 @@
 // tenant-locations.controller.ts — /tenant/locations CRUD + geocode + map-pin + confirm + publish.
 // Behind TenantAuthGuard + RolePermissionGuard. Tenant scope comes from the session (never the client).
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
-import { Body, Controller, Get, HttpException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ListQuery } from '@aipowersalon/database';
+import { LOC_STATUS_FILTERS, LOC_MAP_FILTERS, LOC_BOOKING_FILTERS } from './location-core';
 import { TenantLocationService, LocationError } from './tenant-location.service';
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
 import { APPLY_ADDRESS_BODY, GEOCODE_BODY, LOCATION_CREATE_BODY, LOCATION_UPDATE_BODY, MAP_PIN_BODY } from '../request-schemas';
@@ -20,8 +22,11 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 export class TenantLocationsController {
   constructor(private readonly svc: TenantLocationService) {}
 
+  // Salon Locations guide (Nov 9 2026): optional server search / filters / From–To / sort / pages; no `page` = the full list
   @Get('') @RequirePermission('locations.view')
-  list(@Req() r: any) { return run(() => this.svc.list(ctxFrom(r))); }
+  @ListQuery({ filters: { status: { type: 'enum', values: LOC_STATUS_FILTERS }, map: { type: 'enum', values: LOC_MAP_FILTERS }, booking: { type: 'enum', values: LOC_BOOKING_FILTERS }, dateField: { type: 'enum', values: ['created', 'updated'] } },
+    sorts: { newest: null, oldest: null, name_asc: null, name_desc: null, updated: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const)
+  list(@Req() r: any, @Query() q: any) { return run(() => this.svc.list(ctxFrom(r), q && Object.keys(q).length ? q : undefined)); }
 
   @Post('') @RequirePermission('locations.create')
   create(@Req() r: any, @Body(ValidatedBody(LOCATION_CREATE_BODY, { strict: true })) b: any) { return run(() => this.svc.create(ctxFrom(r), b)); }

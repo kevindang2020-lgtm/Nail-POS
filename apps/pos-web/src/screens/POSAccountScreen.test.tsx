@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { api } from '../api/client';
 import { MemoryRouter } from 'react-router-dom';
 import { POSAccountScreen } from './POSAccountScreen';
 
@@ -105,5 +106,36 @@ describe('POSAccountScreen', () => {
     // REAL subscription wiring (super-admin-controlled settings.subscriptionPlan), not sample
     expect(screen.getByText('Premium Plan')).toBeInTheDocument();   // from tier
     expect(screen.getAllByText('8').length).toBeGreaterThanOrEqual(1);   // Active Users = the real technicianCount (no invented plan limit)
+  });
+
+  it('Nov 9 guides: no sample KPIs, the eight switches are the saved prefs and only move when the server confirms', async () => {
+    const get = vi.mocked(api.get);
+    const base = get.getMockImplementation()!;
+    get.mockImplementation((url: string, q?: Record<string, unknown>) => {
+      if (url === '/pos/me/notification-prefs') return Promise.resolve({ smsNotifications: true, emailNotifications: true, pushNotifications: false, missedCallAlerts: true, bookingAlerts: true, lowStockAlerts: false, payrollApprovals: true, weeklyReportSummaries: true }) as never;
+      if (url === '/pos/me/login-alerts') return Promise.resolve({ enabled: false }) as never;
+      if (url === '/tenant/messaging/readiness') return Promise.reject(Object.assign(new Error('Forbidden'), { status: 403 })) as never;
+      return base(url, q) as never;
+    });
+    vi.mocked(api.patch).mockResolvedValue({ smsNotifications: true, emailNotifications: true, pushNotifications: false, missedCallAlerts: true, bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true } as never);
+    render(<MemoryRouter><POSAccountScreen /></MemoryRouter>);
+    const low = await screen.findByTestId('acx-ntoggle-lowStockAlerts');
+    expect(low.getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByTestId('acx-ntoggle-pushNotifications').getAttribute('aria-checked')).toBe('false');   // real saved value, not a fake "on"
+    fireEvent.click(low);
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/pos/me/notification-prefs', { lowStockAlerts: true }));
+    await waitFor(() => expect(screen.getByTestId('acx-ntoggle-lowStockAlerts').getAttribute('aria-checked')).toBe('true'));
+    // no placeholders: storage / notification health / brand swatches / login alerts / trusted devices
+    expect(screen.queryByText('42%')).toBeNull();
+    expect(screen.queryByText(/4\.2 GB/)).toBeNull();
+    expect(within(screen.getByTestId('acx-kpi-notif')).queryByText('Healthy')).toBeNull();
+    expect(within(screen.getByTestId('acx-kpi-notif')).getByText('—')).toBeInTheDocument();
+    expect(screen.getByTestId('acx-brand-colors').textContent).toBe('Not configured');
+    expect(screen.getByTestId('acx-login-alerts').textContent).toBe('Disabled');
+    expect(screen.getByTestId('acx-trusted').textContent).toBe('No trusted-device registry');
+    expect(screen.getAllByTestId(/^acx-kpi-/)).toHaveLength(8);
+    // full activity: canonical audit, server-paged
+    fireEvent.click(screen.getByText('View all'));
+    expect(await screen.findByTestId('acx-activity-dialog')).toBeInTheDocument();
   });
 });

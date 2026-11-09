@@ -3005,6 +3005,8 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
       const ar: any = await sql`select id, tenant_id, requesting_user_id, prior_role as current_role, requested_role, requested_duration_days, status, high_risk from access_requests where id=${input.id} limit 1`
         .execute(trx).then((x: any) => x.rows[0]).catch(() => undefined);
       if (!ar) return { ok: false as const, reason: 'not_found' };
+      // Request Access guide (Nov 9 2026) §11: a request is not a grant, and nobody decides their own elevation
+      if (String(ar.requesting_user_id) === String(input.approverUserId)) return { ok: false as const, reason: 'self_decision' };
       const t = decideTransition(ar.status, input.action);
       if (!t.ok) return { ok: false as const, reason: 'invalid_transition' };
       if (input.action === 'approve') {

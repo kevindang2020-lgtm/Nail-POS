@@ -1,8 +1,12 @@
 // TenantLocationsScreen.tsx — Management → Locations. Lists each branch, summary KPIs, and a full editor
 // (basic info + address/map-pin + publish workflow). Reuses the canonical /tenant/locations API. Each
 // branch is independent; editing one never touches another.
-import { useEffect, useState } from 'react';
-import { posLocationsApi, type SalonLocation, type LocationSummary } from '../api/posLocationsApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { posLocationsApi, type SalonLocation, type LocationSummary, type LocationQuery, type LocationPage } from '../api/posLocationsApi';
+import { Pager } from '../components/FitKit';
+import { RangeCalendar } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
+import { reportError } from './reportsCommon';
 import { SalonLocationMapEditor } from './locations/SalonLocationMapEditor';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -24,32 +28,42 @@ function StatusPill({ l }: { l: SalonLocation }) {
 export function TenantLocationsScreen() {
   const [rows, setRows] = useState<SalonLocation[]>([]);
   const [summary, setSummary] = useState<LocationSummary | null>(null);
+  const [pg, setPg] = useState<Omit<LocationPage, 'locations' | 'summary'> | null>(null);
   const [loading, setLoading] = useState(true);
+  // newest first, 10 per page (guide default); every filter change goes back to page 1
+  const [f, setFState] = useState<LocationQuery>({ status: 'all', map: 'all', booking: 'all', sort: 'newest', page: 1, pageSize: 10 });
+  const [draft, setDraft] = useState('');
+  const [cal, setCal] = useState(false);
+  const seq = useRef(0);
+  const setF = (p: Partial<LocationQuery>, keepPage = false) => setFState((c) => ({ ...c, ...p, page: keepPage ? (p.page ?? c.page) : 1 }));
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SalonLocation | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
 
-  const load = async () => {
-    setLoading(true); setError(null);
-    try { const r = await posLocationsApi.list(); setRows(r.locations); setSummary(r.summary); }
-    catch (e: any) { setError(e?.message || tx('pos.could_not_load_locations')); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { void load(); }, []);
+  const load = useCallback(async () => {
+    const my = ++seq.current; setLoading(true); setError(null);
+    try { const r = await posLocationsApi.page(f); if (my !== seq.current) return; setRows(r.locations); setSummary(r.summary); setPg({ page: r.page, pageSize: r.pageSize, total: r.total, totalPages: r.totalPages }); }
+    catch (e: any) { if (my === seq.current) setError(reportError(e, tx('pos.salon_locations')) || tx('pos.could_not_load_locations')); }
+    finally { if (my === seq.current) setLoading(false); }
+  }, [f]);
+  useEffect(() => { void load(); }, [load]);
+  const anyFilter = !!(f.q || f.from || f.to || f.status !== 'all' || f.map !== 'all' || f.booking !== 'all');
+  const act = async (fn: () => Promise<unknown>, fallback: string) => { try { await fn(); await load(); } catch (e: any) { setError(e?.message || fallback); } };
 
   const create = async () => {
     if (!newName.trim()) return;
-    try { const r = await posLocationsApi.create({ name: newName.trim() }); setAdding(false); setNewName(''); await load(); setEditing(r.location); }
+    try { const r = await posLocationsApi.create({ name: newName.trim() }); setAdding(false); setNewName(''); setDraft(''); setFState((c) => ({ status: 'all', map: 'all', booking: 'all', sort: 'newest', page: 1, pageSize: c.pageSize })); setEditing(r.location); }
     catch (e: any) { setError(e?.message || tx('pos.could_not_create_the_location')); }
   };
 
-  const summaryCards: [string, number | string, string][] = summary ? [
-    [tx('admin.locations.kpi.total'), summary.total, 'mut'], [tx('pos.active_3'), summary.active, 'ok'], [tx('status.location.published'), summary.published, 'blue'],
-    [tx('pos.unverified'), summary.unverified, summary.unverified ? 'orange' : 'mut'],
-    [tx('admin.locations.kpi.missingPins'), summary.missingPins, summary.missingPins ? 'red' : 'mut'],
-    [tx('admin.locations.kpi.acceptingBookings'), summary.acceptingBookings, 'ok'],
-  ] : [];
+  // the six KPIs (over every branch); tapping one filters the list to it
+  const summaryCards: [string, number | string, string, Partial<LocationQuery>, string][] = [
+    [tx('admin.locations.kpi.total'), summary?.total ?? '—', 'mut', { status: 'all', map: 'all', booking: 'all' }, 'total'], [tx('pos.active_3'), summary?.active ?? '—', 'ok', { status: 'active' }, 'active'], [tx('status.location.published'), summary?.published ?? '—', 'blue', { status: 'published' }, 'published'],
+    [tx('pos.unverified'), summary?.unverified ?? '—', summary?.unverified ? 'orange' : 'mut', { status: 'unverified' }, 'unverified'],
+    [tx('admin.locations.kpi.missingPins'), summary?.missingPins ?? '—', summary?.missingPins ? 'red' : 'mut', { map: 'missing_pin' }, 'pins'],
+    [tx('admin.locations.kpi.acceptingBookings'), summary?.acceptingBookings ?? '—', 'ok', { booking: 'accepting' }, 'booking'],
+  ];
 
   if (editing) return <LocationEditor location={editing} onBack={() => { setEditing(null); void load(); }} onSaved={(l) => setEditing(l)} />;
 
@@ -66,9 +80,30 @@ export function TenantLocationsScreen() {
         </div>
       </div>
 
-      <div className="loc-kpis">
-        {summaryCards.map(([l, v, t]) => (<div key={l} className={`loc-kpi ${t}`}><div className="lk-v">{v}</div><div className="lk-l">{l}</div></div>))}
+      <div className="loc-kpis" data-testid="loc-kpis">
+        {summaryCards.map(([l, v, t, q, id]) => (<button type="button" key={l} data-testid={`loc-kpi-${id}`} className={`loc-kpi ${t}`} onClick={() => setF(q)}><div className="lk-v">{v}</div><div className="lk-l">{l}</div></button>))}
       </div>
+
+      <section className="loc-filters" data-testid="loc-filters">
+        <form className="loc-search" onSubmit={(e) => { e.preventDefault(); setF({ q: draft.trim() || undefined }); }}>
+          <input type="search" data-testid="loc-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tx('locx.searchPh')} aria-label={tx('locx.searchPh')} />
+          <button className="btn" type="submit" data-testid="loc-search-btn">{tx('dfx.search')}</button>
+        </form>
+        <label className="lf-s"><span>{tx('pos.status')}</span><select data-testid="loc-status" value={f.status} onChange={(e) => setF({ status: e.target.value })}>
+          {['all', 'active', 'inactive', 'draft', 'unverified', 'verified', 'published'].map((s) => <option key={s} value={s}>{tx('locx.st.' + s)}</option>)}</select></label>
+        <label className="lf-s"><span>{tx('locx.map')}</span><select data-testid="loc-map" value={f.map} onChange={(e) => setF({ map: e.target.value })}>
+          {['all', 'pin_set', 'pin_confirmed', 'missing_pin'].map((s) => <option key={s} value={s}>{tx('locx.map.' + s)}</option>)}</select></label>
+        <label className="lf-s"><span>{tx('locx.booking')}</span><select data-testid="loc-booking" value={f.booking} onChange={(e) => setF({ booking: e.target.value })}>
+          {['all', 'accepting', 'disabled'].map((s) => <option key={s} value={s}>{tx('locx.bk.' + s)}</option>)}</select></label>
+        <label className="lf-s"><span>{tx('dfx.f.dateField')}</span><select data-testid="loc-datefield" value={f.dateField ?? 'created'} onChange={(e) => setF({ dateField: e.target.value === 'created' ? undefined : e.target.value })}>
+          <option value="created">{tx('locx.date.created')}</option><option value="updated">{tx('locx.date.updated')}</option></select></label>
+        <button type="button" className={'btn ghost' + (f.from || f.to ? ' on' : '')} data-testid="loc-range" onClick={() => setCal(true)}>{f.from || f.to ? `${f.from ?? '…'} → ${f.to ?? '…'}` : tx('dfx.range')}</button>
+        <label className="lf-s"><span>{tx('dfx.f.sort')}</span><select data-testid="loc-sort" value={f.sort} onChange={(e) => setF({ sort: e.target.value })}>
+          {['newest', 'oldest', 'name_asc', 'name_desc', 'updated'].map((s) => <option key={s} value={s}>{tx('locx.sort.' + s)}</option>)}</select></label>
+        {anyFilter ? <button type="button" className="btn ghost" data-testid="loc-clear" onClick={() => { setDraft(''); setFState((c) => ({ status: 'all', map: 'all', booking: 'all', sort: c.sort, page: 1, pageSize: c.pageSize })); }}>{tx('locx.clear')}</button> : null}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={deviceToday()} onApply={(r) => { setF({ from: r.from, to: r.to }); setCal(false); }}
+          onCancel={() => setCal(false)} onClear={() => { setF({ from: undefined, to: undefined }); setCal(false); }} /></div> : null}
+      </section>
 
       {adding && (
         <div className="loc-add">
@@ -80,9 +115,9 @@ export function TenantLocationsScreen() {
 
       {error && <div className="loc-err">{error}</div>}
       {loading ? <div className="loc-empty">{tx('pos.loading_locations')}</div>
-        : rows.length === 0 ? <div className="loc-empty">{tx('pos.no_locations_yet_add_your_first_9muq')}</div>
+        : rows.length === 0 ? <div className="loc-empty" data-testid="loc-empty">{anyFilter ? <>{tx('locx.noMatch')} <button className="btn ghost" onClick={() => { setDraft(''); setFState((c) => ({ status: 'all', map: 'all', booking: 'all', sort: c.sort, page: 1, pageSize: c.pageSize })); }}>{tx('locx.clear')}</button></> : tx('pos.no_locations_yet_add_your_first_9muq')}</div>
         : (
-          <div className="loc-list">
+          <div className="loc-list" data-testid="loc-results">
             {rows.map((l) => (
               <div key={l.id} className="loc-card flex justify-between flex-col sm:flex-row !items-baseline justify-start">
                 <div className="lc-main">
@@ -98,13 +133,18 @@ export function TenantLocationsScreen() {
                 <div className="lc-actions ">
                   <button className="btn whitespace-nowrap" onClick={() => setEditing(l)}>{tx('pos.edit_map_pin')}</button>
                   {l.is_public === true
-                    ? <button className="btn ghost whitespace-nowrap" onClick={async () => { await posLocationsApi.unpublish(l.id); void load(); }}>{tx('pos.unpublish')}</button>
-                    : <button className="btn ghost whitespace-nowrap" onClick={async () => { try { await posLocationsApi.publish(l.id); void load(); } catch (e: any) { setError(e?.message || tx('pos.cannot_publish_yet')); } }}>{tx('pos.publish')}</button>}
+                    ? <button className="btn ghost whitespace-nowrap" onClick={() => act(() => posLocationsApi.unpublish(l.id), tx('pos.save_failed'))}>{tx('pos.unpublish')}</button>
+                    : <button className="btn ghost whitespace-nowrap" onClick={() => act(() => posLocationsApi.publish(l.id), tx('pos.cannot_publish_yet'))}>{tx('pos.publish')}</button>}
                 </div>
               </div>
             ))}
           </div>
         )}
+      <div className="rvw-pager loc-pager" data-testid="loc-pager">
+        <Pager info={pg ? { page: pg.page, pageSize: pg.pageSize, totalItems: pg.total, totalPages: pg.totalPages } : null} onPage={(p) => setF({ page: p }, true)} />
+        <label className="lf-s"><span>{tx('dfx.rows')}</span><select data-testid="loc-pagesize" value={String(f.pageSize)} onChange={(e) => setF({ pageSize: Number(e.target.value) })}>
+          {['10', '25', '50'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+      </div>
     </div>
   );
 }

@@ -23,6 +23,15 @@ describe('POSSettingsScreen', () => {
     render(<MemoryRouter><POSSettingsScreen /></MemoryRouter>);
     expect(await screen.findByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('No section status reported.')).toBeInTheDocument();
+    expect(screen.getByTestId('alg-unverified')).toBeInTheDocument();   // no saved policy in the payload → no invented numbers
+  });
+
+  it('Auto-Logout shows the SAVED policy values (Nov 9 guide)', async () => {
+    globalThis.fetch = mockFetch({ ...state, storeHoursAutoLogout: { autoLogoutEnabled: true, warningMinutes: [5, 1], gracePeriodMinutes: 7, afterCloseExtensionMinutes: 30, exemptRoles: [], timezone: 'America/New_York' } }) as any;
+    render(<MemoryRouter><POSSettingsScreen /></MemoryRouter>);
+    expect((await screen.findByTestId('alg-grace')).textContent).toBe('7 min');
+    expect(screen.getByTestId('alg-ext').textContent).toBe('30 min');
+    expect(screen.getByTestId('alg-warn').textContent).toBe('5 min · 1 min');
   });
 });
 

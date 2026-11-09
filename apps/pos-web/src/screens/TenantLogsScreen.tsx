@@ -1,82 +1,110 @@
-import { useEffect, useMemo, useState } from 'react';
+// TenantLogsScreen.tsx — Devices & Integrations › Device & Integration Logs (spec §54-§55; SUNMI batch 8 guide, Nov 9 2026).
+// A read-only operational log console over GET /pos/logs (paged mode):
+//   • five verified cards over the SAME filters as the table — events in range · warnings · errors · device events ·
+//     integration events (server counts; "—" when unreadable, never a guessed 0)
+//   • the original filters kept (All categories · All severities · Search message or source) + From–To calendar, Refresh,
+//     a link to Device Health (the heartbeat engine — this page never becomes it)
+//   • newest first, numbered pages 10 / 25 / 50 / 100; an event's details
+// Device events are the real ones already kept by their owners (display / register / terminal changes, kiosk events);
+// integration events come from the log store (webhook deliveries, deployments). Nothing is manufactured.
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { posLogsApi, type LogEntryView } from '../api/posLogsApi';
+import { posLogsApi, type LogEntryView, type LogsPage } from '../api/posLogsApi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { viIncludes } from '@aipowersalon/api-contracts';
-import { ImeSafeInput } from '../components/ImeSafeInput';
 import { codeLabel } from '../components/codeLabel';
-import { fmtDateTime } from '../i18n/format';
+import { fmtDateTime, fmtNumber } from '../i18n/format';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
+import { RangeCalendar } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
+import { reportError } from './reportsCommon';
 
-// TenantLogsScreen.tsx — Devices & Integrations › Device & Integration Logs (spec §54-§55), wired to GET /pos/logs.
-// Read-only viewer with category/severity/source/search filters. Device logs stay empty until device producers exist
-// (honest); integration logs populate from real producers such as webhook deliveries.
-const fieldStyle: React.CSSProperties = { height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#FFFDF8', fontFamily: 'inherit', fontSize: 12.5, color: 'var(--text)' };
 const dash = '—';
-
-function sevTone(s: string): { cls: string; color?: string } {
-  if (s === 'warning') return { cls: 'warn' };
-  if (s === 'error' || s === 'critical') return { cls: '', color: 'var(--danger, #B4673B)' };
-  return { cls: '' }; // info
-}
+const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
+const sevChip = (s: string) => <span className={'chip ' + (s === 'warning' ? 'warn' : s === 'error' || s === 'critical' ? 'bad' : '')}>{codeLabel('admin.logs.severity', s, ['level', 'priority'])}</span>;
+type F = { category: string; severity: string; search?: string; from?: string; to?: string; page: number; pageSize: number };
 
 export function TenantLogsScreen() {
   const nav = useNavigate();
-  const [rows, setRows] = useState<LogEntryView[] | null>(null);
-  const [err, setErr] = useState(false);
-  const [category, setCategory] = useState<'all' | 'device' | 'integration'>('all');
-  const [severity, setSeverity] = useState<'all' | 'info' | 'warning' | 'error' | 'critical'>('all');
-  const [search, setSearch] = useState('');
-
-  const load = () => { setErr(false); posLogsApi.list({ limit: 200 }).then((d) => setRows(d?.logs || [])).catch(() => setErr(true)); };
-  useEffect(() => { load(); }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.trim();
-    return (rows || []).filter((r) =>
-      (category === 'all' || r.category === category) &&
-      (severity === 'all' || r.severity === severity) &&
-      (!q || viIncludes(`${r.message} ${r.source}`, q)));   // accent-insensitive (WP-E foldVi)
-  }, [rows, category, severity, search]);
+  const [f, setFState] = useState<F>({ category: 'all', severity: 'all', page: 1, pageSize: 25 });
+  const [draft, setDraft] = useState('');
+  const [d, setD] = useState<LogsPage | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [cal, setCal] = useState(false);
+  const [open, setOpen] = useState<LogEntryView | null>(null);
+  const seq = useRef(0);
+  const setF = (p: Partial<F>, keepPage = false) => setFState((c) => ({ ...c, ...p, page: keepPage ? (p.page ?? c.page) : 1 }));
+  const load = useCallback(() => {
+    const my = ++seq.current; setErr(null);
+    posLogsApi.page(f).then((r) => { if (my === seq.current) setD(r); }).catch((e) => { if (my === seq.current) setErr(reportError(e, 'logs')); });
+  }, [f]);
+  useEffect(load, [load]);
+  const s = d?.summary;
+  const card = (k: keyof NonNullable<typeof s>, label: string, tone?: 'warn' | 'bad' | 'gold', go?: Partial<F>) =>
+    <KpiCard key={k} testId={`lgx-kpi-${k}`} label={label} value={s ? fmtNumber(s[k]) : err ? dash : ''} loading={!d && !err} tone={s && s[k] ? tone : undefined} onClick={go ? () => setF(go) : undefined} />;
+  const anyFilter = f.category !== 'all' || f.severity !== 'all' || !!f.search || !!f.from || !!f.to;
 
   return (
-    <div className="work" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="vh" style={{ display: 'flex', alignItems: 'center' }}>
-        <div><h1>{tx('pos.device_integration_logs')}</h1><div className="sub">{tx('pos.recent_device_and_integration_events_newest_1oyu')}</div></div>
-        <button className="btn ghost" style={{ marginLeft: 'auto' }} onClick={load}>{tx('pos.refresh')}</button>
+    <div className="work" data-testid="lgx-screen" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="vh dfx-head">
+        <div style={{ flex: '1 1 320px', minWidth: 0 }}><h1>{tx('pos.device_integration_logs')}</h1><div className="sub">{tt('lgx.subtitle')}</div></div>
+        <button className="btn ghost" data-testid="lgx-health" onClick={() => nav('/tenant/devices/health')}>{tt('lgx.toHealth')}</button>
+        <button className="btn ghost" data-testid="lgx-refresh" onClick={load}>{tx('pos.refresh')}</button>
       </div>
-
-      <section className="panel">
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <select value={category} onChange={(e) => setCategory(e.target.value as any)} style={fieldStyle}><option value="all">{tx('pos.all_categories_2')}</option><option value="device">{tx('pos.device')}</option><option value="integration">{tx('pos.integration')}</option></select>
-          <select value={severity} onChange={(e) => setSeverity(e.target.value as any)} style={fieldStyle}><option value="all">{tx('pos.all_severities')}</option><option value="info">{tx('pos.info')}</option><option value="warning">{tx('pos.warning_2')}</option><option value="error">{tx('pos.error')}</option><option value="critical">{tx('pos.critical')}</option></select>
-          <ImeSafeInput value={search} onValue={setSearch} placeholder={tx('pos.search_message_or_source')} style={{ ...fieldStyle, flex: 1, minWidth: 180 }} />
-          <span className="s" style={{ color: '#8A7A66' }}>{rows ? tx('pos.length_of_length2', { length: String(filtered.length), length2: String(rows.length) }) : ''}</span>
-        </div>
-
-        {err ? <div className="err">{tx('pos.couldn_t_load_logs')}{' '}<button className="btn ghost" style={{ padding: '2px 8px', marginLeft: 6 }} onClick={load}>{tx('pos.retry')}</button></div>
-          : !rows ? <div className="state">{tx('pos.loading_logs')}</div>
-          : filtered.length === 0 ? <div className="muted">{rows.length === 0 ? tx('pos.no_logs_recorded_yet') : tx('pos.no_logs_match_these_filters')}</div>
-          : (
-            <div className="list" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 240px)' }}>
-              <div className="row" style={{ fontSize: 10.5, color: '#8A7A66', fontWeight: 700, textTransform: 'uppercase' }}><div style={{ width: 150 }}>{tx('pos.time')}</div><div style={{ width: 70 }}>{tx('pos.severity_2')}</div><div style={{ width: 90 }}>{tx('pos.category')}</div><div style={{ width: 110 }}>{tx('pos.source')}</div><div style={{ flex: 1 }}>{tx('pos.message')}</div><div style={{ width: 80 }}>{tx('pos.status')}</div></div>
-              {filtered.map((r) => {
-                const t = sevTone(r.severity);
-                return (
-                  <div className="row" key={r.id}>
-                    <div className="s" style={{ width: 150 }}>{r.createdIso ? fmtDateTime(r.createdIso) : dash}</div>
-                    <div style={{ width: 70 }}><span className={'pill ' + t.cls} style={t.color ? { color: t.color } : undefined}>{codeLabel('admin.logs.severity', r.severity, ['level', 'priority'])}</span></div>
-                    <div className="s" style={{ width: 90 }}>{codeLabel('admin.logs.category', r.category)}</div>
-                    <div className="s" style={{ width: 110 }}>{codeLabel('admin.logs.source', r.source, 'source')}</div>
-                    <div className="t" style={{ flex: 1, minWidth: 160 }}>{r.message}</div>
-                    <div className="s" style={{ width: 80 }}>{r.status ? codeLabel('admin.logs.status', r.status, ['deviceUpdate', 'payment']) : dash}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      <div className="rvw-kpis lgx-kpis" data-testid="lgx-kpis">
+        {card('events', tt('lgx.kpi.events'), 'gold')}
+        {card('warnings', tt('lgx.kpi.warnings'), 'warn', { severity: 'warning' })}
+        {card('errors', tt('lgx.kpi.errors'), 'bad', { severity: 'error' })}
+        {card('device', tt('lgx.kpi.device'), undefined, { category: 'device' })}
+        {card('integration', tt('lgx.kpi.integration'), undefined, { category: 'integration' })}
+      </div>
+      <section className="panel rvw-filters" data-testid="lgx-filters">
+        <select data-testid="lgx-category" value={f.category} onChange={(e) => setF({ category: e.target.value })} aria-label={tt('lgx.category')}><option value="all">{tx('pos.all_categories_2')}</option><option value="device">{tx('pos.device')}</option><option value="integration">{tx('pos.integration')}</option></select>
+        <select data-testid="lgx-severity" value={f.severity} onChange={(e) => setF({ severity: e.target.value })} aria-label={tt('lgx.severity')}><option value="all">{tx('pos.all_severities')}</option><option value="info">{tx('pos.info')}</option><option value="warning">{tx('pos.warning_2')}</option><option value="error">{tx('pos.error_2')}</option><option value="critical">{tx('pos.critical_2')}</option></select>
+        <form className="cnx-searchrow" onSubmit={(e) => { e.preventDefault(); setF({ search: draft.trim() || undefined }); }}>
+          <input className="rvw-search" type="search" data-testid="lgx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tx('pos.search_message_or_source')} aria-label={tx('pos.search_message_or_source')} />
+          <button className="btn" type="submit" data-testid="lgx-search-btn">{tt('dfx.search')}</button>
+        </form>
+        <button className={'btn ghost' + (f.from || f.to ? ' on' : '')} data-testid="lgx-range" onClick={() => setCal(true)}>{f.from || f.to ? `${f.from ?? '…'} → ${f.to ?? '…'}` : tt('dfx.range')}</button>
+        {anyFilter ? <button className="btn ghost" data-testid="lgx-clear" onClick={() => { setDraft(''); setFState({ category: 'all', severity: 'all', page: 1, pageSize: f.pageSize }); }}>{tt('dfx.clear')}</button> : null}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={deviceToday()} onApply={(r) => { setF({ from: r.from, to: r.to }); setCal(false); }}
+          onCancel={() => setCal(false)} onClear={() => { setF({ from: undefined, to: undefined }); setCal(false); }} /></div> : null}
       </section>
-
+      <section className="panel rvw-feed" data-testid="lgx-results">
+        <div className="p-h">{tt('lgx.events')}<span className="sub rvw-scope" data-testid="lgx-count">{d ? tt('lgx.count', { n: fmtNumber(d.total) }) : ''}</span></div>
+        {err ? <ErrorRetry message={err} onRetry={load} />
+          : !d ? <div className="state">{tx('pos.loading_logs')}</div>
+          : d.logs.length === 0 ? <Empty title={anyFilter ? tx('pos.no_logs_match_these_filters') : tx('pos.no_logs_recorded_yet')} />
+          : <div className="rvw-table-wrap"><table className="tbl rvw-table">
+            <thead><tr><th>{tx('pos.time')}</th><th>{tx('pos.severity_2')}</th><th>{tt('lgx.category')}</th><th>{tt('lgx.source')}</th><th>{tt('lgx.message')}</th><th>{tx('pos.status')}</th><th /></tr></thead>
+            <tbody>{d.logs.map((r) => (
+              <tr key={r.id} data-testid="lgx-row">
+                <td className="nowrap sub">{r.createdIso ? fmtDateTime(r.createdIso) : dash}</td>
+                <td>{sevChip(r.severity)}</td>
+                <td className="sub">{codeLabel('admin.logs.category', r.category)}</td>
+                <td className="sub">{codeLabel('admin.logs.source', r.source, 'source')}</td>
+                <td style={{ overflowWrap: 'anywhere' }}>{r.message}</td>
+                <td className="sub">{r.status ? codeLabel('admin.logs.status', r.status, ['deviceUpdate', 'payment']) : dash}</td>
+                <td><button className="btn ghost sm" data-testid="lgx-view" onClick={() => setOpen(r)}>{tt('dfx.view')}</button></td>
+              </tr>))}</tbody></table></div>}
+        <div className="rvw-pager">
+          <Pager info={d ? { page: d.page, pageSize: d.pageSize, totalItems: d.total, totalPages: d.totalPages } : null} onPage={(p) => setF({ page: p }, true)} />
+          <label className="rvw-f"><span>{tt('dfx.rows')}</span><select data-testid="lgx-pagesize" value={String(f.pageSize)} onChange={(e) => setF({ pageSize: Number(e.target.value) })}>
+            {['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+        </div>
+        <p className="sub">{tt('lgx.foot')}</p>
+      </section>
       <div><button className="btn ghost" onClick={() => nav('/tenant/devices/overview')}>{tx('pos.back_to_devices_integrations')}</button></div>
+      {open ? <FitDialog wide testId="lgx-detail" title={open.message} subtitle={open.createdIso ? fmtDateTime(open.createdIso) : undefined} onClose={() => setOpen(null)} footer={<button className="btn ghost" onClick={() => setOpen(null)}>{tx('pos.close')}</button>}>
+        <dl className="ahx-dl">
+          <dt>{tx('pos.severity_2')}</dt><dd>{sevChip(open.severity)}</dd>
+          <dt>{tt('lgx.category')}</dt><dd>{codeLabel('admin.logs.category', open.category)}</dd>
+          <dt>{tt('lgx.source')}</dt><dd>{codeLabel('admin.logs.source', open.source, 'source')}</dd>
+          <dt>{tx('pos.status')}</dt><dd>{open.status ? codeLabel('admin.logs.status', open.status, ['deviceUpdate', 'payment']) : dash}</dd>
+          <dt>{tt('lgx.related')}</dt><dd>{open.relatedId ?? dash}</dd>
+          <dt>{tt('lgx.correlation')}</dt><dd>{open.correlationId ?? dash}</dd>
+          {open.metadata && typeof open.metadata === 'object' ? Object.entries(open.metadata as Record<string, unknown>).slice(0, 12).map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{String(v)}</dd></Fragment>) : null}
+        </dl>
+      </FitDialog> : null}
     </div>
   );
 }

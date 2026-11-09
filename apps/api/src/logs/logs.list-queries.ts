@@ -5,5 +5,5 @@
 import type { ListQuerySpec } from '@aipowersalon/database';
 
 export const LogsControllerListQueries = {
-  list: { filters: { category: { type: 'text' }, severity: { type: 'text' }, source: { type: 'text' } }, search: { params: ['search'] } },
+  list: { filters: { category: { type: 'text' }, severity: { type: 'text' }, source: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page', 'pageSize', 'limit'] },
 } satisfies Record<string, ListQuerySpec>;

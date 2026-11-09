@@ -3,6 +3,10 @@ import { useInlineConfirm } from '@aipowersalon/ui';
 import { useNavigate } from 'react-router-dom';
 import { posDevicesApi, type DevicesOverview, type DeviceStatus, type FleetDevice } from '../api/posDevicesApi';
 import { posAiApi, type PosAiPackage } from '../api/posAiApi';
+import { posPhoneApi, type MessagingReadiness } from '../api/posPhoneApi';
+import { aiCommRows, aiCommMetrics, entitlementOf, ENT_TONE, PROV_TONE, READY_TONE } from './aiCommStatus';
+import { POSDeviceFleetScreen } from './POSDeviceFleetScreen';
+import { reportError } from './reportsCommon';
 import { posSettingsApi } from '../api/posSettingsApi';
 import { posDeploymentsApi, type DeploymentsState } from '../api/posDeploymentsApi';
 import { posCustomerDisplaysApi, type PosStationView } from '../api/posCustomerDisplaysApi';
@@ -19,7 +23,6 @@ import { statusLabel } from '../i18n/status-label';
 // Center registry, Deployment & Update telemetry, Connection/Sync alerts, Integration-Health + Sync-Success charts,
 // and four of the KPIs) render honest "—"/empty states and link out — they NEVER show the reference's fixture numbers.
 
-const COMM_CODES = ['ai_phone_call_assistant', 'ai_booking_assistant', 'ai_review_reputation_assistant', 'ai_voice_transcription', 'ai_reception_copilot'];
 const headStyle: React.CSSProperties = { fontWeight: 800, fontSize: 13.5, fontFamily: 'var(--aps-font-head, Playfair Display)' };
 const panel: React.CSSProperties = { background: '#FFFCF6', border: '1px solid var(--line)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column' };
 const dash = '—';
@@ -29,13 +32,6 @@ function statusTone(s: DeviceStatus): { cls: string; color?: string } {
   if (s === 'maintenance' || s === 'reconnecting') return { cls: 'warn' };
   if (s === 'revoked') return { cls: '', color: 'var(--danger, #B4673B)' };
   return { cls: '' };
-}
-function aiStatus(p: PosAiPackage): { label: string; tone: string } {
-  const st = p.subscription?.status;
-  if (st === 'active' || (p.accessible && st !== 'trialing')) return { label: tx('pos.active_3'), tone: 'ok' };
-  if (st === 'trialing') return { label: tx('pos.trial'), tone: 'warn' };
-  if (p.trialAvailable) return { label: tx('pos.available'), tone: '' };
-  return { label: p.lockLabel || tx('pos.not_connected_2'), tone: 'warn' };
 }
 
 function Donut({ segments, total, centerTop, centerBottom }: { segments: Array<{ value: number; color: string }>; total: number; centerTop: string; centerBottom: string }) {
@@ -62,19 +58,33 @@ export function POSDevicesScreen() {
   const [ov, setOv] = useState<DevicesOverview | null>(null);
   const [ovErr, setOvErr] = useState(false);
   const [pkgs, setPkgs] = useState<PosAiPackage[] | null>(null);
+  const [pkgsErr, setPkgsErr] = useState<string | null>(null);
+  // the salon's own Twilio account status (Phone & Messaging readiness) — null until it answers; 'denied' = no settings.view
+  const [rd, setRd] = useState<MessagingReadiness | null>(null);
+  const [rdState, setRdState] = useState<'loading' | 'ok' | 'unavailable'>('loading');
+  const [aiChecking, setAiChecking] = useState(false);
   const [gw, setGw] = useState<Record<string, unknown> | null>(null);
   const [dep, setDep] = useState<DeploymentsState | null>(null);
   const [registers, setRegisters] = useState<PosStationView[]>([]);   // this location's registers — a terminal is tied to one (Oct 6 2026)
 
   useEffect(() => {
     posDevicesApi.overview().then((d) => setOv(d)).catch(() => setOvErr(true));
-    posAiApi.packages().then((d) => setPkgs(d?.packages || [])).catch(() => setPkgs([]));
+    loadAi();
     (posSettingsApi.gatewayStatus() as Promise<unknown>).then((r) => setGw(r && typeof r === 'object' ? (r as Record<string, unknown>) : {})).catch(() => setGw({}));
     posDeploymentsApi.state().then((d) => setDep(d)).catch(() => setDep(null));
     posCustomerDisplaysApi.state().then((d) => setRegisters(d?.stations ?? [])).catch(() => setRegisters([]));
   }, []);
 
   const k = ov?.kpis;
+  function loadAi(check = false) {
+    setPkgsErr(null);
+    posAiApi.packages().then((d) => setPkgs(d?.packages || [])).catch((e) => { setPkgs(null); setPkgsErr(reportError(e, 'devices')); });
+    setRdState('loading');
+    // Check = the existing authenticated health check (settings.edit); without it, the stored readiness is re-read
+    const read = () => posPhoneApi.readiness().then((r) => { setRd(r); setRdState('ok'); }).catch((e) => { reportError(e, 'devices'); setRd(null); setRdState('unavailable'); });
+    if (check) { setAiChecking(true); posPhoneApi.healthCheck().then((r) => { setRd(r); setRdState('ok'); }).catch(() => read()).finally(() => setAiChecking(false)); }
+    else void read();
+  }
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn' | 'err'; text: string } | null>(null);
   const [pairOpen, setPairOpen] = useState(false);
@@ -134,19 +144,20 @@ export function POSDevicesScreen() {
   const processorName = (typeof gw?.processorType === 'string' && gw.processorType) || tx('pos.payment_processor');
   const merchantMasked = typeof gw?.merchantIdMasked === 'string' ? (gw.merchantIdMasked as string) : dash;
 
-  const comm = (pkgs || []).filter((p) => COMM_CODES.includes(p.code));
-  const aiActive = (pkgs || []).filter((p) => p.subscription?.status === 'active' || (p.accessible && p.subscription?.status !== 'trialing')).length;
+  const comm = aiCommRows(pkgs, rd);
+  const aim = aiCommMetrics(comm, !!pkgs, rd);
+  const aiActive = (pkgs || []).filter((p) => entitlementOf(p) === 'active').length;   // paid & usable only — a trial is not counted as active
 
   const mix = ov?.charts.statusMix;
   const byBranch = useMemo(() => ov?.charts.devicesByBranch || [], [ov]);
   const branchMax = useMemo(() => Math.max(1, ...byBranch.map((b) => b.count)), [byBranch]);
 
   const kpis: Array<{ l: string; v: string; sub?: string; tone?: string; route: string }> = [
-    { l: tx('pos.connected_devices'), v: k ? String(k.connectedDevices) : dash, sub: 'registered', route: '/tenant/devices/health' },
+    { l: tx('dvx.kpi.registered'), v: k ? String(k.connectedDevices) : dash, sub: k ? tx('dvx.kpi.registeredSub', { n: String(k.onlineDevices) }) : '', route: '/tenant/devices/health' },
     { l: tx('pos.online_devices'), v: k ? String(k.onlineDevices) : dash, sub: k?.onlinePct != null ? tx('pos.onlinepct_online', { onlinePct: String(k.onlinePct) }) : tx('pos.live_heartbeat'), tone: 'ok', route: '/tenant/devices/health' },
     { l: tx('pos.payment_terminals'), v: k ? String(k.paymentTerminals) : dash, sub: k ? (k.terminalsAllConnected ? tx('pos.all_connected') : tx('pos.check_status')) : '', route: '/tenant/devices/payment-terminals' },
-    { l: tx('pos.integration_health'), v: k?.integrationHealthPct != null ? `${k.integrationHealthPct}%` : dash, sub: k?.integrationHealthPct != null ? 'stable' : tx('pos.no_registry_yet'), route: '/tenant/integrations/apps' },
-    { l: tx('pos.api_calls_today'), v: k?.apiCallsToday != null ? k.apiCallsToday.toLocaleString() : dash, sub: k?.apiCallsToday != null ? 'metered' : tx('pos.no_metering_yet'), route: '/tenant/integrations/apps' },
+    { l: tx('pos.integration_health'), v: k?.integrationHealthPct != null ? `${k.integrationHealthPct}%` : dash, sub: k?.integrationHealthPct != null ? tx('dvx.kpi.healthySub') : tx('pos.no_registry_yet'), route: '/tenant/integrations/apps' },
+    { l: tx('pos.api_calls_today'), v: k?.apiCallsToday != null ? k.apiCallsToday.toLocaleString() : dash, sub: k?.apiCallsToday != null ? tx('dvx.kpi.meteredSub') : tx('pos.no_metering_yet'), route: '/tenant/integrations/apps' },
     { l: tx('pos.sync_success_rate'), v: k?.syncSuccessRate != null ? `${k.syncSuccessRate}%` : dash, sub: k?.syncSuccessRate != null ? tx('pos.last_24h') : tx('pos.no_sync_log_yet'), route: '/tenant/devices/health' },
     { l: tx('pos.pending_updates'), v: dep ? String(dep.summary.pending) : (k?.pendingUpdates != null ? String(k.pendingUpdates) : dash), sub: dep ? (dep.summary.pending ? tx('pos.view_updates') : tx('pos.up_to_date')) : (k?.pendingUpdates != null ? tx('pos.view_details_2') : tx('pos.no_update_feed_yet')), tone: dep && dep.summary.pending ? 'coral' : undefined, route: '/tenant/devices/assignments' },
     { l: tx('pos.locations_connected'), v: k ? String(k.locationsConnected) : dash, sub: tx('pos.all_branches'), tone: 'purple', route: '/tenant/management/locations' },
@@ -265,7 +276,7 @@ export function POSDevicesScreen() {
           <div className="list">
             <div className="row"><div className="t" style={{ flex: 1 }}>{tx('pos.payment_gateway_fiserv_clover')}</div><span className={'pill ' + (gwConnected ? 'ok' : 'warn')}>{gwConnected ? tx('pos.connected_2') : gwStatus ? statusLabel('gateway', gwStatus) : tx('admin.devices.check')}</span></div>
             <div className="row"><div className="t" style={{ flex: 1 }}>{tx('pos.ai_assistants')}</div><span className="pill ok">{pkgs ? tx('pos.aiactive_active', { aiActive: String(aiActive) }) : dash}</span></div>
-            <div className="row"><div className="t" style={{ flex: 1 }}>{tx('pos.booking_sync')}</div><span className="pill ok">{tx('pos.connected_2')}</span></div>
+            <div className="row"><div className="t" style={{ flex: 1 }}>{tx('pos.booking_sync')}</div><span className="pill" title={tx('dvx.builtInHint')}>{tx('dvx.builtIn')}</span></div>
           </div>
           <div className="s" style={{ color: '#8A7A66', marginTop: 8 }}>{tx('pos.a_full_connector_registry_twilio_sendgrid_1ixc')}{' '}<span style={{ color: 'var(--danger, #B4673B)' }}>{tx('pos.not_connected')}</span></div>
         </section>
@@ -274,14 +285,35 @@ export function POSDevicesScreen() {
       {/* Row 2: AI/Comm · Deployment · Connection/Sync Insights */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
         <section style={panel} data-testid="dev-ai-comms">
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><span style={headStyle}>{tx('pos.ai_communication_integrations')}</span><span className="s" style={{ marginLeft: 'auto', color: '#8A7A66' }}>{comm.length}</span></div>
-          {!pkgs ? <div className="state">{tx('pos.loading')}</div> : comm.length === 0 ? <div className="muted">{tx('pos.no_ai_communication_assistants_available')}</div> : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}><span style={headStyle}>{tx('pos.ai_communication_integrations')}</span>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '3px 9px', fontSize: 11.5 }} data-testid="aic-refresh" onClick={() => loadAi()}>{tx('dfx.refresh')}</button>
+              <button className="btn whitespace-nowrap w-fit" style={{ padding: '3px 9px', fontSize: 11.5 }} data-testid="aic-check" disabled={aiChecking} onClick={() => loadAi(true)}>{aiChecking ? tx('dfx.checking') : tx('aicx.check')}</button>
+            </span></div>
+          <div className="aic-metrics" data-testid="aic-metrics">
+            {([['configured', aim.configured], ['entitled', aim.entitled], ['verified', aim.verified], ['attention', aim.attention]] as const).map(([key, v]) => (
+              <div key={key} className="aic-m" data-testid={`aic-m-${key}`}><b>{v == null ? dash : v}</b><span>{tx('aicx.m.' + key)}</span></div>))}
+          </div>
+          <div className="s" style={{ color: '#8A7A66', marginBottom: 6 }} data-testid="aic-lastcheck">{tx('aicx.lastCheck', { at: aim.lastCheck ? agoLabel(aim.lastCheck) : dash })}{rdState === 'unavailable' ? ` · ${tx('aicx.providerUnavailable')}` : ''}</div>
+          {pkgsErr ? <div className="err" data-testid="aic-error">{pkgsErr} <button className="btn ghost sm" onClick={() => loadAi()}>{tx('pos.retry')}</button></div>
+            : !pkgs ? <div className="state">{tx('pos.loading')}</div> : comm.length === 0 ? <div className="muted">{tx('pos.no_ai_communication_assistants_available')}</div> : (
             <div className="list">
-              {comm.map((p) => { const st = aiStatus(p); return (
-                <div className="row" key={p.code}><div className="t" style={{ flex: 1 }}>{p.name}</div><span className={'pill ' + st.tone} style={{ marginRight: 8 }}>{st.label}</span><button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '3px 9px', fontSize: 11.5 }} onClick={() => nav('/tenant/ai/command-center')}>{tx('pos.manage')}</button></div>
-              ); })}
+              {comm.map((r) => (
+                <div className="row aic-row" key={r.p.code} data-testid="aic-row" data-code={r.p.code}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="t">{r.p.name}</div>
+                    <div className="aic-axes">
+                      <span className={'pill ' + ENT_TONE[r.ent]} data-testid="aic-ent" data-state={r.ent} title={tx('aicx.axis.ent')}>{tx('aicx.ent.' + r.ent)}</span>
+                      <span className={'pill ' + PROV_TONE[r.prov]} data-testid="aic-prov" data-state={r.prov} title={tx('aicx.axis.prov')}>{r.prov === 'unknown' ? `${tx('aicx.axis.prov')}: ${dash}` : tx('aicx.prov.' + r.prov)}</span>
+                      <span className={'pill ' + READY_TONE[r.ready]} data-testid="aic-ready" data-state={r.ready} title={tx('aicx.axis.ready')}>{r.ready === 'unknown' ? `${tx('aicx.axis.ready')}: ${dash}` : tx('aicx.ready.' + r.ready)}</span>
+                    </div>
+                  </div>
+                  <button className="btn ghost whitespace-nowrap w-fit" style={{ minHeight: 36, padding: '3px 12px', fontSize: 12 }} onClick={() => nav('/tenant/ai/command-center')}>{tx('pos.manage')}</button>
+                </div>
+              ))}
             </div>
           )}
+          <div className="s" style={{ color: '#8A7A66', marginTop: 6 }}>{tx('aicx.foot')}</div>
           <button className="btn ghost whitespace-nowrap w-fit" style={{ alignSelf: 'center', marginTop: 8 }} onClick={() => nav('/tenant/ai/command-center')}>{tx('pos.configure_ai_communication')}</button>
         </section>
 
@@ -360,6 +392,9 @@ export function POSDevicesScreen() {
           {quickActions.map(([label, fn]) => <button key={label} className="btn ghost whitespace-nowrap w-fit" onClick={fn}>{label}</button>)}
         </div>
       </section>
+
+      {/* P2: server search / status / From–To / sort over every registered device + newest-first history + read-only health check */}
+      <div data-testid="dev-registry"><POSDeviceFleetScreen view="overview" embedded /></div>
     </div>
   );
 }

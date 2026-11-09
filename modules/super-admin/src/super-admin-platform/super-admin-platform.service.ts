@@ -1556,6 +1556,7 @@ export class SuperAdminPlatformService {
       const msg = r.reason === 'not_found' ? 'Access request not found.'
         : r.reason === 'beyond_authority' ? 'You cannot grant a role above your own authority.'
         : r.reason === 'high_risk_confirmation_required' ? 'This is a high-risk (privileged) grant — confirmHighRisk is required.'
+        : r.reason === 'self_decision' ? 'You cannot review or approve your own access request.'
         : 'This request can no longer be changed.';
       throw new PlatformError(r.reason === 'not_found' ? 'not_found' : 'invalid', msg);
     }
@@ -1587,6 +1588,10 @@ export class SuperAdminPlatformService {
     const me: any = await this.repo.userById(ctx.userId);
     if (!me) throw withCode(new PlatformError('not_found', 'User not found.'), 'USER_NOT_FOUND');
     if (me.role === requestedRole) throw withCode(new PlatformError('invalid', 'You already hold that role.'), 'ROLE_ALREADY_HELD');
+    // one open request per role: a second identical request is refused until the first is decided or cancelled
+    const open = await this.repo.listAccessRequests({ requestingUserId: ctx.userId, page: 1, pageSize: 100 });
+    if ((open?.rows ?? []).some((x: { requestedRole?: string; status?: string }) => x.requestedRole === requestedRole && (x.status === 'submitted' || x.status === 'under_review')))
+      throw withCode(new PlatformError('invalid', 'You already have an open request for that role.'), 'ACCESS_REQUEST_DUPLICATE');
     // server-derived tenant + current role; the client cannot spoof who is requesting or for which tenant
     const r = await this.repo.createAccessRequest({ tenantId: me.tenant_id ?? null, requestingUserId: ctx.userId, currentRole: me.role ?? null, requestedRole, reason, requestedDurationDays });
     await this.audit(ctx, 'access_request_created', 'access_request', r.id, { requestingUserId: ctx.userId, requestedRole, self: true, highRisk: r.highRisk });

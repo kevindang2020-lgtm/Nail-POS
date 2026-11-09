@@ -727,6 +727,9 @@ GET /pos/deposit-reconciliation/workspace/reviewers  realm=staff  auth=session  
 GET /pos/deposit-reconciliation/workspace/search  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/device-fleet/devices  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/device-fleet/history  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/device-fleet/summary  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/overview  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/payment-terminals/activity  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/payment-terminals/audit  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -2859,6 +2862,7 @@ POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/reopen  real
 POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/resolve  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/review  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deposit-reconciliation/workspace/notes  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/device-fleet/check  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/groups/{id}/decision  realm=staff  auth=session  domain=customers  perm=pos.customers.edit  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/groups/{id}/merge  realm=staff  auth=session  domain=customers  perm=pos.customers.merge  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
