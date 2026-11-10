@@ -9,6 +9,7 @@
 // the event lists (activity, payments, redemptions) and, on Members, to the chosen date field only.
 // Every number is the server's (/pos/memberships/*, tenant-scoped, integer cents, the salon's time zone).
 import { MembershipFirstPaymentPanel } from '../components/MembershipFirstPaymentPanel';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
@@ -185,6 +186,7 @@ export function POSMembershipsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.membership_overview')}</h1><div className="sub">{tx('pos.manage_membership_plans_track_member_activity_1q23')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="memberships" />
           <button type="button" className="fk-btn" onClick={() => setRev((n) => n + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'create' })} disabled={!canManage} title={!canManage ? tx('people.fit.noPermission') : undefined} data-testid="create-plan">{tx('pos.create_membership_plan')}</button>
         </div>

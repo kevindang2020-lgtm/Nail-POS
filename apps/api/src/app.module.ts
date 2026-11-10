@@ -59,6 +59,7 @@ import { AiBookingModule } from './ai-booking/ai-booking.module';
 // MERGE: centralized platform branding (public read + locked super-admin controls + audit).
 import { HelpModule } from '@aipowersalon/support';
 import { ProfileModule } from './profile/profile.module';
+import { SystemChecksModule } from './system-checks/system-checks.module';   // shared read-only Check … System (extras arc, Nov 9 2026)
 import { PosSearchModule } from './pos/pos-search.module';
 import { InventoryModule } from '@aipowersalon/inventory';
 import { FinanceModule } from '@aipowersalon/finance';   // Receipt/Expense/OCR/Accounting mandate (Oct 21 2026): THE expense authority
@@ -174,7 +175,7 @@ import { DbConstraintRetrierModule } from './common/db-constraint-retrier.module
     CustomerSalonsModule,
     GoCheckInModule,
     NotificationsModule, RemindersModule, MessageTemplatesModule, CustomerNotificationsModule, EmailCenterModule, CustomerIdentityModule, MessagingInboundModule, TenantMessagingModule, TenantA2pModule, MessagingReadinessModule, AiReadinessModule, AuditPartitionModule, AiBookingModule,
-    BrandingModule, TenantNavigationModule, ProfileModule, PosTeamModule, TenantLocationsModule, PosSearchModule, TicketHistoryModule, SuperAdminTicketsModule, SuperAdminMembershipsModule, SuperAdminMembershipProgramsModule, SuperAdminStaffModule, SmsPackagesModule, SuperAdminCheckinModule, SuperAdminQueueModule, SuperAdminSettlementsModule, SuperAdminLoyaltyModule, SuperAdminAutomationModule, SuperAdminSupportModule, OverviewAggregateModule, SuperAdminCompensationModule, SuperAdminAnalyticsModule, SuperAdminAppointmentOversightModule, SuperAdminRevenueResidualsModule, SuperAdminIntegrationsModule, SuperAdminReportBuilderModule, SuperAdminScheduledReportsModule, TicketRemovalModule, InventoryModule, FinanceModule, FinanceWiringModule, PaycheckWiringModule, PlatformNoticeModule,
+    BrandingModule, TenantNavigationModule, ProfileModule, SystemChecksModule, PosTeamModule, TenantLocationsModule, PosSearchModule, TicketHistoryModule, SuperAdminTicketsModule, SuperAdminMembershipsModule, SuperAdminMembershipProgramsModule, SuperAdminStaffModule, SmsPackagesModule, SuperAdminCheckinModule, SuperAdminQueueModule, SuperAdminSettlementsModule, SuperAdminLoyaltyModule, SuperAdminAutomationModule, SuperAdminSupportModule, OverviewAggregateModule, SuperAdminCompensationModule, SuperAdminAnalyticsModule, SuperAdminAppointmentOversightModule, SuperAdminRevenueResidualsModule, SuperAdminIntegrationsModule, SuperAdminReportBuilderModule, SuperAdminScheduledReportsModule, TicketRemovalModule, InventoryModule, FinanceModule, FinanceWiringModule, PaycheckWiringModule, PlatformNoticeModule,
   ],
   providers: [
     // Constitution 3 Step 7: tenant API keys authenticate requests (read by TenantContextMiddleware before the session path)

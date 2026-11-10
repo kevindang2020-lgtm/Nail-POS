@@ -8,6 +8,7 @@
 // an immutable entry ≤ balance, partial → Partially Paid → Paid), void (now a reason, refused once money was received).
 // Customer-facing invoices (the PDF) are English only. No print dialog: Print opens the PDF in the browser's viewer.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posInvoicesApi as api } from '../api/posInvoicesApi';
@@ -106,6 +107,7 @@ export function POSInvoicesScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.invoices')}</h1><div className="sub">{tx('finance.iv.subtitle')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="invoices" />
           {perms.manage ? <button type="button" className="fk-btn" onClick={exportCsv} data-testid="export">{tx('finance.exportCsv')}</button> : null}
           {perms.create ? <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'new' })} data-testid="new-invoice">+ {tx('finance.iv.new')}</button> : null}
         </div>

@@ -14,6 +14,7 @@
 // (send, approve, reject, duplicate decisions, bill payment, void, payment match / link, delete draft, archive / restore)
 // lives in View expense. Only APPROVED expenses are counted; duplicates are flagged and decided by a person.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { Link } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { FinanceExpenseCreateRequest } from '@aipowersalon/api-contracts/tenant';
@@ -119,6 +120,7 @@ export function POSExpensesScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('finance.ex.title')}</h1><div className="sub">{tx('finance.ex.subtitle')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="expenses" />
           {canManage ? <>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" style={{ display: 'none' }} aria-label={tx('pos.receipt_file')} onChange={(e) => void onFile(e.target.files?.[0])} />
             <button type="button" className="fk-btn" disabled={busy === 'upload'} onClick={() => fileRef.current?.click()} data-testid="upload-receipt">{busy === 'upload' ? tx('pos.uploading') : tx('pos.upload_receipt')}</button>

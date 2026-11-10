@@ -10,6 +10,7 @@
 // Matching is an ALLOCATION a person makes (1:1, split, combined, partial), with the evidence recorded; a suggestion is
 // rule-based evidence and is never applied by itself. Recording a deposit creates a record — no money moves.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { SavedViews, vStr, periodToView, periodFromView } from '../components/SavedViews';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -77,6 +78,7 @@ export function POSDepositReconScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.ai_deposit_reconciliation')}</h1><div className="sub">{tx('finance.dr.subtitle')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="settlements" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           {canManage ? <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'record' })} data-testid="record-deposit">+ {tx('finance.dr.recordDeposit')}</button> : null}
         </div>

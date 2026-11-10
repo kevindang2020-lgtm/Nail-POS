@@ -8,6 +8,7 @@
 // row (catalog_change_log). A change takes effect when it is saved — future-dated prices are not offered, because nothing
 // would apply them. Completed tickets keep their own price snapshot: Customer History shows what was actually charged.
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCatalogApi } from '../api/posCatalogApi';
@@ -78,6 +79,7 @@ export function POSServicePricingScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.service_pricing')}</h1><div className="sub">{tx('pos.your_service_menu_durations_and_prices')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="catalog" />
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
           {can('services.view') ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('cg.exportPrices')}</button> : null}
           <button type="button" className="fk-btn ghost" onClick={() => nav('/services')} data-testid="back-services">{tx('pos.back_to_services')}</button>

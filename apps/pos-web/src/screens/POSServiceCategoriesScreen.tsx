@@ -8,6 +8,7 @@
 // Archive / Restore and Manage Services (move services to another category: preview old → new, a reason, one transaction,
 // one history row per service — a move never changes a price or duration).
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { SavedViews, vStr, periodToView, periodFromView } from '../components/SavedViews';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -61,6 +62,7 @@ export function POSServiceCategoriesScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.service_categories')}</h1><div className="sub">{tx('pos.how_your_service_catalog_is_organized')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="catalog" />
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/services')} data-testid="back-services">{tx('pos.back_to_services')}</button>
           {can('services.edit') ? <button type="button" className="fk-btn primary" onClick={() => setForm({ cat: null })} data-testid="new-category">{tx('cg.cat.new')}</button> : null}

@@ -14,6 +14,7 @@
 //   * Technician Reports: usage by technician (click → the products they used) and the bottle-report review queue;
 //   * Alerts: the Stock Alerts list itself (one source of truth with the sidebar badge).
 import { useEffect, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createIntentKeys } from '@aipowersalon/api-client';
 import { useInlineConfirm, useEventCallback } from '@aipowersalon/ui';
@@ -98,6 +99,7 @@ export function TenantInventoryScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.inventory')}</h1><div className="sub">{tx('pos.track_salon_products_bottles_colors_usage_1gi5')}{m ? <span className="fk-muted"> · {tx('inv.updated', { t: fmtInZone(m.asOf, { hour: 'numeric', minute: '2-digit' }) })}</span> : null}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="inventory" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('pos.refresh')}</button>
           <button type="button" className="fk-btn" onClick={() => setScanning(true)} data-testid="scan-receipt">{tx('pos.scan_receipt')}</button>
           {can('inventory.create') ? <button type="button" className="fk-btn primary" onClick={() => setAdding(true)} data-testid="add-product">{tx('pos.add_product')}</button> : null}

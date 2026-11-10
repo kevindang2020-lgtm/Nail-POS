@@ -10,6 +10,7 @@
 // ONE add-on: an edit says whether it changes the shared definition or this one service's offering. A nail add-on on a hair
 // service is FLAGGED for review — never removed. A new add-on is offered only on the services you choose (never all).
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCatalogApi } from '../api/posCatalogApi';
@@ -63,6 +64,7 @@ export function POSServiceAddOnsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.add_ons_2')}</h1><div className="sub">{tx('pos.manage_add_on_services_across_your_1vxj')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="catalog" />
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
           {canEdit ? <button type="button" className="fk-btn primary" onClick={() => setCreating(true)} data-testid="new-add-on">{tx('pos.new_add_on')}</button> : null}
         </div>

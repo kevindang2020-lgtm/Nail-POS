@@ -9,6 +9,7 @@
 // What was wrong: the page summed whatever /pos/reports/transactions returned in the browser (100 rows shown), dates were
 // UTC days drawn as midnight UTC (Oct 22 showed as Oct 21 8:00 PM), a partial tender showed "completed", Net was Gross.
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTransactionsApi } from '../api/posTransactionsApi';
@@ -70,6 +71,7 @@ export function POSTransactionsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.transactions')}</h1><div className="sub">{tx('txn.subtitle')}{sum.data ? ' · ' + periodText(sum.data.period) : ''}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="payments" />
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           {can('reports.export') ? <button type="button" className="fk-btn" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
         </div>

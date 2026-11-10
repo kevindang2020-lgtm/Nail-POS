@@ -12,6 +12,7 @@
 //   the three priority flows: Full Technician Profile Overlay · Find Qualified & Available Technician · Service Mapping
 //   Assistant · and the paged Activity History.
 import { useCallback, useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { teamCreatedPath } from './teamUrlState';
 import { useInlineAsk, useInlineConfirm } from '@aipowersalon/ui';
@@ -162,6 +163,7 @@ export function POSTechniciansScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('tc.title')}</h1><div className="sub">{tx('tc.sub')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="technicians" />
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setFinder(true)} data-testid="open-finder">{tx('tc.finder')}</button>
           {canEdit ? <button type="button" className="fk-btn ghost" onClick={() => setMapping({ id: null })} data-testid="open-mapping">{tx('tc.mapping')}</button> : null}

@@ -13,6 +13,7 @@
 // Every number is the server's (/pos/catalog/*, /tenant/inventory/*, /pos/bundles, /pos/menu-insights), tenant-scoped,
 // integer cents, the salon's days. Nothing here is seeded or estimated.
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCatalogApi } from '../api/posCatalogApi';
@@ -125,6 +126,7 @@ export function POSServicesScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.services_products')}</h1><div className="sub">{tx('pos.manage_service_menu_pricing_add_ons_iede')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="catalog" />
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
           {can('services.view') ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('pos.export_data')}</button> : null}
           {can('services.edit') ? <button type="button" className="fk-btn ghost" onClick={() => setDialog({ kind: 'import' })} data-testid="import">{tx('cg.importCatalog')}</button> : null}

@@ -24,7 +24,7 @@ export const SOURCE_DOMAINS = {
   'api:domain-streams': 'OPERATIONS', 'api:events': 'OPERATIONS', 'api:health': 'OPERATIONS', 'api:jobs': 'OPERATIONS',
   'api:logs': 'OPERATIONS', 'api:oauth': 'IDENTITY', 'api:observability': 'OPERATIONS', 'api:pos-account': 'IDENTITY',
   'api:pos-project-status': 'SUPPORT', 'api:pos': BY_PATH, 'api:profile': 'IDENTITY', 'api:project-status': 'SUPPORT',
-  'api:realtime': 'OPERATIONS', 'api:mobile-links': 'OPERATIONS', 'api:mobile-config': 'OPERATIONS',   /* Phase 13 B: /app-config, UPDATE_REQUIRED, Super Admin mobile versions */   /* Phase 13 D: AASA / assetlinks / app-links fallback */ 'api:super-admin-system-status': 'OPERATIONS', 'api:api': BY_PATH,
+  'api:realtime': 'OPERATIONS', 'api:system-checks': 'OPERATIONS',   /* extras arc (Nov 9 2026): the shared read-only Check … System */ 'api:mobile-links': 'OPERATIONS', 'api:mobile-config': 'OPERATIONS',   /* Phase 13 B: /app-config, UPDATE_REQUIRED, Super Admin mobile versions */   /* Phase 13 D: AASA / assetlinks / app-links fallback */ 'api:super-admin-system-status': 'OPERATIONS', 'api:api': BY_PATH,
   // modules/ai
   'ai:ai': 'AI', 'ai:ai-analytics-forecasting': 'AI', 'ai:ai-center': 'AI', 'ai:ai-customer-profile': 'AI', 'ai:ai-governance': 'AI',
   'ai:ai-inventory': 'AI', 'ai:ai-marketing': 'AI', 'ai:ai-money-protection': 'AI', 'ai:ai-queue-assignment': 'AI',

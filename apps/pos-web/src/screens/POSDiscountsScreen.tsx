@@ -10,6 +10,7 @@
 // Status) — codes masked (only the last four exist), the $100 figure marked illustrative. A historical period never changes
 // a current-state card. Every number is the server's (/pos/discounts/*, tenant-scoped, integer cents, the salon's days).
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posDiscountsApi } from '../api/posDiscountsApi';
@@ -103,6 +104,7 @@ export function POSDiscountsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.discounts')}</h1><div className="sub">{tx('pos.discount_rules_currently_live_across_your_1yi3')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="discounts" />
           <button type="button" className="fk-btn" onClick={() => setTick((n) => n + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           {canManage && tab !== 'performance' ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('dsc.export.' + tab)}</button> : null}
           <button type="button" className="fk-btn primary" onClick={promotions} data-testid="manage-promotions">{tx('pos.manage_in_promotions')}</button>

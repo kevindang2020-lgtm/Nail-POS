@@ -8,6 +8,7 @@
 // separate); refunds were subtracted again from a net that already contained them; the period was the browser's clock
 // ("This Week" = the last 7 days); there was no record list at all. Browsing never moves money.
 import { useEffect, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posSettlementsApi } from '../api/posSettlementsApi';
@@ -127,6 +128,7 @@ export function POSSettlementsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('finance.st.title')}</h1><div className="sub">{tx('finance.st.subtitle')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="settlements" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh" title={tx('finance.st.refreshHint')}>{tx('finance.refresh')}</button>
           {canExport ? <button type="button" className="fk-btn" onClick={exportReport} data-testid="export">{tx('finance.exportReport')}</button> : null}
           <button type="button" className="fk-btn primary" onClick={() => goRecon()} data-testid="open-recon">{tx('finance.st.viewRecon')}</button>

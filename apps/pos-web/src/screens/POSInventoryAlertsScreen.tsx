@@ -10,6 +10,7 @@
 // What was wrong: the sidebar counted products at their base reorder level (11) while this page listed persisted alert rows
 // that are only written when a product CROSSES a threshold — products already low never got one (0, "inventory is healthy").
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { createIntentKeys } from '@aipowersalon/api-client';
@@ -85,6 +86,7 @@ export function POSInventoryAlertsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.stock_alerts')}</h1><div className="sub">{tx('sa.subtitle')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="inventory" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           {canRecord ? <button type="button" className="fk-btn primary" onClick={() => setRecording({})} data-testid="record-use">{tx('sa.recordUse')}</button> : null}
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory')} data-testid="view-inventory">{tx('sa.viewInventory')}</button>

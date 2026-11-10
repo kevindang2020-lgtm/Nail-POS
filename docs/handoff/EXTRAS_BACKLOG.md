@@ -5,6 +5,26 @@ Extracted from the PDFs' "additional / additive / optional recommendations" sect
 triaged). Status: **TODO** · **BUILT** (built + tested this arc, commit named) · **EXISTS** (already in the product, where) · **NOISE**.
 
 Nothing is marked BUILT or EXISTS without the code being opened and the test named.
+
+## Progress (updated Nov 10 2026, 00:20 New York)
+
+| Status | Rows |
+|---|---|
+| BUILT this arc | 22 |
+| EXISTS (opened and named) | 86 |
+| TODO | 1710 |
+
+Built so far:
+1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
+2. **Shared read-only Check … System** (this commit): `GET pos/system-checks/<page>` for expenses, invoices, settlements,
+   payments, discounts, catalog, inventory, technicians, memberships — 53 checks, each a count of problem rows; a rule
+   the table already enforces is not repeated; the salon's day is its branch's time zone. Mounted on 16 screens.
+
+Decisions:
+- **Comfortable / Compact density switch — deferred, not built.** About 40 rows ask for it. The shell measures density
+  (`data-density`) but no styling uses it; every certified one-screen page fits through its own container rules. A
+  person-chosen Comfortable mode would need new spacing on each of those pages and can break the 1920×945 fit the
+  screen harness certifies. Kevin decides; until then these rows stay TODO.
 **Rows: 1818** across 153 PDFs.
 
 
@@ -12,11 +32,11 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-click Invoices Health Checker Verify API wiring, KPI reconciliation, missing customer links, invalid dates, status transitions, paging, payment records, and all available invoice actions; explain failing source IDs. | TODO |
-| 02 | Automatic Screen Fit Health Checker Admin/dev diagnostic that captures CSS viewport, panel bounds, overflow, clipped controls, touch target issues and layout screenshots at supported resolutions. | TODO |
+| 01 | One-click Invoices Health Checker Verify API wiring, KPI reconciliation, missing customer links, invalid dates, status transitions, paging, payment records, and all available invoice actions; explain failing source IDs. | BUILT — shared read-only Check Invoices System (GET pos/system-checks/invoices, components/SystemCheck); pgtest 5/5 + PG16 run |
+| 02 | Automatic Screen Fit Health Checker Admin/dev diagnostic that captures CSS viewport, panel bounds, overflow, clipped controls, touch target issues and layout screenshots at supported resolutions. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Full Invoice Timeline Inside Invoice Details, show issue, send, open (if supported), partial/full payments, void/credit events, user actor and authoritative timestamps. | TODO |
 | 04 | Unpaid & Overdue Priority View Add an optional status view for genuinely outstanding invoices, based on validated due date and unpaid balance; do not overwrite the default newest-first behavior. | TODO |
-| 05 | Customer Identity Integrity Checker Detect invalid customer joins, missing bill-to snapshots, tenant-mismatched links and stale display mapping; recommend approved repairs without guessing identities. | TODO |
+| 05 | Customer Identity Integrity Checker Detect invalid customer joins, missing bill-to snapshots, tenant-mismatched links and stale display mapping; recommend approved repairs without guessing identities. | BUILT — shared read-only Check Invoices System (GET pos/system-checks/invoices, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 06 | Safe Payment Preview Before recording an external/cash payment, show balance before/after, method, amount, reference and explicit confirmation. No automatic card charge. | TODO |
 | 07 | Readable Receivable Explanations Explain why an invoice is Outstanding, Partially Paid, Paid, Overdue or Void by linking to posted payments and credits. Owner-requested specification • November 2026 Addendum page 14 AI P | TODO |
 | 08 | Smart Duplicate Invoice Warning Warn on suspicious duplicate customer, amount, period and source transaction; never auto-delete or merge records. | TODO |
@@ -61,7 +81,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 05 | Catalog / Booking Wiring Service pickers, Add-Ons, Packages, Booking and Checkout ID continuity. | TODO |
 | 06 | Privacy and Permissions Backend RBAC/tenant/branch isolation and customer-history PII safeguards. | TODO |
 | 07 | Translation and Touch EN/VI text clipping, keyboard/focus, calendar, charts and button target size. | TODO |
-| 08 | Data Freshness / Cache Stale metrics after create/edit/reassign/archive, invalidation and real-time event failures. HEALTH CHECKER SAFETY A checker should produce PASS, WARNING, FAIL or NOT TESTED with evidence, affected | TODO |
+| 08 | Data Freshness / Cache Stale metrics after create/edit/reassign/archive, invalidation and real-time event failures. HEALTH CHECKER SAFETY A checker should produce PASS, WARNING, FAIL or NOT TESTED with evidence, affected | BUILT — shared read-only Check Catalog System (GET pos/system-checks/catalog, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 09 | Category assignment change timeline: capture old/new service-category associations, editor, reason and effective timestamp in an inspectable history. | TODO |
 | 10 | Controlled branch-aware catalog view: if branch rules exist, make authorized scope obvious; do not merge different tenants or branches into one ambiguous total. | TODO |
 | 11 | Chart-to-directory drill-down: tapping a category bar filters the current directory and linked services, with a visible Clear Filter action. | TODO |
@@ -76,7 +96,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Inventory Accuracy Reconcile on-hand, reserved, available, bottle/lot states, valuation, thresholds, 8 KPI definitions, 11/20/171/128 issue and sidebar badge. | TODO |
-| 02 | Screen Fit & Module Detect horizontal page overflow, clipped action areas, disproportionate KPI tiles, hidden Preservation tab content, unreachable modal footer and missing preserved controls. | TODO |
+| 02 | Screen Fit & Module Detect horizontal page overflow, clipped action areas, disproportionate KPI tiles, hidden Preservation tab content, unreachable modal footer and missing preserved controls. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Technician Usage Integrity Validate actor vs technician IDs, actual used_at, all technicians, Last Used By, branch scope and event-to-movement links. | TODO |
 | 04 | Duplicate Stock Movement Find duplicate manual/service/recipe/webhook source references, negative balances, duplicate receiving and concurrent usage conflicts. | TODO |
 | 05 | Module sizing and accessible touch controls A professional POS must feel comfortable from a cashier or manager’s standing position at the front desk. ELEMENT GUIDELINE / ACCEPTANCE KPI tiles Same height within a grid row | TODO |
@@ -89,7 +109,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 12 | AI Inventory Assistant, OCR and subscriptions Protect operational functionality and licensing while making the interface more compact. AREA MUST PRESERVE / IMPROVE AI entitlement banner Original guide reports trial ended | TODO |
 | 13 | Role-aware quick actions Surface actions appropriate to receptionist/manager/owner roles; enforce permissions in backend, not just hidden buttons. | TODO |
 | 14 | Additional recommendations: operational UX Implement selectively after inspecting current code. Each addition must be compatible with the original page and not displace existing modules. RECOMMENDATION BENEFIT / LIMIT | TODO |
-| 15 | Automatic browser visual Screenshots and overflow checks at SUNMI and fallback viewports, both EN/VN, regression representative large datasets. | TODO |
+| 15 | Automatic browser visual Screenshots and overflow checks at SUNMI and fallback viewports, both EN/VN, regression representative large datasets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 16 | Inventory data freshness Show real last successful refresh and retry if disconnected; never show false “live” state. indicator Recommended priority: preserve modules → fix responsive shell → verify 8 KPIs and usage/ledge | TODO |
 
 ## Recent Account Activity 8 (3)
@@ -114,7 +134,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Comparison Readiness Score: show source coverage and freshness before numeric performance rankings; do not imply unreliable data is accurate. | TODO |
-| 02 | Layout Auto-Fit Diagnostics: optional developer-only overlay reporting viewport, overflow, clipped panels, scale and touch-target failures. | TODO |
+| 02 | Layout Auto-Fit Diagnostics: optional developer-only overlay reporting viewport, overflow, clipped panels, scale and touch-target failures. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Comparison Presets: save permitted branch group, metrics, date convention and sort; preserve current filters and authorization. | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 04 | Like-for-Like Branch Groups: compare similar service mix, staffing and operating hours rather than misleading size-based rankings. | TODO |
 | 05 | Metric Definition Tooltips: explain denominator, exclusions, time basis and why N/A may appear; reference canonical reporting definition. | TODO |
@@ -157,13 +177,13 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 04 | Complete existing module preservation inventory Claude must make a before/after inventory from the actual repository and this original guide. Every row below must have a functioning destination, visible entry point or au | TODO |
 | 05 | Priority 1: subscription and metering truth Independent state dimension Required interpretation Billing lifecycle Trial active, trial expired, paid active, past due, cancel pending, canceled - use actual existing enum/st | TODO |
 | 06 | Add search, month calendars and pagination: secure server queries, date semantics, pages 1/2/3+, newest history first. | TODO |
-| 07 | Proposed layout blueprint - visual concept only This diagram is a static interface concept, not live POS data. Preserve existing sidebar/top bar outside the main content area shown below. AI Checkout + Upsell Assistant H | TODO |
+| 07 | Proposed layout blueprint - visual concept only This diagram is a static interface concept, not live POS data. Preserve existing sidebar/top bar outside the main content area shown below. AI Checkout + Upsell Assistant H | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Smart upsell and add-on recommendation rules Every displayed recommendation must be bound to an active, authorized service or product record for the selected salon. Validate availability and price immediately before an a | TODO |
 | 09 | Missed-service detection - two distinct workflows Never confuse a financial mismatch with a sales opportunity A service actually performed but not included on the ticket is a potential record discrepancy requiring human  | TODO |
 | 10 | Execute regression/security tests: document evidence, remaining defects and file changes; never claim unrun tests passed. CLAUDE IMPLEMENTATION HANDOFF / EXISTING CODE FIRST / NO AI-INITIATED CHARGES 12 AI POWERSALON / A | TODO |
 | 12 | Monthly date pickers and precise date semantics Add From Date and To Date controls that open actual calendar month views with month/year, previous/next month, weekday headers, selectable days, range highlight, Today, App | TODO |
 | 13 | Priority recommendations added without removing modules These are additions based on the full-screen SUNMI goal. They do not supersede the original three priorities: (1) subscriptions + Health Checker, (2) smart upsell / | TODO |
-| 14 | Health Checker: original checks plus layout diagnostics The existing "Check AI Checkout + Upsell System" button must perform safe read-only verification of billing/entitlements/quota/provider, ticket consistency, Service | TODO |
+| 14 | Health Checker: original checks plus layout diagnostics The existing "Check AI Checkout + Upsell System" button must perform safe read-only verification of billing/entitlements/quota/provider, ticket consistency, Service | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 15 | One-Click AI Checkout + Upsell System Health Checker Add a real Check AI Checkout + Upsell System button. Verify services using safe, read-only diagnostics and show Passed / Warning / Failed / Unavailable with affected m | TODO |
 | 17 | Secure data contracts and incremental implementation Use existing routes and schemas where possible. The names below are conceptual API capabilities to discover or extend, not instructions to create duplicates. Capabilit | TODO |
 | 18 | Security, tenancy, multilingual UI and scalability Required security controls • Backend enforces trusted tenant context, branch scope, user role, Checkout/service edit permission, billing permission and AI feature entitl | TODO |
@@ -173,16 +193,16 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click POS Layout Health Checker Read-only diagnostics for current viewport, clipped cards, content overflow, inconsistent peer sizing, touch target violations, clipped overlays, font/language expansion. Show module n | TODO |
+| 01 | One-Click POS Layout Health Checker Read-only diagnostics for current viewport, clipped cards, content overflow, inconsistent peer sizing, touch target violations, clipped overlays, font/language expansion. Show module n | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Verified hardware profile and browser reality Requirement SUNMI FLEX 3 27-inch deployment Orientation and panel Landscape / 27-inch capacitive touch / 1920 × 1080 FHD / 16:9 Physical housing (reference only) 646 × 384 ×  | TODO |
 | 03 | Module Inventory and No-Regression Gate Generate a machine-readable inventory for Checkout + Service Done from existing components. CI must fail when a previously present module, button, route, API, status action or perm | TODO |
 | 04 | Balance and Empty-Space Inspector Detect oversized empty cards, crowded controls, mismatched peer heights, uneven gutters and excessive card padding. Recommend CSS-token fixes instead of deleting low-activity modules. | TODO |
 | 05 | Mandatory preservation matrix - all Checkout modules This matrix was derived from the owner-supplied Checkout mandate. Claude must compare it to the actual repository and append every additional module discovered; this l | TODO |
 | 06 | Handoff and Payment Integrity Checker Read-only health report verifying Serving → Service Done → Checkout exactly-once handoff, duplicate tickets, outstanding payment attempts, ticket-version safety and server-reconciled | TODO |
-| 07 | Accessibility + Vietnamese Label Checker Check actual 100% zoom text contrast, touch targets, screen-reader labels, focus order, soft keyboard overlap, Vietnamese overflow, and actionable error messages. | TODO |
+| 07 | Accessibility + Vietnamese Label Checker Check actual 100% zoom text contrast, touch targets, screen-reader labels, focus order, soft keyboard overlap, Vietnamese overflow, and actionable error messages. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Certified Visual Snapshots Save empty, normal, busy, large-salon, UNKNOWN payment and quality-blocked screenshots for both pages. Run pixel/bounding-box regression after every shared-shell change. | TODO |
 | 09 | KPI cards Guests Ready for Checkout; Completed Checkouts Today; Pending Payments; Today’s Revenue; Tips Captured; Average Checkout Time; Gift Card/Loyalty Redemptions; Upsell at Checkout; Receipt Delivery Rate Primary op | TODO |
-| 11 | Non-negotiable payment, checkout and data protections The original 18-page mandate (Appendix A) is binding in full. These protections are repeated here because layout work must not regress them. • Canonical flow: Serving | TODO |
+| 11 | Non-negotiable payment, checkout and data protections The original 18-page mandate (Appendix A) is binding in full. These protections are repeated here because layout work must not regress them. • Canonical flow: Serving | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 12 | Recommended additive improvements - keep existing modules Recommendation Implementation requirement and benefit | TODO |
 | 13 | Automated test plan and screen acceptance gate At least the following tests must execute against a real or faithfully reproduced POS app shell. Use Playwright or the repository's existing E2E framework and add structured | TODO |
 
@@ -224,7 +244,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Layout Health Check Read-only viewport/overflow checker plus screenshot evidence on SUNMI. | TODO |
+| 01 | Layout Health Check Read-only viewport/overflow checker plus screenshot evidence on SUNMI. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Callback SLA Clock Display elapsed time vs promised callback due time with configurable manager alerts; never invent an SLA. | TODO |
 | 03 | Unassigned Task Triage Compact priority row showing ownerless calls, but reuse the same canonical tasks. | TODO |
 | 04 | Last-Contact Truth Show attempted vs actually reached, provider accepted vs delivered, and last verified outcome. | TODO |
@@ -278,7 +298,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 09 | Data freshness indicator Display last verified refresh time with Retry for network/API failures; do not turn service failure into financial zero. | TODO |
 | 10 | Quick View Daily Closeout Link to the branch and business date already selected without expanding tenant/branch scope. Engineering addendum / November 7, 2026 Addendum page 16 AI POWERSALON / END-OF-DAY CASH / SUNMI FLEX | TODO |
 | 11 | Module Preservation Registry Take before/after inventory of all route components, hooks, actions and permissions; make missing module a release blocker. | TODO |
-| 12 | Controlled device calibration Optional user-visible device profile only after measuring the real CSS viewport; never rely on hardcoded screen-name detection. | TODO |
+| 12 | Controlled device calibration Optional user-visible device profile only after measuring the real CSS viewport; never rely on hardcoded screen-name detection. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 13 | Touch keyboard responsiveness On-screen keyboard must not obstruct the amount field, save action, or count confirmation; adjust overlays dynamically. | TODO |
 | 14 | Bilingual label verification Verify Front Desk POS English and Vietnamese label expansion; keep other applications English-only under existing scope. | TODO |
 | 15 | High-volume / large staff support Test 200 technicians, many hand-offs and thousands of source cash tenders using server pagination and efficient queries. | TODO |
@@ -324,10 +344,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Stock Accuracy & Alert Health Checker Compare on-hand vs available stock, thresholds, branch scope, sidebar badges, page KPIs, acknowledged filters, cache freshness, and negative stock cases. | TODO |
-| 02 | One-Click Technician Usage Integrity Checker Trace each confirmed usage event to exactly one inventory movement; flag orphan events, duplicate decrements, missing technician IDs and mismatched units. | TODO |
+| 01 | One-Click Stock Accuracy & Alert Health Checker Compare on-hand vs available stock, thresholds, branch scope, sidebar badges, page KPIs, acknowledged filters, cache freshness, and negative stock cases. | BUILT — shared read-only Check Inventory System (GET pos/system-checks/inventory, components/SystemCheck); pgtest 5/5 + PG16 run |
+| 02 | One-Click Technician Usage Integrity Checker Trace each confirmed usage event to exactly one inventory movement; flag orphan events, duplicate decrements, missing technician IDs and mismatched units. | BUILT — shared read-only Check Inventory System (GET pos/system-checks/inventory, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 03 | One-Click “Last Used By” Verification Validate effective occurred-at ordering, corrections, reversed uses, archived technician IDs and mismatch with cached last-user fields. | TODO |
-| 04 | Automatic Screen Fit & Module Health Checker Inspect page and tab overflow, clipped labels, inaccessible pagination, uneven cards and touch target sizes at 100% zoom. | TODO |
+| 04 | Automatic Screen Fit & Module Health Checker Inspect page and tab overflow, clipped labels, inaccessible pagination, uneven cards and touch target sizes at 100% zoom. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 05 | Product-to-Service Consumption Review Verify known recipes / BOMs, ticket links, multi-technician allocations, and whether any automatic consumption policy was enabled by the tenant. | TODO |
 | 06 | Reorder & Receiving Reconciliation Compare suggested reorder quantities, open POs, actual receipts, movement history and post-receipt alert recalculation. | TODO |
 | 07 | Inventory Data Freshness & Realtime Monitor Expose last updated timestamp and disconnected / stale states for stock, alert counts, technician usage and offline retries. Implementation addendum • Original 32-page specific | TODO |
@@ -386,7 +406,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-click Serving Layout & Module Health Checker Operator/developer diagnostic that verifies screen fit, no panel clipping, module presence, API wiring, permission checks, missing buttons, realtime status, and touch targ | TODO |
+| 01 | One-click Serving Layout & Module Health Checker Operator/developer diagnostic that verifies screen fit, no panel clipping, module presence, API wiring, permission checks, missing buttons, realtime status, and touch targ | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Saved SUNMI 27-inch certified display profile A tested, reusable design-token/layout preset chosen automatically by measured container conditions. Device-local exceptions must not affect other tenants or screen sizes. | TODO |
 | 03 | Balanced Module Sizing Controller Centralize row/column weights, gap scale, min readable sizes, and resize-mode thresholds; stop individual components imposing arbitrary widths/heights. | TODO |
 | 04 | Smart Service Attention Priority Within the existing Live Service Floor and AI Insights, surface delayed services, conflicting bookings, overdue handoffs, and missing confirmations with a clear severity label and safe dr | TODO |
@@ -395,7 +415,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 07 | Touch Safe Action Review For Mark Ready, reassignment, manual price changes or impactful add-ons, show selected guest, affected service, actor permission and any conflict before confirmation. | TODO |
 | 08 | Service Timing & Data Accuracy Checker Compare displayed elapsed/expected timing and KPI totals with backend timestamps/authoritative reports; show stale/unknown status rather than fabricated percentages. | TODO |
 | 09 | EQUAL-WIDTH KPI TILES (ALL NINE) LIVE SERVICE FLOOR (1.12fr) / SERVICE PROGRESS BOARD (1.12fr) / AI SERVICE INSIGHTS (1.00fr) | TODO |
-| 10 | Automated Visual Module Parity Gate CI checks screenshot snapshots, all 9+3+3+5+7 required entry points, mobile/desktop fallbacks, overflow, keyboard focus, panel scroll and button touchability. Build instructions · pres | TODO |
+| 10 | Automated Visual Module Parity Gate CI checks screenshot snapshots, all 9+3+3+5+7 required entry points, mobile/desktop fallbacks, overflow, keyboard focus, panel scroll and button touchability. Build instructions · pres | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## AI Business Assistant (14)
 
@@ -441,11 +461,11 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Discounts Accuracy Reconcile the five KPIs, rule lifecycles, eligibility and expiration definitions. | TODO |
-| 02 | Screen Fit & Module Health Find cropped buttons, overlapped popovers, inconsistent KPI dimensions, hidden pager and sideways page overflow. | TODO |
+| 02 | Screen Fit & Module Health Find cropped buttons, overlapped popovers, inconsistent KPI dimensions, hidden pager and sideways page overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Coupon Eligibility & Limits Explain min spend, exclusions, caps, expiration, branch rules and allowed customer segments. | TODO |
 | 04 | Redemption Integrity Identify duplicate use, pending-vs-confirmed confusion, bad timestamps and idempotency errors. | TODO |
 | 05 | Checkout & Payment Wiring Verify discount preview, confirmed ticket, Fiserv callback status and downstream receipt agreement. | TODO |
-| 06 | Tenant Security & Permissions Check tenant isolation, code masking, customer access, audit coverage and unauthorized overrides. Health Checker output standard • Each check returns Pass / Warning / Failed / Not Verified,  | TODO |
+| 06 | Tenant Security & Permissions Check tenant isolation, code masking, customer access, audit coverage and unauthorized overrides. Health Checker output standard • Each check returns Pass / Warning / Failed / Not Verified,  | BUILT — shared read-only Check Discounts System (GET pos/system-checks/discounts, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 07 | Readable No-Data State. Explain genuine zero records separately from no permission, API unavailable and filtered-out results. | TODO |
 | 08 | Role-Aware Export Preview. Preview number of matching records and applied PII masking before authorized download. Implementation instructions / 07 November 2026 Addendum page 19 AI POWERSALON / DISCOUNTS MANAGEMENT SUNMI | TODO |
 | 09 | Automatic Savings Explanation. Display eligible subtotal, rule calculation, cap/exclusion adjustment and total saving as separate lines. | TODO |
@@ -469,7 +489,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 06 | Technician Skill Coverage: identify service types lacking enough qualified on-shift staff and recommend staffing/schedule review. | TODO |
 | 07 | Appointment Conflict Preview: before moving a booking, show duration, buffer, next appointment and hard constraint explanation. | TODO |
 | 08 | Quick Bulk Staff Actions: invite, search, print/export selected or review exceptions with confirm/audit controls and RBAC. Important boundary Do not invent automatic assignment, change technician eligibility, notify cust | TODO |
-| 09 | Responsive Layout Health Overlay: developer-only inspector for clipped controls, DOM overflow, last visible action and internal scroll panels. | TODO |
+| 09 | Responsive Layout Health Overlay: developer-only inspector for clipped controls, DOM overflow, last visible action and internal scroll panels. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 10 | Balanced KPI Presets: consistent 2/3/4-card responsive grid based on container width; data-rich tables get flexible workspace instead of equally tiny columns. | TODO |
 | 11 | Tech Queue, Fair Turn and Assignment A balanced live queue that does not overwhelm the SUNMI display Preserve queue semantics Keep Ready, Serving, Break, Appointment Soon, Hold and Off Shift states; any existing History  | TODO |
 | 12 | Team and 200-Person Workforce Management Even modules for staffing; fast tables for record-heavy workflows Management modules to retain Keep technician profiles, Active/Inactive, Branch, Skills, Roles, Employment, Invita | TODO |
@@ -493,7 +513,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screen Fit Self-Test A read-only “Check Screen Fit” diagnostic showing actual viewport, sidebar width, overflow and too-small tap targets. | TODO |
+| 01 | Screen Fit Self-Test A read-only “Check Screen Fit” diagnostic showing actual viewport, sidebar width, overflow and too-small tap targets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Balanced Layout Presets Comfortable / Compact density per tenant device; never use global browser zoom or erase controls. | TODO |
 | 03 | Promotion Quick Preview Inspect effective terms and sample eligible ticket without saving a redemption or charging a card. | TODO |
 | 04 | Expiration Calendar See upcoming expiration by branch; link back to same canonical promotion ID. | TODO |
@@ -536,7 +556,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Balanced Screen Fit Inspector Read-only developer/QA panel checks overflow, card height variance and control reachability. | TODO |
+| 01 | Balanced Screen Fit Inspector Read-only developer/QA panel checks overflow, card height variance and control reachability. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Gift Card Trust & Freshness Every balance and KPI exposes data owner, last verified timestamp and source drill-down. | TODO |
 | 03 | Checkout Redemption Readiness Staff preview sees eligibility, card balance, ticket due, split tender effect and approval blockers. | TODO |
 | 04 | Liability Reconciliation Workbench Authorized read-only compare of ledger liability, 5 KPIs and branch clearing exceptions; no automatic money movement. | TODO |
@@ -566,7 +586,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Calendar Fit & Accessibility Health Check Add a staff-visible diagnostics view (or developer-only audit panel) for actual viewport size, overflow/clipped elements, zoom/scale, touch targets, overlays and current responsi | TODO |
+| 01 | Calendar Fit & Accessibility Health Check Add a staff-visible diagnostics view (or developer-only audit panel) for actual viewport size, overflow/clipped elements, zoom/scale, touch targets, overlays and current responsi | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Verified Appointment Timeline Show auditable status progression: requested, held, OTP sent, OTP verified, confirmed, checked in, started, completed, cancelled; link to real event IDs. | TODO |
 | 03 | Availability Confidence / Freshness Show last verified timestamp and eligibility explanation for open slots, including service duration, qualification and current holds. | TODO |
 | 04 | Pending Verification Queue Surface expiring holds and pending verification in a filtered view; require staff authorization for retry and never display codes or assume success. | TODO |
@@ -638,7 +658,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Automatic Layout Health Measure actual overflowing elements and missing actions across all Customer Profiles views; guide corrective CSS changes, not browser zoom manipulation. | TODO |
+| 01 | Automatic Layout Health Measure actual overflowing elements and missing actions across all Customer Profiles views; guide corrective CSS changes, not browser zoom manipulation. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Data Freshness & Trust Show last verified activity/summary timestamp, stale-cache warning and “0 versus unavailable” distinction. | TODO |
 | 03 | Smart Card Details Compact status/visit summary with uniform heights; show more information in Quick View instead of making one card oversized. | TODO |
 | 04 | Authorized Action Launcher Same safe Book, Message, History, Loyalty shortcuts on each card; use existing owning service APIs. | TODO |
@@ -768,7 +788,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 05 | Service Mapping: missing qualifications, expired certifications, invalid service/branch links and contradictory catalog rules. | TODO |
 | 06 | Next Availability: exact-minute gaps, breaks, multi-tech, blocked intervals and conflict revalidation. | TODO |
 | 07 | Booking/Queue/Technician App Sync: missing or delayed event propagation, stale role state and mismatched availability. | TODO |
-| 08 | Commission & Tip Integrity: check historical rate snapshots, paid/earned labels and duplicate attribution without creating payments. | TODO |
+| 08 | Commission & Tip Integrity: check historical rate snapshots, paid/earned labels and duplicate attribution without creating payments. | BUILT — shared read-only Check Technicians System (GET pos/system-checks/technicians, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 09 | Search & Pagination: server-wide scoped results, page bounds, stable order, date basis and no cross-tenant matches. | TODO |
 | 10 | Permissions & Audit: test role gates, sensitive contact/earnings access, actor/event history and denied cross-tenant IDs. CHECKER OUTPUT CONTRACT Show PASS / WARN / FAIL / NOT TESTED, evidence source, checked time, affec | TODO |
 | 11 | PRIORITY 1 - Full Technician Profile Overlay | TODO |
@@ -816,27 +836,27 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | One-Click Financial Accuracy Reconcile all eight KPIs and six secondary totals against authoritative Checker full-period data. | TODO |
-| 02 | Screen Fit & Module Checker Detect missing modules, clipped panels, horizontal scroll, unreachable buttons and font overflow. | TODO |
+| 02 | Screen Fit & Module Checker Detect missing modules, clipped panels, horizontal scroll, unreachable buttons and font overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Payment Provider Readiness Surface Fiserv provider connectivity, terminal readiness and unverified Checker certification/onboarding status accurately. | TODO |
 | 04 | Cash-to-Settlement Trace Checker Trace cash, card and gift card transactions to correct respective ledgers without double counting. | TODO |
 | 05 | Revenue vs Collections Explainer Show staff the documented difference between earned revenue and successfully collected tenders. | TODO |
-| 06 | Refund & Void Integrity Checker Check amount eligibility, provider result, duplicate attempts and correct refund impact. | TODO |
+| 06 | Refund & Void Integrity Checker Check amount eligibility, provider result, duplicate attempts and correct refund impact. | BUILT — shared read-only Check Payments System (GET pos/system-checks/payments, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 07 | Payout & Deposit Checker Explain expected provider payouts separately from sent payments and bank-confirmed deposits. | TODO |
-| 08 | Cross-Module Wiring Checker Check broken links between Checkout, Transactions, Tips, Gift Cards, Cash Drawer and Reconciliation. AI authority rule A health checker is diagnostic and advisory. It must not move money, over | TODO |
+| 08 | Cross-Module Wiring Checker Check broken links between Checkout, Transactions, Tips, Gift Cards, Cash Drawer and Reconciliation. AI authority rule A health checker is diagnostic and advisory. It must not move money, over | BUILT — shared read-only Check Payments System (GET pos/system-checks/payments, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 09 | Financial Exception Inbox Consolidate unresolved statuses and mismatch explanations with drill-down evidence. | TODO |
 | 10 | Data Freshness Indicator Show last successful refresh and provider sync status per panel; never claim real-time when stale. | TODO |
 | 11 | Transaction State Timeline Display authorize/capture/settle/refund events from real provider references. | TODO |
 | 12 | Better Payout Forecast Cards Show expected payout dates, processor names and confidence/source based on available records. | TODO |
 | 13 | Adaptive Table Density Compute readable page size from available table height instead of shrinking text. | TODO |
 | 14 | Risk-Aware Quick Action Preview Show actor, tenant, amount, recipient/provider and effects before protected financial actions. | TODO |
-| 15 | Layout Regression Gate Run screenshot and DOM structure checks before release for all device breakpoints and both POS languages. | TODO |
+| 15 | Layout Regression Gate Run screenshot and DOM structure checks before release for all device breakpoints and both POS languages. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 16 | Module Preservation Registry Track each legacy card, chart, action and route mapping with pre/post-test results; fail deployment if anything vanishes. Implementation policy: Add optional recommendations only after inspec | TODO |
 
 ## AI Plans Packages (9)
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screen Fit Health Checker Read-only developer/admin diagnostic: CSS viewport, content width, zoom/device scale readout, overflow hotspots, clipped CTA checks, tap-target under-size flags and accessibility warnings. No se | TODO |
+| 01 | Screen Fit Health Checker Read-only developer/admin diagnostic: CSS viewport, content width, zoom/device scale readout, overflow hotspots, clipped CTA checks, tap-target under-size flags and accessibility warnings. No se | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Balanced Package Card Engine One reusable style for card price, badge, assistant list, footer and focus state. Equal widths; no card dwarfs another. Five cards remain and descriptions can expand accessibly. | TODO |
 | 03 | Price Truth & Real Savings Verifier Compare current server published price against sums of effective standalone prices; flag false savings claims, stale caching and missing pricing versions for correction. | TODO |
 | 04 | Purchase Overlap & Duplicate Before checkout, show existing standalone/bundle/trial coverage, confirmed quote, credits and Charge Guard effect; reuse authoritative anti-duplicate billing service. | TODO |
@@ -902,7 +922,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 00 | Automatic Viewport Fit Checker — detects clipped controls, excessive whitespace, unreadable KPIs and missing tab actions. 1 | TODO |
+| 00 | Automatic Viewport Fit Checker — detects clipped controls, excessive whitespace, unreadable KPIs and missing tab actions. 1 | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 01 | Exception Review Queue — severity, assigned reviewer, due date, audit and reopen flow. | TODO |
 
 ## AI Receptionist Settings (10)
@@ -933,9 +953,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Service Pricing Accuracy Health Checker Compare the four KPIs against canonical eligible service rows; explain discrepancies, currency rounding and archived/custom-price exclusions. | TODO |
-| 02 | Automatic SUNMI Screen Fit Health Checker In development/admin test mode, detect clipped cards, horizontal overflow, inaccessible actions, off-screen popovers, and effective viewport size. | TODO |
-| 03 | Price History and Audit Integrity Checker Find missing actor/reason/effective date, overlapping price versions, invalid rollback history and mismatched current versus scheduled prices. | TODO |
+| 01 | Service Pricing Accuracy Health Checker Compare the four KPIs against canonical eligible service rows; explain discrepancies, currency rounding and archived/custom-price exclusions. | BUILT — shared read-only Check Catalog System (GET pos/system-checks/catalog, components/SystemCheck); pgtest 5/5 + PG16 run |
+| 02 | Automatic SUNMI Screen Fit Health Checker In development/admin test mode, detect clipped cards, horizontal overflow, inaccessible actions, off-screen popovers, and effective viewport size. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 03 | Price History and Audit Integrity Checker Find missing actor/reason/effective date, overlapping price versions, invalid rollback history and mismatched current versus scheduled prices. | BUILT — shared read-only Check Catalog System (GET pos/system-checks/catalog, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 04 | Booking Price & Duration Impact Checker Before future price/duration edits, detect booked appointments, fixed quotes, technician availability conflicts and stale service pickers. | TODO |
 | 05 | Checkout and Transaction Wiring Checker Reconcile service line snapshots with checkout totals, taxes, discounts, authorized overrides, refunds and payment status. | TODO |
 | 06 | Category & Service Relationship Checker Flag possible anomalies such as Haircut or Hair Coloring categorized as Nails; never auto-mutate owner data. | TODO |
@@ -981,15 +1001,15 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Automatic Fit Health Checker Small nonfinancial technical action in Settings / device diagnostics: show browser CSS viewport, content viewport, density mode, detected outer overflow, clipped panels, font/touch audit. Man | TODO |
-| 02 | Certified SUNMI Device Profile Create optional hardware profile configuration (SUNMI_FLEX3_27_FHD) for layout defaults, viewport checks, connection status and managed kiosk instructions. Avoid hardware-user-agent lock-in | TODO |
+| 02 | Certified SUNMI Device Profile Create optional hardware profile configuration (SUNMI_FLEX3_27_FHD) for layout defaults, viewport checks, connection status and managed kiosk instructions. Avoid hardware-user-agent lock-in | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Checkout Module Registry + Define stable module IDs to detect accidental deletion, hidden entry points or dropped Preservation Tests permission/handler wiring when Claude refactors Checkout. Maintain before/after capabil | TODO |
-| 04 | Automatic 100% viewport-fit contract On startup, resize and orientation changes • Detect available CSS viewport width and height using window.innerWidth/innerHeight, window.visualViewport where supported, documentElement | TODO |
+| 04 | Automatic 100% viewport-fit contract On startup, resize and orientation changes • Detect available CSS viewport width and height using window.innerWidth/innerHeight, window.visualViewport where supported, documentElement | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 05 | Balanced one-screen layout blueprint Layout priority: Reserve stable space for the POS shell and critical controls; use an adaptable central grid for operational work. The workspace is slightly wider than Queue and AI, b | TODO |
 | 06 | Readability + Touch QA Add tests for long EN/VN labels, 200 staff, 100 queue records, 20-line ticket, keyboard, spinner, OS scaling, rotated display and target collisions. | TODO |
 | 07 | Role-Safe Quick Action Explanations A disabled button indicates the missing ticket, permission, unresolved payment, not-configured merchant or stale total; never mask the control or silently approve the operation. These  | TODO |
 | 08 | Viewport auto-fit engine and UI state stability A viewport-aware hook/observer should update display configuration only when the actual app container size changes. Use the existing React patterns and resize utilities if  | TODO |
 | 09 | Touch-first Checkout friendliness • Use an uncluttered information hierarchy: selected guest -> services -> balance due -> selected payment -> status -> receipt/next action. • Touch targets: aim >=44 x 44 CSS px for prim | TODO |
-| 11 | Non-negotiable payment, checkout and data protections The original 18-page mandate (Appendix A) is binding in full. These protections are repeated here because layout work must not regress them. • Canonical flow: Serving | TODO |
+| 11 | Non-negotiable payment, checkout and data protections The original 18-page mandate (Appendix A) is binding in full. These protections are repeated here because layout work must not regress them. • Canonical flow: Serving | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 12 | Recommended additive improvements - keep existing modules Recommendation Implementation requirement and benefit | TODO |
 | 13 | Automated test plan and screen acceptance gate At least the following tests must execute against a real or faithfully reproduced POS app shell. Use Playwright or the repository's existing E2E framework and add structured | TODO |
 
@@ -1070,7 +1090,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | One-Click Retention Accuracy Health Checker Add a button that verifies cohort definitions, Never Visited separation, last completed visit, days away, KPI counts, and oldest-first sort order. | TODO |
-| 02 | Screen Fit & Layout Health Checker Add a development or admin-only diagnostic that flags clipped controls, overlapping text, hidden pagination, and horizontal overflow on the target viewport. | TODO |
+| 02 | Screen Fit & Layout Health Checker Add a development or admin-only diagnostic that flags clipped controls, overlapping text, hidden pagination, and horizontal overflow on the target viewport. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Bulk SMS Eligibility Checker Before preview/send, list exactly why recipients are excluded: missing phone, invalid phone, no consent, STOP, global SMS disabled, tenant Twilio not configured, or quiet-hours restrictions. | TODO |
 | 04 | Safe Cross-Page Selection Review When selecting across pages, provide a compact review summary so staff understand how many recipients are selected, eligible, and excluded before sending. | TODO |
 | 05 | Compact Campaign History Access Keep campaign history accessible through a drawer, overlay, or right-side panel instead of letting it crowd the main retention work area. | TODO |
@@ -1116,12 +1136,12 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Layout & Module Fit Health Add a read-only visual QA subcheck under existing AI Customer Profile System Health: viewport, overflow, card sizes, focus/keyboard occlusion, date-picker placement, inaccessible Clos | TODO |
+| 01 | One-Click Layout & Module Fit Health Add a read-only visual QA subcheck under existing AI Customer Profile System Health: viewport, overflow, card sizes, focus/keyboard occlusion, date-picker placement, inaccessible Clos | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Smart Balanced Layout Presets Optional Touch Comfortable / Compact mode, persisted in existing tenant UI preferences (if applicable). No global browser zoom; allow choice to display more rows while respecting min font/to | TODO |
 | 03 | Evidence + Freshness Status Show provenance and stale/last-refreshed indicators on existing preferences, services, VIP/retention summaries and note drafts; never create parallel source ledgers. | TODO |
 | 04 | Customer Snapshot panel Read-only customer context preview in the real Customer Profile overlay with links to Booking/History/Notes; avoid duplicate profile records or full private details on the AI subscription home. | TODO |
 | 05 | Slow Network / AI Failure resilience Use skeletons and stable card heights, bounded retries, cached authorized metadata where safe, never obscure existing customer/booking services during an AI outage. | TODO |
-| 06 | Visual regression & accessibility CI Add screenshot diffs at target viewports, automated overflow checks, keyboard and touch tests, long EN/VN data cases and module-inventory checks. | TODO |
+| 06 | Visual regression & accessibility CI Add screenshot diffs at target viewports, automated overflow checks, keyboard and touch tests, long EN/VN data cases and module-inventory checks. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 07 | Performance guardrails Defer expensive AI summaries until authorized customer context opens, dedupe provider calls, memoize safe selectors, paginate history and reduce unnecessary shell rerenders. Prioritize upgrades wit | TODO |
 | 12 | VIP and churn/retention intelligence Reuse existing Customer Retention statuses and Loyalty tier definitions. Do not create a competing lifecycle or VIP rule engine inside this feature. CLAUDE ENGINEERING GUIDE / AUDIT F | TODO |
 | 13 | Backend security, tenant isolation, permissions, EN/VN scope and other app localization restrictions. 14-15 Engineering phases, testing matrix, positive/negative cases and requirements for actual test evidence. 16-17 Com | TODO |
@@ -1130,7 +1150,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Responsive Layout Diagnostics: hidden developer-only overlay showing actual CSS viewport, overflow offenders, panel dimensions and browser zoom context. | TODO |
+| 01 | Responsive Layout Diagnostics: hidden developer-only overlay showing actual CSS viewport, overflow offenders, panel dimensions and browser zoom context. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | One-click Deal Health Checker: reconcile Checkout connectivity, approval rules, stale data, expiration jobs and financial totals. | TODO |
 | 03 | Customer-specific Deal Preview: show precise eligible items, discount base and reason codes without recording a use. | TODO |
 | 04 | Discount Budget Exposure Guard: estimate maximum authorized promotion cost from discount caps and allowed uses before activation. | TODO |
@@ -1151,7 +1171,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screen Fit & Module Health No hidden Modules, clipped controls, blocked sidebars, overlapping text, unreachable pager, font shrink, or page-level horizontal overflow. | TODO |
+| 01 | Screen Fit & Module Health No hidden Modules, clipped controls, blocked sidebars, overlapping text, unreachable pager, font shrink, or page-level horizontal overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Product Catalog Accuracy Duplicate SKU/barcode, invalid variant relationship, archival mismatches, branch/catalog counts and broken Detail links. | TODO |
 | 03 | Product KPI & Retail Value Products count, Need Reorder, Retail Value formula, summary-to-detail ties and accurate error/unavailable states. | TODO |
 | 04 | Stock Movement Integrity PO receipts, Add Stock, transfers, waste, usage and corrections post once to the canonical ledger. | TODO |
@@ -1166,7 +1186,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 13 | Stable filtering Preserve active search/sort when returning from Details, editing or a stock confirmation. Source: Products_Claude(1).pdf • November 2026 ADDENDUM PAGE 18 AI POWERSALON / PRODUCTS MANAGEMENT SUNMI FLEX 3  | TODO |
 | 14 | Controlled low-stock reorder Prefill a draft PO from verified product-supplier mappings; require human approval before ordering. | TODO |
 | 15 | Safe archive preview Explain affected inventory/active dependencies before archiving, and preserve access to historical receipts. | TODO |
-| 16 | Touch layout diagnostics Admin/dev-only overlay displays viewport CSS size, shell/sidebar widths and any overflow warnings; no forced zoom. | TODO |
+| 16 | Touch layout diagnostics Admin/dev-only overlay displays viewport CSS size, shell/sidebar widths and any overflow warnings; no forced zoom. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 17 | Concurrent-edit protection Warn when a product or stock balance changed since opening the form and refresh authoritative data. | TODO |
 | 18 | Product movement timeline A chronological evidence view for receipts, stock in/out, usage, transfers, waste and reconciled counts. | TODO |
 | 19 | Metrics freshness marker Show timestamp/source for successful refresh; never show a fresh-looking timestamp after an API error. | TODO |
@@ -1180,7 +1200,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 02 | Money Flow Explorer Click a redemption to trace originating token-backed earning → hold → ticket → payable → provider settlement. | TODO |
 | 03 | Smart Wallet Funding Alert Show low balance and estimated funding needs using verified historical usage; no automatic purchase. | TODO |
 | 04 | Policy Impact Preview Before earning rule changes, show allowed branch scope, expected effect and human approval; historic events immutable. | TODO |
-| 05 | Balanced Dashboard Layout Automated screenshot and overflow checks for each SUNMI viewport with Diagnostics preserved-module inventory. Recommended visual hierarchy Primary operations and finance KPIs stay top-level; low | TODO |
+| 05 | Balanced Dashboard Layout Automated screenshot and overflow checks for each SUNMI viewport with Diagnostics preserved-module inventory. Recommended visual hierarchy Primary operations and finance KPIs stay top-level; low | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 06 | Funding vs Liability Explicitly compare backed rewards, available points, held points and salon payables Reconciliation without combining ledgers. | TODO |
 | 07 | Redemption Exception Queue Owner/finance-friendly queue of expired holds, unreconciled paid tickets and disputed reversals with assignment. | TODO |
 | 08 | Safe Notification Read Sync Reading an alert clears only the recipient unread badge across devices, not the underlying failure. | TODO |
@@ -1208,7 +1228,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 09 | Audit + display Store action result and correlation reference; show exact appointment ID and reliable current state. “AI proposed”, “SMS submitted”, “SMS delivered”, “pending hold exists” and “appointment confirmed” are  | TODO |
 | 10 | Contextual Service Breakdown Surface service, add-ons, estimated duration and canonical salon price in review; visually separate manual overrides from catalog prices. | TODO |
 | 11 | Reception Priority Worklist Explainable queue of pending verification, impending holds, unresolved AI booking attempts and conflicts; sorted by urgency, not just newness. | TODO |
-| 12 | Accessibility Quick Audit Development/staging check for focus order, contrast, safe modal close, 44px touch targets and language overflow, including tenant-facing English/Vietnamese POS. | TODO |
+| 12 | Accessibility Quick Audit Development/staging check for focus order, contrast, safe modal close, 44px touch targets and language overflow, including tenant-facing English/Vietnamese POS. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 13 | Controlled Rollout Flag Enable revised layout for pilot tenants/branches and preserve a documented rollback path; do not run unapproved production migrations. | TODO |
 | 14 | Evidence Export Generate an authorized support report with timestamps, status, masked references, test/trace IDs and screenshots; redact PII, secrets and raw OTP. Do not treat these recommendations as license to remove o | TODO |
 
@@ -1217,7 +1237,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Forecast Trust Ribbon Across Appointments/Revenue/No-Show: source timestamp, history coverage, model version, last verified backtest, source freshness and readiness; links to existing details. | TODO |
-| 02 | Adaptive Layout Health Developer/authorized admin-only diagnostics for rendered viewport, zoom, overflow, clipped Check controls, card sizes, browser/Android info and screenshot evidence. Never expose sensitive runtime d | TODO |
+| 02 | Adaptive Layout Health Developer/authorized admin-only diagnostics for rendered viewport, zoom, overflow, clipped Check controls, card sizes, browser/Android info and screenshot evidence. Never expose sensitive runtime d | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Forecast-to-Capacity Gap Read-only chart comparing expected appointment workload and qualified technician-hours; advisory link to Scheduling Optimizer, no automatic shifts. | TODO |
 | 04 | Explain the Readiness Gap A click on Insufficient History opens a factual source breakdown (days, statuses, missing dates, filters, worker freshness) and links to Booking. | TODO |
 | 05 | Model Reliability Transparent time-based MAE/WAPE/Brier or other applicable task metric, baseline, sample Scorecard size, interval coverage and current version; “Not evaluated” where absent. | TODO |
@@ -1276,8 +1296,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 00 | Responsive-layout diagnostic mode Optional developer-only overlays showing actual viewport bounds 1 and overflow. | TODO |
-| 01 | Screen Fit & UI Health Clipping, page overflow, visual hierarchy, touch size, popover position, keyboard focus. | TODO |
+| 00 | Responsive-layout diagnostic mode Optional developer-only overlays showing actual viewport bounds 1 and overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 01 | Screen Fit & UI Health Clipping, page overflow, visual hierarchy, touch size, popover position, keyboard focus. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Score Scale & Formula 5%/5.0 representation, metric definitions, score model and formatting. | TODO |
 | 03 | Rating Source & Sample Verified reviews, counts, missing data, duplicates, stale score calculations. | TODO |
 | 04 | Distribution & Ranking Tier boundaries, eligible technicians, ties and rank criteria. | TODO |
@@ -1330,7 +1350,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 13 | Activity history & pagination Distinguish event chronology from real appointment scheduling and maintain stable, useful pagination. • Maintain event categories: booking created/modified/cancelled, shift edits, break star | TODO |
 | 14 | Queue Fairness Indicator Explain when customer preference or rotation changes recommendation order | TODO |
 | 15 | Live updates & race conditions The POS must update promptly without false availability, duplicate appointments or an unstable touchscreen UI. • Reuse current WebSocket/SSE subscriptions for bookings, shift edits, breaks, | TODO |
-| 16 | Visual Regression Suite Save before/after screenshots for real viewports and English/Vietnamese Prioritization recommendation Build screen fit and the three mandatory schedule features first. Then implement Health Checke | TODO |
+| 16 | Visual Regression Suite Save before/after screenshots for real viewports and English/Vietnamese Prioritization recommendation Build screen fit and the three mandatory schedule features first. Then implement Health Checke | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 21 | Screen-fit acceptance matrix Claude must test the real application at 100% zoom and on the actual SUNMI hardware when available. VIEWPORT / STATE PASS CONDITION SUNMI 1920 x 1080 panel Actual browser viewport measured; s | TODO |
 
 ## Review Reputation (6)
@@ -1471,7 +1491,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Auto-Fit Display Health Indicator Non-invasive display diagnostics available to authorized staff: actual viewport, overflow hotspots, sidebar/keyboard collisions, and test timestamp. UI adapts; a health badge alone is no | TODO |
+| 01 | Auto-Fit Display Health Indicator Non-invasive display diagnostics available to authorized staff: actual viewport, overflow hotspots, sidebar/keyboard collisions, and test timestamp. UI adapts; a health badge alone is no | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Voice-to-Booking Accuracy Trace Click a call and follow call ID → requested service/time → Booking API response → pending/confirmed record → customer notification, without creating a duplicate booking ledger. | TODO |
 | 03 | Call Recovery Worklist Highlight missed/failed/repeat calls with responsible owner, urgency, first-contact time and safe follow-up controls; managers approve outbound contact. | TODO |
 | 04 | AI Agent Capability Matrix Display, for each agent, what is Configured, Tested, Active and Allowed: hours, services, availability, booking, reschedule, cancel, SMS and handoff. | TODO |
@@ -1511,7 +1531,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 06 | Suspicious Number Change Review: flag unusually frequent changes, cross-device patterns and multiple failed codes; route to authorized risk review, not automatic user lockout without policy. | TODO |
 | 07 | Old-Number Security Notification: preserve configured notices, indicate actual send status and give an unauthorized-change reporting path. | TODO |
 | 08 | Draft and Session Recovery: preserve safe form input across refresh; never store raw OTP in local storage or revive a superseded server request. | TODO |
-| 09 | Screen Fit Diagnostics: development-only overlay showing CSS viewport, device pixel ratio, container width, overflow indicators and current responsive breakpoint; never expose diagnostics to ordinary staff by default. | TODO |
+| 09 | Screen Fit Diagnostics: development-only overlay showing CSS viewport, device pixel ratio, container width, overflow indicators and current responsive breakpoint; never expose diagnostics to ordinary staff by default. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 10 | Effective Policy Explanation: explain whether a setting is inherited, tenant-selected or overridden by Super Admin, without changing it implicitly. | TODO |
 | 11 | Change Audit Timeline: show Requested, SMS Sent, Verified, Applied, Synced and Security Notice events with verified timestamps and sanitized provider references. | TODO |
 | 12 | Safe Reverification on Changed Contact: require future Booking and identity workflows to distrust old-phone OTP proof for the new destination. | TODO |
@@ -1563,7 +1583,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | SUNMI display target and what “100% fit” means The provided reference is a physical-dimensions illustration of the SUNMI FLEX 3 in 27-inch landscape orientation. It is not a screenshot of the running POS or a measurement | TODO |
-| 02 | One-click layout diagnostics Authorized debug tool records viewport, overflow elements and problem panel IDs, with no PII. | TODO |
+| 02 | One-click layout diagnostics Authorized debug tool records viewport, overflow elements and problem panel IDs, with no PII. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Status/freshness strip Show last successful rule run and source feed readiness separately from zero-alert count. | TODO |
 | 04 | Even KPI/summary sizing Use aligned, equal-height cards that wrap without clipping or oversized whitespace. | TODO |
 | 05 | Saved filter views Allow role-safe personal presets (New, High, Unassigned, My Branch) without changing active detection rules. | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
@@ -1584,7 +1604,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Purpose, source priority and boundaries This update supplements the original Refunds & Voids Complete Build Guide (18 pages). Its core goal is automatic screen-fit and proportional module layout on the SUNMI FLEX 3 while | TODO |
-| 02 | Device reference and automatic viewport detection Reference Device requirement Screen SUNMI FLEX 3; 27-inch landscape; 1920 × 1080 physical display; 16:9. Physical unit Approx. 646 mm wide × 384 mm high × 29.8 mm thick ( | TODO |
+| 02 | Device reference and automatic viewport detection Reference Device requirement Screen SUNMI FLEX 3; 27-inch landscape; 1920 × 1080 physical display; 16:9. Physical unit Approx. 646 mm wide × 384 mm high × 29.8 mm thick ( | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Smart Duplicate Warning Warn on same original tender, amount, operator, reason or provider reference; block true idempotent duplicates. | TODO |
 | 04 | Partial Refund Allocation Review Require staff to confirm which original card, cash, gift card or other tender receives each refund amount. | TODO |
 | 05 | Refund Receipt Preview Show proposed customer receipt and final confirmed result; do not send a completed receipt before confirmation. | TODO |
@@ -1620,7 +1640,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 04 | Change Impact Preview Authorized preview estimates the count and type of affected customers, explicitly labels uncertainty and never commits or triggers messages. | TODO |
 | 05 | Propagation Timeline Visual read-only event trail for saved/queued/processing/applied/delayed/failed across existing workers, with source-linked diagnostics. Recommendations must be integrated only after discovering exis | TODO |
 | 06 | Safe Change Review A reusable confirmation summary shows previous/proposed state, role, salon and effects; blocks stale-version changes and accidental double taps. | TODO |
-| 07 | Responsive Module Health Scan Developer-only viewport assertions log overflow/collision at agreed breakpoints; no page-scale zoom or hidden overflow as a substitute for real layout. | TODO |
+| 07 | Responsive Module Health Scan Developer-only viewport assertions log overflow/collision at agreed breakpoints; no page-scale zoom or hidden overflow as a substitute for real layout. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Guided Empty and Restricted States Distinct legitimate empty, unauthorized, disconnected, stale, not entitled and missing-data states, each with a precise safe next action. | TODO |
 | 09 | Contextual Customer Impact Shortcut For authorized roles, link an effective threshold into its existing Customer Search or related module via verified context and permission checks. | TODO |
 | 10 | Change-Event Diff View A clean side-by-side before/after overlay with source links, actor and version for authorized audit reviewers, without editing historical events. Implementation priority P0: preserve and verify exi | TODO |
@@ -1641,7 +1661,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 11 | What Changed? Activity Timeline: booking/shift/queue events that invalidate earlier AI suggestions. | TODO |
 | 12 | Protected Saved Filters: authorized per-user preferred views, date filters and branch selection. | TODO |
 | 13 | Read-Only Dry Run Mode: show recommendations and metrics without booking edits or billing actions outside current plan policy. | TODO |
-| 14 | Visual Layout Health Check: capture viewport metrics and detect clipped buttons, unequal KPI heights and empty oversized panels. PROTECTED CODE BOUNDARY: Do not modify, refactor, migrate, reformat, regenerate or delete a | TODO |
+| 14 | Visual Layout Health Check: capture viewport metrics and detect clipped buttons, unequal KPI heights and empty oversized panels. PROTECTED CODE BOUNDARY: Do not modify, refactor, migrate, reformat, regenerate or delete a | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## Appointment Reminders (4)
 
@@ -1650,7 +1670,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 01 | Remember last selected history/queue tab and non-sensitive date filters for each authorized employee. | TODO |
 | 02 | Provide an accessible compact/wide density preference, never a page-wide scale-down. | TODO |
 | 03 | Provide contextual Help for Send Window explaining the verified existing behavior. | TODO |
-| 04 | Add a one-click Screen Fit Health Checker and visual regression snapshots at different CSS viewports. Scheduling and delivery accuracy (5-8) | TODO |
+| 04 | Add a one-click Screen Fit Health Checker and visual regression snapshots at different CSS viewports. Scheduling and delivery accuracy (5-8) | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## END-OF-DAY FOLLOW-UPS (16)
 
@@ -1665,7 +1685,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 07 | Consent/suppression: opt-outs, quiet hours, already-rebooked cases and cooldown policy. | TODO |
 | 08 | Messaging channels: effective tenant Twilio and email sender, verified callback health. | TODO |
 | 09 | Approval/replies: pending manager approvals, revision status and inbound conversation mapping. | TODO |
-| 10 | Screen accessibility: viewport overflow, clipped controls, touch targets and localized label fit. Health result UX Every check shows Ready / Attention Required / Pending / Failed / Unknown, last verified timestamp, actua | TODO |
+| 10 | Screen accessibility: viewport overflow, clipped controls, touch targets and localized label fit. Health result UX Every check shows Ready / Attention Required / Pending / Failed / Unknown, last verified timestamp, actua | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Opt-Out Integrity: block messages regardless of staff override; verify current consent at dispatch. | TODO |
 | 12 | Provider Status Audit: distinguish accepted/sent/delivered/failure with webhook evidence. | TODO |
 | 13 | Technician Alert Dedup: one committed-ready-list notification per technician per run. | TODO |
@@ -1692,7 +1712,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Live Layout Diagnostic Show measured CSS viewport and identify any clipped controls, overflowing cards or keyboard interference without auto-changing settings. | TODO |
+| 01 | Live Layout Diagnostic Show measured CSS viewport and identify any clipped controls, overflowing cards or keyboard interference without auto-changing settings. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Per-Agent Readiness Scorecard Separate configured, provider checked, voice route checked, booking checked, test call and owner activation. | TODO |
 | 03 | Agent Comparison Preview Compare an existing agent/draft and proposed changes side by side before saving or activating. | TODO |
 | 04 | Routing Conflict Detector Flag duplicate use of a tenant phone number by multiple competing agents; prevent unsafe activation. | TODO |
@@ -1733,7 +1753,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 06 | Module Spacing, Typography & Touch UX Balanced cards with strong readability in a bright front-desk setting. Design system constraints • Use consistent card border, elevation, header height, badge styling, padding and ic | TODO |
 | 07 | Customer-to-Tech Handoff Show selected customer assignment state and whether POS A, No extra Visit, duplicate assignment Status Customer Queue and Technician App have synced. or shared cross-tenant data. Recommended upgr | TODO |
 | 08 | Assignment Panel, Queue Row & Schedule Overlays Keep full workflows reachable without stretching the main page. Compact queue list • A technician row should show existing queue order, avatar/name, status, waiting time, t | TODO |
-| 09 | Recommended Upgrade #1 - Auto-Fit Health Checker Non-mutating layout diagnostics for each POS front-desk station. One-click Check Tech Queue Layout button • Detect current CSS viewport, DPR, orientation, display profile, | TODO |
+| 09 | Recommended Upgrade #1 - Auto-Fit Health Checker Non-mutating layout diagnostics for each POS front-desk station. One-click Check Tech Queue Layout button • Detect current CSS viewport, DPR, orientation, display profile, | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Recommended Upgrades #4 - #7 Useful additions; preserve any already-implemented equivalent rather than duplicating it. Upgrade Requested behavior Boundary | TODO |
 | 12 | Multi-Device Runtime and Reliability An adaptable web POS must remain correct on SUNMI as well as existing Windows desks. Runtime Must verify SUNMI 27-inch target Actual Chromium/WebView, Android/SUNMI OS build, CSS view | TODO |
 | 19 | Mode Selector Security Changing Fair Turn mode is sensitive. Enforce manager/owner permission and audit the change. | TODO |
@@ -1776,7 +1796,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Layout Self-Check & Screen Health Test current viewport, overflow and six tabs without mutating records. | TODO |
+| 01 | Layout Self-Check & Screen Health Test current viewport, overflow and six tabs without mutating records. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Moderation Queue SLA View Show verified age and backlog of submitted drafts; no auto-approval. | TODO |
 | 03 | Safe Draft Completeness Assistant Warn on missing context/evidence and suggest neutral wording. | TODO |
 | 04 | Balanced desktop wireframe This drawing shows the intended hierarchy and six equal-access tabs, not a replacement app or fabricated advisory records. The original POS shell remains the source of truth. AI POWERSALON / SE | TODO |
@@ -1813,7 +1833,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screen Fit / Module Health All eight KPIs, A/B/C, tickets, D/E and seven actions present and usable. | TODO |
+| 01 | Screen Fit / Module Health All eight KPIs, A/B/C, tickets, D/E and seven actions present and usable. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Queue Count Accuracy Active/Waiting/In Progress KPIs match actual eligible status events. | TODO |
 | 03 | Technician Eligibility Skills, schedule, break/offline, current work, branch and conflict checks. | TODO |
 | 04 | Rotation & Fairness Arrival/rotation priority and approved exceptions without leapfrogging. | TODO |
@@ -1841,7 +1861,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 04 | Report layout Implement equal KPI row, full-width table, balanced detail/history, discrepancy panels; preserve all actions. | TODO |
 | 05 | Search and dates Wire role-limited global search, From/To calendar, date basis and correct local time filtering. | TODO |
 | 06 | Paging and drill-down Implement stable grouped report pagination, newest-first event histories, complete technician details. | TODO |
-| 07 | Accuracy checkers Add read-only Commission/Payroll and Screen Fit checkers based on canonical data; no auto money changes. | TODO |
+| 07 | Accuracy checkers Add read-only Commission/Payroll and Screen Fit checkers based on canonical data; no auto money changes. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Cross-module QA Verify Checkout, Service Done, Tips, Refunds, Payroll, permissions, tenant isolation, localization. | TODO |
 | 09 | Release review Run lint/types/build/unit/integration/e2e and rendered screenshot review; list changed files and gaps. NO DUPLICATE BUSINESS ENGINES Check existing services and APIs first. Extend real code only where need | TODO |
 
@@ -1888,8 +1908,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-click Gift Cards Layout Health Checker Validate actual visible bounds for the five KPIs, toolbar, pagination, primary actions, overlays, and EN/VN labels; report overflow, clipping and undersized targets. | TODO |
-| 02 | Display profile inspector Show detected CSS viewport, pixel ratio, browser, orientation, safe viewport height and last test. Treat profile as diagnostic, not a forced browser zoom setting. | TODO |
+| 01 | One-click Gift Cards Layout Health Checker Validate actual visible bounds for the five KPIs, toolbar, pagination, primary actions, overlays, and EN/VN labels; report overflow, clipping and undersized targets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 02 | Display profile inspector Show detected CSS viewport, pixel ratio, browser, orientation, safe viewport height and last test. Treat profile as diagnostic, not a forced browser zoom setting. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | One-click Gift Card Ledger Accuracy Checker Reconcile each sample card and tenant totals across ledger, checkout and KPI aggregate; show exact source IDs behind anomalies. | TODO |
 | 04 | Quick customer-card finder From Checkout or Customer Profile, open a scoped, masked card picker with purchaser/recipient labels, without requiring staff to leave their active sale. | TODO |
 | 05 | Live status and recency indicators Show when balance was verified, source freshness and pending issuance/reversal states; do not confuse stale cached data with authorized spendable value. | TODO |
@@ -1908,7 +1928,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screen Fit & Module Health 100% zoom, viewport height, horizontal overflow, missing/hidden buttons, clipped dialogs, KPI alignment, sticky header/footer and EN/VN text expansion. | TODO |
+| 01 | Screen Fit & Module Health 100% zoom, viewport height, horizontal overflow, missing/hidden buttons, clipped dialogs, KPI alignment, sticky header/footer and EN/VN text expansion. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Add-On Catalog Accuracy All records and four KPI definitions agree with tenant-scoped canonical data, including archived/active and service offering counts. | TODO |
 | 03 | Service Assignment Integrity Orphaned links, category/service mismatches, duplicate active offerings and correct shared versus service-specific edit scope. | TODO |
 | 04 | KPIs CSS grid repeat(4,minmax(0,1fr)) where supported. Equal heights and consistent typography; at narrow viewports use 2 × 2. Filter toolbar Search takes flexible width, status and date filters intrinsic minimum widths. | TODO |
@@ -1923,13 +1943,13 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 13 | Role-aware details: Open a bounded detail overlay with only data the user is allowed to view, avoiding accidental PII exposure. | TODO |
 | 14 | Price/tax reason display: Explain why the exact charged total differs from the default add-on price (overrides, discounts, taxes). | TODO |
 | 15 | Performance guardrails: Cache or index safe tenant queries appropriately, with explicit invalidation after record updates. | TODO |
-| 16 | Visual regression automation: Capture key screenshots at real device viewport sizes in both English and Vietnamese and check controls remain reachable. Implementation guide · 7 Nov 2026 21 AI POWERSALON / ADD-ONS MANAGEM | TODO |
+| 16 | Visual regression automation: Capture key screenshots at real device viewport sizes in both English and Vietnamese and check controls remain reachable. Implementation guide · 7 Nov 2026 21 AI POWERSALON / ADD-ONS MANAGEM | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## Coupons  Promotions (16)
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Auto-Fit Diagnostics Developer/admin-only report showing CSS viewport, scaling, sidebar width, overflow offenders and layout test results. | TODO |
+| 01 | Auto-Fit Diagnostics Developer/admin-only report showing CSS viewport, scaling, sidebar width, overflow offenders and layout test results. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Unified Offers Relationship Viewer Read-only map of coupon, promotion and deal references for vishal and other records, with same-benefit detection. | TODO |
 | 03 | Discount Exposure Preview Before activation, estimate maximum configured liability with eligible-transaction assumptions and clearly labeled uncertainty. | TODO |
 | 04 | Duplicate Redemption Guard Detect duplicate payment callbacks, reused idempotency keys and suspicious near-simultaneous code applications. | TODO |
@@ -1938,19 +1958,19 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 07 | Quick Customer Eligibility Preview Read-only selection of customer, service and branch; reason codes without decrementing coupon limits. | TODO |
 | 08 | Change History & Version Compare Side-by-side before/after offer terms, actor, approver and audit links; protect financial history. ALL ARE OPTIONAL, NONE REPLACE CORE MODULES Document which enhancements already exist. U | TODO |
 | 09 | Responsive Card Consistency Centralized UI card sizing/gap tokens to keep all marketing pages proportional at 1920, 1536 and 1366 widths. | TODO |
-| 10 | Touch Usability Audit Automated hit-target size, focus, labels, modal Close visibility and EN/VN overflow checks. | TODO |
+| 10 | Touch Usability Audit Automated hit-target size, focus, labels, modal Close visibility and EN/VN overflow checks. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Campaign Cost Protection Pre-send authorization, audience consent, estimated SMS/email cost, duplicate campaign-send prevention. | TODO |
 | 12 | Promo-to-Checkout Trace From a promotion, inspect authorized ticket, applied discount, payment and reversal evidence. | TODO |
 | 13 | Source-Based ROI Explanation Separate associated revenue, discount costs, spend and unverified incremental lift. | TODO |
 | 14 | Advanced Branch Scorecard For authorized multi-branch owners, comparable offer uptake, applied discounts and actual associated revenue. | TODO |
 | 15 | Accessible Export & Audit Scoped CSV/PDF export with masked PII, date basis, filters and export activity log. | TODO |
-| 16 | Automatic Release Regression CI and screenshot diffs for desktop/touch layouts plus pricing, permission and reconciliation invariants. NO AUTONOMOUS PRODUCTION CHANGES New AI or health tools must only recommend and diagn | TODO |
+| 16 | Automatic Release Regression CI and screenshot diffs for desktop/touch layouts plus pricing, permission and reconciliation invariants. NO AUTONOMOUS PRODUCTION CHANGES New AI or health tools must only recommend and diagn | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## AI PowerSalonLive Operations (12)
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Live Operations Health Checker Inspect all module wiring, real-data freshness, tenant/branch scope, fetch/query errors, realtime subscription health, empty-vs-broken state and viewport overflow. Report PASS / W | TODO |
+| 01 | One-Click Live Operations Health Checker Inspect all module wiring, real-data freshness, tenant/branch scope, fetch/query errors, realtime subscription health, empty-vs-broken state and viewport overflow. Report PASS / W | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Automatic Screen Fit & Display Calibration A shared read-only display diagnostic that reports CSS viewport, DPR, density mode, OS/browser safe area, outer overflow, clipped cards and Quick Action visibility. Automatic fi | TODO |
 | 03 | Smart Priority Operations Strip Add a compact existing-panel-compatible priority summary for blocked checkouts, unusual waits, excessive staffing gaps, overdue appointments and stale messages; all results link to authori | TODO |
 | 04 | KPI Accuracy & Reconciliation Checker Verify each KPI against backend authoritative definitions, selected branch, time zone, date range, payment-state rules and report aggregates. Display mismatch reasons and stale-cache | TODO |
@@ -2000,8 +2020,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Automatic SUNMI display profile with live CSS viewport detection and a safe standard-browser fallback. | TODO |
-| 02 | Layout Health Checker with real DOM overflow/touch-target checks and screenshots in CI. | TODO |
+| 01 | Automatic SUNMI display profile with live CSS viewport detection and a safe standard-browser fallback. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 02 | Layout Health Checker with real DOM overflow/touch-target checks and screenshots in CI. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Four KPI equal-height responsive cards with evidence timestamp and click-to-filter. | TODO |
 | 04 | Provider-aware Device Readiness Checker to distinguish offline, stale, untested, and genuinely online. | TODO |
 | 05 | Clover Compact pairing checklist: branch, MID, register, supported app, non-charge verification, test evidence. | TODO |
@@ -2017,7 +2037,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Layout Health Checker: add read-only “Check Screen Fit” diagnostic available to authorized POS managers/developers. It reports viewport, clipped primary controls, content overflow and minimum control sizes without changi | TODO |
+| 01 | Layout Health Checker: add read-only “Check Screen Fit” diagnostic available to authorized POS managers/developers. It reports viewport, clipped primary controls, content overflow and minimum control sizes without changi | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Visible “Saved vs Effective” chip: each row and top summary should distinguish persisted settings, currently effective worker version and config drift. Prevent “Saved” from being mistaken for running protection. | TODO |
 | 03 | Consistent card and table design tokens: one reusable balanced layout pattern across Settings, Rules, Alerts and Investigations; preserve each page’s existing fields and workflows. | TODO |
 | 04 | Optional manager compact-density preference: choose comfortable or compact spacing without removing fields, disabling scrolling or changing rule evaluation; remember per authorized user. | TODO |
@@ -2032,8 +2052,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-click Screen Fit & Layout Health Check CSS viewport, page overflow, visible KPI/paging, overlapping buttons, Checker toolbar wrapping, calendar placement and touch targets. Dev/owner diagnostics; never fake a pass. | TODO |
-| 02 | Settlement & Refund Data Health Checker Check source freshness, provider event uniqueness, missing batch IDs, orphan refunds and dates. Explain which adapter/query failed. | TODO |
+| 01 | One-click Screen Fit & Layout Health Check CSS viewport, page overflow, visible KPI/paging, overlapping buttons, Checker toolbar wrapping, calendar placement and touch targets. Dev/owner diagnostics; never fake a pass. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 02 | Settlement & Refund Data Health Checker Check source freshness, provider event uniqueness, missing batch IDs, orphan refunds and dates. Explain which adapter/query failed. | BUILT — shared read-only Check Settlements System (GET pos/system-checks/settlements, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 03 | One-click Financial Reconciliation Accuracy Compare six KPIs, provider totals, refunds, fees and bank matches against Checker authoritative records, with a traceable discrepancy report. | TODO |
 | 04 | Smart Bank Confirmation Status Separate processor-settled, payout-sent, bank-confirmed, partially matched, missing and unknown states; show true evidence. | TODO |
 | 05 | Settlement Detail + Transaction Lineage One touch opens settlement underlying payments provider payout bank-match evidence, without constructing speculative customer links. | TODO |
@@ -2058,7 +2078,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 07 | Ratings / Rankings 0-5 verified stars, sample counts and separate composite evidence. | TODO |
 | 08 | Approvals / Training Unresolved requests, missing training links and real certification dates. | TODO |
 | 09 | Realtime / Integrations Queue, Booking, Time Clock and Technician App sync freshness. | TODO |
-| 10 | Security / Localization Tenant boundaries, role gates, English/Vietnamese layout overflow. Diagnostic UI behavior Show Last Checked, scope, Passed / Warning / Blocked / Not Configured, source reference and exact next act | TODO |
+| 10 | Security / Localization Tenant boundaries, role gates, English/Vietnamese layout overflow. Diagnostic UI behavior Show Last Checked, scope, Passed / Warning / Blocked / Not Configured, source reference and exact next act | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Revenue vs earnings glossary Explain every finance metric and its date basis. | TODO |
 | 12 | Find Qualified & Available Staff Priority B: a functional availability overlay shared with Booking/Technician Scheduling; never invent an opening from UI-only logic. Required input and decision pipeline • Inputs: request | TODO |
 | 13 | One-Day Shift Editor with conflicts Priority C: a technician/date-specific editor integrated with the existing Staff Schedule. It is not a replacement for recurring shift templates. Overlay workflow • Open from employee  | TODO |
@@ -2085,7 +2105,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | One-Click Loyalty Accuracy Reconcile KPIs, balances, reward counts, ledger totals, tier breakdowns and Checker posted redemptions. | TODO |
-| 02 | One-Click Screen Fit Checker Detect clipped headings, overlapping actions, unreadable labels, invisible pager, non-reachable last records and horizontal overflow. | TODO |
+| 02 | One-Click Screen Fit Checker Detect clipped headings, overlapping actions, unreadable labels, invisible pager, non-reachable last records and horizontal overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Reward Eligibility Checker Preview status, tier, inventory, limits, dates and points affordability before a redemption attempt. | TODO |
 | 04 | Duplicate Earning/Redemption Flag replayed sale events, double-click credits and competing redemption Protector requests; never silently alter balances. | TODO |
 | 05 | Tier Qualification Preview Show why a customer is in a tier and what rule would change the tier, using real configured criteria. | TODO |
@@ -2097,7 +2117,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 11 | Member Points & Tier Detail Open full customer loyalty summary with earned, redeemed, expired, adjusted and upcoming eligibility. | TODO |
 | 12 | Accessible Quick Actions Evenly sized buttons, readable labels and no hover-only shortcuts on touch displays. | TODO |
 | 13 | Multi-Branch Reporting Clarity Explicitly show selected branch vs full tenant scope and prohibit cross-tenant visibility. | TODO |
-| 14 | Bilingual Layout QA Automated screenshot checks for both EN and VI text, long tier labels and large numbers. INTERNAL / POS LOYALTY OPERATIONS / 06 NOV 2026 ADDENDUM PAGE 16 AI POWERSALON / CLAUDE ENGINEERING MANDATE SUN | TODO |
+| 14 | Bilingual Layout QA Automated screenshot checks for both EN and VI text, long tier labels and large numbers. INTERNAL / POS LOYALTY OPERATIONS / 06 NOV 2026 ADDENDUM PAGE 16 AI POWERSALON / CLAUDE ENGINEERING MANDATE SUN | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## Campaign Results (7)
 
@@ -2107,7 +2127,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 08 | Campaign list, filters, calendars and pagination Campaigns panel: keep original interaction • Maintain selected campaign highlighting, campaign names, SMS/email channel badges, status, dates and the original list-to-resu | TODO |
 | 13 | Permissions, localization and 10k-tenant readiness Tenant & financial boundary checks • All list/search/detail/export/AI/health endpoints enforce authenticated tenant and branch scope server-side. Never trust browser-pro | TODO |
 | 15 | My recommendations: improvements 9-16 # / Recommendation Expected behavior and guardrail 09 / Branch-Aware Date Semantics Date-mode selector with branch timezone, DST handling and clear interpretation of sent vs booked v | TODO |
-| 16 | UX / responsive acceptance matrix: 24 checks Execute these against the actual application and record environment, browser mode, CSS viewport, zoom setting, screenshot/test artifact and result. Testing on an emulator alon | TODO |
+| 16 | UX / responsive acceptance matrix: 24 checks Execute these against the actual application and record environment, browser mode, CSS viewport, zoom setting, screenshot/test artifact and result. Testing on an emulator alon | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 17 | Campaign comparisons, owner-authorized multi-branch and trends • Allow selected campaigns to be compared by eligible audience, delivery rate, qualifying bookings, completed visits, associated revenue, actual costs and co | TODO |
 | 20 | Reliability, real-time updates and performance • Subscribe to tenant-scoped delivery/bookings/completion/checkout/refund events using existing WebSocket/SSE where supported; fall back to measured refresh without re-sendi | TODO |
 
@@ -2118,8 +2138,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 01 | Automatic viewport profile Detect available CSS space and apply responsive density without OS sniffing. | TODO |
 | 02 | Module parity audit Snapshot route/component/action registry before and after each change. | TODO |
 | 03 | Balanced visual rhythm Unify card headers, badges, gutters and chart/body vertical spacing. | TODO |
-| 04 | Layout Health Checker Automatically detect clipped controls and overlapping cards. | TODO |
-| 05 | Membership Data Health Checker Verify all 5 KPIs and 4 charts against authoritative records. | TODO |
+| 04 | Layout Health Checker Automatically detect clipped controls and overlapping cards. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 05 | Membership Data Health Checker Verify all 5 KPIs and 4 charts against authoritative records. | BUILT — shared read-only Check Memberships System (GET pos/system-checks/memberships, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 06 | Full member detail drawer Expose plan, history, billing, benefits, renewal and status in a bounded overlay. | TODO |
 | 07 | Expiring / past-due advisor Offer authorized, previewed outreach to eligible members; no auto-send. | TODO |
 | 08 | Benefit redemption integrity Reconcile issue, reserve, redeem and reversal transitions. | TODO |
@@ -2139,7 +2159,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 04 | Error Triage & Assignment Create an authorized issue link to a log event with owner, priority, follow-up, status and audit; reuse support/incident engine. | TODO |
 | 05 | Automated Alert Routing Send deduplicated actionable warnings for device offline, terminal unavailable, sync failures and critical provider errors. | TODO |
 | 06 | Integration Environment Labels Clearly show UAT vs production on relevant payment logs to prevent misleading certification/readiness assumptions. | TODO |
-| 07 | Read-only Screen Fit Checker At 100% zoom check viewport dimensions, clipped text/actions, scroll regions, focus and mobile keyboard overlays. | TODO |
+| 07 | Read-only Screen Fit Checker At 100% zoom check viewport dimensions, clipped text/actions, scroll regions, focus and mobile keyboard overlays. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Export Sanitized Logs Role-gated CSV/JSON export with redaction and a fixed date range; evidence of exporter audit. | TODO |
 | 09 | Worker Delay & Retry Visibility Show actual retry queue lag, attempt numbers and dead-letter status without creating a second retry engine. | TODO |
 | 10 | Cross-module Drill-through Deep link between Device Logs, Device Health, Payment Terminals, Device Assignments and Payment Gateway with stable scopes. | TODO |
@@ -2151,7 +2171,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Auto-Fit Health Check Report viewport, overflow, hidden controls, clipped labels and touch-size failures. | TODO |
+| 01 | Auto-Fit Health Check Report viewport, overflow, hidden controls, clipped labels and touch-size failures. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Responsive density presets Comfort / Standard modes that adjust spacing without shrinking content illegibly. | TODO |
 | 03 | Provider evidence timeline Show domain state, last successful check, callback readiness and real send events. | TODO |
 | 04 | Email deliverability guard Prevent false Delivered states and flag provider acceptance versus completion. | TODO |
@@ -2172,9 +2192,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Responsive layout profile Use shared CSS tokens + container width checks across Front Desk POS. | TODO |
-| 02 | One-click screen-fit audit Check clipping, target sizes and independent scrolling at 100% zoom. | TODO |
-| 03 | Catalog data integrity checker Report inconsistent service/category/price/status records. | TODO |
+| 01 | Responsive layout profile Use shared CSS tokens + container width checks across Front Desk POS. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 02 | One-click screen-fit audit Check clipping, target sizes and independent scrolling at 100% zoom. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
+| 03 | Catalog data integrity checker Report inconsistent service/category/price/status records. | BUILT — shared read-only Check Catalog System (GET pos/system-checks/catalog, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 04 | Inventory alert reconciliation Compare canonical stock to dashboard and sidebar counts. | TODO |
 | 05 | Price change impact preview Show future booking/branch effects before owner approval. | TODO |
 | 06 | Branch override comparison Side-by-side tenant default and effective branch settings. | TODO |
@@ -2217,7 +2237,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Appointment History + Layout Health Check Extend the original read-only Check Appointment History System action with a UI Layout Fit section. Report viewport width/height, overflow/clipped controls, KPI consist | TODO |
+| 01 | One-Click Appointment History + Layout Health Check Extend the original read-only Check Appointment History System action with a UI Layout Fit section. Report viewport width/height, overflow/clipped controls, KPI consist | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Booking-to-History Accuracy Monitor Compare the authorized Booking source, Appointment History read model and Service Done completions; expose stale cache, failed worker, mismatched status or missing technician mapping w | TODO |
 | 03 | Smarter Follow-up and Rebooking Review Offer a review-only shortcut to existing Rebooking Opportunities and AI Booking Assistant when a prior completed service supports it. Show whether a future appointment already exist | TODO |
 | 04 | Appointment Change and Source Evidence Viewer Within the details overlay show recorded original versus rescheduled dates, who changed them, verified events and safe audit references. Keep the actual Booking event history | TODO |
@@ -2237,7 +2257,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 03 | Bilingual visual screenshot CI Capture every core page in both languages with busy-state fixtures and compare against approved baselines. | TODO |
 | 04 | Translation coverage dashboard Show missing keys, hard-coded strings, untranslated errors and glossary-review status. | TODO |
 | 05 | No-removal preservation manifest Record existing modules, accessible routes, actions and permissions before layout changes. | TODO |
-| 06 | Automatic overflow inspector Highlight clipping, outer scroll, off-screen actions, and keyboard overlap with exact DOM locations. | TODO |
+| 06 | Automatic overflow inspector Highlight clipping, outer scroll, off-screen actions, and keyboard overlap with exact DOM locations. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 07 | Vietnamese typography review Use approved short labels and complete diacritics support; do not sacrifice legibility. | TODO |
 | 08 | Safe language-switch checkpoint Assert no payment/booking/queue side effects or duplicate realtime subscriptions. | TODO |
 | 09 | Header language-selector usability One consistent English / Tiếng Việt switch across all tenant POS screens. | TODO |
@@ -2332,7 +2352,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screen Fit Diagnostics Add a developer-only diagnostics readout for CSS viewport, DPR, container width, overflow and active breakpoint; hide from normal production users. | TODO |
+| 01 | Screen Fit Diagnostics Add a developer-only diagnostics readout for CSS viewport, DPR, container width, overflow and active breakpoint; hide from normal production users. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Always-visible Safety Banner Keep the blocking OFF state visible during rule browsing; surface the separate flag only from its existing protected control. | TODO |
 | 03 | Reliable Rule Freshness Show per-rule last evaluated time and input freshness; default to Unknown/Stale rather than false green success. | TODO |
 | 04 | Rule Execution Timeline Add a read-only chronological view of last runs, queue lag, errors and source events per rule. | TODO |
@@ -2382,7 +2402,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 03 | Audit data Confirm customer/visit/booking relationships, workers, retention rules, Source-of-truth map and broken/partial/missing list. six KPI semantics and permissions. | TODO |
 | 04 | Auto-fit Reuse shell; introduce local flex/grid responsive layout and equal-size Screenshots at target viewport plus regression of KPI/filter/tab components. 24-inch. | TODO |
 | 05 | Workspace Repair search/date tabs/numbered pagination and expand evidence Working source-backed page flows. overlays, without removing original controls. | TODO |
-| 06 | Diagnostics Implement read-only Churn Watch Health + Screen Fit Health Subsystem results and safe error states. diagnostics using existing observability. | TODO |
+| 06 | Diagnostics Implement read-only Churn Watch Health + Screen Fit Health Subsystem results and safe error states. diagnostics using existing observability. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 07 | Controls Ensure staff-reviewed actions, opt-out checks, rebooking handoff and Authorization and non-mutation tests. tenant protection. | TODO |
 | 08 | Release Run UI/accessibility/API/E2E/regression, gate rollout when needed; Commands + pass/fail/skipped, changed files, rollback. report known blockers. Do not start over If a module already exists and works, leave its b | TODO |
 
@@ -2404,7 +2424,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-click Customer Page Layout & Wiring Health Checker • A permissioned Check Customer Page button (dev/support or authorized manager as appropriate) checks viewport, scroll reachability, card overflow, missing registry  | TODO |
+| 01 | One-click Customer Page Layout & Wiring Health Checker • A permissioned Check Customer Page button (dev/support or authorized manager as appropriate) checks viewport, scroll reachability, card overflow, missing registry  | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | One-click Customer Data & Merge Integrity Checker • Compare customer total/count definitions, orphaned foreign keys, duplicate candidates, unresolved merge conflicts, repeated gift/loyalty entries and missing consent ref | TODO |
 | 03 | Customer Profile 360 overlay • One tap opens the authorized customer snapshot: profile/contact, visits, next appointment, preferences, notes, loyalty/membership, gift cards, receipts and activity. • Reuse canonical Custo | TODO |
 | 04 | Smart duplicate prioritization with explicit evidence • Rank high-risk matches by verified phone/email and relevant identifiers. Display why the pair is suggested and which financial dependencies require human approval.  | TODO |
@@ -2426,7 +2446,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 05 | Recent errors Verified throttling, failed challenge, expired holds, code-delivery issues; “View Failed Records”. | TODO |
 | 06 | Integration Health of API, book-confirmation guards, database, scheduling/hold worker and event processing; “Open Diagnostics”. Status vocabulary Ready / Needs Setup / Pending Provider Action / Degraded / Failed / Unknow | TODO |
 | 07 | Verified SMS Delivery Evidence Separate sender readiness, challenge send attempts, delivery events and actual successful OTP check. | TODO |
-| 08 | Visual Fit Health Check Diagnostics showing CSS viewport, DPR, sidebar width, overflow/overlap elements and text clipping in English/Vietnamese. SUNMI 27-inch engineering addendum / Original 13-page guide follows 21 / 24 | TODO |
+| 08 | Visual Fit Health Check Diagnostics showing CSS viewport, DPR, sidebar width, overflow/overlap elements and text clipping in English/Vietnamese. SUNMI 27-inch engineering addendum / Original 13-page guide follows 21 / 24 | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 09 | Verification Funnel Scorecard Track requested → challenge sent → verified → hold converted → booking confirmed with definitions and verified counts. | TODO |
 | 10 | Lost-Booking Recovery After an expired hold, offer fresh available times and safe restart; never auto-confirm a no-longer-available slot. | TODO |
 | 11 | Tenant Configuration Comparison Show inherited/default vs branch override, effective source and approval state without exposing another tenant. | TODO |
@@ -2447,7 +2467,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 05 | Subscribe to authorized realtime updates. | TODO |
 | 06 | Detailed Super Admin authoring experience Preserve the existing product flow and all present controls. Add improvements only after repository audit; every new control must have real backend behavior or a visibly labeled  | TODO |
 | 07 | On reconnect, refetch snapshot. RENDER: - 1 line when short. Developer / Claude Production Completion Mandate / 11 AI PowerSalon / Super Admin POS Top-Bar Announcement & Platform Broadcast | TODO |
-| 13 | Recommended product upgrades - additive only 01 / Live Fit Diagnostics - Read-only button checks actual SUNMI viewport, overflow, header collision, truncated labels and touch target size. 02 / Audience Impact Preview - B | TODO |
+| 13 | Recommended product upgrades - additive only 01 / Live Fit Diagnostics - Read-only button checks actual SUNMI viewport, overflow, header collision, truncated labels and touch target size. 02 / Audience Impact Preview - B | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 14 | End-to-end test cases - group A: viewport / touch These new test IDs supplement, and do not replace, the original mandate items 140-164. Each test result must include real browser/device evidence or a clear NOT RUN reaso | TODO |
 
 ## AI Usage Limits (10)
@@ -2484,13 +2504,13 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | 13 | Touch-Safe Quick Actions Keep all ten existing actions in a consistent, balanced two-row bar. | TODO |
 | 14 | Data Freshness Indicator Show refresh status/last successful update when data may be stale. | TODO |
 | 15 | Reconciliation Drill-Down From discrepant KPI to source ledger/receipt/benefit event for authorized staff. | TODO |
-| 16 | Visual Regression Gate Automated checks at native and scaled effective viewports in EN and VN. Implementation requirements / 07 Nov 2026 Addendum page 20 AI POWERSALON / MEMBERSHIP OVERVIEW SUNMI FLEX 3 / CLAUDE IMPLEMEN | TODO |
+| 16 | Visual Regression Gate Automated checks at native and scaled effective viewports in EN and VN. Implementation requirements / 07 Nov 2026 Addendum page 20 AI POWERSALON / MEMBERSHIP OVERVIEW SUNMI FLEX 3 / CLAUDE IMPLEMEN | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## GLOBAL LOYALTY  REWARDS (16)
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Auto-fit diagnostics Show detected viewport, zoom, overflow regions and component measurement test | TODO |
+| 01 | Auto-fit diagnostics Show detected viewport, zoom, overflow regions and component measurement test | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Balanced-card layout system Reusable KPI/side-panel sizing tokens across all tenant POS modules | TODO |
 | 03 | Wallet low-balance forecast Estimate days until depletion using verified trailing allocations; label as estimate | TODO |
 | 04 | Purchase status timeline Requested → processing → verified / exception, with provider timestamps | TODO |
@@ -2511,14 +2531,14 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Responsive Layout Health Indicator. Developer/admin diagnostic records content overflow, clipped elements, CSS viewport dimensions, scroll ownership and failed component render; do not expose to staff unnecessarily. | TODO |
+| 01 | Responsive Layout Health Indicator. Developer/admin diagnostic records content overflow, clipped elements, CSS viewport dimensions, scroll ownership and failed component render; do not expose to staff unnecessarily. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Exact preservation contract Claude must reconcile repository reality with both the source PDF and the prior screenshot before changing any existing behavior. Preserve precisely What it means in the upgraded application R | TODO |
 | 03 | Memberships Show eligible active plans, recurring terms and existing membership state; no automatic signup or billing. | TODO |
 | 04 | Automatic full-screen fitting: correct contract The goal is 100% usable fit at 100% zoom, not artificially shrinking an entire 1920 × 1080 design into every browser window. Requirement Implementation and acceptance condi | TODO |
 | 05 | Loyalty redemption Use authoritative current points, tenant-funded tokens, exclusions and approved redemption transaction. | TODO |
 | 06 | Recommended complete screen arrangement A two-card, equal-width top configuration avoids one enormous module next to a tiny one. Dynamic data occupies the lower pane. AI POWER SALON / BRANCH Search Notifications Owner SA | TODO |
 | 07 | Responsive layouts across device sizes The SUNMI landscape target is primary, but the same Web POS must remain usable across the existing 24-inch POS, windows and touch devices. Viewport / state Expected adaptation Wide  | TODO |
-| 08 | React / CSS: viewport-safe shell Illustrative code only. Claude must adapt selectors to the existing codebase and use the actual shared POS layout rather than replace it. /* Scope these rules to the existing Checkout Ups | TODO |
+| 08 | React / CSS: viewport-safe shell Illustrative code only. Claude must adapt selectors to the existing codebase and use the actual shared POS layout rather than replace it. /* Scope these rules to the existing Checkout Ups | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 09 | Touch Accessibility Audit. Automated screenshot/interaction checks for 44px targets, focus, contrast, EN/VN wrapping, portal modals and reduced window height. | TODO |
 | 10 | Safe Rollout and Rollback. Feature-flag incremental UI rollout, baseline/after screenshots, compatible old clients, monitoring and reversible CSS/API changes. CHECKOUT UPSELL ASSISTANT SETTINGS • CLAUDE BUILD HANDOFF Add | TODO |
 | 11 | Full-screen layout and user interaction specification • Keep fixed POS sidebar/top bar and original design tokens. The content area should fill remaining viewport height at 100% zoom; use min-height/overflow-y auto, not  | TODO |
@@ -2553,7 +2573,7 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Auto-fit Diagnostics Detect viewport overflow, clipped controls and touch-target issues. | TODO |
+| 01 | Auto-fit Diagnostics Detect viewport overflow, clipped controls and touch-target issues. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Availability Confidence Show verified/estimated/stale source and refresh timestamp. | TODO |
 | 03 | Status Explanation Reveal why a technician is available, off-shift, serving or on break. | TODO |
 | 04 | Gap Finder Highlight usable continuous gaps for selected service length. | TODO |

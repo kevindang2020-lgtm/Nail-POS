@@ -8,6 +8,7 @@
 // scrolling; Revenue / Collections $116.43 beside three tenders summing $168.15 (only 'approved' summed — the split's
 // 'partial' $51.72 tender dropped), UTC "today", Collections = Revenue, Average ÷ tenders, a "100 % Excellent" health score.
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posMoneyOverviewApi } from '../api/posMoneyOverviewApi';
@@ -59,6 +60,7 @@ export function POSPaymentsOverviewScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.payments_money')}</h1><div className="sub">{tx('pm.subtitle', { scope: d?.scope === 'location' ? tx('pm.scope.location') : tx('pm.scope.salonWord') })}{d ? ' · ' + tx('pm.updated', { t: when(d.generatedAt) }) : ''}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="payments" />
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/reports/payments')} disabled={!can('reports.view')} title={!can('reports.view') ? tx('people.fit.noPermission') : undefined} data-testid="financial-report">{tx('pos.financial_report')}</button>
         </div>

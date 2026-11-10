@@ -13,6 +13,7 @@
 //   Retail Value  retail price × usable, unexpired units on hand — potential value, not sales; the cost value is beside it.
 // The page scrolls vertically (the spec allows it); the sidebar scrolls on its own.
 import { useEffect, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { inventoryApi } from '../api/inventoryApi';
@@ -80,6 +81,7 @@ export function POSProductsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.products')}</h1><div className="sub">{tx('pos.your_inventory_catalog')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="inventory" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory')} data-testid="to-inventory">{tx('prd.toInventory')}</button>
           {can('inventory.reports.view') ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}

@@ -970,4 +970,137 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "sv.full": "Bạn đã có {n} chế độ xem ở đây — hãy xóa một cái để lưu thêm.", // DRAFT — Kevin reviews
   "sv.loadFailed": "Không tải được các chế độ xem đã lưu.", // DRAFT — Kevin reviews
   "sv.saveFailed": "Không lưu được chế độ xem này.", // DRAFT — Kevin reviews
+  "syschk.button": "Kiểm tra hệ thống", // DRAFT — Kevin reviews
+  "syschk.sub": "Chỉ đọc. Đếm lỗi trong dữ liệu của chính tiệm; không thay đổi gì.", // DRAFT — Kevin reviews
+  "syschk.run": "Chạy lại", // DRAFT — Kevin reviews
+  "syschk.running": "Đang kiểm tra…", // DRAFT — Kevin reviews
+  "syschk.state.READY": "Đạt", // DRAFT — Kevin reviews
+  "syschk.state.WARNING": "Cảnh báo", // DRAFT — Kevin reviews
+  "syschk.state.FAILED": "Lỗi", // DRAFT — Kevin reviews
+  "syschk.state.NOT_TESTED": "Chưa kiểm tra", // DRAFT — Kevin reviews
+  "syschk.overall.READY": "Tất cả đều đạt", // DRAFT — Kevin reviews
+  "syschk.overall.WARNING": "Có mục cần chú ý", // DRAFT — Kevin reviews
+  "syschk.overall.FAILED": "Phát hiện lỗi", // DRAFT — Kevin reviews
+  "syschk.overall.NOT_TESTED": "Có mục không chạy được", // DRAFT — Kevin reviews
+  "syschk.count": "Có {n}", // DRAFT — Kevin reviews
+  "syschk.notTested": "Mục này không chạy được — không phải là đạt.", // DRAFT — Kevin reviews
+  "syschk.checkedAt": "Kiểm tra lúc {when}", // DRAFT — Kevin reviews
+  "syschk.scopeBranch": "Chi nhánh này", // DRAFT — Kevin reviews
+  "syschk.scopeAll": "Tất cả chi nhánh của bạn", // DRAFT — Kevin reviews
+  "syschk.failed": "Không chạy được việc kiểm tra.", // DRAFT — Kevin reviews
+  "syschk.expenses.title": "Kiểm tra hệ thống Chi phí", // DRAFT — Kevin reviews
+  "syschk.invoices.title": "Kiểm tra hệ thống Hóa đơn", // DRAFT — Kevin reviews
+  "syschk.settlements.title": "Kiểm tra hệ thống Quyết toán", // DRAFT — Kevin reviews
+  "syschk.payments.title": "Kiểm tra hệ thống Thanh toán", // DRAFT — Kevin reviews
+  "syschk.discounts.title": "Kiểm tra hệ thống Giảm giá", // DRAFT — Kevin reviews
+  "syschk.catalog.title": "Kiểm tra hệ thống Dịch vụ", // DRAFT — Kevin reviews
+  "syschk.inventory.title": "Kiểm tra hệ thống Kho hàng", // DRAFT — Kevin reviews
+  "syschk.technicians.title": "Kiểm tra hệ thống Thợ", // DRAFT — Kevin reviews
+  "syschk.memberships.title": "Kiểm tra hệ thống Thành viên", // DRAFT — Kevin reviews
+  "syschk.expenses.parts_mismatch": "Tạm tính, thuế, tip và phí cộng lại đúng tổng", // DRAFT — Kevin reviews
+  "syschk.expenses.parts_mismatch.fix": "Mở chi phí và sửa các khoản hoặc tổng.", // DRAFT — Kevin reviews
+  "syschk.expenses.future_dated": "Không có chi phí ghi ngày trong tương lai", // DRAFT — Kevin reviews
+  "syschk.expenses.future_dated.fix": "Sửa ngày của chi phí.", // DRAFT — Kevin reviews
+  "syschk.expenses.possible_duplicates": "Các khoản có thể trùng đã được xem xét", // DRAFT — Kevin reviews
+  "syschk.expenses.possible_duplicates.fix": "Xem từng khoản có thể trùng rồi giữ hoặc hủy.", // DRAFT — Kevin reviews
+  "syschk.expenses.bills_past_due": "Không có hóa đơn chưa trả quá hạn", // DRAFT — Kevin reviews
+  "syschk.expenses.bills_past_due.fix": "Trả hoặc cập nhật các hóa đơn quá hạn.", // DRAFT — Kevin reviews
+  "syschk.expenses.review_waiting": "Không có chi phí chờ duyệt quá 7 ngày", // DRAFT — Kevin reviews
+  "syschk.expenses.review_waiting.fix": "Duyệt hoặc từ chối các chi phí đang chờ.", // DRAFT — Kevin reviews
+  "syschk.invoices.total_mismatch": "Tạm tính, thuế và giảm giá cộng lại đúng tổng", // DRAFT — Kevin reviews
+  "syschk.invoices.total_mismatch.fix": "Mở hóa đơn và sửa các khoản.", // DRAFT — Kevin reviews
+  "syschk.invoices.paid_not_covered": "Mọi hóa đơn ghi Đã trả đều có khoản thanh toán đủ", // DRAFT — Kevin reviews
+  "syschk.invoices.paid_not_covered.fix": "Ghi khoản thanh toán còn thiếu hoặc mở lại hóa đơn.", // DRAFT — Kevin reviews
+  "syschk.invoices.overpaid": "Không có hóa đơn nhận nhiều hơn tổng", // DRAFT — Kevin reviews
+  "syschk.invoices.overpaid.fix": "Kiểm tra các khoản thanh toán và hoàn lại hoặc ghi có phần dư.", // DRAFT — Kevin reviews
+  "syschk.invoices.due_before_issue": "Không có ngày đến hạn trước ngày lập", // DRAFT — Kevin reviews
+  "syschk.invoices.due_before_issue.fix": "Sửa ngày trên hóa đơn.", // DRAFT — Kevin reviews
+  "syschk.invoices.open_past_due": "Không có hóa đơn còn mở quá hạn", // DRAFT — Kevin reviews
+  "syschk.invoices.open_past_due.fix": "Liên hệ khách hoặc cập nhật hóa đơn.", // DRAFT — Kevin reviews
+  "syschk.invoices.missing_bill_to": "Mọi hóa đơn đều ghi tên người được lập", // DRAFT — Kevin reviews
+  "syschk.invoices.missing_bill_to.fix": "Thêm khách hàng hoặc tên người nhận hóa đơn.", // DRAFT — Kevin reviews
+  "syschk.invoices.void_without_reason": "Mọi hóa đơn đã hủy đều có lý do", // DRAFT — Kevin reviews
+  "syschk.invoices.void_without_reason.fix": "Thêm lý do cho các hóa đơn đã hủy.", // DRAFT — Kevin reviews
+  "syschk.settlements.duplicate_batch": "Không có lô thanh toán nào bị ghi hai lần", // DRAFT — Kevin reviews
+  "syschk.settlements.duplicate_batch.fix": "Xem lại các lô trùng trước khi đối chiếu.", // DRAFT — Kevin reviews
+  "syschk.settlements.missing_batch_id": "Mọi quyết toán đều có mã lô", // DRAFT — Kevin reviews
+  "syschk.settlements.missing_batch_id.fix": "Kiểm tra báo cáo của đơn vị xử lý để tìm mã lô còn thiếu.", // DRAFT — Kevin reviews
+  "syschk.settlements.deposit_overdue": "Không có khoản tiền gửi nào trễ quá 2 ngày", // DRAFT — Kevin reviews
+  "syschk.settlements.deposit_overdue.fix": "Kiểm tra tài khoản ngân hàng và đơn vị xử lý cho các khoản trễ.", // DRAFT — Kevin reviews
+  "syschk.settlements.deposit_difference": "Tiền gửi khớp với số tiền dự kiến", // DRAFT — Kevin reviews
+  "syschk.settlements.deposit_difference.fix": "Mở quyết toán và giải thích hoặc xử lý phần chênh lệch.", // DRAFT — Kevin reviews
+  "syschk.settlements.bank_unmatched": "Tiền gửi ngân hàng quá 3 ngày đã được khớp", // DRAFT — Kevin reviews
+  "syschk.settlements.bank_unmatched.fix": "Khớp từng khoản tiền gửi với quyết toán của nó.", // DRAFT — Kevin reviews
+  "syschk.settlements.refunds_stuck": "Không có khoản hoàn tiền nào chờ quá một ngày", // DRAFT — Kevin reviews
+  "syschk.settlements.refunds_stuck.fix": "Kiểm tra từng khoản hoàn tiền đang chờ với đơn vị xử lý.", // DRAFT — Kevin reviews
+  "syschk.settlements.refund_over_payment": "Không có khoản thanh toán nào bị hoàn nhiều hơn số đã trả", // DRAFT — Kevin reviews
+  "syschk.settlements.refund_over_payment.fix": "Xem lại các khoản hoàn tiền trên những thanh toán đó.", // DRAFT — Kevin reviews
+  "syschk.payments.stuck_in_progress": "Không có thanh toán nào bị kẹt đang xử lý quá một giờ", // DRAFT — Kevin reviews
+  "syschk.payments.stuck_in_progress.fix": "Mở từng thanh toán và xác nhận kết quả trước khi thử lại.", // DRAFT — Kevin reviews
+  "syschk.payments.stranded": "Không có thanh toán nào bị treo không có kết quả", // DRAFT — Kevin reviews
+  "syschk.payments.stranded.fix": "Xử lý từng thanh toán bị treo với đơn vị xử lý.", // DRAFT — Kevin reviews
+  "syschk.payments.duplicate_processor_txn": "Không có giao dịch nào của đơn vị xử lý bị ghi hai lần", // DRAFT — Kevin reviews
+  "syschk.payments.duplicate_processor_txn.fix": "Xem lại các thanh toán trùng trước khi đóng ngày.", // DRAFT — Kevin reviews
+  "syschk.payments.negative_amount": "Không có thanh toán, tip hay phụ phí nào âm", // DRAFT — Kevin reviews
+  "syschk.payments.negative_amount.fix": "Xem lại các thanh toán đó; hoàn tiền được ghi riêng.", // DRAFT — Kevin reviews
+  "syschk.payments.test_payments": "Không có thanh toán thử nào được tính trong 30 ngày qua", // DRAFT — Kevin reviews
+  "syschk.payments.test_payments.fix": "Đảm bảo thanh toán thử không nằm trong báo cáo.", // DRAFT — Kevin reviews
+  "syschk.discounts.over_redeemed": "Không có ưu đãi nào dùng quá giới hạn", // DRAFT — Kevin reviews
+  "syschk.discounts.over_redeemed.fix": "Tạm dừng ưu đãi và xem lại các lần dùng.", // DRAFT — Kevin reviews
+  "syschk.discounts.percent_missing": "Mọi ưu đãi phần trăm đều có tỷ lệ", // DRAFT — Kevin reviews
+  "syschk.discounts.percent_missing.fix": "Sửa ưu đãi và nhập tỷ lệ phần trăm.", // DRAFT — Kevin reviews
+  "syschk.discounts.fixed_over_price": "Không có giảm giá cố định nào lớn hơn giá", // DRAFT — Kevin reviews
+  "syschk.discounts.fixed_over_price.fix": "Giảm mức giảm hoặc sửa giá.", // DRAFT — Kevin reviews
+  "syschk.discounts.ends_before_starts": "Không có ưu đãi nào kết thúc trước khi bắt đầu", // DRAFT — Kevin reviews
+  "syschk.discounts.ends_before_starts.fix": "Sửa ngày bắt đầu và kết thúc.", // DRAFT — Kevin reviews
+  "syschk.discounts.active_but_ended": "Không có ưu đãi đang chạy nào đã quá ngày kết thúc", // DRAFT — Kevin reviews
+  "syschk.discounts.active_but_ended.fix": "Kết thúc hoặc gia hạn các ưu đãi đó.", // DRAFT — Kevin reviews
+  "syschk.discounts.waiting_approval_started": "Không có ưu đãi chờ duyệt nào đã đến ngày bắt đầu", // DRAFT — Kevin reviews
+  "syschk.discounts.waiting_approval_started.fix": "Duyệt hoặc từ chối các ưu đãi đó.", // DRAFT — Kevin reviews
+  "syschk.catalog.active_without_price": "Mọi dịch vụ đang hoạt động đều có giá", // DRAFT — Kevin reviews
+  "syschk.catalog.active_without_price.fix": "Đặt giá hoặc lưu trữ dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.catalog.zero_duration": "Mọi dịch vụ đang hoạt động đều có thời lượng", // DRAFT — Kevin reviews
+  "syschk.catalog.zero_duration.fix": "Nhập thời gian làm dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.catalog.missing_category": "Mọi dịch vụ đều thuộc một danh mục có thật", // DRAFT — Kevin reviews
+  "syschk.catalog.missing_category.fix": "Chuyển các dịch vụ đó vào một danh mục.", // DRAFT — Kevin reviews
+  "syschk.catalog.in_closed_category": "Không có dịch vụ đang hoạt động nào nằm trong danh mục đã lưu trữ", // DRAFT — Kevin reviews
+  "syschk.catalog.in_closed_category.fix": "Chuyển dịch vụ hoặc mở lại danh mục.", // DRAFT — Kevin reviews
+  "syschk.catalog.duplicate_names": "Không có hai dịch vụ đang hoạt động trùng tên", // DRAFT — Kevin reviews
+  "syschk.catalog.duplicate_names.fix": "Đổi tên hoặc lưu trữ các dịch vụ trùng.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_negative_price": "Không có dịch vụ thêm nào có giá âm", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_negative_price.fix": "Sửa giá dịch vụ thêm.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_on_archived_service": "Không có dịch vụ thêm nào còn bật trên dịch vụ đã lưu trữ", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_on_archived_service.fix": "Tắt hoặc chuyển các dịch vụ thêm đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.available_over_on_hand": "Hàng có sẵn không bao giờ nhiều hơn hàng tồn", // DRAFT — Kevin reviews
+  "syschk.inventory.available_over_on_hand.fix": "Kiểm đếm lại các sản phẩm đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.movement_math": "Mọi lần nhập xuất kho đều cộng đúng (trước + thay đổi = sau)", // DRAFT — Kevin reviews
+  "syschk.inventory.movement_math.fix": "Xem lại các lần nhập xuất đó bằng một lần kiểm kho.", // DRAFT — Kevin reviews
+  "syschk.inventory.below_reorder": "Không có sản phẩm nào ở mức cần đặt hàng", // DRAFT — Kevin reviews
+  "syschk.inventory.below_reorder.fix": "Đặt hàng thêm các sản phẩm đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.archived_with_stock": "Không có sản phẩm đã lưu trữ nào còn tồn kho", // DRAFT — Kevin reviews
+  "syschk.inventory.archived_with_stock.fix": "Dùng hết, chuyển hoặc ghi giảm lượng tồn đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_without_technician": "Mọi lần dùng sản phẩm đều có tên thợ", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_without_technician.fix": "Thêm thợ cho các lần dùng đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_duplicate_key": "Không có lần dùng sản phẩm nào bị ghi hai lần", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_duplicate_key.fix": "Hoàn tác các lần dùng bị trùng.", // DRAFT — Kevin reviews
+  "syschk.technicians.active_but_archived": "Không có thợ đã lưu trữ nào còn hoạt động", // DRAFT — Kevin reviews
+  "syschk.technicians.active_but_archived.fix": "Tắt hoặc khôi phục các thợ đó.", // DRAFT — Kevin reviews
+  "syschk.technicians.missing_name": "Mọi thợ đều có tên", // DRAFT — Kevin reviews
+  "syschk.technicians.missing_name.fix": "Thêm tên còn thiếu.", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_phone": "Không có hai thợ dùng chung số điện thoại", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_phone.fix": "Kiểm tra xem họ có phải cùng một người không.", // DRAFT — Kevin reviews
+  "syschk.technicians.split_out_of_range": "Mọi tỷ lệ chia hoa hồng đều từ 0% đến 100%", // DRAFT — Kevin reviews
+  "syschk.technicians.split_out_of_range.fix": "Sửa tỷ lệ chia của các thợ đó.", // DRAFT — Kevin reviews
+  "syschk.technicians.no_app_account": "Mọi thợ đang làm đều đăng nhập được ứng dụng Thợ", // DRAFT — Kevin reviews
+  "syschk.technicians.no_app_account.fix": "Gửi lời mời dùng ứng dụng cho các thợ đó.", // DRAFT — Kevin reviews
+  "syschk.memberships.cancelled_still_billing": "Không có thẻ thành viên đã hủy hoặc hết hạn nào còn lịch thu tiền", // DRAFT — Kevin reviews
+  "syschk.memberships.cancelled_still_billing.fix": "Bỏ lịch thu tiền tiếp theo của các thẻ đó.", // DRAFT — Kevin reviews
+  "syschk.memberships.renew_without_consent": "Mọi thẻ tự gia hạn đều có sự đồng ý của khách", // DRAFT — Kevin reviews
+  "syschk.memberships.renew_without_consent.fix": "Xin sự đồng ý hoặc tắt tự gia hạn.", // DRAFT — Kevin reviews
+  "syschk.memberships.billing_overdue": "Không có lần thu tiền thẻ nào trễ quá một ngày", // DRAFT — Kevin reviews
+  "syschk.memberships.billing_overdue.fix": "Kiểm tra việc thu tiền của các thẻ đó.", // DRAFT — Kevin reviews
+  "syschk.memberships.active_past_period": "Không có thẻ đang hoạt động nào đã quá hết kỳ", // DRAFT — Kevin reviews
+  "syschk.memberships.active_past_period.fix": "Gia hạn, kết thúc hoặc cập nhật các thẻ đó.", // DRAFT — Kevin reviews
+  "syschk.memberships.paused_past_resume": "Không có thẻ tạm dừng nào đã quá ngày tiếp tục", // DRAFT — Kevin reviews
+  "syschk.memberships.paused_past_resume.fix": "Tiếp tục hoặc gia hạn thời gian tạm dừng.", // DRAFT — Kevin reviews
 };

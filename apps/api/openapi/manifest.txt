@@ -1125,6 +1125,15 @@ GET /pos/skills-catalog  realm=staff  auth=session  domain=workforce  perm=pos.t
 GET /pos/skills-catalog/technician/{technicianId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/skills-catalog/technician/{technicianId}/removal-impact/{assignmentId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/social-posts/state  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/catalog  realm=staff  auth=session  domain=operations  perm=pos.services.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/discounts  realm=staff  auth=session  domain=operations  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/expenses  realm=staff  auth=session  domain=operations  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/inventory  realm=staff  auth=session  domain=operations  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/invoices  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/memberships  realm=staff  auth=session  domain=operations  perm=pos.memberships.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/payments  realm=staff  auth=session  domain=operations  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/settlements  realm=staff  auth=session  domain=operations  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/technicians  realm=staff  auth=session  domain=operations  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-birthdays/upcoming  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
