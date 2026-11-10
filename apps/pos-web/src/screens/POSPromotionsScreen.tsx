@@ -12,6 +12,7 @@
 // Every action is permission-checked on the server; creating, duplicating or saving a suggestion makes a DRAFT and "Save &
 // activate" is the normal Publish step. Checks are logged (Eligibility Checks) and never consume a use. Nothing sends.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SavedViews, vStr } from '../components/SavedViews';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posDiscountsApi } from '../api/posDiscountsApi';
@@ -46,6 +47,8 @@ const day = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 const pick = (v: string | null, list: string[], dflt: string) => (v && list.includes(v) ? v : dflt);
 
+/** the URL filters a saved view keeps (the tab — scope — stays where the person is; each tab has its own views) */
+const PM_VIEW_KEYS = ['q', 'status', 'type', 'branch', 'service', 'basis', 'state', 'verdict', 'grain', 'preset', 'from', 'to', 'size'] as const;
 export function POSPromotionsScreen() {
   const nav = useNavigate(); const can = useCan();
   // a real owner/manager session carries the catalog key 'marketing.manage'; 'pos.marketing.manage' is its route alias (the server resolves both)
@@ -179,6 +182,8 @@ export function POSPromotionsScreen() {
         {tab === 'redemptions' ? <select className="fk-select" value={redState} onChange={(e) => setP({ state: e.target.value === 'confirmed' ? null : e.target.value })} aria-label={tx('pos.status')} data-testid="red-state">{RSTATES.map((s) => <option key={s} value={s}>{tx('dsc.rstate.' + s)}</option>)}</select> : null}
         {tab === 'checks' ? <select className="fk-select" value={verdict} onChange={(e) => setP({ verdict: e.target.value === 'all' ? null : e.target.value })} aria-label={tx('promo.verdict')} data-testid="verdict">{VERDICTS.map((s) => <option key={s} value={s}>{tx('promo.verdict.' + s)}</option>)}</select> : null}
         {tab === 'insights' ? <select className="fk-select" value={grain} onChange={(e) => setP({ grain: e.target.value === 'day' ? null : e.target.value })} aria-label={tx('promo.grain')} data-testid="grain">{GRAINS.map((s) => <option key={s} value={s}>{tx('promo.grain.' + s)}</option>)}</select> : null}
+        <SavedViews surface={`promotions.${tab}`} testId="pm-views" current={Object.fromEntries(PM_VIEW_KEYS.map((k) => [k, P(k)]))}
+          onApply={(v) => { setSearch(vStr(v, 'q')); setP(Object.fromEntries(PM_VIEW_KEYS.map((k) => [k, vStr(v, k) || null]))); }} />
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div> : null}
       {tab !== 'health' ? <PeriodBar compact allowAll={tab !== 'insights'} value={period} onChange={setPeriod} server={server}

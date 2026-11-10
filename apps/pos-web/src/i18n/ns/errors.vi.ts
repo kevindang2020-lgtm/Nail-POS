@@ -672,6 +672,10 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.LOCATIONS_SEARCH_TOO_SHORT': 'Hãy nhập ít nhất 2 ký tự để tìm.',
   'errors.NOTIFICATION_PREFS_SAVE_FAILED': 'Không lưu được tùy chọn thông báo của bạn. Hãy thử lại.',
   'errors.BRAND_COLOR_LOW_CONTRAST': 'Màu này quá nhạt để đọc trên nền trắng — hãy chọn sắc đậm hơn.',
+  'errors.SAVED_VIEW_INVALID': 'Không lưu được chế độ xem này — hãy kiểm tra tên và bộ lọc.', // DRAFT — Kevin reviews
+  'errors.SAVED_VIEW_NOT_FOUND': 'Chế độ xem đã lưu này không còn nữa.', // DRAFT — Kevin reviews
+  'errors.SAVED_VIEW_LIMIT': 'Bạn đã có 20 chế độ xem đã lưu trên màn hình này — hãy xóa bớt một cái trước.', // DRAFT — Kevin reviews
+  'errors.SAVED_VIEW_NAME_TAKEN': 'Bạn đã có một chế độ xem đã lưu cùng tên trên màn hình này.', // DRAFT — Kevin reviews
   'errors.OWN_ROLE_CHANGE': 'Bạn không thể đổi vai trò của chính mình.',
   'errors.OWN_ACCOUNT_DISABLE': 'Bạn không thể vô hiệu hóa tài khoản của chính mình.',
   'errors.PLATFORM_ACCOUNTS_ELSEWHERE': 'Tài khoản nền tảng do đội ngũ nền tảng quản lý, không quản lý ở đây.',

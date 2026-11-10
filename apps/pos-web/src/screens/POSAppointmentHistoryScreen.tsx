@@ -6,6 +6,7 @@
 // The original page (search a customer → their history with the money details per row) stays: the header search opens it as a
 // dialog, and so does "Customer history" on any appointment's details.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SavedViews, vStr, vNum } from '../components/SavedViews';
 import { posAppointmentHistoryApi, type AppointmentHistoryQuery } from '../api/posAppointmentHistoryApi';
 import type { AhListResponse, AhSummaryResponse, AhCheckResponse } from '@aipowersalon/api-contracts/tenant';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
@@ -244,6 +245,9 @@ export function POSAppointmentHistoryScreen() {
           {(['today', 'week', 'month', 'year'] as const).map((p) => <button key={p} className={'btn ghost' + (f.preset === p ? ' on' : '')} data-testid={`ahx-preset-${p}`} onClick={() => setF({ preset: p, from: undefined, to: undefined })}>{tt('cnx.preset.' + p)}</button>)}
           <button className={'btn ghost' + (f.preset === 'custom' ? ' on' : '')} data-testid="ahx-preset-custom" onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : tt('cnx.preset.custom')}</button>
         </div>
+        <SavedViews surface="appointments.history" testId="ahx-views" current={{ ...f, page: undefined }}
+          onApply={(v) => { setDraft(vStr(v, 'q')); setFState({ page: 1, pageSize: vNum(v, 'pageSize', 25), sort: vStr(v, 'sort', 'newest'), status: vStr(v, 'status', 'all'),
+            q: vStr(v, 'q') || undefined, technician: vStr(v, 'technician') || undefined, dateField: vStr(v, 'dateField') || undefined, preset: vStr(v, 'preset') || undefined, from: vStr(v, 'from') || undefined, to: vStr(v, 'to') || undefined }); }} />
         {anyFilter ? <button className="btn ghost" data-testid="ahx-clear" onClick={() => { setDraft(''); setFState({ page: 1, pageSize: f.pageSize, sort: 'newest', status: 'all' }); }}>{tt('cnx.clear')}</button> : null}
         {cal ? <div className="rvw-cal" data-testid="ahx-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period.today ?? deviceToday()}
           onApply={(r) => { setF({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setF({ preset: undefined, from: undefined, to: undefined }); setCal(false); }} /></div> : null}

@@ -6,15 +6,16 @@
 // role, technicians included, and no client calls them).
 import { Body, Controller, Delete, Get, HttpException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ListQuery } from '@aipowersalon/database';
-import type { NotificationDeliveryPage } from '@aipowersalon/api-contracts/tenant';
+import type { NotificationDeliveryPage, SavedView, SavedViewDeleted, SavedViewList } from '@aipowersalon/api-contracts/tenant';
 import { RequirePermission, TenantAuthGuard, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { ProfileService, AvatarError } from './profile.service';
-import { AVATAR_BODY, LOGIN_ALERTS_BODY, NOTIFICATION_PREFS_BODY, UI_PREFS_BODY } from './request-schemas';
+import { SavedViews } from './saved-views';
+import { AVATAR_BODY, LOGIN_ALERTS_BODY, NOTIFICATION_PREFS_BODY, SAVED_VIEW_CREATE_BODY, SAVED_VIEW_UPDATE_BODY, UI_PREFS_BODY } from './request-schemas';
 
 @UseGuards(TenantAuthGuard)
 @Controller('pos/me')
 export class ProfileController {
-  constructor(private readonly svc: ProfileService) {}
+  constructor(private readonly svc: ProfileService, private readonly views: SavedViews) {}
 
   @RequirePermission('self.profile.view') @Get('profile')
   getProfile(@Req() req: any) {
@@ -83,6 +84,31 @@ export class ProfileController {
   updateUiPrefs(@Req() req: any, @Body(ValidatedBody(UI_PREFS_BODY, { strict: true })) body: any) {
     const c = req?.ctx || {};
     return this.svc.updateUiPrefs({ tenantId: c.tenantId, userId: c.userId, role: c.role }, body);
+  }
+
+  // POS saved views (Nov 9 2026): the person's own named filters for one screen — keyed by the session, never the body
+  @RequirePermission('self.profile.view') @Get('saved-views')
+  savedViews(@Req() req: any, @Query('surface') surface: string): Promise<SavedViewList> {
+    const c = req?.ctx || {};
+    return this.views.list({ tenantId: c.tenantId, userId: c.userId }, surface);
+  }
+
+  @RequirePermission('self.profile.edit') @Post('saved-views')
+  createSavedView(@Req() req: any, @Body(ValidatedBody(SAVED_VIEW_CREATE_BODY, { strict: true })) body: any): Promise<SavedView> {
+    const c = req?.ctx || {};
+    return this.views.create({ tenantId: c.tenantId, userId: c.userId }, body);
+  }
+
+  @RequirePermission('self.profile.edit') @Patch('saved-views/:id')
+  updateSavedView(@Req() req: any, @Param('id') id: string, @Body(ValidatedBody(SAVED_VIEW_UPDATE_BODY, { strict: true })) body: any): Promise<SavedView> {
+    const c = req?.ctx || {};
+    return this.views.update({ tenantId: c.tenantId, userId: c.userId }, id, body);
+  }
+
+  @RequirePermission('self.profile.edit') @Delete('saved-views/:id')
+  deleteSavedView(@Req() req: any, @Param('id') id: string): Promise<SavedViewDeleted> {
+    const c = req?.ctx || {};
+    return this.views.remove({ tenantId: c.tenantId, userId: c.userId }, id);
   }
 
   @RequirePermission('settings.view') @Get('billing')

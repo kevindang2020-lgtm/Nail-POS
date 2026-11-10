@@ -221,6 +221,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   pos_message_templates: 'cut',
   pos_payment_terminals: 'ut',
   pos_queue_items: 'cut',
+  pos_saved_views: 'ut',
   pos_stations: 'ut',
   pos_tech_appointments: 'cut',
   pos_tech_queue_tickets: 'ut',

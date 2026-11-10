@@ -5,6 +5,7 @@
 // booking & messaging · assignments & audit), Check Follow-Up System and the Priority & Escalation Assistant.
 // Server: /pos/ai/follow-ups-center/*. A text is prepared, shown, then confirmed — "submitted" is never shown as "delivered".
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SavedViews, vStr, vNum, vBool, periodToView, periodFromView } from '../components/SavedViews';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiFollowUpsApi as fa, type FuDetail, type FuKpis, type FuPage, type FuPrepared, type FuPriority, type FuCheck } from '../api/posAiFollowUpsApi';
@@ -102,6 +103,9 @@ export function POSAIFollowUpsScreen() {
         <label className="aifu-check"><input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} data-testid="aifu-f-overdue" /> {tx('aifu.f.overdue')}</label>
         <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={tx('aifu.f.sort')} data-testid="aifu-f-sort">{['newest', 'priority', 'due'].map((s) => <option key={s} value={s}>{tx(`aifu.sort.${s}`)}</option>)}</select>
         <PeriodBar compact allowAll value={period} onChange={setPeriod} server={data?.filters.period ? { ...data.filters.period, preset: data.filters.period.preset as PeriodState['preset'] } : null} basis={basis} onBasis={setBasis} basisOptions={BASES.map((b) => ({ value: b, label: tx(`aifu.basis.${b}`) }))} />
+        <SavedViews surface="ai.follow-ups" testId="aifu-views" current={{ status, q, priority, source, assignee, overdue, sort, basis, pageSize, ...periodToView(period) }}
+          onApply={(v) => { setStatus((CHIPS as readonly string[]).includes(vStr(v, 'status')) ? (vStr(v, 'status') as (typeof CHIPS)[number]) : 'open'); setQ(vStr(v, 'q')); setPriority(vStr(v, 'priority')); setSource(vStr(v, 'source'));
+            setAssignee(vStr(v, 'assignee')); setOverdue(vBool(v, 'overdue')); setSort(vStr(v, 'sort', 'newest')); setBasis(vStr(v, 'basis', 'created')); setPageSize(vNum(v, 'pageSize', 20)); setPeriod(periodFromView(v, { preset: 'all' } as PeriodState)); }} />
         {filtered ? <button className="btn ghost" onClick={clearAll} data-testid="aifu-clear">{tx('aifu.clear')}</button> : null}
       </div>
       {data && period.preset !== 'all' ? <div className="sub aifu-basis" data-testid="aifu-basis-note">{tx('aifu.basisNote', { basis: tx(`aifu.basis.${data.filters.basis}`), tz: data.filters.period.tz })}</div> : null}

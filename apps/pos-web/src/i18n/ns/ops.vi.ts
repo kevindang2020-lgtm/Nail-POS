@@ -949,4 +949,25 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.receipt.2": "Thanh toán không bao giờ chờ máy in — hóa đơn điện tử vẫn hoạt động.",
   "dfx.receipt.3": "Xem hóa đơn điện tử hôm nay ở thẻ Hóa đơn điện tử.",
   "dfx.hk.printer_registry": "Danh sách máy in",
+  "sv.button": "Chế độ xem", // DRAFT — Kevin reviews
+  "sv.open": "Chế độ xem đã lưu cho màn hình này", // DRAFT — Kevin reviews
+  "sv.openNamed": "Chế độ xem đã lưu — đang xem {name}", // DRAFT — Kevin reviews
+  "sv.title": "Chế độ xem đã lưu", // DRAFT — Kevin reviews
+  "sv.sub": "Bộ lọc riêng của bạn cho màn hình này. Chỉ bạn thấy; không bao giờ hiện nhiều hơn quyền của bạn.", // DRAFT — Kevin reviews
+  "sv.name": "Tên chế độ xem", // DRAFT — Kevin reviews
+  "sv.namePh": "Đặt tên cho bộ lọc hiện tại", // DRAFT — Kevin reviews
+  "sv.makeDefault": "Mở mặc định", // DRAFT — Kevin reviews
+  "sv.save": "Lưu bộ lọc hiện tại", // DRAFT — Kevin reviews
+  "sv.loading": "Đang tải…", // DRAFT — Kevin reviews
+  "sv.empty": "Chưa có chế độ xem nào. Chọn bộ lọc, đặt tên bên dưới rồi lưu.", // DRAFT — Kevin reviews
+  "sv.default": "Mặc định", // DRAFT — Kevin reviews
+  "sv.showing": "đang xem", // DRAFT — Kevin reviews
+  "sv.setDefault": "Đặt mặc định", // DRAFT — Kevin reviews
+  "sv.unsetDefault": "Bỏ mặc định", // DRAFT — Kevin reviews
+  "sv.overwrite": "Cập nhật theo hiện tại", // DRAFT — Kevin reviews
+  "sv.delete": "Xóa", // DRAFT — Kevin reviews
+  "sv.deleteNamed": "Xóa chế độ xem {name}", // DRAFT — Kevin reviews
+  "sv.full": "Bạn đã có {n} chế độ xem ở đây — hãy xóa một cái để lưu thêm.", // DRAFT — Kevin reviews
+  "sv.loadFailed": "Không tải được các chế độ xem đã lưu.", // DRAFT — Kevin reviews
+  "sv.saveFailed": "Không lưu được chế độ xem này.", // DRAFT — Kevin reviews
 };

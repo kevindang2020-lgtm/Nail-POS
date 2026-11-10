@@ -474,6 +474,10 @@
   "referral_health_runs": {
    "domain": "CUSTOMERS",
    "reason": "A18 Referral Program (Nov 6 2026, migration 832): recorded runs of Check Referral System \u2014 same owner as referral_redemptions"
+  },
+  "pos_saved_views": {
+   "domain": "IDENTITY",
+   "reason": "POS saved views (Nov 9 2026, migration 844): one staff member's named filter values for one POS screen inside one salon \u2014 a personal UI preference like user_ui_prefs; holds no business data"
   }
  }
 }

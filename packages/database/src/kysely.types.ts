@@ -4937,6 +4937,10 @@ export interface CustomerNoteReviewsTable {   // migration 843 — Review & Accu
   id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; decision: string; reason: string | null;
   reviewer_user_id: string | null; created_at: Generated<Ts>;
 }
+export interface PosSavedViewsTable {   // migration 844 — a staff member's named filters for one POS screen (personal, per salon)
+  id: Generated<string>; tenant_id: string; owner_user_id: string; surface: string; name: string; filters_json: unknown; is_default: Generated<boolean>;
+  created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
+}
 export interface CustomerIntelligenceSnapshotsTable {   // migration 763 — latest per-customer classification (derived, rebuildable)
   tenant_id: string; customer_id: string; scan_id: string; status: string; completed_visits: Generated<number>; first_visit_at: Ts | null; last_visit_at: Ts | null;
   typical_interval_days: number | null; days_since_last: number | null; has_upcoming: Generated<boolean>; next_appointment_date: string | null; churn_watch: Generated<boolean>;
@@ -8045,6 +8049,7 @@ export interface DB {
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
+  pos_saved_views: PosSavedViewsTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;

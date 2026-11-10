@@ -8,6 +8,7 @@
 // show what each checks and how often it fires; a rule change needs a reason to weaken it and keeps before → after.
 // Nothing here moves money.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { SavedViews } from '../components/SavedViews';
 import { Link, useSearchParams } from 'react-router-dom';
 import { posAIMoneyProtectionApi } from '../api/posAIMoneyProtectionApi';
 import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
@@ -97,8 +98,8 @@ function MpShell({ title, sub, tab, children, onChanged }: { title: string; sub:
 }
 
 /** the shared list frame: search · filters · presets + calendar · table · pager */
-function ListFrame({ testId, f, set, period, setPer, today, searchPh, filters, list, err, onRetry, empty, children, total }: {
-  testId: string; f: Record<string, any>; set: (x: Record<string, any>, keep?: boolean) => void; period: Period; setPer: (p: Period) => void; today?: string; searchPh: string;
+function ListFrame({ testId, surface, f, set, period, setPer, today, searchPh, filters, list, err, onRetry, empty, children, total }: {
+  testId: string; surface: string; f: Record<string, any>; set: (x: Record<string, any>, keep?: boolean) => void; period: Period; setPer: (p: Period) => void; today?: string; searchPh: string;
   filters: ReactNode; list: any; err: string | null; onRetry: () => void; empty: string; children: ReactNode; total?: number }) {
   const [draft, setDraft] = useState(f.q ?? '');
   const [cal, setCal] = useState(false);
@@ -108,6 +109,8 @@ function ListFrame({ testId, f, set, period, setPer, today, searchPh, filters, l
         <input className="rvw-search" type="search" data-testid="mpx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={searchPh} aria-label={searchPh} />
         <button className="btn" type="submit">{t('mpx.search')}</button>
         {filters}
+        <SavedViews surface={surface} testId={`${testId}-views`} current={{ ...f, page: undefined, ...period }}
+          onApply={(v) => { const { preset, from, to, ...rest } = v as Record<string, any>; setDraft(typeof rest.q === 'string' ? rest.q : ''); set({ q: undefined, ...rest }); setPer(preset ? { preset, from: from ?? undefined, to: to ?? undefined } : {}); }} />
         {f.q || period.preset ? <button className="btn ghost" type="button" data-testid="mpx-clear" onClick={() => { setDraft(''); setPer({}); set({ q: undefined }); }}>{t('mpx.clear')}</button> : null}
       </form>
       <div className="rvw-dates">
@@ -194,7 +197,7 @@ export function MpAlerts() {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }} role="tablist">
         {GROUPS.map((g) => <button key={g} role="tab" aria-selected={L.f.status === g} className={'btn ghost' + (L.f.status === g ? ' on' : '')} data-testid={`mpx-grp-${g}`} onClick={() => L.set({ status: g })}>{t('mpx.grp.' + g)}</button>)}
       </div>
-      <ListFrame testId="mpx-alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
+      <ListFrame testId="mpx-alerts" surface="money-protection.alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
         searchPh={L.list?.customersVisible === false ? t('mpx.searchPhNoCustomer') : t('mpx.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.noAlerts')}
         filters={<>
           <select data-testid="mpx-severity" aria-label={t('mpx.severityLabel')} value={L.f.severity} onChange={(e) => L.set({ severity: e.target.value })}>{SEVS.map((k) => <option key={k} value={k}>{t('mpx.sev.' + k)}</option>)}</select>
@@ -306,7 +309,7 @@ export function MpInvestigations() {
   const rows: any[] = L.list?.items ?? [];
   return (
     <MpShell title={tx('pos.money_protection_investigations')} sub={tx('pos.human_review_of_possible_anomalies_notes_xycx')} tab="investigations" onChanged={() => setTick((n) => n + 1)}>
-      <ListFrame testId="mpx-invs" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
+      <ListFrame testId="mpx-invs" surface="money-protection.investigations" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
         searchPh={t('mpx.inv.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.inv.empty')}
         filters={<>
           <select data-testid="mpx-istatus" aria-label={t('mpx.statusLabel')} value={L.f.status} onChange={(e) => L.set({ status: e.target.value })}>{I_STATUS.map((k) => <option key={k} value={k}>{t('mpx.ist.' + k)}</option>)}</select>
@@ -464,7 +467,7 @@ export function MpSettings() {
               <td className="sub">{Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</td>
               <td className="mpx-acts">{r.canEdit ? <button className="btn ghost sm" data-testid="mpx-rule-edit" onClick={() => setEdit(x)}>{t('mpx.rules.edit')}</button> : null}</td></tr>))}</tbody></table></div>
         </section></>)}
-      <ListFrame testId="mpx-history" f={H.f} set={H.set} period={H.period} setPer={H.setPer} today={H.list?.period?.today} list={H.list} err={H.err} onRetry={H.load} total={H.list?.total}
+      <ListFrame testId="mpx-history" surface="money-protection.history" f={H.f} set={H.set} period={H.period} setPer={H.setPer} today={H.list?.period?.today} list={H.list} err={H.err} onRetry={H.load} total={H.list?.total}
         searchPh={t('mpx.set.history')} empty={t('mpx.set.noHistory')} filters={null}>
         <div className="p-h">{t('mpx.set.history')}</div>
         {(H.list?.items ?? []).map((h: any) => <div key={h.id} className="rvw-ev" data-testid="mpx-hist-row">

@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
+import { SavedViews } from './saved-views';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { STORAGE_QUOTA, type StorageQuotaPort } from '@aipowersalon/media';
 
@@ -9,6 +10,7 @@ import { STORAGE_QUOTA, type StorageQuotaPort } from '@aipowersalon/media';
   controllers: [ProfileController],
   providers: [
     { provide: ProfileService, useFactory: (db: AppDatabase, quota?: StorageQuotaPort) => new ProfileService(db, quota ?? null), inject: [DATABASE, { token: STORAGE_QUOTA, optional: true }] },
+    { provide: SavedViews, useFactory: (db: AppDatabase) => new SavedViews(db), inject: [DATABASE] },
   ],
   exports: [ProfileService],
 })

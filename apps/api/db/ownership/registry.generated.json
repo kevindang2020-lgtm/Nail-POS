@@ -8,16 +8,16 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 966,
+  "tables": 967,
   "ownership": {
-   "tenant_owned": 644,
+   "tenant_owned": 645,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 161,
    "tenant_branch_owned": 92,
    "cross_tenant_platform_data": 25
   },
   "domain": {
-   "IDENTITY": 41,
+   "IDENTITY": 42,
    "SECURITY": 31,
    "FINANCE": 83,
    "MARKETING": 24,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 144,
    "CONFIDENTIAL": 167,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 534,
+   "INTERNAL": 535,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -7111,6 +7111,19 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "pos_saved_views": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "IDENTITY",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "POS saved views (Nov 9 2026, migration 844): one staff member's named filter values for one POS screen inside one salon — a personal UI preference like user_ui_prefs; holds no business data"
   },
   "pos_stations": {
    "ownership": "tenant_branch_owned",

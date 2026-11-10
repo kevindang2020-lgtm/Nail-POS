@@ -14,3 +14,8 @@ export const NOTIFICATION_PREFS_BODY: BodySchema = S.object({
 export const UI_PREFS_BODY: BodySchema = S.object({ defaultLanding: S.nullable(S.text(80)) });
 /** ≈ 10 MB of base64 image data at most (the service's own limit is smaller and answers it) */
 export const AVATAR_BODY: BodySchema = S.object({ dataUrl: S.nullable(S.text(14_000_000)) });
+
+// POS saved views (Nov 9 2026): filters are a bounded flat object; the service checks every value (checkSavedViewFilters)
+const SAVED_VIEW_FILTERS: BodySchema = S.bounded(S.freeObject(), 2, 80);
+export const SAVED_VIEW_CREATE_BODY: BodySchema = S.object({ surface: S.text(62), name: S.text(80), filters: SAVED_VIEW_FILTERS, isDefault: S.nullable(S.boolean()) }, ['surface', 'name', 'filters']);
+export const SAVED_VIEW_UPDATE_BODY: BodySchema = S.object({ name: S.nullable(S.text(80)), filters: S.nullable(SAVED_VIEW_FILTERS), isDefault: S.nullable(S.boolean()) });

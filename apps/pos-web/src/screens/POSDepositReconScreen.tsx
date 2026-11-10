@@ -10,6 +10,7 @@
 // Matching is an ALLOCATION a person makes (1:1, split, combined, partial), with the evidence recorded; a suggestion is
 // rule-based evidence and is never applied by itself. Recording a deposit creates a record — no money moves.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SavedViews, vStr, periodToView, periodFromView } from '../components/SavedViews';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posDepositReconApi as api } from '../api/posDepositReconApi';
@@ -96,6 +97,8 @@ export function POSDepositReconScreen() {
         <input className="fk-search sm" value={processor} onChange={(e) => setProcessor(e.target.value.trim())} placeholder={tx('finance.processor')} aria-label={tx('finance.processor')} data-testid="processor" />
         <select className="fk-select" value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} aria-label={tx('finance.dr.bankAccount')} data-testid="bank-filter">
           <option value="">{tx('finance.dr.allAccounts')}</option>{(accounts.data?.items ?? []).map((a: Account) => <option key={a.id} value={a.id}>{a.masked}</option>)}</select>
+        <SavedViews surface="finance.deposit-reconciliation" testId="dr-views" current={{ basis, status, processor, bankAccountId, ...periodToView(period) }}
+          onApply={(v) => { setBasis(vStr(v, 'basis', 'settlement')); setStatus(vStr(v, 'status')); setProcessor(vStr(v, 'processor')); setBankAccountId(vStr(v, 'bankAccountId')); setPeriod(periodFromView(v, { preset: 'month' } as PeriodState)); }} />
         {filtersOn ? <button type="button" className="fk-link" onClick={clearAll} data-testid="reset-filters">{tx('finance.resetFilters')}</button> : null}
       </div>
 

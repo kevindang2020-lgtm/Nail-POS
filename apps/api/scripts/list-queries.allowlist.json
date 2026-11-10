@@ -232,6 +232,10 @@
     "modules/checkout/src/payment-channels/payment-channels.controller.ts#PaymentChannelsController.channels": {
       "kind": "fixed-size",
       "reason": "Three Ways to Pay (Nov 9 2026): always exactly three payment channels of this location (+ the one open ticket named by ?ticketId); never a filter or page of rows"
+    },
+    "profile/profile.controller.ts#ProfileController.savedViews": {
+      "kind": "fixed-size",
+      "reason": "POS saved views (Nov 9 2026): one person's views for ONE screen, at most 20 (SAVED_VIEW_LIMITS.perSurface, enforced on create); ?surface picks the screen, never a row filter or page"
     }
   }
 }

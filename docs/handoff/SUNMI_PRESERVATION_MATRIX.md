@@ -284,7 +284,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSDepositReconScreen.tsx`
 - Guide: AI_PowerSalon_AI_Deposit_Reconciliation
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDepositReconApi.raise`, `posSettlementsApi.detail`, `posSettlementsApi.exportCsv`, `posSettlementsApi.exportDetail`, `posSettlementsApi.list`, `posSettlementsApi.summary`, `posSettlementsApi.transactions`, `posStepUpApi.stepUp`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDepositReconApi.raise`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posSettlementsApi.detail`, `posSettlementsApi.exportCsv`, `posSettlementsApi.exportDetail`, `posSettlementsApi.list`, `posSettlementsApi.summary`, `posSettlementsApi.transactions`, `posStepUpApi.stepUp`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -442,7 +442,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSServiceCategoriesScreen.tsx`
 - Guide: AI_PowerSalon_SERVICE_CATEGORIES
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.categories`, `posCatalogApi.category`, `posCatalogApi.categorySummary`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.reassign`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posServicesApi.archiveCategory`, `posServicesApi.create`, `posServicesApi.createCategory`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posServicesApi.updateCategory`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.categories`, `posCatalogApi.category`, `posCatalogApi.categorySummary`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.reassign`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posServicesApi.archiveCategory`, `posServicesApi.create`, `posServicesApi.createCategory`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posServicesApi.updateCategory`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1235,7 +1235,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSPromotionsScreen.tsx`
 - Guide: AI_PowerSalon_Promotions_Management
 - Scroll: vertical page scroll allowed (Promotions SUNMI addendum: allow vertical scrolling when necessary; keep modules discoverable via scrolling and tabs.)
-- API calls on this page: `authApi.branches`, `authApi.logout`, `authApi.me`, `posCouponsApi.campaigns`, `posCouponsApi.duplicate`, `posCouponsApi.health`, `posCouponsApi.healthRuns`, `posCouponsApi.runHealth`, `posCustomersApi.quickSearch`, `posDealsApi.approve`, `posDealsApi.coupons`, `posDealsApi.create`, `posDealsApi.generateCodes`, `posDealsApi.get`, `posDealsApi.preview`, `posDealsApi.publish`, `posDealsApi.revokeCode`, `posDealsApi.submit`, `posDealsApi.update`, `posDiscountsApi.exportList`, `posDiscountsApi.exportRedemptions`, `posDiscountsApi.kpis`, `posDiscountsApi.list`, `posDiscountsApi.performance`, `posDiscountsApi.redemptions`, `posPromotionsApi.activity`, `posPromotionsApi.checks`, `posPromotionsApi.trends`, `posServicesApi.list`
+- API calls on this page: `authApi.branches`, `authApi.logout`, `authApi.me`, `posCouponsApi.campaigns`, `posCouponsApi.duplicate`, `posCouponsApi.health`, `posCouponsApi.healthRuns`, `posCouponsApi.runHealth`, `posCustomersApi.quickSearch`, `posDealsApi.approve`, `posDealsApi.coupons`, `posDealsApi.create`, `posDealsApi.generateCodes`, `posDealsApi.get`, `posDealsApi.preview`, `posDealsApi.publish`, `posDealsApi.revokeCode`, `posDealsApi.submit`, `posDealsApi.update`, `posDiscountsApi.exportList`, `posDiscountsApi.exportRedemptions`, `posDiscountsApi.kpis`, `posDiscountsApi.list`, `posDiscountsApi.performance`, `posDiscountsApi.redemptions`, `posPromotionsApi.activity`, `posPromotionsApi.checks`, `posPromotionsApi.trends`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posServicesApi.list`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1355,7 +1355,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAIMoneyProtectionScreen.tsx`
 - Guide: AI_PowerSalon_AI_MONEY_PROTECTION_5
 - Scroll: vertical page scroll allowed (Money Protection SUNMI addendum: alerts and investigations get more room; long lists scroll within their panels or the page; no sideways scroll.)
-- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`
+- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1461,7 +1461,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAiBranchCompareScreen.tsx`
 - Guide: AI_PowerSalon_AI_BRANCH_COMPARISON
 - Scroll: vertical page scroll allowed (Branch Comparison addendum: tables scroll within their region.)
-- API calls on this page: `posAiBusinessApi.compareBranches`
+- API calls on this page: `posAiBusinessApi.compareBranches`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1586,7 +1586,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAIFollowUpsScreen.tsx`
 - Guide: AI_PowerSalon_AI_Follow_Ups_Human_Handoff
 - Scroll: vertical page scroll allowed (Follow-Ups addendum: the work table scrolls within its region.)
-- API calls on this page: `posCustomersApi.quickSearch`
+- API calls on this page: `posCustomersApi.quickSearch`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1867,7 +1867,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAIFraudProtectionAssistantScreen.tsx`
 - Guide: AI_PowerSalon_AI_Fraud_Money_Protection
 - Scroll: vertical page scroll allowed (AI Fraud & Money Protection SUNMI addendum: three equal subscription cards, then the assistant dashboard; its list keeps its height and scrolls with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`, `posAiUsageScreenApi.acknowledge`, `posAiUsageScreenApi.cancel`, `posAiUsageScreenApi.check`, `posAiUsageScreenApi.detail`, `posAiUsageScreenApi.exportHistory`, `posAiUsageScreenApi.history`, `posAiUsageScreenApi.packages`, `posAiUsageScreenApi.reconcileInvoices`, `posAiUsageScreenApi.setBranch`, `posAiUsageScreenApi.startTrial`, `posAiUsageScreenApi.summary`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`, `posAiUsageScreenApi.acknowledge`, `posAiUsageScreenApi.cancel`, `posAiUsageScreenApi.check`, `posAiUsageScreenApi.detail`, `posAiUsageScreenApi.exportHistory`, `posAiUsageScreenApi.history`, `posAiUsageScreenApi.packages`, `posAiUsageScreenApi.reconcileInvoices`, `posAiUsageScreenApi.setBranch`, `posAiUsageScreenApi.startTrial`, `posAiUsageScreenApi.summary`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1944,7 +1944,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAIMoneyProtectionAlertsScreen.tsx`, `screens/MoneyProtectionWorkspace.tsx`
 - Guide: AI_PowerSalon_MONEY_PROTECTION_ALERTS
 - Scroll: vertical page scroll allowed (Money Protection Alerts SUNMI addendum: the summary tiles and filters stay on top; the table keeps its height and scrolls with the page; no sideways scroll.)
-- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`
+- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1963,7 +1963,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAIMoneyProtectionRulesScreen.tsx`, `screens/MoneyProtectionWorkspace.tsx`
 - Guide: AI_PowerSalon_Money_Protection_Rules
 - Scroll: vertical page scroll allowed (Money Protection Rules SUNMI addendum: the summary tiles and filters stay on top; the table keeps its height and scrolls with the page; no sideways scroll.)
-- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`
+- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1979,7 +1979,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAIMoneyProtectionSettingsScreen.tsx`, `screens/MoneyProtectionWorkspace.tsx`
 - Guide: AI_PowerSalon_Money_Protection_Settings
 - Scroll: vertical page scroll allowed (Money Protection Settings SUNMI addendum: the summary tiles and filters stay on top; the table keeps its height and scrolls with the page; no sideways scroll.)
-- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`
+- API calls on this page: `posAIMoneyProtectionApi.addNote`, `posAIMoneyProtectionApi.createInvestigation`, `posAIMoneyProtectionApi.explainAlert`, `posAIMoneyProtectionApi.resolveInvestigation`, `posAIMoneyProtectionApi.setInvestigationStatus`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2017,7 +2017,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAppointmentHistoryScreen.tsx`
 - Guide: AI_PowerSalon_Appointment_History
 - Scroll: vertical page scroll allowed (Appointment History SUNMI guide: six cards and the filters stay on top; the appointments table keeps its height and scrolls with the page; no sideways scroll.)
-- API calls on this page: `posAppointmentHistoryApi.check`, `posAppointmentHistoryApi.list`, `posAppointmentHistoryApi.options`, `posAppointmentHistoryApi.summary`, `posCustomersApi.appointments`, `posCustomersApi.quickSearch`
+- API calls on this page: `posAppointmentHistoryApi.check`, `posAppointmentHistoryApi.list`, `posAppointmentHistoryApi.options`, `posAppointmentHistoryApi.summary`, `posCustomersApi.appointments`, `posCustomersApi.quickSearch`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|

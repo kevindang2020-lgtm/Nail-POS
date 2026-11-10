@@ -7,6 +7,7 @@
 //   • a row opens that branch's full figures.
 // Every number comes from GET /pos/ai-business/branches/compare (the canonical Sales Report, one authorized branch at a time).
 import { useCallback, useEffect, useState } from 'react';
+import { SavedViews, vStr, vNum, vBool, periodToView, periodFromView } from '../components/SavedViews';
 import { Link } from 'react-router-dom';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
 import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitKit';
@@ -93,6 +94,8 @@ export function POSAiBranchCompareScreen() {
           <input className="rvw-search" type="search" data-testid="bcx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={bt('bcx.searchPh')} aria-label={bt('bcx.searchPh')} />
           <button className="btn" type="submit">{bt('bzx.search')}</button>
           <label className="rvw-f" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><input type="checkbox" data-testid="bcx-inactive" checked={inactive} onChange={(e) => { setInactive(e.target.checked); setPage(1); }} /><span>{bt('bcx.showInactive')}</span></label>
+          <SavedViews surface="ai.branch-comparison" testId="bcx-views" current={{ q, inactive, pageSize, ...periodToView(period) }}
+            onApply={(v) => { setDraft(vStr(v, 'q')); setQ(vStr(v, 'q')); setInactive(vBool(v, 'inactive')); setPageSize(vNum(v, 'pageSize', 25)); setPeriod(periodFromView(v, { preset: 'month' })); setPage(1); }} />
           {q ? <button className="btn ghost" type="button" onClick={() => { setDraft(''); setQ(''); setPage(1); }}>{bt('bzx.clear')}</button> : null}
         </form>
         {!s && !error ? <div className="state">{bt('pos.loading_branch_comparison')}</div> : rows.length === 0 ? <Empty title={q ? bt('bzx.noMatch') : bt('pos.no_authorized_branches_to_compare')} /> : (

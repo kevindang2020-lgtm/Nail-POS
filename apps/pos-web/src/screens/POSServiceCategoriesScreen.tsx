@@ -8,6 +8,7 @@
 // Archive / Restore and Manage Services (move services to another category: preview old → new, a reason, one transaction,
 // one history row per service — a move never changes a price or duration).
 import { useEffect, useState } from 'react';
+import { SavedViews, vStr, periodToView, periodFromView } from '../components/SavedViews';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCatalogApi } from '../api/posCatalogApi';
@@ -110,6 +111,8 @@ export function POSServiceCategoriesScreen() {
       <div className="fn-tabsrow dsc-periodrow">
         <PeriodBar value={period} onChange={setPeriod} server={(mode === 'categories' ? list.data : cust.data)?.period} allowAll compact
           {...(mode === 'categories' ? { basis: dateField, basisOptions: ['created', 'updated'].map((f) => ({ value: f, label: tx('cg.df.' + f) })), onBasis: setDateField } : { basis: 'paid', basisOptions: [{ value: 'paid', label: tx('cg.df.paid') }], onBasis: () => undefined })} />
+        <SavedViews surface={`catalog.categories.${mode}`} testId="cg-views" current={{ q: search, dateField, status, sort, ...periodToView(period) }}
+          onApply={(v) => { setSearch(vStr(v, 'q')); setDateField(vStr(v, 'dateField', 'created')); setStatus(vStr(v, 'status', 'current')); setSort(vStr(v, 'sort', 'newest')); setPeriod(periodFromView(v, { preset: 'all' } as PeriodState)); }} />
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div>
 
