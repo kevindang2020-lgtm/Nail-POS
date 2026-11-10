@@ -259,6 +259,7 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
         <h3 className="fk-h3" id="payment-history">{tx('finance.iv.paymentHistory')}</h3>
         {d.data!.payments.length === 0 ? <div className="fk-hint">{tx('finance.iv.noPayments')}</div> : <table className="fk-table" data-testid="payments"><tbody>{d.data!.payments.map((pm) => <tr key={pm.id}><td>{fmtYmdSafe(pm.paidOn)}</td><td>{tx('finance.payMethod.' + pm.method)}</td><td>{pm.reference ?? '—'}</td><td>{pm.recordedBy ?? '—'}</td><td className="num">{money(pm.amountCents)}</td></tr>)}</tbody></table>}
         {d.data!.credits?.length ? <><h3 className="fk-h3">{tx('finance.iv.creditNotes')}</h3><table className="fk-table" data-testid="credits"><tbody>{d.data!.credits.map((c) => <tr key={c.id}><td>{c.creditNumber}</td><td>{fmtYmdSafe(c.issuedOn)}</td><td className="fn-wrap">{c.reason}</td><td>{c.refundCents ? tx('finance.iv.refundShown', { a: money(c.refundCents), m: tx('finance.payMethod.' + (c.refundMethod ?? 'other')) }) : '—'}</td><td>{c.issuedBy ?? '—'}</td><td className="num">− {money(c.creditCents)}</td></tr>)}</tbody></table></> : null}
+        <InvoiceTimeline inv={inv} payments={d.data!.payments} credits={d.data!.credits ?? []} />
         {inv.notes ? <><h3 className="fk-h3">{tx('finance.iv.notes')}</h3><div className="fn-wrap">{inv.notes}</div></> : null}
         <h3 className="fk-h3">{tx('finance.iv.deliveryTitle')}</h3>
         {(() => { const dv = d.data!.delivery; const cs = dv.canSend ?? { email: false, sms: false }; const connected = dv.email === 'available' || dv.sms === 'available'; return <div data-testid="delivery">
@@ -487,4 +488,29 @@ function PdfPreview({ id, number, onClose }: { id: string; number: string; onClo
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !url ? <div className="fk-loading">{tx('pos.loading')}</div> : <iframe className="fn-pdf" src={url} title={tx('finance.iv.previewTitle', { n: number })} />}
     </FitDialog>
   );
+}
+
+// extras arc (Nov 10 2026): the invoice's life in one list — created, issued, sent, each payment and credit, paid, voided —
+// built only from the recorded dates on the invoice, its payments and its credit notes (nothing inferred), newest first.
+type TlPay = { id: string; amountCents: number; method: string; createdAt: string | null; recordedBy?: string | null };
+type TlCredit = { id: string; creditNumber: string; creditCents: number; refundCents: number; createdAt?: string | null; issuedOn?: string | null; issuedBy?: string | null };
+export function InvoiceTimeline({ inv, payments, credits }: { inv: { createdAt: string | null; issueDate: string | null; sentAt: string | null; paidAt: string | null; voidedAt: string | null; voidReason: string | null }; payments: TlPay[]; credits: TlCredit[] }) {
+  const ev: { key: string; at: string; title: string; sub?: string }[] = [];
+  if (inv.createdAt) ev.push({ key: 'created', at: inv.createdAt, title: tx('ivt.created') });
+  if (inv.sentAt) ev.push({ key: 'sent', at: inv.sentAt, title: tx('ivt.sent') });
+  for (const pm of payments) if (pm.createdAt) ev.push({ key: 'pay-' + pm.id, at: pm.createdAt, title: tx('ivt.payment', { amount: money(pm.amountCents) }), sub: [tx('finance.payMethod.' + pm.method), pm.recordedBy ? tx('exh.by', { name: pm.recordedBy }) : null].filter(Boolean).join(' · ') });
+  for (const c of credits) { const at = c.createdAt ?? (c.issuedOn ? `${c.issuedOn}T12:00:00Z` : null); if (at) ev.push({ key: 'cr-' + c.id, at, title: tx('ivt.credit', { n: c.creditNumber, amount: money(c.creditCents) }), sub: [c.refundCents ? tx('ivt.refunded', { amount: money(c.refundCents) }) : null, c.issuedBy ? tx('exh.by', { name: c.issuedBy }) : null].filter(Boolean).join(' · ') }); }
+  if (inv.paidAt) ev.push({ key: 'paid', at: inv.paidAt, title: tx('ivt.paid') });
+  if (inv.voidedAt) ev.push({ key: 'void', at: inv.voidedAt, title: tx('ivt.voided'), sub: inv.voidReason ?? undefined });
+  ev.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  return <>
+    <h3 className="fk-h3">{tx('ivt.title')}</h3>
+    {inv.issueDate ? <div className="fk-hint">{tx('ivt.issued', { d: inv.issueDate })}</div> : null}
+    <ul className="fk-list dense" data-testid="invoice-timeline" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {ev.map((e) => <li key={e.key} data-testid="invoice-timeline-row" style={{ padding: '4px 0', borderBottom: '1px solid var(--line, #eee)' }}>
+        <b>{e.title}</b><span className="fk-muted"> · {fmtInZone(e.at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+        {e.sub ? <div className="fk-muted">{e.sub}</div> : null}
+      </li>)}
+    </ul>
+  </>;
 }

@@ -6,14 +6,14 @@ triaged). Status: **TODO** · **BUILT** (built + tested this arc, commit named) 
 
 Nothing is marked BUILT or EXISTS without the code being opened and the test named.
 
-## Progress (updated Nov 10 2026, 01:45 New York)
+## Progress (updated Nov 10 2026, 03:00 New York)
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 27 (incl. part) |
-| EXISTS (opened and named) | 115 |
+| BUILT this arc | 31 (incl. part) |
+| EXISTS (opened and named) | 120 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 18 |
-| TODO | 1658 |
+| TODO | 1649 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -25,6 +25,12 @@ Built so far:
    existing check were dropped: campaigns (Marketing health), cash (Check drawer), follow-ups (End-of-Day health),
    past-open appointments (Appointment History). Checks the database already enforces were removed (double booking —
    exclusion constraint; self-approval — CHECK; appointment end before start — CHECK; duplicate cash movement — unique).
+4. **Record timelines (from data already recorded — nothing inferred)**: expense History (expense_history, now with the
+   person's name, salon-scoped); invoice Timeline (created / sent / payments / credits / paid / voided); payment
+   timeline in Transactions (server, recorded payment / refund / settlement / deposit times). Already present and marked
+   EXISTS: Deals & Offers History / Approvals / Redemptions tabs, End-of-Day Cash hand-off events, Price History.
+   Not built: a generic per-record history for every page — the audit tables name record types differently per module
+   (audit_events.resource_type vs audit_logs.entity_type), so each page needs its own mapping.
 
 Decisions:
 - **Comfortable / Compact density switch — deferred, not built.** About 40 rows ask for it. The shell measures density
@@ -40,7 +46,7 @@ Decisions:
 |---|---|---|
 | 01 | One-click Invoices Health Checker Verify API wiring, KPI reconciliation, missing customer links, invalid dates, status transitions, paging, payment records, and all available invoice actions; explain failing source IDs. | BUILT — shared read-only Check Invoices System (GET pos/system-checks/invoices, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 02 | Automatic Screen Fit Health Checker Admin/dev diagnostic that captures CSS viewport, panel bounds, overflow, clipped controls, touch target issues and layout screenshots at supported resolutions. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 03 | Full Invoice Timeline Inside Invoice Details, show issue, send, open (if supported), partial/full payments, void/credit events, user actor and authoritative timestamps. | TODO |
+| 03 | Full Invoice Timeline Inside Invoice Details, show issue, send, open (if supported), partial/full payments, void/credit events, user actor and authoritative timestamps. | BUILT — Invoice detail → Timeline (created, sent, each payment with who recorded it, credit notes, paid, voided) from recorded dates only; InvoiceTimeline test 2/2 |
 | 04 | Unpaid & Overdue Priority View Add an optional status view for genuinely outstanding invoices, based on validated due date and unpaid balance; do not overwrite the default newest-first behavior. | TODO |
 | 05 | Customer Identity Integrity Checker Detect invalid customer joins, missing bill-to snapshots, tenant-mismatched links and stale display mapping; recommend approved repairs without guessing identities. | BUILT — shared read-only Check Invoices System (GET pos/system-checks/invoices, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 06 | Safe Payment Preview Before recording an external/cash payment, show balance before/after, method, amount, reference and explicit confirmation. No automatic card charge. | TODO |
@@ -297,9 +303,9 @@ Decisions:
 | 02 | Technician cash detail drawer Authorized drill-down with source tickets, tender list, shifts, prior hand-offs, count history, actor, variance and audit trail. | TODO |
 | 03 | Pending count queue Small state summary for Awaiting, Submitted, Counted, Under Review; click to apply real filters. | TODO |
 | 04 | Denomination count helper Optional count sheet with calculated totals; keep manual mode only if approved by tenant settings. | TODO |
-| 05 | Partial hand-off timeline Show first/second/subsequent transfers with accepted totals and remaining responsibility; prevent duplicate events. | TODO |
+| 05 | Partial hand-off timeline Show first/second/subsequent transfers with accepted totals and remaining responsibility; prevent duplicate events. | EXISTS — End-of-Day Cash → technician detail → events list (tech_cash_handoff_events: each hand-off, count, approval or correction with who and when) — POSCashHandoffScreen |
 | 06 | Recount & override workflow Require reason and permission; preserve original counts and reviewer details; no silent overwrite. | TODO |
-| 07 | Audit trail shortcut Provide a one-click view of who received, counted, approved or corrected cash and when. | TODO |
+| 07 | Audit trail shortcut Provide a one-click view of who received, counted, approved or corrected cash and when. | EXISTS — End-of-Day Cash → technician detail → events list (tech_cash_handoff_events: each hand-off, count, approval or correction with who and when) — POSCashHandoffScreen |
 | 08 | Status-aware safe buttons Prevent “Confirm” on closed hand-offs or while a prior save is pending. Indicate disabled reason. | TODO |
 | 09 | Data freshness indicator Display last verified refresh time with Retry for network/API failures; do not turn service failure into financial zero. | TODO |
 | 10 | Quick View Daily Closeout Link to the branch and business date already selected without expanding tenant/branch scope. Engineering addendum / November 7, 2026 Addendum page 16 AI POWERSALON / END-OF-DAY CASH / SUNMI FLEX | TODO |
@@ -818,7 +824,7 @@ Decisions:
 | 04 | Tender / Refund Integrity Failed/timeout/duplicate attempts, refunds linked to original tenders, remaining refundable balance and audit records. | TODO |
 | 05 | Cross-Module Reconciliation Compare Checkout, Split Payments, Gift Cards, Tips, Cash Drawer, Transactions and Daily Closeout using shared event references. No automatic money movement | TODO |
 | 06 | Adaptive rows-per-page Compute a safe page size based on the measured table body height and row height. Preserve full-dataset server pagination and deterministic ordering. | TODO |
-| 07 | Payment-state timeline In ticket details show chronological tender attempts, confirmations, callbacks, reversals and outcomes with correlation IDs; mask sensitive references. | TODO |
+| 07 | Payment-state timeline In ticket details show chronological tender attempts, confirmations, callbacks, reversals and outcomes with correlation IDs; mask sensitive references. | BUILT (part) — Transaction detail now has the per-payment timeline and already lists every tender attempt of the ticket with its state and time; processor callbacks are not shown |
 | 08 | Uncertain Payment Review overlay Surface a compact “Status unknown - verify original attempt” view with safe retry criteria; prevent another charge by double tap. | TODO |
 | 09 | Split Tender Preview Before initiating checkout, show intended card/cash/gift-card allocation and remaining due; preview is not a financial mutation. | TODO |
 | 10 | Filtered export consistency Export all authorized matching records across pages with the same filters, time basis and accounting definitions as the on-screen list. | TODO |
@@ -851,7 +857,7 @@ Decisions:
 | 08 | Cross-Module Wiring Checker Check broken links between Checkout, Transactions, Tips, Gift Cards, Cash Drawer and Reconciliation. AI authority rule A health checker is diagnostic and advisory. It must not move money, over | BUILT — shared read-only Check Payments System (GET pos/system-checks/payments, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 09 | Financial Exception Inbox Consolidate unresolved statuses and mismatch explanations with drill-down evidence. | TODO |
 | 10 | Data Freshness Indicator Show last successful refresh and provider sync status per panel; never claim real-time when stale. | TODO |
-| 11 | Transaction State Timeline Display authorize/capture/settle/refund events from real provider references. | TODO |
+| 11 | Transaction State Timeline Display authorize/capture/settle/refund events from real provider references. | BUILT — Transaction detail → Payment timeline (server: recorded payment / refund / settlement / deposit times only; pgtest 14/14) — PaymentTimeline |
 | 12 | Better Payout Forecast Cards Show expected payout dates, processor names and confidence/source based on available records. | TODO |
 | 13 | Adaptive Table Density Compute readable page size from available table height instead of shrinking text. | TODO |
 | 14 | Risk-Aware Quick Action Preview Show actor, tenant, amount, recipient/provider and effects before protected financial actions. | TODO |
@@ -968,7 +974,7 @@ Decisions:
 | 07 | Permission & Tenant Isolation Checker Validate service prices, edits, history exports and customer lookups are scoped server-side to the correct tenant and branches. New SUNMI Addendum • Attached original follows unchang | TODO |
 | 08 | Live Price Preview Show how a service price would appear in Booking/Checkout including applicable add-ons, discounts and taxes, without charging anyone. | TODO |
 | 09 | Service Price Difference Explanation Show why a final checkout line differs from the catalog base price: branch override, add-on, approved manual override, promotion or membership. | TODO |
-| 10 | Effective-Date Change Timeline Display current, pending and previous service prices in one readable drawer and forbid overlapping incompatible scheduled prices. | TODO |
+| 10 | Effective-Date Change Timeline Display current, pending and previous service prices in one readable drawer and forbid overlapping incompatible scheduled prices. | EXISTS (part) — Price History tab (append-only, reason + version per change) exists; scheduled future prices are not built |
 | 11 | Duplicate Service / Name Review Warn about near-identical names or codes before creating a service; never auto-merge distinct records. | TODO |
 | 12 | Technician Compensation Preview Explain potential commission basis changes where configured and audit the source of actual payout values. | TODO |
 | 13 | Owner Review for Suspicious Categories Offer a non-destructive review queue for category anomalies with original IDs and owner approval workflow. | TODO |
@@ -1168,7 +1174,7 @@ Decisions:
 | 10 | Discount Stacking Explorer: staff preview of allowed and blocked combinations across Deals, Coupons, Promotions, Loyalty and Membership. | TODO |
 | 11 | Branch Performance Comparison: compare verified usage and discount costs by branch, never treating associated revenue as incremental lift. | TODO |
 | 12 | Commission Impact Review: flag deals where commission basis or funding allocation is not approved before production. | TODO |
-| 13 | Deal Timeline / Audit: read-only chronological record of draft, request, approve, activate, pause, redeem and refund events. | TODO |
+| 13 | Deal Timeline / Audit: read-only chronological record of draft, request, approve, activate, pause, redeem and refund events. | EXISTS — Deals & Offers detail: History tab (audit), Approvals tab (decisions with names), Redemptions tab (redeem / reverse) — POSDealsScreen + DiscountDetailsDialog |
 | 14 | Safe Rollback & Feature Flags: gate new UI/diagnostics by tenant or branch with rollback that never discards history. | TODO |
 | 15 | Accessibility / Touch QA: automated text-clipping and hit-target checks with both English and Vietnamese labels. | TODO |
 | 16 | Automated Financial Regression Suite: replay 5%, 20%, technician cap, refunds, duplicate events and concurrency with seeded fixtures. Recommendation acceptance Each recommendation must be classified Already Working, Need | TODO |
@@ -1480,7 +1486,7 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Transaction Source Explanation Show a concise definition popover for Transactions, Gross, Tips and Net, citing which payment states and sources are included. | TODO |
-| 02 | Provider Status Timeline In Details, display requested → authorized → captured → settled/refunded only for actual provider-confirmed events. | TODO |
+| 02 | Provider Status Timeline In Details, display requested → authorized → captured → settled/refunded only for actual provider-confirmed events. | BUILT — Transaction detail → Payment timeline (server: recorded payment / refund / settlement / deposit times only; pgtest 14/14) — PaymentTimeline |
 | 03 | Safe Duplicate-Payment Review Warn on duplicate external references, repeated callbacks and conflicting payment attempts without | TODO |
 | 04 | KPI cards Transactions, Gross, Tips, Net with correct period/filter labels and backend-derived values. Date presets and calendars Today / This Week / This Month / This Year / Custom Range; From Date and To Date month pic | TODO |
 | 05 | Refund Eligibility Preview From Details, preview eligible remaining refundable amount and direct users to the existing authorized refund workflow. 6. “Data Last Verified” Indicator Add subtle freshness messaging when tra | TODO |
@@ -1518,7 +1524,7 @@ Decisions:
 | 04 | KPI cards Total Expenses; Expense Entries; Top Category; Categories Used. Preserve click-through if implemented. Expense work area Search; category/method filters; sorting; expense table; record counts; loading/empty/err | TODO |
 | 05 | Better vendor lookup Tenant-scoped vendor suggestions using canonical vendor IDs; do not create duplicates from similar names. | TODO |
 | 06 | Monthly spending trend Compact drill-down in reports or overlay; use actual filtered data, not default fake charts. | TODO |
-| 07 | Duplicate guard before save Warn for matching vendor/date/amount/receipt hash but allow authorized resolution and audit it. | TODO |
+| 07 | Duplicate guard before save Warn for matching vendor/date/amount/receipt hash but allow authorized resolution and audit it. | EXISTS — duplicate detection on save (finance detectExpenseDuplicates, duplicate_status possible/exact, override needs a reason) — each decision now shows in the expense History |
 | 08 | Receipt/OCR confidence Clearly separate “suggested by OCR” from “verified by staff”; never silently post. review | TODO |
 | 09 | Export quality preview Preview date scope, counts and columns; protect CSV and PII before generating. | TODO |
 | 10 | Accessible bilingual Use current Front Desk EN/VN localization with robust text growth, no hardcoded English controls placeholders. | TODO |

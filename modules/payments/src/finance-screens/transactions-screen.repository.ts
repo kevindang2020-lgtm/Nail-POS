@@ -205,7 +205,24 @@ export class TransactionsScreenRepository {
     const refunds = (await sql<any>`select r.id, r.amount_cents, r.reason, r.status, r.processor_refund_id, r.created_at, r.settled_at, coalesce(u.full_name, u.email) as actor
         from payment_refunds r left join users u on u.id = r.created_by_user_id and u.tenant_id = r.tenant_id where r.tenant_id = ${ctx.tenantId} and r.payment_id = ${paymentId}::uuid order by r.created_at desc, r.id desc`.execute(this.db)).rows;
     const can = (p: string) => hasPermission(ctx as Parameters<typeof hasPermission>[0], p);
+    // extras arc (Nov 10 2026): the payment's state timeline — ONLY recorded timestamps (payment, refunds, settlement batch);
+    // a state with no recorded time is not shown, and nothing is inferred from matching amounts
+    const pt = (await sql<any>`select p.created_at, p.approved_at, p.failed_at, p.stranded_at, p.status, p.processor_transaction_id from payments p
+        where p.tenant_id = ${ctx.tenantId} and p.id = ${paymentId}::uuid`.execute(this.db)).rows[0] ?? {};
+    const timeline: Array<{ kind: string; at: string; amountCents?: number; ref?: string | null; status?: string | null }> = [];
+    const push = (kind: string, at: unknown, extra: Record<string, unknown> = {}) => { const a = iso(at as never); if (a) timeline.push({ kind, at: a, ...extra } as never); };
+    push('created', pt.created_at, { amountCents: N(r.amount_cents) });
+    push('approved', pt.approved_at, { ref: pt.processor_transaction_id ?? null });
+    push('failed', pt.failed_at, { status: pt.status ?? null });
+    push('stranded', pt.stranded_at);
+    for (const x of refunds) { push('refund_requested', x.created_at, { amountCents: N(x.amount_cents), status: String(x.status) }); push('refund_settled', x.settled_at, { amountCents: N(x.amount_cents) }); }
+    if (settlement) {
+      push('settled', settlement.settled_at, { ref: settlement.settlement_id ?? null });
+      if (settlement.actual_deposit_date) push('deposited', `${String(settlement.actual_deposit_date).slice(0, 10)}T12:00:00Z`, { ref: settlement.settlement_id ?? null });
+    }
+    timeline.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
     return {
+      timeline,
       tender: { ...tender, surchargeCents: N(r.surcharge_cents), refundableCents: tender.counted ? Math.max(0, tender.grossCents - tender.refundedCents - tender.refundPendingCents) : 0 },
       refunds: refunds.map((x: any) => ({ id: String(x.id), amountCents: N(x.amount_cents), reason: x.reason ?? null, status: String(x.status), processorRefundId: x.processor_refund_id ?? null, at: iso(x.created_at), settledAt: iso(x.settled_at), actor: x.actor ?? null })),
       ticket,

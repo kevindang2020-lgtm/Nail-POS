@@ -16,8 +16,13 @@ const S1 = id('d1'), S2 = id('d2'), S3 = id('d3'), CAT = id('f1');
 const mgr = { tenantId: T, branchId: B, userId: U, role: 'MANAGER', permissions: ['pos.technicians.view', 'pos.technicians.schedule.edit', 'pos.technicians.skills.edit'] };
 const viewer = { ...mgr, userId: U2, permissions: ['pos.technicians.view'] };
 const other = { tenantId: T2, branchId: BX, userId: id('e9'), role: 'MANAGER', permissions: mgr.permissions };
-// Thursday Nov 5 2026 is "today" in the salon; the pattern starts on Monday Nov 9
-const MON = '2026-11-09', TUE = '2026-11-10', WED = '2026-11-11', NEXT_MON = '2026-11-16', FRI = '2026-11-13';
+// The pattern starts on the first Monday strictly after today (the service's "today" is the real salon day — fixed Nov 2026
+// dates went stale on Nov 10 2026). Every other date is an offset from that Monday, keeping its weekday.
+const ymdPlus = (base: string, days: number) => { const d = new Date(`${base}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+const MON = (() => { const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() + 2); while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
+const TUE = ymdPlus(MON, 1), WED = ymdPlus(MON, 2), FRI = ymdPlus(MON, 4), NEXT_MON = ymdPlus(MON, 7);
+const BEFORE = ymdPlus(MON, -7), CHANGE = ymdPlus(MON, 23), CHANGE_EVE = ymdPlus(MON, 22), LATER_MON = ymdPlus(MON, 28), PAST = ymdPlus(MON, -40);
+const END_WED = ymdPlus(MON, 58), BEFORE_END_WED = ymdPlus(MON, 51), EARLY = ymdPlus(MON, -8);
 let pg: any; let db: any; let wo: WeeklyDaysOffRepository; let sk: SkillsCatalogRepository; let so: ShiftOverrideRepository;
 const events: any[] = [];
 class CapturingOutbox extends OutboxWriter { async write(_trx: unknown, e: any) { events.push(e); } }
@@ -59,7 +64,7 @@ describe('repeating weekly days off (§7, §16)', () => {
   it('every future Monday and Tuesday is off in the one schedule reader; Wednesday and the weekly template are unchanged', async () => {
     for (const d of [MON, TUE, NEXT_MON, addLocalDays(TUE, 7), addLocalDays(MON, 364)]) expect((await weeklyOffTechs(db, T, B, d)).has(MIA)).toBe(true);
     expect((await weeklyOffTechs(db, T, B, WED)).has(MIA)).toBe(false);
-    expect((await weeklyOffTechs(db, T, B, '2026-11-02')).has(MIA)).toBe(false);   // before the start: unchanged
+    expect((await weeklyOffTechs(db, T, B, BEFORE)).has(MIA)).toBe(false);   // before the start: unchanged
     expect((await q(`select count(*)::int n from technician_schedules where tenant_id = $1 and technician_id = $2 and is_working`, [T, MIA])).rows[0].n).toBe(7);
     // the Live Schedule's date editor shows the recurring baseline as off on Monday, working on Wednesday
     expect((await so.editor(mgr, { technicianId: MIA, date: MON })).baseline).toMatchObject({ isWorking: false });
@@ -76,33 +81,33 @@ describe('repeating weekly days off (§7, §16)', () => {
   });
   it('a one-time extra day off (Friday) leaves the weekly rule untouched', async () => {
     await so.save(mgr, { technicianId: MIA, localDate: FRI, overrideType: 'DAY_OFF', reason: 'Appointment' }, 'r4');
-    const rules = await loadWeeklyOffRules(db, T, B, MON, '2027-01-01', [MIA]);
+    const rules = await loadWeeklyOffRules(db, T, B, MON, ymdPlus(MON, 60), [MIA]);
     expect(rules).toHaveLength(1); expect(rules[0].weekdays).toEqual([1, 2]);
   });
   it('changing the pattern next month keeps history: the old rule ends the day before, the new one starts on its date', async () => {
     const cur = await wo.list(mgr, { technicianId: MIA });
-    expect(await code(wo.save(mgr, { technicianId: MIA, weekdays: [3], effectiveFrom: '2026-12-02', expectedVersion: 0 }, 'r5'))).toBe('VERSION_CONFLICT');
-    await wo.save(mgr, { technicianId: MIA, weekdays: [3], effectiveFrom: '2026-12-02', expectedVersion: cur.version, reason: 'New class day' }, 'r6');
+    expect(await code(wo.save(mgr, { technicianId: MIA, weekdays: [3], effectiveFrom: CHANGE, expectedVersion: 0 }, 'r5'))).toBe('VERSION_CONFLICT');
+    await wo.save(mgr, { technicianId: MIA, weekdays: [3], effectiveFrom: CHANGE, expectedVersion: cur.version, reason: 'New class day' }, 'r6');
     const rules = (await q(`select weekdays::text, to_char(effective_from,'YYYY-MM-DD') f, to_char(effective_to,'YYYY-MM-DD') t, status from technician_weekly_off_rules where tenant_id = $1 order by effective_from`, [T])).rows;
-    expect(rules).toEqual([{ weekdays: '{1,2}', f: MON, t: '2026-12-01', status: 'ACTIVE' }, { weekdays: '{3}', f: '2026-12-02', t: null, status: 'ACTIVE' }]);
+    expect(rules).toEqual([{ weekdays: '{1,2}', f: MON, t: CHANGE_EVE, status: 'ACTIVE' }, { weekdays: '{3}', f: CHANGE, t: null, status: 'ACTIVE' }]);
     expect((await weeklyOffTechs(db, T, B, NEXT_MON)).has(MIA)).toBe(true);           // November Mondays still off
-    expect((await weeklyOffTechs(db, T, B, '2026-12-07')).has(MIA)).toBe(false);      // December Monday works
-    expect((await weeklyOffTechs(db, T, B, '2026-12-02')).has(MIA)).toBe(true);       // December Wednesdays off
+    expect((await weeklyOffTechs(db, T, B, LATER_MON)).has(MIA)).toBe(false);      // December Monday works
+    expect((await weeklyOffTechs(db, T, B, CHANGE)).has(MIA)).toBe(true);       // December Wednesdays off
     expect((await q(`select action from technician_weekly_off_events where tenant_id = $1 order by created_at, id`, [T])).rows.map((r: any) => r.action)).toEqual(['CREATED', 'SUPERSEDED', 'CREATED']);
     expect(await code(q(`delete from technician_weekly_off_events where tenant_id = $1`, [T]))).toMatch(/append-only/);
   });
   it('Remove Recurrence from a date; past dates are never edited; viewers and other salons cannot change it', async () => {
     const l = await wo.list(mgr, { technicianId: MIA });
-    const dec = l.rules.find((r: any) => r.effectiveFrom === '2026-12-02')!;
-    expect(await code(wo.end(viewer, { technicianId: MIA, ruleId: dec.id, endFrom: '2027-01-06' }, 'r7'))).toBe('FORBIDDEN');
-    expect(await code(wo.save(mgr, { technicianId: MIA, weekdays: [4], effectiveFrom: '2026-10-01' }, 'r8'))).toBe('WEEKLY_OFF_INVALID');
+    const dec = l.rules.find((r: any) => r.effectiveFrom === CHANGE)!;
+    expect(await code(wo.end(viewer, { technicianId: MIA, ruleId: dec.id, endFrom: END_WED }, 'r7'))).toBe('FORBIDDEN');
+    expect(await code(wo.save(mgr, { technicianId: MIA, weekdays: [4], effectiveFrom: PAST }, 'r8'))).toBe('WEEKLY_OFF_INVALID');
     expect(await code(wo.list(other, { technicianId: MIA }))).toBe('TECHNICIAN_NOT_FOUND');
-    await wo.end(mgr, { technicianId: MIA, ruleId: dec.id, endFrom: '2027-01-06', reason: 'Class finished' }, 'r9');
-    expect((await weeklyOffTechs(db, T, B, '2026-12-30')).has(MIA)).toBe(true);
-    expect((await weeklyOffTechs(db, T, B, '2027-01-06')).has(MIA)).toBe(false);
+    await wo.end(mgr, { technicianId: MIA, ruleId: dec.id, endFrom: END_WED, reason: 'Class finished' }, 'r9');
+    expect((await weeklyOffTechs(db, T, B, BEFORE_END_WED)).has(MIA)).toBe(true);
+    expect((await weeklyOffTechs(db, T, B, END_WED)).has(MIA)).toBe(false);
   });
   it('pure precedence helper: a branch rule does not leak to another branch', () => {
-    const r = [{ id: 'x', technicianId: 't', branchId: 'b1', weekdays: [1], effectiveFrom: '2026-11-01', effectiveTo: null }];
+    const r = [{ id: 'x', technicianId: 't', branchId: 'b1', weekdays: [1], effectiveFrom: EARLY, effectiveTo: null }];
     expect(weeklyOffOn(r, 't', MON, 'b1')).toBeTruthy(); expect(weeklyOffOn(r, 't', MON, 'b2')).toBeNull(); expect(weeklyOffOn(r, 't', WED, 'b1')).toBeNull();
   });
 });

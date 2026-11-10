@@ -218,7 +218,14 @@ export class ExpenseRepository {
   async listHistory(tenantId: string, id: string) {
     const rows = await this.db.selectFrom('expense_history').select(['id', 'action', 'actor_user_id', 'reason', 'before_state', 'after_state', 'version', 'created_at'])
       .where('tenant_id', '=', tenantId).where('expense_id', '=', id).orderBy('created_at', 'asc').execute();
-    return rows.map((h) => ({ id: h.id, action: h.action, actorUserId: h.actor_user_id, reason: h.reason, before: h.before_state, after: h.after_state, version: h.version, at: iso(h.created_at) }));
+    // extras arc (Nov 10 2026): the person's name for the POS history list — this salon's users only, never another salon's
+    const ids = [...new Set(rows.map((h) => h.actor_user_id).filter((x): x is string => !!x))];
+    const names = new Map<string, string>();
+    if (ids.length) {
+      const us = await sql<{ id: string; name: string | null }>`SELECT id, coalesce(nullif(btrim(full_name), ''), email) AS name FROM users WHERE tenant_id = ${tenantId}::uuid AND id = ANY(${ids}::uuid[])`.execute(this.db);
+      for (const u of us.rows) if (u.name) names.set(String(u.id), u.name);
+    }
+    return rows.map((h) => ({ id: h.id, action: h.action, actorUserId: h.actor_user_id, actorName: h.actor_user_id ? names.get(String(h.actor_user_id)) ?? null : null, reason: h.reason, before: h.before_state, after: h.after_state, version: h.version, at: iso(h.created_at) }));
   }
 
   // ── line items / allocations / documents / bill payments ──────────────────────────────────────────────────────────

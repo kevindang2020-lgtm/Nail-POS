@@ -172,6 +172,7 @@ export function TxDialog({ id, tick, onClose, onChanged, onNote, onCustomer, onG
             <button type="button" className="fk-link" onClick={() => onGo('/tenant/payments/refunds-voids')}>{tx('txn.openRefunds')}</button>
           </div>
         </div>
+        <PaymentTimeline items={d.data.timeline ?? []} />
         {tk ? <>
           <h3 className="fk-h3">{tx('txn.ticketTitle', { n: tk.ticketNumber ?? '—' })}</h3>
           <div className="fn-cols2">
@@ -197,4 +198,19 @@ export function TxDialog({ id, tick, onClose, onChanged, onNote, onCustomer, onG
         <TicketRefundPanel ticketId={tk.id} label={t?.customer?.name ?? undefined} onClose={() => { setRefunding(false); d.reload(); }} onDone={() => { onChanged(); onNote({ tone: 'ok', text: tx('rv.done.ticket') }); }} /></FitDialog> : null}
     </FitDialog>
   );
+}
+
+// extras arc (Nov 10 2026): the payment's state timeline from the server (recorded times only — created, approved,
+// failed, refund requested / settled, batch settled, deposited), newest first. A state with no recorded time is absent.
+export function PaymentTimeline({ items }: { items: Array<{ kind: string; at: string; amountCents?: number; ref?: string | null; status?: string | null }> }) {
+  if (!items.length) return null;
+  return <>
+    <h3 className="fk-h3">{tx('ptl.title')}</h3>
+    <ul className="fk-list dense" data-testid="payment-timeline" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {items.map((e, i) => <li key={e.kind + i} data-testid="payment-timeline-row" style={{ padding: '4px 0', borderBottom: '1px solid var(--line, #eee)' }}>
+        <b>{tx('ptl.k.' + e.kind)}</b>
+        <span className="fk-muted"> · {fmtInZone(e.at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}{e.amountCents != null ? ` · ${fmtMoney(e.amountCents)}` : ''}{e.ref ? ` · ${e.ref}` : ''}</span>
+      </li>)}
+    </ul>
+  </>;
 }

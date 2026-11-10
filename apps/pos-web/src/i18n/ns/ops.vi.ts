@@ -1132,4 +1132,53 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.approvals.approved_not_executed.fix": "Mở yêu cầu và chạy lại, hoặc hủy.", // DRAFT — Kevin reviews
   "syschk.approvals.execution_failed": "Không có yêu cầu đã duyệt nào bị lỗi khi thực hiện", // DRAFT — Kevin reviews
   "syschk.approvals.execution_failed.fix": "Mở yêu cầu để xem lý do và thử lại.", // DRAFT — Kevin reviews
+  "exh.title": "Lịch sử", // DRAFT — Kevin reviews
+  "exh.empty": "Chưa có thay đổi nào được ghi.", // DRAFT — Kevin reviews
+  "exh.by": "bởi {name}", // DRAFT — Kevin reviews
+  "exh.system": "bởi hệ thống", // DRAFT — Kevin reviews
+  "exh.unknown": "bởi một nhân viên cũ", // DRAFT — Kevin reviews
+  "exh.a.created": "Đã tạo", // DRAFT — Kevin reviews
+  "exh.a.auto_approved": "Tự động duyệt theo quy tắc của chủ", // DRAFT — Kevin reviews
+  "exh.a.updated": "Đã sửa", // DRAFT — Kevin reviews
+  "exh.a.corrected": "Đã chỉnh sửa", // DRAFT — Kevin reviews
+  "exh.a.category_corrected": "Đã sửa danh mục", // DRAFT — Kevin reviews
+  "exh.a.document_attached": "Đã đính kèm hóa đơn", // DRAFT — Kevin reviews
+  "exh.a.payment_match_checked": "Đã kiểm tra khớp thanh toán", // DRAFT — Kevin reviews
+  "exh.a.payment_linked": "Đã liên kết thanh toán", // DRAFT — Kevin reviews
+  "exh.a.payment_unlinked": "Đã bỏ liên kết thanh toán", // DRAFT — Kevin reviews
+  "exh.a.duplicate_confirmed": "Đã đánh dấu trùng", // DRAFT — Kevin reviews
+  "exh.a.duplicate_overridden": "Đã giữ — không trùng", // DRAFT — Kevin reviews
+  "exh.a.bill_paid": "Đã trả đủ hóa đơn", // DRAFT — Kevin reviews
+  "exh.a.bill_payment_recorded": "Đã ghi khoản trả hóa đơn", // DRAFT — Kevin reviews
+  "exh.a.archived": "Đã lưu trữ", // DRAFT — Kevin reviews
+  "exh.a.restored": "Đã khôi phục", // DRAFT — Kevin reviews
+  "exh.a.submitted": "Đã gửi duyệt", // DRAFT — Kevin reviews
+  "exh.a.approved": "Đã duyệt", // DRAFT — Kevin reviews
+  "exh.a.rejected": "Đã từ chối", // DRAFT — Kevin reviews
+  "exh.a.voided": "Đã hủy", // DRAFT — Kevin reviews
+  "exh.a.returned_to_draft": "Đã trả về bản nháp", // DRAFT — Kevin reviews
+  "exh.a.reimbursement_request": "Đã yêu cầu hoàn tiền", // DRAFT — Kevin reviews
+  "exh.a.reimbursement_approve": "Đã duyệt hoàn tiền", // DRAFT — Kevin reviews
+  "exh.a.reimbursement_reject": "Đã từ chối hoàn tiền", // DRAFT — Kevin reviews
+  "exh.a.reimbursement_pay": "Đã trả hoàn tiền", // DRAFT — Kevin reviews
+  "exh.a.reimbursement_cancel": "Đã hủy hoàn tiền", // DRAFT — Kevin reviews
+  "ivt.title": "Dòng thời gian", // DRAFT — Kevin reviews
+  "ivt.created": "Đã tạo hóa đơn", // DRAFT — Kevin reviews
+  "ivt.issued": "Ngày lập {d}", // DRAFT — Kevin reviews
+  "ivt.sent": "Đã gửi cho khách", // DRAFT — Kevin reviews
+  "ivt.payment": "Đã ghi khoản thanh toán {amount}", // DRAFT — Kevin reviews
+  "ivt.credit": "Phiếu ghi có {n} trị giá {amount}", // DRAFT — Kevin reviews
+  "ivt.refunded": "Đã hoàn {amount}", // DRAFT — Kevin reviews
+  "ivt.paid": "Đã trả đủ", // DRAFT — Kevin reviews
+  "ivt.voided": "Đã hủy", // DRAFT — Kevin reviews
+  "ptl.title": "Dòng thời gian thanh toán", // DRAFT — Kevin reviews
+  "ptl.k.created": "Bắt đầu thanh toán", // DRAFT — Kevin reviews
+  "ptl.k.approved": "Đơn vị xử lý đã duyệt", // DRAFT — Kevin reviews
+  "ptl.k.failed": "Thất bại", // DRAFT — Kevin reviews
+  "ptl.k.stranded": "Không có kết quả từ đơn vị xử lý", // DRAFT — Kevin reviews
+  "ptl.k.refund_requested": "Đã yêu cầu hoàn tiền", // DRAFT — Kevin reviews
+  "ptl.k.refund_settled": "Đã hoàn tiền xong", // DRAFT — Kevin reviews
+  "ptl.k.settled": "Đã vào lô quyết toán", // DRAFT — Kevin reviews
+  "ptl.k.deposited": "Đã chuyển vào ngân hàng", // DRAFT — Kevin reviews
+  "exh.a.other": "Đã thay đổi", // DRAFT — Kevin reviews
 };

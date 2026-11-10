@@ -183,6 +183,11 @@ describe('Transactions — detail, privacy, isolation', () => {
     expect(d.permissions).toMatchObject({ refund: true, sendReceipt: true });
     const s = await r.detail(ctx, ids.s1);
     expect(s.settlement).toMatchObject({ reference: 'BATCH-88', grossCents: 6316 });
+    // extras arc (Nov 10 2026): the state timeline lists only recorded times, newest first, and names the batch
+    expect(d.timeline.map((x) => x.kind)).toEqual(expect.arrayContaining(['created', 'refund_requested']));
+    expect(d.timeline.some((x) => x.kind === 'settled')).toBe(false);   // no batch linked → no settlement event invented
+    expect([...d.timeline].map((x) => x.at)).toEqual([...d.timeline].map((x) => x.at).sort().reverse());
+    if (s.settlement?.settledAt) expect(s.timeline.find((x) => x.kind === 'settled')).toMatchObject({ ref: 'BATCH-88' });
     expect(s.ticket).toMatchObject({ ticketNumber: '4001', financials: { subtotalCents: 5916, tipCents: 400, paidCents: 6316, balanceCents: 0 } });   // a single-tender paid ticket has its ticket too
     // the split ticket is still at checkout: as Checkout leaves it — no subtotal / total yet (written at payment), the $79.72
     // of sales on its line, tax off for this salon. The balance is computed from those (not from total_cents)

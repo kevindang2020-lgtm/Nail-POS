@@ -35,7 +35,10 @@ beforeAll(async () => {
   await review(R.g5, { rating: 5, source: 'google', text: 'Loved my gel manicure, very clean salon', sentiment: 'positive', daysAgo: 3, ext: 'accounts/1/locations/1/reviews/a' });
   await review(R.g1, { rating: 1, source: 'google', text: 'Waited 40 minutes and the tools looked dirty', sentiment: 'negative', severity: 'high', daysAgo: 10, ext: 'accounts/1/locations/1/reviews/b' });
   await review(R.y4, { rating: 4, source: 'yelp', text: 'Nice pedicure', sentiment: 'positive', daysAgo: 40 });
-  await review(R.int3, { rating: 3, source: 'internal', text: 'OK visit', sentiment: null, daysAgo: 70, customer: CUST });
+  // the 15th of the month three months back — always in the 4th month of a 4-month trend, never in a 3-month one (a fixed
+  // "70 days ago" fell inside the 3-month window on the first ~10 days of a month: the Nov 10 2026 red)
+  const back3 = (() => { const n = new Date(); return Math.round((n.getTime() - Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - 3, 15, 12)) / 86_400_000); })();
+  await review(R.int3, { rating: 3, source: 'internal', text: 'OK visit', sentiment: null, daysAgo: back3, customer: CUST });
   await review(R.spam, { rating: 1, source: 'google', text: 'buy followers', sentiment: 'negative', daysAgo: 2, spam: true });
   await review(R.b2, { branch: B2, rating: 2, source: 'google', text: 'Polish chipped next day', sentiment: 'negative', daysAgo: 5 });
   await review(R.other, { tenant: X, branch: BX, rating: 1, source: 'google', text: 'other salon', sentiment: 'negative', daysAgo: 1 });
@@ -126,7 +129,7 @@ describe('Review & Reputation — inbox, detail, queues', () => {
 
 describe('Review & Reputation — trends, branches, security, health', () => {
   it('TR-01 trends and branches use the same definition; a branch with no reviews is N/A', async () => {
-    const t: any = await rc.trends(ctx(), { months: 4 });                 // the 70-day-old review falls in the 4th month back
+    const t: any = await rc.trends(ctx(), { months: 4 });                 // the 3-months-back review falls in the 4th month back
     expect(t.months).toHaveLength(4);
     expect(t.months.reduce((n: number, m: any) => n + m.reviews, 0)).toBe(5);
     expect((await rc.trends(ctx(), { months: 3 }) as any).months.reduce((n: number, m: any) => n + m.reviews, 0)).toBe(4);

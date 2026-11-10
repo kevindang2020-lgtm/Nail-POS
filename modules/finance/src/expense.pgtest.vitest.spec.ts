@@ -52,6 +52,10 @@ describe('finance — isolation', () => {
     expect(expense.branchId).toBeNull();                                                  // filed to the whole salon
     expect((await granted.detail(owner, expense.id)).expense.id).toBe(expense.id);
     expect((await granted.approve(owner, expense.id, expense.version)).expense.status).toBe('approved');
+    // extras arc (Nov 10 2026): the history names the person (this salon's user), for the POS History list
+    const hist = (await granted.detail(owner, expense.id)).history as Array<{ action: string; actorName: string | null }>;
+    expect(hist.map((h) => h.action)).toEqual(expect.arrayContaining(['created', 'approved']));
+    expect(hist.every((h) => h.actorName === 'O O')).toBe(true);
     expect((await granted.list(owner, { tab: 'all' } as never)).items.some((x: { id: string }) => x.id === expense.id)).toBe(true);
     expect(await code(granted.detail(mgr, expense.id))).toBe('EXPENSE_NOT_FOUND');
     // the Owner App's "All branches" (ALL_BRANCHES) report carries the salon-wide cost even when her session picked a

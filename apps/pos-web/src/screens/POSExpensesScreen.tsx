@@ -363,6 +363,7 @@ function ExpenseView({ id, canManage, canApprove, can, catLabel, onClose, onEdit
           {can('owner.expenses.archive') && x.archivedAt ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.restore(x.id), tx('people.common.restored'))}>{tx('pos.restore')}</button> : null}
         </div>
         {err ? <div className="fk-err" role="alert">{err}</div> : null}
+        <ExpenseHistory items={(d.data?.history ?? []) as ExpenseHistoryItem[]} />
       </>}
     </FitDialog>
   );
@@ -411,5 +412,28 @@ function CategoryBreakdown({ dates, onClose }: { dates: { period?: string; from?
             <span className="ex-bar"><span style={{ width: `${Math.round((c.totalCents / max) * 100)}%` }} /></span><b className="num">{money(c.totalCents)}</b></li>)}</ul>}
       {r.data ? <div className="fk-hint"><b>{money(r.data.totalCents)}</b> · {tx('pos.only_approved_expenses_are_counted_drafts_1m5r')}</div> : null}
     </FitDialog>
+  );
+}
+
+// extras arc (Nov 10 2026): the expense's own history (expense_history — who did what, when, and why), newest first.
+type ExpenseHistoryItem = { id: string; action: string; actorUserId: string | null; actorName?: string | null; reason?: string | null; at: string };
+export function ExpenseHistory({ items }: { items: ExpenseHistoryItem[] }) {
+  const rows = [...items].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  const label = (a: string) => { const k = `exh.a.${a}`; const v = tx(k); return v === k ? tx('exh.a.other') : v; };
+  return (
+    <section data-testid="expense-history">
+      <h3 className="fk-sub">{tx('exh.title')}</h3>
+      {rows.length === 0 ? <div className="fk-hint">{tx('exh.empty')}</div> : (
+        <ul className="fk-list dense" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {rows.map((h) => (
+            <li key={h.id} data-testid="expense-history-row" style={{ padding: '4px 0', borderBottom: '1px solid var(--line, #eee)' }}>
+              <b>{label(h.action)}</b>
+              <span className="fk-muted"> · {fmtInZone(h.at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · {h.actorName ? tx('exh.by', { name: h.actorName }) : h.actorUserId ? tx('exh.unknown') : tx('exh.system')}</span>
+              {h.reason ? <div className="fk-muted">{h.reason}</div> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
