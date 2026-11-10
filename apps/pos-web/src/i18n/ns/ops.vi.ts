@@ -1103,4 +1103,33 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.active_past_period.fix": "Gia hạn, kết thúc hoặc cập nhật các thẻ đó.", // DRAFT — Kevin reviews
   "syschk.memberships.paused_past_resume": "Không có thẻ tạm dừng nào đã quá ngày tiếp tục", // DRAFT — Kevin reviews
   "syschk.memberships.paused_past_resume.fix": "Tiếp tục hoặc gia hạn thời gian tạm dừng.", // DRAFT — Kevin reviews
+  "syschk.service-flow.title": "Kiểm tra hệ thống Quy trình phục vụ", // DRAFT — Kevin reviews
+  "syschk.terminals.title": "Kiểm tra hệ thống Máy thanh toán", // DRAFT — Kevin reviews
+  "syschk.approvals.title": "Kiểm tra hệ thống Phê duyệt", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_too_long": "Không có dịch vụ nào đang làm quá 8 giờ", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_too_long.fix": "Hoàn tất hoặc mở lại các phiếu đó.", // DRAFT — Kevin reviews
+  "syschk.service-flow.done_not_paid": "Không có dịch vụ đã xong nào chờ thanh toán quá một ngày", // DRAFT — Kevin reviews
+  "syschk.service-flow.done_not_paid.fix": "Thu tiền hoặc đóng các phiếu đó.", // DRAFT — Kevin reviews
+  "syschk.service-flow.paid_state_mismatch": "Mọi phiếu ghi Đã trả đều có giờ trả, và ngược lại", // DRAFT — Kevin reviews
+  "syschk.service-flow.paid_state_mismatch.fix": "Mở phiếu và kiểm tra thanh toán.", // DRAFT — Kevin reviews
+  "syschk.service-flow.paid_without_payment": "Mọi phiếu đã trả đều có khoản thanh toán thành công", // DRAFT — Kevin reviews
+  "syschk.service-flow.paid_without_payment.fix": "Tìm khoản thanh toán hoặc mở lại phiếu.", // DRAFT — Kevin reviews
+  "syschk.service-flow.queue_waiting_long": "Không có khách nào chờ trong hàng quá 3 giờ", // DRAFT — Kevin reviews
+  "syschk.service-flow.queue_waiting_long.fix": "Phục vụ, chuyển hoặc xóa các khách đó.", // DRAFT — Kevin reviews
+  "syschk.service-flow.in_service_without_ticket": "Mọi khách đang làm đều có phiếu", // DRAFT — Kevin reviews
+  "syschk.service-flow.in_service_without_ticket.fix": "Mở phiếu cho họ từ màn hình Đang phục vụ.", // DRAFT — Kevin reviews
+  "syschk.terminals.not_seen_day": "Mọi máy thanh toán đều có tín hiệu trong ngày qua", // DRAFT — Kevin reviews
+  "syschk.terminals.not_seen_day.fix": "Kiểm tra máy đã bật và có kết nối.", // DRAFT — Kevin reviews
+  "syschk.terminals.last_ping_failed": "Không có máy nào lỗi lần kiểm tra kết nối gần nhất", // DRAFT — Kevin reviews
+  "syschk.terminals.last_ping_failed.fix": "Kiểm tra lại máy ở màn hình Máy thanh toán.", // DRAFT — Kevin reviews
+  "syschk.terminals.never_verified": "Mọi máy thanh toán đều đã được xác minh", // DRAFT — Kevin reviews
+  "syschk.terminals.never_verified.fix": "Chạy kiểm tra máy một lần.", // DRAFT — Kevin reviews
+  "syschk.terminals.duplicate_serial": "Không có số sê-ri nào bị ghi hai lần", // DRAFT — Kevin reviews
+  "syschk.terminals.duplicate_serial.fix": "Tắt bản ghi máy bị trùng.", // DRAFT — Kevin reviews
+  "syschk.approvals.pending_expired": "Không có yêu cầu đang chờ nào quá hạn", // DRAFT — Kevin reviews
+  "syschk.approvals.pending_expired.fix": "Quyết định hoặc hủy các yêu cầu đó.", // DRAFT — Kevin reviews
+  "syschk.approvals.approved_not_executed": "Mọi yêu cầu đã duyệt đều đã được thực hiện", // DRAFT — Kevin reviews
+  "syschk.approvals.approved_not_executed.fix": "Mở yêu cầu và chạy lại, hoặc hủy.", // DRAFT — Kevin reviews
+  "syschk.approvals.execution_failed": "Không có yêu cầu đã duyệt nào bị lỗi khi thực hiện", // DRAFT — Kevin reviews
+  "syschk.approvals.execution_failed.fix": "Mở yêu cầu để xem lý do và thử lại.", // DRAFT — Kevin reviews
 };

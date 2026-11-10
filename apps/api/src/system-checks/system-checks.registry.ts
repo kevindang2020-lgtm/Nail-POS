@@ -20,12 +20,13 @@ export interface DomainDef { permission: string; checks: CheckDef[] }
 const BRANCH_COL = {
   e: sql`e.branch_id`, i: sql`i.branch_id`, s: sql`s.branch_id`, d: sql`d.branch_id`, p: sql`p.branch_id`, r: sql`r.branch_id`,
   a: sql`a.branch_id`, l: sql`l.branch_id`, m: sql`m.branch_id`, u: sql`u.branch_id`, x: sql`x.branch_id`,
+  k: sql`k.branch_id`, q: sql`q.branch_id`, c: sql`c.branch_id`, v: sql`v.branch_id`, w: sql`w.branch_id`, f: sql`f.branch_id`, g: sql`g.branch_id`, h: sql`h.branch_id`,
 } as const;
 type Alias = keyof typeof BRANCH_COL;
 /** `AND <alias>.branch_id = b` when the request is for one branch */
-const br = (alias: Alias, b: string | null) => (b ? sql`AND ${BRANCH_COL[alias]} = ${b}::uuid` : sql``);
+const br = (alias: Alias, b: string | null) => (b ? sql`AND ${BRANCH_COL[alias]}::text = ${b}` : sql``);   // ::text — a few older tables keep ids as text
 /** the SALON's calendar day for that row — its branch's time zone, never the server's UTC day */
-const today = (alias: Alias) => sql`(now() AT TIME ZONE coalesce((SELECT bz.timezone FROM branches bz WHERE bz.id = ${BRANCH_COL[alias]}), 'UTC'))::date`;
+const today = (alias: Alias, t: string) => sql`(now() AT TIME ZONE coalesce((SELECT bz.timezone FROM branches bz WHERE bz.tenant_id = ${t}::uuid AND bz.id::text = ${BRANCH_COL[alias]}::text), 'UTC'))::date`;
 const n = (q: RawBuilder<unknown>) => sql<{ n: number }>`SELECT count(*)::int AS n FROM (${q}) x`;
 
 const PAY_OK = sql`('approved','captured','completed','settled','succeeded','partially_refunded','refunded')`;
@@ -37,9 +38,9 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
   expenses: { permission: 'owner.expenses.view', checks: [
     { key: 'parts_mismatch', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.status <> 'voided' AND e.subtotal_cents IS NOT NULL
         AND e.subtotal_cents + coalesce(e.tax_cents, 0) + coalesce(e.tip_cents, 0) + coalesce(e.fee_cents, 0) - coalesce(e.discount_cents, 0) <> e.amount_cents`) },
-    { key: 'future_dated', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.status <> 'voided' AND e.incurred_on > ${today('e')} + 1`) },
+    { key: 'future_dated', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.status <> 'voided' AND e.incurred_on > ${today('e', t)} + 1`) },
     { key: 'possible_duplicates', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.duplicate_status IN ('possible', 'exact') AND e.status NOT IN ('voided', 'rejected')`) },
-    { key: 'bills_past_due', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.kind = 'bill' AND e.bill_status IN ('open', 'partially_paid') AND e.due_date < ${today('e')}`) },
+    { key: 'bills_past_due', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.kind = 'bill' AND e.bill_status IN ('open', 'partially_paid') AND e.due_date < ${today('e', t)}`) },
     { key: 'review_waiting', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM expenses e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.status = 'pending_review' AND e.created_at < now() - interval '7 days'`) },
   ] },
 
@@ -52,7 +53,7 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'overpaid', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM invoices i WHERE i.tenant_id = ${t}::uuid ${br('i', b)} AND i.status NOT IN ('refunded', 'credited', 'void', 'voided')
         AND coalesce((SELECT sum(p.amount_cents) FROM invoice_payments p WHERE p.tenant_id = i.tenant_id AND p.invoice_id = i.id), 0) > coalesce(i.total_cents, 0)`) },
     { key: 'due_before_issue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM invoices i WHERE i.tenant_id = ${t}::uuid ${br('i', b)} AND i.due_date < i.issue_date`) },
-    { key: 'open_past_due', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM invoices i WHERE i.tenant_id = ${t}::uuid ${br('i', b)} AND i.status IN ${INV_OPEN} AND i.due_date < ${today('i')}`) },
+    { key: 'open_past_due', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM invoices i WHERE i.tenant_id = ${t}::uuid ${br('i', b)} AND i.status IN ${INV_OPEN} AND i.due_date < ${today('i', t)}`) },
     { key: 'missing_bill_to', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM invoices i WHERE i.tenant_id = ${t}::uuid ${br('i', b)} AND i.status <> 'draft' AND i.customer_id IS NULL AND coalesce(btrim(i.bill_to_name), '') = ''`) },
     { key: 'void_without_reason', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM invoices i WHERE i.tenant_id = ${t}::uuid ${br('i', b)} AND i.status IN ('void', 'voided') AND coalesce(btrim(i.void_reason), '') = ''`) },
   ] },
@@ -62,10 +63,10 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'duplicate_batch', severity: 'FAILED', count: (t, b) => n(sql`SELECT s.processor_type, s.settlement_id FROM payment_settlements s WHERE s.tenant_id = ${t}::uuid ${br('s', b)} AND coalesce(s.settlement_id, '') <> ''
         GROUP BY s.processor_type, s.settlement_id HAVING count(*) > 1`) },
     { key: 'missing_batch_id', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM payment_settlements s WHERE s.tenant_id = ${t}::uuid ${br('s', b)} AND coalesce(btrim(s.settlement_id), '') = ''`) },
-    { key: 'deposit_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM payment_settlements s WHERE s.tenant_id = ${t}::uuid ${br('s', b)} AND s.actual_deposit_date IS NULL AND s.expected_deposit_date < ${today('s')} - 2
+    { key: 'deposit_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM payment_settlements s WHERE s.tenant_id = ${t}::uuid ${br('s', b)} AND s.actual_deposit_date IS NULL AND s.expected_deposit_date < ${today('s', t)} - 2
         AND s.status NOT IN ('failed', 'not_applicable', 'returned')`) },
     { key: 'deposit_difference', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM payment_settlements s WHERE s.tenant_id = ${t}::uuid ${br('s', b)} AND coalesce(s.signed_difference_cents, 0) <> 0`) },
-    { key: 'bank_unmatched', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM bank_deposits d WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.matched_settlement_id IS NULL AND d.deposit_date < ${today('d')} - 3`) },
+    { key: 'bank_unmatched', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM bank_deposits d WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.matched_settlement_id IS NULL AND d.deposit_date < ${today('d', t)} - 3`) },
     { key: 'refunds_stuck', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM payment_refunds r WHERE r.tenant_id = ${t}::uuid ${br('r', b)} AND r.status IN ('pending', 'processing', 'reserved') AND r.created_at < now() - interval '1 day'`) },
     { key: 'refund_over_payment', severity: 'FAILED', count: (t, b) => n(sql`SELECT p.id FROM payments p JOIN payment_refunds r ON r.tenant_id = p.tenant_id AND r.payment_id = p.id
         WHERE p.tenant_id = ${t}::uuid ${br('p', b)} AND r.status NOT IN ('failed', 'cancelled', 'voided')
@@ -144,5 +145,41 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'billing_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'grace') AND m.next_billing_at < now() - interval '1 day' AND NOT coalesce(m.comped, false)`) },
     { key: 'active_past_period', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status = 'active' AND m.current_period_end < now() - interval '1 day'`) },
     { key: 'paused_past_resume', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status = 'paused' AND m.pause_resumes_at < now()`) },
+  ] },
+
+  // ── Live Operations / Serving / Service Done (the service flow: queue → serving → done → paid) ───────────────────
+  'service-flow': { permission: 'pos.serving.view', checks: [
+    { key: 'serving_too_long', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at < now() - interval '8 hours'
+        AND k.service_done_at IS NULL AND k.paid_at IS NULL AND k.payment_status IS DISTINCT FROM 'paid'`) },
+    { key: 'done_not_paid', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.service_done_at < now() - interval '1 day'
+        AND k.paid_at IS NULL AND k.payment_status IS DISTINCT FROM 'paid' AND coalesce(k.total_cents, 0) > 0`) },
+    { key: 'paid_state_mismatch', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ((k.payment_status = 'paid') <> (k.paid_at IS NOT NULL))`) },
+    { key: 'paid_without_payment', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.payment_status = 'paid' AND coalesce(k.total_cents, 0) > 0
+        AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.tenant_id = k.tenant_id AND p.ticket_id = k.id AND p.status IN ${PAY_OK})`) },
+    { key: 'queue_waiting_long', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status IN ('waiting', 'called', 'assigned', 'ready_for_tech')
+        AND q.checked_in_at < now() - interval '3 hours'`) },
+    { key: 'in_service_without_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status = 'in_service' AND q.ticket_id IS NULL`) },
+  ] },
+
+
+  // ── Payment Terminals (the terminal records on file — readiness only; nothing is sent to a device) ─────────────
+  terminals: { permission: 'settings.view', checks: [
+    { key: 'not_seen_day', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_payment_terminals w WHERE w.tenant_id = ${t} ${br('w', b)} AND w.disabled_at IS NULL
+        AND coalesce(w.last_seen_at, w.last_ping_at, w.paired_at) < now() - interval '1 day'`) },
+    { key: 'last_ping_failed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_payment_terminals w WHERE w.tenant_id = ${t} ${br('w', b)} AND w.disabled_at IS NULL AND w.last_ping_ok = false`) },
+    { key: 'never_verified', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_payment_terminals w WHERE w.tenant_id = ${t} ${br('w', b)} AND w.disabled_at IS NULL AND w.verified_at IS NULL`) },
+    { key: 'duplicate_serial', severity: 'FAILED', count: (t, b) => n(sql`SELECT coalesce(w.serial_number, w.hsn) FROM pos_payment_terminals w WHERE w.tenant_id = ${t} ${br('w', b)} AND w.disabled_at IS NULL
+        AND coalesce(w.serial_number, w.hsn, '') <> '' GROUP BY coalesce(w.serial_number, w.hsn) HAVING count(*) > 1`) },
+  ] },
+
+
+
+
+  // ── Approvals Management & Authorization Center ───────────────────────────────────────────────────────────────────
+  approvals: { permission: 'approvals.view', checks: [
+    { key: 'pending_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_approval_requests a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'pending' AND a.expires_at < now()`) },
+    { key: 'approved_not_executed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_approval_requests a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'approved' AND a.executed_at IS NULL
+        AND a.decided_at < now() - interval '1 hour'`) },
+    { key: 'execution_failed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_approval_requests a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'execution_failed'`) },
   ] },
 };

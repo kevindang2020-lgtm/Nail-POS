@@ -39,4 +39,13 @@ export class SystemChecksController {
 
   @RequirePermission('pos.memberships.view') @Get('memberships')
   memberships(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('memberships', ctxOf(req)); }
+  @RequirePermission('pos.serving.view') @Get('service-flow')
+  serviceFlow(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('service-flow', ctxOf(req)); }
+
+  @RequirePermission('settings.view') @Get('terminals')
+  terminals(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('terminals', ctxOf(req)); }
+
+  @RequirePermission('approvals.view') @Get('approvals')
+  approvals(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('approvals', ctxOf(req)); }
+
 }

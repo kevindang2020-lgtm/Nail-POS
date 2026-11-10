@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useEventCallback } from '@aipowersalon/ui';
 import { useRealtime } from '../realtime/useRealtime';
 import { REALTIME_STATUS, realtimeStatus } from '../realtime/realtime-client';
@@ -325,6 +326,7 @@ export function POSServiceDoneScreen() {
       <div className="co-title">
         <h1>{tx('pos.service_done')}</h1>
         <div className="co-sub">{tx('pos.completed_service_handoff_guest_confirmation_review_13o1')}</div>
+        <SystemCheckButton domain="service-flow" />
         <div className="co-filters">
           <ImeSafeInput aria-label={tx('pos.search_completed')} value={search} onValue={setSearch} placeholder={tx('pos.search_guest_tech')} style={{ border: '1px solid var(--line)', borderRadius: 9, padding: '0 10px', fontSize: 12, background: 'var(--card)', color: 'var(--text)', width: 160 }} />
           {sel(serviceFilter, setServiceFilter, tx('pos.service_filter'), <><option value="">{tx('pos.all_services')}</option>{(s.filters?.serviceCategories || []).map((c) => <option key={c} value={c}>{c}</option>)}</>)}

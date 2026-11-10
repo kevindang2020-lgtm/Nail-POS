@@ -147,7 +147,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSServingScreen.tsx`
 - Guide: AI_PowerSalon_Serving
 - Scroll: one screen
-- API calls on this page: `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posServingApi.addRetail`, `posServingApi.addService`, `posServingApi.assignHelper`, `posServingApi.assignTechnician`, `posServingApi.balanceSuggestions`, `posServingApi.clearDelay`, `posServingApi.decideChangeRequest`, `posServingApi.markServiceDone`, `posServingApi.notifyCustomer`, `posServingApi.pause`, `posServingApi.pendingChangeRequests`, `posServingApi.reportDelay`, `posServingApi.resume`, `posServingApi.retailCatalog`, `posServingApi.revisions`, `posServingApi.sendToServiceDone`, `posServingApi.staffAlert`, `posServingApi.start`, `posServingApi.state`, `posServingApi.ticket`, `posServingApi.updateNotes`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posServingApi.addRetail`, `posServingApi.addService`, `posServingApi.assignHelper`, `posServingApi.assignTechnician`, `posServingApi.balanceSuggestions`, `posServingApi.clearDelay`, `posServingApi.decideChangeRequest`, `posServingApi.markServiceDone`, `posServingApi.notifyCustomer`, `posServingApi.pause`, `posServingApi.pendingChangeRequests`, `posServingApi.reportDelay`, `posServingApi.resume`, `posServingApi.retailCatalog`, `posServingApi.revisions`, `posServingApi.sendToServiceDone`, `posServingApi.staffAlert`, `posServingApi.start`, `posServingApi.state`, `posServingApi.ticket`, `posServingApi.updateNotes`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -171,7 +171,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSServiceDoneScreen.tsx`
 - Guide: AI_PowerSalon_Service_Done
 - Scroll: one screen
-- API calls on this page: `posMembershipEnrollApi.customerMemberships`, `posMembershipEnrollApi.memberBenefits`, `posMembershipEnrollApi.redeem`, `posServiceDoneApi.markReadyForCheckout`, `posServiceDoneApi.notifyCustomer`, `posServiceDoneApi.qualityCheck`, `posServiceDoneApi.reopenService`, `posServiceDoneApi.sendToCheckout`, `posServiceDoneApi.state`, `posServiceDoneApi.ticket`, `posServiceDoneApi.updateNotes`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posMembershipEnrollApi.customerMemberships`, `posMembershipEnrollApi.memberBenefits`, `posMembershipEnrollApi.redeem`, `posServiceDoneApi.markReadyForCheckout`, `posServiceDoneApi.notifyCustomer`, `posServiceDoneApi.qualityCheck`, `posServiceDoneApi.reopenService`, `posServiceDoneApi.sendToCheckout`, `posServiceDoneApi.state`, `posServiceDoneApi.ticket`, `posServiceDoneApi.updateNotes`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -706,7 +706,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSPaymentTerminalsScreen.tsx`
 - Guide: AI_PowerSalon_Payment_Terminals_2
 - Scroll: one screen
-- API calls on this page: `authApi.branches`, `authApi.logout`, `authApi.me`, `posDevicesApi.assignTerminalLocation`, `posDevicesApi.disableTerminal`, `posDevicesApi.enableTerminal`, `posDevicesApi.pairTerminal`, `posDevicesApi.renameTerminal`, `posDevicesApi.setTerminalRegister`, `posDevicesApi.terminalProcessors`, `posDevicesApi.testTerminal`, `posDevicesApi.unpairTerminal`, `posMobilePaymentsApi.activity`, `posMobilePaymentsApi.approve`, `posMobilePaymentsApi.createPairing`, `posMobilePaymentsApi.devices`, `posMobilePaymentsApi.rename`, `posMobilePaymentsApi.revoke`, `posMobilePaymentsApi.setBranches`, `posMobilePaymentsApi.suspend`, `posSettingsApi.updateCategory`, `posStepUpApi.stepUp`
+- API calls on this page: `authApi.branches`, `authApi.logout`, `authApi.me`, `posDevicesApi.assignTerminalLocation`, `posDevicesApi.disableTerminal`, `posDevicesApi.enableTerminal`, `posDevicesApi.pairTerminal`, `posDevicesApi.renameTerminal`, `posDevicesApi.setTerminalRegister`, `posDevicesApi.terminalProcessors`, `posDevicesApi.testTerminal`, `posDevicesApi.unpairTerminal`, `posMobilePaymentsApi.activity`, `posMobilePaymentsApi.approve`, `posMobilePaymentsApi.createPairing`, `posMobilePaymentsApi.devices`, `posMobilePaymentsApi.rename`, `posMobilePaymentsApi.revoke`, `posMobilePaymentsApi.setBranches`, `posMobilePaymentsApi.suspend`, `posSettingsApi.updateCategory`, `posStepUpApi.stepUp`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2102,7 +2102,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/approvals/POSApprovalsScreen.tsx`
 - Guide: AI_PowerSalon_Approvals_Management_Authorization_Center
 - Scroll: vertical page scroll allowed (Approvals SUNMI guide: four summary cards and the five tabs on top; long request lists scroll with the page.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posStepUpApi.stepUp`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posStepUpApi.stepUp`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|

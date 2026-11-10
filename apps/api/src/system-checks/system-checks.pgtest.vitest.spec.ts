@@ -52,6 +52,7 @@ describe('shared read-only Check … System', () => {
     const tc = await svc.run('technicians', { tenantId: T });
     expect(count(tc, 'duplicate_phone')).toMatchObject({ state: 'WARNING', count: 1 });
     expect(count(tc, 'no_app_account')).toMatchObject({ state: 'WARNING', count: 2 });
+
   });
   it('the branch scope narrows the counts', async () => {
     const b1 = await svc.run('expenses', { tenantId: T, branchId: B1 });

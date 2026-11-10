@@ -176,6 +176,11 @@ export class AppointmentHistoryCenter {
     checks.push({ key: 'customer_links', state: orphan ? 'WARNING' : 'READY', count: orphan });
     const stale = N((await sql<Row>`select count(*)::int as n from ${this.rows(T, s)} r where r.status = any(${OPEN}::text[]) and r.appt_date < ${(await this.ret.window(ctx, { preset: 'today' })).today}::date`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'past_open_appointments', state: stale ? 'WARNING' : 'READY', count: stale });
+    // extras arc (Nov 10 2026): an upcoming booking whose deposit failed — the customer may arrive expecting a held slot
+    const depFail = N((await sql<Row>`select count(*)::int as n from pos_tech_appointments a where a.tenant_id = ${T} and a.status in ('booked', 'confirmed') and a.deposit_status = 'failed'
+        and a.appt_date >= ${(await this.ret.window(ctx, { preset: 'today' })).today}::date
+        ${s.branchIds ? sql`and a.branch_id = any(${s.branchIds}::uuid[])` : sql``}`.execute(this.db)).rows[0]?.n);
+    checks.push({ key: 'deposit_failed_upcoming', state: depFail ? 'WARNING' : 'READY', count: depFail });
     checks.push({ key: 'no_side_effects', state: 'READY' });
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : 'READY';
     return { overall, checkedAt: new Date(this.now()).toISOString(), checks };

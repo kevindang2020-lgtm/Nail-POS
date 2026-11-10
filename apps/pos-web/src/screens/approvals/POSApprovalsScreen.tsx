@@ -10,6 +10,7 @@
 // Every decision carries the request's version; a 409 (someone decided first / it changed) reloads. Realtime: the
 // approval_updated event (refetch key "approvals") refreshes the lists. Nothing is computed here — the server decides.
 import { useCallback, useEffect, useState } from 'react';
+import { SystemCheckButton } from '../../components/SystemCheck';
 import type { ApprovalPolicyDetail, ApprovalRequestView, TenantApprovalKind } from '@aipowersalon/api-contracts/tenant';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { useCan } from '../../components/usePermissions';
@@ -114,7 +115,10 @@ export function POSApprovalsScreen() {
 
   return (
     <div className="work">
-      <div className="vh" style={{ marginBottom: 10 }}><h1>{tx('pos.approvals')}</h1><div className="sub">{tx('pos.refunds_over_the_limit_deals_purchase_14qh')}</div></div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+        <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.approvals')}</h1><div className="sub">{tx('pos.refunds_over_the_limit_deals_purchase_14qh')}</div></div>
+        <SystemCheckButton domain="approvals" />
+      </div>
       <div className="rvw-kpis apx-kpis" data-testid="apx-kpis">
         {([['pending', 'apx.kpi.pending', sum?.pending, 'inbox'], ['owner', 'apx.kpi.owner', sum?.awaitingOwner, 'inbox'], ['urgent', 'apx.kpi.urgent', sum?.urgent, 'inbox'], ['completed', 'apx.kpi.completed', sum?.completed, 'history']] as const).map(([k, label, v, go]) =>
           <KpiCard key={k} testId={`apx-kpi-${k}`} label={tx(label)} loading={!sum && !sumErr} tone={k === 'urgent' && v ? 'bad' : k === 'owner' && v ? 'warn' : k === 'completed' ? 'ok' : undefined}

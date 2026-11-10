@@ -6,19 +6,25 @@ triaged). Status: **TODO** · **BUILT** (built + tested this arc, commit named) 
 
 Nothing is marked BUILT or EXISTS without the code being opened and the test named.
 
-## Progress (updated Nov 10 2026, 00:20 New York)
+## Progress (updated Nov 10 2026, 01:45 New York)
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 23 |
-| EXISTS (opened and named) | 86 |
-| TODO | 1709 |
+| BUILT this arc | 27 (incl. part) |
+| EXISTS (opened and named) | 115 |
+| NOISE (parser picked up acceptance / instruction text) | 18 |
+| TODO | 1658 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
 2. **Shared read-only Check … System** (this commit): `GET pos/system-checks/<page>` for expenses, invoices, settlements,
    payments, discounts, catalog, inventory, technicians, memberships — 53 checks, each a count of problem rows; a rule
    the table already enforces is not repeated; the salon's day is its branch's time zone. Mounted on 16 screens.
+3. **Check System, wave 2**: service flow (Serving, Service Done), terminals (Payment Terminals), approvals (Approvals);
+   Appointment History's own check gains "upcoming booking with a failed deposit". Groups that would have duplicated an
+   existing check were dropped: campaigns (Marketing health), cash (Check drawer), follow-ups (End-of-Day health),
+   past-open appointments (Appointment History). Checks the database already enforces were removed (double booking —
+   exclusion constraint; self-approval — CHECK; appointment end before start — CHECK; duplicate cash movement — unique).
 
 Decisions:
 - **Comfortable / Compact density switch — deferred, not built.** About 40 rows ask for it. The shell measures density
@@ -63,12 +69,12 @@ Decisions:
 | 10 | Accuracy and response-time monitors: Track authorized read failure rate, indexed search freshness, note version conflicts and warning retrieval latency. Implementation safeguards • No AI-generated note is automatically t | TODO |
 | 11 | Acknowledgments are auditable and do not change, delete or publish the warning. | TODO |
 | 12 | Health Checker distinguishes healthy, disabled/empty, permission-denied and broken dependencies. | TODO |
-| 13 | Sensitive-note information and counts never leak across tenants, roles or public displays. | TODO |
+| 13 | Sensitive-note information and counts never leak across tenants, roles or public displays. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 14 | AI drafts require human review and never invent or silently persist safety information. | TODO |
 | 15 | No customer identity, booking, loyalty, gift-card or payment ledger is duplicated or modified. | TODO |
-| 16 | Automated tests were executed; results, failures and blockers are documented. AI POWERSALON / CUSTOMER NOTES CLAUDE IMPLEMENTATION GUIDE | TODO |
+| 16 | Automated tests were executed; results, failures and blockers are documented. AI POWERSALON / CUSTOMER NOTES CLAUDE IMPLEMENTATION GUIDE | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 20 | Empty states, error messages and operational honesty STATE VISIBLE MESSAGE / BEHAVIOR No customer selected Search for a customer or select a profile to view notes. | TODO |
-| 26 | Acceptance checklist - definition of done | TODO |
+| 26 | Acceptance checklist - definition of done | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## SERVICE CATEGORIES (16)
 
@@ -124,10 +130,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 14 | KPI Dynamic Values Test: 0 9 | TODO |
+| 14 | KPI Dynamic Values Test: 0 9 | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 32 | Today's Appointments Arriving Keep this panel fixed-height. Display appointments arriving within: Next 3 Hours or the actual configured period. | TODO |
 | 38 | Manage Waiting Lounge Keep: Manage Waiting Lounge as a compact link/action. | TODO |
-| 64 | Card Padding Operational card padding: 8–12 px often should be sufficient. Do not apply: | TODO |
+| 64 | Card Padding Operational card padding: 8–12 px often should be sufficient. Do not apply: | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## AI BRANCH COMPARISON (14)
 
@@ -142,7 +148,7 @@ Decisions:
 | 07 | Outlier / Small-Sample Cautions: suppress overconfident conclusions when only a few appointments or transactions qualify. For each recommended enhancement, Claude must first identify whether it already exists. Reuse or r | TODO |
 | 08 | Period Comparison Toggle: compare prior equal-length periods with branch-local time and consistent definitions; never silently switch comparison dates. | TODO |
 | 09 | Actionable Trend Flags: detect measurable revenue, booking and retention shifts from existing alerts, without inventing a second anomaly engine. | TODO |
-| 10 | Owner Portfolio Guardrails: transparent "All Authorized Branches" count and exclusions; reject cross-tenant requests lacking verified grants. | TODO |
+| 10 | Owner Portfolio Guardrails: transparent "All Authorized Branches" count and exclusions; reject cross-tenant requests lacking verified grants. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 11 | Data Refresh Indicator: per-branch freshness and partial sync warnings, with non-disruptive refresh of summary and history. | TODO |
 | 12 | Touch-First Branch Navigation: tap-friendly row drawer, clear Back/Close, restore page/filter/scroll after drill-down. | TODO |
 | 13 | Large Portfolio Performance: bounded aggregation, indexed filters, virtualization/pagination for many branches without freezing POS. | TODO |
@@ -180,7 +186,7 @@ Decisions:
 | 07 | Proposed layout blueprint - visual concept only This diagram is a static interface concept, not live POS data. Preserve existing sidebar/top bar outside the main content area shown below. AI Checkout + Upsell Assistant H | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Smart upsell and add-on recommendation rules Every displayed recommendation must be bound to an active, authorized service or product record for the selected salon. Validate availability and price immediately before an a | TODO |
 | 09 | Missed-service detection - two distinct workflows Never confuse a financial mismatch with a sales opportunity A service actually performed but not included on the ticket is a potential record discrepancy requiring human  | TODO |
-| 10 | Execute regression/security tests: document evidence, remaining defects and file changes; never claim unrun tests passed. CLAUDE IMPLEMENTATION HANDOFF / EXISTING CODE FIRST / NO AI-INITIATED CHARGES 12 AI POWERSALON / A | TODO |
+| 10 | Execute regression/security tests: document evidence, remaining defects and file changes; never claim unrun tests passed. CLAUDE IMPLEMENTATION HANDOFF / EXISTING CODE FIRST / NO AI-INITIATED CHARGES 12 AI POWERSALON / A | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 12 | Monthly date pickers and precise date semantics Add From Date and To Date controls that open actual calendar month views with month/year, previous/next month, weekday headers, selectable days, range highlight, Today, App | TODO |
 | 13 | Priority recommendations added without removing modules These are additions based on the full-screen SUNMI goal. They do not supersede the original three priorities: (1) subscriptions + Health Checker, (2) smart upsell / | TODO |
 | 14 | Health Checker: original checks plus layout diagnostics The existing "Check AI Checkout + Upsell System" button must perform safe read-only verification of billing/entitlements/quota/provider, ticket consistency, Service | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
@@ -198,7 +204,7 @@ Decisions:
 | 03 | Module Inventory and No-Regression Gate Generate a machine-readable inventory for Checkout + Service Done from existing components. CI must fail when a previously present module, button, route, API, status action or perm | TODO |
 | 04 | Balance and Empty-Space Inspector Detect oversized empty cards, crowded controls, mismatched peer heights, uneven gutters and excessive card padding. Recommend CSS-token fixes instead of deleting low-activity modules. | TODO |
 | 05 | Mandatory preservation matrix - all Checkout modules This matrix was derived from the owner-supplied Checkout mandate. Claude must compare it to the actual repository and append every additional module discovered; this l | TODO |
-| 06 | Handoff and Payment Integrity Checker Read-only health report verifying Serving → Service Done → Checkout exactly-once handoff, duplicate tickets, outstanding payment attempts, ticket-version safety and server-reconciled | TODO |
+| 06 | Handoff and Payment Integrity Checker Read-only health report verifying Serving → Service Done → Checkout exactly-once handoff, duplicate tickets, outstanding payment attempts, ticket-version safety and server-reconciled | BUILT — Check Service Flow System (pos/system-checks/service-flow): paid state, paid without payment, done not paid, serving over 8 h, queue waiting, in service without ticket |
 | 07 | Accessibility + Vietnamese Label Checker Check actual 100% zoom text contrast, touch targets, screen-reader labels, focus order, soft keyboard overlap, Vietnamese overflow, and actionable error messages. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Certified Visual Snapshots Save empty, normal, busy, large-salon, UNKNOWN payment and quality-blocked screenshots for both pages. Run pixel/bounding-box regression after every shared-shell change. | TODO |
 | 09 | KPI cards Guests Ready for Checkout; Completed Checkouts Today; Pending Payments; Today’s Revenue; Tips Captured; Average Checkout Time; Gift Card/Loyalty Redemptions; Upsell at Checkout; Receipt Delivery Rate Primary op | TODO |
@@ -281,7 +287,7 @@ Decisions:
 | 02 | Complete Call Details and Smart Follow-Ups Let authorized staff open any call and see its transcript, speakers, summary, customer requests and booking-related information. Recommend appropriate follow-ups while preservin | TODO |
 | 03 | Full-Screen History, Advanced Search, Calendars and Pagination Use available screen space for call records and processing health. Add phone/name/transcript search, custom monthly From/To calendars, and pages 1, 2, 3 and  | TODO |
 | 12 | One-click health check specifications Voice pipeline health with real evidence Reuse the original Check Voice Transcription System mandate on BOTH routes, with a compact summary and full diagnostic overlay. Subsystem Mus | TODO |
-| 31 | Final copy-and-run instruction to Claude IMPLEMENTATION Claude: inspect the live AI PowerSalon repository and determine what is truly SAFEGUARD implemented before writing changes. Reuse the current Voice Search, Call His | TODO |
+| 31 | Final copy-and-run instruction to Claude IMPLEMENTATION Claude: inspect the live AI PowerSalon repository and determine what is truly SAFEGUARD implemented before writing changes. Reuse the current Voice Search, Call His | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## End-of-Day Cash (18)
 
@@ -395,7 +401,7 @@ Decisions:
 | 28 | Redis caching and synchronization. | TODO |
 | 29 | Tenant and branch authorization. | TODO |
 | 30 | Existing database schemas, migrations, audits and tests. For every component, report whether it is: AI POWERSALON / CLAUDE ENGINEERING HANDOFF | TODO |
-| 31 | Tenant isolation. | TODO |
+| 31 | Tenant isolation. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 32 | Branch authorization. | TODO |
 | 33 | Audit logging. | TODO |
 | 34 | API errors. | TODO |
@@ -413,7 +419,7 @@ Decisions:
 | 05 | Technician Capacity & Handoff Readiness Preview Within current technician/guest cards, show authorized live capacity, expected finish, qualified availability, and why a Visit is or is not ready for Service Done. | TODO |
 | 06 | Multi-technician Line Ownership Inspector From Guest Service Details, offer a detail drawer showing performer, service line, progress, add-on assignment, and audit history without exposing payroll secrets. | TODO |
 | 07 | Touch Safe Action Review For Mark Ready, reassignment, manual price changes or impactful add-ons, show selected guest, affected service, actor permission and any conflict before confirmation. | TODO |
-| 08 | Service Timing & Data Accuracy Checker Compare displayed elapsed/expected timing and KPI totals with backend timestamps/authoritative reports; show stale/unknown status rather than fabricated percentages. | TODO |
+| 08 | Service Timing & Data Accuracy Checker Compare displayed elapsed/expected timing and KPI totals with backend timestamps/authoritative reports; show stale/unknown status rather than fabricated percentages. | BUILT (part) — Check Service Flow System: serving over 8 h is flagged; the per-ticket elapsed-vs-expected comparison is not built |
 | 09 | EQUAL-WIDTH KPI TILES (ALL NINE) LIVE SERVICE FLOOR (1.12fr) / SERVICE PROGRESS BOARD (1.12fr) / AI SERVICE INSIGHTS (1.00fr) | TODO |
 | 10 | Automated Visual Module Parity Gate CI checks screenshot snapshots, all 9+3+3+5+7 required entry points, mobile/desktop fallbacks, overflow, keyboard focus, panel scroll and button touchability. Build instructions · pres | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
@@ -606,7 +612,7 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | SUNMI Screen Fit Actual viewport, effective CSS dimensions, overflow, clipped controls, visible buttons, 100% browser zoom. | TODO |
-| 02 | Tenant / Branch Scope Authenticated tenant and branch, inherited-vs-overridden configuration, no cross-tenant access. | TODO |
+| 02 | Tenant / Branch Scope Authenticated tenant and branch, inherited-vs-overridden configuration, no cross-tenant access. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 03 | Credential Integrity Secret presence and authenticated provider validation; display only redacted metadata. | TODO |
 | 04 | Assigned Sender Provider number ownership, supported channel, E.164 format and Mapping Service association. | TODO |
 | 05 | Registration Readiness Applicable Brand/Campaign/compliance state with provider evidence and last verified time. | TODO |
@@ -721,8 +727,8 @@ Decisions:
 | 08 | CLICKING MANAGE ALL: END-TO-END EDITING WORKFLOW The existing Manage All action must work. Reuse its current implementation and route if present; otherwise implement a scoped addition after discovery. The screen must not | TODO |
 | 14 | NUMBERED HISTORY PAGES AND NEWEST EVENTS FIRST Pagination is for lists of notifications and audit records, not for the eight switches. Preserve all eight settings on the appropriate responsive grid. • In Notification Del | TODO |
 | 17 | ALERT NOISE CONTROL, DEDUPLICATION AND QUIET HOURS These are additional recommendations. Claude should first verify which mechanisms already exist and enhance them rather than creating redundant schedulers. • Support ten | TODO |
-| 18 | SECURITY, PRIVACY, TENANCY AND ROLE PERMISSIONS Existing tenant isolation and RBAC rules are authoritative. New search and diagnostics must never broaden who can view recipient data or notifications. • Every GET/list/upd | TODO |
-| 25 | DEFINITION OF DONE: REQUIRED EVIDENCE FROM CLAUDE Claude must not state “100% complete” without executed verification against the actual codebase. The final report should include: • Exact frontend/backend files, existing | TODO |
+| 18 | SECURITY, PRIVACY, TENANCY AND ROLE PERMISSIONS Existing tenant isolation and RBAC rules are authoritative. New search and diagnostics must never broaden who can view recipient data or notifications. • Every GET/list/upd | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
+| 25 | DEFINITION OF DONE: REQUIRED EVIDENCE FROM CLAUDE Claude must not state “100% complete” without executed verification against the actual codebase. The final report should include: • Exact frontend/backend files, existing | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Auto Logout 8 (4)
 
@@ -755,7 +761,7 @@ Decisions:
 | 16 | Copy-ready final mandate for Claude Read this complete PDF, including the appended original 13-page AI Inventory Assistant guide and the SUNMI FLEX 3 27-inch reference image. Work in the EXISTING AI PowerSalon repository | TODO |
 | 17 | One-Click Inventory Health & Stock Accuracy Checker Add Check AI Inventory System button. Run non-mutating diagnostics with per-check Passed / Warning / Failed / Unavailable, last checked, source freshness, concrete evid | TODO |
 | 18 | Stock reconciliation and evidence trail A second action, Verify Inventory Accuracy, should compare physical count records with canonical ledger position and authorized receipts/sales/consumption/returns/transfers/adjustm | TODO |
-| 20 | Multi-branch access and tenant isolation Support Current Branch, Selected Authorized Branches and All Authorized Branches only when server-side owner permissions permit. Provide branch-specific stock, reorder, forecast,  | TODO |
+| 20 | Multi-branch access and tenant isolation Support Current Branch, Selected Authorized Branches and All Authorized Branches only when server-side owner permissions permit. Provide branch-specific stock, reorder, forecast,  | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 21 | AI entitlements, subscriptions, privacy and localization • Inspect real AI inventory entitlement, plan, trial, metering and Super Admin overrides; do not invent prices or quota limits. • AI unavailability must not stop b | TODO |
 | 22 | Illustrative API and storage integration contract These endpoints/fields are conceptual checklists, NOT instructions to duplicate current services. Claude must find and extend existing endpoints and schema patterns, pres | TODO |
 | 23 | Real-time refresh and scaling Use existing WebSocket/SSE or safe fallback polling when stock events occur. Apply idempotent event processing, version checks and cache invalidation. Refresh counts on sales, configured ser | TODO |
@@ -789,8 +795,8 @@ Decisions:
 | 06 | Next Availability: exact-minute gaps, breaks, multi-tech, blocked intervals and conflict revalidation. | TODO |
 | 07 | Booking/Queue/Technician App Sync: missing or delayed event propagation, stale role state and mismatched availability. | TODO |
 | 08 | Commission & Tip Integrity: check historical rate snapshots, paid/earned labels and duplicate attribution without creating payments. | BUILT — shared read-only Check Technicians System (GET pos/system-checks/technicians, components/SystemCheck); pgtest 5/5 + PG16 run |
-| 09 | Search & Pagination: server-wide scoped results, page bounds, stable order, date basis and no cross-tenant matches. | TODO |
-| 10 | Permissions & Audit: test role gates, sensitive contact/earnings access, actor/event history and denied cross-tenant IDs. CHECKER OUTPUT CONTRACT Show PASS / WARN / FAIL / NOT TESTED, evidence source, checked time, affec | TODO |
+| 09 | Search & Pagination: server-wide scoped results, page bounds, stable order, date basis and no cross-tenant matches. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
+| 10 | Permissions & Audit: test role gates, sensitive contact/earnings access, actor/event history and denied cross-tenant IDs. CHECKER OUTPUT CONTRACT Show PASS / WARN / FAIL / NOT TESTED, evidence source, checked time, affec | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 11 | PRIORITY 1 - Full Technician Profile Overlay | TODO |
 | 12 | PRIORITY 2 - Find Qualified & Available Technician | TODO |
 | 13 | PRIORITY 3 - Technician Service Mapping Assistant | TODO |
@@ -800,7 +806,7 @@ Decisions:
 | 17 | Backend / data model and API contracts | TODO |
 | 18 | Security, privacy, audit and performance | TODO |
 | 19 | Implementation sequence for Claude | TODO |
-| 20 | Acceptance tests and handoff checklist | TODO |
+| 20 | Acceptance tests and handoff checklist | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Split Payments (18)
 
@@ -1046,7 +1052,7 @@ Decisions:
 | 09 | Three priority recommendations | TODO |
 | 10 | Backend contracts, data and event flow | TODO |
 | 11 | Tenant security, observability and rollout | TODO |
-| 12 | Acceptance tests and delivery evidence AI POWERSALON / RECEPTION COPILOT / CLAUDE BUILD SPEC 2 Screenshot 1 of 3 — Front desk overview Original user-provided photograph (unaltered): | TODO |
+| 12 | Acceptance tests and delivery evidence AI POWERSALON / RECEPTION COPILOT / CLAUDE BUILD SPEC 2 Screenshot 1 of 3 — Front desk overview Original user-provided photograph (unaltered): | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Fiserv Payment Gateway (7)
 
@@ -1083,7 +1089,7 @@ Decisions:
 | 14 | Owner recommendation #2 - Automated daily, weekly and monthly reports Add scheduled report generation that uses existing background workers, scheduler and notification channels. Do not require the owner to keep the brows | TODO |
 | 15 | Owner recommendation #3 - AI Executive Summary & Growth Advisor The AI layer explains verified report data and proposes owner-reviewable opportunities. It must not calculate official numbers from its own imagination or p | TODO |
 | 17 | Secure report viewer, file exports and historical snapshots Report details overlay • Report ID/title/type; owner and branch scope; created/generated timestamps; reporting date window; timezone; created by; generation/acc | TODO |
-| 19 | Tenant isolation, AI access and subscription control • Tenant isolation: enforce authenticated tenant/branch context in backend database access; no client-supplied tenant scope without authorization. Avoid cross-tenant d | TODO |
+| 19 | Tenant isolation, AI access and subscription control • Tenant isolation: enforce authenticated tenant/branch context in backend database access; no client-supplied tenant scope without authorization. Avoid cross-tenant d | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 
 ## Customer Retention (15)
 
@@ -1128,8 +1134,8 @@ Decisions:
 | 29 | Language, accessibility and app boundaries • Front Desk tenant POS supports English/Vietnamese via the existing localization system; add labels for new cards, search, calendar, detail views, health and validation. • Do n | TODO |
 | 30 | Five additional upgrades • One-Click Customer Intelligence Health and Accuracy Checker: authoritative counts, visit history, duplicates, retention/rebooking, scan freshness. • Customer 360-Degree Intelligence: approved i | TODO |
 | 31 | Implementation order (strict priority) Phase Implementation deliverable | TODO |
-| 32 | Acceptance and regression test matrix Existing visual fidelity • Route, title, six card titles/definitions, Refresh, How to use this, cached update, sidebar, header and Help remain functional. • 24-inch 100% browser zoom | TODO |
-| 33 | Definition of done (must all be true) • The original six cards and controls remain; numeric results are real and traceable to source/eligibility rules. • 15 scanned / 1 active / 0 inactive has an evidence-based explanati | TODO |
+| 32 | Acceptance and regression test matrix Existing visual fidelity • Route, title, six card titles/definitions, Refresh, How to use this, cached update, sidebar, header and Help remain functional. • 24-inch 100% browser zoom | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
+| 33 | Definition of done (must all be true) • The original six cards and controls remain; numeric results are real and traceable to source/eligibility rules. • 15 scanned / 1 active / 0 inactive has an evidence-based explanati | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 34 | Final execution mandate for Claude Implement this directly in the existing AI PowerSalon repository. Start by auditing actual code and schema, preserve all six metric cards, current navigation, Refresh and the How to use | TODO |
 
 ## Customer Profile Assistant (9)
@@ -1144,7 +1150,7 @@ Decisions:
 | 06 | Visual regression & accessibility CI Add screenshot diffs at target viewports, automated overflow checks, keyboard and touch tests, long EN/VN data cases and module-inventory checks. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 07 | Performance guardrails Defer expensive AI summaries until authorized customer context opens, dedupe provider calls, memoize safe selectors, paginate history and reduce unnecessary shell rerenders. Prioritize upgrades wit | TODO |
 | 12 | VIP and churn/retention intelligence Reuse existing Customer Retention statuses and Loyalty tier definitions. Do not create a competing lifecycle or VIP rule engine inside this feature. CLAUDE ENGINEERING GUIDE / AUDIT F | TODO |
-| 13 | Backend security, tenant isolation, permissions, EN/VN scope and other app localization restrictions. 14-15 Engineering phases, testing matrix, positive/negative cases and requirements for actual test evidence. 16-17 Com | TODO |
+| 13 | Backend security, tenant isolation, permissions, EN/VN scope and other app localization restrictions. 14-15 Engineering phases, testing matrix, positive/negative cases and requirements for actual test evidence. 16-17 Com | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 
 ## Deals  Offers (16)
 
@@ -1252,7 +1258,7 @@ Decisions:
 | 14 | Service Done. | TODO |
 | 15 | Checkout. | TODO |
 | 16 | Payments and refunds. | TODO |
-| 17 | Sales Reports. AI POWERSALON / CLAUDE IMPLEMENTATION GUIDE 17 / 45 AI Analytics & Forecasting | TODO |
+| 17 | Sales Reports. AI POWERSALON / CLAUDE IMPLEMENTATION GUIDE 17 / 45 AI Analytics & Forecasting | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 20 | STAFFING DEMAND FORECASTING Add an optional staffing analysis layer based on verified demand. Use: • Historical appointments • Service durations • Technician skills • Shift availability • Breaks • Forecast booking volume | TODO |
 | 21 | SERVICE DEMAND FORECASTING Support forecasts for real salon services. Potential categories: • Manicure • Pedicure • Gel services • Acrylic services • Nail art • Head spa • Other tenant-defined services Use actual service | TODO |
 | 26 | PERFORMANCE AND SCALABILITY AI PowerSalon must support thousands of salons and substantial transaction volume. Requirements: • Server-side data aggregation • Efficient database indexes • Bounded queries • Cached aggregat | TODO |
@@ -1288,7 +1294,7 @@ Decisions:
 | 07 | Consent Suppression and purpose-specific eligibility enforced by actual send pipeline. | TODO |
 | 08 | Queue/worker Pending jobs, retries, failed queues, scheduler heartbeat and duplicate prevention. | TODO |
 | 09 | Frontend Viewport fit, clipped controls, API error states, date picker and translation. | TODO |
-| 10 | Security Tenant isolation, permission guards, masking and logs. Health Checker implementation rules • Read-only by default. Never create real send jobs, change settings, publish a template or access other tenants when ru | TODO |
+| 10 | Security Tenant isolation, permission guards, masking and logs. Health Checker implementation rules • Read-only by default. Never create real send jobs, change settings, publish a template or access other tenants when ru | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 11 | Duplicate Template Detection Warn when a new draft is near-identical within the same authorized tenant/branch. | TODO |
 | 12 | Version Rollback Assistant Restore earlier approved content as a NEW audited version; do not rewrite historic messages. Scope safeguard: Add recommendations only after confirming no current module already provides that c | TODO |
 
@@ -1329,7 +1335,7 @@ Decisions:
 | 05 | Build responsive full-screen selected-customer summary, event list and source-linked detail overlays. | TODO |
 | 06 | Implement advanced search, month-view From/To calendars, filters and stable numbered pagination. | TODO |
 | 07 | Integrate live refresh, localization and clear empty/error/permission states. | TODO |
-| 08 | Test source reconciliation, tenant isolation, financial safety, performance and regression; report files changed and verified results. AI POWERSALON / CUSTOMER TIMELINE CLAUDE BUILD SPECIFICATION · 2026-11-01 | TODO |
+| 08 | Test source reconciliation, tenant isolation, financial safety, performance and regression; report files changed and verified results. AI POWERSALON / CUSTOMER TIMELINE CLAUDE BUILD SPECIFICATION · 2026-11-01 | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 
 ## LIVE TECHNICIAN SCHEDULE (17)
 
@@ -1362,7 +1368,7 @@ Decisions:
 | 10 | Custom From/To monthly calendar Provide a visible date-range control with a real month-view calendar opened by either date field. • Calendar displays month/year, previous and next month, weekday names, clickable dates, s | TODO |
 | 16 | Fair post-visit review requests and marketing safeguards Review solicitation must be fair, policy-compliant, and controlled by the existing Communications system. • Eligible requests start from actual completed customer  | TODO |
 | 17 | Recurring complaints and reputation analytics Enable evidence-based insights without claiming AI caused business improvement. • Use canonical review-count, rating-average, distribution, reply backlog, negative review cou | TODO |
-| 20 | Final Claude execution mandate and definition of done CLAUDE: EXECUTE IN THE REAL AI POWERSALON REPOSITORY. First inspect the current code and database. Retain all original Review / Reputation Assistant modules (original | TODO |
+| 20 | Final Claude execution mandate and definition of done CLAUDE: EXECUTE IN THE REAL AI POWERSALON REPOSITORY. First inspect the current code and database. Retain all original Review / Reputation Assistant modules (original | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Stock Alerts  Technician Product Usage (10)
 
@@ -1385,7 +1391,7 @@ Decisions:
 |---|---|---|
 | 01 | Very Important: Use the Recommended Option For ordinary technical decisions, do not stop development to ask me which implementation I want. When multiple reasonable technical approaches exist, use the recommended option  | TODO |
 | 02 | Never Blindly Rewrite My System Before creating anything new, search the repository. Do not create: | TODO |
-| 03 | Tenant isolation AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate | TODO |
+| 03 | Tenant isolation AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 04 | Financial correctness | TODO |
 | 05 | Data integrity | TODO |
 | 06 | Server authority | TODO |
@@ -1409,7 +1415,7 @@ Decisions:
 | 67 | Gift Cards Test: issue load redeem partial redeem AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate refund multi-location history Use ledger. | TODO |
 | 68 | Membership Verify: purchase renew cancel benefit checkout application branch rules as implemented. | TODO |
 | 69 | Deals / Promotions Run: eligibility date rules branch rules service/product rules stacking checkout Do not implement discount formulas only in frontend. 70. Twilio Inspect all SMS/Verify code. Business modules should use | TODO |
-| 71 | Tenant Twilio Routing Verify: Tenant A -> Twilio A Tenant B -> Twilio B No cross-tenant SMS. | TODO |
+| 71 | Tenant Twilio Routing Verify: Tenant A -> Twilio A Tenant B -> Twilio B No cross-tenant SMS. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 72 | Communications Tests Run: OTP appointment confirmation reminder Check-In queue ready receipt review request marketing where allowed | TODO |
 | 73 | SMS Failure Twilio outage must not invalidate: AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate appointment payment checkout Communication retries independently. | TODO |
 | 74 | Customer Display Run dual-screen flow: Check-In Advertising Checkout takeover Tip Payment state Receipt Payment Complete 3 seconds clear customer state Advertising | TODO |
@@ -1425,7 +1431,7 @@ Decisions:
 | 07 | Measure the Real CSS Viewport Use window.innerWidth, window.innerHeight, visualViewport where appropriate, and 100dvh. Do not assume the application receives the monitor's full physical resolution. | TODO |
 | 08 | Full guest and assignment overlay - additive recommendation Improve the operator drill-down without enlarging the main page or rewriting the Visit/Tech Queue domains. Guest row tap should open one responsive, viewport-co | TODO |
 | 09 | Smart queue recommendations without automated harmful changes Recommendation layer is read-only by default; deterministic policy and staff approval remain authoritative. C. Smart Wait-Time / Priority and Technician Recom | TODO |
-| 10 | Backend safeguards from original mandate - retain all UI redesign must not weaken operational correctness, financial boundaries or tenant isolation. Non-negotiable Engineering acceptance rule Canonical Visit One check-in | TODO |
+| 10 | Backend safeguards from original mandate - retain all UI redesign must not weaken operational correctness, financial boundaries or tenant isolation. Non-negotiable Engineering acceptance rule Canonical Visit One check-in | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 11 | Viewport Height Budget • POS header ~48-52 px • Customer Queue title/filter row ~42-48 px • KPI row ~64-74 px • Primary operational row ~155-175 px Claude Build Mandate / 3 AI PowerSalon / Customer Queue 27-Inch Touchscr | TODO |
 | 12 | Page Container .customer-queue-page { height: calc(100dvh - var(--pos-header-height)); overflow: hidden; } /* Nested grid/flex children */ min-height: 0; min-width: 0; | TODO |
 | 31 | Assignment Backend Authority Frontend may display/recommend, but the backend must revalidate tenant, branch, Visit state, technician eligibility, Fair Turn policy, schedule, skills, and conflict at commit time. | TODO |
@@ -1464,10 +1470,10 @@ Decisions:
 | 12 | Permission-safe branch comparisons Owner-authorized aggregated metrics; distinct tenant recipient lists remain separated. | TODO |
 | 13 | Accessible operator mode Touch targets, keyboard/focus, readable status descriptions and optional density settings. | TODO |
 | 14 | Read-only performance telemetry Log frontend render and queue latency by tenant safely, excluding PII. AUDIT FIRST / PRESERVE ALL MODULES / APPROVED SENDS ONLY ADDENDUM PAGE 18 AI POWERSALON / AI MARKETING ASSISTANT SUNM | TODO |
-| 17 | Multi-branch intelligence and strict tenant isolation Owners may manage multiple locations, but that does not create platform-wide permission. Cross-branch and cross-tenant aggregation must follow existing explicit owner | TODO |
+| 17 | Multi-branch intelligence and strict tenant isolation Owners may manage multiple locations, but that does not create platform-wide permission. Cross-branch and cross-tenant aggregation must follow existing explicit owner | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 18 | AI gateway, data pipeline and persistence Preserve the platform stack (React/NestJS/PostgreSQL/Redis/object storage/queue/AI Gateway) where confirmed by the repository. This document specifies logical roles, not assumed  | TODO |
 | 21 | Exact implementation priority order Follow this sequence to avoid building attractive UI on top of incorrect consent, unverified data or disconnected campaign services. | TODO |
-| 22 | Definition of done and final Claude response Do not claim completion until the work is actually integrated into the existing repository and the following acceptance criteria have been verified or explicitly recorded as b | TODO |
+| 22 | Definition of done and final Claude response Do not claim completion until the work is actually integrated into the existing repository and the following acceptance criteria have been verified or explicitly recorded as b | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## TRANSACTIONS (13)
 
@@ -1627,7 +1633,7 @@ Decisions:
 |---|---|---|
 | 05 | Responsive CSS / React implementation examples These are illustrative patterns, not instructions to paste over existing components. Claude must find the actual layout primitives and reuse them where possible. /* Example: | TODO |
 | 11 | Verified status, heartbeat and operating health The user-facing 0 connected must come from verified device connectivity data, not an assumption based on empty UI state. If the page loads zero rows, trace the actual fetch | TODO |
-| 20 | Roles, privileges, tenant isolation and auditing Actor Permitted actions (server policy always authoritative) Receptionist View authorized station status, use assigned POS; no global device approval by default. | TODO |
+| 20 | Roles, privileges, tenant isolation and auditing Actor Permitted actions (server policy always authoritative) Receptionist View authorized station status, use assigned POS; no global device approval by default. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 22 | Conceptual APIs, data and events - adapt, do not duplicate Use these only as capability contracts; they are not assertions about existing API names. Claude must inspect actual controllers, DTOs, policies, database struct | TODO |
 
 ## Customer AI Settings 6 (10)
@@ -1656,7 +1662,7 @@ Decisions:
 | 06 | Service Duration Confidence: show observed sample size and variability before managers adjust catalog timing. | TODO |
 | 07 | Capacity Risk Heatmap: optional per-hour skill demand / safe staffing summary; never replace the canonical booking board. Rollout guardrails for all recommendations • Every new module is additive and optional. Keep origi | TODO |
 | 08 | Manager Review Inbox: approve/reject eligible proposals with a reason and immutable audit trail. | TODO |
-| 09 | Multi-Branch Capacity Comparison: authorized owner sees branch-specific demand without tenant leakage. | TODO |
+| 09 | Multi-Branch Capacity Comparison: authorized owner sees branch-specific demand without tenant leakage. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 10 | 200+ Technician Roster Navigator: scoped search, skill filters, groups and bounded virtualization; retain 12-tech Booking paging. | TODO |
 | 11 | What Changed? Activity Timeline: booking/shift/queue events that invalidate earlier AI suggestions. | TODO |
 | 12 | Protected Saved Filters: authorized per-user preferred views, date filters and branch selection. | BUILT — POS saved views on the recommendation queue (components/SavedViews) |
@@ -1751,7 +1757,7 @@ Decisions:
 | 04 | Next Available Technician Find the next actually eligible technician for selected service(s), Use shared Workforce/Booking duration and protected appointments. eligibility; never guess from green READY status. | TODO |
 | 05 | Module Preservation Contract The repository is the source of truth for the full inventory; this list is only a minimum. DO NOT REMOVE / DO NOT REPLACE / DO NOT DISABLE No module may be deleted, hidden behind a permanent  | TODO |
 | 06 | Module Spacing, Typography & Touch UX Balanced cards with strong readability in a bright front-desk setting. Design system constraints • Use consistent card border, elevation, header height, badge styling, padding and ic | TODO |
-| 07 | Customer-to-Tech Handoff Show selected customer assignment state and whether POS A, No extra Visit, duplicate assignment Status Customer Queue and Technician App have synced. or shared cross-tenant data. Recommended upgr | TODO |
+| 07 | Customer-to-Tech Handoff Show selected customer assignment state and whether POS A, No extra Visit, duplicate assignment Status Customer Queue and Technician App have synced. or shared cross-tenant data. Recommended upgr | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 08 | Assignment Panel, Queue Row & Schedule Overlays Keep full workflows reachable without stretching the main page. Compact queue list • A technician row should show existing queue order, avatar/name, status, waiting time, t | TODO |
 | 09 | Recommended Upgrade #1 - Auto-Fit Health Checker Non-mutating layout diagnostics for each POS front-desk station. One-click Check Tech Queue Layout button • Detect current CSS viewport, DPR, orientation, display profile, | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Recommended Upgrades #4 - #7 Useful additions; preserve any already-implemented equivalent rather than duplicating it. Upgrade Requested behavior Boundary | TODO |
@@ -1808,7 +1814,7 @@ Decisions:
 | 14 | CSS implementation reference - foundation Apply these ideas to the existing design system. The selectors are illustrative. Do not introduce a new shell or replace correct production components; reuse existing layout toke | TODO |
 | 19 | Verified empty states, UI errors and loading CONDITION RECOMMENDED MESSAGE Salon community disabled "Safety Community is disabled for this salon. An authorized owner can enable it in Community Settings." Enabled, query s | TODO |
 | 20 | Ten additional improvements - never replacements # Proposed enhancement Guardrail / benefit | TODO |
-| 24 | Definition of done and original guide appendix • Original Safety Community route and all six tabs remain present, correctly permissioned and functional. • At SUNMI landscape 1920 × 1080 and normal browser zoom, app shell | TODO |
+| 24 | Definition of done and original guide appendix • Original Safety Community route and all six tabs remain present, correctly permissioned and functional. • At SUNMI landscape 1920 × 1080 and normal browser zoom, app shell | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Duplicate Review (14)
 
@@ -1824,10 +1830,10 @@ Decisions:
 | 08 | Verification Run unit, API, integration, E2E, security and responsive screenshot suites; document exact environment and blockers. | TODO |
 | 09 | Rollout Feature flag, staged release, monitor overflow/error/merge metrics, retain safe rollback and do not silently migrate records. Three additional implementation recommendations • Screen-Fit & Module Preservation Che | TODO |
 | 10 | Validate Automated, integration, manual UI and security tests with actual logs/results | TODO |
-| 16 | Security, multi-tenant boundaries and accessibility Area Must be proven in code and tests Server tenant isolation Tenant resolved from trusted authentication context. All candidate IDs and both customer IDs validated bef | TODO |
-| 20 | Definition of done + paste-ready execution mandate DEFINITION OF DONE: Existing Duplicate Review functionality is all preserved; the Web POS auto-fits SUNMI 27-inch landscape from real viewport measurements; modules rema | TODO |
+| 16 | Security, multi-tenant boundaries and accessibility Area Must be proven in code and tests Server tenant isolation Tenant resolved from trusted authentication context. All candidate IDs and both customer IDs validated bef | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
+| 20 | Definition of done + paste-ready execution mandate DEFINITION OF DONE: Existing Duplicate Review functionality is all preserved; the Web POS auto-fits SUNMI 27-inch landscape from real viewport measurements; modules rema | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 29 | Implementation sequence for Claude Stage Required work and verified output | TODO |
-| 30 | Acceptance tests: identification and review • Two people with identical names are not auto-merged; shared family phone produces distinct candidates and requires confirmation. Source: supplied POS screenshot and owner req | TODO |
+| 30 | Acceptance tests: identification and review • Two people with identical names are not auto-merged; shared family phone produces distinct candidates and requires confirmation. Source: supplied POS screenshot and owner req | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## TECH QUEUE (17)
 
@@ -1862,7 +1868,7 @@ Decisions:
 | 05 | Search and dates Wire role-limited global search, From/To calendar, date basis and correct local time filtering. | TODO |
 | 06 | Paging and drill-down Implement stable grouped report pagination, newest-first event histories, complete technician details. | TODO |
 | 07 | Accuracy checkers Add read-only Commission/Payroll and Screen Fit checkers based on canonical data; no auto money changes. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 08 | Cross-module QA Verify Checkout, Service Done, Tips, Refunds, Payroll, permissions, tenant isolation, localization. | TODO |
+| 08 | Cross-module QA Verify Checkout, Service Done, Tips, Refunds, Payroll, permissions, tenant isolation, localization. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 09 | Release review Run lint/types/build/unit/integration/e2e and rendered screenshot review; list changed files and gaps. NO DUPLICATE BUSINESS ENGINES Check existing services and APIs first. Extend real code only where need | TODO |
 
 ## Individual Technician Tipping (8)
@@ -1921,7 +1927,7 @@ Decisions:
 | 11 | Gift-card eligibility explanation Explain active/void/redeemed/pending/locked status, allowed locations and permitted spend rather than showing a vague disabled button. | TODO |
 | 12 | Reconciliation to daily closeout Compare gift-card issuance tenders, redemption amounts, receipt totals and outstanding liability movements to daily register closeout. | TODO |
 | 13 | Secure digital delivery monitoring If delivery by SMS/email exists, show sent/failed status and consent eligibility without revealing complete redeemable secrets in routine messages or audit logs. | TODO |
-| 14 | Controlled large-tenant performance Server-side pagination/indexes, stable sorting, request cancellation and no cross-tenant data fetching for large card ledgers. | TODO |
+| 14 | Controlled large-tenant performance Server-side pagination/indexes, stable sorting, request cancellation and no cross-tenant data fetching for large card ledgers. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 15 | Feature preservation audit before deployment Automatically assert original component registry, routes, critical actions and API behaviors remain present across old and new builds. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 | TODO |
 
 ## ADD-ONS MANAGEMENT (16)
@@ -2023,7 +2029,7 @@ Decisions:
 | 01 | Automatic SUNMI display profile with live CSS viewport detection and a safe standard-browser fallback. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Layout Health Checker with real DOM overflow/touch-target checks and screenshots in CI. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Four KPI equal-height responsive cards with evidence timestamp and click-to-filter. | TODO |
-| 04 | Provider-aware Device Readiness Checker to distinguish offline, stale, untested, and genuinely online. | TODO |
+| 04 | Provider-aware Device Readiness Checker to distinguish offline, stale, untested, and genuinely online. | BUILT — Check Terminals System (pos/system-checks/terminals): not seen in a day, last ping failed, never verified, duplicate serial |
 | 05 | Clover Compact pairing checklist: branch, MID, register, supported app, non-charge verification, test evidence. | TODO |
 | 06 | Safer iPhone revocation review with last-working-payment-method warning and provider-confirmed result. | TODO |
 | 07 | Smart contextual “Needs Attention” assistant with a specific troubleshooting path per failure state. | TODO |
@@ -2042,7 +2048,7 @@ Decisions:
 | 03 | Consistent card and table design tokens: one reusable balanced layout pattern across Settings, Rules, Alerts and Investigations; preserve each page’s existing fields and workflows. | TODO |
 | 04 | Optional manager compact-density preference: choose comfortable or compact spacing without removing fields, disabling scrolling or changing rule evaluation; remember per authorized user. | TODO |
 | 05 | Safe recovery: after a failed Save or lost connection, offer Reload Current, Compare Changes and Retry with explicit confirmation; never silently overwrite concurrent edits. | TODO |
-| 06 | Phase 5 - Cross-module verification. Verify Rules → Alerts → human Investigations and source ledger boundaries, prevention OFF, tenant isolation, Fiserv/Checkout compatibility and iPhone app non-interference. | TODO |
+| 06 | Phase 5 - Cross-module verification. Verify Rules → Alerts → human Investigations and source ledger boundaries, prevention OFF, tenant isolation, Fiserv/Checkout compatibility and iPhone app non-interference. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 07 | Phase 6 - Visual and E2E proof. Run all documented screen sizes, actual SUNMI kiosk/browser viewport, EN/VN, touch/keyboard, regression tests and screenshot diffs. Repair failures. | TODO |
 | 08 | Phase 7 - Handoff. Deliver file-by-file changes, screenshots, command logs, exact pass/fail counts, blockers, rule inventory before/after and an honest final implementation status. CLAUDE BUILD MANDATE / PRESERVE ALL MOD | TODO |
 | 14 | Suggested API contracts - map to existing endpoints These are behavior contracts, not instructions to create a new API namespace when equivalent endpoints already exist. Capability Required contract / checks List setting | TODO |
@@ -2116,7 +2122,7 @@ Decisions:
 | 10 | Smart Empty State No rewards or no members should present truthful guidance and authorized Create/Enroll action. | TODO |
 | 11 | Member Points & Tier Detail Open full customer loyalty summary with earned, redeemed, expired, adjusted and upcoming eligibility. | TODO |
 | 12 | Accessible Quick Actions Evenly sized buttons, readable labels and no hover-only shortcuts on touch displays. | TODO |
-| 13 | Multi-Branch Reporting Clarity Explicitly show selected branch vs full tenant scope and prohibit cross-tenant visibility. | TODO |
+| 13 | Multi-Branch Reporting Clarity Explicitly show selected branch vs full tenant scope and prohibit cross-tenant visibility. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 14 | Bilingual Layout QA Automated screenshot checks for both EN and VI text, long tier labels and large numbers. INTERNAL / POS LOYALTY OPERATIONS / 06 NOV 2026 ADDENDUM PAGE 16 AI POWERSALON / CLAUDE ENGINEERING MANDATE SUN | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## Campaign Results (7)
@@ -2200,7 +2206,7 @@ Decisions:
 | 06 | Branch override comparison Side-by-side tenant default and effective branch settings. | TODO |
 | 07 | Technician eligibility checker Check qualifications against branch hours and booking conflicts. | TODO |
 | 08 | Duplicate scan/import prevention Block repeated SKU, product import and stock movement posting. | TODO |
-| 09 | Smart search suggestions Exact code/SKU then name fallback, without cross-tenant access. | TODO |
+| 09 | Smart search suggestions Exact code/SKU then name fallback, without cross-tenant access. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 10 | KPI cards 5 columns x 2 rows; 1:1 widths; shared All 10 labels, units, values, status meanings min-height Service / Product catalogs 2 equal-width panels; generous row height Independent search/page; readable prices/SKUs | TODO |
 | 11 | Accurate financial chart labels Distinguish sales versus menu-price and cost-based proxies. | TODO |
 | 12 | Expanded data details overlays Allow large forms without crowding summary cards. | TODO |
@@ -2230,7 +2236,7 @@ Decisions:
 | 12 | Safe Retry Console Review only eligible failed attempts; prevent duplicate sends and retain original evidence. | TODO |
 | 13 | Customer Rebooking Prefill Directly open authoritative Booking with verified customer, not name-match duplicates. | TODO |
 | 14 | Verified Recovery Funnel Track subsequent bookings, completed returns and associated revenue distinctly. | TODO |
-| 15 | Tenant Isolation Probe Automated negative tests for cross-tenant and unauthorized branch data exposure. | TODO |
+| 15 | Tenant Isolation Probe Automated negative tests for cross-tenant and unauthorized branch data exposure. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 16 | Visual Regression Gate Capture SUNMI/compact viewports, English/Vietnamese labels, overlays, keyboard and touch. Three release priorities • P0: Correct zero-task causes, Generate Now, scheduler and route mismatch before  | TODO |
 
 ## Appointment History (10)
@@ -2390,8 +2396,8 @@ Decisions:
 | 13 | Contextual source links - One click from alert evidence to the existing authoritative Sales, Booking, Staff or Customer view. | TODO |
 | 14 | Safety review and rollback - Feature flags, baseline screenshots, before/after metric reconciliation and a reversible rollout plan. No removals and no automatic business actions These recommendations add capability to yo | TODO |
 | 15 | Existing Booking, Checkout, Reports, AI Center and ordinary POS operations remain functional. | TODO |
-| 16 | Acceptance tests: screen and workflow Test IDs SUNMI-BA-001 through SUNMI-BA-028 Test ID Pass condition BA-001 1920 x 1080 physical SUNMI at 100% zoom: app usable with browser chrome visible. | TODO |
-| 22 | Definition of done + Claude delivery checklist ACCEPTANCE GATE: A polished screen is not completion. The alert rules, real metric computations, evaluator jobs, notification/incident states, tenant isolation, AI safeguard | TODO |
+| 16 | Acceptance tests: screen and workflow Test IDs SUNMI-BA-001 through SUNMI-BA-028 Test ID Pass condition BA-001 1920 x 1080 physical SUNMI at 100% zoom: app usable with browser chrome visible. | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
+| 22 | Definition of done + Claude delivery checklist ACCEPTANCE GATE: A polished screen is not completion. The alert rules, real metric computations, evaluator jobs, notification/incident states, tenant isolation, AI safeguard | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 
 ## Churn Watch (8)
 
@@ -2558,7 +2564,7 @@ Decisions:
 | 04 | Provide one-by-one checkboxes; Select This Page; Select All Matching; Deselect All; and a clear selection summary. See the dedicated selection contract later. | TODO |
 | 05 | Operator may combine Area Code with inactivity thresholds (30/60/90/120/180/365 days), last visit range, Never Visited toggle, and other existing search filters. | TODO |
 | 06 | Choosing Create Campaign passes a validated selection to the existing Campaign Center as a draft/audience preview only, not as a sent message. | TODO |
-| 07 | Show helpful examples and an empty result when the code has no matching stored numbers. Do not invent numbers or search across other salons. | TODO |
+| 07 | Show helpful examples and an empty result when the code has no matching stored numbers. Do not invent numbers or search across other salons. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 08 | Existing Offer Selector: attach approved promotions/coupons using the existing Checkout redemption and stacking rules; no new standalone discount engine. IMPLEMENTATION DISCIPLINE Add only where genuinely missing. Avoid  | TODO |
 | 09 | One-Click Audience Health: show which selected records have invalid numbers, no consent, no prior visits, or upcoming bookings before review. | TODO |
 | 10 | Phone Contact Verification: track verified/unverified reachable numbers without modifying customer identities or inferring consent from verification. | TODO |
@@ -2599,7 +2605,7 @@ Decisions:
 | 03 | Balanced Customer 360° Dashboard Use equal-width detail cards and consistent tabs for bookings, services, loyalty, AI, duplicate review and retention; preserve all data sources and actions. | TODO |
 | 04 | Customer Identity Collision Warning Display “Multiple possible matches” for shared phone/name with separate candidate rows; require explicit selection and approved Duplicate Review. | TODO |
 | 05 | Recent Searches & Filters (optional) Store only authorized, short-lived user preferences after privacy review; avoid persisting raw PII or making customer search history visible to other employees. | TODO |
-| 06 | Operational Search Performance Panel Expose safe search latency, stale indexes and import status inside diagnostics, with no unrestricted database statistics or PII leakage. | TODO |
+| 06 | Operational Search Performance Panel Expose safe search latency, stale indexes and import status inside diagnostics, with no unrestricted database statistics or PII leakage. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 07 | Consistent Branch Scope Indicator Keep an always-visible read-only “Searching Current Branch / Authorized Branches” label to avoid staff confusion in multi-location businesses. | TODO |
 | 08 | Touch-Friendly Customer Preview On row tap, offer concise identity-safe preview and View Full Profile; avoid disruptive full-screen switches for every accidental tap. | TODO |
 | 09 | Direct Related-Module Navigation Keep authorized links to Booking, Rebooking, Duplicate Review, Churn Watch, Loyalty and Customer AI Settings without reproducing their business logic. | TODO |
@@ -2609,4 +2615,4 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Verify approval-to-execution reconciliation. 2. Provide urgent escalation without auto-approving. 3. Centralize rules so local settings cannot weaken Super Admin protections. CONFIDENTIAL IMPLEMENTATION GUIDE • SCREENSHO | TODO |
+| 01 | Verify approval-to-execution reconciliation. 2. Provide urgent escalation without auto-approving. 3. Centralize rules so local settings cannot weaken Super Admin protections. CONFIDENTIAL IMPLEMENTATION GUIDE • SCREENSHO | BUILT (part) — Check Approvals System: approved-not-executed + execution failed + pending past expiry (point 1); points 2–3 not built |

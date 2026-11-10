@@ -79,5 +79,7 @@ describe('Appointment History workspace', () => {
     const h = await ah.check(owner());
     expect(h.checks.find((c) => c.key === 'past_open_appointments')).toMatchObject({ state: 'WARNING', count: 1 });
     expect(h.checks.map((c) => c.key)).toContain('no_side_effects');
+    // extras arc (Nov 10 2026): an upcoming booking whose deposit failed is named; none in this fixture
+    expect(h.checks.find((c) => c.key === 'deposit_failed_upcoming')).toMatchObject({ state: 'READY', count: 0 });
   });
 });

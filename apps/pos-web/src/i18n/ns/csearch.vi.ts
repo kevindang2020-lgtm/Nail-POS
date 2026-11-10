@@ -388,6 +388,10 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.health.d.past_open_appointments.READY": "Không có lịch hẹn cũ nào còn mở.",
   "ahx.health.d.past_open_appointments.WARNING": "Một số lịch hẹn trước hôm nay vẫn đang đặt hoặc đang làm — hãy hoàn tất, hủy hoặc đánh vắng mặt trên Lịch.",
   "ahx.health.d.past_open_appointments.FAILED": "Không kiểm tra được lịch hẹn cũ còn mở.",
+  "ahx.health.k.deposit_failed_upcoming": "Lịch hẹn sắp tới bị lỗi tiền cọc", // DRAFT — Kevin reviews
+  "ahx.health.d.deposit_failed_upcoming.READY": "Không có lịch hẹn sắp tới nào bị lỗi tiền cọc.", // DRAFT — Kevin reviews
+  "ahx.health.d.deposit_failed_upcoming.WARNING": "Một số lịch hẹn sắp tới bị lỗi tiền cọc — hãy liên hệ khách để thử lại trước ngày hẹn.", // DRAFT — Kevin reviews
+  "ahx.health.d.deposit_failed_upcoming.FAILED": "Không kiểm tra được tiền cọc lỗi.", // DRAFT — Kevin reviews
   "ahx.health.k.no_side_effects": "Chỉ đọc",
   "ahx.health.d.no_side_effects.READY": "Trang này không thay đổi lịch hẹn, phiếu hay thanh toán nào.",
   "ahx.health.d.no_side_effects.WARNING": "Kiểm tra quyền truy cập của trang.",

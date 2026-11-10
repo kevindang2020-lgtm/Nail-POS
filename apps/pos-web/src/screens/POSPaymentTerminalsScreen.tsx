@@ -10,6 +10,7 @@
 // status (never "Online" for a terminal that was never heard from). Every action keeps its audited step-up route; nothing
 // here charges a card (Test Connection is the provider's non-charge ping).
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTerminalsScreenApi as api } from '../api/posTerminalsScreenApi';
@@ -81,6 +82,7 @@ export function POSPaymentTerminalsScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.payment_terminals')}</h1><div className="sub">{tx('pt.subtitle')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="terminals" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           {canDevices ? <button type="button" className="fk-btn" onClick={() => setDlg({ kind: 'addPhone' })} data-testid="add-phone">+ {tx('pt.addPhone')}</button> : null}
           {canEdit ? <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'pair' })} data-testid="pair-terminal">+ {tx('pt.pairTerminal')}</button> : null}
