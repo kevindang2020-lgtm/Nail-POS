@@ -9,6 +9,7 @@ import type { ReportFilters, ExportFormat, DatePreset } from './reports.dto';
 import { validateDateRange, DateRangeError } from '@aipowersalon/api-contracts';
 import { ListQueries } from '@aipowersalon/database';
 import { ReportsControllerListQueries } from './reports.list-queries';
+import type { ReportTransactionPage, ServiceRevenueReport, ReportTicketPage, ReportCustomerPage } from '@aipowersalon/api-contracts/tenant';
 
 function ctxFrom(req: any): ReportsContext {
   const c = req?.ctx || {};
@@ -42,7 +43,8 @@ export class ReportsController {
   constructor(private readonly svc: ReportsService) {}
 
   @Get('state') @RequirePermission('pos.reports.view')
-  state(@Req() r: any, @Query() q: any) { return run(() => this.svc.getState(ctxFrom(r), filtersFrom(q))); }
+  // batch 9 guide 3: only the Daily Summary state reads the trend grouping and the comparison toggle
+  state(@Req() r: any, @Query() q: any) { return run(() => this.svc.getState(ctxFrom(r), { ...filtersFrom(q), groupBy: typeof q.groupBy === 'string' ? q.groupBy.slice(0, 8) : undefined, compare: q.compare === '1' || q.compare === 'true' })); }
 
   @Get('kpis') @RequirePermission('pos.reports.view')
   kpis(@Req() r: any, @Query() q: any) { return run(() => this.svc.getKpis(ctxFrom(r), filtersFrom(q))); }
@@ -83,6 +85,18 @@ export class ReportsController {
   @Get('queue') @RequirePermission('pos.reports.view')
   queue(@Req() r: any, @Query() q: any) { return run(() => this.svc.getQueue(ctxFrom(r), filtersFrom(q))); }
 
+  @Get('service-revenue') @RequirePermission('pos.reports.view')
+  serviceRevenue(@Req() r: any, @Query() q: any): Promise<ServiceRevenueReport> { return run(() => this.svc.getServiceRevenue(ctxFrom(r), filtersFrom(q), { q: q.q, category: q.category, technician: q.technician, page: Number(q.page), pageSize: Number(q.pageSize) })); }
+
+  @Get('customers/page') @RequirePermission('pos.reports.view')
+  customersPage(@Req() r: any, @Query() q: any): Promise<ReportCustomerPage> { return run(() => this.svc.getCustomersPage(ctxFrom(r), filtersFrom(q), { q: q.q, type: q.type, page: Number(q.page), pageSize: Number(q.pageSize) })); }
+
+  @Get('tickets/page') @RequirePermission('pos.reports.view')
+  ticketsPage(@Req() r: any, @Query() q: any): Promise<ReportTicketPage> { return run(() => this.svc.getTicketsPage(ctxFrom(r), filtersFrom(q), q.q, Number(q.page), Number(q.pageSize))); }
+
+  @Get('transactions/page') @RequirePermission('pos.reports.view')
+  transactionsPage(@Req() r: any, @Query() q: any): Promise<ReportTransactionPage> { return run(() => this.svc.getTransactionsPage(ctxFrom(r), filtersFrom(q), q.q, Number(q.page), Number(q.pageSize))); }
+
   @Get('transactions') @RequirePermission('pos.reports.view')
   transactions(@Req() r: any, @Query() q: any) { return run(() => this.svc.getTransactions(ctxFrom(r), filtersFrom(q))); }
 
@@ -91,6 +105,6 @@ export class ReportsController {
 
   @AsyncExport({ kind: 'pos.reports.export' }) @Get('export') @RequirePermission('pos.reports.export')
   export(@Req() r: any, @Query() q: any) {
-    return run(() => this.svc.export(ctxFrom(r), q.type || 'transactions', (q.format || 'csv') as ExportFormat, filtersFrom(q)));
+    return run(() => this.svc.export(ctxFrom(r), q.type || 'transactions', (q.format || 'csv') as ExportFormat, filtersFrom(q), { q: q.q, category: q.category }));
   }
 }

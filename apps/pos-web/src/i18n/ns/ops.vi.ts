@@ -1181,4 +1181,207 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ptl.k.settled": "Đã vào lô quyết toán", // DRAFT — Kevin reviews
   "ptl.k.deposited": "Đã chuyển vào ngân hàng", // DRAFT — Kevin reviews
   "exh.a.other": "Đã thay đổi", // DRAFT — Kevin reviews
+  "syschk.reports.title": "Kiểm tra hệ thống Báo cáo", // DRAFT — Kevin reviews
+  "syschk.reports.charged_vs_collected": "Tổng mỗi phiếu đã trả khớp với số tiền đã thu", // DRAFT — Kevin reviews
+  "syschk.reports.charged_vs_collected.fix": "Mở các phiếu đó ở Giao dịch và so tổng với các khoản thanh toán.", // DRAFT — Kevin reviews
+  "syschk.reports.surcharge_not_card": "Không có phụ phí trên thanh toán tiền mặt, thẻ quà tặng, điểm thưởng hay tiền cọc", // DRAFT — Kevin reviews
+  "syschk.reports.surcharge_not_card.fix": "Xem lại các thanh toán đó; phụ phí chỉ được tính trên thanh toán bằng thẻ.", // DRAFT — Kevin reviews
+  "rpt.how": "Cách tính?", // DRAFT — Kevin reviews
+  "rpt.basisPaid": "Ngày thanh toán (theo ngày của tiệm)", // DRAFT — Kevin reviews
+  "rpt.na": "Không áp dụng", // DRAFT — Kevin reviews
+  "rpt.retBasis": "{n}/{d} khách quay lại", // DRAFT — Kevin reviews
+  "rpt.viewDetails": "Xem chi tiết", // DRAFT — Kevin reviews
+  "rpt.ins.topService": "Nhóm dịch vụ bán chạy nhất (trước thuế và phụ phí): {name} ({amount})", // DRAFT — Kevin reviews
+  "rpt.ins.topMethod": "Thu nhiều nhất bằng {method}: {amount} (gồm thuế, tip và phụ phí)", // DRAFT — Kevin reviews
+  "rpt.ins.source": "Tóm tắt từ dữ liệu phiếu đã trả trong kỳ — không do AI tạo.", // DRAFT — Kevin reviews
+  "rpt.rec.line": "Doanh số thuần {net} + thuế {tax} + tip {tips} + phụ phí {sur} = {charged} đã thu của khách", // DRAFT — Kevin reviews
+  "rpt.rec.collected": "Đã thu {amount}", // DRAFT — Kevin reviews
+  "rpt.rec.diff": "Các số liệu không khớp — chênh lệch {amount}. Chạy Kiểm tra hệ thống Báo cáo để xem phiếu nào.", // DRAFT — Kevin reviews
+  "rpt.calc.basis": "Tất cả số liệu: các phiếu đã trả của tiệm có ngày thanh toán (theo ngày của tiệm) trong kỳ. Hoàn tiền được hiển thị riêng.", // DRAFT — Kevin reviews
+  "rpt.calc.totalRevenue.t": "Tổng doanh thu", // DRAFT — Kevin reviews
+  "rpt.calc.totalRevenue.d": "Dịch vụ và hàng bán lẻ của các phiếu đã trả, trước giảm giá — không gồm thuế, tip hay phụ phí.", // DRAFT — Kevin reviews
+  "rpt.calc.appointments.t": "Lịch hẹn hoàn tất", // DRAFT — Kevin reviews
+  "rpt.calc.appointments.d": "Số phiếu đã trả trong kỳ, mỗi phiếu tính một lần dù có nhiều dịch vụ hay nhiều thợ.", // DRAFT — Kevin reviews
+  "rpt.calc.avgTicket.t": "Trung bình mỗi phiếu", // DRAFT — Kevin reviews
+  "rpt.calc.avgTicket.d": "Tổng doanh thu ÷ số phiếu đã trả. Không áp dụng khi không có phiếu.", // DRAFT — Kevin reviews
+  "rpt.calc.retention.t": "Tỷ lệ giữ khách", // DRAFT — Kevin reviews
+  "rpt.calc.retention.d": "Trong số khách có ghé và trả tiền ở kỳ trước cùng độ dài, tỷ lệ khách quay lại trong kỳ này. Không áp dụng khi kỳ trước không có khách.", // DRAFT — Kevin reviews
+  "rpt.calc.tips.t": "Tổng tip", // DRAFT — Kevin reviews
+  "rpt.calc.tips.d": "Tip ghi trên các phiếu đã trả, thẻ và tiền mặt. Không bao giờ tính vào doanh số.", // DRAFT — Kevin reviews
+  "rpt.calc.rating.t": "Đánh giá trung bình", // DRAFT — Kevin reviews
+  "rpt.calc.rating.d": "Trung bình các đánh giá 1–5 sao trong kỳ, không tính spam (theo định nghĩa của Đánh giá). Không áp dụng khi không có.", // DRAFT — Kevin reviews
+  "rpt.calc.noShow.t": "Tỷ lệ không đến", // DRAFT — Kevin reviews
+  "rpt.calc.noShow.d": "Số khách không đến ÷ số lịch hẹn trong kỳ, không tính lịch đã hủy. Không áp dụng khi không có lịch.", // DRAFT — Kevin reviews
+  "rpt.calc.netSales.t": "Doanh số thuần", // DRAFT — Kevin reviews
+  "rpt.calc.netSales.d": "Tổng doanh thu trừ giảm giá.", // DRAFT — Kevin reviews
+  "rpt.calc.charged.t": "Đã thu của khách", // DRAFT — Kevin reviews
+  "rpt.calc.charged.d": "Số khách đã trả: doanh số thuần + thuế + tip + phụ phí. Cơ cấu thanh toán và danh sách giao dịch dùng số này.", // DRAFT — Kevin reviews
+  "rpt.calc.topService.t": "Dịch vụ bán chạy nhất", // DRAFT — Kevin reviews
+  "rpt.calc.topService.d": "Doanh số theo nhóm dịch vụ, cùng cách tính với Tổng doanh thu (không phải số đã thu).", // DRAFT — Kevin reviews
+  "rpt.tx.search": "Tìm khách, dịch vụ, thợ hoặc số phiếu", // DRAFT — Kevin reviews
+  "rpt.tx.clear": "Xóa", // DRAFT — Kevin reviews
+  "rpt.tx.scope": "Kỳ này · chi nhánh này", // DRAFT — Kevin reviews
+  "rpt.tx.perPage": "Mỗi trang", // DRAFT — Kevin reviews
+  "rpt.tx.noMatch": "Không có kết quả phù hợp", // DRAFT — Kevin reviews
+  "rpt.tx.failed": "Không tải được các giao dịch.", // DRAFT — Kevin reviews
+  "rpt.tx.walkIn": "Khách vãng lai", // DRAFT — Kevin reviews
+  "rpt.tx.charged": "Đã thu", // DRAFT — Kevin reviews
+  "rpt.tx.pager": "Các trang giao dịch", // DRAFT — Kevin reviews
+  "syschk.reports.unmapped_service_lines": "Mọi dòng dịch vụ đã trả đều có nhóm dịch vụ", // DRAFT — Kevin reviews
+  "syschk.reports.unmapped_service_lines.fix": "Các dòng đó là dịch vụ không còn trong danh mục; chúng hiện là \"Chưa phân nhóm / dịch vụ cũ\" trong Doanh thu theo dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.reports.paid_without_service_lines": "Mọi phiếu đã trả có doanh số đều có dòng dịch vụ", // DRAFT — Kevin reviews
+  "syschk.reports.paid_without_service_lines.fix": "Mở các phiếu đó; doanh số của chúng nằm ở \"Không ghi dòng dịch vụ\" cho đến khi có dòng.", // DRAFT — Kevin reviews
+  "rpt.svc.viewAll": "Xem tất cả dịch vụ ({n})", // DRAFT — Kevin reviews
+  "rpt.svc.basis": "Doanh số trước giảm giá, theo từng dòng dịch vụ — không gồm thuế, tip hay phụ phí.", // DRAFT — Kevin reviews
+  "rpt.svc.empty": "Không có doanh số dịch vụ từ {from} đến {to}.", // DRAFT — Kevin reviews
+  "rpt.svc.tip": "{name}: {units} dịch vụ · {amount} doanh số trước giảm giá", // DRAFT — Kevin reviews
+  "rpt.svc.noLines": "Không ghi dòng dịch vụ", // DRAFT — Kevin reviews
+  "rpt.svc.unmapped": "Chưa phân nhóm / dịch vụ cũ", // DRAFT — Kevin reviews
+  "rpt.svc.back": "← Tóm tắt ngày", // DRAFT — Kevin reviews
+  "rpt.svc.export": "Xuất CSV (tất cả kết quả)", // DRAFT — Kevin reviews
+  "rpt.svc.exported": "Đã tải CSV — tất cả các dòng phù hợp, không chỉ trang này.", // DRAFT — Kevin reviews
+  "rpt.svc.search": "Tìm dịch vụ, nhóm, thợ, khách, số điện thoại hoặc số phiếu", // DRAFT — Kevin reviews
+  "rpt.svc.clearAll": "Xóa tất cả", // DRAFT — Kevin reviews
+  "rpt.svc.count": "{n} dòng", // DRAFT — Kevin reviews
+  "rpt.svc.asOf": "Cập nhật lúc {at}", // DRAFT — Kevin reviews
+  "rpt.svc.beforeDiscounts": "Trước giảm giá", // DRAFT — Kevin reviews
+  "rpt.svc.avg": "Trung bình mỗi dịch vụ", // DRAFT — Kevin reviews
+  "rpt.svc.discounts": "Giảm giá trên các phiếu này", // DRAFT — Kevin reviews
+  "rpt.svc.refunds": "Hoàn tiền trên các phiếu này", // DRAFT — Kevin reviews
+  "rpt.svc.ticketLevel": "Ghi theo phiếu, không theo dịch vụ", // DRAFT — Kevin reviews
+  "rpt.svc.definition": "Cách tính: các phiếu đã trả có thanh toán vào một ngày của tiệm trong kỳ. Mỗi dòng dịch vụ tính một lần theo giá đã ghi, vào đúng nhóm của nó; phiếu có hai dịch vụ được chia cho cả hai. Hàng bán lẻ, thuế, tip và phụ phí thẻ không phải doanh số dịch vụ.", // DRAFT — Kevin reviews
+  "rpt.svc.lines": "Các dòng dịch vụ (mới nhất trước)", // DRAFT — Kevin reviews
+  "rpt.svc.paidAt": "Đã trả", // DRAFT — Kevin reviews
+  "rpt.svc.ticket": "Phiếu", // DRAFT — Kevin reviews
+  "rpt.svc.category": "Nhóm", // DRAFT — Kevin reviews
+  "rpt.svc.tech": "Thợ", // DRAFT — Kevin reviews
+  "rpt.svc.customer": "Khách", // DRAFT — Kevin reviews
+  "rpt.svc.amount": "Doanh số", // DRAFT — Kevin reviews
+  "rpt.svc.pager": "Các trang dòng dịch vụ", // DRAFT — Kevin reviews
+  "rpt.svc.noCustomers": "Tên khách bị ẩn — cần quyền xem báo cáo tài chính.", // DRAFT — Kevin reviews
+  "rpt.trend.revenue": "Doanh thu (trước giảm giá)", // DRAFT — Kevin reviews
+  "rpt.trend.tickets": "Lịch hẹn hoàn tất (phiếu đã trả)", // DRAFT — Kevin reviews
+  "rpt.trend.groupBy": "Nhóm theo", // DRAFT — Kevin reviews
+  "rpt.trend.g.hour": "Giờ", // DRAFT — Kevin reviews
+  "rpt.trend.g.day": "Ngày", // DRAFT — Kevin reviews
+  "rpt.trend.g.week": "Tuần", // DRAFT — Kevin reviews
+  "rpt.trend.g.month": "Tháng", // DRAFT — Kevin reviews
+  "rpt.trend.compare": "So với kỳ trước", // DRAFT — Kevin reviews
+  "rpt.trend.asTable": "Xem dạng bảng", // DRAFT — Kevin reviews
+  "rpt.trend.asChart": "Xem dạng biểu đồ", // DRAFT — Kevin reviews
+  "rpt.trend.none": "Không có doanh số hay phiếu đã trả trong kỳ này.", // DRAFT — Kevin reviews
+  "rpt.trend.unavailable": "Máy chủ chưa trả về xu hướng.", // DRAFT — Kevin reviews
+  "rpt.trend.period": "Thời gian", // DRAFT — Kevin reviews
+  "rpt.trend.tip": "{label}: {amount} doanh số · {n} phiếu đã trả", // DRAFT — Kevin reviews
+  "rpt.trend.weekOf": "Tuần từ {date}", // DRAFT — Kevin reviews
+  "rpt.trend.basis": "Mỗi cột = các phiếu đã trả theo giờ thanh toán ở múi giờ của tiệm ({tz}). Doanh thu là doanh số trước giảm giá — không gồm thuế, tip hay phụ phí. Bấm vào một cột để xem các giao dịch.", // DRAFT — Kevin reviews
+  "rpt.trend.reconciled": "Tổng các cột khớp với Tổng doanh thu và Lịch hẹn hoàn tất ở trên.", // DRAFT — Kevin reviews
+  "rpt.trend.notReconciled": "Xu hướng ({trend}) không khớp với Tổng doanh thu ({kpi}) — chạy Kiểm tra hệ thống Báo cáo.", // DRAFT — Kevin reviews
+  "rpt.trend.cmp": "Kỳ trước {from} – {to}: {amount} ({rpct}) · {n} phiếu đã trả ({tpct})", // DRAFT — Kevin reviews
+  "rpt.trend.insufficient": "chưa đủ dữ liệu", // DRAFT — Kevin reviews
+  "rpt.trend.showing": "Đang xem {label}", // DRAFT — Kevin reviews
+  "rpt.sales.sub": "Các phiếu đã trả từ {from} đến {to}", // DRAFT — Kevin reviews
+  "rpt.sales.refreshed": "Đã làm mới lúc {at}", // DRAFT — Kevin reviews
+  "rpt.sales.exported": "Đã tải CSV doanh số cho kỳ này.", // DRAFT — Kevin reviews
+  "rpt.sales.exportEmpty": "Bản xuất không có tệp.", // DRAFT — Kevin reviews
+  "rpt.sales.tickets": "Tra cứu phiếu (mới nhất trước)", // DRAFT — Kevin reviews
+  "rpt.sales.ticketsRestricted": "Cần quyền xem báo cáo tài chính để xem chi tiết phiếu.", // DRAFT — Kevin reviews
+  "rpt.sales.ticketsFailed": "Không tải được các phiếu.", // DRAFT — Kevin reviews
+  "rpt.sales.search": "Tìm khách, số điện thoại, thợ, dịch vụ, số phiếu hoặc cách trả", // DRAFT — Kevin reviews
+  "rpt.sales.count": "{n} phiếu", // DRAFT — Kevin reviews
+  "rpt.sales.noTickets": "Không có phiếu đã trả trong kỳ này.", // DRAFT — Kevin reviews
+  "rpt.sales.servicesTechs": "Dịch vụ · thợ", // DRAFT — Kevin reviews
+  "rpt.sales.col.net": "Doanh số thuần", // DRAFT — Kevin reviews
+  "rpt.sales.tender": "Trả bằng", // DRAFT — Kevin reviews
+  "rpt.sales.status": "Trạng thái", // DRAFT — Kevin reviews
+  "rpt.sales.st.paid": "Đã trả", // DRAFT — Kevin reviews
+  "rpt.sales.st.refunded": "Đã hoàn tiền", // DRAFT — Kevin reviews
+  "rpt.sales.st.partially_refunded": "Hoàn tiền một phần", // DRAFT — Kevin reviews
+  "rpt.sales.refunded": "Đã hoàn {amount}", // DRAFT — Kevin reviews
+  "rpt.sales.breakdown": "Doanh số {sales} − giảm giá {disc} = thuần {net}; + thuế {tax} + tip {tips} + phụ phí {sur} = đã thu {charged}", // DRAFT — Kevin reviews
+  "rpt.sales.pager": "Các trang phiếu", // DRAFT — Kevin reviews
+  "rpt.calc.serviceSales.t": "Doanh số dịch vụ", // DRAFT — Kevin reviews
+  "rpt.calc.serviceSales.d": "Các dòng dịch vụ của phiếu đã trả theo giá đã ghi, trước giảm giá — bằng tổng Doanh thu theo dịch vụ.", // DRAFT — Kevin reviews
+  "rpt.calc.productSales.t": "Doanh số sản phẩm", // DRAFT — Kevin reviews
+  "rpt.calc.productSales.d": "Các dòng hàng bán lẻ của phiếu đã trả theo giá đã ghi, trước giảm giá.", // DRAFT — Kevin reviews
+  "rpt.calc.tax.t": "Thuế đã thu", // DRAFT — Kevin reviews
+  "rpt.calc.tax.d": "Thuế ghi trên các phiếu đã trả (theo thuế suất lúc đó, không phải hôm nay). Không bao giờ tính vào doanh số.", // DRAFT — Kevin reviews
+  "rpt.calc.tickets.t": "Số phiếu", // DRAFT — Kevin reviews
+  "rpt.calc.tickets.d": "Các phiếu đã trả, mỗi phiếu một lần — phiếu trả nửa tiền mặt nửa thẻ vẫn là một phiếu.", // DRAFT — Kevin reviews
+  "rpt.calc.customers.t": "Khách hàng", // DRAFT — Kevin reviews
+  "rpt.calc.customers.d": "Số khách khác nhau có hồ sơ và có phiếu đã trả. Khách vãng lai không có hồ sơ không được tính.", // DRAFT — Kevin reviews
+  "rpt.appt.open": "Còn đang mở", // DRAFT — Kevin reviews
+  "rpt.appt.other": "Trạng thái khác", // DRAFT — Kevin reviews
+  "rpt.appt.basisScheduled": "Ngày hẹn (theo ngày của tiệm)", // DRAFT — Kevin reviews
+  "rpt.appt.unavailable": "Không đọc được kết quả lịch hẹn cho kỳ này — các số này là phiếu đã trả, không phải lịch hẹn.", // DRAFT — Kevin reviews
+  "rpt.appt.eachOnce": "Mỗi lịch hẹn tính một lần", // DRAFT — Kevin reviews
+  "rpt.appt.basis": "Các lịch hẹn có ngày hẹn trong kỳ (theo ngày của tiệm), mọi trạng thái, mỗi lịch một lần. Tỷ lệ tính trên Tổng lịch hẹn; Hoàn tất, Đã hủy và Không đến chỉ theo trạng thái đã ghi — lịch đã qua không bao giờ bị coi là hoàn tất hay không đến.", // DRAFT — Kevin reviews
+  "rpt.appt.empty": "Không có lịch hẹn từ {from} đến {to}.", // DRAFT — Kevin reviews
+  "rpt.appt.tip": "{label}: {n} lịch hẹn · {share} trên tổng", // DRAFT — Kevin reviews
+  "rpt.appt.list": "Các lịch hẹn (đặt gần nhất trước)", // DRAFT — Kevin reviews
+  "rpt.appt.openHistory": "Mở trong Lịch sử lịch hẹn", // DRAFT — Kevin reviews
+  "rpt.appt.listRestricted": "Cần quyền khách hàng để xem danh sách lịch hẹn.", // DRAFT — Kevin reviews
+  "rpt.appt.listFailed": "Không tải được các lịch hẹn.", // DRAFT — Kevin reviews
+  "rpt.appt.search": "Tìm khách, số điện thoại, dịch vụ, thợ hoặc lịch hẹn", // DRAFT — Kevin reviews
+  "rpt.appt.count": "{n} lịch hẹn", // DRAFT — Kevin reviews
+  "rpt.appt.none": "Không có lịch hẹn trong kỳ này.", // DRAFT — Kevin reviews
+  "rpt.appt.when": "Ngày hẹn", // DRAFT — Kevin reviews
+  "rpt.appt.services": "Dịch vụ", // DRAFT — Kevin reviews
+  "rpt.appt.source": "Nguồn", // DRAFT — Kevin reviews
+  "rpt.appt.booked": "Đặt lúc", // DRAFT — Kevin reviews
+  "rpt.appt.anyTech": "Thợ bất kỳ", // DRAFT — Kevin reviews
+  "rpt.appt.pager": "Các trang lịch hẹn", // DRAFT — Kevin reviews
+  "rpt.appt.st.completed": "Hoàn tất", // DRAFT — Kevin reviews
+  "rpt.appt.st.canceled": "Đã hủy", // DRAFT — Kevin reviews
+  "rpt.appt.st.no_show": "Không đến", // DRAFT — Kevin reviews
+  "rpt.appt.st.upcoming": "Đang mở / sắp tới", // DRAFT — Kevin reviews
+  "rpt.appt.status.booked": "Đã đặt", // DRAFT — Kevin reviews
+  "rpt.appt.status.confirmed": "Đã xác nhận", // DRAFT — Kevin reviews
+  "rpt.appt.status.arrived": "Đã đến", // DRAFT — Kevin reviews
+  "rpt.appt.status.checked_in": "Đã check-in", // DRAFT — Kevin reviews
+  "rpt.appt.status.waiting": "Đang chờ", // DRAFT — Kevin reviews
+  "rpt.appt.status.in_service": "Đang làm", // DRAFT — Kevin reviews
+  "rpt.appt.status.completed": "Hoàn tất", // DRAFT — Kevin reviews
+  "rpt.appt.status.cancelled": "Đã hủy", // DRAFT — Kevin reviews
+  "rpt.appt.status.no_show": "Không đến", // DRAFT — Kevin reviews
+  "rpt.tech.unassigned": "Dòng không có thợ", // DRAFT — Kevin reviews
+  "rpt.tech.basis": "Mỗi thợ chỉ được tính các dòng dịch vụ giao cho mình (phiếu có hai thợ được chia theo từng dòng). Doanh thu = doanh số trước giảm giá; không gồm thuế, tip, phụ phí, hàng bán lẻ hay hoa hồng.", // DRAFT — Kevin reviews
+  "rpt.tech.unattributedNote": "{amount} nằm trên các dòng không có thợ hoặc phiếu không có dòng — hiện thành dòng riêng.", // DRAFT — Kevin reviews
+  "rpt.tech.empty": "Không có doanh số dịch vụ của thợ từ {from} đến {to}.", // DRAFT — Kevin reviews
+  "rpt.tech.tip": "{name}: {amount} · {n} dịch vụ", // DRAFT — Kevin reviews
+  "rpt.tech.rankedBy": "Xếp theo doanh thu dịch vụ", // DRAFT — Kevin reviews
+  "rpt.tech.filter": "Lọc thợ theo tên", // DRAFT — Kevin reviews
+  "rpt.tech.tickets": "Phiếu", // DRAFT — Kevin reviews
+  "rpt.tech.detail": "{name} — các dòng dịch vụ (mới nhất trước)", // DRAFT — Kevin reviews
+  "rpt.tech.commission": "Báo cáo hoa hồng", // DRAFT — Kevin reviews
+  "rpt.tech.services": "Báo cáo dịch vụ", // DRAFT — Kevin reviews
+  "rpt.tech.detailTotals": "{amount} · {n} dịch vụ · {tickets} phiếu", // DRAFT — Kevin reviews
+  "rpt.cust.noBase": "Không có kỳ trước để so", // DRAFT — Kevin reviews
+  "rpt.cust.vsPrev": "so với kỳ trước", // DRAFT — Kevin reviews
+  "rpt.cust.empty": "Không có khách đã trả tiền từ {from} đến {to}.", // DRAFT — Kevin reviews
+  "rpt.cust.tip": "{label}: {n} khách · {share}", // DRAFT — Kevin reviews
+  "rpt.cust.list": "Khách trong kỳ (lần ghé gần nhất trước)", // DRAFT — Kevin reviews
+  "rpt.cust.listFailed": "Không tải được danh sách khách.", // DRAFT — Kevin reviews
+  "rpt.cust.type": "Loại khách", // DRAFT — Kevin reviews
+  "rpt.cust.t.all": "Tất cả", // DRAFT — Kevin reviews
+  "rpt.cust.t.new": "Mới", // DRAFT — Kevin reviews
+  "rpt.cust.t.returning": "Quay lại", // DRAFT — Kevin reviews
+  "rpt.cust.search": "Tìm tên, số điện thoại hoặc số phiếu", // DRAFT — Kevin reviews
+  "rpt.cust.count": "{n} khách", // DRAFT — Kevin reviews
+  "rpt.cust.none": "Không có khách đã trả tiền trong kỳ này.", // DRAFT — Kevin reviews
+  "rpt.cust.phone": "Điện thoại", // DRAFT — Kevin reviews
+  "rpt.cust.typeCol": "Loại", // DRAFT — Kevin reviews
+  "rpt.cust.visits": "Số lần ghé", // DRAFT — Kevin reviews
+  "rpt.cust.last": "Lần ghé gần nhất", // DRAFT — Kevin reviews
+  "rpt.cust.pager": "Các trang khách", // DRAFT — Kevin reviews
+  "rpt.calc.newCustomers.t": "Khách mới", // DRAFT — Kevin reviews
+  "rpt.calc.newCustomers.d": "Khách có hồ sơ mà lần ghé có trả tiền đầu tiên nằm trong kỳ này. Khách vãng lai không có hồ sơ không được tính.", // DRAFT — Kevin reviews
+  "rpt.calc.returningCustomers.t": "Khách quay lại", // DRAFT — Kevin reviews
+  "rpt.calc.returningCustomers.d": "Khách có hồ sơ có ghé và trả tiền trong kỳ này và đã từng trả tiền trước đó.", // DRAFT — Kevin reviews
+  "pay.list.search": "Tìm tên kỳ lương, ngày hoặc trạng thái", // DRAFT — Kevin reviews
+  "pay.list.status": "Trạng thái", // DRAFT — Kevin reviews
+  "pay.list.allStatuses": "Mọi trạng thái", // DRAFT — Kevin reviews
+  "pay.list.anyDates": "Mọi ngày", // DRAFT — Kevin reviews
+  "pay.list.count": "{n} kỳ lương", // DRAFT — Kevin reviews
+  "pay.list.pager": "Các trang kỳ lương", // DRAFT — Kevin reviews
 };

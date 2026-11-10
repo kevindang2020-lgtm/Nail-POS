@@ -17,9 +17,11 @@ export interface ReportKpis {
   completedServicesTrendPercent: number;
   newCustomers: number;
   newCustomersTrendPercent: number;
-  averageRating: number;
+  /** mean rating 1–5 of non-spam reviews dated in the period (the Reputation definition); null = no rated review → N/A */
+  averageRating: number | null;
   averageRatingDelta: number;
-  noShowRatePercent: number;
+  /** no-shows ÷ scheduled appointments in the period (cancelled excluded); null = no appointment → N/A */
+  noShowRatePercent: number | null;
   noShowRateDeltaPercent: number;
 }
 
@@ -34,9 +36,13 @@ export interface RevenueOverview {
 // ---- §10 bookings overview ----
 export interface BookingsOverview {
   totalBookings: number;
-  completed: number; completedPercent: number;
-  cancelled: number; cancelledPercent: number;
-  noShow: number; noShowPercent: number;
+  /** shares are of totalBookings; null = N/A (nothing booked) — batch 9 guide 5 */
+  completed: number; completedPercent: number | null;
+  cancelled: number; cancelledPercent: number | null;
+  noShow: number; noShowPercent: number | null;
+  /** batch 9 guide 5: still open (booked · confirmed · arrived · checked in · waiting · in service) and any other status, so the
+   *  partition adds up to the total; `basis` = the date the period owns an appointment by */
+  open?: number; openPercent?: number | null; other?: number; otherPercent?: number | null; basis?: 'scheduled_date' | 'paid_tickets';
 }
 
 // ---- §11 revenue by service ----
@@ -47,6 +53,8 @@ export interface RevenueByServiceItem {
 // ---- §12 top technicians ----
 export interface TopTechnicianRevenue {
   technicianId: string; rank: number; name: string; roleLabel: string; avatarUrl?: string; revenueCents: number; completedServices: number;
+  /** batch 9 guide 6: distinct tickets worked on; true for the unassigned-line / no-line buckets (rank 0) */
+  tickets?: number; unattributed?: boolean;
 }
 
 // ---- §13 appointments trend ----
@@ -56,9 +64,12 @@ export interface AppointmentsTrend {
 
 // ---- §14 customer insights ----
 export interface CustomerInsights {
-  newCustomers: number; newCustomersTrendPercent: number;
-  returningCustomers: number; returningCustomersTrendPercent: number;
-  retentionRatePercent: number; retentionRateTrendPercent: number;
+  newCustomers: number; newCustomersTrendPercent: number | null;
+  returningCustomers: number; returningCustomersTrendPercent: number | null;
+  /** of customers with a paid visit in the previous equal-length period, % who came back in this one; null = no prior cohort → N/A */
+  retentionRatePercent: number | null; retentionRateTrendPercent: number | null;
+  /** the cohort behind retentionRatePercent (numerator / denominator), so the screen can show it */
+  retentionReturned?: number; retentionCohort?: number;
 }
 
 // ---- §15 reports list + export ----
@@ -133,8 +144,11 @@ export interface ReportFilters {
   period?: 'current' | 'previous';
   branchId?: string; technicianId?: string; serviceCategory?: string; service?: string;
   paymentMethod?: string; bookingSource?: string; customerType?: string; status?: string; search?: string;
+  /** batch 9 guide 3: Revenue & Appointments Trend grouping (hour / day / week / month — the server keeps it sensible) and the
+   *  optional previous-period comparison */
+  groupBy?: string; compare?: boolean;
 }
-export interface ReportsDateRange { from: string; to: string; preset: DatePreset; }
+export interface ReportsDateRange { from: string; to: string; preset: DatePreset; /** the branch's IANA zone (Nov 10 2026) */ timezone?: string }
 
 export interface SalesKpis {
   grossSalesCents: number; netSalesCents: number; serviceSalesCents: number; productSalesCents: number;
@@ -165,14 +179,19 @@ export interface QueueSummary {
 }
 
 export interface TransactionRow {
-  id: string; ticketId?: string | null; at: string; customer: string; technician: string; service: string;
+  id: string; ticketId?: string | null; at: string; occurredAt?: string; customer: string; technician: string; service: string;
   paymentMethod: string; grossCents: number; tipCents: number; taxCents: number; netCents: number; status: string;
 }
+/** GET /pos/reports/transactions/page — one page of the period's payment rows, newest first (Nov 10 2026) */
+/** the shared wire contract (api-contracts/tenant ReportTransactionPage) */
+export type TransactionPage = import('@aipowersalon/api-contracts/tenant').ReportTransactionPage;
 export interface PaymentRow { id: string; at: string; method: string; amountCents: number; surchargeCents: number; status: string; }
 
 // Consolidated state actually returned by GET /pos/reports/state (extends the original contract).
 export interface POSReportsFullState extends POSReportsState {
   dateRange: ReportsDateRange;
+  /** batch 9 guide 3: Revenue & Appointments Trend (every bucket, sales basis + paid tickets, optional comparison) */
+  trend?: import('./trend').RevenueTrend;
   salesKpis: SalesKpis;
   salesTrend: SalesTrend;
   payments: PaymentsSummary;

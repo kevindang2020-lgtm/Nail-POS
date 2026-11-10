@@ -54,7 +54,7 @@ describe('Management screens in Vietnamese (WP-C4)', () => {
     });
     const { container } = render(<MemoryRouter><POSSalesReportScreen /></MemoryRouter>);
     await waitFor(() => expect(screen.getAllByText('Gel Manicure').length).toBeGreaterThan(0));
-    expect(screen.getByRole('tab', { name: 'Năm nay' })).toBeInTheDocument();
+    expect(screen.getByTestId('preset-year')).toHaveTextContent(/Năm/);
     expect(screen.getAllByText('Doanh số gộp').length).toBeGreaterThan(0);
     for (const en of ['This Year', 'Gross Sales', 'Avg Ticket']) expect(screen.queryByText(en), en).toBeNull();
     expect(leftoverEnglish(container, ['Gel Manicure', 'Wk']).join(' | ')).toBe('');

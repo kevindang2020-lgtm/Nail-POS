@@ -31,6 +31,19 @@ beforeAll(async () => {
   // technicians: two active with the same phone
   await q(sql`insert into technicians (tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, is_active) values
     (${T}, ${B1}, 'A', 'One', 'A One', '+15550001111', true), (${T}, ${B1}, 'B', 'Two', 'B Two', '+15550001111', true)`);
+  // reports: ticket 11 charged 5000 but only 4000 collected; ticket 12 reconciles but its cash payment carries a surcharge;
+  // ticket 13 is the other salon's identical mismatch (never counted)
+  await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+    (${id(21)}, ${T}, ${B1}, 'C', 'One', 'C One', '+15550002221'), (${id(22)}, ${X}, ${BX}, 'C', 'X', 'C X', '+15550002222')`);
+  await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, paid_at, subtotal_cents, tax_cents, discount_cents, total_cents) values
+    (${id(11)}, ${T}, ${B1}, ${id(21)}, 'paid', now(), 5000, 0, 0, 5000), (${id(12)}, ${T}, ${B2}, ${id(21)}, 'paid', now(), 3000, 0, 0, 3000), (${id(13)}, ${X}, ${BX}, ${id(22)}, 'paid', now(), 5000, 0, 0, 5000)`);
+  await q(sql`insert into payments (tenant_id, branch_id, ticket_id, method, amount_cents, surcharge_cents, tip_cents, tax_cents, discount_cents, change_due_cents, status) values
+    (${T}, ${B1}, ${id(11)}, 'card', 4000, 0, 0, 0, 0, 0, 'approved'), (${T}, ${B2}, ${id(12)}, 'cash', 3000, 100, 0, 0, 0, 0, 'approved'),
+    (${X}, ${BX}, ${id(13)}, 'card', 4000, 0, 0, 0, 0, 0, 'approved')`);
+  // ticket 12 carries a line for a service no longer in the catalog and with no category snapshot (unmapped); the other
+  // salon's ticket 13 has the same (never counted); ticket 11 has no line at all
+  await q(sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents) values
+    (${T}, ${B2}, ${id(12)}, ${id(31)}, 'Nail art', 3000, 15, 3000), (${X}, ${BX}, ${id(13)}, ${id(32)}, 'Nail art', 5000, 15, 5000)`);
 });
 
 describe('shared read-only Check … System', () => {
@@ -52,6 +65,14 @@ describe('shared read-only Check … System', () => {
     const tc = await svc.run('technicians', { tenantId: T });
     expect(count(tc, 'duplicate_phone')).toMatchObject({ state: 'WARNING', count: 1 });
     expect(count(tc, 'no_app_account')).toMatchObject({ state: 'WARNING', count: 2 });
+    const rp = await svc.run('reports', { tenantId: T });
+    expect(count(rp, 'charged_vs_collected')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(rp, 'surcharge_not_card')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(rp, 'paid_without_service_lines')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(rp, 'unmapped_service_lines')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(rp.overall).toBe('FAILED');
+    const rp1 = await svc.run('reports', { tenantId: T, branchId: B1 });
+    expect(count(rp1, 'surcharge_not_card')).toMatchObject({ state: 'READY', count: 0 });
 
   });
   it('the branch scope narrows the counts', async () => {

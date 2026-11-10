@@ -7,11 +7,14 @@
 // Honest fallbacks (documented — no schema source per transaction, so NOT faked): cardSurcharge is 0 (the payments
 // table has no surcharge column), customerType defaults to 'returning', and bookingSource defaults to 'walk_in'.
 // gift_card is normalized to the builder's 'giftCard' bucket; refunded/voided payment statuses map to 'refunded'.
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { branchTimeZone } from '@aipowersalon/database';
 import type { ReportFilters } from './reports.dto';
-import { ReportsContext, ReportsRepositoryPort, Tx, buildReportsState, buildExportRows, daysAgo, attributeCardSurcharge } from './reports.repository';
+import { ReportsContext, ReportsRepositoryPort, Tx, buildReportsState, buildExportRows, daysAgo, attributeCardSurcharge, applyFilters } from './reports.repository';
+import { rankCategories, rankTechnicians, type ServiceLineFact } from './service-revenue';
+import { buildTrend, previousRange, change, type RevenueTrend } from './trend';
+import { ticketFacts, type ReportTicketFact } from './report-tickets';
 import { REPORTABLE_PAYMENT_STATUSES, isRefundStatus } from '@aipowersalon/api-contracts';
 import { addDays as addYmdDays, dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
 
@@ -81,7 +84,7 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
       const techId = t.primary_technician_id || '';
       const custId = t.customer_id || '';
       return {
-        id: p.id, ticketId: p.ticket_id || null, at: localYmd(p.created_at), customerId: custId, customer: cName[custId] || '', customerType: 'returning',
+        id: p.id, ticketId: p.ticket_id || null, at: localYmd(p.created_at), occurredAt: new Date(p.created_at).toISOString(), customerId: custId, customer: cName[custId] || '', customerType: 'returning',
         technicianId: techId, technician: tName[techId] || '', service: line.svcName, category: line.cat, paymentMethod: normMethod(p.method),
         bookingSource: 'walk_in', grossCents: Number(p.amount_cents || 0), surchargeCents: surchargeById[p.id] || 0, status: isRefund(p.status) ? 'refunded' : 'completed',
         // the ticket's own discount / tax / tip / sales ride on its ONE carrier row (payments rows never carried tax or
@@ -108,9 +111,147 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
 
   async query(ctx: ReportsContext, filtersIn: ReportFilters) {
     const filters = await this.withPresetRange(ctx, filtersIn);
-    const out = buildReportsState(await this.loadTx(ctx, filters), filters, ctx.branchId);
+    const txs = await this.loadTx(ctx, filters);
+    const out = buildReportsState(txs, filters, ctx.branchId);
+    // batch 9 guide 2 (Nov 10 2026): Revenue by Service from the period's SERVICE LINES (the shared calculation), not each
+    // ticket's first line — a manicure + pedicure ticket used to put both services under the first one's category
+    const inScope = applyFilters(txs, filters, ctx.branchId);
+    const facts = await this.serviceLineFacts(ctx, inScope);
+    // batch 9 guide 3 (Nov 10 2026): the trend — every bucket of the period, revenue on the sales basis + paid tickets
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null);
+    const range = out.state.dateRange;
+    const trend: RevenueTrend = buildTrend(inScope, range.from, range.to, tz, filters.groupBy);
+    if (filters.compare) {
+      const prev = previousRange(range.from, range.to);
+      const pf: ReportFilters = { ...filters, ...prev, preset: 'custom' };
+      const before = buildTrend(applyFilters(await this.loadTx(ctx, pf), pf, ctx.branchId), prev.from, prev.to, tz, 'day');
+      trend.compare = { ...prev, revenueCents: before.totalRevenueCents, tickets: before.totalTickets,
+        revenueChangePercent: change(trend.totalRevenueCents, before.totalRevenueCents), ticketsChangePercent: change(trend.totalTickets, before.totalTickets) };
+    }
+    out.state.trend = trend;
+    out.state.dateRange.timezone = tz;   // the screen formats times in the salon's zone, not the browser's
+    // batch 9 guide 6: the leaderboard from the same lines — each technician owns only their own service lines
+    out.state.topTechnicians = rankTechnicians(facts.lines);
+    out.state.revenueByService = rankCategories(facts.lines).map((c) => ({ serviceId: c.key, serviceName: c.name, revenueCents: c.grossCents, serviceCount: c.units, percentOfTop: c.percentOfTop }));
+    const withLines: typeof out & { serviceLines: typeof facts; tickets: ReportTicketFact[]; returningIds?: string[] } = Object.assign(out, { serviceLines: facts, tickets: ticketFacts(inScope, facts) });
     await this.overlayFacts(ctx, out).catch(() => undefined);
-    return out;
+    // a failure leaves retention / no-show / rating null (shown N/A, never a made-up 0) and is logged, not hidden
+    await this.overlayPeople(ctx, filters, out).catch((e: unknown) => { console.warn('[reports] people overlay unavailable:', e instanceof Error ? e.message : String(e)); });
+    return withLines;
+  }
+
+  /** batch 9 guide 2 (Nov 10 2026): the service lines of the period's PAID tickets (one carrier row per ticket — the Daily
+   *  Summary population), with their recorded amount, quantity, historical name / category, technician and customer.
+   *  This salon and branch only (every read is tenant-scoped). Discounts and refunds come back per ticket. */
+  async serviceLineFacts(ctx: ReportsContext, txs: Tx[]): Promise<{ lines: ServiceLineFact[]; discountByTicket: Record<string, number>; refundByTicket: Record<string, number>; ticketNumbers?: Record<string, string | null>; phones?: Record<string, string> }> {
+    const paid = txs.filter((t) => t.status === 'completed' && t.ticketId);
+    const at: Record<string, string> = {}; const sales: Record<string, number> = {}; const disc: Record<string, number> = {}; const custOf: Record<string, { id: string; name: string }> = {};
+    for (const t of paid) {
+      const k = t.ticketId as string; const o = t.occurredAt ?? t.at;
+      if (!at[k] || o < at[k]) at[k] = o;
+      sales[k] = (sales[k] || 0) + Math.max(0, (t.salesCents ?? 0) - (t.productCents ?? 0));
+      disc[k] = (disc[k] || 0) + (t.discountCents || 0);
+      if (t.customerId) custOf[k] = { id: t.customerId, name: t.customer };
+    }
+    const refundByTicket: Record<string, number> = {};
+    for (const t of txs) if (t.status === 'refunded' && t.ticketId) refundByTicket[t.ticketId] = (refundByTicket[t.ticketId] || 0) + Math.abs(t.grossCents || 0);
+    const ids = Object.keys(at);
+    if (!ids.length) return { lines: [], discountByTicket: disc, refundByTicket };
+    const rows = await this.scoped(this.db.selectFrom('ticket_service_lines as l'), ctx, 'l')
+      .leftJoin('services as s', (j: any) => j.onRef('s.id', '=', 'l.service_id').onRef('s.tenant_id', '=', 'l.tenant_id'))
+      .leftJoin('service_categories as c', (j: any) => j.onRef('c.id', '=', 's.category_id').onRef('c.tenant_id', '=', 'l.tenant_id'))
+      .leftJoin('technicians as tc', (j: any) => j.onRef('tc.id', '=', 'l.technician_id').onRef('tc.tenant_id', '=', 'l.tenant_id'))
+      .where('l.ticket_id', 'in', ids).where('l.removed_at', 'is', null).where('l.product_id', 'is', null)
+      .where((eb: any) => eb.or([eb('l.line_kind', 'is', null), eb(eb.fn('lower', ['l.line_kind']), '<>', 'retail')]))
+      .select(['l.id', 'l.ticket_id', 'l.service_id', 'l.service_name_snapshot', 'l.category_snapshot', 'c.name as cat', 'l.technician_id', 'tc.full_name as tech', 'l.quantity', 'l.line_total_cents'])
+      .execute();
+    const tks = await this.scoped(this.db.selectFrom('tickets as t'), ctx, 't')
+      .leftJoin('customers as cu', (j: any) => j.onRef('cu.id', '=', 't.customer_id').onRef('cu.tenant_id', '=', 't.tenant_id'))
+      .where('t.id', 'in', ids).select(['t.id', 't.ticket_number', 'cu.normalized_phone as phone']).execute();
+    const tk: Record<string, { num: string | null; phone: string }> = {};
+    for (const r of tks) tk[r.id] = { num: r.ticket_number == null ? null : String(r.ticket_number), phone: String(r.phone ?? '').replace(/\D/g, '') };
+    const withLines = new Set<string>();
+    const lines: ServiceLineFact[] = rows.map((r: any) => {
+      withLines.add(r.ticket_id);
+      const category = String(r.category_snapshot || r.cat || '').trim();
+      return {
+        id: r.id, ticketId: r.ticket_id, ticketNumber: tk[r.ticket_id]?.num ?? null, occurredAt: at[r.ticket_id], serviceId: r.service_id ?? null,
+        serviceName: String(r.service_name_snapshot || '').trim(), category, unmapped: !category, technicianId: r.technician_id ?? null, technician: r.tech || '',
+        customerId: custOf[r.ticket_id]?.id ?? null, customer: custOf[r.ticket_id]?.name ?? '', units: Math.max(1, Number(r.quantity) || 1),
+        grossCents: Number(r.line_total_cents || 0), phoneDigits: tk[r.ticket_id]?.phone || '',
+      };
+    });
+    const ticketNumbers: Record<string, string | null> = {}; const phones: Record<string, string> = {};
+    for (const k of ids) { ticketNumbers[k] = tk[k]?.num ?? null; phones[k] = tk[k]?.phone ?? ''; }
+    for (const k of ids) if (!withLines.has(k) && sales[k] > 0) lines.push({
+      id: 'ticket:' + k, ticketId: k, ticketNumber: tk[k]?.num ?? null, occurredAt: at[k], serviceId: null, serviceName: '', category: '', unmapped: true, noLines: true,
+      technicianId: null, technician: '', customerId: custOf[k]?.id ?? null, customer: custOf[k]?.name ?? '', units: 0, grossCents: sales[k], phoneDigits: tk[k]?.phone || '' });
+    return { lines, discountByTicket: disc, refundByTicket, ticketNumbers, phones };
+  }
+
+  /** Nov 10 2026 (Daily Summary guide §10, §15): the KPIs the payment rows cannot answer, from their own sources — never a 0
+   *  that stands for "unknown". Salon-local days ([from, to] inclusive) in the branch's time zone; this salon and branch only.
+   *  · new vs returning: a customer with a paid ticket BEFORE the period is returning, otherwise new
+   *  · retention: of the customers with a paid ticket in the previous equal-length period, the share who came back in this one
+   *  · no-show rate: no_show ÷ appointments scheduled in the period (cancelled excluded); none scheduled → null (N/A)
+   *  · average rating: the Reputation definition (ratings 1–5, not spam, review date in the period); none → null (N/A) */
+  private async overlayPeople(ctx: ReportsContext, f: ReportFilters, out: { state: any; rows: any[]; returningIds?: string[] }): Promise<void> {
+    const s = out.state; const from = f.from, to = f.to;
+    if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return;
+    const T = ctx.tenantId;
+    const B = ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null;
+    const tz = await branchTimeZone(this.db, T, B);
+    const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+    const prevTo = addYmdDays(from, -1), prevFrom = addYmdDays(from, -days);
+    // column references written out (no identifier is built from a value)
+    const brT = B ? sql`and t.branch_id = ${B}::uuid` : sql``, brA = B ? sql`and a.branch_id = ${B}::uuid` : sql``, brR = B ? sql`and r.branch_id = ${B}::uuid` : sql``;
+    // batch 9 guide 7 (Nov 10 2026): a "paid visit" is a ticket with a collected (non-refund) payment recorded on that salon day —
+    // the SAME population as every money figure on the reports (it used tickets.paid_at, which some paths never set, so New /
+    // Returning could read 0 beside a Customers card that counted them)
+    const paidStatuses = [...REPORTABLE_PAYMENT_STATUSES].filter((st) => !isRefundStatus(st));
+    const payDay = sql`(p.created_at at time zone ${tz})::date`;
+    const paidIn = (a: string, b: string) => sql`select distinct t.customer_id from tickets t
+      join payments p on p.ticket_id = t.id and p.tenant_id = t.tenant_id and p.status = any(${paidStatuses}::text[])
+      where t.tenant_id = ${T}::uuid ${brT} and t.customer_id is not null and ${payDay} between ${a}::date and ${b}::date`;
+    const paidBefore = (ids: string[], day: string) => sql<{ customer_id: string }>`select distinct t.customer_id from tickets t
+      join payments p on p.ticket_id = t.id and p.tenant_id = t.tenant_id and p.status = any(${paidStatuses}::text[])
+      where t.tenant_id = ${T}::uuid ${brT} and t.customer_id = any(${ids}::uuid[]) and ${payDay} < ${day}::date`;
+    const cur: string[] = (await sql<{ customer_id: string }>`${paidIn(from, to)}`.execute(this.db)).rows.map((r) => String(r.customer_id));
+    const returningIds = cur.length ? (await paidBefore(cur, from).execute(this.db)).rows.map((r) => String(r.customer_id)) : [];
+    const returning = returningIds.length;
+    s.customerInsights.returningCustomers = returning; s.customerInsights.newCustomers = cur.length - returning; s.kpis.newCustomers = cur.length - returning;
+    out.returningIds = returningIds;
+    const prev: string[] = (await sql<{ customer_id: string }>`${paidIn(prevFrom, prevTo)}`.execute(this.db)).rows.map((r) => String(r.customer_id));
+    const curSet = new Set(cur); const back = prev.filter((c) => curSet.has(c)).length;
+    s.customerInsights.retentionCohort = prev.length; s.customerInsights.retentionReturned = back;
+    s.customerInsights.retentionRatePercent = prev.length ? Math.round((back / prev.length) * 1000) / 10 : null;
+    // the change against the previous period of the same length — they were a constant 0 ("0%" on every card); no prior base
+    // → null (N/A), never 0% or +100%
+    const prevReturning = prev.length ? (await paidBefore(prev, prevFrom).execute(this.db)).rows.length : 0;
+    s.customerInsights.newCustomersTrendPercent = change(cur.length - returning, prev.length - prevReturning);
+    s.customerInsights.returningCustomersTrendPercent = change(returning, prevReturning);
+    s.customerInsights.retentionRateTrendPercent = null;   // needs the cohort before the previous period — not computed, so not shown
+    const ap = (await sql<{ total: number; scheduled: number; no_show: number; cancelled: number; completed: number; open: number }>`select count(*)::int as total,
+        count(*) filter (where a.status not in ('cancelled', 'canceled'))::int as scheduled, count(*) filter (where a.status = 'no_show')::int as no_show,
+        count(*) filter (where a.status in ('cancelled', 'canceled'))::int as cancelled, count(*) filter (where a.status = 'completed')::int as completed,
+        count(*) filter (where a.status in ('booked', 'confirmed', 'arrived', 'checked_in', 'waiting', 'in_service'))::int as open
+      from pos_tech_appointments a where a.tenant_id = ${T}::uuid ${brA} and a.appt_date between ${from}::date and ${to}::date`.execute(this.db)).rows[0];
+    const scheduled = Number(ap?.scheduled ?? 0);
+    s.kpis.noShowRatePercent = scheduled ? Math.round((Number(ap?.no_show ?? 0) / scheduled) * 1000) / 10 : null;
+    // batch 9 guide 5 (Nov 10 2026): the Appointments Report outcomes are APPOINTMENTS by scheduled salon day — every status,
+    // each appointment once. Total used to be the payment-row count and Completed the paid-ticket count (so always 100%),
+    // with Cancelled / No-Show a constant 0; every share is of the same Total, and N/A (null) when nothing was booked.
+    const tot = Number(ap?.total ?? 0); const share = (n: number) => (tot ? Math.round((n / tot) * 1000) / 10 : null);
+    const done = Number(ap?.completed ?? 0), canc = Number(ap?.cancelled ?? 0), ns = Number(ap?.no_show ?? 0), open = Number(ap?.open ?? 0);
+    s.bookingsOverview = {
+      ...s.bookingsOverview, basis: 'scheduled_date', totalBookings: tot,
+      completed: done, completedPercent: share(done), cancelled: canc, cancelledPercent: share(canc), noShow: ns, noShowPercent: share(ns),
+      open, openPercent: share(open), other: Math.max(0, tot - done - canc - ns - open), otherPercent: share(Math.max(0, tot - done - canc - ns - open)),
+    };
+    const rv = (await sql<{ avg: number | null }>`select round(avg(r.rating) filter (where r.rating between 1 and 5), 1)::float as avg from reviews r
+      where r.tenant_id = ${T}::uuid ${brR} and coalesce(r.is_spam, false) = false
+        and (coalesce(r.review_date, r.created_at) at time zone ${tz})::date between ${from}::date and ${to}::date`.execute(this.db)).rows[0];
+    s.kpis.averageRating = rv?.avg == null ? null : Number(rv.avg);
   }
 
   /** wave 4 PILOT: the facts the pure builder cannot know — never invented. Tips by technician are the compensation

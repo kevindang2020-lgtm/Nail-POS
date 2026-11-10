@@ -19,6 +19,8 @@ import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { codeLabel } from '../components/peopleLabels';
 import { fmtDateTime, fmtInZone } from '../i18n/format';
+import { RangeCalendar } from '../components/FinanceKit';
+import { Pager } from '../components/FitKit';
 type Status = 'draft' | 'review' | 'finalized' | 'paid';
 type Dash = 'OPEN' | 'NEEDS_REVIEW' | 'READY_TO_APPROVE' | 'HAS_EXCEPTIONS' | 'LOCKED' | 'PAID';
 type Period = { id: string; label: string | null; periodStart: string; periodEnd: string; status: Status; version?: number; previewHash?: string | null; approvalHash?: string | null; dashboardStatus?: Dash;
@@ -115,6 +117,12 @@ export function POSPayrollScreen() {
 type StepUp = <T>(action: () => Promise<T>) => Promise<T>;
 
 function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: State; reload: () => Promise<unknown>; can: (p: string) => boolean; stepUp: StepUp; techs: any[]; techName: (id: string) => string | null }) {
+  // SUNMI batch 9 guide 8 (Nov 10 2026): the period list is searchable, filterable by status and by a From–To range (a
+  // period shows when it overlaps the range), newest first (start date, then id) and paged — it was one unsorted column
+  const [pf, setPf] = useState<PeriodFilter>({ q: '', status: 'all' });
+  const [listPage, setListPage] = useState(1);
+  const shownPeriods = filterPeriods(state.periods, pf, (x) => (x.dashboardStatus ? DASH_LABEL()[x.dashboardStatus] : STATUS_LABEL()[x.status]));
+  const pageOfPeriods = shownPeriods.slice((listPage - 1) * LIST_SIZE, listPage * LIST_SIZE);
   const [selId, setSelId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [validation, setValidation] = useState<Validation | null>(null);
@@ -164,7 +172,7 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
   ];
 
   return (
-    <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[300px_minmax(0,1fr)]" style={{ height: '100%' }}>
+    <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(320px,35fr)_minmax(0,65fr)]" style={{ height: '100%' }}>
       <div style={{ ...card, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {can('payroll.manage') ? (
           <div style={{ padding: 10, borderBottom: '1px solid var(--aps-line)', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -174,14 +182,18 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
             <button style={btn(true)} onClick={createPeriod}>{tx('pos.create')}</button>
           </div>
         ) : null}
-        {state.periods.length === 0 ? <div style={{ padding: 18 }}><EmptyState title={tx('pos.no_pay_periods')} message={tx('pos.create_a_period_to_begin')} /></div> :
-          state.periods.map((x) => (
+        {state.periods.length === 0 ? <div style={{ padding: 18 }}><EmptyState title={tx('pos.no_pay_periods')} message={tx('pos.create_a_period_to_begin')} /></div> : (<>
+          <PeriodListFilters value={pf} onChange={(v) => { setPf(v); setListPage(1); }} total={shownPeriods.length} />
+          {pageOfPeriods.length === 0 ? <div style={{ padding: 18 }} data-testid="payroll-nomatch">{tx('rpt.tx.noMatch')}</div> : null}
+          {pageOfPeriods.map((x) => (
             <button key={x.id} onClick={() => open(x.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid var(--aps-line)', background: selId === x.id ? 'var(--aps-page)' : 'transparent', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}><span style={{ fontWeight: 700, fontSize: 13 }}>{x.label || `${x.periodStart} – ${x.periodEnd}`}</span>
                 <StatusBadge tone={DASH_TONE[x.dashboardStatus ?? 'OPEN'] ?? STATUS_TONE[x.status]}>{x.dashboardStatus ? DASH_LABEL()[x.dashboardStatus] : STATUS_LABEL()[x.status]}</StatusBadge></div>
-              <div style={{ ...small, marginTop: 2 }}>{tx('pos.payable')}{' '}{money(x.totalPayableCents)}</div>
+              <div style={{ ...small, marginTop: 2 }}>{tx('pos.payable')}{' '}{money(x.totalPayableCents)} · {x.periodStart} – {x.periodEnd}</div>
             </button>
           ))}
+          <div style={{ padding: '6px 10px' }}><Pager compact info={{ page: listPage, pageSize: LIST_SIZE, totalItems: shownPeriods.length, totalPages: Math.max(1, Math.ceil(shownPeriods.length / LIST_SIZE)) }} onPage={setListPage} label={tx('pay.list.pager')} /></div>
+        </>)}
       </div>
 
       <div style={{ ...card, minHeight: 0, overflow: 'auto' }}>
@@ -557,3 +569,41 @@ function PlansTab({ can, stepUp, techs, techName }: { can: (p: string) => boolea
     </div>
   );
 }
+
+// ── SUNMI batch 9 guide 8 (Nov 10 2026): pay-period list filters ─────────────────────────────────────────────────────────
+const LIST_SIZE = 10;
+export type PeriodFilter = { q: string; status: 'all' | Status; from?: string; to?: string };
+/** newest first (start date desc, then id desc); search over label, dates and status words; a period shows when it overlaps
+ *  the From–To range. Pure — the server still decides every figure. */
+export function filterPeriods<P extends { id: string; label: string | null; periodStart: string; periodEnd: string; status: Status }>(rows: P[], f: PeriodFilter, statusText: (p: P) => string): P[] {
+  const fold = (x: unknown) => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const n = fold(f.q).trim();
+  return rows
+    .filter((p) => f.status === 'all' || p.status === f.status)
+    .filter((p) => (!f.from || p.periodEnd >= f.from) && (!f.to || p.periodStart <= f.to))
+    .filter((p) => !n || [p.label, p.periodStart, p.periodEnd, statusText(p)].some((v) => fold(v).includes(n)))
+    .slice().sort((a, b) => (a.periodStart < b.periodStart ? 1 : a.periodStart > b.periodStart ? -1 : a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+}
+function PeriodListFilters({ value, onChange, total }: { value: PeriodFilter; onChange: (v: PeriodFilter) => void; total: number }) {
+  const [cal, setCal] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const range = value.from || value.to ? `${value.from ?? '…'} – ${value.to ?? '…'}` : tx('pay.list.anyDates');
+  return (
+    <div style={{ padding: 10, borderBottom: '1px solid var(--aps-line)', display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }} data-testid="payroll-list-filters">
+      <input className="input" style={{ minHeight: 44 }} data-testid="payroll-search" maxLength={60} value={value.q} onChange={(e) => onChange({ ...value, q: e.target.value })} placeholder={tx('pay.list.search')} aria-label={tx('pay.list.search')} />
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select className="input" style={{ minHeight: 44 }} aria-label={tx('pay.list.status')} data-testid="payroll-status" value={value.status} onChange={(e) => onChange({ ...value, status: e.target.value as PeriodFilter['status'] })}>
+          {(['all', 'draft', 'review', 'finalized', 'paid'] as const).map((k) => <option key={k} value={k}>{k === 'all' ? tx('pay.list.allStatuses') : STATUS_LABEL()[k]}</option>)}
+        </select>
+        <button type="button" className="btn ghost" style={{ minHeight: 44 }} aria-haspopup="dialog" aria-expanded={cal} data-testid="payroll-dates" onClick={() => setCal((o) => !o)}>{range}</button>
+        {value.q || value.status !== 'all' || value.from || value.to ? <button type="button" className="btn ghost sm" data-testid="payroll-clear" onClick={() => onChange({ q: '', status: 'all' })}>{tx('rpt.svc.clearAll')}</button> : null}
+        <span className="s" data-testid="payroll-count">{tx('pay.list.count', { n: String(total) })}</span>
+      </div>
+      {cal ? <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 8 }}>
+        <RangeCalendar initial={{ from: value.from, to: value.to }} today={today}
+          onApply={(r) => { setCal(false); onChange({ ...value, from: r.from, to: r.to }); }} onCancel={() => setCal(false)} onClear={() => { setCal(false); onChange({ ...value, from: undefined, to: undefined }); }} />
+      </div> : null}
+    </div>
+  );
+}
+

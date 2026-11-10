@@ -59,5 +59,6 @@ export * from './payment-channels';   // Three Ways to Pay (SUNMI batch 7, Nov 9
 export * from './device-fleet';   // Device fleet (SUNMI batch 8, Nov 9 2026)
 export * from './me-prefs';   // own notification + login-alert prefs (SUNMI batch 8, Nov 9 2026)
 export * from './saved-views';   // POS saved views (extras arc, Nov 9 2026)
+export * from './report-transactions';   // Daily Summary transactions page (batch 9, Nov 10 2026)
 export * from './system-checks';   // shared read-only Check … System (extras arc, Nov 9 2026)
 export * from './access-requests';   // requestable roles policy (batch 8 decision 6, Nov 9 2026)

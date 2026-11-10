@@ -48,4 +48,7 @@ export class SystemChecksController {
   @RequirePermission('approvals.view') @Get('approvals')
   approvals(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('approvals', ctxOf(req)); }
 
+
+  @RequirePermission('pos.reports.view') @Get('reports')
+  reports(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('reports', ctxOf(req)); }
 }

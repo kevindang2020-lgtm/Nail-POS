@@ -3,10 +3,12 @@
 // below, so server-side filters genuinely change the result (§11) and the in-memory and Postgres adapters produce
 // identical math. A different tenant sees its own (empty) data — isolation.
 // ASYNC: the port is async (the Postgres/Kysely adapter awaits real queries; the in-memory adapter is trivially async).
+import type { ServiceLineFact } from './service-revenue';
+import type { ReportTicketFact } from './report-tickets';
 import { taxCents as taxOf } from '@aipowersalon/money';
 import {
   POSReportsFullState, ReportFilters, ReportsDateRange, SalesKpis, SalesTrend, PaymentsSummary, TipsSummary,
-  TaxSummary, DiscountSurchargeSummary, QueueSummary, TransactionRow, trendPercent, completedPercent, noShowRate,
+  TaxSummary, DiscountSurchargeSummary, QueueSummary, TransactionRow, completedPercent,
 } from './reports.dto';
 
 export interface Tx {
@@ -16,6 +18,8 @@ export interface Tx {
   tipCents: number; status: 'completed' | 'refunded';
   /** The payment's ticket (Oct 2 2026: the POS Transactions screen refunds by ticket — Decision 20). */
   ticketId?: string | null;
+  /** when the payment was recorded (ISO) — the newest-first order of the paged transactions list (Nov 10 2026) */
+  occurredAt?: string;
   /** Wave 4 PILOT (Oct 13 2026): the TICKET's sales (service + retail lines, before discounts) and its retail part,
    *  carried on ONE payment row per ticket. Absent (in-memory demo rows) → the payment amount is the sale, as before. */
   salesCents?: number; productCents?: number;
@@ -24,13 +28,14 @@ export interface Tx {
 export interface ReportsContext { tenantId: string; branchId: string; userId: string; role: string; permissions: string[]; }
 
 export interface ReportsRepositoryPort {
-  query(ctx: ReportsContext, filters: ReportFilters): Promise<{ state: POSReportsFullState; rows: TransactionRow[] }>;
+  /** serviceLines: the period's service-line facts (batch 9 guide 2) — the Kysely adapter fills it; the in-memory one does not */
+  query(ctx: ReportsContext, filters: ReportFilters): Promise<{ state: POSReportsFullState; rows: TransactionRow[]; serviceLines?: { lines: ServiceLineFact[]; discountByTicket: Record<string, number>; refundByTicket: Record<string, number> }; tickets?: ReportTicketFact[]; returningIds?: string[] }>;
   exportRows(ctx: ReportsContext, type: string, filters: ReportFilters): Promise<{ headers: string[]; rows: (string | number)[][] }>;
 }
 
 export function daysAgo(n: number): string { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
 
-function applyFilters(rows: Tx[], f: ReportFilters, seedBranch: string): Tx[] {
+export function applyFilters(rows: Tx[], f: ReportFilters, seedBranch: string): Tx[] {
   // a single seeded/served branch; if a different branch is requested there is no data for it (branch isolation)
   if (f.branchId && f.branchId !== seedBranch) return [];
   const from = f.from || daysAgo(7);
@@ -89,7 +94,9 @@ export function buildReportsState(all: Tx[], filters: ReportFilters, seedBranch:
   const tax = sum(completed, (r) => r.taxCents);
   const surcharge = sum(completed, (r) => r.surchargeCents);
   const tickets = new Set(completed.map((r) => r.ticketId ?? r.id)).size;   // tickets, not payment rows (a split is one ticket)
-  const customers = new Set(rows.map((r) => r.customerId)).size;
+  // batch 9 guide 4 (Nov 10 2026): KNOWN customers of PAID tickets — a walk-in (no customer) is not a customer, and a refund
+  // row is not a visit; it used to count both
+  const customers = new Set(completed.map((r) => r.customerId).filter(Boolean)).size;
   const net = gross - discounts;
 
   const range: ReportsDateRange = { from: filters.from || daysAgo(7), to: filters.to || daysAgo(0), preset: filters.preset || 'week' };
@@ -133,7 +140,7 @@ export function buildReportsState(all: Tx[], filters: ReportFilters, seedBranch:
   };
 
   const txRows: TransactionRow[] = rows.map((r) => ({
-    id: r.id, ticketId: r.ticketId ?? null, at: r.at, customer: r.customer, technician: r.technician, service: r.service, paymentMethod: r.paymentMethod,
+    id: r.id, ticketId: r.ticketId ?? null, at: r.at, occurredAt: r.occurredAt, customer: r.customer, technician: r.technician, service: r.service, paymentMethod: r.paymentMethod,
     grossCents: r.grossCents, tipCents: r.tipCents, taxCents: r.taxCents, netCents: r.grossCents - r.discountCents, status: r.status,
   }));
 
@@ -144,14 +151,16 @@ export function buildReportsState(all: Tx[], filters: ReportFilters, seedBranch:
       totalBookings, bookingsTrendPercent: 0,
       completedServices: tickets, completedServicesTrendPercent: 0,
       newCustomers: rows.filter((r) => r.customerType === 'new').length, newCustomersTrendPercent: 0,
-      averageRating: 0, averageRatingDelta: 0, /* no reviews read here: the screen shows '—' */ noShowRatePercent: noShowRate(0, totalBookings), noShowRateDeltaPercent: 0,
+      averageRating: null, averageRatingDelta: 0, /* filled from reviews by the adapter; null = N/A */ noShowRatePercent: null, noShowRateDeltaPercent: 0,   // filled from appointments by the adapter
     },
     revenueOverview: { totalRevenueCents: gross, trendPercent: 0, previousRangeLabel: 'prev. period', points: salesTrend.points.map((p) => ({ label: p.label, date: p.label, revenueCents: p.grossSalesCents })) },
-    bookingsOverview: { totalBookings, completed: tickets, completedPercent: completedPercent(tickets, totalBookings), cancelled: 0, cancelledPercent: 0, noShow: 0, noShowPercent: 0 },
-    revenueByService: [...new Set(completed.map((r) => r.category))].map((cat) => { const cr = completed.filter((r) => r.category === cat); const rev = sum(cr, (r) => r.grossCents); return { serviceId: cat, serviceName: cat, revenueCents: rev, serviceCount: cr.length, percentOfTop: 0 }; }).sort((a, b) => b.revenueCents - a.revenueCents),
-    topTechnicians: [...techMap.entries()].map(([technicianId, v], i) => ({ technicianId, rank: i + 1, name: v.name, roleLabel: 'Technician', revenueCents: sum(completed.filter((r) => r.technicianId === technicianId), (r) => r.grossCents), completedServices: completed.filter((r) => r.technicianId === technicianId).length })).sort((a, b) => b.revenueCents - a.revenueCents).map((t, i) => ({ ...t, rank: i + 1 })),
+    bookingsOverview: { basis: 'paid_tickets', totalBookings, completed: tickets, completedPercent: completedPercent(tickets, totalBookings), cancelled: 0, cancelledPercent: 0, noShow: 0, noShowPercent: 0 },
+    // Nov 10 2026 (Daily Summary guide §12): SALES basis (service + retail lines, before tax / tip / surcharge) — the same basis as
+    // the Sales cards; it used the charged amount (incl. tax + surcharge), so 'Top service by revenue' read $104.99 against $96 sales
+    revenueByService: [...new Set(completed.map((r) => r.category))].map((cat) => { const cr = completed.filter((r) => r.category === cat); const rev = sum(cr, (r) => (r.salesCents ?? r.grossCents)); return { serviceId: cat, serviceName: cat, revenueCents: rev, serviceCount: new Set(cr.map((r) => r.ticketId ?? r.id)).size, percentOfTop: 0 }; }).sort((a, b) => b.revenueCents - a.revenueCents),
+    topTechnicians: [...techMap.entries()].map(([technicianId, v], i) => ({ technicianId, rank: i + 1, name: v.name, roleLabel: 'Technician', revenueCents: sum(completed.filter((r) => r.technicianId === technicianId), (r) => (r.salesCents ?? r.grossCents)), completedServices: new Set(completed.filter((r) => r.technicianId === technicianId).map((r) => r.ticketId ?? r.id)).size })).sort((a, b) => b.revenueCents - a.revenueCents).map((t, i) => ({ ...t, rank: i + 1 })),
     appointmentsTrend: { points: salesTrend.points.map((p) => ({ label: p.label, date: p.label, bookings: ticketsByDay.get(p.label)?.size ?? 0, completed: ticketsByDay.get(p.label)?.size ?? 0 })) },
-    customerInsights: { newCustomers: rows.filter((r) => r.customerType === 'new').length, newCustomersTrendPercent: 0, returningCustomers: rows.filter((r) => r.customerType === 'returning').length, returningCustomersTrendPercent: 0, retentionRatePercent: 0, retentionRateTrendPercent: 0 },
+    customerInsights: { newCustomers: rows.filter((r) => r.customerType === 'new').length, newCustomersTrendPercent: 0, returningCustomers: rows.filter((r) => r.customerType === 'returning').length, returningCustomersTrendPercent: 0, retentionRatePercent: null, retentionRateTrendPercent: 0 },   // filled by the adapter from the prior-period cohort
     availableReports: [
       { reportKey: 'sales', label: 'Sales', exportFormats: ['csv'] },
       { reportKey: 'services', label: 'Services', exportFormats: ['csv'] },
@@ -168,7 +177,7 @@ export function buildExportRows(all: Tx[], type: string, filters: ReportFilters,
   if (type === 'sales') return { headers: ['Date', 'Gross', 'Net'], rows: state.salesTrend.points.map((p) => [p.label, p.grossSalesCents, p.netSalesCents]) };
   if (type === 'technicians') return { headers: ['Technician', 'Revenue', 'Services'], rows: state.topTechnicians.map((t) => [t.name, t.revenueCents, t.completedServices]) };
   if (type === 'tax') return { headers: ['Category', 'Tax Collected'], rows: state.tax.byCategory.map((c) => [c.category, c.taxCents]) };
-  if (type === 'customers') return { headers: ['Metric', 'Value'], rows: [['New Customers', state.customerInsights.newCustomers], ['Returning Customers', state.customerInsights.returningCustomers], ['Retention Rate (%)', state.customerInsights.retentionRatePercent]] };
+  if (type === 'customers') return { headers: ['Metric', 'Value'], rows: [['New Customers', state.customerInsights.newCustomers], ['Returning Customers', state.customerInsights.returningCustomers], ['Retention Rate (%)', state.customerInsights.retentionRatePercent ?? 'N/A']] };
   if (type === 'services') return { headers: ['Service Name', 'Revenue', 'Service Count'], rows: state.revenueByService.map((s) => [s.serviceName, s.revenueCents, s.serviceCount]) };
   if (type === 'payments') return { headers: ['Metric', 'Amount (Cents)'], rows: [['Card', state.payments.cardCents], ['Cash', state.payments.cashCents], ['Gift Card', state.payments.giftCardCents], ['Surcharges', state.payments.cardSurchargeCents], ['Refunds', state.payments.refundsCents]] };
   if (type === 'tips') return { headers: ['Technician', 'Tips (Cents)'], rows: state.tips.byTechnician.map((t) => [t.name, t.tipsCents]) };

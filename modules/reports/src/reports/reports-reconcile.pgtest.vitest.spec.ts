@@ -88,7 +88,7 @@ describe('POS Reports reconcile with the day', () => {
     expect(state.queue.byTechnician).toEqual([]);
     // wave 4 PILOT screen pass: POS Reports showed "Average rating 4.8" with no reviews, a +11.1 % revenue trend against an
     // invented previous period (gross × 0.9), and 1 booking / 1 completed on every chart day
-    expect(state.kpis.averageRating).toBe(0);
+    expect(state.kpis.averageRating).toBeNull();   // Nov 10 2026: no rated review → N/A, never a 0-star figure
     expect(state.kpis.averageRatingDelta).toBe(0);
     expect(state.kpis.revenueTrendPercent).toBe(0);
     expect(state.revenueOverview.trendPercent).toBe(0);

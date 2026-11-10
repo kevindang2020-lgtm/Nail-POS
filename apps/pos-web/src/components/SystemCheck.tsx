@@ -13,7 +13,7 @@ const ct = (k: string, v?: Record<string, string | number>) => tx(k, v as Parame
 /** the page's own read permission (the server checks the same one on GET pos/system-checks/<page>) */
 const PERM: Record<SystemCheckDomain, string> = { expenses: 'owner.expenses.view', invoices: 'pos.checkout.view', settlements: 'reconciliation.view', payments: 'pos.reports.view',
   discounts: 'pos.marketing.view', catalog: 'pos.services.view', inventory: 'inventory.view', technicians: 'pos.technicians.view', memberships: 'pos.memberships.view',
-  'service-flow': 'pos.serving.view', terminals: 'settings.view', approvals: 'approvals.view' };
+  'service-flow': 'pos.serving.view', terminals: 'settings.view', approvals: 'approvals.view', reports: 'pos.reports.view' };
 const TONE: Record<string, string> = { READY: '#1F7A3F', WARNING: '#A96F22', FAILED: '#B3261E', NOT_TESTED: '#6B6257' };
 
 export function SystemCheckButton({ domain, testId = `syschk-${domain}` }: { domain: SystemCheckDomain; testId?: string }) {

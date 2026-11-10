@@ -20,7 +20,7 @@ export interface DomainDef { permission: string; checks: CheckDef[] }
 const BRANCH_COL = {
   e: sql`e.branch_id`, i: sql`i.branch_id`, s: sql`s.branch_id`, d: sql`d.branch_id`, p: sql`p.branch_id`, r: sql`r.branch_id`,
   a: sql`a.branch_id`, l: sql`l.branch_id`, m: sql`m.branch_id`, u: sql`u.branch_id`, x: sql`x.branch_id`,
-  k: sql`k.branch_id`, q: sql`q.branch_id`, c: sql`c.branch_id`, v: sql`v.branch_id`, w: sql`w.branch_id`, f: sql`f.branch_id`, g: sql`g.branch_id`, h: sql`h.branch_id`,
+  k: sql`k.branch_id`, t: sql`t.branch_id`, q: sql`q.branch_id`, c: sql`c.branch_id`, v: sql`v.branch_id`, w: sql`w.branch_id`, f: sql`f.branch_id`, g: sql`g.branch_id`, h: sql`h.branch_id`,
 } as const;
 type Alias = keyof typeof BRANCH_COL;
 /** `AND <alias>.branch_id = b` when the request is for one branch */
@@ -181,5 +181,22 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'approved_not_executed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_approval_requests a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'approved' AND a.executed_at IS NULL
         AND a.decided_at < now() - interval '1 hour'`) },
     { key: 'execution_failed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_approval_requests a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'execution_failed'`) },
+  ] },
+  // ── Reports / Daily Summary (SUNMI batch 9, Nov 10 2026: the guide's "Report Accuracy / Health Checker") ──────────────
+  // The figures the report adds up must agree with the money and the lines underneath them.
+  reports: { permission: 'pos.reports.view', checks: [
+    // a paid ticket's total against its collected payments (approved / captured / settled …, incl. later-refunded originals);
+    // a gift-card or deposit edge case can differ legitimately, so this asks a person to look rather than calling it wrong
+    { key: 'charged_vs_collected', severity: 'WARNING', count: (tn, b) => n(sql`SELECT 1 FROM tickets t WHERE t.tenant_id = ${tn}::uuid ${br('t', b)} AND t.paid_at IS NOT NULL
+        AND coalesce(t.total_cents, 0) <> coalesce((SELECT sum(p.amount_cents) FROM payments p WHERE p.tenant_id = t.tenant_id AND p.ticket_id = t.id AND p.status IN ${PAY_OK}), 0)`) },
+    { key: 'surcharge_not_card', severity: 'FAILED', count: (tn, b) => n(sql`SELECT 1 FROM payments p WHERE p.tenant_id = ${tn}::uuid ${br('p', b)} AND coalesce(p.surcharge_cents, 0) > 0
+        AND p.method IN ('cash', 'gift_card', 'cash_to_technician', 'global_reward', 'deposit')`) },
+    // batch 9 guide 2 §16 source coverage: Revenue by Service can only file a sale under a category its line names
+    { key: 'unmapped_service_lines', severity: 'WARNING', count: (tn, b) => n(sql`SELECT 1 FROM ticket_service_lines l JOIN tickets t ON t.id = l.ticket_id AND t.tenant_id = l.tenant_id
+        WHERE l.tenant_id = ${tn}::uuid ${br('l', b)} AND (t.paid_at IS NOT NULL OR t.status = 'paid') AND l.removed_at IS NULL AND l.service_id IS NOT NULL AND nullif(trim(l.category_snapshot), '') IS NULL
+        AND NOT EXISTS (SELECT 1 FROM services s JOIN service_categories c ON c.id = s.category_id AND c.tenant_id = s.tenant_id WHERE s.id = l.service_id AND s.tenant_id = l.tenant_id)`) },
+    { key: 'paid_without_service_lines', severity: 'WARNING', count: (tn, b) => n(sql`SELECT 1 FROM tickets t WHERE t.tenant_id = ${tn}::uuid ${br('t', b)} AND (t.paid_at IS NOT NULL OR t.status = 'paid')
+        AND EXISTS (SELECT 1 FROM payments p WHERE p.tenant_id = t.tenant_id AND p.ticket_id = t.id AND p.status IN ${PAY_OK} AND p.amount_cents > 0)
+        AND NOT EXISTS (SELECT 1 FROM ticket_service_lines l WHERE l.tenant_id = t.tenant_id AND l.ticket_id = t.id AND l.removed_at IS NULL)`) },
   ] },
 };
