@@ -5,7 +5,6 @@
 // checks in ReviewRequestService have already passed before send is called.
 import type { DispatchPort, ReqCtx } from './ai-review-reputation-requests.service';
 import { systemContext } from '@aipowersalon/tenant-context';
-import { customerMessageLanguage } from '@aipowersalon/api-contracts';
 
 // The communications surface this adapter needs (structural — the real CommunicationsService satisfies it).
 export interface CommunicationsLike {
@@ -15,12 +14,8 @@ export interface CommunicationsLike {
 
 /** Build the review-request message. The public review destination/link is tenant-configured (settings.reviewRequest);
  *  callers pass it in so the body isn't hard-coded. Kept short and neutral — never gates who may leave a public review. */
-export function reviewRequestBody(brandName: string, link: string | null, customerLanguage?: string | null): string {
-  // VietnamesePOS §54 / §119 (Oct 28 2026): the customer's language (customers.preferred_language; unknown → English)
-  if (customerMessageLanguage(customerLanguage) === 'vi') {
-    const viBase = `Cảm ơn quý khách đã ghé${brandName ? ` ${brandName}` : ' tiệm'}! Chúng tôi rất mong nhận được góp ý chân thành của quý khách.`;
-    return link ? `${viBase} Viết đánh giá tại đây: ${link}` : `${viBase} Hãy trả lời tin nhắn này để cho chúng tôi biết.`;
-  }
+export function reviewRequestBody(brandName: string, link: string | null, _customerLanguage?: string | null): string {
+  // English only (Kevin, Nov 9 2026): customers are Americans — the language argument does not change the words
   const base = `Thanks for visiting${brandName ? ` ${brandName}` : ''}! We'd love your honest feedback.`;
   return link ? `${base} Share a review here: ${link}` : `${base} Reply to let us know how we did.`;
 }
@@ -33,8 +28,7 @@ export class CommunicationsDispatchAdapter implements DispatchPort {
     const channel = msg.channel === 'email' ? 'email' : 'sms';
     const commCtx: any = { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, userName: this.opts?.senderName ?? 'Review Assistant', role: ctx.role, permissions: ctx.permissions };
     const language = this.opts?.languageOf ? await this.opts.languageOf(ctx.tenantId, msg.customerId).catch((e: unknown) => { console.warn('[review-request] customer language read failed — sending English:', (e as Error)?.message); return null; }) : null;   // a failed read sends English, never blocks the request
-    const vi = customerMessageLanguage(language) === 'vi';
-    const thread = await this.comm.createThread(commCtx, { customerId: msg.customerId, channel, subject: vi ? 'Quý khách thấy dịch vụ thế nào?' : 'How was your visit?' });
+    const thread = await this.comm.createThread(commCtx, { customerId: msg.customerId, channel, subject: 'How was your visit?' });
     await this.comm.reply(commCtx, thread.id, reviewRequestBody(this.opts?.brandName ?? '', this.opts?.link ?? null, language));
     return { dispatchId: thread.id };
   }
@@ -47,11 +41,7 @@ export function googleReviewLink(placeId: string | null | undefined): string | n
 }
 
 /** The reminder wording (policy.oneReminder): one short nudge, same destination, same language rule. */
-export function reviewReminderBody(brandName: string, link: string | null, customerLanguage?: string | null): string {
-  if (customerMessageLanguage(customerLanguage) === 'vi') {
-    const viBase = `${brandName ? `${brandName}: ` : ''}Nếu quý khách có chút thời gian, chúng tôi rất mong nhận được đánh giá của quý khách.`;
-    return link ? `${viBase} ${link}` : viBase;
-  }
+export function reviewReminderBody(brandName: string, link: string | null, _customerLanguage?: string | null): string {
   const base = `${brandName ? `${brandName}: ` : ''}If you have a minute, we'd still love to hear how your visit went.`;
   return link ? `${base} ${link}` : base;
 }
@@ -89,8 +79,7 @@ export class MessengerDispatchAdapter implements DispatchPort {
     if (msg.channel === 'email') {
       if (!who.email) throw new Error('NO_CONTACT');
       if (!this.messenger.sendEmail) throw new Error('EMAIL_NOT_AVAILABLE');
-      const vi = customerMessageLanguage(who.language) === 'vi';
-      r = await this.messenger.sendEmail({ tenantId: ctx.tenantId, branchId, to: who.email, subject: vi ? 'Quý khách thấy dịch vụ thế nào?' : 'How was your visit?', body, purpose: 'followup', customerId: msg.customerId, source,
+      r = await this.messenger.sendEmail({ tenantId: ctx.tenantId, branchId, to: who.email, subject: 'How was your visit?', body, purpose: 'followup', customerId: msg.customerId, source,
         idempotencyKey: msg.requestId ? `review-request:${msg.requestId}${msg.reminder ? ':reminder' : ''}` : null });
     } else {
       // app / in_app requests have no push template yet: SMS is the deliverable channel (as before)

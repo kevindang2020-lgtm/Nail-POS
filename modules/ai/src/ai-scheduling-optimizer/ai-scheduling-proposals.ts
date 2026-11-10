@@ -20,7 +20,6 @@ import type { SchedProposalSummary, SchedProposalStatus, SchedRecommendation, Sc
 import type { CustomerScheduleProposal, CustomerScheduleProposalList } from '@aipowersalon/api-contracts/customer';
 import type { SchedCtx, SchedProposalPort } from './ai-scheduling.ports';
 import { SchedOpsError, iso, isUuid, rowsOf, schedSystemCtx, uuidOrNull, unwrapRec, type SchedEngine } from './ai-scheduling-ops.common';
-import { customerMessageLanguage } from '@aipowersalon/api-contracts';
 
 export const DEFAULT_TZ = 'America/New_York';
 export const LIVE: SchedProposalStatus[] = ['proposed', 'customer_notified'];
@@ -93,14 +92,7 @@ const CUSTOMER_REASON: Partial<Record<SchedRecType, string>> = {
 export function customerReason(type: SchedRecType | null | undefined): string { return (type && CUSTOMER_REASON[type]) || 'The salon would like to adjust your appointment time.'; }
 
 export function proposalText(input: { salonName: string; original: { date: string; startTime: string }; proposed: { date: string; startTime: string }; technicianName: string | null; technicianChanges: boolean; link: string; language?: string | null }): string {
-  // VietnamesePOS §54 / §119 (Oct 28 2026): the customer's language; the salon's names stay as they are
-  if (customerMessageLanguage(input.language) === 'vi') {
-    const viDate = (d: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d); return m ? `${m[3]}/${m[2]}/${m[1]}` : d; };
-    const whenVi = (x: { date: string; startTime: string }) => `${x.startTime} ngày ${viDate(x.date)}`;
-    const techVi = input.technicianChanges && input.technicianName ? ` với thợ ${input.technicianName}` : '';
-    return `${input.salonName}: tiệm muốn dời lịch hẹn của quý khách từ ${whenVi(input.original)} sang ${whenVi(input.proposed)}${techVi}. `
-      + `Giờ cũ vẫn được giữ cho đến khi quý khách đồng ý. Xem và đồng ý hoặc từ chối: ${input.link}`;
-  }
+  // English only (Kevin, Nov 9 2026): the customer's language does not change the words; the salon's names stay as they are
   const when = (x: { date: string; startTime: string }) => `${x.date} at ${x.startTime}`;
   const tech = input.technicianChanges && input.technicianName ? ` with ${input.technicianName}` : '';
   return `${input.salonName}: we'd like to move your appointment on ${when(input.original)} to ${when(input.proposed)}${tech}. `

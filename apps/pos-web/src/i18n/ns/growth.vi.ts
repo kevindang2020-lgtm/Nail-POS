@@ -1006,21 +1006,21 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   'growth.aiBooking.hold.expired': 'Hết hạn',
   // moved from the frozen catalog.vi.ts (Nov 6 2026) — keys unchanged
   'pos.ads_managed_by_platform': 'Quảng cáo hiện do AI PowerSalon quản lý. Quảng cáo của tiệm vẫn được lưu và sẽ phát lại khi quảng cáo của tiệm được bật lại. Bạn vẫn có thể tạm dừng hoặc lưu trữ chúng.',
-  "cmx.refresh": "Làm mới",   // DRAFT — Kevin reviews
-  "cmx.check": "Kiểm tra hệ thống",   // DRAFT — Kevin reviews
-  "cmx.kpi.active": "Cảnh báo đang hoạt động",   // DRAFT — Kevin reviews
-  "cmx.kpi.following": "Đang theo dõi",   // DRAFT — Kevin reviews
-  "cmx.kpi.drafts": "Bản nháp của tôi",   // DRAFT — Kevin reviews
-  "cmx.kpi.awaiting": "Chờ tiệm duyệt",   // DRAFT — Kevin reviews
-  "cmx.kpi.incidents": "Sự cố riêng tư",   // DRAFT — Kevin reviews
-  "cmx.health.running": "Đang kiểm tra — chỉ đọc…",   // DRAFT — Kevin reviews
-  "cmx.health.readOnly": "Chỉ đọc: không đăng, không duyệt, không thay đổi gì.",   // DRAFT — Kevin reviews
-  "cmx.health.ok": "Đang hoạt động",   // DRAFT — Kevin reviews
-  "cmx.health.noAccess": "Vai trò của bạn không dùng được",   // DRAFT — Kevin reviews
-  "cmx.health.failed": "Không phản hồi",   // DRAFT — Kevin reviews
-  "cmx.health.k.feed": "Bảng tin cảnh báo",   // DRAFT — Kevin reviews
-  "cmx.health.k.settings": "Cài đặt cộng đồng",   // DRAFT — Kevin reviews
-  "cmx.health.k.alerts": "Cảnh báo đang bật",   // DRAFT — Kevin reviews
-  "cmx.health.k.follows": "Mục theo dõi",   // DRAFT — Kevin reviews
-  "cmx.health.k.incidents": "Sự cố riêng tư",   // DRAFT — Kevin reviews
+  "cmx.refresh": "Làm mới",
+  "cmx.check": "Kiểm tra hệ thống",
+  "cmx.kpi.active": "Cảnh báo đang hoạt động",
+  "cmx.kpi.following": "Đang theo dõi",
+  "cmx.kpi.drafts": "Bản nháp của tôi",
+  "cmx.kpi.awaiting": "Chờ tiệm duyệt",
+  "cmx.kpi.incidents": "Sự cố riêng tư",
+  "cmx.health.running": "Đang kiểm tra — chỉ đọc…",
+  "cmx.health.readOnly": "Chỉ đọc: không đăng, không duyệt, không thay đổi gì.",
+  "cmx.health.ok": "Đang hoạt động",
+  "cmx.health.noAccess": "Vai trò của bạn không dùng được",
+  "cmx.health.failed": "Không phản hồi",
+  "cmx.health.k.feed": "Bảng tin cảnh báo",
+  "cmx.health.k.settings": "Cài đặt cộng đồng",
+  "cmx.health.k.alerts": "Cảnh báo đang bật",
+  "cmx.health.k.follows": "Mục theo dõi",
+  "cmx.health.k.incidents": "Sự cố riêng tư",
 };

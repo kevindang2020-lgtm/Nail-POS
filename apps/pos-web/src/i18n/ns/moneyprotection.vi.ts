@@ -320,24 +320,24 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.health.d.no_money_moved.WARNING": "Tự động chặn trùng tiền đang bật trên máy chủ — có thể chặn một khoản thanh toán. Hãy xác nhận đây là chủ ý.",
   "fpx.open": "Mở Bảo vệ tiền",
   "fpx.list": "Cảnh báo gần đây",
-  "mpx.rules.col.category": "Loại",   // DRAFT — Kevin reviews
-  "mpx.rules.col.severity": "Mức độ",   // DRAFT — Kevin reviews
-  "mpx.rules.col.mode": "Chế độ",   // DRAFT — Kevin reviews
-  "mpx.rules.col.thresholds": "Ngưỡng",   // DRAFT — Kevin reviews
-  "mpx.rules.col.review": "Người duyệt",   // DRAFT — Kevin reviews
-  "mpx.rules.reviewYes": "Bắt buộc",   // DRAFT — Kevin reviews
-  "mpx.rules.reviewNo": "Không bắt buộc",   // DRAFT — Kevin reviews
-  "mpx.mode.realtime": "Tức thời",   // DRAFT — Kevin reviews
-  "mpx.mode.near_realtime": "Gần tức thời",   // DRAFT — Kevin reviews
-  "mpx.mode.batch": "Chạy theo lịch",   // DRAFT — Kevin reviews,
-  "mpx.rk.total": "Tổng quy tắc",   // DRAFT — Kevin reviews
-  "mpx.rk.enabled": "Đang bật",   // DRAFT — Kevin reviews
-  "mpx.rk.disabled": "Đang tắt",   // DRAFT — Kevin reviews
-  "mpx.rk.errors": "Không chạy",   // DRAFT — Kevin reviews
-  "mpx.rk.errorsSub": "Đã bật nhưng lớp phát hiện của nó đang tắt",   // DRAFT — Kevin reviews,
-  "mpx.sk.running": "Đang chạy",   // DRAFT — Kevin reviews
-  "mpx.sk.overrides": "Đã chỉnh",   // DRAFT — Kevin reviews
-  "mpx.sk.overridesSub": "Mức độ hoặc ngưỡng khác mặc định",   // DRAFT — Kevin reviews
-  "mpx.sk.colEnabled": "Bật",   // DRAFT — Kevin reviews
-  "mpx.sk.colSeverity": "Mức độ (đã chỉnh)",   // DRAFT — Kevin reviews
+  "mpx.rules.col.category": "Loại",
+  "mpx.rules.col.severity": "Mức độ",
+  "mpx.rules.col.mode": "Chế độ",
+  "mpx.rules.col.thresholds": "Ngưỡng",
+  "mpx.rules.col.review": "Người duyệt",
+  "mpx.rules.reviewYes": "Bắt buộc",
+  "mpx.rules.reviewNo": "Không bắt buộc",
+  "mpx.mode.realtime": "Tức thời",
+  "mpx.mode.near_realtime": "Gần tức thời",
+  "mpx.mode.batch": "Chạy theo lịch",
+  "mpx.rk.total": "Tổng quy tắc",
+  "mpx.rk.enabled": "Đang bật",
+  "mpx.rk.disabled": "Đang tắt",
+  "mpx.rk.errors": "Không chạy",
+  "mpx.rk.errorsSub": "Đã bật nhưng lớp phát hiện của nó đang tắt",
+  "mpx.sk.running": "Đang chạy",
+  "mpx.sk.overrides": "Đã chỉnh",
+  "mpx.sk.overridesSub": "Mức độ hoặc ngưỡng khác mặc định",
+  "mpx.sk.colEnabled": "Bật",
+  "mpx.sk.colSeverity": "Mức độ (đã chỉnh)",
 };

@@ -17,6 +17,7 @@
 // other (the idempotency key and the stored scheduling explanation both carry it).
 import { sql, type Kysely } from 'kysely';
 import { Logger } from '@nestjs/common';
+import { getContext } from '@aipowersalon/observability';
 
 const languageLog = new Logger('AiResponseLanguage');
 
@@ -50,10 +51,19 @@ export interface ResponseLanguageResolver {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** The POS rule over the database: the user's own choice → the salon's default → English. Never throws (English). */
+/** Is this call made from the employee web POS? Kevin (Oct 28 + Nov 9 2026): Vietnamese ONLY in the web POS — the Owner,
+ *  Technician, Customer and Tap to Pay apps, background jobs and everything a customer receives are English. The POS sends
+ *  `X-Client-Type: pos` on every request (client.ts posHttp); no request context (a job, an event) → not the POS. */
+export function isFrontDeskPosRequest(ctx: { clientApp?: string } | undefined = getContext()): boolean {
+  return ctx?.clientApp === 'pos';
+}
+
+/** The POS rule over the database: the user's own choice → the salon's default → English. Never throws (English).
+ *  Outside the web POS the answer is always English (isFrontDeskPosRequest). */
 export class KyselyResponseLanguageResolver implements ResponseLanguageResolver {
-  constructor(private readonly db: Kysely<any>) {}
+  constructor(private readonly db: Kysely<any>, private readonly isPos: () => boolean = () => isFrontDeskPosRequest()) {}
   async forUser(q: { tenantId: string; userId: string | null; branchId?: string | null }): Promise<ResponseLanguage> {
+    if (!this.isPos()) return 'en';
     try {
       if (q.userId && UUID.test(q.userId)) {
         const r = await sql<{ l: string | null }>`select preferred_language as l from users where id = ${q.userId}::uuid and (tenant_id = ${q.tenantId}::uuid or tenant_id is null)`.execute(this.db);

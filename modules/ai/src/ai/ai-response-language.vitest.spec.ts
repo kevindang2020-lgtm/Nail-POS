@@ -166,9 +166,25 @@ describe('check:silent-catch (Oct 27 2026): a failed language lookup is logged, 
     const logged: string[] = [];
     const spy = vitest.spyOn(Logger.prototype, 'warn').mockImplementation((m: any) => { logged.push(String(m)); });
     try {
-      const r = new KyselyResponseLanguageResolver({ getExecutor: () => { throw new Error('db down'); } } as any);
+      const r = new KyselyResponseLanguageResolver({ getExecutor: () => { throw new Error('db down'); } } as any, () => true);
       expect(await r.forUser({ tenantId: '11111111-1111-4111-8111-111111111111', userId: '22222222-2222-4222-8222-222222222222' })).toBe('en');
       expect(logged.some((m) => /response language lookup failed/.test(m) && /db down/.test(m))).toBe(true);
     } finally { spy.mockRestore(); }
+  });
+});
+
+describe('Vietnamese only in the web POS (Kevin, Nov 9 2026)', () => {
+  const ids = { tenantId: '11111111-1111-4111-8111-111111111111', userId: '22222222-2222-4222-8222-222222222222' };
+  it('a call that is not from the web POS (Owner / Tech / Customer app, a job) is English and never reads the POS choice', async () => {
+    let read = false;
+    const db = { getExecutor: () => { read = true; throw new Error('must not be read'); } } as any;
+    expect(await new KyselyResponseLanguageResolver(db, () => false).forUser(ids)).toBe('en');
+    expect(read).toBe(false);
+  });
+  it('the request context decides: only X-Client-Type pos counts as the POS', async () => {
+    const { isFrontDeskPosRequest } = await import('./ai-response-language');
+    expect(isFrontDeskPosRequest({ clientApp: 'pos' })).toBe(true);
+    for (const app of ['owner', 'tech', 'customer', 'manager-pay', undefined]) expect(isFrontDeskPosRequest({ clientApp: app as any })).toBe(false);
+    expect(isFrontDeskPosRequest(undefined)).toBe(false);
   });
 });

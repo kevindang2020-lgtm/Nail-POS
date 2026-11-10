@@ -34,15 +34,9 @@ export type ReminderPushLike = { dispatchToUser(tenantId: string | null, userId:
 
 const SYSTEM_CTX = (() => { const c = systemContext({ tenantId: '', actor: 'reminders' }); return { userId: c.userId, role: c.role }; })();
 
-/** The appointment time in the salon's zone, written for the customer's language ("Tue, Jun 23, 2:30 PM" / "14:30 Thứ Ba, 23/6"). */
-export function startLabel(ms: number, tz: string, language: AppLanguage = 'en'): string {
+/** The appointment time in the salon's zone, in English for the customer ("Tue, Jun 23, 2:30 PM"). English only (Nov 9 2026). */
+export function startLabel(ms: number, tz: string, _language: AppLanguage = 'en'): string {
   try {
-    if (language === 'vi') {
-      const d = new Date(ms);
-      const time = new Intl.DateTimeFormat('vi-VN', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
-      const day = new Intl.DateTimeFormat('vi-VN', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'numeric' }).format(d);
-      return `${time} ${day}`;
-    }
     return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(ms));
   } catch { return ''; }
 }

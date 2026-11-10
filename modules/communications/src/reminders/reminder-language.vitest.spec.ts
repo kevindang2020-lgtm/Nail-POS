@@ -43,12 +43,12 @@ describe('appointment reminders in the customer\'s language', () => {
     expect(out.sent.find((s) => s.to === 'en1@example.test')).toMatchObject({ subject: 'Appointment reminder — Kim Nails' });
     expect(out.sent.find((s) => s.to === 'vi1@example.test')!.body).not.toContain('STOP');
   });
-  it('the template pairs: rung words, date label and fallbacks in both languages', () => {
-    expect([rungWords(1440, 'vi'), rungWords(180, 'vi'), rungWords(60, 'vi'), rungWords(30, 'vi'), rungWords(4320, 'vi')]).toEqual(['vào ngày mai', 'trong khoảng 3 giờ nữa', 'trong khoảng một giờ nữa', 'trong 30 phút nữa', 'trong 3 ngày nữa']);
+  it('English for every language argument (Nov 9 2026: no Vietnamese variant exists): rung words, date label, fallbacks', () => {
+    expect([rungWords(1440, 'vi'), rungWords(180, 'vi'), rungWords(60, 'vi'), rungWords(30, 'vi'), rungWords(4320, 'vi')]).toEqual(['tomorrow', 'in about 3 hours', 'in about an hour', 'in 30 minutes', 'in 3 days']);
     expect(rungWords(1440)).toBe('tomorrow');
-    expect(startLabel(Date.UTC(2026, 5, 2, 18, 30), 'America/New_York', 'vi')).toBe('14:30 Thứ Ba, 2/6');
-    expect(buildReminderMessage({ appointmentId: 'x', startsAtMs: 0, status: 'booked', language: 'vi' }, undefined, 'email')).toBe('Xin nhắc quý khách có lịch hẹn tại tiệm. Vui lòng trả lời tin nhắn này nếu cần đổi lịch.');
-    expect(reminderSubject(undefined, 'vi')).toBe('Nhắc lịch hẹn');
+    expect(startLabel(Date.UTC(2026, 5, 2, 18, 30), 'America/New_York', 'vi')).toBe('Tue, Jun 2, 2:30 PM');
+    expect(buildReminderMessage({ appointmentId: 'x', startsAtMs: 0, status: 'booked', language: 'vi' }, undefined, 'email')).toBe('this is a reminder of your appointment at your salon. Reply to reschedule.');
+    expect(reminderSubject(undefined, 'vi')).toBe('Appointment reminder');
     expect(reminderPush(undefined, undefined, 'en')).toEqual({ title: 'Appointment reminder', body: 'Your appointment is coming up.' });
   });
 });

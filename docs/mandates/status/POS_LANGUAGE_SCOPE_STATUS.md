@@ -117,3 +117,24 @@ the native shells declare `CFBundleDevelopmentRegion = en` with no Vietnamese lo
    layout runs (1920×1080, 1600×900, 2560×1440, 200 technicians) and the Appendix C pilot (`apps/api/scripts/lib/pilot-vietnamese.mjs`).
 3. **Rollback** — the change is code-only (no migration, no data touched). To roll back, revert `05ac57cd`; stored
    preferences (`users.preferred_language`, `customers.preferred_language`, the tenant default) are unchanged by it.
+
+## Nov 9 2026 — Kevin: "all the apps and customers are in English because they are Americans. Only web POS English and Vietnamese."
+
+Re-audited after SUNMI batches 1–8. Nothing Vietnamese was being SENT (customerMessageLanguage() already answered `en`), but
+unused Vietnamese wording and one real leak path remained. Fixed:
+
+| # | Before | Now |
+|---|---|---|
+| N1 | Unused `.vi` receipt SMS / email / push templates | Deleted — `checkout-receipt-text.ts` is English only |
+| N2 | Unused `.vi` reminder SMS / email / push, Vietnamese rung words and a `vi-VN` date label | Deleted — `reminder-core.ts`, `reminders.service.ts startLabel` English only |
+| N3 | Unused Vietnamese column of the customer in-app / push notice table | Deleted — `customer-notification-text.ts` English only |
+| N4 | Vietnamese review-request / review-reminder SMS + email subject | Deleted — `ai-review-reputation.integrations.ts` English only |
+| N5 | Vietnamese reschedule-proposal SMS | Deleted — `ai-scheduling-proposals.ts` English only |
+| N6 | **Leak path:** AI prose followed the user's POS language even when the call came from the Owner / Tech app or a background job | `KyselyResponseLanguageResolver` answers English unless the request carries `X-Client-Type: pos` (`isFrontDeskPosRequest`) |
+
+`check-english-only-apps` now also fails on any Vietnamese letter or `vi-VN` format in those customer-message files and on the
+removal of the N6 guard (negative-tested: a planted Vietnamese string fails it).
+
+Not leftovers (my Nov 9 report was wrong to list them): a Tech-app language switch and Vietnamese SMS templates are OUT of scope
+by this ruling. The Vietnamese POS stays as it is: POS screens, POS announcements, the POS-printed pay stub, POS AI explanations.
+All 1,168 Vietnamese POS DRAFT strings were approved by Kevin on Nov 9 2026 (`vi-drafts.mjs --approve all`; review sheet now 0 rows).

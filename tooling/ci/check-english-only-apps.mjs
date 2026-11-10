@@ -120,6 +120,31 @@ for (const page of ['apps/booking-public/index.html', 'apps/go-check-in-kiosk/in
   }
 }
 
+// ── what customers receive (Kevin, Nov 9 2026: "all the apps and customers are in English because they are Americans") ──
+// The unused Vietnamese receipt / reminder / notice / review-request / reschedule wording was deleted; it may not return.
+{
+  const CUSTOMER_TEXT = [
+    'modules/checkout/src/checkout/checkout-receipt-text.ts',
+    'modules/communications/src/reminders/reminder-core.ts',
+    'modules/communications/src/reminders/reminders.service.ts',
+    'packages/api-contracts/src/customer-notification-text.ts',
+    'modules/ai/src/ai-review-reputation/ai-review-reputation.integrations.ts',
+    'modules/ai/src/ai-scheduling-optimizer/ai-scheduling-proposals.ts',
+    'modules/memberships/src/membership-comms-core.ts',
+    'modules/booking/src/customer-phone/customer-phone-notify.ts',
+  ];
+  for (const f of CUSTOMER_TEXT) {
+    if (!existsSync(join(ROOT, f))) { problems.push(`${f}: missing — update the customer-text list`); continue; }
+    stripComments(read(f)).split('\n').forEach((line, i) => {
+      if (VI_LETTER.test(line)) problems.push(`${f}:${i + 1}: Vietnamese text in a customer message — ${line.trim().slice(0, 100)}`);
+      if (/['"`]vi-VN['"`]/.test(line)) problems.push(`${f}:${i + 1}: Vietnamese date format in a customer message`);
+    });
+  }
+  // AI prose: Vietnamese only when the request comes from the web POS (X-Client-Type: pos)
+  const res = stripComments(read('modules/ai/src/ai/ai-response-language.ts'));
+  if (!/export function isFrontDeskPosRequest\(/.test(res) || !/if \(!this\.isPos\(\)\) return 'en';/.test(res)) problems.push("modules/ai/src/ai/ai-response-language.ts: AI prose must be English outside the web POS (isFrontDeskPosRequest guard removed)");
+}
+
 if (problems.length) {
   console.error(`❌ english-only-apps — ${problems.length} problem(s). Only the Front Desk POS is bilingual (POSLanguage.pdf):`);
   for (const p of problems.slice(0, 50)) console.error('   ' + p);

@@ -53,8 +53,8 @@ describe('receipts in the customer\'s language', () => {
     const broken = harness(new Error('db down')); await broken.svc.receiptSms(ctx, 'tk1');
     expect(broken.sms[0]).toMatch(/^Thanks for visiting!/);
   });
-  it('template pairs omit what was not charged', () => {
-    expect(receiptSms('vi', { total: '$20.00', reference: 'R-1' })).toBe('Cảm ơn quý khách đã ghé tiệm! Tổng hóa đơn là $20.00. Mã hóa đơn R-1.');
+  it('templates are English for every language argument and omit what was not charged (Nov 9 2026: no Vietnamese variant exists)', () => {
+    expect(receiptSms('vi', { total: '$20.00', reference: 'R-1' })).toBe('Thanks for visiting! Your receipt total is $20.00. Ref R-1.');
     expect(receiptEmail('en', { total: '$20.00', reference: 'R-1', items: 'Polish  $20.00' }).body).toBe('Thanks for visiting!\n\nPolish  $20.00\n\nTotal $20.00. Reference R-1.');
   });
 });

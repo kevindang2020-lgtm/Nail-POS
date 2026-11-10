@@ -512,12 +512,12 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   'admin.cash.count': 'Đếm tiền',
   'admin.cash.recount': 'Đếm lại',
   'admin.payments.monitor': 'Cần theo dõi',
-  "apx.kpi.pending": "Chờ quyết định",   // DRAFT — Kevin reviews
-  "apx.kpi.pendingSub": "đang chờ quyết định",   // DRAFT — Kevin reviews
-  "apx.kpi.owner": "Chờ chủ tiệm",   // DRAFT — Kevin reviews
-  "apx.kpi.ownerSub": "cần người duyệt cấp cao hơn bạn",   // DRAFT — Kevin reviews
-  "apx.kpi.urgent": "Khẩn",   // DRAFT — Kevin reviews
-  "apx.kpi.urgentSub": "hết hạn trong 24 giờ",   // DRAFT — Kevin reviews
-  "apx.kpi.completed": "Đã hoàn tất",   // DRAFT — Kevin reviews
-  "apx.kpi.completedSub": "đã duyệt và thực hiện",   // DRAFT — Kevin reviews
+  "apx.kpi.pending": "Chờ quyết định",
+  "apx.kpi.pendingSub": "đang chờ quyết định",
+  "apx.kpi.owner": "Chờ chủ tiệm",
+  "apx.kpi.ownerSub": "cần người duyệt cấp cao hơn bạn",
+  "apx.kpi.urgent": "Khẩn",
+  "apx.kpi.urgentSub": "hết hạn trong 24 giờ",
+  "apx.kpi.completed": "Đã hoàn tất",
+  "apx.kpi.completedSub": "đã duyệt và thực hiện",
 };

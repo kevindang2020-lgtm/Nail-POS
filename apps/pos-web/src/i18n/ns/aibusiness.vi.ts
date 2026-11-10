@@ -516,5 +516,5 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "aib.rerun": "Chạy lại cho {p}",
   "aib.savedSearch": "Tìm câu hỏi đã lưu",
   "aib.sessionLog": "Câu hỏi trong phiên này ({n}) — cũng được lưu trong lịch sử bên dưới",
-  "bcx.k.completed": "Đã hoàn tất",   // DRAFT — Kevin reviews
+  "bcx.k.completed": "Đã hoàn tất",
 };

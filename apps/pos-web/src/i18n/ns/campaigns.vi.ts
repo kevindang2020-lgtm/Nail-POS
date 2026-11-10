@@ -264,5 +264,5 @@ export const CAMPAIGNS_VI: Record<keyof typeof CAMPAIGNS_EN, string> = {
   "cc.a.liveCount": "Số khách có thể nhận ngay:",
   "cc.a.when": "Thời điểm gợi ý:",
   "cc.a.saveDraft": "Lưu thành bản nháp",
-  "cc.w.proposed": "Trình tạo chiến dịch đề xuất {at} (giờ tiệm) — đã điền sẵn bên dưới. Chưa có gì được lên lịch cho đến khi bạn bắt đầu chiến dịch.",   // DRAFT — Kevin reviews
+  "cc.w.proposed": "Trình tạo chiến dịch đề xuất {at} (giờ tiệm) — đã điền sẵn bên dưới. Chưa có gì được lên lịch cho đến khi bạn bắt đầu chiến dịch.",
 };

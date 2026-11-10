@@ -577,376 +577,376 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   'pos.copilot_conflict_check_failed': 'Chưa kiểm tra trùng lịch được — chưa có gì được quyết định. Hãy thử lại.',
   'pos.copilot_phone_unavailable': 'Không hiển thị được cuộc gọi AI: lễ tân AI chưa được thiết lập ở đây hoặc không đọc được cuộc gọi.',
   'pos.copilot_choose_branch_for_service': 'Hãy chọn chi nhánh trước — dịch vụ và giá được đặt theo từng chi nhánh.',
-  "sox.how.btn": "Cách hoạt động",   // DRAFT — Kevin reviews
-  "sox.how.title": "Cách Tối ưu lịch hẹn hoạt động",   // DRAFT — Kevin reviews
-  "sox.how.1": "Hệ thống đọc lịch thật, lịch làm của thợ, kỹ năng và thời lượng dịch vụ — không bịa ra gì.",   // DRAFT — Kevin reviews
-  "sox.how.2": "Hệ thống gợi ý giờ tốt hơn, lấp khoảng trống và sửa trùng lịch. Gợi ý không tự thay đổi lịch hẹn đã xác nhận.",   // DRAFT — Kevin reviews
-  "sox.how.3": "Khi cần khách đồng ý, gợi ý được gửi cho khách trước; chỉ câu trả lời của khách mới dời lịch.",   // DRAFT — Kevin reviews
-  "sox.how.4": "Tối ưu tự động luôn tắt trừ khi chủ tiệm bật, và khi bật vẫn theo quy định và giới hạn của tiệm.",   // DRAFT — Kevin reviews
-  "sox.how.5": "Mọi gợi ý, phê duyệt và thay đổi đều lưu trong Lịch sử để biết ai quyết định gì và khi nào.",   // DRAFT — Kevin reviews,
-  "dfx.checkedAt": "kiểm tra lúc {at}",   // DRAFT — Kevin reviews
-  "dfx.checking": "Đang kiểm tra — chỉ đọc…",   // DRAFT — Kevin reviews
-  "dfx.clear": "Xóa bộ lọc",   // DRAFT — Kevin reviews
-  "dfx.count": "{n} thiết bị",   // DRAFT — Kevin reviews
-  "dfx.f.dateField": "Theo ngày",   // DRAFT — Kevin reviews
-  "dfx.f.sort": "Sắp xếp",   // DRAFT — Kevin reviews
-  "dfx.f.status": "Trạng thái",   // DRAFT — Kevin reviews
-  "dfx.kioskSupport": "Máy tự check-in do bộ phận hỗ trợ AIPowerSalon cài đặt và thay đổi.",   // DRAFT — Kevin reviews
-  "dfx.loading": "Đang tải…",   // DRAFT — Kevin reviews
-  "dfx.noBranch": "Chưa gán chi nhánh",   // DRAFT — Kevin reviews
-  "dfx.noMatch": "Không có thiết bị nào khớp bộ lọc.",   // DRAFT — Kevin reviews
-  "dfx.notConfigured": "Chưa cài đặt",   // DRAFT — Kevin reviews
-  "dfx.range": "Từ – Đến",   // DRAFT — Kevin reviews
-  "dfx.readOnly": "Chỉ đọc: không ghép nối, không gửi tín hiệu, không thu hồi, không thay đổi gì.",   // DRAFT — Kevin reviews
-  "dfx.refresh": "Làm mới",   // DRAFT — Kevin reviews
-  "dfx.rows": "Số dòng",   // DRAFT — Kevin reviews
-  "dfx.search": "Tìm",   // DRAFT — Kevin reviews
-  "dfx.searchPh": "Thiết bị, chi nhánh, quầy hoặc mã",   // DRAFT — Kevin reviews
-  "dfx.unnamed": "Thiết bị chưa đặt tên",   // DRAFT — Kevin reviews
-  "dfx.view": "Chi tiết",   // DRAFT — Kevin reviews
-  "dfx.tab.devices": "Thiết bị",   // DRAFT — Kevin reviews
-  "dfx.tab.history": "Lịch sử",   // DRAFT — Kevin reviews
-  "dfx.tab.printers": "Máy in",   // DRAFT — Kevin reviews
-  "dfx.tab.receipts": "Hóa đơn điện tử",   // DRAFT — Kevin reviews
-  "dfx.list.devices": "Thiết bị đã đăng ký",   // DRAFT — Kevin reviews
-  "dfx.list.assignments": "Phân công thiết bị",   // DRAFT — Kevin reviews
-  "dfx.noun.device": "thiết bị",   // DRAFT — Kevin reviews
-  "dfx.manage.registers": "Quản lý quầy & màn hình",   // DRAFT — Kevin reviews
-  "dfx.manage.displays": "Quản lý màn hình khách",   // DRAFT — Kevin reviews
-  "dfx.manage.terminals": "Mở máy thanh toán",   // DRAFT — Kevin reviews
-  "dfx.kpi.attention": "Cần xử lý",   // DRAFT — Kevin reviews
-  "dfx.kpi.attentionSub": "mất kết nối, lâu không phản hồi hoặc chưa cài xong",   // DRAFT — Kevin reviews
-  "dfx.kpi.unassigned": "Chưa phân công",   // DRAFT — Kevin reviews
-  "dfx.kpi.assigned": "Đã phân công",   // DRAFT — Kevin reviews
-  "dfx.kpi.assignedSub": "đã gán chi nhánh và quầy",   // DRAFT — Kevin reviews
-  "dfx.kpi.retiredSub": "không tính {n} đã ngưng / thu hồi",   // DRAFT — Kevin reviews
-  "dfx.kpi.rpos.registered": "Quầy đã đăng ký",   // DRAFT — Kevin reviews
-  "dfx.kpi.rpos.online": "Quầy đang hoạt động",   // DRAFT — Kevin reviews
-  "dfx.kpi.rpos.onlineSub": "màn hình của quầy đã báo trong 75 giây qua",   // DRAFT — Kevin reviews
-  "dfx.kpi.rpos.unassignedSub": "chưa ghép màn hình khách nào",   // DRAFT — Kevin reviews
-  "dfx.kpi.kiosk.registered": "Máy tự check-in đã đăng ký",   // DRAFT — Kevin reviews
-  "dfx.kpi.kiosk.online": "Đang kết nối",   // DRAFT — Kevin reviews
-  "dfx.kpi.kiosk.onlineSub": "đã báo trong 5 phút qua",   // DRAFT — Kevin reviews
-  "dfx.kpi.kiosk.today": "Check-in hôm nay",   // DRAFT — Kevin reviews
-  "dfx.kpi.kiosk.todaySub": "khách đã check-in xong trên máy",   // DRAFT — Kevin reviews
-  "dfx.kpi.kiosk.unassignedSub": "chưa gán chi nhánh",   // DRAFT — Kevin reviews
-  "dfx.kpi.tablet.registered": "Máy tính bảng đã đăng ký",   // DRAFT — Kevin reviews
-  "dfx.kpi.tablet.online": "Đang hoạt động",   // DRAFT — Kevin reviews
-  "dfx.kpi.tablet.onlineSub": "vừa báo gần đây (màn hình 75 giây · máy check-in 5 phút)",   // DRAFT — Kevin reviews
-  "dfx.kpi.tablet.unassignedSub": "chưa gán quầy hoặc chi nhánh",   // DRAFT — Kevin reviews
-  "dfx.kpi.assign.registered": "Thiết bị đã đăng ký",   // DRAFT — Kevin reviews
-  "dfx.kpi.assign.online": "Đang kết nối",   // DRAFT — Kevin reviews
-  "dfx.kpi.assign.onlineSub": "đang báo tín hiệu",   // DRAFT — Kevin reviews
-  "dfx.kpi.assign.unassignedSub": "chưa gán quầy hoặc chi nhánh",   // DRAFT — Kevin reviews
-  "dfx.kpi.printers": "Máy in hóa đơn",   // DRAFT — Kevin reviews
-  "dfx.kpi.emailToday": "Hóa đơn email hôm nay",   // DRAFT — Kevin reviews
-  "dfx.kpi.smsToday": "Hóa đơn SMS hôm nay",   // DRAFT — Kevin reviews
-  "dfx.kpi.noneToday": "Không lấy hóa đơn hôm nay",   // DRAFT — Kevin reviews
-  "dfx.kpi.todaySub": "khách chọn trên màn hình",   // DRAFT — Kevin reviews
-  "dfx.kpi.failedSub": "{n} không gửi được",   // DRAFT — Kevin reviews
-  "dfx.check.rpos": "Kiểm tra hệ thống quầy lễ tân",   // DRAFT — Kevin reviews
-  "dfx.check.kiosk": "Kiểm tra hệ thống máy check-in",   // DRAFT — Kevin reviews
-  "dfx.check.tablet": "Kiểm tra hệ thống máy tính bảng",   // DRAFT — Kevin reviews
-  "dfx.check.receipt": "Kiểm tra hệ thống hóa đơn",   // DRAFT — Kevin reviews
-  "dfx.check.assign": "Kiểm tra phân công",   // DRAFT — Kevin reviews
-  "dfx.check.health": "Kiểm tra tình trạng thiết bị",   // DRAFT — Kevin reviews
-  "dfx.empty.rpos": "Quầy lễ tân là một quầy thu ngân. Thêm quầy và ghép màn hình khách cho từng quầy ở trang Màn hình khách.",   // DRAFT — Kevin reviews
-  "dfx.empty.kiosk": "Máy tự check-in do bộ phận hỗ trợ AIPowerSalon cài đặt. Liên hệ hỗ trợ để thêm máy cho chi nhánh này.",   // DRAFT — Kevin reviews
-  "dfx.empty.tablet": "iPad và máy tính bảng Android sẽ hiện ở đây sau khi được ghép làm màn hình khách hoặc cài làm máy check-in.",   // DRAFT — Kevin reviews
-  "dfx.empty.assign": "Thiết bị sẽ hiện ở đây khi ghép màn hình, cài máy check-in hoặc thêm máy thanh toán.",   // DRAFT — Kevin reviews
-  "dfx.empty.health": "Thiết bị sẽ hiện ở đây khi ghép màn hình, cài máy check-in hoặc thêm máy thanh toán.",   // DRAFT — Kevin reviews
-  "dfx.foot.rpos": "Quầy là các quầy thu ngân của bạn. Quầy hoạt động khi màn hình riêng của quầy báo tín hiệu.",   // DRAFT — Kevin reviews
-  "dfx.foot.kiosk": "Trạng thái máy lấy từ tín hiệu của chính máy. Khách check-in vào cùng hàng chờ với quầy lễ tân.",   // DRAFT — Kevin reviews
-  "dfx.foot.tablet": "Máy tính bảng dùng làm màn hình khách hoặc máy check-in, lấy từ danh sách riêng của từng loại.",   // DRAFT — Kevin reviews
-  "dfx.foot.assign": "Vị trí của từng màn hình, máy check-in và máy thanh toán. Đổi vị trí trên trang riêng của thiết bị.",   // DRAFT — Kevin reviews
-  "dfx.foot.health": "Trạng thái theo lần báo gần nhất của từng thiết bị. Máy thanh toán chưa từng phản hồi hiện là chưa kiểm tra, không bao giờ là đã kết nối.",   // DRAFT — Kevin reviews
-  "dfx.h.by": "Người thực hiện",   // DRAFT — Kevin reviews
-  "dfx.h.choice": "Hóa đơn",   // DRAFT — Kevin reviews
-  "dfx.h.device": "Thiết bị",   // DRAFT — Kevin reviews
-  "dfx.h.event": "Sự kiện",   // DRAFT — Kevin reviews
-  "dfx.h.result": "Kết quả",   // DRAFT — Kevin reviews
-  "dfx.h.searchPh": "Sự kiện hoặc người",   // DRAFT — Kevin reviews
-  "dfx.h.receiptPh": "Số phiếu, loại hóa đơn hoặc quầy",   // DRAFT — Kevin reviews
-  "dfx.h.theKiosk": "Máy check-in",   // DRAFT — Kevin reviews
-  "dfx.h.ticket": "Phiếu",   // DRAFT — Kevin reviews
-  "dfx.h.when": "Thời gian",   // DRAFT — Kevin reviews
-  "dfx.h.empty": "Không có lịch sử trong khoảng này.",   // DRAFT — Kevin reviews
-  "dfx.h.noReceipts": "Không có hóa đơn điện tử trong khoảng này.",   // DRAFT — Kevin reviews
-  "dfx.st.all": "Tất cả",   // DRAFT — Kevin reviews
-  "dfx.st.online": "Đang hoạt động",   // DRAFT — Kevin reviews
-  "dfx.st.offline": "Mất kết nối",   // DRAFT — Kevin reviews
-  "dfx.st.attention": "Cần xử lý",   // DRAFT — Kevin reviews
-  "dfx.st.pending": "Chưa cài xong",   // DRAFT — Kevin reviews
-  "dfx.st.unassigned": "Chưa phân công",   // DRAFT — Kevin reviews
-  "dfx.st.disabled": "Đã tắt",   // DRAFT — Kevin reviews
-  "dfx.st.unknown": "Chưa kiểm tra",   // DRAFT — Kevin reviews
-  "dfx.st.retired": "Đã ngưng",   // DRAFT — Kevin reviews
-  "dfx.st.revoked": "Đã thu hồi",   // DRAFT — Kevin reviews
-  "dfx.st.maintenance": "Bảo trì",   // DRAFT — Kevin reviews
-  "dfx.sort.newest": "Mới nhất trước",   // DRAFT — Kevin reviews
-  "dfx.sort.last_seen": "Lần báo gần nhất",   // DRAFT — Kevin reviews
-  "dfx.sort.name": "Tên A–Z",   // DRAFT — Kevin reviews
-  "dfx.sort.status": "Cần xử lý trước",   // DRAFT — Kevin reviews
-  "dfx.date.created": "Ngày thêm",   // DRAFT — Kevin reviews
-  "dfx.date.last_seen": "Lần báo gần nhất",   // DRAFT — Kevin reviews
-  "dfx.date.updated": "Ngày cập nhật",   // DRAFT — Kevin reviews
-  "dfx.reason.NO_DEDICATED_DISPLAY": "Quầy chưa ghép màn hình khách",   // DRAFT — Kevin reviews
-  "dfx.reason.REGISTER_DISPLAY_NOT_REPORTING": "Màn hình của quầy lâu không báo tín hiệu",   // DRAFT — Kevin reviews
-  "dfx.reason.KIOSK_LINK_EXPIRED": "Liên kết máy check-in đã hết hạn — nhờ hỗ trợ gia hạn",   // DRAFT — Kevin reviews
-  "dfx.reason.NEVER_CONNECTED": "Chưa từng kết nối",   // DRAFT — Kevin reviews
-  "dfx.reason.NOT_HEARD_FROM": "Lâu không phản hồi",   // DRAFT — Kevin reviews
-  "dfx.reason.NO_BRANCH": "Chưa gán chi nhánh",   // DRAFT — Kevin reviews
-  "dfx.reason.PAIRING_NOT_FINISHED": "Chưa ghép nối xong",   // DRAFT — Kevin reviews
-  "dfx.reason.NO_REGISTER": "Chưa gán quầy",   // DRAFT — Kevin reviews
-  "dfx.reason.TERMINAL_NOT_TESTED": "Chưa kiểm tra — bấm Kiểm tra kết nối",   // DRAFT — Kevin reviews
-  "dfx.reason.TERMINAL_OFFLINE": "Mất kết nối — kiểm tra nguồn và mạng",   // DRAFT — Kevin reviews
-  "dfx.hs.READY": "Sẵn sàng",   // DRAFT — Kevin reviews
-  "dfx.hs.WARNING": "Cảnh báo",   // DRAFT — Kevin reviews
-  "dfx.hs.FAILED": "Lỗi",   // DRAFT — Kevin reviews
-  "dfx.hs.NOT_CONFIGURED": "Chưa cài đặt",   // DRAFT — Kevin reviews
-  "dfx.hk.registry_readable": "Đọc được danh sách thiết bị",   // DRAFT — Kevin reviews
-  "dfx.hk.devices_registered": "Thiết bị đã đăng ký",   // DRAFT — Kevin reviews
-  "dfx.hk.devices_reporting": "Thiết bị không báo tín hiệu",   // DRAFT — Kevin reviews
-  "dfx.hk.pairing_finished": "Chưa cài xong",   // DRAFT — Kevin reviews
-  "dfx.hk.assignments_complete": "Thiết bị chưa có vị trí",   // DRAFT — Kevin reviews
-  "dfx.hk.digital_receipts": "Hóa đơn điện tử hôm nay",   // DRAFT — Kevin reviews
-  "dfx.hk.receipt_failures_today": "Hóa đơn không gửi được hôm nay",   // DRAFT — Kevin reviews
-  "dfx.hk.history_readable": "Đọc được lịch sử",   // DRAFT — Kevin reviews
-  "dfx.hk.no_side_effects": "Chỉ đọc",   // DRAFT — Kevin reviews
-  "dfx.choice.email": "Email",   // DRAFT — Kevin reviews
-  "dfx.choice.sms": "SMS",   // DRAFT — Kevin reviews
-  "dfx.choice.none": "Không lấy hóa đơn",   // DRAFT — Kevin reviews
-  "dfx.rs.sending": "Đang gửi",   // DRAFT — Kevin reviews
-  "dfx.rs.sent": "Đã gửi",   // DRAFT — Kevin reviews
-  "dfx.rs.skipped": "Không cần",   // DRAFT — Kevin reviews
-  "dfx.rs.unavailable": "Không khả dụng",   // DRAFT — Kevin reviews
-  "dfx.rs.failed": "Không gửi được",   // DRAFT — Kevin reviews
-  "dfx.ent.customer_display": "Màn hình khách",   // DRAFT — Kevin reviews
-  "dfx.ent.pos_station": "Quầy",   // DRAFT — Kevin reviews
-  "dfx.ent.payment_terminal": "Máy thanh toán",   // DRAFT — Kevin reviews
-  "dfx.ent.pos_payment_terminal": "Máy thanh toán",   // DRAFT — Kevin reviews
-  "dfx.ent.kiosk": "Máy check-in",   // DRAFT — Kevin reviews
-  "dfx.ent.device": "Thiết bị",   // DRAFT — Kevin reviews
-  "dfx.fact.displays": "Màn hình khách",   // DRAFT — Kevin reviews
-  "dfx.fact.terminals": "Máy thanh toán",   // DRAFT — Kevin reviews
-  "dfx.fact.role": "Dùng làm",   // DRAFT — Kevin reviews
-  "dfx.fact.appVersion": "Phiên bản ứng dụng",   // DRAFT — Kevin reviews
-  "dfx.fact.mode": "Chế độ màn hình",   // DRAFT — Kevin reviews
-  "dfx.fact.screen": "Kích thước màn hình",   // DRAFT — Kevin reviews
-  "dfx.fact.operational": "Trạng thái máy",   // DRAFT — Kevin reviews
-  "dfx.fact.hsnMasked": "Số sê-ri (HSN)",   // DRAFT — Kevin reviews
-  "dfx.val.kiosk": "Máy check-in",   // DRAFT — Kevin reviews
-  "dfx.val.customer_display": "Màn hình khách",   // DRAFT — Kevin reviews
-  "dfx.ev.customer_display_paired": "Đã ghép màn hình",   // DRAFT — Kevin reviews
-  "dfx.ev.customer_display_revoked": "Đã gỡ màn hình",   // DRAFT — Kevin reviews
-  "dfx.ev.customer_display_updated": "Đã đổi màn hình",   // DRAFT — Kevin reviews
-  "dfx.ev.pos_station_created": "Đã thêm quầy",   // DRAFT — Kevin reviews
-  "dfx.ev.pos_station_updated": "Đã đổi tên quầy",   // DRAFT — Kevin reviews
-  "dfx.ev.pos_station_retired": "Đã ngưng quầy",   // DRAFT — Kevin reviews
-  "dfx.ev.heartbeat": "Máy check-in báo tín hiệu",   // DRAFT — Kevin reviews
-  "dfx.ev.check_in_completed": "Khách đã check-in",   // DRAFT — Kevin reviews,
-  "lgx.subtitle": "Sự kiện thiết bị và tích hợp, mới nhất trước. Chỉ xem.",   // DRAFT — Kevin reviews
-  "lgx.toHealth": "Tình trạng thiết bị",   // DRAFT — Kevin reviews
-  "lgx.kpi.events": "Sự kiện trong khoảng",   // DRAFT — Kevin reviews
-  "lgx.kpi.warnings": "Cảnh báo",   // DRAFT — Kevin reviews
-  "lgx.kpi.errors": "Lỗi",   // DRAFT — Kevin reviews
-  "lgx.kpi.device": "Sự kiện thiết bị",   // DRAFT — Kevin reviews
-  "lgx.kpi.integration": "Sự kiện tích hợp",   // DRAFT — Kevin reviews
-  "lgx.category": "Loại",   // DRAFT — Kevin reviews
-  "lgx.severity": "Mức độ",   // DRAFT — Kevin reviews
-  "lgx.source": "Nguồn",   // DRAFT — Kevin reviews
-  "lgx.message": "Nội dung",   // DRAFT — Kevin reviews
-  "lgx.events": "Sự kiện",   // DRAFT — Kevin reviews
-  "lgx.count": "{n} sự kiện",   // DRAFT — Kevin reviews
-  "lgx.related": "Bản ghi liên quan",   // DRAFT — Kevin reviews
-  "lgx.correlation": "Mã liên kết",   // DRAFT — Kevin reviews
-  "lgx.foot": "Sự kiện thiết bị lấy từ hệ thống quản lý từng thiết bị (màn hình, quầy, máy thanh toán, máy check-in); sự kiện tích hợp lấy từ việc gửi webhook và triển khai. Không bao giờ ghi số thẻ hay thông tin bí mật.",   // DRAFT — Kevin reviews,
-  "cdx.check": "Kiểm tra hệ thống màn hình",   // DRAFT — Kevin reviews
-  "cdx.findPh": "Tìm màn hình",   // DRAFT — Kevin reviews
-  "cdx.history": "Lịch sử màn hình",   // DRAFT — Kevin reviews,
-  "dfx.embedTitle": "Tất cả thiết bị · danh sách & lịch sử",   // DRAFT — Kevin reviews
-  "dfx.embedSub": "Tìm mọi thiết bị đã đăng ký; lịch sử mới nhất trước",   // DRAFT — Kevin reviews
-  "dvx.kpi.registered": "Thiết bị đã đăng ký",   // DRAFT — Kevin reviews
-  "dvx.kpi.registeredSub": "{n} đang báo trực tuyến",   // DRAFT — Kevin reviews
-  "dvx.kpi.healthySub": "đã xác minh ổn định",   // DRAFT — Kevin reviews
-  "dvx.kpi.meteredSub": "có đo lường",   // DRAFT — Kevin reviews
-  "dvx.builtIn": "Tích hợp sẵn",   // DRAFT — Kevin reviews
-  "dvx.builtInHint": "Lịch hẹn chạy ngay trong AI PowerSalon — không có đồng bộ bên ngoài cần kết nối",   // DRAFT — Kevin reviews
-  "aicx.check": "Kiểm tra AI & Liên lạc",   // DRAFT — Kevin reviews
-  "aicx.m.configured": "Trợ lý",   // DRAFT — Kevin reviews
-  "aicx.m.entitled": "Được quyền dùng",   // DRAFT — Kevin reviews
-  "aicx.m.verified": "Nhà cung cấp đã xác minh",   // DRAFT — Kevin reviews
-  "aicx.m.attention": "Cần chú ý",   // DRAFT — Kevin reviews
-  "aicx.lastCheck": "Lần kiểm tra nhà cung cấp gần nhất: {at}",   // DRAFT — Kevin reviews
-  "aicx.providerUnavailable": "vai trò này không xem được trạng thái nhà cung cấp",   // DRAFT — Kevin reviews
-  "aicx.axis.ent": "Gói đăng ký",   // DRAFT — Kevin reviews
-  "aicx.axis.prov": "Nhà cung cấp",   // DRAFT — Kevin reviews
-  "aicx.axis.ready": "Sẵn sàng",   // DRAFT — Kevin reviews
-  "aicx.ent.active": "Đang hoạt động",   // DRAFT — Kevin reviews
-  "aicx.ent.trial": "Dùng thử",   // DRAFT — Kevin reviews
-  "aicx.ent.trial_expired": "Hết dùng thử",   // DRAFT — Kevin reviews
-  "aicx.ent.cancelled": "Đã hủy",   // DRAFT — Kevin reviews
-  "aicx.ent.paused": "Tạm ngưng",   // DRAFT — Kevin reviews
-  "aicx.ent.past_due": "Quá hạn thanh toán",   // DRAFT — Kevin reviews
-  "aicx.ent.unpaid": "Chưa thanh toán",   // DRAFT — Kevin reviews
-  "aicx.ent.expired": "Đã hết hạn",   // DRAFT — Kevin reviews
-  "aicx.ent.not_subscribed": "Chưa đăng ký",   // DRAFT — Kevin reviews
-  "aicx.ent.unavailable": "Không khả dụng",   // DRAFT — Kevin reviews
-  "aicx.ent.no_permission": "Không có quyền",   // DRAFT — Kevin reviews
-  "aicx.ent.limit": "Đã đạt giới hạn sử dụng",   // DRAFT — Kevin reviews
-  "aicx.ent.branch_off": "Tắt ở chi nhánh này",   // DRAFT — Kevin reviews
-  "aicx.ent.account_inactive": "Tài khoản không hoạt động",   // DRAFT — Kevin reviews
-  "aicx.ent.unknown": "Gói đăng ký: —",   // DRAFT — Kevin reviews
-  "aicx.prov.connected": "Đã kết nối nhà cung cấp",   // DRAFT — Kevin reviews
-  "aicx.prov.unauthorized": "Nhà cung cấp từ chối xác thực",   // DRAFT — Kevin reviews
-  "aicx.prov.stale": "Kiểm tra nhà cung cấp đã cũ",   // DRAFT — Kevin reviews
-  "aicx.prov.untested": "Chưa kiểm tra nhà cung cấp",   // DRAFT — Kevin reviews
-  "aicx.prov.not_configured": "Chưa thiết lập nhà cung cấp",   // DRAFT — Kevin reviews
-  "aicx.prov.not_required": "Không cần nhà cung cấp",   // DRAFT — Kevin reviews
-  "aicx.ready.ready": "Sẵn sàng",   // DRAFT — Kevin reviews
-  "aicx.ready.missing_config": "Thiếu cấu hình",   // DRAFT — Kevin reviews
-  "aicx.ready.blocked": "Bị chặn",   // DRAFT — Kevin reviews
-  "aicx.ready.degraded": "Suy giảm",   // DRAFT — Kevin reviews
-  "aicx.ready.not_permitted": "Không được phép hoạt động",   // DRAFT — Kevin reviews
-  "aicx.foot": "Gói đăng ký, nhà cung cấp và mức sẵn sàng được kiểm tra riêng. Nhà cung cấp hoạt động không bao giờ bật lại gói đã hủy; nút Quản lý không mua hay hủy gói.",   // DRAFT — Kevin reviews,
-  "arq.duplicate": "Bạn đã có một yêu cầu đang mở cho vai trò này — hãy chờ quyết định hoặc hủy yêu cầu đó trước.",   // DRAFT — Kevin reviews
-  "arq.policy": "Gửi yêu cầu không có nghĩa là được cấp quyền. Quản trị viên nền tảng xem xét mọi yêu cầu; không ai được tự phê duyệt yêu cầu của mình.",   // DRAFT — Kevin reviews
-  "arq.submitted": "Đã gửi {at}",   // DRAFT — Kevin reviews
-  "arq.decided": "đã quyết định {at}",   // DRAFT — Kevin reviews
-  "arq.expires": "hết hạn {at}",   // DRAFT — Kevin reviews
-  "arq.notes": "Ghi chú của người duyệt",   // DRAFT — Kevin reviews,
-  "acx.notConfigured": "Chưa cấu hình",   // DRAFT — Kevin reviews
-  "acx.nh.verified": "Đã xác minh",   // DRAFT — Kevin reviews
-  "acx.nh.degraded": "Suy giảm",   // DRAFT — Kevin reviews
-  "acx.nh.blocked": "Bị chặn",   // DRAFT — Kevin reviews
-  "acx.nh.unknownSub": "Không có trạng thái",   // DRAFT — Kevin reviews
-  "acx.nh.checked": "Kiểm tra lúc {at}",   // DRAFT — Kevin reviews
-  "acx.nh.neverChecked": "Chưa kiểm tra",   // DRAFT — Kevin reviews
-  "acx.usage.unknown": "Không có dữ liệu sử dụng",   // DRAFT — Kevin reviews
-  "acx.usage.of": "{used} / {limit}",   // DRAFT — Kevin reviews
-  "acx.usage.noLimit": "Chưa đặt giới hạn lưu trữ",   // DRAFT — Kevin reviews
-  "acx.usage.ai": "{n} AI đang hoạt động",   // DRAFT — Kevin reviews
-  "acx.notif.saved": "Đã lưu.",   // DRAFT — Kevin reviews
-  "acx.notif.sub": "Thông báo của riêng bạn — được lưu khi máy chủ xác nhận",   // DRAFT — Kevin reviews
-  "acx.notif.foot": "Công tắc Bật là lựa chọn của bạn; để gửi được còn cần kênh đã thiết lập (SMS cần thiết lập nhắn tin của tiệm).",   // DRAFT — Kevin reviews
-  "acx.eff.on": "Bật",   // DRAFT — Kevin reviews
-  "acx.eff.off": "Tắt",   // DRAFT — Kevin reviews
-  "acx.eff.blocked": "Bật — SMS chưa gửi được",   // DRAFT — Kevin reviews
-  "acx.eff.unknown": "Bật — chưa rõ trạng thái gửi",   // DRAFT — Kevin reviews
-  "acx.act.sub": "Hoạt động tài khoản, bảo mật và hệ thống mới nhất của tiệm — mới nhất trước",   // DRAFT — Kevin reviews
-  "acx.act.back": "Quay lại Tài khoản",   // DRAFT — Kevin reviews
-  "acx.act.searchPh": "Tìm sự kiện, người hoặc mã tham chiếu",   // DRAFT — Kevin reviews
-  "acx.act.clear": "Xóa lọc",   // DRAFT — Kevin reviews
-  "acx.act.noMatch": "Không có hoạt động phù hợp trong khoảng này",   // DRAFT — Kevin reviews
-  "acx.act.details": "Chi tiết",   // DRAFT — Kevin reviews
-  "acx.act.by": "Bởi",   // DRAFT — Kevin reviews
-  "acx.act.role": "Vai trò",   // DRAFT — Kevin reviews
-  "acx.act.module": "Phân hệ",   // DRAFT — Kevin reviews
-  "acx.act.status": "Kết quả",   // DRAFT — Kevin reviews
-  "acx.act.code": "Mã sự kiện",   // DRAFT — Kevin reviews
-  "acx.act.id": "ID sự kiện",   // DRAFT — Kevin reviews
-  "acx.act.readOnly": "Chỉ xem — mở sự kiện không thay đổi gì.",   // DRAFT — Kevin reviews
-  "acx.act.viewAll": "Xem tất cả",   // DRAFT — Kevin reviews,
-  "alg.unverified": "Không xác minh được chính sách đã lưu — bấm Sửa để tải.",   // DRAFT — Kevin reviews
-  "alg.status": "Trạng thái",   // DRAFT — Kevin reviews
-  "alg.grace": "Thời gian gia hạn",   // DRAFT — Kevin reviews
-  "alg.afterClose": "Gia hạn sau giờ đóng cửa",   // DRAFT — Kevin reviews
-  "alg.warnings": "Cảnh báo trước khi đăng xuất",   // DRAFT — Kevin reviews
-  "alg.exempt": "Vai trò được miễn",   // DRAFT — Kevin reviews
-  "alg.tz": "Múi giờ",   // DRAFT — Kevin reviews
-  "alg.min": "{n} phút",   // DRAFT — Kevin reviews
-  "alg.none": "Không có",   // DRAFT — Kevin reviews
-  "alg.serverNote": "Máy chủ kết thúc phiên không hoạt động; đồng hồ đếm ngược trên màn hình chỉ để cảnh báo.",   // DRAFT — Kevin reviews,
-  "locx.searchPh": "Tìm tên, số điện thoại, địa chỉ hoặc mã",   // DRAFT — Kevin reviews
-  "locx.map": "Ghim bản đồ",   // DRAFT — Kevin reviews
-  "locx.booking": "Đặt lịch trực tuyến",   // DRAFT — Kevin reviews
-  "locx.clear": "Xóa bộ lọc",   // DRAFT — Kevin reviews
-  "locx.noMatch": "Không có chi nhánh nào khớp với bộ lọc.",   // DRAFT — Kevin reviews
-  "locx.st.all": "Mọi trạng thái",   // DRAFT — Kevin reviews
-  "locx.st.active": "Đang hoạt động",   // DRAFT — Kevin reviews
-  "locx.st.inactive": "Ngưng hoạt động",   // DRAFT — Kevin reviews
-  "locx.st.draft": "Bản nháp",   // DRAFT — Kevin reviews
-  "locx.st.unverified": "Chưa xác minh",   // DRAFT — Kevin reviews
-  "locx.st.verified": "Đã xác minh",   // DRAFT — Kevin reviews
-  "locx.st.published": "Đã công khai",   // DRAFT — Kevin reviews
-  "locx.map.all": "Tất cả",   // DRAFT — Kevin reviews
-  "locx.map.pin_set": "Đã đặt ghim",   // DRAFT — Kevin reviews
-  "locx.map.pin_confirmed": "Ghim đã xác nhận",   // DRAFT — Kevin reviews
-  "locx.map.missing_pin": "Thiếu ghim",   // DRAFT — Kevin reviews
-  "locx.bk.all": "Tất cả",   // DRAFT — Kevin reviews
-  "locx.bk.accepting": "Đang nhận đặt lịch",   // DRAFT — Kevin reviews
-  "locx.bk.disabled": "Tắt đặt lịch",   // DRAFT — Kevin reviews
-  "locx.date.created": "Ngày thêm",   // DRAFT — Kevin reviews
-  "locx.date.updated": "Cập nhật gần nhất",   // DRAFT — Kevin reviews
-  "locx.sort.newest": "Mới nhất trước",   // DRAFT — Kevin reviews
-  "locx.sort.oldest": "Cũ nhất trước",   // DRAFT — Kevin reviews
-  "locx.sort.name_asc": "Tên A–Z",   // DRAFT — Kevin reviews
-  "locx.sort.name_desc": "Tên Z–A",   // DRAFT — Kevin reviews
-  "locx.sort.updated": "Cập nhật gần đây",   // DRAFT — Kevin reviews,
-  "ftx.subscription": "Gói đăng ký",   // DRAFT — Kevin reviews
-  "ftx.usage": "Mức dùng & giới hạn",   // DRAFT — Kevin reviews
-  "ftx.planUnlinked": "Chưa liên kết với danh mục tính năng",   // DRAFT — Kevin reviews
-  "ftx.enabledSub": "Đang bật cho tiệm",   // DRAFT — Kevin reviews
-  "ftx.availableSub": "Có trong gói của bạn",   // DRAFT — Kevin reviews
-  "ftx.attention": "Cần chú ý",   // DRAFT — Kevin reviews
-  "ftx.attentionSub": "Bị nền tảng chặn",   // DRAFT — Kevin reviews
-  "ftx.why.unlinked": "Gói \"{plan}\" của bạn chưa được liên kết với một gói trong danh mục tính năng, nên chưa liệt kê được tính năng nào. Bộ phận hỗ trợ AI PowerSalon sẽ liên kết — trang này không thay đổi gói của bạn.",   // DRAFT — Kevin reviews
-  "ftx.why.noPlan": "Tiệm chưa có gói đăng ký nào được ghi nhận.",   // DRAFT — Kevin reviews
-  "ftx.why.empty": "Gói của bạn chưa được cấu hình tính năng nào.",   // DRAFT — Kevin reviews
-  "ftx.searchPh": "Tìm tên hoặc mã tính năng",   // DRAFT — Kevin reviews
-  "ftx.f.all": "Tất cả",   // DRAFT — Kevin reviews
-  "ftx.f.enabled": "Bật",   // DRAFT — Kevin reviews
-  "ftx.f.off": "Tắt",   // DRAFT — Kevin reviews
-  "ftx.f.attention": "Cần chú ý",   // DRAFT — Kevin reviews
-  "ftx.count": "{n} / {total}",   // DRAFT — Kevin reviews
-  "ftx.noMatch": "Không có tính năng phù hợp.",   // DRAFT — Kevin reviews
-  "ftx.st.enabled": "Bật",   // DRAFT — Kevin reviews
-  "ftx.st.blocked": "Bị nền tảng chặn",   // DRAFT — Kevin reviews
-  "ftx.st.override_off": "Đã tắt cho tài khoản của bạn",   // DRAFT — Kevin reviews
-  "ftx.st.not_in_plan": "Không có trong gói",   // DRAFT — Kevin reviews
-  "ftx.d.key": "Mã tính năng",   // DRAFT — Kevin reviews
-  "ftx.d.plan": "Thiết lập theo gói",   // DRAFT — Kevin reviews
-  "ftx.d.notInPlan": "Không có trong gói",   // DRAFT — Kevin reviews
-  "ftx.d.override": "Ghi đè cho tài khoản",   // DRAFT — Kevin reviews
-  "ftx.d.none": "Không có",   // DRAFT — Kevin reviews
-  "ftx.d.srcOverride": "Ghi đè cho tài khoản",   // DRAFT — Kevin reviews
-  "ftx.d.srcPlan": "Gói",   // DRAFT — Kevin reviews
-  "ftx.d.effective": "Hiệu lực",   // DRAFT — Kevin reviews
-  "ftx.d.blocked": "Nền tảng đã hạn chế tính năng này cho tài khoản của bạn. Hãy liên hệ bộ phận hỗ trợ AI PowerSalon.",   // DRAFT — Kevin reviews
-  "ftx.d.readOnly": "Chỉ xem — thay đổi gói thực hiện qua mục Gói đăng ký; trang này không mua hay bật tính năng.",   // DRAFT — Kevin reviews,
-  "acx.planFee": "{fee} / tháng",   // DRAFT — Kevin reviews,
-  "acx.trustedN": "{n} thiết bị tin cậy",   // DRAFT — Kevin reviews,
-  "brx.primary": "Màu thương hiệu",   // DRAFT — Kevin reviews
-  "brx.accent": "Màu nhấn",   // DRAFT — Kevin reviews
-  "brx.notSet": "Chưa đặt",   // DRAFT — Kevin reviews
-  "brx.clear": "Xóa",   // DRAFT — Kevin reviews,
-  "arq.openTag": "đang có yêu cầu",   // DRAFT — Kevin reviews,
-  "acx.dh.title": "Lịch sử gửi",   // DRAFT — Kevin reviews
-  "acx.dh.searchPh": "Tìm thông báo hoặc địa chỉ",   // DRAFT — Kevin reviews
-  "acx.dh.channel": "Kênh",   // DRAFT — Kevin reviews
-  "acx.dh.status": "Trạng thái",   // DRAFT — Kevin reviews
-  "acx.dh.alert": "Thông báo",   // DRAFT — Kevin reviews
-  "acx.dh.to": "Gửi đến",   // DRAFT — Kevin reviews
-  "acx.dh.none": "Chưa có thông báo nào được gửi cho bạn.",   // DRAFT — Kevin reviews
-  "acx.dh.noMatch": "Không có lần gửi nào khớp với bộ lọc.",   // DRAFT — Kevin reviews
-  "acx.dh.ch.all": "Mọi kênh",   // DRAFT — Kevin reviews
-  "acx.dh.ch.sms": "SMS",   // DRAFT — Kevin reviews
-  "acx.dh.ch.email": "Email",   // DRAFT — Kevin reviews
-  "acx.dh.ch.push": "Thông báo đẩy",   // DRAFT — Kevin reviews
-  "acx.dh.st.all": "Mọi trạng thái",   // DRAFT — Kevin reviews
-  "acx.dh.st.delivered": "Đã nhận",   // DRAFT — Kevin reviews
-  "acx.dh.st.sent": "Đã gửi",   // DRAFT — Kevin reviews
-  "acx.dh.st.queued": "Đang chờ",   // DRAFT — Kevin reviews
-  "acx.dh.st.failed": "Thất bại",   // DRAFT — Kevin reviews
-  "acx.dh.st.suppressed": "Bị chặn theo lựa chọn",   // DRAFT — Kevin reviews
-  "acx.dh.st.blocked": "Bị chặn",   // DRAFT — Kevin reviews,
-  "ksk.noteTitle": "Kiosk do AI PowerSalon thiết lập",   // DRAFT — Kevin reviews
-  "ksk.note": "Kiosk check-in là thiết bị do AI PowerSalon chuẩn bị và liên kết với tiệm, nên không thể thêm ở đây. Bạn có thể tìm, kiểm tra và xem lại mọi kiosk trên trang này.",   // DRAFT — Kevin reviews
-  "ksk.request": "Yêu cầu hỗ trợ thêm kiosk",   // DRAFT — Kevin reviews,
-  "dfx.kpi.printersSub": "hóa đơn là điện tử — chưa có danh sách máy in",   // DRAFT — Kevin reviews
-  "dfx.receipt.why": "Hóa đơn AI PowerSalon là điện tử: khách chọn Email, SMS hoặc Không lấy hóa đơn trên màn hình khách, và mọi hóa đơn được lưu trong lịch sử của khách.",   // DRAFT — Kevin reviews
-  "dfx.receipt.1": "Máy in là tùy chọn. Cần có cầu nối máy in được hỗ trợ, hiện tiệm chưa cài.",   // DRAFT — Kevin reviews
-  "dfx.receipt.2": "Thanh toán không bao giờ chờ máy in — hóa đơn điện tử vẫn hoạt động.",   // DRAFT — Kevin reviews
-  "dfx.receipt.3": "Xem hóa đơn điện tử hôm nay ở thẻ Hóa đơn điện tử.",   // DRAFT — Kevin reviews
-  "dfx.hk.printer_registry": "Danh sách máy in",   // DRAFT — Kevin reviews
+  "sox.how.btn": "Cách hoạt động",
+  "sox.how.title": "Cách Tối ưu lịch hẹn hoạt động",
+  "sox.how.1": "Hệ thống đọc lịch thật, lịch làm của thợ, kỹ năng và thời lượng dịch vụ — không bịa ra gì.",
+  "sox.how.2": "Hệ thống gợi ý giờ tốt hơn, lấp khoảng trống và sửa trùng lịch. Gợi ý không tự thay đổi lịch hẹn đã xác nhận.",
+  "sox.how.3": "Khi cần khách đồng ý, gợi ý được gửi cho khách trước; chỉ câu trả lời của khách mới dời lịch.",
+  "sox.how.4": "Tối ưu tự động luôn tắt trừ khi chủ tiệm bật, và khi bật vẫn theo quy định và giới hạn của tiệm.",
+  "sox.how.5": "Mọi gợi ý, phê duyệt và thay đổi đều lưu trong Lịch sử để biết ai quyết định gì và khi nào.",
+  "dfx.checkedAt": "kiểm tra lúc {at}",
+  "dfx.checking": "Đang kiểm tra — chỉ đọc…",
+  "dfx.clear": "Xóa bộ lọc",
+  "dfx.count": "{n} thiết bị",
+  "dfx.f.dateField": "Theo ngày",
+  "dfx.f.sort": "Sắp xếp",
+  "dfx.f.status": "Trạng thái",
+  "dfx.kioskSupport": "Máy tự check-in do bộ phận hỗ trợ AIPowerSalon cài đặt và thay đổi.",
+  "dfx.loading": "Đang tải…",
+  "dfx.noBranch": "Chưa gán chi nhánh",
+  "dfx.noMatch": "Không có thiết bị nào khớp bộ lọc.",
+  "dfx.notConfigured": "Chưa cài đặt",
+  "dfx.range": "Từ – Đến",
+  "dfx.readOnly": "Chỉ đọc: không ghép nối, không gửi tín hiệu, không thu hồi, không thay đổi gì.",
+  "dfx.refresh": "Làm mới",
+  "dfx.rows": "Số dòng",
+  "dfx.search": "Tìm",
+  "dfx.searchPh": "Thiết bị, chi nhánh, quầy hoặc mã",
+  "dfx.unnamed": "Thiết bị chưa đặt tên",
+  "dfx.view": "Chi tiết",
+  "dfx.tab.devices": "Thiết bị",
+  "dfx.tab.history": "Lịch sử",
+  "dfx.tab.printers": "Máy in",
+  "dfx.tab.receipts": "Hóa đơn điện tử",
+  "dfx.list.devices": "Thiết bị đã đăng ký",
+  "dfx.list.assignments": "Phân công thiết bị",
+  "dfx.noun.device": "thiết bị",
+  "dfx.manage.registers": "Quản lý quầy & màn hình",
+  "dfx.manage.displays": "Quản lý màn hình khách",
+  "dfx.manage.terminals": "Mở máy thanh toán",
+  "dfx.kpi.attention": "Cần xử lý",
+  "dfx.kpi.attentionSub": "mất kết nối, lâu không phản hồi hoặc chưa cài xong",
+  "dfx.kpi.unassigned": "Chưa phân công",
+  "dfx.kpi.assigned": "Đã phân công",
+  "dfx.kpi.assignedSub": "đã gán chi nhánh và quầy",
+  "dfx.kpi.retiredSub": "không tính {n} đã ngưng / thu hồi",
+  "dfx.kpi.rpos.registered": "Quầy đã đăng ký",
+  "dfx.kpi.rpos.online": "Quầy đang hoạt động",
+  "dfx.kpi.rpos.onlineSub": "màn hình của quầy đã báo trong 75 giây qua",
+  "dfx.kpi.rpos.unassignedSub": "chưa ghép màn hình khách nào",
+  "dfx.kpi.kiosk.registered": "Máy tự check-in đã đăng ký",
+  "dfx.kpi.kiosk.online": "Đang kết nối",
+  "dfx.kpi.kiosk.onlineSub": "đã báo trong 5 phút qua",
+  "dfx.kpi.kiosk.today": "Check-in hôm nay",
+  "dfx.kpi.kiosk.todaySub": "khách đã check-in xong trên máy",
+  "dfx.kpi.kiosk.unassignedSub": "chưa gán chi nhánh",
+  "dfx.kpi.tablet.registered": "Máy tính bảng đã đăng ký",
+  "dfx.kpi.tablet.online": "Đang hoạt động",
+  "dfx.kpi.tablet.onlineSub": "vừa báo gần đây (màn hình 75 giây · máy check-in 5 phút)",
+  "dfx.kpi.tablet.unassignedSub": "chưa gán quầy hoặc chi nhánh",
+  "dfx.kpi.assign.registered": "Thiết bị đã đăng ký",
+  "dfx.kpi.assign.online": "Đang kết nối",
+  "dfx.kpi.assign.onlineSub": "đang báo tín hiệu",
+  "dfx.kpi.assign.unassignedSub": "chưa gán quầy hoặc chi nhánh",
+  "dfx.kpi.printers": "Máy in hóa đơn",
+  "dfx.kpi.emailToday": "Hóa đơn email hôm nay",
+  "dfx.kpi.smsToday": "Hóa đơn SMS hôm nay",
+  "dfx.kpi.noneToday": "Không lấy hóa đơn hôm nay",
+  "dfx.kpi.todaySub": "khách chọn trên màn hình",
+  "dfx.kpi.failedSub": "{n} không gửi được",
+  "dfx.check.rpos": "Kiểm tra hệ thống quầy lễ tân",
+  "dfx.check.kiosk": "Kiểm tra hệ thống máy check-in",
+  "dfx.check.tablet": "Kiểm tra hệ thống máy tính bảng",
+  "dfx.check.receipt": "Kiểm tra hệ thống hóa đơn",
+  "dfx.check.assign": "Kiểm tra phân công",
+  "dfx.check.health": "Kiểm tra tình trạng thiết bị",
+  "dfx.empty.rpos": "Quầy lễ tân là một quầy thu ngân. Thêm quầy và ghép màn hình khách cho từng quầy ở trang Màn hình khách.",
+  "dfx.empty.kiosk": "Máy tự check-in do bộ phận hỗ trợ AIPowerSalon cài đặt. Liên hệ hỗ trợ để thêm máy cho chi nhánh này.",
+  "dfx.empty.tablet": "iPad và máy tính bảng Android sẽ hiện ở đây sau khi được ghép làm màn hình khách hoặc cài làm máy check-in.",
+  "dfx.empty.assign": "Thiết bị sẽ hiện ở đây khi ghép màn hình, cài máy check-in hoặc thêm máy thanh toán.",
+  "dfx.empty.health": "Thiết bị sẽ hiện ở đây khi ghép màn hình, cài máy check-in hoặc thêm máy thanh toán.",
+  "dfx.foot.rpos": "Quầy là các quầy thu ngân của bạn. Quầy hoạt động khi màn hình riêng của quầy báo tín hiệu.",
+  "dfx.foot.kiosk": "Trạng thái máy lấy từ tín hiệu của chính máy. Khách check-in vào cùng hàng chờ với quầy lễ tân.",
+  "dfx.foot.tablet": "Máy tính bảng dùng làm màn hình khách hoặc máy check-in, lấy từ danh sách riêng của từng loại.",
+  "dfx.foot.assign": "Vị trí của từng màn hình, máy check-in và máy thanh toán. Đổi vị trí trên trang riêng của thiết bị.",
+  "dfx.foot.health": "Trạng thái theo lần báo gần nhất của từng thiết bị. Máy thanh toán chưa từng phản hồi hiện là chưa kiểm tra, không bao giờ là đã kết nối.",
+  "dfx.h.by": "Người thực hiện",
+  "dfx.h.choice": "Hóa đơn",
+  "dfx.h.device": "Thiết bị",
+  "dfx.h.event": "Sự kiện",
+  "dfx.h.result": "Kết quả",
+  "dfx.h.searchPh": "Sự kiện hoặc người",
+  "dfx.h.receiptPh": "Số phiếu, loại hóa đơn hoặc quầy",
+  "dfx.h.theKiosk": "Máy check-in",
+  "dfx.h.ticket": "Phiếu",
+  "dfx.h.when": "Thời gian",
+  "dfx.h.empty": "Không có lịch sử trong khoảng này.",
+  "dfx.h.noReceipts": "Không có hóa đơn điện tử trong khoảng này.",
+  "dfx.st.all": "Tất cả",
+  "dfx.st.online": "Đang hoạt động",
+  "dfx.st.offline": "Mất kết nối",
+  "dfx.st.attention": "Cần xử lý",
+  "dfx.st.pending": "Chưa cài xong",
+  "dfx.st.unassigned": "Chưa phân công",
+  "dfx.st.disabled": "Đã tắt",
+  "dfx.st.unknown": "Chưa kiểm tra",
+  "dfx.st.retired": "Đã ngưng",
+  "dfx.st.revoked": "Đã thu hồi",
+  "dfx.st.maintenance": "Bảo trì",
+  "dfx.sort.newest": "Mới nhất trước",
+  "dfx.sort.last_seen": "Lần báo gần nhất",
+  "dfx.sort.name": "Tên A–Z",
+  "dfx.sort.status": "Cần xử lý trước",
+  "dfx.date.created": "Ngày thêm",
+  "dfx.date.last_seen": "Lần báo gần nhất",
+  "dfx.date.updated": "Ngày cập nhật",
+  "dfx.reason.NO_DEDICATED_DISPLAY": "Quầy chưa ghép màn hình khách",
+  "dfx.reason.REGISTER_DISPLAY_NOT_REPORTING": "Màn hình của quầy lâu không báo tín hiệu",
+  "dfx.reason.KIOSK_LINK_EXPIRED": "Liên kết máy check-in đã hết hạn — nhờ hỗ trợ gia hạn",
+  "dfx.reason.NEVER_CONNECTED": "Chưa từng kết nối",
+  "dfx.reason.NOT_HEARD_FROM": "Lâu không phản hồi",
+  "dfx.reason.NO_BRANCH": "Chưa gán chi nhánh",
+  "dfx.reason.PAIRING_NOT_FINISHED": "Chưa ghép nối xong",
+  "dfx.reason.NO_REGISTER": "Chưa gán quầy",
+  "dfx.reason.TERMINAL_NOT_TESTED": "Chưa kiểm tra — bấm Kiểm tra kết nối",
+  "dfx.reason.TERMINAL_OFFLINE": "Mất kết nối — kiểm tra nguồn và mạng",
+  "dfx.hs.READY": "Sẵn sàng",
+  "dfx.hs.WARNING": "Cảnh báo",
+  "dfx.hs.FAILED": "Lỗi",
+  "dfx.hs.NOT_CONFIGURED": "Chưa cài đặt",
+  "dfx.hk.registry_readable": "Đọc được danh sách thiết bị",
+  "dfx.hk.devices_registered": "Thiết bị đã đăng ký",
+  "dfx.hk.devices_reporting": "Thiết bị không báo tín hiệu",
+  "dfx.hk.pairing_finished": "Chưa cài xong",
+  "dfx.hk.assignments_complete": "Thiết bị chưa có vị trí",
+  "dfx.hk.digital_receipts": "Hóa đơn điện tử hôm nay",
+  "dfx.hk.receipt_failures_today": "Hóa đơn không gửi được hôm nay",
+  "dfx.hk.history_readable": "Đọc được lịch sử",
+  "dfx.hk.no_side_effects": "Chỉ đọc",
+  "dfx.choice.email": "Email",
+  "dfx.choice.sms": "SMS",
+  "dfx.choice.none": "Không lấy hóa đơn",
+  "dfx.rs.sending": "Đang gửi",
+  "dfx.rs.sent": "Đã gửi",
+  "dfx.rs.skipped": "Không cần",
+  "dfx.rs.unavailable": "Không khả dụng",
+  "dfx.rs.failed": "Không gửi được",
+  "dfx.ent.customer_display": "Màn hình khách",
+  "dfx.ent.pos_station": "Quầy",
+  "dfx.ent.payment_terminal": "Máy thanh toán",
+  "dfx.ent.pos_payment_terminal": "Máy thanh toán",
+  "dfx.ent.kiosk": "Máy check-in",
+  "dfx.ent.device": "Thiết bị",
+  "dfx.fact.displays": "Màn hình khách",
+  "dfx.fact.terminals": "Máy thanh toán",
+  "dfx.fact.role": "Dùng làm",
+  "dfx.fact.appVersion": "Phiên bản ứng dụng",
+  "dfx.fact.mode": "Chế độ màn hình",
+  "dfx.fact.screen": "Kích thước màn hình",
+  "dfx.fact.operational": "Trạng thái máy",
+  "dfx.fact.hsnMasked": "Số sê-ri (HSN)",
+  "dfx.val.kiosk": "Máy check-in",
+  "dfx.val.customer_display": "Màn hình khách",
+  "dfx.ev.customer_display_paired": "Đã ghép màn hình",
+  "dfx.ev.customer_display_revoked": "Đã gỡ màn hình",
+  "dfx.ev.customer_display_updated": "Đã đổi màn hình",
+  "dfx.ev.pos_station_created": "Đã thêm quầy",
+  "dfx.ev.pos_station_updated": "Đã đổi tên quầy",
+  "dfx.ev.pos_station_retired": "Đã ngưng quầy",
+  "dfx.ev.heartbeat": "Máy check-in báo tín hiệu",
+  "dfx.ev.check_in_completed": "Khách đã check-in",
+  "lgx.subtitle": "Sự kiện thiết bị và tích hợp, mới nhất trước. Chỉ xem.",
+  "lgx.toHealth": "Tình trạng thiết bị",
+  "lgx.kpi.events": "Sự kiện trong khoảng",
+  "lgx.kpi.warnings": "Cảnh báo",
+  "lgx.kpi.errors": "Lỗi",
+  "lgx.kpi.device": "Sự kiện thiết bị",
+  "lgx.kpi.integration": "Sự kiện tích hợp",
+  "lgx.category": "Loại",
+  "lgx.severity": "Mức độ",
+  "lgx.source": "Nguồn",
+  "lgx.message": "Nội dung",
+  "lgx.events": "Sự kiện",
+  "lgx.count": "{n} sự kiện",
+  "lgx.related": "Bản ghi liên quan",
+  "lgx.correlation": "Mã liên kết",
+  "lgx.foot": "Sự kiện thiết bị lấy từ hệ thống quản lý từng thiết bị (màn hình, quầy, máy thanh toán, máy check-in); sự kiện tích hợp lấy từ việc gửi webhook và triển khai. Không bao giờ ghi số thẻ hay thông tin bí mật.",
+  "cdx.check": "Kiểm tra hệ thống màn hình",
+  "cdx.findPh": "Tìm màn hình",
+  "cdx.history": "Lịch sử màn hình",
+  "dfx.embedTitle": "Tất cả thiết bị · danh sách & lịch sử",
+  "dfx.embedSub": "Tìm mọi thiết bị đã đăng ký; lịch sử mới nhất trước",
+  "dvx.kpi.registered": "Thiết bị đã đăng ký",
+  "dvx.kpi.registeredSub": "{n} đang báo trực tuyến",
+  "dvx.kpi.healthySub": "đã xác minh ổn định",
+  "dvx.kpi.meteredSub": "có đo lường",
+  "dvx.builtIn": "Tích hợp sẵn",
+  "dvx.builtInHint": "Lịch hẹn chạy ngay trong AI PowerSalon — không có đồng bộ bên ngoài cần kết nối",
+  "aicx.check": "Kiểm tra AI & Liên lạc",
+  "aicx.m.configured": "Trợ lý",
+  "aicx.m.entitled": "Được quyền dùng",
+  "aicx.m.verified": "Nhà cung cấp đã xác minh",
+  "aicx.m.attention": "Cần chú ý",
+  "aicx.lastCheck": "Lần kiểm tra nhà cung cấp gần nhất: {at}",
+  "aicx.providerUnavailable": "vai trò này không xem được trạng thái nhà cung cấp",
+  "aicx.axis.ent": "Gói đăng ký",
+  "aicx.axis.prov": "Nhà cung cấp",
+  "aicx.axis.ready": "Sẵn sàng",
+  "aicx.ent.active": "Đang hoạt động",
+  "aicx.ent.trial": "Dùng thử",
+  "aicx.ent.trial_expired": "Hết dùng thử",
+  "aicx.ent.cancelled": "Đã hủy",
+  "aicx.ent.paused": "Tạm ngưng",
+  "aicx.ent.past_due": "Quá hạn thanh toán",
+  "aicx.ent.unpaid": "Chưa thanh toán",
+  "aicx.ent.expired": "Đã hết hạn",
+  "aicx.ent.not_subscribed": "Chưa đăng ký",
+  "aicx.ent.unavailable": "Không khả dụng",
+  "aicx.ent.no_permission": "Không có quyền",
+  "aicx.ent.limit": "Đã đạt giới hạn sử dụng",
+  "aicx.ent.branch_off": "Tắt ở chi nhánh này",
+  "aicx.ent.account_inactive": "Tài khoản không hoạt động",
+  "aicx.ent.unknown": "Gói đăng ký: —",
+  "aicx.prov.connected": "Đã kết nối nhà cung cấp",
+  "aicx.prov.unauthorized": "Nhà cung cấp từ chối xác thực",
+  "aicx.prov.stale": "Kiểm tra nhà cung cấp đã cũ",
+  "aicx.prov.untested": "Chưa kiểm tra nhà cung cấp",
+  "aicx.prov.not_configured": "Chưa thiết lập nhà cung cấp",
+  "aicx.prov.not_required": "Không cần nhà cung cấp",
+  "aicx.ready.ready": "Sẵn sàng",
+  "aicx.ready.missing_config": "Thiếu cấu hình",
+  "aicx.ready.blocked": "Bị chặn",
+  "aicx.ready.degraded": "Suy giảm",
+  "aicx.ready.not_permitted": "Không được phép hoạt động",
+  "aicx.foot": "Gói đăng ký, nhà cung cấp và mức sẵn sàng được kiểm tra riêng. Nhà cung cấp hoạt động không bao giờ bật lại gói đã hủy; nút Quản lý không mua hay hủy gói.",
+  "arq.duplicate": "Bạn đã có một yêu cầu đang mở cho vai trò này — hãy chờ quyết định hoặc hủy yêu cầu đó trước.",
+  "arq.policy": "Gửi yêu cầu không có nghĩa là được cấp quyền. Quản trị viên nền tảng xem xét mọi yêu cầu; không ai được tự phê duyệt yêu cầu của mình.",
+  "arq.submitted": "Đã gửi {at}",
+  "arq.decided": "đã quyết định {at}",
+  "arq.expires": "hết hạn {at}",
+  "arq.notes": "Ghi chú của người duyệt",
+  "acx.notConfigured": "Chưa cấu hình",
+  "acx.nh.verified": "Đã xác minh",
+  "acx.nh.degraded": "Suy giảm",
+  "acx.nh.blocked": "Bị chặn",
+  "acx.nh.unknownSub": "Không có trạng thái",
+  "acx.nh.checked": "Kiểm tra lúc {at}",
+  "acx.nh.neverChecked": "Chưa kiểm tra",
+  "acx.usage.unknown": "Không có dữ liệu sử dụng",
+  "acx.usage.of": "{used} / {limit}",
+  "acx.usage.noLimit": "Chưa đặt giới hạn lưu trữ",
+  "acx.usage.ai": "{n} AI đang hoạt động",
+  "acx.notif.saved": "Đã lưu.",
+  "acx.notif.sub": "Thông báo của riêng bạn — được lưu khi máy chủ xác nhận",
+  "acx.notif.foot": "Công tắc Bật là lựa chọn của bạn; để gửi được còn cần kênh đã thiết lập (SMS cần thiết lập nhắn tin của tiệm).",
+  "acx.eff.on": "Bật",
+  "acx.eff.off": "Tắt",
+  "acx.eff.blocked": "Bật — SMS chưa gửi được",
+  "acx.eff.unknown": "Bật — chưa rõ trạng thái gửi",
+  "acx.act.sub": "Hoạt động tài khoản, bảo mật và hệ thống mới nhất của tiệm — mới nhất trước",
+  "acx.act.back": "Quay lại Tài khoản",
+  "acx.act.searchPh": "Tìm sự kiện, người hoặc mã tham chiếu",
+  "acx.act.clear": "Xóa lọc",
+  "acx.act.noMatch": "Không có hoạt động phù hợp trong khoảng này",
+  "acx.act.details": "Chi tiết",
+  "acx.act.by": "Bởi",
+  "acx.act.role": "Vai trò",
+  "acx.act.module": "Phân hệ",
+  "acx.act.status": "Kết quả",
+  "acx.act.code": "Mã sự kiện",
+  "acx.act.id": "ID sự kiện",
+  "acx.act.readOnly": "Chỉ xem — mở sự kiện không thay đổi gì.",
+  "acx.act.viewAll": "Xem tất cả",
+  "alg.unverified": "Không xác minh được chính sách đã lưu — bấm Sửa để tải.",
+  "alg.status": "Trạng thái",
+  "alg.grace": "Thời gian gia hạn",
+  "alg.afterClose": "Gia hạn sau giờ đóng cửa",
+  "alg.warnings": "Cảnh báo trước khi đăng xuất",
+  "alg.exempt": "Vai trò được miễn",
+  "alg.tz": "Múi giờ",
+  "alg.min": "{n} phút",
+  "alg.none": "Không có",
+  "alg.serverNote": "Máy chủ kết thúc phiên không hoạt động; đồng hồ đếm ngược trên màn hình chỉ để cảnh báo.",
+  "locx.searchPh": "Tìm tên, số điện thoại, địa chỉ hoặc mã",
+  "locx.map": "Ghim bản đồ",
+  "locx.booking": "Đặt lịch trực tuyến",
+  "locx.clear": "Xóa bộ lọc",
+  "locx.noMatch": "Không có chi nhánh nào khớp với bộ lọc.",
+  "locx.st.all": "Mọi trạng thái",
+  "locx.st.active": "Đang hoạt động",
+  "locx.st.inactive": "Ngưng hoạt động",
+  "locx.st.draft": "Bản nháp",
+  "locx.st.unverified": "Chưa xác minh",
+  "locx.st.verified": "Đã xác minh",
+  "locx.st.published": "Đã công khai",
+  "locx.map.all": "Tất cả",
+  "locx.map.pin_set": "Đã đặt ghim",
+  "locx.map.pin_confirmed": "Ghim đã xác nhận",
+  "locx.map.missing_pin": "Thiếu ghim",
+  "locx.bk.all": "Tất cả",
+  "locx.bk.accepting": "Đang nhận đặt lịch",
+  "locx.bk.disabled": "Tắt đặt lịch",
+  "locx.date.created": "Ngày thêm",
+  "locx.date.updated": "Cập nhật gần nhất",
+  "locx.sort.newest": "Mới nhất trước",
+  "locx.sort.oldest": "Cũ nhất trước",
+  "locx.sort.name_asc": "Tên A–Z",
+  "locx.sort.name_desc": "Tên Z–A",
+  "locx.sort.updated": "Cập nhật gần đây",
+  "ftx.subscription": "Gói đăng ký",
+  "ftx.usage": "Mức dùng & giới hạn",
+  "ftx.planUnlinked": "Chưa liên kết với danh mục tính năng",
+  "ftx.enabledSub": "Đang bật cho tiệm",
+  "ftx.availableSub": "Có trong gói của bạn",
+  "ftx.attention": "Cần chú ý",
+  "ftx.attentionSub": "Bị nền tảng chặn",
+  "ftx.why.unlinked": "Gói \"{plan}\" của bạn chưa được liên kết với một gói trong danh mục tính năng, nên chưa liệt kê được tính năng nào. Bộ phận hỗ trợ AI PowerSalon sẽ liên kết — trang này không thay đổi gói của bạn.",
+  "ftx.why.noPlan": "Tiệm chưa có gói đăng ký nào được ghi nhận.",
+  "ftx.why.empty": "Gói của bạn chưa được cấu hình tính năng nào.",
+  "ftx.searchPh": "Tìm tên hoặc mã tính năng",
+  "ftx.f.all": "Tất cả",
+  "ftx.f.enabled": "Bật",
+  "ftx.f.off": "Tắt",
+  "ftx.f.attention": "Cần chú ý",
+  "ftx.count": "{n} / {total}",
+  "ftx.noMatch": "Không có tính năng phù hợp.",
+  "ftx.st.enabled": "Bật",
+  "ftx.st.blocked": "Bị nền tảng chặn",
+  "ftx.st.override_off": "Đã tắt cho tài khoản của bạn",
+  "ftx.st.not_in_plan": "Không có trong gói",
+  "ftx.d.key": "Mã tính năng",
+  "ftx.d.plan": "Thiết lập theo gói",
+  "ftx.d.notInPlan": "Không có trong gói",
+  "ftx.d.override": "Ghi đè cho tài khoản",
+  "ftx.d.none": "Không có",
+  "ftx.d.srcOverride": "Ghi đè cho tài khoản",
+  "ftx.d.srcPlan": "Gói",
+  "ftx.d.effective": "Hiệu lực",
+  "ftx.d.blocked": "Nền tảng đã hạn chế tính năng này cho tài khoản của bạn. Hãy liên hệ bộ phận hỗ trợ AI PowerSalon.",
+  "ftx.d.readOnly": "Chỉ xem — thay đổi gói thực hiện qua mục Gói đăng ký; trang này không mua hay bật tính năng.",
+  "acx.planFee": "{fee} / tháng",
+  "acx.trustedN": "{n} thiết bị tin cậy",
+  "brx.primary": "Màu thương hiệu",
+  "brx.accent": "Màu nhấn",
+  "brx.notSet": "Chưa đặt",
+  "brx.clear": "Xóa",
+  "arq.openTag": "đang có yêu cầu",
+  "acx.dh.title": "Lịch sử gửi",
+  "acx.dh.searchPh": "Tìm thông báo hoặc địa chỉ",
+  "acx.dh.channel": "Kênh",
+  "acx.dh.status": "Trạng thái",
+  "acx.dh.alert": "Thông báo",
+  "acx.dh.to": "Gửi đến",
+  "acx.dh.none": "Chưa có thông báo nào được gửi cho bạn.",
+  "acx.dh.noMatch": "Không có lần gửi nào khớp với bộ lọc.",
+  "acx.dh.ch.all": "Mọi kênh",
+  "acx.dh.ch.sms": "SMS",
+  "acx.dh.ch.email": "Email",
+  "acx.dh.ch.push": "Thông báo đẩy",
+  "acx.dh.st.all": "Mọi trạng thái",
+  "acx.dh.st.delivered": "Đã nhận",
+  "acx.dh.st.sent": "Đã gửi",
+  "acx.dh.st.queued": "Đang chờ",
+  "acx.dh.st.failed": "Thất bại",
+  "acx.dh.st.suppressed": "Bị chặn theo lựa chọn",
+  "acx.dh.st.blocked": "Bị chặn",
+  "ksk.noteTitle": "Kiosk do AI PowerSalon thiết lập",
+  "ksk.note": "Kiosk check-in là thiết bị do AI PowerSalon chuẩn bị và liên kết với tiệm, nên không thể thêm ở đây. Bạn có thể tìm, kiểm tra và xem lại mọi kiosk trên trang này.",
+  "ksk.request": "Yêu cầu hỗ trợ thêm kiosk",
+  "dfx.kpi.printersSub": "hóa đơn là điện tử — chưa có danh sách máy in",
+  "dfx.receipt.why": "Hóa đơn AI PowerSalon là điện tử: khách chọn Email, SMS hoặc Không lấy hóa đơn trên màn hình khách, và mọi hóa đơn được lưu trong lịch sử của khách.",
+  "dfx.receipt.1": "Máy in là tùy chọn. Cần có cầu nối máy in được hỗ trợ, hiện tiệm chưa cài.",
+  "dfx.receipt.2": "Thanh toán không bao giờ chờ máy in — hóa đơn điện tử vẫn hoạt động.",
+  "dfx.receipt.3": "Xem hóa đơn điện tử hôm nay ở thẻ Hóa đơn điện tử.",
+  "dfx.hk.printer_registry": "Danh sách máy in",
 };

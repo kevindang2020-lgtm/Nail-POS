@@ -164,6 +164,6 @@ export const VOICESETTINGS_VI: Record<string, string> = {
   "vsx.health.d.tenant_isolation.FAILED": "Có bản chép lời liên kết với tiệm khác. Hãy báo ngay.",
   "vsx.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
   "vsx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không gọi điện, không chép lời, không xóa, không gửi tin nhắn.",
-  "vsx.entitlement": "Tiệm chưa đăng ký dịch vụ Chép lời cuộc gọi. Chính sách đã lưu chỉ hiển thị để xem; không thể thay đổi cho đến khi đăng ký.",   // DRAFT — Kevin reviews
-  "vsx.openPlans": "Mở Gói AI",   // DRAFT — Kevin reviews
+  "vsx.entitlement": "Tiệm chưa đăng ký dịch vụ Chép lời cuộc gọi. Chính sách đã lưu chỉ hiển thị để xem; không thể thay đổi cho đến khi đăng ký.",
+  "vsx.openPlans": "Mở Gói AI",
 };

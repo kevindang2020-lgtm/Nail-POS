@@ -48,44 +48,35 @@ export function selectDueReminders(cands: ReminderCandidate[], nowMs: number, op
 // Build the reminder copy. Kept short and SMS-safe; the email path reuses the same body with a subject. The SMS
 // variant carries the carrier-standard STOP opt-out line (the STOP keyword stays English in every language — it is the
 // carrier keyword); email reminders omit it (handled via unsubscribe/opt-out).
-// English + Vietnamese POS mandate WP-I (§119): every template has an .en and a .vi variant, chosen by the CUSTOMER's
-// language (customerMessageLanguage). The Vietnamese wording is listed in docs/i18n/VI_NEW_STRINGS_FOR_REVIEW.md.
+// ENGLISH ONLY (Kevin, Oct 28 + Nov 9 2026): customers are Americans; only the employee web POS is bilingual. The language
+// arguments are kept for callers and ignored; the Vietnamese variants were deleted Nov 9 2026.
 /** the rung's own words: "tomorrow" (≥ 20 h), "in about N hours" (≥ 2 h), "in N minutes" — never a bare lead number */
-export function rungWords(leadMinutes: number, language: AppLanguage = 'en'): string {
-  if (language === 'vi') {
-    if (leadMinutes >= 20 * 60) return leadMinutes <= 28 * 60 ? 'vào ngày mai' : `trong ${Math.round(leadMinutes / 1440)} ngày nữa`;
-    if (leadMinutes >= 110) return `trong khoảng ${Math.round(leadMinutes / 60)} giờ nữa`;
-    if (leadMinutes >= 55) return 'trong khoảng một giờ nữa';
-    return `trong ${leadMinutes} phút nữa`;
-  }
+export function rungWords(leadMinutes: number, _language: AppLanguage = 'en'): string {
   if (leadMinutes >= 20 * 60) return leadMinutes <= 28 * 60 ? 'tomorrow' : `in ${Math.round(leadMinutes / 1440)} days`;
   if (leadMinutes >= 110) return `in about ${Math.round(leadMinutes / 60)} hours`;
   if (leadMinutes >= 55) return 'in about an hour';
   return `in ${leadMinutes} minutes`;
 }
 type Parts = { name: string; salon: string; svc: string; when: string; soon: string; sms: boolean };
-const REMINDER_TEMPLATES: Record<`appointment_reminder.${AppLanguage}`, (p: Parts) => string> = {
+const REMINDER_TEMPLATES: Record<'appointment_reminder.en', (p: Parts) => string> = {
   'appointment_reminder.en': (p) => `${p.name ? `Hi ${p.name}, ` : ''}this is a reminder of your appointment${p.svc ? ` for ${p.svc}` : ''} at ${p.salon || 'your salon'}${p.soon ? ` ${p.soon}` : ''}${p.when ? ` on ${p.when}` : ''}. Reply to reschedule.${p.sms ? ' Reply STOP to opt out.' : ''}`,
-  'appointment_reminder.vi': (p) => `${p.name ? `Chào ${p.name}, xin` : 'Xin'} nhắc quý khách có lịch hẹn${p.svc ? ` dịch vụ ${p.svc}` : ''} tại ${p.salon || 'tiệm'}${p.soon ? ` ${p.soon}` : ''}${p.when ? `, lúc ${p.when}` : ''}. Vui lòng trả lời tin nhắn này nếu cần đổi lịch.${p.sms ? ' Trả lời STOP để ngừng nhận tin.' : ''}`,
 };
 export function buildReminderMessage(c: ReminderCandidate, salonName?: string, channel: ReminderChannel = 'sms', leadMinutes?: number): string {
-  const language = c.language === 'vi' ? 'vi' : 'en';
-  return REMINDER_TEMPLATES[`appointment_reminder.${language}`]({
+  const language: AppLanguage = 'en';
+  return REMINDER_TEMPLATES['appointment_reminder.en']({
     name: c.customerName?.trim() ?? '', salon: salonName?.trim() ?? '', svc: c.serviceName?.trim() ?? '', when: c.startLabel?.trim() ?? '',
     soon: leadMinutes != null ? rungWords(leadMinutes, language) : '', sms: channel === 'sms',
   }).trim();
 }
 
-export function reminderSubject(salonName?: string, language: AppLanguage = 'en'): string {
+export function reminderSubject(salonName?: string, _language: AppLanguage = 'en'): string {
   const salon = salonName?.trim() ? ` — ${salonName.trim()}` : '';
-  return language === 'vi' ? `Nhắc lịch hẹn${salon}` : `Appointment reminder${salon}`;
+  return `Appointment reminder${salon}`;
 }
 /** The app push that accompanies a reminder (lock screen: no service, no price), in the customer's language. */
-export function reminderPush(salonName: string | undefined, startLabel: string | undefined, language: AppLanguage = 'en'): { title: string; body: string } {
+export function reminderPush(salonName: string | undefined, startLabel: string | undefined, _language: AppLanguage = 'en'): { title: string; body: string } {
   const salon = salonName?.trim() ?? '', when = startLabel?.trim() ?? '';
-  return language === 'vi'
-    ? { title: 'Nhắc lịch hẹn', body: `Lịch hẹn của quý khách${salon ? ` tại ${salon}` : ''} sắp đến${when ? ` — ${when}` : ''}.` }
-    : { title: 'Appointment reminder', body: `Your${salon ? ' ' + salon : ''} appointment is coming up${when ? ' — ' + when : ''}.` };
+  return { title: 'Appointment reminder', body: `Your${salon ? ' ' + salon : ''} appointment is coming up${when ? ' — ' + when : ''}.` };
 }
 
 // ── Appointment Reminders guide (747): the dispatch protocol's pure rules ────────────────────────────────────────────
