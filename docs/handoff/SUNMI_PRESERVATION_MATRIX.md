@@ -1477,7 +1477,7 @@ Pages: 129 · modules: 908
 - Screen: `screens/POSAISchedulingOptimizerScreen.tsx`
 - Guide: AI_PowerSalon_AI_Scheduling_Optimizer
 - Scroll: vertical page scroll allowed (Scheduling Optimizer addendum: section content scrolls within the page; tabs keep every module reachable.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.state`, `posBookingApi.technicians`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.state`, `posBookingApi.technicians`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|

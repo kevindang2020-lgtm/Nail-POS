@@ -28,7 +28,7 @@ DELETE /pos/booking/drafts/{draftId}  realm=staff  auth=session  domain=booking 
 DELETE /pos/customer-displays/stations/{stationId}  realm=staff  auth=session  domain=operations  perm=pos.customer_display.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 DELETE /pos/marketing/display-ads/{id}  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.archive  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 DELETE /pos/me/avatar  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
-DELETE /pos/me/saved-views/{id}  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
+DELETE /pos/me/saved-views/{id}  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=TENANT/records  guards=TenantAuthGuard
 DELETE /pos/settings/customer-phone/branches/{branchId}  realm=staff  auth=session  domain=identity  perm=pos.customers.phone.settings  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 DELETE /super-admin/ai/tenants/{tenantId}/subscriptions/{code}  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 DELETE /super-admin/owners/{ownerId}/branches/{branchId}  realm=super_admin  auth=session  domain=tenants  derived=super_admin.tenants.edit  resource=PLATFORM/realm  guards=SuperAdminGuard
@@ -2056,7 +2056,7 @@ PATCH /pos/marketing/display-ads/{id}  realm=staff  auth=session  domain=marketi
 PATCH /pos/me/avatar  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
 PATCH /pos/me/login-alerts  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
 PATCH /pos/me/notification-prefs  realm=staff  auth=session  domain=identity  perm=self.notifications  resource=OWN/permission  guards=TenantAuthGuard
-PATCH /pos/me/saved-views/{id}  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
+PATCH /pos/me/saved-views/{id}  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=TENANT/records  guards=TenantAuthGuard
 PATCH /pos/me/ui-prefs  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
 PATCH /pos/message-templates/templates/{id}  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/nail-showcase/comments/{commentId}/hide  realm=staff  auth=session  domain=workforce  perm=customers.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

@@ -7,6 +7,7 @@
 //   • SchedEventTrailCard — History as the append-only event trail (generated · staff · customer · apply), newest first.
 // Nothing here changes a schedule: decisions, approvals and applying stay on the recommendation detail (the engine routes).
 import { useCallback, useEffect, useState } from 'react';
+import { SavedViews, vStr, vNum, periodToView, periodFromView } from '../../components/SavedViews';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiSchedulingOptimizerApi as api } from '../../api/posAiSchedulingOptimizerApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../../components/FitKit';
@@ -124,6 +125,8 @@ export function SchedQueueCard({ tick, group: initialGroup = 'all', compact = fa
           <button className="btn" type="submit">{t('scx.search')}</button>
           <select data-testid="scx-group" aria-label={t('scx.statusLabel')} value={f.group} onChange={(e) => set({ group: e.target.value })}>{SC_GROUPS.map((g) => <option key={g} value={g}>{t('scx.group.' + g)}</option>)}</select>
           <select data-testid="scx-datefield" aria-label={t('scx.dateLabel')} value={f.dateField} onChange={(e) => set({ dateField: e.target.value })}>{DATE_FIELDS.map((d) => <option key={d} value={d}>{t('scx.date.' + d)}</option>)}</select>
+          {!compact ? <SavedViews surface="ai.scheduling-optimizer.queue" testId="scx-views" current={{ q: f.q ?? '', group: f.group, dateField: f.dateField, pageSize: f.pageSize, ...periodToView(period) }}
+            onApply={(v) => { setDraft(vStr(v, 'q')); setPeriod(periodFromView(v, {} as Period)); setF({ q: vStr(v, 'q') || undefined, group: vStr(v, 'group', 'all'), dateField: vStr(v, 'dateField', 'created'), page: 1, pageSize: vNum(v, 'pageSize', 25) }); }} /> : null}
           {any ? <button className="btn ghost" type="button" onClick={() => { setDraft(''); setPeriod({}); set({ q: undefined, group: 'all' }); }}>{t('scx.clear')}</button> : null}
         </form>
         <div className="rvw-dates">

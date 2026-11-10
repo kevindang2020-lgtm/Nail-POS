@@ -156,6 +156,7 @@ export const SEGMENT_FIXTURES = [
   ['/pos/marketing/segments/audience-drafts/{id}', F('segment_audience_drafts')],
   ['/pos/marketing/segments/customers/{id}', F('customers')],
   ['/pos/message-templates/templates/{id}', F('pos_message_templates')],
+  ['/pos/me/saved-views/{id}', F('pos_saved_views', 'id', { over: { owner_user_id: '$owner', surface: 'idor.check', name: 'IDOR view', filters_json: {} } })],   // extras arc (Nov 9 2026): salon A owner's saved view; keyed by session tenant + user
   ['/pos/payments/refunds-voids/{kind}', { value: 'refund' }],                     // overrides the global `kind`: 'refund' | 'void' only
   ['/pos/payments/refunds-voids/{kind}/{id}', F('payment_refunds')],
   ['/pos/rebooking/customers/{id}', F('customers')],

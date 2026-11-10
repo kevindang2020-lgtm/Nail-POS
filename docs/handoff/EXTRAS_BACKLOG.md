@@ -10,9 +10,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 22 |
+| BUILT this arc | 23 |
 | EXISTS (opened and named) | 86 |
-| TODO | 1710 |
+| TODO | 1709 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -1659,7 +1659,7 @@ Decisions:
 | 09 | Multi-Branch Capacity Comparison: authorized owner sees branch-specific demand without tenant leakage. | TODO |
 | 10 | 200+ Technician Roster Navigator: scoped search, skill filters, groups and bounded virtualization; retain 12-tech Booking paging. | TODO |
 | 11 | What Changed? Activity Timeline: booking/shift/queue events that invalidate earlier AI suggestions. | TODO |
-| 12 | Protected Saved Filters: authorized per-user preferred views, date filters and branch selection. | TODO |
+| 12 | Protected Saved Filters: authorized per-user preferred views, date filters and branch selection. | BUILT — POS saved views on the recommendation queue (components/SavedViews) |
 | 13 | Read-Only Dry Run Mode: show recommendations and metrics without booking edits or billing actions outside current plan policy. | TODO |
 | 14 | Visual Layout Health Check: capture viewport metrics and detect clipped buttons, unequal KPI heights and empty oversized panels. PROTECTED CODE BOUNDARY: Do not modify, refactor, migrate, reformat, regenerate or delete a | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
