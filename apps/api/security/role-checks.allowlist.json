@@ -498,6 +498,12 @@
    "match": "const approvals = requestedInviteeRole === 'SUPER_ADMIN' ? platformApprovalsFrom(this.moduleRef) : null;",
    "count": 1,
    "reason": "Security Deep Scan \u00a7134: compares the role being GRANTED by a platform invitation (request body), not the caller's role \u2014 an invitation that would mint a SUPER_ADMIN is the approvable action (PlatformApprovals, policy default off). The caller is authorised by permission + step-up."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/access-request-core.ts",
+   "match": "role === cur",
+   "count": 1,
+   "reason": "batch 8 decision 6 (Nov 9 2026): requestableRoles marks the role the user already HOLDS so the request form does not offer it \u2014 a comparison between two role names in the role-request policy itself, not an authorization decision (the approval path decides by authority rank)."
   }
  ]
 }

@@ -53,6 +53,7 @@ const FIXTURE = {
 vi.mock('../api/superAdminPlansApi', () => ({
   usePlansOverview: () => ({ data: FIXTURE, loading: false, error: null, reload: vi.fn() }),
   superAdminPlansApi: {
+    unlinkedTenants: vi.fn().mockResolvedValue({ tenants: [], plans: [] }),
     create: vi.fn().mockResolvedValue({ id: 'new' }),
     changePricing: vi.fn().mockResolvedValue({ id: 'p2', versionNumber: 2, versions: [] }),
     planUtilization: vi.fn().mockResolvedValue({

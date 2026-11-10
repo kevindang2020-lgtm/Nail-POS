@@ -54,6 +54,21 @@ export class KyselySettingsRepository implements SettingsRepositoryPort {
         aiFeatures: effectiveAiFeatures(pkg, overrides),
       };
     } catch { /* keep template values if the AI tables are unreachable */ }
+    // batch 8 decision 8: the plan, tier, status and counts come from the authoritative rows — never a sample.
+    // plan = the subscription's own text; tier = the catalogue plan it maps to (linked code first); "" when none.
+    const sub: any = await sql`SELECT s.plan, s.status, p.name AS catalog_name FROM tenant_subscriptions s
+        LEFT JOIN subscription_plans p ON lower(p.code) = lower(coalesce(s.plan_code, '')) OR lower(p.code) = lower(s.plan) OR lower(p.name) = lower(s.plan)
+       WHERE s.tenant_id = ${ctx.tenantId} AND lower(s.status) <> 'cancelled' ORDER BY s.created_at DESC, (lower(p.code) = lower(coalesce(s.plan_code, ''))) DESC LIMIT 1`
+      .execute(this.db).then((r: any) => r.rows[0] ?? null);
+    const counts: any = await sql`SELECT (SELECT count(*)::int FROM customers c WHERE c.tenant_id = ${ctx.tenantId} AND coalesce(c.status, 'active') <> 'merged') AS customers,
+        (SELECT count(*)::int FROM technicians t WHERE t.tenant_id = ${ctx.tenantId} AND t.archived_at IS NULL AND coalesce(t.is_active, true)) AS technicians`
+      .execute(this.db).then((r: any) => r.rows[0] ?? null);
+    base.subscriptionPlan = {
+      ...base.subscriptionPlan,
+      plan: sub?.plan ? String(sub.plan) : '', tier: sub?.catalog_name ? String(sub.catalog_name) : '', billingStatus: sub?.status ? String(sub.status).toLowerCase() : '',
+      customerCount: counts ? Number(counts.customers) : null, technicianCount: counts ? Number(counts.technicians) : null,
+      smsThisMonth: null,   // no tenant-facing monthly SMS counter here — the SMS package page owns usage
+    };
     return base;
   }
 

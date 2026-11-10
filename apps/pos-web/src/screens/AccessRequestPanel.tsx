@@ -3,7 +3,7 @@
 // open one. Identity/tenant are server-derived — this panel never sends a user id. Approvals happen in the Super
 // Admin console. Honest: high-risk (OWNER) requests are flagged; nothing here grants access on its own.
 import { useEffect, useState } from 'react';
-import { posMeAccessRequestsApi } from '../api/posMeAccessRequestsApi';
+import { posMeAccessRequestsApi, type RequestableRolesResponse } from '../api/posMeAccessRequestsApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/codeLabel';
 import { statusLabel } from '../i18n/status-label';
@@ -11,7 +11,6 @@ import { fmtInZone } from '../i18n/format';
 import { reportError } from './reportsCommon';
 
 const cardBox: React.CSSProperties = { background: 'var(--card, #FFFCF6)', border: '1px solid var(--line)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', minHeight: 0 };
-const SELF_ROLES = ['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION', 'TECHNICIAN'];
 const statusTone: Record<string, string> = { submitted: 'warn', under_review: 'warn', approved: 'ok', rejected: 'danger', cancelled: '', expired: '' };
 
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: '2-digit', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
@@ -24,12 +23,15 @@ export function AccessRequestPanel({ currentRole }: { currentRole?: string | nul
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  // the requestable roles come from the server policy (batch 8 decision 6) — never a list in this file
+  const [roleOpts, setRoleOpts] = useState<RequestableRolesResponse['roles'] | null>(null);
 
   // newest first (the server orders by created_at desc); a failed read says so instead of showing "no requests"
   const load = () => { setLoadErr(null); return posMeAccessRequestsApi.listMine().then((r: any) => setRows(r?.rows || [])).catch((e) => { setRows(null); setLoadErr(reportError(e, t('pos.my_requests'))); }); };
-  useEffect(() => { load(); }, []);
+  const loadRoles = () => posMeAccessRequestsApi.roles().then((r) => setRoleOpts(r?.roles ?? [])).catch((e) => { setRoleOpts(null); setLoadErr(reportError(e, t('pos.requested_role'))); });
+  useEffect(() => { load(); loadRoles(); }, []);
 
-  const options = SELF_ROLES.filter((r) => r !== (currentRole || '').toUpperCase());
+  const options = (roleOpts ?? []).filter((r) => r.state !== 'held' && r.state !== 'not_requestable');
   const openSame = (rows ?? []).some((r) => r.requestedRole === role && (r.status === 'submitted' || r.status === 'under_review'));
   const ready = !!role && reason.trim().length >= 5 && !busy && !openSame;
 
@@ -40,7 +42,7 @@ export function AccessRequestPanel({ currentRole }: { currentRole?: string | nul
       const r: any = await posMeAccessRequestsApi.create({ requestedRole: role, reason: reason.trim(), requestedDurationDays: duration ? Number(duration) : null });
       setMsg(r.highRisk ? t('pos.request_submitted_this_is_a_privileged_1f61') : t('pos.request_submitted_for_review'));
       setRole(''); setReason(''); setDuration('');
-      await load();
+      await load(); await loadRoles();
     } catch (e: any) { setMsg(e?.message || t('pos.could_not_submit_the_request')); } finally { setBusy(false); }
   };
   const cancel = async (id: string) => {
@@ -59,7 +61,7 @@ export function AccessRequestPanel({ currentRole }: { currentRole?: string | nul
       <div style={{ display: 'grid', gap: 6, marginBottom: 8 }}>
         <select aria-label={t('pos.requested_role')} value={role} onChange={(e) => setRole(e.target.value)} style={{ padding: '8px 9px' }}>
           <option value="">{t('pos.select_a_role')}</option>
-          {options.map((r) => <option key={r} value={r}>{codeLabel('admin.role', r, 'role')}{r === 'OWNER' ? ` (${t('pos.high_risk')})` : ''}</option>)}
+          {options.map((r) => <option key={r.role} value={r.role}>{codeLabel('admin.role', r.role, 'role')}{r.highRisk ? ` (${t('pos.high_risk')})` : ''}{r.state === 'open_request' ? ` · ${t('arq.openTag')}` : ''}</option>)}
         </select>
         <textarea aria-label={t('pos.reason_2')} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('pos.business_reason_at_least_5_characters')} rows={2} style={{ padding: '8px 9px', resize: 'vertical' }} />
         <input aria-label={t('pos.duration_in_days')} value={duration} onChange={(e) => setDuration(e.target.value.replace(/[^0-9]/g, ''))} placeholder={t('pos.duration_in_days_optional_blank_permanent')} style={{ padding: '8px 9px' }} />

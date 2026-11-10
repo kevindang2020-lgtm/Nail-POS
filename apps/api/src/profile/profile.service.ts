@@ -32,7 +32,7 @@ export class AvatarError extends Error {
 // ---- Login-alert preferences (Account → Security, §19). Per-user, tenant-scoped like the avatar store,
 // accessed via raw sql (no kysely.types entry needed). Defaults are security-forward (every alert on);
 // the pure helpers below are unit-tested directly so the mapping/merge logic is covered without a live db. ----
-import type { LoginAlertPrefs, NotificationPrefs } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
+import type { LoginAlertPrefs, NotificationPrefs, NotificationDeliveryPage } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
 export type { LoginAlertPrefs, NotificationPrefs };
 export const DEFAULT_LOGIN_ALERTS: LoginAlertPrefs = {
   enabled: true, newDevice: true, newLocation: true, passwordChanged: true, emailChanged: true,
@@ -402,6 +402,37 @@ export class ProfileService {
       throw withCode(new HttpException('Your notification preferences could not be saved. Try again.', HttpStatus.SERVICE_UNAVAILABLE), 'NOTIFICATION_PREFS_SAVE_FAILED');
     }
     return next;
+  }
+
+  // batch 8 decision 7 (Nov 9 2026): the user's OWN alert deliveries from notification_delivery_logs (the log the
+  // senders already write) — tenant + user from the session, newest first, server-paged. No second log store.
+  async notificationDeliveries(ctx: MeCtx, q: { q?: string; channel?: string; status?: string; from?: string; to?: string; page?: number | string; pageSize?: number | string }): Promise<NotificationDeliveryPage> {
+    const pageSize = [10, 25, 50, 100].includes(Number(q.pageSize)) ? Number(q.pageSize) : 25;
+    const page = Math.max(1, Math.floor(Number(q.page) || 1));
+    if (!this.db || !ctx.tenantId || !ctx.userId) return { items: [], page: 1, pageSize, total: 0, totalPages: 1 };
+    const day = /^\d{4}-\d{2}-\d{2}$/;
+    if ((q.from && !day.test(q.from)) || (q.to && !day.test(q.to)) || (q.from && q.to && q.from > q.to))
+      throw withCode(new HttpException('Pick a start date on or before the end date.', HttpStatus.BAD_REQUEST), 'LOGS_INVALID_PERIOD');
+    const term = String(q.q ?? '').trim().slice(0, 100);
+    const ch = ['sms', 'email', 'push'].includes(String(q.channel)) ? String(q.channel) : null;
+    const st = ['queued', 'sent', 'delivered', 'failed', 'suppressed', 'blocked'].includes(String(q.status)) ? String(q.status) : null;
+    // the salon's own calendar days: from = its first instant; to = the first instant of the next day (half-open)
+    const tz = await sql<{ tz: string | null }>`SELECT timezone AS tz FROM branches WHERE tenant_id = ${ctx.tenantId} AND deleted_at IS NULL ORDER BY created_at LIMIT 1`.execute(this.db).then((r) => r.rows[0]?.tz || 'UTC');
+    const where = sql`d.user_id = ${ctx.userId}::uuid
+      ${ch ? sql`AND d.channel = ${ch}` : sql``} ${st ? sql`AND d.status = ${st}` : sql``}
+      ${term ? sql`AND (d.template ILIKE ${'%' + term.replace(/[\\%_]/g, (m) => '\\' + m) + '%'} OR d.target_masked ILIKE ${'%' + term.replace(/[\\%_]/g, (m) => '\\' + m) + '%'})` : sql``}
+      ${q.from ? sql`AND d.created_at >= (${q.from}::date)::timestamp AT TIME ZONE ${tz}` : sql``}
+      ${q.to ? sql`AND d.created_at < ((${q.to}::date + 1)::timestamp AT TIME ZONE ${tz})` : sql``}`;
+    const total = Number((await sql<{ n: number }>`SELECT count(*)::int AS n FROM notification_delivery_logs d WHERE d.tenant_id = ${ctx.tenantId}::uuid AND ${where}`.execute(this.db)).rows[0]?.n ?? 0);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages);
+    const rows = await sql<{ id: string; channel: string; target_masked: string; template: string; status: string; error_message: string | null; created_at: Date }>`
+      SELECT d.id, d.channel, d.target_masked, d.template, d.status, d.error_message, d.created_at FROM notification_delivery_logs d
+       WHERE d.tenant_id = ${ctx.tenantId}::uuid AND ${where} ORDER BY d.created_at DESC, d.id DESC LIMIT ${pageSize} OFFSET ${(p - 1) * pageSize}`.execute(this.db);
+    return {
+      items: rows.rows.map((r) => ({ id: String(r.id), channel: r.channel as 'sms', targetMasked: r.target_masked, template: r.template, status: r.status as 'sent',
+        error: r.error_message ? String(r.error_message).slice(0, 200) : null, createdAt: new Date(r.created_at).toISOString() })),
+      page: p, pageSize, total, totalPages,
+    };
   }
 
   // The authenticated user's own UI preferences (§33), scoped to their session. Fail-soft to defaults so

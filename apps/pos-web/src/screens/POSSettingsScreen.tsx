@@ -244,7 +244,7 @@ export function POSSettingsScreen() {
   // displayBranding / tagline / showBranchName / idleMessage: the header and idle footer of the salon's 23-inch customer
   // display (spec §13). Plain text only — the server refuses markup and over-long lines.
   const saveDisp = () => saveCat('display', 'customer-display-devices', { enabled: !!dispF.enabled, displayMode: dispF.displayMode, stationNumber: dispF.stationNumber, idleMessage: String(dispF.idleMessage ?? '').trim(), sessionTimeoutMinutes: num(dispF.sessionTimeoutMinutes), tipPromptEnabled: !!dispF.tipPromptEnabled, receiptPromptEnabled: !!dispF.receiptPromptEnabled, displayBranding: !!dispF.displayBranding, tagline: String(dispF.tagline ?? '').trim(), showBranchName: !!dispF.showBranchName });
-  const saveRcpt = () => saveCat('receipts', 'receipts-branding', { showLogo: !!rcptF.showLogo, header: rcptF.header, footer: rcptF.footer, businessAddress: rcptF.businessAddress, thankYouMessage: rcptF.thankYouMessage, showSurchargeLine: !!rcptF.showSurchargeLine, showTechnicianLines: !!rcptF.showTechnicianLines, showServiceNotes: !!rcptF.showServiceNotes, showDiscountLine: !!rcptF.showDiscountLine, showLoyaltyPoints: !!rcptF.showLoyaltyPoints, showTips: !!rcptF.showTips, defaultDelivery: csvStrs(rcptF.defaultDelivery), brandStyle: rcptF.brandStyle });
+  const saveRcpt = () => saveCat('receipts', 'receipts-branding', { brandPrimary: rcptF.brandPrimary || null, brandAccent: rcptF.brandAccent || null, showLogo: !!rcptF.showLogo, header: rcptF.header, footer: rcptF.footer, businessAddress: rcptF.businessAddress, thankYouMessage: rcptF.thankYouMessage, showSurchargeLine: !!rcptF.showSurchargeLine, showTechnicianLines: !!rcptF.showTechnicianLines, showServiceNotes: !!rcptF.showServiceNotes, showDiscountLine: !!rcptF.showDiscountLine, showLoyaltyPoints: !!rcptF.showLoyaltyPoints, showTips: !!rcptF.showTips, defaultDelivery: csvStrs(rcptF.defaultDelivery), brandStyle: rcptF.brandStyle });
   const openRoles = async () => {
     if (edit === 'roles') { setEdit(null); return; }
     setNote(null);
@@ -649,6 +649,15 @@ export function POSSettingsScreen() {
           {edit === 'receipts' ? (
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <SalonLogoSetting onChanged={(has) => upRc('showLogo', has)} />
+              {/* batch 8 decision 5: brand colours (#RRGGBB) — the server refuses a shade too light to read on white */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }} data-testid="brand-colors-edit">
+                {(['brandPrimary', 'brandAccent'] as const).map((k) => (
+                  <label key={k} className="s" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{i18nText(k === 'brandPrimary' ? 'brx.primary' : 'brx.accent')}
+                    <input type="color" data-testid={`brand-${k}`} value={rcptF[k] || '#A96F22'} onChange={(e) => upRc(k, e.target.value.toUpperCase())} style={{ width: 44, height: 32, padding: 0, border: '1px solid var(--line)', borderRadius: 8 }} />
+                    <span className="sub">{rcptF[k] || i18nText('brx.notSet')}</span>
+                    {rcptF[k] ? <button type="button" className="btn ghost sm" onClick={() => upRc(k, null)}>{i18nText('brx.clear')}</button> : null}
+                  </label>))}
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Field label={i18nText('pos.header')} value={rcptF.header} onChange={(v) => upRc('header', v)} w={150} /><Field label={i18nText('pos.footer')} value={rcptF.footer} onChange={(v) => upRc('footer', v)} w={150} /></div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Field label={i18nText('pos.thank_you')} value={rcptF.thankYouMessage} onChange={(v) => upRc('thankYouMessage', v)} w={170} /><Field label={i18nText('pos.address_2')} value={rcptF.businessAddress} onChange={(v) => upRc('businessAddress', v)} w={170} /></div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Field label={i18nText('pos.delivery_csv')} value={Array.isArray(rcptF.defaultDelivery) ? rcptF.defaultDelivery.join(',') : rcptF.defaultDelivery} onChange={(v) => upRc('defaultDelivery', v)} w={130} /><Field label={i18nText('pos.brand_style')} value={rcptF.brandStyle} onChange={(v) => upRc('brandStyle', v)} w={110} /></div>

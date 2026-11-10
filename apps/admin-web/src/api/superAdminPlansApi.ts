@@ -1,6 +1,7 @@
 // superAdminPlansApi.ts — typed client + hook for Super Admin → Plans & Feature Limits (GET /super-admin/plans/overview).
 // Mirrors the backend plans-overview-core shape. Read-only; honest gaps are surfaced via kpis.notModeled.
-import type { ChangePreview, GrandfatherRow, OverageRuleDetail, PlanDirectoryRow, PlansOverview, Strategy, TenantSubscription } from '@aipowersalon/api-contracts/platform';
+import type { ChangePreview, GrandfatherRow, OverageRuleDetail, PlanDirectoryRow, PlansOverview, Strategy, TenantSubscription, UnlinkedTenantsResponse, PlanLinkResult } from '@aipowersalon/api-contracts/platform';
+export type { UnlinkedTenantsResponse, PlanLinkResult };
 export type { ChangePreview, GrandfatherRow, OverageRuleDetail, PlanDirectoryRow, PlansOverview, Strategy, TenantSubscription };   // the API's own contract (Constitution 13 §15) — never re-declare it here
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './client';
@@ -47,6 +48,9 @@ export type TenantEntitlements = {
 
 export const superAdminPlansApi = {
   overview: () => api.get<PlansOverview>('/super-admin/plans/overview'),
+  /** batch 8 decision 3: salons whose plan maps to no catalogue plan + the audited link (plan_code only; price untouched) */
+  unlinkedTenants: () => api.get<UnlinkedTenantsResponse>('/super-admin/plans/unlinked-tenants'),
+  linkTenantPlan: (tenantId: string, planCode: string, reason: string) => api.post<PlanLinkResult>(`/super-admin/plans/tenants/${encodeURIComponent(tenantId)}/link`, { planCode, reason }),
   create: (body: CreatePlanBody) => api.post<{ id: string; versions: PlanVersion[] }>('/super-admin/plans', body as unknown as Record<string, unknown>),
   changePricing: (id: string, body: ChangePricingBody) => api.post<{ id: string; versionNumber: number; versions: PlanVersion[] }>(`/super-admin/plans/${id}/pricing`, body as unknown as Record<string, unknown>),
   updatePlanLimits: (id: string, body: { reason: string; changes: { metric: string; limitValue: number | null | 'unlimited'; enforcement?: 'hard' | 'soft'; overageAllowed?: boolean; overagePriceCents?: number }[] }) =>

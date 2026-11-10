@@ -4,7 +4,9 @@
 // self.profile.view / self.profile.edit / self.notifications (every staff role holds them); the salon-wide billing
 // summary and backup status are settings.view and requesting a backup is settings.edit (they were open to every staff
 // role, technicians included, and no client calls them).
-import { Body, Controller, Delete, Get, HttpException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ListQuery } from '@aipowersalon/database';
+import type { NotificationDeliveryPage } from '@aipowersalon/api-contracts/tenant';
 import { RequirePermission, TenantAuthGuard, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { ProfileService, AvatarError } from './profile.service';
 import { AVATAR_BODY, LOGIN_ALERTS_BODY, NOTIFICATION_PREFS_BODY, UI_PREFS_BODY } from './request-schemas';
@@ -48,6 +50,15 @@ export class ProfileController {
   updateLoginAlerts(@Req() req: any, @Body(ValidatedBody(LOGIN_ALERTS_BODY, { strict: true })) body: any) {
     const c = req?.ctx || {};
     return this.svc.updateLoginAlerts({ tenantId: c.tenantId, userId: c.userId, role: c.role }, body);
+  }
+
+  // batch 8 decision 7: the user's own alert deliveries (notification_delivery_logs), newest first, server-paged
+  @RequirePermission('self.notifications') @Get('notification-deliveries')
+  @ListQuery({ filters: { channel: { type: 'enum', values: ['sms', 'email', 'push'] }, status: { type: 'enum', values: ['queued', 'sent', 'delivered', 'failed', 'suppressed', 'blocked'] } },
+    sorts: { newest: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const)
+  notificationDeliveries(@Req() req: any, @Query() q: any): Promise<NotificationDeliveryPage> {
+    const c = req?.ctx || {};
+    return this.svc.notificationDeliveries({ tenantId: c.tenantId, userId: c.userId, role: c.role }, q ?? {});
   }
 
   @RequirePermission('self.notifications') @Get('notification-prefs')

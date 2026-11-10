@@ -41,3 +41,14 @@ export function grantExpiry(now: Date, durationDays: number | null | undefined):
   if (!durationDays || durationDays <= 0) return null;
   return new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 }
+
+// ── batch 8 decision 6 (Nov 9 2026): the roles a signed-in salon user may REQUEST — one policy, served to the POS ──
+/** tenant roles a salon user may ask for (never a platform role); the dropdown and the server read this same list */
+export const SELF_REQUESTABLE_ROLES = ['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION', 'TECHNICIAN'] as const;
+export type RequestableRoleState = 'available' | 'held' | 'open_request' | 'not_requestable';
+/** Pure: each requestable role for this user — held / already asked for / available — with the high-risk flag. */
+export function requestableRoles(currentRole: string | null | undefined, openRequestRoles: string[]): { role: string; highRisk: boolean; state: RequestableRoleState }[] {
+  const cur = String(currentRole ?? '').toUpperCase();
+  return SELF_REQUESTABLE_ROLES.map((role) => ({ role, highRisk: isHighRisk(role),
+    state: role === cur ? 'held' : openRequestRoles.includes(role) ? 'open_request' : 'available' }));
+}

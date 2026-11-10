@@ -99,7 +99,7 @@ ok('readiness ready when all satisfied', allReady.ready === true && allReady.pen
   ok('open>=close rejected', await threwAsync(() => svc.patchCategory(owner, 'store-hours-auto-logout', { storeHours: { monday: { isOpen: true, openTime: '20:00', closeTime: '09:00' } } }), ValidationError));
 
   ok('subscription-plan PATCH is forbidden (read-only)', await threwAsync(() => svc.patchCategory(owner, 'subscription-plan', { plan: 'X' }), ForbiddenError));
-  ok('subscription-plan GET works (read-only view)', !!(await svc.getCategory(owner, 'subscription-plan')).plan);
+  ok('subscription-plan GET works (read-only view)', (await svc.getCategory(owner, 'subscription-plan')).readOnly === true);   // batch 8: no sample plan text any more
   ok('audit-logs GET returns rows', Array.isArray((await svc.getCategory(owner, 'audit-logs')).recentItems));
 
   console.log(`\nsettings-core: ${passed} passed, ${failed} failed`);

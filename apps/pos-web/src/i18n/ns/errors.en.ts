@@ -670,6 +670,8 @@ export const ERRORS_EN = {
   'errors.LOCATIONS_INVALID_PERIOD': 'Pick a From date on or before the To date.',
   'errors.LOCATIONS_SEARCH_TOO_SHORT': 'Type at least 2 characters to search.',
   'errors.NOTIFICATION_PREFS_SAVE_FAILED': 'Your notification preferences could not be saved. Try again.',
+  'errors.BRAND_COLOR_LOW_CONTRAST': 'That colour is too light to read on white — pick a darker shade.',
+  'errors.PRINTER_RETIRED': 'A retired printer cannot be changed.',
   'errors.OWN_ROLE_CHANGE': 'You cannot change your own role.',
   'errors.OWN_ACCOUNT_DISABLE': 'You cannot disable your own account.',
   'errors.PLATFORM_ACCOUNTS_ELSEWHERE': 'Platform accounts are managed by the platform team, not here.',

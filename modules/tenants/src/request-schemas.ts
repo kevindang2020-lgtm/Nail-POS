@@ -97,6 +97,8 @@ export const SETTINGS_RECEIPTS_BODY = section({
   showLogo: bool, logoRef: text(500), header: text(500), footer: text(500), businessAddress: text(300), thankYouMessage: text(300),
   showSurchargeLine: bool, showTechnicianLines: bool, showServiceNotes: bool, showDiscountLine: bool, showLoyaltyPoints: bool,
   showTips: bool, defaultDelivery: texts(5, 16), brandStyle: text(40),
+  // batch 8 decision 5 (Nov 9 2026): the salon's brand colours, #RRGGBB or null to clear
+  brandPrimary: S.nullable(S.string({ pattern: '^#[0-9A-Fa-f]{6}$' })), brandAccent: S.nullable(S.string({ pattern: '^#[0-9A-Fa-f]{6}$' })),
 });
 
 // ── POS Settings actions ─────────────────────────────────────────────────────────────────────────────────────────

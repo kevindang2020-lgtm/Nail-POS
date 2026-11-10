@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('../api/posMeAccessRequestsApi', () => ({
-  posMeAccessRequestsApi: { listMine: vi.fn(), create: vi.fn(), cancel: vi.fn() },
+  posMeAccessRequestsApi: { listMine: vi.fn(), create: vi.fn(), cancel: vi.fn(), roles: vi.fn() },
 }));
 import { posMeAccessRequestsApi } from '../api/posMeAccessRequestsApi';
 import { AccessRequestPanel } from './AccessRequestPanel';
@@ -19,7 +19,12 @@ beforeEach(() => {
   (posMeAccessRequestsApi.listMine as any).mockResolvedValue({ rows: mine, total: mine.length });
   (posMeAccessRequestsApi.create as any).mockResolvedValue({ id: 'new', status: 'submitted', highRisk: false });
   (posMeAccessRequestsApi.cancel as any).mockResolvedValue({ id: 'a1', status: 'cancelled' });
+  // the server policy (batch 8 decision 6) for a TECHNICIAN with an open MANAGER request
+  (posMeAccessRequestsApi.roles as any).mockResolvedValue({ roles: rolesFor('TECHNICIAN', ['MANAGER']) });
 });
+function rolesFor(held: string, open: string[]) {
+  return ['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION', 'TECHNICIAN'].map((role) => ({ role, highRisk: role === 'OWNER', state: role === held ? 'held' : open.includes(role) ? 'open_request' : 'available' }));
+}
 
 describe('AccessRequestPanel', () => {
   it('lists the user’s own requests with status', async () => {
@@ -51,11 +56,15 @@ describe('AccessRequestPanel', () => {
   });
 
   it('excludes the current role from the request options', async () => {
+    (posMeAccessRequestsApi.roles as any).mockResolvedValue({ roles: rolesFor('MANAGER', []) });
     render(<AccessRequestPanel currentRole="MANAGER" />);
     await screen.findByText('Technician → Manager');
+    await waitFor(() => expect(screen.getByLabelText('Requested role').querySelectorAll('option').length).toBeGreaterThan(1));
     const opts = Array.from(screen.getByLabelText('Requested role').querySelectorAll('option')).map((o) => o.getAttribute('value'));
     expect(opts).not.toContain('MANAGER');
     expect(opts).toContain('OWNER');
+    expect(opts).not.toContain('SUPER_ADMIN');
+    expect(posMeAccessRequestsApi.roles).toHaveBeenCalled();   // the list is the server's policy, not a hard-coded one
   });
 
   it('cancels an open request', async () => {

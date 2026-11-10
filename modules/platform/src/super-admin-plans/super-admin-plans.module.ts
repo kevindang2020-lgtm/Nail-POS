@@ -35,9 +35,10 @@ import { PlatformApprovals, PlatformApprovalsController } from '../platform-appr
 import { FeatureRegistry, FeatureRegistryController } from './feature-registry';
 import { ENTITLEMENT_SERVICE, type EntitlementService as FeatureGate } from '@aipowersalon/permissions';
 import { invalidateOnWrite } from './plan-feature-source';
+import { PlanLinksController } from './plan-links';
 
 @Module({
-  controllers: [FeatureRegistryController, PlatformApprovalsController, UsageAlertsController, SuperAdminPlansController, EntitlementsController, OverageController, SubscriptionChangeController, TenantOffersController, GrandfatherController, UtilizationController, ScheduledChangesController],
+  controllers: [PlanLinksController, FeatureRegistryController, PlatformApprovalsController, UsageAlertsController, SuperAdminPlansController, EntitlementsController, OverageController, SubscriptionChangeController, TenantOffersController, GrandfatherController, UtilizationController, ScheduledChangesController],
   providers: [
     // Constitution 7 §119 — maker/checker; 'plan.limit_override' is the first registered action
     { provide: PlatformApprovals, useFactory: (db: AppDatabase, ent: EntitlementsService) => {

@@ -23,7 +23,7 @@ export class PosAccountService {
       ctx.branchId ? db.selectFrom('branches').where('tenant_id', '=', t).where('id', '=', ctx.branchId)
         .select(['name', 'address', 'city', 'state', 'zip', 'phone', 'timezone', 'public_display_name']).executeTakeFirst().catch(() => null) : null,
       db.selectFrom('tenant_subscriptions as s').leftJoin('subscription_plans as p', 'p.code', 's.plan_code').where('s.tenant_id', '=', t)
-        .select(['p.name as plan_name', 's.plan_code', 's.status', 's.current_period_end', 's.monthly_price_cents']).orderBy('s.created_at', 'desc').executeTakeFirst().catch(() => null),
+        .select(['p.name as plan_name', 's.plan_code', 's.plan as plan_text', 's.status', 's.current_period_end', 's.monthly_price_cents']).orderBy('s.created_at', 'desc').executeTakeFirst().catch(() => null),
       db.selectFrom('user_branch_access as a').innerJoin('branches as b', 'b.id', 'a.branch_id').where('a.tenant_id', '=', t).where('b.tenant_id', '=', t).where('a.user_id', '=', ctx.userId)
         .select(['b.name', 'b.address', 'b.city', 'b.state', 'a.role', 'a.access_level', 'b.status']).orderBy('b.name').execute().catch(() => []),
       db.selectFrom('users').where('tenant_id', '=', t).where('status', '=', 'active').select(['role']).select((eb: any) => eb.fn.countAll().as('n')).groupBy('role').execute().catch(() => []),

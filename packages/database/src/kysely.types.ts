@@ -4933,6 +4933,10 @@ export interface CustomerIntelligenceScansTable {   // migration 763 — Custome
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
 }
+export interface ReceiptPrintersTable {   // migration 844 — receipt-printer registry (batch 8 decision 2; records only, no print bridge)
+  id: Generated<string>; tenant_id: string; branch_id: string | null; pos_station_id: string | null; name: string; connection: string; address: string | null;
+  paper_width_mm: Generated<number>; status: Generated<string>; retired_at: Ts | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
+}
 export interface CustomerNoteReviewsTable {   // migration 843 — Review & Accuracy of safety notes (append-only; tied to the text's sha256)
   id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; decision: string; reason: string | null;
   reviewer_user_id: string | null; created_at: Generated<Ts>;
@@ -8045,6 +8049,7 @@ export interface DB {
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
+  receipt_printers: ReceiptPrintersTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;

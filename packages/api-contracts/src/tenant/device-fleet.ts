@@ -3,7 +3,7 @@
 export type DfClass = 'all' | 'reception_pos' | 'kiosk' | 'tablet' | 'display' | 'terminal' | 'receipt';
 export type DfStatus = 'online' | 'offline' | 'attention' | 'pending' | 'disabled' | 'revoked' | 'retired' | 'maintenance' | 'unknown' | 'unassigned';
 export interface DfDevice {
-  id: string; source: 'station' | 'kiosk' | 'display' | 'terminal'; class: DfClass; name: string; type: string;
+  id: string; source: 'station' | 'kiosk' | 'display' | 'terminal' | 'printer'; class: DfClass; name: string; type: string;
   branchId: string | null; branch: string | null; station: string | null; status: DfStatus; reason: string | null;
   lastSeenAt: string | null; createdAt: string | null; updatedAt: string | null; facts: Record<string, unknown>;
 }
@@ -22,3 +22,6 @@ export interface DfCheckResponse {
   class: DfClass; overall: 'READY' | 'WARNING' | 'FAILED' | 'NOT_CONFIGURED'; checkedAt: string;
   checks: { key: string; state: 'READY' | 'WARNING' | 'FAILED' | 'NOT_CONFIGURED'; count?: number }[];
 }
+/** a receipt-printer RECORD (receipt_printers, batch 8 decision 2) — no print bridge, so never a live status */
+export interface ReceiptPrinter { id: string; name: string; connection: 'network' | 'usb' | 'bluetooth' | 'cloud'; address: string | null; paperWidthMm: number;
+  status: 'active' | 'disabled' | 'retired'; branchId: string | null; posStationId: string | null; createdAt: string; updatedAt: string }

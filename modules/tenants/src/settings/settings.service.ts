@@ -30,6 +30,12 @@ const CONNECTION_TYPES = new Set(['cloud', 'lan', 'usb']);
 
 export class ForbiddenError extends Error { constructor(m: string) { super(m); this.name = 'ForbiddenError'; } }
 export class ValidationError extends Error { constructor(m: string) { super(m); this.name = 'ValidationError'; } }
+/** WCAG relative-luminance contrast of #RRGGBB against white (1 – 21) */
+export function contrastWithWhite(hex: string): number {
+  const ch = (i: number) => { const v = parseInt(hex.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * ch(1) + 0.7152 * ch(3) + 0.0722 * ch(5);
+  return 1.05 / (L + 0.05);
+}
 
 
 // Sections whose GO-LIVE depends on an external credential/device. Build/code is complete for all of them;
@@ -152,6 +158,15 @@ export class PosSettingsService {
 
   // ---- validation (rejects bad input before save) ----
   private validate(category: SettingsCategory, v: any): void {
+    if (category === 'receipts-branding') {
+      // batch 8 decision 5: a brand colour must read on the white receipt / cream POS — WCAG 3:1 against white at least
+      for (const k of ['brandPrimary', 'brandAccent'] as const) {
+        const c = v[k];
+        if (c === undefined || c === null || c === '') continue;
+        if (typeof c !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(c)) throw withCode(new ValidationError('Brand colours must be #RRGGBB'), 'SETTING_VALUE_INVALID');
+        if (contrastWithWhite(c) < 3) throw withCode(new ValidationError('That colour is too light to read on white — pick a darker shade'), 'BRAND_COLOR_LOW_CONTRAST');
+      }
+    }
     // Reject non-finite, negative, or out-of-range numbers. NaN/Infinity are caught explicitly (typeof NaN === 'number',
     // and NaN comparisons are always false, so the bare range check below would otherwise let them through).
     const pct = (x: any, name: string, max = 100, min = 0) => { if (typeof x !== 'number' || !Number.isFinite(x) || x < min || x > max) throw withCode(new ValidationError(name + ' must be between ' + min + ' and ' + max), 'SETTING_VALUE_INVALID'); };

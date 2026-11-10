@@ -114,6 +114,8 @@ describe('POSAccountScreen', () => {
     get.mockImplementation((url: string, q?: Record<string, unknown>) => {
       if (url === '/pos/me/notification-prefs') return Promise.resolve({ smsNotifications: true, emailNotifications: true, pushNotifications: false, missedCallAlerts: true, bookingAlerts: true, lowStockAlerts: false, payrollApprovals: true, weeklyReportSummaries: true }) as never;
       if (url === '/pos/me/login-alerts') return Promise.resolve({ enabled: false }) as never;
+      if (url === '/auth/devices') return Promise.resolve({ canTrust: true, devices: [
+        { id: 'd1', trustState: 'trusted', trustedUntil: '2099-01-01T00:00:00Z' }, { id: 'd2', trustState: 'trusted', trustedUntil: '2020-01-01T00:00:00Z' }, { id: 'd3', trustState: 'recognized', trustedUntil: null }] }) as never;
       if (url === '/tenant/messaging/readiness') return Promise.reject(Object.assign(new Error('Forbidden'), { status: 403 })) as never;
       return base(url, q) as never;
     });
@@ -132,7 +134,7 @@ describe('POSAccountScreen', () => {
     expect(within(screen.getByTestId('acx-kpi-notif')).getByText('—')).toBeInTheDocument();
     expect(screen.getByTestId('acx-brand-colors').textContent).toBe('Not configured');
     expect(screen.getByTestId('acx-login-alerts').textContent).toBe('Disabled');
-    expect(screen.getByTestId('acx-trusted').textContent).toBe('No trusted-device registry');
+    expect(screen.getByTestId('acx-trusted').textContent).toBe('1 trusted');   // auth_devices: trusted and not lapsed
     expect(screen.getAllByTestId(/^acx-kpi-/)).toHaveLength(8);
     // full activity: canonical audit, server-paged
     fireEvent.click(screen.getByText('View all'));

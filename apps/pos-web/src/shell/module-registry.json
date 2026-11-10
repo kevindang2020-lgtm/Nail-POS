@@ -5321,6 +5321,10 @@
     {
      "id": "dfx-results",
      "label": "Device list (six columns) or the true empty state"
+    },
+    {
+     "id": "ksk-note",
+     "label": "Kiosks are set up by AI PowerSalon (support request)"
     }
    ]
   },
@@ -5395,6 +5399,10 @@
     {
      "id": "dfx-results",
      "label": "Device list (six columns) or the true empty state"
+    },
+    {
+     "id": "prx-note",
+     "label": "Printer records + Add printer"
     }
    ]
   },

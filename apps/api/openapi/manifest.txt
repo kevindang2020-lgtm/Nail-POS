@@ -178,6 +178,7 @@ GET /health  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm
 GET /health/live  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm  unversioned
 GET /health/ready  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm  unversioned
 GET /me/access-requests  realm=shared  auth=session  domain=identity  resource=OWN/path
+GET /me/access-requests/roles  realm=shared  auth=session  domain=identity  resource=OWN/path
 GET /me/privacy-export  realm=shared  auth=session  domain=identity  resource=OWN/path  async=me.privacy-export
 GET /media/{path}  realm=shared  auth=public  domain=workforce  resource=PUBLIC/realm  unversioned
 GET /metrics  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm  unversioned
@@ -831,6 +832,7 @@ GET /pos/me/backup  realm=staff  auth=session  domain=identity  perm=settings.vi
 GET /pos/me/billing  realm=staff  auth=session  domain=identity  perm=settings.view  resource=BRANCH/permission  guards=TenantAuthGuard
 GET /pos/me/locale  realm=staff  auth=session  domain=identity  perm=self.profile.view  resource=OWN/permission
 GET /pos/me/login-alerts  realm=staff  auth=session  domain=identity  perm=self.profile.view  resource=OWN/permission  guards=TenantAuthGuard
+GET /pos/me/notification-deliveries  realm=staff  auth=session  domain=identity  perm=self.notifications  resource=OWN/permission  guards=TenantAuthGuard
 GET /pos/me/notification-prefs  realm=staff  auth=session  domain=identity  perm=self.notifications  resource=OWN/permission  guards=TenantAuthGuard
 GET /pos/me/profile  realm=staff  auth=session  domain=identity  perm=self.profile.view  resource=OWN/permission  guards=TenantAuthGuard
 GET /pos/me/sessions  realm=staff  auth=session  domain=identity  perm=self.profile.view  resource=OWN/permission  guards=TenantAuthGuard
@@ -1548,6 +1550,7 @@ GET /super-admin/plans/tenants/{tenantId}/check/{metric}  realm=super_admin  aut
 GET /super-admin/plans/tenants/{tenantId}/entitlements  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/plans/tenants/{tenantId}/subscription  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/plans/tenants/{tenantId}/subscription/changes  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
+GET /super-admin/plans/unlinked-tenants  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/plans/usage-alerts  realm=super_admin  auth=session  domain=finance  perm=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/plans/utilization  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/plans/utilization/trend  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.view  resource=PLATFORM/realm  guards=SuperAdminGuard
@@ -2050,6 +2053,7 @@ PATCH /pos/nail-showcase/posts/{postId}/hide  realm=staff  auth=session  domain=
 PATCH /pos/nail-showcase/reports/{reportId}  realm=staff  auth=session  domain=workforce  perm=customers.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/project-status/module/{moduleKey}/recheck  realm=staff  auth=session  domain=support  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/queue/items/{queueItemId}  realm=staff  auth=session  domain=booking  perm=pos.queue.edit  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
+PATCH /pos/receipt-printers/{id}  realm=staff  auth=session  domain=operations  perm=pos.devices.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/reminders  realm=staff  auth=session  domain=communications  perm=communications.manage  resource=BRANCH/permission  feature=smart_reminders  guards=TenantAuthGuard
 PATCH /pos/service-add-ons/{addOnId}  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/services/categories/{categoryId}  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -3026,6 +3030,8 @@ POST /pos/rebooking/check  realm=staff  auth=session  domain=ai  perm=pos.ai_cus
 POST /pos/rebooking/customers/{id}/handoff  realm=staff  auth=session  domain=ai  perm=pos.booking.create  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/rebooking/customers/{id}/review  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/receipt-center/check  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/receipt-printers  realm=staff  auth=session  domain=operations  perm=pos.devices.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/receipt-printers/{id}/retire  realm=staff  auth=session  domain=operations  perm=pos.devices.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/assistant/plan  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/assistant/save  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/check  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3463,6 +3469,7 @@ POST /super-admin/plans  realm=super_admin  auth=session  domain=finance  derive
 POST /super-admin/plans/grandfathered  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/plans/overage/recompute  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/plans/scheduled-changes/process  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
+POST /super-admin/plans/tenants/{tenantId}/link  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/plans/tenants/{tenantId}/offers/add-ons  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/plans/tenants/{tenantId}/offers/add-ons/cancel  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/plans/tenants/{tenantId}/offers/promotions  realm=super_admin  auth=session  domain=finance  derived=super_admin.plans.manage  resource=PLATFORM/realm  guards=SuperAdminGuard

@@ -12,6 +12,7 @@ import { AccessRequestPanel } from './AccessRequestPanel';
 import { NotificationPrefsPanel, AccountActivityDialog } from './AccountKit';
 import { posPhoneApi, type MessagingReadiness } from '../api/posPhoneApi';
 import { posMePrefsApi, type LoginAlertPrefs } from '../api/posMePrefsApi';
+import { posSecurityApi } from '../api/posSecurityApi';
 import { entitlementOf } from './aiCommStatus';
 import { reportError } from './reportsCommon';
 import SmsVerificationPanel from '../components/SmsVerificationPanel';
@@ -30,7 +31,7 @@ import { serverText } from '../i18n/server-text';
 
 type BusinessBranch = { salonName?: string; legalName?: string; phone?: string; branchName?: string; address?: string; city?: string; state?: string; zip?: string; email?: string; timezone?: string };
 type Notifications = { smsConfirmation?: boolean; emailConfirmation?: boolean; pushConfirmation?: boolean; noShowFollowUp?: boolean; a2pStatus?: string };
-type ReceiptsBranding = { showLogo?: boolean; header?: string };
+type ReceiptsBranding = { showLogo?: boolean; header?: string; brandPrimary?: string | null; brandAccent?: string | null };
 // subscriptionPlan is set by Super Admin and surfaced READ-ONLY to the tenant (aiPackage/aiFeatures are live-resolved
 // server-side from tenant_ai_packages). This is the Account screen's super-admin → tenant wiring for the billing panel.
 type SubscriptionPlan = { plan?: string; tier?: string; billingStatus?: string; aiPackageIncluded?: boolean; aiPackage?: string; aiFeatures?: Record<string, boolean>; customerCount?: number; technicianCount?: number; smsThisMonth?: number };
@@ -91,6 +92,7 @@ export function POSAccountScreen() {
   const [rd, setRd] = useState<MessagingReadiness | null>(null);
   const [rdKnown, setRdKnown] = useState(false);
   const [alerts, setAlerts] = useState<LoginAlertPrefs | null>(null);
+  const [trusted, setTrusted] = useState<number | null>(null);
   const [actOpen, setActOpen] = useState(false);
   const [locs, setLocs] = useState<{ locations: SalonLocation[]; summary: any } | null>(null);
   const [mfa, setMfa] = useState<Mfa | null>(null);
@@ -105,6 +107,9 @@ export function POSAccountScreen() {
     // Notification Health = the salon's real SMS readiness (settings.view); a role without it sees "—", never "Healthy"
     posPhoneApi.readiness().then((r) => { setRd(r); setRdKnown(true); }).catch((e) => { reportError(e, 'account'); setRd(null); setRdKnown(true); });
     posMePrefsApi.loginAlerts().then(setAlerts).catch((e) => { reportError(e, 'account'); setAlerts(null); });
+    // trusted devices = the identity layer's own device registry (auth_devices, Security & 2FA) — trusted AND not lapsed
+    posSecurityApi.devices().then((d) => setTrusted((d?.devices ?? []).filter((x) => x.trustState === 'trusted' && (!x.trustedUntil || new Date(x.trustedUntil).getTime() > Date.now())).length))
+      .catch((e) => { reportError(e, 'account'); setTrusted(null); });
     posLocationsApi.list().then((d) => setLocs(d as any)).catch(() => setLocs(null));
     api.get<Mfa>('/auth/mfa/status').then(setMfa).catch(() => setMfa(null));
     posAuditApi.events({ pageSize: 6 }).then((d) => setActivity(d?.items || [])).catch((e) => { reportError(e, 'account'); setActivity([]); });
@@ -222,7 +227,8 @@ export function POSAccountScreen() {
             {kvRow(tx('pos.timezone'), biz.timezone || (overview?.business?.timezone || ''))}
             {kvRow(tx('pos.display_name_2'), biz.salonName || (overview?.business?.display || ''))}
             {kvRow(tx('pos.receipts_from'), rb.header || biz.salonName || (overview?.business?.receipts || ''))}
-            {kvRow(tx('pos.brand_colors'), <span className="sub" data-testid="acx-brand-colors">{tt('acx.notConfigured')}</span>)}   {/* no brand-colour setting exists — the four sample swatches are gone */}
+            {kvRow(tx('pos.brand_colors'), (() => { const cs = [rb.brandPrimary, rb.brandAccent].filter((c): c is string => !!c);   // Settings → Receipts & Branding (batch 8 decision 5)
+              return <span data-testid="acx-brand-colors" style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>{cs.length ? cs.map((c) => <span key={c} title={c} style={{ width: 15, height: 15, borderRadius: '50%', background: c, border: '1px solid var(--line)' }} />) : <span className="sub">{tt('acx.notConfigured')}</span>}</span>; })())}
             {kvRow(tx('pos.logo_status'), <span className="pill ok">{rb.showLogo === false ? tx('pos.not_set') : tx('pos.active_3')}</span>)}
           </div>
         </section>
@@ -233,7 +239,7 @@ export function POSAccountScreen() {
             {kvRow(tx('pos.password_last_changed'), me?.passwordChangedAt ? fmtDateAgo(me.passwordChangedAt) : (overview?.security?.passwordChanged || ''))}
             {kvRow(tx('pos.two_factor_authentication'), <span className={'pill ' + (twoFA ? 'ok' : 'warn')}>{!mfa ? tx('pos.unknown') : twoFA ? tx('pos.enabled') : tx('pos.disabled')}</span>)}
             {kvRow(tx('pos.login_alerts'), <span className={'pill ' + (alerts?.enabled ? 'ok' : alerts ? 'warn' : '')} data-testid="acx-login-alerts">{!alerts ? '—' : alerts.enabled ? tx('pos.enabled') : tx('pos.disabled')}</span>)}
-            {kvRow(tx('pos.trusted_devices'), <span data-testid="acx-trusted">{overview?.security?.trustedDevices || tt('acx.trustedNone')}</span>)}   {/* there is no trusted-device registry; an active session is not a trusted device */}
+            {kvRow(tx('pos.trusted_devices'), <span data-testid="acx-trusted">{trusted == null ? '—' : tt('acx.trustedN', { n: trusted })}</span>)}   {/* auth_devices (Security & 2FA): a device the user trusted from a 2FA sign-in, not a session count */}
           </div>
           <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', margin: '10px 0 6px' }}>{tx('pos.recent_sign_ins')}</div>
           {sessions === null ? (

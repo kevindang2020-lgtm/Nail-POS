@@ -7,7 +7,8 @@ import { Body, Controller, Get, Param, Post, Req, HttpException } from '@nestjs/
 import { safeInet } from '@aipowersalon/database';
 import { SuperAdminPlatformService, type AdminCtx } from './super-admin-platform.service';
 import { run } from './super-admin-platform.controller';
-import { MY_ACCESS_REQUEST_BODY } from '../request-schemas-programs';   // BUILD_PLAN Phase 12 (#17)
+import { MY_ACCESS_REQUEST_BODY } from '../request-schemas-programs';
+import type { RequestableRolesResponse } from '@aipowersalon/api-contracts/tenant';   // BUILD_PLAN Phase 12 (#17)
 
 function ctxFrom(req: any): AdminCtx { return { userId: req?.ctx?.userId, email: req?.ctx?.email, ip: safeInet(req?.ip) ?? undefined }; }
 
@@ -16,6 +17,8 @@ export class MyAccessRequestsController {
   constructor(private readonly svc: SuperAdminPlatformService) {}
   private uid(r: any): string { const u = r?.ctx?.userId; if (!u) throw new HttpException({ ok: false, code: 'UNAUTHENTICATED' }, 401); return u; }
 
+  /** batch 8 decision 6: the roles this user may request — the POS dropdown reads this, never a hard-coded list */
+  @Get('roles') roles(@Req() r: any): Promise<RequestableRolesResponse> { this.uid(r); return run(() => this.svc.ownRequestableRoles(ctxFrom(r))); }
   @Get() mine(@Req() r: any) { this.uid(r); return run(() => this.svc.listOwnAccessRequests(ctxFrom(r))); }
   @Post() create(@Req() r: any, @Body(ValidatedBody(MY_ACCESS_REQUEST_BODY, { strict: true })) b: any) { this.uid(r); return run(() => this.svc.createOwnAccessRequest(ctxFrom(r), b || {})); }
   @Post(':id/cancel') cancel(@Req() r: any, @Param('id') id: string) { this.uid(r); return run(() => this.svc.cancelOwnAccessRequest(ctxFrom(r), id)); }

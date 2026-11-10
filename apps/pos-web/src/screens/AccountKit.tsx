@@ -4,7 +4,7 @@
 //   • recent activity → GET /pos/audit/events (the canonical tenant audit), newest first, server-paged
 import { useCallback, useEffect, useState } from 'react';
 import type { MessagingReadiness } from '@aipowersalon/api-contracts/tenant';
-import { posMePrefsApi, type NotificationPrefs } from '../api/posMePrefsApi';
+import { posMePrefsApi, type NotificationPrefs, type NotificationDeliveryPage, type DeliveryQuery } from '../api/posMePrefsApi';
 import { posAuditApi, type AuditPage, type AuditEventRow } from '../api/posAuditApi';
 import { FitDialog, Pager, ErrorRetry, Empty } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
@@ -90,6 +90,7 @@ export function NotificationPrefsPanel({ rd, rdKnown }: { rd: MessagingReadiness
           {err ? <ErrorRetry message={err} onRetry={load} /> : !prefs ? <div className="state">{tx('pos.loading')}</div> : <div className="acx-ngrid">{NOTIF_ITEMS.map((it) => row(it, true))}</div>}
           {msg ? <div className={msg.tone === 'err' ? 'err' : 'sub'} style={{ marginTop: 8 }}>{msg.text}</div> : null}
           <p className="sub" style={{ marginTop: 10 }}>{tt('acx.notif.foot')}</p>
+          <DeliveryHistory />
         </FitDialog>
       ) : null}
     </section>
@@ -146,5 +147,45 @@ export function AccountActivityDialog({ onClose }: { onClose: () => void }) {
         </FitDialog>
       ) : null}
     </FitDialog>
+  );
+}
+
+/** batch 8 decision 7: my own alert deliveries (notification_delivery_logs) — search, channel, status, From–To, pages */
+export function DeliveryHistory() {
+  const [q, setQ] = useState<DeliveryQuery>({ page: 1, pageSize: 10 });
+  const [draft, setDraft] = useState('');
+  const [cal, setCal] = useState(false);
+  const [d, setD] = useState<NotificationDeliveryPage | null>(null); const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); posMePrefsApi.deliveries(q).then(setD).catch((e) => setErr(reportError(e, tt('acx.dh.title')))); }, [q]);
+  useEffect(load, [load]);
+  const set = (p: Partial<DeliveryQuery>) => setQ((c) => ({ ...c, ...p, page: p.page ?? 1 }));
+  const any = !!(q.q || q.channel || q.status || q.from || q.to);
+  return (
+    <section className="acx-dh" data-testid="acx-dh">
+      <div className="acx-h" style={{ margin: '14px 0 8px' }}>{tt('acx.dh.title')}</div>
+      <div className="acx-afilters">
+        <form className="cnx-searchrow" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
+          <input className="rvw-search" type="search" data-testid="acx-dh-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tt('acx.dh.searchPh')} aria-label={tt('acx.dh.searchPh')} />
+          <button className="btn" type="submit">{tt('dfx.search')}</button>
+        </form>
+        <select data-testid="acx-dh-channel" aria-label={tt('acx.dh.channel')} value={q.channel ?? 'all'} onChange={(e) => set({ channel: e.target.value })}>
+          {['all', 'sms', 'email', 'push'].map((c) => <option key={c} value={c}>{tt('acx.dh.ch.' + c)}</option>)}</select>
+        <select data-testid="acx-dh-status" aria-label={tt('acx.dh.status')} value={q.status ?? 'all'} onChange={(e) => set({ status: e.target.value })}>
+          {['all', 'delivered', 'sent', 'queued', 'failed', 'suppressed', 'blocked'].map((c) => <option key={c} value={c}>{tt('acx.dh.st.' + c)}</option>)}</select>
+        <button type="button" className={'btn ghost' + (q.from || q.to ? ' on' : '')} data-testid="acx-dh-range" onClick={() => setCal(true)}>{q.from || q.to ? `${q.from ?? '…'} → ${q.to ?? '…'}` : tt('dfx.range')}</button>
+        {any ? <button type="button" className="btn ghost" onClick={() => { setDraft(''); setQ({ page: 1, pageSize: q.pageSize }); }}>{tt('acx.act.clear')}</button> : null}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: q.from, to: q.to }} today={deviceToday()} onApply={(r) => { set({ from: r.from, to: r.to }); setCal(false); }}
+          onCancel={() => setCal(false)} onClear={() => { set({ from: undefined, to: undefined }); setCal(false); }} /></div> : null}
+      </div>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !d ? <div className="state">{tx('pos.loading')}</div>
+        : d.items.length === 0 ? <Empty title={any ? tt('acx.dh.noMatch') : tt('acx.dh.none')} />
+        : <div className="rvw-table-wrap"><table className="tbl rvw-table" data-testid="acx-dh-table">
+          <thead><tr><th>{tx('pos.time')}</th><th>{tt('acx.dh.alert')}</th><th>{tt('acx.dh.channel')}</th><th>{tt('acx.dh.to')}</th><th>{tt('acx.dh.status')}</th></tr></thead>
+          <tbody>{d.items.map((r) => (
+            <tr key={r.id} data-testid="acx-dh-row"><td className="sub nowrap">{when(r.createdAt)}</td><td style={{ fontWeight: 700 }}>{codeLabel('admin.notif.template', r.template)}</td>
+              <td>{tt('acx.dh.ch.' + r.channel)}</td><td className="sub">{r.targetMasked}</td>
+              <td><span className={'chip ' + (r.status === 'delivered' || r.status === 'sent' ? 'ok' : r.status === 'failed' || r.status === 'blocked' ? 'bad' : 'warn')}>{tt('acx.dh.st.' + r.status)}</span>{r.error ? <div className="sub" style={{ fontSize: 11 }}>{r.error}</div> : null}</td></tr>))}</tbody></table></div>}
+      <div className="rvw-pager"><Pager info={d ? { page: d.page, pageSize: d.pageSize, totalItems: d.total, totalPages: d.totalPages } : null} onPage={(p) => set({ page: p })} /></div>
+    </section>
   );
 }

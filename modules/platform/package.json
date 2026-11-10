@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@aipowersalon/api-contracts": "*",
+    "@aipowersalon/audit": "*",
     "@aipowersalon/cache": "*",
     "@aipowersalon/database": "*",
     "@aipowersalon/observability": "*",

@@ -39,7 +39,20 @@ against its guide; nothing was removed or renamed. Vietnamese text added in this
 Note: two earlier pilot / security / API runs failed only while five heavy suites shared the machine (browser crash,
 timeouts, killed run); each passed when re-run on its own and the numbers above are those solo runs.
 
-## Decisions for Kevin
+## Decisions 1–8 — built (Kevin: "Build all", Nov 9 2026)
+
+| # | Decision | What was built |
+|---|---|---|
+| 1 | Kiosks stay Super-Admin-provisioned | Kiosk page states it ("Kiosks are set up by AI PowerSalon") with an **Ask support for a kiosk** button; search / check / history unchanged |
+| 2 | Printer registry | Migration **844 `receipt_printers`** + `pos/receipt-printers` (add / edit / turn off / retire, `pos.devices.manage`, canonical audit). Receipt Devices lists printers from the fleet with Add printer / Edit / Turn off / Retire and per-printer history. **No print bridge**: a printer is never shown online (`NO_PRINT_BRIDGE`); digital receipts unchanged |
+| 3 | Link unlinked plans | Super Admin → Plans: **"Salons not linked to a catalogue plan"** panel + audited **Link to plan** (`GET /super-admin/plans/unlinked-tenants`, `POST …/tenants/:id/link`). Writes `plan_code` only — plan text, price, status untouched. Entitlements read a linked code first |
+| 4 | Trusted devices | Correction: the registry **already existed** (`auth_devices`, Security & 2FA). Account now counts trusted, unexpired devices from it |
+| 5 | Brand colours | `brandPrimary` / `brandAccent` (#RRGGBB) in Receipts & Branding with colour pickers; server refuses a shade under 3:1 contrast on white (`BRAND_COLOR_LOW_CONTRAST`); Account shows the swatches |
+| 6 | Requestable roles from policy | One policy (`SELF_REQUESTABLE_ROLES` + `requestableRoles`) used by the create path and `GET /me/access-requests/roles`; the POS dropdown reads it (held / open request / high risk), never a hard-coded list |
+| 7 | Notification delivery history | `GET /pos/me/notification-deliveries` over the existing `notification_delivery_logs` (own rows, newest first, channel / status / search / salon-local From–To, pages); "Delivery history" in Manage All |
+| 8 | Remove the plan template | Settings `subscriptionPlan` defaults are empty; plan / tier / status and customer / technician counts are read live (tenant_subscriptions + catalogue, customers, technicians); SMS-this-month shows "—". Account shows the subscription's own plan text |
+
+## Decisions for Kevin (original list — all eight now built, see above)
 
 1. **Kiosks** are created by Super Admin only — tenants can view, search and check them but not add one. Keep?
 2. **Printers**: there is no printer registry or bridge; Receipt Devices honestly says NOT CONFIGURED and shows the real digital-receipt history. Build a printer registry, or stay digital-first?

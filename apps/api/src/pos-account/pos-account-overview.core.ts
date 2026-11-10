@@ -12,7 +12,7 @@ export type AccountRows = {
   user: { email: string | null; normalized_phone: string | null; role: string | null; created_at: unknown; last_login_at: unknown; password_changed_at: unknown } | null;
   tenant: { display_name: string | null; legal_name: string | null; business_phone: string | null; tenant_code: string | null } | null;
   branch: { name: string | null; address: string | null; city: string | null; state: string | null; zip: string | null; phone: string | null; timezone: string | null; public_display_name: string | null } | null;
-  subscription: { plan_name: string | null; plan_code: string | null; status: string | null; current_period_end: unknown; monthly_price_cents: number | null } | null;
+  subscription: { plan_name: string | null; plan_code: string | null; plan_text?: string | null; status: string | null; current_period_end: unknown; monthly_price_cents: number | null } | null;
   branches: { name: string; address: string | null; city: string | null; state: string | null; role: string | null; access_level: string | null; status: string | null }[];
   roleCounts: { role: string; n: number }[];
   activeBranchCount: number;
@@ -58,7 +58,7 @@ export function buildAccountOverview(rows: AccountRows): PosAccountOverview {
     },
     security: { passwordChanged: iso(user?.password_changed_at), loginAlerts: null, trustedDevices: null },
     billing: {
-      plan: subscription?.plan_name ?? subscription?.plan_code ?? null, status: subscription?.status ?? null, renewal, renewalShort: renewal ? `Next: ${renewal.slice(0, 10)}` : null,
+      plan: subscription?.plan_name ?? subscription?.plan_text ?? subscription?.plan_code ?? null, status: subscription?.status ?? null, renewal, renewalShort: renewal ? `Next: ${renewal.slice(0, 10)}` : null,
       method: null, expires: null, fee: money(subscription?.monthly_price_cents),
       locations: String(rows.activeBranchCount), users: String(activeUsers), features: [],
     },

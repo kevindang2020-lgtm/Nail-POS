@@ -643,6 +643,8 @@ export const ERROR_REGISTRY = {
   LOCATIONS_INVALID_PERIOD:       { status: 400, message: 'Pick a From date on or before the To date.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },
   LOCATIONS_SEARCH_TOO_SHORT:     { status: 400, message: 'Type at least 2 characters to search.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },
   NOTIFICATION_PREFS_SAVE_FAILED: { status: 503, message: 'Your notification preferences could not be saved. Try again.', domain: 'auth', retryable: true, severity: 'warning', action: 'RETRY' },
+  BRAND_COLOR_LOW_CONTRAST:       { status: 400, message: 'That colour is too light to read on white — pick a darker shade.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },
+  PRINTER_RETIRED:                { status: 409, message: 'A retired printer cannot be changed.', domain: 'general', retryable: false, severity: 'info', action: 'REFRESH' },
   OWN_ROLE_CHANGE:                { status: 403, message: 'You cannot change your own role.', domain: 'workforce', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
   OWN_ACCOUNT_DISABLE:            { status: 403, message: 'You cannot disable your own account.', domain: 'workforce', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
   PLATFORM_ACCOUNTS_ELSEWHERE:    { status: 403, message: 'Platform accounts are managed by the platform team, not here.', domain: 'workforce', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },

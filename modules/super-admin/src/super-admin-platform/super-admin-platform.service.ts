@@ -5,6 +5,8 @@ import { tenantPred, type OverviewScope, type DB } from '@aipowersalon/database'
 import { encryptField, decryptField } from './field-encryption';
 import { APPLICATION_STATUSES, APPLICATION_PRIORITIES, APPLICATION_CONTACT_CHANNELS, canTransitionApplication } from './applications-lifecycle-core';
 import { randomBytes } from 'node:crypto';
+import { SELF_REQUESTABLE_ROLES, requestableRoles } from './access-request-core';   // batch 8 decision 6
+import type { RequestableRolesResponse } from '@aipowersalon/api-contracts/tenant';
 import { applyPerformanceQuery } from './tenant-performance-core';
 import { portalUrl } from '@aipowersalon/config';
 import { AutomationEngineService } from '@aipowersalon/platform';
@@ -1578,7 +1580,7 @@ export class SuperAdminPlatformService {
   //    from req.ctx (never the client); a user cannot self-request SUPER_ADMIN. ──
   async createOwnAccessRequest(ctx: AdminCtx, input: any) {
     if (!ctx.userId) throw new PlatformError('invalid', 'Authenticated context required.');
-    const SELF_ROLES = ['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION', 'TECHNICIAN']; // not SUPER_ADMIN
+    const SELF_ROLES: readonly string[] = SELF_REQUESTABLE_ROLES; // the one policy (access-request-core) — never SUPER_ADMIN
     const requestedRole = String(input?.requestedRole || '').trim();
     const reason = String(input?.reason || '').trim();
     const requestedDurationDays = input?.requestedDurationDays != null && input.requestedDurationDays !== '' ? Number(input.requestedDurationDays) : null;
@@ -1596,6 +1598,14 @@ export class SuperAdminPlatformService {
     const r = await this.repo.createAccessRequest({ tenantId: me.tenant_id ?? null, requestingUserId: ctx.userId, currentRole: me.role ?? null, requestedRole, reason, requestedDurationDays });
     await this.audit(ctx, 'access_request_created', 'access_request', r.id, { requestingUserId: ctx.userId, requestedRole, self: true, highRisk: r.highRisk });
     return { id: r.id, status: r.status, highRisk: r.highRisk };
+  }
+  /** batch 8 decision 6: the roles this user may request, from the same policy the create path enforces */
+  async ownRequestableRoles(ctx: AdminCtx): Promise<RequestableRolesResponse> {
+    if (!ctx.userId) throw withCode(new PlatformError('invalid', 'Please sign in again.'), 'AUTH_REQUIRED');
+    const me: any = await this.repo.userById(ctx.userId);
+    const open = await this.repo.listAccessRequests({ requestingUserId: ctx.userId, page: 1, pageSize: 100 });
+    const openRoles = (open?.rows ?? []).filter((x: { status?: string }) => x.status === 'submitted' || x.status === 'under_review').map((x: { requestedRole?: string }) => String(x.requestedRole));
+    return { roles: requestableRoles(me?.role ?? null, openRoles) };
   }
   listOwnAccessRequests(ctx: AdminCtx) {
     if (!ctx.userId) throw new PlatformError('invalid', 'Authenticated context required.');

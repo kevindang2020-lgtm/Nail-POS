@@ -4245,3 +4245,8 @@ button.loc-kpi { border: 0; text-align: left; cursor: pointer; font: inherit; }
 [data-testid="lgx-screen"] > * { flex-shrink: 0; }
 [data-testid="lgx-screen"] .cnx-searchrow { flex: 1 1 420px; }
 [data-testid="lgx-results"] .fk-empty { height: auto; min-height: 160px; }
+
+/* Receipt Devices — printer records (batch 8 decision 2) */
+.prx-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.prx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.prx-grid input, .prx-grid select { height: 40px; }

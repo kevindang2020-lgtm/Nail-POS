@@ -27,7 +27,10 @@ export class KyselyEntitlementsRepo implements EntitlementsRepo {
   }
 
   async getActivePlanText(tenantId: string): Promise<string | null> {
-    const r: any = await sql`SELECT plan FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    // Nov 9 2026 (batch 8 decision 3): a Super Admin "link" sets plan_code to a catalogue code without touching the plan
+    // text or the price; a linked code wins, anything else falls back to the plan text exactly as before
+    const r: any = await sql`SELECT CASE WHEN plan_code IS NOT NULL AND EXISTS (SELECT 1 FROM subscription_plans sp WHERE lower(sp.code) = lower(tenant_subscriptions.plan_code))
+                             THEN plan_code ELSE plan END AS plan FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
                              AND lower(status) = 'active' ORDER BY current_period_end DESC NULLS LAST LIMIT 1`.execute(this.db);
     return r.rows[0]?.plan != null ? String(r.rows[0].plan) : null;
   }

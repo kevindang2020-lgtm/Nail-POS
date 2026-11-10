@@ -3,9 +3,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn() }));
+const m = vi.hoisted(() => ({ ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn(), addPrinter: vi.fn(), updatePrinter: vi.fn(), retirePrinter: vi.fn(), cdState: vi.fn() }));
 vi.mock('../api/posDevicesApi', () => ({ posDevicesApi: { overview: m.ov } }));
-vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check } }));
+vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check, addPrinter: m.addPrinter, updatePrinter: m.updatePrinter, retirePrinter: m.retirePrinter } }));
+vi.mock('../api/posCustomerDisplaysApi', () => ({ posCustomerDisplaysApi: { state: m.cdState } }));
 import { POSDeviceFleetScreen } from './POSDeviceFleetScreen';
 
 const dev = (o: Record<string, unknown> = {}) => ({ id: 'd1', source: 'station', class: 'reception_pos', name: 'Front Desk 1', type: 'reception_pos', branchId: 'b1', branch: 'Main', station: 'Front Desk 1', status: 'online', reason: null, lastSeenAt: null, createdAt: '2026-11-01T10:00:00Z', updatedAt: null, facts: { displays: 1 }, ...o });
@@ -38,14 +39,23 @@ describe('Devices sub-pages', () => {
     fireEvent.click(screen.getByTestId('dfx-search-btn'));
     await waitFor(() => expect(m.devices).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'front' })));
   });
-  it('Receipt Devices: printers NOT CONFIGURED, digital receipts are the history', async () => {
-    m.summary.mockResolvedValue({ class: 'receipt', checkedAt: '2026-11-09T10:00:00Z', registered: 0, online: 0, attention: 0, unassigned: 0, disabled: 0, retired: 0, extra: { printerRegistry: 'not_configured', emailToday: 4, smsToday: 2, noReceiptToday: 1, failedToday: 0 } });
+  it('Receipt Devices: printer RECORDS (never online), add one at a register, digital receipts are the history', async () => {
+    m.summary.mockResolvedValue({ class: 'receipt', checkedAt: '2026-11-09T10:00:00Z', registered: 1, online: 0, attention: 0, unassigned: 0, disabled: 0, retired: 0, extra: { printerRegistry: 'records_only', printBridge: 'not_configured', emailToday: 4, smsToday: 1, noReceiptToday: 0, failedToday: 0 } });
+    m.devices.mockResolvedValue({ ...listOf([dev({ id: 'p1', source: 'printer', class: 'receipt', name: 'Epson TM-m30', type: 'receipt_printer', status: 'unknown', reason: 'NO_PRINT_BRIDGE', lastSeenAt: null, facts: { connection: 'network', paperWidthMm: 80, stationId: 's1' } })]), class: 'receipt' });
     m.history.mockResolvedValue({ class: 'receipt', items: [], receipts: [{ id: 'r1', at: '2026-11-09T10:00:00Z', choice: 'email', status: 'sent', ticket: '12', station: 'Front Desk 1' }], total: 1, page: 1, pageSize: 25, totalPages: 1 });
+    m.cdState.mockResolvedValue({ stations: [{ id: 's1', name: 'Front Desk 1' }] });
+    m.addPrinter.mockResolvedValue({ id: 'p2' });
     r('receipt-devices');
-    expect(await screen.findByText(/No receipt printer connected/)).toBeInTheDocument();
-    expect(screen.getByTestId('dfx-kpi-printers').textContent).toMatch(/Not configured/);
-    await waitFor(() => expect(screen.getByTestId('dfx-kpi-email').textContent).toContain('4'));
-    expect(m.devices).not.toHaveBeenCalled();
+    expect(await screen.findByText('Epson TM-m30')).toBeInTheDocument();
+    expect(screen.getByTestId('prx-note')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('dfx-kpi-printers').textContent).toContain('1'));
+    expect(screen.getByTestId('dfx-connected').textContent).toMatch(/^0 /);   // a record is never "connected"
+    fireEvent.click(screen.getByTestId('prx-add'));
+    fireEvent.change(await screen.findByTestId('prx-name'), { target: { value: 'Back printer' } });
+    await waitFor(() => expect(screen.getByTestId('prx-station').querySelectorAll('option').length).toBe(2));
+    fireEvent.change(screen.getByTestId('prx-station'), { target: { value: 's1' } });
+    fireEvent.click(screen.getByTestId('prx-save'));
+    await waitFor(() => expect(m.addPrinter).toHaveBeenCalledWith(expect.objectContaining({ name: 'Back printer', connection: 'network', paperWidthMm: 80, posStationId: 's1' })));
     fireEvent.click(screen.getByTestId('dfx-tab-history'));
     expect(await screen.findByText('#12')).toBeInTheDocument();
   });

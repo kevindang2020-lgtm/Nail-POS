@@ -9,15 +9,16 @@
 //   • Devices | History tabs — search, status, which date + From–To calendar, sort, newest first, numbered pages
 //     10 / 25 / 50 / 100 — the six original columns (Device · Type · Branch · Station · Status · Last sync) + details
 //   • a device's details with its own history; the true empty state with what to do next
-//   • Receipt Devices: AI PowerSalon keeps no printer registry (receipts are digital — Email / SMS / No receipt on the
-//     customer display), so printers show NOT CONFIGURED and the page shows the real digital-receipt history.
+//   • Receipt Devices: the salon's receipt-printer RECORDS (receipt_printers, batch 8 decision 2) — add / assign / disable /
+//     retire. There is no print bridge, so no printer is ever shown online; the history is the real digital receipts.
 // Read-only: device actions stay on the owning pages (registers & displays → Customer Displays, terminals → Payment
 // Terminals; kiosks are set up by AIPowerSalon support). No count is invented — an unreadable figure shows "—".
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
 import { posDevicesApi, type DevicesOverview } from '../api/posDevicesApi';
-import { posDeviceFleetApi, type DeviceFleetQuery } from '../api/posDeviceFleetApi';
+import { posDeviceFleetApi, type DeviceFleetQuery, type PrinterInput } from '../api/posDeviceFleetApi';
+import { posCustomerDisplaysApi, type PosStationView } from '../api/posCustomerDisplaysApi';
 import { reportError } from './reportsCommon';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
@@ -59,6 +60,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<DfDevice | null>(null);
   const [health, setHealth] = useState<DfCheckResponse | 'loading' | { error: string } | null>(null);
+  const [printerForm, setPrinterForm] = useState<'new' | DfDevice | null>(null);
   const seq = useRef(0);
   const setF = (p: Partial<DeviceFleetQuery>, keepPage = false) => setFState((c) => ({ ...c, ...p, page: keepPage ? (p.page ?? c.page) : 1 }));
 
@@ -68,10 +70,9 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
     if (view === 'health') posDevicesApi.overview().then(setOv).catch((e) => setTopErr(reportError(e, 'devices')));
   }, [cfg.cls, view]);
   const loadList = useCallback(() => {
-    if (cfg.cls === 'receipt') return;
     const my = ++seq.current; setListErr(null);
     posDeviceFleetApi.devices(f).then((d) => { if (my === seq.current) setList(d); }).catch((e) => { if (my === seq.current) setListErr(reportError(e, 'devices')); });
-  }, [f, cfg.cls]);
+  }, [f]);
   useEffect(loadTop, [loadTop]);
   useEffect(loadList, [loadList]);
   const refresh = () => { loadTop(); loadList(); };
@@ -80,7 +81,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   const n = (v: number | undefined | null) => (v == null ? '—' : fmtNumber(v));
   const card = (k: string, label: string, v: number | null | undefined, sub?: string, tone?: 'ok' | 'warn' | 'bad' | 'gold', status?: string) =>
     <KpiCard key={k} testId={`dfx-kpi-${k}`} label={label} value={sum || ov ? n(v) : topErr ? '—' : ''} loading={!sum && !ov && !topErr} sub={sub} tone={tone}
-      onClick={status && cfg.cls !== 'receipt' ? () => { setTab('devices'); setF({ status }); } : undefined} />;
+      onClick={status ? () => { setTab('devices'); setF({ status }); } : undefined} />;
   const kpis = () => {
     const s = sum; const x = (s?.extra ?? {}) as Record<string, number | null>;
     if (view === 'health') {
@@ -89,7 +90,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
         card('terminals', tx('pos.payment_terminals'), k?.paymentTerminals), card('locations', tx('pos.locations'), k?.locationsConnected)];
     }
     if (view === 'receipt-devices') return [
-      <KpiCard key="printers" testId="dfx-kpi-printers" label={tt('dfx.kpi.printers')} value={tt('dfx.notConfigured')} sub={tt('dfx.kpi.printersSub')} />,
+      <KpiCard key="printers" testId="dfx-kpi-printers" label={tt('dfx.kpi.printers')} value={s ? n(s.registered) : topErr ? '—' : ''} loading={!s && !topErr} sub={tt('prx.kpiSub')} onClick={() => { setTab('devices'); setF({ status: 'all' }); }} />,
       card('email', tt('dfx.kpi.emailToday'), x.emailToday as number, tt('dfx.kpi.todaySub'), 'ok'), card('sms', tt('dfx.kpi.smsToday'), x.smsToday as number, tt('dfx.kpi.todaySub'), 'ok'),
       card('none', tt('dfx.kpi.noneToday'), x.noReceiptToday as number, x.failedToday ? tt('dfx.kpi.failedSub', { n: x.failedToday as number }) : tt('dfx.kpi.todaySub'), x.failedToday ? 'warn' : undefined)];
     const reg = tt(`dfx.kpi.${cfg.key}.registered`);
@@ -134,13 +135,20 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
         <button role="tab" aria-selected={tab === 'history'} className={'btn ghost' + (tab === 'history' ? ' on' : '')} data-testid="dfx-tab-history" onClick={() => setTab('history')}>{tt(view === 'receipt-devices' ? 'dfx.tab.receipts' : 'dfx.tab.history')}</button>
       </div>
 
-      {tab === 'devices' && view === 'receipt-devices' ? (
-        <section className="panel dfx-empty" data-testid="dfx-results">
-          <Empty title={tx('admin.devices.noneConnected', { noun: cfg.noun() })} />
-          <p className="sub">{tt('dfx.receipt.why')}</p>
-          <ul className="dfx-steps"><li>{tt('dfx.receipt.1')}</li><li>{tt('dfx.receipt.2')}</li><li>{tt('dfx.receipt.3')}</li></ul>
+      {/* batch 8 decision 1: kiosks stay Super-Admin-provisioned (hardware AI PowerSalon ships) — the salon asks support */}
+      {view === 'check-in-kiosk' ? (
+        <section className="panel prx-note" data-testid="ksk-note">
+          <div style={{ flex: 1, minWidth: 0 }}><b>{tt('ksk.noteTitle')}</b><div className="sub">{tt('ksk.note')}</div></div>
+          <button className="btn ghost" data-testid="ksk-request" onClick={() => nav('/tenant/account/support')}>{tt('ksk.request')}</button>
         </section>
-      ) : tab === 'devices' ? (<>
+      ) : null}
+      {tab === 'devices' && view === 'receipt-devices' ? (
+        <section className="panel prx-note" data-testid="prx-note">
+          <div style={{ flex: 1, minWidth: 0 }}><b>{tt('prx.noteTitle')}</b><div className="sub">{tt('prx.note')}</div></div>
+          <button className="btn" data-testid="prx-add" onClick={() => setPrinterForm('new')}>{tt('prx.add')}</button>
+        </section>
+      ) : null}
+      {tab === 'devices' ? (<>
         <section className="panel rvw-filters" data-testid="dfx-filters">
           <form className="cnx-searchrow" onSubmit={(e) => { e.preventDefault(); setF({ q: draft.trim() || undefined }); }}>
             <input className="rvw-search" type="search" data-testid="dfx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tt('dfx.searchPh')} aria-label={tt('dfx.searchPh')} />
@@ -185,7 +193,8 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
         </section>
       </>) : <FleetHistory cls={cfg.cls} />}
 
-      {open ? <DeviceDetail d={open} onClose={() => setOpen(null)} /> : null}
+      {open ? <DeviceDetail d={open} onClose={() => setOpen(null)} onEditPrinter={(d) => { setOpen(null); setPrinterForm(d); }} onChanged={() => { setOpen(null); refresh(); }} /> : null}
+      {printerForm ? <PrinterForm d={printerForm === 'new' ? null : printerForm} onClose={() => setPrinterForm(null)} onSaved={() => { setPrinterForm(null); refresh(); }} /> : null}
       {health ? <FitDialog wide testId="dfx-health" title={tt(`dfx.check.${cfg.key}`)} onClose={() => setHealth(null)} footer={<button className="btn ghost" onClick={() => setHealth(null)}>{tx('pos.close')}</button>}
         subtitle={health !== 'loading' && !('error' in health) ? `${tt('dfx.hs.' + health.overall)} · ${when(health.checkedAt)}` : undefined}>
         {health === 'loading' ? <div className="state">{tt('dfx.checking')}</div> : 'error' in health ? <div className="err">{health.error}</div> : <>
@@ -232,13 +241,20 @@ export function FleetHistory({ cls, deviceId }: { cls: DfClass; deviceId?: strin
   );
 }
 
-function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {
+function DeviceDetail({ d, onClose, onEditPrinter, onChanged }: { d: DfDevice; onClose: () => void; onEditPrinter?: (d: DfDevice) => void; onChanged?: () => void }) {
   const nav = useNavigate();
+  const [pBusy, setPBusy] = useState(false); const [pErr, setPErr] = useState<string | null>(null);
+  const printerAct = (fn: () => Promise<unknown>) => { setPBusy(true); setPErr(null); fn().then(() => onChanged?.()).catch((e) => setPErr(reportError(e, tt('prx.title')))).finally(() => setPBusy(false)); };
+  const isPrinter = d.source === 'printer'; const live = !['retired'].includes(d.status);
   const owner = d.source === 'terminal' ? '/tenant/devices/payment-terminals' : d.source === 'display' || d.source === 'station' ? '/tenant/devices/customer-displays' : null;
-  const facts = Object.entries(d.facts ?? {}).filter(([, v]) => v != null && v !== '');
+  const facts = Object.entries(d.facts ?? {}).filter(([k, v]) => v != null && v !== '' && k !== 'stationId');
   return (
     <FitDialog wide testId="dfx-detail" title={d.name || tt('dfx.unnamed')} subtitle={`${d.source === 'station' ? tx('pos.reception_pos') : typeLabel(d.type)} · ${d.branch ?? tt('dfx.noBranch')}`} onClose={onClose}
-      footer={<>{owner ? <button className="btn" data-testid="dfx-detail-manage" onClick={() => nav(owner)}>{tt(d.source === 'terminal' ? 'dfx.manage.terminals' : 'dfx.manage.displays')}</button> : <span className="sub">{tt('dfx.kioskSupport')}</span>}
+      footer={<>{isPrinter && live ? <>
+          <button className="btn" data-testid="prx-edit" disabled={pBusy} onClick={() => onEditPrinter?.(d)}>{tt('prx.edit')}</button>
+          <button className="btn ghost" data-testid="prx-toggle" disabled={pBusy} onClick={() => printerAct(() => posDeviceFleetApi.updatePrinter(d.id, { status: d.status === 'disabled' ? 'active' : 'disabled' }))}>{tt(d.status === 'disabled' ? 'prx.enable' : 'prx.disable')}</button>
+          <button className="btn ghost" data-testid="prx-retire" disabled={pBusy} onClick={() => printerAct(() => posDeviceFleetApi.retirePrinter(d.id))}>{tt('prx.retire')}</button></> : null}
+        {owner ? <button className="btn" data-testid="dfx-detail-manage" onClick={() => nav(owner)}>{tt(d.source === 'terminal' ? 'dfx.manage.terminals' : 'dfx.manage.displays')}</button> : <span className="sub">{tt('dfx.kioskSupport')}</span>}
         <button className="btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
       <dl className="ahx-dl">
         <dt>{tx('pos.status')}</dt><dd>{statusChip(d.status)}{d.reason ? <span className="sub"> — {tt('dfx.reason.' + d.reason)}</span> : null}</dd>
@@ -247,8 +263,41 @@ function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {
         <dt>{tt('dfx.date.created')}</dt><dd>{when(d.createdAt)}</dd>
         {facts.map(([k, v]) => <Fragment key={k}><dt>{tt('dfx.fact.' + k)}</dt><dd>{typeof v === 'string' && /^[a-z_]+$/.test(v) ? tt('dfx.val.' + v) : String(v)}</dd></Fragment>)}
       </dl>
+      {pErr ? <div className="err">{pErr}</div> : null}
       <h3 className="dfx-h3">{tt('dfx.tab.history')}</h3>
-      <FleetHistory cls={d.source === 'station' ? 'reception_pos' : d.source === 'kiosk' ? 'kiosk' : d.source === 'terminal' ? 'terminal' : 'display'} deviceId={d.id} />
+      <FleetHistory cls={d.source === 'station' ? 'reception_pos' : d.source === 'kiosk' ? 'kiosk' : d.source === 'terminal' ? 'terminal' : d.source === 'printer' ? 'receipt' : 'display'} deviceId={d.id} />
+    </FitDialog>
+  );
+}
+
+/** add / edit a receipt-printer RECORD (batch 8 decision 2) — the register list is this location's own registers */
+function PrinterForm({ d, onClose, onSaved }: { d: DfDevice | null; onClose: () => void; onSaved: () => void }) {
+  const f0 = (d?.facts ?? {}) as { connection?: string; address?: string | null; paperWidthMm?: number; stationId?: string | null };
+  const [v, setV] = useState<PrinterInput>({ name: d?.name ?? '', connection: (f0.connection as PrinterInput['connection']) ?? 'network', address: f0.address ?? '', paperWidthMm: (f0.paperWidthMm === 58 ? 58 : 80), posStationId: f0.stationId ?? null });
+  const [stations, setStations] = useState<PosStationView[] | null>(null);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { posCustomerDisplaysApi.state().then((s) => setStations(s?.stations ?? [])).catch((e) => { setStations([]); setErr(reportError(e, tx('pos.station'))); }); }, []);
+  const ok = !!v.name?.trim() && !busy;
+  const save = () => {
+    if (!ok) return; setBusy(true); setErr(null);
+    const body: PrinterInput = { ...v, name: v.name!.trim(), address: v.address?.trim() || null };
+    (d ? posDeviceFleetApi.updatePrinter(d.id, body) : posDeviceFleetApi.addPrinter({ name: body.name, connection: body.connection, address: body.address, paperWidthMm: body.paperWidthMm, posStationId: body.posStationId })).then(onSaved).catch((e) => setErr(reportError(e, tt('prx.title')))).finally(() => setBusy(false));
+  };
+  return (
+    <FitDialog testId="prx-form" title={tt(d ? 'prx.edit' : 'prx.add')} subtitle={tt('prx.formSub')} onClose={onClose} busy={busy}
+      footer={<><button className="btn ghost" onClick={onClose}>{tx('pos.cancel')}</button><button className="btn" data-testid="prx-save" disabled={!ok} onClick={save}>{busy ? tx('pos.saving_2') : tt('prx.save')}</button></>}>
+      <div className="prx-grid">
+        <label className="rvw-f"><span>{tt('prx.name')}</span><input data-testid="prx-name" maxLength={80} value={v.name ?? ''} onChange={(e) => setV({ ...v, name: e.target.value })} /></label>
+        <label className="rvw-f"><span>{tt('prx.connection')}</span><select data-testid="prx-connection" value={v.connection} onChange={(e) => setV({ ...v, connection: e.target.value as PrinterInput['connection'] })}>
+          {(['network', 'usb', 'bluetooth', 'cloud'] as const).map((c) => <option key={c} value={c}>{tt('prx.conn.' + c)}</option>)}</select></label>
+        <label className="rvw-f"><span>{tt('prx.address')}</span><input data-testid="prx-address" maxLength={120} value={v.address ?? ''} onChange={(e) => setV({ ...v, address: e.target.value })} placeholder={tt('prx.addressPh')} /></label>
+        <label className="rvw-f"><span>{tt('prx.paper')}</span><select data-testid="prx-paper" value={String(v.paperWidthMm)} onChange={(e) => setV({ ...v, paperWidthMm: e.target.value === '58' ? 58 : 80 })}>
+          <option value="80">{tt('prx.mm', { n: 80 })}</option><option value="58">{tt('prx.mm', { n: 58 })}</option></select></label>
+        <label className="rvw-f"><span>{tx('pos.station')}</span><select data-testid="prx-station" value={v.posStationId ?? ''} onChange={(e) => setV({ ...v, posStationId: e.target.value || null })}>
+          <option value="">{tx('pos.unassigned')}</option>{(stations ?? []).map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}</select></label>
+      </div>
+      {err ? <div className="err" style={{ marginTop: 8 }}>{err}</div> : null}
+      <p className="sub" style={{ marginTop: 8 }}>{tt('prx.note')}</p>
     </FitDialog>
   );
 }

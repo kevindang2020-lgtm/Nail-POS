@@ -3,6 +3,7 @@
 // source yet render "—"/"Not connected yet" (never fabricated). Money is integer cents from the API, formatted here.
 import { useMemo, useState, useEffect, type CSSProperties } from 'react';
 import { usePlansOverview, superAdminPlansApi, type PlanDirectoryRow, type PlanUtilization } from '../api/superAdminPlansApi';
+import { UnlinkedPlansPanel } from './UnlinkedPlansPanel';
 import { AddPlanModal, ChangePricingModal, ChangePlanModal, ManageOffersModal, EntitlementsModal, ConfigureDefaultLimitsModal, ConfigureOveragePricingModal, GrandfatherModal, PlanUtilizationModal } from './PlanModals';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
@@ -184,6 +185,9 @@ export function PlansScreen() {
       <div className=" grid  grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 mb-3 mt-3">
         {kpiCards.map((c) => <KpiCard key={c.label} {...c} />)}
       </div>
+
+      {/* batch 8 decision 3: salons whose plan maps to no catalogue plan (their Features page is empty) */}
+      <div className="mb-3"><UnlinkedPlansPanel /></div>
 
       {/* directory (left) + alert rails (right) */}
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-3.5 items-start">
