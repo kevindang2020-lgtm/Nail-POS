@@ -35,7 +35,7 @@ type SalesKpis = {
 type ServiceRow = { serviceId: string; serviceName: string; revenueCents: number; serviceCount: number; percentOfTop: number };
 type ReportState = {
   salesKpis: SalesKpis; revenueByService?: ServiceRow[]; trend?: RevenueTrend;
-  payments?: { cardCents: number; cashCents: number; giftCardCents: number };
+  payments?: { cardCents: number; cashCents: number; giftCardCents: number; collectedCents?: number };
   dateRange?: { from: string; to: string; timezone?: string };
 };
 const PRESETS = ['today', 'week', 'month', 'year', 'custom'];
@@ -137,7 +137,7 @@ export function POSSalesReportScreen() {
 
       {s && k ? (<>
         <div className="kpis">{cards.map(([l, v, ck]) => (<div className="kpi" key={l} title={t(`rpt.calc.${ck}.d`)}><div className="l">{l}</div><div className="v">{v}</div></div>))}</div>
-        {s.payments ? <ChargeReconcile sk={k} collectedCents={s.payments.cardCents + s.payments.cashCents + s.payments.giftCardCents} money={money} /> : null}
+        {s.payments ? <ChargeReconcile sk={k} collectedCents={s.payments.collectedCents ?? s.payments.cardCents + s.payments.cashCents + s.payments.giftCardCents} money={money} /> : null}
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-3 mb-3">
           <section className="panel" style={{ minWidth: 0 }}>

@@ -126,3 +126,10 @@ describe('POSCommissionReportScreen', () => {
     expect(await screen.findByText(/No commissionable activity/)).toBeInTheDocument();
   });
 });
+
+describe('POSCommissionReportScreen — period from the URL (batch 9, Nov 10 2026)', () => {
+  it('a link from the Technicians Report opens on its period', async () => {
+    render(<MemoryRouter initialEntries={['/tenant/reports/commission?preset=custom&from=2026-10-01&to=2026-10-15']}><POSCommissionReportScreen /></MemoryRouter>);
+    await waitFor(() => expect(cm.summary).toHaveBeenCalledWith(expect.objectContaining({ preset: 'custom', from: '2026-10-01', to: '2026-10-15' })));
+  });
+});

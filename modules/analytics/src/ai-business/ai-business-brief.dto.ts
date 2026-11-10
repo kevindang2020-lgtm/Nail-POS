@@ -11,9 +11,10 @@ export type BriefRevenue =
 
 export interface BriefAppointments {
   totalBookings: number;
-  completed: number; completedPercent: number;
-  cancelled: number; cancelledPercent: number;
-  noShow: number; noShowPercent: number;
+  /** shares of totalBookings; null = nothing booked (N/A) — batch 9 guide 5: these are real appointment outcomes now */
+  completed: number; completedPercent: number | null;
+  cancelled: number; cancelledPercent: number | null;
+  noShow: number; noShowPercent: number | null;
 }
 export interface BriefQueue {
   averageWaitMinutes: number; longestWaitMinutes: number; walkIns: number; skipped: number; peakWindow: string;
@@ -62,11 +63,11 @@ export function deriveWatchItems(a: BriefAppointments, q: BriefQueue, t: BriefTh
   const limitedData = a.totalBookings < t.minSampleBookings;
 
   if (!limitedData) {
-    if (a.noShowPercent >= t.noShowPercent) watch.push({
+    if (a.noShowPercent != null && a.noShowPercent >= t.noShowPercent) watch.push({
       code: 'no_show_rate', severity: 'watch', metric: 'no_shows', value: a.noShowPercent, threshold: t.noShowPercent,
       message: `No-show rate is ${a.noShowPercent}% (${a.noShow} of ${a.totalBookings}).`,
     });
-    if (a.cancelledPercent >= t.cancelledPercent) watch.push({
+    if (a.cancelledPercent != null && a.cancelledPercent >= t.cancelledPercent) watch.push({
       code: 'cancellation_rate', severity: 'watch', metric: 'cancellations', value: a.cancelledPercent, threshold: t.cancelledPercent,
       message: `Cancellation rate is ${a.cancelledPercent}% (${a.cancelled} of ${a.totalBookings}).`,
     });

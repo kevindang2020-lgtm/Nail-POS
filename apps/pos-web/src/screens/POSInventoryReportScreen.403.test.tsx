@@ -1,8 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-const { sumMock, alertMock } = vi.hoisted(() => ({ sumMock: vi.fn(), alertMock: vi.fn() }));
-vi.mock('../api/posInventoryReportApi', () => ({ posInventoryReportApi: { summary: sumMock, alerts: alertMock } }));
+import { MemoryRouter } from 'react-router-dom';
+const { metricsMock } = vi.hoisted(() => ({ metricsMock: vi.fn() }));
+vi.mock('../api/posInventoryReportApi', () => ({ posInventoryReportApi: { metrics: metricsMock, products: vi.fn(), movements: vi.fn() } }));
 import { POSInventoryReportScreen } from './POSInventoryReportScreen';
 describe('Inventory report permissions', () => {
-  it('shows a permission message on 403', async () => { sumMock.mockRejectedValue({ status: 403 }); alertMock.mockRejectedValue({ status: 403 }); render(<POSInventoryReportScreen />); expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument(); });
+  it('shows a permission message on 403', async () => {
+    metricsMock.mockRejectedValue({ status: 403 });
+    render(<MemoryRouter><POSInventoryReportScreen /></MemoryRouter>);
+    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+  });
 });

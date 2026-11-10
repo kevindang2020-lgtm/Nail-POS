@@ -129,6 +129,11 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
         revenueChangePercent: change(trend.totalRevenueCents, before.totalRevenueCents), ticketsChangePercent: change(trend.totalTickets, before.totalTickets) };
     }
     out.state.trend = trend;
+    // batch 9 guide 15 (Nov 10 2026): taxable vs exempt from each line's own flag (it was all net sales taxable, exempt a
+    // constant 0) and by category from the lines; tax itself is recorded per TICKET, so no per-category tax is invented
+    const tax = await this.taxFacts(ctx, Object.keys(facts.ticketNumbers ?? {}));
+    out.state.tax = { ...out.state.tax, taxableSalesCents: tax.taxable, exemptSalesCents: tax.exempt, byCategory: tax.byCategory,
+      effectiveRatePercent: tax.taxable > 0 ? Math.round((out.state.tax.taxCollectedCents / tax.taxable) * 100000) / 1000 : null, adjustmentsCents: null, basis: 'lines_before_discounts' };
     out.state.dateRange.timezone = tz;   // the screen formats times in the salon's zone, not the browser's
     // batch 9 guide 6: the leaderboard from the same lines — each technician owns only their own service lines
     out.state.topTechnicians = rankTechnicians(facts.lines);
@@ -187,6 +192,27 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
       id: 'ticket:' + k, ticketId: k, ticketNumber: tk[k]?.num ?? null, occurredAt: at[k], serviceId: null, serviceName: '', category: '', unmapped: true, noLines: true,
       technicianId: null, technician: '', customerId: custOf[k]?.id ?? null, customer: custOf[k]?.name ?? '', units: 0, grossCents: sales[k], phoneDigits: tk[k]?.phone || '' });
     return { lines, discountByTicket: disc, refundByTicket, ticketNumbers, phones };
+  }
+
+  /** batch 9 guide 15: the paid tickets' lines (service + retail, not removed) split by their recorded taxable flag and category */
+  private async taxFacts(ctx: ReportsContext, ticketIds: string[]): Promise<{ taxable: number; exempt: number; byCategory: { category: string; taxableCents: number; exemptCents: number; taxCents: null }[] }> {
+    if (!ticketIds.length) return { taxable: 0, exempt: 0, byCategory: [] };
+    const rows = await this.scoped(this.db.selectFrom('ticket_service_lines as l'), ctx, 'l')
+      .leftJoin('services as s', (j: any) => j.onRef('s.id', '=', 'l.service_id').onRef('s.tenant_id', '=', 'l.tenant_id'))
+      .leftJoin('service_categories as c', (j: any) => j.onRef('c.id', '=', 's.category_id').onRef('c.tenant_id', '=', 'l.tenant_id'))
+      .where('l.ticket_id', 'in', ticketIds).where('l.removed_at', 'is', null)
+      .select(['l.is_taxable', 'l.product_id', 'l.line_kind', 'l.category_snapshot', 'c.name as cat', 'l.line_total_cents']).execute();
+    const by = new Map<string, { category: string; taxableCents: number; exemptCents: number; taxCents: null }>();
+    let taxable = 0, exempt = 0;
+    for (const r of rows as { is_taxable: boolean | null; product_id: string | null; line_kind: string | null; category_snapshot: string | null; cat: string | null; line_total_cents: number | null }[]) {
+      const retail = !!r.product_id || String(r.line_kind || '').toLowerCase() === 'retail';
+      const category = retail ? 'Retail' : String(r.category_snapshot || r.cat || '').trim() || 'Unmapped';
+      const v = Number(r.line_total_cents || 0); const isTax = r.is_taxable !== false;
+      const c = by.get(category) ?? { category, taxableCents: 0, exemptCents: 0, taxCents: null };
+      if (isTax) { c.taxableCents += v; taxable += v; } else { c.exemptCents += v; exempt += v; }
+      by.set(category, c);
+    }
+    return { taxable, exempt, byCategory: [...by.values()].sort((a, b) => (b.taxableCents + b.exemptCents) - (a.taxableCents + a.exemptCents) || a.category.localeCompare(b.category)) };
   }
 
   /** Nov 10 2026 (Daily Summary guide §10, §15): the KPIs the payment rows cannot answer, from their own sources — never a 0

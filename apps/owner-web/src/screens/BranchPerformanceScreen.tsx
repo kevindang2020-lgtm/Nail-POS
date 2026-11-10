@@ -15,7 +15,8 @@ const money = (c: number) => formatCurrency(c, { fractionDigits: 0 });
 const money2 = (c: number) => formatCurrency(c);
 function trend(p: number) { if (p > 0) return { cls: 'up', arrow: '▲', text: `${p.toFixed(1)}%` }; if (p < 0) return { cls: 'down', arrow: '▼', text: `${Math.abs(p).toFixed(1)}%` }; return { cls: 'flat', arrow: '•', text: '0.0%' }; }
 
-function Trend({ p }: { p: number }) { const t = trend(p); return <span className={`t ${t.cls}`}>{t.arrow} {t.text}</span>; }
+// Nov 10 2026: no revenue in the comparison period → no trend (the server sends null); it used to read "+100%"
+function Trend({ p }: { p: number | null }) { if (p == null) return <span className="t flat" data-testid="trend-na">N/A</span>; const t = trend(p); return <span className={`t ${t.cls}`}>{t.arrow} {t.text}</span>; }
 
 export function BranchPerformanceScreen() {
   const { go } = useOwnerNav();   // developer merge (Oct 6 2026): a back arrow to More, as every pushed screen has

@@ -43,6 +43,8 @@ export interface AiCenterSection {
 
 export interface AiCenterOverview {
   generatedAt: string;
+  /** batch 9 guide 14 (Nov 10 2026): the salon-day window the period figures cover; the 7-day figures end on `to` */
+  window?: { from: string; to: string; timezone: string; weekFrom: string } | null;
   kpis: AiCenterKpis;
   /** the reference image's 12 modules, each flagged tracked/untracked honestly. */
   sections: AiCenterSection[];

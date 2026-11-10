@@ -2,5 +2,5 @@
 // campaigns, reminders). Reuses GET /tenant/ai/center/overview. Metrics are honest: tracked or untracked.
 import { api } from "./client";
 export const posAiCenterApi = {
-  overview: () => api.get<any>(`/tenant/ai/center/overview`),
+  overview: (q?: Record<string, unknown>) => api.get<any>(`/tenant/ai/center/overview`, q),   // batch 9 guide 14: ?preset / ?from&to (salon days)
 };

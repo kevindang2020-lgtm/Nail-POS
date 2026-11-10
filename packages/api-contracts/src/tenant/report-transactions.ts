@@ -20,11 +20,13 @@ export interface ServiceRevenueReport {
   period: { from: string; to: string; timezone: string | null };
   basis: 'paid_ticket_service_lines';
   asOf: string;
-  filters: { q: string | null; category: string | null; technician?: string | null };
+  filters: { q: string | null; category: string | null; technician?: string | null; service?: string | null };
   /** the whole filtered set (search + category) */
-  totals: { grossCents: number; units: number; lines: number; tickets: number; averageCents: number | null; ticketDiscountCents: number; refundedCents: number };
+  totals: { grossCents: number; units: number; lines: number; tickets: number; averageCents: number | null; ticketDiscountCents: number; refundedCents: number; uniqueServices?: number };
   /** search applied, category NOT applied — so every bar stays visible while one is selected */
   categories: ServiceRevenueCategoryRow[];
+  /** batch 9 guide 10: the same lines ranked by service (historical id, else recorded name); category filter applied */
+  services?: ServiceRevenueCategoryRow[];
   history: { items: ServiceRevenueLine[]; total: number; page: number; pageSize: number };
   customersVisible: boolean;
 }
@@ -49,3 +51,7 @@ export interface RevenueTrend { groupBy: TrendGroupBy; groupByOptions: TrendGrou
 // most recent visit first. Phone: last 4 digits only. Money only with the financial permission (null otherwise).
 export interface ReportCustomerRow { customerId: string; customer: string; phoneLast4: string | null; type: 'new' | 'returning'; visits: number; lastVisitAt: string; netSalesCents: number | null }
 export interface ReportCustomerPage { items: ReportCustomerRow[]; total: number; page: number; pageSize: number; q: string | null; type: 'all' | 'new' | 'returning'; from: string; to: string; timezone: string | null; moneyVisible: boolean }
+
+// GET /pos/settings/audit-logs/page — Settings change history (SUNMI batch 9 guide 20): newest first, searched, by salon day
+export interface SettingsAuditRow { id: string; at: string; area: string; action: string; actor: string | null; role: string; changedKeys: string[] }
+export interface SettingsAuditPage { items: SettingsAuditRow[]; total: number; page: number; pageSize: number; timezone: string | null }

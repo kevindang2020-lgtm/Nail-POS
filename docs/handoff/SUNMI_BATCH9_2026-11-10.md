@@ -201,3 +201,201 @@ with numbered pages, "Clear all" and a count; each row now shows its dates. Pure
 Payroll screen tests still pass (14 total).
 Not done here (needs a decision / a server change): searching periods by TECHNICIAN name or phone — the period list
 does not carry its technicians; the per-technician search lives in the period workspace and Weekly paychecks tabs.
+
+## 9 · Commission Report (/tenant/reports/commission)
+
+Audited against the Oct 30 rebuild: every item of the update already exists — five cards, custom From–To calendars,
+one server search (technician name / phone / id, ticket, service, customer), sortable paged table, Technician Commission
+Details (captured rates, tip shares, adjustments, payouts — newest first, paged), commission + tips = payout obligation,
+Paid only from recorded payouts, the payroll cross-check, the persisted Discrepancy Review (the guide's "health checker")
+and the audited server CSV.
+- **The guide's tip concern is already resolved:** the photographed note ("tips attributed to the primary technician")
+  is an old string no longer shown; the live calculation and note use each technician's share as allocated at checkout
+  (`ticket_tip_allocations`). No historical tip was or should be redistributed.
+- Fixed: the screen now opens on a period passed in the URL (the new Technicians → Commission link), test added; the
+  permission test now renders inside a router. Commission tests 11/11.
+
+## 10 · Services Report (/tenant/reports/services)
+
+The page was rebuilt in guide 2 (the expanded Revenue by Service workspace). Gaps found against this guide:
+- **"Unique Services" counted categories, not services.** Now the distinct services of the filtered lines (a service
+  renamed in the period is still one service — its historical id).
+- No per-service view. Added `services` (the same lines ranked by historical service id, else recorded name; a renamed
+  service is one row, shown under the name it sold under most) and a Category / Service toggle; a service bar filters
+  the lines (`service=`), chip + Clear all; the full-scope CSV honours it.
+- Verified: service-revenue.pgtest 10/10 (unique 3; renamed manicure one row 3 units / 12,500; service filter),
+  POS services 6/6.
+
+## 11 · Inventory Reports (/tenant/reports/inventory)
+
+Findings:
+- **"Expiring Soon" counted expired bottles (real defect).** The report read the older `/tenant/inventory/summary`, whose
+  expiring count is bottles dated within 30 days with no lower bound — already-expired bottles included. The guide's
+  "11 products vs 128 expiring" is mostly a unit difference (products vs bottles) the screen never explained.
+- Reorder Attention: unsearched, unpaged, no status choice; no stock history.
+
+Built (reusing the Inventory screen backend — metrics, product list, movement ledger; no new inventory engine):
+- Cards from `/tenant/inventory/screen/metrics`: each card's written definition as its tooltip, Inventory Value basis
+  (cost × usable unexpired bottles), Low Stock with its Critical count, Expiring Soon = bottles in the next 30 days.
+- Data health: expired bottles on hand, stock drift (cached stock ≠ bottle records), products without a cost — and a
+  line stating products and bottles are different units. Read-only; every fix links to Inventory.
+- Reorder Attention via `/screen/products` (needs reorder / out / critical / low, search over product, SKU, barcode,
+  colour #, sorted most critical first, 25 per page, expiring / expired bottles per product).
+- Stock movements via `/screen/movements` for a PeriodBar period (URL), newest first, searched, paged.
+- Verified: POS inventory report 4/4 (+ the 403 test).
+
+## 12 · Marketing Report (/tenant/reports/marketing)
+
+Findings:
+- **The screen crashed with no reviews (real defect).** The server already sends `averageRating: null` / `campaignRoi:
+  null` for "none / not measurable", but the screen called `.toFixed(1)` on it and printed `null` + "x ROI".
+- **The guide's "$100 cost, 0 sent, 0x ROI" question:** the campaign cost is the amount the owner ENTERED on the
+  campaign (create / edit form), not provider charges. With nothing sent there is no return to measure → ROI is now N/A
+  (server rule + test), and the cost is labelled "entered on the campaign, not provider charges".
+- The figures are all-time (the three source services take no period); the subtitle now says so instead of implying a
+  period. Adding a period means changing Campaigns / Promotions / Reviews services — left for Kevin's decision.
+- Verified: marketing-report.vitest 5/5 (+ ROI rule), POS marketing 3/3 (+ null / entered-cost / scope).
+
+## 13 · Payments Report (/tenant/reports/payments)
+
+Findings:
+- **The period tabs did nothing (real defect)** — `period` sent (Tax Report has the same; fixed in guide 15).
+- **Total Collected dropped methods (real defect).** Only card + cash + gift card were summed; cash-to-technician,
+  rewards, deposits … vanished from the total (and from the Daily Summary / Sales charged-vs-collected line).
+- **Split Payments was a constant 0 (invented).**
+
+Built: `payments.byMethod` / `otherCents` / `collectedCents` (every non-refund method) and a real `splitCount`
+(tickets with two or more collected payment rows); the reconcile lines use the full collected total. Screen: PeriodBar
+(URL), eight cards incl. Other methods, every method in the chart with its share, a basis line, a note that processor
+status is the connection (not a check of the amounts), and the period's payment rows (the Daily Summary list).
+- Verified: payments-summary.vitest 1/1, POS payments 1/1.
+- **Correction to guide 3:** `trend.spec.ts` did not match the module's test pattern, so it had NOT run when I first
+  reported it; renamed to `trend.vitest.spec.ts` — it now runs and passes 5/5.
+
+## 15 · Tax Reports (/tenant/reports/tax) — done before 14 (same `period` bug as Payments)
+
+Findings:
+- **The period tabs did nothing (real defect)** — `period` sent, `preset` read. (Sweep: no report screen sends `period`
+  any more.)
+- **Taxable Sales was all net sales and Exempt Sales a constant 0 (invented)**, although every line records `is_taxable`.
+- **"Tax by category" put each ticket's whole tax under its first line's category.** Tax is recorded per ticket, so a
+  per-category tax figure cannot be stated truthfully.
+- Adjustments was a constant 0.
+
+Built: taxable / exempt from each line's own flag (sales before discounts), per category (retail its own row), the
+period's tax shown once with a note that it is per ticket; configured rate and effective rate (tax ÷ taxable) both
+labelled; Adjustments "not tracked separately" instead of 0; the CSV gives taxable / exempt per category + the period's
+tax; PeriodBar (URL); the period's tickets with their tax (the Sales Ticket Explorer).
+- Verified: service-revenue.pgtest 11/11 (taxable 17,200 / exempt 1,500, retail row, effective rate), POS tax 1/1.
+
+## 14 · AI Analytics (/tenant/reports/ai)
+
+Findings:
+- **An invented metric (real defect):** "Appointment fill rate" (AI Center booking panel) was `bookings ÷ (bookings + 2)` —
+  two bookings always read 50% — presented as "appointment duration / scheduled capacity". No capacity model exists → now
+  "Not tracked yet: capacity model unavailable".
+- The page was "today" only, and its "7-Day Performance" figures were a rolling `now() − 7 days` (not salon days, and no
+  way to read a past period); Campaign Performance is all sent campaigns (not dated).
+
+Built: the AI Center overview takes `?preset=today|week|month|year` or `?from&to` (salon days; clamped to today and a
+year; absent = today exactly as before, so the AI Center screen is unchanged). Every "in the period" figure uses that
+window; the 7-day figures use the 7 salon days ENDING on its last day; the response carries `window` so the screen states
+what it covers. POS: PeriodBar (URL, default today), caption names the range, the 7-day panel names its days, Campaign
+Performance says it is all campaigns. The eight cards keep "Not tracked yet" exactly as before — nothing filled in.
+- Verified: ai-center-window.vitest 2/2, ai-center module 188 passed (9 skipped as before), POS AI Analytics 4/4,
+  loader on real PG16 for today / this month / a past month.
+- Not built: per-metric detail histories behind each card — those live in AI Calls / AI Follow-ups / Campaigns, which
+  already have searched, paged lists; the cards link nowhere new.
+
+## 16 · Multi-Location Reports (/tenant/reports/multi-location)
+
+Findings:
+- The period chips work here (the owner endpoint reads `period`).
+- **Growth was invented when there was no base (real defect).** The shared `pct()` returns +100% when the previous period
+  had nothing, so a branch that just started always "grew 100%" and could win Best Growth; Top Branch / Highest Average
+  Ticket / Most Bookings were also picked among all-zero rows.
+Built (owner `getBranchPerformance`, which also feeds the Owner web Branch Performance screen): trend = null with no prior
+revenue (contract `number | null`), Best Growth only among branches with a base, Top Branch only with revenue, Highest
+Average Ticket only with paid tickets, Most Bookings only with bookings; POS and Owner web show N/A. `pct()` itself is
+unchanged for the other Owner views.
+- **Found and fixed while doing this:** my guide-5 / guide-7 changes made appointment shares and customer trends nullable;
+  the AI Business assistant (analytics module) still typed them as numbers — a no-booking period could have printed
+  "null% no-shows" or fired a "below" alert on N/A. Now: briefs, tips, branch insights and the alert evaluator skip a null
+  (an alert with no value is "not evaluated"; the events column is nullable). Every module and app typechecks clean.
+- Verified: owner-financial-kpis 13/13 (+ no-base test), analytics 343/343, owner-web Branch Performance 8/8, POS 3/3.
+- Not built: custom From–To and paging on this screen — the owner comparison endpoint takes presets only; with three
+  branches a list needs no paging. Decision for Kevin if more branches are coming.
+
+## 17 · Management Overview (/tenant/management/overview) and 18 · Branch Performance Snapshot
+
+Findings:
+- Pending Approvals showed "— workflow pending" although the Approvals service (pos/approvals) now exists.
+- The Branch Performance Snapshot listed name / city / status only — no performance at all; status was the raw code.
+- Open Tasks and Compliance have no source system yet — they correctly stay "— workflow pending" (not invented).
+
+Built:
+- Pending Approvals = the Approvals service's pending total with an Open button; without approvals.view it says "No
+  access to approvals", on failure "Approvals unavailable" — never 0.
+- Snapshot: the same branch list, plus Revenue / Bookings / Avg Ticket / Trend for Today / This Week / This Month from
+  the owner branch comparison — the SAME numbers as Multi-Location (guide 16's honest growth: N/A with no prior revenue);
+  without owner.branches.view the figures are withheld with a note and the list still shows every branch; translated
+  status labels; a search once there are more than four branches.
+- Verified: POS Management 2/2 (+ approvals count, per-branch figures, N/A trend).
+- Not changed: "On Shift Now" reads the Team screen's available-now count (Time Clock attendance would be a new source —
+  decision for Kevin).
+
+## 19 · Settings (/settings?section=business-branch)
+
+Finding (the guide's main question — "is 100% Complete from authoritative checks?"): **no.** Every section was hard-coded
+`completionPercent: 100, status: 'Complete'` — the BUILD status (each section is code-complete) — and the screen showed it
+to the salon as Go-Live Readiness "100% Complete" even with live card processing not connected. The real external items
+were already computed (`goLivePending`) but shown only as a small line.
+Built: the settings state now returns `goLiveReady / goLiveTotal` (live card processing, Google Reserve, A2P approval, a
+paired customer display) and each section's own pending reasons. The banner shows "3 of 4 ready" + "Waiting on outside
+setup" / "Ready to go live"; each card shows Saved, or Waiting with its reason, instead of a 100% bar. Every edit control
+and the 20 cards are unchanged. Nothing about live payments is claimed — the payments item stays waiting until a live MID.
+- Verified: tenants settings 53/53, POS Settings 5/5 (+ go-live counts / waiting pill / no "100% complete").
+
+## 20 · Business & Branch (Settings → business-branch)
+
+Finding: every settings save is audited (`settings_audit_logs`: who, role, area, changed keys), but the screen showed
+none of it, and the only read (`/pos/settings/audit-logs`) returned the last 50 rows unsearched and swallowed errors.
+Built: GET /pos/settings/audit-logs/page — newest first (time, then id), search over area / action / record / who / role,
+a From–To of salon days in the branch zone, 10/25/50/100, this salon only (branch rows + tenant-wide rows), errors
+surface; and a "Settings change history" panel on the Settings screen (search, month-calendar range, pager, who + role,
+what changed). The business & branch fields, cards and edit workflows are unchanged.
+- Verified: settings-audit-page.pgtest 2/2 (order, actor, changed keys, search, salon-day range incl. a late-evening UTC
+  row, other salon hidden), runs on PG16, POS Settings 7/7.
+
+## Decisions for Kevin (batch 9)
+
+1. **Email Report / Schedule Report** (Daily Summary) stay labelled "not connected" — wiring them needs a delivery
+   pipeline (consent, permissions, delivery log). Build it, or keep the label?
+2. **Marketing Report period** — the figures are all-time because Campaigns / Promotions / Reviews take no date range.
+   Add a period to those three services?
+3. **Payroll period search by technician** — the period list does not carry its technicians; searching periods by a
+   technician's name / phone needs a server change. Wanted?
+4. **"On Shift Now"** (Management) reads the Team screen's available-now count, not Time Clock attendance. Switch to
+   Time Clock?
+5. **Multi-Location** — presets only (the owner comparison endpoint takes no custom range); no paging for 3 branches.
+   Add a custom range / paging if more branches are coming?
+6. **Open Tasks / Compliance** (Management) have no source system — they stay "workflow pending". Build them or leave?
+7. **Local pilot data**: Check Reports System finds 8 paid tickets with no service lines (seeded cash tickets); they show
+   as "No service lines recorded" in Revenue by Service. Clean the seed, or leave as a realistic test case?
+8. **Vietnamese drafts** — ~240 new `// DRAFT — Kevin reviews` lines from batch 9 (all `rpt.*`, `syschk.reports.*`,
+   `pay.list.*`, `mgmt.*`, `set.*`). They are in docs/handoff/VI_DRAFT_REVIEW.md.
+
+## Verification (run this session, Nov 10 2026)
+
+- Gates: `run-gates.mjs` exit 0 — 83 passed (57 gates + 26 audits), after fixing four this-session findings in code
+  (free-text refusal, a swallowed catch, as-any, a list handler without a spec) rather than raising any baseline.
+- Typecheck: every module and app `tsc --noEmit` clean (it was not — analytics had broken on nullable shares; fixed).
+- POS: 401 files / 2206 tests passed.
+- Modules: reports 89/89 · analytics 344/344 · tenants 188/188 · ai 2454 passed (37 skipped, as before) · owner-web 374/374.
+- API: 3294 passed / 3 failed / 138 skipped. The 3 failures were one pre-existing date-bombed file
+  (`ai-booking-center.pgtest`: events fixed on Nov 3, the recovery view looks back 7 days from now) — fixture anchored to
+  "a day ago"; that file now passes 10/10 alone. The full API suite was NOT re-run after that one-file fix.
+- Real Postgres 16.15: every system check, the reports query (people overlay, service lines, tax), the AI Center loader
+  and the settings history SQL ran against the local pilot data.
+- **Not run this batch:** the 804-check Vietnamese one-screen harness (~45 min), and the batch-9 pages are not yet in
+  its MODULE_SET.

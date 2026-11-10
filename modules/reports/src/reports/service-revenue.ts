@@ -91,3 +91,23 @@ export function rankTechnicians(lines: ServiceLineFact[]): TechnicianRank[] {
   let n = 0; for (const r of out) r.rank = r.unattributed ? 0 : ++n;
   return out;
 }
+
+// ── batch 9 guide 10 (Nov 10 2026): the same lines ranked by SERVICE (historical id, else its recorded name) ────────────────
+export const svcKeyOf = (l: ServiceLineFact) => (l.noLines ? NO_LINES : l.serviceId ? 'id:' + l.serviceId : 'name:' + l.serviceName.toLowerCase());
+export function rankServices(lines: ServiceLineFact[]): ServiceRevenueCategory[] {
+  const m = new Map<string, ServiceRevenueCategory & { names: Map<string, number> }>();
+  for (const l of lines) {
+    const key = svcKeyOf(l);
+    const c = m.get(key) ?? { key, name: '', units: 0, grossCents: 0, lines: 0, percentOfTop: 0, unmapped: !!l.noLines, names: new Map<string, number>() };
+    c.units += l.units; c.grossCents += l.grossCents; c.lines += 1;
+    if (!l.noLines) c.names.set(l.serviceName, (c.names.get(l.serviceName) ?? 0) + 1);
+    m.set(key, c);
+  }
+  // a renamed service keeps one row (its id); it shows the name it was sold under most often in the period
+  const out = [...m.values()].map(({ names, ...c }) => ({ ...c, name: [...names.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? '' }))
+    .sort((a, b) => Number(a.unmapped) - Number(b.unmapped) || b.grossCents - a.grossCents || a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
+  const top = out.find((c) => !c.unmapped)?.grossCents || 0;
+  for (const c of out) c.percentOfTop = top > 0 ? Math.round((c.grossCents / top) * 100) : 0;
+  return out;
+}
+export const uniqueServices = (lines: ServiceLineFact[]) => new Set(lines.filter((l) => !l.noLines).map(svcKeyOf)).size;

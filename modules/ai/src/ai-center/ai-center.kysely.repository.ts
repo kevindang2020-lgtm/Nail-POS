@@ -23,24 +23,29 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
   async load(scope: AiCenterScope): Promise<AiCenterRawInputs> {
     // pos_tech_appointments: the appointment DATE is appt_date (date); start_time/end_time are text times.
     const tz = await branchTimeZone(this.db, scope.tenantId, scope.branchId);   // the branch's day (Oct 3 2026 — was UTC)
-    const todayDate = businessDate(tz, new Date(this.now()));
-    const dayStart = new Date(localDateTimeToEpochMs(todayDate, '00:00', tz)), dayEnd = new Date(localDateTimeToEpochMs(addDays(todayDate, 1), '00:00', tz));
+    // SUNMI batch 9 guide 14 (Nov 10 2026): ONE salon-day window for every "in the period" figure (it was today), and the
+    // 7-day performance window ENDS on the period's last day (it was a rolling now() - 7 days, so a past period could not be
+    // read and the 7-day figures were not salon days)
+    const salonToday = businessDate(tz, new Date(this.now()));
+    const { from: fromDate, to: todayDate } = resolveWindow(scope.range, salonToday);
+    const dayStart = new Date(localDateTimeToEpochMs(fromDate, '00:00', tz)), dayEnd = new Date(localDateTimeToEpochMs(addDays(todayDate, 1), '00:00', tz));
+    const weekStart = new Date(localDateTimeToEpochMs(addDays(todayDate, -6), '00:00', tz));
     const bookingsRow = await this.scope<any>(this.db.selectFrom('pos_tech_appointments'), scope)
       .where('status', '!=', 'cancelled')
-      .where('appt_date', '=', todayDate)
+      .where('appt_date', '>=', fromDate).where('appt_date', '<=', todayDate)
       .select((eb: any) => eb.fn.countAll().as('n'))
       .executeTakeFirst();
 
     const aiBookingsRow = await this.scope<any>(this.db.selectFrom('pos_tech_appointments'), scope)
       .where('status', '!=', 'cancelled')
       .where('source', '=', 'ai')
-      .where('appt_date', '=', todayDate)
+      .where('appt_date', '>=', fromDate).where('appt_date', '<=', todayDate)
       .select((eb: any) => eb.fn.countAll().as('n'))
       .executeTakeFirst();
 
     const completedRow = await this.scope<any>(this.db.selectFrom('pos_tech_appointments'), scope)
       .where('status', '=', 'completed')
-      .where('appt_date', '=', todayDate)
+      .where('appt_date', '>=', fromDate).where('appt_date', '<=', todayDate)
       .select((eb: any) => eb.fn.countAll().as('n')).executeTakeFirst();
     // Rebookings today: reschedules are recorded in appointment_reschedules (pos_tech_appointments has no
     // rescheduled-from column), so count reschedule events created today (created_at is timestamptz).
@@ -50,7 +55,7 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
       .select((eb: any) => eb.fn.countAll().as('n')).executeTakeFirst();
 
     const sentRow = await this.scope<any>(this.db.selectFrom('reviews'), scope)
-      .where('created_at', '>=', sql<Date>`now() - interval '7 days'`)
+      .where('created_at', '>=', weekStart).where('created_at', '<', dayEnd)
       .select((eb: any) => [eb.fn.avg('rating').as('avg'), eb.fn.countAll().as('n')])
       .executeTakeFirst();
 
@@ -67,7 +72,7 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
         count(*) filter (where status = 'success')::int ok,
         count(*) filter (where status in ('success','provider_error','failed'))::int attempts
       from ai_usage_logs
-      where tenant_id = ${t} and created_at >= now() - interval '7 days'
+      where tenant_id = ${t} and created_at >= ${weekStart} and created_at < ${dayEnd}
     `.execute(this.db).then((r: any) => r.rows?.[0] ?? null).catch(() => null);
 
     const recent = await sql<{ package_code: string; action: string; status: string; created_at: string }>`
@@ -91,7 +96,7 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
       select count(*) filter (where status = 'sent')::int ok,
              count(*) filter (where status in ('sent','failed'))::int attempts
       from appointment_reminder_attempts
-      where tenant_id = ${t} and created_at >= now() - interval '7 days'
+      where tenant_id = ${t} and created_at >= ${weekStart} and created_at < ${dayEnd}
     `.execute(this.db).then((r: any) => r.rows?.[0] ?? null).catch(() => null);
     const remAttempts = Number(remWeek?.attempts ?? 0);
 
@@ -107,7 +112,7 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
     // per-workflow run-history from workflow_runs (tenant+branch scoped).
     let wfStats: Record<string, { sentToday: number; successRatePct: number | null }> | null = null;
     try {
-      let wq = this.db.selectFrom('workflow_runs').where('tenant_id', '=', scope.tenantId).where('ran_at', '>=', sql<Date>`now() - interval '7 days'`);
+      let wq = this.db.selectFrom('workflow_runs').where('tenant_id', '=', scope.tenantId).where('ran_at', '>=', weekStart).where('ran_at', '<', dayEnd);
       if (scope.branchId) wq = wq.where((eb: any) => eb.or([eb('branch_id', '=', scope.branchId), eb('branch_id', 'is', null)]));
       const wr: any[] = await wq.selectAll().execute();
       const mapped: WorkflowRunRow[] = wr.map((x) => ({ id: x.id, tenantId: x.tenant_id, branchId: x.branch_id, workflowKey: x.workflow_key, dedupeKey: x.dedupe_key, status: x.status, customerId: x.customer_id, appointmentId: x.appointment_id, detail: x.detail, ranAt: typeof x.ran_at === 'string' ? x.ran_at : new Date(x.ran_at).toISOString() }));
@@ -125,7 +130,7 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
         count(*) filter (where status in ('delivered','sent','read'))::int ok,
         count(*)::int attempts
       from communication_messages
-      where tenant_id = ${t} and direction = 'outbound' and created_at >= now() - interval '7 days'
+      where tenant_id = ${t} and direction = 'outbound' and created_at >= ${weekStart} and created_at < ${dayEnd}
     `.execute(this.db).then((r: any) => r.rows?.[0] ?? null).catch(() => null);
     const autoAttempts = Number(autoRow?.attempts ?? 0);
 
@@ -157,10 +162,13 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
 
     const n = Number(sentRow?.n ?? 0);
     return {
+      window: { from: fromDate, to: todayDate, timezone: tz, weekFrom: addDays(todayDate, -6) },
       bookingsToday: Number(bookingsRow?.n ?? 0),
       aiBookingsToday: Number(aiBookingsRow?.n ?? 0),
       bookingsCompletedToday: Number(completedRow?.n ?? 0),
-      appointmentFillRatePct: bookingsRow?.n ? Math.round((Number(bookingsRow.n) / (Number(bookingsRow.n) + 2)) * 100) : 0, // Simplified metric for now without full capacity model
+      // batch 9 guide 14: was bookings ÷ (bookings + 2) — an invented number shown as "duration / capacity"; no capacity model
+      // exists, so it is reported as not tracked
+      appointmentFillRatePct: null,
       rebookingsToday: Number(rebookRow?.n ?? 0),
       aiConversationsToday: convToday,
       weekConversations: week == null ? null : Number(week.ok ?? 0),
@@ -185,3 +193,18 @@ export class KyselyAiCenterRepo implements AiCenterRepo {
     };
   }
 }
+
+/** batch 9 guide 14: a requested salon-day range (preset or from–to), clamped to today and to 366 days; default today */
+export function resolveWindow(range: AiCenterScope['range'], today: string): { from: string; to: string } {
+  const day = /^\d{4}-\d{2}-\d{2}$/;
+  if (range?.from && range?.to && day.test(range.from) && day.test(range.to)) {
+    const to = range.to > today ? today : range.to; const from = range.from > to ? to : range.from;
+    return { from: from < addDays(to, -365) ? addDays(to, -365) : from, to };
+  }
+  const wd = new Date(today + 'T00:00:00Z').getUTCDay();
+  if (range?.preset === 'week') return { from: addDays(today, -((wd + 6) % 7)), to: today };
+  if (range?.preset === 'month') return { from: today.slice(0, 8) + '01', to: today };
+  if (range?.preset === 'year') return { from: today.slice(0, 5) + '01-01', to: today };
+  return { from: today, to: today };
+}
+

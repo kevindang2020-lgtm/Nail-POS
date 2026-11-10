@@ -8,8 +8,8 @@ import type { BusinessAlert, AlertMetric } from './ai-business-alerts.repository
 /** Minimal facade over the three tool services the supported alert metrics need. The real services satisfy it. */
 export interface AlertMetricSource {
   getRevenueSummary(ctx: AiBusinessContext, preset?: string): Promise<{ netSalesCents: number; averageTicketCents: number; ticketsCount: number }>;
-  getAppointmentMetrics(ctx: AiBusinessContext, preset?: string): Promise<{ funnel: { completed: number; cancelledPercent: number; noShowPercent: number; totalBookings: number } }>;
-  getCustomerGrowth(ctx: AiBusinessContext, preset?: string): Promise<{ retentionRatePercent: number; activeCustomers: number }>;
+  getAppointmentMetrics(ctx: AiBusinessContext, preset?: string): Promise<{ funnel: { completed: number; cancelledPercent: number | null; noShowPercent: number | null; totalBookings: number } }>;
+  getCustomerGrowth(ctx: AiBusinessContext, preset?: string): Promise<{ retentionRatePercent: number | null; activeCustomers: number }>;
 }
 
 export type MetricUnit = 'currency_cents' | 'count' | 'percent';
@@ -17,7 +17,7 @@ export type MetricUnit = 'currency_cents' | 'count' | 'percent';
 export interface AlertEvaluation {
   metricId: AlertMetric;
   unit: MetricUnit;
-  value: number;
+  value: number | null;   // null = no value for the period (N/A) — not evaluated
   threshold: number;
   operator: 'lt' | 'gt';
   preset: string;
@@ -36,7 +36,7 @@ export class AiBusinessAlertEvaluator {
   constructor(private readonly src: AlertMetricSource) {}
 
   /** Resolve (value, sampleSize) for a metric at a preset, pulling from the appropriate authorized tool. */
-  private async resolve(ctx: AiBusinessContext, metricId: AlertMetric, preset: string): Promise<{ value: number; sampleSize: number }> {
+  private async resolve(ctx: AiBusinessContext, metricId: AlertMetric, preset: string): Promise<{ value: number | null; sampleSize: number }> {
     switch (metricId) {
       case 'net_sales': { const r = await this.src.getRevenueSummary(ctx, preset); return { value: r.netSalesCents, sampleSize: r.ticketsCount }; }
       case 'average_ticket': { const r = await this.src.getRevenueSummary(ctx, preset); return { value: r.averageTicketCents, sampleSize: r.ticketsCount }; }
@@ -49,10 +49,13 @@ export class AiBusinessAlertEvaluator {
 
   async evaluate(ctx: AiBusinessContext, alert: Pick<BusinessAlert, 'metricId' | 'operator' | 'threshold' | 'preset' | 'minSampleSize'>): Promise<AlertEvaluation> {
     const { value, sampleSize } = await this.resolve(ctx, alert.metricId, alert.preset);
-    const sampleOk = sampleSize >= alert.minSampleSize;
-    const conditionHolds = alert.operator === 'lt' ? value < alert.threshold : value > alert.threshold;
+    // batch 9: a metric with no value for the period (N/A — e.g. nothing booked, no prior cohort) is NOT evaluated; it used
+    // to read as 0 and could trip a "below" alert
+    const known = value != null;
+    const sampleOk = known && sampleSize >= alert.minSampleSize;
+    const conditionHolds = known && (alert.operator === 'lt' ? (value as number) < alert.threshold : (value as number) > alert.threshold);
     const triggered = sampleOk && conditionHolds;
-    const reason = !sampleOk
+    const reason = !known ? `${alert.metricId} has no value for this period (N/A); not evaluated.` : !sampleOk
       ? `Sample size ${sampleSize} is below the minimum ${alert.minSampleSize}; not evaluated.`
       : conditionHolds
         ? `${alert.metricId} (${value}) is ${alert.operator === 'lt' ? 'below' : 'above'} ${alert.threshold}.`

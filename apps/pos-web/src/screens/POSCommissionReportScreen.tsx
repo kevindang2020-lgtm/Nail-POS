@@ -14,6 +14,7 @@
 //     reversal checks. F3: the CSV is built and audited on the server (same columns and file name); the export history.
 // Read only. Nothing here moves money, edits an earning or changes who owns a tip.
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { posCommissionScreenApi } from '../api/posTeamScreensApi';
 import { posCommissionReportApi } from '../api/posCommissionReportApi';
@@ -34,7 +35,13 @@ const signed = (c: number) => (c > 0 ? '+' : c < 0 ? '−' : '') + money(Math.ab
 export function POSCommissionReportScreen() {
   const { reloadKey } = useReportCadence();
   const { open: openIPad } = useIPadView();
-  const [period, setPeriod] = useState<PeriodState>({ preset: 'month' });
+  // batch 9 (Nov 10 2026): a link from another report (Technicians → Commission) carries its period in the URL
+  const [sp] = useSearchParams();
+  const [period, setPeriod] = useState<PeriodState>(() => {
+    const p = sp.get('preset');
+    if (p === 'custom' && sp.get('from') && sp.get('to')) return { preset: 'custom', from: sp.get('from') ?? undefined, to: sp.get('to') ?? undefined };
+    return p === 'today' || p === 'week' || p === 'month' || p === 'year' ? { preset: p } : { preset: 'month' };
+  });
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [sort, setSort] = useState('commission'); const [page, setPage] = useState(1);
   const [pp, setPp] = useState(1); const [exportErr, setExportErr] = useState<string | null>(null); const [exTick, setExTick] = useState(0);

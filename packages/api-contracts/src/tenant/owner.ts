@@ -40,12 +40,13 @@ export interface OwnerSalonOverview {
 
 export interface OwnerBranchPerformanceState {
   period: { from: string; to: string; comparisonFrom?: string; comparisonTo?: string };
-  totalRevenueCents: number; totalRevenueTrendPercent: number;
-  topBranch?: { branchId: string; branchName: string; trendPercent: number };
+  /** batch 9 guide 16/18 (Nov 10 2026): a trend needs a prior base — null = no revenue in the comparison period (N/A, never +100%) */
+  totalRevenueCents: number; totalRevenueTrendPercent: number | null;
+  topBranch?: { branchId: string; branchName: string; trendPercent: number | null };
   totalBranches: number; activeBranches: number;
-  branches: { rank: number; branchId: string; branchName: string; revenueCents: number; trendPercent: number; bookingCount: number; averageTicketCents: number }[];
+  branches: { rank: number; branchId: string; branchName: string; revenueCents: number; trendPercent: number | null; bookingCount: number; averageTicketCents: number }[];
   quickComparison: {
-    bestGrowth?: { branchId: string; branchName: string; valuePercent: number };
+    bestGrowth?: { branchId: string; branchName: string; valuePercent: number | null };
     highestAverageTicket?: { branchId: string; branchName: string; valueCents: number };
     topBookings?: { branchId: string; branchName: string; value: number };
   };

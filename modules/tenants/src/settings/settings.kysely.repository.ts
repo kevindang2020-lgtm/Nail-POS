@@ -11,6 +11,7 @@
 // (secrets must never be stored in an app table), so they are read from server-side env (FISERV_SECRET /
 // FISERV_MERCHANT_ID). With no env configured there is no live MID, so payments correctly reports not-live and the
 // credential surfaces as '' (masked only) — matching the in-memory adapter's honest "not configured" behavior.
+import { branchTimeZone } from '@aipowersalon/database';
 import { withoutRetiredQueueWorkflowKeys } from './settings.dto';
 import { effectiveAiFeatures, isAiEnabled } from '@aipowersalon/platform';
 import { sql, type Kysely } from 'kysely';
@@ -117,6 +118,25 @@ export class KyselySettingsRepository implements SettingsRepositoryPort {
       // the settings change itself already happened and is not undone
       console.error(`[settings-audit] could not record ${row.actionType} on ${row.entityId ?? row.entityType ?? 'settings'} (tenant ${row.tenantId}): ${(e as Error)?.message ?? e}`);
     });
+  }
+
+  /** SUNMI batch 9 guide 20 (Nov 10 2026): the settings change history one page at a time — newest first (time, then id), a
+   *  search over the area / action / record / who, and a From–To of salon days in the branch's zone. Tenant + branch scoped
+   *  (branch rows and tenant-wide rows). Errors surface — never an empty list that looks like "no changes". */
+  async listAuditPage(ctx: SettingsContext, f: { q?: string; from?: string; to?: string; page: number; pageSize: number }): Promise<{ rows: any[]; total: number; tz: string }> {
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId || null);
+    const day = /^\d{4}-\d{2}-\d{2}$/;
+    let qb: any = this.db.selectFrom('settings_audit_logs as l').leftJoin('users as u', 'u.id', 'l.user_id')
+      .where('l.tenant_id', '=', ctx.tenantId).where((eb: any) => eb.or([eb('l.branch_id', '=', ctx.branchId || ''), eb('l.branch_id', 'is', null)]));
+    if (f.from && day.test(f.from)) qb = qb.where(sql`(l.created_at at time zone ${tz})::date`, '>=', f.from);
+    if (f.to && day.test(f.to)) qb = qb.where(sql`(l.created_at at time zone ${tz})::date`, '<=', f.to);
+    const needle = String(f.q ?? '').trim().slice(0, 80);
+    if (needle) { const like = '%' + needle.replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+      qb = qb.where((eb: any) => eb.or([eb('l.entity_type', 'ilike', like), eb('l.action_type', 'ilike', like), eb('l.entity_id', 'ilike', like), eb('u.full_name', 'ilike', like), eb('l.role', 'ilike', like)])); }
+    const total = Number((await qb.select((eb: any) => eb.fn.countAll().as('n')).executeTakeFirst())?.n ?? 0);
+    const rows = await qb.select(['l.id', 'l.created_at', 'l.entity_type', 'l.action_type', 'l.role', 'l.metadata', 'u.full_name as actor'])
+      .orderBy('l.created_at', 'desc').orderBy('l.id', 'desc').limit(f.pageSize).offset((f.page - 1) * f.pageSize).execute();
+    return { rows, total, tz };
   }
 
   async listAudit(ctx: SettingsContext, limit: number): Promise<POSSettingsAuditLogRow[]> {

@@ -12,7 +12,7 @@ import { NO_LINES, UNMAPPED } from './service-revenue';
 
 const id = (n: number) => 'a9002000-0000-4000-8000-' + String(n).padStart(12, '0');
 const T = id(1), B = id(2), X = id(3), BX = id(4), ANN = id(10), BEA = id(11), XC = id(12), LISA = id(20), MAI = id(21), NAILS = id(31), SPA = id(32), MANI = id(40), PEDI = id(41), XS = id(42), GONE = id(43), PROD = id(44);
-let svc: ReportsService;
+let svc: ReportsService; let pgRef: any;
 const owner: any = { tenantId: T, branchId: B, userId: 'u', role: 'OWNER', permissions: ['pos.reports.view', 'pos.reports.financial_view', 'pos.reports.export'] };
 const staff: any = { tenantId: T, branchId: B, userId: 'u2', role: 'STAFF', permissions: ['pos.reports.view'] };
 // the last 3 salon days (an explicit range, so the tickets 10–30 hours old are in it on any weekday)
@@ -50,6 +50,7 @@ beforeAll(async () => {
   await ticket(102, ANN, 10, 5003, 3000, 0, 0, 0, 0, []);
   // another salon, same customer name and phone, identical service — never visible
   await ticket(900, XC, 5, 5001, 4500, 0, 0, 0, 0, [[XS, 'Gel Manicure', 'Nails', null, 1, 4500, null]], X, BX);
+  pgRef = pg;
   svc = new ReportsService(new KyselyReportsRepository(kyselyFor(pg) as any));
 }, 180_000);
 
@@ -135,4 +136,19 @@ describe('Revenue by Service — one shared line-level calculation', () => {
     expect(mai.totals).toMatchObject({ grossCents: 4000, units: 1 });
     expect(mai.history.items.map((l) => l.serviceName)).toEqual(['Spa Pedicure']);
   });
+  it('Services Report (guide 10): ranked by service too — a renamed service stays one row; unique services is distinct services', async () => {
+    const r = await svc.getServiceRevenue(owner, week);
+    expect(r.totals.uniqueServices).toBe(3);                                  // manicure (renamed, one id), pedicure, nail art
+    expect(r.services!.map((x) => [x.name, x.units, x.grossCents])).toEqual([['Classic Manicure', 3, 12500], ['Spa Pedicure', 1, 4000], ['Nail art', 1, 1500], ['', 0, 3000]]);
+    const mani = await svc.getServiceRevenue(owner, week, { service: 'id:' + MANI });
+    expect(mani.totals).toMatchObject({ grossCents: 12500, units: 3, uniqueServices: 1 });
+  });
+  it('Tax (guide 15, runs LAST — it flags a line exempt): taxable vs exempt from each line, retail its own category, no per-category tax', async () => {
+    await pgRef.exec(`UPDATE ticket_service_lines SET is_taxable = false WHERE tenant_id = '${T}' AND service_name_snapshot = 'Nail art'`);
+    const { state } = await (svc as any).repo.query(owner, week);
+    expect(state.tax).toMatchObject({ taxableSalesCents: 17200, exemptSalesCents: 1500, adjustmentsCents: null, basis: 'lines_before_discounts' });   // 4500+4000+700+8000 | 1500
+    expect(state.tax.byCategory.find((c: any) => c.category === 'Retail')).toMatchObject({ taxableCents: 700, taxCents: null });
+    expect(state.tax.effectiveRatePercent).toBeCloseTo((700 / 17200) * 100, 2);
+  });
 });
+

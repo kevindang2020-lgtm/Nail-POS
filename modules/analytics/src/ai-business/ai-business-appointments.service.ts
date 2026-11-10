@@ -19,9 +19,9 @@ export interface AppointmentMetrics {
   partialCurrentPeriod: boolean;
   funnel: {
     totalBookings: number;
-    completed: number; completedPercent: number;
-    cancelled: number; cancelledPercent: number;
-    noShow: number; noShowPercent: number;
+    completed: number; completedPercent: number | null;   // null = nothing booked (N/A)
+    cancelled: number; cancelledPercent: number | null;
+    noShow: number; noShowPercent: number | null;
     walkIns: number;
   };
   trend: { label: string; date: string; bookings: number; completed: number }[];

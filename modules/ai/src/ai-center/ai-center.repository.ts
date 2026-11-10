@@ -2,7 +2,8 @@
 // never the client. The in-memory repo is the dev/offline/test default (honest nulls + an optional seed input).
 import type { AiCenterRawInputs } from './ai-center.dto';
 
-export interface AiCenterScope { tenantId: string; branchId: string | null; }
+/** batch 9 guide 14: the salon-day window (a preset or from–to); absent = today */
+export interface AiCenterScope { tenantId: string; branchId: string | null; range?: { preset?: 'today' | 'week' | 'month' | 'year'; from?: string; to?: string } }
 
 export interface AiCenterRepo {
   load(scope: AiCenterScope): Promise<AiCenterRawInputs>;

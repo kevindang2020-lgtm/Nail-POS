@@ -160,6 +160,8 @@ export interface SalesTrend { points: { label: string; grossSalesCents: number; 
 export interface PaymentsSummary {
   cardCents: number; cashCents: number; giftCardCents: number; splitCount: number;
   refundsCents: number; cardSurchargeCents: number; processorStatus: string;
+  /** batch 9 guide 13: every collected method (cents), the methods beyond card / cash / gift card, their total */
+  byMethod?: Record<string, number>; otherCents?: number; collectedCents?: number;
 }
 export interface TipsSummary {
   totalCents: number; cardTipsCents: number; cashTipsCents: number; tipPercentAvg: number;
@@ -167,7 +169,9 @@ export interface TipsSummary {
 }
 export interface TaxSummary {
   taxableSalesCents: number; exemptSalesCents: number; taxCollectedCents: number; taxRatePercent: number;
-  byCategory: { category: string; taxCents: number }[]; adjustmentsCents: number;
+  byCategory: { category: string; taxCents: number | null; taxableCents?: number; exemptCents?: number }[]; adjustmentsCents: number | null;
+  /** batch 9 guide 15: tax ÷ taxable line sales before discounts (null = no taxable sales); `basis` of taxable / exempt */
+  effectiveRatePercent?: number | null; basis?: 'lines_before_discounts';
 }
 export interface DiscountSurchargeSummary {
   discountCents: number; discountCount: number; topReason: string;

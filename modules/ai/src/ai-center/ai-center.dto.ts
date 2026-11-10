@@ -19,6 +19,8 @@ export interface AiCenterRawInputs {
   /** appointments completed today (status='completed'), scoped. */
   bookingsCompletedToday: number | null;
   /** appointment fill rate % today (booked duration / capacity), scoped. null => source unavailable. */
+  /** batch 9 guide 14: the salon-day window every period figure covers, and the 7-day window ending on its last day */
+  window?: { from: string; to: string; timezone: string; weekFrom: string };
   appointmentFillRatePct: number | null;
   /** appointments today rescheduled from a prior one (rebooking assistance), scoped. */
   rebookingsToday: number | null;

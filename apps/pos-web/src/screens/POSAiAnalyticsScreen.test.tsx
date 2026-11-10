@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
 const { ovMock } = vi.hoisted(() => ({ ovMock: vi.fn() }));
 vi.mock('../api/posAiCenterApi', () => ({ posAiCenterApi: { overview: ovMock } }));
 import { POSAiAnalyticsScreen } from './POSAiAnalyticsScreen';
@@ -23,7 +24,7 @@ const overview = {
 describe('POSAiAnalyticsScreen', () => {
   it('shows tracked KPIs with values and untracked as "Not tracked yet"', async () => {
     ovMock.mockResolvedValue(overview);
-    render(<POSAiAnalyticsScreen />);
+    render(<MemoryRouter><POSAiAnalyticsScreen /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'AI Analytics' })).toBeInTheDocument();
     expect(screen.getAllByText('42').length).toBeGreaterThan(0);
     expect(screen.getByText('$1,320.00')).toBeInTheDocument();        // upsell revenue cents
@@ -32,8 +33,19 @@ describe('POSAiAnalyticsScreen', () => {
   });
   it('flags an estimated metric with an est. tag', async () => {
     ovMock.mockResolvedValue(overview);
-    render(<POSAiAnalyticsScreen />);
+    render(<MemoryRouter><POSAiAnalyticsScreen /></MemoryRouter>);
     expect(await screen.findByText('est.')).toBeInTheDocument();      // aiTimeSavedMinutes estimated
     expect(screen.getByText(/246 min/)).toBeInTheDocument();
+  });
+});
+
+describe('POSAiAnalyticsScreen — period (batch 9 guide 14, Nov 10 2026)', () => {
+  it('today by default; a preset asks the server for that window and the caption + 7-day panel name it', async () => {
+    const ov = ovMock;
+    ov.mockResolvedValue({ ...overview, window: { from: '2026-11-01', to: '2026-11-10', timezone: 'America/New_York', weekFrom: '2026-11-04' } });
+    render(<MemoryRouter initialEntries={['/tenant/reports/ai?preset=month']}><POSAiAnalyticsScreen /></MemoryRouter>);
+    await waitFor(() => expect(ov).toHaveBeenCalledWith({ preset: 'month' }));
+    expect(await screen.findByTestId('ai-caption')).toHaveTextContent('2026-11-01 – 2026-11-10');
+    expect(screen.getByTestId('ai-week')).toHaveTextContent('from 2026-11-04');
   });
 });

@@ -341,22 +341,24 @@ export class OwnerService {
       const rev = rc?.revenueCents ?? 0;
       const tc = rc?.ticketCount ?? 0;
       const prevRev = revP.get(b.branchId) ?? 0;
-      return { branchId: b.branchId, branchName: b.branchName, revenueCents: rev, trendPercent: pct(rev, prevRev), bookingCount: book.get(b.branchId) ?? 0, averageTicketCents: tc > 0 ? Math.round((rc?.salesCents ?? 0) / tc) : 0 };   // sales ÷ paid tickets (POS definition)
+      // batch 9 guide 16 (Nov 10 2026): no prior revenue → no trend (null, shown N/A) — pct() reads that as +100% growth
+      return { branchId: b.branchId, branchName: b.branchName, revenueCents: rev, trendPercent: prevRev > 0 ? pct(rev, prevRev) : null, hasTickets: tc > 0, bookingCount: book.get(b.branchId) ?? 0, averageTicketCents: tc > 0 ? Math.round((rc?.salesCents ?? 0) / tc) : 0 };   // sales ÷ paid tickets (POS definition)
     });
     rows.sort((a, b) => b.revenueCents - a.revenueCents);
     const ranked = rows.map((r, i) => ({ rank: i + 1, ...r }));
     const totalRevenueCents = rows.reduce((s, r) => s + r.revenueCents, 0);
     const totalPrev = (restricted !== null ? revPrev.filter((x) => x.branchId === restricted) : revPrev).reduce((s, x) => s + x.revenueCents, 0);
-    const top = ranked[0];
-    const bestGrowth = [...rows].sort((a, b) => b.trendPercent - a.trendPercent)[0];
-    const highestAvg = [...rows].sort((a, b) => b.averageTicketCents - a.averageTicketCents)[0];
-    const topBookings = [...rows].sort((a, b) => b.bookingCount - a.bookingCount)[0];
+    // a "top" / "best" needs something to rank: revenue > 0, a prior base for growth, a paid ticket, a booking
+    const top = ranked.find((r) => r.revenueCents > 0);
+    const bestGrowth = rows.filter((r) => r.trendPercent != null).sort((a, b) => (b.trendPercent as number) - (a.trendPercent as number))[0];
+    const highestAvg = rows.filter((r) => r.hasTickets).sort((a, b) => b.averageTicketCents - a.averageTicketCents)[0];
+    const topBookings = rows.filter((r) => r.bookingCount > 0).sort((a, b) => b.bookingCount - a.bookingCount)[0];
     return {
       period: { from: from.fromIso, to: from.toIso, comparisonFrom: prev.fromIso, comparisonTo: prev.toIso },
-      totalRevenueCents, totalRevenueTrendPercent: pct(totalRevenueCents, totalPrev),
+      totalRevenueCents, totalRevenueTrendPercent: totalPrev > 0 ? pct(totalRevenueCents, totalPrev) : null,
       topBranch: top ? { branchId: top.branchId, branchName: top.branchName, trendPercent: top.trendPercent } : undefined,
       totalBranches: branches.length, activeBranches: branches.filter((b) => b.status === 'active').length,
-      branches: ranked,
+      branches: ranked.map(({ hasTickets: _h, ...r }) => r),
       quickComparison: {
         bestGrowth: bestGrowth ? { branchId: bestGrowth.branchId, branchName: bestGrowth.branchName, valuePercent: bestGrowth.trendPercent } : undefined,
         highestAverageTicket: highestAvg ? { branchId: highestAvg.branchId, branchName: highestAvg.branchName, valueCents: highestAvg.averageTicketCents } : undefined,

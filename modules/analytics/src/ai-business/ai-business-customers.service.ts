@@ -14,10 +14,10 @@ export interface CustomerSource {
 export interface CustomerGrowth {
   preset: DatePreset;
   partialCurrentPeriod: boolean;
-  newCustomers: number; newCustomersTrendPercent: number;
-  returningCustomers: number; returningCustomersTrendPercent: number;
+  newCustomers: number; newCustomersTrendPercent: number | null;   // null = no prior period base (N/A)
+  returningCustomers: number; returningCustomersTrendPercent: number | null;
   activeCustomers: number;                 // derived = new + returning (labeled in modeledFields/notes)
-  retentionRatePercent: number; retentionRateTrendPercent: number;
+  retentionRatePercent: number | null; retentionRateTrendPercent: number | null;   // null = no prior cohort / not computed
   limitedData: boolean;                    // true when the active-customer sample is below the floor (§16)
   freshnessClass: FreshnessClass;
   drilldownRoute: string;

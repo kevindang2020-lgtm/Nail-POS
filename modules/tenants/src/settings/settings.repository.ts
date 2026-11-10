@@ -27,6 +27,8 @@ export interface SettingsRepositoryPort {
   paymentsConfig(ctx: SettingsContext): Promise<{ merchantId?: string; secret?: string }>; // server-only; for the provider adapter
   appendAudit(row: POSSettingsAuditLogRow): Promise<void>;
   listAudit(ctx: SettingsContext, limit: number): Promise<POSSettingsAuditLogRow[]>;
+  /** batch 9 guide 20: the change history one page at a time (Postgres adapter only) */
+  listAuditPage?(ctx: SettingsContext, f: { q?: string; from?: string; to?: string; page: number; pageSize: number }): Promise<{ rows: any[]; total: number; tz: string }>;
 }
 
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v)); }

@@ -7,7 +7,7 @@ import {
 } from './reports.dto';
 import { ReportsContext, ReportsRepositoryPort } from './reports.repository';
 import { hasPermission, isStaffPrincipal } from '@aipowersalon/permissions';
-import { rankCategories, totalsOf, matchLine, newestFirst, techKeyOf, NO_LINES, UNMAPPED, type ServiceLineFact } from './service-revenue';
+import { rankCategories, rankServices, uniqueServices, svcKeyOf, totalsOf, matchLine, newestFirst, techKeyOf, NO_LINES, UNMAPPED, type ServiceLineFact } from './service-revenue';
 import type { ServiceRevenueReport, ReportTicketPage, ReportCustomerPage } from '@aipowersalon/api-contracts/tenant';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
@@ -116,7 +116,7 @@ export class ReportsService {
   /** batch 9 guide 2 (Nov 10 2026): Revenue by Service — the shared line-level calculation (service-revenue.ts) for the
    *  Daily Summary card and the Services Report. Search + category filter the lines; totals cover every match; the line
    *  history is one server page, newest first. Customer names and phone matching only with the financial permission. */
-  async getServiceRevenue(ctx: ReportsContext, f: ReportFilters = {}, opts: { q?: string; category?: string; technician?: string; page?: number; pageSize?: number } = {}): Promise<ServiceRevenueReport> {
+  async getServiceRevenue(ctx: ReportsContext, f: ReportFilters = {}, opts: { q?: string; category?: string; technician?: string; service?: string; page?: number; pageSize?: number } = {}): Promise<ServiceRevenueReport> {
     this.assertView(ctx);
     const out = await this.repo.query(ctx, f);
     const facts = out.serviceLines ?? { lines: [] as ServiceLineFact[], discountByTicket: {}, refundByTicket: {} };
@@ -128,7 +128,10 @@ export class ReportsService {
     // batch 9 guide 6: one technician's lines (the Technicians Report drill-down) — the same keys as the leaderboard
     const technician = String(opts.technician ?? '').trim().slice(0, 64) || null;
     const byTech = technician ? searched.filter((l) => techKeyOf(l) === technician) : searched;
-    const filtered = category ? byTech.filter((l) => keyOf(l) === category) : byTech;
+    const inCategory = category ? byTech.filter((l) => keyOf(l) === category) : byTech;
+    // batch 9 guide 10: one service (its historical id, else its recorded name)
+    const service = String(opts.service ?? '').trim().slice(0, 200) || null;
+    const filtered = service ? inCategory.filter((l) => svcKeyOf(l) === service) : inCategory;
     const sorted = [...filtered].sort(newestFirst);
     const pageSize = [25, 50, 100].includes(Number(opts.pageSize)) ? Number(opts.pageSize) : 25;
     const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -136,13 +139,13 @@ export class ReportsService {
     const items = sorted.slice((page - 1) * pageSize, page * pageSize).map(({ phoneDigits: _p, customerId: _c, ...l }) => ({ ...l, customer: canCust ? l.customer : '' }));
     return {
       period: { from: out.state.dateRange.from, to: out.state.dateRange.to, timezone: out.state.dateRange.timezone ?? null },
-      basis: 'paid_ticket_service_lines', asOf: new Date().toISOString(), filters: { q: q || null, category, technician },
-      totals: totalsOf(filtered, facts.discountByTicket, facts.refundByTicket), categories: rankCategories(byTech),
+      basis: 'paid_ticket_service_lines', asOf: new Date().toISOString(), filters: { q: q || null, category, technician, service },
+      totals: { ...totalsOf(filtered, facts.discountByTicket, facts.refundByTicket), uniqueServices: uniqueServices(filtered) }, categories: rankCategories(byTech), services: rankServices(inCategory),
       history: { items, total: sorted.length, page, pageSize }, customersVisible: canCust,
     };
   }
 
-  private async serviceLineRows(ctx: ReportsContext, f: ReportFilters, extra: { q?: string; category?: string }) {
+  private async serviceLineRows(ctx: ReportsContext, f: ReportFilters, extra: { q?: string; category?: string; service?: string }) {
     const first = await this.getServiceRevenue(ctx, f, { ...extra, pageSize: 100 });
     const all = [...first.history.items];
     for (let p = 2; p <= Math.ceil(first.history.total / 100); p++) all.push(...(await this.getServiceRevenue(ctx, f, { ...extra, page: p, pageSize: 100 })).history.items);
@@ -220,7 +223,7 @@ export class ReportsService {
   }
 
   // ---- export ----
-  async export(ctx: ReportsContext, type: string, format: ExportFormat, filters: ReportFilters = {}, extra: { q?: string; category?: string } = {}): Promise<{ format: ExportFormat; filename: string; csv?: string; disabledReason?: string }> {
+  async export(ctx: ReportsContext, type: string, format: ExportFormat, filters: ReportFilters = {}, extra: { q?: string; category?: string; service?: string } = {}): Promise<{ format: ExportFormat; filename: string; csv?: string; disabledReason?: string }> {
     this.assertView(ctx);
     if (!hasPermission(ctx as any, 'pos.reports.export')) throw new ForbiddenError('Missing pos.reports.export');
     if (['sales', 'payments', 'tips', 'tax', 'transactions'].includes(type)) this.requireFinancial(ctx);

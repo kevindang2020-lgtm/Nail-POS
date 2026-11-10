@@ -3,7 +3,9 @@
 // Guard requires `settings.view`; per-category EDIT permission + read-only rules are enforced in the service.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp } from '@aipowersalon/permissions/guards';
 import type { PosTerminalLocationAssigned } from '@aipowersalon/api-contracts/tenant';   // wire contract (typing ratchet)
-import { Controller, Get, Patch, Post, Body, Param, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { ListQuery } from '@aipowersalon/database';
+import type { SettingsAuditPage } from '@aipowersalon/api-contracts/tenant';
 import { safeInet } from '@aipowersalon/database';
 import { PosSettingsService, ForbiddenError, ValidationError } from './settings.service';
 import type { SettingsCategory, SettingsContext } from './settings.dto';
@@ -92,6 +94,10 @@ export class PosSettingsController {
   @Get('subscription-plan') @RequirePermission('settings.view') gSub(@Req() r: any) { return this.get(r, 'subscription-plan'); }
 
   @Get('audit-logs') @RequirePermission('settings.view') gAudit(@Req() r: any) { return this.get(r, 'audit-logs'); }
+  // SUNMI batch 9 guide 20: the change history — newest first, searched, salon-day From–To, paged
+  @Get('audit-logs/page') @RequirePermission('settings.view')
+  @ListQuery({ filters: { from: { type: 'text' }, to: { type: 'text' } }, search: { params: ['q'], maxLength: 80 }, limitParams: ['pageSize'], maxLimit: 100, defaultLimit: 25, params: ['page'] } as const)
+  auditPage(@Req() r: any, @Query() q: any): Promise<SettingsAuditPage> { return this.run(() => this.svc.auditPage(ctxFrom(r), q)); }
 
   // action helper: Forbidden -> 403, other (input) errors -> 400. An ASYNC action's rejection used to slip past the
   // try/catch (it only saw synchronous throws) and reached the client as a 500; a rejected Forbidden/Validation error

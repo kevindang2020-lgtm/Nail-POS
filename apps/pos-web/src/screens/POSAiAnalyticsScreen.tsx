@@ -6,11 +6,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { posAiCenterApi } from '../api/posAiCenterApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
-import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
+import { fmtInZone } from '../i18n/format';
+import { useUrlPeriod } from './reportsCommon';
+import { PeriodBar } from '../components/FinanceKit';   // the location's clock (not the device's)
 
 type Metric = { tracked: boolean; value: number | null; unit?: string; source: string; estimated?: boolean; route?: string };
 type Overview = {
   generatedAt: string;
+  window?: { from: string; to: string; timezone: string; weekFrom: string } | null;
   kpis: Record<string, Metric>;
   performance: { totalConversations: Metric; aiSuccessRatePct: Metric };
   callIntelligence: { callsHandled: Metric; recovered: Metric; callToBookingRatePct: Metric };
@@ -51,25 +54,33 @@ export function POSAiAnalyticsScreen() {
   const [o, setO] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
+  // SUNMI batch 9 guide 14 (Nov 10 2026): the period is chosen (today by default, as before) and every "in the period"
+  // figure + the 7-day panel follow it; the window the server used is shown, not assumed
+  const { period, setPeriod, query } = useUrlPeriod('today');
+  const key = JSON.stringify(query);
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setO(await posAiCenterApi.overview() as Overview); }
-    catch (e: any) { setError(reportError(e, t('growth.noun.aiAnalytics'))); }
+    try { setO(await posAiCenterApi.overview(query) as Overview); }
+    catch (e: any) { setO(null); setError(reportError(e, t('growth.noun.aiAnalytics'))); }
     finally { setLoading(false); }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="work"><div className="state">{t('pos.loading_ai_analytics')}</div></div>;
-  if (error) return <div className="work"><div className="err" style={{ marginTop: 12 }}>{error}</div></div>;
-  if (!o) return <div className="work"><div className="state">{t('pos.no_data')}</div></div>;
+  const w = o?.window ?? null;
+  const server = w ? { preset: period.preset, from: w.from, to: w.to, tz: w.timezone, today: w.to } : null;
+  const bar = <PeriodBar value={period} onChange={setPeriod} server={server} />;
+  if (loading && !o) return <div className="work">{bar}<div className="state">{t('pos.loading_ai_analytics')}</div></div>;
+  if (error) return <div className="work">{bar}<div className="err" style={{ marginTop: 12 }}>{error}</div></div>;
+  if (!o) return <div className="work">{bar}<div className="state">{t('pos.no_data')}</div></div>;
 
   const trackedCount = Object.values(o.kpis).filter((m) => m.tracked).length;
 
   return (
     <div className="work">
       <div className="vh"><h1>{t('pos.ai_analytics')}</h1>
-        <div className="sub mb-3">{t('pos.how_your_ai_assistants_are_performing_1qyq')}</div></div>
+        <div className="sub mb-3" data-testid="ai-caption">{w && w.from !== w.to ? t('rpt.ai.caption', { from: w.from, to: w.to }) : t('pos.how_your_ai_assistants_are_performing_1qyq')}</div></div>
+      {bar}
 
       <div className="kpis kpis grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3" >
         {KPI_LABELS().map(([key, label]) => <MetricCard key={key} label={label} m={o.kpis[key]} />)}
@@ -94,7 +105,7 @@ export function POSAiAnalyticsScreen() {
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <div className="p-h">{t('pos.campaign_performance')}</div>
+        <div className="p-h">{t('pos.campaign_performance')} <span className="s">· {t('rpt.ai.allCampaigns')}</span></div>
         <div className="kpis kpis grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3" style={{ marginTop: 8,  }}>
           <MetricCard label={t('pos.sent')} m={o.campaigns?.sent} />
           <MetricCard label={t('pos.bookings_2')} m={o.campaigns?.bookings} />
@@ -104,7 +115,7 @@ export function POSAiAnalyticsScreen() {
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <div className="p-h">{t('pos.7_day_performance')}</div>
+        <div className="p-h">{t('pos.7_day_performance')}{w ? <span className="s" data-testid="ai-week"> · {t('rpt.ai.week', { from: w.weekFrom, to: w.to })}</span> : null}</div>
         <div className="kpis kpis grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3" style={{ marginTop: 8,  }}>
           <MetricCard label={t('pos.total_conversations')} m={o.performance?.totalConversations} />
           <MetricCard label={t('pos.ai_success_rate')} m={o.performance?.aiSuccessRatePct} />

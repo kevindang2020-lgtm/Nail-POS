@@ -29,7 +29,7 @@ const HEALTH_GAP_SECONDS = 30;
 export interface ScorecardRow {
   branchId: string; branchName: string; status: string; timeZone: string;
   netSalesCents: number | null; ticketsCount: number | null; averageTicketCents: number | null;
-  totalBookings: number; completed: number; completionRate: number | null; noShowPercent: number; cancelledPercent: number;
+  totalBookings: number; completed: number; completionRate: number | null; noShowPercent: number | null; cancelledPercent: number | null;
   technicianHours: number | null; operatingHours: number | null; customers: number; returningCustomers: number;
   netPerTechnicianHourCents: number | null; netPerOperatingHourCents: number | null; returningRate: number | null;
   rank: { perTechnicianHour: number | null; perOperatingHour: number | null; returningRate: number | null };
@@ -67,7 +67,7 @@ export function explainDifference(a: ScorecardRow, b: ScorecardRow): { lines: st
     lines.push(`${money(Math.abs(price))} comes from the average ticket (${money(Math.round(avgA))} vs ${money(Math.round(avgB))}).`);
   } else lines.push('Revenue is hidden for your role, so only bookings, hours and customers are compared.');
   if (a.completionRate != null && b.completionRate != null && a.completionRate !== b.completionRate) lines.push(`Completed bookings: ${a.completionRate}% vs ${b.completionRate}%.`);
-  if (a.noShowPercent !== b.noShowPercent) lines.push(`No-shows: ${a.noShowPercent}% vs ${b.noShowPercent}%.`);
+  if (a.noShowPercent != null && b.noShowPercent != null && a.noShowPercent !== b.noShowPercent) lines.push(`No-shows: ${a.noShowPercent}% vs ${b.noShowPercent}%.`);
   if (a.technicianHours != null && b.technicianHours != null) lines.push(`Technician hours worked: ${a.technicianHours} vs ${b.technicianHours}${a.netPerTechnicianHourCents != null && b.netPerTechnicianHourCents != null ? ` — ${money(a.netPerTechnicianHourCents)} vs ${money(b.netPerTechnicianHourCents)} per technician hour` : ''}.`);
   if (a.returningRate != null && b.returningRate != null) lines.push(`Returning customers: ${a.returningRate}% vs ${b.returningRate}%.`);
   lines.push('These are measured differences, not causes — open each branch\'s Sales Report to look closer.');
@@ -80,13 +80,13 @@ export function adviseBranches(rows: ScorecardRow[]): Advice[] {
   if (rows.length < 2) return out;
   const mTech = median(rows.map((r) => r.netPerTechnicianHourCents).filter((x): x is number => x != null));
   const mRet = median(rows.map((r) => r.returningRate).filter((x): x is number => x != null));
-  const mNoShow = median(rows.map((r) => r.noShowPercent));
+  const mNoShow = median(rows.map((r) => r.noShowPercent).filter((x): x is number => x != null));
   for (const r of rows) {
     if (mTech != null && r.netPerTechnicianHourCents != null && r.netPerTechnicianHourCents < mTech * 0.8)
       out.push({ branchId: r.branchId, branchName: r.branchName, kind: 'low_yield_per_tech_hour', severity: 'warning', route: '/tenant/ai/scheduling-optimizer',
         message: `${r.branchName} earns ${money(r.netPerTechnicianHourCents)} per technician hour, below the salon median of ${money(Math.round(mTech))}. Compare its schedule with its bookings — there may be more staffed hours than demand.`,
         basis: { netPerTechnicianHourCents: r.netPerTechnicianHourCents, medianCents: Math.round(mTech), technicianHours: r.technicianHours } });
-    if (mNoShow != null && r.noShowPercent >= 5 && r.noShowPercent >= mNoShow + 5)
+    if (mNoShow != null && r.noShowPercent != null && r.noShowPercent >= 5 && r.noShowPercent >= mNoShow + 5)
       out.push({ branchId: r.branchId, branchName: r.branchName, kind: 'high_no_shows', severity: 'warning', route: '/tenant/ai/receptionist/follow-ups',
         message: `${r.branchName} has ${r.noShowPercent}% no-shows against a salon median of ${r1(mNoShow)}%. Reminders and a confirmation call the day before are the usual first step.`,
         basis: { noShowPercent: r.noShowPercent, medianPercent: r1(mNoShow) } });

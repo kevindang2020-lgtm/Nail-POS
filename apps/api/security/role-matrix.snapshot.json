@@ -1072,6 +1072,7 @@
   "GET /pos/serving/tickets/{ticketId}": "AAAAARRRRRRRRRRRR",
   "GET /pos/serving/tickets/{ticketId}/revisions": "AAAAARRRRRRRRRRRR",
   "GET /pos/settings/audit-logs": "AADDDRRRRRRRRRRRR",
+  "GET /pos/settings/audit-logs/page": "AADDDRRRRRRRRRRRR",
   "GET /pos/settings/booking-appointments": "AADDDRRRRRRRRRRRR",
   "GET /pos/settings/booking-phone-verification": "AADDDRRRRRRRRRRRR",
   "GET /pos/settings/booking-phone-verification/usage": "AADDDRRRRRRRRRRRR",

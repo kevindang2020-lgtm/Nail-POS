@@ -1089,6 +1089,7 @@ GET /pos/serving/tickets  realm=staff  auth=session  domain=checkout  perm=pos.s
 GET /pos/serving/tickets/{ticketId}  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/serving/tickets/{ticketId}/revisions  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/audit-logs  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/settings/audit-logs/page  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/booking-appointments  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/booking-phone-verification  realm=staff  auth=session  domain=booking  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/booking-phone-verification/usage  realm=staff  auth=session  domain=booking  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

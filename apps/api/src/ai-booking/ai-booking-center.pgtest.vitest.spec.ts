@@ -12,10 +12,13 @@ const C1 = 'a7b40000-0000-4000-8000-0000000000c1', TE = 'a7b40000-0000-4000-8000
 const A1 = 'a7b40000-0000-4000-8000-0000000000a1', A2 = 'a7b40000-0000-4000-8000-0000000000a2';
 const ctx: any = { tenantId: T, branchId: B, userId: 'a7b40000-0000-4000-8000-0000000000f1', role: 'OWNER', permissions: ['ai_booking.view'] };
 const audited: Array<Record<string, unknown>> = [];
+// Nov 10 2026: the events were fixed at Nov 3 2026 while the recovery view looks back 7 days from NOW — the tests broke
+// one week after they were written. Anchored to a day ago (top of the hour) so they hold on any date.
+const BASE = Math.floor((Date.now() - 86_400_000) / 3_600_000) * 3_600_000;
 let pg: any; let center: AiBookingCenter;
 const ev = (cid: string, stage: string, minute: number, extra: { outcome?: string; failure?: string; appt?: string; branch?: string } = {}) =>
   pg.query(`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, failure_reason, appointment_id, correlation_id, created_at) values ($1,$2,'AI_PHONE_RECEPTIONIST',$3,$4,$5,$6,$7,$8)`,
-    [T, extra.branch ?? B, stage, extra.outcome ?? null, extra.failure ?? null, extra.appt ?? null, cid, new Date(Date.UTC(2026, 10, 3, 15, minute)).toISOString()]);
+    [T, extra.branch ?? B, stage, extra.outcome ?? null, extra.failure ?? null, extra.appt ?? null, cid, new Date(BASE + minute * 60_000).toISOString()]);
 
 beforeAll(async () => {
   pg = await migratedPglite(); await pg.exec(`SET TIME ZONE 'UTC'`);

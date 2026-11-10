@@ -28,7 +28,7 @@ type ReportsState = {
   salesKpis: { grossSalesCents: number; netSalesCents: number; serviceSalesCents: number; productSalesCents: number; tipsCents: number; taxCollectedCents: number; cardSurchargeCents: number; discountsCents: number; refundsCents: number; ticketsCount: number; customersCount: number; averageTicketCents: number };
   salesTrend: Trend;
   trend?: RevenueTrend;
-  payments: { cardCents: number; cashCents: number; giftCardCents: number; splitCount: number; refundsCents: number; cardSurchargeCents: number; processorStatus: string };
+  payments: { cardCents: number; cashCents: number; giftCardCents: number; splitCount: number; refundsCents: number; cardSurchargeCents: number; processorStatus: string; collectedCents?: number; otherCents?: number; byMethod?: Record<string, number> };
   tips: { totalCents: number; cardTipsCents: number; cashTipsCents: number; tipPercentAvg: number; noTipCount: number; managerApprovalCount: number; byTechnician: { technicianId: string; name: string; tipsCents: number }[] };
   tax: { taxableSalesCents: number; exemptSalesCents: number; taxCollectedCents: number; taxRatePercent: number; byCategory: { category: string; taxCents: number }[]; adjustmentsCents: number };
   discountSurcharge: { discountCents: number; discountCount: number; topReason: string; cardSurchargeCents: number; surchargePercent: number; cashDiscountCents: number };
@@ -203,7 +203,7 @@ export function POSReportsScreen() {
         {isR('salesKpis') ? <Restricted /> : (
           <div className="kpis">{kpis.map((c) => (<div className="kpi" key={c.l}><div className="l">{c.l}</div><div className="v">{c.v}</div></div>))}</div>
         )}
-        {!isR('salesKpis') && !isR('payments') ? <ChargeReconcile sk={sk} collectedCents={s.payments.cardCents + s.payments.cashCents + s.payments.giftCardCents} money={money} /> : null}
+        {!isR('salesKpis') && !isR('payments') ? <ChargeReconcile sk={sk} collectedCents={s.payments.collectedCents ?? s.payments.cardCents + s.payments.cashCents + s.payments.giftCardCents} money={money} /> : null}
       </section>
 
       {insights.length > 0 ? (

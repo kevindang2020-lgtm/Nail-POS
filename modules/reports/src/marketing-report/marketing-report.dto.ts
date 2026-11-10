@@ -41,7 +41,9 @@ export interface MarketingReportState {
 export function composeHeadline(c: CampaignsPillar, p: PromotionsPillar, r: ReviewsPillar): MarketingHeadline {
   return {
     campaignRevenueCents: Math.max(0, Math.round(c.campaignRevenueCents || 0)),
-    campaignRoi: c.avgRoi == null || !Number.isFinite(Number(c.avgRoi)) ? null : Number(c.avgRoi),
+    // batch 9 guide 12 (Nov 10 2026): the campaign cost is what the owner ENTERED on the campaign, not provider charges — with
+    // nothing sent there is no return to measure, so ROI is N/A (it read "0x" beside a $100 entered cost and 0 messages)
+    campaignRoi: (c.totalSent ?? 0) <= 0 || c.avgRoi == null || !Number.isFinite(Number(c.avgRoi)) ? null : Number(c.avgRoi),
     activePromotions: Math.max(0, p.active || 0),
     promotionRedemptions: Math.max(0, p.totalRedemptions || 0),
     averageRating: (r.totalReviews ?? 0) > 0 ? Number(r.averageRating) || 0 : null,

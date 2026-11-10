@@ -6,18 +6,19 @@ import { posMultiLocationApi } from '../api/posMultiLocationApi';
 import { money, PeriodTabs, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
-type BranchRow = { rank: number; branchId: string; branchName: string; revenueCents: number; trendPercent: number; bookingCount: number; averageTicketCents: number };
-type Highlight = { branchId: string; branchName: string; valuePercent?: number; valueCents?: number; value?: number };
+type BranchRow = { rank: number; branchId: string; branchName: string; revenueCents: number; trendPercent: number | null; bookingCount: number; averageTicketCents: number };
+type Highlight = { branchId: string; branchName: string; valuePercent?: number | null; valueCents?: number; value?: number };
 type State = {
   period: { from: string; to: string; comparisonFrom: string; comparisonTo: string };
-  totalRevenueCents: number; totalRevenueTrendPercent: number;
-  topBranch?: { branchId: string; branchName: string; trendPercent: number };
+  totalRevenueCents: number; totalRevenueTrendPercent: number | null;
+  topBranch?: { branchId: string; branchName: string; trendPercent: number | null };
   totalBranches: number; activeBranches: number;
   branches: BranchRow[];
   quickComparison: { bestGrowth?: Highlight; highestAverageTicket?: Highlight; topBookings?: Highlight };
 };
 
-const trend = (p: number) => { const s = p > 0 ? '+' : ''; const c = p > 0 ? '#2E9E54' : p < 0 ? '#C0392B' : 'var(--muted)'; return <span style={{ color: c, fontWeight: 700 }}>{s}{p}%</span>; };
+// batch 9 guide 16 (Nov 10 2026): null = no prior revenue → N/A (it read +100%)
+const trend = (p: number | null | undefined) => { if (p == null) return <span style={{ color: 'var(--muted)', fontWeight: 700 }} data-testid="ml-trend-na">{t('rpt.na')}</span>; const s = p > 0 ? '+' : ''; const c = p > 0 ? '#2E9E54' : p < 0 ? '#C0392B' : 'var(--muted)'; return <span style={{ color: c, fontWeight: 700 }}>{s}{p}%</span>; };
 
 export function POSMultiLocationScreen() {
   const [period, setPeriod] = useState('month');
@@ -53,7 +54,7 @@ export function POSMultiLocationScreen() {
             <div className="kpi"><div className="l">{t('pos.total_revenue')}</div><div className="v" style={{ color: 'var(--aps-orange)' }}>{money(s.totalRevenueCents)}</div><div className="d">{trend(s.totalRevenueTrendPercent)} {t('pos.vs_prev')}</div></div>
             <div className="kpi"><div className="l">{t('pos.branches')}</div><div className="v">{s.totalBranches}</div><div className="d">{s.activeBranches} {t('pos.active')}</div></div>
             <div className="kpi"><div className="l">{t('pos.top_branch')}</div><div className="v" style={{ fontSize: 18 }}>{s.topBranch?.branchName || '—'}</div>{s.topBranch ? <div className="d">{trend(s.topBranch.trendPercent)}</div> : null}</div>
-            <div className="kpi"><div className="l">{t('pos.best_growth')}</div><div className="v" style={{ fontSize: 18 }}>{q?.bestGrowth?.branchName || '—'}</div>{q?.bestGrowth ? <div className="d">{trend(q.bestGrowth.valuePercent ?? 0)}</div> : null}</div>
+            <div className="kpi"><div className="l">{t('pos.best_growth')}</div><div className="v" style={{ fontSize: 18 }}>{q?.bestGrowth?.branchName || '—'}</div>{q?.bestGrowth ? <div className="d">{trend(q.bestGrowth.valuePercent)}</div> : null}</div>
           </div>
 
           {rows.length === 0 ? <div className="state" style={{ marginTop: 12 }}>{t('pos.no_branch_activity_in_this_period')}</div> : (

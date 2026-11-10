@@ -117,6 +117,17 @@ export function buildReportsState(all: Tx[], filters: ReportFilters, seedBranch:
     giftCardCents: sum(completed.filter((r) => r.paymentMethod === 'giftCard'), (r) => r.grossCents),
     splitCount: 0, refundsCents: refunds, cardSurchargeCents: surcharge, processorStatus: 'unknown',   // the Kysely adapter fills the salon's real gateway status (no invented "stub")
   };
+  // batch 9 guide 13 (Nov 10 2026): EVERY collected method — cash to technician, rewards, deposits … used to fall out of
+  // "Total Collected" (only card / cash / gift card were summed) — and a REAL split count (it was a constant 0):
+  // tickets paid with two or more collected payment rows
+  const byMethod: Record<string, number> = {};
+  for (const r of completed) byMethod[r.paymentMethod] = (byMethod[r.paymentMethod] ?? 0) + (r.grossCents || 0);
+  const legsByTicket = new Map<string, number>();
+  for (const r of completed) if (r.ticketId) legsByTicket.set(r.ticketId, (legsByTicket.get(r.ticketId) ?? 0) + 1);
+  payments.byMethod = byMethod;
+  payments.otherCents = Object.entries(byMethod).filter(([m]) => m !== 'card' && m !== 'cash' && m !== 'giftCard').reduce((a, [, v]) => a + v, 0);
+  payments.collectedCents = Object.values(byMethod).reduce((a, v) => a + v, 0);
+  payments.splitCount = [...legsByTicket.values()].filter((n) => n > 1).length;
   const techMap = new Map<string, { name: string; tips: number }>();
   for (const r of completed) { const c = techMap.get(r.technicianId) || { name: r.technician, tips: 0 }; c.tips += r.tipCents; techMap.set(r.technicianId, c); }
   const tipsSummary: TipsSummary = {
@@ -176,7 +187,8 @@ export function buildExportRows(all: Tx[], type: string, filters: ReportFilters,
   const { state } = buildReportsState(all, filters, seedBranch);
   if (type === 'sales') return { headers: ['Date', 'Gross', 'Net'], rows: state.salesTrend.points.map((p) => [p.label, p.grossSalesCents, p.netSalesCents]) };
   if (type === 'technicians') return { headers: ['Technician', 'Revenue', 'Services'], rows: state.topTechnicians.map((t) => [t.name, t.revenueCents, t.completedServices]) };
-  if (type === 'tax') return { headers: ['Category', 'Tax Collected'], rows: state.tax.byCategory.map((c) => [c.category, c.taxCents]) };
+  // batch 9 guide 15: tax is recorded per ticket — the export gives taxable / exempt sales per category and the period's tax
+  if (type === 'tax') return { headers: ['Category', 'Taxable sales (cents, before discounts)', 'Exempt sales (cents)', 'Tax collected (cents, whole period)'], rows: [...state.tax.byCategory.map((c) => [c.category, c.taxableCents ?? 'N/A', c.exemptCents ?? 'N/A', '']), ['All categories', state.tax.taxableSalesCents, state.tax.exemptSalesCents, state.tax.taxCollectedCents]] };
   if (type === 'customers') return { headers: ['Metric', 'Value'], rows: [['New Customers', state.customerInsights.newCustomers], ['Returning Customers', state.customerInsights.returningCustomers], ['Retention Rate (%)', state.customerInsights.retentionRatePercent ?? 'N/A']] };
   if (type === 'services') return { headers: ['Service Name', 'Revenue', 'Service Count'], rows: state.revenueByService.map((s) => [s.serviceName, s.revenueCents, s.serviceCount]) };
   if (type === 'payments') return { headers: ['Metric', 'Amount (Cents)'], rows: [['Card', state.payments.cardCents], ['Cash', state.payments.cashCents], ['Gift Card', state.payments.giftCardCents], ['Surcharges', state.payments.cardSurchargeCents], ['Refunds', state.payments.refundsCents]] };

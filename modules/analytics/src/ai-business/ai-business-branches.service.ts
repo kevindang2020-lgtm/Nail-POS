@@ -24,8 +24,8 @@ export interface BranchComparisonRow {
   ticketsCount: number | null;
   totalBookings: number;
   completed: number;
-  cancelledPercent: number;
-  noShowPercent: number;
+  cancelledPercent: number | null;   // null = nothing booked
+  noShowPercent: number | null;
   // normalized (null when the denominator or financials are unavailable)
   revenuePerCompletedAppointmentCents: number | null;
   /** completed / totalBookings as a percent — null (N/A) when the branch had no bookings, never a fake 0 % */

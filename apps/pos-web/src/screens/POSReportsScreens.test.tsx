@@ -67,6 +67,16 @@ describe('POSServicesReportScreen — the expanded Revenue by Service workspace 
     expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
     expect(screen.queryByTestId('svc-kpi-sales')).toBeNull();
   });
+  it('ranks by service too (guide 10): a service click filters the lines; unique services is distinct services', async () => {
+    revMock.mockResolvedValue(rev({ totals: { grossCents: 21000, units: 5, lines: 5, tickets: 3, averageCents: 4200, ticketDiscountCents: 500, refundedCents: 0, uniqueServices: 3 },
+      services: [{ key: 'id:s1', name: 'Classic Manicure', units: 3, grossCents: 12500, lines: 2, percentOfTop: 100, unmapped: false }] }));
+    at();
+    expect(await screen.findByTestId('svc-kpi-unique')).toHaveTextContent('3');
+    fireEvent.click(screen.getByTestId('svc-by-service'));
+    fireEvent.click(await screen.findByTestId('svc-bar-id:s1'));
+    await waitFor(() => expect(revMock).toHaveBeenLastCalledWith(expect.objectContaining({ service: 'id:s1', page: 1 })));
+    expect(await screen.findByTestId('svc-chip-service')).toHaveTextContent('Classic Manicure');
+  });
   it('the empty period says so with its dates — never a fake $0 chart', async () => {
     revMock.mockResolvedValue(rev({ categories: [], totals: { grossCents: 0, units: 0, lines: 0, tickets: 0, averageCents: null, ticketDiscountCents: 0, refundedCents: 0 }, history: { items: [], total: 0, page: 1, pageSize: 25 } }));
     at();
@@ -102,12 +112,18 @@ describe('POSTechniciansReportScreen (batch 9 guide 6)', () => {
   });
 });
 
-describe('POSPaymentsReportScreen', () => {
-  it('renders payment-method KPIs', async () => {
-    payMock.mockResolvedValue({ cardCents: 90000, cashCents: 20000, giftCardCents: 5000, splitCount: 2, refundsCents: 1000, cardSurchargeCents: 300, processorStatus: 'Connected' });
-    render(<POSPaymentsReportScreen />);
+describe('POSPaymentsReportScreen (batch 9 guide 13)', () => {
+  const payAt = () => render(<MemoryRouter initialEntries={['/tenant/reports/payments']}><POSPaymentsReportScreen /></MemoryRouter>);
+  it('collects every method, shows Other and a real split count, and asks for the chosen period', async () => {
+    payMock.mockResolvedValue({ cardCents: 90000, cashCents: 20000, giftCardCents: 5000, splitCount: 2, refundsCents: 1000, cardSurchargeCents: 300, processorStatus: 'Connected',
+      byMethod: { card: 90000, cash: 20000, giftCard: 5000, cash_to_technician: 4000 }, otherCents: 4000, collectedCents: 119000 });
+    payAt();
     expect(await screen.findByRole('heading', { name: 'Payments Report' })).toBeInTheDocument();
-    expect(screen.getAllByText('$1,150.00').length).toBeGreaterThan(0); // total collected
-    expect(screen.getByText('Connected')).toBeInTheDocument();
+    expect(screen.getByTestId('pay-collected')).toHaveTextContent('$1,190.00');
+    expect(screen.getByTestId('pay-other')).toHaveTextContent('$40.00');
+    expect(screen.getByTestId('pay-split')).toHaveTextContent('2');
+    expect(payMock).toHaveBeenCalledWith({ preset: 'month' });               // `preset`, not the ignored `period`
+    fireEvent.click(screen.getByTestId('preset-today'));
+    await waitFor(() => expect(payMock).toHaveBeenCalledWith({ preset: 'today' }));
   });
 });

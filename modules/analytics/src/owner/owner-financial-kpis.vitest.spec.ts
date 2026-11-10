@@ -115,6 +115,20 @@ describe('getBranchPerformance — ranking and growth', () => {
     expect(out.totalBranches).toBe(2);
   });
 
+  it('batch 9 guide 16 (Nov 10 2026): a branch with no prior revenue has NO trend (null) and never wins "best growth"', async () => {
+    class NewBranchRepo extends BranchRepo {
+      async listBranches() { return [...(await super.listBranches()), { branchId: 'b3', branchName: 'New', status: 'active', city: null }]; }
+      async revenueByBranch() { this.rb++; return this.rb % 2 === 1
+        ? [{ branchId: 'b1', revenueCents: 200000, ticketCount: 50, salesCents: 175000 }, { branchId: 'b3', revenueCents: 90000, ticketCount: 20, salesCents: 80000 }]
+        : [{ branchId: 'b1', revenueCents: 150000, ticketCount: 40, salesCents: 140000 }]; }
+    }
+    const out = await new OwnerService(new NewBranchRepo()).getBranchPerformance(ctx(['owner.branches.view']), 'month');
+    expect(out.branches.find((b) => b.branchId === 'b3')!.trendPercent).toBeNull();      // was +100%
+    expect(out.branches.find((b) => b.branchId === 'b2')!.trendPercent).toBeNull();      // nothing now, nothing before
+    expect(out.quickComparison.bestGrowth!.branchId).toBe('b1');
+    expect(out.quickComparison.topBookings!.branchId).toBe('b2');
+  });
+
   it('getComparison delegates to the same computation', async () => {
     const out = await new OwnerService(new BranchRepo()).getComparison(ctx(['owner.branches.view']), 'month');
     expect(out.totalRevenueCents).toBe(500000);

@@ -141,13 +141,13 @@ export interface GrowthTip { kind: string; message: string; basis: Record<string
 export function growthAdvice(x: { customers?: Row | null; appointments?: Row | null; revenue?: Row | null }): GrowthTip[] {
   const tips: GrowthTip[] = [];
   const c = x.customers, a = x.appointments?.funnel, r = x.revenue;
-  if (a && a.totalBookings >= 10 && a.noShowPercent >= 8) tips.push({ kind: 'no_shows', route: '/tenant/ai/receptionist/follow-ups', basis: { noShowPercent: a.noShowPercent, bookings: a.totalBookings },
+  if (a && a.totalBookings >= 10 && a.noShowPercent != null && a.noShowPercent >= 8) tips.push({ kind: 'no_shows', route: '/tenant/ai/receptionist/follow-ups', basis: { noShowPercent: a.noShowPercent, bookings: a.totalBookings },
     message: `${a.noShowPercent}% of ${a.totalBookings} bookings were no-shows. Reminder texts and a confirmation call the day before usually cut this.` });
-  if (a && a.totalBookings >= 10 && a.cancelledPercent >= 15) tips.push({ kind: 'cancellations', route: '/tenant/appointments', basis: { cancelledPercent: a.cancelledPercent },
+  if (a && a.totalBookings >= 10 && a.cancelledPercent != null && a.cancelledPercent >= 15) tips.push({ kind: 'cancellations', route: '/tenant/appointments', basis: { cancelledPercent: a.cancelledPercent },
     message: `${a.cancelledPercent}% of bookings were cancelled. Offer the open slots to the waitlist so the time is not lost.` });
-  if (c && !c.limitedData && c.retentionRatePercent < 40) tips.push({ kind: 'retention', route: '/tenant/marketing/win-back', basis: { retentionRatePercent: c.retentionRatePercent, activeCustomers: c.activeCustomers },
+  if (c && !c.limitedData && c.retentionRatePercent != null && c.retentionRatePercent < 40) tips.push({ kind: 'retention', route: '/tenant/marketing/win-back', basis: { retentionRatePercent: c.retentionRatePercent, activeCustomers: c.activeCustomers },
     message: `Only ${c.retentionRatePercent}% of customers came back. A win-back campaign to customers who have not visited in 60 days is the usual next step.` });
-  if (c && !c.limitedData && c.newCustomers > 0 && c.newCustomersTrendPercent <= -20) tips.push({ kind: 'new_customers', route: '/tenant/marketing/referrals', basis: { newCustomers: c.newCustomers, trendPercent: c.newCustomersTrendPercent },
+  if (c && !c.limitedData && c.newCustomers > 0 && c.newCustomersTrendPercent != null && c.newCustomersTrendPercent <= -20) tips.push({ kind: 'new_customers', route: '/tenant/marketing/referrals', basis: { newCustomers: c.newCustomers, trendPercent: c.newCustomersTrendPercent },
     message: `New customers are down ${Math.abs(c.newCustomersTrendPercent)}% (${c.newCustomers} this period). A referral reward brings in friends of your regulars.` });
   if (r && r.ticketsCount >= 10 && r.productSalesCents === 0) tips.push({ kind: 'retail', route: '/tenant/ai/checkout-upsell', basis: { ticketsCount: r.ticketsCount },
     message: `None of the ${r.ticketsCount} paid tickets included a product. Checkout suggestions can offer aftercare at the right moment.` });

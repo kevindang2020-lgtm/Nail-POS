@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { posSettingsApi } from '../api/posSettingsApi';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
@@ -9,6 +9,11 @@ import { t as i18nText } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { serverText } from '../i18n/server-text';
 import { LANGUAGE_LABEL } from '../shell/LanguageSwitch';   // a language's own name is never translated
+import { api } from '../api/client';
+import { RangeCalendar } from '../components/FinanceKit';
+import { Pager } from '../components/FitKit';
+import { fmtInTz } from '../i18n/format';
+import type { SettingsAuditPage } from '@aipowersalon/api-contracts/tenant';
 
 // POS Settings — reads /pos/settings/state (POSSettingsState). Go-live readiness + per-category status grid, plus
 // Nearly all categories are EDITABLE inline, incl. the roles/permissions matrix (read-only only for security,
@@ -18,7 +23,7 @@ import { LANGUAGE_LABEL } from '../shell/LanguageSwitch';   // a language's own 
 // on demand via getCategory). Patch bodies are partials of the category settings interfaces;
 // per-category edit permission is enforced server-side (a 403 surfaces). Other categories stay read-only (each needs
 // its own form; the patch endpoints exist for all 16).
-type Section = { sectionKey: string; label: string; completionPercent: number; status: string; missingReasons: string[] };
+type Section = { sectionKey: string; label: string; completionPercent: number; status: string; missingReasons: string[]; goLivePending?: string[] };
 type SettingsState = {
   context: { role: string; permissions: string[] };
   businessBranch: { salonName: string; legalName: string; businessType: string; website?: string; branchName: string; address?: string; city?: string; state?: string; zip?: string; currency: string; timezone: string; multiBranchEnabled: boolean; defaultLanguage?: 'en' | 'vi' };
@@ -29,7 +34,7 @@ type SettingsState = {
   onlineGoogleAiBooking: { onlineBookingEnabled: boolean; tenantSlug: string; googleBookingLink?: string; aiPhoneEnabled: boolean; aiActions: { findAvailability: boolean; create: boolean; reschedule: boolean; cancel: boolean; sendReminder: boolean } };
   storeHoursAutoLogout?: { autoLogoutEnabled: boolean; warningMinutes: number[]; gracePeriodMinutes: number; afterCloseExtensionMinutes: number; exemptRoles?: string[]; timezone?: string };
   sectionStatuses: Section[];
-  moduleStatus?: { completionPercent: number; status: string; missingReasons: string[]; goLivePending?: string[] };
+  moduleStatus?: { completionPercent: number; status: string; missingReasons: string[]; goLivePending?: string[]; goLiveReady?: number; goLiveTotal?: number };
 };
 
 const money = (c: number) => '$' + ((c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -278,6 +283,7 @@ export function POSSettingsScreen() {
   const overall = s.moduleStatus?.completionPercent ?? (sections.length ? Math.round(sections.reduce((a, x) => a + x.completionPercent, 0) / sections.length) : 0);
   const overallStatus = s.moduleStatus?.status ?? '';
   const goLivePending = s.moduleStatus?.goLivePending ?? [];
+  const goTotal = s.moduleStatus?.goLiveTotal ?? null; const goReady = s.moduleStatus?.goLiveReady ?? 0;
   const bb = s.businessBranch; const pc = s.paymentsCheckout; const tx = s.tax; const nf = s.notifications; const ob = s.onlineGoogleAiBooking;
 
   return (
@@ -291,12 +297,20 @@ export function POSSettingsScreen() {
       {note ? <div className="err" style={{ marginBottom: 12 }}>{note}</div> : null}
 
       <section className="panel mb-3">
+        {/* SUNMI batch 9 guide 19 (Nov 10 2026): readiness = the go-live items that are actually ready (live card processing,
+            Google Reserve, A2P approval, a paired display). It showed the BUILD status — every section is code-complete, so it
+            always read "100% Complete" even with card processing not live */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <h2 style={{ margin: 0 }}>{i18nText('pos.go_live_readiness')}</h2>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginLeft: 'auto' }}>{overall}%</div>
-          {overallStatus ? <span className={'pill ' + stTone(overallStatus)}>{overallStatus}</span> : null}
+          {goTotal != null ? <>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginLeft: 'auto' }} data-testid="golive-count">{i18nText('set.golive.count', { ready: String(goReady), total: String(goTotal) })}</div>
+            <span className={'pill ' + (goReady === goTotal ? 'ok' : 'warn')} data-testid="golive-state">{goReady === goTotal ? i18nText('set.golive.ready') : i18nText('set.golive.waiting')}</span>
+          </> : <>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginLeft: 'auto' }}>{overall}%</div>
+            {overallStatus ? <span className={'pill ' + stTone(overallStatus)}>{overallStatus}</span> : null}
+          </>}
         </div>
-        <Bar pct={overall} />
+        <Bar pct={goTotal ? Math.round((goReady / goTotal) * 100) : overall} />
         {goLivePending.length ? <div className="s" style={{ marginTop: 8 }}>{i18nText('pos.pending_3')}{' '}{goLivePending.join(' · ')}</div> : null}
       </section>
 
@@ -308,15 +322,17 @@ export function POSSettingsScreen() {
             <div key={sec.sectionKey} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 12, background: '#FFFDF8' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div className="t" style={{ fontSize: 13.5 }}>{serverText(sec.label)}</div>
-                <span className={'pill ' + stTone(sec.status)} style={{ marginLeft: 'auto' }}>{serverText(sec.status)}</span>
+                {sec.goLivePending?.length
+                  ? <span className="pill warn" style={{ marginLeft: 'auto' }} data-testid={`sec-wait-${sec.sectionKey}`}>{i18nText('set.sec.waiting')}</span>
+                  : <span className="pill ok" style={{ marginLeft: 'auto' }}>{i18nText('set.sec.saved')}</span>}
               </div>
-              <Bar pct={sec.completionPercent} />
-              <div className="s" style={{ marginTop: 4 }}>{sec.completionPercent}{i18nText('pos.complete')}</div>
+              {sec.goLivePending?.length ? <div className="s" style={{ marginTop: 6 }}>{sec.goLivePending.map((r) => serverText(r)).join(' · ')}</div> : <div className="s" style={{ marginTop: 6 }}>{i18nText('set.sec.savedNote')}</div>}
               {sec.missingReasons?.length ? <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 11.5, color: 'var(--muted)' }}>{sec.missingReasons.slice(0, 4).map((m, i) => <li key={i}>{m}</li>)}</ul> : null}
             </div>
           ))}
         </div>
       </section>
+      <SettingsHistory />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 mb-3">
         <section className="panel">
@@ -719,3 +735,55 @@ function AiQueuePointer({ onOpen }: { onOpen: () => void }) {
     </div>
   );
 }
+
+// ── SUNMI batch 9 guide 20 (Nov 10 2026): Settings change history ─────────────────────────────────────────────────────────
+// Every settings save is audited (settings_audit_logs); the screen showed none of it. Newest first, searched (area, action,
+// who), a From–To of salon days, 25 per page — read only.
+const SETTINGS_AREAS = ["business_branch", "store_hours", "payments_checkout", "tips", "tax", "booking", "online_ai_booking", "technician_app", "notifications", "queue_workflow", "services_pricing", "technicians_staff", "roles_permissions", "loyalty", "customer_display_devices", "receipts_branding", "gift_card_settings", "subscription_plan", "audit_logs"];
+function SettingsHistory() {
+  const [draft, setDraft] = useState(''); const [q, setQ] = useState('');
+  const [range, setRange] = useState<{ from?: string; to?: string }>({});
+  const [cal, setCal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [d, setD] = useState<SettingsAuditPage | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const first = useRef(true);
+  useEffect(() => { setPage(1); }, [q, range.from, range.to]);
+  useEffect(() => { if (first.current) { first.current = false; return; } const h = setTimeout(() => setQ(draft.trim()), 300); return () => clearTimeout(h); }, [draft]);
+  useEffect(() => {
+    let alive = true; setErr(null);
+    (api.get('/pos/settings/audit-logs/page', { q: q || undefined, from: range.from, to: range.to, page, pageSize: 25 }) as Promise<SettingsAuditPage>)
+      .then((r) => { if (!alive) return; if (Array.isArray(r?.items)) setD(r); else { setD(null); setErr(i18nText('set.hist.failed')); } })
+      .catch((e: any) => { if (alive) { setD(null); setErr(e?.status === 403 ? i18nText('set.hist.forbidden') : i18nText('set.hist.failed')); } });
+    return () => { alive = false; };
+  }, [q, range.from, range.to, page]);
+  return (
+    <section className="panel mb-3" data-testid="settings-history" style={{ position: 'relative' }}>
+      <h2>{i18nText('set.hist.title')}</h2>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <input className="input" style={{ minWidth: 260, minHeight: 44 }} data-testid="settings-history-search" maxLength={80} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={i18nText('set.hist.search')} aria-label={i18nText('set.hist.search')} />
+        <button type="button" className="btn ghost" style={{ minHeight: 44 }} aria-haspopup="dialog" aria-expanded={cal} onClick={() => setCal((o) => !o)}>{range.from || range.to ? `${range.from ?? '…'} – ${range.to ?? '…'}` : i18nText('set.hist.anyDates')}</button>
+        {draft || range.from || range.to ? <button type="button" className="btn ghost sm" onClick={() => { setDraft(''); setQ(''); setRange({}); }}>{i18nText('rpt.svc.clearAll')}</button> : null}
+        {d ? <span className="s">{i18nText('set.hist.count', { n: String(d.total) })}</span> : null}
+      </div>
+      {cal ? <div style={{ position: 'absolute', zIndex: 20, top: 92, left: 12 }}><RangeCalendar initial={range} today={new Date().toISOString().slice(0, 10)} onApply={(r) => { setCal(false); setRange(r); }} onCancel={() => setCal(false)} onClear={() => { setCal(false); setRange({}); }} /></div> : null}
+      {err ? <div className="err" role="alert">{err}</div> : !d ? <div className="muted">{i18nText('set.hist.loading')}</div> : d.items.length === 0 ? (
+        <div className="muted" data-testid="settings-history-empty">{q || range.from || range.to ? i18nText('rpt.tx.noMatch') : i18nText('set.hist.none')}</div>
+      ) : (
+        <div className="overflow-x-auto w-full"><table className="tbl w-full">
+          <thead><tr><th>{i18nText('set.hist.when')}</th><th>{i18nText('set.hist.area')}</th><th>{i18nText('set.hist.who')}</th><th>{i18nText('set.hist.changed')}</th></tr></thead>
+          <tbody>{d.items.map((x) => (
+            <tr key={x.id}>
+              <td className="whitespace-nowrap">{fmtInTz(x.at, d.timezone, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+              <td>{SETTINGS_AREAS.includes(x.area) ? i18nText('set.area.' + x.area) : i18nText('set.area.other')}</td>
+              <td>{x.actor || '—'}<div className="s">{statusLabel('role', x.role)}</div></td>
+              <td className="s">{x.changedKeys.length ? x.changedKeys.join(', ') : '—'}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+      {d ? <Pager info={{ page: d.page, pageSize: d.pageSize, totalItems: d.total, totalPages: Math.max(1, Math.ceil(d.total / d.pageSize)) }} onPage={setPage} label={i18nText('set.hist.title')} /> : null}
+    </section>
+  );
+}
+

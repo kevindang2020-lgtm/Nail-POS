@@ -81,4 +81,28 @@ describe('Queue & Workflow — retired auto-assign toggles', () => {
     expect(saved).not.toHaveProperty('assignBy');
     expect(saved).toMatchObject({ avgServiceMinutes: 30 });
   });
+
+  it('Go-Live Readiness counts the real go-live items, not the build status (batch 9 guide 19)', async () => {
+    globalThis.fetch = mockFetch({ ...state,
+      sectionStatuses: [{ sectionKey: 'payments-checkout', label: 'Payments & Checkout', completionPercent: 100, status: 'Complete', missingReasons: [], goLivePending: ['connect a live Fiserv CardPointe merchant ID'] },
+        { sectionKey: 'tips', label: 'Tips', completionPercent: 100, status: 'Complete', missingReasons: [] }],
+      moduleStatus: { completionPercent: 100, status: 'Complete', missingReasons: [], goLivePending: ['Live card processing (Fiserv MID) — connect a live Fiserv CardPointe merchant ID'], goLiveReady: 3, goLiveTotal: 4 } }) as any;
+    render(<MemoryRouter><POSSettingsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('golive-count')).toHaveTextContent('3 of 4 ready');
+    expect(screen.getByTestId('golive-state')).toHaveTextContent('Waiting on outside setup');
+    expect(screen.getByTestId('sec-wait-payments-checkout')).toBeInTheDocument();
+    expect(screen.queryByText('100% complete')).toBeNull();
+  });
+
+  it('shows the settings change history, newest first, searched on the server (batch 9 guide 20)', async () => {
+    const page = { items: [{ id: 'a1', at: '2026-11-10T03:30:00Z', area: 'tips', action: 'pos_settings_tips_updated', actor: 'Kim Owner', role: 'OWNER', changedKeys: ['defaultTipPercents'] }], total: 1, page: 1, pageSize: 25, timezone: 'America/New_York' };
+    const f = vi.fn(async (u: any) => ({ ok: true, status: 200, json: async () => (String(u).includes('audit-logs/page') ? page : state), headers: { get: () => null } } as any));
+    globalThis.fetch = f as any;
+    render(<MemoryRouter><POSSettingsScreen /></MemoryRouter>);
+    expect(await screen.findByText('Kim Owner')).toBeInTheDocument();
+    expect(screen.getByText('defaultTipPercents')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('settings-history-search'), { target: { value: 'tips' } });
+    await waitFor(() => expect(f.mock.calls.some((c: any[]) => /audit-logs\/page.*q=tips/.test(String(c[0])))).toBe(true));
+  });
 });
+

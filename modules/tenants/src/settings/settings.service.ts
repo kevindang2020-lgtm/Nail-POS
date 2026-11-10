@@ -24,6 +24,7 @@ import {
 import { isStaffPrincipal } from '@aipowersalon/permissions';
 import type { MessageTemplateStorePort } from './settings.templates.kysely';
 import type { A2pStatusReaderPort, A2pStatusView } from './settings.a2p.kysely';
+import type { SettingsAuditPage } from '@aipowersalon/api-contracts/tenant';
 
 const TERMINAL_TYPES = new Set(['clover_compact', 'clover_flex', 'clover_mini', 'other']);   // wave 3 PAYI §11
 const CONNECTION_TYPES = new Set(['cloud', 'lan', 'usb']);
@@ -105,7 +106,7 @@ export class PosSettingsService {
       ...raw,
       notifications: await this.withRealA2p(ctx, raw.notifications),
       auditLogs: { recentItems: await this.repo.listAudit(ctx, 20) },
-      sectionStatuses: moduleStatus.sections.map((s) => ({ sectionKey: s.key, label: s.label, completionPercent: s.completionPercent, status: s.status, missingReasons: s.missingReasons })),
+      sectionStatuses: moduleStatus.sections.map((s) => ({ sectionKey: s.key, label: s.label, completionPercent: s.completionPercent, status: s.status, missingReasons: s.missingReasons, goLivePending: s.goLivePending })),
       moduleStatus,
     };
   }
@@ -432,6 +433,27 @@ export class PosSettingsService {
   }
   // ---- Customer-display actions (test / test-ticket / refresh) ----
 
+  // ---- SUNMI batch 9 guide 20 (Nov 10 2026): settings change history, paged ----
+  async auditPage(ctx: SettingsContext, q: { q?: string; from?: string; to?: string; page?: unknown; pageSize?: unknown }): Promise<SettingsAuditPage> {
+    this.assertTenantUser(ctx);
+    const pageSize = [10, 25, 50, 100].includes(Number(q.pageSize)) ? Number(q.pageSize) : 25;
+    const page = Math.max(1, Math.floor(Number(q.page) || 1));
+    // the in-memory adapter (tests / local) pages its own newest-first list the same way
+    const r = this.repo.listAuditPage ? await this.repo.listAuditPage(ctx, { q: q.q, from: q.from, to: q.to, page, pageSize }) : await this.memoryAuditPage(ctx, { q: q.q, page, pageSize });
+    const meta = (m: unknown): { changedKeys?: unknown } => (m && typeof m === 'object' ? (m as { changedKeys?: unknown }) : {});   // jsonb arrives parsed
+    return { total: r.total, page, pageSize, timezone: r.tz, items: r.rows.map((x: any) => ({
+      id: String(x.id), at: x.created_at ? new Date(x.created_at).toISOString() : '', area: x.entity_type || '', action: x.action_type || '',
+      actor: x.actor ?? null, role: x.role || '', changedKeys: (() => { const k = meta(x.metadata).changedKeys; return Array.isArray(k) ? k.map(String) : []; })() })) };
+  }
+
+  private async memoryAuditPage(ctx: SettingsContext, f: { q?: string; page: number; pageSize: number }) {
+    const all = await this.repo.listAudit(ctx, 1000);
+    const n = String(f.q ?? '').trim().toLowerCase();
+    const hit = all.filter((a) => !n || [a.entityType, a.actionType, a.entityId, a.role].some((v) => String(v ?? '').toLowerCase().includes(n)));
+    const rows = hit.slice((f.page - 1) * f.pageSize, f.page * f.pageSize).map((a) => ({ id: a.id, created_at: a.createdAt, entity_type: a.entityType, action_type: a.actionType, role: a.role, metadata: { changedKeys: a.changedKeys ?? [] }, actor: null }));
+    return { rows, total: hit.length, tz: 'UTC' };
+  }
+
   // ---- GO-LIVE readiness (honest external-config tracker; tenant-visible) ----
   async getGoLiveReadiness(ctx: SettingsContext): Promise<GoLiveReadiness> {
     this.assertTenantUser(ctx);
@@ -461,7 +483,8 @@ export class PosSettingsService {
       return { key, label, completionPercent: 100, status: 'Complete' as const, editable, missingReasons: [], goLivePending: goLive.length ? goLive : undefined };
     });
     const roll = rollUpStatus(sections);
-    return { moduleKey: 'aipowersalon-pos-settings', completionPercent: roll.completionPercent, status: roll.status, missingReasons: roll.missingReasons, sections, goLivePending: readiness.pending.map((p) => `${p.label} — ${p.reason || 'pending'}`) };
+    return { moduleKey: 'aipowersalon-pos-settings', completionPercent: roll.completionPercent, status: roll.status, missingReasons: roll.missingReasons, sections,
+      goLiveReady: readiness.items.filter((i) => i.ready).length, goLiveTotal: readiness.items.length, goLivePending: readiness.pending.map((p) => `${p.label} — ${p.reason || 'pending'}`) };
   }
   private async isSectionLive(ctx: SettingsContext, key: SettingsCategory): Promise<boolean> {
     if (key === 'payments-checkout') return (await this.payments(ctx)).isLive();

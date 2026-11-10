@@ -3,7 +3,8 @@
  * Behind TenantAuthGuard (POS roles only). CROSS-TENANT-SAFE: scope is taken from req.ctx (session), never the client.
  */
 import { RequiresAiPackage, EnforceAiPackage } from '../ai-entitlement/ai-entitlement.guard';
-import { Controller, Get, Post, Patch, Body, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { ListQuery } from '@aipowersalon/database';
+import { Controller, Get, Post, Patch, Body, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { TenantAuthGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COPILOT_AVAILABILITY_BODY, COPILOT_HOLD_BODY, COPILOT_HOLD_RELEASE_BODY, COPILOT_CONFLICT_BODY, COPILOT_CONTEXT_BODY, COPILOT_DRAFT_MESSAGE_BODY, COPILOT_EXPLAIN_SERVICE_BODY, COPILOT_FEEDBACK_BODY, COPILOT_INTENT_BODY, COPILOT_LEARNING_APPROVE_BODY, COPILOT_LEARNING_DISMISS_BODY, COPILOT_NEXT_ACTIONS_BODY, COPILOT_PROMPT_BODY, COPILOT_RECOMMENDATION_BODY, COPILOT_SESSION_END_BODY, COPILOT_SESSION_START_BODY, COPILOT_SETTINGS_BODY, COPILOT_TAKE_OVER_BODY, COPILOT_TECHNICIANS_BODY } from '../request-schemas';
 import { AiCenterService, type AiCenterCtx } from './ai-center.service';
@@ -32,7 +33,15 @@ export class AiCenterController {
     if (e instanceof CopilotLearningError) throw new HttpException({ code: e.code, message: e.message }, e.code === 'PERMISSION_DENIED' ? HttpStatus.FORBIDDEN : e.code === 'NOT_FOUND' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST);
     throw e;
   }
-  @RequirePermission('ai.use') @Get('overview') overview(@Req() r: any) { return this.svc.overview(ctxFrom(r)); }
+  // batch 9 guide 14 (Nov 10 2026): ?preset=today|week|month|year or ?from=&to= (salon days) — absent = today, as before
+  @RequirePermission('ai.use') @Get('overview')
+  @ListQuery({ filters: { preset: { type: 'enum', values: ['today', 'week', 'month', 'year'] } }, dateRange: { maxDays: 366 } } as const)   // resolveWindow clamps to a year too
+  overview(@Req() r: any, @Query() q: any) {
+    const preset = ['today', 'week', 'month', 'year'].includes(q?.preset) ? q.preset : undefined;
+    const day = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+    const from = day(q?.from), to = day(q?.to);
+    return this.svc.overview(ctxFrom(r), from && to ? { from, to } : preset ? { preset } : undefined);
+  }
 
   /**
    * Reception Copilot read-only context (spec §8–10): resolves a caller (by phone) or open customer (by id) into a

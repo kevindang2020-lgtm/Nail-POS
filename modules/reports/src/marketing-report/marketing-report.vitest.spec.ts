@@ -44,3 +44,11 @@ describe('marketing-report — service composition', () => {
     await expect(svc.getState({ tenantId: '', userId: '' } as any)).rejects.toBeInstanceOf(MarketingReportForbiddenError);
   });
 });
+
+describe('composeHeadline — batch 9 guide 12 (Nov 10 2026)', () => {
+  it('an entered campaign cost with nothing sent is not a 0x return: ROI is N/A', () => {
+    const h = composeHeadline({ totalCampaigns: 1, activeCampaigns: 0, totalSent: 0, campaignRevenueCents: 0, totalCostCents: 10000, avgRoi: 0, avgOpenRate: 0 } as any,
+      { total: 1, active: 1, paused: 0, totalRedemptions: 0, expiringSoon: 0 } as any, { totalReviews: 4, averageRating: 5, fiveStarPercent: 100, publicCount: 4, hiddenCount: 0 } as any);
+    expect(h.campaignRoi).toBeNull(); expect(h.averageRating).toBe(5);
+  });
+});

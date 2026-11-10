@@ -31,6 +31,8 @@ export function POSServicesReportScreen() {
   const preset = PRESETS.includes(sp.get('preset') || '') ? (sp.get('preset') as PeriodState['preset']) : 'month';
   const period: PeriodState = preset === 'custom' ? { preset, from: sp.get('from') || undefined, to: sp.get('to') || undefined } : { preset };
   const category = sp.get('category') || '';
+  const service = sp.get('service') || '';
+  const by: 'category' | 'service' = sp.get('by') === 'service' ? 'service' : 'category';
   const q = sp.get('q') || '';
   const page = Math.max(1, Number(sp.get('page')) || 1);
   const pageSize = [25, 50, 100].includes(Number(sp.get('pageSize'))) ? Number(sp.get('pageSize')) : 25;
@@ -60,9 +62,9 @@ export function POSServicesReportScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
-  const query = useMemo(() => ({ ...periodQuery(period), q: q || undefined, category: category || undefined, page, pageSize }),
+  const query = useMemo(() => ({ ...periodQuery(period), q: q || undefined, category: category || undefined, service: service || undefined, page, pageSize }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [preset, period.from, period.to, q, category, page, pageSize]);
+    [preset, period.from, period.to, q, category, service, page, pageSize]);
   useEffect(() => {
     let alive = true; setLoading(true); setError(null);
     (posReportsApi.serviceRevenue(query) as Promise<ServiceRevenueReport>)
@@ -76,7 +78,7 @@ export function POSServicesReportScreen() {
   const doExport = async () => {
     setNote(null); setExporting(true);
     try {
-      const x: any = await posReportsApi.exportReport({ type: 'service_lines', format: 'csv', ...periodQuery(period), q: q || undefined, category: category || undefined });
+      const x: any = await posReportsApi.exportReport({ type: 'service_lines', format: 'csv', ...periodQuery(period), q: q || undefined, category: category || undefined, service: service || undefined });
       if (x?.disabledReason) setNote(x.disabledReason);
       else if (x?.csv != null) {
         const url = URL.createObjectURL(new Blob([x.csv], { type: 'text/csv;charset=utf-8;' }));
@@ -86,13 +88,15 @@ export function POSServicesReportScreen() {
     } catch (e: any) { setNote(reportError(e, t('pos.services_report'))); } finally { setExporting(false); }
   };
 
-  const cats = r?.categories ?? [];
+  const cats = (by === 'service' ? r?.services : r?.categories) ?? [];
   const maxRev = Math.max(1, ...cats.map((c) => c.grossCents));
   const tz = r?.period.timezone ?? null;
   const server = r ? { preset, from: r.period.from, to: r.period.to, tz: tz ?? '', today: r.period.to } : null;
-  const filtered = !!(q || category);
+  const filtered = !!(q || category || service);
   const totals = r?.totals;
   const label = (k: string, n: string) => svcCategoryLabel(k, n);
+  const selKey = by === 'service' ? service : category;
+  const pick = (k: string) => (by === 'service' ? patch({ service: k === service ? undefined : k }) : patch({ category: k === category ? undefined : k }));
 
   return (
     <div className="work">
@@ -111,8 +115,9 @@ export function POSServicesReportScreen() {
       <div className="flex flex-wrap items-center gap-2 my-2">
         <input className="input" style={{ minWidth: 300, minHeight: 44 }} data-testid="svc-search" maxLength={80} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t('rpt.svc.search')} aria-label={t('rpt.svc.search')} />
         {category ? <span className="chip" data-testid="svc-chip-category">{label(category, cats.find((c) => c.key === category)?.name ?? category)} <button className="btn ghost sm" aria-label={t('rpt.tx.clear')} onClick={() => patch({ category: undefined })}>×</button></span> : null}
+        {service ? <span className="chip" data-testid="svc-chip-service">{(r?.services ?? []).find((c) => c.key === service)?.name || t('pos.service_3')} <button className="btn ghost sm" aria-label={t('rpt.tx.clear')} onClick={() => patch({ service: undefined })}>×</button></span> : null}
         {q ? <span className="chip" data-testid="svc-chip-q">“{q}” <button className="btn ghost sm" aria-label={t('rpt.tx.clear')} onClick={() => { setDraft(''); patch({ q: undefined }); }}>×</button></span> : null}
-        {filtered ? <button className="btn ghost sm" data-testid="svc-clear-all" onClick={() => { setDraft(''); patch({ q: undefined, category: undefined }); }}>{t('rpt.svc.clearAll')}</button> : null}
+        {filtered ? <button className="btn ghost sm" data-testid="svc-clear-all" onClick={() => { setDraft(''); patch({ q: undefined, category: undefined, service: undefined }); }}>{t('rpt.svc.clearAll')}</button> : null}
         {r ? <span className="s" data-testid="svc-count">{t('rpt.svc.count', { n: String(r.history.total) })}</span> : null}
         {r ? <span className="s">{t('rpt.svc.asOf', { at: fmtInTz(r.asOf, tz, { hour: 'numeric', minute: '2-digit' }) })}</span> : null}
       </div>
@@ -125,23 +130,24 @@ export function POSServicesReportScreen() {
           <div className="kpi"><div className="l">{t('pos.service_revenue')}</div><div className="v" data-testid="svc-kpi-sales">{money(totals!.grossCents)}</div><div className="d">{t('rpt.svc.beforeDiscounts')}</div></div>
           <div className="kpi"><div className="l">{t('pos.services_sold')}</div><div className="v">{totals!.units}</div></div>
           <div className="kpi"><div className="l">{t('rpt.svc.avg')}</div><div className="v">{totals!.averageCents == null ? t('rpt.na') : money(totals!.averageCents)}</div></div>
-          <div className="kpi"><div className="l">{t('pos.unique_services')}</div><div className="v">{cats.filter((c) => !c.unmapped).length}</div></div>
+          <div className="kpi"><div className="l">{t('pos.unique_services')}</div><div className="v" data-testid="svc-kpi-unique">{totals!.uniqueServices ?? (r.services ?? []).filter((c) => !c.unmapped).length}</div></div>
           <div className="kpi"><div className="l">{t('rpt.svc.discounts')}</div><div className="v">{money(totals!.ticketDiscountCents)}</div><div className="d">{t('rpt.svc.ticketLevel')}</div></div>
           <div className="kpi"><div className="l">{t('rpt.svc.refunds')}</div><div className="v">{money(totals!.refundedCents)}</div><div className="d">{t('rpt.svc.ticketLevel')}</div></div>
         </div>
         <div className="s mb-2" data-testid="svc-basis">{t('rpt.svc.definition')}</div>
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 mb-3">
           <section className="panel" style={{ minWidth: 0 }}>
-            <div className="p-h">{t('pos.top_services_by_revenue')}</div>
+            <div className="flex flex-wrap items-center justify-between gap-2"><div className="p-h">{t('pos.top_services_by_revenue')}</div>
+              <div className="fk-seg" role="group" aria-label={t('rpt.svc.groupBy')}>{(['category', 'service'] as const).map((g) => <button key={g} type="button" className={by === g ? 'on' : ''} aria-pressed={by === g} style={{ minHeight: 44 }} data-testid={`svc-by-${g}`} onClick={() => patch({ by: g === 'category' ? undefined : g }, true)}>{t('rpt.svc.by.' + g)}</button>)}</div></div>
             {cats.length === 0 ? <div className="state" data-testid="svc-empty">{t('rpt.svc.empty', { from: r.period.from, to: r.period.to })}</div> : (
               <div className="list" role="list" aria-label={t('pos.revenue_by_service_2')}>
                 {cats.map((c) => {
-                  const nm = label(c.key, c.name); const on = c.key === category;
+                  const nm = label(c.key, c.name); const on = c.key === selKey;
                   const tip = t('rpt.svc.tip', { name: nm, units: String(c.units), amount: money(c.grossCents) });
                   return (
                     <button key={c.key} role="listitem" type="button" aria-pressed={on} title={tip} aria-label={tip} className="w-full text-left" data-testid={`svc-bar-${c.key}`}
                       style={{ padding: '6px 4px', minHeight: 44, background: on ? 'var(--panel-2, rgba(0,0,0,.04))' : 'none', border: 0, borderRadius: 6, cursor: 'pointer' }}
-                      onClick={() => patch({ category: on ? undefined : c.key })}>
+                      onClick={() => pick(c.key)}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}><span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: on ? 700 : 400 }}>{nm} <span className="s">· {c.units}</span></span><span className="num">{money(c.grossCents)}</span></div>
                       <div style={{ height: 6, background: 'var(--line)', borderRadius: 4, marginTop: 3 }}><div style={{ height: 6, width: `${Math.round((c.grossCents / maxRev) * 100)}%`, background: c.unmapped ? 'var(--aps-orange)' : 'var(--gold)', borderRadius: 4 }} /></div>
                     </button>

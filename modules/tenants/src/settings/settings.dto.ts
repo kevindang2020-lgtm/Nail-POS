@@ -102,7 +102,7 @@ export interface POSSettingsState {
   receiptsBranding: ReceiptsBrandingSettings; subscriptionPlan: SubscriptionPlanSettings;
   giftCardSettings: GiftCardSettings;
   auditLogs: { recentItems: POSSettingsAuditLogRow[] };
-  sectionStatuses: { sectionKey: SettingsCategory; label: string; completionPercent: number; status: ModuleStatusLevel; missingReasons: string[] }[];
+  sectionStatuses: { sectionKey: SettingsCategory; label: string; completionPercent: number; status: ModuleStatusLevel; missingReasons: string[]; goLivePending?: string[] }[];
   moduleStatus?: POSSettingsModuleStatus;
 }
 
@@ -202,6 +202,9 @@ export interface POSSettingsSectionStatus {
 export interface POSSettingsModuleStatus {
   moduleKey: "aipowersalon-pos-settings"; completionPercent: number; status: ModuleStatusLevel;
   missingReasons: string[]; sections: POSSettingsSectionStatus[]; goLivePending?: string[];
+  /** SUNMI batch 9 guide 19 (Nov 10 2026): the go-live items that are actually ready / their total — completionPercent is the
+   *  BUILD status (every section is code-complete), which the screen must not present as the salon's readiness */
+  goLiveReady?: number; goLiveTotal?: number;
 }
 // the 18 settings categories with display labels (drives the rail + status report; order is the spec order)
 export const SETTINGS_CATEGORY_LABELS: { key: SettingsCategory; label: string }[] = [

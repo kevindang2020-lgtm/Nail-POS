@@ -86,7 +86,7 @@ export class ReportsController {
   queue(@Req() r: any, @Query() q: any) { return run(() => this.svc.getQueue(ctxFrom(r), filtersFrom(q))); }
 
   @Get('service-revenue') @RequirePermission('pos.reports.view')
-  serviceRevenue(@Req() r: any, @Query() q: any): Promise<ServiceRevenueReport> { return run(() => this.svc.getServiceRevenue(ctxFrom(r), filtersFrom(q), { q: q.q, category: q.category, technician: q.technician, page: Number(q.page), pageSize: Number(q.pageSize) })); }
+  serviceRevenue(@Req() r: any, @Query() q: any): Promise<ServiceRevenueReport> { return run(() => this.svc.getServiceRevenue(ctxFrom(r), filtersFrom(q), { q: q.q, category: q.category, technician: q.technician, service: q.service, page: Number(q.page), pageSize: Number(q.pageSize) })); }
 
   @Get('customers/page') @RequirePermission('pos.reports.view')
   customersPage(@Req() r: any, @Query() q: any): Promise<ReportCustomerPage> { return run(() => this.svc.getCustomersPage(ctxFrom(r), filtersFrom(q), { q: q.q, type: q.type, page: Number(q.page), pageSize: Number(q.pageSize) })); }
@@ -105,6 +105,6 @@ export class ReportsController {
 
   @AsyncExport({ kind: 'pos.reports.export' }) @Get('export') @RequirePermission('pos.reports.export')
   export(@Req() r: any, @Query() q: any) {
-    return run(() => this.svc.export(ctxFrom(r), q.type || 'transactions', (q.format || 'csv') as ExportFormat, filtersFrom(q), { q: q.q, category: q.category }));
+    return run(() => this.svc.export(ctxFrom(r), q.type || 'transactions', (q.format || 'csv') as ExportFormat, filtersFrom(q), { q: q.q, category: q.category, service: q.service }));
   }
 }

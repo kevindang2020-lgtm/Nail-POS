@@ -1384,4 +1384,104 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "pay.list.anyDates": "Mọi ngày", // DRAFT — Kevin reviews
   "pay.list.count": "{n} kỳ lương", // DRAFT — Kevin reviews
   "pay.list.pager": "Các trang kỳ lương", // DRAFT — Kevin reviews
+  "rpt.svc.groupBy": "Nhóm theo", // DRAFT — Kevin reviews
+  "rpt.svc.by.category": "Nhóm dịch vụ", // DRAFT — Kevin reviews
+  "rpt.svc.by.service": "Dịch vụ", // DRAFT — Kevin reviews
+  "rpt.inv.asOf": "Cập nhật lúc {at}", // DRAFT — Kevin reviews
+  "rpt.inv.open": "Mở Kho hàng", // DRAFT — Kevin reviews
+  "rpt.inv.valueBasis": "Giá vốn × chai dùng được, chưa hết hạn", // DRAFT — Kevin reviews
+  "rpt.inv.critical": "{n} rất thấp", // DRAFT — Kevin reviews
+  "rpt.inv.expiringUnit": "Số chai · {days} ngày tới", // DRAFT — Kevin reviews
+  "rpt.inv.health": "Tình trạng dữ liệu", // DRAFT — Kevin reviews
+  "rpt.inv.h.ok": "Không lệch tồn kho, sản phẩm nào cũng có giá vốn, không có chai hết hạn trong kho.", // DRAFT — Kevin reviews
+  "rpt.inv.h.expired": "Có {n} chai đã hết hạn trong kho — không tính vào Sắp hết hạn và không tính vào giá trị.", // DRAFT — Kevin reviews
+  "rpt.inv.h.drift": "{n} sản phẩm: tồn kho ghi nhớ khác với hồ sơ từng chai — hãy kiểm đếm lại trong Kho hàng.", // DRAFT — Kevin reviews
+  "rpt.inv.h.noCost": "{n} sản phẩm chưa có giá vốn — Giá trị kho không tính chúng.", // DRAFT — Kevin reviews
+  "rpt.inv.h.counts": "Sản phẩm đếm theo sản phẩm ({products}); Số chai và Sắp hết hạn đếm theo chai ({bottles} · {expiring}) — hai đơn vị khác nhau.", // DRAFT — Kevin reviews
+  "rpt.inv.count": "{n} sản phẩm", // DRAFT — Kevin reviews
+  "rpt.inv.st.needs_reorder": "Cần đặt thêm", // DRAFT — Kevin reviews
+  "rpt.inv.st.out_of_stock": "Hết hàng", // DRAFT — Kevin reviews
+  "rpt.inv.st.critical": "Rất thấp", // DRAFT — Kevin reviews
+  "rpt.inv.st.low": "Thấp", // DRAFT — Kevin reviews
+  "rpt.inv.search": "Tìm sản phẩm, SKU, mã vạch hoặc mã màu", // DRAFT — Kevin reviews
+  "rpt.inv.failed": "Không tải được kho hàng.", // DRAFT — Kevin reviews
+  "rpt.inv.expiringCol": "Chai sắp hết hạn", // DRAFT — Kevin reviews
+  "rpt.inv.expiredN": "{n} đã hết hạn", // DRAFT — Kevin reviews
+  "rpt.inv.moves": "Biến động kho (mới nhất trước)", // DRAFT — Kevin reviews
+  "rpt.inv.movesCount": "{n} biến động", // DRAFT — Kevin reviews
+  "rpt.inv.movesSearch": "Tìm sản phẩm, lý do hoặc số PO", // DRAFT — Kevin reviews
+  "rpt.inv.noMoves": "Không có biến động kho trong kỳ này.", // DRAFT — Kevin reviews
+  "rpt.inv.when": "Lúc", // DRAFT — Kevin reviews
+  "rpt.inv.type": "Biến động", // DRAFT — Kevin reviews
+  "rpt.inv.change": "Thay đổi", // DRAFT — Kevin reviews
+  "rpt.inv.after": "Sau đó", // DRAFT — Kevin reviews
+  "rpt.inv.by": "Người làm", // DRAFT — Kevin reviews
+  "rpt.mkt.roiNa": "ROI không áp dụng — chưa gửi hoặc chưa có chi phí", // DRAFT — Kevin reviews
+  "rpt.mkt.costEntered": "(số nhập trên chiến dịch, không phải phí nhà cung cấp)", // DRAFT — Kevin reviews
+  "rpt.mkt.allTime": "Toàn thời gian — mọi chiến dịch, khuyến mãi và đánh giá", // DRAFT — Kevin reviews
+  "rpt.pay.other": "Cách trả khác", // DRAFT — Kevin reviews
+  "rpt.pay.basis": "Đã thu = mọi khoản thanh toán (không tính hoàn tiền) ghi vào một ngày của tiệm trong kỳ, theo cách trả (thẻ, tiền mặt, thẻ quà tặng, tiền mặt cho thợ, điểm thưởng, tiền cọc …). Trả tách = phiếu trả bằng hai khoản trở lên. Hoàn tiền hiện riêng.", // DRAFT — Kevin reviews
+  "rpt.pay.processorNote": "Trạng thái bộ xử lý là kết nối cổng thanh toán, không phải kiểm tra các số tiền này.", // DRAFT — Kevin reviews
+  "rpt.tax.retail": "Hàng bán lẻ", // DRAFT — Kevin reviews
+  "rpt.tax.effective": "Thực tế {rate} trên doanh số chịu thuế", // DRAFT — Kevin reviews
+  "rpt.tax.notTracked": "Không ghi riêng", // DRAFT — Kevin reviews
+  "rpt.tax.basis": "Thuế đã thu = thuế ghi trên các phiếu đã trả trong kỳ (theo thuế suất lúc đó). Chịu thuế / miễn thuế = cờ chịu thuế của từng dòng, trước giảm giá. Thuế suất là mức tiệm cài đặt; thực tế = thuế ÷ doanh số chịu thuế.", // DRAFT — Kevin reviews
+  "rpt.tax.allCats": "Tất cả nhóm", // DRAFT — Kevin reviews
+  "rpt.tax.perTicket": "Thuế ghi theo phiếu, không theo dòng — {amount} cho cả kỳ; không chia theo nhóm.", // DRAFT — Kevin reviews
+  "rpt.tax.tickets": "Các phiếu và thuế (mới nhất trước)", // DRAFT — Kevin reviews
+  "rpt.ai.caption": "Hiệu quả trợ lý AI · {from} – {to}", // DRAFT — Kevin reviews
+  "rpt.ai.week": "7 ngày kết thúc {to} (từ {from})", // DRAFT — Kevin reviews
+  "rpt.ai.allCampaigns": "mọi chiến dịch đã gửi, không chỉ kỳ này", // DRAFT — Kevin reviews
+  "mgmt.open": "Mở", // DRAFT — Kevin reviews
+  "mgmt.appr.forbidden": "Không có quyền xem phê duyệt", // DRAFT — Kevin reviews
+  "mgmt.appr.unavailable": "Chưa tải được phê duyệt", // DRAFT — Kevin reviews
+  "mgmt.st.active": "Đang hoạt động", // DRAFT — Kevin reviews
+  "mgmt.st.inactive": "Ngừng hoạt động", // DRAFT — Kevin reviews
+  "mgmt.st.draft": "Bản nháp", // DRAFT — Kevin reviews
+  "mgmt.snap.period": "Kỳ xem nhanh", // DRAFT — Kevin reviews
+  "mgmt.snap.p.today": "Hôm nay", // DRAFT — Kevin reviews
+  "mgmt.snap.p.week": "Tuần này", // DRAFT — Kevin reviews
+  "mgmt.snap.p.month": "Tháng này", // DRAFT — Kevin reviews
+  "mgmt.snap.search": "Tìm chi nhánh hoặc thành phố", // DRAFT — Kevin reviews
+  "mgmt.snap.forbidden": "Cần quyền xem hiệu quả chi nhánh để xem số liệu — danh sách vẫn hiện mọi chi nhánh.", // DRAFT — Kevin reviews
+  "mgmt.snap.unavailable": "Chưa tải được số liệu chi nhánh.", // DRAFT — Kevin reviews
+  "mgmt.snap.basis": "Cùng số liệu với Báo cáo → Nhiều chi nhánh. Xu hướng so với kỳ trước cùng độ dài; không áp dụng khi kỳ trước không có doanh thu.", // DRAFT — Kevin reviews
+  "set.golive.count": "{ready}/{total} mục đã sẵn sàng", // DRAFT — Kevin reviews
+  "set.golive.ready": "Sẵn sàng hoạt động", // DRAFT — Kevin reviews
+  "set.golive.waiting": "Đang chờ thiết lập bên ngoài", // DRAFT — Kevin reviews
+  "set.sec.waiting": "Đang chờ", // DRAFT — Kevin reviews
+  "set.sec.saved": "Đã lưu", // DRAFT — Kevin reviews
+  "set.sec.savedNote": "Cài đặt đã lưu và có thể sửa tại đây.", // DRAFT — Kevin reviews
+  "set.hist.title": "Lịch sử thay đổi cài đặt (mới nhất trước)", // DRAFT — Kevin reviews
+  "set.hist.search": "Tìm mục, thay đổi hoặc người sửa", // DRAFT — Kevin reviews
+  "set.hist.anyDates": "Mọi ngày", // DRAFT — Kevin reviews
+  "set.hist.count": "{n} thay đổi", // DRAFT — Kevin reviews
+  "set.hist.failed": "Không tải được lịch sử thay đổi.", // DRAFT — Kevin reviews
+  "set.hist.forbidden": "Không có quyền xem lịch sử thay đổi.", // DRAFT — Kevin reviews
+  "set.hist.loading": "Đang tải lịch sử thay đổi…", // DRAFT — Kevin reviews
+  "set.hist.none": "Chưa có thay đổi cài đặt nào.", // DRAFT — Kevin reviews
+  "set.hist.when": "Lúc", // DRAFT — Kevin reviews
+  "set.hist.area": "Mục", // DRAFT — Kevin reviews
+  "set.hist.who": "Người sửa", // DRAFT — Kevin reviews
+  "set.hist.changed": "Đã đổi", // DRAFT — Kevin reviews
+  "set.area.business_branch": "Doanh nghiệp & Chi nhánh", // DRAFT — Kevin reviews
+  "set.area.store_hours": "Giờ mở cửa & Tự đăng xuất", // DRAFT — Kevin reviews
+  "set.area.payments_checkout": "Thanh toán", // DRAFT — Kevin reviews
+  "set.area.tips": "Tiền tip", // DRAFT — Kevin reviews
+  "set.area.tax": "Thuế", // DRAFT — Kevin reviews
+  "set.area.booking": "Đặt lịch & Lịch hẹn", // DRAFT — Kevin reviews
+  "set.area.online_ai_booking": "Đặt lịch trực tuyến, Google & AI", // DRAFT — Kevin reviews
+  "set.area.technician_app": "Ứng dụng thợ", // DRAFT — Kevin reviews
+  "set.area.notifications": "Thông báo & Nhắc lịch", // DRAFT — Kevin reviews
+  "set.area.queue_workflow": "Hàng chờ & Quy trình", // DRAFT — Kevin reviews
+  "set.area.services_pricing": "Dịch vụ & Giá", // DRAFT — Kevin reviews
+  "set.area.technicians_staff": "Thợ & Nhân viên", // DRAFT — Kevin reviews
+  "set.area.roles_permissions": "Vai trò, Quyền & Bảo mật", // DRAFT — Kevin reviews
+  "set.area.loyalty": "Khách thân thiết & Thành viên", // DRAFT — Kevin reviews
+  "set.area.customer_display_devices": "Màn hình khách & Thiết bị", // DRAFT — Kevin reviews
+  "set.area.receipts_branding": "Hóa đơn & Thương hiệu", // DRAFT — Kevin reviews
+  "set.area.gift_card_settings": "Thẻ quà tặng", // DRAFT — Kevin reviews
+  "set.area.subscription_plan": "Gói dịch vụ", // DRAFT — Kevin reviews
+  "set.area.audit_logs": "Nhật ký", // DRAFT — Kevin reviews
+  "set.area.other": "Cài đặt khác", // DRAFT — Kevin reviews
 };
