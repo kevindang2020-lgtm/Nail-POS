@@ -3,7 +3,8 @@ import { ValidatedBody } from '@aipowersalon/permissions/guards';
 // files / tracks / cancels their OWN role-elevation request. NOT behind SuperAdminGuard: it is protected by the
 // session middleware (TenantContextMiddleware fails closed → 401 without a session), and identity is taken from
 // req.ctx server-side, never from the client. Approvals happen in the Super Admin console.
-import { Body, Controller, Get, Param, Post, Req, HttpException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, HttpException, UseGuards } from '@nestjs/common';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
 import { safeInet } from '@aipowersalon/database';
 import { SuperAdminPlatformService, type AdminCtx } from './super-admin-platform.service';
 import { run } from './super-admin-platform.controller';
@@ -18,7 +19,7 @@ export class MyAccessRequestsController {
   private uid(r: any): string { const u = r?.ctx?.userId; if (!u) throw new HttpException({ ok: false, code: 'UNAUTHENTICATED' }, 401); return u; }
 
   /** batch 8 decision 6: the roles this user may request — the POS dropdown reads this, never a hard-coded list */
-  @Get('roles') roles(@Req() r: any): Promise<RequestableRolesResponse> { this.uid(r); return run(() => this.svc.ownRequestableRoles(ctxFrom(r))); }
+  @Get('roles') @UseGuards(TenantAuthGuard, RolePermissionGuard) @RequirePermission('self.profile.view') roles(@Req() r: any): Promise<RequestableRolesResponse> { this.uid(r); return run(() => this.svc.ownRequestableRoles(ctxFrom(r))); }
   @Get() mine(@Req() r: any) { this.uid(r); return run(() => this.svc.listOwnAccessRequests(ctxFrom(r))); }
   @Post() create(@Req() r: any, @Body(ValidatedBody(MY_ACCESS_REQUEST_BODY, { strict: true })) b: any) { this.uid(r); return run(() => this.svc.createOwnAccessRequest(ctxFrom(r), b || {})); }
   @Post(':id/cancel') cancel(@Req() r: any, @Param('id') id: string) { this.uid(r); return run(() => this.svc.cancelOwnAccessRequest(ctxFrom(r), id)); }

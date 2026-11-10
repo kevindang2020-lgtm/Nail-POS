@@ -940,38 +940,13 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "acx.dh.st.failed": "Thất bại",   // DRAFT — Kevin reviews
   "acx.dh.st.suppressed": "Bị chặn theo lựa chọn",   // DRAFT — Kevin reviews
   "acx.dh.st.blocked": "Bị chặn",   // DRAFT — Kevin reviews,
-  "prx.title": "Máy in hóa đơn",   // DRAFT — Kevin reviews
-  "prx.kpiSub": "máy in đã ghi nhận — chưa có cầu nối in",   // DRAFT — Kevin reviews
-  "prx.noteTitle": "Hồ sơ máy in",   // DRAFT — Kevin reviews
-  "prx.note": "Ghi nhận từng máy in hóa đơn, vị trí đặt và cách kết nối. AI PowerSalon chưa in ra máy này (chưa có cầu nối in), nên máy in không bao giờ hiển thị là đang trực tuyến — hóa đơn điện tử vẫn hoạt động như trước.",   // DRAFT — Kevin reviews
-  "prx.add": "Thêm máy in",   // DRAFT — Kevin reviews
-  "prx.edit": "Sửa máy in",   // DRAFT — Kevin reviews
-  "prx.save": "Lưu máy in",   // DRAFT — Kevin reviews
-  "prx.formSub": "Chỉ là hồ sơ — không in gì cả",   // DRAFT — Kevin reviews
-  "prx.enable": "Bật",   // DRAFT — Kevin reviews
-  "prx.disable": "Tắt",   // DRAFT — Kevin reviews
-  "prx.retire": "Ngừng dùng",   // DRAFT — Kevin reviews
-  "prx.name": "Tên máy in",   // DRAFT — Kevin reviews
-  "prx.connection": "Kết nối",   // DRAFT — Kevin reviews
-  "prx.address": "Địa chỉ hoặc mẫu máy",   // DRAFT — Kevin reviews
-  "prx.addressPh": "vd: 192.168.1.40 hoặc Epson TM-m30",   // DRAFT — Kevin reviews
-  "prx.paper": "Khổ giấy",   // DRAFT — Kevin reviews
-  "prx.conn.network": "Mạng (Wi-Fi / dây)",   // DRAFT — Kevin reviews
-  "prx.conn.usb": "USB",   // DRAFT — Kevin reviews
-  "prx.conn.bluetooth": "Bluetooth",   // DRAFT — Kevin reviews
-  "prx.conn.cloud": "In qua đám mây",   // DRAFT — Kevin reviews
-  "dfx.fact.connection": "Kết nối",   // DRAFT — Kevin reviews
-  "dfx.fact.address": "Địa chỉ hoặc mẫu máy",   // DRAFT — Kevin reviews
-  "dfx.fact.paperWidthMm": "Khổ giấy (mm)",   // DRAFT — Kevin reviews
-  "dfx.val.network": "Mạng",   // DRAFT — Kevin reviews
-  "dfx.val.usb": "USB",   // DRAFT — Kevin reviews
-  "dfx.val.bluetooth": "Bluetooth",   // DRAFT — Kevin reviews
-  "dfx.val.cloud": "In qua đám mây",   // DRAFT — Kevin reviews
-  "dfx.reason.NO_PRINT_BRIDGE": "Đã ghi nhận — chưa có cầu nối in để kiểm tra",   // DRAFT — Kevin reviews
-  "dfx.hk.printers_registered": "Máy in đã ghi nhận",   // DRAFT — Kevin reviews
-  "dfx.hk.print_bridge": "Cầu nối in",   // DRAFT — Kevin reviews,
   "ksk.noteTitle": "Kiosk do AI PowerSalon thiết lập",   // DRAFT — Kevin reviews
   "ksk.note": "Kiosk check-in là thiết bị do AI PowerSalon chuẩn bị và liên kết với tiệm, nên không thể thêm ở đây. Bạn có thể tìm, kiểm tra và xem lại mọi kiosk trên trang này.",   // DRAFT — Kevin reviews
   "ksk.request": "Yêu cầu hỗ trợ thêm kiosk",   // DRAFT — Kevin reviews,
-  "prx.mm": "{n} mm",   // DRAFT — Kevin reviews
+  "dfx.kpi.printersSub": "hóa đơn là điện tử — chưa có danh sách máy in",   // DRAFT — Kevin reviews
+  "dfx.receipt.why": "Hóa đơn AI PowerSalon là điện tử: khách chọn Email, SMS hoặc Không lấy hóa đơn trên màn hình khách, và mọi hóa đơn được lưu trong lịch sử của khách.",   // DRAFT — Kevin reviews
+  "dfx.receipt.1": "Máy in là tùy chọn. Cần có cầu nối máy in được hỗ trợ, hiện tiệm chưa cài.",   // DRAFT — Kevin reviews
+  "dfx.receipt.2": "Thanh toán không bao giờ chờ máy in — hóa đơn điện tử vẫn hoạt động.",   // DRAFT — Kevin reviews
+  "dfx.receipt.3": "Xem hóa đơn điện tử hôm nay ở thẻ Hóa đơn điện tử.",   // DRAFT — Kevin reviews
+  "dfx.hk.printer_registry": "Danh sách máy in",   // DRAFT — Kevin reviews
 };

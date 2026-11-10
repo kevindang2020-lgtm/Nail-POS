@@ -672,7 +672,6 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.LOCATIONS_SEARCH_TOO_SHORT': 'Hãy nhập ít nhất 2 ký tự để tìm.',   // DRAFT — Kevin reviews
   'errors.NOTIFICATION_PREFS_SAVE_FAILED': 'Không lưu được tùy chọn thông báo của bạn. Hãy thử lại.',   // DRAFT — Kevin reviews
   'errors.BRAND_COLOR_LOW_CONTRAST': 'Màu này quá nhạt để đọc trên nền trắng — hãy chọn sắc đậm hơn.',   // DRAFT — Kevin reviews
-  'errors.PRINTER_RETIRED': 'Không thể thay đổi máy in đã ngừng dùng.',   // DRAFT — Kevin reviews
   'errors.OWN_ROLE_CHANGE': 'Bạn không thể đổi vai trò của chính mình.',
   'errors.OWN_ACCOUNT_DISABLE': 'Bạn không thể vô hiệu hóa tài khoản của chính mình.',
   'errors.PLATFORM_ACCOUNTS_ELSEWHERE': 'Tài khoản nền tảng do đội ngũ nền tảng quản lý, không quản lý ở đây.',

@@ -125,6 +125,8 @@ const AUDITS = [
   // Constitution 13: the architecture tests (cycles, back-edges, mirrored API types, deep imports) — found six mirrored
   // types and a relative migrations path on Oct 3 2026 because this runner did not include them
   ['architecture tests', 'npm', ['run', '-s', 'architecture:test']],
+  // Kevin (Nov 9 2026): NO receipt-printer registry — built once by mistake, removed; this keeps it from coming back
+  ['no printer registry', 'node', ['tooling/ci/check-no-printer-registry.mjs']],
   ['module entries', 'python3', ['tooling/modules/audit-entries.py']],
   ['spec imports', 'python3', ['tooling/modules/check-spec-imports.py']],
   // Sep 2026: a developer handoff hid malware in eslint.config.mjs behind thousands of tabs — no hidden code, no

@@ -7,9 +7,8 @@
 //   display        customer_display_devices (paired displays — iPad / Android / web; heartbeat every 30 s)
 //   terminal       pos_payment_terminals (Clover Compact; the PAYI normalized status — a terminal that never answered is
 //                  UNKNOWN, never "connected")
-//   receipt        receipt_printers (migration 844, batch 8 decision 2) — the salon's printer RECORDS. There is no print
-//                  bridge, so a printer's connection is never claimed: an active printer is 'unknown' (NO_PRINT_BRIDGE).
-//                  The digital receipts (Email / SMS / No receipt on the customer display) stay its history.
+//   receipt        NO printer registry exists in AI PowerSalon: receipts are digital (Email / SMS / No receipt, chosen
+//                  on the customer display). The page says NOT CONFIGURED and shows the real digital-receipt history.
 //
 // ROOT CAUSE this fixes: the old sub-pages filtered customer_display_devices by device types that registry never stores
 // ('reception_pos', 'check_in_kiosk', 'printer') — so Reception POS / Kiosks / Receipt Devices always said "0 connected"
@@ -43,7 +42,7 @@ const fold = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g
 
 /** the salon's own calendar day start (as an instant) — "today" counts follow the branch's clock, not the server's UTC day */
 const SCOPE_COLS: Record<string, { tenant: ReturnType<typeof sql.ref>; branch: ReturnType<typeof sql.ref> }> = {
-  d: { tenant: sql.ref('d.tenant_id'), branch: sql.ref('d.branch_id') }, p: { tenant: sql.ref('p.tenant_id'), branch: sql.ref('p.branch_id') }, k: { tenant: sql.ref('k.tenant_id'), branch: sql.ref('k.branch_id') },
+  d: { tenant: sql.ref('d.tenant_id'), branch: sql.ref('d.branch_id') }, k: { tenant: sql.ref('k.tenant_id'), branch: sql.ref('k.branch_id') },
   s: { tenant: sql.ref('s.tenant_id'), branch: sql.ref('s.branch_id') }, t: { tenant: sql.ref('t.tenant_id'), branch: sql.ref('t.branch_id') },
 };
 
@@ -130,26 +129,6 @@ export class DeviceFleetCenter {
     });
   }
 
-  /** receipt printers — records only: with no print bridge nothing reports, so an active printer is never "online" */
-  private async printers(ctx: DfCtx): Promise<DfDevice[]> {
-    const r = await sql<any>`
-      SELECT p.id, p.name, p.connection, p.address, p.paper_width_mm, p.status, p.branch_id, b.name AS branch_name, st.name AS station_name, p.pos_station_id,
-             p.created_at, p.updated_at
-        FROM receipt_printers p
-        LEFT JOIN branches b ON b.id = p.branch_id AND b.tenant_id = p.tenant_id
-        LEFT JOIN pos_stations st ON st.tenant_id = p.tenant_id AND st.id = p.pos_station_id
-       WHERE ${this.scope('p', ctx)} ORDER BY p.created_at DESC LIMIT ${CAP}`.execute(this.db);
-    return r.rows.map((p: any) => {
-      const st = String(p.status);
-      const status: DfStatus = st === 'retired' ? 'retired' : st === 'disabled' ? 'disabled' : !p.pos_station_id ? 'unassigned' : 'unknown';
-      return { id: String(p.id), source: 'printer', class: 'receipt', name: String(p.name ?? ''), type: 'receipt_printer',
-        branchId: p.branch_id ? String(p.branch_id) : null, branch: p.branch_name ?? null, station: p.station_name ?? null, status,
-        reason: status === 'unknown' ? 'NO_PRINT_BRIDGE' : status === 'unassigned' ? 'NO_REGISTER' : null,
-        lastSeenAt: null, createdAt: iso(p.created_at), updatedAt: iso(p.updated_at),
-        facts: { connection: p.connection, address: p.address ?? null, paperWidthMm: Number(p.paper_width_mm), stationId: p.pos_station_id ? String(p.pos_station_id) : null } } as DfDevice;
-    });
-  }
-
   private async terminals(ctx: DfCtx): Promise<DfDevice[]> {
     const r = await sql<any>`
       SELECT t.id, t.label, t.status, t.branch_id, b.name AS branch_name, COALESCE(st.name, t.station_id) AS station_name, t.station_id, t.paired_at, t.disabled_at, t.last_seen_at,
@@ -181,7 +160,7 @@ export class DeviceFleetCenter {
       case 'display': return safe(this.displays(ctx, nowMs));
       case 'terminal': return safe(this.terminals(ctx));
       case 'tablet': return [...await this.displays(ctx, nowMs, TABLET_DISPLAY_TYPES), ...await this.kiosks(ctx, nowMs, TABLET_KIOSK_TYPES)];
-      case 'receipt': return safe(this.printers(ctx));
+      case 'receipt': return [];   // no printer registry exists (digital-first receipts)
       default: return [...await this.displays(ctx, nowMs), ...await this.kiosks(ctx, nowMs), ...await this.terminals(ctx)];
     }
   }
@@ -214,7 +193,7 @@ export class DeviceFleetCenter {
         FROM customer_display_sessions WHERE tenant_id = ${ctx.tenantId} ${ctx.branchId ? sql`AND (branch_id = ${ctx.branchId} OR branch_id IS NULL)` : sql``}
           AND receipt_at >= ${await this.todayStart(ctx)}`.execute(this.db);
       const x: Partial<{ email: number; sms: number; none: number; failed: number; last: unknown }> = r.rows[0] ?? {};
-      out.extra = { printerRegistry: out.registered ? 'records_only' : 'not_configured', printBridge: 'not_configured', emailToday: Number(x.email ?? 0), smsToday: Number(x.sms ?? 0), noReceiptToday: Number(x.none ?? 0), failedToday: Number(x.failed ?? 0), lastReceiptAt: iso(x.last) };
+      out.extra = { printerRegistry: 'not_configured', emailToday: Number(x.email ?? 0), smsToday: Number(x.sms ?? 0), noReceiptToday: Number(x.none ?? 0), failedToday: Number(x.failed ?? 0), lastReceiptAt: iso(x.last) };
     }
     return out;
   }
@@ -260,10 +239,9 @@ export class DeviceFleetCenter {
     const term = String(q.q ?? '').trim();
     if (term && term.length < 2) throw new DeviceFleetError('DEVICE_FLEET_SEARCH_TOO_SHORT', 'Type at least 2 characters.');
     const like = term ? `%${term.replace(/[\\%_]/g, (m) => '\\' + m)}%` : null;
-    const entities = cls === 'reception_pos' ? ['pos_station'] : cls === 'display' || cls === 'tablet' ? ['customer_display'] : cls === 'terminal' ? ['payment_terminal', 'pos_payment_terminal'] : cls === 'kiosk' ? [] : cls === 'receipt' ? ['receipt_printer'] : ['customer_display', 'pos_station', 'payment_terminal', 'pos_payment_terminal'];
+    const entities = cls === 'reception_pos' ? ['pos_station'] : cls === 'display' || cls === 'tablet' ? ['customer_display'] : cls === 'terminal' ? ['payment_terminal', 'pos_payment_terminal'] : cls === 'kiosk' ? [] : cls === 'receipt' ? [] : ['customer_display', 'pos_station', 'payment_terminal', 'pos_payment_terminal'];
     const withKiosk = cls === 'kiosk' || cls === 'tablet' || cls === 'all';
-    // Receipt Devices: the page history is the digital receipts; ONE printer's history is its own audit trail
-    if (cls === 'receipt' && !q.deviceId) return this.receiptHistory(ctx, { lo, hi, like, page, pageSize });
+    if (cls === 'receipt') return this.receiptHistory(ctx, { lo, hi, like, page, pageSize });
     const audit = entities.length ? sql`SELECT a.id::text AS id, a.created_at, a.action_type AS event, a.entity_type AS entity, a.entity_id::text AS device_id, a.role AS actor_role,
           u.full_name AS actor, 'audit' AS source FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
          WHERE a.tenant_id = ${ctx.tenantId} AND a.entity_type = ANY(${entities}::text[])
@@ -275,15 +253,7 @@ export class DeviceFleetCenter {
            ${ctx.branchId ? sql`AND (l.branch_id = ${ctx.branchId} OR l.branch_id IS NULL)` : sql``}
            ${q.deviceId ? sql`AND l.device_id::text = ${q.deviceId}` : sql``} ${lo ? sql`AND l.created_at >= ${lo}` : sql``} ${hi ? sql`AND l.created_at <= ${hi}` : sql``}
            ${like ? sql`AND (l.event_type ILIKE ${like} OR l.safe_message ILIKE ${like})` : sql``}` : null;
-    // the canonical audit (AuditService → audit_events) for the same device kinds — receipt printers write here (batch 8)
-    const events = entities.length ? sql`SELECT e.id::text AS id, e.occurred_at AS created_at, e.action AS event, e.resource_type AS entity, e.resource_id AS device_id, e.actor_role,
-          coalesce(e.actor_name, u.full_name) AS actor, 'audit' AS source FROM audit_events e LEFT JOIN users u ON u.id = e.actor_user_id
-         WHERE e.tenant_id = ${ctx.tenantId} AND e.resource_type = ANY(${entities}::text[])
-           ${ctx.branchId ? sql`AND (e.branch_id = ${ctx.branchId} OR e.branch_id IS NULL)` : sql``}
-           ${q.deviceId ? sql`AND e.resource_id = ${q.deviceId}` : sql``} ${lo ? sql`AND e.occurred_at >= ${lo}` : sql``} ${hi ? sql`AND e.occurred_at <= ${hi}` : sql``}
-           ${like ? sql`AND (e.action ILIKE ${like} OR coalesce(e.actor_name, u.full_name) ILIKE ${like})` : sql``}` : null;
-    const parts = [audit, events, kiosk].filter((x): x is NonNullable<typeof x> => !!x);
-    const union = sql.join(parts, sql` UNION ALL `);
+    const union = audit && kiosk ? sql`${audit} UNION ALL ${kiosk}` : (audit ?? kiosk)!;
     const r = await sql<any>`SELECT *, count(*) OVER()::int AS total FROM (${union}) h ORDER BY h.created_at DESC, h.id DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`.execute(this.db);
     const total = Number(r.rows[0]?.total ?? 0);
     return { class: cls, items: r.rows.map((x: any) => ({ id: String(x.id), at: iso(x.created_at)!, event: String(x.event), entity: String(x.entity ?? ''), deviceId: x.device_id ?? null, actor: x.actor ?? null, actorRole: x.actor_role ?? null, source: x.source })),
@@ -310,7 +280,7 @@ export class DeviceFleetCenter {
     let rows: DfDevice[] = [];
     try { rows = await this.rows(ctx, cls); add('registry_readable', 'READY'); } catch { add('registry_readable', 'FAILED'); }
     const live = rows.filter((r) => !['revoked', 'retired'].includes(r.status));
-    if (cls === 'receipt') { add('printers_registered', live.length ? 'READY' : 'NOT_CONFIGURED', live.length); add('print_bridge', 'NOT_CONFIGURED'); }
+    if (cls === 'receipt') add('printer_registry', 'NOT_CONFIGURED');
     else add('devices_registered', live.length ? 'READY' : 'NOT_CONFIGURED', live.length);
     const silent = live.filter((r) => ['offline', 'attention', 'unknown'].includes(r.status)).length;
     if (cls !== 'receipt') add('devices_reporting', silent ? 'WARNING' : 'READY', silent);

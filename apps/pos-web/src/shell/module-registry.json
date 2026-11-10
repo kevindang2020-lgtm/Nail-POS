@@ -5399,10 +5399,6 @@
     {
      "id": "dfx-results",
      "label": "Device list (six columns) or the true empty state"
-    },
-    {
-     "id": "prx-note",
-     "label": "Printer records + Add printer"
     }
    ]
   },

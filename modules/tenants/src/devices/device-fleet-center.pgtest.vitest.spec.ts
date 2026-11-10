@@ -103,14 +103,14 @@ describe('device fleet — history, receipts and the check', () => {
     expect((await fc.history(ctx(), { class: 'reception_pos' })).items.map((x) => x.event)).toEqual(['pos_station_created']);
     expect((await fc.history(ctx(), { class: 'all', q: 'check_in' })).total).toBe(1);
   });
-  it('DF-07 Receipt Devices: no printers recorded yet (NOT CONFIGURED), no print bridge + the real digital receipts', async () => {
+  it('DF-07 Receipt Devices: no printer registry (NOT CONFIGURED) + the real digital receipts', async () => {
     const s = await fc.summary(ctx(), 'receipt');
     expect(s.registered).toBe(0);
     expect(s.extra).toMatchObject({ printerRegistry: 'not_configured', emailToday: 1, smsToday: 1, noReceiptToday: 1, failedToday: 1 });
     const h = await fc.history(ctx(), { class: 'receipt' });
     expect(h.total).toBe(3); expect(h.receipts!.map((r) => r.choice).sort()).toEqual(['email', 'none', 'sms']);
     const c = await fc.check(ctx(), 'receipt');
-    expect(c.checks.find((x) => x.key === 'printers_registered')!.state).toBe('NOT_CONFIGURED'); expect(c.checks.find((x) => x.key === 'print_bridge')!.state).toBe('NOT_CONFIGURED');
+    expect(c.checks.find((x) => x.key === 'printer_registry')!.state).toBe('NOT_CONFIGURED');
     expect(c.checks.find((x) => x.key === 'receipt_failures_today')).toMatchObject({ state: 'WARNING', count: 1 });
   });
   it('DF-08 the check is read-only and honest', async () => {

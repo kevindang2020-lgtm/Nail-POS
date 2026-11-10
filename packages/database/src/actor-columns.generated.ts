@@ -234,7 +234,6 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   queue_groups: 'cut',
   queue_service_assignments: 'ut',
   rebooking_reviews: 'u',
-  receipt_printers: 'ut',
   reception_copilot_action_ledger: 'ut',
   reception_copilot_feedback: 'ut',
   reconciliation_exceptions: 'ut',
