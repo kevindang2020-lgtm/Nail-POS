@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 88 (incl. part) |
-| EXISTS (opened and named) | 718 (incl. part) |
+| BUILT this arc | 89 (incl. part) |
+| EXISTS (opened and named) | 723 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 424 |
-| TODO | 584 |
+| TODO | 578 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -1790,11 +1790,11 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Choose goal Win back lapsed visitors, fill schedule gaps, promote a service or improve repeat bookings. | TODO |
-| 02 | Select scope Tenant/branch, verified audience, date window, messaging channel, service and budget. | TODO |
+| 01 | Choose goal Win back lapsed visitors, fill schedule gaps, promote a service or improve repeat bookings. | EXISTS — Campaign Assistant goals: win back inactive, fill slow weekdays, promote a new service, repeat visits (POSCampaignCenterScreen GOALS) |
+| 02 | Select scope Tenant/branch, verified audience, date window, messaging channel, service and budget. | EXISTS — wizard details → audience (segment snapshot with selected/eligible/excluded counts) → content → schedule (cc-w-audience-now) |
 | 03 | Generate proposal Safe draft with source metrics, segment eligibility, exclusions, templates and estimated costs if verified. | EXISTS — recommendations with source reasons and status (amk-recs, amk-rec-why, amk-rec-status) |
-| 04 | Validate Consent, opt-outs, branch/timezone, provider readiness, SMS segments, overlap cooldown and active booking conflicts. | TODO |
-| 05 | Review and approve Authorized manager sees recipient count, message preview, schedule and actual spend ceiling. | TODO |
+| 04 | Validate Consent, opt-outs, branch/timezone, provider readiness, SMS segments, overlap cooldown and active booking conflicts. | EXISTS — recipients carry consent-now and exclusion reasons; the worker re-checks consent at send (cc-rec-table, header note) |
+| 05 | Review and approve Authorized manager sees recipient count, message preview, schedule and actual spend ceiling. | EXISTS — review → approval step; Launch only schedules an APPROVED campaign (STEPS review/approval) |
 | 06 | Schedule safely Only after explicit approval through existing campaign jobs; never send or spend from AI generation itself. SUNMI interaction pattern • Use short step tabs or responsive wizard columns; preserve all six u | EXISTS — campaigns only send after explicit approval through the existing campaign jobs (Campaign Center launch preflight) |
 | 07 | Date/Timezone Diagnostics Detects branch-local cutoff errors and daylight-saving reporting mismatches. | TODO |
 | 08 | Provider Readiness & Deliverability Separates configuration from real SMS/email callback success. | TODO |
@@ -2390,7 +2390,7 @@ Decisions:
 |---|---|---|
 | 01 | Rule collision / duplicate detector - Warn when two active rules repeatedly produce overlapping alerts for the same branch, metric and time window. | BUILT — the New Alert form warns when an ACTIVE rule already watches the same metric, comparison and period (overlapping alerts); creating stays allowed — bzx-a-collision; test |
 | 02 | SUNMI display profile Understand hardware dimensions versus browser viewport dimensions Visual reference provided: SUNMI FLEX 3 27-inch, landscape. The uploaded illustration labels a 1920 x 1080 (16:9) display and a devi | NOISE — display-profile background |
-| 03 | Clear data freshness ribbon - Show latest metric/report refresh and last successful evaluator run; label stale or partial data. | TODO |
+| 03 | Clear data freshness ribbon - Show latest metric/report refresh and last successful evaluator run; label stale or partial data. | EXISTS — Last evaluated KPI (or Never) + automatic-evaluation state shown honestly (bzx-a-last, summary.automaticEvaluation) |
 | 04 | Automatic screen-fit implementation Scoped layout recipe - adapt to existing React styles instead of replacing globally Actual viewport-driven React/CSS behavior Claude should locate the current POS shell and reuse exist | NOISE — layout recipe |
 | 05 | Notification unread integrity - Durable user-specific read state; badge clears across tabs/devices while incident acknowledgment stays separate. | TODO |
 | 06 | Preserve rule creation and management Improve the form without changing saved rule meaning Original controls remain first-class UI Maintain Alert name, Metric, comparator (falls below/rises above), Amount/threshold, repo | NOISE — preserve rule creation (kept: New Alert row + rule table) |
@@ -2398,7 +2398,7 @@ Decisions:
 | 08 | Budget-aware SMS protection - Estimate delivery recipient count and cost, confirm tenant Twilio readiness and prevent runaway notification loops. | TODO |
 | 09 | Low sample explanation - State exact eligible sample denominator, why rules are insufficient and where to investigate missing records. | EXISTS — an evaluation records the sample and "not evaluated because the sample was too small" (POSAiAlertsScreen history) |
 | 10 | Search, calendars and pagination Advanced controls must fit the touch viewport and keep filters stable Search and filters Global POS search stays unchanged. Add a dedicated Business Alerts search by rule name, metric, ru | EXISTS — alert history with search, state, date presets + From/To month calendar, numbered pages |
-| 11 | Saved workspace / filter memory - Restore authorized branch, active tab, date range, search and paging after returning from details. | TODO |
+| 11 | Saved workspace / filter memory - Restore authorized branch, active tab, date range, search and paging after returning from details. | BUILT — rules list search, filters and page come back after a details overlay or another screen (this tab; cleared on user change/sign-out) (useSessionState; POSAiAlertsScreen.test) |
 | 12 | Large-salon performance - Windowed lists, indexed rule history, bounded polling and smooth touch interactions for many techs/branches. | NOISE — performance guidance |
 | 13 | Contextual source links - One click from alert evidence to the existing authoritative Sales, Booking, Staff or Customer view. | EXISTS (part) — Explain shows the measured price × volume bridge / appointment funnel behind an alert |
 | 14 | Safety review and rollback - Feature flags, baseline screenshots, before/after metric reconciliation and a reversible rollout plan. No removals and no automatic business actions These recommendations add capability to yo | NOISE — rollout guidance |

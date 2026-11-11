@@ -16,6 +16,7 @@ import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitK
 import { BzPeriodBar, BzHealthButton, bt, bzErr, bzWhen, bzNum, bzValue, bzDays, type BzPeriod } from '../components/BusinessKit';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
 import { IncidentsPanel, DeliveryDialog } from './ai-business/AlertIncidents';
+import { useSessionState } from '../components/useSessionState';
 
 type Metric = 'net_sales' | 'average_ticket' | 'completed_appointments' | 'cancellation_rate' | 'no_show_rate' | 'customer_retention';
 const METRICS: Metric[] = ['net_sales', 'average_ticket', 'completed_appointments', 'cancellation_rate', 'no_show_rate', 'customer_retention'];
@@ -112,8 +113,9 @@ function NewAlert({ onCreated, onError }: { onCreated: () => void; onError: (t: 
 }
 
 function Rules({ tick, onChanged, onMsg, onHistory }: { tick: number; onChanged: () => void; onMsg: (m: { tone: 'ok' | 'err'; text: string }) => void; onHistory: (a: { id: string; title: string }) => void }) {
-  const [draft, setDraft] = useState('');
-  const [f, setF] = useState<{ q?: string; status: string; metric: string; page: number; pageSize: number }>({ status: 'all', metric: 'all', page: 1, pageSize: 25 });
+  // saved workspace: the rules list's search, filters and page come back after a details overlay or another screen (this tab)
+  const [f, setF] = useSessionState<{ q?: string; status: string; metric: string; page: number; pageSize: number }>('aps.bzx.rules', { status: 'all', metric: 'all', page: 1, pageSize: 25 });
+  const [draft, setDraft] = useState(f.q ?? '');
   const [list, setList] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [evals, setEvals] = useState<Record<string, any>>({});

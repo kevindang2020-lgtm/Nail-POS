@@ -1,7 +1,7 @@
 // POSAiAlertsScreen — AI Business Alerts guide (Nov 3 2026): the New Alert row and rule table stay; Evaluate now is recorded with what
 // changed; history with acknowledgement and explanation; Delete asks first; honest about no automatic evaluation / delivery.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { c, api } = vi.hoisted(() => {
   const c = { alertSummary: vi.fn(), rules: vi.fn(), history: vi.fn(), evaluate: vi.fn(), acknowledge: vi.fn(), explain: vi.fn(), anomaly: vi.fn(), alertCheck: vi.fn(),
@@ -17,6 +17,7 @@ const EV = { id: 'e1', alertId: 'a1', title: 'test', metricId: 'average_ticket',
 const wrap = () => render(<MemoryRouter><POSAiAlertsScreen /></MemoryRouter>);
 beforeEach(() => {
   vi.clearAllMocks();
+  try { sessionStorage.clear(); } catch { /* jsdom */ }
   c.alertSummary.mockResolvedValue({ activeRules: 2, pausedRules: 0, triggeredUnacknowledged: 1, needsReview: 0, neverEvaluated: 1, lastEvaluatedAt: '2026-11-03T15:00:00Z', automaticEvaluation: false });
   c.rules.mockResolvedValue({ items: [RULE], total: 1, page: 1, pageSize: 25, totalPages: 1 });
   c.history.mockResolvedValue({ items: [EV], total: 1, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' } });
@@ -155,5 +156,15 @@ describe('POSAiAlertsScreen', () => {
     expect(screen.getByTestId('bzx-delivery')).toHaveTextContent('no mobile number');
     fireEvent.click(screen.getByTestId('bzx-d-save'));
     await vi.waitFor(() => expect(c.alertSetDelivery).toHaveBeenCalledWith('a1', { severity: 'critical', channels: ['in_app', 'sms'], recipientUserIds: ['u1'], quietHoursStart: 21, quietHoursEnd: 8, cooldownMinutes: 60 }));
+  });
+  it('Saved workspace: the rules search comes back after leaving and returning (same tab)', async () => {
+    const v = wrap();
+    fireEvent.change(await screen.findByTestId('bzx-a-search'), { target: { value: 'ticket' } });
+    fireEvent.submit(screen.getByTestId('bzx-a-search').closest('form')!);
+    await waitFor(() => expect(c.rules).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'ticket' })));
+    v.unmount(); c.rules.mockClear();
+    wrap();
+    expect((await screen.findByTestId('bzx-a-search') as HTMLInputElement).value).toBe('ticket');
+    await waitFor(() => expect(c.rules).toHaveBeenCalledWith(expect.objectContaining({ q: 'ticket' })));
   });
 });
