@@ -1532,4 +1532,9 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "tips.noMatch": "Không có thợ khớp “{q}”.", // DRAFT — Kevin reviews
   "ops.liveOps.updatedAt": "cập nhật {t}", // DRAFT — Kevin reviews
   "ops.liveOps.refresh": "Làm mới ngay", // DRAFT — Kevin reviews
+  "lgx.impact": "Thiết bị này dùng để", // DRAFT — Kevin reviews
+  "lgx.role.card": "Nhận thanh toán thẻ tại quầy của nó — lỗi ở đây có thể làm ngừng thanh toán thẻ tại quầy đó", // DRAFT — Kevin reviews
+  "lgx.role.checkout": "Chạy thanh toán và việc quầy lễ tân tại trạm của nó", // DRAFT — Kevin reviews
+  "lgx.role.display": "Cho khách xem tổng tiền và lời mời tip khi thanh toán", // DRAFT — Kevin reviews
+  "lgx.role.checkin": "Cho khách tự check-in", // DRAFT — Kevin reviews
 };

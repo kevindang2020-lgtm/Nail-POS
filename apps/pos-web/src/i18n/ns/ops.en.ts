@@ -1533,4 +1533,9 @@ export const OPS_EN = {
   "tips.noMatch": "No technician matches “{q}”.",
   "ops.liveOps.updatedAt": "updated {t}",
   "ops.liveOps.refresh": "Refresh now",
+  "lgx.impact": "What this device does",
+  "lgx.role.card": "Takes card payments at its register — a problem here can stop card checkout there",
+  "lgx.role.checkout": "Runs checkout and front-desk work at its station",
+  "lgx.role.display": "Shows customers their total and tip prompt at checkout",
+  "lgx.role.checkin": "Lets customers check themselves in",
 };

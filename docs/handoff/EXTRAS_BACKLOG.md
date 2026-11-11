@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 87 (incl. part) |
-| EXISTS (opened and named) | 712 (incl. part) |
+| BUILT this arc | 88 (incl. part) |
+| EXISTS (opened and named) | 718 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 424 |
-| TODO | 591 |
+| TODO | 584 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -1647,16 +1647,16 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Truthful Operational State Matrix One compact state summary distinguishing salon preference, policy, entitlement, Gateway and worker readiness; clicking reveals authoritative source and timestamp. | TODO |
-| 02 | Policy Provenance Inspector An expandable “Why this value?” link for each of five thresholds, showing policy source, scope, version and last applied time without exposing secrets. | TODO |
+| 01 | Truthful Operational State Matrix One compact state summary distinguishing salon preference, policy, entitlement, Gateway and worker readiness; clicking reveals authoritative source and timestamp. | EXISTS — status strip separates salon switch, package/subscription, effective-for-session and whether evaluations used the current values (casx-strip, casx-salon, casx-package, casx-effective, casx-propagation) |
+| 02 | Policy Provenance Inspector An expandable “Why this value?” link for each of five thresholds, showing policy source, scope, version and last applied time without exposing secrets. | EXISTS — per-threshold provenance: value, default, which level set it, allowed range, last change (casx-th-reason, casx-last) |
 | 03 | Config Drift Alert Non-mutating detection of discrepancies between settings resolver and Churn Watch/Rebooking/Customer Intelligence consuming an older version. | TODO |
-| 04 | Change Impact Preview Authorized preview estimates the count and type of affected customers, explicitly labels uncertainty and never commits or triggers messages. | TODO |
-| 05 | Propagation Timeline Visual read-only event trail for saved/queued/processing/applied/delayed/failed across existing workers, with source-linked diagnostics. Recommendations must be integrated only after discovering exis | TODO |
-| 06 | Safe Change Review A reusable confirmation summary shows previous/proposed state, role, salon and effects; blocks stale-version changes and accidental double taps. | TODO |
+| 04 | Change Impact Preview Authorized preview estimates the count and type of affected customers, explicitly labels uncertainty and never commits or triggers messages. | EXISTS — read-only impact preview before saving thresholds, labelled (casx-preview, casx-preview-note) |
+| 05 | Propagation Timeline Visual read-only event trail for saved/queued/processing/applied/delayed/failed across existing workers, with source-linked diagnostics. Recommendations must be integrated only after discovering exis | EXISTS — history detail shows whether evaluations picked the change up (casx-event-propagation) |
+| 06 | Safe Change Review A reusable confirmation summary shows previous/proposed state, role, salon and effects; blocks stale-version changes and accidental double taps. | EXISTS — confirmation names salon, change and role; version-checked save (casx-confirm, casx-confirm-text) |
 | 07 | Responsive Module Health Scan Developer-only viewport assertions log overflow/collision at agreed breakpoints; no page-scale zoom or hidden overflow as a substitute for real layout. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Guided Empty and Restricted States Distinct legitimate empty, unauthorized, disconnected, stale, not entitled and missing-data states, each with a precise safe next action. | TODO |
 | 09 | Contextual Customer Impact Shortcut For authorized roles, link an effective threshold into its existing Customer Search or related module via verified context and permission checks. | TODO |
-| 10 | Change-Event Diff View A clean side-by-side before/after overlay with source links, actor and version for authorized audit reviewers, without editing historical events. Implementation priority P0: preserve and verify exi | TODO |
+| 10 | Change-Event Diff View A clean side-by-side before/after overlay with source links, actor and version for authorized audit reviewers, without editing historical events. Implementation priority P0: preserve and verify exi | EXISTS — history detail overlay with before / after (casx-event, casx-before, casx-after) |
 
 ## AI Scheduling Optimizer (13)
 
@@ -2177,7 +2177,7 @@ Decisions:
 | 09 | Worker Delay & Retry Visibility Show actual retry queue lag, attempt numbers and dead-letter status without creating a second retry engine. | TODO |
 | 10 | Cross-module Drill-through Deep link between Device Logs, Device Health, Payment Terminals, Device Assignments and Payment Gateway with stable scopes. | EXISTS (part) — the logs page links to Device Health (TenantLogsScreen) |
 | 11 | Device Firmware & Version Awareness Expose registered app/OS versions and supported firmware warnings only where the actual device inventory provides them. | TODO |
-| 12 | Customer-impact Context Show if a device outage affects check-in, receipts or checkout; never infer customer identity from public hardware logs. SUNMI FLEX 3 27-inch / 1920x1080 / Front Desk POS / 100% zoom 18 AI POWERSA | TODO |
+| 12 | Customer-impact Context Show if a device outage affects check-in, receipts or checkout; never infer customer identity from public hardware logs. SUNMI FLEX 3 27-inch / 1920x1080 / Front Desk POS / 100% zoom 18 AI POWERSA | BUILT — a device event’s details say what that device is for (card terminal, register, customer display, check-in kiosk) — a fixed role per device kind, never inferred from customer or hardware data (TenantLogsScreen DEVICE_ROLE + lgx-impact; test) |
 | 17 | Additional operational recommendations These additions should improve an existing module, never replace it. First confirm whether they already exist in Device Health, Payment Gateway, Notifications or the Control Plane. | NOISE — heading |
 
 ## Email Management  Delivery Center (16)

@@ -31,4 +31,15 @@ describe('TenantLogsScreen', () => {
     fireEvent.click((await screen.findAllByTestId('lgx-view'))[1]);
     expect(await screen.findByTestId('lgx-detail')).toBeInTheDocument();
   });
+  it('Customer-impact context: a device event says what that device is for; an integration event does not', async () => {
+    pageMock.mockResolvedValue({ logs: [{ id: 'd1', category: 'device', severity: 'warning', source: 'payment_terminal', message: 'terminal offline', correlationId: null, relatedId: 't1', status: null, metadata: null, createdIso: '2026-05-06T14:00:00Z' }, logs[1]], total: 2, page: 1, pageSize: 25, totalPages: 1, summary: { events: 2, warnings: 1, errors: 1, device: 1, integration: 1 } });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[0]);
+    expect(await screen.findByTestId('lgx-impact')).toHaveTextContent(/card payments/i);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('lgx-detail')).toBeNull());
+    fireEvent.click(screen.getAllByTestId('lgx-view')[1]);
+    await screen.findByTestId('lgx-detail');
+    expect(screen.queryByTestId('lgx-impact')).toBeNull();
+  });
 });

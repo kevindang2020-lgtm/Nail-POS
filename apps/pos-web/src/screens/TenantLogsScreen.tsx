@@ -14,6 +14,10 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/codeLabel';
 import { fmtDateTime, fmtNumber } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
+
+// Customer-impact context (backlog Device Integration Logs · 12): what the device that logged the event is FOR, so staff see
+// what a problem there can touch. A fixed role per device kind — never inferred from the customer or from hardware data.
+const DEVICE_ROLE: Record<string, string> = { payment_terminal: 'card', pos_station: 'checkout', customer_display: 'display', kiosk: 'checkin' };
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 import { reportError } from './reportsCommon';
@@ -100,6 +104,7 @@ export function TenantLogsScreen() {
           <dt>{tt('lgx.category')}</dt><dd>{codeLabel('admin.logs.category', open.category)}</dd>
           <dt>{tt('lgx.source')}</dt><dd>{codeLabel('admin.logs.source', open.source, 'source')}</dd>
           <dt>{tx('pos.status')}</dt><dd>{open.status ? codeLabel('admin.logs.status', open.status, ['deviceUpdate', 'payment']) : dash}</dd>
+          {open.category === 'device' && DEVICE_ROLE[open.source] ? <><dt>{tt('lgx.impact')}</dt><dd data-testid="lgx-impact">{tt('lgx.role.' + DEVICE_ROLE[open.source])}</dd></> : null}
           <dt>{tt('lgx.related')}</dt><dd>{open.relatedId ?? dash}</dd>
           <dt>{tt('lgx.correlation')}</dt><dd>{open.correlationId ?? dash}</dd>
           {open.metadata && typeof open.metadata === 'object' ? Object.entries(open.metadata as Record<string, unknown>).slice(0, 12).map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{String(v)}</dd></Fragment>) : null}
