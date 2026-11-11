@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 89 (incl. part) |
-| EXISTS (opened and named) | 723 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 424 |
-| TODO | 578 |
+| EXISTS (opened and named) | 725 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 436 |
+| TODO | 564 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -251,7 +251,7 @@ Decisions:
 | 05 | Release Feature flag, migration/rollback plan, audit/monitoring, staging Measured report with explicit unresolved blockers on target device RELEASE GATE Do not call the job complete based only on screenshots, a build com | NOISE — release-gate instruction |
 | 07 | CUSTOMER A Separate earned reward voucher becomes AVAILABLE | EXISTS — the referrer's earned reward is its own voucher in the customer's wallet (modules/deals referral-vouchers: issued on qualification) |
 | 08 | LATER CHECKOUT Referrer redeems own voucher at eligible sponsoring salon Key distinction: The friend may receive an immediately usable first-visit voucher at verification. The referrer may see a PENDING voucher, but it m | EXISTS — checkout finds that voucher in the wallet and applies, reserves, redeems or releases it on the discount authority (referral-vouchers.ts) |
-| 12 | COMMUNICATIONS, DEEP LINKS, REALTIME AND PRIVACY R066 Notification policy Send English-only consent-compliant referral activated, pending, reward unlocked, expiring and redemption messages through existing Communications | TODO |
+| 12 | COMMUNICATIONS, DEEP LINKS, REALTIME AND PRIVACY R066 Notification policy Send English-only consent-compliant referral activated, pending, reward unlocked, expiring and redemption messages through existing Communications | NOISE — requirement narrative block |
 
 ## AI Follow Ups Human Handoff (16)
 
@@ -309,7 +309,7 @@ Decisions:
 | 07 | Audit trail shortcut Provide a one-click view of who received, counted, approved or corrected cash and when. | EXISTS — End-of-Day Cash → technician detail → events list (tech_cash_handoff_events: each hand-off, count, approval or correction with who and when) — POSCashHandoffScreen |
 | 08 | Status-aware safe buttons Prevent “Confirm” on closed hand-offs or while a prior save is pending. Indicate disabled reason. | EXISTS (part) — a count against a changed hand-off is refused with the current figure shown (conflict); saves disable while pending |
 | 09 | Data freshness indicator Display last verified refresh time with Retry for network/API failures; do not turn service failure into financial zero. | BUILT — Numbers updated {time} stamped only after a successful summary; a failed refresh shows the error with Retry (never $0) and the last good time (cash-fresh; POSCashHandoffScreen.test) |
-| 10 | Quick View Daily Closeout Link to the branch and business date already selected without expanding tenant/branch scope. Engineering addendum / November 7, 2026 Addendum page 16 AI POWERSALON / END-OF-DAY CASH / SUNMI FLEX | TODO |
+| 10 | Quick View Daily Closeout Link to the branch and business date already selected without expanding tenant/branch scope. Engineering addendum / November 7, 2026 Addendum page 16 AI POWERSALON / END-OF-DAY CASH / SUNMI FLEX | EXISTS — End-of-Day Cash is the Daily Closeout screen itself (/cash-handoffs); branch and business date stay as selected |
 | 11 | Module Preservation Registry Take before/after inventory of all route components, hooks, actions and permissions; make missing module a release blocker. | EXISTS — module registry + preservation matrix gate |
 | 12 | Controlled device calibration Optional user-visible device profile only after measuring the real CSS viewport; never rely on hardcoded screen-name detection. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 13 | Touch keyboard responsiveness On-screen keyboard must not obstruct the amount field, save action, or count confirmation; adjust overlays dynamically. | TODO |
@@ -340,7 +340,7 @@ Decisions:
 | 03 | Schedule Gaps | EXISTS — Gaps & Conflicts tab (schedule gaps from a deterministic engine) |
 | 04 | Overbooking & Conflicts | EXISTS — Gaps & Conflicts tab (overbooking / conflicts, hard rules checked before scoring) |
 | 05 | Busy & Understaffed | EXISTS (part) — Insights → Staffing (SchedInsightsCard kind 'staffing') |
-| 06 | Technician Utilization | TODO |
+| 06 | Technician Utilization | NOISE — bare heading (detailed in row 12) |
 | 07 | Duration Insights | EXISTS — Insights → Duration: service durations from real history with sample size; approving one changes only the engine's planning duration |
 | 08 | Appointment Availability | EXISTS — Find a Time tab + Insights → Availability |
 | 09 | Optimization History | EXISTS — History tab led by the append-only event trail |
@@ -366,7 +366,7 @@ Decisions:
 | 07 | Inventory Data Freshness & Realtime Monitor Expose last updated timestamp and disconnected / stale states for stock, alert counts, technician usage and offline retries. Implementation addendum • Original 32-page specific | BUILT — last good update time on Stock Alerts; a failed refresh says it is stale (alerts-fresh) (shared FinanceKit useFreshAt/FreshnessLine; components/FreshnessLine.test.tsx) |
 | 08 | Smart Restock Priority Assistant Rank truly low/out-of-stock products by expected demand and reorder lead time, while requiring staff approval for actual purchasing. | TODO |
 | 09 | Barcode Scan & Double-Tap Protection Make scanner flows quick on touchscreens with visual confirmation and idempotency protection across repeated scans. | EXISTS — Record Product Use: a scanner's barcode + Enter picks the exact product, chosen product shown, one idempotency key on confirm (POSInventoryAlertsScreen onScan) |
-| 10 | Product Usage Details Overlay Show one product’s last user, all technician totals, usage timeline, reversals and related ticket references within a bounded panel. | TODO |
+| 10 | Product Usage Details Overlay Show one product’s last user, all technician totals, usage timeline, reversals and related ticket references within a bounded panel. | EXISTS — product details overlay: Overview · Pricing · Inventory · Suppliers · Usage (technician uses, reversals) · History (components/InventoryKit ProductDetailsDialog) |
 | 11 | Technician Consumption Trend Offer period-based product / technician summaries with units and service volume context; avoid ungrounded misconduct alerts. | EXISTS (part) — Technicians tab: per-technician product totals for the period with units (no misconduct conclusions) |
 | 12 | Low-Stock Cause Explanation Describe whether low stock is driven by confirmed usage, receiving delays, corrections, reservations, or inconsistent inventory units. | TODO |
 | 13 | Staff-Friendly Acknowledgment Workflow Show who acknowledged alerts, when, what remained unresolved, and what was later restocked. | EXISTS (part) — Acknowledge on active alerts and an Alert History tab (acknowledged / resolved over time) |
@@ -782,7 +782,7 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Receptionist Requests an Action | EXISTS — receptionist asks in the Copilot chat; the action is PREPARED, not executed (useCopilotAction prepare) |
-| 02 | Screenshot inventory: preserve all visible modules Screenshot / position Exact feature set to preserve 1 · Top view Reception Copilot title and subtitle; Queue now (waiting/in service); AI Phone Receptionist recent activ | TODO |
+| 02 | Screenshot inventory: preserve all visible modules Screenshot / position Exact feature set to preserve 1 · Top view Reception Copilot title and subtitle; Queue now (waiting/in service); AI Phone Receptionist recent activ | NOISE — screenshot inventory (modules preserved; registry gate) |
 | 03 | Backend Checks Availability and Permissions | EXISTS — server preview checks availability + permissions before anything is offered (posCopilotCenterApi prepare/preview) |
 | 04 | Staff Reviews and Confirms Action | EXISTS — PreparedCard: staff reviews the server preview and confirms |
 | 05 | Real POS Backend Executes the Action | EXISTS — confirm runs through the real POS backend services (copilot center confirm) |
@@ -987,7 +987,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 31 | Copy-ready final instruction for Claude Claude, modify my existing AI PowerSalon codebase - do not rebuild the application. Read this entire PDF and inspect the three provided reference images. The route is /tenant/devic | TODO |
+| 31 | Copy-ready final instruction for Claude Claude, modify my existing AI PowerSalon codebase - do not rebuild the application. Read this entire PDF and inspect the three provided reference images. The route is /tenant/devic | NOISE — copy-ready instruction text |
 
 ## AI BUSINESS SETUP (15)
 
@@ -1454,10 +1454,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 02 | Exact screenshot inventory: eight summary cards Your screenshot shows eight KPIs across a very compressed row. Preserve all eight, but redesign to provide readable space and consistent proportions. CARD SHOWN SCREENSHOT  | TODO |
+| 02 | Exact screenshot inventory: eight summary cards Your screenshot shows eight KPIs across a very compressed row. Preserve all eight, but redesign to provide readable space and consistent proportions. CARD SHOWN SCREENSHOT  | NOISE — screenshot inventory |
 | 15 | Account Finder and controlled search The user requested search by phones and names. Make search useful, permission-sensitive and contextual. Do NOT create one unscoped search across all salons. • Add an Account Finder th | TODO |
 | 23 | Twelve additional recommendations tailored to AI PowerSalon • 1. Account Completion Assistant: explain missing fields, verification state and safe next action before displaying “100%”. • 2. Account Integrity Health Check | NOISE — recommendations list heading |
-| 24 | Implementation order for Claude PHASE WHAT MUST BE VERIFIED AND DELIVERED P0 - Repository audit Locate route/UI/backend/data/migrations/auth; map every observed card, panel, sidebar route and data owner; capture baseline | TODO |
+| 24 | Implementation order for Claude PHASE WHAT MUST BE VERIFIED AND DELIVERED P0 - Repository audit Locate route/UI/backend/data/migrations/auth; map every observed card, panel, sidebar route and data owner; capture baseline | NOISE — implementation-order table |
 
 ## AI Marketing Assistant (18)
 
@@ -1589,7 +1589,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 31 | Copy-ready final instruction for Claude Claude, modify my existing AI PowerSalon codebase - do not rebuild the application. Read this entire PDF and inspect the three provided reference images. The route is /tenant/devic | TODO |
+| 31 | Copy-ready final instruction for Claude Claude, modify my existing AI PowerSalon codebase - do not rebuild the application. Read this entire PDF and inspect the three provided reference images. The route is /tenant/devic | NOISE — copy-ready instruction text |
 
 ## MONEY PROTECTION ALERTS (16)
 
@@ -1638,10 +1638,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 05 | Responsive CSS / React implementation examples These are illustrative patterns, not instructions to paste over existing components. Claude must find the actual layout primitives and reuse them where possible. /* Example: | TODO |
+| 05 | Responsive CSS / React implementation examples These are illustrative patterns, not instructions to paste over existing components. Claude must find the actual layout primitives and reuse them where possible. /* Example: | NOISE — illustrative CSS/React examples |
 | 11 | Verified status, heartbeat and operating health The user-facing 0 connected must come from verified device connectivity data, not an assumption based on empty UI state. If the page loads zero rows, trace the actual fetch | TODO |
 | 20 | Roles, privileges, tenant isolation and auditing Actor Permitted actions (server policy always authoritative) Receptionist View authorized station status, use assigned POS; no global device approval by default. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 22 | Conceptual APIs, data and events - adapt, do not duplicate Use these only as capability contracts; they are not assertions about existing API names. Claude must inspect actual controllers, DTOs, policies, database struct | TODO |
+| 22 | Conceptual APIs, data and events - adapt, do not duplicate Use these only as capability contracts; they are not assertions about existing API names. Claude must inspect actual controllers, DTOs, policies, database struct | NOISE — conceptual API contracts text |
 
 ## Customer AI Settings 6 (10)
 
@@ -2024,9 +2024,9 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 02 | SUNMI hardware and usable viewport Physical inches are not CSS coordinates. Reference Target / developer rule SUNMI panel 27-inch landscape; image states 1920 × 1080 pixels, 16:9 ratio Display housing 25.43 in / 646 mm w | TODO |
-| 13 | Added recommendations - operational quality New suggestions are additive: none replace existing original features. R1 - Call lifecycle status timeline A compact evidence timeline: Incoming → Routed → Agent Active → Tool  | TODO |
-| 14 | Added recommendations - scale and service Apply only after an audit shows that the capability is absent. R7 - AI call quality review queue Staff may flag a call for accuracy, clarity or incorrect service suggestion. Use  | TODO |
+| 02 | SUNMI hardware and usable viewport Physical inches are not CSS coordinates. Reference Target / developer rule SUNMI panel 27-inch landscape; image states 1920 × 1080 pixels, 16:9 ratio Display housing 25.43 in / 646 mm w | NOISE — viewport facts (screen check covers fit) |
+| 13 | Added recommendations - operational quality New suggestions are additive: none replace existing original features. R1 - Call lifecycle status timeline A compact evidence timeline: Incoming → Routed → Agent Active → Tool  | NOISE — recommendations heading |
+| 14 | Added recommendations - scale and service Apply only after an audit shows that the capability is absent. R7 - AI call quality review queue Staff may flag a call for accuracy, clarity or incorrect service suggestion. Use  | NOISE — recommendations heading |
 | 15 | Security, consent and protected surfaces Multi-tenant voice data and iPhone payment code are out of bounds for risky changes. Tenant and branch isolation • Enforce tenant/branch ownership and RBAC in every API, database  | NOISE — security/consent boundary text |
 
 ## Payment Terminals 2 (12)
