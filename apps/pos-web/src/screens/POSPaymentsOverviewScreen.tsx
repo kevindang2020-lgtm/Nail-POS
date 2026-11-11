@@ -18,7 +18,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';   // useDebounced: services search
-import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 
 type Space = 'overview' | 'transactions' | 'revenue' | 'payouts';
 const SPACES: Space[] = ['overview', 'transactions', 'revenue', 'payouts'];
@@ -39,6 +39,7 @@ export function POSPaymentsOverviewScreen() {
   const [kind, setKind] = useState(''); const [txPage, setTxPage] = useState(1);
   const pq = periodQuery(period);
   const o = useLoad(() => posMoneyOverviewApi.overview(pq), [JSON.stringify(pq), tick]);
+  const freshAt = useFreshAt(o.data);   // data freshness: only after a successful read; a failed refresh keeps the last good time
   const d = o.data; const k = d?.kpis; const out = d?.outstanding;
   const pqKey = JSON.stringify(pq);
   useEffect(() => { setTxPage(1); }, [kind, pqKey]);
@@ -72,6 +73,7 @@ export function POSPaymentsOverviewScreen() {
         <button type="button" className="fk-btn" onClick={() => setSearchOpen(true)} disabled={q.length < 2} data-testid="search-go">{tx('pm.searchGo')}</button>
         <PeriodBar value={period} onChange={setPeriod} server={d?.period} allowAll compact />
       </div>
+      <FreshnessLine at={freshAt} error={o.error} testId="payments-fresh" />
       <div className="fk-kpis pm-kpis" data-testid="kpis">
         {o.error ? <StateBlock error={o.error} onRetry={o.reload} /> : <>
           <KpiCard testId="kpi-revenue" tone="gold" label={tx('pm.kpi.revenue')} loading={!k} value={k ? fmtMoney(k.revenueCents) : ''} sub={tx('pm.sub.period', { p: scopeP })} onClick={() => setSpace('revenue')} />

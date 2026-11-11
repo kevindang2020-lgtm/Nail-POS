@@ -24,7 +24,7 @@ import { statusLabel } from '../i18n/status-label';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced, downloadCsv, type PageInfo } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 
 type Kpis = { totalMembers: number; newMembersThisMonth: number; activeMembers: number; activePctOfTotal: number; membershipRevenueCents: number; membershipPaymentsThisMonth?: number;
@@ -104,6 +104,7 @@ export function POSMembershipsScreen() {
   useEffect(() => setPg('plans')(1), [keys.plans]);    
 
   const ov = useLoad(() => posMembershipsApi.overview() as Promise<Overview>, [rev]);
+  const freshAt = useFreshAt(ov.data);   // data freshness: only after a successful read; a failed refresh keeps the last good time
   const [panelFilter, setPanelFilter] = useState('active');
   const ovActScope = { ...periodQuery(periods.overview) };
   const panelMembers = useLoad(() => (tab === 'overview' ? posMembershipsApi.members({ page: pg('p-members'), pageSize: PANEL, filter: panelFilter }) : Promise.resolve(null)), [tab === 'overview', pg('p-members'), panelFilter, rev]);
@@ -193,6 +194,7 @@ export function POSMembershipsScreen() {
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
 
+      <FreshnessLine at={freshAt} error={ov.error} testId="memberships-fresh" />
       <div className="fk-kpis five mos-kpis" data-testid="membership-kpis">
         {ov.error ? <StateBlock error={ov.error} onRetry={ov.reload} /> : <>
           <KpiCard testId="kpi-total" label={tx('pos.total_members')} loading={!k} value={k ? nf(k.totalMembers) : ''} sub={k ? `${tx('mos.scope.now')} · ${tx('people.mo.kpi.newThisMonth', { n: nf(k.newMembersThisMonth) })}` : ''} onClick={() => openMembers('all')} />

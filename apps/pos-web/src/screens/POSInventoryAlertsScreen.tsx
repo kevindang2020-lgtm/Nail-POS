@@ -20,7 +20,7 @@ import { codeLabel } from '../components/peopleLabels';
 import { errorTextOf } from '../i18n/error-text';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 
 type Tab = 'active' | 'usage' | 'technicians' | 'history';
 const TABS: Tab[] = ['active', 'usage', 'technicians', 'history'];
@@ -54,6 +54,7 @@ export function POSInventoryAlertsScreen() {
   const key = tab + JSON.stringify(scope); useEffect(() => { setPage(1); }, [key]);
   const fit = useFitRows<HTMLDivElement>(46, { min: 3, max: 18, reserve: 34 });
   const sum = useLoad(() => posInventoryAlertsApi.summary(), [tick]);
+  const freshAt = useFreshAt(sum.data);   // data freshness: only after a successful read; a failed refresh keeps the last good time
   const list = useLoad(() => {
     const qq = { ...scope, page, pageSize: fit.rows };
     return tab === 'active' ? posInventoryAlertsApi.active(qq) : tab === 'usage' ? posInventoryAlertsApi.usage(qq) : tab === 'technicians' ? posInventoryAlertsApi.technicians(qq) : posInventoryAlertsApi.history(qq);
@@ -98,6 +99,7 @@ export function POSInventoryAlertsScreen() {
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>
         {note.productId ? <button type="button" className="fk-link" onClick={() => setProduct(note.productId!)} data-testid="note-view-product">{tx('sa.viewProduct')}</button> : null}
         <button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      <FreshnessLine at={freshAt} error={sum.error} testId="alerts-fresh" />
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-open" tone={k && k.openAlerts > 0 ? 'bad' : undefined} label={tx('pos.open_alerts')} loading={!k} value={k ? fmtNumber(k.openAlerts) : ''} sub={k ? tx('sa.kpi.openSub', { a: fmtNumber(k.acknowledged) }) : ''} onClick={() => { setTab('active'); setSeverity(''); setShowAck(false); }} />

@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 60 (incl. part) |
-| EXISTS (opened and named) | 623 (incl. part) |
+| BUILT this arc | 64 (incl. part) |
+| EXISTS (opened and named) | 625 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 374 |
-| TODO | 761 |
+| TODO | 755 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -362,7 +362,7 @@ Decisions:
 | 04 | Automatic Screen Fit & Module Health Checker Inspect page and tab overflow, clipped labels, inaccessible pagination, uneven cards and touch target sizes at 100% zoom. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 05 | Product-to-Service Consumption Review Verify known recipes / BOMs, ticket links, multi-technician allocations, and whether any automatic consumption policy was enabled by the tenant. | TODO |
 | 06 | Reorder & Receiving Reconciliation Compare suggested reorder quantities, open POs, actual receipts, movement history and post-receipt alert recalculation. | TODO |
-| 07 | Inventory Data Freshness & Realtime Monitor Expose last updated timestamp and disconnected / stale states for stock, alert counts, technician usage and offline retries. Implementation addendum • Original 32-page specific | TODO |
+| 07 | Inventory Data Freshness & Realtime Monitor Expose last updated timestamp and disconnected / stale states for stock, alert counts, technician usage and offline retries. Implementation addendum • Original 32-page specific | BUILT — last good update time on Stock Alerts; a failed refresh says it is stale (alerts-fresh) (shared FinanceKit useFreshAt/FreshnessLine; components/FreshnessLine.test.tsx) |
 | 08 | Smart Restock Priority Assistant Rank truly low/out-of-stock products by expected demand and reorder lead time, while requiring staff approval for actual purchasing. | TODO |
 | 09 | Barcode Scan & Double-Tap Protection Make scanner flows quick on touchscreens with visual confirmation and idempotency protection across repeated scans. | EXISTS — Record Product Use: a scanner's barcode + Enter picks the exact product, chosen product shown, one idempotency key on confirm (POSInventoryAlertsScreen onScan) |
 | 10 | Product Usage Details Overlay Show one product’s last user, all technician totals, usage timeline, reversals and related ticket references within a bounded panel. | TODO |
@@ -571,7 +571,7 @@ Decisions:
 | 01 | Balanced Screen Fit Inspector Read-only developer/QA panel checks overflow, card height variance and control reachability. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Gift Card Trust & Freshness Every balance and KPI exposes data owner, last verified timestamp and source drill-down. | TODO |
 | 03 | Checkout Redemption Readiness Staff preview sees eligibility, card balance, ticket due, split tender effect and approval blockers. | TODO |
-| 04 | Liability Reconciliation Workbench Authorized read-only compare of ledger liability, 5 KPIs and branch clearing exceptions; no automatic money movement. | TODO |
+| 04 | Liability Reconciliation Workbench Authorized read-only compare of ledger liability, 5 KPIs and branch clearing exceptions; no automatic money movement. | EXISTS — Branch Liability & Clearing panel, read-only (POSGiftCardsScreen.liability.test) |
 | 05 | Safe Issuance / Replacement Preview Human review of denomination, funding, branch eligibility, recipient and irreversible impact before write. Prioritize safety and usefulness • If a recommendation already exists in the  | TODO |
 
 ## AI Queue Assignment (8)
@@ -856,7 +856,7 @@ Decisions:
 | 07 | Payout & Deposit Checker Explain expected provider payouts separately from sent payments and bank-confirmed deposits. | TODO |
 | 08 | Cross-Module Wiring Checker Check broken links between Checkout, Transactions, Tips, Gift Cards, Cash Drawer and Reconciliation. AI authority rule A health checker is diagnostic and advisory. It must not move money, over | BUILT — shared read-only Check Payments System (GET pos/system-checks/payments, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 09 | Financial Exception Inbox Consolidate unresolved statuses and mismatch explanations with drill-down evidence. | TODO |
-| 10 | Data Freshness Indicator Show last successful refresh and provider sync status per panel; never claim real-time when stale. | TODO |
+| 10 | Data Freshness Indicator Show last successful refresh and provider sync status per panel; never claim real-time when stale. | BUILT — last successful refresh on Payments overview; never claims live (payments-fresh) (shared FinanceKit useFreshAt/FreshnessLine; components/FreshnessLine.test.tsx) |
 | 11 | Transaction State Timeline Display authorize/capture/settle/refund events from real provider references. | BUILT — Transaction detail → Payment timeline (server: recorded payment / refund / settlement / deposit times only; pgtest 14/14) — PaymentTimeline |
 | 12 | Better Payout Forecast Cards Show expected payout dates, processor names and confidence/source based on available records. | TODO |
 | 13 | Adaptive Table Density Compute readable page size from available table height instead of shrinking text. | EXISTS — page size computed from the available table height (useFitRows), text never shrunk (POSPaymentsOverviewScreen) |
@@ -1388,7 +1388,7 @@ Decisions:
 | 06 | Footer Selection count + results + newest-first status + numbered pager. Stay visible Balanced space rules • Use a common 8 / 12 / 16px spacing rhythm, consistent card radii, baseline alignment, and matching card heights | TODO |
 | 07 | Reorder / Receiving Safety Low-stock reorder recommendations vs on-order and actual received; no stock increase on draft PO. | EXISTS — reorder opens a draft purchase order; stock rises only on receiving (reorder / create-po) |
 | 08 | Tenant / Permission Integrity Role checks; branch-scoped search/export; cross-tenant product, staff, customer and vendor data leak prevention. | NOISE — security audit instruction |
-| 09 | Realtime / Freshness Data invalidation, last updated indicators, subscriber reconnect and offline pending entries. | TODO |
+| 09 | Realtime / Freshness Data invalidation, last updated indicators, subscriber reconnect and offline pending entries. | BUILT — last updated indicator on Stock Alerts; a failed refresh keeps the last good time (alerts-fresh) (shared FinanceKit useFreshAt/FreshnessLine; components/FreshnessLine.test.tsx) |
 | 10 | English / Vietnamese UI Translation coverage on tenant Front Desk POS only; text wrapping, date controls and labels remain accessible. Diagnostics must be read-only by default. Display exact source records, discrepancies | NOISE — translation instruction (EN/VI keys present) |
 
 ## Full-System Engineering Upgrade (32)
@@ -1928,7 +1928,7 @@ Decisions:
 | 06 | Barcode/scanner assistance Use the existing input/scanner interface if supported; keep a protected manual lookup fallback, with no secret exposure in autocomplete. | TODO |
 | 07 | Guided gift card issuance overlay Create a concise, touch-friendly workflow with input validation and a clear payment-confirmation step. Make primary buttons consistently sized. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 A | EXISTS (part) — Issue Gift Card is payment-first: it opens a ticket Checkout pays; the card holds value only after payment (POSGiftCardsScreen) |
 | 08 | Duplicate issuance and double-spend alerts Detect repeated payment references, identical idempotency keys, overlapping redemption requests and mismatched gift-card activation events. | TODO |
-| 09 | Gift-card liability by branch report Show funded liability, outstanding balances, issued value and redeemed value by authorized branch and as-of date, respecting existing cross-branch rules. | TODO |
+| 09 | Gift-card liability by branch report Show funded liability, outstanding balances, issued value and redeemed value by authorized branch and as-of date, respecting existing cross-branch rules. | EXISTS — liability by branch with clearing exceptions (Branch Liability & Clearing panel; POSGiftCardsScreen.liability.test) |
 | 10 | Refund/reversal preview Before permitted corrections, display current balance, proposed delta, resulting balance, linked ticket and an explicit approver/audit reason. | TODO |
 | 11 | Gift-card eligibility explanation Explain active/void/redeemed/pending/locked status, allowed locations and permitted spend rather than showing a vague disabled button. | EXISTS (part) — status tabs All / Active / Redeemed / Void; Void is a manager's reasoned, step-up, ledgered action |
 | 12 | Reconciliation to daily closeout Compare gift-card issuance tenders, redemption amounts, receipt totals and outstanding liability movements to daily register closeout. | TODO |
@@ -2514,7 +2514,7 @@ Decisions:
 | 11 | KPI Source Tooltips Define date scope and metric meaning; differentiate snapshot count from selected-period events. | EXISTS — each KPI states snapshot vs this-month scope and opens its list |
 | 12 | Export Scope Review Show authorized row count, filters and data sensitivity before export. | TODO |
 | 13 | Touch-Safe Quick Actions Keep all ten existing actions in a consistent, balanced two-row bar. | EXISTS — the ten Quick Actions kept under every tab |
-| 14 | Data Freshness Indicator Show refresh status/last successful update when data may be stale. | TODO |
+| 14 | Data Freshness Indicator Show refresh status/last successful update when data may be stale. | BUILT — last successful update on Membership Overview (memberships-fresh) (shared FinanceKit useFreshAt/FreshnessLine; components/FreshnessLine.test.tsx) |
 | 15 | Reconciliation Drill-Down From discrepant KPI to source ledger/receipt/benefit event for authorized staff. | TODO |
 | 16 | Visual Regression Gate Automated checks at native and scaled effective viewports in EN and VN. Implementation requirements / 07 Nov 2026 Addendum page 20 AI POWERSALON / MEMBERSHIP OVERVIEW SUNMI FLEX 3 / CLAUDE IMPLEMEN | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 

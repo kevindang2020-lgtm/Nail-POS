@@ -20,7 +20,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/peopleLabels';   // (full key, code) → label, humanised when the key is missing
 import { fmtInZone, fmtMoney, fmtNumber } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
-import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
 
 // Functional Decision 31 — gift-card value is the salon's liability; each branch recognizes what it sells and redeems.
@@ -139,6 +139,7 @@ export function POSGiftCardsScreen() {
   const fit = useFitRows<HTMLDivElement>(42, { min: 3, max: 18, reserve: 34 });
   const list = useLoad(() => posGiftCardsApi.list({ ...scope, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
   const sum = useLoad(() => posGiftCardsApi.summary({ ...periodQuery(period), dateField: basis }), [JSON.stringify(period), basis, tick]);
+  const freshAt = useFreshAt(sum.data);   // data freshness: only after a successful read; a failed refresh keeps the last good time
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const k = sum.data?.kpis; const perm = sum.data?.permissions ?? {};
   const rows: Card[] = list.data?.items ?? [];
@@ -182,6 +183,7 @@ export function POSGiftCardsScreen() {
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><span className="fn-note-acts">{note.actions?.map((a) => <button key={a.label} type="button" className="fk-link" onClick={() => { a.run(); setNote(null); }}>{a.label}</button>)}<button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></span></div> : null}
 
+      <FreshnessLine at={freshAt} error={sum.error} testId="giftcards-fresh" />
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-liability" tone="gold" label={tx('gc.kpi.liability')} loading={!k} value={k ? fmtMoney(k.outstandingLiabilityCents) : ''} sub={tx('gc.kpi.liabilitySub')} onClick={() => setGroup('active')} />
