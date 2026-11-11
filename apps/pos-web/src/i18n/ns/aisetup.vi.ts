@@ -223,4 +223,5 @@ export const AISETUP_VI: Record<string, string> = {
   "aiset.sample.nailArt": "Thợ nào vẽ móng nghệ thuật được?",
   "aiset.sample.bookTomorrow": "Tôi đặt lịch 3 giờ chiều mai được không?",
   "aiset.sample.cancellation": "Chính sách hủy lịch của tiệm thế nào?",
+  "aiset.faqDup": "Đã có câu hỏi tương tự — bạn vẫn có thể lưu:", // DRAFT — Kevin reviews
 };

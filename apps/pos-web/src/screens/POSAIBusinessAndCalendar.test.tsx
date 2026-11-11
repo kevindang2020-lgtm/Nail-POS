@@ -40,6 +40,13 @@ import { POSAIBusinessSetupScreen } from './POSAIBusinessSetupScreen';
 import { POSAICalendarScreen } from './POSAICalendarScreen';
 
 describe('POSAIBusinessSetupScreen', () => {
+  it('FAQ Duplicate Warning: a new question that asks the same thing shows the existing one; Add stays enabled', async () => {
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText('Do you take walk-ins?')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('ais-q'), { target: { value: 'Do you accept walk-ins?' } });
+    expect(await screen.findByTestId('ais-faq-dup', {}, { timeout: 2000 })).toHaveTextContent('Do you take walk-ins?');
+    expect(screen.getByTestId('ais-add')).not.toBeDisabled();
+  });
   it('shows readiness from the canonical read model (raw vs eligible, exclusions), Unknown instead of a false zero, and the FAQ list', async () => {
     render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('Do you take walk-ins?')).toBeInTheDocument());

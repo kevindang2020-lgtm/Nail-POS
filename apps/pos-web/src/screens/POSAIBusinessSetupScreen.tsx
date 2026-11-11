@@ -17,6 +17,7 @@ import { fmtInZone as fmtInZoneOpts } from '../i18n/format';
 const fmtInZone = (x: string | null | undefined) => fmtInZoneOpts(x, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { similarFaqs, faqWords } from './faqDup';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const STATUS_TONE: Record<string, string> = { READY: 'ok', NEEDS_SETUP: 'warn', STALE: 'warn', FAILED: 'bad', DISABLED: 'muted', UNKNOWN: 'bad' };
@@ -87,6 +88,17 @@ export function POSAIBusinessSetupScreen() {
   useEffect(() => { setF((x) => ({ ...x, page: 1 })); }, [dq, scope]);
   const setFilter = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch, page: 1 }));
 
+  // FAQ Duplicate Warning: look for existing questions that ask the same thing (warn only — saving stays allowed)
+  const dupQ = useDebounced(form.question, 450);
+  const [lookAlikes, setLookAlikes] = useState<Array<{ id: string; question: string }>>([]);
+  useEffect(() => {
+    const words = [...faqWords(dupQ)].sort((a, b) => b.length - a.length);
+    if (words.length < 2) { setLookAlikes([]); return; }
+    let live = true;
+    Promise.resolve().then(() => posAiBusinessSetupApi.faqs({ q: words[0], page: 1, pageSize: 50 } as FaqQuery))
+      .then((r: any) => { if (live) setLookAlikes(similarFaqs(dupQ, (r?.items ?? []) as Array<{ id: string; question: string; status?: string }>)); }, () => { if (live) setLookAlikes([]); });
+    return () => { live = false; };
+  }, [dupQ]);
   const addFaq = async () => {
     setFormErr(null); setNotice(null);
     if (!form.question.trim() || !form.answer.trim()) { setFormErr(t('aiset.needBoth')); return; }
@@ -139,6 +151,8 @@ export function POSAIBusinessSetupScreen() {
                 <label>{t('aiset.category')}<input data-testid="ais-cat" value={form.category} maxLength={60} placeholder={t('aiset.categoryPh')} onChange={(e) => setForm({ ...form, category: e.target.value })} /></label>
               </div>
               <label className="ais-full">{t('aiset.answer')}<textarea data-testid="ais-a" value={form.answer} maxLength={2000} rows={3} placeholder={t('aiset.answerPh')} onChange={(e) => setForm({ ...form, answer: e.target.value })} /></label>
+              {lookAlikes.length ? <div className="fk-note warn" role="status" data-testid="ais-faq-dup">{t('aiset.faqDup')}{' '}
+                {lookAlikes.map((x, i) => <span key={x.id}>{i ? ' · ' : ''}<button type="button" className="fk-link" onClick={() => setOpen(x.id)} data-testid="ais-faq-dup-open">“{x.question}”</button></span>)}</div> : null}
               <div className="ais-form-foot"><button className="btn" data-testid="ais-add" disabled={saving} onClick={addFaq}>{saving ? t('aiset.adding') : t('aiset.addFaq')}</button><span className="sub">{t('aiset.draftHint')}</span></div>
               {formErr ? <div className="err" role="alert">{formErr}</div> : null}
               {notice ? <div className="ok" role="status" data-testid="ais-notice">{notice}</div> : null}

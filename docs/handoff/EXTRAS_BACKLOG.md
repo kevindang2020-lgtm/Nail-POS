@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 73 (incl. part) |
-| EXISTS (opened and named) | 670 (incl. part) |
+| BUILT this arc | 74 (incl. part) |
+| EXISTS (opened and named) | 671 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 398 |
-| TODO | 677 |
+| TODO | 675 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -993,11 +993,11 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Explain Zero Counts Each readiness tile opens a reasons drawer: raw/eligible count, exclusion list, branch, source and refresh timestamp. | EXISTS — readiness rows show raw vs eligible counts, the exclusions and the source (same rules the AI receptionist uses) (POSAIBusinessSetupScreen) |
-| 02 | Guided Setup Checklist One-click deep links to existing Hours, Service Catalog, Team and Staff Schedule editors, with return navigation. | TODO |
+| 02 | Guided Setup Checklist One-click deep links to existing Hours, Service Catalog, Team and Staff Schedule editors, with return navigation. | EXISTS — readiness checklist rows deep-link to Hours, Services, Team and Schedule editors with Retry (ReadinessRow onGo in POSAIBusinessSetupScreen) |
 | 03 | Branch Scope Inspector A compact label showing selected tenant and branch; surface mismatch in a read-only diagnostic. | TODO |
 | 04 | Source Freshness Marker Last checked, updated, sync-lag and unknown state, never a false green ready flag. | EXISTS (part) — a count that could not be read shows Unknown + Retry, never 0 |
 | 05 | Balanced Dense/Comfortable View Optional operator preference affects spacing, not content; default remains touch-friendly. | BUILT — opt-in Compact spacing per device; spacing only, default unchanged (shell/spacingPref.ts) |
-| 06 | FAQ Duplicate Warning Warn about similar questions before saving, but permit authorized overrides and | TODO |
+| 06 | FAQ Duplicate Warning Warn about similar questions before saving, but permit authorized overrides and | BUILT — new FAQ shows existing questions that ask the same thing (warn only, Add stays enabled; opens the existing FAQ) (faqDup.ts + ais-faq-dup; tests) |
 | 07 | Approval Difference View Side-by-side draft vs currently approved answer before manager publishes. | EXISTS (part) — editing an approved FAQ is a pending change that never replaces the live text until approved |
 | 08 | Safe Knowledge Test Pack Run preapproved sample questions against read-only source snapshots; never contact real customers. | EXISTS — Preview AI Knowledge / FAQ preview run read-only; never books, holds, texts or calls |
 | 09 | Long-List Usability Sticky list columns/actions and clear pagination, with no entire-page horizontal scrolling. | TODO |
