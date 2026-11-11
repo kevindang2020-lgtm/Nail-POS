@@ -20,6 +20,7 @@ import { codeLabel } from '../components/peopleLabels';
 import { errorTextOf } from '../i18n/error-text';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
+import { ExportPreview } from '../components/ExportPreview';
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, type PeriodState } from '../components/FinanceKit';
 
 type Row = { id: string; ticketId: string | null; ticketNumber: string | null; state: string; rawStatus: string; createdAt: string | null; paidAt: string | null; lastRefundAt: string | null;
@@ -46,7 +47,7 @@ export function POSTransactionsScreen() {
   const [minA, setMinA] = useState(''); const [maxA, setMaxA] = useState('');
   const [period, setPeriod] = useState<PeriodState>(deepRef ? { preset: 'all' } : { preset: 'month' }); const [basis, setBasis] = useState('paid');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [detail, setDetail] = useState<string | null>(null);
-  const [note, setNote] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null); const [exporting, setExporting] = useState(false);
+  const [note, setNote] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null); const [exporting, setExporting] = useState(false); const [previewExport, setPreviewExport] = useState(false);
   const minC = minA ? centsFromText(minA) : null; const maxC = maxA ? centsFromText(maxA) : null;
   const amountBad = (minA && minC == null) || (maxA && maxC == null) || (minC != null && maxC != null && minC > maxC);
   const filters = { ...periodQuery(period), dateField: basis, search: q || undefined, method: method || undefined, technician: tech || undefined,
@@ -64,7 +65,7 @@ export function POSTransactionsScreen() {
     ...(minA || maxA ? [{ label: tx('txn.chip.amount', { a: minA || '0', b: maxA || '∞' }), clear: () => { setMinA(''); setMaxA(''); } }] : [])];
   const clearAll = () => { setSearch(''); setStatus(''); setMethod(''); setTech(''); setMinA(''); setMaxA(''); setSort('created_desc'); setPeriod({ preset: 'month' }); setBasis('paid'); };
   const doExport = async () => {
-    setExporting(true);
+    setExporting(true); setPreviewExport(false);
     try { const csv = await posTransactionsApi.exportCsv(scope); const blob = new Blob([String(csv)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transactions.csv'; a.click(); URL.revokeObjectURL(a.href); setNote({ tone: 'ok', text: tx('finance.exported') }); }
     catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } finally { setExporting(false); }
   };
@@ -76,7 +77,7 @@ export function POSTransactionsScreen() {
         <div className="fk-head-actions">
           <SystemCheckButton domain="payments" />
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
-          {can('reports.export') ? <button type="button" className="fk-btn" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
+          {can('reports.export') ? <button type="button" className="fk-btn" onClick={() => setPreviewExport(true)} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
@@ -126,6 +127,9 @@ export function POSTransactionsScreen() {
               </tr>))}</tbody>
           </table>}
       </FitPanel>
+      {previewExport ? <ExportPreview title={tx('finance.exportReport')} count={list.data?.total} cap={20000} audited busy={exporting}
+        period={`${periodText(list.data?.period)} · ${tx('txn.basis.' + basis)}`} filters={[...chips.map((c) => c.label), ...(sort !== 'created_desc' ? [tx('txn.sort.' + sort)] : [])]}
+        onConfirm={doExport} onCancel={() => setPreviewExport(false)} /> : null}
       {detail ? <TxDialog id={detail} tick={tick} onClose={() => setDetail(null)} onChanged={() => setTick((t) => t + 1)} onNote={setNote}
         onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} onGo={(path) => nav(path)} /> : null}
     </div>

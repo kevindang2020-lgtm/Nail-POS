@@ -345,4 +345,15 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.iv.why.void": "Đã hủy — không còn tính vào số dư nào.", // DRAFT — Kevin reviews
   "finance.freshAt": "Số liệu cập nhật {t}", // DRAFT — Kevin reviews
   "finance.freshStale": "Làm mới thất bại — số liệu đúng gần nhất lúc {t}", // DRAFT — Kevin reviews
+  "exp.cancel": "Hủy", // DRAFT — Kevin reviews
+  "exp.download": "Tải CSV", // DRAFT — Kevin reviews
+  "exp.records": "Số bản ghi", // DRAFT — Kevin reviews
+  "exp.period": "Khoảng thời gian", // DRAFT — Kevin reviews
+  "exp.filters": "Bộ lọc", // DRAFT — Kevin reviews
+  "exp.noFilters": "Không có — mọi bản ghi trong khoảng thời gian", // DRAFT — Kevin reviews
+  "exp.masked": "Số điện thoại và email của khách được che.", // DRAFT — Kevin reviews
+  "exp.formula": "Ô bắt đầu giống công thức bảng tính được làm an toàn.", // DRAFT — Kevin reviews
+  "exp.audited": "Lần xuất được ghi vào nhật ký kiểm tra kèm tên bạn.", // DRAFT — Kevin reviews
+  "exp.nothing": "Không có bản ghi nào khớp bộ lọc nên không có gì để xuất.", // DRAFT — Kevin reviews
+  "exp.cap": "Chỉ {n} bản ghi đầu tiên được xuất — hãy thu hẹp bộ lọc để lấy phần còn lại.", // DRAFT — Kevin reviews
 };

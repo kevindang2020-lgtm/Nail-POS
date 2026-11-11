@@ -18,7 +18,7 @@ import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { nf, money, mins, day, whenTime, pageOf, ChangeHistoryTable } from './catalogShared';
 
 type Tab = 'catalog' | 'usage';
@@ -47,6 +47,7 @@ export function POSServiceAddOnsScreen() {
   useEffect(() => setPg('catalog')(1), [keys.catalog]);    
   useEffect(() => setPg('usage')(1), [keys.usage]);    
   const sum = useLoad(() => posCatalogApi.addOnSummary(), [tick]);
+  const freshAt = useFreshAt(sum.data);   // data freshness: only after a successful read
   const list = useLoad(() => (tab === 'catalog' ? posCatalogApi.addOns({ ...scope, page: pages.catalog, pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.catalog, pages.catalog, tick]);
   const usage = useLoad(() => (tab === 'usage' ? posCatalogApi.addOnUsage({ ...uscope, page: pages.usage, pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.usage, pages.usage, tick]);
 
@@ -71,6 +72,7 @@ export function POSServiceAddOnsScreen() {
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
 
+      <FreshnessLine at={freshAt} error={sum.error} testId="addons-fresh" />
       <div className="fk-kpis four cg-kpis" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-total" label={tx('pos.total_add_ons')} loading={!k} value={k ? nf(k.offerings) : ''} sub={k ? tx('cg.ao.kpiTotalSub', { d: nf(k.definitions) }) : ''} onClick={() => { setTab('catalog'); clearAll(); }} />

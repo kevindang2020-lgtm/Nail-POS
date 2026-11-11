@@ -19,7 +19,8 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced, type PageInfo } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { ExportPreview } from '../components/ExportPreview';
+import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 
 type Tab = 'discounts' | 'redemptions' | 'performance';
@@ -89,8 +90,9 @@ export function POSDiscountsScreen() {
   const count = (d: any) => (d ? <span className="fk-muted"> · {tx('dsc.matching', { n: nf(d.totalItems) })}</span> : null);
   const noRows = (what: string, action?: React.ReactNode) => (filtered ? <Empty title={q ? tx('dsc.noMatchSearch', { q }) : tx('dsc.noMatch')}><button type="button" className="fk-btn" onClick={clearAll} data-testid="empty-clear">{tx('finance.clearFilters')}</button></Empty> : <Empty title={what}>{action}</Empty>);
   const promotions = () => nav('/tenant/marketing/promotions');
+  const [previewExport, setPreviewExport] = useState(false);
   const doExport = async () => {
-    setExporting(true); setNote(null);
+    setExporting(true); setNote(null); setPreviewExport(false);
     try {
       if (tab === 'redemptions') saveCsv('discount-redemptions.csv', await posDiscountsApi.exportRedemptions(redScope));
       else saveCsv('discounts.csv', await posDiscountsApi.exportList(listScope));
@@ -101,12 +103,16 @@ export function POSDiscountsScreen() {
   if (isForbidden(kpis.error)) return <div className="work dsc" data-testid="discounts-screen"><h1>{tx('pos.discounts')}</h1><StateBlock error={kpis.error} onRetry={kpis.reload} /></div>;
   return (
     <div className="work dsc" data-testid="discounts-screen">
+      {previewExport ? <ExportPreview title={tx('dsc.export.' + tab)} busy={exporting}
+        count={tab === 'redemptions' ? reds.data?.totalItems : list.data?.totalItems} period={periodText(serverPeriod)}
+        filters={[...(q ? [`“${q}”`] : []), ...(tab === 'discounts' ? [tx('dsc.status.' + status), tx('dsc.type.' + type)] : [tx('dsc.rstate.' + redState)])]}
+        onConfirm={doExport} onCancel={() => setPreviewExport(false)} /> : null}
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.discounts')}</h1><div className="sub">{tx('pos.discount_rules_currently_live_across_your_1yi3')}</div></div>
         <div className="fk-head-actions">
           <SystemCheckButton domain="discounts" />
           <button type="button" className="fk-btn" onClick={() => setTick((n) => n + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
-          {canManage && tab !== 'performance' ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('dsc.export.' + tab)}</button> : null}
+          {canManage && tab !== 'performance' ? <button type="button" className="fk-btn ghost" onClick={() => setPreviewExport(true)} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('dsc.export.' + tab)}</button> : null}
           <button type="button" className="fk-btn primary" onClick={promotions} data-testid="manage-promotions">{tx('pos.manage_in_promotions')}</button>
         </div>
       </header>

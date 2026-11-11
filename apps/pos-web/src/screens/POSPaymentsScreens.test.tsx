@@ -43,4 +43,22 @@ describe('POSTransactionsScreen', () => {
     expect(api.list).toHaveBeenCalledWith(expect.objectContaining({ search: '7d1b0000-0000-4000-8000-000000000042', preset: 'all' }));
     expect((screen.getByTestId('search') as HTMLInputElement).value).toBe('7d1b0000-0000-4000-8000-000000000042');
   });
+  it('Export scope & privacy preview: shows the server count, period and filters; nothing is generated until Download', async () => {
+    api.exportCsv.mockResolvedValue('a,b\n');
+    const url = globalThis.URL as any; url.createObjectURL = vi.fn(() => 'blob:x'); url.revokeObjectURL = vi.fn();
+    render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>); await screen.findAllByTestId('tx-row');
+    fireEvent.change(screen.getByTestId('status'), { target: { value: 'failed' } });
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'failed' })));
+    fireEvent.click(screen.getByTestId('export'));
+    expect(screen.getByTestId('export-preview-count')).toHaveTextContent('4');
+    expect(screen.getByTestId('export-preview-filters').textContent).not.toBe('');
+    expect(screen.getByTestId('export-preview-privacy')).toHaveTextContent(/masked/);
+    expect(api.exportCsv).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('export-preview-cancel'));
+    expect(screen.queryByTestId('export-preview')).toBeNull();
+    expect(api.exportCsv).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('export'));
+    fireEvent.click(screen.getByTestId('export-preview-go'));
+    await waitFor(() => expect(api.exportCsv).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' })));
+  });
 });

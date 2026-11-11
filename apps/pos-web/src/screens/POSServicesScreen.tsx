@@ -28,7 +28,7 @@ import { ProductFormDialog } from '../components/InventoryKit';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, centsFromText, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, centsFromText, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { nf, money, mins, day, pageOf, invPageOf, STATUS_TONE, statusText, saveCsv, Donut, Bars, Gauge, CustomerHistoryTable, EditPricingDialog, ServiceDialog } from './catalogShared';
 
 type Scope = 'all' | 'services' | 'products' | 'customers' | 'technicians';
@@ -73,6 +73,7 @@ export function POSServicesScreen() {
   useEffect(() => setCustPage(1), [keys.cust]);
 
   const dash = useLoad(() => posCatalogApi.dashboard(per), [JSON.stringify(per), tick]);
+  const freshAt = useFreshAt(dash.data);   // data freshness: only after a successful read
   const charts = useLoad(() => posCatalogApi.charts(per), [JSON.stringify(per), tick]);
   const svcs = useLoad(() => (scope === 'products' || scope === 'customers' ? Promise.resolve(null) : posCatalogApi.services({ ...svcScope, page: svcPage, pageSize: PAGE })), [scope, keys.svc, svcPage, tick]);
   const prds = useLoad(() => (scope === 'services' || scope === 'technicians' || scope === 'customers' || !can('inventory.view') ? Promise.resolve(null) : posInventoryScreenApi.products({ ...prdScope, page: prdPage, pageSize: PAGE })), [scope, keys.prd, prdPage, tick]);
@@ -146,6 +147,7 @@ export function POSServicesScreen() {
       </div>
       <div className="fk-hint mos-scope" data-testid="scope-note">{basis === 'sold' ? tx('cg.svp.periodSold') : tx('cg.svp.periodList', { f: tx('cg.df.' + basis) })}</div>
 
+      <FreshnessLine at={freshAt} error={dash.error} testId="catalog-fresh" />
       <div className="fk-kpis five cg-kpis" data-testid="kpis">
         {dash.error ? <StateBlock error={dash.error} onRetry={dash.reload} /> : <>
           <KpiCard testId="kpi-total-services" label={tx('pos.total_services')} loading={!k} value={k ? nf(k.totalServices) : ''} sub={k ? tx('cg.kpi.totalSub', { a: nf(k.activeServices), i: nf(k.inactiveServices) }) : ''} onClick={() => setScope('services')} />

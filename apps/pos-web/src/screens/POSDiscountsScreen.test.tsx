@@ -40,4 +40,14 @@ describe('POSDiscountsScreen', () => {
     expect(await screen.findByText('No confirmed redemptions yet.')).toBeInTheDocument();
     expect(api.redemptions).toHaveBeenCalledWith(expect.objectContaining({ state: 'confirmed', page: 1 }));
   });
+  it('Role-Aware Export Preview: the matching count and filters show first; the CSV is only generated after Download', async () => {
+    renderScreen();
+    await screen.findByText('••••NG20');
+    fireEvent.click(screen.getByTestId('export'));
+    expect(screen.getByTestId('export-preview-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('export-preview-privacy')).toHaveTextContent(/masked/);
+    expect(api.exportList).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('export-preview-go'));
+    await vi.waitFor(() => expect(api.exportList).toHaveBeenCalled());
+  });
 });
