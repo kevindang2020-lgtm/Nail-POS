@@ -252,4 +252,9 @@ export const MTEMPLATES_VI = {
   "mt.wfsrc.marketing_campaigns": "Mỗi chiến dịch có nội dung riêng đã duyệt trong Trung tâm chiến dịch; kiểm tra lại đồng ý khi gửi.",
   "mt.wfsrc.membership": "Tin thành viên có sẵn (gia hạn, thanh toán lỗi).",
   "mt.wfsrc.receipt": "Hóa đơn do Thanh toán tạo từ phiếu đã xong.",
+  "mt.dupWarn": "Có vẻ giống mẫu đã có: {names}. Vẫn lưu được — hãy kiểm tra để tránh tạo trùng.", // DRAFT — Kevin reviews
+  "mt.restoreVersion": "Khôi phục phiên bản này", // DRAFT — Kevin reviews
+  "mt.restoreAsk": "Khôi phục v{from}? Nội dung sẽ được lưu thành phiên bản mới v{v}; lịch sử vẫn giữ nguyên.", // DRAFT — Kevin reviews
+  "mt.restoreYes": "Khôi phục thành bản mới", // DRAFT — Kevin reviews
+  "mt.restored": "Đã khôi phục v{from} thành v{v}.", // DRAFT — Kevin reviews
 };

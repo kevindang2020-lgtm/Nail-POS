@@ -104,7 +104,8 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
   const [ov, setOv] = useState<Overview | null>(null);
   const [ovErr, setOvErr] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
-  const loadOverview = useCallback(() => { setOvErr(null); posLoyaltyApi.overview().then(setOv).catch((e) => setOvErr(errText(e, tx('people.loyalty.loadFailed')))); }, []);
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const loadOverview = useCallback(() => { setOvErr(null); posLoyaltyApi.overview().then((d) => { setOv(d); setLoadedAt(new Date().toISOString()); }).catch((e) => setOvErr(errText(e, tx('people.loyalty.loadFailed')))); }, []);
   useEffect(() => { loadOverview(); }, [loadOverview]);
 
   const catalogFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
@@ -140,6 +141,9 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      {/* newest-first freshness: when this screen last loaded the numbers + one Refresh for KPIs and every list */}
+      <div className="sub ly-fresh" data-testid="loyalty-fresh" aria-live="polite">{loadedAt ? tx('people.loyalty.updatedAt', { t: whenTime(loadedAt) }) : tx('pos.loading')}{' '}
+        <button type="button" className="fk-link" onClick={() => { loadOverview(); rewards.refresh(); members.refresh(); reds.refresh(); }} data-testid="loyalty-refresh">{tx('people.loyalty.refresh')}</button></div>
 
       <div className="fk-kpis five" data-testid="loyalty-kpis">
         {ovErr ? <ErrorRetry message={ovErr} onRetry={loadOverview} /> : <>

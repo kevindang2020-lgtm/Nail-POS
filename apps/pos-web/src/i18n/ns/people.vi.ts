@@ -847,4 +847,6 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.fit.pageN': 'Trang {n}',
   'people.fit.rangeShort': '{from}–{to} / {total}',
   'people.mo.exportShort': 'Xuất',
+  'people.loyalty.updatedAt': 'Cập nhật {t}', // DRAFT — Kevin reviews
+  'people.loyalty.refresh': 'Làm mới', // DRAFT — Kevin reviews
 };

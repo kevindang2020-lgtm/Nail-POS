@@ -253,4 +253,9 @@ export const MTEMPLATES_EN = {
   "mt.wfsrc.marketing_campaigns": "Each campaign keeps its own approved message in Campaign Center; consent is re-checked when it sends.",
   "mt.wfsrc.membership": "Built-in membership texts (renewal, failed payment).",
   "mt.wfsrc.receipt": "Receipts are built by Checkout from the finished ticket.",
+  "mt.dupWarn": "Looks like an existing template: {names}. You can still save — check you are not creating a duplicate.",
+  "mt.restoreVersion": "Restore this version",
+  "mt.restoreAsk": "Restore v{from}? Its content is saved as a new version v{v}; history is kept.",
+  "mt.restoreYes": "Restore as new version",
+  "mt.restored": "Restored v{from} as v{v}.",
 };

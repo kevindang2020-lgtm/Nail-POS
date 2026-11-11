@@ -1530,4 +1530,6 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "tips.basis": "Tính theo ngày nhận thanh toán (ngày của tiệm) — không phải ngày phân bổ hay ngày trả lương. Tip không bao giờ tính vào doanh số.", // DRAFT — Kevin reviews
   "tips.search": "Tìm thợ", // DRAFT — Kevin reviews
   "tips.noMatch": "Không có thợ khớp “{q}”.", // DRAFT — Kevin reviews
+  "ops.liveOps.updatedAt": "cập nhật {t}", // DRAFT — Kevin reviews
+  "ops.liveOps.refresh": "Làm mới ngay", // DRAFT — Kevin reviews
 };

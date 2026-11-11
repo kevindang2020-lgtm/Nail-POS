@@ -15,6 +15,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInTz } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
+import { similarTemplates, type DupHit } from './messageTemplateDup';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 
 const SIZES = [10, 20, 50] as const;
@@ -213,6 +214,16 @@ function Editor({ initial, summary, canManage, onSaved, onConflict }: { initial:
     let live = true; api.preview({ draft: d }).then((r) => { if (live) setPv(r); }, () => { if (live) setPv(null); });
     return () => { live = false; };
   }, [draft]);
+  // duplicate-template warning for NEW drafts only (warns, never blocks)
+  const dupKey = useDebounced(editing ? '' : JSON.stringify({ name: f.name, channel: f.channel, body: f.body }), 500);
+  const [dupes, setDupes] = useState<DupHit[]>([]);
+  useEffect(() => {
+    if (!dupKey) { setDupes([]); return; }
+    const d = JSON.parse(dupKey) as { name: string; channel: string; body: string };
+    if (!d.name.trim() && d.body.trim().length < 12) { setDupes([]); return; }
+    let live = true; api.list({ channel: d.channel, pageSize: 50 }).then((l) => { if (live) setDupes(similarTemplates(d, l.items)); }, () => { if (live) setDupes([]); });
+    return () => { live = false; };
+  }, [dupKey]);
   const save = async (activate: boolean) => {
     if (!f.name.trim() || !f.body.trim()) { setErr(tx('pos.name_and_body_are_required')); return; }
     setBusy(true); setErr(null); setProblems([]);
@@ -253,6 +264,7 @@ function Editor({ initial, summary, canManage, onSaved, onConflict }: { initial:
           {[...pv.validation.errors, ...pv.validation.warnings].map((x, i) => <div key={i} className={'mt-finding ' + (i < pv.validation.errors.length ? 'bad' : 'warn')} data-testid="mt-finding">{vText(x)}</div>)}</>
           : <div className="sub">{tx('mt.preview.empty')}</div>}
       </div>
+      {dupes.length ? <div className="fk-note warn" role="status" data-testid="mt-dup-warn">{tx('mt.dupWarn', { names: dupes.map((x) => x.name).join(', ') })}</div> : null}
       {problems.length ? <div className="fk-note bad" role="alert">{problems.map((p) => vText(p)).join(' ')}</div> : null}
       <div className="mt-actions">
         {editing ? <button type="button" className="fk-btn primary" disabled={busy || !canManage || !dirty} onClick={() => save(false)} data-testid="mt-save">{busy ? tx('pos.saving_2') : tx('mt.save')}</button>
@@ -293,6 +305,18 @@ function DetailDialog({ id, summary, canManage, onClose, onChanged, onOpen, onUs
     } finally { setBusy(false); }
   };
   const dup = async () => { setBusy(true); try { const r = await api.duplicate(id); onChanged(); onOpen(r.template.id); } catch (e) { setMsg({ tone: 'bad', text: errText(e) }); } finally { setBusy(false); } };
+  // Version Rollback Assistant: restoring an earlier version saves its content as a NEW version through the
+  // normal audited update path (history is never rewritten); the server re-validates it.
+  const [restoreV, setRestoreV] = useState<number | null>(null);
+  const restore = async (v: number) => {
+    if (!d) return; const src = d.versions.find((x) => x.version === v); if (!src) return;
+    const tt = d.template; setBusy(true); setMsg(null);
+    try {
+      const r = await api.update(id, { recordVersion: tt.recordVersion, name: tt.name, channel: tt.channel, body: src.body, category: tt.category, subject: tt.channel === 'email' ? (src.subject ?? null) : null, description: tt.description });
+      setD(r); setRestoreV(null); setEditKey((n) => n + 1); setMsg({ tone: 'ok', text: tx('mt.restored', { from: String(v), v: String(r.template.version) }) }); onChanged();
+    } catch (e: any) { setMsg({ tone: 'bad', text: errText(e) }); if (e?.code === 'TEMPLATE_VERSION_CONFLICT') load(); }
+    finally { setBusy(false); }
+  };
   const t = d?.template;
   return (
     <FitDialog wide title={t ? t.name : tx('mt.template')} subtitle={t ? <span><Chip s={t.status} /> v{t.version} · {t.channel === 'email' ? tx('pos.email') : 'SMS'} · {catLabel(t.category)}</span> : undefined} onClose={close} busy={busy} testId="mt-detail"
@@ -327,7 +351,12 @@ function DetailDialog({ id, summary, canManage, onClose, onChanged, onOpen, onUs
         </>) : null}
         {tab === 'versions' ? <ul className="mt-versions" data-testid="mt-versions">{d.versions.map((v) => <li key={v.version}>
           <div className="mt-vh"><b>v{v.version}</b>{v.version === t.version ? <span className="fk-chip ok">{tx('mt.current')}</span> : null}{v.backfilled ? <span className="fk-chip mut">{tx('mt.backfilled')}</span> : null}<span className="sub">{when(v.createdAt)} · {v.byName ?? '—'}</span></div>
-          {v.subject ? <div className="mt-subjline">{v.subject}</div> : null}<div className="mt-rendered">{v.body}</div></li>)}</ul> : null}
+          {v.subject ? <div className="mt-subjline">{v.subject}</div> : null}<div className="mt-rendered">{v.body}</div>
+          {v.version !== t.version && t.status !== 'archived' && canManage ? (restoreV === v.version
+            ? <div className="fk-note warn" data-testid="mt-restore-confirm-box"><span>{tx('mt.restoreAsk', { from: String(v.version), v: String(t.version + 1) })}</span>
+                <button type="button" className="fk-btn primary" disabled={busy} onClick={() => restore(v.version)} data-testid="mt-restore-confirm">{tx('mt.restoreYes')}</button>
+                <button type="button" className="fk-link" onClick={() => setRestoreV(null)}>{tx('mt.cancel')}</button></div>
+            : <button type="button" className="fk-link" disabled={busy} onClick={() => setRestoreV(v.version)} data-testid="mt-restore-version">{tx('mt.restoreVersion')}</button>) : null}</li>)}</ul> : null}
         {tab === 'test' ? <PreviewTest d={d} summary={summary} canManage={canManage} /> : null}
         {tab === 'automations' ? <TemplateAutomations d={d} /> : null}
       </>}

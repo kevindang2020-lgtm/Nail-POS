@@ -848,4 +848,6 @@ export const PEOPLE_EN = {
   'people.fit.pageN': 'Page {n}',
   'people.fit.rangeShort': '{from}–{to} of {total}',
   'people.mo.exportShort': 'Export',
+  'people.loyalty.updatedAt': 'Updated {t}',
+  'people.loyalty.refresh': 'Refresh',
 };

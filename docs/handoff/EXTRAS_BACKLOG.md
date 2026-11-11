@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 51 (incl. part) |
-| EXISTS (opened and named) | 456 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 272 |
-| TODO | 1039 |
+| BUILT this arc | 55 (incl. part) |
+| EXISTS (opened and named) | 509 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 300 |
+| TODO | 954 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -941,16 +941,16 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Map source-code components, routes, data stores and existing integration behavior; record pre-change baseline. | TODO |
-| 02 | Trace every screenshot field from the frontend through backend validation and persistence to the effective voice configuration. | TODO |
-| 03 | Repair existing Save/enable/recording/provider-sync behavior without duplicating database concepts. | TODO |
-| 04 | Redesign the Settings page for the ASUS touchscreen and preserve all original navigation. | TODO |
-| 05 | Add effective status, health diagnostics, error remedies and versioned settings history. | TODO |
+| 01 | Map source-code components, routes, data stores and existing integration behavior; record pre-change baseline. | NOISE — process step (baseline mapping) |
+| 02 | Trace every screenshot field from the frontend through backend validation and persistence to the effective voice configuration. | NOISE — process step (trace fields) |
+| 03 | Repair existing Save/enable/recording/provider-sync behavior without duplicating database concepts. | NOISE — process step (repair existing save path) |
+| 04 | Redesign the Settings page for the ASUS touchscreen and preserve all original navigation. | NOISE — process step (redesign; nav preserved by registry gate) |
+| 05 | Add effective status, health diagnostics, error remedies and versioned settings history. | EXISTS — receptionist health check + versioned control history with reason (rcp-health, rcp-ctl-history, expectedVersion) |
 | 06 | Implement settings/history search, full month From/To calendar, stable server pagination, detail overlays and restore controls. | TODO |
 | 07 | Connect optional AI configuration recommendations to a human approval workflow. | TODO |
-| 08 | Write and execute UI, integration, concurrency, recording, security and multi-tenant tests. | TODO |
-| 09 | Verify staging and approved provider test accounts; do not perform billable call tests without authorization. | TODO |
-| 10 | Prepare rollout controls, feature flags, observability, deployment and rollback instructions; isolate account-level blockers. Claude must return these artifacts and proof • Files changed, design summary, relevant API/dat | TODO |
+| 08 | Write and execute UI, integration, concurrency, recording, security and multi-tenant tests. | NOISE — test instruction |
+| 09 | Verify staging and approved provider test accounts; do not perform billable call tests without authorization. | NOISE — staging/provider verification instruction |
+| 10 | Prepare rollout controls, feature flags, observability, deployment and rollback instructions; isolate account-level blockers. Claude must return these artifacts and proof • Files changed, design summary, relevant API/dat | NOISE — rollout instruction |
 
 ## Global  Tenant Earning Rules (4)
 
@@ -1085,16 +1085,16 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Keep the original: AI Business Reports route, four report-generation buttons, historical records, Report / Generated / Status columns, left sidebar and POS shell. | TODO |
-| 02 | Repair UX: 24-inch/27-inch POS at 100% zoom, readable touch controls, no clipped content, vertical scroll only when needed, and improved use of blank space. | TODO |
-| 03 | Make reports findable: contextual authorized search, monthly From/To calendars, server pagination, and newest-generated-first history on page 1. | TODO |
-| 04 | Fix report lifecycle: queued/processing/completed/failed must be distinct from expired temporary links, missing artifacts and retention expiry. | TODO |
+| 01 | Keep the original: AI Business Reports route, four report-generation buttons, historical records, Report / Generated / Status columns, left sidebar and POS shell. | EXISTS — route, report-type generate buttons and report history kept (bzx-gen-types, bzx-r-history) |
+| 02 | Repair UX: 24-inch/27-inch POS at 100% zoom, readable touch controls, no clipped content, vertical scroll only when needed, and improved use of blank space. | NOISE — UX instruction |
+| 03 | Make reports findable: contextual authorized search, monthly From/To calendars, server pagination, and newest-generated-first history on page 1. | EXISTS — search, From/To period bar, server pages, newest-first sort (bzx-r-search, BzPeriodBar, Pager, bzx-r-sort) |
+| 04 | Fix report lifecycle: queued/processing/completed/failed must be distinct from expired temporary links, missing artifacts and retention expiry. | EXISTS — processing / failed / expired / viewable counted and shown separately (bzx-r-processing, bzx-r-failed, bzx-r-expired, bzx-expired) |
 | 05 | Implement five upgrades: Report System Health Checker, automated schedules, AI Executive Summary and Growth Advisor, source/number verification, and authorized all-my-salons reporting. | TODO |
 | 06 | Protect financial truth: one canonical Reports calculation service. Same metric + same scope + same dates + same snapshot = same figure everywhere. | TODO |
-| 07 | Finish real implementation: actual APIs/storage/jobs/permissions; regression tests and final file/change inventory, not unsupported claims of completion. What is known from the screenshot versus what must be checked Visu | TODO |
+| 07 | Finish real implementation: actual APIs/storage/jobs/permissions; regression tests and final file/change inventory, not unsupported claims of completion. What is known from the screenshot versus what must be checked Visu | NOISE — delivery instruction |
 | 14 | Owner recommendation #2 - Automated daily, weekly and monthly reports Add scheduled report generation that uses existing background workers, scheduler and notification channels. Do not require the owner to keep the brows | TODO |
 | 15 | Owner recommendation #3 - AI Executive Summary & Growth Advisor The AI layer explains verified report data and proposes owner-reviewable opportunities. It must not calculate official numbers from its own imagination or p | TODO |
-| 17 | Secure report viewer, file exports and historical snapshots Report details overlay • Report ID/title/type; owner and branch scope; created/generated timestamps; reporting date window; timezone; created by; generation/acc | TODO |
+| 17 | Secure report viewer, file exports and historical snapshots Report details overlay • Report ID/title/type; owner and branch scope; created/generated timestamps; reporting date window; timezone; created by; generation/acc | EXISTS — report detail overlay with meta, verify and regenerate (bzx-report, bzx-report-meta, bzx-verify, bzx-regen) |
 | 19 | Tenant isolation, AI access and subscription control • Tenant isolation: enforce authenticated tenant/branch context in backend database access; no client-supplied tenant scope without authorization. Avoid cross-tenant d | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 
 ## Customer Retention (15)
@@ -1291,18 +1291,18 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Template CRUD Create/save/retrieve/list permission and transaction path; failed API response shown. | TODO |
-| 02 | Variable renderer Legacy [name], new allowlisted tokens, missing-data safeguards. | TODO |
-| 03 | Active version Draft/Active correctness, active automation binding, queued snapshot consistency. | TODO |
-| 04 | Booking connections Existing booking confirmation, reminders, follow-up and missed-call dependencies. | TODO |
-| 05 | SMS readiness Tenant-specific Twilio account, sender, registration and callbacks (last checked). | TODO |
-| 06 | Email readiness Verified sender/domain, transport config and events (last checked). | TODO |
-| 07 | Consent Suppression and purpose-specific eligibility enforced by actual send pipeline. | TODO |
-| 08 | Queue/worker Pending jobs, retries, failed queues, scheduler heartbeat and duplicate prevention. | TODO |
-| 09 | Frontend Viewport fit, clipped controls, API error states, date picker and translation. | TODO |
+| 01 | Template CRUD Create/save/retrieve/list permission and transaction path; failed API response shown. | EXISTS — create/update/status/duplicate with version conflict + validation errors shown (POSMessageTemplatesScreen, message-templates.pgtest) |
+| 02 | Variable renderer Legacy [name], new allowlisted tokens, missing-data safeguards. | EXISTS — server renderer with allowlisted variables, legacy [name] placeholders flagged, missing-data fallbacks (template-variables.ts, mt-live-preview) |
+| 03 | Active version Draft/Active correctness, active automation binding, queued snapshot consistency. | EXISTS — versions tab + active-binding protection (mt-versions, TEMPLATE_IN_USE replacement flow) |
+| 04 | Booking connections Existing booking confirmation, reminders, follow-up and missed-call dependencies. | EXISTS — Automations tab: workflow connections/bind/unbind (TemplateAutomations, api.connections) |
+| 05 | SMS readiness Tenant-specific Twilio account, sender, registration and callbacks (last checked). | EXISTS — health check sms_sender finding (tenant Twilio set / last validated / failed) in message-templates.ts healthCheck |
+| 06 | Email readiness Verified sender/domain, transport config and events (last checked). | EXISTS — health check email_sender finding in message-templates.ts healthCheck |
+| 07 | Consent Suppression and purpose-specific eligibility enforced by actual send pipeline. | EXISTS — consent/suppression enforced in the send pipeline (communications notifications.service, reminders.service) |
+| 08 | Queue/worker Pending jobs, retries, failed queues, scheduler heartbeat and duplicate prevention. | EXISTS elsewhere — notification failures queue (notification-failures.ts) + reminder run heartbeat (appointment_reminder_runs); not surfaced on this page |
+| 09 | Frontend Viewport fit, clipped controls, API error states, date picker and translation. | EXISTS — FitDialog/ErrorRetry/PeriodBar calendar, EN/VI keys (POSMessageTemplatesScreen) |
 | 10 | Security Tenant isolation, permission guards, masking and logs. Health Checker implementation rules • Read-only by default. Never create real send jobs, change settings, publish a template or access other tenants when ru | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 11 | Duplicate Template Detection Warn when a new draft is near-identical within the same authorized tenant/branch. | TODO |
-| 12 | Version Rollback Assistant Restore earlier approved content as a NEW audited version; do not rewrite historic messages. Scope safeguard: Add recommendations only after confirming no current module already provides that c | TODO |
+| 11 | Duplicate Template Detection Warn when a new draft is near-identical within the same authorized tenant/branch. | BUILT — new drafts warn (never block) when same name or near-identical body exists on the channel (messageTemplateDup.ts + mt-dup-warn; tests) |
+| 12 | Version Rollback Assistant Restore earlier approved content as a NEW audited version; do not rewrite historic messages. Scope safeguard: Add recommendations only after confirming no current module already provides that c | BUILT — 'Restore this version' saves the old content as a NEW version via the audited update path; history kept (mt-restore-version; POSMessageTemplatesScreen.test) |
 
 ## TEAM PERFORMANCE 3 (11)
 
@@ -1573,16 +1573,16 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Scope Start from authenticated tenant and allowed branches. Match canonical customer ID. | TODO |
-| 02 | Data sufficiency Require configured minimum history. Otherwise Insufficient History, not strong prediction. | TODO |
-| 03 | Auto-fit Web POS shell: all screens, not one screenshot Global layout contract • Retain existing top bar and side navigation; make the main content a fluid child using flex: 1 and min-width: 0. Avoid fixed widths that ov | TODO |
-| 04 | Upcoming booking Find relevant future appointments; classify confirmed, pending, other service, canceled and unavailable distinctly. | TODO |
-| 05 | Catalog check Check recommended service is active, branch-available, and has current approved price/duration. | TODO |
-| 06 | Deduplicate One active opportunity per canonical customer/service/appropriate evaluation window unless existing model explicitly differs. | TODO |
-| 07 | Explain Store/return source references, rule version, calculated window, caveats and evaluation time. | TODO |
-| 08 | Review Opportunity becomes a staff-review item, not a preauthorized appointment. Distinguish business states Opportunity created means advisory analysis exists. Booking started means a human entered the Booking Assistant | TODO |
-| 11 | Helpful status/empty/error states and accessibility Situation Truthful screen behavior Initial page Explain the basic Search or load an authorized default queue if existing policy permits; avoid a meaningless giant blank | TODO |
-| 17 | Build order and evidence Claude must provide Phase Concrete work Exit evidence 0 — Audit and Locate route, shell, all nested modules, CSS, APIs, worker Preservation matrix and 100% zoom baseline jobs, integrations, tests | TODO |
+| 01 | Scope Start from authenticated tenant and allowed branches. Match canonical customer ID. | EXISTS — tenant + authorized-branch scope (rebooking-center.ts scope / branchScope) |
+| 02 | Data sufficiency Require configured minimum history. Otherwise Insufficient History, not strong prediction. | EXISTS — Insufficient History tab below the cadence minimum (rebooking-center.ts RB_TABS 'insufficient') |
+| 03 | Auto-fit Web POS shell: all screens, not one screenshot Global layout contract • Retain existing top bar and side navigation; make the main content a fluid child using flex: 1 and min-width: 0. Avoid fixed widths that ov | NOISE — shell layout contract text |
+| 04 | Upcoming booking Find relevant future appointments; classify confirmed, pending, other service, canceled and unavailable distinctly. | EXISTS — upcoming booking suppression + booked tab (has_upcoming, ov-booking) |
+| 05 | Catalog check Check recommended service is active, branch-available, and has current approved price/duration. | EXISTS — service price/duration shown only while the service is active (rebooking-center.ts service_active) |
+| 06 | Deduplicate One active opportunity per canonical customer/service/appropriate evaluation window unless existing model explicitly differs. | EXISTS — one opportunity per customer from the single Customer Intelligence snapshot; new opportunity keyed by rebooking_since (765_rebooking_center.sql) |
+| 07 | Explain Store/return source references, rule version, calculated window, caveats and evaluation time. | EXISTS — evidence, inputs, window and caveats in the overlay (ov-evidence, ov-inputs, ov-window, ov-caveats) |
+| 08 | Review Opportunity becomes a staff-review item, not a preauthorized appointment. Distinguish business states Opportunity created means advisory analysis exists. Booking started means a human entered the Booking Assistant | EXISTS — staff review (mark reviewed / defer / reopen); booking only via the Booking Assistant (rbx-mark-reviewed, rebooking_review_events) |
+| 11 | Helpful status/empty/error states and accessibility Situation Truthful screen behavior Initial page Explain the basic Search or load an authorized default queue if existing policy permits; avoid a meaningless giant blank | EXISTS — loading/notice/unavailable/empty states (rbx-loading, rbx-notice, rbx-unavailable) |
+| 17 | Build order and evidence Claude must provide Phase Concrete work Exit evidence 0 — Audit and Locate route, shell, all nested modules, CSS, APIs, worker Preservation matrix and 100% zoom baseline jobs, integrations, tests | NOISE — build-order table heading |
 
 ## Customer Displays (1)
 
@@ -1709,16 +1709,16 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Open: The existing + Add Location button opens a responsive full-screen modal / wizard or existing form. Preserve original required fields and validations; do not invent mandatory fields without verifying source rules. | TODO |
-| 02 | Identity: Enter branch/salon name, code (if applicable), authorized manager/contact and existing tenant/parent branch context. Scope ownership server-side, never from a trusted client-supplied tenant_id. | TODO |
-| 03 | Address: Street address, unit, city, state/province, postal/ZIP, country, timezone. Existing provider autocomplete is optional but must not silently overwrite typed data. | TODO |
-| 04 | Pin: Geocode address using the project’s configured map integration; show the address and pin side by side; allow drag/set pin manually; distinguish pin present, manager confirmed and system verification. | TODO |
-| 05 | Booking: Apply existing booking availability flags and business-hours rules. Never treat a pin as proof the salon is authorized to accept bookings. | TODO |
-| 06 | Save: Persist transactionally, return the authoritative location record and validation result, update counters and list, reset page to 1 under default “newest first” ordering. | TODO |
+| 01 | Open: The existing + Add Location button opens a responsive full-screen modal / wizard or existing form. Preserve original required fields and validations; do not invent mandatory fields without verifying source rules. | EXISTS — + Add Location creates the branch, then the full location editor opens (TenantLocationsScreen; inline form, not a multi-step wizard) |
+| 02 | Identity: Enter branch/salon name, code (if applicable), authorized manager/contact and existing tenant/parent branch context. Scope ownership server-side, never from a trusted client-supplied tenant_id. | EXISTS — name, public display name, salon code, manager fields (TenantLocationsScreen field list) |
+| 03 | Address: Street address, unit, city, state/province, postal/ZIP, country, timezone. Existing provider autocomplete is optional but must not silently overwrite typed data. | EXISTS — street, line 2, suite, city, state, ZIP, timezone fields |
+| 04 | Pin: Geocode address using the project’s configured map integration; show the address and pin side by side; allow drag/set pin manually; distinguish pin present, manager confirmed and system verification. | EXISTS — server geocode + pin confirm with manual lat/long fallback (locations/SalonLocationMapEditor.tsx) |
+| 05 | Booking: Apply existing booking availability flags and business-hours rules. Never treat a pin as proof the salon is authorized to accept bookings. | EXISTS — online-booking toggle is separate from the pin (is_online_booking_enabled) |
+| 06 | Save: Persist transactionally, return the authoritative location record and validation result, update counters and list, reset page to 1 under default “newest first” ordering. | EXISTS — save returns the authoritative record and refreshes the list (posLocationsApi update → onSaved) |
 | 07 | Next actions: If draft or incomplete, show “Complete profile / Verify / Publish” as permitted next steps rather than fabricating a published state. Existing Edit & Map Pin button • Keep the exact visible Edit & Map Pin a | TODO |
-| 09 | Add / Edit Location and map-pin workflow Create Location - step-by-step | TODO |
-| 13 | Responsive accessibility and performance checklist Area Definition of success Keyboard / touch Tabs, filters, date selectors, maps and dialogs work with keyboard + touch; logical focus order, Escape closes, focus returns | TODO |
-| 14 | Three recommended intelligence safeguards These additions are recommended alongside the screen redesign, not as replacements for any existing modules. They must remain informational/permission-aware and never publish or  | TODO |
+| 09 | Add / Edit Location and map-pin workflow Create Location - step-by-step | NOISE — section heading |
+| 13 | Responsive accessibility and performance checklist Area Definition of success Keyboard / touch Tabs, filters, date selectors, maps and dialogs work with keyboard + touch; logical focus order, Escape closes, focus returns | NOISE — checklist table heading |
+| 14 | Three recommended intelligence safeguards These additions are recommended alongside the screen redesign, not as replacements for any existing modules. They must remain informational/permission-aware and never publish or  | NOISE — section heading |
 
 ## AI Front Desk (10)
 
@@ -1826,19 +1826,19 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Baseline List actual components, routes, modules, API contracts, data owners, role permissions and existing tests. Capture screenshots of original page and comparison. | TODO |
-| 02 | Preserve Produce original-to-new feature placement map; identify everything that must remain reachable, including newly discovered modules. | TODO |
-| 03 | Shared shell Implement tested auto-fit adapter in Front Desk Web POS only. Preserve native mobile code. Verify Header/Sidebar/Booking/Checkout first. | TODO |
-| 04 | Duplicate page Arrange equal KPI cards, filters, queue/evidence/historical views; adapt CSS containers and touch controls. | TODO |
-| 05 | Detail workflow Improve A/B comparison and sticky footer; preserve "Merge into this" as survivor selection, not immediate execution. | TODO |
-| 06 | Data correctness Check matcher confidence, backend merge preview, permission, version/idempotency, linked financial/consent records. | TODO |
-| 07 | Discoverability Secure search, genuine month calendars, stable newest-first numbered pages and read-only health. | TODO |
-| 08 | Verification Run unit, API, integration, E2E, security and responsive screenshot suites; document exact environment and blockers. | TODO |
-| 09 | Rollout Feature flag, staged release, monitor overflow/error/merge metrics, retain safe rollback and do not silently migrate records. Three additional implementation recommendations • Screen-Fit & Module Preservation Che | TODO |
-| 10 | Validate Automated, integration, manual UI and security tests with actual logs/results | TODO |
+| 01 | Baseline List actual components, routes, modules, API contracts, data owners, role permissions and existing tests. Capture screenshots of original page and comparison. | NOISE — process instruction (baseline inventory) |
+| 02 | Preserve Produce original-to-new feature placement map; identify everything that must remain reachable, including newly discovered modules. | NOISE — process instruction (preservation map) |
+| 03 | Shared shell Implement tested auto-fit adapter in Front Desk Web POS only. Preserve native mobile code. Verify Header/Sidebar/Booking/Checkout first. | EXISTS — FitKit dialogs/panels + shell compact spacing; native apps untouched |
+| 04 | Duplicate page Arrange equal KPI cards, filters, queue/evidence/historical views; adapt CSS containers and touch controls. | EXISTS — KPI cards, filters, queue/history views (dup-kpis, dup-filters, dup-results) |
+| 05 | Detail workflow Improve A/B comparison and sticky footer; preserve "Merge into this" as survivor selection, not immediate execution. | EXISTS — A/B compare, sticky footer, Merge into this kept as survivor choice (dup-compare, dup-foot, dup-merge-into) |
+| 06 | Data correctness Check matcher confidence, backend merge preview, permission, version/idempotency, linked financial/consent records. | EXISTS — confidence, server merge preview with blockers/acks, merge idempotency key (dup-confidence, pv-blockers, newMergeKey) |
+| 07 | Discoverability Secure search, genuine month calendars, stable newest-first numbered pages and read-only health. | EXISTS — search, month calendar, newest-first numbered pages, page size (dup-search, dup-cal, dup-pagesize) |
+| 08 | Verification Run unit, API, integration, E2E, security and responsive screenshot suites; document exact environment and blockers. | NOISE — verification instruction |
+| 09 | Rollout Feature flag, staged release, monitor overflow/error/merge metrics, retain safe rollback and do not silently migrate records. Three additional implementation recommendations • Screen-Fit & Module Preservation Che | NOISE — rollout instruction |
+| 10 | Validate Automated, integration, manual UI and security tests with actual logs/results | NOISE — validation instruction |
 | 16 | Security, multi-tenant boundaries and accessibility Area Must be proven in code and tests Server tenant isolation Tenant resolved from trusted authentication context. All candidate IDs and both customer IDs validated bef | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 20 | Definition of done + paste-ready execution mandate DEFINITION OF DONE: Existing Duplicate Review functionality is all preserved; the Web POS auto-fits SUNMI 27-inch landscape from real viewport measurements; modules rema | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
-| 29 | Implementation sequence for Claude Stage Required work and verified output | TODO |
+| 29 | Implementation sequence for Claude Stage Required work and verified output | NOISE — implementation-sequence heading |
 | 30 | Acceptance tests: identification and review • Two people with identical names are not auto-merged; shared family phone produces distinct candidates and requires confirmation. Source: supplied POS screenshot and owner req | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## TECH QUEUE (17)
@@ -1983,17 +1983,17 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | One-Click Live Operations Health Checker Inspect all module wiring, real-data freshness, tenant/branch scope, fetch/query errors, realtime subscription health, empty-vs-broken state and viewport overflow. Report PASS / W | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 02 | Automatic Screen Fit & Display Calibration A shared read-only display diagnostic that reports CSS viewport, DPR, density mode, OS/browser safe area, outer overflow, clipped cards and Quick Action visibility. Automatic fi | TODO |
+| 02 | Automatic Screen Fit & Display Calibration A shared read-only display diagnostic that reports CSS viewport, DPR, density mode, OS/browser safe area, outer overflow, clipped cards and Quick Action visibility. Automatic fi | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx: viewport, fit, clipped, touch, display) |
 | 03 | Smart Priority Operations Strip Add a compact existing-panel-compatible priority summary for blocked checkouts, unusual waits, excessive staffing gaps, overdue appointments and stale messages; all results link to authori | TODO |
 | 04 | KPI Accuracy & Reconciliation Checker Verify each KPI against backend authoritative definitions, selected branch, time zone, date range, payment-state rules and report aggregates. Display mismatch reasons and stale-cache | TODO |
-| 05 | Multi-Location Safe Summary For authorized multi-branch owners, offer branch switch or aggregate preview without leaking one tenant into another; show current selection visibly and enforce branch permissions server-side. | TODO |
+| 05 | Multi-Location Safe Summary For authorized multi-branch owners, offer branch switch or aggregate preview without leaking one tenant into another; show current selection visibly and enforce branch permissions server-side. | EXISTS — Multi-Location Snapshot card per authorized branch (lo-locations) |
 | 06 | Quick Action Readiness & Permission Guard For each Quick Action explain why enabled/disabled, verify selected customer/Visit when relevant, prevent accidental duplicate submissions, and maintain existing manager approval | TODO |
-| 07 | Realtime Recovery Indicator A small actual connectivity indicator, last-sync timestamp and safe manual reconcile button. On reconnect fetch authoritative snapshot then resume events; no window.location.reload(). | TODO |
-| 08 | One-Click Module Preservation Checker Compare pre/post component inventory, routes, handlers, permissions, tests and current actions. Fail the release if a module disappears, becomes unreachable or a button degrades to a | TODO |
-| 09 | Staff-Friendly Detail Mode Use existing View All or viewport-bound drawers to show deep detail without stretching the summary page; preserve current filters, selected branch and item context when closing. | TODO |
+| 07 | Realtime Recovery Indicator A small actual connectivity indicator, last-sync timestamp and safe manual reconcile button. On reconnect fetch authoritative snapshot then resume events; no window.location.reload(). | BUILT — live indicator now shows the last successful read time + a manual ↻ Refresh that re-reads /state (live-ops-synced / live-ops-refresh; POSDashboardScreen.test) |
+| 08 | One-Click Module Preservation Checker Compare pre/post component inventory, routes, handlers, permissions, tests and current actions. Fail the release if a module disappears, becomes unreachable or a button degrades to a | EXISTS — check-pos-module-registry gate + POS preservation matrix (tooling/e2e/pos-preservation-matrix.mjs) |
+| 09 | Staff-Friendly Detail Mode Use existing View All or viewport-bound drawers to show deep detail without stretching the summary page; preserve current filters, selected branch and item context when closing. | EXISTS — every KPI/snapshot tile opens its full module instead of stretching the dashboard (POSDashboardScreen kpiCards[].to) |
 | 10 | Operational Trend Explainability For changing revenue/appointments or performance, display exact source and time window plus a concise “what changed” explanation, while leaving decisions and money movement with employees | TODO |
-| 11 | Business integrity, tenancy & realtime Authority boundaries • Appointments: Booking remains the authority. Do not invent a new appointment count or separate visit state in Live Operations. • Queue / staff / service: Cust | TODO |
-| 12 | Proof-based validation matrix Claude must run automated and manual tests in the actual repository, record measurements and screenshots, and distinguish PASS, FAIL, NOT_TESTED, or BLOCKED_EXTERNAL. The checklist below ext | TODO |
+| 11 | Business integrity, tenancy & realtime Authority boundaries • Appointments: Booking remains the authority. Do not invent a new appointment count or separate visit state in Live Operations. • Queue / staff / service: Cust | NOISE — authority-boundary policy text |
+| 12 | Proof-based validation matrix Claude must run automated and manual tests in the actual repository, record measurements and screenshots, and distinguish PASS, FAIL, NOT_TESTED, or BLOCKED_EXTERNAL. The checklist below ext | NOISE — validation instruction |
 
 ## AI MONEY PROTECTION 5 (19)
 
@@ -2116,18 +2116,18 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Loyalty Accuracy Reconcile KPIs, balances, reward counts, ledger totals, tier breakdowns and Checker posted redemptions. | TODO |
+| 01 | One-Click Loyalty Accuracy Reconcile KPIs, balances, reward counts, ledger totals, tier breakdowns and Checker posted redemptions. | EXISTS — Points Outstanding KPI shows ledger matches/differs (balanceReconciled) + Check Customer & Loyalty System (loyalty-health-run) |
 | 02 | One-Click Screen Fit Checker Detect clipped headings, overlapping actions, unreadable labels, invisible pager, non-reachable last records and horizontal overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 03 | Reward Eligibility Checker Preview status, tier, inventory, limits, dates and points affordability before a redemption attempt. | TODO |
+| 03 | Reward Eligibility Checker Preview status, tier, inventory, limits, dates and points affordability before a redemption attempt. | EXISTS — reward catalog says why a reward cannot be redeemed (avail.expired/outOfStock/tier/upcoming, notEnough) and the redeem picker blocks it (POSLoyaltyScreen.test) |
 | 04 | Duplicate Earning/Redemption Flag replayed sale events, double-click credits and competing redemption Protector requests; never silently alter balances. | TODO |
 | 05 | Tier Qualification Preview Show why a customer is in a tier and what rule would change the tier, using real configured criteria. | TODO |
-| 06 | Loyalty Activity Investigation Show complete source transaction history, actor and audited corrections for View authorized finance/owner roles. AI can investigate and recommend but must never move tokens, alter balances  | TODO |
+| 06 | Loyalty Activity Investigation Show complete source transaction history, actor and audited corrections for View authorized finance/owner roles. AI can investigate and recommend but must never move tokens, alter balances  | EXISTS — point history / audit trail per member (people.loyalty.pointHistoryOf, auditTrail, ledger dialog) |
 | 07 | Redemption Reconciliation Compare points debits, reward redemptions and linked checkout/service records; highlight mismatches. | TODO |
-| 08 | Wallet Funding & Liability If approved and implemented, show tenant token wallet balance and issuance Visibility funding health with authorized access. | TODO |
-| 09 | Newest-First Data Freshness Show last sync, update timestamp and clear refresh feedback for high-activity Marker salons. | TODO |
-| 10 | Smart Empty State No rewards or no members should present truthful guidance and authorized Create/Enroll action. | TODO |
-| 11 | Member Points & Tier Detail Open full customer loyalty summary with earned, redeemed, expired, adjusted and upcoming eligibility. | TODO |
-| 12 | Accessible Quick Actions Evenly sized buttons, readable labels and no hover-only shortcuts on touch displays. | TODO |
+| 08 | Wallet Funding & Liability If approved and implemented, show tenant token wallet balance and issuance Visibility funding health with authorized access. | EXISTS — Rewards Network panel: wallet levels, low/critical thresholds, reviewed token purchase (RewardsNetworkPanel rn-levels / rn-buy-review) |
+| 09 | Newest-First Data Freshness Show last sync, update timestamp and clear refresh feedback for high-activity Marker salons. | BUILT — 'Updated {time}' line + one Refresh for KPIs and every list (loyalty-fresh / loyalty-refresh; POSLoyaltyScreen.test) |
+| 10 | Smart Empty State No rewards or no members should present truthful guidance and authorized Create/Enroll action. | EXISTS — truthful empty states with authorized CTA (noRewards + createFirstReward, noMembers + Enroll) |
+| 11 | Member Points & Tier Detail Open full customer loyalty summary with earned, redeemed, expired, adjusted and upcoming eligibility. | EXISTS — member points history + redemptions dialogs (pointHistoryOf, redemptionsOf) |
+| 12 | Accessible Quick Actions Evenly sized buttons, readable labels and no hover-only shortcuts on touch displays. | EXISTS — evenly sized quick-action panel with text labels (loyalty-quick), no hover-only shortcuts |
 | 13 | Multi-Branch Reporting Clarity Explicitly show selected branch vs full tenant scope and prohibit cross-tenant visibility. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 14 | Bilingual Layout QA Automated screenshot checks for both EN and VI text, long tier labels and large numbers. INTERNAL / POS LOYALTY OPERATIONS / 06 NOV 2026 ADDENDUM PAGE 16 AI POWERSALON / CLAUDE ENGINEERING MANDATE SUN | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
@@ -2147,19 +2147,19 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Automatic viewport profile Detect available CSS space and apply responsive density without OS sniffing. | TODO |
-| 02 | Module parity audit Snapshot route/component/action registry before and after each change. | TODO |
-| 03 | Balanced visual rhythm Unify card headers, badges, gutters and chart/body vertical spacing. | TODO |
+| 01 | Automatic viewport profile Detect available CSS space and apply responsive density without OS sniffing. | EXISTS — FitKit panels + shell compact spacing (shell/spacingPref.ts) |
+| 02 | Module parity audit Snapshot route/component/action registry before and after each change. | NOISE — process instruction (parity audit); covered by check-pos-module-registry + preservation matrix gates |
+| 03 | Balanced visual rhythm Unify card headers, badges, gutters and chart/body vertical spacing. | NOISE — styling instruction, no discrete feature |
 | 04 | Layout Health Checker Automatically detect clipped controls and overlapping cards. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 05 | Membership Data Health Checker Verify all 5 KPIs and 4 charts against authoritative records. | BUILT — shared read-only Check Memberships System (GET pos/system-checks/memberships, components/SystemCheck); pgtest 5/5 + PG16 run |
-| 06 | Full member detail drawer Expose plan, history, billing, benefits, renewal and status in a bounded overlay. | TODO |
-| 07 | Expiring / past-due advisor Offer authorized, previewed outreach to eligible members; no auto-send. | TODO |
+| 06 | Full member detail drawer Expose plan, history, billing, benefits, renewal and status in a bounded overlay. | EXISTS — member detail dialog: identity, lifecycle, billing, benefits, audit (md-* in POSMembershipsScreen) |
+| 07 | Expiring / past-due advisor Offer authorized, previewed outreach to eligible members; no auto-send. | EXISTS — expiring/past-due filters + previewed, permission-gated reminder send (md-reminder / reminder-send); no auto-send |
 | 08 | Benefit redemption integrity Reconcile issue, reserve, redeem and reversal transitions. | TODO |
-| 09 | Payment retry guard Protect renewal and checkout idempotency, especially during uncertain provider states. | TODO |
+| 09 | Payment retry guard Protect renewal and checkout idempotency, especially during uncertain provider states. | EXISTS — renewal/checkout idempotency in membership-billing.repository + membership-renewal.scheduler |
 | 10 | Smart subscription change preview Show how plan edits affect current vs future subscribers before approval. | TODO |
-| 11 | Bilingual visual CI Test long EN/VI strings, focus, touch hit areas and no state reset. | TODO |
+| 11 | Bilingual visual CI Test long EN/VI strings, focus, touch hit areas and no state reset. | NOISE — test instruction (visual CI), not a feature |
 | 12 | Monthly finance reconciliation Connect membership collections/refunds to existing Payment/Reports ledger, not a shadow total. Priority: deliver preservation, data correctness, responsive fit, and the ten existing actions | TODO |
-| 16 | Engineering blueprint: backend & mutations Code audit sequence • Locate the existing route, page component, CSS, membership models, controllers, services, queries, payment/reconciliation logic, customer-profile links, au | TODO |
+| 16 | Engineering blueprint: backend & mutations Code audit sequence • Locate the existing route, page component, CSS, membership models, controllers, services, queries, payment/reconciliation logic, customer-profile links, au | NOISE — engineering blueprint text |
 
 ## Device Integration Logs (13)
 
@@ -2348,16 +2348,16 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | App shell Preserve sidebar, global header, branch selector and account controls. | TODO |
-| 02 | Header/actions Page title, context, last verified sync, Refresh, Assign Device, Check Device System; permission-scoped. | TODO |
-| 03 | Optional KPIs If backend verified: Registered Devices, Assigned, Connected, Needs Attention; equal-height units. | TODO |
-| 04 | Search toolbar Device/station/employee search plus type, branch, station, status filters; wrap gracefully. | TODO |
-| 05 | Directory Device table fills available width and height; sticky column headers, row details, history and pagination. Claude implementation specification • 09 Nov 2026 06 AI POWERSALON / DEVICES & INTEGRATIONS SUNMI FLEX  | TODO |
+| 01 | App shell Preserve sidebar, global header, branch selector and account controls. | NOISE — preservation instruction (shell untouched) |
+| 02 | Header/actions Page title, context, last verified sync, Refresh, Assign Device, Check Device System; permission-scoped. | EXISTS — header with Refresh + Check Device System (dfx-refresh, dfx-check) |
+| 03 | Optional KPIs If backend verified: Registered Devices, Assigned, Connected, Needs Attention; equal-height units. | EXISTS — device KPIs (dfx-kpis) |
+| 04 | Search toolbar Device/station/employee search plus type, branch, station, status filters; wrap gracefully. | EXISTS — search + status/sort/date filters (dfx-search, dfx-filters) |
+| 05 | Directory Device table fills available width and height; sticky column headers, row details, history and pagination. Claude implementation specification • 09 Nov 2026 06 AI POWERSALON / DEVICES & INTEGRATIONS SUNMI FLEX  | EXISTS — device table, row detail, history tab, page size (dfx-results, dfx-detail, dfx-tab-history, dfx-pagesize) |
 | 06 | Device Duplicate Identity Inspector Flag multiple nicknames or unexpected duplicate fingerprints without automatically merging registered devices. | TODO |
-| 07 | Suggested React/CSS auto-fit implementation Use the existing style conventions; this is a pattern, not an instruction to copy component names or replace the app shell. The shell must expose a bounded content container. / | TODO |
+| 07 | Suggested React/CSS auto-fit implementation Use the existing style conventions; this is a pattern, not an instruction to copy component names or replace the app shell. The shell must expose a bounded content container. / | NOISE — implementation pattern text |
 | 08 | SUNMI Hardware Readiness Checklist OS/browser/touch/agent/reconnect/peripheral compatibility evidence; no fabricated provider or driver support. | TODO |
 | 09 | Payment Terminal Routing Guard Link to Fiserv/Clover health, reserved busy state and authenticated register pairing; do not directly move money. Claude implementation specification • 09 Nov 2026 27 AI POWERSALON / DEVICE | TODO |
-| 12 | Full Assign Device overlay: screen and actions • Opening: click a device row or “Assign Device”. Show an overlay up to the usable viewport height, with Close/Cancel consistently visible and a scrollable body. • Identity: | TODO |
+| 12 | Full Assign Device overlay: screen and actions • Opening: click a device row or “Assign Device”. Show an overlay up to the usable viewport height, with Close/Cancel consistently visible and a scrollable body. • Identity: | EXISTS — row / Manage opens the device detail overlay (dfx-detail, dfx-manage) |
 | 25 | Security, audit and history integrity • Keep a tamper-evident record of device registration, state transitions, station reassignment, enrollment revocation and privileged diagnostic actions. • Capture previous and new st | TODO |
 
 ## Money Protection Rules (18)

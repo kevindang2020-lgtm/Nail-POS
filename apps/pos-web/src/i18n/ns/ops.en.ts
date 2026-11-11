@@ -1531,4 +1531,6 @@ export const OPS_EN = {
   "tips.basis": "Counted on the day the payment was taken (the salon’s day) — not the allocation or payout day. Tips are never part of sales.",
   "tips.search": "Find a technician",
   "tips.noMatch": "No technician matches “{q}”.",
+  "ops.liveOps.updatedAt": "updated {t}",
+  "ops.liveOps.refresh": "Refresh now",
 };

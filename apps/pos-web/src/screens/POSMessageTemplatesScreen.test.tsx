@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({ summary: vi.fn(), list: vi.fn(), create: vi.fn(), 
 vi.mock('../api/posMessageTemplatesApi', () => ({ posMessageTemplatesApi: { ...m, detail: vi.fn(), update: vi.fn(), duplicate: vi.fn(), setStatus: vi.fn(), bind: vi.fn(), unbind: vi.fn() } }));
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => undefined }));
 import { POSMessageTemplatesScreen } from './POSMessageTemplatesScreen';
+import { posMessageTemplatesApi as realApi } from '../api/posMessageTemplatesApi';
 
 const period = { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-31' };
 const summary = { kpis: { total: 1, active: 1, sms: 1, email: 0, archived: 0, drafts: 0, inactive: 0, usedThisMonthMessages: 3, usedThisMonthTemplates: 1 }, month: { from: '2026-10-01', to: '2026-10-31', tz: 'America/New_York' }, checkedAt: '2026-10-31T12:00:00Z',
@@ -56,5 +57,31 @@ describe('POSMessageTemplatesScreen', () => {
     m.summary.mockRejectedValue({ status: 403 }); m.list.mockRejectedValue({ status: 403 });
     ui();
     expect(await screen.findByTestId('mt-forbidden')).toHaveTextContent(/do not have permission/i);
+  });
+  it('warns (never blocks) when a new draft looks like an existing template', async () => {
+    m.list.mockResolvedValue(page([row]));
+    ui();
+    await screen.findByText('Confirmation');
+    fireEvent.change(screen.getByTestId('mt-f-body'), { target: { value: 'Hi [name], your visit is confirmed.' } });
+    expect(await screen.findByTestId('mt-dup-warn', {}, { timeout: 2000 })).toHaveTextContent('Confirmation');
+    expect(screen.getByTestId('mt-create')).not.toBeDisabled();
+  });
+  it('restores an earlier version as a NEW version via the audited update path', async () => {
+    m.list.mockResolvedValue(page([row]));
+    const tpl = { ...row, version: 2, recordVersion: 4, body: 'New text' };
+    const v = (n: number, body: string) => ({ version: n, name: 'Confirmation', channel: 'sms', category: null, subject: null, body, variables: [], backfilled: false, createdAt: null, byName: null });
+    const det = { template: tpl, validation: { errors: [], warnings: [], tokens: [] }, versions: [v(2, 'New text'), v(1, 'Old text')], bindings: [], tests: [], variables: [] };
+    (realApi.detail as any).mockResolvedValue(det);
+    (realApi.update as any).mockResolvedValue({ ...det, template: { ...tpl, version: 3, recordVersion: 5, body: 'Old text' } });
+    ui();
+    fireEvent.click(await screen.findByTestId('mt-row'));
+    fireEvent.click(await screen.findByTestId('mt-tab-versions'));
+    const btns = await screen.findAllByTestId('mt-restore-version');
+    expect(btns).toHaveLength(1);
+    fireEvent.click(btns[0]);
+    fireEvent.click(screen.getByTestId('mt-restore-confirm'));
+    await waitFor(() => expect(realApi.update).toHaveBeenCalled());
+    expect((realApi.update as any).mock.calls[0]).toEqual(['tpl_1', expect.objectContaining({ recordVersion: 4, body: 'Old text', name: 'Confirmation' })]);
+    expect(await screen.findByText('Restored v1 as v3.')).toBeInTheDocument();
   });
 });

@@ -125,11 +125,12 @@ export function POSDashboardScreen() {
   const [svcOverride, setSvcOverride] = useState<NonNullable<DashState['topServices']> | null>(null);
   const [payOverride, setPayOverride] = useState<DashState['paymentMix'] | null>(null);
   const [live, setLive] = useState<RealtimeStatus>(() => realtimeStatus());
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);   // last successful read (Realtime Recovery Indicator)
   useEffect(() => { const h = (e: Event) => setLive((e as CustomEvent<{ status: RealtimeStatus }>).detail.status); window.addEventListener(REALTIME_STATUS, h); return () => window.removeEventListener(REALTIME_STATUS, h); }, []);
 
   // §25: a refetch keeps the previous values on screen until the new ones arrive (no blank page, no scroll reset)
   const load = useCallback(() => {
-    posDashboardApi.getState().then((d) => { setS(d as DashState); setErr(null); }).catch((e: any) => setErr(e?.message || tx('pos.unable_to_load_dashboard')));
+    posDashboardApi.getState().then((d) => { setS(d as DashState); setErr(null); setSyncedAt(new Date().toISOString()); }).catch((e: any) => setErr(e?.message || tx('pos.unable_to_load_dashboard')));
   }, []);
   useEffect(() => { load(); }, [load]);
   useRealtime('dashboard', load);
@@ -232,7 +233,8 @@ export function POSDashboardScreen() {
 
       {/* Row 1 — Operations snapshot · Live salon activity · AI insights (§9–§11) */}
       <div className="ov-grid ov-3 lo-row1">
-        <Card testId="lo-snapshot" title={tx('pos.today_s_operations_snapshot')} right={<span className="live" data-testid="live-ops-live" data-live={live} style={{ color: LIVE_TONE[live] }}>● {tx(`payment.board.live.${live}`)}</span>}>
+        <Card testId="lo-snapshot" title={tx('pos.today_s_operations_snapshot')} right={<span className="live" data-testid="live-ops-live" data-live={live} style={{ color: LIVE_TONE[live] }}>● {tx(`payment.board.live.${live}`)}{syncedAt ? <span className="sub" data-testid="live-ops-synced"> · {tx('ops.liveOps.updatedAt', { t: fmtTime(syncedAt) })}</span> : null}
+          <button type="button" className="fk-link" onClick={load} aria-label={tx('ops.liveOps.refresh')} title={tx('ops.liveOps.refresh')} data-testid="live-ops-refresh">↻</button></span>}>
           {!s ? loading : (
             <div className="lo-tiles">
               {tile(tx('pos.waiting_guests'), ops?.waitingGuests ?? 0, `${tx('pos.est_wait')} ${ops?.estWaitMinutes ?? 0} ${tx('pos.min')}`, 'people', '#5B4B93', '/queue')}

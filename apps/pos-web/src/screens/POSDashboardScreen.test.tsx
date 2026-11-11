@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSDashboardScreen } from './POSDashboardScreen';
 
@@ -200,5 +200,13 @@ describe('POSDashboardScreen — one-screen rules', () => {
     expect(rev.getAttribute('title')).toMatch(/2,450,000\.00/);
     const act = screen.getByTestId('lo-activity');
     expect(within(act).getByText('+11 more')).toBeInTheDocument();
+  });
+  it('Realtime Recovery Indicator: shows the last successful read and a manual Refresh that re-reads /state', async () => {
+    const f = vi.fn(routeFetch); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('live-ops-synced')).toHaveTextContent(/updated/);
+    const n = f.mock.calls.filter((c) => String(c[0]).includes('/dashboard/state')).length;
+    fireEvent.click(screen.getByTestId('live-ops-refresh'));
+    await waitFor(() => expect(f.mock.calls.filter((c) => String(c[0]).includes('/dashboard/state')).length).toBe(n + 1));
   });
 });

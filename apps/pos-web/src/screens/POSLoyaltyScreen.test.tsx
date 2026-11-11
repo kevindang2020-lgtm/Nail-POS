@@ -148,5 +148,13 @@ describe('POSLoyaltyScreen', () => {
     fireEvent.change(screen.getByTestId('members-sort'), { target: { value: 'balance' } });
     await waitFor(() => expect(api.members).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'balance', status: 'inactive', page: 1 })));
   });
+  it('shows when the numbers were loaded; Refresh re-reads the KPIs and every list', async () => {
+    mount();
+    await waitFor(() => expect(screen.getByTestId('loyalty-fresh')).toHaveTextContent(/Updated/));
+    const before = api.overview.mock.calls.length;
+    fireEvent.click(screen.getByTestId('loyalty-refresh'));
+    await waitFor(() => expect(api.overview.mock.calls.length).toBe(before + 1));
+    await waitFor(() => expect(api.redemptions.mock.calls.length).toBeGreaterThan(1));
+  });
 });
 
