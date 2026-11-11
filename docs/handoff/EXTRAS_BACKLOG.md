@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 75 (incl. part) |
-| EXISTS (opened and named) | 673 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 416 |
-| TODO | 654 |
+| EXISTS (opened and named) | 678 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 417 |
+| TODO | 648 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -322,10 +322,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Overview Six even KPI tiles; processing/health summary; recent documents queue; balanced search, filters, upload and safe refresh actions. | TODO |
+| 01 | Overview Six even KPI tiles; processing/health summary; recent documents queue; balanced search, filters, upload and safe refresh actions. | EXISTS — KPI tiles, health check, recent documents with search/filters (rcsx-kpis, rcsx-health, rcsx-row) |
 | 02 | Quarantined Security-scanner status, reason, uploader and timestamps; readable two-panel details; restricted release/recheck controls; unsafe preview blocked. | TODO |
 | 03 | Extracting Queue/scan/OCR/validation phases, job freshness, attempts and errors; compact processing cards and sortable job table; verified retry eligibility. | TODO |
-| 04 | Manual Entry Vendor, invoice ID, dates, currency, totals, line items and attachment; aligned form sections; consistent validation and duplicate gates. | TODO |
+| 04 | Manual Entry Vendor, invoice ID, dates, currency, totals, line items and attachment; aligned form sections; consistent validation and duplicate gates. | EXISTS — manual entry path on the review screen (rrx-manual) |
 | 05 | Review Required Original PDF/image on left and extracted/editable verified data on right, equally prominent; clear approval controls, line-item evidence and source links. Shared navigation contract • All ten labels remai | TODO |
 | 06 | Ten Existing Tabs - Functional Requirements 1. Overview • Show six existing metrics from real tenant-scoped queries, with consistent status definitions and last-updated state. • Each KPI drills into the correct filtered  | NOISE — the guide's own tab-by-tab requirements heading |
 
@@ -1324,10 +1324,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click OCR Health and Accuracy Checker Verify storage/upload, OCR provider, workers, duplicate detection, Expenses approvals, purchasing/receiving, inventory boundaries, subscription metering and tenant permissions. S | TODO |
+| 01 | One-Click OCR Health and Accuracy Checker Verify storage/upload, OCR provider, workers, duplicate detection, Expenses approvals, purchasing/receiving, inventory boundaries, subscription metering and tenant permissions. S | EXISTS — read-only receipt scanner / review system checks (rcsx-check → rcsx-health; rrx-check → rrx-health) |
 | 02 | Full review and human-controlled approval workspace Show original receipt beside extracted editable data, line items, taxes, arithmetic warnings, category and inventory match. Staff must confirm any posting/receiving. | TODO |
-| 03 | Search, month calendars and newest-first pages Search vendor, invoice, product, SKU, amount, receipt/expense/PO ID, and only legitimate authorized customer references. Use custom month-view From/To controls and numbered  | TODO |
-| 04 | Duplicate and purchase-order matching Find repeated uploads/expenses, mismatched unit prices and partial receiving; require review and protect against double expense/stock posting. | TODO |
+| 03 | Search, month calendars and newest-first pages Search vendor, invoice, product, SKU, amount, receipt/expense/PO ID, and only legitimate authorized customer references. Use custom month-view From/To controls and numbered  | EXISTS — search, date field + From/To month calendar, newest-first sort (rcsx-search, rcsx-datefield, rcsx-sort; rrx-search, rrx-sort) |
+| 04 | Duplicate and purchase-order matching Find repeated uploads/expenses, mismatched unit prices and partial receiving; require review and protect against double expense/stock posting. | EXISTS — duplicate receipts flagged + Duplicates KPI (rcsx-dupe, kpi-dupes) |
 | 05 | Expense and inventory intelligence Use approved supplier costs, category spend and verified receiving to explain changes while preserving canonical reporting formulas and human control. 26 / Implementation sequence for C | TODO |
 
 ## Customer Timeline (8)
@@ -1370,7 +1370,7 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 08 | External review provider and internal-feedback integration Inspect actual connectors; support only approved provider APIs and existing integration capabilities. • Inventory existing Google Business Profile, Facebook, Yel | TODO |
-| 09 | Responsive screen states and component ownership Operating state Claude must test and implement SUNMI full-screen landscape Use available height below top bar; balanced peer cards and review work area. Browser 100% scale | TODO |
+| 09 | Responsive screen states and component ownership Operating state Claude must test and implement SUNMI full-screen landscape Use available height below top bar; balanced peer cards and review work area. Browser 100% scale | NOISE — responsive state instruction |
 | 10 | Custom From/To monthly calendar Provide a visible date-range control with a real month-view calendar opened by either date field. • Calendar displays month/year, previous and next month, weekday names, clickable dates, s | TODO |
 | 16 | Fair post-visit review requests and marketing safeguards Review solicitation must be fair, policy-compliant, and controlled by the existing Communications system. • Eligible requests start from actual completed customer  | TODO |
 | 17 | Recurring complaints and reputation analytics Enable evidence-based insights without claiming AI caused business improvement. • Use canonical review-count, rating-average, distribution, reply backlog, negative review cou | TODO |
