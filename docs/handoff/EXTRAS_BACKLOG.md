@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 78 (incl. part) |
-| EXISTS (opened and named) | 684 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 417 |
-| TODO | 635 |
+| EXISTS (opened and named) | 685 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 421 |
+| TODO | 630 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -438,16 +438,16 @@ Decisions:
 | 02 | One-Click Data Drilldown Click any KPI for authorized existing report/transaction records; retain time and branch scope. | EXISTS (part) — each answer has a drilldown to the real report |
 | 03 | Comparison Explainer State selected prior period, calculation basis and revenue vs profit definition for every comparison. | TODO |
 | 04 | Smart Question Suggestions Suggest relevant read-only follow-up questions from current authorized context; never imply AI can directly send/charge. | TODO |
-| 05 | Balanced Card Auto Layout Dynamically wrap 7 quick questions and four KPIs; equal padding/heights, no unused giant cards. | TODO |
+| 05 | Balanced Card Auto Layout Dynamically wrap 7 quick questions and four KPIs; equal padding/heights, no unused giant cards. | NOISE — card layout instruction |
 | 06 | Session-Safe Workspace Preserve current draft, filters and open answer while browsing within the same tenant; wipe cached scope when switching tenant. | TODO |
 | 07 | Data Freshness Warning Flag stale source/event lag and offer Refresh/Retry, not fabricated zeros or full-green status. | EXISTS (part) — freshness shown with each answer, Refresh / Retry (aib-refresh, aib-retry); degrades to metrics-only, never fabricated |
 | 08 | Executive Summary Mode Optional concise answer preview and Expand for full details; never hide original questions, charts or history permanently. | TODO |
 | 09 | Multi-Branch Fairness Notes Normalize staffing/operating hours, show input denominators and clarify that a larger branch naturally has higher totals. | TODO |
 | 10 | What Changed Since Last Check Compare two validated reporting snapshots and identify data corrections vs actual business change. | TODO |
 | 11 | Context-Aware Empty States When no authorized data, no subscription or no report source, explain what is missing and give a safe next action. | EXISTS (part) — no AI package: says so and still shows the metrics |
-| 12 | Touch and Keyboard Comfort Large tap targets, visible focused fields, accessible date picker, modal focus trapping and keyboard Escape/Close behavior. | TODO |
+| 12 | Touch and Keyboard Comfort Large tap targets, visible focused fields, accessible date picker, modal focus trapping and keyboard Escape/Close behavior. | NOISE — touch/keyboard instruction (FitDialog focus trap + Esc already shared) |
 | 13 | History Provenance Timeline Keep saved answers immutable and show refresh/version, source IDs, who viewed/approved exports and permissions. | EXISTS (part) — saved answers searchable with re-run (aib-saved-search, aib-rerun) |
-| 14 | Performance at Scale Paginate large datasets, virtualize only where justified, bound backend queries and cache per tenant/branch with invalidation. Implementation efficiency • Prefer extending common POS card, table, dat | TODO |
+| 14 | Performance at Scale Paginate large datasets, virtualize only where justified, bound backend queries and cache per tenant/branch with invalidation. Implementation efficiency • Prefer extending common POS card, table, dat | NOISE — performance instruction |
 
 ## Customer Profile Global Loyalty Protection (6)
 
@@ -500,7 +500,7 @@ Decisions:
 | 04 | Opening-Hour Surge Mode: optimize batch clock-ins and check-ins, show queue backlog and pending assignments without hiding core action buttons. Recommendations 5-8 | TODO |
 | 05 | No-Hidden-Limit Validator: run repeatable 12/24/50/100/199/200/201 employee data tests across endpoints, page counts and filters. | EXISTS (part) — repeatable large-roster tests: payroll-200-technicians.pgtest and the live pilot day's 24-technician / 110-booking paging checks; not every endpoint at 199/200/201 |
 | 06 | Technician Skill Coverage: identify service types lacking enough qualified on-shift staff and recommend staffing/schedule review. | TODO |
-| 07 | Appointment Conflict Preview: before moving a booking, show duration, buffer, next appointment and hard constraint explanation. | TODO |
+| 07 | Appointment Conflict Preview: before moving a booking, show duration, buffer, next appointment and hard constraint explanation. | EXISTS — Schedule Conflict Warning before moving a booking: every cause + alternatives (POSTechAppointmentsScreen act-check-conflict / dlg-conflict) |
 | 08 | Quick Bulk Staff Actions: invite, search, print/export selected or review exceptions with confirm/audit controls and RBAC. Important boundary Do not invent automatic assignment, change technician eligibility, notify cust | TODO |
 | 09 | Responsive Layout Health Overlay: developer-only inspector for clipped controls, DOM overflow, last visible action and internal scroll panels. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 10 | Balanced KPI Presets: consistent 2/3/4-card responsive grid based on container width; data-rich tables get flexible workspace instead of equally tiny columns. | NOISE — layout guidance |
@@ -513,7 +513,7 @@ Decisions:
 | 21 | Additional Recommendations: Faster Operations Additive suggestions - implement only after verifying existing equivalents Recommendations 1-4 | NOISE — heading for additional suggestions |
 | 58 | Service-technician compatibility Selecting a service should recommend/filter only technicians approved for that exact service. Claude / Developer Build Mandate / 8 AI PowerSalon / 200-Technician Large Salon Scale Upgrade | EXISTS (part) — technician service eligibility (migration 583/631) drives Best Matches / open times by skill (live pilot day checks) |
 | 59 | Appointment protection at scale Efficiently verify now + estimated duration + cleanup buffer <= next appointment using indexed/batched data. | EXISTS (part) — overlapping bookings refused by a database exclusion constraint; the live pilot day's booking race check |
-| 60 | Realtime fanout performance Simulate 50+ active POS/manager/tech clients if feasible and verify no uncontrolled N x N broadcast behavior. Claude / Developer Build Mandate / 9 AI PowerSalon / 200-Technician Large Salon Sc | TODO |
+| 60 | Realtime fanout performance Simulate 50+ active POS/manager/tech clients if feasible and verify no uncontrolled N x N broadcast behavior. Claude / Developer Build Mandate / 9 AI PowerSalon / 200-Technician Large Salon Sc | NOISE — load-test instruction |
 
 ## Referral Program (2)
 
