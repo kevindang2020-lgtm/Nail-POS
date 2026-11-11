@@ -194,6 +194,7 @@ export const ERROR_REGISTRY = {
   RECEIPT_DUPLICATE:             { status: 409, message: 'This receipt was already saved.', domain: 'finance', retryable: false, severity: 'warning', action: 'NONE' },
   RECEIPT_POSSIBLE_DUPLICATE:    { status: 409, message: 'This looks similar to an expense already saved.', domain: 'finance', retryable: false, severity: 'warning', action: 'NONE' },
   EXPENSE_NOT_FOUND:             { status: 404, message: 'That expense was not found.', domain: 'finance', retryable: false, severity: 'info', action: 'REFRESH' },
+  PRODUCT_CHANGED:               { status: 409, message: 'This product was changed on another device since you opened it. Reload and try again.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   EXPENSE_VERSION_CONFLICT:      { status: 409, message: 'Someone else changed this expense a moment ago. The latest version is shown — check it and try again.', domain: 'finance', retryable: false, severity: 'info', action: 'REFRESH' },
   EXPENSE_ALREADY_APPROVED:      { status: 409, message: 'This expense is already approved.', domain: 'finance', retryable: false, severity: 'info', action: 'REFRESH' },
   EXPENSE_INVALID_STATE:         { status: 409, message: 'That cannot be done to this expense in its current state.', domain: 'finance', retryable: false, severity: 'info', action: 'REFRESH' },
