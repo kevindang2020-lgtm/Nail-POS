@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 57 (incl. part) |
-| EXISTS (opened and named) | 608 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 340 |
-| TODO | 813 |
+| EXISTS (opened and named) | 620 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 372 |
+| TODO | 769 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -579,12 +579,12 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Select an existing waiting queue entry by customer/name/phone, with Queue Entry ID retained as advanced lookup. | TODO |
-| 02 | Resolve actual customer and requested services; show linked customer preference and wait duration. | TODO |
+| 02 | Resolve actual customer and requested services; show linked customer preference and wait duration. | EXISTS — guest details with requested services, preference and wait (aq-guest-details, AIQueueCustomerPanel) |
 | 03 | Fetch candidate technicians from the correct tenant/branch and filter all hard eligibility constraints. | TODO |
-| 04 | Run approved rotation policy over the eligible set; provide ranked alternatives with reproducible rule-based reasons. | TODO |
+| 04 | Run approved rotation policy over the eligible set; provide ranked alternatives with reproducible rule-based reasons. | EXISTS — rule-based explanation for the recommendation (aiq-explanation) |
 | 05 | Display availability, next committed appointment, rotation context and any preference exception. | TODO |
-| 06 | Allow receptionist/manager to approve or reject; never commit merely because a recommendation is displayed. | TODO |
-| 07 | Revalidate queue entry version, tech eligibility, Booking conflict, kill-switch, entitlement and permissions at commit | TODO |
+| 06 | Allow receptionist/manager to approve or reject; never commit merely because a recommendation is displayed. | EXISTS — staff must press Assign; a shown recommendation never commits (aqo-assign; AIQueueCenter.test) |
+| 07 | Revalidate queue entry version, tech eligibility, Booking conflict, kill-switch, entitlement and permissions at commit | EXISTS — assign is sent with the queue version shown; a guest moved on another device is refused (AIQueueCustomerPanel header comment) |
 | 08 | Use the existing Queue Management assignment API transaction; verify committed assignment ID, then update queue/Serving and audit. Recommendation explanations • Show why candidate A is recommended and why B/C are alterna | TODO |
 
 ## Device Health (2)
@@ -674,10 +674,10 @@ Decisions:
 | 02 | Data Freshness & Trust Show last verified activity/summary timestamp, stale-cache warning and “0 versus unavailable” distinction. | TODO |
 | 03 | Smart Card Details Compact status/visit summary with uniform heights; show more information in Quick View instead of making one card oversized. | TODO |
 | 04 | Authorized Action Launcher Same safe Book, Message, History, Loyalty shortcuts on each card; use existing owning service APIs. | TODO |
-| 05 | Balanced card sizing and layout rules Keep every card useful and similarly sized, regardless of how many customers are shown. Component Preferred SUNMI behavior Compact fallback Customer cards Four equal columns; uniform | TODO |
+| 05 | Balanced card sizing and layout rules Keep every card useful and similarly sized, regardless of how many customers are shown. Component Preferred SUNMI behavior Compact fallback Customer cards Four equal columns; uniform | NOISE — card sizing rule text |
 | 06 | Notes Draft Protection Version checks, unsaved-work prompt, confirmed save and author/time audit on sensitive preference edits. | TODO |
 | 07 | Customer 360 Consistency Single authoritative customer ID, shared data contract and stable state when switching Quick/Full View. | TODO |
-| 08 | Staff-friendly Language Existing Front Desk EN/VN translations, touch-friendly action labels and visible focus states. Prioritize corrective changes by risk: P0 identity/tenant/loyalty integrity; P1 lost or clipped contr | TODO |
+| 08 | Staff-friendly Language Existing Front Desk EN/VN translations, touch-friendly action labels and visible focus states. Prioritize corrective changes by risk: P0 identity/tenant/loyalty integrity; P1 lost or clipped contr | NOISE — translation/touch instruction (EN/VI keys present) |
 
 ## Weekly Technician Paycheck (6)
 
@@ -702,9 +702,9 @@ Decisions:
 |---|---|---|
 | 01 | SUNMI Screen Fit Actual CSS viewport, overflow, card balance, touch target bounds, focus, modal clipping; capture screenshot. | EXISTS — Check this screen + certified harness |
 | 02 | Retention Integrity Historical snapshots, segment definitions, counts, branch scope, consent and booking prefill. | TODO |
-| 03 | Twilio Connectivity Stored config, provider-auth outcome, sender number assignment, masked security status. | TODO |
-| 04 | Carrier Readiness 10DLC/toll-free approval, service association, freshness and real provider evidence. | TODO |
-| 05 | Booking Verify Effective tenant/global toggles, service credentials, resend, attempt limits and pending->confirmed path. | TODO |
+| 03 | Twilio Connectivity Stored config, provider-auth outcome, sender number assignment, masked security status. | EXISTS — Twilio connectivity in the messaging health check (messaging-health.ts runProviderChecks) |
+| 04 | Carrier Readiness 10DLC/toll-free approval, service association, freshness and real provider evidence. | EXISTS — registration readiness sync (registration-sync.service.ts) |
+| 05 | Booking Verify Effective tenant/global toggles, service credentials, resend, attempt limits and pending->confirmed path. | EXISTS — booking verification health check (booking-verification-center.ts verify_service/policy) |
 | 06 | Team Integrity Duplicate employee, schedule conflicts, clock state, skills, training, missing assignments. | TODO |
 | 07 | AI Entitlement & Billing Branch override vs shared quota, invoice math, provider event idempotency, stale links. | TODO |
 | 08 | Nightly Jobs & Wiring Scheduler, queues, retry/alerts, tenant routing and module-to-module consistency. Operating rule. Health Checkers investigate and recommend; they must not change money, employee status, customer con | TODO |
@@ -717,13 +717,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Discovery Map routes, components, service APIs, segmentation rules, permissions, legacy data, and tests. | TODO |
+| 01 | Discovery Map routes, components, service APIs, segmentation rules, permissions, legacy data, and tests. | NOISE — process step (discovery) |
 | 02 | Integrity Reconcile qualifying visits, last visit, lifetime spend, tier eligibility, missing/duplicate customer records. | TODO |
 | 03 | Foundation Implement tenant/branch-scoped segment query APIs, search, filters, date semantics, pagination. | TODO |
 | 04 | Workflow Customer overlay, Why This Segment?, snapshots, audience builder, Booking preselection. | TODO |
 | 05 | Integration Customer Retention, Marketing, Twilio/email consent and campaign eligibility. | TODO |
-| 06 | Proof Type-check/build, test suite, staging screenshots, hardware checks, deployment/rollback and handoff. 05 / Canonical segment definitions Do not change business rules based on appearance alone. Read existing authorit | TODO |
-| 16 | ADDITIONS 16 recommendations: 1 through 8 Additive improvements only: verify existing equivalents first, then connect rather than duplicating modules. | TODO |
+| 06 | Proof Type-check/build, test suite, staging screenshots, hardware checks, deployment/rollback and handoff. 05 / Canonical segment definitions Do not change business rules based on appearance alone. Read existing authorit | NOISE — proof/handoff instruction |
+| 16 | ADDITIONS 16 recommendations: 1 through 8 Additive improvements only: verify existing equivalents first, then connect rather than duplicating modules. | NOISE — section heading |
 
 ## Notification Preferences (6)
 
@@ -869,14 +869,14 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Screen Fit Health Checker Read-only developer/admin diagnostic: CSS viewport, content width, zoom/device scale readout, overflow hotspots, clipped CTA checks, tap-target under-size flags and accessibility warnings. No se | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 02 | Balanced Package Card Engine One reusable style for card price, badge, assistant list, footer and focus state. Equal widths; no card dwarfs another. Five cards remain and descriptions can expand accessibly. | TODO |
+| 02 | Balanced Package Card Engine One reusable style for card price, badge, assistant list, footer and focus state. Equal widths; no card dwarfs another. Five cards remain and descriptions can expand accessibly. | NOISE — card style instruction |
 | 03 | Price Truth & Real Savings Verifier Compare current server published price against sums of effective standalone prices; flag false savings claims, stale caching and missing pricing versions for correction. | TODO |
 | 04 | Purchase Overlap & Duplicate Before checkout, show existing standalone/bundle/trial coverage, confirmed quote, credits and Charge Guard effect; reuse authoritative anti-duplicate billing service. | TODO |
 | 05 | Subscription vs Readiness Split Separate commercial trial/active/past-due/cancelled states from technical Ready/Setup Required/Provider Down so users understand access versus setup. | TODO |
-| 06 | Responsive Action Density When width falls, collapse secondary descriptions into accessible Details, not primary CTAs. Prioritize readable price, status and Manage/Buy/Cancel visibility. | TODO |
+| 06 | Responsive Action Density When width falls, collapse secondary descriptions into accessible Details, not primary CTAs. Prioritize readable price, status and Manage/Buy/Cancel visibility. | NOISE — responsive density instruction |
 | 07 | Billing Data Freshness Indicator Show last invoice/subscription sync and real provider-pending states. No false Paid/Active badge based on a browser request response. | TODO |
-| 08 | Accessibility + Vietnamese Text Long translated labels, 44px touch targets, keyboard/reader focus, contrast and dialog Audit scrolling. Tenant Front Desk only gets EN/VN; other apps retain their current language scope. I | TODO |
-| 22 | State machine and failure handling Event Expected behavior Product viewed No charge, no entitlement change. Purchase submitted Persist idempotent intent; show pending until verified. | TODO |
+| 08 | Accessibility + Vietnamese Text Long translated labels, 44px touch targets, keyboard/reader focus, contrast and dialog Audit scrolling. Tenant Front Desk only gets EN/VN; other apps retain their current language scope. I | NOISE — accessibility/translation instruction |
+| 22 | State machine and failure handling Event Expected behavior Product viewed No charge, no entitlement change. Purchase submitted Persist idempotent intent; show pending until verified. | NOISE — state-machine table heading |
 
 ## Review Reputation Settings (4)
 
@@ -1064,13 +1064,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Find the exact route /tenant/integrations/payment-gateway and inspect its component tree, stylesheet, layout shell, locale strings, data hooks and current test coverage. | TODO |
-| 02 | Trace the tenant/branch selector, Gateway UI status, credential display, onboarding status and merchant mapping back to actual backend endpoints and database entities. | TODO |
-| 03 | Inspect existing Fiserv Gateway, CardPointe, Bolt and/or Clover REST Pay Display adapters and identify which have REAL SDK/provider wiring versus mocks. | TODO |
-| 04 | Identify the canonical Checkout/Payment Domain, payment intent/state machine, terminal registry, merchant onboarding, receipt, refund, idempotency, webhook and reconciliation code. | TODO |
-| 05 | Inspect Fiserv provider credentials and routing as references only: NEVER print them or place them in a PDF, log, diff, test screenshot, browser bundle or development report. | TODO |
-| 06 | Inventory subscription-related billing separately from salon customer card processing. Subscription invoice payment services are not automatically the Fiserv checkout service. | TODO |
-| 07 | Produce a preservation matrix: Existing and working / Existing but broken / Partial or mocked / Not built / Externally blocked. For each module cite actual file and function names. Mandatory inventory format MODULE SOURC | TODO |
+| 01 | Find the exact route /tenant/integrations/payment-gateway and inspect its component tree, stylesheet, layout shell, locale strings, data hooks and current test coverage. | NOISE — process step (inspect route) |
+| 02 | Trace the tenant/branch selector, Gateway UI status, credential display, onboarding status and merchant mapping back to actual backend endpoints and database entities. | NOISE — process step (trace selectors) |
+| 03 | Inspect existing Fiserv Gateway, CardPointe, Bolt and/or Clover REST Pay Display adapters and identify which have REAL SDK/provider wiring versus mocks. | NOISE — process step (inspect adapters) |
+| 04 | Identify the canonical Checkout/Payment Domain, payment intent/state machine, terminal registry, merchant onboarding, receipt, refund, idempotency, webhook and reconciliation code. | NOISE — process step (identify domain) |
+| 05 | Inspect Fiserv provider credentials and routing as references only: NEVER print them or place them in a PDF, log, diff, test screenshot, browser bundle or development report. | NOISE — process step; standing rule: credentials never printed |
+| 06 | Inventory subscription-related billing separately from salon customer card processing. Subscription invoice payment services are not automatically the Fiserv checkout service. | NOISE — process step (inventory billing separately) |
+| 07 | Produce a preservation matrix: Existing and working / Existing but broken / Partial or mocked / Not built / Externally blocked. For each module cite actual file and function names. Mandatory inventory format MODULE SOURC | NOISE — deliverable instruction (preservation matrix exists: docs/handoff/SUNMI_PRESERVATION_MATRIX.md) |
 
 ## Voice Transcription Settings (4)
 
@@ -1334,13 +1334,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Locate route, component, existing APIs, permissions, worker pipelines and all relevant source systems; produce code audit. | TODO |
-| 02 | Repair customer search, identity disambiguation and current source linkage before new visuals. | TODO |
-| 03 | Implement read-only health diagnostics to expose real missing/stale/error data. | TODO |
-| 04 | Complete authorized timeline aggregation, true chronological ordering, idempotency and visit grouping. | TODO |
-| 05 | Build responsive full-screen selected-customer summary, event list and source-linked detail overlays. | TODO |
-| 06 | Implement advanced search, month-view From/To calendars, filters and stable numbered pagination. | TODO |
-| 07 | Integrate live refresh, localization and clear empty/error/permission states. | TODO |
+| 01 | Locate route, component, existing APIs, permissions, worker pipelines and all relevant source systems; produce code audit. | NOISE — process step (locate/map) |
+| 02 | Repair customer search, identity disambiguation and current source linkage before new visuals. | NOISE — process step (repair search first) |
+| 03 | Implement read-only health diagnostics to expose real missing/stale/error data. | EXISTS — read-only timeline check + partial-data notice (tlx-check, tlx-partial) |
+| 04 | Complete authorized timeline aggregation, true chronological ordering, idempotency and visit grouping. | EXISTS — chronological events grouped by visit (tlx-events, tlx-group) |
+| 05 | Build responsive full-screen selected-customer summary, event list and source-linked detail overlays. | EXISTS — customer summary KPIs + source-linked event overlay (tlx-kpis, ov-booking/ov-checkout/ov-refunds) |
+| 06 | Implement advanced search, month-view From/To calendars, filters and stable numbered pagination. | EXISTS — search with match picker, From/To month calendar, filters, numbered pages (tlx-search, tlx-matches, tlx-cal, tlx-pagesize) |
+| 07 | Integrate live refresh, localization and clear empty/error/permission states. | EXISTS — newer-events notice, EN/VI keys, empty/error states (tlx-newer, tlx-find-err) |
 | 08 | Test source reconciliation, tenant isolation, financial safety, performance and regression; report files changed and verified results. AI POWERSALON / CUSTOMER TIMELINE CLAUDE BUILD SPECIFICATION · 2026-11-01 | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 
 ## LIVE TECHNICIAN SCHEDULE (17)
@@ -1867,7 +1867,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Baseline audit Locate /tenant/reports/commission; inspect original 5 cards, 7 columns, Full View, existing query/API/business logic and screenshot. | TODO |
+| 01 | Baseline audit Locate /tenant/reports/commission; inspect original 5 cards, 7 columns, Full View, existing query/API/business logic and screenshot. | NOISE — process step (baseline audit) |
 | 02 | Finance definitions Trace captured rates, tip assignment, adjustments, earned/payable/paid meaning; reconcile screenshot arithmetic. | TODO |
 | 03 | Auto-fit shell Repair layout with CSS grid/minmax/dvh and actual viewport handling; preserve sidebar/topbar and responsive fallback. | TODO |
 | 04 | Report layout Implement equal KPI row, full-width table, balanced detail/history, discrepancy panels; preserve all actions. | TODO |
@@ -1875,7 +1875,7 @@ Decisions:
 | 06 | Paging and drill-down Implement stable grouped report pagination, newest-first event histories, complete technician details. | TODO |
 | 07 | Accuracy checkers Add read-only Commission/Payroll and Screen Fit checkers based on canonical data; no auto money changes. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Cross-module QA Verify Checkout, Service Done, Tips, Refunds, Payroll, permissions, tenant isolation, localization. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 09 | Release review Run lint/types/build/unit/integration/e2e and rendered screenshot review; list changed files and gaps. NO DUPLICATE BUSINESS ENGINES Check existing services and APIs first. Extend real code only where need | TODO |
+| 09 | Release review Run lint/types/build/unit/integration/e2e and rendered screenshot review; list changed files and gaps. NO DUPLICATE BUSINESS ENGINES Check existing services and APIs first. Extend real code only where need | NOISE — release review instruction |
 
 ## Individual Technician Tipping (8)
 
@@ -1894,13 +1894,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Mandatory audit before coding Claude must inspect the actual running application/repository, not assume prior PDF requests have been completed. Preserve production data and follow existing conventions. Subsystem Specific | TODO |
-| 02 | SUNMI display facts and what 100% fit means Dimension Source figure / engineering implication Screen 27-inch landscape, nominal 1920 x 1080 resolution, 16:9 aspect ratio. Unit dimensions Overall width 25.43 in / 646 mm;  | TODO |
+| 01 | Mandatory audit before coding Claude must inspect the actual running application/repository, not assume prior PDF requests have been completed. Preserve production data and follow existing conventions. Subsystem Specific | NOISE — audit-before-coding instruction |
+| 02 | SUNMI display facts and what 100% fit means Dimension Source figure / engineering implication Screen 27-inch landscape, nominal 1920 x 1080 resolution, 16:9 aspect ratio. Unit dimensions Overall width 25.43 in / 646 mm;  | NOISE — display facts table |
 | 08 | Step 2 - Audience: strict eligibility This is one of the three highest-risk areas in the original source guide. The UI must make "matched" and "eligible to contact" visibly different, while keeping all existing filtering | TODO |
 | 10 | Step 4 - Offer: reuse approved promotion rules Canonical offer guardrails • Use existing Deals & Promotions, Loyalty & Rewards, Gift Cards, service catalog and Checkout. Preserve all implemented Offer step controls. • Ke | TODO |
 | 11 | Step 5 - Schedule: calendar & delivery readiness Date and time contract from the original guide • Retain the existing schedule wizard step, preserve draft dates/time and use the configured branch timezone. • Month calend | TODO |
 | 16 | Recommendations 9-16: safety & insight 09 - One-Click Campaign System Health Reuse original guide Health Checker and show Passed/Warning/Failed/Unavailable for drafts, audience/consent, content, provider, worker, costs a | TODO |
-| 17 | Visual acceptance checklist - SUNMI & 24-inch Claude must execute these checks with actual 100%-zoom browser screenshots and interaction evidence. Browser/device confirmation is required; a desktop emulator screenshot al | TODO |
+| 17 | Visual acceptance checklist - SUNMI & 24-inch Claude must execute these checks with actual 100%-zoom browser screenshots and interaction evidence. Browser/device confirmation is required; a desktop emulator screenshot al | NOISE — visual acceptance checklist |
 
 ## Three Ways To Pay (9)
 
@@ -2051,14 +2051,14 @@ Decisions:
 |---|---|---|
 | 01 | Layout Health Checker: add read-only “Check Screen Fit” diagnostic available to authorized POS managers/developers. It reports viewport, clipped primary controls, content overflow and minimum control sizes without changi | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Visible “Saved vs Effective” chip: each row and top summary should distinguish persisted settings, currently effective worker version and config drift. Prevent “Saved” from being mistaken for running protection. | TODO |
-| 03 | Consistent card and table design tokens: one reusable balanced layout pattern across Settings, Rules, Alerts and Investigations; preserve each page’s existing fields and workflows. | TODO |
+| 03 | Consistent card and table design tokens: one reusable balanced layout pattern across Settings, Rules, Alerts and Investigations; preserve each page’s existing fields and workflows. | NOISE — design-token instruction |
 | 04 | Optional manager compact-density preference: choose comfortable or compact spacing without removing fields, disabling scrolling or changing rule evaluation; remember per authorized user. | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
 | 05 | Safe recovery: after a failed Save or lost connection, offer Reload Current, Compare Changes and Retry with explicit confirmation; never silently overwrite concurrent edits. | TODO |
 | 06 | Phase 5 - Cross-module verification. Verify Rules → Alerts → human Investigations and source ledger boundaries, prevention OFF, tenant isolation, Fiserv/Checkout compatibility and iPhone app non-interference. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 07 | Phase 6 - Visual and E2E proof. Run all documented screen sizes, actual SUNMI kiosk/browser viewport, EN/VN, touch/keyboard, regression tests and screenshot diffs. Repair failures. | TODO |
-| 08 | Phase 7 - Handoff. Deliver file-by-file changes, screenshots, command logs, exact pass/fail counts, blockers, rule inventory before/after and an honest final implementation status. CLAUDE BUILD MANDATE / PRESERVE ALL MOD | TODO |
-| 14 | Suggested API contracts - map to existing endpoints These are behavior contracts, not instructions to create a new API namespace when equivalent endpoints already exist. Capability Required contract / checks List setting | TODO |
-| 15 | Implementation plan for Claude | TODO |
+| 07 | Phase 6 - Visual and E2E proof. Run all documented screen sizes, actual SUNMI kiosk/browser viewport, EN/VN, touch/keyboard, regression tests and screenshot diffs. Repair failures. | NOISE — visual/E2E proof instruction |
+| 08 | Phase 7 - Handoff. Deliver file-by-file changes, screenshots, command logs, exact pass/fail counts, blockers, rule inventory before/after and an honest final implementation status. CLAUDE BUILD MANDATE / PRESERVE ALL MOD | NOISE — handoff instruction |
+| 14 | Suggested API contracts - map to existing endpoints These are behavior contracts, not instructions to create a new API namespace when equivalent endpoints already exist. Capability Required contract / checks List setting | NOISE — API contract proposal text |
+| 15 | Implementation plan for Claude | NOISE — implementation-plan heading |
 
 ## DEPOSITS  SETTLEMENTS (12)
 
@@ -2409,14 +2409,14 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Inventory Find Churn Watch UI route, components, shell, CSS, hooks, translated File paths, feature inventory and screenshots. keys and all linked modules. | TODO |
-| 02 | Baseline Run current tests; capture viewport sizes, screenshot and actual data Baseline tests, console errors and measured boxes. readiness, identify overflow/clipping. | TODO |
-| 03 | Audit data Confirm customer/visit/booking relationships, workers, retention rules, Source-of-truth map and broken/partial/missing list. six KPI semantics and permissions. | TODO |
+| 01 | Inventory Find Churn Watch UI route, components, shell, CSS, hooks, translated File paths, feature inventory and screenshots. keys and all linked modules. | NOISE — process step (inventory) |
+| 02 | Baseline Run current tests; capture viewport sizes, screenshot and actual data Baseline tests, console errors and measured boxes. readiness, identify overflow/clipping. | NOISE — process step (baseline) |
+| 03 | Audit data Confirm customer/visit/booking relationships, workers, retention rules, Source-of-truth map and broken/partial/missing list. six KPI semantics and permissions. | NOISE — process step (data audit) |
 | 04 | Auto-fit Reuse shell; introduce local flex/grid responsive layout and equal-size Screenshots at target viewport plus regression of KPI/filter/tab components. 24-inch. | TODO |
 | 05 | Workspace Repair search/date tabs/numbered pagination and expand evidence Working source-backed page flows. overlays, without removing original controls. | TODO |
 | 06 | Diagnostics Implement read-only Churn Watch Health + Screen Fit Health Subsystem results and safe error states. diagnostics using existing observability. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 07 | Controls Ensure staff-reviewed actions, opt-out checks, rebooking handoff and Authorization and non-mutation tests. tenant protection. | TODO |
-| 08 | Release Run UI/accessibility/API/E2E/regression, gate rollout when needed; Commands + pass/fail/skipped, changed files, rollback. report known blockers. Do not start over If a module already exists and works, leave its b | TODO |
+| 08 | Release Run UI/accessibility/API/E2E/regression, gate rollout when needed; Commands + pass/fail/skipped, changed files, rollback. report known blockers. Do not start over If a module already exists and works, leave its b | NOISE — release instruction |
 
 ## Voice Call History (9)
 
