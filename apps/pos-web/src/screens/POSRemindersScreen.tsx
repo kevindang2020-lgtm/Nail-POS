@@ -14,6 +14,7 @@ import { posReminderCenterApi as rc, type RcKpis, type RcPage, type RcDetails, t
 import { authApi } from '../api/authApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { readSession } from '../components/useSessionState';
 import { reportError } from './reportsCommon';
 import { errorTextOf } from '../i18n/error-text';
 import { useRealtime } from '../realtime/useRealtime';
@@ -86,7 +87,12 @@ export function POSRemindersScreen() {
   const [kpiPreset, setKpiPreset] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [kpis, setKpis] = useState<RcKpis | null>(null);
   const [health, setHealth] = useState<RcHealth | null>(null);
-  const [filters, setFilters] = useState<Filters>(() => ({ ...DEFAULTS, ...readUrl() }));
+  // last tab + non-sensitive filters are remembered for this browser tab (sessionStorage) so leaving and coming back keeps
+  // them; a link with its own ?tab=… still wins. Never a phone, an email or the search text.
+  const [filters, setFilters] = useState<Filters>(() => {
+    const f: Filters = { ...DEFAULTS, ...readSession<Partial<Filters>>('aps.rmc.filters', {}), page: 1, ...readUrl() };
+    return (TABS as readonly string[]).includes(f.tab) ? f : { ...f, tab: 'upcoming' };
+  });
   const [search, setSearch] = useState('');
   const q = useDebounced(search, 300);
   const [page, setPage] = useState<RcPage | null>(null);
@@ -107,6 +113,7 @@ export function POSRemindersScreen() {
       if (filters.page > 1) u.set('page', String(filters.page)); if (filters.pageSize !== 20) u.set('pageSize', String(filters.pageSize));
       const s = u.toString(); window.history.replaceState(null, '', `${window.location.pathname}${s ? `?${s}` : ''}`);
     } catch { /* URL state is a convenience */ }
+    try { const { tab, channel, branchId, basis, from, to, pageSize } = filters; sessionStorage.setItem('aps.rmc.filters', JSON.stringify({ tab, channel, branchId, basis, from, to, pageSize })); } catch { /* best effort */ }
   }, [filters]);
   useEffect(() => { authApi.branches().then((r) => setBranches((r?.branches ?? []).filter((b) => !!b.id).map((b) => ({ id: b.id, name: b.name ?? '' })))).catch(() => setBranches([])); }, []);
   useEffect(() => { rc.kpis({ preset: kpiPreset, branchId: filters.branchId || undefined }).then(setKpis).catch(() => setKpis(null)); }, [kpiPreset, filters.branchId, tick]);

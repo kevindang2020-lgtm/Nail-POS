@@ -24,6 +24,7 @@ const PAGE = (items: unknown[]) => ({ tab: 'upcoming', basis: 'scheduled', timez
 const ui = () => render(<MemoryRouter><POSRemindersScreen /></MemoryRouter>);
 
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ }
   Object.values(m).forEach((f) => f.mockReset());
   m.get.mockResolvedValue({ enabled: true, leadMinutes: 1440, windowMinutes: 60, channel: 'sms' });
   m.kpis.mockResolvedValue(K); m.health.mockResolvedValue(H); m.branches.mockResolvedValue({ ok: true, branches: [] });
@@ -99,5 +100,14 @@ describe('CustomerReminderHistory (Customer Profile section)', () => {
     render(<MemoryRouter><CustomerReminderHistory customerId="c1" /></MemoryRouter>);
     expect(await screen.findByTestId('rmc-cust-row')).toHaveTextContent('Customer opted out (STOP)');
     expect(m.cust).toHaveBeenCalledWith('c1', 1, 10);
+  });
+  it('remembers the last tab after leaving the screen (this browser tab)', async () => {
+    window.history.replaceState(null, '', '/tenant/communications/reminders');
+    const v = render(<MemoryRouter><POSRemindersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('rmc-tab-failed'));
+    await waitFor(() => expect(m.list).toHaveBeenLastCalledWith(expect.objectContaining({ tab: 'failed' })));
+    v.unmount(); window.history.replaceState(null, '', '/tenant/communications/reminders'); m.list.mockClear();
+    render(<MemoryRouter><POSRemindersScreen /></MemoryRouter>);
+    await waitFor(() => expect(m.list).toHaveBeenCalledWith(expect.objectContaining({ tab: 'failed' })));
   });
 });

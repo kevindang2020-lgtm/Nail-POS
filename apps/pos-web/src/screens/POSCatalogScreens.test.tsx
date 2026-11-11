@@ -33,6 +33,7 @@ const detail = { ...SIX[0], description: null, categoryArchived: false, addOns: 
 const AO = (sid: string, sname: string, flag: string | null = null) => ({ offeringId: 'o-' + sid, key: 'ao_french', name: 'French tips', priceCents: 1000, durationMinutes: 10, taxable: true, active: true, serviceId: sid, serviceName: sname, serviceStatus: 'active', categoryName: 'Nails', sharedWith: 4, reviewFlag: flag, createdAt: '2026-10-01T12:00:00Z', updatedAt: null });
 
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ }
   for (const g of [cat, svc, bundles, insights, alerts, invScreen]) Object.values(g).forEach((f) => (f as any).mockReset());
   cat.dashboard.mockResolvedValue({ period, kpis: { totalServices: 6, activeServices: 6, inactiveServices: 0, activeProducts: 11, allProducts: 11, onlineBookable: 6, onlinePctOfActive: 100, avgServicePriceCents: 6633, pricedServices: 6,
     retailRevenueTodayCents: 1200, retailItemsToday: 1, retailTicketsToday: 1, serviceMixMargin: null, topCategory: 'Nails', topCategoryBasis: 'realized', topCategoryCents: 45600, packageSales: null, activeBundles: 0, addOnConversionPct: 50, addOnTickets: 4, serviceTickets: 8 } });
@@ -148,6 +149,16 @@ describe('Service Categories', () => {
     await waitFor(() => expect(cat.categories).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Nails' })));
     fireEvent.click(screen.getByTestId('chart-drill-clear'));
     expect(screen.queryByTestId('chart-drill')).toBeNull();
+  });
+  it('Saved filter state: the search comes back after leaving and returning to the screen', async () => {
+    const v = mount(<POSServiceCategoriesScreen />);
+    await screen.findByTestId('breakdown-table');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'Nails' } });
+    await waitFor(() => expect(cat.categories).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Nails' })));
+    v.unmount(); cat.categories.mockClear();
+    mount(<POSServiceCategoriesScreen />);
+    expect((await screen.findByTestId('search') as HTMLInputElement).value).toBe('Nails');
+    await waitFor(() => expect(cat.categories).toHaveBeenCalledWith(expect.objectContaining({ q: 'Nails' })));
   });
   it('403 is a permission state', async () => {
     cat.categorySummary.mockRejectedValue({ status: 403 });

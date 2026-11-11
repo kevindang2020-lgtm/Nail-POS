@@ -7,7 +7,8 @@
 // · the Category Directory, server-paged, newest first · Category details (Overview · Services · History) · New / Edit /
 // Archive / Restore and Manage Services (move services to another category: preview old → new, a reason, one transaction,
 // one history row per service — a move never changes a price or duration).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSessionState } from '../components/useSessionState';
 import { SystemCheckButton } from '../components/SystemCheck';
 import { SavedViews, vStr, periodToView, periodFromView } from '../components/SavedViews';
 import { useNavigate } from 'react-router-dom';
@@ -27,12 +28,14 @@ const PAGE = 10;
 
 export function POSServiceCategoriesScreen() {
   const nav = useNavigate(); const can = useCan();
-  const [mode, setMode] = useState<Mode>('categories');
-  const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
+  // Saved filter state: mode, search, period, filters, sort and page come back after leaving the screen (this browser tab);
+  // a real search / filter change still returns to page 1 (the first render keeps the restored page)
+  const [mode, setMode] = useSessionState<Mode>('aps.cg.mode', 'categories');
+  const [search, setSearch] = useSessionState('aps.cg.search', ''); const q = useDebounced(search.trim(), 300);
   const [drill, setDrill] = useState<string | null>(null);   // the category picked on the chart (cleared with the search)
-  const [period, setPeriod] = useState<PeriodState>({ preset: 'all' }); const [dateField, setDateField] = useState('created');
-  const [status, setStatus] = useState('current'); const [sort, setSort] = useState('newest');
-  const [page, setPage] = useState(1); const [cpage, setCpage] = useState(1);
+  const [period, setPeriod] = useSessionState<PeriodState>('aps.cg.period', { preset: 'all' }); const [dateField, setDateField] = useSessionState('aps.cg.dateField', 'created');
+  const [status, setStatus] = useSessionState('aps.cg.status', 'current'); const [sort, setSort] = useSessionState('aps.cg.sort', 'newest');
+  const [page, setPage] = useSessionState('aps.cg.page', 1); const [cpage, setCpage] = useSessionState('aps.cg.cpage', 1);
   const [tick, setTick] = useState(0); const reload = () => setTick((n) => n + 1);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [detail, setDetail] = useState<{ id: string; tab?: DTab } | null>(null);
@@ -41,7 +44,9 @@ export function POSServiceCategoriesScreen() {
 
   const scope = { q: q || undefined, status, sort, dateField, ...periodQuery(period) };
   const key = JSON.stringify(scope); const ckey = q + JSON.stringify(periodQuery(period));
-  useEffect(() => setPage(1), [key]); useEffect(() => setCpage(1), [ckey]);
+  const keyMounted = useRef(false); const ckeyMounted = useRef(false);
+  useEffect(() => { if (keyMounted.current) setPage(1); keyMounted.current = true; }, [key]);
+  useEffect(() => { if (ckeyMounted.current) setCpage(1); ckeyMounted.current = true; }, [ckey]);
   const summary = useLoad(() => posCatalogApi.categorySummary(), [tick]);
   const list = useLoad(() => (mode === 'categories' ? posCatalogApi.categories({ ...scope, page, pageSize: PAGE }) : Promise.resolve(null)), [mode, key, page, tick]);
   const cust = useLoad(() => (mode === 'customers' && can('customers.view') ? posCatalogApi.customerHistory({ q, kind: 'all', ...periodQuery(period), page: cpage, pageSize: PAGE }) : Promise.resolve(null)), [mode, ckey, cpage, tick]);

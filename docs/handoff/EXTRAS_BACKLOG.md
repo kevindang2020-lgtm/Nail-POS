@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 84 (incl. part) |
-| EXISTS (opened and named) | 695 (incl. part) |
+| BUILT this arc | 86 (incl. part) |
+| EXISTS (opened and named) | 696 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 423 |
-| TODO | 612 |
+| TODO | 609 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -99,7 +99,7 @@ Decisions:
 | 10 | Controlled branch-aware catalog view: if branch rules exist, make authorized scope obvious; do not merge different tenants or branches into one ambiguous total. | TODO |
 | 11 | Chart-to-directory drill-down: tapping a category bar filters the current directory and linked services, with a visible Clear Filter action. | BUILT — a category name on the Services per Category chart filters the directory to it, with a visible "Clear filters" (bars-categories-pick, chart-drill); POSCatalogScreens test |
 | 12 | Quick “Manage Services” panel: provide easy service reassignment from category details with preview/confirmation and current price/duration preserved. | EXISTS — category details → Manage Services: pick services, target category, reason, preview old → new, confirm in one transaction; price/duration untouched (move-preview, move-confirm) |
-| 13 | Saved filter state: preserve filters and page position when viewing details, while resetting to Page 1 after actual search or sort changes. | TODO |
+| 13 | Saved filter state: preserve filters and page position when viewing details, while resetting to Page 1 after actual search or sort changes. | BUILT — mode, search, period, filters, sort and page persist in this browser tab (details are overlays); a real search/filter change resets to page 1 (shared useSessionState; POSCatalogScreens.test) |
 | 14 | Visual regression snapshots: capture normal, Vietnamese, empty, loaded, popover, and overlay states at physical and effective SUNMI viewports. | NOISE — visual-regression instruction (covered by tooling/e2e/pos-vi-one-screen.mjs) |
 | 15 | Performance guardrails: backend aggregated counts, indexed category lookups and real pagination; do not prefetch every service for large tenants. | NOISE — performance guardrail instruction |
 | 16 | Rollout and rollback plan: feature flag if needed, deploy to a pilot salon, compare counts and navigation before broad rollout; revert code safely without deleting categories. SUNMI FLEX 3 / 1920 x 1080 landscape / 100%  | NOISE — rollout instruction |
@@ -1680,8 +1680,8 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Remember last selected history/queue tab and non-sensitive date filters for each authorized employee. | TODO |
-| 02 | Provide an accessible compact/wide density preference, never a page-wide scale-down. | TODO |
+| 01 | Remember last selected history/queue tab and non-sensitive date filters for each authorized employee. | BUILT — last queue/history tab + non-sensitive filters remembered in this browser tab (a link’s own ?tab wins; never phone/email/search text) (POSRemindersScreen; test) |
+| 02 | Provide an accessible compact/wide density preference, never a page-wide scale-down. | EXISTS — profile menu → Compact spacing (this device): tightens spacing only, never a page-wide scale-down (shell/spacingPref.ts) |
 | 03 | Provide contextual Help for Send Window explaining the verified existing behavior. | TODO |
 | 04 | Add a one-click Screen Fit Health Checker and visual regression snapshots at different CSS viewports. Scheduling and delivery accuracy (5-8) | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
