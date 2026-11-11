@@ -536,3 +536,11 @@ infrastructure actions outside the repo (rotate credentials, close port 5432, re
 Nov 11 2026 — Kevin: remove printer. The four Receipt Devices printer-registry rows are REMOVED from the backlog (receipts
 are digital; no printer registry, wizard, test print or adapter will be built). Existing honest "Not configured" printer
 status and digital-receipt history stay as they are (no module/route/nav removed).
+
+## Batch 9 "Not built" lines — re-checked Nov 11 2026 (all closed later in the batch)
+- Top Technicians: ranks from the service lines — each technician (helpers included) owns their own lines
+  (reports.kysely.repository rankTechnicians(facts.lines), guide 6).
+- Pay periods by technician name/phone: filterPeriods matches technicians paid in a period (techHits) — POSPayrollScreen.
+- Marketing report period: optional preset / custom From–To (marketing-report.controller, "batch 9 decision 2").
+- AI Analytics cards: each panel links to its full list (ai-link-calls, ai-link-followups, ai-link-campaigns).
+- Owner comparison custom From–To: owner.controller (Nov 10), compared with the same length just before it.

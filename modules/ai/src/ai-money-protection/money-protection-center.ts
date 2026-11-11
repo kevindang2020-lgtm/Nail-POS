@@ -334,7 +334,16 @@ export class MoneyProtectionCenter {
         au.full_name as assignee, b.name as branch,
         (select count(*) from money_protection_investigation_notes n where n.tenant_id = i.tenant_id and n.investigation_id = i.id)::int as notes
       from ${FROM} where ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+    // Reviewer workload (backlog MONEY PROTECTION 5 · 06): ALL active cases in the caller's scope, independent of the list
+    // filters — pending, high priority, unassigned and aging (open 7+ days). Read-only; Investigations are not merged.
+    const wl = (await sql<Row>`select count(*)::int as open,
+        count(*) filter (where i.severity in ('HIGH', 'CRITICAL'))::int as high,
+        count(*) filter (where i.assigned_user_id is null)::int as unassigned,
+        count(*) filter (where i.created_at < now() - interval '7 days')::int as aging
+      from money_protection_investigations i where i.tenant_id = ${T} and ${this.scope(sql`i.branch_id`, ctx).w} and i.status not in ('RESOLVED', 'CLOSED')`.execute(this.db)).rows[0] ?? {};
+    const workload = { open: N(wl.open), high: N(wl.high), unassigned: N(wl.unassigned), aging: N(wl.aging) };
     return {
+      workload,
       items: rows.map((r) => ({ id: String(r.id), title: r.title, category: r.category, severity: r.severity, status: r.status, assignee: r.assignee ?? null, branch: r.branch ?? null,
         valueUnderReviewCents: N(r.value_under_review_cents), recoveryCents: N(r.recovery_amount_cents), resolution: r.resolution ?? null, alerts: arr((r.related ?? {}).alertIds).length,
         notes: N(r.notes), openedAt: iso(r.created_at), updatedAt: iso(r.updated_at), closedAt: iso(r.closed_at) })),

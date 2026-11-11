@@ -343,4 +343,9 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.d.openSource": "Open in Transactions",
   "mpx.rules.checkedAt": "Checked {t}",
   "mpx.rules.notChecked": "Not checked since it was turned on or changed",
+  "mpx.wl.open": "Active cases",
+  "mpx.wl.high": "High priority",
+  "mpx.wl.unassigned": "Unassigned",
+  "mpx.wl.aging": "Open 7+ days",
+  "mpx.wl.unassignedHint": "Assign from each case’s details",
 };

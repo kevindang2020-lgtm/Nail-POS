@@ -343,4 +343,9 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.d.openSource": "Mở trong Giao dịch", // DRAFT — Kevin reviews
   "mpx.rules.checkedAt": "Đã kiểm tra {t}", // DRAFT — Kevin reviews
   "mpx.rules.notChecked": "Chưa kiểm tra kể từ khi bật hoặc thay đổi", // DRAFT — Kevin reviews
+  "mpx.wl.open": "Hồ sơ đang mở", // DRAFT — Kevin reviews
+  "mpx.wl.high": "Ưu tiên cao", // DRAFT — Kevin reviews
+  "mpx.wl.unassigned": "Chưa giao", // DRAFT — Kevin reviews
+  "mpx.wl.aging": "Mở từ 7 ngày", // DRAFT — Kevin reviews
+  "mpx.wl.unassignedHint": "Giao việc trong chi tiết từng hồ sơ", // DRAFT — Kevin reviews
 };

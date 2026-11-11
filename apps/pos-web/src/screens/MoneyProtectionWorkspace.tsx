@@ -310,6 +310,14 @@ export function MpInvestigations() {
   const rows: any[] = L.list?.items ?? [];
   return (
     <MpShell title={tx('pos.money_protection_investigations')} sub={tx('pos.human_review_of_possible_anomalies_notes_xycx')} tab="investigations" onChanged={() => setTick((n) => n + 1)}>
+      {/* reviewer workload: all ACTIVE cases in scope (not the filtered list); a tile narrows the list to that slice */}
+      {L.list?.workload ? <div className="mpx-workload" data-testid="mpx-workload" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '6px 0' }}>
+        {(['open', 'high', 'unassigned', 'aging'] as const).map((k) => (
+          <button key={k} type="button" className={'fk-chip' + ((k === 'aging' || k === 'unassigned') && L.list.workload[k] > 0 ? ' warn' : k === 'high' && L.list.workload[k] > 0 ? ' bad' : '')} data-testid={'mpx-wl-' + k}
+            disabled={k === 'unassigned'} title={k === 'unassigned' ? t('mpx.wl.unassignedHint') : undefined}
+            onClick={() => L.set(k === 'high' ? { status: 'active', severity: 'HIGH' } : k === 'aging' ? { status: 'active', sort: 'oldest' } : { status: 'active', severity: 'all' })}>
+            {t('mpx.wl.' + k)}: <b>{L.list.workload[k]}</b></button>))}
+      </div> : null}
       <ListFrame testId="mpx-invs" surface="money-protection.investigations" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
         searchPh={t('mpx.inv.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.inv.empty')}
         filters={<>

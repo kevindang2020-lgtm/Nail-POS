@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 78 (incl. part) |
-| EXISTS (opened and named) | 685 (incl. part) |
+| BUILT this arc | 79 (incl. part) |
+| EXISTS (opened and named) | 687 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 421 |
-| TODO | 630 |
+| TODO | 627 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -2005,14 +2005,14 @@ Decisions:
 | 03 | Evidence Completeness Meter Per alert/case show which source links were verified, missing, stale or permission-limited. | TODO |
 | 04 | Deduplicated Exposure Drill-down Explain Value Under Review calculations, overlapping alerts and why sums differ from alert count. | TODO |
 | 05 | Funding Calendar Awareness Mark “Expected / Not yet due / Overdue / Unmatched” based on processor and bank timing. | TODO |
-| 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | TODO |
+| 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | BUILT — workload strip on Investigations: active / high priority / unassigned / open 7+ days for ALL active cases in scope (server count, independent of list filters); High and Open 7+ days narrow the list; cases stay separate (money-protection-center investigations().workload; pgtest IN-01; POSAIMoneyProtectionInvestigationsScreen.test) |
 | 07 | Safe Rule Preview Before a manager saves rule edits, show read-only estimated historical matches on approved test data; never silently activate. | TODO |
 | 08 | Source Reconciliation Links One click from alert to same ticket, refund, batch or reconciliation in the existing owning module. Priority labels Priority A: 01-05 because they prevent misleading risk/health messages. Prio | BUILT — alert sources link to the same ticket / payment in Transactions; Transactions now honours ?ticket= / ?q= deep links across all dates (mpx-src-ticket, mpx-src-payment; POSAIMoneyProtectionAlertsScreen.test, POSPaymentsScreens.test) |
-| 09 | Workspace Layout Profiles Use responsive layout presets for 1920 × 1080 SUNMI, other desktops and short viewports; reflow with CSS, not OS/browser zoom hacks. | TODO |
+| 09 | Workspace Layout Profiles Use responsive layout presets for 1920 × 1080 SUNMI, other desktops and short viewports; reflow with CSS, not OS/browser zoom hacks. | EXISTS — certified 1920×945/952/1032 layouts reflow with CSS; screen check on every page (shell/ScreenCheckDialog) |
 | 10 | Smart Filter Presets Saved local UI preferences for “Critical”, “Awaiting Review”, “My Cases”, “Last | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 11 | Documented Alert Rate Limits Throttle duplicate notifications while preserving distinct evidence and an auditable incident timeline. | TODO |
 | 12 | Failure-aware Snapshot Allow authorized read-only as-of view labeled stale when providers are offline, rather than misleading zeros. | TODO |
-| 13 | Long-list Virtualization For heavy histories use stable server pagination and optional row virtualization without losing focus/navigation. | TODO |
+| 13 | Long-list Virtualization For heavy histories use stable server pagination and optional row virtualization without losing focus/navigation. | EXISTS — stable server pagination (Pager) on every Money Protection list; row virtualization not added (pages are bounded) |
 | 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | TODO |
 | 15 | Export Provenance Export author, time, tenant scope, metric definitions, source freshness and redaction scope on approved files. | TODO |
 | 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | NOISE — accessibility/language QA instruction |

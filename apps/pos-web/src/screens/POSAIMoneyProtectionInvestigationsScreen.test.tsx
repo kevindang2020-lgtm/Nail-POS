@@ -46,4 +46,13 @@ describe('POSAIMoneyProtectionInvestigationsScreen', () => {
     fireEvent.change(screen.getByTestId('mpx-istatus'), { target: { value: 'RESOLVED' } });
     await waitFor(() => expect(mc.investigations).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'RESOLVED', page: 1 })));
   });
+  it('Reviewer workload: active / high / unassigned / aging counts for ALL active cases; High narrows the list', async () => {
+    mc.investigations.mockResolvedValue({ ...page([inv]), workload: { open: 5, high: 2, unassigned: 3, aging: 1 } });
+    wrap(<POSAIMoneyProtectionInvestigationsScreen />);
+    expect(await screen.findByTestId('mpx-wl-open')).toHaveTextContent('5');
+    expect(screen.getByTestId('mpx-wl-unassigned')).toHaveTextContent('3');
+    expect(screen.getByTestId('mpx-wl-aging')).toHaveTextContent('1');
+    fireEvent.click(screen.getByTestId('mpx-wl-high'));
+    await waitFor(() => expect(mc.investigations).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'active', severity: 'HIGH' })));
+  });
 });

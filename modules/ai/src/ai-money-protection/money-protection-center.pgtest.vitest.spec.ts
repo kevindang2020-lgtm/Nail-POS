@@ -153,6 +153,15 @@ describe('Investigations', () => {
     const l: any = await mc.investigations(ctx(), { q: 'T-1042' });
     expect(l.items[0]).toMatchObject({ id: created.id, status: 'INVESTIGATING', assignee: 'Owner Kim', notes: 1, alerts: 1 });
     expect((await mc.investigations(ctx(), { status: 'RESOLVED' }) as any).total).toBe(0);
+    // reviewer workload: every active case in scope regardless of the list filter (assigned → not unassigned; fresh → not aging)
+    const w0: any = (await mc.investigations(ctx(), { status: 'RESOLVED' }) as any).workload;
+    expect(w0.open).toBeGreaterThanOrEqual(1);
+    const unassigned = await inv.create(ictx, { title: 'Unassigned refund loop' });
+    await db.updateTable('money_protection_investigations' as any).set({ created_at: new Date(Date.now() - 9 * 86400_000) } as any).where('id' as any, '=', unassigned.id).execute();
+    const w1: any = (await mc.investigations(ctx(), {}) as any).workload;
+    expect(w1.open).toBe(w0.open + 1);
+    expect(w1.unassigned).toBe(w0.unassigned + 1);
+    expect(w1.aging).toBe(w0.aging + 1);
   });
 });
 
