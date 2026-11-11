@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 66 (incl. part) |
-| EXISTS (opened and named) | 626 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 385 |
-| TODO | 741 |
+| BUILT this arc | 67 (incl. part) |
+| EXISTS (opened and named) | 628 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 387 |
+| TODO | 736 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -1999,14 +1999,14 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Monitoring Trust Banner At top of overview show “Monitoring Active / Stale / Disabled / Partial / Error” with last successful run and source coverage. | TODO |
-| 02 | One-Click Health Summary Single button with dependency matrix, last validated source and safe resolution path; read-only. | TODO |
+| 01 | Monitoring Trust Banner At top of overview show “Monitoring Active / Stale / Disabled / Partial / Error” with last successful run and source coverage. | EXISTS — monitoring banner: current / stale / off with last run and schedule state (mpx-monitoring) |
+| 02 | One-Click Health Summary Single button with dependency matrix, last validated source and safe resolution path; read-only. | EXISTS — read-only Money Protection check from the header (mpx-check, mpx-health) |
 | 03 | Evidence Completeness Meter Per alert/case show which source links were verified, missing, stale or permission-limited. | TODO |
 | 04 | Deduplicated Exposure Drill-down Explain Value Under Review calculations, overlapping alerts and why sums differ from alert count. | TODO |
 | 05 | Funding Calendar Awareness Mark “Expected / Not yet due / Overdue / Unmatched” based on processor and bank timing. | TODO |
 | 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | TODO |
 | 07 | Safe Rule Preview Before a manager saves rule edits, show read-only estimated historical matches on approved test data; never silently activate. | TODO |
-| 08 | Source Reconciliation Links One click from alert to same ticket, refund, batch or reconciliation in the existing owning module. Priority labels Priority A: 01-05 because they prevent misleading risk/health messages. Prio | TODO |
+| 08 | Source Reconciliation Links One click from alert to same ticket, refund, batch or reconciliation in the existing owning module. Priority labels Priority A: 01-05 because they prevent misleading risk/health messages. Prio | BUILT — alert sources link to the same ticket / payment in Transactions; Transactions now honours ?ticket= / ?q= deep links across all dates (mpx-src-ticket, mpx-src-payment; POSAIMoneyProtectionAlertsScreen.test, POSPaymentsScreens.test) |
 | 09 | Workspace Layout Profiles Use responsive layout presets for 1920 × 1080 SUNMI, other desktops and short viewports; reflow with CSS, not OS/browser zoom hacks. | TODO |
 | 10 | Smart Filter Presets Saved local UI preferences for “Critical”, “Awaiting Review”, “My Cases”, “Last | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 11 | Documented Alert Rate Limits Throttle duplicate notifications while preserving distinct evidence and an auditable incident timeline. | TODO |
@@ -2014,10 +2014,10 @@ Decisions:
 | 13 | Long-list Virtualization For heavy histories use stable server pagination and optional row virtualization without losing focus/navigation. | TODO |
 | 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | TODO |
 | 15 | Export Provenance Export author, time, tenant scope, metric definitions, source freshness and redaction scope on approved files. | TODO |
-| 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | TODO |
+| 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | NOISE — accessibility/language QA instruction |
 | 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | TODO |
 | 19 | Subscription, bilingual POS and accessibility • Use actual AI PowerSalon billing entitlements and usage counters; do not invent prices. Keep basic payment processing functioning during AI service expiration. • For tenant | TODO |
-| 20 | Suggested contracts and ownership (verify before implementation) Do not create these endpoints or tables blindly. The following are required behaviors to map onto the real repository. Reuse or extend existing services ra | TODO |
+| 20 | Suggested contracts and ownership (verify before implementation) Do not create these endpoints or tables blindly. The following are required behaviors to map onto the real repository. Reuse or extend existing services ra | NOISE — suggested contracts text (verify-before-implementing note) |
 
 ## AI Calls  Voice Intelligence Management Center (4)
 

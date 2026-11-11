@@ -37,4 +37,10 @@ describe('POSTransactionsScreen', () => {
     render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>);
     expect(await screen.findByText(/Your role cannot see this information/i)).toBeInTheDocument();
   });
+  it('a ?ticket= deep link (Customer Timeline / Money Protection) opens the ledger searched for that ticket across all dates', async () => {
+    render(<MemoryRouter initialEntries={['/tenant/payments/transactions?ticket=7d1b0000-0000-4000-8000-000000000042']}><POSTransactionsScreen /></MemoryRouter>);
+    await screen.findAllByTestId('tx-row');
+    expect(api.list).toHaveBeenCalledWith(expect.objectContaining({ search: '7d1b0000-0000-4000-8000-000000000042', preset: 'all' }));
+    expect((screen.getByTestId('search') as HTMLInputElement).value).toBe('7d1b0000-0000-4000-8000-000000000042');
+  });
 });

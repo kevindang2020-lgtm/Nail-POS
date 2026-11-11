@@ -340,4 +340,5 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.sk.overridesSub": "Mức độ hoặc ngưỡng khác mặc định",
   "mpx.sk.colEnabled": "Bật",
   "mpx.sk.colSeverity": "Mức độ (đã chỉnh)",
+  "mpx.d.openSource": "Mở trong Giao dịch", // DRAFT — Kevin reviews
 };

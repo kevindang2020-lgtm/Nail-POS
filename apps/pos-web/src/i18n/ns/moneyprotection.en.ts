@@ -340,4 +340,5 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.sk.overridesSub": "Severity or a threshold differs from its default",
   "mpx.sk.colEnabled": "Enabled",
   "mpx.sk.colSeverity": "Severity (override)",
+  "mpx.d.openSource": "Open in Transactions",
 };

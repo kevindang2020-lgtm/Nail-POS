@@ -47,6 +47,9 @@ describe('POSAIMoneyProtectionAlertsScreen', () => {
     fireEvent.click(await screen.findByTestId('mpx-alert-view'));
     expect(await screen.findByTestId('mpx-d-sources')).toHaveTextContent('T-1042');
     expect(screen.getByTestId('mpx-d-sources')).toHaveTextContent('Cashier Lan');
+    // Source Reconciliation Links: the same ticket / payment opens in Transactions (the owning screen), read-only
+    expect(screen.getByTestId('mpx-src-ticket')).toHaveAttribute('href', '/tenant/payments/transactions?ticket=t1');
+    expect(screen.getByTestId('mpx-src-payment')).toHaveAttribute('href', '/tenant/payments/transactions?q=p1');
     expect(screen.getByTestId('mpx-d-evidence')).toHaveTextContent('Potential duplicate — requires review.');
     fireEvent.click(screen.getByTestId('mpx-act-dismiss'));
     expect(screen.getByTestId('mpx-act-go')).toBeDisabled();

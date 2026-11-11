@@ -10,7 +10,7 @@
 // UTC days drawn as midnight UTC (Oct 22 showed as Oct 21 8:00 PM), a partial tender showed "completed", Net was Gross.
 import { useEffect, useState } from 'react';
 import { SystemCheckButton } from '../components/SystemCheck';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTransactionsApi } from '../api/posTransactionsApi';
 import { posCheckoutApi } from '../api/posCheckoutApi';
@@ -38,10 +38,13 @@ const errMsg = (e: unknown) => errorTextOf(e, tx('finance.state.loadFailed'));
 
 export function POSTransactionsScreen() {
   const nav = useNavigate(); const can = useCan();
-  const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
+  // deep links (?ticket=<id> from Customer Timeline / Money Protection, ?q=<ref>) open the ledger already searched for
+  // that reference across ALL dates (the server search matches ticket / payment / refund / batch ids exactly)
+  const [sp] = useSearchParams(); const deepRef = (sp.get('ticket') ?? sp.get('q') ?? '').trim().slice(0, 100);
+  const [search, setSearch] = useState(deepRef); const q = useDebounced(search.trim(), 300);
   const [status, setStatus] = useState(''); const [method, setMethod] = useState(''); const [tech, setTech] = useState(''); const [sort, setSort] = useState('created_desc');
   const [minA, setMinA] = useState(''); const [maxA, setMaxA] = useState('');
-  const [period, setPeriod] = useState<PeriodState>({ preset: 'month' }); const [basis, setBasis] = useState('paid');
+  const [period, setPeriod] = useState<PeriodState>(deepRef ? { preset: 'all' } : { preset: 'month' }); const [basis, setBasis] = useState('paid');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [detail, setDetail] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null); const [exporting, setExporting] = useState(false);
   const minC = minA ? centsFromText(minA) : null; const maxC = maxA ? centsFromText(maxA) : null;
@@ -97,7 +100,7 @@ export function POSTransactionsScreen() {
       </div>
       {amountBad ? <div className="fk-error" role="alert" data-testid="amount-error">{tx('txn.amountBad')}</div> : null}
       <div className="fn-tabsrow tn-periodrow">
-        <PeriodBar value={period} onChange={setPeriod} server={list.data?.period} compact basis={basis} basisOptions={BASES.map((b) => ({ value: b, label: tx('txn.basis.' + b) }))} onBasis={setBasis} />
+        <PeriodBar value={period} onChange={setPeriod} server={list.data?.period} compact allowAll basis={basis} basisOptions={BASES.map((b) => ({ value: b, label: tx('txn.basis.' + b) }))} onBasis={setBasis} />
         {chips.length ? <span className="fn-chips" data-testid="chips">{chips.map((c) => <span key={c.label} className="fk-chip mut">{c.label}<button type="button" className="fk-chip-x" aria-label={tx('finance.removeFilter', { f: c.label })} onClick={c.clear}>✕</button></span>)}
           <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button></span> : null}
       </div>
