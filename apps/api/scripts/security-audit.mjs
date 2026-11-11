@@ -152,7 +152,9 @@ function vitest(label, args, timeoutMs) {
   const m = out.match(/Tests\s+(\d+) passed(?:\s*\|\s*(\d+) skipped)?/);
   const failed = /failed/i.test(out.match(/Tests[^\n]*/)?.[0] ?? '') || r.status !== 0;
   add('Security test suites', label, failed ? 'FAILED' : 'PASSED', failed ? 'HIGH' : null,
-    m ? `${m[1]} passed${m[2] ? `, ${m[2]} skipped` : ''}` : out.split('\n').filter(Boolean).slice(-3).join(' | ').slice(0, 300));
+    // a killed run says so (Nov 10 2026: shards 1–2 hit the cap and the report quoted a stray console.warn as the "reason")
+    r.signal || r.error ? `did not finish — stopped after ${Math.round(timeoutMs / 1000)}s (${r.signal || r.error?.code || 'error'}); no test result to report`
+      : m ? `${m[1]} passed${m[2] ? `, ${m[2]} skipped` : ''}` : out.split('\n').filter(Boolean).slice(-3).join(' | ').slice(0, 300));
 }
 if (!SKIP.has('quick')) packageTests('Auth/session core (quick lane) — modules/identity', 'identity', 'modules', ['src/auth/auth-session-token.vitest.spec.ts']);   // identity is a module (Constitution 13)
 // The permission kernel's own tests moved with it to packages/permissions (Constitution 13); run them from there.
@@ -200,7 +202,7 @@ if (MODE === 'full') {
   // with per-shard results in the report. (First-run lesson: a single vitest invocation over all pgtest files at
   // once thrashes — 419-migration boot per file under worker contention — and yields no incremental evidence.)
   for (const k of ONLY_SHARDS) {
-    vitest(`Full test battery shard ${k}/4 (includes all real-schema pgtest isolation suites)`, [`--shard=${k}/4`], 420000);
+    vitest(`Full test battery shard ${k}/4 (includes all real-schema pgtest isolation suites)`, [`--shard=${k}/4`], 900000);   // Nov 10 2026: a shard now takes ~430 s on an idle box — the old 420 s cap killed passing runs
   }
 }
 

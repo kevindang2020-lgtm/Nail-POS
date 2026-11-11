@@ -407,6 +407,22 @@ the Campaigns screen too, so it is listed rather than done silently.
 **Still Kevin's:** Email / Schedule Report delivery (decision 1 — needs a consented delivery pipeline), Open Tasks /
 Compliance (decision 6 — no source system), seed clean-up (7), Vietnamese draft review (8), density switch, and "push".
 
+### Verification of the follow-ups (run this session, Nov 10 2026, late)
+
+- Gates: `run-gates.mjs` — all 57 gates + 26 audits passed (83/83) on the follow-up code.
+- API, full suite: 402 files passed / 27 skipped · **3297 passed, 0 failed**, 138 skipped (the date-bomb fix included).
+- POS, full suite: 2211/2212 — the one failure was the new registry pages' guide names (must be the PDF name); fixed,
+  `screenCheck.test.ts` re-run 15/15. Not re-run in full after that one-line data fix.
+- Modules: reports 91/91 · analytics 345/345 · workforce payroll 150 passed (16 skipped: the postgres-race files).
+- Screen harness `MODULE_SET=batch9` on a fresh migrated + seeded scratch DB (PILOT01): **104/104 certified
+  (primary 26/26), 208/208 including responsive**. The first run failed 16 checks only because I had registered
+  modules that render only with data (Sales ticket search/count, Appointments search); swapped for always-present ones.
+- `security-audit --full`: **PASSED 32 · FAILED 0 · NOT VERIFIED 4** (live processor, production infra, live Twilio,
+  hardware). The first full run reported shards 1–2 FAILED: both shards pass alone (925 and 712 tests, 0 failed) but
+  take ~430 s, and the audit killed them at 420 s and quoted a stray `console.warn` as the reason. Fixed in the runner:
+  15-minute shard budget and an honest "did not finish — stopped after Ns" message. No check was weakened.
+- Real Postgres 16.15: the payroll technician fold/exists SQL; migrations 1–844 on two fresh scratch DBs.
+
 ## Decisions for Kevin (batch 9)
 
 1. **Email Report / Schedule Report** (Daily Summary) stay labelled "not connected" — wiring them needs a delivery
