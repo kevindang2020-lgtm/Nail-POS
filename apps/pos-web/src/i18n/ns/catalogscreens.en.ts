@@ -425,4 +425,5 @@ export const CATALOGSCREENS_EN = {
   'cg.csv.location': 'Location',
   'cg.csv.sold30': 'Sold (30 days)',
   'cg.csv.created': 'Created',
+  "cg.drill": "Directory filtered to {c} from the chart.",
 };

@@ -50,6 +50,23 @@ describe('AI Branch Comparison screen', () => {
     expect(screen.getByText('$5,000.00')).toBeInTheDocument(); // avg ticket / rev-per-completed for b1
   });
 
+  it('extras (Nov 11 2026): fewer than 5 bookings is marked a small sample; definitions are one tap away', async () => {
+    compareMock.mockResolvedValue({
+      preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: 60000, ticketsCount: 13, averageTicketCents: 4615, totalBookings: 14, completed: 12, completionRate: 86, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [],
+      branches: [
+        { branchId: 'b1', branchName: 'Marlton', status: 'active', netSalesCents: 50000, averageTicketCents: 5000, ticketsCount: 10, totalBookings: 11, completed: 10, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 5000, completionRate: 91 },
+        { branchId: 'b2', branchName: 'Deptford', status: 'active', netSalesCents: 10000, averageTicketCents: 3333, ticketsCount: 3, totalBookings: 3, completed: 2, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 5000, completionRate: 67 },
+      ],
+    });
+    render1();
+    await screen.findByText('Deptford');
+    const small = screen.getAllByTestId('bcx-small');
+    expect(small).toHaveLength(1);
+    expect(small[0]).toHaveAttribute('title', expect.stringContaining('Only 3 bookings'));
+    expect(screen.getByTestId('bcx-defs')).toHaveTextContent('Completion — Completed ÷ Bookings');
+  });
+
   it('shows dashes for revenue columns when financials are restricted', async () => {
     compareMock.mockResolvedValue({
       preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: false, branchCount: 1, truncated: false, page: 1, pageSize: 25, totalItems: 1, totalPages: 1, inactiveHidden: 0,

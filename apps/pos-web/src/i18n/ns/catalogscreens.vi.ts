@@ -425,4 +425,5 @@ export const CATALOGSCREENS_VI = {
   'cg.csv.location': 'Chi nhánh',
   'cg.csv.sold30': 'Đã bán (30 ngày)',
   'cg.csv.created': 'Ngày tạo',
+  "cg.drill": "Danh mục đang lọc theo {c} từ biểu đồ.", // DRAFT — Kevin reviews
 };

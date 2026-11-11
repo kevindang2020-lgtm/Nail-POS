@@ -484,4 +484,25 @@ export const CSEARCH_VI: Record<string, string> = {
   "cpf.view.new": "Mới thêm",
   "cpf.view.review": "Cần xem lại",
   "cpf.vip": "VIP",
+  "cnx.unsaved": "Bạn có thay đổi chưa lưu. Đóng mà không lưu?", // DRAFT — Kevin reviews
+  "cnx.keepEditing": "Tiếp tục sửa", // DRAFT — Kevin reviews
+  "cnx.discard": "Bỏ thay đổi", // DRAFT — Kevin reviews
+  "cnx.q.shape": "Dáng móng", // DRAFT — Kevin reviews
+  "cnx.q.length": "Độ dài", // DRAFT — Kevin reviews
+  "cnx.q.finish": "Loại sơn", // DRAFT — Kevin reviews
+  "cnx.q.shape.square": "Vuông", // DRAFT — Kevin reviews
+  "cnx.q.shape.round": "Tròn", // DRAFT — Kevin reviews
+  "cnx.q.shape.oval": "Oval", // DRAFT — Kevin reviews
+  "cnx.q.shape.squoval": "Vuông bo tròn", // DRAFT — Kevin reviews
+  "cnx.q.shape.almond": "Hạnh nhân", // DRAFT — Kevin reviews
+  "cnx.q.shape.coffin": "Coffin", // DRAFT — Kevin reviews
+  "cnx.q.shape.stiletto": "Nhọn", // DRAFT — Kevin reviews
+  "cnx.q.length.short": "Ngắn", // DRAFT — Kevin reviews
+  "cnx.q.length.medium": "Vừa", // DRAFT — Kevin reviews
+  "cnx.q.length.long": "Dài", // DRAFT — Kevin reviews
+  "cnx.q.finish.gel": "Gel", // DRAFT — Kevin reviews
+  "cnx.q.finish.dip": "Bột nhúng (dip)", // DRAFT — Kevin reviews
+  "cnx.q.finish.acrylic": "Bột acrylic", // DRAFT — Kevin reviews
+  "cnx.q.finish.regular": "Sơn thường", // DRAFT — Kevin reviews
+  "cnx.q.finish.builder": "Gel đắp (builder)", // DRAFT — Kevin reviews
 };

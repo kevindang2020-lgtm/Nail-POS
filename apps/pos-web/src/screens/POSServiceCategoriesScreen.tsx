@@ -29,6 +29,7 @@ export function POSServiceCategoriesScreen() {
   const nav = useNavigate(); const can = useCan();
   const [mode, setMode] = useState<Mode>('categories');
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
+  const [drill, setDrill] = useState<string | null>(null);   // the category picked on the chart (cleared with the search)
   const [period, setPeriod] = useState<PeriodState>({ preset: 'all' }); const [dateField, setDateField] = useState('created');
   const [status, setStatus] = useState('current'); const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1); const [cpage, setCpage] = useState(1);
@@ -79,7 +80,10 @@ export function POSServiceCategoriesScreen() {
 
       <div className="mos-row two cg-row">
         <FitPanel testId="chart" title={tx('pos.services_per_category')}>
-          {!s ? <div className="fk-loading">{tx('pos.loading_categories')}</div> : <Bars items={s.breakdown.map((b: any) => ({ name: breakdownName(b), value: b.services }))} testId="bars-categories" empty={tx('pos.no_categories_yet')} fmt={(n) => nf(n)} />}
+          {!s ? <div className="fk-loading">{tx('pos.loading_categories')}</div> : <Bars items={s.breakdown.map((b: any) => ({ name: breakdownName(b), value: b.services }))} testId="bars-categories" empty={tx('pos.no_categories_yet')} fmt={(n) => nf(n)}
+            onPick={(name, i) => { if (!s.breakdown[i]?.categoryId) return; setMode('categories'); setSearch(name); setDrill(name); }} />}
+          {/* extras (Nov 11 2026) — chart-to-directory drill-down: a bar filters the directory below, with a visible Clear */}
+          {drill && search === drill ? <div className="fk-hint" data-testid="chart-drill">{tx('cg.drill', { c: drill })} <button type="button" className="fk-btn ghost sm" data-testid="chart-drill-clear" onClick={() => { setDrill(null); setSearch(''); }}>{tx('finance.clearFilters')}</button></div> : null}
         </FitPanel>
         <FitPanel testId="breakdown" title={tx('pos.breakdown')}>
           {!s ? <div className="fk-loading">{tx('pos.loading')}</div> : s.breakdown.length === 0 ? <Empty title={tx('pos.no_data')} />

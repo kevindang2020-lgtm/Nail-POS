@@ -33,6 +33,10 @@ const money = (c: number | null | undefined) => bzValue(c ?? null, 'cents');
 const pct = (n: number | null | undefined) => (n == null ? bt('bcx.na') : `${n}%`);
 const na = (v: string | null) => v ?? bt('bcx.na');
 
+/** fewer bookings than this in the period: rates are shown, but marked as a small sample (no ranking conclusion) */
+const SMALL_N = 5;
+const small = (r: { totalBookings?: number | null }) => (r.totalBookings ?? 0) > 0 && (r.totalBookings ?? 0) < SMALL_N;
+
 export function POSAiBranchCompareScreen() {
   const [period, setPeriod] = useState<{ preset?: string; from?: string; to?: string }>({ preset: 'month' });
   const [cal, setCal] = useState(false);
@@ -109,9 +113,12 @@ export function POSAiBranchCompareScreen() {
                 <td className="num">{!fin ? '—' : r.averageTicketCents == null ? bt('bcx.na') : money(r.averageTicketCents)}</td>
                 <td className="num">{bzNum(r.totalBookings)}</td>
                 <td className="num">{bzNum(r.completed)}</td>
-                <td className="num" data-testid="bcx-completion">{pct(r.completionRate)}</td>
+                <td className="num" data-testid="bcx-completion">{pct(r.completionRate)}{small(r) ? <span className="chip" style={{ marginLeft: 4 }} title={bt('bcx.smallTip', { n: String(r.totalBookings ?? 0) })} data-testid="bcx-small">{bt('bcx.small')}</span> : null}</td>
                 <td className="num">{!fin ? '—' : r.revenuePerCompletedAppointmentCents == null ? bt('bcx.na') : money(r.revenuePerCompletedAppointmentCents)}</td>
               </tr>))}</tbody></table></div>)}
+        {/* extras (Nov 11 2026) — metric definitions (denominator, exclusions, time basis, why N/A) and the small-sample rule */}
+        {rows.length ? <details style={{ marginTop: 8 }} data-testid="bcx-defs"><summary className="sub" style={{ cursor: 'pointer', minHeight: 32 }}>{bt('bcx.defs')}</summary>
+          <ul className="sub" style={{ paddingLeft: 18, margin: '6px 0' }}>{['net', 'avg', 'bookings', 'completed', 'completion', 'revCompleted', 'small'].map((k) => <li key={k}>{bt('bcx.def.' + k, { n: String(SMALL_N) })}</li>)}</ul></details> : null}
         <div className="rvw-pager">
           <Pager info={s ? { page: s.page, pageSize: s.pageSize, totalItems: s.totalItems, totalPages: s.totalPages } : null} onPage={setPage} />
           <label className="rvw-f"><span>{bt('bzx.rows')}</span><select data-testid="bcx-size" value={String(pageSize)} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>{['10', '25', '50'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>

@@ -40,6 +40,19 @@ const errText = (e: unknown, fallback: string) => {
   return errorTextOf(e, fallback);
 };
 
+// extras (Nov 11 2026) — structured nail-service quick notes: chips write "Shape: Almond" style lines into Preferred style;
+// one line per group (a new pick replaces the old one), free text stays as typed
+const QUICK: { group: string; values: string[] }[] = [
+  { group: 'shape', values: ['square', 'round', 'oval', 'squoval', 'almond', 'coffin', 'stiletto'] },
+  { group: 'length', values: ['short', 'medium', 'long'] },
+  { group: 'finish', values: ['gel', 'dip', 'acrylic', 'regular', 'builder'] },
+];
+export function applyQuickNote(text: string, groupLabel: string, valueLabel: string): string {
+  const lines = String(text ?? '').split('\n').filter((l) => !l.toLowerCase().startsWith(groupLabel.toLowerCase() + ':'));
+  const kept = lines.filter((l, i) => l.trim() || i < lines.length - 1);
+  return [`${groupLabel}: ${valueLabel}`, ...kept].join('\n').replace(/\n+$/, '');
+}
+
 /** the original notes editor — same fields, same save (and offline draft) */
 function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: string; fullName: string; phone?: string | null }; onClose: () => void; onSaved: () => void }) {
   const [notes, setNotes] = useState<Notes | null>(null);
@@ -51,6 +64,10 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
     posCustomersApi.getNotes(customer.customerId).then((n) => { setNotes({ ...EMPTY, ...(n || {}) }); setBase({ ...EMPTY, ...(n || {}) }); }).catch((e) => setError(reportError(e, 'these notes')));
   }, [customer.customerId]);
   const up = (k: keyof Notes) => (v: string) => setNotes((n) => (n ? { ...n, [k]: v } : n));
+  // extras (Nov 11 2026) — safe draft recovery: closing with unsaved edits asks first (never auto-saves, never auto-submits)
+  const dirty = !!notes && !!base && JSON.stringify(notes) !== JSON.stringify(base);
+  const [askClose, setAskClose] = useState(false);
+  const tryClose = () => { if (dirty && !saving) setAskClose(true); else onClose(); };
   const save = async () => {
     if (!notes) return;
     setSaving(true); setNote(null);
@@ -65,14 +82,28 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
       <textarea value={String(notes?.[k] ?? '')} onChange={(e) => up(k)(e.target.value)} rows={rows} data-testid={`cnx-ed-${k}`} /></label>
   );
   return (
-    <FitDialog wide testId="cnx-editor" title={customer.fullName || t('pos.unnamed_customer')} subtitle={customer.phone || undefined} onClose={onClose} busy={saving}
-      footer={<>{note ? <span className={note.ok ? 'ok' : 'err'} role="status" data-testid="cnx-ed-note">{note.text}</span> : null}
-        <button className="btn ghost" onClick={onClose}>{t('pos.close')}</button>
+    <FitDialog wide testId="cnx-editor" title={customer.fullName || t('pos.unnamed_customer')} subtitle={customer.phone || undefined} onClose={tryClose} busy={saving}
+      footer={askClose ? <><span className="err" role="alert" data-testid="cnx-ed-unsaved">{t('cnx.unsaved')}</span>
+        <button className="btn ghost" data-testid="cnx-ed-keep" onClick={() => setAskClose(false)}>{t('cnx.keepEditing')}</button>
+        <button className="btn danger" data-testid="cnx-ed-discard" onClick={onClose}>{t('cnx.discard')}</button></> : <>{note ? <span className={note.ok ? 'ok' : 'err'} role="status" data-testid="cnx-ed-note">{note.text}</span> : null}
+        <button className="btn ghost" data-testid="cnx-ed-close" onClick={tryClose}>{t('pos.close')}</button>
         <button className="btn" data-testid="cnx-ed-save" disabled={!notes || saving} onClick={save}>{saving ? t('pos.saving_2') : t('pos.save_notes')}</button></>}>
       {error ? <div className="err">{error}</div> : !notes ? <div className="state">{t('pos.loading_notes')}</div> : <>
         {field(t('pos.warnings'), 'warnings', 2, t('people.customer.notes.warningsHint'))}
         {field(t('pos.allergies'), 'allergyNotes', 2)}
         {field(t('pos.salon_notes'), 'salonNotes', 3)}
+        <div className="cnx-quick" data-testid="cnx-quick" style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '2px 0 6px' }}>
+          {QUICK.map((g) => (
+            <div key={g.group} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+              <span className="sub" style={{ minWidth: 64 }}>{t('cnx.q.' + g.group)}</span>
+              {g.values.map((v) => (
+                <button key={v} type="button" className="chip" style={{ minHeight: 36 }} data-testid={'cnx-q-' + g.group + '-' + v}
+                  onClick={() => setNotes((n) => (n ? { ...n, preferredStyle: applyQuickNote(String(n.preferredStyle ?? ''), t('cnx.q.' + g.group), t('cnx.q.' + g.group + '.' + v)) } : n))}>
+                  {t('cnx.q.' + g.group + '.' + v)}</button>
+              ))}
+            </div>
+          ))}
+        </div>
         <div className="cnx-two">{field(t('pos.preferred_style'), 'preferredStyle', 2)}{field(t('people.customer.notes.servicePreferencesTitle'), 'servicePreferences', 2)}</div>
         {field(t('people.customer.notes.preferredTechnicianTitle'), 'preferredTechnician', 1)}
         <label className="cnx-visible"><input type="checkbox" checked={notes.customerVisible} onChange={(e) => setNotes({ ...notes, customerVisible: e.target.checked })} data-testid="cnx-ed-visible" />

@@ -52,12 +52,12 @@ export function Donut({ items, testId, empty }: { items: Mix[]; testId: string; 
   );
 }
 /** horizontal bars (counts or cents) */
-export function Bars({ items, testId, empty, fmt }: { items: { name: string; value: number; sub?: string }[]; testId: string; empty: string; fmt: (n: number) => string }) {
+export function Bars({ items, testId, empty, fmt, onPick }: { items: { name: string; value: number; sub?: string }[]; testId: string; empty: string; fmt: (n: number) => string; onPick?: (name: string, i: number) => void }) {
   const max = Math.max(0, ...items.map((x) => x.value));
   if (!items.length || max <= 0) return <div className="fk-hint cg-chart-empty" data-testid={testId + '-empty'}>{empty}</div>;
   return (
     <ul className="cg-bars" data-testid={testId}>
-      {items.map((x, i) => <li key={i} title={`${x.name}: ${fmt(x.value)}`}><span className="cg-bn">{x.name}</span><span className="cg-bt"><span style={{ width: `${Math.max(2, (x.value / max) * 100)}%` }} /></span><b>{fmt(x.value)}</b>{x.sub ? <span className="fk-muted cg-bs">{x.sub}</span> : null}</li>)}
+      {items.map((x, i) => <li key={i} title={`${x.name}: ${fmt(x.value)}`}>{onPick ? <button type="button" className="cg-bn link" data-testid={testId + '-pick'} onClick={() => onPick(x.name, i)}>{x.name}</button> : <span className="cg-bn">{x.name}</span>}<span className="cg-bt"><span style={{ width: `${Math.max(2, (x.value / max) * 100)}%` }} /></span><b>{fmt(x.value)}</b>{x.sub ? <span className="fk-muted cg-bs">{x.sub}</span> : null}</li>)}
     </ul>
   );
 }

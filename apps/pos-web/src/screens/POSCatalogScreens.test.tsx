@@ -140,6 +140,15 @@ describe('Service Categories', () => {
     expect(screen.getByTestId('review-service_category_mismatch')).toHaveTextContent('Haircut');
     expect(cat.reassign).not.toHaveBeenCalled();
   });
+  it('extras (Nov 11 2026): a chart bar filters the directory to that category, with a visible Clear', async () => {
+    mount(<POSServiceCategoriesScreen />);
+    await screen.findByTestId('breakdown-table');
+    fireEvent.click(screen.getAllByTestId('bars-categories-pick')[0]);
+    expect(await screen.findByTestId('chart-drill')).toHaveTextContent('Nails');
+    await waitFor(() => expect(cat.categories).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Nails' })));
+    fireEvent.click(screen.getByTestId('chart-drill-clear'));
+    expect(screen.queryByTestId('chart-drill')).toBeNull();
+  });
   it('403 is a permission state', async () => {
     cat.categorySummary.mockRejectedValue({ status: 403 });
     mount(<POSServiceCategoriesScreen />);

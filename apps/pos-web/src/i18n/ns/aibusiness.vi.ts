@@ -517,4 +517,14 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "aib.savedSearch": "Tìm câu hỏi đã lưu",
   "aib.sessionLog": "Câu hỏi trong phiên này ({n}) — cũng được lưu trong lịch sử bên dưới",
   "bcx.k.completed": "Đã hoàn tất",
+  "bcx.small": "mẫu nhỏ", // DRAFT — Kevin reviews
+  "bcx.smallTip": "Chỉ có {n} lịch hẹn trong kỳ — tỷ lệ là thật nhưng quá ít để so sánh chi nhánh.", // DRAFT — Kevin reviews
+  "bcx.defs": "Cách tính các số này", // DRAFT — Kevin reviews
+  "bcx.def.net": "Doanh số thuần — các phiếu đã trả trong kỳ của chi nhánh, trước thuế, tip và phụ phí, sau giảm giá (theo Báo cáo doanh số), tính theo ngày của chi nhánh.", // DRAFT — Kevin reviews
+  "bcx.def.avg": "Trung bình mỗi phiếu — Doanh số thuần ÷ số phiếu đã trả. Không áp dụng khi không có phiếu.", // DRAFT — Kevin reviews
+  "bcx.def.bookings": "Lịch hẹn — các lịch hẹn trong kỳ, mọi trạng thái, mỗi lịch tính một lần.", // DRAFT — Kevin reviews
+  "bcx.def.completed": "Hoàn tất — các lịch hẹn được ghi là hoàn tất (lịch đã qua không bị coi là hoàn tất).", // DRAFT — Kevin reviews
+  "bcx.def.completion": "Tỷ lệ hoàn tất — Hoàn tất ÷ Lịch hẹn. Không áp dụng khi không có lịch.", // DRAFT — Kevin reviews
+  "bcx.def.revCompleted": "Doanh thu / lịch hoàn tất — Doanh số thuần ÷ số lịch hoàn tất. Không áp dụng khi không có lịch hoàn tất.", // DRAFT — Kevin reviews
+  "bcx.def.small": "Dưới {n} lịch hẹn được đánh dấu “mẫu nhỏ”: hãy cân nhắc khi so sánh các chi nhánh này.", // DRAFT — Kevin reviews
 };
