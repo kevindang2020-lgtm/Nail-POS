@@ -25,7 +25,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
-import { DiscountDetailsDialog, RedemptionsTable, TONE, life, pageOf, discountLabel } from './POSDiscountsScreen';
+import { DiscountDetailsDialog, RedemptionsTable, TONE, life, pageOf, discountLabel, ticketRoute } from './POSDiscountsScreen';
 import { Actions, AssistantDialog, Campaigns, CheckDialog, DuplicateDialog, Financial, SizePicker, healthTone } from './POSCouponsScreen';
 import { posCouponsApi } from '../api/posCouponsApi';
 import { DealWizard } from './deals/DealWizard';
@@ -122,9 +122,7 @@ export function POSPromotionsScreen() {
   // Promotions guide (Nov 4 2026) "View Receipt": a paid ticket opens its receipt in Transactions; a pending one (code on an
   // unpaid ticket) still opens Checkout
   const openTicket = (ticketId: string) => {
-    const r = (reds.data?.items ?? []).find((x: any) => x.ticketId === ticketId);
-    if (r && r.status !== 'applied' && r.ticketNumber) nav(`/tenant/payments/transactions?search=${encodeURIComponent(r.ticketNumber)}`);
-    else nav(`/checkout?ticket=${encodeURIComponent(ticketId)}`);
+    nav(ticketRoute((reds.data?.items ?? []).find((x: any) => x.ticketId === ticketId), ticketId));
   };
   const [exporting, setExporting] = useState(false);
   const exportCsv = async () => {

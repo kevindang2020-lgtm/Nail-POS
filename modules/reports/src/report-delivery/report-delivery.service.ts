@@ -5,14 +5,14 @@
 // Every attempt is logged with its honest outcome: sent / simulated (no provider in this environment) / not_configured /
 // failed / skipped — never "sent" when nothing left.
 import { sql, type Kysely } from 'kysely';
-import { branchTimeZone, type DB } from '@aipowersalon/database';
+import { branchTimeZone, assertTransition, type DB } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import { hasPermission } from '@aipowersalon/permissions';
 import { isNotConfiguredSender, isSimulatedSender, type EmailSender } from '@aipowersalon/notifications';
 import type { ReportEmailState, ReportEmailSendResult, ReportEmailDelivery, ReportEmailSubscription } from '@aipowersalon/api-contracts/tenant';
 import type { ReportsService } from '../reports/reports.service';
 import type { ReportsContext } from '../reports/reports.repository';
-import { dueOccurrence, renderDailySummaryEmail, SEND_AT_RE, SEND_NOW_PER_HOUR, REPORT_FREQUENCIES, type ReportFrequency, type DeliveryStatus } from './report-delivery.dto';
+import { REPORT_EMAIL_DELIVERY, dueOccurrence, renderDailySummaryEmail, SEND_AT_RE, SEND_NOW_PER_HOUR, REPORT_FREQUENCIES, type ReportFrequency, type DeliveryStatus } from './report-delivery.dto';
 
 export class ReportDeliveryError extends Error {
   constructor(readonly status: 400 | 403 | 404 | 429, message: string) { super(message); }
@@ -124,7 +124,8 @@ export class ReportDeliveryService {
     return r.rows[0]?.id ?? null;
   }
   private async finish(id: string, s: DeliveryStatus, providerId: string | null = null) {
-    await sql`update report_email_deliveries set status = ${s.status}, detail = ${s.detail}, provider_id = ${providerId}, updated_at = now() where id = ${id}`.execute(this.db);
+    assertTransition(REPORT_EMAIL_DELIVERY, 'pending', s.status);   // finished once, from pending
+    await sql`update report_email_deliveries set status = ${s.status}, detail = ${s.detail}, provider_id = ${providerId}, updated_at = now() where id = ${id} and status = 'pending'`.execute(this.db);
   }
 
   private async deliver(ctx: ReportsContext, id: string, from: string, to: string, scheduled: boolean): Promise<DeliveryStatus> {

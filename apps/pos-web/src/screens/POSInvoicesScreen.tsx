@@ -232,6 +232,8 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
         <div className="fn-statusline"><span className={'fk-chip ' + (TONE[inv.displayStatus] ?? 'mut')}>{lbl('finance.iv.status.' + inv.displayStatus, inv.displayStatus)}</span>
           {inv.sentAt ? <span className="fk-hint">{tx('finance.iv.issuedAt', { w: when(inv.sentAt) })}</span> : null}
           {inv.displayStatus === 'void' && inv.voidReason ? <span className="fk-hint">{tx('finance.iv.voidReasonShown', { r: inv.voidReason })}</span> : null}</div>
+        {/* extras (Nov 11 2026) — Readable Receivable Explanations: why this status, from the invoice's own recorded amounts */}
+        <div className="fk-hint" data-testid="status-why">{explainStatus(inv)}</div>
         <div className="fn-cols2">
           <dl className="fk-dl">
             <dt>{tx('finance.iv.billTo')}</dt><dd>{inv.customer.name ?? <span className="fk-muted">{customerText(inv.customer)}</span>}{inv.customer.id ? <> · <button type="button" className="fk-link" onClick={() => onProfile(inv.customer.id!)} data-testid="open-profile">{tx('finance.openCustomer')}</button></> : null}</dd>
@@ -294,6 +296,22 @@ function CatalogPicker({ onPick }: { onPick: (it: { name: string; unitPriceCents
 }
 
 type Line = { description: string; quantity: string; unit: string };
+const addYmd = (ymd: string, k: number) => { const [y, m, d] = ymd.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + k)); return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`; };
+/** why an invoice has its status — from its own recorded totals, payments, credits and due date (nothing inferred) */
+export function explainStatus(inv: { displayStatus: string; totalCents: number; paidCents: number; balanceCents: number; creditedCents?: number; dueDate: string | null }): string {
+  const due = inv.dueDate ? fmtYmdSafe(inv.dueDate) : null;
+  switch (inv.displayStatus) {
+    case 'draft': return tx('finance.iv.why.draft');
+    case 'sent': return due ? tx('finance.iv.why.sentDue', { b: money(inv.balanceCents), d: due }) : tx('finance.iv.why.sent', { b: money(inv.balanceCents) });
+    case 'overdue': return tx('finance.iv.why.overdue', { d: due ?? '—', b: money(inv.balanceCents) });
+    case 'partially_paid': return tx('finance.iv.why.partial', { p: money(inv.paidCents), t: money(inv.totalCents), b: money(inv.balanceCents) });
+    case 'paid': return inv.creditedCents ? tx('finance.iv.why.paidCredit', { p: money(inv.paidCents), c: money(inv.creditedCents) }) : tx('finance.iv.why.paid', { p: money(inv.paidCents) });
+    case 'credited': return tx('finance.iv.why.credited', { c: money(inv.creditedCents ?? 0) });
+    case 'void': return tx('finance.iv.why.void');
+    default: return '';
+  }
+}
+
 function InvoiceForm({ edit, today, onClose, onSaved }: { edit?: Detail; today: string; onClose: () => void; onSaved: (d: Detail, sent: boolean, preview: boolean) => void }) {
   const [customer, setCustomer] = useState<{ id: string; name: string; phone: string | null; email: string | null } | null>(edit?.invoice.customer.id ? { id: edit.invoice.customer.id, name: edit.invoice.customer.name ?? '', phone: edit.invoice.customer.phone, email: edit.invoice.customer.email } : null);
   const [find, setFind] = useState(''); const fq = useDebounced(find.trim(), 300);
@@ -313,6 +331,12 @@ function InvoiceForm({ edit, today, onClose, onSaved }: { edit?: Detail; today: 
   const subtotal = okLines.reduce((a, l) => a + l.quantity * (l.unitPriceCents ?? 0), 0);
   const taxC = tax ? centsFromText(tax) : 0, discC = discount ? centsFromText(discount) : 0;
   const total = subtotal - (discC ?? 0) + (taxC ?? 0);
+  // extras (Nov 11 2026) — Smart Duplicate Invoice Warning: the same customer already has a non-void invoice for this exact
+  // total issued in the last 60 days. A warning only — it never blocks, merges or deletes anything.
+  const dupKey = useDebounced(!edit && customer && total > 0 ? `${customer.id}|${total}` : '', 400);
+  const dup = useLoad(() => (dupKey ? api.list({ preset: 'custom', from: addYmd(today, -60), to: today, dateField: 'issued', customerId: customer!.id, amountMin: total, amountMax: total, sort: 'created_desc', page: 1, pageSize: 5 })
+    : Promise.resolve({ items: [] })), [dupKey]);
+  const dupRow = ((dup.data?.items ?? []) as Row[]).find((r) => r.displayStatus !== 'void');
   const datesBad = !!due && due < issue;
   const valid = !!customer && okLines.length > 0 && !badLine && taxC != null && discC != null && (discC ?? 0) <= subtotal && total > 0 && !datesBad;
   const save = async (send: boolean, preview = false) => {
@@ -366,6 +390,7 @@ function InvoiceForm({ edit, today, onClose, onSaved }: { edit?: Detail; today: 
             <label className="fk-field"><span>{tx('finance.iv.tax')}</span><input inputMode="decimal" value={tax} onChange={(e) => setTax(e.target.value)} placeholder="0.00" /></label>
           </div>
           <dl className="fk-dl"><dt>{tx('finance.iv.subtotal')}</dt><dd>{money(subtotal)}</dd><dt>{tx('finance.iv.col.total')}</dt><dd><b data-testid="form-total">{money(total)}</b></dd></dl>
+          {dupRow ? <div className="fk-note bad" role="status" data-testid="dup-warning"><span>{tx('finance.iv.dupWarning', { n: dupRow.invoiceNumber, d: fmtYmdSafe(dupRow.issueDate), a: money(total) })}</span></div> : null}
           {badLine ? <div className="fk-err">{tx('finance.iv.lineInvalid')}</div> : null}
           {(discC ?? 0) > subtotal ? <div className="fk-err">{tx('finance.iv.discountTooBig')}</div> : null}
           <div className="fk-hint">{tx('finance.iv.serverComputes')}</div>
@@ -392,7 +417,7 @@ function PaymentDialog({ d, today, onClose, onDone }: { d: Detail; today: string
     <FitDialog title={tx('finance.iv.recordPaymentTitle', { n: inv.invoiceNumber })} subtitle={customerText(inv.customer)} onClose={onClose} busy={busy} testId="payment-dialog"
       footer={<><button type="button" className="fk-btn" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
         <button type="button" className="fk-btn primary" disabled={!valid || busy} onClick={submit} data-testid="confirm-payment">{busy ? tx('pos.saving') : tx('finance.iv.confirmPayment', { a: cents != null ? money(cents) : '' })}</button></>}>
-      <dl className="fk-dl"><dt>{tx('finance.iv.col.total')}</dt><dd>{money(inv.totalCents)}</dd><dt>{tx('finance.iv.paidSoFar')}</dt><dd>{money(inv.paidCents)}</dd><dt>{tx('finance.iv.balanceDue')}</dt><dd><b>{money(inv.balanceCents)}</b></dd></dl>
+      <dl className="fk-dl"><dt>{tx('finance.iv.col.total')}</dt><dd>{money(inv.totalCents)}</dd><dt>{tx('finance.iv.paidSoFar')}</dt><dd>{money(inv.paidCents)}</dd><dt>{tx('finance.iv.balanceDue')}</dt><dd><b>{money(inv.balanceCents)}</b></dd>{/* extras — Safe Payment Preview: the balance this payment leaves (the server still decides) */}<dt>{tx('finance.iv.balanceAfter')}</dt><dd data-testid="pay-balance-after">{cents != null && cents > 0 && cents <= inv.balanceCents ? money(inv.balanceCents - cents) : '—'}</dd></dl>
       <div className="fk-grid2">
         <label className="fk-field"><span>{tx('finance.iv.paymentAmount')} *</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} data-autofocus data-testid="pay-amount" /></label>
         <DateField label={tx('finance.iv.paymentDate')} value={date} onChange={setDate} today={today} max={today} required testId="pay-date" />

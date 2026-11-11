@@ -181,7 +181,8 @@ export function POSDiscountsScreen() {
         </div> : null}
         <FitPanel testId="redemptions-list" title={<>{tx('dsc.tab.redemptions')}{count(reds.data)}</>} footer={<Pager info={pageOf(reds.data)} onPage={setPg('redemptions')} label={tx('dsc.tab.redemptions')} />}>
           {reds.error ? <StateBlock error={reds.error} onRetry={reds.reload} /> : !reds.data ? <div className="fk-loading">{tx('pos.loading')}</div> : reds.data.items.length === 0 ? noRows(tx('dsc.noRedemptions'))
-            : <RedemptionsTable rows={reds.data.items} onCoupon={(dealId) => setDetail(dealId)} onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} />}
+            : <RedemptionsTable rows={reds.data.items} onCoupon={(dealId) => setDetail(dealId)} onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)}
+              onTicket={(tid, row) => nav(ticketRoute(row, tid))} />}
         </FitPanel>
       </> : null}
 
@@ -207,12 +208,17 @@ export function POSDiscountsScreen() {
       </> : null}
 
       {detail ? <DiscountDetailsDialog id={detail.id} initialTab={detail.tab} onClose={() => setDetail(null)} onPromotions={promotions} tick={tick}
-        onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} /> : null}
+        onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} onTicket={(tid, row) => nav(ticketRoute(row, tid))} /> : null}
     </div>
   );
 }
 
-export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact = false }: { rows: any[]; onCoupon?: (dealId: string) => void; onCustomer?: (id: string, name: string) => void; onTicket?: (ticketId: string) => void; compact?: boolean }) {
+/** Redemption → receipt (Promotions guide "View Receipt"; extras Nov 11 2026 on Discounts too): a paid ticket opens its
+ *  receipt in Transactions, a code still on an unpaid ticket opens Checkout */
+export const ticketRoute = (r: { ticketId: string; ticketNumber?: string | null; status?: string } | undefined, ticketId: string) =>
+  (r && r.status !== 'applied' && r.ticketNumber ? `/tenant/payments/transactions?search=${encodeURIComponent(r.ticketNumber)}` : `/checkout?ticket=${encodeURIComponent(ticketId)}`);
+
+export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact = false }: { rows: any[]; onCoupon?: (dealId: string) => void; onCustomer?: (id: string, name: string) => void; onTicket?: (ticketId: string, row?: { ticketId: string; ticketNumber?: string | null; status?: string }) => void; compact?: boolean }) {
   return (
     <table className="fk-table fn-table dsc-table" data-testid="redemptions-table">
       <thead><tr><th>{tx('dsc.col.when')}</th><th>{tx('pos.customer')}</th>{compact ? null : <th>{tx('dsc.col.code')}</th>}<th>{tx('dsc.col.ticket')}</th><th className="num t-opt">{tx('dsc.col.subtotal')}</th><th className="num">{tx('dsc.col.discount')}</th><th className="num t-opt2">{tx('dsc.col.final')}</th><th>{tx('pos.status')}</th>{onCoupon ? <th aria-label={tx('finance.actions')} /> : null}</tr></thead>
@@ -220,7 +226,7 @@ export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact
         <td>{whenTime(r.at)}<span className="fk-li-s dsc-ref" title={r.id}>{r.id.slice(0, 8)}</span></td>
         <td>{r.customerId && onCustomer ? <button type="button" className="fk-li-t link" onClick={() => onCustomer(r.customerId, r.customerName ?? '')}>{r.customerName || '—'}</button> : <span>{r.customerName || tx('dsc.noCustomer')}</span>}{r.maskedPhone ? <span className="fk-li-s">{r.maskedPhone}</span> : null}</td>
         {compact ? null : <td><b className="dsc-code">{r.code ?? '—'}</b><span className="fk-li-s">{r.dealName}</span></td>}
-        <td>{r.ticketNumber && r.ticketId && onTicket ? <button type="button" className="fk-li-t link" onClick={() => onTicket(r.ticketId)} data-testid="red-ticket">#{r.ticketNumber}</button> : r.ticketNumber ? '#' + r.ticketNumber : '—'}{r.technician ? <span className="fk-li-s">{r.technician}</span> : null}</td>
+        <td>{r.ticketNumber && r.ticketId && onTicket ? <button type="button" className="fk-li-t link" onClick={() => onTicket(r.ticketId, r)} data-testid="red-ticket">#{r.ticketNumber}</button> : r.ticketNumber ? '#' + r.ticketNumber : '—'}{r.technician ? <span className="fk-li-s">{r.technician}</span> : null}</td>
         <td className="num t-opt">{r.eligibleSubtotalCents == null ? '—' : fmtMoney(r.eligibleSubtotalCents)}</td>
         <td className="num"><b>−{fmtMoney(r.discountCents)}</b>{r.reversedCents ? <span className="fk-li-s">{tx('dsc.reversedAmt', { v: fmtMoney(r.reversedCents) })}</span> : null}</td>
         <td className="num t-opt2">{r.finalCents == null ? '—' : fmtMoney(r.finalCents)}</td>
@@ -240,7 +246,7 @@ const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${Stri
 export interface DetailExtras { tabs?: { key: string; label: string; render: (x: any) => React.ReactNode }[]; footer?: (x: any) => React.ReactNode; managed?: boolean;
   /** Marketing → Deals & Offers reads every kind through its own endpoints (pos/deals-offers); default = the coupon read model */
   load?: (id: string) => Promise<any>; loadRedemptions?: (q: Record<string, unknown>) => Promise<any> }
-export function DiscountDetailsDialog({ id, initialTab, onClose, onPromotions, onCustomer, onTicket, tick, extras }: { id: string; initialTab?: string; onClose: () => void; onPromotions?: () => void; onCustomer: (id: string, name: string) => void; onTicket?: (ticketId: string) => void; tick: number; extras?: DetailExtras }) {
+export function DiscountDetailsDialog({ id, initialTab, onClose, onPromotions, onCustomer, onTicket, tick, extras }: { id: string; initialTab?: string; onClose: () => void; onPromotions?: () => void; onCustomer: (id: string, name: string) => void; onTicket?: (ticketId: string, row?: { ticketId: string; ticketNumber?: string | null; status?: string }) => void; tick: number; extras?: DetailExtras }) {
   const [t, setT] = useState<string>(initialTab ?? 'overview'); const [rp, setRp] = useState(1);
   useEffect(() => { setT(initialTab ?? 'overview'); setRp(1); }, [id, initialTab]);
   const d = useLoad(() => (extras?.load ?? posDiscountsApi.detail)(id), [id, tick]);

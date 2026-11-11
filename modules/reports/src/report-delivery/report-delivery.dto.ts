@@ -3,6 +3,7 @@
 // Money is integer cents; the figures are the Sales Report's own (ReportsService.getSales) — nothing is recomputed here.
 import type { SalesKpis } from '../reports/reports.dto';
 import { addDays } from '@aipowersalon/date-time';
+import { defineStateMachine } from '@aipowersalon/database';
 
 export type ReportFrequency = 'daily' | 'weekly';
 export const REPORT_FREQUENCIES: readonly ReportFrequency[] = ['daily', 'weekly'];
@@ -10,6 +11,14 @@ export const REPORT_FREQUENCIES: readonly ReportFrequency[] = ['daily', 'weekly'
 export const SEND_AT_RE = /^([01][0-9]|2[0-3]):00$/;
 /** one person may e-mail themselves the report at most this many times an hour (Email Report button) */
 export const SEND_NOW_PER_HOUR = 5;
+
+/** report_email_deliveries.status — an attempt is recorded 'pending' and finished exactly once with its honest outcome */
+export const REPORT_EMAIL_DELIVERY = defineStateMachine({
+  name: 'report_email_delivery', table: 'report_email_deliveries', column: 'status',
+  states: ['pending', 'sent', 'simulated', 'failed', 'not_configured', 'skipped'],
+  transitions: { pending: ['sent', 'simulated', 'failed', 'not_configured', 'skipped'], sent: [], simulated: [], failed: [], not_configured: [], skipped: [] },
+  initial: ['pending'],
+});
 
 export interface DeliveryStatus { status: 'sent' | 'simulated' | 'failed' | 'not_configured' | 'skipped'; detail: string | null }
 

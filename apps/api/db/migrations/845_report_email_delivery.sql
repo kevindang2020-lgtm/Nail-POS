@@ -25,13 +25,15 @@ CREATE TABLE IF NOT EXISTS report_email_subscriptions (
   updated_by     UUID
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_report_email_subscriptions_owner ON report_email_subscriptions (tenant_id, owner_user_id, report_key);
+-- the salon-keyed target for the deliveries' composite foreign key (a delivery can never point at another salon's schedule)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_report_email_subscriptions_tenant_id ON report_email_subscriptions (tenant_id, id);
 CREATE INDEX IF NOT EXISTS ix_report_email_subscriptions_due ON report_email_subscriptions (active, tenant_id);
 
 CREATE TABLE IF NOT EXISTS report_email_deliveries (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id        UUID NOT NULL REFERENCES tenants(id),
   branch_id        UUID,
-  subscription_id  UUID REFERENCES report_email_subscriptions(id) ON DELETE SET NULL,
+  subscription_id  UUID,   -- schedules are never deleted (turning one off keeps it), so no delete action is needed
   owner_user_id    UUID NOT NULL,
   report_key       TEXT NOT NULL DEFAULT 'daily_summary',
   kind             TEXT NOT NULL CHECK (kind IN ('now', 'scheduled')),
@@ -43,7 +45,8 @@ CREATE TABLE IF NOT EXISTS report_email_deliveries (
   occurrence_key   TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_by       UUID   -- the person (send-now) or NULL for the scheduler
+  updated_by       UUID,   -- the person (send-now) or NULL for the scheduler
+  CONSTRAINT fk_report_email_deliveries_subscription FOREIGN KEY (tenant_id, subscription_id) REFERENCES report_email_subscriptions (tenant_id, id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_report_email_deliveries_occurrence ON report_email_deliveries (tenant_id, occurrence_key) WHERE occurrence_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_report_email_deliveries_tenant ON report_email_deliveries (tenant_id, created_at DESC);

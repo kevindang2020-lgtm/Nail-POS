@@ -154,4 +154,29 @@ describe('POSInvoicesScreen', () => {
     const attempts = await screen.findByTestId('delivery-attempts');
     expect(attempts).toHaveTextContent('Submitted'); expect(attempts).not.toHaveTextContent('Delivered');
   });
+  it('extras (Nov 11 2026): the payment dialog shows the balance the payment leaves; detail says why the status', async () => {
+    api.detail.mockResolvedValue(detail());
+    mount();
+    fireEvent.click(await screen.findByText('INV-0002'));
+    expect(await screen.findByTestId('status-why')).toHaveTextContent('Past its due date');
+    fireEvent.click(screen.getByTestId('record-payment'));
+    fireEvent.change(await screen.findByTestId('pay-amount'), { target: { value: '4.00' } });
+    expect(screen.getByTestId('pay-balance-after')).toHaveTextContent('$6.00');
+    fireEvent.change(screen.getByTestId('pay-amount'), { target: { value: '40.00' } });   // more than the balance
+    expect(screen.getByTestId('pay-balance-after')).toHaveTextContent('—');
+  });
+  it('extras (Nov 11 2026): same customer + same total in the last 60 days warns, never blocks', async () => {
+    api.lookupCustomers.mockResolvedValue({ items: [{ id: 'c-1', name: 'John Smith', phone: '(856) 555-1234', email: null, invoices: 1 }] });
+    mount();
+    await screen.findByText('INV-0002');
+    api.list.mockResolvedValue(pageOf([inv({ id: 'i-9', invoiceNumber: 'INV-0009', displayStatus: 'sent', issueDate: '2026-10-20', totalCents: 4500 })]));
+    fireEvent.click(screen.getByTestId('new-invoice'));
+    fireEvent.change(screen.getByTestId('line-desc'), { target: { value: 'Gel manicure' } });
+    fireEvent.change(screen.getByTestId('line-price'), { target: { value: '45.00' } });
+    fireEvent.change(screen.getByTestId('customer-find'), { target: { value: 'John' } });
+    fireEvent.click(await screen.findByTestId('customer-option'));
+    expect(await screen.findByTestId('dup-warning', {}, { timeout: 3000 })).toHaveTextContent('INV-0009');
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ customerId: 'c-1', amountMin: 4500, amountMax: 4500, dateField: 'issued', preset: 'custom' })));
+    expect(screen.getByTestId('save-draft')).not.toBeDisabled();
+  });
 });

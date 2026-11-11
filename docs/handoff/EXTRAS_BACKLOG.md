@@ -6,14 +6,14 @@ triaged). Status: **TODO** · **BUILT** (built + tested this arc, commit named) 
 
 Nothing is marked BUILT or EXISTS without the code being opened and the test named.
 
-## Progress (updated Nov 10 2026, 03:00 New York)
+## Progress (updated Nov 11 2026, 01:00 New York)
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 31 (incl. part) |
-| EXISTS (opened and named) | 120 (incl. part) |
+| BUILT this arc | 40 (incl. part) |
+| EXISTS (opened and named) | 129 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 18 |
-| TODO | 1649 |
+| TODO | 1631 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -47,16 +47,16 @@ Decisions:
 | 01 | One-click Invoices Health Checker Verify API wiring, KPI reconciliation, missing customer links, invalid dates, status transitions, paging, payment records, and all available invoice actions; explain failing source IDs. | BUILT — shared read-only Check Invoices System (GET pos/system-checks/invoices, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 02 | Automatic Screen Fit Health Checker Admin/dev diagnostic that captures CSS viewport, panel bounds, overflow, clipped controls, touch target issues and layout screenshots at supported resolutions. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Full Invoice Timeline Inside Invoice Details, show issue, send, open (if supported), partial/full payments, void/credit events, user actor and authoritative timestamps. | BUILT — Invoice detail → Timeline (created, sent, each payment with who recorded it, credit notes, paid, voided) from recorded dates only; InvoiceTimeline test 2/2 |
-| 04 | Unpaid & Overdue Priority View Add an optional status view for genuinely outstanding invoices, based on validated due date and unpaid balance; do not overwrite the default newest-first behavior. | TODO |
+| 04 | Unpaid & Overdue Priority View Add an optional status view for genuinely outstanding invoices, based on validated due date and unpaid balance; do not overwrite the default newest-first behavior. | EXISTS — status filter "Overdue" + Outstanding/Overdue KPIs (POSInvoicesScreen STATUSES, kpi-outstanding); default stays newest first |
 | 05 | Customer Identity Integrity Checker Detect invalid customer joins, missing bill-to snapshots, tenant-mismatched links and stale display mapping; recommend approved repairs without guessing identities. | BUILT — shared read-only Check Invoices System (GET pos/system-checks/invoices, components/SystemCheck); pgtest 5/5 + PG16 run |
-| 06 | Safe Payment Preview Before recording an external/cash payment, show balance before/after, method, amount, reference and explicit confirmation. No automatic card charge. | TODO |
-| 07 | Readable Receivable Explanations Explain why an invoice is Outstanding, Partially Paid, Paid, Overdue or Void by linking to posted payments and credits. Owner-requested specification • November 2026 Addendum page 14 AI P | TODO |
-| 08 | Smart Duplicate Invoice Warning Warn on suspicious duplicate customer, amount, period and source transaction; never auto-delete or merge records. | TODO |
-| 09 | Document Delivery Eligibility Checker Check authorized email/phone, tenant configuration, sender readiness and proper consent before enabling Send/Resend. | TODO |
+| 06 | Safe Payment Preview Before recording an external/cash payment, show balance before/after, method, amount, reference and explicit confirmation. No automatic card charge. | BUILT — payment dialog shows total, paid so far, balance due AND "Balance after this payment" before Confirm (pay-balance-after); no card charge; POSInvoicesScreen.test |
+| 07 | Readable Receivable Explanations Explain why an invoice is Outstanding, Partially Paid, Paid, Overdue or Void by linking to posted payments and credits. Owner-requested specification • November 2026 Addendum page 14 AI P | BUILT — invoice detail "why this status" line from its own totals, payments, credits and due date (explainStatus, status-why); extras test 1/1 + screen test |
+| 08 | Smart Duplicate Invoice Warning Warn on suspicious duplicate customer, amount, period and source transaction; never auto-delete or merge records. | BUILT — new-invoice form warns when the same customer has a non-void invoice for the exact total issued in the last 60 days (dup-warning); never blocks/merges; screen test |
+| 09 | Document Delivery Eligibility Checker Check authorized email/phone, tenant configuration, sender readiness and proper consent before enabling Send/Resend. | EXISTS — Email/Text buttons enabled only when the sender is connected, the customer has the destination and consent (delivery.canSend), and the user may send; drafts must be issued first |
 | 10 | Export and Audit Protection Provide a visibly scoped export preview, role checks, safe spreadsheet escaping and an audit record; preserve existing export behavior. | TODO |
 | 11 | Payment-to-Invoice Reconciliation Detect unlinked posted payments, duplicate references and balance mismatches; suggest investigation, never change financial records automatically. | TODO |
 | 12 | No-Data and Failure States Use clear zero-invoice, no-search-results, failed-API, offline and unsupported-integration states instead of empty white panels. | TODO |
-| 13 | Customer Profile Cross-Link A receptionist can click the customer name to open the authorized Customer Profile, then return to the same invoice search/page context. | TODO |
+| 13 | Customer Profile Cross-Link A receptionist can click the customer name to open the authorized Customer Profile, then return to the same invoice search/page context. | EXISTS — invoice detail Bill-to → Open customer (open-profile) to Customer Profiles; profile → invoices arrives with ?customerId= filter |
 | 14 | Release-gate Module Registry Generate a before/after inventory of original and discovered modules, their routes, API calls, permission rules and test status; fail release if a module disappears. Owner-requested specifica | TODO |
 
 ## Customer Notes 6 (18)
@@ -474,17 +474,17 @@ Decisions:
 |---|---|---|
 | 01 | Discounts Accuracy Reconcile the five KPIs, rule lifecycles, eligibility and expiration definitions. | TODO |
 | 02 | Screen Fit & Module Health Find cropped buttons, overlapped popovers, inconsistent KPI dimensions, hidden pager and sideways page overflow. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 03 | Coupon Eligibility & Limits Explain min spend, exclusions, caps, expiration, branch rules and allowed customer segments. | TODO |
+| 03 | Coupon Eligibility & Limits Explain min spend, exclusions, caps, expiration, branch rules and allowed customer segments. | EXISTS — discount details Eligibility and Limits sections (dd-eligibility, dd-limits: min purchase, caps/remaining, dates, branch) in POSDiscountsScreen |
 | 04 | Redemption Integrity Identify duplicate use, pending-vs-confirmed confusion, bad timestamps and idempotency errors. | TODO |
 | 05 | Checkout & Payment Wiring Verify discount preview, confirmed ticket, Fiserv callback status and downstream receipt agreement. | TODO |
 | 06 | Tenant Security & Permissions Check tenant isolation, code masking, customer access, audit coverage and unauthorized overrides. Health Checker output standard • Each check returns Pass / Warning / Failed / Not Verified,  | BUILT — shared read-only Check Discounts System (GET pos/system-checks/discounts, components/SystemCheck); pgtest 5/5 + PG16 run |
-| 07 | Readable No-Data State. Explain genuine zero records separately from no permission, API unavailable and filtered-out results. | TODO |
+| 07 | Readable No-Data State. Explain genuine zero records separately from no permission, API unavailable and filtered-out results. | EXISTS — filtered-out results ("No discounts match …" + Clear filters) are told apart from a genuine zero; 403 → permission message (POSDiscountsScreen.403.test) |
 | 08 | Role-Aware Export Preview. Preview number of matching records and applied PII masking before authorized download. Implementation instructions / 07 November 2026 Addendum page 19 AI POWERSALON / DISCOUNTS MANAGEMENT SUNMI | TODO |
 | 09 | Automatic Savings Explanation. Display eligible subtotal, rule calculation, cap/exclusion adjustment and total saving as separate lines. | TODO |
 | 10 | Stacking Conflict Advisor. When membership, loyalty, gift card or another coupon overlaps, show which verified policy wins. | TODO |
 | 11 | Refund Impact Preview. Before authorized refund, show original discount allocation and whether coupon-use reversal applies under existing policy. | TODO |
 | 12 | Duplicate Provider Event Alert. Flag duplicate payment callbacks and repeated coupon commit attempts without counting extra uses. | TODO |
-| 13 | Redemption to Receipt Drilldown. Link promotion usage to immutable checkout evidence and the corresponding customer record. | TODO |
+| 13 | Redemption to Receipt Drilldown. Link promotion usage to immutable checkout evidence and the corresponding customer record. | BUILT — every redemption row links its ticket (red-ticket: paid → its receipt in Transactions, unpaid → Checkout; shared ticketRoute with Promotions) and the customer record; POSDiscountsScreen.ticket test |
 | 14 | Configuration Drift Monitor. Compare displayed discount eligibility with canonical Promotions config and active branch state. | TODO |
 | 15 | Auto-Fit Regression Suite. Capture screenshots and overflow assertions for the target SUNMI and fallback CSS viewports. | TODO |
 | 16 | Safe Change / Rollback Report. Produce a diff of touched components and show what was changed, preserved, verified or rolled back. Priority Prioritize viewport-fit and module preservation, then financial correctness and  | TODO |
@@ -526,7 +526,7 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Screen Fit Self-Test A read-only “Check Screen Fit” diagnostic showing actual viewport, sidebar width, overflow and too-small tap targets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 02 | Balanced Layout Presets Comfortable / Compact density per tenant device; never use global browser zoom or erase controls. | TODO |
+| 02 | Balanced Layout Presets Comfortable / Compact density per tenant device; never use global browser zoom or erase controls. | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
 | 03 | Promotion Quick Preview Inspect effective terms and sample eligible ticket without saving a redemption or charging a card. | TODO |
 | 04 | Expiration Calendar See upcoming expiration by branch; link back to same canonical promotion ID. | TODO |
 | 05 | Promotion Cloning Duplicate safely into Draft with a new code/version; never copy completed uses or approval. | TODO |
@@ -1149,7 +1149,7 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | One-Click Layout & Module Fit Health Add a read-only visual QA subcheck under existing AI Customer Profile System Health: viewport, overflow, card sizes, focus/keyboard occlusion, date-picker placement, inaccessible Clos | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 02 | Smart Balanced Layout Presets Optional Touch Comfortable / Compact mode, persisted in existing tenant UI preferences (if applicable). No global browser zoom; allow choice to display more rows while respecting min font/to | TODO |
+| 02 | Smart Balanced Layout Presets Optional Touch Comfortable / Compact mode, persisted in existing tenant UI preferences (if applicable). No global browser zoom; allow choice to display more rows while respecting min font/to | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
 | 03 | Evidence + Freshness Status Show provenance and stale/last-refreshed indicators on existing preferences, services, VIP/retention summaries and note drafts; never create parallel source ledgers. | TODO |
 | 04 | Customer Snapshot panel Read-only customer context preview in the real Customer Profile overlay with links to Booking/History/Notes; avoid duplicate profile records or full private details on the AI subscription home. | TODO |
 | 05 | Slow Network / AI Failure resilience Use skeletons and stable card heights, bounded retries, cached authorized metadata where safe, never obscure existing customer/booking services during an AI outage. | TODO |
@@ -1474,7 +1474,7 @@ Decisions:
 | 10 | Source verification Click KPI or result to open existing authorized source; do not create a new ledger. | TODO |
 | 11 | Campaign approval timeline Versioned audit of reviewer, content, audience, channel and cap. | TODO |
 | 12 | Permission-safe branch comparisons Owner-authorized aggregated metrics; distinct tenant recipient lists remain separated. | TODO |
-| 13 | Accessible operator mode Touch targets, keyboard/focus, readable status descriptions and optional density settings. | TODO |
+| 13 | Accessible operator mode Touch targets, keyboard/focus, readable status descriptions and optional density settings. | TODO (density part built: Compact spacing; touch / keyboard / status parts not) |
 | 14 | Read-only performance telemetry Log frontend render and queue latency by tenant safely, excluding PII. AUDIT FIRST / PRESERVE ALL MODULES / APPROVED SENDS ONLY ADDENDUM PAGE 18 AI POWERSALON / AI MARKETING ASSISTANT SUNM | TODO |
 | 17 | Multi-branch intelligence and strict tenant isolation Owners may manage multiple locations, but that does not create platform-wide permission. Cross-branch and cross-tenant aggregation must follow existing explicit owner | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 18 | AI gateway, data pipeline and persistence Preserve the platform stack (React/NestJS/PostgreSQL/Redis/object storage/queue/AI Gateway) where confirmed by the repository. This document specifies logical roles, not assumed  | TODO |
@@ -1520,16 +1520,16 @@ Decisions:
 |---|---|---|
 | 01 | Smart expense attention bar Small alerts for missing receipts, incomplete categories, overdue reviews, duplicate risk. Opens existing detail views. | TODO |
 | 02 | Receipt-to-expense Suggest links for uploaded receipts and invoices using existing backend data; require user matching confirmation. | TODO |
-| 03 | Expense approval queue If supported by policy, add an owner/manager review state without overwriting current expense posting semantics. | TODO |
-| 04 | KPI cards Total Expenses; Expense Entries; Top Category; Categories Used. Preserve click-through if implemented. Expense work area Search; category/method filters; sorting; expense table; record counts; loading/empty/err | TODO |
+| 03 | Expense approval queue If supported by policy, add an owner/manager review state without overwriting current expense posting semantics. | EXISTS — pending_review state with Approve / Void for approvers (act-approve, canApprove); posting semantics unchanged |
+| 04 | KPI cards Total Expenses; Expense Entries; Top Category; Categories Used. Preserve click-through if implemented. Expense work area Search; category/method filters; sorting; expense table; record counts; loading/empty/err | EXISTS — KPI cards Total Expenses / Entries / Top Category / Categories Used (finance.ex.kpi.*) with search, category/method filters, sort |
 | 05 | Better vendor lookup Tenant-scoped vendor suggestions using canonical vendor IDs; do not create duplicates from similar names. | TODO |
 | 06 | Monthly spending trend Compact drill-down in reports or overlay; use actual filtered data, not default fake charts. | TODO |
 | 07 | Duplicate guard before save Warn for matching vendor/date/amount/receipt hash but allow authorized resolution and audit it. | EXISTS — duplicate detection on save (finance detectExpenseDuplicates, duplicate_status possible/exact, override needs a reason) — each decision now shows in the expense History |
-| 08 | Receipt/OCR confidence Clearly separate “suggested by OCR” from “verified by staff”; never silently post. review | TODO |
+| 08 | Receipt/OCR confidence Clearly separate “suggested by OCR” from “verified by staff”; never silently post. review | EXISTS — receipt upload goes to the Receipt AI review queue; nothing posts without a person (POSExpensesScreen upload → /tenant/ai/ocr-receipt) |
 | 09 | Export quality preview Preview date scope, counts and columns; protect CSV and PII before generating. | TODO |
-| 10 | Accessible bilingual Use current Front Desk EN/VN localization with robust text growth, no hardcoded English controls placeholders. | TODO |
+| 10 | Accessible bilingual Use current Front Desk EN/VN localization with robust text growth, no hardcoded English controls placeholders. | EXISTS — every control behind t() with EN/VI (pos-i18n gate: no raw JSX text), Vietnamese harness certified |
 | 11 | Safe multi-branch view Owners see only authorized branches; per-branch scope follows existing permissions and reporting definitions. | TODO |
-| 12 | Layout density setting Optional Compact/Comfortable for staff only if all essential controls remain readable and current global system supports it. NEW INSTRUCTIONS / Original 18-page expenses guide preserved after this  | TODO |
+| 12 | Layout density setting Optional Compact/Comfortable for staff only if all essential controls remain readable and current global system supports it. NEW INSTRUCTIONS / Original 18-page expenses guide preserved after this  | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
 
 ## PHONE NUMBER MANAGEMENT 4 (16)
 
@@ -2052,7 +2052,7 @@ Decisions:
 | 01 | Layout Health Checker: add read-only “Check Screen Fit” diagnostic available to authorized POS managers/developers. It reports viewport, clipped primary controls, content overflow and minimum control sizes without changi | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Visible “Saved vs Effective” chip: each row and top summary should distinguish persisted settings, currently effective worker version and config drift. Prevent “Saved” from being mistaken for running protection. | TODO |
 | 03 | Consistent card and table design tokens: one reusable balanced layout pattern across Settings, Rules, Alerts and Investigations; preserve each page’s existing fields and workflows. | TODO |
-| 04 | Optional manager compact-density preference: choose comfortable or compact spacing without removing fields, disabling scrolling or changing rule evaluation; remember per authorized user. | TODO |
+| 04 | Optional manager compact-density preference: choose comfortable or compact spacing without removing fields, disabling scrolling or changing rule evaluation; remember per authorized user. | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
 | 05 | Safe recovery: after a failed Save or lost connection, offer Reload Current, Compare Changes and Retry with explicit confirmation; never silently overwrite concurrent edits. | TODO |
 | 06 | Phase 5 - Cross-module verification. Verify Rules → Alerts → human Investigations and source ledger boundaries, prevention OFF, tenant isolation, Fiserv/Checkout compatibility and iPhone app non-interference. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 07 | Phase 6 - Visual and E2E proof. Run all documented screen sizes, actual SUNMI kiosk/browser viewport, EN/VN, touch/keyboard, regression tests and screenshot diffs. Repair failures. | TODO |
@@ -2494,7 +2494,7 @@ Decisions:
 | 06 | Usage Anomaly & Duplicate Event Monitor Flag sudden metering spikes, duplicate IDs or stale ingestion; protect hard caps and actual records. | TODO |
 | 07 | Price Change Transparency Show effective price source, version, override, grandfathering and approved comparison before any new purchase. | TODO |
 | 08 | One-click Billing-to-Usage Reconciliation Cross-check invoice, active entitlements, provider confirmations and counted usage without creating new ledgers. | TODO |
-| 09 | Adaptive Catalog View Preferences Allow permitted Compact/Comfortable density preference; keep all cards intact, avoid hidden data and persist per device. | TODO |
+| 09 | Adaptive Catalog View Preferences Allow permitted Compact/Comfortable density preference; keep all cards intact, avoid hidden data and persist per device. | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
 | 10 | Search, month calendars, history and pagination Static catalog cards (15 total) and five bundles remain discoverable through responsive search/scroll. Numbered pages apply to dynamic event history, not to hiding the comp | TODO |
 
 ## Membership Overview (16)

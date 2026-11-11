@@ -332,4 +332,15 @@ export const FINANCE_VI: Record<string, string> = {
   'pos.cash_drawer_register': 'Quầy',
   'pos.cash_drawer_unassigned': 'Tiền mặt chưa gán quầy',
   "gc.clearingOpen": "Bảng đầy đủ · chọn ngày",
+  "finance.iv.balanceAfter": "Còn lại sau lần trả này", // DRAFT — Kevin reviews
+  "finance.iv.dupWarning": "Khách này đã có hóa đơn {n} số tiền {a}, xuất ngày {d}. Hãy kiểm tra để tránh trùng trước khi lưu.", // DRAFT — Kevin reviews
+  "finance.iv.why.draft": "Bản nháp — chưa xuất nên chưa phải trả cho tới khi gửi.", // DRAFT — Kevin reviews
+  "finance.iv.why.sent": "Đã xuất, chưa ghi nhận thanh toán — còn {b}.", // DRAFT — Kevin reviews
+  "finance.iv.why.sentDue": "Đã xuất, chưa ghi nhận thanh toán — còn {b}, hạn {d}.", // DRAFT — Kevin reviews
+  "finance.iv.why.overdue": "Đã quá hạn ({d}), còn {b} chưa trả.", // DRAFT — Kevin reviews
+  "finance.iv.why.partial": "Đã trả {p} trên {t} — còn {b}.", // DRAFT — Kevin reviews
+  "finance.iv.why.paid": "Đã trả đủ (ghi nhận {p}).", // DRAFT — Kevin reviews
+  "finance.iv.why.paidCredit": "Đã tất toán: trả {p} và ghi có {c}.", // DRAFT — Kevin reviews
+  "finance.iv.why.credited": "Đã đóng bằng giấy ghi có ({c}).", // DRAFT — Kevin reviews
+  "finance.iv.why.void": "Đã hủy — không còn tính vào số dư nào.", // DRAFT — Kevin reviews
 };

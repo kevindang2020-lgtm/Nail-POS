@@ -461,6 +461,18 @@ Compliance (decision 6 — no source system), seed clean-up (7), Vietnamese draf
    never fonts or touch targets — so a page certified in Standard still fits. Stored per device. Test 2/2.
 6. **Push** — done at the end of this round (see the commit list).
 
+**Found by the full API suite and fixed (my migration 845):** the delivery → schedule link was a plain foreign key; it is
+now salon-keyed `(tenant_id, subscription_id) → (tenant_id, id)` (tenant-consistency B-12); delivery status writes go
+through a declared state machine `REPORT_EMAIL_DELIVERY` (pending → one outcome, guarded `where status = 'pending'`);
+the state vocabulary file regenerated.
+
+**Extras backlog this round** (EXTRAS_BACKLOG.md): Invoices — BUILT balance-after-payment preview, plain-language
+"why this status", duplicate-invoice warning (same customer + exact total within 60 days, never blocks); EXISTS overdue
+view, delivery eligibility, customer cross-link. Discounts — BUILT ticket drill-down on every redemption row (shared
+`ticketRoute` with Promotions); EXISTS eligibility/limits, honest no-data states. Expenses — EXISTS approval queue, KPI
+cards, OCR review-before-post, EN/VI. Density rows that ask for an optional setting — BUILT by Compact spacing.
+Totals now: 40 built · 129 exists · 18 noise · 1,631 to do (of 1,818).
+
 ## Decisions for Kevin (batch 9)
 
 1. **Email Report / Schedule Report** (Daily Summary) stay labelled "not connected" — wiring them needs a delivery

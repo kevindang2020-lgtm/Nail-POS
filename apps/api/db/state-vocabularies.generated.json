@@ -2086,6 +2086,14 @@
    "published",
    "retired"
   ],
+  "report_email_deliveries.status": [
+   "failed",
+   "not_configured",
+   "pending",
+   "sent",
+   "simulated",
+   "skipped"
+  ],
   "residual_statements.import_status": [
    "failed",
    "imported",
