@@ -613,6 +613,16 @@ export class InventoryService {
         sets.push(sql`${sql.ref(col)} = ${val}`);
       }
     }
+    // concurrent-edit protection (Products backlog · 17): with expectedUpdatedAt (the updatedAt the form was opened with), a
+    // product changed elsewhere since then is refused with 409 PRODUCT_CHANGED instead of being silently overwritten
+    const expected = typeof b?.expectedUpdatedAt === 'string' && b.expectedUpdatedAt && !Number.isNaN(Date.parse(b.expectedUpdatedAt)) ? new Date(b.expectedUpdatedAt).toISOString() : null;
+    if (sets.length && expected) {
+      const upd = await sql`UPDATE inventory_products SET ${sql.join(sets, sql`, `)}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}
+        AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ${expected}::timestamptz)`.execute(this.need());
+      if (!Number(upd.numAffectedRows ?? 0)) throw new InventoryError(409, 'This product was changed on another device since you opened it. Reload and try again.', { code: 'PRODUCT_CHANGED' });
+      await this.audit(ctx, 'inventory_product_updated', id, null, { fields: Object.keys(b || {}).filter((k) => k !== 'expectedUpdatedAt') });
+      return this.getProduct(ctx, id);
+    }
     if (sets.length) { await sql`UPDATE inventory_products SET ${sql.join(sets, sql`, `)}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need()); await this.audit(ctx, 'inventory_product_updated', id, null, { fields: Object.keys(b || {}) }); }
     return this.getProduct(ctx, id);
   }

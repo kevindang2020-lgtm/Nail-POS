@@ -56,6 +56,13 @@ export class InvestigationService {
     if (input.severity != null && !(INVESTIGATION_SEVERITIES as readonly string[]).includes(input.severity)) throw new MoneyProtectionValidationError(`Severity must be one of ${INVESTIGATION_SEVERITIES.join(', ')}.`);
     const alertIds = [...new Set(input.alertIds ?? [])];
     const linked = alertIds.length ? await this.alerts.getAlertsByIds(ctx, alertIds) : [];
+    // One case per incident: when every linked alert already belongs to the SAME case (a repeated click, a second device),
+    // that case is returned instead of opening a duplicate. Alerts spread over different cases still open a new one.
+    const existing = [...new Set(linked.map((a) => a.investigationId))];
+    if (linked.length && existing.length === 1 && existing[0]) {
+      const prior = await this.repo.get(ctx, existing[0]);
+      if (prior) return prior;
+    }
     // snapshot value + related entities from the linked alerts (tenant-scoped by getAlertsByIds)
     const valueUnderReviewCents = linked.reduce((s, a) => s + (a.amountCents || 0), 0);
     const userIds = [...new Set(linked.flatMap((a) => a.related.userIds ?? []))];

@@ -40,7 +40,7 @@ const productSnake = {
   category_id: id, brand_id: id, preferred_vendor_id: id,
 };
 export const INV_PRODUCT_CREATE_BODY: BodySchema = S.object(productCamel);
-export const INV_PRODUCT_UPDATE_BODY: BodySchema = S.object({ ...productCamel, ...productSnake });
+export const INV_PRODUCT_UPDATE_BODY: BodySchema = S.object({ ...productCamel, ...productSnake, expectedUpdatedAt: str(64) });   // concurrent-edit guard (optional)
 export const INV_STOCK_OVERRIDES_BODY: BodySchema = S.object({
   reorderLevelOverride: num, reorderQuantityOverride: num, criticalLevelOverride: num, leadTimeDaysOverride: num, preferredVendorIdOverride: id, expectedVersion: num,
 });

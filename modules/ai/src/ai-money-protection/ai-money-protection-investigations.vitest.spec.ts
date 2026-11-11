@@ -42,6 +42,21 @@ describe('InvestigationService — create + link', () => {
   });
 });
 
+describe('InvestigationService — one case per incident', () => {
+  it('a repeated open for alerts already in a case returns that case (no duplicate)', async () => {
+    const { svc, alertId } = await setup();
+    const first = await svc.create(ctx(PERMS.investigate), { title: 'Dup charge', alertIds: [alertId] });
+    const again = await svc.create(ctx(PERMS.investigate), { title: 'Dup charge', alertIds: [alertId] });
+    expect(again.id).toBe(first.id);
+  });
+  it('a case without alerts is always new', async () => {
+    const { svc } = await setup();
+    const a = await svc.create(ctx(PERMS.investigate), { title: 'manual' });
+    const b = await svc.create(ctx(PERMS.investigate), { title: 'manual' });
+    expect(a.id).not.toBe(b.id);
+  });
+});
+
 describe('InvestigationService — append-only notes', () => {
   it('accumulates notes in order and never rewrites them', async () => {
     const { svc, alertId } = await setup();

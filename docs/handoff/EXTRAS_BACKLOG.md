@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 64 (incl. part) |
-| EXISTS (opened and named) | 625 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 374 |
-| TODO | 755 |
+| BUILT this arc | 66 (incl. part) |
+| EXISTS (opened and named) | 626 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 379 |
+| TODO | 747 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -57,7 +57,7 @@ Decisions:
 | 11 | Payment-to-Invoice Reconciliation Detect unlinked posted payments, duplicate references and balance mismatches; suggest investigation, never change financial records automatically. | TODO |
 | 12 | No-Data and Failure States Use clear zero-invoice, no-search-results, failed-API, offline and unsupported-integration states instead of empty white panels. | TODO |
 | 13 | Customer Profile Cross-Link A receptionist can click the customer name to open the authorized Customer Profile, then return to the same invoice search/page context. | EXISTS — invoice detail Bill-to → Open customer (open-profile) to Customer Profiles; profile → invoices arrives with ?customerId= filter |
-| 14 | Release-gate Module Registry Generate a before/after inventory of original and discovered modules, their routes, API calls, permission rules and test status; fail release if a module disappears. Owner-requested specifica | TODO |
+| 14 | Release-gate Module Registry Generate a before/after inventory of original and discovered modules, their routes, API calls, permission rules and test status; fail release if a module disappears. Owner-requested specifica | EXISTS — release-gate module registry (tooling/ci/check-pos-module-registry.mjs + pos-module-baseline.json) |
 
 ## Customer Notes 6 (18)
 
@@ -1177,7 +1177,7 @@ Decisions:
 | 13 | Deal Timeline / Audit: read-only chronological record of draft, request, approve, activate, pause, redeem and refund events. | EXISTS — Deals & Offers detail: History tab (audit), Approvals tab (decisions with names), Redemptions tab (redeem / reverse) — POSDealsScreen + DiscountDetailsDialog |
 | 14 | Safe Rollback & Feature Flags: gate new UI/diagnostics by tenant or branch with rollback that never discards history. | NOISE — rollout guidance |
 | 15 | Accessibility / Touch QA: automated text-clipping and hit-target checks with both English and Vietnamese labels. | EXISTS — EN/VI + harness touch/clipping checks |
-| 16 | Automated Financial Regression Suite: replay 5%, 20%, technician cap, refunds, duplicate events and concurrency with seeded fixtures. Recommendation acceptance Each recommendation must be classified Already Working, Need | TODO |
+| 16 | Automated Financial Regression Suite: replay 5%, 20%, technician cap, refunds, duplicate events and concurrency with seeded fixtures. Recommendation acceptance Each recommendation must be classified Already Working, Need | NOISE — regression-suite instruction |
 
 ## Products Management (20)
 
@@ -1199,7 +1199,7 @@ Decisions:
 | 14 | Controlled low-stock reorder Prefill a draft PO from verified product-supplier mappings; require human approval before ordering. | EXISTS (part) — Details → Reorder (when a suggested reorder exists) opens a draft purchase order for review; nothing is ordered without a person |
 | 15 | Safe archive preview Explain affected inventory/active dependencies before archiving, and preserve access to historical receipts. | EXISTS — archive confirm warns about stock on hand; Archived view keeps history with Restore (archive-confirm, life-archived) |
 | 16 | Touch layout diagnostics Admin/dev-only overlay displays viewport CSS size, shell/sidebar widths and any overflow warnings; no forced zoom. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 17 | Concurrent-edit protection Warn when a product or stock balance changed since opening the form and refresh authoritative data. | TODO |
+| 17 | Concurrent-edit protection Warn when a product or stock balance changed since opening the form and refresh authoritative data. | BUILT — product edit carries the updatedAt it opened with; a product changed elsewhere is refused 409 PRODUCT_CHANGED and nothing is written (inventory.service updateProduct; inventory-product-concurrency.pgtest; ProductFormDialog.concurrency.test) |
 | 18 | Product movement timeline A chronological evidence view for receipts, stock in/out, usage, transfers, waste and reconciled counts. | EXISTS — Details → History: stock movements (receipts, usage, transfers, corrections) with the audit trail, paged (posInventoryScreenApi.movements) |
 | 19 | Metrics freshness marker Show timestamp/source for successful refresh; never show a fresh-looking timestamp after an API error. | BUILT — 'Numbers updated {time}' stamped only after a successful metrics read; a failed refresh says the numbers are from the last good read (metrics-fresh; POSProductsScreen.test) |
 | 20 | Automated visual regression Capture primary SUNMI and fallback viewport screenshots in both POS languages and compare after releases. Source: Products_Claude(1).pdf • November 2026 ADDENDUM PAGE 19 AI POWERSALON / PRODUC | EXISTS — certified one-screen screenshots EN + VI for Products in the harness |
@@ -1603,7 +1603,7 @@ Decisions:
 | 07 | Alert list, severity filter and workspace flow The original uploaded guide shows an existing Severity = All control and an empty-state screen. Preserve both. Enhance with real data, not a replacement mockup. Page-level o | EXISTS — alert list with severity filter, presets + From/To calendar, sort, numbered pages |
 | 08 | Pinned action row Keep Refresh and Health Check accessible in long scroll states, without overlaying content. | TODO |
 | 09 | Evidence overlay, investigations and no-money rule The central safety distinction: an alert is a possible discrepancy. It is not a verified loss or accusation. Money Protection Alerts is a triage/investigative interface, | EXISTS — alert evidence overlay; acknowledge / dismiss (reason) / reopen; nothing here moves money |
-| 10 | One case per incident Use idempotency/reuse to prevent duplicate Investigation cases from repeated clicks. | TODO |
+| 10 | One case per incident Use idempotency/reuse to prevent duplicate Investigation cases from repeated clicks. | BUILT — opening a case for alerts already in one case returns that case instead of a duplicate (investigations.service create; investigations.vitest.spec) |
 | 11 | False-positive review insights Show repeated patterns and human feedback; never self-disable monitoring rules. | TODO |
 | 12 | Performance, reliability and state recovery An attractive responsive page is not complete if it stalls under large salons, heavy alert histories or degraded provider data. • Use server-side paging and indexes, bounded qu | NOISE — reliability guidance |
 | 13 | Batch triage preview Where permissions allow, preview actions and require user confirmation; no bulk payout or charge actions. | TODO |
@@ -2254,7 +2254,7 @@ Decisions:
 | 03 | Smarter Follow-up and Rebooking Review Offer a review-only shortcut to existing Rebooking Opportunities and AI Booking Assistant when a prior completed service supports it. Show whether a future appointment already exist | TODO |
 | 04 | Appointment Change and Source Evidence Viewer Within the details overlay show recorded original versus rescheduled dates, who changed them, verified events and safe audit references. Keep the actual Booking event history | TODO |
 | 05 | Staff-friendly Saved Filter Views Optional “Today”, “Upcoming”, “Recently Created”, “No-Shows” and “Needs Review” quick filters. Save the current staff user’s view preference only if there is a suitable existing preferen | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
-| 06 | Automated Layout Regression Pipeline Use Playwright viewport snapshots and DOM measurements at 1920×1080, 1600×900, 1440×900, 1366×768 and at reduced available sizes. Fail CI on hidden core actions, unexpected browser ov | TODO |
+| 06 | Automated Layout Regression Pipeline Use Playwright viewport snapshots and DOM measurements at 1920×1080, 1600×900, 1440×900, 1366×768 and at reduced available sizes. Fail CI on hidden core actions, unexpected browser ov | NOISE — layout regression pipeline instruction (tooling/e2e/pos-vi-one-screen.mjs) |
 | 12 | Complete Appointment Details overlay A. Header and customer context Show booking ID, scheduled time/timezone, status, branch, source channel, created/updated timestamps, customer identity and authorized contact details.  | TODO |
 | 14 | Customer, completion, checkout and retention reconciliation Service completion and visits The completion count must be reconciled with Service Done and the canonical visit definition. A customer with multiple services on | TODO |
 | 16 | Loading, zero-data, disabled and failure states State Recommended user-facing behavior Loading Loading appointment history… with skeleton rows or spinner. Verified no records No appointments exist in this authorized scop | TODO |
@@ -2314,13 +2314,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Audit all eight tabs, six KPI definitions, external provider capabilities and existing service ownership. | TODO |
-| 02 | Repair review import/authorization before trusting displayed metrics. | TODO |
+| 01 | Audit all eight tabs, six KPI definitions, external provider capabilities and existing service ownership. | NOISE — process step (audit tabs/definitions) |
+| 02 | Repair review import/authorization before trusting displayed metrics. | NOISE — process step (repair import first) |
 | 03 | Build the One-Click Reputation Health Checker and clear empty/unavailable states. | TODO |
 | 04 | Complete Review Inbox, full details and human-controlled Response Approvals. | TODO |
 | 05 | Finish Serious Complaints with case ownership, evidence and escalation. | TODO |
 | 06 | Complete Feedback Trends, authorized Branch Comparison, Review Requests and Integrations. | TODO |
-| 07 | Implement full-screen layout, search, From/To month calendars, numbered newest-first paging. Claude implementation guide / Reference screenshot: 2026-10-30 / Prepared 2026-11-01 14 AI POWERSALON / AI REVIEW & REPUTATION | TODO |
+| 07 | Implement full-screen layout, search, From/To month calendars, numbered newest-first paging. Claude implementation guide / Reference screenshot: 2026-10-30 / Prepared 2026-11-01 14 AI POWERSALON / AI REVIEW & REPUTATION | NOISE — implementation instruction text |
 | 16 | Viewport, input and workflow test matrix Test configuration Required visual and functional proof SUNMI target - 1920 x 1080 At 100% zoom capture actual layout viewport, sidebar/top-bar/main rect, eight visible/reachable  | TODO |
 
 ## Communications  SMS Inbox (16)

@@ -241,7 +241,9 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
     };
     try {
       let id = product?.id as string | undefined;
-      if (edit) await inventoryApi.updateProduct(product.id, body);
+      // concurrent-edit protection: the save carries the updatedAt this form opened with; a product changed elsewhere since
+      // then is refused by the server (409 PRODUCT_CHANGED) and the message asks to reload instead of overwriting it
+      if (edit) await inventoryApi.updateProduct(product.id, product.updatedAt ? { ...body, expectedUpdatedAt: product.updatedAt } : body);
       else id = (await inventoryApi.createProduct(body)).id;
       if (edit && (f.reorderOv !== (product.thresholds?.reorderOverride == null ? '' : String(product.thresholds.reorderOverride)) || f.criticalOv !== (product.thresholds?.criticalOverride == null ? '' : String(product.thresholds.criticalOverride))))
         await inventoryApi.setStockOverrides(product.id, { reorderLevelOverride: f.reorderOv.trim() || null, criticalLevelOverride: f.criticalOv.trim() || null, expectedVersion: product.stockVersion ?? undefined });
