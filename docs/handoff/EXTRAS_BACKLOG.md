@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 45 (incl. part) |
-| EXISTS (opened and named) | 186 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 48 |
-| TODO | 1539 |
+| BUILT this arc | 46 (incl. part) |
+| EXISTS (opened and named) | 246 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 177 |
+| TODO | 1349 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -333,24 +333,24 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 00 | 0 Off Enabled Search: customer, phone, technician, service, appointment ID... SEARCH | TODO |
-| 01 | Screenshot baseline and preservation inventory Observed screen title: AI Scheduling Optimizer. Existing route: /tenant/ai/scheduling-optimizer. The captured page contains a Refresh action, four status counters, a How thi | TODO |
-| 02 | Recommendations | TODO |
-| 03 | Schedule Gaps | TODO |
-| 04 | Overbooking & Conflicts | TODO |
-| 05 | Busy & Understaffed | TODO |
+| 00 | 0 Off Enabled Search: customer, phone, technician, service, appointment ID... SEARCH | NOISE — screenshot text (status / search placeholder) |
+| 01 | Screenshot baseline and preservation inventory Observed screen title: AI Scheduling Optimizer. Existing route: /tenant/ai/scheduling-optimizer. The captured page contains a Refresh action, four status counters, a How thi | NOISE — preservation-inventory instruction |
+| 02 | Recommendations | EXISTS — Recommendations tab: searchable, paged queue (POSAISchedulingOptimizerScreen 'recs') |
+| 03 | Schedule Gaps | EXISTS — Gaps & Conflicts tab (schedule gaps from a deterministic engine) |
+| 04 | Overbooking & Conflicts | EXISTS — Gaps & Conflicts tab (overbooking / conflicts, hard rules checked before scoring) |
+| 05 | Busy & Understaffed | EXISTS (part) — Insights → Staffing (SchedInsightsCard kind 'staffing') |
 | 06 | Technician Utilization | TODO |
-| 07 | Duration Insights | TODO |
-| 08 | Appointment Availability | TODO |
-| 09 | Optimization History | TODO |
-| 10 | Automatic Optimization ALSO PRESERVE Refresh; How this works; Open recommendations, Awaiting customer approval, Automatic optimization and Module counters; sidebar, salon selector, top search, notifications, owner accoun | TODO |
+| 07 | Duration Insights | EXISTS — Insights → Duration: service durations from real history with sample size; approving one changes only the engine's planning duration |
+| 08 | Appointment Availability | EXISTS — Find a Time tab + Insights → Availability |
+| 09 | Optimization History | EXISTS — History tab led by the append-only event trail |
+| 10 | Automatic Optimization ALSO PRESERVE Refresh; How this works; Open recommendations, Awaiting customer approval, Automatic optimization and Module counters; sidebar, salon selector, top search, notifications, owner accoun | NOISE — preserve-list instruction |
 | 11 | Module 5 - Busy & Understaffed Analyze workload coverage by hour, branch, service category and qualified staffing; use verified booking volume, work shifts and demand history. • Show available qualified technicians, book | TODO |
 | 12 | Module 6 - Technician Utilization Calculate utilization from an explicitly defined denominator and comparable working minutes, rather than raw booking count. Existing route: /tenant/ai/scheduling-optimizer 7 AI POWERSALO | TODO |
-| 17 | Preserve Tech Queue rotation and fairness AI Scheduling Optimizer must not become an unauthorized substitute for Tech Queue, Customer Queue or assignment policies. • Respect the established fair rotation, explicit techni | TODO |
-| 20 | Illustrative API contracts (adapt to current routes) Claude must discover current API names before adding anything. These examples describe behavior only; they are not an instruction to create competing REST endpoints. O | TODO |
-| 21 | Freshness, workers, consistency, and performance • Use existing Booking event stream/WebSocket/SSE to invalidate or update affected recommendations after booking create/edit/cancel, shift change, break change, qualificat | TODO |
-| 24 | Health Checker - diagnostic matrix COMPONENT VERIFICATION / FAILURE EXAMPLE Booking and locks API reachable; overlapping holds honored; no false openings Technician shifts Shift version fresh; actual breaks and time off  | TODO |
-| 25 | Test matrix - real scenarios, not visual mockup only AREA REQUIRED TEST SCENARIOS Tab and shell All ten tabs route, original header/sidebar preserved, 100% zoom on 24/27-inch layouts Search Name/phone/service/tech/appoin | TODO |
+| 17 | Preserve Tech Queue rotation and fairness AI Scheduling Optimizer must not become an unauthorized substitute for Tech Queue, Customer Queue or assignment policies. • Respect the established fair rotation, explicit techni | NOISE — preservation rule (Tech Queue rotation untouched) — holds |
+| 20 | Illustrative API contracts (adapt to current routes) Claude must discover current API names before adding anything. These examples describe behavior only; they are not an instruction to create competing REST endpoints. O | NOISE — illustrative API contracts |
+| 21 | Freshness, workers, consistency, and performance • Use existing Booking event stream/WebSocket/SSE to invalidate or update affected recommendations after booking create/edit/cancel, shift change, break change, qualificat | NOISE — freshness/performance guidance |
+| 24 | Health Checker - diagnostic matrix COMPONENT VERIFICATION / FAILURE EXAMPLE Booking and locks API reachable; overlapping holds honored; no false openings Technician shifts Shift version fresh; actual breaks and time off  | EXISTS — Check Scheduling System (read-only diagnostic matrix) |
+| 25 | Test matrix - real scenarios, not visual mockup only AREA REQUIRED TEST SCENARIOS Tab and shell All ten tabs route, original header/sidebar preserved, 100% zoom on 24/27-inch layouts Search Name/phone/service/tech/appoin | NOISE — test-matrix instruction |
 
 ## Stock Alerts Technician Product Usage (16)
 
@@ -364,55 +364,55 @@ Decisions:
 | 06 | Reorder & Receiving Reconciliation Compare suggested reorder quantities, open POs, actual receipts, movement history and post-receipt alert recalculation. | TODO |
 | 07 | Inventory Data Freshness & Realtime Monitor Expose last updated timestamp and disconnected / stale states for stock, alert counts, technician usage and offline retries. Implementation addendum • Original 32-page specific | TODO |
 | 08 | Smart Restock Priority Assistant Rank truly low/out-of-stock products by expected demand and reorder lead time, while requiring staff approval for actual purchasing. | TODO |
-| 09 | Barcode Scan & Double-Tap Protection Make scanner flows quick on touchscreens with visual confirmation and idempotency protection across repeated scans. | TODO |
+| 09 | Barcode Scan & Double-Tap Protection Make scanner flows quick on touchscreens with visual confirmation and idempotency protection across repeated scans. | EXISTS — Record Product Use: a scanner's barcode + Enter picks the exact product, chosen product shown, one idempotency key on confirm (POSInventoryAlertsScreen onScan) |
 | 10 | Product Usage Details Overlay Show one product’s last user, all technician totals, usage timeline, reversals and related ticket references within a bounded panel. | TODO |
-| 11 | Technician Consumption Trend Offer period-based product / technician summaries with units and service volume context; avoid ungrounded misconduct alerts. | TODO |
+| 11 | Technician Consumption Trend Offer period-based product / technician summaries with units and service volume context; avoid ungrounded misconduct alerts. | EXISTS (part) — Technicians tab: per-technician product totals for the period with units (no misconduct conclusions) |
 | 12 | Low-Stock Cause Explanation Describe whether low stock is driven by confirmed usage, receiving delays, corrections, reservations, or inconsistent inventory units. | TODO |
-| 13 | Staff-Friendly Acknowledgment Workflow Show who acknowledged alerts, when, what remained unresolved, and what was later restocked. | TODO |
-| 14 | Safe Export & Audit Drill-Down Authorized CSV/PDF export of all matching records, not only first page, with branch scope, units, date field, actor and event IDs. | TODO |
-| 15 | EN/VN Visual Resilience Test Vietnamese labels, 24-hour / 12-hour formatting, decimal units and Unicode diacritics in the Front Desk POS only. | TODO |
-| 16 | Automated Regression Screenshots Snapshot SUNMI-class layout states for empty, low-stock, heavy-use, long-name, long-Vietnamese-label, and huge-history datasets. Implementation addendum • Original 32-page specification a | TODO |
+| 13 | Staff-Friendly Acknowledgment Workflow Show who acknowledged alerts, when, what remained unresolved, and what was later restocked. | EXISTS (part) — Acknowledge on active alerts and an Alert History tab (acknowledged / resolved over time) |
+| 14 | Safe Export & Audit Drill-Down Authorized CSV/PDF export of all matching records, not only first page, with branch scope, units, date field, actor and event IDs. | EXISTS (part) — CSV export of the current tab's matching rows with its scope (posInventoryAlertsApi.exportCsv) |
+| 15 | EN/VN Visual Resilience Test Vietnamese labels, 24-hour / 12-hour formatting, decimal units and Unicode diacritics in the Front Desk POS only. | EXISTS — EN/VI behind t(), Front Desk only; Vietnamese harness certified |
+| 16 | Automated Regression Screenshots Snapshot SUNMI-class layout states for empty, low-stock, heavy-use, long-name, long-Vietnamese-label, and huge-history datasets. Implementation addendum • Original 32-page specification a | EXISTS — certified one-screen screenshots EN + VI (stock alerts page in the harness) |
 
 ## Service Recommendations 5 (36)
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Health Checker: verify Customer Management, Service Done, catalog availability and pricing, Booking, technician qualifications, workers, subscriptions, cache freshness and tenant scope. Explain missing results  | TODO |
-| 02 | Customer 360° evidence and recommendations: show verified completed services, customer preferences, current catalog prices, technician qualifications, upcoming appointments, human review and approved booking handoff. | TODO |
-| 03 | Full-screen dashboard, search, calendars and pagination: use unused space; support month-view From/To pickers, tabbed queues, advanced search, and newest-first numbered pages. Before implementing, Claude must audit the e | TODO |
-| 04 | Full-screen design Pages 5-8: runtime viewport, Grid/Flex, balanced design, screen blueprint. 5-9 AI logic, catalog, customer, bookings, staff Pages 10-12: Customer 360°, evidence, active pricing, technician and booking  | TODO |
-| 05 | Customer Intelligence. | TODO |
-| 06 | Customer Profile AI. | TODO |
-| 07 | Duplicate Review. | TODO |
-| 08 | Churn Watch. | TODO |
-| 09 | Rebooking Opportunities. | TODO |
-| 10 | Customer AI Settings. | TODO |
-| 11 | Services & Products catalog. | TODO |
-| 12 | Active and inactive service records. | TODO |
-| 13 | Service prices, durations and approved add-ons. | TODO |
-| 14 | Manual service-price override rules. | TODO |
-| 15 | Service Done and completed-service history. | TODO |
-| 16 | Checkout and existing ticket records. | TODO |
-| 17 | Booking Calendar. | TODO |
-| 18 | AI Booking Assistant. | TODO |
-| 19 | Technician skills and service qualifications. | TODO |
-| 20 | Technician work schedules, breaks and availability. | TODO |
-| 21 | Customer preferences. | TODO |
-| 22 | Memberships. | TODO |
-| 23 | Loyalty & Rewards. | TODO |
-| 24 | Customer Retention. | TODO |
-| 25 | Communications and customer consent. | TODO |
-| 26 | AI subscriptions, permissions and usage. | TODO |
-| 27 | AI Gateway and recommendation workers. | TODO |
-| 28 | Redis caching and synchronization. | TODO |
-| 29 | Tenant and branch authorization. | TODO |
-| 30 | Existing database schemas, migrations, audits and tests. For every component, report whether it is: AI POWERSALON / CLAUDE ENGINEERING HANDOFF | TODO |
+| 01 | One-Click Health Checker: verify Customer Management, Service Done, catalog availability and pricing, Booking, technician qualifications, workers, subscriptions, cache freshness and tenant scope. Explain missing results  | EXISTS — Check Service Recommendations System (srx-check), read-only |
+| 02 | Customer 360° evidence and recommendations: show verified completed services, customer preferences, current catalog prices, technician qualifications, upcoming appointments, human review and approved booking handoff. | EXISTS — 360° overlay: evidence, completed services, preferences, today's catalog price / duration / add-ons, qualified technicians, bookings, memberships (ov-*) |
+| 03 | Full-screen dashboard, search, calendars and pagination: use unused space; support month-view From/To pickers, tabbed queues, advanced search, and newest-first numbered pages. Before implementing, Claude must audit the e | EXISTS — opens on the salon's queue: tabs, type/service/technician filters, date basis + From/To month calendar, sort, numbered pages (POSAICustomerRecommendationsScreen) |
+| 04 | Full-screen design Pages 5-8: runtime viewport, Grid/Flex, balanced design, screen blueprint. 5-9 AI logic, catalog, customer, bookings, staff Pages 10-12: Customer 360°, evidence, active pricing, technician and booking  | NOISE — design/blueprint pages reference |
+| 05 | Customer Intelligence. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 06 | Customer Profile AI. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 07 | Duplicate Review. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 08 | Churn Watch. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 09 | Rebooking Opportunities. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 10 | Customer AI Settings. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 11 | Services & Products catalog. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 12 | Active and inactive service records. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 13 | Service prices, durations and approved add-ons. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 14 | Manual service-price override rules. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 15 | Service Done and completed-service history. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 16 | Checkout and existing ticket records. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 17 | Booking Calendar. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 18 | AI Booking Assistant. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 19 | Technician skills and service qualifications. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 20 | Technician work schedules, breaks and availability. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 21 | Customer preferences. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 22 | Memberships. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 23 | Loyalty & Rewards. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 24 | Customer Retention. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 25 | Communications and customer consent. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 26 | AI subscriptions, permissions and usage. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 27 | AI Gateway and recommendation workers. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 28 | Redis caching and synchronization. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 29 | Tenant and branch authorization. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 30 | Existing database schemas, migrations, audits and tests. For every component, report whether it is: AI POWERSALON / CLAUDE ENGINEERING HANDOFF | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
 | 31 | Tenant isolation. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 32 | Branch authorization. | TODO |
-| 33 | Audit logging. | TODO |
-| 34 | API errors. | TODO |
-| 35 | Data freshness. | TODO |
-| 36 | Recommendation outcome tracking. Health states • Passed • Warning • Failed • Insufficient Data • Unavailable For each issue show: • Affected component • Verified problem • Possible cause • Suggested corrective action • L | TODO |
+| 32 | Branch authorization. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 33 | Audit logging. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 34 | API errors. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 35 | Data freshness. | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
+| 36 | Recommendation outcome tracking. Health states • Passed • Warning • Failed • Insufficient Data • Unavailable For each issue show: • Affected component • Verified problem • Possible cause • Suggested corrective action • L | NOISE — an item in the guide's list of components to verify (audit checklist), not a feature |
 
 ## Serving (10)
 
@@ -497,21 +497,21 @@ Decisions:
 | 02 | Shift-Aware Staffing Heatmap: summarize ready, booked, on-break and late technicians per time band; expand to underlying authorized schedules. | TODO |
 | 03 | Fair Turn Explainability: display eligibility and skip reasons with a manager-facing review history, not a second competing fairness calculation. | TODO |
 | 04 | Opening-Hour Surge Mode: optimize batch clock-ins and check-ins, show queue backlog and pending assignments without hiding core action buttons. Recommendations 5-8 | TODO |
-| 05 | No-Hidden-Limit Validator: run repeatable 12/24/50/100/199/200/201 employee data tests across endpoints, page counts and filters. | TODO |
+| 05 | No-Hidden-Limit Validator: run repeatable 12/24/50/100/199/200/201 employee data tests across endpoints, page counts and filters. | EXISTS (part) — repeatable large-roster tests: payroll-200-technicians.pgtest and the live pilot day's 24-technician / 110-booking paging checks; not every endpoint at 199/200/201 |
 | 06 | Technician Skill Coverage: identify service types lacking enough qualified on-shift staff and recommend staffing/schedule review. | TODO |
 | 07 | Appointment Conflict Preview: before moving a booking, show duration, buffer, next appointment and hard constraint explanation. | TODO |
 | 08 | Quick Bulk Staff Actions: invite, search, print/export selected or review exceptions with confirm/audit controls and RBAC. Important boundary Do not invent automatic assignment, change technician eligibility, notify cust | TODO |
 | 09 | Responsive Layout Health Overlay: developer-only inspector for clipped controls, DOM overflow, last visible action and internal scroll panels. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 10 | Balanced KPI Presets: consistent 2/3/4-card responsive grid based on container width; data-rich tables get flexible workspace instead of equally tiny columns. | TODO |
-| 11 | Tech Queue, Fair Turn and Assignment A balanced live queue that does not overwhelm the SUNMI display Preserve queue semantics Keep Ready, Serving, Break, Appointment Soon, Hold and Off Shift states; any existing History  | TODO |
-| 12 | Team and 200-Person Workforce Management Even modules for staffing; fast tables for record-heavy workflows Management modules to retain Keep technician profiles, Active/Inactive, Branch, Skills, Roles, Employment, Invita | TODO |
-| 13 | Time Clock, Schedules and Opening Bursts Every clock event must update eligibility without duplicating shifts Dataset and resilience Generate 200 technicians x 7 days of shifts, breaks, lunch, appointments, time-off and  | TODO |
-| 14 | Payroll Accuracy Checker: source-to-statement-to-payout reconciliation with visible exception links; no autonomous financial mutation. | TODO |
+| 10 | Balanced KPI Presets: consistent 2/3/4-card responsive grid based on container width; data-rich tables get flexible workspace instead of equally tiny columns. | NOISE — layout guidance |
+| 11 | Tech Queue, Fair Turn and Assignment A balanced live queue that does not overwhelm the SUNMI display Preserve queue semantics Keep Ready, Serving, Break, Appointment Soon, Hold and Off Shift states; any existing History  | NOISE — preserve-semantics guidance |
+| 12 | Team and 200-Person Workforce Management Even modules for staffing; fast tables for record-heavy workflows Management modules to retain Keep technician profiles, Active/Inactive, Branch, Skills, Roles, Employment, Invita | NOISE — module guidance |
+| 13 | Time Clock, Schedules and Opening Bursts Every clock event must update eligibility without duplicating shifts Dataset and resilience Generate 200 technicians x 7 days of shifts, breaks, lunch, appointments, time-off and  | NOISE — dataset / resilience guidance |
+| 14 | Payroll Accuracy Checker: source-to-statement-to-payout reconciliation with visible exception links; no autonomous financial mutation. | EXISTS — payroll cross-check and the persisted Discrepancy Review (statement vs sources vs payouts) with exception links; nothing auto-changes money |
 | 15 | Realtime Noise Guard: aggregate frequent technician status bursts and refresh only affected UI projections. | TODO |
-| 16 | Accessibility and Language QA: verify EN/VN Front Desk labels, dynamic label lengths, focus order, text scaling and reduced motion. Design principle Balance comparable modules; never force the 12-column scheduler, a KPI  | TODO |
-| 21 | Additional Recommendations: Faster Operations Additive suggestions - implement only after verifying existing equivalents Recommendations 1-4 | TODO |
-| 58 | Service-technician compatibility Selecting a service should recommend/filter only technicians approved for that exact service. Claude / Developer Build Mandate / 8 AI PowerSalon / 200-Technician Large Salon Scale Upgrade | TODO |
-| 59 | Appointment protection at scale Efficiently verify now + estimated duration + cleanup buffer <= next appointment using indexed/batched data. | TODO |
+| 16 | Accessibility and Language QA: verify EN/VN Front Desk labels, dynamic label lengths, focus order, text scaling and reduced motion. Design principle Balance comparable modules; never force the 12-column scheduler, a KPI  | EXISTS — EN/VI on the Front Desk POS; Vietnamese harness certified across 147 pages |
+| 21 | Additional Recommendations: Faster Operations Additive suggestions - implement only after verifying existing equivalents Recommendations 1-4 | NOISE — heading for additional suggestions |
+| 58 | Service-technician compatibility Selecting a service should recommend/filter only technicians approved for that exact service. Claude / Developer Build Mandate / 8 AI PowerSalon / 200-Technician Large Salon Scale Upgrade | EXISTS (part) — technician service eligibility (migration 583/631) drives Best Matches / open times by skill (live pilot day checks) |
+| 59 | Appointment protection at scale Efficiently verify now + estimated duration + cleanup buffer <= next appointment using indexed/batched data. | EXISTS (part) — overlapping bookings refused by a database exclusion constraint; the live pilot day's booking race check |
 | 60 | Realtime fanout performance Simulate 50+ active POS/manager/tech clients if feasible and verify no uncontrolled N x N broadcast behavior. Claude / Developer Build Mandate / 9 AI PowerSalon / 200-Technician Large Salon Sc | TODO |
 
 ## Referral Program (2)
@@ -638,7 +638,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Smart viewport calibration Record actual SUNMI CSS viewport and resize when browser chrome/keyboard/orientation changes. | TODO |
+| 01 | Smart viewport calibration Record actual SUNMI CSS viewport and resize when browser chrome/keyboard/orientation changes. | EXISTS — the shell measures the live CSS viewport / visual viewport / keyboard on resize and orientation change (shell/displayProfile.ts → <html data-density>, --pos-vvh) |
 | 02 | Receipt-to-expense trace view One tap shows original receipt -> OCR fields -> review -> approval -> ledger -> export. | TODO |
 | 03 | Confidence-first review Show low-confidence fields first, keep high-confidence values available without redundant retyping. | TODO |
 | 04 | Duplicate resolution workspace Compare two documents side by side and record staff decision with reason and audit trail. | TODO |
@@ -647,24 +647,24 @@ Decisions:
 | 07 | OCR outage resilience Status, safe retries and manual entry; preserve original upload before any OCR attempt. | TODO |
 | 08 | Branch allocation checker Verify exact cents across branches and show branch-level reporting impact. | TODO |
 | 09 | Accountant export preflight Check period, branch scope, duplicate expenses, missing categories and report reconciliations. | TODO |
-| 10 | Module and touch regression monitor Screenshot + control inventory; detect missing panels, clipped buttons and accidental removal. Do not turn recommendations into silent automation: AI may recommend; humans and existing | TODO |
+| 10 | Module and touch regression monitor Screenshot + control inventory; detect missing panels, clipped buttons and accidental removal. Do not turn recommendations into silent automation: AI may recommend; humans and existing | EXISTS — module registry gate + certified screenshot harness (missing panels, clipped buttons, removals fail CI) |
 | 24 | Image Optimization Preserve original but generate optimized copies for: OCR thumbnail review screen Do not repeatedly process a 20 MB phone photo. | TODO |
 | 25 | Image Quality Analysis Before OCR detect obvious problems: too dark too blurry receipt cut off extreme perspective Developer & Claude Completion Mandate / 10 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting In | TODO |
-| 29 | AI Platform Integration `ai_ocr_receipt` must use the central AI Platform / AI Gateway. It must not independently import random model-provider SDKs throughout the module. | TODO |
-| 30 | OCR Provider Abstraction Conceptually: DocumentExtractionPort Capabilities: extractText() extractStructuredFields() getConfidence() detectDocumentType() | TODO |
+| 29 | AI Platform Integration `ai_ocr_receipt` must use the central AI Platform / AI Gateway. It must not independently import random model-provider SDKs throughout the module. | NOISE — architecture rule (central AI Gateway) |
+| 30 | OCR Provider Abstraction Conceptually: DocumentExtractionPort Capabilities: extractText() extractStructuredFields() getConfidence() detectDocumentType() | NOISE — architecture concept (provider port) |
 | 40 | Category Recommendation Rules Use deterministic rules before AI when possible. Examples: Home Depot -> Repairs / Maintenance or Equipment depending line items Nail supply distributor -> Supplies Electric / Gas / Water -> | TODO |
-| 43 | Never Change Approved Historical Category Silently If a new category rule is created tomorrow: old approved expenses remain unchanged. | TODO |
-| 44 | Vendor Entity Normalize vendors. Conceptually: Vendor { id tenantId? normalizedName displayName address? phone? website? defaultCategoryId? | TODO |
-| 74 | Receptionist Access Receptionist should normally not see all business expenses. Optional permission may allow: upload receipt without allowing: view payroll bills view owner expenses export accounting approve expenses | TODO |
-| 75 | Technician Access Technicians normally should not see salon financial expenses. They may upload reimbursement receipts only if tenant enables it. | TODO |
-| 76 | Owner Access Owner has tenant-wide expense management according to role/security policy. | TODO |
-| 77 | Manager Access Manager access can be: branch only by default. | TODO |
-| 78 | Super Admin Super Admin should normally see: feature health OCR processing failures storage health AI usage Developer & Claude Completion Mandate / 21 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting Intellige | TODO |
-| 83 | Low-Risk Auto Approval Future Option For trusted recurring vendors under a threshold: Developer & Claude Completion Mandate / 22 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting Intelligence electric bill soft | TODO |
-| 84 | Immutable Original Financial Evidence After expense approval: do not allow ordinary users to replace the original receipt image invisibly. A replacement must create: new document version or: additional supporting attachm | TODO |
-| 85 | Delete Rules Draft uploads may be removable according to policy. Approved financial records should generally use: ARCHIVED VOIDED rather than hard deletion. 86. Search Allow search by: Vendor Amount Date | TODO |
-| 97 | Tax / Accountant Export Owner should be able to export business expense records for: Accountant Bookkeeper Tax Preparation | TODO |
-| 98 | Export Formats Support: CSV XLSX PDF summary where appropriate. Developer & Claude Completion Mandate / 25 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting Intelligence PDF packages may include receipt images  | TODO |
+| 43 | Never Change Approved Historical Category Silently If a new category rule is created tomorrow: old approved expenses remain unchanged. | NOISE — rule (approved history never re-categorised) |
+| 44 | Vendor Entity Normalize vendors. Conceptually: Vendor { id tenantId? normalizedName displayName address? phone? website? defaultCategoryId? | NOISE — data-model concept |
+| 74 | Receptionist Access Receptionist should normally not see all business expenses. Optional permission may allow: upload receipt without allowing: view payroll bills view owner expenses export accounting approve expenses | NOISE — role policy text (enforced by RBAC: expenses need finance permissions) |
+| 75 | Technician Access Technicians normally should not see salon financial expenses. They may upload reimbursement receipts only if tenant enables it. | NOISE — role policy text |
+| 76 | Owner Access Owner has tenant-wide expense management according to role/security policy. | NOISE — role policy text |
+| 77 | Manager Access Manager access can be: branch only by default. | NOISE — role policy text |
+| 78 | Super Admin Super Admin should normally see: feature health OCR processing failures storage health AI usage Developer & Claude Completion Mandate / 21 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting Intellige | NOISE — role policy text |
+| 83 | Low-Risk Auto Approval Future Option For trusted recurring vendors under a threshold: Developer & Claude Completion Mandate / 22 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting Intelligence electric bill soft | NOISE — a future option, explicitly not now |
+| 84 | Immutable Original Financial Evidence After expense approval: do not allow ordinary users to replace the original receipt image invisibly. A replacement must create: new document version or: additional supporting attachm | NOISE — rule (immutable approved evidence) |
+| 85 | Delete Rules Draft uploads may be removable according to policy. Approved financial records should generally use: ARCHIVED VOIDED rather than hard deletion. 86. Search Allow search by: Vendor Amount Date | NOISE — rule (void/archive, not delete) |
+| 97 | Tax / Accountant Export Owner should be able to export business expense records for: Accountant Bookkeeper Tax Preparation | EXISTS — Expenses export of matching records for the accountant (export-csv / export-xlsx / export-pdf) |
+| 98 | Export Formats Support: CSV XLSX PDF summary where appropriate. Developer & Claude Completion Mandate / 25 AI PowerSalon / Receipt, Expense, Invoice, OCR & Accounting Intelligence PDF packages may include receipt images  | EXISTS — CSV, XLSX and PDF exports on Expenses |
 
 ## Customer Profiles (8)
 
@@ -750,31 +750,31 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | One-Click Inventory Health & Stock Accuracy Checker Investigate the screenshot showing 11 products and 11 Critical items; verify quantities, thresholds, inbound orders, consumption and receiving. | TODO |
-| 02 | What the SUNMI screen actually means Dimension Required engineering interpretation Panel diagonal 27-inch physical screen size; it does not define the browser layout width. Panel resolution 1920 x 1080 hardware pixels, 1 | TODO |
+| 02 | What the SUNMI screen actually means Dimension Required engineering interpretation Panel diagonal 27-inch physical screen size; it does not define the browser layout width. Panel resolution 1920 x 1080 hardware pixels, 1 | NOISE — interpretation / QA / mandate / contract text, not a feature |
 | 03 | Full-Screen Searchable Dashboard Keep the 6 metric cards and 4 buttons; add SKU/product/supplier search, monthly From/To calendars, newest-first activity pages and detailed overlays. Implementation specification / Verify | TODO |
-| 04 | Complete 100% zoom full-screen dashboard; retain four buttons and six KPIs, vertical scrolling. | TODO |
-| 05 | Screen redesign, navigation and responsive behavior At 100% browser zoom on 24-inch and 27-inch POS displays, the fixed application shell remains visible; the content region uses available width. Let long data areas scro | TODO |
-| 06 | Screen and density matrix Test by actual content container width after the shell/sidebar, not nominal resolution alone. These rows are target behaviors, not assertions that a particular browser always reports the listed  | TODO |
-| 07 | Stock classifications, calculations and screenshot discrepancy First extract the actual classification rules from code. If the application intends mutually exclusive categories, propose and validate an explicit precedenc | TODO |
-| 08 | Four action views: functional, balanced, testable Command Center • Preserve summary and all six KPI values; include freshness, priority stock signals, pending approved stock events, active PO status and recommendations,  | TODO |
-| 09 | Stock classifications and the 11-Critical observation Photographed values are not production truths The existing screenshot shows 11 Products, 0 In Stock, 0 Low, 11 Critical, 0 Out of Stock, 0 Overstock. These values can | TODO |
-| 10 | Run automated, integration, UI and regression tests; document proofs and remaining blockers. Implementation specification / Verify against repository before coding 11 AI POWERSALON / AI INVENTORY ASSISTANT CLAUDE IMPLEME | TODO |
+| 04 | Complete 100% zoom full-screen dashboard; retain four buttons and six KPIs, vertical scrolling. | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 05 | Screen redesign, navigation and responsive behavior At 100% browser zoom on 24-inch and 27-inch POS displays, the fixed application shell remains visible; the content region uses available width. Let long data areas scro | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 06 | Screen and density matrix Test by actual content container width after the shell/sidebar, not nominal resolution alone. These rows are target behaviors, not assertions that a particular browser always reports the listed  | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 07 | Stock classifications, calculations and screenshot discrepancy First extract the actual classification rules from code. If the application intends mutually exclusive categories, propose and validate an explicit precedenc | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 08 | Four action views: functional, balanced, testable Command Center • Preserve summary and all six KPI values; include freshness, priority stock signals, pending approved stock events, active PO status and recommendations,  | EXISTS (part) — four views: Command Center, Low Stock, Reorder (cards with evidence), Slow-Moving; read-only analysis (POSAiInventoryScreen) |
+| 09 | Stock classifications and the 11-Critical observation Photographed values are not production truths The existing screenshot shows 11 Products, 0 In Stock, 0 Low, 11 Critical, 0 Out of Stock, 0 Overstock. These values can | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 10 | Run automated, integration, UI and regression tests; document proofs and remaining blockers. Implementation specification / Verify against repository before coding 11 AI POWERSALON / AI INVENTORY ASSISTANT CLAUDE IMPLEME | NOISE — interpretation / QA / mandate / contract text, not a feature |
 | 11 | Search, calendars, history and overlays Full-width, readable filter toolbar Product/SKU/barcode/supplier search, category/status, branch scope, explicit date dimension and From/To month pickers. At wide viewport, use equ | TODO |
 | 12 | One-click inventory and screen health checks Check AI Inventory System - preserve / complete Health domain Read-only evidence and status Catalog & units SKU uniqueness, active references, product/branch mapping, valid co | TODO |
-| 13 | Backend, multi-tenant and iPhone isolation Existing architecture is authoritative • Keep Products & Inventory as canonical catalog and stock ledger. Purchasing/Receiving own PO and physical receipt events. Checkout/Servi | TODO |
-| 14 | QA matrix - must run at 100% zoom on the real target Test Pass conditions / evidence SUNMI primary viewport Actual device (or accurately matched emulator): 27-inch FHD landscape, 100% browser zoom, all 6 KPIs + all 4 act | TODO |
-| 15 | Slow-Moving, Overstock, expiry and waste analysis Slow-moving analysis should show last movement, units sold/used in selected lookback, days since movement, stock coverage, cost/value when authorized, demand horizon and  | TODO |
-| 16 | Copy-ready final mandate for Claude Read this complete PDF, including the appended original 13-page AI Inventory Assistant guide and the SUNMI FLEX 3 27-inch reference image. Work in the EXISTING AI PowerSalon repository | TODO |
+| 13 | Backend, multi-tenant and iPhone isolation Existing architecture is authoritative • Keep Products & Inventory as canonical catalog and stock ledger. Purchasing/Receiving own PO and physical receipt events. Checkout/Servi | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 14 | QA matrix - must run at 100% zoom on the real target Test Pass conditions / evidence SUNMI primary viewport Actual device (or accurately matched emulator): 27-inch FHD landscape, 100% browser zoom, all 6 KPIs + all 4 act | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 15 | Slow-Moving, Overstock, expiry and waste analysis Slow-moving analysis should show last movement, units sold/used in selected lookback, days since movement, stock coverage, cost/value when authorized, demand horizon and  | EXISTS (part) — Slow-Moving tab (dead-stock findings with evidence); overstock / waste views not built |
+| 16 | Copy-ready final mandate for Claude Read this complete PDF, including the appended original 13-page AI Inventory Assistant guide and the SUNMI FLEX 3 27-inch reference image. Work in the EXISTING AI PowerSalon repository | NOISE — interpretation / QA / mandate / contract text, not a feature |
 | 17 | One-Click Inventory Health & Stock Accuracy Checker Add Check AI Inventory System button. Run non-mutating diagnostics with per-check Passed / Warning / Failed / Unavailable, last checked, source freshness, concrete evid | TODO |
 | 18 | Stock reconciliation and evidence trail A second action, Verify Inventory Accuracy, should compare physical count records with canonical ledger position and authorized receipts/sales/consumption/returns/transfers/adjustm | TODO |
 | 20 | Multi-branch access and tenant isolation Support Current Branch, Selected Authorized Branches and All Authorized Branches only when server-side owner permissions permit. Provide branch-specific stock, reorder, forecast,  | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 21 | AI entitlements, subscriptions, privacy and localization • Inspect real AI inventory entitlement, plan, trial, metering and Super Admin overrides; do not invent prices or quota limits. • AI unavailability must not stop b | TODO |
-| 22 | Illustrative API and storage integration contract These endpoints/fields are conceptual checklists, NOT instructions to duplicate current services. Claude must find and extend existing endpoints and schema patterns, pres | TODO |
-| 23 | Real-time refresh and scaling Use existing WebSocket/SSE or safe fallback polling when stock events occur. Apply idempotent event processing, version checks and cache invalidation. Refresh counts on sales, configured ser | TODO |
-| 24 | Implementation sequence - exact priorities Order Work package / evidence | TODO |
-| 27 | Claude deliverables after implementation Return a concise implementation report identifying: audited existing modules; verified/defective/missing features; files touched; API and data model changes; migrations and rollba | TODO |
-| 28 | Authorization matrix - permitted vs prohibited actions User interaction Authorized result AI may do View stock / forecast Read authorized data; inspect source and freshness. Explain and suggest only. Review reorder Open  | TODO |
-| 29 | Copy-ready execution mandate to use with this PDF Claude: Treat the photographed /tenant/ai/inventory page as the current UI baseline, not proof of correct backend behavior. First inspect real code and provide a feature- | TODO |
+| 21 | AI entitlements, subscriptions, privacy and localization • Inspect real AI inventory entitlement, plan, trial, metering and Super Admin overrides; do not invent prices or quota limits. • AI unavailability must not stop b | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 22 | Illustrative API and storage integration contract These endpoints/fields are conceptual checklists, NOT instructions to duplicate current services. Claude must find and extend existing endpoints and schema patterns, pres | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 23 | Real-time refresh and scaling Use existing WebSocket/SSE or safe fallback polling when stock events occur. Apply idempotent event processing, version checks and cache invalidation. Refresh counts on sales, configured ser | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 24 | Implementation sequence - exact priorities Order Work package / evidence | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 27 | Claude deliverables after implementation Return a concise implementation report identifying: audited existing modules; verified/defective/missing features; files touched; API and data model changes; migrations and rollba | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 28 | Authorization matrix - permitted vs prohibited actions User interaction Authorized result AI may do View stock / forecast Read authorized data; inspect source and freshness. Explain and suggest only. Review reorder Open  | NOISE — interpretation / QA / mandate / contract text, not a feature |
+| 29 | Copy-ready execution mandate to use with this PDF Claude: Treat the photographed /tenant/ai/inventory page as the current UI baseline, not proof of correct backend behavior. First inspect real code and provide a feature- | NOISE — interpretation / QA / mandate / contract text, not a feature |
 
 ## Reception Copilot (8)
 
@@ -818,24 +818,24 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Split Payment Accuracy Distinct ticket counts, tender sums, due balances, status alignment, failed/unknown exclusion, duplicate joins. Evidence-backed discrepancy list. | TODO |
+| 01 | Split Payment Accuracy Distinct ticket counts, tender sums, due balances, status alignment, failed/unknown exclusion, duplicate joins. Evidence-backed discrepancy list. | EXISTS — five KPIs computed server-side over the whole scope; a ticket counted once; declined attempts are never tenders (POSSplitPaymentsScreen) |
 | 02 | Device / Payment Wiring Tenant MID/register routing, paired Clover Compact status, Fiserv test availability, feature flags, webhook processing health. Read-only status. | TODO |
-| 03 | Screen Fit / Layout Actual CSS viewport, browser zoom guidance, clipped/overlapping controls, pager visibility, tap-target size, EN/VN overflow. | TODO |
+| 03 | Screen Fit / Layout Actual CSS viewport, browser zoom guidance, clipped/overlapping controls, pager visibility, tap-target size, EN/VN overflow. | EXISTS — Check this screen (viewport, clipping, overlap, pager, touch) + certified harness |
 | 04 | Tender / Refund Integrity Failed/timeout/duplicate attempts, refunds linked to original tenders, remaining refundable balance and audit records. | TODO |
 | 05 | Cross-Module Reconciliation Compare Checkout, Split Payments, Gift Cards, Tips, Cash Drawer, Transactions and Daily Closeout using shared event references. No automatic money movement | TODO |
 | 06 | Adaptive rows-per-page Compute a safe page size based on the measured table body height and row height. Preserve full-dataset server pagination and deterministic ordering. | TODO |
 | 07 | Payment-state timeline In ticket details show chronological tender attempts, confirmations, callbacks, reversals and outcomes with correlation IDs; mask sensitive references. | BUILT (part) — Transaction detail now has the per-payment timeline and already lists every tender attempt of the ticket with its state and time; processor callbacks are not shown |
 | 08 | Uncertain Payment Review overlay Surface a compact “Status unknown - verify original attempt” view with safe retry criteria; prevent another charge by double tap. | TODO |
 | 09 | Split Tender Preview Before initiating checkout, show intended card/cash/gift-card allocation and remaining due; preview is not a financial mutation. | TODO |
-| 10 | Filtered export consistency Export all authorized matching records across pages with the same filters, time basis and accounting definitions as the on-screen list. | TODO |
+| 10 | Filtered export consistency Export all authorized matching records across pages with the same filters, time basis and accounting definitions as the on-screen list. | EXISTS (part) — Export of the matching records with the current filters (export) |
 | 11 | Register / terminal mismatch warning Warn when the selected processor merchant or paired terminal does not belong to the current tenant/register, without exposing other tenant details. | TODO |
-| 12 | Financial discrepancy drill-down Let owners/managers inspect the source ticket and tender references when a split amount, refund or tip amount fails reconciliation. Implementation specification • Keep every existing modu | TODO |
+| 12 | Financial discrepancy drill-down Let owners/managers inspect the source ticket and tender references when a split amount, refund or tip amount fails reconciliation. Implementation specification • Keep every existing modu | EXISTS — each ticket row opens its payment breakdown in place and a detail overlay with every tender attempt (toggle-breakdown, tenders-table) |
 | 13 | Duplicate event detector Flag repeated callback IDs, repeated tender operation IDs and possible duplicated local posting. Diagnosis only; no automatic ledger erasure. | TODO |
 | 14 | Pending payment banner A small accessible banner shows unresolved card outcomes and links to safe verification. Avoid counting unresolved charges as paid. | TODO |
 | 15 | Per-branch feature readiness Indicate which split methods are genuinely enabled per tenant/branch (Clover, Tap to Pay, gift card, cash). Disabled provider states must explain why. | TODO |
-| 16 | Cash and card method clarity Separate financial method from capture device/channel in both summary and ticket detail. Multiple devices never increase tender count. | TODO |
+| 16 | Cash and card method clarity Separate financial method from capture device/channel in both summary and ticket detail. Multiple devices never increase tender count. | EXISTS (part) — method combination filter and the per-method breakdown (Cash · Card · Gift Card) separate from register (register filter) |
 | 17 | Financial read-only mode during outage If critical provider/backend services fail, allow permitted inquiry with accurate stale-data labeling, but disable unsafe financial mutations. | TODO |
-| 18 | Automated screenshots and module-preservation registry Baseline the existing module tree and route actions before changes; fail CI on missing controls, visual overflow and broken primary links. Implementation ordering Fi | TODO |
+| 18 | Automated screenshots and module-preservation registry Baseline the existing module tree and route actions before changes; fail CI on missing controls, visual overflow and broken primary links. Implementation ordering Fi | EXISTS — module registry + preservation matrix + certified screenshots |
 
 ## Technician Profile Team Management (1)
 
@@ -891,25 +891,25 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Monitoring Trust Banner At top of overview show “Monitoring Active / Stale / Disabled / Partial / Error” with last successful run and source coverage. | TODO |
-| 02 | One-Click Health Summary Single button with dependency matrix, last validated source and safe resolution path; read-only. | TODO |
+| 01 | Monitoring Trust Banner At top of overview show “Monitoring Active / Stale / Disabled / Partial / Error” with last successful run and source coverage. | EXISTS — overview says whether monitoring is CURRENT / stale / never ran (never "no alerts" when detection never ran) (MoneyProtectionWorkspace MpOverview) |
+| 02 | One-Click Health Summary Single button with dependency matrix, last validated source and safe resolution path; read-only. | EXISTS — Check AI Money Protection System in the shared header (read-only) |
 | 03 | Evidence Completeness Meter Per alert/case show which source links were verified, missing, stale or permission-limited. | TODO |
 | 04 | Deduplicated Exposure Drill-down Explain Value Under Review calculations, overlapping alerts and why sums differ from alert count. | TODO |
 | 05 | Funding Calendar Awareness Mark “Expected / Not yet due / Overdue / Unmatched” based on processor and bank timing. | TODO |
 | 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | TODO |
 | 07 | Safe Rule Preview Before a manager saves rule edits, show read-only estimated historical matches on approved test data; never silently activate. | TODO |
-| 08 | Source Reconciliation Links One click from alert to same ticket, refund, batch or reconciliation in the existing owning module. Priority labels Priority A: 01-05 because they prevent misleading risk/health messages. Prio | TODO |
+| 08 | Source Reconciliation Links One click from alert to same ticket, refund, batch or reconciliation in the existing owning module. Priority labels Priority A: 01-05 because they prevent misleading risk/health messages. Prio | EXISTS — an alert opens with the invoice / payments / staff it points at, linked to their own pages, and its history |
 | 09 | Workspace Layout Profiles Use responsive layout presets for 1920 × 1080 SUNMI, other desktops and short viewports; reflow with CSS, not OS/browser zoom hacks. | TODO |
 | 10 | Smart Filter Presets Saved local UI preferences for “Critical”, “Awaiting Review”, “My Cases”, “Last | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 11 | Documented Alert Rate Limits Throttle duplicate notifications while preserving distinct evidence and an auditable incident timeline. | TODO |
 | 12 | Failure-aware Snapshot Allow authorized read-only as-of view labeled stale when providers are offline, rather than misleading zeros. | TODO |
-| 13 | Long-list Virtualization For heavy histories use stable server pagination and optional row virtualization without losing focus/navigation. | TODO |
+| 13 | Long-list Virtualization For heavy histories use stable server pagination and optional row virtualization without losing focus/navigation. | EXISTS (part) — alerts / investigations use stable server paging, newest first (no virtualization needed at page size) |
 | 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | TODO |
 | 15 | Export Provenance Export author, time, tenant scope, metric definitions, source freshness and redaction scope on approved files. | TODO |
-| 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | TODO |
+| 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | EXISTS — EN/VI behind t(), coded texts translated (mpTextCoded); Vietnamese harness certified |
 | 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | TODO |
 | 19 | Subscription, bilingual POS and accessibility • Use actual AI PowerSalon billing entitlements and usage counters; do not invent prices. Keep basic payment processing functioning during AI service expiration. • For tenant | TODO |
-| 20 | Suggested contracts and ownership (verify before implementation) Do not create these endpoints or tables blindly. The following are required behaviors to map onto the real repository. Reuse or extend existing services ra | TODO |
+| 20 | Suggested contracts and ownership (verify before implementation) Do not create these endpoints or tables blindly. The following are required behaviors to map onto the real repository. Reuse or extend existing services ra | NOISE — suggested contracts ("do not create blindly") |
 
 ## CASH DRAWER (1)
 
@@ -1121,28 +1121,28 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Start with a repository and data-flow audit | TODO |
-| 02 | Verify six metric definitions and 15/1/0 population relationship; validate freshness. | TODO |
-| 03 | Implement one-click read-only Health Checker and error diagnostics. | TODO |
-| 04 | Redesign 24/27-inch full-screen UI while preserving current navigation/cards. | TODO |
-| 05 | Implement customer search, month-view date ranges, server-side pagination. | TODO |
-| 06 | Wire full customer details overlay and evidence/source drill-downs. | TODO |
-| 07 | Authorized advanced search • Customer: first/last/full name, verified phone (normalized), permitted email, customer ID. • Technician: actual technician name/ID, previously assigned technician, verified preference (distin | TODO |
-| 08 | Monthly From Date / To Date calendar controls • Open actual month-grid popover with month/year heading, previous/next month, weekday labels, selectable days, highlighted range, Today/Apply/Clear/Cancel. • Presets: Today, | TODO |
-| 09 | Numbered pagination and correct sorting • Use server-side pagination for customer overview, candidates, active/inactive lists, churn/rebooking/recommendation records, intelligence activity, scan history and data-quality  | TODO |
-| 10 | Execute tests, document source changes, results and blockers. | TODO |
+| 01 | Start with a repository and data-flow audit | NOISE — audit / implementation-order / mandate text, not a feature |
+| 02 | Verify six metric definitions and 15/1/0 population relationship; validate freshness. | EXISTS — the six cards reconcile on screen ("Why these numbers?" cix-why: each scanned profile in exactly one state) with real freshness (cix-freshness) |
+| 03 | Implement one-click read-only Health Checker and error diagnostics. | EXISTS — Check Customer Intelligence System (cix-check), read-only |
+| 04 | Redesign 24/27-inch full-screen UI while preserving current navigation/cards. | NOISE — audit / implementation-order / mandate text, not a feature |
+| 05 | Implement customer search, month-view date ranges, server-side pagination. | EXISTS — authorized customer list: search, status/flag filters, date field + presets + month calendar, sort, numbered pages |
+| 06 | Wire full customer details overlay and evidence/source drill-downs. | EXISTS — customer overlay with classification, evidence, the Customer Search profile and links to owning modules |
+| 07 | Authorized advanced search • Customer: first/last/full name, verified phone (normalized), permitted email, customer ID. • Technician: actual technician name/ID, previously assigned technician, verified preference (distin | EXISTS (part) — customer search (name / phone / email) on the list |
+| 08 | Monthly From Date / To Date calendar controls • Open actual month-grid popover with month/year heading, previous/next month, weekday labels, selectable days, highlighted range, Today/Apply/Clear/Cancel. • Presets: Today, | EXISTS — From/To month calendar (shared RangeCalendar) on the customer list |
+| 09 | Numbered pagination and correct sorting • Use server-side pagination for customer overview, candidates, active/inactive lists, churn/rebooking/recommendation records, intelligence activity, scan history and data-quality  | EXISTS — server-side numbered pages with sort |
+| 10 | Execute tests, document source changes, results and blockers. | NOISE — audit / implementation-order / mandate text, not a feature |
 | 17 | Retention, marketing and communication safety • Customer Intelligence may identify reviewable segments; Customer Retention owns lifecycle policy, Audience Builder owns marketing eligibility, Campaign Builder owns approva | TODO |
 | 18 | Identity correctness, phone updates and cross-branch • Normalize numbers, preserve phone verification and audit history, support legitimate shared numbers and prevent false merges. • Staff may update phone through existi | TODO |
 | 23 | Multi-branch Customer Intelligence • Switch Current Branch, Selected Authorized Branches or All Authorized Branches according to actual owner permissions. • Show aggregation scopes explicitly, deduplicate distinct custom | TODO |
 | 24 | Loyalty and memberships: read authoritative data • Customer Intelligence displays only authorized current tiers, balances, membership state and benefits from Loyalty & Rewards/Memberships. • Do not calculate or persist a | TODO |
 | 25 | Entitlements, subscriptions and AI metering • Audit AI Customer Profile Assistant and Customer Intelligence access separately from ordinary Customer Management. • Use the existing subscription/entitlement service and AI  | TODO |
 | 26 | Privacy, RBAC, tenant isolation and audit • Server-authorized tenant and branch scope on each read, search, overlay, export and write; never trust a browser-supplied tenant ID. • Apply role permissions, minimization and  | TODO |
-| 29 | Language, accessibility and app boundaries • Front Desk tenant POS supports English/Vietnamese via the existing localization system; add labels for new cards, search, calendar, detail views, health and validation. • Do n | TODO |
-| 30 | Five additional upgrades • One-Click Customer Intelligence Health and Accuracy Checker: authoritative counts, visit history, duplicates, retention/rebooking, scan freshness. • Customer 360-Degree Intelligence: approved i | TODO |
-| 31 | Implementation order (strict priority) Phase Implementation deliverable | TODO |
+| 29 | Language, accessibility and app boundaries • Front Desk tenant POS supports English/Vietnamese via the existing localization system; add labels for new cards, search, calendar, detail views, health and validation. • Do n | EXISTS — EN/VI on the Front Desk POS only (english-only-apps gate keeps other apps English) |
+| 30 | Five additional upgrades • One-Click Customer Intelligence Health and Accuracy Checker: authoritative counts, visit history, duplicates, retention/rebooking, scan freshness. • Customer 360-Degree Intelligence: approved i | EXISTS (part) — the first of the five (health & accuracy checker) is cix-check; the others not built |
+| 31 | Implementation order (strict priority) Phase Implementation deliverable | NOISE — audit / implementation-order / mandate text, not a feature |
 | 32 | Acceptance and regression test matrix Existing visual fidelity • Route, title, six card titles/definitions, Refresh, How to use this, cached update, sidebar, header and Help remain functional. • 24-inch 100% browser zoom | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 33 | Definition of done (must all be true) • The original six cards and controls remain; numeric results are real and traceable to source/eligibility rules. • 15 scanned / 1 active / 0 inactive has an evidence-based explanati | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
-| 34 | Final execution mandate for Claude Implement this directly in the existing AI PowerSalon repository. Start by auditing actual code and schema, preserve all six metric cards, current navigation, Refresh and the How to use | TODO |
+| 34 | Final execution mandate for Claude Implement this directly in the existing AI PowerSalon repository. Start by auditing actual code and schema, preserve all six metric cards, current navigation, Refresh and the How to use | NOISE — audit / implementation-order / mandate text, not a feature |
 
 ## Customer Profile Assistant (9)
 
@@ -1189,20 +1189,20 @@ Decisions:
 | 04 | Stock Movement Integrity PO receipts, Add Stock, transfers, waste, usage and corrections post once to the canonical ledger. | TODO |
 | 05 | Technician Attribution Last Used By, all technician events, used_at vs recorded_at, branch attribution, corrections and idempotency. | TODO |
 | 06 | Cross-Module Wiring Products → Inventory → Alerts → Suppliers/POs → Checkout → Reports; stable IDs, cache freshness and tenant safety. | TODO |
-| 07 | Duplicate product warning Alert when a new SKU, barcode or supplier SKU may duplicate an existing product; allow authorized review. | TODO |
+| 07 | Duplicate product warning Alert when a new SKU, barcode or supplier SKU may duplicate an existing product; allow authorized review. | EXISTS (part) — a duplicate SKU / barcode is refused by the server and said so in the product form (ProductFormDialog); no supplier-SKU near-match warning |
 | 08 | Quick scan and find Focus barcode input efficiently for compatible scanner hardware; never add unintended spacing to exact codes. | TODO |
-| 09 | Stock status preview Before Add Stock, display current, incoming, projected and threshold impact by branch and unit. | TODO |
-| 10 | Row-level quick details Compact Details overlay from the product row, keeping Add Stock and Archive available. | TODO |
+| 09 | Stock status preview Before Add Stock, display current, incoming, projected and threshold impact by branch and unit. | EXISTS (part) — Add Stock shows current → after quantity before saving (inv.addStockSub); incoming / threshold impact not shown |
+| 10 | Row-level quick details Compact Details overlay from the product row, keeping Add Stock and Archive available. | EXISTS — product row opens Details (Overview · Pricing · Inventory · Suppliers · Technician Usage · History) with Edit / Add Stock / Record Use / Reorder kept (ProductDetailsDialog) |
 | 11 | Readable price history Expose authorized effective-date changes, why a price changed and what original receipts retain. | TODO |
 | 12 | Unavailable-data clarity Show loading/unavailable/retry separately from zero products, no matches, or no technician history. | TODO |
 | 13 | Stable filtering Preserve active search/sort when returning from Details, editing or a stock confirmation. Source: Products_Claude(1).pdf • November 2026 ADDENDUM PAGE 18 AI POWERSALON / PRODUCTS MANAGEMENT SUNMI FLEX 3  | TODO |
-| 14 | Controlled low-stock reorder Prefill a draft PO from verified product-supplier mappings; require human approval before ordering. | TODO |
+| 14 | Controlled low-stock reorder Prefill a draft PO from verified product-supplier mappings; require human approval before ordering. | EXISTS (part) — Details → Reorder (when a suggested reorder exists) opens a draft purchase order for review; nothing is ordered without a person |
 | 15 | Safe archive preview Explain affected inventory/active dependencies before archiving, and preserve access to historical receipts. | TODO |
 | 16 | Touch layout diagnostics Admin/dev-only overlay displays viewport CSS size, shell/sidebar widths and any overflow warnings; no forced zoom. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 17 | Concurrent-edit protection Warn when a product or stock balance changed since opening the form and refresh authoritative data. | TODO |
-| 18 | Product movement timeline A chronological evidence view for receipts, stock in/out, usage, transfers, waste and reconciled counts. | TODO |
+| 18 | Product movement timeline A chronological evidence view for receipts, stock in/out, usage, transfers, waste and reconciled counts. | EXISTS — Details → History: stock movements (receipts, usage, transfers, corrections) with the audit trail, paged (posInventoryScreenApi.movements) |
 | 19 | Metrics freshness marker Show timestamp/source for successful refresh; never show a fresh-looking timestamp after an API error. | TODO |
-| 20 | Automated visual regression Capture primary SUNMI and fallback viewport screenshots in both POS languages and compare after releases. Source: Products_Claude(1).pdf • November 2026 ADDENDUM PAGE 19 AI POWERSALON / PRODUC | TODO |
+| 20 | Automated visual regression Capture primary SUNMI and fallback viewport screenshots in both POS languages and compare after releases. Source: Products_Claude(1).pdf • November 2026 ADDENDUM PAGE 19 AI POWERSALON / PRODUC | EXISTS — certified one-screen screenshots EN + VI for Products in the harness |
 
 ## Global Loyalty Rewards (16)
 
@@ -1256,19 +1256,19 @@ Decisions:
 | 06 | Source-to-Report Side-by-side canonical historical revenue totals with date/status/refund explanations and Reconciliation source links; never recompute independent financial authority. | TODO |
 | 07 | Non-mutating Scenario Optional what-if staffing/service demand illustration with explicitly labeled assumptions; Sandbox versioned and separate from real forecasts, never written as actual appointment or revenue. | TODO |
 | 08 | Accessibility / Touch Chart Tap-to-inspect chart points, textual accessible trend summary, larger focus states, table Summary equivalents and full-screen chart view without truncation. Do not reduce the number of origina | TODO |
-| 09 | Prevent cut-off charts, tables, or buttons. | TODO |
-| 10 | Preserve filter settings during navigation. | TODO |
+| 09 | Prevent cut-off charts, tables, or buttons. | NOISE — guidance or a list of source systems to verify, not a feature |
+| 10 | Preserve filter settings during navigation. | BUILT — the chosen forecast tab is kept in the address (?tab=), so leaving and returning or refreshing keeps it (readTab / writeTab); test |
 | 11 | Use accessible chart legends and tooltips. | TODO |
-| 12 | Preserve the existing gold/cream appearance. Recommended Dashboard Layout A. Header Display: | TODO |
-| 13 | Service catalog. | TODO |
-| 14 | Service Done. | TODO |
-| 15 | Checkout. | TODO |
-| 16 | Payments and refunds. | TODO |
+| 12 | Preserve the existing gold/cream appearance. Recommended Dashboard Layout A. Header Display: | NOISE — guidance or a list of source systems to verify, not a feature |
+| 13 | Service catalog. | NOISE — guidance or a list of source systems to verify, not a feature |
+| 14 | Service Done. | NOISE — guidance or a list of source systems to verify, not a feature |
+| 15 | Checkout. | NOISE — guidance or a list of source systems to verify, not a feature |
+| 16 | Payments and refunds. | NOISE — guidance or a list of source systems to verify, not a feature |
 | 17 | Sales Reports. AI POWERSALON / CLAUDE IMPLEMENTATION GUIDE 17 / 45 AI Analytics & Forecasting | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 | 20 | STAFFING DEMAND FORECASTING Add an optional staffing analysis layer based on verified demand. Use: • Historical appointments • Service durations • Technician skills • Shift availability • Breaks • Forecast booking volume | TODO |
 | 21 | SERVICE DEMAND FORECASTING Support forecasts for real salon services. Potential categories: • Manicure • Pedicure • Gel services • Acrylic services • Nail art • Head spa • Other tenant-defined services Use actual service | TODO |
-| 26 | PERFORMANCE AND SCALABILITY AI PowerSalon must support thousands of salons and substantial transaction volume. Requirements: • Server-side data aggregation • Efficient database indexes • Bounded queries • Cached aggregat | TODO |
-| 32 | IMPLEMENTATION PRIORITY ORDER Claude, implement in the following order. Priority 1 — Audit Existing Implementation Find working, broken, partial, and missing functionality. Priority 2 — Verify Historical Data Investigate | TODO |
+| 26 | PERFORMANCE AND SCALABILITY AI PowerSalon must support thousands of salons and substantial transaction volume. Requirements: • Server-side data aggregation • Efficient database indexes • Bounded queries • Cached aggregat | NOISE — guidance or a list of source systems to verify, not a feature |
+| 32 | IMPLEMENTATION PRIORITY ORDER Claude, implement in the following order. Priority 1 — Audit Existing Implementation Find working, broken, partial, and missing functionality. Priority 2 — Verify Historical Data Investigate | NOISE — guidance or a list of source systems to verify, not a feature |
 
 ## AI Fraud Money Protection (12)
 
@@ -1395,38 +1395,38 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Very Important: Use the Recommended Option For ordinary technical decisions, do not stop development to ask me which implementation I want. When multiple reasonable technical approaches exist, use the recommended option  | TODO |
-| 02 | Never Blindly Rewrite My System Before creating anything new, search the repository. Do not create: | TODO |
+| 01 | Very Important: Use the Recommended Option For ordinary technical decisions, do not stop development to ask me which implementation I want. When multiple reasonable technical approaches exist, use the recommended option  | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 02 | Never Blindly Rewrite My System Before creating anything new, search the repository. Do not create: | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
 | 03 | Tenant isolation AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 04 | Financial correctness | TODO |
-| 05 | Data integrity | TODO |
-| 06 | Server authority | TODO |
-| 07 | Backward compatibility | TODO |
-| 08 | Simplicity | TODO |
-| 09 | Maintainability | TODO |
-| 10 | Performance | TODO |
-| 11 | Scalability | TODO |
-| 12 | Operational reliability Use the safest production-quality option and continue. Document the decision afterward. Only stop and ask me when the decision requires something that cannot safely be inferred, such as: Productio | TODO |
-| 32 | Recommended Fair Turn Defaults Use: Mode RECOMMEND_AND_CONFIRM Fairness WEIGHTED TRADITIONAL ROTATION Clock-In JOIN_BACK Skill-ineligible skip KEEP POSITION Customer requests another technician KEEP POSITION | TODO |
-| 33 | Fair Turn Eligibility Before ranking: employment active correct tenant correct branch clocked in working shift skill eligible not serving not unavailable not on protected break appointment safe | TODO |
-| 34 | Fair Turn Must Be Explainable Every automatic/recommended decision must have: selected technician candidate ranking reason skipped technicians AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate s | TODO |
-| 35 | Time Clock Test: Clock In Break Start Break End Clock Out Server timestamps remain authoritative. | TODO |
-| 36 | Break vs Queue Hold Do not merge these concepts. BREAK = time/payroll event QUEUE HOLD = assignment availability state | TODO |
-| 37 | Workforce Scheduling Test: shift lunch breaks time off vacation unavailable blocks multi-branch assignment Booking and Fair Turn must use authoritative schedule state. | TODO |
-| 38 | Technician Profile Verify global professional identity is separate from tenant employment. Professional/portable: profile photo bio portfolio public skills public reputation Tenant-private: commission payroll manager not | TODO |
-| 39 | Skill Requests Verify: submit review approve reject AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate Technician cannot self-approve. Approved skill affects: booking eligibility queue eligibilit | TODO |
-| 40 | Technician App Run: Home Schedule Queue Tickets Service Customers where permitted Time Clock Earnings Tips Payroll Portfolio Ratings Skills Notifications Profile Settings Every screen must connect to real APIs. | TODO |
-| 41 | Service Workflow Test complete: ASSIGNED -> ACCEPT if required -> START SERVICE -> SERVING -> ADD / MODIFY AUTHORIZED ITEMS -> SERVICE DONE | TODO |
-| 42 | Service Done Service Done must produce/lock the appropriate operational financial snapshot. | TODO |
-| 67 | Gift Cards Test: issue load redeem partial redeem AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate refund multi-location history Use ledger. | TODO |
-| 68 | Membership Verify: purchase renew cancel benefit checkout application branch rules as implemented. | TODO |
-| 69 | Deals / Promotions Run: eligibility date rules branch rules service/product rules stacking checkout Do not implement discount formulas only in frontend. 70. Twilio Inspect all SMS/Verify code. Business modules should use | TODO |
+| 04 | Financial correctness | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 05 | Data integrity | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 06 | Server authority | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 07 | Backward compatibility | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 08 | Simplicity | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 09 | Maintainability | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 10 | Performance | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 11 | Scalability | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 12 | Operational reliability Use the safest production-quality option and continue. Document the decision afterward. Only stop and ask me when the decision requires something that cannot safely be inferred, such as: Productio | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 32 | Recommended Fair Turn Defaults Use: Mode RECOMMEND_AND_CONFIRM Fairness WEIGHTED TRADITIONAL ROTATION Clock-In JOIN_BACK Skill-ineligible skip KEEP POSITION Customer requests another technician KEEP POSITION | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 33 | Fair Turn Eligibility Before ranking: employment active correct tenant correct branch clocked in working shift skill eligible not serving not unavailable not on protected break appointment safe | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 34 | Fair Turn Must Be Explainable Every automatic/recommended decision must have: selected technician candidate ranking reason skipped technicians AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate s | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 35 | Time Clock Test: Clock In Break Start Break End Clock Out Server timestamps remain authoritative. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 36 | Break vs Queue Hold Do not merge these concepts. BREAK = time/payroll event QUEUE HOLD = assignment availability state | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 37 | Workforce Scheduling Test: shift lunch breaks time off vacation unavailable blocks multi-branch assignment Booking and Fair Turn must use authoritative schedule state. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 38 | Technician Profile Verify global professional identity is separate from tenant employment. Professional/portable: profile photo bio portfolio public skills public reputation Tenant-private: commission payroll manager not | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 39 | Skill Requests Verify: submit review approve reject AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate Technician cannot self-approve. Approved skill affects: booking eligibility queue eligibilit | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 40 | Technician App Run: Home Schedule Queue Tickets Service Customers where permitted Time Clock Earnings Tips Payroll Portfolio Ratings Skills Notifications Profile Settings Every screen must connect to real APIs. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 41 | Service Workflow Test complete: ASSIGNED -> ACCEPT if required -> START SERVICE -> SERVING -> ADD / MODIFY AUTHORIZED ITEMS -> SERVICE DONE | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 42 | Service Done Service Done must produce/lock the appropriate operational financial snapshot. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 67 | Gift Cards Test: issue load redeem partial redeem AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate refund multi-location history Use ledger. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 68 | Membership Verify: purchase renew cancel benefit checkout application branch rules as implemented. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 69 | Deals / Promotions Run: eligibility date rules branch rules service/product rules stacking checkout Do not implement discount formulas only in frontend. 70. Twilio Inspect all SMS/Verify code. Business modules should use | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
 | 71 | Tenant Twilio Routing Verify: Tenant A -> Twilio A Tenant B -> Twilio B No cross-tenant SMS. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 72 | Communications Tests Run: OTP appointment confirmation reminder Check-In queue ready receipt review request marketing where allowed | TODO |
-| 73 | SMS Failure Twilio outage must not invalidate: AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate appointment payment checkout Communication retries independently. | TODO |
-| 74 | Customer Display Run dual-screen flow: Check-In Advertising Checkout takeover Tip Payment state Receipt Payment Complete 3 seconds clear customer state Advertising | TODO |
-| 75 | Customer Display Privacy Test After payment completion: verify previous customer's: name phone services total tip payment receipt is actually removed. Do not merely overlay advertisement. | TODO |
-| 76 | Advertising | TODO |
+| 72 | Communications Tests Run: OTP appointment confirmation reminder Check-In queue ready receipt review request marketing where allowed | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 73 | SMS Failure Twilio outage must not invalidate: AI PowerSalon / Full System Run, Audit, Repair, Wiring & Completion Mandate appointment payment checkout Communication retries independently. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 74 | Customer Display Run dual-screen flow: Check-In Advertising Checkout takeover Tip Payment state Receipt Payment Complete 3 seconds clear customer state Advertising | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 75 | Customer Display Privacy Test After payment completion: verify previous customer's: name phone services total tip payment receipt is actually removed. Do not merely overlay advertisement. | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
+| 76 | Advertising | NOISE — a principle / test instruction from the full-system mandate, not a feature (the flows it names are run by the live pilot day, 242 checks) |
 
 ## Customer Queue (16)
 
@@ -1761,27 +1761,27 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 04 | Next Available Technician Find the next actually eligible technician for selected service(s), Use shared Workforce/Booking duration and protected appointments. eligibility; never guess from green READY status. | TODO |
-| 05 | Module Preservation Contract The repository is the source of truth for the full inventory; this list is only a minimum. DO NOT REMOVE / DO NOT REPLACE / DO NOT DISABLE No module may be deleted, hidden behind a permanent  | TODO |
-| 06 | Module Spacing, Typography & Touch UX Balanced cards with strong readability in a bright front-desk setting. Design system constraints • Use consistent card border, elevation, header height, badge styling, padding and ic | TODO |
+| 05 | Module Preservation Contract The repository is the source of truth for the full inventory; this list is only a minimum. DO NOT REMOVE / DO NOT REPLACE / DO NOT DISABLE No module may be deleted, hidden behind a permanent  | NOISE — preservation contract (module registry gate covers it) |
+| 06 | Module Spacing, Typography & Touch UX Balanced cards with strong readability in a bright front-desk setting. Design system constraints • Use consistent card border, elevation, header height, badge styling, padding and ic | NOISE — spacing/typography guidance |
 | 07 | Customer-to-Tech Handoff Show selected customer assignment state and whether POS A, No extra Visit, duplicate assignment Status Customer Queue and Technician App have synced. or shared cross-tenant data. Recommended upgr | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 08 | Assignment Panel, Queue Row & Schedule Overlays Keep full workflows reachable without stretching the main page. Compact queue list • A technician row should show existing queue order, avatar/name, status, waiting time, t | TODO |
 | 09 | Recommended Upgrade #1 - Auto-Fit Health Checker Non-mutating layout diagnostics for each POS front-desk station. One-click Check Tech Queue Layout button • Detect current CSS viewport, DPR, orientation, display profile, | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Recommended Upgrades #4 - #7 Useful additions; preserve any already-implemented equivalent rather than duplicating it. Upgrade Requested behavior Boundary | TODO |
-| 12 | Multi-Device Runtime and Reliability An adaptable web POS must remain correct on SUNMI as well as existing Windows desks. Runtime Must verify SUNMI 27-inch target Actual Chromium/WebView, Android/SUNMI OS build, CSS view | TODO |
+| 12 | Multi-Device Runtime and Reliability An adaptable web POS must remain correct on SUNMI as well as existing Windows desks. Runtime Must verify SUNMI 27-inch target Actual Chromium/WebView, Android/SUNMI OS build, CSS view | NOISE — multi-device runtime guidance |
 | 19 | Mode Selector Security Changing Fair Turn mode is sensitive. Enforce manager/owner permission and audit the change. | TODO |
 | 20 | Main Queue Row Use compact rows. Adapt to the actual design rather than forcing new fields. • Queue position • Avatar/name • Queue status • Ready since / wait Claude Build Mandate / 5 AI PowerSalon / Tech Queue 27-Inch T | TODO |
-| 21 | Do Not Put Payroll on Tech Queue Do not expose commission, pay rate, salary, bank/tax data, or private manager notes on this operational screen. | TODO |
-| 22 | Explicit Queue Statuses Use the existing canonical state model and keep states unambiguous. • READY • SERVING • BREAK • QUEUE_HOLD • APPOINTMENT_PROTECTED • OFF_SHIFT • CLOCKED_OUT • UNAVAILABLE | TODO |
-| 23 | Time Clock and Queue State Are Different CLOCKED_IN does not automatically mean READY. A clocked-in technician can be serving, on break, on hold, or appointment- protected. | TODO |
-| 24 | Break and Queue Hold Are Different Break is workforce/time state. Queue Hold is temporary participation state. Do not merge them. | TODO |
-| 25 | Hard Eligibility Before Fairness Fair Turn ranking starts only after all hard eligibility checks pass. tenant -> branch -> active employment -> clocked in / scheduled -> not serving -> not unavailable -> not on protected | TODO |
-| 41 | Assignment Panel Must Not Expand Page Whether 1, 10, or 100 candidates exist, the panel height remains fixed. Candidate lists use internal scrolling or top recommendations. | TODO |
+| 21 | Do Not Put Payroll on Tech Queue Do not expose commission, pay rate, salary, bank/tax data, or private manager notes on this operational screen. | NOISE — rule (no payroll on Tech Queue) — holds: rows show status, rotation, specialties, next appointment only |
+| 22 | Explicit Queue Statuses Use the existing canonical state model and keep states unambiguous. • READY • SERVING • BREAK • QUEUE_HOLD • APPOINTMENT_PROTECTED • OFF_SHIFT • CLOCKED_OUT • UNAVAILABLE | NOISE — rule (canonical queue states) |
+| 23 | Time Clock and Queue State Are Different CLOCKED_IN does not automatically mean READY. A clocked-in technician can be serving, on break, on hold, or appointment- protected. | NOISE — rule (clocked in ≠ ready) |
+| 24 | Break and Queue Hold Are Different Break is workforce/time state. Queue Hold is temporary participation state. Do not merge them. | NOISE — rule (break ≠ queue hold) |
+| 25 | Hard Eligibility Before Fairness Fair Turn ranking starts only after all hard eligibility checks pass. tenant -> branch -> active employment -> clocked in / scheduled -> not serving -> not unavailable -> not on protected | NOISE — rule (hard eligibility before fairness) |
+| 41 | Assignment Panel Must Not Expand Page Whether 1, 10, or 100 candidates exist, the panel height remains fixed. Candidate lists use internal scrolling or top recommendations. | NOISE — layout rule (fixed-height assignment panel) |
 | 42 | Customer Queue Integration Use the canonical Visit/Customer Queue record. Tech Queue assignment updates that same Visit; it must not create a duplicate Visit or duplicate customer queue entry. Customer checks in -> Visit | TODO |
-| 43 | Assignment Concurrency Two receptionists must not assign the same single-capacity technician simultaneously. Session A assigns Lisa Session B assigns Lisa at the same time Expected: ONE SUCCESS ONE ASSIGNMENT_CONFLICT | TODO |
-| 45 | Manual Override Authorized manager override requires permission, reason, and audit when Fair Turn policy is bypassed. | TODO |
+| 43 | Assignment Concurrency Two receptionists must not assign the same single-capacity technician simultaneously. Session A assigns Lisa Session B assigns Lisa at the same time Expected: ONE SUCCESS ONE ASSIGNMENT_CONFLICT | EXISTS — two terminals assigning the same guest at once: exactly one wins, the other gets 409 (live pilot day MULTI-TERMINAL ASSIGN RACE) |
+| 45 | Manual Override Authorized manager override requires permission, reason, and audit when Fair Turn policy is bypassed. | EXISTS (part) — Reassign requires a technician and a reason (doReassign; server tech-queue.service); Decline reasons that are safety/eligibility never cost a turn |
 | 46 | Manual Override Must Preserve History Record original recommendation, selected technician, override reason, actor, and time where appropriate. Claude Build Mandate / 8 AI PowerSalon / Tech Queue 27-Inch Touchscreen, Fair | TODO |
 | 47 | Quick Actions Audit actual Tech Queue actions. Potential legitimate actions include Assign, Hold, Return to Queue, Break Start/End, View Schedule, View Technician, and Reconcile/Refresh. | TODO |
-| 48 | No Dead Buttons Every action must have a real handler and backend/domain path. No console.log, fake toast, or placeholder route. | TODO |
+| 48 | No Dead Buttons Every action must have a real handler and backend/domain path. No console.log, fake toast, or placeholder route. | NOISE — rule (no dead buttons) — enforced platform-wide by the dead-client / unreached-route audits |
 | 49 | Technician Row Tap Open a compact detail drawer instead of expanding row height. | TODO |
 | 50 | Technician Detail Drawer May show operational status, ready since, today's queue history, next appointment, relevant skills, current assignment, and break/hold state. Do not expose unnecessary payroll. 51. Search For 200 | TODO |
 
@@ -2368,20 +2368,20 @@ Decisions:
 | 02 | Always-visible Safety Banner Keep the blocking OFF state visible during rule browsing; surface the separate flag only from its existing protected control. | TODO |
 | 03 | Reliable Rule Freshness Show per-rule last evaluated time and input freshness; default to Unknown/Stale rather than false green success. | TODO |
 | 04 | Rule Execution Timeline Add a read-only chronological view of last runs, queue lag, errors and source events per rule. | TODO |
-| 05 | Explain Why Triggered Show matched predicate, authoritative references, threshold and exclusions in human-readable terms. | TODO |
+| 05 | Explain Why Triggered Show matched predicate, authoritative references, threshold and exclusions in human-readable terms. | EXISTS (part) — each of the 15 rules shows what it checks and how often it fires; an alert shows its evidence |
 | 06 | Duplicate Incident Suppression Use stable fingerprints and source-event IDs to prevent webhook retry noise and repeated investigations. | TODO |
 | 07 | Safer Batch Readiness Warn when membership, gift-card or cash close batch schedules or ledgers are unavailable. | TODO |
 | 08 | Consistent Empty States Differentiate no matching rules, no recorded evaluations, permission denied, stale source and API outage. MONEY PROTECTION / RULES & DETECTION / 27-INCH LANDSCAPE ADDENDUM 19 AI POWERSALON / SUNMI | TODO |
 | 09 | Threshold Change Preview Show estimated affected past evaluations in dry-run only; no production mutations. | TODO |
-| 10 | Configuration Diff Viewer Expose before/after settings, actor, reason, effective date and rollback eligibility. | TODO |
-| 11 | Sensible Default Sorting New evaluations first with stable ID tiebreaker; configured rule priority never follows display order. | TODO |
-| 12 | Cross-Module Evidence Links Use existing Alerts and Investigations routes, maintaining original selection and filters on return. | TODO |
+| 10 | Configuration Diff Viewer Expose before/after settings, actor, reason, effective date and rollback eligibility. | EXISTS (part) — a rule change needs a reason to weaken it and keeps before → after with the actor (MpRules) |
+| 11 | Sensible Default Sorting New evaluations first with stable ID tiebreaker; configured rule priority never follows display order. | EXISTS — newest first with stable paging on evaluations / alerts |
+| 12 | Cross-Module Evidence Links Use existing Alerts and Investigations routes, maintaining original selection and filters on return. | EXISTS — links go to the existing Alerts and Investigations routes (shared page tabs) |
 | 13 | Staff-Fairness Guardrails Baseline anomalies must communicate uncertainty, minimum sample size and peer group comparability. | TODO |
 | 14 | End-to-End Monitor Check Add a non-mutating readiness summary for source intake -> evaluation -> alert handoff -> human review. | TODO |
 | 15 | Controlled Export Export only authorized, sanitized rule/evaluation columns with filter scope and audit event. | TODO |
 | 16 | Progressive Rollout Behind an existing safe Web POS feature flag, compare baseline screenshots and monitor production errors before broad rollout. MONEY PROTECTION / RULES & DETECTION / 27-INCH LANDSCAPE ADDENDUM 20 AI P | TODO |
-| 18 | Additional recommendations: operations | TODO |
-| 19 | Additional recommendations: governance | TODO |
+| 18 | Additional recommendations: operations | NOISE — heading |
+| 19 | Additional recommendations: governance | NOISE — heading |
 
 ## AI BUSINESS ALERTS (17)
 

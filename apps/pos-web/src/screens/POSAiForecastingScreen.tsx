@@ -13,6 +13,15 @@ import { ForecastHistory, ForecastCheckButton } from './ForecastHistory';
 import { fmtInZone, fmtNumber } from '../i18n/format';   // the location's clock (not the device's)
 import { KpiCard } from '../components/FitKit';
 type Tab = 'appointments' | 'revenue' | 'noshow';
+const TAB_IDS: Tab[] = ['appointments', 'revenue', 'noshow'];
+export function readTab(search: string = typeof window !== 'undefined' ? window.location.search : ''): Tab {
+  const v = new URLSearchParams(search).get('tab');
+  return TAB_IDS.includes(v as Tab) ? (v as Tab) : 'appointments';
+}
+function writeTab(t: Tab) {
+  try { const u = new URL(window.location.href); u.searchParams.set('tab', t); window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash); }
+  catch { /* no history API (very old browser): the tab still switches for this visit */ }
+}
 const TABS = (): [Tab, string][] => [['appointments', tx('growth.aiForecast.tab.appointments')], ['revenue', tx('growth.aiForecast.tab.revenue')], ['noshow', tx('growth.aiForecast.tab.noshow')]];
 const titleCase = (s: string) => growthCode(s, 'level');
 const pct = (w: number | null | undefined) => (w == null ? '—' : `${(w * 100).toFixed(1)}%`);
@@ -123,7 +132,9 @@ function NoShowView({ data }: { data: any }) {
 }
 
 export function POSAiForecastingScreen() {
-  const [tab, setTab] = useState<Tab>('appointments');
+  // extras (Nov 11 2026) — the chosen tab lives in the address (?tab=), so leaving and coming back (or a refresh) keeps it
+  const [tab, setTabState] = useState<Tab>(() => readTab());
+  const setTab = (t: Tab) => { setTabState(t); writeTab(t); };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appt, setAppt] = useState<any | null>(null);
