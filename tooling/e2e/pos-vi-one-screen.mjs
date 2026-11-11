@@ -182,6 +182,23 @@ export const BATCH6_MODULES = [
 ];
 /** SUNMI batch 7 (Kevin's Nov 9 2026 PDFs): customers, community, approvals, checkout / tipping / three ways to pay, loyalty,
  *  referrals, team, AI usage / reputation / OCR / upsell / scheduling / churn / customer AI settings (MODULE_SET=batch7). */
+/** SUNMI batch 9 (Kevin's Nov 10 2026 PDFs): the reports family and the Management overview (MODULE_SET=batch9; =all adds the
+ *  pages not already in another batch — Payroll, Commission and Settings are). */
+export const BATCH9_MODULES = [
+  { key: 'daily-summary', path: '/reports', label: 'DAILY SUMMARY' },
+  { key: 'rpt-sales', path: '/tenant/reports/sales', label: 'SALES REPORT' },
+  { key: 'rpt-appointments', path: '/tenant/reports/appointments', label: 'APPOINTMENTS REPORT' },
+  { key: 'rpt-technicians', path: '/tenant/reports/technicians', label: 'TECHNICIANS REPORT' },
+  { key: 'rpt-customers', path: '/tenant/reports/customers', label: 'CUSTOMERS REPORT' },
+  { key: 'rpt-services', path: '/tenant/reports/services', label: 'SERVICES REPORT' },
+  { key: 'rpt-inventory', path: '/tenant/reports/inventory', label: 'INVENTORY REPORTS' },
+  { key: 'rpt-marketing', path: '/tenant/reports/marketing', label: 'MARKETING REPORT' },
+  { key: 'rpt-payments', path: '/tenant/reports/payments', label: 'PAYMENTS REPORT' },
+  { key: 'rpt-ai', path: '/tenant/reports/ai', label: 'AI ANALYTICS' },
+  { key: 'rpt-tax', path: '/tenant/reports/tax', label: 'TAX REPORTS' },
+  { key: 'rpt-multi-location', path: '/tenant/reports/multi-location', label: 'MULTI-LOCATION REPORTS' },
+  { key: 'mgmt-overview', path: '/tenant/management/overview', label: 'MANAGEMENT' },
+];
 export const BATCH8_MODULES = [
   { key: 'settings', path: '/settings', label: 'SETTINGS' },
   { key: 'locations', path: '/tenant/management/locations', label: 'SALON LOCATIONS' },
@@ -619,7 +636,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (lj?.outcome === 'BRANCH_SELECTION_REQUIRED') await ctx.request.post(WEB + '/auth/select-branch', { data: { branchId: B } });
     if (!login.ok()) throw new Error(`owner login ${login.status()}`);
     const setLanguage = async (lang) => { const r = await ctx.request.put(WEB + '/pos/me/language', { data: { language: lang } }); if (!r.ok()) throw new Error(`PUT /pos/me/language ${r.status()}`); };
-    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES, ...BATCH7_MODULES, ...BATCH8_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'batch7' ? BATCH7_MODULES : process.env.MODULE_SET === 'batch8' ? BATCH8_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
+    const SET = process.env.MODULE_SET === 'all' ? [...MODULES, ...EXTRA_MODULES, ...BATCH2_MODULES, ...BATCH3_MODULES, ...BATCH4_MODULES, ...BATCH5_MODULES, ...BATCH6_MODULES, ...BATCH7_MODULES, ...BATCH8_MODULES, ...BATCH9_MODULES].filter((m, i, a) => a.findIndex((x) => x.key === m.key) === i) : process.env.MODULE_SET === 'batch6' ? BATCH6_MODULES : process.env.MODULE_SET === 'batch7' ? BATCH7_MODULES : process.env.MODULE_SET === 'batch8' ? BATCH8_MODULES : process.env.MODULE_SET === 'batch9' ? BATCH9_MODULES : process.env.MODULE_SET === 'extra' ? EXTRA_MODULES : process.env.MODULE_SET === 'batch2' ? BATCH2_MODULES : process.env.MODULE_SET === 'batch3' ? BATCH3_MODULES : process.env.MODULE_SET === 'batch4' ? BATCH4_MODULES : process.env.MODULE_SET === 'batch5' ? BATCH5_MODULES : MODULES;
     const mods = ONLY ? SET.filter((m) => ONLY.includes(m.key)) : SET;
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx.newPage(), setLanguage, base: WEB, shots: SHOTS, state: STATE, modules: mods, viewports: VPS, log: (s) => console.log(s) });
     await setLanguage('en');

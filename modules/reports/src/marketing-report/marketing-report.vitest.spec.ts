@@ -52,3 +52,34 @@ describe('composeHeadline — batch 9 guide 12 (Nov 10 2026)', () => {
     expect(h.campaignRoi).toBeNull(); expect(h.averageRating).toBe(5);
   });
 });
+
+describe('marketing-report — a period (batch 9 decision 2, Nov 10 2026)', () => {
+  const C = (id: string, scheduledAt: string | null, createdAt: string, sent: number, rev: number) => ({ id, scheduledAt, createdAt, sentCount: sent, openCount: 0, clickCount: 0, replyCount: 0, bookingCount: 0, revenueCents: rev, costCents: 0, status: 'completed' });
+  const camps = [C('a', '2026-10-05T15:00:00Z', '2026-09-20T00:00:00Z', 100, 20000), C('b', null, '2026-10-20T15:00:00Z', 50, 5000), C('c', '2026-09-30T15:00:00Z', '2026-09-01T00:00:00Z', 999, 99900)];
+  const pages = [camps.slice(0, 2), camps.slice(2)];
+  const campsSvc = { getState: async (_c: any, f: any) => ({ kpis: {}, campaigns: f?.page ? pages[f.page - 1] : [], pagination: { totalPages: 2 } }) } as any;
+  const promos = { getState: async () => ({ kpis: promoState.kpis, promotions: [
+    { id: 'p1', status: 'active', startsAt: '2026-10-10T00:00:00Z', endsAt: null, createdAt: '2026-10-01T00:00:00Z', redemptionCount: 7 },
+    { id: 'p2', status: 'active', startsAt: '2026-01-01T00:00:00Z', endsAt: '2026-03-01T00:00:00Z', createdAt: '2026-01-01T00:00:00Z', redemptionCount: 50 },
+  ] }) } as any;
+  const revs = { getState: async () => ({ kpis: revState.kpis, reviews: [
+    { id: 'r1', rating: 5, isPublic: true, isHidden: false, comment: null, createdAt: '2026-10-11T18:00:00Z' },
+    { id: 'r2', rating: 3, isPublic: true, isHidden: false, comment: null, createdAt: '2026-11-01T03:00:00Z' },   // Oct 31, 11 pm in the salon (New York) — inside the window
+  ] }) } as any;
+  it('scopes campaigns (all pages, by send day), reviews (by day left) and promotions (run overlaps) to the window', async () => {
+    const svc = new MarketingReportService(campsSvc, promos, revs);   // no db → the default salon zone
+    const st = await svc.getState(ctx, { preset: 'custom', from: '2026-10-01', to: '2026-10-31' });
+    expect(st.period).toMatchObject({ from: '2026-10-01', to: '2026-10-31', preset: 'custom' });
+    expect(st.campaigns.totalCampaigns).toBe(2); expect(st.campaigns.totalSent).toBe(150); expect(st.campaigns.campaignRevenueCents).toBe(25000);
+    expect(st.promotions.total).toBe(1); expect(st.promotions.totalRedemptions).toBe(7); expect(st.redemptionsAllTime).toBe(true);
+    expect(st.reviews.totalReviews).toBe(2); expect(st.reviews.averageRating).toBe(4);
+  });
+  it('no period = all time, as before; a bad range is refused with the registry code', async () => {
+    const svc = new MarketingReportService(fakeCampaigns, fakePromos, fakeReviews);
+    const st = await svc.getState(ctx);
+    expect(st.period).toBeNull(); expect(st.campaigns.totalCampaigns).toBe(5); expect(st.redemptionsAllTime).toBeUndefined();
+    await expect(svc.getState(ctx, { preset: 'custom', from: '2026-10-31', to: '2026-10-01' })).rejects.toMatchObject({ apiCode: 'DATE_RANGE_INVALID' });
+    await expect(svc.getState(ctx, { preset: 'custom', from: '2025-01-01', to: '2026-10-01' })).rejects.toMatchObject({ apiCode: 'DATE_RANGE_TOO_LARGE' });
+    await expect(svc.getState(ctx, { preset: 'forever' })).rejects.toMatchObject({ apiCode: 'DATE_RANGE_INVALID' });
+  });
+});

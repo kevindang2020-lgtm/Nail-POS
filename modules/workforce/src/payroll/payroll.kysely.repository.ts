@@ -3,13 +3,16 @@
 import { projectionDeliversRealtime } from '@aipowersalon/config';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import { sql, type Kysely } from 'kysely';
-import { applyListQuery, parseListQuery, assertTransition, type DB } from '@aipowersalon/database';
+import { applyListQuery, parseListQuery, assertTransition, escapeLike, type DB } from '@aipowersalon/database';
 import { PAYROLL_PERIODS_SPEC } from './payroll.list-queries';
 import type { PayrollContext, PayrollRepositoryPort, PeriodPage, CanonicalLineInput } from './payroll.repository';
 import type { PayrollPeriodRow, PayrollLineRow, PeriodFilters, CreatePeriodRequest, PeriodStatus, CommissionType } from './payroll.dto';
-import { PAYROLL_PERIOD, dashboardStatusOf, ymdOf } from './payroll.dto';
+import { PAYROLL_PERIOD, dashboardStatusOf, ymdOf, technicianTerm } from './payroll.dto';
 import { clampPage } from '@aipowersalon/api-contracts';
 import { periodsOverlap, overlapError } from './payroll-workflow';
+// Vietnamese letters folded to plain ones for the technician search (the same fold technicianTerm applies to the term)
+const FOLD_FROM = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ';
+const FOLD_TO = 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydaaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd';
 
 export const toPeriod = (r: any): PayrollPeriodRow => withDashboard({
   id: r.id, tenantId: r.tenant_id, branchId: r.branch_id ?? null, label: r.label ?? null,
@@ -74,8 +77,14 @@ export class KyselyPayrollRepository implements PayrollRepositoryPort {
   }
 
   // BUILD_PLAN Phase 12 (DoD #21/#22): filters, search and order from PAYROLL_PERIODS_SPEC — columns from the spec, values bound
-  private async page(baseWhere: (qb: any) => any, f: PeriodFilters): Promise<PeriodPage> {
+  private async page(where: (qb: any) => any, f: PeriodFilters): Promise<PeriodPage> {
     const lq = parseListQuery(f as Record<string, unknown>, PAYROLL_PERIODS_SPEC);
+    // batch 9: ?technician= — periods with a line for a technician whose name (accent-free) or phone matches
+    const term = technicianTerm(f.technician);
+    const baseWhere = !term ? where : (qb: any) => where(qb).where(sql<boolean>`exists (select 1 from payroll_lines pl left join technicians t on t.id = pl.technician_id and t.tenant_id = pl.tenant_id
+      where pl.period_id = payroll_periods.id and pl.tenant_id = payroll_periods.tenant_id
+        and (lower(translate(coalesce(pl.technician_name, '') || ' ' || coalesce(t.full_name, ''), ${FOLD_FROM}, ${FOLD_TO})) like ${'%' + escapeLike(term.text) + '%'}
+          ${term.digits ? sql`or coalesce(t.normalized_phone, '') like ${'%' + term.digits + '%'}` : sql``}))`);
     const page = clampPage(f.page);
     const pageSize = lq.limit;
     const countRow: any = await applyListQuery(baseWhere(this.db.selectFrom('payroll_periods')), lq, { sort: false, limit: false }).select(sql<number>`count(*)`.as('n')).executeTakeFirst().catch(() => ({ n: 0 }));

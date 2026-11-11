@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { stateMock } = vi.hoisted(() => ({ stateMock: vi.fn() }));
 vi.mock('../api/posMarketingReportApi', () => ({ posMarketingReportApi: { state: stateMock } }));
@@ -37,5 +37,20 @@ describe('POSMarketingReportScreen — batch 9 guide 12 (Nov 10 2026)', () => {
     expect(screen.getByTestId('mkt-rating')).toHaveTextContent('N/A');
     expect(screen.getByText(/entered on the campaign/)).toBeInTheDocument();
     expect(screen.getByTestId('mkt-scope')).toHaveTextContent('All time');
+  });
+  it('asks the server for the chosen period and says redemptions stay all-time (batch 9 decision 2)', async () => {
+    stateMock.mockResolvedValue(state);
+    render(<MemoryRouter initialEntries={['/tenant/reports/marketing?preset=month']}><POSMarketingReportScreen /></MemoryRouter>);
+    await waitFor(() => expect(stateMock).toHaveBeenCalledWith({ preset: 'month' }));
+    stateMock.mockResolvedValue({ ...state, period: { from: '2026-11-01', to: '2026-11-10', preset: 'month', timeZone: 'America/New_York', today: '2026-11-10' }, redemptionsAllTime: true });
+    fireEvent.click(await screen.findByTestId('preset-all'));
+    await waitFor(() => expect(stateMock).toHaveBeenLastCalledWith({ preset: 'all' }));
+  });
+  it('shows the window and the all-time note when the server scoped the figures', async () => {
+    stateMock.mockResolvedValue({ ...state, period: { from: '2026-10-01', to: '2026-10-31', preset: 'custom', timeZone: 'America/New_York', today: '2026-11-10' }, redemptionsAllTime: true });
+    render(<MemoryRouter initialEntries={['/x?preset=custom&from=2026-10-01&to=2026-10-31']}><POSMarketingReportScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('mkt-scope')).toHaveTextContent('2026-10-01 – 2026-10-31');
+    expect(screen.getByTestId('mkt-redemptions-alltime')).toBeInTheDocument();
+    expect(stateMock).toHaveBeenCalledWith({ preset: 'custom', from: '2026-10-01', to: '2026-10-31' });
   });
 });

@@ -91,7 +91,7 @@ export interface UpsertLineRequest {
   adjustmentCents?: number;
 }
 
-export interface PeriodFilters { status?: PeriodStatus; search?: string; page?: number; pageSize?: number }
+export interface PeriodFilters { status?: PeriodStatus; search?: string; technician?: string; page?: number; pageSize?: number }
 export interface PayrollKpis { totalPeriods: number; openPeriods: number; unpaidPayableCents: number; lifetimePayableCents: number; lifetimeCommissionCents: number; lifetimeTipsCents: number }
 
 const cents = (v: unknown): number => Math.max(0, Math.trunc(Number(v) || 0));
@@ -192,9 +192,18 @@ export function derivePayrollKpis(periods: PayrollPeriodRow[]): PayrollKpis {
   };
 }
 
-export function applyPeriodFilters(rows: PayrollPeriodRow[], f: PeriodFilters): PayrollPeriodRow[] {
+/** A technician search term: its words (accent-free, lower case) and, when it holds 3+ digits, those digits for a phone. */
+export function technicianTerm(raw: string | undefined): { text: string; digits: string } | null {
+  const text = String(raw ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').trim().toLowerCase().slice(0, 100);
+  if (!text) return null;
+  const d = text.replace(/\D/g, '');
+  return { text, digits: d.length >= 3 ? d : '' };
+}
+
+export function applyPeriodFilters(rows: PayrollPeriodRow[], f: PeriodFilters, technicianPeriodIds?: Set<string>): PayrollPeriodRow[] {
   let out = rows;
   if (f.status) out = out.filter((r) => r.status === f.status);
   if (f.search) { const s = f.search.toLowerCase(); out = out.filter((r) => (r.label || '').toLowerCase().includes(s)); }
+  if (f.technician && technicianPeriodIds) out = out.filter((r) => technicianPeriodIds.has(r.id));
   return out;
 }

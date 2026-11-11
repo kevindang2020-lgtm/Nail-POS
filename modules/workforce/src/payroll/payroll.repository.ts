@@ -2,7 +2,7 @@
 // always consistent. The in-memory store starts EMPTY (no mock data). Lines are keyed unique per (period, technician).
 import { randomUUID } from 'crypto';
 import type { PayrollPeriodRow, PayrollLineRow, PeriodFilters, CreatePeriodRequest, UpsertLineRequest, PeriodStatus } from './payroll.dto';
-import { computeLine, rollupPeriodTotals, applyPeriodFilters } from './payroll.dto';
+import { computeLine, rollupPeriodTotals, applyPeriodFilters, technicianTerm } from './payroll.dto';
 import { clampPage } from '@aipowersalon/api-contracts';
 import { periodsOverlap, overlapError } from './payroll-workflow';
 
@@ -82,7 +82,9 @@ export class InMemoryPayrollRepository implements PayrollRepositoryPort {
   }
 
   async listPeriods(tenantId: string, filters: PeriodFilters): Promise<PeriodPage> {
-    return paginate(applyPeriodFilters(this.periods.filter((p) => p.tenantId === tenantId), filters), filters);
+    const term = technicianTerm(filters.technician);
+    const hit = term ? new Set(this.lines.filter((l) => l.tenantId === tenantId && technicianTerm(l.technicianName ?? '')?.text.includes(term.text)).map((l) => l.periodId)) : undefined;
+    return paginate(applyPeriodFilters(this.periods.filter((p) => p.tenantId === tenantId), filters, hit), filters);
   }
   async listPlatform(filters: PeriodFilters & { tenantId?: string }): Promise<PeriodPage> {
     const all = filters.tenantId ? this.periods.filter((p) => p.tenantId === filters.tenantId) : this.periods;

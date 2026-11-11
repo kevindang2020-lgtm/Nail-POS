@@ -29,6 +29,7 @@ vi.mock('../api/client', () => ({
         kpis: { totalPeriods: 2, openPeriods: 1, unpaidPayableCents: 1874200, lifetimePayableCents: 3000000, lifetimeCommissionCents: 1800000, lifetimeTipsCents: 600000 },
         periods: [],
       });
+      if (path.includes('/pos/time-clock/state')) return Promise.resolve({ kpis: { technicianCount: 5, clockedInCount: 4, totalHoursToday: 20 }, technicians: [] });
       if (path.includes('/pos/approvals')) return Promise.resolve({ items: [], page: 1, pageSize: 1, total: 3, hasMore: true });
       if (path.includes('branches/comparison')) return Promise.resolve({ branches: [
         { branchId: 'b1', revenueCents: 120000, trendPercent: 12.5, bookingCount: 30, averageTicketCents: 4000 },
@@ -64,6 +65,7 @@ describe('POSManagementScreen — batch 9 guides 17–18 (Nov 10 2026)', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(await screen.findByTestId('mgmt-trend-b1')).toHaveTextContent('+12.5%');
     expect(screen.getByTestId('mgmt-trend-b2')).toHaveTextContent('N/A');
+    expect(screen.getByText('On Shift Now').parentElement).toHaveTextContent('4');   // Time Clock, not 'available now'
   });
 });
 

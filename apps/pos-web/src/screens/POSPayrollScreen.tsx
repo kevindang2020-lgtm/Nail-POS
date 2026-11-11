@@ -121,7 +121,22 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
   // period shows when it overlaps the range), newest first (start date, then id) and paged — it was one unsorted column
   const [pf, setPf] = useState<PeriodFilter>({ q: '', status: 'all' });
   const [listPage, setListPage] = useState(1);
-  const shownPeriods = filterPeriods(state.periods, pf, (x) => (x.dashboardStatus ? DASH_LABEL()[x.dashboardStatus] : STATUS_LABEL()[x.status]));
+  // batch 9 decision 3: the search also finds the periods a technician (name or phone) is paid in — matched by the server
+  // against the period lines (GET /pos/payroll/state?technician=), so a name never has to be in the period label
+  const [techHits, setTechHits] = useState<Set<string> | null>(null);
+  const [techSearchDown, setTechSearchDown] = useState(false);
+  useEffect(() => {
+    const q = pf.q.trim();
+    if (q.length < 2) { setTechHits(null); setTechSearchDown(false); return; }
+    let live = true;
+    const h = setTimeout(() => {
+      posPayrollApi.getState({ technician: q, pageSize: 200 })
+        .then((r: any) => { if (live) { setTechHits(new Set(((r?.periods ?? []) as { id: string }[]).map((x) => x.id))); setTechSearchDown(false); } })
+        .catch(() => { if (live) { setTechHits(null); setTechSearchDown(true); } });   // shown below the search box — label/date search still works
+    }, 300);
+    return () => { live = false; clearTimeout(h); };
+  }, [pf.q]);
+  const shownPeriods = filterPeriods(state.periods, pf, (x) => (x.dashboardStatus ? DASH_LABEL()[x.dashboardStatus] : STATUS_LABEL()[x.status]), techHits);
   const pageOfPeriods = shownPeriods.slice((listPage - 1) * LIST_SIZE, listPage * LIST_SIZE);
   const [selId, setSelId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -184,6 +199,7 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
         ) : null}
         {state.periods.length === 0 ? <div style={{ padding: 18 }}><EmptyState title={tx('pos.no_pay_periods')} message={tx('pos.create_a_period_to_begin')} /></div> : (<>
           <PeriodListFilters value={pf} onChange={(v) => { setPf(v); setListPage(1); }} total={shownPeriods.length} />
+          {techSearchDown ? <div className="s" style={{ padding: '4px 10px', color: 'var(--muted)' }} data-testid="payroll-tech-search-down">{tx('pay.list.techSearchDown')}</div> : null}
           {pageOfPeriods.length === 0 ? <div style={{ padding: 18 }} data-testid="payroll-nomatch">{tx('rpt.tx.noMatch')}</div> : null}
           {pageOfPeriods.map((x) => (
             <button key={x.id} onClick={() => open(x.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid var(--aps-line)', background: selId === x.id ? 'var(--aps-page)' : 'transparent', cursor: 'pointer' }}>
@@ -575,13 +591,13 @@ const LIST_SIZE = 10;
 export type PeriodFilter = { q: string; status: 'all' | Status; from?: string; to?: string };
 /** newest first (start date desc, then id desc); search over label, dates and status words; a period shows when it overlaps
  *  the From–To range. Pure — the server still decides every figure. */
-export function filterPeriods<P extends { id: string; label: string | null; periodStart: string; periodEnd: string; status: Status }>(rows: P[], f: PeriodFilter, statusText: (p: P) => string): P[] {
+export function filterPeriods<P extends { id: string; label: string | null; periodStart: string; periodEnd: string; status: Status }>(rows: P[], f: PeriodFilter, statusText: (p: P) => string, techHits?: Set<string> | null): P[] {
   const fold = (x: unknown) => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const n = fold(f.q).trim();
   return rows
     .filter((p) => f.status === 'all' || p.status === f.status)
     .filter((p) => (!f.from || p.periodEnd >= f.from) && (!f.to || p.periodStart <= f.to))
-    .filter((p) => !n || [p.label, p.periodStart, p.periodEnd, statusText(p)].some((v) => fold(v).includes(n)))
+    .filter((p) => !n || [p.label, p.periodStart, p.periodEnd, statusText(p)].some((v) => fold(v).includes(n)) || !!techHits?.has(p.id))   // or a technician paid in it (server match)
     .slice().sort((a, b) => (a.periodStart < b.periodStart ? 1 : a.periodStart > b.periodStart ? -1 : a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
 }
 function PeriodListFilters({ value, onChange, total }: { value: PeriodFilter; onChange: (v: PeriodFilter) => void; total: number }) {

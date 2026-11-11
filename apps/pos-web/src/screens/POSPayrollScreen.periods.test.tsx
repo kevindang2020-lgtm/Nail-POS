@@ -17,4 +17,9 @@ describe('filterPeriods', () => {
     expect(filterPeriods(rows, { q: '', status: 'draft' }, txt).map((p) => p.id)).toEqual(['c']);
     expect(filterPeriods(rows, { q: '', status: 'all', from: '2026-10-15', to: '2026-10-16' }, txt).map((p) => p.id)).toEqual(['b', 'a']);
   });
+  it('a technician search also shows the periods the server matched (name / phone in the period lines)', () => {
+    expect(filterPeriods(rows, { q: 'tran ngoc', status: 'all' }, txt, new Set(['a', 'c'])).map((p) => p.id)).toEqual(['c', 'a']);
+    expect(filterPeriods(rows, { q: 'tran ngoc', status: 'paid' }, txt, new Set(['a', 'c'])).map((p) => p.id)).toEqual(['a']);   // status still applies
+    expect(filterPeriods(rows, { q: 'tran ngoc', status: 'all' }, txt, null).map((p) => p.id)).toEqual([]);
+  });
 });

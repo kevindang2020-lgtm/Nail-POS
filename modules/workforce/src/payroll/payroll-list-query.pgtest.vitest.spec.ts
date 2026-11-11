@@ -44,4 +44,23 @@ describe('payroll periods on the list-query standard', () => {
   it('the platform list takes filter[tenantId]', async () => {
     expect((await repo.listPlatform(edge({ filter: { tenantId: T2 } }, SA) as any)).items.map((x: any) => x.label)).toEqual(['other']);
   });
+  it('?technician= finds the periods a technician is paid in — name accent-free, or phone digits; salon-scoped (batch 9)', async () => {
+    const B = 'b0110000-0000-4000-8000-0000000000b1'; const TECH = 'b0110000-0000-4000-8000-0000000000c1';
+    await db.insertInto('technicians').values({ id: TECH, tenant_id: T1, branch_id: B, first_name: 'Ngọc', last_name: 'Trần', full_name: 'Trần Ngọc', normalized_phone: '+17145550123' } as any).execute();
+    const per = async (label: string) => (await db.selectFrom('payroll_periods').select(['id']).where('label', '=', label).executeTakeFirstOrThrow()).id;
+    await db.insertInto('payroll_lines').values([
+      { tenant_id: T1, period_id: await per('2026-07'), technician_id: TECH, technician_name: 'Trần Ngọc' },
+      { tenant_id: T1, period_id: await per('2026-06'), technician_id: 'b0110000-0000-4000-8000-0000000000c2', technician_name: 'Lisa Phạm' },
+      { tenant_id: T2, period_id: await per('other'), technician_id: TECH, technician_name: 'Trần Ngọc' },
+    ] as any).execute();
+    const labels = async (t: string, tenant = T1) => (await repo.listPeriods(tenant, edge({ technician: t }, POS) as any)).items.map((x: any) => x.label);
+    expect(await labels('tran ngoc')).toEqual(['2026-07']);
+    expect(await labels('NGỌC')).toEqual(['2026-07']);
+    expect(await labels('555-0123')).toEqual(['2026-07']);
+    expect(await labels('pham')).toEqual(['2026-06']);
+    expect(await labels('nobody')).toEqual([]);
+    expect(await labels('100%')).toEqual([]);                       // a LIKE wildcard is literal
+    expect(await labels('tran', T2)).toEqual(['other']);
+    expect(codeOf({ technician: 'x' }, POS)).toBe('ok');
+  });
 });

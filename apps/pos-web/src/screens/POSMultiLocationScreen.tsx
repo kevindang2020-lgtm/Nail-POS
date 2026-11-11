@@ -4,6 +4,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { posMultiLocationApi } from '../api/posMultiLocationApi';
 import { money, PeriodTabs, reportError } from './reportsCommon';
+import { RangeCalendar } from '../components/FinanceKit';
+import { fmtInZone } from '../i18n/format';
+// the server sends instants; show the salon days ([from, to) — the end instant is exclusive)
+const dayOf = (iso: string, end = false) => fmtInZone(new Date(Date.parse(iso) - (end ? 1 : 0)).toISOString(), { month: 'short', day: 'numeric', year: 'numeric' });
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
 type BranchRow = { rank: number; branchId: string; branchName: string; revenueCents: number; trendPercent: number | null; bookingCount: number; averageTicketCents: number };
@@ -22,17 +26,20 @@ const trend = (p: number | null | undefined) => { if (p == null) return <span st
 
 export function POSMultiLocationScreen() {
   const [period, setPeriod] = useState('month');
+  // Nov 10 2026 (batch 9 guide 16 follow-up): a custom From–To of salon days, compared with the same length just before
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const [cal, setCal] = useState(false);
   const [s, setS] = useState<State | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (p: string) => {
+  const load = useCallback(async (p: string, r: { from: string; to: string } | null) => {
     setLoading(true); setError(null);
-    try { setS(await posMultiLocationApi.state(p) as State); }
-    catch (e: any) { setError(reportError(e, t('admin.noun.multiLocation'))); }
+    try { setS(await posMultiLocationApi.state(p, r ?? undefined) as State); }
+    catch (e: any) { setS(null); setError(reportError(e, t('admin.noun.multiLocation'))); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { load(period); }, [load, period]);
+  useEffect(() => { load(period, range); }, [load, period, range]);
 
   const rows = s?.branches || [];
   const maxRev = Math.max(1, ...rows.map((r) => r.revenueCents));
@@ -42,7 +49,13 @@ export function POSMultiLocationScreen() {
     <div className="work">
       <div className="vh "><h1>{t('pos.multi_location_reports')}</h1><div className="sub mb-3">{t('pos.cross_branch_performance_for_your_salon')}</div></div>
       <div className="flex flex-col md:flex-row flex-wrap whitespace-nowrap sm:items-center justify-between gap-2 mb-1">
-        <PeriodTabs period={period} onChange={setPeriod} />
+        <div className="flex flex-wrap items-center gap-2" style={{ position: 'relative' }}>
+          <PeriodTabs period={range ? '' : period} onChange={(p) => { setRange(null); setPeriod(p); }} />
+          <button type="button" className={'btn ' + (range ? '' : 'ghost')} style={{ minHeight: 40 }} data-testid="ml-custom" aria-haspopup="dialog" aria-expanded={cal} onClick={() => setCal((o) => !o)}>{range ? `${range.from} – ${range.to}` : t('ml.custom')}</button>
+          {cal ? <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0 }}><RangeCalendar initial={range ?? {}} today={new Date().toISOString().slice(0, 10)}
+            onApply={(r) => { setCal(false); if (r.from && r.to) setRange({ from: r.from, to: r.to }); }} onCancel={() => setCal(false)} onClear={() => { setCal(false); setRange(null); }} /></div> : null}
+        </div>
+        {s?.period ? <span className="s" data-testid="ml-window">{t('ml.window', { from: dayOf(s.period.from), to: dayOf(s.period.to, true), cf: dayOf(s.period.comparisonFrom), ct: dayOf(s.period.comparisonTo, true) })}</span> : null}
       </div>
 
       {loading ? <div className="state">{t('pos.loading_multi_location_report')}</div>

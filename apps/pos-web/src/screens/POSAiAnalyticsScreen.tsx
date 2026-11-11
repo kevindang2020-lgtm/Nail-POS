@@ -3,6 +3,7 @@
 // tag if it's an estimate); an untracked metric shows "Not tracked yet" plus the reason from the backend —
 // nothing is fabricated. Values light up as their underlying data (AI calls, bookings, campaigns) accrues.
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { posAiCenterApi } from '../api/posAiCenterApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -43,6 +44,9 @@ function MetricCard({ label, m }: { label: string; m: Metric | undefined }) {
     </div>
   );
 }
+
+// each section opens the list its numbers come from (the existing screens — nothing new is counted here)
+const ListLink = ({ to, testId }: { to: string; testId: string }) => <Link className="link-44" style={{ float: 'right', fontSize: 13, fontWeight: 600 }} to={to} data-testid={testId}>{t('rpt.ai.viewList')}</Link>;
 
 const KPI_LABELS = (): [string, string][] => [
   ['aiCallsHandled', t('growth.aiAnalytics.kpi.aiCallsHandled')], ['bookingsCapturedByAi', t('growth.aiAnalytics.kpi.bookingsCapturedByAi')], ['missedCallsRecovered', t('growth.aiAnalytics.kpi.missedCallsRecovered')],
@@ -87,7 +91,7 @@ export function POSAiAnalyticsScreen() {
       </div>
 
       <section className="panel" style={{ marginTop: 14 }}>
-        <div className="p-h">{t('pos.call_intelligence_2')}</div>
+        <div className="p-h">{t('pos.call_intelligence_2')}<ListLink to="/tenant/ai/receptionist/calls" testId="ai-link-calls" /></div>
         <div className="kpis kpis grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3" style={{ marginTop: 8,  }}>
           <MetricCard label={t('pos.calls_handled')} m={o.callIntelligence?.callsHandled} />
           <MetricCard label={t('pos.recovered_2')} m={o.callIntelligence?.recovered} />
@@ -96,7 +100,7 @@ export function POSAiAnalyticsScreen() {
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <div className="p-h">{t('pos.booking_assistant')}</div>
+        <div className="p-h">{t('pos.booking_assistant')}<ListLink to="/tenant/ai/receptionist/follow-ups" testId="ai-link-followups" /></div>
         <div className="kpis kpis grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3" style={{ marginTop: 8,  }}>
           <MetricCard label={t('pos.completed_2')} m={o.bookingAssistant?.completed} />
           <MetricCard label={t('pos.ai_bookings')} m={o.bookingAssistant?.aiBookings} />
@@ -105,7 +109,7 @@ export function POSAiAnalyticsScreen() {
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <div className="p-h">{t('pos.campaign_performance')} <span className="s">· {t('rpt.ai.allCampaigns')}</span></div>
+        <div className="p-h">{t('pos.campaign_performance')} <span className="s">· {t('rpt.ai.allCampaigns')}</span><ListLink to="/tenant/ai/marketing/results" testId="ai-link-campaigns" /></div>
         <div className="kpis kpis grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3" style={{ marginTop: 8,  }}>
           <MetricCard label={t('pos.sent')} m={o.campaigns?.sent} />
           <MetricCard label={t('pos.bookings_2')} m={o.campaigns?.bookings} />

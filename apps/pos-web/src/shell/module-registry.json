@@ -5762,6 +5762,285 @@
      "label": "Subscription link"
     }
    ]
+  },
+  {
+   "key": "daily-summary",
+   "title": "Daily Summary",
+   "routes": [
+    "/reports"
+   ],
+   "screens": [
+    "POSReportsScreen"
+   ],
+   "guide": "AI_PowerSalon_Daily_Reports_9",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "rpt-trend",
+     "label": "Revenue & Appointments Trend"
+    },
+    {
+     "id": "rpt-rbs",
+     "label": "Revenue by Service"
+    }
+   ]
+  },
+  {
+   "key": "rpt-sales",
+   "title": "Sales Report",
+   "routes": [
+    "/tenant/reports/sales"
+   ],
+   "screens": [
+    "POSSalesReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Sales_Report",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "sales-how",
+     "label": "How it is calculated"
+    }
+   ]
+  },
+  {
+   "key": "rpt-appointments",
+   "title": "Appointments Report",
+   "routes": [
+    "/tenant/reports/appointments"
+   ],
+   "screens": [
+    "POSAppointmentsReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Appointments_Report",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "appt-basis",
+     "label": "Date basis"
+    }
+   ]
+  },
+  {
+   "key": "rpt-technicians",
+   "title": "Technicians Report",
+   "routes": [
+    "/tenant/reports/technicians"
+   ],
+   "screens": [
+    "POSTechniciansReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Technicians_Report",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "tech-basis",
+     "label": "Date basis"
+    },
+    {
+     "id": "tech-filter",
+     "label": "Technician filter"
+    }
+   ]
+  },
+  {
+   "key": "rpt-customers",
+   "title": "Customers Report",
+   "routes": [
+    "/tenant/reports/customers"
+   ],
+   "screens": [
+    "POSCustomersReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Customers_Report",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "cust-search",
+     "label": "Customer search"
+    },
+    {
+     "id": "cust-count",
+     "label": "Customer count"
+    }
+   ]
+  },
+  {
+   "key": "rpt-services",
+   "title": "Services Report",
+   "routes": [
+    "/tenant/reports/services"
+   ],
+   "screens": [
+    "POSServicesReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Services_Report_",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "svc-basis",
+     "label": "Date basis"
+    },
+    {
+     "id": "svc-count",
+     "label": "Service line count"
+    }
+   ]
+  },
+  {
+   "key": "rpt-inventory",
+   "title": "Inventory Reports",
+   "routes": [
+    "/tenant/reports/inventory"
+   ],
+   "screens": [
+    "POSInventoryReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Inventory_Reports",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "inv-health",
+     "label": "Stock health"
+    },
+    {
+     "id": "inv-search",
+     "label": "Product search"
+    }
+   ]
+  },
+  {
+   "key": "rpt-marketing",
+   "title": "Marketing Report",
+   "routes": [
+    "/tenant/reports/marketing"
+   ],
+   "screens": [
+    "POSMarketingReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Marketing_Report",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "mkt-period",
+     "label": "Period (All time / presets / custom)"
+    },
+    {
+     "id": "mkt-scope",
+     "label": "Window shown"
+    }
+   ]
+  },
+  {
+   "key": "rpt-payments",
+   "title": "Payments Report",
+   "routes": [
+    "/tenant/reports/payments"
+   ],
+   "screens": [
+    "POSPaymentsReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Payments_Report",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "pay-basis",
+     "label": "Date basis"
+    }
+   ]
+  },
+  {
+   "key": "rpt-ai",
+   "title": "AI Analytics",
+   "routes": [
+    "/tenant/reports/ai"
+   ],
+   "screens": [
+    "POSAiAnalyticsScreen"
+   ],
+   "guide": "AI_PowerSalon_AI_Analytics",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "ai-link-calls",
+     "label": "Call intelligence → AI Calls"
+    },
+    {
+     "id": "ai-link-campaigns",
+     "label": "Campaigns → Campaign Results"
+    }
+   ]
+  },
+  {
+   "key": "rpt-tax",
+   "title": "Tax Reports",
+   "routes": [
+    "/tenant/reports/tax"
+   ],
+   "screens": [
+    "POSTaxReportScreen"
+   ],
+   "guide": "AI_PowerSalon_Tax_Reports",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "tax-basis",
+     "label": "Date basis"
+    },
+    {
+     "id": "tax-collected",
+     "label": "Tax collected"
+    }
+   ]
+  },
+  {
+   "key": "rpt-multi-location",
+   "title": "Multi-Location Reports",
+   "routes": [
+    "/tenant/reports/multi-location"
+   ],
+   "screens": [
+    "POSMultiLocationScreen"
+   ],
+   "guide": "AI_PowerSalon_Multi_Location_Reports",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "ml-custom",
+     "label": "Custom dates"
+    }
+   ]
+  },
+  {
+   "key": "mgmt-overview",
+   "title": "Management Overview",
+   "routes": [
+    "/tenant/management/overview"
+   ],
+   "screens": [
+    "POSManagementScreen"
+   ],
+   "guide": "AI_PowerSalon_Management",
+   "scroll": "page",
+   "scrollReason": "Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.",
+   "modules": [
+    {
+     "id": "mgmt-snapshot",
+     "label": "Branch Performance Snapshot"
+    }
+   ]
   }
  ]
 }

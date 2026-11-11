@@ -38,7 +38,7 @@ import {
 } from '../request-schemas';
 
 function ctxFrom(req: any): PayrollContext { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId ?? null, userId: c.userId, role: c.role, permissions: c.permissions || [], authz: c.authz ? { scope: c.authz.scope ?? null, branchIds: c.authz.branchIds ?? null } : null }; }
-function filtersFrom(q: any): PeriodFilters { const n = (v: any) => (v === undefined || v === '' ? undefined : Number(v)); return { status: q.status as PeriodStatus, search: q.search, page: n(q.page), pageSize: n(q.pageSize) }; }
+function filtersFrom(q: any): PeriodFilters { const n = (v: any) => (v === undefined || v === '' ? undefined : Number(v)); return { status: q.status as PeriodStatus, search: q.search, technician: q.technician || undefined, page: n(q.page), pageSize: n(q.pageSize) }; }
 async function run<T>(fn: () => T | Promise<T>): Promise<T> {
   try { return await fn(); } catch (e: any) {
     if (e instanceof PayrollError) throw new HttpException({ code: e.code, message: e.message, ...(e.details ? { details: e.details } : {}) }, e.status);

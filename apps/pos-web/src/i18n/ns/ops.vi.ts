@@ -1378,7 +1378,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "rpt.calc.newCustomers.d": "Khách có hồ sơ mà lần ghé có trả tiền đầu tiên nằm trong kỳ này. Khách vãng lai không có hồ sơ không được tính.", // DRAFT — Kevin reviews
   "rpt.calc.returningCustomers.t": "Khách quay lại", // DRAFT — Kevin reviews
   "rpt.calc.returningCustomers.d": "Khách có hồ sơ có ghé và trả tiền trong kỳ này và đã từng trả tiền trước đó.", // DRAFT — Kevin reviews
-  "pay.list.search": "Tìm tên kỳ lương, ngày hoặc trạng thái", // DRAFT — Kevin reviews
+  "pay.list.search": "Tìm kỳ lương, ngày, trạng thái hoặc tên / SĐT thợ", // DRAFT — Kevin reviews
+  "pay.list.techSearchDown": "Hiện chưa tìm được theo thợ — chỉ tìm theo tên kỳ lương và ngày.", // DRAFT — Kevin reviews
   "pay.list.status": "Trạng thái", // DRAFT — Kevin reviews
   "pay.list.allStatuses": "Mọi trạng thái", // DRAFT — Kevin reviews
   "pay.list.anyDates": "Mọi ngày", // DRAFT — Kevin reviews
@@ -1484,4 +1485,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "set.area.subscription_plan": "Gói dịch vụ", // DRAFT — Kevin reviews
   "set.area.audit_logs": "Nhật ký", // DRAFT — Kevin reviews
   "set.area.other": "Cài đặt khác", // DRAFT — Kevin reviews
+  "mgmt.shift.fallback": "Không đọc được Chấm công — đang hiện số thợ rảnh lúc này", // DRAFT — Kevin reviews
+  "ml.custom": "Chọn ngày", // DRAFT — Kevin reviews
+  "ml.window": "{from} – {to}, so với {cf} – {ct}", // DRAFT — Kevin reviews
+  "rpt.ai.viewList": "Xem danh sách →", // DRAFT — Kevin reviews
+  "rpt.mkt.window": "{from} – {to}", // DRAFT — Kevin reviews
+  "rpt.mkt.redemptionsAllTime": "lượt dùng tính từ trước đến nay (chưa ghi theo ngày)", // DRAFT — Kevin reviews
 };

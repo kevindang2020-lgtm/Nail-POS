@@ -158,8 +158,9 @@ export class OwnerController {
   @RequirePermission('owner.branches.view') @Get('branches/performance') branchPerformance(@Req() r: any, @Query('period') period?: string) {
     return run(() => this.svc.getBranchPerformance(ctxFrom(r), coercePeriod(period)));
   }
-  @RequirePermission('owner.branches.view') @Get('branches/comparison') branchComparison(@Req() r: any, @Query('period') period?: string) {
-    return run(() => this.svc.getComparison(ctxFrom(r), coercePeriod(period)));
+  @RequirePermission('owner.branches.view') @Get('branches/comparison') branchComparison(@Req() r: any, @Query('period') period?: string, @Query('from') from?: string, @Query('to') to?: string) {
+    // Nov 10 2026: an optional custom From–To (salon days, inclusive) — compared with the same length just before it
+    return run(() => this.svc.getComparison(ctxFrom(r), coercePeriod(period), from && to ? { from: String(from), to: String(to) } : undefined));
   }
   @RequirePermission('owner.branches.view') @Get('branches/:branchId/performance') branchDetail(@Req() r: any, @Param('branchId') branchId: string, @Query('period') period?: string) {
     return run(() => this.svc.getBranchDetail(ctxFrom(r), branchId, coercePeriod(period)));

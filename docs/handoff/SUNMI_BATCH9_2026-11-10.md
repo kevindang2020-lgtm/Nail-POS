@@ -367,6 +367,46 @@ what changed). The business & branch fields, cards and edit workflows are unchan
 - Verified: settings-audit-page.pgtest 2/2 (order, actor, changed keys, search, salon-day range incl. a late-evening UTC
   row, other salon hidden), runs on PG16, POS Settings 7/7.
 
+## Follow-ups built after "Continue finishing all my not done now" (Nov 10 2026, late)
+
+Kevin asked to finish the not-done list. Four of the open decisions were built on the obvious reading; the rest stay his.
+
+- **On Shift Now (decision 4) — built.** The Management KPI reads `GET /pos/time-clock/state` → `kpis.clockedInCount`
+  (Time Clock attendance). If the time clock cannot be read it falls back to the Team screen's available-now count and
+  says so under the number (`mgmt.shift.fallback`). POS Management 2/2.
+- **Multi-Location custom range (decision 5) — built.** `GET /owner/branches/comparison?from=&to=` (salon days,
+  inclusive; comparison = the same number of days just before). `customRange()` in owner.dto refuses from > to and ranges
+  over 366 days (`DATE_RANGE_INVALID`); the list-query spec declares `dateRange: { maxDays: 'analytics' }` (366). POS:
+  a "Custom dates" button opens the shared RangeCalendar; the window line reads "Oct 1, 2026 – Oct 31, 2026, compared
+  with …" (the server's end instant is exclusive, shown as the last day). Paging for 3 branches: not added (no need yet).
+  Tests: analytics owner 14/14 (customRange), POS Multi-Location 4/4.
+- **Payroll period search by technician (decision 3) — built.** `GET /pos/payroll/state?technician=` (declared filter,
+  applied by the repository): periods with a payroll line whose technician name — line name or the technicians row,
+  Vietnamese accents folded both cases — or phone digits (3+) match. LIKE wildcards are literal (`escapeLike`). The POS
+  search box asks the server after 300 ms and shows those periods beside the label/date matches; status and date
+  filters still apply. If the server search fails the box says so and label/date search keeps working. Tests: PGlite
+  pgtest 4/4 (accent-free, upper-case Vietnamese, phone, other salon isolated, `100%` literal), POS payroll 16/16.
+  The fold + exists SQL also ran on real Postgres 16.15 (fr_pilot): "TRẦN Ngọc Đức" → "tran ngoc duc".
+- **Marketing Report period (decision 2) — built.** `GET /pos/marketing-report/state?preset=|from=&to=`. No preset =
+  all time, exactly as before. With a period the pillars are rebuilt by each domain's OWN summary function over the rows
+  inside the window (no new aggregation): campaigns by send day (scheduled, else created; every page of the list, not
+  the first 50), reviews by the day left, promotions whose run overlaps the window. Salon days in the branch time zone.
+  Promotion redemptions are a running total per promotion (no dated log) — so with a period the report says
+  "redemptions are all-time" next to them instead of pretending. POS: the shared PeriodBar (All / Today / Week / Month /
+  Year / Custom), All time by default. Tests: reports marketing 7/7, POS marketing 9/9.
+- **AI Analytics (guide 14 gap) — built.** Each section links to the list behind its numbers: Call intelligence → AI
+  Calls, Booking assistant → AI Follow-ups, Campaign performance → Campaign Results. POS AI Analytics 5/5.
+- **Harness registration — done.** The 13 batch-9 pages not already registered are in `module-registry.json` (guide =
+  the PDF name) and in the harness as `MODULE_SET=batch9` (and in `all`). Baseline and preservation matrix regenerated.
+
+**Found, not changed (Kevin):** the Campaigns screen's header KPIs (and the all-time Marketing Report, which reuses
+them) are computed over the first page of campaigns only — `repo.list(tenant, {})` uses the list default of 50. Under 50
+campaigns nothing is wrong; above it the totals undercount. The fix is to page in `CampaignsService.getState`; it changes
+the Campaigns screen too, so it is listed rather than done silently.
+
+**Still Kevin's:** Email / Schedule Report delivery (decision 1 — needs a consented delivery pipeline), Open Tasks /
+Compliance (decision 6 — no source system), seed clean-up (7), Vietnamese draft review (8), density switch, and "push".
+
 ## Decisions for Kevin (batch 9)
 
 1. **Email Report / Schedule Report** (Daily Summary) stay labelled "not connected" — wiring them needs a delivery

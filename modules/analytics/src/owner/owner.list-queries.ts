@@ -13,7 +13,7 @@ export const OwnerControllerListQueries = {
   cashDrawer: { filters: { date: { type: 'date' } }, search: false },
   cashSummary: { filters: { date: { type: 'date' } }, search: false },
   branchPerformance: { filters: { period: { type: 'text' } }, search: false },
-  branchComparison: { filters: { period: { type: 'text' } }, search: false },
+  branchComparison: { filters: { period: { type: 'text' } }, search: false, dateRange: { maxDays: 'analytics' } },
   branchDetail: { filters: { period: { type: 'text' } }, search: false },
   bookingOverview: { filters: { period: { type: 'text' }, branchId: { type: 'id' } }, search: false },
   bookingTrend: { filters: { branchId: { type: 'id' } }, search: false },

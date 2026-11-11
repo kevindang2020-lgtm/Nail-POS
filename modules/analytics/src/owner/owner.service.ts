@@ -8,7 +8,7 @@ import { OwnerError } from './owner-errors';
 import { pageStaffRows } from './owner-staff-paging';
 import type { OwnerStaffPerformancePage, OwnerStaffPerformanceRow } from '@aipowersalon/api-contracts/tenant';
 import { verifyPassword, hashPassword } from '@aipowersalon/auth';
-import { ranges, pct, pctOf, periodRange, toCsv, type OwnerPeriod, type OwnerBookingPeriod, type OwnerDashboardState, type OwnerBranchPerformanceState, type OwnerBranchListItem, type OwnerBranchDetail, type OwnerBookingOverview, type OwnerAppointmentListItem, type OwnerAppointmentDetail, type OwnerStaffPerformanceState, type OwnerStaffAttendance, type OwnerTechnicianDetail, type OwnerTechnicianEarnings, type OwnerFinanceSummary, type OwnerPaymentMix, type OwnerReportInfo, type OwnerReportExport, type OwnerAlert, type OwnerAlertSummary, type OwnerProfileCard, type OwnerSettingsSnapshot, type OwnerAuditEntry, type OwnerExpense, type OwnerExpenseInput, type OwnerExpenseSummary, type OwnerContextResponse, type OwnerSalonOverview, type OwnerTicketList, type OwnerTicketHistory, type OwnerTicketFilters, type OwnerLiveOperations, type OwnerLiveOpsQuery, type OwnerPayrollList, type OwnerPayrollPeriodDetail, type OwnerCustomersOverview, type OwnerGiftCardReport, type OwnerInventoryOverview, type OwnerMarketingOverview, type OwnerPaymentsOverview, type OwnerApprovals, type OwnerApprovalItem, type OwnerAttention } from './owner.dto';
+import { ranges, pct, pctOf, periodRange, customRange, toCsv, type OwnerPeriod, type OwnerBookingPeriod, type OwnerDashboardState, type OwnerBranchPerformanceState, type OwnerBranchListItem, type OwnerBranchDetail, type OwnerBookingOverview, type OwnerAppointmentListItem, type OwnerAppointmentDetail, type OwnerStaffPerformanceState, type OwnerStaffAttendance, type OwnerTechnicianDetail, type OwnerTechnicianEarnings, type OwnerFinanceSummary, type OwnerPaymentMix, type OwnerReportInfo, type OwnerReportExport, type OwnerAlert, type OwnerAlertSummary, type OwnerProfileCard, type OwnerSettingsSnapshot, type OwnerAuditEntry, type OwnerExpense, type OwnerExpenseInput, type OwnerExpenseSummary, type OwnerContextResponse, type OwnerSalonOverview, type OwnerTicketList, type OwnerTicketHistory, type OwnerTicketFilters, type OwnerLiveOperations, type OwnerLiveOpsQuery, type OwnerPayrollList, type OwnerPayrollPeriodDetail, type OwnerCustomersOverview, type OwnerGiftCardReport, type OwnerInventoryOverview, type OwnerMarketingOverview, type OwnerPaymentsOverview, type OwnerApprovals, type OwnerApprovalItem, type OwnerAttention } from './owner.dto';
 import { clampPage, withCode } from '@aipowersalon/api-contracts';
 import { buildMediaUrl } from '@aipowersalon/media';
 import { hasPermission, hasTenantWideScope, isPlatformPrincipal } from '@aipowersalon/permissions';
@@ -320,11 +320,14 @@ export class OwnerService {
     }));
   }
 
-  async getBranchPerformance(ctx: OwnerContext, period: OwnerPeriod = 'month'): Promise<OwnerBranchPerformanceState> {
+  async getBranchPerformance(ctx: OwnerContext, period: OwnerPeriod = 'month', custom?: { from: string; to: string }): Promise<OwnerBranchPerformanceState> {
     this.require(ctx, 'owner.branches.view');
     await this.allowedSet(ctx); // prime the assigned-subset filter for listBranches/revenueByBranch/bookingsByBranch
     const now = new Date();
-    const { from, prev } = periodRange(now, period, (await this.tzc(ctx)).timezone);
+    const tz = (await this.tzc(ctx)).timezone;
+    const cr = custom ? customRange(custom.from, custom.to, tz) : null;
+    if (custom && !cr) throw withCode(new OwnerError('invalid', 'The start date must be on or before the end date.'), 'DATE_RANGE_INVALID');
+    const { from, prev } = cr ?? periodRange(now, period, tz);
     const restricted = await this.branchConstraint(ctx);
     const [branchesAll, revCur, revPrev, bookCur] = await Promise.all([
       this.repo.listBranches(ctx),
@@ -394,8 +397,8 @@ export class OwnerService {
   }
 
   // Comparison tab reuses the ranked branch payload (branch-vs-branch). Period-over-period overlay is a documented refinement.
-  async getComparison(ctx: OwnerContext, period: OwnerPeriod = 'month'): Promise<OwnerBranchPerformanceState> {
-    return this.getBranchPerformance(ctx, period);
+  async getComparison(ctx: OwnerContext, period: OwnerPeriod = 'month', custom?: { from: string; to: string }): Promise<OwnerBranchPerformanceState> {
+    return this.getBranchPerformance(ctx, period, custom);
   }
 
   // ---- Module 3: Booking Overview ----

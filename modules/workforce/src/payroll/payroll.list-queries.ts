@@ -6,7 +6,8 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 
 // The payroll periods list — validated by the interceptor AND applied by the repository (payroll.kysely.repository.ts).
 export const PAYROLL_PERIODS_SPEC = {
-  filters: { status: { type: 'text', column: 'status' } },
+  // technician (batch 9): a technician's name or phone — matched against the period's lines by the repository (no column here)
+  filters: { status: { type: 'text', column: 'status' }, technician: { type: 'text' } },
   search: { params: ['search'], columns: ['label'] },
   sorts: { periodStart: 'period_start' }, defaultSort: '-periodStart', tiebreaker: 'id',
   limitParams: ['pageSize'], maxLimit: 200, defaultLimit: 50, params: ['page'],

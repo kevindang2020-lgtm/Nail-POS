@@ -30,7 +30,13 @@ export interface MarketingHeadline {
   totalReviews: number;
 }
 
+/** The window the figures cover. null = all time (no period asked). Salon-local days, inclusive. */
+export interface MarketingPeriod { from: string; to: string; preset: string | null; timeZone: string; today: string }
+
 export interface MarketingReportState {
+  period?: MarketingPeriod | null;
+  /** with a period: a promotion's redemptions are a running total (no dated redemption log), so they are all-time */
+  redemptionsAllTime?: boolean;
   headline: MarketingHeadline;
   campaigns: CampaignsPillar;
   promotions: PromotionsPillar;
@@ -49,4 +55,25 @@ export function composeHeadline(c: CampaignsPillar, p: PromotionsPillar, r: Revi
     averageRating: (r.totalReviews ?? 0) > 0 ? Number(r.averageRating) || 0 : null,
     totalReviews: Math.max(0, r.totalReviews || 0),
   };
+}
+
+// ── batch 9 decision 2 (Nov 10 2026): a period for the Marketing Report ─────────────────────────────────────────────────
+/** the salon-local day (YYYY-MM-DD) of an instant */
+export function localDay(iso: string | null | undefined, tz: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso); if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+const inDays = (day: string | null, w: { from: string; to: string }) => !!day && day >= w.from && day <= w.to;
+/** a campaign counts in the window it went out (its scheduled send, else the day it was created) */
+export function campaignsInWindow<T extends { scheduledAt: string | null; createdAt: string }>(rows: T[], w: { from: string; to: string }, tz: string): T[] {
+  return rows.filter((r) => inDays(localDay(r.scheduledAt ?? r.createdAt, tz), w));
+}
+/** a review counts on the day it was left */
+export function reviewsInWindow<T extends { createdAt: string }>(rows: T[], w: { from: string; to: string }, tz: string): T[] {
+  return rows.filter((r) => inDays(localDay(r.createdAt, tz), w));
+}
+/** a promotion counts when its run overlaps the window (no start = from its creation; no end = still running) */
+export function promotionsInWindow<T extends { startsAt: string | null; endsAt: string | null; createdAt: string }>(rows: T[], w: { from: string; to: string }, tz: string): T[] {
+  return rows.filter((p) => { const s = localDay(p.startsAt ?? p.createdAt, tz); const e = localDay(p.endsAt, tz); return (!s || s <= w.to) && (!e || e >= w.from); });
 }

@@ -42,6 +42,7 @@ export function POSManagementScreen() {
   const [payroll, setPayroll] = useState<PayrollState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [approvals, setApprovals] = useState<{ n?: number; err?: 'forbidden' | 'unavailable' } | null>(null);
+  const [clock, setClock] = useState<number | null>(null);
 
   useEffect(() => {
     posLocationsApi.list().then((d) => { setBranches(d?.locations || []); setLocSummary(d?.summary || null); }).catch(() => {});
@@ -49,6 +50,8 @@ export function POSManagementScreen() {
     (api.get('/pos/payroll/state') as Promise<PayrollState>).then(setPayroll).catch(() => setPayroll(null));
     // SUNMI batch 9 guide 17 (Nov 10 2026): Pending Approvals is the Approvals service's own count (it was a "—"); a role
     // without approvals.view sees "no access", a failure "unavailable" — never a made-up 0
+    (api.get('/pos/time-clock/state', { page: 1, pageSize: 1 }) as Promise<{ kpis?: { clockedInCount?: number } }>)
+      .then((r) => setClock(typeof r?.kpis?.clockedInCount === 'number' ? r.kpis.clockedInCount : null)).catch(() => setClock(null));
     (api.get('/pos/approvals', { status: 'pending', page: 1, pageSize: 1 }) as Promise<{ total: number }>)
       .then((r) => setApprovals(typeof r?.total === 'number' ? { n: r.total } : { err: 'unavailable' }))
       .catch((e: any) => setApprovals({ err: e?.status === 403 ? 'forbidden' : 'unavailable' }));
@@ -66,7 +69,9 @@ export function POSManagementScreen() {
   const kpis: Kpi[] = [
     { l: tx('pos.active_staff'), v: String(tk.activeTechnicians) },
     { l: tx('pos.branches_active'), v: `${activeBranches}/${totalBranches}` },
-    { l: tx('pos.on_shift_now'), v: String(tk.availableNow) },
+    // Nov 10 2026 (batch 9 follow-up): On Shift Now = technicians clocked in or on break per the Time Clock (actual
+    // attendance); it read the Team screen's "available now". Without the Time Clock answer it falls back, labelled.
+    clock != null ? { l: tx('pos.on_shift_now'), v: String(clock), why: undefined } : { l: tx('pos.on_shift_now'), v: String(tk.availableNow), note: true, why: tx('mgmt.shift.fallback') },
     { l: tx('pos.payroll_payable'), v: pk ? money(pk.unpaidPayableCents) : '—' },
     { l: tx('pos.open_pay_periods'), v: pk ? String(pk.openPeriods) : '—' },
     { l: tx('pos.open_tasks'), v: '—', note: true },

@@ -74,6 +74,18 @@ export function periodRange(now: Date, period: OwnerPeriod, timeZone = 'UTC'): {
   return { from: dr(start, now, timeZone), prev: dr(prevStart, new Date(prevStart.getTime() + elapsed), timeZone) };
 }
 
+/** Nov 10 2026 (batch 9 guide 16 follow-up): a custom From–To of salon days (inclusive) and the comparison window of the
+ *  same length ending the day before — for Multi-Location / Branch Performance custom ranges. null when invalid. */
+export function customRange(fromDay: string, toDay: string, timeZone = 'UTC'): { from: DateRange; prev: DateRange } | null {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/; const a = day.exec(fromDay), b = day.exec(toDay);
+  if (!a || !b || fromDay > toDay) return null;
+  const start = zStartOfDay(+a[1], +a[2], +a[3], timeZone);
+  const end = zShiftDays(zStartOfDay(+b[1], +b[2], +b[3], timeZone), 1, timeZone);
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  if (days > 366) return null;
+  return { from: dr(start, end, timeZone), prev: dr(zShiftDays(start, -days, timeZone), start, timeZone) };
+}
+
 export interface OwnerBranchListItem { branchId: string; branchName: string; status: string; city: string | null; address?: string | null; state?: string | null; hasSwitchPin?: boolean }
 export interface OwnerBranchDetail {
   branchId: string; branchName: string; status: string;

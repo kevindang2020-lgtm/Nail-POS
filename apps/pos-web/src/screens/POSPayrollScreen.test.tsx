@@ -164,4 +164,12 @@ describe('POSPayrollScreen (wave 2)', () => {
     fireEvent.click(screen.getByText('Retry now'));
     await waitFor(() => expect(api.exceptionAction).toHaveBeenCalledWith('e1', 'retry', undefined));
   });
+  it('searching a technician name asks the server which periods pay them (batch 9)', async () => {
+    render(<POSPayrollScreen />);
+    await screen.findByText('Jun 1–15');
+    api.getState.mockResolvedValueOnce({ kpis: {}, periods: [{ id: 'p1' }], pagination: {} });
+    fireEvent.change(screen.getByTestId('payroll-search'), { target: { value: 'Sam Lee' } });
+    await waitFor(() => expect(api.getState).toHaveBeenCalledWith({ technician: 'Sam Lee', pageSize: 200 }));
+    expect(await screen.findByText('Jun 1–15')).toBeInTheDocument();   // not in the label — shown because Sam is paid in it
+  });
 });

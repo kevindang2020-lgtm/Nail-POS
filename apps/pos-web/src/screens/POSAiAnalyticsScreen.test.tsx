@@ -48,4 +48,11 @@ describe('POSAiAnalyticsScreen — period (batch 9 guide 14, Nov 10 2026)', () =
     expect(await screen.findByTestId('ai-caption')).toHaveTextContent('2026-11-01 – 2026-11-10');
     expect(screen.getByTestId('ai-week')).toHaveTextContent('from 2026-11-04');
   });
+  it('links each section to the list behind it', async () => {
+    ovMock.mockResolvedValue(overview);
+    render(<MemoryRouter><POSAiAnalyticsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ai-link-calls')).toHaveAttribute('href', '/tenant/ai/receptionist/calls');
+    expect(screen.getByTestId('ai-link-followups')).toHaveAttribute('href', '/tenant/ai/receptionist/follow-ups');
+    expect(screen.getByTestId('ai-link-campaigns')).toHaveAttribute('href', '/tenant/ai/marketing/results');
+  });
 });

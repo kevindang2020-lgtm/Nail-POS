@@ -4,13 +4,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { posMarketingReportApi } from '../api/posMarketingReportApi';
-import { useReportCadence } from './reportsCommon';
+import { useReportCadence, useUrlPeriod } from './reportsCommon';
+import { PeriodBar, type ServerPeriod } from '../components/FinanceKit';
 import { money, reportError } from './reportsCommon';
 import { useIPadView } from '../components/IPadViewProvider';
 import { reportRequest } from '../components/ipad-modules';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
 type State = {
+  period?: { from: string; to: string; preset: string | null; timeZone: string; today: string } | null;
+  redemptionsAllTime?: boolean;
   headline: { campaignRevenueCents: number; campaignRoi: number | null; activePromotions: number; promotionRedemptions: number; averageRating: number | null; totalReviews: number };
   campaigns: { totalCampaigns: number; activeCampaigns: number; totalSent: number; campaignRevenueCents: number; totalCostCents: number; avgRoi: number; avgOpenRate: number };
   promotions: { total: number; active: number; paused: number; totalRedemptions: number; expiringSoon: number };
@@ -30,12 +33,15 @@ export function POSMarketingReportScreen() {
   const { open: openIPad } = useIPadView();
   const [loading, setLoading] = useState(true);
 
+  // batch 9 decision 2: a period for the whole report — All time (the default, as before), a preset or Custom dates
+  const { period, setPeriod, query } = useUrlPeriod('all');
+  const qKey = JSON.stringify(query);
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setS(await posMarketingReportApi.state() as State); }
+    try { setS(await posMarketingReportApi.state(JSON.parse(qKey)) as State); }
     catch (e: any) { setError(reportError(e, t('admin.reports.noun.marketing'))); }
     finally { setLoading(false); }
-  }, []);
+  }, [qKey]);
   useEffect(() => { load(); }, [load, reloadKey]);   // the report cadence's reloadKey re-runs the load
 
   if (loading && !s) return <div className="work"><div className="state">{t('pos.loading_marketing_report')}</div></div>;
@@ -43,13 +49,16 @@ export function POSMarketingReportScreen() {
   if (!s) return <div className="work"><div className="state">{t('pos.no_data')}</div></div>;
 
   const h = s.headline;
+  const sp: ServerPeriod = s.period ? { preset: (s.period.preset ?? 'custom') as ServerPeriod['preset'], from: s.period.from, to: s.period.to, tz: s.period.timeZone, today: s.period.today }
+    : { preset: 'all', from: null, to: null, tz: '', today: new Date().toISOString().slice(0, 10) };
   return (
     <div className="work">
-      <div className="vh "><h1>{t('pos.marketing_report')}</h1><div className="sub mb-3">{t('pos.campaigns_promotions_and_reputation_at_a_qolt')} · <span data-testid="mkt-scope">{t('rpt.mkt.allTime')}</span></div></div><div className="flex flex-col md:flex-row flex-wrap whitespace-nowrap sm:items-center justify-between gap-2 mb-1"><button className="btn ghost w-fit whitespace-nowrap"  title={t('pos.open_full_ipad_view')} onClick={() => openIPad(reportRequest(t('pos.marketing_report'), { kpis: [{ label: t('pos.campaign_revenue'), value: money(s.headline.campaignRevenueCents) }, { label: 'ROI', value: s.headline.campaignRoi == null ? t('rpt.na') : s.headline.campaignRoi + 'x' }, { label: t('pos.active_promotions'), value: s.headline.activePromotions }, { label: t('pos.redemptions'), value: s.headline.promotionRedemptions }, { label: t('pos.avg_rating_2'), value: s.headline.averageRating == null ? t('rpt.na') : s.headline.averageRating + ' \u2605' }, { label: t('pos.reviews_2'), value: s.headline.totalReviews }] }))}>{t('pos.full_view')}</button></div>
+      <div className="vh "><h1>{t('pos.marketing_report')}</h1><div className="sub mb-3">{t('pos.campaigns_promotions_and_reputation_at_a_qolt')} · <span data-testid="mkt-scope">{s.period ? t('rpt.mkt.window', { from: s.period.from, to: s.period.to }) : t('rpt.mkt.allTime')}</span></div></div><div className="flex flex-col md:flex-row flex-wrap whitespace-nowrap sm:items-center justify-between gap-2 mb-1"><button className="btn ghost w-fit whitespace-nowrap"  title={t('pos.open_full_ipad_view')} onClick={() => openIPad(reportRequest(t('pos.marketing_report'), { kpis: [{ label: t('pos.campaign_revenue'), value: money(s.headline.campaignRevenueCents) }, { label: 'ROI', value: s.headline.campaignRoi == null ? t('rpt.na') : s.headline.campaignRoi + 'x' }, { label: t('pos.active_promotions'), value: s.headline.activePromotions }, { label: t('pos.redemptions'), value: s.headline.promotionRedemptions }, { label: t('pos.avg_rating_2'), value: s.headline.averageRating == null ? t('rpt.na') : s.headline.averageRating + ' \u2605' }, { label: t('pos.reviews_2'), value: s.headline.totalReviews }] }))}>{t('pos.full_view')}</button></div>
 
+      <div style={{ marginBottom: 10 }} data-testid="mkt-period"><PeriodBar compact allowAll value={period} onChange={setPeriod} server={sp} /></div>
       <div className="kpis">
         <div className="kpi"><div className="l">{t('pos.campaign_revenue')}</div><div className="v" style={{ color: 'var(--aps-orange)' }}>{money(h.campaignRevenueCents)}</div><div className="d" data-testid="mkt-roi">{h.campaignRoi == null ? t('rpt.mkt.roiNa') : `${h.campaignRoi}${t('pos.roi')}`}</div></div>
-        <div className="kpi"><div className="l">{t('pos.active_promotions')}</div><div className="v">{h.activePromotions}</div><div className="d">{h.promotionRedemptions} {t('pos.redemptions_2')}</div></div>
+        <div className="kpi"><div className="l">{t('pos.active_promotions')}</div><div className="v">{h.activePromotions}</div><div className="d">{h.promotionRedemptions} {t('pos.redemptions_2')}{s.redemptionsAllTime ? <span data-testid="mkt-redemptions-alltime"> · {t('rpt.mkt.redemptionsAllTime')}</span> : null}</div></div>
         <div className="kpi"><div className="l">{t('pos.avg_rating_2')}</div><div className="v" data-testid="mkt-rating">{rating(h.averageRating, h.totalReviews)}</div>{h.averageRating != null && h.totalReviews ? <div className="d" style={{ color: 'var(--aps-orange)' }}>{stars(h.averageRating)}</div> : null}</div>
         <div className="kpi"><div className="l">{t('pos.reviews_2')}</div><div className="v">{h.totalReviews}</div></div>
       </div>
@@ -68,7 +77,7 @@ export function POSMarketingReportScreen() {
           <div className="p-h" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{t('pos.promotions')}{' '}<button className="btn ghost w-fit whitespace-nowrap" style={{ padding: '2px 8px' }} onClick={() => nav('/tenant/marketing/promotions')}>{t('pos.open_2')}</button></div>
           <div style={{ fontSize: 14, lineHeight: 2 }}>
             <div>{t('pos.total_2')}{' '}<b>{s.promotions.total}</b> {t('pos.active_2')}{' '}<b>{s.promotions.active}</b> {t('pos.paused_2')}{' '}<b>{s.promotions.paused}</b></div>
-            <div>{t('pos.redemptions_3')}{' '}<b>{s.promotions.totalRedemptions}</b></div>
+            <div>{t('pos.redemptions_3')}{' '}<b>{s.promotions.totalRedemptions}</b>{s.redemptionsAllTime ? <span className="s"> ({t('rpt.mkt.redemptionsAllTime')})</span> : null}</div>
             <div>{t('pos.expiring_soon_2')}{' '}<b>{s.promotions.expiringSoon}</b></div>
           </div>
         </section>

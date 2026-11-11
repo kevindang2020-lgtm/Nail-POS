@@ -188,7 +188,7 @@ Authenticity: payment webhooks — per-tenant HMAC over the raw body, timing-saf
 | POST | `/customer/nail-showcase/posts/{postId}/photos` | modules/workforce/src/nail-showcase/nail-showcase.controller.ts:85 |  |
 | POST | `/customer/profile/avatar` | apps/api/src/customer/customer.controller.ts:118 |  |
 | POST | `/customer/social/me/avatar` | modules/workforce/src/nail-showcase/nail-showcase-social.controller.ts:64 |  |
-| POST | `/owner/profile/avatar` | modules/analytics/src/owner/owner.controller.ts:252 | owner.dashboard.view |
+| POST | `/owner/profile/avatar` | modules/analytics/src/owner/owner.controller.ts:253 | owner.dashboard.view |
 | POST | `/tech/profile/avatar` | modules/workforce/src/tech-profile/tech-profile.controller.ts:62 | tech.profile.edit |
 | POST | `/tech/profile/cover` | modules/workforce/src/tech-profile/tech-profile.controller.ts:68 | tech.profile.edit |
 | POST | `/tech/profile/photos` | modules/workforce/src/tech-profile/tech-profile.controller.ts:77 | tech.profile.edit |

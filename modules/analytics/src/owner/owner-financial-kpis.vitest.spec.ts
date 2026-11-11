@@ -191,3 +191,13 @@ describe('Owner average ticket = sales ÷ paid tickets (the POS reports\' defini
     expect(out.averageTicketCents).toBe(4000);
   });
 });
+
+describe('customRange (Nov 10 2026)', () => {
+  it('inclusive salon days, compared with the same length just before; invalid → null', async () => {
+    const { customRange } = await import('./owner.dto');
+    const r = customRange('2026-10-01', '2026-10-31', 'America/New_York')!;
+    expect([r.from.fromDate, r.from.toDate, r.prev.fromDate, r.prev.toDate]).toEqual(['2026-10-01', '2026-10-31', '2026-08-31', '2026-09-30']);
+    expect(customRange('2026-11-05', '2026-11-01')).toBeNull();
+    expect(customRange('2024-01-01', '2026-01-01')).toBeNull();
+  });
+});
