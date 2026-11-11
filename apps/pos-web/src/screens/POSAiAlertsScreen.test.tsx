@@ -41,6 +41,15 @@ describe('POSAiAlertsScreen', () => {
     expect(screen.getByTestId('bzx-a-manual')).toHaveTextContent('Automatic evaluation is switched off for this server');
     expect(screen.getByTestId('bzx-a-triggered')).toHaveTextContent('1');
   });
+  it('extras (Nov 11 2026): warns when an active rule already watches the same metric, comparison and period', async () => {
+    wrap();
+    await screen.findByTestId('bzx-a-row');
+    expect(screen.queryByTestId('bzx-a-collision')).toBeNull();   // net_sales / lt / today: no such active rule
+    fireEvent.change(screen.getByTestId('bzx-a-metric'), { target: { value: 'average_ticket' } });
+    fireEvent.change(screen.getByTestId('bzx-a-op'), { target: { value: 'gt' } });
+    expect(await screen.findByTestId('bzx-a-collision')).toHaveTextContent('“test”');
+    expect(screen.getByTestId('bzx-a-create')).not.toBeDisabled();
+  });
   it('creates an alert with the dollar amount in cents and the minimum sample', async () => {
     api.alertCreate.mockResolvedValue({});
     wrap();

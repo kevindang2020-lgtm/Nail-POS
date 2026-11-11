@@ -527,4 +527,5 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.def.completion": "Tỷ lệ hoàn tất — Hoàn tất ÷ Lịch hẹn. Không áp dụng khi không có lịch.", // DRAFT — Kevin reviews
   "bcx.def.revCompleted": "Doanh thu / lịch hoàn tất — Doanh số thuần ÷ số lịch hoàn tất. Không áp dụng khi không có lịch hoàn tất.", // DRAFT — Kevin reviews
   "bcx.def.small": "Dưới {n} lịch hẹn được đánh dấu “mẫu nhỏ”: hãy cân nhắc khi so sánh các chi nhánh này.", // DRAFT — Kevin reviews
+  "bzx.a.collision": "Đã có cảnh báo đang bật “{t}” theo dõi cùng chỉ số, phép so sánh và kỳ — hai cảnh báo sẽ báo trùng nhau.", // DRAFT — Kevin reviews
 };

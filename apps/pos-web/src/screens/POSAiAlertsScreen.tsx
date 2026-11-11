@@ -72,6 +72,16 @@ function NewAlert({ onCreated, onError }: { onCreated: () => void; onError: (t: 
   const [minSample, setMinSample] = useState('5');
   const [busy, setBusy] = useState(false);
   const unit = UNIT[metricId];
+  // extras (Nov 11 2026) — rule collision warning: an ACTIVE rule already watches the same metric, comparison and period, so the
+  // two would fire overlapping alerts. A warning only — creating stays allowed.
+  const [same, setSame] = useState<{ title: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    posAiBusinessApi.center.rules({ metric: metricId, status: 'active', page: 1, pageSize: 100 })
+      .then((r: any) => { if (live) setSame(((r?.items ?? []) as any[]).find((a) => a.active && a.metricId === metricId && a.operator === operator && a.preset === preset) ?? null); })
+      .catch(() => { if (live) setSame(null); });   // the warning is advice; without it the form still works
+    return () => { live = false; };
+  }, [metricId, operator, preset]);
   const create = () => {
     const raw = Number(amount); const ms = Math.trunc(Number(minSample));
     if (!title.trim() || amount.trim() === '' || !Number.isFinite(raw) || raw < 0) { onError(bt('bzx.a.formInvalid')); return; }
@@ -92,6 +102,7 @@ function NewAlert({ onCreated, onError }: { onCreated: () => void; onError: (t: 
         <label className="rvw-f"><span>{bt('bzx.a.minSample')}</span><input data-testid="bzx-a-min" inputMode="numeric" value={minSample} onChange={(e) => setMinSample(e.target.value)} /></label>
         <button type="button" className="btn" data-testid="bzx-a-create" disabled={busy} onClick={create}>{bt('bzx.a.create')}</button>
       </div>
+      {same ? <div className="sub" role="status" style={{ color: 'var(--aps-orange)', marginTop: 6 }} data-testid="bzx-a-collision">{bt('bzx.a.collision', { t: same.title })}</div> : null}
     </section>
   );
 }

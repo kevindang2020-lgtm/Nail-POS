@@ -526,4 +526,5 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bcx.def.completion": "Completion — Completed ÷ Bookings. N/A when nothing was booked.",
   "bcx.def.revCompleted": "Rev / Completed — Net Sales ÷ completed appointments. N/A when none completed.",
   "bcx.def.small": "Fewer than {n} bookings is marked “small sample”: compare those branches with care.",
+  "bzx.a.collision": "An active alert, “{t}”, already watches this metric, comparison and period — the two would fire overlapping alerts.",
 };
