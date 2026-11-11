@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 74 (incl. part) |
-| EXISTS (opened and named) | 671 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 398 |
-| TODO | 675 |
+| BUILT this arc | 75 (incl. part) |
+| EXISTS (opened and named) | 673 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 403 |
+| TODO | 667 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -1474,8 +1474,8 @@ Decisions:
 | 10 | Source verification Click KPI or result to open existing authorized source; do not create a new ledger. | TODO |
 | 11 | Campaign approval timeline Versioned audit of reviewer, content, audience, channel and cap. | TODO |
 | 12 | Permission-safe branch comparisons Owner-authorized aggregated metrics; distinct tenant recipient lists remain separated. | TODO |
-| 13 | Accessible operator mode Touch targets, keyboard/focus, readable status descriptions and optional density settings. | TODO (density part built: Compact spacing; touch / keyboard / status parts not) |
-| 14 | Read-only performance telemetry Log frontend render and queue latency by tenant safely, excluding PII. AUDIT FIRST / PRESERVE ALL MODULES / APPROVED SENDS ONLY ADDENDUM PAGE 18 AI POWERSALON / AI MARKETING ASSISTANT SUNM | TODO |
+| 13 | Accessible operator mode Touch targets, keyboard/focus, readable status descriptions and optional density settings. | NOISE — accessibility instruction |
+| 14 | Read-only performance telemetry Log frontend render and queue latency by tenant safely, excluding PII. AUDIT FIRST / PRESERVE ALL MODULES / APPROVED SENDS ONLY ADDENDUM PAGE 18 AI POWERSALON / AI MARKETING ASSISTANT SUNM | NOISE — telemetry instruction + audit-first heading |
 | 17 | Multi-branch intelligence and strict tenant isolation Owners may manage multiple locations, but that does not create platform-wide permission. Cross-branch and cross-tenant aggregation must follow existing explicit owner | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 18 | AI gateway, data pipeline and persistence Preserve the platform stack (React/NestJS/PostgreSQL/Redis/object storage/queue/AI Gateway) where confirmed by the repository. This document specifies logical roles, not assumed  | NOISE — platform-stack guidance |
 | 21 | Exact implementation priority order Follow this sequence to avoid building attractive UI on top of incorrect consent, unverified data or disconnected campaign services. | NOISE — implementation order |
@@ -2256,9 +2256,9 @@ Decisions:
 | 05 | Staff-friendly Saved Filter Views Optional “Today”, “Upcoming”, “Recently Created”, “No-Shows” and “Needs Review” quick filters. Save the current staff user’s view preference only if there is a suitable existing preferen | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 06 | Automated Layout Regression Pipeline Use Playwright viewport snapshots and DOM measurements at 1920×1080, 1600×900, 1440×900, 1366×768 and at reduced available sizes. Fail CI on hidden core actions, unexpected browser ov | NOISE — layout regression pipeline instruction (tooling/e2e/pos-vi-one-screen.mjs) |
 | 12 | Complete Appointment Details overlay A. Header and customer context Show booking ID, scheduled time/timezone, status, branch, source channel, created/updated timestamps, customer identity and authorized contact details.  | TODO |
-| 14 | Customer, completion, checkout and retention reconciliation Service completion and visits The completion count must be reconciled with Service Done and the canonical visit definition. A customer with multiple services on | TODO |
-| 16 | Loading, zero-data, disabled and failure states State Recommended user-facing behavior Loading Loading appointment history… with skeleton rows or spinner. Verified no records No appointments exist in this authorized scop | TODO |
-| 17 | Realtime behavior and source-of-truth protection Use existing Booking events and WebSocket/SSE; if unavailable, use an established safe refresh fallback. Refresh changed rows after appointment creation, reschedule, cance | TODO |
+| 14 | Customer, completion, checkout and retention reconciliation Service completion and visits The completion count must be reconciled with Service Done and the canonical visit definition. A customer with multiple services on | NOISE — reconciliation requirement narrative |
+| 16 | Loading, zero-data, disabled and failure states State Recommended user-facing behavior Loading Loading appointment history… with skeleton rows or spinner. Verified no records No appointments exist in this authorized scop | NOISE — state table text |
+| 17 | Realtime behavior and source-of-truth protection Use existing Booking events and WebSocket/SSE; if unavailable, use an established safe refresh fallback. Refresh changed rows after appointment creation, reschedule, cance | NOISE — realtime requirement narrative |
 
 ## English Vietnamese POS Localization (13)
 
@@ -2595,11 +2595,11 @@ Decisions:
 | 08 | Pending Verification Show SMS-required/pending without pretending booking confirmed. | TODO |
 | 09 | KPI cards Equal min-height, aligned labels/values and icon slots. Use responsive grid; avoid one oversized KPI. Allow 5+4 or balanced 3×3 if measured widths require it. 3 technician cards Grid with equal card heights and | EXISTS — nine KPI cards in the certified grid (harness) |
 | 10 | History Diff Display before/after schedule changes with actor and reason. | EXISTS (part) — Recent booking changes from the appointment change log, newest first, with actor (own period and pages) |
-| 11 | Data Freshness Warn when live stream disconnected or API query stale. | TODO |
+| 11 | Data Freshness Warn when live stream disconnected or API query stale. | BUILT — Numbers updated {time} after a successful read; a failed refresh says the numbers are from the last good read (ta-fresh; shared FreshnessLine) |
 | 12 | Keyboard & Touch QA Add automated focus/touch-target/visible-dialog checks. | EXISTS — the harness checks focus/touch targets and visible dialogs; Check this screen on demand |
 | 13 | Narrow-Screen Adaptation Adapt KPI columns and timeline scrolling without zoom tricks. | EXISTS — responsive sizes certified (1366×768, 1280×800) without zoom |
-| 14 | Empty State Actions Offer New Booking, Change Date, or Find Next Available. | TODO |
-| 15 | Appointment Audit Preview Preview allowed transitions and impact before commit. | TODO |
+| 14 | Empty State Actions Offer New Booking, Change Date, or Find Next Available. | EXISTS — empty list offers Clear filters and Find Next Available Technician (empty-clear, cta-finder, open-finder) |
+| 15 | Appointment Audit Preview Preview allowed transitions and impact before commit. | EXISTS — Schedule Conflict Warning with every cause + alternatives before rescheduling (act-check-conflict, dlg-conflict) |
 | 16 | Permission-Aware Actions Do not show unsupported or forbidden action buttons. Build guide addendum • Original owner-approved 12-page guide appended unchanged Addendum 22 / 24 AI POWERSALON / SUNMI FLEX 3 2026 / ENGINEERI | EXISTS — actions follow permissions; the server re-checks (original actions kept) |
 
 ## Customer Search (10)

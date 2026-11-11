@@ -26,7 +26,7 @@ import { posCheckInApi } from '../api/posCheckInApi';
 import { useCan } from '../components/usePermissions';
 import { TechnicianPickerButton } from '../components/TechnicianPickerButton';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { TechTimeline, FullDayOverlay, ConflictPanel, nf, hm12, addDay, apptStatus, liveStatus, liveTone } from './teamShared';
 import { QualifiedFinder, pageOf, whenTime } from './technicianScreenParts';
 
@@ -51,6 +51,7 @@ export function POSTechAppointmentsScreen() {
   useRealtime(['booking', 'tech-appointments', 'technicians'], reload);
 
   const kp = useLoad(() => posTechAppointmentsScreenApi.kpis({ date: date ?? undefined }), [date, tick]);
+  const freshAt = useFreshAt(kp.data);   // data freshness: only after a successful read
   const day = date ?? kp.data?.date ?? null; const today = kp.data?.today ?? day ?? '';
   const lanes = useLoad(() => posTechAppointmentsApi.state({ date: day ?? undefined, lanePage, lanePageSize: TA_LANE_PAGE_SIZE, laneSearch: laneQ || undefined, roster: 'none' }), [day, lanePage, laneQ, tick]);
   const board = useLoad(() => (view === 'day' && day ? posLiveTechnicianScheduleApi.board({ date: day, lanePage, lanePageSize: TA_LANE_PAGE_SIZE, search: laneQ || undefined }) : Promise.resolve(null)), [view, day, lanePage, laneQ, tick]);
@@ -98,6 +99,8 @@ export function POSTechAppointmentsScreen() {
         <button type="button" className="fk-btn ghost" onClick={() => setDate(null)} disabled={!date || date === today} data-testid="to-today">{tx('tm.today')}</button>
         <span className="fk-hint">{tx('tm.dayRule', { d: day ?? '' })}</span>
       </div>
+
+      <FreshnessLine at={freshAt} error={kp.error} testId="ta-fresh" />
 
       <div className="fk-kpis nine cg-kpis" data-testid="kpis">
         {kp.error ? <StateBlock error={kp.error} onRetry={kp.reload} /> : ([['today', 'all', 'pos.today_2'], ['booked', 'booked', 'pos.booked'], ['checkedIn', 'checked_in', 'pos.checked_in_2'], ['inService', 'in_service', 'pos.in_service_3'], ['completed', 'completed', 'pos.completed_2'],
