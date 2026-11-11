@@ -12,8 +12,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 |---|---|
 | BUILT this arc | 75 (incl. part) |
 | EXISTS (opened and named) | 673 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 403 |
-| TODO | 667 |
+| NOISE (parser picked up acceptance / instruction text) | 416 |
+| TODO | 654 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -729,10 +729,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 04 | NON-NEGOTIABLE REPOSITORY AUDIT BEFORE BUILDING Claude must find the actual route, component tree, service boundaries and stored policy before adding screens or APIs. Work from evidence, not from visible buttons alone. • | TODO |
+| 04 | NON-NEGOTIABLE REPOSITORY AUDIT BEFORE BUILDING Claude must find the actual route, component tree, service boundaries and stored policy before adding screens or APIs. Work from evidence, not from visible buttons alone. • | NOISE — repository-audit-before-building instruction |
 | 08 | CLICKING MANAGE ALL: END-TO-END EDITING WORKFLOW The existing Manage All action must work. Reuse its current implementation and route if present; otherwise implement a scoped addition after discovery. The screen must not | TODO |
 | 14 | NUMBERED HISTORY PAGES AND NEWEST EVENTS FIRST Pagination is for lists of notifications and audit records, not for the eight switches. Preserve all eight settings on the appropriate responsive grid. • In Notification Del | TODO |
-| 17 | ALERT NOISE CONTROL, DEDUPLICATION AND QUIET HOURS These are additional recommendations. Claude should first verify which mechanisms already exist and enhance them rather than creating redundant schedulers. • Support ten | TODO |
+| 17 | ALERT NOISE CONTROL, DEDUPLICATION AND QUIET HOURS These are additional recommendations. Claude should first verify which mechanisms already exist and enhance them rather than creating redundant schedulers. • Support ten | NOISE — recommendations preamble (verify-first note) |
 | 18 | SECURITY, PRIVACY, TENANCY AND ROLE PERMISSIONS Existing tenant isolation and RBAC rules are authoritative. New search and diagnostics must never broaden who can view recipient data or notifications. • Every GET/list/upd | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 25 | DEFINITION OF DONE: REQUIRED EVIDENCE FROM CLAUDE Claude must not state “100% complete” without executed verification against the actual codebase. The final report should include: • Exact frontend/backend files, existing | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
@@ -740,10 +740,10 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 24 | Failure states and truthful UI feedback Never use a blank card or a false success message when a security service is failing. • Settings load failure: show an actionable error and keep edits disabled until effective poli | TODO |
-| 25 | Settings changes, concurrency and safe propagation Changes must be versioned, auditable, and synchronized without granting access beyond platform limits. • After valid owner/admin Save, persist atomically and emit existi | TODO |
-| 26 | Architecture and separation of responsibility No additional authentication database or payment-state store may be created just for this module. • Authentication/Identity: employee identity, credentials and login requirem | TODO |
-| 33 | Claude final handoff instructions Paste this mandate into Claude together with access to the actual AI PowerSalon source repository. The PDF is an implementation plan, not a code patch or certified audit. Scope lock • Ta | TODO |
+| 24 | Failure states and truthful UI feedback Never use a blank card or a false success message when a security service is failing. • Settings load failure: show an actionable error and keep edits disabled until effective poli | NOISE — truthful-UI principle text |
+| 25 | Settings changes, concurrency and safe propagation Changes must be versioned, auditable, and synchronized without granting access beyond platform limits. • After valid owner/admin Save, persist atomically and emit existi | NOISE — settings propagation principle text |
+| 26 | Architecture and separation of responsibility No additional authentication database or payment-state store may be created just for this module. • Authentication/Identity: employee identity, credentials and login requirem | NOISE — architecture boundary text |
+| 33 | Claude final handoff instructions Paste this mandate into Claude together with access to the actual AI PowerSalon source repository. The PDF is an implementation plan, not a code patch or certified audit. Scope lock • Ta | NOISE — Claude handoff instructions |
 
 ## AI Inventory Assistant (26)
 
@@ -907,8 +907,8 @@ Decisions:
 | 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | TODO |
 | 15 | Export Provenance Export author, time, tenant scope, metric definitions, source freshness and redaction scope on approved files. | TODO |
 | 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | EXISTS — EN/VI behind t(), coded texts translated (mpTextCoded); Vietnamese harness certified |
-| 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | TODO |
-| 19 | Subscription, bilingual POS and accessibility • Use actual AI PowerSalon billing entitlements and usage counters; do not invent prices. Keep basic payment processing functioning during AI service expiration. • For tenant | TODO |
+| 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | NOISE — notifications/escalation requirement narrative |
+| 19 | Subscription, bilingual POS and accessibility • Use actual AI PowerSalon billing entitlements and usage counters; do not invent prices. Keep basic payment processing functioning during AI service expiration. • For tenant | NOISE — subscription/bilingual/accessibility narrative |
 | 20 | Suggested contracts and ownership (verify before implementation) Do not create these endpoints or tables blindly. The following are required behaviors to map onto the real repository. Reuse or extend existing services ra | NOISE — suggested contracts ("do not create blindly") |
 
 ## CASH DRAWER (1)
@@ -1455,7 +1455,7 @@ Decisions:
 |---|---|---|
 | 02 | Exact screenshot inventory: eight summary cards Your screenshot shows eight KPIs across a very compressed row. Preserve all eight, but redesign to provide readable space and consistent proportions. CARD SHOWN SCREENSHOT  | TODO |
 | 15 | Account Finder and controlled search The user requested search by phones and names. Make search useful, permission-sensitive and contextual. Do NOT create one unscoped search across all salons. • Add an Account Finder th | TODO |
-| 23 | Twelve additional recommendations tailored to AI PowerSalon • 1. Account Completion Assistant: explain missing fields, verification state and safe next action before displaying “100%”. • 2. Account Integrity Health Check | TODO |
+| 23 | Twelve additional recommendations tailored to AI PowerSalon • 1. Account Completion Assistant: explain missing fields, verification state and safe next action before displaying “100%”. • 2. Account Integrity Health Check | NOISE — recommendations list heading |
 | 24 | Implementation order for Claude PHASE WHAT MUST BE VERIFIED AND DELIVERED P0 - Repository audit Locate route/UI/backend/data/migrations/auth; map every observed card, panel, sidebar route and data owner; capture baseline | TODO |
 
 ## AI Marketing Assistant (18)
@@ -2015,8 +2015,8 @@ Decisions:
 | 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | TODO |
 | 15 | Export Provenance Export author, time, tenant scope, metric definitions, source freshness and redaction scope on approved files. | TODO |
 | 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | NOISE — accessibility/language QA instruction |
-| 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | TODO |
-| 19 | Subscription, bilingual POS and accessibility • Use actual AI PowerSalon billing entitlements and usage counters; do not invent prices. Keep basic payment processing functioning during AI service expiration. • For tenant | TODO |
+| 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | NOISE — notifications/escalation requirement narrative |
+| 19 | Subscription, bilingual POS and accessibility • Use actual AI PowerSalon billing entitlements and usage counters; do not invent prices. Keep basic payment processing functioning during AI service expiration. • For tenant | NOISE — subscription/bilingual/accessibility narrative |
 | 20 | Suggested contracts and ownership (verify before implementation) Do not create these endpoints or tables blindly. The following are required behaviors to map onto the real repository. Reuse or extend existing services ra | NOISE — suggested contracts text (verify-before-implementing note) |
 
 ## AI Calls  Voice Intelligence Management Center (4)
@@ -2026,7 +2026,7 @@ Decisions:
 | 02 | SUNMI hardware and usable viewport Physical inches are not CSS coordinates. Reference Target / developer rule SUNMI panel 27-inch landscape; image states 1920 × 1080 pixels, 16:9 ratio Display housing 25.43 in / 646 mm w | TODO |
 | 13 | Added recommendations - operational quality New suggestions are additive: none replace existing original features. R1 - Call lifecycle status timeline A compact evidence timeline: Incoming → Routed → Agent Active → Tool  | TODO |
 | 14 | Added recommendations - scale and service Apply only after an audit shows that the capability is absent. R7 - AI call quality review queue Staff may flag a call for accuracy, clarity or incorrect service suggestion. Use  | TODO |
-| 15 | Security, consent and protected surfaces Multi-tenant voice data and iPhone payment code are out of bounds for risky changes. Tenant and branch isolation • Enforce tenant/branch ownership and RBAC in every API, database  | TODO |
+| 15 | Security, consent and protected surfaces Multi-tenant voice data and iPhone payment code are out of bounds for risky changes. Tenant and branch isolation • Enforce tenant/branch ownership and RBAC in every API, database  | NOISE — security/consent boundary text |
 
 ## Payment Terminals 2 (12)
 
@@ -2138,7 +2138,7 @@ Decisions:
 | 05 | Responsive layout rules and CSS reference Technical design principles • Reuse the current shared React POS shell, design-system components, CSS variables and existing layout primitives before introducing new infrastructu | NOISE — responsive CSS reference text |
 | 08 | Campaign list, filters, calendars and pagination Campaigns panel: keep original interaction • Maintain selected campaign highlighting, campaign names, SMS/email channel badges, status, dates and the original list-to-resu | TODO |
 | 13 | Permissions, localization and 10k-tenant readiness Tenant & financial boundary checks • All list/search/detail/export/AI/health endpoints enforce authenticated tenant and branch scope server-side. Never trust browser-pro | NOISE — permissions/localization requirement narrative |
-| 15 | My recommendations: improvements 9-16 # / Recommendation Expected behavior and guardrail 09 / Branch-Aware Date Semantics Date-mode selector with branch timezone, DST handling and clear interpretation of sent vs booked v | TODO |
+| 15 | My recommendations: improvements 9-16 # / Recommendation Expected behavior and guardrail 09 / Branch-Aware Date Semantics Date-mode selector with branch timezone, DST handling and clear interpretation of sent vs booked v | NOISE — recommendations table heading |
 | 16 | UX / responsive acceptance matrix: 24 checks Execute these against the actual application and record environment, browser mode, CSS viewport, zoom setting, screenshot/test artifact and result. Testing on an emulator alon | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 17 | Campaign comparisons, owner-authorized multi-branch and trends • Allow selected campaigns to be compared by eligible audience, delivery rate, qualifying bookings, completed visits, associated revenue, actual costs and co | TODO |
 | 20 | Reliability, real-time updates and performance • Subscribe to tenant-scoped delivery/bookings/completion/checkout/refund events using existing WebSocket/SSE where supported; fall back to measured refresh without re-sendi | NOISE — reliability/performance requirement narrative |
