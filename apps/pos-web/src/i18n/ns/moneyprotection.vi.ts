@@ -341,4 +341,6 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.sk.colEnabled": "Bật",
   "mpx.sk.colSeverity": "Mức độ (đã chỉnh)",
   "mpx.d.openSource": "Mở trong Giao dịch", // DRAFT — Kevin reviews
+  "mpx.rules.checkedAt": "Đã kiểm tra {t}", // DRAFT — Kevin reviews
+  "mpx.rules.notChecked": "Chưa kiểm tra kể từ khi bật hoặc thay đổi", // DRAFT — Kevin reviews
 };

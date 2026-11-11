@@ -69,7 +69,8 @@ function MpShell({ title, sub, tab, children, onChanged }: { title: string; sub:
     ['rules', '/tenant/ai/money-protection/rules'], ['settings', '/tenant/ai/money-protection/settings']];
   return (
     <div className="work" data-testid={`mpx-${tab}`}>
-      <div className="vh" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
+      {/* pinned action row: Run detection / Check stay reachable while a long list scrolls (sticky, not an overlay) */}
+      <div className="vh mpx-pinned" data-testid="mpx-pinned" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 260 }}><h1>{title}</h1><div className="sub mb-3">{sub}</div></div>
         <button className="btn ghost" data-testid="mpx-run" disabled={busy} onClick={runDetection}>{busy ? t('mpx.running') : t('mpx.run')}</button>
         <button className="btn ghost" data-testid="mpx-check" onClick={runCheck}>{t('mpx.check')}</button>
@@ -420,7 +421,8 @@ export function MpRules() {
                 <td>{['realtime', 'near_realtime', 'batch'].includes(x.mode) ? t('mpx.mode.' + x.mode) : '—'}</td>
                 <td className="sub">{Object.keys(x.thresholds).length ? Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ') : '—'}</td>
                 <td>{x.humanReview ? t('mpx.rules.reviewYes') : t('mpx.rules.reviewNo')}</td>
-                <td><RuleState x={x} /></td>
+                <td><RuleState x={x} />{x.effective ? <div className={'sub' + (!x.lastCheckedAt || Date.now() - Date.parse(x.lastCheckedAt) > 26 * 3600_000 ? ' warn' : '')} data-testid="mpx-rule-checked">
+                  {x.lastCheckedAt ? t('mpx.rules.checkedAt', { t: when(x.lastCheckedAt) }) : t('mpx.rules.notChecked')}</div> : null}</td>
                 <td>{fmtNumber(x.alerts30d)}<div className="sub">{t('mpx.rules.col.last')}: {when(x.lastAlertAt)}</div>{x.dismissed90d ? <div className="sub">{t('mpx.rules.dismissed', { n: fmtNumber(x.dismissed90d) })}</div> : null}</td>
                 <td className="mpx-acts"><div className="mpx-act-stack"><button className="btn ghost sm" data-testid="mpx-rule-view" onClick={() => setOpen(x)}>{t('mpx.view')}</button>
                   <Link className="btn ghost sm" to={`/tenant/ai/money-protection/alerts?rule=${x.id}`}>{t('mpx.rules.seeAlerts')}</Link></div></td>

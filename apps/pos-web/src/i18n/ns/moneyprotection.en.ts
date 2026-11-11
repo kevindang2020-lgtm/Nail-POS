@@ -341,4 +341,6 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.sk.colEnabled": "Enabled",
   "mpx.sk.colSeverity": "Severity (override)",
   "mpx.d.openSource": "Open in Transactions",
+  "mpx.rules.checkedAt": "Checked {t}",
+  "mpx.rules.notChecked": "Not checked since it was turned on or changed",
 };

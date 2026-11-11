@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 75 (incl. part) |
+| BUILT this arc | 77 (incl. part) |
 | EXISTS (opened and named) | 678 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 417 |
-| TODO | 644 |
+| TODO | 642 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -1602,7 +1602,7 @@ Decisions:
 | 05 | Saved filter views Allow role-safe personal presets (New, High, Unassigned, My Branch) without changing active detection rules. | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 06 | Combined smart search Search IDs/name/phone/source reference with masked results and strict tenant scope. | EXISTS (part) — alerts search with filters, tenant-scoped |
 | 07 | Alert list, severity filter and workspace flow The original uploaded guide shows an existing Severity = All control and an empty-state screen. Preserve both. Enhance with real data, not a replacement mockup. Page-level o | EXISTS — alert list with severity filter, presets + From/To calendar, sort, numbered pages |
-| 08 | Pinned action row Keep Refresh and Health Check accessible in long scroll states, without overlaying content. | TODO |
+| 08 | Pinned action row Keep Refresh and Health Check accessible in long scroll states, without overlaying content. | BUILT — Run detection / Check row is sticky inside the screen scroll area (not an overlay) on every Money Protection tab (mpx-pinned, styles.css .mpx-pinned) |
 | 09 | Evidence overlay, investigations and no-money rule The central safety distinction: an alert is a possible discrepancy. It is not a verified loss or accusation. Money Protection Alerts is a triage/investigative interface, | EXISTS — alert evidence overlay; acknowledge / dismiss (reason) / reopen; nothing here moves money |
 | 10 | One case per incident Use idempotency/reuse to prevent duplicate Investigation cases from repeated clicks. | BUILT — opening a case for alerts already in one case returns that case instead of a duplicate (investigations.service create; investigations.vitest.spec) |
 | 11 | False-positive review insights Show repeated patterns and human feedback; never self-disable monitoring rules. | TODO |
@@ -2367,7 +2367,7 @@ Decisions:
 |---|---|---|
 | 01 | Screen Fit Diagnostics Add a developer-only diagnostics readout for CSS viewport, DPR, container width, overflow and active breakpoint; hide from normal production users. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Always-visible Safety Banner Keep the blocking OFF state visible during rule browsing; surface the separate flag only from its existing protected control. | EXISTS — safety line always shown at the top of the workspace (mpx-safety); layer-off chip per rule (mpx.rules.layerOff) |
-| 03 | Reliable Rule Freshness Show per-rule last evaluated time and input freshness; default to Unknown/Stale rather than false green success. | TODO |
+| 03 | Reliable Rule Freshness Show per-rule last evaluated time and input freshness; default to Unknown/Stale rather than false green success. | BUILT — each active rule shows when a recorded detection pass last checked it, or "Not checked since it was turned on or changed" (warn), never a false green (money-protection-center rules() lastCheckedAt; pgtest RU-02; POSAIMoneyProtectionRulesScreen.test) |
 | 04 | Rule Execution Timeline Add a read-only chronological view of last runs, queue lag, errors and source events per rule. | EXISTS — read-only run history list (mpx-runs, mpx-run-row) |
 | 05 | Explain Why Triggered Show matched predicate, authoritative references, threshold and exclusions in human-readable terms. | EXISTS (part) — each of the 15 rules shows what it checks and how often it fires; an alert shows its evidence |
 | 06 | Duplicate Incident Suppression Use stable fingerprints and source-event IDs to prevent webhook retry noise and repeated investigations. | EXISTS — stable fingerprints dedupe repeat incidents (ai-money-protection-rules.ts / repository fingerprint) |

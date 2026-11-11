@@ -17,6 +17,17 @@ const rule = (o: any = {}) => ({ id: 'MP_DUP_CHARGE_LIKELY', name: 'Likely dupli
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('POSAIMoneyProtectionRulesScreen', () => {
+  it('Reliable Rule Freshness: each active rule says when a pass last checked it, or that it is not checked yet (never a false green)', async () => {
+    const recent = new Date(Date.now() - 3600_000).toISOString();
+    mc.rules.mockResolvedValue({ rules: [rule({ lastCheckedAt: recent }), rule({ id: 'MP_REFUND_EXCEEDS_CAPTURE', lastCheckedAt: null }), rule({ id: 'MP_OFF', enabled: false, effective: false })], canEdit: false });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    const rows = await screen.findAllByTestId('mpx-rule-row');
+    expect(rows[0].querySelector('[data-testid="mpx-rule-checked"]')).toHaveTextContent(/^Checked /);
+    expect(rows[0].querySelector('[data-testid="mpx-rule-checked"]')!.className).not.toContain('warn');
+    expect(rows[1].querySelector('[data-testid="mpx-rule-checked"]')).toHaveTextContent('Not checked since it was turned on or changed');
+    expect(rows[1].querySelector('[data-testid="mpx-rule-checked"]')!.className).toContain('warn');
+    expect(rows[2].querySelector('[data-testid="mpx-rule-checked"]')).toBeNull();
+  });
   it('renders each rule with how it checks, thresholds, state, counts and a link to its alerts', async () => {
     mc.rules.mockResolvedValue({ rules: [rule(), rule({ id: 'MP_CASH_DRAWER_VARIANCE', layer: 'reconciliation', layerOn: false, thresholds: {} })], canEdit: false });
     wrap(<POSAIMoneyProtectionRulesScreen />);

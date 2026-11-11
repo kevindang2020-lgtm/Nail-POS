@@ -369,6 +369,9 @@ export class MoneyProtectionCenter {
     const counts = (await sql<Row>`select a.rule_id, count(*) filter (where a.created_at > now() - interval '30 days')::int as n30,
         count(*) filter (where a.status = any(${MC_OPEN}::text[]))::int as open, count(*) filter (where a.status = 'DISMISSED_FALSE_POSITIVE' and a.updated_at > now() - interval '90 days')::int as fp90,
         max(a.last_seen_at) as last from money_protection_alerts a where a.tenant_id = ${T} and ${this.scope(sql`a.branch_id`, ctx).w} group by 1`.execute(this.db)).rows;
+    // per-rule freshness (Rules backlog · 03): a detection pass evaluates every effective rule, so a rule was last checked at the
+    // last SUCCEEDED pass that finished while it was on and after its last settings change — otherwise null ("not checked yet")
+    const lastPass = (await sql<Row>`select max(finished_at) as at from money_protection_detection_runs where tenant_id = ${T} and status = 'succeeded'`.execute(this.db)).rows[0]?.at ?? null;
     const f = this.deps.flags();
     const layerOn = (l: string) => f.enabled && (l === 'deterministic' ? f.deterministicRules : l === 'baseline' ? f.baselines : f.reconciliation);
     return {
@@ -379,7 +382,8 @@ export class MoneyProtectionCenter {
           defaultSeverity: d.severity, severity: s?.severity_override ?? d.severity, severityOverridden: !!s?.severity_override,
           defaultThresholds: d.defaultThresholds, thresholds: { ...d.defaultThresholds, ...((s?.thresholds as Record<string, unknown>) ?? {}) },
           enabled, layerOn: layerOn(d.layer), effective: enabled && layerOn(d.layer), updatedAt: iso(s?.updated_at),
-          alerts30d: N(c?.n30), open: N(c?.open), dismissed90d: N(c?.fp90), lastAlertAt: iso(c?.last) };
+          alerts30d: N(c?.n30), open: N(c?.open), dismissed90d: N(c?.fp90), lastAlertAt: iso(c?.last),
+          lastCheckedAt: enabled && layerOn(d.layer) && lastPass && (!s?.updated_at || new Date(lastPass as string) >= new Date(s.updated_at as string)) ? iso(lastPass) : null };
       }),
       canEdit: has(ctx, 'ai_money_protection.manage_settings'),
     };

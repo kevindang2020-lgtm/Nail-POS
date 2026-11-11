@@ -172,6 +172,10 @@ describe('Rules and safe settings', () => {
     expect(h.items.map((x: any) => x.after.enabled)).toEqual([true, false]);
     expect(h.items[1]).toMatchObject({ rule: 'Likely duplicate charge', reason: expect.stringContaining('Split'), weaker: true, actor: 'Owner Kim' });
     expect(await code(mc.saveRule(ctx({ permissions: ['ai_money_protection.view'] }), 'MP_DUP_CHARGE_LIKELY', { enabled: true }))).toBe('PERMISSION_DENIED');
+    // per-rule freshness: a rule untouched since the recorded pass shows when it was checked; a rule changed after it is "not checked yet"
+    const after: any = await mc.rules(ctx());
+    expect(after.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_EXACT').lastCheckedAt).toEqual(expect.any(String));
+    expect(after.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_LIKELY').lastCheckedAt).toBeNull();
   });
 });
 

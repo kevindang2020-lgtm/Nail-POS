@@ -4258,3 +4258,6 @@ html[data-spacing="compact"] .tbl th { padding: 6px 8px; }
 html[data-spacing="compact"] .tbl td { padding: 6px 8px; }
 /* Service Categories chart drill-down (Nov 11 2026): a category name on the chart is a button that filters the directory */
 .cg-bars .cg-bn.link { background: none; border: none; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; text-decoration: underline dotted; min-height: 28px; }
+
+/* Money Protection pinned action row (backlog MONEY PROTECTION ALERTS · 08): sticky inside the screen's own scroll area */
+.mpx-pinned { position: sticky; top: 0; z-index: 3; background: var(--page); padding-top: 4px; }
