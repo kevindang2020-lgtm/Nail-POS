@@ -4,7 +4,7 @@
 import type { MtRow } from '../api/posMessageTemplatesApi';
 
 export const PREVIEW_LEN = 160;
-const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}{}\[\]_ ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}{}[\]_ ]+/gu, ' ').replace(/\s+/g, ' ').trim();
 const words = (s: string) => new Set(norm(s).split(' ').filter(Boolean));
 function jaccard(a: Set<string>, b: Set<string>): number {
   if (!a.size || !b.size) return 0;

@@ -78,7 +78,11 @@ function NewAlert({ onCreated, onError }: { onCreated: () => void; onError: (t: 
   useEffect(() => {
     let live = true;
     posAiBusinessApi.center.rules({ metric: metricId, status: 'active', page: 1, pageSize: 100 })
-      .then((r: any) => { if (live) setSame(((r?.items ?? []) as any[]).find((a) => a.active && a.metricId === metricId && a.operator === operator && a.preset === preset) ?? null); })
+      .then((r: unknown) => {
+        type RuleLite = { title: string; active?: boolean; metricId?: string; operator?: string; preset?: string };
+        const items = ((r as { items?: RuleLite[] } | null)?.items ?? []);
+        if (live) setSame(items.find((a) => a.active && a.metricId === metricId && a.operator === operator && a.preset === preset) ?? null);
+      })
       .catch(() => { if (live) setSame(null); });   // the warning is advice; without it the form still works
     return () => { live = false; };
   }, [metricId, operator, preset]);
