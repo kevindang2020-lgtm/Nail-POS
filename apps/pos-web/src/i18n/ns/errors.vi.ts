@@ -1490,4 +1490,5 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.WINBACK_GOAL_INVALID': 'Hãy chọn mục tiêu thu hút khách quay lại.',
   'errors.WINBACK_AUDIENCE_EMPTY': 'Hiện không có khách đủ điều kiện cho mục tiêu này.',
   'errors.WINBACK_HEALTH_RATE_LIMITED': 'Vừa kiểm tra dữ liệu giữ chân khách. Hãy thử lại sau một phút.',
+  'errors.PRODUCT_CHANGED': 'Sản phẩm này đã được thay đổi trên thiết bị khác từ lúc bạn mở. Hãy tải lại rồi thử lại.', // DRAFT — Kevin reviews
 };

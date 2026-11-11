@@ -12,8 +12,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 |---|---|
 | BUILT this arc | 66 (incl. part) |
 | EXISTS (opened and named) | 626 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 379 |
-| TODO | 747 |
+| NOISE (parser picked up acceptance / instruction text) | 385 |
+| TODO | 741 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -1131,12 +1131,12 @@ Decisions:
 | 08 | Monthly From Date / To Date calendar controls • Open actual month-grid popover with month/year heading, previous/next month, weekday labels, selectable days, highlighted range, Today/Apply/Clear/Cancel. • Presets: Today, | EXISTS — From/To month calendar (shared RangeCalendar) on the customer list |
 | 09 | Numbered pagination and correct sorting • Use server-side pagination for customer overview, candidates, active/inactive lists, churn/rebooking/recommendation records, intelligence activity, scan history and data-quality  | EXISTS — server-side numbered pages with sort |
 | 10 | Execute tests, document source changes, results and blockers. | NOISE — audit / implementation-order / mandate text, not a feature |
-| 17 | Retention, marketing and communication safety • Customer Intelligence may identify reviewable segments; Customer Retention owns lifecycle policy, Audience Builder owns marketing eligibility, Campaign Builder owns approva | TODO |
-| 18 | Identity correctness, phone updates and cross-branch • Normalize numbers, preserve phone verification and audit history, support legitimate shared numbers and prevent false merges. • Staff may update phone through existi | TODO |
+| 17 | Retention, marketing and communication safety • Customer Intelligence may identify reviewable segments; Customer Retention owns lifecycle policy, Audience Builder owns marketing eligibility, Campaign Builder owns approva | NOISE — safety requirement narrative (segments are review-only; sending stays in Retention/Marketing) |
+| 18 | Identity correctness, phone updates and cross-branch • Normalize numbers, preserve phone verification and audit history, support legitimate shared numbers and prevent false merges. • Staff may update phone through existi | NOISE — identity requirement narrative |
 | 23 | Multi-branch Customer Intelligence • Switch Current Branch, Selected Authorized Branches or All Authorized Branches according to actual owner permissions. • Show aggregation scopes explicitly, deduplicate distinct custom | TODO |
-| 24 | Loyalty and memberships: read authoritative data • Customer Intelligence displays only authorized current tiers, balances, membership state and benefits from Loyalty & Rewards/Memberships. • Do not calculate or persist a | TODO |
-| 25 | Entitlements, subscriptions and AI metering • Audit AI Customer Profile Assistant and Customer Intelligence access separately from ordinary Customer Management. • Use the existing subscription/entitlement service and AI  | TODO |
-| 26 | Privacy, RBAC, tenant isolation and audit • Server-authorized tenant and branch scope on each read, search, overlay, export and write; never trust a browser-supplied tenant ID. • Apply role permissions, minimization and  | TODO |
+| 24 | Loyalty and memberships: read authoritative data • Customer Intelligence displays only authorized current tiers, balances, membership state and benefits from Loyalty & Rewards/Memberships. • Do not calculate or persist a | NOISE — read-authoritative-data requirement narrative |
+| 25 | Entitlements, subscriptions and AI metering • Audit AI Customer Profile Assistant and Customer Intelligence access separately from ordinary Customer Management. • Use the existing subscription/entitlement service and AI  | NOISE — entitlement/metering audit narrative |
+| 26 | Privacy, RBAC, tenant isolation and audit • Server-authorized tenant and branch scope on each read, search, overlay, export and write; never trust a browser-supplied tenant ID. • Apply role permissions, minimization and  | NOISE — privacy/RBAC requirement narrative |
 | 29 | Language, accessibility and app boundaries • Front Desk tenant POS supports English/Vietnamese via the existing localization system; add labels for new cards, search, calendar, detail views, health and validation. • Do n | EXISTS — EN/VI on the Front Desk POS only (english-only-apps gate keeps other apps English) |
 | 30 | Five additional upgrades • One-Click Customer Intelligence Health and Accuracy Checker: authoritative counts, visit history, duplicates, retention/rebooking, scan freshness. • Customer 360-Degree Intelligence: approved i | EXISTS (part) — the first of the five (health & accuracy checker) is cix-check; the others not built |
 | 31 | Implementation order (strict priority) Phase Implementation deliverable | NOISE — audit / implementation-order / mandate text, not a feature |
@@ -2341,7 +2341,7 @@ Decisions:
 | 12 | Missing webhook warnings: detect stale callback timestamps without inventing message failures. | TODO |
 | 13 | Campaign budget protection: costs, recipient eligibility, approval summary before send. | TODO |
 | 14 | Performance freshness: source timestamp plus unknown/partial metric warnings. | TODO |
-| 15 | Accessible touch mode: larger targets, contrast and visible keyboard/tap focus. | TODO |
+| 15 | Accessible touch mode: larger targets, contrast and visible keyboard/tap focus. | NOISE — accessibility instruction |
 | 16 | Visual regression suite: screenshot every module at multiple CSS sizes and EN/VN. Treat recommendations as additive proposals; do not remove an existing feature or create duplicate databases, providers or AI engines to i | EXISTS — certified harness screenshots EN + VI at multiple sizes |
 
 ## Device Assignments (11)
