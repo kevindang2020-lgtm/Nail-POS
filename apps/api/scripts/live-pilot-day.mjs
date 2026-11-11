@@ -1131,7 +1131,7 @@ try {
     const of = await shoot('owner-app-reports', 'owner-web', '/', own, new RegExp(`TOTAL REVENUE[^$]*\\$${Math.floor(numbers.collectedCents / 100)}`), async (page) => { await sleep(1500); await page.getByRole('button', { name: /reports/i }).first().click({ timeout: 8000 }).catch(() => undefined); });
     const pr = await shoot('pos-reports', 'pos-web', '/reports', own, /322\.00|Gross/i);
     check(`SCREEN: the Owner app dashboard renders; POS Reports render the day (net sales $304.00 = gross $322.00 − $18.00 discounts incl. Kim's membership, no invented rating); the Owner app Reports tab shows total revenue $${collectedTxt} (rounded to dollars) (Chromium)`,
-      !!od.matched && !!of.matched && !!pr.matched && /Average Rating —/i.test(pr.text ?? '') && /Net Sales \$304\.00/i.test(pr.text ?? '') && [od, of, pr].every((x) => !(x.pageErrors?.length)), short({ od: od.err ?? (od.text ?? '').slice(0, 160), of: of.matched, ofT: (of.text ?? '').slice(0, 200), pr: pr.matched, e: [od, of, pr].map((x) => x.pageErrors) }));
+      !!od.matched && !!of.matched && !!pr.matched && /Average Rating\s*(—|N\/A)/i.test(pr.text ?? '')   /* batch 9 (Nov 10 2026): no rating reads "N/A" (was "—"); a number still fails */ && /Net Sales \$304\.00/i.test(pr.text ?? '') && [od, of, pr].every((x) => !(x.pageErrors?.length)), short({ od: od.err ?? (od.text ?? '').slice(0, 160), of: of.matched, ofT: (of.text ?? '').slice(0, 200), pr: pr.matched, e: [od, of, pr].map((x) => x.pageErrors) }));
     info(`screenshots (${shots.length}) in ${SHOTS}: ${shots.map((x) => `${x.file ?? x.name}${x.matched === false ? ' (text not found)' : ''}${x.error ? ' ERROR ' + x.error : ''}`).join(', ')}`);
   }
 
