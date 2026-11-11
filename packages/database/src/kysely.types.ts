@@ -4941,6 +4941,15 @@ export interface PosSavedViewsTable {   // migration 844 — a staff member's na
   id: Generated<string>; tenant_id: string; owner_user_id: string; surface: string; name: string; filters_json: unknown; is_default: Generated<boolean>;
   created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
 }
+export interface ReportEmailSubscriptionsTable {   // migration 845 — a staff member's own Daily Summary e-mail schedule (self-consented)
+  id: Generated<string>; tenant_id: string; branch_id: string | null; owner_user_id: string; report_key: Generated<string>; frequency: string;
+  send_at: Generated<string>; active: Generated<boolean>; consented_at: Generated<Ts>; created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
+}
+export interface ReportEmailDeliveriesTable {   // migration 845 — every Daily Summary e-mail attempt and its honest outcome
+  id: Generated<string>; tenant_id: string; branch_id: string | null; subscription_id: string | null; owner_user_id: string; report_key: Generated<string>;
+  kind: string; period_from: string; period_to: string; status: Generated<string>; detail: string | null; provider_id: string | null; occurrence_key: string | null;
+  created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
+}
 export interface CustomerIntelligenceSnapshotsTable {   // migration 763 — latest per-customer classification (derived, rebuildable)
   tenant_id: string; customer_id: string; scan_id: string; status: string; completed_visits: Generated<number>; first_visit_at: Ts | null; last_visit_at: Ts | null;
   typical_interval_days: number | null; days_since_last: number | null; has_upcoming: Generated<boolean>; next_appointment_date: string | null; churn_watch: Generated<boolean>;
@@ -8050,6 +8059,8 @@ export interface DB {
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
   pos_saved_views: PosSavedViewsTable;
+  report_email_subscriptions: ReportEmailSubscriptionsTable;
+  report_email_deliveries: ReportEmailDeliveriesTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;

@@ -2339,7 +2339,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSReportsScreen.tsx`
 - Guide: AI_PowerSalon_Daily_Reports_9
 - Scroll: vertical page scroll allowed (Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.invoke`, `posAiApi.packages`, `posReportsApi.exportReport`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.invoke`, `posAiApi.packages`, `posReportsApi.deliveryState`, `posReportsApi.emailNow`, `posReportsApi.exportReport`, `posReportsApi.schedule`, `posReportsApi.unschedule`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2352,7 +2352,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSSalesReportScreen.tsx`
 - Guide: AI_PowerSalon_Sales_Report
 - Scroll: vertical page scroll allowed (Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.exportReport`, `posReportsApi.state`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.deliveryState`, `posReportsApi.emailNow`, `posReportsApi.exportReport`, `posReportsApi.schedule`, `posReportsApi.state`, `posReportsApi.unschedule`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2389,7 +2389,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSCustomersReportScreen.tsx`
 - Guide: AI_PowerSalon_Customers_Report
 - Scroll: vertical page scroll allowed (Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.)
-- API calls on this page: `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.customers`, `posReportsApi.exportReport`, `posReportsApi.state`, `posSystemChecksApi.run`
+- API calls on this page: `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.customers`, `posReportsApi.deliveryState`, `posReportsApi.emailNow`, `posReportsApi.exportReport`, `posReportsApi.schedule`, `posReportsApi.state`, `posReportsApi.unschedule`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2441,7 +2441,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSPaymentsReportScreen.tsx`
 - Guide: AI_PowerSalon_Payments_Report
 - Scroll: vertical page scroll allowed (Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.)
-- API calls on this page: `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.exportReport`, `posReportsApi.payments`, `posReportsApi.state`, `posSystemChecksApi.run`
+- API calls on this page: `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCheckoutApi.technicianSplit`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.deliveryState`, `posReportsApi.emailNow`, `posReportsApi.exportReport`, `posReportsApi.payments`, `posReportsApi.schedule`, `posReportsApi.state`, `posReportsApi.unschedule`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2466,7 +2466,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSTaxReportScreen.tsx`
 - Guide: AI_PowerSalon_Tax_Reports
 - Scroll: vertical page scroll allowed (Report page (batch 9): KPI cards, filters and a bounded table; the page scrolls below the fold, never sideways.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.exportReport`, `posReportsApi.state`, `posReportsApi.tax`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.invoke`, `posAiApi.packages`, `posBookingApi.appointment`, `posBookingApi.moveToQueue`, `posBookingApi.startService`, `posCheckInApi.appointmentCheckIn`, `posCheckoutApi.detail`, `posCustomersApi.appointments`, `posCustomersApi.getDetail`, `posCustomersApi.getNotes`, `posQueueApi.callNext`, `posQueueApi.item`, `posQueueApi.moveToServing`, `posQueueApi.moveToTechQueue`, `posQueueApi.notifyCustomer`, `posQueueApi.startService`, `posReportsApi.deliveryState`, `posReportsApi.emailNow`, `posReportsApi.exportReport`, `posReportsApi.schedule`, `posReportsApi.state`, `posReportsApi.tax`, `posReportsApi.unschedule`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|

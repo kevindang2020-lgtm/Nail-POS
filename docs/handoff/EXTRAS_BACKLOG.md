@@ -33,10 +33,10 @@ Built so far:
    (audit_events.resource_type vs audit_logs.entity_type), so each page needs its own mapping.
 
 Decisions:
-- **Comfortable / Compact density switch — deferred, not built.** About 40 rows ask for it. The shell measures density
-  (`data-density`) but no styling uses it; every certified one-screen page fits through its own container rules. A
-  person-chosen Comfortable mode would need new spacing on each of those pages and can break the 1920×945 fit the
-  screen harness certifies. Kevin decides; until then these rows stay TODO.
+- **Comfortable / Compact density switch — built Nov 10 2026 as opt-in Compact spacing** (profile menu, per device;
+  Standard = the certified spacing stays default; Compact tightens gaps/padding only, never fonts or touch targets —
+  `shell/spacingPref.ts`, styles.css `html[data-spacing="compact"]`). The ~40 rows that ask for it are not re-marked one
+  by one yet.
 **Rows: 1818** across 153 PDFs.
 
 

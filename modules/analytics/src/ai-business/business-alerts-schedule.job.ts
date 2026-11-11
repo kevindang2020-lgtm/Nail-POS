@@ -7,18 +7,13 @@ import type { Kysely } from 'kysely';
 import { runAsSingleOwner, DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { logException, runTick } from '@aipowersalon/observability';
 import { runsBackgroundJob } from '@aipowersalon/config';
-import { permissionsFor, hasPermission, POS_ROUTE_KEY_ALIASES, type Role } from '@aipowersalon/permissions';
+import { sessionPermissionsForRole } from '@aipowersalon/permissions';
 import { BUSINESS_CENTER } from './business-center.controller';
 import type { BusinessCenter } from './business-center';
 import { BUSINESS_ALERT_INCIDENTS, type BusinessAlertIncidents } from './business-alert-incidents';
 
-/** a role's session permissions: its catalog grants plus every legacy pos.* key those grants allow (what a signed-in session carries) */
-export function sessionPermissionsForRole(role: string): string[] {
-  const base = permissionsFor(role as Role) as string[];   // an unknown role has no grants
-  if (!base.length) return [];
-  const aliases = POS_ROUTE_KEY_ALIASES.filter((k) => hasPermission({ userId: 'scheduler', tenantId: 'scheduler', branchId: '', role, permissions: base } as unknown as Parameters<typeof hasPermission>[0], k));
-  return [...new Set([...base, ...aliases])];
-}
+// a role's session permissions: the shared rule (moved to @aipowersalon/permissions Nov 10 2026; re-exported for callers)
+export { sessionPermissionsForRole };
 
 @Injectable()
 export class BusinessAlertsScheduleJob implements OnModuleInit, OnModuleDestroy {

@@ -1307,7 +1307,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "rpt.calc.tax.t": "Thuế đã thu", // DRAFT — Kevin reviews
   "rpt.calc.tax.d": "Thuế ghi trên các phiếu đã trả (theo thuế suất lúc đó, không phải hôm nay). Không bao giờ tính vào doanh số.", // DRAFT — Kevin reviews
   "rpt.calc.tickets.t": "Số phiếu", // DRAFT — Kevin reviews
-  "rpt.calc.tickets.d": "Các phiếu đã trả, mỗi phiếu một lần — phiếu trả nửa tiền mặt nửa thẻ vẫn là một phiếu.", // DRAFT — Kevin reviews
+  "rpt.calc.tickets.d": "Các phiếu đã trả, mỗi phiếu một lần — phiếu trả bằng cả tiền mặt và thẻ vẫn là một phiếu.", // DRAFT — Kevin reviews
   "rpt.calc.customers.t": "Khách hàng", // DRAFT — Kevin reviews
   "rpt.calc.customers.d": "Số khách khác nhau có hồ sơ và có phiếu đã trả. Khách vãng lai không có hồ sơ không được tính.", // DRAFT — Kevin reviews
   "rpt.appt.open": "Còn đang mở", // DRAFT — Kevin reviews
@@ -1396,7 +1396,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "rpt.inv.health": "Tình trạng dữ liệu", // DRAFT — Kevin reviews
   "rpt.inv.h.ok": "Không lệch tồn kho, sản phẩm nào cũng có giá vốn, không có chai hết hạn trong kho.", // DRAFT — Kevin reviews
   "rpt.inv.h.expired": "Có {n} chai đã hết hạn trong kho — không tính vào Sắp hết hạn và không tính vào giá trị.", // DRAFT — Kevin reviews
-  "rpt.inv.h.drift": "{n} sản phẩm: tồn kho ghi nhớ khác với hồ sơ từng chai — hãy kiểm đếm lại trong Kho hàng.", // DRAFT — Kevin reviews
+  "rpt.inv.h.drift": "{n} sản phẩm: số tồn kho đang lưu khác với hồ sơ từng chai — hãy kiểm đếm lại trong Kho hàng.", // DRAFT — Kevin reviews
   "rpt.inv.h.noCost": "{n} sản phẩm chưa có giá vốn — Giá trị kho không tính chúng.", // DRAFT — Kevin reviews
   "rpt.inv.h.counts": "Sản phẩm đếm theo sản phẩm ({products}); Số chai và Sắp hết hạn đếm theo chai ({bottles} · {expiring}) — hai đơn vị khác nhau.", // DRAFT — Kevin reviews
   "rpt.inv.count": "{n} sản phẩm", // DRAFT — Kevin reviews
@@ -1412,26 +1412,26 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "rpt.inv.movesCount": "{n} biến động", // DRAFT — Kevin reviews
   "rpt.inv.movesSearch": "Tìm sản phẩm, lý do hoặc số PO", // DRAFT — Kevin reviews
   "rpt.inv.noMoves": "Không có biến động kho trong kỳ này.", // DRAFT — Kevin reviews
-  "rpt.inv.when": "Lúc", // DRAFT — Kevin reviews
+  "rpt.inv.when": "Thời gian", // DRAFT — Kevin reviews
   "rpt.inv.type": "Biến động", // DRAFT — Kevin reviews
   "rpt.inv.change": "Thay đổi", // DRAFT — Kevin reviews
-  "rpt.inv.after": "Sau đó", // DRAFT — Kevin reviews
-  "rpt.inv.by": "Người làm", // DRAFT — Kevin reviews
+  "rpt.inv.after": "Tồn sau", // DRAFT — Kevin reviews
+  "rpt.inv.by": "Người thực hiện", // DRAFT — Kevin reviews
   "rpt.mkt.roiNa": "ROI không áp dụng — chưa gửi hoặc chưa có chi phí", // DRAFT — Kevin reviews
   "rpt.mkt.costEntered": "(số nhập trên chiến dịch, không phải phí nhà cung cấp)", // DRAFT — Kevin reviews
   "rpt.mkt.allTime": "Toàn thời gian — mọi chiến dịch, khuyến mãi và đánh giá", // DRAFT — Kevin reviews
   "rpt.pay.other": "Cách trả khác", // DRAFT — Kevin reviews
   "rpt.pay.basis": "Đã thu = mọi khoản thanh toán (không tính hoàn tiền) ghi vào một ngày của tiệm trong kỳ, theo cách trả (thẻ, tiền mặt, thẻ quà tặng, tiền mặt cho thợ, điểm thưởng, tiền cọc …). Trả tách = phiếu trả bằng hai khoản trở lên. Hoàn tiền hiện riêng.", // DRAFT — Kevin reviews
-  "rpt.pay.processorNote": "Trạng thái bộ xử lý là kết nối cổng thanh toán, không phải kiểm tra các số tiền này.", // DRAFT — Kevin reviews
+  "rpt.pay.processorNote": "Trạng thái xử lý thanh toán là kết nối với cổng thanh toán, không phải kiểm tra các số tiền này.", // DRAFT — Kevin reviews
   "rpt.tax.retail": "Hàng bán lẻ", // DRAFT — Kevin reviews
-  "rpt.tax.effective": "Thực tế {rate} trên doanh số chịu thuế", // DRAFT — Kevin reviews
+  "rpt.tax.effective": "Thuế suất thực tế {rate} trên doanh số chịu thuế", // DRAFT — Kevin reviews
   "rpt.tax.notTracked": "Không ghi riêng", // DRAFT — Kevin reviews
   "rpt.tax.basis": "Thuế đã thu = thuế ghi trên các phiếu đã trả trong kỳ (theo thuế suất lúc đó). Chịu thuế / miễn thuế = cờ chịu thuế của từng dòng, trước giảm giá. Thuế suất là mức tiệm cài đặt; thực tế = thuế ÷ doanh số chịu thuế.", // DRAFT — Kevin reviews
   "rpt.tax.allCats": "Tất cả nhóm", // DRAFT — Kevin reviews
   "rpt.tax.perTicket": "Thuế ghi theo phiếu, không theo dòng — {amount} cho cả kỳ; không chia theo nhóm.", // DRAFT — Kevin reviews
   "rpt.tax.tickets": "Các phiếu và thuế (mới nhất trước)", // DRAFT — Kevin reviews
   "rpt.ai.caption": "Hiệu quả trợ lý AI · {from} – {to}", // DRAFT — Kevin reviews
-  "rpt.ai.week": "7 ngày kết thúc {to} (từ {from})", // DRAFT — Kevin reviews
+  "rpt.ai.week": "7 ngày đến hết {to} (từ {from})", // DRAFT — Kevin reviews
   "rpt.ai.allCampaigns": "mọi chiến dịch đã gửi, không chỉ kỳ này", // DRAFT — Kevin reviews
   "mgmt.open": "Mở", // DRAFT — Kevin reviews
   "mgmt.appr.forbidden": "Không có quyền xem phê duyệt", // DRAFT — Kevin reviews
@@ -1461,13 +1461,13 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "set.hist.forbidden": "Không có quyền xem lịch sử thay đổi.", // DRAFT — Kevin reviews
   "set.hist.loading": "Đang tải lịch sử thay đổi…", // DRAFT — Kevin reviews
   "set.hist.none": "Chưa có thay đổi cài đặt nào.", // DRAFT — Kevin reviews
-  "set.hist.when": "Lúc", // DRAFT — Kevin reviews
+  "set.hist.when": "Thời gian", // DRAFT — Kevin reviews
   "set.hist.area": "Mục", // DRAFT — Kevin reviews
   "set.hist.who": "Người sửa", // DRAFT — Kevin reviews
   "set.hist.changed": "Đã đổi", // DRAFT — Kevin reviews
   "set.area.business_branch": "Doanh nghiệp & Chi nhánh", // DRAFT — Kevin reviews
   "set.area.store_hours": "Giờ mở cửa & Tự đăng xuất", // DRAFT — Kevin reviews
-  "set.area.payments_checkout": "Thanh toán", // DRAFT — Kevin reviews
+  "set.area.payments_checkout": "Thanh toán & Tính tiền", // DRAFT — Kevin reviews
   "set.area.tips": "Tiền tip", // DRAFT — Kevin reviews
   "set.area.tax": "Thuế", // DRAFT — Kevin reviews
   "set.area.booking": "Đặt lịch & Lịch hẹn", // DRAFT — Kevin reviews
@@ -1483,7 +1483,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "set.area.receipts_branding": "Hóa đơn & Thương hiệu", // DRAFT — Kevin reviews
   "set.area.gift_card_settings": "Thẻ quà tặng", // DRAFT — Kevin reviews
   "set.area.subscription_plan": "Gói dịch vụ", // DRAFT — Kevin reviews
-  "set.area.audit_logs": "Nhật ký", // DRAFT — Kevin reviews
+  "set.area.audit_logs": "Nhật ký hoạt động", // DRAFT — Kevin reviews
   "set.area.other": "Cài đặt khác", // DRAFT — Kevin reviews
   "mgmt.shift.fallback": "Không đọc được Chấm công — đang hiện số thợ rảnh lúc này", // DRAFT — Kevin reviews
   "ml.custom": "Chọn ngày", // DRAFT — Kevin reviews
@@ -1491,4 +1491,40 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "rpt.ai.viewList": "Xem danh sách →", // DRAFT — Kevin reviews
   "rpt.mkt.window": "{from} – {to}", // DRAFT — Kevin reviews
   "rpt.mkt.redemptionsAllTime": "lượt dùng tính từ trước đến nay (chưa ghi theo ngày)", // DRAFT — Kevin reviews
+  "rpt.mail.failed": "Không gửi được báo cáo.", // DRAFT — Kevin reviews
+  "rpt.mail.nowResult": "Gửi báo cáo qua email tới {to}: {result}", // DRAFT — Kevin reviews
+  "rpt.mail.status.sent": "đã gửi", // DRAFT — Kevin reviews
+  "rpt.mail.status.simulated": "đã ghi lại, chưa gửi (môi trường thử — chưa có nhà cung cấp email)", // DRAFT — Kevin reviews
+  "rpt.mail.status.not_configured": "chưa gửi — email chưa được thiết lập", // DRAFT — Kevin reviews
+  "rpt.mail.status.failed": "thất bại", // DRAFT — Kevin reviews
+  "rpt.mail.status.skipped": "bỏ qua", // DRAFT — Kevin reviews
+  "rpt.mail.status.pending": "đang gửi…", // DRAFT — Kevin reviews
+  "rpt.mail.scheduledOn": "Đã bật Lên lịch báo cáo. Báo cáo gửi tới email của chính bạn.", // DRAFT — Kevin reviews
+  "rpt.mail.scheduledOff": "Đã tắt Lên lịch báo cáo.", // DRAFT — Kevin reviews
+  "rpt.mail.noPermission": "Bạn cần quyền xem và xuất báo cáo tài chính.", // DRAFT — Kevin reviews
+  "rpt.mail.noEmail": "Tài khoản của bạn chưa có email. Hãy thêm email vào hồ sơ trước.", // DRAFT — Kevin reviews
+  "rpt.mail.to": "Gửi tới email tài khoản của bạn: {to}", // DRAFT — Kevin reviews
+  "rpt.mail.sender.simulated": "Môi trường thử: email được ghi lại tại đây, không gửi đi.", // DRAFT — Kevin reviews
+  "rpt.mail.sender.not_configured": "Email chưa được thiết lập cho hệ thống — sẽ không gửi gì cho tới khi thiết lập.", // DRAFT — Kevin reviews
+  "rpt.mail.notRunning": "Máy chủ đang tắt chức năng gửi theo lịch — lịch của bạn đã lưu nhưng sẽ không gửi.", // DRAFT — Kevin reviews
+  "rpt.mail.frequency": "Tần suất", // DRAFT — Kevin reviews
+  "rpt.mail.hour": "Gửi sau (giờ tiệm)", // DRAFT — Kevin reviews
+  "rpt.mail.daily": "Hằng ngày (hôm qua)", // DRAFT — Kevin reviews
+  "rpt.mail.weekly": "Hằng tuần (thứ Hai, tuần trước)", // DRAFT — Kevin reviews
+  "rpt.mail.update": "Lưu", // DRAFT — Kevin reviews
+  "rpt.mail.turnOn": "Bật cho tôi", // DRAFT — Kevin reviews
+  "rpt.mail.turnOff": "Tắt", // DRAFT — Kevin reviews
+  "rpt.mail.activeLine": "Đang bật: {when}, sau {hour}.", // DRAFT — Kevin reviews
+  "rpt.mail.consent": "Chỉ bạn nhận, tại email tài khoản của bạn. Bạn có thể tắt tại đây bất cứ lúc nào.", // DRAFT — Kevin reviews
+  "rpt.mail.kind.now": "Gửi báo cáo", // DRAFT — Kevin reviews
+  "rpt.mail.kind.scheduled": "Theo lịch", // DRAFT — Kevin reviews
+  "mgmt.tasks.overdue": "{n} quá hạn", // DRAFT — Kevin reviews
+  "mgmt.tasks.none_overdue": "Không có việc quá hạn", // DRAFT — Kevin reviews
+  "mgmt.tasks.forbidden": "Không có quyền xem việc cần theo dõi", // DRAFT — Kevin reviews
+  "mgmt.tasks.unavailable": "Không tải được danh sách việc", // DRAFT — Kevin reviews
+  "mgmt.health.sub": "Mục Tình trạng thiết lập cần xử lý · {warn} cảnh báo · kiểm tra ngày {date}", // DRAFT — Kevin reviews
+  "mgmt.health.forbidden": "Không có quyền xem Tình trạng thiết lập", // DRAFT — Kevin reviews
+  "mgmt.health.unavailable": "Không tải được Tình trạng thiết lập", // DRAFT — Kevin reviews
+  "mgmt.health.never": "Chưa kiểm tra — mở Tình trạng thiết lập để chạy", // DRAFT — Kevin reviews
+  "shell.spacing.compact": "Khoảng cách gọn (máy này)", // DRAFT — Kevin reviews
 };

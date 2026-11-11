@@ -430,6 +430,37 @@ Compliance (decision 6 — no source system), seed clean-up (7), Vietnamese draf
   "Average Rating —" but batch 9 made an empty rating read "N/A" (figures were right: gross $322.00, net $304.00).
   Check updated to accept "—" or "N/A" (a number still fails); re-run on a fresh DB **242/242**.
 
+## Kevin's open decisions — picked and built (Nov 10 2026, 11:30 pm: "can you pick and continue fix all it")
+
+1. **Email Report / Schedule Report — built (consent-based).** Migration 845 (`report_email_subscriptions`,
+   `report_email_deliveries`), `modules/reports/src/report-delivery/*`, routes `GET pos/reports/delivery/state`,
+   `POST …/send-now`, `PUT|DELETE …/subscription`. Consent model: the report only ever goes to the signed-in staff
+   member's OWN account e-mail; only that person can put themselves on a schedule; no free-typed address exists. Sending
+   needs reports view + financial view + export (as the figures on screen do); turning a schedule off needs only view.
+   Email Report = the period on screen, now (max 5 an hour). Schedule = daily (yesterday) or weekly (Mondays, last
+   Monday–Sunday) after a whole salon-local hour; the hourly job (`REPORT_EMAIL_SCHEDULE=off` stops it) sends each
+   occurrence once (unique occurrence key) and re-checks at send time that the person is still active and still allowed
+   (otherwise "skipped", logged). Figures = `ReportsService.getSales` (the Sales Report's own). Outcomes are said as
+   they are: sent / simulated (no provider — dev) / not_configured (production without SendGrid) / failed / skipped.
+   Every action is audited. `sessionPermissionsForRole` moved to `@aipowersalon/permissions` (one rule; analytics
+   re-exports it). Tests: pgtest 7/7 (own address, outcomes, cap, once per occurrence, off, lost access, salon isolation,
+   escaping) · POS component 3/3 · migration 845 + its CHECKs on real Postgres 16.15.
+2. **Open Tasks / Compliance — built from real sources.** Open Tasks = the salon's ONE task system (AI Follow-ups &
+   Human Handoff: open + assigned + in progress + waiting) with the overdue count and Open → the follow-ups page.
+   Compliance = Setup Health checks needing action (action required + error) with warnings and the last check date, Open
+   → Setup Health; never run → "Not checked yet". No access / failure is said as such — never 0. POS Management 3/3.
+3. **Pilot data — kept, explained.** The 8 line-less paid tickets exist only in the local scratch database `aps`
+   ($0 total, cash paid, Nov 7 — written by a test script). Every product seed is clean: both fresh pilot-day databases
+   (pd9, pd9b) and fr_pilot have 0. The check is right to flag them; nothing in the repo seeds them.
+4. **Vietnamese drafts — reviewed.** All 346 batch-9 draft lines read against the English: 15 corrected (e.g. a split
+   cash/card ticket was "nửa tiền mặt nửa thẻ"; "After" stock column was "Sau đó"; Setup Health now uses the existing
+   term "Tình trạng thiết lập"; Time Clock "Chấm công"). The `// DRAFT — Kevin reviews` markers stay — approving them is
+   Kevin's (native speaker).
+5. **Density switch — built as opt-in Compact spacing.** Profile menu → "Compact spacing (this device)". Standard (the
+   certified spacing) stays the default; Compact only tightens gaps and padding (KPI cards, panels, table cells) —
+   never fonts or touch targets — so a page certified in Standard still fits. Stored per device. Test 2/2.
+6. **Push** — done at the end of this round (see the commit list).
+
 ## Decisions for Kevin (batch 9)
 
 1. **Email Report / Schedule Report** (Daily Summary) stay labelled "not connected" — wiring them needs a delivery

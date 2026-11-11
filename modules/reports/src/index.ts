@@ -19,3 +19,4 @@ export { MarketingReportModule } from './marketing-report/marketing-report.modul
 export { MarketingGrowthModule } from './marketing-growth/marketing-growth.module';   // Marketing & Growth (Oct 30 2026): reconciliation, search, activity, journey, economics
 export { BirthdayCenterModule } from './birthdays/birthday-center.module';   // Birthday Campaigns (Oct 31 2026): /pos/birthdays/*
 export * from './marketing-report/marketing-report.dto';
+export { ReportDeliveryModule } from './report-delivery/report-delivery.module';   // Daily Summary Email / Schedule Report (Nov 10 2026): /pos/reports/delivery/*

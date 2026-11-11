@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { posReportsApi } from '../api/posReportsApi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { ReportEmailControls } from '../components/ReportEmailControls';
 import { fmtMoney, fmtInZone, fmtInTz } from '../i18n/format';
 import { codeLabel } from '../components/codeLabel';
 import { statusLabel } from '../i18n/status-label';
@@ -355,8 +356,8 @@ export function POSReportsScreen() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <button className="btn ghost w-fit whitespace-nowrap" disabled={exporting} onClick={() => doExport('transactions', 'csv')}>{tx('pos.export_csv')}</button>
             <button className="btn ghost w-fit whitespace-nowrap" disabled={exporting} onClick={() => doExport('transactions', 'pdf')}>{tx('pos.export_pdf')}</button>
-            <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setNote(tx('pos.emailed_scheduled_delivery_isn_t_connected_8q0c'))}>{tx('pos.email_report')}</button>
-            <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setNote(tx('pos.scheduled_report_delivery_isn_t_connected_123o'))}>{tx('pos.schedule_report')}</button>
+            {/* batch 9 decision 1 (Nov 10 2026): real delivery — to the signed-in person's own address, their own schedule */}
+            <ReportEmailControls range={s?.dateRange ? { from: s.dateRange.from, to: s.dateRange.to } : null} onNote={setNote} />
           </div>
           <div className="s" style={{ marginTop: 6, color: '#8A7A66' }}>{tx('pos.csv_pdf_use_the_live_export_15b3')}</div>
         </section>

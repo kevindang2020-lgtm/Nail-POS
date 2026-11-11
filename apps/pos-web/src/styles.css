@@ -4248,3 +4248,11 @@ button.loc-kpi { border: 0; text-align: left; cursor: pointer; font: inherit; }
 
 /* Check-In Kiosks — "set up by AI PowerSalon" note (batch 8 decision 1) */
 .ksk-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+
+/* Compact spacing (Nov 10 2026) — person-chosen per device (profile menu). Gaps and padding only: font sizes and touch
+   targets are unchanged, so every page certified in Standard spacing still fits. */
+html[data-spacing="compact"] .kpis { gap: 8px; margin: 10px 0 12px; }
+html[data-spacing="compact"] .kpi { padding: 9px 10px; }
+html[data-spacing="compact"] .panel { padding: 10px; }
+html[data-spacing="compact"] .tbl th { padding: 6px 8px; }
+html[data-spacing="compact"] .tbl td { padding: 6px 8px; }

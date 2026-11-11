@@ -30,6 +30,8 @@ vi.mock('../api/client', () => ({
         periods: [],
       });
       if (path.includes('/pos/time-clock/state')) return Promise.resolve({ kpis: { technicianCount: 5, clockedInCount: 4, totalHoursToday: 20 }, technicians: [] });
+      if (path.includes('/pos/ai/follow-ups-center/kpis')) return Promise.resolve({ cards: { open: 2, assigned: 1, inProgress: 1, waiting: 0, overdue: 1, resolved: 9 } });
+      if (path.includes('/tenant/setup-health/summary')) return Promise.resolve({ run: { runDate: '2026-11-10' }, counts: { ready: 20, warning: 2, action_required: 1, error: 1 } });
       if (path.includes('/pos/approvals')) return Promise.resolve({ items: [], page: 1, pageSize: 1, total: 3, hasMore: true });
       if (path.includes('branches/comparison')) return Promise.resolve({ branches: [
         { branchId: 'b1', revenueCents: 120000, trendPercent: 12.5, bookingCount: 30, averageTicketCents: 4000 },
@@ -69,3 +71,13 @@ describe('POSManagementScreen — batch 9 guides 17–18 (Nov 10 2026)', () => {
   });
 });
 
+describe('POSManagementScreen — Open Tasks / Compliance (Nov 10 2026)', () => {
+  it('Open Tasks = active follow-up tasks with the overdue count; Compliance = Setup Health checks needing action', async () => {
+    render(<MemoryRouter><POSManagementScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('mgmt-tasks-open')).toBeInTheDocument();
+    expect(screen.getByText('Open Tasks').parentElement).toHaveTextContent('4');
+    expect(screen.getByTestId('mgmt-tasks-open-sub')).toHaveTextContent('1 overdue');
+    expect(screen.getByText('Compliance').parentElement).toHaveTextContent('2');
+    expect(screen.getByTestId('mgmt-health-open-sub')).toHaveTextContent('2 warnings · checked 2026-11-10');
+  });
+});

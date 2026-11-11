@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 967,
+  "tables": 969,
   "ownership": {
-   "tenant_owned": 645,
+   "tenant_owned": 647,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 161,
    "tenant_branch_owned": 92,
@@ -35,14 +35,14 @@
    "DEALS": 18,
    "LOYALTY": 36,
    "MEMBERSHIPS": 11,
-   "ANALYTICS": 18,
+   "ANALYTICS": 20,
    "INVENTORY": 29,
    "PLATFORM": 20,
    "TENANTS": 29
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 144,
-   "CONFIDENTIAL": 167,
+   "CONFIDENTIAL": 169,
    "SECURITY_SECRET": 39,
    "INTERNAL": 535,
    "PAYMENT_RESTRICTED": 76,
@@ -7991,6 +7991,30 @@
    "has_tenant_id": true,
    "platform_rows": true,
    "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "report_email_deliveries": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "ANALYTICS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "report_email_subscriptions": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "ANALYTICS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
   },

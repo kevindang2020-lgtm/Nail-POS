@@ -5,6 +5,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import './styles.css';
+import { applySpacing, readSpacing } from './shell/spacingPref';
+applySpacing(readSpacing());   // the person's Compact / Standard spacing for this device, before the first paint
 import { installOfflineReadCache } from './api/offline-read-cache';
 import { installSessionLockWatch } from './api/session-lock-watch';
 import { installHitSlop } from './shell/hitSlop';

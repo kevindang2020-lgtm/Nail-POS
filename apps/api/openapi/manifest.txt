@@ -29,6 +29,7 @@ DELETE /pos/customer-displays/stations/{stationId}  realm=staff  auth=session  d
 DELETE /pos/marketing/display-ads/{id}  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.archive  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 DELETE /pos/me/avatar  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=OWN/permission  guards=TenantAuthGuard
 DELETE /pos/me/saved-views/{id}  realm=staff  auth=session  domain=identity  perm=self.profile.edit  resource=TENANT/records  guards=TenantAuthGuard
+DELETE /pos/reports/delivery/subscription  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 DELETE /pos/settings/customer-phone/branches/{branchId}  realm=staff  auth=session  domain=identity  perm=pos.customers.phone.settings  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 DELETE /super-admin/ai/tenants/{tenantId}/subscriptions/{code}  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 DELETE /super-admin/owners/{ownerId}/branches/{branchId}  realm=super_admin  auth=session  domain=tenants  derived=super_admin.tenants.edit  resource=PLATFORM/realm  guards=SuperAdminGuard
@@ -995,6 +996,7 @@ GET /pos/reminders  realm=staff  auth=session  domain=communications  perm=commu
 GET /pos/reports/booking  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reports/customers  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reports/customers/page  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/reports/delivery/state  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reports/detail/{kind}/{id}  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reports/discounts  realm=staff  auth=session  domain=analytics  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reports/export  realm=staff  auth=session  domain=analytics  perm=pos.reports.export  resource=BRANCH/permission  async=pos.reports.export  guards=RolePermissionGuard,TenantAuthGuard
@@ -3061,6 +3063,7 @@ POST /pos/referral-program/rewards/{id}/issue  realm=staff  auth=session  domain
 POST /pos/referral-program/rewards/{id}/reverse  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reminder-center/reminders/{id}/cancel  realm=staff  auth=session  domain=communications  perm=communications.manage  resource=BRANCH/records  feature=smart_reminders  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reminder-center/reminders/{id}/retry  realm=staff  auth=session  domain=communications  perm=communications.manage  resource=BRANCH/records  feature=smart_reminders  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/reports/delivery/send-now  realm=staff  auth=session  domain=analytics  perm=pos.reports.export  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reputation-settings/check  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reputation-settings/save  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reputation/check  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3986,6 +3989,7 @@ PUT /pos/me/language  realm=staff  auth=session  domain=identity  perm=self.prof
 PUT /pos/queue/items/{queueItemId}/service-assignments  realm=staff  auth=session  domain=booking  perm=pos.queue.assign_technician  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/referral-program/codes/{id}/status  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/referral-program/settings  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/reports/delivery/subscription  realm=staff  auth=session  domain=analytics  perm=pos.reports.export  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/retention/settings  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/retention/sms/pricing  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

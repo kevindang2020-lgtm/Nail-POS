@@ -15,7 +15,7 @@ import { GiftCardsModule, GiftCardStockModule } from '@aipowersalon/gift-cards';
 import { SplitPaymentsModule, RefundsVoidsModule, PaymentWebhookModule, PaymentReconciliationModule, HardwarePaymentModule, InvoicesModule, CustomerPaymentsModule, DepositReconciliationModule, PaymentGatewayModule } from '@aipowersalon/payments';
 import { KyselyAiAccessRepo, KyselyAiUsageLogger, type AiUsageLogger, AiModule, AiGovernanceModule, AiSubscriptionBillingModule, AiEntitlementGuard, type AiEntitlementRepo, AiReadinessModule, AiMarketingModule, AiMarketingSendModule, MoneyProtectionModule, QueueAssignmentModule, AiSchedulingModule, AiInventoryModule, AiAnalyticsForecastingModule, AiRevenueModule, AiReviewReputationModule, VoiceBookingModule, VoiceTranscriptionModule, CallIntelligenceModule, WorkflowRunsModule, AiCenterModule, AiCustomerProfileModule } from '@aipowersalon/ai';
 import { PlatformNoticeModule, CampaignsModule, TenantA2pModule, MessagingReadinessModule, SmsPackagesModule, PushModule, NotificationsModule, MessengerModule, CommunicationsModule, TenantMessagingModule, RemindersModule, EndOfDayFollowUpModule, MessagingInboundModule, MessageTemplatesModule, CustomerNotificationsModule, EmailCenterModule } from '@aipowersalon/communications';
-import { ReportsModule, MenuInsightsModule, BookingCheckinEventsModule, MarketingReportModule, MarketingGrowthModule, BirthdayCenterModule } from '@aipowersalon/reports';
+import { ReportsModule, MenuInsightsModule, BookingCheckinEventsModule, MarketingReportModule, MarketingGrowthModule, BirthdayCenterModule, ReportDeliveryModule } from '@aipowersalon/reports';
 import { CashDrawerModule, CheckoutModule, MobileCheckoutModule, TicketHistoryModule, SkipLineCheckoutModule, AiCheckoutUpsellModule } from '@aipowersalon/checkout';
 import { BrandingModule, OwnerPortfolioModule, DevicesModule, PosSettingsModule, TenantLocationsModule, TenantNavigationModule, TenantEntitlementsModule, SocialModule } from '@aipowersalon/tenants';
 import { CustomerSalonsModule, CustomerIdentityModule, CustomersModule, ReviewsModule, WalletModule, ReferralsModule, CustomerSearchModule, CustomerNotesModule, AppointmentHistoryModule, DuplicateReviewModule, CustomerTimelineModule } from '@aipowersalon/customers';
@@ -161,7 +161,7 @@ import { DbConstraintRetrierModule } from './common/db-constraint-retrier.module
     SuperAdminAiSchedulingOptimizerModule,
     SuperAdminAiOcrReceiptModule,
     ReferralsModule, SocialModule, DepositReconciliationModule, SuperAdminReconModule,
-    MarketingReportModule, MarketingGrowthModule, BirthdayCenterModule, TimeClockModule, TurnQueueModule, SplitPaymentsModule, ServiceAddOnsModule,   // TurnQueueModule: Fair Turn Engine (wave 2)
+    MarketingReportModule, MarketingGrowthModule, BirthdayCenterModule, ReportDeliveryModule, TimeClockModule, TurnQueueModule, SplitPaymentsModule, ServiceAddOnsModule,   // TurnQueueModule: Fair Turn Engine (wave 2)
     TenantApprovalsModule,   // BUILD_PLAN Phase 9: before the domains that inject its @Global token (checkout, deals, inventory)
     TeamPermissionsModule, AccessGovernanceModule, InvoicesModule, TenantEntitlementsModule, TenantBillingModule,
     SuperAdminTenantsModule, SuperAdminCustomerDataModule, SuperAdminProductCatalogModule, SuperAdminAiInsightsModule, SuperAdminAiUsageModule, SuperAdminDeviceManagementModule, SuperAdminSystemStatusModule, SuperAdminOwnersModule,

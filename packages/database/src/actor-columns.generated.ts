@@ -251,6 +251,8 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   reminder_templates: 'cut',
   reminder_tenant_overrides: 'ut',
   reminder_timing_defaults: 'ut',
+  report_email_deliveries: 'ut',
+  report_email_subscriptions: 'ut',
   residual_statements: 'c',
   retention_sms_campaigns: 'ut',
   retention_sms_recipients: 'ut',

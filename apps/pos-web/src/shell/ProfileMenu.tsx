@@ -9,6 +9,7 @@ import type { Badges } from './tenant-access';
 import { Trash2 } from "lucide-react";
 import { POSSecuritySettingsModal } from './POSSecuritySettingsModal';
 import { ScreenCheckDialog } from './ScreenCheckDialog';
+import { readSpacing, saveSpacing, type Spacing } from './spacingPref';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 
@@ -43,6 +44,7 @@ export function ProfileMenu({ badges }: { badges?: Badges }) {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [spacing, setSpacing] = useState<Spacing>(() => readSpacing());   // Compact spacing (this device)
   const [editorOpen, setEditorOpen] = useState(false);
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
   const [screenCheckOpen, setScreenCheckOpen] = useState(false);   // SUNMI mandates: the read-only Screen Check
@@ -208,6 +210,10 @@ export function ProfileMenu({ badges }: { badges?: Badges }) {
           )}
           <button className="who-item" role="menuitem" onClick={() => { setMenuOpen(false); setSecurityModalOpen(true); }}>
             <Icon name="lock" /> {t('pos.pos_device_lock_setup')}
+          </button>
+          <button className="who-item" role="menuitemcheckbox" aria-checked={spacing === 'compact'} data-testid="spacing-toggle"
+            onClick={() => { const next = spacing === 'compact' ? 'standard' : 'compact'; saveSpacing(next); setSpacing(next); }}>
+            <Icon name="dashboard" /> {t('shell.spacing.compact')}{spacing === 'compact' ? ' ✓' : ''}
           </button>
           <div className="who-sep" />
           <button className="who-item" role="menuitem" onClick={async () => { setMenuOpen(false); await logout(); }}>

@@ -43,6 +43,11 @@ export function POSManagementScreen() {
   const [error, setError] = useState<string | null>(null);
   const [approvals, setApprovals] = useState<{ n?: number; err?: 'forbidden' | 'unavailable' } | null>(null);
   const [clock, setClock] = useState<number | null>(null);
+  // Nov 10 2026 (Kevin: "pick and continue fix all it"): Open Tasks = the salon's ONE task system (AI Follow-ups & Human
+  // Handoff: open + assigned + in progress + waiting); Compliance = Setup Health checks that need action. No access / no
+  // run / a failure is said as such — never a made-up 0.
+  const [tasks, setTasks] = useState<{ n?: number; overdue?: number; err?: 'forbidden' | 'unavailable' } | null>(null);
+  const [health, setHealth] = useState<{ n?: number; warn?: number; runDate?: string | null; err?: 'forbidden' | 'unavailable' | 'never' } | null>(null);
 
   useEffect(() => {
     posLocationsApi.list().then((d) => { setBranches(d?.locations || []); setLocSummary(d?.summary || null); }).catch(() => {});
@@ -52,6 +57,14 @@ export function POSManagementScreen() {
     // without approvals.view sees "no access", a failure "unavailable" — never a made-up 0
     (api.get('/pos/time-clock/state', { page: 1, pageSize: 1 }) as Promise<{ kpis?: { clockedInCount?: number } }>)
       .then((r) => setClock(typeof r?.kpis?.clockedInCount === 'number' ? r.kpis.clockedInCount : null)).catch(() => setClock(null));
+    type TaskCards = { cards?: { open?: number; assigned?: number; inProgress?: number; waiting?: number; overdue?: number } };
+    (api.get('/pos/ai/follow-ups-center/kpis') as Promise<TaskCards>)
+      .then((r) => { const c = r?.cards; setTasks(c && typeof c.open === 'number' ? { n: (c.open ?? 0) + (c.assigned ?? 0) + (c.inProgress ?? 0) + (c.waiting ?? 0), overdue: c.overdue ?? 0 } : { err: 'unavailable' }); })
+      .catch((e: any) => setTasks({ err: e?.status === 403 ? 'forbidden' : 'unavailable' }));
+    type HealthSummary = { run?: { runDate?: string } | null; counts?: Record<string, number> };
+    (api.get('/tenant/setup-health/summary') as Promise<HealthSummary>)
+      .then((r) => { if (!r?.run) { setHealth({ err: 'never' }); return; } const c = r.counts ?? {}; setHealth({ n: (c.action_required ?? 0) + (c.error ?? 0), warn: c.warning ?? 0, runDate: r.run.runDate ?? null }); })
+      .catch((e: any) => setHealth({ err: e?.status === 403 ? 'forbidden' : 'unavailable' }));
     (api.get('/pos/approvals', { status: 'pending', page: 1, pageSize: 1 }) as Promise<{ total: number }>)
       .then((r) => setApprovals(typeof r?.total === 'number' ? { n: r.total } : { err: 'unavailable' }))
       .catch((e: any) => setApprovals({ err: e?.status === 403 ? 'forbidden' : 'unavailable' }));
@@ -65,7 +78,11 @@ export function POSManagementScreen() {
   const activeBranches = locSummary?.active ?? branches.filter((b) => (b.status || '').toLowerCase() === 'active').length;
   const totalBranches = locSummary?.total ?? branches.length;
   const pk = payroll?.kpis;
-  type Kpi = { l: string; v: string; note?: boolean; why?: string; link?: string };
+  type Kpi = { l: string; v: string; note?: boolean; why?: string; action?: React.ReactNode; tid?: string; sub?: string };
+  const goTo = (to: string, id: 'mgmt-tasks-open' | 'mgmt-approvals-open' | 'mgmt-health-open') => (id === 'mgmt-tasks-open'
+    ? <button className="btn ghost sm" data-testid="mgmt-tasks-open" onClick={() => nav(to)}>{tx('mgmt.open')}</button>
+    : id === 'mgmt-approvals-open' ? <button className="btn ghost sm" data-testid="mgmt-approvals-open" onClick={() => nav(to)}>{tx('mgmt.open')}</button>
+    : <button className="btn ghost sm" data-testid="mgmt-health-open" onClick={() => nav(to)}>{tx('mgmt.open')}</button>);
   const kpis: Kpi[] = [
     { l: tx('pos.active_staff'), v: String(tk.activeTechnicians) },
     { l: tx('pos.branches_active'), v: `${activeBranches}/${totalBranches}` },
@@ -74,9 +91,11 @@ export function POSManagementScreen() {
     clock != null ? { l: tx('pos.on_shift_now'), v: String(clock), why: undefined } : { l: tx('pos.on_shift_now'), v: String(tk.availableNow), note: true, why: tx('mgmt.shift.fallback') },
     { l: tx('pos.payroll_payable'), v: pk ? money(pk.unpaidPayableCents) : '—' },
     { l: tx('pos.open_pay_periods'), v: pk ? String(pk.openPeriods) : '—' },
-    { l: tx('pos.open_tasks'), v: '—', note: true },
-    approvals?.n != null ? { l: tx('pos.pending_approvals'), v: String(approvals.n), link: '/approvals' } : { l: tx('pos.pending_approvals'), v: '—', note: true, why: approvals?.err ? tx('mgmt.appr.' + approvals.err) : undefined },
-    { l: tx('pos.compliance'), v: '—', note: true },
+    tasks?.n != null ? { l: tx('pos.open_tasks'), v: String(tasks.n), sub: tasks.overdue ? tx('mgmt.tasks.overdue', { n: String(tasks.overdue) }) : tx('mgmt.tasks.none_overdue'), action: goTo('/tenant/ai/receptionist/follow-ups', 'mgmt-tasks-open'), tid: 'mgmt-tasks-open' }
+      : { l: tx('pos.open_tasks'), v: '—', note: true, why: tasks?.err ? tx('mgmt.tasks.' + tasks.err) : undefined },
+    approvals?.n != null ? { l: tx('pos.pending_approvals'), v: String(approvals.n), action: goTo('/approvals', 'mgmt-approvals-open'), tid: 'mgmt-approvals-open' } : { l: tx('pos.pending_approvals'), v: '—', note: true, why: approvals?.err ? tx('mgmt.appr.' + approvals.err) : undefined },
+    health?.n != null ? { l: tx('pos.compliance'), v: String(health.n), sub: tx('mgmt.health.sub', { warn: String(health.warn ?? 0), date: health.runDate ?? '—' }), action: goTo('/tenant/management/setup-health', 'mgmt-health-open'), tid: 'mgmt-health-open' }
+      : { l: tx('pos.compliance'), v: '—', note: true, why: health?.err ? tx('mgmt.health.' + health.err) : undefined, ...(health?.err === 'never' ? { action: goTo('/tenant/management/setup-health', 'mgmt-health-open'), tid: 'mgmt-health-open' } : {}) },
   ];
 
   // Payroll allocation (commission / tips / base) — real from payroll KPIs
@@ -94,7 +113,7 @@ export function POSManagementScreen() {
     <div className="work" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="vh"><h1>{tx('pos.management')}</h1><div className="sub">{tx('pos.real_time_operational_control_and_oversight_by8l')}</div></div>
 
-      <div className="kpis">{kpis.map((c) => (<div className="kpi" key={c.l}><div className="l">{c.l}</div><div className="v" style={c.note ? { color: '#8A7A66' } : undefined}>{c.v}</div>{c.note ? <div className="s" style={{ color: '#8A7A66' }}>{c.why ?? tx('pos.workflow_pending')}</div> : null}{c.link ? <button className="btn ghost sm" data-testid="mgmt-approvals-open" onClick={() => nav(c.link as string)}>{tx('mgmt.open')}</button> : null}</div>))}</div>
+      <div className="kpis">{kpis.map((c) => (<div className="kpi" key={c.l}><div className="l">{c.l}</div><div className="v" style={c.note ? { color: '#8A7A66' } : undefined}>{c.v}</div>{c.note ? <div className="s" style={{ color: '#8A7A66' }}>{c.why ?? tx('pos.workflow_pending')}</div> : null}{c.sub && !c.note ? <div className="s" style={{ color: '#8A7A66' }} data-testid={c.tid ? c.tid + '-sub' : undefined}>{c.sub}</div> : null}{c.action ?? null}</div>))}</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
         <section style={cardBox}>
