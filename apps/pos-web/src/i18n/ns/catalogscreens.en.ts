@@ -426,4 +426,5 @@ export const CATALOGSCREENS_EN = {
   'cg.csv.sold30': 'Sold (30 days)',
   'cg.csv.created': 'Created',
   "cg.drill": "Directory filtered to {c} from the chart.",
+  "cg.svc.lookAlike": "Looks like a service you already have: {names}. You can still save — check this is not a duplicate.",
 };

@@ -7,7 +7,8 @@ import { posCatalogApi } from '../api/posCatalogApi';
 import { posServicesApi } from '../api/posServicesApi';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
-import { FitDialog, type PageInfo } from '../components/FitKit';
+import { FitDialog, useDebounced, type PageInfo } from '../components/FitKit';
+import { similarServices, normName, type SvcLite } from './serviceNameDup';
 import { centsFromText, textFromCents } from '../components/FinanceKit';
 
 export const nf = (n: number | null | undefined) => fmtNumber(n || 0);
@@ -158,6 +159,25 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { if (!service && !cat && categories.length) setCat(categories[0].categoryId); }, [categories]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // Duplicate Service / Name Review: a new name (create or rename) is compared with the catalog — the first 100 services
+  // plus a server search on its longest word — and a look-alike is shown as a warning. Saving stays allowed.
+  const dupName = useDebounced(name, 450);
+  const [lookAlikes, setLookAlikes] = useState<SvcLite[]>([]);
+  useEffect(() => {
+    const n = normName(dupName);
+    if (n.length < 3 || (service && n === normName(service.name ?? ''))) { setLookAlikes([]); return; }
+    const word = n.split(' ').sort((a, b) => b.length - a.length)[0];
+    let live = true;
+    const items = (r: unknown) => ((r as { items?: SvcLite[] } | null)?.items ?? []);
+    const read = (q: Record<string, unknown>) => Promise.resolve().then(() => posServicesApi.list(q)).catch(() => null);   // advice only: a failed read shows no warning
+    Promise.all([read({ pageSize: 100 }), read({ search: word, pageSize: 100 })])
+      .then(([a, b]) => {
+        if (!live) return;
+        const seen = new Map<string, SvcLite>(); for (const x of [...items(a), ...items(b)]) seen.set(x.serviceId, x);
+        setLookAlikes(similarServices(dupName, [...seen.values()], service?.serviceId ?? null));
+      });
+    return () => { live = false; };
+  }, [dupName]);   // eslint-disable-line react-hooks/exhaustive-deps
   const save = async () => {
     const cents = centsFromText(price || '0'); const m = Number(dur);
     if (!name.trim()) { setErr(tx('pos.name_is_required')); return; }
@@ -199,6 +219,7 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
         <label className="cg-chk"><input type="checkbox" checked={ai} onChange={(e) => setAi(e.target.checked)} /> {tx('cg.f.ai')}</label>
         <label className="cg-chk"><input type="checkbox" checked={taxable} onChange={(e) => setTaxable(e.target.checked)} data-testid="service-taxable" /> {tx('cg.f.taxable')}</label>
       </div>
+      {lookAlikes.length ? <div className="fk-note warn" role="status" data-testid="service-lookalike"><span>{tx('cg.svc.lookAlike', { names: lookAlikes.map((x) => x.categoryName ? `${x.serviceName} (${x.categoryName})` : x.serviceName).join(', ') })}</span></div> : null}
       {service && taxable !== (service.taxable !== false) ? <p className="fk-hint" data-testid="service-taxable-hint">{tx('cg.f.taxableHint')}</p> : null}
       {service ? <p className="fk-hint">{tx('cg.svc.historyRule')}</p> : null}
       {err ? <div className="fk-note bad" role="alert" data-testid="service-error"><span>{err}</span></div> : null}

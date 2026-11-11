@@ -3,7 +3,7 @@ import { api } from "./client";
 export const posServicesApi = {
   state: (q?: Record<string, unknown>) => api.get(`/pos/services/state`, q),
   categories: () => api.get(`/pos/services/categories`),
-  list: () => api.get(`/pos/services`),
+  list: (q?: Record<string, unknown>) => api.get(`/pos/services`, q),
   create: (body: Record<string, unknown>) => api.post(`/pos/services`, body),
   update: (id: string, body: Record<string, unknown>) => api.patch(`/pos/services/${id}`, body),
   archive: (id: string) => api.post(`/pos/services/${id}/archive`),

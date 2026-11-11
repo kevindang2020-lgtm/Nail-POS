@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 57 (incl. part) |
+| BUILT this arc | 58 (incl. part) |
 | EXISTS (opened and named) | 620 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 372 |
-| TODO | 769 |
+| NOISE (parser picked up acceptance / instruction text) | 373 |
+| TODO | 767 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -971,11 +971,11 @@ Decisions:
 | 04 | Booking Price & Duration Impact Checker Before future price/duration edits, detect booked appointments, fixed quotes, technician availability conflicts and stale service pickers. | EXISTS (part) — pricing impact preview before saving (services/:id/pricing-impact) |
 | 05 | Checkout and Transaction Wiring Checker Reconcile service line snapshots with checkout totals, taxes, discounts, authorized overrides, refunds and payment status. | TODO |
 | 06 | Category & Service Relationship Checker Flag possible anomalies such as Haircut or Hair Coloring categorized as Nails; never auto-mutate owner data. | EXISTS (part) — category anomalies flagged for review on Service Categories (service_category_mismatch) |
-| 07 | Permission & Tenant Isolation Checker Validate service prices, edits, history exports and customer lookups are scoped server-side to the correct tenant and branches. New SUNMI Addendum • Attached original follows unchang | TODO |
+| 07 | Permission & Tenant Isolation Checker Validate service prices, edits, history exports and customer lookups are scoped server-side to the correct tenant and branches. New SUNMI Addendum • Attached original follows unchang | NOISE — isolation checker instruction |
 | 08 | Live Price Preview Show how a service price would appear in Booking/Checkout including applicable add-ons, discounts and taxes, without charging anyone. | TODO |
 | 09 | Service Price Difference Explanation Show why a final checkout line differs from the catalog base price: branch override, add-on, approved manual override, promotion or membership. | EXISTS (part) — Customer History shows what was actually charged (ticket snapshots) beside the catalog price |
 | 10 | Effective-Date Change Timeline Display current, pending and previous service prices in one readable drawer and forbid overlapping incompatible scheduled prices. | EXISTS (part) — Price History tab (append-only, reason + version per change) exists; scheduled future prices are not built |
-| 11 | Duplicate Service / Name Review Warn about near-identical names or codes before creating a service; never auto-merge distinct records. | TODO |
+| 11 | Duplicate Service / Name Review Warn about near-identical names or codes before creating a service; never auto-merge distinct records. | BUILT — new or renamed service warns (never blocks/merges) on a look-alike name: same words, accents/case, 1–2 letter typos (serviceNameDup.ts + service-lookalike in ServiceDialog; tests) |
 | 12 | Technician Compensation Preview Explain potential commission basis changes where configured and audit the source of actual payout values. | TODO |
 | 13 | Owner Review for Suspicious Categories Offer a non-destructive review queue for category anomalies with original IDs and owner approval workflow. | TODO |
 | 14 | Readable EN/VN Mode Test translated long labels/diacritics at SUNMI size without truncating KPI meanings, button actions or validation messages. | EXISTS — EN/VI; harness certified |

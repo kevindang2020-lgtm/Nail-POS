@@ -426,4 +426,5 @@ export const CATALOGSCREENS_VI = {
   'cg.csv.sold30': 'Đã bán (30 ngày)',
   'cg.csv.created': 'Ngày tạo',
   "cg.drill": "Danh mục đang lọc theo {c} từ biểu đồ.", // DRAFT — Kevin reviews
+  "cg.svc.lookAlike": "Có vẻ giống dịch vụ đã có: {names}. Vẫn lưu được — hãy kiểm tra để tránh trùng.", // DRAFT — Kevin reviews
 };
