@@ -24,6 +24,7 @@ import { statusLabel } from '../i18n/status-label';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced, downloadCsv, type PageInfo } from '../components/FitKit';
+import { ExportPreview } from '../components/ExportPreview';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 
@@ -125,24 +126,33 @@ export function POSMembershipsScreen() {
   const [busyExport, setBusyExport] = useState<string | null>(null);
   const stamp = () => deviceToday();
   const dollars = (c: number) => (c / 100).toFixed(2);
+  // Export scope review (backlog Membership · 12): the rows are read first, then a preview shows the real row count and
+  // scope; the file is only written after Download (Cancel writes nothing)
+  const [pendingExport, setPendingExport] = useState<{ kind: string; n: number; go: () => void } | null>(null);
   const runExport = async (kind: 'members' | 'payments' | 'redemptions') => {
     if (busyExport) return; setBusyExport(kind); setNote(null);
     try {
       if (kind === 'members') {
         const rows = (await posMembershipsApi.exportMembers()) as MemberExportRow[];
-        downloadCsv(`membership-members-${stamp()}.csv`, [tx('people.membership.csv.customer'), tx('people.membership.csv.plan'), tx('people.membership.csv.status'), tx('people.membership.csv.memberNumber'), tx('people.membership.csv.joined'), tx('people.membership.csv.nextBilling'), tx('people.membership.csv.autoRenew'), tx('people.membership.csv.lifetimePaid')],
-          rows.map((r) => [r.customerName, r.planName || '', memberStatus(r.status), r.memberNumber || '', ymd(r.joinDate), ymd(r.nextBillingAt), r.autoRenew ? tx('pos.yes') : tx('pos.no'), dollars(r.lifetimePaidCents)]));
-        setNote({ tone: 'ok', text: tx('people.mo.exported', { n: nf(rows.length), what: tx('pos.export_members') }) });
+        setPendingExport({ kind, n: rows.length, go: () => {
+          downloadCsv(`membership-members-${stamp()}.csv`, [tx('people.membership.csv.customer'), tx('people.membership.csv.plan'), tx('people.membership.csv.status'), tx('people.membership.csv.memberNumber'), tx('people.membership.csv.joined'), tx('people.membership.csv.nextBilling'), tx('people.membership.csv.autoRenew'), tx('people.membership.csv.lifetimePaid')],
+            rows.map((r) => [r.customerName, r.planName || '', memberStatus(r.status), r.memberNumber || '', ymd(r.joinDate), ymd(r.nextBillingAt), r.autoRenew ? tx('pos.yes') : tx('pos.no'), dollars(r.lifetimePaidCents)]));
+          setNote({ tone: 'ok', text: tx('people.mo.exported', { n: nf(rows.length), what: tx('pos.export_members') }) });
+        } });
       } else if (kind === 'payments') {
         const rows = (await posMembershipsApi.exportPayments()) as PaymentExportRow[];
-        downloadCsv(`membership-payments-${stamp()}.csv`, [tx('people.membership.csv.customer'), tx('people.membership.csv.plan'), tx('people.membership.csv.kind'), tx('people.membership.csv.amount'), tx('people.membership.csv.tax'), tx('people.membership.csv.status'), tx('people.membership.csv.processor'), tx('people.membership.csv.created'), tx('people.membership.csv.settled')],
-          rows.map((r) => [r.customerName, r.planName || '', r.kind, dollars(r.amountCents), dollars(r.taxCents), statusLabel(['payment', 'paymentAttempt'], r.status), r.processor || '', ymd(r.createdAt), ymd(r.settledAt)]));
-        setNote({ tone: 'ok', text: tx('people.mo.exported', { n: nf(rows.length), what: tx('pos.export_payments') }) });
+        setPendingExport({ kind, n: rows.length, go: () => {
+          downloadCsv(`membership-payments-${stamp()}.csv`, [tx('people.membership.csv.customer'), tx('people.membership.csv.plan'), tx('people.membership.csv.kind'), tx('people.membership.csv.amount'), tx('people.membership.csv.tax'), tx('people.membership.csv.status'), tx('people.membership.csv.processor'), tx('people.membership.csv.created'), tx('people.membership.csv.settled')],
+            rows.map((r) => [r.customerName, r.planName || '', r.kind, dollars(r.amountCents), dollars(r.taxCents), statusLabel(['payment', 'paymentAttempt'], r.status), r.processor || '', ymd(r.createdAt), ymd(r.settledAt)]));
+          setNote({ tone: 'ok', text: tx('people.mo.exported', { n: nf(rows.length), what: tx('pos.export_payments') }) });
+        } });
       } else {
         const rows = (await posMembershipsApi.exportRedemptions()) as RedemptionExportRow[];
-        downloadCsv(`membership-redemptions-${stamp()}.csv`, [tx('people.membership.csv.customer'), tx('people.membership.csv.service'), tx('people.membership.csv.standardValue'), tx('people.membership.csv.allocatedValue'), tx('people.membership.csv.upgradeCharge'), tx('people.membership.csv.technician'), tx('people.membership.csv.date')],
-          rows.map((r) => [r.customerName, r.serviceName || '', dollars(r.standardValueCents), dollars(r.allocatedValueCents), dollars(r.upgradeChargeCents), r.technicianName || '', ymd(r.createdAt)]));
-        setNote({ tone: 'ok', text: tx('people.mo.exported', { n: nf(rows.length), what: tx('pos.export_redemptions') }) });
+        setPendingExport({ kind, n: rows.length, go: () => {
+          downloadCsv(`membership-redemptions-${stamp()}.csv`, [tx('people.membership.csv.customer'), tx('people.membership.csv.service'), tx('people.membership.csv.standardValue'), tx('people.membership.csv.allocatedValue'), tx('people.membership.csv.upgradeCharge'), tx('people.membership.csv.technician'), tx('people.membership.csv.date')],
+            rows.map((r) => [r.customerName, r.serviceName || '', dollars(r.standardValueCents), dollars(r.allocatedValueCents), dollars(r.upgradeChargeCents), r.technicianName || '', ymd(r.createdAt)]));
+          setNote({ tone: 'ok', text: tx('people.mo.exported', { n: nf(rows.length), what: tx('pos.export_redemptions') }) });
+        } });
       }
     } catch (e) { setNote({ tone: 'bad', text: errText(e, tx('people.mo.exportFailed')) }); } finally { setBusyExport(null); }
   };
@@ -195,6 +205,9 @@ export function POSMembershipsScreen() {
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
 
       <FreshnessLine at={freshAt} error={ov.error} testId="memberships-fresh" />
+      {pendingExport ? <ExportPreview title={tx('pos.export_' + pendingExport.kind)} count={pendingExport.n} masked={false}
+        filters={[tx('people.mo.exportScope.' + pendingExport.kind)]}
+        onConfirm={() => { const p = pendingExport; setPendingExport(null); p.go(); }} onCancel={() => setPendingExport(null)} /> : null}
       <div className="fk-kpis five mos-kpis" data-testid="membership-kpis">
         {ov.error ? <StateBlock error={ov.error} onRetry={ov.reload} /> : <>
           <KpiCard testId="kpi-total" label={tx('pos.total_members')} loading={!k} value={k ? nf(k.totalMembers) : ''} sub={k ? `${tx('mos.scope.now')} · ${tx('people.mo.kpi.newThisMonth', { n: nf(k.newMembersThisMonth) })}` : ''} onClick={() => openMembers('all')} />

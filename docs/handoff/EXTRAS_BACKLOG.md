@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 81 (incl. part) |
-| EXISTS (opened and named) | 688 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 421 |
-| TODO | 624 |
+| BUILT this arc | 82 (incl. part) |
+| EXISTS (opened and named) | 695 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 423 |
+| TODO | 614 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -781,14 +781,14 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Receptionist Requests an Action | TODO |
+| 01 | Receptionist Requests an Action | EXISTS — receptionist asks in the Copilot chat; the action is PREPARED, not executed (useCopilotAction prepare) |
 | 02 | Screenshot inventory: preserve all visible modules Screenshot / position Exact feature set to preserve 1 · Top view Reception Copilot title and subtitle; Queue now (waiting/in service); AI Phone Receptionist recent activ | TODO |
-| 03 | Backend Checks Availability and Permissions | TODO |
-| 04 | Staff Reviews and Confirms Action | TODO |
-| 05 | Real POS Backend Executes the Action | TODO |
-| 06 | Result Is Verified, Logged and Displayed Final instruction: Implement, integrate, test, verify and document Reception Copilot as a real safe operational assistant built on existing AI PowerSalon services. Do not duplicat | TODO |
-| 11 | Upgrade C: Front Desk Priority Assistant with approval Build a priority workspace that reads verified operational signals, not generic model guesses. Candidate work: customers waiting, appointments starting soon, schedul | TODO |
-| 16 | Required Claude completion report Claude must return a precise report with: (1) repo audit and screenshots-to-components map; (2) baseline bugs/data sources; (3) architecture and endpoint reuse; (4) modules preserved; (5 | TODO |
+| 03 | Backend Checks Availability and Permissions | EXISTS — server preview checks availability + permissions before anything is offered (posCopilotCenterApi prepare/preview) |
+| 04 | Staff Reviews and Confirms Action | EXISTS — PreparedCard: staff reviews the server preview and confirms |
+| 05 | Real POS Backend Executes the Action | EXISTS — confirm runs through the real POS backend services (copilot center confirm) |
+| 06 | Result Is Verified, Logged and Displayed Final instruction: Implement, integrate, test, verify and document Reception Copilot as a real safe operational assistant built on existing AI PowerSalon services. Do not duplicat | EXISTS — ActionOutcome shows the verified result; activity history logs it (CopilotWorkspace) |
+| 11 | Upgrade C: Front Desk Priority Assistant with approval Build a priority workspace that reads verified operational signals, not generic model guesses. Candidate work: customers waiting, appointments starting soon, schedul | EXISTS — PriorityAssistant: verified task sources with reason/evidence; every proposal needs a person to confirm |
+| 16 | Required Claude completion report Claude must return a precise report with: (1) repo audit and screenshots-to-components map; (2) baseline bugs/data sources; (3) architecture and endpoint reuse; (4) modules preserved; (5 | NOISE — completion report instruction |
 
 ## TECHNICIANS MANAGEMENT CENTER (20)
 
@@ -1752,7 +1752,7 @@ Decisions:
 | 10 | Registration Expiry / Status Alerts Alert owner on relevant suspended/rejected registrations or stale provider status, with evidence, deduplication and non-spam notification rules. | TODO |
 | 11 | End-to-End Delivery Trace One activity overlay traces application request, provider acceptance, SID, callbacks, current status and failure reason. | TODO |
 | 12 | Booking Code Health Test Safe staging verification of six-digit OTP route, expiry, attempts, abuse controls and provider configuration; never send a real code without authorization. | TODO |
-| 13 | Compliance and Opt-Out Shield Separate transactional/marketing purpose, STOP processing, suppression, quiet hours and retry eligibility, with explicit blocking reason. | TODO |
+| 13 | Compliance and Opt-Out Shield Separate transactional/marketing purpose, STOP processing, suppression, quiet hours and retry eligibility, with explicit blocking reason. | EXISTS — reminders honour STOP/opt-out ("opted_out" outcome), quiet hours and the STOP line in every language; inbound STOP routed to the one owning salon; marketing consent separate (reminder-core.ts, reminder-center.ts, tenant-number.service.ts, notifications consent) |
 | 14 | Accurate Cost Guardrails Show verified current SMS costs and configured budget/usage thresholds; warn before paid actions; no invented fees. | TODO |
 | 15 | Safe Configuration Export Allow a masked, role-authorized setup/health report for support; exclude tokens, raw destination PII and hidden tenant identifiers. | TODO |
 | 16 | Regression Snapshot Suite Automate screen/layout snapshots at SUNMI and smaller viewports, EN/VN texts, role profiles, error states, and all existing modules after changes. Engineering instructions / November 7, 2026 Add | EXISTS — certified harness screenshots EN + VI for Messaging Setup |
@@ -1819,7 +1819,7 @@ Decisions:
 | 08 | Permission-Aware Role Preview Let owner inspect actions available by role, with no privilege escalation. | TODO |
 | 09 | Safe Export / Developer Incident Report Export sanitized operational diagnostics, never private PII by default. | TODO |
 | 14 | CSS implementation reference - foundation Apply these ideas to the existing design system. The selectors are illustrative. Do not introduce a new shell or replace correct production components; reuse existing layout toke | NOISE — CSS reference |
-| 19 | Verified empty states, UI errors and loading CONDITION RECOMMENDED MESSAGE Salon community disabled "Safety Community is disabled for this salon. An authorized owner can enable it in Community Settings." Enabled, query s | TODO |
+| 19 | Verified empty states, UI errors and loading CONDITION RECOMMENDED MESSAGE Salon community disabled "Safety Community is disabled for this salon. An authorized owner can enable it in Community Settings." Enabled, query s | NOISE — empty/error state wording table (states already distinct on the page) |
 | 20 | Ten additional improvements - never replacements # Proposed enhancement Guardrail / benefit | NOISE — heading |
 | 24 | Definition of done and original guide appendix • Original Safety Community route and all six tabs remain present, correctly permissioned and functional. • At SUNMI landscape 1920 × 1080 and normal browser zoom, app shell | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
@@ -2513,7 +2513,7 @@ Decisions:
 | 09 | Lifecycle Change Audit Visible authorized log for pause, resume, renewal, cancellation and plan changes. | EXISTS — Member Details → activity + audit (lifecycle changes) |
 | 10 | Member Communication Offer consent-aware reminder preview and estimated per-tenant messaging cost. Preview | TODO |
 | 11 | KPI Source Tooltips Define date scope and metric meaning; differentiate snapshot count from selected-period events. | EXISTS — each KPI states snapshot vs this-month scope and opens its list |
-| 12 | Export Scope Review Show authorized row count, filters and data sensitivity before export. | TODO |
+| 12 | Export Scope Review Show authorized row count, filters and data sensitivity before export. | BUILT — membership exports read the rows first, then a preview shows the real row count and scope; the CSV is written only after Download (ExportPreview in POSMembershipsScreen; test) |
 | 13 | Touch-Safe Quick Actions Keep all ten existing actions in a consistent, balanced two-row bar. | EXISTS — the ten Quick Actions kept under every tab |
 | 14 | Data Freshness Indicator Show refresh status/last successful update when data may be stale. | BUILT — last successful update on Membership Overview (memberships-fresh) (shared FinanceKit useFreshAt/FreshnessLine; components/FreshnessLine.test.tsx) |
 | 15 | Reconciliation Drill-Down From discrepant KPI to source ledger/receipt/benefit event for authorized staff. | TODO |

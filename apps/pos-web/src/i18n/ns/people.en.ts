@@ -850,4 +850,7 @@ export const PEOPLE_EN = {
   'people.mo.exportShort': 'Export',
   'people.loyalty.updatedAt': 'Updated {t}',
   'people.loyalty.refresh': 'Refresh',
+  'people.mo.exportScope.members': 'Every member in your salon scope (all plans and statuses)',
+  'people.mo.exportScope.payments': 'Every membership payment in your salon scope',
+  'people.mo.exportScope.redemptions': 'Every membership benefit redemption in your salon scope',
 };

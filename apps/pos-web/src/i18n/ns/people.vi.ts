@@ -849,4 +849,7 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.mo.exportShort': 'Xuất',
   'people.loyalty.updatedAt': 'Cập nhật {t}', // DRAFT — Kevin reviews
   'people.loyalty.refresh': 'Làm mới', // DRAFT — Kevin reviews
+  'people.mo.exportScope.members': 'Mọi hội viên trong phạm vi tiệm (mọi gói và trạng thái)', // DRAFT — Kevin reviews
+  'people.mo.exportScope.payments': 'Mọi khoản thanh toán hội viên trong phạm vi tiệm', // DRAFT — Kevin reviews
+  'people.mo.exportScope.redemptions': 'Mọi lượt dùng quyền lợi hội viên trong phạm vi tiệm', // DRAFT — Kevin reviews
 };

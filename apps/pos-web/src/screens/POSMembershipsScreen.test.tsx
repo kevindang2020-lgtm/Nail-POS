@@ -1,7 +1,7 @@
 // POSMembershipsScreen — Membership Overview rebuild (Oct 29 2026): the five KPIs, the three panels, the four analytics and
 // the ten Quick Actions stay; the search + period strip and the six tabs are added; a phone search opens Members.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { api } = vi.hoisted(() => ({ api: { overview: vi.fn(), members: vi.fn(), memberDetail: vi.fn(), activity: vi.fn(), payments: vi.fn(), redemptions: vi.fn(), planList: vi.fn(), planPerformance: vi.fn(), discounts: vi.fn(),
   exportMembers: vi.fn(), exportPayments: vi.fn(), exportRedemptions: vi.fn(), previewReminders: vi.fn(), runReminders: vi.fn() } }));
@@ -43,5 +43,16 @@ describe('POSMembershipsScreen', () => {
     fireEvent.change(screen.getByTestId('search'), { target: { value: '(856) 555-1234' } });
     expect(await screen.findByTestId('members-table', {}, { timeout: 2000 })).toBeInTheDocument();
     expect(api.members).toHaveBeenCalledWith(expect.objectContaining({ q: '(856) 555-1234', filter: 'any' }));
+  });
+  it('Export scope review: rows are read, the real count + scope are shown, and the file is written only after Download', async () => {
+    api.exportMembers.mockResolvedValue([{ customerName: 'Lan', planName: 'VIP', status: 'active', memberNumber: 'M1', joinDate: null, nextBillingAt: null, autoRenew: true }, { customerName: 'Mai', planName: 'VIP', status: 'active', memberNumber: 'M2', joinDate: null, nextBillingAt: null, autoRenew: false }]);
+    const url = globalThis.URL as any; url.createObjectURL = vi.fn(() => 'blob:x'); url.revokeObjectURL = vi.fn();
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('qa-export-members'));
+    expect(await screen.findByTestId('export-preview-count')).toHaveTextContent('2');
+    expect(url.createObjectURL).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('export-preview-go'));
+    await waitFor(() => expect(url.createObjectURL).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId('export-preview')).toBeNull();
   });
 });
