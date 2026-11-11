@@ -422,6 +422,13 @@ Compliance (decision 6 — no source system), seed clean-up (7), Vietnamese draf
   take ~430 s, and the audit killed them at 420 s and quoted a stray `console.warn` as the reason. Fixed in the runner:
   15-minute shard budget and an honest "did not finish — stopped after Ns" message. No check was weakened.
 - Real Postgres 16.15: the payroll technician fold/exists SQL; migrations 1–844 on two fresh scratch DBs.
+- Screen harness `MODULE_SET=all` (147 pages, EN + VI, 8 viewports): **1176/1176 certified (primary 294/294)** ·
+  2346/2352 including responsive. The 6 report-only items are at non-certified sizes on pages outside batch 9 (Booking
+  Phone Verification "Save amount" 40 px tall at 2560×1440; Customer Profiles and Checkout buttons squeezed at
+  1280×800 / 1366×768, mostly in Vietnamese). Not fixed here; listed.
+- Live pilot day (fresh scratch DB, real API + Postgres, Chromium): first run 241/242 — the one failure looked for
+  "Average Rating —" but batch 9 made an empty rating read "N/A" (figures were right: gross $322.00, net $304.00).
+  Check updated to accept "—" or "N/A" (a number still fails); re-run on a fresh DB **242/242**.
 
 ## Decisions for Kevin (batch 9)
 
@@ -453,5 +460,4 @@ Compliance (decision 6 — no source system), seed clean-up (7), Vietnamese draf
   "a day ago"; that file now passes 10/10 alone. The full API suite was NOT re-run after that one-file fix.
 - Real Postgres 16.15: every system check, the reports query (people overlay, service lines, tax), the AI Center loader
   and the settings history SQL ran against the local pilot data.
-- **Not run this batch:** the 804-check Vietnamese one-screen harness (~45 min), and the batch-9 pages are not yet in
-  its MODULE_SET.
+- The one-screen harness and the batch-9 MODULE_SET: done later the same session (see the follow-up verification above).
