@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 82 (incl. part) |
+| BUILT this arc | 83 (incl. part) |
 | EXISTS (opened and named) | 695 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 423 |
-| TODO | 614 |
+| TODO | 613 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -531,7 +531,7 @@ Decisions:
 | 03 | Promotion Quick Preview Inspect effective terms and sample eligible ticket without saving a redemption or charging a card. | EXISTS (part) — Eligibility Checks scope + Check Promotion (read-only; nothing redeems) (POSPromotionsScreen) |
 | 04 | Expiration Calendar See upcoming expiration by branch; link back to same canonical promotion ID. | TODO |
 | 05 | Promotion Cloning Duplicate safely into Draft with a new code/version; never copy completed uses or approval. | EXISTS — Duplicate from the details creates a DRAFT with a new code; completed uses are never copied (DuplicateDialog) |
-| 06 | Pause Impact Warning Show current branch/campaign/Checkout impact before owner confirms Pause. | TODO |
+| 06 | Pause Impact Warning Show current branch/campaign/Checkout impact before owner confirms Pause. | BUILT — Pause asks first and shows code(s), where it applies, uses vs cap and dates, and says Checkout stops accepting it (server refuses non-active deals: deals.service DEAL_NOT_AVAILABLE) while paid tickets keep their discount (dlg-confirm-pause; POSPromotionsScreen.test) |
 | 07 | Code Conflict Finder Detect overlapping code, conflicting service eligibility and unintended stacking. | TODO |
 | 08 | Saved Filters Role/tenant-scoped saved library filters, without exposing other salon data. How Claude should add recommendations • Check whether each capability already exists. Improve what is present; do not create dupl | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 09 | Discount Exposure Meter Estimate maximum planned discount outlay from allowed uses and caps; label as estimate. | TODO |

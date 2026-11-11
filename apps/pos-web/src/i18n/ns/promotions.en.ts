@@ -30,4 +30,8 @@ export const PROMOTIONS_EN = {
   'promo.flagKey.discount_size': 'Discount size', 'promo.flagKey.exposure': 'Discount exposure', 'promo.flagKey.conflicts': 'Overlapping promotions', 'promo.flagKey.consent': 'Marketing consent',
   'promo.flagKey.provider': 'Texting readiness', 'promo.flagKey.staffing': 'Staffing', 'promo.flagKey.service_cost': 'Service costs',
   'promo.msgPreview': 'Message preview (not saved, not sent)',
+  'promo.pause.title': 'Pause “{name}”?',
+  'promo.pause.where': 'Where it applies',
+  'promo.pause.allBranches': 'All branches',
+  'promo.pause.effect': 'Checkout stops accepting this promotion as soon as you pause it. Tickets already paid keep their discount, and the history stays. Resume turns it back on.',
 } as const;

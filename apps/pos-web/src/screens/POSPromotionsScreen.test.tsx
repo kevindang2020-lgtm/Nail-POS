@@ -44,6 +44,11 @@ describe('POSPromotionsScreen', () => {
     deals.pause.mockResolvedValue({ id: 'd1', status: 'paused' });
     renderScreen();
     fireEvent.click(await screen.findByTestId('row-pause'));
+    // Pause Impact Warning: nothing changes until the owner confirms; the dialog says what pausing does
+    expect(deals.pause).not.toHaveBeenCalled();
+    expect(screen.getByTestId('pause-impact')).toBeInTheDocument();
+    expect(screen.getByTestId('dlg-confirm-pause')).toHaveTextContent(/Checkout stops accepting/);
+    fireEvent.click(screen.getByTestId('confirm-pause'));
     expect(deals.pause).toHaveBeenCalledWith('d1');
   });
   it('Check uses the logged promotions checker and says it was recorded, not applied', async () => {

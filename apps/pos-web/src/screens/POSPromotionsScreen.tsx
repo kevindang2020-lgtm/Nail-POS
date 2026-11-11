@@ -81,6 +81,7 @@ export function POSPromotionsScreen() {
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const [assistant, setAssistant] = useState(false);
   const [confirmRow, setConfirmRow] = useState<{ id: string; name: string } | null>(null);
+  const [confirmPause, setConfirmPause] = useState<any>(null);   // Pause Impact Warning: what pausing changes, before it happens
   const [busyRow, setBusyRow] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
@@ -204,7 +205,7 @@ export function POSPromotionsScreen() {
               <td><span className={'fk-chip ' + (TONE[p.lifecycle] ?? 'mut')} data-testid="row-status">{life(p.lifecycle)}</span></td>
               <td className="fn-acts" onClick={(e) => e.stopPropagation()}>
                 <button type="button" className="fk-btn ghost sm" onClick={() => setChecking({ id: p.id, name: p.name })} data-testid="row-check">{tx('cp.check')}</button>
-                {canManage && p.dealStatus === 'active' ? <button type="button" className="fk-btn ghost sm" disabled={busyRow === p.id} onClick={() => void rowAct(p, 'pause')} data-testid="row-pause">{tx('pos.pause')}</button> : null}
+                {canManage && p.dealStatus === 'active' ? <button type="button" className="fk-btn ghost sm" disabled={busyRow === p.id} onClick={() => setConfirmPause(p)} data-testid="row-pause">{tx('pos.pause')}</button> : null}
                 {canManage && p.dealStatus === 'paused' ? <button type="button" className="fk-btn ghost sm" disabled={busyRow === p.id} onClick={() => void rowAct(p, 'resume')} data-testid="row-resume">{tx('cp.act.resume')}</button> : null}
                 {canManage && ['sold_out', 'expired', 'canceled', 'rejected'].includes(p.dealStatus) ? <button type="button" className="fk-btn ghost sm" disabled={busyRow === p.id} onClick={() => setConfirmRow({ id: p.id, name: p.name })} data-testid="row-archive">{tx('pos.archive')}</button> : null}
               </td></tr>)}</tbody>
@@ -286,6 +287,17 @@ export function POSPromotionsScreen() {
       {dup ? <DuplicateDialog id={dup.id} name={dup.name} onClose={() => setDup(null)} onDone={(v) => { setDup(null); setDetail(null); afterCreate(v, 'cp.duplicated'); }} /> : null}
       {assistant ? <AssistantDialog services={services} title={tx('promo.assistant')} api={{ suggest: posPromotionsApi.suggest, draft: posCouponsApi.draft }}
         onClose={() => setAssistant(false)} onDone={(v) => { setAssistant(false); afterCreate(v, 'cp.assistDrafted'); }} /> : null}
+      {confirmPause ? <FitDialog title={tx('promo.pause.title', { name: confirmPause.name })} onClose={() => setConfirmPause(null)} testId="dlg-confirm-pause"
+        footer={<><button type="button" className="fk-btn primary" onClick={() => { const r = confirmPause; setConfirmPause(null); void rowAct(r, 'pause'); }} data-testid="confirm-pause">{tx('pos.pause')}</button>
+          <button type="button" className="fk-btn ghost" onClick={() => setConfirmPause(null)}>{tx('pos.cancel')}</button></>}>
+        <dl className="fk-dl" data-testid="pause-impact">
+          <dt>{tx('pos.code')}</dt><dd>{confirmPause.code ?? tx('dsc.noCode')}{confirmPause.codes > 1 ? ' · ' + tx('dsc.codesN', { n: nf(confirmPause.codes) }) : ''}</dd>
+          <dt>{tx('promo.pause.where')}</dt><dd>{confirmPause.branchName ?? tx('promo.pause.allBranches')}</dd>
+          <dt>{tx('pos.redemptions')}</dt><dd>{nf(confirmPause.used)}{confirmPause.maxRedemptions != null ? ` / ${nf(confirmPause.maxRedemptions)}` : ''}</dd>
+          <dt>{tx('promo.col.dates')}</dt><dd>{confirmPause.startsAt ? day(confirmPause.startsAt) : tx('promo.now')} – {confirmPause.endsAt ? day(confirmPause.endsAt) : tx('pos.no_end_date')}</dd>
+        </dl>
+        <p className="rt-p">{tx('promo.pause.effect')}</p>
+      </FitDialog> : null}
       {confirmRow ? <FitDialog title={tx('promo.confirmTitle')} onClose={() => setConfirmRow(null)} testId="dlg-confirm-archive"
         footer={<><button type="button" className="fk-btn danger" onClick={() => { const r = confirmRow; setConfirmRow(null); void rowAct({ id: r.id, name: r.name }, 'archive'); }} data-testid="confirm-archive">{tx('pos.archive')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setConfirmRow(null)}>{tx('pos.cancel')}</button></>}>

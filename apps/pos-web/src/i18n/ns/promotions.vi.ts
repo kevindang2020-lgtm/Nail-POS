@@ -31,4 +31,8 @@ export const PROMOTIONS_VI: Record<keyof typeof PROMOTIONS_EN, string> = {
   'promo.flagKey.discount_size': 'Mức giảm', 'promo.flagKey.exposure': 'Tổng mức giảm có thể', 'promo.flagKey.conflicts': 'Khuyến mãi trùng', 'promo.flagKey.consent': 'Đồng ý nhận tiếp thị',
   'promo.flagKey.provider': 'Sẵn sàng nhắn tin', 'promo.flagKey.staffing': 'Nhân sự', 'promo.flagKey.service_cost': 'Chi phí dịch vụ',
   'promo.msgPreview': 'Xem trước tin nhắn (không lưu, không gửi)',
+  'promo.pause.title': 'Tạm dừng “{name}”?', // DRAFT — Kevin reviews
+  'promo.pause.where': 'Áp dụng tại', // DRAFT — Kevin reviews
+  'promo.pause.allBranches': 'Mọi chi nhánh', // DRAFT — Kevin reviews
+  'promo.pause.effect': 'Thanh toán sẽ ngừng nhận khuyến mãi này ngay khi bạn tạm dừng. Hóa đơn đã trả vẫn giữ giảm giá và lịch sử được giữ nguyên. Chọn Tiếp tục để bật lại.', // DRAFT — Kevin reviews
 };
