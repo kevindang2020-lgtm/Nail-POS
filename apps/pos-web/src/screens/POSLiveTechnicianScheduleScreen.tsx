@@ -54,7 +54,7 @@ export function POSLiveTechnicianScheduleScreen() {
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 250);
   const [lanePage, setLanePage] = useState(1);
   const [tick, setTick] = useState(0); const [updated, setUpdated] = useState(clockNow());
-  const reload = useCallback(() => { setTick((n) => n + 1); setUpdated(clockNow()); }, []);
+  const reload = useCallback(() => { setTick((n) => n + 1); }, []);
   const [sel, setSel] = useState<string | null>(null); const [fullDay, setFullDay] = useState<{ id: string; date: string } | null>(null); const [finder, setFinder] = useState(false);
   const [aPeriod, setAPeriod] = useState<PeriodState>({ preset: 'week' }); const [aKind, setAKind] = useState('all'); const [aSearch, setASearch] = useState(''); const aq = useDebounced(aSearch.trim(), 300); const [ap, setAp] = useState(1);
   useEffect(() => setLanePage(1), [q, status, skill, view]);
@@ -66,6 +66,8 @@ export function POSLiveTechnicianScheduleScreen() {
   const lane = q.startsWith('#') || q.length >= 2 ? q : '';
   const paging = { lanePage, lanePageSize: LS_LANE_PAGE_SIZE, laneSearch: lane || undefined, roster: 'none' as const };
   const st = useLoad(() => (day ? api.state({ date: day, view: 'day', status, skill, ...paging }) : Promise.resolve(null)), [day, status, skill, lanePage, lane, tick]);
+  // "Updated" is the time the board was last READ successfully (not the time Refresh was pressed); a failed read keeps it
+  useEffect(() => { if (st.data) setUpdated(clockNow()); }, [st.data]);
   const wk = useLoad(() => (view === 'week' && day ? api.week({ date: day, status, skill, ...paging }) : Promise.resolve(null)), [view, day, status, skill, lanePage, lane, tick]);
   const found = useLoad(() => (q.length >= 2 && !q.startsWith('#') ? posLiveScheduleScreenApi.search({ q }) : Promise.resolve(null)), [q]);
   const act = useLoad(() => posLiveScheduleScreenApi.activity({ ...periodQuery(aPeriod), kind: aKind, q: aq || undefined, page: ap, pageSize: 8 }), [JSON.stringify(aPeriod), aKind, aq, ap, tick]);
