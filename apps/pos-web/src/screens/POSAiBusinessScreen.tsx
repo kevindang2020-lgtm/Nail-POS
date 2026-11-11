@@ -16,6 +16,7 @@ import { RangeCalendar } from '../components/FinanceKit';
 import { BzHealthButton } from '../components/BusinessKit';
 import { deviceToday } from '../lib/deviceToday';
 import { RecordResults, ProfitResults, GrowthResults, AssistantHistory } from './ai-business/AssistantExtras';
+import { useSessionState } from '../components/useSessionState';
 type Ask = {
   ok: boolean; needsClarification: boolean; intent: string | null; toolUsed: string | null;
   answer: string | null; structured: any | null;
@@ -66,11 +67,13 @@ const freshnessOf = (s: any): string | null => s?.freshnessClass || s?.evidence?
 const drilldownOf = (s: any): string | null => s?.drilldownRoute || s?.evidence?.drilldownRoute || null;
 
 export function POSAiBusinessScreen() {
-  const [period, setPeriod] = useState('today');
-  const [range, setRange] = useState<{ from: string; to: string } | null>(null);   // A4: a custom From–To (period === 'custom')
+  // Session-safe workspace: period, custom range and the typed question come back after browsing away (this tab only;
+  // dropped when another user signs in or on sign-out — useSessionState / AuthContext)
+  const [period, setPeriod] = useSessionState('aps.bza.period', 'today');
+  const [range, setRange] = useSessionState<{ from: string; to: string } | null>('aps.bza.range', null);   // A4: a custom From–To (period === 'custom')
   const [cal, setCal] = useState(false);
   const [histTick, setHistTick] = useState(0);
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useSessionState('aps.bza.question', '');
   const [res, setRes] = useState<Ask | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

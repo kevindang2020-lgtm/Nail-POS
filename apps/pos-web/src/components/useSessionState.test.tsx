@@ -14,3 +14,20 @@ describe('useSessionState', () => {
     sessionStorage.setItem('z', '{"b":2}'); expect(readSession('z', { a: 1 })).toEqual({ a: 1, b: 2 });
   });
 });
+
+import { clearSessionUiState, scopeSessionUiState } from './useSessionState';
+describe('shared terminal hygiene', () => {
+  it('a different user / salon drops the remembered aps.* state; the held payment key survives; other keys untouched', () => {
+    sessionStorage.clear();
+    scopeSessionUiState('t1:b1:u1');
+    sessionStorage.setItem('aps.emc.draft', '{"subject":"x"}'); sessionStorage.setItem('aps.rn.buyKey', 'k1'); sessionStorage.setItem('other', '1');
+    scopeSessionUiState('t1:b1:u1');
+    expect(sessionStorage.getItem('aps.emc.draft')).not.toBeNull();
+    scopeSessionUiState('t1:b1:u2');
+    expect(sessionStorage.getItem('aps.emc.draft')).toBeNull();
+    expect(sessionStorage.getItem('aps.rn.buyKey')).toBe('k1');
+    expect(sessionStorage.getItem('other')).toBe('1');
+    sessionStorage.setItem('aps.cnx.query', '{}'); clearSessionUiState();
+    expect(sessionStorage.getItem('aps.cnx.query')).toBeNull();
+  });
+});

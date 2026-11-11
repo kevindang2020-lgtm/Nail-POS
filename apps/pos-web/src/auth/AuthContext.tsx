@@ -5,6 +5,7 @@ import { setDraftScope } from '../api/offline-drafts';
 import { rememberSession, forgetSession, offlineSessionPrincipal, isNoConnection } from './offline-session';
 import { webPush } from '../lib/webPush';   // developer merge (Oct 6 2026): browser push for the front desk (inert until configured)
 import { WebPushToast } from '@aipowersalon/web-push';
+import { clearSessionUiState, scopeSessionUiState } from '../components/useSessionState';
 
 // Client-side auth state for the POS. Restores via /auth/me on mount; login stores the principal returned by
 // POST /auth/login (the httpOnly cookie rides along on later requests); logout clears cookie + state. Backend
@@ -20,6 +21,7 @@ function scopeTo(p: Principal | null): void {
   const sc = p?.userId ? `${p.tenantId ?? ''}:${p.branchId ?? ''}:${p.userId}` : '';
   if (sc) setOfflineCacheScope(sc);
   setDraftScope(sc);
+  if (sc) scopeSessionUiState(sc);   // another user / salon on this tab → the previous user's remembered filters and drafts go
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { await authApi.logout(); } catch { /* ignore */ } 
     localStorage.removeItem('pos_locked');
     clearOfflineReadCache();
+    clearSessionUiState();   // remembered filters / drafts never carry over to the next person at a shared terminal
     forgetSession();   // Decision 33: a signed-out device never reopens offline
     setPrincipalState(null); setOffline(false); 
   };

@@ -9,6 +9,7 @@ vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { ask: askMock, sa
 import { POSAiBusinessScreen } from './POSAiBusinessScreen';
 
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ }
   askMock.mockReset();
   savedListMock.mockReset().mockResolvedValue([]);
   revMock.mockReset().mockResolvedValue({ netSalesCents: 120000, ticketsCount: 30 });
@@ -122,5 +123,12 @@ describe('POSAiBusinessScreen', () => {
     expect(rec).toHaveTextContent('never sent to the AI');
     fireEvent.click(screen.getAllByTestId('aib-h-replay')[0]);
     await waitFor(() => expect(askMock).toHaveBeenLastCalledWith({ intent: 'growth_advice', question: 'How can we grow?', preset: 'month' }));
+  });
+  it('Session-safe workspace: the typed question comes back after browsing away (same tab)', async () => {
+    const v = renderScreen();
+    fireEvent.change(await screen.findByTestId('aib-composer'), { target: { value: 'Why were Tuesdays slow?' } });
+    v.unmount();
+    renderScreen();
+    expect((await screen.findByTestId('aib-composer') as HTMLTextAreaElement).value).toBe('Why were Tuesdays slow?');
   });
 });

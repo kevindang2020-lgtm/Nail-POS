@@ -18,3 +18,23 @@ export function useSessionState<T>(key: string, fallback: T): [T, Dispatch<SetSt
   useEffect(() => { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch { /* best effort */ } }, [key, v]);
   return [v, setV];
 }
+
+// Shared front-desk terminals: remembered UI state belongs to ONE signed-in user at ONE salon. When the user / salon
+// changes, or on sign-out, every 'aps.' tab key is dropped — except a held payment idempotency key, which must survive so a
+// retried purchase can never be charged twice.
+const SCOPE_KEY = 'aps.ui.scope';
+const KEEP = new Set([SCOPE_KEY, 'aps.rn.buyKey']);
+export function clearSessionUiState(): void {
+  try {
+    const drop: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) { const k = sessionStorage.key(i); if (k && k.startsWith('aps.') && !KEEP.has(k)) drop.push(k); }
+    for (const k of drop) sessionStorage.removeItem(k);
+  } catch { /* no storage */ }
+}
+export function scopeSessionUiState(scope: string): void {
+  try {
+    const prev = sessionStorage.getItem(SCOPE_KEY);
+    if (prev !== null && prev !== scope) clearSessionUiState();
+    if (scope) sessionStorage.setItem(SCOPE_KEY, scope); else sessionStorage.removeItem(SCOPE_KEY);
+  } catch { /* no storage */ }
+}

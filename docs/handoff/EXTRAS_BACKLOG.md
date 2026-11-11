@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 86 (incl. part) |
-| EXISTS (opened and named) | 696 (incl. part) |
+| BUILT this arc | 87 (incl. part) |
+| EXISTS (opened and named) | 697 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 423 |
-| TODO | 609 |
+| TODO | 607 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -439,7 +439,7 @@ Decisions:
 | 03 | Comparison Explainer State selected prior period, calculation basis and revenue vs profit definition for every comparison. | TODO |
 | 04 | Smart Question Suggestions Suggest relevant read-only follow-up questions from current authorized context; never imply AI can directly send/charge. | TODO |
 | 05 | Balanced Card Auto Layout Dynamically wrap 7 quick questions and four KPIs; equal padding/heights, no unused giant cards. | NOISE — card layout instruction |
-| 06 | Session-Safe Workspace Preserve current draft, filters and open answer while browsing within the same tenant; wipe cached scope when switching tenant. | TODO |
+| 06 | Session-Safe Workspace Preserve current draft, filters and open answer while browsing within the same tenant; wipe cached scope when switching tenant. | BUILT — period, custom range and the typed question come back after browsing away in this tab; all remembered aps.* UI state is dropped when another user/salon signs in on the tab or on sign-out (useSessionState + AuthContext scopeSessionUiState/clearSessionUiState; tests) |
 | 07 | Data Freshness Warning Flag stale source/event lag and offer Refresh/Retry, not fabricated zeros or full-green status. | EXISTS (part) — freshness shown with each answer, Refresh / Retry (aib-refresh, aib-retry); degrades to metrics-only, never fabricated |
 | 08 | Executive Summary Mode Optional concise answer preview and Expand for full details; never hide original questions, charts or history permanently. | TODO |
 | 09 | Multi-Branch Fairness Notes Normalize staffing/operating hours, show input denominators and clarify that a larger branch naturally has higher totals. | TODO |
@@ -1682,7 +1682,7 @@ Decisions:
 |---|---|---|
 | 01 | Remember last selected history/queue tab and non-sensitive date filters for each authorized employee. | BUILT — last queue/history tab + non-sensitive filters remembered in this browser tab (a link’s own ?tab wins; never phone/email/search text) (POSRemindersScreen; test) |
 | 02 | Provide an accessible compact/wide density preference, never a page-wide scale-down. | EXISTS — profile menu → Compact spacing (this device): tightens spacing only, never a page-wide scale-down (shell/spacingPref.ts) |
-| 03 | Provide contextual Help for Send Window explaining the verified existing behavior. | TODO |
+| 03 | Provide contextual Help for Send Window explaining the verified existing behavior. | EXISTS — How it works line under the settings explains lead time + send window, the 5-minute run, reschedule/cancel and that a missed window is never sent late (rmc-semantics in POSRemindersScreen, matches reminders.service windowMs) |
 | 04 | Add a one-click Screen Fit Health Checker and visual regression snapshots at different CSS viewports. Scheduling and delivery accuracy (5-8) | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## END-OF-DAY FOLLOW-UPS (16)
