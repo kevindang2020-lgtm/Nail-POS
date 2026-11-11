@@ -13,7 +13,8 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | BUILT this arc | 75 (incl. part) |
 | EXISTS (opened and named) | 678 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 417 |
-| TODO | 648 |
+| TODO | 644 |
+| REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -231,11 +232,11 @@ Decisions:
 | 07 | Touch Touch targets, tab order, screen-reader labels, overlay close and keyboard work. | EXISTS — 44px targets / focus / dialog close checked by Check this screen and the harness touch rules |
 | 08 | Locale Front Desk EN/VN selection preserved; longer strings cause no clipping. | EXISTS — EN/VI behind t(); Vietnamese harness certified |
 | 09 | Printer inventory API counts match scoped rows and actual device signals; no fake online status. | EXISTS — printer count shows Not configured (no registry, no fake online status); email / SMS counts are real receipt deliveries |
-| 10 | Add wizard Unauthorized employee cannot register or assign printer. | TODO — blocked by Kevin's standing rule: no receipt-printer registry without his written go-ahead (receipts are digital; printers show Not configured) |
-| 11 | Add wizard Wrong tenant/branch or duplicate device assignment rejected server-side. | TODO — blocked by Kevin's standing rule: no receipt-printer registry without his written go-ahead (receipts are digital; printers show Not configured) |
+| 10 | Add wizard Unauthorized employee cannot register or assign printer. | REMOVED — Kevin, Nov 11 2026: no receipt printer in the product (receipts are digital); row dropped, nothing to build |
+| 11 | Add wizard Wrong tenant/branch or duplicate device assignment rejected server-side. | REMOVED — Kevin, Nov 11 2026: no receipt printer in the product (receipts are digital); row dropped, nothing to build |
 | 12 | Connection Unverified printer reports Not Configured/Unknown, never Ready. | EXISTS — printers are always Not configured, never Ready |
-| 13 | Test print Explicit TEST page contains no real customer/payment data. | TODO — blocked by Kevin's standing rule: no receipt-printer registry without his written go-ahead (receipts are digital; printers show Not configured) |
-| 14 | Adapter Android/WebUSB/Bluetooth limitations surfaced accurately when unsupported. | TODO — blocked by Kevin's standing rule: no receipt-printer registry without his written go-ahead (receipts are digital; printers show Not configured) |
+| 13 | Test print Explicit TEST page contains no real customer/payment data. | REMOVED — Kevin, Nov 11 2026: no receipt printer in the product (receipts are digital); row dropped, nothing to build |
+| 14 | Adapter Android/WebUSB/Bluetooth limitations surfaced accurately when unsupported. | REMOVED — Kevin, Nov 11 2026: no receipt printer in the product (receipts are digital); row dropped, nothing to build |
 | 15 | Digital policy Email / SMS / No Receipt checkout remains unchanged and operational. Internal development handoff • 09 Nov 2026 • Screen + code verification required 27 AI POWERSALON / RECEIPT DEVICES SUNMI FLEX 3 / CLAUD | EXISTS — Email / SMS / No receipt checkout unchanged (the Receipt Devices page reads them only) |
 
 ## Refer A Friend Earn Rewards (9)

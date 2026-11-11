@@ -532,3 +532,7 @@ Built this round (each with tests):
 
 Still Kevin's: approve the VI drafts (docs/handoff/VI_DRAFT_REVIEW.md, markers stay); PRODUCTION-READY POS 5 rows are
 infrastructure actions outside the repo (rotate credentials, close port 5432, revoke the exposed Firebase key, new Play keys).
+
+Nov 11 2026 — Kevin: remove printer. The four Receipt Devices printer-registry rows are REMOVED from the backlog (receipts
+are digital; no printer registry, wizard, test print or adapter will be built). Existing honest "Not configured" printer
+status and digital-receipt history stay as they are (no module/route/nav removed).
