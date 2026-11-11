@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 87 (incl. part) |
-| EXISTS (opened and named) | 702 (incl. part) |
+| EXISTS (opened and named) | 712 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 424 |
-| TODO | 601 |
+| TODO | 591 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -684,12 +684,12 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 04 | Earnings Calculation & Already-Paid Handling The paycheck screen must read technician earnings from the existing authoritative payroll ledger, not recalculate commission independently. Supported earning components SERVIC | TODO |
-| 06 | Payout Plans & Exact 50% Check / 50% Cash Splitting Separate what the technician is owed from how the technician will be paid. EARNINGS LEDGER ↓ PAY PERIOD ↓ PAY STATEMENT ↓ PAYOUT PLAN ↓ OWNER APPROVAL ↓ PAYOUT TRANSACT | TODO |
-| 11 | Cash Payout & Technician Acknowledgment Cash payout is a first-class, fully recorded payout transaction. Conceptual CashPayout CashPayout { payoutId amountCents cashSource Developer / Claude Production Completion Mandate | TODO |
-| 12 | Cash Drawer Integration & Physical Cash Controls If payroll cash comes from a POS cash drawer, the withdrawal must create a non-sale cash movement linked to the payout. Cash Drawer ↓ PAYROLL_CASH_PAYOUT -$990 ↓ Expected  | TODO |
-| 15 | Technician App - Payroll, Pay Statement & History Payroll home PAYROLL Current Pay Period Oct 12 - Oct 18 Estimated Earnings: $1,980 | TODO |
-| 17 | Events, Workers, Realtime & Notifications Potential events payroll.period.opened payroll.calculated payroll.manager_review_started payroll.submitted_to_owner payroll.returned payroll.approved payroll.locked pay_statement | TODO |
+| 04 | Earnings Calculation & Already-Paid Handling The paycheck screen must read technician earnings from the existing authoritative payroll ledger, not recalculate commission independently. Supported earning components SERVIC | EXISTS — paychecks read the SAME payroll periods/lines; the server decides every figure; already-paid lines are not paid twice (POSPaycheckTab header, workforce payroll) |
+| 06 | Payout Plans & Exact 50% Check / 50% Cash Splitting Separate what the technician is owed from how the technician will be paid. EARNINGS LEDGER ↓ PAY PERIOD ↓ PAY STATEMENT ↓ PAYOUT PLAN ↓ OWNER APPROVAL ↓ PAYOUT TRANSACT | EXISTS — salon 50/50 default split, manager changes per technician (percent or dollars) with a reason the owner sees (POSPaycheckTab) |
+| 11 | Cash Payout & Technician Acknowledgment Cash payout is a first-class, fully recorded payout transaction. Conceptual CashPayout CashPayout { payoutId amountCents cashSource Developer / Claude Production Completion Mandate | EXISTS — cash payout is a recorded payout handed over with the technician PIN (POSPaycheckTab cash flow) |
+| 12 | Cash Drawer Integration & Physical Cash Controls If payroll cash comes from a POS cash drawer, the withdrawal must create a non-sale cash movement linked to the payout. Cash Drawer ↓ PAYROLL_CASH_PAYOUT -$990 ↓ Expected  | EXISTS — cash from the register drawer writes a cash_drawer_movement (bound by apps/api; sources drawer/safe/bank/other), planned → ready → handed off → acknowledged (payroll-paycheck.service.ts) |
+| 15 | Technician App - Payroll, Pay Statement & History Payroll home PAYROLL Current Pay Period Oct 12 - Oct 18 Estimated Earnings: $1,980 | EXISTS — Technician App pay statements panel (apps/tech-web TechPayStatementsPanel + test) |
+| 17 | Events, Workers, Realtime & Notifications Potential events payroll.period.opened payroll.calculated payroll.manager_review_started payroll.submitted_to_owner payroll.returned payroll.approved payroll.locked pay_statement | EXISTS — payroll status writes are recorded as domain events with realtime to the Owner App (payroll.kysely.repository period_paid/finalized/reopened; owner.service ownerPayrollUpdated) |
 
 ## Features (1)
 
@@ -1030,13 +1030,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Guided Enrollment Wizard One safe flow for device type, branch/station, QR/one-time code, app confirmation and owner approval. | TODO |
+| 01 | Guided Enrollment Wizard One safe flow for device type, branch/station, QR/one-time code, app confirmation and owner approval. | EXISTS — pair a device with its 6-digit one-time code, station + branch (POSDevicesScreen pairing form) |
 | 02 | Connection & Battery Health Expose last authenticated heartbeat, battery where available, OS/app version and stale-device warnings. | TODO |
 | 03 | One-Click Tablets Health Checker Read-only diagnostic across registry, pairing, sessions, health events, permissions and integrations. | EXISTS — Check Tablets System (read-only) in the fleet header (POSDeviceFleetScreen) |
 | 04 | Assignment Conflict Preview Warn before two devices claim one restricted station/role; show impact before commit. | TODO |
-| 05 | Remote Logout / Revoke Owner-controlled sign-out and credential invalidation with clear confirmation and audit. | TODO |
+| 05 | Remote Logout / Revoke Owner-controlled sign-out and credential invalidation with clear confirmation and audit. | EXISTS — owner Revoke access with confirmation; revoked devices listed as revoked (POSDevicesScreen revokeDevice) |
 | 06 | Secure Replacement Flow Decommission lost/replaced devices safely and enroll a new device without copying secrets. | TODO |
-| 07 | Customer Privacy Reset Automatic kiosk/customer-display reset of previous customer data after use or inactivity. | TODO |
+| 07 | Customer Privacy Reset Automatic kiosk/customer-display reset of previous customer data after use or inactivity. | EXISTS — customer display clears the previous customer 3 seconds after use (pilot phase 4 DISPLAY 3-SECOND PRIVACY CLEAR) |
 | 08 | App and OS Lifecycle Show outdated/unsupported versions clearly; require explicit policy before mandatory upgrades. | TODO |
 | 09 | Tablet Activity Timeline History of enrollment, session, assignment, updates, failures and recovery with search, calendars and paging. | EXISTS (part) — a device's details with its own history + the History tab (newest first, calendar, pages) |
 | 10 | Branch/Station Fleet View One scoped list for multi-branch owners, with clear current branch and station ownership. | EXISTS (part) — one scoped list with Branch and Station columns and filters |
@@ -1952,7 +1952,7 @@ Decisions:
 | 09 | Service profitability context: Optional authorized reporting on sold add-ons and consumed recipe cost with clearly defined basis. | TODO |
 | 10 | Attach-rate analytics: Report the share of eligible completed service tickets with a confirmed add-on, using a documented denominator. | TODO |
 | 11 | Real-time freshness hint: Show last refreshed/updated time and distinguish stale data from verified zero. | BUILT — Numbers updated {time} after a successful read; a failed refresh says it is stale, never a verified zero (addons-fresh; shared FreshnessLine, FreshnessLine.test) |
-| 12 | Friendly empty states: Offer useful actions for empty catalog, no matching results or no historical purchases without fake data. | TODO |
+| 12 | Friendly empty states: Offer useful actions for empty catalog, no matching results or no historical purchases without fake data. | EXISTS — empty catalog offers Create (manage only); no-match offers Clear filters; no usage says so — no fake data (POSServiceAddOnsScreen Empty states) |
 | 13 | Role-aware details: Open a bounded detail overlay with only data the user is allowed to view, avoiding accidental PII exposure. | EXISTS — Add-On details overlay: Overview · Assignments · Pricing · Usage · Audit |
 | 14 | Price/tax reason display: Explain why the exact charged total differs from the default add-on price (overrides, discounts, taxes). | TODO |
 | 15 | Performance guardrails: Cache or index safe tenant queries appropriately, with explicit invalidation after record updates. | NOISE — performance guidance |
