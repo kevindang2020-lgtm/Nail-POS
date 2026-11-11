@@ -32,4 +32,5 @@ export const SPLITPAY_VI: Record<string, string> = {
   'sp.refundsTitle': 'Hoàn tiền', 'sp.rstate.refunded': 'Đã hoàn', 'sp.rstate.pending': 'Đang chờ', 'sp.rstate.processing': 'Đang xử lý', 'sp.rstate.reserved': 'Đã giữ', 'sp.rstate.failed': 'Thất bại', 'sp.rstate.voided': 'Đã hủy', 'sp.rstate.cancelled': 'Đã hủy bỏ',
   'sp.linesTitle': 'Dịch vụ & Sản phẩm', 'sp.auditTitle': 'Nhật ký',
   'sp.refundNote': 'Hoàn tiền được thực hiện từ mục Hoàn tiền & Hủy, về đúng khoản gốc, qua bộ xử lý. Trang này không chuyển tiền.',
+  'sp.pendingBanner': '{n} hóa đơn có thanh toán thẻ đang chờ kết quả. Khoản này chưa được tính là đã trả — hãy kiểm tra lần thanh toán gốc trong hóa đơn trước khi quẹt lại.', // DRAFT — Kevin reviews
 };

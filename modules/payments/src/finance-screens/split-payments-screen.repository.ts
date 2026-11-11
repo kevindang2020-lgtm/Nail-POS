@@ -190,12 +190,13 @@ export class SplitPaymentsScreenRepository {
         count(*) filter (where ${SplitPaymentsScreenRepository.STATUS} = 'partially_paid')::int as partial, coalesce(sum(${SplitPaymentsScreenRepository.DUE}) filter (where ${SplitPaymentsScreenRepository.STATUS} = 'partially_paid'), 0)::bigint as outstanding,
         count(*) filter (where ${SplitPaymentsScreenRepository.STATUS} in ('refunded', 'partially_refunded'))::int as refunded, count(*) filter (where ${SplitPaymentsScreenRepository.STATUS} = 'failed')::int as failed,
         coalesce(sum(a.tip_cents) filter (where a.confirmed >= 2), 0)::bigint as tips, coalesce(sum(a.cash_cents) filter (where a.confirmed >= 2), 0)::bigint as cash, coalesce(sum(a.card_cents) filter (where a.confirmed >= 2), 0)::bigint as card, coalesce(sum(a.gift_cents) filter (where a.confirmed >= 2), 0)::bigint as gift,
+        count(*) filter (where a.pending > 0)::int as pending_attempt_tickets,
         count(*)::int as listed
       from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w}`.execute(this.db)).rows[0] ?? {};
     const n = N(r.split_tickets);
     return {
       kpis: { splitTickets: n, splitTotalCents: N(r.split_total), avgTenders: n ? Math.round((N(r.split_tenders) / n) * 10) / 10 : 0, completedTickets: N(r.completed), outstandingTickets: N(r.partial), outstandingCents: N(r.outstanding),
-        refundedTickets: N(r.refunded), failedTickets: N(r.failed), listedTickets: N(r.listed), tipsCents: N(r.tips), byMethod: { cashCents: N(r.cash), cardCents: N(r.card), giftCardCents: N(r.gift) } },
+        refundedTickets: N(r.refunded), failedTickets: N(r.failed), listedTickets: N(r.listed), pendingAttemptTickets: N(r.pending_attempt_tickets), tipsCents: N(r.tips), byMethod: { cashCents: N(r.cash), cardCents: N(r.card), giftCardCents: N(r.gift) } },
       definitions: { splitTicket: 'a ticket with two or more CONFIRMED tenders; a declined attempt never counts; pending splits are counted apart as partially paid', splitTotal: 'each qualifying ticket total once (its final total, tip and surcharge included; refunds shown separately)',
         avgTenders: 'confirmed tenders ÷ qualifying tickets', completed: 'qualifying tickets fully paid', outstanding: 'remaining due on partially paid tickets — not processor settlement' },
       period: f.period, basis: f.basis, asOf: new Date().toISOString(),

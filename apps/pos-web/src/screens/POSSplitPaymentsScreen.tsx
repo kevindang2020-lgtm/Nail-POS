@@ -81,6 +81,8 @@ export function POSSplitPaymentsScreen() {
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      {/* pending payment banner: card attempts still waiting for a result are NOT counted as paid — verify, never re-charge */}
+      {k && k.pendingAttemptTickets > 0 ? <div className="fk-note warn" role="status" data-testid="pending-banner">{tx('sp.pendingBanner', { n: fmtNumber(k.pendingAttemptTickets) })}</div> : null}
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-tickets" tone="gold" label={tx('sp.kpi.tickets')} loading={!k} value={k ? fmtNumber(k.splitTickets) : ''} sub={k ? tx('sp.kpi.ticketsSub', { n: fmtNumber(k.listedTickets - k.splitTickets) }) : ''} onClick={() => setStatus('')} />

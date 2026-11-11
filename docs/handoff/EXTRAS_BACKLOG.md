@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 79 (incl. part) |
-| EXISTS (opened and named) | 687 (incl. part) |
+| BUILT this arc | 81 (incl. part) |
+| EXISTS (opened and named) | 688 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 421 |
-| TODO | 627 |
+| TODO | 624 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -832,7 +832,7 @@ Decisions:
 | 11 | Register / terminal mismatch warning Warn when the selected processor merchant or paired terminal does not belong to the current tenant/register, without exposing other tenant details. | TODO |
 | 12 | Financial discrepancy drill-down Let owners/managers inspect the source ticket and tender references when a split amount, refund or tip amount fails reconciliation. Implementation specification • Keep every existing modu | EXISTS — each ticket row opens its payment breakdown in place and a detail overlay with every tender attempt (toggle-breakdown, tenders-table) |
 | 13 | Duplicate event detector Flag repeated callback IDs, repeated tender operation IDs and possible duplicated local posting. Diagnosis only; no automatic ledger erasure. | TODO |
-| 14 | Pending payment banner A small accessible banner shows unresolved card outcomes and links to safe verification. Avoid counting unresolved charges as paid. | TODO |
+| 14 | Pending payment banner A small accessible banner shows unresolved card outcomes and links to safe verification. Avoid counting unresolved charges as paid. | BUILT — banner when card attempts are still waiting for a result: counted per ticket on the server, said to be NOT counted as paid, with verify-before-recharge wording (split-payments-screen summary pendingAttemptTickets; pgtest; POSSplitPaymentsScreen.test) |
 | 15 | Per-branch feature readiness Indicate which split methods are genuinely enabled per tenant/branch (Clover, Tap to Pay, gift card, cash). Disabled provider states must explain why. | TODO |
 | 16 | Cash and card method clarity Separate financial method from capture device/channel in both summary and ticket detail. Multiple devices never increase tender count. | EXISTS (part) — method combination filter and the per-method breakdown (Cash · Card · Gift Card) separate from register (register filter) |
 | 17 | Financial read-only mode during outage If critical provider/backend services fail, allow permitted inquiry with accurate stale-data labeling, but disable unsafe financial mutations. | TODO |
@@ -897,10 +897,10 @@ Decisions:
 | 03 | Evidence Completeness Meter Per alert/case show which source links were verified, missing, stale or permission-limited. | TODO |
 | 04 | Deduplicated Exposure Drill-down Explain Value Under Review calculations, overlapping alerts and why sums differ from alert count. | TODO |
 | 05 | Funding Calendar Awareness Mark “Expected / Not yet due / Overdue / Unmatched” based on processor and bank timing. | TODO |
-| 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | TODO |
+| 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | BUILT — same as the duplicate section below: Investigations workload strip (money-protection-center investigations().workload; tests) |
 | 07 | Safe Rule Preview Before a manager saves rule edits, show read-only estimated historical matches on approved test data; never silently activate. | TODO |
 | 08 | Source Reconciliation Links One click from alert to same ticket, refund, batch or reconciliation in the existing owning module. Priority labels Priority A: 01-05 because they prevent misleading risk/health messages. Prio | EXISTS — an alert opens with the invoice / payments / staff it points at, linked to their own pages, and its history |
-| 09 | Workspace Layout Profiles Use responsive layout presets for 1920 × 1080 SUNMI, other desktops and short viewports; reflow with CSS, not OS/browser zoom hacks. | TODO |
+| 09 | Workspace Layout Profiles Use responsive layout presets for 1920 × 1080 SUNMI, other desktops and short viewports; reflow with CSS, not OS/browser zoom hacks. | EXISTS — certified 1920×945/952/1032 layouts reflow with CSS; screen check on every page |
 | 10 | Smart Filter Presets Saved local UI preferences for “Critical”, “Awaiting Review”, “My Cases”, “Last | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 11 | Documented Alert Rate Limits Throttle duplicate notifications while preserving distinct evidence and an auditable incident timeline. | TODO |
 | 12 | Failure-aware Snapshot Allow authorized read-only as-of view labeled stale when providers are offline, rather than misleading zeros. | TODO |

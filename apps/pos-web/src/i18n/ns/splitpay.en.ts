@@ -32,4 +32,6 @@ export const SPLITPAY_EN = {
   'sp.refundsTitle': 'Refunds', 'sp.rstate.refunded': 'Refunded', 'sp.rstate.pending': 'Pending', 'sp.rstate.processing': 'Processing', 'sp.rstate.reserved': 'Reserved', 'sp.rstate.failed': 'Failed', 'sp.rstate.voided': 'Voided', 'sp.rstate.cancelled': 'Cancelled',
   'sp.linesTitle': 'Services & products', 'sp.auditTitle': 'Audit trail',
   'sp.refundNote': 'Refunds are made from Refunds & Voids against the original tender, through the processor. Nothing on this page moves money.',
+  'sp.pendingBanner': '{n} ticket(s) have a card payment still waiting for its result. It is not counted as paid — check the original attempt in the ticket before charging again.',
 } as const;
+

@@ -140,3 +140,14 @@ describe('Split Payments — detail, isolation, errors', () => {
     const csv = await r.exportCsv(ctx, await all()); expect(csv).toContain('Tickets,5'); expect(csv).not.toContain('(856) 555-1234'); expect(csv).toContain('150.00');
   });
 });
+
+describe('Split Payments — pending card outcomes (banner count)', () => {
+  it('a ticket with a card attempt still waiting for its result is counted once in pendingAttemptTickets; settled ones are not', async () => {
+    const before = (await r.summary(ctx, await all())).kpis.pendingAttemptTickets;
+    const t = await ticket({ total: 9000, number: 'T-PEND-1' });
+    await pay(t, 'cash', 4000);
+    await pay(t, 'card', 5000, 'pending', 'ref-pend-1');
+    await pay(t, 'card', 5000, 'processing', 'ref-pend-2');
+    expect((await r.summary(ctx, await all())).kpis.pendingAttemptTickets).toBe(before + 1);
+  });
+});

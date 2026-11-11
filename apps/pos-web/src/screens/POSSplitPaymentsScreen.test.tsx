@@ -1,7 +1,7 @@
 // Payments → Split Payments (Oct 29 2026 one-screen rebuild): one row per ticket with its PAYMENT BREAKDOWN in place
 // (Total · Cash · Credit Card · Gift Card · Remaining balance), server KPIs, server filters, a declined attempt never a tender.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), registers: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
@@ -59,5 +59,13 @@ describe('POSSplitPaymentsScreen', () => {
     mount();
     expect((await screen.findAllByText(/could not be reached/i)).length).toBeGreaterThan(0);   // each card says so (summary and list)
     expect(screen.queryByText('$0.00')).toBeNull();
+  });
+  it('pending payment banner: shows only when card attempts are still waiting; says they are not counted as paid', async () => {
+    mount(); await screen.findAllByTestId('ticket-row');
+    expect(screen.queryByTestId('pending-banner')).toBeNull();
+    cleanup();
+    api.summary.mockResolvedValue({ ...summary, kpis: { ...summary.kpis, pendingAttemptTickets: 2 } });
+    mount();
+    expect(await screen.findByTestId('pending-banner')).toHaveTextContent(/2 ticket\(s\).*not counted as paid/);
   });
 });
