@@ -99,4 +99,6 @@ export const REWARDSNET_VI = {
   'rn.co.option': '{amount} ({points} điểm)',
   'rn.co.use': 'Dùng điểm thưởng',
   'rn.co.failed': 'Không áp dụng được điểm thưởng.',
+  'rn.forecast.days': 'Ước tính: còn khoảng {n} ngày token theo mức dùng tháng này', // DRAFT — Kevin reviews
+  'rn.forecast.none': 'Tháng này chưa dùng token — chưa có ước tính', // DRAFT — Kevin reviews
 };

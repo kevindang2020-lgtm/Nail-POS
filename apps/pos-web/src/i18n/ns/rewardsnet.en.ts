@@ -98,4 +98,6 @@ export const REWARDSNET_EN = {
   'rn.co.option': '{amount} ({points} pts)',
   'rn.co.use': 'Use rewards',
   'rn.co.failed': 'Could not apply the rewards.',
+  'rn.forecast.days': 'Estimate: about {n} days of tokens left at this month’s pace',
+  'rn.forecast.none': 'No tokens used this month yet — no depletion estimate',
 };

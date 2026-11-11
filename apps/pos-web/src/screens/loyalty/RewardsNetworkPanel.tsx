@@ -31,6 +31,14 @@ const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short'
 export const pointsOf = (tenths: number) => fmtNumber((Number(tenths) || 0) / 10, 1);
 /** wallet cents → tokens (1 token = tokenValueCents) */
 export const tokensOf = (cents: number, tokenValueCents = 100) => fmtNumber((Number(cents) || 0) / Math.max(1, tokenValueCents), 2);
+/** Wallet low-balance forecast (backlog GLOBAL LOYALTY · 03): an ESTIMATE from this month's verified token use — available ÷
+ *  (used this month ÷ days elapsed). No use this month → null (no estimate is invented). */
+export function walletForecastDays(availableCents: number, usedThisMonthCents: number, dayOfMonth: number): number | null {
+  if (!(usedThisMonthCents > 0) || !(dayOfMonth >= 1)) return null;
+  const perDay = usedThisMonthCents / dayOfMonth;
+  return Math.max(0, Math.floor(availableCents / perDay));
+}
+
 export function rateText(r: Pick<RewardsNetEarningRate, 'spendIncrementCents' | 'pointTenthsPerIncrement'> | null | undefined): string {
   if (!r) return '—';
   return tx(r.pointTenthsPerIncrement === 10 ? 'rn.rate.one' : 'rn.rate', { spend: fmtMoney(r.spendIncrementCents), points: pointsOf(r.pointTenthsPerIncrement) });
@@ -202,6 +210,8 @@ export function RewardsNetworkPanel() {
           actions={<>{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
+          {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
+            return <div className={'fk-hint' + (d != null && d <= 14 ? ' warn' : '')} data-testid="rn-forecast">{d == null ? tx('rn.forecast.none') : tx('rn.forecast.days', { n: fmtNumber(d) })}</div>; })() : null}
           {purchases.err ? <ErrorRetry message={purchases.err} onRetry={purchases.refresh} /> : !purchases.data ? <div className="fk-loading">{tx('pos.loading')}</div> : purchases.data.items.length === 0 ? (
             <Empty title={tx('rn.noPurchases')}>{st && !buyBlockedReason ? <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button> : null}</Empty>
           ) : (

@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 77 (incl. part) |
-| EXISTS (opened and named) | 678 (incl. part) |
+| BUILT this arc | 78 (incl. part) |
+| EXISTS (opened and named) | 680 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 417 |
-| TODO | 642 |
+| TODO | 639 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -1209,7 +1209,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-click Loyalty Accuracy Scan funding, points, holds, redemptions, payables and cross-device freshness; Health Checker evidence-backed PASS/WARN/FAIL. | TODO |
+| 01 | One-click Loyalty Accuracy Scan funding, points, holds, redemptions, payables and cross-device freshness; Health Checker evidence-backed PASS/WARN/FAIL. | EXISTS — Check Customer & Loyalty System: read-only checks incl. ledger balance reconciliation and bonus posting (loyalty-health-run) |
 | 02 | Money Flow Explorer Click a redemption to trace originating token-backed earning → hold → ticket → payable → provider settlement. | TODO |
 | 03 | Smart Wallet Funding Alert Show low balance and estimated funding needs using verified historical usage; no automatic purchase. | EXISTS (part) — token wallet balance with alert level (migration 804, wallet/levels) on Loyalty → Rewards Network; no depletion forecast |
 | 04 | Policy Impact Preview Before earning rule changes, show allowed branch scope, expected effect and human approval; historic events immutable. | EXISTS (part) — earning rule changes go through a preview (earning/preview), drafts and scheduled versions before activation (step-up) |
@@ -1221,7 +1221,7 @@ Decisions:
 | 10 | Source-linked Financial Explain every KPI formula, scope, currency, version, last refreshed time and Tooltips missing/unknown states. Operational guardrail All recommendations must reuse existing modules, notifications,  | TODO |
 | 11 | History Smart Filter Presets Save authorized date/status/branch filters with newest-first server pagination and safe permissions. | EXISTS (part) — purchase history and token activity ledger, newest first, server-paged |
 | 12 | Screenshot-based Regression Test viewport geometry, open/close overlays, English/Vietnamese POS labels and Suite source-backed data. | EXISTS — Loyalty page in the certified harness, EN + VI |
-| 13 | Device-friendly Details A consistent Close, Back, View Source, action toolbar, focus restoration and internal Overlay scrolling. | TODO |
+| 13 | Device-friendly Details A consistent Close, Back, View Source, action toolbar, focus restoration and internal Overlay scrolling. | EXISTS — shared FitDialog: Close, Esc, focus trap, focus restored to the opener, internal body scrolling (components/FitKit.tsx) |
 | 14 | Readiness Control Center Per-feature CODE_READY, SANDBOX_READY, PRODUCTION_READY or BLOCKED_EXTERNAL with evidence. | EXISTS (part) — Buy Tokens says BLOCKED_EXTERNAL when no approved provider is connected (no pretend readiness) |
 | 15 | Stable Cross-app Balance Use existing push/realtime contracts and explicit stale-time labels; no optimistic financial Invalidation changes. | TODO |
 | 16 | Audit-ready Export & Role-scoped CSV/report with date basis, rule versions, source IDs, reviewer notes and Evidence export audit. Every new recommendation is additive. Existing screens, route names, action destinations,  | TODO |
@@ -2525,7 +2525,7 @@ Decisions:
 |---|---|---|
 | 01 | Auto-fit diagnostics Show detected viewport, zoom, overflow regions and component measurement test | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Balanced-card layout system Reusable KPI/side-panel sizing tokens across all tenant POS modules | NOISE — layout-token guidance |
-| 03 | Wallet low-balance forecast Estimate days until depletion using verified trailing allocations; label as estimate | TODO |
+| 03 | Wallet low-balance forecast Estimate days until depletion using verified trailing allocations; label as estimate | BUILT — wallet panel shows an estimate of days of tokens left at this month’s verified pace (labelled Estimate; no use → no estimate) (walletForecastDays + rn-forecast; walletForecast.test) |
 | 04 | Purchase status timeline Requested → processing → verified / exception, with provider timestamps | EXISTS (part) — purchase detail (purchases/:id); nothing spendable until the provider verifies the funds |
 | 05 | Customer rewards explainer Show where points came from, when spendable and which rule version applied | TODO |
 | 06 | Redemption preview Show rewards applied, due after discount and why amount is eligible | TODO |
