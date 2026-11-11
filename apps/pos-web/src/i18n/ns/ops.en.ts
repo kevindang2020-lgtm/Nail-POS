@@ -1528,4 +1528,7 @@ export const OPS_EN = {
   "mgmt.health.unavailable": "Setup Health unavailable",
   "mgmt.health.never": "Not checked yet — run Setup Health",
   "shell.spacing.compact": "Compact spacing (this device)",
+  "tips.basis": "Counted on the day the payment was taken (the salon’s day) — not the allocation or payout day. Tips are never part of sales.",
+  "tips.search": "Find a technician",
+  "tips.noMatch": "No technician matches “{q}”.",
 };

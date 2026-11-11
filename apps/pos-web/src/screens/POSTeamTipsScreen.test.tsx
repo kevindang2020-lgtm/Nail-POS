@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 const { tipsMock } = vi.hoisted(() => ({ tipsMock: vi.fn() }));
 vi.mock('../api/posReportsApi', () => ({ posReportsApi: { tips: tipsMock } }));
 import { POSTeamTipsScreen } from './POSTeamTipsScreen';
@@ -18,5 +18,14 @@ describe('POSTeamTipsScreen', () => {
     tipsMock.mockResolvedValue({ ...tips, byTechnician: [] });
     render(<POSTeamTipsScreen />);
     expect(await screen.findByText(/No tips recorded/)).toBeInTheDocument();
+  });
+  it('extras (Nov 11 2026): states the time basis; finds a technician (accent-free) in the list', async () => {
+    tipsMock.mockResolvedValue(tips);
+    render(<POSTeamTipsScreen />);
+    expect(await screen.findByTestId('tips-basis')).toHaveTextContent('day the payment was taken');
+    fireEvent.change(screen.getByTestId('tips-search'), { target: { value: 'ANA' } });
+    expect(screen.getByText('Ana')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('tips-search'), { target: { value: 'zzz' } });
+    expect(screen.getByTestId('tips-empty')).toHaveTextContent('No technician matches “zzz”.');
   });
 });

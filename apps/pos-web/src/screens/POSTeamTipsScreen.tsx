@@ -24,13 +24,19 @@ export function POSTeamTipsScreen() {
   }, []);
   useEffect(() => { load(period); }, [load, period]);
 
-  const techs = (t?.byTechnician || []).slice().sort((a, b) => b.tipsCents - a.tipsCents);
+  // extras (Nov 11 2026): find a technician in the full list the server returned (every technician with tips in the period)
+  const [q, setQ] = useState('');
+  const fold = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+  const all = (t?.byTechnician || []).slice().sort((a, b) => b.tipsCents - a.tipsCents);
+  const techs = q.trim() ? all.filter((x) => fold(x.name || '').includes(fold(q.trim()))) : all;
   const maxTip = Math.max(1, ...techs.map((x) => x.tipsCents));
 
   return (
     <div className="work">
       <div className="vh" style={{ marginBottom: 10 }}><h1>{tx('pos.team_tips')}</h1><div className="sub">{tx('pos.tips_earned_by_technician_over_the_1xt1')}</div></div>
       <PeriodTabs period={period} onChange={setPeriod} />
+      {/* extras (Nov 11 2026) — time basis: tips count on the day the payment was taken (the salon's day), not allocation / payout day */}
+      <div className="sub" style={{ marginTop: 6 }} data-testid="tips-basis">{tx('tips.basis')}</div>
 
       {loading ? <div className="state">{tx('pos.loading_team_tips')}</div>
         : error ? <div className="err" style={{ marginTop: 12 }}>{error}</div>
@@ -45,8 +51,9 @@ export function POSTeamTipsScreen() {
           </div>
 
           <section className="panel" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
-            <div className="p-h" style={{ padding: '14px 14px 0' }}>{tx('pos.tips_by_technician')}</div>
-            {techs.length === 0 ? <div className="state" style={{ padding: 16 }}>{tx('pos.no_tips_recorded_in_this_period')}</div> : (
+            <div className="p-h" style={{ padding: '14px 14px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{tx('pos.tips_by_technician')}
+              {all.length > 1 ? <input className="input" style={{ minHeight: 40, marginLeft: 'auto', maxWidth: 260 }} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx('tips.search')} aria-label={tx('tips.search')} data-testid="tips-search" /> : null}</div>
+            {techs.length === 0 ? <div className="state" style={{ padding: 16 }} data-testid="tips-empty">{all.length && q.trim() ? tx('tips.noMatch', { q: q.trim() }) : tx('pos.no_tips_recorded_in_this_period')}</div> : (
              <div className="w-full overflow-x-auto md:overflow-x-visible">
   <table className="tbl min-w-[700px] md:min-w-0">
                 <thead><tr><th>{tx('pos.technician')}</th><th style={{ textAlign: 'right' }}>{tx('pos.tips')}</th><th style={{ width: 160 }}></th></tr></thead>

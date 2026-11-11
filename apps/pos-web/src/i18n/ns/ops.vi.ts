@@ -1527,4 +1527,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "mgmt.health.unavailable": "Không tải được Tình trạng thiết lập", // DRAFT — Kevin reviews
   "mgmt.health.never": "Chưa kiểm tra — mở Tình trạng thiết lập để chạy", // DRAFT — Kevin reviews
   "shell.spacing.compact": "Khoảng cách gọn (máy này)", // DRAFT — Kevin reviews
+  "tips.basis": "Tính theo ngày nhận thanh toán (ngày của tiệm) — không phải ngày phân bổ hay ngày trả lương. Tip không bao giờ tính vào doanh số.", // DRAFT — Kevin reviews
+  "tips.search": "Tìm thợ", // DRAFT — Kevin reviews
+  "tips.noMatch": "Không có thợ khớp “{q}”.", // DRAFT — Kevin reviews
 };

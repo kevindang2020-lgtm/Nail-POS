@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 49 (incl. part) |
-| EXISTS (opened and named) | 405 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 243 |
-| TODO | 1121 |
+| BUILT this arc | 51 (incl. part) |
+| EXISTS (opened and named) | 456 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 272 |
+| TODO | 1039 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -527,18 +527,18 @@ Decisions:
 |---|---|---|
 | 01 | Screen Fit Self-Test A read-only “Check Screen Fit” diagnostic showing actual viewport, sidebar width, overflow and too-small tap targets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Balanced Layout Presets Comfortable / Compact density per tenant device; never use global browser zoom or erase controls. | BUILT — opt-in Compact spacing per device (profile menu → Compact spacing; Standard = certified default; gaps/padding only, never fonts or touch targets) — shell/spacingPref.ts + spacingPref.test 2/2 |
-| 03 | Promotion Quick Preview Inspect effective terms and sample eligible ticket without saving a redemption or charging a card. | TODO |
+| 03 | Promotion Quick Preview Inspect effective terms and sample eligible ticket without saving a redemption or charging a card. | EXISTS (part) — Eligibility Checks scope + Check Promotion (read-only; nothing redeems) (POSPromotionsScreen) |
 | 04 | Expiration Calendar See upcoming expiration by branch; link back to same canonical promotion ID. | TODO |
-| 05 | Promotion Cloning Duplicate safely into Draft with a new code/version; never copy completed uses or approval. | TODO |
+| 05 | Promotion Cloning Duplicate safely into Draft with a new code/version; never copy completed uses or approval. | EXISTS — Duplicate from the details creates a DRAFT with a new code; completed uses are never copied (DuplicateDialog) |
 | 06 | Pause Impact Warning Show current branch/campaign/Checkout impact before owner confirms Pause. | TODO |
 | 07 | Code Conflict Finder Detect overlapping code, conflicting service eligibility and unintended stacking. | TODO |
 | 08 | Saved Filters Role/tenant-scoped saved library filters, without exposing other salon data. How Claude should add recommendations • Check whether each capability already exists. Improve what is present; do not create dupl | BUILT — POS saved views (migration 844, pos/me/saved-views, components/SavedViews); pgtest 6/6, component 4/4 |
 | 09 | Discount Exposure Meter Estimate maximum planned discount outlay from allowed uses and caps; label as estimate. | TODO |
 | 10 | Redemption Reconciliation Daily comparison of promotion usage to finalized Checkout and approved refund adjustments. | TODO |
 | 11 | Fraud/Abuse Signals Flag repeat-account, high-use or unusual override patterns for human review; no automatic penalty. | TODO |
-| 12 | Promotion ROI Explanation Distinguish associated ticket revenue, discount expense and measured contribution; no invented incremental return. | TODO |
+| 12 | Promotion ROI Explanation Distinguish associated ticket revenue, discount expense and measured contribution; no invented incremental return. | EXISTS (part) — Financial tab: discount actually redeemed vs linked ticket sales (associated, not caused) |
 | 13 | Branch Comparison Compare per-branch eligible tickets and redemption rates with consistent denominators. | TODO |
-| 14 | Version and Audit Timeline See the exact terms effective at each redemption; keep historical versions immutable. | TODO |
+| 14 | Version and Audit Timeline See the exact terms effective at each redemption; keep historical versions immutable. | EXISTS (part) — Activity tab: who paused / resumed / archived, when, before → after with version |
 | 15 | Checkout Conflict Simulator Use staging fixtures to test coupons, membership, loyalty, split payment, refund and gift cards. | TODO |
 | 16 | No-Double-Use Monitor Alert on duplicate callback/idempotency anomalies and cap-race failures; suggest safe correction. Explicit guardrails • Financial recommendations are for reporting or controlled approval. They must  | TODO |
 
@@ -604,14 +604,14 @@ Decisions:
 | 04 | Pending Verification Queue Surface expiring holds and pending verification in a filtered view; require staff authorization for retry and never display codes or assume success. | TODO |
 | 05 | Conflict Explanation Drawer When a slot cannot be booked, explain actual business hours, staff off-shift, qualification, time-off, reserved time or booking conflict. | TODO |
 | 06 | One-click POS Booking Reconciliation Compare branch/day IDs and statuses between AI Calendar and POS Booking, with a read-only discrepancy report and source links. SUNMI 27-inch addendum / Original 14-page guide follows  | TODO |
-| 07 | Capacity-aware 200-technician display Use the established 12-per-page technician UI plus efficient pagination/virtualization of long histories; never put 200 narrow columns on one screen. | TODO |
+| 07 | Capacity-aware 200-technician display Use the established 12-per-page technician UI plus efficient pagination/virtualization of long histories; never put 200 narrow columns on one screen. | EXISTS (part) — technicians 12 a page on the booking views (live pilot day 24-technician paging check) |
 | 08 | Automatic responsive density - without shrinking fonts Switch between spacious and compact grid spacing based on container width, keep equal KPIs and readable text, and retain all operations. | TODO |
 | 09 | Deep-link continuity Return users from POS Booking or a customer overlay to the same authorized date, branch, filters and list location. | TODO |
 | 10 | AI booking provenance and exception review Create a reviewable list of AI-origin failures, incomplete verification and false source attribution with source IDs and redacted event details. | TODO |
-| 11 | Stage-only visual regression suite Capture 1920 x 1080, available CSS viewport at 100% zoom, 1600 x 900, 1366 x 768, 125% display scaling and long-label scenarios. | TODO |
-| 12 | Safe rollout and rollback Gate new visual or diagnostic components behind existing feature flags where available; preserve old UI/API compatibility and reversible migrations. Every recommendation must be additive. Before | TODO |
+| 11 | Stage-only visual regression suite Capture 1920 x 1080, available CSS viewport at 100% zoom, 1600 x 900, 1366 x 768, 125% display scaling and long-label scenarios. | EXISTS — harness screenshots at certified + responsive sizes |
+| 12 | Safe rollout and rollback Gate new visual or diagnostic components behind existing feature flags where available; preserve old UI/API compatibility and reversible migrations. Every recommendation must be additive. Before | NOISE — rollout guidance |
 | 15 | Smart AI Scheduling & Availability Assistant Additional recommendation #3. AI may suggest verified openings, qualified technicians, gaps, pending OTP confirmations or conflict risks. Recommendations must have explicit ev | TODO |
-| 16 | API, data and multi-tenant architecture Discover and reuse existing contracts • Inspect the actual React frontend, NestJS services, PostgreSQL schema, Redis cache and booking events. Confirm canonical table names and rou | TODO |
+| 16 | API, data and multi-tenant architecture Discover and reuse existing contracts • Inspect the actual React frontend, NestJS services, PostgreSQL schema, Redis cache and booking events. Confirm canonical table names and rou | NOISE — architecture guidance |
 
 ## Phone  Messaging  Text Messaging Setup (16)
 
@@ -700,7 +700,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | SUNMI Screen Fit Actual CSS viewport, overflow, card balance, touch target bounds, focus, modal clipping; capture screenshot. | TODO |
+| 01 | SUNMI Screen Fit Actual CSS viewport, overflow, card balance, touch target bounds, focus, modal clipping; capture screenshot. | EXISTS — Check this screen + certified harness |
 | 02 | Retention Integrity Historical snapshots, segment definitions, counts, branch scope, consent and booking prefill. | TODO |
 | 03 | Twilio Connectivity Stored config, provider-auth outcome, sender number assignment, masked security status. | TODO |
 | 04 | Carrier Readiness 10DLC/toll-free approval, service association, freshness and real provider evidence. | TODO |
@@ -708,10 +708,10 @@ Decisions:
 | 06 | Team Integrity Duplicate employee, schedule conflicts, clock state, skills, training, missing assignments. | TODO |
 | 07 | AI Entitlement & Billing Branch override vs shared quota, invoice math, provider event idempotency, stale links. | TODO |
 | 08 | Nightly Jobs & Wiring Scheduler, queues, retry/alerts, tenant routing and module-to-module consistency. Operating rule. Health Checkers investigate and recommend; they must not change money, employee status, customer con | TODO |
-| 09 | CI/staging release proof is still associated with the deployed version. Produce a health_check_runs record, individual health_check_results, severity, source, verification timestamp, actionable explanation, retry history | TODO |
-| 13 | Additional safeguard #1: Unified Setup Health Dashboard MANDATORY NEW CAPABILITY. Provide an authorized tenant-owner screen titled Setup Health under an existing appropriate navigation group (avoid duplicate sidebar entr | TODO |
-| 14 | Additional safeguard #2: automated nightly verification and escalation MANDATORY NEW CAPABILITY. Use the existing job scheduler; run tenant-aware nightly maintenance with staggering, rate limits and retries. Verify both  | TODO |
-| 15 | Additional safeguard #3: independently provable completion MANDATORY RELEASE GATE. A feature is not Completed and Verified because a button, schema, automated test file or screenshot exists. For every row in the acceptan | TODO |
+| 09 | CI/staging release proof is still associated with the deployed version. Produce a health_check_runs record, individual health_check_results, severity, source, verification timestamp, actionable explanation, retry history | NOISE — release-proof instruction |
+| 13 | Additional safeguard #1: Unified Setup Health Dashboard MANDATORY NEW CAPABILITY. Provide an authorized tenant-owner screen titled Setup Health under an existing appropriate navigation group (avoid duplicate sidebar entr | EXISTS — Setup Health (/tenant/management/setup-health): one authorized dashboard of setup checks by area and branch, with alerts |
+| 14 | Additional safeguard #2: automated nightly verification and escalation MANDATORY NEW CAPABILITY. Use the existing job scheduler; run tenant-aware nightly maintenance with staggering, rate limits and retries. Verify both  | EXISTS — nightly Setup Health run with open alerts escalated once and acknowledged by a person (health_check_runs nightly, health_check_alerts escalated_at) |
+| 15 | Additional safeguard #3: independently provable completion MANDATORY RELEASE GATE. A feature is not Completed and Verified because a button, schema, automated test file or screenshot exists. For every row in the acceptan | NOISE — release gate definition |
 
 ## Customer Segments (7)
 
@@ -823,7 +823,7 @@ Decisions:
 | 03 | Screen Fit / Layout Actual CSS viewport, browser zoom guidance, clipped/overlapping controls, pager visibility, tap-target size, EN/VN overflow. | EXISTS — Check this screen (viewport, clipping, overlap, pager, touch) + certified harness |
 | 04 | Tender / Refund Integrity Failed/timeout/duplicate attempts, refunds linked to original tenders, remaining refundable balance and audit records. | TODO |
 | 05 | Cross-Module Reconciliation Compare Checkout, Split Payments, Gift Cards, Tips, Cash Drawer, Transactions and Daily Closeout using shared event references. No automatic money movement | TODO |
-| 06 | Adaptive rows-per-page Compute a safe page size based on the measured table body height and row height. Preserve full-dataset server pagination and deterministic ordering. | TODO |
+| 06 | Adaptive rows-per-page Compute a safe page size based on the measured table body height and row height. Preserve full-dataset server pagination and deterministic ordering. | EXISTS — rows per page computed from the measured table height (useFitRows); the full data stays server-paged |
 | 07 | Payment-state timeline In ticket details show chronological tender attempts, confirmations, callbacks, reversals and outcomes with correlation IDs; mask sensitive references. | BUILT (part) — Transaction detail now has the per-payment timeline and already lists every tender attempt of the ticket with its state and time; processor callbacks are not shown |
 | 08 | Uncertain Payment Review overlay Surface a compact “Status unknown - verify original attempt” view with safe retry criteria; prevent another charge by double tap. | TODO |
 | 09 | Split Tender Preview Before initiating checkout, show intended card/cash/gift-card allocation and remaining due; preview is not a financial mutation. | TODO |
@@ -859,10 +859,10 @@ Decisions:
 | 10 | Data Freshness Indicator Show last successful refresh and provider sync status per panel; never claim real-time when stale. | TODO |
 | 11 | Transaction State Timeline Display authorize/capture/settle/refund events from real provider references. | BUILT — Transaction detail → Payment timeline (server: recorded payment / refund / settlement / deposit times only; pgtest 14/14) — PaymentTimeline |
 | 12 | Better Payout Forecast Cards Show expected payout dates, processor names and confidence/source based on available records. | TODO |
-| 13 | Adaptive Table Density Compute readable page size from available table height instead of shrinking text. | TODO |
+| 13 | Adaptive Table Density Compute readable page size from available table height instead of shrinking text. | EXISTS — page size computed from the available table height (useFitRows), text never shrunk (POSPaymentsOverviewScreen) |
 | 14 | Risk-Aware Quick Action Preview Show actor, tenant, amount, recipient/provider and effects before protected financial actions. | TODO |
 | 15 | Layout Regression Gate Run screenshot and DOM structure checks before release for all device breakpoints and both POS languages. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 16 | Module Preservation Registry Track each legacy card, chart, action and route mapping with pre/post-test results; fail deployment if anything vanishes. Implementation policy: Add optional recommendations only after inspec | TODO |
+| 16 | Module Preservation Registry Track each legacy card, chart, action and route mapping with pre/post-test results; fail deployment if anything vanishes. Implementation policy: Add optional recommendations only after inspec | EXISTS — module registry + preservation matrix |
 
 ## AI Plans Packages (9)
 
@@ -968,18 +968,18 @@ Decisions:
 | 01 | Service Pricing Accuracy Health Checker Compare the four KPIs against canonical eligible service rows; explain discrepancies, currency rounding and archived/custom-price exclusions. | BUILT — shared read-only Check Catalog System (GET pos/system-checks/catalog, components/SystemCheck); pgtest 5/5 + PG16 run |
 | 02 | Automatic SUNMI Screen Fit Health Checker In development/admin test mode, detect clipped cards, horizontal overflow, inaccessible actions, off-screen popovers, and effective viewport size. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Price History and Audit Integrity Checker Find missing actor/reason/effective date, overlapping price versions, invalid rollback history and mismatched current versus scheduled prices. | BUILT — shared read-only Check Catalog System (GET pos/system-checks/catalog, components/SystemCheck); pgtest 5/5 + PG16 run |
-| 04 | Booking Price & Duration Impact Checker Before future price/duration edits, detect booked appointments, fixed quotes, technician availability conflicts and stale service pickers. | TODO |
+| 04 | Booking Price & Duration Impact Checker Before future price/duration edits, detect booked appointments, fixed quotes, technician availability conflicts and stale service pickers. | EXISTS (part) — pricing impact preview before saving (services/:id/pricing-impact) |
 | 05 | Checkout and Transaction Wiring Checker Reconcile service line snapshots with checkout totals, taxes, discounts, authorized overrides, refunds and payment status. | TODO |
-| 06 | Category & Service Relationship Checker Flag possible anomalies such as Haircut or Hair Coloring categorized as Nails; never auto-mutate owner data. | TODO |
+| 06 | Category & Service Relationship Checker Flag possible anomalies such as Haircut or Hair Coloring categorized as Nails; never auto-mutate owner data. | EXISTS (part) — category anomalies flagged for review on Service Categories (service_category_mismatch) |
 | 07 | Permission & Tenant Isolation Checker Validate service prices, edits, history exports and customer lookups are scoped server-side to the correct tenant and branches. New SUNMI Addendum • Attached original follows unchang | TODO |
 | 08 | Live Price Preview Show how a service price would appear in Booking/Checkout including applicable add-ons, discounts and taxes, without charging anyone. | TODO |
-| 09 | Service Price Difference Explanation Show why a final checkout line differs from the catalog base price: branch override, add-on, approved manual override, promotion or membership. | TODO |
+| 09 | Service Price Difference Explanation Show why a final checkout line differs from the catalog base price: branch override, add-on, approved manual override, promotion or membership. | EXISTS (part) — Customer History shows what was actually charged (ticket snapshots) beside the catalog price |
 | 10 | Effective-Date Change Timeline Display current, pending and previous service prices in one readable drawer and forbid overlapping incompatible scheduled prices. | EXISTS (part) — Price History tab (append-only, reason + version per change) exists; scheduled future prices are not built |
 | 11 | Duplicate Service / Name Review Warn about near-identical names or codes before creating a service; never auto-merge distinct records. | TODO |
 | 12 | Technician Compensation Preview Explain potential commission basis changes where configured and audit the source of actual payout values. | TODO |
 | 13 | Owner Review for Suspicious Categories Offer a non-destructive review queue for category anomalies with original IDs and owner approval workflow. | TODO |
-| 14 | Readable EN/VN Mode Test translated long labels/diacritics at SUNMI size without truncating KPI meanings, button actions or validation messages. | TODO |
-| 15 | Data Freshness & Conflict Notice Explain when a price was last updated and warn if another manager saved a newer version before submitting. | TODO |
+| 14 | Readable EN/VN Mode Test translated long labels/diacritics at SUNMI size without truncating KPI meanings, button actions or validation messages. | EXISTS — EN/VI; harness certified |
+| 15 | Data Freshness & Conflict Notice Explain when a price was last updated and warn if another manager saved a newer version before submitting. | EXISTS — Edit Pricing carries the version the editor opened; a newer save is refused (conflict notice) |
 | 16 | Pricing Export Verification Give an authorized full-scope export with the date/time of the price snapshot; protect tenant/customer PII. New SUNMI Addendum • Attached original follows unchanged Addendum 16 AI POWERSALON / | TODO |
 
 ## Customer Displays (1)
@@ -1031,33 +1031,33 @@ Decisions:
 |---|---|---|
 | 01 | Guided Enrollment Wizard One safe flow for device type, branch/station, QR/one-time code, app confirmation and owner approval. | TODO |
 | 02 | Connection & Battery Health Expose last authenticated heartbeat, battery where available, OS/app version and stale-device warnings. | TODO |
-| 03 | One-Click Tablets Health Checker Read-only diagnostic across registry, pairing, sessions, health events, permissions and integrations. | TODO |
+| 03 | One-Click Tablets Health Checker Read-only diagnostic across registry, pairing, sessions, health events, permissions and integrations. | EXISTS — Check Tablets System (read-only) in the fleet header (POSDeviceFleetScreen) |
 | 04 | Assignment Conflict Preview Warn before two devices claim one restricted station/role; show impact before commit. | TODO |
 | 05 | Remote Logout / Revoke Owner-controlled sign-out and credential invalidation with clear confirmation and audit. | TODO |
 | 06 | Secure Replacement Flow Decommission lost/replaced devices safely and enroll a new device without copying secrets. | TODO |
 | 07 | Customer Privacy Reset Automatic kiosk/customer-display reset of previous customer data after use or inactivity. | TODO |
 | 08 | App and OS Lifecycle Show outdated/unsupported versions clearly; require explicit policy before mandatory upgrades. | TODO |
-| 09 | Tablet Activity Timeline History of enrollment, session, assignment, updates, failures and recovery with search, calendars and paging. | TODO |
-| 10 | Branch/Station Fleet View One scoped list for multi-branch owners, with clear current branch and station ownership. | TODO |
+| 09 | Tablet Activity Timeline History of enrollment, session, assignment, updates, failures and recovery with search, calendars and paging. | EXISTS (part) — a device's details with its own history + the History tab (newest first, calendar, pages) |
+| 10 | Branch/Station Fleet View One scoped list for multi-branch owners, with clear current branch and station ownership. | EXISTS (part) — one scoped list with Branch and Station columns and filters |
 | 11 | Safe Export & Evidence Bundle Authorized redacted CSV/PDF device inventory and health report; never export keys or customer PII. | TODO |
-| 12 | Payment Capability Gate Keep generic tablets distinct from Fiserv terminals and native iPhone Tap to Pay; show supported features from verified backend capability. Claude implementation specification / 09 Nov 2026 26 AI  | TODO |
-| 25 | Twelve additional recommendations | TODO |
+| 12 | Payment Capability Gate Keep generic tablets distinct from Fiserv terminals and native iPhone Tap to Pay; show supported features from verified backend capability. Claude implementation specification / 09 Nov 2026 26 AI  | NOISE — rule (tablets stay distinct from Fiserv terminals and Tap to Pay) — holds: tablets never take payments |
+| 25 | Twelve additional recommendations | NOISE — heading |
 
 ## Reception Copilot (12)
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Screenshot evidence and inventory | TODO |
-| 02 | Visual and interaction design | TODO |
-| 03 | Advanced search, date calendars and pagination | TODO |
-| 04 | Customer, caller, phone AI and duplicate review | TODO |
-| 05 | Queue, services, availability and conflict checking | TODO |
-| 06 | Booking, rescheduling and cancellation safety | TODO |
-| 07 | SMS messaging and communications | TODO |
-| 08 | Copilot chat, settings and AI entitlements | TODO |
-| 09 | Three priority recommendations | TODO |
-| 10 | Backend contracts, data and event flow | TODO |
-| 11 | Tenant security, observability and rollout | TODO |
+| 01 | Screenshot evidence and inventory | NOISE — a section heading of the guide (no feature text) |
+| 02 | Visual and interaction design | NOISE — a section heading of the guide (no feature text) |
+| 03 | Advanced search, date calendars and pagination | NOISE — a section heading of the guide (no feature text) |
+| 04 | Customer, caller, phone AI and duplicate review | NOISE — a section heading of the guide (no feature text) |
+| 05 | Queue, services, availability and conflict checking | NOISE — a section heading of the guide (no feature text) |
+| 06 | Booking, rescheduling and cancellation safety | NOISE — a section heading of the guide (no feature text) |
+| 07 | SMS messaging and communications | NOISE — a section heading of the guide (no feature text) |
+| 08 | Copilot chat, settings and AI entitlements | NOISE — a section heading of the guide (no feature text) |
+| 09 | Three priority recommendations | NOISE — a section heading of the guide (no feature text) |
+| 10 | Backend contracts, data and event flow | NOISE — a section heading of the guide (no feature text) |
+| 11 | Tenant security, observability and rollout | NOISE — a section heading of the guide (no feature text) |
 | 12 | Acceptance tests and delivery evidence AI POWERSALON / RECEPTION COPILOT / CLAUDE BUILD SPEC 2 Screenshot 1 of 3 — Front desk overview Original user-provided photograph (unaltered): | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Fiserv Payment Gateway (7)
@@ -1234,14 +1234,14 @@ Decisions:
 | 03 | Services / techs Read canonical service prices/durations/add-ons, qualifications, schedules and customer context. | TODO |
 | 04 | Availability Query canonical Booking; validate holds, blocked time, tech breaks, existing appointments and conflicts. | TODO |
 | 05 | Human approval Display exact date, salon-local time, service, technician(s), price and terms; require authorized confirmation. | TODO |
-| 06 | Pending hold Create idempotent pending booking through existing API; never label pending as confirmed. | TODO |
-| 07 | Six-digit SMS When required by policy use existing tenant-specific verification, retries, cooldown and expiry. | TODO |
-| 08 | Confirm + verify Only mark Confirmed after backend verifies code and transaction; emit Booking events; reconcile POS and AI Calendar. | TODO |
+| 06 | Pending hold Create idempotent pending booking through existing API; never label pending as confirmed. | EXISTS (part) — pending holds go through the existing verified booking flow (idempotent hold; pending never shown as confirmed) |
+| 07 | Six-digit SMS When required by policy use existing tenant-specific verification, retries, cooldown and expiry. | EXISTS (part) — the salon's own Twilio Verify for six-digit codes with retries / cooldown (Booking Phone Verification) |
+| 08 | Confirm + verify Only mark Confirmed after backend verifies code and transaction; emit Booking events; reconcile POS and AI Calendar. | EXISTS (part) — confirmed only after the server verifies the code (BookingVerificationGuard / VerifiedBookingFlow) |
 | 09 | Audit + display Store action result and correlation reference; show exact appointment ID and reliable current state. “AI proposed”, “SMS submitted”, “SMS delivered”, “pending hold exists” and “appointment confirmed” are  | TODO |
 | 10 | Contextual Service Breakdown Surface service, add-ons, estimated duration and canonical salon price in review; visually separate manual overrides from catalog prices. | TODO |
 | 11 | Reception Priority Worklist Explainable queue of pending verification, impending holds, unresolved AI booking attempts and conflicts; sorted by urgency, not just newness. | TODO |
 | 12 | Accessibility Quick Audit Development/staging check for focus order, contrast, safe modal close, 44px touch targets and language overflow, including tenant-facing English/Vietnamese POS. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 13 | Controlled Rollout Flag Enable revised layout for pilot tenants/branches and preserve a documented rollback path; do not run unapproved production migrations. | TODO |
+| 13 | Controlled Rollout Flag Enable revised layout for pilot tenants/branches and preserve a documented rollback path; do not run unapproved production migrations. | NOISE — rollout guidance |
 | 14 | Evidence Export Generate an authorized support report with timestamps, status, masked references, test/trace IDs and screenshots; redact PII, secrets and raw OTP. Do not treat these recommendations as license to remove o | TODO |
 
 ## AI Analytics Forecasting (21)
@@ -1274,18 +1274,18 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Exact duplicate charge 09 Paid ticket without capture | TODO |
-| 02 | Likely duplicate charge 10 Captured money on cancelled ticket | TODO |
+| 01 | Exact duplicate charge 09 Paid ticket without capture | EXISTS — these are canonical Money Protection rules (duplicate charge / paid ticket without capture …) in modules/ai ai-money-protection-rules.ts |
+| 02 | Likely duplicate charge 10 Captured money on cancelled ticket | EXISTS — canonical Money Protection rules (likely duplicate charge / captured money on cancelled ticket) in ai-money-protection-rules.ts |
 | 03 | Verify financial data and all 15 canonical rules with realtime/near-realtime/batch worker health and no duplicate engine. | TODO |
-| 04 | Build one-click read-only Fraud Protection Health Checker with source freshness and actionable error classification. | TODO |
-| 05 | Redesign full-screen module home for 24/27-inch POS, status cards, navigation, readable touch UI and vertical scroll. | TODO |
-| 06 | Add authorized search, monthly date-range calendars and paginated history with newest-first default and explicit date modes. | TODO |
+| 04 | Build one-click read-only Fraud Protection Health Checker with source freshness and actionable error classification. | EXISTS — Check AI Money Protection System (read-only) in the shared header |
+| 05 | Redesign full-screen module home for 24/27-inch POS, status cards, navigation, readable touch UI and vertical scroll. | NOISE — redesign instruction |
+| 06 | Add authorized search, monthly date-range calendars and paginated history with newest-first default and explicit date modes. | EXISTS — alerts / investigations: search, presets + From/To month calendar, newest first, numbered pages |
 | 07 | Add source-backed AI financial explanation overlays for refund, discount, void, mismatch, cash and settlement cases. | TODO |
 | 08 | Priority 2 - explainable suspicious refund monitoring • Trace original captured payment, payment method, ticket, refund request vs completed refund, cumulative refunds, processor reference, authorized employee action and | TODO |
 | 09 | Extend verified AI Analytics and permitted multi-branch summaries using canonical Reports definitions. | TODO |
-| 10 | Run full UI, API, security, worker, billing and payment non-mutation regression tests; document actual results and blockers. | TODO |
-| 19 | Implementation order - specific engineering plan | TODO |
-| 20 | Verification matrix and negative tests Area Mandatory checks Screenshot parity Original route, finance description, $69/mo reference, 0/10,000 calls reference, status, trial notice, Cancel add-on, sidebar and links Billi | TODO |
+| 10 | Run full UI, API, security, worker, billing and payment non-mutation regression tests; document actual results and blockers. | NOISE — regression instruction |
+| 19 | Implementation order - specific engineering plan | NOISE — implementation order |
+| 20 | Verification matrix and negative tests Area Mandatory checks Screenshot parity Original route, finance description, $69/mo reference, 0/10,000 calls reference, status, trial notice, Cancel add-on, sidebar and links Billi | NOISE — verification matrix |
 
 ## MESSAGE TEMPLATES  AUTOMATION (12)
 
@@ -1485,17 +1485,17 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Transaction Source Explanation Show a concise definition popover for Transactions, Gross, Tips and Net, citing which payment states and sources are included. | TODO |
+| 01 | Transaction Source Explanation Show a concise definition popover for Transactions, Gross, Tips and Net, citing which payment states and sources are included. | EXISTS — the four KPIs each carry their definition (POSTransactionsScreen) |
 | 02 | Provider Status Timeline In Details, display requested → authorized → captured → settled/refunded only for actual provider-confirmed events. | BUILT — Transaction detail → Payment timeline (server: recorded payment / refund / settlement / deposit times only; pgtest 14/14) — PaymentTimeline |
 | 03 | Safe Duplicate-Payment Review Warn on duplicate external references, repeated callbacks and conflicting payment attempts without | TODO |
-| 04 | KPI cards Transactions, Gross, Tips, Net with correct period/filter labels and backend-derived values. Date presets and calendars Today / This Week / This Month / This Year / Custom Range; From Date and To Date month pic | TODO |
-| 05 | Refund Eligibility Preview From Details, preview eligible remaining refundable amount and direct users to the existing authorized refund workflow. 6. “Data Last Verified” Indicator Add subtle freshness messaging when tra | TODO |
+| 04 | KPI cards Transactions, Gross, Tips, Net with correct period/filter labels and backend-derived values. Date presets and calendars Today / This Week / This Month / This Year / Custom Range; From Date and To Date month pic | EXISTS — Transactions · Gross · Tips · Net from the server over every matching tender with period / filter labels |
+| 05 | Refund Eligibility Preview From Details, preview eligible remaining refundable amount and direct users to the existing authorized refund workflow. 6. “Data Last Verified” Indicator Add subtle freshness messaging when tra | EXISTS — details overlay shows refunds and what is still refundable, with the existing guarded refund |
 | 07 | Sticky Ledger Header and Footer Keep headers and pager visible while rows scroll inside the bounded central work area. These are additions or improvements. Audit the repository first; if equivalent features already exist | TODO |
-| 08 | Customer & Ticket Context Preview Show compact authorized customer identity and ticket details without requiring many page changes. | TODO |
+| 08 | Customer & Ticket Context Preview Show compact authorized customer identity and ticket details without requiring many page changes. | EXISTS (part) — details: the tender, its ticket's lines / tenders / tips |
 | 09 | Payment Method Explanation Separate tender type from capture channel, so Clover Compact and Tap to Pay do not appear to be different financial tender currencies. | TODO |
 | 10 | Export Scope & Privacy Preview For existing exports, display selected dates/filters, records and role-based masking before the user downloads. | TODO |
-| 11 | Localized Empty and Error States Add clear English/Vietnamese text for no transactions, no matches, unavailable provider status and retry; never fabricate $0.00. | TODO |
-| 12 | Reconciliation Shortcut Open verified related settlement or deposit details without inventing a connection from matching amounts. | TODO |
+| 11 | Localized Empty and Error States Add clear English/Vietnamese text for no transactions, no matches, unavailable provider status and retry; never fabricate $0.00. | EXISTS — EN/VI empty / error states behind t() |
+| 12 | Reconciliation Shortcut Open verified related settlement or deposit details without inventing a connection from matching amounts. | EXISTS (part) — the settlement is shown only when linked |
 | 13 | Transaction Trend Mini-Summary Optional small period comparison if data exists. Keep compact and never displace main ledger or KPIs. | TODO |
 | 14 | Search Result Type Indicators Label matched source as Ticket, Payment, Customer or Refund so staff can distinguish similar identifiers. Never enable unapproved money movement, alter revenue calculation rules, or remove e | TODO |
 
@@ -1559,15 +1559,15 @@ Decisions:
 | 01 | Technician Earnings Overlay Clickable allocated/pending/paid details tied to tickets and approved paycheck records. | TODO |
 | 02 | Tip Split Preview Before confirming an authorized split, display exact cents per technician and rounding remainder. | TODO |
 | 03 | Duplicate Tip Warning Flag same event/transaction processed twice without silently deleting financial history. | TODO |
-| 04 | Cash Tip Source Labels Distinguish drawer-collected cash from cash handed directly to technician. | TODO |
+| 04 | Cash Tip Source Labels Distinguish drawer-collected cash from cash handed directly to technician. | EXISTS (part) — the tips summary separates card and cash tips (Team → Tips; Reports tips) |
 | 05 | Refund Impact Preview Explain whether a reversal affects collected total, allocation and payable. | TODO |
 | 06 | Tip Discrepancy Inbox Queue evidence-based mismatches for managers; no automatic ledger edit. | TODO |
-| 07 | Smart Search Shortcuts Locate tip via ticket, phone, technician or payment ID with exact matches first. | TODO |
+| 07 | Smart Search Shortcuts Locate tip via ticket, phone, technician or payment ID with exact matches first. | BUILT (part) — Team → Tips: find a technician by name (accent-free) in the period's full list (tips-search); ticket / phone / payment search not built |
 | 08 | One-Tap History Open complete transaction audit and payout chronology inside an accessible panel. | TODO |
-| 09 | Time-Basis Badges Explain Tip Collected Date vs Allocation/Payout Date to prevent misleading comparisons. | TODO |
+| 09 | Time-Basis Badges Explain Tip Collected Date vs Allocation/Payout Date to prevent misleading comparisons. | BUILT — Team → Tips states its time basis: the day the payment was taken (salon day), not allocation / payout day (tips-basis); test |
 | 10 | Source-of-Truth Labels Display when values are verified, pending sync, adjusted or unavailable. | TODO |
 | 11 | Verified CSV/PDF Exports Use ledger-backed filtered result sets and protect spreadsheet formula injection. | TODO |
-| 12 | Regression Snapshot Tests Guard module count, chart/cards/table balance and important workflows across deployments. Prioritize recommendations 1–6 for tip accuracy and staff trust; 7–12 for usability and operational dura | TODO |
+| 12 | Regression Snapshot Tests Guard module count, chart/cards/table balance and important workflows across deployments. Prioritize recommendations 1–6 for tip accuracy and staff trust; 7–12 for usability and operational dura | EXISTS — module registry + harness screenshots |
 
 ## Rebooking Opportunities (10)
 
@@ -1811,15 +1811,15 @@ Decisions:
 | 01 | Layout Self-Check & Screen Health Test current viewport, overflow and six tabs without mutating records. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Moderation Queue SLA View Show verified age and backlog of submitted drafts; no auto-approval. | TODO |
 | 03 | Safe Draft Completeness Assistant Warn on missing context/evidence and suggest neutral wording. | TODO |
-| 04 | Balanced desktop wireframe This drawing shows the intended hierarchy and six equal-access tabs, not a replacement app or fabricated advisory records. The original POS shell remains the source of truth. AI POWERSALON / SE | TODO |
+| 04 | Balanced desktop wireframe This drawing shows the intended hierarchy and six equal-access tabs, not a replacement app or fabricated advisory records. The original POS shell remains the source of truth. AI POWERSALON / SE | NOISE — wireframe drawing |
 | 05 | Private Evidence Access Timeline Authorized auditable log of who viewed each restricted attachment. | TODO |
 | 06 | Corrections & Retractions Inbox Track material published changes, follower notification delivery and appeals. | TODO |
 | 07 | Region Alert Preferences Preview Show what subscribers would receive without exposing source cases. | TODO |
 | 08 | Permission-Aware Role Preview Let owner inspect actions available by role, with no privilege escalation. | TODO |
 | 09 | Safe Export / Developer Incident Report Export sanitized operational diagnostics, never private PII by default. | TODO |
-| 14 | CSS implementation reference - foundation Apply these ideas to the existing design system. The selectors are illustrative. Do not introduce a new shell or replace correct production components; reuse existing layout toke | TODO |
+| 14 | CSS implementation reference - foundation Apply these ideas to the existing design system. The selectors are illustrative. Do not introduce a new shell or replace correct production components; reuse existing layout toke | NOISE — CSS reference |
 | 19 | Verified empty states, UI errors and loading CONDITION RECOMMENDED MESSAGE Salon community disabled "Safety Community is disabled for this salon. An authorized owner can enable it in Community Settings." Enabled, query s | TODO |
-| 20 | Ten additional improvements - never replacements # Proposed enhancement Guardrail / benefit | TODO |
+| 20 | Ten additional improvements - never replacements # Proposed enhancement Guardrail / benefit | NOISE — heading |
 | 24 | Definition of done and original guide appendix • Original Safety Community route and all six tabs remain present, correctly permissioned and functional. • At SUNMI landscape 1920 × 1080 and normal browser zoom, app shell | NOISE — main-spec acceptance / instruction text picked up by the parser, not an optional extra |
 
 ## Duplicate Review (14)
@@ -1923,18 +1923,18 @@ Decisions:
 | 01 | One-click Gift Cards Layout Health Checker Validate actual visible bounds for the five KPIs, toolbar, pagination, primary actions, overlays, and EN/VN labels; report overflow, clipping and undersized targets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Display profile inspector Show detected CSS viewport, pixel ratio, browser, orientation, safe viewport height and last test. Treat profile as diagnostic, not a forced browser zoom setting. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | One-click Gift Card Ledger Accuracy Checker Reconcile each sample card and tenant totals across ledger, checkout and KPI aggregate; show exact source IDs behind anomalies. | TODO |
-| 04 | Quick customer-card finder From Checkout or Customer Profile, open a scoped, masked card picker with purchaser/recipient labels, without requiring staff to leave their active sale. | TODO |
+| 04 | Quick customer-card finder From Checkout or Customer Profile, open a scoped, masked card picker with purchaser/recipient labels, without requiring staff to leave their active sale. | EXISTS (part) — universal masked search (card ref / last 4, purchaser or recipient, phone, email); exact code only via protected Check Balance |
 | 05 | Live status and recency indicators Show when balance was verified, source freshness and pending issuance/reversal states; do not confuse stale cached data with authorized spendable value. | TODO |
 | 06 | Barcode/scanner assistance Use the existing input/scanner interface if supported; keep a protected manual lookup fallback, with no secret exposure in autocomplete. | TODO |
-| 07 | Guided gift card issuance overlay Create a concise, touch-friendly workflow with input validation and a clear payment-confirmation step. Make primary buttons consistently sized. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 A | TODO |
+| 07 | Guided gift card issuance overlay Create a concise, touch-friendly workflow with input validation and a clear payment-confirmation step. Make primary buttons consistently sized. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 A | EXISTS (part) — Issue Gift Card is payment-first: it opens a ticket Checkout pays; the card holds value only after payment (POSGiftCardsScreen) |
 | 08 | Duplicate issuance and double-spend alerts Detect repeated payment references, identical idempotency keys, overlapping redemption requests and mismatched gift-card activation events. | TODO |
 | 09 | Gift-card liability by branch report Show funded liability, outstanding balances, issued value and redeemed value by authorized branch and as-of date, respecting existing cross-branch rules. | TODO |
 | 10 | Refund/reversal preview Before permitted corrections, display current balance, proposed delta, resulting balance, linked ticket and an explicit approver/audit reason. | TODO |
-| 11 | Gift-card eligibility explanation Explain active/void/redeemed/pending/locked status, allowed locations and permitted spend rather than showing a vague disabled button. | TODO |
+| 11 | Gift-card eligibility explanation Explain active/void/redeemed/pending/locked status, allowed locations and permitted spend rather than showing a vague disabled button. | EXISTS (part) — status tabs All / Active / Redeemed / Void; Void is a manager's reasoned, step-up, ledgered action |
 | 12 | Reconciliation to daily closeout Compare gift-card issuance tenders, redemption amounts, receipt totals and outstanding liability movements to daily register closeout. | TODO |
 | 13 | Secure digital delivery monitoring If delivery by SMS/email exists, show sent/failed status and consent eligibility without revealing complete redeemable secrets in routine messages or audit logs. | TODO |
 | 14 | Controlled large-tenant performance Server-side pagination/indexes, stable sorting, request cancellation and no cross-tenant data fetching for large card ledgers. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
-| 15 | Feature preservation audit before deployment Automatically assert original component registry, routes, critical actions and API behaviors remain present across old and new builds. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 | TODO |
+| 15 | Feature preservation audit before deployment Automatically assert original component registry, routes, critical actions and API behaviors remain present across old and new builds. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 | EXISTS — module registry + preservation matrix gate |
 
 ## ADD-ONS MANAGEMENT (16)
 
@@ -1967,12 +1967,12 @@ Decisions:
 | 04 | Duplicate Redemption Guard Detect duplicate payment callbacks, reused idempotency keys and suspicious near-simultaneous code applications. | TODO |
 | 05 | Expiration / Limit Alerts Warnings for soon-to-expire offers, exhausted usage limits, paused codes and stale coupons. | TODO |
 | 06 | Full Benefit Stacking Inspector Show exactly why coupons, deals, membership, loyalty and gift-card tender do or do not combine. | TODO |
-| 07 | Quick Customer Eligibility Preview Read-only selection of customer, service and branch; reason codes without decrementing coupon limits. | TODO |
-| 08 | Change History & Version Compare Side-by-side before/after offer terms, actor, approver and audit links; protect financial history. ALL ARE OPTIONAL, NONE REPLACE CORE MODULES Document which enhancements already exist. U | TODO |
-| 09 | Responsive Card Consistency Centralized UI card sizing/gap tokens to keep all marketing pages proportional at 1920, 1536 and 1366 widths. | TODO |
+| 07 | Quick Customer Eligibility Preview Read-only selection of customer, service and branch; reason codes without decrementing coupon limits. | EXISTS (part) — Eligibility Checks on Promotions / Coupons (read-only customer · service check with reasons) |
+| 08 | Change History & Version Compare Side-by-side before/after offer terms, actor, approver and audit links; protect financial history. ALL ARE OPTIONAL, NONE REPLACE CORE MODULES Document which enhancements already exist. U | EXISTS (part) — Activity with before → after and version on each offer |
+| 09 | Responsive Card Consistency Centralized UI card sizing/gap tokens to keep all marketing pages proportional at 1920, 1536 and 1366 widths. | NOISE — UI sizing-token guidance |
 | 10 | Touch Usability Audit Automated hit-target size, focus, labels, modal Close visibility and EN/VN overflow checks. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 11 | Campaign Cost Protection Pre-send authorization, audience consent, estimated SMS/email cost, duplicate campaign-send prevention. | TODO |
-| 12 | Promo-to-Checkout Trace From a promotion, inspect authorized ticket, applied discount, payment and reversal evidence. | TODO |
+| 12 | Promo-to-Checkout Trace From a promotion, inspect authorized ticket, applied discount, payment and reversal evidence. | EXISTS — redemption rows open the customer and the ticket (receipt in Transactions / Checkout) (shared ticketRoute) |
 | 13 | Source-Based ROI Explanation Separate associated revenue, discount costs, spend and unverified incremental lift. | TODO |
 | 14 | Advanced Branch Scorecard For authorized multi-branch owners, comparable offer uptake, applied discounts and actual associated revenue. | TODO |
 | 15 | Accessible Export & Audit Scoped CSV/PDF export with masked PII, date basis, filters and export activity log. | TODO |
@@ -2165,7 +2165,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Logging Accuracy & Source Coverage Checker Compare registered sources and observed event producers to find silent gaps, stuck workers, or missing device event subscriptions. | TODO |
+| 01 | Logging Accuracy & Source Coverage Checker Compare registered sources and observed event producers to find silent gaps, stuck workers, or missing device event subscriptions. | EXISTS (part) — five verified cards over the same filters (events, warnings, errors, device, integration), "—" when unreadable |
 | 02 | Clover Compact / Fiserv Trace Viewer Connect terminal events, command timestamps, provider responses and status inquiry through correlation IDs without logging card data. | TODO |
 | 03 | One-Click Device Connection Timeline Show registered → connected → disconnected → reconnecting → recovered history with timestamps and provenance. | TODO |
 | 04 | Error Triage & Assignment Create an authorized issue link to a log event with owner, priority, follow-up, status and audit; reuse support/incident engine. | TODO |
@@ -2174,10 +2174,10 @@ Decisions:
 | 07 | Read-only Screen Fit Checker At 100% zoom check viewport dimensions, clipped text/actions, scroll regions, focus and mobile keyboard overlays. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 08 | Export Sanitized Logs Role-gated CSV/JSON export with redaction and a fixed date range; evidence of exporter audit. | TODO |
 | 09 | Worker Delay & Retry Visibility Show actual retry queue lag, attempt numbers and dead-letter status without creating a second retry engine. | TODO |
-| 10 | Cross-module Drill-through Deep link between Device Logs, Device Health, Payment Terminals, Device Assignments and Payment Gateway with stable scopes. | TODO |
+| 10 | Cross-module Drill-through Deep link between Device Logs, Device Health, Payment Terminals, Device Assignments and Payment Gateway with stable scopes. | EXISTS (part) — the logs page links to Device Health (TenantLogsScreen) |
 | 11 | Device Firmware & Version Awareness Expose registered app/OS versions and supported firmware warnings only where the actual device inventory provides them. | TODO |
 | 12 | Customer-impact Context Show if a device outage affects check-in, receipts or checkout; never infer customer identity from public hardware logs. SUNMI FLEX 3 27-inch / 1920x1080 / Front Desk POS / 100% zoom 18 AI POWERSA | TODO |
-| 17 | Additional operational recommendations These additions should improve an existing module, never replace it. First confirm whether they already exist in Device Health, Payment Gateway, Notifications or the Control Plane. | TODO |
+| 17 | Additional operational recommendations These additions should improve an existing module, never replace it. First confirm whether they already exist in Device Health, Payment Gateway, Notifications or the Control Plane. | NOISE — heading |
 
 ## Email Management  Delivery Center (16)
 
@@ -2264,19 +2264,19 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Display profile registry Persist tested viewport rules for SUNMI 27-inch, iMac desktop and common smaller screens. | TODO |
-| 02 | Balanced module sizing tokens Centralize card min/max widths, rows, padding, gap and font sizing for consistent pages. | TODO |
-| 03 | Bilingual visual screenshot CI Capture every core page in both languages with busy-state fixtures and compare against approved baselines. | TODO |
-| 04 | Translation coverage dashboard Show missing keys, hard-coded strings, untranslated errors and glossary-review status. | TODO |
-| 05 | No-removal preservation manifest Record existing modules, accessible routes, actions and permissions before layout changes. | TODO |
+| 01 | Display profile registry Persist tested viewport rules for SUNMI 27-inch, iMac desktop and common smaller screens. | EXISTS — display profiles decided from the live viewport (shell/displayProfile.ts densityFor) and certified sizes in the harness |
+| 02 | Balanced module sizing tokens Centralize card min/max widths, rows, padding, gap and font sizing for consistent pages. | NOISE — sizing-token guidance |
+| 03 | Bilingual visual screenshot CI Capture every core page in both languages with busy-state fixtures and compare against approved baselines. | EXISTS — every registered page captured in English and Vietnamese at certified + responsive sizes (pos-vi-one-screen, 147 pages) |
+| 04 | Translation coverage dashboard Show missing keys, hard-coded strings, untranslated errors and glossary-review status. | EXISTS (part) — gates check-i18n (Vietnamese complete, placeholders match), check-pos-i18n (no hard-coded JSX text) and the VI draft review sheet (docs/handoff/VI_DRAFT_REVIEW.md) |
+| 05 | No-removal preservation manifest Record existing modules, accessible routes, actions and permissions before layout changes. | EXISTS — module registry + preservation matrix |
 | 06 | Automatic overflow inspector Highlight clipping, outer scroll, off-screen actions, and keyboard overlap with exact DOM locations. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 07 | Vietnamese typography review Use approved short labels and complete diacritics support; do not sacrifice legibility. | TODO |
+| 07 | Vietnamese typography review Use approved short labels and complete diacritics support; do not sacrifice legibility. | EXISTS (part) — Vietnamese drafts reviewed against English (batch 9 pass) and marked for Kevin's approval |
 | 08 | Safe language-switch checkpoint Assert no payment/booking/queue side effects or duplicate realtime subscriptions. | TODO |
-| 09 | Header language-selector usability One consistent English / Tiếng Việt switch across all tenant POS screens. | TODO |
+| 09 | Header language-selector usability One consistent English / Tiếng Việt switch across all tenant POS screens. | EXISTS — one English / Tiếng Việt switch in the POS header |
 | 10 | Touch-first adaptive forms Sticky actions, field focus recovery and Android keyboard-aware overlays. | TODO |
 | 11 | Tenant preference integrity Test persistence, tenant separation, per-user overrides and English fallback. | TODO |
-| 12 | Rollback-ready release gate Block deployment on lost modules, state regressions or untranslated critical payment warnings. SUNMI FLEX 3 27-INCH / EN / VI TENANT POS / ORIGINAL MANDATE APPENDED IN FULL 17 AI POWERSALON /  | TODO |
-| 29 | Core POS Action Terminology Use consistent initial translations and refine them only through one shared glossary. English Vietnamese Save Lưu Cancel Hủy Close Đóng | TODO |
+| 12 | Rollback-ready release gate Block deployment on lost modules, state regressions or untranslated critical payment warnings. SUNMI FLEX 3 27-INCH / EN / VI TENANT POS / ORIGINAL MANDATE APPENDED IN FULL 17 AI POWERSALON /  | EXISTS — gates block lost modules (registry) and untranslated / hard-coded strings |
+| 29 | Core POS Action Terminology Use consistent initial translations and refine them only through one shared glossary. English Vietnamese Save Lưu Cancel Hủy Close Đóng | NOISE — terminology process |
 
 ## Finish the Five Unfinished Features (16)
 
