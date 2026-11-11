@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 78 (incl. part) |
-| EXISTS (opened and named) | 680 (incl. part) |
+| EXISTS (opened and named) | 684 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 417 |
-| TODO | 639 |
+| TODO | 635 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -1662,18 +1662,18 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Scheduling Accuracy Health Checker: detailed source-of-truth reconciliation, exact cause, time and remediation. R02 “Why this opening?” explainer: service/skill, shift, break, hold and duration facts for every  | TODO |
+| 01 | One-Click Scheduling Accuracy Health Checker: detailed source-of-truth reconciliation, exact cause, time and remediation. R02 “Why this opening?” explainer: service/skill, shift, break, hold and duration facts for every  | EXISTS — Check Scheduling System from the optimizer header (POSAISchedulingOptimizerScreen header: Check Scheduling System) |
 | 03 | Before/After Impact Preview: proposed move, affected bookings/technicians, capacity and approval status. | TODO |
 | 04 | Queue-Aware Gap Filling: link recommendations to actual customer waiting and approved queue fairness logic. | TODO |
 | 05 | Schedule Freshness Indicator: source timestamps, delayed events, stale recommendation badge and recheck action. | TODO |
 | 06 | Service Duration Confidence: show observed sample size and variability before managers adjust catalog timing. | TODO |
 | 07 | Capacity Risk Heatmap: optional per-hour skill demand / safe staffing summary; never replace the canonical booking board. Rollout guardrails for all recommendations • Every new module is additive and optional. Keep origi | TODO |
-| 08 | Manager Review Inbox: approve/reject eligible proposals with a reason and immutable audit trail. | TODO |
+| 08 | Manager Review Inbox: approve/reject eligible proposals with a reason and immutable audit trail. | EXISTS — staff review every recommendation; confirmed appointments also need customer approval; History = append-only event trail (Recommendations + Customer approvals + History tabs) |
 | 09 | Multi-Branch Capacity Comparison: authorized owner sees branch-specific demand without tenant leakage. | EXISTS (isolation part) — enforced in CI: check:tenant (every query keyed by the session tenant), src/common/idor-route-coverage + scripts/idor-routes.mjs (another salon's id → not found, every by-id route), role matrix (apps/api/scripts/role-matrix.mjs), check:audit-writers; any page-specific remainder of the row is not built |
 | 10 | 200+ Technician Roster Navigator: scoped search, skill filters, groups and bounded virtualization; retain 12-tech Booking paging. | TODO |
 | 11 | What Changed? Activity Timeline: booking/shift/queue events that invalidate earlier AI suggestions. | TODO |
 | 12 | Protected Saved Filters: authorized per-user preferred views, date filters and branch selection. | BUILT — POS saved views on the recommendation queue (components/SavedViews) |
-| 13 | Read-Only Dry Run Mode: show recommendations and metrics without booking edits or billing actions outside current plan policy. | TODO |
+| 13 | Read-Only Dry Run Mode: show recommendations and metrics without booking edits or billing actions outside current plan policy. | EXISTS — engine only proposes; every change is applied by the server through the booking service after review — no browser edits (POSAISchedulingOptimizerScreen header) |
 | 14 | Visual Layout Health Check: capture viewport metrics and detect clipped buttons, unequal KPI heights and empty oversized panels. PROTECTED CODE BOUNDARY: Do not modify, refactor, migrate, reformat, regenerate or delete a | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## Appointment Reminders (4)
@@ -1966,7 +1966,7 @@ Decisions:
 | 02 | Unified Offers Relationship Viewer Read-only map of coupon, promotion and deal references for vishal and other records, with same-benefit detection. | TODO |
 | 03 | Discount Exposure Preview Before activation, estimate maximum configured liability with eligible-transaction assumptions and clearly labeled uncertainty. | TODO |
 | 04 | Duplicate Redemption Guard Detect duplicate payment callbacks, reused idempotency keys and suspicious near-simultaneous code applications. | TODO |
-| 05 | Expiration / Limit Alerts Warnings for soon-to-expire offers, exhausted usage limits, paused codes and stale coupons. | TODO |
+| 05 | Expiration / Limit Alerts Warnings for soon-to-expire offers, exhausted usage limits, paused codes and stale coupons. | EXISTS — Expiring KPI + paused/exhausted status chips on Discounts (kpi-expiring, status filter) |
 | 06 | Full Benefit Stacking Inspector Show exactly why coupons, deals, membership, loyalty and gift-card tender do or do not combine. | TODO |
 | 07 | Quick Customer Eligibility Preview Read-only selection of customer, service and branch; reason codes without decrementing coupon limits. | EXISTS (part) — Eligibility Checks on Promotions / Coupons (read-only customer · service check with reasons) |
 | 08 | Change History & Version Compare Side-by-side before/after offer terms, actor, approver and audit links; protect financial history. ALL ARE OPTIONAL, NONE REPLACE CORE MODULES Document which enhancements already exist. U | EXISTS (part) — Activity with before → after and version on each offer |
