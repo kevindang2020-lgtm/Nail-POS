@@ -473,6 +473,13 @@ view, delivery eligibility, customer cross-link. Discounts — BUILT ticket dril
 cards, OCR review-before-post, EN/VI. Density rows that ask for an optional setting — BUILT by Compact spacing.
 Totals now: 40 built · 129 exists · 18 noise · 1,631 to do (of 1,818).
 
+**Extras backlog, Nov 11 2026 (Kevin: "continuing")** — page by page, every row opened against the code:
+BUILT Customer Notes quick chips (Shape / Length / Finish) + unsaved-edits guard; Service Categories chart → directory
+drill-down; AI Branch Comparison metric definitions + "small sample" marker (< 5 bookings); AI Forecasting tab kept in
+the address. ~150 rows confirmed EXISTS with the component / test named, ~180 rows marked NOISE (instruction, plan,
+QA-matrix or audit-checklist text the parser picked up — each says why); the four Receipt Devices printer rows stay TODO,
+blocked by the no-receipt-printer-registry rule. Totals after this round are in EXTRAS_BACKLOG.md's Progress table.
+
 ## Decisions for Kevin (batch 9)
 
 1. **Email Report / Schedule Report** (Daily Summary) stay labelled "not connected" — wiring them needs a delivery
