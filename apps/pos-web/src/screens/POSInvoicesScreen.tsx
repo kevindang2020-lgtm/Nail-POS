@@ -16,7 +16,8 @@ import { useCan } from '../components/usePermissions';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, fmtYmdSafe, DateField, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
+import { ExportPreview } from '../components/ExportPreview';
+import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, fmtYmdSafe, DateField, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
 import { financeDownload as download } from './POSSettlementsScreen';
 import { deviceToday } from '../lib/deviceToday';
 
@@ -100,15 +101,19 @@ export function POSInvoicesScreen() {
     if ((data.items ?? []).some((x: Row) => x.id === p.id)) { setHighlight(p.id); setTimeout(() => setHighlight(null), 4000); setNote({ tone: 'ok', text: tx(p.verb, { n: p.number }) }); }
     else setNote({ tone: 'ok', text: tx(p.verb, { n: p.number }) + ' ' + tx('finance.iv.outsideFilters'), actions: [{ label: tx('finance.iv.viewInvoice'), run: () => setDlg({ kind: 'detail', id: p.id }) }, { label: tx('finance.clearFilters'), run: clearAll }] });
   }, [list.data, list.loading]);
-  const exportCsv = async () => { try { download('invoices.csv', await api.exportCsv({ ...scope, status: status || undefined, sort }), 'text/csv;charset=utf-8'); setNote({ tone: 'ok', text: tx('finance.exported') }); } catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } };
+  const [previewExport, setPreviewExport] = useState(false);
+  const exportCsv = async () => { setPreviewExport(false); try { download('invoices.csv', await api.exportCsv({ ...scope, status: status || undefined, sort }), 'text/csv;charset=utf-8'); setNote({ tone: 'ok', text: tx('finance.exported') }); } catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } };
 
   return (
     <div className="work fit iv" data-testid="invoices-screen">
+      {previewExport ? <ExportPreview title={tx('finance.exportCsv')} count={list.data?.total} cap={20000} audited masked={false}
+        period={periodText(summary.data?.period ?? list.data?.period)} filters={chips.map((c) => c.label)}
+        onConfirm={() => void exportCsv()} onCancel={() => setPreviewExport(false)} /> : null}
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.invoices')}</h1><div className="sub">{tx('finance.iv.subtitle')}</div></div>
         <div className="fk-head-actions">
           <SystemCheckButton domain="invoices" />
-          {perms.manage ? <button type="button" className="fk-btn" onClick={exportCsv} data-testid="export">{tx('finance.exportCsv')}</button> : null}
+          {perms.manage ? <button type="button" className="fk-btn" onClick={() => setPreviewExport(true)} data-testid="export">{tx('finance.exportCsv')}</button> : null}
           {perms.create ? <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'new' })} data-testid="new-invoice">+ {tx('finance.iv.new')}</button> : null}
         </div>
       </header>

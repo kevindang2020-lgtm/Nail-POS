@@ -179,4 +179,16 @@ describe('POSInvoicesScreen', () => {
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ customerId: 'c-1', amountMin: 4500, amountMax: 4500, dateField: 'issued', preset: 'custom' })));
     expect(screen.getByTestId('save-draft')).not.toBeDisabled();
   });
+  it('Export and Audit Protection: a scoped preview (count, period, filters, audit note) comes before the CSV', async () => {
+    api.exportCsv.mockResolvedValue('a\n');
+    const url = globalThis.URL as any; url.createObjectURL = vi.fn(() => 'blob:x'); url.revokeObjectURL = vi.fn();
+    mount();
+    fireEvent.click(await screen.findByTestId('export'));
+    expect(screen.getByTestId('export-preview-scope')).toBeInTheDocument();
+    expect(screen.getByTestId('export-preview-privacy')).toHaveTextContent(/audit log/);
+    expect(screen.getByTestId('export-preview-privacy')).not.toHaveTextContent(/masked/);
+    expect(api.exportCsv).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('export-preview-go'));
+    await waitFor(() => expect(api.exportCsv).toHaveBeenCalled());
+  });
 });

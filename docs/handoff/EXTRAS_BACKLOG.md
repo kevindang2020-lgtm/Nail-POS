@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 71 (incl. part) |
+| BUILT this arc | 72 (incl. part) |
 | EXISTS (opened and named) | 654 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 389 |
-| TODO | 704 |
+| TODO | 703 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -53,7 +53,7 @@ Decisions:
 | 07 | Readable Receivable Explanations Explain why an invoice is Outstanding, Partially Paid, Paid, Overdue or Void by linking to posted payments and credits. Owner-requested specification • November 2026 Addendum page 14 AI P | BUILT — invoice detail "why this status" line from its own totals, payments, credits and due date (explainStatus, status-why); extras test 1/1 + screen test |
 | 08 | Smart Duplicate Invoice Warning Warn on suspicious duplicate customer, amount, period and source transaction; never auto-delete or merge records. | BUILT — new-invoice form warns when the same customer has a non-void invoice for the exact total issued in the last 60 days (dup-warning); never blocks/merges; screen test |
 | 09 | Document Delivery Eligibility Checker Check authorized email/phone, tenant configuration, sender readiness and proper consent before enabling Send/Resend. | EXISTS — Email/Text buttons enabled only when the sender is connected, the customer has the destination and consent (delivery.canSend), and the user may send; drafts must be issued first |
-| 10 | Export and Audit Protection Provide a visibly scoped export preview, role checks, safe spreadsheet escaping and an audit record; preserve existing export behavior. | TODO |
+| 10 | Export and Audit Protection Provide a visibly scoped export preview, role checks, safe spreadsheet escaping and an audit record; preserve existing export behavior. | BUILT — export preview with count, period, filters and the audit note before the CSV; spreadsheet formulas neutralised server-side (ExportPreview; POSInvoicesScreen.test) |
 | 11 | Payment-to-Invoice Reconciliation Detect unlinked posted payments, duplicate references and balance mismatches; suggest investigation, never change financial records automatically. | TODO |
 | 12 | No-Data and Failure States Use clear zero-invoice, no-search-results, failed-API, offline and unsupported-integration states instead of empty white panels. | TODO |
 | 13 | Customer Profile Cross-Link A receptionist can click the customer name to open the authorized Customer Profile, then return to the same invoice search/page context. | EXISTS — invoice detail Bill-to → Open customer (open-profile) to Customer Profiles; profile → invoices arrives with ?customerId= filter |
