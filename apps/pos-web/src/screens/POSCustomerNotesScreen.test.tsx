@@ -3,7 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const { searchMock, getMock, setMock } = vi.hoisted(() => ({ searchMock: vi.fn(), getMock: vi.fn(), setMock: vi.fn() }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: searchMock, getNotes: getMock, setNotes: setMock } }));
 import { POSCustomerNotesScreen } from './POSCustomerNotesScreen';
-beforeEach(() => { searchMock.mockReset(); getMock.mockReset(); setMock.mockReset(); });
+beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ } searchMock.mockReset(); getMock.mockReset(); setMock.mockReset(); });
 
 const cust = { customerId: 'c1', fullName: 'Ana Rivera', phone: '555-1234', visitsCount: 7 };
 const notes = { salonNotes: 'Prefers quiet', allergyNotes: 'Latex', preferredStyle: 'French', preferredTechnician: 'Ben', servicePreferences: 'Gel', warnings: 'Sensitive skin', customerVisible: false };

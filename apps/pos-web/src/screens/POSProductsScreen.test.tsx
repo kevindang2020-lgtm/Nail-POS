@@ -28,4 +28,14 @@ describe('POSProductsScreen', () => {
     expect(await screen.findByText(/zzz/, {}, { timeout: 2000 })).toBeInTheDocument();
     expect(mocks.screen.products).toHaveBeenCalledWith(expect.objectContaining({ search: 'zzz', page: 1 }));
   });
+  it('Metrics freshness marker: stamped after a successful read; a failed refresh says the numbers are from the last good read', async () => {
+    render(<MemoryRouter><POSProductsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('metrics-fresh')).toHaveTextContent(/Numbers updated/);
+    const ok = mocks.screen.metrics;
+    mocks.screen.metrics = async () => { throw new Error('down'); };
+    try {
+      fireEvent.click(screen.getByTestId('refresh'));
+      expect(await screen.findByText(/Refresh failed — the last good numbers are from/)).toBeInTheDocument();
+    } finally { mocks.screen.metrics = ok; }
+  });
 });

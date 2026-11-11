@@ -19,6 +19,7 @@ const detail = (review = 'needs_review') => ({ customer: { id: 'c1', name: 'Lan 
     { category: 'general', text: 'Likes quiet chairs', hash: 'b'.repeat(64), at: '2026-11-08T15:00:00Z', ticketId: null, review: 'not_required', reviewedAt: null, safety: false }],
   history: review === 'reviewed' ? [{ category: 'allergy', decision: 'confirmed', reason: null, at: '2026-11-09T10:00:00Z', reviewer: 'Owner Kim', current: true }] : [] });
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ }
   vi.clearAllMocks();
   cust.quickSearch.mockResolvedValue({ items: [] });
   cn.summary.mockResolvedValue({ asOf: '', cards: { customersWithNotes: 5, safetyWarnings: 2, preferencesRecorded: 3, needsReview: 4 }, needsCorrection: 1, entries: 9, lastUpdatedAt: null, definitions: {}, scope: { label: 'tenant_wide', confined: false } });
@@ -78,5 +79,17 @@ describe('Customer Notes workspace', () => {
     fireEvent.click(within(screen.getByTestId('cnx-editor')).getAllByRole('button', { name: 'Close' }).slice(-1)[0]);
     fireEvent.click(screen.getByTestId('cnx-check'));
     expect(await screen.findByTestId('cnx-chk-corrections_open')).toHaveTextContent(/Notes marked for correction/);
+  });
+  it('Persistent search state: search and filters come back after leaving and reopening the screen', async () => {
+    const v = render(<POSCustomerNotesScreen />);
+    await screen.findAllByTestId('cnx-row');
+    fireEvent.change(screen.getByTestId('cnx-search'), { target: { value: 'Lan' } });
+    fireEvent.click(screen.getByTestId('cnx-search-btn'));
+    fireEvent.change(screen.getByTestId('cnx-review'), { target: { value: 'needs_correction' } });
+    await waitFor(() => expect(cn.list).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Lan', review: 'needs_correction' })));
+    v.unmount(); cn.list.mockClear();
+    render(<POSCustomerNotesScreen />);
+    await waitFor(() => expect(cn.list).toHaveBeenCalledWith(expect.objectContaining({ q: 'Lan', review: 'needs_correction' })));
+    expect((screen.getByTestId('cnx-search') as HTMLInputElement).value).toBe('Lan');
   });
 });

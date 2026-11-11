@@ -114,6 +114,14 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
   );
 }
 
+const NOTES_QUERY_KEY = 'aps.cnx.query';
+const NOTES_QUERY_DEFAULT: CustomerNotesQuery = { page: 1, pageSize: 25, sort: 'newest' };
+export function readNotesQuery(): CustomerNotesQuery {
+  try { const raw = sessionStorage.getItem(NOTES_QUERY_KEY); if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return { ...NOTES_QUERY_DEFAULT, ...v }; } } catch { /* unavailable storage → defaults */ }
+  return { ...NOTES_QUERY_DEFAULT };
+}
+function writeNotesQuery(q: CustomerNotesQuery) { try { sessionStorage.setItem(NOTES_QUERY_KEY, JSON.stringify(q)); } catch { /* best effort */ } }
+
 export function POSCustomerNotesScreen() {
   // ── the original customer search (header) ──
   const [query, setQuery] = useState('');
@@ -136,8 +144,11 @@ export function POSCustomerNotesScreen() {
 
   // ── the workspace ──
   const [sum, setSum] = useState<CnSummaryResponse | null>(null); const [sumErr, setSumErr] = useState<string | null>(null);
-  const [f, setFState] = useState<CustomerNotesQuery>({ page: 1, pageSize: 25, sort: 'newest' });
-  const [draft, setDraft] = useState('');
+  // Persistent search state: the list query (search, filters, sort, page) survives leaving the screen and coming back in
+  // this browser tab (sessionStorage — per device, cleared with the tab; storage failures fall back to the defaults)
+  const [f, setFState] = useState<CustomerNotesQuery>(() => readNotesQuery());
+  const [draft, setDraft] = useState(() => f.q ?? '');
+  useEffect(() => { writeNotesQuery(f); }, [f]);
   const [list, setList] = useState<CnListResponse | null>(null); const [listErr, setListErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<string | null>(null);

@@ -457,4 +457,6 @@ export const INVENTORY_VI = {
   'sup.viewOrder': 'Xem đơn',
   'inv.col.count': 'Số chai',
   'inv.oneOfGroup': 'Áp dụng cho một chai trong nhóm này',
+  'prd.freshAt': 'Số liệu cập nhật {t}', // DRAFT — Kevin reviews
+  'prd.freshStale': 'Làm mới thất bại — số liệu đúng gần nhất lúc {t}', // DRAFT — Kevin reviews
 };

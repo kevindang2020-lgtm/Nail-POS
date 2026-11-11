@@ -19,7 +19,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { inventoryApi } from '../api/inventoryApi';
 import { posProductsApi } from '../api/posProductsApi';
 import { posInventoryScreenApi } from '../api/posInventoryScreenApi';
-import { fmtNumber } from '../i18n/format';
+import { fmtNumber, fmtTime } from '../i18n/format';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
@@ -49,6 +49,9 @@ export function POSProductsScreen() {
   const lookups = useLoad(async () => { const [c, b, v] = await Promise.all([inventoryApi.categories(), inventoryApi.brands(), inventoryApi.vendors()]); return { categories: c?.categories ?? [], brands: b?.brands ?? [], vendors: v?.vendors ?? [] }; }, [tick]);
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const refresh = () => { setTick((t) => t + 1); window.dispatchEvent(new CustomEvent('aps:nav-counts-changed')); };
+  // Metrics freshness marker: stamped only when a metrics read SUCCEEDS; a failed refresh never shows a fresh-looking time
+  const [freshAt, setFreshAt] = useState<Date | null>(null);
+  useEffect(() => { if (metrics.data) setFreshAt(new Date()); }, [metrics.data]);
   const m = metrics.data; const rows: any[] = list.data?.rows ?? [];
   const filtered = !!(q || status || brandId || categoryId || vendorId || period.preset !== 'all' || lifecycle !== 'active');
   const clearAll = () => { setSearch(''); setStatus(''); setBrandId(''); setCategoryId(''); setVendorId(''); setPeriod({ preset: 'all' }); setDateField('created'); setLifecycle('active'); setSort('newest'); };
@@ -92,6 +95,7 @@ export function POSProductsScreen() {
         {note.productId ? <button type="button" className="fk-link" onClick={() => setDetail(note.productId!)} data-testid="note-view">{tx('prd.viewProduct')}</button> : null}
         {note.outside ? <button type="button" className="fk-link" onClick={clearAll} data-testid="note-clear">{tx('finance.clearFilters')}</button> : null}
         <button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      {freshAt ? <div className={'sub prd-fresh' + (metrics.error ? ' warn' : '')} data-testid="metrics-fresh" aria-live="polite">{metrics.error ? tx('prd.freshStale', { t: fmtTime(freshAt) }) : tx('prd.freshAt', { t: fmtTime(freshAt) })}</div> : null}
       <div className="fk-kpis three" data-testid="kpis">
         {metrics.error ? <StateBlock error={metrics.error} onRetry={metrics.reload} /> : <>
           <KpiCard testId="kpi-products" label={tx('pos.products')} loading={!m} value={m ? fmtNumber(m.products) : ''} sub={tx('prd.kpi.productsSub')} onClick={() => { clearAll(); }} />
