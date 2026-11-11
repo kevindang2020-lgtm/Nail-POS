@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 72 (incl. part) |
-| EXISTS (opened and named) | 654 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 389 |
-| TODO | 703 |
+| BUILT this arc | 73 (incl. part) |
+| EXISTS (opened and named) | 670 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 398 |
+| TODO | 677 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -452,12 +452,12 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Request Authorized manager submits positive amount and reason. Server validates and stores pending status. | TODO |
-| 02 | Notify Correct salon Owner App inbox receives durable record; push notification is supplemental and cannot approve. | TODO |
-| 03 | Review Owner sees customer, salon/branch, requester, reason, current points, proposed award, available tokens and token cost. | TODO |
-| 04 | Decision Authenticated authorized owner explicitly Approve or Reject; high-value award reauth if current policy requires. | TODO |
-| 05 | Posting On approval only, verify current policy and funding, atomically/durably post one token debit + one global credit. | TODO |
-| 06 | Confirm Both POS and Owner App show source-backed status, timestamps, transaction references and accurate final balances. Compatibility guard • Preserve existing Owner App account, device authentication, layout standards | TODO |
+| 01 | Request Authorized manager submits positive amount and reason. Server validates and stores pending status. | EXISTS — POST /pos/loyalty/bonus-requests: positive points + reason, server stores a pending loyalty_bonus approval (customers/loyalty/loyalty-bonus.ts) |
+| 02 | Notify Correct salon Owner App inbox receives durable record; push notification is supplemental and cannot approve. | EXISTS — request lands on the salon approvals engine shown in the Owner App Approvals inbox (loyalty-bonus.ts) |
+| 03 | Review Owner sees customer, salon/branch, requester, reason, current points, proposed award, available tokens and token cost. | EXISTS — owner sees server-computed current points, after-approval preview and token cost (loyalty-bonus.ts header) |
+| 04 | Decision Authenticated authorized owner explicitly Approve or Reject; high-value award reauth if current policy requires. | EXISTS — OWNER-only approve/reject (loyalty.bonus.approve), never the requester, one-week expiry |
+| 05 | Posting On approval only, verify current policy and funding, atomically/durably post one token debit + one global credit. | EXISTS — executor runs once; funded bonus = one token debit + one global credit in one transaction (postFundedBonus); too few tokens → nothing moves |
+| 06 | Confirm Both POS and Owner App show source-backed status, timestamps, transaction references and accurate final balances. Compatibility guard • Preserve existing Owner App account, device authentication, layout standards | EXISTS — request status, timestamps and references shown in POS and Owner App; health check approved_bonus_posted_once |
 
 ## AI Command Center (4)
 
@@ -1101,7 +1101,7 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | One-Click Retention Accuracy Health Checker Add a button that verifies cohort definitions, Never Visited separation, last completed visit, days away, KPI counts, and oldest-first sort order. | TODO |
+| 01 | One-Click Retention Accuracy Health Checker Add a button that verifies cohort definitions, Never Visited separation, last completed visit, days away, KPI counts, and oldest-first sort order. | EXISTS — Check Retention System runs read-only checks with overall result (open-health → health-run / health-result) |
 | 02 | Screen Fit & Layout Health Checker Add a development or admin-only diagnostic that flags clipped controls, overlapping text, hidden pagination, and horizontal overflow on the target viewport. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 03 | Bulk SMS Eligibility Checker Before preview/send, list exactly why recipients are excluded: missing phone, invalid phone, no consent, STOP, global SMS disabled, tenant Twilio not configured, or quiet-hours restrictions. | EXISTS — bulk SMS preview lists why each recipient is excluded (consent, opt-out, phone, recently contacted, upcoming booking, never visited) (POSRetentionScreen) |
 | 04 | Safe Cross-Page Selection Review When selecting across pages, provide a compact review summary so staff understand how many recipients are selected, eligible, and excluded before sending. | EXISTS (part) — selection bar with counts: select page / all matching eligible / clear |
@@ -1114,7 +1114,7 @@ Decisions:
 | 11 | Vietnamese copy resilience If POS localization applies, ensure longer Vietnamese labels wrap intentionally and do not break the table header or KPI row. | EXISTS — EN/VI; Vietnamese harness certified |
 | 12 | Accessible comparison text Show status/eligibility with text and icon—not color alone—so staff can understand the outcome quickly. | TODO |
 | 13 | Table personalization only if already supported If column visibility or density controls already exist in the platform, keep them. If not, do not create risky complexity unless necessary. | NOISE — conditional instruction (only if already supported) |
-| 14 | Data freshness hint Show the last updated time or refresh behavior when helpful, especially for campaigns and recently delivered statuses. | TODO |
+| 14 | Data freshness hint Show the last updated time or refresh behavior when helpful, especially for campaigns and recently delivered statuses. | BUILT — Numbers updated {time} after a successful summary; a failed refresh keeps the last good time and says so (retention-fresh; shared FreshnessLine) |
 | 15 | Communication audit shortcut Provide quick access to the audit trail for authorized users when a send, exclusion, or callback status needs investigation. AI POWERSALON / CUSTOMER RETENTION / SUNMI FLEX 3 Claude developer | TODO |
 
 ## Customer Intelligence (22)
@@ -1881,14 +1881,14 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 00 | Evidence map Locate all tip and customer display screens; inspect screenshots, payment flows, source tables, routes, worker states, localization, mobile dependencies and current tests. | TODO |
-| 01 | Compatibility Prove target SUNMI runtime/OS/touch capability and external customer display integration model; do not assume Windows-specific APIs. | TODO |
+| 00 | Evidence map Locate all tip and customer display screens; inspect screenshots, payment flows, source tables, routes, worker states, localization, mobile dependencies and current tests. | NOISE — process step (evidence map) |
+| 01 | Compatibility Prove target SUNMI runtime/OS/touch capability and external customer display integration model; do not assume Windows-specific APIs. | NOISE — process step (compatibility proof) |
 | 02 | Screen fit Implement/adapt responsive POS shell and module layout; preserve global navigation; verify container geometry and zero global x-overflow. | TODO |
 | 03 | Customer UX Equal-size per-technician cards, independent presets/custom, review and fixed confirm actions, 1/2/3+ recipients. | TODO |
 | 04 | Financial safety Validate versioned tip selection, one trusted Checkout amount, Fiserv routing and UNKNOWN recovery without modifying native iPhone code. | TODO |
 | 05 | Ledger and payroll Verify per-recipient payment/card/cash allocation reconciliation, cash already paid, adjustments and reports. | TODO |
 | 06 | Isolation and privacy Backend permission negative tests, display pairing, audit and three-second state reset. | TODO |
-| 07 | Test and rollout Unit + integration + UI viewport + physical device + Fiserv sandbox/UAT; progressive feature-flag release only after P0 gates pass. Blocker handling If SUNMI external display support, Clover Compact prov | TODO |
+| 07 | Test and rollout Unit + integration + UI viewport + physical device + Fiserv sandbox/UAT; progressive feature-flag release only after P0 gates pass. Blocker handling If SUNMI external display support, Clover Compact prov | NOISE — test and rollout instruction |
 
 ## Campaign Builder (7)
 
@@ -2135,13 +2135,13 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 05 | Responsive layout rules and CSS reference Technical design principles • Reuse the current shared React POS shell, design-system components, CSS variables and existing layout primitives before introducing new infrastructu | TODO |
+| 05 | Responsive layout rules and CSS reference Technical design principles • Reuse the current shared React POS shell, design-system components, CSS variables and existing layout primitives before introducing new infrastructu | NOISE — responsive CSS reference text |
 | 08 | Campaign list, filters, calendars and pagination Campaigns panel: keep original interaction • Maintain selected campaign highlighting, campaign names, SMS/email channel badges, status, dates and the original list-to-resu | TODO |
-| 13 | Permissions, localization and 10k-tenant readiness Tenant & financial boundary checks • All list/search/detail/export/AI/health endpoints enforce authenticated tenant and branch scope server-side. Never trust browser-pro | TODO |
+| 13 | Permissions, localization and 10k-tenant readiness Tenant & financial boundary checks • All list/search/detail/export/AI/health endpoints enforce authenticated tenant and branch scope server-side. Never trust browser-pro | NOISE — permissions/localization requirement narrative |
 | 15 | My recommendations: improvements 9-16 # / Recommendation Expected behavior and guardrail 09 / Branch-Aware Date Semantics Date-mode selector with branch timezone, DST handling and clear interpretation of sent vs booked v | TODO |
 | 16 | UX / responsive acceptance matrix: 24 checks Execute these against the actual application and record environment, browser mode, CSS viewport, zoom setting, screenshot/test artifact and result. Testing on an emulator alon | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 17 | Campaign comparisons, owner-authorized multi-branch and trends • Allow selected campaigns to be compared by eligible audience, delivery rate, qualifying bookings, completed visits, associated revenue, actual costs and co | TODO |
-| 20 | Reliability, real-time updates and performance • Subscribe to tenant-scoped delivery/bookings/completion/checkout/refund events using existing WebSocket/SSE where supported; fall back to measured refresh without re-sendi | TODO |
+| 20 | Reliability, real-time updates and performance • Subscribe to tenant-scoped delivery/bookings/completion/checkout/refund events using existing WebSocket/SSE where supported; fall back to measured refresh without re-sendi | NOISE — reliability/performance requirement narrative |
 
 ## Membership Overview (13)
 
@@ -2303,12 +2303,12 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Smart Campaign Health & Delivery Checker Add Check Campaign System. Verify Twilio, Email, campaign scheduling, recipient eligibility, background workers and delivery failures. Explain specifically why Completed may coexi | TODO |
-| 02 | Full Campaign Details & Customer Results Overlay Clicking any campaign, including spring into glow, opens a complete authorized overlay: selected/eligible audiences, message attempts, provider statuses, bookings, actual  | TODO |
-| 03 | AI Campaign Assistant With Approval Allow owners to choose inactive-customer recovery, slow weekdays, new services or repeat visits. Suggest audience/message/budget/schedule and consent exclusions. Staff must approve bef | TODO |
-| 05 | POWERFUL SEARCH: CAMPAIGNS VS RECIPIENTS Search must operate on the correct data domain. A reusable campaign is not itself a customer. Provide clear scopes: All Campaigns, Recipients, Delivery History, Booking Outcomes,  | TODO |
-| 07 | Quick Actions (wrap) DISPLAY RULE An overview must surface every existing area. With shorter usable viewports, keep the primary table scrollable and move secondary detail into explicit expand/tabs/overlays - never silent | TODO |
-| 15 | CONNECTED MODULES AND QUICK ACTIONS Keep the 13 existing Marketing & Growth sidebar modules plus the four dashboard cards and all seven quick actions. Use existing routes and services, not new disconnected duplicates. Mo | TODO |
+| 01 | Smart Campaign Health & Delivery Checker Add Check Campaign System. Verify Twilio, Email, campaign scheduling, recipient eligibility, background workers and delivery failures. Explain specifically why Completed may coexi | EXISTS — Check Campaign System (cc-open-health → cc-h-findings / cc-h-trace) |
+| 02 | Full Campaign Details & Customer Results Overlay Clicking any campaign, including spring into glow, opens a complete authorized overlay: selected/eligible audiences, message attempts, provider statuses, bookings, actual  | EXISTS — details overlay: Overview · Recipients · Message · Delivery Events · Bookings & Redemptions · Financial · Audit (POSCampaignCenterScreen) |
+| 03 | AI Campaign Assistant With Approval Allow owners to choose inactive-customer recovery, slow weekdays, new services or repeat visits. Suggest audience/message/budget/schedule and consent exclusions. Staff must approve bef | EXISTS — Campaign Assistant drafts; launch only schedules an APPROVED campaign (cc-open-assistant; six-step flow ends in approval) |
+| 05 | POWERFUL SEARCH: CAMPAIGNS VS RECIPIENTS Search must operate on the correct data domain. A reusable campaign is not itself a customer. Provide clear scopes: All Campaigns, Recipients, Delivery History, Booking Outcomes,  | EXISTS — campaigns ↔ recipients search scopes (cc-search, cc-rec-search) |
+| 07 | Quick Actions (wrap) DISPLAY RULE An overview must surface every existing area. With shorter usable viewports, keep the primary table scrollable and move secondary detail into explicit expand/tabs/overlays - never silent | NOISE — display rule text |
+| 15 | CONNECTED MODULES AND QUICK ACTIONS Keep the 13 existing Marketing & Growth sidebar modules plus the four dashboard cards and all seven quick actions. Use existing routes and services, not new disconnected duplicates. Mo | NOISE — connected-modules rule (sidebar modules preserved by the registry gate) |
 
 ## AI Review and Reputation (8)
 
@@ -2472,15 +2472,15 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Authenticate employee. | TODO |
-| 02 | Resolve trusted tenant + branch. | TODO |
+| 01 | Authenticate employee. | EXISTS — announcements load only inside the signed-in POS shell (shell/PlatformAnnouncementBar.tsx) |
+| 02 | Resolve trusted tenant + branch. | EXISTS — tenant + branch come from the server session, not the client (platform announcements snapshot endpoint) |
 | 03 | Full POS application auto-fit - every route The POS front-desk shell must be responsive at the actual viewport size, not hardwired to a single development monitor. Use CSS Grid/Flexbox, fluid widths, intrinsic sizing, re | TODO |
-| 04 | Render highest-priority eligible message. | TODO |
-| 05 | Subscribe to authorized realtime updates. | TODO |
+| 04 | Render highest-priority eligible message. | EXISTS — highest-priority eligible message rendered, More for several (PlatformAnnouncementBar.test) |
+| 05 | Subscribe to authorized realtime updates. | EXISTS — realtime signal refetches the snapshot (useRealtime in PlatformAnnouncementBar; test) |
 | 06 | Detailed Super Admin authoring experience Preserve the existing product flow and all present controls. Add improvements only after repository audit; every new control must have real backend behavior or a visibly labeled  | TODO |
-| 07 | On reconnect, refetch snapshot. RENDER: - 1 line when short. Developer / Claude Production Completion Mandate / 11 AI PowerSalon / Super Admin POS Top-Bar Announcement & Platform Broadcast | TODO |
+| 07 | On reconnect, refetch snapshot. RENDER: - 1 line when short. Developer / Claude Production Completion Mandate / 11 AI PowerSalon / Super Admin POS Top-Bar Announcement & Platform Broadcast | EXISTS — refetch on realtime/reconnect; one line when short, More panel when long (PlatformAnnouncementBar.test) |
 | 13 | Recommended product upgrades - additive only 01 / Live Fit Diagnostics - Read-only button checks actual SUNMI viewport, overflow, header collision, truncated labels and touch target size. 02 / Audience Impact Preview - B | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 14 | End-to-end test cases - group A: viewport / touch These new test IDs supplement, and do not replace, the original mandate items 140-164. Each test result must include real browser/device evidence or a clear NOT RUN reaso | TODO |
+| 14 | End-to-end test cases - group A: viewport / touch These new test IDs supplement, and do not replace, the original mandate items 140-164. Each test result must include real browser/device evidence or a clear NOT RUN reaso | NOISE — end-to-end test case list |
 
 ## AI Usage Limits (10)
 

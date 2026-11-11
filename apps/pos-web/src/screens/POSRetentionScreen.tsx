@@ -38,7 +38,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, downloadText, type PageInfo } from '../components/FitKit';
-import { PeriodBar, periodQuery, fmtYmdSafe, DateField, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, fmtYmdSafe, DateField, useFreshAt, FreshnessLine, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { HealthDialog, AssistantDialog } from './RetentionWinBack';
 import { useRealtime } from '../realtime/useRealtime';
 
@@ -104,6 +104,7 @@ export function POSRetentionScreen() {
   const pKey = JSON.stringify(pq);
   const [sum, setSum] = useState<Summary | null>(null);
   const [sumErr, setSumErr] = useState<string | null>(null);
+  const freshAt = useFreshAt(sum);   // data freshness: only after a successful summary read
   const [ready, setReady] = useState<Readiness | null>(null);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const sumSeq = useRef(0);
@@ -229,6 +230,7 @@ export function POSRetentionScreen() {
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
 
+      <FreshnessLine at={freshAt} error={sumErr} testId="retention-fresh" />
       <div className="fk-kpis eight" data-testid="retention-kpis">
         {sumErr ? <ErrorRetry message={sumErr} onRetry={loadSummary} /> : <>
           <KpiCard testId="kpi-rate" label={tx('pos.returning_rate')} loading={!k} tone="gold" value={k ? (k.returningRatePercent == null ? tx('rt2.na') : `${k.returningRatePercent}%`) : ''}
