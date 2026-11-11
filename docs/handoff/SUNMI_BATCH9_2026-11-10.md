@@ -511,3 +511,24 @@ blocked by the no-receipt-printer-registry rule. Totals after this round are in 
 - Real Postgres 16.15: every system check, the reports query (people overlay, service lines, tax), the AI Center loader
   and the settings history SQL ran against the local pilot data.
 - The one-screen harness and the batch-9 MODULE_SET: done later the same session (see the follow-up verification above).
+
+## Extras round — Nov 11 2026 (backlog audit continued)
+
+Backlog (docs/handoff/EXTRAS_BACKLOG.md): BUILT 66 · EXISTS 626 · NOISE 385 · TODO 741 (was 51 / 455 / — / 1,040 at the
+start of this round). Every BUILT/EXISTS row names its component, test or file.
+
+Built this round (each with tests):
+- Message Templates: duplicate-template warning on new drafts (warn only) · Version Rollback (restores old content as a NEW
+  version through the audited update path).
+- Service dialog: look-alike service name warning (same words, accents/case, 1–2 letter typos; warn only, never merges).
+- Products: concurrent-edit guard — the edit carries the updatedAt it opened with; a product changed elsewhere is refused
+  409 PRODUCT_CHANGED (new registered error code, EN + VI draft) and nothing is written. pgtest + real PG16 SQL check.
+- Money Protection: opening a case for alerts already in one case returns that case (no duplicate cases).
+- Customer Notes: search / filters / sort / page persist in the browser tab (sessionStorage) and come back on return.
+- Data freshness line (shared FinanceKit useFreshAt / FreshnessLine — stamped only after a successful read; a failed refresh
+  says the numbers are from the last good read): Inventory, Products, End-of-Day Cash, Stock Alerts, Memberships, Payments
+  overview, Gift Cards. Loyalty and Live Operations got an "Updated" time + manual Refresh.
+- Team Tips: basis line + technician search.
+
+Still Kevin's: approve the VI drafts (docs/handoff/VI_DRAFT_REVIEW.md, markers stay); PRODUCTION-READY POS 5 rows are
+infrastructure actions outside the repo (rotate credentials, close port 5432, revoke the exposed Firebase key, new Play keys).
