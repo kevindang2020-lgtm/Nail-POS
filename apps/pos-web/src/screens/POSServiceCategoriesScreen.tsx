@@ -45,8 +45,8 @@ export function POSServiceCategoriesScreen() {
   const scope = { q: q || undefined, status, sort, dateField, ...periodQuery(period) };
   const key = JSON.stringify(scope); const ckey = q + JSON.stringify(periodQuery(period));
   const keyMounted = useRef(false); const ckeyMounted = useRef(false);
-  useEffect(() => { if (keyMounted.current) setPage(1); keyMounted.current = true; }, [key]);
-  useEffect(() => { if (ckeyMounted.current) setCpage(1); ckeyMounted.current = true; }, [ckey]);
+  useEffect(() => { if (keyMounted.current) setPage(1); keyMounted.current = true; }, [key, setPage]);
+  useEffect(() => { if (ckeyMounted.current) setCpage(1); ckeyMounted.current = true; }, [ckey, setCpage]);
   const summary = useLoad(() => posCatalogApi.categorySummary(), [tick]);
   const list = useLoad(() => (mode === 'categories' ? posCatalogApi.categories({ ...scope, page, pageSize: PAGE }) : Promise.resolve(null)), [mode, key, page, tick]);
   const cust = useLoad(() => (mode === 'customers' && can('customers.view') ? posCatalogApi.customerHistory({ q, kind: 'all', ...periodQuery(period), page: cpage, pageSize: PAGE }) : Promise.resolve(null)), [mode, ckey, cpage, tick]);

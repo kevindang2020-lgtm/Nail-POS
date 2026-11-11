@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 87 (incl. part) |
-| EXISTS (opened and named) | 697 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 423 |
-| TODO | 607 |
+| EXISTS (opened and named) | 702 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 424 |
+| TODO | 601 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -2104,14 +2104,14 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Original screenshot — required visual reference Original customer-provided AI PowerSalon Customer Retention screenshot | TODO |
-| 02 | Search toolbar: searchable text; Today / Week / Month / Year / Custom; From/To calendar; Segment; Visit Count; SMS Eligible; sort and Clear. | TODO |
+| 01 | Original screenshot — required visual reference Original customer-provided AI PowerSalon Customer Retention screenshot | NOISE — screenshot reference |
+| 02 | Search toolbar: searchable text; Today / Week / Month / Year / Custom; From/To calendar; Segment; Visit Count; SMS Eligible; sort and Clear. | EXISTS — search + period presets/custom calendar + segment, visits, SMS, email, branch, technician, spend filters (rt-search, flt-*) |
 | 03 | Summary cards: preserve the five existing cards and add Never Visited, optionally Recovered and Campaign Recoveries as distinct metrics. | TODO |
 | 04 | Segment tabs: All Customers / Returning / Approaching Risk / At Risk / Never Visited / Recovered. Keep counts consistent with selected filters. | TODO |
-| 05 | Win-Back customer list: retain six original columns; add select checkbox, Segment, SMS Eligibility, Last Contact, action; use sticky table header if necessary. | TODO |
-| 06 | Action toolbar: Select Page / Select All Matching Eligible / Clear Selection / Preview Bulk SMS / View Customer. | TODO |
-| 07 | Reporting panels: Retention Trend, Win-Back Priority, Campaign History, Recovery Tracking, Follow-Up Activity. | TODO |
-| 08 | Overlays: Customer Details, Campaign Composer, Send Confirmation, Calendar — all with clear Close and Cancel actions. AI POWERSALON / CUSTOMER RETENTION / CLAUDE BUILD GUIDE PAGE 7 Desktop layout target: ASUS 27-inch AIO | TODO |
+| 05 | Win-Back customer list: retain six original columns; add select checkbox, Segment, SMS Eligibility, Last Contact, action; use sticky table header if necessary. | EXISTS — win-back list rows with segment reason, SMS/email eligibility and actions (rt-row, rt-segment-reason, rt-row-book) |
+| 06 | Action toolbar: Select Page / Select All Matching Eligible / Clear Selection / Preview Bulk SMS / View Customer. | EXISTS — select page / select-all-matching (confirmed) / bulk preview through the plan (select-all-confirm, ai-selected, ai-eligible/excluded) |
+| 07 | Reporting panels: Retention Trend, Win-Back Priority, Campaign History, Recovery Tracking, Follow-Up Activity. | EXISTS — Retention Trend, priority, campaign history, recovery tracking (rt-trend, rt-prio, open-history, open-recovery, rt-recovery-totals) |
+| 08 | Overlays: Customer Details, Campaign Composer, Send Confirmation, Calendar — all with clear Close and Cancel actions. AI POWERSALON / CUSTOMER RETENTION / CLAUDE BUILD GUIDE PAGE 7 Desktop layout target: ASUS 27-inch AIO | EXISTS — customer details, campaign composer/plan, cancel confirmation, calendar overlays with Close/Cancel (rt-customer-close, ai-plan, campaign-cancel-confirm) |
 
 ## Loyalty  Rewards (14)
 
