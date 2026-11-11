@@ -11,9 +11,9 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 | Status | Rows |
 |---|---|
 | BUILT this arc | 89 (incl. part) |
-| EXISTS (opened and named) | 725 (incl. part) |
+| EXISTS (opened and named) | 728 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 436 |
-| TODO | 564 |
+| TODO | 561 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -56,7 +56,7 @@ Decisions:
 | 09 | Document Delivery Eligibility Checker Check authorized email/phone, tenant configuration, sender readiness and proper consent before enabling Send/Resend. | EXISTS — Email/Text buttons enabled only when the sender is connected, the customer has the destination and consent (delivery.canSend), and the user may send; drafts must be issued first |
 | 10 | Export and Audit Protection Provide a visibly scoped export preview, role checks, safe spreadsheet escaping and an audit record; preserve existing export behavior. | BUILT — export preview with count, period, filters and the audit note before the CSV; spreadsheet formulas neutralised server-side (ExportPreview; POSInvoicesScreen.test) |
 | 11 | Payment-to-Invoice Reconciliation Detect unlinked posted payments, duplicate references and balance mismatches; suggest investigation, never change financial records automatically. | TODO |
-| 12 | No-Data and Failure States Use clear zero-invoice, no-search-results, failed-API, offline and unsupported-integration states instead of empty white panels. | TODO |
+| 12 | No-Data and Failure States Use clear zero-invoice, no-search-results, failed-API, offline and unsupported-integration states instead of empty white panels. | EXISTS — StateBlock for failed API (retry/permission) vs no-match with Clear vs no invoices yet (POSInvoicesScreen list states) |
 | 13 | Customer Profile Cross-Link A receptionist can click the customer name to open the authorized Customer Profile, then return to the same invoice search/page context. | EXISTS — invoice detail Bill-to → Open customer (open-profile) to Customer Profiles; profile → invoices arrives with ?customerId= filter |
 | 14 | Release-gate Module Registry Generate a before/after inventory of original and discovered modules, their routes, API calls, permission rules and test status; fail release if a module disappears. Owner-requested specifica | EXISTS — release-gate module registry (tooling/ci/check-pos-module-registry.mjs + pos-module-baseline.json) |
 
@@ -2106,8 +2106,8 @@ Decisions:
 |---|---|---|
 | 01 | Original screenshot — required visual reference Original customer-provided AI PowerSalon Customer Retention screenshot | NOISE — screenshot reference |
 | 02 | Search toolbar: searchable text; Today / Week / Month / Year / Custom; From/To calendar; Segment; Visit Count; SMS Eligible; sort and Clear. | EXISTS — search + period presets/custom calendar + segment, visits, SMS, email, branch, technician, spend filters (rt-search, flt-*) |
-| 03 | Summary cards: preserve the five existing cards and add Never Visited, optionally Recovered and Campaign Recoveries as distinct metrics. | TODO |
-| 04 | Segment tabs: All Customers / Returning / Approaching Risk / At Risk / Never Visited / Recovered. Keep counts consistent with selected filters. | TODO |
+| 03 | Summary cards: preserve the five existing cards and add Never Visited, optionally Recovered and Campaign Recoveries as distinct metrics. | EXISTS — five original cards + Never Visited · Recovered · Campaign Recoveries, each opens its cohort (POSRetentionScreen KPI row) |
+| 04 | Segment tabs: All Customers / Returning / Approaching Risk / At Risk / Never Visited / Recovered. Keep counts consistent with selected filters. | EXISTS — segment tabs All | Returning | Approaching Risk | At Risk | Never Visited | Recovered (+90+/180+/SMS-eligible) (POSRetentionScreen) |
 | 05 | Win-Back customer list: retain six original columns; add select checkbox, Segment, SMS Eligibility, Last Contact, action; use sticky table header if necessary. | EXISTS — win-back list rows with segment reason, SMS/email eligibility and actions (rt-row, rt-segment-reason, rt-row-book) |
 | 06 | Action toolbar: Select Page / Select All Matching Eligible / Clear Selection / Preview Bulk SMS / View Customer. | EXISTS — select page / select-all-matching (confirmed) / bulk preview through the plan (select-all-confirm, ai-selected, ai-eligible/excluded) |
 | 07 | Reporting panels: Retention Trend, Win-Back Priority, Campaign History, Recovery Tracking, Follow-Up Activity. | EXISTS — Retention Trend, priority, campaign history, recovery tracking (rt-trend, rt-prio, open-history, open-recovery, rt-recovery-totals) |

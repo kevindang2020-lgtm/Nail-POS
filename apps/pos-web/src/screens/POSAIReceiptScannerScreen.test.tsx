@@ -28,7 +28,8 @@ describe('POSAIReceiptScannerScreen', () => {
   it('keeps the add-on header (honest state) and shows the four cards with their definitions', async () => {
     mount();
     expect(await screen.findByTestId('pkg-state')).toHaveTextContent('Trial expired');
-    expect(await screen.findByTestId('kpi-scanned')).toHaveTextContent('4');
+    // the KPI card renders (loading) before its value arrives — wait for the value, not just the card (flaky under load)
+    await waitFor(() => expect(screen.getByTestId('kpi-scanned')).toHaveTextContent('4'));
     expect(screen.getByTestId('kpi-review')).toHaveTextContent('1');
     expect(screen.getByTestId('kpi-dupes')).toHaveTextContent('1');
     expect(screen.getByTestId('kpi-approved')).toHaveTextContent('1');
