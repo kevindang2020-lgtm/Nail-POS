@@ -151,4 +151,5 @@ export const EMAILCENTER_EN: Record<string, string> = {
   "emc.state.verified": "Verified",
   "emc.sub": "Email settings, delivery health and every email your salon sent",
   "emc.title": "Email",
+  "emc.c.restored": "Your unsent subject and message were restored. Pick the customer again before sending.",
 };

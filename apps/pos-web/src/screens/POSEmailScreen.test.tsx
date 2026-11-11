@@ -12,6 +12,7 @@ import { POSEmailScreen } from './POSEmailScreen';
 
 const W = { preset: 'month', from: '2026-10-01', to: '2026-10-31', tz: 'America/New_York', today: '2026-10-31' };
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ }
   Object.values(m).forEach((f) => f.mockReset());
   m.getCat.mockResolvedValue({ senderBrand: 'SMS Brand LLC', emailConfirmation: false, receiptDelivery: ['SMS'] });
   m.settings.mockResolvedValue({ senderName: 'Glow Bar', replyTo: null, bookingConfirmations: false, receipts: false, source: 'tenant', fromAddress: 'nailsalons@aipowersalon.com', savedAt: null, canEdit: true });
@@ -47,5 +48,17 @@ describe('POSEmailScreen', () => {
     expect(body).toMatchObject({ emailSenderName: 'Glow Bar', emailConfirmation: true });
     expect(body.senderBrand).toBeUndefined();
     expect(body.receiptDelivery).toEqual(['SMS', 'Email']);
+  });
+  it('Draft autosave: subject and message survive closing and reopening the composer; the recipient is not kept', async () => {
+    render(<MemoryRouter><POSEmailScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('emc-compose'));
+    fireEvent.change(screen.getByTestId('emc-c-subject'), { target: { value: 'Holiday hours' } });
+    expect(screen.queryByTestId('emc-c-restored')).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('emc-composer')).toBeNull());
+    fireEvent.click(screen.getByTestId('emc-compose'));
+    expect((screen.getByTestId('emc-c-subject') as HTMLInputElement).value).toBe('Holiday hours');
+    expect(screen.getByTestId('emc-c-restored')).toBeInTheDocument();
+    expect(sessionStorage.getItem('aps.emc.draft')).not.toMatch(/customer|@/);
   });
 });

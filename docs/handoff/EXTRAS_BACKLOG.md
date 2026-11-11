@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 83 (incl. part) |
+| BUILT this arc | 84 (incl. part) |
 | EXISTS (opened and named) | 695 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 423 |
-| TODO | 613 |
+| TODO | 612 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -2190,7 +2190,7 @@ Decisions:
 | 04 | Email deliverability guard Prevent false Delivered states and flag provider acceptance versus completion. | EXISTS — Delivered is N/A without verified provider events, never 0 or assumed |
 | 05 | Bounce/complaint hygiene Separate suppression and hard bounce, with guided approved remediation. | TODO |
 | 06 | Test-send wizard Controlled recipient, preview, confirmation and full provider attempt history. | EXISTS (part) — staff-only test email |
-| 07 | Draft autosave Recover typed subject/body during resize, relogin or language switch. | TODO |
+| 07 | Draft autosave Recover typed subject/body during resize, relogin or language switch. | BUILT — composer subject + message autosave in this browser tab and come back on reopen / re-login / language switch; the recipient is not stored; a send clears it (POSEmailScreen readEmailDraft/writeEmailDraft; test) |
 | 08 | Duplicate-send prevention Deduplicate retry, webhook replay and concurrent resend. | EXISTS (part) — protected Resend in Email Details |
 | 09 | Template variable checker Catch missing/unauthorized placeholders before sending. | TODO |
 | 10 | Customer identity confidence Warn on ambiguous tenant-local customer/contact matches before sending. | TODO |

@@ -223,10 +223,24 @@ export function POSEmailScreen() {
   );
 }
 
+const EMAIL_DRAFT_KEY = 'aps.emc.draft';
+function readEmailDraft(): { subject: string; body: string } {
+  try { const v = JSON.parse(sessionStorage.getItem(EMAIL_DRAFT_KEY) || 'null'); if (v && typeof v === 'object') return { subject: String(v.subject ?? '').slice(0, 150), body: String(v.body ?? '').slice(0, 5000) }; } catch { /* no storage */ }
+  return { subject: '', body: '' };
+}
+function writeEmailDraft(subject: string, body: string) {
+  try { if (subject || body) sessionStorage.setItem(EMAIL_DRAFT_KEY, JSON.stringify({ subject, body })); else sessionStorage.removeItem(EMAIL_DRAFT_KEY); } catch { /* best effort */ }
+}
+
 function Composer({ onClose, onSent }: { onClose: () => void; onSent: () => void }) {
   const [query, setQuery] = useState(''); const dq = useDebounced(query, 300);
   const [hits, setHits] = useState<any[]>([]); const [cust, setCust] = useState<any | null>(null);
-  const [subject, setSubject] = useState(''); const [body, setBody] = useState(''); const [ok, setOk] = useState(false);
+  // Draft autosave: subject + body survive closing the composer, a re-login or a language switch in this browser tab
+  // (sessionStorage; the recipient is NOT saved — no customer data is kept); a successful send clears the draft
+  const [saved] = useState(readEmailDraft);   // read once, when the composer opens
+  const [subject, setSubject] = useState(saved.subject); const [body, setBody] = useState(saved.body); const [ok, setOk] = useState(false);
+  const restored = !!(saved.subject || saved.body);
+  useEffect(() => { writeEmailDraft(subject, body); }, [subject, body]);
   const [msg, setMsg] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!dq.trim() || cust) { setHits([]); return; }
@@ -237,7 +251,7 @@ function Composer({ onClose, onSent }: { onClose: () => void; onSent: () => void
   const email = cust ? String(cust.email ?? '') : '';
   const send = async () => {
     if (!cust) return; setBusy(true); setMsg(null);
-    try { const r = await posEmailCenterApi.compose({ customerId: String(cust.customerId ?? cust.id), subject: subject.trim(), body: body.trim() }, requestId()); setMsg(t('emc.c.sent', { o: outcome(r.outcome) + (r.reason ? ` (${r.reason})` : '') })); setOk(false); onSent(); }
+    try { const r = await posEmailCenterApi.compose({ customerId: String(cust.customerId ?? cust.id), subject: subject.trim(), body: body.trim() }, requestId()); writeEmailDraft('', ''); setMsg(t('emc.c.sent', { o: outcome(r.outcome) + (r.reason ? ` (${r.reason})` : '') })); setOk(false); onSent(); }
     catch (e: any) { setMsg(e?.message || t('emc.r.failed')); }
     finally { setBusy(false); }
   };
@@ -251,6 +265,7 @@ function Composer({ onClose, onSent }: { onClose: () => void; onSent: () => void
           : <input className="fk-search" placeholder={t('emc.c.search')} value={query} onChange={(e) => setQuery(e.target.value)} data-testid="emc-c-search" />}
       </label>
       {!cust && hits.length ? <ul className="emc-hits">{hits.map((h: any) => <li key={h.customerId ?? h.id}><button type="button" className="btn ghost sm" onClick={() => setCust(h)} data-testid="emc-c-hit">{h.displayName ?? h.fullName ?? `${h.firstName ?? ''} ${h.lastName ?? ''}`} · {h.email || t('emc.c.noEmail')}</button></li>)}</ul> : null}
+      {restored ? <div className="fk-note" role="status" data-testid="emc-c-restored">{t('emc.c.restored')}</div> : null}
       <label className="emc-field">{t('emc.c.subject')}<input value={subject} maxLength={150} onChange={(e) => setSubject(e.target.value)} data-testid="emc-c-subject" /></label>
       <label className="emc-field">{t('emc.c.body')}<textarea rows={6} maxLength={5000} value={body} onChange={(e) => setBody(e.target.value)} data-testid="emc-c-body" /></label>
       {subject.trim() || body.trim() ? <><h4>{t('emc.c.preview')}</h4><div className="emc-preview" data-testid="emc-c-preview"><b>{subject}</b><pre className="emc-body">{body}</pre><div className="sub">{t('emc.c.transactional')}</div></div></> : null}

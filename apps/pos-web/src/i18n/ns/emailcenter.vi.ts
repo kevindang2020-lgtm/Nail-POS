@@ -151,4 +151,5 @@ export const EMAILCENTER_VI: Record<string, string> = {
   "emc.state.verified": "Đã xác minh",
   "emc.sub": "Cài đặt email, tình trạng gửi và mọi email tiệm đã gửi",
   "emc.title": "Email",
+  "emc.c.restored": "Tiêu đề và nội dung chưa gửi đã được khôi phục. Hãy chọn lại khách hàng trước khi gửi.", // DRAFT — Kevin reviews
 };
