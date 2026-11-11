@@ -31,7 +31,7 @@ import { statusLabel } from '../i18n/status-label';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
-import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 import { StockChip, ProductDetailsDialog, ProductFormDialog, EditProductDialog, AddStockDialog, money, unitLabel, errMsg, sevLabel, when, day, ymd } from '../components/InventoryKit';
 import { LastUsed, RecordUseDialog } from './POSInventoryAlertsScreen';
 
@@ -80,7 +80,7 @@ export function TenantInventoryScreen() {
   const q = useDebounced(s.search.trim(), 300);
   const metrics = useLoad(() => posInventoryScreenApi.metrics(), [tick]);
   const refresh = () => { setTick((t) => t + 1); window.dispatchEvent(new CustomEvent('aps:nav-counts-changed')); };
-  const m = metrics.data;
+  const m = metrics.data; const freshAt = useFreshAt(metrics.data);   // inventory data freshness (only after a successful read)
   const go = (t: Tab, p: Partial<TabState> = {}) => { setTab(t); setState((x) => ({ ...x, [t]: { ...x[t], ...p, page: 1 } })); setTimeout(() => listTop.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 0); };
   if (isForbidden(metrics.error)) return <div className="work inv2" data-testid="inventory-screen"><h1>{tx('pos.inventory')}</h1><StateBlock error={metrics.error} onRetry={metrics.reload} /></div>;
   const kpis: Array<{ id: string; label: string; value: string; sub: string; tone?: 'ok' | 'warn' | 'bad' | 'gold'; onClick?: () => void }> = m ? [
@@ -108,6 +108,7 @@ export function TenantInventoryScreen() {
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>
         {note.productId ? <button type="button" className="fk-link" onClick={() => setDetail({ id: note.productId! })}>{tx('prd.viewProduct')}</button> : null}
         <button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      <FreshnessLine at={freshAt} error={metrics.error} testId="inventory-fresh" />
       <div className="inv2-kpis" data-testid="kpis">
         {metrics.error ? <StateBlock error={metrics.error} onRetry={metrics.reload} /> : !m ? Array.from({ length: 9 }, (_, i) => <KpiCard key={i} label="…" loading value="" />)
           : kpis.map((k) => <KpiCard key={k.id} testId={'kpi-' + k.id} label={k.label} value={k.value} sub={k.sub} tone={k.tone} onClick={k.onClick} />)}

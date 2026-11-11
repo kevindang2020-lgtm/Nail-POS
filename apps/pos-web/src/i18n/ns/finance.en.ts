@@ -346,4 +346,6 @@ export const FINANCE_EN = {
   "finance.iv.why.paidCredit": "Settled: {p} paid and {c} credited.",
   "finance.iv.why.credited": "Closed by credit notes ({c}).",
   "finance.iv.why.void": "Voided — it no longer counts toward any balance.",
+  "finance.freshAt": "Numbers updated {t}",
+  "finance.freshStale": "Refresh failed — the last good numbers are from {t}",
 };

@@ -343,4 +343,6 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.iv.why.paidCredit": "Đã tất toán: trả {p} và ghi có {c}.", // DRAFT — Kevin reviews
   "finance.iv.why.credited": "Đã đóng bằng giấy ghi có ({c}).", // DRAFT — Kevin reviews
   "finance.iv.why.void": "Đã hủy — không còn tính vào số dư nào.", // DRAFT — Kevin reviews
+  "finance.freshAt": "Số liệu cập nhật {t}", // DRAFT — Kevin reviews
+  "finance.freshStale": "Làm mới thất bại — số liệu đúng gần nhất lúc {t}", // DRAFT — Kevin reviews
 };

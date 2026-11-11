@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 58 (incl. part) |
-| EXISTS (opened and named) | 620 (incl. part) |
-| NOISE (parser picked up acceptance / instruction text) | 373 |
-| TODO | 767 |
+| BUILT this arc | 60 (incl. part) |
+| EXISTS (opened and named) | 623 (incl. part) |
+| NOISE (parser picked up acceptance / instruction text) | 374 |
+| TODO | 761 |
 
 Built so far:
 1. **POS saved views** (`ae62e1f1`): migration 844, `pos/me/saved-views`, `components/SavedViews`, wired into 9 screens.
@@ -113,8 +113,8 @@ Decisions:
 | 04 | Duplicate Stock Movement Find duplicate manual/service/recipe/webhook source references, negative balances, duplicate receiving and concurrent usage conflicts. | TODO |
 | 05 | Module sizing and accessible touch controls A professional POS must feel comfortable from a cashier or manager’s standing position at the front desk. ELEMENT GUIDELINE / ACCEPTANCE KPI tiles Same height within a grid row | NOISE — sizing guideline table (screen-fit guidance), not a feature |
 | 06 | Receipt / Import & Entitlement Check OCR source status, review approval, duplicate import, secure file reference, permission and AI subscription gating. Output format Every checker should return Pass / Warning / Failed / | TODO |
-| 07 | Reorder suggestions with Show on-hand + on-order + target + suggested order qty and verified supplier mapping preview before manager review. | TODO |
-| 08 | Better empty/error states Separate zero products, no matching records, permission denied, offline/API error and zero import queue. IMPLEMENTATION ADDENDUM / 07 NOV 2026 ADDENDUM PAGE 15 AI POWERSALON / SUNMI FLEX 3 / INV | TODO |
+| 07 | Reorder suggestions with Show on-hand + on-order + target + suggested order qty and verified supplier mapping preview before manager review. | EXISTS — Reorder opens a DRAFT PO prefilled with suggested qty and supplier; nothing saved until Create (TenantInventoryScreen.reorder.test) |
+| 08 | Better empty/error states Separate zero products, no matching records, permission denied, offline/API error and zero import queue. IMPLEMENTATION ADDENDUM / 07 NOV 2026 ADDENDUM PAGE 15 AI POWERSALON / SUNMI FLEX 3 / INV | EXISTS — StateBlock for permission/API errors vs no-match vs no products (TenantInventoryScreen list states) |
 | 09 | Before/after quantity preview Before Add Stock, Count Adjustment, Transfer, or Usage, show projected quantity, unit and affected branch. | EXISTS (part) — Add Stock shows on-hand → after in its header before saving (inv.addStockSub); Record Product Use shows stock before / after and refuses below zero; Count / Transfer previews not checked |
 | 10 | Duplicate event warning Show safe detection before retrying a usage/receiving call; use server idempotency and explicit final status. | EXISTS (part) — Add Stock sends once (in-flight guard) and Record Use carries one idempotency key; no separate retry warning |
 | 11 | Purchasing, transfers, alerts and service workflows Screen-fit changes must not interfere with stock custody and cross-module invariants. CROSS-MODULE WIRING PROTECTED BEHAVIOR Suppliers → Purchase Orders Keep supplier/p | NOISE — protected-behaviour table (cross-module wiring to preserve), not a feature |
@@ -122,7 +122,7 @@ Decisions:
 | 13 | Role-aware quick actions Surface actions appropriate to receptionist/manager/owner roles; enforce permissions in backend, not just hidden buttons. | EXISTS — actions follow permissions (e.g. inventory.stock.adjust for recording use on behalf of a technician) and the server re-checks every one |
 | 14 | Additional recommendations: operational UX Implement selectively after inspecting current code. Each addition must be compatible with the original page and not displace existing modules. RECOMMENDATION BENEFIT / LIMIT | NOISE — heading for the recommendations list, not a feature |
 | 15 | Automatic browser visual Screenshots and overflow checks at SUNMI and fallback viewports, both EN/VN, regression representative large datasets. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
-| 16 | Inventory data freshness Show real last successful refresh and retry if disconnected; never show false “live” state. indicator Recommended priority: preserve modules → fix responsive shell → verify 8 KPIs and usage/ledge | TODO |
+| 16 | Inventory data freshness Show real last successful refresh and retry if disconnected; never show false “live” state. indicator Recommended priority: preserve modules → fix responsive shell → verify 8 KPIs and usage/ledge | BUILT — Numbers updated {time} after a successful metrics read; a failed refresh shows the last good time (shared FinanceKit useFreshAt/FreshnessLine, inventory-fresh; TenantInventoryScreen.fresh.test) |
 
 ## Recent Account Activity 8 (3)
 
@@ -301,19 +301,19 @@ Decisions:
 |---|---|---|
 | 01 | Compact cash difference strip Make shortage/overage status visible directly below KPIs; show a link to Under Review records. Do not interpret all negative values as theft. | EXISTS — shortage / overage strip under the KPIs (difference-strip with dif-short / dif-over) linking to the matching records |
 | 02 | Technician cash detail drawer Authorized drill-down with source tickets, tender list, shifts, prior hand-offs, count history, actor, variance and audit trail. | EXISTS (part) — hand-off detail with source ticket lines, count figures and the event trail with actor and time (lines-table, count-figures, events) |
-| 03 | Pending count queue Small state summary for Awaiting, Submitted, Counted, Under Review; click to apply real filters. | TODO |
+| 03 | Pending count queue Small state summary for Awaiting, Submitted, Counted, Under Review; click to apply real filters. | EXISTS — Awaiting / Reconciled KPI cards apply the real status filter on click (kpi-awaiting, kpi-reconciled) |
 | 04 | Denomination count helper Optional count sheet with calculated totals; keep manual mode only if approved by tenant settings. | EXISTS — optional denomination count sheet with the calculated total (use-sheet, sheet); manual amount stays available |
 | 05 | Partial hand-off timeline Show first/second/subsequent transfers with accepted totals and remaining responsibility; prevent duplicate events. | EXISTS — End-of-Day Cash → technician detail → events list (tech_cash_handoff_events: each hand-off, count, approval or correction with who and when) — POSCashHandoffScreen |
 | 06 | Recount & override workflow Require reason and permission; preserve original counts and reviewer details; no silent overwrite. | EXISTS — recount as Add or Replace with the prior count kept, resolve with a required reason (mode-add / mode-replace, resolve-reason); stale-count conflict refused (conflict) |
 | 07 | Audit trail shortcut Provide a one-click view of who received, counted, approved or corrected cash and when. | EXISTS — End-of-Day Cash → technician detail → events list (tech_cash_handoff_events: each hand-off, count, approval or correction with who and when) — POSCashHandoffScreen |
 | 08 | Status-aware safe buttons Prevent “Confirm” on closed hand-offs or while a prior save is pending. Indicate disabled reason. | EXISTS (part) — a count against a changed hand-off is refused with the current figure shown (conflict); saves disable while pending |
-| 09 | Data freshness indicator Display last verified refresh time with Retry for network/API failures; do not turn service failure into financial zero. | TODO |
+| 09 | Data freshness indicator Display last verified refresh time with Retry for network/API failures; do not turn service failure into financial zero. | BUILT — Numbers updated {time} stamped only after a successful summary; a failed refresh shows the error with Retry (never $0) and the last good time (cash-fresh; POSCashHandoffScreen.test) |
 | 10 | Quick View Daily Closeout Link to the branch and business date already selected without expanding tenant/branch scope. Engineering addendum / November 7, 2026 Addendum page 16 AI POWERSALON / END-OF-DAY CASH / SUNMI FLEX | TODO |
 | 11 | Module Preservation Registry Take before/after inventory of all route components, hooks, actions and permissions; make missing module a release blocker. | EXISTS — module registry + preservation matrix gate |
 | 12 | Controlled device calibration Optional user-visible device profile only after measuring the real CSS viewport; never rely on hardcoded screen-name detection. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 13 | Touch keyboard responsiveness On-screen keyboard must not obstruct the amount field, save action, or count confirmation; adjust overlays dynamically. | TODO |
 | 14 | Bilingual label verification Verify Front Desk POS English and Vietnamese label expansion; keep other applications English-only under existing scope. | EXISTS — EN/VI behind t(); other apps stay English (english-only-apps gate) |
-| 15 | High-volume / large staff support Test 200 technicians, many hand-offs and thousands of source cash tenders using server pagination and efficient queries. | TODO |
+| 15 | High-volume / large staff support Test 200 technicians, many hand-offs and thousands of source cash tenders using server pagination and efficient queries. | NOISE — load-test instruction (list is server-paged) |
 | 16 | Export scope transparency CSV/PDF must state tenant/branch, business date, selected date field, filters, as-of time and authorized source rows. | TODO |
 | 17 | Period-lock & revision handling Closed daily cash records require permission-controlled reopening with a complete prior history. | TODO |
 | 18 | Non-destructive schema policy Inspect existing cash hand-off tables, ledgers and events; reuse them. No duplicate ledger or destructive migration to improve screen fit. Engineering addendum / November 7, 2026 Addendum pa | NOISE — schema policy (no duplicate ledger) — holds: hand-offs reuse the existing cash tables |

@@ -18,7 +18,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { fmtMoney, fmtNumber, fmtInZone, fmtYmd } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
-import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, DateField, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, DateField, centsFromText, textFromCents, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
 
 type Unit = { id: string | null; technicianId: string; technician: string | null; technicianActive: boolean; businessDate: string | null; branch: string | null; expectedCents: number; paymentCount: number;
   countedCents: number | null; differenceCents: number | null; status: string; state: string; version: number; drawerTransferCents: number; submittedAt: string | null; countedAt: string | null; resolvedAt: string | null;
@@ -55,6 +55,7 @@ export function POSCashHandoffScreen() {
   const list = useLoad(() => posCashHandoffApi.list({ ...scope, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
   const sum = useLoad(() => posCashHandoffApi.summary({ ...periodQuery(period), dateField: basis, technician: tech || undefined }), [JSON.stringify(period), basis, tech, tick]);
   const techs = useLoad(() => posCashHandoffApi.technicians(), []);
+  const freshAt = useFreshAt(sum.data);   // data freshness: only after a successful summary; an error is never shown as $0
   useRealtime('cash-handoffs', () => setTick((t) => t + 1));   // a technician's hand-off / another desk's count → refresh in place
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const k = sum.data?.kpis; const dif = sum.data?.difference; const perms = sum.data?.permissions ?? {};
@@ -89,6 +90,7 @@ export function POSCashHandoffScreen() {
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>
         {note.view ? <><button type="button" className="fk-link" onClick={() => setDetail(note.view!)}>{tx('ch.viewHandoff')}</button><button type="button" className="fk-link" onClick={clearAll}>{tx('finance.clearFilters')}</button></> : null}
         <button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      <FreshnessLine at={freshAt} error={sum.error} testId="cash-fresh" />
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-expected" tone="gold" label={tx('ch.kpi.expected')} loading={!k} value={k ? fmtMoney(k.expectedCents) : ''} sub={k ? tx('ch.kpi.expectedSub', { n: fmtNumber(k.payments) }) : ''} />

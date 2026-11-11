@@ -12,7 +12,7 @@
 //   fmtYmdSafe     'YYYY-MM-DD' → "Oct 9, 2026"; anything else → "Not set" (the Invoices "Invalid Date" fix).
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { fmtYmd, displayLocale } from '../i18n/format';
+import { fmtYmd, fmtTime, displayLocale } from '../i18n/format';
 import { deviceToday } from '../lib/deviceToday';
 
 type PeriodPreset = 'today' | 'week' | 'month' | 'year' | 'custom' | 'all';
@@ -240,3 +240,16 @@ export function centsFromText(s: string): number | null {
   return Number.isSafeInteger(c) ? c : null;
 }
 export const textFromCents = (c: number | null | undefined) => (c == null ? '' : `${Math.floor(Math.abs(c) / 100)}.${String(Math.abs(c) % 100).padStart(2, '0')}`);
+
+/** Data freshness marker (backlog: "metrics freshness" rows): the time of the last SUCCESSFUL read of `data`. A failed refresh
+ *  keeps that time and says the numbers are from it — it never shows a fresh-looking time after an error. */
+export function useFreshAt(data: unknown): Date | null {
+  const [at, setAt] = useState<Date | null>(null);
+  useEffect(() => { if (data) setAt(new Date()); }, [data]);
+  return at;
+}
+export function FreshnessLine({ at, error, testId, className }: { at: Date | null; error?: unknown; testId: string; className?: string }) {
+  if (!at) return null;
+  return <div className={'sub fk-fresh' + (error ? ' warn' : '') + (className ? ' ' + className : '')} data-testid={testId} aria-live="polite">
+    {error ? tx('finance.freshStale', { t: fmtTime(at) }) : tx('finance.freshAt', { t: fmtTime(at) })}</div>;
+}

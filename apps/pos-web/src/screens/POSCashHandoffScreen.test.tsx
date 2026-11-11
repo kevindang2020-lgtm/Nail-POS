@@ -66,4 +66,12 @@ describe('POSCashHandoffScreen', () => {
     await waitFor(() => expect(api.list.mock.calls[0][0]).toMatchObject({ preset: 'custom', from: '2026-11-05', to: '2026-11-05' }));
     expect(await screen.findByTestId('open-drawer')).toBeTruthy();
   });
+  it('data freshness: stamped after a good summary; a failed refresh shows the error (never $0) and the last good time', async () => {
+    mount();
+    expect(await screen.findByTestId('cash-fresh')).toHaveTextContent(/Numbers updated/);
+    api.summary.mockRejectedValue(new Error('down'));
+    fireEvent.click(screen.getByTestId('refresh'));
+    expect(await screen.findByText(/Refresh failed — the last good numbers are from/)).toBeInTheDocument();
+    expect(screen.queryByTestId('kpi-expected')).toBeNull();
+  });
 });

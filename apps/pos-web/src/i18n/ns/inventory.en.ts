@@ -457,6 +457,4 @@ export const INVENTORY_EN = {
   'sup.viewOrder': 'View order',
   'inv.col.count': 'Bottles',
   'inv.oneOfGroup': 'Applies to one bottle of this group',
-  'prd.freshAt': 'Numbers updated {t}',
-  'prd.freshStale': 'Refresh failed — the last good numbers are from {t}',
 };
