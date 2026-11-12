@@ -583,3 +583,15 @@ Five agents built in separate worktrees (branches extras-agent1..5) and were mer
 No new routes this round (fields and one `compare` query param only). Nothing moves money, changes history or sends.
 Left for Kevin (decisions, not code): END-OF-DAY 11 in-app follow-ups vs SMS/email opt-out list; Customer Profile
 Assistant 12 churn vs Customer Retention; End-of-Day Cash 17 reopening closed cash records.
+
+## Extras backlog — round 3 of the 5 parallel agents (Nov 12 2026, later)
+Merged extras-agent1..5: TODO 355 → 307 (counted from EXTRAS_BACKLOG.md; marks name files and tests). Highlights:
+- Inbox "Mark all as read" with a cutoff (new POST pos/communications/inbox/read-all; newer conversations stay unread).
+- Expense vendor lookup (new POST owner/finance/expenses/vendor-match); approving no longer creates a near-duplicate vendor.
+- Gift-card duplicate issuance / double-spend alerts; discount redemption integrity checks; AI usage anomaly checks.
+- Money Protection threshold preview (rules/save dryRun — nothing saved). Two agents built the same preview; it was
+  merged ONCE (agent 5's, previewThresholds) and the second copy removed so there is one implementation.
+- Retention area-code finder, queue throughput, verified appointment timeline, duration confidence, refund receipt
+  preview, customer KPI definitions, register-conflict warning, renewal reminder STOP counts, call → booking outcome,
+  safety-note review receipt, AI booking service breakdown.
+Role-matrix snapshot accepted the 2 new routes after review (same roles as their siblings).
