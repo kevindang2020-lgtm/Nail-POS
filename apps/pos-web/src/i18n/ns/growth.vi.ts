@@ -1081,4 +1081,8 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.community.gaps.evidence": "Chưa đính kèm bằng chứng. Tệp được giữ riêng tư; người kiểm duyệt có thể xem.", // DRAFT — Kevin reviews
   "growth.community.gaps.evidenceAfterSave": "Lưu bản nháp để đính kèm bằng chứng (tệp được giữ riêng tư).", // DRAFT — Kevin reviews
   "growth.community.gaps.wording": "Đây chỉ là gợi ý, không bắt buộc. Hãy mô tả việc đã xảy ra, không nêu ai làm; dùng từ trung lập như “nghi ngờ lừa đảo”. Phần kiểm tra cách dùng từ chạy khi bạn lưu, và nút “Gợi ý cách diễn đạt trung lập” có thể giúp.", // DRAFT — Kevin reviews
+  "growth.community.access.title": "Ai đã mở tệp này ({n})", // DRAFT — Kevin reviews
+  "growth.community.access.none": "Chưa ai mở tệp này.", // DRAFT — Kevin reviews
+  "growth.community.access.moderator": "Người kiểm duyệt của nền tảng, theo một hồ sơ kiểm duyệt", // DRAFT — Kevin reviews
+  "growth.community.access.staff": "Một nhân viên của tiệm", // DRAFT — Kevin reviews
 };

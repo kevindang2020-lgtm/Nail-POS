@@ -10,10 +10,13 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 
 export const EVIDENCE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 export const EVIDENCE_MAX_BYTES = 15 * 1024 * 1024;
+/** Safety Community 05 — the server adds who opened each file (newest first); absent on an older server */
+type EvidenceAccessRow = { at: string; byName: string | null; byRole: string | null; moderator: boolean; reason: string | null };
+type EvidenceRow = CommunityEvidenceView & { accessLog?: EvidenceAccessRow[] };
 const SCAN: Record<CommunityEvidenceView['scanStatus'], string> = { get unscanned() { return t('growth.community.scan.unscanned'); }, get clean() { return t('growth.community.scan.clean'); }, get infected() { return t('growth.community.scan.infected'); }, get error() { return t('growth.community.scan.error'); } };
 
 export function CommunityEvidencePanel({ postId, canUpload, tick }: { postId: string; canUpload: boolean; tick?: number }) {
-  const [items, setItems] = useState<CommunityEvidenceView[] | null>(null);
+  const [items, setItems] = useState<EvidenceRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,6 +47,7 @@ export function CommunityEvidencePanel({ postId, canUpload, tick }: { postId: st
       const a = await api.evidenceAccess(id, reason.trim());
       setOpening(null); setReason('');
       window.open(a.url, '_blank', 'noopener');
+      void load();   // the access just logged shows in the file's timeline
     } catch (e) { setError(communityErrorText(e, t('growth.community.couldNotOpenTheFile'))); }
   };
 
@@ -55,7 +59,7 @@ export function CommunityEvidencePanel({ postId, canUpload, tick }: { postId: st
       {items && items.length === 0 ? <div style={muted}>{t('pos.no_files_yet')}</div> : null}
       <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0', display: 'grid', gap: 6 }}>
         {(items ?? []).map((ev) => (
-          <li key={ev.id} style={{ ...row, justifyContent: 'space-between', fontSize: 12.5 }} data-testid="community-evidence-row">
+          <li key={ev.id} style={{ ...row, justifyContent: 'space-between', fontSize: 12.5, flexWrap: 'wrap' }} data-testid="community-evidence-row">
             <span>{ev.mimeType || 'file'} · {ev.sizeBytes != null ? t('pos.v0_kb_2', { v0: String(Math.ceil(ev.sizeBytes / 1024)) }) : '—'} · {ev.uploadStatus === 'uploaded' ? SCAN[ev.scanStatus] : ev.uploadStatus === 'failed' ? t('pos.upload_failed') : t('pos.upload_not_finished')} · {when(ev.createdAt)}</span>
             {ev.uploadStatus === 'uploaded' && ev.scanStatus === 'clean' ? (
               opening === ev.id ? (
@@ -65,6 +69,14 @@ export function CommunityEvidencePanel({ postId, canUpload, tick }: { postId: st
                   <button style={btnGhost} onClick={() => setOpening(null)}>{t('pos.cancel')}</button>
                 </span>
               ) : <button style={btnGhost} onClick={() => { setOpening(ev.id); setReason(''); }}>{t('pos.open_5')}</button>
+            ) : null}
+            {ev.accessLog ? (
+              <details style={{ flexBasis: '100%' }} data-testid="community-evidence-access">
+                <summary style={muted}>{t('growth.community.access.title', { n: String(ev.accessLog.length) })}</summary>
+                {ev.accessLog.length === 0 ? <div style={muted}>{t('growth.community.access.none')}</div> : (
+                  <ol style={{ margin: '4px 0', paddingLeft: 18 }}>{ev.accessLog.map((a, i) => (
+                    <li key={i} data-testid="community-evidence-access-row">{when(a.at)} · {a.moderator ? t('growth.community.access.moderator') : (a.byName ?? t('growth.community.access.staff'))}{a.reason ? ` — ${a.reason}` : ''}</li>))}</ol>)}
+              </details>
             ) : null}
           </li>
         ))}

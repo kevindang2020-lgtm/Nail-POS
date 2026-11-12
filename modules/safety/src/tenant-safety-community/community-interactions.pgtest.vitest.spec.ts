@@ -279,6 +279,16 @@ describe('evidence (own salon only, private storage, scanner fails closed)', () 
     expect(acc.url).toContain('sig=1');
     expect(await q('select tenant_id, user_id, case_id, reason from community_evidence_access_log where evidence_id = $1', [t.evidenceId]))
       .toEqual([{ tenant_id: A, user_id: A_OWNER, case_id: null, reason: 'checking the screenshot before a dispute' }]);
+    // Safety Community 05 — the access timeline rides on the evidence list: who (by role), when, why; a moderator unnamed; no ids
+    await q(`update users set full_name = 'Amy Owner' where id = $1`, [A_OWNER]);
+    await q(`insert into community_evidence_access_log (evidence_id, tenant_id, user_id, case_id, reason, created_at) values ($1, null, $2, $3, 'case review of a reported post', now() + interval '1 minute')`, [t.evidenceId, MOD, id(77)]);
+    const withLog: any[] = await svc.listEvidence(ctxOf(A, A_OWNER), P1);
+    const tl = withLog.find((e) => e.id === t.evidenceId).accessLog;
+    expect(tl).toEqual([
+      { at: expect.any(String), byName: null, byRole: null, moderator: true, reason: null },
+      { at: expect.any(String), byName: 'Amy Owner', byRole: 'OWNER', moderator: false, reason: 'checking the screenshot before a dispute' }]);
+    expect(withLog.find((e) => e.id === bad.evidenceId).accessLog).toEqual([]);
+    expect(JSON.stringify(withLog)).not.toContain(MOD); expect(JSON.stringify(withLog)).not.toContain(A_OWNER);
   });
   it('the scanner fails CLOSED: an error or no verdict stays unscanned; the rescan job retries', async () => {
     const t = await svc.requestUpload(ctxOf(A, A_OWNER), { postId: P1, mimeType: 'image/jpeg', sizeBytes: 5, sha256: sha });
