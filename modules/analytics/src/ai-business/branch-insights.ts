@@ -35,6 +35,47 @@ export interface ScorecardRow {
   rank: { perTechnicianHour: number | null; perOperatingHour: number | null; returningRate: number | null };
   /** AI BRANCH COMPARISON 09: what the salon's EXISTING alert rules flagged for this branch in the period (no second detector) */
   trendFlags?: TrendFlag[];
+  /** AI BRANCH COMPARISON 06: the salon days this branch's hours, shifts and customers were read over (its own time zone) */
+  range?: { from: string; to: string };
+}
+/** AI BRANCH COMPARISON 06 (Nov 12 2026) — Source-to-Answer audit trail for "Explain the difference": every figure the
+ *  explanation rests on, for both branches, with the record or report it was read from, the salon days, and the time it
+ *  was read. Revenue figures are null (never 0) when the viewer may not see revenue. Read-only. */
+export type BranchEvidenceSource = 'sales_report' | 'booking_report' | 'time_clock' | 'opening_hours' | 'paid_tickets';
+export interface BranchEvidenceFigure { key: string; unit: 'cents' | 'count' | 'percent' | 'hours'; a: number | null; b: number | null; source: BranchEvidenceSource; hidden: boolean }
+export interface BranchExplainEvidence {
+  asOf: string; preset: string;
+  a: { branchId: string; branchName: string; timeZone: string; range: { from: string; to: string } | null };
+  b: { branchId: string; branchName: string; timeZone: string; range: { from: string; to: string } | null };
+  financialsIncluded: boolean; figures: BranchEvidenceFigure[];
+  sources: Array<{ source: BranchEvidenceSource; route: string }>;
+}
+export const EVIDENCE_ROUTES: Record<BranchEvidenceSource, string> = {
+  sales_report: '/tenant/reports/sales', booking_report: '/tenant/reports/appointments', time_clock: '/tenant/team/time-clock',
+  opening_hours: '/tenant/management/locations', paid_tickets: '/tenant/reports/customers',
+};
+/** Pure: the evidence for an explanation of A vs B, from the same two scorecard rows the explanation used. */
+export function explainEvidence(a: ScorecardRow, b: ScorecardRow, o: { asOf: string; preset: string; financialsIncluded: boolean }): BranchExplainEvidence {
+  const fin = o.financialsIncluded;
+  const f = (key: string, unit: BranchEvidenceFigure['unit'], source: BranchEvidenceSource, pick: (r: ScorecardRow) => number | null, money = false): BranchEvidenceFigure =>
+    ({ key, unit, source, a: money && !fin ? null : pick(a), b: money && !fin ? null : pick(b), hidden: money && !fin });
+  const figures: BranchEvidenceFigure[] = [
+    f('net_sales', 'cents', 'sales_report', (r) => r.netSalesCents, true),
+    f('paid_tickets', 'count', 'sales_report', (r) => r.ticketsCount, true),
+    f('average_ticket', 'cents', 'sales_report', (r) => r.averageTicketCents, true),
+    f('bookings', 'count', 'booking_report', (r) => r.totalBookings),
+    f('completed', 'count', 'booking_report', (r) => r.completed),
+    f('completion_rate', 'percent', 'booking_report', (r) => r.completionRate),
+    f('no_show_rate', 'percent', 'booking_report', (r) => r.noShowPercent),
+    f('technician_hours', 'hours', 'time_clock', (r) => r.technicianHours),
+    f('operating_hours', 'hours', 'opening_hours', (r) => r.operatingHours),
+    f('customers', 'count', 'paid_tickets', (r) => r.customers),
+    f('returning_customers', 'count', 'paid_tickets', (r) => r.returningCustomers),
+    f('returning_rate', 'percent', 'paid_tickets', (r) => r.returningRate),
+  ];
+  const used = [...new Set(figures.map((x) => x.source))];
+  const side = (r: ScorecardRow) => ({ branchId: r.branchId, branchName: r.branchName, timeZone: r.timeZone, range: r.range ?? null });
+  return { asOf: o.asOf, preset: o.preset, a: side(a), b: side(b), financialsIncluded: fin, figures, sources: used.map((source) => ({ source, route: EVIDENCE_ROUTES[source] })) };
 }
 /** One metric family the existing AI Business Alerts engine triggered on for a branch: how many triggered evaluations, the
  *  latest one's value vs its rule threshold, and how many of those incidents are still open. */
@@ -145,7 +186,7 @@ export class BranchInsights {
         netPerTechnicianHourCents: b.netSalesCents != null && techH ? Math.round(b.netSalesCents / techH) : null,
         netPerOperatingHourCents: b.netSalesCents != null && opH ? Math.round(b.netSalesCents / opH) : null,
         returningRate: customers > 0 ? Math.round((returning / customers) * 100) : null,
-        rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null } });
+        rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, range: { from: range.from, to: range.to } });
     }
     // AI BRANCH COMPARISON 09 — trend flags FROM the existing alerts engine (ai_business_alert_events written by its rules):
     // triggered evaluations of a branch-scoped rule whose evaluated day falls in the period, per metric; salon-wide rules
@@ -187,7 +228,8 @@ export class BranchInsights {
     const s = await this.scorecard(ctx, q);
     const a = s.rows.find((r) => r.branchId === q.a), b = s.rows.find((r) => r.branchId === q.b);
     if (!a || !b) throw new BranchInsightsError('Branch not found among the branches you can view.', 'BRANCH_NOT_AUTHORIZED', 403);
-    return { a: a.branchName, b: b.branchName, preset: s.preset, range: s.range, ...explainDifference(a, b) };
+    const evidence = explainEvidence(a, b, { asOf: new Date(this.now()).toISOString(), preset: s.preset, financialsIncluded: s.financialsIncluded });
+    return { a: a.branchName, b: b.branchName, preset: s.preset, range: s.range, ...explainDifference(a, b), evidence };
   }
 
   /** P1 — Branch Data Health Checker: read-only; recorded; a repeat within 30 s returns the last run. */

@@ -585,4 +585,26 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.t.open": "{n} vẫn đang mở.", // DRAFT — Kevin reviews
   "bcx.t.go": "Mở cảnh báo", // DRAFT — Kevin reviews
   "bcx.t.note": "Chỉ hiện các quy tắc đặt cho từng chi nhánh; quy tắc cho toàn tiệm nằm trong Cảnh báo AI Kinh doanh. Trang này không tự phát hiện gì.", // DRAFT — Kevin reviews
+  "bcx.ev.title": "Các số liệu này lấy từ đâu", // DRAFT — Kevin reviews
+  "bcx.ev.asOf": "Đọc lúc {at}", // DRAFT — Kevin reviews
+  "bcx.ev.days": "{from} – {to} ({tz})", // DRAFT — Kevin reviews
+  "bcx.ev.figure": "Số liệu", // DRAFT — Kevin reviews
+  "bcx.ev.source": "Nguồn", // DRAFT — Kevin reviews
+  "bcx.ev.f.net_sales": "Doanh thu thuần", // DRAFT — Kevin reviews
+  "bcx.ev.f.paid_tickets": "Phiếu đã thanh toán", // DRAFT — Kevin reviews
+  "bcx.ev.f.average_ticket": "Phiếu trung bình", // DRAFT — Kevin reviews
+  "bcx.ev.f.bookings": "Lịch hẹn", // DRAFT — Kevin reviews
+  "bcx.ev.f.completed": "Đã hoàn thành", // DRAFT — Kevin reviews
+  "bcx.ev.f.completion_rate": "Tỷ lệ hoàn thành", // DRAFT — Kevin reviews
+  "bcx.ev.f.no_show_rate": "Không đến", // DRAFT — Kevin reviews
+  "bcx.ev.f.technician_hours": "Giờ làm của thợ", // DRAFT — Kevin reviews
+  "bcx.ev.f.operating_hours": "Giờ mở cửa", // DRAFT — Kevin reviews
+  "bcx.ev.f.customers": "Khách hàng", // DRAFT — Kevin reviews
+  "bcx.ev.f.returning_customers": "Khách quay lại", // DRAFT — Kevin reviews
+  "bcx.ev.f.returning_rate": "Tỷ lệ quay lại", // DRAFT — Kevin reviews
+  "bcx.ev.s.sales_report": "Báo cáo doanh thu", // DRAFT — Kevin reviews
+  "bcx.ev.s.booking_report": "Báo cáo lịch hẹn", // DRAFT — Kevin reviews
+  "bcx.ev.s.time_clock": "Ca chấm công", // DRAFT — Kevin reviews
+  "bcx.ev.s.opening_hours": "Giờ mở cửa của địa điểm", // DRAFT — Kevin reviews
+  "bcx.ev.s.paid_tickets": "Phiếu đã thanh toán (Báo cáo khách hàng)", // DRAFT — Kevin reviews
 };

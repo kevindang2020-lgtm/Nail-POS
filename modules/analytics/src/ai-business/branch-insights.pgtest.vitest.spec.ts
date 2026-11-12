@@ -3,7 +3,7 @@
 // difference, the growth advisor, the recorded Branch Data Health Checker.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, adviseBranches, type ScorecardRow } from './branch-insights';
+import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, explainEvidence, adviseBranches, type ScorecardRow } from './branch-insights';
 
 const id = (n: number) => `82700000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const T = id(1), BIG = id(2), SMALL = id(3), OWNER = id(10), C1 = id(20), C2 = id(21), C3 = id(22), TECH = id(30);
@@ -91,6 +91,34 @@ describe('A3 — explanation and advisor', () => {
     expect(e.lines.at(-1)).toMatch(/measured differences, not causes/);
     expect(await code(bi.explain(ctx(), { a: BIG, b: BIG }))).toBe('VALIDATION_FAILED');
     expect(await code(bi.explain(ctx(), { a: BIG, b: id(99) }))).toBe('BRANCH_NOT_AUTHORIZED');
+  });
+  it('BI-06 Source-to-Answer: the explanation carries every figure it rests on for both branches, the source of each, the salon days and the as-of time; read-only', async () => {
+    const before = (await q(`select (select count(*) from ai_business_health_runs)::int as h, (select count(*) from tickets)::int as t`))[0];
+    const e = await bi.explain(ctx(), { preset: 'week', a: BIG, b: SMALL });
+    const ev = e.evidence;
+    expect(ev.asOf).toBe('2026-11-06T20:00:00.000Z');
+    expect(ev.a).toEqual({ branchId: BIG, branchName: 'Big Main St', timeZone: 'UTC', range: { from: '2026-11-02', to: '2026-11-06' } });
+    expect(ev.b.branchId).toBe(SMALL);
+    const by = Object.fromEntries(ev.figures.map((x) => [x.key, x]));
+    // the same numbers the bridge used: net 3000 vs 1000, tickets 60 vs 16 — from the Sales Report
+    expect(by.net_sales).toEqual({ key: 'net_sales', unit: 'cents', a: 300000, b: 100000, source: 'sales_report', hidden: false });
+    expect(by.paid_tickets).toMatchObject({ a: 60, b: 16, source: 'sales_report' });
+    expect(e.bridge!.totalCents).toBe(by.net_sales.a! - by.net_sales.b!);
+    expect(by.no_show_rate).toMatchObject({ a: 9, b: 2, source: 'booking_report' });
+    expect(by.technician_hours).toMatchObject({ a: 50, b: 10, unit: 'hours', source: 'time_clock' });
+    expect(by.operating_hours).toMatchObject({ a: 50, b: null, source: 'opening_hours' });     // SMALL has no hours: unknown, never 0
+    expect(by.returning_customers).toMatchObject({ a: 1, b: 0, source: 'paid_tickets' });
+    expect(ev.sources.map((x) => x.source).sort()).toEqual(['booking_report', 'opening_hours', 'paid_tickets', 'sales_report', 'time_clock']);
+    expect(ev.sources.find((x) => x.source === 'sales_report')!.route).toBe('/tenant/reports/sales');
+    const after = (await q(`select (select count(*) from ai_business_health_runs)::int as h, (select count(*) from tickets)::int as t`))[0];
+    expect(after).toEqual(before);
+    // revenue hidden for the viewer: money figures are null and marked hidden, counts stay
+    const row = (await bi.scorecard(ctx(), { preset: 'week' })).rows;
+    const hid = explainEvidence(row[0], row[1], { asOf: 'x', preset: 'week', financialsIncluded: false });
+    const hb = Object.fromEntries(hid.figures.map((x) => [x.key, x]));
+    expect(hb.net_sales).toMatchObject({ a: null, b: null, hidden: true });
+    expect(hb.average_ticket).toMatchObject({ a: null, b: null, hidden: true });
+    expect(hb.bookings).toMatchObject({ hidden: false, a: 70 });
   });
   it('BI-04 advisor rules state their numbers: low yield per technician hour, high no-shows, low return rate', () => {
     const base = (o: Partial<ScorecardRow>): ScorecardRow => ({ branchId: 'x', branchName: 'X', status: 'active', timeZone: 'UTC', netSalesCents: 1, ticketsCount: 1, averageTicketCents: 1, totalBookings: 1, completed: 1,

@@ -40,6 +40,33 @@ describe('AI Branch Comparison screen', () => {
     expect(lines).toHaveTextContent('These are measured differences, not causes');
   });
 
+  it('AI BRANCH COMPARISON 06: the explanation shows the figures it rests on, their source, the salon days and the as-of time; hidden revenue stays —', async () => {
+    compareMock.mockResolvedValue({ preset: 'week', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: false, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: null, ticketsCount: null, averageTicketCents: null, totalBookings: 20, completed: 18, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [], branches: [] });
+    center.branchScorecard.mockResolvedValue(SC);
+    const side = (id: string, name: string) => ({ branchId: id, branchName: name, timeZone: 'America/New_York', range: { from: '2026-11-02', to: '2026-11-08' } });
+    center.branchExplain.mockResolvedValue({ a: 'Marlton', b: 'Deptford', preset: 'week', range: null, lines: [], bridge: null,
+      evidence: { asOf: '2026-11-06T20:00:00Z', preset: 'week', a: side('b1', 'Marlton'), b: side('b2', 'Deptford'), financialsIncluded: false,
+        figures: [{ key: 'net_sales', unit: 'cents', a: null, b: null, source: 'sales_report', hidden: true },
+          { key: 'technician_hours', unit: 'hours', a: 50, b: 10, source: 'time_clock', hidden: false },
+          { key: 'operating_hours', unit: 'hours', a: 50, b: null, source: 'opening_hours', hidden: false },
+          { key: 'no_show_rate', unit: 'percent', a: 9, b: 2, source: 'booking_report', hidden: false }],
+        sources: [{ source: 'sales_report', route: '/tenant/reports/sales' }, { source: 'time_clock', route: '/tenant/team/time-clock' }] } });
+    render1();
+    fireEvent.click(await screen.findByTestId('bcx-explain'));
+    fireEvent.click(await screen.findByTestId('bcx-e-run'));
+    const ev = await screen.findByTestId('bcx-e-evidence');
+    expect(within(ev).getByTestId('bcx-ev-days')).toHaveTextContent('Marlton: 2026-11-02 – 2026-11-08 (America/New_York)');
+    expect(within(ev).getByTestId('bcx-ev-asof')).toHaveTextContent(/Read .*2026/);
+    const rows = within(ev).getAllByTestId('bcx-ev-row');
+    const byKey = (k: string) => rows.find((r) => r.getAttribute('data-key') === k)!;
+    expect(byKey('net_sales')).toHaveTextContent(/Net sales\s*—\s*—\s*Sales Report/);
+    expect(byKey('technician_hours')).toHaveTextContent('Time clock shifts');
+    expect(byKey('operating_hours').textContent).toContain('N/A');          // unknown, never 0
+    expect(byKey('no_show_rate')).toHaveTextContent(/9%\s*2%/);
+    expect(within(ev).getByRole('link', { name: 'Time clock shifts' }).getAttribute('href')).toBe('/tenant/team/time-clock');
+  });
+
   it('renders a per-branch row with totals and normalized revenue-per-completed', async () => {
     compareMock.mockResolvedValue({
       preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 1,
