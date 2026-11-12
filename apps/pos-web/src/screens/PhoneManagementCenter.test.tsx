@@ -81,4 +81,20 @@ describe('Phone Number Management center', () => {
     fireEvent.click(screen.getByTestId('pm-up-dup-continue'));
     await waitFor(() => expect(api.detail).toHaveBeenCalledWith('s1'));
   });
+  it('PHONE NUMBER MANAGEMENT 4 · 06: the server\'s suspicious-change list shows reasons and facts; Review opens the latest request; nothing else happens', async () => {
+    vi.mocked(api.summary).mockResolvedValue({ ...summary(), risk: { windowDays: 30, items: [{ customerId: 'c7', customerName: 'Often Changer', changes: 3, failedRequests: 0, codeAttempts: 2, channels: 1, addresses: 1,
+      reasons: ['frequent_changes'], latestRequestId: 'r1', latestAt: '2026-10-31T11:58:00Z' }] } } as never);
+    ui();
+    const row = await screen.findByTestId('pm-risk-row');
+    expect(row).toHaveTextContent('Often Changer'); expect(row).toHaveTextContent('Frequent changes'); expect(row).toHaveTextContent('3 requests, 0 failed or expired, 2 code tries, 1 channels');
+    expect(screen.getByTestId('pm-risk')).toHaveTextContent('nothing here locks a customer out');
+    fireEvent.click(screen.getByTestId('pm-risk-open'));
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('r1'));
+    expect(vi.mocked(posCustomersApi.phoneCancel)).not.toHaveBeenCalled();
+  });
+  it('no review section when the server lists none', async () => {
+    ui();
+    await screen.findByTestId('pm-kpi-verified');
+    expect(screen.queryByTestId('pm-risk')).toBeNull();
+  });
 });

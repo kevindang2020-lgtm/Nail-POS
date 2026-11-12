@@ -23,6 +23,7 @@ type Tab = 'pending' | 'history' | 'sync';
 const GROUPS = ['pending', 'code_sent', 'retry_allowed', 'expired', 'failed', 'manager_review', 'cancelled', 'completed', 'sync_attention'] as const;
 const SOURCES = ['staff_pos', 'customer_app', 'kiosk', 'ai_receptionist', 'import'] as const;
 const BASES = ['requested', 'verified', 'applied', 'failed', 'audit'] as const;
+const RISK_REASONS = ['frequent_changes', 'failed_codes', 'cross_device'];
 const SYNCS = ['attention', 'retry_scheduled', 'failed', 'in_progress', 'pending', 'synced'] as const;
 const isForbidden = (e: unknown) => { const x = e as { status?: number; code?: string } | null; return !!x && (x.status === 403 || x.code === 'PERMISSION_DENIED'); };
 const errText = (e: unknown) => errorTextOf(e, tx('phm.loadError'));
@@ -136,6 +137,19 @@ export function PhoneManagementCenter() {
           )}
         </section>
       </div>
+
+      {summary?.risk?.items.length ? (
+        <section className="pm-card" data-testid="pm-risk" aria-labelledby="pm-risk-h">
+          <h2 id="pm-risk-h" className="pm-h2">{tx('phm.risk.title')}</h2>
+          <div className="sub">{tx('phm.risk.sub', { d: String(summary.risk.windowDays) })}</div>
+          <ul className="pm-pick">{summary.risk.items.map((r) => (
+            <li key={r.customerId} data-testid="pm-risk-row">
+              <span><b>{r.customerName ?? '—'}</b> <span className="pm-small">{r.reasons.filter((x) => RISK_REASONS.includes(x)).map((x) => tx('phm.risk.r.' + x)).join(' · ')}</span>
+                <span className="pm-small"> · {tx('phm.risk.facts', { c: fmtNumber(r.changes), f: fmtNumber(r.failedRequests), a: fmtNumber(r.codeAttempts), ch: fmtNumber(r.channels) })}</span></span>
+              <button type="button" className="fk-btn ghost sm" onClick={() => setOpenId(r.latestRequestId)} data-testid="pm-risk-open">{tx('phm.risk.review')}</button>
+            </li>))}</ul>
+        </section>
+      ) : null}
 
       <section className="pm-card pm-lists" data-testid="pm-lists">
         <div className="fk-seg pm-tabs" role="tablist">

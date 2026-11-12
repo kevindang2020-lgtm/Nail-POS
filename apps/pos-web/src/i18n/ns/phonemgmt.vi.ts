@@ -172,4 +172,11 @@ export const PHONEMGMT_VI = {
   "phm.dup.other": "Dùng số khác", // DRAFT — Kevin reviews
   "phm.dup.family": "Đây là số dùng chung trong gia đình, tiếp tục", // DRAFT — Kevin reviews
   "phm.dup.continue": "Tiếp tục", // DRAFT — Kevin reviews
+  "phm.risk.title": "Thay đổi số cần xem lại", // DRAFT — Kevin reviews
+  "phm.risk.sub": "Các lần đổi số điện thoại bất thường trong {d} ngày qua. Để người có thẩm quyền xem lại: ở đây không khóa khách hay đổi số nào.", // DRAFT — Kevin reviews
+  "phm.risk.r.frequent_changes": "Đổi số nhiều lần", // DRAFT — Kevin reviews
+  "phm.risk.r.failed_codes": "Nhập mã sai nhiều lần", // DRAFT — Kevin reviews
+  "phm.risk.r.cross_device": "Nhiều thiết bị hoặc kênh", // DRAFT — Kevin reviews
+  "phm.risk.facts": "{c} yêu cầu, {f} lỗi hoặc hết hạn, {a} lần nhập mã, {ch} kênh", // DRAFT — Kevin reviews
+  "phm.risk.review": "Xem yêu cầu mới nhất", // DRAFT — Kevin reviews
 };

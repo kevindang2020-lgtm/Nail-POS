@@ -6,7 +6,10 @@ import { api } from './client';
 type PcGroup = 'pending' | 'code_sent' | 'retry_allowed' | 'expired' | 'failed' | 'manager_review' | 'cancelled' | 'completed' | 'sync_attention';
 export type PcSync = 'not_needed' | 'pending' | 'in_progress' | 'synced' | 'retry_scheduled' | 'failed' | 'unknown';
 export interface PcKpi { value: number | string; source: string }
-export interface PcSummary { timezone: string; generatedAt: string; kpis: Record<'verified' | 'pending' | 'failed' | 'today' | 'shared' | 'smsHealth', PcKpi>; syncAttention: number; can: { startChange: boolean; editSettings: boolean; retrySync: boolean } }
+export interface PcSummary { timezone: string; generatedAt: string; kpis: Record<'verified' | 'pending' | 'failed' | 'today' | 'shared' | 'smsHealth', PcKpi>; syncAttention: number; can: { startChange: boolean; editSettings: boolean; retrySync: boolean };
+  /** PHONE NUMBER MANAGEMENT 4 · 06 — the server's suspicious-change review list (review only) */
+  risk?: { windowDays: number; items: PcRiskItem[] } }
+export interface PcRiskItem { customerId: string; customerName: string | null; changes: number; failedRequests: number; codeAttempts: number; channels: number; addresses: number; reasons: string[]; latestRequestId: string; latestAt: string | null }
 export interface PcHealthItem { key: string; state: string; message: string; [k: string]: unknown }
 export interface PcHealth { checkedAt: string; items: PcHealthItem[]; limits: { codeDigits: number; codeTtlSeconds: number; maxAttempts: number; resendCooldownSeconds: number; syncMaxAttempts: number } }
 export interface PcRow {

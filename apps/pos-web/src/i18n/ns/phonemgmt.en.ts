@@ -172,4 +172,11 @@ export const PHONEMGMT_EN = {
   "phm.dup.other": "Use a different number",
   "phm.dup.family": "It is a shared family phone, continue",
   "phm.dup.continue": "Continue",
+  "phm.risk.title": "Number changes to review",
+  "phm.risk.sub": "Unusual phone number changes in the last {d} days. For an authorized person to review: nothing here locks a customer out or changes a number.",
+  "phm.risk.r.frequent_changes": "Frequent changes",
+  "phm.risk.r.failed_codes": "Repeated failed codes",
+  "phm.risk.r.cross_device": "Several devices or channels",
+  "phm.risk.facts": "{c} requests, {f} failed or expired, {a} code tries, {ch} channels",
+  "phm.risk.review": "Review latest request",
 };

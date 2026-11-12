@@ -43,6 +43,8 @@ export const PC_GROUPS = {
   sync_attention: ['synchronization_failed'],
 } as const;
 export type PcGroup = keyof typeof PC_GROUPS;
+/** PHONE NUMBER MANAGEMENT 4 · 06 — when a customer's last 30 days of number changes go to review (any one is enough) */
+export const PC_RISK = { changes: 3, failedRequests: 2, codeAttempts: 6, channels: 2, addresses: 2 } as const;
 const OPEN_STATES: string[] = [...PC_GROUPS.pending, ...PC_GROUPS.code_sent, ...PC_GROUPS.retry_allowed, ...PC_GROUPS.expired, ...PC_GROUPS.manager_review];
 const FAILURE_STATES: string[] = [...PC_GROUPS.retry_allowed, ...PC_GROUPS.expired, ...PC_GROUPS.failed];
 const PROVEN_STATES: string[] = ['phone_verified', 'phone_activated', 'synchronization_failed', 'customer_records_synchronized'];
@@ -148,8 +150,9 @@ export class PhoneCenter {
            group by normalized_phone having count(*) > 1) x) as shared,
         (select count(*)::int from customer_phone_update_sessions where tenant_id = ${T} and state = 'synchronization_failed') as sync_attention`.execute(this.db)).rows[0];
     const health = await this.readiness(ctx);
+    const risk = await this.riskReview(ctx);
     return {
-      timezone: tz, generatedAt: new Date().toISOString(),
+      timezone: tz, generatedAt: new Date().toISOString(), risk,
       kpis: {
         verified: { value: n(r.verified), source: 'customer_phones: customers with an SMS-verified active number' },
         pending: { value: n(r.pending), source: 'customer_phone_update_sessions: open, not yet proven, not past their deadline' },
@@ -162,6 +165,35 @@ export class PhoneCenter {
       // what THIS user may do (the routes re-check every one; the screen only hides what would be refused)
       can: { startChange: has(ctx, 'pos.customers.edit'), editSettings: has(ctx, 'pos.customers.phone.settings'), retrySync: has(ctx, 'pos.customers.phone.retry_sync') },
     };
+  }
+
+  /** PHONE NUMBER MANAGEMENT 4 · 06 — Suspicious Number Change Review. Customers whose number changes in the last 30 days look
+   *  unusual: frequent change requests, several failed / expired requests or many code attempts, or requests from several
+   *  channels or network addresses (cross-device). A list for an authorized person to review — it never locks anyone out,
+   *  cancels a request or changes a number; addresses are only counted, never returned. */
+  private async riskReview(ctx: PcContext) {
+    const T = ctx.tenantId;
+    const rows: any[] = (await sql`select s.customer_id, max(c.full_name) as name, count(*)::int as changes,
+        count(*) filter (where s.state in (${sql.join(FAILURE_STATES)}))::int as failed_requests,
+        coalesce(sum(bv.attempts), 0)::int as code_attempts, count(distinct s.update_source)::int as channels, count(distinct bv.ip)::int as addresses,
+        (array_agg(s.id order by s.created_at desc))[1] as latest_id, max(s.created_at) as latest_at
+      from customer_phone_update_sessions s join customers c on c.id = s.customer_id and c.tenant_id = s.tenant_id
+      left join lateral (select v.attempt_count as attempts, v.request_ip as ip from booking_verification_sessions v
+        where v.tenant_id = s.tenant_id and v.booking_session_id = s.id order by v.created_at desc limit 1) bv on true
+      where s.tenant_id = ${T} and s.created_at >= now() - interval '30 days'
+      group by s.customer_id
+      having count(*) >= ${PC_RISK.changes} or count(*) filter (where s.state in (${sql.join(FAILURE_STATES)})) >= ${PC_RISK.failedRequests}
+        or coalesce(sum(bv.attempts), 0) >= ${PC_RISK.codeAttempts} or count(distinct s.update_source) >= ${PC_RISK.channels} or count(distinct bv.ip) >= ${PC_RISK.addresses}
+      order by max(s.created_at) desc limit 50`.execute(this.db)).rows;
+    const items = rows.map((r) => {
+      const reasons: string[] = [];
+      if (n(r.changes) >= PC_RISK.changes) reasons.push('frequent_changes');
+      if (n(r.failed_requests) >= PC_RISK.failedRequests || n(r.code_attempts) >= PC_RISK.codeAttempts) reasons.push('failed_codes');
+      if (n(r.channels) >= PC_RISK.channels || n(r.addresses) >= PC_RISK.addresses) reasons.push('cross_device');
+      return { customerId: String(r.customer_id), customerName: r.name ?? null, changes: n(r.changes), failedRequests: n(r.failed_requests), codeAttempts: n(r.code_attempts),
+        channels: n(r.channels), addresses: n(r.addresses), reasons, latestRequestId: String(r.latest_id), latestAt: iso(r.latest_at) };
+    });
+    return { windowDays: 30, thresholds: { ...PC_RISK }, items, action: 'review_only' as const };
   }
 
   /** sender readiness — what is configured and when it was last checked. Never a secret, never "verified" because "connected". */
