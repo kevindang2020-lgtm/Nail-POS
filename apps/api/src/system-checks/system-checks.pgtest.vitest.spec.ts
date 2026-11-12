@@ -75,6 +75,35 @@ describe('shared read-only Check … System', () => {
     expect(count(rp1, 'surcharge_not_card')).toMatchObject({ state: 'READY', count: 0 });
 
   });
+  it('extras Unfinished POS Modules 06 — Team Integrity: clock state, open punches, skills and training; never the other salon', async () => {
+    const TA = id(41), TB = id(42), TC = id(43), TX = id(44), TOK = id(45);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, archived_at, status) values
+      (${TA}, ${T}, ${B1}, 'Ari', 'Archived', 'Ari Archived', false, now(), 'archived'), (${TB}, ${T}, ${B1}, 'Bo', 'Busy', 'Bo Busy', true, null, 'active'),
+      (${TC}, ${T}, ${B2}, 'Cy', 'Cert', 'Cy Cert', true, null, 'active'), (${TOK}, ${T}, ${B1}, 'Ok', 'Fine', 'Ok Fine', true, null, 'active'),
+      (${TX}, ${X}, ${BX}, 'Xo', 'Other', 'Xo Other', false, now(), 'archived')`);
+    const before = (await svc.run('technicians', { tenantId: T })).checks;
+    const base = (k: string) => before.find((c: any) => c.key === k).count as number;
+    // Ari is archived but still clocked in (and so is the other salon's Xo); Bo left a punch open since 3 days ago
+    await q(sql`insert into technician_workforce_state (tenant_id, branch_id, technician_id, clock_status, shift_status) values
+      (${T}, ${B1}, ${TA}, 'CLOCKED_IN', 'ON_SHIFT'), (${T}, ${B1}, ${TB}, 'CLOCKED_IN', 'ON_SHIFT'), (${X}, ${BX}, ${TX}, 'ON_BREAK', 'ON_SHIFT')`);
+    await q(sql`insert into technician_shifts (tenant_id, branch_id, technician_id, shift_date, start_time, end_time, status) values
+      (${T}, ${B1}, ${TB}, current_date - 3, now() - interval '3 days', null, 'active'), (${T}, ${B1}, ${TOK}, current_date - 3, now() - interval '3 days', now() - interval '3 days' + interval '8 hours', 'completed'),
+      (${X}, ${BX}, ${TX}, current_date - 3, now() - interval '3 days', null, 'active')`);
+    // Ok Fine does a service; Cy's certificate expired last month (a revoked one and a future one never count)
+    await q(sql`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values (${T}, ${B1}, ${TOK}, ${id(31)})`);
+    await q(sql`insert into technician_certifications (tenant_id, technician_id, name, expires_at, revoked_reason) values
+      (${T}, ${TC}, 'Nail tech license', current_date - 30, null), (${T}, ${TC}, 'Old', current_date - 300, 'replaced'), (${T}, ${TOK}, 'Gel course', current_date + 200, null),
+      (${X}, ${TX}, 'License', current_date - 30, null)`);
+    const tc = await svc.run('technicians', { tenantId: T });
+    expect(count(tc, 'clocked_in_not_active')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(tc, 'punch_open_past_day')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(tc, 'no_service_mapping').count).toBe(base('no_service_mapping') - 1);   // mapping Ok removes her; Bo, Cy (and the two earlier) remain; archived Ari never counts
+    expect(count(tc, 'no_service_mapping').count).toBe(4);
+    expect(count(tc, 'certification_expired')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(tc.overall).toBe('FAILED');
+    const b2 = await svc.run('technicians', { tenantId: T, branchId: B2 });
+    expect(count(b2, 'clocked_in_not_active').count).toBe(0); expect(count(b2, 'certification_expired').count).toBe(1);
+  });
   it('the branch scope narrows the counts', async () => {
     const b1 = await svc.run('expenses', { tenantId: T, branchId: B1 });
     expect(b1.branchId).toBe(B1);

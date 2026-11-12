@@ -1628,4 +1628,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.discounts.live_deal_branch_closed.fix": "Chi nhánh không còn mở nhưng ưu đãi vẫn hiện là đang chạy — hãy kết thúc ưu đãi hoặc chuyển sang chi nhánh đang mở.", // DRAFT — Kevin reviews
   "syschk.discounts.live_deal_service_unavailable": "Mọi ưu đãi đang chạy chỉ áp dụng cho dịch vụ vẫn còn cung cấp", // DRAFT — Kevin reviews
   "syschk.discounts.live_deal_service_unavailable.fix": "Một dịch vụ của ưu đãi đã được lưu trữ, tắt hoặc xóa — cập nhật dịch vụ của ưu đãi để khách không thấy mức giảm không thể dùng.", // DRAFT — Kevin reviews
+  "syschk.technicians.clocked_in_not_active": "Không có thợ đã lưu trữ hoặc ngưng hoạt động nào vẫn đang chấm công vào", // DRAFT — Kevin reviews
+  "syschk.technicians.clocked_in_not_active.fix": "Chấm công ra cho những thợ đó (hoặc khôi phục họ) trong Chấm công.", // DRAFT — Kevin reviews
+  "syschk.technicians.punch_open_past_day": "Không có lượt chấm công vào nào còn mở từ ngày trước", // DRAFT — Kevin reviews
+  "syschk.technicians.punch_open_past_day.fix": "Đóng các lượt đó với giờ ra đúng trong Chấm công.", // DRAFT — Kevin reviews
+  "syschk.technicians.no_service_mapping": "Mỗi thợ đang hoạt động được duyệt ít nhất một dịch vụ", // DRAFT — Kevin reviews
+  "syschk.technicians.no_service_mapping.fix": "Gán dịch vụ cho họ trong Trợ lý gán dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.technicians.certification_expired": "Không có thợ đang hoạt động nào có chứng chỉ hết hạn", // DRAFT — Kevin reviews
+  "syschk.technicians.certification_expired.fix": "Tải lên chứng chỉ đã gia hạn hoặc đánh dấu chứng chỉ cũ đã được thay thế.", // DRAFT — Kevin reviews
 };
