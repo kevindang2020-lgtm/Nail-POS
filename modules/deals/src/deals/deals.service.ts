@@ -15,6 +15,8 @@
 //  bug 18  an auto-approved technician deal goes live
 //  bug 21  bad input is a 400 (validateDealInput), never a database error
 import type { DealsRepositoryPort } from './deals.repository';
+import { stackingInspector } from '../engine/stacking-inspector';
+import type { StackingPolicy } from '../engine/pricing';
 import type { DealContext, CreateDealInput, DealView, DealSettingsView, ReservationFacts } from './deals.dto';
 import {
   computeFinalPriceCents, nextStatus, initialStatus, validateTechDealAgainstSettings, validateDealInput, publishTarget,
@@ -119,7 +121,7 @@ export class DealsService {
   // BUSINESS rules on the backend: the salon's technician-deal limits, ownership, the deal's terms and the status machine.
   private auth(ctx: DealContext) { if (!ctx?.userId || !ctx?.tenantId) throw new DealForbiddenError('Not authenticated.'); }
 
-  async getSettings(ctx: DealContext): Promise<DealSettingsView> { this.auth(ctx); return (await this.tenantGate(ctx)).settings; }
+  async getSettings(ctx: DealContext): Promise<DealSettingsView> { this.auth(ctx); return withStacking((await this.tenantGate(ctx)).settings); }
 
   async updateSettings(ctx: DealContext, patch: Partial<DealSettings>): Promise<DealSettingsView> {
     this.auth(ctx);
@@ -132,7 +134,7 @@ export class DealsService {
     for (const k of ['maxDiscountPercent', 'maxFixedDiscountCents', 'minServicePriceCents', 'maxActiveDealsPerTech', 'maxRedemptionsCap', 'maxCampaignDurationDays']) {
       if (p[k] !== undefined && p[k] !== null && !(Number.isInteger(p[k]) && p[k] >= 0)) throw withCode(new DealValidationError(`${k} must be a whole number.`), 'WHOLE_NUMBER_REQUIRED');
     }
-    return this.repo.upsertSettings(ctx, p);
+    return withStacking(await this.repo.upsertSettings(ctx, p));
   }
 
   /** Is the salon allowed to run deals right now (its own switch, the platform's)? */
@@ -785,11 +787,7 @@ export class DealsService {
   }
 
   /** The tenant's stacking policy, as the pricing engine takes it. */
-  async policy(ctx: DealContext) {
-    const s = await this.repo.getSettings(ctx);
-    return { mode: (s.stackingPolicy ?? 'best_single') as any, allowWithMembership: !!s.allowStackMembership, allowWithLoyalty: s.allowStackLoyalty !== false,
-      priceFloorPercent: s.priceFloorPercent ?? 0, maxTotalDiscountPercent: s.maxTotalDiscountPercent ?? null };
-  }
+  async policy(ctx: DealContext) { return policyFromSettings(await this.repo.getSettings(ctx)); }
 
   /**
    * The simulator: a draft (or an existing deal with changes) judged against a sample customer, services and time —
@@ -913,4 +911,17 @@ export function widenedTerms(before: DealView, after: Record<string, any>, patch
   if (has('rules') && JSON.stringify(after.rules ?? null) !== JSON.stringify(before.rules ?? null)) w.push('rules');
   if (has('stackable') && !before.stackable && after.stackable) w.push('stackable');
   return w;
+}
+
+/** The tenant's saved settings as the pricing engine's StackingPolicy — the ONE mapping (Checkout and the settings view). */
+export function policyFromSettings(s: Partial<DealSettings>): StackingPolicy {
+  return { mode: (s.stackingPolicy ?? 'best_single') as StackingPolicy['mode'], allowWithMembership: !!s.allowStackMembership, allowWithLoyalty: s.allowStackLoyalty !== false,
+    priceFloorPercent: s.priceFloorPercent ?? 0, maxTotalDiscountPercent: s.maxTotalDiscountPercent ?? null };
+}
+
+/** Settings plus "which offers combine", answered by the same inspector Check Coupon uses (no second set of rules). */
+function withStacking(s: DealSettings): DealSettingsView {
+  const policy = policyFromSettings(s);
+  return { ...s, stackingExplained: { mode: policy.mode, combinable: stackingInspector(policy, { stackable: true, stackGroup: null }).rows,
+    notCombinable: stackingInspector(policy, { stackable: false, stackGroup: null }).rows.filter((r) => r.benefit === 'other_offer') } };
 }

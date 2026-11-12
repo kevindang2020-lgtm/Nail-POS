@@ -47,28 +47,6 @@ export const DEALSOFFERS_VI = {
   'do.stack.combination': 'Kết hợp', // DRAFT — Kevin reviews
   'do.stack.result': 'Kết quả', // DRAFT — Kevin reviews
   'do.stack.why': 'Lý do', // DRAFT — Kevin reviews
-  'do.stack.pair.deal_deal': 'Ưu đãi + ưu đãi khác', // DRAFT — Kevin reviews
-  'do.stack.pair.deal_coupon': 'Ưu đãi + phiếu giảm giá', // DRAFT — Kevin reviews
-  'do.stack.pair.promo_code': 'Ưu đãi + mã khuyến mãi', // DRAFT — Kevin reviews
-  'do.stack.pair.non_combinable': 'Ưu đãi không đánh dấu cộng dồn + bất kỳ ưu đãi hoặc phiếu giảm giá nào khác', // DRAFT — Kevin reviews
-  'do.stack.pair.with_membership': 'Ưu đãi hoặc phiếu giảm giá + giảm giá hội viên', // DRAFT — Kevin reviews
-  'do.stack.pair.with_loyalty': 'Ưu đãi hoặc phiếu giảm giá + phần thưởng tích điểm', // DRAFT — Kevin reviews
-  'do.stack.pair.membership_loyalty': 'Giảm giá hội viên + phần thưởng tích điểm (không có ưu đãi)', // DRAFT — Kevin reviews
-  'do.stack.pair.prepaid_credit': 'Lượt hội viên trả trước + bất kỳ', // DRAFT — Kevin reviews
-  'do.stack.verdict.allowed': 'Cộng dồn', // DRAFT — Kevin reviews
-  'do.stack.verdict.conditional': 'Cộng dồn nếu được đánh dấu', // DRAFT — Kevin reviews
-  'do.stack.verdict.blocked': 'Không cộng dồn', // DRAFT — Kevin reviews
-  'do.stack.reason.one_offer': 'Mỗi hóa đơn một ưu đãi hoặc phiếu giảm giá — Thanh toán giữ cái giúp khách tiết kiệm hơn.', // DRAFT — Kevin reviews
-  'do.stack.reason.both_combinable': 'Chỉ khi cả hai được đánh dấu cộng dồn.', // DRAFT — Kevin reviews
-  'do.stack.reason.both_combinable_other_group': 'Chỉ khi cả hai được đánh dấu cộng dồn và thuộc nhóm cộng dồn khác nhau.', // DRAFT — Kevin reviews
-  'do.stack.reason.competes_alone': 'Nó được so riêng với nhóm cộng dồn; khách nhận kết quả tốt hơn.', // DRAFT — Kevin reviews
-  'do.stack.reason.exclusive': 'Chính sách độc quyền: ưu đãi không bao giờ cộng với giảm giá hội viên hay phần thưởng.', // DRAFT — Kevin reviews
-  'do.stack.reason.setting_on': 'Được cài đặt ở trên cho phép.', // DRAFT — Kevin reviews
-  'do.stack.reason.better_of_two': 'Cài đặt ở trên không cho phép — Thanh toán tính cả hai cách và giữ cách tốt hơn cho khách.', // DRAFT — Kevin reviews
-  'do.stack.reason.no_deal': 'Khi hóa đơn không có ưu đãi, hai loại này luôn cộng dồn.', // DRAFT — Kevin reviews
-  'do.stack.reason.prepaid': 'Hội viên đã trả trước nên luôn được áp dụng.', // DRAFT — Kevin reviews
-  'do.stack.floor': 'Khách luôn trả ít nhất {v}% tổng phụ.', // DRAFT — Kevin reviews
-  'do.stack.max': 'Một hóa đơn không bao giờ được giảm quá {v}%.', // DRAFT — Kevin reviews
   'do.byBranch.title': 'Theo chi nhánh', // DRAFT — Kevin reviews
   'do.byBranch.uses': 'Lượt đã thanh toán', // DRAFT — Kevin reviews
   'do.byBranch.customers': 'Khách hàng', // DRAFT — Kevin reviews
@@ -76,4 +54,6 @@ export const DEALSOFFERS_VI = {
   'do.byBranch.avg': 'Trung bình mỗi lượt', // DRAFT — Kevin reviews
   'do.byBranch.noBranch': 'Không ghi chi nhánh', // DRAFT — Kevin reviews
   'do.byBranch.note': 'Lượt đã thanh toán trong khoảng thời gian đã chọn, đã trừ hoàn tiền. Không hiển thị doanh thu của các hóa đơn này — đó không phải doanh số tăng thêm nhờ ưu đãi.', // DRAFT — Kevin reviews
+  'do.stack.nc': 'Nếu ưu đãi không được đánh dấu kết hợp được:', // DRAFT — Kevin reviews
+  'do.stack.c': 'Nếu ưu đãi được đánh dấu kết hợp được:', // DRAFT — Kevin reviews
 } as const;

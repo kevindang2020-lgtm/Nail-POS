@@ -111,6 +111,20 @@ describe('technician deals — backend policy enforcement', () => {
     expect(s.maxDiscountPercent).toBe(25);
     expect(s.minServicePriceCents).toBe(3000);
   });
+  it('settings carry "which offers combine" — the same stacking inspector Check Coupon uses, for the saved policy', async () => {
+    await svc.updateSettings(mgr, { stackingPolicy: 'stack_groups', allowStackMembership: true, allowStackLoyalty: false, priceFloorPercent: 20 });
+    const x = (await svc.getSettings(mgr)).stackingExplained!;
+    expect(x.mode).toBe('stack_groups');
+    const by = Object.fromEntries(x.combinable.map((r) => [r.benefit, r]));
+    expect(by.other_offer.combines).toBe('conditional');
+    expect(by.membership_discount).toMatchObject({ combines: 'yes', reason: 'allowed_by_policy' });
+    expect(by.loyalty_reward).toMatchObject({ combines: 'no', reason: 'not_allowed_by_policy' });
+    expect(by.price_floor).toMatchObject({ combines: 'limit', value: 20 });
+    expect(x.notCombinable).toEqual([expect.objectContaining({ benefit: 'other_offer', combines: 'no', reason: 'offer_not_stackable' })]);
+    // PATCH answers with the same block, so the screen refreshes without a second read
+    const after = await svc.updateSettings(mgr, { stackingPolicy: 'exclusive' });
+    expect(after.stackingExplained!.combinable.find((r) => r.benefit === 'membership_discount')).toMatchObject({ combines: 'no', reason: 'policy_exclusive' });
+  });
 });
 
 describe('technician "My Deals" — self-service via tech methods', () => {

@@ -60,7 +60,11 @@ export interface DealView {
 export type DealKind = 'deal' | 'coupon' | 'automatic' | 'announcement';
 export type StackingPolicyMode = 'best_single' | 'stack_all' | 'stack_groups' | 'exclusive';
 
+/** One row of "which offers combine" — the pricing engine's own answer (modules/deals engine/stacking-inspector.ts). */
+export interface DealStackingRow { benefit: string; combines: string; reason: string; message: string; value?: number | null }
 export interface DealSettings {
+  /** GET/PATCH pos/deals/settings: which offers combine under the saved policy, for a combinable offer and a non-combinable one. */
+  stackingExplained?: { mode: string; combinable: DealStackingRow[]; notCombinable: DealStackingRow[] };
   allowTechnicianDeals: TechDealPolicy;
   maxDiscountPercent: number | null;
   maxFixedDiscountCents: number | null;

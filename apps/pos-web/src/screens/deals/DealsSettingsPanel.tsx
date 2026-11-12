@@ -5,7 +5,6 @@
 import { useState } from 'react';
 import { posDealsApi, type DealSettings } from '../../api/posDealsApi';
 import { t, enPlural } from '@aipowersalon/mobile-sdk/i18n';
-import { stackingMatrix, stackingLimits, type StackingInputs } from './stackingExplorer';
 
 const POLICIES = (): [string, string][] => [
   ['best_single', t('growth.deals.policy.best_single')],
@@ -54,28 +53,31 @@ export function DealsSettingsPanel({ settings, onSaved }: { settings: DealSettin
   );
 }
 
-const VERDICT_TONE: Record<string, string> = { allowed: 'ok', conditional: 'warn', blocked: 'bad' };
-
-/** Deals 10 — read-only: which offer types combine on one ticket under the settings above (the pricing engine's rules). */
-export function StackingExplorer({ settings }: { settings: StackingInputs }) {
-  const rows = stackingMatrix(settings);
-  const lim = stackingLimits(settings);
+/** Deals 10 — read-only: which offers combine on one ticket under the settings above. The rows are the SERVER's answer
+ *  (the same stacking inspector Check Coupon uses, tested against the pricing engine) — nothing is re-derived here. */
+export function StackingExplorer({ settings }: { settings: DealSettings }) {
+  const x = settings.stackingExplained;
+  const tone = (c: string) => (c === 'yes' ? 'ok' : c === 'no' ? 'warn' : '');
+  const row = (r: { benefit: string; combines: string; reason: string; value?: number | null }, key: string) => (
+    <tr key={key} data-testid={'stack-' + key}>
+      <td>{t('cp.stk.b.' + r.benefit)}</td>
+      <td><span className={'fk-chip ' + tone(r.combines)} data-testid="stack-verdict">{t('cp.stk.a.' + r.combines)}</span></td>
+      <td style={{ fontSize: 12 }}>{t('cp.stk.r.' + r.benefit + '.' + r.reason, { v: r.value == null ? '—' : String(r.value) })}</td>
+    </tr>);
   return (
     <div data-testid="stacking-explorer" style={{ marginTop: 12 }}>
       <div className="p-h">{t('do.stack.title')}</div>
       <div className="sub" style={{ fontSize: 12 }}>{t('do.stack.note')}</div>
-      <table className="fk-table" style={{ width: '100%', marginTop: 6 }}>
-        <thead><tr><th>{t('do.stack.combination')}</th><th>{t('do.stack.result')}</th><th>{t('do.stack.why')}</th></tr></thead>
-        <tbody>{rows.map((r) => (
-          <tr key={r.pair} data-testid={'stack-' + r.pair}>
-            <td>{t('do.stack.pair.' + r.pair)}</td>
-            <td><span className={'fk-chip ' + VERDICT_TONE[r.verdict]} data-testid="stack-verdict">{t('do.stack.verdict.' + r.verdict)}</span></td>
-            <td style={{ fontSize: 12 }}>{t('do.stack.reason.' + r.reason)}</td>
-          </tr>))}
-        </tbody>
-      </table>
-      {lim.floorPercent != null || lim.maxPercent != null ? <div className="sub" style={{ fontSize: 12, marginTop: 4 }} data-testid="stack-limits">
-        {lim.floorPercent != null ? t('do.stack.floor', { v: lim.floorPercent }) : null}{' '}{lim.maxPercent != null ? t('do.stack.max', { v: lim.maxPercent }) : null}</div> : null}
+      {!x ? <div className="sub" data-testid="stack-unavailable">—</div> : (
+        <table className="fk-table" style={{ width: '100%', marginTop: 6 }}>
+          <thead><tr><th>{t('do.stack.combination')}</th><th>{t('do.stack.result')}</th><th>{t('do.stack.why')}</th></tr></thead>
+          <tbody>
+            <tr><td colSpan={3} className="sub" style={{ fontSize: 12 }}>{t('do.stack.c')}</td></tr>
+            {x.combinable.map((r) => row(r, r.benefit))}
+            <tr><td colSpan={3} className="sub" style={{ fontSize: 12 }}>{t('do.stack.nc')}</td></tr>
+            {x.notCombinable.map((r) => row(r, 'nc-' + r.benefit))}
+          </tbody>
+        </table>)}
     </div>
   );
 }

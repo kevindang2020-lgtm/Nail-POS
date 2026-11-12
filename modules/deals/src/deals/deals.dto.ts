@@ -58,4 +58,7 @@ export interface ReservationFacts { serviceIds?: string[]; date?: string; startT
 
 
 export interface ApprovalDecisionInput { reason?: string | null; }
-export type DealSettingsView = DealSettings;
+/** Which offers combine under the saved policy, in the pricing engine's own terms (engine/stacking-inspector.ts) —
+ *  for an offer marked combinable and for one that is not. Read-only; the POS shows these rows instead of re-deriving them. */
+export interface DealStackingExplained { mode: string; combinable: Array<{ benefit: string; combines: string; reason: string; message: string; value?: number | null }>; notCombinable: Array<{ benefit: string; combines: string; reason: string; message: string; value?: number | null }> }
+export type DealSettingsView = DealSettings & { stackingExplained?: DealStackingExplained };

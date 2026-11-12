@@ -156,16 +156,25 @@ describe('checker, health, wizard, settings, performance', () => {
     fireEvent.change(screen.getByLabelText('Stacking policy'), { target: { value: 'stack_all' } });
     await waitFor(() => expect(deals.updateSettings).toHaveBeenCalledWith({ stackingPolicy: 'stack_all' }));
   });
-  it('Settings shows the read-only stacking explorer for the saved policy (stack by group, member discount allowed, 20% floor)', async () => {
-    deals.getSettings.mockResolvedValue({ ...settings, stackingPolicy: 'stack_groups', allowStackMembership: true, allowStackLoyalty: false, priceFloorPercent: 20 });
+  it('Settings shows the stacking rows the SERVER returned (the same inspector Check Coupon uses) — nothing re-derived', async () => {
+    deals.getSettings.mockResolvedValue({ ...settings, stackingPolicy: 'stack_groups', allowStackMembership: true, priceFloorPercent: 20,
+      stackingExplained: { mode: 'stack_groups',
+        combinable: [
+          { benefit: 'other_offer', combines: 'conditional', reason: 'other_stackable', message: '' },
+          { benefit: 'membership_discount', combines: 'yes', reason: 'allowed_by_policy', message: '' },
+          { benefit: 'price_floor', combines: 'limit', reason: 'floor_set', message: '', value: 20 }],
+        notCombinable: [{ benefit: 'other_offer', combines: 'no', reason: 'offer_not_stackable', message: '' }] } });
     renderScreen('/tenant/marketing/deals?tab=settings');
     const ex = await screen.findByTestId('stacking-explorer');
-    expect(within(within(ex).getByTestId('stack-deal_coupon')).getByTestId('stack-verdict')).toHaveTextContent('Combine if marked');
-    expect(within(ex).getByTestId('stack-deal_coupon')).toHaveTextContent('different stack groups');
-    expect(within(within(ex).getByTestId('stack-with_membership')).getByTestId('stack-verdict')).toHaveTextContent('Combine');
-    expect(within(within(ex).getByTestId('stack-with_loyalty')).getByTestId('stack-verdict')).toHaveTextContent('Do not combine');
-    expect(within(ex).getByTestId('stack-limits')).toHaveTextContent('at least 20% of the subtotal');
+    expect(within(within(ex).getByTestId('stack-membership_discount')).getByTestId('stack-verdict')).toHaveTextContent('Combines');
+    expect(within(within(ex).getByTestId('stack-nc-other_offer')).getByTestId('stack-verdict')).toHaveTextContent('Does not combine');
+    expect(within(ex).getByTestId('stack-price_floor')).toHaveTextContent('at least 20% of the subtotal');
     expect(deals.updateSettings).not.toHaveBeenCalled();
+  });
+  it('an older server without the stacking answer shows "—", never an invented table', async () => {
+    deals.getSettings.mockResolvedValue({ ...settings });
+    renderScreen('/tenant/marketing/deals?tab=settings');
+    expect(await screen.findByTestId('stack-unavailable')).toHaveTextContent('—');
   });
   it('Performance shows the dashboard (net discounts, top deals)', async () => {
     deals.dashboard.mockResolvedValue({ days: 30, live: { active: 2, scheduled: 0, pendingApproval: 1, activeCoupons: 0 }, totals: { openApplications: 0, openDiscountCents: 0, redemptions: 1, netDiscountCents: 50, views: 0, reversals: 0 },
