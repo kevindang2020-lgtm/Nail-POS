@@ -91,6 +91,17 @@ describe('Inventory — stock activity', () => {
     expect((await ic.activity(ctx({ branchId: B2 }), {}) as any).total).toBe(0);
     expect(await code(ic.activity(ctx(), { preset: 'custom', from: '2026-11-03', to: '2026-11-01' }))).toBe('IC_INVALID_PERIOD');
   });
+  it('AC-02 extras (AI Inventory 03 / 11): one product\'s own history (productId); barcode search on products and activity', async () => {
+    const a: any = await ic.activity(ctx(), { productId: P.gel });
+    expect(a.items.map((r: any) => r.reason)).toEqual(['Gel manicure', 'PO-77']);
+    expect(a.applied.productId).toBe(P.gel);
+    expect((await ic.activity(ctx(), { productId: 'not-a-uuid' }) as any).total).toBe(3);   // ignored, never an error
+    expect((await ic.activity(ctx({ branchId: B2 }), { productId: P.gel }) as any).total).toBe(0);
+    await q(`update inventory_products set barcode = '0123456789012' where id = $1`, [P.gel]);
+    const p: any = await ic.productsList(ctx(), { q: '0123456789012' });
+    expect(p.items.map((x: any) => [x.name, x.barcode])).toEqual([['Gel base coat', '0123456789012']]);
+    expect((await ic.activity(ctx(), { q: '0123456789012' }) as any).total).toBe(2);
+  });
 });
 
 describe('Check Inventory System', () => {

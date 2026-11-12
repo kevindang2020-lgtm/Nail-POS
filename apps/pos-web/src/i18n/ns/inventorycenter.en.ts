@@ -153,4 +153,13 @@ export const INVENTORYCENTER_EN: Record<string, string> = {
   "icx.health.d.count_variance_applied.PASSED": "Every reconciled count moved the stock ledger by exactly counted minus expected.",
   "icx.health.d.count_variance_applied.FAILED": "A reconciled count did not move the ledger by its full difference (for example fewer bottles were on hand than the count said were missing). Recount those products.",
   "icx.health.d.count_variance_applied.INSUFFICIENT_DATA": "No reconciled physical count yet.",
+  "icx.po.sku": "SKU",
+  "icx.po.barcode": "Barcode",
+  "icx.po.category": "Category",
+  "icx.po.vendor": "Vendor",
+  "icx.po.lead": "{n} days lead time",
+  "icx.po.max": "max {n}",
+  "icx.po.differs": "differs from the stock record",
+  "icx.po.stockUpdated": "Stock record updated",
+  "icx.po.history": "This product’s stock history (newest first)",
 };

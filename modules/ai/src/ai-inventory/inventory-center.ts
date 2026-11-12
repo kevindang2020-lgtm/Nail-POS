@@ -38,7 +38,7 @@ const MOVE_GROUP: Record<string, string[]> = {
   transfer: ['transfer_in', 'transfer_out'], damage_waste: ['damaged', 'waste', 'expired'], return: ['returned', 'customer_return', 'return_to_vendor'],
 };
 const KNOWN = Object.values(MOVE_GROUP).flat();
-const X_COLS = sql.raw('x.id, x.name, x.sku, x.reorder_level, x.critical_level, x.maximum_stock, x.created_at, x.category, x.vendor, x.lead_time_days, x.on_hand, x.reserved, x.stock_rows, x.stock_updated_at, x.inbound, x.ledger_after, x.ledger_at');
+const X_COLS = sql.raw('x.id, x.name, x.sku, x.barcode, x.reorder_level, x.critical_level, x.maximum_stock, x.created_at, x.category, x.vendor, x.lead_time_days, x.on_hand, x.reserved, x.stock_rows, x.stock_updated_at, x.inbound, x.ledger_after, x.ledger_at');
 const RANK: Record<string, number> = { out_of_stock: 0, critical: 1, low: 2, overstock: 3, in_stock: 4 };
 const HEALTH_GAP_SECONDS = 30;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,7 +71,7 @@ export class InventoryCenter {
     const SB = B ? sql`and s.branch_id = ${B}::uuid` : sql``;
     const MB = B ? sql`and m.branch_id = ${B}::uuid` : sql``;
     const PB = B ? sql`and po.branch_id = ${B}::uuid` : sql``;
-    return sql`(select p.id, p.name, p.sku, p.reorder_level, p.critical_level, p.maximum_stock, p.created_at, c.name as category, v.name as vendor, v.lead_time_days,
+    return sql`(select p.id, p.name, p.sku, p.barcode, p.reorder_level, p.critical_level, p.maximum_stock, p.created_at, c.name as category, v.name as vendor, v.lead_time_days,
           coalesce(st.on_hand, 0) as on_hand, coalesce(st.reserved, 0) as reserved, st.rows as stock_rows, st.updated_at as stock_updated_at,
           coalesce(oo.inbound, 0) as inbound, lg.ledger_after, lg.ledger_at
         from inventory_products p
@@ -131,7 +131,7 @@ export class InventoryCenter {
     const sort = pick(IC_SORTS, f.sort) ?? 'attention';
     const q = String(f.q ?? '').trim().slice(0, 80);
     const where = [sql`true`];
-    if (q) where.push(sql`(x.name ilike ${esc(q)} or coalesce(x.sku, '') ilike ${esc(q)} or coalesce(x.vendor, '') ilike ${esc(q)} or coalesce(x.category, '') ilike ${esc(q)})`);
+    if (q) where.push(sql`(x.name ilike ${esc(q)} or coalesce(x.sku, '') ilike ${esc(q)} or coalesce(x.barcode, '') ilike ${esc(q)} or coalesce(x.vendor, '') ilike ${esc(q)} or coalesce(x.category, '') ilike ${esc(q)})`);   // extras AI Inventory 11: barcode too
     // the classification is the pure position rule, applied to the page's candidate set in memory (a salon has hundreds, not millions)
     const rows = (await sql<Row>`select ${X_COLS} from ${this.products(ctx)} where ${sql.join(where, sql` and `)} limit 5000`.execute(this.db)).rows
       .map((r) => ({ r, k: this.classify(r) }))
@@ -143,7 +143,7 @@ export class InventoryCenter {
     const total = rows.length;
     const slice = rows.slice((page - 1) * pageSize, page * pageSize);
     return {
-      items: slice.map(({ r, k }) => ({ id: String(r.id), name: r.name, sku: r.sku ?? null, category: r.category ?? null, vendor: r.vendor ?? null, leadTimeDays: r.lead_time_days == null ? null : N(r.lead_time_days),
+      items: slice.map(({ r, k }) => ({ id: String(r.id), name: r.name, sku: r.sku ?? null, barcode: r.barcode ?? null, category: r.category ?? null, vendor: r.vendor ?? null, leadTimeDays: r.lead_time_days == null ? null : N(r.lead_time_days),
         onHand: N(r.on_hand), reserved: N(r.reserved), openOrderQty: N(r.inbound), reorderLevel: N(r.reorder_level), criticalLevel: k.crit.level, criticalSource: k.crit.source,
         maximumStock: r.maximum_stock == null ? null : N(r.maximum_stock), status: k.status, noThreshold: k.noThreshold, hasStockRecord: N(r.stock_rows) > 0,
         ledgerBalance: r.ledger_after == null ? null : N(r.ledger_after), ledgerAt: iso(r.ledger_at), ledgerMismatch: k.mismatch, stockUpdatedAt: iso(r.stock_updated_at) })),
@@ -180,7 +180,10 @@ export class InventoryCenter {
     if (type === 'other') where.push(sql`m.movement_type <> all(${KNOWN}::text[])`);
     else if (type !== 'all') where.push(sql`m.movement_type = any(${MOVE_GROUP[type]}::text[])`);
     if (from && to) where.push(sql`m.created_at >= (${from}::date::timestamp at time zone ${tz}) and m.created_at < ((${to}::date + 1)::timestamp at time zone ${tz})`);
-    if (q) where.push(sql`(p.name ilike ${esc(q)} or coalesce(p.sku, '') ilike ${esc(q)} or coalesce(m.reason, '') ilike ${esc(q)} or coalesce(m.related_id::text, '') ilike ${esc(q)})`);
+    if (q) where.push(sql`(p.name ilike ${esc(q)} or coalesce(p.sku, '') ilike ${esc(q)} or coalesce(p.barcode, '') ilike ${esc(q)} or coalesce(m.reason, '') ilike ${esc(q)} or coalesce(m.related_id::text, '') ilike ${esc(q)})`);
+    // extras (AI Inventory 03 / 11 product overlay): one product's own history
+    const productId = isUuid(f.productId) ? String(f.productId) : null;
+    if (productId) where.push(sql`m.product_id = ${productId}::uuid`);
     const W = sql.join(where, sql` and `);
     const FROM = sql`inventory_stock_movements m join inventory_products p on p.id = m.product_id and p.tenant_id = m.tenant_id
       left join users u on u.id = m.actor_user_id and u.tenant_id = m.tenant_id left join branches b on b.id = m.branch_id and b.tenant_id = m.tenant_id`;
@@ -193,7 +196,7 @@ export class InventoryCenter {
       items: rows.map((r) => ({ id: String(r.id), at: iso(r.created_at), type: r.movement_type, group: groupOf(String(r.movement_type)), productId: String(r.product_id), product: r.name, sku: r.sku ?? null,
         before: r.quantity_before == null ? null : N(r.quantity_before), change: r.quantity_change == null ? null : N(r.quantity_change), after: r.quantity_after == null ? null : N(r.quantity_after),
         unit: r.unit ?? null, reference: r.related_type ? { type: r.related_type, id: r.related_id ?? null } : null, reason: r.reason ?? null, actor: r.actor ?? null, branch: r.branch ?? null })),
-      total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), applied: { q: q || null, type, preset, from, to }, period: { today, timeZone: tz },
+      total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), applied: { q: q || null, type, preset, from, to, productId }, period: { today, timeZone: tz },
     };
   }
 

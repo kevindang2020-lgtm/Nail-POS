@@ -67,6 +67,17 @@ describe('POSAiInventoryScreen', () => {
     const s = screen.getByTestId('icx-chk-sku_unique');
     expect(s).toHaveTextContent('Every SKU belongs to one product'); expect(s).toHaveTextContent('Part: Product catalog'); expect(s).toHaveTextContent('2');
   });
+  it('extras AI Inventory 03 / 11: a product row opens its details overlay with that product\'s own stock history (productId, paged)', async () => {
+    render(<POSAiInventoryScreen />);
+    fireEvent.click((await screen.findAllByTestId('icx-product-row'))[0]);
+    const o = await screen.findByTestId('icx-product-overlay');
+    await waitFor(() => expect(center.activity).toHaveBeenCalledWith(expect.objectContaining({ productId: 'p1', page: 1, pageSize: 10 })));
+    const f = screen.getByTestId('icx-po-fields');
+    expect(f).toHaveTextContent('GEL-01'); expect(f).toHaveTextContent('Sally Beauty'); expect(f).toHaveTextContent('differs from the stock record');
+    expect(f.textContent).toMatch(/Barcode—/);
+    expect(await screen.findAllByTestId('icx-po-move')).toHaveLength(1);
+    expect(o).toHaveTextContent('Gel manicure');
+  });
   it('loads Low Stock when its tab is selected', async () => {
     render(<POSAiInventoryScreen />);
     await screen.findByTestId('icx-panel');

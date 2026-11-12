@@ -153,4 +153,13 @@ export const INVENTORYCENTER_VI: Record<string, string> = {
   "icx.health.d.count_variance_applied.PASSED": "Mọi lần kiểm kê đã đối chiếu đều điều chỉnh sổ kho đúng bằng số đếm trừ số dự kiến.", // DRAFT — Kevin reviews
   "icx.health.d.count_variance_applied.FAILED": "Một lần kiểm kê đã đối chiếu chưa điều chỉnh sổ kho đủ chênh lệch (ví dụ số chai còn ít hơn số chai kiểm kê báo thiếu). Hãy đếm lại các sản phẩm đó.", // DRAFT — Kevin reviews
   "icx.health.d.count_variance_applied.INSUFFICIENT_DATA": "Chưa có lần kiểm kê thực tế nào được đối chiếu.", // DRAFT — Kevin reviews
+  "icx.po.sku": "SKU", // DRAFT — Kevin reviews
+  "icx.po.barcode": "Mã vạch", // DRAFT — Kevin reviews
+  "icx.po.category": "Danh mục", // DRAFT — Kevin reviews
+  "icx.po.vendor": "Nhà cung cấp", // DRAFT — Kevin reviews
+  "icx.po.lead": "giao trong {n} ngày", // DRAFT — Kevin reviews
+  "icx.po.max": "tối đa {n}", // DRAFT — Kevin reviews
+  "icx.po.differs": "khác với số tồn đã ghi", // DRAFT — Kevin reviews
+  "icx.po.stockUpdated": "Cập nhật số tồn lúc", // DRAFT — Kevin reviews
+  "icx.po.history": "Lịch sử tồn kho của sản phẩm này (mới nhất trước)", // DRAFT — Kevin reviews
 };
