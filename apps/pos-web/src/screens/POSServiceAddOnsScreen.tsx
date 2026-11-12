@@ -248,24 +248,42 @@ function AddOnEditor({ addOnKey, row, onClose, onSaved }: { addOnKey: string; ro
   const [name, setName] = useState(''); const [price, setPrice] = useState(''); const [dur, setDur] = useState(''); const [taxable, setTaxable] = useState(false); const [reason, setReason] = useState('');
   const [adds, setAdds] = useState<{ serviceId: string; name: string }[]>([]); const [removes, setRemoves] = useState<string[]>([]);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  // extras ADD-ONS 08 — a change to the shared definition touches several services at once: the server evaluates it first
+  // (dryRun, nothing written) and the editor shows every offering's old → new value before the real save.
+  const [preview, setPreview] = useState<{ key: string; changes: MassEditChangeRow[] } | null>(null);
   useEffect(() => { if (base) { setName(x?.name ?? base.name ?? ''); setPrice(textFromCents(base.priceCents)); setDur(String(base.durationMinutes ?? 0)); setTaxable(!!base.taxable); } }, [x, scope]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const bodyOf = (): Record<string, unknown> | null => {
+    const cents = centsFromText(price || '0'); const m = Number(dur || '0');
+    if (cents == null || !Number.isInteger(m) || m < 0) return null;
+    const body: Record<string, unknown> = { scope, priceCents: cents, durationMinutes: m, taxable, reason: reason.trim() };
+    if (scope === 'definition') { body.name = name.trim(); if (adds.length) body.addServiceIds = adds.map((a) => a.serviceId); if (removes.length) body.removeServiceIds = removes; }
+    else body.serviceId = row?.serviceId;
+    return body;
+  };
+  const mass = scope === 'definition' && (x?.offerings?.length ?? 0) > 1;
+  const cur = bodyOf(); const curKey = cur ? JSON.stringify(cur) : '';
+  const previewFresh = !!preview && preview.key === curKey;
   const save = async () => {
     const cents = centsFromText(price || '0'); const m = Number(dur || '0');
     if (cents == null) { setErr(tx('pos.enter_a_valid_price_dollars_and_1qkm')); return; }
     if (!Number.isInteger(m) || m < 0) { setErr(tx('pos.duration_must_be_zero_or_positive')); return; }
     if (!reason.trim()) { setErr(tx('cg.reasonRequired')); return; }
+    const body = bodyOf(); if (!body) return;
     setBusy(true); setErr(null);
     try {
-      const body: Record<string, unknown> = { scope, priceCents: cents, durationMinutes: m, taxable, reason: reason.trim() };
-      if (scope === 'definition') { body.name = name.trim(); if (adds.length) body.addServiceIds = adds.map((a) => a.serviceId); if (removes.length) body.removeServiceIds = removes; }
-      else body.serviceId = row.serviceId;
+      if (mass && !previewFresh) {   // first press: review (nothing saved); the next press saves exactly what was reviewed
+        const r: any = await posCatalogApi.updateAddOn(addOnKey, { ...body, dryRun: true });
+        setPreview({ key: JSON.stringify(body), changes: Array.isArray(r?.changes) ? r.changes : [] });
+        return;
+      }
       const r: any = await posCatalogApi.updateAddOn(addOnKey, body);
       onSaved(tx('cg.ao.saved', { name: name.trim() || x?.name || '', n: nf(r?.changed) }));
     } catch (e) { setErr(errorTextOf(e, tx('pos.save_failed'))); } finally { setBusy(false); }
   };
+  const svcName = (id: string | null) => x?.offerings?.find((o: any) => o.serviceId === id)?.serviceName ?? adds.find((a) => a.serviceId === id)?.name ?? '—';
   return (
     <FitDialog wide title={tx('cg.ao.editTitle', { name: x?.name ?? row?.name ?? '' })} onClose={onClose} busy={busy} testId="dlg-add-on-edit"
-      footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" onClick={save} disabled={busy || !x} data-testid="add-on-edit-save">{busy ? tx('pos.saving_2') : tx('pos.save_changes_2')}</button></>}>
+      footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" onClick={save} disabled={busy || !x} data-testid="add-on-edit-save">{busy ? tx('pos.saving_2') : mass && !previewFresh ? tx('cg.ao.mp.review') : tx('pos.save_changes_2')}</button></>}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !x ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         {row && shared ? <div className="fk-seg mos-dtabs" role="radiogroup" aria-label={tx('cg.ao.scope')} data-testid="edit-scope">
           <button type="button" role="radio" aria-checked={scope === 'offering'} className={scope === 'offering' ? 'on' : ''} onClick={() => setScope('offering')} data-testid="scope-offering">{tx('cg.ao.scopeOffering', { s: row.serviceName })}</button>
@@ -287,9 +305,38 @@ function AddOnEditor({ addOnKey, row, onClose, onSaved }: { addOnKey: string; ro
           <ServicePicker picked={adds} onChange={setAdds} exclude={x.offerings.filter((o: any) => o.active).map((o: any) => o.serviceId)} />
         </> : null}
         <AddOnBookingImpact upcoming={x.upcoming} serviceId={scope === 'offering' && row ? row.serviceId : null} newMinutes={/^\d+$/.test(dur) ? Number(dur) : null} />
+        {mass && previewFresh && preview ? <MassEditPreview changes={preview.changes} svcName={svcName} /> : null}
         {err ? <div className="fk-note bad" role="alert" data-testid="edit-error"><span>{err}</span></div> : null}
       </>}
     </FitDialog>
+  );
+}
+
+/** one field one offering would change — from the server's dryRun (local name: not an API type) */
+type MassEditChangeRow = { serviceId: string | null; field: string; oldValue: unknown; newValue: unknown };
+const MASS_FIELD: Record<string, string> = { price_cents: 'pos.price', duration_delta_minutes: 'cg.ao.plusTime', is_taxable: 'pos.taxable', name: 'cg.ao.mp.name', is_active: 'pos.status', offering: 'cg.ao.assignments' };
+function massValue(field: string, v: unknown): string {
+  if (v == null || v === '') return '—';
+  if (field === 'price_cents') return fmtMoney(Number(v));
+  if (field === 'duration_delta_minutes') return plusMin(Number(v));
+  if (field === 'is_taxable') return v === true ? tx('pos.yes') : tx('pos.no');
+  if (field === 'is_active') return v === true ? tx('pos.active_3') : tx('pos.inactive_2');
+  if (field === 'offering') return v === 'added' ? tx('cg.ao.mp.added') : '—';
+  return String(v);
+}
+/** extras ADD-ONS 08: the affected count and every offering's old → new value BEFORE the shared definition is saved; the old
+ *  values are the undo plan (each saved change is also kept in the add-on's Audit history). */
+function MassEditPreview({ changes, svcName }: { changes: MassEditChangeRow[]; svcName: (id: string | null) => string }) {
+  const offerings = new Set(changes.map((c) => c.serviceId ?? '')).size;
+  return (
+    <div className="fk-note warn" data-testid="mass-preview">
+      {changes.length === 0 ? <span data-testid="mass-preview-none">{tx('cg.ao.mp.none')}</span> : <div>
+        <b data-testid="mass-preview-count">{tx('cg.ao.mp.count', { n: nf(changes.length), o: nf(offerings) })}</b>
+        <ul className="fk-list dense" data-testid="mass-preview-list">{changes.map((c, i) => <li key={i} className="fk-li"><span>{svcName(c.serviceId)} · {MASS_FIELD[c.field] ? tx(MASS_FIELD[c.field]) : '—'}</span>
+          <span className="fk-muted">{massValue(c.field, c.oldValue)} → {massValue(c.field, c.newValue)}</span></li>)}</ul>
+        <span className="fk-hint" data-testid="mass-preview-undo">{tx('cg.ao.mp.undo')}</span>
+      </div>}
+    </div>
   );
 }
 

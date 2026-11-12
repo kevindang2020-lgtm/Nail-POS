@@ -446,4 +446,10 @@ export const CATALOGSCREENS_EN = {
   "cg.ao.why.price_varies_by_service": "Default price differs by service",
   "cg.ao.why.no_active_menu_price": "No active menu price for this add-on now",
   "cg.ao.why.tax_on_ticket": "Taxable — tax is added on the ticket, not in this line",
+  "cg.ao.mp.review": "Review changes",
+  "cg.ao.mp.name": "Name",
+  "cg.ao.mp.added": "Added",
+  "cg.ao.mp.none": "Nothing would change — every offering already has these values.",
+  "cg.ao.mp.count": "{n} changes across {o} offerings — nothing is saved until you press Save Changes.",
+  "cg.ao.mp.undo": "To undo after saving, edit back to the old values shown here; each change is kept in this add-on’s Audit history.",
 };

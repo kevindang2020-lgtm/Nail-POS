@@ -42,5 +42,5 @@ export const CATALOG_PRICING_SCHEDULE_BODY: BodySchema = S.object({ priceCents: 
 export const CATALOG_PRICING_SCHEDULE_CANCEL_BODY: BodySchema = S.object({ scheduleId: str(40), reason: str(500) });
 export const CATALOG_REASSIGN_BODY: BodySchema = S.object({ serviceIds: ids, toCategoryId: id, reason: str(500), confirm: flag });
 export const CATALOG_ADD_ON_CREATE_BODY: BodySchema = S.object({ name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, serviceIds: ids, confirmDuplicate: flag });
-export const CATALOG_ADD_ON_UPDATE_BODY: BodySchema = S.object({ scope: str(16), serviceId: id, name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, addServiceIds: ids, removeServiceIds: ids, reason: str(500) });
+export const CATALOG_ADD_ON_UPDATE_BODY: BodySchema = S.object({ scope: str(16), serviceId: id, name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, addServiceIds: ids, removeServiceIds: ids, reason: str(500), dryRun: flag });
 export const CATALOG_ADD_ON_STATE_BODY: BodySchema = S.object({ serviceId: id, reason: str(500) });

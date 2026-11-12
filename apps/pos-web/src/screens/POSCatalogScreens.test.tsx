@@ -241,6 +241,41 @@ describe('Add-Ons', () => {
     fireEvent.click(screen.getByTestId('add-on-edit-save'));
     await waitFor(() => expect(cat.updateAddOn).toHaveBeenCalledWith('ao_french', expect.objectContaining({ scope: 'offering', serviceId: 's1', priceCents: 1200, reason: 'gel tips cost more' })));
   });
+  it('ADD-ONS 08: a shared-definition edit is reviewed first (server dryRun, nothing saved) — affected count, old → new per offering, undo note; the next press saves', async () => {
+    cat.updateAddOn.mockImplementation(async (_k: string, b: any) => (b.dryRun ? { changed: 3, dryRun: true, changes: [
+      { serviceId: 's1', field: 'price_cents', oldValue: 1000, newValue: 1200 }, { serviceId: 's2', field: 'price_cents', oldValue: 800, newValue: 1200 },
+      { serviceId: 's5', field: 'is_active', oldValue: true, newValue: false }] } : { changed: 3 }));
+    mount(<POSServiceAddOnsScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-edit'))[0]);
+    fireEvent.click(await screen.findByTestId('scope-definition'));
+    fireEvent.change(screen.getByTestId('edit-price'), { target: { value: '12.00' } });
+    fireEvent.change(screen.getByTestId('edit-reason'), { target: { value: 'new tip cost' } });
+    expect(screen.getByTestId('add-on-edit-save')).toHaveTextContent('Review changes');
+    fireEvent.click(screen.getByTestId('add-on-edit-save'));
+    const p = await screen.findByTestId('mass-preview');
+    expect(cat.updateAddOn).toHaveBeenCalledTimes(1);
+    expect(cat.updateAddOn).toHaveBeenLastCalledWith('ao_french', expect.objectContaining({ scope: 'definition', priceCents: 1200, dryRun: true }));
+    expect(screen.getByTestId('mass-preview-count')).toHaveTextContent('3 changes across 3 offerings');
+    const items = [...screen.getByTestId('mass-preview-list').querySelectorAll('li')].map((li) => li.textContent);
+    expect(items[0]).toMatch(/Gel Manicure · Price\$10\.00 → \$12\.00/);
+    expect(items[1]).toMatch(/Classic Pedicure · Price\$8\.00 → \$12\.00/);
+    expect(items[2]).toMatch(/Haircut · Status\s*Active → Inactive/);
+    expect(p).toHaveTextContent('Audit history');
+    expect(screen.getByTestId('add-on-edit-save')).toHaveTextContent('Save Changes');
+    // changing a field after the review asks for a new review (what is saved is always what was reviewed)
+    fireEvent.change(screen.getByTestId('edit-price'), { target: { value: '13.00' } });
+    expect(screen.queryByTestId('mass-preview')).toBeNull();
+    expect(screen.getByTestId('add-on-edit-save')).toHaveTextContent('Review changes');
+    fireEvent.change(screen.getByTestId('edit-price'), { target: { value: '14.00' } });
+    fireEvent.click(screen.getByTestId('add-on-edit-save'));
+    await waitFor(() => expect(cat.updateAddOn).toHaveBeenCalledTimes(2));
+    expect(cat.updateAddOn.mock.calls[1][1]).toMatchObject({ priceCents: 1400, dryRun: true });
+    expect(await screen.findByTestId('mass-preview')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('add-on-edit-save'));
+    await waitFor(() => expect(cat.updateAddOn).toHaveBeenCalledTimes(3));
+    expect(cat.updateAddOn.mock.calls[2][1]).not.toHaveProperty('dryRun');
+    expect(cat.updateAddOn.mock.calls[2][1]).toMatchObject({ scope: 'definition', priceCents: 1400 });
+  });
   it('ADD-ONS 07: editing +time shows the upcoming appointments that booked it and how many would run longer; archive warns too', async () => {
     const up = { appointments: 2, policy: 'booked_quotes_kept', items: [
       { appointmentId: 'ap1', day: '2026-11-20', time: '09:00', customer: null, serviceId: 's1', serviceName: 'Gel Manicure', bookedMinutes: 10, quotedCents: 1000 },
