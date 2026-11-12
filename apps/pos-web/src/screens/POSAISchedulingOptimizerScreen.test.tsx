@@ -209,6 +209,20 @@ describe('Recommendations', () => {
     expect(calls.some((c) => c.url.includes('query='))).toBe(false);
   });
 
+  it('extras (AI Scheduling Optimizer 13 · 11): a queue row lists what changed on its appointment since the suggestion, labelled, ids never raw', async () => {
+    routes[`GET ${B}/center/recommendations`] = { body: page([qrow({ id: 'r4', stale: true, changedSince: [
+      { changeType: 'assigned', field: 'technician_id', oldValue: null, newValue: '(record)', at: '2026-10-08T15:00:00Z', actorType: 'system' },
+      { changeType: 'status_changed', field: 'status', oldValue: 'booked', newValue: 'cancelled', at: '2026-10-08T14:00:00Z', actorType: 'user' },
+      { changeType: 'rescheduled', field: 'start_time', oldValue: '10:00', newValue: '10:30', at: '2026-10-08T13:00:00Z', actorType: 'user' }] }), qrow({ id: 'r5', changedSince: [] })]) };
+    renderScreen(); tab('Recommendations');
+    const q = await screen.findByTestId('scx-queue');
+    const items = await within(q).findAllByTestId('scx-changed-item');
+    expect(within(q).getAllByTestId('scx-changed').length).toBe(1);
+    expect(items[0]).toHaveTextContent('Technician assigned · — → (a record)');
+    expect(items[1].textContent).toMatch(/^Status changed · Booked → Cancel/);
+    expect(items[2]).toHaveTextContent('Rescheduled · 10:00 → 10:30');
+  });
+
   it('detail: simulation before/after, benefit, versions; Accept sends expectedVersion and shows the new status', async () => {
     renderScreen(); tab('Recommendations');
     fireEvent.click((await within(await screen.findByTestId('scx-queue')).findAllByTestId('scx-row'))[0]);

@@ -15,6 +15,7 @@ import { RangeCalendar, isForbidden } from '../../components/FinanceKit';
 import { errorTextOf } from '../../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../../i18n/format';
 import { STATUS_LABEL, TYPE_LABEL, statusTone, pill, hm, pretty } from './schedUi';
+import { statusLabel } from '../../i18n/status-label';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -98,6 +99,21 @@ function SchedHealthDialog({ data, onClose }: { data: any; onClose: () => void }
 }
 
 // ── the recommendation queue ──────────────────────────────────────────────────────────────────────────────────────
+/** extras (AI Scheduling Optimizer 13 · 11): one recorded appointment change made after the suggestion was computed */
+type SchedChangeSince = { changeType: string; field: string | null; oldValue: string | null; newValue: string | null; at: string | null; actorType: string | null };
+const KNOWN_CHANGE = ['created', 'updated', 'status_changed', 'rescheduled', 'cancelled', 'assigned'];
+const changeVal = (field: string | null, v: string | null) => (v == null ? '—' : v === '(record)' ? t('scx.changed.record') : field === 'status' ? statusLabel('appointment', v) : v);
+export function ChangedSince({ changes }: { changes: SchedChangeSince[] | null | undefined }) {
+  if (!Array.isArray(changes) || changes.length === 0) return null;
+  return (
+    <div className="sub" data-testid="scx-changed"><b>{t('scx.changed.title')}</b>
+      <ul style={{ margin: 0, paddingLeft: 16 }}>{changes.slice(0, 3).map((c, i) => <li key={i} data-testid="scx-changed-item">
+        {KNOWN_CHANGE.includes(c.changeType) ? t('scx.changed.k.' + c.changeType) : t('scx.changed.k.other')}
+        {c.oldValue != null || c.newValue != null ? ` · ${changeVal(c.field, c.oldValue)} → ${changeVal(c.field, c.newValue)}` : ''}{c.at ? ` · ${when(c.at)}` : ''}
+      </li>)}</ul>
+    </div>
+  );
+}
 const slot = (x: any) => (x ? `${x.date ?? '—'} ${hm(x.start)} · ${x.technician ?? t('scx.anyTech')}` : '—');
 export function SchedQueueCard({ tick, group: initialGroup = 'all', compact = false, selectedId, onSelect }: {
   tick: number; group?: (typeof SC_GROUPS)[number]; compact?: boolean; selectedId?: string | null; onSelect: (id: string) => void;
@@ -153,6 +169,7 @@ export function SchedQueueCard({ tick, group: initialGroup = 'all', compact = fa
                 <td><span style={pill(tone.bg, tone.fg)}>{(STATUS_LABEL as Record<string, string>)[r.status] ?? pretty(r.status)}</span>
                   {r.stale ? <div><span className="chip bad" data-testid="scx-stale">{t(r.appointmentMissing ? 'scx.apptGone' : 'scx.stale')}</span></div> : null}
                   {r.pastExpiry ? <div><span className="chip warn">{t('scx.pastExpiry')}</span></div> : null}
+                  <ChangedSince changes={r.changedSince} />
                   {r.needsCustomer ? <div className="sub">{t('scx.needsCustomer')}</div> : null}
                   {r.automated ? <div className="sub">{t('scx.automated')}</div> : null}</td>
                 <td className="nowrap">{when(r.createdAt)}{r.confidence != null ? <div className="sub">{t('scx.confidence', { n: Math.round(r.confidence * 100) })}</div> : null}</td>

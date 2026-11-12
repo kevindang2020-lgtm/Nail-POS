@@ -197,4 +197,13 @@ export const SCHEDCENTER_EN: Record<string, string> = {
   "scx.health.d.no_side_effects.PASSED": "This page and this check never move an appointment, apply a change or send a message.",
   "scx.preset.yesterday": "Yesterday",
   "scx.preset.last_7": "Last 7 days",
+  "scx.changed.title": "What changed since this suggestion:",
+  "scx.changed.record": "(a record)",
+  "scx.changed.k.created": "Created",
+  "scx.changed.k.updated": "Updated",
+  "scx.changed.k.status_changed": "Status changed",
+  "scx.changed.k.rescheduled": "Rescheduled",
+  "scx.changed.k.cancelled": "Canceled",
+  "scx.changed.k.assigned": "Technician assigned",
+  "scx.changed.k.other": "Changed",
 };

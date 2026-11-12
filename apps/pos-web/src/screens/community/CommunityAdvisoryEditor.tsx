@@ -53,6 +53,21 @@ function resultText(s: string): string {
   return tx('pos.status_s', { s: String(pretty(s)) });
 }
 
+/** Safety Community extras 03 — Safe Draft Completeness Assistant: what context the draft still lacks (all optional
+ *  fields — warnings, never a block) and whether evidence is attached. Neutral wording stays the server's deterministic
+ *  check plus the optional "Suggest neutral wording" help; this list only points at them. */
+export type DraftGap = 'region' | 'incidentDate' | 'scamMethod' | 'channels' | 'recommendation' | 'evidence' | 'evidenceAfterSave';
+export function draftGaps(f: Pick<Form, 'region' | 'incidentDate' | 'scamMethod' | 'channels' | 'recommendation'>, evidenceCount: number | null): DraftGap[] {
+  const out: DraftGap[] = [];
+  if (!f.region.trim()) out.push('region');
+  if (!f.incidentDate.trim()) out.push('incidentDate');
+  if (!f.scamMethod.trim()) out.push('scamMethod');
+  if (!f.channels.length) out.push('channels');
+  if (!f.recommendation.trim()) out.push('recommendation');
+  if (evidenceCount == null) out.push('evidenceAfterSave'); else if (evidenceCount === 0) out.push('evidence');
+  return out;
+}
+
 export function CommunityAdvisoryEditor() {
   const { id: routeId } = useParams();
   const [params] = useSearchParams();
@@ -231,6 +246,18 @@ export function CommunityAdvisoryEditor() {
           ) : null}
           {post && WITHDRAWABLE.includes(status) && can(P.draft) ? <div style={row}><button type="button" style={btnDanger} disabled={busy} onClick={onWithdraw}>{tx('pos.withdraw_to_draft')}</button></div> : null}
         </form>
+        {!ro && !published ? (() => {
+          const gaps = draftGaps(form, post ? (post.evidence?.count ?? 0) : null);
+          return (
+            <section style={card} aria-label={tx('growth.community.gaps.title')} data-testid="community-draft-gaps">
+              <div style={cardHead}>{tx('growth.community.gaps.title')}</div>
+              {gaps.length === 0 ? <div style={okText} data-testid="community-draft-gaps-ok">{tx('growth.community.gaps.none')}</div> : (
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{gaps.map((g) => <li key={g} data-testid={`community-gap-${g}`}>{tx('growth.community.gaps.' + g)}</li>)}</ul>
+              )}
+              <div style={{ ...muted, marginTop: 6 }}>{tx('growth.community.gaps.wording')}</div>
+            </section>
+          );
+        })() : null}
         {notice ? <div role="status" style={okText} data-testid="community-submit-result">{notice}</div> : null}
         {error ? <div role="alert" style={errText} data-testid="community-editor-error">{error}</div> : null}
         {suggestion ? (

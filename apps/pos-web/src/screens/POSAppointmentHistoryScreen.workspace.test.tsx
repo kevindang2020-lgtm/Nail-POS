@@ -101,4 +101,15 @@ describe('Appointment History workspace', () => {
     expect(nextFutureAppointment([{ startsAt: '2026-11-20T15:00:00Z', status: 'confirmed' }, { startsAt: '2026-11-15T15:00:00Z', status: 'booked' }, { startsAt: '2026-11-13T15:00:00Z', status: 'cancelled' }, { startsAt: '2026-11-01T15:00:00Z', status: 'booked' }], now)).toBe('2026-11-15T15:00:00.000Z');
     expect(nextFutureAppointment([{ startsAt: '2026-11-13T15:00:00Z', status: 'completed' }], now)).toBeNull();
   });
+  it('extras (Appointment History 12 · A): the details header shows booking ID, scheduled time with the salon time zone, masked contact and a labelled source', async () => {
+    m.list.mockResolvedValue({ ...listOf([{ ...row, id: 'ab12cd34-1111-4222-8333-444455556666', phone: '•••-•••-1234', source: 'online' }]), period: { today: '2026-11-09', timeZone: 'America/New_York' } });
+    render(<POSAppointmentHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('ahx-view'));
+    const d = await screen.findByTestId('ahx-detail');
+    expect(within(d).getByTestId('ahx-detail-id')).toHaveTextContent('AB12CD34');
+    expect(within(d).getByTestId('ahx-detail-id')).toHaveAttribute('title', 'ab12cd34-1111-4222-8333-444455556666');
+    expect(within(d).getByTestId('ahx-detail-when')).toHaveTextContent('10:00–11:00 · 60 min · salon time (America/New_York)');
+    expect(within(d).getByTestId('ahx-detail-contact')).toHaveTextContent('•••-•••-1234');
+    expect(within(d).getByTestId('ahx-detail-source').textContent).not.toBe('online');
+  });
 });
