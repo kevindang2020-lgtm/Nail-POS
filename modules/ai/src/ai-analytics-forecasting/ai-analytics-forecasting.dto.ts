@@ -49,7 +49,11 @@ export class InMemoryAppointmentSource implements AppointmentSeriesSource {
  *  adapter in prod (getRevenueOverview → requireFinancial), so revenue forecasts require pos.reports.financial_view. */
 export interface RevenueSeriesSource {
   getDailyRevenue(ctx: AiForecastContext, lookbackDays: number): Promise<SeriesPoint[]>;
+  /** extras (AI Analytics Forecasting 06): the canonical report's OWN sales totals for a salon-day window — read, never recomputed */
+  getSalesTotals?(ctx: AiForecastContext, from: string, to: string): Promise<RevenueSourceTotals>;
 }
+/** the Sales report's totals for the forecast's history window (cents; tickets = paid tickets) */
+export interface RevenueSourceTotals { grossSalesCents: number; discountsCents: number; refundsCents: number; netSalesCents: number; ticketsCount: number }
 
 export class InMemoryRevenueSource implements RevenueSeriesSource {
   public lastCtx: AiForecastContext | null = null;

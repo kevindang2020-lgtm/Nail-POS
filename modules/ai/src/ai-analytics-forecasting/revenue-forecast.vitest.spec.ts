@@ -1,7 +1,7 @@
 // revenue-forecast.vitest.spec.ts — revenue domain over a fake financial source.
 import { describe, it, expect } from 'vitest';
 import { RevenueForecastService } from './revenue-forecast.service';
-import { AiForecastError, InMemoryRevenueSource, type AiForecastContext, type RevenueSeriesSource } from './ai-analytics-forecasting.dto';
+import { AiForecastError, InMemoryRevenueSource, type AiForecastContext, type RevenueSeriesSource, type RevenueSourceTotals } from './ai-analytics-forecasting.dto';
 import type { SeriesPoint } from './forecast-core';
 
 const series = (values: number[]): SeriesPoint[] => {
@@ -65,5 +65,45 @@ describe('isolation', () => {
     const f = await s.getRevenueForecast(ctx({ tenantId: 'T1' }), 3);
     expect(src.lastCtx!.tenantId).toBe('T1');
     expect(f.horizon.every((h) => h.pointCents < 1_000_000)).toBe(true); // T2 was ×100
+  });
+});
+
+// extras (AI Analytics Forecasting 06): Source-to-Report — the trained history beside the canonical report's OWN totals for the
+// same days; the service never recomputes a revenue figure, it reads the report and says whether the two agree.
+class ReportBackedSource extends InMemoryRevenueSource {
+  public asked: { from: string; to: string } | null = null;
+  constructor(private totals: RevenueSourceTotals | Error) { super(); }
+  async getSalesTotals(_ctx: AiForecastContext, from: string, to: string): Promise<RevenueSourceTotals> {
+    this.asked = { from, to };
+    if (this.totals instanceof Error) throw this.totals;
+    return this.totals;
+  }
+}
+describe('Source-to-Report reconciliation (extras AI Analytics Forecasting 06)', () => {
+  const rows = series(weeklyRevenue(60));
+  const sum = rows.reduce((a, p) => a + p.value, 0);
+  it('asks the report for exactly the trained days and says they match, with the basis spelled out', async () => {
+    const src = new ReportBackedSource({ grossSalesCents: sum, discountsCents: 5000, refundsCents: 8500, netSalesCents: sum - 5000, ticketsCount: 120 });
+    src.seed('T1', 'B1', rows);
+    const f = await new RevenueForecastService(src).getRevenueForecast(ctx(), 7);
+    expect(src.asked).toEqual({ from: rows[0].date, to: rows[59].date });
+    expect(f.source).toMatchObject({ from: rows[0].date, to: rows[59].date, days: 60, trainedTotalCents: sum, status: 'matches', differenceCents: 0, readOnly: true,
+      report: { grossSalesCents: sum, discountsCents: 5000, refundsCents: 8500, netSalesCents: sum - 5000, ticketsCount: 120 },
+      basis: { dateBasis: 'paid_day_branch_time_zone', discounts: 'not_subtracted', refunds: 'not_subtracted' } });
+  });
+  it('a report that disagrees is shown as a difference, never silently replaced', async () => {
+    const src = new ReportBackedSource({ grossSalesCents: sum - 1234, discountsCents: 0, refundsCents: 0, netSalesCents: sum - 1234, ticketsCount: 10 });
+    src.seed('T1', 'B1', rows);
+    const f = await new RevenueForecastService(src).getRevenueForecast(ctx(), 7);
+    expect(f.source).toMatchObject({ status: 'differs', differenceCents: 1234, trainedTotalCents: sum });
+  });
+  it('an unreadable report is "unavailable" with the reason — never a confident zero; the forecast itself still answers', async () => {
+    const denied = Object.assign(new Error('Missing pos.reports.financial_view'), { name: 'ForbiddenError' });
+    const a = new ReportBackedSource(denied); a.seed('T1', 'B1', rows);
+    expect((await new RevenueForecastService(a).getRevenueForecast(ctx(), 7)).source).toMatchObject({ status: 'unavailable', unavailableReason: 'permission', report: null, differenceCents: null });
+    const b = new ReportBackedSource(new Error('db down')); b.seed('T1', 'B1', rows);
+    const fb = await new RevenueForecastService(b).getRevenueForecast(ctx(), 7);
+    expect(fb.source).toMatchObject({ status: 'unavailable', unavailableReason: 'error' }); expect(fb.horizon).toHaveLength(7);
+    expect((await svc(rows).svc.getRevenueForecast(ctx(), 7)).source).toMatchObject({ status: 'unavailable', unavailableReason: 'not_supported' });
   });
 });

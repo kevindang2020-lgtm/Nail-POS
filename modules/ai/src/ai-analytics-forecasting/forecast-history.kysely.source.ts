@@ -8,7 +8,7 @@
 // zero-filled, cancelled appointments excluded. Read-only; tenant + branch scoped.
 import { sql, type Kysely } from 'kysely';
 import { branchTimeZone, type DB } from '@aipowersalon/database';
-import type { AiForecastContext, AppointmentSeriesSource, RevenueSeriesSource } from './ai-analytics-forecasting.dto';
+import type { AiForecastContext, AppointmentSeriesSource, RevenueSeriesSource, RevenueSourceTotals } from './ai-analytics-forecasting.dto';
 import type { SeriesPoint } from './forecast-core';
 import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
@@ -51,6 +51,10 @@ export class ZeroFilledRevenueSource implements RevenueSeriesSource {
     if (!pts.length) return [];
     const to = this.db ? addDays(await salonToday(this.db, ctx, this.now()), -1) : pts[pts.length - 1].date;
     return zeroFill(pts.filter((p) => p.date <= to), pts[0].date, to);
+  }
+  async getSalesTotals(ctx: AiForecastContext, from: string, to: string): Promise<RevenueSourceTotals> {
+    if (!this.inner.getSalesTotals) throw new Error('revenue source has no report totals');
+    return this.inner.getSalesTotals(ctx, from, to);
   }
 }
 

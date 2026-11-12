@@ -23,7 +23,7 @@ import { InMemoryHourlyDemandSource, type HourlyDemandSource } from './ai-analyt
 import { InMemoryForecastRunRepository, type ForecastRunRepositoryPort } from './forecast-run.repository';
 import { KyselyForecastRunRepository } from './forecast-run.kysely.repository';
 import { InMemoryProductDemandSource, type ProductDemandSource, type ProductPositionProvider } from './ai-analytics-forecasting.dto';
-import type { AppointmentSeriesSource, RevenueSeriesSource, AiForecastContext } from './ai-analytics-forecasting.dto';
+import type { AppointmentSeriesSource, RevenueSeriesSource, AiForecastContext, RevenueSourceTotals } from './ai-analytics-forecasting.dto';
 import type { SeriesPoint } from './forecast-core';
 import { BookingCalendarAppointmentSource, ZeroFilledRevenueSource, ScheduleCapacitySource } from './forecast-history.kysely.source';
 import { AiInventoryModule } from '../ai-inventory/ai-inventory.module';
@@ -73,6 +73,12 @@ export class ReportsRevenueSource implements RevenueSeriesSource {
     return (overview?.points ?? [])
       .filter((p) => p && p.date)
       .map((p) => ({ date: p.date, value: Number(p.revenueCents ?? 0) }));
+  }
+  /** extras (AI Analytics Forecasting 06): the SAME report's sales KPIs for the window (financial gate inside getSales) */
+  async getSalesTotals(ctx: AiForecastContext, from: string, to: string): Promise<RevenueSourceTotals> {
+    const rctx: ReportsContext = { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };
+    const k = (await this.reports.getSales(rctx, { from, to })).kpis;
+    return { grossSalesCents: Number(k.grossSalesCents ?? 0), discountsCents: Number(k.discountsCents ?? 0), refundsCents: Number(k.refundsCents ?? 0), netSalesCents: Number(k.netSalesCents ?? 0), ticketsCount: Number(k.ticketsCount ?? 0) };
   }
 }
 

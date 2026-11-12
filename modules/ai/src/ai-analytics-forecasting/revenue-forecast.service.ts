@@ -4,7 +4,7 @@
 // financial gate is strict and the output is explicitly labeled a forecast range — NOT guaranteed income. Accuracy is only
 // reported from a backtest. Values are cents (money-as-integer-cents invariant preserved end to end).
 import { forecast, backtest, selectModel, classifyDataQuality, classifyConfidence, type BacktestMetrics, type SeriesPoint } from './forecast-core';
-import { AiForecastError, AiForecastErrorCode, type AiForecastContext, type RevenueSeriesSource } from './ai-analytics-forecasting.dto';
+import { AiForecastError, AiForecastErrorCode, type AiForecastContext, type RevenueSeriesSource, type RevenueSourceTotals } from './ai-analytics-forecasting.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 const MIN_HISTORY = 14;
@@ -27,7 +27,22 @@ export interface RevenueForecast {
   horizon: { step: number; date: string; pointCents: number; lowerCents: number; upperCents: number }[];
   generatedAt: string;
   disclaimer: string;
+  source?: RevenueSourceReconciliation;
 }
+
+/** extras (AI Analytics Forecasting 06): Source-to-Report — the history the model trained on, beside the canonical Sales report's
+ *  OWN totals for the same salon days (read from the report, never recomputed here), with the basis spelled out. */
+export interface RevenueSourceReconciliation {
+  from: string; to: string; days: number;
+  trainedTotalCents: number;                 // sum of the daily series the model was fitted on (the report's daily gross sales)
+  report: RevenueSourceTotals | null;        // the report's totals for from..to; null when it could not be read
+  status: 'matches' | 'differs' | 'unavailable';
+  differenceCents: number | null;            // trained − report gross (0 when they agree)
+  unavailableReason: 'permission' | 'error' | 'not_supported' | null;
+  basis: { dateBasis: 'paid_day_branch_time_zone'; counted: 'completed_payment_sales_before_tax_tip_surcharge'; discounts: 'not_subtracted'; refunds: 'not_subtracted' };
+  readOnly: true;
+}
+const SOURCE_BASIS: RevenueSourceReconciliation['basis'] = { dateBasis: 'paid_day_branch_time_zone', counted: 'completed_payment_sales_before_tax_tip_surcharge', discounts: 'not_subtracted', refunds: 'not_subtracted' };
 
 function addDays(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00.000Z');
@@ -38,6 +53,19 @@ const isForbidden = (e: any) => e && (e.name === 'ForbiddenError' || e instanceo
 
 export class RevenueForecastService {
   constructor(private readonly source: RevenueSeriesSource) {}
+
+  /** the trained history beside the report's own totals for the same days; a read failure is said, never a confident 0 */
+  async sourceToReport(ctx: AiForecastContext, series: SeriesPoint[]): Promise<RevenueSourceReconciliation> {
+    const from = series[0].date, to = series[series.length - 1].date;
+    const trainedTotalCents = Math.round(series.reduce((a, p) => a + Number(p.value || 0), 0));
+    const base = { from, to, days: series.length, trainedTotalCents, basis: SOURCE_BASIS, readOnly: true as const };
+    if (!this.source.getSalesTotals) return { ...base, report: null, status: 'unavailable', differenceCents: null, unavailableReason: 'not_supported' };
+    let report: RevenueSourceTotals;
+    try { report = await this.source.getSalesTotals(ctx, from, to); }
+    catch (e) { return { ...base, report: null, status: 'unavailable', differenceCents: null, unavailableReason: isForbidden(e) ? 'permission' : 'error' }; }
+    const differenceCents = trainedTotalCents - report.grossSalesCents;
+    return { ...base, report, status: differenceCents === 0 ? 'matches' : 'differs', differenceCents, unavailableReason: null };
+  }
 
   /** AI Analytics & Forecasting guide (Nov 2026): how much history the model has — the SAME series the forecast uses, so the
    *  "have N of 14 days" the screen shows is the number the forecast was refused on. Read-only. */
@@ -91,8 +119,9 @@ export class RevenueForecastService {
       pointCents: Math.round(h.point), lowerCents: Math.round(h.lower), upperCents: Math.round(h.upper),
     }));
 
+    const source = await this.sourceToReport(ctx, series);
     return {
-      domain: 'revenue', branchId: ctx.branchId, currencyUnit: 'cents', horizonDays,
+      domain: 'revenue', branchId: ctx.branchId, currencyUnit: 'cents', horizonDays, source,
       method: selection.selected, selectionReason: selection.reason, historyLength: series.length,
       dataQuality: classifyDataQuality(series),
       confidence: classifyConfidence(series.length, horizonDays, metrics?.wape ?? null, classifyDataQuality(series)),

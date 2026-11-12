@@ -128,6 +128,36 @@ function CapacityGapPanel({ cap }: { cap: any }) {
   );
 }
 
+/** extras (AI Analytics Forecasting 06): Source-to-Report — the history the revenue model trained on beside the canonical Sales
+ *  report's OWN totals for the same days (from the server; nothing recomputed here), the basis in words and a link to the report. */
+interface FcSourceRecon { from: string; to: string; days: number; trainedTotalCents: number; status: string; differenceCents: number | null; unavailableReason: string | null;
+  report: { grossSalesCents: number; discountsCents: number; refundsCents: number; netSalesCents: number; ticketsCount: number } | null }
+function SourceToReportPanel({ src }: { src: FcSourceRecon }) {
+  const r = src.report;
+  const href = `/tenant/reports/sales?preset=custom&from=${encodeURIComponent(src.from)}&to=${encodeURIComponent(src.to)}`;
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="fc-src">
+      <div className="p-h">{tx('growth.aiForecast.src.title')}</div>
+      <div className="sub" data-testid="fc-src-window">{tx('growth.aiForecast.src.window', { from: src.from, to: src.to, n: fmtNumber(src.days) })}</div>
+      <div className="overflow-x-auto w-full" style={{ marginTop: 8 }}><table className="tbl w-full min-w-max">
+        <thead><tr><th>{tx('growth.aiForecast.src.figure')}</th><th>{tx('growth.aiForecast.src.trained')}</th><th>{tx('growth.aiForecast.src.report')}</th></tr></thead>
+        <tbody>
+          <tr data-testid="fc-src-gross"><td>{tx('growth.aiForecast.src.gross')}</td><td>{money(src.trainedTotalCents)}</td><td>{r ? money(r.grossSalesCents) : '—'}</td></tr>
+          <tr data-testid="fc-src-discounts"><td>{tx('growth.aiForecast.src.discounts')}</td><td>{tx('growth.aiForecast.src.notSubtracted')}</td><td>{r ? money(r.discountsCents) : '—'}</td></tr>
+          <tr data-testid="fc-src-refunds"><td>{tx('growth.aiForecast.src.refunds')}</td><td>{tx('growth.aiForecast.src.notSubtracted')}</td><td>{r ? money(r.refundsCents) : '—'}</td></tr>
+          <tr data-testid="fc-src-net"><td>{tx('growth.aiForecast.src.net')}</td><td>—</td><td>{r ? money(r.netSalesCents) : '—'}</td></tr>
+          <tr><td>{tx('growth.aiForecast.src.tickets')}</td><td>—</td><td>{r ? fmtNumber(r.ticketsCount) : '—'}</td></tr>
+        </tbody>
+      </table></div>
+      <div className="sub" style={{ marginTop: 8 }} data-testid="fc-src-status">{src.status === 'matches' ? tx('growth.aiForecast.src.matches')
+        : src.status === 'differs' ? tx('growth.aiForecast.src.differs', { d: money(Math.abs(src.differenceCents ?? 0)) })
+        : tx('growth.aiForecast.src.unavailable.' + (src.unavailableReason === 'permission' ? 'permission' : 'error'))}</div>
+      <div className="sub" style={{ marginTop: 4 }}>{tx('growth.aiForecast.src.basis')}{' '}
+        <a className="link-44" href={href} data-testid="fc-src-open" style={{ color: 'var(--aps-orange)' }}>{tx('growth.aiForecast.src.open')}</a></div>
+    </section>
+  );
+}
+
 function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments' | 'revenue'; accuracy?: any }) {
   const isMoney = kind === 'revenue';
   const fmt = (n: number) => (isMoney ? money(n) : String(Math.round(n)));
@@ -184,6 +214,7 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
         </table></div>
       </section>
       {kind === 'appointments' && data.capacity ? <CapacityGapPanel cap={data.capacity} /> : null}
+      {kind === 'revenue' && data.source ? <SourceToReportPanel src={data.source} /> : null}
       <div className="sub" style={{ marginTop: 10 }}>{data.selectionReason} · {data.disclaimer}</div>
     </>
   );

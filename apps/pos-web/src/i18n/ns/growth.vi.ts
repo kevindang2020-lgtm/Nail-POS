@@ -1104,4 +1104,21 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiForecast.cap.state.unknown": "Chưa rõ", // DRAFT — Kevin reviews
   "growth.aiForecast.cap.note": "Giờ đã xếp lịch = lịch tuần cộng thay đổi theo ngày, đã trừ giờ nghỉ; chưa trừ ngày nghỉ phép. Chỉ để tham khảo — không tạo hay đổi ca nào.", // DRAFT — Kevin reviews
   "growth.aiForecast.cap.openOptimizer": "Mở Tối ưu lịch hẹn", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.title": "Từ nguồn đến báo cáo — dữ liệu dự báo này đã học", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.window": "Ngày của tiệm từ {from} đến {to} ({n} ngày)", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.figure": "Số liệu", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.trained": "Dự báo đã dùng", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.report": "Báo cáo doanh số, cùng các ngày", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.gross": "Doanh số gộp", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.discounts": "Giảm giá", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.refunds": "Hoàn tiền", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.net": "Doanh số ròng", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.tickets": "Phiếu đã thanh toán", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.notSubtracted": "không trừ", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.matches": "Dữ liệu lịch sử khớp với doanh số gộp của báo cáo doanh số cho các ngày này.", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.differs": "Dữ liệu lịch sử lệch với báo cáo doanh số {d} — báo cáo là chuẩn; hãy xem báo cáo cho các ngày này.", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.unavailable.permission": "Cần quyền xem báo cáo tài chính để thấy số liệu của báo cáo doanh số.", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.unavailable.error": "Hiện không đọc được số liệu báo cáo doanh số — không hiện phần so sánh.", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.basis": "Cách tính: mỗi ngày thanh toán theo múi giờ của chi nhánh; doanh số của các thanh toán hoàn tất trước thuế, tiền tip và phụ phí. Giảm giá và hoàn tiền không bị trừ khỏi dữ liệu lịch sử; chúng được hiện từ báo cáo.", // DRAFT — Kevin reviews
+  "growth.aiForecast.src.open": "Mở báo cáo doanh số cho các ngày này", // DRAFT — Kevin reviews
 };
