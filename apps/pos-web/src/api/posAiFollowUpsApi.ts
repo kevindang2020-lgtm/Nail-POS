@@ -19,6 +19,8 @@ export interface FuDetail {
   call: null | { providerCallId: string; agent: string | null; startedAt: string | null; endedAt: string | null; durationSeconds: number | null; transfer: string; disconnection: string | null; error: string | null; summary: string | null; sentiment: string | null; handoffs: { kind: string; source: string; callbackRequired: boolean; reason: string | null; at: string | null }[] };
   attempts: { id: string; channel: string; outcome: string; recordedBy: string | null; recipient: string | null; note: string | null; nextAttemptAt: string | null; at: string | null; attestation: boolean }[];
   booking: { linked: { id: string; date: string; start: string; status: string; source: string } | null; upcoming: number };
+  /** extras (AI Follow Ups 05): the same customer reached in the last 7 days elsewhere (absent from an older server) */
+  recentContacts?: { source: 'ai_follow_up' | 'end_of_day'; at: string | null; channel: string; outcome: string | null; by: string | null; ref: string }[];
   activity: { type: string; from: string | null; to: string | null; note: string | null; actor: string | null; at: string | null }[];
   permissions: { canWork: boolean; canManage: boolean; canText: boolean; canBook: boolean };
 }

@@ -212,7 +212,7 @@ function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id
         {/* extras (AI Follow Ups 05) — Duplicate Contact Guard: reached in the last 7 days by another follow-up task or an
             end-of-day technician follow-up (server-recorded). A warning only; it blocks nothing. */}
         {d.recentContacts?.length ? <div className="aifu-notice warn" role="status" data-testid="aifu-d-recent">{tx('aifu.recent.title', { n: d.recentContacts.length })}
-          <ul className="sub" style={{ margin: '2px 0 0', paddingLeft: 18 }}>{d.recentContacts.map((r: any, i: number) => <li key={r.ref + i} data-testid="aifu-d-recent-row">
+          <ul className="sub" style={{ margin: '2px 0 0', paddingLeft: 18 }}>{d.recentContacts.map((r, i) => <li key={r.ref + i} data-testid="aifu-d-recent-row">
             {tx('aifu.recent.src.' + r.source)} · {fmt(r.at)} · {r.by ?? tx('aifu.none')}{r.source === 'ai_follow_up' && r.outcome ? ` · ${label('out', r.outcome)}` : ''}</li>)}</ul></div> : null}
         <div className="aifu-tabs" role="tablist">{TABS.map((t) => <button key={t} role="tab" aria-selected={tab === t} className={'btn' + (tab === t ? '' : ' ghost')} onClick={() => setTab(t)} data-testid={`aifu-tab-${t}`}>{tx(`aifu.tab.${t}`)}</button>)}</div>
         <div className="aifu-tabbody">
