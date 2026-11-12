@@ -154,4 +154,33 @@ export const BOOKVERIFY_VI = {
   "bv.dev.pctUnknown": "— số mã đã gửi", // DRAFT — Kevin reviews
   "bv.dev.failedNoReport": "Nhà cung cấp lỗi: {f} · Không có báo cáo: {r}", // DRAFT — Kevin reviews
   "bv.dev.checks": "Mã đúng đã kiểm tra", // DRAFT — Kevin reviews
+  "bv.cmp.title": "Cài đặt tiệm so với chi nhánh", // DRAFT — Kevin reviews
+  "bv.cmp.location": "Chi nhánh", // DRAFT — Kevin reviews
+  "bv.cmp.pick": "Chọn chi nhánh", // DRAFT — Kevin reviews
+  "bv.cmp.failed": "Không tải được cài đặt của chi nhánh đó.", // DRAFT — Kevin reviews
+  "bv.cmp.inherits": "Theo tiệm", // DRAFT — Kevin reviews
+  "bv.cmp.on": "Bật", // DRAFT — Kevin reviews
+  "bv.cmp.off": "Tắt", // DRAFT — Kevin reviews
+  "bv.cmp.hours": "{n} giờ", // DRAFT — Kevin reviews
+  "bv.cmp.own": "Chi nhánh này có cài đặt riêng; giá trị để trống sẽ theo tiệm.", // DRAFT — Kevin reviews
+  "bv.cmp.inheritsAll": "Chi nhánh này không có cài đặt riêng — dùng cài đặt của tiệm.", // DRAFT — Kevin reviews
+  "bv.cmp.noSalon": "Tiệm chưa lưu cài đặt, nên áp dụng mặc định có sẵn (tắt).", // DRAFT — Kevin reviews
+  "bv.cmp.setting": "Cài đặt", // DRAFT — Kevin reviews
+  "bv.cmp.salon": "Tiệm", // DRAFT — Kevin reviews
+  "bv.cmp.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "bv.cmp.effective": "Đang áp dụng", // DRAFT — Kevin reviews
+  "bv.cmp.source": "Lấy từ", // DRAFT — Kevin reviews
+  "bv.cmp.f.enabled": "Xác minh số điện thoại", // DRAFT — Kevin reviews
+  "bv.cmp.f.channel.online": "Đặt lịch trực tuyến", // DRAFT — Kevin reviews
+  "bv.cmp.f.channel.customer_app": "Ứng dụng khách hàng", // DRAFT — Kevin reviews
+  "bv.cmp.f.channel.ai_receptionist": "Lễ tân AI", // DRAFT — Kevin reviews
+  "bv.cmp.f.verifyEveryBooking": "Xác minh mọi lịch hẹn", // DRAFT — Kevin reviews
+  "bv.cmp.f.reverifyAfterSeconds": "Tin số đã xác minh trong", // DRAFT — Kevin reviews
+  "bv.cmp.f.reverifyOnGroupBooking": "Xác minh lại lịch hẹn nhóm", // DRAFT — Kevin reviews
+  "bv.cmp.f.reverifyOnDeposit": "Xác minh lại lịch hẹn có đặt cọc", // DRAFT — Kevin reviews
+  "bv.cmp.f.reverifyOnHighValue": "Xác minh lại lịch hẹn giá trị cao", // DRAFT — Kevin reviews
+  "bv.cmp.src.platform": "Chính sách nền tảng AI PowerSalon", // DRAFT — Kevin reviews
+  "bv.cmp.src.branch": "Chi nhánh này", // DRAFT — Kevin reviews
+  "bv.cmp.src.salon": "Cài đặt của tiệm", // DRAFT — Kevin reviews
+  "bv.cmp.src.default": "Mặc định có sẵn", // DRAFT — Kevin reviews
 } as const;

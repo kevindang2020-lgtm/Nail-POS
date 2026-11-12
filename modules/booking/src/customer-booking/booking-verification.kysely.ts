@@ -21,6 +21,7 @@ import { createDomainEvent, type OutboxWriter } from '@aipowersalon/events';
 import type { CredentialResolution, TenantCredentialResolver } from './booking-verification-provider';
 import type { BookingVerificationConfigPort } from './booking-verification-guard';
 import type { PlatformPolicy, TenantPolicy, BranchPolicy, ProviderStatus } from './booking-verification-policy';
+import { tenantPolicyFromRow, branchPolicyFromRow, DEFAULT_SALON_POLICY } from './booking-verification-policy';
 
 const ms = (t: any): number => (t instanceof Date ? t.getTime() : t ? new Date(t).getTime() : 0);
 
@@ -81,12 +82,7 @@ export class KyselyTenantCredentialResolver implements TenantCredentialResolver 
 }
 
 // ── policy config ───────────────────────────────────────────────────────────────────────────────────────
-const DEFAULT_TENANT: TenantPolicy = {
-  enabled: false,                                  // OFF until a tenant turns it on. Shipping this code must not
-                                                   // start refusing bookings at tenants who never asked for it.
-  channels: {}, verifyEveryBooking: false, reverifyAfterSeconds: 86_400,
-  reverifyOnGroupBooking: true, reverifyOnDeposit: true, reverifyOnHighValue: true, version: null,
-};
+const DEFAULT_TENANT: TenantPolicy = DEFAULT_SALON_POLICY;   // OFF until a tenant turns it on (booking-verification-policy.ts)
 
 export class KyselyBookingVerificationConfig implements BookingVerificationConfigPort {
   constructor(private readonly db: AppDatabase | null, private readonly resolver: TenantCredentialResolver) {}
@@ -121,20 +117,7 @@ export class KyselyBookingVerificationConfig implements BookingVerificationConfi
       WHERE tenant_id = ${tenantId} AND branch_id IS NULL LIMIT 1`.execute(this.db).catch(() => ({ rows: [] }));
     const r = res.rows?.[0];
     if (!r) return DEFAULT_TENANT;                  // never configured → the feature is off for this tenant
-    return {
-      enabled: !!r.enabled,
-      channels: {
-        online: !!r.channel_online, customer_app: !!r.channel_customer_app,
-        ai_receptionist: !!r.channel_ai_receptionist, kiosk: !!r.channel_kiosk,
-        front_desk: !!r.channel_front_desk, walk_in: !!r.channel_walk_in,
-      },
-      verifyEveryBooking: !!r.verify_every_booking,
-      reverifyAfterSeconds: Number(r.reverify_after_seconds ?? 0),
-      reverifyOnGroupBooking: !!r.reverify_on_group_booking,
-      reverifyOnDeposit: !!r.reverify_on_deposit,
-      reverifyOnHighValue: !!r.reverify_on_high_value,
-      version: r.version ?? null,
-    };
+    return tenantPolicyFromRow(r);
   }
 
   async branch(tenantId: string, branchId: string): Promise<BranchPolicy | null> {
@@ -144,23 +127,9 @@ export class KyselyBookingVerificationConfig implements BookingVerificationConfi
       WHERE tenant_id = ${tenantId} AND branch_id = ${branchId} LIMIT 1`.execute(this.db).catch(() => ({ rows: [] }));
     const r = res.rows?.[0];
     if (!r) return null;                            // no branch row → inherit the tenant
-    return {
-      // NULL on a branch row means INHERIT — which is why this is `?? null` and not `!!`. Coercing it would turn
-      // "no opinion" into "disabled", and silently switch the feature off at every branch that never set it.
-      enabled: r.enabled == null ? null : !!r.enabled,
-      channels: {
-        online: !!r.channel_online, customer_app: !!r.channel_customer_app,
-        ai_receptionist: !!r.channel_ai_receptionist, kiosk: !!r.channel_kiosk,
-        front_desk: !!r.channel_front_desk, walk_in: !!r.channel_walk_in,
-      },
-      // Phase 4: the branch's own re-verification rules (the settings service writes them on the branch row)
-      verifyEveryBooking: r.verify_every_booking == null ? null : !!r.verify_every_booking,
-      reverifyAfterSeconds: r.reverify_after_seconds == null ? null : Number(r.reverify_after_seconds),
-      reverifyOnGroupBooking: r.reverify_on_group_booking == null ? null : !!r.reverify_on_group_booking,
-      reverifyOnDeposit: r.reverify_on_deposit == null ? null : !!r.reverify_on_deposit,
-      reverifyOnHighValue: r.reverify_on_high_value == null ? null : !!r.reverify_on_high_value,
-      version: r.version ?? null,
-    };
+    // NULL on a branch row means INHERIT (branchPolicyFromRow keeps it null); Phase 4: the branch's own re-verification
+    // rules are read too (the settings service writes them on the branch row)
+    return branchPolicyFromRow(r);
   }
 
   async provider(tenantId: string, branchId: string): Promise<ProviderStatus> {

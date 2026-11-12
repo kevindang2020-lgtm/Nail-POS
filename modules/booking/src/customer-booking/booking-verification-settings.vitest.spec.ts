@@ -173,3 +173,50 @@ describe('a location that is not the salon\'s own is refused before anything is 
     expect(writes).toHaveLength(2);
   });
 });
+
+describe('extras Booking Phone Verification 11 — salon vs location configuration comparison (read-only)', () => {
+  const salonRow = { enabled: true, channel_online: true, channel_customer_app: false, channel_ai_receptionist: true, verify_every_booking: false, reverify_after_seconds: 3600,
+    reverify_on_group_booking: true, reverify_on_deposit: true, reverify_on_high_value: false, version: 4 };
+  const branchRow = { enabled: null, channel_online: false, channel_customer_app: true, channel_ai_receptionist: true, verify_every_booking: true, reverify_after_seconds: null,
+    reverify_on_group_booking: null, reverify_on_deposit: false, reverify_on_high_value: null, version: 2 };
+  function svc(rows: { salon: any; branch: any }, plat: { required?: boolean; blocked?: boolean; emergency?: boolean } = {}) {
+    const writes: any[] = [];
+    const store: VerificationSettingsStore = {
+      async settingsRow(_t, b) { return b ? rows.branch : rows.salon; },
+      async upsert(row) { writes.push(row); },
+      async providerValidated() { return true; },
+      async platformPolicy() { return { requiredForTenant: !!plat.required, blockedForTenant: !!plat.blocked, emergencyDisabled: !!plat.emergency, moduleEnabled: true }; },
+    };
+    return { s: new BookingVerificationSettingsService(store, creds('configured')), writes };
+  }
+  const by = (v: any) => Object.fromEntries(v.comparison.rows.map((r: any) => [r.field, r]));
+  it('each setting: salon value, the location value (null = inherits), the effective value and its source', async () => {
+    const { s, writes } = svc({ salon: salonRow, branch: branchRow });
+    const v = await s.get('t1', 'b1');
+    expect(v.comparison).toMatchObject({ branchHasOwnSettings: true, salonHasSettings: true });
+    const r = by(v);
+    expect(r.enabled).toEqual({ field: 'enabled', salon: true, branch: null, effective: true, source: 'salon' });          // NULL on the branch row inherits
+    expect(r['channel.online']).toEqual({ field: 'channel.online', salon: true, branch: false, effective: false, source: 'branch' });
+    expect(r['channel.customer_app']).toMatchObject({ salon: false, branch: true, effective: true, source: 'branch' });
+    expect(r.verifyEveryBooking).toMatchObject({ salon: false, branch: true, effective: true, source: 'branch' });
+    expect(r.reverifyAfterSeconds).toMatchObject({ salon: 3600, branch: null, effective: 3600, source: 'salon' });
+    expect(r.reverifyOnDeposit).toMatchObject({ salon: true, branch: false, effective: false, source: 'branch' });
+    expect(r.reverifyOnHighValue).toMatchObject({ branch: null, effective: false, source: 'salon' });
+    expect(writes).toEqual([]);                                                                                       // nothing saved
+    expect((await s.get('t1')).comparison).toBeUndefined();                                                           // the salon view has no comparison
+  });
+  it('a location with no row inherits everything; a salon with no row shows the built-in default (off)', async () => {
+    const r = by(await svc({ salon: salonRow, branch: null }).s.get('t1', 'b1'));
+    expect(Object.values(r).every((x: any) => x.branch === null && x.source === 'salon')).toBe(true);
+    const d = await svc({ salon: null, branch: null }).s.get('t1', 'b1');
+    expect(d.comparison).toMatchObject({ salonHasSettings: false, branchHasOwnSettings: false });
+    expect(by(d).enabled).toEqual({ field: 'enabled', salon: false, branch: null, effective: false, source: 'default' });
+    expect(by(d)['channel.online']).toMatchObject({ effective: false, source: 'default' });                          // the resolver's default has no channel on
+  });
+  it('the platform decides "enabled" when it requires, blocks or switches the module off', async () => {
+    expect(by(await svc({ salon: { ...salonRow, enabled: false }, branch: null }, { required: true }).s.get('t1', 'b1')).enabled).toMatchObject({ salon: false, effective: true, source: 'platform' });
+    expect(by(await svc({ salon: salonRow, branch: branchRow }, { blocked: true }).s.get('t1', 'b1')).enabled).toMatchObject({ effective: false, source: 'platform' });
+    const em = await svc({ salon: salonRow, branch: branchRow }, { emergency: true }).s.get('t1', 'b1');
+    expect(by(em).enabled).toMatchObject({ effective: false, source: 'platform' }); expect(em.comparison!.platform.emergencyDisabled).toBe(true);
+  });
+});

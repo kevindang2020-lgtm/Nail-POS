@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { fmtMoney } from '../i18n/format';
 import { posSettingsApi } from '../api/posSettingsApi';
 import { posCustomersApi } from '../api/posCustomersApi';
 import { posEmailCenterApi, type EmSettings, type EmSummary, type EmHealth, type EmPage, type EmDetail, type EmStatus, type EmRecipientCheck } from '../api/posEmailCenterApi';
@@ -230,9 +231,15 @@ const dur = (sec: number | null) => (sec == null ? '—' : sec < 90 ? t('emc.lat
  *  from the server's summary; nothing here changes a suppression or sends anything. */
 function DeliveryHygiene({ summary, tz }: { summary: EmSummary | null; tz?: string }) {
   if (!summary) return null;
-  const lat = summary.latency; const hy = summary.suppression;
+  const lat = summary.latency; const hy = summary.suppression; const us = summary.usage;
   return (
     <section className="panel emc-hygiene" data-testid="emc-hygiene">
+      {us ? <div data-testid="emc-usage">
+        <div className="emc-row"><h3>{t('emc.use.title')}</h3><span className="sub" data-testid="emc-use-sent">{t('emc.use.sent', { n: us.handedToProvider })}</span></div>
+        <div className="emc-row"><span>{t('emc.use.cost')}</span><b data-testid="emc-use-cost">{us.state === 'known' && us.costCents != null ? fmtMoney(us.costCents)
+          : us.state === 'cost_unknown' ? t('emc.use.unknown', { c: us.withProviderCost ?? 0, n: us.handedToProvider }) : us.state === 'not_authorized' ? t('emc.use.notAuthorized') : '—'}</b></div>
+        <div className="sub">{t('emc.use.basis')}</div>
+      </div> : null}
       <div className="emc-row"><h3>{t('emc.lat.title')}</h3></div>
       {lat == null ? <div className="sub" data-testid="emc-lat-na">{t('emc.lat.na')}</div>
         : lat.measured === 0 ? <div className="sub" data-testid="emc-lat-none">{t('emc.lat.none')}</div>

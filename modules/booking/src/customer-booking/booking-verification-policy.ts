@@ -146,6 +146,80 @@ export interface PolicyInput {
   now?: number;
 }
 
+/** What a salon that never saved settings gets: verification OFF. */
+export const DEFAULT_SALON_POLICY: TenantPolicy = {
+  enabled: false,                                  // OFF until a tenant turns it on. Shipping this code must not
+                                                   // start refusing bookings at tenants who never asked for it.
+  channels: {}, verifyEveryBooking: false, reverifyAfterSeconds: 86_400,
+  reverifyOnGroupBooking: true, reverifyOnDeposit: true, reverifyOnHighValue: true, version: null,
+};
+
+// ── inheritance (ONE rule, used by the resolver AND by the configuration comparison below) ───────────────
+/** A branch value wins where the branch row has one; `null` / absent inherits the salon's. */
+export function inheritedRules(t: TenantPolicy, b: BranchPolicy | null | undefined) {
+  return {
+    verifyEveryBooking: b?.verifyEveryBooking ?? t.verifyEveryBooking,
+    reverifyAfterSeconds: b?.reverifyAfterSeconds ?? t.reverifyAfterSeconds,
+    reverifyOnGroupBooking: b?.reverifyOnGroupBooking ?? t.reverifyOnGroupBooking,
+    reverifyOnDeposit: b?.reverifyOnDeposit ?? t.reverifyOnDeposit,
+    reverifyOnHighValue: b?.reverifyOnHighValue ?? t.reverifyOnHighValue,
+  };
+}
+export const inheritedEnabled = (t: TenantPolicy, b: BranchPolicy | null | undefined): boolean => (b?.enabled ?? null) ?? t.enabled;
+export const inheritedChannels = (t: TenantPolicy, b: BranchPolicy | null | undefined) => b?.channels ?? t.channels;
+
+/** Row → policy (booking_verification_settings), shared by the resolver's config reader and the settings screen. A NULL on a
+ *  branch row means INHERIT — `?? null`, never `!!`, or "no opinion" would read as "disabled". */
+export function tenantPolicyFromRow(r: Record<string, unknown>): TenantPolicy {
+  return {
+    enabled: !!r.enabled,
+    channels: { online: !!r.channel_online, customer_app: !!r.channel_customer_app, ai_receptionist: !!r.channel_ai_receptionist, kiosk: !!r.channel_kiosk, front_desk: !!r.channel_front_desk, walk_in: !!r.channel_walk_in },
+    verifyEveryBooking: !!r.verify_every_booking, reverifyAfterSeconds: Number(r.reverify_after_seconds ?? 0),
+    reverifyOnGroupBooking: !!r.reverify_on_group_booking, reverifyOnDeposit: !!r.reverify_on_deposit, reverifyOnHighValue: !!r.reverify_on_high_value,
+    version: r.version == null ? null : Number(r.version),
+  };
+}
+export function branchPolicyFromRow(r: Record<string, unknown>): BranchPolicy {
+  const b = (v: unknown) => (v == null ? null : !!v);
+  return {
+    enabled: b(r.enabled),
+    channels: { online: !!r.channel_online, customer_app: !!r.channel_customer_app, ai_receptionist: !!r.channel_ai_receptionist, kiosk: !!r.channel_kiosk, front_desk: !!r.channel_front_desk, walk_in: !!r.channel_walk_in },
+    verifyEveryBooking: b(r.verify_every_booking), reverifyAfterSeconds: r.reverify_after_seconds == null ? null : Number(r.reverify_after_seconds),
+    reverifyOnGroupBooking: b(r.reverify_on_group_booking), reverifyOnDeposit: b(r.reverify_on_deposit), reverifyOnHighValue: b(r.reverify_on_high_value),
+    version: r.version == null ? null : Number(r.version),
+  };
+}
+
+/** Extras (Booking Phone Verification 11 "Tenant Configuration Comparison"): for one location, each setting's salon value,
+ *  the location's own value (null = inherits), the EFFECTIVE value the resolver uses and where it comes from — the platform
+ *  (Super Admin required / blocked / switched off), the location's row, the salon's row, or the built-in default (no salon
+ *  row yet). Same inheritance functions as resolveBookingVerificationPolicy, so the screen can never disagree with it. */
+export type ConfigSource = 'platform' | 'branch' | 'salon' | 'default';
+export const COMPARED_FIELDS = ['enabled', 'channel.online', 'channel.customer_app', 'channel.ai_receptionist', 'verifyEveryBooking', 'reverifyAfterSeconds', 'reverifyOnGroupBooking', 'reverifyOnDeposit', 'reverifyOnHighValue'] as const;
+export type ComparedField = (typeof COMPARED_FIELDS)[number];
+export interface ConfigComparisonRow { field: ComparedField; salon: boolean | number; branch: boolean | number | null; effective: boolean | number; source: ConfigSource }
+export function branchConfigComparison(platform: PlatformPolicy, salon: TenantPolicy | null, salonDefault: TenantPolicy, branch: BranchPolicy | null) {
+  const t = salon ?? salonDefault;
+  const base: ConfigSource = salon ? 'salon' : 'default';
+  const rules = inheritedRules(t, branch); const ch = inheritedChannels(t, branch);
+  const platformOff = platform.emergencyDisabled || !platform.moduleEnabled || platform.blockedForTenant;
+  const rows: ConfigComparisonRow[] = [];
+  const add = (field: ComparedField, sv: boolean | number, bv: boolean | number | null | undefined, ev: boolean | number, forced: ConfigSource | null = null) =>
+    rows.push({ field, salon: sv, branch: bv ?? null, effective: ev, source: forced ?? (bv != null ? 'branch' : base) });
+  add('enabled', t.enabled, branch?.enabled, platformOff ? false : platform.requiredForTenant ? true : inheritedEnabled(t, branch), platformOff || platform.requiredForTenant ? 'platform' : null);
+  for (const c of ['online', 'customer_app', 'ai_receptionist'] as const) add(('channel.' + c) as ComparedField, t.channels[c] === true, branch?.channels ? branch.channels[c] === true : null, ch?.[c] === true);
+  add('verifyEveryBooking', t.verifyEveryBooking, branch?.verifyEveryBooking, rules.verifyEveryBooking);
+  add('reverifyAfterSeconds', t.reverifyAfterSeconds, branch?.reverifyAfterSeconds, rules.reverifyAfterSeconds);
+  add('reverifyOnGroupBooking', t.reverifyOnGroupBooking, branch?.reverifyOnGroupBooking, rules.reverifyOnGroupBooking);
+  add('reverifyOnDeposit', t.reverifyOnDeposit, branch?.reverifyOnDeposit, rules.reverifyOnDeposit);
+  add('reverifyOnHighValue', t.reverifyOnHighValue, branch?.reverifyOnHighValue, rules.reverifyOnHighValue);
+  return {
+    branchHasOwnSettings: !!branch, salonHasSettings: !!salon,
+    platform: { emergencyDisabled: platform.emergencyDisabled, moduleDisabled: !platform.moduleEnabled, blockedForTenant: platform.blockedForTenant, requiredForTenant: platform.requiredForTenant },
+    rows,
+  };
+}
+
 // ── the resolver ─────────────────────────────────────────────────────────────────────────────────────────
 
 const result = (
@@ -174,14 +248,7 @@ export function resolveBookingVerificationPolicy(input: PolicyInput): PolicyResu
   const now = input.now ?? Date.now();
   // The branch's own re-verification rules, where it has them (null = inherit the tenant's).
   const b = input.branch;
-  const i: PolicyInput = !b ? input : { ...input, tenant: {
-    ...input.tenant,
-    verifyEveryBooking: b.verifyEveryBooking ?? input.tenant.verifyEveryBooking,
-    reverifyAfterSeconds: b.reverifyAfterSeconds ?? input.tenant.reverifyAfterSeconds,
-    reverifyOnGroupBooking: b.reverifyOnGroupBooking ?? input.tenant.reverifyOnGroupBooking,
-    reverifyOnDeposit: b.reverifyOnDeposit ?? input.tenant.reverifyOnDeposit,
-    reverifyOnHighValue: b.reverifyOnHighValue ?? input.tenant.reverifyOnHighValue,
-  } };
+  const i: PolicyInput = !b ? input : { ...input, tenant: { ...input.tenant, ...inheritedRules(input.tenant, b) } };
 
   // 1. PLATFORM EMERGENCY DISABLE — beats everything, including a tenant that requires verification, because it
   //    exists for the case where verification itself is the thing that is broken. It does NOT block the booking:
@@ -202,15 +269,14 @@ export function resolveBookingVerificationPolicy(input: PolicyInput): PolicyResu
 
   // 3. TENANT + BRANCH. A branch may override the tenant; `null` inherits. Neither can switch OFF something the
   //    platform requires — that is the entire point of `requiredForTenant`.
-  const branchEnabled = i.branch?.enabled ?? null;
-  const enabled = branchEnabled ?? i.tenant.enabled;
+  const enabled = inheritedEnabled(i.tenant, i.branch);
   if (!enabled && !platformRequires) {
     return result('disabled', 'tenant_disabled', 'Phone verification is off for this business.', i);
   }
 
   // 4. CHANNEL. Front-desk and walk-in are staff-created and are NOT verified unless the tenant explicitly opts
   //    in — the spec is explicit, and OTP-ing a customer standing at the counter is theatre, not security.
-  const channels = i.branch?.channels ?? i.tenant.channels;
+  const channels = inheritedChannels(i.tenant, i.branch);
   const channelOn = channels?.[i.channel] === true;
   if (!channelOn && !platformRequires) {
     return result('not_required', `channel_not_enabled:${i.channel}`, 'Verification is not required for this booking.', i);

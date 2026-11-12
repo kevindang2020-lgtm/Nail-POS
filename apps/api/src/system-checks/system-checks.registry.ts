@@ -297,6 +297,45 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'billing_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'grace') AND m.next_billing_at < now() - interval '1 day' AND NOT coalesce(m.comped, false)`) },
     { key: 'active_past_period', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status = 'active' AND m.current_period_end < now() - interval '1 day'`) },
     { key: 'paused_past_resume', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status = 'paused' AND m.pause_resumes_at < now()`) },
+    // ── benefit redemption integrity (extras Membership Overview 13 · 08 / 16 · 03): issue → reserve → redeem → release / reversal.
+    // The balance is the one creditBalance() (memberships-core) derives from the append-only ledger: granted − redeemed − expired
+    // − open holds + adjustments, per membership and benefit. Below zero = more was used than the member ever had.
+    { key: 'benefit_balance_negative', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_credit_ledger l JOIN customer_memberships m ON m.tenant_id = l.tenant_id AND m.id = l.customer_membership_id
+        WHERE l.tenant_id = ${t}::uuid ${br('m', b)} AND l.benefit_id IS NOT NULL
+        GROUP BY l.customer_membership_id, l.benefit_id
+        HAVING sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.quantity WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.quantity ELSE 0 END)
+                 - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.quantity WHEN l.entry_type = 'released' THEN -l.quantity WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.quantity ELSE 0 END)) < 0
+            OR sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.amount_cents WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.amount_cents ELSE 0 END)
+                 - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.amount_cents WHEN l.entry_type = 'released' THEN -l.amount_cents WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.amount_cents ELSE 0 END)) < 0`) },
+    // a redeem writes BOTH an immutable redemption snapshot and a 'redeemed' ledger entry (redeemBenefit, one lock): per member,
+    // benefit and ticket the two counts must agree — a snapshot with no ledger entry left the credit unspent, and the reverse
+    // spent a credit with no record of the service it paid for
+    { key: 'redemption_ledger_mismatch', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM (
+          SELECT r.customer_membership_id AS mid, r.benefit_id AS bid, r.ticket_id AS tid, count(*) AS c, 0 AS l FROM membership_redemptions r WHERE r.tenant_id = ${t}::uuid AND r.benefit_id IS NOT NULL GROUP BY 1, 2, 3
+          UNION ALL
+          SELECT l.customer_membership_id, l.benefit_id, l.ticket_id, 0, count(*) FROM membership_credit_ledger l WHERE l.tenant_id = ${t}::uuid AND l.entry_type = 'redeemed' AND l.benefit_id IS NOT NULL AND l.ticket_id IS NOT NULL GROUP BY 1, 2, 3
+        ) z JOIN customer_memberships m ON m.tenant_id = ${t}::uuid AND m.id = z.mid
+        WHERE true ${br('m', b)} GROUP BY z.mid, z.bid, z.tid HAVING sum(z.c) <> sum(z.l)`) },
+    // a hold that was never redeemed or released although its ticket is already closed (paid or voided): the credit stays held
+    { key: 'reservation_open_on_closed_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_credit_ledger l
+        JOIN customer_memberships m ON m.tenant_id = l.tenant_id AND m.id = l.customer_membership_id
+        JOIN tickets k ON k.tenant_id = l.tenant_id AND k.id = l.ticket_id
+        WHERE l.tenant_id = ${t}::uuid ${br('m', b)} AND l.entry_type = 'reserved' AND l.reservation_ref IS NOT NULL
+          AND (k.paid_at IS NOT NULL OR k.status IN ('void', 'voided', 'cancelled', 'canceled'))
+          AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = l.tenant_id AND c.reservation_ref = l.reservation_ref AND c.entry_type IN ('released', 'redeemed'))`) },
+    // a benefit consumed on a ticket that was later voided, with no reversal (restored / released / adjusted) for that ticket
+    { key: 'redeemed_on_voided_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.status IN ('void', 'voided', 'cancelled', 'canceled')
+          AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = r.tenant_id AND c.customer_membership_id = r.customer_membership_id
+                          AND c.ticket_id = r.ticket_id AND c.entry_type IN ('restored', 'released', 'adjusted'))`) },
+    // ── billing (extras Membership Overview 16 · 02, part): a charge still "pending" a day later never got its provider result
+    { key: 'payment_pending_stuck', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'pending' AND p.created_at < now() - interval '1 day'`) },
+    // a renewal or installment collected AFTER the membership was cancelled
+    { key: 'charged_after_cancel', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.kind IN ('renewal', 'installment') AND m.canceled_at IS NOT NULL AND p.created_at > m.canceled_at`) },
   ] },
 
   // ── Live Operations / Serving / Service Done (the service flow: queue → serving → done → paid) ───────────────────

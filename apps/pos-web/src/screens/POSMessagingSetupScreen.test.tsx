@@ -22,7 +22,7 @@ vi.mock('../api/posMessagingSetupApi', () => ({ posMessagingSetupApi: {
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn(async () => ({ branches: [{ id: 'b1', name: 'Main' }, { id: 'b2', name: 'Uptown' }] })) } }));
 import { api } from '../api/client';
 import { readinessFixture, regItem } from './phoneMessagingTestKit';
-import { POSMessagingSetupScreen } from './POSMessagingSetupScreen';
+import { POSMessagingSetupScreen, ConsentBoundaryPanel } from './POSMessagingSetupScreen';
 
 const VA = 'VA' + 'a'.repeat(32);
 const view = (over: Record<string, unknown> = {}) => ({ tenantId: 't1', branchId: null, provider: 'twilio', status: 'configured', accountSid: 'AC…1111', accountSidLast4: '1111', fromNumber: '+18565550100', authTokenLast4: 'abcd',
@@ -221,5 +221,18 @@ describe('PM-03 / PM-04 registration from the provider', () => {
     renderIt();
     expect(await screen.findByTestId('pm-config-TWILIO_STATUS_CALLBACK_URL')).toHaveTextContent('Valid');
     expect(screen.getByTestId('pm-wh-numbers')).toHaveTextContent('Points to this app');
+  });
+  it('Phone & Messaging 12: the consent boundary panel states each rule — booking codes still go after STOP, follow-ups / marketing are blocked — with the ledger evidence', () => {
+    const rule = (kind: string, blocked: boolean, basis: string, path = 'notifications', ev: any = { blocked: 0, sentToOptedOut: 0 }, state = 'consistent') =>
+      ({ kind, channel: 'sms', purpose: kind, blockedByOptOut: blocked, blockedByMarketingUnsubscribe: false, basis, path, last30Days: path === 'verify_service' ? null : ev, state });
+    render(<ConsentBoundaryPanel cb={{ overall: 'breach', optedOut: { sms: 2, email: 1 }, note: 'n', rules: [
+      rule('booking_code', false, 'transactional', 'verify_service'), rule('followup', true, 'service', 'notifications', { blocked: 3, sentToOptedOut: 0 }),
+      rule('reminder', true, 'service', 'notifications', { blocked: 0, sentToOptedOut: 1 }, 'breach')] as any }} />);
+    expect(screen.getByTestId('ms-cb-booking_code').textContent).toBe('Booking verification codeStill sentTransactional — the customer asked for itSent by the salon’s verification service (not on the message log)');
+    expect(screen.getByTestId('ms-cb-followup').textContent).toContain('Blocked by STOP');
+    expect(screen.getByTestId('ms-cb-followup').textContent).toContain('3 blocked · 0 sent to an opted-out number');
+    expect(screen.getByTestId('ms-cb-reminder').textContent).toContain('sent although STOP should block it');
+    expect(screen.getByTestId('ms-cb-overall').textContent).toBe('Needs review');
+    expect(screen.getByTestId('ms-cb-optedout').textContent).toBe('2 numbers texted STOP · 1 email addresses unsubscribed');
   });
 });

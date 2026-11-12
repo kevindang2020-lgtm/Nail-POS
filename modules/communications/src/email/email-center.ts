@@ -100,6 +100,7 @@ export class EmailCenter {
     const eventsKnown = everEvents && (await this.callbacksConfigured());
     const latency = eventsKnown ? await this.deliveryLatency(T, p) : null;
     const suppression = await this.suppressionHygiene(T);
+    const usage = await this.emailUsage(ctx, p);
     return {
       window: { preset: p.preset, from: p.from, to: p.to, tz: p.tz, today: p.today, basis: 'created' },
       provider: health.overall,
@@ -107,7 +108,7 @@ export class EmailCenter {
       bookingConfirmations: N(r.booking), receipts: N(r.receipts),
       deliveryRate: eventsKnown && N(r.with_events) > 0 ? Math.round((N(r.delivered) / N(r.with_events)) * 1000) / 10 : null,
       deliveryRateDenominator: eventsKnown ? 'emails the provider accepted that have at least one verified provider event — delivered, still pending, or bounced / blocked by the receiver (emails with no event yet are excluded as Unknown)' : null,
-      latency, suppression,
+      latency, suppression, usage,
       definitions: { accepted: 'handed to the provider and accepted (not proof of delivery)', delivered: 'verified provider "delivered" events only', bounced: 'provider bounce / block events', blocked: 'never handed to the provider (setting off, suppressed, not configured, invalid address)' },
     };
   }
@@ -126,6 +127,21 @@ export class EmailCenter {
     const secs = (v: unknown) => (measured > 0 && v !== null && v !== undefined ? Math.round(Number(v)) : null);
     return { measured, medianSeconds: secs(r?.median), p90Seconds: secs(r?.p90), slowestSeconds: secs(r?.slowest),
       basis: 'time from the email being handed to the provider to the provider\'s verified "delivered" event; emails without that event are not measured' };
+  }
+
+  // ── Email 12: usage and provider cost — usage = emails this salon handed to the provider in the period (they carry the
+  // provider's message id); cost = the provider's OWN reported cost (notifications.provider_cost_micros), summed only when the
+  // provider reported it for EVERY one of them — otherwise null ("not known"), never estimated from a price list. The cost is
+  // shown only to people who manage communications; others see the counts and 'not_authorized'.
+  private async emailUsage(ctx: EcContext, p: { from: string | null; to: string | null; tz: string }) {
+    const r = (await sql<{ handed: number; costed: number; micros: string | number | null }>`select count(*)::int as handed,
+        count(*) filter (where n.provider_cost_micros is not null)::int as costed, coalesce(sum(n.provider_cost_micros), 0)::bigint as micros
+      from notifications n where n.tenant_id = ${ctx.tenantId}::uuid and n.channel = 'email' and n.provider_id is not null and ${this.inP(sql`n.created_at`, p)}`.execute(this.db)).rows[0];
+    const handed = N(r?.handed), costed = N(r?.costed);
+    const authorized = hasPermission(ctx as unknown as PermCtx, 'pos.communications.manage');
+    const state = handed === 0 ? 'no_sends' as const : !authorized ? 'not_authorized' as const : costed === handed ? 'known' as const : 'cost_unknown' as const;
+    return { handedToProvider: handed, withProviderCost: authorized ? costed : null, costCents: state === 'known' ? Math.round(N(r?.micros) / 10_000) : null, state,
+      basis: 'emails handed to the provider in this period; the cost is the provider\'s own reported cost, shown only when it reported every one' };
   }
 
   // ── Email 05: bounce / complaint hygiene — the CURRENT suppression list for email, split by why it is there (a hard

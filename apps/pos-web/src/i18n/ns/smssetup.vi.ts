@@ -113,4 +113,33 @@ export const SMSSETUP_VI = {
   "ms.rep.excluded": "Không có trong báo cáo: thông tin đăng nhập và mã bảo mật, số điện thoại và email khách, mã nội bộ.", // DRAFT — Kevin reviews
   "ms.rep.copy": "Sao chép báo cáo", // DRAFT — Kevin reviews
   "ms.rep.copied": "Đã sao chép", // DRAFT — Kevin reviews
+  "ms.cb.title": "Ranh giới đồng ý (STOP và hủy đăng ký)", // DRAFT — Kevin reviews
+  "ms.cb.overall.consistent": "Nhất quán", // DRAFT — Kevin reviews
+  "ms.cb.overall.breach": "Cần xem lại", // DRAFT — Kevin reviews
+  "ms.cb.optedOut": "{sms} số đã nhắn STOP · {email} email đã hủy đăng ký", // DRAFT — Kevin reviews
+  "ms.cb.type": "Tin nhắn", // DRAFT — Kevin reviews
+  "ms.cb.rule": "Sau STOP / hủy đăng ký", // DRAFT — Kevin reviews
+  "ms.cb.why": "Lý do", // DRAFT — Kevin reviews
+  "ms.cb.evidence": "30 ngày qua", // DRAFT — Kevin reviews
+  "ms.cb.blockedStop": "Bị chặn bởi STOP", // DRAFT — Kevin reviews
+  "ms.cb.blockedUnsub": "Bị chặn khi hủy đăng ký toàn bộ", // DRAFT — Kevin reviews
+  "ms.cb.sentDespite": "Vẫn được gửi", // DRAFT — Kevin reviews
+  "ms.cb.marketingUnsub": "cũng bị chặn khi hủy nhận tiếp thị", // DRAFT — Kevin reviews
+  "ms.cb.basis.transactional": "Giao dịch — khách tự yêu cầu", // DRAFT — Kevin reviews
+  "ms.cb.basis.service": "Tin dịch vụ", // DRAFT — Kevin reviews
+  "ms.cb.basis.marketing": "Tiếp thị — cần khách đồng ý nhận", // DRAFT — Kevin reviews
+  "ms.cb.notOnLedger": "Gửi qua dịch vụ xác minh của tiệm (không có trong nhật ký tin nhắn)", // DRAFT — Kevin reviews
+  "ms.cb.ev": "{b} bị chặn · {s} gửi tới số đã từ chối", // DRAFT — Kevin reviews
+  "ms.cb.breach": "đã gửi dù STOP phải chặn", // DRAFT — Kevin reviews
+  "ms.cb.k.booking_code": "Mã xác minh đặt lịch", // DRAFT — Kevin reviews
+  "ms.cb.k.account": "Tin tài khoản / bảo mật", // DRAFT — Kevin reviews
+  "ms.cb.k.receipt": "Tin hóa đơn", // DRAFT — Kevin reviews
+  "ms.cb.k.reminder": "Nhắc lịch hẹn", // DRAFT — Kevin reviews
+  "ms.cb.k.notification": "Tin thông báo", // DRAFT — Kevin reviews
+  "ms.cb.k.conversation": "Trò chuyện hai chiều", // DRAFT — Kevin reviews
+  "ms.cb.k.followup": "Tin hỏi thăm", // DRAFT — Kevin reviews
+  "ms.cb.k.marketing": "Tin tiếp thị", // DRAFT — Kevin reviews
+  "ms.cb.k.email_transactional": "Email hóa đơn / đặt lịch", // DRAFT — Kevin reviews
+  "ms.cb.k.email_marketing": "Email tiếp thị", // DRAFT — Kevin reviews
+  "ms.cb.note": "Chỉ xem. Mã đặt lịch là tin giao dịch nên vẫn gửi sau STOP; mọi tin khác bị chặn. Ở đây không thay đổi sự đồng ý của ai.", // DRAFT — Kevin reviews
 } as const;

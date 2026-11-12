@@ -4,9 +4,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 vi.mock('../api/client', () => ({ api: { get: vi.fn(), patch: vi.fn(), post: vi.fn() } }));
+vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ branches: [{ id: 'b1', name: 'Main', isActive: true }, { id: 'b2', name: 'Haddon', isActive: true }] }) } }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn(), useSearchParams: () => [new URLSearchParams(), vi.fn()] }));
 import { api } from '../api/client';
-import { POSBookingVerificationScreen } from './POSBookingVerificationScreen';
+import { POSBookingVerificationScreen, ConfigComparison } from './POSBookingVerificationScreen';
 
 const settings = (over: any = {}) => ({
   enabled: true, channels: { online: true, customerApp: true, aiReceptionist: true }, verifyEveryBooking: false, reverifyAfterSeconds: 86400,
@@ -144,5 +145,18 @@ describe('the activity panel and the switches', () => {
     vi.mocked(api.get).mockImplementation(async (p: string, ...rest: any[]) => (p === '/pos/booking-verification-center/summary' ? { ...base, providerFailures: { windowDays: 7, total: 0, groups: [] } } as never : prev(p, ...rest)));
     render(<POSBookingVerificationScreen />);
     expect(await screen.findByTestId('bv-triage-none')).toHaveTextContent('No provider failures in the last 7 days.');
+  });
+  it('extras Booking Phone Verification 11: choosing a location shows the server comparison — salon, location (or inherits), in effect, source', async () => {
+    vi.mocked(api.get).mockImplementation(async (p: string) => (p === '/pos/settings/booking-phone-verification?branchId=b2' ? { comparison: { branchHasOwnSettings: true, salonHasSettings: true, rows: [
+      { field: 'enabled', salon: true, branch: null, effective: true, source: 'salon' },
+      { field: 'channel.online', salon: true, branch: false, effective: false, source: 'branch' },
+      { field: 'reverifyAfterSeconds', salon: 86400, branch: null, effective: 86400, source: 'salon' }] } } : {}) as never);
+    render(<ConfigComparison />);
+    fireEvent.change(await screen.findByTestId('bv-cmp-branch'), { target: { value: 'b2' } });
+    expect((await screen.findByTestId('bv-cmp-enabled')).textContent).toBe('Phone verificationOnInheritsOnSalon setting');
+    expect(screen.getByTestId('bv-cmp-channel.online').textContent).toBe('Online bookingOnOffOffThis location');
+    expect(screen.getByTestId('bv-cmp-reverifyAfterSeconds').textContent).toContain('24 h');
+    expect(screen.getByTestId('bv-cmp-state').textContent).toMatch(/its own settings/);
+    expect(api.patch).not.toHaveBeenCalled();
   });
 });

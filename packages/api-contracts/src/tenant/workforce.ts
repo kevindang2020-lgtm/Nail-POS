@@ -1,7 +1,7 @@
 // workforce.ts — wire contract (Constitution 13 §13, §15). Realm: tenant. Moved from the server's own declaration so the
 // server and every app use ONE definition.
 
-export type HandoffStatus = 'open' | 'submitted' | 'reconciled' | 'discrepancy' | 'cancelled';
+export type HandoffStatus = 'open' | 'submitted' | 'reconciled' | 'discrepancy' | 'cancelled' | 'reopened';   // reopened: End-of-Day Cash 17
 export interface QualifiedTechnician { technicianId: string; displayName: string; workingStatus: string; shiftStatus: string; status: string; }
 
 export interface CashHandoff {

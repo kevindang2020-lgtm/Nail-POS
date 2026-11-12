@@ -278,3 +278,19 @@ describe('Phase 4: a branch’s own re-verification rules (found by the live pro
     expect(r.mustVerify).toBe(true);
   });
 });
+
+describe('extras Booking Phone Verification 11 — the comparison uses the resolver\'s own inheritance', () => {
+  it('for every combination, the comparison\'s effective enabled / online / verify-every agrees with what the resolver decides', async () => {
+    const { resolveBookingVerificationPolicy, branchConfigComparison, DEFAULT_SALON_POLICY } = await import('./booking-verification-policy');
+    const plat = { emergencyDisabled: false, moduleEnabled: true, requiredForTenant: false, blockedForTenant: false, version: null };
+    const provider = { configured: true, healthy: true, version: null };
+    for (const tEnabled of [true, false]) for (const bEnabled of [true, false, null]) for (const bOnline of [true, false, null]) for (const bEvery of [true, false, null]) {
+      const tenant = { ...DEFAULT_SALON_POLICY, enabled: tEnabled, channels: { online: true }, verifyEveryBooking: false };
+      const branch = { enabled: bEnabled, channels: bOnline == null ? null : { online: bOnline }, verifyEveryBooking: bEvery, version: 1 };
+      const cmp = Object.fromEntries(branchConfigComparison(plat, tenant, DEFAULT_SALON_POLICY, branch).rows.map((r) => [r.field, r.effective]));
+      const d = resolveBookingVerificationPolicy({ channel: 'online', platform: plat, tenant, branch, provider, history: { lastVerifiedAt: Date.now() - 1000, phoneChanged: false } });
+      const expected = !cmp.enabled ? 'disabled' : !cmp['channel.online'] ? 'not_required' : cmp.verifyEveryBooking ? 'required' : 'recent_verification_accepted';
+      expect(d.decision, JSON.stringify({ tEnabled, bEnabled, bOnline, bEvery })).toBe(expected);
+    }
+  });
+});

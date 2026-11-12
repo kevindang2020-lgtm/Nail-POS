@@ -25,6 +25,7 @@
 //              Customer Notifications incidents list acknowledges / resolves it). It never sends, buys, registers or
 //              changes a credential.
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { consentBoundary } from '../notifications/consent-boundary';
 import { sql, type Kysely } from 'kysely';
 import { withCode } from '@aipowersalon/api-contracts';
 import { enqueueJob, PermanentJobError, type AppDatabase } from '@aipowersalon/database';
@@ -197,6 +198,8 @@ export class MessagingSetupCenter {
     const worst = (['failed', 'attention_required', 'unknown', 'pending'] as PartState[]).find((s) => parts.some((p) => p.state === s)) ?? 'ready';
     return { generatedAt: new Date().toISOString(), scope: { branchId: r.scope.branchId, branchName: r.scope.branchName, source: r.source }, overall: worst, parts, delivery: d, wizard,
       schedule: await this.schedule(ctx.tenantId), lastTest: r.lastTest,
+      // Phone & Messaging 12: what STOP / unsubscribe does to each message type, with this salon's 30-day evidence (salon-wide)
+      consentBoundary: await consentBoundary(this.db, ctx.tenantId),
       note: 'Each part is judged on its own evidence. A Connected account does not prove carrier approval, inbound routing or delivery.' };
   }
 

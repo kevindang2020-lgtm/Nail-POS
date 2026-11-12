@@ -345,4 +345,66 @@ describe('shared read-only Check … System', () => {
     expect(count(await svc.run('payments', { tenantId: T }), 'non_card_in_processor_batch')).toMatchObject({ state: 'FAILED', count: 2 });
     expect(count(await svc.run('payments', { tenantId: T, branchId: B2 }), 'non_card_in_processor_batch')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('extras Membership Overview 13·08 / 16·03 / 16·02 — benefit redemption integrity and stuck billing; branch-scoped; never another salon; writes nothing', async () => {
+    // own salon pair (ids 630..669, agent-3 range) so nothing planted earlier in this shared DB is counted
+    const T3 = id(630), X3 = id(631), B31 = id(632), B32 = id(633), BX3 = id(634), C3 = id(635), CX3 = id(636), PL = id(637), PV = id(638), PLX = id(639), PVX = id(640);
+    const BEN = id(641), BENX = id(642), M1 = id(643), M2 = id(644), MX = id(645), K1 = id(646), K2 = id(647), K3 = id(648), KX = id(649), RES = id(650), RESX = id(651), RES2 = id(652);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T3}, 'M', 'Members', 'sc-630', 'SC630', 'active'), (${X3}, 'MX', 'Other members', 'sc-631', 'SC631', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B31}, ${T3}, 'Main'), (${B32}, ${T3}, 'Second'), (${BX3}, ${X3}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C3}, ${T3}, ${B31}, 'Mem', 'Ber', 'Mem Ber', '+15550006301'), (${CX3}, ${X3}, ${BX3}, 'Oth', 'Er', 'Oth Er', '+15550006302')`);
+    await q(sql`insert into membership_plans (id, tenant_id, name, status) values (${PL}, ${T3}, 'Gold', 'active'), (${PLX}, ${X3}, 'Gold X', 'active')`);
+    await q(sql`insert into membership_plan_versions (id, plan_id, tenant_id, version_number, price_cents) values (${PV}, ${PL}, ${T3}, 1, 4900), (${PVX}, ${PLX}, ${X3}, 1, 4900)`);
+    await q(sql`insert into membership_benefits (id, plan_version_id, tenant_id, benefit_type, label, credits_per_cycle) values (${BEN}, ${PV}, ${T3}, 'service_credit', 'Gel', 1), (${BENX}, ${PVX}, ${X3}, 'service_credit', 'Gel', 1)`);
+    // M1 in B1 (cancelled yesterday), M2 in B2, MX the other salon's
+    await q(sql`insert into customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, auto_renew, auto_renew_consent_at, canceled_at) values
+      (${M1}, ${T3}, ${B31}, ${C3}, ${PL}, ${PV}, 'canceled', false, now(), now() - interval '1 day'),
+      (${M2}, ${T3}, ${B32}, ${C3}, ${PL}, ${PV}, 'active', false, now(), null),
+      (${MX}, ${X3}, ${BX3}, ${CX3}, ${PLX}, ${PVX}, 'canceled', false, now(), now() - interval '1 day')`);
+    // K1 paid (B1), K2 voided (B2), K3 voided (B2, reversed), KX the other salon's voided ticket
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, paid_at, total_cents) values
+      (${K1}, ${T3}, ${B31}, ${C3}, 'paid', now(), 4900), (${K2}, ${T3}, ${B32}, ${C3}, 'voided', null, 4900), (${K3}, ${T3}, ${B32}, ${C3}, 'void', null, 4900),
+      (${KX}, ${X3}, ${BX3}, ${CX3}, 'voided', null, 4900)`);
+    await q(sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, quantity, ticket_id, reservation_ref, reason) values
+      (${T3}, ${M1}, ${BEN}, 'issued', 1, null, null, 'enrollment'),
+      (${T3}, ${M1}, ${BEN}, 'redeemed', 1, ${K1}, null, 'service_redeem'),
+      (${T3}, ${M1}, ${BEN}, 'redeemed', 1, ${K1}, null, 'service_redeem'),
+      (${T3}, ${M1}, ${BEN}, 'reserved', 1, ${K1}, ${RES}, 'booking_reserve'),
+      (${T3}, ${M2}, ${BEN}, 'issued', 3, null, null, 'enrollment'),
+      (${T3}, ${M2}, ${BEN}, 'redeemed', 1, ${K2}, null, 'service_redeem'),
+      (${T3}, ${M2}, ${BEN}, 'redeemed', 1, ${K3}, null, 'service_redeem'),
+      (${T3}, ${M2}, ${BEN}, 'restored', 1, ${K3}, null, 'void_reversal'),
+      (${T3}, ${M2}, ${BEN}, 'reserved', 1, ${K2}, ${RES2}, 'booking_reserve'),
+      (${T3}, ${M2}, ${BEN}, 'released', 1, null, ${RES2}, 'booking_release'),
+      (${X3}, ${MX}, ${BENX}, 'redeemed', 2, ${KX}, null, 'service_redeem'),
+      (${X3}, ${MX}, ${BENX}, 'reserved', 1, ${KX}, ${RESX}, 'booking_reserve')`);
+    // redemption snapshots: M1 has ONE for K1 although the ledger spent TWO (mismatch); M2's K2 and K3 match their ledger rows
+    await q(sql`insert into membership_redemptions (tenant_id, branch_id, customer_membership_id, ticket_id, benefit_id) values
+      (${T3}, ${B31}, ${M1}, ${K1}, ${BEN}), (${T3}, ${B32}, ${M2}, ${K2}, ${BEN}), (${T3}, ${B32}, ${M2}, ${K3}, ${BEN}), (${X3}, ${BX3}, ${MX}, ${KX}, ${BENX})`);
+    await q(sql`insert into membership_payments (tenant_id, branch_id, customer_membership_id, customer_id, kind, amount_cents, status, idempotency_key, created_at) values
+      (${T3}, ${B31}, ${M1}, ${C3}, 'renewal', 4900, 'succeeded', 'sc630-a', now()),
+      (${T3}, ${B32}, ${M2}, ${C3}, 'renewal', 4900, 'pending', 'sc630-b', now() - interval '3 days'),
+      (${T3}, ${B32}, ${M2}, ${C3}, 'renewal', 4900, 'pending', 'sc630-c', now() - interval '2 hours'),
+      (${T3}, ${B31}, ${M1}, ${C3}, 'enrollment', 4900, 'succeeded', 'sc630-d', now()),
+      (${X3}, ${BX3}, ${MX}, ${CX3}, 'renewal', 4900, 'succeeded', 'sc630-x', now()),
+      (${X3}, ${BX3}, ${MX}, ${CX3}, 'renewal', 4900, 'pending', 'sc630-y', now() - interval '3 days')`);
+    const tally = sql`select (select count(*) from membership_credit_ledger) + (select count(*) from membership_redemptions) + (select count(*) from membership_payments) as n`;
+    const before = (await q(tally)).rows;
+    const all = await svc.run('memberships', { tenantId: T3 });
+    expect(count(all, 'benefit_balance_negative')).toMatchObject({ state: 'FAILED', count: 1 });          // M1: 1 issued − 2 redeemed − 1 open hold; M2 is 3 − 2 + 1 restored = 2
+    expect(count(all, 'redemption_ledger_mismatch')).toMatchObject({ state: 'FAILED', count: 1 });        // M1/K1: 1 snapshot vs 2 ledger redeems
+    expect(count(all, 'reservation_open_on_closed_ticket')).toMatchObject({ state: 'WARNING', count: 1 }); // RES on paid K1; RES2 was released
+    expect(count(all, 'redeemed_on_voided_ticket')).toMatchObject({ state: 'WARNING', count: 1 });        // K2 (K3 was restored)
+    expect(count(all, 'payment_pending_stuck')).toMatchObject({ state: 'WARNING', count: 1 });            // the 3-day one, not the 2-hour one
+    expect(count(all, 'charged_after_cancel')).toMatchObject({ state: 'FAILED', count: 1 });              // the renewal after M1's cancel; the enrollment row is not a renewal
+    expect(all.overall).toBe('FAILED');
+    const b2 = await svc.run('memberships', { tenantId: T3, branchId: B32 });
+    expect(count(b2, 'benefit_balance_negative').count).toBe(0);
+    expect(count(b2, 'redemption_ledger_mismatch').count).toBe(0);
+    expect(count(b2, 'reservation_open_on_closed_ticket').count).toBe(0);
+    expect(count(b2, 'redeemed_on_voided_ticket').count).toBe(1);
+    expect(count(b2, 'payment_pending_stuck').count).toBe(1);
+    expect(count(b2, 'charged_after_cancel').count).toBe(0);
+    expect((await q(tally)).rows).toEqual(before);
+  });
 });

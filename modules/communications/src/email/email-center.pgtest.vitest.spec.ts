@@ -322,4 +322,25 @@ describe('booking confirmation email (guide §09)', () => {
     expect((await q(sql`select status, failure_reason from notifications where source_id = ${String(appt2)}`))[0]).toEqual({ status: 'blocked', failure_reason: 'booking_email_disabled' });
     expect(bookingConfirmationEmail({ salon: 'S', branch: null, address: null, date: '2026-12-31', start: '09:05', services: [], technician: null, customerFirst: null, reference: 'AB12' }).body).toMatch(/^Hi there,/);
   });
+  it('Email 12 usage + cost: counts what was handed to the provider; cost only when the provider reported every one, only for managers; never another salon', async () => {
+    const handed = async (tenant: string) => Number((await q(sql`select count(*)::int as n from notifications where tenant_id = ${tenant} and channel = 'email' and provider_id is not null
+      and created_at >= (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York')`))[0].n);
+    await q(sql`insert into notifications (tenant_id, channel, to_address, subject, body, status, purpose, branch_id, provider_id, provider_cost_micros) values
+      (${T2}, 'email', 'a@other.test', 'S', 'B', 'sent', 'receipt', ${B2}, 'SGcost1', 1000000), (${T2}, 'email', 'b@other.test', 'S', 'B', 'delivered', 'receipt', ${B2}, 'SGcost2', null),
+      (${T2}, 'email', 'c@other.test', 'S', 'B', 'blocked', 'receipt', ${B2}, null, null), (${T2}, 'sms', '+16095550100', null, 'B', 'sent', 'receipt', ${B2}, 'SMcost3', 9990000)`);
+    const n2 = await handed(T2);
+    expect(n2).toBeGreaterThanOrEqual(2);
+    const s1: any = await center.summary(owner2, { preset: 'today' });
+    expect(s1.usage).toMatchObject({ handedToProvider: n2, state: 'cost_unknown', costCents: null });     // SGcost2 has no provider cost: not known, never estimated
+    await q(sql`update notifications set provider_cost_micros = 250000 where tenant_id = ${T2} and channel = 'email' and provider_id is not null and provider_cost_micros is null`);
+    const micros = Number((await q(sql`select coalesce(sum(provider_cost_micros), 0)::bigint as m from notifications where tenant_id = ${T2} and channel = 'email' and provider_id is not null
+      and created_at >= (date_trunc('day', now() at time zone 'America/New_York') at time zone 'America/New_York')`))[0].m);
+    const s2: any = await center.summary(owner2, { preset: 'today' });
+    expect(s2.usage).toMatchObject({ handedToProvider: n2, withProviderCost: n2, state: 'known', costCents: Math.round(micros / 10_000) });
+    expect(s2.usage.costCents).toBeGreaterThanOrEqual(125);                                               // $1.00 + $0.25 at least; the SMS row never counts
+    const viewer2: EcContext = { ...owner2, role: 'FRONT_DESK', permissions: ['pos.communications.view'] };
+    expect((await center.summary(viewer2, { preset: 'today' })).usage).toMatchObject({ handedToProvider: n2, withProviderCost: null, costCents: null, state: 'not_authorized' });
+    const mine: any = await center.summary(owner, { preset: 'today' });
+    expect(mine.usage.handedToProvider).toBe(await handed(T));
+  });
 });

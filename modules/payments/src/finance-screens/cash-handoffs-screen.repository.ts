@@ -54,16 +54,19 @@ export class CashHandoffsScreenRepository {
         coalesce(h.drawer_transfer_cents, 0)::bigint as drawer_transfer_cents, h.denominations_json, h.reconciled_by_user_id, h.resolved_by_user_id, h.submitted_by_user_id,
         coalesce(h.created_at, e.last_at) as created_at, coalesce(h.updated_at, e.last_at) as updated_at, e.first_at, e.last_at,
         tc.full_name as technician_name, tc.is_active as technician_active, tc.normalized_phone as technician_phone, tc.status as technician_status, b.name as branch_name,
-        cu.full_name as counted_by, ru.full_name as resolved_by, su.full_name as submitted_by
+        cu.full_name as counted_by, ru.full_name as resolved_by, su.full_name as submitted_by,
+        h.reopened_at, h.reopen_reason, coalesce(h.reopen_count, 0)::int as reopen_count, rou.full_name as reopened_by
       from (select c.tenant_id, c.technician_id, c.bd, min(c.branch_id::text)::uuid as branch_id,
             sum(c.amount_cents)::bigint as expected_cents, count(*)::int as payment_count, min(c.confirmed_at) as first_at, max(c.confirmed_at) as last_at
           from (select c0.tenant_id, c0.technician_id, c0.branch_id, c0.amount_cents, c0.confirmed_at, (c0.confirmed_at at time zone ${tz})::date as bd from cash_payment_confirmations c0 where c0.tenant_id = ${T} and c0.status = 'confirmed' and c0.technician_id is not null) c
           group by c.tenant_id, c.technician_id, c.bd) e
       full outer join (select id, tenant_id, branch_id, technician_id, business_date, expected_cents, counted_cents, variance_cents, payment_count, status, submitted_by_user_id, submitted_at, reconciled_by_user_id, reconciled_at, notes,
-          created_at, updated_at, version, denominations_json, resolution_reason, resolved_by_user_id, resolved_at, drawer_transfer_cents from tech_cash_handoffs where tenant_id = ${T}) h on h.technician_id = e.technician_id and h.business_date = e.bd
+          created_at, updated_at, version, denominations_json, resolution_reason, resolved_by_user_id, resolved_at, drawer_transfer_cents,
+          reopened_at, reopened_by_user_id, reopen_reason, reopen_count from tech_cash_handoffs where tenant_id = ${T}) h on h.technician_id = e.technician_id and h.business_date = e.bd
       left join technicians tc on tc.id = coalesce(h.technician_id, e.technician_id) and tc.tenant_id = ${T}
       left join branches b on b.id = coalesce(h.branch_id, e.branch_id) and b.tenant_id = ${T}
-      left join users cu on cu.id = h.reconciled_by_user_id and cu.tenant_id = h.tenant_id left join users ru on ru.id = h.resolved_by_user_id and ru.tenant_id = h.tenant_id left join users su on su.id = h.submitted_by_user_id and su.tenant_id = h.tenant_id`;
+      left join users cu on cu.id = h.reconciled_by_user_id and cu.tenant_id = h.tenant_id left join users ru on ru.id = h.resolved_by_user_id and ru.tenant_id = h.tenant_id left join users su on su.id = h.submitted_by_user_id and su.tenant_id = h.tenant_id
+      left join users rou on rou.id = h.reopened_by_user_id and rou.tenant_id = h.tenant_id`;
   }
   private static readonly DIFF = sql`(case when a.counted_cents is null then null else a.counted_cents - a.expected_cents end)`;
   /** the screen's state: awaiting (open / submitted), balanced, resolved (reconciled after a review), under review (short / over), cancelled */
@@ -74,7 +77,7 @@ export class CashHandoffsScreenRepository {
   }
   private status(s: ChFilters['status']): RawBuilder<boolean> {
     switch (s) {
-      case 'awaiting': return sql<boolean>`a.status in ('open', 'submitted')`;
+      case 'awaiting': return sql<boolean>`a.status in ('open', 'submitted', 'reopened')`;   // a reopened count waits for a new count
       case 'reconciled': return sql<boolean>`a.status = 'reconciled'`;
       case 'discrepancy': return sql<boolean>`a.status = 'discrepancy'`;
       case 'balanced': case 'resolved': case 'short': case 'over': return sql<boolean>`${CashHandoffsScreenRepository.STATE} = ${s}`;
@@ -118,6 +121,8 @@ export class CashHandoffsScreenRepository {
       status: String(r.status), state: String(r.state), version: N(r.version), drawerTransferCents: N(r.drawer_transfer_cents),
       submittedAt: iso(r.submitted_at), countedAt: iso(r.reconciled_at), resolvedAt: iso(r.resolved_at), createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), firstCashAt: iso(r.first_at), lastCashAt: iso(r.last_at),
       countedBy: r.counted_by ?? null, resolvedBy: r.resolved_by ?? null, submittedBy: r.submitted_by ?? null, notes: r.notes ?? null, resolutionReason: r.resolution_reason ?? null,
+      // End-of-Day Cash 17: the last reopen of this count (who / when / why) and how many times it was reopened
+      reopen: r.reopened_at ? { at: iso(r.reopened_at), by: r.reopened_by ?? null, reason: r.reopen_reason ?? null, count: N(r.reopen_count) } : null,
       ...(r.rank !== undefined && r.rank !== 0 ? { matchedBy: r.rank === 2 ? 'reference' : 'name' } : {}),
     };
   }
@@ -140,7 +145,7 @@ export class CashHandoffsScreenRepository {
     const tz = await this.tz(ctx, f); const w = this.where(ctx, { ...f, q: '', status: undefined }, tz);
     const r = (await sql<any>`select coalesce(sum(a.expected_cents), 0)::bigint as expected, coalesce(sum(a.counted_cents), 0)::bigint as counted, count(distinct a.technician_id)::int as technicians,
         count(*)::int as units, count(*) filter (where a.status = 'reconciled')::int as reconciled, count(*) filter (where a.status = 'reconciled' and a.resolved_at is not null)::int as resolved,
-        count(*) filter (where a.status in ('open', 'submitted'))::int as awaiting, count(*) filter (where a.status = 'submitted')::int as submitted, count(*) filter (where a.status = 'discrepancy')::int as under_review,
+        count(*) filter (where a.status in ('open', 'submitted', 'reopened'))::int as awaiting, count(*) filter (where a.status = 'submitted')::int as submitted, count(*) filter (where a.status = 'discrepancy')::int as under_review,
         count(*) filter (where a.counted_cents is not null and a.counted_cents < a.expected_cents)::int as short_units, count(*) filter (where a.counted_cents is not null and a.counted_cents > a.expected_cents)::int as over_units,
         count(*) filter (where a.counted_cents is not null and a.counted_cents = a.expected_cents)::int as balanced_units,
         coalesce(sum(a.counted_cents - a.expected_cents) filter (where a.counted_cents is not null), 0)::bigint as difference,
@@ -158,7 +163,7 @@ export class CashHandoffsScreenRepository {
         difference: 'counted − expected per unit; negative = shortage, positive = overage; a resolution keeps the figures',
       },
       period: f.period, basis: f.basis, asOf: new Date().toISOString(),
-      permissions: { count: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.take_payment'), resolve: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'checkout.manage_overrides'),
+      permissions: { count: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.take_payment'), resolve: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'checkout.manage_overrides'), reopen: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'cash_handoff.reopen'),
         export: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.reports.export'), customer: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.customers.view') },
     };
   }
@@ -188,7 +193,7 @@ export class CashHandoffsScreenRepository {
         denominations: e.denominations_json ? (Array.isArray(e.denominations_json) ? e.denominations_json : JSON.parse(String(e.denominations_json))) : null, reason: e.reason ?? null, drawerMovementId: e.drawer_movement_id ? String(e.drawer_movement_id) : null, idempotent: !!e.idempotency_key, at: iso(e.created_at), actor: e.actor ?? null })),
       drawerMovements: movements.map((m: any) => ({ id: String(m.id), direction: String(m.direction), amountCents: N(m.amount_cents), register: String(m.register_id ?? 'main'), businessDate: String(m.business_date), at: iso(m.created_at), voided: !!m.voided_at })),
       audit: auditRows.map((a: any) => ({ action: String(a.action), at: iso(a.created_at), actor: a.actor ?? a.role ?? null, metadata: a.metadata ?? null })),
-      permissions: { count: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.take_payment'), resolve: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'checkout.manage_overrides'), customer: canContact },
+      permissions: { count: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.take_payment'), resolve: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'checkout.manage_overrides'), reopen: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'cash_handoff.reopen'), customer: canContact },
     };
   }
 

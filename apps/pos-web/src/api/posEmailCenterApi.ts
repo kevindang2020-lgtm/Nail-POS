@@ -7,9 +7,11 @@ export type EmStatus = 'accepted' | 'delivered' | 'failed' | 'bounced' | 'blocke
 export type EmCategory = 'booking' | 'receipt' | 'reminder' | 'follow_up' | 'marketing' | 'manual';
 export interface EmWindow { preset: string; from: string | null; to: string | null; tz: string; today: string }
 export interface EmSettings { senderName: string; replyTo: string | null; bookingConfirmations: boolean; receipts: boolean; source: string; fromAddress: string; savedAt: string | null; canEdit: boolean }
-export interface EmSummary { window: EmWindow; provider: string; accepted: number; delivered: number | null; failed: number; bounced: number; blocked: number; simulated: number; bookingConfirmations: number; receipts: number; deliveryRate: number | null; deliveryRateDenominator: string | null; latency?: EmLatency | null; suppression?: EmHygiene }
+export interface EmSummary { window: EmWindow; provider: string; accepted: number; delivered: number | null; failed: number; bounced: number; blocked: number; simulated: number; bookingConfirmations: number; receipts: number; deliveryRate: number | null; deliveryRateDenominator: string | null; latency?: EmLatency | null; suppression?: EmHygiene; usage?: EmUsage }
 /** Email 11 — accepted → verified delivered (null when no verified provider events exist) */
 export interface EmLatency { measured: number; medianSeconds: number | null; p90Seconds: number | null; slowestSeconds: number | null; basis: string }
+/** Email 12 — emails handed to the provider in the period; cost only when the provider reported every one and the viewer manages communications */
+export interface EmUsage { handedToProvider: number; withProviderCost: number | null; costCents: number | null; state: 'no_sends' | 'not_authorized' | 'cost_unknown' | 'known'; basis: string }
 /** Email 05 — the suppression list now, split by why each address is there, with the approved next step */
 export interface EmHygiene { total: number; buckets: { key: 'hard_bounce' | 'complaint' | 'unsubscribe' | 'other'; addresses: number; latestAt: string | null; scope: string; next: string }[]; basis: string }
 /** Email 10 — the composer's recipient check (preview = true; nothing is sent) */

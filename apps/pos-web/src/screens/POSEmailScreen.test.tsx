@@ -97,4 +97,19 @@ describe('POSEmailScreen', () => {
     expect((screen.getByTestId('emc-c-send') as HTMLButtonElement).disabled).toBe(false);
     expect(m.compose).not.toHaveBeenCalled();   // the check never sends
   });
+  it('Email 12: usage counts what was handed to the provider; cost only when the provider reported it for every email; managers only', async () => {
+    const base = { window: W, provider: 'ready', accepted: 3, delivered: null, failed: 0, bounced: 0, blocked: 0, simulated: 0, bookingConfirmations: 0, receipts: 3, deliveryRate: null, deliveryRateDenominator: null, latency: null };
+    m.summary.mockResolvedValue({ ...base, usage: { handedToProvider: 3, withProviderCost: 3, costCents: 125, state: 'known', basis: 'b' } });
+    const v = mount();
+    expect((await screen.findByTestId('emc-use-sent')).textContent).toBe('3 emails handed to the provider');
+    expect(screen.getByTestId('emc-use-cost').textContent).toBe('$1.25');
+    v.unmount();
+    m.summary.mockResolvedValue({ ...base, usage: { handedToProvider: 3, withProviderCost: 1, costCents: null, state: 'cost_unknown', basis: 'b' } });
+    const v2 = mount();
+    expect((await screen.findByTestId('emc-use-cost')).textContent).toBe('Not known — the provider reported the cost of 1 of 3 emails');
+    v2.unmount();
+    m.summary.mockResolvedValue({ ...base, usage: { handedToProvider: 3, withProviderCost: null, costCents: null, state: 'not_authorized', basis: 'b' } });
+    mount();
+    expect((await screen.findByTestId('emc-use-cost')).textContent).toBe('Shown to managers only');
+  });
 });

@@ -107,4 +107,12 @@ export const COUPONS_EN = {
   'cp.roi.branch': 'Location',
   'cp.roi.customers': 'Customers',
   'cp.roi.noBranch': 'No location',
+  'cp.dtab.related': 'Related offers',
+  'cp.rel.same': 'Same benefit',
+  'cp.rel.noneSame': 'No other live or upcoming offer gives the same benefit.',
+  'cp.rel.allBranches': 'All branches',
+  'cp.rel.allServices': 'Every service',
+  'cp.rel.sharedServices': '{n} shared services',
+  'cp.rel.stackable': 'Combinable',
+  'cp.rel.note': 'Same benefit = the same discount type and value, a branch and services that meet, and overlapping dates. Review whether both are intended; nothing is changed here.',
 } as const;
