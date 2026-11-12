@@ -162,6 +162,11 @@ describe('§12 the read-only checker uses Checkout\'s engine', () => {
     await applyAtCheckout(t, { code: 'BIGFIFTY50' });
     const v = await center.check(ctx, vishal.id, { ticketId: t, codeEntered: true });
     expect(v.verdict).toBe('NOT_COMBINABLE'); expect(v.discountPreviewCents).toBe(0); expect(v.context.onTicket).toBe(1);
+    // Extras · Coupons 06: the stacking inspector explains it from the salon's stored policy (best_single → one offer per ticket)
+    expect(v.stacking.mode).toBe('best_single');
+    expect(v.stacking.rows.find((r) => r.benefit === 'other_offer')).toMatchObject({ combines: 'no', reason: 'policy_one_offer' });
+    expect(v.stacking.rows.find((r) => r.benefit === 'gift_card_tender')).toMatchObject({ combines: 'yes', reason: 'payment_not_discount' });
+    expect(v.stacking.rows.map((r) => r.benefit)).toEqual(['other_offer', 'membership_discount', 'membership_credit', 'loyalty_reward', 'gift_card_tender', 'price_floor', 'discount_cap']);
     await co.onRefunded(ctx, t, null, 'cleanup'); void big;
   });
   it('another salon cannot check, list or link this salon\'s coupon; another salon\'s customer is never judged', async () => {

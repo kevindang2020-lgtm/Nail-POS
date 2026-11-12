@@ -90,4 +90,15 @@ export const COMMSINBOX_VI = {
   'ci.readAll.confirm': 'Đánh dấu đã đọc', // DRAFT — Kevin reviews
   'ci.readAll.done': 'Đã đánh dấu {n} cuộc trò chuyện là đã đọc.', // DRAFT — Kevin reviews
   'ci.readAll.kept': '{n} cuộc trò chuyện có tin nhắn mới hơn vẫn chưa đọc.', // DRAFT — Kevin reviews
+  'ci.fr.sources': 'Bản ghi mới nhất — tin nhắn: {m} · cuộc gọi: {c} · cập nhật giao tin: {d}', // DRAFT — Kevin reviews
+  'ci.fr.unknown': '{m} chưa rõ', // DRAFT — Kevin reviews
+  'ci.fr.partial': '{m} chưa đầy đủ', // DRAFT — Kevin reviews
+  'ci.fr.m.missed': 'Cuộc gọi nhỡ', // DRAFT — Kevin reviews
+  'ci.fr.m.sentToday': 'Đã gửi hôm nay', // DRAFT — Kevin reviews
+  'ci.fr.m.delivered': 'Đã giao hôm nay', // DRAFT — Kevin reviews
+  'ci.fr.r.call_ledger_unreadable': 'không đọc được lịch sử cuộc gọi', // DRAFT — Kevin reviews
+  'ci.fr.r.no_call_records': 'chưa từng ghi nhận cuộc gọi nào ở đây, nên số 0 có thể không đúng', // DRAFT — Kevin reviews
+  'ci.fr.r.simulated_sends': 'có {n} lần gửi thử không qua nhà cung cấp', // DRAFT — Kevin reviews
+  'ci.fr.r.awaiting_callbacks': '{n} tin nhắn vẫn chờ cập nhật giao tin', // DRAFT — Kevin reviews
+  'ci.fr.r.callbacks_stale': '{n} tin nhắn đang chờ và chưa có cập nhật giao tin nào — hãy kiểm tra webhook', // DRAFT — Kevin reviews
 };

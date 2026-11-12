@@ -16,6 +16,13 @@ export interface BvSummary {
   /** Verification Funnel Scorecard (Extras · Booking Phone Verification 09) — evidence-only counts, last 30 days */
   /** Provider Failure Triage (Extras · Booking Phone Verification 12) — grouped by what to fix; provider codes only */
   providerFailures?: { windowDays: number; total: number; groups: Array<{ category: string; count: number; lastAt: string | null; codes: string[] }> };
+  deliveryEvidence?: {
+    windowDays: number;
+    sender: { state: string; definition: string };
+    sends: { sessions: number; attempts: number; definition: string };
+    delivery: { delivered: number; providerFailed: number; noReport: number; lastDeliveredAt: string | null; deliveredPercent: number | null; definition: string };
+    checks: { verified: number; percentOfSent: number | null; definition: string };
+  };
   funnel?: { windowDays: number; overrides: number; overridesDefinition: string; steps: Array<{ key: string; count: number; definition: string; conversionPercent: number | null }> };
 }
 export interface BvHealth { checkedAt: string; overall: BvHealthState; items: Array<{ key: string; state: BvHealthState; message: string; evidence: string; nextAction: string | null; checkedAt: string }> }

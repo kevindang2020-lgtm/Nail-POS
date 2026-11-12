@@ -35,6 +35,9 @@ export interface InboxSummary {
   sentToday: { total: number; submitted: number; delivered: number; failed: number; simulated: number };
   /** Missing-webhook warning (Extras · SMS Inbox 12): timestamps only — waiting texts are never counted as failed */
   callbacks?: { state: 'ok' | 'delayed' | 'stale'; awaiting: number; oldestAwaitingAt: string | null; lastCallbackAt: string | null; waitMinutes: number; lookbackDays: number };
+  /** Performance freshness (Extras · SMS Inbox 14): the newest SOURCE record per tile family + unknown / partial warnings */
+  freshness?: { conversationsAt: string | null; messagesAt: string | null; callsAt: string | null; deliveryCallbacksAt: string | null;
+    warnings: Array<{ metric: string; kind: 'unknown' | 'partial'; reason: string; count: number | null }> };
   definitions: Record<string, string>; generatedAt: string;
 }
 export interface ThreadChange { id: string; version: number; status: string; unreadCount: number; assignedTo: string | null; assignedToName: string | null; followUpDueAt: string | null; customerId: string | null; changed: boolean }

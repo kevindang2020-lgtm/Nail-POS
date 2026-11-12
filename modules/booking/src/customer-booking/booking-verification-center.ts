@@ -161,6 +161,19 @@ export class BookingVerificationCenter {
     const fr = (await sql<{ reason: string | null; n: number; last_at: Date | string | null }>`select s.failure_reason as reason, count(*)::int as n, max(s.updated_at) as last_at
       from booking_verification_sessions s where s.tenant_id = ${T} and s.updated_at >= now() - interval '7 days' and ${PROVIDER_ERR}
       group by s.failure_reason`.execute(this.db)).rows;
+    // Verified SMS Delivery Evidence (Extras · Booking Phone Verification 07): the same 30 days, but each stage from its OWN
+    // record — a send handed to the provider (last_sent_at; resends counted as extra attempts), a provider delivery receipt
+    // (delivered_at), a provider failure, and a correct code checked on the server (verified_at without a staff override).
+    // "Sent" is never shown as "delivered": a send with no receipt and no failure is counted as "no delivery report".
+    const d = (await sql<{ sessions_sent: number; attempts: number; delivered: number; provider_failed: number; no_report: number; checked: number; last_delivered: Date | string | null }>`select
+        count(*) filter (where s.last_sent_at is not null)::int as sessions_sent,
+        coalesce(sum(1 + coalesce(s.resend_count, 0)) filter (where s.last_sent_at is not null), 0)::int as attempts,
+        count(*) filter (where s.delivered_at is not null)::int as delivered,
+        count(*) filter (where s.delivered_at is null and ${PROVIDER_ERR})::int as provider_failed,
+        count(*) filter (where s.last_sent_at is not null and s.delivered_at is null and not ${PROVIDER_ERR})::int as no_report,
+        count(*) filter (where s.verified_at is not null and s.override_at is null)::int as checked,
+        max(s.delivered_at) as last_delivered
+      from booking_verification_sessions s where s.tenant_id = ${T} and s.created_at >= now() - interval '30 days'`.execute(this.db)).rows[0];
     const cred = await this.credential(ctx);
     const smsState: HealthState = !cred ? 'needs_setup' : cred.last_validation_error ? 'failed' : n(r.provider_err24) > 0 ? 'degraded' : cred.last_validated_at ? 'ready' : 'pending_provider_action';
     return {
@@ -177,6 +190,10 @@ export class BookingVerificationCenter {
       },
       lastActivityAt: iso(r.last_activity),
       providerFailures: triageFailures(fr.map((x) => ({ reason: String(x.reason), count: n(x.n), lastAt: iso(x.last_at) }))),
+      deliveryEvidence: deliveryEvidence(smsState, {
+        sessionsSent: n(d?.sessions_sent), sendAttempts: n(d?.attempts), delivered: n(d?.delivered), providerFailed: n(d?.provider_failed),
+        noDeliveryReport: n(d?.no_report), successfulChecks: n(d?.checked), lastDeliveredAt: iso(d?.last_delivered),
+      }),
       funnel: verificationFunnel({ requested: n(f.requested), sent: n(f.sent), verified: n(f.verified), holdConverted: n(f.hold_converted), confirmed: n(f.confirmed), overrides: n(f.overrides) }),
     };
   }
@@ -395,6 +412,24 @@ export function verificationFunnel(c: Record<FunnelStep, number> & { overrides: 
       conversionPercent: prev == null ? null : prev > 0 ? Math.round((c[key] / prev) * 1000) / 10 : null };
   });
   return { windowDays: 30, steps, overrides: c.overrides, overridesDefinition: 'Bookings a manager let through without a code (audited), in the same 30 days — shown apart, never as verified.' };
+}
+
+/** Verified SMS Delivery Evidence (Extras · Booking Phone Verification 07): four separate stages, each with its own
+ *  definition — sender readiness (the account check, not a delivery), send attempts, provider delivery events, and codes
+ *  actually checked correct on the server. Rates are null ("unknown") when there is nothing to divide by. */
+export function deliveryEvidence(senderState: HealthState, c: { sessionsSent: number; sendAttempts: number; delivered: number; providerFailed: number; noDeliveryReport: number; successfulChecks: number; lastDeliveredAt: string | null }) {
+  const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
+  return {
+    windowDays: 30,
+    sender: { state: senderState, definition: 'The salon\'s own Twilio account and sender at their last check. A ready sender is not proof that any text arrived.' },
+    sends: { sessions: c.sessionsSent, attempts: c.sendAttempts, definition: 'Verifications whose code was handed to the provider; attempts include staff and customer resends.' },
+    delivery: {
+      delivered: c.delivered, providerFailed: c.providerFailed, noReport: c.noDeliveryReport, lastDeliveredAt: c.lastDeliveredAt,
+      deliveredPercent: pct(c.delivered, c.sessionsSent),
+      definition: 'Delivery receipts the provider reported back. "No report" means the code was sent but no delivered or failed report arrived — it is not counted as delivered.',
+    },
+    checks: { verified: c.successfulChecks, percentOfSent: pct(c.successfulChecks, c.sessionsSent), definition: 'Correct six-digit codes accepted on the server. Staff overrides are not counted.' },
+  };
 }
 
 /** Provider Failure Triage (Extras · Booking Phone Verification 12): a stored failure reason ("provider_error:20003",

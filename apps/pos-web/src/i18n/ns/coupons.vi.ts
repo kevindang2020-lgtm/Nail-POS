@@ -59,4 +59,37 @@ export const COUPONS_VI = {
   'cp.check.stacking_overlap': 'Không có phiếu đang chạy nào vô tình cộng dồn với nhau', // DRAFT — Kevin reviews
   'cp.check.cap_exceeded': 'Không có phiếu nào bị dùng quá giới hạn', // DRAFT — Kevin reviews
   'cp.check.repeat_accounts': 'Không có phiếu nào bị dùng bởi hồ sơ khách trùng nhau', // DRAFT — Kevin reviews
+  'cp.stk.title': 'Cách kết hợp · quy tắc tiệm: {m}', // DRAFT — Kevin reviews
+  'cp.stk.mode.best_single': 'một ưu đãi mỗi phiếu', // DRAFT — Kevin reviews
+  'cp.stk.mode.stack_all': 'các ưu đãi kết hợp được thì cộng dồn', // DRAFT — Kevin reviews
+  'cp.stk.mode.stack_groups': 'cộng dồn, mỗi nhóm một', // DRAFT — Kevin reviews
+  'cp.stk.mode.exclusive': 'độc quyền', // DRAFT — Kevin reviews
+  'cp.stk.b.other_offer': 'Ưu đãi hoặc coupon khác', // DRAFT — Kevin reviews
+  'cp.stk.b.membership_discount': 'Giảm giá hội viên', // DRAFT — Kevin reviews
+  'cp.stk.b.membership_credit': 'Tín dụng hội viên trả trước', // DRAFT — Kevin reviews
+  'cp.stk.b.loyalty_reward': 'Phần thưởng tích điểm', // DRAFT — Kevin reviews
+  'cp.stk.b.gift_card_tender': 'Thanh toán bằng thẻ quà tặng', // DRAFT — Kevin reviews
+  'cp.stk.b.price_floor': 'Giá tối thiểu', // DRAFT — Kevin reviews
+  'cp.stk.b.discount_cap': 'Tổng giảm giá tối đa', // DRAFT — Kevin reviews
+  'cp.stk.a.yes': 'Kết hợp được', // DRAFT — Kevin reviews
+  'cp.stk.a.no': 'Không kết hợp', // DRAFT — Kevin reviews
+  'cp.stk.a.conditional': 'Tùy trường hợp', // DRAFT — Kevin reviews
+  'cp.stk.a.limit': 'Giới hạn', // DRAFT — Kevin reviews
+  'cp.stk.a.none': 'Chưa đặt', // DRAFT — Kevin reviews
+  'cp.stk.r.other_offer.policy_one_offer': 'Tiệm chỉ cho một ưu đãi hoặc coupon mỗi phiếu — giữ cái có lợi nhất cho khách.', // DRAFT — Kevin reviews
+  'cp.stk.r.other_offer.offer_not_stackable': 'Ưu đãi này không được đánh dấu kết hợp, nên được so riêng; giữ kết quả tốt hơn.', // DRAFT — Kevin reviews
+  'cp.stk.r.other_offer.other_stackable_other_group': 'Kết hợp với các ưu đãi kết hợp được khác, trừ ưu đãi cùng nhóm.', // DRAFT — Kevin reviews
+  'cp.stk.r.other_offer.other_stackable': 'Kết hợp với các ưu đãi hoặc coupon khác cũng được đánh dấu kết hợp.', // DRAFT — Kevin reviews
+  'cp.stk.r.membership_discount.policy_exclusive': 'Quy tắc độc quyền: không dùng chung với giảm giá hội viên — giữ cái tốt hơn.', // DRAFT — Kevin reviews
+  'cp.stk.r.membership_discount.allowed_by_policy': 'Được dùng thêm trên giảm giá hội viên (giảm giá hội viên tính trước).', // DRAFT — Kevin reviews
+  'cp.stk.r.membership_discount.not_allowed_by_policy': 'Không được dùng chung với giảm giá hội viên — Thanh toán giữ cái tốt hơn.', // DRAFT — Kevin reviews
+  'cp.stk.r.membership_credit.prepaid_credit': 'Tín dụng hội viên trả trước luôn được áp dụng — khách đã trả cho dịch vụ đó.', // DRAFT — Kevin reviews
+  'cp.stk.r.loyalty_reward.policy_exclusive': 'Quy tắc độc quyền: không dùng chung với phần thưởng tích điểm — giữ cái tốt hơn.', // DRAFT — Kevin reviews
+  'cp.stk.r.loyalty_reward.allowed_by_policy': 'Có thể dùng phần thưởng tích điểm trên cùng phiếu (tính sau cùng).', // DRAFT — Kevin reviews
+  'cp.stk.r.loyalty_reward.not_allowed_by_policy': 'Không được dùng chung với phần thưởng tích điểm — Thanh toán giữ cái tốt hơn.', // DRAFT — Kevin reviews
+  'cp.stk.r.gift_card_tender.payment_not_discount': 'Thẻ quà tặng là cách thanh toán, không phải giảm giá: trả phần còn lại và không thay đổi giảm giá.', // DRAFT — Kevin reviews
+  'cp.stk.r.price_floor.floor_set': 'Khách luôn trả ít nhất {v}% tổng phụ; phần giảm vượt bị cắt, cắt cái sau cùng trước.', // DRAFT — Kevin reviews
+  'cp.stk.r.price_floor.floor_unset': 'Không đặt phần tối thiểu — một dòng có thể giảm về 0, không thấp hơn.', // DRAFT — Kevin reviews
+  'cp.stk.r.discount_cap.cap_set': 'Tổng mọi giảm giá tối đa {v}% tổng phụ; phần vượt bị cắt, cắt cái sau cùng trước.', // DRAFT — Kevin reviews
+  'cp.stk.r.discount_cap.cap_unset': 'Không có tổng giảm giá tối đa ngoài giá tối thiểu.', // DRAFT — Kevin reviews
 } as const;

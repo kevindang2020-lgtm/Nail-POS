@@ -14,7 +14,7 @@ import { KyselyVerificationStore } from './booking-verification.kysely';
 import { VerifiedBookingFlow } from './booking-verification-flow';
 import { BookingVerificationSettingsService } from './booking-verification-settings.service';
 import { KyselyVerificationSettingsStore } from './booking-verification-settings.kysely';
-import { BookingVerificationCenter, reasonText, verificationFunnel, triageFailure } from './booking-verification-center';
+import { BookingVerificationCenter, reasonText, verificationFunnel, triageFailure, deliveryEvidence } from './booking-verification-center';
 
 const P = 'b7430000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -281,5 +281,40 @@ describe('Provider Failure Triage', () => {
     expect(triageFailure('provider_error:99999')).toBe('other');
     expect(triageFailure('invalid_number')).toBe('wrong_phone');
     expect(triageFailure(null)).toBe('other');
+  });
+});
+
+// Extras · Booking Phone Verification 07 — sender readiness, send attempts, delivery events and successful checks kept apart
+describe('Verified SMS Delivery Evidence', () => {
+  const T5 = id('a5'), B5 = id('b5');
+  const c5 = { tenantId: T5, branchId: B5, userId: U, role: 'OWNER', permissions: ['settings.view'] };
+  it('a send is never a delivery: receipts, provider failures and "no report" are counted separately; overrides are not checks', async () => {
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T5}, 'E', 'Salon E', 'bvc-e', 'BVCE01', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B5}, ${T5}, 'Fifth', 'America/New_York')`);
+    const mk = async (o: { status?: string; failure?: string | null; sent?: boolean; delivered?: boolean; resends?: number; override?: boolean; agoMin?: number }) => {
+      const sid = await session({ tenant: T5, branch: B5, customer: null, status: o.status ?? 'sent', failure: o.failure ?? null, createdAgoMin: o.agoMin ?? 5 });
+      await q(sql`update booking_verification_sessions set last_sent_at = ${o.sent === false ? null : sql`now()`}, delivered_at = ${o.delivered ? sql`now()` : null},
+        resend_count = ${o.resends ?? 0}, override_at = ${o.override ? sql`now()` : null} where id = ${sid}::uuid`);
+    };
+    await mk({ delivered: true, status: 'verified' });             // delivered + checked
+    await mk({ delivered: true, resends: 2 });                      // delivered, 3 attempts, not checked
+    await mk({});                                                   // sent, no receipt → no report
+    await mk({ failure: 'provider_error:30007' });                  // provider failed
+    await mk({ sent: false, status: 'pending' });                   // requested, never sent
+    await mk({ sent: false, status: 'verified', override: true });  // staff override — not a check
+    await mk({ delivered: true, status: 'verified', agoMin: 40 * 24 * 60 });   // outside 30 days
+    const e = (await center().summary(c5)).deliveryEvidence;
+    expect(e.windowDays).toBe(30);
+    expect(e.sender.state).toBe('needs_setup');                     // no Twilio account in this salon — readiness is its own stage
+    expect(e.sends).toMatchObject({ sessions: 4, attempts: 6 });
+    expect(e.delivery).toMatchObject({ delivered: 2, providerFailed: 1, noReport: 1, deliveredPercent: 50 });
+    expect(e.delivery.lastDeliveredAt).toMatch(/^\d{4}-/);
+    expect(e.checks).toMatchObject({ verified: 1, percentOfSent: 25 });
+    expect((await center().summary(ctx(T2))).deliveryEvidence.delivery.delivered).toBe(0);   // another salon sees none of it
+  });
+  it('rates are unknown (null) with nothing sent, never 0 %', () => {
+    const e = deliveryEvidence('ready', { sessionsSent: 0, sendAttempts: 0, delivered: 0, providerFailed: 0, noDeliveryReport: 0, successfulChecks: 0, lastDeliveredAt: null });
+    expect(e.delivery.deliveredPercent).toBeNull(); expect(e.checks.percentOfSent).toBeNull();
+    expect(e.sender.definition).toMatch(/not proof/);
   });
 });
