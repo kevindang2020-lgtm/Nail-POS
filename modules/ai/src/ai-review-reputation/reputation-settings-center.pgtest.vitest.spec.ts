@@ -140,6 +140,35 @@ describe('Review & Reputation Settings — health and fail-closed', () => {
     expect((await rss.check(ctx())).reused).toBe(true);
     expect((await q(sql`select count(*)::int as n from review_response_drafts where tenant_id = ${T}`))[0].n).toBe(before);
   });
+  it('HL-02 dry run: last 7 days of paid visits through the request service\'s own preview — would ask / skipped by reason / quiet-hours shifts; nothing is scheduled or sent', async () => {
+    const T3 = id(30), B3 = id(31);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T3}, 'S3', 'Dry', 'rss-769d', 'RSS769D', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B3}, ${T3}, 'Dry Main', 'America/New_York')`);
+    const cust = async (n: number, phone: string | null, optIn: boolean) => { await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, marketing_sms_opt_in)
+      values (${id(n)}, ${T3}, ${B3}, 'C', ${String(n)}, ${'C ' + n}, ${phone}, ${optIn})`); return id(n); };
+    const A = await cust(40, '+16095550140', true), A2 = await cust(41, '+16095550141', true), OUT = await cust(42, '+16095550142', false), NOPH = await cust(43, null, true), COOL = await cust(44, '+16095550144', true);
+    const day = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    let k = 0;
+    const tk = async (customer: string | null, at: string, tenant = T3, branch = B3) => q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, ticket_number, paid_at)
+      values (${id(60 + ++k)}, ${tenant}, ${branch}, ${customer}, 'paid', 5000, ${'D' + k}, ${at}::timestamptz)`);
+    await tk(A, `${day}T18:00:00Z`);                         // 1 pm New York + 2 h: sent as planned
+    await tk(A2, `${day}T23:30:00Z`);                        // 6:30 pm + 2 h = 8:30 pm: still before quiet hours
+    await tk(COOL, `${day}T19:00:00Z`);
+    await tk(OUT, `${day}T18:00:00Z`); await tk(NOPH, `${day}T18:00:00Z`);
+    await tk(A, new Date(Date.now() - 12 * 86400000).toISOString());   // older than 7 days: not considered
+    await q(sql`insert into review_requests (tenant_id, branch_id, customer_id, channel, status, idempotency_key, scheduled_for, created_at) values (${T3}, ${B3}, ${COOL}, 'sms', 'sent', 'old-cool-1', now() - interval '3 days', now() - interval '3 days')`);
+    const ctx3 = ctx({ tenantId: T3, branchId: B3 });
+    // A2 again but late: 8:30 pm + 2 h = 10:30 pm → moved out of quiet hours
+    await tk(await cust(45, '+16095550145', true), `${day}T01:30:00Z`);
+    const reqBefore = (await q(sql`select count(*)::int as n from review_requests where tenant_id = ${T3}`))[0].n;
+    const c: any = await rss.check(ctx3);
+    const dry = c.checks.find((x: any) => x.key === 'request_dry_run');
+    expect(dry.detail).toMatchObject({ days: 7, visits: 6, capped: false, wouldAsk: 3, skipped: 3, quietHoursShifted: 1, channel: 'sms', channelReady: false, requestsEnabled: false });
+    expect(dry.detail.byReason).toEqual({ opted_out: 1, no_contact_method: 1, frequency_cap: 1 });   // the service's own order: contact, consent, value, cap, cooldown
+    expect(dry).toMatchObject({ state: 'WARNING', count: 3 });   // SMS would be the channel and no sender is configured
+    expect((await q(sql`select count(*)::int as n from review_requests where tenant_id = ${T3}`))[0].n).toBe(reqBefore);   // nothing scheduled
+    expect((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T3}`))[0].n).toBe(0);              // nothing sent
+  });
   it('FC-01 a settings read error is an error — never the defaults (which would re-enable a disabled assistant)', async () => {
     const broken = new KyselySettings({ selectFrom: () => ({ select: () => ({ where: () => ({ execute: async () => { throw new Error('DB_DOWN'); } }) }) }) } as any);
     expect(await code(broken.load(ctx()))).toBe('DB_DOWN');

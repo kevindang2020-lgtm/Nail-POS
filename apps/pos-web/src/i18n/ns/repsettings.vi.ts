@@ -196,5 +196,25 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.health.d.tenant_isolation.PASSED": "Mọi thay đổi đã ghi đều do nhân viên tiệm này thực hiện.",
   "rssx.health.d.tenant_isolation.FAILED": "Có thay đổi gắn với người dùng của tiệm khác. Hãy báo ngay.",
   "rssx.health.k.no_side_effects": "Không gửi, đăng hay tính phí",
-  "rssx.health.d.no_side_effects.PASSED": "Việc kiểm tra và các cài đặt này không gửi tin, đăng, duyệt hay tính phí."
+  "rssx.health.d.no_side_effects.PASSED": "Việc kiểm tra và các cài đặt này không gửi tin, đăng, duyệt hay tính phí.",
+  "rssx.health.k.request_dry_run": "Chạy thử yêu cầu đánh giá (7 ngày qua)", // DRAFT — Kevin reviews
+  "rssx.health.d.request_dry_run.PASSED": "Chính sách hiện tại đã được áp dụng thử cho các lượt khách đã thanh toán gần đây. Không có gì được lên lịch hay gửi đi.", // DRAFT — Kevin reviews
+  "rssx.health.d.request_dry_run.WARNING": "Một số khách sẽ được hỏi qua kênh chưa kết nối. Không có gì được lên lịch hay gửi đi.", // DRAFT — Kevin reviews
+  "rssx.health.d.request_dry_run.INSUFFICIENT_DATA": "Không có lượt khách đã thanh toán nào trong 7 ngày qua để chạy thử.", // DRAFT — Kevin reviews
+  "rssx.dry.line": "{days} ngày qua: {v} lượt khách đã thanh toán — {a} sẽ được hỏi, {s} sẽ bỏ qua", // DRAFT — Kevin reviews
+  "rssx.dry.quiet": "{n} sẽ được dời ra khỏi giờ yên lặng.", // DRAFT — Kevin reviews
+  "rssx.dry.channel": "Kênh: {c}.", // DRAFT — Kevin reviews
+  "rssx.dry.notReady": "Số gửi SMS của tiệm chưa được kết nối.", // DRAFT — Kevin reviews
+  "rssx.dry.off": "Yêu cầu đánh giá đang tắt — đây là kết quả nếu bật lên.", // DRAFT — Kevin reviews
+  "rssx.dry.r.opted_out": "đã từ chối hoặc bị chặn", // DRAFT — Kevin reviews
+  "rssx.dry.r.no_contact_method": "không có số điện thoại / email", // DRAFT — Kevin reviews
+  "rssx.dry.r.no_customer": "lượt khách không có khách hàng", // DRAFT — Kevin reviews
+  "rssx.dry.r.below_min_value": "dưới giá trị tối thiểu", // DRAFT — Kevin reviews
+  "rssx.dry.r.frequency_cap": "đã hỏi trong kỳ này", // DRAFT — Kevin reviews
+  "rssx.dry.r.cooldown": "mới hỏi gần đây", // DRAFT — Kevin reviews
+  "rssx.dry.r.already_requested": "đã yêu cầu cho lượt này", // DRAFT — Kevin reviews
+  "rssx.dry.r.requests_disabled": "yêu cầu đang tắt", // DRAFT — Kevin reviews
+  "rssx.dry.ch.sms": "SMS", // DRAFT — Kevin reviews
+  "rssx.dry.ch.email": "Email", // DRAFT — Kevin reviews
+  "rssx.dry.ch.app": "Ứng dụng", // DRAFT — Kevin reviews
 };

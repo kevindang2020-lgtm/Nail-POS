@@ -17,6 +17,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posReputationSettingsApi as api, type ReputationSettingsValues } from '../api/posReputationSettingsApi';
 import { errorTextOf } from '../i18n/error-text';
 import { statusLabel } from '../i18n/status-label';
+import { codeLabel } from '../components/peopleLabels';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
@@ -304,9 +305,22 @@ function HealthTab() {
           <div key={x.key} className="rvw-check" data-testid={`chk-${x.key}`}>
             <div><span className={'chip ' + (STATE_TONE[x.state] ?? '')} data-testid={`chk-${x.key}-state`}>{t('rssx.health.' + x.state)}</span> <b>{t('rssx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
             <div className="sub">{t('rssx.health.d.' + x.key + '.' + x.state)}</div>
+            {x.key === 'request_dry_run' && x.detail ? <DryRunLine d={x.detail} /> : null}
           </div>
         ))}
       </>}
     </section>
   );
+}
+
+/** Extras (Review & Reputation Settings 03): the server's dry run of the current request policy over the last 7 days of paid
+ *  visits — counts and reasons only, worded here; nothing was scheduled or sent. */
+type DryRunDetail = { days: number; visits: number; capped: boolean; wouldAsk: number; skipped: number; byReason: Record<string, number>; quietHoursShifted: number; channel: string; channelReady: boolean | null; requestsEnabled: boolean };
+function DryRunLine({ d }: { d: DryRunDetail }) {
+  const reasons = Object.entries(d.byReason).filter(([, n]) => n > 0).map(([r, n]) => `${codeLabel('rssx.dry.r.' + r, r)} ${fmtNumber(n)}`).join(' · ');
+  return <div className="sub" data-testid="rssx-dry-run">
+    <div>{t('rssx.dry.line', { days: fmtNumber(d.days), v: fmtNumber(d.visits) + (d.capped ? '+' : ''), a: fmtNumber(d.wouldAsk), s: fmtNumber(d.skipped) })}{reasons ? ` (${reasons})` : ''}</div>
+    <div>{t('rssx.dry.quiet', { n: fmtNumber(d.quietHoursShifted) })} {t('rssx.dry.channel', { c: codeLabel('rssx.dry.ch.' + d.channel, d.channel) })}{d.channelReady === false ? ' ' + t('rssx.dry.notReady') : ''}</div>
+    {!d.requestsEnabled ? <div>{t('rssx.dry.off')}</div> : null}
+  </div>;
 }
