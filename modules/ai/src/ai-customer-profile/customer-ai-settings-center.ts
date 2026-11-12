@@ -89,10 +89,28 @@ export class CustomerAiSettingsCenter {
     const ci = (await sql<Row>`select finished_at, tunables, rule_version from customer_intelligence_scans where tenant_id = ${T} and status = 'completed' order by started_at desc limit 1`.execute(this.db)).rows[0];
     const srs = (await sql<Row>`select finished_at, tunables, rule_version from service_recommendation_scans where tenant_id = ${T} and status = 'completed' order by started_at desc limit 1`.execute(this.db)).rows[0];
     const applied = (r: Row | undefined, version: string) => (!r ? 'never' : r.rule_version !== version ? 'pending' : sameJson(r.tunables, eff.tunables) ? 'applied' : 'pending');
+    // Config Drift Alert (read-only): WHICH values the last completed evaluation used that differ from the values the resolver
+    // gives now, and whether it ran under an older rule version. Churn Watch + Rebooking read Customer Intelligence's evaluation,
+    // so its drift is theirs. Nothing is re-evaluated here; a Refresh on that screen is the only fix.
+    const drift = (r: Row | undefined, version: string) => {
+      if (!r) return null;
+      const used = (r.tunables ?? {}) as Record<string, unknown>;
+      const now = eff.tunables as unknown as Record<string, unknown>;
+      const keys = [...new Set([...Object.keys(now), ...Object.keys(used)])].sort()
+        .filter((k) => used[k] !== now[k])
+        .map((k) => ({ key: k, evaluatedValue: (used[k] ?? null) as number | null, currentValue: (now[k] ?? null) as number | null, onScreen: (CAS_KEYS as readonly string[]).includes(k) }));
+      const ruleChanged = r.rule_version !== version;
+      return { drifted: ruleChanged || keys.length > 0, keys, ruleVersion: { evaluated: (r.rule_version ?? null) as string | null, current: version, changed: ruleChanged } };
+    };
     const last = (await sql<Row>`select e.created_at, coalesce(u.full_name, u.email) as actor from ai_customer_profile_settings_events e left join users u on u.id = e.actor_user_id and u.tenant_id = ${T}
       where e.tenant_id = ${T} order by e.created_at desc, e.id desc limit 1`.execute(this.db)).rows[0];
     const t = rows.tenant;
+    // Guided states (extras 08): whether there is ANY completed visit with a customer — without one the thresholds have nothing
+    // to measure, which the screen states as "missing data", never as zeros
+    const visits = N((await sql<Row>`select count(*)::int as n from (select 1 from tickets where tenant_id = ${T} and customer_id is not null and removed_at is null
+      and status = any(${VISIT}::text[]) limit 1) x`.execute(this.db)).rows[0]?.n);
     return {
+      customerHistory: { hasCompletedVisits: visits > 0 },
       assistant: {
         effectiveEnabled: eff.enabled, disabledAtLevel: eff.disabledAtLevel,
         salon: t?.enabled === false ? 'disabled' : t?.enabled === true ? 'enabled' : 'inherited',
@@ -106,8 +124,8 @@ export class CustomerAiSettingsCenter {
       salonRow: { version: N(t?.version ?? 0), updatedAt: iso(t?.updated_at), exists: !!t },
       lastChange: last ? { at: iso(last.created_at), by: last.actor ?? null } : null,
       propagation: {
-        customerIntelligence: { state: applied(ci, CI_RULE_VERSION), lastEvaluatedAt: iso(ci?.finished_at), feeds: ['churn_watch', 'rebooking'] },
-        serviceRecommendations: { state: applied(srs, SR_RULE_VERSION), lastEvaluatedAt: iso(srs?.finished_at) },
+        customerIntelligence: { state: applied(ci, CI_RULE_VERSION), lastEvaluatedAt: iso(ci?.finished_at), feeds: ['churn_watch', 'rebooking'], drift: drift(ci, CI_RULE_VERSION) },
+        serviceRecommendations: { state: applied(srs, SR_RULE_VERSION), lastEvaluatedAt: iso(srs?.finished_at), drift: drift(srs, SR_RULE_VERSION) },
       },
       checkedAt: new Date(this.now()).toISOString(),
     };
@@ -295,7 +313,8 @@ export class CustomerAiSettingsCenter {
       const e = st.entitlement;
       checks.push({ key: 'subscription', state: e.allowed === null ? 'UNAVAILABLE' : e.allowed ? 'PASSED' : e.enforcement === 'enforce' ? 'FAILED' : 'WARNING', detail: { reason: e.reason, enforcement: e.enforcement } });
       for (const [key, p] of [['intelligence_applied', st.propagation.customerIntelligence], ['recommendations_applied', st.propagation.serviceRecommendations]] as const)
-        checks.push({ key, state: p.state === 'applied' ? 'PASSED' : p.state === 'never' ? 'INSUFFICIENT_DATA' : 'WARNING', detail: { lastEvaluatedAt: p.lastEvaluatedAt } });
+        checks.push({ key, state: p.state === 'applied' ? 'PASSED' : p.state === 'never' ? 'INSUFFICIENT_DATA' : 'WARNING',
+          detail: { lastEvaluatedAt: p.lastEvaluatedAt, driftedKeys: p.drift ? p.drift.keys.map((x) => x.key) : [], ruleVersionChanged: p.drift?.ruleVersion.changed ?? false } });
     }
     const failedScans = N((await one(sql<Row>`select
         (select count(*) from customer_intelligence_scans where tenant_id = ${T} and status = 'failed' and started_at > now() - interval '7 days')

@@ -118,6 +118,33 @@ const tab = (name: string) => fireEvent.click(screen.getByRole('tab', { name }))
 
 beforeEach(() => { perms.deny = new Set(); server.r1 = rec(); routes = defaults(); install(); });
 
+describe('Capacity Risk Heatmap (extras 07)', () => {
+  const cap = { date: '2026-10-08', branchId: 'b1', timeZone: 'America/New_York', tightAtPct: 85, basis: 'x',
+    totals: { staffedMin: 240, bookedMin: 200, overHours: 1, tightHours: 1, unstaffedHours: 0, skillShortHours: 1 },
+    hours: [
+      { hour: '09:00', startMin: 540, endMin: 600, techsOnShift: 2, staffedMin: 120, bookedMin: 60, unassignedMin: 0, heldMin: 0, utilizationPct: 50, risk: 'ok', skillShort: false, skills: [] },
+      { hour: '10:00', startMin: 600, endMin: 660, techsOnShift: 1, staffedMin: 60, bookedMin: 90, unassignedMin: 30, heldMin: 15, utilizationPct: 100, risk: 'over', skillShort: true,
+        skills: [{ category: 'Pedicure', demandMin: 90, techsNeeded: 2, qualifiedOnShift: 1, short: true }] },
+    ] };
+  it('loads nothing until asked; then shows the server risk per hour and an hour\'s skill shortage; read-only', async () => {
+    routes[`GET ${B}/calendar`] = (c: Call) => ({ body: { date: '2026-10-08', gaps: [], conflicts: [], appointments: {}, utilizationPct: 70, ...(c.url.includes('capacity=1') ? { capacity: cap } : {}) } });
+    renderScreen();
+    const box = await screen.findByTestId('sched-capacity');
+    expect(calls.some((c) => c.url.includes('capacity=1'))).toBe(false);
+    fireEvent.click(within(box).getByTestId('sched-capacity-toggle'));
+    const over = await within(box).findByTestId('sched-cap-h-10:00');
+    expect(over.getAttribute('data-risk')).toBe('over');
+    expect(within(box).getByTestId('sched-cap-h-09:00').textContent).toContain('OK');
+    expect(within(box).getByTestId('sched-capacity-totals').textContent).toContain('Over capacity: 1 h');
+    fireEvent.click(over);
+    const d = within(box).getByTestId('sched-capacity-detail');
+    expect(d.textContent).toContain('1 on shift · staffed 60 min · booked 90 min · held 15 min · use 100%');
+    expect(d.textContent).toContain('30 booked min have no technician yet');
+    expect(within(d).getByTestId('sched-cap-skill-Pedicure').textContent).toContain('1 — short');
+    expect(calls.filter((c) => c.method !== 'GET' && c.url.includes('capacity')).length).toBe(0);
+  });
+});
+
 describe('Overview', () => {
   it('shows the latest run’s day measures and the review / customer counts', async () => {
     renderScreen();

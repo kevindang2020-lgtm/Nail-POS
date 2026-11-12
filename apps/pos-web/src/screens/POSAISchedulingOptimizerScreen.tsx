@@ -21,6 +21,7 @@ import { posBookingApi } from '../api/posBookingApi';
 import { posAiSchedulingOptimizerApi as api } from '../api/posAiSchedulingOptimizerApi';
 import { P, muted, today } from './ai-scheduling/schedUi';
 import { SchedOverviewCard } from './ai-scheduling/SchedOverviewCard';
+import { SchedCapacityCard } from './ai-scheduling/SchedCapacityCard';
 import { SchedRecommendationsCard, type SchedDayAppointment } from './ai-scheduling/SchedRecommendationsCard';
 import { SchedRecommendationDetail } from './ai-scheduling/SchedRecommendationDetail';
 import { SchedFindTimeCard } from './ai-scheduling/SchedFindTimeCard';
@@ -118,6 +119,7 @@ export function POSAISchedulingOptimizerScreen() {
       </FitDialog> : null}
       <div style={{ padding: 20, display: 'grid', gap: 16 }} data-testid="sched-body">
         {tab === 'overview' && <SchedOverviewCard {...props} date={date} settings={settings} onOpenRun={openRun} onSelectRec={select} />}
+        {tab === 'overview' && <SchedCapacityCard date={date} tick={tick} />}
         {tab === 'recs' && <>
           {selected ? <SchedRecommendationDetail id={selected} tick={tick} can={can} techName={techName} onChanged={bump} onClose={() => select(null)} /> : null}
           <SchedQueueCard tick={tick} group={queueGroup} selectedId={selected} onSelect={select} />

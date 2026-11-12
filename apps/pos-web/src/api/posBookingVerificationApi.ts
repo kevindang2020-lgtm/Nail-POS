@@ -39,6 +39,13 @@ export interface BvDetail extends BvRow {
   provider: { kind: string; reference: string | null };
   override: { at: string | null; reason: string | null; contactMethod: string | null } | null;
   canResend: boolean; timeline: Array<{ at: string; event: string }>;
+  /** extras 10 Lost-Booking Recovery — present (non-null) only when the hold expired without becoming an appointment */
+  recovery?: LostBookingRecoveryView | null;
+}
+export interface LostBookingRecoveryView {
+  state: 'offered' | 'not_connected' | 'not_permitted'; date: string | null; originalStart: string | null; preferredTechnicianId: string | null;
+  alternatives: { technicianId: string; technicianName: string; start: string; preferred: boolean }[]; totalOpen: number;
+  noteCode: 'no_staff' | 'no_open' | 'default_length' | 'not_connected' | 'not_permitted' | null;
 }
 export type BvQuery = Record<string, string | number | undefined>;
 const enc = encodeURIComponent;

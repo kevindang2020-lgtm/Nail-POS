@@ -13,7 +13,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { AiPackagePanel } from './POSAiPackageScreen';
-import { FitDialog, Pager } from '../components/FitKit';
+import { FitDialog, Pager, downloadText } from '../components/FitKit';
+import { buildSupportReport } from './aiBookingSupportReport';
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 import { fmtInZone } from '../i18n/format';
@@ -276,6 +277,7 @@ function RequestOverlay({ requestId, onClose, onBooking, onCustomer }: { request
         {d?.customerId ? <button className="btn ghost" onClick={() => onCustomer(d.customerId!)} data-testid="bko-customer">{t('growth.aiBooking.ov.viewCustomer')}</button> : null}
         <button className="btn ghost" onClick={() => onBooking(d?.appointmentDate)} data-testid="bko-booking">{t('growth.aiBooking.openBooking')}</button>
         <button className="btn ghost" onClick={() => setTab('audit')}>{t('growth.aiQueue.ov.reviewHistory')}</button>
+        {d ? <button className="btn ghost" data-testid="bko-report" onClick={() => downloadText(`ai-booking-support-${d.requestId.slice(0, 12)}.txt`, buildSupportReport(d, new Date().toISOString()), 'text/plain;charset=utf-8')}>{t('growth.aiBooking.rep.button')}</button> : null}
         <button className="btn" onClick={onClose}>{t('pos.close')}</button>
       </div>}>
       <div role="tablist" style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }} className="fk-seg">

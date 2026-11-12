@@ -53,6 +53,8 @@ describe('Customer AI Settings — state and provenance', () => {
     expect(s.assistant).toMatchObject({ effectiveEnabled: true, salon: 'inherited', operational: 'operational' });
     expect(s.salonRow.version).toBe(0);
     expect(s.propagation.customerIntelligence.state).toBe('never');
+    expect(s.customerHistory).toEqual({ hasCompletedVisits: true });                          // the seeded paid tickets
+    expect((await cas.state(ctx({ tenantId: X, branchId: BX }))).customerHistory).toEqual({ hasCompletedVisits: false });   // another salon: none
   });
   it('ST-02 the package / subscription decision is kept apart from the salon switch; enforcement decides whether it blocks', async () => {
     ent = { allowed: false, reason: 'trial_expired', subscriptionStatus: 'trialing' };
@@ -105,6 +107,26 @@ describe('Customer AI Settings — safe writes', () => {
     clock += 120_000; await ci.scan(ctx());
     expect((await cas.state(ctx())).propagation.customerIntelligence.state).toBe('applied');
   });
+  it('WR-04b Config Drift Alert names exactly the values the last evaluation used that differ from now, and changes nothing', async () => {
+    const s0: any = await cas.state(ctx());
+    expect(s0.propagation.customerIntelligence.drift).toMatchObject({ drifted: false, keys: [], ruleVersion: { changed: false } });
+    expect(s0.propagation.serviceRecommendations.drift).toBeNull();                     // never evaluated → nothing to compare
+    await cas.setThresholds(ctx(), { values: { longTermInactiveDays: 250 }, expectedVersion: await v() }, audit);
+    const scansBefore = await q(sql`select count(*)::int n from customer_intelligence_scans where tenant_id = ${T}`);
+    const d: any = (await cas.state(ctx())).propagation.customerIntelligence.drift;
+    expect(d.drifted).toBe(true);
+    expect(d.keys).toEqual([{ key: 'longTermInactiveDays', evaluatedValue: 240, currentValue: 250, onScreen: true }]);
+    // an evaluation stored under an older rule version is drift even with the same numbers
+    await q(sql`update customer_intelligence_scans set rule_version = 'old-rule' where tenant_id = ${T} and status = 'completed'`);
+    const d2: any = (await cas.state(ctx())).propagation.customerIntelligence.drift;
+    expect(d2.ruleVersion).toMatchObject({ evaluated: 'old-rule', changed: true });
+    const chk: any = await cas.check(ctx());
+    await q(sql`delete from customer_ai_settings_health_runs where tenant_id = ${T}`);   // HL-01 needs a fresh run, not this one reused
+    expect(chk.checks.find((c: any) => c.key === 'intelligence_applied').detail).toMatchObject({ driftedKeys: ['longTermInactiveDays'], ruleVersionChanged: true });
+    expect(await q(sql`select count(*)::int n from customer_intelligence_scans where tenant_id = ${T}`)).toEqual(scansBefore);   // detection only
+    clock += 120_000; await ci.scan(ctx());
+    expect((await cas.state(ctx())).propagation.customerIntelligence.drift).toMatchObject({ drifted: false, keys: [] });
+  });
   it('WR-05 Reset returns the five to the code defaults and keeps the switch', async () => {
     const r: any = await cas.setThresholds(ctx(), { reset: true, expectedVersion: await v() }, audit);
     expect(r.state.thresholds.every((x: any) => x.source === 'default')).toBe(true);
@@ -125,7 +147,7 @@ describe('Customer AI Settings — preview, history, fail-closed, health', () =>
   });
   it('HI-01 history is newest first, searchable, append-only; the detail shows before / after and propagation', async () => {
     const h: any = await cas.history(ctx(), {});
-    expect(h.total).toBe(5);                                       // thresholds · disable · enable · long-term · reset
+    expect(h.total).toBe(6);                                       // thresholds · disable · enable · long-term · long-term (drift) · reset
     const at = h.items.map((e: any) => e.at); expect([...at].sort().reverse()).toEqual(at);
     expect(h.items[0].type).toBe('thresholds_reset');
     expect((await cas.history(ctx(), { q: 'renovation' })).total).toBe(1);

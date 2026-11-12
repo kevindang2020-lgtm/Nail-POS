@@ -52,6 +52,12 @@ describe('ai-customer-profile core — honest counting', () => {
     expect(classifyInactivity('2026-01-01T00:00:00Z', 28, true, 14, NOW).status).toBe('active');
     expect(classifyInactivity('2026-06-01T00:00:00Z', null, false, 1, NOW).status).toBe('insufficient_history');
   });
+  it('§14 the SALON\'s "min. visits to establish a return cadence" decides Not enough history (it used the code default 3)', () => {
+    const t2 = { minVisitsForServicePref: 3, minVisitsForTechPref: 3, minVisitsForCadence: 2, inactiveDays: 90, longTermInactiveDays: 180, dueMultiplier: 1, inactiveMultiplier: 1.5 };
+    expect(classifyInactivity('2026-06-01T00:00:00Z', 28, false, 2, NOW).status).toBe('insufficient_history');          // default 3: two visits are not enough
+    expect(classifyInactivity('2026-06-01T00:00:00Z', 28, false, 2, NOW, t2).status).not.toBe('insufficient_history');  // the salon set 2
+    expect(classifyInactivity('2026-06-01T00:00:00Z', 28, false, 3, NOW, { ...t2, minVisitsForCadence: 4 }).status).toBe('insufficient_history');
+  });
 
   it('§18 completeness measures data quality only and flags invalid contact info', () => {
     const c = profileCompleteness({ firstName: 'Jen', lastName: 'Lee', phone: '8565551234', email: 'nope', smsConsentKnown: true });

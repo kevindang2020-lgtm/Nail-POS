@@ -47,6 +47,8 @@ export interface AssistantDashboardProps {
   openLabel: string;
   note?: ReactNode;
   errText?: (e: unknown) => string | null;
+  /** optional evidence / freshness strip under the counters, rendered from the SAME summary (never a second fetch or ledger) */
+  evidence?: (summary: any) => ReactNode;
 }
 
 export function AssistantDashboard(p: AssistantDashboardProps) {
@@ -85,6 +87,7 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
       <div className="rvw-kpis" data-testid="as-kpis" style={{ marginTop: 10 }}>
         {p.kpis.map((k) => <KpiCard key={k.key} testId={`as-kpi-${k.key}`} label={k.label} value={sum ? k.value(sum) : '—'} loading={!sum && !sumErr} tone={sum ? k.tone?.(sum) : undefined} />)}
       </div>
+      {sum && p.evidence ? p.evidence(sum) : null}
       <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="as-list">
         <div className="p-h">{p.listTitle}</div>
         <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>

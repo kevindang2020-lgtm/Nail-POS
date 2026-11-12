@@ -120,4 +120,13 @@ export const ASSISTANTS_EN: Record<string, string> = {
   "cpx.ret.seg.never_visited": "Never visited",
   "cpx.ret.open": "Open Customer Retention",
   "cpx.ret.source": "Churn and at-risk status come from Customer Retention — this assistant does not classify churn itself.",
+  "cpx.ev.title": "Where these numbers come from",
+  "cpx.ev.scan": "Statuses, cards and rebooking flags: the last Customer Intelligence scan —",
+  "cpx.ev.stale": "Older than {n} minutes or made under an older rule. Press Refresh in Customer Intelligence to rescan.",
+  "cpx.ev.newSince": "{n} customer(s) added since that scan are not classified yet.",
+  "cpx.ev.retention": "Retention status (At risk / Approaching): Customer Retention, read live when this page loaded — at risk after {d} days without a visit.",
+  "cpx.ev.retentionUnknown": "Retention status: Customer Retention could not be read just now — shown as —.",
+  "cpx.ev.dup": "Possible duplicates: the duplicate review, last checked {at}.",
+  "cpx.ev.dupNever": "Possible duplicates: the duplicate review has not run yet.",
+  "cpx.ev.prefs": "Preferences, favourite services and notes are shown on each customer’s profile from their own records; this page keeps no copy.",
 };

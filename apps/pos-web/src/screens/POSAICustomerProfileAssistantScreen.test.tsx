@@ -83,5 +83,20 @@ describe('AI Customer Profile Assistant', () => {
     wrap();
     await waitFor(() => expect(screen.getByTestId('as-kpi-rebooking')).toHaveTextContent('5'));
     expect(screen.getByTestId('as-kpi-churn')).toHaveTextContent('—');
+    expect(screen.getByTestId('cpx-ev-retention')).toHaveTextContent('could not be read just now');
+  });
+  it('CPA-03 Evidence + Freshness: each part names its source and age from the same summary; stale says how to refresh; unknown is —', async () => {
+    ci.summary.mockResolvedValue({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 },
+      retention: { atRisk: 12, approaching: 4, active: 20, never: 2, atRiskDays: 90, source: 'customer_retention' },
+      freshness: { state: 'stale', lastSuccessAt: '2026-11-10T15:00:00Z', staleAfterMinutes: 60, minutesSinceSuccess: 3000 },
+      breakdown: { newSinceScan: 3 }, duplicateReview: { lastScanAt: null, open: null } });
+    wrap();
+    const ev = await screen.findByTestId('cpx-evidence');
+    expect(screen.getByTestId('cpx-ev-scan-state')).toHaveTextContent('Out of date · last scan Nov 10, 2026');
+    expect(ev).toHaveTextContent('Older than 60 minutes');
+    expect(screen.getByTestId('cpx-ev-new')).toHaveTextContent('3 customer(s) added since that scan');
+    expect(screen.getByTestId('cpx-ev-retention')).toHaveTextContent('at risk after 90 days');
+    expect(screen.getByTestId('cpx-ev-dup')).toHaveTextContent('has not run yet');
+    expect(ci.summary).toHaveBeenCalledTimes(1);                                                // no second fetch for the evidence
   });
 });

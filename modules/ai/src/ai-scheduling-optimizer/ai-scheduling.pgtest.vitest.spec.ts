@@ -4,6 +4,7 @@
 // conditional settings writes, the outbox event riding the state change's transaction, and the reader's inputs
 // (per-technician shifts with a dated override, lunch + blocked breaks, approved time off, manual locks, learned
 // durations, service profiles, real branch membership).
+import { capacityHeatmap } from './ai-scheduling-capacity';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { OutboxWriter } from '@aipowersalon/events';
@@ -80,6 +81,18 @@ describe('day reader on the real schema', () => {
     expect(day.durationByService[S1]).toBeUndefined();                       // not approved → not used
     expect(day.services[S1]).toMatchObject({ durationMin: 45, setupMin: 5, cleanupMin: 10, maxGroupSize: 2, categoryName: 'Manicure' });
     expect(day.branchHours).toEqual({ start: 540, end: 1140 });
+  });
+  it('Capacity Risk Heatmap (extras 07) reads the same day: staffed = shifts − lunch / blocked / approved time off; booked; qualified by approvals', async () => {
+    const h = capacityHeatmap(await reader.loadDay(ctx(), B, DATE));
+    const by = Object.fromEntries(h.hours.map((x) => [x.hour, x]));
+    expect(h.hours[0].hour).toBe('09:00'); expect(h.hours.at(-1)!.hour).toBe('18:00');           // the branch's hours 09–19
+    expect(by['09:00']).toMatchObject({ techsOnShift: 1, staffedMin: 60, bookedMin: 45, utilizationPct: 75, risk: 'ok' });
+    expect(by['09:00'].skills).toEqual([{ category: 'Manicure', demandMin: 45, techsNeeded: 1, qualifiedOnShift: 1, short: false }]);
+    expect(by['11:00']).toMatchObject({ techsOnShift: 2, staffedMin: 90 });                         // Bo's 11:00–11:30 training
+    expect(by['12:00']).toMatchObject({ techsOnShift: 1, staffedMin: 60 });                         // Ann's lunch
+    expect(by['14:00']).toMatchObject({ techsOnShift: 1, staffedMin: 60, bookedMin: 45 });          // Bo's dated shift ended at 14:00
+    expect(by['15:00']).toMatchObject({ staffedMin: 0, bookedMin: 0, risk: 'closed' });             // Ann's approved time off
+    expect(h.totals).toMatchObject({ bookedMin: 90, overHours: 0, unstaffedHours: 0 });
   });
   it('appointment() is tenant-scoped', async () => {
     expect(await reader.appointment(ctx(), AP2)).toMatchObject({ id: AP2, branchId: B, startTime: '14:00', manualLock: true, version: 1 });

@@ -160,3 +160,42 @@ describe('the activity panel and the switches', () => {
     expect(api.patch).not.toHaveBeenCalled();
   });
 });
+
+describe('extras 10 — Lost-Booking Recovery in the record detail', () => {
+  const ROW = { id: 'v-lost', branchId: 'b1', branchName: 'Main', bookingSessionId: 's1', customerId: 'c1', customerName: 'Ava Kim', maskedPhone: '••••0142', channel: 'online', status: 'expired', codeState: 'expired',
+    attempts: 1, resends: 0, expiresAt: null, requestedAt: '2026-10-31T13:00:00Z', verifiedAt: null, lastSentAt: null, updatedAt: null, appointmentId: null, staffOverride: false, whyRequired: null, failure: null,
+    hold: { holdId: 'h1', status: 'expired', expiresAt: '2026-10-31T13:10:00Z', startsAt: '2026-11-03T15:00:00Z', endsAt: null, technicianName: 'Lan Pham' } };
+  const detail = (recovery: any) => ({ ...ROW, services: ['Polish'], policy: { version: null, tenantVersion: null, branchVersion: null, providerVersion: null, reason: null, why: null }, provider: { kind: 'twilio_verify', reference: null },
+    override: null, canResend: false, timeline: [], recovery });
+  const withDetail = (d: any) => {
+    const prev = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (p: string, ...rest: any[]) => (p === '/pos/booking-verification-center/history' ? { items: [ROW], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 } as never
+      : p === '/pos/booking-verification-center/history/v-lost' ? d as never : prev(p, ...rest)));
+  };
+  it('an expired hold shows the server\'s fresh open times, the held technician marked, and says nothing is booked', async () => {
+    withDetail(detail({ state: 'offered', date: '2026-11-03', originalStart: '2026-11-03T15:00:00Z', preferredTechnicianId: 't1', totalOpen: 14, noteCode: null,
+      alternatives: [{ technicianId: 't1', technicianName: 'Lan Pham', start: '11:00', preferred: true }, { technicianId: 't2', technicianName: 'Mai', start: '09:00', preferred: false }] }));
+    render(<POSBookingVerificationScreen />);
+    fireEvent.click(await screen.findByTestId('bv-history-row'));
+    const box = await screen.findByTestId('bv-recovery');
+    const slots = screen.getAllByTestId('bv-rec-slot').map((x) => x.textContent);
+    expect(slots[0]).toMatch(/11:00.*Lan Pham — same technician/);
+    expect(slots[1]).toMatch(/9:00.*Mai/);
+    expect(box).toHaveTextContent('12 more open time(s)');
+    expect(box).toHaveTextContent('never confirmed');
+    expect(screen.getByTestId('bv-rec-restart')).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+  it('no permission / no engine is said in words; no recovery block without an expired hold', async () => {
+    withDetail(detail({ state: 'not_permitted', date: '2026-11-03', originalStart: null, preferredTechnicianId: null, totalOpen: 0, noteCode: 'not_permitted', alternatives: [] }));
+    const v = render(<POSBookingVerificationScreen />);
+    fireEvent.click(await screen.findByTestId('bv-history-row'));
+    expect(await screen.findByTestId('bv-rec-note')).toHaveTextContent('cannot view the booking calendar');
+    v.unmount();
+    withDetail(detail(null));
+    render(<POSBookingVerificationScreen />);
+    fireEvent.click(await screen.findByTestId('bv-history-row'));
+    await screen.findByTestId('bv-timeline');
+    expect(screen.queryByTestId('bv-recovery')).toBeNull();
+  });
+});

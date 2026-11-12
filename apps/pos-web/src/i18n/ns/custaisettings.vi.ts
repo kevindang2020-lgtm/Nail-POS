@@ -186,5 +186,31 @@ export const CUSTAISETTINGS_VI: Record<string, string> = {
   "casx.health.d.tenant_isolation.PASSED": "Mọi thay đổi đã ghi nhận đều thuộc tiệm này.",
   "casx.health.d.tenant_isolation.FAILED": "Có thay đổi trỏ tới người dùng của tiệm khác. Hãy báo ngay.",
   "casx.health.k.no_side_effects": "Không đặt hẹn, nhắn tin hay tính phí",
-  "casx.health.d.no_side_effects.PASSED": "Màn hình và việc kiểm tra chỉ đọc và ghi cài đặt và lịch sử của chính tiệm."
+  "casx.health.d.no_side_effects.PASSED": "Màn hình và việc kiểm tra chỉ đọc và ghi cài đặt và lịch sử của chính tiệm.",
+  "casx.drift.title": "Lệch cấu hình — một lần đánh giá đã dùng giá trị cũ", // DRAFT — Kevin reviews
+  "casx.drift.lead": "{w} chạy lần cuối với giá trị khác với cài đặt hiện tại:", // DRAFT — Kevin reviews
+  "casx.drift.row": "{l}: đánh giá với {a} — hiện là {b}", // DRAFT — Kevin reviews
+  "casx.drift.internal": "{n} giá trị mặc định đã thay đổi từ lần chạy đó", // DRAFT — Kevin reviews
+  "casx.drift.rule": "Lần chạy dùng phiên bản quy tắc cũ ({v})", // DRAFT — Kevin reviews
+  "casx.drift.fix": "Chỉ phát hiện — không tính lại gì. Bấm Làm mới trên màn hình đó để áp dụng cài đặt hiện tại.", // DRAFT — Kevin reviews
+  "casx.gs.forbidden": "Vai trò của bạn không mở được cài đặt AI khách hàng.", // DRAFT — Kevin reviews
+  "casx.gs.forbiddenNext": "Nhờ chủ tiệm cấp quyền AI Customer Profile cho vai trò của bạn. Chưa có gì bị thay đổi.", // DRAFT — Kevin reviews
+  "casx.gs.offline": "Không kết nối được máy chủ — thiết bị có vẻ đang mất mạng.", // DRAFT — Kevin reviews
+  "casx.gs.offlineNext": "Kiểm tra kết nối rồi thử lại. Cài đặt đã lưu không bị thay đổi.", // DRAFT — Kevin reviews
+  "casx.gs.retry": "Thử lại", // DRAFT — Kevin reviews
+  "casx.gs.not_entitled": "Gói AI hoặc gói đăng ký của tiệm chưa bao gồm tính năng này", // DRAFT — Kevin reviews
+  "casx.gs.openPlans": "Mở các gói AI", // DRAFT — Kevin reviews
+  "casx.gs.entitlement_unknown": "Hiện chưa xác nhận được gói", // DRAFT — Kevin reviews
+  "casx.gs.disabled": "Trợ lý đang tắt cho tiệm này", // DRAFT — Kevin reviews
+  "casx.gs.askManager": "nhờ chủ tiệm hoặc quản lý bật lên", // DRAFT — Kevin reviews
+  "casx.gs.no_history": "Chưa có lượt đến hoàn tất nào gắn với khách — các ngưỡng chưa có gì để đo", // DRAFT — Kevin reviews
+  "casx.gs.noHistoryNext": "thanh toán phiếu có gắn khách; ở đây không cần thay đổi gì", // DRAFT — Kevin reviews
+  "casx.gs.never_evaluated": "Customer Intelligence chưa đánh giá khách nào", // DRAFT — Kevin reviews
+  "casx.gs.stale_ci": "Customer Intelligence (Churn Watch, Rebooking) vẫn dùng giá trị cũ", // DRAFT — Kevin reviews
+  "casx.gs.openCi": "mở Customer Intelligence và bấm Làm mới", // DRAFT — Kevin reviews
+  "casx.gs.stale_sr": "Service Recommendations vẫn dùng giá trị cũ", // DRAFT — Kevin reviews
+  "casx.gs.openSr": "mở Service Recommendations và bấm Làm mới", // DRAFT — Kevin reviews
+  "casx.impact.inactive": "Xem các khách mà ngưỡng này đánh dấu Không hoạt động", // DRAFT — Kevin reviews
+  "casx.impact.long_term_inactive": "Xem các khách mà ngưỡng này đánh dấu Không hoạt động lâu", // DRAFT — Kevin reviews
+  "casx.impact.insufficient_history": "Xem các khách chưa đủ số lượt này", // DRAFT — Kevin reviews
 };

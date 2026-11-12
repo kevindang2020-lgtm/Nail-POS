@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api/client';
 import { authApi } from '../api/authApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { clockOfHHMM } from './opsClock';
 import { useInlineAsk } from '@aipowersalon/ui';
 import type { BookingVerificationUsageView, PendingVerificationView } from '@aipowersalon/api-contracts';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -646,6 +647,17 @@ function VerificationDetail({ id, when, onClose, onOpenCustomer, onOpenBooking, 
           <div className="sub bv-small">{t('bv.d.policy')}: {[d.policy.version, d.policy.tenantVersion, d.policy.branchVersion, d.policy.providerVersion].map((x) => x ?? '—').join(' / ')}</div>
           <div className="p-h" style={{ marginTop: 12 }}>{t('bv.d.timeline')}</div>
           <ol className="bv-timeline" data-testid="bv-timeline">{d.timeline.map((e, i) => <li key={i}><span className="sub bv-small">{when(e.at)}</span> {e.event}</li>)}</ol>
+          {d.recovery ? <div className="panel" style={{ marginTop: 12, padding: 10 }} data-testid="bv-recovery">
+            <div className="p-h">{t('bv.rec.title')}</div>
+            <div className="sub">{t('bv.rec.lead', { date: d.recovery.date ?? '—' })}</div>
+            {d.recovery.alternatives.length ? <ul className="bv-rec-list" style={{ margin: '6px 0', paddingLeft: 18 }}>
+              {d.recovery.alternatives.map((x) => <li key={x.technicianId + x.start} data-testid="bv-rec-slot">{clockOfHHMM(x.start)} · {x.technicianName}{x.preferred ? ` — ${t('bv.rec.sameTech')}` : ''}</li>)}
+            </ul> : null}
+            {d.recovery.totalOpen > d.recovery.alternatives.length ? <div className="sub bv-small">{t('bv.rec.more', { n: d.recovery.totalOpen - d.recovery.alternatives.length })}</div> : null}
+            {d.recovery.noteCode ? <div className="sub" data-testid="bv-rec-note">{t('bv.rec.note.' + d.recovery.noteCode)}</div> : null}
+            <div className="sub bv-small" style={{ marginTop: 6 }}>{t('bv.rec.safety')}</div>
+            <button type="button" className="btn ghost" style={{ marginTop: 6 }} onClick={onOpenBooking} data-testid="bv-rec-restart">{t('bv.rec.restart')}</button>
+          </div> : null}
           <div className="sub bv-small" style={{ marginTop: 8 }}>{t('bv.d.noCode')}</div>
           {note ? <div data-testid="bv-resend-note" style={{ marginTop: 8 }}>{note}</div> : null}
         </div>

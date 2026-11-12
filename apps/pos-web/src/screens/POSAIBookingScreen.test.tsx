@@ -81,6 +81,7 @@ describe('A7 AI Booking Assistant', () => {
     fireEvent.click(screen.getByTestId('bko-tab-verification'));
     expect(screen.getByTestId('bko-panel-verification').textContent).toContain('never shown');
     expect(screen.getByTestId('bko-panel-verification').textContent).toContain('Verified');
+    expect(screen.getByTestId('bko-report')).toHaveTextContent('Support report');            // extras 14: the redacted report, from this detail
   });
   it('Extras · AI Booking Assistant 10: services tab separates manual prices from catalog prices, marks add-ons and totals the booking', async () => {
     bk.detail.mockResolvedValue({ ...row('r9', 'pending_confirmation', { appointmentId: 'a9', appointmentDate: '2026-11-07', appointmentTime: '10:00', appointmentStatus: 'booked', services: ['Gel Manicure', 'Nail Art'] }), branchId: 'b1',

@@ -24,6 +24,7 @@ import { DealsModule, DealsService } from '@aipowersalon/deals';
 import { PushModule, PushService, SmsPackagesModule, SmsEntitlementService } from '@aipowersalon/communications';
 import { AuditModule, AuditService, auditSinkFor } from '@aipowersalon/audit';
 import { Module } from '@nestjs/common';
+import { BookingModule } from '../booking/booking.module';
 import { CustomerBookingController } from './customer-booking.controller';
 import { CustomerBookingService, PhoneVerificationRequiredError, PhoneVerificationUnavailableError, BookingValidationError, BookingConflictError, type BookingAdmissionPort } from './customer-booking.service';
 import { InMemoryCustomerBookingRepository, type CustomerBookingDataPort } from './customer-booking.repository';
@@ -64,7 +65,7 @@ import { BookingVerificationOverrideService } from './booking-verification-overr
 import { KyselyOverrideStore } from './booking-verification-override.kysely';
 
 @Module({
-  imports: [BookingDepositsModule, SmsPackagesModule, PushModule, AuditModule, DealsModule, EventsCoreModule],   // Phase 4: booking.phone_verification_* commit with their facts
+  imports: [BookingDepositsModule, SmsPackagesModule, PushModule, AuditModule, DealsModule, EventsCoreModule, BookingModule],   // BookingModule: POS Booking's availability for Lost-Booking Recovery (extras 10)   // Phase 4: booking.phone_verification_* commit with their facts
   controllers: [CustomerDepositController, CustomerBookingController, BookingVerificationController, BookingVerificationSettingsController, BookingVerificationOversightController, BookingVerificationWebhookController, BookingVerificationOverrideController, BookingVerificationCenterController],
   providers: [
     { provide: 'CustomerBookingDataPort', useFactory: (db: AppDatabase, outbox: OutboxWriter): CustomerBookingDataPort => (db ? new KyselyCustomerBookingRepository(db, outbox) : new InMemoryCustomerBookingRepository()), inject: [DATABASE, OutboxWriter] },

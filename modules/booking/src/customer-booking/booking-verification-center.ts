@@ -22,6 +22,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import type { AppDatabase } from '@aipowersalon/database';
 import type { AuditSink } from '@aipowersalon/audit';
 import { normalizePhone, phoneKey } from '@aipowersalon/customers';
+import { hasPermission } from '@aipowersalon/permissions';
 import type { BookingChannel } from './booking-verification-policy';
 
 export interface BvcContext { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
@@ -75,9 +76,20 @@ export function reasonText(reason: string | null | undefined): string | null {
   return `Policy rule: ${r}`;
 }
 
+/** POS Booking's availability engine (BookingService.availability) — the same open starts POS Booking offers; never invented */
+export type BvcAvailabilityPort = (ctx: BvcContext & { branchId: string }, q: { date: string; serviceIds?: string[] }) => Promise<{ technicianId: string; name: string; slots: string[] }[]>;
+export interface BvcRecovery {
+  state: 'offered' | 'not_connected' | 'not_permitted';
+  date: string | null; originalStart: string | null; serviceIds: string[]; preferredTechnicianId: string | null;
+  alternatives: { technicianId: string; technicianName: string; start: string; preferred: boolean }[]; totalOpen: number;
+  note: string | null; noteCode: 'no_staff' | 'no_open' | 'default_length' | 'not_connected' | 'not_permitted' | null; safety: string;
+}
+
 export interface BvcListFilters { q?: string; status?: string; channel?: string; branchId?: string; basis?: string; preset?: string; from?: string; to?: string; page?: unknown; pageSize?: unknown }
 
 export class BookingVerificationCenter {
+  /** Lost-Booking Recovery (extras 10): bound by the controller when POS Booking's engine is present */
+  availability: BvcAvailabilityPort | null = null;
   constructor(
     private readonly db: NonNullable<AppDatabase>,
     private readonly audit?: AuditSink | null,
@@ -345,7 +357,7 @@ export class BookingVerificationCenter {
     const r = (await sql<any>`${this.cols()}, s.policy_version, s.tenant_config_version, s.branch_config_version, s.provider_config_version, s.provider,
         (s.provider_verification_sid is not null) as has_provider_ref, right(coalesce(s.provider_verification_sid, ''), 4) as provider_ref_last4,
         s.delivered_at, s.consumed_at, s.override_reason, s.override_contact_method, h.created_at as hold_created_at, h.released_at as hold_released_at, h.release_reason,
-        s.phone_hash, (select c.normalized_phone from customers c where c.id = s.customer_id and c.tenant_id = s.tenant_id) as record_phone
+        s.phone_hash, (select c.normalized_phone from customers c where c.id = s.customer_id and c.tenant_id = s.tenant_id) as record_phone, h.technician_id as hold_technician_id
       ${this.base(ctx)} and s.id = ${id}::uuid`.execute(this.db)).rows[0];
     if (!r) notFound();
     const svcIds: string[] = Array.isArray(r.service_ids_json) ? r.service_ids_json.map(String).filter((x: string) => UUID.test(x)) : [];
@@ -368,7 +380,36 @@ export class BookingVerificationCenter {
       canResend: ['pending', 'sent'].includes(String(r.raw_status)) && !!r.customer_id && new Date(r.expires_at).getTime() > Date.now() && !!this.send
         && (() => { const e = r.record_phone ? normalizePhone(String(r.record_phone)) : null; return !!e && phoneKey(e) === String(r.phone_hash); })(),
       timeline: t,
+      recovery: await this.recovery(ctx, r, svcIds),
     };
+  }
+
+  /**
+   * Lost-Booking Recovery (extras 10). Only for a record whose hold EXPIRED without becoming an appointment: fresh open starts
+   * from POS Booking's own availability for the same services on the held day (today when that day has passed), the held
+   * technician first. Suggestions only — nothing is held, booked or sent, and the lost slot is never confirmed: POS Booking
+   * re-checks the chosen time and the booking asks for verification again under the salon's rule.
+   */
+  private async recovery(ctx: BvcContext, r: any, serviceIds: string[]): Promise<BvcRecovery | null> {
+    if (r.consumed_appointment_id || !r.hold_id || String(r.hold_status) !== 'expired') return null;
+    const safety = 'Suggestions only — nothing is held, booked or sent, and the expired time is never confirmed. Book the chosen time in POS Booking, which checks it again.';
+    const tz = await this.tz({ ...ctx, branchId: r.branch_id ? String(r.branch_id) : ctx.branchId });
+    const ymd = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const today = ymd(new Date());
+    const held = r.start_time ? ymd(new Date(r.start_time)) : null;
+    const date = held && held >= today ? held : today;
+    const preferred = r.hold_technician_id ? String(r.hold_technician_id) : null;
+    const base: BvcRecovery = { state: 'offered', date, originalStart: iso(r.start_time), serviceIds, preferredTechnicianId: preferred, alternatives: [], totalOpen: 0, note: null, noteCode: null, safety };
+    if (!this.availability || !r.branch_id) return { ...base, state: 'not_connected', noteCode: 'not_connected', note: 'Open times cannot be read here — use Find a time in POS Booking.' };
+    // the engine is POS Booking's: a role that cannot view the booking calendar is told so (never an empty list that reads as "fully booked")
+    if (!hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.booking.view')) return { ...base, state: 'not_permitted', noteCode: 'not_permitted', note: 'Your role cannot view the booking calendar.' };
+    const rows = await this.availability({ ...ctx, branchId: String(r.branch_id) }, { date, serviceIds: serviceIds.length ? serviceIds : undefined });
+    const nowHm = date === today ? new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()) : null;
+    const slots = rows.flatMap((x) => x.slots.filter((start) => !nowHm || start > nowHm).map((start) => ({ technicianId: x.technicianId, technicianName: x.name, start, preferred: preferred != null && x.technicianId === preferred })));
+    slots.sort((a, b) => Number(b.preferred) - Number(a.preferred) || a.start.localeCompare(b.start) || a.technicianName.localeCompare(b.technicianName));
+    const noteCode = rows.length === 0 ? 'no_staff' as const : slots.length === 0 ? 'no_open' as const : !serviceIds.length ? 'default_length' as const : null;
+    return { ...base, alternatives: slots.slice(0, 12), totalOpen: slots.length, noteCode,
+      note: rows.length === 0 ? 'No technician is working this day.' : slots.length === 0 ? 'No qualified technician has an open time this day.' : !serviceIds.length ? 'The request named no service, so the salon\'s default service length is used.' : null };
   }
 
   /**

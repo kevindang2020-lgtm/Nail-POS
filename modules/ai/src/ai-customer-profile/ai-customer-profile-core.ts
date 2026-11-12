@@ -221,7 +221,7 @@ export function classifyInactivity(
   if (completedCount === 0 || !lastVisitIso) return { status: 'insufficient_history', daysSinceLastVisit: null, evidence: ['No completed visit history'] };
   const elapsed = daysBetween(lastVisitIso, nowIso);
   if (hasFutureAppointment) return { status: 'active', daysSinceLastVisit: elapsed, evidence: ['Has an upcoming appointment'] };
-  if (completedCount < DEFAULT_TUNABLES.minVisitsForCadence)
+  if (completedCount < t.minVisitsForCadence)   // the SALON's minimum (was the code default — the setting was shown but ignored here)
     return { status: 'insufficient_history', daysSinceLastVisit: elapsed, evidence: [`Only ${completedCount} completed visit(s); cadence not established`] };
 
   // personal cadence when known, else flat thresholds

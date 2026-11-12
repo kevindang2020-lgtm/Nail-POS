@@ -11,6 +11,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { asWhen } from '../components/AssistantDashboard';
 import { CustomerQuickView, type CpxCard } from '../components/CustomerProfilesDirectory';   // extras #04: the REAL profile overlay, read-only
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
@@ -68,10 +69,32 @@ export function POSAICustomerProfileAssistantScreen() {
         check={ci.check} checkLabel={t('cpx.check')}
         checkText={{ title: (k) => t('cix.health.k.' + k), detail: (k, s, x) => (k === 'eligibility' && x?.detail ? t('cix.health.eligibility', { s: fmtNumber(x.detail.scanned), a: fmtNumber(x.detail.active), i: fmtNumber(x.detail.inactiveCard),
           n: fmtNumber(x.detail.neverServed), u: fmtNumber(x.detail.underCadence), r: fmtNumber(x.detail.rebookingSoon + x.detail.dueForReturn) }) : t('cix.health.d.' + k + '.' + s)) }}
-        openTo="/tenant/ai/customer-profile" openLabel={t('cpx.open')} note={t('cpx.note')} />
+        openTo="/tenant/ai/customer-profile" openLabel={t('cpx.open')} note={t('cpx.note')} evidence={(s) => <CpxEvidence s={s} />} />
       <div className="sub" data-testid="cpx-retention-source">{t('cpx.ret.source')} <button type="button" className="aic-link" data-testid="cpx-retention-link" onClick={() => nav(RETENTION_ROUTE)}>{t('cpx.ret.open')}</button></div>
     </AiPackagePanel>
     {snap ? <CustomerQuickView customer={snap} onClose={() => setSnap(null)} onFullView={() => { const id = snap.id; setSnap(null); nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(id)}`); }} /> : null}
     </>
+  );
+}
+
+const FRESH_TONE: Record<string, string> = { up_to_date: 'ok', stale: 'warn', failed: 'bad', never: '', running: 'gold' };
+/** Evidence + Freshness (extras #03): where each part of this page comes from and how old it is — read from the SAME summary the
+ *  cards use (Customer Intelligence's last scan + freshness, Customer Retention read live, the duplicate review's last scan).
+ *  No parallel source ledger; an unknown time is "—", never invented. */
+function CpxEvidence({ s }: { s: any }) {
+  const f = s?.freshness; const dup = s?.duplicateReview;
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="cpx-evidence" aria-label={t('cpx.ev.title')}>
+      <div className="p-h">{t('cpx.ev.title')}</div>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <li data-testid="cpx-ev-scan">{t('cpx.ev.scan')}{' '}
+          {f ? <span className={'chip ' + (FRESH_TONE[f.state] ?? '')} data-testid="cpx-ev-scan-state">{t('cix.fresh.' + f.state, { at: asWhen(f.lastSuccessAt) })}</span> : '—'}
+          {f?.state === 'stale' ? <div className="sub">{t('cpx.ev.stale', { n: fmtNumber(f.staleAfterMinutes ?? 0) })}</div> : null}
+          {s?.breakdown?.newSinceScan ? <div className="sub" data-testid="cpx-ev-new">{t('cpx.ev.newSince', { n: fmtNumber(s.breakdown.newSinceScan) })}</div> : null}</li>
+        <li data-testid="cpx-ev-retention">{s?.retention ? t('cpx.ev.retention', { d: fmtNumber(s.retention.atRiskDays) }) : t('cpx.ev.retentionUnknown')}</li>
+        <li data-testid="cpx-ev-dup">{dup?.lastScanAt ? t('cpx.ev.dup', { at: asWhen(dup.lastScanAt) }) : t('cpx.ev.dupNever')}</li>
+        <li className="sub">{t('cpx.ev.prefs')}</li>
+      </ul>
+    </section>
   );
 }

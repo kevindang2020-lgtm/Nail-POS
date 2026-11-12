@@ -100,6 +100,11 @@ const skillsFor = (day: DayData, tech: DayTech | null, serviceIds: string[]): Re
   return Object.fromEntries(serviceIds.map((id) => { const cat = day.services[id]?.categoryName; return [id, !!tech && (!cat || tech.skills.includes(cat))]; }));
 };
 
+/** THE workforce skill rule (skillsFor) for one service — exported for read-only summaries (capacity heatmap); never a second rule. */
+export function techQualifiedFor(day: DayData, technicianId: string, serviceId: string): boolean {
+  return !!skillsFor(day, techOf(day, technicianId), [serviceId])[serviceId];
+}
+
 /** The gate's context for one technician on this day — real shifts, breaks, time off, every other appointment widened by
  *  the booking buffer on both sides. Stations: pos_stations are checkout terminals, not service chairs, so the station
  *  constraint stays dormant (no stationId on placements) — a recorded Phase 7 decision. */
