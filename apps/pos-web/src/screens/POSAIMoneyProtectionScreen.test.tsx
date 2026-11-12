@@ -57,3 +57,28 @@ describe('POSAIMoneyProtectionScreen (overview)', () => {
     expect(await screen.findByText(/cannot do this in Money Protection/)).toBeInTheDocument();
   });
 });
+
+describe('Money Protection overview — failure-aware snapshot (AI Money Protection 5 · extras #12)', () => {
+  it('a failed refresh keeps the last figures labelled stale and "as of", never zeros; nothing ever read shows "—"', async () => {
+    mc.summary.mockResolvedValueOnce(SUM());
+    mc.runDetection.mockResolvedValue({ created: 0, updated: 0 });
+    wrap(<POSAIMoneyProtectionScreen />);
+    await waitFor(() => expect(screen.getByTestId('mpx-kpi-open')).toHaveTextContent('6'));
+    expect(screen.queryByTestId('mpx-asof')).toBeNull();
+    mc.summary.mockRejectedValueOnce(new Error('Failed to fetch'));
+    fireEvent.click(screen.getByTestId('mpx-run'));
+    expect(await screen.findByTestId('mpx-asof')).toHaveTextContent(/as of .+; they are not live/);
+    expect(screen.getByTestId('mpx-kpi-open')).toHaveTextContent('6');
+    mc.summary.mockResolvedValueOnce(SUM({ cards: { ...SUM().cards, openAlerts: 7 } }));
+    fireEvent.click(screen.getByTestId('mpx-asof-retry'));
+    await waitFor(() => expect(screen.queryByTestId('mpx-asof')).toBeNull());
+    expect(screen.getByTestId('mpx-kpi-open')).toHaveTextContent('7');
+  });
+  it('a first read that fails is an error with "—" cards, not a stale label', async () => {
+    mc.summary.mockRejectedValueOnce(new Error('Failed to fetch'));
+    wrap(<POSAIMoneyProtectionScreen />);
+    await screen.findByRole('alert');
+    expect(screen.queryByTestId('mpx-asof')).toBeNull();
+    expect(screen.getByTestId('mpx-kpi-open')).toHaveTextContent('—');
+  });
+});

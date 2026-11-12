@@ -80,3 +80,19 @@ describe('scoreReversalRateOutliers — FAIRNESS GATES', () => {
     expect(scoreReversalRateOutliers(payments, refunds, { ...DEFAULT_BASELINE_OPTS, zThreshold: 10 })).toHaveLength(0);
   });
 });
+
+describe('scoreReversalRateOutliers — fairness context in the evidence (Money Protection Rules extras #13)', () => {
+  it('states the minimum sample, the peers actually compared (leave-one-out) and their sample range', () => {
+    const { payments, refunds } = activity([
+      { user: 'u1', captured: 30, reversals: 1 },
+      { user: 'u2', captured: 50, reversals: 1 },
+      { user: 'u3', captured: 70, reversals: 1 },
+      { user: 'lowvol', captured: 5, reversals: 5 },
+      { user: 'bad', captured: 50, reversals: 15 },
+    ]);
+    const out = scoreReversalRateOutliers(payments, refunds);
+    expect(out).toHaveLength(1);
+    expect(out[0].evidence.baselineValues).toMatchObject({ minSampleSize: 20, minPeers: 3, comparedPeers: 3, peerCount: 4, peerCapturedMin: 30, peerCapturedMax: 70 });
+    expect(out[0].evidence.currentValues).toMatchObject({ capturedTransactions: 50, reversals: 15 });
+  });
+});

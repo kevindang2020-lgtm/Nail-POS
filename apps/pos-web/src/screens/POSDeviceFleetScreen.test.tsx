@@ -96,3 +96,26 @@ describe('Device Assignments — duplicate identity (extras #06)', () => {
     expect(c).toHaveTextContent('2');
   });
 });
+
+describe('Tablets — app version lifecycle (extras #08)', () => {
+  it('each display shows its app version, older than the newest seen, or not reported; no upgrade is required without a policy', async () => {
+    m.devices.mockResolvedValue(listOf([
+      dev({ id: 't1', source: 'display', class: 'tablet', name: 'Tab A', type: 'tablet', facts: { appVersion: '2.10.0' } }),
+      dev({ id: 't2', source: 'display', class: 'tablet', name: 'Tab B', type: 'tablet', facts: { appVersion: '2.9.4' } }),
+      dev({ id: 't3', source: 'display', class: 'tablet', name: 'Tab C', type: 'tablet', facts: { appVersion: null } }),
+    ]));
+    r('tablets');
+    const rows = await screen.findAllByTestId('dfx-row');
+    const kinds = rows.map((x) => within(x).getByTestId('dfx-ver').getAttribute('data-kind'));
+    expect(kinds).toEqual(['current', 'older', 'unreported']);
+    expect(within(rows[1]).getByTestId('dfx-ver')).toHaveTextContent('Older app version 2.9.4 — newest on your devices is 2.10.0');
+    expect(screen.getByTestId('dfx-ver-policy')).toHaveTextContent('no upgrade is required');
+    expect(screen.queryByText(/unsupported/i)).toBeNull();
+  });
+  it('a register (not a display) has no version line', async () => {
+    r('reception-pos');
+    await screen.findAllByTestId('dfx-row');
+    expect(screen.queryByTestId('dfx-ver')).toBeNull();
+    expect(screen.queryByTestId('dfx-ver-policy')).toBeNull();
+  });
+});

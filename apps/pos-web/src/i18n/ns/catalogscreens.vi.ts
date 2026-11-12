@@ -427,4 +427,7 @@ export const CATALOGSCREENS_VI = {
   'cg.csv.created': 'Ngày tạo',
   "cg.drill": "Danh mục đang lọc theo {c} từ biểu đồ.", // DRAFT — Kevin reviews
   "cg.svc.lookAlike": "Có vẻ giống dịch vụ đã có: {names}. Vẫn lưu được — hãy kiểm tra để tránh trùng.", // DRAFT — Kevin reviews
+  "cg.col.listMargin": "Biên lợi nhuận niêm yết", // DRAFT — Kevin reviews
+  "cg.col.listMarginWhy": "Tính từ giá bán lẻ và giá vốn trong danh mục — không phải từ doanh số.", // DRAFT — Kevin reviews
+  "cg.kpi.avgMenuSub": "Giá niêm yết, không phải doanh số · dịch vụ đang hoạt động có giá ({n})", // DRAFT — Kevin reviews
 };

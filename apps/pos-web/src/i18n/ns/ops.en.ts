@@ -1581,4 +1581,8 @@ export const OPS_EN = {
   "dfx.hk.duplicate_names": "Devices sharing a name in one location (never merged automatically)",
   "ops.qa.needsPermission": "Not available for your role — needs the permission: {p}",
   "ops.qa.locked": "No access",
+  "dfx.ver.current": "App {v}",
+  "dfx.ver.older": "Older app version {v} — newest on your devices is {n}",
+  "dfx.ver.unreported": "App version not reported",
+  "dfx.ver.policy": "App versions are compared with the newest one your listed devices report. No minimum version is set, so no upgrade is required — update from the device when convenient.",
 };

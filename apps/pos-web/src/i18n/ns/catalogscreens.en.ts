@@ -427,4 +427,7 @@ export const CATALOGSCREENS_EN = {
   'cg.csv.created': 'Created',
   "cg.drill": "Directory filtered to {c} from the chart.",
   "cg.svc.lookAlike": "Looks like a service you already have: {names}. You can still save — check this is not a duplicate.",
+  "cg.col.listMargin": "List margin",
+  "cg.col.listMarginWhy": "From the catalog retail price and unit cost — not from sales.",
+  "cg.kpi.avgMenuSub": "Menu price, not sales · active services with a price ({n})",
 };

@@ -26,6 +26,29 @@ import { fmtInZone, fmtNumber } from '../i18n/format';
 import { deviceToday } from '../lib/deviceToday';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
+/** extras (Tablets · 08) — App lifecycle: a device's reported app version against the NEWEST version reported by the devices
+ *  listed. There is no minimum-version policy in the product, so nothing is called "unsupported" and no upgrade is required —
+ *  an older version is shown as older, a missing one as not reported. */
+export function cmpVersion(a: string, b: string): number {
+  const pa = a.split(/[.+-]/).map((x) => Number.parseInt(x, 10)); const pb = b.split(/[.+-]/).map((x) => Number.parseInt(x, 10));
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = Number.isFinite(pa[i]) ? pa[i] : 0; const y = Number.isFinite(pb[i]) ? pb[i] : 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+export function newestAppVersion(items: DfDevice[]): string | null {
+  let best: string | null = null;
+  for (const d of items) { const v = d.facts?.appVersion; if (typeof v === 'string' && v.trim() && (!best || cmpVersion(v, best) > 0)) best = v.trim(); }
+  return best;
+}
+export function appVersionStanding(d: DfDevice, newest: string | null): { kind: 'current' | 'older' | 'unreported'; version: string | null } | null {
+  if (d.source !== 'display') return null;   // only customer displays / tablets report an app version
+  const v = typeof d.facts?.appVersion === 'string' && d.facts.appVersion.trim() ? d.facts.appVersion.trim() : null;
+  if (!v) return { kind: 'unreported', version: null };
+  return { kind: newest && cmpVersion(v, newest) < 0 ? 'older' : 'current', version: v };
+}
+
 export type DeviceView = 'overview' | 'health' | 'assignments' | 'reception-pos' | 'check-in-kiosk' | 'tablets' | 'receipt-devices';
 const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 type Cfg = { cls: DfClass; title: () => string; noun: () => string; key: string; manage?: { to: string; label: string } };
@@ -179,7 +202,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
                   <td className="sub">{d.source === 'station' ? tx('pos.reception_pos') : typeLabel(d.type)}</td>
                   <td>{d.branch ?? <span className="sub">{tt('dfx.noBranch')}</span>}</td>
                   <td>{d.station || <span style={{ color: 'var(--muted)' }}>{tx('pos.unassigned')}</span>}</td>
-                  <td>{statusChip(d.status)}{d.reason ? <div className="sub dfx-reason">{tt('dfx.reason.' + d.reason)}</div> : null}</td>
+                  <td>{statusChip(d.status)}{d.reason ? <div className="sub dfx-reason">{tt('dfx.reason.' + d.reason)}</div> : null}<VersionLine st={appVersionStanding(d, newestAppVersion(list.items))} newest={newestAppVersion(list.items)} /></td>
                   <td className="sub">{d.lastSeenAt ? agoLabel(d.lastSeenAt) : '—'}</td>
                   <td className="nowrap"><button className="btn ghost sm" data-testid="dfx-view" onClick={() => setOpen(d)}>{tt('dfx.view')}</button></td>
                 </tr>))}</tbody></table></div>}
@@ -189,6 +212,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
               {['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
           </div>
           <p className="sub">{tt(`dfx.foot.${cfg.key}`)}</p>
+          {list && list.items.some((d) => d.source === 'display') ? <p className="sub" data-testid="dfx-ver-policy">{tt('dfx.ver.policy')}</p> : null}
         </section>
       </>) : <FleetHistory cls={cfg.cls} />}
 
@@ -237,6 +261,13 @@ export function FleetHistory({ cls, deviceId }: { cls: DfClass; deviceId?: strin
       <div className="rvw-pager"><Pager info={d ? { page: d.page, pageSize: d.pageSize, totalItems: d.total, totalPages: d.totalPages } : null} onPage={(p) => setQ((c) => ({ ...c, page: p }))} /></div>
     </section>
   );
+}
+
+function VersionLine({ st, newest }: { st: ReturnType<typeof appVersionStanding>; newest: string | null }) {
+  if (!st) return null;
+  if (st.kind === 'unreported') return <div className="sub" data-testid="dfx-ver" data-kind="unreported">{tt('dfx.ver.unreported')}</div>;
+  if (st.kind === 'older') return <div className="sub warn" data-testid="dfx-ver" data-kind="older">{tt('dfx.ver.older', { v: st.version ?? '—', n: newest ?? '—' })}</div>;
+  return <div className="sub" data-testid="dfx-ver" data-kind="current">{tt('dfx.ver.current', { v: st.version ?? '—' })}</div>;
 }
 
 function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {

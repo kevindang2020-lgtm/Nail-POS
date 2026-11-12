@@ -528,4 +528,6 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.changes.a.customer": "Khách hàng", // DRAFT — Kevin reviews
   "ahx.changes.a.system": "Hệ thống", // DRAFT — Kevin reviews
   "ahx.changes.a.ai": "Lễ tân AI", // DRAFT — Kevin reviews
+  "cnx.pc.title": "Có thể có sở thích mâu thuẫn — vui lòng xem lại:", // DRAFT — Kevin reviews
+  "cnx.pc.note": "Không có gì bị thay đổi. Giữ cái đang đúng và xóa cái còn lại.", // DRAFT — Kevin reviews
 };

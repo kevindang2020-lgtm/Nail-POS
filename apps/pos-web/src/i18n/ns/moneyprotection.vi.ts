@@ -371,4 +371,24 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.set.eff.unknown": "Hiệu lực: —", // DRAFT — Kevin reviews
   "mpx.stale.note": "Dữ liệu cũ — không làm mới được. Đang hiển thị kết quả tải lúc {t}.", // DRAFT — Kevin reviews
   "mpx.stale.retry": "Thử lại", // DRAFT — Kevin reviews
+  "mpx.rec.why": "Thay đổi chưa được lưu. Không có gì bị ghi đè. Chọn cách tiếp tục:", // DRAFT — Kevin reviews
+  "mpx.rec.reload": "Tải lại bản hiện tại", // DRAFT — Kevin reviews
+  "mpx.rec.compare": "So sánh thay đổi", // DRAFT — Kevin reviews
+  "mpx.rec.retry": "Thử lưu lại", // DRAFT — Kevin reviews
+  "mpx.rec.confirm": "Gửi lại thay đổi này?", // DRAFT — Kevin reviews
+  "mpx.rec.confirmOver": "Lưu giá trị của bạn đè lên bản đang lưu?", // DRAFT — Kevin reviews
+  "mpx.rec.yes": "Có, lưu", // DRAFT — Kevin reviews
+  "mpx.rec.field": "Cài đặt", // DRAFT — Kevin reviews
+  "mpx.rec.mine": "Thay đổi của bạn", // DRAFT — Kevin reviews
+  "mpx.rec.now": "Đang lưu", // DRAFT — Kevin reviews
+  "mpx.rec.same": "Giá trị của bạn giống bản đang lưu.", // DRAFT — Kevin reviews
+  "mpx.rec.gone": "Quy tắc này không còn trong danh sách.", // DRAFT — Kevin reviews
+  "mpx.fair.title": "Mức độ chắc chắn của so sánh này", // DRAFT — Kevin reviews
+  "mpx.fair.sample": "Người này: {r} lần hoàn/hủy trên {n} thanh toán (tối thiểu để so sánh: {min}).", // DRAFT — Kevin reviews
+  "mpx.fair.peers": "So với {p} nhân viên có {range} thanh toán mỗi người; tỷ lệ hoàn/hủy trung bình của họ là {avg}%.", // DRAFT — Kevin reviews
+  "mpx.fair.small": "Mẫu nhỏ — vài lần hoàn tiền hợp lệ có thể thay đổi tỷ lệ này nhiều.", // DRAFT — Kevin reviews
+  "mpx.fair.caution": "Đây là so sánh thống kê để xem xét, không phải kết luận về bất kỳ ai. Chưa tính khác biệt về vai trò, vị trí và ca làm.", // DRAFT — Kevin reviews
+  "mpx.rules.none": "Tiệm này chưa có quy tắc phát hiện nào.", // DRAFT — Kevin reviews
+  "mpx.rules.noEvaluations": "Chưa ghi nhận lần kiểm tra nào cho các quy tắc đang bật. Hãy chạy phát hiện để kiểm tra.", // DRAFT — Kevin reviews
+  "mpx.asof": "Đã cũ — không làm mới được. Các số liệu này tính đến {t}; không phải số liệu trực tiếp.", // DRAFT — Kevin reviews
 };

@@ -66,3 +66,51 @@ describe('Money Protection Settings — Saved vs Effective (extras #02)', () => 
     expect(chips[2]).toHaveTextContent('Effective: off');
   });
 });
+
+describe('Money Protection Settings — safe recovery after a failed Save (extras #05)', () => {
+  it('a stale save offers Reload / Compare / Retry; Compare shows mine vs saved now; Retry asks first and sends the newer version only after Compare', async () => {
+    const newer = { ...rule, thresholds: { windowSeconds: 200 }, updatedAt: '2026-11-02T09:00:00.000Z' };
+    mc.saveRule.mockRejectedValueOnce({ status: 409, code: 'MC_STALE' }).mockResolvedValueOnce({});
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rule-edit'));
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '90' } });
+    fireEvent.click(screen.getByTestId('mpx-rule-save'));
+    await screen.findByTestId('mpx-rec');
+    expect(mc.saveRule).toHaveBeenCalledTimes(1);
+    // Compare: fetch what is saved now; nothing is saved
+    mc.rules.mockResolvedValue({ rules: [newer], canEdit: true });
+    fireEvent.click(screen.getByTestId('mpx-rec-compare'));
+    const rows = await screen.findAllByTestId('mpx-rec-diff-row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('windowSeconds'); expect(rows[0]).toHaveTextContent('90'); expect(rows[0]).toHaveTextContent('200');
+    expect(mc.saveRule).toHaveBeenCalledTimes(1);
+    // Retry needs an explicit yes; cancelling sends nothing
+    fireEvent.click(screen.getByTestId('mpx-rec-retry'));
+    expect(screen.getByTestId('mpx-rec-confirm')).toHaveTextContent('over what is saved now');
+    fireEvent.click(screen.getByTestId('mpx-rec-no'));
+    expect(mc.saveRule).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('mpx-rec-retry'));
+    fireEvent.click(screen.getByTestId('mpx-rec-yes'));
+    await waitFor(() => expect(mc.saveRule).toHaveBeenCalledTimes(2));
+    expect(mc.saveRule.mock.calls[1][0]).toMatchObject({ thresholds: { windowSeconds: 90 }, expectedUpdatedAt: '2026-11-02T09:00:00.000Z' });
+  });
+  it('a lost connection: Retry (confirmed) resends with the version first seen; Reload Current replaces my edits with the saved values', async () => {
+    mc.saveRule.mockRejectedValue(new Error('Failed to fetch'));
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rule-edit'));
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '90' } });
+    fireEvent.click(screen.getByTestId('mpx-rule-save'));
+    await screen.findByTestId('mpx-rec');
+    fireEvent.click(screen.getByTestId('mpx-rec-retry'));
+    expect(screen.getByTestId('mpx-rec-confirm')).toHaveTextContent('Send this change again?');
+    fireEvent.click(screen.getByTestId('mpx-rec-yes'));
+    await waitFor(() => expect(mc.saveRule).toHaveBeenCalledTimes(2));
+    expect(mc.saveRule.mock.calls[1][0].expectedUpdatedAt).toBe('2026-11-01T10:00:00.000Z');
+    await screen.findByTestId('mpx-rec');
+    mc.rules.mockResolvedValue({ rules: [{ ...rule, thresholds: { windowSeconds: 150 }, updatedAt: '2026-11-02T09:00:00.000Z' }], canEdit: true });
+    fireEvent.click(screen.getByTestId('mpx-rec-reload'));
+    await waitFor(() => expect((screen.getByLabelText('windowSeconds') as HTMLInputElement).value).toBe('150'));
+    expect(screen.queryByTestId('mpx-rec')).toBeNull();
+    expect(mc.saveRule).toHaveBeenCalledTimes(2);
+  });
+});

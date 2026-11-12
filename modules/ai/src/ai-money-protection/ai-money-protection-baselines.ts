@@ -96,7 +96,11 @@ export function scoreReversalRateOutliers(
         summary: `${NONACCUSATORY.possibleAnomaly} This staff member's reversal rate is higher than peers over a comparable sample.`,
         triggeredRules: ['MP_REVERSAL_RATE_OUTLIER'],
         currentValues: { reversalRatePct: round1(s.ratePct), reversals: s.reversals, capturedTransactions: s.captured },
-        baselineValues: { peerMeanRatePct: round1(m), peerCount: stats.length },
+        // Money Protection Rules extras #13 (staff-fairness guardrails): the minimum sample, how many peers were actually compared
+        // (leave-one-out) and their sample range — so the reader can judge comparability and uncertainty, not just the z-score.
+        baselineValues: { peerMeanRatePct: round1(m), peerCount: stats.length, comparedPeers: others.length, minSampleSize: opts.minSampleSize, minPeers: opts.minPeers,
+          peerCapturedMin: Math.min(...stats.filter((o) => o.userId !== s.userId).map((o) => o.captured)),
+          peerCapturedMax: Math.max(...stats.filter((o) => o.userId !== s.userId).map((o) => o.captured)) },
         differences: { zScore: round1(z) },
         recommendedReview: [
           'Review a sample of this staff member\'s reversals for legitimate reasons before drawing conclusions.',

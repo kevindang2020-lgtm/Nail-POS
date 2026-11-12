@@ -165,5 +165,12 @@ export const UPSELLSETTINGS_VI: Record<string, string> = {
   "ucx.health.d.settings_history.PASSED": "Các thay đổi cài đặt đều được ghi lại.",
   "ucx.health.d.settings_history.WARNING": "Cài đặt đã thay đổi nhưng không có lịch sử.",
   "ucx.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
-  "ucx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không thêm vào hóa đơn, không tính tiền, không đăng ký, không đổi điểm, không phát thẻ, không đặt lịch, không gửi tin."
+  "ucx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không thêm vào hóa đơn, không tính tiền, không đăng ký, không đổi điểm, không phát thẻ, không đặt lịch, không gửi tin.",
+  "ucx.st.pref": "Lựa chọn của tiệm:", // DRAFT — Kevin reviews
+  "ucx.st.prefInherit": "chưa đặt ở đây — theo mặc định ({v})", // DRAFT — Kevin reviews
+  "ucx.st.run": "Có thể gợi ý lúc này:", // DRAFT — Kevin reviews
+  "ucx.st.runYes": "Có", // DRAFT — Kevin reviews
+  "ucx.st.runNo": "Không — {why}", // DRAFT — Kevin reviews
+  "ucx.st.pay": "Quyền thanh toán:", // DRAFT — Kevin reviews
+  "ucx.st.payNone": "Không có. Gợi ý không bao giờ thu tiền, giảm giá hay sửa phiếu; thu ngân thêm món và khách thanh toán khi tính tiền.", // DRAFT — Kevin reviews
 };

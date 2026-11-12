@@ -528,4 +528,6 @@ export const CSEARCH_EN: Record<string, string> = {
   "ahx.changes.a.customer": "Customer",
   "ahx.changes.a.system": "System",
   "ahx.changes.a.ai": "AI receptionist",
+  "cnx.pc.title": "Possible conflicting preferences — please review:",
+  "cnx.pc.note": "Nothing was changed. Keep the one that is current and remove the other.",
 };

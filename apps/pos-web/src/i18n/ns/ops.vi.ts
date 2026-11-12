@@ -1580,4 +1580,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.hk.duplicate_names": "Thiết bị trùng tên trong cùng chi nhánh (không bao giờ tự gộp)", // DRAFT — Kevin reviews
   "ops.qa.needsPermission": "Vai trò của bạn không dùng được — cần quyền: {p}", // DRAFT — Kevin reviews
   "ops.qa.locked": "Không có quyền", // DRAFT — Kevin reviews
+  "dfx.ver.current": "Ứng dụng {v}", // DRAFT — Kevin reviews
+  "dfx.ver.older": "Phiên bản ứng dụng cũ hơn {v} — mới nhất trên thiết bị của bạn là {n}", // DRAFT — Kevin reviews
+  "dfx.ver.unreported": "Thiết bị chưa báo phiên bản ứng dụng", // DRAFT — Kevin reviews
+  "dfx.ver.policy": "Phiên bản ứng dụng được so với phiên bản mới nhất mà các thiết bị trong danh sách báo về. Chưa đặt phiên bản tối thiểu nên không bắt buộc cập nhật — hãy cập nhật trên thiết bị khi tiện.", // DRAFT — Kevin reviews
 };

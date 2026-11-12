@@ -224,4 +224,9 @@ export const AISETUP_EN: Record<string, string> = {
   "aiset.sample.bookTomorrow": "Can I book tomorrow at 3 PM?",
   "aiset.sample.cancellation": "What is your cancellation policy?",
   "aiset.faqDup": "A similar question already exists — you can still save:",
+  "aiset.stale": "Could not refresh. Showing the list loaded at {t}.",
+  "aiset.forbidden": "Your role cannot view AI Business Setup.",
+  "aiset.noMatch": "Nothing matches this search or these filters. Clear them to see everything.",
+  "aiset.noFaqsYet": "No FAQs yet. Add the first one above.",
+  "aiset.noHistoryYet": "No changes have been recorded yet.",
 };
