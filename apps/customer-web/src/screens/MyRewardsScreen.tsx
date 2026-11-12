@@ -12,6 +12,12 @@ import { customerRewardsApi, type GlobalRewardsView } from '../api/customerRewar
 
 const STATUS: Record<string, string> = { HELD: 'Held at checkout', CONFIRMED_REDEEMED: 'Redeemed', RELEASED: 'Released', EXPIRED: 'Released', REVERSED: 'Refunded', EARNED: 'Earned', PARTIALLY_REVERSED: 'Partly refunded' };
 
+/** Extras · GLOBAL LOYALTY 05: which rule version applied when these points were earned (from the earn-time snapshot). */
+export function ruleLabel(r: { kind: 'network' | 'salon'; versionNo: number | null } | null | undefined): string {
+  if (!r) return 'Rule not recorded';
+  return (r.kind === 'salon' ? "Salon's own rate" : 'Network rate') + (r.versionNo == null ? '' : ` (version ${r.versionNo})`);
+}
+
 export function MyRewardsScreen() {
   const nav = useNavigate();
   const [v, setV] = useState<GlobalRewardsView | null>(null);
@@ -63,7 +69,7 @@ export function MyRewardsScreen() {
           <h2 className="cust-h2" style={{ fontSize: 16, marginBottom: 8 }}>Points earned</h2>
           {v.earned.length === 0 ? <div style={{ fontSize: 13, color: '#6B7280' }}>No points yet. You earn on what you pay at participating salons.</div> : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="rewards-earned">
-              {v.earned.map((e) => <li key={e.ref} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13.5 }}><span><b>{e.salon}</b><br /><span style={{ color: '#6B7280', fontSize: 12 }}>{e.at ? fmtDate(e.at) : ''} · {e.rate} · {e.ref}</span></span><span style={{ fontWeight: 700 }}>+{e.points}</span></li>)}
+              {v.earned.map((e) => <li key={e.ref} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13.5 }}><span><b>{e.salon}</b><br /><span style={{ color: '#6B7280', fontSize: 12 }}>{e.at ? fmtDate(e.at) : ''} · {e.rate} · {e.ref}</span>{e.rule || e.spendableFrom !== undefined ? <><br /><span style={{ color: '#6B7280', fontSize: 12 }} data-testid="rewards-earned-why">{ruleLabel(e.rule)}{' · '}{e.spendableFrom ? `Spendable since ${fmtDate(e.spendableFrom)}` : 'Refunded — not spendable'}</span></> : null}</span><span style={{ fontWeight: 700 }}>+{e.points}</span></li>)}
             </ul>)}
         </div>
       ) : null}
