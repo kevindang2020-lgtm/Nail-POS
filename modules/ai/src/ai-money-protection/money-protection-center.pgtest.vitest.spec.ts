@@ -34,6 +34,7 @@ beforeAll(async () => {
       return { evaluated: d.evaluated + r.evaluated, created: d.created + r.created, updated: d.updated + r.updated, layers: { d, r } };
     },
     saveRule: (c, ruleId, input) => svc.updateSetting(c as any, ruleId, input),
+    previewRule: (c, ruleId, th) => svc.previewThresholds(c as any, ruleId, th),
   };
   mc = new MoneyProtectionCenter(db, deps);
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'S','Pilot','mp-778','MP778','active'), ($2,'X','Other','mp-778x','MP778X','active')`, [T, X]);
@@ -206,6 +207,19 @@ describe('Rules and safe settings', () => {
     const after: any = await mc.rules(ctx());
     expect(after.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_EXACT').lastCheckedAt).toEqual(expect.any(String));
     expect(after.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_LIKELY').lastCheckedAt).toBeNull();
+  });
+  it('RU-09 (Money Protection Rules 09) Threshold Change Preview: rules/save with dryRun compares the detections on the real schema and writes nothing', async () => {
+    const before = await q(`select (select count(*)::int from money_protection_rule_settings where tenant_id = $1 and rule_id = 'MP_FAILED_PAYMENT_RETRY_LOOP') s,
+      (select count(*)::int from money_protection_events where tenant_id = $1) e, (select count(*)::int from money_protection_alerts where tenant_id = $1) a, (select count(*)::int from audit_logs where tenant_id = $1) l`, [T]);
+    const p: any = await mc.saveRule(ctx(), 'MP_FAILED_PAYMENT_RETRY_LOOP', { thresholds: { minDeclines: 6 }, dryRun: true });
+    expect(p).toMatchObject({ ruleId: 'MP_FAILED_PAYMENT_RETRY_LOOP', dryRun: true, supported: true, windowDays: 30, proposedThresholds: { minDeclines: 6 } });
+    expect(p.currentCount - p.stops + p.starts).toBe(p.proposedCount);
+    expect(await mc.saveRule(ctx(), 'MP_MULTIPLE_REVERSALS', { thresholds: { minReversals: 3 }, dryRun: true })).toMatchObject({ supported: false, reason: 'threshold_not_read_by_detector' });
+    expect(await code(mc.saveRule(ctx(), 'MP_FAILED_PAYMENT_RETRY_LOOP', { thresholds: { minDeclines: 999 }, dryRun: true }))).toBe('MC_INVALID_THRESHOLD');
+    expect(await code(mc.saveRule(ctx({ permissions: ['ai_money_protection.view'] }), 'MP_FAILED_PAYMENT_RETRY_LOOP', { thresholds: { minDeclines: 6 }, dryRun: true }))).toBe('PERMISSION_DENIED');
+    const after = await q(`select (select count(*)::int from money_protection_rule_settings where tenant_id = $1 and rule_id = 'MP_FAILED_PAYMENT_RETRY_LOOP') s,
+      (select count(*)::int from money_protection_events where tenant_id = $1) e, (select count(*)::int from money_protection_alerts where tenant_id = $1) a, (select count(*)::int from audit_logs where tenant_id = $1) l`, [T]);
+    expect(after).toEqual(before);
   });
   it('RU-03 (MONEY PROTECTION ALERTS 11) false-positive insights: reviewed / dismissed / reopened per rule and the dismissal reasons that repeat — the rule stays on', async () => {
     // two more recorded dismissals of the same alert with the same wording (a repeated pattern), one with its own wording

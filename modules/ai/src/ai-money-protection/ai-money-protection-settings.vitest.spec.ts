@@ -1,6 +1,6 @@
 // ai-money-protection-settings.vitest.spec.ts
 import { describe, it, expect } from 'vitest';
-import { validateRuleSetting, applyRuleSettings, thresholdOverrides, type RuleSettingsMap } from './ai-money-protection-settings';
+import { validateRuleSetting, applyRuleSettings, previewThresholdDiff, type RuleSettingsMap } from './ai-money-protection-settings';
 import { runDeterministicRules, detectFailedPaymentRetryLoop, type NormalizedAttempt, type NormalizedPayment } from './ai-money-protection-rules';
 import { MoneyProtectionService, MoneyProtectionForbiddenError, MoneyProtectionValidationError } from './ai-money-protection.service';
 import { InMemoryMoneyProtectionRepository } from './ai-money-protection.repository';
@@ -68,7 +68,7 @@ describe('MoneyProtectionService settings integration', () => {
   it('a disabled rule produces no alert of that type', async () => {
     const { svc } = await seededSvc();
     await svc.updateSetting(ctx(perms), 'MP_DUP_CHARGE_EXACT', { enabled: false });
-    const r = await svc.evaluateDeterministic(ctx(perms));
+    await svc.evaluateDeterministic(ctx(perms));
     const alerts = await svc.listAlerts(ctx(perms), {});
     expect(alerts.items.some((a) => a.alertType === 'duplicate_charge_exact')).toBe(false);
   });
@@ -86,5 +86,46 @@ describe('MoneyProtectionService settings integration', () => {
     const { svc } = await seededSvc();
     await svc.updateSetting(ctx(perms), 'MP_DUP_CHARGE_EXACT', { enabled: false });
     expect(await svc.getSettings(ctx(perms, 'B'))).toEqual({}); // tenant B unaffected
+  });
+});
+
+describe('Threshold Change Preview (Money Protection Rules 09) — dry run only', () => {
+  const perms = ['ai_money_protection.view', 'ai_money_protection.view_alerts', 'ai_money_protection.manage_settings'];
+  const t0 = Date.now() - 2 * 86_400_000;
+  const dec = (id: string, ticketId: string, min: number): NormalizedAttempt => ({ id, branchId: 'b1', ticketId, status: 'declined', method: 'card', createdAtMs: t0 + min * 60_000 });
+  // t1: 5 declines in 10 min · t2: 3 declines · t3: 9 declines (HIGH at the default 8)
+  const attempts = [...[0, 2, 4, 6, 8].map((m, i) => dec('a1' + i, 't1', m)), ...[0, 1, 2].map((m, i) => dec('a2' + i, 't2', m)), ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((m, i) => dec('a3' + i, 't3', m))];
+  function svcWith() {
+    const repo = new InMemoryMoneyProtectionRepository();
+    repo.seedActivity('A', [], [], [], attempts);
+    return { repo, svc: new MoneyProtectionService(repo, new InMemoryEntitlement(() => true)) };
+  }
+  it('pure diff: stops / starts / severity by fingerprint, for that rule only', () => {
+    const c = (fp: string, severity: AlertCandidate['severity'], ruleId = 'R'): AlertCandidate => ({ ruleId, alertType: 'x', severity, confidence: 'high', riskScore: 1, amountCents: 0, entityFingerprint: fp, evaluationWindow: '', branchId: null, evidence: { summary: '', triggeredRules: [], recommendedReview: [], alternativeExplanations: [], dataFreshness: 'realtime' }, related: { ticketIds: [fp] } } as AlertCandidate);
+    const d = previewThresholdDiff('R', [c('a', 'MEDIUM'), c('b', 'MEDIUM'), c('z', 'HIGH', 'OTHER')], [c('b', 'HIGH'), c('c', 'MEDIUM')]);
+    expect(d).toMatchObject({ currentCount: 2, proposedCount: 2, stops: 1, starts: 1, severityChanges: 1, unchanged: 0 });
+    expect(d.examples.map((x) => [x.fingerprint, x.change, x.fromSeverity, x.toSeverity])).toEqual([['a', 'stops', 'MEDIUM', null], ['c', 'starts', null, 'MEDIUM'], ['b', 'severity', 'MEDIUM', 'HIGH']]);
+  });
+  it('raising minDeclines 4 → 6 stops the 5-decline ticket; lowering to 3 starts the 3-decline ticket; highSeverityAt 10 lowers t3 — nothing saved, no alert', async () => {
+    const { repo, svc } = svcWith();
+    const up: any = await svc.previewThresholds(ctx(perms), 'MP_FAILED_PAYMENT_RETRY_LOOP', { minDeclines: 6 });
+    expect(up).toMatchObject({ dryRun: true, supported: true, windowDays: 30, currentThresholds: { minDeclines: 4, windowMinutes: 15, highSeverityAt: 8 }, proposedThresholds: { minDeclines: 6 }, currentCount: 2, proposedCount: 1, stops: 1, starts: 0 });
+    expect(up.examples[0]).toMatchObject({ change: 'stops', ticketIds: ['t1'] });
+    const down: any = await svc.previewThresholds(ctx(perms), 'MP_FAILED_PAYMENT_RETRY_LOOP', { minDeclines: 3 });
+    expect(down).toMatchObject({ currentCount: 2, proposedCount: 3, stops: 0, starts: 1 });
+    expect(down.examples[0]).toMatchObject({ change: 'starts', ticketIds: ['t2'], toSeverity: 'MEDIUM' });
+    const sev: any = await svc.previewThresholds(ctx(perms), 'MP_FAILED_PAYMENT_RETRY_LOOP', { highSeverityAt: 10 });
+    expect(sev).toMatchObject({ severityChanges: 1, stops: 0, starts: 0 });
+    expect(sev.examples[0]).toMatchObject({ ticketIds: ['t3'], fromSeverity: 'HIGH', toSeverity: 'MEDIUM' });
+    expect(await svc.getSettings(ctx(perms))).toEqual({});                      // nothing saved
+    expect((await repo.listAlerts(ctx(perms), { limit: 50 } as any)).items).toEqual([]);   // no alert raised
+  });
+  it('a saved threshold is the baseline; out-of-bounds is refused; a rule whose detector ignores thresholds says so', async () => {
+    const { svc } = svcWith();
+    await svc.updateSetting(ctx(perms), 'MP_FAILED_PAYMENT_RETRY_LOOP', { thresholds: { minDeclines: 6 } });
+    expect(await svc.previewThresholds(ctx(perms), 'MP_FAILED_PAYMENT_RETRY_LOOP', { minDeclines: 4 })).toMatchObject({ currentThresholds: { minDeclines: 6 }, currentCount: 1, proposedCount: 2, starts: 1 });
+    await expect(svc.previewThresholds(ctx(perms), 'MP_FAILED_PAYMENT_RETRY_LOOP', { minDeclines: 0 })).rejects.toBeInstanceOf(MoneyProtectionValidationError);
+    expect(await svc.previewThresholds(ctx(perms), 'MP_CASH_DRAWER_VARIANCE', { toleranceCents: 500 })).toEqual({ ruleId: 'MP_CASH_DRAWER_VARIANCE', dryRun: true, supported: false, reason: 'threshold_not_read_by_detector', windowDays: 30 });
+    await expect(svc.previewThresholds(ctx([]), 'MP_FAILED_PAYMENT_RETRY_LOOP', {})).rejects.toBeInstanceOf(MoneyProtectionForbiddenError);
   });
 });

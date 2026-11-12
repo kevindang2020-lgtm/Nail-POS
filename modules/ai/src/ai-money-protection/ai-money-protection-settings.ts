@@ -64,3 +64,30 @@ export function thresholdOverrides(map: RuleSettingsMap): Record<string, Record<
   for (const [ruleId, s] of Object.entries(map)) if (s.thresholds && Object.keys(s.thresholds).length) out[ruleId] = s.thresholds;
   return out;
 }
+
+// ── Threshold Change Preview (Money Protection Rules 09) ─────────────────────────────────────────────────────────
+// Dry run only: the deterministic detector is run twice over the same recent activity — once with the saved thresholds,
+// once with the proposed ones — and the two candidate sets for ONE rule are compared by their stable fingerprint. Nothing
+// is saved and no alert is created. Only rules whose detector actually reads a tenant threshold can be simulated; every
+// other rule says so instead of showing a made-up number.
+export const PREVIEW_SIMULATED_RULES: readonly string[] = ['MP_DUP_CHARGE_LIKELY', 'MP_FAILED_PAYMENT_RETRY_LOOP'];
+export interface ThresholdPreviewChange { fingerprint: string; change: 'stops' | 'starts' | 'severity'; fromSeverity: Severity | null; toSeverity: Severity | null; ticketIds: string[]; amountCents: number }
+export interface ThresholdPreviewDiff { currentCount: number; proposedCount: number; stops: number; starts: number; severityChanges: number; unchanged: number; examples: ThresholdPreviewChange[] }
+export function previewThresholdDiff(ruleId: string, current: AlertCandidate[], proposed: AlertCandidate[], maxExamples = 10): ThresholdPreviewDiff {
+  const mine = (xs: AlertCandidate[]) => new Map(xs.filter((c) => c.ruleId === ruleId).map((c) => [c.entityFingerprint, c]));
+  const a = mine(current), b = mine(proposed);
+  const changes: ThresholdPreviewChange[] = [];
+  let unchanged = 0;
+  const tickets = (c: AlertCandidate) => (c.related?.ticketIds ?? []).map(String);
+  for (const [fp, c] of a) {
+    const n = b.get(fp);
+    if (!n) changes.push({ fingerprint: fp, change: 'stops', fromSeverity: c.severity, toSeverity: null, ticketIds: tickets(c), amountCents: c.amountCents });
+    else if (n.severity !== c.severity) changes.push({ fingerprint: fp, change: 'severity', fromSeverity: c.severity, toSeverity: n.severity, ticketIds: tickets(c), amountCents: c.amountCents });
+    else unchanged++;
+  }
+  for (const [fp, n] of b) if (!a.has(fp)) changes.push({ fingerprint: fp, change: 'starts', fromSeverity: null, toSeverity: n.severity, ticketIds: tickets(n), amountCents: n.amountCents });
+  const order = { stops: 0, starts: 1, severity: 2 } as const;
+  changes.sort((x, y) => order[x.change] - order[y.change] || x.fingerprint.localeCompare(y.fingerprint));
+  return { currentCount: a.size, proposedCount: b.size, stops: changes.filter((c) => c.change === 'stops').length, starts: changes.filter((c) => c.change === 'starts').length,
+    severityChanges: changes.filter((c) => c.change === 'severity').length, unchanged, examples: changes.slice(0, maxExamples) };
+}

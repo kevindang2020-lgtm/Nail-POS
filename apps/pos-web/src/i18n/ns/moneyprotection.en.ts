@@ -401,4 +401,13 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.fp.reasonN": "“{r}” × {n}",
   "mpx.fp.noPattern": "No repeated reason",
   "mpx.fp.policy": "Insight from your team's own decisions. Rules are never switched off or relaxed automatically — change a rule above, with a reason, if the pattern is expected.",
+  "mpx.thp.btn": "Preview this threshold change",
+  "mpx.thp.title": "If this threshold had applied over the last {d} days",
+  "mpx.thp.counts": "{now} detection(s) with the saved setting → {next} with your change",
+  "mpx.thp.detail": "{stops} would stop · {starts} would start · {sev} would change severity",
+  "mpx.thp.ex.stops": "Would no longer be flagged ({from}) · {n} ticket(s)",
+  "mpx.thp.ex.starts": "Would be newly flagged ({to}) · {n} ticket(s)",
+  "mpx.thp.ex.severity": "Severity {from} → {to} · {n} ticket(s)",
+  "mpx.thp.dry": "Dry run only — nothing is saved and no alert is created. Save to apply the change.",
+  "mpx.thp.unsupported": "This setting is not read by the detector for this rule yet, so its effect on past detections cannot be previewed.",
 };

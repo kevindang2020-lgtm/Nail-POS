@@ -94,6 +94,28 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'ends_before_starts', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM deals d WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.ends_at IS NOT NULL AND d.starts_at IS NOT NULL AND d.ends_at < d.starts_at`) },
     { key: 'active_but_ended', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM deals d WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.status IN ('active', 'scheduled', 'approved') AND d.ends_at < now()`) },
     { key: 'waiting_approval_started', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM deals d WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.status = 'pending_approval' AND d.starts_at IS NOT NULL AND d.starts_at < now()`) },
+    // extras (Discounts #04 Redemption Integrity · #12 repeated coupon commits · Coupons #04): the deal_redemptions ledger
+    // (applied on the ticket → redeemed when it is paid → released / reversed). The table already refuses two live uses of
+    // one deal on one ticket (uq_deal_redemption_ticket_live) and a reused key per deal (uq_deal_redemption_idem), so those
+    // are not repeated; these find what the ledger alone cannot stop.
+    // pending vs confirmed: still "applied" (pending) although its ticket was paid more than 10 minutes ago — markTicketPaid missed it
+    { key: 'redemption_pending_on_paid', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM deal_redemptions r JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('r', b)} AND r.status = 'applied' AND k.paid_at IS NOT NULL AND k.paid_at < now() - interval '10 minutes'`) },
+    // counted as redeemed although its ticket was never paid
+    { key: 'redeemed_ticket_unpaid', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM deal_redemptions r JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('r', b)} AND r.status IN ('redeemed', 'partially_reversed') AND k.paid_at IS NULL`) },
+    // bad timestamps: redeemed before it was applied, reversed before it was applied, redeemed with no redeemed time, applied in the future
+    { key: 'redemption_bad_timestamps', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM deal_redemptions r WHERE r.tenant_id = ${t}::uuid ${br('r', b)}
+        AND (r.redeemed_at < r.applied_at - interval '1 minute' OR r.reversed_at < r.applied_at - interval '1 minute'
+          OR (r.status IN ('redeemed', 'partially_reversed') AND r.redeemed_at IS NULL) OR r.applied_at > now() + interval '10 minutes')`) },
+    // a coupon code's use counter disagrees with its live uses in the ledger (a repeated commit counted twice, or a release not given back)
+    { key: 'coupon_use_count_drift', severity: 'FAILED', count: (t, b) => n(sql`SELECT c.id FROM deal_coupon_codes c JOIN deals d ON d.tenant_id = c.tenant_id AND d.id = c.deal_id
+        WHERE c.tenant_id = ${t}::uuid ${br('d', b)}
+          AND c.use_count <> (SELECT count(*) FROM deal_redemptions u WHERE u.tenant_id = c.tenant_id AND u.coupon_code_id = c.id AND u.status IN ('applied', 'redeemed', 'partially_reversed'))`) },
+    // a single-use code live on more than one ticket — a duplicate use
+    { key: 'single_use_code_reused', severity: 'FAILED', count: (t, b) => n(sql`SELECT c.id FROM deal_coupon_codes c JOIN deals d ON d.tenant_id = c.tenant_id AND d.id = c.deal_id
+        JOIN deal_redemptions u ON u.tenant_id = c.tenant_id AND u.coupon_code_id = c.id AND u.status IN ('applied', 'redeemed', 'partially_reversed')
+        WHERE c.tenant_id = ${t}::uuid ${br('d', b)} AND c.single_use GROUP BY c.id HAVING count(*) > 1`) },
   ] },
 
   // ── Services / Categories / Pricing / Add-ons (/pos/services) ─────────────────────────────────────────────────────

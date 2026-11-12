@@ -153,4 +153,32 @@ describe('shared read-only Check … System', () => {
     expect(count(r, 'received_over_ordered_lines')).toMatchObject({ state: 'FAILED', count: 1 });
     expect(count(await svc.run('inventory', { tenantId: T, branchId: B2 }), 'duplicate_usage_movement')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('extras: Discounts — redemption integrity: pending on a paid ticket, redeemed on an unpaid one, bad timestamps, coupon use counter drift, a single-use code used twice', async () => {
+    const D = id(91), DX = id(92), CODE = id(93), CODE2 = id(94), CODEX = id(95), K1 = id(96), K2 = id(97), K3 = id(98), KX = id(99);
+    await q(sql`insert into deals (id, tenant_id, branch_id, owner_type, title, discount_type, discount_percent, status, starts_at, ends_at) values
+      (${D}, ${T}, ${B1}, 'salon', 'Code 15', 'percent', 15, 'active', now() - interval '2 days', now() + interval '5 days'),
+      (${DX}, ${X}, ${BX}, 'salon', 'Other code', 'percent', 15, 'active', now() - interval '2 days', now() + interval '5 days')`);
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, paid_at, subtotal_cents, tax_cents, discount_cents, total_cents) values
+      (${K1}, ${T}, ${B1}, ${id(21)}, 'paid', now() - interval '1 hour', 4000, 0, 600, 3400), (${K2}, ${T}, ${B1}, ${id(21)}, 'open', null, 4000, 0, 600, 3400),
+      (${K3}, ${T}, ${B1}, ${id(21)}, 'paid', now() - interval '1 hour', 4000, 0, 600, 3400), (${KX}, ${X}, ${BX}, ${id(22)}, 'paid', now() - interval '1 hour', 4000, 0, 600, 3400)`);
+    // CODE: single use, counter 1 (the constraint caps it) but live on two tickets → reused AND drift; CODE2: counter 1, no live use → drift
+    await q(sql`insert into deal_coupon_codes (id, tenant_id, deal_id, code_hash, code_hint, single_use, use_count, status) values
+      (${CODE}, ${T}, ${D}, 'h1', 'AB12', true, 1, 'exhausted'), (${CODE2}, ${T}, ${D}, 'h2', 'CD34', false, 1, 'active'), (${CODEX}, ${X}, ${DX}, 'hx', 'EF56', true, 1, 'exhausted')`);
+    const red = (tenant: string, branch: string, deal: string, ticket: string, status: string, code: string | null, applied: any, redeemed: any) => q(sql`insert into deal_redemptions
+      (tenant_id, branch_id, deal_id, ticket_id, customer_id, amount_discounted_cents, deal_version, status, coupon_code_id, applied_at, redeemed_at)
+      values (${tenant}, ${branch}, ${deal}, ${ticket}, null, 600, 1, ${status}, ${code}, ${applied}, ${redeemed})`);
+    await red(T, B1, D, K1, 'applied', CODE, sql`now() - interval '2 hours'`, null);                              // pending although paid an hour ago
+    await red(T, B1, D, K2, 'redeemed', CODE, sql`now() - interval '2 hours'`, sql`now() - interval '3 hours'`);   // redeemed on an unpaid ticket, redeemed before applied
+    await red(T, B1, D, K3, 'redeemed', null, sql`now() - interval '2 hours'`, sql`now() - interval '1 hour'`);    // fine
+    await red(X, BX, DX, KX, 'applied', CODEX, sql`now() - interval '2 hours'`, null);                             // the other salon's: never counted
+    await red(X, BX, DX, KX, 'released', CODEX, sql`now() + interval '1 day'`, null);
+    const r = await svc.run('discounts', { tenantId: T });
+    expect(count(r, 'redemption_pending_on_paid')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'redeemed_ticket_unpaid')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'redemption_bad_timestamps')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'coupon_use_count_drift')).toMatchObject({ state: 'FAILED', count: 2 });
+    expect(count(r, 'single_use_code_reused')).toMatchObject({ state: 'FAILED', count: 1 });
+    const b2 = await svc.run('discounts', { tenantId: T, branchId: B2 });
+    expect(['redemption_pending_on_paid', 'redeemed_ticket_unpaid', 'coupon_use_count_drift', 'single_use_code_reused'].map((k) => count(b2, k).count)).toEqual([0, 0, 0, 0]);
+  });
 });

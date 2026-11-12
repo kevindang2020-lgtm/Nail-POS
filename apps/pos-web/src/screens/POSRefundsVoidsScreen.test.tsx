@@ -40,6 +40,26 @@ describe('POSRefundsVoidsScreen', () => {
     await waitFor(() => expect(co.refund).toHaveBeenCalledWith('p1', { reason: 'Chipped', amountCents: 1000 }, expect.any(String)));
     expect(await screen.findByTestId('note')).toHaveTextContent('Refund of $10.00 completed.');
   });
+  it('REFUNDS 05: the review step previews the customer refund receipt (proposed, not sent); nothing goes out before Confirm', async () => {
+    api.find.mockResolvedValue({ query: '6001', period: PERIOD, items: [tender] }); co.refund.mockResolvedValue({ status: 'approval_pending' });
+    mount(); await screen.findByTestId('reversal-row');
+    fireEvent.click(screen.getByTestId('find-payment')); fireEvent.change(screen.getByTestId('find-query'), { target: { value: '#6001' } });
+    fireEvent.click(await screen.findByTestId('find-refund'));
+    expect(screen.queryByTestId('refund-receipt-preview')).toBeNull();
+    fireEvent.change(screen.getByTestId('refund-amount'), { target: { value: '12.50' } }); fireEvent.change(screen.getByTestId('refund-reason'), { target: { value: 'Chipped' } });
+    fireEvent.click(screen.getByTestId('review-refund'));
+    const p = screen.getByTestId('refund-receipt-preview');
+    expect(p).toHaveTextContent('Proposed · not sent'); expect(p).toHaveTextContent('#6001'); expect(p).toHaveTextContent('John Smith');
+    expect(p).toHaveTextContent('VISA ••4242 · $100.00'); expect(p).toHaveTextContent('Partial refund of this payment');
+    expect(screen.getByTestId('rcpt-amount')).toHaveTextContent('−$12.50');
+    expect(p).toHaveTextContent('The original card (Card)');
+    expect(screen.getByTestId('rcpt-left')).toHaveTextContent('$37.50');                       // 50.00 refundable − 12.50
+    expect(screen.getByTestId('rcpt-note')).toHaveTextContent('Nothing is sent, printed or saved until you confirm');
+    expect(co.refund).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('confirm-refund'));
+    await waitFor(() => expect(co.refund).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('note')).not.toHaveTextContent('completed');               // the final answer is the server's
+  });
   it('a lost processor answer is said plainly and never retried', async () => {
     api.find.mockResolvedValue({ query: '6001', period: PERIOD, items: [tender] }); co.refund.mockRejectedValue(Object.assign(new Error('lost'), { status: 409, body: { code: 'REFUND_STATUS_UNKNOWN' } }));
     mount(); await screen.findByTestId('reversal-row');

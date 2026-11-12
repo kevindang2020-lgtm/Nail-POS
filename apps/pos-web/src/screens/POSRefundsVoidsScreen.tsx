@@ -235,6 +235,30 @@ function FindDialog({ onClose, onDone }: { onClose: () => void; onDone: (tone: '
   );
 }
 
+/** REFUNDS 05 — Refund Receipt Preview: what the customer's refund receipt would say, built only from the tender the server
+ *  returned and the amount typed. Shown at the review step; it is a PROPOSAL — nothing is sent, printed or saved, and the
+ *  final answer is the server's (refunded / waiting for approval / pending / unknown — held) after Confirm. */
+function RefundReceiptPreview({ tender, cents, reason }: { tender: Tender; cents: number; reason: string }) {
+  const after = Math.max(0, tender.refundableCents - cents);
+  const kind = cents >= tender.refundableCents && tender.refundedCents === 0 && tender.pendingCents === 0 ? 'full' : 'partial';
+  return (
+    <div className="panel" data-testid="refund-receipt-preview" style={{ padding: 10, margin: '8px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><b>{tx('rv.rcpt.title')}</b><span className="fk-chip warn">{tx('rv.rcpt.proposed')}</span></div>
+      <dl className="fk-dl" style={{ marginTop: 6 }}>
+        <dt>{tx('rv.rcpt.ticket')}</dt><dd>{tender.ticketNumber ? '#' + tender.ticketNumber : tx('rv.notLinked')}</dd>
+        <dt>{tx('rv.rcpt.customer')}</dt><dd>{tender.customer?.name ?? tx('rv.walkIn')}</dd>
+        <dt>{tx('rv.rcpt.original')}</dt><dd>{methodLbl(tender.method, tender.giftCardLast4)}{tender.card ? ' · ' + tender.card : ''} · {fmtMoney(tender.amountCents)} · {day(tender.at)}</dd>
+        <dt>{tx('rv.rcpt.type')}</dt><dd>{tx('rv.rcpt.kind.' + kind)}</dd>
+        <dt>{tx('rv.rcpt.amount')}</dt><dd><b data-testid="rcpt-amount">−{fmtMoney(cents)}</b></dd>
+        <dt>{tx('rv.rcpt.to')}</dt><dd>{tx('rv.rcpt.to.' + (tender.method === 'cash' || tender.method === 'gift_card' ? tender.method : 'card'), { m: methodLbl(tender.method, tender.giftCardLast4) })}</dd>
+        <dt>{tx('rv.rcpt.left')}</dt><dd data-testid="rcpt-left">{fmtMoney(after)}</dd>
+        <dt>{tx('finance.reason')}</dt><dd>{reason || '—'}</dd>
+      </dl>
+      <div className="fk-hint" data-testid="rcpt-note">{tx('rv.rcpt.note')}</div>
+    </div>
+  );
+}
+
 /** Refund ONE original tender (never a ticket total as one charge): amount ≤ refundable, reason, review, step-up, one key per intent. */
 function RefundTenderDialog({ tender, onClose, onDone, onTicket }: { tender: Tender; onClose: () => void; onDone: (tone: 'ok' | 'warn', text: string) => void; onTicket?: () => void }) {
   const [amount, setAmount] = useState(textFromCents(tender.refundableCents)); const [reason, setReason] = useState(''); const [review, setReview] = useState(false);
@@ -267,7 +291,8 @@ function RefundTenderDialog({ tender, onClose, onDone, onTicket }: { tender: Ten
         {review ? <button type="button" className="fk-btn primary" onClick={submit} disabled={busy} data-testid="confirm-refund">{busy ? tx('pos.loading') : tx('rv.confirmRefund', { a: fmtMoney(cents ?? 0) })}</button>
           : <button type="button" className="fk-btn primary" onClick={() => setReview(true)} disabled={!valid} data-testid="review-refund">{tx('rv.reviewRefund')}</button>}</>}>
       <TenderPosition t={tender} />
-      {review ? <div className="fk-note warn" data-testid="refund-review"><span>{tx('rv.reviewText', { a: fmtMoney(cents ?? 0), m: methodLbl(tender.method, tender.giftCardLast4), o: fmtMoney(tender.amountCents), r: reason.trim() })}</span></div> : <>
+      {review ? <><div className="fk-note warn" data-testid="refund-review"><span>{tx('rv.reviewText', { a: fmtMoney(cents ?? 0), m: methodLbl(tender.method, tender.giftCardLast4), o: fmtMoney(tender.amountCents), r: reason.trim() })}</span></div>
+        <RefundReceiptPreview tender={tender} cents={cents ?? 0} reason={reason.trim()} /></> : <>
         <label className="fk-field"><span>{tx('rv.amount', { max: fmtMoney(tender.refundableCents) })}</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} data-testid="refund-amount" /></label>
         {over ? <div className="fk-error" role="alert">{tx('rv.overMax', { max: fmtMoney(tender.refundableCents) })}</div> : null}
         <label className="fk-field"><span>{tx('rv.reasonRequired')}</span><textarea rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="refund-reason" /></label>

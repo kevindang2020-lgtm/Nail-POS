@@ -77,6 +77,10 @@ export function SchedRecommendationDetail({ id, can, techName, onChanged, onClos
         </div>
       )}
 
+      {/* Scheduling Optimizer 03 — Before/After Impact: who else the move touches (the server's own affected lists) */}
+      {(rec.affectedAppointmentIds?.length || rec.affectedTechnicianIds?.length) ? <div style={{ fontSize: 12.5 }} data-testid="sched-affected">
+        {t('ops.sched.affected', { a: String(rec.affectedAppointmentIds?.length ?? 0), n: String(rec.affectedTechnicianIds?.length ?? 0), names: (rec.affectedTechnicianIds ?? []).map((id) => techName(id)).join(', ') || '—' })}
+      </div> : null}
       {sim ? (
         <table style={table} aria-label={t('pos.simulation_before_and_after')}>
           <thead><tr><th style={th}>{t('pos.measure')}</th><th style={th}>{t('pos.before')}</th><th style={th}>{t('pos.after')}</th></tr></thead>

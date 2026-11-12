@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { mc, api } = vi.hoisted(() => {
-  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), previewRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
   return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
 });
 vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
@@ -31,6 +31,28 @@ describe('POSAIMoneyProtectionSettingsScreen', () => {
     fireEvent.click(screen.getByTestId('mpx-rule-save'));
     await waitFor(() => expect(mc.saveRule).toHaveBeenLastCalledWith({ ruleId: 'MP_DUP_CHARGE_LIKELY', enabled: false, severityOverride: null, thresholds: { windowSeconds: 90 },
       reason: 'Split tenders trigger it', expectedUpdatedAt: '2026-11-01T10:00:00.000Z' }));
+  });
+  it('Money Protection Rules 09: Threshold Change Preview is a dry run of the changed thresholds, shows counts + examples, and never saves', async () => {
+    mc.previewRule.mockResolvedValueOnce({ ruleId: 'MP_DUP_CHARGE_LIKELY', dryRun: true, supported: true, windowDays: 30, currentCount: 3, proposedCount: 2, stops: 2, starts: 1, severityChanges: 0, unchanged: 1,
+      examples: [{ fingerprint: 'f1', change: 'stops', fromSeverity: 'HIGH', toSeverity: null, ticketIds: ['t1'], amountCents: 5000 }, { fingerprint: 'f2', change: 'starts', fromSeverity: null, toSeverity: 'HIGH', ticketIds: ['t2'], amountCents: 4000 }] })
+      .mockResolvedValueOnce({ ruleId: 'MP_DUP_CHARGE_LIKELY', dryRun: true, supported: false, reason: 'threshold_not_read_by_detector', windowDays: 30 });
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rule-edit'));
+    expect(screen.queryByTestId('mpx-th-preview-btn')).toBeNull();                 // nothing changed → nothing to preview
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '60' } });
+    fireEvent.click(screen.getByTestId('mpx-th-preview-btn'));
+    await waitFor(() => expect(mc.previewRule).toHaveBeenCalledWith({ ruleId: 'MP_DUP_CHARGE_LIKELY', thresholds: { windowSeconds: 60 } }));
+    const p = await screen.findByTestId('mpx-th-preview');
+    expect(p).toHaveTextContent('last 30 days'); expect(screen.getByTestId('mpx-th-counts')).toHaveTextContent('3 detection(s) with the saved setting → 2 with your change');
+    expect(p).toHaveTextContent('2 would stop · 1 would start · 0 would change severity');
+    expect(screen.getAllByTestId('mpx-th-example').map((e) => e.textContent)).toEqual(['Would no longer be flagged (High) · 1 ticket(s)', 'Would be newly flagged (High) · 1 ticket(s)']);
+    expect(p).toHaveTextContent('nothing is saved');
+    expect(mc.saveRule).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '30' } });   // editing again clears the stale preview
+    expect(screen.queryByTestId('mpx-th-preview')).toBeNull();
+    fireEvent.click(screen.getByTestId('mpx-th-preview-btn'));
+    expect(await screen.findByTestId('mpx-th-preview')).toHaveTextContent('cannot be previewed');
+    expect(mc.saveRule).not.toHaveBeenCalled();
   });
   it('shows the change history before → after, flagged weaker, with who and why', async () => {
     wrap(<POSAIMoneyProtectionSettingsScreen />);

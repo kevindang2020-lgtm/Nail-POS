@@ -627,6 +627,23 @@ export function ruleDraftDiff(mine: { enabled: boolean; sev: string; th: Record<
   }
   return out;
 }
+/** Threshold Change Preview (Money Protection Rules 09): what the proposed thresholds would have done to the last 30 days of
+ *  detections — a dry run on the server (nothing saved, no alert raised). Shown only after the person asks for it. */
+type ThresholdPreviewView = { supported: boolean; reason?: string; windowDays?: number; currentCount?: number; proposedCount?: number; stops?: number; starts?: number; severityChanges?: number;
+  examples?: { fingerprint: string; change: 'stops' | 'starts' | 'severity'; fromSeverity: string | null; toSeverity: string | null; ticketIds: string[] }[] };
+function ThresholdPreview({ p }: { p: ThresholdPreviewView }) {
+  if (!p.supported) return <div className="fk-note" data-testid="mpx-th-preview" style={{ marginTop: 6 }}>{t('mpx.thp.unsupported')}</div>;
+  return (
+    <div className="panel" data-testid="mpx-th-preview" style={{ padding: 8, margin: '6px 0' }}>
+      <div><b>{t('mpx.thp.title', { d: p.windowDays ?? 30 })}</b></div>
+      <div data-testid="mpx-th-counts">{t('mpx.thp.counts', { now: p.currentCount ?? 0, next: p.proposedCount ?? 0 })}</div>
+      <div className="sub">{t('mpx.thp.detail', { stops: p.stops ?? 0, starts: p.starts ?? 0, sev: p.severityChanges ?? 0 })}</div>
+      {(p.examples ?? []).length ? <ul className="sub" style={{ margin: '4px 0 0', paddingLeft: 18 }}>{(p.examples ?? []).slice(0, 5).map((x) => (
+        <li key={x.fingerprint} data-testid="mpx-th-example">{t('mpx.thp.ex.' + x.change, { from: x.fromSeverity ? t('mpx.sev.' + x.fromSeverity) : '—', to: x.toSeverity ? t('mpx.sev.' + x.toSeverity) : '—', n: x.ticketIds.length })}</li>))}</ul> : null}
+      <div className="sub" style={{ marginTop: 4 }}>{t('mpx.thp.dry')}</div>
+    </div>
+  );
+}
 function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void; onSaved: () => void }) {
   const [enabled, setEnabled] = useState<boolean>(rule.enabled);
   const [sev, setSev] = useState<string>(rule.severityOverridden ? rule.severity : '');
@@ -638,6 +655,13 @@ function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void
   const [base, setBase] = useState<string | null>(rule.updatedAt ?? null);   // the version this person last saw
   const [cur, setCur] = useState<any>(null);                                  // what is saved now (after Reload / Compare)
   const [confirmRetry, setConfirmRetry] = useState(false);
+  const [preview, setPreview] = useState<ThresholdPreviewView | null>(null);
+  const numericTh = () => Object.fromEntries(Object.entries(th).map(([k, v]) => [k, v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v]));
+  const thChanged = Object.entries(th).some(([k, v]) => String(rule.thresholds?.[k] ?? '') !== v);
+  const runPreview = () => {
+    setBusy(true); setMsg(null);
+    mc.previewRule({ ruleId: rule.id, thresholds: numericTh() }).then((p: ThresholdPreviewView) => setPreview(p)).catch((e) => { setPreview(null); setMsg(mpErr(e)); }).finally(() => setBusy(false));
+  };
   const save = () => {
     setBusy(true); setMsg(null); setConfirmRetry(false);
     const thresholds = Object.fromEntries(Object.entries(th).map(([k, v]) => [k, v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v]));
@@ -682,7 +706,9 @@ function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void
       <label className="rvw-f"><input type="checkbox" data-testid="mpx-rule-enabled" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> <span>{t('mpx.rules.enabled')}</span></label>
       <label className="rvw-f"><span>{t('mpx.rules.severity')}</span><select data-testid="mpx-rule-sev" value={sev} onChange={(e) => setSev(e.target.value)}>
         <option value="">{t('mpx.rules.defaultSev', { s: t('mpx.sev.' + rule.defaultSeverity) })}</option>{SEVS.filter((s) => s !== 'all').map((s) => <option key={s} value={s}>{t('mpx.sev.' + s)}</option>)}</select></label>
-      {Object.keys(th).map((k) => <label key={k} className="rvw-f"><span>{k}</span><input value={th[k]} onChange={(e) => setTh((x) => ({ ...x, [k]: e.target.value }))} aria-label={k} /></label>)}
+      {Object.keys(th).map((k) => <label key={k} className="rvw-f"><span>{k}</span><input value={th[k]} onChange={(e) => { setPreview(null); setTh((x) => ({ ...x, [k]: e.target.value })); }} aria-label={k} /></label>)}
+      {thChanged ? <button type="button" className="btn ghost sm" data-testid="mpx-th-preview-btn" disabled={busy} onClick={runPreview}>{t('mpx.thp.btn')}</button> : null}
+      {preview ? <ThresholdPreview p={preview} /> : null}
       <label className="rvw-f"><span>{t('mpx.rules.reason')}</span><textarea data-testid="mpx-rule-reason" rows={2} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
       <div className="sub">{t('mpx.rules.reasonHint')}</div>
     </FitDialog>
