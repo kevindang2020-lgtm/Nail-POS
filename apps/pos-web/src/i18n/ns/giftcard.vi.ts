@@ -61,4 +61,7 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.adjPreview": "Số dư hiện tại {now} · thay đổi {d} · số dư sau {after}", // DRAFT — Kevin reviews
   "gc.adjOver": "Vượt quá số dư — điều chỉnh không thể làm thẻ âm.", // DRAFT — Kevin reviews
   "gc.adjAudit": "Không gắn với phiếu: ghi nhận là điều chỉnh của quản lý kèm lý do, sau khi xác nhận mật khẩu, trong sổ thẻ và nhật ký kiểm tra.", // DRAFT — Kevin reviews
+  "gc.integrity.ok": "Kiểm tra sổ: số dư của cả {n} thẻ đã thanh toán khớp với lịch sử giao dịch.", // DRAFT — Kevin reviews
+  "gc.integrity.bad": "Kiểm tra sổ: {n} thẻ có số dư không khớp với lịch sử giao dịch của chính thẻ đó. Chưa thay đổi gì — mở thẻ để xem:", // DRAFT — Kevin reviews
+  "gc.integrity.card": "Số dư {b} · sổ cộng lại {l}", // DRAFT — Kevin reviews
 };

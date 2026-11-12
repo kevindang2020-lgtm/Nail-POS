@@ -56,4 +56,6 @@ export const COUPONS_VI = {
   'cp.goal.slow_weekdays': 'Lấp đầy ngày vắng', 'cp.goal.promote_service': 'Quảng bá một dịch vụ', 'cp.goal.returning_visits': 'Khuyến khích quay lại lần hai', 'cp.goal.reconnect_inactive': 'Kết nối lại khách lâu không ghé',
   'cp.percentOff': 'Giảm phần trăm', 'cp.onePerCustomer': 'mỗi khách một lần', 'cp.eligibleCustomers': 'Số khách có thể dùng', 'cp.exposure': 'Chi phí tối đa', 'cp.exposureNote': 'nếu {n} lượt ghé như cũ lặp lại cùng mã',
   'cp.assistSave': 'Lưu bản nháp', 'cp.assistSafety': 'Lưu chỉ tạo bản nháp. Kích hoạt và gửi cho khách là các bước riêng, cần duyệt.',
+  'cp.check.stacking_overlap': 'Không có phiếu đang chạy nào vô tình cộng dồn với nhau', // DRAFT — Kevin reviews
+  'cp.check.cap_exceeded': 'Không có phiếu nào bị dùng quá giới hạn', // DRAFT — Kevin reviews
 } as const;

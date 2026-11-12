@@ -57,4 +57,6 @@ export const COUPONS_EN = {
   'cp.goal.slow_weekdays': 'Fill slow weekdays', 'cp.goal.promote_service': 'Promote a service', 'cp.goal.returning_visits': 'Encourage a second visit', 'cp.goal.reconnect_inactive': 'Reconnect with inactive customers',
   'cp.percentOff': 'Percent off', 'cp.onePerCustomer': 'one per customer', 'cp.eligibleCustomers': 'Customers who could use it', 'cp.exposure': 'Most it could cost', 'cp.exposureNote': 'if the same {n} visits happened again with it',
   'cp.assistSave': 'Save as draft', 'cp.assistSafety': 'Saving makes a draft only. Activating it and sending it to anyone are separate, approved steps.',
+  'cp.check.stacking_overlap': 'No accidental stacking between live coupons',
+  'cp.check.cap_exceeded': 'No coupon used past its limits',
 } as const;

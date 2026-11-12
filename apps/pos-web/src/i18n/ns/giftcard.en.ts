@@ -66,4 +66,7 @@ export const GIFTCARD_EN = {
   "gc.adjPreview": "Balance now {now} · change {d} · balance after {after}",
   "gc.adjOver": "That is more than the balance — a correction cannot take a card below zero.",
   "gc.adjAudit": "Not linked to a ticket: recorded as a manager correction with your reason, after password confirmation, in the card ledger and audit log.",
+  "gc.integrity.ok": "Ledger check: the balances of all {n} paid cards match their transaction records.",
+  "gc.integrity.bad": "Ledger check: {n} card(s) have a balance that does not match their own transaction records. Nothing was changed — open a card to review:",
+  "gc.integrity.card": "Balance {b} · ledger adds up to {l}",
 } as const;

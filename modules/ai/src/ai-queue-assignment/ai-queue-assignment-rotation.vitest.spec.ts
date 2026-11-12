@@ -79,4 +79,18 @@ describe('service — the queue\'s workload signals + rotation', () => {
     expect(await svc.setRotationPolicy(ctx(), { policy: 'fixed_order', fixedOrder: ['t2', 't1'] })).toEqual({ policy: 'manual_order', fixedOrder: ['t2', 't1'] });
     expect(await svc.getRotationPolicy(ctx())).toEqual({ policy: 'manual_order', fixedOrder: ['t2', 't1'] });
   });
+
+  // Tech Queue backlog · 19 "Mode Selector Security": changing the Fair Turn mode is a manager/owner action and is audited
+  it('a fairness mode needs the turn-rules permission on top of manage_rules; the front desk is refused; each change is logged with actor + reason', async () => {
+    const settings = new InMemoryQueueAssignmentSettings();
+    const svc = new QueueAssignmentService(new InMemoryQueueAssignmentRepository(), new InMemoryQueueDataAdapter({}), new InMemoryQueueAssignmentEntitlement(() => true), undefined, { settings });
+    const FRONT_DESK = ['ai_queue_assignment.view', 'ai_queue_assignment.recommend', 'ai_queue_assignment.assign'];
+    await expect(svc.setRotationPolicy(ctx('A', FRONT_DESK), { policy: 'workload_balanced' })).rejects.toBeInstanceOf(QueueAssignmentForbiddenError);
+    await expect(svc.setRotationPolicy(ctx('A', PERMS), { policy: 'workload_balanced' })).rejects.toBeInstanceOf(QueueAssignmentForbiddenError);
+    expect((await settings.versions({ tenantId: 'A', branchId: 'b1' })).length).toBe(0);   // a refused change leaves no trace in the settings
+    const owner = ctx('A', [...PERMS, 'turn_queue.settings.manage']);
+    expect(await svc.setRotationPolicy(owner, { policy: 'workload_balanced', reason: 'busy season' })).toEqual({ policy: 'workload_balanced', fixedOrder: [] });
+    const log = await settings.versions({ tenantId: 'A', branchId: 'b1' });
+    expect(log[0]).toMatchObject({ change: 'rotation', reason: 'busy season', changedBy: 'u1' });
+  });
 });

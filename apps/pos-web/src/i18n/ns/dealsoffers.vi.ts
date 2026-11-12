@@ -39,4 +39,6 @@ export const DEALSOFFERS_VI = {
   'do.check.tech_policy': 'Ưu đãi của thợ tuân thủ quy định hiện tại',
   'do.sla.soon': 'Bắt đầu sau {h} giờ — cần quyết định', // DRAFT — Kevin reviews
   'do.sla.passed': 'Đã qua giờ bắt đầu — vẫn chờ quyết định', // DRAFT — Kevin reviews
+  'do.check.stacking_overlap': 'Không có ưu đãi đang chạy nào vô tình cộng dồn với nhau', // DRAFT — Kevin reviews
+  'do.check.cap_exceeded': 'Không có ưu đãi nào bị dùng quá giới hạn', // DRAFT — Kevin reviews
 } as const;

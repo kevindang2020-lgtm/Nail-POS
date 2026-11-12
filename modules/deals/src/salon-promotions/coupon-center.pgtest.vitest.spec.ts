@@ -229,7 +229,7 @@ describe('§11 related campaigns, §19 health, §16 assistant (draft only)', () 
   });
   it('health is ready from verified checks; a drifted counter and a payment that never marked its coupon are flagged — nothing is auto-fixed', async () => {
     const h0 = await center.health(ctx);
-    expect(h0.checks.map((c) => [c.key, c.status])).toEqual([['counters', 'ready'], ['paid_not_marked', 'ready'], ['stuck_holds', 'ready'], ['confirmed_unpaid', 'ready'], ['expiry_lag', 'ready']]);
+    expect(h0.checks.map((c) => [c.key, c.status])).toEqual([['counters', 'ready'], ['paid_not_marked', 'ready'], ['stuck_holds', 'ready'], ['confirmed_unpaid', 'ready'], ['expiry_lag', 'ready'], ['cap_exceeded', 'ready'], ['stacking_overlap', 'ready']]);
     await q(`update deals set redemption_count = redemption_count + 3 where id = $1`, [vishal.id]);
     const t = await ticket(C1, [[S10, 1000]]); await applyAtCheckout(t, { code: 'VISHALNG20' });
     await q(`update tickets set status = 'paid' where id = $1`, [t]);   // paid, but onPaid never ran
@@ -271,6 +271,49 @@ describe('§11 related campaigns, §19 health, §16 assistant (draft only)', () 
     expect(s.basis).toMatchObject({ atRiskDays: 60 });
     expect(s.terms.rules).toEqual({ all: [{ type: 'lapsed', days: 60 }, { type: 'min_visits', count: 1 }] });
     expect(s.eligibleCustomers).toBe(0);   // C1 visited recently; C2 visited recently; nobody else has visits
+  });
+});
+
+// Promotions backlog · 07 Code Conflict Finder: two live coupons both marked combinable on the same service and dates are
+// flagged (sample = the earlier one); different services, a non-combinable partner or non-overlapping dates are not; nothing changes
+describe('Coupons — stacking conflict check', () => {
+  it('flags only combinable live coupons that overlap on service and dates, and edits nothing', async () => {
+    const key = async () => (await center.health(ctx)).checks.find((c) => c.key === 'stacking_overlap')!;
+    expect((await key()).status).toBe('ready');
+    const a = await coupon('Gel A', 'GELSTACKA', { stackable: true, serviceIds: [S100] });
+    const other = await coupon('Pedi', 'PEDISTACK', { stackable: true, serviceIds: [SOTHER] });   // a different service: no conflict
+    const solo = await coupon('Gel solo', 'GELSOLO', { stackable: false, serviceIds: [S100] });   // not combinable: no conflict
+    expect((await key()).status).toBe('ready');
+    const later = new Date(Date.now() + 400 * 86400_000).toISOString(); const later2 = new Date(Date.now() + 430 * 86400_000).toISOString();
+    const future = await coupon('Gel next year', 'GELNEXTYR', { stackable: true, serviceIds: [S100], startsAt: later, endsAt: later2 });
+    const aEnds = new Date(Date.now() + 30 * 86400_000).toISOString();
+    await q(`update deals set ends_at = $2 where id = $1`, [a.id, aEnds]);   // a ends long before the scheduled one starts
+    expect((await key()).status).toBe('ready');
+    const b = await coupon('All services', 'ALLSTACK', { stackable: true, serviceIds: [] });   // every service, overlaps a AND other
+    const k = await key();
+    expect(k.status).toBe('attention'); expect(k.count).toBe(3);   // pairs a+b, other+b, future+b (b never ends) → the earlier of each
+    expect(k.sample).toEqual([a.id, other.id, future.id]);
+    expect(k.sample).not.toContain(solo.id);
+    expect((await q(`select status from deals where id = any($1::uuid[])`, [[a.id, b.id, other.id, future.id]])).map((r: any) => r.status).sort()).toEqual(['active', 'active', 'active', 'scheduled']);
+    for (const d of [a, b, other, future, solo]) await svc.pause(ctx, d.id).catch(async () => q(`update deals set status = 'paused' where id = $1`, [d.id]));
+    expect((await key()).status).toBe('ready');
+  });
+  it('No-Double-Use: more completed uses than the per-customer or total limit is flagged from the ledger; nothing is changed', async () => {
+    const key = async () => (await center.health(ctx)).checks.find((c) => c.key === 'cap_exceeded')!;
+    expect((await key()).status).toBe('ready');
+    const once = await coupon('Once each', 'ONCEEACH', { maxPerCustomer: 1, maxRedemptions: 5 });
+    const ins = (cust: string, st = 'redeemed') => q(`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, deal_version, status, amount_discounted_cents) values ($1,$2,$3,$4,1,$5,100)`, [once.id, T, B, cust, st]);
+    await ins(C1); await ins(C2); await ins(C1, 'reversed');   // a reversed use does not count
+    expect((await key()).status).toBe('ready');
+    await ins(C1);                                             // the race: C1 used it twice
+    const k = await key();
+    expect(k).toMatchObject({ status: 'attention', count: 1, sample: [once.id] });
+    expect((await redemptions(once.id)).length).toBe(4);       // flagged, not rewritten
+    await q(`update deal_redemptions set status = 'reversed' where deal_id = $1 and customer_id = $2 and status = 'redeemed' and id = (select id from deal_redemptions where deal_id = $1 and customer_id = $2 and status = 'redeemed' order by created_at desc, id desc limit 1)`, [once.id, C1]);
+    expect((await key()).status).toBe('ready');
+    await q(`update deals set max_per_customer = null, max_redemptions = 1 where id = $1`, [once.id]);   // total cap 1, two completed uses
+    expect((await key())).toMatchObject({ status: 'attention', sample: [once.id] });
+    await q(`update deals set max_redemptions = null where id = $1`, [once.id]);
   });
 });
 

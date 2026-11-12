@@ -185,6 +185,13 @@ export function POSGiftCardsScreen() {
 
       <FreshnessLine at={freshAt} error={sum.error} testId="giftcards-fresh" />
       {freshAt ? <div className="sub" data-testid="giftcards-source">{tx('gc.source')}</div> : null}
+      {/* GIFT CARDS backlog · 03: every paid card's balance checked against its own ledger rows; a mismatch names the card (read-only) */}
+      {sum.data?.integrity ? (sum.data.integrity.unreconciledCards > 0
+        ? <div className="fk-note bad" role="status" data-testid="gc-integrity"><span>{tx('gc.integrity.bad', { n: fmtNumber(sum.data.integrity.unreconciledCards) + (sum.data.integrity.capped ? '+' : '') })}</span>
+            <span className="fn-note-acts">{(sum.data.integrity.sample as { cardId: string; card: string; balanceCents: number; ledgerBalanceCents: number }[]).map((x) =>
+              <button key={x.cardId} type="button" className="fk-link" data-testid="gc-integrity-card" onClick={() => setDlg({ kind: 'detail', id: x.cardId })}
+                title={tx('gc.integrity.card', { b: fmtMoney(x.balanceCents), l: fmtMoney(x.ledgerBalanceCents) })}>{x.card}</button>)}</span></div>
+        : <div className="sub" data-testid="gc-integrity">{tx('gc.integrity.ok', { n: fmtNumber(sum.data.integrity.checkedCards) })}</div>) : null}
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-liability" tone="gold" label={tx('gc.kpi.liability')} loading={!k} value={k ? fmtMoney(k.outstandingLiabilityCents) : ''} sub={tx('gc.kpi.liabilitySub')} onClick={() => setGroup('active')} />

@@ -40,4 +40,6 @@ export const DEALSOFFERS_EN = {
   'do.check.tech_policy': 'Technician deals follow today\'s rules',
   'do.sla.soon': 'Starts in {h} h — needs a decision',
   'do.sla.passed': 'Start time passed — still waiting for a decision',
+  'do.check.stacking_overlap': 'No accidental stacking between live offers',
+  'do.check.cap_exceeded': 'No offer used past its limits',
 } as const;

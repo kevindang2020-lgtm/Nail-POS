@@ -200,4 +200,21 @@ describe('Gift Cards — reload, void, isolation', () => {
     await expect(r.detail(ctxOther, card1)).rejects.toMatchObject({ code: 'GIFT_CARD_NOT_FOUND' });
     expect((await w.voidGiftCardById(ctxOther, card1, 'guess'))).toEqual({ ok: false, reason: 'not_found' });
   });
+  // GIFT CARDS backlog · 03 Ledger Accuracy Checker: the summary judges every paid card's balance against its own ledger rows
+  // and names the exact card behind a mismatch; nothing is corrected by the check
+  it('ledger accuracy: all cards reconcile; a drifted balance is named with both numbers and left as it is', async () => {
+    const s0 = (await r.summary(ctx, await allTime())).integrity;
+    expect(s0.unreconciledCards).toBe(0); expect(s0.sample).toEqual([]);
+    expect(s0.checkedCards).toBeGreaterThan(0);
+    const paid = (await q(`select id, balance_cents from gift_cards where tenant_id = $1 and status = 'active' order by created_at limit 1`, [T])).rows[0];
+    await q(`update gift_cards set balance_cents = balance_cents + 700 where id = $1`, [paid.id]);
+    const s1 = (await r.summary(ctx, await allTime())).integrity;
+    expect(s1.unreconciledCards).toBe(1);
+    expect(s1.sample).toEqual([{ cardId: paid.id, card: expect.stringMatching(/^(•••• \d{4}|GC-\*{4}-.{4}|••••)$/), balanceCents: Number(paid.balance_cents) + 700, ledgerBalanceCents: Number(paid.balance_cents) }]);
+    expect((await r.detail(ctx, paid.id)).totals.reconciled).toBe(false);   // the card's own detail agrees
+    expect(Number((await q(`select balance_cents from gift_cards where id = $1`, [paid.id])).rows[0].balance_cents)).toBe(Number(paid.balance_cents) + 700);
+    expect((await r.summary(ctxOther, await allTime())).integrity.unreconciledCards).toBe(0);   // another salon never sees it
+    await q(`update gift_cards set balance_cents = balance_cents - 700 where id = $1`, [paid.id]);
+    expect((await r.summary(ctx, await allTime())).integrity.unreconciledCards).toBe(0);
+  });
 });

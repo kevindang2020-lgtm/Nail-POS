@@ -204,7 +204,17 @@ export class GiftCardsScreenRepository {
           count(*) filter (where t.type in ('redeem', 'redemption'))::int as redemptions
         from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
         where t.tenant_id = ${T} and ${sc} and ${per}`.execute(this.db)).rows[0] ?? {};
+    // GIFT CARDS backlog · 03 "Ledger Accuracy Checker": every card in scope whose balance column does not equal the sum of its
+    // own ledger rows (the same rule the card's detail uses), with the exact card ids behind it — read-only, never "fixed" here.
+    // An unpaid (pending_payment / draft) card carries no value yet and is not judged.
+    const drift = (await sql<any>`select g0.id, g0.card_number_last4, g0.code, g0.balance_cents::bigint as bal, coalesce(l.s, 0)::bigint as led from gift_cards g0
+        left join lateral (select sum(${SIGNED}) as s from gift_card_transactions t where t.tenant_id = g0.tenant_id and t.gift_card_id = g0.id) l on true
+        where g0.tenant_id = ${T} and ${sc} and g0.status not in ('pending_payment', 'draft') and g0.balance_cents <> coalesce(l.s, 0)
+        order by g0.created_at, g0.id limit 200`.execute(this.db)).rows;
+    const checked = N((await sql<any>`select count(*)::int as n from gift_cards g0 where g0.tenant_id = ${T} and ${sc} and g0.status not in ('pending_payment', 'draft')`.execute(this.db)).rows[0]?.n);
     return {
+      integrity: { checkedCards: checked, unreconciledCards: drift.length, capped: drift.length >= 200,
+        sample: drift.slice(0, 10).map((d: any) => ({ cardId: String(d.id), card: maskedCard(d.card_number_last4, d.code), balanceCents: N(d.bal), ledgerBalanceCents: N(d.led) })) },
       kpis: {
         outstandingLiabilityCents: N(owed.liability), activeCards: N(owed.active), totalCards: N(owed.total), pendingPaymentCards: N(owed.pending), redeemedCards: N(owed.redeemed), closedCards: N(owed.closed),
         totalIssuedCents: N(flows.issued), issuedCards: N(flows.issued_cards), reloadedCents: N(flows.reloaded),

@@ -107,6 +107,31 @@ export class CouponCenter {
         where r.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and r.status in ('redeemed', 'partially_reversed') and coalesce(t.status, 'missing') not in ('paid', 'closed', 'refunded', 'partially_refunded') limit 50`.execute(this.db)).rows);
     await run('expiry_lag', 'Ended coupons have been closed by the scheduled job.', (n) => `${n} coupon(s) past their end date are still marked active (the expiry job is behind; Checkout refuses them anyway by date).`,
       async () => (await sql<any>`select d.id from deals d where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and d.status = 'active' and d.ends_at is not null and d.ends_at < now() - interval '1 hour' limit 50`.execute(this.db)).rows);
+    // Promotions backlog · 16 "No-Double-Use Monitor": a cap race that got through — more completed uses than the offer's total
+    // cap, or one customer over the per-customer limit. Read from the ledger; the correction (reversal / refund) is a person's call.
+    await run('cap_exceeded', 'No coupon has been used more often than its limits allow.', (n) => `${n} coupon(s) have more completed uses than their total or per-customer limit allows (two checkouts raced past the limit). Review the redemptions; nothing was changed.`,
+      async () => (await sql<any>`select d.id from deals d where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and (
+          (d.max_redemptions is not null and (select count(*) from deal_redemptions r where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed')) > d.max_redemptions)
+          or (d.max_per_customer is not null and exists (select 1 from deal_redemptions r where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed') and r.customer_id is not null
+                group by r.customer_id having count(*) > d.max_per_customer)))
+        order by d.created_at, d.id limit 50`.execute(this.db)).rows);
+    // Promotions backlog · 07 "Code Conflict Finder": codes themselves are unique per salon (uq_deal_coupon_code), so the real
+    // conflict is two live / scheduled offers that are BOTH marked combinable, cover the same service (no service list = every
+    // service), the same branch scope and overlapping dates — Checkout may stack them on one ticket. Flagged for a person to
+    // review; nothing is paused or edited here. The sample is the earlier-created offer of each pair.
+    await run('stacking_overlap', 'No two live offers can be combined on the same service by accident.', (n) => `${n} live or scheduled coupon(s) are marked combinable with another live coupon on the same service and dates — they can stack on one ticket. Review whether that is intended.`,
+      async () => (await sql<any>`select distinct a.id, a.created_at from deals a join deals b on b.tenant_id = a.tenant_id and b.id <> a.id and (b.created_at, b.id) > (a.created_at, a.id)
+        where a.tenant_id = ${T} and ${sql.raw(this.scope === 'coupon' ? `a.kind = 'coupon' and b.kind = 'coupon' and ` : '')}a.status in ('active', 'scheduled') and b.status in ('active', 'scheduled')
+          and a.stackable and b.stackable
+          and (a.branch_id is null or b.branch_id is null or a.branch_id = b.branch_id)
+          and ${ctx.branchId && UUID.test(ctx.branchId) ? sql`(a.branch_id = ${ctx.branchId} or a.branch_id is null)` : sql`true`}
+          and coalesce(a.starts_at, '-infinity'::timestamptz) < coalesce(b.ends_at, 'infinity'::timestamptz)
+          and coalesce(b.starts_at, '-infinity'::timestamptz) < coalesce(a.ends_at, 'infinity'::timestamptz)
+          and (not exists (select 1 from deal_services s where s.tenant_id = a.tenant_id and s.deal_id = a.id)
+            or not exists (select 1 from deal_services s where s.tenant_id = b.tenant_id and s.deal_id = b.id)
+            or exists (select 1 from deal_services sa join deal_services sb on sb.service_id = sa.service_id and sb.tenant_id = sa.tenant_id
+                       where sa.tenant_id = a.tenant_id and sa.deal_id = a.id and sb.deal_id = b.id))
+        order by a.created_at, a.id limit 50`.execute(this.db)).rows);
     if (this.scope === 'all') {
       // Deals & Offers guide §17 "Check Deal System": the approval backlog and live technician deals measured against TODAY's rules
       await run('approval_backlog', 'No deal has been waiting for a manager for more than 3 days.', (n) => `${n} deal(s) have waited for a manager's decision for more than 3 days.`,

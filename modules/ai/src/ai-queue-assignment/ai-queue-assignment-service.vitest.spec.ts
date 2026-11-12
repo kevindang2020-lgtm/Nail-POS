@@ -102,13 +102,19 @@ describe('QueueAssignmentService', () => {
     });
 
     it('overridden needs the override permission + a technician, and assigns as a manager override', async () => {
-      const { svc, assign } = make();
+      const { svc, assign, repo } = make();
       const env = await svc.recommend(ctx('A'), 'q1');
       await expect(svc.decide(ctx('A', 'b1', ['ai_queue_assignment.view', 'ai_queue_assignment.assign']), env.recommendationId, { decision: 'overridden', chosenTechnicianId: 't3' })).rejects.toBeInstanceOf(QueueAssignmentForbiddenError);
       await expect(svc.decide(ctx('A'), env.recommendationId, { decision: 'overridden' })).rejects.toBeInstanceOf(QueueAssignmentValidationError);
       const res = await svc.decide(ctx('A'), env.recommendationId, { decision: 'overridden', chosenTechnicianId: 't3', reason: 'regular client' });
       expect(res.applied).toBe(true);
       expect(assign.calls[0].opts).toMatchObject({ technicianId: 't3', managerOverride: true, source: 'ai_suggestion' });
+      // Tech Queue backlog · 46 "Manual Override Must Preserve History": the decision row keeps the original recommendation
+      // (its stored envelope still names the suggested technician), the technician chosen, the reason, who and when
+      const [d] = await repo.listDecisions(ctx('A'), 'q1');
+      expect(d).toMatchObject({ recommendationId: env.recommendationId, decision: 'overridden', chosenTechnicianId: 't3', reason: 'regular client', decidedBy: 'u1', applied: true });
+      expect(Number.isNaN(Date.parse(d!.createdAt))).toBe(false);
+      expect((await repo.getRecommendation(ctx('A'), env.recommendationId))?.envelope.recommended?.technicianId).toBe('t1');
     });
 
     it('accepted with a different technician is refused (that is an override)', async () => {

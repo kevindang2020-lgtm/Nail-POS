@@ -48,6 +48,24 @@ describe('POSGiftCardsScreen', () => {
     const k = screen.getByTestId('kpi-issued'); fireEvent.click(k.querySelector('button') ?? k);
     await waitFor(() => expect(gc.liability).toHaveBeenCalled());
   });
+  it('GIFT CARDS · 03 ledger check: all cards reconcile → a quiet line; a drifted card is named (masked) and opens its detail', async () => {
+    gc.summary.mockResolvedValue({ ...summary, integrity: { checkedCards: 3, unreconciledCards: 0, capped: false, sample: [] } });
+    const v = mount();
+    expect(await screen.findByTestId('gc-integrity')).toHaveTextContent(/all 3 paid cards match/);
+    v.unmount();
+    gc.summary.mockResolvedValue({ ...summary, integrity: { checkedCards: 3, unreconciledCards: 1, capped: false, sample: [{ cardId: 'g9', card: '•••• 7777', balanceCents: 4200, ledgerBalanceCents: 3500 }] } });
+    gc.detail.mockResolvedValue({ card: card({ id: 'g9', card: '•••• 7777' }), permissions: { void: false, reload: false },
+      totals: { originalCents: 3500, reloadedCents: 0, redeemedCents: 0, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 4200, transactions: 1, ledgerBalanceCents: 3500, reconciled: false } });
+    gc.ledger.mockResolvedValue(pageOf([]));
+    mount();
+    const note = await screen.findByTestId('gc-integrity');
+    expect(note).toHaveTextContent(/1 card\(s\) have a balance that does not match/);
+    const btn = screen.getByTestId('gc-integrity-card');
+    expect(btn).toHaveTextContent('•••• 7777'); expect(btn.getAttribute('title')).toMatch(/\$42\.00.*\$35\.00/);
+    fireEvent.click(btn);
+    await waitFor(() => expect(gc.detail).toHaveBeenCalledWith('g9'));
+    expect(gc.adjust).not.toHaveBeenCalled();
+  });
   it('status tab and search go to the server, with chips and Clear All', async () => {
     mount(); await screen.findByText('•••• 4821');
     fireEvent.click(screen.getByTestId('tab-redeemed'));
