@@ -191,6 +191,14 @@ export function adviseBranches(rows: ScorecardRow[]): Advice[] {
   return out;
 }
 
+const FINANCIAL_VIEW = 'pos.reports.financial_view';
+type SnapRow = { id: string; title: string | null; preset: string; range_from: string | null; range_to: string | null; financials_included: boolean; as_of: Date | string; created_at: Date | string;
+  snapshot_json: unknown; saved_by: string | null; branches: number; sign_offs: number; last_decision: string | null };
+export interface BranchSignOff { id: string; decision: 'approved' | 'needs_follow_up' | 'noted'; note: string; reviewer: string | null; at: string }
+export interface BranchSnapshotSummaryView { id: string; title: string | null; preset: string; range: { from: string; to: string } | null; asOf: string; savedBy: string | null; savedAt: string;
+  branches: number; financialsIncluded: boolean; signOffs: number; lastDecision: BranchSignOff['decision'] | null }
+export interface BranchSnapshotView extends BranchSnapshotSummaryView { totals: Record<string, number | null>; rows: Array<Record<string, string | number | null>>; signOffList: BranchSignOff[]; canSignOff: boolean; immutable: true }
+
 export class BranchInsights {
   constructor(private readonly db: Kysely<any>, private readonly branches: Pick<AiBusinessBranchesService, 'compareBranches'>, private readonly now: () => number = () => Date.now()) {}
 
@@ -286,6 +294,72 @@ export class BranchInsights {
     if (!a || !b) throw new BranchInsightsError('Branch not found among the branches you can view.', 'BRANCH_NOT_AUTHORIZED', 403);
     const evidence = explainEvidence(a, b, { asOf: new Date(this.now()).toISOString(), preset: s.preset, financialsIncluded: s.financialsIncluded });
     return { a: a.branchName, b: b.branchName, preset: s.preset, range: s.range, ...explainDifference(a, b), evidence };
+  }
+
+  // ── AI BRANCH COMPARISON 14 (Nov 12 2026) — saved comparisons + manager sign-off notes (migration 848) ──
+  /** Freeze the server's own comparison for the period (every authorized branch, never figures from the browser). */
+  async saveSnapshot(ctx: AiBusinessContext, q: Row): Promise<BranchSnapshotView> {
+    this.need(ctx);
+    const title = q.title == null ? null : String(q.title).trim().slice(0, 120) || null;
+    const cmp = await this.branches.compareBranches(ctx, { preset: q.preset, from: q.from, to: q.to, all: true });
+    const rows = (cmp.branches as BranchComparisonRow[]).map((b) => ({ branchId: b.branchId, branchName: b.branchName, status: b.status, netSalesCents: b.netSalesCents, ticketsCount: b.ticketsCount,
+      averageTicketCents: b.averageTicketCents, totalBookings: b.totalBookings, completed: b.completed, completionRate: b.completionRate, cancelledPercent: b.cancelledPercent, noShowPercent: b.noShowPercent,
+      revenuePerCompletedAppointmentCents: b.revenuePerCompletedAppointmentCents }));
+    const snap = { totals: cmp.totals, branches: rows };
+    const ins = (await sql<{ id: string }>`insert into ai_branch_comparison_snapshots (tenant_id, branch_id, created_by_user_id, title, preset, range_from, range_to, financials_included, as_of, snapshot_json)
+      values (${ctx.tenantId}, ${isUuid(ctx.branchId) ? ctx.branchId : null}, ${isUuid(ctx.userId) ? ctx.userId : null}, ${title}, ${String(cmp.preset)}, ${cmp.range?.from ?? null}::date, ${cmp.range?.to ?? null}::date,
+        ${cmp.financialsIncluded}, ${cmp.asOf ?? new Date(this.now()).toISOString()}::timestamptz, ${JSON.stringify(snap)}::jsonb) returning id`.execute(this.db)).rows[0];
+    return this.snapshot(ctx, String(ins.id));
+  }
+  async listSnapshots(ctx: AiBusinessContext, q: Row): Promise<{ items: BranchSnapshotSummaryView[]; page: number; pageSize: number; totalItems: number; totalPages: number }> {
+    this.need(ctx);
+    const pageSize = 10;
+    const total = Number((await sql<{ n: number }>`select count(*)::int as n from ai_branch_comparison_snapshots where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0]?.n ?? 0);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(totalPages, Math.max(1, Math.trunc(Number(q.page)) || 1));
+    const rows = (await sql<SnapRow>`${this.snapSelect(ctx.tenantId)} order by s.created_at desc, s.id desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+    return { items: rows.map((r) => this.summaryOf(r)), page, pageSize, totalItems: total, totalPages };
+  }
+  async snapshot(ctx: AiBusinessContext, id: string): Promise<BranchSnapshotView> {
+    this.need(ctx);
+    if (!isUuid(id)) throw new BranchInsightsError('That saved comparison could not be found.', 'RESOURCE_NOT_FOUND', 404);
+    const r = (await sql<SnapRow>`${this.snapSelect(ctx.tenantId)} and s.id = ${id}::uuid`.execute(this.db)).rows[0];
+    if (!r) throw new BranchInsightsError('That saved comparison could not be found.', 'RESOURCE_NOT_FOUND', 404);
+    const fin = has(ctx, FINANCIAL_VIEW);
+    const j = (typeof r.snapshot_json === 'string' ? JSON.parse(r.snapshot_json) : r.snapshot_json) as { totals: Record<string, number | null>; branches: Array<Record<string, string | number | null>> };
+    const MONEY_T = ['netSalesCents', 'ticketsCount', 'averageTicketCents'], MONEY_R = ['netSalesCents', 'ticketsCount', 'averageTicketCents', 'revenuePerCompletedAppointmentCents'];
+    const mask = <T extends Record<string, unknown>>(o: T, keys: string[]): T => (fin ? o : { ...o, ...Object.fromEntries(keys.map((k) => [k, null])) });
+    const signOffList = (await sql<{ id: string; decision: string; note: string; created_at: Date | string; reviewer: string | null }>`select so.id, so.decision, so.note, so.created_at, nullif(u.full_name, '') as reviewer
+        from ai_branch_comparison_signoffs so left join users u on u.id = so.reviewer_user_id and u.tenant_id = so.tenant_id
+        where so.tenant_id = ${ctx.tenantId} and so.snapshot_id = ${id}::uuid order by so.created_at desc, so.id desc`.execute(this.db)).rows
+      .map((x) => ({ id: String(x.id), decision: x.decision as BranchSignOff['decision'], note: String(x.note), reviewer: x.reviewer ?? null, at: new Date(x.created_at).toISOString() }));
+    return { ...this.summaryOf(r), financialsIncluded: r.financials_included && fin, totals: mask(j.totals ?? {}, MONEY_T), rows: (j.branches ?? []).map((b) => mask(b, MONEY_R)),
+      signOffList, canSignOff: fin, immutable: true };
+  }
+  /** A reviewer's note on a saved comparison: append-only; the reviewer must be able to see the money they sign off on. */
+  async signOff(ctx: AiBusinessContext, id: string, b: Row): Promise<BranchSnapshotView> {
+    this.need(ctx);
+    if (!has(ctx, FINANCIAL_VIEW)) throw new BranchInsightsError('Signing off needs permission to see the sales figures.', 'PERMISSION_DENIED', 403);
+    const decision = String(b.decision ?? ''), note = String(b.note ?? '').trim();
+    if (!['approved', 'needs_follow_up', 'noted'].includes(decision)) throw new BranchInsightsError('Choose approved, needs follow-up or noted.', 'VALIDATION_FAILED');
+    if (note.length < 3) throw new BranchInsightsError('Write a short note (at least 3 characters).', 'REASON_REQUIRED');
+    await this.snapshot(ctx, id);   // exists in this salon (else RESOURCE_NOT_FOUND)
+    await sql`insert into ai_branch_comparison_signoffs (tenant_id, snapshot_id, reviewer_user_id, decision, note)
+      values (${ctx.tenantId}, ${id}::uuid, ${isUuid(ctx.userId) ? ctx.userId : null}, ${decision}, ${note.slice(0, 1000)})`.execute(this.db);
+    return this.snapshot(ctx, id);
+  }
+  private snapSelect(T: string) {
+    return sql`select s.id, s.title, s.preset, s.range_from::text as range_from, s.range_to::text as range_to, s.financials_included, s.as_of, s.created_at, s.snapshot_json,
+        nullif(u.full_name, '') as saved_by, jsonb_array_length(coalesce(s.snapshot_json -> 'branches', '[]'::jsonb))::int as branches,
+        (select count(*) from ai_branch_comparison_signoffs c where c.tenant_id = s.tenant_id and c.snapshot_id = s.id)::int as sign_offs,
+        (select c2.decision from ai_branch_comparison_signoffs c2 where c2.tenant_id = s.tenant_id and c2.snapshot_id = s.id order by c2.created_at desc, c2.id desc limit 1) as last_decision
+      from ai_branch_comparison_snapshots s left join users u on u.id = s.created_by_user_id and u.tenant_id = s.tenant_id
+      where s.tenant_id = ${T}`;
+  }
+  private summaryOf(r: SnapRow): BranchSnapshotSummaryView {
+    return { id: String(r.id), title: r.title ?? null, preset: String(r.preset), range: r.range_from && r.range_to ? { from: String(r.range_from).slice(0, 10), to: String(r.range_to).slice(0, 10) } : null,
+      asOf: new Date(r.as_of).toISOString(), savedBy: r.saved_by ?? null, savedAt: new Date(r.created_at).toISOString(), branches: Number(r.branches ?? 0),
+      financialsIncluded: !!r.financials_included, signOffs: Number(r.sign_offs ?? 0), lastDecision: (r.last_decision as BranchSignOff['decision'] | null) ?? null };
   }
 
   /** P1 — Branch Data Health Checker: read-only; recorded; a repeat within 30 s returns the last run. */

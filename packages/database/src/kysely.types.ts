@@ -4943,6 +4943,13 @@ export interface CatalogCategoryReviewsTable {   // migration 847 — owner deci
   id: Generated<string>; tenant_id: string; branch_id: string | null; kind: string; category_id: string; service_id: string | null;
   category_name: string; service_name: string | null; decision: string; note: string; reviewer_user_id: string | null; created_at: Generated<Ts>;
 }
+export interface AiBranchComparisonSnapshotsTable {   // migration 848 — a frozen AI Branch Comparison (immutable)
+  id: Generated<string>; tenant_id: string; branch_id: string | null; created_by_user_id: string | null; title: string | null; preset: string;
+  range_from: string | null; range_to: string | null; financials_included: boolean; as_of: Ts; snapshot_json: unknown; created_at: Generated<Ts>;
+}
+export interface AiBranchComparisonSignoffsTable {   // migration 848 — reviewer sign-off notes on a saved comparison (append-only)
+  id: Generated<string>; tenant_id: string; snapshot_id: string; reviewer_user_id: string | null; decision: string; note: string; created_at: Generated<Ts>;
+}
 export interface PosSavedViewsTable {   // migration 844 — a staff member's named filters for one POS screen (personal, per salon)
   id: Generated<string>; tenant_id: string; owner_user_id: string; surface: string; name: string; filters_json: unknown; is_default: Generated<boolean>;
   created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
@@ -8065,6 +8072,8 @@ export interface DB {
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
   catalog_category_reviews: CatalogCategoryReviewsTable;
+  ai_branch_comparison_snapshots: AiBranchComparisonSnapshotsTable;
+  ai_branch_comparison_signoffs: AiBranchComparisonSignoffsTable;
   pos_saved_views: PosSavedViewsTable;
   report_email_subscriptions: ReportEmailSubscriptionsTable;
   report_email_deliveries: ReportEmailDeliveriesTable;

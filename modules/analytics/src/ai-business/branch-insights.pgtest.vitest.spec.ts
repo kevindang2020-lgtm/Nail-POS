@@ -2,7 +2,9 @@
 // fair scorecard (per worked technician hour, per operating hour, returning customers), the measured explanation of a
 // difference, the growth advisor, the recorded Branch Data Health Checker.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { migratedPglite, kyselyFor, applyMigrationToPglite } from '@aipowersalon/testing';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, explainEvidence, adviseBranches, likeForLikeGroups, mixOverlap, type ScorecardRow } from './branch-insights';
 
 const id = (n: number) => `82700000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -26,6 +28,8 @@ const compare = {
 
 beforeAll(async () => {
   pg = await migratedPglite();
+  // migration 848 (AI BRANCH COMPARISON 14) — replayed here when the shared schema snapshot predates it (idempotent)
+  if (!(await pg.query(`select to_regclass('ai_branch_comparison_snapshots') as t`)).rows[0].t) await applyMigrationToPglite(pg, readFileSync(join(__dirname, '../../../../apps/api/db/migrations/848_ai_branch_comparison_snapshots.sql'), 'utf8'));
   db = kyselyFor(pg);
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'S','Lux','bi-827','BI827','active')`, [T]);
   await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$3,'Big Main St','active','UTC'), ($2,$3,'Small Annex','active','UTC')`, [BIG, SMALL, T]);
@@ -165,6 +169,41 @@ describe('A3 — explanation and advisor', () => {
     expect(adv.find((a) => a.kind === 'low_yield_per_tech_hour')!.message).toMatch(/C earns \$50\.00 per technician hour, below the salon median of \$100\.00/);
     expect(adviseBranches([rows[0]])).toEqual([]);                   // nothing to compare against
     expect(explainDifference({ ...rows[0], netSalesCents: null, ticketsCount: null }, rows[1]).lines[0]).toMatch(/Revenue is hidden/);
+  });
+});
+
+describe('AI BRANCH COMPARISON 14 — saved comparison + manager sign-off notes', () => {
+  it('BI-10 the server freezes its own figures; sign-off notes are append-only and never change the snapshot; money masked without financial view; salon-scoped', async () => {
+    const FIN = ['pos.ai_business.view', 'pos.reports.financial_view'];
+    const saved = await bi.saveSnapshot(ctx({ permissions: FIN }), { preset: 'week', title: 'Week 45 review' });
+    expect(saved).toMatchObject({ title: 'Week 45 review', preset: 'week', range: { from: '2026-11-02', to: '2026-11-06' }, savedBy: 'Owner', branches: 2, financialsIncluded: true, signOffs: 0, lastDecision: null, immutable: true, canSignOff: true });
+    expect(saved.rows.map((r) => [r.branchName, r.netSalesCents, r.totalBookings])).toEqual([['Big Main St', 300000, 70], ['Small Annex', 100000, 18]]);
+    // the live comparison changes later (another source) — the saved figures do not
+    const later = new BranchInsights(db, { async compareBranches() { return { ...(await compare.compareBranches(ctx())), branches: [] } as any; } }, () => NOW);
+    expect((await later.snapshot(ctx({ permissions: FIN }), saved.id)).rows.map((r) => r.netSalesCents)).toEqual([300000, 100000]);
+    // a viewer without financial view: money null, cannot sign off
+    const plain = await bi.snapshot(ctx(), saved.id);
+    expect(plain).toMatchObject({ canSignOff: false, financialsIncluded: false });
+    expect(plain.rows[0]).toMatchObject({ netSalesCents: null, averageTicketCents: null, totalBookings: 70 });
+    expect(plain.totals.netSalesCents ?? null).toBeNull();
+    expect(await code(bi.signOff(ctx(), saved.id, { decision: 'approved', note: 'Looks right' }))).toBe('PERMISSION_DENIED');
+    expect(await code(bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'approved', note: 'ok' }))).toBe('REASON_REQUIRED');
+    expect(await code(bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'delete_it', note: 'Looks right' }))).toBe('VALIDATION_FAILED');
+    await bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'approved', note: 'Numbers match the Sales Report' });
+    const two = await bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'needs_follow_up', note: 'Ask Small Annex about the no-shows' });
+    expect(two.signOffList.map((x) => [x.decision, x.reviewer])).toEqual([['needs_follow_up', 'Owner'], ['approved', 'Owner']]);
+    expect(two).toMatchObject({ signOffs: 2, lastDecision: 'needs_follow_up' });
+    expect(two.rows.map((r) => r.netSalesCents)).toEqual([300000, 100000]);              // the snapshot is untouched by the notes
+    // immutable / append-only in the database itself
+    await expect(pg.query(`update ai_branch_comparison_snapshots set title = 'x'`)).rejects.toThrow(/append-only/);
+    await expect(pg.query(`delete from ai_branch_comparison_signoffs`)).rejects.toThrow(/append-only/);
+    // list, newest first; another salon sees nothing
+    await bi.saveSnapshot(ctx({ permissions: FIN }), { preset: 'week' });
+    const list = await bi.listSnapshots(ctx(), {});
+    expect(list).toMatchObject({ totalItems: 2, page: 1, totalPages: 1 });
+    expect(list.items[1]).toMatchObject({ id: saved.id, signOffs: 2, lastDecision: 'needs_follow_up' });
+    expect(await code(bi.snapshot(ctx({ tenantId: id(98) }), saved.id))).toBe('RESOURCE_NOT_FOUND');
+    expect(await code(bi.snapshot(ctx(), 'nope'))).toBe('RESOURCE_NOT_FOUND');
   });
 });
 
