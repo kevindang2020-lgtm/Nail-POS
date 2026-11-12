@@ -288,4 +288,8 @@ export const CAMPAIGNS_EN = {
   "cc.tri.retry": "Waiting messages are resumed by the next send run. A failed message is never sent again, because the provider may already have accepted it.",
   "cc.bk.dupes": "{n} repeated booking record(s) for an appointment already counted were ignored",
   "cc.bk.span": "Counted bookings made",
+  "cc.h.sys.drafts": "Drafts waiting for approval",
+  "cc.h.sys.content": "Message content",
+  "cc.h.sys.consent": "Audience consent",
+  "cc.h.sys.costs": "Cost vs budget",
 };

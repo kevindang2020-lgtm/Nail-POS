@@ -760,6 +760,11 @@ export class CampaignCenter {
     f('scheduler', N(hb?.n) > 0 ? 'ready' : 'unknown', N(hb?.n) > 0 ? 'Background workers are reporting in.' : 'No background worker has reported in the last 5 minutes (or none is configured here).', `live worker processes in the last 5 minutes: ${N(hb?.n)}`, N(hb?.n) > 0 ? null : 'Check the worker deployment; scheduled campaigns wait until a worker runs.');
     const overdue = N((await sql<any>`select count(*)::int as n from campaigns where tenant_id = ${T} and status = 'scheduled' and scheduled_at < now() - interval '15 minutes'`.execute(this.db)).rows[0]?.n);
     if (overdue > 0) f('scheduler_backlog', 'attention_required', `${overdue} scheduled campaign(s) are more than 15 minutes overdue.`, 'campaigns status=scheduled, scheduled_at past', 'Check that the send worker is running.');
+    // Drafts (extras Campaign Builder 16): a draft sent for approval that nobody has decided on for 3 days
+    const waiting = N((await sql<any>`select count(*)::int as n from campaigns c where c.tenant_id = ${T} and ${this.branchW(ctx)} and c.status = 'draft' and c.submitted_at is not null
+        and c.approved_at is null and c.submitted_at < now() - interval '3 days'`.execute(this.db)).rows[0]?.n);
+    f('drafts', waiting > 0 ? 'attention_required' : 'ready', waiting > 0 ? `${waiting} draft(s) have waited more than 3 days for approval.` : 'No draft is waiting long for approval.',
+      'campaigns status=draft, submitted, not approved', waiting > 0 ? 'Ask an owner or manager to approve or return them.' : null);
     // Recipients + Execution + Reporting — per campaign when one is named
     const cid = b?.campaignId && UUID.test(b.campaignId) ? String(b.campaignId) : null;
     let trace: Record<string, unknown> | null = null;
@@ -777,6 +782,28 @@ export class CampaignCenter {
         ? 'Marked Completed, but no send was ever recorded: it was completed by hand, or before sending existed for it. Nothing was sent.'
         : d.status === 'scheduled' && !plan ? 'Scheduled without an approved send plan — the worker will skip it.' : `${k.submitted} accepted, ${k.delivered} delivered, ${k.failed} failed, ${k.unknown} awaiting a delivery callback.`;
       f('execution', execStatus, execSummary, `ledger rows ${String(trace.ledgerRows)}; plan ${plan ? 'v' + N(plan.message_version) : 'none'}`, execStatus === 'ready' ? null : 'Duplicate the campaign, choose an audience, approve it and launch again.');
+      // Content / Consent / Costs (extras Campaign Builder 16) — read from the same preview and send gate the wizard uses
+      const pv = await this.preview(ctx, cid);
+      const row = await this.loadRow(this.db, ctx, cid);
+      const stale = !!row.approved_at && !!row.approved_content_hash && row.approved_content_hash !== row.content_hash;
+      if (!String(row.message_body ?? '').trim()) f('content', 'failed', 'The campaign has no message.', 'campaigns.message_body empty', 'Write the message in step 3.');
+      else if (stale) f('content', 'failed', 'The message or audience changed after it was approved; it cannot be sent until it is approved again.', 'approved content hash differs from the current one', 'Send it for approval again.');
+      else if (pv.unknownVariables.length) f('content', 'attention_required', `The message uses ${pv.unknownVariables.length} placeholder(s) that are not filled in.`, `unknown: ${pv.unknownVariables.join(', ')}`, 'Use only the listed placeholders.');
+      else f('content', 'ready', `The message is set${pv.segmentsPerMessage != null ? ` (${pv.segmentsPerMessage} text segment(s) each)` : ''}.`, `message version ${N(row.message_version) || 1}`, null);
+      // a customer chosen as eligible who has since texted STOP or withdrawn marketing consent is skipped at send — say how many
+      const lapsed = d.audienceSource === 'segment_snapshot' ? N((await sql<any>`select count(*)::int as n from campaign_recipients r join customers cu on cu.tenant_id = r.tenant_id and cu.id = r.customer_id
+          where r.tenant_id = ${T} and r.campaign_id = ${cid} and r.snapshot_version = ${N(row.snapshot_version)} and r.eligibility = 'eligible'
+            and (case when r.channel = 'sms' then (cu.marketing_sms_opt_in is not true
+                   or exists (select 1 from notification_opt_outs o where o.tenant_id = r.tenant_id and o.channel = 'sms' and o.address = cu.normalized_phone))
+                 else (cu.marketing_email_opt_in is not true
+                   or exists (select 1 from notification_opt_outs o where o.tenant_id = r.tenant_id and o.channel = 'email' and o.address = lower(cu.email))) end)`.execute(this.db)).rows[0]?.n) : 0;
+      if (d.audienceSource === 'segment_snapshot') f('consent', lapsed > 0 ? 'attention_required' : 'ready', lapsed > 0 ? `${lapsed} customer(s) chosen as eligible have since opted out or withdrawn consent; they will be skipped.` : 'Everyone chosen as eligible still allows marketing messages.',
+        `campaign_recipients snapshot ${N(row.snapshot_version)} against current consent and opt-outs`, lapsed > 0 ? 'Refresh the audience before launching so the counts are right.' : null);
+      const budget = N(row.cost_cents);
+      const usd = (cents: number) => `$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+      if (pv.estimatedCostCents == null) f('costs', 'unknown', pv.costNote, 'no platform price per segment (or email)', null);
+      else if (budget > 0 && pv.estimatedCostCents > budget) f('costs', 'attention_required', `The estimated cost (${usd(pv.estimatedCostCents)}) is over the budget (${usd(budget)}).`, `${pv.estimatedSegments} segment(s) × platform price`, 'Raise the budget or narrow the audience.');
+      else f('costs', 'ready', `Estimated cost ${usd(pv.estimatedCostCents)}${budget > 0 ? `, within the ${usd(budget)} budget` : ' (no budget set)'}.`, `${pv.estimatedSegments} segment(s) × platform price`, null);
       const mismatch = k.legacySentCount !== k.submitted;
       f('reporting', mismatch ? 'attention_required' : 'ready', mismatch ? `Old counter says ${k.legacySentCount} sent; the send records say ${k.submitted}. The send records are shown.` : 'Counts match their sources.', 'campaigns.sent_count vs ai_marketing_campaign_sends', null);
     }

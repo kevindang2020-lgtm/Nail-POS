@@ -388,3 +388,41 @@ describe('§14 assistant — suggestions and drafts only', () => {
     expect((await cc.assistantSuggest(owner, 'slow_weekdays')).risks.join(' ')).toMatch(/capacity/i);
   });
 });
+
+describe('extras Campaign Builder 16 — one-click Campaign System Health: drafts, content, consent and costs', () => {
+  it('flags a stale approval wait, placeholders that are not filled, chosen customers who have since opted out, and a cost over budget — read-only', async () => {
+    const xs = [await customer('Hope One'), await customer('Hope Two'), await customer('Hope Three')];
+    const c1 = (await cc.createDraft(owner, { name: 'Health check glow', channel: 'sms', messageBody: 'Hi {first_nam}, {offer}!', offer: '10% off', budgetCents: 5 })).id;
+    await cc.setAudience(owner, c1, { draftId: await audienceDraft(xs.map((x) => [x, 'eligible'] as [string, string])) });
+    // after the snapshot: one texts STOP, one withdraws marketing consent
+    const phone2 = (await q(sql`select normalized_phone from customers where id = ${xs[1]}`))[0].normalized_phone;
+    await q(sql`insert into notification_opt_outs (tenant_id, channel, address, reason) values (${T}, 'sms', ${phone2}, 'STOP')`);
+    await q(sql`update customers set marketing_sms_opt_in = false where id = ${xs[2]}`);
+    const sentBefore = Number((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T}`))[0].n);
+    const h: any = await cc.healthCheck(owner, { campaignId: c1 }, {});
+    const byKey = (k: string) => h.findings.find((f: any) => f.subsystem === k);
+    expect(byKey('content')).toMatchObject({ status: 'attention_required', evidence: 'unknown: {first_nam}' });
+    expect(byKey('consent')).toMatchObject({ status: 'attention_required' });
+    expect(byKey('consent').summary).toMatch(/^2 customer\(s\) chosen as eligible have since opted out/);
+    // 1 segment × 3 eligible in the snapshot × the platform price (3.5¢) = 11¢, over the 5¢ budget
+    expect(byKey('costs')).toMatchObject({ status: 'attention_required', summary: 'The estimated cost ($0.11) is over the budget ($0.05).' });
+    expect(h.sendsAnything).toBe(false);
+    // approved, then edited: the content is stale (FAILED), and that outranks the placeholder warning
+    await cc.updateDraft(owner, c1, { messageBody: 'Hi there, {offer}!', budgetCents: 500 });
+    await cc.submit(manager, c1); await cc.approve(owner, c1);
+    await cc.updateDraft(owner, c1, { messageBody: 'Hi there, {offer} today only!' });
+    const h2: any = await cc.healthCheck(owner, { campaignId: c1 }, {});
+    expect(h2.findings.find((f: any) => f.subsystem === 'content')).toMatchObject({ status: 'failed' });
+    expect(h2.findings.find((f: any) => f.subsystem === 'costs')).toMatchObject({ status: 'ready', summary: 'Estimated cost $0.11, within the $5.00 budget.' });
+    expect(h2.overall).toBe('failed');
+    // a draft sent for approval 4 days ago and never decided
+    await q(sql`insert into campaigns (tenant_id, name, channel, audience_size, status, submitted_at, created_at) values (${T}, 'Waiting long', 'sms', 0, 'draft', now() - interval '4 days', now() - interval '5 days')`);
+    const h3: any = await cc.healthCheck(owner, {}, {});
+    expect(h3.findings.find((f: any) => f.subsystem === 'drafts')).toMatchObject({ status: 'attention_required' });
+    expect(h3.findings.find((f: any) => f.subsystem === 'drafts').summary).toMatch(/draft\(s\) have waited more than 3 days for approval/);
+    expect(h3.findings.find((f: any) => f.subsystem === 'content')).toBeUndefined();   // per-campaign findings only for a named campaign
+    // the other salon sees none of it
+    expect((await cc.healthCheck(other, {}, {})).findings.find((f: any) => f.subsystem === 'drafts')).toMatchObject({ status: 'ready' });
+    expect(Number((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T}`))[0].n)).toBe(sentBefore);
+  });
+});
