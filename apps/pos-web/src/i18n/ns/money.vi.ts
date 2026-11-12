@@ -219,4 +219,25 @@ export const MONEY_VI = {
   "cdr.chk.floatSet": "Tiền lẻ đầu ca {amount}.",
   "cdr.chk.noFloat": "Hôm nay chưa đặt tiền lẻ đầu ca. Hãy đặt nếu két bắt đầu có tiền mặt.",
   "cdr.chk.load.label": "Không kiểm tra được",
+  "pm.bridge.open": "Vì sao khác nhau", // DRAFT — Kevin reviews
+  "pm.bridge.title": "Doanh thu và Tiền thu", // DRAFT — Kevin reviews
+  "pm.bridge.sub": "Doanh thu kiếm được trở thành tiền thu trong kỳ này như thế nào", // DRAFT — Kevin reviews
+  "pm.bridge.revenue": "Doanh thu", // DRAFT — Kevin reviews
+  "pm.bridge.revenueWhy": "dịch vụ và sản phẩm bán trên các phiếu đã thanh toán trong kỳ, sau giảm giá", // DRAFT — Kevin reviews
+  "pm.bridge.tax": "Thuế", // DRAFT — Kevin reviews
+  "pm.bridge.taxWhy": "thuế bán hàng trên các phiếu đó — thu hộ, không phải doanh thu", // DRAFT — Kevin reviews
+  "pm.bridge.tips": "Tiền tip", // DRAFT — Kevin reviews
+  "pm.bridge.tipsWhy": "tip trên các phiếu đó — thuộc về thợ", // DRAFT — Kevin reviews
+  "pm.bridge.expected": "Phải thu trên các phiếu thanh toán trong kỳ", // DRAFT — Kevin reviews
+  "pm.bridge.expectedWhy": "doanh thu + thuế + tip", // DRAFT — Kevin reviews
+  "pm.bridge.difference": "Phí khác hoặc chênh lệch", // DRAFT — Kevin reviews
+  "pm.bridge.differenceWhy": "tiền thu trên các phiếu đó trừ số phải thu (phí, làm tròn, trả dư hoặc thiếu)", // DRAFT — Kevin reviews
+  "pm.bridge.otherDays": "Đã trả cho các phiếu đó vào ngày khác", // DRAFT — Kevin reviews
+  "pm.bridge.otherDaysWhy": "tiền cọc hoặc trả một phần ngoài kỳ này", // DRAFT — Kevin reviews
+  "pm.bridge.otherTickets": "Thu cho {n} phiếu khác", // DRAFT — Kevin reviews
+  "pm.bridge.otherTicketsWhy": "tiền thu trong kỳ cho phiếu còn mở, thanh toán ở kỳ khác, hoặc không có phiếu", // DRAFT — Kevin reviews
+  "pm.bridge.collections": "Tiền thu", // DRAFT — Kevin reviews
+  "pm.bridge.collectionsWhy": "các khoản thanh toán đã xác nhận theo ngày thanh toán (= tổng trên Giao dịch)", // DRAFT — Kevin reviews
+  "pm.bridge.unbalanced": "Các bước này không cộng ra đúng Tiền thu — một số dòng thanh toán không khớp được. Mở Giao dịch để xem lại.", // DRAFT — Kevin reviews
+  "pm.bridge.refunds": "Hoàn tiền là một con số riêng, không trừ vào hai số này. Chỉ xem.", // DRAFT — Kevin reviews
 };

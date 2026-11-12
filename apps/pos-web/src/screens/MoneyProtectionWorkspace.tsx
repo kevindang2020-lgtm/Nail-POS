@@ -484,6 +484,28 @@ function EffectiveChip({ x }: { x: any }) {
   if (x.enabled) return <span className="chip bad" data-testid="mpx-set-effective" data-state="drift" title={t('mpx.set.eff.driftWhy')}>{t('mpx.set.eff.drift')}</span>;
   return <span className="chip" data-testid="mpx-set-effective" data-state="off">{t('mpx.set.eff.off')}</span>;
 }
+/** MONEY PROTECTION ALERTS 11: false-positive review insights from the recorded human decisions (90 days) — reviewed /
+ *  dismissed / reopened per rule and the dismissal reasons people keep writing. Insight only: no rule is changed from here. */
+type FpInsight = { ruleId: string; name: string; reviewed90d: number; dismissed90d: number; reopened90d: number; dismissRatePct: number | null; repeatedReasons: { reason: string; count: number }[] };
+function FalsePositiveInsights({ items }: { items?: FpInsight[] }) {
+  if (!items) return null;   // an older server: nothing shown, nothing guessed
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="mpx-fp">
+      <div className="p-h">{t('mpx.fp.title')}</div>
+      {items.length === 0 ? <div className="sub" data-testid="mpx-fp-none">{t('mpx.fp.none')}</div> : (
+        <table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th className="num">{t('mpx.fp.reviewed')}</th><th className="num">{t('mpx.fp.dismissed')}</th><th className="num">{t('mpx.fp.reopened')}</th><th>{t('mpx.fp.reasons')}</th></tr></thead>
+          <tbody>{items.map((x) => <tr key={x.ruleId} data-testid="mpx-fp-row">
+            <td><b>{ruleName(x.ruleId, x.name)}</b></td>
+            <td className="num">{fmtNumber(x.reviewed90d)}</td>
+            <td className="num">{fmtNumber(x.dismissed90d)}{x.dismissRatePct != null ? <div className="sub">{t('mpx.fp.rate', { n: fmtNumber(x.dismissRatePct) })}</div> : null}</td>
+            <td className="num">{fmtNumber(x.reopened90d)}</td>
+            <td className="sub">{x.repeatedReasons.length ? x.repeatedReasons.map((y) => t('mpx.fp.reasonN', { r: y.reason, n: fmtNumber(y.count) })).join(' · ') : t('mpx.fp.noPattern')}</td>
+          </tr>)}</tbody></table>)}
+      <p className="sub" data-testid="mpx-fp-policy">{t('mpx.fp.policy')}</p>
+    </section>
+  );
+}
+
 export function MpRules() {
   const [tick, setTick] = useState(0);
   const { r, err, load, forbidden, okAt } = useRules(tick);
@@ -532,7 +554,8 @@ export function MpRules() {
                 <td className="mpx-acts"><div className="mpx-act-stack"><button className="btn ghost sm" data-testid="mpx-rule-view" onClick={() => setOpen(x)}>{t('mpx.view')}</button>
                   <Link className="btn ghost sm" to={`/tenant/ai/money-protection/alerts?rule=${x.id}`}>{t('mpx.rules.seeAlerts')}</Link></div></td>
               </tr>))}</tbody></table></div>
-        </section></>)}
+        </section>
+        <FalsePositiveInsights items={r.falsePositiveInsights} /></>)}
       {open ? <FitDialog wide testId="mpx-rule" title={ruleName(open.id, open.name)} onClose={() => setOpen(null)} footer={<button className="btn ghost" onClick={() => setOpen(null)}>{t('mpx.close')}</button>}>
         <p>{open.description}</p>
         <div className="sub">{catName(open.category)} · {t('mpx.layer.' + open.layer)} · {t('mpx.rules.default', { s: t('mpx.sev.' + open.defaultSeverity) })}</div>

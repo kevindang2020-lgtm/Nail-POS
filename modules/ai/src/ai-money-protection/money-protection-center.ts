@@ -423,9 +423,28 @@ export class MoneyProtectionCenter {
     // per-rule freshness (Rules backlog · 03): a detection pass evaluates every effective rule, so a rule was last checked at the
     // last SUCCEEDED pass that finished while it was on and after its last settings change — otherwise null ("not checked yet")
     const lastPass = (await sql<Row>`select max(finished_at) as at from money_protection_detection_runs where tenant_id = ${T} and status = 'succeeded'`.execute(this.db)).rows[0]?.at ?? null;
+    // MONEY PROTECTION ALERTS 11 (Nov 12 2026): false-positive review insights from the human decisions already recorded
+    // (money_protection_events, 90 days): per rule how many alerts people reviewed, how many they dismissed as false
+    // positives, how many dismissals were later reopened, and the dismissal reasons that repeat (same wording, ≥ 2 times).
+    // Insight only — a rule is never switched off or relaxed by this; changing a rule stays the reasoned rules/save.
+    const fpRows = (await sql<Row>`select a.rule_id, count(distinct e.entity_id) filter (where e.action in ('acknowledge', 'dismiss'))::int as reviewed,
+        count(distinct e.entity_id) filter (where e.action = 'dismiss')::int as dismissed, count(distinct e.entity_id) filter (where e.action = 'reopen')::int as reopened
+      from money_protection_events e join money_protection_alerts a on a.tenant_id = e.tenant_id and a.id::text = e.entity_id
+      where e.tenant_id = ${T} and e.entity_type = 'alert' and e.created_at > now() - interval '90 days' and ${this.scope(sql`a.branch_id`, ctx).w} group by 1`.execute(this.db)).rows;
+    const fpReasons = (await sql<Row>`select a.rule_id, lower(btrim(e.reason)) as reason, count(*)::int as n
+      from money_protection_events e join money_protection_alerts a on a.tenant_id = e.tenant_id and a.id::text = e.entity_id
+      where e.tenant_id = ${T} and e.entity_type = 'alert' and e.action = 'dismiss' and e.reason is not null and e.created_at > now() - interval '90 days' and ${this.scope(sql`a.branch_id`, ctx).w}
+      group by 1, 2 having count(*) >= 2 order by 3 desc, 2 asc`.execute(this.db)).rows;
+    const falsePositiveInsights = fpRows.filter((r) => N(r.dismissed) > 0).map((r) => {
+      const d = RULE_CATALOG.find((x) => x.id === r.rule_id);
+      return { ruleId: String(r.rule_id), name: d?.name ?? String(r.rule_id), reviewed90d: N(r.reviewed), dismissed90d: N(r.dismissed), reopened90d: N(r.reopened),
+        dismissRatePct: N(r.reviewed) ? Math.round((N(r.dismissed) / N(r.reviewed)) * 100) : null,
+        repeatedReasons: fpReasons.filter((x) => x.rule_id === r.rule_id).slice(0, 3).map((x) => ({ reason: String(x.reason), count: N(x.n) })) };
+    }).sort((a, b) => b.dismissed90d - a.dismissed90d || a.ruleId.localeCompare(b.ruleId));
     const f = this.deps.flags();
     const layerOn = (l: string) => f.enabled && (l === 'deterministic' ? f.deterministicRules : l === 'baseline' ? f.baselines : f.reconciliation);
     return {
+      falsePositiveInsights, falsePositivePolicy: 'insight_only_rules_never_auto_disabled' as const,
       rules: RULE_CATALOG.map((d) => {
         const s = settings.find((x) => x.rule_id === d.id); const c = counts.find((x) => x.rule_id === d.id);
         const enabled = s ? !!s.enabled : true;

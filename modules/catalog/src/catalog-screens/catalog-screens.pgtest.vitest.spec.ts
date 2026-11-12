@@ -283,3 +283,38 @@ describe('Add-Ons', () => {
     await expect(repo.updateAddOn(ctx2, 'ao_french', { scope: 'definition', name: 'x' })).rejects.toThrow(/not found/);
   });
 });
+
+describe('Add-Ons — booking impact preview (07) and price reasons (14), Nov 12 2026', () => {
+  it('the detail lists upcoming appointments that booked the add-on (by key, or by name on older rows); finished / cancelled / past are left out; names need customers.view', async () => {
+    const svcJson = (addOn: Record<string, unknown>) => JSON.stringify([{ serviceId: GEL, serviceName: 'Gel Manicure', durationMinutes: 55, priceCents: 6500, addOns: [addOn] }]);
+    const byKey = svcJson({ addOnId: 'ao_french', name: 'French tips', durationDeltaMinutes: 10, priceCents: 1000 });
+    const byName = svcJson({ addOnId: 'old-id', name: 'FRENCH TIPS', durationDeltaMinutes: 10, priceCents: 900 });
+    const other = svcJson({ addOnId: 'ao_other', name: 'Chrome', durationDeltaMinutes: 10, priceCents: 1500 });
+    await q(`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status) values
+      ($1,$6,$7,$9,$8,'Mai Le',$10::jsonb, current_date + 4, '09:00','09:55',55,'confirmed'),
+      ($2,$6,$7,$9,$8,'Mai Le',$11::jsonb, current_date + 5, '11:00','11:55',55,'booked'),
+      ($3,$6,$7,$9,$8,'Mai Le',$10::jsonb, current_date + 6, '11:00','11:55',55,'cancelled'),
+      ($4,$6,$7,$9,$8,'Mai Le',$10::jsonb, current_date - 4, '11:00','11:55',55,'booked'),
+      ($5,$6,$7,$9,$8,'Mai Le',$12::jsonb, current_date + 7, '11:00','11:55',55,'booked')`,
+      [id('ac1'), id('ac2'), id('ac3'), id('ac4'), id('ac5'), T, B, id('aa1'), id('f1'), byKey, byName, other]);
+    const d: any = await repo.addOnDetail(ctx, 'ao_french');
+    expect(d.upcoming).toMatchObject({ appointments: 2, policy: 'booked_quotes_kept' });
+    expect(d.upcoming.items.map((x: any) => [x.appointmentId, x.serviceName, x.bookedMinutes, x.quotedCents, x.customer])).toEqual([
+      [id('ac1'), 'Gel Manicure', 10, 1000, null], [id('ac2'), 'Gel Manicure', 10, 900, null]]);
+    const withNames: any = await repo.addOnDetail({ ...ctx, permissions: ['pos.services.view', 'customers.view'] }, 'ao_french');
+    expect(withNames.upcoming.items[0].customer).toBe('Mai Le');
+    // the preview is read only: the booked add-on keeps its quoted minutes and price
+    expect((await q(`select services from pos_tech_appointments where id = $1`, [id('ac1')])).rows[0].services[0].addOns[0]).toMatchObject({ durationDeltaMinutes: 10, priceCents: 1000 });
+  });
+
+  it('a usage row says why its charged amount differs from the default price (quantity, line reduced, varies by service, tax on the ticket)', async () => {
+    await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, category_snapshot, is_add_on, line_kind, quantity, status)
+      values ($1,$2,$3,'00000000-0000-0000-0000-000000000000',$4,'French Tips',1000,15,1500,'Nails',true,'add_on',2,'done')`, [T, B, id('7a2'), id('f1')]);
+    const u = await repo.addOnUsage(ctx, { q: '#102', page: 1, pageSize: 10 });
+    const row: any = u.items.find((x) => x.addOn === 'French Tips');
+    expect(row).toMatchObject({ chargedCents: 1500, quotedCents: 1000, quantity: 2, menuPriceCents: null });
+    expect(row.priceReasons).toEqual(expect.arrayContaining(['quantity', 'line_reduced', 'price_varies_by_service']));
+    const plain: any = (await repo.addOnUsage(ctx, { q: '#101', page: 1, pageSize: 10 })).items.find((x) => x.addOn === 'French tips');
+    expect(plain.priceReasons).not.toContain('line_reduced'); expect(plain.priceReasons).not.toContain('quantity');
+  });
+});

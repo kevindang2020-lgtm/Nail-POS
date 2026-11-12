@@ -56,4 +56,28 @@ export const TIPS_VI: Record<string, string> = {
   'tp.split.remainder': 'Phần lẻ làm tròn: {c}¢, mỗi người một xu cho {n}', // DRAFT — Kevin reviews
   'tp.split.diff': 'Lệch {a} — các phần phải cộng đúng bằng tiền tip đã thu', // DRAFT — Kevin reviews
   'tp.split.nothingSaved': 'Chỉ xem trước — không có gì thay đổi cho đến khi bạn lưu kèm lý do.', // DRAFT — Kevin reviews
+  'tp.src.verified': 'Đã xác minh', // DRAFT — Kevin reviews
+  'tp.src.verified.why': 'tiền tip đã thu, đã chia và bản ghi lương khớp nhau', // DRAFT — Kevin reviews
+  'tp.src.pending': 'Đang chờ', // DRAFT — Kevin reviews
+  'tp.src.pending.why': 'chưa chia hết, hoặc bảng lương chưa ghi nhận', // DRAFT — Kevin reviews
+  'tp.src.adjusted': 'Đã điều chỉnh', // DRAFT — Kevin reviews
+  'tp.src.adjusted.why': 'đã có khoản hoàn hoặc điều chỉnh thủ công sau khi chia', // DRAFT — Kevin reviews
+  'tp.src.review': 'Cần xem lại', // DRAFT — Kevin reviews
+  'tp.src.review.why': 'bản ghi lương không khớp với tiền tip đã thu', // DRAFT — Kevin reviews
+  'tp.ri.open': 'Hoàn tiền sẽ ảnh hưởng thế nào?', // DRAFT — Kevin reviews
+  'tp.ri.title': 'Xem trước ảnh hưởng hoàn tiền', // DRAFT — Kevin reviews
+  'tp.ri.scenario': 'Nếu phiếu này được', // DRAFT — Kevin reviews
+  'tp.ri.sc.service_only': 'Hoàn tiền — chỉ dịch vụ (giữ tip)', // DRAFT — Kevin reviews
+  'tp.ri.sc.full_with_tip': 'Hoàn tiền — gồm cả tip', // DRAFT — Kevin reviews
+  'tp.ri.sc.void': 'Hủy phiếu', // DRAFT — Kevin reviews
+  'tp.ri.sc.chargeback': 'Khiếu nại (chargeback)', // DRAFT — Kevin reviews
+  'tp.ri.collected': 'Tip đã thu', // DRAFT — Kevin reviews
+  'tp.ri.collectedSame': 'giữ nguyên như đã thu; khoản hoàn được ghi riêng bên cạnh', // DRAFT — Kevin reviews
+  'tp.ri.net': 'Tip thực nhận', // DRAFT — Kevin reviews
+  'tp.ri.payable': 'Phải trả', // DRAFT — Kevin reviews
+  'tp.ri.post.none': 'Không thay đổi — tip không bị hoàn.', // DRAFT — Kevin reviews
+  'tp.ri.post.posted_now': 'Khoản hoàn được trừ của thợ trong kỳ lương đang mở.', // DRAFT — Kevin reviews
+  'tp.ri.post.future_period_pending': 'Kỳ lương này đã trả: khoản hoàn chuyển sang kỳ sau và chờ duyệt.', // DRAFT — Kevin reviews
+  'tp.ri.post.pending_review': 'Chargeback không bị trừ tự động — chờ quản lý xem xét.', // DRAFT — Kevin reviews
+  'tp.ri.readOnly': 'Chỉ xem trước — không hoàn tiền, hủy hay ghi sổ gì từ đây.', // DRAFT — Kevin reviews
 };

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 // SUNMI FLEX 3 mandates (Nov 6 2026): the density modes come from the usable CSS size, never from a device name.
 import { describe, expect, it } from 'vitest';
 import { densityFor, keyboardOpenFor, DISPLAY_PROFILES, measureDisplay, startDisplayProfile, displayProfile } from './displayProfile';
@@ -40,3 +42,28 @@ describe('startDisplayProfile', () => {
     stop();
   });
 });
+
+describe('keyboard-aware dialogs (End-of-Day Cash 13 / Localization 10)', () => {
+  const css = readFileSync(resolve(__dirname, '../styles.css'), 'utf8');
+  it('the visible viewport top is written beside its height', () => {
+    const stop = startDisplayProfile(window);
+    expect(document.documentElement.style.getPropertyValue('--pos-vvt')).toMatch(/^\d+px$/);
+    stop();
+  });
+  it('with the keyboard open a dialog is capped to the visible height and its backdrop follows the visible viewport; closed, untouched', () => {
+    const rules = css.split('\n').filter((l) => l.startsWith('html[data-keyboard="open"]')).join('\n');
+    expect(rules).toMatch(/\.fk-dialog\{max-height:calc\(var\(--pos-vvh/);
+    expect(rules).toMatch(/\.fk-backdrop\{top:var\(--pos-vvt/);
+    const style = document.createElement('style'); style.textContent = rules; document.head.appendChild(style);
+    const back = document.createElement('div'); back.className = 'fk-backdrop'; const dlg = document.createElement('div'); dlg.className = 'fk-dialog';
+    back.appendChild(dlg); document.body.appendChild(back);
+    const root = document.documentElement;
+    root.setAttribute('data-keyboard', 'closed');
+    expect(getComputedStyle(dlg).maxHeight).toBe('');
+    root.setAttribute('data-keyboard', 'open');
+    expect(getComputedStyle(dlg).maxHeight).toContain('--pos-vvh');
+    expect(getComputedStyle(back).height).toContain('--pos-vvh');
+    root.setAttribute('data-keyboard', 'closed'); back.remove(); style.remove();
+  });
+});
+

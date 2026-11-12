@@ -115,6 +115,7 @@ function apply(p: PosDisplayProfile, root: HTMLElement): void {
   set('data-touch', p.touch ? 'on' : 'off');
   root.style.setProperty('--pos-vvh', `${p.vvH}px`);
   root.style.setProperty('--pos-kb-inset', `${Math.max(0, p.innerH - p.vvH - p.vvTop)}px`);
+  root.style.setProperty('--pos-vvt', `${p.vvTop}px`);   // where the visible part starts (styles.css keeps open dialogs inside it)
 }
 
 const same = (a: PosDisplayProfile | null, b: PosDisplayProfile) => !!a && a.innerW === b.innerW && a.innerH === b.innerH && a.vvW === b.vvW && a.vvH === b.vvH

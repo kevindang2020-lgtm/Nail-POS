@@ -51,4 +51,35 @@ describe('POSPaymentsOverviewScreen', () => {
     perms = ['reports.view']; render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>); await screen.findByTestId('kpi-collections');
     expect(screen.getByTestId('qa-payout')).toBeDisabled(); expect(screen.getByTestId('qa-report')).not.toBeDisabled();
   });
+  it('PAYMENTS 05: Revenue tab explains Revenue vs Collections step by step from the server bridge; nothing is recalculated', async () => {
+    mo.overview.mockResolvedValue({ ...overview, revenueBridge: { revenueCents: 10883, taxCents: 0, tipsCents: 760, expectedCents: 11643, collectedOnPaidTicketsCents: 11643, otherDifferenceCents: 0,
+      collectedOtherDaysCents: 0, collectedForOtherTicketsCents: 5172, otherTicketsCount: 1, collectionsCents: 16815, balanced: true } });
+    mo.services.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 5, pageCount: 1 });
+    render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('space-revenue'));
+    fireEvent.click(await screen.findByTestId('revenue-bridge-open'));
+    const t = await screen.findByTestId('revenue-bridge-table');
+    expect(screen.getByTestId('bridge-revenue')).toHaveTextContent('$108.83');
+    expect(screen.getByTestId('bridge-tips')).toHaveTextContent('+ $7.60');
+    expect(screen.getByTestId('bridge-expected')).toHaveTextContent('$116.43');
+    expect(screen.getByTestId('bridge-otherTickets')).toHaveTextContent('Collected for 1 other ticket(s)');
+    expect(screen.getByTestId('bridge-otherTickets')).toHaveTextContent('+ $51.72');
+    expect(screen.getByTestId('bridge-collections')).toHaveTextContent('$168.15');
+    expect(t.querySelectorAll('tr')).toHaveLength(8);
+    expect(screen.queryByTestId('revenue-bridge-unbalanced')).toBeNull();
+  });
+  it('PAYMENTS 05: an unbalanced bridge says so; no bridge from the server → no button', async () => {
+    mo.overview.mockResolvedValue({ ...overview, revenueBridge: { revenueCents: 100, taxCents: 0, tipsCents: 0, expectedCents: 100, collectedOnPaidTicketsCents: 100, otherDifferenceCents: 0, collectedOtherDaysCents: 0, collectedForOtherTicketsCents: 0, otherTicketsCount: 0, collectionsCents: 150, balanced: false } });
+    mo.services.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 5, pageCount: 1 });
+    const v = render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('space-revenue'));
+    fireEvent.click(await screen.findByTestId('revenue-bridge-open'));
+    expect(await screen.findByTestId('revenue-bridge-unbalanced')).toBeInTheDocument();
+    v.unmount();
+    mo.overview.mockResolvedValue(overview);
+    render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('space-revenue'));
+    await screen.findByTestId('panel-trend-wide');
+    expect(screen.queryByTestId('revenue-bridge-open')).toBeNull();
+  });
 });

@@ -197,9 +197,12 @@ function RevenueSpace({ d, pq, onDay }: { d: any; pq: any; onDay: (s: string) =>
   const fit = useFitRows<HTMLDivElement>(40, { min: 3, max: 14, reserve: 34 });
   const l = useLoad(() => posMoneyOverviewApi.services({ ...pq, search: sq || undefined, page, pageSize: fit.rows }), [JSON.stringify(pq), sq, page, fit.rows]);
   const items: any[] = l.data?.items ?? []; const top = Math.max(1, ...items.map((x) => x.revenueCents));
+  const [why, setWhy] = useState(false);
   return (
     <div className="pm-grid two">
-      <FitPanel testId="panel-trend-wide" title={<span>{tx('pos.revenue_overview')} <span className="fk-hint">{fmtMoney(d.kpis.revenueCents)} · {fmtMoney(d.kpis.collectionsCents)}</span></span>}><Trend trend={d.revenueTrend} onDay={onDay} tall /></FitPanel>
+      <FitPanel testId="panel-trend-wide" title={<span>{tx('pos.revenue_overview')} <span className="fk-hint">{fmtMoney(d.kpis.revenueCents)} · {fmtMoney(d.kpis.collectionsCents)}</span></span>}
+        actions={d.revenueBridge ? <button type="button" className="fk-btn sm" onClick={() => setWhy(true)} data-testid="revenue-bridge-open">{tx('pm.bridge.open')}</button> : undefined}><Trend trend={d.revenueTrend} onDay={onDay} tall /></FitPanel>
+      {why && d.revenueBridge ? <RevenueBridgeDialog b={d.revenueBridge} onClose={() => setWhy(false)} /> : null}
       <FitPanel testId="panel-services" bodyRef={fit.ref} title={<span>{tx('pos.top_services_by_revenue')} <span className="fk-hint">{tx('pm.servicesBase')}</span></span>}
         actions={<div className="fn-search"><input className="fk-search" type="search" value={s} onChange={(e) => setS(e.target.value)} placeholder={tx('pm.servicesPh')} aria-label={tx('pm.servicesPh')} data-testid="services-search" /></div>}
         footer={<Pager info={l.data ? { page: l.data.page, pageSize: l.data.pageSize, totalItems: l.data.total, totalPages: l.data.pageCount } : null} onPage={setPage} compact label={tx('pos.top_services_by_revenue')} />}>
@@ -207,6 +210,33 @@ function RevenueSpace({ d, pq, onDay }: { d: any; pq: any; onDay: (s: string) =>
           <ul className="mo-top pm-top" data-testid="services">{items.map((x, i) => <li key={x.name + i} data-testid="service-row"><span className="mo-rank">{(l.data.page - 1) * l.data.pageSize + i + 1}</span><span className="mo-top-n">{x.name}<span className="mo-bar"><span style={{ width: `${Math.round((x.revenueCents / top) * 100)}%`, background: '#C89B5A' }} /></span></span><span className="fk-muted">×{fmtNumber(x.count)}</span><b>{fmtMoney(x.revenueCents)}</b></li>)}</ul>}
       </FitPanel>
     </div>
+  );
+}
+
+/** PAYMENTS 05: Revenue vs Collections explainer — the server's exact bridge for the period (revenueBridge), each step one
+ *  line; read only. Refunds are their own KPI and are in neither figure. */
+type MoneyBridge = { revenueCents: number; taxCents: number; tipsCents: number; expectedCents: number; collectedOnPaidTicketsCents: number; otherDifferenceCents: number;
+  collectedOtherDaysCents: number; collectedForOtherTicketsCents: number; otherTicketsCount: number; collectionsCents: number; balanced: boolean };
+function RevenueBridgeDialog({ b, onClose }: { b: MoneyBridge; onClose: () => void }) {
+  const sign = (c: number) => (c > 0 ? '+ ' : c < 0 ? '− ' : '') + fmtMoney(Math.abs(c));
+  const rows: [string, string, boolean?][] = [
+    ['pm.bridge.revenue', fmtMoney(b.revenueCents), true],
+    ['pm.bridge.tax', sign(b.taxCents)],
+    ['pm.bridge.tips', sign(b.tipsCents)],
+    ['pm.bridge.expected', fmtMoney(b.expectedCents), true],
+    ['pm.bridge.difference', sign(b.otherDifferenceCents)],
+    ['pm.bridge.otherDays', sign(-b.collectedOtherDaysCents)],
+    ['pm.bridge.otherTickets', sign(b.collectedForOtherTicketsCents)],
+    ['pm.bridge.collections', fmtMoney(b.collectionsCents), true],
+  ];
+  return (
+    <FitDialog title={tx('pm.bridge.title')} subtitle={tx('pm.bridge.sub')} onClose={onClose} testId="revenue-bridge"
+      footer={<button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button>}>
+      <table className="fk-table" data-testid="revenue-bridge-table"><tbody>{rows.map(([k, v, strong]) => <tr key={k} data-testid={'bridge-' + k.split('.').pop()}>
+        <td>{strong ? <b>{tx(k)}</b> : tx(k, { n: fmtNumber(b.otherTicketsCount) })}<span className="fk-li-s">{tx(k + 'Why')}</span></td><td className="num">{strong ? <b>{v}</b> : v}</td></tr>)}</tbody></table>
+      {!b.balanced ? <div className="fk-note warn" data-testid="revenue-bridge-unbalanced"><span>{tx('pm.bridge.unbalanced')}</span></div> : null}
+      <p className="fk-hint">{tx('pm.bridge.refunds')}</p>
+    </FitDialog>
   );
 }
 

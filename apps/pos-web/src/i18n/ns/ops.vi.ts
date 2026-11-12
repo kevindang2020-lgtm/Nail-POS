@@ -1584,4 +1584,23 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.ver.older": "Phiên bản ứng dụng cũ hơn {v} — mới nhất trên thiết bị của bạn là {n}", // DRAFT — Kevin reviews
   "dfx.ver.unreported": "Thiết bị chưa báo phiên bản ứng dụng", // DRAFT — Kevin reviews
   "dfx.ver.policy": "Phiên bản ứng dụng được so với phiên bản mới nhất mà các thiết bị trong danh sách báo về. Chưa đặt phiên bản tối thiểu nên không bắt buộc cập nhật — hãy cập nhật trên thiết bị khi tiện.", // DRAFT — Kevin reviews
+  "lgx.env.production": "Thanh toán: Thật (Production)", // DRAFT — Kevin reviews
+  "lgx.env.productionWhy": "sự kiện thanh toán ở đây đến từ tài khoản {p} thật", // DRAFT — Kevin reviews
+  "lgx.env.sandbox": "Thanh toán: Thử nghiệm (Sandbox / UAT)", // DRAFT — Kevin reviews
+  "lgx.env.sandboxWhy": "sự kiện thanh toán ở đây là giao dịch thử trên {p} — không phải thật và không phải bằng chứng chứng nhận", // DRAFT — Kevin reviews
+  "lgx.env.none": "Thanh toán: chưa thiết lập", // DRAFT — Kevin reviews
+  "lgx.env.noneWhy": "chưa cấu hình tài khoản thanh toán nên không có sự kiện thanh toán", // DRAFT — Kevin reviews
+  "lgx.env.src.branch": "tài khoản riêng của chi nhánh này", // DRAFT — Kevin reviews
+  "lgx.env.src.salon": "tài khoản mặc định của tiệm", // DRAFT — Kevin reviews
+  "lgx.env.cert": "Xác nhận production: {s}", // DRAFT — Kevin reviews
+  "lgx.env.noCert": "Chưa ghi nhận xác nhận production", // DRAFT — Kevin reviews
+  "lgx.env.certStatus.testing": "đang thử", // DRAFT — Kevin reviews
+  "lgx.env.certStatus.submitted": "đã nộp", // DRAFT — Kevin reviews
+  "lgx.env.certStatus.changes_requested": "cần chỉnh sửa", // DRAFT — Kevin reviews
+  "lgx.env.certStatus.approved": "đã duyệt", // DRAFT — Kevin reviews
+  "lgx.env.certStatus.revoked": "đã thu hồi", // DRAFT — Kevin reviews
+  "lgx.env.proc.fiserv": "Fiserv", // DRAFT — Kevin reviews
+  "lgx.env.proc.cardpointe": "CardPointe", // DRAFT — Kevin reviews
+  "lgx.env.proc.clover": "Clover", // DRAFT — Kevin reviews
+  "lgx.env.proc.none": "không có", // DRAFT — Kevin reviews
 };

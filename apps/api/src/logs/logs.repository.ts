@@ -13,7 +13,12 @@ export interface LogsRepositoryPort {
   query(ctx: LogsContext, f: LogFilters): Promise<StoredLog[]>;
   /** SUNMI batch 8 (Nov 9 2026): dated, numbered pages + the range's counts (optional — the in-memory store pages in the service) */
   page?(ctx: LogsContext, f: LogPageFilters): Promise<{ rows: StoredLog[]; total: number; summary: LogSummary }>;
+  /** Device Integration Logs 06 (Nov 12 2026): the payment environment these logs come from (optional — no store, no label) */
+  paymentEnvironment?(ctx: LogsContext): Promise<LogPaymentEnvironment>;
 }
+/** sandbox = test / UAT traffic (never certification or production evidence); production = live merchant. `certification`
+ *  is the latest recorded Fiserv production validation for that processor, null when none is recorded or it cannot be told. */
+export interface LogPaymentEnvironment { environment: 'sandbox' | 'production' | null; source: 'branch' | 'salon' | null; processor: string | null; certification: string | null }
 export interface LogPageFilters extends LogFilters { from?: string; to?: string; page: number; pageSize: number }
 export interface LogSummary { events: number; warnings: number; errors: number; device: number; integration: number }
 

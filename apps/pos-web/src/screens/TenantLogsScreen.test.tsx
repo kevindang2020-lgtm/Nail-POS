@@ -57,4 +57,25 @@ describe('TenantLogsScreen', () => {
     await screen.findByTestId('lgx-detail');
     expect(screen.queryByTestId('lgx-impact')).toBeNull();
   });
+  it('Device Integration Logs 06: says whether payment events are sandbox / UAT or production, and whether a production validation is recorded', async () => {
+    const base = { logs, total: 2, page: 1, pageSize: 25, totalPages: 1, summary: { events: 2, warnings: 0, errors: 1, device: 0, integration: 2 } };
+    pageMock.mockResolvedValue({ ...base, paymentEnvironment: { environment: 'sandbox', source: 'salon', processor: 'cardpointe', certification: null } });
+    const v = render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    const env = await screen.findByTestId('lgx-env');
+    expect(env).toHaveAttribute('data-env', 'sandbox');
+    expect(env).toHaveTextContent('Payments: Sandbox / UAT');
+    expect(env).toHaveTextContent('test traffic on CardPointe — not production and not certification evidence');
+    expect(env).toHaveTextContent("the salon's default merchant");
+    expect(screen.getByTestId('lgx-env-cert')).toHaveTextContent('No production validation recorded');
+    v.unmount();
+    pageMock.mockResolvedValue({ ...base, paymentEnvironment: { environment: 'production', source: 'branch', processor: 'clover', certification: 'approved' } });
+    const v2 = render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('lgx-env')).toHaveTextContent('Payments: Production');
+    expect(screen.getByTestId('lgx-env-cert')).toHaveTextContent('Production validation: approved');
+    v2.unmount();
+    pageMock.mockResolvedValue(base);   // an older server: no label, nothing guessed
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    await screen.findByText('Delivery failed for CRM');
+    expect(screen.queryByTestId('lgx-env')).toBeNull();
+  });
 });

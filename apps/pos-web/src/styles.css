@@ -1471,6 +1471,11 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .fk-backdrop{position:fixed;inset:0;background:rgba(32,24,14,.42);display:grid;place-items:center;z-index:80;padding:16px}
 .fk-dialog{background:var(--card);border-radius:16px;box-shadow:0 24px 60px rgba(30,20,8,.28);width:min(560px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden}
 .fk-dialog.wide{width:min(940px,100%)}
+/* End-of-Day Cash 13 / Localization 10 (Nov 12 2026): with the Android soft keyboard open (displayProfile writes data-keyboard,
+   --pos-vvh / --pos-vvt from the visual viewport) a dialog sits inside the VISIBLE part of the screen and is capped at its
+   height: the body scrolls, the footer (Save / Confirm) stays visible above the keyboard; closed, nothing changes. */
+html[data-keyboard="open"] .fk-backdrop{top:var(--pos-vvt,0px);bottom:auto;height:var(--pos-vvh,100dvh);padding:8px}
+html[data-keyboard="open"] .fk-dialog{max-height:calc(var(--pos-vvh,100dvh) - 16px)}
 .fk-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 16px 8px;border-bottom:1px solid #F4EDE1;flex:none}
 .fk-dialog-head h2{font-size:17px;margin:0;font-weight:800}
 .fk-dialog-sub{font-size:12px;color:var(--muted);margin-top:2px}

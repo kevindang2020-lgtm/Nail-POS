@@ -391,4 +391,14 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.rules.none": "Tiệm này chưa có quy tắc phát hiện nào.", // DRAFT — Kevin reviews
   "mpx.rules.noEvaluations": "Chưa ghi nhận lần kiểm tra nào cho các quy tắc đang bật. Hãy chạy phát hiện để kiểm tra.", // DRAFT — Kevin reviews
   "mpx.asof": "Đã cũ — không làm mới được. Các số liệu này tính đến {t}; không phải số liệu trực tiếp.", // DRAFT — Kevin reviews
+  "mpx.fp.title": "Xem lại báo động nhầm — 90 ngày qua", // DRAFT — Kevin reviews
+  "mpx.fp.none": "Không có báo động nào bị bỏ qua vì nhầm trong 90 ngày qua.", // DRAFT — Kevin reviews
+  "mpx.fp.reviewed": "Đã xem xét", // DRAFT — Kevin reviews
+  "mpx.fp.dismissed": "Đã bỏ qua", // DRAFT — Kevin reviews
+  "mpx.fp.reopened": "Mở lại sau đó", // DRAFT — Kevin reviews
+  "mpx.fp.reasons": "Lý do lặp lại", // DRAFT — Kevin reviews
+  "mpx.fp.rate": "{n}% số đã xem xét", // DRAFT — Kevin reviews
+  "mpx.fp.reasonN": "“{r}” × {n}", // DRAFT — Kevin reviews
+  "mpx.fp.noPattern": "Không có lý do lặp lại", // DRAFT — Kevin reviews
+  "mpx.fp.policy": "Thông tin từ chính quyết định của nhân viên. Quy tắc không bao giờ tự tắt hay tự nới lỏng — nếu mẫu này là bình thường, hãy đổi quy tắc ở trên kèm lý do.", // DRAFT — Kevin reviews
 };
