@@ -55,7 +55,7 @@ export function BranchInsightsPanel({ period, tick }: { period: { preset?: strin
       {err ? <ErrorRetry message={err} onRetry={load} /> : !s ? <div className="state">{bt('bzx.loading')}</div> : rows.length === 0 ? <Empty title={bt('pos.no_authorized_branches_to_compare')} /> : (<>
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>
           <th>{bt('pos.branch')}</th><th className="num">{bt('bcx.s.techHours')}</th><th className="num">{bt('bcx.s.perTechHour')}</th>
-          <th className="num">{bt('bcx.s.openHours')}</th><th className="num">{bt('bcx.s.perOpenHour')}</th><th className="num">{bt('bcx.s.returning')}</th></tr></thead>
+          <th className="num">{bt('bcx.s.openHours')}</th><th className="num">{bt('bcx.s.perOpenHour')}</th><th className="num">{bt('bcx.s.returning')}</th><th>{bt('bcx.l.col')}</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.branchId} data-testid="bcx-s-row">
               <td><b>{r.branchName}</b></td>
@@ -64,6 +64,7 @@ export function BranchInsightsPanel({ period, tick }: { period: { preset?: strin
               <td className="num">{hrs(r.operatingHours)}</td>
               <td className="num">{s.financialsIncluded ? money(r.netPerOperatingHourCents) : '—'}{rank(r.rank.perOperatingHour)}</td>
               <td className="num">{r.returningRate == null ? bt('bcx.na') : `${r.returningRate}% (${bzNum(r.returningCustomers)}/${bzNum(r.customers)})`}{rank(r.rank.returningRate)}</td>
+              <td data-testid="bcx-s-like"><LikeCell l={r.likeForLike} fin={s.financialsIncluded} /></td>
             </tr>))}</tbody></table></div>
         {rows.length > 1 ? <button type="button" className="btn ghost" data-testid="bcx-explain" onClick={() => setExplain(true)}>{bt('bcx.e.open')}</button> : null}
         <div className="p-h" style={{ marginTop: 12 }}>{bt('bcx.a.title')}</div>
@@ -97,6 +98,19 @@ function ExplainDialog({ rows, period, onClose }: { rows: any[]; period: Record<
       {r?.evidence ? <ExplainEvidence ev={r.evidence} /> : null}
     </FitDialog>
   );
+}
+
+/** AI BRANCH COMPARISON 04 — like-for-like group (server: branch-insights likeForLikeGroups — similar technician hours, opening
+ *  hours and service mix). Shows the rank among those branches only, or why the branch has no group; never a size ranking. */
+type LikeView = { peers: Array<{ branchId: string; branchName: string; mixOverlapPercent: number }>; rankPerTechnicianHour: number | null; of: number; mix: Array<{ category: string; sharePercent: number }>; reason: string | null };
+export function LikeCell({ l, fin }: { l?: LikeView; fin: boolean }) {
+  if (!l) return <>—</>;
+  const mix = l.mix.slice(0, 3).map((m) => `${m.category} ${m.sharePercent}%`).join(', ');
+  if (!l.peers.length) return <span className="sub" title={mix || undefined}>{bt('bcx.l.r.' + (l.reason ?? 'no_peers'))}</span>;
+  return <span title={mix || undefined}>
+    {fin && l.rankPerTechnicianHour != null ? bt('bcx.l.rank', { n: l.rankPerTechnicianHour, of: l.of }) + ' · ' : ''}
+    {bt('bcx.l.with', { names: l.peers.map((p) => p.branchName).join(', ') })}
+  </span>;
 }
 
 /** AI BRANCH COMPARISON 06 — Source-to-Answer: every figure the explanation rests on, for both branches, with the report or

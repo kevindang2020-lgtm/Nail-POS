@@ -3,7 +3,7 @@
 // difference, the growth advisor, the recorded Branch Data Health Checker.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, explainEvidence, adviseBranches, type ScorecardRow } from './branch-insights';
+import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, explainEvidence, adviseBranches, likeForLikeGroups, mixOverlap, type ScorecardRow } from './branch-insights';
 
 const id = (n: number) => `82700000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const T = id(1), BIG = id(2), SMALL = id(3), OWNER = id(10), C1 = id(20), C2 = id(21), C3 = id(22), TECH = id(30);
@@ -73,6 +73,41 @@ describe('A3 — fair scorecard', () => {
     const small = s.rows.find((r) => r.branchId === SMALL)!, big = s.rows.find((r) => r.branchId === BIG)!;
     expect(small.trendFlags).toEqual([{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00.000Z', route: '/tenant/ai/business/alerts' }]);
     expect(big.trendFlags).toEqual([expect.objectContaining({ family: 'retention', metricId: 'customer_retention', unit: 'percent', triggered: 1, openIncidents: 0, latestValue: 20 })]);
+  });
+  it('BI-07 like-for-like: service mix is read from paid service lines (products, add-ons and removed lines left out); a branch without opening hours has no group, never a size-based one', async () => {
+    const big = (await q(`select id, paid_at from tickets where tenant_id = $1 and branch_id = $2 and paid_at >= '2026-11-02' order by paid_at`, [T, BIG])).map((r) => String(r.id));
+    const line = (ticket: string, cat: string | null, o: { product?: boolean; addOn?: boolean; removed?: boolean } = {}) =>
+      q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, category_snapshot, is_add_on, product_id, removed_at)
+        values ($1,$2,$3,$4,'svc',2500,30,2500,$5,$6,$7,$8)`, [T, BIG, ticket, o.product ? null : id(76), cat, o.addOn ?? false, o.product ? id(77) : null, o.removed ? '2026-11-04T16:00:00Z' : null]);
+    await line(big[0], 'Manicure'); await line(big[0], 'Manicure'); await line(big[1], 'Manicure'); await line(big[1], 'Pedicure');
+    await line(big[1], 'Pedicure', { addOn: true }); await line(big[1], 'Retail', { product: true }); await line(big[1], 'Waxing', { removed: true });
+    const s = await bi.scorecard(ctx(), { preset: 'week' });
+    const b = s.rows.find((r) => r.branchId === BIG)!, sm = s.rows.find((r) => r.branchId === SMALL)!;
+    expect(b.likeForLike!.mix).toEqual([{ category: 'Manicure', sharePercent: 75 }, { category: 'Pedicure', sharePercent: 25 }]);
+    expect(b.likeForLike).toMatchObject({ peers: [], reason: 'no_peers', rankPerTechnicianHour: null, of: 1 });
+    expect(sm.likeForLike).toMatchObject({ peers: [], reason: 'no_opening_hours' });
+    expect(s.notes.join(' ')).toMatch(/Like-for-like: .*1.5× .*60%/);
+  });
+  it('BI-08 like-for-like grouping: staffing and opening hours within 1.5× AND service mix overlap ≥ 60 %; rank only inside the group', () => {
+    const row = (o: Partial<ScorecardRow>): ScorecardRow => ({ branchId: 'x', branchName: 'X', status: 'active', timeZone: 'UTC', netSalesCents: 1, ticketsCount: 1, averageTicketCents: 1, totalBookings: 1, completed: 1,
+      completionRate: 100, noShowPercent: 0, cancelledPercent: 0, technicianHours: 100, operatingHours: 60, customers: 1, returningCustomers: 0, netPerTechnicianHourCents: 5000,
+      netPerOperatingHourCents: 1, returningRate: 0, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
+    const rows = [row({ branchId: 'a', branchName: 'A', netPerTechnicianHourCents: 4000 }), row({ branchId: 'b', branchName: 'B', technicianHours: 140, netPerTechnicianHourCents: 6000 }),
+      row({ branchId: 'c', branchName: 'C', technicianHours: 400, netPerTechnicianHourCents: 9000 }),          // 4× the staffing of A
+      row({ branchId: 'd', branchName: 'D' }),                                                                  // same size, different mix
+      row({ branchId: 'e', branchName: 'E', technicianHours: null })];
+    const nails = new Map([['Manicure', 50], ['Pedicure', 50]]), lashes = new Map([['Lashes', 80], ['Manicure', 20]]);
+    const mixes = new Map([['a', nails], ['b', new Map([['Manicure', 60], ['Pedicure', 30], ['Waxing', 10]])], ['c', nails], ['d', lashes], ['e', nails]]);
+    expect(mixOverlap(nails, lashes)).toBe(20);
+    likeForLikeGroups(rows, mixes);
+    const by = Object.fromEntries(rows.map((r) => [r.branchId, r.likeForLike!]));
+    expect(by.a.peers.map((p) => p.branchId)).toEqual(['b']);                  // C too big, D other mix, E no shifts
+    expect(by.a.peers[0].mixOverlapPercent).toBe(80);
+    expect(by.a).toMatchObject({ of: 2, rankPerTechnicianHour: 2, reason: null });
+    expect(by.b).toMatchObject({ of: 2, rankPerTechnicianHour: 1 });
+    expect(by.c).toMatchObject({ peers: [], reason: 'no_peers', rankPerTechnicianHour: null });
+    expect(by.d.reason).toBe('no_peers');
+    expect(by.e).toMatchObject({ reason: 'no_staffing', peers: [] });
   });
   it('BI-02 opening hours honour closed days and effective dates', () => {
     const rows = [{ day_of_week: 1, opens_at: '09:00', closes_at: '17:30', is_closed: false }, { day_of_week: 0, opens_at: '10:00', closes_at: '15:00', is_closed: true },

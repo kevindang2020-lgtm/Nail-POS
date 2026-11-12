@@ -606,4 +606,11 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bcx.ev.s.time_clock": "Time clock shifts",
   "bcx.ev.s.opening_hours": "Location opening hours",
   "bcx.ev.s.paid_tickets": "Paid tickets (Customers Report)",
+  "bcx.l.col": "Like-for-like",
+  "bcx.l.rank": "#{n} of {of} per technician hour",
+  "bcx.l.with": "similar to {names}",
+  "bcx.l.r.no_peers": "No similar branch",
+  "bcx.l.r.no_staffing": "No time clock hours",
+  "bcx.l.r.no_opening_hours": "No opening hours set",
+  "bcx.l.r.no_services": "No paid services",
 };

@@ -607,4 +607,11 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.ev.s.time_clock": "Ca chấm công", // DRAFT — Kevin reviews
   "bcx.ev.s.opening_hours": "Giờ mở cửa của địa điểm", // DRAFT — Kevin reviews
   "bcx.ev.s.paid_tickets": "Phiếu đã thanh toán (Báo cáo khách hàng)", // DRAFT — Kevin reviews
+  "bcx.l.col": "So sánh tương đương", // DRAFT — Kevin reviews
+  "bcx.l.rank": "#{n} trên {of} theo giờ làm của thợ", // DRAFT — Kevin reviews
+  "bcx.l.with": "tương tự {names}", // DRAFT — Kevin reviews
+  "bcx.l.r.no_peers": "Không có chi nhánh tương tự", // DRAFT — Kevin reviews
+  "bcx.l.r.no_staffing": "Chưa có giờ chấm công", // DRAFT — Kevin reviews
+  "bcx.l.r.no_opening_hours": "Chưa đặt giờ mở cửa", // DRAFT — Kevin reviews
+  "bcx.l.r.no_services": "Chưa có dịch vụ đã thanh toán", // DRAFT — Kevin reviews
 };

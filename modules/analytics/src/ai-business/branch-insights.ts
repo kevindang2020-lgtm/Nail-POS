@@ -37,6 +37,47 @@ export interface ScorecardRow {
   trendFlags?: TrendFlag[];
   /** AI BRANCH COMPARISON 06: the salon days this branch's hours, shifts and customers were read over (its own time zone) */
   range?: { from: string; to: string };
+  /** AI BRANCH COMPARISON 04: the branches like this one (staffing, opening hours and service mix) and its rank among them */
+  likeForLike?: LikeForLike;
+}
+/** AI BRANCH COMPARISON 04 (Nov 12 2026) — Like-for-like groups. Two branches are compared like-for-like only when, in the
+ *  same period, their worked technician hours AND their opening hours are each within LIKE_MAX_RATIO of each other and
+ *  their service mix (share of paid service lines per category) overlaps by at least LIKE_MIN_MIX_OVERLAP percent. A
+ *  branch missing hours, shifts or paid service lines has no group (reason says which) — it is never grouped by size. */
+export const LIKE_MAX_RATIO = 1.5;
+export const LIKE_MIN_MIX_OVERLAP = 60;
+export interface LikeForLike {
+  peers: Array<{ branchId: string; branchName: string; mixOverlapPercent: number }>;
+  /** rank by net per technician hour among this branch + its peers (null when revenue is hidden or there are no peers) */
+  rankPerTechnicianHour: number | null; of: number;
+  mix: Array<{ category: string; sharePercent: number }>;
+  reason: 'no_staffing' | 'no_opening_hours' | 'no_services' | 'no_peers' | null;
+}
+/** share (0–100, one decimal) of each category in a branch's paid service lines */
+export type ServiceMix = Map<string, number>;
+export function mixOverlap(a: ServiceMix, b: ServiceMix): number {
+  let o = 0;
+  for (const [k, v] of a) o += Math.min(v, b.get(k) ?? 0);
+  return r1(o);
+}
+const within = (x: number, y: number) => x > 0 && y > 0 && Math.max(x, y) / Math.min(x, y) <= LIKE_MAX_RATIO;
+/** Pure: the like-for-like group of every row (rows are mutated with `likeForLike`). */
+export function likeForLikeGroups(rows: ScorecardRow[], mixes: Map<string, ServiceMix>): void {
+  const mixList = (m: ServiceMix | undefined) => [...(m ?? new Map()).entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([category, sharePercent]) => ({ category, sharePercent }));
+  const reasonOf = (r: ScorecardRow): LikeForLike['reason'] => (r.technicianHours == null ? 'no_staffing' : r.operatingHours == null ? 'no_opening_hours' : !(mixes.get(r.branchId)?.size) ? 'no_services' : null);
+  for (const r of rows) {
+    const reason = reasonOf(r);
+    const mine = mixes.get(r.branchId);
+    const peers = reason ? [] : rows.filter((o) => o.branchId !== r.branchId && reasonOf(o) == null
+        && within(r.technicianHours!, o.technicianHours!) && within(r.operatingHours!, o.operatingHours!)
+        && mixOverlap(mine!, mixes.get(o.branchId)!) >= LIKE_MIN_MIX_OVERLAP)
+      .map((o) => ({ branchId: o.branchId, branchName: o.branchName, mixOverlapPercent: mixOverlap(mine!, mixes.get(o.branchId)!) }));
+    const group = [r, ...rows.filter((o) => peers.some((p) => p.branchId === o.branchId))];
+    const ranked = group.filter((x) => x.netPerTechnicianHourCents != null).sort((x, y) => (y.netPerTechnicianHourCents as number) - (x.netPerTechnicianHourCents as number));
+    const pos = ranked.findIndex((x) => x.branchId === r.branchId);
+    r.likeForLike = { peers, of: group.length, mix: mixList(mine), reason: reason ?? (peers.length ? null : 'no_peers'),
+      rankPerTechnicianHour: peers.length && pos >= 0 ? pos + 1 : null };
+  }
 }
 /** AI BRANCH COMPARISON 06 (Nov 12 2026) — Source-to-Answer audit trail for "Explain the difference": every figure the
  *  explanation rests on, for both branches, with the record or report it was read from, the salon days, and the time it
@@ -211,13 +252,28 @@ export class BranchInsights {
           operator: String(f.operator), latestAt: f.latest_at == null ? null : new Date(f.latest_at).toISOString(), route: '/tenant/ai/business/alerts' };
       });
     }
+    // AI BRANCH COMPARISON 04 — service mix per branch: paid tickets in the branch's own salon days, service lines (not products, add-ons or removed lines), by category
+    type MixRow = { branch_id: string; category: string; n: number };
+    const mixes = new Map<string, ServiceMix>();
+    for (const r of rows) {
+      const rg = r.range!;
+      const mr = (await sql<MixRow>`select l.branch_id, coalesce(nullif(l.category_snapshot, ''), 'Uncategorized') as category, count(*)::int as n
+        from ticket_service_lines l join tickets tk on tk.id = l.ticket_id and tk.tenant_id = l.tenant_id
+        where l.tenant_id = ${ctx.tenantId} and l.branch_id = ${r.branchId}::uuid and l.removed_at is null and l.product_id is null and coalesce(l.is_add_on, false) = false and tk.status = 'paid'
+          and (tk.paid_at at time zone ${r.timeZone})::date between ${rg.from}::date and ${rg.to}::date
+        group by l.branch_id, 2`.execute(this.db)).rows;
+      const total = mr.reduce((a, x) => a + Number(x.n), 0);
+      mixes.set(r.branchId, new Map(total ? mr.map((x) => [String(x.category), r1((Number(x.n) / total) * 100)]) : []));
+    }
+    likeForLikeGroups(rows, mixes);
     const rankBy = (k: 'netPerTechnicianHourCents' | 'netPerOperatingHourCents' | 'returningRate', slot: keyof ScorecardRow['rank']) => {
       const sorted = rows.filter((r) => r[k] != null).sort((a, b) => (b[k] as number) - (a[k] as number));
       sorted.forEach((r, i) => { r.rank[slot] = i + 1; });
     };
     rankBy('netPerTechnicianHourCents', 'perTechnicianHour'); rankBy('netPerOperatingHourCents', 'perOperatingHour'); rankBy('returningRate', 'returningRate');
     const notes = ['Ranks use per-hour and per-customer figures, so a smaller or shorter-hours branch is not ranked down for its size.',
-      'Technician hours are the hours clocked in on the time clock; operating hours come from each location\'s opening hours.'];
+      'Technician hours are the hours clocked in on the time clock; operating hours come from each location\'s opening hours.',
+      `Like-for-like: branches whose technician hours and opening hours are each within ${LIKE_MAX_RATIO}× of each other and whose service mix overlaps by at least ${LIKE_MIN_MIX_OVERLAP}%.`];
     if (!cmp.financialsIncluded) notes.push('Revenue is hidden for your role: the per-hour sales figures are not shown.');
     return { preset: String(cmp.preset), range: cmp.range, financialsIncluded: cmp.financialsIncluded, rows, advice: adviseBranches(rows), notes };
   }

@@ -9,8 +9,8 @@ const render1 = () => render(<MemoryRouter><POSAiBranchCompareScreen /></MemoryR
 
 const ROW = (o: any) => ({ status: 'active', timeZone: 'UTC', averageTicketCents: 5000, totalBookings: 10, completed: 9, completionRate: 90, noShowPercent: 2, cancelledPercent: 1, customers: 10, returningCustomers: 5, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
 const SC = { preset: 'month', range: null, financialsIncluded: true, notes: [], rows: [
-  ROW({ branchId: 'b1', branchName: 'Marlton', trendFlags: [{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00Z', route: '/tenant/ai/business/alerts' }], netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
-  ROW({ branchId: 'b2', branchName: 'Deptford', netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
+  ROW({ branchId: 'b1', branchName: 'Marlton', likeForLike: { peers: [{ branchId: 'b3', branchName: 'Cherry Hill', mixOverlapPercent: 80 }, { branchId: 'b4', branchName: 'Voorhees', mixOverlapPercent: 70 }], rankPerTechnicianHour: 2, of: 3, mix: [{ category: 'Manicure', sharePercent: 60 }], reason: null }, trendFlags: [{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00Z', route: '/tenant/ai/business/alerts' }], netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
+  ROW({ branchId: 'b2', branchName: 'Deptford', likeForLike: { peers: [], rankPerTechnicianHour: null, of: 1, mix: [], reason: 'no_opening_hours' }, netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
   advice: [{ branchId: 'b2', branchName: 'Deptford', kind: 'no_opening_hours', severity: 'info', message: 'x', basis: {}, route: '/tenant/management/locations' }] };
 beforeEach(() => { center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset(); });
 
@@ -25,6 +25,10 @@ describe('AI Branch Comparison screen', () => {
     expect(rows[1]).toHaveTextContent('Deptford');
     expect(rows[1]).toHaveTextContent('$100.00 · #1');
     expect(screen.getByTestId('bcx-advice')).toHaveTextContent('Deptford has no opening hours set');
+    // AI BRANCH COMPARISON 04: like-for-like group from the server — rank among similar branches, or why there is none
+    const like = screen.getAllByTestId('bcx-s-like');
+    expect(like[0]).toHaveTextContent('#2 of 3 per technician hour · similar to Cherry Hill, Voorhees');
+    expect(like[1]).toHaveTextContent('No opening hours set');
     // AI BRANCH COMPARISON 09: the existing alert rules' flags, worded, linking to Alerts
     const tf = screen.getAllByTestId('bcx-trend');
     expect(tf).toHaveLength(1);
