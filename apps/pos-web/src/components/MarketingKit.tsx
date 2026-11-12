@@ -115,7 +115,12 @@ export function MkEstimate({ channel, body, recipients, budgetCents, onResult }:
 const CC_PRESET: Record<string, string> = { today: 'today', week: 'week', month: 'month', year: 'year', all: 'all' };
 const STATUSES = ['', 'draft', 'awaiting_approval', 'approved', 'scheduled', 'sending', 'completed', 'cancelled'];
 /** Campaign Center's own list — search · status · channel · period · numbered pages, newest first; rows open in Campaign Center */
-export function CampaignLibrary({ tick = 0, title, onOpen }: { tick?: number; title?: string; onOpen?: (c: any) => void }) {
+export function CampaignLibrary({ tick = 0, title, onOpen, selectedId, compare = false }: { tick?: number; title?: string; onOpen?: (c: any) => void;
+  /** Campaign Results 08: the campaign whose results are open stays highlighted in the list */ selectedId?: string | null;
+  /** Campaign Results 17: tick up to four campaigns and compare them side by side (figures as the server reports them) */ compare?: boolean }) {
+  const [picked, setPicked] = useState<any[]>([]);
+  const [comparing, setComparing] = useState(false);
+  const togglePick = (c: any) => setPicked((p) => (p.some((x) => x.id === c.id) ? p.filter((x) => x.id !== c.id) : p.length >= 4 ? p : [...p, c]));
   const [draft, setDraft] = useState('');
   const [f, setF] = useState<{ q?: string; status: string; channel: string; preset: string; from?: string; to?: string; page: number; pageSize: number }>({ status: '', channel: '', preset: 'all', page: 1, pageSize: 10 });
   const [list, setList] = useState<any>(null);
@@ -147,10 +152,13 @@ export function CampaignLibrary({ tick = 0, title, onOpen }: { tick?: number; ti
       </div>
       {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{mt('amk.loading')}</div> : rows.length === 0 ? <Empty title={filtered ? mt('amk.lib.noMatch') : mt('amk.lib.none')} /> : (
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>
+          {compare ? <th><span className="sr-only">{mt('amk.cmp.pick')}</span></th> : null}
           <th>{mt('amk.lib.col.name')}</th><th>{mt('amk.lib.col.status')}</th><th>{mt('amk.lib.col.channel')}</th><th>{mt('amk.lib.col.audience')}</th>
           <th>{mt('amk.lib.col.sent')}</th><th>{mt('amk.lib.col.booked')}</th><th>{mt('amk.lib.col.cost')}</th><th>{mt('amk.lib.col.created')}</th></tr></thead>
           <tbody>{rows.map((c) => (
-            <tr key={c.id} data-testid="amk-lib-row">
+            <tr key={c.id} data-testid="amk-lib-row" className={selectedId === c.id ? 'on' : undefined} aria-selected={selectedId === c.id ? true : undefined}>
+              {compare ? <td><input type="checkbox" data-testid="amk-cmp-pick" aria-label={mt('amk.cmp.pickOne', { name: c.name })} checked={picked.some((x) => x.id === c.id)}
+                disabled={!picked.some((x) => x.id === c.id) && picked.length >= 4} onChange={() => togglePick(c)} /></td> : null}
               <td>{onOpen ? <button type="button" className="linkish" data-testid="amk-lib-open" onClick={() => onOpen(c)}>{c.name}</button> : <Link to={`/tenant/marketing/campaigns?q=${encodeURIComponent(c.id)}`}>{c.name}</Link>}{c.origin === 'assistant' ? <span className="chip" style={{ marginLeft: 6 }}>{mt('amk.lib.assistant')}</span> : null}</td>
               <td>{mt('amk.cst.' + c.displayStatus)}{c.outcome ? <div className="sub">{mt('amk.outcome.' + c.outcome)}</div> : null}</td>
               <td>{mt('amk.channel.' + c.channel)}</td>
@@ -160,11 +168,40 @@ export function CampaignLibrary({ tick = 0, title, onOpen }: { tick?: number; ti
               <td>{c.counts.actualCostCents == null ? (c.counts.submitted ? mt('amk.notReported') : mkMoney(0)) : mkMoney(c.counts.actualCostCents)}{c.budgetCents ? <div className="sub">{mt('amk.lib.budget', { b: mkMoney(c.budgetCents) })}</div> : null}</td>
               <td>{mkWhen(c.createdAt)}</td>
             </tr>))}</tbody></table></div>)}
+      {compare ? <div className="rvw-dates" data-testid="amk-cmp-bar">
+        <span className="sub">{mt('amk.cmp.count', { n: String(picked.length) })}</span>
+        <button type="button" className="btn" disabled={picked.length < 2} onClick={() => setComparing(true)} data-testid="amk-cmp-open">{mt('amk.cmp.open')}</button>
+        {picked.length ? <button type="button" className="btn ghost" onClick={() => setPicked([])} data-testid="amk-cmp-clear">{mt('amk.clear')}</button> : null}
+      </div> : null}
+      {comparing ? <CampaignCompare rows={picked} onClose={() => setComparing(false)} /> : null}
       <div className="rvw-pager">
         <Pager info={list?.pagination ?? null} onPage={(n) => set({ page: n })} />
         <label className="rvw-f"><span>{mt('amk.rows')}</span><select data-testid="amk-lib-rows" value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '20', '50'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
       </div>
     </section>
+  );
+}
+/** Campaign Results 17 — the picked campaigns side by side. Every figure is the server's (counts, its delivery rate and cost per
+ *  booking); a figure the server does not have reads N/A. Revenue is "associated", never "caused". Read only. */
+function CampaignCompare({ rows, onClose }: { rows: any[]; onClose: () => void }) {
+  const na = mt('amk.na');
+  const lines: { key: string; cell: (c: any) => string }[] = [
+    { key: 'channel', cell: (c) => mt('amk.channel.' + c.channel) },
+    { key: 'eligible', cell: (c) => (c.counts.eligible == null ? (c.counts.selectedIsEstimate ? mt('amk.lib.estimate', { n: mkNum(c.counts.selected) }) : na) : mt('amk.lib.eligibleOf', { e: mkNum(c.counts.eligible), n: mkNum(c.counts.selected) })) },
+    { key: 'delivered', cell: (c) => `${mkNum(c.counts.delivered)} / ${mkNum(c.counts.submitted)}` },
+    { key: 'deliveryRate', cell: (c) => (c.counts.deliveryRatePercent == null ? na : `${fmtNumber(c.counts.deliveryRatePercent, 1)}%`) },
+    { key: 'booked', cell: (c) => mkNum(c.counts.booked) },
+    { key: 'revenue', cell: (c) => mkMoney(c.counts.associatedRevenueCents) },
+    { key: 'cost', cell: (c) => (c.counts.actualCostCents == null ? (c.counts.submitted ? mt('amk.notReported') : mkMoney(0)) : mkMoney(c.counts.actualCostCents)) },
+    { key: 'costPerBooking', cell: (c) => (c.counts.costPerBookingCents == null ? na : mkMoney(c.counts.costPerBookingCents)) },
+    { key: 'created', cell: (c) => mkWhen(c.createdAt) },
+  ];
+  return (
+    <FitDialog wide testId="amk-cmp" title={mt('amk.cmp.title')} onClose={onClose} footer={<button type="button" className="btn ghost" onClick={onClose}>{mt('amk.close')}</button>}>
+      <div className="rvw-table-wrap"><table className="tbl" data-testid="amk-cmp-table"><thead><tr><th>{mt('amk.cmp.metric')}</th>{rows.map((c) => <th key={c.id}>{c.name}</th>)}</tr></thead>
+        <tbody>{lines.map((l) => <tr key={l.key} data-testid={'amk-cmp-' + l.key}><td>{mt('amk.cmp.row.' + l.key)}</td>{rows.map((c) => <td key={c.id} className="num">{l.cell(c)}</td>)}</tr>)}</tbody></table></div>
+      <p className="sub">{mt('amk.associated')} {mt('amk.cmp.note')}</p>
+    </FitDialog>
   );
 }
 function LibCustom({ value, onApply, today }: { value: { preset: string; from?: string; to?: string }; onApply: (from: string, to: string) => void; today?: string }) {

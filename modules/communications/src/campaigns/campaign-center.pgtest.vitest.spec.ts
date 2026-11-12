@@ -185,6 +185,16 @@ describe('§08 wizard: details → audience snapshot → message → preview →
   });
 });
 
+describe('Campaign Results 17 — comparison ratios come from the server', () => {
+  it('delivery rate = delivered / submitted and cost per booking = reported cost / bookings; N/A (null) for a zero denominator or unreported cost', () => {
+    const snap = { audience_source: 'segment_snapshot', snapshot_version: 1, selected: 10, eligible: 8 };
+    expect(countsOf({ ...snap, submitted: 8, delivered: 6, costed: 8, cost_micros: 60_000, booked: 3 })).toMatchObject({ deliveryRatePercent: 75, actualCostCents: 6, costPerBookingCents: 2 });
+    expect(countsOf({ ...snap, submitted: 3, delivered: 1, costed: 3, cost_micros: 0, booked: 0 })).toMatchObject({ deliveryRatePercent: 33.3, costPerBookingCents: null });
+    expect(countsOf({ ...snap, submitted: 4, delivered: 4, costed: 2, cost_micros: 20_000, booked: 2 })).toMatchObject({ actualCostCents: null, costPerBookingCents: null });   // cost not reported for every message
+    expect(countsOf({ ...snap, submitted: 0 })).toMatchObject({ deliveryRatePercent: null, costPerBookingCents: null });
+  });
+});
+
 describe('AI Marketing Assistant 11 — campaign approval timeline (versioned audit)', () => {
   it('each approval records reviewer, content version + hash, audience snapshot + counts, channel and spend cap; an edit says it voided the approval; launches carry the versions', async () => {
     const a: any = await cc.audit(owner, cA);

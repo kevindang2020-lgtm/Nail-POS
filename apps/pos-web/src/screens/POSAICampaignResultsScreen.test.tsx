@@ -35,4 +35,26 @@ describe('POSAICampaignResultsScreen', () => {
     expect(screen.getByTestId('amk-stage-cost')).toHaveTextContent('$0.28');
     expect(screen.getByTestId('amk-res-detail')).toHaveTextContent('does not prove the campaign caused the visit');
   });
+  it('Campaign Results 08 + 17: the open campaign stays highlighted; two to four ticked campaigns compare side by side with the server\'s rates (N/A when it has none)', async () => {
+    const row2 = { id: 'c2', name: 'Spring email', status: 'completed', displayStatus: 'completed', outcome: null, origin: 'manual', channel: 'email', budgetCents: 0, createdAt: '2026-10-20T10:00:00Z',
+      counts: { ...counts, selected: 5, eligible: 5, submitted: 0, delivered: 0, booked: 0, associatedRevenueCents: 0, actualCostCents: null, deliveryRatePercent: null, costPerBookingCents: null } };
+    cc.list.mockResolvedValue({ items: [{ id: 'c1', name: 'Gel rebooking', status: 'completed', displayStatus: 'completed', outcome: null, origin: 'assistant', channel: 'sms', budgetCents: 500, createdAt: '2026-11-01T10:00:00Z',
+      counts: { ...counts, deliveryRatePercent: 75, costPerBookingCents: 14 } }, row2], pagination: { page: 1, pageSize: 10, totalItems: 2, totalPages: 1 }, period: { today: '2026-11-03' } });
+    render(<MemoryRouter><POSAICampaignResultsScreen /></MemoryRouter>);
+    const rows = await screen.findAllByTestId('amk-lib-row');
+    fireEvent.click(screen.getAllByTestId('amk-lib-open')[0]);
+    await screen.findByTestId('amk-res-detail');
+    expect(rows[0]).toHaveAttribute('aria-selected', 'true'); expect(rows[1]).not.toHaveAttribute('aria-selected');
+    expect(screen.getByTestId('amk-cmp-open')).toBeDisabled();
+    const picks = screen.getAllByTestId('amk-cmp-pick');
+    fireEvent.click(picks[0]); fireEvent.click(picks[1]);
+    expect(screen.getByTestId('amk-cmp-bar')).toHaveTextContent('2 of 4 picked');
+    fireEvent.click(screen.getByTestId('amk-cmp-open'));
+    const t = await screen.findByTestId('amk-cmp-table');
+    expect(t).toHaveTextContent('Gel rebooking'); expect(t).toHaveTextContent('Spring email');
+    expect(screen.getByTestId('amk-cmp-deliveryRate')).toHaveTextContent(/75%\s*N\/A/);
+    expect(screen.getByTestId('amk-cmp-costPerBooking')).toHaveTextContent(/\$0\.14\s*N\/A/);
+    expect(screen.getByTestId('amk-cmp-eligible')).toHaveTextContent('8');
+    expect(screen.getByTestId('amk-cmp')).toHaveTextContent('does not prove the campaign caused the visit');
+  });
 });

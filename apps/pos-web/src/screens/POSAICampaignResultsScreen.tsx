@@ -48,7 +48,7 @@ export function POSAICampaignResultsScreen() {
         {cards.map((c) => <KpiCard key={c.key} testId={`amk-res-${c.key}`} label={mt('amk.kpi.' + c.key)} value={s ? c.v : '—'} sub={c.sub} loading={!s && !err} />)}
       </div>
       {s ? <p className="sub">{s.definitions?.associatedRevenue ? mt('amk.associated') : null} {mt('amk.res.basis')}</p> : null}
-      <CampaignLibrary tick={tick} title={mt('amk.res.list')} onOpen={setOpen} />
+      <CampaignLibrary tick={tick} title={mt('amk.res.list')} onOpen={setOpen} selectedId={open?.id ?? null} compare />
       {open ? <CampaignFunnel id={open.id} name={open.name} onClose={() => setOpen(null)} /> : null}
     </div>
   );

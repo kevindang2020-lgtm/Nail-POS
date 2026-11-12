@@ -136,6 +136,8 @@ export interface CampaignCounts {
   queued: number; attempted: number; submitted: number; skippedAtSend: number; failed: number; delivered: number; unknown: number; simulated: number;
   booked: number; redemptions: number; discountCents: number; associatedRevenueCents: number; legacyRevenueCents: number; legacySentCount: number;
   actualCostCents: number | null; roi: number | null; roiNote: string;
+  /** Campaign Results 17 — comparison ratios, computed HERE once (null when the denominator is 0 / the cost is not reported) */
+  deliveryRatePercent: number | null; costPerBookingCents: number | null;
 }
 export function countsOf(r: any): CampaignCounts {
   const snapshot = r.audience_source === 'segment_snapshot' && N(r.snapshot_version) > 0;
@@ -154,6 +156,8 @@ export function countsOf(r: any): CampaignCounts {
     legacyRevenueCents: N(r.legacy_revenue), legacySentCount: N(r.sent_count), actualCostCents, roi,
     roiNote: roi != null ? 'ROI = (revenue on tickets that redeemed this campaign\'s codes − provider cost) / provider cost.'
       : submitted === 0 ? 'Not available: nothing was sent, so there is no cost.' : 'Not available: the provider has not reported the cost of every message.',
+    deliveryRatePercent: submitted > 0 ? Math.round((delivered / submitted) * 1000) / 10 : null,
+    costPerBookingCents: actualCostCents != null && N(r.booked) > 0 ? Math.round(actualCostCents / N(r.booked)) : null,
   };
 }
 

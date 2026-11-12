@@ -351,4 +351,20 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.b.r.when": "Giờ gửi đề xuất",
   "amk.b.r.whenV": "{d} {t} ({tz})",
   "amk.b.r.whenNone": "Chọn khi bắt đầu trong Trung tâm chiến dịch",
+  "amk.cmp.pick": "So sánh", // DRAFT — Kevin reviews
+  "amk.cmp.pickOne": "So sánh {name}", // DRAFT — Kevin reviews
+  "amk.cmp.count": "Đã chọn {n} trên 4 để so sánh", // DRAFT — Kevin reviews
+  "amk.cmp.open": "So sánh mục đã chọn", // DRAFT — Kevin reviews
+  "amk.cmp.title": "So sánh chiến dịch", // DRAFT — Kevin reviews
+  "amk.cmp.metric": "Chỉ số", // DRAFT — Kevin reviews
+  "amk.cmp.row.channel": "Kênh", // DRAFT — Kevin reviews
+  "amk.cmp.row.eligible": "Đối tượng đủ điều kiện", // DRAFT — Kevin reviews
+  "amk.cmp.row.delivered": "Đã giao / đã nhận", // DRAFT — Kevin reviews
+  "amk.cmp.row.deliveryRate": "Tỷ lệ giao", // DRAFT — Kevin reviews
+  "amk.cmp.row.booked": "Lịch hẹn hợp lệ", // DRAFT — Kevin reviews
+  "amk.cmp.row.revenue": "Doanh thu liên quan", // DRAFT — Kevin reviews
+  "amk.cmp.row.cost": "Chi phí thực tế", // DRAFT — Kevin reviews
+  "amk.cmp.row.costPerBooking": "Chi phí mỗi lịch hẹn", // DRAFT — Kevin reviews
+  "amk.cmp.row.created": "Ngày tạo", // DRAFT — Kevin reviews
+  "amk.cmp.note": "Số liệu theo báo cáo của từng chiến dịch; N/A nghĩa là không có gì để chia hoặc chi phí chưa được báo.", // DRAFT — Kevin reviews
 };

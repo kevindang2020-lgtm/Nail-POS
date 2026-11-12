@@ -4283,3 +4283,6 @@ html[data-spacing="compact"] .tbl td { padding: 6px 8px; }
 .mpx-pinned { position: sticky; top: 0; z-index: 3; background: var(--page); padding-top: 4px; }
 .fk-checks{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}.fk-checks li{padding:6px 10px;border-radius:8px;background:var(--aps-surface-2,#f6f4f1)}.fk-checks li.ok::before{content:"✓ ";color:var(--aps-ok,#2e7d32)}.fk-checks li.warn::before{content:"! ";color:var(--aps-orange,#A96F22)}.fk-checks li.bad{color:var(--aps-bad,#b3261e)}
 .aic-soon td{background:rgba(169,111,34,.08)}
+/* Campaign Results 08 — the campaign whose results are open stays highlighted in the list */
+.rvw-table tr.on td { background: #FBF3E4; }
+.rvw-table tr.on td:first-child { box-shadow: inset 3px 0 0 #A96F22; }
