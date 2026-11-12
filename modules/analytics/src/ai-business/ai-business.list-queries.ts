@@ -7,7 +7,7 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 export const AiBusinessControllerListQueries = {
   listMetrics: { filters: { category: { type: 'text' } }, search: false },
   appointmentMetrics: { filters: { preset: { type: 'text' } }, search: false },
-  compareBranches: { filters: { preset: { type: 'text' }, includeInactive: { type: 'text' } }, search: { params: ['q'] }, maxLimit: 50, dateRange: { maxDays: 366 }, params: ['page'] },
+  compareBranches: { filters: { preset: { type: 'text' }, includeInactive: { type: 'text' }, compare: { type: 'text' } }, search: { params: ['q'] }, maxLimit: 50, dateRange: { maxDays: 366 }, params: ['page'] },
   customerGrowth: { filters: { preset: { type: 'text' } }, search: false },
   technicianPerformance: { filters: { preset: { type: 'text' } }, search: false },
   dailyBrief: { filters: { preset: { type: 'text' } }, search: false },

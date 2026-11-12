@@ -344,7 +344,7 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "payment.qaWhy.paid": "Đã thanh toán", // DRAFT — Kevin reviews
   "payment.qaWhy.totalLoading": "Tổng tiền đang tải", // DRAFT — Kevin reviews
   "payment.qaWhy.merchantNotConfigured": "Chưa cấu hình tài khoản thẻ", // DRAFT — Kevin reviews
-  "payment.giftReady.title": "Sẵn sàng thanh toán bằng thẻ quà", // DRAFT — Kevin reviews
+  "payment.giftReady.title": "Sẵn sàng thanh toán bằng thẻ quà tặng", // DRAFT — Kevin reviews
   "payment.giftReady.check": "Kiểm tra thẻ", // DRAFT — Kevin reviews
   "payment.giftReady.failed": "Không kiểm tra được thẻ", // DRAFT — Kevin reviews
   "payment.giftReady.ready": "Sẵn sàng áp dụng", // DRAFT — Kevin reviews
@@ -365,5 +365,5 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "payment.giftReady.blocker.already_paid": "Hóa đơn này đã trả đủ", // DRAFT — Kevin reviews
   "payment.giftReady.blocker.offline": "Mất kết nối — tạm dừng thanh toán", // DRAFT — Kevin reviews
   "payment.giftReady.blocker.phone_claim": "Một điện thoại thanh toán đang giữ hóa đơn này", // DRAFT — Kevin reviews
-  "payment.giftReady.blocker.disabled": "Thanh toán bằng thẻ quà đang tắt trong Cài đặt thanh toán", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.disabled": "Thanh toán bằng thẻ quà tặng đang tắt trong Cài đặt thanh toán", // DRAFT — Kevin reviews
 };

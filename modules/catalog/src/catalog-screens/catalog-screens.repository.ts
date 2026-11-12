@@ -696,8 +696,8 @@ export class CatalogScreensRepository {
     const sums = (await sql<any>`select coalesce(sum(l.line_total_cents) filter (where t.paid_at is not null), 0)::bigint as paid_cents, count(*) filter (where t.paid_at is not null)::int as paid ${from} where ${w}`.execute(this.db)).rows[0];
     const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select l.id, l.service_name_snapshot, l.line_total_cents, l.price_cents_snapshot, l.duration_minutes_snapshot, l.created_at, t.paid_at, l.quantity, l.is_taxable,
-        (select case when count(distinct m.price_cents) = 1 then min(m.price_cents) end from service_add_ons m where m.tenant_id = l.tenant_id and m.is_active and lower(m.name) = lower(l.service_name_snapshot)) as menu_cents,
-        (select count(*) from service_add_ons m where m.tenant_id = l.tenant_id and m.is_active and lower(m.name) = lower(l.service_name_snapshot))::int as menu_rows, t.ticket_number, t.id as ticket_id, t.status as ticket_status,
+        (select case when count(distinct sa.price_cents) = 1 then min(sa.price_cents) end from service_add_ons sa where sa.tenant_id = l.tenant_id and sa.is_active and lower(sa.name) = lower(l.service_name_snapshot)) as menu_cents,
+        (select count(*) from service_add_ons sa where sa.tenant_id = l.tenant_id and sa.is_active and lower(sa.name) = lower(l.service_name_snapshot))::int as menu_rows, t.ticket_number, t.id as ticket_id, t.status as ticket_status,
         cu.full_name, cu.phone_display, cu.normalized_phone, coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) as technician,
         (select string_agg(m.service_name_snapshot, ', ' order by m.created_at) from ticket_service_lines m where m.tenant_id = l.tenant_id and m.ticket_id = l.ticket_id and m.removed_at is null and not coalesce(m.is_add_on, false) and lower(coalesce(m.line_kind, 'service')) = 'service') as main_services
       ${from} where ${w} order by ${col} desc, l.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;

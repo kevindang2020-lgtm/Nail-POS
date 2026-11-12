@@ -74,8 +74,8 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.review.recipient": "Người nhận", // DRAFT — Kevin reviews
   "gc.review.recipientSelf": "{purchaser} (không gửi tặng)", // DRAFT — Kevin reviews
   "gc.review.where": "Dùng được tại", // DRAFT — Kevin reviews
-  "gc.review.allLocations": "Tất cả chi nhánh của tiệm (Cài đặt thẻ quà)", // DRAFT — Kevin reviews
-  "gc.review.thisLocation": "Chỉ chi nhánh này (Cài đặt thẻ quà)", // DRAFT — Kevin reviews
+  "gc.review.allLocations": "Tất cả chi nhánh của tiệm (Cài đặt thẻ quà tặng)", // DRAFT — Kevin reviews
+  "gc.review.thisLocation": "Chỉ chi nhánh này (Cài đặt thẻ quà tặng)", // DRAFT — Kevin reviews
   "gc.review.impact": "Sau khi Thanh toán nhận tiền, thẻ có giá trị sử dụng. Muốn hoàn tác phải hoàn tiền tại Thanh toán hoặc hủy thẻ kèm lý do — không bao giờ tự động đảo ngược.", // DRAFT — Kevin reviews
   "gc.replacePreview.moves": "Số dư được chuyển: {amount}, từ {from}", // DRAFT — Kevin reviews
   "gc.replacePreview.newCard": "Số dư chuyển sang một thẻ mới tại tiệm này; lịch sử đầy đủ vẫn lưu trên cả hai thẻ.", // DRAFT — Kevin reviews

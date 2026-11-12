@@ -65,15 +65,15 @@ describe('Device & Integration Logs — pages', () => {
 
 describe('Device Integration Logs 06 (Nov 12 2026): payment environment label', () => {
   it('the salon default when the branch has no merchant of its own; a branch merchant wins; the latest production validation is reported only for an exact provider', async () => {
-    await q(sql`insert into tenant_payment_config (tenant_id, processor, environment) values (${T}, 'cardpointe', 'sandbox') on conflict (tenant_id) do update set processor = excluded.processor, environment = excluded.environment`);
+    await q(sql`insert into tenant_payment_config (tenant_id, processor, environment) values (${T}, 'clover', 'sandbox') on conflict (tenant_id) do update set processor = excluded.processor, environment = excluded.environment`);
     let r: any = await svc.query(ctx, { page: 1, pageSize: 10 });
-    expect(r.paymentEnvironment).toEqual({ environment: 'sandbox', source: 'salon', processor: 'cardpointe', certification: null });
-    await q(sql`insert into payment_platform_validations (provider, scope_version, environment, status) values ('cardpointe', 'bolt v1', 'production', 'testing')`);
+    expect(r.paymentEnvironment).toEqual({ environment: 'sandbox', source: 'salon', processor: 'clover', certification: null });
+    await q(sql`insert into payment_platform_validations (provider, scope_version, environment, status) values ('clover', 'bolt v1', 'production', 'testing')`);
     r = await svc.query(ctx, { page: 1, pageSize: 10 });
     expect(r.paymentEnvironment.certification).toBe('testing');
-    await q(sql`insert into payment_merchant_accounts (tenant_id, branch_id, processor, environment) values (${T}, ${B}, 'fiserv', 'production')`);
+    await q(sql`insert into payment_merchant_accounts (tenant_id, branch_id, processor, environment) values (${T}, ${B}, 'clover', 'production')`);
     r = await svc.query(ctx, { page: 1, pageSize: 10 });
-    expect(r.paymentEnvironment).toEqual({ environment: 'production', source: 'branch', processor: 'fiserv', certification: null });
+    expect(r.paymentEnvironment).toEqual({ environment: 'production', source: 'branch', processor: 'clover', certification: 'testing' });
     // another salon with nothing configured: no label (never someone else's)
     r = await svc.query({ ...ctx, tenantId: X, branchId: '' }, { page: 1, pageSize: 10 });
     expect(r.paymentEnvironment).toEqual({ environment: null, source: null, processor: null, certification: null });

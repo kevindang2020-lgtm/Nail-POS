@@ -28,9 +28,6 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
     return rows.map(this.map);
   }
 
-  /** SUNMI batch 8 (Nov 9 2026): the page reads the log store PLUS the real device events already kept by their owners —
-   *  display / register / terminal changes (audit_logs) and kiosk events (go_checkin_logs) — as category 'device', so the
-   *  Device Logs page is no longer empty while no device writes to tenant_event_logs. No second log store; nothing copied. */
   /** the branch's own merchant account when it has one, else the salon default (the same order the payment router uses) */
   async paymentEnvironment(ctx: LogsContext): Promise<LogPaymentEnvironment> {
     const T = ctx.tenantId; const br = ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null;
@@ -40,12 +37,14 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
     if (!row) return { environment: null, source: null, processor: null, certification: null };
     const processor = String(row.processor ?? '') || null;
     const environment = row.environment === 'production' ? 'production' : row.environment === 'sandbox' ? 'sandbox' : null;
-    // validations are recorded per provider name; only an exact name match is reported (fiserv as a family is not guessed)
-    const provider = processor === 'cardpointe' || processor === 'clover' ? processor : null;
-    const v = provider ? (await sql<any>`select status from payment_platform_validations where provider = ${provider} and environment = 'production' order by created_at desc limit 1`.execute(this.db)).rows[0] : undefined;
+    // validations are recorded per provider name; only an exact match on the stored processor name is reported (no family guessing)
+    const v = processor ? (await sql<any>`select status from payment_platform_validations where provider = ${processor} and environment = 'production' order by created_at desc limit 1`.execute(this.db)).rows[0] : undefined;
     return { environment, source: b ? 'branch' : 'salon', processor, certification: v ? String(v.status) : null };
   }
 
+  /** SUNMI batch 8 (Nov 9 2026): the page reads the log store PLUS the real device events already kept by their owners —
+   *  display / register / terminal changes (audit_logs) and kiosk events (go_checkin_logs) — as category 'device', so the
+   *  Device Logs page is no longer empty while no device writes to tenant_event_logs. No second log store; nothing copied. */
   async page(ctx: LogsContext, f: LogPageFilters): Promise<{ rows: StoredLog[]; total: number; summary: LogSummary }> {
     const T = ctx.tenantId; const br = ctx.branchId || null;
     const lo = f.from ? `${f.from}T00:00:00Z` : null; const hi = f.to ? `${f.to}T23:59:59.999Z` : null;

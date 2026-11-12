@@ -158,9 +158,9 @@ export class BookingVerificationCenter {
       where s.tenant_id = ${T} and s.created_at >= now() - interval '30 days'`.execute(this.db)).rows[0] ?? {};
     // Provider Failure Triage (Extras · Booking Phone Verification 12): the last 7 days of provider-side failures grouped by
     // what to fix — from the stored reason + provider error code only (a customer's wrong guess is never a provider failure)
-    const fr = (await sql`select s.failure_reason as reason, count(*)::int as n, max(s.updated_at) as last_at
+    const fr = (await sql<{ reason: string | null; n: number; last_at: Date | string | null }>`select s.failure_reason as reason, count(*)::int as n, max(s.updated_at) as last_at
       from booking_verification_sessions s where s.tenant_id = ${T} and s.updated_at >= now() - interval '7 days' and ${PROVIDER_ERR}
-      group by s.failure_reason`.execute(this.db)).rows as any[];
+      group by s.failure_reason`.execute(this.db)).rows;
     const cred = await this.credential(ctx);
     const smsState: HealthState = !cred ? 'needs_setup' : cred.last_validation_error ? 'failed' : n(r.provider_err24) > 0 ? 'degraded' : cred.last_validated_at ? 'ready' : 'pending_provider_action';
     return {
