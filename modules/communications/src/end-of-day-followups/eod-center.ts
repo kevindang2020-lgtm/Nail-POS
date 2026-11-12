@@ -110,9 +110,14 @@ export type SendRefusal = 'not_found' | 'invalid_state' | 'expired' | 'customer_
  *  closed ticket and a service line that was not removed. A voided / reopened / removed ticket or a removed line is a cancelled
  *  source: the task can never be sent (no manager override), and the contact check says why. */
 export const EOD_SOURCE_TICKET_STATUSES = ['paid', 'completed', 'closed'] as const;
-export const sourceCancelledSql = (taskAlias: string) => sql`(exists (select 1 from tickets st where st.tenant_id = ${sql.ref(taskAlias + '.tenant_id')} and st.id = ${sql.ref(taskAlias + '.ticket_id')}
+// the two task aliases callers use — constant column references only (check:raw-sql-inputs: never a built identifier)
+const TASK_REFS = {
+  f: { tenant: sql.ref('f.tenant_id'), ticket: sql.ref('f.ticket_id'), line: sql.ref('f.ticket_service_line_id') },
+  sfu: { tenant: sql.ref('sfu.tenant_id'), ticket: sql.ref('sfu.ticket_id'), line: sql.ref('sfu.ticket_service_line_id') },
+} as const;
+export const sourceCancelledSql = (taskAlias: keyof typeof TASK_REFS) => { const r = TASK_REFS[taskAlias]; return sql`(exists (select 1 from tickets st where st.tenant_id = ${r.tenant} and st.id = ${r.ticket}
       and (st.removed_at is not null or st.status <> all(${[...EOD_SOURCE_TICKET_STATUSES]}::text[])))
-    or exists (select 1 from ticket_service_lines sl where sl.tenant_id = ${sql.ref(taskAlias + '.tenant_id')} and sl.id = ${sql.ref(taskAlias + '.ticket_service_line_id')} and sl.removed_at is not null))`;
+    or exists (select 1 from ticket_service_lines sl where sl.tenant_id = ${r.tenant} and sl.id = ${r.line} and sl.removed_at is not null))`; };
 export type ClaimResult =
   | { outcome: 'sent'; notificationId: string; overridden: string[] }
   | { outcome: 'already_sent' }
