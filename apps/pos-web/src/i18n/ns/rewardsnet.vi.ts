@@ -101,4 +101,19 @@ export const REWARDSNET_VI = {
   'rn.co.failed': 'Không áp dụng được điểm thưởng.',
   'rn.forecast.days': 'Ước tính: còn khoảng {n} ngày token theo mức dùng tháng này', // DRAFT — Kevin reviews
   'rn.forecast.none': 'Tháng này chưa dùng token — chưa có ước tính', // DRAFT — Kevin reviews
+  'rn.branches.btn': 'Theo chi nhánh', // DRAFT — Kevin reviews
+  'rn.branches.title': 'Dùng ví theo chi nhánh', // DRAFT — Kevin reviews
+  'rn.branches.since': 'Tháng này của tiệm, từ {date}. Một ví chung cho cả tiệm; mỗi dòng là phần chi nhánh đó tích điểm và nhận thưởng.', // DRAFT — Kevin reviews
+  'rn.branches.none': 'Tháng này chưa có tích điểm hay đổi thưởng', // DRAFT — Kevin reviews
+  'rn.branches.branch': 'Chi nhánh', // DRAFT — Kevin reviews
+  'rn.branches.earnings': 'Lượt tích điểm', // DRAFT — Kevin reviews
+  'rn.branches.points': 'Điểm', // DRAFT — Kevin reviews
+  'rn.branches.funded': 'Token đã dùng', // DRAFT — Kevin reviews
+  'rn.branches.redeemed': 'Thưởng đã nhận', // DRAFT — Kevin reviews
+  'rn.branches.redeemedCell': '{n} · {amount}', // DRAFT — Kevin reviews
+  'rn.branches.unassigned': 'Không ghi chi nhánh', // DRAFT — Kevin reviews
+  'rn.branches.matches': 'Các chi nhánh khớp với ví: đã dùng {n} token tháng này.', // DRAFT — Kevin reviews
+  'rn.branches.mismatch': 'Các chi nhánh cộng lại {a} token nhưng ví ghi đã dùng {b} tháng này — hãy nhờ hỗ trợ kiểm tra.', // DRAFT — Kevin reviews
+  'rn.branches.noDouble': 'Không có lượt tích điểm nào bị trừ token hai lần.', // DRAFT — Kevin reviews
+  'rn.branches.double': '{n} lượt tích điểm bị trừ token nhiều hơn một lần — hãy nhờ hỗ trợ kiểm tra.', // DRAFT — Kevin reviews
 };

@@ -12,6 +12,12 @@ export interface WalletSummary {
   lifetimeFundedCents: number; lifetimeAllocatedCents: number; deficitCents: number; status: string; alertLevel: 'ok' | 'low' | 'critical' | 'empty' | string; tokenValueCents: number; updatedAt: string | null;
   /** C1 audit (Nov 4 2026) §5.6: the warning levels in force (the salon's own when set) and the platform defaults */
   lowBalanceCents?: number; criticalBalanceCents?: number; levelsOwn?: boolean; platformLowBalanceCents?: number; platformCriticalBalanceCents?: number;
+  /** extras GLOBAL LOYALTY REWARDS 13: this salon month's earning / redemptions per branch from the ONE wallet (server-computed) */
+  branchUsage?: RewardsNetBranchSplit;
+}
+export interface RewardsNetBranchSplit {
+  since: string; totalFundedCents: number; walletUsedCents: number; matchesWallet: boolean; doubleFunded: number;
+  rows: { branchId: string | null; branchName: string | null; earnings: number; pointTenths: number; fundedCents: number; redemptions: number; redeemedValueCents: number }[];
 }
 export interface NetworkState {
   generatedAt: string; mode: 'GLOBAL' | 'CUSTOM';

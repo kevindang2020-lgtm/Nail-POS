@@ -342,6 +342,7 @@ export class GlobalRewardsRepository {
     const month = (await sql<Row>`SELECT coalesce(-sum(l.delta_cents), 0) AS used FROM token_wallet_ledger l
       WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation' AND l.created_at >= ${monthStart}::timestamptz`.execute(x)).rows[0];
     const available = n(w?.available_cents);
+    const branchUsage = await this.branchUsage(tenantId, monthStart, n(month?.used), x);
     return {
       // wallet amounts are money cents: 1 token = tokenValueCents cents, so the funded dollar value IS availableCents
       exists: !!w, availableCents: available, available: tokensLabel(available, program.tokenValueCents), availableValueCents: available,
@@ -351,7 +352,34 @@ export class GlobalRewardsRepository {
       // C1 audit §5.6: the warning levels in force (the salon's own when set) and the platform defaults
       lowBalanceCents: walletLevels(program, w).lowBalanceCents, criticalBalanceCents: walletLevels(program, w).criticalBalanceCents, levelsOwn: w?.low_balance_cents_override != null || w?.critical_balance_cents_override != null,
       platformLowBalanceCents: program.lowBalanceCents, platformCriticalBalanceCents: program.criticalBalanceCents,
+      branchUsage,
     };
+  }
+
+  /** Extras (GLOBAL LOYALTY REWARDS 13): ONE salon wallet, truthfully attributed per branch for this salon month — the points each
+   *  branch's earnings funded (from the wallet's own earn_allocation rows, joined to the earning that caused each one) and the
+   *  rewards each branch accepted. Read-only. `matchesWallet` says the branch rows add up to the wallet's "used this month";
+   *  `doubleFunded` counts earnings with more than one allocation (should be 0 — the same rule the books check uses). */
+  async branchUsage(tenantId: string, monthStart: string, walletUsedCents: number, x: Exec = this.db) {
+    const earn = (await sql<{ branch_id: string | null; branch_name: string | null; earns: number; tenths: number; funded: number }>`SELECT e.branch_id, b.name AS branch_name, count(DISTINCT e.id)::int AS earns,
+        coalesce(sum(e.point_tenths), 0)::bigint AS tenths, coalesce(-sum(l.delta_cents), 0)::bigint AS funded
+      FROM token_wallet_ledger l JOIN reward_earn_transactions e ON e.id::text = l.source_id AND e.tenant_id = l.tenant_id
+      LEFT JOIN branches b ON b.id = e.branch_id AND b.tenant_id = e.tenant_id
+      WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation' AND l.created_at >= ${monthStart}::timestamptz
+      GROUP BY e.branch_id, b.name`.execute(x)).rows;
+    const red = (await sql<{ branch_id: string | null; branch_name: string | null; c: number; v: number }>`SELECT r.branch_id, rb.name AS branch_name, count(*)::int AS c, coalesce(sum(r.value_cents), 0)::bigint AS v
+      FROM reward_redemptions r LEFT JOIN branches rb ON rb.id = r.branch_id AND rb.tenant_id = r.tenant_id
+      WHERE r.tenant_id = ${tenantId}::uuid AND r.status = 'CONFIRMED_REDEEMED' AND r.confirmed_at >= ${monthStart}::timestamptz
+      GROUP BY r.branch_id, rb.name`.execute(x)).rows;
+    const dup = (await sql<{ c: number }>`SELECT count(*)::int AS c FROM (SELECT l.source_id FROM token_wallet_ledger l WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation'
+      AND l.created_at >= ${monthStart}::timestamptz GROUP BY l.source_id HAVING count(*) > 1) d`.execute(x)).rows[0];
+    const by = new Map<string, { branchId: string | null; branchName: string | null; earnings: number; pointTenths: number; fundedCents: number; redemptions: number; redeemedValueCents: number }>();
+    const row = (id: string | null, name: string | null) => { const k = id ?? ''; if (!by.has(k)) by.set(k, { branchId: id, branchName: name, earnings: 0, pointTenths: 0, fundedCents: 0, redemptions: 0, redeemedValueCents: 0 }); return by.get(k)!; };
+    for (const e of earn) { const r = row(e.branch_id ? String(e.branch_id) : null, e.branch_name ?? null); r.earnings += n(e.earns); r.pointTenths += n(e.tenths); r.fundedCents += n(e.funded); }
+    for (const d of red) { const r = row(d.branch_id ? String(d.branch_id) : null, d.branch_name ?? null); r.redemptions += n(d.c); r.redeemedValueCents += n(d.v); }
+    const rows = [...by.values()].sort((a, b) => b.fundedCents - a.fundedCents || (a.branchName ?? '').localeCompare(b.branchName ?? ''));
+    const totalFundedCents = rows.reduce((a, r) => a + r.fundedCents, 0);
+    return { since: monthStart, rows, totalFundedCents, walletUsedCents, matchesWallet: totalFundedCents === walletUsedCents, doubleFunded: n(dup?.c) };
   }
 
   /** C1 audit (Nov 4 2026) LoyaltyTokens §5.6: the salon's own low / critical warning levels (null = the platform default).
