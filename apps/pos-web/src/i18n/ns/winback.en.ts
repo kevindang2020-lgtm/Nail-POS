@@ -129,4 +129,9 @@ export const WINBACK_EN: Record<string, string> = {
   'wb.areaCode.noneHint': 'Only this salon’s customer phone numbers are searched. Try another code, for example 609 or 215.',
   'wb.areaCode.clear': 'Clear area code',
   'wb.areaCode.matching': 'Area code {c}: {n} matching',
+  'wb.flt.phoneCheck': 'Phone check',
+  'wb.flt.phoneCheck.any': 'Any phone check',
+  'wb.phoneCheck.verified': 'Number confirmed',
+  'wb.phoneCheck.unverified': 'Number not confirmed',
+  'wb.phoneCheck.note': 'Confirmed = the customer entered a code sent to this number. It shows the number reaches them; it is not permission to text (SMS consent is checked separately).',
 };

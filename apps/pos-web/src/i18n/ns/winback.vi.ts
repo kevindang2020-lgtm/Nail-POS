@@ -128,4 +128,9 @@ export const WINBACK_VI: Record<string, string> = {
   'wb.areaCode.noneHint': 'Chỉ tìm trong số điện thoại khách hàng của tiệm này. Thử mã khác, ví dụ 609 hoặc 215.', // DRAFT — Kevin reviews
   'wb.areaCode.clear': 'Xóa mã vùng', // DRAFT — Kevin reviews
   'wb.areaCode.matching': 'Mã vùng {c}: {n} khách khớp', // DRAFT — Kevin reviews
+  'wb.flt.phoneCheck': 'Xác minh số', // DRAFT — Kevin reviews
+  'wb.flt.phoneCheck.any': 'Mọi trạng thái xác minh', // DRAFT — Kevin reviews
+  'wb.phoneCheck.verified': 'Số đã xác minh', // DRAFT — Kevin reviews
+  'wb.phoneCheck.unverified': 'Số chưa xác minh', // DRAFT — Kevin reviews
+  'wb.phoneCheck.note': 'Đã xác minh = khách đã nhập mã gửi tới số này. Điều đó cho biết số liên lạc được với khách; đó không phải là sự đồng ý nhận tin nhắn (sự đồng ý SMS được kiểm tra riêng).', // DRAFT — Kevin reviews
 };

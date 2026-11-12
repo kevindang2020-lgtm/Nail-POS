@@ -261,4 +261,25 @@ describe('Customer Retention — status is text + shape, not colour alone (extra
     expect(await screen.findByText('Ana Rivera')).toBeInTheDocument();
     expect(screen.getByTestId('flt-areacode')).toHaveValue('');
   });
+
+  it('extras Win-Back 10: the phone check shows confirmed / not confirmed numbers, filters the list and the select-all selection; never says consent', async () => {
+    const ROWS = [row('c1', 'Ana Rivera', { phoneVerification: 'verified' }), row('c2', 'Bo Chen', { smsStatus: 'no_consent', phoneVerification: 'verified' }), row('c3', 'Cy Old', { phoneVerification: 'unverified' }), row('c4', 'Di Nophone', { maskedPhone: null, phoneStatus: 'missing', smsStatus: 'no_phone', phoneVerification: 'no_number' })];
+    api.customers.mockImplementation(async (q: any) => list(q.phoneCheck === 'verified' ? ROWS.slice(0, 2) : ROWS));
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    const badges = screen.getAllByTestId('rt-phone-verification');
+    expect(badges.map((b) => b.textContent)).toEqual(['Number confirmed', 'Number confirmed', 'Number not confirmed']);   // no badge without a number
+    expect(badges[0]!.getAttribute('title')).toMatch(/not permission to text/);
+    fireEvent.change(screen.getByTestId('flt-phonecheck'), { target: { value: 'verified' } });
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ phoneCheck: 'verified', page: 1 })));
+    await waitFor(() => expect(screen.queryByText('Cy Old')).toBeNull());
+    fireEvent.click(screen.getByTestId('select-all-matching'));
+    fireEvent.click(await screen.findByTestId('select-all-confirm'));
+    fireEvent.click(screen.getByTestId('send-sms'));
+    fireEvent.change(await screen.findByRole('textbox', { name: /message/i }), { target: { value: 'We miss you, come back soon!' } });
+    fireEvent.click(screen.getByTestId('sms-preview'));
+    await waitFor(() => expect(api.preview).toHaveBeenCalledWith(expect.objectContaining({ selection: expect.objectContaining({ phoneCheck: 'verified', sms: 'eligible' }) })));
+    fireEvent.click(screen.getByTestId('flt-clear'));
+    await waitFor(() => expect(screen.getByTestId('flt-phonecheck')).toHaveValue(''));
+  });
 });
