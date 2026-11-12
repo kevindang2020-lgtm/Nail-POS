@@ -186,5 +186,11 @@ export const CUSTAISETTINGS_VI: Record<string, string> = {
   "casx.health.d.tenant_isolation.PASSED": "Mọi thay đổi đã ghi nhận đều thuộc tiệm này.",
   "casx.health.d.tenant_isolation.FAILED": "Có thay đổi trỏ tới người dùng của tiệm khác. Hãy báo ngay.",
   "casx.health.k.no_side_effects": "Không đặt hẹn, nhắn tin hay tính phí",
-  "casx.health.d.no_side_effects.PASSED": "Màn hình và việc kiểm tra chỉ đọc và ghi cài đặt và lịch sử của chính tiệm."
+  "casx.health.d.no_side_effects.PASSED": "Màn hình và việc kiểm tra chỉ đọc và ghi cài đặt và lịch sử của chính tiệm.",
+  "casx.drift.title": "Lệch cấu hình — một lần đánh giá đã dùng giá trị cũ", // DRAFT — Kevin reviews
+  "casx.drift.lead": "{w} chạy lần cuối với giá trị khác với cài đặt hiện tại:", // DRAFT — Kevin reviews
+  "casx.drift.row": "{l}: đánh giá với {a} — hiện là {b}", // DRAFT — Kevin reviews
+  "casx.drift.internal": "{n} giá trị mặc định đã thay đổi từ lần chạy đó", // DRAFT — Kevin reviews
+  "casx.drift.rule": "Lần chạy dùng phiên bản quy tắc cũ ({v})", // DRAFT — Kevin reviews
+  "casx.drift.fix": "Chỉ phát hiện — không tính lại gì. Bấm Làm mới trên màn hình đó để áp dụng cài đặt hiện tại.", // DRAFT — Kevin reviews
 };

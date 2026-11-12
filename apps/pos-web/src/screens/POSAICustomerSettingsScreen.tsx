@@ -41,6 +41,35 @@ function errText(e: any, fallbackKey: string) {
 }
 const valueText = (unit: string, n: number) => t('casx.unit.' + unit, { n: fmtNumber(n) });
 
+type DriftKey = { key: string; evaluatedValue: number | null; currentValue: number | null; onScreen: boolean };
+type DriftInfo = { drifted: boolean; keys: DriftKey[]; ruleVersion: { evaluated: string | null; current: string; changed: boolean } } | null | undefined;
+const UNIT: Record<Key, string> = { minVisitsForServicePref: 'visits', minVisitsForTechPref: 'visits', minVisitsForCadence: 'visits', inactiveDays: 'days', longTermInactiveDays: 'days' };
+/** Config Drift Alert — the server's read-only comparison of the values each evaluation used vs the values now (nothing is recalculated) */
+function DriftAlert({ p }: { p: { customerIntelligence: { drift?: DriftInfo }; serviceRecommendations: { drift?: DriftInfo } } }) {
+  const items = ([['ci', p.customerIntelligence.drift], ['sr', p.serviceRecommendations.drift]] as const).filter(([, d]) => d?.drifted);
+  if (!items.length) return null;
+  const num = (k: string, n: number | null) => (n == null ? '—' : (KEYS as readonly string[]).includes(k) ? valueText(UNIT[k as Key], n) : fmtNumber(n));
+  return (
+    <div className="panel warn" role="status" data-testid="casx-drift" style={{ marginTop: 12, padding: 12 }}>
+      <strong>{t('casx.drift.title')}</strong>
+      {items.map(([w, d]) => {
+        const shown = d!.keys.filter((x) => x.onScreen); const internal = d!.keys.length - shown.length;
+        return (
+          <div key={w} data-testid={`casx-drift-${w}`} style={{ marginTop: 6 }}>
+            <div>{t('casx.drift.lead', { w: t('casx.prop.' + w) })}</div>
+            <ul style={{ margin: '4px 0 0 18px' }}>
+              {shown.map((x) => <li key={x.key} data-testid={`casx-drift-${w}-${x.key}`}>{t('casx.drift.row', { l: t(LABEL[x.key as Key]), a: num(x.key, x.evaluatedValue), b: num(x.key, x.currentValue) })}</li>)}
+              {internal > 0 ? <li>{t('casx.drift.internal', { n: fmtNumber(internal) })}</li> : null}
+              {d!.ruleVersion.changed ? <li>{t('casx.drift.rule', { v: d!.ruleVersion.evaluated ?? '—' })}</li> : null}
+            </ul>
+          </div>
+        );
+      })}
+      <div className="sub" style={{ marginTop: 6 }}>{t('casx.drift.fix')}</div>
+    </div>
+  );
+}
+
 export function POSAICustomerSettingsScreen() {
   const can = useCan();
   const manage = can('pos.ai_customer_profile.churn');
@@ -87,6 +116,7 @@ export function POSAICustomerSettingsScreen() {
               <div className="sub">{t('casx.prop.ci')}: <b>{t('casx.prop.' + s.propagation.customerIntelligence.state)}</b></div>
               <div className="sub">{t('casx.prop.sr')}: <b>{t('casx.prop.' + s.propagation.serviceRecommendations.state)}</b></div></div>
           </div>
+          <DriftAlert p={s.propagation} />
         </section>
 
         <div className="rvw-tabs" role="tablist" data-testid="casx-tabs">

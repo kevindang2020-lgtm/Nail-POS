@@ -35,6 +35,25 @@ describe('POSAICustomerSettingsScreen', () => {
     expect(screen.getByTestId('src-longTermInactiveDays')).toHaveTextContent('Default');
   });
 
+  it('Config Drift Alert lists exactly the server-reported drifted values and stays hidden without drift', async () => {
+    api.state.mockResolvedValue(STATE({ propagation: {
+      customerIntelligence: { state: 'pending', lastEvaluatedAt: null, drift: { drifted: true, ruleVersion: { evaluated: 'ci-1', current: 'ci-2', changed: true },
+        keys: [{ key: 'longTermInactiveDays', evaluatedValue: 240, currentValue: 250, onScreen: true }, { key: 'dueMultiplier', evaluatedValue: 1.2, currentValue: 1, onScreen: false }] } },
+      serviceRecommendations: { state: 'applied', lastEvaluatedAt: null, drift: { drifted: false, keys: [], ruleVersion: { evaluated: 'sr-1', current: 'sr-1', changed: false } } } } }));
+    render(<POSAICustomerSettingsScreen />);
+    const box = await screen.findByTestId('casx-drift');
+    expect(screen.getByTestId('casx-drift-ci-longTermInactiveDays')).toHaveTextContent('Long-term inactive after: evaluated with 240 days — now 250 days');
+    expect(box).toHaveTextContent('1 built-in value(s) changed since it ran');
+    expect(box).toHaveTextContent('older rule version (ci-1)');
+    expect(screen.queryByTestId('casx-drift-sr')).toBeNull();
+    expect(box).toHaveTextContent('Detection only');
+  });
+  it('no drift → no alert', async () => {
+    render(<POSAICustomerSettingsScreen />);
+    await screen.findByTestId('casx-strip');
+    expect(screen.queryByTestId('casx-drift')).toBeNull();
+  });
+
   it('the strip keeps the salon switch, the subscription decision and propagation apart', async () => {
     render(<POSAICustomerSettingsScreen />);
     expect(await screen.findByTestId('casx-salon-state')).toHaveTextContent('Enabled');

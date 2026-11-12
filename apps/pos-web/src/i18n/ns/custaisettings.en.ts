@@ -186,5 +186,11 @@ export const CUSTAISETTINGS_EN: Record<string, string> = {
   "casx.health.d.tenant_isolation.PASSED": "Every recorded change belongs to this salon.",
   "casx.health.d.tenant_isolation.FAILED": "A change references another salon's user. Report this immediately.",
   "casx.health.k.no_side_effects": "No bookings, messages or billing",
-  "casx.health.d.no_side_effects.PASSED": "This screen and its check only read and write the salon's own settings and history."
+  "casx.health.d.no_side_effects.PASSED": "This screen and its check only read and write the salon's own settings and history.",
+  "casx.drift.title": "Config drift — an evaluation used older values",
+  "casx.drift.lead": "{w} last ran with values that differ from the settings now:",
+  "casx.drift.row": "{l}: evaluated with {a} — now {b}",
+  "casx.drift.internal": "{n} built-in value(s) changed since it ran",
+  "casx.drift.rule": "It ran under an older rule version ({v})",
+  "casx.drift.fix": "Detection only — nothing was recalculated. Press Refresh on that screen to apply the current settings.",
 };
