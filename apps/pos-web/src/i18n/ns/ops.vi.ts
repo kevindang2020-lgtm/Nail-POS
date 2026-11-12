@@ -1735,4 +1735,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.proc.manual": "Thủ công", // DRAFT — Kevin reviews
   "dfx.env.sandbox": "Thử nghiệm / UAT", // DRAFT — Kevin reviews
   "dfx.env.production": "Chính thức", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_for_other_customer": "Mọi quyền lợi hội viên đều được dùng trên hóa đơn của chính hội viên", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_for_other_customer.fix": "Kiểm tra các hóa đơn đó: nếu quyền lợi được dùng cho người khác, hãy hoàn lại hoặc ghi rõ lý do.", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_line_other_ticket": "Dịch vụ của mỗi lần sử dụng quyền lợi nằm đúng trên hóa đơn đã ghi", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_line_other_ticket.fix": "Báo cho bộ phận hỗ trợ: những lần sử dụng này trỏ đến dịch vụ trên một hóa đơn khác.", // DRAFT — Kevin reviews
+  "syschk.memberships.live_membership_archived_customer": "Không có thẻ hội viên còn hiệu lực nào nằm trên hồ sơ khách đã lưu trữ", // DRAFT — Kevin reviews
+  "syschk.memberships.live_membership_archived_customer.fix": "Chuyển thẻ hội viên sang hồ sơ hiện tại của khách (gộp hồ sơ) hoặc kết thúc thẻ.", // DRAFT — Kevin reviews
 };

@@ -1736,4 +1736,10 @@ export const OPS_EN = {
   "dfx.proc.manual": "Manual",
   "dfx.env.sandbox": "Sandbox / UAT",
   "dfx.env.production": "Production",
+  "syschk.memberships.redeemed_for_other_customer": "Every membership benefit was used on the member's own ticket",
+  "syschk.memberships.redeemed_for_other_customer.fix": "Check those tickets: if the benefit was used for someone else, reverse it or note why.",
+  "syschk.memberships.redemption_line_other_ticket": "Every redemption's service line is on the ticket it was recorded against",
+  "syschk.memberships.redemption_line_other_ticket.fix": "Tell support: those redemptions point at a service on a different ticket.",
+  "syschk.memberships.live_membership_archived_customer": "No live membership sits on an archived customer profile",
+  "syschk.memberships.live_membership_archived_customer.fix": "Move the membership to the customer's current profile (merge) or end it.",
 };

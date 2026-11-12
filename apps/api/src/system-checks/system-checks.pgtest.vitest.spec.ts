@@ -492,4 +492,38 @@ describe('shared read-only Check … System', () => {
     expect(count(b2, 'money_rows_other_salon').count).toBe(0);
     expect((await q(tally)).rows).toEqual(before);
   });
+  it('extras Membership Overview 16·06 — wiring: a benefit used on another customer\'s ticket, a redemption line on another ticket, a live membership on an archived profile; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 4500..4549, agent-4 range)
+    const T4 = id(4500), X4 = id(4501), B41 = id(4502), B42 = id(4503), BX4 = id(4504), C1 = id(4505), C2 = id(4506), CA = id(4507), CX = id(4508), PL = id(4509), PV = id(4510), PLX = id(4511), PVX = id(4512);
+    const M1 = id(4513), M2 = id(4514), MA = id(4515), MX = id(4516), K1 = id(4517), K2 = id(4518), K3 = id(4519), KX = id(4520), L1 = id(4521), L2 = id(4522), LX = id(4523);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'W4', 'Wiring4', 'sc-4500', 'SC4500', 'active'), (${X4}, 'WX4', 'OtherW4', 'sc-4501', 'SC4501', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, archived_at) values
+      (${C1}, ${T4}, ${B41}, 'Mem', 'One', 'Mem One', '+15550045001', null), (${C2}, ${T4}, ${B41}, 'Guest', 'Two', 'Guest Two', '+15550045002', null),
+      (${CA}, ${T4}, ${B42}, 'Old', 'Profile', 'Old Profile', '+15550045003', now()), (${CX}, ${X4}, ${BX4}, 'Oth', 'Er', 'Oth Er', '+15550045004', now())`);
+    await q(sql`insert into membership_plans (id, tenant_id, name, status) values (${PL}, ${T4}, 'Gold', 'active'), (${PLX}, ${X4}, 'Gold X', 'active')`);
+    await q(sql`insert into membership_plan_versions (id, plan_id, tenant_id, version_number, price_cents) values (${PV}, ${PL}, ${T4}, 1, 4900), (${PVX}, ${PLX}, ${X4}, 1, 4900)`);
+    await q(sql`insert into customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, auto_renew, auto_renew_consent_at) values
+      (${M1}, ${T4}, ${B41}, ${C1}, ${PL}, ${PV}, 'active', false, now()), (${M2}, ${T4}, ${B41}, ${C1}, ${PL}, ${PV}, 'canceled', false, now()),
+      (${MA}, ${T4}, ${B42}, ${CA}, ${PL}, ${PV}, 'active', false, now()), (${MX}, ${X4}, ${BX4}, ${CX}, ${PLX}, ${PVX}, 'active', false, now())`);
+    // K1 the member's own ticket, K2 the guest's ticket, K3 another ticket of the member; KX the other salon's guest ticket
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents) values
+      (${K1}, ${T4}, ${B41}, ${C1}, 'open', 4900), (${K2}, ${T4}, ${B41}, ${C2}, 'open', 4900), (${K3}, ${T4}, ${B41}, ${C1}, 'open', 4900), (${KX}, ${X4}, ${BX4}, ${CX}, 'open', 4900), (${id(4532)}, ${X4}, ${BX4}, ${CX}, 'open', 4900)`);
+    await q(sql`insert into ticket_service_lines (id, tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents) values
+      (${L1}, ${T4}, ${B41}, ${K1}, ${id(4530)}, 'Gel', 4900, 45, 4900), (${L2}, ${T4}, ${B41}, ${K3}, ${id(4530)}, 'Gel', 4900, 45, 4900), (${LX}, ${X4}, ${BX4}, ${KX}, ${id(4531)}, 'Gel', 4900, 45, 4900)`);
+    // fine: M1 on K1/L1; guest: M1 on K2; line L2 (on K3) recorded against K1; the other salon's mismatched line never counted
+    await q(sql`insert into membership_redemptions (tenant_id, branch_id, customer_membership_id, ticket_id, service_line_id) values
+      (${T4}, ${B41}, ${M1}, ${K1}, ${L1}), (${T4}, ${B41}, ${M1}, ${K2}, null), (${T4}, ${B41}, ${M1}, ${K1}, ${L2}), (${X4}, ${BX4}, ${MX}, ${id(4532)}, ${LX})`);
+    const tally = sql`select (select count(*) from membership_redemptions) + (select count(*) from customer_memberships) as n`;
+    const before = (await q(tally)).rows;
+    const all = await svc.run('memberships', { tenantId: T4 });
+    expect(count(all, 'redeemed_for_other_customer')).toMatchObject({ state: 'WARNING', count: 1 });         // K2 is the guest's
+    expect(count(all, 'redemption_line_other_ticket')).toMatchObject({ state: 'FAILED', count: 1 });         // L2 sits on K3
+    expect(count(all, 'live_membership_archived_customer')).toMatchObject({ state: 'WARNING', count: 1 });   // MA; the cancelled M2 and the other salon's MX are not
+    const b2 = await svc.run('memberships', { tenantId: T4, branchId: B42 });
+    expect(count(b2, 'redeemed_for_other_customer').count).toBe(0);
+    expect(count(b2, 'redemption_line_other_ticket').count).toBe(0);
+    expect(count(b2, 'live_membership_archived_customer').count).toBe(1);
+    expect((await q(tally)).rows).toEqual(before);
+  });
 });

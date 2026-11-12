@@ -363,6 +363,21 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'failed' AND p.kind IN ('renewal', 'installment') AND p.created_at > now() - interval '30 days'
           AND NOT EXISTS (SELECT 1 FROM customer_notifications cn WHERE cn.tenant_id = m.tenant_id AND cn.customer_id = m.customer_id
                           AND cn.reference LIKE 'membership-payment-failed:' || m.id::text || ':%' AND cn.created_at >= p.created_at - interval '1 minute')`) },
+    // ── cross-module wiring (extras Membership Overview 16 · 06, part): Membership ↔ Checkout ↔ Customers.
+    // A benefit used on a ticket that belongs to a DIFFERENT customer than the member (the redeem step does not compare them) …
+    { key: 'redeemed_for_other_customer', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.customer_id IS NOT NULL AND k.customer_id <> m.customer_id`) },
+    // … a redemption naming a service line that sits on another ticket than the one it was recorded against …
+    { key: 'redemption_line_other_ticket', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN ticket_service_lines sl ON sl.tenant_id = r.tenant_id AND sl.id = r.service_line_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND r.ticket_id IS NOT NULL AND sl.ticket_id <> r.ticket_id`) },
+    // … and a live membership left on an archived customer profile (a merge moves memberships to the survivor)
+    { key: 'live_membership_archived_customer', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m
+        JOIN customers cu ON cu.tenant_id = m.tenant_id AND cu.id = m.customer_id
+        WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'trial', 'grace', 'past_due', 'paused') AND cu.archived_at IS NOT NULL`) },
     // ── tenant security (extras Membership Overview 16 · 08, part). The customer link is already enforced by a trigger
     // (trg_tc_membership_customer), so it is not repeated; the branch, the plan and the money rows are not, so a membership
     // pointing at another salon's branch or plan, or billing / credit / redemption rows filed under another salon, show here.
