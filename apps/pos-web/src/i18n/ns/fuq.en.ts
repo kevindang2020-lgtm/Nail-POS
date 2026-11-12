@@ -177,4 +177,5 @@ export const FUQ_EN = {
   'fuq.cd.unavailable': 'Recent messages are not available for your role.',
   'fuq.cd.more': '+{n} more in the customer timeline',
   'fuq.cd.note': 'From the customer timeline (texts, emails, reminders, receipts, follow-ups). Read only — nothing is sent from here.',
+  'fuq.cc.source_cancelled': 'Visit cancelled (ticket voided, reopened or service removed) — cannot be sent',
 };

@@ -106,4 +106,26 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     expect(await screen.findByTestId('fuq-d-recent-na')).toHaveTextContent('Recent messages are not available for your role.');
     expect(screen.queryByTestId('fuq-d-recent-none')).toBeNull();
   });
+  it('extras FOLLOW-UP QUEUE 05: a task whose visit was voided or had its service removed shows "Visit cancelled" in the contact check (server category), as a blocking chip', async () => {
+    window.history.replaceState(null, '', '/follow-ups');
+    const detail = { id: 't1', status: 'pending', businessDate: '2026-10-30', customerId: 'c-t1', customerName: 'Olivia Brown', customerPhone: null, customerHasApp: true, technicianId: 'te1', technicianName: 'Linh Tran',
+      serviceName: 'Gel Manicure', ticketId: 'k1', ticketNumber: '1001', appointmentId: null, completedAt: null, createdAt: null, submittedAt: null, sentAt: null, expiredAt: null, rejectedAt: null, templateKey: null, draft: 'Thanks for visiting!', sentMessage: null, delivery: null };
+    const base = mockFetch();
+    const f = vi.fn(async (u: any, _init?: any) => {
+      const url = String(u);
+      const r = url.includes('/eod-follow-ups/tasks/t1') ? { status: 200, body: detail }
+        : url.includes('/contact-check') ? { status: 200, body: { taskId: 't1', category: 'source_cancelled', categories: ['source_cancelled'], channel: 'customer_app', cooldownHours: 72, lastFollowUp: null, otherChannel: null, optOuts: [], marketing: { sms: true, email: true }, upcomingBooking: null, priority: 'normal', priorityReasons: [], priorityVersion: 'v1' } }
+        : url.includes('/follow-up-queue/customers/') ? { status: 200, body: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 } }
+        : null;
+      if (!r) return base(u);
+      return { ok: r.status < 400, status: r.status, json: async () => r.body, headers: { get: () => null } } as any;
+    });
+    globalThis.fetch = f as any;
+    view();
+    fireEvent.click((await screen.findAllByTestId('fuq-row-details'))[0]);
+    const chip = await screen.findByTestId('fuq-d-category');
+    expect(chip).toHaveTextContent('Visit cancelled (ticket voided, reopened or service removed) — cannot be sent');
+    expect(chip.className).toContain('bad');
+    expect(f.mock.calls.some((c: any[]) => (c[1]?.method ?? 'GET') !== 'GET')).toBe(false);   // read only
+  });
 });
