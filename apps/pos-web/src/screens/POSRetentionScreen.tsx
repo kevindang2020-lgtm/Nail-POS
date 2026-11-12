@@ -77,6 +77,10 @@ const sortLabel = (s: string) => (s === 'priority' || s === 'created_desc' ? tx(
 const errText = (e: any, fb: string) => (e && (e.status === 403 || e.code === 'PERMISSION_DENIED') ? tx('errors.PERMISSION_DENIED') : errorTextOf(e, fb));
 const errDetails = (e: any): Record<string, any> => e?.details?.error?.details ?? e?.details?.details ?? e?.details ?? {};
 const SMS_TONE: Record<string, string> = { eligible: 'ok', recently_contacted: 'warn', upcoming_booking: 'info', no_consent: 'mut', opted_out: 'bad', no_phone: 'mut', invalid_phone: 'bad' };
+// Customer Retention extras #12: the SMS outcome is never colour alone — a shape (✓ can text · ⏸ wait · ✕ cannot) sits before the
+// words, hidden from screen readers (the words already say it)
+const SMS_ICON: Record<string, string> = { eligible: '✓', recently_contacted: '⏸', upcoming_booking: '⏸', no_consent: '✕', opted_out: '✕', no_phone: '✕', invalid_phone: '✕' };
+const smsIcon = (s: string) => <span aria-hidden="true" data-testid="rt-sms-icon" style={{ marginRight: 3 }}>{SMS_ICON[s] ?? '•'}</span>;
 const RECIP_TONE: Record<string, string> = { delivered: 'ok', sent: 'info', simulated: 'info', queued: 'warn', submitting: 'warn', excluded: 'mut', blocked: 'mut', failed: 'bad', undelivered: 'bad', unknown: 'warn' };
 const SEG_TONE: Record<string, string> = { at_risk: 'bad', approaching: 'warn', active: 'ok', never_visited: 'mut' };
 const BAND_TONE: Record<string, string> = { high: 'bad', medium: 'warn', low: 'mut' };
@@ -353,7 +357,7 @@ export function POSRetentionScreen() {
                   <td><span className={'fk-chip ' + (SEG_TONE[r.segment] ?? 'mut')}>{segLabel(r.segment === 'never_visited' ? 'never_visited' : r.segment, per)}</span></td>
                   <td>{r.priority ? <button type="button" className={'rt-prio ' + BAND_TONE[r.priority.band]} title={tx('rt2.whyTitle') + ' ' + whyText(r.priority, r)} aria-label={tx('rt2.priorityAria', { n: String(r.priority.score), b: tx('rt2.band.' + r.priority.band) })}
                       onClick={() => setDlg({ kind: 'customer', id: r.customerId })} data-testid="rt-prio"><b>{r.priority.score}</b> {tx('rt2.band.' + r.priority.band)}</button> : <span className="fk-muted">—</span>}</td>
-                  <td><span className={'fk-chip ' + (SMS_TONE[r.smsStatus] ?? 'mut')} title={r.nextAppointmentDate ? tx('rt2.bookedFor', { date: fmtYmdSafe(r.nextAppointmentDate) }) : undefined}>{smsLabel(r.smsStatus)}</span></td>
+                  <td><span className={'fk-chip ' + (SMS_TONE[r.smsStatus] ?? 'mut')} title={r.nextAppointmentDate ? tx('rt2.bookedFor', { date: fmtYmdSafe(r.nextAppointmentDate) }) : undefined}>{smsIcon(r.smsStatus)}{smsLabel(r.smsStatus)}</span></td>
                   <td className="t-opt">{r.lastOutreachAt ? when(r.lastOutreachAt) : <span className="fk-muted">—</span>}</td>
                   <td><span className="fk-li-acts">
                     <button type="button" className="fk-ibtn" aria-label={tx('pos.open_profile')} title={tx('pos.open_profile')} onClick={() => nav(`/customers?customerId=${encodeURIComponent(r.customerId)}&q=${encodeURIComponent(r.customerName)}`)}>👤</button>
@@ -536,7 +540,7 @@ function CustomerDialog({ id, onClose, openProfile, book, canText, canNote = fal
             <dt>{tx('pos.lifetime')}</dt><dd>{fmtMoney(d.lifetimeSpendCents)} <span className="fk-muted">· {tx('people.retention.netRefunds')}</span></dd>
             <dt>{tx('pos.phone')}</dt><dd>{d.maskedPhone ?? tx('people.retention.phoneMissing')}</dd>
             <dt>{tx('people.retention.consent')}</dt><dd>{d.marketingSmsConsent ? tx('people.retention.consentYes', { date: when(d.consentUpdatedAt) }) : tx('people.retention.consentNo')}</dd>
-            <dt>{tx('people.retention.smsStatus')}</dt><dd><span className={'fk-chip ' + (SMS_TONE[d.smsStatus] ?? 'mut')}>{smsLabel(d.smsStatus)}</span></dd>
+            <dt>{tx('people.retention.smsStatus')}</dt><dd><span className={'fk-chip ' + (SMS_TONE[d.smsStatus] ?? 'mut')}>{smsIcon(d.smsStatus)}{smsLabel(d.smsStatus)}</span></dd>
             <dt>{tx('rt2.lastBooking')}</dt><dd>{d.lastBooking ? `${fmtYmdSafe(d.lastBooking.date)} · ${tx('rt2.appt.' + d.lastBooking.status)}` : '—'}</dd>
             <dt>{tx('wb.ov.emailConsent')}</dt><dd data-testid="rt-email-consent">{d.marketingEmailConsent ? tx('wb.yes') : tx('wb.no')}{d.maskedEmail ? ` · ${d.maskedEmail}` : ''}</dd>
             {d.refunds ? <><dt>{tx('wb.ov.refunds')}</dt><dd>{tx('wb.ov.refundsVal', { n: nf(d.refunds.count), c: fmtMoney(d.refunds.cents) })}</dd></> : null}

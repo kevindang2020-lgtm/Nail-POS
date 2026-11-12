@@ -207,3 +207,14 @@ describe('Customer Retention — useful empty state (extras #10)', () => {
     await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ segment: 'approaching' })));
   });
 });
+
+describe('Customer Retention — status is text + shape, not colour alone (extras #12)', () => {
+  it('each SMS outcome chip has a shape before its words (✓ can text, ✕ cannot), hidden from screen readers', async () => {
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    const icons = screen.getAllByTestId('rt-sms-icon');
+    expect(icons.map((i) => i.textContent)).toEqual(['✓', '✕']);   // Ana: eligible · Bo: no consent
+    expect(icons.every((i) => i.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(icons[1].parentElement!.textContent!.length).toBeGreaterThan(2);   // the words are still there
+  });
+});
