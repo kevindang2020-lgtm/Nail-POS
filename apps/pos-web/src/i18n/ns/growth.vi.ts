@@ -1104,4 +1104,23 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiForecast.cap.state.unknown": "Chưa rõ", // DRAFT — Kevin reviews
   "growth.aiForecast.cap.note": "Giờ đã xếp lịch = lịch tuần cộng thay đổi theo ngày, đã trừ giờ nghỉ; chưa trừ ngày nghỉ phép. Chỉ để tham khảo — không tạo hay đổi ca nào.", // DRAFT — Kevin reviews
   "growth.aiForecast.cap.openOptimizer": "Mở Tối ưu lịch hẹn", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.button": "Báo cáo hỗ trợ", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.title": "Yêu cầu đặt lịch AI — báo cáo hỗ trợ", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.generated": "Tạo lúc", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.redacted": "Đã ẩn: không có tên khách, số điện thoại bị che, mã tham chiếu nhà cung cấp chỉ còn 4 số cuối, không có mã xác minh.", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.branch": "Mã chi nhánh", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.source": "Nguồn", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.status": "Trạng thái", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.created": "Tạo", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.updated": "Cập nhật", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.appointment": "Mã lịch hẹn", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.phone": "Số điện thoại (đã che)", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.verified": "Đã xác minh", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.attempts": "Số lần thử", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.timeline": "Dòng thời gian (truy vết)", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.tools": "Lệnh công cụ", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.verification": "Xác minh", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.holds": "Giữ chỗ", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.messages": "Tin nhắn", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.noScreens": "Không kèm ảnh chụp màn hình — tự đính kèm nếu bộ phận hỗ trợ yêu cầu.", // DRAFT — Kevin reviews
 };
