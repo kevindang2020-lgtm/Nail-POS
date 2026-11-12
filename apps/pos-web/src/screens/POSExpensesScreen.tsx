@@ -63,7 +63,7 @@ export function POSExpensesScreen() {
   const [form, setForm] = useState<FormState | null>(null);
   const [viewId, setViewId] = useState<string | null>(null); const [billsCal, setBillsCal] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
-  const [cats, setCats] = useState(false);
+  const [cats, setCats] = useState(false); const [trend, setTrend] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const fit = useFitRows<HTMLDivElement>(46, { min: 4, max: 15, reserve: 34 });
@@ -148,7 +148,7 @@ export function POSExpensesScreen() {
 
       <div className="fk-kpis" data-testid="kpis">
         {summary.error ? <StateBlock error={summary.error} onRetry={summary.reload} /> : <>
-          <KpiCard testId="kpi-total" label={tx('finance.ex.kpi.total')} tone="gold" loading={!k} value={k ? money(k.totalCents) : ''} sub={tx('finance.ex.kpi.totalSub')} />
+          <KpiCard testId="kpi-total" label={tx('finance.ex.kpi.total')} tone="gold" loading={!k} value={k ? money(k.totalCents) : ''} sub={tx('finance.ex.kpi.totalSub')} onClick={k ? () => setTrend(true) : undefined} />
           <KpiCard testId="kpi-entries" label={tx('finance.ex.kpi.entries')} loading={!k} value={k ? fmtNumber(k.entries) : ''} sub={tx('finance.ex.kpi.entriesSub')} />
           <KpiCard testId="kpi-top" label={tx('finance.ex.kpi.top')} loading={!k} value={k ? (k.topCategory ? serverText(k.topCategory.label) : '—') : ''}
             sub={k ? (k.topCategory ? tx('finance.ex.kpi.topSub', { a: money(k.topCategory.totalCents) }) : tx('finance.ex.kpi.topNone')) : ''} onClick={k && k.topCategory && period.preset !== 'all' ? () => setCats(true) : undefined} />
@@ -223,6 +223,7 @@ export function POSExpensesScreen() {
         onEdit={(x) => { setViewId(null); setForm(formOf(x)); }} onAsk={(a) => setAsk(a)} onChanged={(msg) => { setNote({ tone: 'ok', text: msg }); reload(); }} busy={busy} setBusy={setBusy} tick={tick} /> : null}
       {ask ? <AskDialog ask={ask} onClose={() => setAsk(null)} onDone={(msg) => { setAsk(null); setNote({ tone: 'ok', text: msg }); reload(); }} /> : null}
       {cats ? <CategoryBreakdown dates={dates} onClose={() => setCats(false)} /> : null}
+      {trend ? <MonthlyTrend filters={filters} today={today} onClose={() => setTrend(false)} onMonth={(from, to) => { setTrend(false); setPeriod({ preset: 'custom', from, to }); }} /> : null}
     </div>
   );
 }
@@ -415,6 +416,31 @@ function AskDialog({ ask, onClose, onDone }: { ask: Ask; onClose: () => void; on
 }
 
 /** every category of the period (approved expenses), from the finance report — opened from the Top Category card */
+/** Extras (Expenses Management 06): approved spend per month for the last 12 salon months, from the server over the same
+ *  category / method / search filters (never a sample chart). A month opens the list on that month. Read-only. */
+export function monthRange(month: string, today: string): { from: string; to: string } {
+  const y = Number(month.slice(0, 4)), m = Number(month.slice(5, 7));
+  const last = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+  return { from: `${month}-01`, to: last > today ? today : last };
+}
+function MonthlyTrend({ filters, today, onClose, onMonth }: { filters: { q?: string; category?: string; paymentMethod?: string }; today: string; onClose: () => void; onMonth: (from: string, to: string) => void }) {
+  const r = useLoad(() => posExpensesApi.kpis({ period: 'month', ...filters, trend: '1' }), [JSON.stringify(filters)]);
+  const rows = r.data?.trend ?? [];
+  const max = Math.max(1, ...rows.map((x) => x.totalCents));
+  const filtered = !!(filters.q || filters.category || filters.paymentMethod);
+  const label = (m: string) => fmtInZone(`${m}-15T12:00:00Z`, { month: 'short', year: 'numeric' }) || m;
+  return (
+    <FitDialog title={tx('finance.ex.trend.title')} subtitle={tx(filtered ? 'finance.ex.trend.subFiltered' : 'finance.ex.trend.sub')} onClose={onClose} testId="dlg-trend">
+      {r.error ? <StateBlock error={r.error} onRetry={r.reload} /> : !r.data ? <div className="fk-loading">{tx('pos.loading')}</div>
+        : !rows.length ? <Empty title={tx('pos.no_approved_expenses_in_this_period')} />
+        : <ul className="fk-list ex-bars" data-testid="trend-list">{rows.map((x) => <li key={x.month} className="fk-li" data-testid="trend-row">
+            <button type="button" className="fk-link ex-bar-l" onClick={() => { const w = monthRange(x.month, today); onMonth(w.from, w.to); }} data-testid={'trend-open-' + x.month}>{label(x.month)}</button>
+            <span className="ex-bar"><span style={{ width: `${Math.round((x.totalCents / max) * 100)}%` }} /></span><b className="num">{money(x.totalCents)}</b><span className="fk-li-s">{tx('finance.ex.trend.count', { n: fmtNumber(x.count) })}</span></li>)}</ul>}
+      <div className="fk-hint">{tx('finance.ex.trend.basis')}</div>
+    </FitDialog>
+  );
+}
+
 function CategoryBreakdown({ dates, onClose }: { dates: { period?: string; from?: string; to?: string }; onClose: () => void }) {
   const r = useLoad<FinReport>(() => (dates.period === 'custom' ? posExpensesApi.reportRange(dates.from ?? '', dates.to ?? '') : posExpensesApi.report(dates.period ?? 'month')), [JSON.stringify(dates)]);
   const items = useMemo(() => (r.data?.byCategory ?? []).filter((c) => c.totalCents > 0), [r.data]);

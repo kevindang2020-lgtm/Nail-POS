@@ -99,6 +99,15 @@ const snapshot = (e: ExpenseRow) => ({ status: e.status, category: e.category, a
 
 /** Extras (Expenses Management 01): an expense waiting in review longer than this is shown as overdue */
 export const REVIEW_OVERDUE_DAYS = 7;
+/** Extras (Expenses Management 06): months on the spending trend */
+export const TREND_MONTHS = 12;
+/** the `n` calendar months ending with the month of `today` (YYYY-MM-DD, the salon's day), oldest first, as YYYY-MM */
+export function trendMonths(today: string, n: number): string[] {
+  let y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7));
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) { out.unshift(`${y}-${String(m).padStart(2, '0')}`); m -= 1; if (m === 0) { m = 12; y -= 1; } }
+  return out;
+}
 
 export class ExpenseService {
   readonly repo: ExpenseRepository;
@@ -357,7 +366,7 @@ export class ExpenseService {
   }
   /** Expenses guide (Nov 4 2026): Total · Entries · Top Category (by amount) · Categories Used over the whole filtered set, with
    *  the period the server resolved in the salon's time zone (the screen shows it; a preset is never a device-clock guess). */
-  async summary(ctx: FinanceCtx, f: Pick<ListFilters, 'from' | 'to' | 'category' | 'paymentMethod' | 'q'> & { branchId?: string | null; period?: ReportPeriod | null }) {
+  async summary(ctx: FinanceCtx, f: Pick<ListFilters, 'from' | 'to' | 'category' | 'paymentMethod' | 'q'> & { branchId?: string | null; period?: ReportPeriod | null; trend?: boolean }) {
     this.require(ctx, PERM.view);
     const s = await this.scope(ctx, f.branchId);
     const tz = await this.tz(ctx.tenantId); const today = businessDate(tz, this.now());
@@ -366,12 +375,16 @@ export class ExpenseService {
     if (from && to && from > to) throw new ExpenseError('EXPENSE_INVALID', 'The start date must be on or before the end date.');
     if (f.period && f.period !== 'custom' && !from && !to) ({ from, to } = periodWindow(f.period, today));
     const scopeF = { from, to, category: f.category, paymentMethod: f.paymentMethod, q: f.q };
-    const [k, att] = await Promise.all([this.repo.summary(s, scopeF), this.repo.attention(s, scopeF, this.overdueBefore())]);
+    const months = f.trend ? trendMonths(today, TREND_MONTHS) : null;
+    const [k, att, monthly] = await Promise.all([this.repo.summary(s, scopeF), this.repo.attention(s, scopeF, this.overdueBefore()),
+      months ? this.repo.monthly(s, { category: f.category, paymentMethod: f.paymentMethod, q: f.q }, `${months[0]}-01`, today) : Promise.resolve(null)]);
     const { custom } = await this.validKeys(ctx.tenantId);
     return { period: { preset: (preset ?? 'all') as 'today' | 'week' | 'month' | 'year' | 'custom' | 'all', from: from ?? null, to: to ?? null, tz, today },
       totalCents: k.totalCents, entries: k.entries, categoriesUsed: k.categoriesUsed,
       topCategory: k.top ? { key: k.top.key, label: categoryLabel(k.top.key, custom), totalCents: k.top.totalCents } : null,
-      attention: { ...att, overdueAfterDays: REVIEW_OVERDUE_DAYS } };
+      attention: { ...att, overdueAfterDays: REVIEW_OVERDUE_DAYS },
+      // Extras (Expenses Management 06): the last 12 salon months (this month so far), every month listed — $0 is a real zero
+      ...(months && monthly ? { trend: months.map((m) => { const x = monthly.find((r) => r.month === m); return { month: m, totalCents: x?.totalCents ?? 0, count: x?.count ?? 0 }; }) } : {}) };
   }
   /** a review waiting longer than this (since it last changed) is overdue on the attention bar */
   private overdueBefore() { return new Date(this.now().getTime() - REVIEW_OVERDUE_DAYS * 86400000); }

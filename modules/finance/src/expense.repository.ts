@@ -193,6 +193,16 @@ export class ExpenseRepository {
     return { totalCents: n(r?.total), entries: n(r?.c), categoriesUsed: n(r?.cats), top: top.rows[0] ? { key: String(top.rows[0].k), totalCents: n(top.rows[0].total) } : null };
   }
 
+  /** Extras (Expenses Management 06): approved spend per calendar month (expense date) over the screen's category /
+   *  method / search filters and branch scope, between two dates — the same rows the KPI cards count. */
+  async monthly(s: Scope, f: ListFilters, from: string, to: string): Promise<Array<{ month: string; totalCents: number; count: number }>> {
+    const cond = sql.join([counted, sql`e.archived_at IS NULL`, ...this.filterWhere({ ...f, from, to })], sql` AND `);
+    const r = await sql<{ k: string; t: string; c: string }>`SELECT to_char(e.incurred_on, 'YYYY-MM') AS k, SUM(e.amount_cents)::text AS t, count(*)::text AS c
+      FROM expenses e LEFT JOIN inventory_vendors v ON v.id = e.vendor_id AND v.tenant_id = e.tenant_id WHERE e.tenant_id = ${s.tenantId} ${scoped(s)} AND ${cond}
+      GROUP BY 1 ORDER BY 1`.execute(this.db);
+    return r.rows.map((x) => ({ month: String(x.k), totalCents: n(x.t), count: n(x.c) }));
+  }
+
   /** Extras (Expenses Management 01): the attention bar — counts over the screen's filters (dates, category, method,
    *  search) and branch scope, each by the same rule the list uses when the count is clicked. Read-only. */
   async attention(s: Scope, f: ListFilters, overdueBefore: Date): Promise<{ missingReceipts: number; uncategorized: number; overdueReviews: number; duplicateRisk: number }> {

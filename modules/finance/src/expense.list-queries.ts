@@ -9,7 +9,7 @@ export const ExpenseControllerListQueries = {
     sorts: { created: null, date: null, amount: null },
   },
   summary: {
-    filters: { category: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' } },
+    filters: { category: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' }, trend: { type: 'text' } },
     search: { params: ['q'] },
   },
   // Bill due calendar (Extras · Receipt Expense OCR 06): the window in days (1–90) and the branch

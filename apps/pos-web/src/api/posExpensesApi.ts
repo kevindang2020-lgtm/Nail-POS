@@ -20,7 +20,7 @@ export const posExpensesApi = {
   reportRange: (from: string, to: string) => api.get<FinanceReport>(`/owner/finance/reports`, { period: 'custom', from, to }),
   expenses: (q: { tab: ExpenseTab | 'all'; period?: string; from?: string; to?: string; q?: string; category?: string; paymentMethod?: string; sort?: 'created' | 'date' | 'amount'; page?: number; pageSize?: number; attention?: ExpenseAttention }) => api.get<FinanceExpensePage>(`/owner/finance/expenses`, q),
   /** Expenses guide (Nov 4 2026): the four KPIs over the whole filtered set, with the period the server resolved */
-  kpis: (q: { period?: string; from?: string; to?: string; q?: string; category?: string; paymentMethod?: string }) => api.get<FinanceExpenseSummary>(`/owner/finance/expenses/summary`, q),
+  kpis: (q: { period?: string; from?: string; to?: string; q?: string; category?: string; paymentMethod?: string; trend?: '1' }) => api.get<FinanceExpenseSummary>(`/owner/finance/expenses/summary`, q),
   update: (id: string, body: FinanceExpenseUpdateRequest) => api.patch<FinanceExpenseResult>(`/owner/finance/expenses/${enc(id)}`, body as unknown as Record<string, unknown>),
   detail: (id: string) => api.get<FinanceExpenseDetail>(`/owner/finance/expenses/${enc(id)}`),
   /** Bill due calendar (Extras · Receipt Expense OCR 06): open bills due within `days` of the salon's today, overdue first */

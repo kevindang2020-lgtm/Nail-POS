@@ -413,4 +413,9 @@ export const FINANCE_EN = {
   "finance.ex.att.uncat": "{n} category not confirmed",
   "finance.ex.att.overdue": "{n} waiting for review over {d} days",
   "finance.ex.att.dups": "{n} possible duplicates",
+  "finance.ex.trend.title": "Monthly spending",
+  "finance.ex.trend.sub": "Approved expenses per month, last 12 months (this month so far). Tap a month to list it.",
+  "finance.ex.trend.subFiltered": "Approved expenses per month, last 12 months, with your category / method / search filters. Tap a month to list it.",
+  "finance.ex.trend.count": "{n} expenses",
+  "finance.ex.trend.basis": "By expense date in the salon’s calendar. Drafts, expenses waiting for review and voided expenses are not counted.",
 };

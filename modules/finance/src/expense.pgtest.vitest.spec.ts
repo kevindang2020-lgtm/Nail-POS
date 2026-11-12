@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { OutboxWriter } from '@aipowersalon/events';
-import { ExpenseService, type FinanceCtx, type BranchScopePort } from './expense.service';
+import { ExpenseService, trendMonths, type FinanceCtx, type BranchScopePort } from './expense.service';
 import { ExpenseError } from './expense-errors';
 
 const T = 'f9000000-0000-4000-8000-000000000001', T2 = 'f9000000-0000-4000-8000-000000000002';
@@ -365,5 +365,21 @@ describe('finance — the expense attention bar', () => {
     expect((await svc.list(own4, { tab: 'all', attention: 'bogus' } as never)).total).toBe(5);
     // another salon sees none of it
     expect((await svc.summary(other, { from: today, to: today })).attention?.overdueReviews ?? 0).toBe(0);
+  });
+  it('Extras (Expenses Management 06): ?trend lists the last 12 salon months, approved only, with the screen filters; $0 months are listed', async () => {
+    const months = trendMonths(today, 12);
+    expect(months).toHaveLength(12); expect(months[11]).toBe(today.slice(0, 7));
+    expect(trendMonths('2026-02-15', 3)).toEqual(['2025-12', '2026-01', '2026-02']);
+    const prevMonth = months[10];
+    await svc.create(own4, { amountCents: 2500, incurredOn: `${prevMonth}-10`, vendor: 'Trend A', category: 'supplies', paymentMethod: 'cash', intent: 'approve', idempotencyKey: 'trend-a' } as never);
+    await svc.create(own4, { amountCents: 9900, incurredOn: `${prevMonth}-11`, vendor: 'Trend B', category: 'supplies', paymentMethod: 'cash', intent: 'draft', idempotencyKey: 'trend-b' } as never);   // a draft never counts
+    const s = await svc.summary(own4, { period: 'month', trend: true });
+    expect(s.trend?.map((x) => x.month)).toEqual(months);
+    const thisMonthApproved = (await svc.summary(own4, { period: 'month' })).totalCents;
+    expect(s.trend?.[11].totalCents).toBe(thisMonthApproved);                 // the same rows the KPI counts
+    expect(s.trend?.[10]).toEqual({ month: prevMonth, totalCents: 2500, count: 1 });
+    expect(s.trend?.[0]).toEqual({ month: months[0], totalCents: 0, count: 0 });
+    expect((await svc.summary(own4, { period: 'month', trend: true, paymentMethod: 'business_card' })).trend?.[10].totalCents).toBe(0);   // filters apply
+    expect((await svc.summary(own4, { period: 'month' })).trend).toBeUndefined();   // only when asked
   });
 });

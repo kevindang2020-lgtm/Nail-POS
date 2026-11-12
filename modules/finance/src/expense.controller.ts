@@ -73,7 +73,7 @@ export class ExpenseController {
   }
   // Expenses guide (Nov 4 2026): declared before expenses/:id so "summary" is never read as an expense id
   @RequirePermission('owner.expenses.view') @Get('expenses/summary') summary(@Req() r: Req, @Query() q: Record<string, string | undefined>): Promise<FinanceExpenseSummary> {
-    return financeRun(() => this.svc.summary(financeCtx(r, q.branchId), { from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, paymentMethod: q.paymentMethod, q: q.q, branchId: q.branchId || null }));
+    return financeRun(() => this.svc.summary(financeCtx(r, q.branchId), { from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, paymentMethod: q.paymentMethod, q: q.q, branchId: q.branchId || null, trend: q.trend === '1' || q.trend === 'true' }));
   }
   // Bill due calendar (Extras · Receipt Expense OCR 06): declared before expenses/:id
   @RequirePermission('owner.expenses.view') @Get('expenses/bills-due') billsDue(@Req() r: Req, @Query('days') days?: string, @Query('branchId') branchId?: string): Promise<FinanceBillsDue> {

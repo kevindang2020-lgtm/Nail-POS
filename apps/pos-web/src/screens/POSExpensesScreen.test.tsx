@@ -49,6 +49,21 @@ describe('POSExpensesScreen (Expenses guide)', () => {
     await waitFor(() => expect(m.expenses).toHaveBeenLastCalledWith(expect.objectContaining({ tab: 'duplicates', attention: undefined })));
     expect(m.approve).not.toHaveBeenCalled(); expect(m.update).not.toHaveBeenCalled(); expect(m.voidExpense).not.toHaveBeenCalled();
   });
+  it('monthly spending: Total opens 12 server months with the same filters; a month lists that month', async () => {
+    const keys = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
+    const months = keys.map((k) => ({ month: k, totalCents: k === '2026-10' ? 45000 : k === '2026-09' ? 15000 : 0, count: k === '2026-10' ? 3 : k === '2026-09' ? 1 : 0 }));
+    m.kpis.mockImplementation(async (q: Record<string, unknown>) => (q.trend ? { ...kpis, trend: months } : kpis));
+    renderIt();
+    fireEvent.change(await screen.findByTestId('category'), { target: { value: 'supplies' } });
+    fireEvent.click(await screen.findByTestId('kpi-total'));
+    const dlg = await screen.findByTestId('dlg-trend');
+    await waitFor(() => expect(m.kpis).toHaveBeenCalledWith(expect.objectContaining({ trend: '1', category: 'supplies' })));
+    expect(await within(dlg).findAllByTestId('trend-row')).toHaveLength(12);
+    expect(within(dlg).getByText(/with your category/)).toBeInTheDocument();
+    fireEvent.click(within(dlg).getByTestId('trend-open-2026-10'));
+    await waitFor(() => expect(m.expenses).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'custom', from: '2026-10-01', to: '2026-10-21', category: 'supplies' })));
+    expect(screen.queryByTestId('dlg-trend')).toBeNull();
+  });
   it('attention bar: nothing to show when every count is zero', async () => {
     m.kpis.mockResolvedValue({ ...kpis, attention: { missingReceipts: 0, uncategorized: 0, overdueReviews: 0, duplicateRisk: 0, overdueAfterDays: 7 } });
     renderIt();
