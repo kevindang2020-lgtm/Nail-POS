@@ -783,6 +783,7 @@
   "GET /pos/live-schedule-screen/search": "AAAADRRRRRRRRRRRR",
   "GET /pos/live-schedule-screen/shift-impact": "AAAADRRRRRRRRRRRR",
   "GET /pos/logs": "AADDDRRRRRRRRRRRR",
+  "GET /pos/logs/export": "AADDDRRRRRRRRRRRR",
   "GET /pos/loyalty/bonus-requests": "AAAAARRRRRRRRRRRR",
   "GET /pos/loyalty/bonus-requests/health": "AAAADRRRRRRRRRRRR",
   "GET /pos/loyalty/bonus-requests/preview": "AAAAARRRRRRRRRRRR",
