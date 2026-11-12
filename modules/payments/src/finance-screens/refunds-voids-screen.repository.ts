@@ -21,6 +21,7 @@ import {
   csvDocument, usd, audit, type AuditRecorder, oneOf, moneyToCents,
 } from './finance-scope';
 import { methodKey } from './split-payments-screen.repository';
+import { explainReversalException } from './refund-root-cause';
 
 export const RV_BASES = ['requested', 'completed', 'original'] as const;
 export const RV_TYPES = ['refund', 'partial_refund', 'void'] as const;
@@ -183,11 +184,16 @@ export class RefundsVoidsScreenRepository {
    *  or a reversal whose original tender is not linked to a ticket. Read only — it never retries, settles or changes a status;
    *  each item opens the existing detail (where the authorised Checkout actions live). */
   static readonly STALE_PENDING_HOURS = 24;
-  async escalations(ctx: FinanceCtx) {
+  /** the ONE escalation rule (alias a = base()) — the Inbox groups by it and the detail's root-cause advisor reads it */
+  private escalationGroup(): RawBuilder<string | null> {
     const hrs = RefundsVoidsScreenRepository.STALE_PENDING_HOURS;
-    const grp = sql<string>`(case when a.state = 'needs_review' then 'provider_timeout'
+    return sql<string | null>`(case when a.state = 'needs_review' then 'provider_timeout'
         when a.state in ('pending', 'processing') and a.requested_at < now() - make_interval(hours => ${hrs}) then 'stale_pending'
         when (a.kind = 'refund' and a.state = 'completed' and a.provider_ref is not null and a.reversal_payment_id is null) or a.ticket_number is null then 'broken_link' end)`;
+  }
+  async escalations(ctx: FinanceCtx) {
+    const hrs = RefundsVoidsScreenRepository.STALE_PENDING_HOURS;
+    const grp = this.escalationGroup();
     const rows = (await sql<{ grp: string; id: string; kind: 'refund' | 'void'; ticket_number: string | null; reversed_cents: string | number; requested_at: string | null; review_reason: string | null; n: number; cents: string | number; oldest: string | null; rk: number }>`
       select x.* from (select ${grp} as grp, a.id, a.kind, a.ticket_number, a.reversed_cents, a.requested_at, a.review_reason,
           count(*) over (partition by ${grp})::int as n, sum(a.reversed_cents) over (partition by ${grp}) as cents, min(a.requested_at) over (partition by ${grp}) as oldest,
@@ -205,7 +211,7 @@ export class RefundsVoidsScreenRepository {
   async detail(ctx: FinanceCtx, kind: string, id: string) {
     if ((kind !== 'refund' && kind !== 'void') || !isUuid(id)) throw new FinanceError('That reversal could not be found.', 'REVERSAL_NOT_FOUND', 404);
     const T = ctx.tenantId;
-    const r = (await sql<any>`select a.*, 0 as rank from (${this.base(ctx)}) a where a.kind = ${kind} and a.id = ${id}::uuid and ${this.scope(ctx)}`.execute(this.db)).rows[0];
+    const r = (await sql<any>`select a.*, 0 as rank, ${this.escalationGroup()} as escalation_group from (${this.base(ctx)}) a where a.kind = ${kind} and a.id = ${id}::uuid and ${this.scope(ctx)}`.execute(this.db)).rows[0];
     if (!r) throw new FinanceError('That reversal could not be found.', 'REVERSAL_NOT_FOUND', 404);
     const reversal = this.row(ctx, r);
     const original = await this.tender(ctx, String(r.payment_id));
@@ -224,8 +230,14 @@ export class RefundsVoidsScreenRepository {
       from tickets t where t.tenant_id = ${T} and t.id = ${String(r.ticket_id)}::uuid`.execute(this.db)).rows[0] : null;
     const tip = r.ticket_id ? (await sql<any>`select x.technician_id, x.tip_cents, tc.full_name from ticket_tip_allocations x left join technicians tc on tc.id = x.technician_id and tc.tenant_id = x.tenant_id where x.tenant_id = ${T} and x.ticket_id = ${String(r.ticket_id)}::uuid order by x.tip_cents desc`.execute(this.db)).rows : [];
     const loyalty = r.ticket_id ? (await sql<any>`select l.id, l.points, coalesce(l.reversed_points, 0) as reversed_points, l.source, l.created_at from loyalty_point_earnings l where l.tenant_id = ${T} and l.ticket_id = ${String(r.ticket_id)}::uuid order by l.created_at desc limit 10`.execute(this.db)).rows : [];
+    const thisRefund = refunds.find((x: any) => String(x.id) === String(r.id));
+    // REFUNDS 10 — Exception Root-Cause Advisor: evidence from the rows above, the Inbox's own group; read only
+    const rootCause = explainReversalException({ kind: reversal.kind, id: reversal.id, paymentId: reversal.paymentId, state: reversal.state, rawStatus: reversal.rawStatus,
+      escalation: (['provider_timeout', 'stale_pending', 'broken_link'] as const).find((g) => g === r.escalation_group) ?? null,
+      reviewReason: reversal.reviewReason, strandedAt: thisRefund ? iso(thisRefund.stranded_at) : null, lastError: reversal.lastError, providerRef: reversal.providerRef,
+      reversalPaymentId: reversal.reversalPaymentId, ticketId: reversal.ticketId, ticketNumber: reversal.ticketNumber, settlementId: reversal.settlementId, requestedAt: reversal.requestedAt, nowMs: Date.now() });
     return {
-      reversal, original,
+      reversal, original, rootCause,
       tenders: tenders.map((p: any) => ({ id: String(p.id), method: methodKey(p.method), amountCents: N(p.amount_cents), status: String(p.status), reservedCents: N(p.reserved_cents), refundableCents: Math.max(0, N(p.amount_cents) - N(p.reserved_cents)), processorRef: p.processor_transaction_id ?? null,
         card: p.card_brand || p.card_last4 ? `${p.card_brand ?? ''} ••${p.card_last4 ?? '••'}`.trim() : null, giftCardLast4: p.gift_card_last4 ?? null, at: iso(p.created_at), isOriginal: String(p.id) === String(r.payment_id) })),
       refunds: refunds.map((x: any) => ({ id: String(x.id), amountCents: N(x.amount_cents), status: String(x.status), reason: x.reason ?? null, providerRef: x.processor_refund_id ?? null, at: iso(x.created_at), settledAt: iso(x.settled_at), settledBy: x.settled_by ?? null, reviewReason: x.review_reason ?? null, strandedAt: iso(x.stranded_at), actor: x.actor ?? null, isThis: String(x.id) === String(r.id) })),

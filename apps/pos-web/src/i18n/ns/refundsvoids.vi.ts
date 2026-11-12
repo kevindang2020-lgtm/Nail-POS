@@ -202,4 +202,29 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.esc.why.broken_link': 'Một khoản hoàn tiền đã xong có mã hoàn tiền của bộ xử lý nhưng không có bản ghi hoàn trả, hoặc thanh toán gốc không gắn với phiếu.', // DRAFT — Kevin reviews
   'rv.esc.more': 'Còn {n} khoản — dùng bộ lọc trạng thái để xem hết.', // DRAFT — Kevin reviews
   'rv.esc.readOnly': 'Danh sách này chỉ hiển thị vấn đề. Không bao giờ thử lại, xử lý hay đổi trạng thái hoàn tiền.', // DRAFT — Kevin reviews
+  'rv.rc.title': 'Nguyên nhân theo sổ cái', // DRAFT — Kevin reviews
+  'rv.rc.nextTitle': 'Bước tiếp theo:', // DRAFT — Kevin reviews
+  'rv.rc.readOnly': 'Tóm tắt từ chính các bản ghi sổ cái của lần hoàn tiền này. Không bao giờ đổi trạng thái, thử hoàn tiền lại hay liên hệ đơn vị xử lý.', // DRAFT — Kevin reviews
+  'rv.rc.hours': '{n} giờ', // DRAFT — Kevin reviews
+  'rv.rc.cause.provider_timeout': 'Mất phản hồi từ đơn vị xử lý', // DRAFT — Kevin reviews
+  'rv.rc.cause.stale_pending': 'Chờ quá lâu', // DRAFT — Kevin reviews
+  'rv.rc.cause.broken_link': 'Liên kết sổ cái bị hỏng', // DRAFT — Kevin reviews
+  'rv.rc.cause.failed': 'Hoàn tiền bị từ chối', // DRAFT — Kevin reviews
+  'rv.rc.next.verify_with_processor': 'Xác nhận kết quả với đơn vị xử lý, rồi dùng Kiểm tra trạng thái hoàn tiền để chốt. Đừng tạo lần hoàn tiền mới.', // DRAFT — Kevin reviews
+  'rv.rc.next.check_reservation': 'Kiểm tra vì sao khoản giữ chưa hoàn tất; số tiền vẫn bị giữ trên thanh toán gốc.', // DRAFT — Kevin reviews
+  'rv.rc.next.ledger_reversal_missing': 'Lần hoàn tiền của đơn vị xử lý chưa có bản ghi đảo trong sổ cái — nhờ văn phòng đối chiếu với báo cáo của đơn vị xử lý.', // DRAFT — Kevin reviews
+  'rv.rc.next.ticket_link_missing': 'Thanh toán gốc chưa gắn với phiếu nào — hãy tìm phiếu trước khi làm gì.', // DRAFT — Kevin reviews
+  'rv.rc.next.review_decline': 'Bộ xử lý đã từ chối; tiền chưa được trả lại. Xem lý do trước khi thử lại từ Tìm giao dịch gốc.', // DRAFT — Kevin reviews
+  'rv.rc.ev.raw_status': 'Trạng thái đã ghi', // DRAFT — Kevin reviews
+  'rv.rc.ev.review_reason': 'Lý do cần xem xét', // DRAFT — Kevin reviews
+  'rv.rc.ev.stranded_at': 'Được đánh dấu cần xem xét', // DRAFT — Kevin reviews
+  'rv.rc.ev.last_error': 'Bộ xử lý trả về lỗi', // DRAFT — Kevin reviews
+  'rv.rc.ev.provider_ref': 'Mã hoàn tiền của đơn vị xử lý', // DRAFT — Kevin reviews
+  'rv.rc.ev.provider_ref_missing': 'Không có mã hoàn tiền của đơn vị xử lý', // DRAFT — Kevin reviews
+  'rv.rc.ev.ledger_reversal': 'Bản ghi đảo trong sổ cái', // DRAFT — Kevin reviews
+  'rv.rc.ev.ledger_reversal_missing': 'Không có bản ghi đảo trong sổ cái', // DRAFT — Kevin reviews
+  'rv.rc.ev.ticket_link': 'Phiếu', // DRAFT — Kevin reviews
+  'rv.rc.ev.ticket_link_missing': 'Chưa gắn với phiếu', // DRAFT — Kevin reviews
+  'rv.rc.ev.settlement': 'Lô kết toán', // DRAFT — Kevin reviews
+  'rv.rc.ev.waiting_hours': 'Đã chờ', // DRAFT — Kevin reviews
 };
