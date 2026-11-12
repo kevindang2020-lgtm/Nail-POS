@@ -289,7 +289,7 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "cd.rfm.atRisk": "Có rủi ro",
   "cd.rfm.cannotLose": "Không thể để mất",
   "cd.rfm.hibernating": "Lâu không quay lại",
-  "cd.rfm.noVisits": "Chưa ghé tiệm"
+  "cd.rfm.noVisits": "Chưa ghé tiệm",
   "dup.health.k.orphan_references": "Bản ghi trỏ đến khách không còn tồn tại", // DRAFT — Kevin reviews
   "dup.health.k.archived_with_bookings": "Lịch hẹn sắp tới trên hồ sơ đã lưu trữ", // DRAFT — Kevin reviews
   "dup.health.k.loyalty_repeat_entries": "Điểm tích lũy bị ghi lặp", // DRAFT — Kevin reviews

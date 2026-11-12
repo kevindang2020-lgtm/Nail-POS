@@ -291,7 +291,7 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "cd.rfm.atRisk": "At Risk",
   "cd.rfm.cannotLose": "Cannot Lose Them",
   "cd.rfm.hibernating": "Hibernating",
-  "cd.rfm.noVisits": "No Visits Yet"
+  "cd.rfm.noVisits": "No Visits Yet",
   "dup.health.k.orphan_references": "Records naming a missing customer",
   "dup.health.k.archived_with_bookings": "Upcoming bookings on archived profiles",
   "dup.health.k.loyalty_repeat_entries": "Repeated loyalty postings",
