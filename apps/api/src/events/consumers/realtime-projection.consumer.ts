@@ -221,6 +221,13 @@ const MAP: Partial<Record<string, (e: DomainEvent<any>) => Client | Client[]>> =
   // §31 fan-out: one domain fact, two client refreshes — the ticket screen and the reports screen
   [DOMAIN_EVENTS.CHECKOUT_COMPLETED]:      (e) => [{ event: EVENTS.ticketPaid, payload: { ticketId: e.aggregateId } }, { event: EVENTS.reportsUpdated, payload: {} },
     ...(e.payload?.channel === 'skip_line' ? [{ event: EVENTS.ticketClosed, payload: { ticketId: e.aggregateId } }] : [])],
+  // Extras REFUNDS & VOIDS 08 (Nov 12 2026): a CONFIRMED reversal (payment.voided is written only on a real transition;
+  // payment.refunded only when a refund becomes 'refunded' — a released reservation records nothing) refreshes the
+  // money screens through the existing routing: reports_updated (Reports, Dashboard, Overview, and the Refunds & Voids
+  // and Transactions ledgers, which listen on "reports"); a void also changes what the ticket still owes →
+  // checkout_total_recalculated for the checkout screen. Ids only; never amounts beyond what the routing already carries.
+  [DOMAIN_EVENTS.PAYMENT_VOIDED]:          (e) => [{ event: EVENTS.checkoutTotalRecalculated, payload: { ticketId: e.payload?.ticketId ?? null, paymentId: e.aggregateId } }, { event: EVENTS.reportsUpdated, payload: {} }],
+  [DOMAIN_EVENTS.PAYMENT_REFUNDED]:        (e) => [{ event: EVENTS.reportsUpdated, payload: { refundId: e.aggregateId, paymentId: e.payload?.paymentId ?? null } }],
   [DOMAIN_EVENTS.PAYMENT_FAILED]:          (e) => [{ event: EVENTS.paymentFailed, payload: { ticketId: e.payload?.ticketId ?? null } },
     // skip-line: the customer's own app hears the decline, with the processor's reason text (no card data)
     ...(e.payload?.channel === 'skip_line' && e.payload?.customerId ? [{ event: EVENTS.customerPaymentFailed, payload: { ticketId: e.payload?.ticketId ?? null, reason: e.payload?.reason ?? null }, scope: 'customer' as const, customerId: String(e.payload.customerId) }] : [])],

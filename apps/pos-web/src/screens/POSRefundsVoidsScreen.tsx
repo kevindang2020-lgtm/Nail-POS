@@ -10,6 +10,7 @@
 // What was wrong: the page read the newest 1,000 reversal payment rows (a void's zero-amount record counted as a void, a
 // pending or failed refund never appeared), had no period, search or paging, and a read error looked like $0.00.
 import { useEffect, useRef, useState } from 'react';
+import { useRealtime } from '../realtime/useRealtime';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { createIntentKeys } from '@aipowersalon/api-client';
@@ -81,6 +82,10 @@ export function POSRefundsVoidsScreen() {
   const list = useLoad(() => posRefundsVoidsApi.list({ ...scope, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
   const sum = useLoad(() => posRefundsVoidsApi.summary({ ...periodQuery(period), dateField: basis, method: method || undefined, processor: processor || undefined, register: register || undefined }), [JSON.stringify(period), basis, method, processor, register, tick]);
   const facets = useLoad(() => posRefundsVoidsApi.facets(), []);
+  // Extras REFUNDS & VOIDS 08: a confirmed refund / void / payment elsewhere (another register, the owner app) refreshes
+  // this ledger in place through the existing realtime routing ("reports": reports_updated / ticket_paid / payment_approved) —
+  // events only (no timer), data kept while it reloads
+  useRealtime('reports', () => { list.reload(); sum.reload(); }, { intervalMs: 0, hiddenMs: 0 });
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const esc: RvEscalations | undefined = sum.data?.escalations; const k = sum.data?.kpis; const perms = sum.data?.permissions ?? {}; const rows: Rev[] = list.data?.items ?? [];
   const chips = [...(q ? [{ label: tx('rv.chip.search', { q }), clear: () => setSearch('') }] : []), ...(type ? [{ label: typeLbl(type), clear: () => setType('') }] : []), ...(state ? [{ label: stateLbl(state), clear: () => setState('') }] : []),
