@@ -512,6 +512,19 @@ export class AiFollowUpCenter {
       where a.tenant_id = ${T} and a.follow_up_id = ${id} order by a.created_at desc, a.id desc limit 50`.execute(this.db)).rows;
     const activity: Row[] = (await sql<Row>`select a.event_type, a.from_value, a.to_value, a.note, a.metadata, a.created_at, u.full_name actor_name from ai_follow_up_activity a
       left join users u on u.id = a.actor_user_id and u.tenant_id = a.tenant_id where a.tenant_id = ${T} and a.follow_up_id = ${id} order by a.created_at desc, a.id desc limit 100`.execute(this.db)).rows;
+    // extras (AI Follow Ups 05) — Duplicate Contact Guard: the same customer reached in the last 7 days by ANOTHER AI
+    // follow-up task (its recorded contact attempts) or by an end-of-day technician follow-up (sent). A warning only —
+    // it blocks nothing and changes nothing (the text path keeps its own cooldown + manager override).
+    const recentContacts: Row[] = c || phone ? (await sql<Row>`select * from (
+        select 'ai_follow_up' as source, a.created_at as at, a.channel, a.outcome, coalesce(u.full_name, 'Staff') as by_name, a.follow_up_id as ref
+          from ai_follow_up_contact_attempts a join ai_receptionist_follow_ups o on o.id = a.follow_up_id and o.tenant_id = a.tenant_id
+          left join users u on u.id = a.actor_user_id and u.tenant_id = a.tenant_id
+         where a.tenant_id = ${T} and a.follow_up_id <> ${id} and a.created_at > now() - interval '7 days'
+           and (${c ? sql`o.customer_id = ${c.id}` : sql`false`} or ${phone ? sql`o.caller_phone = ${phone}` : sql`false`})
+        union all
+        select 'end_of_day' as source, s.sent_at as at, 'customer_app' as channel, s.status as outcome, coalesce(nullif(s.technician_name_snapshot, ''), 'Technician') as by_name, s.id as ref
+          from service_follow_up_tasks s where s.tenant_id = ${T} and s.deleted_at is null and s.sent_at is not null and s.sent_at > now() - interval '7 days' and ${c ? sql`s.customer_id = ${c.id}` : sql`false`}
+      ) x order by x.at desc limit 10`.execute(this.db)).rows : [];
     await recordAuditStrict(this.db, { tenantId: T, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role }, { module: 'ai_follow_ups', action: 'follow_up.viewed', resourceType: 'ai_follow_up', resourceId: id, summary: 'Follow-up details viewed' });
     const smsState = (a: Row) => {
       if (a.channel !== 'sms' || !a.notification_id) return a.outcome;
@@ -532,6 +545,7 @@ export class AiFollowUpCenter {
         error: call.error_category ?? null, summary: call.summary ?? null, sentiment: call.sentiment ?? null, handoffs: handoffs.map((h) => ({ kind: h.kind, source: h.source, callbackRequired: !!h.callback_required, reason: h.reason, at: iso(h.created_at) })) } : null,
       attempts: attempts.map((a) => ({ id: a.id, channel: a.channel, outcome: smsState(a), recordedBy: a.actor_name ?? null, recipient: a.recipient_ref ?? null, note: a.note ?? null,
         nextAttemptAt: iso(a.next_attempt_at), at: iso(a.created_at), attestation: a.channel !== 'sms' })),
+      recentContacts: recentContacts.map((r) => ({ source: String(r.source) as 'ai_follow_up' | 'end_of_day', at: iso(r.at), channel: String(r.channel), outcome: r.outcome ?? null, by: r.by_name ?? null, ref: String(r.ref) })),
       booking: { linked: linkedAppt ? { id: linkedAppt.id, date: linkedAppt.d, start: linkedAppt.start_time, status: linkedAppt.status, source: linkedAppt.source } : null, upcoming: upcoming.length },
       activity: activity.map((a) => ({ type: a.event_type, from: a.from_value, to: a.to_value, note: a.note, actor: a.actor_name ?? (a.event_type === 'created' && !a.actor_name ? 'AI receptionist' : null), at: iso(a.created_at) })),
       permissions: { canWork: this.can(ctx, 'communications.manage') || this.can(ctx, 'ai.manage'), canManage: this.can(ctx, 'ai.manage'), canText: this.can(ctx, 'reception_copilot.send_message'), canBook: this.can(ctx, 'pos.booking.create') },

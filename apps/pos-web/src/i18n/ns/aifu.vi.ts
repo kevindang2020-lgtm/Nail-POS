@@ -253,4 +253,7 @@ export const AIFU_VI: Record<string, string> = {
   "aifu.wait": "Đánh dấu đang chờ",
   "aifu.edit": "Sửa chi tiết",
   "aifu.rec.when": "Mở việc {opened} · kiểm tra lúc {at}", // DRAFT — Kevin reviews
+  "aifu.recent.title": "Đã liên hệ gần đây — {n} lần liên hệ khác trong 7 ngày qua. Kiểm tra trước khi liên hệ lại.", // DRAFT — Kevin reviews
+  "aifu.recent.src.ai_follow_up": "Một việc theo dõi khác", // DRAFT — Kevin reviews
+  "aifu.recent.src.end_of_day": "Theo dõi cuối ngày của thợ", // DRAFT — Kevin reviews
 };

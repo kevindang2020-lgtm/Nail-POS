@@ -334,3 +334,25 @@ describe('A13 Nov 6 — missed-call / Copilot sources, recommended assignee, not
     expect((await fc.healthHistory(ownB, {})).totalItems).toBe(0);
   });
 });
+
+describe('AI Follow Ups 05 — duplicate contact guard (warning only)', () => {
+  it('a customer reached in the last 7 days by another follow-up task or an end-of-day technician follow-up is listed; older contacts and other customers are not', async () => {
+    const C9 = id('c9');
+    await sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status) values (${C9}, ${TA}, ${BA}, 'Dee', 'Vu', 'Dee Vu', '+16095550199', 'active')`.execute(db);
+    const a = (await fc.create(desk, { reason: 'BOOKING_HELP', description: 'First ask', priority: 'normal', customerId: C9, idempotencyKey: 'dup-guard-0001' })).id;
+    const b = (await fc.create(desk, { reason: 'CALLBACK', description: 'Second ask', priority: 'normal', customerId: C9, idempotencyKey: 'dup-guard-0002' })).id;
+    expect((await fc.detail(own, b)).recentContacts).toEqual([]);
+    await fc.recordAttempt(desk, a, { channel: 'phone_call', outcome: 'reached', idempotencyKey: 'dup-guard-att-1' });
+    await sql`insert into service_follow_up_tasks (tenant_id, branch_id, business_date, customer_id, technician_id, ticket_id, ticket_service_line_id, technician_name_snapshot, status, sent_at)
+      values (${TA}, ${BA}, '2026-11-01', ${C9}, ${id('f1')}, ${id('f2')}, ${id('f3')}, 'Lan Tran', 'sent', now() - interval '1 day'),
+             (${TA}, ${BA}, '2026-10-01', ${C9}, ${id('f1')}, ${id('f4')}, ${id('f5')}, 'Lan Tran', 'sent', now() - interval '20 days'),
+             (${TA}, ${BA}, '2026-11-01', ${C1}, ${id('f1')}, ${id('f6')}, ${id('f7')}, 'Lan Tran', 'sent', now() - interval '1 day')`.execute(db);
+    const before = N((await q1(sql`select count(*)::int n from ai_follow_up_contact_attempts where follow_up_id = ${b}`)).n);
+    const d = await fc.detail(own, b);
+    expect(d.recentContacts.map((x: any) => [x.source, x.channel, x.by])).toEqual([['ai_follow_up', 'phone_call', 'Fiona Desk'], ['end_of_day', 'customer_app', 'Lan Tran']]);
+    expect(d.recentContacts[0].ref).toBe(a);
+    // the task's own attempts are not "another" contact; nothing was written by reading
+    expect((await fc.detail(own, a)).recentContacts.map((x: any) => x.source)).toEqual(['end_of_day']);
+    expect(N((await q1(sql`select count(*)::int n from ai_follow_up_contact_attempts where follow_up_id = ${b}`)).n)).toBe(before);
+  });
+});
