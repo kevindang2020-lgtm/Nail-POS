@@ -18,6 +18,8 @@ export const posAIMoneyProtectionApi = {
     timeline: (id: string) => api.get<any>(`/pos/money-protection-center/investigations/timeline`, { id }),
     rules: () => api.get<any>(`/pos/money-protection-center/rules`),
     saveRule: (b: { ruleId: string; enabled: boolean; severityOverride: string | null; thresholds: Record<string, number | string>; reason?: string | null; expectedUpdatedAt: string | null }) => api.post<any>(`/pos/money-protection-center/rules/save`, b),
+    /** Threshold Change Preview (Rules 09): the same route with dryRun — the server returns BEFORE saving anything */
+    previewRule: (b: { ruleId: string; thresholds: Record<string, number | string> }) => api.post<any>(`/pos/money-protection-center/rules/save`, { ...b, dryRun: true }),
     history: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/settings/history`, clean(q)),
     runs: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/detection/runs`, clean(q)),
     runDetection: () => api.post<any>(`/pos/money-protection-center/detection/run`, {}),

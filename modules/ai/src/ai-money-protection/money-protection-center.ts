@@ -77,6 +77,8 @@ export interface McDeps {
   /** the existing validated rule save (service.updateSetting) */
   saveRule: (ctx: McCtx, ruleId: string, input: { enabled: boolean; severityOverride: string | null; thresholds: Record<string, unknown> }) => Promise<unknown>;
   scheduled: () => boolean;
+  /** Threshold Change Preview (Rules 09): the service's dry run (service.previewThresholds) — never saves, never raises an alert */
+  previewRule?: (ctx: McCtx, ruleId: string, thresholds: Record<string, unknown>) => Promise<unknown>;
 }
 
 export class MoneyProtectionCenter {
@@ -459,10 +461,21 @@ export class MoneyProtectionCenter {
     };
   }
 
-  async saveRule(ctx: McCtx, ruleId: string, b: { enabled?: unknown; severityOverride?: unknown; thresholds?: unknown; reason?: unknown; expectedUpdatedAt?: unknown }) {
+  async saveRule(ctx: McCtx, ruleId: string, b: { enabled?: unknown; severityOverride?: unknown; thresholds?: unknown; reason?: unknown; expectedUpdatedAt?: unknown; dryRun?: unknown }) {
     this.need(ctx, 'ai_money_protection.manage_settings');
     const d = RULE.get(ruleId);
     if (!d) throw new MoneyCenterError('That rule does not exist.', 'MC_NOT_FOUND', 404);
+    // Money Protection Rules 09 — Threshold Change Preview: `dryRun: true` returns what the proposed thresholds would have
+    // done to the recent detections and returns BEFORE anything is written (no setting, no event, no audit row, no alert)
+    if (b.dryRun === true) {
+      const proposed = b.thresholds && typeof b.thresholds === 'object' && !Array.isArray(b.thresholds) ? b.thresholds as Record<string, unknown> : {};
+      if (!this.deps.previewRule) return { ruleId, dryRun: true, supported: false, reason: 'preview_unavailable' };
+      try { return await this.deps.previewRule(ctx, ruleId, proposed); }
+      catch (e) {
+        if (e instanceof Error && e.name === 'MoneyProtectionValidationError') throw new MoneyCenterError(e.message, 'MC_INVALID_THRESHOLD', 400);
+        throw e;
+      }
+    }
     const T = ctx.tenantId;
     const before = (await sql<Row>`select enabled, severity_override, thresholds, updated_at from money_protection_rule_settings where tenant_id = ${T} and rule_id = ${ruleId}`.execute(this.db)).rows[0];
     const exp = typeof b.expectedUpdatedAt === 'string' ? b.expectedUpdatedAt : null;

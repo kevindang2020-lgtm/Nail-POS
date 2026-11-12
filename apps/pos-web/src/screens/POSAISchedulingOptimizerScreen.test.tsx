@@ -218,6 +218,8 @@ describe('Recommendations', () => {
     expect(within(d).getByTestId('sched-proposed').textContent).toContain('11:15 AM');
     expect(within(d).getByTestId('sched-proposed').textContent).toContain('Leo');
     expect(within(d).getByTestId('sched-versions').textContent).toContain('settings v4');
+    // Scheduling Optimizer 03 — Before/After Impact: the appointments and technicians the move touches
+    expect(within(d).getByTestId('sched-affected').textContent).toBe('Affects 1 appointment(s) and 2 technician(s): Mia, Leo');
     // A5: the technician's day — neighbours, before / after, what the move opens and closes
     const day = await within(d).findByTestId('sched-day');
     expect(within(day).getByTestId('sched-day-neighbours').textContent).toBe('Before it: 10:00–11:15 (0 min gap) · Nothing after it');
@@ -351,6 +353,25 @@ describe('Find a time, gaps & conflicts, approvals, insights, settings, usage', 
     renderScreen(); tab('Insights');
     const r2 = await screen.findByTestId('sched-insight');
     expect(within(r2).queryByText('Approve')).toBeNull();
+  });
+
+  it('AI Scheduling Optimizer 06: a duration suggestion shows its observed sample size and spread before approval', async () => {
+    routes[`GET ${B}/insights`] = { body: { items: [
+      { kind: 'duration', id: 'i1', branchId: 'b1', serviceId: 's1', technicianId: null, action: 'decrease', currentMin: 60, suggestedMin: 45, sampleSize: 31, reason: null, confidence: 0.8, status: 'review_required', version: 2, createdAt: '2026-10-07T00:00:00Z',
+        observed: { sampleSize: 31, medianMin: 44.6, p25Min: 30, p75Min: 58, p90Min: 70, stddevMin: 12, variability: 'wide', spreadPct: 63 } },
+      { kind: 'duration', id: 'i2', branchId: 'b1', serviceId: 's1', technicianId: null, action: 'increase', currentMin: 30, suggestedMin: 40, sampleSize: 12, reason: null, confidence: 0.8, status: 'review_required', version: 1, createdAt: '2026-10-06T00:00:00Z',
+        observed: { sampleSize: 12, medianMin: 40, p25Min: 38, p75Min: 42, p90Min: 44, stddevMin: 2, variability: 'steady', spreadPct: 10 } },
+      { kind: 'duration', id: 'i3', branchId: 'b1', serviceId: 's1', technicianId: null, action: 'increase', currentMin: 30, suggestedMin: 40, sampleSize: 12, reason: null, confidence: 0.8, status: 'review_required', version: 1, createdAt: '2026-10-05T00:00:00Z' },
+    ], total: 3 } };
+    renderScreen(); tab('Insights');
+    await waitFor(() => expect(screen.getAllByTestId('sched-duration-spread')).toHaveLength(3));
+    const [wide, steady, none] = screen.getAllByTestId('sched-duration-spread');
+    expect(wide.textContent).toContain('Times vary a lot');
+    expect(wide.textContent).toContain('31 visits · typical 45 min · middle half 30–58 min · 9 in 10 within 70 min');
+    expect(wide.textContent).toContain('Check with the team');
+    expect(steady.textContent).toContain('Steady times');
+    expect(steady.textContent).not.toContain('Check with the team');
+    expect(none.textContent).toContain('No observed timing spread');
   });
 
   it('Settings: read-only without configure; with it, saves the layer conditionally on its version', async () => {

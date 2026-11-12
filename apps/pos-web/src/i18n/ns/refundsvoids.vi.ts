@@ -175,4 +175,19 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.dup.sameTenders': '{amount} đã được hoàn trên hóa đơn này về cùng phương thức {when}.', // DRAFT — Kevin reviews
   'rv.dup.sameAmount': '{amount} đã được hoàn trên hóa đơn này {when}.', // DRAFT — Kevin reviews
   'rv.dup.check': 'Hãy kiểm tra đây là lần hoàn tiền mới trước khi xác nhận.', // DRAFT — Kevin reviews
+  'rv.rcpt.title': 'Hóa đơn hoàn tiền cho khách — xem trước', // DRAFT — Kevin reviews
+  'rv.rcpt.proposed': 'Đề xuất · chưa gửi', // DRAFT — Kevin reviews
+  'rv.rcpt.ticket': 'Phiếu', // DRAFT — Kevin reviews
+  'rv.rcpt.customer': 'Khách hàng', // DRAFT — Kevin reviews
+  'rv.rcpt.original': 'Thanh toán gốc', // DRAFT — Kevin reviews
+  'rv.rcpt.type': 'Loại', // DRAFT — Kevin reviews
+  'rv.rcpt.kind.full': 'Hoàn toàn bộ khoản thanh toán này', // DRAFT — Kevin reviews
+  'rv.rcpt.kind.partial': 'Hoàn một phần khoản thanh toán này', // DRAFT — Kevin reviews
+  'rv.rcpt.amount': 'Số tiền hoàn', // DRAFT — Kevin reviews
+  'rv.rcpt.to': 'Hoàn về', // DRAFT — Kevin reviews
+  'rv.rcpt.to.card': 'Thẻ gốc ({m})', // DRAFT — Kevin reviews
+  'rv.rcpt.to.cash': 'Tiền mặt từ ngăn kéo', // DRAFT — Kevin reviews
+  'rv.rcpt.to.gift_card': 'Cùng thẻ quà tặng ({m})', // DRAFT — Kevin reviews
+  'rv.rcpt.left': 'Còn có thể hoàn sau lần này', // DRAFT — Kevin reviews
+  'rv.rcpt.note': 'Đây chỉ là bản xem trước. Không gửi, in hay lưu gì cho đến khi bạn xác nhận, và kết quả hiện sau khi Xác nhận là câu trả lời của bộ xử lý — hoàn tiền thẻ vẫn có thể đang chờ duyệt hoặc đang xử lý.', // DRAFT — Kevin reviews
 };

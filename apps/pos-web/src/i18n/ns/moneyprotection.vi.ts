@@ -401,4 +401,13 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.fp.reasonN": "“{r}” × {n}", // DRAFT — Kevin reviews
   "mpx.fp.noPattern": "Không có lý do lặp lại", // DRAFT — Kevin reviews
   "mpx.fp.policy": "Thông tin từ chính quyết định của nhân viên. Quy tắc không bao giờ tự tắt hay tự nới lỏng — nếu mẫu này là bình thường, hãy đổi quy tắc ở trên kèm lý do.", // DRAFT — Kevin reviews
+  "mpx.thp.btn": "Xem trước thay đổi ngưỡng", // DRAFT — Kevin reviews
+  "mpx.thp.title": "Nếu ngưỡng này được áp dụng trong {d} ngày qua", // DRAFT — Kevin reviews
+  "mpx.thp.counts": "{now} lần phát hiện với cài đặt đã lưu → {next} với thay đổi của bạn", // DRAFT — Kevin reviews
+  "mpx.thp.detail": "{stops} sẽ không còn · {starts} sẽ mới xuất hiện · {sev} sẽ đổi mức độ", // DRAFT — Kevin reviews
+  "mpx.thp.ex.stops": "Sẽ không còn bị đánh dấu ({from}) · {n} phiếu", // DRAFT — Kevin reviews
+  "mpx.thp.ex.starts": "Sẽ bị đánh dấu mới ({to}) · {n} phiếu", // DRAFT — Kevin reviews
+  "mpx.thp.ex.severity": "Mức độ {from} → {to} · {n} phiếu", // DRAFT — Kevin reviews
+  "mpx.thp.dry": "Chỉ chạy thử — không lưu gì và không tạo cảnh báo nào. Bấm Lưu để áp dụng.", // DRAFT — Kevin reviews
+  "mpx.thp.unsupported": "Bộ phát hiện chưa đọc cài đặt này cho quy tắc này, nên không thể xem trước ảnh hưởng lên các lần phát hiện trước.", // DRAFT — Kevin reviews
 };

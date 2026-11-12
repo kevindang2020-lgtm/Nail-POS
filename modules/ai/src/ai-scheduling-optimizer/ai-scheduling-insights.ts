@@ -43,6 +43,19 @@ export function durationSuggestion(currentMin: number | null, stats: DurationSta
   return { action, suggestedMin: Math.round(stats.median), confidence, reason: `Median of ${stats.n} completed services is ${Math.round(stats.median)} min (configured ${currentMin} min; middle half ${Math.round(stats.p25)}–${Math.round(stats.p75)} min).` };
 }
 
+/** Service Duration Confidence (extras): how much the observed times vary, from the stored statistics. Middle-half width
+ *  (p75 − p25) ÷ median: < 20 % steady · < 40 % variable · otherwise wide; fewer than MIN_SAMPLE samples → too_few (never
+ *  a confident label on thin data). Read only — it explains, it never changes a duration. */
+export type DurationVariability = 'too_few' | 'steady' | 'variable' | 'wide';
+export interface DurationObserved { sampleSize: number; medianMin: number; p25Min: number; p75Min: number; p90Min: number; stddevMin: number; variability: DurationVariability; spreadPct: number | null }
+export function durationObserved(st: { n: number; median: number; p25: number; p75: number; p90: number; stddev: number } | null): DurationObserved | null {
+  if (!st || !Number.isFinite(st.n) || st.n <= 0) return null;
+  const r1 = (x: number) => Math.round(x * 10) / 10;
+  const spread = st.median > 0 ? (st.p75 - st.p25) / st.median : null;
+  const variability: DurationVariability = st.n < MIN_SAMPLE || spread == null ? 'too_few' : spread < 0.2 ? 'steady' : spread < 0.4 ? 'variable' : 'wide';
+  return { sampleSize: st.n, medianMin: r1(st.median), p25Min: r1(st.p25), p75Min: r1(st.p75), p90Min: r1(st.p90), stddevMin: r1(st.stddev), variability, spreadPct: spread == null ? null : Math.round(spread * 100) };
+}
+
 export interface DayCapacityInput { capacityMin: number; confirmedMin: number; historyDailyMin: number[]; unscheduledTechnicianIds: string[] }
 /** Staffing + availability suggestions for one location-day. Pure. */
 export function dayInsights(d: DayCapacityInput) {
@@ -85,7 +98,11 @@ function toInsight(kind: SchedInsightKind, r: any): SchedInsight {
   const tr = r.time_range && typeof r.time_range === 'object' ? r.time_range : {};
   const date = r.date ? (r.date instanceof Date ? utcDate(r.date) : String(r.date).slice(0, 10)) : null;
   // reasonCoded / recommendedActionCoded (Vietnamese POS §21): the stored English re-coded at read time (old rows too)
-  if (kind === 'duration') return { kind, ...base, serviceId: String(r.service_id), technicianId: r.technician_id ?? null, action: String(r.action), currentMin: n(r.current_min), suggestedMin: n(r.suggested_min), sampleSize: Number(r.sample_size ?? 0), reason: r.reason ?? null, reasonCoded: schedInsightReasonCoded(r.reason) } as SchedDurationInsight;
+  if (kind === 'duration') {
+    // observed: the latest stored statistics for the same (location, service, technician) key, when the list joined them
+    const observed = r.st_n == null ? null : durationObserved({ n: Number(r.st_n), median: Number(r.st_median), p25: Number(r.st_p25), p75: Number(r.st_p75), p90: Number(r.st_p90), stddev: Number(r.st_stddev) });
+    return { kind, ...base, serviceId: String(r.service_id), technicianId: r.technician_id ?? null, action: String(r.action), currentMin: n(r.current_min), suggestedMin: n(r.suggested_min), sampleSize: Number(r.sample_size ?? 0), reason: r.reason ?? null, reasonCoded: schedInsightReasonCoded(r.reason), observed } as SchedDurationInsight;
+  }
   if (kind === 'staffing') return { kind, ...base, date, startTime: tr.start ?? null, endTime: tr.end ?? null, state: String(r.state), missingMinutes: n(r.missing_minutes), missingSkills: Array.isArray(r.missing_skills) ? r.missing_skills : [], recommendedAction: r.recommended_action ?? null, recommendedActionCoded: schedInsightReasonCoded(r.recommended_action) } as SchedStaffingInsight;
   return { kind, ...base, date, startTime: tr.start ?? null, endTime: tr.end ?? null, technicianId: r.technician_id ?? null, serviceId: r.service_id ?? null, direction: r.direction, reason: r.reason ?? null, reasonCoded: schedInsightReasonCoded(r.reason) } as SchedAvailabilityInsight;
 }
@@ -96,6 +113,18 @@ export class KyselyInsightStore implements InsightStore {
   async list(tenantId: string, branchId: string | null, kind: SchedInsightKind | null, status: SchedInsightStatus | null, limit: number) {
     const out: SchedInsight[] = [];
     for (const k of kind ? [kind] : KINDS) {
+      if (k === 'duration') {
+        const rows = rowsOf(await sql`select dr.*, st.sample_size as st_n, st.median_min as st_median, st.p25_min as st_p25, st.p75_min as st_p75, st.p90_min as st_p90, st.stddev_min as st_stddev
+                                        from service_duration_recommendations dr
+                                        left join service_duration_statistics st on st.tenant_id = dr.tenant_id and st.service_id = dr.service_id
+                                             and st.branch_id is not distinct from dr.branch_id and st.technician_id is not distinct from dr.technician_id
+                                       where dr.tenant_id = ${tenantId}
+                                         and (${branchId}::uuid is null or dr.branch_id = ${branchId}::uuid)
+                                         and (${status}::text is null or dr.status = ${status}::text)
+                                       order by dr.created_at desc limit ${limit}`.execute(this.db));
+        out.push(...rows.map((r) => toInsight(k, r)));
+        continue;
+      }
       const rows = rowsOf(await sql`select * from ${this.t(k)} where tenant_id = ${tenantId}
                                       and (${branchId}::uuid is null or branch_id = ${branchId}::uuid)
                                       and (${status}::text is null or status = ${status}::text)

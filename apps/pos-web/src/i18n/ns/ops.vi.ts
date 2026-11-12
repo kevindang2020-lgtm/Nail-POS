@@ -1603,4 +1603,22 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.env.proc.cardpointe": "CardPointe", // DRAFT — Kevin reviews
   "lgx.env.proc.clover": "Clover", // DRAFT — Kevin reviews
   "lgx.env.proc.none": "không có", // DRAFT — Kevin reviews
+  "ops.sched.spread.none": "Chưa có dữ liệu độ chênh thời gian cho dịch vụ này.", // DRAFT — Kevin reviews
+  "ops.sched.spread.too_few": "Quá ít lượt", // DRAFT — Kevin reviews
+  "ops.sched.spread.steady": "Thời gian ổn định", // DRAFT — Kevin reviews
+  "ops.sched.spread.variable": "Thời gian có chênh lệch", // DRAFT — Kevin reviews
+  "ops.sched.spread.wide": "Thời gian chênh lệch nhiều", // DRAFT — Kevin reviews
+  "ops.sched.spread.line": "{n} lượt · thường {median} phút · nửa giữa {p25}–{p75} phút · 9/10 lượt trong {p90} phút", // DRAFT — Kevin reviews
+  "ops.sched.spread.check": "Hỏi lại thợ trước khi dựa vào thời gian này.", // DRAFT — Kevin reviews
+  "ops.sched.affected": "Ảnh hưởng {a} lịch hẹn và {n} thợ: {names}", // DRAFT — Kevin reviews
+  "syschk.discounts.redemption_pending_on_paid": "Không còn lượt dùng nào đang chờ trên phiếu đã thanh toán", // DRAFT — Kevin reviews
+  "syschk.discounts.redemption_pending_on_paid.fix": "Mở phiếu trong Giao dịch; ưu đãi phải được xác nhận khi thanh toán — báo hỗ trợ nếu vẫn đang chờ.", // DRAFT — Kevin reviews
+  "syschk.discounts.redeemed_ticket_unpaid": "Không có lượt dùng nào được tính trên phiếu chưa thanh toán", // DRAFT — Kevin reviews
+  "syschk.discounts.redeemed_ticket_unpaid.fix": "Mở phiếu: hoàn tất hoặc hủy để lượt dùng được xác nhận hoặc trả lại.", // DRAFT — Kevin reviews
+  "syschk.discounts.redemption_bad_timestamps": "Thời gian các lượt dùng đúng thứ tự", // DRAFT — Kevin reviews
+  "syschk.discounts.redemption_bad_timestamps.fix": "Có lượt dùng được xác nhận hoặc hoàn lại trước khi áp dụng, hoặc ghi ngày tương lai — kiểm tra đồng hồ thiết bị và báo hỗ trợ.", // DRAFT — Kevin reviews
+  "syschk.discounts.coupon_use_count_drift": "Số lần dùng của mỗi mã khớp với các lượt dùng đã ghi", // DRAFT — Kevin reviews
+  "syschk.discounts.coupon_use_count_drift.fix": "Một lần ghi bị lặp hoặc bị mất đã làm lệch bộ đếm — xem lại các lượt dùng của mã trước khi khách khác dùng.", // DRAFT — Kevin reviews
+  "syschk.discounts.single_use_code_reused": "Không có mã dùng một lần nào bị dùng hơn một lần", // DRAFT — Kevin reviews
+  "syschk.discounts.single_use_code_reused.fix": "Thu hồi mã và xem lại cả hai phiếu.", // DRAFT — Kevin reviews
 };

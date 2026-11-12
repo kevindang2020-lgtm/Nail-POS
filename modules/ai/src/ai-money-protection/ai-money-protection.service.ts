@@ -10,7 +10,7 @@ import { scoreReversalRateOutliers } from './ai-money-protection-baselines';
 import { runReconciliation } from './ai-money-protection-reconciliation';
 import { moneyProtectionFlags, type MoneyProtectionFlags } from './ai-money-protection-flags';
 import { getRuleCatalog, RULE_CATALOG } from './ai-money-protection-catalog';
-import { applyRuleSettings, thresholdOverrides, validateRuleSetting, type RuleSetting } from './ai-money-protection-settings';
+import { applyRuleSettings, thresholdOverrides, validateRuleSetting, previewThresholdDiff, PREVIEW_SIMULATED_RULES, type RuleSetting, type ThresholdPreviewDiff } from './ai-money-protection-settings';
 import type { EntitlementPort } from './ai-money-protection-entitlement';
 import { mpTextCoded } from '@aipowersalon/api-contracts/tenant';
 
@@ -24,6 +24,7 @@ export class MoneyProtectionDisabledError extends Error {
   constructor(msg = 'AI_MONEY_PROTECTION_DISABLED') { super(msg); this.name = 'MoneyProtectionDisabledError'; }
 }
 
+const PREVIEW_DAYS = 30;   // Threshold Change Preview: how far back the dry run looks
 const DEFAULT_LOOKBACK_MS = 24 * 60 * 60 * 1000; // 24h window for on-demand deterministic evaluation
 
 export class MoneyProtectionService {
@@ -107,6 +108,31 @@ export class MoneyProtectionService {
       if (r.created) created++; else updated++;
     }
     return { evaluated: candidates.length, created, updated };
+  }
+
+  /** Threshold Change Preview (Money Protection Rules 09): a DRY RUN of one rule's proposed thresholds against the same
+   *  recent activity the detector reads (last `days` days). Nothing is saved and no alert is created or touched. */
+  async previewThresholds(ctx: MoneyProtectionContext, ruleId: string, proposed: unknown, days = PREVIEW_DAYS): Promise<
+    { ruleId: string; dryRun: true; supported: false; reason: 'threshold_not_read_by_detector'; windowDays: number } |
+    ({ ruleId: string; dryRun: true; supported: true; windowDays: number; currentThresholds: Record<string, number>; proposedThresholds: Record<string, number> } & ThresholdPreviewDiff)> {
+    this.need(ctx, 'ai_money_protection.view');
+    await this.assertEnabled(ctx);
+    const known = new Set(RULE_CATALOG.map((r) => r.id));
+    const v = validateRuleSetting(ruleId, { thresholds: proposed ?? {} }, known);
+    if (!v.ok || !v.value) throw new MoneyProtectionValidationError(v.errors.join('; ') || 'Invalid setting');
+    if (!PREVIEW_SIMULATED_RULES.includes(ruleId)) return { ruleId, dryRun: true, supported: false, reason: 'threshold_not_read_by_detector', windowDays: days };
+    const settings = await this.repo.getRuleSettings(ctx);
+    const def = RULE_CATALOG.find((r) => r.id === ruleId);
+    const numeric = (o: Record<string, unknown> | undefined) => Object.fromEntries(Object.entries(o ?? {}).filter(([, x]) => typeof x === 'number')) as Record<string, number>;
+    const currentThresholds = { ...numeric(def?.defaultThresholds), ...(settings[ruleId]?.thresholds ?? {}) };
+    const proposedThresholds = { ...currentThresholds, ...v.value.thresholds };
+    const { payments, refunds, tickets, attempts } = await this.repo.loadActivity(ctx, Date.now() - days * 86_400_000);
+    // the rule is previewed as if it were on (the question is what the THRESHOLD does); a severity override applies to both runs
+    const forced = { ...settings, [ruleId]: { ruleId, enabled: true, severityOverride: settings[ruleId]?.severityOverride ?? null, thresholds: currentThresholds } };
+    const base = thresholdOverrides(forced);
+    const current = applyRuleSettings(runDeterministicRules(payments, refunds, tickets, attempts, base), forced);
+    const next = applyRuleSettings(runDeterministicRules(payments, refunds, tickets, attempts, { ...base, [ruleId]: proposedThresholds }), forced);
+    return { ruleId, dryRun: true, supported: true, windowDays: days, currentThresholds, proposedThresholds, ...previewThresholdDiff(ruleId, current, next) };
   }
 
   // Batch reconciliation over authoritative domain data (membership/gift-card/cash). Runs on the reconciliation

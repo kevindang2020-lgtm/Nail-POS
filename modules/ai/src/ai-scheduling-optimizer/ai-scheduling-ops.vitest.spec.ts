@@ -6,7 +6,7 @@ import { HttpException } from '@nestjs/common';
 import { csvCell, toCsv, SchedExportService } from './ai-scheduling-export';
 import { toTechChange, SchedTechService } from './ai-scheduling-tech';
 import { SchedOwnerService, clampDays } from './ai-scheduling-owner';
-import { durationSuggestion, dayInsights, SchedInsightService, type InsightStore } from './ai-scheduling-insights';
+import { durationSuggestion, durationObserved, dayInsights, SchedInsightService, type InsightStore } from './ai-scheduling-insights';
 import { robustDurationStats } from './ai-scheduling-stats';
 import { SchedPlatformSwitch } from './ai-scheduling-ops.platform-switch';
 import { LazySchedEngine, schedOpsRun, SchedOpsError, schedSystemCtx, needPerm, unwrapRec } from './ai-scheduling-ops.common';
@@ -82,6 +82,18 @@ describe('insights', () => {
     expect(durationSuggestion(60, stats(Array(10).fill(52)))).toBeNull();                 // 8 min < 9 (15 %)
     expect(durationSuggestion(60, stats(Array(10).fill(50)))).toMatchObject({ action: 'decrease', suggestedMin: 50 });
     expect(durationSuggestion(null, stats(Array(20).fill(50)))).toBeNull();
+  });
+  it('Service Duration Confidence (extras 06): sample size + middle-half spread → too_few / steady / variable / wide', () => {
+    expect(durationObserved(null)).toBeNull();
+    expect(durationObserved(stats([]))).toBeNull();
+    expect(durationObserved(stats(Array(9).fill(45)))).toMatchObject({ sampleSize: 9, variability: 'too_few' });   // thin data is never "steady"
+    expect(durationObserved(stats(Array(12).fill(50)))).toMatchObject({ sampleSize: 12, medianMin: 50, p25Min: 50, p75Min: 50, spreadPct: 0, variability: 'steady' });
+    // 40..60 evenly → p25 45, p75 55, median 50 → 20 % → variable
+    const even = Array.from({ length: 21 }, (_, i) => 40 + i);
+    expect(durationObserved(stats(even))).toMatchObject({ sampleSize: 21, medianMin: 50, p25Min: 45, p75Min: 55, spreadPct: 20, variability: 'variable' });
+    // 20..80 evenly → p25 35, p75 65 → 60 % → wide
+    const wide = Array.from({ length: 13 }, (_, i) => 20 + i * 5);
+    expect(durationObserved(stats(wide))).toMatchObject({ medianMin: 50, p25Min: 35, p75Min: 65, spreadPct: 60, variability: 'wide' });
   });
   it('day insights: understaffed → staffing; low projected utilization → close; overbooked with a free tech → open', () => {
     expect(dayInsights({ capacityMin: 480, confirmedMin: 700, historyDailyMin: [], unscheduledTechnicianIds: ['x'] })).toMatchObject({ staffing: { state: 'severely_understaffed' }, availability: { direction: 'open', technicianId: 'x' } });

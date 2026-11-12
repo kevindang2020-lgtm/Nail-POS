@@ -150,6 +150,8 @@ describe('insights (Kysely)', () => {
     const list = await svc.list(mgr, { kind: 'duration' });
     expect(list.items).toHaveLength(2);
     expect(list.items.every((i: any) => i.suggestedMin === 50 && i.currentMin === 30 && i.sampleSize === 12)).toBe(true);
+    // Service Duration Confidence (extras 06): each suggestion carries the observed spread of ITS key (all 50 min → steady)
+    expect(list.items.map((i: any) => i.observed)).toEqual([0, 1].map(() => ({ sampleSize: 12, medianMin: 50, p25Min: 50, p75Min: 50, p90Min: 50, stddevMin: 0, variability: 'steady', spreadPct: 0 })));
     expect((await svc.list({ ...mgr, tenantId: T2, branchId: B2 }, {})).items).toEqual([]);
     const one = list.items[0];
     await expect(svc.decide(mgr, 'duration', one.id, true, { expectedVersion: one.version + 1 })).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });

@@ -58,6 +58,7 @@ import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one
           const r = await svc.evaluateReconciliation(sys);
           return { evaluated: d.evaluated + r.evaluated, created: d.created + r.created, updated: d.updated + r.updated, layers: { deterministic: d, reconciliation: r } };
         },
+        previewRule: (ctx: McCtx, ruleId: string, thresholds: Record<string, unknown>) => svc.previewThresholds({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: String(ctx.userId ?? ''), role: ctx.role ?? '', permissions: ctx.permissions ?? [] } as never, ruleId, thresholds),
         saveRule: (ctx: McCtx, ruleId: string, input) => svc.updateSetting({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: String(ctx.userId ?? ''), role: ctx.role ?? '', permissions: ctx.permissions ?? [] } as never, ruleId, input),
       }) : null),
       inject: [DATABASE, MoneyProtectionService, 'MoneyProtectionEntitlementPort'],

@@ -10,6 +10,25 @@ import { codedText } from '../../i18n/coded-text';
 
 const KINDS: SchedInsightKind[] = ['duration', 'staffing', 'availability'];
 
+// Service Duration Confidence (extras): the observed spread the server attaches to a duration suggestion (`observed`,
+// from the stored statistics for the same key). Read from the row — a local shape so this compiles with older contracts.
+type DurationSpreadView = { sampleSize: number; medianMin: number; p25Min: number; p75Min: number; p90Min: number; variability: 'too_few' | 'steady' | 'variable' | 'wide'; spreadPct: number | null };
+const spreadOf = (i: SchedInsight): DurationSpreadView | null => (i.kind === 'duration' ? ((i as SchedInsight & { observed?: DurationSpreadView | null }).observed ?? null) : null);
+const VAR_TONE: Record<DurationSpreadView['variability'], [string, string]> = { too_few: ['#F3ECE1', '#6C6965'], steady: ['#E5F2E8', '#2F6B3A'], variable: ['#FBF0DC', '#8A5A12'], wide: ['#FBE4E1', '#9B2C21'] };
+function DurationSpread({ i }: { i: SchedInsight }) {
+  const o = spreadOf(i);
+  if (i.kind !== 'duration') return null;
+  if (!o) return <div style={{ ...muted, flexBasis: '100%' }} data-testid="sched-duration-spread">{t('ops.sched.spread.none')}</div>;
+  const [bg, fg] = VAR_TONE[o.variability];
+  return (
+    <div style={{ ...row, flexBasis: '100%', fontSize: 12 }} data-testid="sched-duration-spread">
+      <span style={pill(bg, fg)}>{t(`ops.sched.spread.${o.variability}`)}</span>
+      <span style={muted}>{t('ops.sched.spread.line', { n: String(o.sampleSize), median: String(Math.round(o.medianMin)), p25: String(Math.round(o.p25Min)), p75: String(Math.round(o.p75Min)), p90: String(Math.round(o.p90Min)) })}</span>
+      {o.variability === 'wide' || o.variability === 'too_few' ? <span style={{ color: '#8A5A12' }}>{t('ops.sched.spread.check')}</span> : null}
+    </div>
+  );
+}
+
 function describe(i: SchedInsight, techName: (id: string | null | undefined) => string, serviceName: (id: string | null) => string): string {
   if (i.kind === 'duration') return t('pos.serviceid_v1_v2_v3_min_samplesize_ynz4', { serviceId: String(serviceName(i.serviceId)), v1: String(i.technicianId ? ` (${techName(i.technicianId)})` : ''), v2: String(i.currentMin ?? '—'), v3: String(i.suggestedMin ?? '—'), sampleSize: String(i.sampleSize), v5: String(i.reason ? ` · ${codedText(i.reasonCoded, i.reason)}` : '') });
   if (i.kind === 'staffing') return `${i.date ?? ''} ${hm(i.startTime)}–${hm(i.endTime)}: ${pretty(i.state)}${i.missingMinutes ? t('pos.missingminutes_min_short', { missingMinutes: String(i.missingMinutes) }) : ''}${i.missingSkills.length ? t('pos.needs_v0', { v0: String(i.missingSkills.join(', ')) }) : ''}${i.recommendedAction ? ` · ${codedText(i.recommendedActionCoded, i.recommendedAction)}` : ''}`;
@@ -70,6 +89,7 @@ export function SchedInsightsCard({ tick, can, techName, onChanged, services }: 
                 <button style={btnGold} disabled={!!busy} onClick={() => decide(i, 'approve')}>{t('pos.approve')}</button>
                 <button style={btnDanger} disabled={!!busy} onClick={() => decide(i, 'reject')}>{t('pos.reject')}</button>
               </> : null}
+              <DurationSpread i={i} />
             </div>
           ))}
         </div>
