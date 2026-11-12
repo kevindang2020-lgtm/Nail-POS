@@ -50,6 +50,16 @@ const priceLine = (p: any) => (p.originalPriceCents != null && p.finalPriceCents
   ? `${fmtMoney(p.originalPriceCents)} → ${fmtMoney(p.finalPriceCents)}` : null);
 const pct = (p: { discountType: string; discountPercent: number | null; discountCents: number | null }) => (p.discountType === 'percent' ? `${p.discountPercent ?? 0}%` : fmtMoney(p.discountCents ?? 0));
 
+/** extras (Deals & Offers 07): a proposal still waiting for a manager when its start time is near (≤ 48 h) or already
+ *  passed is flagged — it is never auto-approved; the manager still decides */
+export function approvalUrgency(startsAt: string | null | undefined, now: number): { kind: 'soon' | 'passed'; hours: number } | null {
+  if (!startsAt) return null;
+  const ms = Date.parse(startsAt) - now; if (!Number.isFinite(ms)) return null;
+  if (ms <= 0) return { kind: 'passed', hours: 0 };
+  const hours = Math.ceil(ms / 3600000);
+  return hours <= 48 ? { kind: 'soon', hours } : null;
+}
+
 export function POSDealsScreen() {
   const nav = useNavigate(); const can = useCan();
   const canManage = can('pos.marketing.manage') || can('marketing.manage');
@@ -210,7 +220,8 @@ export function POSDealsScreen() {
             <thead><tr><th>{tx('do.col.requested')}</th><th>{tx('do.col.proposal')}</th><th>{tx('cp.col.value')}</th><th>{tx('do.col.policy')}</th><th className="t-opt">{tx('pos.valid')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
             <tbody>{apr.data.items.map((a: any) => <tr key={a.id} className="inv2-click" onClick={() => setDeciding(a)} data-testid="approval-row">
               <td>{whenTime(a.requestedAt)}</td>
-              <td><span className="fk-li-t">{a.title}</span><span className="fk-li-s">{a.ownerType === 'technician' ? tx('do.byTech', { t: a.technicianName ?? '—' }) : tx('pos.salon_deal')}{a.services.length ? ` · ${a.services.join(', ')}` : ''}</span></td>
+              <td><span className="fk-li-t">{a.title}</span><span className="fk-li-s">{a.ownerType === 'technician' ? tx('do.byTech', { t: a.technicianName ?? '—' }) : tx('pos.salon_deal')}{a.services.length ? ` · ${a.services.join(', ')}` : ''}</span>
+                {(() => { const u = approvalUrgency(a.startsAt, Date.now()); return u ? <span className={'fk-chip ' + (u.kind === 'passed' ? 'bad' : 'warn')} data-testid="approval-sla">{u.kind === 'passed' ? tx('do.sla.passed') : tx('do.sla.soon', { h: String(u.hours) })}</span> : null; })()}</td>
               <td>{discountLabel(a)}{priceLine(a) ? <span className="fk-li-s">{priceLine(a)}</span> : null}</td>
               <td>{a.policy ? <span className={'fk-chip ' + (a.policy.withinPolicy ? 'ok' : 'bad')} data-testid="approval-policy">{a.policy.withinPolicy ? tx('do.within', { c: a.policy.maxDiscountPercent == null ? tx('do.noCap') : `${a.policy.maxDiscountPercent}%` }) : tx('do.outside')}</span> : <span className="fk-muted">{tx('do.salonRules')}</span>}</td>
               <td className="t-opt">{a.endsAt ? `${day(a.startsAt ?? a.requestedAt)} – ${day(a.endsAt)}` : tx('pos.no_end_date')}</td>

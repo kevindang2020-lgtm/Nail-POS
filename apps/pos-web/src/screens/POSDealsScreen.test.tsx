@@ -85,6 +85,13 @@ describe('the owner\'s records, cards and the technician policy', () => {
 });
 
 describe('approval inbox', () => {
+  it('a proposal whose start is near is flagged as needing a decision — never auto-approved', async () => {
+    offers.approvals.mockResolvedValue({ order: 'oldest', ...page([request({ startsAt: new Date(Date.now() + 5 * 3600000).toISOString() })]) });
+    renderScreen('/tenant/marketing/deals?tab=approvals');
+    const r = await screen.findByTestId('approval-row');
+    expect(within(r).getByTestId('approval-sla').textContent).toMatch(/Starts in (5|6) h — needs a decision/);
+    expect(deals.approve).not.toHaveBeenCalled();
+  });
   it('oldest waiting first; the review overlay compares with the cap; Approve calls the server', async () => {
     deals.approve.mockResolvedValue({});
     renderScreen('/tenant/marketing/deals?tab=approvals');

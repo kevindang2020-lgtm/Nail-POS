@@ -23,7 +23,7 @@
 //   • detection      — "Run detection now" (one pass, all three layers, recorded) and the scheduled pass (opt-in env);
 //   • check          — "Check AI Money Protection System": read-only.
 import { hasPermission } from '@aipowersalon/permissions';
-import { sql, type Kysely } from 'kysely';
+import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone, assertTransition, canMoveToSql } from '@aipowersalon/database';
 import { MONEY_PROTECTION_ALERT, MONEY_PROTECTION_RUN } from '../ai-lifecycles';
@@ -159,6 +159,7 @@ export class MoneyProtectionCenter {
     const byCat = (await sql<Row>`select a.rule_id, count(*)::int as n from money_protection_alerts a where a.tenant_id = ${T} and ${S} and a.status = any(${MC_OPEN}::text[]) group by 1`.execute(this.db)).rows;
     const cats: Record<string, number> = {};
     for (const r of byCat) { const c = RULE.get(String(r.rule_id))?.category ?? 'other'; cats[c] = (cats[c] ?? 0) + N(r.n); }
+    const exposure = await this.exposure(T, S);
     const f = this.deps.flags();
     const monitoring = !f.enabled ? 'module_off' : !run ? 'never_checked' : run.status === 'failed' ? 'last_run_failed'
       : !ok?.at || new Date(ok.at).getTime() < this.now() - 26 * 3600e3 ? 'stale' : 'current';
@@ -166,7 +167,7 @@ export class MoneyProtectionCenter {
       asOf: new Date(this.now()).toISOString(),
       cards: { newAlerts: N(a.new_alerts), openAlerts: N(a.open_alerts), critical: N(a.critical), high: N(a.high), valueUnderReviewCents: N(a.under_review),
         openInvestigations: N(inv.open), unassignedInvestigations: N(inv.unassigned), dismissed30d: N(a.dismissed30), raised30d: N(a.raised30) },
-      byCategory: cats,
+      byCategory: cats, exposure,
       monitoring, scheduled: this.deps.scheduled(),
       lastRun: run ? { id: String(run.id), trigger: run.trigger_kind, status: run.status, startedAt: iso(run.started_at), finishedAt: iso(run.finished_at),
         created: N(run.created_alerts), updated: N(run.updated_alerts), errorCode: run.error_code ?? null } : null,
@@ -228,7 +229,40 @@ export class MoneyProtectionCenter {
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, status: group, severity, category, rule, dateField, sort, preset: per.preset, from: per.from, to: per.to },
       period: { today: per.today, timeZone: per.tz }, customersVisible: customers,
+      // extras (Money Protection 5 · 14): why a list is empty — paused, never checked, failed, stale, no data, or verified
+      monitor: await this.monitorState(T),
     };
+  }
+  /** The detection monitor's state, the same rule as the Overview: module off / never checked / last run failed / stale
+   *  (no success in 26 h) / current — plus how many records the last successful pass evaluated (0 = no transaction data). */
+  /** extras (Money Protection 5 · 04): Value Under Review explained. Open alerts that point at the SAME transaction(s)
+   *  overlap — e.g. a duplicate-charge rule and a refund-timing rule on one payment — so the plain sum counts that money
+   *  twice. Alerts sharing any transaction id (or the same entity fingerprint) form one group; a group counts its largest
+   *  amount once. Both figures are shown; neither is a confirmed loss. */
+  private async exposure(T: string, S: RawBuilder<unknown>) {
+    const rows = (await sql<Row>`select a.id, a.amount_cents, a.entity_fingerprint, a.related from money_protection_alerts a
+      where a.tenant_id = ${T} and ${S} and a.status = any(${MC_OPEN}::text[]) order by a.id limit 5000`.execute(this.db)).rows;
+    const parent = rows.map((_, i) => i); const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const owner = new Map<string, number>();
+    rows.forEach((r, i) => {
+      const rel = (typeof r.related === 'object' && r.related) || {};   // jsonb arrives parsed (the same read as alert())
+      const keys = [...(Array.isArray(rel.transactionIds) ? rel.transactionIds.map((x: unknown) => 'tx:' + String(x)) : []), 'fp:' + String(r.entity_fingerprint)];
+      for (const k of keys) { const j = owner.get(k); if (j == null) owner.set(k, i); else parent[find(i)] = find(j); }
+    });
+    const groups = new Map<number, { max: number; n: number }>();
+    rows.forEach((r, i) => { const g = find(i); const cur = groups.get(g) ?? { max: 0, n: 0 }; cur.max = Math.max(cur.max, N(r.amount_cents)); cur.n += 1; groups.set(g, cur); });
+    const sumCents = rows.reduce((a, r) => a + N(r.amount_cents), 0);
+    const dedupedCents = [...groups.values()].reduce((a, g) => a + g.max, 0);
+    const overlappingAlerts = [...groups.values()].filter((g) => g.n > 1).reduce((a, g) => a + g.n, 0);
+    return { alerts: rows.length, sumCents, groups: groups.size, dedupedCents, overlappingAlerts, capped: rows.length >= 5000 };
+  }
+  private async monitorState(T: string) {
+    const run = (await sql<Row>`select status from money_protection_detection_runs where tenant_id = ${T} order by started_at desc limit 1`.execute(this.db)).rows[0];
+    const ok = (await sql<Row>`select finished_at, evaluated from money_protection_detection_runs where tenant_id = ${T} and status = 'succeeded' order by finished_at desc limit 1`.execute(this.db)).rows[0];
+    const f = this.deps.flags();
+    const state = !f.enabled ? 'module_off' : !run ? 'never_checked' : run.status === 'failed' ? 'last_run_failed'
+      : !ok?.finished_at || new Date(ok.finished_at).getTime() < this.now() - 26 * 3600e3 ? 'stale' : 'current';
+    return { state, lastSuccessAt: iso(ok?.finished_at), lastEvaluated: ok ? N(ok.evaluated) : null };
   }
   private alertOut(r: Row) {
     const d = RULE.get(String(r.rule_id));
@@ -248,9 +282,9 @@ export class MoneyProtectionCenter {
     const ticketIds = arr(rel.ticketIds).filter(isUuid), payIds = arr(rel.transactionIds).filter(isUuid), userIds = await this.involved(this.db, T, rel);
     const customers = has(ctx, 'customers.view');
     // the source records the alert points at — read from their own tables, this salon only
-    const tickets = ticketIds.length ? (await sql<Row>`select tk.id, tk.ticket_number, tk.status, tk.total_cents, tk.created_at, c.full_name as customer from tickets tk
+    const tickets = ticketIds.length ? (await sql<Row>`select tk.id, tk.ticket_number, tk.status, tk.total_cents, tk.created_at, tk.updated_at, c.full_name as customer from tickets tk
       left join customers c on c.id = tk.customer_id and c.tenant_id = tk.tenant_id where tk.tenant_id = ${T} and tk.id = any(${ticketIds}::uuid[]) order by tk.created_at`.execute(this.db)).rows : [];
-    const payments = payIds.length ? (await sql<Row>`select id, ticket_id, method, amount_cents, status, processor, created_at from payments
+    const payments = payIds.length ? (await sql<Row>`select id, ticket_id, method, amount_cents, status, processor, created_at, updated_at from payments
       where tenant_id = ${T} and id = any(${payIds}::uuid[]) order by created_at`.execute(this.db)).rows : [];
     const staff = userIds.length ? (await sql<Row>`select id, full_name, role from users where tenant_id = ${T} and id = any(${userIds}::uuid[])`.execute(this.db)).rows : [];
     const events = (await sql<Row>`select e.action, e.from_state, e.to_state, e.reason, e.created_at, coalesce(u.full_name, u.email) as actor from money_protection_events e
@@ -266,6 +300,14 @@ export class MoneyProtectionCenter {
         payments: payments.map((x) => ({ id: String(x.id), ticketId: x.ticket_id ? String(x.ticket_id) : null, method: x.method, amountCents: N(x.amount_cents), status: x.status, processor: x.processor ?? null, at: iso(x.created_at) })),
         staff: staff.map((x) => ({ id: String(x.id), name: x.full_name ?? null, role: x.role ?? null })),
         missing: { tickets: ticketIds.length - tickets.length, payments: payIds.length - payments.length },
+      },
+      // extras (Money Protection 5 · 03): per source kind — expected by the alert, verified (found in its own table, this
+      // salon), missing, stale (the record changed after the alert last saw it), and what this person may not see
+      completeness: {
+        tickets: { expected: ticketIds.length, verified: tickets.length, missing: ticketIds.length - tickets.length, stale: tickets.filter((x) => x.updated_at && r.last_seen_at && new Date(x.updated_at) > new Date(r.last_seen_at)).length },
+        payments: { expected: payIds.length, verified: payments.length, missing: payIds.length - payments.length, stale: payments.filter((x) => x.updated_at && r.last_seen_at && new Date(x.updated_at) > new Date(r.last_seen_at)).length },
+        staff: { expected: userIds.length, verified: staff.length, missing: userIds.length - staff.length, stale: 0 },
+        customerDetailsLimited: !customers,
       },
       history: events.map((e) => ({ action: e.action, from: e.from_state, to: e.to_state, reason: e.reason ?? null, actor: e.actor ?? null, at: iso(e.created_at) })),
       canAct: has(ctx, 'ai_money_protection.investigate') && !self, selfInvolved: self,

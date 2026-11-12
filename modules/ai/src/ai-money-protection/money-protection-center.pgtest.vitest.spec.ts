@@ -77,8 +77,11 @@ describe('Money Protection — detection is recorded', () => {
     failNext = true;
     expect((await mc.runDetection(ctx(), 'scheduled') as any)).toMatchObject({ status: 'failed', errorCode: 'detection_failed' });
     expect((await mc.summary(ctx()) as any).monitoring).toBe('last_run_failed');
+    expect(((await mc.alerts(ctx(), {})) as any).monitor.state).toBe('last_run_failed');   // the list says why it may be empty
     expect((await mc.runDetection(ctx(), 'scheduled') as any).status).toBe('succeeded');
     expect((await mc.summary(ctx()) as any).monitoring).toBe('current');
+    const m = ((await mc.alerts(ctx(), {})) as any).monitor;
+    expect(m.state).toBe('current'); expect(m.lastSuccessAt).not.toBeNull(); expect(typeof m.lastEvaluated).toBe('number');
   });
 });
 
@@ -94,6 +97,18 @@ describe('Alerts', () => {
     const s: any = await mc.summary(ctx());
     expect(s.cards.openAlerts).toBe(l.total);
     expect(s.cards.critical).toBeGreaterThanOrEqual(1);
+    // extras (MP5 · 04): two open alerts on the SAME transaction count their money once in the de-duplicated figure
+    const before = s.exposure;
+    expect(before.sumCents).toBe(s.cards.valueUnderReviewCents);
+    for (const [rule, amt] of [['MP_X_OVERLAP_A', 5000], ['MP_X_OVERLAP_B', 3000]] as const)
+      await q(`insert into money_protection_alerts (tenant_id, branch_id, rule_id, alert_type, severity, status, amount_cents, entity_fingerprint, related) values ($1,$2,$3,'test','LOW','NEW',$4,$5,$6::jsonb)`,
+        [T, B, rule, amt, 'fp-' + rule, JSON.stringify({ transactionIds: ['tx-overlap-1'] })]);
+    const after: any = (await mc.summary(ctx())).exposure;
+    expect(after.sumCents - before.sumCents).toBe(8000);
+    expect(after.dedupedCents - before.dedupedCents).toBe(5000);
+    expect(after.overlappingAlerts - before.overlappingAlerts).toBeGreaterThanOrEqual(2);
+    expect(after.groups - before.groups).toBe(1);
+    await q(`delete from money_protection_alerts where tenant_id = $1 and rule_id like 'MP_X_OVERLAP_%'`, [T]);
   });
   it('AL-02 search: rule name, hóa đơn number, staff name, customer name / phone (customers.view only), alert id', async () => {
     expect((await mc.alerts(ctx(), { q: 'Exact duplicate' }) as any).items.map((a: any) => a.id)).toContain(A1);
@@ -119,6 +134,12 @@ describe('Alerts', () => {
     expect(d.sources.payments).toHaveLength(2);
     expect(d.sources.staff[0]).toMatchObject({ name: 'Cashier Lan' });
     expect(d.actions).toEqual(['acknowledge', 'dismiss']);
+    // extras (MP5 · 03): evidence completeness per source kind
+    expect(d.completeness.payments).toMatchObject({ expected: 2, verified: 2, missing: 0, stale: 0 });
+    expect(d.completeness.tickets.verified).toBe(d.sources.tickets.length);
+    const pid = d.sources.payments[0].id;
+    await q(`update payments set updated_at = now() + interval '1 minute' where id = $1`, [pid]);   // changed after the alert last saw it
+    expect(((await mc.alert(ctx(), A1)) as any).completeness.payments.stale).toBe(1);
     expect(await code(mc.alert(ctx(), A2))).toBe('MC_NOT_FOUND');
     expect(await code(mc.alert(ctx(), 'x'))).toBe('MC_NOT_FOUND');
   });

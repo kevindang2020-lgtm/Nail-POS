@@ -37,4 +37,6 @@ export const DEALSOFFERS_VI = {
   'do.check.counters': 'Số lượt dùng khớp sổ ghi', 'do.check.paid_not_marked': 'Phiếu đã thanh toán đã ghi nhận ưu đãi', 'do.check.stuck_holds': 'Không có ưu đãi kẹt trên phiếu bỏ dở',
   'do.check.confirmed_unpaid': 'Lượt dùng hoàn tất nằm trên phiếu đã thanh toán', 'do.check.expiry_lag': 'Ưu đãi hết hạn đã được đóng đúng hạn', 'do.check.approval_backlog': 'Hàng chờ duyệt đang được xử lý',
   'do.check.tech_policy': 'Ưu đãi của thợ tuân thủ quy định hiện tại',
+  'do.sla.soon': 'Bắt đầu sau {h} giờ — cần quyết định', // DRAFT — Kevin reviews
+  'do.sla.passed': 'Đã qua giờ bắt đầu — vẫn chờ quyết định', // DRAFT — Kevin reviews
 } as const;

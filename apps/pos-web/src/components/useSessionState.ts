@@ -13,9 +13,11 @@ export function readSession<T>(key: string, fallback: T): T {
     return typeof v === typeof fallback ? v : fallback;
   } catch { return fallback; }
 }
+/** keep a non-sensitive value for this tab (a storage failure leaves plain in-memory state) */
+export function writeSession(key: string, v: unknown): void { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch { /* best effort */ } }
 export function useSessionState<T>(key: string, fallback: T): [T, Dispatch<SetStateAction<T>>] {
   const [v, setV] = useState<T>(() => readSession(key, fallback));
-  useEffect(() => { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch { /* best effort */ } }, [key, v]);
+  useEffect(() => { writeSession(key, v); }, [key, v]);
   return [v, setV];
 }
 

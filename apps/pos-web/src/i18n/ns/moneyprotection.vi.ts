@@ -348,4 +348,20 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.wl.unassigned": "Chưa giao", // DRAFT — Kevin reviews
   "mpx.wl.aging": "Mở từ 7 ngày", // DRAFT — Kevin reviews
   "mpx.wl.unassignedHint": "Giao việc trong chi tiết từng hồ sơ", // DRAFT — Kevin reviews
+  "mpx.empty.off": "Bảo vệ tiền đang tắt cho tiệm này nên không có gì được kiểm tra — đây không phải kết quả sạch.", // DRAFT — Kevin reviews
+  "mpx.empty.never": "Chưa từng chạy phát hiện ở đây nên danh sách trống không chứng minh điều gì. Hãy chạy phát hiện từ Tổng quan.", // DRAFT — Kevin reviews
+  "mpx.empty.failed": "Lần phát hiện gần nhất bị lỗi nên danh sách có thể thiếu cảnh báo. Xem Các lần phát hiện.", // DRAFT — Kevin reviews
+  "mpx.empty.stale": "Không có lần phát hiện thành công nào từ {at}; vấn đề mới có thể chưa hiện.", // DRAFT — Kevin reviews
+  "mpx.empty.noData": "Lần chạy gần nhất không có giao dịch nào để kiểm tra — chưa có dữ liệu thanh toán, không phải kết quả sạch.", // DRAFT — Kevin reviews
+  "mpx.empty.verified": "Không có cảnh báo đang mở. Lần chạy thành công gần nhất ({at}) đã kiểm tra {n} bản ghi và không thấy gì.", // DRAFT — Kevin reviews
+  "mpx.exp.open": "Cách tính Giá trị đang xem xét", // DRAFT — Kevin reviews
+  "mpx.exp.sum": "{n} cảnh báo đang mở cộng lại {v} (số tiền đang xem xét của từng cảnh báo).", // DRAFT — Kevin reviews
+  "mpx.exp.overlap": "{n} cảnh báo trong số đó cùng chỉ vào các giao dịch giống nhau; tính một lần cho mỗi nhóm cảnh báo liên quan ({g} nhóm), số tiền đang xem xét là {v}.", // DRAFT — Kevin reviews
+  "mpx.exp.none": "Không có hai cảnh báo đang mở nào cùng chỉ vào một giao dịch, nên không có gì bị tính hai lần.", // DRAFT — Kevin reviews
+  "mpx.exp.why": "Vì vậy tổng có thể lớn hơn số tiền thực sự liên quan. Không con số nào là thiệt hại đã xác nhận.", // DRAFT — Kevin reviews
+  "mpx.cm.title": "Mức đầy đủ của bằng chứng", // DRAFT — Kevin reviews
+  "mpx.cm.line": "{v} trên {n} đã xác minh", // DRAFT — Kevin reviews
+  "mpx.cm.missing": "thiếu {n}", // DRAFT — Kevin reviews
+  "mpx.cm.stale": "{n} đã thay đổi từ lần cảnh báo kiểm tra gần nhất", // DRAFT — Kevin reviews
+  "mpx.cm.limited": "Thông tin khách hàng bị ẩn với vai trò của bạn (giới hạn quyền).", // DRAFT — Kevin reviews
 };

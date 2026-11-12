@@ -12,6 +12,7 @@ const empty = { items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 }
 const overview = { period: { label: 'This month', start: '2026-10-01', timeZone: 'America/New_York' }, kpis: { loyaltyMembers: 2, newMembersThisMonth: 1, pointsOutstanding: 620, balanceReconciled: true, activeRewards: 1, totalRewards: 2, redemptionsThisMonth: 1, redemptionsPending: 0, pointsRedeemedThisMonth: 200 },
   tiers: [{ tier: 'VIP', members: 1, points: 500 }, { tier: 'Regular', members: 1, points: 120 }] };
 beforeEach(() => {
+  sessionStorage.clear();
   Object.values(api).forEach((f) => f.mockReset());
   api.overview.mockResolvedValue(overview); api.rewards.mockResolvedValue(empty); api.members.mockResolvedValue(empty); api.redemptions.mockResolvedValue(empty);
 });
@@ -139,6 +140,17 @@ describe('POSLoyaltyScreen', () => {
     expect(within(why).getByTestId('tier-why-next').textContent).toMatch(/Gold/);
     expect(within(why).getByTestId('tier-why-next').textContent).toMatch(/350/);
     expect(why.textContent).not.toMatch(/Diamond/);   // a tier not in use is never the next rule
+  });
+  it('tier / status / sort are remembered for the session; the search text never is', async () => {
+    const m = { customerId: 'c1', customerName: 'Ann Lee', avatarUrl: null, maskedPhone: null, tier: 'Regular', pointsBalance: 500, totalEarned: 500, totalRedeemed: 0, enrolledAt: null };
+    api.members.mockResolvedValue({ ...empty, items: [m], totalItems: 1 });
+    const first = mount();
+    fireEvent.change(await screen.findByTestId('members-status'), { target: { value: 'inactive' } });
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem('aps.loy.members') ?? '{}')).toMatchObject({ status: 'inactive' }));
+    expect(sessionStorage.getItem('aps.loy.members')).not.toMatch(/"q"/);
+    first.unmount(); api.members.mockClear();
+    mount();
+    await waitFor(() => expect(api.members).toHaveBeenCalledWith(expect.objectContaining({ status: 'inactive' })));
   });
   it('an owner moves a member to another tier with a reason; members can be filtered by status and sorted', async () => {
     const m = { customerId: 'c1', customerName: 'Ann Lee', avatarUrl: null, maskedPhone: null, tier: 'Regular', pointsBalance: 500, totalEarned: 500, totalRedeemed: 0, enrolledAt: null };

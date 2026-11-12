@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 113 (incl. part) |
-| EXISTS (opened and named) | 740 (incl. part) |
+| BUILT this arc | 120 (incl. part) |
+| EXISTS (opened and named) | 746 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 436 |
-| TODO | 525 |
+| TODO | 512 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -894,8 +894,8 @@ Decisions:
 |---|---|---|
 | 01 | Monitoring Trust Banner At top of overview show “Monitoring Active / Stale / Disabled / Partial / Error” with last successful run and source coverage. | EXISTS — overview says whether monitoring is CURRENT / stale / never ran (never "no alerts" when detection never ran) (MoneyProtectionWorkspace MpOverview) |
 | 02 | One-Click Health Summary Single button with dependency matrix, last validated source and safe resolution path; read-only. | EXISTS — Check AI Money Protection System in the shared header (read-only) |
-| 03 | Evidence Completeness Meter Per alert/case show which source links were verified, missing, stale or permission-limited. | TODO |
-| 04 | Deduplicated Exposure Drill-down Explain Value Under Review calculations, overlapping alerts and why sums differ from alert count. | TODO |
+| 03 | Evidence Completeness Meter Per alert/case show which source links were verified, missing, stale or permission-limited. | BUILT — money-protection-center alert() returns completeness per source kind (tickets / payments / staff: expected, verified in their own tables for this salon, missing, stale = changed after the alert last saw it) + customerDetailsLimited; EvidenceMeter in the alert detail (tests: money-protection-center.pgtest AL-04 completeness incl. stale, POSAIMoneyProtectionAlertsScreen.test "evidence completeness") |
+| 04 | Deduplicated Exposure Drill-down Explain Value Under Review calculations, overlapping alerts and why sums differ from alert count. | BUILT — money-protection-center summary().exposure: open alerts sharing any transaction id (or the same entity fingerprint) form one group counted at its largest amount; returns alerts, plain sum (= Value Under Review), groups, de-duplicated value, overlapping alerts + an Overview drill-down explaining why the sum differs from the count; neither is a confirmed loss (tests: money-protection-center.pgtest AL-01 overlap, POSAIMoneyProtectionScreen.test "explains Value Under Review") |
 | 05 | Funding Calendar Awareness Mark “Expected / Not yet due / Overdue / Unmatched” based on processor and bank timing. | TODO |
 | 06 | Reviewer Workload View Summarize pending, high-priority, assigned/unassigned and aging cases, without merging Investigations. | BUILT — same as the duplicate section below: Investigations workload strip (money-protection-center investigations().workload; tests) |
 | 07 | Safe Rule Preview Before a manager saves rule edits, show read-only estimated historical matches on approved test data; never silently activate. | TODO |
@@ -905,7 +905,7 @@ Decisions:
 | 11 | Documented Alert Rate Limits Throttle duplicate notifications while preserving distinct evidence and an auditable incident timeline. | TODO |
 | 12 | Failure-aware Snapshot Allow authorized read-only as-of view labeled stale when providers are offline, rather than misleading zeros. | TODO |
 | 13 | Long-list Virtualization For heavy histories use stable server pagination and optional row virtualization without losing focus/navigation. | EXISTS (part) — alerts / investigations use stable server paging, newest first (no virtualization needed at page size) |
-| 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | TODO |
+| 14 | Better Empty States Explain verified no alerts vs no transaction data vs paused monitor vs filtered no matches vs access restriction. | BUILT — money-protection-center alerts() returns monitor {state, lastSuccessAt, lastEvaluated} (same rule as the Overview) + alertsEmpty() in MoneyProtectionWorkspace: filtered no-match vs module off vs never checked vs last run failed vs stale vs no transaction data vs verified pass with time and records checked; access restriction stays the 403 permission state (tests: money-protection-center.pgtest DT-02 monitor, moneyProtectionEmpty.test.ts) |
 | 15 | Export Provenance Export author, time, tenant scope, metric definitions, source freshness and redaction scope on approved files. | TODO |
 | 16 | Accessibility & Language QA Touch targets, keyboard focus, real screen reader labels and EN/VN layouts; no truncation in translated labels. DO NOT AUTO-ENABLE Ship new dashboards, diagnostic controls or presets behind ex | EXISTS — EN/VI behind t(), coded texts translated (mpTextCoded); Vietnamese harness certified |
 | 18 | Notifications, escalation and multi-salon owner views Notification delivery • Reuse existing tenant notification center and authorized email/SMS connectors where configured; respect roles, quiet hours, cooldown and escal | NOISE — notifications/escalation requirement narrative |
@@ -1165,11 +1165,11 @@ Decisions:
 |---|---|---|
 | 01 | Responsive Layout Diagnostics: hidden developer-only overlay showing actual CSS viewport, overflow offenders, panel dimensions and browser zoom context. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | One-click Deal Health Checker: reconcile Checkout connectivity, approval rules, stale data, expiration jobs and financial totals. | EXISTS — Check Deal System in the header (POSDealsScreen) |
-| 03 | Customer-specific Deal Preview: show precise eligible items, discount base and reason codes without recording a use. | TODO |
-| 04 | Discount Budget Exposure Guard: estimate maximum authorized promotion cost from discount caps and allowed uses before activation. | TODO |
+| 03 | Customer-specific Deal Preview: show precise eligible items, discount base and reason codes without recording a use. | EXISTS — Deals & Offers "Check" (CheckDialog with posDealsOffersApi.check): pick a ticket or hypothetical services/spend and optionally the customer (new-customer / once-per-customer rules), returns verdict, discount it would take on the eligible base, and reason codes; read-only, logged as a check, never a redemption (POSDealsScreen, POSCouponsScreen; tests: POSCouponsScreen / POSDealsScreen tests) |
+| 04 | Discount Budget Exposure Guard: estimate maximum authorized promotion cost from discount caps and allowed uses before activation. | BUILT — the Discount Exposure Meter (screens/deals/exposure.ts, ExposureRows on the shared detail Limits tab) also shows on Deals & Offers (POSDealsScreen loads the same detail via deals-center.detail → discounts-screen detail): uses left × per-ticket max or remaining budget, labelled an estimate; draft/pending deals can be checked before activation (tests: exposure.test.ts, exposureDialog.test.tsx) |
 | 05 | Duplicate Redemption Monitor: find duplicate callbacks or repeated ticket/deal keys and guide investigation without auto-editing ledgers. | TODO |
 | 06 | Upcoming Expiration Alerts: notify authorized managers about scheduled starts, expirations and remaining usage before staff confusion. | EXISTS (part) — Expiring soon card from the server; no notification |
-| 07 | Approval SLA / Escalation: flag technician proposals approaching start time, retaining manager authorization rather than auto-approving. | TODO |
+| 07 | Approval SLA / Escalation: flag technician proposals approaching start time, retaining manager authorization rather than auto-approving. | BUILT — POSDealsScreen approval inbox: approvalUrgency() flags a waiting proposal whose start is ≤ 48 h away ("Starts in N h — needs a decision") or already passed; the manager still decides, nothing is auto-approved (tests: approvalUrgency.test.ts, POSDealsScreen.test "start is near") |
 | 08 | Preview vs Paid Comparison: compare the initial estimate with the final Checkout discount and explain changes due to ticket edits. Implementation principle All proposed enhancements are additive to the existing interface | TODO |
 | 09 | Deal Rule Versioning: freeze each committed redemption under the exact approved rules used at payment time. | EXISTS (part) — deal version history; redemptions kept on the discount authority |
 | 10 | Discount Stacking Explorer: staff preview of allowed and blocked combinations across Deals, Coupons, Promotions, Loyalty and Membership. | TODO |
@@ -1964,7 +1964,7 @@ Decisions:
 |---|---|---|
 | 01 | Auto-Fit Diagnostics Developer/admin-only report showing CSS viewport, scaling, sidebar width, overflow offenders and layout test results. | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 | 02 | Unified Offers Relationship Viewer Read-only map of coupon, promotion and deal references for vishal and other records, with same-benefit detection. | TODO |
-| 03 | Discount Exposure Preview Before activation, estimate maximum configured liability with eligible-transaction assumptions and clearly labeled uncertainty. | TODO |
+| 03 | Discount Exposure Preview Before activation, estimate maximum configured liability with eligible-transaction assumptions and clearly labeled uncertainty. | BUILT — Discount Exposure Meter on the shared coupon detail (Marketing → Coupons uses DiscountDetailsDialog): estimated maximum liability from allowed uses × per-ticket cap or remaining budget, labelled an estimate with the reason when there is no ceiling (tests: exposure.test.ts, exposureDialog.test.tsx) |
 | 04 | Duplicate Redemption Guard Detect duplicate payment callbacks, reused idempotency keys and suspicious near-simultaneous code applications. | TODO |
 | 05 | Expiration / Limit Alerts Warnings for soon-to-expire offers, exhausted usage limits, paused codes and stale coupons. | EXISTS — Expiring KPI + paused/exhausted status chips on Discounts (kpi-expiring, status filter) |
 | 06 | Full Benefit Stacking Inspector Show exactly why coupons, deals, membership, loyalty and gift-card tender do or do not combine. | TODO |
@@ -1976,7 +1976,7 @@ Decisions:
 | 12 | Promo-to-Checkout Trace From a promotion, inspect authorized ticket, applied discount, payment and reversal evidence. | EXISTS — redemption rows open the customer and the ticket (receipt in Transactions / Checkout) (shared ticketRoute) |
 | 13 | Source-Based ROI Explanation Separate associated revenue, discount costs, spend and unverified incremental lift. | TODO |
 | 14 | Advanced Branch Scorecard For authorized multi-branch owners, comparable offer uptake, applied discounts and actual associated revenue. | TODO |
-| 15 | Accessible Export & Audit Scoped CSV/PDF export with masked PII, date basis, filters and export activity log. | TODO |
+| 15 | Accessible Export & Audit Scoped CSV/PDF export with masked PII, date basis, filters and export activity log. | EXISTS — Discounts/Coupons exports (discounts-screen GET export, export/redemptions): pos.marketing.manage only, the screen’s filters + period + date basis, codes and phones masked in the CSV, @AsyncExport contract whose service records who exported what in the audit trail (async-export.service), ExportPreview count/filters/masked confirm before the file (POSDiscountsScreen/Coupons) |
 | 16 | Automatic Release Regression CI and screenshot diffs for desktop/touch layouts plus pricing, permission and reconciliation invariants. NO AUTONOMOUS PRODUCTION CHANGES New AI or health tools must only recommend and diagn | EXISTS — profile menu → Check this screen (shell/ScreenCheckDialog.tsx, rules in shell/screenCheck.ts: fit, horizontal, clipped, overlap, touch, balance, in-view, modules, realtime, display); CI screenshots EN+VI at 1920×945/952/1032 (tooling/e2e/pos-vi-one-screen.mjs) |
 
 ## AI PowerSalonLive Operations (12)
@@ -2230,11 +2230,11 @@ Decisions:
 | # | Recommendation | Status |
 |---|---|---|
 | 01 | Screen Fit Viewport size, zoom, overflow, clipping, touch target and modal reachability. | EXISTS — Check this screen + certified harness |
-| 02 | Source Data Completed services / missed-call source counts and tenant/branch eligibility. | TODO |
+| 02 | Source Data Completed services / missed-call source counts and tenant/branch eligibility. | EXISTS — End-of-day follow-up generation runs (eod-center runs(): candidates, created, skipped, excluded with exclusions_json, rule version, branch time zone) shown in the Follow-Up Queue results/runs; health 'generation' row names the last run per branch (POSFollowUpsScreen fuq-health) |
 | 03 | Generate Now Handler, last invocation, idempotency, created/existed/skipped/failed counts. | EXISTS (part) — Generate Now kept with results (created / existed / skipped / failed) |
-| 04 | Scheduler Last/next run, worker heartbeat, queue backlog, retries and dead-letter items. | TODO |
+| 04 | Scheduler Last/next run, worker heartbeat, queue backlog, retries and dead-letter items. | EXISTS — eod-center health(): scheduler rows for followups.run_due / followups.expire_stale from scheduler_runs (last finished, runs, failures, last outcome/error, heartbeat > 15 min = attention), queue row with awaiting count and oldest submitted (POSFollowUpsScreen fuq-health) |
 | 05 | Task State Pending/Scheduled/Skipped/Failed consistency and stale/cancelled source handling. | TODO |
-| 06 | Twilio / Email Tenant sender readiness, registration, API/webhook status and recent provider errors. | TODO |
+| 06 | Twilio / Email Tenant sender readiness, registration, API/webhook status and recent provider errors. | EXISTS — eod-center health() states delivery honestly: Customer App inbox 'ready'; SMS and email rows 'not used — this workflow sends no text/email' (no sender readiness to fake) (POSFollowUpsScreen fuq-health) |
 | 07 | Consent / Cooldown Opt-outs, permitted purpose, quiet hours and duplicate-message checks. | TODO |
 | 08 | Search / Paging Query scope, date/timezone accuracy, stable ordering and history availability. | EXISTS — server search, filters, explicit date basis + month From/To calendar, numbered pages 10/20/50 (POSFollowUpsScreen) |
 | 09 | Cross-Module Booking, Checkout, Customer Profile, Technician App and SMS Inbox reconciliation. | TODO |
@@ -2528,9 +2528,9 @@ Decisions:
 | 03 | Wallet low-balance forecast Estimate days until depletion using verified trailing allocations; label as estimate | BUILT — wallet panel shows an estimate of days of tokens left at this month’s verified pace (labelled Estimate; no use → no estimate) (walletForecastDays + rn-forecast; walletForecast.test) |
 | 04 | Purchase status timeline Requested → processing → verified / exception, with provider timestamps | EXISTS (part) — purchase detail (purchases/:id); nothing spendable until the provider verifies the funds |
 | 05 | Customer rewards explainer Show where points came from, when spendable and which rule version applied | TODO |
-| 06 | Redemption preview Show rewards applied, due after discount and why amount is eligible | TODO |
+| 06 | Redemption preview Show rewards applied, due after discount and why amount is eligible | EXISTS — Checkout Reward code (POSCheckoutScreen applyReward/removeReward): the reward is applied to the unpaid ticket from the server discount snapshot (loyalty line with its description and −amount), Total Due recomputed by the server, and it can be removed before payment — nothing is spent until the ticket is paid (test: POSCheckoutScreen.reward.test.tsx) |
 | 07 | Reimbursement drill-down Explain PAYABLE/PROCESSING/PAID with actual provider and journal evidence | TODO |
-| 08 | Smart authorized filters Remember non-sensitive filter state; deep-link safe reports, not PII in URLs Implementation condition Do not ship a new feature as a stub or fake metric. Each recommendation requires a backend so | TODO |
+| 08 | Smart authorized filters Remember non-sensitive filter state; deep-link safe reports, not PII in URLs Implementation condition Do not ship a new feature as a stub or fake metric. Each recommendation requires a backend so | BUILT — POSLoyaltyScreen members list: tier / status / sort remembered for the tab session (aps.loy.members via components/useSessionState writeSession/readSession; dropped on sign-out or user/salon switch by clearSessionUiState); the search text (a name or phone) is never kept and nothing goes in the URL (test: POSLoyaltyScreen.test "remembered for the session") |
 | 09 | Daily double-entry integrity Flag unbalanced token/points/funding journals; human-reviewed correction only | TODO |
 | 10 | Stale-provider indicator Show last settlement verification and distinguish pending from unknown | TODO |
 | 11 | Idempotency conflict center Investigate repeated purchase/earn/redeem keys without double side effects | EXISTS (part) — one request key per token purchase, re-sent on a lost answer, so a retry never charges twice |

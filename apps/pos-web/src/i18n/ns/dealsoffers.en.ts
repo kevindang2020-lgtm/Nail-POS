@@ -38,4 +38,6 @@ export const DEALSOFFERS_EN = {
   'do.check.counters': 'Use counts match the ledger', 'do.check.paid_not_marked': 'Paid tickets marked their deals', 'do.check.stuck_holds': 'No deal stuck on an abandoned ticket',
   'do.check.confirmed_unpaid': 'Completed redemptions are on paid tickets', 'do.check.expiry_lag': 'Ended deals were closed on time', 'do.check.approval_backlog': 'Approval queue is moving',
   'do.check.tech_policy': 'Technician deals follow today\'s rules',
+  'do.sla.soon': 'Starts in {h} h — needs a decision',
+  'do.sla.passed': 'Start time passed — still waiting for a decision',
 } as const;

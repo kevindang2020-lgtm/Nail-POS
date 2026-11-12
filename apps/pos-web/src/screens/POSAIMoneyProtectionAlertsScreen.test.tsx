@@ -57,6 +57,14 @@ describe('POSAIMoneyProtectionAlertsScreen', () => {
     fireEvent.click(screen.getByTestId('mpx-act-go'));
     await waitFor(() => expect(mc.alertAction).toHaveBeenCalledWith({ id: 'mpa_1', action: 'dismiss', reason: 'Webhook retried; one capture voided', expectedStatus: 'NEW' }));
   });
+  it('evidence completeness: verified / missing / changed-since per source kind, and what this role cannot see', async () => {
+    mc.alert.mockResolvedValue(detail({ completeness: { tickets: { expected: 1, verified: 1, missing: 0, stale: 0 }, payments: { expected: 3, verified: 2, missing: 1, stale: 1 }, staff: { expected: 0, verified: 0, missing: 0, stale: 0 }, customerDetailsLimited: true } }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-alert-view'));
+    expect((await screen.findByTestId('mpx-cm-payments')).textContent).toMatch(/2 of 3 verified · 1 missing · 1 changed since/);
+    expect(screen.queryByTestId('mpx-cm-staff')).toBeNull();
+    expect(screen.getByTestId('mpx-cm-limited')).toBeInTheDocument();
+  });
   it('an alert about your own activity offers no actions and says why', async () => {
     mc.alert.mockResolvedValue(detail({ canAct: false, selfInvolved: true }));
     wrap(<POSAIMoneyProtectionAlertsScreen />);

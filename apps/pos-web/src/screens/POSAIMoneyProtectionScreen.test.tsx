@@ -18,6 +18,13 @@ const SUM = (o: any = {}) => ({ cards: { newAlerts: 4, openAlerts: 6, critical: 
 beforeEach(() => { vi.clearAllMocks(); mc.runs.mockResolvedValue(page([{ id: 'r1', trigger: 'manual', status: 'succeeded', startedAt: '2026-11-03T05:00:00Z', created: 2, updated: 1, actor: 'Owner Kim' }])); });
 
 describe('POSAIMoneyProtectionScreen (overview)', () => {
+  it('explains Value Under Review: the plain sum vs counting overlapping alerts on the same transactions once', async () => {
+    mc.summary.mockResolvedValue(SUM({ exposure: { alerts: 3, sumCents: 12500, groups: 2, dedupedCents: 9000, overlappingAlerts: 2, capped: false } }));
+    wrap(<POSAIMoneyProtectionScreen />);
+    const e = await screen.findByTestId('mpx-exposure');
+    expect(e.textContent).toMatch(/3 open alerts add up to \$125\.00/);
+    expect(screen.getByTestId('mpx-exposure-dedup').textContent).toMatch(/2 of them point at the same transactions.*\$90\.00/);
+  });
   it('renders the cards, the under-review framing, kinds of open alerts and the detection runs', async () => {
     mc.summary.mockResolvedValue(SUM());
     wrap(<POSAIMoneyProtectionScreen />);

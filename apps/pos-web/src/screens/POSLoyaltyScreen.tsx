@@ -23,6 +23,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, type PageInfo } from '../components/FitKit';
 import { RewardsNetworkPanel } from './loyalty/RewardsNetworkPanel';
+import { readSession, writeSession } from '../components/useSessionState';
 import { tierPreview } from './loyalty/tierPreview';
 import { LoyaltyBonusRequest } from '../components/LoyaltyBonusRequest';
 
@@ -113,11 +114,15 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
   const membersFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const redFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const rewards = useServerList<Reward, { status: string }>((q) => posLoyaltyApi.rewards({ page: q.page, pageSize: q.pageSize, status: q.status || undefined }), catalogFit.rows, { status: '' });
-  const members = useServerList<Member, { tier: string; q: string; status: string; sort: string }>((q) => posLoyaltyApi.members({ page: q.page, pageSize: q.pageSize, tier: q.tier || undefined, q: q.q || undefined, status: q.status || undefined, sort: q.sort || undefined }), membersFit.rows, { tier: '', q: '', status: '', sort: '' });
+  const members = useServerList<Member, { tier: string; q: string; status: string; sort: string }>((q) => posLoyaltyApi.members({ page: q.page, pageSize: q.pageSize, tier: q.tier || undefined, q: q.q || undefined, status: q.status || undefined, sort: q.sort || undefined }), membersFit.rows, { ...readSession('aps.loy.members', { tier: '', status: '', sort: '' }), q: '' });
   const reds = useServerList<Redemption, { status: string }>((q) => posLoyaltyApi.redemptions({ page: q.page, pageSize: q.pageSize, status: q.status || undefined }), redFit.rows, { status: '' });
   const [search, setSearch] = useState('');
   const debounced = useDebounced(search, 300);
   useEffect(() => { if (debounced !== members.filters.q) members.setFilters({ q: debounced }); }, [debounced]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // extras (GLOBAL LOYALTY 08): tier / status / sort are remembered for this session (cleared on sign-out or salon switch);
+  // the search text — a name or phone — is never kept
+  const { tier: mTier, status: mStatus, sort: mSort } = members.filters;
+  useEffect(() => { writeSession('aps.loy.members', { tier: mTier, status: mStatus, sort: mSort }); }, [mTier, mStatus, mSort]);
 
   // overlays
   const [dlg, setDlg] = useState<null | { kind: 'enroll' } | { kind: 'reward'; reward?: Reward } | { kind: 'adjust'; member: Member } | { kind: 'redeem'; member: Member }

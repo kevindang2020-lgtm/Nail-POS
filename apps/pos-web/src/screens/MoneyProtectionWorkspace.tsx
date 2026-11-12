@@ -46,6 +46,37 @@ const ruleName = (id: string, fallback?: string) => (RULE_IDS.includes(id) ? t('
 const catName = (c: string | null | undefined) => t('mpx.cat.' + (c && (CATS as readonly string[]).includes(c) ? c : 'other'));
 const stName = (s: string) => t('mpx.st.' + s);
 const codeOf = (e: unknown) => { const x = e as { code?: string; details?: { code?: string }; body?: { code?: string } } | null; return x?.code ?? x?.details?.code ?? x?.body?.code; };
+/** extras (Money Protection 5 · 14): an empty alerts list says WHICH empty it is — filtered, paused, never checked, failed,
+ *  stale, no transaction data, or a verified pass that found nothing (with its time) */
+/** extras (Money Protection 5 · 03): Evidence Completeness — per source kind, how many the alert points at, how many were
+ *  verified in their own tables, missing, changed since the alert last saw them, and what this person may not see */
+function EvidenceMeter({ c }: { c: { tickets: K; payments: K; staff: K; customerDetailsLimited: boolean } }) {
+  const rows = (['tickets', 'payments', 'staff'] as const).filter((k) => c[k].expected > 0);
+  if (!rows.length && !c.customerDetailsLimited) return null;
+  return (
+    <div className="sub" data-testid="mpx-completeness" style={{ marginTop: 6 }}>
+      <b>{t('mpx.cm.title')}</b>
+      {rows.map((k) => <div key={k} data-testid={'mpx-cm-' + k}>{t('mpx.d.' + k)}: {t('mpx.cm.line', { v: fmtNumber(c[k].verified), n: fmtNumber(c[k].expected) })}
+        {c[k].missing ? ` · ${t('mpx.cm.missing', { n: fmtNumber(c[k].missing) })}` : ''}{c[k].stale ? ` · ${t('mpx.cm.stale', { n: fmtNumber(c[k].stale) })}` : ''}</div>)}
+      {c.customerDetailsLimited ? <div data-testid="mpx-cm-limited">{t('mpx.cm.limited')}</div> : null}
+    </div>
+  );
+}
+type K = { expected: number; verified: number; missing: number; stale: number };
+
+export function alertsEmpty(f: Record<string, any>, period: { preset?: string | null }, list: any): string {
+  const filtered = !!(f.q || period.preset || (f.severity && f.severity !== 'all') || (f.category && f.category !== 'all') || f.rule || (f.status && f.status !== 'open'));
+  if (filtered) return t('mpx.noMatch');
+  const m = list?.monitor;
+  if (!m) return t('mpx.noAlerts');
+  if (m.state === 'module_off') return t('mpx.empty.off');
+  if (m.state === 'never_checked') return t('mpx.empty.never');
+  if (m.state === 'last_run_failed') return t('mpx.empty.failed');
+  if (m.state === 'stale') return t('mpx.empty.stale', { at: m.lastSuccessAt ? fmtInZone(m.lastSuccessAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—' });
+  if (m.lastEvaluated === 0) return t('mpx.empty.noData');
+  return t('mpx.empty.verified', { at: m.lastSuccessAt ? fmtInZone(m.lastSuccessAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—', n: String(m.lastEvaluated ?? 0) });
+}
+
 export function mpErr(e: unknown) {
   const c = codeOf(e);
   if (c && ['MC_INVALID_PERIOD', 'MC_NOT_FOUND', 'MC_REASON_REQUIRED', 'MC_STALE', 'MC_STATE_INVALID', 'MC_DETECTION_FAILED', 'SEGREGATION_OF_DUTIES'].includes(c)) return t('mpx.err.' + c);
@@ -166,6 +197,10 @@ export function MpOverview() {
         <KpiCard testId="mpx-kpi-dismissed" label={t('mpx.kpi.dismissed')} value={c ? fmtNumber(c.dismissed30d) : '—'} loading={!s && !err} />
       </div>
       <p className="sub" data-testid="mpx-value-hint">{t('mpx.kpi.valueHint')}</p>
+      {s?.exposure && s.exposure.alerts > 0 ? <details className="sub" data-testid="mpx-exposure"><summary>{t('mpx.exp.open')}</summary>
+        <div>{t('mpx.exp.sum', { n: fmtNumber(s.exposure.alerts), v: money(s.exposure.sumCents) })}</div>
+        <div data-testid="mpx-exposure-dedup">{s.exposure.overlappingAlerts ? t('mpx.exp.overlap', { n: fmtNumber(s.exposure.overlappingAlerts), g: fmtNumber(s.exposure.groups), v: money(s.exposure.dedupedCents) }) : t('mpx.exp.none')}</div>
+        <div>{t('mpx.exp.why')}</div></details> : null}
       <section className="panel" style={{ padding: 12, marginTop: 8 }} data-testid="mpx-bycat">
         <div className="p-h">{t('mpx.byCategory')}</div>
         {s && !Object.keys(s.byCategory ?? {}).length ? <div className="state">{s.monitoring === 'current' ? t('mpx.noOpen') : t('mpx.mon.' + s.monitoring, { at: monAt })}</div>
@@ -199,7 +234,7 @@ export function MpAlerts() {
         {GROUPS.map((g) => <button key={g} role="tab" aria-selected={L.f.status === g} className={'btn ghost' + (L.f.status === g ? ' on' : '')} data-testid={`mpx-grp-${g}`} onClick={() => L.set({ status: g })}>{t('mpx.grp.' + g)}</button>)}
       </div>
       <ListFrame testId="mpx-alerts" surface="money-protection.alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
-        searchPh={L.list?.customersVisible === false ? t('mpx.searchPhNoCustomer') : t('mpx.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.noAlerts')}
+        searchPh={L.list?.customersVisible === false ? t('mpx.searchPhNoCustomer') : t('mpx.searchPh')} empty={alertsEmpty(L.f, L.period, L.list)}
         filters={<>
           <select data-testid="mpx-severity" aria-label={t('mpx.severityLabel')} value={L.f.severity} onChange={(e) => L.set({ severity: e.target.value })}>{SEVS.map((k) => <option key={k} value={k}>{t('mpx.sev.' + k)}</option>)}</select>
           <select data-testid="mpx-category" aria-label={t('mpx.categoryLabel')} value={L.f.category} onChange={(e) => L.set({ category: e.target.value, rule: undefined })}>{CATS.map((k) => <option key={k} value={k}>{catName(k)}</option>)}</select>
@@ -279,6 +314,7 @@ function AlertDialog({ id, onClose, onChanged }: { id: string; onClose: () => vo
           {d.sources.tickets.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.tickets')}: <Link to={`/tenant/payments/transactions?ticket=${encodeURIComponent(x.id)}`} data-testid="mpx-src-ticket" title={t('mpx.d.openSource')}><b>{x.number ?? x.id.slice(0, 8)}</b></Link> · {x.totalCents == null ? '' : money(x.totalCents)} · {when(x.at)}{x.customer ? ` · ${x.customer}` : ''}</div>)}
           {d.sources.payments.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.payments')}: {money(x.amountCents)} · {statusLabel('paymentMethod', x.method)} · {statusLabel(['payment', 'state'], x.status)} · {when(x.at)} · <Link to={`/tenant/payments/transactions?q=${encodeURIComponent(x.id)}`} data-testid="mpx-src-payment">{t('mpx.d.openSource')}</Link></div>)}
           {d.sources.staff.length ? <div className="rvw-ev">{t('mpx.d.staff')}: {d.sources.staff.map((x: any) => x.name).filter(Boolean).join(', ')}</div> : null}
+          {d.completeness ? <EvidenceMeter c={d.completeness} /> : null}
           {d.sources.missing.tickets + d.sources.missing.payments ? <div className="sub">{t('mpx.d.missing', { n: fmtNumber(d.sources.missing.tickets + d.sources.missing.payments) })}</div> : null}
         </section>
         {d.selfInvolved ? <p className="warn" data-testid="mpx-d-self">{t('mpx.d.self')}</p> : null}
