@@ -69,3 +69,12 @@ describe('SecurityService.overview', () => {
     expect((o as any).blockedIps.rows[0]).toMatchObject({ target: '203.0.113.45', threatType: 'Brute Force' });
   });
 });
+
+import { assembleSecurityKpis } from './security-core';
+describe('suspicious sessions — there is no session risk scoring, so the count is unknown, never a confident 0', () => {
+  it('a null count renders unavailable ("Not connected" / "—"), not zero', () => {
+    const k = assembleSecurityKpis({ suspiciousSessions: null }).suspiciousSessions;
+    expect(k.available).toBe(false);
+    expect(k.value).toBeNull();
+  });
+});

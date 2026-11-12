@@ -15,12 +15,14 @@ export class KyselySecurityRepository implements SecurityRepositoryPort {
   async kpiTotals(): Promise<SecurityKpiTotals> {
     const u: any = await one(this.db, sql`select count(*) filter (where role <> 'CUSTOMER' and status = 'active')::int total, count(*) filter (where role <> 'CUSTOMER' and status = 'active' and mfa_enabled = true)::int mfa, count(*) filter (where role in ('SUPER_ADMIN','OWNER'))::int privileged from users`);
     const f: any = await one(this.db, sql`select count(*)::int c from login_attempts where success = false and created_at >= now() - interval '7 days'`);
-    const s: any = await one(this.db, sql`select count(*) filter (where status = 'suspicious')::int suspicious, count(*) filter (where status = 'active' and expires_at > now())::int active from sessions`);
+    const s: any = await one(this.db, sql`select count(*) filter (where status = 'active' and expires_at > now())::int active from sessions`);
     const e: any = await one(this.db, sql`select count(*)::int c from report_exports where created_at >= now() - interval '7 days'`);
     const p: any = await one(this.db, sql`select count(*)::int c from customer_privacy_requests where status not in ('completed','rejected')`);
     const b: any = await one(this.db, sql`select count(*)::int total, count(*) filter (where status = 'completed')::int done from tenant_backup_requests`);
     const backupRate = b && n(b.total) > 0 ? Math.round((n(b.done) / n(b.total)) * 1000) / 10 : null;
-    return { twoFaEnabled: n(u?.mfa), twoFaTotal: n(u?.total), failedLogins7d: n(f?.c), suspiciousSessions: n(s?.suspicious), privilegedAccounts: n(u?.privileged), dataExportEvents7d: n(e?.c), privacyRequestsOpen: n(p?.c), activeSessions: n(s?.active), backupSuccessRatePct: backupRate };
+    return { twoFaEnabled: n(u?.mfa), twoFaTotal: n(u?.total), failedLogins7d: n(f?.c), // sessions.status has no 'suspicious' value (its CHECK: active, cancelled, completed, expired, inactive, locked, revoked,
+      // suspended) and there is no session risk scoring — the old filter could never match and showed a confident 0. Not known → '—'.
+      suspiciousSessions: null, privilegedAccounts: n(u?.privileged), dataExportEvents7d: n(e?.c), privacyRequestsOpen: n(p?.c), activeSessions: n(s?.active), backupSuccessRatePct: backupRate };
   }
 
   async failedLoginTrend7d(): Promise<DayCount[]> {

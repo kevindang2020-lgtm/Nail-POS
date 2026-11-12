@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/permissions/src/permission-registry.ts` by `tooling/permissions/generate-permission-docs.mjs`. Do not edit by hand.
 
-447 catalog keys — critical 19, high 71, medium 120, low 237; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
+448 catalog keys — critical 19, high 72, medium 120, low 237; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
 
 Authorization is by PERMISSION, never by role name: a role (or template / custom role) is a set of these keys; a per-person
 ALLOW / DENY override adds or removes one; DENY always wins. Scopes say where a key applies (OWN = the person's own records,
@@ -207,6 +207,12 @@ owner's high-risk report and in every access review.
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
 | `payouts.manage` | Manage payouts | critical | TENANT | yes | OWNER | Record what was actually paid to technicians for an approved pay period (cash, check, direct deposit). |  |
+
+### cash_handoff
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `cash_handoff.reopen` | Reopen cash handoff | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Reopen a closed end-of-day cash count with a reason (the earlier figures stay in its history and it must be counted again). |  |
 
 ### locations
 

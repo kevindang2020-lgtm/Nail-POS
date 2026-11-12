@@ -836,6 +836,8 @@ export interface TechCashHandoffsTable {
   resolved_by_user_id: string | null;
   resolved_at: TsNull;
   drawer_transfer_cents: Generated<string | number>;   // drift patch Oct 30 2026 (migrations 724–732)
+  // migration 846 (End-of-Day Cash 17): who reopened a closed count, when, why, and how many times
+  reopened_at: TsNull; reopened_by_user_id: string | null; reopen_reason: string | null; reopen_count: Generated<number>;
 }
 export interface CashDrawerSessionsTable {
   id: Generated<string>; tenant_id: string; branch_id: string; register_id: Generated<string>; business_date: string;

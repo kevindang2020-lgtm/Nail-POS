@@ -75,6 +75,16 @@ for (const f of readdirSync(MIG).filter((x) => x.endsWith('.sql')).sort()) {
     // REPLACES, not merges — an ALTER that drops and re-adds the constraint defines the new truth.
     if (vals.length) allowed.set(`${table}.${col}`, new Set(vals));
   }
+
+  // The Phase 10 helper: PERFORM schema_apply_check('table', 'constraint', 'col IN (''a'', ''b'')', …) — how later migrations
+  // (556, 610, 846 …) widen a vocabulary on large tables. Its SQL text is a quoted literal, so the values carry doubled
+  // quotes. Reading it keeps the allowed set equal to the migrated schema instead of the original CREATE TABLE's list.
+  const helper = /schema_apply_check\(\s*'([a-z0-9_]+)'\s*,\s*'[a-z0-9_]+'\s*,\s*'\s*([a-z0-9_]+)\s+IN\s*\(([^)]*)\)/gi;
+  let h;
+  while ((h = helper.exec(sql))) {
+    const vals = [...h[3].matchAll(/''([^']+)''/g)].map((m) => m[1]);
+    if (vals.length) allowed.set(`${h[1].toLowerCase()}.${h[2].toLowerCase()}`, new Set(vals));
+  }
 }
 
 // ── every literal comparison in raw SQL ─────────────────────────────────────────────────────────────────

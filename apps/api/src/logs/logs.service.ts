@@ -2,6 +2,7 @@
 // write() never throws to its caller: a logging failure must not break the action being logged. Metadata is shallow-
 // sanitized to drop obviously-sensitive keys so secrets never land in the log store.
 import { hasPermission } from '@aipowersalon/permissions';
+import { withCode } from '@aipowersalon/api-contracts';
 import { normalizeFilters, isSeverity, type LogSeverity, redactLogText, logCsvCell, LOG_EXPORT_MAX_DAYS, LOG_EXPORT_MAX_ROWS, logExportRangeDays } from './logs-core';
 import type { LogsContext, LogWriteCtx, LogEntryInput, LogEntryView, LogSink } from './logs.dto';
 import type { LogsRepositoryPort, StoredLog, LogSummary, LogPaymentEnvironment } from './logs.repository';
@@ -85,7 +86,7 @@ export class LogsService implements LogSink {
     }
     const filters = { category: f.category ?? 'all', severity: f.severity ?? 'all', source: f.source ?? 'all', search: f.search ? 'yes' : 'no', device: f.relatedId ? 'yes' : 'no', trace: f.correlationId ? 'yes' : 'no' };
     try { await this.repo.recordExport(ctx, { from, to, rows: rows.length, total, filters }); }
-    catch (e) { throw new ExportUnavailableError(`Log export audit failed: ${(e as Error).message}`); }
+    catch { throw withCode(new ExportUnavailableError('Log export is unavailable: its audit row could not be written, so no file was made'), 'SERVICE_UNAVAILABLE'); }
     const line = (cells: unknown[]) => cells.map(logCsvCell).join(',');
     const out = [line(['Device and integration logs (sanitized)']), line(['Generated', new Date(this.now()).toISOString()]), line(['Period', `${from} to ${to} (UTC days, as on the page)`]),
       line(['Category', filters.category]), line(['Severity', filters.severity]), line(['Source', filters.source]), line(['Search', filters.search]),

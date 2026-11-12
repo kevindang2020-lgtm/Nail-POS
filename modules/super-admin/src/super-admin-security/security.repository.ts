@@ -1,6 +1,6 @@
 // Repository port for the Security & Compliance oversight aggregate. Reads real sources only; anything unmodelled is
 // simply not queried (the service marks it an honest gap). In-memory returns empties/zeros.
-export interface SecurityKpiTotals { twoFaEnabled: number; twoFaTotal: number; failedLogins7d: number; suspiciousSessions: number; privilegedAccounts: number; dataExportEvents7d: number; privacyRequestsOpen: number; activeSessions: number; backupSuccessRatePct: number | null }
+export interface SecurityKpiTotals { twoFaEnabled: number; twoFaTotal: number; failedLogins7d: number; suspiciousSessions: number | null; privilegedAccounts: number; dataExportEvents7d: number; privacyRequestsOpen: number; activeSessions: number; backupSuccessRatePct: number | null }
 export interface DayCount { day: string; count: number }
 export interface AuthRow { userId: string; name: string; role: string; mfaEnabled: boolean; lastLogin: string | null; failedLogins: number; sessionStatus: string; privileged: boolean }
 export interface SessionRow { userId: string; name: string; role: string; ip: string | null; device: string | null; status: string; lastActivity: string | null }
@@ -36,7 +36,7 @@ export interface SecurityRepositoryPort {
 }
 
 export class InMemorySecurityRepository implements SecurityRepositoryPort {
-  async kpiTotals() { return { twoFaEnabled: 0, twoFaTotal: 0, failedLogins7d: 0, suspiciousSessions: 0, privilegedAccounts: 0, dataExportEvents7d: 0, privacyRequestsOpen: 0, activeSessions: 0, backupSuccessRatePct: null }; }
+  async kpiTotals() { return { twoFaEnabled: 0, twoFaTotal: 0, failedLogins7d: 0, suspiciousSessions: null, privilegedAccounts: 0, dataExportEvents7d: 0, privacyRequestsOpen: 0, activeSessions: 0, backupSuccessRatePct: null }; }
   async failedLoginTrend7d() { return []; }
   async authOverview() { return []; }
   async activeSessions() { return []; }
