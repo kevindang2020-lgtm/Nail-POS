@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 const m = vi.hoisted(() => ({
   expenses: vi.fn(), kpis: vi.fn(), report: vi.fn(), reportRange: vi.fn(), categories: vi.fn(), recommend: vi.fn(), createExpense: vi.fn(), update: vi.fn(), detail: vi.fn(),
   approve: vi.fn(), submit: vi.fn(), reject: vi.fn(), voidExpense: vi.fn(), duplicateDecision: vi.fn(), archive: vi.fn(), restore: vi.fn(), deleteDraft: vi.fn(), billPayment: vi.fn(), exportFile: vi.fn(),
-  paymentMatch: vi.fn(), paymentLink: vi.fn(), upload: vi.fn(), save: vi.fn(), billsDue: vi.fn(), exportPreflight: vi.fn(), rulePreview: vi.fn(), createRule: vi.fn(),
+  paymentMatch: vi.fn(), paymentLink: vi.fn(), upload: vi.fn(), save: vi.fn(), billsDue: vi.fn(), exportPreflight: vi.fn(), rulePreview: vi.fn(), createRule: vi.fn(), vendorMatch: vi.fn(),
 }));
 vi.mock('../api/posExpensesApi', () => ({ posExpensesApi: m, saveExportFile: m.save }));
 vi.mock('../api/posAiOcrReceiptApi', () => ({ posAiOcrReceiptApi: { upload: m.upload, detail: vi.fn(), previewUrl: vi.fn() } }));
@@ -183,6 +183,46 @@ describe('POSExpensesScreen (Expenses guide)', () => {
     fireEvent.click(within(f).getByTestId('form-save'));
     expect(await within(f).findByText(/positive amount/i)).toBeInTheDocument();
     expect(m.createExpense).not.toHaveBeenCalled();
+  });
+  it('vendor lookup (Extras · Expenses Management 05): an exact match links the salon vendor; a similar one is offered, never merged; a new name says when it joins', async () => {
+    m.createExpense.mockResolvedValue({ expense: exp({ id: 'new2' }), duplicate: { status: 'none', matches: [] }, created: true });
+    m.recommend.mockResolvedValue({ key: 'other', source: 'fallback', reason: '', confidence: 0 });
+    m.vendorMatch.mockImplementation(async (v: string) => v === 'SALLY BEAUTY #12' ? { query: v, exact: { id: 'v-sally', name: 'Sally Beauty' }, suggestions: [], willCreateOnApproval: false }
+      : v === 'Nail Depot' ? { query: v, exact: null, suggestions: [{ id: 'v-nd', name: 'Nail Depot Wholesale', score: 0.67 }], willCreateOnApproval: false }
+      : { query: v, exact: null, suggestions: [], willCreateOnApproval: true });
+    renderIt(); const f = await openForm();
+    const vendor = within(f).getByTestId('f-vendor');
+    fireEvent.change(vendor, { target: { value: 'Brand New Florist' } }); fireEvent.blur(vendor);
+    expect(await within(f).findByTestId('vendor-new')).toHaveTextContent('joins your vendor list when this expense is approved');
+    fireEvent.change(vendor, { target: { value: 'Nail Depot' } });
+    expect(within(f).queryByTestId('vendor-new')).toBeNull();          // typing clears the old answer
+    fireEvent.blur(vendor);
+    const box = await within(f).findByTestId('vendor-suggest');
+    expect(within(f).queryByTestId('vendor-linked')).toBeNull();
+    fireEvent.click(within(box).getByTestId('vendor-pick-v-nd'));
+    expect((vendor as HTMLInputElement).value).toBe('Nail Depot Wholesale');
+    expect(within(f).getByTestId('vendor-linked')).toHaveTextContent('Matches your vendor: Nail Depot Wholesale');
+    fireEvent.change(within(f).getByTestId('f-amount'), { target: { value: '10.00' } });
+    fireEvent.click(within(f).getByTestId('form-save'));
+    await waitFor(() => expect(m.createExpense).toHaveBeenCalledTimes(1));
+    expect(m.createExpense.mock.calls[0][0]).toMatchObject({ vendor: 'Nail Depot Wholesale', vendorId: 'v-nd', amountCents: 1000 });
+    expect(m.vendorMatch).not.toHaveBeenCalledWith('Nail Depot Wholesale');   // picking does not re-query
+  });
+  it('vendor lookup: an exact spelling links automatically; retyping the name drops the link before save', async () => {
+    m.createExpense.mockResolvedValue({ expense: exp({ id: 'new3' }), duplicate: { status: 'none', matches: [] }, created: true });
+    m.recommend.mockResolvedValue({ key: 'other', source: 'fallback', reason: '', confidence: 0 });
+    m.vendorMatch.mockResolvedValue({ query: 'SALLY BEAUTY #12', exact: { id: 'v-sally', name: 'Sally Beauty' }, suggestions: [], willCreateOnApproval: false });
+    renderIt(); const f = await openForm();
+    const vendor = within(f).getByTestId('f-vendor');
+    fireEvent.change(vendor, { target: { value: 'SALLY BEAUTY #12' } }); fireEvent.blur(vendor);
+    expect(await within(f).findByTestId('vendor-linked')).toHaveTextContent('Sally Beauty');
+    expect((vendor as HTMLInputElement).value).toBe('SALLY BEAUTY #12');   // the receipt's words are kept as typed
+    fireEvent.change(vendor, { target: { value: 'Someone Else' } });
+    expect(within(f).queryByTestId('vendor-linked')).toBeNull();
+    fireEvent.change(within(f).getByTestId('f-amount'), { target: { value: '5.00' } });
+    fireEvent.click(within(f).getByTestId('form-save'));
+    await waitFor(() => expect(m.createExpense).toHaveBeenCalledTimes(1));
+    expect(m.createExpense.mock.calls[0][0].vendorId).toBeUndefined();
   });
   it('creates in exact cents with ONE idempotency key per form; the new row is first on Page 1 and highlighted', async () => {
     m.createExpense.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({ expense: exp({ id: 'new1', status: 'approved' }), duplicate: { status: 'none', matches: [] }, created: true });

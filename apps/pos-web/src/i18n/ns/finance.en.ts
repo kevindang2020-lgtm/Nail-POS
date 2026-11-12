@@ -437,4 +437,8 @@ export const FINANCE_EN = {
   "finance.ex.trend.subFiltered": "Approved expenses per month, last 12 months, with your category / method / search filters. Tap a month to list it.",
   "finance.ex.trend.count": "{n} expenses",
   "finance.ex.trend.basis": "By expense date in the salon’s calendar. Drafts, expenses waiting for review and voided expenses are not counted.",
+  "finance.ex.vendor.linked": "Matches your vendor: {name}",
+  "finance.ex.vendor.didYouMean": "Similar vendors you already have — tap one to use it:",
+  "finance.ex.vendor.newOnApproval": "New vendor — it joins your vendor list when this expense is approved.",
+  "finance.ex.vendor.nearNote": "Keeping your spelling? It stays unlinked so no near-duplicate vendor is created; an owner can link it later.",
 };

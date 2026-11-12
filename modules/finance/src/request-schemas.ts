@@ -40,6 +40,7 @@ export const FIN_SETTINGS_BODY: BodySchema = S.object({
   version: S.nullable(S.integer({ minimum: 0 })),
 });
 export const FIN_DUP_CHECK_BODY: BodySchema = S.object({ vendor: txt(200), vendorId: S.nullable(S.uuid()), incurredOn: S.date(), amountCents: S.cents(), invoiceNumber: txt(80), receiptNumber: txt(80), excludeId: S.nullable(S.uuid()) }, ['incurredOn', 'amountCents']);
+export const FIN_VENDOR_MATCH_BODY: BodySchema = S.object({ vendor: S.text(200) }, ['vendor']);   // Extras (Expenses Management 05)
 export const FIN_RECOMMEND_BODY: BodySchema = S.object({ vendor: txt(200), lines: S.nullable(S.array(S.text(300), { maxItems: 50 })) });
 export const FIN_IMPORT_BODY: BodySchema = S.object({
   rows: S.array(S.object({ date: txt(20), vendor: txt(200), amount: S.oneOfTypes(['string', 'number', 'null'], { maxLength: 20 }), category: txt(60), branch: txt(120), description: txt(1000) }), { maxItems: 2000 }),

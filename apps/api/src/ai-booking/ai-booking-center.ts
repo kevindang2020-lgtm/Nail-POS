@@ -175,6 +175,28 @@ export class AiBookingCenter {
     return (Array.isArray(list) ? list : []).map((s: any) => ({ name: s?.name ?? s?.serviceName ?? null, priceCents: s?.priceCents ?? s?.price_cents ?? null, durationMinutes: s?.durationMinutes ?? s?.duration_minutes ?? null }));
   }
 
+  /** Extras (AI Booking Assistant 10): each booked line beside the salon's current catalog price / duration, add-ons
+   *  marked, manual price overrides kept apart from catalog prices (read-only; nothing is re-priced). */
+  private async serviceBreakdown(ctx: BkCtx, v: unknown) {
+    const raw = jsonList(v); const list: any[] = Array.isArray(raw) ? raw : [];
+    const ids = [...new Set(list.map((s) => (typeof s?.serviceId === 'string' ? s.serviceId : null)).filter((x): x is string => !!x && /^[0-9a-f-]{36}$/i.test(x)))];
+    const cat = ids.length ? (await sql<{ id: string; price_cents: number | null; duration_minutes: number | null }>`select id::text as id, price_cents, duration_minutes from services
+      where tenant_id = ${ctx.tenantId} and status = 'active' and id::text in (${sql.join(ids)})`.execute(this.db)).rows : [];
+    const byId = new Map(cat.map((c) => [c.id, c]));
+    const num = (x: unknown): number | null => (x == null || x === '' || !Number.isFinite(Number(x)) ? null : Math.round(Number(x)));
+    const serviceLines = list.map((s: any) => {
+      const id = typeof s?.serviceId === 'string' ? s.serviceId : null; const c = id ? byId.get(id) : undefined;
+      const manual = s?.priceOverrideCents != null || !!String(s?.overrideReason ?? '').trim();
+      return { name: s?.name ?? s?.serviceName ?? null, priceCents: num(s?.priceCents ?? s?.price_cents), durationMinutes: num(s?.durationMinutes ?? s?.duration_minutes),
+        serviceId: id, isAddon: s?.isAddon === true, parentServiceId: s?.parentServiceId ?? null, manualOverride: manual, overrideReason: manual ? (s?.overrideReason ?? null) : null,
+        catalogPriceCents: c ? num(c.price_cents) : null, catalogDurationMinutes: c ? num(c.duration_minutes) : null, inCatalog: !!c };
+    });
+    const sum = (xs: Array<number | null>) => (xs.length && xs.every((x) => x != null) ? (xs as number[]).reduce((a, b) => a + b, 0) : null);
+    return { serviceLines, serviceSummary: { lines: serviceLines.length, addOns: serviceLines.filter((l) => l.isAddon).length,
+      totalPriceCents: sum(serviceLines.map((l) => l.priceCents)), totalDurationMinutes: sum(serviceLines.map((l) => l.durationMinutes)),
+      catalogTotalCents: sum(serviceLines.map((l) => l.catalogPriceCents)), overrides: serviceLines.filter((l) => l.manualOverride).length, notInCatalog: serviceLines.filter((l) => !l.inCatalog).length } };
+  }
+
   // ── §8 overlay ────────────────────────────────────────────────────────────────────────────────────────────────────
   async detail(ctx: BkCtx, requestId: string) {
     this.need(ctx, 'ai_booking.view');
@@ -201,7 +223,7 @@ export class AiBookingCenter {
       customer: { customerId: r.customer_id ? String(r.customer_id) : null, name: r.customer_name ?? null, maskedPhone: mask(r.customer_phone ?? r.normalized_phone),
         verified: verifications.some((v: any) => v.status === 'verified'),
         appointments: nearby.map((a: any) => ({ appointmentId: String(a.id), date: ymd(a.appt_date), time: a.start_time ?? null, status: a.status, source: a.source })) },
-      serviceLines: this.services(r.services),
+      ...(await this.serviceBreakdown(ctx, r.services)),
       timeline: events.map((e: any) => ({ stage: e.stage, outcome: e.outcome ?? null, failureReason: e.failure_reason ?? null, appointmentId: e.appointment_id ?? null, latencyMs: e.latency_ms ?? null, at: iso(e.created_at) })),
       // never a code — state, counts, the masked phone and when it expires
       verification: verifications.map((v: any) => ({ status: v.status, channel: v.channel, maskedPhone: v.phone_mask, attempts: N(v.attempt_count), resends: N(v.resend_count),

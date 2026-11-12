@@ -70,6 +70,16 @@ describe('POSAiUsageScreen', () => {
     expect(screen.getByTestId('chk-trial_rows_current')).toHaveTextContent(/still stored as "trialing"/);
     expect(api.check).toHaveBeenCalledTimes(1);
   });
+  it('Extras · AI Usage Limits 06: the check words a usage spike, a request counted twice and a quiet meter — and says nothing was changed', async () => {
+    api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [
+      { key: 'usage_spike', state: 'WARNING', count: 1, detail: { packages: ['ai_business_assistant'] } }, { key: 'duplicate_usage_events', state: 'WARNING', count: 2 }, { key: 'metering_stale', state: 'INSUFFICIENT_DATA', count: 0 }] });
+    render(<POSAiUsageScreen />);
+    fireEvent.click(await screen.findByTestId('aiu-check'));
+    expect(await screen.findByTestId('chk-usage_spike')).toHaveTextContent(/Sudden usage spike.*3× its usual daily amount.*limits and records are unchanged/);
+    expect(screen.getByTestId('chk-duplicate_usage_events')).toHaveTextContent(/One request counted twice · 2.*nothing was removed or refunded/);
+    expect(screen.getByTestId('chk-metering_stale')).toHaveTextContent(/Not enough data.*No live package/);
+    expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
+  });
   it('AI Plans tabs (SUNMI §07): ?view=subscriptions lists active subscriptions; ?view=billing opens cost & invoices — only for a role that may see cost', async () => {
     const { unmount } = render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=subscriptions']}><Screen /></MemoryRouter>);
     await waitFor(() => expect(api.packages).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' })));

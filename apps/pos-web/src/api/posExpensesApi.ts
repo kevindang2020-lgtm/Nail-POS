@@ -7,6 +7,8 @@ const enc = encodeURIComponent;
 import type { FinanceRulePreview, FinanceExportPreflight, FinanceBillsDue } from '@aipowersalon/api-contracts/tenant';
 import type { FinanceInboxTab, FinanceExpense, FinanceCategory, FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceExpensePage, FinanceCategoryList, FinanceCategoryRecommendation, FinanceExpenseCreateResult, FinanceExpenseCreateRequest, FinanceAttachResult, FinancePaymentMatch, FinancePaymentLinkRequest, FinanceSettings, FinanceSettingsRequest, FinanceExpenseSummary, FinanceExpenseUpdateRequest, FinanceExpenseResult, FinanceExpenseDetail } from '@aipowersalon/api-contracts/tenant';
 export type ExpenseTab = FinanceInboxTab;
+/** POST /owner/finance/expenses/vendor-match (kept local so the POS compiles before the shared contract ships) */
+export interface VendorMatchView { query: string; exact: { id: string; name: string } | null; suggestions: Array<{ id: string; name: string; score: number }>; willCreateOnApproval: boolean }
 /** Extras (Expenses Management 01): the attention bar's click-through (the server lists by the same rule it counts) */
 export type ExpenseAttentionFilter = 'no_receipt' | 'uncategorized' | 'overdue_review';
 export type RulePreview = FinanceRulePreview;
@@ -29,6 +31,8 @@ export const posExpensesApi = {
   /** Vendor rule (Extras · Receipt Expense OCR 05): preview first (read-only), then save through the existing rules route */
   rulePreview: (vendor: string, categoryKey: string) => api.post<RulePreview>(`/owner/finance/expense-rules/preview`, { vendor, categoryKey }),
   createRule: (vendor: string, categoryKey: string) => api.post<{ id: string }>(`/owner/finance/expense-rules`, { vendor, categoryKey }),
+  /** Extras (Expenses Management 05): the salon's own vendor for typed words, or similar ones to pick — read-only, never creates */
+  vendorMatch: (vendor: string) => api.post<VendorMatchView>(`/owner/finance/expenses/vendor-match`, { vendor }),
   recommend: (vendor: string) => api.post<FinanceCategoryRecommendation>(`/owner/finance/expenses/recommend-category`, { vendor }),
   createExpense: (body: FinanceExpenseCreateRequest) => api.post<FinanceExpenseCreateResult>(`/owner/finance/expenses`, body as unknown as Record<string, unknown>),
   submit: (id: string, version: number) => api.post(`/owner/finance/expenses/${enc(id)}/submit`, { version }),

@@ -83,6 +83,30 @@ describe('A7 request detail', () => {
   });
 });
 
+describe('Extras · AI Booking Assistant 10 — contextual service breakdown', () => {
+  it('each line beside the CURRENT catalog: add-on marked, manual override kept apart with its reason, totals; nothing re-priced', async () => {
+    const CAT = 'a7b40000-0000-4000-8000-0000000000d1', S1 = 'a7b40000-0000-4000-8000-0000000000d2', S2 = 'a7b40000-0000-4000-8000-0000000000d3', GONE = 'a7b40000-0000-4000-8000-0000000000d4', A9 = 'a7b40000-0000-4000-8000-0000000000a9';
+    await pg.query(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Nails')`, [CAT, T, B]);
+    await pg.query(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$3,$4,$5,'Gel Manicure',45,5000), ($2,$3,$4,$5,'Nail Art',15,1500)`, [S1, S2, T, B, CAT]);
+    const lines = [{ serviceId: S1, serviceName: 'Gel Manicure', priceCents: 4000, priceOverrideCents: 4000, overrideReason: 'Loyal guest', durationMinutes: 45 },
+      { serviceId: S2, serviceName: 'Nail Art', priceCents: 1500, durationMinutes: 15, isAddon: true, parentServiceId: S1 },
+      { serviceId: GONE, serviceName: 'Old Service', priceCents: 900, durationMinutes: 10 }];
+    await pg.query(`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, customer_phone, source, services, appt_date, start_time, end_time, status) values ($1,$2,$3,$4,$5,'Thảo Nguyễn','(856) 555-1234','ai',$6::jsonb,'2026-11-07','10:00','11:10','booked')`, [A9, T, B, TE, C1, JSON.stringify(lines)]);
+    await ev('r9', 'BOOKING_INTENT_DETECTED', 20); await ev('r9', 'BOOKING_SUCCEEDED', 21, { appt: A9, outcome: 'succeeded' });
+    const d = await center.detail(ctx, 'r9');
+    expect(d.serviceLines[0]).toMatchObject({ name: 'Gel Manicure', priceCents: 4000, manualOverride: true, overrideReason: 'Loyal guest', catalogPriceCents: 5000, catalogDurationMinutes: 45, inCatalog: true, isAddon: false });
+    expect(d.serviceLines[1]).toMatchObject({ name: 'Nail Art', priceCents: 1500, manualOverride: false, overrideReason: null, catalogPriceCents: 1500, isAddon: true, parentServiceId: S1 });
+    expect(d.serviceLines[2]).toMatchObject({ name: 'Old Service', inCatalog: false, catalogPriceCents: null });
+    expect(d.serviceSummary).toEqual({ lines: 3, addOns: 1, totalPriceCents: 6400, totalDurationMinutes: 70, catalogTotalCents: null, overrides: 1, notInCatalog: 1 });
+    // the stored appointment lines are untouched
+    expect((await pg.query(`select services from pos_tech_appointments where id = $1`, [A9])).rows[0].services).toEqual(lines);
+    // an older free-form line (no service id) still reads, never claims a catalog price
+    const old = await center.detail(ctx, 'r1');
+    expect(old.serviceLines[0]).toMatchObject({ name: 'Gel Manicure', priceCents: 4500, inCatalog: false, catalogPriceCents: null, manualOverride: false });
+    expect(old.serviceSummary).toMatchObject({ lines: 1, totalPriceCents: 4500, totalDurationMinutes: 45, catalogTotalCents: null });
+  });
+});
+
 describe('A7 recovery', () => {
   it('lists failed requests and AI appointments not yet confirmed; Dismiss needs a reason and is audited', async () => {
     const r = await center.recovery(ctx);

@@ -86,6 +86,11 @@ export interface FinanceRuleList { rules: FinanceRule[] }
 export interface FinanceRuleRequest { vendor: string; categoryKey: string; keyword?: string | null; vendorId?: string | null }
 export interface FinanceRuleResult { id: string; [k: string]: unknown }
 /** Vendor-rule preview (Extras · Receipt Expense OCR 05) — read-only, before a rule is saved */
+/** Extras (Expenses Management 05): the salon's own vendors for typed words — an exact normalized match, else up to three
+ *  "did you mean" suggestions (never merged silently). willCreateOnApproval: no exact and no similar vendor, so approving
+ *  would add this name to the directory; with a similar vendor it is left for a person to link. */
+export interface FinanceVendorMatchRequest { vendor: string }
+export interface FinanceVendorMatch { query: string; exact: { id: string; name: string } | null; suggestions: Array<{ id: string; name: string; score: number }>; willCreateOnApproval: boolean }
 export interface FinanceRulePreviewRequest { vendor: string; categoryKey: string }
 export interface FinanceRulePreview {
   vendorNorm: string; categoryKey: string; categoryLabel: string; since: string; matched: number; sameCategory: number; approved: number; approvedDifferent: number;

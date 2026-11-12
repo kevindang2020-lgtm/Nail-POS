@@ -3,7 +3,7 @@
 // on four services), honest "—" for figures the data cannot support, the review flags, the reason-required pricing editor,
 // the shared-definition vs one-offering edit, and 403s.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
   cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
@@ -78,6 +78,33 @@ describe('Services & Products', () => {
     expect(col).toHaveTextContent('List margin');
     expect(col.getAttribute('title')).toMatch(/not from sales/);
     expect(screen.getByTestId('chart-rule')).toHaveTextContent(/paid ticket lines/);
+  });
+  it('extras (Services & Products 2 · 14): the service and product lists page independently, keep the picked service, and a new search starts both on Page 1', async () => {
+    cat.services.mockImplementation(async (q: any) => (q?.pageSize === 1 ? page(SIX.slice(0, 1), { totalItems: 6, stats: STATS })
+      : page(q?.page === 2 ? SIX.slice(3) : SIX.slice(0, 3), { page: q?.page ?? 1, pageSize: 3, totalItems: 6, totalPages: 2, stats: STATS })));
+    invScreen.products.mockImplementation(async (q: any) => ({ total: 12, page: q?.page ?? 1, pageSize: 6, pages: 2, rows: [{ id: 'p' + (q?.page ?? 1), name: 'Product page ' + (q?.page ?? 1), sku: 'SKU', onHand: 1, retailCents: 1500, costCents: 700, severity: 'ok' }] }));
+    mount(<POSServicesScreen />);
+    const menu = await screen.findByTestId('service-menu');
+    const rows = await within(menu).findAllByTestId('service-row');
+    fireEvent.click(rows[1]);                                                    // pick Classic Pedicure
+    await waitFor(() => expect(cat.service).toHaveBeenLastCalledWith('s2'));
+    fireEvent.click(within(menu).getByRole('button', { name: 'Page 2' }));
+    await waitFor(() => expect(within(menu).getAllByTestId('service-row')[0]).toHaveTextContent('CD Mani 6805'));
+    const svcCalls = cat.services.mock.calls.map((c) => c[0]).filter((q: any) => q?.pageSize !== 1);
+    expect(svcCalls[svcCalls.length - 1]).toMatchObject({ page: 2 });
+    expect(invScreen.products).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));   // the product list did not move
+    expect(within(screen.getByTestId('product-catalog')).getByText('Product page 1')).toBeInTheDocument();
+    expect(cat.service).toHaveBeenLastCalledWith('s2');                          // the picked service stays picked across pages
+    // the product list pages on its own
+    fireEvent.click(within(screen.getByTestId('product-catalog')).getByRole('button', { name: 'Page 2' }));
+    expect(await within(screen.getByTestId('product-catalog')).findByText('Product page 2')).toBeInTheDocument();
+    expect(within(menu).getAllByTestId('service-row')[0]).toHaveTextContent('CD Mani 6805');
+    // a new search: both lists back to Page 1, no rows repeated
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'mani' } });
+    await waitFor(() => expect(cat.services).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'mani', page: 1 })));
+    await waitFor(() => expect(invScreen.products).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'mani', page: 1 })));
+    const ids = within(menu).getAllByTestId('service-row').map((r) => r.textContent);
+    expect(new Set(ids).size).toBe(ids.length);
   });
   it('a phone search shows customer history (what was charged), not a service filter', async () => {
     cat.customerHistory.mockResolvedValue({ ...page([{ lineId: 'l1', ticketId: 't1', ticketNumber: '101', paid: true, at: '2026-10-29T12:00:00Z', customerId: 'cu1', customerName: 'Mai Le', maskedPhone: '••• 1234', item: 'Gel Manicure', kind: 'service', categoryAtSale: 'Nails', catalogPriceAtSaleCents: 5500, chargedCents: 5500, minutes: 45, technician: 'Vy Tran' }]), needsQuery: false });

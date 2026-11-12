@@ -18,7 +18,7 @@ import { SystemCheckButton } from '../components/SystemCheck';
 import { Link } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { FinanceExpenseCreateRequest } from '@aipowersalon/api-contracts/tenant';
-import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail, type FinSummary, type ExpenseAttentionFilter } from '../api/posExpensesApi';
+import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail, type FinSummary, type ExpenseAttentionFilter, type VendorMatchView } from '../api/posExpensesApi';
 import { posAiOcrReceiptApi } from '../api/posAiOcrReceiptApi';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
@@ -46,7 +46,7 @@ const errCode = (e: unknown): string => String((e as { code?: string; apiCode?: 
 const errMsg = (e: unknown, fallback: string): string => String((e as { message?: string })?.message || fallback);
 
 type Ask = { id: string; version: number; action: 'reject' | 'void' | 'not_duplicate' | 'duplicate' | 'pay' | 'link_payment'; label: string };
-type FormState = { id?: string; version?: number; status?: string; kind: 'expense' | 'bill'; category: string; amount: string; vendor: string; description: string; incurredOn: string; paymentMethod: string; dueDate: string; invoiceNumber: string; reason: string };
+type FormState = { id?: string; version?: number; status?: string; kind: 'expense' | 'bill'; category: string; amount: string; vendor: string; vendorId?: string | null; description: string; incurredOn: string; paymentMethod: string; dueDate: string; invoiceNumber: string; reason: string };
 type Note = { tone: 'ok' | 'warn' | 'bad'; text: string; actions?: Array<{ label: string; run: () => void }> };
 
 export function POSExpensesScreen() {
@@ -242,6 +242,19 @@ function ExpenseForm({ initial, today, categories, canApprove, onClose, onSaved 
   const edit = !!f.id; const correction = edit && f.status === 'approved';
   const set = (p: Partial<FormState>) => setF((x) => ({ ...x, ...p }));
   const cents = centsFromText(f.amount);
+  const [vmatch, setVmatch] = useState<VendorMatchView | null>(null);
+  // Extras (Expenses Management 05): the salon's canonical vendor for these words; similar names are offered, never merged
+  const lookupVendor = async () => {
+    const words = f.vendor.trim();
+    if (!words || (edit && words === initial.vendor.trim())) { setVmatch(null); return; }
+    try {
+      const m = await posExpensesApi.vendorMatch(words);
+      if (m.query !== words) return;
+      setVmatch(m);
+      if (m.exact) { const id = m.exact.id; setF((x) => (x.vendor.trim() === words ? { ...x, vendorId: id } : x)); }
+    } catch { setVmatch(null); /* a lookup is optional; the typed name is still saved */ }
+  };
+  const pickVendor = (v: { id: string; name: string }) => { setF((x) => ({ ...x, vendor: v.name, vendorId: v.id })); setVmatch({ query: v.name, exact: v, suggestions: [], willCreateOnApproval: false }); };
   const suggest = async () => {
     if (edit || !f.vendor.trim() || f.category) return;
     try { const r = await posExpensesApi.recommend(f.vendor.trim()); if (r?.key && r.source !== 'fallback') { setSuggested(r.key); setF((x) => (x.category ? x : { ...x, category: r.key })); } } catch { /* a suggestion is optional */ }
@@ -253,7 +266,7 @@ function ExpenseForm({ initial, today, categories, canApprove, onClose, onSaved 
     if (f.kind === 'bill' && !f.dueDate) { setErr(tx('pos.a_bill_needs_a_due_date')); return; }
     if (correction && !f.reason.trim()) { setErr(tx('finance.ex.correctionReason')); return; }
     setBusy(true);
-    const fields = { kind: f.kind, category: f.category || null, amountCents: cents, vendor: f.vendor.trim() || null, description: f.description.trim() || null, incurredOn: f.incurredOn,
+    const fields = { kind: f.kind, category: f.category || null, amountCents: cents, vendor: f.vendor.trim() || null, ...(f.vendorId ? { vendorId: f.vendorId } : {}), description: f.description.trim() || null, incurredOn: f.incurredOn,
       paymentMethod: (f.paymentMethod || null) as FinanceExpenseCreateRequest['paymentMethod'], dueDate: f.kind === 'bill' ? f.dueDate : null, invoiceNumber: f.kind === 'bill' ? f.invoiceNumber.trim() || null : null };
     try {
       if (edit) { const r = await posExpensesApi.update(f.id!, { ...fields, version: f.version!, reason: correction ? f.reason.trim() : null }); onSaved(r.expense.id, 'edit'); }
@@ -282,7 +295,12 @@ function ExpenseForm({ initial, today, categories, canApprove, onClose, onSaved 
           <option value="expense">{tx('pos.expense_already_paid')}</option><option value="bill">{tx('pos.bill_to_pay_later')}</option></select></label>
         <label className="fk-field"><span>{tx('pos.amount_2')} *</span><input inputMode="decimal" value={f.amount} onChange={(e) => set({ amount: e.target.value })} placeholder="0.00" data-testid="f-amount" /></label>
         <DateField label={tx('pos.date')} value={f.incurredOn} onChange={(d) => set({ incurredOn: d })} today={today} required testId="f-date" />
-        <label className="fk-field"><span>{tx('pos.vendor')}</span><input value={f.vendor} maxLength={200} onChange={(e) => set({ vendor: e.target.value })} onBlur={() => void suggest()} placeholder={tx('pos.e_g_sally_beauty')} data-testid="f-vendor" /></label>
+        <label className="fk-field"><span>{tx('pos.vendor')}</span><input value={f.vendor} maxLength={200} onChange={(e) => { set({ vendor: e.target.value, vendorId: null }); setVmatch(null); }} onBlur={() => { void lookupVendor(); void suggest(); }} placeholder={tx('pos.e_g_sally_beauty')} data-testid="f-vendor" />
+          {vmatch?.exact && f.vendorId === vmatch.exact.id ? <small className="fk-hint" data-testid="vendor-linked">{tx('finance.ex.vendor.linked', { name: vmatch.exact.name })}</small> : null}
+          {vmatch && !vmatch.exact && vmatch.suggestions.length ? <span className="fk-hint" data-testid="vendor-suggest"><small>{tx('finance.ex.vendor.didYouMean')}</small>
+            {vmatch.suggestions.map((v) => <button key={v.id} type="button" className="fk-chip" onClick={() => pickVendor(v)} data-testid={`vendor-pick-${v.id}`}>{v.name}</button>)}
+            <small>{tx('finance.ex.vendor.nearNote')}</small></span> : null}
+          {vmatch?.willCreateOnApproval ? <small className="fk-hint" data-testid="vendor-new">{tx('finance.ex.vendor.newOnApproval')}</small> : null}</label>
         <label className="fk-field"><span>{tx('pos.category')}</span>
           <select value={f.category} onChange={(e) => set({ category: e.target.value })} data-testid="f-category"><option value="">{tx('pos.choose_for_me')}</option>{categories.map((c) => <option key={c.key} value={c.key}>{serverText(c.label)}</option>)}</select>
           {suggested && f.category === suggested ? <small className="fk-hint">{tx('pos.suggested_from_the_vendor')}</small> : null}</label>

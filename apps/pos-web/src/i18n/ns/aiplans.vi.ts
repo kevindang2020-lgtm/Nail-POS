@@ -129,4 +129,15 @@ export const AIPLANS_VI: Record<string, string> = {
   "plx.overlap": "Tiệm đã có riêng {n} trợ lý trong gói này: {names}.",
   "plx.overlapPaid": "Hiện đang trả {price}/tháng cho chúng.",
   "plx.overlapConfirm": "Bắt đầu gói này không hủy các trợ lý tiệm đã đăng ký riêng — chúng vẫn tính giá riêng. Hãy xem Sử dụng & giới hạn AI để không trả tiền hai lần.",
+  "aiux.k.metering_stale": "Mức dùng vẫn đang được ghi nhận", // DRAFT — Kevin reviews
+  "aiux.d.metering_stale.PASSED": "Đã ghi nhận lượt gọi AI trong 14 ngày qua.", // DRAFT — Kevin reviews
+  "aiux.d.metering_stale.WARNING": "Gói đang hoạt động nhưng 14 ngày trở lên không ghi nhận lượt gọi AI nào. Có thể không ai dùng, hoặc mức dùng không còn được ghi nhận — hãy kiểm tra trước khi tin vào số liệu.", // DRAFT — Kevin reviews
+  "aiux.d.metering_stale.INSUFFICIENT_DATA": "Không có gói đang hoạt động có mức dùng để so sánh.", // DRAFT — Kevin reviews
+  "aiux.k.usage_spike": "Mức dùng tăng đột biến", // DRAFT — Kevin reviews
+  "aiux.d.usage_spike.PASSED": "Không gói nào dùng nhiều hơn hẳn mức thường ngày trong 24 giờ qua.", // DRAFT — Kevin reviews
+  "aiux.d.usage_spike.WARNING": "Một gói đã dùng gấp 3 lần trở lên mức thường ngày trong 24 giờ qua. Hãy xem lại — giới hạn và dữ liệu không thay đổi.", // DRAFT — Kevin reviews
+  "aiux.d.usage_spike.INSUFFICIENT_DATA": "Chưa đủ dữ liệu sử dụng trong hai tuần qua để so sánh.", // DRAFT — Kevin reviews
+  "aiux.k.duplicate_usage_events": "Một yêu cầu bị tính hai lần", // DRAFT — Kevin reviews
+  "aiux.d.duplicate_usage_events.PASSED": "Không yêu cầu nào bị tính nhiều hơn một lần trong 30 ngày qua.", // DRAFT — Kevin reviews
+  "aiux.d.duplicate_usage_events.WARNING": "Cùng một yêu cầu bị tính nhiều hơn một lần trong 30 ngày qua. Hãy báo lại — không có gì bị xóa hay hoàn tiền.", // DRAFT — Kevin reviews
 };

@@ -49,6 +49,42 @@ describe('Check AI Usage & Subscriptions', () => {
     expect((await q(sql`select count(*)::int as n from tenant_ai_subscriptions where tenant_id = ${T}`))[0].n).toBe(before);
     expect((await q(sql`select status from tenant_ai_subscriptions where tenant_id = ${T} and package_code = 'ai_ocr_receipt_scanner'`))[0].status).toBe('trialing');
   });
+  it('Extras · AI Usage Limits 06: a usage spike, one request metered twice and stale ingestion are flagged — nothing is changed', async () => {
+    const T3 = 'c7720000-0000-4000-8000-000000000003';
+    const c3 = { ...ctx, tenantId: T3 };
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T3}, 'S3', 'Spike', 'aiu-773', 'AIU773', 'active')`);
+    const by = (c: any, k: string) => c.checks.find((x: any) => x.key === k);
+    // nothing live, nothing counted: not enough data, never a fake pass
+    let c: any = await repo.check(c3);
+    expect(by(c, 'usage_spike').state).toBe('INSUFFICIENT_DATA');
+    expect(by(c, 'metering_stale').state).toBe('INSUFFICIENT_DATA');
+    expect(by(c, 'duplicate_usage_events')).toMatchObject({ state: 'PASSED', count: 0 });
+    await q(sql`insert into tenant_ai_subscriptions (id, tenant_id, package_code, status, billing_period, price_cents, currency, usage_limit, overage_enabled, current_period_starts_at)
+      values (gen_random_uuid(), ${T3}, 'ai_business_assistant', 'active', 'monthly', 2900, 'usd', 5000, false, now() - interval '20 days')`);
+    // last call 20 days ago: live package, the meter has been quiet for 14+ days
+    await q(sql`insert into ai_usage_logs (tenant_id, package_code, usage_unit, usage_amount, status, request_id, created_at) values (${T3}, 'ai_business_assistant', 'calls', 1, 'success', 'old-1', now() - interval '20 days')`);
+    await q(sql`delete from ai_usage_health_runs where tenant_id = ${T3}`);
+    c = await repo.check(c3);
+    expect(by(c, 'metering_stale').state).toBe('WARNING');
+    expect(by(c, 'metering_stale').count).toBeGreaterThanOrEqual(19);
+    // a steady 1 call a day for 14 days, then 30 in the last day: a spike; the same request id twice: a duplicate
+    await q(sql`insert into ai_usage_logs (tenant_id, package_code, usage_unit, usage_amount, status, request_id, created_at)
+      select ${T3}, 'ai_business_assistant', 'calls', 1, 'success', 'steady-' || g, now() - (g || ' days')::interval - interval '2 hours' from generate_series(1, 14) g`);
+    await q(sql`insert into ai_usage_logs (tenant_id, package_code, usage_unit, usage_amount, status, request_id, created_at)
+      select ${T3}, 'ai_business_assistant', 'calls', 1, 'success', 'burst-' || g, now() - interval '1 hour' from generate_series(1, 30) g`);
+    await q(sql`insert into ai_usage_logs (tenant_id, package_code, usage_unit, usage_amount, status, request_id, created_at) values (${T3}, 'ai_marketing_assistant', 'calls', 1, 'success', 'burst-1', now() - interval '1 hour')`);
+    const rows = (await q(sql`select count(*)::int as n from ai_usage_logs where tenant_id = ${T3}`))[0].n;
+    await q(sql`delete from ai_usage_health_runs where tenant_id = ${T3}`);
+    c = await repo.check(c3);
+    expect(by(c, 'usage_spike')).toMatchObject({ state: 'WARNING', count: 1, detail: { packages: ['ai_business_assistant'] } });
+    expect(by(c, 'duplicate_usage_events')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by(c, 'metering_stale').state).toBe('PASSED');
+    expect(c.overall).not.toBe('PASSED');
+    expect((await q(sql`select count(*)::int as n from ai_usage_logs where tenant_id = ${T3}`))[0].n).toBe(rows);   // the records stand
+    // another salon's spike is not this salon's
+    await q(sql`delete from ai_usage_health_runs where tenant_id = ${T}`);
+    expect(by(await repo.check(ctx), 'usage_spike').state).not.toBe('WARNING');
+  });
   it('AIC-01 AI Center reconcile: the stale "trialing" row counts as old Trial/Running, but now as trial expired and NOT runnable; the gate agrees', async () => {
     await sub('ai_booking_assistant', 'active');
     const r: any = await repo.reconcile(ctx, { AI_ENTITLEMENT_ENFORCEMENT: '' } as any);

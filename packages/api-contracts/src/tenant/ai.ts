@@ -219,7 +219,13 @@ export interface AibActivityPage { period: AibPeriod; basis: string; page: numbe
 export interface AibRequestDetail extends AibActivityRow {
   branchId: string | null;
   customer: { customerId: string | null; name: string | null; maskedPhone: string | null; verified: boolean; appointments: Array<{ appointmentId: string; date: string | null; time: string | null; status: string; source: string }> };
-  serviceLines: Array<{ name: string | null; priceCents: number | null; durationMinutes: number | null }>;
+  serviceLines: Array<{ name: string | null; priceCents: number | null; durationMinutes: number | null;
+    /** Extras (AI Booking Assistant 10): the line against the salon's CURRENT catalog — add-on, manual override (and its
+     *  reason), the catalog's own price / duration (null when the service is no longer in the catalog) */
+    serviceId?: string | null; isAddon?: boolean; parentServiceId?: string | null; manualOverride?: boolean; overrideReason?: string | null;
+    catalogPriceCents?: number | null; catalogDurationMinutes?: number | null; inCatalog?: boolean }>;
+  /** Extras (AI Booking Assistant 10): totals over the lines; catalogTotalCents null when any line has no catalog price */
+  serviceSummary?: { lines: number; addOns: number; totalPriceCents: number | null; totalDurationMinutes: number | null; catalogTotalCents: number | null; overrides: number; notInCatalog: number };
   timeline: Array<{ stage: string; outcome: string | null; failureReason: string | null; appointmentId: string | null; latencyMs: number | null; at: string | null }>;
   verification: Array<{ status: string; channel: string; maskedPhone: string; attempts: number; resends: number; expiresAt: string | null; verifiedAt: string | null; failureReason: string | null; at: string | null }>;
   communications: Array<{ kind: string; provider: string; providerReference: string | null; sentAt: string | null; status: string }>;

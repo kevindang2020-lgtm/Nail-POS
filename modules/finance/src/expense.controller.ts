@@ -12,7 +12,7 @@ import { ExpenseControllerListQueries } from './expense.list-queries';
 import type { ReportPeriod } from './expense-reports';
 import type { InboxTab, ExpenseAttention } from './expense.repository';
 import type {
-  FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceVendorSpend, FinanceExpensePage, FinanceExpenseSummary, FinanceExpenseDetail, FinanceExpenseCreateResult, FinanceExpenseResult,
+  FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceVendorSpend, FinanceVendorMatch, FinanceVendorMatchRequest, FinanceExpensePage, FinanceExpenseSummary, FinanceExpenseDetail, FinanceExpenseCreateResult, FinanceExpenseResult,
   FinanceDeleteResult, FinanceAttachResult, FinanceArchiveResult, FinanceBatchResult, FinanceDuplicateResult, FinanceCategoryRecommendation, FinanceImportResult, FinanceCategoryList,
   FinanceCategoryResult, FinanceRuleList, FinanceRuleResult, FinanceSettings, FinanceExpenseCreateRequest, FinanceExpenseUpdateRequest, FinanceVersionRequest,
   FinanceReasonRequest, FinanceDuplicateDecisionRequest, FinanceBillPaymentRequest, FinanceReimbursementRequest, FinanceAttachRequest, FinanceIdsRequest,
@@ -21,7 +21,7 @@ import type {
 } from '@aipowersalon/api-contracts/tenant';
 import {
   FIN_EXPENSE_CREATE_BODY, FIN_EXPENSE_UPDATE_BODY, FIN_VERSION_BODY, FIN_REASON_BODY, FIN_DUPLICATE_BODY, FIN_BILL_PAYMENT_BODY, FIN_REIMBURSEMENT_BODY,
-  FIN_ATTACH_BODY, FIN_IDS_BODY, FIN_CATEGORY_BODY, FIN_RULE_BODY, FIN_RULE_PREVIEW_BODY, FIN_SETTINGS_BODY, FIN_DUP_CHECK_BODY, FIN_RECOMMEND_BODY, FIN_IMPORT_BODY, FIN_PAYMENT_LINK_BODY,
+  FIN_ATTACH_BODY, FIN_IDS_BODY, FIN_CATEGORY_BODY, FIN_RULE_BODY, FIN_RULE_PREVIEW_BODY, FIN_SETTINGS_BODY, FIN_DUP_CHECK_BODY, FIN_RECOMMEND_BODY, FIN_VENDOR_MATCH_BODY, FIN_IMPORT_BODY, FIN_PAYMENT_LINK_BODY,
 } from './request-schemas';
 
 interface Req { ctx?: { tenantId?: string; userId?: string; role?: string; permissions?: string[]; branchId?: string | null } }
@@ -102,6 +102,8 @@ export class ExpenseController {
   @RequirePermission('owner.expenses.approve') @Post('expenses/batch/approve') batchApprove(@Req() r: Req, @Body(ValidatedBody(FIN_IDS_BODY, { strict: true })) b: FinanceIdsRequest): Promise<FinanceBatchResult> { return financeRun(() => this.svc.approveHighConfidence(financeCtx(r), b.ids, b.threshold ?? 0.95)); }
   @RequirePermission('owner.expenses.manage') @Post('expenses/batch/categorize') batchCategorize(@Req() r: Req, @Body(ValidatedBody(FIN_IDS_BODY, { strict: true })) b: FinanceIdsRequest): Promise<FinanceBatchResult> { return financeRun(() => this.svc.bulkCategorize(financeCtx(r), b.ids, b.categoryKey ?? '')); }
   @RequirePermission('owner.expenses.view') @Post('expenses/check-duplicates') checkDup(@Req() r: Req, @Body(ValidatedBody(FIN_DUP_CHECK_BODY, { strict: true })) b: FinanceDuplicateCheckRequest): Promise<FinanceDuplicateResult> { return financeRun(() => this.svc.checkDuplicates(financeCtx(r), b as never)); }
+  // Extras (Expenses Management 05): the salon's canonical vendor / similar vendors for typed words — read-only, never creates
+  @RequirePermission('owner.expenses.view') @Post('expenses/vendor-match') vendorMatch(@Req() r: Req, @Body(ValidatedBody(FIN_VENDOR_MATCH_BODY, { strict: true })) b: FinanceVendorMatchRequest): Promise<FinanceVendorMatch> { return financeRun(() => this.svc.vendorMatch(financeCtx(r), { vendor: b.vendor })); }
   @RequirePermission('owner.expenses.view') @Post('expenses/recommend-category') recommend(@Req() r: Req, @Body(ValidatedBody(FIN_RECOMMEND_BODY, { strict: true })) b: FinanceRecommendRequest): Promise<FinanceCategoryRecommendation> { return financeRun(() => this.svc.recommend(financeCtx(r), { vendor: b.vendor ?? null, lines: b.lines ?? [] })); }
   @RequirePermission('owner.expenses.manage') @Post('expenses/import') importCsv(@Req() r: Req, @Body(ValidatedBody(FIN_IMPORT_BODY, { strict: true })) b: FinanceImportRequest): Promise<FinanceImportResult> { return financeRun(() => this.svc.importRows(financeCtx(r), b.rows as never, { dryRun: !!b.dryRun })); }
 
