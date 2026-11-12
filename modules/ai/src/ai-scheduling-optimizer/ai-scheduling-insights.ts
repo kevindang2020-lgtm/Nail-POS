@@ -114,7 +114,7 @@ export class KyselyInsightStore implements InsightStore {
     const out: SchedInsight[] = [];
     for (const k of kind ? [kind] : KINDS) {
       if (k === 'duration') {
-        const rows = rowsOf(await sql`select dr.*, st.sample_size as st_n, st.median_min as st_median, st.p25_min as st_p25, st.p75_min as st_p75, st.p90_min as st_p90, st.stddev_min as st_stddev
+        const rows = rowsOf(await sql`select dr.id, dr.branch_id, dr.status, dr.version, dr.created_at, dr.confidence, dr.service_id, dr.technician_id, dr.action, dr.current_min, dr.suggested_min, dr.sample_size, dr.reason, st.sample_size as st_n, st.median_min as st_median, st.p25_min as st_p25, st.p75_min as st_p75, st.p90_min as st_p90, st.stddev_min as st_stddev
                                         from service_duration_recommendations dr
                                         left join service_duration_statistics st on st.tenant_id = dr.tenant_id and st.service_id = dr.service_id
                                              and st.branch_id is not distinct from dr.branch_id and st.technician_id is not distinct from dr.technician_id
