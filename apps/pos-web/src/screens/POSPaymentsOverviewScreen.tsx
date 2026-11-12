@@ -258,7 +258,7 @@ function PayoutsSpace({ d, onReconcile, onSettlements }: { d: any; onReconcile: 
               <td>{p.expectedDate ?? '—'}</td><td>{p.destination ?? tx('txn.notAvailable')}</td><td><span className={'fk-chip ' + (p.status === 'pending' ? 'info' : p.status === 'failed' || p.status === 'returned' ? 'bad' : 'ok')}>{codeLabel('rv.settle.' + p.status, p.status)}</span></td>
               <td>{p.bank === 'deposit_recorded' ? <span className="fk-chip ok">{tx('pm.bank.recorded', { d: p.depositedDate ?? '' })}</span> : <span className="fk-chip mut">{tx('pm.bank.notConfirmed')}</span>}</td></tr>)}</tbody></table>}
       </FitPanel>
-      <FitPanel testId="panel-health-wide" title={tx('pm.healthTitle')}><Health h={d.health} /><div className="fk-hint">{tx('pm.healthNote')}</div></FitPanel>
+      <FitPanel testId="panel-health-wide" title={tx('pm.healthTitle')}><PayoutForecast f={d.payoutForecast} /><Health h={d.health} /><div className="fk-hint">{tx('pm.healthNote')}</div></FitPanel>
     </div>
   );
 }
@@ -281,4 +281,21 @@ function SearchDialog({ q, pq, onClose, onTx, onInvoice, onPayout }: { q: string
       </>}
     </FitDialog>
   );
+}
+
+// extras Payments & Money 12 — Payout Forecast: the server's pending processor payouts by expected date and processor, each
+// date labelled with its source (the processor's own date, or estimated from the settlement date). Late = past the expected
+// date and still not deposited — never shown as arrived. Absent from an older server → nothing shown.
+type ForecastRow = { expectedDate: string | null; processor: string | null; source: 'processor' | 'estimated'; payouts: number; netCents: number; late: boolean };
+function PayoutForecast({ f }: { f?: { today: string; fundingDays: number; items: ForecastRow[]; totalCents: number } | null }) {
+  if (!f) return null;
+  return <section data-testid="payout-forecast">
+    <h3 className="fk-h3">{tx('pm.fc.title')}{f.items.length ? <span className="fk-muted"> · {fmtMoney(f.totalCents)}</span> : null}</h3>
+    {!f.items.length ? <div className="fk-hint" data-testid="payout-forecast-none">{tx('pm.fc.none')}</div>
+      : <ul className="fn-notes">{f.items.slice(0, 6).map((x) => <li key={`${x.expectedDate}|${x.processor}|${x.source}`} data-testid="payout-forecast-row">
+        <b>{x.expectedDate ?? '—'}</b> · {x.processor ? codeLabel('pm.fc.proc.' + x.processor, x.processor) : '—'} · {fmtMoney(x.netCents)} <span className="fk-muted">({tx('pm.fc.count', { n: fmtNumber(x.payouts) })})</span>{' '}
+        <span className={'fk-chip ' + (x.source === 'processor' ? 'info' : 'mut')} data-testid="payout-forecast-source">{tx('pm.fc.source.' + x.source, { d: String(f.fundingDays) })}</span>
+        {x.late ? <> <span className="fk-chip warn" data-testid="payout-forecast-late">{tx('pm.fc.late')}</span></> : null}</li>)}</ul>}
+    <div className="fk-hint">{tx('pm.fc.note')}</div>
+  </section>;
 }
