@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiSearch, FiPlus, FiMinus, FiAlertCircle } from 'react-icons/fi';
 import { ServiceCard, AddonCard, BookingSummary, type ServiceCatalogItem, type AddonItem, type PriceOverride } from '../components/BookingSharedComponents';
+import { QuickServiceCategoryPicker } from '../components/QuickServiceCategoryPicker';
+import { posServicesApi } from '../api/posServicesApi';
 import { posBookingApi } from '../api/posBookingApi';
 import { TechnicianPicker } from '../components/TechnicianPicker';
 import { useCan } from '../components/usePermissions';
@@ -64,7 +66,9 @@ export function POSWalkInScreen() {
 
   // Load Catalog
   useEffect(() => {
-    posBookingApi.state({ roster: 'none' }).then((res: any) => {   // §2: services + categories only; technicians come from the picker
+    let alive = true;
+    posBookingApi.state({ roster: 'none' }).then((res: any) => {
+      if (!alive) return;   // §2: services + categories only; technicians come from the picker
       const apiSvcs = (res.filters?.services || []).map((s: any) => ({
         serviceId: s.serviceId,
         name: s.name,
@@ -73,16 +77,27 @@ export function POSWalkInScreen() {
         durationMinutes: s.durationMinutes || 30
       }));
       setServices(apiSvcs);
-      if (apiSvcs.length > 0) {
-        const cats = Array.from(new Set([ALL_CATEGORIES, ...(res.filters?.serviceCategories || [])]));
-        setCategories(cats);
-      }
+      // Use the tenant's REAL catalog categories; examples from the mockup are never inserted as data.
+      // Booking state is the safe initial fallback when the catalog admin read is not permitted.
+      const fromBooking = [...(res.filters?.serviceCategories || []), ...apiSvcs.map((s: ServiceCatalogItem) => s.category)]
+        .filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0);
+      setCategories([ALL_CATEGORIES, ...Array.from(new Set<string>(fromBooking))]);
+      // Tenant category CRUD already exists; fetch the active category order, including empty categories.
+      // This is a read-only enrichment, never a second service catalog or a booking dependency.
+      void posServicesApi.categories().then((rows: any) => {
+        if (!alive || !Array.isArray(rows)) return;
+        const active = rows.filter((c: any) => c?.status === 'active' && typeof c?.name === 'string' && c.name.trim())
+          .map((c: any) => c.name as string);
+        setCategories([ALL_CATEGORIES, ...Array.from(new Set<string>(active))]);
+      }).catch(() => { /* Booking still works with the tenant-scoped booking-state categories. */ });
       setLoading(false);
     }).catch((e: any) => {
+      if (!alive) return;
       console.error(e);
       setCatalogError(CATALOG_ERROR);
       setLoading(false);
     });
+    return () => { alive = false; };
   }, []);
 
   // Click outside to close dropdown
@@ -403,31 +418,25 @@ export function POSWalkInScreen() {
               <h2 style={{ margin: 0, fontSize: 18 }}>{tx('pos.choose_services')}{' '}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>{tx('pos.tap_a_card_to_add_select_14er')}</span></h2>
             </div>
 
-            {/* Category Tabs */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 8, overflowX: 'auto' }}>
-              {(categories.length > 0 ? categories : [ALL_CATEGORIES]).map(cat => (
-                <button 
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: 20,
-                    border: activeCategory === cat ? 'none' : '1px solid var(--line)',
-                    background: activeCategory === cat ? 'var(--aps-orange)' : '#FFF',
-                    color: activeCategory === cat ? '#FFF' : 'var(--text)',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >{cat === ALL_CATEGORIES ? tx('pos.all_services') : cat}</button>
-              ))}
-            </div>
+            {/* In-page quick picker: replaces old horizontal category tabs; sidebar and top bar untouched. */}
+            <QuickServiceCategoryPicker
+              categories={categories}
+              services={services}
+              activeCategory={activeCategory}
+              onSelectCategory={setActiveCategory}
+              allValue={ALL_CATEGORIES}
+              allLabel={tx('pos.all_services')}
+            />
 
             {/* Service Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 185px), 1fr))', gap: 12 }}>
               {services.length === 0 && (
                 <div role="status" className="s muted" style={{ padding: 12 }}>{catalogError ? tx(catalogError) : (loading ? tx('pos.loading_services') : tx('pos.this_salon_has_no_services_in_387i'))}</div>
+              )}
+              {services.length > 0 && activeCategory !== ALL_CATEGORIES && !services.some(s => s.category === activeCategory) && (
+                <div role="status" className="s muted" data-testid="empty-category-services" style={{ padding: 14 }}>
+                  {tx('pos.this_salon_has_no_services_in_387i')}
+                </div>
               )}
               {services.filter(s => activeCategory === ALL_CATEGORIES || s.category === activeCategory).map(svc => (
                 <ServiceCard 
