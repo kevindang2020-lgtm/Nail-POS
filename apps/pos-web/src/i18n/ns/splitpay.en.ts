@@ -33,5 +33,13 @@ export const SPLITPAY_EN = {
   'sp.linesTitle': 'Services & products', 'sp.auditTitle': 'Audit trail',
   'sp.refundNote': 'Refunds are made from Refunds & Voids against the original tender, through the processor. Nothing on this page moves money.',
   'sp.pendingBanner': '{n} ticket(s) have a card payment still waiting for its result. It is not counted as paid — check the original attempt in the ticket before charging again.',
+  'sp.dup.title': 'Duplicate event check',
+  'sp.dup.none': 'No duplicate events across {n} tender(s): no repeated callbacks, no repeated operation reference, no double posting.',
+  'sp.dup.row': '{t} — {n}',
+  'sp.dup.k.repeated_callbacks': 'Repeated processor callback',
+  'sp.dup.k.repeated_operation': 'Same reference on another tender',
+  'sp.dup.k.duplicate_gift_posting': 'Posted twice to gift-card ledger',
+  'sp.dup.k.duplicate_drawer_posting': 'Posted twice to cash drawer',
+  'sp.dup.safe': 'Diagnosis only — nothing is erased or reversed here. Verify, then correct through Refunds & Voids or the cash drawer with a reason.',
 } as const;
 

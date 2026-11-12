@@ -14,11 +14,13 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
+import { readSession, writeSession } from '../components/useSessionState';
 import { AICustomerProfilePanel } from './AICustomerProfilePanel';
 import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+const CSX_FILTERS_KEY = 'aps.csx.filters';
 const URL_KEYS = ['status', 'booking', 'technician', 'service', 'branch', 'dateField', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
 const STATE_TONE: Record<string, 'ok' | 'warn' | 'bad' | undefined> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', UNKNOWN: undefined };
 const LIFE_TONE: Record<string, string> = { active: 'ok', inactive: 'warn', never: '', archived: 'bad', unknown: '' };
@@ -39,6 +41,20 @@ export function POSAICustomerSearchScreen() {
     if (!keepPage) next.delete('page');
     setSp(next, { replace: true });
   };
+  // extras (Customer Search 05) — Recent filters: the last filter set (status / booking / technician / service / branch /
+  // date field / period / sort / page size — NEVER the typed search term, a phone or a name) is kept for this browser tab
+  // only (useSessionState keys are dropped on sign-out and when the user or salon changes, so another employee on a shared
+  // terminal never sees it) and restored when the screen is opened again without filters in the link.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (URL_KEYS.some((k) => sp.get(k))) return;
+    const saved = readSession<Record<string, string>>(CSX_FILTERS_KEY, {});
+    const next = new URLSearchParams();
+    for (const k of URL_KEYS) if (k !== 'page' && typeof saved[k] === 'string' && saved[k]) next.set(k, saved[k]);
+    if ([...next.keys()].length) { setSp(next, { replace: true }); setRestored(true); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { const keep: Record<string, string> = {}; for (const k of URL_KEYS) if (k !== 'page' && f[k]) keep[k] = f[k]; writeSession(CSX_FILTERS_KEY, keep); }, [f]);
   const query: CustomerSearchQuery = { ...f, q: q || undefined, page: Number(f.page ?? 1), pageSize: Number(f.pageSize ?? 25) };
   const range = { branch: f.branch, preset: f.preset && f.preset !== 'all' ? f.preset : 'month', from: f.from, to: f.to };
 
@@ -140,6 +156,7 @@ export function POSAICustomerSearchScreen() {
           {(['today', 'week', 'month', 'year'] as const).map((p) => <button key={p} className={'btn ghost' + (f.preset === p ? ' on' : '')} data-testid={`preset-${p}`} onClick={() => setF({ preset: p, from: null, to: null })}>{t('csx.preset.' + p)}</button>)}
           <button className={'btn ghost' + (f.preset === 'custom' ? ' on' : '')} data-testid="preset-custom" onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : t('csx.preset.custom')}</button>
         </div>
+        {restored && anyFilter ? <span className="muted" data-testid="csx-restored">{t('csx.filtersRestored')}</span> : null}
         {anyFilter ? <button className="btn ghost" data-testid="flt-clear" onClick={() => { setDraft(''); setQ(''); setSp(new URLSearchParams(), { replace: true }); }}>{t('csx.clearAll')}</button> : null}
         {cal ? <div className="rvw-cal" data-testid="csx-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.today ?? deviceToday()}
           onApply={(r) => { setF({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setF({ preset: null, from: null, to: null }); setCal(false); }} /></div> : null}

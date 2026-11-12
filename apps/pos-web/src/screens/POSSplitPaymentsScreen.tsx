@@ -173,6 +173,7 @@ function DetailDialog({ id, onClose, onCustomer, onTransactions, onCheckout }: {
             <td><span className={'fk-chip ' + (TENDER_TONE[x.state] ?? 'mut')}>{tx('sp.tstate.' + x.state)}</span>{x.state !== 'confirmed' ? <span className="fk-li-s">{x.rawStatus}</span> : null}</td>
             <td className="fn-mono">{x.processorRef ?? (x.giftCard?.ledgerEntryId ? tx('sp.giftLedger') : x.drawerMovementId ? tx('sp.drawerEntry') : '—')}</td>
             <td className="num">{x.refundedCents ? fmtMoney(x.refundedCents) : '—'}{x.state === 'confirmed' && x.refundedCents ? <span className="fk-li-s">{tx('sp.t.refundable', { a: fmtMoney(x.refundableCents) })}</span> : null}</td><td>{when(x.at)}</td></tr>)}</tbody></table>
+        <DuplicateEvents r={d.data.duplicateEvents} tenders={d.data.tenders} />
         {d.data.refunds.length ? <><h3 className="fk-h3">{tx('sp.refundsTitle')}</h3><ul className="fn-notes">{d.data.refunds.map((x: any) => <li key={x.id}><span className="fk-li-s">{when(x.at)} · {x.actor ?? '—'} · {codeLabel('sp.rstate.' + x.status, x.status)}</span><div>−{fmtMoney(x.amountCents)}{x.reason ? ` — ${x.reason}` : ''}{x.processorRefundId ? ` · ${x.processorRefundId}` : ''}</div></li>)}</ul></> : null}
         {d.data.lines?.length ? <><h3 className="fk-h3">{tx('sp.linesTitle')}</h3><table className="fk-table"><tbody>{d.data.lines.map((l: any) => <tr key={l.id}><td>{l.name ?? '—'}</td><td>{l.technician ?? ''}</td><td className="num">{fmtMoney(l.cents)}</td></tr>)}</tbody></table></> : null}
         {d.data.audit?.length ? <><h3 className="fk-h3">{tx('sp.auditTitle')}</h3><ul className="fn-notes">{d.data.audit.slice(0, 8).map((a: any, i: number) => <li key={i}><span className="fk-li-s">{when(a.at)} · {a.actor ?? '—'}</span><div>{codeLabel('sp.audit.' + a.action, a.action)}</div></li>)}</ul></> : null}
@@ -180,4 +181,20 @@ function DetailDialog({ id, onClose, onCustomer, onTransactions, onCheckout }: {
       </>}
     </FitDialog>
   );
+}
+
+// extras (Split Payments 13) — Duplicate event detector: the server's recorded signals for this ticket's tenders (repeated
+// processor callbacks, the same operation reference on another tender, a tender posted twice to the gift-card ledger or the
+// cash drawer). Diagnosis only — no button here erases, reverses or merges anything. Absent from an older server → nothing.
+type DupEvents = { checkedTenders: number; findings: Array<{ paymentId: string; kind: string; count: number; ref: string | null }> };
+export function DuplicateEvents({ r, tenders }: { r?: DupEvents | null; tenders: Array<{ id: string; method: string; amountCents: number }> }) {
+  if (!r) return null;
+  const tender = (id: string) => { const x = tenders.find((t) => t.id === id); return x ? `${methodLbl(x.method)} ${fmtMoney(x.amountCents)}` : id.slice(-8).toUpperCase(); };
+  return <section data-testid="sp-dup">
+    <h3 className="fk-h3">{tx('sp.dup.title')}</h3>
+    {!r.findings.length ? <div className="fk-hint" data-testid="sp-dup-none">{tx('sp.dup.none', { n: fmtNumber(r.checkedTenders) })}</div>
+      : <ul className="fn-notes">{r.findings.map((f, i) => <li key={f.paymentId + f.kind + i} data-testid="sp-dup-row"><span className="fk-chip warn">{codeLabel('sp.dup.k.' + f.kind, f.kind)}</span>{' '}
+        <span>{tx('sp.dup.row', { t: tender(f.paymentId), n: fmtNumber(f.count) })}</span>{f.ref ? <span className="fk-li-s fn-mono"> {f.ref}</span> : null}</li>)}</ul>}
+    <div className="fk-hint">{tx('sp.dup.safe')}</div>
+  </section>;
 }

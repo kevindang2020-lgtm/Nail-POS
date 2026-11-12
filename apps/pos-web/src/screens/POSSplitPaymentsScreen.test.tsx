@@ -68,4 +68,20 @@ describe('POSSplitPaymentsScreen', () => {
     mount();
     expect(await screen.findByTestId('pending-banner')).toHaveTextContent(/2 ticket\(s\).*not counted as paid/);
   });
+  it('Split Payments 13: the detail lists each duplicate-event finding per tender with no erase action; a clean ticket says so', async () => {
+    const base = { ticket: t120, financials: { subtotalCents: 12000, discountCents: 0, taxCents: 0, tipCents: 0, surchargeCents: 0, totalCents: 12000, paidCents: 7000, refundedCents: 0, balanceCents: 5000 },
+      tenders: [{ id: 'p1', method: 'card', channel: null, amountCents: 7000, tipCents: 0, surchargeCents: 0, state: 'confirmed', rawStatus: 'approved', processorRef: 'RR9', card: null, giftCard: null, refundedCents: 0, refundableCents: 7000, refunds: 0, at: '2026-10-29T10:30:00Z' }],
+      reversalRows: [], refunds: [], lines: [], tipAllocations: [], audit: [], permissions: { refund: false, customer: false } };
+    api.detail.mockResolvedValue({ ...base, duplicateEvents: { checkedTenders: 1, findings: [{ paymentId: 'p1', kind: 'repeated_callbacks', count: 2, ref: 'RR9' }, { paymentId: 'p1', kind: 'duplicate_drawer_posting', count: 2, ref: null }] } });
+    mount(); await screen.findAllByTestId('ticket-row');
+    fireEvent.click(screen.getAllByRole('button', { name: 'View' })[0]);
+    const box = await screen.findByTestId('sp-dup');
+    const rows = screen.getAllByTestId('sp-dup-row');
+    expect(rows[0]).toHaveTextContent('Repeated processor callback'); expect(rows[0]).toHaveTextContent('$70.00 — 2'); expect(rows[0]).toHaveTextContent('RR9');
+    expect(rows[1]).toHaveTextContent('Posted twice to cash drawer');
+    expect(box.querySelectorAll('button')).toHaveLength(0);
+    api.detail.mockResolvedValue({ ...base, duplicateEvents: { checkedTenders: 1, findings: [] } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'View' })[1]);
+    expect(await screen.findByTestId('sp-dup-none')).toHaveTextContent('across 1 tender(s)');
+  });
 });

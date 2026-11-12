@@ -106,4 +106,22 @@ describe('POSAICustomerSearchScreen', () => {
     fireEvent.click(screen.getByTestId('csx-refresh'));
     expect(await screen.findByText(/cannot search customers/i)).toBeInTheDocument();
   });
+  it('Customer Search 05: the last filters (never the search text) come back when the screen is opened again in this tab', async () => {
+    sessionStorage.clear();
+    const first = mount();
+    await screen.findAllByTestId('csx-row');
+    fireEvent.change(screen.getByTestId('flt-status'), { target: { value: 'inactive' } });
+    fireEvent.change(screen.getByTestId('csx-search'), { target: { value: '8565550101' } });
+    fireEvent.click(screen.getByTestId('csx-search-btn'));
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'inactive', q: '8565550101' })));
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem('aps.csx.filters') ?? '{}')).toEqual({ status: 'inactive' }));
+    expect(sessionStorage.getItem('aps.csx.filters')).not.toContain('8565550101');
+    first.unmount(); api.customers.mockClear();
+    mount();
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'inactive', q: undefined })));
+    expect(await screen.findByTestId('csx-restored')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('flt-clear'));
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem('aps.csx.filters') ?? '{}')).toEqual({}));
+    sessionStorage.clear();
+  });
 });

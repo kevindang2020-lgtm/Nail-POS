@@ -505,4 +505,8 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.q.finish.acrylic": "Bột acrylic", // DRAFT — Kevin reviews
   "cnx.q.finish.regular": "Sơn thường", // DRAFT — Kevin reviews
   "cnx.q.finish.builder": "Gel đắp (builder)", // DRAFT — Kevin reviews
+  "csx.filtersRestored": "Bộ lọc của bạn từ trước trong phiên này (không lưu nội dung tìm kiếm)", // DRAFT — Kevin reviews
+  "cnx.conflict": "Có người đã thay đổi ghi chú này sau khi bạn mở. Chưa lưu gì.", // DRAFT — Kevin reviews
+  "cnx.loadTheirs": "Tải phiên bản của họ", // DRAFT — Kevin reviews
+  "cnx.saveAnyway": "Vẫn lưu bản của tôi", // DRAFT — Kevin reviews
 };

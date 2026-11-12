@@ -1,6 +1,6 @@
 // Customer Notes extras (Nov 11 2026): nail-service quick chips; closing with unsaved edits asks first
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: {
   quickSearch: vi.fn(async () => ({ items: [{ customerId: 'c1', fullName: 'Grace Kim', phone: '', visitsCount: 2 }] })),
   getNotes: vi.fn(async () => ({ salonNotes: 'Likes almond shape', preferredStyle: 'Prefers nude tones' })),
@@ -38,5 +38,36 @@ describe('quick notes', () => {
     await openGrace();
     fireEvent.click(screen.getByTestId('cnx-ed-close'));
     expect(screen.queryByTestId('cnx-editor')).toBeNull();
+  });
+});
+
+describe('Customer Profiles 06 — version check before saving notes', () => {
+  it('someone else changed the notes meanwhile → nothing is written until Load theirs or Save mine anyway', async () => {
+    const { posCustomersApi: api } = await import('../api/posCustomersApi') as any;
+    api.setNotes.mockReset(); api.setNotes.mockImplementation(async (_id: string, n: any) => n);
+    await openGrace();
+    fireEvent.change(screen.getByTestId('cnx-ed-salonNotes'), { target: { value: 'Likes coffin shape' } });
+    api.getNotes.mockResolvedValueOnce({ salonNotes: 'Likes almond shape', preferredStyle: 'Prefers nude tones', warnings: 'Latex allergy — added by Lan' });
+    fireEvent.click(screen.getByTestId('cnx-ed-save'));
+    expect(await screen.findByTestId('cnx-ed-conflict')).toBeInTheDocument();
+    expect(api.setNotes).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('cnx-ed-save-anyway'));
+    await waitFor(() => expect(api.setNotes).toHaveBeenCalledWith('c1', expect.objectContaining({ salonNotes: 'Likes coffin shape' })));
+    expect(screen.queryByTestId('cnx-ed-conflict')).toBeNull();
+  });
+  it('Load theirs replaces the form with their version; an unchanged server saves straight away', async () => {
+    const { posCustomersApi: api } = await import('../api/posCustomersApi') as any;
+    api.setNotes.mockReset(); api.setNotes.mockImplementation(async (_id: string, n: any) => n);
+    await openGrace();
+    fireEvent.change(screen.getByTestId('cnx-ed-salonNotes'), { target: { value: 'Mine' } });
+    api.getNotes.mockResolvedValueOnce({ salonNotes: 'Theirs', preferredStyle: 'Prefers nude tones' });
+    fireEvent.click(screen.getByTestId('cnx-ed-save'));
+    fireEvent.click(await screen.findByTestId('cnx-ed-load-theirs'));
+    expect(screen.getByTestId('cnx-ed-salonNotes')).toHaveValue('Theirs');
+    expect(api.setNotes).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId('cnx-ed-salonNotes'), { target: { value: 'Theirs + mine' } });
+    api.getNotes.mockResolvedValueOnce({ salonNotes: 'Theirs', preferredStyle: 'Prefers nude tones' });
+    fireEvent.click(screen.getByTestId('cnx-ed-save'));
+    await waitFor(() => expect(api.setNotes).toHaveBeenCalledWith('c1', expect.objectContaining({ salonNotes: 'Theirs + mine' })));
   });
 });

@@ -505,4 +505,8 @@ export const CSEARCH_EN: Record<string, string> = {
   "cnx.q.finish.acrylic": "Acrylic",
   "cnx.q.finish.regular": "Regular polish",
   "cnx.q.finish.builder": "Builder gel",
+  "csx.filtersRestored": "Your filters from earlier in this session (search text is never kept)",
+  "cnx.conflict": "Someone changed these notes after you opened them. Nothing was saved.",
+  "cnx.loadTheirs": "Load their version",
+  "cnx.saveAnyway": "Save mine anyway",
 };
