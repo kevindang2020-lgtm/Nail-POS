@@ -364,4 +364,11 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.cm.missing": "thiếu {n}", // DRAFT — Kevin reviews
   "mpx.cm.stale": "{n} đã thay đổi từ lần cảnh báo kiểm tra gần nhất", // DRAFT — Kevin reviews
   "mpx.cm.limited": "Thông tin khách hàng bị ẩn với vai trò của bạn (giới hạn quyền).", // DRAFT — Kevin reviews
+  "mpx.set.eff.running": "Hiệu lực: đang chạy", // DRAFT — Kevin reviews
+  "mpx.set.eff.drift": "Đã lưu bật · chưa chạy", // DRAFT — Kevin reviews
+  "mpx.set.eff.driftWhy": "Đã lưu là Bật nhưng lớp phát hiện đang tắt, nên quy tắc này chưa kiểm tra gì.", // DRAFT — Kevin reviews
+  "mpx.set.eff.off": "Hiệu lực: tắt", // DRAFT — Kevin reviews
+  "mpx.set.eff.unknown": "Hiệu lực: —", // DRAFT — Kevin reviews
+  "mpx.stale.note": "Dữ liệu cũ — không làm mới được. Đang hiển thị kết quả tải lúc {t}.", // DRAFT — Kevin reviews
+  "mpx.stale.retry": "Thử lại", // DRAFT — Kevin reviews
 };

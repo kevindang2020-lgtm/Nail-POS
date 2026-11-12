@@ -364,4 +364,11 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.cm.missing": "{n} missing",
   "mpx.cm.stale": "{n} changed since the alert last checked",
   "mpx.cm.limited": "Customer details are hidden for your role (permission-limited).",
+  "mpx.set.eff.running": "Effective: running",
+  "mpx.set.eff.drift": "Saved on · not running",
+  "mpx.set.eff.driftWhy": "Saved as On, but its detection layer is off, so this rule is not checking anything yet.",
+  "mpx.set.eff.off": "Effective: off",
+  "mpx.set.eff.unknown": "Effective: —",
+  "mpx.stale.note": "Stale — could not refresh. Showing the last results loaded at {t}.",
+  "mpx.stale.retry": "Retry",
 };

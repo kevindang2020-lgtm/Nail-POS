@@ -129,3 +129,30 @@ describe('POSAIMoneyProtectionAlertsScreen in Vietnamese', () => {
     expect(other.getAttribute('lang')).toBe('vi');
   });
 });
+
+describe('Money Protection alerts — offline-safe (extras #15)', () => {
+  it('a failed refresh keeps the last-known rows, marked Stale with Retry; Retry that succeeds clears it', async () => {
+    mc.alertAction.mockResolvedValue({ status: 'DISMISSED_FALSE_POSITIVE' });
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-alert-view'));
+    await screen.findByTestId('mpx-d-sources');
+    mc.alerts.mockRejectedValue(new Error('offline'));
+    fireEvent.click(screen.getByTestId('mpx-act-dismiss'));
+    fireEvent.change(screen.getByTestId('mpx-reason'), { target: { value: 'Webhook retried; one capture voided' } });
+    fireEvent.click(screen.getByTestId('mpx-act-go'));
+    const stale = await screen.findByTestId('mpx-alerts-stale');
+    expect(stale).toHaveTextContent(/Stale — could not refresh\. Showing the last results loaded at /);
+    expect(screen.getAllByTestId('mpx-alert-row')).toHaveLength(1);   // last-known rows stay — never a blank or a zero
+    mc.alerts.mockResolvedValue(page([row]));
+    fireEvent.click(screen.getByTestId('mpx-alerts-stale-retry'));
+    await waitFor(() => expect(screen.queryByTestId('mpx-alerts-stale')).toBeNull());
+  });
+  it('a failed read for a NEW query (different filter) is an error, not stale old rows', async () => {
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    await screen.findAllByTestId('mpx-alert-row');
+    mc.alerts.mockRejectedValue(new Error('offline'));
+    fireEvent.click(screen.getByTestId('mpx-preset-week'));
+    await waitFor(() => expect(screen.queryAllByTestId('mpx-alert-row')).toHaveLength(0));
+    expect(screen.queryByTestId('mpx-alerts-stale')).toBeNull();
+  });
+});
