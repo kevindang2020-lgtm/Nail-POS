@@ -258,8 +258,26 @@ export class ReputationCenter {
     const rows = (await sql<Row>`with m as (select generate_series(date_trunc('month', ${today}::date) - make_interval(months => ${months - 1}), date_trunc('month', ${today}::date), interval '1 month')::date as month)
       select m.month::text as month, x.* from m left join lateral (select ${this.metricsSelect(T)} from ${this.FROM()} where r.tenant_id = ${T} and ${W}
         and (coalesce(r.review_date, r.created_at) at time zone ${tz})::date >= m.month and (coalesce(r.review_date, r.created_at) at time zone ${tz})::date < (m.month + interval '1 month')::date) x on true order by m.month`.execute(this.db)).rows;
+    // extras (Review Reputation 17 — recurring complaints): over the SAME window and filters as the months above — the rating
+    // distribution, and the complaint topics each review's LATEST saved classification (review_analysis.categories) names,
+    // counted once per review. Counts only; nothing here says a topic caused anything.
+    const first = rows.length ? String(rows[0].month) : today;
+    const inWindow = sql`(coalesce(r.review_date, r.created_at) at time zone ${tz})::date >= ${first}::date`;
+    const dist = (await sql<Row>`select count(*) filter (where r.rating = 1)::int as r1, count(*) filter (where r.rating = 2)::int as r2, count(*) filter (where r.rating = 3)::int as r3,
+        count(*) filter (where r.rating = 4)::int as r4, count(*) filter (where r.rating = 5)::int as r5, count(*) filter (where r.rating is null or r.rating not between 1 and 5)::int as unrated,
+        count(la.review_id)::int as classified, count(*)::int as reviews
+      from reviews r left join lateral (select a.review_id from review_analysis a where a.tenant_id = r.tenant_id and a.review_id = r.id limit 1) la on true
+      where r.tenant_id = ${T} and ${W} and ${inWindow}`.execute(this.db)).rows[0] ?? {};
+    const topics = (await sql<Row>`select c.cat, count(*)::int as reviews, count(*) filter (where r.sentiment = 'negative')::int as negative
+      from reviews r join lateral (select a.categories from review_analysis a where a.tenant_id = r.tenant_id and a.review_id = r.id order by a.analyzed_at desc, a.id desc limit 1) la on true
+      cross join lateral (select distinct x.cat from jsonb_array_elements_text(case when jsonb_typeof(la.categories) = 'array' then la.categories else '[]'::jsonb end) as x(cat)) c
+      where r.tenant_id = ${T} and ${W} and ${inWindow}
+      group by c.cat order by reviews desc, c.cat limit 25`.execute(this.db)).rows;
     return { months: rows.map((x) => ({ month: String(x.month).slice(0, 7), ...this.metricsOut(x), sample: N(x.reviews) < 5 ? 'too_few' : N(x.reviews) < 20 ? 'small' : 'ok' })), timeZone: tz,
-      note: 'Associations over time, not causes. Months with few reviews are marked.' };
+      note: 'Associations over time, not causes. Months with few reviews are marked.',
+      ratingDistribution: { from: first.slice(0, 10), reviews: N(dist.reviews), stars: [1, 2, 3, 4, 5].map((k) => ({ stars: k, count: N(dist['r' + k]) })), unrated: N(dist.unrated) },
+      recurringTopics: { classifiedReviews: N(dist.classified), basis: 'latest_saved_classification',
+        items: topics.map((x) => ({ topic: String(x.cat), reviews: N(x.reviews), negative: N(x.negative), recurring: N(x.reviews) >= 2 })) } };
   }
 
   // ── Branch Comparison (authorized branches only, same definitions) ────────────────────────────────────────────

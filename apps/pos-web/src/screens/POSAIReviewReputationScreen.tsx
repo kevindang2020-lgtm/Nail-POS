@@ -17,6 +17,7 @@ import { posReputationApi as rp } from '../api/posReputationApi';
 import { posAiReviewReputationApi as apiR } from '../api/posAiReviewReputationApi';
 import { errorTextOf } from '../i18n/error-text';
 import { statusLabel } from '../i18n/status-label';
+import { codeLabel } from '../components/codeLabel';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
@@ -232,7 +233,31 @@ function TrendsTab({ source }: { source: string }) {
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('rpx.col.month')}</th><th>{t('rpx.col.count')}</th><th>{t('pos.average_rating_3')}</th><th>{t('pos.negative_share')}</th><th>{t('pos.response_rate')}</th><th /></tr></thead>
           <tbody>{d.months.map((x: any) => <tr key={x.month} data-testid="rpx-trend-row"><td>{x.month}</td><td className="num">{fmtNumber(x.reviews)}</td><td className="num">{rating(x.averageRating)}</td>
             <td className="num">{pctText(x.negativeShare)}</td><td className="num">{pctText(x.responseRate)}</td><td className="sub">{x.sample !== 'ok' ? t('rpx.sample.' + x.sample) : null}</td></tr>)}</tbody></table></div>)}
+      {d ? <ReputationPatterns d={d} /> : null}
     </section>
+  );
+}
+
+/** extras (Review Reputation 17): over the same 12 months and source — the rating distribution and the complaint topics
+ *  named by each review's latest saved classification. Counts only; it never claims a cause. Absent from an older server → nothing. */
+function ReputationPatterns({ d }: { d: any }) {
+  const dist = d.ratingDistribution; const top = d.recurringTopics;
+  if (!dist && !top) return null;
+  const max = Math.max(1, ...(dist?.stars ?? []).map((x: any) => Number(x.count) || 0));
+  return (
+    <div className="rvw-patterns" data-testid="rpx-patterns">
+      {dist ? <div data-testid="rpx-dist"><h3>{t('rpx.pat.dist')}</h3>
+        <ul className="fk-list dense">{[...dist.stars].reverse().map((x: any) => <li key={x.stars} data-testid="rpx-dist-row"><span>{t('rpx.pat.stars', { n: x.stars })}</span>
+          <span aria-hidden="true" style={{ display: 'inline-block', height: 8, width: `${Math.round((Number(x.count) / max) * 120)}px`, background: 'currentColor', opacity: 0.35, margin: '0 8px' }} />
+          <b>{fmtNumber(x.count)}</b></li>)}</ul>
+        {dist.unrated ? <p className="sub">{t('rpx.pat.unrated', { n: fmtNumber(dist.unrated) })}</p> : null}</div> : null}
+      {top ? <div data-testid="rpx-topics"><h3>{t('rpx.pat.topics')}</h3>
+        <p className="sub">{t('rpx.pat.basis', { n: fmtNumber(top.classifiedReviews) })}</p>
+        {!top.items.length ? <div className="state" data-testid="rpx-topics-none">{t('rpx.pat.noTopics')}</div>
+          : <ul className="fk-list dense">{top.items.map((x: any) => <li key={x.topic} data-testid="rpx-topic"><span>{codeLabel('rpx.topic', x.topic)}{x.recurring ? <span className="chip warn" style={{ marginLeft: 6 }}>{t('rpx.pat.recurring')}</span> : null}</span>
+            <span className="sub">{t('rpx.pat.topicV', { n: fmtNumber(x.reviews), neg: fmtNumber(x.negative) })}</span></li>)}</ul>}
+        <p className="sub">{t('rpx.pat.note')}</p></div> : null}
+    </div>
   );
 }
 

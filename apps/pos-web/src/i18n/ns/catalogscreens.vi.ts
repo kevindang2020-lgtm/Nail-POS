@@ -446,4 +446,10 @@ export const CATALOGSCREENS_VI = {
   "cg.ao.why.price_varies_by_service": "Giá mặc định khác nhau theo dịch vụ", // DRAFT — Kevin reviews
   "cg.ao.why.no_active_menu_price": "Hiện không có giá menu đang hoạt động cho dịch vụ thêm này", // DRAFT — Kevin reviews
   "cg.ao.why.tax_on_ticket": "Chịu thuế — thuế được cộng trên phiếu, không nằm trong dòng này", // DRAFT — Kevin reviews
+  "cg.ao.mp.review": "Xem lại thay đổi", // DRAFT — Kevin reviews
+  "cg.ao.mp.name": "Tên", // DRAFT — Kevin reviews
+  "cg.ao.mp.added": "Đã thêm", // DRAFT — Kevin reviews
+  "cg.ao.mp.none": "Không có gì thay đổi — mọi lượt áp dụng đã có các giá trị này.", // DRAFT — Kevin reviews
+  "cg.ao.mp.count": "{n} thay đổi trên {o} lượt áp dụng — chưa lưu gì cho đến khi bạn nhấn Lưu thay đổi.", // DRAFT — Kevin reviews
+  "cg.ao.mp.undo": "Để hoàn tác sau khi lưu, hãy sửa lại theo các giá trị cũ hiển thị ở đây; mỗi thay đổi được giữ trong Nhật ký của dịch vụ thêm này.", // DRAFT — Kevin reviews
 };

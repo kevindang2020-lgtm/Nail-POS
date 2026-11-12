@@ -335,4 +335,14 @@ describe('shared read-only Check … System', () => {
     expect(count(b2, 'profile_change_waiting').count).toBe(0);
     expect((await q(sql`select (select count(*) from team_training_assignments) + (select count(*) from technician_certifications) + (select count(*) from tech_profile_change_requests) as n`)).rows).toEqual(before.rows);
   });
+  it('extras PAYMENTS & MONEY 04: a cash or gift-card tender tied to a processor settlement batch is counted (a card one is not; another salon never)', async () => {
+    const SB = id(640), SBX = id(641), K1 = id(642), KX = id(643);
+    await q(sql`insert into payment_settlements (id, tenant_id, branch_id, settlement_id, gross_cents, net_cents) values (${SB}, ${T}, ${B1}, 'B-640', 9000, 8800), (${SBX}, ${X}, ${BX}, 'B-641', 100, 100)`);
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents) values (${K1}, ${T}, ${B1}, ${id(21)}, 'open', 0, 0, 0, 0), (${KX}, ${X}, ${BX}, ${id(22)}, 'open', 0, 0, 0, 0)`);
+    await q(sql`insert into payments (tenant_id, branch_id, ticket_id, method, amount_cents, status, settlement_batch_id) values
+      (${T}, ${B1}, ${K1}, 'cash', 2000, 'approved', ${SB}), (${T}, ${B1}, ${K1}, 'gift_card', 1000, 'approved', ${SB}), (${T}, ${B1}, ${K1}, 'card', 6000, 'approved', ${SB}),
+      (${T}, ${B1}, ${K1}, 'cash', 500, 'declined', ${SB}), (${X}, ${BX}, ${KX}, 'cash', 100, 'approved', ${SBX})`);
+    expect(count(await svc.run('payments', { tenantId: T }), 'non_card_in_processor_batch')).toMatchObject({ state: 'FAILED', count: 2 });
+    expect(count(await svc.run('payments', { tenantId: T, branchId: B2 }), 'non_card_in_processor_batch')).toMatchObject({ state: 'READY', count: 0 });
+  });
 });

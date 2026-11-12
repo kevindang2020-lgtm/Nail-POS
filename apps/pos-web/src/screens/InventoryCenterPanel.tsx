@@ -105,6 +105,7 @@ function ProductsList({ tick }: { tick: number }) {
   const [f, setF] = useState<{ q?: string; status: string; sort: string; page: number; pageSize: number }>({ status: 'all', sort: 'attention', page: 1, pageSize: 25 });
   const [list, setList] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState<any | null>(null);
   const load = useCallback(() => { setErr(null); ic.products(f).then(setList).catch((e) => setErr(errText(e))); }, [f]);
   useEffect(() => { load(); }, [load, tick]);
   const set = (x: Partial<typeof f>, keep = false) => setF((y) => ({ ...y, ...x, page: keep ? (x.page ?? y.page) : 1 }));
@@ -120,7 +121,7 @@ function ProductsList({ tick }: { tick: number }) {
       {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{t('icx.loading')}</div> : !rows.length ? <Empty title={f.q || f.status !== 'all' ? t('icx.noMatch') : t('icx.noProducts')} /> : (
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('icx.col.product')}</th><th>{t('icx.col.onHand')}</th><th>{t('icx.col.levels')}</th><th>{t('icx.col.ordered')}</th><th>{t('icx.col.status')}</th><th>{t('icx.col.ledger')}</th></tr></thead>
           <tbody>{rows.map((p) => (
-            <tr key={p.id} data-testid="icx-product-row">
+            <tr key={p.id} data-testid="icx-product-row" className="inv2-click" tabIndex={0} onClick={() => setOpen(p)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(p); }}>
               <td><b>{p.name}</b><div className="sub">{[p.sku, p.category, p.vendor].filter(Boolean).join(' · ')}</div></td>
               <td>{fmtNumber(p.onHand)}{p.reserved ? <div className="sub">{t('icx.reserved', { n: fmtNumber(p.reserved) })}</div> : null}{!p.hasStockRecord ? <div className="sub warn">{t('icx.noRecord')}</div> : null}</td>
               <td>{p.noThreshold ? <span className="chip warn">{t('icx.noLevels')}</span> : <>{fmtNumber(p.reorderLevel)} / {fmtNumber(p.criticalLevel)}{p.criticalSource === 'derived' ? <div className="sub">{t('icx.derived')}</div> : null}</>}</td>
@@ -128,7 +129,43 @@ function ProductsList({ tick }: { tick: number }) {
               <td><span className={'chip ' + (ST_TONE[p.status] ?? '')} data-testid="icx-status-chip">{t('icx.st.' + p.status)}</span></td>
               <td>{p.ledgerBalance == null ? <span className="sub">{t('icx.noLedger')}</span> : p.ledgerMismatch ? <span className="chip bad">{t('icx.ledgerDiff', { n: fmtNumber(p.ledgerBalance) })}</span> : <span className="sub">{t('icx.ledgerSame')}</span>}</td>
             </tr>))}</tbody></table></div>)}
+      {open ? <ProductOverlay p={open} onClose={() => setOpen(null)} /> : null}
     </Frame>
+  );
+}
+
+/** extras (AI Inventory 03 / 11): a product's details in an overlay — every field the list row carries (codes, levels and
+ *  where they come from, on hand / reserved / on order, the ledger's last balance) and that product's OWN stock history,
+ *  newest first, paged (GET …/center/activity?productId). Read-only. */
+function ProductOverlay({ p, onClose }: { p: any; onClose: () => void }) {
+  const [page, setPage] = useState(1);
+  const [h, setH] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); ic.activity({ productId: p.id, page, pageSize: 10 }).then(setH).catch((e) => setErr(errText(e))); }, [p.id, page]);
+  useEffect(() => { load(); }, [load]);
+  const dash = (v: unknown) => (v == null || v === '' ? '—' : String(v));
+  return (
+    <FitDialog wide testId="icx-product-overlay" title={p.name} subtitle={[p.sku, p.barcode].filter(Boolean).join(' · ') || undefined} onClose={onClose}
+      footer={<button className="btn ghost" onClick={onClose}>{t('icx.close')}</button>}>
+      <dl className="fk-dl" data-testid="icx-po-fields">
+        <dt>{t('icx.po.sku')}</dt><dd>{dash(p.sku)}</dd>
+        <dt>{t('icx.po.barcode')}</dt><dd>{dash(p.barcode)}</dd>
+        <dt>{t('icx.po.category')}</dt><dd>{dash(p.category)}</dd>
+        <dt>{t('icx.po.vendor')}</dt><dd>{dash(p.vendor)}{p.leadTimeDays != null ? ` · ${t('icx.po.lead', { n: fmtNumber(p.leadTimeDays) })}` : ''}</dd>
+        <dt>{t('icx.col.onHand')}</dt><dd>{fmtNumber(p.onHand)}{p.reserved ? ` · ${t('icx.reserved', { n: fmtNumber(p.reserved) })}` : ''}{!p.hasStockRecord ? ` · ${t('icx.noRecord')}` : ''}</dd>
+        <dt>{t('icx.col.levels')}</dt><dd>{p.noThreshold ? t('icx.noLevels') : `${fmtNumber(p.reorderLevel)} / ${p.criticalLevel == null ? '—' : fmtNumber(p.criticalLevel)}${p.criticalSource === 'derived' ? ' · ' + t('icx.derived') : ''}`}{p.maximumStock != null ? ` · ${t('icx.po.max', { n: fmtNumber(p.maximumStock) })}` : ''}</dd>
+        <dt>{t('icx.col.ordered')}</dt><dd>{p.openOrderQty ? fmtNumber(p.openOrderQty) : '—'}</dd>
+        <dt>{t('icx.col.status')}</dt><dd><span className={'chip ' + (ST_TONE[p.status] ?? '')}>{t('icx.st.' + p.status)}</span></dd>
+        <dt>{t('icx.col.ledger')}</dt><dd>{p.ledgerBalance == null ? t('icx.noLedger') : `${fmtNumber(p.ledgerBalance)}${p.ledgerAt ? ' · ' + when(p.ledgerAt) : ''}${p.ledgerMismatch ? ' · ' + t('icx.po.differs') : ''}`}</dd>
+        <dt>{t('icx.po.stockUpdated')}</dt><dd>{when(p.stockUpdatedAt)}</dd>
+      </dl>
+      <h3>{t('icx.po.history')}</h3>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !h ? <div className="state">{t('icx.loading')}</div> : !h.items.length ? <Empty title={t('icx.noActivity')} /> : <>
+        <div className="rvw-table-wrap"><table className="tbl rvw-table" data-testid="icx-po-history"><thead><tr><th>{t('icx.col.when')}</th><th>{t('icx.col.type')}</th><th>{t('icx.col.change')}</th><th>{t('icx.col.after')}</th><th>{t('icx.col.by')}</th></tr></thead>
+          <tbody>{h.items.map((m: any) => <tr key={m.id} data-testid="icx-po-move"><td className="nowrap">{when(m.at)}</td><td>{t('icx.type.' + m.group)}{m.reason ? <div className="sub">{m.reason}</div> : null}</td>
+            <td>{m.change == null ? '—' : (m.change > 0 ? '+' : '') + fmtNumber(m.change)}</td><td>{m.after == null ? '—' : fmtNumber(m.after)}</td><td>{m.actor ?? '—'}</td></tr>)}</tbody></table></div>
+        <Pager info={{ page: h.page, pageSize: h.pageSize, totalItems: h.total, totalPages: h.totalPages }} onPage={setPage} />
+      </>}
+    </FitDialog>
   );
 }
 

@@ -38,7 +38,7 @@ const MOVE_GROUP: Record<string, string[]> = {
   transfer: ['transfer_in', 'transfer_out'], damage_waste: ['damaged', 'waste', 'expired'], return: ['returned', 'customer_return', 'return_to_vendor'],
 };
 const KNOWN = Object.values(MOVE_GROUP).flat();
-const X_COLS = sql.raw('x.id, x.name, x.sku, x.reorder_level, x.critical_level, x.maximum_stock, x.created_at, x.category, x.vendor, x.lead_time_days, x.on_hand, x.reserved, x.stock_rows, x.stock_updated_at, x.inbound, x.ledger_after, x.ledger_at');
+const X_COLS = sql.raw('x.id, x.name, x.sku, x.barcode, x.reorder_level, x.critical_level, x.maximum_stock, x.created_at, x.category, x.vendor, x.lead_time_days, x.on_hand, x.reserved, x.stock_rows, x.stock_updated_at, x.inbound, x.ledger_after, x.ledger_at');
 const RANK: Record<string, number> = { out_of_stock: 0, critical: 1, low: 2, overstock: 3, in_stock: 4 };
 const HEALTH_GAP_SECONDS = 30;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,7 +71,7 @@ export class InventoryCenter {
     const SB = B ? sql`and s.branch_id = ${B}::uuid` : sql``;
     const MB = B ? sql`and m.branch_id = ${B}::uuid` : sql``;
     const PB = B ? sql`and po.branch_id = ${B}::uuid` : sql``;
-    return sql`(select p.id, p.name, p.sku, p.reorder_level, p.critical_level, p.maximum_stock, p.created_at, c.name as category, v.name as vendor, v.lead_time_days,
+    return sql`(select p.id, p.name, p.sku, p.barcode, p.reorder_level, p.critical_level, p.maximum_stock, p.created_at, c.name as category, v.name as vendor, v.lead_time_days,
           coalesce(st.on_hand, 0) as on_hand, coalesce(st.reserved, 0) as reserved, st.rows as stock_rows, st.updated_at as stock_updated_at,
           coalesce(oo.inbound, 0) as inbound, lg.ledger_after, lg.ledger_at
         from inventory_products p
@@ -131,7 +131,7 @@ export class InventoryCenter {
     const sort = pick(IC_SORTS, f.sort) ?? 'attention';
     const q = String(f.q ?? '').trim().slice(0, 80);
     const where = [sql`true`];
-    if (q) where.push(sql`(x.name ilike ${esc(q)} or coalesce(x.sku, '') ilike ${esc(q)} or coalesce(x.vendor, '') ilike ${esc(q)} or coalesce(x.category, '') ilike ${esc(q)})`);
+    if (q) where.push(sql`(x.name ilike ${esc(q)} or coalesce(x.sku, '') ilike ${esc(q)} or coalesce(x.barcode, '') ilike ${esc(q)} or coalesce(x.vendor, '') ilike ${esc(q)} or coalesce(x.category, '') ilike ${esc(q)})`);   // extras AI Inventory 11: barcode too
     // the classification is the pure position rule, applied to the page's candidate set in memory (a salon has hundreds, not millions)
     const rows = (await sql<Row>`select ${X_COLS} from ${this.products(ctx)} where ${sql.join(where, sql` and `)} limit 5000`.execute(this.db)).rows
       .map((r) => ({ r, k: this.classify(r) }))
@@ -143,7 +143,7 @@ export class InventoryCenter {
     const total = rows.length;
     const slice = rows.slice((page - 1) * pageSize, page * pageSize);
     return {
-      items: slice.map(({ r, k }) => ({ id: String(r.id), name: r.name, sku: r.sku ?? null, category: r.category ?? null, vendor: r.vendor ?? null, leadTimeDays: r.lead_time_days == null ? null : N(r.lead_time_days),
+      items: slice.map(({ r, k }) => ({ id: String(r.id), name: r.name, sku: r.sku ?? null, barcode: r.barcode ?? null, category: r.category ?? null, vendor: r.vendor ?? null, leadTimeDays: r.lead_time_days == null ? null : N(r.lead_time_days),
         onHand: N(r.on_hand), reserved: N(r.reserved), openOrderQty: N(r.inbound), reorderLevel: N(r.reorder_level), criticalLevel: k.crit.level, criticalSource: k.crit.source,
         maximumStock: r.maximum_stock == null ? null : N(r.maximum_stock), status: k.status, noThreshold: k.noThreshold, hasStockRecord: N(r.stock_rows) > 0,
         ledgerBalance: r.ledger_after == null ? null : N(r.ledger_after), ledgerAt: iso(r.ledger_at), ledgerMismatch: k.mismatch, stockUpdatedAt: iso(r.stock_updated_at) })),
@@ -180,7 +180,10 @@ export class InventoryCenter {
     if (type === 'other') where.push(sql`m.movement_type <> all(${KNOWN}::text[])`);
     else if (type !== 'all') where.push(sql`m.movement_type = any(${MOVE_GROUP[type]}::text[])`);
     if (from && to) where.push(sql`m.created_at >= (${from}::date::timestamp at time zone ${tz}) and m.created_at < ((${to}::date + 1)::timestamp at time zone ${tz})`);
-    if (q) where.push(sql`(p.name ilike ${esc(q)} or coalesce(p.sku, '') ilike ${esc(q)} or coalesce(m.reason, '') ilike ${esc(q)} or coalesce(m.related_id::text, '') ilike ${esc(q)})`);
+    if (q) where.push(sql`(p.name ilike ${esc(q)} or coalesce(p.sku, '') ilike ${esc(q)} or coalesce(p.barcode, '') ilike ${esc(q)} or coalesce(m.reason, '') ilike ${esc(q)} or coalesce(m.related_id::text, '') ilike ${esc(q)})`);
+    // extras (AI Inventory 03 / 11 product overlay): one product's own history
+    const productId = isUuid(f.productId) ? String(f.productId) : null;
+    if (productId) where.push(sql`m.product_id = ${productId}::uuid`);
     const W = sql.join(where, sql` and `);
     const FROM = sql`inventory_stock_movements m join inventory_products p on p.id = m.product_id and p.tenant_id = m.tenant_id
       left join users u on u.id = m.actor_user_id and u.tenant_id = m.tenant_id left join branches b on b.id = m.branch_id and b.tenant_id = m.tenant_id`;
@@ -193,7 +196,7 @@ export class InventoryCenter {
       items: rows.map((r) => ({ id: String(r.id), at: iso(r.created_at), type: r.movement_type, group: groupOf(String(r.movement_type)), productId: String(r.product_id), product: r.name, sku: r.sku ?? null,
         before: r.quantity_before == null ? null : N(r.quantity_before), change: r.quantity_change == null ? null : N(r.quantity_change), after: r.quantity_after == null ? null : N(r.quantity_after),
         unit: r.unit ?? null, reference: r.related_type ? { type: r.related_type, id: r.related_id ?? null } : null, reason: r.reason ?? null, actor: r.actor ?? null, branch: r.branch ?? null })),
-      total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), applied: { q: q || null, type, preset, from, to }, period: { today, timeZone: tz },
+      total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), applied: { q: q || null, type, preset, from, to, productId }, period: { today, timeZone: tz },
     };
   }
 
@@ -234,6 +237,24 @@ export class InventoryCenter {
     checks.push({ key: 'orders_received', component: 'purchasing', state: overdue ? 'WARNING' : 'PASSED', count: overdue });
     const needLead = k.filter((x) => (x.k.status === 'critical' || x.k.status === 'low' || x.k.status === 'out_of_stock') && (x.r.vendor == null || x.r.lead_time_days == null)).length;
     checks.push({ key: 'reorder_data', component: 'purchasing', state: needLead ? 'WARNING' : 'PASSED', count: needLead });
+    // extras (AI Inventory Assistant 12 · catalog & units): two active products with the same SKU or barcode make a scan or a
+    // search land on the wrong one — nothing in the table refuses it, so it is counted here (products in a shared group)
+    const dupOf = (col: 'sku' | 'barcode') => sql<Row>`select coalesce(sum(g.n), 0)::int as n from (select count(*)::int as n from inventory_products ip
+      where ip.tenant_id = ${T} and ip.active and ip.archived_at is null and coalesce(btrim(${col === 'sku' ? sql`ip.sku` : sql`ip.barcode`}), '') <> ''
+      group by lower(btrim(${col === 'sku' ? sql`ip.sku` : sql`ip.barcode`})) having count(*) > 1) g`;
+    const dupSku = N((await one(dupOf('sku'))).n);
+    checks.push({ key: 'sku_unique', component: 'catalog', state: !n ? 'INSUFFICIENT_DATA' : dupSku ? 'WARNING' : 'PASSED', count: dupSku });
+    const dupBar = N((await one(dupOf('barcode'))).n);
+    checks.push({ key: 'barcode_unique', component: 'catalog', state: !n ? 'INSUFFICIENT_DATA' : dupBar ? 'WARNING' : 'PASSED', count: dupBar });
+    // extras (AI Inventory Assistant 18 · physical count vs ledger): a reconciled count must have moved the ledger by exactly
+    // counted − expected for each counted product (the adjustment movements carry the count as their source). A line whose
+    // movements differ (e.g. fewer bottles on hand than the count said were missing) is named here.
+    const cnt = await one(sql<Row>`select count(*)::int as lines, count(*) filter (where coalesce(mv.applied, 0) <> l.counted_qty - l.expected_qty)::int as off
+      from inventory_count_lines l join inventory_counts ct on ct.tenant_id = l.tenant_id and ct.id = l.count_id
+      left join lateral (select sum(m.quantity_change)::int as applied from inventory_stock_movements m where m.tenant_id = l.tenant_id
+        and m.related_type = 'inventory_count' and m.related_id = l.count_id and m.product_id = l.product_id) mv on true
+      where l.tenant_id = ${T} ${B ? sql`and ct.branch_id = ${B}::uuid` : sql``} and ct.status = 'reconciled' and l.is_counted and l.counted_qty is not null`);
+    checks.push({ key: 'count_variance_applied', component: 'ledger', state: !N(cnt.lines) ? 'INSUFFICIENT_DATA' : N(cnt.off) ? 'FAILED' : 'PASSED', count: N(cnt.off), detail: { countedLines: N(cnt.lines) } });
     const cross = N((await one(sql<Row>`select count(*)::int as n from inventory_location_stock s join inventory_products p on p.id = s.product_id where s.tenant_id = ${T} and p.tenant_id <> s.tenant_id`)).n);
     checks.push({ key: 'tenant_isolation', component: 'security', state: cross ? 'FAILED' : 'PASSED', count: cross });
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });

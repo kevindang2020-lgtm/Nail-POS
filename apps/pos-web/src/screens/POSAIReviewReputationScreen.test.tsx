@@ -118,6 +118,22 @@ describe('POSAIReviewReputationScreen', () => {
     expect(await screen.findByTestId('rpx-overdue')).toHaveTextContent('2');
   });
 
+  it('extras Review Reputation 17: Feedback Trends shows the rating distribution and recurring complaint topics in words, with the no-cause note', async () => {
+    rp.trends.mockResolvedValue({ months: [{ month: '2026-11', reviews: 5, averageRating: 3, negativeShare: 40, responseRate: 0, sample: 'too_few' }], note: 'x',
+      ratingDistribution: { from: '2025-12-01', reviews: 5, stars: [1, 2, 3, 4, 5].map((k) => ({ stars: k, count: k === 1 ? 3 : 1 })), unrated: 1 },
+      recurringTopics: { classifiedReviews: 2, basis: 'latest_saved_classification', items: [
+        { topic: 'long_wait', reviews: 2, negative: 2, recurring: true }, { topic: 'not_a_known_topic', reviews: 1, negative: 0, recurring: false }] } });
+    mount();
+    fireEvent.click(screen.getByTestId('tab-trends'));
+    const rows = await screen.findAllByTestId('rpx-dist-row');
+    expect(rows.map((r) => r.textContent)).toEqual(['5 ★1', '4 ★1', '3 ★1', '2 ★1', '1 ★3']);
+    expect(screen.getByTestId('rpx-dist')).toHaveTextContent('1 reviews have no star rating.');
+    const topics = screen.getAllByTestId('rpx-topic');
+    expect(topics[0]).toHaveTextContent('Long wait'); expect(topics[0]).toHaveTextContent('Recurring'); expect(topics[0]).toHaveTextContent('2 reviews · 2 negative');
+    expect(topics[1].textContent).not.toMatch(/not_a_known_topic/);
+    expect(screen.getByTestId('rpx-topics')).toHaveTextContent('not proof of a cause');
+    expect(screen.getByTestId('rpx-topics')).toHaveTextContent('latest saved classification of 2 reviews');
+  });
   it('the check renders localized detail text', async () => {
     rp.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'requests_delivery', state: 'WARNING', count: 2 }] });
     mount();

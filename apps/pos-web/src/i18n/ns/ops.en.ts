@@ -1680,4 +1680,6 @@ export const OPS_EN = {
   "lgx.export.failed": "Could not export the logs.",
   "ops.serving.insight.booking_conflict": "{name} has a booking in {minutes} min but needs about {remaining} min more ({count} conflict(s))",
   "ops.serving.insightSub.booking_conflict": "Review the Booking board before the next guest arrives — nothing is moved automatically.",
+  "syschk.payments.non_card_in_processor_batch": "No cash or gift-card payment is tied to a card processor batch",
+  "syschk.payments.non_card_in_processor_batch.fix": "Cash is counted by the cash drawer and gift cards by their ledger. Open each payment and have the processor batch link corrected so the money is not counted twice.",
 };

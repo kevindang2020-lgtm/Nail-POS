@@ -284,6 +284,25 @@ describe('Add-Ons', () => {
   });
 });
 
+describe('Add-Ons — mass edit preview (extras ADD-ONS 08)', () => {
+  it('dryRun on the shared definition lists each offering\'s old → new value and writes nothing (no row, no history)', async () => {
+    const before = (await q(`select service_id, price_cents, is_active from service_add_ons where tenant_id = $1 and add_on_key = 'ao_french' order by service_id`, [T])).rows;
+    const hist = (await repo.history(ctx, { addOnKey: 'ao_french', page: 1, pageSize: 50 })).totalItems;
+    const r: any = await repo.updateAddOn(ctx, 'ao_french', { scope: 'definition', priceCents: 1200, removeServiceIds: [CUT], dryRun: true });
+    expect(r.dryRun).toBe(true);
+    const price = r.changes.filter((c: any) => c.field === 'price_cents');
+    // every offering whose price is not already $12 — the Classic Pedicure one is $8 (its own price), the rest $10
+    expect(price.map((c: any) => [c.serviceId, c.oldValue, c.newValue]).sort()).toEqual([[GEL, 1000, 1200], [PEDI, 800, 1200], [CUT, 1000, 1200], [COLOR, 1000, 1200]].sort());
+    expect(r.changes.find((c: any) => c.field === 'is_active')).toMatchObject({ serviceId: CUT, oldValue: true, newValue: false });
+    expect(r.changed).toBe(r.changes.length);
+    expect((await q(`select service_id, price_cents, is_active from service_add_ons where tenant_id = $1 and add_on_key = 'ao_french' order by service_id`, [T])).rows).toEqual(before);
+    expect((await repo.history(ctx, { addOnKey: 'ao_french', page: 1, pageSize: 50 })).totalItems).toBe(hist);
+    // a one-offering preview names only that offering
+    const one: any = await repo.updateAddOn(ctx, 'ao_french', { scope: 'offering', serviceId: GEL, priceCents: 1300, dryRun: true });
+    expect(one.changes.map((c: any) => [c.serviceId, c.field])).toEqual([[GEL, 'price_cents']]);
+  });
+});
+
 describe('Add-Ons — booking impact preview (07) and price reasons (14), Nov 12 2026', () => {
   it('the detail lists upcoming appointments that booked the add-on (by key, or by name on older rows); finished / cancelled / past are left out; names need customers.view', async () => {
     const svcJson = (addOn: Record<string, unknown>) => JSON.stringify([{ serviceId: GEL, serviceName: 'Gel Manicure', durationMinutes: 55, priceCents: 6500, addOns: [addOn] }]);

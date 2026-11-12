@@ -128,6 +128,21 @@ describe('Review & Reputation — inbox, detail, queues', () => {
 });
 
 describe('Review & Reputation — trends, branches, security, health', () => {
+  it('TR-02 extras (Review Reputation 17): the rating distribution and recurring complaint topics from each review\'s LATEST classification; spam and other salons never count', async () => {
+    await q(sql`insert into review_analysis (tenant_id, branch_id, review_id, categories, analyzed_at) values
+      (${T}, ${B}, ${R.g1}, '["pricing_dispute"]', now() - interval '2 days'), (${T}, ${B}, ${R.g1}, '["long_wait","cleanliness","long_wait"]', now() - interval '1 day'),
+      (${T}, ${B2}, ${R.b2}, '["product_issue","long_wait"]', now()), (${T}, ${B}, ${R.spam}, '["long_wait"]', now()), (${X}, ${BX}, ${R.other}, '["long_wait"]', now())`);
+    const t: any = await rc.trends(ctx(), { months: 12 });
+    expect(t.ratingDistribution).toMatchObject({ reviews: 5, unrated: 0 });
+    expect(t.ratingDistribution.stars.map((x: any) => x.count)).toEqual([1, 1, 1, 1, 1]);
+    expect(t.recurringTopics.classifiedReviews).toBe(2);
+    expect(t.recurringTopics.items).toEqual([
+      { topic: 'long_wait', reviews: 2, negative: 2, recurring: true },
+      { topic: 'cleanliness', reviews: 1, negative: 1, recurring: false },
+      { topic: 'product_issue', reviews: 1, negative: 1, recurring: false }]);   // the older 'pricing_dispute' run of the same review is not counted
+    const g: any = await rc.trends(ctx(), { months: 12, source: 'yelp' });
+    expect(g.recurringTopics.items).toEqual([]); expect(g.ratingDistribution.reviews).toBe(1);
+  });
   it('TR-01 trends and branches use the same definition; a branch with no reviews is N/A', async () => {
     const t: any = await rc.trends(ctx(), { months: 4 });                 // the 3-months-back review falls in the 4th month back
     expect(t.months).toHaveLength(4);

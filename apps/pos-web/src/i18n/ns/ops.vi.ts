@@ -1679,4 +1679,6 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.export.failed": "Không thể xuất nhật ký.", // DRAFT — Kevin reviews
   "ops.serving.insight.booking_conflict": "{name} có lịch hẹn sau {minutes} phút nhưng còn cần khoảng {remaining} phút ({count} xung đột)", // DRAFT — Kevin reviews
   "ops.serving.insightSub.booking_conflict": "Xem bảng Đặt lịch trước khi khách tiếp theo đến — không có gì bị tự động dời.", // DRAFT — Kevin reviews
+  "syschk.payments.non_card_in_processor_batch": "Không có thanh toán tiền mặt hoặc thẻ quà tặng nào gắn với lô của đơn vị xử lý thẻ", // DRAFT — Kevin reviews
+  "syschk.payments.non_card_in_processor_batch.fix": "Tiền mặt được tính trong ngăn kéo tiền, thẻ quà tặng được tính trong sổ của nó. Mở từng thanh toán và sửa liên kết lô để tiền không bị tính hai lần.", // DRAFT — Kevin reviews
 };

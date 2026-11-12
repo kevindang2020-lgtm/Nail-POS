@@ -140,5 +140,26 @@ export const INVENTORYCENTER_VI: Record<string, string> = {
   "icx.health.d.tenant_isolation.PASSED": "Mọi bản ghi tồn đều thuộc sản phẩm của tiệm này.",
   "icx.health.d.tenant_isolation.FAILED": "Có bản ghi tồn trỏ tới sản phẩm của tiệm khác. Hãy báo ngay.",
   "icx.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
-  "icx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không đặt hàng, kiểm kê, chuyển hay điều chỉnh tồn."
+  "icx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không đặt hàng, kiểm kê, chuyển hay điều chỉnh tồn.",
+  "icx.health.k.sku_unique": "Mỗi SKU thuộc một sản phẩm", // DRAFT — Kevin reviews
+  "icx.health.d.sku_unique.PASSED": "Không có hai sản phẩm đang dùng trùng SKU.", // DRAFT — Kevin reviews
+  "icx.health.d.sku_unique.WARNING": "Một số sản phẩm đang dùng trùng SKU nên tìm kiếm hoặc quét mã có thể chọn nhầm. Đặt SKU riêng cho từng sản phẩm hoặc lưu trữ bản trùng.", // DRAFT — Kevin reviews
+  "icx.health.d.sku_unique.INSUFFICIENT_DATA": "Chưa có sản phẩm để kiểm tra.", // DRAFT — Kevin reviews
+  "icx.health.k.barcode_unique": "Mỗi mã vạch thuộc một sản phẩm", // DRAFT — Kevin reviews
+  "icx.health.d.barcode_unique.PASSED": "Không có hai sản phẩm đang dùng trùng mã vạch.", // DRAFT — Kevin reviews
+  "icx.health.d.barcode_unique.WARNING": "Một số sản phẩm đang dùng trùng mã vạch nên quét có thể chọn nhầm sản phẩm. Sửa mã vạch của một trong số đó.", // DRAFT — Kevin reviews
+  "icx.health.d.barcode_unique.INSUFFICIENT_DATA": "Chưa có sản phẩm để kiểm tra.", // DRAFT — Kevin reviews
+  "icx.health.k.count_variance_applied": "Kiểm kê thực tế đã vào sổ kho", // DRAFT — Kevin reviews
+  "icx.health.d.count_variance_applied.PASSED": "Mọi lần kiểm kê đã đối chiếu đều điều chỉnh sổ kho đúng bằng số đếm trừ số dự kiến.", // DRAFT — Kevin reviews
+  "icx.health.d.count_variance_applied.FAILED": "Một lần kiểm kê đã đối chiếu chưa điều chỉnh sổ kho đủ chênh lệch (ví dụ số chai còn ít hơn số chai kiểm kê báo thiếu). Hãy đếm lại các sản phẩm đó.", // DRAFT — Kevin reviews
+  "icx.health.d.count_variance_applied.INSUFFICIENT_DATA": "Chưa có lần kiểm kê thực tế nào được đối chiếu.", // DRAFT — Kevin reviews
+  "icx.po.sku": "SKU", // DRAFT — Kevin reviews
+  "icx.po.barcode": "Mã vạch", // DRAFT — Kevin reviews
+  "icx.po.category": "Danh mục", // DRAFT — Kevin reviews
+  "icx.po.vendor": "Nhà cung cấp", // DRAFT — Kevin reviews
+  "icx.po.lead": "giao trong {n} ngày", // DRAFT — Kevin reviews
+  "icx.po.max": "tối đa {n}", // DRAFT — Kevin reviews
+  "icx.po.differs": "khác với số tồn đã ghi", // DRAFT — Kevin reviews
+  "icx.po.stockUpdated": "Cập nhật số tồn lúc", // DRAFT — Kevin reviews
+  "icx.po.history": "Lịch sử tồn kho của sản phẩm này (mới nhất trước)", // DRAFT — Kevin reviews
 };

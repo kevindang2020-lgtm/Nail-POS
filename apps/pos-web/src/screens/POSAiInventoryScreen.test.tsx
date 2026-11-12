@@ -56,6 +56,28 @@ describe('POSAiInventoryScreen', () => {
     const k = await screen.findByTestId('icx-chk-ledger_matches_stock');
     expect(k).toHaveTextContent('Stock matches its history'); expect(k).toHaveTextContent('Part: Stock history'); expect(k).toHaveTextContent('Has not passed yet');
   });
+  it('extras AI Inventory 12 / 18: duplicate SKU and count-vs-ledger checks are shown in words', async () => {
+    center.check.mockResolvedValue({ overall: 'FAILED', checkedAt: '2026-11-03T05:00:00Z', checks: [
+      { key: 'count_variance_applied', component: 'ledger', state: 'FAILED', count: 1, lastPassedAt: null },
+      { key: 'sku_unique', component: 'catalog', state: 'WARNING', count: 2, lastPassedAt: null }] });
+    render(<POSAiInventoryScreen />);
+    fireEvent.click(await screen.findByTestId('icx-check'));
+    const c = await screen.findByTestId('icx-chk-count_variance_applied');
+    expect(c).toHaveTextContent('Physical counts reached the ledger'); expect(c).toHaveTextContent('Recount those products');
+    const s = screen.getByTestId('icx-chk-sku_unique');
+    expect(s).toHaveTextContent('Every SKU belongs to one product'); expect(s).toHaveTextContent('Part: Product catalog'); expect(s).toHaveTextContent('2');
+  });
+  it('extras AI Inventory 03 / 11: a product row opens its details overlay with that product\'s own stock history (productId, paged)', async () => {
+    render(<POSAiInventoryScreen />);
+    fireEvent.click((await screen.findAllByTestId('icx-product-row'))[0]);
+    const o = await screen.findByTestId('icx-product-overlay');
+    await waitFor(() => expect(center.activity).toHaveBeenCalledWith(expect.objectContaining({ productId: 'p1', page: 1, pageSize: 10 })));
+    const f = screen.getByTestId('icx-po-fields');
+    expect(f).toHaveTextContent('GEL-01'); expect(f).toHaveTextContent('Sally Beauty'); expect(f).toHaveTextContent('differs from the stock record');
+    expect(f.textContent).toMatch(/Barcode—/);
+    expect(await screen.findAllByTestId('icx-po-move')).toHaveLength(1);
+    expect(o).toHaveTextContent('Gel manicure');
+  });
   it('loads Low Stock when its tab is selected', async () => {
     render(<POSAiInventoryScreen />);
     await screen.findByTestId('icx-panel');

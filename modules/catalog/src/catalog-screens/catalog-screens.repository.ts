@@ -735,8 +735,11 @@ export class CatalogScreensRepository {
 
   /** Edit Add-On. scope 'definition' changes every offering of the key (name / price / minutes / taxable); scope 'offering'
    *  changes ONE service's price / minutes / taxable. addServiceIds adds offerings (definition defaults); removeServiceIds
-   *  deactivates offerings (never deleted — ticket history keeps them). Each changed field is a history row. */
-  async updateAddOn(ctx: CatCtx, key: string, b: { scope?: unknown; serviceId?: unknown; name?: unknown; priceCents?: unknown; durationMinutes?: unknown; taxable?: unknown; addServiceIds?: unknown; removeServiceIds?: unknown; reason?: unknown }) {
+   *  deactivates offerings (never deleted — ticket history keeps them). Each changed field is a history row.
+   *  dryRun (extras ADD-ONS 08 mass-edit safeguard): the same evaluation, NOTHING written — returns every field each offering
+   *  would change, old → new (the old values are the undo plan; the real save records them in the Audit history). */
+  async updateAddOn(ctx: CatCtx, key: string, b: { scope?: unknown; serviceId?: unknown; name?: unknown; priceCents?: unknown; durationMinutes?: unknown; taxable?: unknown; addServiceIds?: unknown; removeServiceIds?: unknown; reason?: unknown; dryRun?: unknown }) {
+    const dry = b.dryRun === true;
     const T = ctx.tenantId; if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(key))) throw err(404, 'ADD_ON_NOT_FOUND', 'That add-on was not found.');
     const scope = b.scope === 'offering' ? 'offering' : 'definition';
     const sid = scope === 'offering' && typeof b.serviceId === 'string' && UUID.test(b.serviceId) ? b.serviceId : null;
@@ -763,7 +766,7 @@ export class CatalogScreensRepository {
         const c = diffFields('add_on', key, { name: r.name, price_cents: N(r.price_cents), duration_delta_minutes: N(r.duration_delta_minutes), is_taxable: !!r.is_taxable }, after, { serviceId: String(r.service_id), reason, source: 'add_ons' });
         if (!c.length) continue;
         changes.push(...c);
-        await sql`update service_add_ons set name = coalesce(${after.name ?? null}::text, name), price_cents = coalesce(${price ?? null}::bigint, price_cents),
+        if (!dry) await sql`update service_add_ons set name = coalesce(${after.name ?? null}::text, name), price_cents = coalesce(${price ?? null}::bigint, price_cents),
             duration_delta_minutes = coalesce(${mins ?? null}::int, duration_delta_minutes), is_taxable = coalesce(${taxable ?? null}::boolean, is_taxable), updated_at = now(),
             updated_by = ${UUID.test(ctx.userId) ? ctx.userId : null} where tenant_id = ${T} and id = ${r.id}`.execute(trx);
       }
@@ -774,10 +777,10 @@ export class CatalogScreensRepository {
         for (const s of svc) {
           if (have.has(String(s.id))) {   // an existing (maybe deactivated) offering comes back instead of a second row
             const ex = rows.find((r: any) => String(r.service_id) === String(s.id));
-            if (!ex.is_active) { await sql`update service_add_ons set is_active = true, updated_at = now() where tenant_id = ${T} and id = ${ex.id}`.execute(trx); changes.push({ entityType: 'add_on', entityId: key, serviceId: String(s.id), field: 'is_active', oldValue: false, newValue: true, reason, source: 'add_ons' }); }
+            if (!ex.is_active) { if (!dry) await sql`update service_add_ons set is_active = true, updated_at = now() where tenant_id = ${T} and id = ${ex.id}`.execute(trx); changes.push({ entityType: 'add_on', entityId: key, serviceId: String(s.id), field: 'is_active', oldValue: false, newValue: true, reason, source: 'add_ons' }); }
             continue;
           }
-          await sql`insert into service_add_ons (tenant_id, branch_id, service_id, add_on_key, name, price_cents, duration_delta_minutes, is_taxable, is_active, sort_order, updated_at, updated_by)
+          if (!dry) await sql`insert into service_add_ons (tenant_id, branch_id, service_id, add_on_key, name, price_cents, duration_delta_minutes, is_taxable, is_active, sort_order, updated_at, updated_by)
             values (${T}, ${s.branch_id ?? def.branch_id}, ${s.id}, ${key}, ${name ?? def.name}, ${price ?? N(def.price_cents)}, ${mins ?? N(def.duration_delta_minutes)}, ${taxable ?? !!def.is_taxable}, true,
               (select coalesce(max(sort_order), -1) + 1 from service_add_ons where tenant_id = ${T} and service_id = ${s.id}), now(), ${UUID.test(ctx.userId) ? ctx.userId : null})`.execute(trx);
           changes.push({ entityType: 'add_on', entityId: key, serviceId: String(s.id), field: 'offering', oldValue: null, newValue: 'added', reason, source: 'add_ons' });
@@ -785,8 +788,9 @@ export class CatalogScreensRepository {
       }
       for (const rid of remove) {
         const ex = rows.find((r: any) => String(r.service_id) === rid);
-        if (ex && ex.is_active) { await sql`update service_add_ons set is_active = false, updated_at = now() where tenant_id = ${T} and id = ${ex.id}`.execute(trx); changes.push({ entityType: 'add_on', entityId: key, serviceId: rid, field: 'is_active', oldValue: true, newValue: false, reason, source: 'add_ons' }); }
+        if (ex && ex.is_active) { if (!dry) await sql`update service_add_ons set is_active = false, updated_at = now() where tenant_id = ${T} and id = ${ex.id}`.execute(trx); changes.push({ entityType: 'add_on', entityId: key, serviceId: rid, field: 'is_active', oldValue: true, newValue: false, reason, source: 'add_ons' }); }
       }
+      if (dry) return { changed: changes.length, dryRun: true as const, changes: changes.map((c) => ({ serviceId: c.serviceId ?? null, field: c.field, oldValue: c.oldValue ?? null, newValue: c.newValue ?? null })) };
       await recordCatalogChanges(trx, ctx, changes);
       return { changed: changes.length };
     });
