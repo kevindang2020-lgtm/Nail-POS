@@ -567,8 +567,8 @@ New contract types: FinanceRulePreview(Request), FinanceBillsDue, FinanceExportP
 AiCalendarPendingQueue, DiscountRefundImpact. Role-matrix snapshot regenerated on purpose for the 6 new read-only routes. No money is moved, no history is changed and nothing is sent by any of these.
 
 ## Extras backlog — round 2 of the 5 parallel agents (Nov 12 2026)
-Five agents built in separate worktrees (branches extras-agent1..5) and were merged: 49 rows BUILT (some "part"), 13 EXISTS,
-2 NOISE. TODO 407 → 355. Each row in EXTRAS_BACKLOG.md names its files and tests. Highlights:
+Five agents built in separate worktrees (branches extras-agent1..5) and were merged: 38 rows BUILT (some "part"), 13 EXISTS,
+1 NOISE. TODO 407 → 355 (counted from EXTRAS_BACKLOG.md). Each row in EXTRAS_BACKLOG.md names its files and tests. Highlights:
 - Checkout gift-card "Check card" readiness (one rate-limited lookup, split remainder, blockers); issue/replace previews.
 - Product price history (audited before → after + reason). Fixed a real bug: retail price edits were silently dropped
   (updateProduct column map). After merge: an edit sends a price only when it changed, so a viewer whose prices are
