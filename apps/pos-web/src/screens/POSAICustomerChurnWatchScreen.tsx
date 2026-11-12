@@ -5,6 +5,9 @@
 // Needs Review / Reviewed / History tabs, priority, a date field with presets and a From/To month calendar, sort, numbered pages,
 // and the Retention Evidence overlay: the rule's evidence and inputs, the review state, Mark reviewed / Defer / Reopen / note,
 // and links to the owning modules. Churn Watch never texts, books, edits a customer or changes points.
+// Kevin, Nov 12 2026 (decision 2): THE status on every row is Customer Retention's classification (row.verdict: segment + days
+// away, read by the server from the Retention module) and links to it; the assistant's signals show only as labelled supporting
+// reasons — never a level, a verdict or a filter.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -24,7 +27,10 @@ const DATE_FIELDS = ['signal_since', 'last_visit', 'next_appointment', 'created'
 const PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'last_90', 'year'] as const;
 const SORTS = ['priority', 'signal_newest', 'last_visit', 'days_since', 'name'];
 const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAILED: 'bad', INSUFFICIENT_DATA: '', UNAVAILABLE: 'bad' };
-const LEVEL_TONE: Record<string, string> = { possible: 'warn', elevated: 'bad', high: 'bad', low: 'ok', insufficient: '' };
+const SEGMENT_TONE: Record<string, string> = { approaching: 'warn', at_risk: 'bad', active: 'ok', never_visited: '' };
+const RETENTION_ROUTE = '/tenant/customers/retention';
+const FLAGGED_SEGMENTS = ['approaching', 'at_risk'];
+const verdictLine = (v: any) => (!v ? '—' : v.daysAway == null ? t('cwx.level.' + v.segment) : t('cwx.verdict.line', { seg: t('cwx.level.' + v.segment), n: fmtNumber(v.daysAway) }));
 const KNOWN_ERRORS = ['AI_CUSTOMER_PROFILE_DISABLED', 'CUSTOMER_NOT_FOUND', 'CHURN_INVALID_PERIOD', 'CHURN_SEARCH_TOO_SHORT', 'CHURN_NO_SIGNAL', 'CHURN_STALE_VERSION', 'CHURN_NOTE_REQUIRED', 'INTELLIGENCE_SCAN_FAILED', 'PERMISSION_DENIED'];
 function errText(e: any, fallbackKey: string) {
   const code = e?.body?.code ?? e?.code;
@@ -85,7 +91,7 @@ export function POSAICustomerChurnWatchScreen() {
   const m = sum?.metrics; const fr = sum?.freshness;
   const anyFilter = ['priority', 'dateField', 'preset', 'sort'].some((k) => f[k]) || !!q;
   const metric = (testId: string, label: string, v: number | undefined, onClick?: () => void, tone?: 'warn' | 'bad' | 'gold') => (
-    <KpiCard testId={testId} label={label} loading={loading && !sum} tone={tone} value={sum?.unavailable ? t('cwx.unavailable') : v == null ? '—' : fmtNumber(v)} onClick={onClick} />
+    <KpiCard testId={testId} label={label} loading={loading && !sum} tone={tone} value={v == null ? '—' : fmtNumber(v)} onClick={onClick} />
   );
 
   return (
@@ -101,7 +107,8 @@ export function POSAICustomerChurnWatchScreen() {
       </div>
       {notice ? <div className="panel" role="status" data-testid="cwx-notice" style={{ padding: 12, marginBottom: 10 }}>{notice}</div> : null}
       {err ? <ErrorRetry message={err} onRetry={() => void load()} /> : null}
-      {sum?.unavailable ? <p className="warn" data-testid="cwx-unavailable">{t('cwx.unavailableNote')}</p> : null}
+      {fr?.state === 'never' ? <p className="warn" data-testid="cwx-unavailable">{t('cwx.unavailableNote')}</p> : null}
+      {sum?.definitions ? <div className="sub" data-testid="cwx-verdict-source">{t('cwx.verdict.source', { r: sum.definitions.riskDays, a: sum.definitions.approachingDays })} <button type="button" className="aic-link" data-testid="cwx-retention-link" onClick={() => nav(RETENTION_ROUTE)}>{t('cwx.verdict.open')}</button></div> : null}
 
       <div className="rvw-kpis" data-testid="cwx-metrics">
         {metric('kpi-evaluated', t('cwx.kpi.evaluated'), m?.evaluated)}
@@ -154,10 +161,9 @@ export function POSAICustomerChurnWatchScreen() {
             onApply={(r) => { setF({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setF({ preset: null, from: null, to: null }); setCal(false); }} /></div> : null}
         </section>
         <section className="panel rvw-feed" data-testid="cwx-results">
-          <div className="p-h">{t('cwx.tab.' + tab)}<span className="sub rvw-scope" data-testid="cwx-count">{list && !list.unavailable ? t('cwx.count', { n: fmtNumber(list.total) }) : ''}</span></div>
+          <div className="p-h">{t('cwx.tab.' + tab)}<span className="sub rvw-scope" data-testid="cwx-count">{list ? t('cwx.count', { n: fmtNumber(list.total) }) : ''}</span></div>
           {loading && !list ? <div className="state">{t('pos.evaluating_churn_risk')}</div>
             : !list ? null
-            : list.unavailable ? <Empty title={t('cwx.unavailableNote')} />
             : list.items.length === 0 ? <Empty title={anyFilter ? t('cwx.noMatch') : t('cwx.empty.' + tab)} />
             : <div className="rvw-table-wrap"><table className="tbl rvw-table">
               <thead><tr><th>{t('cwx.col.customer')}</th><th>{t('cwx.col.lastVisit')}</th><th>{t('cwx.col.daysSince')}</th><th>{t('cwx.col.interval')}</th><th>{t('cwx.col.upcoming')}</th><th>{t('cwx.col.signal')}</th><th>{t('cwx.col.reason')}</th><th>{t('cwx.col.review')}</th><th /></tr></thead>
@@ -168,13 +174,13 @@ export function POSAICustomerChurnWatchScreen() {
                   <td className="num">{r.daysSinceLast == null ? '—' : fmtNumber(r.daysSinceLast)}</td>
                   <td>{r.typicalIntervalDays ? t('cwx.days', { n: r.typicalIntervalDays }) : t('cwx.notEstablished')}</td>
                   <td className="nowrap">{r.nextAppointmentDate ?? t('cwx.none')}</td>
-                  <td><span className={'chip ' + (LEVEL_TONE[r.level] ?? '')} data-testid="cwx-level">{t('cwx.state.' + r.state)}</span><div className="sub">{when(r.signalSince)}</div></td>
-                  <td className="sub">{r.evidence[0] ?? '—'}</td>
+                  <td><span className={'chip ' + (SEGMENT_TONE[r.verdict?.segment] ?? '')} data-testid="cwx-level">{t('cwx.state.' + r.state)}</span><div className="sub" data-testid="cwx-verdict">{verdictLine(r.verdict)}{r.verdict?.since ? ` · ${when(r.verdict.since)}` : ''}</div></td>
+                  <td className="sub" data-testid="cwx-supporting">{r.supporting?.reasons?.[0] ?? '—'}</td>
                   <td>{r.review ? <span className={'chip ' + (r.review.current ? 'ok' : 'warn')}>{t('cwx.review.' + r.review.status)}{r.review.dueOn ? ` · ${r.review.dueOn}` : ''}</span> : '—'}</td>
                   <td><button className="btn ghost sm" data-testid="cwx-view" onClick={(e) => { e.stopPropagation(); setOpenId(r.id); }}>{t('cwx.viewEvidence')}</button></td>
                 </tr>))}</tbody></table></div>}
           <div className="rvw-pager">
-            <Pager info={list && !list.unavailable ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => setF({ page: String(p) }, true)} />
+            <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => setF({ page: String(p) }, true)} />
             <label className="rvw-f"><span>{t('cwx.rows')}</span>
               <select data-testid="cwx-pagesize" value={String(query.pageSize)} onChange={(e) => setF({ pageSize: e.target.value === '25' ? null : e.target.value })}>
                 {['10', '25', '50', '100'].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -208,10 +214,10 @@ function EvidenceOverlay({ id, onClose, onChanged, nav }: { id: string; onClose:
     finally { setBusy(false); }
   };
   const go = (to: string) => { onClose(); nav(to); };
-  const s = d?.signal; const i = d?.inputs; const flagged = s && ['possible', 'elevated', 'high'].includes(s.level);
+  const v = d?.verdict; const sp = d?.supporting; const i = d?.inputs; const flagged = !!v && FLAGGED_SEGMENTS.includes(v.segment);
   const manage = can('pos.ai_customer_profile.churn');
   return (
-    <FitDialog wide testId="cwx-overlay" busy={busy} title={t('cwx.ov.title')} subtitle={s ? `${t('cwx.state.' + s.state)} · ${t('cwx.level.' + s.level)}` : undefined} onClose={onClose}
+    <FitDialog wide testId="cwx-overlay" busy={busy} title={t('cwx.ov.title')} subtitle={v ? `${t('cwx.state.' + v.state)} · ${t('cwx.level.' + v.segment)}` : undefined} onClose={onClose}
       footer={<div className="rvw-ov-foot">
         {mode !== 'view' ? <>
           <button className="btn ghost" onClick={() => setMode('view')} disabled={busy}>{t('pos.cancel')}</button>
@@ -231,10 +237,14 @@ function EvidenceOverlay({ id, onClose, onChanged, nav }: { id: string; onClose:
       </div>}>
       {err ? <div className="err">{err}</div> : !d ? <div className="state">{t('cwx.loading')}</div> : <>
         {actErr ? <p className="err" role="alert" data-testid="cwx-act-err">{actErr}</p> : null}
-        {!d.evaluated ? <p className="warn">{t('cwx.ov.notEvaluated')}</p> : <>
-          <p className="warn" data-testid="ov-note">{t('cwx.ov.caution')}</p>
+        <p className="warn" data-testid="ov-note">{t('cwx.ov.caution')}</p>
+        <h4>{t('cwx.ov.verdict')}</h4>
+        <div data-testid="ov-verdict">{v.daysAway == null ? t('cwx.level.' + v.segment) : t('cwx.ov.verdictLine', { seg: t('cwx.level.' + v.segment), n: fmtNumber(v.daysAway) })}
+          {v.since ? <div className="sub">{t('cwx.ov.verdictSince', { d: when(v.since) })}</div> : null}
+          <button type="button" className="aic-link" data-testid="ov-retention" onClick={() => go(RETENTION_ROUTE)}>{t('cwx.verdict.open')}</button></div>
+        {!d.evaluated ? <p className="sub" data-testid="ov-not-evaluated">{t('cwx.ov.notEvaluated')}</p> : <>
           <h4>{t('cwx.ov.evidence')}</h4>
-          <ul data-testid="ov-evidence">{s.evidence.map((x: string, k: number) => <li key={k}>{x}</li>)}</ul>
+          <ul data-testid="ov-evidence">{sp.reasons.map((x: string, k: number) => <li key={k}>{x}</li>)}</ul>
           <dl className="rvw-dl" data-testid="ov-inputs">
             <dt>{t('cwx.ov.visits')}</dt><dd>{t('cwx.ov.visitsLine', { n: fmtNumber(i.completedVisits), first: when(i.firstVisitAt), last: when(i.lastVisitAt) })}</dd>
             <dt>{t('cwx.col.interval')}</dt><dd>{i.typicalIntervalDays ? t('cwx.days', { n: i.typicalIntervalDays }) : t('cwx.notEstablished')}</dd>
@@ -242,7 +252,7 @@ function EvidenceOverlay({ id, onClose, onChanged, nav }: { id: string; onClose:
             <dt>{t('cwx.col.upcoming')}</dt><dd>{i.hasUpcoming ? i.nextAppointmentDate : t('cwx.none')}</dd>
             <dt>{t('cwx.ov.canceled')}</dt><dd>{t('cwx.ov.cancelLine', { c: fmtNumber(i.canceledCount), n: fmtNumber(i.noShowCount) })}</dd>
             <dt>{t('cwx.ov.membership')}</dt><dd>{i.membershipCanceled ? t('cwx.ov.membershipCanceled') : t('cwx.none')}</dd>
-            <dt>{t('cwx.ov.since')}</dt><dd>{when(s.since, true)}</dd>
+            <dt>{t('cwx.ov.since')}</dt><dd>{when(sp.since, true)}</dd>
             <dt>{t('cwx.ov.rule')}</dt><dd className="sub">{d.rule ? t('cwx.ov.ruleLine', { v: d.rule.version, at: when(d.rule.evaluatedAt, true) }) : '—'}</dd>
           </dl>
         </>}

@@ -8,11 +8,10 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.all": "Tất cả",
   "cwx.none": "Không có",
   "cwx.notProvided": "Chưa có",
-  "cwx.unavailable": "Không khả dụng",
   "cwx.check": "Kiểm tra hệ thống Theo dõi rời bỏ",
   "cwx.refreshReused": "Vừa đánh giá xong — đang hiển thị kết quả đó.",
   "cwx.refreshDone": "Đã đánh giá xong: {n} khách hàng.",
-  "cwx.unavailableNote": "Chưa có kết quả đánh giá nên chưa có tín hiệu để hiển thị. Đây không phải là \"không rủi ro\" — hãy bấm Làm mới.",
+  "cwx.unavailableNote": "Trợ lý chưa đánh giá lý do hỗ trợ — hãy bấm Làm mới. Tình trạng từ Giữ chân khách hiển thị là dữ liệu trực tiếp.", // DRAFT — Kevin reviews
   "cwx.searchHint": "Cũng tìm được theo thợ, dịch vụ hoặc mã khách.",
   "cwx.clearAll": "Xóa tất cả",
   "cwx.count": "{n} khách hàng",
@@ -51,7 +50,7 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.empty.needs_review": "Hiện không có khách nào cần xem xét.",
   "cwx.empty.reviewed": "Không có tín hiệu nào đã xem xét.",
   "cwx.empty.all_signals": "Không có tín hiệu hiện tại.",
-  "cwx.empty.insufficient": "Mọi khách đã đánh giá đều đủ lịch sử.",
+  "cwx.empty.insufficient": "Mọi khách đều đã có ít nhất một lần ghé hoàn tất.", // DRAFT — Kevin reviews
   "cwx.empty.no_signal": "Không có khách nào không có tín hiệu.",
   "cwx.f.priority": "Mức ưu tiên",
   "cwx.f.sort": "Sắp xếp",
@@ -59,11 +58,11 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.priority.higher": "Ưu tiên cao",
   "cwx.priority.normal": "Cần xem xét",
   "cwx.sort.priority": "Ưu tiên cao nhất trước",
-  "cwx.sort.signal_newest": "Tín hiệu mới nhất trước",
+  "cwx.sort.signal_newest": "Tình trạng mới nhất trước", // DRAFT — Kevin reviews
   "cwx.sort.last_visit": "Lần đến gần nhất trước",
   "cwx.sort.days_since": "Lâu nhất từ lần đến cuối",
   "cwx.sort.name": "Tên",
-  "cwx.date.signal_since": "Ngày có tín hiệu",
+  "cwx.date.signal_since": "Tình trạng từ ngày", // DRAFT — Kevin reviews
   "cwx.date.last_visit": "Lần hoàn tất gần nhất",
   "cwx.date.next_appointment": "Ngày hẹn",
   "cwx.date.created": "Ngày tạo khách",
@@ -85,8 +84,8 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.col.daysSince": "Số ngày từ lần đến",
   "cwx.col.interval": "Khoảng quay lại quen thuộc",
   "cwx.col.upcoming": "Lịch hẹn sắp tới",
-  "cwx.col.signal": "Tín hiệu",
-  "cwx.col.reason": "Lý do chính",
+  "cwx.col.signal": "Tình trạng Giữ chân khách", // DRAFT — Kevin reviews
+  "cwx.col.reason": "Lý do hỗ trợ", // DRAFT — Kevin reviews
   "cwx.col.review": "Xem xét",
   "cwx.state.needs_review": "Cần xem xét",
   "cwx.state.higher_priority": "Ưu tiên cao",
@@ -117,19 +116,19 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.ov.appointments": "Lịch sử lịch hẹn",
   "cwx.ov.rebooking": "Mở Đặt lại lịch",
   "cwx.ov.recommendations": "Gợi ý dịch vụ",
-  "cwx.ov.notEvaluated": "Khách này chưa được đánh giá. Hãy bấm Làm mới.",
+  "cwx.ov.notEvaluated": "Lý do hỗ trợ chưa được đánh giá. Hãy bấm Làm mới.", // DRAFT — Kevin reviews
   "cwx.ov.caution": "Tín hiệu nội bộ thận trọng — không phải quyết định rời đi đã xác nhận, và không bao giờ hiển thị cho khách.",
-  "cwx.ov.evidence": "Vì sao có tín hiệu này",
+  "cwx.ov.evidence": "Lý do hỗ trợ (tín hiệu của trợ lý — không phải kết luận)", // DRAFT — Kevin reviews
   "cwx.ov.visits": "Lượt đã hoàn tất",
   "cwx.ov.visitsLine": "{n} lượt · lần đầu {first} · gần nhất {last}",
   "cwx.ov.canceled": "Hủy / không đến",
   "cwx.ov.cancelLine": "{c} lần hủy · {n} lần không đến",
   "cwx.ov.membership": "Hội viên",
   "cwx.ov.membershipCanceled": "Đã hủy (không có gói đang hoạt động)",
-  "cwx.ov.since": "Có tín hiệu từ",
+  "cwx.ov.since": "Tín hiệu thấy lần đầu", // DRAFT — Kevin reviews
   "cwx.ov.rule": "Quy tắc",
   "cwx.ov.ruleLine": "Phiên bản {v} · đánh giá lúc {at}",
-  "cwx.ov.reviewLine": "{s} lúc {at} ở mức {l}",
+  "cwx.ov.reviewLine": "{s} lúc {at} ở tình trạng {l}", // DRAFT — Kevin reviews
   "cwx.ov.until": "đến {d}",
   "cwx.ov.reviewExpired": "tín hiệu đã thay đổi — hãy xem lại",
   "cwx.ov.history": "Lịch sử xem xét",
@@ -152,7 +151,7 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.health.FAILED": "Lỗi",
   "cwx.health.INSUFFICIENT_DATA": "Chưa đủ dữ liệu",
   "cwx.health.UNAVAILABLE": "Không khả dụng",
-  "cwx.health.agreement": "Thẻ rời bỏ (sơ bộ) của Phân tích khách hàng đếm {c}; quy tắc của danh sách này thấy {p} có thể, {e} tăng cao và {h} cao. Cả hai đến từ cùng một lần đánh giá.",
+  "cwx.health.agreement": "Thẻ rời bỏ (sơ bộ) của Phân tích khách hàng đếm {c}; tín hiệu hỗ trợ của trợ lý thấy {p} có thể, {e} tăng cao và {h} cao. Chúng chỉ giải thích — kết luận là của Giữ chân khách.", // DRAFT — Kevin reviews
   "cwx.health.k.assistant_enabled": "Trợ lý Hồ sơ khách hàng AI",
   "cwx.health.d.assistant_enabled.PASSED": "Trợ lý đang bật.",
   "cwx.health.d.assistant_enabled.WARNING": "Trợ lý đang tắt; tín hiệu không thể làm mới. Hãy bật trong Cài đặt AI khách hàng.",
@@ -187,5 +186,18 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.health.d.no_customer_side_effects.PASSED": "Theo dõi rời bỏ không có đường nào để nhắn tin, đặt lịch, sửa khách hay đổi điểm; chỉ ghi nhận xét của chính nó.",
   "cwx.health.k.indexes": "Chỉ mục",
   "cwx.health.d.indexes.PASSED": "Đã có chỉ mục tín hiệu và xem xét.",
-  "cwx.health.d.indexes.WARNING": "Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất."
+  "cwx.health.d.indexes.WARNING": "Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất.",
+  "cwx.level.at_risk": "Nguy cơ", // DRAFT — Kevin reviews
+  "cwx.level.approaching": "Sắp đến hạn", // DRAFT — Kevin reviews
+  "cwx.level.active": "Đang hoạt động", // DRAFT — Kevin reviews
+  "cwx.level.never_visited": "Chưa từng ghé", // DRAFT — Kevin reviews
+  "cwx.verdict.line": "{seg} · vắng {n} ngày", // DRAFT — Kevin reviews
+  "cwx.verdict.source": "Mọi tình trạng ở đây là phân loại của Giữ chân khách (Nguy cơ từ {r} ngày, Sắp đến hạn từ {a} ngày). Tín hiệu của trợ lý chỉ giải thích lý do.", // DRAFT — Kevin reviews
+  "cwx.verdict.open": "Mở Giữ chân khách", // DRAFT — Kevin reviews
+  "cwx.ov.verdict": "Kết luận (Giữ chân khách)", // DRAFT — Kevin reviews
+  "cwx.ov.verdictLine": "{seg} · {n} ngày từ lần ghé hoàn tất gần nhất", // DRAFT — Kevin reviews
+  "cwx.ov.verdictSince": "Ở tình trạng này từ {d}", // DRAFT — Kevin reviews
+  "cwx.health.k.verdict_source": "Nguồn kết luận: Giữ chân khách", // DRAFT — Kevin reviews
+  "cwx.health.d.verdict_source.PASSED": "Mọi kết luận là phân loại của Giữ chân khách; tín hiệu của trợ lý chỉ là lý do hỗ trợ.", // DRAFT — Kevin reviews
+  "cwx.health.d.verdict_source.UNAVAILABLE": "Không đọc được Giữ chân khách nên không thể hiển thị kết luận. Hãy thử lại.", // DRAFT — Kevin reviews
 };
