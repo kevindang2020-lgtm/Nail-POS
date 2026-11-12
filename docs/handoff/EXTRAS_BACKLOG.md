@@ -6,7 +6,7 @@ triaged). Status: **TODO** · **BUILT** (built + tested this arc, commit named) 
 
 Nothing is marked BUILT or EXISTS without the code being opened and the test named.
 
-## Progress (updated Nov 11 2026, 03:30 New York)
+## Progress (updated Nov 12 2026, New York)
 
 | Status | Rows |
 |---|---|

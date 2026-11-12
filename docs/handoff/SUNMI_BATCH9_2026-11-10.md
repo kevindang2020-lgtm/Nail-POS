@@ -565,3 +565,21 @@ Built with tests and marked BUILT in EXTRAS_BACKLOG.md (each row names its files
   Payment Terminals 07/08, Payment Terminals 2 07.
 New contract types: FinanceRulePreview(Request), FinanceBillsDue, FinanceExportPreflight, InventoryLowStockCause,
 AiCalendarPendingQueue, DiscountRefundImpact. Role-matrix snapshot regenerated on purpose for the 6 new read-only routes. No money is moved, no history is changed and nothing is sent by any of these.
+
+## Extras backlog — round 2 of the 5 parallel agents (Nov 12 2026)
+Five agents built in separate worktrees (branches extras-agent1..5) and were merged: 49 rows BUILT (some "part"), 13 EXISTS,
+2 NOISE. TODO 407 → 355. Each row in EXTRAS_BACKLOG.md names its files and tests. Highlights:
+- Checkout gift-card "Check card" readiness (one rate-limited lookup, split remainder, blockers); issue/replace previews.
+- Product price history (audited before → after + reason). Fixed a real bug: retail price edits were silently dropped
+  (updateProduct column map). After merge: an edit sends a price only when it changed, so a viewer whose prices are
+  hidden can never wipe cost/retail (ProductPriceHistory.test.tsx).
+- Restock priority (measured 30-day use vs lead time, "unknown" when no use), SMS callback health, verification funnel
+  and provider-failure triage, retention audit shortcut, rebooking shortcut from appointment history.
+- OCR confidence-first review, finder skill explanation, follow-up contact cooldown, AI Business related questions /
+  summary-first, branch-aware catalog scope, accessible forecast chart.
+- Money Protection: save-failure recovery, honest empty states, peer-comparison sample sizes, false-positive insights.
+- Add-on booking impact + price reasons, tip refund impact + source labels, revenue → collections bridge, branch compare
+  previous period, Android soft-keyboard dialog fit, device-logs payment environment label.
+No new routes this round (fields and one `compare` query param only). Nothing moves money, changes history or sends.
+Left for Kevin (decisions, not code): END-OF-DAY 11 in-app follow-ups vs SMS/email opt-out list; Customer Profile
+Assistant 12 churn vs Customer Retention; End-of-Day Cash 17 reopening closed cash records.
