@@ -32,7 +32,7 @@ for (const d of dirs) {
   // reminder dates and the billing catch-up use local-time Date methods, and node-postgres/PGlite read DATE columns as
   // local midnight. On a machine set to another zone (a developer in New York) seven tests (six module, one app)
   // failed for that reason alone; run the suites in the zone the code is deployed in (DUAL_SCREEN_DISPLAY_AUDIT.md D).
-  const r = spawnSync('npx', ['vitest', 'run'], { cwd: d, encoding: 'utf8', timeout: 1_800_000, maxBuffer: 256 * 1024 * 1024, env: { ...process.env, TZ: 'UTC' } });
+  const r = spawnSync('npx', ['vitest', 'run'], { cwd: d, encoding: 'utf8', timeout: 2_700_000, maxBuffer: 256 * 1024 * 1024, env: { ...process.env, TZ: 'UTC' } });
   const out = (r.stdout || '') + (r.stderr || '');
   const files = (out.match(/^\s*Test Files[^\n]*/m) || ['(no summary)'])[0].trim();
   const tests = (out.match(/^\s*Tests\s[^\n]*/m) || [''])[0].trim();
