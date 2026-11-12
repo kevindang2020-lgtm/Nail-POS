@@ -1673,4 +1673,16 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.inventory.recipe_inactive_product.fix": "Mở Kho hàng → Công thức và thay sản phẩm trong công thức của các dịch vụ đó.", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_short_deduction": "Khi hoàn tất dịch vụ, kho đã trừ đủ lượng theo công thức (30 ngày qua)", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_short_deduction.fix": "Kho bị thiếu khi làm dịch vụ — hãy kiểm đếm lại sản phẩm và nhập thêm hàng; lượng đã trừ không bị thay đổi.", // DRAFT — Kevin reviews
+  "syschk.memberships.benefit_balance_negative": "Không có hội viên nào dùng nhiều lượt ưu đãi hơn số được cấp", // DRAFT — Kevin reviews
+  "syschk.memberships.benefit_balance_negative.fix": "Mở hội viên, so lịch sử lượt với các lần ghé và sửa bằng một điều chỉnh đã được duyệt.", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_ledger_mismatch": "Mỗi ưu đãi đã dùng đều có cả hồ sơ lần ghé và mục trừ lượt", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_ledger_mismatch.fix": "Mở hội viên và phiếu: lần ghé không có mục trừ lượt, hoặc một lượt bị trừ hai lần, cần quản lý xem lại.", // DRAFT — Kevin reviews
+  "syschk.memberships.reservation_open_on_closed_ticket": "Không có lượt ưu đãi nào còn bị giữ cho phiếu đã đóng", // DRAFT — Kevin reviews
+  "syschk.memberships.reservation_open_on_closed_ticket.fix": "Bỏ giữ lượt hoặc ghi nhận việc dùng lượt cho phiếu đó.", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_on_voided_ticket": "Không có ưu đãi nào vẫn bị tính là đã dùng trên phiếu đã hủy", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_on_voided_ticket.fix": "Xem lại phiếu đã hủy và trả lại lượt nếu dịch vụ không diễn ra.", // DRAFT — Kevin reviews
+  "syschk.memberships.payment_pending_stuck": "Không có khoản thu thẻ hội viên nào chờ kết quả quá một ngày", // DRAFT — Kevin reviews
+  "syschk.memberships.payment_pending_stuck.fix": "Kiểm tra khoản thu với nhà cung cấp thanh toán, rồi đánh dấu thành công hoặc thất bại.", // DRAFT — Kevin reviews
+  "syschk.memberships.charged_after_cancel": "Không có khoản gia hạn nào được thu sau khi thẻ hội viên đã hủy", // DRAFT — Kevin reviews
+  "syschk.memberships.charged_after_cancel.fix": "Xem lại khoản thu và hoàn tiền nếu việc hủy vẫn giữ nguyên.", // DRAFT — Kevin reviews
 };
