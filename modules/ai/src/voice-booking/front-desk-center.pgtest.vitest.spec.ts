@@ -276,3 +276,28 @@ describe('A14 Nov 6 — agent search by creator / number, call search by phone /
     expect((await fd.calls(ownB, aid, {}).catch((e: any) => e.code))).toBeTruthy();   // another salon cannot read them
   });
 });
+
+describe('Extras · AI Front Desk 08 — agent performance drill-down with a clear window and comparison basis', () => {
+  it('counts calls, confirmed bookings (succeeded appointment writes only) and handoffs in the salon-local window vs the equal window before; none without a window', async () => {
+    const aid = (await q1(sql`insert into ai_receptionist_agents (tenant_id, branch_id, name, status, provider_agent_id, created_by_user_id)
+      values (${TA}, ${BA}, 'Perf Agent', 'draft', 'agent_perf', ${OWNER}) returning id`)).id;
+    const ins = (ref: string, at: string, handoff: string | null, abandoned = false) => sql`insert into voice_call_outcomes (tenant_id, branch_id, provider, provider_call_id, agent_ref, started_at, duration_seconds, handoff_outcome, abandoned)
+      values (${TA}, ${BA}, 'retell', ${ref}, 'agent_perf', ${at}::timestamptz, 60, ${handoff}, ${abandoned})`.execute(db);
+    // window 2026-03-09 … 2026-03-10 (New York); previous window 2026-03-07 … 2026-03-08
+    await ins('perf_1', '2026-03-09T15:00:00Z', null);
+    await ins('perf_2', '2026-03-10T15:00:00Z', 'transferred');
+    await ins('perf_3', '2026-03-11T03:30:00Z', 'none', true);           // 10:30 pm Mar 10 in New York → inside the window
+    await ins('perf_4', '2026-03-08T15:00:00Z', null);                    // previous window
+    await ins('perf_5', '2026-03-11T15:00:00Z', null);                    // after the window
+    const tool = (ref: string, status: string, k: string) => sql`insert into voice_tool_executions (tenant_id, branch_id, provider_call_id, invocation_key, tool_name, tool_kind, status, related_type, related_id, requested_at)
+      values (${TA}, ${BA}, ${ref}, ${k}, 'create_appointment', 'write', ${status}, 'appointment', gen_random_uuid(), now())`.execute(db);
+    await tool('perf_1', 'succeeded', 'perf-inv-1'); await tool('perf_2', 'failed', 'perf-inv-2'); await tool('perf_4', 'succeeded', 'perf-inv-4');
+    const r: any = await fd.calls(own, aid, { from: '2026-03-09', to: '2026-03-10' });
+    expect(r.items.map((x: any) => x.providerCallId).sort()).toEqual(['perf_1', 'perf_2', 'perf_3']);
+    expect(r.performance).toMatchObject({ from: '2026-03-09', to: '2026-03-10', timeZone: 'America/New_York', previousFrom: '2026-03-07', previousTo: '2026-03-08' });
+    expect(r.performance.current).toEqual({ calls: 3, answered: 2, confirmedBookings: 1, handoffs: 1, failed: 0, bookingRatePercent: 33.3 });
+    expect(r.performance.previous).toEqual({ calls: 1, answered: 1, confirmedBookings: 1, handoffs: 0, failed: 0, bookingRatePercent: 100 });
+    expect(r.performance.basis).toContain('2 salon days');
+    expect((await fd.calls(own, aid, {}) as any).performance).toBeNull();
+  });
+});

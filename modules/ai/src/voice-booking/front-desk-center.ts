@@ -23,7 +23,7 @@
 //   rollback (owner)    re-activates the agent recorded as `prior_agent_id` on this agent's last activation — same gates.
 // Drafts are rows only: create / save / duplicate never call a provider, place a call or change a route.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
-import { utcDate } from '@aipowersalon/date-time';
+import { utcDate, addDays } from '@aipowersalon/date-time';
 import { randomUUID } from 'node:crypto';
 import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
@@ -268,12 +268,14 @@ export class FrontDeskCenter {
   async calls(ctx: FdCtx, id: string, f: { q?: string; period?: string; from?: string; to?: string; page?: unknown; pageSize?: unknown }) {
     const T = ctx.tenantId; const a = await this.agentRow(ctx, id);
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
-    if (!a.provider_agent_id) return { items: [], pagination: { page, pageSize: size, totalItems: 0, totalPages: 1 }, note: 'This agent is not linked to a voice provider agent, so it has answered no calls.' };
+    if (!a.provider_agent_id) return { performance: null, items: [], pagination: { page, pageSize: size, totalItems: 0, totalPages: 1 }, note: 'This agent is not linked to a voice provider agent, so it has answered no calls.' };
     const q = String(f.q ?? '').trim().slice(0, 100);
     let byDate = sql`true`;
+    const between = (from: string, to: string, tz: string) => sql`coalesce(started_at, created_at) >= (${from}::date::timestamp at time zone ${tz}) and coalesce(started_at, created_at) < ((${to}::date + 1)::timestamp at time zone ${tz})`;
+    let win: { from: string; to: string; tz: string } | null = null;
     if (f.period || f.from || f.to) {
       const w = await this.rc.window(ctx, { period: f.period, from: f.from, to: f.to });
-      byDate = sql`coalesce(started_at, created_at) >= (${w.from}::date::timestamp at time zone ${w.tz}) and coalesce(started_at, created_at) < ((${w.to}::date + 1)::timestamp at time zone ${w.tz})`;
+      win = w; byDate = between(w.from, w.to, w.tz);
     }
     // A14 Nov 6: also by caller / dialed phone digits, the customer's name (linked through its follow-up) and an appointment id
     const qd = q.replace(/\D/g, ''); const qid = /^[0-9a-f-]{36}$/i.test(q) ? q : null;
@@ -289,7 +291,28 @@ export class FrontDeskCenter {
     const total = N(agg.n);
     const rows: Row[] = (await sql<Row>`select provider_call_id, coalesce(started_at, created_at) at_, duration_seconds, booking_outcome, handoff_outcome, error_category, abandoned
       from voice_call_outcomes where tenant_id = ${T} and ${where} order by coalesce(started_at, created_at) desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
-    return { items: rows.map((c) => ({ callRef: String(c.provider_call_id).slice(0, 12) + '…', providerCallId: c.provider_call_id, at: iso(c.at_),
+    // Extras · AI Front Desk 08: a performance drill-down for the chosen salon-local window, from recorded calls only — confirmed
+    // bookings are calls with a succeeded appointment write (a booking still waiting for the six-digit code is NOT counted),
+    // handoffs are calls whose recorded handoff outcome is not 'none'. The comparison basis is the equal-length window just
+    // before it (same agent, same search). No window chosen → no drill-down (never an implied "all time" comparison).
+    const perf = async (cond: RawBuilder<unknown>) => {
+      const r: Row = (await sql<Row>`select count(*)::int calls, count(*) filter (where not coalesce(abandoned, false))::int answered,
+          count(*) filter (where handoff_outcome is not null and handoff_outcome <> 'none')::int handoffs,
+          count(*) filter (where error_category is not null)::int failed,
+          count(*) filter (where exists (select 1 from voice_tool_executions x where x.tenant_id = voice_call_outcomes.tenant_id and x.provider_call_id = voice_call_outcomes.provider_call_id
+            and x.tool_kind = 'write' and x.status = 'succeeded' and x.related_type = 'appointment'))::int booked
+        from voice_call_outcomes where tenant_id = ${T} and agent_ref = ${a.provider_agent_id} and ${byQ} and ${cond}`.execute(this.db)).rows[0] ?? {};
+      const calls = N(r.calls); const booked = N(r.booked);
+      return { calls, answered: N(r.answered), confirmedBookings: booked, handoffs: N(r.handoffs), failed: N(r.failed), bookingRatePercent: calls > 0 ? Math.round((booked / calls) * 1000) / 10 : null };
+    };
+    let performance: { from: string; to: string; timeZone: string; current: Awaited<ReturnType<typeof perf>>; previous: Awaited<ReturnType<typeof perf>>; previousFrom: string; previousTo: string; basis: string } | null = null;
+    if (win) {
+      const len = Math.round((Date.parse(win.to + 'T00:00:00Z') - Date.parse(win.from + 'T00:00:00Z')) / 86_400_000) + 1;
+      const previousTo = addDays(win.from, -1); const previousFrom = addDays(win.from, -len);
+      performance = { from: win.from, to: win.to, timeZone: win.tz, current: await perf(byDate), previous: await perf(between(previousFrom, previousTo, win.tz)), previousFrom, previousTo,
+        basis: `Compared with the ${len} salon day${len === 1 ? '' : 's'} just before (${previousFrom} – ${previousTo}). Confirmed bookings = calls with a completed appointment booking; a booking still waiting for the code is not counted.` };
+    }
+    return { performance, items: rows.map((c) => ({ callRef: String(c.provider_call_id).slice(0, 12) + '…', providerCallId: c.provider_call_id, at: iso(c.at_),
       durationSeconds: c.duration_seconds == null ? null : N(c.duration_seconds), booking: c.booking_outcome ?? null, handoff: c.handoff_outcome ?? null,
       error: c.error_category ?? null, abandoned: !!c.abandoned })),
       // A14 Nov 6: the average length of the ENDED calls in this filtered set (null when none ended)
