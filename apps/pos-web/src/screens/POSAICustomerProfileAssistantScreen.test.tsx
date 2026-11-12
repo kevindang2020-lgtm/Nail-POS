@@ -7,6 +7,8 @@ import { MemoryRouter } from 'react-router-dom';
 const { ci, pkg } = vi.hoisted(() => ({ ci: { summary: vi.fn(), customers: vi.fn(), check: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
 vi.mock('../api/posCustomerIntelligenceApi', () => ({ posCustomerIntelligenceApi: ci }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: pkg }));
+const cust = vi.hoisted(() => ({ getDetail: vi.fn() }));
+vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: cust }));
 import { POSAICustomerProfileAssistantScreen } from './POSAICustomerProfileAssistantScreen';
 
 const CARD = { package: { code: 'ai_customer_profile_assistant', name: 'AI Customer Profile Assistant', description: 'Customer insights.', category: 'Growth', posArea: 'Customers', state: 'trialing', storedStatus: 'trialing',
@@ -44,5 +46,21 @@ describe('AI Customer Profile Assistant', () => {
     const k = await screen.findByTestId('as-chk-eligibility');
     expect(k.textContent).not.toContain('cix.');
     expect(k).toHaveTextContent('40');
+  });
+  it('extras #04 Customer Snapshot: a row opens the real Customer 360 Quick View (same detail read), read-only with Booking / History / Notes links', async () => {
+    ci.summary.mockResolvedValue({ cards: null });
+    cust.getDetail.mockResolvedValue({ displayName: 'Linh Pham', status: 'active', phone: '(•••) •••-0142', visitCount: 7, totalSpendCents: 42000, averageSpendCents: 6000,
+      loyalty: { points: 120, earned: 150, redeemed: 30, tier: 'Silver' }, giftCards: [], recentVisits: [], notes: { allergyNotes: 'Latex' } });
+    wrap();
+    fireEvent.click(await screen.findByTestId('cpx-snapshot-open'));
+    await waitFor(() => expect(cust.getDetail).toHaveBeenCalledWith('c1'));
+    const q = await screen.findByTestId('cpx-quick');
+    expect(await screen.findByText('$420.00')).toBeInTheDocument();
+    expect(screen.getByTestId('cpx-book')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cpx-tab-visits')); expect(screen.getByTestId('cpx-history')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cpx-tab-notes')); expect(screen.getByTestId('cpx-edit-notes')).toBeInTheDocument();
+    expect(q.textContent).not.toMatch(/cpf\.|cpx\.snapshot/);
+    fireEvent.click(screen.getByTestId('cpx-full'));
+    await waitFor(() => expect(screen.queryByTestId('cpx-quick')).toBeNull());
   });
 });

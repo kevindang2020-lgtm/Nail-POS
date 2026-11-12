@@ -7,7 +7,7 @@ import { sql } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { pbComputeAvailabilityInWindows } from '@aipowersalon/booking';
-import { AiCalendarCenter, AiCalendarError, periodRange, phoneDigits, localToday, addDays, type AicCtx } from './ai-calendar-center';
+import { AiCalendarCenter, AiCalendarError, periodRange, phoneDigits, localToday, addDays, reconcileAppointments, type AicCtx } from './ai-calendar-center';
 
 let db: any;
 const TZ = 'America/New_York';
@@ -284,5 +284,38 @@ describe('T40/T42 overlay, T44 health, T43 assistant', () => {
     const starts = d.appointments.map((x: any) => x.start);
     expect(starts).toEqual([...starts].sort());
     expect(d.holds.some((h: any) => h.pendingVerification)).toBe(true);
+  });
+});
+
+describe('AI Calendar #06 one-click POS Booking reconciliation (read-only)', () => {
+  it('reconcileAppointments: one-side ids and status flips; a cancelled row left out by one read is not a discrepancy', () => {
+    const r = reconcileAppointments(
+      [{ id: 'a', status: 'booked' }, { id: 'b', status: 'confirmed' }, { id: 'c', status: 'cancelled' }, { id: 'd', status: 'booked' }],
+      [{ id: 'a', status: 'booked' }, { id: 'b', status: 'checked_in' }, { id: 'e', status: 'booked' }, { id: 'f', status: 'no_show' }]);
+    expect(r).toEqual({ onlyCalendar: ['d'], onlyBooking: ['e'], statusDiffers: [{ id: 'b', calendar: 'confirmed', booking: 'checked_in' }], total: 3 });
+    expect(reconcileAppointments([{ id: 'a', status: 'booked' }], [{ id: 'a', status: 'booked' }]).total).toBe(0);
+  });
+  it('health names each discrepancy by appointment id when POS Booking disagrees with the canonical rows, and writes no appointment', async () => {
+    const D2 = '2026-11-23';
+    const keep = await appt({ tenant: T2, branch: B2, tech: T2TECH, date: D2, s: '10:00', e: '10:45' });
+    const dropped = await appt({ tenant: T2, branch: B2, tech: T2TECH, date: D2, s: '11:00', e: '11:45' });
+    const flipped = await appt({ tenant: T2, branch: B2, tech: T2TECH, date: D2, s: '12:00', e: '12:45', status: 'confirmed' });
+    const ghost = randomUUID();
+    // a Booking read that lost one appointment, shows another with a different status and has one AI Calendar never stored
+    const skewed = { ...stubBooking, async dayGrid(ctx: any, date?: string) {
+      const g: any = await stubBooking.dayGrid(ctx, date);
+      const items = g.appointments.filter((a: any) => a.appointmentId !== dropped).map((a: any) => (a.appointmentId === flipped ? { ...a, status: 'checked_in' } : a));
+      return { ...g, appointments: [...items, { appointmentId: ghost, technicianId: T2TECH, startTime: '13:00', endTime: '13:45', status: 'booked' }] };
+    } };
+    const before = (await sql<any>`select count(*)::int c, max(updated_at) u from pos_tech_appointments where tenant_id = ${T2}`.execute(db)).rows[0];
+    const h = await new AiCalendarCenter(db, skewed as any).health(OTHER, D2);
+    const b = h.checks.find((c: any) => c.id === 'booking');
+    expect(b.state).toBe('FAILED');
+    expect(b.detail).toContain('1 only in AI Calendar, 1 only in POS Booking, 1 with a different status');
+    expect(b.evidence).toContain(`only in AI Calendar: ${dropped}`);
+    expect(b.evidence).toContain(`only in POS Booking: ${ghost}`);
+    expect(b.evidence).toContain(`${flipped} (AI Calendar confirmed / Booking checked_in)`);
+    expect(b.evidence).not.toContain(keep);
+    expect((await sql<any>`select count(*)::int c, max(updated_at) u from pos_tech_appointments where tenant_id = ${T2}`.execute(db)).rows[0]).toEqual(before);
   });
 });

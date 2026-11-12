@@ -1624,4 +1624,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.devices.regConflict": "{register} đang do {others} phục vụ. Nếu {label} cũng phục vụ quầy này, lần quẹt thẻ bắt đầu tại quầy có thể đi đến một trong hai máy.", // DRAFT — Kevin reviews
   "ops.devices.regConflictYes": "Vẫn gán", // DRAFT — Kevin reviews
   "ops.devices.pairConflict": "{register} đang do {others} phục vụ. Ghép máy này vào quầy đó nghĩa là hai máy cùng phục vụ một quầy.", // DRAFT — Kevin reviews
+  "syschk.discounts.live_deal_branch_closed": "Không có ưu đãi đang chạy nào thuộc chi nhánh đã đóng hoặc đã xóa", // DRAFT — Kevin reviews
+  "syschk.discounts.live_deal_branch_closed.fix": "Chi nhánh không còn mở nhưng ưu đãi vẫn hiện là đang chạy — hãy kết thúc ưu đãi hoặc chuyển sang chi nhánh đang mở.", // DRAFT — Kevin reviews
+  "syschk.discounts.live_deal_service_unavailable": "Mọi ưu đãi đang chạy chỉ áp dụng cho dịch vụ vẫn còn cung cấp", // DRAFT — Kevin reviews
+  "syschk.discounts.live_deal_service_unavailable.fix": "Một dịch vụ của ưu đãi đã được lưu trữ, tắt hoặc xóa — cập nhật dịch vụ của ưu đãi để khách không thấy mức giảm không thể dùng.", // DRAFT — Kevin reviews
 };

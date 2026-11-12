@@ -18,6 +18,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { useCopilotAction, PreparedCard, ActionOutcome } from './receptionCopilotCenter';
 import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 import { PendingHolds } from './aiCalendar/PendingHolds';
+import { SlotExplain } from './aiCalendar/SlotExplain';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const shift = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
@@ -133,6 +134,7 @@ function DayView({ date, tick, onOpen }: { date: string; tick: number; onOpen: (
   const [page, setPage] = useState(1);
   const [d, setD] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [why, setWhy] = useState(false);
   useEffect(() => { setPage(1); }, [date]);
   const load = useCallback(async () => { setErr(null); try { setD(await posAiCalendarApi.day(date, page)); } catch (e) { setErr(errorTextOf(e, t('aical.loadFailed'))); } }, [date, page]);
   useEffect(() => { void load(); }, [load, tick]);
@@ -147,6 +149,7 @@ function DayView({ date, tick, onOpen }: { date: string; tick: number; onOpen: (
           <button className="btn ghost" disabled={d.techPaging.page <= 1} onClick={() => setPage((p) => p - 1)} data-testid="aic-tech-prev">{t('aical.prev12')}</button>
           <span className="aic-muted" data-testid="aic-tech-label">{t('aical.techLabel', { label: d.techPaging.label })}</span>
           <button className="btn ghost" disabled={d.techPaging.page >= d.techPaging.totalPages} onClick={() => setPage((p) => p + 1)} data-testid="aic-tech-next">{t('aical.next12')}</button>
+          <button className="btn ghost" disabled={!d.technicians.length} onClick={() => setWhy(true)} data-testid="aic-why-btn">{t('aical.why.open')}</button>
         </div>
       </div>
       {!d.appointments.length ? <div className="aic-empty" data-testid="aic-day-empty">{t('aical.noAppointments')}</div> : null}
@@ -169,6 +172,7 @@ function DayView({ date, tick, onOpen }: { date: string; tick: number; onOpen: (
         ))}
       </div>
       {d.appointments.some((a: any) => !a.technicianId) ? <div className="aic-muted">{t('aical.unassignedNote')}</div> : null}
+      {why ? <SlotExplain day={d} onClose={() => setWhy(false)} /> : null}
     </section>
   );
 }

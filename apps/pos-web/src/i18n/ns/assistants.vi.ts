@@ -111,5 +111,6 @@ export const ASSISTANTS_VI: Record<string, string> = {
   "cpx.dateLabel": "Ngày lọc theo",
   "cpx.f.flag": "Đánh dấu",
   "cpx.anyFlag": "Mọi đánh dấu",
-  "cpx.daysAgo": "{n} ngày trước"
+  "cpx.daysAgo": "{n} ngày trước",
+  "cpx.snapshot.open": "Mở thông tin nhanh của khách {name}", // DRAFT — Kevin reviews
 };

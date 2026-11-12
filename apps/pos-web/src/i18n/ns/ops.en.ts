@@ -1625,4 +1625,8 @@ export const OPS_EN = {
   "ops.devices.regConflict": "{register} is already served by {others}. If {label} serves it too, a card charge started at that register could go to either terminal.",
   "ops.devices.regConflictYes": "Assign anyway",
   "ops.devices.pairConflict": "{register} is already served by {others}. Pairing this terminal to it means two terminals serve one register.",
+  "syschk.discounts.live_deal_branch_closed": "No live deal belongs to a closed or removed branch",
+  "syschk.discounts.live_deal_branch_closed.fix": "The branch is no longer open but its deal still shows as live — end the deal or move it to an open branch.",
+  "syschk.discounts.live_deal_service_unavailable": "Every live deal applies only to services that are still offered",
+  "syschk.discounts.live_deal_service_unavailable.fix": "A service the deal applies to was archived, turned off or removed — update the deal’s services so customers are not shown a saving they cannot get.",
 };

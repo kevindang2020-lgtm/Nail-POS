@@ -110,5 +110,6 @@ export const ASSISTANTS_EN: Record<string, string> = {
   "cpx.dateLabel": "Date filter means",
   "cpx.f.flag": "Flag",
   "cpx.anyFlag": "Any flag",
-  "cpx.daysAgo": "{n} days ago"
+  "cpx.daysAgo": "{n} days ago",
+  "cpx.snapshot.open": "Open the customer snapshot for {name}",
 };

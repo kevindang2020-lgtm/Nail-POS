@@ -89,6 +89,17 @@ export function pageArgs(page: unknown, size: unknown) {
   const p = Math.max(1, Math.min(10_000, Math.trunc(Number(page)) || 1));
   return { page: p, pageSize: ps, offset: (p - 1) * ps };
 }
+/** AI Calendar vs POS Booking, appointment by appointment (extras AI Calendar #06): ids on one side only, and ids on both
+ *  sides whose status differs. Pure. A cancelled / no-show row missing from one side is not a discrepancy (a read may
+ *  leave those out), but one present on both sides still takes part, so a status flip is seen. */
+export function reconcileAppointments(calendar: ReadonlyArray<{ id: string; status: string }>, booking: ReadonlyArray<{ id: string; status: string }>) {
+  const cal = new Map(calendar.map((x) => [x.id, x.status])); const bk = new Map(booking.filter((x) => x.id).map((x) => [x.id, x.status]));
+  const counted = (s: string | undefined) => !NOT_COUNTED.includes(String(s));
+  const onlyCalendar = [...cal.keys()].filter((id) => !bk.has(id) && counted(cal.get(id))).sort();
+  const onlyBooking = [...bk.keys()].filter((id) => !cal.has(id) && counted(bk.get(id))).sort();
+  const statusDiffers = [...cal.entries()].filter(([id, s]) => bk.has(id) && bk.get(id) !== s).map(([id, s]) => ({ id, calendar: s, booking: bk.get(id) as string })).sort((a, b) => a.id.localeCompare(b.id));
+  return { onlyCalendar, onlyBooking, statusDiffers, total: onlyCalendar.length + onlyBooking.length + statusDiffers.length };
+}
 /** E.164-ish digits for phone search: punctuation and a leading country code are tolerated ("(609) 555-0142", "+1 609…") */
 export function phoneDigits(q: string): string | null { const d = q.replace(/\D/g, ''); return d.length >= 4 ? (d.length === 11 && d.startsWith('1') ? d.slice(1) : d) : null; }
 
@@ -378,12 +389,22 @@ export class AiCalendarCenter {
           add(id, group, label, 'UNKNOWN', 'This could not be checked right now.', `read failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Run the check again; if it repeats, contact support with the run time.', source); }
       };
       await guard('booking', 'Canonical Booking', 'Booking rows and parity', 'pos_tech_appointments + BookingService.dayGrid', async () => {
-        const mine = n((await sql<Row>`select count(*)::int c from pos_tech_appointments a where a.tenant_id = ${T} and ${this.scope(ctx)} and a.appt_date = ${date}::date and a.status <> all(${NOT_COUNTED}::text[])`.execute(trx)).rows[0]?.c);
+        // extras (AI Calendar #06 One-click POS Booking Reconciliation): compare the two reads appointment by appointment —
+        // ids and statuses, not just the counts — and name each discrepancy by its appointment id (read-only)
+        const rowsMine = (await sql<{ id: string; status: string }>`select a.id::text id, a.status from pos_tech_appointments a where a.tenant_id = ${T} and ${this.scope(ctx)} and a.appt_date = ${date}::date`.execute(trx)).rows;
+        const mine = rowsMine.filter((x) => !NOT_COUNTED.includes(x.status)).length;
         if (!this.booking) { add('booking', 'Canonical Booking', 'Booking rows and parity', 'UNKNOWN', `${mine} appointment(s) in the canonical table; Booking itself is not available here.`, `rows ${mine}`, null, 'pos_tech_appointments'); return; }
         const g: Row = await this.booking.dayGrid(this.bctx(ctx), date);
-        const theirs = ((g.appointments ?? []) as Row[]).filter((x) => !NOT_COUNTED.includes(x.status)).length;
-        add('booking', 'Canonical Booking', 'Booking rows and parity', mine === theirs ? 'READY' : 'FAILED', mine === theirs ? `AI Calendar and POS Booking both show ${mine} appointment(s) on ${date}.` : `AI Calendar counts ${mine} but POS Booking shows ${theirs} on ${date}.`,
-          `canonical rows ${mine}; Booking day grid ${theirs}; same tenant/branch scope`, mine === theirs ? null : 'Report the date and branch to support; the two reads must use the same scope.', 'pos_tech_appointments + BookingService.dayGrid');
+        const theirRows = ((g.appointments ?? []) as Row[]);
+        const theirs = theirRows.filter((x) => !NOT_COUNTED.includes(x.status)).length;
+        const rec = reconcileAppointments(rowsMine, theirRows.map((x) => ({ id: String(x.appointmentId ?? x.id ?? ''), status: String(x.status ?? '') })));
+        const same = mine === theirs && !rec.total;
+        const ids = (xs: string[]) => (xs.length ? xs.slice(0, 5).join(', ') + (xs.length > 5 ? ` (+${xs.length - 5} more)` : '') : 'none');
+        add('booking', 'Canonical Booking', 'Booking rows and parity', same ? 'READY' : 'FAILED',
+          same ? `AI Calendar and POS Booking both show ${mine} appointment(s) on ${date}, with the same ids and statuses.`
+            : `AI Calendar counts ${mine} but POS Booking shows ${theirs} on ${date}; ${rec.onlyCalendar.length} only in AI Calendar, ${rec.onlyBooking.length} only in POS Booking, ${rec.statusDiffers.length} with a different status.`,
+          `canonical rows ${mine}; Booking day grid ${theirs}; same tenant/branch scope; only in AI Calendar: ${ids(rec.onlyCalendar)}; only in POS Booking: ${ids(rec.onlyBooking)}; status differs: ${ids(rec.statusDiffers.map((d) => `${d.id} (AI Calendar ${d.calendar} / Booking ${d.booking})`))}`,
+          same ? null : 'Open each listed appointment in POS Booking; report the date and branch to support — the two reads must use the same scope.', 'pos_tech_appointments + BookingService.dayGrid');
       });
       await guard('schedule', 'Technician Schedule', 'Shifts and working hours', 'BookingService.technicianPage', async () => {
         if (!this.booking) { add('schedule', 'Technician Schedule', 'Shifts and working hours', 'UNKNOWN', 'Booking is not available here.', 'no booking service', null, 'BookingService'); return; }

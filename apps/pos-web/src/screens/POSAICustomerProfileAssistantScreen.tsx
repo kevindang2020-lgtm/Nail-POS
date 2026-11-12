@@ -9,6 +9,9 @@ import { AssistantDashboard } from '../components/AssistantDashboard';
 import { posCustomerIntelligenceApi } from '../api/posCustomerIntelligenceApi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtNumber, fmtInZone } from '../i18n/format';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CustomerQuickView, type CpxCard } from '../components/CustomerProfilesDirectory';   // extras #04: the REAL profile overlay, read-only
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const STATUSES = ['all', 'active', 'rebooking_soon', 'due_for_return', 'inactive_all', 'inactive', 'long_term_inactive', 'insufficient_history', 'never_served', 'not_scanned'];
@@ -20,7 +23,13 @@ const card = (s: any, k: string) => (s?.cards ? fmtNumber(s.cards[k] ?? 0) : t('
 const ci = posCustomerIntelligenceApi;
 
 export function POSAICustomerProfileAssistantScreen() {
+  // Customer Snapshot (extras #04): a row opens the existing Customer 360 Quick View (same GET /pos/customers/:id as the
+  // profile page, contact masked by the server for the role) with its Booking / History / Notes links — no second profile
+  // record and nothing private kept on this AI page. Full View opens the profile page for that id.
+  const nav = useNavigate();
+  const [snap, setSnap] = useState<CpxCard | null>(null);
   return (
+    <>
     <AiPackagePanel code="ai_customer_profile_assistant" title={t('pos.ai_customer_insights')}>
       <AssistantDashboard testId="cpx-dashboard"
         summary={ci.summary}
@@ -35,7 +44,7 @@ export function POSAICustomerProfileAssistantScreen() {
         list={ci.customers}
         rowKey={(r) => r.id}
         columns={[
-          { key: 'customer', label: t('cpx.col.customer'), render: (r) => <><b>{r.name ?? '—'}</b>{r.phone ? <div className="sub">{r.phone}</div> : null}</> },
+          { key: 'customer', label: t('cpx.col.customer'), render: (r) => <><button className="aic-link" data-testid="cpx-snapshot-open" onClick={() => setSnap({ id: r.id, name: r.name ?? '' })} aria-label={t('cpx.snapshot.open', { name: r.name ?? '—' })}><b>{r.name ?? '—'}</b></button>{r.phone ? <div className="sub">{r.phone}</div> : null}</> },
           { key: 'status', label: t('cpx.col.status'), render: (r) => <span className="chip">{t('cix.status.' + (r.scanned ? (STATUSES.includes(r.status) ? r.status : 'not_scanned') : (r.neverServed ? 'never_served' : 'not_scanned')))}</span> },
           { key: 'last', label: t('cpx.col.last'), render: (r) => <>{day(r.lastVisitAt)}{r.daysSinceLast != null ? <div className="sub">{t('cpx.daysAgo', { n: fmtNumber(r.daysSinceLast) })}</div> : null}</> },
           { key: 'visits', label: t('cpx.col.visits'), render: (r) => (r.completedVisits == null ? '—' : fmtNumber(r.completedVisits)) },
@@ -56,5 +65,7 @@ export function POSAICustomerProfileAssistantScreen() {
           n: fmtNumber(x.detail.neverServed), u: fmtNumber(x.detail.underCadence), r: fmtNumber(x.detail.rebookingSoon + x.detail.dueForReturn) }) : t('cix.health.d.' + k + '.' + s)) }}
         openTo="/tenant/ai/customer-profile" openLabel={t('cpx.open')} note={t('cpx.note')} />
     </AiPackagePanel>
+    {snap ? <CustomerQuickView customer={snap} onClose={() => setSnap(null)} onFullView={() => { const id = snap.id; setSnap(null); nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(id)}`); }} /> : null}
+    </>
   );
 }
