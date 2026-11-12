@@ -11,7 +11,7 @@ const v = (x: unknown) => (x == null || x === '' ? '—' : String(x));
 /** anything that still looks like a phone number or an e-mail address in free text is masked (defence in depth) */
 export const redactFreeText = (s: string | null | undefined) => (s == null ? '—' : String(s)
   .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
-  .replace(/\+?\d[\d\s().-]{7,}\d/g, (m) => `[phone …${m.replace(/\D/g, '').slice(-4)}]`)
+  .replace(/\+?\d[\d\s().-]{7,}\d/g, (m) => t('growth.aiBooking.rep.phoneMask', { v: m.replace(/\D/g, '').slice(-4) }))
   .replace(/(?<!…)\b\d{4,8}\b/g, '[number]'));
 
 export function buildSupportReport(d: AibRequestDetail, generatedAt: string): string {
@@ -23,16 +23,16 @@ export function buildSupportReport(d: AibRequestDetail, generatedAt: string): st
     `${t('growth.aiBooking.rep.phone')}: ${v(d.customer?.maskedPhone)} · ${t('growth.aiBooking.rep.verified')}: ${d.customer?.verified ? 'yes' : 'no'}`,
     `${t('growth.aiBooking.rep.attempts')}: ${v(d.attempts)}`, '');
   L.push(`## ${t('growth.aiBooking.rep.timeline')}`);
-  for (const x of d.timeline ?? []) L.push(`${v(x.at)}  ${v(x.stage)}${x.outcome ? ` · ${x.outcome}` : ''}${x.failureReason ? ` · ${x.failureReason}` : ''}${x.latencyMs != null ? ` · ${x.latencyMs} ms` : ''}${x.appointmentId ? ` · appt ${x.appointmentId}` : ''}`);
+  for (const x of d.timeline ?? []) L.push(`${v(x.at)}  ${v(x.stage)}${x.outcome ? ` · ${x.outcome}` : ''}${x.failureReason ? ` · ${x.failureReason}` : ''}${x.latencyMs != null ? ` · ${x.latencyMs} ms` : ''}${x.appointmentId ? ` · ${t('growth.aiBooking.rep.appt', { v: x.appointmentId })}` : ''}`);
   if (!d.timeline?.length) L.push('—');
   L.push('', `## ${t('growth.aiBooking.rep.tools')}`);
-  for (const x of d.tools ?? []) L.push(`${v(x.at)} → ${v(x.finishedAt)}  ${v(x.tool)} (${v(x.kind)}) · ${v(x.status)} · ${x.requests} req${x.error ? ` · error: ${redactFreeText(x.error)}` : ''}`);
+  for (const x of d.tools ?? []) L.push(`${v(x.at)} → ${v(x.finishedAt)}  ${v(x.tool)} (${v(x.kind)}) · ${v(x.status)} · ${x.requests} req${x.error ? ` · ${t('growth.aiBooking.rep.error', { v: redactFreeText(x.error) })}` : ''}`);
   if (!d.tools?.length) L.push('—');
   L.push('', `## ${t('growth.aiBooking.rep.verification')}`);
   for (const x of d.verification ?? []) L.push(`${v(x.at)}  ${v(x.status)} · ${v(x.channel)} · ${v(x.maskedPhone)} · tries ${x.attempts}/${x.resends} · expires ${v(x.expiresAt)} · verified ${v(x.verifiedAt)}${x.failureReason ? ` · ${x.failureReason}` : ''}`);
   if (!d.verification?.length) L.push('—');
   L.push('', `## ${t('growth.aiBooking.rep.holds')}`);
-  for (const x of d.holds ?? []) L.push(`${x.holdId}  ${v(x.status)} · ${v(x.channel)} · ${v(x.startAt)}–${v(x.endAt)} · expires ${v(x.expiresAt)} · released ${v(x.releasedAt)}${x.releaseReason ? ` (${x.releaseReason})` : ''}${x.convertedAppointmentId ? ` · appt ${x.convertedAppointmentId}` : ''}`);
+  for (const x of d.holds ?? []) L.push(`${x.holdId}  ${v(x.status)} · ${v(x.channel)} · ${v(x.startAt)}–${v(x.endAt)} · expires ${v(x.expiresAt)} · released ${v(x.releasedAt)}${x.releaseReason ? ` (${x.releaseReason})` : ''}${x.convertedAppointmentId ? ` · ${t('growth.aiBooking.rep.appt', { v: x.convertedAppointmentId })}` : ''}`);
   if (!d.holds?.length) L.push('—');
   L.push('', `## ${t('growth.aiBooking.rep.messages')}`);
   for (const x of d.communications ?? []) L.push(`${v(x.sentAt)}  ${v(x.kind)} · ${v(x.provider)} · ref ${last4(x.providerReference)} · ${v(x.status)}`);

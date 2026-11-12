@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 969,
+  "tables": 972,
   "ownership": {
-   "tenant_owned": 647,
+   "tenant_owned": 650,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 161,
    "tenant_branch_owned": 92,
@@ -21,7 +21,7 @@
    "SECURITY": 31,
    "FINANCE": 83,
    "MARKETING": 24,
-   "AI": 148,
+   "AI": 150,
    "AUDIT": 29,
    "OPERATIONS": 77,
    "SUPPORT": 57,
@@ -29,7 +29,7 @@
    "PAYMENTS": 60,
    "WORKFORCE": 76,
    "CUSTOMERS": 60,
-   "CATALOG": 21,
+   "CATALOG": 22,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 14,
    "DEALS": 18,
@@ -41,14 +41,14 @@
    "TENANTS": 29
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 144,
+   "HIGHLY_SENSITIVE": 146,
    "CONFIDENTIAL": 169,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 535,
+   "INTERNAL": 536,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 55,
+  "append_only": 58,
   "platform_rows": 101
  },
  "tables": {
@@ -246,6 +246,30 @@
    "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_branch_comparison_signoffs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "ai_branch_comparison_snapshots": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": true,
    "source": "heuristic"
   },
   "ai_budget_alerts": {
@@ -2213,6 +2237,18 @@
    "has_tenant_id": true,
    "has_branch_id": true,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "catalog_category_reviews": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CATALOG",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": true,
    "source": "heuristic"
   },
   "catalog_change_log": {

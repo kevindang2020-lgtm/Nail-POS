@@ -1159,4 +1159,7 @@ export const GROWTH_EN = {
   "growth.community.preview.channels": "In-app: {a} · Push: {b} · Email: {c} · Text (critical only): {d}",
   "growth.community.preview.truncated": "Only the newest {m} advisories were checked.",
   "growth.community.preview.note": "Counts only — no advisory is opened and nothing is sent from this preview.",
+  "growth.aiBooking.rep.phoneMask": "[phone …{v}]",
+  "growth.aiBooking.rep.appt": "appt {v}",
+  "growth.aiBooking.rep.error": "error: {v}",
 };

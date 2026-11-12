@@ -1160,4 +1160,7 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.community.preview.channels": "Trong ứng dụng: {a} · Thông báo đẩy: {b} · Email: {c} · Tin nhắn (chỉ khẩn cấp): {d}", // DRAFT — Kevin reviews
   "growth.community.preview.truncated": "Chỉ kiểm tra {m} cảnh báo mới nhất.", // DRAFT — Kevin reviews
   "growth.community.preview.note": "Chỉ là số đếm — không mở cảnh báo nào và không gửi gì từ bản xem trước này.", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.phoneMask": "[SĐT …{v}]", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.appt": "lịch hẹn {v}", // DRAFT — Kevin reviews
+  "growth.aiBooking.rep.error": "lỗi: {v}", // DRAFT — Kevin reviews
 };
