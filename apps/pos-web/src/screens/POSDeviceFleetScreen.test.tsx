@@ -76,6 +76,33 @@ describe('Devices sub-pages', () => {
   });
 });
 
+describe('extras Device Assignments 09 — payment terminal routing guard', () => {
+  it('a terminal\'s details show the server verdict, register pairing, reservation, processor and links; nothing is sent', async () => {
+    const term = dev({ id: 't1', source: 'terminal', class: 'terminal', name: 'Compact 2', type: 'payment_terminal', status: 'online',
+      facts: { operational: 'PROCESSING', hsnMasked: '••••0002', routing: { verdict: 'busy', operational: 'PROCESSING', registerPaired: true, reservedFor: 'ticket', reservedUntil: '2026-11-12T15:06:00Z',
+        processor: 'clover', environment: 'sandbox', lastPingOk: true, lastPingAt: '2026-11-12T15:00:00Z', movesMoney: false } } });
+    m.summary.mockResolvedValue({ class: 'terminal', checkedAt: '2026-11-09T10:00:00Z', registered: 1, online: 1, attention: 0, unassigned: 0, disabled: 0, retired: 0, extra: {} });
+    m.devices.mockResolvedValue({ ...listOf([term]), class: 'all' });
+    r('assignments');
+    fireEvent.click((await screen.findAllByTestId('dfx-view'))[0]);
+    const g = await screen.findByTestId('dfx-routing');
+    expect(g).toHaveAttribute('data-verdict', 'busy');
+    expect(g).toHaveTextContent('Reserved — another checkout is using it');
+    expect(g).toHaveTextContent('Paired with a register');
+    expect(g).toHaveTextContent(/Held by a checkout until Nov/);
+    expect(g).toHaveTextContent('Clover · Sandbox / UAT');
+    expect(g).toHaveTextContent('nothing is sent to the terminal');
+    expect(within(screen.getByTestId('dfx-detail')).queryByText('[object Object]')).toBeNull();   // the routing object is not dumped as a fact
+    expect(within(g).getByTestId('dfx-route-gateway')).toBeInTheDocument();
+  });
+  it('a register (not a terminal) has no routing guard', async () => {
+    r('reception-pos');
+    fireEvent.click((await screen.findAllByTestId('dfx-view'))[0]);
+    await screen.findByTestId('dfx-detail');
+    expect(screen.queryByTestId('dfx-routing')).toBeNull();
+  });
+});
+
 describe('Reception POS — verified connected count (extras Reception POS #11)', () => {
   it('an unreadable registry summary shows "— connected", never a made-up 0; the readable count carries its checked-at time', async () => {
     m.summary.mockRejectedValue(Object.assign(new Error('down'), { status: 503 }));

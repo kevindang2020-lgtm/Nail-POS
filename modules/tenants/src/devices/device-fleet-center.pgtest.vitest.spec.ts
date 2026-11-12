@@ -134,6 +134,25 @@ describe('device fleet — history, receipts and the check', () => {
 });
 
 describe('duplicateNameCount (pure)', () => {
+  it('extras Device Assignments 09 — terminal routing guard: ready / busy (reserved, holder id never shown) / no register / no processor / not ready; read-only', async () => {
+    await q(sql`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn, station_id, last_seen_at) values
+      ('df-t2', ${T}, ${B}, 'Compact 2', 'paired', 'C032UQ00000002', ${S2}, now()), ('df-t3', ${T}, ${B}, 'Compact 3', 'paired', 'C032UQ00000003', null, now()),
+      ('df-t4', ${T}, ${B}, 'Compact 4', 'paired', 'C032UQ00000004', ${S3}, now())`);
+    await q(sql`insert into payment_terminal_leases (tenant_id, terminal_id, holder, expires_at) values (${T}, 'df-t2', 'ticket:9f1c-secret-ticket', now() + interval '2 minutes')`);
+    const routing = async () => Object.fromEntries((await fc.list(ctx(), { class: 'terminal', pageSize: 50 } as any)).items.map((d: any) => [d.name, d.facts.routing]));
+    let r = await routing();
+    expect(r['Compact 4']).toMatchObject({ verdict: 'no_processor', processor: null, registerPaired: true, movesMoney: false });   // no merchant setup yet
+    await q(sql`insert into tenant_payment_config (tenant_id) values (${T})`);
+    const proc = (await q(sql`select processor from tenant_payment_config where tenant_id = ${T}`))[0].processor;
+    r = await routing();
+    expect(r['Compact 4']).toMatchObject({ verdict: 'ready', operational: 'ONLINE', processor: proc });
+    expect(r['Compact 2']).toMatchObject({ verdict: 'busy', operational: 'PROCESSING', reservedFor: 'ticket' });
+    expect(r['Compact 2'].reservedUntil).toEqual(expect.any(String));
+    expect(JSON.stringify(r)).not.toContain('secret-ticket');
+    expect(r['Compact 3']).toMatchObject({ verdict: 'no_register', registerPaired: false });
+    expect(r['Compact 1']).toMatchObject({ verdict: 'not_ready', operational: 'UNKNOWN' });   // never answered: not routable
+    expect((await q(sql`select count(*)::int as n from payment_terminal_leases where tenant_id = ${T}`))[0].n).toBe(1);   // nothing reserved or released
+  });
   it('counts only names shared inside the same branch; blank names are ignored', () => {
     expect(duplicateNameCount([{ name: 'Front', branchId: 'b1' }, { name: 'front ', branchId: 'b1' }, { name: 'Front', branchId: 'b2' }, { name: '', branchId: 'b1' }, { name: '', branchId: 'b1' }] as any)).toBe(2);
     expect(duplicateNameCount([{ name: 'A', branchId: 'b1' }, { name: 'B', branchId: 'b1' }] as any)).toBe(0);

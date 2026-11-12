@@ -1707,4 +1707,32 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.branch_or_plan_other_salon.fix": "Báo ngay cho bộ phận hỗ trợ: những thẻ hội viên này trỏ đến chi nhánh hoặc gói của tiệm khác.", // DRAFT — Kevin reviews
   "syschk.memberships.money_rows_other_salon": "Không có khoản thu, tín dụng hay lần sử dụng hội viên nào bị ghi vào tiệm khác", // DRAFT — Kevin reviews
   "syschk.memberships.money_rows_other_salon.fix": "Báo ngay cho bộ phận hỗ trợ: những dòng này bị ghi nhầm tiệm.", // DRAFT — Kevin reviews
+  "dfx.route.title": "Kiểm tra định tuyến thanh toán", // DRAFT — Kevin reviews
+  "dfx.route.v.ready": "Quầy thanh toán có thể gửi khoản thanh toán đến máy này ngay", // DRAFT — Kevin reviews
+  "dfx.route.v.busy": "Đang được giữ — một quầy khác đang dùng; quầy thứ hai sẽ được báo là máy bận", // DRAFT — Kevin reviews
+  "dfx.route.v.no_register": "Chưa ghép với quầy nào — không quầy thanh toán nào gửi đến được", // DRAFT — Kevin reviews
+  "dfx.route.v.no_processor": "Chi nhánh này chưa chọn bộ xử lý thanh toán", // DRAFT — Kevin reviews
+  "dfx.route.v.not_ready": "Chưa sẵn sàng — máy đang mất kết nối, bị tắt hoặc chưa từng phản hồi", // DRAFT — Kevin reviews
+  "dfx.route.register": "Ghép với quầy", // DRAFT — Kevin reviews
+  "dfx.route.paired": "Đã ghép với quầy", // DRAFT — Kevin reviews
+  "dfx.route.notPaired": "Chưa ghép", // DRAFT — Kevin reviews
+  "dfx.route.reserved": "Giữ máy", // DRAFT — Kevin reviews
+  "dfx.route.reservedBy.ticket": "Đang được một lần thanh toán giữ đến {t}", // DRAFT — Kevin reviews
+  "dfx.route.reservedBy.display": "Đang được màn hình khách giữ đến {t}", // DRAFT — Kevin reviews
+  "dfx.route.reservedBy.other": "Đang được giữ đến {t}", // DRAFT — Kevin reviews
+  "dfx.route.free": "Trống", // DRAFT — Kevin reviews
+  "dfx.route.processor": "Bộ xử lý", // DRAFT — Kevin reviews
+  "dfx.route.noProcessor": "Chưa đặt", // DRAFT — Kevin reviews
+  "dfx.route.ping": "Lần kiểm tra máy gần nhất", // DRAFT — Kevin reviews
+  "dfx.route.pingOk": "Có phản hồi", // DRAFT — Kevin reviews
+  "dfx.route.pingFailed": "Không phản hồi", // DRAFT — Kevin reviews
+  "dfx.route.pingNever": "Chưa từng kiểm tra", // DRAFT — Kevin reviews
+  "dfx.route.note": "Chỉ xem: không gửi gì đến máy và không có khoản tiền nào được chuyển từ đây.", // DRAFT — Kevin reviews
+  "dfx.route.gateway": "Cổng thanh toán", // DRAFT — Kevin reviews
+  "dfx.proc.clover": "Clover", // DRAFT — Kevin reviews
+  "dfx.proc.fiserv": "Fiserv", // DRAFT — Kevin reviews
+  "dfx.proc.cardpointe": "Fiserv CardPointe", // DRAFT — Kevin reviews
+  "dfx.proc.manual": "Thủ công", // DRAFT — Kevin reviews
+  "dfx.env.sandbox": "Thử nghiệm / UAT", // DRAFT — Kevin reviews
+  "dfx.env.production": "Chính thức", // DRAFT — Kevin reviews
 };
