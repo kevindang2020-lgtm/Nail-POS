@@ -1629,4 +1629,8 @@ export const OPS_EN = {
   "syschk.discounts.live_deal_branch_closed.fix": "The branch is no longer open but its deal still shows as live — end the deal or move it to an open branch.",
   "syschk.discounts.live_deal_service_unavailable": "Every live deal applies only to services that are still offered",
   "syschk.discounts.live_deal_service_unavailable.fix": "A service the deal applies to was archived, turned off or removed — update the deal’s services so customers are not shown a saving they cannot get.",
+  "syschk.inventory.recipe_inactive_product": "No service recipe uses an archived or inactive product",
+  "syschk.inventory.recipe_inactive_product.fix": "Open Inventory → Recipes and replace the product in those services’ recipes.",
+  "syschk.inventory.recipe_short_deduction": "Service Done took each recipe’s full amount from stock (last 30 days)",
+  "syschk.inventory.recipe_short_deduction.fix": "Stock ran short when the service was done — recount the product and receive stock; the deduction itself is not changed.",
 };
