@@ -36,3 +36,30 @@ export function matchesFilters(r: LogRowLike, f: LogFilters): boolean {
   if (f.correlationId && r.correlationId !== f.correlationId) return false;
   return true;
 }
+
+// ── Device Integration Logs backlog · 08: the sanitized export ─────────────────────────────────────────────────────────
+// What leaves the salon in a log file: the event's time, category, severity, source, message, status and its record /
+// trace ids — never the metadata column (provider payloads), and the message itself is redacted: e-mail addresses,
+// long digit runs (card / phone / account-like numbers, separators allowed — only the last 4 digits stay) and any
+// `secret=…` / `token: …` style value. Cells are formula-safe (a leading = + - @ is quoted).
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const KEYVAL_RE = /\b(secret|password|passcode|pin|token|signing|api[_-]?key|authorization|cookie|cvv|cvc)(\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s,;]+)/gi;
+const DIGITS_RE = /(?<![\w-])\+?(?:\d[\s().-]{0,2}){8,}\d(?![\w-])/g;   // 9+ digits, not inside a word / id (UUIDs and dates stay)
+export function redactLogText(raw: unknown): string {
+  let s = String(raw ?? '');
+  s = s.replace(KEYVAL_RE, (_m, k: string, sep: string) => `${k}${sep}[redacted]`);
+  s = s.replace(EMAIL_RE, '[email]');
+  s = s.replace(DIGITS_RE, (m) => { if (/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2})?$/.test(m)) return m;   // a date (and its hour), not a number
+    const d = m.replace(/\D/g, ''); return `•••${d.slice(-4)}`; });
+  return s;
+}
+export function logCsvCell(v: unknown): string {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+/** the longest range one export may cover (a fixed, bounded window — never "everything") */
+export const LOG_EXPORT_MAX_DAYS = 31;
+/** the most rows one file holds; a range with more says so in the file (Truncated: yes) instead of silently cutting */
+export const LOG_EXPORT_MAX_ROWS = 5000;
+export function logExportRangeDays(from: string, to: string): number { return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1; }

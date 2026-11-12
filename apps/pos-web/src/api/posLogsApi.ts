@@ -9,5 +9,9 @@ export const posLogsApi = {
   /** SUNMI batch 8 (Nov 9 2026): dated, numbered pages (newest first) + the range's counts — device events included */
   page: (p: { category?: string; severity?: string; search?: string; relatedId?: string; correlationId?: string; from?: string; to?: string; page: number; pageSize: number }) =>
     api.get<LogsPage>('/pos/logs', Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== '' && v !== 'all'))),
+  /** Device Integration Logs 08: the sanitized CSV of one range (from + to, at most 31 days) with the page's filters —
+   *  needs pos.reports.export; the server records the export before it returns the file */
+  exportCsv: (p: { category?: string; severity?: string; search?: string; relatedId?: string; correlationId?: string; from?: string; to?: string }) =>
+    api.exportAsync<string>('/pos/logs/export', Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== '' && v !== 'all')), 'text'),
 };
 export type { LogEntryView };
