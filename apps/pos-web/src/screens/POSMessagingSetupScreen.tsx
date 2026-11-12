@@ -41,7 +41,7 @@ import { FitDialog, FitPanel, requestId } from '../components/FitKit';
 import { isForbidden } from '../components/FinanceKit';
 import { Pill, CapsLine, TestRows, CheckRows, RegRow, reasonText, outcomeText, when, splitLink } from './phoneMessagingParts';
 import { SmsReadinessPanel, SetupWizard, BranchSenders, SetupActivity } from './messagingSetupCenter';
-import { posMessagingSetupApi, type SetupOverview } from '../api/posMessagingSetupApi';
+import { posMessagingSetupApi, type SetupOverview, type ConsentBoundaryView } from '../api/posMessagingSetupApi';
 import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const E164 = /^\+[1-9][0-9]{6,15}$/;
@@ -487,6 +487,8 @@ export function POSMessagingSetupScreen() {
             </div>
           </section>
 
+          {ov?.consentBoundary ? <ConsentBoundaryPanel cb={ov.consentBoundary} /> : null}
+
           <section id="pm-test" className="fk-panel pmc-card" data-testid="pm-test">
             <div className="fk-panel-head"><h2>{t('pos.send_a_test_message')}</h2>{rd?.lastTest ? <Pill state={rd.lastTest.status} testId="pm-last-test" /> : null}</div>
             <div className="fk-panel-body pmc-form">
@@ -592,5 +594,25 @@ export function POSMessagingSetupScreen() {
         </FitDialog>
       ) : null}
     </div>
+  );
+}
+
+/** Phone & Messaging 12 "Consent Boundary Checker" (Kevin, Nov 12 2026): what a customer's STOP or unsubscribe does to each
+ *  message type — booking codes and account texts still go (transactional), everything else is blocked — with the salon's
+ *  30-day evidence from the ledger. The rule comes from the server's send path; read-only. */
+export function ConsentBoundaryPanel({ cb }: { cb: ConsentBoundaryView }) {
+  return (
+    <section className="fk-panel" data-testid="ms-consent">
+      <div className="fk-panel-head"><h2>{t('ms.cb.title')}</h2><span className={'fk-chip ' + (cb.overall === 'breach' ? 'bad' : 'ok')} data-testid="ms-cb-overall">{t('ms.cb.overall.' + cb.overall)}</span></div>
+      <div className="pmc-hint" data-testid="ms-cb-optedout">{t('ms.cb.optedOut', { sms: cb.optedOut.sms, email: cb.optedOut.email })}</div>
+      <table className="fk-table"><thead><tr><th scope="col">{t('ms.cb.type')}</th><th scope="col">{t('ms.cb.rule')}</th><th scope="col">{t('ms.cb.why')}</th><th scope="col">{t('ms.cb.evidence')}</th></tr></thead>
+        <tbody>{cb.rules.map((r) => <tr key={r.kind} data-testid={'ms-cb-' + r.kind}>
+          <th scope="row">{t('ms.cb.k.' + r.kind)}</th>
+          <td>{r.blockedByOptOut ? t(r.channel === 'sms' ? 'ms.cb.blockedStop' : 'ms.cb.blockedUnsub') : t('ms.cb.sentDespite')}{r.blockedByMarketingUnsubscribe ? ' · ' + t('ms.cb.marketingUnsub') : ''}</td>
+          <td>{t('ms.cb.basis.' + r.basis)}</td>
+          <td>{r.last30Days == null ? t('ms.cb.notOnLedger') : t('ms.cb.ev', { b: r.last30Days.blocked, s: r.last30Days.sentToOptedOut })}{r.state === 'breach' ? <b className="err"> · {t('ms.cb.breach')}</b> : null}</td>
+        </tr>)}</tbody></table>
+      <div className="pmc-hint">{t('ms.cb.note')}</div>
+    </section>
   );
 }

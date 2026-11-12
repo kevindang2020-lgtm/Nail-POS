@@ -15,7 +15,12 @@ export interface SetupOverview {
   wizard: { steps: WizardStep[]; resumeAt: MsgSetupWizardKey };
   schedule: { enabled: boolean; lastScheduledAt: string | null; lastCheckAt: string | null; runsAt: string; mode: string };
   note: string;
+  consentBoundary?: ConsentBoundaryView;
 }
+/** Phone & Messaging 12 — what STOP / unsubscribe does to each message type (the send path's own rule) + 30-day ledger evidence */
+export interface ConsentBoundaryRuleView { kind: string; channel: 'sms' | 'email'; purpose: string | null; blockedByOptOut: boolean; blockedByMarketingUnsubscribe: boolean; basis: 'transactional' | 'service' | 'marketing'; path: 'verify_service' | 'notifications';
+  last30Days: { blocked: number; sentToOptedOut: number } | null; state: 'consistent' | 'breach' | 'not_on_ledger' }
+export interface ConsentBoundaryView { rules: ConsentBoundaryRuleView[]; optedOut: { sms: number; email: number }; overall: 'consistent' | 'breach'; note: string }
 export interface BranchSender { branchId: string; name: string | null; source: string; inherits: boolean; accountSidMasked: string | null; sender: string | null; senderType: string | null; registration: MsgSetupPartState; parts: { key: MsgSetupPartKey; state: MsgSetupPartState }[]; lastCheckedAt: string | null }
 export interface BranchSenders { salonDefault: { accountSidMasked: string | null; sender: string | null; senderType: string | null; source: string }; branches: BranchSender[]; rule: string }
 export type MsgSetupActivityKind = 'test_sms' | 'health_check' | 'registration_check' | 'number_purchase';

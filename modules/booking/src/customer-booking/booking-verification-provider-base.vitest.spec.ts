@@ -36,3 +36,14 @@ describe('send failures carry the provider error CODE (never the message) for tr
     expect(await p3.send(creds, '+18565550199')).toMatchObject({ ok: false, reason: 'provider_error', providerCode: 'network' });
   });
 });
+
+describe('Phone & Messaging 12 — booking codes are transactional and NOT blocked by STOP (Kevin, Nov 12 2026)', () => {
+  it('the Verify provider has no opt-out input: a number that texted STOP still gets its six-digit code', async () => {
+    const http = vi.fn(async () => new Response(JSON.stringify({ sid: 'VE1', status: 'pending' }), { status: 201 }));
+    expect(TwilioVerifyProvider.length).toBeLessThanOrEqual(2);              // (http, base) — no opt-out store can be passed in
+    const p = new TwilioVerifyProvider(http as any, 'http://127.0.0.1:3091');
+    const r = await p.send({ accountSid: 'AC1', authToken: 't', verifyServiceSid: 'VA1', fromNumber: null }, '+16095550301');
+    expect(r).toMatchObject({ ok: true, providerVerificationSid: 'VE1' });
+    expect(String((http.mock.calls[0] as any)[0])).toBe('http://127.0.0.1:3091/v2/Services/VA1/Verifications');
+  });
+});

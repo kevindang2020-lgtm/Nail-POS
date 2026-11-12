@@ -1,5 +1,6 @@
 // notifications.service.ts — tenant-facing send path. Reuses the auth SmsSender/EmailSender ports, meters
 // sms_credits/email_credits (always enforced — you can't send without credits), and logs every attempt.
+import { smsStopExempt } from './consent-boundary';
 import { type SmsSender, type EmailSender, type TenantMessenger, type TenantSmsRequest, type TenantEmailRequest, type TenantSendResult, type MessagePurpose, isSimulatedSender, isNotConfiguredSender } from '@aipowersalon/notifications';
 import { type EmailPolicyPort, EMAIL_RE } from '../email/email-policy';
 import type { NotificationsRepositoryPort } from './notifications.repository';
@@ -220,7 +221,8 @@ export class NotificationsService implements TenantMessenger {
       } catch (e: any) { return { sent: false, status: 'failed', reason: String(e?.message || 'send_failed').slice(0, 200) }; }
     }
     // Account and security texts are not marketing: an opt-out does not stop them (the person asked for this code).
-    if (req.purpose !== 'account' && this.optOut && await this.optOut.isOptedOut(req.tenantId, 'sms', to)) {
+    // The rule lives in consent-boundary.ts (the Consent Boundary Checker reads the same function).
+    if (!smsStopExempt(req.purpose) && this.optOut && await this.optOut.isOptedOut(req.tenantId, 'sms', to)) {
       const row = await this.repo.log({ tenantId: req.tenantId, channel: 'sms', toAddress: to, subject: null, body, customerId: req.customerId ?? null, status: 'blocked', providerId: null, failureReason: 'opted_out' }, facts);
       return { sent: false, status: 'blocked', reason: 'opted_out', notificationId: row?.id };
     }
