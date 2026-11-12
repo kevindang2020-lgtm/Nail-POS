@@ -361,6 +361,13 @@ export function POSCommunicationsScreen() {
             {tx(sum.callbacks.state === 'stale' ? 'ci.cb.stale' : 'ci.cb.delayed', { n: sum.callbacks.awaiting.toLocaleString(), m: String(sum.callbacks.waitMinutes), t: sum.callbacks.lastCallbackAt ? when(sum.callbacks.lastCallbackAt) : tx('ci.cb.never') })}
             {sum.callbacks.state === 'stale' ? <> <button type="button" className="ci-btn" onClick={() => nav('/tenant/communications/messaging-setup')} data-testid="callback-fix">{tx('ci.cb.fix')}</button></> : null}
           </div> : null}
+          {sum?.freshness ? <div className="ci-small" data-testid="ci-freshness" title={sum.definitions?.freshness}>
+            {tx('ci.fr.sources', { m: sum.freshness.messagesAt ? when(sum.freshness.messagesAt) : '—', c: sum.freshness.callsAt ? when(sum.freshness.callsAt) : '—', d: sum.freshness.deliveryCallbacksAt ? when(sum.freshness.deliveryCallbacksAt) : '—' })}
+            {sum.freshness.warnings.map((w) => (
+              <div key={w.metric + w.reason} data-testid={'ci-fr-' + w.metric} style={{ color: 'var(--aps-warn, #b26b00)' }}>
+                {tx(w.kind === 'unknown' ? 'ci.fr.unknown' : 'ci.fr.partial', { m: tx('ci.fr.m.' + w.metric) })}: {tx('ci.fr.r.' + w.reason, { n: w.count == null ? '—' : w.count.toLocaleString() })}
+              </div>))}
+          </div> : null}
         </div>
         <div className="ci-card">
           <div className="ci-card-t">{tx('pos.campaign_center')}</div>

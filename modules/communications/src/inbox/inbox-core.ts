@@ -234,6 +234,7 @@ export const KPI_DEFINITIONS = {
   email: 'conversations on the email channel',
   totalConversations: 'all conversations (each counted once, whatever its channel)',
   awaitingReply: 'conversations whose latest customer message has no staff reply yet',
+  freshness: 'the newest record behind each tile (conversations, messages, calls, delivery callbacks) — the source time, not the time this page was built; a tile whose source could not be read or never reported is Unknown, and one still waiting on provider confirmation is Partial',
   callbackHealth: 'staff texts handed to the provider more than 30 minutes ago (last 7 days) with no delivery callback yet; "stale" when no callback at all has arrived since the oldest of them — the webhook may be missing. These are awaiting confirmation, never counted as failed.',
 } as const;
 
@@ -250,4 +251,19 @@ export function callbackHealth(i: { awaiting: number; oldestAwaitingAt: string |
   if (base.awaiting === 0 || !i.oldestAwaitingAt) return { ...base, state: 'ok' };
   const last = i.lastCallbackAt ? Date.parse(i.lastCallbackAt) : NaN;
   return { ...base, state: Number.isFinite(last) && last > Date.parse(i.oldestAwaitingAt) ? 'delayed' : 'stale' };
+}
+
+/** Performance freshness (Extras · SMS Inbox 14): which tiles are UNKNOWN (their source could not be read or has never
+ *  reported) or PARTIAL (some of what they count is still unconfirmed). Codes only — the screen words them. Never a guess:
+ *    missed     unknown  the call ledger could not be read, or this scope has no call record at all (calls not connected)
+ *    sentToday  partial  some of today's sends were simulated (no provider) — they are not real texts
+ *    delivered  partial  texts are still waiting for a provider status callback — "delivered" can only grow */
+export type MetricWarning = { metric: 'missed' | 'sentToday' | 'delivered'; kind: 'unknown' | 'partial'; reason: 'call_ledger_unreadable' | 'no_call_records' | 'simulated_sends' | 'awaiting_callbacks' | 'callbacks_stale'; count: number | null };
+export function metricWarnings(i: { missedReadable: boolean; callsAt: string | null; simulatedToday: number; callbackState: CallbackHealthState; awaitingCallbacks: number }): MetricWarning[] {
+  const w: MetricWarning[] = [];
+  if (!i.missedReadable) w.push({ metric: 'missed', kind: 'unknown', reason: 'call_ledger_unreadable', count: null });
+  else if (!i.callsAt) w.push({ metric: 'missed', kind: 'unknown', reason: 'no_call_records', count: null });
+  if (i.simulatedToday > 0) w.push({ metric: 'sentToday', kind: 'partial', reason: 'simulated_sends', count: i.simulatedToday });
+  if (i.callbackState !== 'ok') w.push({ metric: 'delivered', kind: 'partial', reason: i.callbackState === 'stale' ? 'callbacks_stale' : 'awaiting_callbacks', count: i.awaitingCallbacks });
+  return w;
 }

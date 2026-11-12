@@ -16,6 +16,7 @@ import { dealRule, termsSnapshot, LedgerRefusal, type KyselyDealsLedger, type De
 import { hashCode, normalizeCode, lookupBlocked, LOOKUP_WINDOW_MS, parseWalletQr } from './coupons';
 import type { OfferSummary } from '@aipowersalon/api-contracts/tenant';
 import { couponVerdict, configReasons, type CouponVerdict } from './coupon-verdict';
+import { stackingInspector } from './stacking-inspector';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 export class DealRefusedError extends Error {
@@ -209,7 +210,8 @@ export class DealsCheckoutService {
    * judges hypothetical facts (services, spend, customer) — still the one engine.
    */
   async check(ctx: DealContext, dealId: string, input: { ticketId?: string | null; customerId?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean }): Promise<CouponVerdict & {
-    dealId: string; title: string; status: string; discountPreviewCents: number; eligibleBaseCents: number; context: { ticketId: string | null; customerId: string | null; serviceIds: string[]; spendCents: number; onTicket: number; policy: string } }> {
+    dealId: string; title: string; status: string; discountPreviewCents: number; eligibleBaseCents: number; context: { ticketId: string | null; customerId: string | null; serviceIds: string[]; spendCents: number; onTicket: number; policy: string };
+    stacking: ReturnType<typeof stackingInspector> }> {
     const deal = await this.ledger.deal(ctx.tenantId, dealId);
     if (!deal || deal.kind === 'announcement') throw withCode(new DealRefusedError('Deal not found.', 400), 'DEAL_NOT_FOUND');
     const t = input.ticketId ? await this.ticket(ctx, input.ticketId) : null;
@@ -243,7 +245,9 @@ export class DealsCheckoutService {
     const eligibleBase = offer.lineIds ? lines.filter((l) => offer.lineIds!.includes(l.lineId)).reduce((n, l) => n + l.priceCents, 0) : lines.reduce((n, l) => n + l.priceCents, 0);
     const v = couponVerdict(deal.status, reasons);
     return { ...v, dealId: deal.id, title: deal.title, status: deal.status, discountPreviewCents: v.eligible ? preview : 0, eligibleBaseCents: eligibleBase,
-      context: { ticketId: t?.ticketId ?? null, customerId, serviceIds, spendCents, onTicket, policy: policy.mode } };
+      context: { ticketId: t?.ticketId ?? null, customerId, serviceIds, spendCents, onTicket, policy: policy.mode },
+      // Extras · Coupons & Promotions 06: why this offer does / does not combine with each other benefit (same rules as priceTicket)
+      stacking: stackingInspector(policy, { stackable: !!deal.stackable, stackGroup: deal.stackGroup ?? null }) };
   }
 
   async onPaid(ctx: DealContext, ticketId: string) { return this.ledger.markTicketPaid(ctx.tenantId, ticketId); }

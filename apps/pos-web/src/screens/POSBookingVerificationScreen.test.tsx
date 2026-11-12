@@ -115,6 +115,21 @@ describe('the activity panel and the switches', () => {
     expect(screen.getByTestId('bv-funnel-confirmed')).toHaveTextContent('— of previous step');
     expect(screen.getByTestId('bv-funnel-overrides')).toHaveTextContent('Staff overrides (not counted as verified): 1');
   });
+  it('Extras BPV-07: SMS delivery evidence keeps sender readiness, sends, delivery reports and correct checks apart ("—" when unknown)', async () => {
+    const base = await (api.get as any)('/pos/booking-verification-center/summary');
+    const prev = vi.mocked(api.get).getMockImplementation()!;
+    const deliveryEvidence = { windowDays: 30, sender: { state: 'ready', definition: 'd' }, sends: { sessions: 4, attempts: 6, definition: 'd' },
+      delivery: { delivered: 2, providerFailed: 1, noReport: 1, lastDeliveredAt: null, deliveredPercent: 50, definition: 'd' }, checks: { verified: 0, percentOfSent: null, definition: 'd' } };
+    vi.mocked(api.get).mockImplementation(async (p: string, ...rest: any[]) => (p === '/pos/booking-verification-center/summary' ? { ...base, deliveryEvidence } as never : prev(p, ...rest)));
+    render(<POSBookingVerificationScreen />);
+    expect(await screen.findByTestId('bv-delivery')).toHaveTextContent('SMS delivery evidence · last 30 days');
+    expect(screen.getByTestId('bv-dev-sender')).toHaveTextContent('Ready');
+    expect(screen.getByTestId('bv-dev-sender')).toHaveTextContent('not proof a text arrived');
+    expect(screen.getByTestId('bv-dev-sends')).toHaveTextContent('6 send attempts incl. resends');
+    expect(screen.getByTestId('bv-dev-delivery')).toHaveTextContent('50% of codes sent');
+    expect(screen.getByTestId('bv-dev-delivery')).toHaveTextContent('Provider failed: 1 · No report: 1');
+    expect(screen.getByTestId('bv-dev-checks')).toHaveTextContent('— of codes sent');
+  });
   it('Extras BPV-12: provider failures are grouped by what to fix, with the provider codes; none says so', async () => {
     const base = await (api.get as any)('/pos/booking-verification-center/summary');
     const prev = vi.mocked(api.get).getMockImplementation()!;

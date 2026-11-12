@@ -300,6 +300,14 @@ export function CheckDialog({ dealId, name, services, onClose, check = posCoupon
       {res.eligible ? <b data-testid="check-discount">{tx('cp.wouldTake', { v: fmtMoney(res.discountPreviewCents), b: fmtMoney(res.eligibleBaseCents) })}</b> : null}
       <div className="fk-hint">{tx('cp.va.' + res.verdict)}</div>
       {res.reasons.length ? <ul className="fk-list dense">{res.reasons.map((r, i) => <li key={i} className="fk-li"><span className="fk-li-t">{tx('cp.v.' + r.code)}</span><span className="fk-li-s">{r.message}</span></li>)}</ul> : null}
+      {res.stacking ? <div data-testid="check-stacking">
+        <div className="fk-li-t" style={{ marginTop: 8 }}>{tx('cp.stk.title', { m: tx('cp.stk.mode.' + res.stacking.mode) })}</div>
+        <ul className="fk-list dense">{res.stacking.rows.map((r) => (
+          <li key={r.benefit} className="fk-li" data-testid={'stk-' + r.benefit}>
+            <span className="fk-li-t">{tx('cp.stk.b.' + r.benefit)} <span className={'fk-chip ' + (r.combines === 'yes' ? 'ok' : r.combines === 'no' ? 'warn' : '')}>{tx('cp.stk.a.' + r.combines)}</span></span>
+            <span className="fk-li-s">{tx('cp.stk.r.' + r.benefit + '.' + r.reason, { v: r.value == null ? '—' : String(r.value) })}</span>
+          </li>))}</ul>
+      </div> : null}
       <div className="fk-hint">{tx('cp.readOnlyCheck')}</div>
       {doneNote ? <div className="fk-hint" data-testid="check-logged">{doneNote}</div> : null}
     </div> : null}

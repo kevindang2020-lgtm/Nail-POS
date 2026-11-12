@@ -455,6 +455,33 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
                 </li>))}
             </ul>)}
         </section>) : null}
+      {summary?.deliveryEvidence ? (
+        <section className="panel bv-delivery" data-testid="bv-delivery" style={{ marginBottom: 12 }}>
+          <div className="p-h">{t('bv.dev.title', { d: String(summary.deliveryEvidence.windowDays) })}</div>
+          <ol style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, listStyle: 'none', margin: 0, padding: 0 }}>
+            <li title={summary.deliveryEvidence.sender.definition} data-testid="bv-dev-sender">
+              <div className="sub" style={{ fontSize: 12 }}>{t('bv.dev.sender')}</div>
+              <strong style={{ fontSize: 16 }}>{t('bv.hs.' + summary.deliveryEvidence.sender.state)}</strong>
+              <div className="sub" style={{ fontSize: 11 }}>{t('bv.dev.senderNote')}</div>
+            </li>
+            <li title={summary.deliveryEvidence.sends.definition} data-testid="bv-dev-sends">
+              <div className="sub" style={{ fontSize: 12 }}>{t('bv.dev.sends')}</div>
+              <strong style={{ fontSize: 20 }}>{fmtNumber(summary.deliveryEvidence.sends.sessions)}</strong>
+              <div className="sub" style={{ fontSize: 11 }}>{t('bv.dev.attempts', { n: fmtNumber(summary.deliveryEvidence.sends.attempts) })}</div>
+            </li>
+            <li title={summary.deliveryEvidence.delivery.definition} data-testid="bv-dev-delivery">
+              <div className="sub" style={{ fontSize: 12 }}>{t('bv.dev.delivered')}</div>
+              <strong style={{ fontSize: 20 }}>{fmtNumber(summary.deliveryEvidence.delivery.delivered)}</strong>
+              <div className="sub" style={{ fontSize: 11 }}>{summary.deliveryEvidence.delivery.deliveredPercent == null ? t('bv.dev.pctUnknown') : t('bv.dev.pctOfSent', { p: String(summary.deliveryEvidence.delivery.deliveredPercent) })}</div>
+              <div className="sub" style={{ fontSize: 11 }}>{t('bv.dev.failedNoReport', { f: fmtNumber(summary.deliveryEvidence.delivery.providerFailed), r: fmtNumber(summary.deliveryEvidence.delivery.noReport) })}</div>
+            </li>
+            <li title={summary.deliveryEvidence.checks.definition} data-testid="bv-dev-checks">
+              <div className="sub" style={{ fontSize: 12 }}>{t('bv.dev.checks')}</div>
+              <strong style={{ fontSize: 20 }}>{fmtNumber(summary.deliveryEvidence.checks.verified)}</strong>
+              <div className="sub" style={{ fontSize: 11 }}>{summary.deliveryEvidence.checks.percentOfSent == null ? t('bv.dev.pctUnknown') : t('bv.dev.pctOfSent', { p: String(summary.deliveryEvidence.checks.percentOfSent) })}</div>
+            </li>
+          </ol>
+        </section>) : null}
       {summary?.funnel ? (
         <section className="panel bv-funnel" data-testid="bv-funnel" style={{ marginBottom: 12 }}>
           <div className="p-h">{t('bv.funnel.title', { d: String(summary.funnel.windowDays) })}</div>

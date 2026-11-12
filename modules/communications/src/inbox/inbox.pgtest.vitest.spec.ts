@@ -435,6 +435,40 @@ describe('callback health (missing webhook warning)', () => {
   });
 });
 
+// Extras · SMS Inbox 14 — performance freshness: source timestamps + unknown / partial warnings
+describe('performance freshness', () => {
+  const T5 = id('a5'), B5 = id('b51'), O5 = id('e51');
+  const own5: InboxCtx = { tenantId: T5, branchId: B5, userId: O5, role: 'OWNER', permissions: ALL, userName: 'Fay', authz: { branchIds: null } };
+  it('no call record → missed is unknown; simulated sends → sent partial; waiting callbacks → delivered partial; timestamps come from the records', async () => {
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Fern LLC','Fern Nails','ib-fern','IBL005','active')`, [T5]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Fern Main','active','America/New_York')`, [B5, T5]);
+    const empty = await svc.summary(own5, null);
+    expect(empty.freshness).toMatchObject({ conversationsAt: null, messagesAt: null, callsAt: null, deliveryCallbacksAt: null });
+    expect(empty.freshness.warnings).toEqual([{ metric: 'missed', kind: 'unknown', reason: 'no_call_records', count: null }]);
+    const act = new Date(Date.now() - 3 * 3600_000);
+    const th = await thread(T5, { branch: B5, contact: '+12155556001', activity: act.toISOString() });
+    const old = new Date(Date.now() - 2 * 3600_000);
+    const nSent = (await q(`insert into notifications (tenant_id, channel, to_address, body, status, provider_id, created_at) values ($1,'sms','+12155556001','hi','sent','SMfr1',$2) returning id`, [T5, old])).rows[0].id;
+    await q(`insert into communication_messages (tenant_id, thread_id, direction, channel, body, status, notification_id, author_kind, created_at) values ($1,$2,'outbound','sms','hi','sent',$3,'staff',$4)`, [T5, th, nSent, old]);
+    const nSim = (await q(`insert into notifications (tenant_id, channel, to_address, body, status, created_at) values ($1,'sms','+12155556001','sim','simulated',now()) returning id`, [T5])).rows[0].id;
+    const msgAt = new Date(Date.now() - 60_000);
+    await q(`insert into communication_messages (tenant_id, thread_id, direction, channel, body, status, notification_id, author_kind, created_at) values ($1,$2,'outbound','sms','sim','sent',$3,'staff',$4)`, [T5, th, nSim, msgAt]);
+    const callAt = new Date(Date.now() - 5 * 86400_000);
+    await q(`insert into call_intelligence_events (tenant_id, branch_id, provider_call_id, status, started_at) values ($1,$2,'CALLFR1','answered_ai',$3)`, [T5, B5, callAt]);
+    const s = await svc.summary(own5, null);
+    expect(s.freshness.messagesAt).toBe(msgAt.toISOString());
+    expect(s.freshness.callsAt).toBe(callAt.toISOString());
+    expect(s.freshness.conversationsAt).not.toBeNull();
+    expect(s.conversations.missed).toBe(0);                     // a real zero now: calls do reach the ledger
+    expect(s.freshness.warnings).toEqual([
+      { metric: 'sentToday', kind: 'partial', reason: 'simulated_sends', count: 1 },
+      { metric: 'delivered', kind: 'partial', reason: 'callbacks_stale', count: 1 },
+    ]);
+    // another salon's records never move this salon's timestamps
+    expect((await svc.summary(otherOwner, null)).freshness.callsAt).toBeNull();
+  });
+});
+
 // Extras · Customer Notifications 03 — Mark all as read with a cutoff
 describe('mark all as read with a cutoff', () => {
   const T3 = id('a3'), C1 = id('b31'), C2 = id('b32'), O3 = id('e31'), M3 = id('e32');

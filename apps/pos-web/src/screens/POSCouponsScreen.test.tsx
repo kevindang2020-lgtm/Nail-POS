@@ -46,6 +46,22 @@ describe('POSCouponsScreen', () => {
     expect(screen.getByTestId('check-discount')).toHaveTextContent('$6.67');
     expect(cp.check).toHaveBeenCalledWith('d1', { ticketNumber: '77001', codeEntered: true });
   });
+  it('Extras Coupons 06: Check shows why the coupon does or does not combine with each benefit, worded from codes', async () => {
+    cp.check.mockResolvedValue({ verdict: 'ELIGIBLE', eligible: true, action: '', reasons: [], dealId: 'd1', title: 'vishal', status: 'active', discountPreviewCents: 667, eligibleBaseCents: 3335,
+      context: { ticketId: 't', customerId: null, serviceIds: [], spendCents: 3335, onTicket: 0, policy: 'best_single' },
+      stacking: { mode: 'best_single', rows: [
+        { benefit: 'other_offer', combines: 'no', reason: 'policy_one_offer', message: 'x' },
+        { benefit: 'gift_card_tender', combines: 'yes', reason: 'payment_not_discount', message: 'x' },
+        { benefit: 'price_floor', combines: 'limit', reason: 'floor_set', message: 'x', value: 40 }] } });
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('coupon-check'));
+    fireEvent.change(screen.getByTestId('check-ticket'), { target: { value: '77001' } });
+    fireEvent.click(screen.getByTestId('check-run'));
+    expect(await screen.findByTestId('check-stacking')).toHaveTextContent('How it combines · salon rule: one offer per ticket');
+    expect(screen.getByTestId('stk-other_offer')).toHaveTextContent('Another deal or coupon Does not combine');
+    expect(screen.getByTestId('stk-gift_card_tender')).toHaveTextContent('Gift card payment Combines');
+    expect(screen.getByTestId('stk-price_floor')).toHaveTextContent('at least 40% of the subtotal');
+  });
   it('Health tab shows the server\'s verified checks', async () => {
     renderScreen('/tenant/marketing/coupons?tab=health');
     expect(await screen.findByTestId('health-overall')).toHaveTextContent('Ready');

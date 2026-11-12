@@ -144,4 +144,14 @@ export const BOOKVERIFY_VI = {
   "bv.triage.fix.unavailable": "Không kết nối được Twilio — thường là tạm thời; hãy chạy kiểm tra hệ thống.", // DRAFT — Kevin reviews
   "bv.triage.fix.wrong_phone": "Số không hợp lệ, là số bàn hoặc không phải di động — hãy xác nhận lại với khách.", // DRAFT — Kevin reviews
   "bv.triage.fix.other": "Mở lịch sử xác minh và xem mã lỗi của từng lần thất bại.", // DRAFT — Kevin reviews
+  "bv.dev.title": "Bằng chứng gửi SMS · {d} ngày qua", // DRAFT — Kevin reviews
+  "bv.dev.sender": "Sẵn sàng gửi", // DRAFT — Kevin reviews
+  "bv.dev.senderNote": "Chỉ kiểm tra tài khoản — không chứng minh tin nhắn đã đến", // DRAFT — Kevin reviews
+  "bv.dev.sends": "Mã đã gửi", // DRAFT — Kevin reviews
+  "bv.dev.attempts": "{n} lần gửi kể cả gửi lại", // DRAFT — Kevin reviews
+  "bv.dev.delivered": "Báo đã giao", // DRAFT — Kevin reviews
+  "bv.dev.pctOfSent": "{p}% số mã đã gửi", // DRAFT — Kevin reviews
+  "bv.dev.pctUnknown": "— số mã đã gửi", // DRAFT — Kevin reviews
+  "bv.dev.failedNoReport": "Nhà cung cấp lỗi: {f} · Không có báo cáo: {r}", // DRAFT — Kevin reviews
+  "bv.dev.checks": "Mã đúng đã kiểm tra", // DRAFT — Kevin reviews
 } as const;

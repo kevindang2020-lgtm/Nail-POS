@@ -9,6 +9,8 @@ export interface CouponCheck {
   verdict: VerdictCode; eligible: boolean; action: string; reasons: { code: VerdictCode; engineCode: string; message: string; params?: Record<string, unknown> }[];
   dealId: string; title: string; status: string; discountPreviewCents: number; eligibleBaseCents: number;
   context: { ticketId: string | null; customerId: string | null; serviceIds: string[]; spendCents: number; onTicket: number; policy: string };
+  /** Extras · Coupons 06 — why this offer does / does not combine with each other benefit (the pricing engine's own rules) */
+  stacking?: { mode: string; rows: { benefit: string; combines: 'yes' | 'no' | 'conditional' | 'limit' | 'none'; reason: string; message: string; value?: number | null }[] };
 }
 export type CouponAssistGoal = 'slow_weekdays' | 'promote_service' | 'returning_visits' | 'reconnect_inactive';
 export const posCouponsApi = {

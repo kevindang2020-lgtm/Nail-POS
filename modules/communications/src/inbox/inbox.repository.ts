@@ -16,7 +16,7 @@ import { parseInboundKeyword } from '../notifications/notifications-core';
 import { COMMUNICATION_THREAD, COMMUNICATION_MESSAGE } from '../communications-lifecycles';
 import {
   InboxError, isUuid, normalizePhone, last10, maskPhone, maskEmail, preview, likeOf, deliveryState, answersCustomer, blockReasonCode,
-  automatedType, mergeTimeline, decodeCursor, encodeCursor, resolveInboxPeriod, TIMELINE_PAGE, TIMELINE_SOURCES, callbackHealth, CALLBACK_WAIT_MINUTES, CALLBACK_LOOKBACK_DAYS,
+  automatedType, mergeTimeline, decodeCursor, encodeCursor, resolveInboxPeriod, TIMELINE_PAGE, TIMELINE_SOURCES, callbackHealth, metricWarnings, CALLBACK_WAIT_MINUTES, CALLBACK_LOOKBACK_DAYS,
   type InboxQuery, type TimelineSource, type DeliveryState,
 } from './inbox-core';
 import type { InboxPeriod, InboxTimelineEvent } from '@aipowersalon/api-contracts/tenant';
@@ -223,10 +223,18 @@ export class InboxRepository {
         AND m.created_at >= (${sql`(now() AT TIME ZONE ${tz})::date`})::timestamp AT TIME ZONE ${tz}`.execute(this.db)).rows[0] ?? {};
     // C2 audit (Nov 4 2026): "Missed" = calls missed today (salon day) from the call ledger — the tile counted threads in a
     // 'missed' status nothing ever sets, so it was always 0. The threads count stays beside it.
-    const mc: Row = (await sql<Row>`SELECT count(*)::int AS n FROM call_intelligence_events ce
-      WHERE ce.tenant_id = ${ctx.tenantId} AND ce.status = 'missed'   -- 'missed' is a status (149); outcome never holds it
-        AND ${branch ? sql`ce.branch_id = ${branch}::uuid` : this.branchOk(ctx, sql`ce.branch_id`)}
-        AND COALESCE(ce.started_at, ce.created_at) >= (${sql`(now() AT TIME ZONE ${tz})::date`})::timestamp AT TIME ZONE ${tz}`.execute(this.db).catch(() => ({ rows: [{ n: null }] }))).rows[0] ?? {};
+    // Performance freshness (Extras · SMS Inbox 14): the same read also returns the newest call record in scope (any day), so
+    // "0 missed" from a salon whose calls never reach the ledger is flagged unknown rather than shown as a clean zero
+    const mc: Row = (await sql<Row>`SELECT count(*) FILTER (WHERE ce.status = 'missed'   -- 'missed' is a status (149); outcome never holds it
+          AND COALESCE(ce.started_at, ce.created_at) >= (${sql`(now() AT TIME ZONE ${tz})::date`})::timestamp AT TIME ZONE ${tz})::int AS n,
+        max(COALESCE(ce.started_at, ce.created_at)) AS latest
+      FROM call_intelligence_events ce
+      WHERE ce.tenant_id = ${ctx.tenantId}
+        AND ${branch ? sql`ce.branch_id = ${branch}::uuid` : this.branchOk(ctx, sql`ce.branch_id`)}`.execute(this.db).catch(() => ({ rows: [{ n: null, latest: null }] }))).rows[0] ?? {};
+    // newest record behind each tile family (source timestamps, not the time this page was built)
+    const fr: Row = (await sql<Row>`SELECT (SELECT max(${this.activity()}) FROM communication_threads t WHERE t.tenant_id = ${ctx.tenantId} AND ${this.branchScope(ctx, branch)}) AS threads_at,
+        (SELECT max(m.created_at) FROM communication_messages m JOIN communication_threads t ON t.tenant_id = ${ctx.tenantId} AND t.id = m.thread_id
+          WHERE m.tenant_id = ${ctx.tenantId} AND ${this.branchScope(ctx, branch)}) AS messages_at`.execute(this.db)).rows[0] ?? {};
     // Missing-webhook warning (Extras · SMS Inbox 12): texts handed to the provider > 30 min ago (last 7 days) with no status
     // callback recorded, and the newest callback this salon received — timestamps only, never a failure
     const cb: Row = (await sql<Row>`SELECT count(*)::int AS awaiting, min(m.created_at) AS oldest,
@@ -237,8 +245,14 @@ export class InboxRepository {
         AND nt.status = 'sent' AND nt.delivered_at IS NULL AND coalesce(nt.provider_status, '') NOT IN ('delivered', 'undelivered', 'failed')
         AND m.created_at < now() - make_interval(mins => ${CALLBACK_WAIT_MINUTES}) AND m.created_at >= now() - make_interval(days => ${CALLBACK_LOOKBACK_DAYS})
         AND NOT EXISTS (SELECT 1 FROM notification_delivery_events e WHERE e.tenant_id = ${ctx.tenantId} AND e.notification_id = nt.id)`.execute(this.db)).rows[0] ?? {};
+    const callbacks = callbackHealth({ awaiting: n(cb.awaiting), oldestAwaitingAt: iso(cb.oldest), lastCallbackAt: iso(cb.last_callback) });
+    const missed = mc.n == null ? null : n(mc.n);
     return {
       scope: { branch, tz },
+      freshness: {
+        conversationsAt: iso(fr.threads_at), messagesAt: iso(fr.messages_at), callsAt: iso(mc.latest), deliveryCallbacksAt: iso(cb.last_callback),
+        warnings: metricWarnings({ missedReadable: missed != null, callsAt: iso(mc.latest), simulatedToday: n(m.simulated), callbackState: callbacks.state, awaitingCallbacks: callbacks.awaiting }),
+      },
       callbacks: callbackHealth({ awaiting: n(cb.awaiting), oldestAwaitingAt: iso(cb.oldest), lastCallbackAt: iso(cb.last_callback) }),
       conversations: { total: n(k.total), open: n(k.open), unreadThreads: n(k.unread_threads), unreadMessages: n(k.unread_messages), replied: n(k.replied),
         missed: mc.n == null ? null : n(mc.n), missedThreads: n(k.missed), awaiting: n(k.awaiting), oldestAwaitingSince: iso(k.oldest_awaiting) },

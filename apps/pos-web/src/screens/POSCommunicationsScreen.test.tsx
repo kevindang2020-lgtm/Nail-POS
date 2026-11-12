@@ -94,6 +94,20 @@ describe('POSCommunicationsScreen', () => {
     fireEvent.change(sel, { target: { value: 'rsms:11111111-1111-4111-8111-111111111111' } });
     await waitFor(() => expect((posCommunicationsApi.inbox.list as any)).toHaveBeenLastCalledWith(expect.objectContaining({ campaign: 'rsms:11111111-1111-4111-8111-111111111111', page: '1' })));
   });
+  it('Extras SMS-14: performance shows the source timestamps ("—" when none) and unknown / partial warnings', async () => {
+    const base = { scope: { branch: null, tz: 'America/New_York' }, conversations: { total: 1, open: 1, unreadThreads: 1, unreadMessages: 1, replied: 0, missed: 0, awaiting: 1, oldestAwaitingSince: null },
+      channelMix: [{ channel: 'sms', count: 1 }], sentToday: { total: 2, submitted: 1, delivered: 0, failed: 0, simulated: 1 }, definitions: {}, generatedAt: '2026-06-06T14:00:00Z' };
+    const summary = posCommunicationsApi.inbox.summary as unknown as ReturnType<typeof vi.fn>;
+    summary.mockResolvedValue({ ...base, freshness: { conversationsAt: '2026-06-06T13:00:00Z', messagesAt: '2026-06-06T13:00:00Z', callsAt: null, deliveryCallbacksAt: null,
+      warnings: [{ metric: 'missed', kind: 'unknown', reason: 'no_call_records', count: null }, { metric: 'sentToday', kind: 'partial', reason: 'simulated_sends', count: 1 }] } });
+    render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
+    const f = await screen.findByTestId('ci-freshness');
+    expect(f.textContent).toMatch(/calls: — · delivery callbacks: —/);
+    expect(f.textContent).not.toMatch(/messages: —/);
+    expect(screen.getByTestId('ci-fr-missed').textContent).toBe('Missed calls unknown: no call has ever been recorded here, so 0 may not be real');
+    expect(screen.getByTestId('ci-fr-sentToday').textContent).toMatch(/Sent today partial: 1 test send\(s\) without a provider/);
+    summary.mockResolvedValue(base);
+  });
   it('Extras SMS-12: a stale status-callback webhook is warned about from timestamps — waiting texts are not counted as failed', async () => {
     const base = { scope: { branch: null, tz: 'America/New_York' }, conversations: { total: 1, open: 1, unreadThreads: 1, unreadMessages: 1, replied: 0, missed: 0, awaiting: 1, oldestAwaitingSince: null },
       channelMix: [{ channel: 'sms', count: 1 }], sentToday: { total: 12, submitted: 12, delivered: 10, failed: 0, simulated: 0 }, definitions: {}, generatedAt: '2026-06-06T14:00:00Z' };
