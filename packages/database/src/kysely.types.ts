@@ -4939,6 +4939,10 @@ export interface CustomerNoteReviewsTable {   // migration 843 — Review & Accu
   id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; decision: string; reason: string | null;
   reviewer_user_id: string | null; created_at: Generated<Ts>;
 }
+export interface CatalogCategoryReviewsTable {   // migration 847 — owner decisions on Service Categories review findings (append-only; tied to the names)
+  id: Generated<string>; tenant_id: string; branch_id: string | null; kind: string; category_id: string; service_id: string | null;
+  category_name: string; service_name: string | null; decision: string; note: string; reviewer_user_id: string | null; created_at: Generated<Ts>;
+}
 export interface PosSavedViewsTable {   // migration 844 — a staff member's named filters for one POS screen (personal, per salon)
   id: Generated<string>; tenant_id: string; owner_user_id: string; surface: string; name: string; filters_json: unknown; is_default: Generated<boolean>;
   created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
@@ -8060,6 +8064,7 @@ export interface DB {
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
+  catalog_category_reviews: CatalogCategoryReviewsTable;
   pos_saved_views: PosSavedViewsTable;
   report_email_subscriptions: ReportEmailSubscriptionsTable;
   report_email_deliveries: ReportEmailDeliveriesTable;

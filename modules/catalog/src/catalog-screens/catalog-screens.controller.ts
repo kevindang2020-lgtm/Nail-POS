@@ -3,12 +3,13 @@
 // from the session, never from the request.
 //   pos.services.view           dashboard · charts · services · services/:id · history · categories(*) · add-ons(*)
 //   pos.services.pricing.edit   PATCH services/:id/pricing (price / duration with a reason, conflict-checked)
-//   pos.services.edit           POST categories/:id/reassign · add-on create / edit / archive / restore
+//   pos.services.edit           POST categories/:id/reassign · POST categories/:id/review (approve as is / reopen a finding) · add-on create / edit / archive / restore
 //   customers.view              customer-history (what a customer was actually charged — PII)
 import { ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { CATALOG_ADD_ON_CREATE_BODY, CATALOG_ADD_ON_STATE_BODY, CATALOG_ADD_ON_UPDATE_BODY, CATALOG_PRICING_BODY, CATALOG_PRICING_REVERT_BODY, CATALOG_PRICING_SCHEDULE_BODY, CATALOG_PRICING_SCHEDULE_CANCEL_BODY, CATALOG_REASSIGN_BODY } from '../request-schemas';
+import { CATALOG_ADD_ON_CREATE_BODY, CATALOG_ADD_ON_STATE_BODY, CATALOG_ADD_ON_UPDATE_BODY, CATALOG_PRICING_BODY, CATALOG_PRICING_REVERT_BODY, CATALOG_PRICING_SCHEDULE_BODY, CATALOG_PRICING_SCHEDULE_CANCEL_BODY, CATALOG_REASSIGN_BODY, CATALOG_CATEGORY_REVIEW_BODY } from '../request-schemas';
+import type { CategoryReviewDecisionResponse } from '@aipowersalon/api-contracts/tenant';
 import { CatalogScreensRepository, SERVICE_STATUSES, SERVICE_SORTS, CATEGORY_SORTS, ADD_ON_SORTS, HISTORY_FIELDS, type CatCtx } from './catalog-screens.repository';
 
 export const CATALOG_SCREENS = 'CatalogScreensRepository';
@@ -84,6 +85,13 @@ export class CatalogScreensController {
 
   @Post('categories/:categoryId/reassign') @RequirePermission('pos.services.edit')
   reassign(@Req() req: any, @Param('categoryId') id: string, @Body(ValidatedBody(CATALOG_REASSIGN_BODY, { strict: true })) b: any) { return this.r().reassign(ctxFrom(req), id, b || {}); }
+
+  // SERVICE PRICING 13 (Nov 12 2026): approve a Service Categories review finding as is, or reopen it — a note, append-only,
+  // tied to the original ids and names; the catalog itself never changes here (fixing stays Move services)
+  @Post('categories/:categoryId/review') @RequirePermission('pos.services.edit')
+  reviewDecision(@Req() req: any, @Param('categoryId') id: string, @Body(ValidatedBody(CATALOG_CATEGORY_REVIEW_BODY, { strict: true })) b: any): Promise<CategoryReviewDecisionResponse> {
+    return this.r().decideCategoryReview(ctxFrom(req), id, b || {}) as Promise<CategoryReviewDecisionResponse>;
+  }
 
   @Get('add-ons/summary') @RequirePermission('pos.services.view')
   addOnSummary(@Req() req: any) { return this.r().addOnSummary(ctxFrom(req)); }

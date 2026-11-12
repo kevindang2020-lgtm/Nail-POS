@@ -51,6 +51,7 @@ export * from './branch-health';   // BUILD_PLAN Phase 14 B: Constitution 11 §3
 export * from './finance';   // Receipt/Expense/OCR/Accounting mandate (Oct 21 2026): /owner/finance/*
 export * from './ai-business-incidents';   // A2 alerts incidents + notifications (Nov 6 2026)
 export * from './ai-business-branch-insights';   // A3 branch scorecard / explain / advisor / data check (Nov 6 2026)
+export * from './catalog-category-review';   // SERVICE PRICING 13 owner review of category findings (Nov 12 2026)
 export * from './ai-business-assistant-history';   // A4 assistant history + Check Business Data (Nov 6 2026)
 export * from './pos-terminal-pay';   // Fiserv master build §7 (Nov 2026): POS Card → Clover Compact
 export * from './ai-marketing-center';   // Campaign Builder Steps 4 + 5 (SUNMI batch 5, Nov 8 2026)

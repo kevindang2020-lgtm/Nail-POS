@@ -3,7 +3,9 @@
 // CD Mani 4432 30m $50 · CD Mani 6805 30m $50 · Haircut 30m $45 · Hair Coloring 120m $150), categories Nails 4 / CD 4432 1 /
 // CD 6805 1, and "French tips" ($10, +10m, taxable) offered on Gel Manicure, Classic Pedicure, Haircut and Hair Coloring.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { migratedPglite, kyselyFor, applyMigrationToPglite } from '@aipowersalon/testing';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { CatalogScreensRepository } from './catalog-screens.repository';
 import { KyselyServicesRepository } from '../services/services.kysely.repository';
 
@@ -20,6 +22,8 @@ const q = (s: string, p: unknown[] = []) => pg.query(s, p);
 
 beforeAll(async () => {
   pg = await migratedPglite();
+  // migration 847 (SERVICE PRICING 13) — replayed here when the shared schema snapshot predates it (idempotent)
+  if (!(await q(`select to_regclass('catalog_category_reviews') as t`)).rows[0].t) await applyMigrationToPglite(pg, readFileSync(join(__dirname, '../../../../apps/api/db/migrations/847_catalog_category_reviews.sql'), 'utf8'));
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Pilot LLC','Pilot','cat-a','CTA001','active'), ($2,'Other LLC','Other','cat-b','CTB001','active')`, [T, T2]);
   await q(`insert into branches (id, tenant_id, name, status, timezone, created_at) values ($1,$3,'Main','active','America/New_York', now() - interval '2 days'), ($2,$3,'Uptown','active','America/New_York', now() - interval '1 day'), ($4,$5,'Elsewhere','active','America/New_York', now())`, [B, B2, T, BX, T2]);
   await q(`insert into users (id, tenant_id, email, full_name, role, status) values ($1,$2,'owner@cat.test','Pat Owner','OWNER','active')`, [U, T]);
@@ -150,6 +154,44 @@ describe('Service Categories', () => {
     expect(s.review.filter((r) => r.kind === 'code_like_name').map((r) => r.categoryName)).toEqual(['CD 4432', 'CD 6805']);
     expect(s.review.filter((r) => r.kind === 'service_category_mismatch').map((r) => r.serviceName).sort()).toEqual(['Hair Coloring', 'Haircut']);
     expect(s.review.filter((r) => r.kind === 'empty').map((r) => r.categoryName)).toEqual(['Brows']);
+  });
+
+  it('SERVICE PRICING 13: owner review — approve a finding as is (note required, original ids kept, nothing in the catalog changes), reopen it; a rename puts it back in the queue; append-only', async () => {
+    const edit = { ...ctx, permissions: ['pos.services.view', 'pos.services.edit'] };
+    const code = async (p: Promise<unknown>) => { try { await p; return 'ok'; } catch (e: any) { return e?.response?.code ?? e?.code ?? e?.message; } };
+    const catalogBefore = (await q(`select id, name, category_id, status from services where tenant_id = $1 order by id`, [T])).rows;
+    const s0 = await repo.categorySummary(ctx);
+    expect(s0.review.every((r) => r.status === 'open' && r.lastDecision === null)).toBe(true);
+    expect(await code(repo.decideCategoryReview(edit, CUT, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'fine as is' }))).toBe('CATEGORY_NOT_FOUND');    // the category id, not the service id
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'x' }))).toBe('REASON_REQUIRED');
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', decision: 'approve', note: 'no service' }))).toBe('VALIDATION_FAILED');
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: GEL, decision: 'approve', note: 'not flagged' }))).toBe('CATEGORY_NOT_FOUND');
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'reopen', note: 'nothing to reopen' }))).toBe('INVALID_STATE_TRANSITION');
+    const r = await repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'We offer kids nail + haircut combo here' });
+    expect(r.changesCatalog).toBe(false);
+    expect(r.item).toMatchObject({ kind: 'service_category_mismatch', categoryId: NAILS, categoryName: 'Nails', serviceId: CUT, serviceName: 'Haircut', status: 'approved',
+      lastDecision: { decision: 'approved_as_is', note: 'We offer kids nail + haircut combo here', by: 'Pat Owner' } });
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'again' }))).toBe('REQUEST_ALREADY_DECIDED');
+    // still listed (after the open ones), with who / when / why; the other findings stay open
+    const s1 = await repo.categorySummary(ctx);
+    expect(s1.review.at(-1)).toMatchObject({ serviceId: CUT, status: 'approved' });
+    expect(s1.review.filter((x) => x.status === 'open')).toHaveLength(s0.review.length - 1);
+    // the catalog is untouched
+    expect((await q(`select id, name, category_id, status from services where tenant_id = $1 order by id`, [T])).rows).toEqual(catalogBefore);
+    // reopen → open again, history newest first
+    const ro = await repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'reopen', note: 'Owner wants to move it after all' });
+    expect(ro.item.status).toBe('open');
+    expect(ro.history.map((h) => h.decision)).toEqual(['reopened', 'approved_as_is']);
+    // a decision is tied to the name it was made on: rename the empty category → back in the queue; the old name again → approved again
+    await repo.decideCategoryReview(edit, EMPTY, { kind: 'empty', decision: 'approve', note: 'Brows services start next month' });
+    await q(`update service_categories set name = 'Brows & Lashes' where id = $1`, [EMPTY]);
+    expect((await repo.categorySummary(ctx)).review.find((x) => x.categoryId === EMPTY)).toMatchObject({ categoryName: 'Brows & Lashes', status: 'open', lastDecision: null });
+    await q(`update service_categories set name = 'Brows' where id = $1`, [EMPTY]);
+    expect((await repo.categorySummary(ctx)).review.find((x) => x.categoryId === EMPTY)!.status).toBe('approved');
+    // append-only; another salon sees none of it
+    await expect(q(`update catalog_category_reviews set note = 'changed'`)).rejects.toThrow(/append-only/);
+    await expect(q(`delete from catalog_category_reviews`)).rejects.toThrow(/append-only/);
+    expect((await repo.categorySummary(ctx2)).review.every((x) => x.lastDecision === null)).toBe(true);
   });
 
   it('extras row 10: the summary says which catalog scope it counts — a branch session its branch (+ salon-wide rows); a salon-wide session every branch separately, never another salon', async () => {
