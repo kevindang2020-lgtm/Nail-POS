@@ -11,6 +11,7 @@ import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { deviceToday } from '../lib/deviceToday';
+import { useCan } from '../components/usePermissions';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -164,9 +165,27 @@ export function VoiceCallsWorkspace({ mode }: { mode: 'search' | 'history' }) {
               <div><span className={'chip ' + (STATE_TONE[x.state] ?? '')}>{t('vcx.health.' + x.state)}</span> <b>{t('vcx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
               <div className="sub">{t('vcx.health.d.' + x.key + '.' + x.state)}</div>
               <div className="sub">{t('vcx.health.part', { c: t('vcx.comp.' + x.component) })} · {x.lastPassedAt ? t('vcx.health.lastPassed', { at: when(x.lastPassedAt) }) : t('vcx.health.neverPassed')}</div>
+              {x.key === 'provider_connection' && x.state !== 'PASSED' ? <ProviderSetupHelp /> : null}
             </div>))}
         </>}
       </FitDialog> : null}
+    </div>
+  );
+}
+
+/** Extras (Voice Call History 07): safe configuration help when the phone provider is not connected — the exact next action,
+ *  the permission the setup page needs and a link to it only when this person has that permission. No key, token or
+ *  provider secret is ever shown here; the integration key itself is issued by the platform administrator. */
+export const PROVIDER_SETUP = { route: '/tenant/ai/receptionist', permission: 'ai.use' } as const;
+function ProviderSetupHelp() {
+  const can = useCan(); const allowed = can(PROVIDER_SETUP.permission);
+  return (
+    <div className="sub" data-testid="vcx-provider-help">
+      <b>{t('vcx.help.next')}</b> {t('vcx.help.step')}
+      <div>{t('vcx.help.needs', { p: PROVIDER_SETUP.permission })}</div>
+      {allowed ? <Link className="btn ghost" to={PROVIDER_SETUP.route} data-testid="vcx-provider-link">{t('vcx.help.open')}</Link>
+        : <div data-testid="vcx-provider-noaccess">{t('vcx.help.ask')}</div>}
+      <div>{t('vcx.help.noSecrets')}</div>
     </div>
   );
 }

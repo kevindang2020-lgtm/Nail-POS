@@ -12,6 +12,8 @@ const staff = vi.hoisted(() => ({ staff: vi.fn() }));
 const vc = vi.hoisted(() => ({ summary: vi.fn(), list: vi.fn(), detail: vi.fn(), check: vi.fn() }));
 vi.mock('../api/posAIVoiceTranscriptionApi', () => ({ posAIVoiceTranscriptionApi: { ...m, center: c, followUps: fu, calls: vc } }));
 vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: staff }));
+const perm = vi.hoisted(() => ({ deny: new Set<string>() }));
+vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => !perm.deny.has(p) }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await (orig() as any)), useParams: () => ({ id: 'tr1' }) }));
 import { POSAIVoiceTranscriptionScreen } from './POSAIVoiceTranscriptionScreen';
 import { POSAIVoiceTranscriptionHistoryScreen } from './POSAIVoiceTranscriptionHistoryScreen';
@@ -122,6 +124,30 @@ describe('Call History', () => {
     fireEvent.click(screen.getByText('Close'));
     fireEvent.click(screen.getByTestId('vcx-check'));
     expect(await screen.findByText(/cannot view call transcripts/)).toBeInTheDocument();
+  });
+});
+
+describe('Voice Call History 07 — safe configuration help', () => {
+  it('provider not connected: the exact next step, the permission it needs, a link only with that permission, never a key', async () => {
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([]));
+    const res = { overall: 'WARNING', checkedAt: '2026-11-03T05:00:00Z', reused: false, checks: [{ key: 'provider_connection', component: 'provider', state: 'WARNING', count: 0, lastPassedAt: null },
+      { key: 'calls_arriving', component: 'ingestion', state: 'PASSED', lastPassedAt: '2026-11-03T05:00:00Z' }] };
+    vc.check.mockResolvedValue(res);
+    const { unmount } = wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    fireEvent.click(screen.getByTestId('vcx-check'));
+    const help = await screen.findByTestId('vcx-provider-help');
+    expect(help).toHaveTextContent('Needs the permission: ai.use');
+    expect(help).toHaveTextContent('ask the platform administrator to issue a voice integration key');
+    expect(screen.getByTestId('vcx-provider-link').getAttribute('href')).toBe('/tenant/ai/receptionist');
+    expect(help.textContent).not.toMatch(/vk_|token|secret/i);
+    expect(within(screen.getByTestId('vcx-chk-calls_arriving')).queryByTestId('vcx-provider-help')).toBeNull();   // only where it applies
+    unmount();
+    perm.deny.add('ai.use');
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    fireEvent.click(screen.getByTestId('vcx-check'));
+    expect(await screen.findByTestId('vcx-provider-noaccess')).toHaveTextContent('ask the salon owner');
+    expect(screen.queryByTestId('vcx-provider-link')).toBeNull();
+    perm.deny.clear();
   });
 });
 

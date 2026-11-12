@@ -19,6 +19,7 @@ import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
+import { evenSplit, splitPreview } from './tips/tipSplitPreview';
 
 type Tab = 'overview' | 'transactions' | 'distribution' | 'adjustments';
 type Tech = { id: string; name: string | null };
@@ -235,6 +236,7 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
   const stepUp = useStepUp(tx('tp.stepup'));
   const [editing, setEditing] = useState(false); const [amounts, setAmounts] = useState<Record<string, string>>({}); const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [eligible, setEligible] = useState<{ technicianId: string; name: string | null }[]>([]);
+  const [before, setBefore] = useState<Record<string, number>>({}); const [evenRem, setEvenRem] = useState<number | null>(null);
   // D15/D19 gaps (Nov 5 2026): free-form adjustment — add or remove an amount for one technician, with a reason
   const [free, setFree] = useState(false); const [fTech, setFTech] = useState(''); const [fDir, setFDir] = useState<'add' | 'remove'>('add'); const [fAmt, setFAmt] = useState(''); const [fReason, setFReason] = useState('');
   const freeKeys = useRef(createIntentKeys());
@@ -257,7 +259,7 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
   const sum = useMemo(() => Object.values(amounts).reduce((a, v) => a + (centsFromText(v) ?? 0), 0), [amounts]);
   const startEdit = async () => {
     setErr(null);
-    try { const cur = await posPayrollApi.ticketTip(id); setEligible(cur.allocations); setAmounts(Object.fromEntries(cur.allocations.map((a) => [a.technicianId, textFromCents(a.tipCents)]))); setEditing(true); }
+    try { const cur = await posPayrollApi.ticketTip(id); setEligible(cur.allocations); setBefore(Object.fromEntries(cur.allocations.map((a) => [a.technicianId, a.tipCents]))); setEvenRem(null); setAmounts(Object.fromEntries(cur.allocations.map((a) => [a.technicianId, textFromCents(a.tipCents)]))); setEditing(true); }
     catch (e) { setErr(errMsg(e)); }
   };
   const save = async () => {
@@ -303,8 +305,19 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
             <td className={'num' + (a.manualCorrectionCents + a.reversedCents < 0 ? ' tp-neg' : '')}>{a.manualCorrectionCents + a.reversedCents ? fmtMoney(a.manualCorrectionCents + a.reversedCents) : '—'}</td><td className="num">{fmtMoney(a.netCents)}</td></tr>)}
             {allocs.length === 0 ? <tr><td colSpan={5} className="fk-muted">{tx('tp.noAllocations')}</td></tr> : null}</tbody></table>
         {editing ? <div className="fk-void tp-edit" data-testid="adjust-form">
-          <div className="tp-edit-rows">{eligible.map((e) => <label key={e.technicianId} className="fk-field"><span>{e.name ?? e.technicianId}</span><input inputMode="decimal" value={amounts[e.technicianId] ?? ''} onChange={(ev) => setAmounts({ ...amounts, [e.technicianId]: ev.target.value })} data-testid={'alloc-' + e.technicianId} /></label>)}</div>
+          <div className="tp-edit-rows">{eligible.map((e) => <label key={e.technicianId} className="fk-field"><span>{e.name ?? e.technicianId}</span><input inputMode="decimal" value={amounts[e.technicianId] ?? ''} onChange={(ev) => { setEvenRem(null); setAmounts({ ...amounts, [e.technicianId]: ev.target.value }); }} data-testid={'alloc-' + e.technicianId} /></label>)}</div>
           <div className={'fk-hint' + (sum !== t.amountCents ? ' tp-warn' : '')}>{tx('tp.sumCheck', { s: fmtMoney(sum), t: fmtMoney(t.amountCents) })}</div>
+          {eligible.length > 1 ? <button type="button" className="fk-btn sm" onClick={() => { const e = evenSplit(t.amountCents, eligible.length); setAmounts(Object.fromEntries(eligible.map((x, i) => [x.technicianId, textFromCents(e.parts[i])]))); setEvenRem(e.remainderCents); }} data-testid="split-even">{tx('tp.split.even')}</button> : null}
+          {(() => {
+            // Extras (Tips & Gratuity 02): exact cents per technician before the save — before → after, the change, the remainder
+            const pv = splitPreview(t.amountCents, eligible.map((e) => ({ technicianId: e.technicianId, name: e.name, beforeCents: before[e.technicianId] ?? 0, afterCents: centsFromText(amounts[e.technicianId] ?? '') ?? 0 })));
+            if (!pv.changed) return null;
+            return <div data-testid="split-preview"><table className="fk-table"><thead><tr><th>{tx('pos.technician')}</th><th className="num">{tx('tp.split.now')}</th><th className="num">{tx('tp.split.after')}</th><th className="num">{tx('tp.split.change')}</th></tr></thead>
+              <tbody>{pv.rows.map((r) => <tr key={r.technicianId} data-testid="split-row"><td>{r.name ?? '—'}</td><td className="num">{fmtMoney(r.beforeCents)}</td><td className="num"><b>{fmtMoney(r.afterCents)}</b></td><td className={'num' + (r.deltaCents < 0 ? ' tp-neg' : '')}>{r.deltaCents > 0 ? '+' : ''}{fmtMoney(r.deltaCents)}</td></tr>)}</tbody></table>
+              {evenRem ? <div className="fk-hint" data-testid="split-remainder">{tx('tp.split.remainder', { c: fmtNumber(evenRem), n: eligible.slice(0, evenRem).map((e) => e.name ?? '—').join(', ') })}</div> : null}
+              {!pv.balanced ? <div className="fk-hint tp-warn" data-testid="split-diff">{tx('tp.split.diff', { a: fmtMoney(Math.abs(pv.differenceCents)) })}</div> : null}
+              <div className="fk-hint">{tx('tp.split.nothingSaved')}</div></div>;
+          })()}
           <label className="fk-field"><span>{tx('tp.reason')} *</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-testid="adjust-reason" /></label>
           <button type="button" className="fk-btn" onClick={() => setEditing(false)} disabled={busy}>{tx('pos.cancel')}</button>
           <button type="button" className="fk-btn primary" onClick={save} disabled={busy || sum !== t.amountCents || reason.trim().length < 3} data-testid="adjust-save">{busy ? tx('pos.saving') : tx('tp.saveAdjustment')}</button>

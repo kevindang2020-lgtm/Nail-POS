@@ -18,7 +18,7 @@ import { SystemCheckButton } from '../components/SystemCheck';
 import { Link } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { FinanceExpenseCreateRequest } from '@aipowersalon/api-contracts/tenant';
-import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail } from '../api/posExpensesApi';
+import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail, type FinSummary, type ExpenseAttention } from '../api/posExpensesApi';
 import { posAiOcrReceiptApi } from '../api/posAiOcrReceiptApi';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
@@ -57,12 +57,13 @@ export function POSExpensesScreen() {
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [category, setCategory] = useState(''); const [method, setMethod] = useState(''); const [sort, setSort] = useState<Sort>('created');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
+  const [attention, setAttention] = useState<ExpenseAttention | ''>('');
   const [note, setNote] = useState<Note | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [viewId, setViewId] = useState<string | null>(null); const [billsCal, setBillsCal] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
-  const [cats, setCats] = useState(false);
+  const [cats, setCats] = useState(false); const [trend, setTrend] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const fit = useFitRows<HTMLDivElement>(46, { min: 4, max: 15, reserve: 34 });
@@ -70,18 +71,18 @@ export function POSExpensesScreen() {
   const pq = periodQuery(period);
   const dates = pq.preset === 'custom' ? { period: 'custom', from: pq.from, to: pq.to } : pq.preset === 'all' ? {} : { period: pq.preset };
   const filters = { q: q || undefined, category: category || undefined, paymentMethod: method || undefined };
-  const scopeKey = JSON.stringify([tab, dates, filters, sort]);
+  const scopeKey = JSON.stringify([tab, dates, filters, sort, attention]);
   useEffect(() => setPage(1), [scopeKey]);   // a new period / search / filter / sort / tab starts at Page 1
   // each answer carries the reload it answers, so a save is judged only against a list read AFTER it
-  const list = useLoad(() => posExpensesApi.expenses({ tab, ...dates, ...filters, sort, page, pageSize: fit.rows }).then((d) => ({ ...d, forTick: tick })), [scopeKey, page, fit.rows, tick]);
+  const list = useLoad(() => posExpensesApi.expenses({ tab, ...dates, ...filters, sort, page, pageSize: fit.rows, attention: attention || undefined }).then((d) => ({ ...d, forTick: tick })), [scopeKey, page, fit.rows, tick]);
   const summary = useLoad(() => posExpensesApi.kpis({ ...dates, ...filters }), [JSON.stringify([dates, filters]), tick]);
   const catList = useLoad(() => posExpensesApi.categories(), [tick]);
   const categories: FinCategory[] = (catList.data?.categories ?? []).filter((c) => c.active);
   const catLabel = (key: string | null | undefined, label?: string | null) => (label ? serverText(label) : key ? serverText(categories.find((c) => c.key === key)?.label ?? key) : '—');
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const reload = () => setTick((n) => n + 1);
-  const filtered = !!(q || category || method || tab !== 'all');
-  const clearFilters = () => { setSearch(''); setCategory(''); setMethod(''); setTab('all'); setSort('created'); };
+  const filtered = !!(q || category || method || tab !== 'all' || attention);
+  const clearFilters = () => { setSearch(''); setCategory(''); setMethod(''); setTab('all'); setSort('created'); setAttention(''); };
 
   // after a save: the authoritative list decides whether the new / edited row is in view
   const pendingRow = useRef<{ id: string; kind: 'create' | 'edit'; after: number } | null>(null);
@@ -147,7 +148,7 @@ export function POSExpensesScreen() {
 
       <div className="fk-kpis" data-testid="kpis">
         {summary.error ? <StateBlock error={summary.error} onRetry={summary.reload} /> : <>
-          <KpiCard testId="kpi-total" label={tx('finance.ex.kpi.total')} tone="gold" loading={!k} value={k ? money(k.totalCents) : ''} sub={tx('finance.ex.kpi.totalSub')} />
+          <KpiCard testId="kpi-total" label={tx('finance.ex.kpi.total')} tone="gold" loading={!k} value={k ? money(k.totalCents) : ''} sub={tx('finance.ex.kpi.totalSub')} onClick={k ? () => setTrend(true) : undefined} />
           <KpiCard testId="kpi-entries" label={tx('finance.ex.kpi.entries')} loading={!k} value={k ? fmtNumber(k.entries) : ''} sub={tx('finance.ex.kpi.entriesSub')} />
           <KpiCard testId="kpi-top" label={tx('finance.ex.kpi.top')} loading={!k} value={k ? (k.topCategory ? serverText(k.topCategory.label) : '—') : ''}
             sub={k ? (k.topCategory ? tx('finance.ex.kpi.topSub', { a: money(k.topCategory.totalCents) }) : tx('finance.ex.kpi.topNone')) : ''} onClick={k && k.topCategory && period.preset !== 'all' ? () => setCats(true) : undefined} />
@@ -155,10 +156,11 @@ export function POSExpensesScreen() {
         </>}
       </div>
       <div className="fn-scope" data-testid="kpi-scope">{tx('finance.ex.scope')}</div>
+      {k?.attention ? <AttentionBar a={k.attention} active={attention} onPick={(x) => { if (x === 'duplicates') { setAttention(''); setTab('duplicates'); } else { setTab('all'); setAttention(x); } }} onClear={() => setAttention('')} /> : null}
 
       <div className="fn-toolbar ex-toolbar" role="toolbar" aria-label={tx('finance.filters')}>
         <div className="fk-seg ex-tabs" role="tablist">
-          {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={'tab-' + x}>{tx(TAB_LABEL[x])}</button>)}
+          {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => { setTab(x); setAttention(''); }} data-testid={'tab-' + x}>{tx(TAB_LABEL[x])}</button>)}
         </div>
         {tab === 'bills' ? <button type="button" className="fk-btn ghost" onClick={() => setBillsCal(true)} data-testid="bills-calendar">{tx('finance.bills.calTitle')}</button> : null}
         <div className="fn-search wide">
@@ -221,6 +223,7 @@ export function POSExpensesScreen() {
         onEdit={(x) => { setViewId(null); setForm(formOf(x)); }} onAsk={(a) => setAsk(a)} onChanged={(msg) => { setNote({ tone: 'ok', text: msg }); reload(); }} busy={busy} setBusy={setBusy} tick={tick} /> : null}
       {ask ? <AskDialog ask={ask} onClose={() => setAsk(null)} onDone={(msg) => { setAsk(null); setNote({ tone: 'ok', text: msg }); reload(); }} /> : null}
       {cats ? <CategoryBreakdown dates={dates} onClose={() => setCats(false)} /> : null}
+      {trend ? <MonthlyTrend filters={filters} today={today} onClose={() => setTrend(false)} onMonth={(from, to) => { setTrend(false); setPeriod({ preset: 'custom', from, to }); }} /> : null}
     </div>
   );
 }
@@ -413,6 +416,31 @@ function AskDialog({ ask, onClose, onDone }: { ask: Ask; onClose: () => void; on
 }
 
 /** every category of the period (approved expenses), from the finance report — opened from the Top Category card */
+/** Extras (Expenses Management 06): approved spend per month for the last 12 salon months, from the server over the same
+ *  category / method / search filters (never a sample chart). A month opens the list on that month. Read-only. */
+export function monthRange(month: string, today: string): { from: string; to: string } {
+  const y = Number(month.slice(0, 4)), m = Number(month.slice(5, 7));
+  const last = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+  return { from: `${month}-01`, to: last > today ? today : last };
+}
+function MonthlyTrend({ filters, today, onClose, onMonth }: { filters: { q?: string; category?: string; paymentMethod?: string }; today: string; onClose: () => void; onMonth: (from: string, to: string) => void }) {
+  const r = useLoad(() => posExpensesApi.kpis({ period: 'month', ...filters, trend: '1' }), [JSON.stringify(filters)]);
+  const rows = r.data?.trend ?? [];
+  const max = Math.max(1, ...rows.map((x) => x.totalCents));
+  const filtered = !!(filters.q || filters.category || filters.paymentMethod);
+  const label = (m: string) => fmtInZone(`${m}-15T12:00:00Z`, { month: 'short', year: 'numeric' }) || m;
+  return (
+    <FitDialog title={tx('finance.ex.trend.title')} subtitle={tx(filtered ? 'finance.ex.trend.subFiltered' : 'finance.ex.trend.sub')} onClose={onClose} testId="dlg-trend">
+      {r.error ? <StateBlock error={r.error} onRetry={r.reload} /> : !r.data ? <div className="fk-loading">{tx('pos.loading')}</div>
+        : !rows.length ? <Empty title={tx('pos.no_approved_expenses_in_this_period')} />
+        : <ul className="fk-list ex-bars" data-testid="trend-list">{rows.map((x) => <li key={x.month} className="fk-li" data-testid="trend-row">
+            <button type="button" className="fk-link ex-bar-l" onClick={() => { const w = monthRange(x.month, today); onMonth(w.from, w.to); }} data-testid={'trend-open-' + x.month}>{label(x.month)}</button>
+            <span className="ex-bar"><span style={{ width: `${Math.round((x.totalCents / max) * 100)}%` }} /></span><b className="num">{money(x.totalCents)}</b><span className="fk-li-s">{tx('finance.ex.trend.count', { n: fmtNumber(x.count) })}</span></li>)}</ul>}
+      <div className="fk-hint">{tx('finance.ex.trend.basis')}</div>
+    </FitDialog>
+  );
+}
+
 function CategoryBreakdown({ dates, onClose }: { dates: { period?: string; from?: string; to?: string }; onClose: () => void }) {
   const r = useLoad<FinReport>(() => (dates.period === 'custom' ? posExpensesApi.reportRange(dates.from ?? '', dates.to ?? '') : posExpensesApi.report(dates.period ?? 'month')), [JSON.stringify(dates)]);
   const items = useMemo(() => (r.data?.byCategory ?? []).filter((c) => c.totalCents > 0), [r.data]);
@@ -430,6 +458,24 @@ function CategoryBreakdown({ dates, onClose }: { dates: { period?: string; from?
 
 // extras arc (Nov 10 2026): the expense's own history (expense_history — who did what, when, and why), newest first.
 type ExpenseHistoryItem = { id: string; action: string; actorUserId: string | null; actorName?: string | null; reason?: string | null; at: string };
+/** Extras (Expenses Management 01): small attention chips under the KPIs — missing receipts, category still unsure, reviews
+ *  waiting more than N days, duplicate risk — counted by the server over the same filters; a click opens the list by the
+ *  same rule (or the Duplicates tab). Nothing is changed from here. Zero counts are not shown. */
+export function AttentionBar({ a, active, onPick, onClear }: { a: NonNullable<FinSummary['attention']>; active: ExpenseAttention | ''; onPick: (x: ExpenseAttention | 'duplicates') => void; onClear: () => void }) {
+  const items: Array<{ id: ExpenseAttention | 'duplicates'; n: number; key: string }> = [
+    { id: 'no_receipt', n: a.missingReceipts, key: 'finance.ex.att.noReceipt' }, { id: 'uncategorized', n: a.uncategorized, key: 'finance.ex.att.uncat' },
+    { id: 'overdue_review', n: a.overdueReviews, key: 'finance.ex.att.overdue' }, { id: 'duplicates', n: a.duplicateRisk, key: 'finance.ex.att.dups' }];
+  const shown = items.filter((x) => x.n > 0 || x.id === active);
+  if (!shown.length) return null;
+  return (
+    <div className="fn-chips ex-attention" role="group" aria-label={tx('finance.ex.att.label')} data-testid="attention-bar">
+      <span className="fk-muted">{tx('finance.ex.att.label')}</span>
+      {shown.map((x) => <button key={x.id} type="button" className={'fk-chip ' + (active === x.id ? 'info' : 'warn')} aria-pressed={active === x.id} onClick={() => (active === x.id ? onClear() : onPick(x.id))} data-testid={'att-' + x.id}>
+        {tx(x.key, { n: fmtNumber(x.n), d: fmtNumber(a.overdueAfterDays) })}</button>)}
+    </div>
+  );
+}
+
 export function ExpenseHistory({ items }: { items: ExpenseHistoryItem[] }) {
   const rows = [...items].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   const label = (a: string) => { const k = `exh.a.${a}`; const v = tx(k); return v === k ? tx('exh.a.other') : v; };

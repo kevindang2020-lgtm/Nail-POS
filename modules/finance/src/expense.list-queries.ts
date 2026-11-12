@@ -3,13 +3,13 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 
 export const ExpenseControllerListQueries = {
   list: {
-    filters: { tab: { type: 'text' }, category: { type: 'text' }, vendorId: { type: 'id' }, status: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' }, minCents: { type: 'text' }, maxCents: { type: 'text' } },
+    filters: { tab: { type: 'text' }, attention: { type: 'text' }, category: { type: 'text' }, vendorId: { type: 'id' }, status: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' }, minCents: { type: 'text' }, maxCents: { type: 'text' } },
     search: { params: ['q'] },
     // the handler orders by these itself (expense.repository: created = newest added first, date = expense date, amount)
     sorts: { created: null, date: null, amount: null },
   },
   summary: {
-    filters: { category: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' } },
+    filters: { category: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' }, trend: { type: 'text' } },
     search: { params: ['q'] },
   },
   // Bill due calendar (Extras · Receipt Expense OCR 06): the window in days (1–90) and the branch

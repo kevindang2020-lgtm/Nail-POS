@@ -354,6 +354,8 @@ a { color: inherit; text-decoration: none; }
 .ov-qa .qa-btn:hover .qa-ic{background:linear-gradient(135deg,#E8B84B,#C9971B);color:#fff;border-color:#C9971B;
   box-shadow:0 4px 10px rgba(169,111,34,.28)}
 .ov-qa .qa-l{line-height:1.15;text-align:center}
+.ov-qa .qa-btn:disabled{opacity:.55;cursor:not-allowed}
+.ov-qa .qa-why{font-size:10.5px;line-height:1.1;color:var(--muted)}
 
 /* ===== Top-bar profile / avatar (clickable, editable photo) ===== */
 .who{position:relative;display:flex;align-items:center;}

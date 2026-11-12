@@ -67,6 +67,27 @@ describe('POSTipsScreen', () => {
     fireEvent.click(screen.getByTestId('adjust-save'));
     await waitFor(() => expect(payroll.setTicketTip).toHaveBeenCalledWith('t1', { allocations: [{ technicianId: 'v', tipCents: 500 }, { technicianId: 'a', tipCents: 460 }], reason: 'Anna did the art' }));
   });
+  it('Tip split preview: Split evenly fills exact cents, shows before → after per technician and where the remainder cent goes; nothing saves until Save', async () => {
+    api.detail.mockResolvedValue({ tip: row({ amountCents: 961 }), payments: [], allocations: [], splitRule: 'single', unallocatedCents: 0, adjustments: [], audit: [], permissions: { adjust: true, customer: true } });
+    payroll.ticketTip.mockResolvedValue({ ticketId: 't1', tipCents: 961, status: 'open', locked: false, allocations: [{ technicianId: 'v', name: 'Vishal verma', tipCents: 961 }, { technicianId: 'a', name: 'Anna Lee', tipCents: 0 }] });
+    mount(); await screen.findByTestId('tech-bars');
+    fireEvent.click(screen.getByTestId('tab-transactions'));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'View' }))[0]);
+    fireEvent.click(await screen.findByTestId('adjust'));
+    await screen.findByTestId('adjust-form');
+    expect(screen.queryByTestId('split-preview')).toBeNull();   // nothing changed yet
+    fireEvent.click(screen.getByTestId('split-even'));
+    expect((screen.getByTestId('alloc-v') as HTMLInputElement).value).toBe('4.81'); expect((screen.getByTestId('alloc-a') as HTMLInputElement).value).toBe('4.80');
+    const rows = screen.getAllByTestId('split-row');
+    expect(rows[0]).toHaveTextContent('Vishal verma'); expect(rows[0]).toHaveTextContent('$9.61'); expect(rows[0]).toHaveTextContent('−$4.80');
+    expect(rows[1]).toHaveTextContent('+$4.80');
+    expect(screen.getByTestId('split-remainder').textContent).toBe('Rounding remainder: 1¢, one cent each to Vishal verma');
+    expect(screen.queryByTestId('split-diff')).toBeNull();
+    fireEvent.change(screen.getByTestId('alloc-a'), { target: { value: '4.00' } });
+    expect(screen.getByTestId('split-diff').textContent).toMatch(/Off by \$0\.80/);
+    expect(screen.queryByTestId('split-remainder')).toBeNull();
+    expect(payroll.setTicketTip).not.toHaveBeenCalled();
+  });
   it('D15/D19 gaps — Add or remove tip: one technician, a direction, an amount and a reason, sent once with an Idempotency-Key', async () => {
     api.detail.mockResolvedValue({ tip: row(), payments: [], allocations: [], splitRule: 'single', unallocatedCents: 0, adjustments: [], audit: [], permissions: { adjust: true, customer: true } });
     payroll.ticketTip.mockResolvedValue({ ticketId: 't1', tipCents: 960, status: 'paid', locked: true, allocations: [{ technicianId: 'v', name: 'Vishal verma', tipCents: 960 }, { technicianId: 'a', name: 'Anna Lee', tipCents: 0 }] });

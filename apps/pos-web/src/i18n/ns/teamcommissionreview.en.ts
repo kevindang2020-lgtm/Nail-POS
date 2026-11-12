@@ -140,4 +140,11 @@ export const TEAMCOMMISSIONREVIEW_EN = {
   'cr.sumR.MISATTRIBUTED': 'A commission reversal is recorded for a technician who earned nothing on the refunded lines.',
   'cr.calc': 'Calculation (as computed by the server):',
   'cr.timing': 'Only posted POS refunds are reconciled; processor settlement and payroll timing may lag behind.',
+  'cr.age.label': 'Open by age:',
+  'cr.age.new': 'New today · {n}',
+  'cr.age.week': '1–{d} days · {n}',
+  'cr.age.overdue': 'Overdue (over {d} days) · {n}',
+  'cr.age.oldest': 'Oldest first',
+  'cr.age.row': 'Open {n} d',
+  'cr.age.rowOverdue': 'Overdue · {n} d',
 };

@@ -10,7 +10,7 @@ import { ExpenseService, ALL_BRANCHES, type FinanceCtx } from './expense.service
 import { ExpenseError } from './expense-errors';
 import { ExpenseControllerListQueries } from './expense.list-queries';
 import type { ReportPeriod } from './expense-reports';
-import type { InboxTab } from './expense.repository';
+import type { InboxTab, ExpenseAttention } from './expense.repository';
 import type {
   FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceVendorSpend, FinanceExpensePage, FinanceExpenseSummary, FinanceExpenseDetail, FinanceExpenseCreateResult, FinanceExpenseResult,
   FinanceDeleteResult, FinanceAttachResult, FinanceArchiveResult, FinanceBatchResult, FinanceDuplicateResult, FinanceCategoryRecommendation, FinanceImportResult, FinanceCategoryList,
@@ -69,11 +69,11 @@ export class ExpenseController {
   // ── expenses ─────────────────────────────────────────────────────────────────────────────────────────────────────
   @RequirePermission('owner.expenses.view') @Get('expenses') list(@Req() r: Req, @Query() q: Record<string, string | undefined>): Promise<FinanceExpensePage> {
     return financeRun(() => this.svc.list(financeCtx(r, q.branchId), { tab: (q.tab as InboxTab) || 'all', from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, vendorId: q.vendorId, status: q.status,
-      paymentMethod: q.paymentMethod, q: q.q, minCents: centsQ(q.minCents), maxCents: centsQ(q.maxCents), page: int(q.page), pageSize: int(q.pageSize ?? q.limit), sort: q.sort === 'amount' || q.sort === 'created' ? q.sort : 'date', branchId: q.branchId || null }));
+      paymentMethod: q.paymentMethod, q: q.q, minCents: centsQ(q.minCents), maxCents: centsQ(q.maxCents), page: int(q.page), pageSize: int(q.pageSize ?? q.limit), sort: q.sort === 'amount' || q.sort === 'created' ? q.sort : 'date', branchId: q.branchId || null, attention: q.attention as ExpenseAttention | undefined }));
   }
   // Expenses guide (Nov 4 2026): declared before expenses/:id so "summary" is never read as an expense id
   @RequirePermission('owner.expenses.view') @Get('expenses/summary') summary(@Req() r: Req, @Query() q: Record<string, string | undefined>): Promise<FinanceExpenseSummary> {
-    return financeRun(() => this.svc.summary(financeCtx(r, q.branchId), { from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, paymentMethod: q.paymentMethod, q: q.q, branchId: q.branchId || null }));
+    return financeRun(() => this.svc.summary(financeCtx(r, q.branchId), { from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, paymentMethod: q.paymentMethod, q: q.q, branchId: q.branchId || null, trend: q.trend === '1' || q.trend === 'true' }));
   }
   // Bill due calendar (Extras · Receipt Expense OCR 06): declared before expenses/:id
   @RequirePermission('owner.expenses.view') @Get('expenses/bills-due') billsDue(@Req() r: Req, @Query('days') days?: string, @Query('branchId') branchId?: string): Promise<FinanceBillsDue> {

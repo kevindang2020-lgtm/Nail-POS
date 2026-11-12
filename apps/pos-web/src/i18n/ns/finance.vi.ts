@@ -424,4 +424,14 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.iv.recon.negative_balance": "Thu nhiều hơn số nợ", // DRAFT — Kevin reviews
   "finance.iv.recon.duplicate_reference": "Mã tham chiếu thanh toán đã dùng cho khoản khác", // DRAFT — Kevin reviews
   "finance.iv.recon.no_reference": "Thanh toán bên ngoài không có mã tham chiếu", // DRAFT — Kevin reviews
+  "finance.ex.att.label": "Cần xem lại:", // DRAFT — Kevin reviews
+  "finance.ex.att.noReceipt": "{n} chưa có hóa đơn", // DRAFT — Kevin reviews
+  "finance.ex.att.uncat": "{n} chưa xác nhận danh mục", // DRAFT — Kevin reviews
+  "finance.ex.att.overdue": "{n} chờ duyệt quá {d} ngày", // DRAFT — Kevin reviews
+  "finance.ex.att.dups": "{n} có thể bị trùng", // DRAFT — Kevin reviews
+  "finance.ex.trend.title": "Chi tiêu theo tháng", // DRAFT — Kevin reviews
+  "finance.ex.trend.sub": "Chi phí đã duyệt mỗi tháng, 12 tháng gần nhất (tháng này tính đến hôm nay). Chạm vào một tháng để xem danh sách.", // DRAFT — Kevin reviews
+  "finance.ex.trend.subFiltered": "Chi phí đã duyệt mỗi tháng, 12 tháng gần nhất, theo bộ lọc danh mục / phương thức / tìm kiếm của bạn. Chạm vào một tháng để xem danh sách.", // DRAFT — Kevin reviews
+  "finance.ex.trend.count": "{n} khoản chi", // DRAFT — Kevin reviews
+  "finance.ex.trend.basis": "Theo ngày chi theo lịch của tiệm. Bản nháp, khoản đang chờ duyệt và khoản đã hủy không được tính.", // DRAFT — Kevin reviews
 };

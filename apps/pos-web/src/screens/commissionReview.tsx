@@ -32,9 +32,10 @@ const errText = (e: unknown) => {
 export function DiscrepancyReviewPanel({ pq, onOpenTech }: { pq: Record<string, unknown>; onOpenTech: (t: { technicianId: string; technicianName: string | null; focus?: string }) => void }) {
   const [status, setStatus] = useState<string>('open_all'); const [type, setType] = useState(''); const [sev, setSev] = useState(''); const [who, setWho] = useState('');
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300); const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
+  const [age, setAge] = useState(''); const [oldest, setOldest] = useState(false);
   const [open, setOpen] = useState<string | null>(null); const [running, setRunning] = useState(false); const [pol, setPol] = useState(''); const [polMsg, setPolMsg] = useState<{ ok: boolean; text: string } | null>(null); const [runMsg, setRunMsg] = useState<any | null>(null); const [runErr, setRunErr] = useState<string | null>(null);
-  useEffect(() => setPage(1), [status, type, sev, who, q]);
-  const list = useLoad(() => posCommissionReviewApi.list({ status, type: type || undefined, severity: sev || undefined, assignee: who || undefined, q: q || undefined, page, pageSize: 6 }), [status, type, sev, who, q, page, tick]);
+  useEffect(() => setPage(1), [status, type, sev, who, q, age, oldest]);
+  const list = useLoad(() => posCommissionReviewApi.list({ status, type: type || undefined, severity: sev || undefined, assignee: who || undefined, q: q || undefined, age: age || undefined, sort: oldest ? 'oldest' : undefined, page, pageSize: 6 }), [status, type, sev, who, q, age, oldest, page, tick]);
   const d: any = list.data; const last = d?.lastRun;
   const run = async () => {
     setRunning(true); setRunErr(null); setRunMsg(null);
@@ -67,12 +68,19 @@ export function DiscrepancyReviewPanel({ pq, onOpenTech }: { pq: Record<string, 
         <select className="fk-select" value={sev} onChange={(e) => setSev(e.target.value)} aria-label={tx('cr.severity')} data-testid="cr-sev">{['', 'high', 'medium', 'low'].map((x) => <option key={x} value={x}>{x ? tx('cr.sev.' + x) : tx('cr.allSev')}</option>)}</select>
         <select className="fk-select" value={who} onChange={(e) => setWho(e.target.value)} aria-label={tx('cr.assignee')} data-testid="cr-who">{['', 'me', 'none'].map((x) => <option key={x} value={x}>{tx('cr.who.' + (x || 'all'))}</option>)}</select>
       </div>
+      {d?.ageCounts ? <div className="fn-chips" role="group" aria-label={tx('cr.age.label')} data-testid="cr-age">
+        {/* Extras (Finish the Five 05): open findings by age since detection — a click filters; oldest first to triage */}
+        <span className="fk-muted">{tx('cr.age.label')}</span>
+        {(['new', 'week', 'overdue'] as const).map((a) => <button key={a} type="button" className={'fk-chip ' + (age === a ? 'info' : a === 'overdue' && d.ageCounts.overdue ? 'bad' : 'mut')} aria-pressed={age === a}
+          onClick={() => setAge(age === a ? '' : a)} data-testid={'cr-age-' + a}>{tx('cr.age.' + a, { n: nf(d.ageCounts[a] ?? 0), d: nf(d.ageCounts.overdueAfterDays) })}</button>)}
+        <label className="fk-check"><input type="checkbox" checked={oldest} onChange={(e) => setOldest(e.target.checked)} data-testid="cr-oldest" /> {tx('cr.age.oldest')}</label>
+      </div> : null}
       {list.error ? <StateBlock error={list.error} onRetry={list.reload} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div>
         : d.items.length === 0 ? <Empty title={last ? tx('cr.none') : tx('cr.noneYet')} />
         : <div className="tq-scroll"><table className="fk-table fn-table cg-table" data-testid="disc-table"><thead><tr><th>{tx('cr.col.detected')}</th><th>{tx('cr.type')}</th><th>{tx('pos.technician')}</th><th>{tx('cm.l.ticket')}</th>
           <th className="num">{tx('cm.d.expected')}</th><th className="num">{tx('cm.d.recorded')}</th><th className="num">{tx('cr.col.diff')}</th><th>{tx('pos.status')}</th><th className="t-opt">{tx('cr.assignee')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
           <tbody>{d.items.map((r: any) => <tr key={r.id} className="inv2-click" onClick={() => setOpen(r.id)} data-testid="disc-row">
-            <td>{whenTime(r.detectedAt)}</td>
+            <td>{whenTime(r.detectedAt)}{r.ageDays != null && (r.status === 'OPEN' || r.status === 'ASSIGNED' || r.status === 'INVESTIGATING') ? <span className={'fk-li-s' + (r.overdue ? ' tp-warn' : '')} data-testid="disc-age">{r.overdue ? tx('cr.age.rowOverdue', { n: nf(r.ageDays) }) : tx('cr.age.row', { n: nf(r.ageDays) })}</span> : null}</td>
             <td><span className={'fk-chip ' + (r.severity === 'high' ? 'bad' : r.severity === 'medium' ? 'warn' : 'mut')}>{tx('cr.t.' + r.type)}</span>{r.verification !== 'CONFIRMED' ? <span className="fk-li-s">{tx('cr.v.' + r.verification)}</span> : null}</td>
             <td>{r.technician ?? '—'}</td><td>{r.ticketNumber ? tx('tq.ticketNo', { n: r.ticketNumber }) : '—'}</td>
             <td className="num">{r.expectedCents == null ? '—' : money(r.expectedCents)}</td><td className="num">{r.recordedCents == null ? '—' : money(r.recordedCents)}</td><td className="num"><b>{signed(r.differenceCents)}</b></td>

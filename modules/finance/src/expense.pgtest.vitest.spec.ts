@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { OutboxWriter } from '@aipowersalon/events';
-import { ExpenseService, type FinanceCtx, type BranchScopePort } from './expense.service';
+import { ExpenseService, trendMonths, type FinanceCtx, type BranchScopePort } from './expense.service';
 import { ExpenseError } from './expense-errors';
 
 const T = 'f9000000-0000-4000-8000-000000000001', T2 = 'f9000000-0000-4000-8000-000000000002';
@@ -327,5 +327,59 @@ describe('finance — an expense entered on a branch device', () => {
     const wide = await svc.create(pos, { amountCents: 1234, incurredOn: today, vendor: 'Salon Wide Vendor', branchId: null, intent: 'approve', idempotencyKey: 'pos-branch-2' } as never);
     const wid = (wide as { expense?: { id: string }; id?: string }).expense?.id ?? (wide as { id: string }).id;
     expect((await q(`select branch_id from expenses where id = $1`, [wid]))[0]?.branch_id).toBeNull();
+  });
+});
+
+// Extras (Expenses Management 01): the attention bar — missing receipts, no category, reviews waiting > 7 days, duplicate
+// risk — counted over the screen's own filters and branch scope; each count opens the list by the SAME rule. Read-only.
+describe('finance — the expense attention bar', () => {
+  const T4 = 'f9000000-0000-4000-8000-000000000004', O4 = 'f9000000-0000-4000-8000-0000000000e4';
+  const own4: FinanceCtx = { tenantId: T4, userId: O4, role: 'OWNER', permissions: ALL };
+  it('counts each attention kind truthfully, honours filters, and the click-through lists exactly those rows', async () => {
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code) values ($1,'S4','S4','fin-d','FIND')`, [T4]);
+    await q(`insert into tenant_settings (id, tenant_id, branch_id, category, settings_json) values (gen_random_uuid(), $1, NULL, 'business-branch', '{"timezone":"UTC"}'::jsonb)`, [T4]);
+    await q(`insert into users (id, tenant_id, first_name, last_name, full_name, email, status, role) values ($1,$2,'A','A','A A','a4@fin.test','active','OWNER')`, [O4, T4]);
+    const mk = async (k: string, x: Record<string, unknown>) => (await svc.create(own4, { amountCents: 1000 + k.length, incurredOn: today, vendor: 'V ' + k, paymentMethod: 'cash', idempotencyKey: 'att-' + k, ...x } as never)).expense;
+    const withReceipt = await mk('rcpt', { category: 'supplies', intent: 'approve' });
+    const doc = (await q(`insert into ocr_documents (tenant_id, document_type, total_cents, document_date, pipeline_status) values ($1,'receipt',100,$2::date,'approved') returning id`, [T4, today]))[0].id as string;
+    await q(`insert into expense_documents (tenant_id, expense_id, document_id, role) values ($1,$2,$3,'receipt')`, [T4, withReceipt.id, doc]);
+    const noCat = await mk('nocat', { category: null, intent: 'approve', paymentMethod: 'business_card' });
+    const fresh = await mk('fresh', { category: 'supplies', intent: 'submit' });
+    const stale = await mk('stale', { category: 'supplies', intent: 'submit' });
+    await q(`update expenses set updated_at = now() - interval '9 days' where id = $1`, [stale.id]);
+    const voided = await mk('void', { category: null, intent: 'approve' });
+    await svc.void(own4, voided.id, 'mistake', (await svc.detail(own4, voided.id)).expense.version);
+    await q(`update expenses set duplicate_status = 'possible' where id = $1`, [fresh.id]);
+
+    const s = await svc.summary(own4, { period: 'month' });
+    // 3 live rows without a receipt (voided not counted), 1 uncategorized (voided not counted), 1 overdue, 1 duplicate risk
+    expect(s.attention).toEqual({ missingReceipts: 3, uncategorized: 1, overdueReviews: 1, duplicateRisk: 1, overdueAfterDays: 7 });
+    // the screen's filters apply: business card only → just the uncategorized one
+    expect((await svc.summary(own4, { period: 'month', paymentMethod: 'business_card' })).attention).toMatchObject({ missingReceipts: 1, uncategorized: 1, overdueReviews: 0, duplicateRisk: 0 });
+    // click-through: the list by the same rule
+    const ids = async (attention: string) => (await svc.list(own4, { tab: 'all', attention } as never)).items.map((x: { id: string }) => x.id).sort();
+    expect(await ids('no_receipt')).toEqual([noCat.id, fresh.id, stale.id].sort());
+    expect(await ids('uncategorized')).toEqual([noCat.id]);
+    expect(await ids('overdue_review')).toEqual([stale.id]);
+    // an unknown value is ignored, never an error or an empty list
+    expect((await svc.list(own4, { tab: 'all', attention: 'bogus' } as never)).total).toBe(5);
+    // another salon sees none of it
+    expect((await svc.summary(other, { from: today, to: today })).attention?.overdueReviews ?? 0).toBe(0);
+  });
+  it('Extras (Expenses Management 06): ?trend lists the last 12 salon months, approved only, with the screen filters; $0 months are listed', async () => {
+    const months = trendMonths(today, 12);
+    expect(months).toHaveLength(12); expect(months[11]).toBe(today.slice(0, 7));
+    expect(trendMonths('2026-02-15', 3)).toEqual(['2025-12', '2026-01', '2026-02']);
+    const prevMonth = months[10];
+    await svc.create(own4, { amountCents: 2500, incurredOn: `${prevMonth}-10`, vendor: 'Trend A', category: 'supplies', paymentMethod: 'cash', intent: 'approve', idempotencyKey: 'trend-a' } as never);
+    await svc.create(own4, { amountCents: 9900, incurredOn: `${prevMonth}-11`, vendor: 'Trend B', category: 'supplies', paymentMethod: 'cash', intent: 'draft', idempotencyKey: 'trend-b' } as never);   // a draft never counts
+    const s = await svc.summary(own4, { period: 'month', trend: true });
+    expect(s.trend?.map((x) => x.month)).toEqual(months);
+    const thisMonthApproved = (await svc.summary(own4, { period: 'month' })).totalCents;
+    expect(s.trend?.[11].totalCents).toBe(thisMonthApproved);                 // the same rows the KPI counts
+    expect(s.trend?.[10]).toEqual({ month: prevMonth, totalCents: 2500, count: 1 });
+    expect(s.trend?.[0]).toEqual({ month: months[0], totalCents: 0, count: 0 });
+    expect((await svc.summary(own4, { period: 'month', trend: true, paymentMethod: 'business_card' })).trend?.[10].totalCents).toBe(0);   // filters apply
+    expect((await svc.summary(own4, { period: 'month' })).trend).toBeUndefined();   // only when asked
   });
 });

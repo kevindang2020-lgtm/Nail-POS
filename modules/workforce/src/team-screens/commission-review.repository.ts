@@ -63,6 +63,16 @@ const EVENT_OF: Record<ReviewAction, string> = { assign: 'ASSIGNED', investigate
 export interface ActionBody { expectedVersion?: unknown; assigneeUserId?: unknown; note?: unknown; resolutionCode?: unknown; reason?: unknown }
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+/** Extras (Finish the Five 05): an open finding older than this is overdue on the review queue */
+export const OVERDUE_DAYS = 7;
+export const AGE_BUCKETS = ['new', 'week', 'overdue'] as const; type AgeBucket = typeof AGE_BUCKETS[number];
+const OPEN_STATES = new Set(['OPEN', 'ASSIGNED', 'INVESTIGATING']);
+function ageWhere(a: AgeBucket) {
+  if (a === 'new') return sql`r.detected_at > now() - interval '1 day'`;
+  if (a === 'week') return sql`r.detected_at <= now() - interval '1 day' and r.detected_at > now() - make_interval(days => ${OVERDUE_DAYS})`;
+  return sql`r.detected_at <= now() - make_interval(days => ${OVERDUE_DAYS})`;
+}
+
 export class CommissionReviewRepository {
   private readonly screen: CommissionScreenRepository;
   constructor(private readonly db: Kysely<any>, private readonly rt: RealtimeEmitter | null = null) { this.screen = new CommissionScreenRepository(db); }
@@ -252,7 +262,7 @@ export class CommissionReviewRepository {
   }
 
   // ── list / detail ───────────────────────────────────────────────────────────────────────────────────────────────
-  async list(ctx: TeamCtx, f: { status?: string; severity?: string; type?: string; assignee?: string; q?: string; from?: string; to?: string; page?: unknown; pageSize?: unknown }) {
+  async list(ctx: TeamCtx, f: { status?: string; severity?: string; type?: string; assignee?: string; q?: string; from?: string; to?: string; age?: string; sort?: string; page?: unknown; pageSize?: unknown }) {
     this.mustView(ctx); const T = ctx.tenantId; const { page, pageSize } = paging(f.page, f.pageSize, 8);
     const st = (REVIEW_STATUSES as readonly string[]).includes(String(f.status)) ? String(f.status) : f.status === 'open_all' ? 'open_all' : 'all';
     const sev = ['low', 'medium', 'high'].includes(String(f.severity)) ? String(f.severity) : null;
@@ -260,18 +270,26 @@ export class CommissionReviewRepository {
     const who = f.assignee === 'me' ? ctx.userId : f.assignee && UUID.test(f.assignee) ? f.assignee : null; const unassigned = f.assignee === 'none';
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw); const isId = UUID.test(raw);
     const from = /^\d{4}-\d{2}-\d{2}$/.test(String(f.from)) ? String(f.from) : null; const to = /^\d{4}-\d{2}-\d{2}$/.test(String(f.to)) ? String(f.to) : null;
+    // Extras (Finish the Five 05): age triage of OPEN findings (open / assigned / investigating) since detection —
+    // new (< 1 day), this week (1–7 days), overdue (> 7 days); oldest first on request
+    const age = AGE_BUCKETS.includes(String(f.age) as AgeBucket) ? String(f.age) as AgeBucket : null; const oldest = f.sort === 'oldest';
     const base = sql`from commission_discrepancy_reviews r left join technicians te on te.id = r.technician_id and te.tenant_id = r.tenant_id left join tickets tk on tk.id = r.transaction_id and tk.tenant_id = r.tenant_id
       left join users au on au.id = r.assigned_to_user_id and au.tenant_id = r.tenant_id where r.tenant_id = ${T} and ${this.brR(ctx)}`;
     const w = sql`(${st} = 'all' or (${st} = 'open_all' and r.status in ('OPEN', 'ASSIGNED', 'INVESTIGATING')) or r.status = ${st}) and (${sev}::text is null or r.severity = ${sev}) and (${type}::text is null or r.finding_type = ${type})
       and (${who}::uuid is null or r.assigned_to_user_id = ${who}) and (not ${unassigned} or r.assigned_to_user_id is null)
       and (${from}::date is null or r.detected_at >= ${from}::date) and (${to}::date is null or r.detected_at < (${to}::date + 1))
+      and (${age}::text is null or (r.status in ('OPEN', 'ASSIGNED', 'INVESTIGATING') and ${ageWhere(age ?? 'new')}))
       and (${raw} = '' or coalesce(te.full_name, '') ilike ${l} or coalesce(tk.ticket_number, '') ilike ${l} or r.summary ilike ${l} or (${isId} and (r.id::text = ${raw} or r.transaction_id::text = ${raw} or r.service_line_id::text = ${raw})))`;
     const counts = (await sql<any>`select r.status, count(*)::int as n ${base} group by r.status`.execute(this.db)).rows;
+    const ages = (await sql<any>`select count(*) filter (where ${ageWhere('new')})::int as new, count(*) filter (where ${ageWhere('week')})::int as week, count(*) filter (where ${ageWhere('overdue')})::int as overdue
+      ${base} and r.status in ('OPEN', 'ASSIGNED', 'INVESTIGATING')`.execute(this.db)).rows[0];
     const total = N((await sql<any>`select count(*)::int as n ${base} and ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select r.id, r.finding_type, r.verification_state, r.status, r.severity, r.summary, r.technician_id, te.full_name as technician, r.transaction_id, tk.ticket_number, r.expected_cents, r.recorded_cents,
-        r.difference_cents, r.assigned_to_user_id, coalesce(nullif(au.full_name, ''), au.email) as assignee, r.detected_at, r.updated_at, r.version
-      ${base} and ${w} order by r.detected_at desc, r.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
-    return { counts: Object.fromEntries(REVIEW_STATUSES.map((s) => [s, N(counts.find((c: any) => c.status === s)?.n)])), lastRun: await this.lastRun(ctx), policy: await this.refundPolicy(ctx),
+        r.difference_cents, r.assigned_to_user_id, coalesce(nullif(au.full_name, ''), au.email) as assignee, r.detected_at, r.updated_at, r.version,
+        floor(extract(epoch from (now() - r.detected_at)) / 86400)::int as age_days
+      ${base} and ${w} order by ${oldest ? sql`r.detected_at asc, r.id asc` : sql`r.detected_at desc, r.id desc`} limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
+    return { counts: Object.fromEntries(REVIEW_STATUSES.map((s) => [s, N(counts.find((c: any) => c.status === s)?.n)])),
+      ageCounts: { new: N(ages?.new), week: N(ages?.week), overdue: N(ages?.overdue), overdueAfterDays: OVERDUE_DAYS }, lastRun: await this.lastRun(ctx), policy: await this.refundPolicy(ctx),
       items: rows.map((r: any) => this.item(r)), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
   private item(r: any) {
@@ -279,6 +297,7 @@ export class CommissionReviewRepository {
       technicianId: r.technician_id ? String(r.technician_id) : null, technician: r.technician ?? null, ticketId: r.transaction_id ? String(r.transaction_id) : null, ticketNumber: r.ticket_number ?? null,
       expectedCents: r.expected_cents == null ? null : N(r.expected_cents), recordedCents: r.recorded_cents == null ? null : N(r.recorded_cents), differenceCents: r.difference_cents == null ? null : N(r.difference_cents),
       assigneeUserId: r.assigned_to_user_id ? String(r.assigned_to_user_id) : null, assignee: r.assignee ?? null, detectedAt: iso(r.detected_at), updatedAt: iso(r.updated_at), version: N(r.version),
+      ...(r.age_days != null ? { ageDays: N(r.age_days), overdue: OPEN_STATES.has(String(r.status)) && N(r.age_days) >= OVERDUE_DAYS } : {}),
       actions: allowedActions(String(r.status) as Status) };
   }
   async lastRun(ctx: TeamCtx) {

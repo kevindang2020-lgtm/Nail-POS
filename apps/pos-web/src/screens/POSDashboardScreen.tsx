@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { posDashboardApi } from '../api/posDashboardApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../auth/AuthContext';
+import { useCan } from '../components/usePermissions';
+import { quickActionGate } from './quickActionGate';
 import { useTenantNavAccess } from '../shell/tenant-access';
 import { t as tx, currentLocale } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
@@ -112,7 +114,7 @@ const hubMoney = (c: number) => (Math.abs(c) < 1000000 ? fmtMoney(c, { whole: tr
 
 export function POSDashboardScreen() {
   const nav = useNavigate();
-  const { principal } = useAuth();
+  const { principal } = useAuth(); const can = useCan();
   const access = useTenantNavAccess(principal?.role, principal?.permissions);
   const aiAllowed = access.aiPackages.length > 0;
   const [s, setS] = useState<DashState | null>(null);
@@ -354,7 +356,7 @@ export function POSDashboardScreen() {
       <div className="ov-qa" data-testid="live-ops-quick-actions">
         <div className="qa-h">{tx('pos.quick_actions_2')}</div>
         <div className="qa-row">
-          {QA.map(([l, to, d]) => (<button key={l} className="qa-btn" onClick={() => nav(to)}><span className="qa-ic"><svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg></span><span className="qa-l">{l}</span></button>))}
+          {QA.map(([l, to, d]) => { const g = quickActionGate(to, can); const why = g.ok ? undefined : tx('pos.qa_needs_permission', { p: g.missing.join(', ') }); return (<button key={l} className="qa-btn" disabled={!g.ok} aria-disabled={!g.ok} title={why} aria-description={why} data-testid={'qa-' + to} onClick={() => { if (g.ok) nav(to); }}><span className="qa-ic"><svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg></span><span className="qa-l">{l}</span>{why ? <span className="qa-why" data-testid="qa-why">{tx('pos.qa_locked')}</span> : null}</button>); })}
         </div>
       </div>
     </div>

@@ -140,4 +140,11 @@ export const TEAMCOMMISSIONREVIEW_VI = {
   'cr.sumR.MISATTRIBUTED': 'Có khoản hoàn hoa hồng ghi cho thợ không có thu nhập trên các dòng được hoàn tiền.',
   'cr.calc': 'Cách tính (do máy chủ tính):',
   'cr.timing': 'Chỉ đối chiếu các lần hoàn tiền POS đã ghi sổ; thời điểm quyết toán của bộ xử lý và lương có thể chậm hơn.',
+  'cr.age.label': 'Đang mở theo thời gian:', // DRAFT — Kevin reviews
+  'cr.age.new': 'Mới hôm nay · {n}', // DRAFT — Kevin reviews
+  'cr.age.week': '1–{d} ngày · {n}', // DRAFT — Kevin reviews
+  'cr.age.overdue': 'Quá hạn (hơn {d} ngày) · {n}', // DRAFT — Kevin reviews
+  'cr.age.oldest': 'Cũ nhất trước', // DRAFT — Kevin reviews
+  'cr.age.row': 'Mở {n} ngày', // DRAFT — Kevin reviews
+  'cr.age.rowOverdue': 'Quá hạn · {n} ngày', // DRAFT — Kevin reviews
 };

@@ -164,7 +164,7 @@ export const VOICECALLS_VI: Record<string, string> = {
   "vcx.comp.security": "Bảo mật",
   "vcx.health.k.provider_connection": "Đã kết nối nhà cung cấp",
   "vcx.health.d.provider_connection.PASSED": "Tiệm có khóa nhà cung cấp đang hoạt động.",
-  "vcx.health.d.provider_connection.WARNING": "Có cuộc gọi nhưng không có khóa nhà cung cấp đang hoạt động. Nguyên nhân: khóa bị thu hồi hoặc hết hạn. Cách xử lý: tạo khóa mới trong cài đặt thoại.",
+  "vcx.health.d.provider_connection.WARNING": "Có cuộc gọi nhưng không có khóa nhà cung cấp đang hoạt động. Nguyên nhân: khóa bị thu hồi hoặc hết hạn. Cách xử lý: xin cấp khóa mới (xem bước tiếp theo bên dưới).", // DRAFT — Kevin reviews
   "vcx.health.d.provider_connection.INSUFFICIENT_DATA": "Chưa có khóa nhà cung cấp và chưa có cuộc gọi — đường dây chưa được kết nối.",
   "vcx.health.k.calls_arriving": "Cuộc gọi đang đến",
   "vcx.health.d.calls_arriving.PASSED": "Có cuộc gọi trong 7 ngày qua.",
@@ -225,4 +225,10 @@ export const VOICECALLS_VI: Record<string, string> = {
   "vcx.kpi.followUps": "Cần theo dõi",
   "vcx.kpi.pendingFailed": "Đang xử lý / thất bại",
   "vcx.kpi.subPf": "{p} đang xử lý · {f} thất bại",
+  "vcx.help.next": "Bước tiếp theo:", // DRAFT — Kevin reviews
+  "vcx.help.step": "mở Lễ tân AI → trạng thái thiết lập và xem “Khóa tích hợp”. Nếu ghi Chưa cấp, hãy nhờ quản trị viên nền tảng cấp khóa tích hợp thoại cho tiệm, rồi gọi thử một cuộc.", // DRAFT — Kevin reviews
+  "vcx.help.needs": "Cần quyền: {p}", // DRAFT — Kevin reviews
+  "vcx.help.open": "Mở thiết lập Lễ tân AI", // DRAFT — Kevin reviews
+  "vcx.help.ask": "Bạn không có quyền vào trang đó — hãy nhờ chủ tiệm.", // DRAFT — Kevin reviews
+  "vcx.help.noSecrets": "Khóa và mật khẩu nhà cung cấp không bao giờ hiển thị trên màn hình này.", // DRAFT — Kevin reviews
 };
