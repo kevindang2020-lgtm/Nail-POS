@@ -10,5 +10,6 @@ export const AiAnalyticsForecastingControllerListQueries = {
   noShowRisk: { search: false, dateRange: { maxDays: 'analytics', days: ['days'] } },
   appointmentForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
   revenueForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
+  serviceDemandForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
   accuracy: { filters: { domain: { type: 'text' } }, search: false },
 } satisfies Record<string, ListQuerySpec>;

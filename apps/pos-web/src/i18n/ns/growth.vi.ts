@@ -1121,4 +1121,17 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiForecast.src.unavailable.error": "Hiện không đọc được số liệu báo cáo doanh số — không hiện phần so sánh.", // DRAFT — Kevin reviews
   "growth.aiForecast.src.basis": "Cách tính: mỗi ngày thanh toán theo múi giờ của chi nhánh; doanh số của các thanh toán hoàn tất trước thuế, tiền tip và phụ phí. Giảm giá và hoàn tiền không bị trừ khỏi dữ liệu lịch sử; chúng được hiện từ báo cáo.", // DRAFT — Kevin reviews
   "growth.aiForecast.src.open": "Mở báo cáo doanh số cho các ngày này", // DRAFT — Kevin reviews
+  "growth.aiForecast.tab.services": "Nhu cầu dịch vụ", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.readiness": "Mỗi nhóm dịch vụ hiện dữ liệu lịch sử riêng bên dưới; một nhóm cần ít nhất 14 ngày dữ liệu mới được dự báo.", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.none": "Không có dịch vụ nào được thanh toán từ {from} đến {to}.", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.basis": "Dữ liệu lịch sử: số lượt dịch vụ trên các phiếu đã thanh toán, theo ngày thanh toán ở múi giờ của chi nhánh, từ {from} đến {to}. Không tính các dòng đã xóa và dòng bán lẻ. Một nhóm cần {n} ngày dữ liệu để được dự báo.", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.category": "Nhóm dịch vụ", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.history": "Lịch sử", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.historyVal": "{u} lượt dịch vụ trong {d} ngày", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.last": "thanh toán gần nhất {d}", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.next": "{n} ngày tới", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.range": "Khoảng (cộng các khoảng 80% mỗi ngày)", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.short": "Chưa đủ dữ liệu — cần thêm {n} ngày", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.note": "Đây là dự báo số lượt dịch vụ, không phải lịch hẹn đã đặt và không phải tiền. Trang này không đặt hay xếp lịch gì.", // DRAFT — Kevin reviews
+  "growth.aiForecast.svc.wape": "WAPE kiểm tra lại {p}%", // DRAFT — Kevin reviews
 };

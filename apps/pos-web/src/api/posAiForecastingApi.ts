@@ -1,10 +1,13 @@
 // posAiForecastingApi.ts — client for AI Analytics & Forecasting (/pos/ai-analytics/*). Server derives tenant/branch.
 // All endpoints are READ-ONLY: statistical forecasts (appointments, revenue) and an operational no-show risk view.
 import { api } from "./client";
+import type { AiServiceDemandForecast } from "@aipowersalon/api-contracts/tenant";
 
 export const posAiForecastingApi = {
   appointments: (horizonDays = 14) => api.get<any>(`/pos/ai-analytics/forecast/appointments`, { horizonDays }),
   revenue: (horizonDays = 14) => api.get<any>(`/pos/ai-analytics/forecast/revenue`, { horizonDays }),
+  /** extras (AI Analytics Forecasting 21): service demand per category from the paid tickets' service lines */
+  serviceDemand: (horizonDays = 7) => api.get<AiServiceDemandForecast>(`/pos/ai-analytics/forecast/service-demand`, { horizonDays }),
   noShowRisk: (days = 7) => api.get<any>(`/pos/ai-analytics/no-show-risk`, { days }),
   accuracy: (domain: 'appointments' | 'revenue') => api.get<any>(`/pos/ai-analytics/accuracy`, { domain }),
   /** how much verified history each forecast has, the minimum and what is short (AI Analytics & Forecasting guide, Nov 2026) */

@@ -13,6 +13,8 @@ import { ForecastRunService } from './forecast-run.service';
 import { SeasonalTrendService } from './seasonal-trend.service';
 import { AnomalyDetectService } from './anomaly-detect.service';
 import { BusyPeriodService } from './busy-period.service';
+import { ServiceDemandForecastService } from './service-demand-forecast.service';
+import type { AiServiceDemandForecast } from '@aipowersalon/api-contracts/tenant';
 import { AiForecastError, type AiForecastContext } from './ai-analytics-forecasting.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { AiAnalyticsForecastingControllerListQueries } from './ai-analytics-forecasting.list-queries';
@@ -47,6 +49,7 @@ export class AiAnalyticsForecastingController {
     private readonly seasonal: SeasonalTrendService,
     private readonly anomalies: AnomalyDetectService,
     private readonly busyPeriods: BusyPeriodService,
+    private readonly serviceDemand: ServiceDemandForecastService,
   ) {}
 
   @Get('busy-periods')
@@ -92,6 +95,14 @@ export class AiAnalyticsForecastingController {
       await this.runs.recordForecast(ctx, 'appointments', out); // best-effort, once/day
       return out;
     });
+  }
+
+  /** extras (AI Analytics Forecasting 21): service demand per category from the paid tickets' service lines — read-only */
+  @Get('forecast/service-demand')
+  @RequirePermission('pos.ai_analytics.view')
+  serviceDemandForecast(@Req() r: any, @Query('horizonDays') horizonDays?: string): Promise<AiServiceDemandForecast> {
+    const h = horizonDays ? Math.max(1, Math.min(30, parseInt(horizonDays, 10) || 7)) : 7;
+    return run(() => this.serviceDemand.getServiceDemand(ctxFrom(r), h));
   }
 
   @Get('forecast/revenue')

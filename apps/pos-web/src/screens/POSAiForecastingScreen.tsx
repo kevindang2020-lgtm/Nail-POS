@@ -11,9 +11,10 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { growthCode } from './growthLabels';
 import { ForecastHistory, ForecastCheckButton } from './ForecastHistory';
 import { fmtInZone, fmtNumber } from '../i18n/format';   // the location's clock (not the device's)
+import type { AiServiceDemandForecast } from '@aipowersalon/api-contracts/tenant';
 import { KpiCard, FitDialog } from '../components/FitKit';
-type Tab = 'appointments' | 'revenue' | 'noshow';
-const TAB_IDS: Tab[] = ['appointments', 'revenue', 'noshow'];
+type Tab = 'appointments' | 'revenue' | 'noshow' | 'services';
+const TAB_IDS: Tab[] = ['appointments', 'revenue', 'noshow', 'services'];
 export function readTab(search: string = typeof window !== 'undefined' ? window.location.search : ''): Tab {
   const v = new URLSearchParams(search).get('tab');
   return TAB_IDS.includes(v as Tab) ? (v as Tab) : 'appointments';
@@ -22,7 +23,7 @@ function writeTab(t: Tab) {
   try { const u = new URL(window.location.href); u.searchParams.set('tab', t); window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash); }
   catch { /* no history API (very old browser): the tab still switches for this visit */ }
 }
-const TABS = (): [Tab, string][] => [['appointments', tx('growth.aiForecast.tab.appointments')], ['revenue', tx('growth.aiForecast.tab.revenue')], ['noshow', tx('growth.aiForecast.tab.noshow')]];
+const TABS = (): [Tab, string][] => [['appointments', tx('growth.aiForecast.tab.appointments')], ['revenue', tx('growth.aiForecast.tab.revenue')], ['noshow', tx('growth.aiForecast.tab.noshow')], ['services', tx('growth.aiForecast.tab.services')]];
 const titleCase = (s: string) => growthCode(s, 'level');
 const pct = (w: number | null | undefined) => (w == null ? '—' : `${(w * 100).toFixed(1)}%`);
 
@@ -220,6 +221,30 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
   );
 }
 
+/** extras (AI Analytics Forecasting 21): service demand per category — history and forecast both from the server; a category
+ *  without enough history says so (never a guessed number). Units of service, not money; nothing is booked. */
+function ServiceDemandView({ data }: { data: AiServiceDemandForecast }) {
+  const units = (v: number | null) => (v == null ? '—' : fmtNumber(v, 1));
+  if (!data.categories.length) return <div className="state" data-testid="fc-svc-empty">{tx('growth.aiForecast.svc.none', { from: data.historyFrom, to: data.historyTo })}</div>;
+  return (
+    <section className="panel" style={{ padding: 0, overflow: 'hidden' }} data-testid="fc-svc">
+      <div className="sub" style={{ padding: '10px 12px' }} data-testid="fc-svc-basis">{tx('growth.aiForecast.svc.basis', { from: data.historyFrom, to: data.historyTo, n: fmtNumber(data.minimumHistoryDays) })}</div>
+      <div className="overflow-x-auto w-full"><table className="tbl w-full min-w-max">
+        <thead><tr><th>{tx('growth.aiForecast.svc.category')}</th><th>{tx('growth.aiForecast.svc.history')}</th><th>{tx('growth.aiForecast.svc.next', { n: fmtNumber(data.horizonDays) })}</th><th>{tx('growth.aiForecast.svc.range')}</th><th>{tx('pos.model')}</th></tr></thead>
+        <tbody>{data.categories.map((c) => (
+          <tr key={c.category} data-testid="fc-svc-row">
+            <td>{c.category}</td>
+            <td>{tx('growth.aiForecast.svc.historyVal', { u: fmtNumber(c.historyUnits), d: fmtNumber(c.historyDays) })}{c.lastSaleDay ? <div className="sub">{tx('growth.aiForecast.svc.last', { d: c.lastSaleDay })}</div> : null}</td>
+            <td>{c.status === 'forecast' ? <b>{units(c.forecastUnits)}</b> : <span className="sub">{tx('growth.aiForecast.svc.short', { n: fmtNumber(Math.max(0, data.minimumHistoryDays - c.historyDays)) })}</span>}</td>
+            <td>{c.status === 'forecast' ? `${units(c.lowerUnits)} – ${units(c.upperUnits)}` : '—'}</td>
+            <td>{c.status === 'forecast' ? <>{titleCase(c.method ?? '')}<div className="sub">{titleCase(c.confidence ?? '')}{c.wape != null ? ` · ${tx('growth.aiForecast.svc.wape', { p: (c.wape * 100).toFixed(1) })}` : ''}</div></> : '—'}</td>
+          </tr>))}</tbody>
+      </table></div>
+      <div className="sub" style={{ padding: '8px 12px' }}>{tx('growth.aiForecast.svc.note')}</div>
+    </section>
+  );
+}
+
 function NoShowView({ data }: { data: any }) {
   if (!data.items || data.items.length === 0) return <div className="state">{tx('pos.no_upcoming_appointments_to_assess')}</div>;
   return (
@@ -255,6 +280,7 @@ export function POSAiForecastingScreen() {
   const [rev, setRev] = useState<any | null>(null);
   const [acc, setAcc] = useState<Record<string, any>>({});
   const [ns, setNs] = useState<any | null>(null);
+  const [svc, setSvc] = useState<AiServiceDemandForecast | null>(null);
   // how much verified history each forecast has — the same series the forecast uses (AI Analytics & Forecasting guide, Nov 2026)
   const [ready, setReady] = useState<any | null>(null);
   const [readyErr, setReadyErr] = useState<string | null>(null);
@@ -266,7 +292,8 @@ export function POSAiForecastingScreen() {
     setLoading(true); setError(null);
     const call = t === 'appointments' ? posAiForecastingApi.appointments().then(setAppt)
       : t === 'revenue' ? posAiForecastingApi.revenue().then(setRev)
-        : posAiForecastingApi.noShowRisk().then(setNs);
+        : t === 'services' ? posAiForecastingApi.serviceDemand().then(setSvc)
+          : posAiForecastingApi.noShowRisk().then(setNs);
     // Tracked (realized) accuracy is secondary — never block or fail the forecast on it.
     if (t === 'appointments' || t === 'revenue') {
       posAiForecastingApi.accuracy(t).then((a: any) => setAcc((prev) => ({ ...prev, [t]: a }))).catch(() => {});
@@ -297,8 +324,8 @@ export function POSAiForecastingScreen() {
           read from the source (No-Show Risk reads the booking history) — Available History, Required History, Valid Records,
           Forecast Readiness, Last Forecast, Data Quality. A role without the financial permission is told so, not shown zeros. */}
       <section className="panel fcx-ready-panel" style={{ padding: 12, marginBottom: 12 }} data-testid="fcx-readiness">
-        <div className="p-h">{tx('fcx.readiness')} · {tx('growth.aiForecast.tab.' + tab)}{ready ? ` · ${tx('fcx.source.' + ready.sources[tab === 'revenue' ? 'revenue' : 'appointments'])}` : ''}</div>
-        {readyErr ? <div className="err">{readyErr}</div> : !ready ? <div className="state">{tx('pos.loading')}</div> : (() => {
+        <div className="p-h">{tx('fcx.readiness')} · {tx('growth.aiForecast.tab.' + tab)}{ready && tab !== 'services' ? ` · ${tx('fcx.source.' + ready.sources[tab === 'revenue' ? 'revenue' : 'appointments'])}` : ''}</div>
+        {tab === 'services' ? <div className="sub" data-testid="fcx-svc-ready">{tx('growth.aiForecast.svc.readiness')}</div> : readyErr ? <div className="err">{readyErr}</div> : !ready ? <div className="state">{tx('pos.loading')}</div> : (() => {
           const d = tab === 'revenue' ? 'revenue' : 'appointments'; const r = ready[d];
           if (r.restricted) return <div className="sub" data-testid="fcx-restricted">{tx('fcx.restricted')}</div>;
           const valid = Math.max(0, r.historyDays - (r.zeroDays ?? 0));
@@ -320,6 +347,7 @@ export function POSAiForecastingScreen() {
       {!loading && !error && tab === 'appointments' && appt && <ForecastView data={appt} kind="appointments" accuracy={acc.appointments} />}
       {!loading && !error && tab === 'revenue' && rev && <ForecastView data={rev} kind="revenue" accuracy={acc.revenue} />}
       {!loading && !error && tab === 'noshow' && ns && <NoShowView data={ns} />}
+      {!loading && !error && tab === 'services' && svc && <ServiceDemandView data={svc} />}
       <ForecastHistory />
     </div>
   );
