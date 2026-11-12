@@ -84,6 +84,14 @@ export function POSAIPlansScreen() {
               {p.state === 'trialing' && p.trialEndsAt ? <div className="sub" data-testid={`plan-trial-${p.code}`}>{t('plx.trialEnds', { d: fmtInZone(p.trialEndsAt, { month: 'short', day: 'numeric', year: 'numeric' }) })}</div> : null}
               {p.state === 'trial_expired' && p.trialEndsAt ? <div className="sub" data-testid={`plan-trial-${p.code}`}>{t('plx.trialEnded', { d: fmtInZone(p.trialEndsAt, { month: 'short', day: 'numeric', year: 'numeric' }) })} {t('aiu.nextStep.trial_expired')}</div> : null}
               {!discounted ? <div className="sub" data-testid={`plan-nodiscount-${p.code}`}>{t('plx.noDiscount')}</div> : null}
+              {/* extras AI Plans #03: the server's price check — the members' own prices added up, and whether "Save" is the real saving */}
+              {p.priceCheck && p.priceCheck.state !== 'unknown' ? (
+                <div className={p.priceCheck.state === 'verified' ? 'sub' : 'warn'} style={{ marginTop: 4, fontSize: 12.5 }} data-testid={`plan-pricecheck-${p.code}`} data-state={p.priceCheck.state}>
+                  {t('plx.pc.separately', { price: money(p.priceCheck.standaloneCents) })}{' · '}
+                  {p.priceCheck.state === 'no_saving' ? (p.priceCheck.realSavingsCents === 0 ? t('plx.pc.same') : t('plx.pc.noSaving', { price: money(-p.priceCheck.realSavingsCents) }))
+                    : p.priceCheck.state === 'overstated' ? t('plx.pc.overstated', { real: money(p.priceCheck.realSavingsCents), claimed: money(p.priceCheck.claimedSavingsCents) })
+                    : t('plx.pc.verified', { real: money(p.priceCheck.realSavingsCents) })}
+                </div>) : null}
               {p.overlap?.owned.length ? <div className="warn" data-testid={`plan-overlap-${p.code}`} style={{ marginTop: 8, fontSize: 12.5 }}>
                 {t('plx.overlap', { n: String(p.overlap.owned.length), names: p.overlap.owned.map((x) => x.name).join(', ') })}
                 {p.overlap.ownedMonthlyCents ? ` ${t('plx.overlapPaid', { price: money(p.overlap.ownedMonthlyCents) })}` : ''}

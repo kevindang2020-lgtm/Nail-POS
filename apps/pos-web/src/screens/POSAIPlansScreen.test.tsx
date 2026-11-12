@@ -59,5 +59,20 @@ describe('POSAIPlansScreen', () => {
     expect(await screen.findByTestId('plan-confirm-overlap-plan_money_owner')).toHaveTextContent(/does not cancel/);
     expect(api.startPlanTrial).not.toHaveBeenCalled();
   });
+  it('extras AI Plans #03: the server\'s price check is shown — a verified saving, an overstated "Save", or no saving versus buying separately', async () => {
+    api.plans.mockResolvedValue({ plans: [
+      plan({ code: 'p_ok', fullCents: 10000, discountCents: 2000, effectiveCents: 8000, priceCheck: { standaloneCents: 10000, realSavingsCents: 2000, claimedSavingsCents: 2000, state: 'verified' } }),
+      plan({ code: 'p_over', fullCents: 12000, discountCents: 2400, effectiveCents: 9600, priceCheck: { standaloneCents: 10000, realSavingsCents: 400, claimedSavingsCents: 2400, state: 'overstated' } }),
+      plan({ code: 'p_none', fullCents: 12000, discountCents: 0, effectiveCents: 12000, priceCheck: { standaloneCents: 10000, realSavingsCents: -2000, claimedSavingsCents: 0, state: 'no_saving' } }),
+      plan({ code: 'p_old' }),
+    ] });
+    mount();
+    const ok = await screen.findByTestId('plan-pricecheck-p_ok');
+    expect(ok).toHaveAttribute('data-state', 'verified');
+    expect(ok).toHaveTextContent('Bought separately: $100/mo · you really save $20/mo');
+    expect(screen.getByTestId('plan-pricecheck-p_over')).toHaveTextContent('the real saving is $4/mo, not the $24 shown');
+    expect(screen.getByTestId('plan-pricecheck-p_none')).toHaveTextContent('costs $20/mo more than buying them separately');
+    expect(screen.queryByTestId('plan-pricecheck-p_old')).toBeNull();   // an older server sends no check: nothing is invented
+  });
 });
 

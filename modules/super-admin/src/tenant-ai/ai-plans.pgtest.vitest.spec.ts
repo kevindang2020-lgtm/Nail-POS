@@ -66,5 +66,26 @@ describe('AI Plans', () => {
     // a plan already live has nothing "to buy", so no overlap is shown
     expect((await plan('plan_money_owner')).overlap).toEqual({ owned: [], ownedMonthlyCents: 0 });
   });
+  it('extras AI Plans #03: the price is checked against the members bought separately — a real saving is verified; an overridden list price that makes "Save" untrue is flagged; read-only', async () => {
+    const p0 = await plan('plan_client_growth');
+    const standalone = p0.packages.reduce((a: number, x: any) => a + x.monthlyPriceCents, 0);
+    expect(p0.priceCheck).toEqual({ standaloneCents: standalone, realSavingsCents: standalone - p0.effectiveCents, claimedSavingsCents: p0.discountCents,
+      state: standalone - p0.effectiveCents <= 0 ? 'no_saving' : p0.discountCents > standalone - p0.effectiveCents ? 'overstated' : 'verified' });
+    // Super Admin: 20% off the plan price
+    await q(sql`insert into ai_plan_settings (plan_code, price_cents_override, discount_type, discount_value, active) values ('plan_client_growth', null, 'percent', 20, true)
+      on conflict (plan_code) do update set price_cents_override = excluded.price_cents_override, discount_type = excluded.discount_type, discount_value = excluded.discount_value`);
+    const p1 = await plan('plan_client_growth');
+    expect(p1.priceCheck).toMatchObject({ standaloneCents: standalone, claimedSavingsCents: p1.discountCents, realSavingsCents: p1.discountCents, state: 'verified' });
+    // the list price is raised above the members' own prices: "Save 20%" is still advertised, the real saving is smaller
+    await q(sql`update ai_plan_settings set price_cents_override = ${standalone + 2000} where plan_code = 'plan_client_growth'`);
+    const p2 = await plan('plan_client_growth');
+    expect(p2.discountCents).toBe(Math.round((standalone + 2000) * 0.2));
+    expect(p2.priceCheck.realSavingsCents).toBe(standalone - p2.effectiveCents);
+    expect(p2.priceCheck.state).toBe(p2.priceCheck.realSavingsCents <= 0 ? 'no_saving' : 'overstated');
+    // no discount at all on a raised price: buying separately is cheaper
+    await q(sql`update ai_plan_settings set discount_type = null, discount_value = 0 where plan_code = 'plan_client_growth'`);
+    expect((await plan('plan_client_growth')).priceCheck).toMatchObject({ realSavingsCents: -2000, claimedSavingsCents: 0, state: 'no_saving' });
+    await q(sql`delete from ai_plan_settings where plan_code = 'plan_client_growth'`);
+  });
 });
 

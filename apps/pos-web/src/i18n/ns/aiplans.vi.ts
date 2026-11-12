@@ -140,4 +140,9 @@ export const AIPLANS_VI: Record<string, string> = {
   "aiux.k.duplicate_usage_events": "Một yêu cầu bị tính hai lần", // DRAFT — Kevin reviews
   "aiux.d.duplicate_usage_events.PASSED": "Không yêu cầu nào bị tính nhiều hơn một lần trong 30 ngày qua.", // DRAFT — Kevin reviews
   "aiux.d.duplicate_usage_events.WARNING": "Cùng một yêu cầu bị tính nhiều hơn một lần trong 30 ngày qua. Hãy báo lại — không có gì bị xóa hay hoàn tiền.", // DRAFT — Kevin reviews
+  "plx.pc.separately": "Mua riêng: {price}/tháng", // DRAFT — Kevin reviews
+  "plx.pc.verified": "bạn thật sự tiết kiệm {real}/tháng", // DRAFT — Kevin reviews
+  "plx.pc.overstated": "tiết kiệm thật là {real}/tháng, không phải {claimed} như đang hiện (giá niêm yết của gói được đặt cao hơn giá riêng của các trợ lý)", // DRAFT — Kevin reviews
+  "plx.pc.noSaving": "gói này đắt hơn mua riêng {price}/tháng", // DRAFT — Kevin reviews
+  "plx.pc.same": "không tiết kiệm so với mua riêng", // DRAFT — Kevin reviews
 };

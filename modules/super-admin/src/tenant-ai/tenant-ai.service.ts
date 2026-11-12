@@ -128,8 +128,16 @@ export class TenantAiService {
       const owned = subscribed ? [] : pkgs.flatMap((p) => { const m = subByCode.get(p.code); if (!m) return [];
         const live = m.status === 'active' || (m.status === 'trialing' && !(m.trialEndsAt && new Date(m.trialEndsAt).getTime() < Date.now()));
         return live ? [{ code: p.code, name: p.name, status: m.status, monthlyPriceCents: Number(m.priceCents) || p.monthlyPriceCents }] : []; });
+      // extras (AI Plans #03 Price Truth & Real Savings): the plan's price against its members bought separately at their own
+      // list prices (the package catalogue). "Save $X" is the discount off the plan's list price; when Super Admin overrides
+      // that list price the real saving versus buying separately can be smaller — or none — and the storefront must say so.
+      const standaloneCents = pkgs.reduce((a, p) => a + (Number(p.monthlyPriceCents) || 0), 0);
+      const realSavingsCents = standaloneCents - effectiveCents;
+      const priceCheck = { standaloneCents, realSavingsCents, claimedSavingsCents: discountCents,
+        state: standaloneCents <= 0 ? 'unknown' as const : realSavingsCents <= 0 ? 'no_saving' as const : discountCents > realSavingsCents ? 'overstated' as const : 'verified' as const };
       return {
         code: pl.code, name: pl.name, description: pl.description, essential: !!pl.essential,
+        priceCheck,
         overlap: { owned, ownedMonthlyCents: owned.reduce((a, x) => a + (x.status === 'active' ? x.monthlyPriceCents : 0), 0) },
         fullCents, discountCents, effectiveCents,
         subscribed, status: planSub?.status ?? (subscribed ? 'active' : null), trialAvailable,
