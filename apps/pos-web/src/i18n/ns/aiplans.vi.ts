@@ -145,4 +145,9 @@ export const AIPLANS_VI: Record<string, string> = {
   "plx.pc.overstated": "tiết kiệm thật là {real}/tháng, không phải {claimed} như đang hiện (giá niêm yết của gói được đặt cao hơn giá riêng của các trợ lý)", // DRAFT — Kevin reviews
   "plx.pc.noSaving": "gói này đắt hơn mua riêng {price}/tháng", // DRAFT — Kevin reviews
   "plx.pc.same": "không tiết kiệm so với mua riêng", // DRAFT — Kevin reviews
+  "aiux.k.bundle_overlap": "Trả tiền hai lần cho cùng một trợ lý", // DRAFT — Kevin reviews
+  "aiux.d.bundle_overlap.PASSED": "Không có trợ lý nào vừa trả riêng vừa nằm trong gói đã trả tiền.", // DRAFT — Kevin reviews
+  "aiux.d.bundle_overlap.WARNING": "Có trợ lý vừa trả tiền riêng vừa nằm trong một gói đã trả tiền (hoặc có trong hai gói đang chạy). Hãy xem lại với chủ tiệm — chưa hủy hay hoàn tiền gì.", // DRAFT — Kevin reviews
+  "aiux.overlap.plans": "Trong gói: {plans}", // DRAFT — Kevin reviews
+  "aiux.overlap.ownSince": "trả riêng từ {d}", // DRAFT — Kevin reviews
 };

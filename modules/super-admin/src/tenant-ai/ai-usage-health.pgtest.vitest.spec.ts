@@ -109,3 +109,30 @@ describe('Check AI Usage & Subscriptions', () => {
     expect(by('feature_routes_gated').state).toBe('WARNING');
   });
 });
+
+// extras AI Usage Limits 04: bundle overlap — an assistant paid on its own AND inside a paid plan is named for review; nothing changes
+describe('Check AI Usage & Subscriptions — bundle overlap (review only)', () => {
+  const T4 = 'c7720000-0000-4000-8000-000000000041';
+  const c4 = { tenantId: T4, userId: U, role: 'OWNER', permissions: ['ai.use', 'ai.manage', 'subscription.manage'] };
+  const own = (code: string, created: string) => q(sql`insert into tenant_ai_subscriptions (id, tenant_id, package_code, status, billing_period, price_cents, currency, usage_limit, overage_enabled, current_period_starts_at, created_at)
+    values (gen_random_uuid(), ${T4}, ${code}, 'active', 'monthly', 6900, 'usd', 500, false, now() - interval '3 days', now() - ${created}::interval)`);
+  it('BO-01 paid on its own before a paid plan that includes it → WARNING naming it; members the plan created and trial plans are not flagged', async () => {
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S4', 'Overlap', 'aiu-774', 'AIU774', 'active')`);
+    expect((await repo.check(c4)).checks.find((x: any) => x.key === 'bundle_overlap')).toMatchObject({ state: 'PASSED', count: 0 });
+    await q(sql`delete from ai_usage_health_runs where tenant_id = ${T4}`);
+    await q(sql`insert into tenant_ai_plan_subscriptions (tenant_id, plan_code, status, price_cents, started_at) values (${T4}, 'plan_money_owner', 'active', 12900, now() - interval '5 days'),
+      (${T4}, 'plan_client_growth', 'trialing', 0, now() - interval '2 days')`);
+    await own('ai_fraud_money_protection', '30 days');   // bought on its own a month before the plan → paid twice
+    await own('ai_ocr_receipt_scanner', '5 days');       // created with the plan (same moment): the plan's member, not an overlap
+    await q(sql`update tenant_ai_subscriptions set created_at = (select started_at from tenant_ai_plan_subscriptions where tenant_id = ${T4} and plan_code = 'plan_money_owner') where tenant_id = ${T4} and package_code = 'ai_ocr_receipt_scanner'`);
+    await own('ai_marketing_assistant', '40 days');      // own subscription, but its plan is only on trial: nothing paid twice yet
+    const before = await q(sql`select package_code, status, price_cents from tenant_ai_subscriptions where tenant_id = ${T4} order by package_code`);
+    const x: any = (await repo.check(c4)).checks.find((k: any) => k.key === 'bundle_overlap');
+    expect(x).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(x.detail.overlaps).toHaveLength(1);
+    expect(x.detail.overlaps[0]).toMatchObject({ code: 'ai_fraud_money_protection', plans: ['Money & Owner'] });
+    expect(x.detail.overlaps[0].paidOnItsOwnSince).toBeTruthy();
+    expect(await q(sql`select package_code, status, price_cents from tenant_ai_subscriptions where tenant_id = ${T4} order by package_code`)).toEqual(before);   // nothing cancelled or re-priced
+    expect((await q(sql`select status from tenant_ai_plan_subscriptions where tenant_id = ${T4} and plan_code = 'plan_money_owner'`))[0].status).toBe('active');
+  });
+});

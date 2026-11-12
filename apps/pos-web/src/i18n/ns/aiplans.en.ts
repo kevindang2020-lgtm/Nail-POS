@@ -145,4 +145,9 @@ export const AIPLANS_EN: Record<string, string> = {
   "plx.pc.overstated": "the real saving is {real}/mo, not the {claimed} shown (the plan list price was set above the assistants' own prices)",
   "plx.pc.noSaving": "this plan costs {price}/mo more than buying them separately",
   "plx.pc.same": "no saving versus buying them separately",
+  "aiux.k.bundle_overlap": "Paid twice for the same assistant",
+  "aiux.d.bundle_overlap.PASSED": "No assistant is paid for both on its own and inside a paid plan.",
+  "aiux.d.bundle_overlap.WARNING": "An assistant is paid for on its own and also inside a paid plan (or listed by two live plans). Review it with the owner — nothing was cancelled or refunded.",
+  "aiux.overlap.plans": "In plan: {plans}",
+  "aiux.overlap.ownSince": "paid on its own since {d}",
 };

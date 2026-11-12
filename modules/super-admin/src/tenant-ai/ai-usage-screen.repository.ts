@@ -605,6 +605,23 @@ export class AiUsageScreenRepository {
       and (p.trial_ends_at is null or p.trial_ends_at > now())`)).n);
     const planMembers = cards.filter((c) => c.state === 'cancelled' || c.state === 'expired' || c.state === 'trial_expired').length;
     checks.push({ key: 'plans_in_step', state: planGap && planMembers ? 'WARNING' : 'PASSED', count: planGap && planMembers ? planMembers : 0 });
+    // extras AI Usage Limits 04 (Bundle Overlap Detector): an assistant the salon pays for on its own AND inside a paid plan (the
+    // assistant's own paid subscription began before the plan did — the plan path creates its members at the plan's start), or one
+    // listed by two live plans. Review only: nothing is cancelled, refunded or re-priced; the owner decides.
+    type OvRow = { package_code: string; status: string; price_cents: number; created_at: Date | string };
+    type PlRow = { plan_code: string; status: string; started_at: Date | string; trial_ends_at: Date | string | null };
+    const livePlans = (await sql<PlRow>`select plan_code, status, started_at, trial_ends_at from tenant_ai_plan_subscriptions where tenant_id = ${T} and status in ('active', 'trialing')
+      and (status = 'active' or trial_ends_at is null or trial_ends_at > now())`.execute(this.db)).rows;
+    const ownRows = new Map((await sql<OvRow>`select package_code, status, price_cents, created_at from tenant_ai_subscriptions where tenant_id = ${T}
+      and status in ('active', 'past_due') and price_cents > 0`.execute(this.db)).rows.map((r) => [String(r.package_code), r]));
+    const overlaps: { code: string; name: string; plans: string[]; paidOnItsOwnSince: string | null }[] = [];
+    for (const def of AI_PACKAGES) {
+      const plansFor = livePlans.filter((pl) => AI_PLANS.find((x) => x.code === pl.plan_code)?.packageCodes.includes(def.code));
+      const own = ownRows.get(def.code);
+      const ownBeforePaidPlan = !!own && plansFor.some((pl) => pl.status === 'active' && new Date(own.created_at).getTime() < new Date(pl.started_at).getTime());
+      if (plansFor.length >= 2 || ownBeforePaidPlan) overlaps.push({ code: def.code, name: def.name, plans: plansFor.map((pl) => AI_PLANS.find((x) => x.code === pl.plan_code)?.name ?? pl.plan_code), paidOnItsOwnSince: ownBeforePaidPlan ? iso(own!.created_at) : null });
+    }
+    checks.push({ key: 'bundle_overlap', state: overlaps.length ? 'WARNING' : 'PASSED', count: overlaps.length, detail: { overlaps } });
     const disabled = cards.filter((c) => c.state === 'disabled_by_admin').length;
     checks.push({ key: 'admin_switches', state: disabled ? 'WARNING' : 'PASSED', count: disabled });
     // AI Center guide (P0): the gate the AI platform runs before every model call agrees with what the page shows — an expired trial,

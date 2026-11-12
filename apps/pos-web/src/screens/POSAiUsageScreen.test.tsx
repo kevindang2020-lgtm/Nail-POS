@@ -125,6 +125,16 @@ describe('POSAiUsageScreen', () => {
     expect(screen.getByTestId('chk-metering_stale')).toHaveTextContent(/Not enough data.*No live package/);
     expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
   });
+  it('Extras · AI Usage Limits 04: the check names an assistant paid on its own and inside a paid plan, for review — nothing is cancelled', async () => {
+    api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [
+      { key: 'bundle_overlap', state: 'WARNING', count: 1, detail: { overlaps: [{ code: 'ai_fraud_money_protection', name: 'AI Fraud & Money Protection', plans: ['Money & Owner'], paidOnItsOwnSince: '2026-10-01T15:00:00Z' }] } }] });
+    render(<POSAiUsageScreen />);
+    fireEvent.click(await screen.findByTestId('aiu-check'));
+    const c = await screen.findByTestId('chk-bundle_overlap');
+    expect(c).toHaveTextContent(/Paid twice for the same assistant · 1.*nothing was cancelled or refunded/);
+    expect(within(c).getByTestId('chk-bundle-overlaps')).toHaveTextContent('AI Fraud & Money ProtectionIn plan: Money & Owner · paid on its own since Oct 1, 2026');
+    expect(api.cancel).not.toHaveBeenCalled();
+  });
   it('AI Plans tabs (SUNMI §07): ?view=subscriptions lists active subscriptions; ?view=billing opens cost & invoices — only for a role that may see cost', async () => {
     const { unmount } = render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=subscriptions']}><Screen /></MemoryRouter>);
     await waitFor(() => expect(api.packages).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' })));

@@ -145,7 +145,10 @@ export function POSAiUsageScreen() {
           <p className="sub">{tx('aiux.readOnly')}{health.reused ? ` ${tx('aiux.recent')}` : ''}</p>
           {health.checks.map((x: any) => <div key={x.key} className="rvw-check" data-testid={`chk-${x.key}`}>
             <div><span className={'chip ' + (x.state === 'FAILED' ? 'bad' : x.state === 'WARNING' ? 'warn' : x.state === 'PASSED' ? 'ok' : '')}>{tx('aiux.state.' + x.state)}</span> <b>{tx('aiux.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
-            <div className="sub">{tx('aiux.d.' + x.key + '.' + x.state)}</div></div>)}
+            <div className="sub">{tx('aiux.d.' + x.key + '.' + x.state)}</div>
+            {x.key === 'bundle_overlap' && Array.isArray(x.detail?.overlaps) && x.detail.overlaps.length ? <ul className="fk-list dense" data-testid="chk-bundle-overlaps">{x.detail.overlaps.map((o: any) => (
+              <li key={o.code} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{o.name}</span>
+                <span className="fk-li-s">{tx('aiux.overlap.plans', { plans: (o.plans ?? []).join(', ') || '—' })}{o.paidOnItsOwnSince ? ' · ' + tx('aiux.overlap.ownSince', { d: day(o.paidOnItsOwnSince) }) : ''}</span></div></li>))}</ul> : null}</div>)}
         </>}
       </FitDialog> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
