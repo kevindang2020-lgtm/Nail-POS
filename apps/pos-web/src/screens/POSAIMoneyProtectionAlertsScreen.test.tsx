@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-libra
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage, useLanguage } from '@aipowersalon/mobile-sdk/i18n';
 const { mc, api } = vi.hoisted(() => {
-  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), alertBatch: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
   return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
 });
 vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
@@ -181,5 +181,34 @@ describe('Money Protection — staff-fairness guardrails on peer-comparison aler
     fireEvent.click(await screen.findByTestId('mpx-alert-view'));
     await screen.findByTestId('mpx-d-evidence');
     expect(screen.queryByTestId('mpx-fair')).toBeNull();
+  });
+  it('MONEY PROTECTION ALERTS 13: batch triage previews per alert on the server, needs a confirmation, then reports what changed; hidden without permission', async () => {
+    const row2 = { ...row, id: 'mpa_2', status: 'ACKNOWLEDGED' };
+    mc.alerts.mockResolvedValue(page([row, row2], { canAct: true }));
+    mc.alertBatch.mockImplementation(async (b: any) => b.confirm ? { preview: false, applied: 1, refused: 1, results: [] }
+      : { preview: true, needsReason: b.action !== 'acknowledge', counts: { ready: 1, notFound: 0, stateInvalid: 1, ownActivity: 0 }, items: [] });
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    const boxes = await screen.findAllByTestId('mpx-alert-select');
+    fireEvent.click(boxes[0]); fireEvent.click(boxes[1]);
+    expect(screen.getByTestId('mpx-batch-bar')).toHaveTextContent('2 alert(s) selected');
+    fireEvent.click(screen.getByTestId('mpx-batch-open'));
+    expect(await screen.findByTestId('mpx-batch-preview')).toHaveTextContent('1 alert(s) will change.');
+    expect(screen.getByTestId('mpx-batch-preview')).toHaveTextContent('1 cannot take this action');
+    expect(mc.alertBatch).toHaveBeenLastCalledWith({ ids: ['mpa_1', 'mpa_2'], action: 'acknowledge' });
+    expect((screen.getByTestId('mpx-batch-apply') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('mpx-batch-action'), { target: { value: 'dismiss' } });
+    await waitFor(() => expect(screen.getByTestId('mpx-batch-reason')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('mpx-batch-confirm'));
+    expect((screen.getByTestId('mpx-batch-apply') as HTMLButtonElement).disabled).toBe(true);   // dismiss needs a reason
+    fireEvent.change(screen.getByTestId('mpx-batch-reason'), { target: { value: 'Webhook replay, verified' } });
+    fireEvent.click(screen.getByTestId('mpx-batch-apply'));
+    expect(await screen.findByTestId('mpx-batch-result')).toHaveTextContent('1 changed · 1 left unchanged');
+    expect(mc.alertBatch).toHaveBeenLastCalledWith({ ids: ['mpa_1', 'mpa_2'], action: 'dismiss', reason: 'Webhook replay, verified', confirm: true });
+    expect(mc.alertAction).not.toHaveBeenCalled();
+    cleanup();
+    mc.alerts.mockResolvedValue(page([row], { canAct: false }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    await screen.findByTestId('mpx-alert-row');
+    expect(screen.queryByTestId('mpx-alert-select')).toBeNull();
   });
 });

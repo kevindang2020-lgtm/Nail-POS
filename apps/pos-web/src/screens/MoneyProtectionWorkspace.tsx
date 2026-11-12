@@ -258,6 +258,9 @@ export function MpAlerts() {
   const L = useList(mc.alerts, init, tick);
   const [open, setOpen] = useState<string | null>(null);
   const rows: any[] = L.list?.items ?? [];
+  const [sel, setSel] = useState<string[]>([]); const [batch, setBatch] = useState(false);
+  const canBatch = L.list?.canAct === true;
+  const toggle = (id: string) => setSel((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length >= 50 ? c : [...c, id]));
   return (
     <MpShell title={tx('pos.money_protection_alerts')} sub={tx('pos.possible_anomalies_requiring_review_each_shows_1ql7')} tab="alerts" onChanged={() => setTick((n) => n + 1)}>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }} role="tablist">
@@ -271,9 +274,13 @@ export function MpAlerts() {
           <select data-testid="mpx-datefield" aria-label={t('mpx.dateLabel')} value={L.f.dateField} onChange={(e) => L.set({ dateField: e.target.value })}>{A_DATES.map((k) => <option key={k} value={k}>{t('mpx.date.' + k)}</option>)}</select>
           <select data-testid="mpx-sort" aria-label={t('mpx.sortLabel')} value={L.f.sort} onChange={(e) => L.set({ sort: e.target.value })}>{A_SORTS.map((k) => <option key={k} value={k}>{t('mpx.sort.' + k)}</option>)}</select>
         </>}>
-        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.col.when')}</th><th>{t('mpx.col.alert')}</th><th>{t('mpx.col.severity')}</th><th>{t('mpx.col.amount')}</th><th>{t('mpx.col.status')}</th><th /></tr></thead>
+        {canBatch && sel.length ? <div className="fk-note" role="status" data-testid="mpx-batch-bar"><span>{t('mpx.batch.selected', { n: fmtNumber(sel.length) })}</span>
+          <button type="button" className="btn sm" data-testid="mpx-batch-open" onClick={() => setBatch(true)}>{t('mpx.batch.open')}</button>
+          <button type="button" className="btn ghost sm" onClick={() => setSel([])}>{t('mpx.batch.clear')}</button></div> : null}
+        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>{canBatch ? <th aria-label={t('mpx.batch.select')} /> : null}<th>{t('mpx.col.when')}</th><th>{t('mpx.col.alert')}</th><th>{t('mpx.col.severity')}</th><th>{t('mpx.col.amount')}</th><th>{t('mpx.col.status')}</th><th /></tr></thead>
           <tbody>{rows.map((a) => (
             <tr key={a.id} data-testid="mpx-alert-row">
+              {canBatch ? <td><input type="checkbox" aria-label={t('mpx.batch.select')} checked={sel.includes(a.id)} onChange={() => toggle(a.id)} data-testid="mpx-alert-select" /></td> : null}
               <td className="nowrap">{when(a.firstSeenAt)}{a.eventCount > 1 ? <div className="sub">×{fmtNumber(a.eventCount)}</div> : null}</td>
               <td><b>{ruleName(a.ruleId, a.rule)}</b><div className="sub">{catName(a.category)}{a.branch ? ` · ${a.branch}` : ''}</div></td>
               <td><span className={'chip ' + (SEV_TONE[a.severity] ?? '')}>{t('mpx.sev.' + a.severity)}</span></td>
@@ -283,7 +290,50 @@ export function MpAlerts() {
             </tr>))}</tbody></table></div>
       </ListFrame>
       {open ? <AlertDialog id={open} onClose={() => setOpen(null)} onChanged={() => setTick((n) => n + 1)} /> : null}
+      {batch ? <BatchTriage ids={sel} onClose={() => setBatch(false)} onDone={() => { setSel([]); setTick((n) => n + 1); }} /> : null}
     </MpShell>
+  );
+}
+
+/** MONEY PROTECTION ALERTS 13 — Batch triage: the server says, per selected alert, what the action would do (nothing is
+ *  written); only after the person confirms does it run the single-alert action for each. Acknowledge / dismiss / reopen
+ *  only — no payout, charge, refund or write-off exists here. */
+function BatchTriage({ ids: picked, onClose, onDone }: { ids: string[]; onClose: () => void; onDone: () => void }) {
+  const [ids] = useState(picked);   // the selection when the dialog opened (the list clears its own after Apply)
+  const [action, setAction] = useState<'acknowledge' | 'dismiss' | 'reopen'>('acknowledge');
+  const [preview, setPreview] = useState<any | null>(null); const [result, setResult] = useState<any | null>(null);
+  const [reason, setReason] = useState(''); const [ok, setOk] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true; setPreview(null); setOk(false); setErr(null); setResult(null);
+    mc.alertBatch({ ids, action }).then((r) => { if (live) setPreview(r); }).catch((e) => { if (live) setErr(errorTextOf(e, t('mpx.batch.failed'))); });
+    return () => { live = false; };
+  }, [ids, action]);
+  const apply = async () => {
+    setBusy(true); setErr(null);
+    try { const r = await mc.alertBatch({ ids, action, reason: reason.trim() || null, confirm: true }); setResult(r); onDone(); }
+    catch (e) { setErr(errorTextOf(e, t('mpx.batch.failed'))); } finally { setBusy(false); }
+  };
+  const c = preview?.counts; const needsReason = !!preview?.needsReason;
+  return (
+    <FitDialog title={t('mpx.batch.title')} subtitle={t('mpx.batch.sub')} onClose={onClose} busy={busy} testId="mpx-batch" footer={<>
+      <button type="button" className="btn ghost" onClick={onClose}>{t('mpx.close')}</button>
+      {!result ? <button type="button" className="btn" data-testid="mpx-batch-apply" disabled={busy || !c?.ready || !ok || (needsReason && reason.trim().length < 5)} onClick={() => void apply()}>{t('mpx.batch.apply', { n: fmtNumber(c?.ready ?? 0) })}</button> : null}</>}>
+      <label className="field">{t('mpx.batch.action')}
+        <select value={action} disabled={!!result} onChange={(e) => setAction(e.target.value as 'acknowledge' | 'dismiss' | 'reopen')} data-testid="mpx-batch-action">
+          {(['acknowledge', 'dismiss', 'reopen'] as const).map((a) => <option key={a} value={a}>{t('mpx.act.' + a)}</option>)}</select></label>
+      {err ? <div className="fk-note bad" role="alert">{err}</div> : null}
+      {!preview && !err ? <div className="state">{t('mpx.loading')}</div> : null}
+      {c && !result ? <div data-testid="mpx-batch-preview">
+        <div>{t('mpx.batch.ready', { n: fmtNumber(c.ready) })}</div>
+        {c.stateInvalid ? <div className="sub">{t('mpx.batch.stateInvalid', { n: fmtNumber(c.stateInvalid) })}</div> : null}
+        {c.ownActivity ? <div className="sub">{t('mpx.batch.ownActivity', { n: fmtNumber(c.ownActivity) })}</div> : null}
+        {c.notFound ? <div className="sub">{t('mpx.batch.notFound', { n: fmtNumber(c.notFound) })}</div> : null}
+        {needsReason ? <label className="field">{t('mpx.batch.reason')}<textarea rows={2} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="mpx-batch-reason" /></label> : null}
+        {c.ready ? <label className="emc-check"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} data-testid="mpx-batch-confirm" />{t('mpx.batch.confirm', { n: fmtNumber(c.ready) })}</label> : null}
+      </div> : null}
+      {result ? <div role="status" data-testid="mpx-batch-result">{t('mpx.batch.result', { a: fmtNumber(result.applied), r: fmtNumber(result.refused) })}</div> : null}
+      <p className="sub">{t('mpx.batch.noMoney')}</p>
+    </FitDialog>
   );
 }
 
