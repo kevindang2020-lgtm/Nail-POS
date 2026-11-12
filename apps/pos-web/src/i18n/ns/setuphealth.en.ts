@@ -135,4 +135,13 @@ export const SETUPHEALTH_EN = {
   'hs.code.provider_approved': 'Approved — confirmed with Twilio recently.',
   'hs.code.not_provider_verified': 'Not confirmed with Twilio recently. Refresh status.',
   'hs.code.nightly_failed': 'The last nightly check failed. It will retry; open the module to see why.',
+  'hs.check.ai_billing_integrity': 'AI billing integrity',
+  'hs.code.consistent': 'The AI invoices agree with themselves and with the packages.',
+  'hs.code.no_invoices': 'No AI invoice has been received yet.',
+  'hs.code.refunded_over_paid': 'An AI invoice shows more refunded than was paid.',
+  'hs.code.paid_with_amount_due': 'An AI invoice marked paid still shows money due.',
+  'hs.code.open_past_period': 'An AI invoice is still open more than 30 days after its period ended.',
+  'hs.code.invoice_without_subscription': 'An AI invoice is for a package this salon never subscribed to.',
+  'hs.code.override_without_package': 'A location turns on an AI package the salon has no live subscription for.',
+  'hs.code.events_rejected': 'The billing provider sent invoice events that were refused in the last 7 days.',
 };

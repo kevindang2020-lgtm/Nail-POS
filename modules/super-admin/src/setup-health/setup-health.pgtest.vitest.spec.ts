@@ -197,3 +197,28 @@ describe('booking readiness per location', () => {
   });
 });
 
+
+// extras Unfinished POS Modules 07 — AI entitlement & billing integrity over the stored provider snapshots (read-only)
+describe('AI billing integrity', () => {
+  const link = (inv: string, o: { status?: string; pkg?: string | null; paid?: number; refunded?: number; due?: number | null; periodEnd?: string } = {}) =>
+    q(`insert into ai_billing_invoice_links (tenant_id, provider, provider_invoice_id, package_code, status, total_cents, amount_paid_cents, amount_refunded_cents, amount_due_cents, period_end, provider_updated_at, snapshot_hash, source)
+      values ($1, 'billing', $2, $3, $4, 5900, $5, $6, $7, $8::date, now(), 'h', 'webhook')`, [T, inv, o.pkg === undefined ? 'ai_marketing_assistant' : o.pkg, o.status ?? 'paid', o.paid ?? 5900, o.refunded ?? 0, o.due === undefined ? 0 : o.due, o.periodEnd ?? '2026-11-01']);
+  const check = async () => { await unthrottle(); await repo.run(owner, 'manual'); return byKey(await repo.summary(owner, {}))['ai.billing_integrity:all']; };
+  it('consistent invoices are ready; paid with money still due, an old open invoice, a link to a package never subscribed, an override with no live package and refused events warn; refunds above payments fail', async () => {
+    await link('inv-ok');
+    expect(await check()).toMatchObject({ status: 'ready', code: 'consistent' });
+    await link('inv-paid-due', { due: 1000 });
+    await link('inv-old-open', { status: 'open', paid: 0, due: 5900, periodEnd: '2026-08-01' });
+    await link('inv-orphan', { pkg: 'ai_receptionist' });
+    await q(`insert into tenant_ai_branch_settings (tenant_id, branch_id, package_code, override_enabled) values ($1, $2, 'ai_marketing_assistant', true)`, [T, B1]);   // its package is past_due, not live
+    await q(`insert into ai_billing_invoice_events (tenant_id, provider, provider_event_id, event_type, outcome) values ($1, 'billing', 'evt-bad-1', 'invoice.updated', 'rejected')`, [T]);
+    const w = await check();
+    expect(w).toMatchObject({ status: 'warning', code: 'paid_with_amount_due' });
+    expect(w.technical.detail).toMatchObject({ paidWithDue: 1, openPastPeriod: 1, invoiceWithoutSubscription: 1, overrideWithoutPackage: 1, rejectedEvents7d: 1, refundedOverPaid: 0, invoices: 4 });
+    await link('inv-over-refund', { refunded: 9000 });
+    expect(await check()).toMatchObject({ status: 'error', code: 'refunded_over_paid' });
+    // the other salon sees none of Lotus' invoices
+    const o = byKey(await (async () => { await unthrottle(); await repo.run(other, 'manual'); return repo.summary(other, {}); })())['ai.billing_integrity:all'];
+    expect(o).toMatchObject({ status: 'ready', code: 'no_invoices' });
+  });
+});
