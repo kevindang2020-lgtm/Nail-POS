@@ -294,6 +294,7 @@ export class DiscountsScreenRepository {
     const versions = (await sql<any>`select v.id, v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from deal_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = v.tenant_id
       where v.tenant_id = ${T} and v.deal_id = ${dealId} order by v.version desc, v.created_at desc limit 20`.execute(this.db)).rows;
     const roi = await this.roiExplained(ctx, dealId);
+    const related = await this.relatedOffers(ctx, dealId);
     const rules = r.rules && typeof r.rules === 'object' ? r.rules : null;
     const ruleCount = rules ? JSON.stringify(rules).split('"type"').length - 1 : 0;
     return {
@@ -307,7 +308,49 @@ export class DiscountsScreenRepository {
       services: services.map((s: any) => ({ id: String(s.id), name: String(s.name) })),
       usage: { confirmed: N(usage?.confirmed), pendingAtCheckout: N(usage?.pending), released: N(usage?.released), reversed: N(usage?.reversed), uniqueCustomers: N(usage?.customers), savingsCents: N(usage?.saved), lastRedeemedAt: iso(usage?.last_at) },
       history: versions.map((v: any) => ({ id: String(v.id), version: N(v.version), at: iso(v.created_at), actor: v.actor ?? null, terms: summarizeTerms(v.terms) })),
-      roi: roi.roi, byBranch: roi.byBranch,
+      roi: roi.roi, byBranch: roi.byBranch, related,
+    };
+  }
+
+  /** Extras (Coupons & Promotions 02 "Unified Offers Relationship Viewer"), read-only: what else refers to this offer and which
+   *  OTHER offers — coupons, promotions (automatic) and deals alike, whatever screen owns them — give the SAME benefit:
+   *  the same discount type and value, a branch scope that meets (salon-wide meets every branch), services that meet (no
+   *  service list = every service) and dates that overlap. Archived / cancelled / rejected / ended offers are not listed.
+   *  Same-benefit is a fact for a person to review (they may be intentional), never a change. A branch user sees only offers
+   *  of their branch or salon-wide. */
+  private async relatedOffers(ctx: DiscountsCtx, dealId: string) {
+    const T = ctx.tenantId;
+    const ob = ctx.branchId && UUID.test(ctx.branchId) ? sql`(o.branch_id = ${ctx.branchId} or o.branch_id is null)` : sql`true`;
+    type SameRow = { id: string; title: string; kind: string | null; life: string; branch_name: string | null; stackable: boolean; salon_wide: boolean; shared: number | null; code_hint: string | null };
+    const same = (await sql<SameRow>`with me as (select d.id, d.discount_type, d.discount_percent, d.discount_cents, d.branch_id, d.starts_at, d.ends_at,
+            exists (select 1 from deal_services s where s.tenant_id = d.tenant_id and s.deal_id = d.id) as has_svc
+          from deals d where d.tenant_id = ${T} and d.id = ${dealId})
+        select o.id, o.title, o.kind, o.stackable, ob.name as branch_name, (o.branch_id is null) as salon_wide,
+          (case when o.suspended_at is not null then 'paused' when o.status = 'sold_out' or (o.max_redemptions is not null and o.redemption_count >= o.max_redemptions) then 'exhausted'
+            when o.status = 'draft' then 'draft' when o.starts_at > now() then 'scheduled' else 'active' end) as life,
+          (case when me.has_svc and exists (select 1 from deal_services s2 where s2.tenant_id = o.tenant_id and s2.deal_id = o.id)
+            then (select count(*)::int from deal_services s1 join deal_services s2 on s2.service_id = s1.service_id and s2.tenant_id = s1.tenant_id
+                  where s1.tenant_id = ${T} and s1.deal_id = me.id and s2.deal_id = o.id) else null end) as shared,
+          (select c.code_hint from deal_coupon_codes c where c.tenant_id = o.tenant_id and c.deal_id = o.id order by c.created_at, c.id limit 1) as code_hint
+        from me join deals o on o.tenant_id = ${T} and o.id <> me.id
+          left join branches ob on ob.id = o.branch_id and ob.tenant_id = o.tenant_id
+        where ${ob} and o.status not in ('archived', 'canceled', 'rejected', 'expired') and (o.ends_at is null or o.ends_at > now())
+          and o.discount_type = me.discount_type
+          and o.discount_percent is not distinct from (case when me.discount_type = 'percent' then me.discount_percent else o.discount_percent end)
+          and (me.discount_type = 'percent' or o.discount_cents is not distinct from me.discount_cents)
+          and (o.branch_id is null or me.branch_id is null or o.branch_id = me.branch_id)
+          and coalesce(o.starts_at, '-infinity'::timestamptz) < coalesce(me.ends_at, 'infinity'::timestamptz)
+          and coalesce(me.starts_at, '-infinity'::timestamptz) < coalesce(o.ends_at, 'infinity'::timestamptz)
+          and (not me.has_svc or not exists (select 1 from deal_services s where s.tenant_id = o.tenant_id and s.deal_id = o.id)
+            or exists (select 1 from deal_services s1 join deal_services s2 on s2.service_id = s1.service_id and s2.tenant_id = s1.tenant_id
+                       where s1.tenant_id = ${T} and s1.deal_id = me.id and s2.deal_id = o.id))
+        order by o.created_at desc, o.id limit 20`.execute(this.db)).rows;
+    type RefRow = { campaigns: number };
+    const refs = (await sql<RefRow>`select (select count(*)::int from campaigns c where c.tenant_id = ${T} and c.deal_id = ${dealId}) as campaigns`.execute(this.db)).rows[0];
+    return {
+      sameBenefit: same.map((o) => ({ id: String(o.id), name: String(o.title), kind: String(o.kind ?? 'deal'), lifecycle: String(o.life), branchName: o.branch_name ?? null,
+        salonWide: !!o.salon_wide, stackable: !!o.stackable, sharedServices: o.shared == null ? null : N(o.shared), code: o.code_hint ? '••••' + String(o.code_hint) : null })),
+      campaigns: N(refs?.campaigns),
     };
   }
 

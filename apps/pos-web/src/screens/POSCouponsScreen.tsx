@@ -189,6 +189,7 @@ export function POSCouponsScreen() {
             { key: 'codes', label: tx('cp.dtab.codes'), render: (x) => <DealCouponsPanel dealId={x.id} title={x.name} onClose={() => setDetail({ id: x.id })} /> },
             { key: 'financial', label: tx('cp.dtab.financial'), render: (x) => <Financial x={x} /> },
             { key: 'campaigns', label: tx('cp.dtab.campaigns'), render: (x) => <Campaigns dealId={x.id} /> },
+            { key: 'related', label: tx('cp.dtab.related'), render: (x) => <RelatedOffers x={x} onOpen={(id) => setDetail({ id })} /> },
           ],
           footer: (x) => <Actions x={x} canManage={canManage} onCheck={() => setChecking({ id: x.id, name: x.name })}
             onEdit={async () => { try { setWizard({ editing: await posDealsApi.get(x.id) as DealView }); setDetail(null); } catch (e) { setNote({ tone: 'bad', text: errorTextOf(e, tx('cp.failed')) }); } }}
@@ -275,6 +276,27 @@ export function RoiExplained({ roi, byBranch }: { roi: OfferRoiView; byBranch: O
       <table className="fk-table" data-testid="roi-branches"><thead><tr><th scope="col">{tx('cp.roi.branch')}</th><th scope="col">{tx('dsc.tot.events')}</th><th scope="col">{tx('cp.roi.customers')}</th><th scope="col">{tx('cp.roi.discount')}</th><th scope="col">{tx('cp.roi.revenue')}</th></tr></thead>
         <tbody>{byBranch.map((b) => <tr key={b.branchId ?? 'none'} data-testid="roi-branch-row"><th scope="row">{b.branchName ?? tx('cp.roi.noBranch')}</th><td>{nf(b.redemptions)}</td><td>{nf(b.uniqueCustomers)}</td><td>{fmtMoney(b.discountCents)}</td><td>{fmtMoney(b.associatedRevenueCents)} · {tx('cp.roi.tickets', { n: nf(b.associatedTickets) })}</td></tr>)}</tbody></table>
     </> : null}
+  </div>;
+}
+
+/** Extras (Coupons & Promotions 02 "Unified Offers Relationship Viewer"): the server's read-only map of what refers to this
+ *  coupon and which OTHER offers (coupons, automatic promotions, deals) give the same benefit — same type and value, branch,
+ *  services and dates (details.related). Shown for a person to review; nothing is paused, merged or edited here. Only a coupon
+ *  opens here (this screen reads coupons); the others are named with their kind. */
+type RelatedOfferRow = { id: string; name: string; kind: string; lifecycle: string; branchName: string | null; salonWide: boolean; stackable: boolean; sharedServices: number | null; code: string | null };
+export function RelatedOffers({ x, onOpen }: { x: { related?: { sameBenefit: RelatedOfferRow[]; campaigns: number } }; onOpen: (id: string) => void }) {
+  const r = x.related;
+  if (!r) return <div className="fk-hint" data-testid="dd-related-none">—</div>;
+  return <div data-testid="dd-related">
+    <dl className="fk-dl mo-dl">
+      <dt>{tx('cp.dtab.campaigns')}</dt><dd data-testid="rel-campaigns">{nf(r.campaigns)}</dd>
+      <dt>{tx('cp.rel.same')}</dt><dd data-testid="rel-same-count">{nf(r.sameBenefit.length)}</dd>
+    </dl>
+    {r.sameBenefit.length === 0 ? <Empty title={tx('cp.rel.noneSame')} /> : <ul className="fk-list dense">{r.sameBenefit.map((o) => <li key={o.id} className="fk-li" data-testid="rel-same-row">
+      {o.kind === 'coupon' ? <button type="button" className="fk-link" onClick={() => onOpen(o.id)} data-testid="rel-open">{o.name}</button> : <span className="fk-li-t">{o.name}</span>}
+      <span className="fk-li-s">{tx('do.kind.' + o.kind)} · {life(o.lifecycle)} · {o.salonWide ? tx('cp.rel.allBranches') : (o.branchName ?? '—')}
+        {' · '}{o.sharedServices == null ? tx('cp.rel.allServices') : tx('cp.rel.sharedServices', { n: nf(o.sharedServices) })}{o.code ? ' · ' + o.code : ''}{o.stackable ? ' · ' + tx('cp.rel.stackable') : ''}</span></li>)}</ul>}
+    <div className="fk-hint">{tx('cp.rel.note')}</div>
   </div>;
 }
 

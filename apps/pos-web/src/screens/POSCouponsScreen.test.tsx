@@ -12,7 +12,7 @@ vi.mock('../api/posCouponsApi', () => ({ posCouponsApi: cp }));
 vi.mock('../api/posServicesApi', () => ({ posServicesApi: { list: vi.fn().mockResolvedValue([]) } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: vi.fn().mockResolvedValue({ items: [{ customerId: 'c-7', fullName: 'Mai Le', phone: '(856) 555-1234' }] }) } }));
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ branches: [{ id: 'b1', name: 'Main', isActive: true }, { id: 'b2', name: 'Second', isActive: true }] }) } }));
-import { POSCouponsScreen, Financial } from './POSCouponsScreen';
+import { POSCouponsScreen, Financial, RelatedOffers } from './POSCouponsScreen';
 
 const period = { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-30' };
 const kpis = { today: '2026-10-30', total: 1, activeDiscounts: 1, percentOff: 1, fixedAmount: 0, redemptions: 0, expiringSoon: 0, expiringWindowDays: 7,
@@ -121,5 +121,24 @@ describe('POSCouponsScreen', () => {
     render(<MemoryRouter><Financial x={{ ...x, roi: { ...x.roi, campaignSpend: { campaigns: 1, messagesSent: 3, messagesCosted: 1, spendCents: null, state: 'cost_unknown' } }, byBranch: [] }} /></MemoryRouter>);
     expect(await screen.findByTestId('roi-spend')).toHaveTextContent('Not known yet — the provider has reported the cost of 1 of 3 messages.');
     expect(screen.queryByTestId('roi-branches')).toBeNull();
+  });
+  it('Extras Coupons & Promotions 02: Related offers lists the server same-benefit offers of any kind; only a coupon opens here; empty says so', async () => {
+    const onOpen = vi.fn();
+    const x = { related: { campaigns: 2, sameBenefit: [
+      { id: 'p1', name: 'Fall auto 20', kind: 'automatic', lifecycle: 'active', branchName: null, salonWide: true, stackable: false, sharedServices: null, code: null },
+      { id: 'c2', name: 'Twin coupon', kind: 'coupon', lifecycle: 'scheduled', branchName: 'Main', salonWide: false, stackable: true, sharedServices: 2, code: '••••AB12' }] } };
+    const v = render(<MemoryRouter><RelatedOffers x={x} onOpen={onOpen} /></MemoryRouter>);
+    expect(screen.getByTestId('rel-campaigns')).toHaveTextContent('2');
+    expect(screen.getByTestId('rel-same-count')).toHaveTextContent('2');
+    const rows = screen.getAllByTestId('rel-same-row');
+    expect(rows[0]).toHaveTextContent('Fall auto 20');
+    expect(rows[0]).toHaveTextContent('Automatic promotion · Active · All branches · Every service');
+    expect(rows[1]).toHaveTextContent('Coupon · Scheduled · Main · 2 shared services · ••••AB12 · Combinable');
+    expect(screen.getAllByTestId('rel-open')).toHaveLength(1);                 // the automatic promotion is not openable on Coupons
+    fireEvent.click(screen.getByTestId('rel-open'));
+    expect(onOpen).toHaveBeenCalledWith('c2');
+    v.unmount();
+    render(<MemoryRouter><RelatedOffers x={{ related: { campaigns: 0, sameBenefit: [] } }} onOpen={onOpen} /></MemoryRouter>);
+    expect(screen.getByText('No other live or upcoming offer gives the same benefit.')).toBeTruthy();
   });
 });

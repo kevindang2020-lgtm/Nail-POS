@@ -185,3 +185,43 @@ describe('Refund Impact Preview (Extras · Discounts 11)', () => {
     expect((await repo.refundImpact(ctx2, id('7a1'), null)).items).toHaveLength(0);   // another salon sees nothing
   });
 });
+
+describe('Unified Offers Relationship Viewer (Extras · Coupons & Promotions 02)', () => {
+  it('details list other offers of ANY kind giving the same benefit (type + value, branch, services, dates) — read-only, own salon and branch only', async () => {
+    const B3 = id('b7');
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Seventh','active','America/New_York')`, [B3, T]);
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Pedicure',50,5000)`, [id('5e2'), T, B, CAT]);
+    const offer = (n: string, f: { kind: string; pct: number; status?: string; ends?: string; branch?: string | null; tenant?: string }) =>
+      q(`insert into deals (id, tenant_id, branch_id, owner_type, kind, title, discount_type, discount_percent, status, ends_at, created_at)
+         values ($1,$2,$3,'salon',$4,$5,'percent',$6,$7, ${f.ends ?? 'null'}, now() - interval '1 hour')`, [id(n), f.tenant ?? T, f.branch ?? null, f.kind, 'Rel ' + n, f.pct, f.status ?? 'active']);
+    await offer('f1', { kind: 'automatic', pct: 20 });                              // same as Spring Glow (20 %, every service, salon-wide)
+    await offer('f2', { kind: 'deal', pct: 20, status: 'archived' });               // archived: not listed
+    await offer('f3', { kind: 'deal', pct: 15 });                                   // another value
+    await offer('f4', { kind: 'coupon', pct: 20, ends: "now() - interval '1 day'" }); // ended
+    await offer('f5', { kind: 'deal', pct: 20, branch: B3 });                       // same benefit at another branch: owner sees it, a Main user does not
+    await offer('f6', { kind: 'deal', pct: 25 });                                   // same as Soon Twenty-Five on its service
+    await offer('f7', { kind: 'deal', pct: 25 });                                   // 25 % but only on a different service
+    await offer('f9', { kind: 'deal', pct: 20, tenant: T2 });                       // the other salon
+    await q(`insert into deal_services (deal_id, service_id, tenant_id) values ($1,$2,$3), ($4,$5,$3)`, [id('f6'), id('5e1'), T, id('f7'), id('5e2')]);
+    const before = (await q(`select (select count(*) from deals) + (select count(*) from deal_redemptions) + (select count(*) from deal_services) as n`)).rows[0].n;
+
+    const main = await repo.detail(ctx, id('d1'));
+    const names = main.related.sameBenefit.map((o: { name: string }) => o.name);
+    expect(names).toContain('Rel f1');
+    expect(names).not.toContain('Rel f5');                                          // the Main user's branch scope
+    for (const x of ['Rel f2', 'Rel f3', 'Rel f4', 'Rel f6', 'Rel f7', 'Rel f9', 'Spring Glow', 'Other Spring']) expect(names).not.toContain(x);
+    expect(main.related.sameBenefit.find((o: { name: string }) => o.name === 'Rel f1')).toMatchObject({ kind: 'automatic', lifecycle: 'active', salonWide: true, sharedServices: null });
+    expect(main.related.campaigns).toBe(0);
+
+    const owner = await repo.detail({ ...ctx, branchId: '' }, id('d1'));
+    expect(owner.related.sameBenefit.map((o: { name: string }) => o.name)).toEqual(expect.arrayContaining(['Rel f1', 'Rel f5']));
+
+    const svc = await repo.detail({ ...ctx, branchId: '' }, id('d6'));
+    const s = svc.related.sameBenefit;
+    expect(s.map((o: { name: string }) => o.name)).toContain('Rel f6');
+    expect(s.map((o: { name: string }) => o.name)).not.toContain('Rel f7');
+    expect(s.find((o: { name: string }) => o.name === 'Rel f6')).toMatchObject({ sharedServices: 1 });
+
+    expect((await q(`select (select count(*) from deals) + (select count(*) from deal_redemptions) + (select count(*) from deal_services) as n`)).rows[0].n).toBe(before);
+  });
+});

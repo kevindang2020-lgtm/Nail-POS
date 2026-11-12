@@ -106,4 +106,12 @@ export const COUPONS_VI = {
   'cp.roi.branch': 'Chi nhánh', // DRAFT — Kevin reviews
   'cp.roi.customers': 'Khách hàng', // DRAFT — Kevin reviews
   'cp.roi.noBranch': 'Không có chi nhánh', // DRAFT — Kevin reviews
+  'cp.dtab.related': 'Ưu đãi liên quan', // DRAFT — Kevin reviews
+  'cp.rel.same': 'Cùng quyền lợi', // DRAFT — Kevin reviews
+  'cp.rel.noneSame': 'Không có ưu đãi nào khác đang chạy hoặc sắp chạy cho cùng quyền lợi.', // DRAFT — Kevin reviews
+  'cp.rel.allBranches': 'Tất cả chi nhánh', // DRAFT — Kevin reviews
+  'cp.rel.allServices': 'Mọi dịch vụ', // DRAFT — Kevin reviews
+  'cp.rel.sharedServices': '{n} dịch vụ chung', // DRAFT — Kevin reviews
+  'cp.rel.stackable': 'Cộng gộp được', // DRAFT — Kevin reviews
+  'cp.rel.note': 'Cùng quyền lợi = cùng loại và mức giảm, chi nhánh và dịch vụ trùng nhau, và ngày trùng nhau. Hãy xem lại cả hai có đúng ý không; ở đây không thay đổi gì.', // DRAFT — Kevin reviews
 } as const;
