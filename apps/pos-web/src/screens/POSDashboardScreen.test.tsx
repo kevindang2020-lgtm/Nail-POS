@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+const perm = vi.hoisted(() => ({ deny: new Set<string>() }));
+vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => !perm.deny.has(p) }));
 import { POSDashboardScreen } from './POSDashboardScreen';
+import { requiredPermissions } from '../shell/tenant-nav';
 
 // Rich /pos/dashboard/state contract (picture-exact module set); /tenant/inventory/alerts returns the canonical list.
 const state = {
@@ -25,6 +28,22 @@ const routeFetch = vi.fn(async (url: string) => {
   return { ok: true, status: 200, json: async () => body, headers: { get: () => null } } as any;
 });
 beforeEach(() => { vi.restoreAllMocks(); });
+
+describe('Live Operations 06 — Quick Action readiness', () => {
+  it('a Quick Action whose sidebar permission is missing is disabled and names the key; the others stay enabled', async () => {
+    globalThis.fetch = routeFetch as any;
+    const checkoutKeys = requiredPermissions({ id: 'checkout' });
+    checkoutKeys.forEach((k) => perm.deny.add(k));
+    render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    const pay = await screen.findByTestId('qa-/checkout');
+    expect(pay).toBeDisabled();
+    expect(pay.getAttribute('title')).toBe(`Not available for your role — needs the permission: ${checkoutKeys.join(', ')}`);
+    expect(pay).toHaveTextContent('No access');
+    expect(screen.getByTestId('qa-/booking')).not.toBeDisabled();
+    expect(screen.getByTestId('qa-/messages')).not.toBeDisabled();
+    perm.deny.clear();
+  });
+});
 
 describe('POSDashboardScreen (tenant /tenant/dashboard, picture-exact)', () => {
   it('renders the 9 KPIs and every reference module', async () => {
