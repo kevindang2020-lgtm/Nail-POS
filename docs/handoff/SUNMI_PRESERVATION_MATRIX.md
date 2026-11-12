@@ -1906,7 +1906,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAICustomerProfileAssistantScreen.tsx`
 - Guide: AI_PowerSalon_Customer_Profile_Assistant
 - Scroll: vertical page scroll allowed (AI Customer Profile Assistant SUNMI addendum: three equal subscription cards, then the assistant dashboard; its list keeps its height and scrolls with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posAiUsageScreenApi.acknowledge`, `posAiUsageScreenApi.cancel`, `posAiUsageScreenApi.check`, `posAiUsageScreenApi.detail`, `posAiUsageScreenApi.exportHistory`, `posAiUsageScreenApi.history`, `posAiUsageScreenApi.packages`, `posAiUsageScreenApi.reconcileInvoices`, `posAiUsageScreenApi.setBranch`, `posAiUsageScreenApi.startTrial`, `posAiUsageScreenApi.summary`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posAiUsageScreenApi.acknowledge`, `posAiUsageScreenApi.cancel`, `posAiUsageScreenApi.check`, `posAiUsageScreenApi.detail`, `posAiUsageScreenApi.exportHistory`, `posAiUsageScreenApi.history`, `posAiUsageScreenApi.packages`, `posAiUsageScreenApi.reconcileInvoices`, `posAiUsageScreenApi.setBranch`, `posAiUsageScreenApi.startTrial`, `posAiUsageScreenApi.summary`, `posCustomerSearchApi.customers`, `posCustomerSearchApi.summary`, `posCustomersApi.getDetail`, `posLoyaltyApi.bonusPreview`, `posLoyaltyApi.bonusRequest`, `posLoyaltyApi.bonusRequests`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
