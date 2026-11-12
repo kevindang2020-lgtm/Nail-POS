@@ -156,12 +156,32 @@ describe('checker, health, wizard, settings, performance', () => {
     fireEvent.change(screen.getByLabelText('Stacking policy'), { target: { value: 'stack_all' } });
     await waitFor(() => expect(deals.updateSettings).toHaveBeenCalledWith({ stackingPolicy: 'stack_all' }));
   });
+  it('Settings shows the read-only stacking explorer for the saved policy (stack by group, member discount allowed, 20% floor)', async () => {
+    deals.getSettings.mockResolvedValue({ ...settings, stackingPolicy: 'stack_groups', allowStackMembership: true, allowStackLoyalty: false, priceFloorPercent: 20 });
+    renderScreen('/tenant/marketing/deals?tab=settings');
+    const ex = await screen.findByTestId('stacking-explorer');
+    expect(within(within(ex).getByTestId('stack-deal_coupon')).getByTestId('stack-verdict')).toHaveTextContent('Combine if marked');
+    expect(within(ex).getByTestId('stack-deal_coupon')).toHaveTextContent('different stack groups');
+    expect(within(within(ex).getByTestId('stack-with_membership')).getByTestId('stack-verdict')).toHaveTextContent('Combine');
+    expect(within(within(ex).getByTestId('stack-with_loyalty')).getByTestId('stack-verdict')).toHaveTextContent('Do not combine');
+    expect(within(ex).getByTestId('stack-limits')).toHaveTextContent('at least 20% of the subtotal');
+    expect(deals.updateSettings).not.toHaveBeenCalled();
+  });
   it('Performance shows the dashboard (net discounts, top deals)', async () => {
     deals.dashboard.mockResolvedValue({ days: 30, live: { active: 2, scheduled: 0, pendingApproval: 1, activeCoupons: 0 }, totals: { openApplications: 0, openDiscountCents: 0, redemptions: 1, netDiscountCents: 50, views: 0, reversals: 0 },
       daily: [], top: [{ dealId: 'd1', title: 'Spring time', kind: 'deal', status: 'active', redemptionCount: 1, maxRedemptions: null, budgetCents: null, budgetReservedCents: 0, discountedCents: 50, views: 0, redemptions: 1, conversion: null }] });
     renderScreen('/tenant/marketing/deals?tab=performance');
     const dash = await screen.findByTestId('deals-dashboard');
     await waitFor(() => expect(dash).toHaveTextContent('Spring time'));
+  });
+  it('Performance compares paid uses and net discount cost by location, without revenue', async () => {
+    deals.dashboard.mockResolvedValue({ days: 30, live: { active: 2, scheduled: 0, pendingApproval: 0, activeCoupons: 0 }, totals: { openApplications: 0, openDiscountCents: 0, redemptions: 3, netDiscountCents: 1700, views: 0, reversals: 0 },
+      daily: [], top: [], byBranch: [{ branchId: 'b1', branchName: 'Main', uses: 2, customers: 2, netDiscountCents: 1200, avgDiscountCents: 600 }, { branchId: null, branchName: null, uses: 1, customers: 1, netDiscountCents: 500, avgDiscountCents: 500 }] });
+    renderScreen('/tenant/marketing/deals?tab=performance');
+    const rows = await screen.findAllByTestId('deals-branch-row');
+    expect(rows[0]).toHaveTextContent('Main'); expect(rows[0]).toHaveTextContent('$12.00'); expect(rows[0]).toHaveTextContent('$6.00');
+    expect(rows[1]).toHaveTextContent('No location recorded');
+    expect(screen.getByTestId('deals-by-branch')).not.toHaveTextContent(/revenue/i);
   });
   it('a location filter reaches the library, approvals and redemptions; the redemption basis and #ticket work', async () => {
     renderScreen();

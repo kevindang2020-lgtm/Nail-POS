@@ -443,7 +443,17 @@ export class KyselyDealsLedger {
       .map((r) => ({ dealId: String(r.id), title: String(r.title), kind: String(r.kind), status: String(r.status), redemptionCount: Number(r.redemption_count), maxRedemptions: num(r.max_redemptions),
         budgetCents: num(r.budget_cents), budgetReservedCents: Number(r.budget_reserved_cents || 0), discountedCents: Number(r.discounted), views: Number(r.views), redemptions: Number(r.redemptions),
         conversion: Number(r.views) > 0 ? Math.round((Number(r.redemptions) / Number(r.views)) * 1000) / 10 : null }));
-    return { days, live: { active: Number(live?.active ?? 0), scheduled: Number(live?.scheduled ?? 0), pendingApproval: Number(live?.pending ?? 0), activeCoupons: Number(live?.coupons ?? 0) },
+    // Extras · Deals 11: verified uses and discount cost per location (paid uses only, net of refunds). Associated revenue is
+    // deliberately not reported here — it is not incremental lift.
+    const byBranch = (await sql<{ branch_id: string | null; branch_name: string | null; uses: number; customers: number; net_cents: string | number }>`
+                                  SELECT r.branch_id, br.name AS branch_name, count(*)::int AS uses, count(DISTINCT r.customer_id)::int AS customers,
+                                         coalesce(sum(r.amount_discounted_cents - r.reversed_cents),0)::bigint AS net_cents
+                                    FROM deal_redemptions r LEFT JOIN branches br ON br.id = r.branch_id AND br.tenant_id = r.tenant_id
+                                   WHERE r.tenant_id = ${tenantId} AND r.status IN ('redeemed','partially_reversed') AND r.redeemed_at >= ${since}::date
+                                   GROUP BY r.branch_id, br.name ORDER BY net_cents DESC, br.name`.execute(this.d)).rows
+      .map((r) => { const uses = Number(r.uses); const net = Number(r.net_cents); return { branchId: r.branch_id ? String(r.branch_id) : null, branchName: r.branch_name ? String(r.branch_name) : null,
+        uses, customers: Number(r.customers), netDiscountCents: net, avgDiscountCents: uses > 0 ? Math.round(net / uses) : null }; });
+    return { days, byBranch, live: { active: Number(live?.active ?? 0), scheduled: Number(live?.scheduled ?? 0), pendingApproval: Number(live?.pending ?? 0), activeCoupons: Number(live?.coupons ?? 0) },
       totals: { openApplications: Number(money?.open ?? 0), openDiscountCents: Number(money?.open_cents ?? 0), redemptions: Number(money?.redeemed ?? 0), netDiscountCents: Number(money?.net_cents ?? 0),
         views: daily.reduce((n, d) => n + d.views, 0), reversals: daily.reduce((n, d) => n + d.reversals, 0) },
       daily, top };

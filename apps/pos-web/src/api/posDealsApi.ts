@@ -38,6 +38,8 @@ export const posDealsApi = {
 
 export interface DealsDashboard {
   days: number;
+  /** Extras · Deals 11: paid uses and net discount cost per location (no revenue — never treated as lift). Absent on older servers. */
+  byBranch?: { branchId: string | null; branchName: string | null; uses: number; customers: number; netDiscountCents: number; avgDiscountCents: number | null }[];
   live: { active: number; scheduled: number; pendingApproval: number; activeCoupons: number };
   totals: { openApplications: number; openDiscountCents: number; redemptions: number; netDiscountCents: number; views: number; reversals: number } | null;
   daily: { day: string; views: number; bookings: number; applications: number; redemptions: number; reversals: number; discountedCents: number; reversedCents: number }[];
