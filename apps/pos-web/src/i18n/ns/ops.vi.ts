@@ -1537,4 +1537,5 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.role.checkout": "Chạy thanh toán và việc quầy lễ tân tại trạm của nó", // DRAFT — Kevin reviews
   "lgx.role.display": "Cho khách xem tổng tiền và lời mời tip khi thanh toán", // DRAFT — Kevin reviews
   "lgx.role.checkin": "Cho khách tự check-in", // DRAFT — Kevin reviews
+  "dfx.hk.duplicate_names": "Thiết bị trùng tên trong cùng chi nhánh (không bao giờ tự gộp)", // DRAFT — Kevin reviews
 };

@@ -56,6 +56,14 @@ export function zonedDayStart(tz: string, now: Date): Date {
 
 export interface DfQuery { class?: string; q?: string; status?: string; branchId?: string; from?: string; to?: string; dateField?: string; sort?: string; page?: number; pageSize?: number }
 
+/** How many live devices share their (branch, normalised name) with at least one other device. Exported for tests. */
+export function duplicateNameCount(rows: Pick<DfDevice, 'name' | 'branchId'>[]): number {
+  const groups = new Map<string, number>();
+  for (const r of rows) { const n = String(r.name ?? '').trim().replace(/\s+/g, ' ').toLowerCase(); if (!n) continue; const k = `${r.branchId ?? ''}|${n}`; groups.set(k, (groups.get(k) ?? 0) + 1); }
+  let dup = 0; for (const c of groups.values()) if (c > 1) dup += c;
+  return dup;
+}
+
 export class DeviceFleetCenter {
   constructor(readonly db: any, private readonly now: () => Date = () => new Date()) {}
 
@@ -288,6 +296,10 @@ export class DeviceFleetCenter {
     if (cls !== 'receipt') add('pairing_finished', pending ? 'WARNING' : 'READY', pending);
     const noPlace = live.filter((r) => r.status === 'unassigned' || (r.source === 'display' && !r.station) || (r.source === 'kiosk' && !r.branchId)).length;
     if (cls !== 'receipt' && cls !== 'terminal') add('assignments_complete', noPlace ? 'WARNING' : 'READY', noPlace);
+    // Device Assignments extras #06 (duplicate identity inspector): two live devices in one branch with the same name (case
+    // and spacing ignored) are easy to confuse at the front desk. Flagged as a WARNING with how many devices share a name —
+    // never merged, renamed or unregistered here (the check stays read-only).
+    if (cls !== 'receipt') add('duplicate_names', duplicateNameCount(live) ? 'WARNING' : 'READY', duplicateNameCount(live));
     if (cls === 'receipt') {
       const s = await this.summary(ctx, 'receipt');
       add('digital_receipts', 'READY', Number(s.extra.emailToday ?? 0) + Number(s.extra.smsToday ?? 0));

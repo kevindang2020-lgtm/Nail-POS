@@ -1538,4 +1538,5 @@ export const OPS_EN = {
   "lgx.role.checkout": "Runs checkout and front-desk work at its station",
   "lgx.role.display": "Shows customers their total and tip prompt at checkout",
   "lgx.role.checkin": "Lets customers check themselves in",
+  "dfx.hk.duplicate_names": "Devices sharing a name in one location (never merged automatically)",
 };

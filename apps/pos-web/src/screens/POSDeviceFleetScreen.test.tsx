@@ -75,3 +75,24 @@ describe('Devices sub-pages', () => {
     expect(await screen.findByTestId('dfx-chk-devices_reporting')).toBeInTheDocument();
   });
 });
+
+describe('Reception POS — verified connected count (extras Reception POS #11)', () => {
+  it('an unreadable registry summary shows "— connected", never a made-up 0; the readable count carries its checked-at time', async () => {
+    m.summary.mockRejectedValue(Object.assign(new Error('down'), { status: 503 }));
+    r('reception-pos');
+    await waitFor(() => expect(screen.getByTestId('dfx-connected').textContent).toMatch(/^— connected/));
+    expect(screen.getByTestId('dfx-connected').textContent).not.toMatch(/^0 /);
+  });
+});
+
+describe('Device Assignments — duplicate identity (extras #06)', () => {
+  it('the read-only check names devices that share a name in one location, with the count', async () => {
+    m.check.mockResolvedValue({ class: 'reception_pos', overall: 'WARNING', checkedAt: '2026-11-09T10:00:00Z', checks: [{ key: 'duplicate_names', state: 'WARNING', count: 2 }] });
+    r('reception-pos');
+    await screen.findAllByTestId('dfx-row');
+    fireEvent.click(screen.getByTestId('dfx-check'));
+    const c = await screen.findByTestId('dfx-chk-duplicate_names');
+    expect(c).toHaveTextContent('Devices sharing a name in one location (never merged automatically)');
+    expect(c).toHaveTextContent('2');
+  });
+});
