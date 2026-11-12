@@ -98,6 +98,12 @@ describe('services CSV import — commit', () => {
   it('round-trips: a re-imported export (dollar prices) updates in place, creating nothing', async () => {
     const svc = mk();
     const exported = await svc.export(ctx);            // headers: Id,Name,Category,Price($),Duration,Status,...
+    // SERVICE PRICING 16: the price snapshot time is on every row (one export = one snapshot time)
+    const table = parseCsv(exported.csv);
+    expect(table[0].at(-1)).toBe('Price Snapshot At');
+    const stamps = new Set(table.slice(1).filter((r) => r.length > 1).map((r) => r.at(-1)));
+    expect(stamps.size).toBe(1);
+    expect([...stamps][0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     const before = (await svc.list(ctx)).items.length;
     const res = await svc.importCommit(ctx, exported.csv);
     expect(res.created).toBe(0);                        // everything matches by Id/Name

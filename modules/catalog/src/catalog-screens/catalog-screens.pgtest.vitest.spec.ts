@@ -126,6 +126,15 @@ describe('Service Pricing — audited edits and history', () => {
     expect((await repo.history(ctx2, { page: 1, pageSize: 10 })).totalItems).toBe(0);
   });
 
+  it('SERVICE PRICING 16: the services export reports each service\'s own Taxable flag (it said yes for every row)', async () => {
+    await q(`update services set is_taxable = false where id = $1`, [CUT]);
+    const { headers, rows } = await svcRepo.exportRows(ctx as never, {} as never);
+    const ti = headers.indexOf('Taxable'), ni = headers.indexOf('Name');
+    const by = Object.fromEntries(rows.map((r) => [String(r[ni]), r[ti]]));
+    expect(by['Haircut']).toBe('no');
+    expect(by['Gel Manicure']).toBe('yes');
+    await q(`update services set is_taxable = true where id = $1`, [CUT]);
+  });
   it('customer history: phone in any format, name, ticket number → the charged snapshot; never a list of everyone', async () => {
     expect((await repo.customerHistory(ctx, { q: '' })).needsQuery).toBe(true);
     for (const p of ['8565551234', '(856) 555-1234', '856-555-1234', '+1 856 555 1234']) expect((await repo.customerHistory(ctx, { q: p, page: 1, pageSize: 10 })).totalItems).toBe(5);
