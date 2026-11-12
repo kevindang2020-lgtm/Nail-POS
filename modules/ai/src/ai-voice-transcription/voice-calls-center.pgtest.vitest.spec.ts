@@ -141,6 +141,28 @@ describe('Call details overlay', () => {
     const a = await q(`select action, resource_id from audit_events where tenant_id = $1 and action = 'voice_transcript.viewed'`, [T]);
     expect(a.map((r) => r.resource_id)).toContain(A);
   });
+  it('Extras VCH-05 call → booking: the outcome comes from Booking records for the linked customer within 24 h, never from the request; the agent\'s own report is labelled', async () => {
+    const TECH = id(60);
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active) values ($1,$2,$3,'Anna','Le','Anna Le','active',true) on conflict do nothing`, [TECH, T, B]);
+    const K = await call({ cust: C2, hoursAgo: 3, ref: 'call-vch05', lines: ['I want a gel manicure Saturday'] });
+    // nothing booked yet → no appointments; the request stays unverified
+    let d: any = await vc.call(ctx(), K);
+    expect(d.booking).toEqual({ basis: 'same_customer_within_24h', providerReported: null, appointments: [] });
+    expect(d.request.state).toBe('requested_unverified');
+    await q(`insert into voice_call_outcomes (tenant_id, branch_id, provider_call_id, booking_outcome) values ($1,$2,'call-vch05','booked')`, [T, B]);
+    // one appointment made 1 h after the call (counts), one made 2 days before it and one for another customer (do not)
+    const A1 = (await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, source, appt_date, start_time, end_time, status, created_at)
+      values ($1,$2,$3,$4,'Mai Tran','phone','2026-11-14','10:00','11:00','booked', now() - interval '2 hours') returning id`, [T, B, TECH, C2]))[0].id;
+    await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, source, appt_date, start_time, end_time, status, created_at)
+      values ($1,$2,$3,$4,'Mai Tran','phone','2026-11-10','10:00','11:00','completed', now() - interval '2 days'), ($1,$2,$3,$5,'Linh Pham','phone','2026-11-14','12:00','13:00','booked', now() - interval '1 hour')`, [T, B, TECH, C2, C1]);
+    d = await vc.call(ctx(), K);
+    expect(d.booking.providerReported).toBe('booked');
+    expect(d.booking.appointments).toEqual([{ id: A1, date: '2026-11-14', startTime: '10:00', status: 'booked', source: 'phone', createdAt: expect.any(String) }]);
+    // without customers.view the match (which identifies the customer) is not made; an unlinked call says why
+    expect((await vc.call(ctx({ permissions: VIEW }), K) as any).booking).toMatchObject({ basis: 'hidden', appointments: [] });
+    const U = await call({ cust: null, hoursAgo: 2 });
+    expect((await vc.call(ctx(), U) as any).booking).toMatchObject({ basis: 'no_linked_customer', appointments: [] });
+  });
   it('DT-02 another branch, another salon, a bad id → not found', async () => {
     expect(await code(vc.call(ctx(), E))).toBe('VC_CALL_NOT_FOUND');
     expect(await code(vc.call(ctx(), F))).toBe('VC_CALL_NOT_FOUND');

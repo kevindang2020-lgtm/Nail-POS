@@ -80,4 +80,10 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.replacePreview.moves": "Số dư được chuyển: {amount}, từ {from}", // DRAFT — Kevin reviews
   "gc.replacePreview.newCard": "Số dư chuyển sang một thẻ mới tại tiệm này; lịch sử đầy đủ vẫn lưu trên cả hai thẻ.", // DRAFT — Kevin reviews
   "gc.replacePreview.irreversible": "Thẻ cũ bị ngưng vĩnh viễn và không bao giờ dùng lại được.", // DRAFT — Kevin reviews
+  "gc.dup.title": "{n} cảnh báo có thể trùng lặp hoặc chi tiêu hai lần — hãy xem lại thẻ; chưa có gì bị thay đổi.", // DRAFT — Kevin reviews
+  "gc.dup.repeatedPayment": "{n} khoản thanh toán dùng cho nhiều lần đổi thẻ", // DRAFT — Kevin reviews
+  "gc.dup.overlappingRedemption": "{n} lần đổi cùng một thẻ trong vòng 60 giây", // DRAFT — Kevin reviews
+  "gc.dup.multipleActivation": "{n} thẻ được kích hoạt nhiều lần", // DRAFT — Kevin reviews
+  "gc.dup.activatedWhilePending": "{n} thẻ được kích hoạt khi vẫn chờ thanh toán", // DRAFT — Kevin reviews
+  "gc.dup.card": "{k} · {a} trên {r} dòng sổ cái", // DRAFT — Kevin reviews
 };

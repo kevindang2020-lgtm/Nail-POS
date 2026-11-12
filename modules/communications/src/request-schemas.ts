@@ -51,6 +51,7 @@ export const INBOX_STATUS_BODY: BodySchema = S.object({ status: str(20), expecte
 export const INBOX_FOLLOW_UP_BODY: BodySchema = S.object({ dueAt: str(40), reason: str(200), expectedVersion: num });
 export const INBOX_LINK_BODY: BodySchema = S.object({ customerId: str(64), expectedVersion: num });
 export const INBOX_BOOKING_LINK_BODY: BodySchema = S.object({ appointmentId: str(64) }, ['appointmentId']);   // C2 audit: a booking made from the conversation
+export const INBOX_READ_ALL_BODY: BodySchema = S.object({ cutoff: str(40), branch: str(40) }, ['cutoff']);   // Customer Notifications extras 03: mark all read up to a cutoff
 export const INBOX_START_BODY: BodySchema = S.object({ customerId: str(64), phone: str(40) });
 
 // Super Admin communications (admin-web superAdminCommunicationsApi)

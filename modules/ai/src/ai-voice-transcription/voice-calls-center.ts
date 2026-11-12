@@ -271,7 +271,22 @@ export class VoiceCallsCenter {
     await recordAuditStrict(this.db, { tenantId: T, branchId: r.branch_id ?? null, userId: isUuid(ctx.userId) ? ctx.userId! : null, role: ctx.role ?? null },
       { module: 'ai_voice_transcription', action: 'voice_transcript.viewed', resourceType: 'call_transcript', resourceId: id, summary: 'Call transcript opened (redacted)' });
     const appt = intel?.appointment && typeof intel.appointment === 'object' ? intel.appointment : null;
+    // Voice Call History extras 05 — call → booking traceability. The request above is only what the caller said; the
+    // OUTCOME comes from the Booking records (pos_tech_appointments) made for the call's linked customer within 24 h after
+    // the call (matched by customer + time — there is no call id on an appointment, and the screen says so). What the voice
+    // agent itself reported (voice_call_outcomes.booking_outcome) is shown beside it, labelled as provider-reported.
+    const reported = r.provider_call_id ? (await sql<{ booking_outcome: string | null }>`select o.booking_outcome from voice_call_outcomes o
+      where o.tenant_id = ${T} and o.provider_call_id = ${String(r.provider_call_id)} limit 1`.execute(this.db)).rows[0]?.booking_outcome ?? null : null;
+    const booked = customers && r.customer_id ? (await sql<{ id: string; appt_date: string; start_time: string; status: string; source: string; created_at: Date | string }>`
+      select a.id, a.appt_date::text as appt_date, a.start_time, a.status, a.source, a.created_at from pos_tech_appointments a
+      where a.tenant_id = ${T} and a.customer_id = ${String(r.customer_id)}::uuid and a.created_at >= ${r.created_at}::timestamptz and a.created_at < ${r.created_at}::timestamptz + interval '24 hours'
+      order by a.created_at, a.id limit 5`.execute(this.db)).rows : [];
     return {
+      booking: {
+        basis: !r.customer_id ? 'no_linked_customer' : !customers ? 'hidden' : 'same_customer_within_24h',
+        providerReported: reported,
+        appointments: booked.map((a) => ({ id: String(a.id), date: String(a.appt_date).slice(0, 10), startTime: String(a.start_time), status: String(a.status), source: String(a.source), createdAt: iso(a.created_at) })),
+      },
       call: {
         id: String(r.id), callRef: r.provider_call_id, provider: r.provider, branch: r.branch ?? null, callAt: iso(r.created_at), updatedAt: iso(r.updated_at),
         direction: r.direction, handler: r.handler, durationSeconds: r.duration_seconds == null ? null : N(r.duration_seconds),

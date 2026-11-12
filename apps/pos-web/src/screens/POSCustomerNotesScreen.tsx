@@ -298,6 +298,22 @@ export function POSCustomerNotesScreen() {
   );
 }
 
+/** Customer Notes extras 04 — the review receipt under a safety note: who acknowledged it, when, the decision and WHICH
+ *  version of the text (a short form of the text's own hash); an acknowledgment of an earlier text is never shown as
+ *  covering the current one. Read-only (from the detail's own review history). */
+function ReviewReceipt({ category, hash, history }: { category: string; hash: string; history: CnDetailResponse['history'] }) {
+  const cur = history.find((h) => h.category === category && h.current);
+  const older = cur ? null : history.find((h) => h.category === category);
+  const ver = hash.slice(0, 8);
+  return (
+    <div className={'sub cnx-receipt' + (cur ? '' : ' warn')} data-testid={`cnx-receipt-${category}`}>
+      {cur ? t('cnx.receipt.current', { d: t('cnx.dec.' + cur.decision), who: cur.reviewer ?? '—', at: when(cur.at), v: ver })
+        : older ? t('cnx.receipt.older', { d: t('cnx.dec.' + older.decision), who: older.reviewer ?? '—', at: when(older.at), v: ver })
+        : t('cnx.receipt.none', { v: ver })}
+    </div>
+  );
+}
+
 /** one customer's notes: every category, the safety review, the history */
 function NoteDetail({ customerId, onClose, onEdit, onChanged }: { customerId: string; onClose: () => void; onEdit: (c: { customerId: string; fullName: string; phone?: string | null }) => void; onChanged: () => void }) {
   const [d, setD] = useState<CnDetailResponse | null>(null);
@@ -325,6 +341,7 @@ function NoteDetail({ customerId, onClose, onEdit, onChanged }: { customerId: st
             <div className="cnx-entry-h"><span className={'chip ' + (CAT_TONE[e.category] ?? '')}>{t('cnx.cat.' + e.category)}</span>
               <span className={'chip ' + (REVIEW_TONE[e.review] ?? '')}>{t('cnx.rv.' + e.review)}</span><span className="sub">{when(e.at)}</span></div>
             <p className="cnx-text">{e.text}</p>
+            {e.safety ? <ReviewReceipt category={e.category} hash={e.hash} history={d.history} /> : null}
             {e.safety ? (correct?.category === e.category ? <div className="cnx-correct">
                 <label className="rvw-f"><span>{t('cnx.correctWhy')}</span><input value={reason} maxLength={500} onChange={(ev) => setReason(ev.target.value)} data-testid="cnx-reason" /></label>
                 <button className="btn ghost" onClick={() => setCorrect(null)}>{t('pos.cancel')}</button>

@@ -231,4 +231,11 @@ export const VOICECALLS_EN: Record<string, string> = {
   "vcx.help.open": "Open AI Receptionist setup",
   "vcx.help.ask": "You do not have access to that page — ask the salon owner.",
   "vcx.help.noSecrets": "Keys and provider passwords are never shown on this screen.",
+  "vcx.d.booking": "Booking outcome",
+  "vcx.d.booking.none": "No appointment was booked for this customer within 24 hours of the call. The request above is not a booking.",
+  "vcx.d.booking.made": "booking record made {at}",
+  "vcx.d.booking.basis": "From Booking records for this customer made within 24 hours after the call (matched by customer and time, not by a call id).",
+  "vcx.d.booking.hidden": "Your role cannot see customer details, so the booking outcome is not matched here.",
+  "vcx.d.booking.noCustomer": "This call is not linked to a customer, so no booking can be traced to it.",
+  "vcx.d.booking.reported": "The voice agent reported: {o} (provider report, not a booking record)",
 };

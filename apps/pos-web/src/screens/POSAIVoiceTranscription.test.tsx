@@ -112,6 +112,28 @@ describe('Call History', () => {
     expect(screen.queryByTestId('vcx-call')).toBeNull();
     expect(screen.getByTestId('vcx-row')).toBeInTheDocument();
   });
+  it('Extras VCH-05: the booking outcome comes from Booking records (date, time, status, when made); the agent report is labelled; none booked says the request is not a booking', async () => {
+    const base = { call: { id: 'tr1', callRef: 'c1', callAt: '2026-11-02T15:00:00Z', direction: 'inbound', durationSeconds: 65, statusGroup: 'completed', language: 'en', branch: 'Main' },
+      customer: { linked: true, id: 'cu1', name: 'Linh Pham', phoneLast4: '0142', visible: true }, transcript: [], summary: null, intents: [],
+      request: { services: ['gel manicure'], date: 'Saturday', time: null, technician: null, state: 'requested_unverified' }, followUps: [], canWorkFollowUps: false };
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([vcRow()]));
+    vc.detail.mockResolvedValueOnce({ ...base, booking: { basis: 'same_customer_within_24h', providerReported: 'booked', appointments: [{ id: 'a1', date: '2026-11-08', startTime: '10:00', status: 'confirmed', source: 'phone', createdAt: '2026-11-02T15:20:00Z' }] } })
+      .mockResolvedValueOnce({ ...base, booking: { basis: 'same_customer_within_24h', providerReported: null, appointments: [] } })
+      .mockResolvedValueOnce({ ...base, booking: { basis: 'no_linked_customer', providerReported: null, appointments: [] } });
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('vcx-view'));
+    const appt = await screen.findByTestId('vcx-booking-appt');
+    expect(appt).toHaveTextContent('2026-11-08 10:00'); expect(appt).toHaveTextContent('Confirmed'); expect(appt).toHaveTextContent('booking record made');
+    expect(screen.getByTestId('vcx-call-booking')).toHaveTextContent('matched by customer and time, not by a call id');
+    expect(screen.getByTestId('vcx-booking-reported')).toHaveTextContent('The voice agent reported: Booked (provider report, not a booking record)');
+    fireEvent.click(screen.getByTestId('vcx-call-close'));
+    fireEvent.click(await screen.findByTestId('vcx-view'));
+    expect(await screen.findByTestId('vcx-booking-none')).toHaveTextContent('The request above is not a booking');
+    expect(screen.queryByTestId('vcx-booking-reported')).toBeNull();
+    fireEvent.click(screen.getByTestId('vcx-call-close'));
+    fireEvent.click(await screen.findByTestId('vcx-view'));
+    expect(await screen.findByTestId('vcx-booking-basis')).toHaveTextContent('not linked to a customer');
+  });
   it('Check Voice Transcription System: every check with its part and last pass; a failed request is an error, never a pass', async () => {
     vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([]));
     vc.check.mockResolvedValueOnce({ overall: 'FAILED', checkedAt: '2026-11-03T05:00:00Z', reused: false, checks: [{ key: 'no_card_numbers_searchable', component: 'privacy', state: 'FAILED', count: 1, lastPassedAt: null },

@@ -21,7 +21,7 @@ vi.mock('../api/posCommunicationsApi', () => {
   const ok = (v: unknown) => vi.fn().mockResolvedValue(v);
   return {
     posCommunicationsApi: {
-      inbox: { list: ok(page), summary: ok(summary), sourceCampaigns: ok({ items: [{ value: 'rsms:11111111-1111-4111-8111-111111111111', name: 'October win-back', kind: 'rsms', sentAt: null }], windowDays: 14 }), detail: ok(detail), read: ok({}), unread: ok({}), reply: vi.fn(), status: vi.fn(), assign: vi.fn(), followUp: vi.fn(), linkCustomer: vi.fn(),
+      inbox: { list: ok(page), summary: ok(summary), sourceCampaigns: ok({ items: [{ value: 'rsms:11111111-1111-4111-8111-111111111111', name: 'October win-back', kind: 'rsms', sentAt: null }], windowDays: 14 }), detail: ok(detail), read: ok({}), unread: ok({}), readAll: ok({ cutoff: '2026-06-06T14:05:00.000Z', branch: null, marked: 1, skippedNewer: 2 }), reply: vi.fn(), status: vi.fn(), assign: vi.fn(), followUp: vi.fn(), linkCustomer: vi.fn(),
         customers: ok({ items: [] }), staff: ok({ items: [] }), templates: ok({ items: [] }), renderTemplate: vi.fn(), older: ok({ messages: [], olderCursor: null }), start: vi.fn(), timeline: ok({ items: [] }) },
       getActivity: vi.fn().mockResolvedValue({
         windowDays: 30,
@@ -111,5 +111,25 @@ describe('POSCommunicationsScreen', () => {
     await screen.findByText('Olivia Brown');
     expect(screen.queryByTestId('callback-warning')).toBeNull();
     summary.mockResolvedValue(base);
+  });
+
+  it('Extras Customer Notifications 03: Mark all as read asks first, sends the list-loaded cutoff, and says how many newer stayed unread', async () => {
+    const readAll = posCommunicationsApi.inbox.readAll as unknown as ReturnType<typeof vi.fn>;
+    readAll.mockClear();
+    const before = Date.now();
+    render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('ci-read-all'));
+    expect(readAll).not.toHaveBeenCalled();                     // explicit: nothing happens until confirmed
+    expect(screen.getByTestId('ci-read-all-confirm')).toHaveTextContent(/Newer texts stay unread/);
+    fireEvent.click(screen.getByTestId('ci-read-all-no'));
+    expect(screen.queryByTestId('ci-read-all-confirm')).toBeNull();
+    fireEvent.click(screen.getByTestId('ci-read-all'));
+    fireEvent.click(screen.getByTestId('ci-read-all-yes'));
+    await waitFor(() => expect(readAll).toHaveBeenCalledTimes(1));
+    const [cutoff, branch] = readAll.mock.calls[0];
+    expect(new Date(cutoff).getTime()).toBeGreaterThanOrEqual(before - 1000);   // the moment the list was shown, not a later click
+    expect(new Date(cutoff).getTime()).toBeLessThanOrEqual(Date.now());
+    expect(branch).toBeNull();
+    expect(await screen.findByTestId('ci-note')).toHaveTextContent('1 conversation(s) marked as read. 2 with newer texts stayed unread.');
   });
 });

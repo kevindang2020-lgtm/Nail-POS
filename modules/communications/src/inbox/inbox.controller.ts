@@ -8,6 +8,7 @@
 //   GET  pos/communications/inbox/threads/:id/timeline    unified customer timeline (?before= &sources=)
 //   POST pos/communications/inbox/threads/:id/reply       Idempotency-Key REQUIRED; one Send = one message
 //   POST pos/communications/inbox/threads/:id/{read|unread|assign|status|follow-up|link-customer}  (expectedVersion)
+//   POST pos/communications/inbox/read-all               { cutoff, branch? } — Mark all as read up to the cutoff (manage)
 //   POST pos/communications/inbox/conversations           New Message: open / reuse a conversation (nothing is sent)
 //   GET  pos/communications/inbox/{templates|customers|staff}
 // Guards: TenantAuthGuard + RolePermissionGuard; tenant, branch and authorized branches from the session (req.ctx), never the body.
@@ -18,7 +19,8 @@ import { Idempotent } from '@aipowersalon/database/nest';
 import { InboxService } from './inbox.service';
 import { InboxError } from './inbox-core';
 import type { InboxCtx } from './inbox.repository';
-import { INBOX_REPLY_BODY, INBOX_ASSIGN_BODY, INBOX_STATUS_BODY, INBOX_FOLLOW_UP_BODY, INBOX_LINK_BODY, INBOX_BOOKING_LINK_BODY, INBOX_START_BODY, EMPTY_BODY } from '../request-schemas';
+import type { InboxMarkAllReadResponse } from '@aipowersalon/api-contracts/tenant';
+import { INBOX_REPLY_BODY, INBOX_ASSIGN_BODY, INBOX_STATUS_BODY, INBOX_FOLLOW_UP_BODY, INBOX_LINK_BODY, INBOX_BOOKING_LINK_BODY, INBOX_START_BODY, INBOX_READ_ALL_BODY, EMPTY_BODY } from '../request-schemas';
 
 export const INBOX_SERVICE = 'InboxService';
 
@@ -85,6 +87,9 @@ export class InboxController {
   }
   @Post('threads/:id/read') @RequirePermission('pos.communications.view')
   read(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(EMPTY_BODY, { strict: true })) _b: any) { return runInbox(() => this.s().markRead(inboxCtxFrom(r), id)); }
+  /** Customer Notifications extras 03: explicit Mark all as read up to `cutoff` (what the list showed); newer texts stay unread */
+  @Post('read-all') @RequirePermission('pos.communications.manage')
+  readAll(@Req() r: any, @Body(ValidatedBody(INBOX_READ_ALL_BODY, { strict: true })) b: any): Promise<InboxMarkAllReadResponse> { return runInbox(() => this.s().markAllRead(inboxCtxFrom(r), b ?? {})); }
   @Post('threads/:id/unread') @RequirePermission('pos.communications.view')
   unread(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(EMPTY_BODY, { strict: true })) _b: any) { return runInbox(() => this.s().markUnread(inboxCtxFrom(r), id)); }
   @Post('threads/:id/assign') @RequirePermission('pos.communications.manage')

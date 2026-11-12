@@ -538,4 +538,7 @@ export const CSEARCH_EN: Record<string, string> = {
   "ahx.rebook.note": "Opens the existing review screens — nothing is booked or sent from here.",
   "cnx.pc.title": "Possible conflicting preferences — please review:",
   "cnx.pc.note": "Nothing was changed. Keep the one that is current and remove the other.",
+  "cnx.receipt.current": "Review receipt: {d} by {who} · {at} · for this exact text (version {v})",
+  "cnx.receipt.older": "Last review ({d} by {who} · {at}) was for an earlier text — this version ({v}) has not been reviewed",
+  "cnx.receipt.none": "No review yet for this text (version {v})",
 };

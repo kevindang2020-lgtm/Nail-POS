@@ -85,4 +85,10 @@ export const GIFTCARD_EN = {
   "gc.replacePreview.moves": "Balance that moves: {amount}, from {from}",
   "gc.replacePreview.newCard": "It goes to a brand-new card at this salon; the full history stays on both cards.",
   "gc.replacePreview.irreversible": "The old card is retired permanently and can never be used again.",
+  "gc.dup.title": "{n} possible duplicate or double-spend alert(s) — review the cards; nothing has been changed.",
+  "gc.dup.repeatedPayment": "{n} payment used for more than one redemption",
+  "gc.dup.overlappingRedemption": "{n} redemptions of one card within 60 seconds",
+  "gc.dup.multipleActivation": "{n} card activated more than once",
+  "gc.dup.activatedWhilePending": "{n} card activated while still awaiting payment",
+  "gc.dup.card": "{k} · {a} across {r} ledger rows",
 } as const;

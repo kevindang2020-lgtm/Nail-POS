@@ -83,4 +83,10 @@ export const COMMSINBOX_EN = {
   'ci.cb.delayed': '{n} sent texts are still waiting for a delivery update after {m} min. Provider callbacks are still arriving (last: {t}) — these texts are not counted as failed.',
   'ci.cb.never': 'none received',
   'ci.cb.fix': 'Check Messaging Setup',
+  'ci.readAll': 'Mark all as read',
+  'ci.readAll.hint': 'Marks every conversation shown up to now as read. Texts that arrive after this list was loaded stay unread.',
+  'ci.readAll.ask': 'Mark every conversation whose last customer text arrived by {at} as read? Newer texts stay unread.',
+  'ci.readAll.confirm': 'Mark as read',
+  'ci.readAll.done': '{n} conversation(s) marked as read.',
+  'ci.readAll.kept': '{n} with newer texts stayed unread.',
 };

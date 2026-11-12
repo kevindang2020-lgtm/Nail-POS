@@ -538,4 +538,7 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.rebook.note": "Mở các màn hình xem xét hiện có — không đặt lịch hay gửi tin nào từ đây.", // DRAFT — Kevin reviews
   "cnx.pc.title": "Có thể có sở thích mâu thuẫn — vui lòng xem lại:", // DRAFT — Kevin reviews
   "cnx.pc.note": "Không có gì bị thay đổi. Giữ cái đang đúng và xóa cái còn lại.", // DRAFT — Kevin reviews
+  "cnx.receipt.current": "Đã xem xét: {d} bởi {who} · {at} · cho đúng nội dung này (phiên bản {v})", // DRAFT — Kevin reviews
+  "cnx.receipt.older": "Lần xem xét gần nhất ({d} bởi {who} · {at}) là cho nội dung trước — phiên bản này ({v}) chưa được xem xét", // DRAFT — Kevin reviews
+  "cnx.receipt.none": "Nội dung này chưa được xem xét (phiên bản {v})", // DRAFT — Kevin reviews
 };

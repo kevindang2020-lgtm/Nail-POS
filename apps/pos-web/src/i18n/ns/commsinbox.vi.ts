@@ -84,4 +84,10 @@ export const COMMSINBOX_VI = {
   'ci.cb.delayed': '{n} tin nhắn đã gửi vẫn đang chờ cập nhật giao hàng sau {m} phút. Callback từ nhà cung cấp vẫn đang đến (gần nhất: {t}) — các tin này không bị tính là thất bại.', // DRAFT — Kevin reviews
   'ci.cb.never': 'chưa nhận được', // DRAFT — Kevin reviews
   'ci.cb.fix': 'Kiểm tra cài đặt nhắn tin', // DRAFT — Kevin reviews
+  'ci.readAll': 'Đánh dấu tất cả là đã đọc', // DRAFT — Kevin reviews
+  'ci.readAll.hint': 'Đánh dấu mọi cuộc trò chuyện đang hiển thị đến lúc này là đã đọc. Tin nhắn đến sau khi tải danh sách vẫn chưa đọc.', // DRAFT — Kevin reviews
+  'ci.readAll.ask': 'Đánh dấu đã đọc mọi cuộc trò chuyện có tin nhắn khách cuối cùng đến trước {at}? Tin nhắn mới hơn vẫn chưa đọc.', // DRAFT — Kevin reviews
+  'ci.readAll.confirm': 'Đánh dấu đã đọc', // DRAFT — Kevin reviews
+  'ci.readAll.done': 'Đã đánh dấu {n} cuộc trò chuyện là đã đọc.', // DRAFT — Kevin reviews
+  'ci.readAll.kept': '{n} cuộc trò chuyện có tin nhắn mới hơn vẫn chưa đọc.', // DRAFT — Kevin reviews
 };
