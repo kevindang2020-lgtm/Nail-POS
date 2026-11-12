@@ -853,4 +853,13 @@ export const PEOPLE_EN = {
   'people.mo.exportScope.members': 'Every member in your salon scope (all plans and statuses)',
   'people.mo.exportScope.payments': 'Every membership payment in your salon scope',
   'people.mo.exportScope.redemptions': 'Every membership benefit redemption in your salon scope',
+  'people.loyalty.why.notConfigured': '{tier} is not one of your configured tiers, so it has no threshold rule.',
+  'people.loyalty.why.noThreshold': '{tier} has no points threshold set — the tier was given by hand.',
+  'people.loyalty.why.meets': 'In {tier}: its threshold is {min}; this member has earned {earned} in total.',
+  'people.loyalty.why.below': 'In {tier} although its threshold is {min} and this member has earned {earned} in total.',
+  'people.loyalty.why.next': 'Next tier: {tier} at {min} — {n} more earned points to reach it.',
+  'people.loyalty.why.nextReached': 'Next tier: {tier} at {min} — this member already meets it.',
+  'people.loyalty.why.noNext': 'No higher configured tier has a points threshold.',
+  'people.loyalty.why.lower': 'By points alone this member fits {tier} ({min}).',
+  'people.loyalty.why.manual': 'Thresholds are a guide: a member changes tier only when someone with permission moves them.',
 };

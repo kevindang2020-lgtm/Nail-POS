@@ -169,3 +169,19 @@ describe('Discounts — expiring window and redemption date basis', () => {
     expect(finalized.items.map((x: { id: string }) => x.id)).toEqual(expect.arrayContaining([id('ae1'), id('ae2')]));
   });
 });
+
+describe('Refund Impact Preview (Extras · Discounts 11)', () => {
+  it('shows each discount’s line allocation and what a refund would do under the one refund rule — and changes nothing', async () => {
+    const LA = id('11a'), LB = id('11b');
+    await q(`update deal_redemptions set line_allocations = $2::jsonb where id = $1`, [id('ae1'), JSON.stringify([{ lineId: LA, cents: 1200 }, { lineId: LB, cents: 800 }])]);
+    const part = await repo.refundImpact(ctx, id('7a1'), [LA]);
+    expect(part.items).toHaveLength(1);
+    expect(part.items[0]).toMatchObject({ dealName: 'Spring Glow', outcome: 'partial', reverseCents: 1200, placeReturned: false, discountCents: 2000 });
+    expect(part.items[0].lines).toEqual([{ lineId: LA, cents: 1200, refunded: true }, { lineId: LB, cents: 800, refunded: false }]);
+    expect((await repo.refundImpact(ctx, id('7a1'), null)).items[0]).toMatchObject({ outcome: 'reverse', reverseCents: 2000, placeReturned: true });
+    expect((await repo.refundImpact(ctx, id('7a3'), null)).items[0]).toMatchObject({ outcome: 'release', status: 'applied' });   // unpaid ticket
+    expect((await repo.refundImpact(ctx, id('7a3'), [LA])).items[0].outcome).toBe('keep');
+    expect((await pg.query(`select status, reversed_cents from deal_redemptions where id = $1`, [id('ae1')])).rows[0]).toMatchObject({ status: 'redeemed' });   // read-only
+    expect((await repo.refundImpact(ctx2, id('7a1'), null)).items).toHaveLength(0);   // another salon sees nothing
+  });
+});

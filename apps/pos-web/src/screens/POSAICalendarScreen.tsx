@@ -17,6 +17,7 @@ import { RangeCalendar } from '../components/FinanceKit';
 import { useRealtime } from '../realtime/useRealtime';
 import { useCopilotAction, PreparedCard, ActionOutcome } from './receptionCopilotCenter';
 import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
+import { PendingHolds } from './aiCalendar/PendingHolds';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const shift = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
@@ -46,7 +47,7 @@ export function POSAICalendarScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [health, setHealth] = useState<any | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
-  const [showAssist, setShowAssist] = useState(false);
+  const [showAssist, setShowAssist] = useState(false); const [pending, setPending] = useState(false);
   const [showDefs, setShowDefs] = useState(false);
 
   const loadSummary = useCallback(async () => {
@@ -74,10 +75,12 @@ export function POSAICalendarScreen() {
         <div className="aic-row">
           <button className="btn" onClick={() => nav(date ? `/booking?date=${date}` : '/booking')} data-testid="aic-open-booking">{t('aical.openBooking')}</button>
           <button className="btn ghost" onClick={() => { void runHealth(); }} disabled={healthBusy} data-testid="aic-health-btn">{healthBusy ? t('aical.checking') : t('aical.checkSystem')}</button>
+          <button className="btn ghost" onClick={() => setPending(true)} data-testid="aic-pending-btn">{t('aical.pq.title')}</button>
           <button className="btn ghost" onClick={refresh} data-testid="aic-refresh">{t('aical.refresh')}</button>
         </div>
       </div>
 
+      {pending ? <PendingHolds onClose={() => setPending(false)} onBooking={(d) => nav(`/booking?date=${d}`)} /> : null}
       <section className="aic-panel" aria-label={t('aical.navigation')}>
         <div className="aic-row">
           <button className="btn" onClick={() => step(-1)} disabled={!date} data-testid="aic-prev">{t('aical.prev')}</button>

@@ -270,6 +270,7 @@ describe('overlay, health, assistant, security (T33, T40–T46)', () => {
   it('assistant: recommendations only, with evidence; Dismiss/Accept are audited and change nothing else', async () => {
     const pr = await fc.priorities(own);
     expect(pr.items.length).toBeGreaterThan(0); expect(pr.items[0].evidence.length).toBeGreaterThan(0);
+    expect(Math.abs(Date.parse(pr.asOf) - Date.now())).toBeLessThan(60_000);   // the as-of time the evidence was computed at
     const before = await q1(sql`select status, priority, assigned_user_id, version from ai_receptionist_follow_ups where id = ${pr.items[0].taskId}`);
     await fc.decide(desk, { taskId: pr.items[0].taskId, signal: pr.items[0].signal, decision: 'dismiss', note: 'handled at desk' });
     expect(await q1(sql`select status, priority, assigned_user_id, version from ai_receptionist_follow_ups where id = ${pr.items[0].taskId}`)).toEqual(before);

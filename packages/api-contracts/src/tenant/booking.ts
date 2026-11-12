@@ -108,3 +108,9 @@ export interface BookingOpeningsResponse {
   offset: number;
   limit: number;
 }
+
+/** AI Calendar · Pending Verification Queue (Extras · AI Calendar 04): live slot holds, soonest to expire first */
+export interface AiCalendarPendingQueue {
+  asOf: string; timeZone: string; pendingCode: number; expiringSoon: number;
+  items: { id: string; technicianId: string | null; technicianName: string | null; date: string; start: string; end: string; expiresAt: string; minutesLeft: number; channel: string | null; pendingCode: boolean; expiringSoon: boolean }[];
+}

@@ -1,6 +1,7 @@
 {
   "_": "BUILD_PLAN Phase 12 (Constitution 5 §32–33): manifest export / download / csv GETs that do NOT build a file, so they are not @AsyncExport routes. check:async-exports fails on a stale entry.",
   "routes": {
+    "GET /owner/finance/expenses/export/preflight": "the accountant export PREFLIGHT (Extras · Receipt Expense OCR 09): JSON counts and checks of the rows an export would write — builds no file",
     "GET /pos/commission-screen/export-history": "the report-export AUDIT list (F3, Oct 30 2026: who exported Commission / Team Performance, when, result, row and byte counts) — JSON rows, not a file",
     "GET /pos/payroll/periods/{id}/exports": "the payroll export AUDIT list (who exported which period, format, sha256) — JSON rows, not a file (Payroll mandate §83)",
     "GET /super-admin/audit-logs/export-flags": "a list of export-review flags (JSON page), not a file",

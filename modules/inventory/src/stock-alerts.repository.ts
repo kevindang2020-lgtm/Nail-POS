@@ -14,6 +14,7 @@ import { liveAlertState, openAlertCount, onOrderSql } from './stock-alert-state'
 import { formatQuantity } from './product-usage-core';
 import { reorderSuggestion } from './inventory-core';
 import { InventoryError, type InvCtx } from './inventory.service';
+import type { InventoryLowStockCause } from '@aipowersalon/api-contracts/tenant';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -277,6 +278,61 @@ export class StockAlertsRepository {
         effective: formatQuantity(N(r.hundredths)), corrected: !!r.event_id && N(r.quantity_hundredths) !== N(r.hundredths), status: r.status ?? 'confirmed', note: r.note ?? null, onBehalfReason: r.on_behalf_reason ?? null,
       })),
     };
+  }
+
+  /** Low-Stock Cause Explanation (Extras · Stock Alerts 12): the measured movements of the last `days` days by kind
+   *  (usage, receiving, losses, corrections), open purchase orders, the last receipt, and whether the ledger agrees with
+   *  on-hand. Every cause named is a measured fact; when nothing explains it, it says so instead of guessing. */
+  async lowStockCause(ctx: InvCtx, productId: string, days = 30) {
+    const b = this.branch(ctx);
+    if (!UUID.test(productId)) throw withCode(new InventoryError(404, 'Product not found'), 'PRODUCT_NOT_FOUND');
+    const prod = (await sql<any>`SELECT p.id, p.name, coalesce(s.quantity_on_hand, 0)::int AS on_hand, coalesce(s.reorder_level_override, p.reorder_level, 0)::int AS reorder_level, coalesce(s.reorder_quantity_override, p.reorder_quantity, 0)::int AS reorder_quantity
+      FROM inventory_products p LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id AND s.branch_id = ${b}
+      WHERE p.id = ${productId} AND p.tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
+    if (!prod) throw withCode(new InventoryError(404, 'Product not found'), 'PRODUCT_NOT_FOUND');
+    const D = Math.min(365, Math.max(1, Math.trunc(days) || 30));
+    const types = (await sql<any>`SELECT movement_type, coalesce(sum(quantity_change), 0)::int AS change, count(*)::int AS n FROM inventory_stock_movements
+      WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${b} AND product_id = ${productId} AND created_at >= now() - make_interval(days => ${D}) GROUP BY movement_type ORDER BY movement_type`.execute(this.db)).rows;
+    const last = (await sql<any>`SELECT quantity_after FROM inventory_stock_movements WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${b} AND product_id = ${productId}
+      ORDER BY created_at DESC, id DESC LIMIT 1`.execute(this.db)).rows[0];
+    const rec = (await sql<any>`SELECT max(created_at) AS at FROM inventory_stock_movements WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${b} AND product_id = ${productId}
+      AND movement_type IN ('purchase_received', 'transfer_in', 'manual_add', 'opening_balance')`.execute(this.db)).rows[0];
+    const tz = (await sql<{ tz: string | null }>`SELECT timezone AS tz FROM branches WHERE id = ${b} AND tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0]?.tz || 'America/New_York';   // the salon's day, not the server's
+    const po = (await sql<any>`SELECT coalesce(sum(l.quantity_ordered - l.quantity_received), 0)::int AS qty, count(DISTINCT o.id)::int AS orders, min(o.expected_date)::text AS expected,
+        bool_or(o.expected_date < (now() AT TIME ZONE ${tz})::date) AS overdue
+      FROM purchase_order_lines l JOIN purchase_orders o ON o.id = l.purchase_order_id AND o.tenant_id = l.tenant_id
+      WHERE l.tenant_id = ${ctx.tenantId} AND o.branch_id = ${b} AND l.product_id = ${productId} AND o.status IN ('approved', 'ordered', 'partial') AND l.quantity_received < l.quantity_ordered`.execute(this.db)).rows[0];
+    const partly = N((await sql<any>`SELECT count(*)::int AS n FROM purchase_order_lines l JOIN purchase_orders o ON o.id = l.purchase_order_id AND o.tenant_id = l.tenant_id
+      WHERE l.tenant_id = ${ctx.tenantId} AND o.branch_id = ${b} AND l.product_id = ${productId} AND o.status IN ('approved', 'ordered', 'partial') AND l.quantity_received > 0 AND l.quantity_received < l.quantity_ordered`.execute(this.db)).rows[0]?.n);
+    const lastRec = (await sql<any>`SELECT quantity_change FROM inventory_stock_movements WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${b} AND product_id = ${productId}
+      AND movement_type IN ('purchase_received', 'transfer_in', 'manual_add', 'opening_balance') ORDER BY created_at DESC, id DESC LIMIT 1`.execute(this.db)).rows[0];
+    const KIND: Record<string, 'usage' | 'received' | 'losses' | 'corrections'> = {
+      service_usage: 'usage', technician_usage: 'usage', bottle_opened: 'usage', usage_correction: 'usage',
+      purchase_received: 'received', transfer_in: 'received', manual_add: 'received', opening_balance: 'received', customer_return: 'received', returned: 'received',
+      damaged: 'losses', expired: 'losses', return_to_vendor: 'losses', transfer_out: 'losses', correction: 'corrections', count_adjustment: 'corrections',
+    };
+    const buckets = { usage: 0, received: 0, losses: 0, corrections: 0, other: 0 };
+    for (const t of types) buckets[KIND[String(t.movement_type)] ?? 'other'] += N(t.change);
+    const onHand = N(prod.on_hand); const reorder = N(prod.reorder_level);
+    const ledgerAfter = last && last.quantity_after != null ? N(last.quantity_after) : null;
+    const consistent = ledgerAfter == null ? null : ledgerAfter === onHand;
+    const out = { usage: Math.max(0, -buckets.usage), losses: Math.max(0, -buckets.losses) };
+    const causes: InventoryLowStockCause['causes'] = [];
+    if (!types.length) causes.push('no_movements');
+    if (out.usage > 0 && out.usage >= out.losses) causes.push('usage');
+    if (out.losses > 0 && out.losses >= (out.usage + out.losses) / 4) causes.push('losses');
+    if (types.length && buckets.received <= 0) causes.push(N(po?.qty) > 0 && po?.overdue ? 'receiving_delayed' : 'no_receiving');
+    else if (N(po?.qty) > 0 && po?.overdue) causes.push('receiving_delayed');
+    if (buckets.corrections < 0) causes.push('corrections');
+    if (consistent === false) causes.push('inconsistent');
+    return {
+      product: { id: String(prod.id), name: String(prod.name), onHand, reorderLevel: reorder, low: onHand <= reorder },
+      days: D, buckets, byType: types.map((t: any) => ({ type: String(t.movement_type), change: N(t.change), count: N(t.n) })),
+      lastReceivedAt: iso(rec?.at), openOrders: { quantity: N(po?.qty), orders: N(po?.orders), expectedDate: po?.expected ?? null, overdue: !!po?.overdue },
+      ledgerAfter, consistent, causes,
+      reorder: { reorderQuantity: N(prod.reorder_quantity), onOrder: N(po?.qty), suggested: reorderSuggestion(onHand, reorder, N(prod.reorder_quantity), N(po?.qty)),
+        partlyReceivedLines: partly, receivedInWindow: buckets.received, lastReceiptQuantity: lastRec ? N(lastRec.quantity_change) : null },
+    } satisfies InventoryLowStockCause;
   }
 
   // ── All Technicians ─────────────────────────────────────────────────────────────────────────────────────────────────

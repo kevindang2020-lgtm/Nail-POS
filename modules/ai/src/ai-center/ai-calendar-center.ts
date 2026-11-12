@@ -21,7 +21,7 @@ import { branchTimeZone } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { pbComputeAvailabilityInWindows, pbOpenRanges, type BookingService, type BookingContext, type PBStatus } from '@aipowersalon/booking';
-import type { BookingTechnicianQuery } from '@aipowersalon/api-contracts/tenant';
+import type { BookingTechnicianQuery, AiCalendarPendingQueue } from '@aipowersalon/api-contracts/tenant';
 
 export const AI_CALENDAR_CENTER = Symbol('AI_CALENDAR_CENTER');
 export const AIC_PACKAGE = 'ai_phone_call_assistant';
@@ -109,6 +109,22 @@ export class AiCalendarCenter {
     return (await sql<Row>`select id, technician_id, to_char(start_time at time zone ${tz}, 'HH24:MI') s, to_char(end_time at time zone ${tz}, 'HH24:MI') e, expires_at, booking_session_id, channel
       from booking_holds h where h.tenant_id = ${ctx.tenantId} and ${this.scope(ctx, 'h')} and h.kind = 'slot' and h.released_at is null and h.converted_appointment_id is null
         and h.expires_at > now() and (h.start_time at time zone ${tz})::date = ${date}::date order by h.start_time, h.id limit 500`.execute(this.db)).rows;
+  }
+
+  /** Pending Verification Queue (Extras · AI Calendar 04): every live slot hold (not released, not converted, not expired),
+   *  soonest to expire first — the ones waiting for the customer's code and the ones about to lapse. Read-only: a retry or a
+   *  release stays a staff action in Booking with its own permission. */
+  async pendingQueue(ctx: AicCtx): Promise<AiCalendarPendingQueue> {
+    const clk = await this.clock(ctx); const tz = clk.tz;
+    const rows = (await sql<Row>`select h.id, h.technician_id, t.full_name tech_name, to_char(h.start_time at time zone ${tz}, 'YYYY-MM-DD') d,
+        to_char(h.start_time at time zone ${tz}, 'HH24:MI') s, to_char(h.end_time at time zone ${tz}, 'HH24:MI') e, h.expires_at, h.channel,
+        h.booking_session_id is not null pending_code, extract(epoch from (h.expires_at - now()))::int secs
+      from booking_holds h left join technicians t on t.id = h.technician_id and t.tenant_id = h.tenant_id
+      where h.tenant_id = ${ctx.tenantId} and ${this.scope(ctx, 'h')} and h.kind = 'slot' and h.released_at is null and h.converted_appointment_id is null and h.expires_at > now()
+      order by h.expires_at asc, h.id asc limit 200`.execute(this.db)).rows;
+    const items = rows.map((r) => ({ id: String(r.id), technicianId: r.technician_id ?? null, technicianName: r.tech_name ?? null, date: String(r.d), start: String(r.s), end: String(r.e),
+      expiresAt: iso(r.expires_at)!, minutesLeft: Math.max(0, Math.floor(n(r.secs) / 60)), channel: r.channel ?? null, pendingCode: !!r.pending_code, expiringSoon: n(r.secs) <= 600 }));
+    return { asOf: new Date().toISOString(), timeZone: tz, pendingCode: items.filter((x) => x.pendingCode).length, expiringSoon: items.filter((x) => x.expiringSoon).length, items };
   }
 
   // ── four KPI cards + reconciliation (P1 metric integrity) ────────────────────────────────────────────────────────

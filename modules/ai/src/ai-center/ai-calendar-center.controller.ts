@@ -9,6 +9,7 @@ import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { AiCalendarCenter, AiCalendarError, AI_CALENDAR_CENTER, AIC_PACKAGE, AIC_PERIODS, AIC_BASES, AIC_SORTS, AIC_SOURCES, AIC_STATUSES, type AicCtx } from './ai-calendar-center';
+import type { AiCalendarPendingQueue } from '@aipowersalon/api-contracts/tenant';
 
 function ctxFrom(req: any): AicCtx {
   const c = req?.ctx || {};
@@ -59,6 +60,10 @@ export class AiCalendarCenterController {
     const x = ctxFrom(r); need(x);
     return run(() => this.c().list(x, { q: q?.q, status: q?.status, source: q?.source, aiOnly: q?.aiOnly, technicianId: q?.technicianId, basis: q?.basis, period: q?.period, from: q?.from, to: q?.to, sort: q?.sort, page: q?.page, pageSize: q?.pageSize }));
   }
+
+  /** Pending Verification Queue (Extras · AI Calendar 04): live holds, soonest to expire first — read-only */
+  @Get('holds/pending') @RequirePermission('pos.booking.view')
+  pending(@Req() r: any): Promise<AiCalendarPendingQueue> { const x = ctxFrom(r); need(x); return run(() => this.c().pendingQueue(x)); }
 
   /** Appointment & Customer History overlay — the view itself is audited */
   @Get('appointments/:id') @RequirePermission('pos.booking.view')

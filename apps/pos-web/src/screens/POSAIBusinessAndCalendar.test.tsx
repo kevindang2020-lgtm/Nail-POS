@@ -34,6 +34,9 @@ vi.mock('../api/posAiCalendarApi', () => ({ posAiCalendarApi: {
     appointments: [{ id: 'bk1', technicianId: 't1', customerName: 'Ann', start: '10:00', end: '10:30', status: 'booked', source: 'ai', aiCreated: true, services: ['Gel Manicure'] }], holds: [] }),
   range: () => Promise.resolve({ days: [], totals: { appointments: 0, aiCreated: 0 } }), list: () => Promise.resolve({ items: [], page: 1, pageSize: 20, total: 0, totalPages: 1 }),
   detail: () => Promise.resolve(null), health: () => Promise.resolve(null), assistant: () => Promise.resolve({ cards: [] }),
+  pendingHolds: () => Promise.resolve({ asOf: '2026-07-04T15:00:00Z', timeZone: 'America/New_York', pendingCode: 1, expiringSoon: 1, items: [
+    { id: 'h1', technicianId: 't1', technicianName: 'Bella', date: '2026-07-04', start: '12:00', end: '13:00', expiresAt: '2026-07-04T15:04:00Z', minutesLeft: 4, channel: 'online', pendingCode: true, expiringSoon: true },
+    { id: 'h2', technicianId: 't1', technicianName: 'Bella', date: '2026-07-05', start: '09:00', end: '10:00', expiresAt: '2026-07-04T15:40:00Z', minutesLeft: 40, channel: null, pendingCode: false, expiringSoon: false }] }),
 } }));
 
 import { POSAIBusinessSetupScreen } from './POSAIBusinessSetupScreen';
@@ -79,5 +82,14 @@ describe('POSAICalendarScreen', () => {
     expect(screen.getByTestId('aic-kpi-slots')).toHaveTextContent('30');    // hold- and past-aware, with the engine total in the hint
     expect(screen.getByText('Open in POS Booking')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\\u20[0-9a-f]{2}/);
+  });
+  it('Pending verification lists live holds soonest to expire first, with waiting-for-code and minutes left', async () => {
+    render(<MemoryRouter><POSAICalendarScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('aic-pending-btn'));
+    const rows = await screen.findAllByTestId('aic-pq-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toMatch(/12:00–13:00/); expect(rows[0].textContent).toMatch(/Expiring soon/);
+    expect(screen.getAllByTestId('aic-pq-left').map((x) => x.textContent)).toEqual([expect.stringMatching(/^4 min/), expect.stringMatching(/^40 min/)]);
+    expect(screen.getByTestId('aic-pending').textContent).toMatch(/1 waiting for a code/);
   });
 });

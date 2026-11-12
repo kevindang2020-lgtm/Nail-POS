@@ -252,4 +252,5 @@ export const AIFU_EN: Record<string, string> = {
   "aifu.viewOnly": "Your role can view follow-ups but not work them.",
   "aifu.wait": "Mark waiting",
   "aifu.edit": "Edit details",
+  "aifu.rec.when": "Task opened {opened} · checked {at}",
 };

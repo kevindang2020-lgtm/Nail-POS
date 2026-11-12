@@ -184,11 +184,12 @@ export function POSGiftCardsScreen() {
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><span className="fn-note-acts">{note.actions?.map((a) => <button key={a.label} type="button" className="fk-link" onClick={() => { a.run(); setNote(null); }}>{a.label}</button>)}<button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></span></div> : null}
 
       <FreshnessLine at={freshAt} error={sum.error} testId="giftcards-fresh" />
+      {freshAt ? <div className="sub" data-testid="giftcards-source">{tx('gc.source')}</div> : null}
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-liability" tone="gold" label={tx('gc.kpi.liability')} loading={!k} value={k ? fmtMoney(k.outstandingLiabilityCents) : ''} sub={tx('gc.kpi.liabilitySub')} onClick={() => setGroup('active')} />
           <KpiCard testId="kpi-active" label={tx('gc.kpi.active')} loading={!k} value={k ? fmtNumber(k.activeCards) : ''} sub={tx('gc.kpi.activeSub')} onClick={() => setGroup('active')} />
-          <KpiCard testId="kpi-issued" label={tx('gc.kpi.issued')} loading={!k} value={k ? fmtMoney(k.totalIssuedCents) : ''} sub={k ? tx('gc.kpi.issuedSub', { n: fmtNumber(k.issuedCards), p: periodText(sum.data?.period) }) : ''} />
+          <KpiCard testId="kpi-issued" label={tx('gc.kpi.issued')} loading={!k} value={k ? fmtMoney(k.totalIssuedCents) : ''} sub={k ? tx('gc.kpi.issuedSub', { n: fmtNumber(k.issuedCards), p: periodText(sum.data?.period) }) : ''} onClick={() => setDlg({ kind: 'liability' })} />
           <KpiCard testId="kpi-redeemed" label={tx('gc.kpi.redeemed')} loading={!k} value={k ? fmtMoney(k.redeemedValueCents) : ''} sub={k ? tx('gc.kpi.redeemedSub', { n: fmtNumber(k.redemptions), r: fmtMoney(k.refundedBackCents) }) : ''} onClick={() => setGroup('redeemed')} />
           <KpiCard testId="kpi-total" label={tx('gc.kpi.total')} loading={!k} value={k ? fmtNumber(k.totalCards) : ''} sub={k ? tx('gc.kpi.totalSub', { p: fmtNumber(k.pendingPaymentCards) }) : ''} onClick={clearAll} />
         </>}

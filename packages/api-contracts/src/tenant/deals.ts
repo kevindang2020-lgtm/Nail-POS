@@ -109,3 +109,11 @@ export interface TicketOffers {
   best: { dealIds: string[]; add: { dealId: string; couponId: string | null }[]; savingsCents: number; currentCents: number; better: boolean } | null;
   policy?: { mode: string };
 }
+
+/** Refund Impact Preview (Extras · Discounts 11): what a refund would do to each discount on the ticket — read-only */
+export interface DiscountRefundImpact {
+  ticketId: string; wholeTicket: boolean;
+  items: { redemptionId: string; dealName: string; code: string | null; status: string; discountCents: number; alreadyReversedCents: number;
+    outcome: 'release' | 'keep' | 'reverse' | 'partial' | 'none'; reverseCents: number; placeReturned: boolean;
+    lines: { lineId: string; cents: number; refunded: boolean }[] }[];
+}

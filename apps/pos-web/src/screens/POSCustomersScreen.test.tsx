@@ -62,6 +62,15 @@ describe('POSCustomersScreen', () => {
     expect(screen.getByText(/Showing 1–3 of 3/)).toBeInTheDocument();
   });
 
+  it('data freshness & trust: the as-of time of the last good read, and a number the server did not send is "—", never 0', async () => {
+    globalThis.fetch = mockFetch({ ...state, kpisFull: { ...state.kpisFull, vipCustomers: null, totalCustomers: 0 } }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('customers-fresh')).toBeInTheDocument();
+    const vip = screen.getAllByText('VIP Customers')[0].closest('div')!.parentElement!;
+    expect(vip.textContent).toMatch(/—/);                                  // unavailable, not a false zero
+    const total = screen.getAllByText('Total Customers')[0].closest('div')!.parentElement!;
+    expect(total.textContent).toMatch(/0/);                                // a real zero stays 0
+  });
   it('opens the customer profile drawer when a customer name is clicked', async () => {
     globalThis.fetch = mockFetch({
       kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 1, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 1, averageSpendCents: 5203 },
@@ -78,6 +87,19 @@ describe('POSCustomersScreen', () => {
     // tab strip switches to the loyalty/membership view (all from the real detail payload)
     fireEvent.click(within(dialog).getByText('Loyalty & Membership'));
     expect(within(dialog).getByText('MEMBERSHIP')).toBeInTheDocument();
+  });
+
+  it('every row carries the same safe shortcuts: Book (customer preselected) and Loyalty (the profile Loyalty tab)', async () => {
+    globalThis.fetch = mockFetch({
+      kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 1, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 1, averageSpendCents: 5203 },
+      rows: { items: [{ customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'olivia@email.com', status: 'active', source: 'walk_in', visitCount: 24, lastVisitAt: '2026-05-05', totalSpendCents: 124800, averageSpendCents: 5200, loyaltyTier: 'Gold', loyaltyPoints: 10, tags: [] }], pagination: pagination(1) },
+      filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect((await screen.findAllByTestId('cd-row-book')).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByTestId('cd-row-loyalty')[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('MEMBERSHIP')).toBeInTheDocument();   // opened straight on Loyalty & Membership
   });
 
   it('edits tags from the profile drawer (PATCH /pos/customers/:id/tags)', async () => {

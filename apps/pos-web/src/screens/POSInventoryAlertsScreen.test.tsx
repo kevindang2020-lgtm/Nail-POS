@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const api = vi.hoisted(() => ({ summary: vi.fn(), active: vi.fn(), history: vi.fn(), usage: vi.fn(), ledger: vi.fn(), technicians: vi.fn(), pickers: vi.fn(), event: vi.fn(), acknowledge: vi.fn(), record: vi.fn(), adjust: vi.fn(), exportCsv: vi.fn() }));
+const api = vi.hoisted(() => ({ summary: vi.fn(), active: vi.fn(), history: vi.fn(), usage: vi.fn(), ledger: vi.fn(), technicians: vi.fn(), pickers: vi.fn(), event: vi.fn(), acknowledge: vi.fn(), record: vi.fn(), adjust: vi.fn(), exportCsv: vi.fn(), cause: vi.fn() }));
 vi.mock('../api/posInventoryAlertsApi', () => ({ posInventoryAlertsApi: api }));
 let perms: string[] = [];
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ principal: { userId: 'u', role: 'MANAGER', permissions: perms } }) }));
@@ -32,6 +32,23 @@ describe('POSInventoryAlertsScreen', () => {
     expect(screen.getByTestId('kpi-out')).toHaveTextContent('3');
     const rows = await screen.findAllByTestId('alert-row');
     expect(rows[0]).toHaveTextContent('No recorded use'); expect(rows[1]).toHaveTextContent('Bao Tran');
+  });
+  it('the product overlay explains why it is low from measured movements, an overdue order and a ledger mismatch', async () => {
+    api.ledger.mockResolvedValue({ product: { id: 'p1', name: 'Rose Gel', sku: 'RG-01', unit: 'bottle', onHand: 1, reorderLevel: 3, criticalLevel: 2 }, lastUsedAt: null, lastUsedLabel: 'No recorded use', lastRecordedAt: null, period: PERIOD,
+      byTechnician: [], total: 0, page: 1, pageSize: 8, pages: 1, events: [] });
+    api.cause.mockResolvedValue({ product: { id: 'p1', name: 'Rose Gel', onHand: 1, reorderLevel: 3, low: true }, days: 30, buckets: { usage: -6, received: 0, losses: -2, corrections: 0, other: 0 },
+      byType: [], lastReceivedAt: '2026-09-15T12:00:00Z', openOrders: { quantity: 10, orders: 1, expectedDate: '2026-10-27', overdue: true }, ledgerAfter: 2, consistent: false, causes: ['usage', 'losses', 'receiving_delayed', 'inconsistent'],
+      reorder: { reorderQuantity: 6, onOrder: 10, suggested: 0, partlyReceivedLines: 1, receivedInWindow: 0, lastReceiptQuantity: 10 } });
+    mount();
+    fireEvent.click((await screen.findAllByText('Rose Gel'))[0]);
+    const c = await screen.findByTestId('low-cause');
+    expect(c.textContent).toMatch(/Why it is low/);
+    expect(screen.getByTestId('cause-usage').textContent).toMatch(/Used: 6/);
+    expect(screen.getByTestId('cause-receiving_delayed').textContent).toMatch(/10 on order/);
+    expect(screen.getByTestId('cause-inconsistent').textContent).toMatch(/ends at 2 but on-hand shows 1/);
+    expect(screen.getByTestId('reorder-recon').textContent).toMatch(/10 on order covers the reorder/);
+    expect(screen.getByTestId('reorder-partial').textContent).toMatch(/1 order lines are partly received/);
+    expect(api.cause).toHaveBeenCalledWith('p1');
   });
   it('switching to Product Usage reads the usage list with the period and date basis', async () => {
     mount(); await screen.findAllByTestId('alert-row');

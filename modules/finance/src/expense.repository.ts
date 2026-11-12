@@ -158,6 +158,16 @@ export class ExpenseRepository {
     return { items: rows.rows.map(mapExpense), total, page: served };
   }
 
+  /** Bill due calendar (Extras · Receipt Expense OCR 06): open / partly paid bills due on or before `until` (overdue
+   *  included), soonest first. Same scope and the same open-bill rule as the KPI counts above. */
+  async billsDue(s: Scope, until: string, limit = 200): Promise<ExpenseRow[]> {
+    const rows = await sql<Raw>`SELECT ${COLS} FROM expenses e LEFT JOIN inventory_vendors v ON v.id = e.vendor_id AND v.tenant_id = e.tenant_id
+      WHERE e.tenant_id = ${s.tenantId} ${scoped(s)} AND e.kind = 'bill' AND e.bill_status IN ('open', 'partially_paid') AND e.status <> 'voided'
+        AND e.archived_at IS NULL AND e.due_date IS NOT NULL AND e.due_date <= ${until}::date
+      ORDER BY e.due_date ASC, e.id ASC LIMIT ${Math.min(Math.max(1, limit), 500)}`.execute(this.db);
+    return rows.rows.map(mapExpense);
+  }
+
   /** Expenses guide (Nov 4 2026) — the four KPIs over the WHOLE filtered set (every page): the counted (approved) expenses in
    *  the date range matching the same search / category / method as the list. Top Category is by amount (ties → key). */
   async summary(s: Scope, f: ListFilters): Promise<{ totalCents: number; entries: number; categoriesUsed: number; top: { key: string; totalCents: number } | null }> {
@@ -244,6 +254,14 @@ export class ExpenseRepository {
   async replaceAllocations(exec: Exec, tenantId: string, expenseId: string, rows: Array<{ branchId: string; amountCents: number; basisPoints: number | null }>) {
     await exec.deleteFrom('expense_allocations').where('tenant_id', '=', tenantId).where('expense_id', '=', expenseId).execute();
     if (rows.length) await exec.insertInto('expense_allocations').values(rows.map((a) => ({ tenant_id: tenantId, expense_id: expenseId, branch_id: a.branchId, amount_cents: a.amountCents, basis_points: a.basisPoints })) as never).execute();
+  }
+  /** Vendor-rule preview (Extras · Receipt Expense OCR 05): this salon's recent non-voided expenses with their vendor name,
+   *  for matching on the normalized vendor in the service (vendor names are not stored normalized). Tenant-scoped. */
+  async vendorHistory(tenantId: string, since: string, limit = 5000) {
+    const r = await sql<{ status: string; category: string; category_source: string; vendor: string | null }>`SELECT e.status, e.category, e.category_source, COALESCE(v.name, e.vendor) AS vendor
+      FROM expenses e LEFT JOIN inventory_vendors v ON v.id = e.vendor_id AND v.tenant_id = e.tenant_id
+      WHERE e.tenant_id = ${tenantId} AND e.status <> 'voided' AND e.incurred_on >= ${since}::date ORDER BY e.incurred_on DESC, e.id DESC LIMIT ${limit}`.execute(this.db);
+    return r.rows.map((x) => ({ status: String(x.status), category: String(x.category ?? ''), categorySource: String(x.category_source ?? ''), vendor: x.vendor ?? null }));
   }
   async allocations(tenantId: string, expenseId: string) {
     const rows = await this.db.selectFrom('expense_allocations').select(['branch_id', 'amount_cents', 'basis_points']).where('tenant_id', '=', tenantId).where('expense_id', '=', expenseId).execute();

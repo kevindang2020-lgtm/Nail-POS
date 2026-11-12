@@ -22,6 +22,7 @@ import { DEAL_REDEMPTION_HOLD, DEAL_REDEMPTION, DEAL_COUPON_CODE } from './deal-
 import type { DealTerms, CustomerFacts } from './eligibility';
 import type { OfferRule, LineAllocation } from './pricing';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
+import { refundOutcome } from './refund-outcome';
 
 const rowsOf = (r: any): any[] => (r && Array.isArray(r.rows) ? r.rows : []);
 const iso = (v: any): string | null => (v ? new Date(v).toISOString() : null);
@@ -323,11 +324,10 @@ export class KyselyDealsLedger {
       const rows = rowsOf(await sql`SELECT * FROM deal_redemptions WHERE tenant_id = ${tenantId} AND ticket_id = ${ticketId} AND status IN ('applied','redeemed','partially_reversed') ORDER BY id FOR UPDATE`.execute(trx));
       let reversed = 0; let partial = 0; let reversedCents = 0;
       for (const r of rows) {
-        const alloc: LineAllocation[] = Array.isArray(r.line_allocations) ? r.line_allocations : (typeof r.line_allocations === 'string' ? JSON.parse(r.line_allocations) : []);
         const already = Number(r.reversed_cents || 0);
         const total = Number(r.amount_discounted_cents || 0);
-        const allLines = !lineIds || !alloc.length || alloc.every((a) => a.cents <= 0 || lineIds.includes(a.lineId));
-        const share = !lineIds ? total : alloc.filter((a) => lineIds.includes(a.lineId)).reduce((n, a) => n + a.cents, 0);
+        const out = refundOutcome(r, lineIds);   // the one refund rule (engine/refund-outcome.ts), shared with the read-only preview
+        const allLines = out.kind === 'reverse';
         if (r.status === 'applied') {
           if (!lineIds) { await sql`UPDATE deal_redemptions SET status = 'released', reversal_reason = ${reason}, updated_at = now() WHERE ${canMoveToSql(DEAL_REDEMPTION, 'released')} AND tenant_id = ${tenantId} AND id = ${r.id}`.execute(trx); await this.giveBack(trx, tenantId, r, reason); }
           continue;
@@ -339,8 +339,8 @@ export class KyselyDealsLedger {
           reversed++; reversedCents += total - already;
           await this.event(trx, DOMAIN_EVENTS.DEAL_REDEMPTION_REVERSED, tenantId, r.branch_id, 'deal_redemption', String(r.id), actorId, { redemptionId: String(r.id), dealId: String(r.deal_id), ticketId, kind: r.kind, full: true, reversedCents: total - already, reason });
           await this.analytics(trx, tenantId, String(r.deal_id), r.customer_id, 'reversal');
-        } else if (share > 0) {
-          const next = Math.min(total, already + share);
+        } else if (out.kind === 'partial') {
+          const next = out.nextReversedCents;
           await sql`UPDATE deal_redemptions SET status = 'partially_reversed', reversed_at = now(), reversal_reason = ${reason}, reversed_cents = ${next}, updated_at = now() WHERE ${canMoveToSql(DEAL_REDEMPTION, 'partially_reversed')} AND tenant_id = ${tenantId} AND id = ${r.id}`.execute(trx);
           partial++; reversedCents += next - already;
           await this.event(trx, DOMAIN_EVENTS.DEAL_REDEMPTION_REVERSED, tenantId, r.branch_id, 'deal_redemption', String(r.id), actorId, { redemptionId: String(r.id), dealId: String(r.deal_id), ticketId, kind: r.kind, full: false, reversedCents: next - already, reason });

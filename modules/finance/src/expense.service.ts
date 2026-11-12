@@ -220,6 +220,31 @@ export class ExpenseService {
     await this.auditLog(ctx, 'expense_rule_created', { id, branchId: null }, { summary: `Always categorize ${b.vendor} as ${categoryLabel(key)}`, metadata: { vendorNorm, key } });
     return { id, vendorNorm, categoryKey: key };
   }
+  /** Vendor-rule preview (Extras · Receipt Expense OCR 05): what an "always categorize this vendor as X" rule would do,
+   *  BEFORE it is saved. A rule only classifies FUTURE drafts: approved history and open drafts keep their category (no
+   *  silent change) — the preview counts how the last 180 days of this vendor's expenses were categorized against it. */
+  async previewRule(ctx: FinanceCtx, b: { vendor: string; categoryKey: string }) {
+    this.require(ctx, PERM.view);
+    const vendorNorm = normalizeVendorName(b.vendor);
+    if (!vendorNorm) throw new ExpenseError('EXPENSE_INVALID', 'Name the vendor this rule is for.');
+    const { keys, custom } = await this.validKeys(ctx.tenantId);
+    const key = normalizeCategory(b.categoryKey, keys);
+    if (!key) throw new ExpenseError('EXPENSE_CATEGORY_NOT_FOUND');
+    const today = await this.today(ctx.tenantId);
+    const [hist, rules] = await Promise.all([this.repo.vendorHistory(ctx.tenantId, addDays(today, -180)), this.repo.rules(ctx.tenantId)]);
+    const mine = hist.filter((h) => h.vendor && normalizeVendorName(h.vendor) === vendorNorm);
+    const by = new Map<string, number>(); for (const h of mine) by.set(h.category, (by.get(h.category) ?? 0) + 1);
+    const approved = mine.filter((h) => h.status === 'approved'); const open = mine.filter((h) => h.status === 'draft' || h.status === 'pending_review');
+    const existing = rules.find((r) => r.vendorNorm === vendorNorm && r.active !== false && r.kind === 'owner_lock') ?? null;
+    return {
+      vendorNorm, categoryKey: key, categoryLabel: categoryLabel(key, custom), since: addDays(today, -180),
+      matched: mine.length, sameCategory: mine.filter((h) => h.category === key).length,
+      approved: approved.length, approvedDifferent: approved.filter((h) => h.category !== key).length,
+      open: open.length, openDifferent: open.filter((h) => h.category !== key).length,
+      byCategory: [...by.entries()].sort((x, y) => y[1] - x[1]).map(([k, n]) => ({ key: k, label: categoryLabel(k, custom), count: n })),
+      replaces: existing ? { id: existing.id, categoryKey: existing.categoryKey, label: categoryLabel(existing.categoryKey, custom) } : null,
+    };
+  }
   async deleteRule(ctx: FinanceCtx, id: string) {
     this.require(ctx, PERM.categories);
     if (!(await this.repo.deactivateRule(this.db, ctx.tenantId, id, ctx.userId))) throw new ExpenseError('EXPENSE_NOT_FOUND', 'That rule was not found.');
@@ -313,6 +338,18 @@ export class ExpenseService {
     const { items, total, page } = await this.repo.list(s, { ...f, from, to });
     const { custom } = await this.validKeys(ctx.tenantId);
     return { items: items.map((e) => this.view(e, custom)), total, page, pageSize: Math.min(Math.max(1, f.pageSize ?? 50), 200) };
+  }
+  /** Bill due calendar (Extras · Receipt Expense OCR 06): open bills due within `days` (1–90, default 30) of the salon's
+   *  today, overdue first. Read-only — paying a bill stays the permissioned Record payment action. */
+  async billsDue(ctx: FinanceCtx, f: { days?: number | null; branchId?: string | null }) {
+    this.require(ctx, PERM.view);
+    const s = await this.scope(ctx, f.branchId);
+    const today = await this.today(ctx.tenantId);
+    const days = Number.isInteger(f.days) && (f.days as number) >= 1 && (f.days as number) <= 90 ? (f.days as number) : 30;
+    const until = addDays(today, days);
+    const rows = await this.repo.billsDue(s, until, 201);
+    const { custom } = await this.validKeys(ctx.tenantId);
+    return { today, until, days, capped: rows.length > 200, items: rows.slice(0, 200).map((e) => this.view(e, custom, today)) };
   }
   /** Expenses guide (Nov 4 2026): Total · Entries · Top Category (by amount) · Categories Used over the whole filtered set, with
    *  the period the server resolved in the salon's time zone (the screen shows it; a preset is never a device-clock guess). */
@@ -1046,6 +1083,37 @@ export class ExpenseService {
   }
 
   // ── export (§97–100, §202) ─────────────────────────────────────────────────────────────────────────────────────────
+  /** Accountant export preflight (Extras · Receipt Expense OCR 09): before an export, the same rows the export would
+   *  write (same period, branch scope and filters), checked for duplicates, missing categories, missing receipts,
+   *  unapproved records left out, and whether the rows reconcile to the counted total. Read-only; nothing is exported. */
+  async exportPreflight(ctx: FinanceCtx, q: { period?: ReportPeriod; from?: string; to?: string; branchId?: string | null; includeUnapproved?: boolean; category?: string; paymentMethod?: string; q?: string }) {
+    this.require(ctx, PERM.export);
+    const s = await this.scope(ctx, q.branchId);
+    const today = await this.today(ctx.tenantId);
+    let w: DateWindow;
+    try { w = periodWindow(q.period ?? 'month', today, { from: q.from, to: q.to }); } catch (e) { throw new ExpenseError('EXPENSE_INVALID', (e as Error).message); }
+    const fold = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+    const words = q.q?.trim() ? fold(q.q.trim()) : '';
+    const keep = (e: { category: string | null; paymentMethod: string | null; vendorName?: string | null; vendor: string | null; description: string | null; invoiceNumber: string | null; receiptNumber?: string | null }) =>
+      (!q.category || e.category === q.category) && (!q.paymentMethod || e.paymentMethod === q.paymentMethod)
+      && (!words || [e.vendorName, e.vendor, e.description, e.invoiceNumber, e.receiptNumber].some((x) => fold(x).includes(words)));
+    const [rowsAll, everyStatus, counted] = await Promise.all([this.repo.exportRows(s, w.from, w.to, !!q.includeUnapproved), this.repo.exportRows(s, w.from, w.to, true), this.repo.totals(s, w.from, w.to)]);
+    const rows = rowsAll.filter(keep);
+    const totalCents = rows.reduce((a, e) => a + e.amountCents, 0);
+    const filtered = !!(q.category || q.paymentMethod || words);
+    return {
+      period: { from: w.from, to: w.to }, branchScope: (s.branchId ? 'branch' : 'all_allowed') as 'branch' | 'all_allowed', branchName: s.branchId ? (rows.find((e) => e.branchId === s.branchId)?.branchName ?? null) : null,
+      rows: rows.length, totalCents, filtered, includeUnapproved: !!q.includeUnapproved,
+      duplicates: rows.filter((e) => e.duplicateStatus === 'possible' || e.duplicateStatus === 'exact').length,
+      uncategorized: rows.filter((e) => !e.category).length,
+      missingReceipts: rows.filter((e) => !e.hasReceipt).length,
+      unapprovedLeftOut: q.includeUnapproved ? 0 : everyStatus.filter(keep).filter((e) => e.status !== 'approved').length,
+      countedTotalCents: counted.totalCents,
+      // the rows reconcile to the counted total only when the export is the plain approved set (no filters, no drafts)
+      reconciles: filtered || q.includeUnapproved ? null : totalCents === counted.totalCents,
+    };
+  }
+
   async exportFile(ctx: FinanceCtx, q: { format: 'csv' | 'xlsx' | 'pdf'; period?: ReportPeriod; from?: string; to?: string; branchId?: string | null; includeUnapproved?: boolean; category?: string; paymentMethod?: string; q?: string }) {
     this.require(ctx, PERM.export);
     const s = await this.scope(ctx, q.branchId);

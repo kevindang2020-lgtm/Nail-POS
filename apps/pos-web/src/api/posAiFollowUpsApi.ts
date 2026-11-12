@@ -46,6 +46,6 @@ export const posAiFollowUpsApi = {
   importSources: () => api.post<{ createdFromMissedCalls: number; createdFromCopilot: number }>(`${B}/import-sources`, {}),
   recommendedAssignee: () => api.get<{ userId: string; name: string; role: string; openTasks: number; reason: string } | null>(`${B}/recommended-assignee`),
   healthHistory: (page = 1, pageSize = 10) => api.get<{ items: { overall: string; at: string | null; by: string | null; failed: number }[]; page: number; pageSize: number; totalItems: number; totalPages: number }>(`${B}/health/history`, { page: String(page), pageSize: String(pageSize) }),
-  priorities: () => api.get<{ items: FuPriority[]; bookingsAwaitingVerification: number; note: string }>(`${B}/priorities`),
+  priorities: () => api.get<{ items: FuPriority[]; asOf?: string; bookingsAwaitingVerification: number; note: string }>(`${B}/priorities`),
   decide: (b: { taskId: string; signal: string; decision: 'accept' | 'dismiss' | 'escalate'; note?: string | null; version?: number }) => api.post<unknown>(`${B}/priorities/decide`, b),
 };

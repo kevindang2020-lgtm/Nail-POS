@@ -27,6 +27,10 @@ import { money } from './reportsCommon';
 import { serverText } from '../i18n/server-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { deviceToday } from '../lib/deviceToday';
+import { BillsCalendar } from './expenses/BillsCalendar';
+import { AllocationCheck } from './expenses/AllocationCheck';
+import { ExportPreflightDialog } from './expenses/ExportPreflight';
+import { VendorRuleDialog } from './expenses/VendorRuleDialog';
 
 type Tab = ExpenseTab | 'all';
 const TABS: Tab[] = ['all', 'inbox', 'needs_review', 'approved', 'bills', 'duplicates', 'archived'];
@@ -56,7 +60,7 @@ export function POSExpensesScreen() {
   const [note, setNote] = useState<Note | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
-  const [viewId, setViewId] = useState<string | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null); const [billsCal, setBillsCal] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
   const [cats, setCats] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -103,8 +107,9 @@ export function POSExpensesScreen() {
     } catch (e) { setNote({ tone: 'bad', text: errMsg(e, tx('people.expenses.err.upload')) }); }
     finally { setBusy(null); if (fileRef.current) fileRef.current.value = ''; }
   };
+  const [preflight, setPreflight] = useState<'csv' | 'xlsx' | 'pdf' | null>(null);
   const exportAs = async (format: 'csv' | 'xlsx' | 'pdf') => {
-    setBusy('export-' + format); setNote(null);
+    setBusy('export-' + format); setNote(null); setPreflight(null);
     try { const f = await posExpensesApi.exportFile(format, (dates as { period?: string }).period ?? 'month', { from: (dates as { from?: string }).from, to: (dates as { to?: string }).to, ...filters }); saveExportFile(f); setNote({ tone: 'ok', text: tx('people.expenses.exported') }); }
     catch (e) { setNote({ tone: 'bad', text: errMsg(e, tx('people.expenses.err.export')) }); }
     finally { setBusy(null); }
@@ -127,9 +132,9 @@ export function POSExpensesScreen() {
           </> : null}
           <Link className="fk-btn ghost" to="/tenant/ai/ocr-receipt">{tx('pos.receipt_ai_review')}</Link>
           {canExport ? <>
-            <button type="button" className="fk-btn" disabled={busy === 'export-csv'} onClick={() => void exportAs('csv')} title={tx('finance.ex.exportScope')} data-testid="export-csv">{tx('pos.export_csv')}</button>
-            <button type="button" className="fk-btn" disabled={busy === 'export-xlsx'} onClick={() => void exportAs('xlsx')} title={tx('finance.ex.exportScope')} data-testid="export-xlsx">{tx('pos.export_excel')}</button>
-            <button type="button" className="fk-btn" disabled={busy === 'export-pdf'} onClick={() => void exportAs('pdf')} title={tx('finance.ex.exportScope')} data-testid="export-pdf">{tx('pos.export_pdf')}</button>
+            <button type="button" className="fk-btn" disabled={busy === 'export-csv'} onClick={() => setPreflight('csv')} title={tx('finance.ex.exportScope')} data-testid="export-csv">{tx('pos.export_csv')}</button>
+            <button type="button" className="fk-btn" disabled={busy === 'export-xlsx'} onClick={() => setPreflight('xlsx')} title={tx('finance.ex.exportScope')} data-testid="export-xlsx">{tx('pos.export_excel')}</button>
+            <button type="button" className="fk-btn" disabled={busy === 'export-pdf'} onClick={() => setPreflight('pdf')} title={tx('finance.ex.exportScope')} data-testid="export-pdf">{tx('pos.export_pdf')}</button>
           </> : null}
           {canManage ? <button type="button" className="fk-btn primary" onClick={() => { setNote(null); setForm(emptyForm(today)); }} data-testid="add-expense">{tx('pos.add_expense')}</button> : null}
         </div>
@@ -155,6 +160,7 @@ export function POSExpensesScreen() {
         <div className="fk-seg ex-tabs" role="tablist">
           {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={'tab-' + x}>{tx(TAB_LABEL[x])}</button>)}
         </div>
+        {tab === 'bills' ? <button type="button" className="fk-btn ghost" onClick={() => setBillsCal(true)} data-testid="bills-calendar">{tx('finance.bills.calTitle')}</button> : null}
         <div className="fn-search wide">
           <input className="fk-search wide" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('finance.ex.searchPh')} aria-label={tx('finance.ex.searchPh')} data-testid="search" />
           {search ? <button type="button" className="fk-x" aria-label={tx('finance.clearSearch')} onClick={() => setSearch('')}>✕</button> : null}
@@ -208,7 +214,10 @@ export function POSExpensesScreen() {
       </FitPanel>
 
       {form ? <ExpenseForm initial={form} today={today} categories={categories} canApprove={canApprove} onClose={() => setForm(null)} onSaved={onSaved} /> : null}
-      {viewId ? <ExpenseView id={viewId} canManage={canManage} canApprove={canApprove} can={can} catLabel={catLabel} onClose={() => setViewId(null)}
+      {preflight ? <ExportPreflightDialog format={preflight} busy={busy === 'export-' + preflight} onClose={() => setPreflight(null)} onConfirm={() => void exportAs(preflight)}
+        query={{ period: (dates as { period?: string }).period ?? 'month', from: (dates as { from?: string }).from, to: (dates as { to?: string }).to, ...filters }} /> : null}
+      {billsCal ? <BillsCalendar onClose={() => setBillsCal(false)} onOpen={(id) => { setBillsCal(false); setViewId(id); }} /> : null}
+      {viewId ? <ExpenseView id={viewId} categories={categories} canManage={canManage} canApprove={canApprove} can={can} catLabel={catLabel} onClose={() => setViewId(null)}
         onEdit={(x) => { setViewId(null); setForm(formOf(x)); }} onAsk={(a) => setAsk(a)} onChanged={(msg) => { setNote({ tone: 'ok', text: msg }); reload(); }} busy={busy} setBusy={setBusy} tick={tick} /> : null}
       {ask ? <AskDialog ask={ask} onClose={() => setAsk(null)} onDone={(msg) => { setAsk(null); setNote({ tone: 'ok', text: msg }); reload(); }} /> : null}
       {cats ? <CategoryBreakdown dates={dates} onClose={() => setCats(false)} /> : null}
@@ -294,13 +303,14 @@ function ExpenseForm({ initial, today, categories, canApprove, onClose, onSaved 
 }
 
 /** View expense: every field, the receipt (private, expiring preview when Receipt AI can show it), and the workflow actions. */
-function ExpenseView({ id, canManage, canApprove, can, catLabel, onClose, onEdit, onAsk, onChanged, busy, setBusy, tick }: {
+function ExpenseView({ id, canManage, canApprove, can, catLabel, categories = [], onClose, onEdit, onAsk, onChanged, busy, setBusy, tick }: {
+  categories?: FinCategory[];
   id: string; canManage: boolean; canApprove: boolean; can: (k: string) => boolean; catLabel: (k: string | null | undefined, l?: string | null) => string; onClose: () => void; onEdit: (x: FinExpense) => void;
   onAsk: (a: Ask) => void; onChanged: (msg: string) => void; busy: string | null; setBusy: (b: string | null) => void; tick: number;
 }) {
   const d = useLoad<FinDetail>(() => posExpensesApi.detail(id), [id, tick]);
   const [err, setErr] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<{ url: string | null; failed: boolean } | null>(null);
+  const [receipt, setReceipt] = useState<{ url: string | null; failed: boolean } | null>(null); const [ruleFor, setRuleFor] = useState<string | null>(null);
   const x = d.data?.expense;
   const act = async (fn: () => Promise<unknown>, ok: string | ((r: unknown) => string)) => {
     setBusy(id); setErr(null);
@@ -340,10 +350,12 @@ function ExpenseView({ id, canManage, canApprove, can, catLabel, onClose, onEdit
           {x.rejectedReason ? <><dt>{tx('pos.reject')}</dt><dd>{x.rejectedReason}</dd></> : null}
           <dt>{tx('finance.ex.created', { d: '' }).trim()}</dt><dd>{x.createdAt ? fmtInZone(x.createdAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</dd>
         </dl>
+        <AllocationCheck allocations={d.data?.allocations ?? []} amountCents={x.amountCents} branchId={x.branchId ?? null} counted={x.status === 'approved'} />
         {receipt ? (receipt.url ? <a className="fk-btn" href={receipt.url} target="_blank" rel="noreferrer noopener" data-testid="receipt-link">{tx('finance.ex.openReceipt')} ↗</a>
           : <div className="fk-hint">{tx('finance.ex.receiptPreviewOff')} <Link to="/tenant/ai/ocr-receipt">{tx('pos.receipt_ai_review')}</Link></div>) : null}
         <h3 className="fk-sub">{tx('finance.ex.workflow')}</h3>
         <div className="cg-acts wrap" data-testid="view-actions">
+          {can('owner.expenses.categories.manage') && (x.vendorDisplay || x.vendor) ? <button type="button" className="fk-btn ghost" onClick={() => setRuleFor(String(x.vendorDisplay || x.vendor))} data-testid="act-vendor-rule">{tx('finance.rule.open')}</button> : null}
           {canManage && x.status === 'draft' ? <button type="button" className="fk-btn" disabled={b} onClick={() => void act(() => posExpensesApi.submit(x.id, x.version), tx('people.expenses.sentForReview'))}>{tx('pos.send')}</button> : null}
           {canApprove && (x.status === 'pending_review' || x.status === 'draft') && !dup ? <button type="button" className="fk-btn primary" disabled={b} onClick={() => void act(() => posExpensesApi.approve(x.id, x.version), tx('people.expenses.approved'))} data-testid="act-approve">{tx('pos.approve')}</button> : null}
           {canApprove && dup ? <>
@@ -365,6 +377,7 @@ function ExpenseView({ id, canManage, canApprove, can, catLabel, onClose, onEdit
         {err ? <div className="fk-err" role="alert">{err}</div> : null}
         <ExpenseHistory items={(d.data?.history ?? []) as ExpenseHistoryItem[]} />
       </>}
+      {ruleFor && x ? <VendorRuleDialog vendor={ruleFor} initialKey={x.category} categories={categories} catLabel={(k) => catLabel(k)} canSave={can('owner.expenses.categories.manage')} onClose={() => setRuleFor(null)} onSaved={(msg) => { setRuleFor(null); onChanged(msg); }} /> : null}
     </FitDialog>
   );
 }

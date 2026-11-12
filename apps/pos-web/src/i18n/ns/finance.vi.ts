@@ -356,4 +356,53 @@ export const FINANCE_VI: Record<string, string> = {
   "exp.audited": "Lần xuất được ghi vào nhật ký kiểm tra kèm tên bạn.", // DRAFT — Kevin reviews
   "exp.nothing": "Không có bản ghi nào khớp bộ lọc nên không có gì để xuất.", // DRAFT — Kevin reviews
   "exp.cap": "Chỉ {n} bản ghi đầu tiên được xuất — hãy thu hẹp bộ lọc để lấy phần còn lại.", // DRAFT — Kevin reviews
+  "finance.bills.calTitle": "Lịch hạn thanh toán hóa đơn", // DRAFT — Kevin reviews
+  "finance.bills.calSub": "Hóa đơn chưa thanh toán đến hạn trước {to}, quá hạn hiện trước", // DRAFT — Kevin reviews
+  "finance.bills.window": "Khoảng thời gian", // DRAFT — Kevin reviews
+  "finance.bills.days": "{n} ngày tới", // DRAFT — Kevin reviews
+  "finance.bills.none": "Không có hóa đơn nào đến hạn trong khoảng này.", // DRAFT — Kevin reviews
+  "finance.bills.capped": "Đang hiện 200 hóa đơn đầu tiên — thu hẹp khoảng thời gian để xem phần còn lại.", // DRAFT — Kevin reviews
+  "finance.bills.overdue": "Quá hạn", // DRAFT — Kevin reviews
+  "finance.bills.today": "Đến hạn hôm nay", // DRAFT — Kevin reviews
+  "finance.bills.openSum": "Còn nợ {v}", // DRAFT — Kevin reviews
+  "finance.alloc.title": "Phân bổ theo chi nhánh", // DRAFT — Kevin reviews
+  "finance.alloc.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "finance.alloc.exact": "Chính xác: phần của các chi nhánh cộng lại đúng {v}.", // DRAFT — Kevin reviews
+  "finance.alloc.off": "Lệch {v}: các phần cộng lại {s}, chi phí là {t}. Hãy sửa phân bổ trước khi báo cáo.", // DRAFT — Kevin reviews
+  "finance.alloc.notCounted": "Chưa vào báo cáo — chỉ chi phí đã duyệt mới được tính.", // DRAFT — Kevin reviews
+  "finance.alloc.oneBranch": "Chỉ tính trong báo cáo của {b}.", // DRAFT — Kevin reviews
+  "finance.alloc.split": "Báo cáo mỗi chi nhánh tính phần của chi nhánh đó ở trên; tổng của tiệm tính toàn bộ số tiền một lần.", // DRAFT — Kevin reviews
+  "finance.alloc.salonWide": "Toàn tiệm, không phân bổ: tính trong tổng của tiệm; báo cáo chi nhánh hiển thị phần được tính toán.", // DRAFT — Kevin reviews
+  "finance.pf.title": "Trước khi xuất ({f})", // DRAFT — Kevin reviews
+  "finance.pf.export": "Xuất", // DRAFT — Kevin reviews
+  "finance.pf.period": "Kỳ", // DRAFT — Kevin reviews
+  "finance.pf.scope": "Phạm vi chi nhánh", // DRAFT — Kevin reviews
+  "finance.pf.oneBranch": "Một chi nhánh", // DRAFT — Kevin reviews
+  "finance.pf.allBranches": "Tất cả chi nhánh bạn được xem", // DRAFT — Kevin reviews
+  "finance.pf.rows": "Số dòng", // DRAFT — Kevin reviews
+  "finance.pf.filtered": "Đang áp dụng bộ lọc (danh mục, phương thức hoặc tìm kiếm).", // DRAFT — Kevin reviews
+  "finance.pf.noDups": "Không có khoản nghi trùng.", // DRAFT — Kevin reviews
+  "finance.pf.dups": "{n} khoản nghi trùng — hãy xem lại trước.", // DRAFT — Kevin reviews
+  "finance.pf.noUncat": "Mọi dòng đều có danh mục.", // DRAFT — Kevin reviews
+  "finance.pf.uncat": "{n} dòng chưa có danh mục.", // DRAFT — Kevin reviews
+  "finance.pf.allReceipts": "Mọi dòng đều có biên lai đính kèm.", // DRAFT — Kevin reviews
+  "finance.pf.receipts": "{n} dòng chưa có biên lai đính kèm.", // DRAFT — Kevin reviews
+  "finance.pf.noUnapproved": "Không có khoản chưa duyệt trong kỳ này.", // DRAFT — Kevin reviews
+  "finance.pf.unapproved": "{n} khoản chưa duyệt không được xuất (chỉ xuất chi phí đã duyệt).", // DRAFT — Kevin reviews
+  "finance.pf.recon": "Khớp: các dòng cộng lại đúng tổng đã tính {v}.", // DRAFT — Kevin reviews
+  "finance.pf.reconOff": "Không khớp: các dòng {a} so với tổng đã tính {b}.", // DRAFT — Kevin reviews
+  "finance.pf.reconNa": "Đang lọc hoặc có khoản chưa duyệt: không so sánh với tổng đã tính.", // DRAFT — Kevin reviews
+  "finance.pf.note": "Các kiểm tra này không chặn việc xuất; chúng cho thấy kế toán sẽ nhận được gì.", // DRAFT — Kevin reviews
+  "finance.rule.openDrafts": "{n} bản nháp đang mở dùng danh mục khác — giữ nguyên trừ khi có người sửa.", // DRAFT — Kevin reviews
+  "finance.rule.title": "Quy tắc danh mục theo nhà cung cấp", // DRAFT — Kevin reviews
+  "finance.rule.always": "Luôn xếp vào danh mục", // DRAFT — Kevin reviews
+  "finance.rule.save": "Lưu quy tắc", // DRAFT — Kevin reviews
+  "finance.rule.saved": "Đã lưu quy tắc: {v} → {c} cho các bản nháp sau này.", // DRAFT — Kevin reviews
+  "finance.rule.future": "Chỉ áp dụng cho bản nháp sau này: chi phí mới từ nhà cung cấp này sẽ được gợi ý là {c}.", // DRAFT — Kevin reviews
+  "finance.rule.history": "Trong 180 ngày qua (từ {since}) nhà cung cấp này có {n} khoản chi; {same} khoản đã dùng danh mục này.", // DRAFT — Kevin reviews
+  "finance.rule.noHistory": "Không có khoản chi nào từ nhà cung cấp này từ {since}.", // DRAFT — Kevin reviews
+  "finance.rule.approved": "{n} khoản đã duyệt dùng danh mục khác — vẫn giữ nguyên; lịch sử không bao giờ thay đổi.", // DRAFT — Kevin reviews
+  "finance.rule.replaces": "Thay thế quy tắc hiện tại của nhà cung cấp này ({c}).", // DRAFT — Kevin reviews
+  "finance.rule.noPerm": "Bạn có thể xem trước, nhưng cần quyền danh mục để lưu quy tắc.", // DRAFT — Kevin reviews
+  "finance.rule.open": "Quy tắc cho nhà cung cấp này", // DRAFT — Kevin reviews
 };

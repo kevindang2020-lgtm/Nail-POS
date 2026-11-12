@@ -16,6 +16,7 @@ import { LoyaltyBonusRequest } from '../components/LoyaltyBonusRequest';
 import { posDuplicateReviewApi } from '../api/posDuplicateReviewApi';
 import { CompareOverlay } from './POSAICustomerDuplicateReviewScreen';
 import { FitDialog } from '../components/FitKit';
+import { useFreshAt, FreshnessLine } from '../components/FinanceKit';
 import { MembershipChip, useMemberStatusMap } from './MembershipChip';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -59,6 +60,8 @@ type ImpResult = { created: number; updated: number; duplicatesSkipped: number; 
 
 const money = (c: number) => fmtMoney(c || 0);
 const nf = (x: number) => fmtNumber(x || 0);
+/** extras (Customer Profiles 02): a number the server did not send is unavailable (—), never a false 0 */
+const nv = (x: number | null | undefined) => (x == null || !Number.isFinite(Number(x)) ? '—' : fmtNumber(Number(x)));
 const fmtTrend = (t: number | null | undefined) => {
   if (t == null) return null;
   const up = t >= 0;
@@ -128,7 +131,7 @@ export function POSCustomersScreen() {
   const [pageSize, setPageSize] = useState(10);   // F1 §28: 10 / 25 / 50 rows
   const [moreOpen, setMoreOpen] = useState(false);
   // profile drawer
-  const [profileRow, setProfileRow] = useState<Row | null>(null);
+  const [profileRow, setProfileRow] = useState<Row | null>(null); const [profileTab, setProfileTab] = useState<'overview' | 'loyalty' | 'visits' | 'notes'>('overview');
   const [profile, setProfile] = useState<any>(null);
   const [profileBusy, setProfileBusy] = useState(false);
   // F1 §30: the row's Message action opens this customer's conversation in the inbox (starting one if none exists) —
@@ -148,7 +151,8 @@ export function POSCustomersScreen() {
   // focus goes back to the control that opened it (touch and keyboard users land where they were)
   const profileOpener = useRef<HTMLElement | null>(null);
   const closeProfile = () => { setProfileRow(null); const el = profileOpener.current; profileOpener.current = null; if (el && el.isConnected) setTimeout(() => el.focus(), 0); };
-  const openProfile = (row: Row) => {
+  const openProfile = (row: Row, tab: 'overview' | 'loyalty' | 'visits' | 'notes' = 'overview') => {
+    setProfileTab(tab);
     profileOpener.current = (document.activeElement as HTMLElement | null) ?? null;
     setProfileRow(row); setProfile(null); setProfileBusy(true);
     (posCustomersApi.getDetail(row.customerId) as Promise<any>).then((d) => setProfile(d)).catch(() => setProfile(null)).finally(() => setProfileBusy(false));
@@ -175,8 +179,9 @@ export function POSCustomersScreen() {
   const [updateExisting, setUpdateExisting] = useState(false);
 
   const buildQ = useEventCallback(() => ({ search: search || undefined, status: status || undefined, segment: segment || undefined, source: source || undefined, tag: tag || undefined, loyaltyTier: loyaltyTier || undefined, spendBand: spendBand || undefined, page, pageSize }));
-  const load = useCallback((q: Record<string, unknown>) => (api.get('/pos/customers/state', q) as Promise<CustomersState>).then((d) => setS(d)).catch((e: any) => setError(e?.message || tx('pos.failed_to_load_customers'))), []);
+  const load = useCallback((q: Record<string, unknown>) => (api.get('/pos/customers/state', q) as Promise<CustomersState>).then((d) => { setS(d); setError(null); }).catch((e: any) => setError(e?.message || tx('pos.failed_to_load_customers'))), []);
   const refetch = () => load(buildQ());
+  const freshAt = useFreshAt(s);   // extras (Customer Profiles 02): the as-of time of the last good read; a failed refresh keeps it and says stale
   // Smooth Refresh spec §28/§62: a customer created or edited on another device appears on this list — refetch on
   // customer events (routed to the 'customers' screen) and every 45 s while visible (the §81 detail class). The list
   // keeps its search/filters (buildQ) and the open edit form survives (state lives in this component, not the rows).
@@ -279,14 +284,14 @@ export function POSCustomersScreen() {
   const topSpenders = s.directory?.topSpendersCount ?? rows.filter((r) => r.totalSpendCents >= 100000).length; // full-base top 5%, else page-scoped ($1k+)
 
   const kpis8 = [
-    { l: tx('pos.total_customers'), v: nf(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, ic: 'group', color: '#2E7D32', bg: '#EAF4EC' },
-    { l: tx('pos.new_customers'), v: nf(k.newCustomersToday), sub: tx('people.customers.kpi.recent'), trend: tr?.newCustomers, ic: 'userplus', color: '#6E59C7', bg: '#EFEAFA' },
-    { l: tx('pos.returning_customers_2'), v: nf(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, ic: 'repeat', color: '#2C6BB0', bg: '#E9F1FA' },
-    { l: tx('pos.vip_customers'), v: nf(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, ic: 'crown', color: '#E8852B', bg: '#FDEFE0' },
-    { l: tx('pos.inactive_customers_2'), v: nf(k.inactiveCustomers), sub: tx('pos.needs_attention_2'), trend: undefined, ic: 'userx', color: '#C0392B', bg: '#FBEAE8' },
+    { l: tx('pos.total_customers'), v: nv(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, ic: 'group', color: '#2E7D32', bg: '#EAF4EC' },
+    { l: tx('pos.new_customers'), v: nv(k.newCustomersToday), sub: tx('people.customers.kpi.recent'), trend: tr?.newCustomers, ic: 'userplus', color: '#6E59C7', bg: '#EFEAFA' },
+    { l: tx('pos.returning_customers_2'), v: nv(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, ic: 'repeat', color: '#2C6BB0', bg: '#E9F1FA' },
+    { l: tx('pos.vip_customers'), v: nv(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, ic: 'crown', color: '#E8852B', bg: '#FDEFE0' },
+    { l: tx('pos.inactive_customers_2'), v: nv(k.inactiveCustomers), sub: tx('pos.needs_attention_2'), trend: undefined, ic: 'userx', color: '#C0392B', bg: '#FBEAE8' },
     { l: tx('pos.retention_rate'), v: an ? `${an.retentionRatePercent}%` : '—', sub: tx('pos.repeat_rate_2'), trend: undefined, ic: 'dollar', color: '#2E7D32', bg: '#EAF4EC' },
-    { l: tx('pos.avg_spend_per_customer'), v: money(k.averageSpendCents), sub: tx('pos.per_customer_2'), trend: tr?.avgSpend, ic: 'card', color: '#2C6BB0', bg: '#E9F1FA' },
-    { l: tx('pos.loyalty_members'), v: nf(k.loyaltyMembers), sub: tx('pos.loyaltymembers_of_total', { loyaltyMembers: String(pct(k.loyaltyMembers)) }), trend: undefined, ic: 'loyalty', color: '#C0392B', bg: '#FBEAE8' },
+    { l: tx('pos.avg_spend_per_customer'), v: k.averageSpendCents == null ? '—' : money(k.averageSpendCents), sub: tx('pos.per_customer_2'), trend: tr?.avgSpend, ic: 'card', color: '#2C6BB0', bg: '#E9F1FA' },
+    { l: tx('pos.loyalty_members'), v: nv(k.loyaltyMembers), sub: tx('pos.loyaltymembers_of_total', { loyaltyMembers: String(pct(k.loyaltyMembers)) }), trend: undefined, ic: 'loyalty', color: '#C0392B', bg: '#FBEAE8' },
   ];
   const summary6 = [
     { l: tx('pos.total_customers'), v: nf(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, seg: '' },
@@ -331,6 +336,7 @@ export function POSCustomersScreen() {
       </div>
       {confirmUi}
 
+      <FreshnessLine at={freshAt} error={error} testId="customers-fresh" />
       {/* 8 KPI cards */}
       <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2" data-module-id="customers-kpis">
         {kpis8.map((c) => (
@@ -542,7 +548,11 @@ export function POSCustomersScreen() {
                         <td style={{ padding: '8px 12px' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={can('pos.communications.send') ? tx('pos.message') : tx('cd.msg.noPerm')} aria-label={tx('pos.message')} data-testid="cd-row-message" disabled={!can('pos.communications.send') || msgBusy === c.customerId} onClick={() => messageCustomer(c.customerId)}>✉</button>
+                            {/* extras (Customer Profiles 04): the same safe shortcuts on every row — Book (POS Booking, the customer
+                                preselected) and Loyalty (the profile's Loyalty tab); each only when this role may use it */}
+                            {can('pos.booking.create') ? <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.book')} aria-label={tx('pos.book')} data-testid="cd-row-book" onClick={() => nav(`/booking/new?customerId=${encodeURIComponent(c.customerId)}&from=customers`)}>📅</button> : null}
                             <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.profile_activity')} onClick={() => openProfile(c)}>▦</button>
+                            <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.loyalty_membership')} aria-label={tx('pos.loyalty_membership')} data-testid="cd-row-loyalty" onClick={() => openProfile(c, 'loyalty')}>★</button>
                             <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.edit')} onClick={() => openEdit(c)}>⋯</button>
                           </div>
                         </td>
@@ -704,14 +714,14 @@ export function POSCustomersScreen() {
           <AiAssistantPanel packageCode="ai_customer_profile_assistant" cta={tx('pos.summarize_customer')} action="profile" buildPrompt={() => "Summarize this nail-salon customer's preferences and flag VIP or churn risk. Be brief."} />
         </section>
       </div>
-      {profileRow ? <CustomerDrawer row={profileRow} detail={profile} busy={profileBusy} onClose={closeProfile} nav={nav} /> : null}
+      {profileRow ? <CustomerDrawer row={profileRow} detail={profile} busy={profileBusy} onClose={closeProfile} nav={nav} initialTab={profileTab} /> : null}
     </div>
   );
 }
 
-function CustomerDrawer({ row, detail, busy, onClose, nav }: { row: Row; detail: any; busy: boolean; onClose: () => void; nav: (to: string) => void }) {
+function CustomerDrawer({ row, detail, busy, onClose, nav, initialTab = 'overview' }: { row: Row; detail: any; busy: boolean; onClose: () => void; nav: (to: string) => void; initialTab?: 'overview' | 'loyalty' | 'visits' | 'notes' }) {
   const { open: openIPad } = useIPadView();
-  const [tab, setTab] = useState<'overview' | 'loyalty' | 'visits' | 'notes'>('overview');
+  const [tab, setTab] = useState<'overview' | 'loyalty' | 'visits' | 'notes'>(initialTab);
   const d = detail;
   // editable state (synced from the detail payload)
   const [eNotes, setENotes] = useState<any>(null);

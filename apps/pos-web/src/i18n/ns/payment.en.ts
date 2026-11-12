@@ -336,4 +336,9 @@ export const PAYMENT_EN = {
   "pgx.line.live": "Live card payments enabled",
   "pgx.line.notLive": "Live card payments off until Fiserv certification",
   "pgx.line.liveUnknown": "Live payment state not read",
+  "payment.splitPrev.stillDue": "Still due",
+  "payment.splitPrev.over": "Over the amount due by",
+  "payment.splitPrev.exact": "Matches the amount due",
+  "payment.splitPrev.invalid": "{n} tender amounts are blank or not valid",
+  "payment.splitPrev.previewOnly": "Preview only — nothing is charged until you take the payment.",
 };

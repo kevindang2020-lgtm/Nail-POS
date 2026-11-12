@@ -130,4 +130,21 @@ export const STOCKALERTS_VI = {
   'sa.rec.onBehalfNote': 'Bạn được ghi là người nhập.',
   'sa.rec.done': 'Đã ghi nhận: {t} dùng {q} {p}.',
   'sa.rec.replayed': 'Lượt dùng này đã được ghi nhận — không trừ kho hai lần.',
+  'sa.cause.title': 'Biến động tồn kho', // DRAFT — Kevin reviews
+  'sa.cause.titleLow': 'Vì sao sắp hết', // DRAFT — Kevin reviews
+  'sa.cause.usage': 'Đã dùng: {n} cho dịch vụ và thợ trong {d} ngày qua.', // DRAFT — Kevin reviews
+  'sa.cause.losses': 'Hao hụt: {n} hỏng, hết hạn, trả lại hoặc chuyển đi trong {d} ngày qua.', // DRAFT — Kevin reviews
+  'sa.cause.noReceiving': 'Không nhận hàng trong {d} ngày qua (lần nhận gần nhất: {last}).', // DRAFT — Kevin reviews
+  'sa.cause.never': 'chưa có', // DRAFT — Kevin reviews
+  'sa.cause.delayed': 'Nhận hàng bị trễ: đang đặt {n}, dự kiến {date}.', // DRAFT — Kevin reviews
+  'sa.cause.onOrder': 'Đang đặt {n}, dự kiến {date}.', // DRAFT — Kevin reviews
+  'sa.cause.corrections': 'Điều chỉnh đã trừ {n}.', // DRAFT — Kevin reviews
+  'sa.cause.inconsistent': 'Sổ biến động kết thúc ở {a} nhưng tồn kho hiện {b} — hãy kiểm đếm trước khi đặt hàng.', // DRAFT — Kevin reviews
+  'sa.cause.none': 'Không có biến động nào trong {d} ngày qua giải thích mức tồn này.', // DRAFT — Kevin reviews
+  'sa.cause.buckets': '{d} ngày qua: dùng {u} · nhận {r} · hao hụt {l} · điều chỉnh {c}', // DRAFT — Kevin reviews
+  'sa.recon.suggest': 'Đề xuất đặt thêm: {n} (sau khi trừ {o} đang đặt).', // DRAFT — Kevin reviews
+  'sa.recon.covered': 'Sắp hết, nhưng {o} đang đặt đã đủ — không đề xuất thêm.', // DRAFT — Kevin reviews
+  'sa.recon.notLow': 'Hiện trên mức đặt lại — cảnh báo tự hết theo tồn kho.', // DRAFT — Kevin reviews
+  'sa.recon.partial': '{n} dòng đơn hàng mới nhận một phần.', // DRAFT — Kevin reviews
+  'sa.recon.lastReceipt': 'Lần nhận gần nhất thêm {n}.', // DRAFT — Kevin reviews
 };

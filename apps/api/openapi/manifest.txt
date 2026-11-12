@@ -250,7 +250,9 @@ GET /owner/finance/expense-categories  realm=staff  auth=session  domain=finance
 GET /owner/finance/expense-rules  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expense-settings  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /owner/finance/expenses/bills-due  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses/export  realm=staff  auth=session  domain=finance  perm=owner.expenses.export  resource=BRANCH/permission  async=owner.finance.expenses.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /owner/finance/expenses/export/preflight  realm=staff  auth=session  domain=finance  perm=owner.expenses.export  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses/summary  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses/{id}  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/payment-mix  realm=staff  auth=session  domain=analytics  perm=owner.finance.view  resource=BRANCH/permission
@@ -464,6 +466,7 @@ GET /pos/ai/calendar-center/appointments  realm=staff  auth=session  domain=ai  
 GET /pos/ai/calendar-center/appointments/{id}  realm=staff  auth=session  domain=ai  perm=pos.booking.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai/calendar-center/assistant  realm=staff  auth=session  domain=ai  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai/calendar-center/day  realm=staff  auth=session  domain=ai  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai/calendar-center/holds/pending  realm=staff  auth=session  domain=ai  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai/calendar-center/range  realm=staff  auth=session  domain=ai  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai/calendar-center/summary  realm=staff  auth=session  domain=ai  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai/calls-center/assistant  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -748,6 +751,7 @@ GET /pos/discounts/export/redemptions  realm=staff  auth=session  domain=deals  
 GET /pos/discounts/kpis  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/discounts/performance  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/discounts/redemptions  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/discounts/refund-impact/{ticketId}  realm=staff  auth=session  domain=deals  perm=pos.checkout.refund  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/discounts/{dealId}  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/duplicate-review/groups  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/duplicate-review/groups/{id}  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -1996,6 +2000,7 @@ GET /tenant/inventory/stock-alerts/events/{eventId}  realm=staff  auth=session  
 GET /tenant/inventory/stock-alerts/export  realm=staff  auth=session  domain=inventory  perm=inventory.reports.view  resource=BRANCH/permission  async=inventory.stock-alerts.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/stock-alerts/history  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/stock-alerts/pickers  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/inventory/stock-alerts/products/{productId}/cause  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/stock-alerts/summary  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/stock-alerts/technicians  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/stock-alerts/usage  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -2478,6 +2483,7 @@ POST /owner/deals/{id}/reject  realm=staff  auth=session  domain=deals  perm=pos
 POST /owner/expenses  realm=staff  auth=session  domain=analytics  perm=owner.expenses.manage  resource=BRANCH/permission
 POST /owner/finance/expense-categories  realm=staff  auth=session  domain=finance  perm=owner.expenses.categories.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expense-rules  realm=staff  auth=session  domain=finance  perm=owner.expenses.categories.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /owner/finance/expense-rules/preview  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses  realm=staff  auth=session  domain=finance  perm=owner.expenses.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/batch/approve  realm=staff  auth=session  domain=finance  perm=owner.expenses.approve  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/batch/categorize  realm=staff  auth=session  domain=finance  perm=owner.expenses.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

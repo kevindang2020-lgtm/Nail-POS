@@ -4,8 +4,11 @@
 import { api } from "./client";
 
 const enc = encodeURIComponent;
+import type { FinanceRulePreview, FinanceExportPreflight, FinanceBillsDue } from '@aipowersalon/api-contracts/tenant';
 import type { FinanceInboxTab, FinanceExpense, FinanceCategory, FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceExpensePage, FinanceCategoryList, FinanceCategoryRecommendation, FinanceExpenseCreateResult, FinanceExpenseCreateRequest, FinanceAttachResult, FinancePaymentMatch, FinancePaymentLinkRequest, FinanceSettings, FinanceSettingsRequest, FinanceExpenseSummary, FinanceExpenseUpdateRequest, FinanceExpenseResult, FinanceExpenseDetail } from '@aipowersalon/api-contracts/tenant';
 export type ExpenseTab = FinanceInboxTab;
+export type RulePreview = FinanceRulePreview;
+export type ExportPreflight = FinanceExportPreflight;
 export type { FinanceExpenseSummary as FinSummary, FinanceExpenseDetail as FinDetail, FinanceExpense as FinExpense, FinanceCategory as FinCategory, FinanceDashboard as FinDashboard, FinanceReport as FinReport, FinanceExportPayload };
 
 export const posExpensesApi = {
@@ -18,7 +21,12 @@ export const posExpensesApi = {
   kpis: (q: { period?: string; from?: string; to?: string; q?: string; category?: string; paymentMethod?: string }) => api.get<FinanceExpenseSummary>(`/owner/finance/expenses/summary`, q),
   update: (id: string, body: FinanceExpenseUpdateRequest) => api.patch<FinanceExpenseResult>(`/owner/finance/expenses/${enc(id)}`, body as unknown as Record<string, unknown>),
   detail: (id: string) => api.get<FinanceExpenseDetail>(`/owner/finance/expenses/${enc(id)}`),
+  /** Bill due calendar (Extras · Receipt Expense OCR 06): open bills due within `days` of the salon's today, overdue first */
+  billsDue: (days: number) => api.get<FinanceBillsDue>(`/owner/finance/expenses/bills-due`, { days }),
   categories: () => api.get<FinanceCategoryList>(`/owner/finance/expense-categories`),
+  /** Vendor rule (Extras · Receipt Expense OCR 05): preview first (read-only), then save through the existing rules route */
+  rulePreview: (vendor: string, categoryKey: string) => api.post<RulePreview>(`/owner/finance/expense-rules/preview`, { vendor, categoryKey }),
+  createRule: (vendor: string, categoryKey: string) => api.post<{ id: string }>(`/owner/finance/expense-rules`, { vendor, categoryKey }),
   recommend: (vendor: string) => api.post<FinanceCategoryRecommendation>(`/owner/finance/expenses/recommend-category`, { vendor }),
   createExpense: (body: FinanceExpenseCreateRequest) => api.post<FinanceExpenseCreateResult>(`/owner/finance/expenses`, body as unknown as Record<string, unknown>),
   submit: (id: string, version: number) => api.post(`/owner/finance/expenses/${enc(id)}/submit`, { version }),
@@ -30,6 +38,8 @@ export const posExpensesApi = {
   deleteDraft: (id: string) => api.del(`/owner/finance/expenses/${enc(id)}`),
   duplicateDecision: (id: string, decision: 'not_duplicate' | 'duplicate', reason: string) => api.post(`/owner/finance/expenses/${enc(id)}/duplicate-decision`, { decision, reason }),
   billPayment: (id: string, amountCents: number, idempotencyKey: string) => api.post(`/owner/finance/expenses/${enc(id)}/bill-payments`, { amountCents, idempotencyKey }),
+  /** Accountant export preflight (Extras · Receipt Expense OCR 09): the export's own rows, checked — read-only */
+  exportPreflight: (period: string, filters: { from?: string; to?: string; category?: string; paymentMethod?: string; q?: string } = {}) => api.get<ExportPreflight>(`/owner/finance/expenses/export/preflight`, { period, ...filters }),
   exportFile: (format: 'csv' | 'xlsx' | 'pdf', period: string, filters: { from?: string; to?: string; category?: string; paymentMethod?: string; q?: string } = {}) => api.exportAsync<FinanceExportPayload>(`/owner/finance/expenses/export`, { format, period, ...filters }, 'json'),
   // Oct 27 2026 — §142 the receipt document carries the finance suggestion of an existing expense; a person links it here
   attachReceipt: (expenseId: string, documentId: string) => api.post<FinanceAttachResult>(`/owner/finance/expenses/${enc(expenseId)}/documents`, { documentId, role: 'receipt' }),

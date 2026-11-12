@@ -41,6 +41,13 @@ describe('POSGiftCardsScreen', () => {
     expect(document.body.textContent).not.toMatch(/\b\d{16}\b/);
     expect(gc.list.mock.calls[0][0]).toMatchObject({ preset: 'all', dateField: 'issued', sort: 'issued_desc', page: 1 });
   });
+  it('trust & freshness: the KPIs name their data source next to the as-of time, and Issued drills into the ledger', async () => {
+    mount();
+    expect(await screen.findByTestId('giftcards-source')).toHaveTextContent(/transaction ledger/);
+    expect(screen.getByTestId('giftcards-fresh')).toBeInTheDocument();
+    const k = screen.getByTestId('kpi-issued'); fireEvent.click(k.querySelector('button') ?? k);
+    await waitFor(() => expect(gc.liability).toHaveBeenCalled());
+  });
   it('status tab and search go to the server, with chips and Clear All', async () => {
     mount(); await screen.findByText('•••• 4821');
     fireEvent.click(screen.getByTestId('tab-redeemed'));

@@ -15,6 +15,7 @@ import { codeLabel } from './codeLabel';
 import { statusLabel } from '../i18n/status-label';
 import { fmtMoney } from '../i18n/format';
 import { errorTextOf } from '../i18n/error-text';
+import { RefundDiscountImpact } from './RefundDiscountImpact';
 
 const money = (c: number) => fmtMoney(c || 0);
 // a gift card says which card it goes back to (Oct 6 2026) — four characters, from the server
@@ -139,6 +140,7 @@ export function TicketRefundPanel({ ticketId, label, onClose, onDone }: { ticket
               <div className="s" style={{ fontWeight: 700 }}>{tx('pos.how')}{' '}{money(preview.amountCents)} {tx('pos.goes_back')}</div>
               <ul style={{ margin: '4px 0 0 18px' }}>{preview.allocations.filter((a) => a.amountToRefundCents > 0).map((a) => <li key={a.paymentId}>{method(a.method, a.giftCardLast4)}: {money(a.amountToRefundCents)}</li>)}</ul>
               <div className="s muted" style={{ marginTop: 4 }}>{tx('pos.each_part_goes_back_to_the_sb2h')}</div>
+              <RefundDiscountImpact ticketId={ticketId} lineIds={picked} whole={refundable !== null && preview.amountCents >= refundable} />
               <button className="btn" style={{ marginTop: 8 }} onClick={doRefund} disabled={busy || !reasonOk} title={reasonOk ? undefined : tx('pos.enter_a_reason_first')}>{busy ? tx('pos.refunding') : tx('pos.refund_amountcents', { amountCents: String(money(preview.amountCents)) })}</button>
             </div>
           )}

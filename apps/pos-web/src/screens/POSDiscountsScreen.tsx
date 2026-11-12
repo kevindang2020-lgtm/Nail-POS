@@ -20,6 +20,8 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced, type PageInfo } from '../components/FitKit';
 import { ExportPreview } from '../components/ExportPreview';
+import { savingsExplain, type SavingsRule } from './deals/savingsExplain';
+import { exposure } from './deals/exposure';
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 
@@ -224,7 +226,7 @@ export function POSDiscountsScreen() {
 export const ticketRoute = (r: { ticketId: string; ticketNumber?: string | null; status?: string } | undefined, ticketId: string) =>
   (r && r.status !== 'applied' && r.ticketNumber ? `/tenant/payments/transactions?search=${encodeURIComponent(r.ticketNumber)}` : `/checkout?ticket=${encodeURIComponent(ticketId)}`);
 
-export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact = false }: { rows: any[]; onCoupon?: (dealId: string) => void; onCustomer?: (id: string, name: string) => void; onTicket?: (ticketId: string, row?: { ticketId: string; ticketNumber?: string | null; status?: string }) => void; compact?: boolean }) {
+export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact = false, rule }: { rule?: SavingsRule; rows: any[]; onCoupon?: (dealId: string) => void; onCustomer?: (id: string, name: string) => void; onTicket?: (ticketId: string, row?: { ticketId: string; ticketNumber?: string | null; status?: string }) => void; compact?: boolean }) {
   return (
     <table className="fk-table fn-table dsc-table" data-testid="redemptions-table">
       <thead><tr><th>{tx('dsc.col.when')}</th><th>{tx('pos.customer')}</th>{compact ? null : <th>{tx('dsc.col.code')}</th>}<th>{tx('dsc.col.ticket')}</th><th className="num t-opt">{tx('dsc.col.subtotal')}</th><th className="num">{tx('dsc.col.discount')}</th><th className="num t-opt2">{tx('dsc.col.final')}</th><th>{tx('pos.status')}</th>{onCoupon ? <th aria-label={tx('finance.actions')} /> : null}</tr></thead>
@@ -234,12 +236,38 @@ export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact
         {compact ? null : <td><b className="dsc-code">{r.code ?? '—'}</b><span className="fk-li-s">{r.dealName}</span></td>}
         <td>{r.ticketNumber && r.ticketId && onTicket ? <button type="button" className="fk-li-t link" onClick={() => onTicket(r.ticketId, r)} data-testid="red-ticket">#{r.ticketNumber}</button> : r.ticketNumber ? '#' + r.ticketNumber : '—'}{r.technician ? <span className="fk-li-s">{r.technician}</span> : null}</td>
         <td className="num t-opt">{r.eligibleSubtotalCents == null ? '—' : fmtMoney(r.eligibleSubtotalCents)}</td>
-        <td className="num"><b>−{fmtMoney(r.discountCents)}</b>{r.reversedCents ? <span className="fk-li-s">{tx('dsc.reversedAmt', { v: fmtMoney(r.reversedCents) })}</span> : null}</td>
+        <td className="num"><b>−{fmtMoney(r.discountCents)}</b>{r.reversedCents ? <span className="fk-li-s">{tx('dsc.reversedAmt', { v: fmtMoney(r.reversedCents) })}</span> : null}{rule ? <SavingsWhy rule={rule} row={r} /> : null}</td>
         <td className="num t-opt2">{r.finalCents == null ? '—' : fmtMoney(r.finalCents)}</td>
         <td><span className={'fk-chip ' + (TONE[r.status] ?? 'mut')}>{state(r.status)}</span>{r.reversalReason ? <span className="fk-li-s">{codeLabel('dsc.reason.' + r.reversalReason, r.reversalReason)}</span> : null}</td>
         {onCoupon ? <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onCoupon(r.dealId)} data-testid="red-coupon">{tx('dsc.viewCoupon')}</button></td> : null}
       </tr>)}</tbody>
     </table>
+  );
+}
+
+/** Discount Exposure Meter: the most this promotion could still give away (an estimate / upper bound, exposure.ts) */
+function ExposureRows({ x }: { x: any }) {
+  const e = exposure({ discountType: x.discountType, discountCents: x.discountCents, maxDiscountCents: x.limits?.maxDiscountCents, maxRedemptions: x.limits?.maxRedemptions ?? x.maxRedemptions,
+    remaining: x.remaining, used: x.used, budgetCents: x.limits?.budgetCents, savingsCents: x.usage?.savingsCents });
+  const why = e.estimate != null ? tx(e.limitedBy === 'budget' ? 'dsc.exp.byBudget' : 'dsc.exp.byUses', { n: nf(e.usesLeft ?? 0), v: fmtMoney(e.perUse ?? 0) })
+    : e.usesLeft == null ? tx('dsc.exp.unlimited') : tx('dsc.exp.noCap');
+  return <><dt>{tx('dsc.exp.title')}</dt><dd data-testid="dd-exposure"><b>{e.estimate != null ? fmtMoney(e.estimate) : '—'}</b> <span className="fk-muted">· {tx('dsc.exp.estimate')}</span><span className="fk-li-s">{why}</span></dd></>;
+}
+
+/** Automatic Savings Explanation: eligible subtotal → rule → cap → saving, each on its own line (savingsExplain.ts) */
+function SavingsWhy({ rule, row }: { rule: SavingsRule; row: { discountCents: number; eligibleSubtotalCents?: number | null } }) {
+  const e = savingsExplain(rule, row.eligibleSubtotalCents, row.discountCents);
+  if (!e) return null;
+  return (
+    <details className="dsc-why" data-testid="savings-why"><summary>{tx('dsc.why.open')}</summary>
+      <dl className="fk-dl mo-dl">
+        <dt>{tx('dsc.why.eligible')}</dt><dd>{fmtMoney(e.eligible)}</dd>
+        <dt>{rule.discountType === 'percent' ? tx('dsc.why.rulePct', { p: String(rule.discountPercent ?? 0) }) : tx('dsc.why.ruleFixed')}</dt><dd>−{fmtMoney(e.rule)}</dd>
+        {e.cap != null ? <><dt>{e.capKind === 'cap' ? tx('dsc.why.cap', { v: fmtMoney(rule.maxDiscountCents ?? 0) }) : tx('dsc.why.subtotal')}</dt><dd data-testid="savings-why-cap">+{fmtMoney(e.cap)}</dd></> : null}
+        <dt><b>{tx('dsc.why.saved')}</b></dt><dd><b>−{fmtMoney(e.recorded)}</b></dd>
+      </dl>
+      {e.matches ? null : <div className="fk-hint" data-testid="savings-why-diff">{tx('dsc.why.differs', { v: fmtMoney(e.expected) })}</div>}
+    </details>
   );
 }
 
@@ -307,11 +335,12 @@ export function DiscountDetailsDialog({ id, initialTab, onClose, onPromotions, o
           <dt>{tx('dsc.l.cap')}</dt><dd>{x.limits.maxDiscountCents == null ? tx('pos.none') : fmtMoney(x.limits.maxDiscountCents)}</dd>
           <dt>{tx('dsc.l.budget')}</dt><dd>{x.limits.budgetCents == null ? tx('pos.none') : fmtMoney(x.limits.budgetCents)}</dd>
           <dt>{tx('dsc.l.codes')}</dt><dd>{tx('dsc.l.codesV', { n: nf(x.limits.codes), a: nf(x.limits.activeCodes), w: nf(x.limits.walletCodes) })}</dd>
+          <ExposureRows x={x} />
         </dl> : null}
         {t === 'items' ? (x.services.length === 0 ? <div className="fk-hint" data-testid="dd-items">{tx('dsc.allItems')}</div>
           : <ul className="fk-list dense" data-testid="dd-items">{x.services.map((s: any) => <li key={s.id} className="fk-li"><span className="fk-li-t">{s.name}</span></li>)}</ul>) : null}
         {t === 'redemptions' ? (reds.error ? <StateBlock error={reds.error} onRetry={reds.reload} /> : !reds.data ? <div className="fk-loading">{tx('pos.loading')}</div>
-          : reds.data.items.length === 0 ? <Empty title={tx('dsc.noRedemptions')} /> : <><RedemptionsTable rows={reds.data.items} compact onCustomer={onCustomer} onTicket={onTicket} /><Pager info={pageOf(reds.data)} onPage={setRp} /></>) : null}
+          : reds.data.items.length === 0 ? <Empty title={tx('dsc.noRedemptions')} /> : <><RedemptionsTable rows={reds.data.items} compact onCustomer={onCustomer} onTicket={onTicket} rule={{ discountType: x.discountType, discountPercent: x.discountPercent, discountCents: x.discountCents, maxDiscountCents: x.limits?.maxDiscountCents ?? null }} /><Pager info={pageOf(reds.data)} onPage={setRp} /></>) : null}
         {t === 'history' ? (x.history.length === 0 ? <div className="fk-hint">{tx('dsc.noHistory')}</div> : (
           <table className="fk-table fn-table dsc-table" data-testid="dd-history"><thead><tr><th>{tx('dsc.col.when')}</th><th>{tx('dsc.col.version')}</th><th>{tx('dsc.col.by')}</th><th>{tx('dsc.col.terms')}</th></tr></thead>
             <tbody>{x.history.map((h: any) => <tr key={h.id}><td>{whenTime(h.at)}</td><td>v{h.version}</td><td>{h.actor || '—'}</td><td className="dsc-terms">{Object.entries(h.terms).map(([k2, v]) => `${tx('dsc.term.' + k2)}: ${k2.endsWith('Cents') ? fmtMoney(Number(v)) : String(v)}`).join(' · ') || '—'}</td></tr>)}</tbody></table>)) : null}

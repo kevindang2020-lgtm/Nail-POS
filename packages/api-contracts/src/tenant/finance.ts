@@ -79,6 +79,19 @@ export interface FinanceRule { id: string; vendorNorm: string; vendorId: string 
 export interface FinanceRuleList { rules: FinanceRule[] }
 export interface FinanceRuleRequest { vendor: string; categoryKey: string; keyword?: string | null; vendorId?: string | null }
 export interface FinanceRuleResult { id: string; [k: string]: unknown }
+/** Vendor-rule preview (Extras · Receipt Expense OCR 05) — read-only, before a rule is saved */
+export interface FinanceRulePreviewRequest { vendor: string; categoryKey: string }
+export interface FinanceRulePreview {
+  vendorNorm: string; categoryKey: string; categoryLabel: string; since: string; matched: number; sameCategory: number; approved: number; approvedDifferent: number;
+  open: number; openDifferent: number; byCategory: { key: string; label: string; count: number }[]; replaces: { id: string; categoryKey: string; label: string } | null;
+}
+/** Bill due calendar (Extras · Receipt Expense OCR 06) */
+export interface FinanceBillsDue { today: string; until: string; days: number; capped: boolean; items: FinanceExpense[] }
+/** Accountant export preflight (Extras · Receipt Expense OCR 09) */
+export interface FinanceExportPreflight {
+  period: { from: string; to: string }; branchScope: 'branch' | 'all_allowed'; branchName: string | null; rows: number; totalCents: number; filtered: boolean; includeUnapproved: boolean;
+  duplicates: number; uncategorized: number; missingReceipts: number; unapprovedLeftOut: number; countedTotalCents: number; reconciles: boolean | null;
+}
 export interface FinanceSettings {
   requireApproval: boolean; autoReady: boolean; autoCategory: boolean; learnFromCorrections: boolean; duplicateDetection: boolean;
   billReminderDays: number; defaultBranchId: string | null; receptionistUpload: boolean; technicianUpload: boolean; version: number;

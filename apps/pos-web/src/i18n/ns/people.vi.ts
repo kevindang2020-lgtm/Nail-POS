@@ -852,4 +852,13 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.mo.exportScope.members': 'Mọi hội viên trong phạm vi tiệm (mọi gói và trạng thái)', // DRAFT — Kevin reviews
   'people.mo.exportScope.payments': 'Mọi khoản thanh toán hội viên trong phạm vi tiệm', // DRAFT — Kevin reviews
   'people.mo.exportScope.redemptions': 'Mọi lượt dùng quyền lợi hội viên trong phạm vi tiệm', // DRAFT — Kevin reviews
+  'people.loyalty.why.notConfigured': '{tier} không thuộc các hạng tiệm đã thiết lập, nên không có quy tắc ngưỡng.', // DRAFT — Kevin reviews
+  'people.loyalty.why.noThreshold': '{tier} chưa đặt ngưỡng điểm — hạng này được gán thủ công.', // DRAFT — Kevin reviews
+  'people.loyalty.why.meets': 'Đang ở {tier}: ngưỡng là {min}; khách đã tích tổng cộng {earned}.', // DRAFT — Kevin reviews
+  'people.loyalty.why.below': 'Đang ở {tier} dù ngưỡng là {min} và khách mới tích tổng cộng {earned}.', // DRAFT — Kevin reviews
+  'people.loyalty.why.next': 'Hạng kế tiếp: {tier} từ {min} — cần tích thêm {n}.', // DRAFT — Kevin reviews
+  'people.loyalty.why.nextReached': 'Hạng kế tiếp: {tier} từ {min} — khách đã đạt ngưỡng này.', // DRAFT — Kevin reviews
+  'people.loyalty.why.noNext': 'Không có hạng cao hơn nào đặt ngưỡng điểm.', // DRAFT — Kevin reviews
+  'people.loyalty.why.lower': 'Chỉ tính theo điểm, khách phù hợp hạng {tier} ({min}).', // DRAFT — Kevin reviews
+  'people.loyalty.why.manual': 'Ngưỡng chỉ để tham khảo: khách chỉ đổi hạng khi người có quyền chuyển hạng.', // DRAFT — Kevin reviews
 };

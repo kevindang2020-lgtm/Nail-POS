@@ -544,3 +544,24 @@ status and digital-receipt history stay as they are (no module/route/nav removed
 - Marketing report period: optional preset / custom From–To (marketing-report.controller, "batch 9 decision 2").
 - AI Analytics cards: each panel links to its full list (ai-link-calls, ai-link-followups, ai-link-campaigns).
 - Owner comparison custom From–To: owner.controller (Nov 10), compared with the same length just before it.
+
+## Extras backlog round — Nov 11 2026 (later)
+Built with tests and marked BUILT in EXTRAS_BACKLOG.md (each row names its files and tests):
+- Loyalty Rewards 05 Tier Qualification Preview (tierPreview.ts, member tier dialog).
+- Discounts 09 Automatic Savings Explanation (savingsExplain.ts mirrors deals-checkout-core math).
+- Promotions 04 Expiration Calendar · 09 Discount Exposure Meter (estimate, "no ceiling" when unbounded).
+- AI Follow-Ups 08 Priority Explainability (priorities() returns asOf; evidence + opened/checked times).
+- AI Business Assistant 03 Comparison Explainer (periods, metric definition, revenue ≠ profit).
+- Gift Cards 02 Trust & Freshness (data-source line; every KPI drills down).
+- Receipt Expense OCR 05 vendor-rule preview (POST expense-rules/preview) · 06 bill due calendar (GET expenses/bills-due)
+  · 08 branch allocation checker · 09 accountant export preflight (GET expenses/export/preflight, builds no file).
+- Stock Alerts 12 Low-Stock Cause Explanation (GET stock-alerts/products/:id/cause; salon-day overdue check).
+- AI Calendar 04 Pending Verification Queue (GET calendar-center/holds/pending; read-only, retry stays in Booking).
+- Stock Alerts 06 Reorder & Receiving Reconciliation · Split Payments 09 Split Tender Preview (no request made) ·
+  Discounts 11 Refund Impact Preview (engine/refund-outcome.ts is now the ONE refund rule the ledger also uses) ·
+  AI Queue Assignment 01 guest search + on-demand entry-ID lookup · 05 candidate table · Customer Profiles 02 freshness /
+  "—" not 0 · 04 row shortcuts (Book, Loyalty).
+- Marked EXISTS with evidence: Customer Segments 02–05, AI Queue Assignment 03/08, Notification Preferences 08/14,
+  Payment Terminals 07/08, Payment Terminals 2 07.
+New contract types: FinanceRulePreview(Request), FinanceBillsDue, FinanceExportPreflight, InventoryLowStockCause,
+AiCalendarPendingQueue, DiscountRefundImpact. Role-matrix snapshot regenerated on purpose for the 6 new read-only routes. No money is moved, no history is changed and nothing is sent by any of these.

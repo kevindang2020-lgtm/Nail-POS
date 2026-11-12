@@ -12,4 +12,12 @@ export const ExpenseControllerListQueries = {
     filters: { category: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' } },
     search: { params: ['q'] },
   },
+  // Bill due calendar (Extras · Receipt Expense OCR 06): the window in days (1–90) and the branch
+  billsDue: { filters: { days: { type: 'int', min: 1, max: 90 }, branchId: { type: 'id' } } },
+  // Accountant export preflight (Extras · Receipt Expense OCR 09): the SAME filters as the export it checks
+  exportPreflight: {
+    filters: { period: { type: 'text' }, branchId: { type: 'id' }, includeUnapproved: { type: 'text' }, category: { type: 'text' }, paymentMethod: { type: 'text' } },
+    search: { params: ['q'] },
+    dateRange: { maxDays: 'analytics' },
+  },
 } satisfies Record<string, ListQuerySpec>;

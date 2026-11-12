@@ -275,6 +275,19 @@ describe('POSCheckoutScreen — payment method selector + inputs (were unreachab
     expect(pay.idemKey).toMatch(/^[A-Za-z0-9_\-:.]{8,200}$/);
   });
 
+  it('split tender preview: allocation by tender and what is still due, before any payment is taken', async () => {
+    const f = coFetch2(); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSCheckoutScreen /></MemoryRouter>);
+    await screen.findByText('Checkout');
+    await waitFor(() => expect((f as any).calls.some((c: any) => c.url.match(/\/tickets\/t1$/))).toBe(true));
+    fireEvent.click(await screen.findByText('Enable split payment'));
+    const box = await screen.findByTestId('split-preview');
+    expect(screen.getByTestId('split-prev-remaining').textContent).toMatch(/Matches the amount due/);   // one card segment = the full due
+    fireEvent.click(screen.getByText('+ Add tender'));
+    expect(screen.getByTestId('split-prev-invalid').textContent).toMatch(/1 tender amounts/);
+    expect(box.textContent).toMatch(/nothing is charged/);
+    expect((f as any).calls.some((c: any) => c.url.includes('/pay/') && c.method === 'POST')).toBe(false);   // a preview never pays
+  });
   it('choosing Gift Card reveals the code input and pays by gift card', async () => {
     const f = coFetch2(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSCheckoutScreen /></MemoryRouter>);

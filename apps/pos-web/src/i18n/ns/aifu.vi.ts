@@ -252,4 +252,5 @@ export const AIFU_VI: Record<string, string> = {
   "aifu.viewOnly": "Vai trò của bạn chỉ xem được, không xử lý được việc theo dõi.",
   "aifu.wait": "Đánh dấu đang chờ",
   "aifu.edit": "Sửa chi tiết",
+  "aifu.rec.when": "Mở việc {opened} · kiểm tra lúc {at}", // DRAFT — Kevin reviews
 };

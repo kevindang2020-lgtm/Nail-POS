@@ -23,6 +23,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, type PageInfo } from '../components/FitKit';
 import { RewardsNetworkPanel } from './loyalty/RewardsNetworkPanel';
+import { tierPreview } from './loyalty/tierPreview';
 import { LoyaltyBonusRequest } from '../components/LoyaltyBonusRequest';
 
 type Overview = { period: { label: string; start: string; timeZone: string }; kpis: { loyaltyMembers: number; newMembersThisMonth: number; pointsOutstanding: number; ledgerBalance: number; balanceReconciled: boolean;
@@ -553,6 +554,7 @@ function MemberTierDialog({ member, onClose, onDone }: { member: Member; onClose
   return (
     <FitDialog title={tx('people.loyalty.changeTier')} subtitle={`${member.customerName} · ${tierLabel(member.tier)}`} onClose={onClose} busy={busy} testId="dlg-member-tier"
       footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={!tier || reason.trim().length < 3 || busy} onClick={save} data-testid="member-tier-save">{busy ? tx('pos.saving_2') : tx('people.loyalty.changeTier')}</button></>}>
+      {d ? <TierWhy tiers={d.items} member={member} /> : null}
       {!d && !err ? <div className="fk-loading">{tx('pos.loading')}</div> : d ? (
         <div className="fk-grid2">
           <label className="fk-field"><span>{tx('people.loyalty.newTier')}</span><select data-autofocus value={tier} onChange={(e) => setTier(e.target.value)} data-testid="member-tier-pick"><option value="">—</option>{options.map((o) => <option key={o} value={o}>{tierLabel(o)}</option>)}</select></label>
@@ -562,6 +564,23 @@ function MemberTierDialog({ member, onClose, onDone }: { member: Member; onClose
       <div className="fk-hint">{tx('people.loyalty.tierChangeAudit')}</div>
       {err ? <div className="fk-err" role="alert">{err}</div> : null}
     </FitDialog>
+  );
+}
+
+// Tier Qualification Preview: the member's tier rule and what configured rule would change it (real tier rows only)
+function TierWhy({ tiers, member }: { tiers: TierRow[]; member: Member }) {
+  const p = tierPreview(tiers, member.tier, member.totalEarned);
+  const pts = (n: number) => tx('people.loyalty.pts', { n: nf(n) });
+  return (
+    <div className="fk-note" data-testid="tier-why">
+      <div data-testid="tier-why-current">{!p.current ? tx('people.loyalty.why.notConfigured', { tier: tierLabel(member.tier) })
+        : p.current.minPoints == null ? tx('people.loyalty.why.noThreshold', { tier: tierLabel(p.current.name) })
+        : tx(p.meetsCurrent ? 'people.loyalty.why.meets' : 'people.loyalty.why.below', { tier: tierLabel(p.current.name), min: pts(p.current.minPoints), earned: pts(p.earned) })}</div>
+      <div data-testid="tier-why-next">{p.next ? (p.toNext === 0 ? tx('people.loyalty.why.nextReached', { tier: tierLabel(p.next.name), min: pts(p.next.minPoints ?? 0) }) : tx('people.loyalty.why.next', { tier: tierLabel(p.next.name), min: pts(p.next.minPoints ?? 0), n: pts(p.toNext ?? 0) }))
+        : p.current && p.current.minPoints == null ? null : tx('people.loyalty.why.noNext')}</div>
+      {p.lower && p.meetsCurrent === false ? <div data-testid="tier-why-lower">{tx('people.loyalty.why.lower', { tier: tierLabel(p.lower.name), min: pts(p.lower.minPoints ?? 0) })}</div> : null}
+      <div className="fk-hint">{tx('people.loyalty.why.manual')}</div>
+    </div>
   );
 }
 

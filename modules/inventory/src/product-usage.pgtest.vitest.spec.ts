@@ -191,3 +191,28 @@ describe('Stock Alerts read model', () => {
     expect(await code(repo.acknowledge(other, PLOW[0], null))).toBe('ALERT_NOT_FOUND');
   });
 });
+
+describe('Low-Stock Cause Explanation (Extras · Stock Alerts 12)', () => {
+  it('names measured causes: usage, losses, an overdue order, and a ledger that disagrees with on-hand', async () => {
+    const PX = '00000000-0000-4000-8000-0000000c0a5e';
+    await q(`insert into inventory_products (id, tenant_id, name, sku, active, reorder_level) values ($1,$2,'Cause Gel','CG-01',true,4)`, [PX, T]);
+    await q(`insert into inventory_location_stock (tenant_id, branch_id, product_id, quantity_on_hand) values ($1,$2,$3,1)`, [T, B, PX]);
+    await q(`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, quantity_after, created_at) values
+      ($1,$2,$3,'purchase_received',10,10, now() - interval '40 days'), ($1,$2,$3,'service_usage',-6,4, now() - interval '5 days'), ($1,$2,$3,'damaged',-2,2, now() - interval '3 days')`, [T, B, PX]);
+    const po = (await q(`insert into purchase_orders (tenant_id, branch_id, status, expected_date) values ($1,$2,'ordered', current_date - 2) returning id`, [T, B]))[0].id;
+    await q(`insert into purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, quantity_received) values ($1,$2,$3,10,0)`, [T, po, PX]);
+    const c = await repo.lowStockCause(manager, PX);
+    expect(c.product).toMatchObject({ onHand: 1, reorderLevel: 4, low: true });
+    expect(c.buckets).toMatchObject({ usage: -6, losses: -2, received: 0 });
+    expect(c.openOrders).toMatchObject({ quantity: 10, orders: 1, overdue: true });
+    expect(c.causes).toEqual(['usage', 'losses', 'receiving_delayed', 'inconsistent']);
+    expect(c.ledgerAfter).toBe(2); expect(c.consistent).toBe(false);
+    expect(c.lastReceivedAt).not.toBeNull();   // the 40-day-old receipt is outside the window but still the last one
+    // Reorder & Receiving Reconciliation (Stock Alerts 06): 10 already on order covers the gap → nothing more is suggested
+    expect(c.reorder).toMatchObject({ onOrder: 10, suggested: 0, partlyReceivedLines: 0, receivedInWindow: 0, lastReceiptQuantity: 10 });
+  });
+  it('a product with no movements says so; another salon cannot read it', async () => {
+    expect((await repo.lowStockCause(manager, PLOW[0])).causes).toEqual(['no_movements']);
+    expect(await code(repo.lowStockCause({ ...manager, tenantId: T2, branchId: B2 }, PLOW[0]))).not.toBe('OK');
+  });
+});

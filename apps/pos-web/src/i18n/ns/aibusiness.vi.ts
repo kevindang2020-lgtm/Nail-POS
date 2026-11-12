@@ -528,4 +528,12 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.def.revCompleted": "Doanh thu / lịch hoàn tất — Doanh số thuần ÷ số lịch hoàn tất. Không áp dụng khi không có lịch hoàn tất.", // DRAFT — Kevin reviews
   "bcx.def.small": "Dưới {n} lịch hẹn được đánh dấu “mẫu nhỏ”: hãy cân nhắc khi so sánh các chi nhánh này.", // DRAFT — Kevin reviews
   "bzx.a.collision": "Đã có cảnh báo đang bật “{t}” theo dõi cùng chỉ số, phép so sánh và kỳ — hai cảnh báo sẽ báo trùng nhau.", // DRAFT — Kevin reviews
+  "bzc.periods": "So sánh", // DRAFT — Kevin reviews
+  "bzc.vs": "{a} so với {b}", // DRAFT — Kevin reviews
+  "bzc.prevOf": "kỳ trước của {p}", // DRAFT — Kevin reviews
+  "bzc.partial": "kỳ hiện tại chưa kết thúc", // DRAFT — Kevin reviews
+  "bzc.basis": "Cách tính", // DRAFT — Kevin reviews
+  "bzc.def.net_sales": "Doanh thu thuần: doanh thu gộp trừ giảm giá, hoàn tiền và hủy; không gồm tiền tip và thuế.", // DRAFT — Kevin reviews
+  "bzc.notProfit": "Doanh thu và lợi nhuận", // DRAFT — Kevin reviews
+  "bzc.notProfitV": "Đây là so sánh doanh thu (doanh thu thuần), không phải lợi nhuận — lợi nhuận còn trừ chi phí. Hãy hỏi “Lợi nhuận & chi phí” để xem.", // DRAFT — Kevin reviews
 };

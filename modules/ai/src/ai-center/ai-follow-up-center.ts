@@ -658,7 +658,7 @@ export class AiFollowUpCenter {
     }
     const verif: Row[] = (await sql<Row>`select count(*)::int n from booking_verification_sessions where tenant_id = ${ctx.tenantId} and status in ('pending','sent') and expires_at > now()`.execute(this.db).catch(() => ({ rows: [{ n: 0 }] as Row[] }))).rows;
     out.sort((a, b) => a.rank - b.rank || b.ageMinutes - a.ageMinutes);
-    return { items: out.slice(0, 50), bookingsAwaitingVerification: n(verif[0]?.n), note: 'Recommendations only. Nothing is sent, booked, reassigned or resolved until a staff member does it.' };
+    return { items: out.slice(0, 50), asOf: new Date(now).toISOString(), bookingsAwaitingVerification: n(verif[0]?.n), note: 'Recommendations only. Nothing is sent, booked, reassigned or resolved until a staff member does it.' };
   }
   async decide(ctx: FuCtx, b: { taskId?: string; signal?: string; decision?: string; note?: string; version?: number }) {
     this.needWork(ctx);

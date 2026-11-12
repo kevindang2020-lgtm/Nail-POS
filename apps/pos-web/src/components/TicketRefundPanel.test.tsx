@@ -5,6 +5,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const refundPreview = vi.fn(); const refundTicket = vi.fn(); const unsettledRefunds = vi.fn(); const settleRefund = vi.fn(); const stepUp = vi.fn();
 vi.mock('../api/posCheckoutApi', () => ({ posCheckoutApi: { refundPreview: (...a: any[]) => refundPreview(...a), refundTicket: (...a: any[]) => refundTicket(...a), unsettledRefunds: (...a: any[]) => unsettledRefunds(...a), settleRefund: (...a: any[]) => settleRefund(...a) } }));
+const refundImpact = vi.fn();
+vi.mock('../api/posDiscountsApi', () => ({ posDiscountsApi: { refundImpact: (...a: any[]) => refundImpact(...a) } }));
 vi.mock('../api/posStepUpApi', () => ({ posStepUpApi: { stepUp: (...a: any[]) => stepUp(...a) } }));
 import { TicketRefundPanel } from './TicketRefundPanel';
 
@@ -12,11 +14,25 @@ const tenders = [{ paymentId: 'pc', method: 'card', amountCents: 6000, refundedC
 const preview = (amountCents: number, alloc: [string, string, number][]) => ({ ticketId: 't1', amountCents, refundableCents: 10000, tenders, allocations: alloc.map(([paymentId, method, amountToRefundCents]) => ({ paymentId, method, amountToRefundCents })) });
 beforeEach(() => {
   refundPreview.mockReset(); refundTicket.mockReset(); unsettledRefunds.mockReset(); settleRefund.mockReset(); stepUp.mockReset();
-  unsettledRefunds.mockResolvedValue({ ticketId: 't1', refunds: [] });
+  unsettledRefunds.mockResolvedValue({ ticketId: 't1', refunds: [] }); refundImpact.mockReset(); refundImpact.mockResolvedValue({ ticketId: 't1', wholeTicket: true, items: [] });
   refundPreview.mockImplementation(async (_t: string, cents: number) => cents === 1 ? preview(1, [['pc', 'card', 1]]) : cents === 5000 ? preview(5000, [['pc', 'card', 3000], ['pk', 'cash', 2000]]) : preview(cents, [['pc', 'card', cents]]));
 });
 
 describe('TicketRefundPanel', () => {
+  it('refund impact preview: a whole-ticket refund says the coupon is reversed and its use comes back; an amount refund keeps it', async () => {
+    refundImpact.mockResolvedValue({ ticketId: 't1', wholeTicket: true, items: [{ redemptionId: 'r1', dealName: 'Spring Glow', code: '••••NG20', status: 'redeemed', discountCents: 2000, alreadyReversedCents: 0,
+      outcome: 'reverse', reverseCents: 2000, placeReturned: true, lines: [{ lineId: 'l1', cents: 1200, refunded: true }, { lineId: 'l2', cents: 800, refunded: true }] }] });
+    render(<TicketRefundPanel ticketId="t1" onClose={() => {}} />);
+    await screen.findByText('This ticket can still return $100.00.');
+    fireEvent.click(screen.getByText('Preview split'));
+    const li = await screen.findByTestId('refund-discount');
+    expect(li.textContent).toMatch(/Spring Glow — \$20\.00 \(\$12\.00 \+ \$8\.00\)/); expect(li.textContent).toMatch(/Reversed: \$20\.00/); expect(li.textContent).toMatch(/use, budget and code come back/);
+    expect(refundImpact).toHaveBeenLastCalledWith('t1', null);
+    fireEvent.change(screen.getByLabelText('Refund amount'), { target: { value: '50' } });
+    fireEvent.click(screen.getByText('Preview split'));
+    expect((await screen.findByTestId('refund-discount')).textContent).toMatch(/Kept: an amount refund/);
+    expect(refundTicket).not.toHaveBeenCalled();
+  });
   it('starts from what the server says the ticket can return', async () => {
     render(<TicketRefundPanel ticketId="t1" onClose={() => {}} />);
     expect(await screen.findByText('This ticket can still return $100.00.')).toBeInTheDocument();

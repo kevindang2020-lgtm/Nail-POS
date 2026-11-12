@@ -62,4 +62,5 @@ export const GIFTCARD_EN = {
   "gc.adjustReason": "Reason",
   "gc.adjusted": "{card} adjusted — balance now {a}.",
   "gc.amount": "Amount",
+  "gc.source": "Source: card balances (liability, active, total) and the gift-card transaction ledger (issued, redeemed) for your branch scope, read live at the time above. Tap a card to drill into its records.",
 } as const;

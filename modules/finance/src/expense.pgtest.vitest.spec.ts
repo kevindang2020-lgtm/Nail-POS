@@ -142,6 +142,17 @@ describe('finance — categories', () => {
   it('the salon\'s rule does not leak to another salon', async () => {
     expect((await svc.recommend(other, { vendor: 'PSE&G' })).key).toBe('utilities');
   });
+  it('vendor-rule preview: counts how this vendor was categorized, never changes history, and names a rule it would replace', async () => {
+    const a = await svc.create(owner, { amountCents: 3101, incurredOn: today, vendor: 'Preview Supply Co', category: 'supplies', intent: 'submit', idempotencyKey: 'pv-1' });
+    await svc.approve(owner, a.expense.id, a.expense.version);
+    await svc.create(owner, { amountCents: 3202, incurredOn: today, vendor: 'PREVIEW SUPPLY CO.', category: 'equipment', intent: 'draft', idempotencyKey: 'pv-2' });
+    const p = await svc.previewRule(owner, { vendor: 'Preview Supply Co', categoryKey: 'equipment' });
+    expect(p).toMatchObject({ matched: 2, approved: 1, approvedDifferent: 1, open: 1, openDifferent: 0, sameCategory: 1, replaces: null });
+    expect((await svc.detail(owner, a.expense.id)).expense.category).toBe('supplies');   // a preview changes nothing
+    await svc.createRule(owner, { vendor: 'Preview Supply Co', categoryKey: 'supplies' });
+    expect((await svc.previewRule(owner, { vendor: 'Preview Supply Co', categoryKey: 'equipment' })).replaces?.categoryKey).toBe('supplies');
+    expect((await svc.previewRule(other, { vendor: 'Preview Supply Co', categoryKey: 'equipment' })).matched).toBe(0);   // another salon sees nothing
+  });
 });
 
 describe('finance — reports reconcile with the export (approved only)', () => {
@@ -159,6 +170,18 @@ describe('finance — reports reconcile with the export (approved only)', () => 
     const csv = new TextDecoder().decode(f.bytes);
     expect(csv).not.toContain('Draft Only'); expect(csv).not.toContain('Voided Vendor');
     expect(draft.expense.status).toBe('draft');
+  });
+  it('accountant export preflight: same rows as the export, reconciles to the counted total, and flags unapproved / uncategorized / missing receipts', async () => {
+    await svc.create(owner, { amountCents: 777, incurredOn: today, vendor: 'Preflight Draft', category: 'other', idempotencyKey: 'pf-draft', intent: 'draft' });
+    const pf = await svc.exportPreflight(owner, { period: 'month' });
+    const f = await svc.exportFile(owner, { format: 'csv', period: 'month' });
+    expect(pf.rows).toBe(f.rows); expect(pf.totalCents).toBe(f.totalCents);
+    expect(pf.reconciles).toBe(true); expect(pf.totalCents).toBe(pf.countedTotalCents);
+    expect(pf.unapprovedLeftOut).toBeGreaterThan(0);
+    expect(pf.missingReceipts).toBe(pf.rows);   // none of these test expenses has a receipt attached
+    expect(pf.branchScope).toBe('all_allowed');
+    const filtered = await svc.exportPreflight(owner, { period: 'month', category: 'rent' });
+    expect(filtered.filtered).toBe(true); expect(filtered.reconciles).toBeNull();   // a filtered export is never claimed to reconcile
   });
   it('a CSV cell that looks like a formula is neutralised', async () => {
     await svc.create(owner, { amountCents: 1000, incurredOn: today, vendor: '=HYPERLINK("x")', category: 'other', idempotencyKey: 'csv-inj' });
@@ -178,6 +201,19 @@ describe('finance — bills and reimbursements', () => {
     await svc.recordBillPayment(owner, expense.id, { amountCents: 6000, idempotencyKey: 'pay-3' });
     d = await svc.detail(owner, expense.id);
     expect(d.expense.billStatus).toBe('paid'); expect(d.expense.openCents).toBe(0);
+  });
+  it('bill due calendar: open bills due within the window, overdue first; paid and later bills are left out', async () => {
+    const d = (n: number) => { const x = new Date(today + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const mk = (inv: string, due: number, amt: number) => svc.create(owner, { kind: 'bill', amountCents: amt, incurredOn: d(-20), dueDate: d(due), vendor: 'Cal Vendor', category: 'rent', invoiceNumber: inv, idempotencyKey: 'cal-' + inv });
+    await mk('CAL-OVER', -5, 5101); await mk('CAL-SOON', 10, 5203); await mk('CAL-LATE', 60, 5307);
+    const paid = (await mk('CAL-PAID', 3, 5409)).expense; await svc.recordBillPayment(owner, paid.id, { amountCents: 5409, idempotencyKey: 'cal-pay' });
+    const r = await svc.billsDue(owner, { days: 30 });
+    const mine = r.items.filter((x) => String(x.invoiceNumber ?? '').startsWith('CAL-')).map((x) => x.invoiceNumber);
+    expect(mine).toEqual(['CAL-OVER', 'CAL-SOON']);
+    expect(r.items.find((x) => x.invoiceNumber === 'CAL-OVER')!.billDue).toBe('overdue');
+    expect(r.days).toBe(30); expect(r.until > r.today).toBe(true);
+    expect((await svc.billsDue(owner, { days: 90 })).items.map((x) => x.invoiceNumber)).toContain('CAL-LATE');
+    expect((await svc.billsDue(owner, { days: 999 })).days).toBe(30);   // out-of-range window falls back, never unbounded
   });
   it('a personal-card purchase is reimbursed: requested → approved → paid', async () => {
     const { expense } = await svc.create(owner, { amountCents: 2500, incurredOn: today, vendor: 'Staples', category: 'supplies', paymentMethod: 'personal_card', reimburse: true, idempotencyKey: 'reimb-1' });

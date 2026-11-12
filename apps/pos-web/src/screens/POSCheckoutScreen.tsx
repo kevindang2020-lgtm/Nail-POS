@@ -67,6 +67,7 @@ type CheckoutState = {
 
 const money = (c?: number) => '$' + ((c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 import { TipKeypad, parseDollarsToCents, useEventCallback } from '@aipowersalon/ui';
+import { SplitPreviewBox } from './checkout/SplitPreviewBox';
 
 // The ONE shared exact parser (no float money math). Invalid input keeps the old lenient behavior: 0.
 const dollarsToCents = (s: string) => parseDollarsToCents(s) ?? 0;
@@ -875,6 +876,7 @@ export function POSCheckoutScreen() {
                           >
                             {tx('pos.add_tender')}
                           </button>
+                          <SplitPreviewBox segments={segments} dueCents={splitDue} labels={Object.fromEntries(SEG_METHODS.map((x) => [x.m, x.label]))} />
                           <div className="flex justify-between text-xs font-bold pt-1 border-t border-[var(--line)]">
                             <span>{tx('pos.total_paid')}</span>
                             <span style={{ color: splitOk ? '#2E9E54' : '#C0392B' }}>

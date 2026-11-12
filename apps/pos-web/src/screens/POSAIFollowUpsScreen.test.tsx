@@ -18,11 +18,12 @@ const detail = vi.fn((_id: string) => Promise.resolve({ overview: { ...row, reso
   customer: { id: null, name: null, phone: '•••0000', unmatched: true, match: 'unmatched', smsOptedOut: false, sharedPhoneProfiles: 0 }, call: null, attempts: [], booking: { linked: null, upcoming: 0 }, activity: [],
   permissions: { canWork: true, canManage: false, canText: true, canBook: true } }));
 
+const priorities = vi.fn(() => Promise.resolve({ items: [] as any[], asOf: undefined as string | undefined, bookingsAwaitingVerification: 0, note: '' }));
 const importSources = vi.fn(() => Promise.resolve({ createdFromMissedCalls: 2, createdFromCopilot: 1 }));
 const healthHistory = vi.fn(() => Promise.resolve({ items: [{ overall: 'WARNING', at: '2026-11-06T15:00:00Z', by: 'Olivia Owner', failed: 1 }], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 }));
 vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: {
   importSources: () => importSources(), healthHistory: () => healthHistory(), recommendedAssignee: () => Promise.resolve({ userId: 'u9', name: 'Fran Desk', role: 'FRONT_DESK', openTasks: 0, reason: 'x' }),
-  list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [] }), priorities: () => Promise.resolve({ items: [], bookingsAwaitingVerification: 0, note: '' }),
+  list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [] }), priorities: () => priorities(),
   create: (b: any) => create(b), detail: (id: string) => detail(id), prepareText: (id: string, b: any) => prepareText(id, b), confirmText: (...a: any[]) => confirmText(...a),
   edit: (id: string, b: any) => edit(id, b), health: vi.fn(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
 } }));
@@ -33,6 +34,13 @@ const mount = () => render(<MemoryRouter><POSAIFollowUpsScreen /></MemoryRouter>
 
 describe('POSAIFollowUpsScreen', () => {
   beforeEach(() => { list.mockClear(); create.mockClear(); prepareText.mockClear(); confirmText.mockClear(); });
+  it('every assistant urgency suggestion shows its evidence, when the task opened and when the check ran', async () => {
+    priorities.mockResolvedValueOnce({ items: [{ taskId: 'fu1', version: 1, reason: 'CALLBACK', priority: 'high', ageMinutes: 90, signal: 'overdue_callback', rank: 1, recommendation: 'x', evidence: ['Overdue by 30 min'] }], asOf: '2026-11-10T15:00:00Z', bookingsAwaitingVerification: 0, note: '' });
+    mount();
+    expect((await screen.findByTestId('aifu-rec-evidence')).textContent).toMatch(/Overdue by 30 min/);
+    const when = screen.getByTestId('aifu-rec-when').textContent ?? '';
+    expect(when).toMatch(/1:30/); expect(when).toMatch(/3:00/);   // opened 90 min before the 15:00 check (TZ=UTC)
+  });
   it('keeps the six original status chips and Back to Command Center', async () => {
     mount();
     for (const s of ['open', 'assigned', 'in_progress', 'waiting', 'resolved', 'all']) expect(screen.getByTestId(`aifu-chip-${s}`)).toBeInTheDocument();

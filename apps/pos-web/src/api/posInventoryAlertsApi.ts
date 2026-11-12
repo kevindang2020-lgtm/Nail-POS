@@ -4,6 +4,7 @@
 // it". Recording a use is one idempotent request (Idempotency-Key per intent — a double tap or a retry records once); a
 // correction is a signed adjustment with a reason (inventory.stock.adjust), never an edit.
 import { api, posHttp } from './client';
+import type { InventoryLowStockCause } from '@aipowersalon/api-contracts/tenant';
 type Q = Record<string, unknown>;
 export class ApiError extends Error { constructor(message: string, public status: number, public code?: string, public body?: any) { super(message); this.name = 'ApiError'; } }
 const http = <T,>(path: string, init?: RequestInit) => posHttp<T>(path, init, { mapError: (status, body, message) => new ApiError(message, status, (body as { code?: string; error?: { code?: string } } | null)?.error?.code ?? (body as { code?: string } | null)?.code, body) });
@@ -17,6 +18,8 @@ export const posInventoryAlertsApi = {
   history: (q: Q) => api.get<any>(`${B}/history`, clean(q)),
   usage: (q: Q) => api.get<any>(`${B}/usage`, clean(q)),
   ledger: (productId: string, q: Q) => api.get<any>(`${B}/usage/products/${enc(productId)}`, clean(q)),
+  /** Low-Stock Cause Explanation (Extras · Stock Alerts 12): measured movements, open orders, ledger agreement */
+  cause: (productId: string) => api.get<InventoryLowStockCause>(`${B}/products/${enc(productId)}/cause`),
   technicians: (q: Q) => api.get<any>(`${B}/technicians`, clean(q)),
   pickers: (search?: string) => api.get<any>(`${B}/pickers`, clean({ search })),
   event: (eventId: string) => api.get<any>(`${B}/events/${enc(eventId)}`),

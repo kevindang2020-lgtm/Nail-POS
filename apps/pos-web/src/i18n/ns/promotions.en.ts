@@ -34,4 +34,10 @@ export const PROMOTIONS_EN = {
   'promo.pause.where': 'Where it applies',
   'promo.pause.allBranches': 'All branches',
   'promo.pause.effect': 'Checkout stops accepting this promotion as soon as you pause it. Tickets already paid keep their discount, and the history stays. Resume turns it back on.',
+  'promo.exp.title': 'Expiration calendar',
+  'promo.exp.sub': 'Promotions ending {from} – {to}',
+  'promo.exp.window': 'Window',
+  'promo.exp.days': 'Next {n} days',
+  'promo.exp.none': 'No promotion ends in this window.',
+  'promo.exp.capped': 'Showing the first {n} of {total} — narrow the window to see the rest.',
 } as const;

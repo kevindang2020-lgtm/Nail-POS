@@ -147,4 +147,18 @@ export const DISCOUNTS_VI = {
   'dsc.term.endsAt': 'Kết thúc',
   'dsc.term.status': 'Trạng thái',
   'dsc.kpi.redLedger': 'Mọi thời gian (bộ đếm mã) · {n} trong Lịch sử sử dụng',
+  'dsc.why.open': 'Cách tính', // DRAFT — Kevin reviews
+  'dsc.why.eligible': 'Tạm tính được áp dụng', // DRAFT — Kevin reviews
+  'dsc.why.rulePct': '{p}% của tạm tính được áp dụng', // DRAFT — Kevin reviews
+  'dsc.why.ruleFixed': 'Giảm số tiền cố định', // DRAFT — Kevin reviews
+  'dsc.why.cap': 'Giới hạn tối đa {v}', // DRAFT — Kevin reviews
+  'dsc.why.subtotal': 'Không vượt quá tạm tính được áp dụng', // DRAFT — Kevin reviews
+  'dsc.why.saved': 'Số tiền giảm trên phiếu', // DRAFT — Kevin reviews
+  'dsc.why.differs': 'Điều khoản hiện tại sẽ giảm {v}; phiếu giữ số tiền giảm đã ghi lúc thanh toán (điều khoản đã đổi, giới hạn cộng dồn, hoặc hoàn lại).', // DRAFT — Kevin reviews
+  'dsc.exp.title': 'Mức chi giảm giá tối đa', // DRAFT — Kevin reviews
+  'dsc.exp.estimate': 'ước tính — số tiền giảm tối đa còn có thể chi', // DRAFT — Kevin reviews
+  'dsc.exp.byUses': 'Còn {n} lượt × tối đa {v} mỗi lượt', // DRAFT — Kevin reviews
+  'dsc.exp.byBudget': 'Giới hạn bởi ngân sách còn lại', // DRAFT — Kevin reviews
+  'dsc.exp.unlimited': 'Không có mức trần: không giới hạn lượt dùng và chưa đặt ngân sách', // DRAFT — Kevin reviews
+  'dsc.exp.noCap': 'Không có mức trần: giảm theo % không có giới hạn mỗi phiếu và chưa đặt ngân sách', // DRAFT — Kevin reviews
 };

@@ -30,6 +30,7 @@ import { Actions, AssistantDialog, Campaigns, CheckDialog, DuplicateDialog, Fina
 import { posCouponsApi } from '../api/posCouponsApi';
 import { DealWizard } from './deals/DealWizard';
 import { DealCouponsPanel } from './deals/DealCouponsPanel';
+import { ExpirationCalendar } from './deals/ExpirationCalendar';
 
 type Tab = 'library' | 'redemptions' | 'checks' | 'insights' | 'health';
 const TABS: Tab[] = ['library', 'redemptions', 'checks', 'insights', 'health'];
@@ -74,7 +75,7 @@ export function POSPromotionsScreen() {
   useEffect(() => { if ((P('q') ?? '') !== q) setP({ q: q || null }); }, [q]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const [tick, setTick] = useState(0); const refresh = () => setTick((n) => n + 1);
-  const [detail, setDetail] = useState<{ id: string; tab?: string } | null>(null);
+  const [detail, setDetail] = useState<{ id: string; tab?: string } | null>(null); const [expCal, setExpCal] = useState(false);
   const [checking, setChecking] = useState<{ id: string; name: string } | null>(null);
   const [choose, setChoose] = useState(false);
   const [wizard, setWizard] = useState<{ editing: DealView | null } | null>(null);
@@ -160,7 +161,7 @@ export function POSPromotionsScreen() {
         <KpiCard testId="kpi-active" tone="ok" label={tx('pos.active_3')} loading={!k} value={k ? nf(k.activeDiscounts) : ''} sub={k ? tx('dsc.kpi.activeSub', { s: nf(k.split.scheduled), p: nf(k.split.paused) }) : ''} onClick={() => setP({ scope: null, status: 'active' })} />
         <KpiCard testId="kpi-paused" tone={k && k.split.paused ? 'warn' : undefined} label={tx('pos.paused')} loading={!k} value={k ? nf(k.split.paused) : ''} sub={tx('cp.kpi.pausedSub')} onClick={() => setP({ scope: null, status: 'paused' })} />
         <KpiCard testId="kpi-redemptions" tone="gold" label={tx('pos.redemptions')} loading={!k} value={k ? nf(k.ledger.confirmedEvents) : ''} sub={k ? tx('cp.kpi.redSub', { p: nf(k.ledger.pendingAtCheckout) }) : ''} onClick={() => setP({ scope: 'redemptions' })} />
-        <KpiCard testId="kpi-expiring" tone={k && k.expiringSoon > 0 ? 'warn' : undefined} label={tx('pos.expiring_soon')} loading={!k} value={k ? nf(k.expiringSoon) : ''} sub={k ? tx('dsc.kpi.expSub', { n: nf(k.expiringWindowDays) }) : ''} />
+        <KpiCard testId="kpi-expiring" tone={k && k.expiringSoon > 0 ? 'warn' : undefined} label={tx('pos.expiring_soon')} loading={!k} value={k ? nf(k.expiringSoon) : ''} sub={k ? tx('dsc.kpi.expSub', { n: nf(k.expiringWindowDays) }) : ''} onClick={k ? () => setExpCal(true) : undefined} />
         <KpiCard testId="kpi-value" label={tx('promo.kpi.value')} loading={!k} value={k ? fmtMoney(k.ledger.savingsCents) : ''} sub={k ? tx('cp.kpi.valueSub', { g: fmtMoney(k.ledger.grossDiscountCents ?? 0), r: fmtMoney(k.ledger.reversedCents ?? 0) }) : ''} />
       </div>
 
@@ -247,6 +248,7 @@ export function POSPromotionsScreen() {
           <div className="fk-hint">{tx('cp.healthNote', { t: when(health.data.checkedAt) })}</div></>}
       </FitPanel> : null}
 
+      {expCal && k ? <ExpirationCalendar today={k.today} onClose={() => setExpCal(false)} onOpen={(id) => { setExpCal(false); setDetail({ id }); }} /> : null}
       {detail ? <DiscountDetailsDialog id={detail.id} initialTab={detail.tab} tick={tick} onClose={() => setDetail(null)} onCustomer={openCustomer} onTicket={openTicket}
         extras={{
           tabs: [

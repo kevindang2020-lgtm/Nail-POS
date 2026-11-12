@@ -17,6 +17,8 @@ import { tenantTimeZone, ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, AsyncExport } from '@aipowersalon/permissions/guards';
 import { hashCode, normalizeCode } from '../engine/coupons';
 import { ruleDiscount } from '../engine/pricing';
+import { refundOutcome } from '../engine/refund-outcome';
+import type { DiscountRefundImpact } from '@aipowersalon/api-contracts/tenant';
 
 export interface DiscountsCtx { tenantId: string; branchId: string; userId: string; role: string; permissions: string[] }
 export interface DPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
@@ -307,6 +309,25 @@ export class DiscountsScreenRepository {
     };
   }
 
+  /** Refund Impact Preview (Extras · Discounts 11): for a ticket (and optionally the service lines being refunded), each
+   *  discount / coupon application with its line allocation and what the refund would do under the ONE refund rule
+   *  (engine/refund-outcome.ts — the same function the ledger applies). Read-only: nothing is reversed here. */
+  async refundImpact(ctx: DiscountsCtx, ticketId: string, lineIds: string[] | null): Promise<DiscountRefundImpact> {
+    if (!UUID.test(ticketId)) throw withCode(new HttpException({ code: 'TICKET_NOT_FOUND', message: 'Ticket not found' }, HttpStatus.NOT_FOUND), 'TICKET_NOT_FOUND');
+    const ids = lineIds && lineIds.length ? lineIds.filter((x) => UUID.test(x)) : null;
+    const rows = (await sql<any>`select r.id, r.status, r.amount_discounted_cents, r.reversed_cents, r.line_allocations, d.title,
+        (select c.code_hint from deal_coupon_codes c where c.tenant_id = r.tenant_id and c.id = r.coupon_code_id) as code_hint
+      from deal_redemptions r join deals d on d.id = r.deal_id and d.tenant_id = r.tenant_id
+      where r.tenant_id = ${ctx.tenantId} and r.ticket_id = ${ticketId} and ${this.branch(ctx)} and r.status in ('applied', 'redeemed', 'partially_reversed') order by r.id`.execute(this.db)).rows;
+    return { ticketId, wholeTicket: !ids, items: rows.map((r: any) => {
+      const o = refundOutcome(r, ids);
+      const alloc: { lineId: string; cents: number }[] = Array.isArray(r.line_allocations) ? r.line_allocations : (typeof r.line_allocations === 'string' ? JSON.parse(r.line_allocations) : []);
+      return { redemptionId: String(r.id), dealName: String(r.title), code: r.code_hint ? '••••' + String(r.code_hint) : null, status: String(r.status), discountCents: N(r.amount_discounted_cents),
+        alreadyReversedCents: N(r.reversed_cents), outcome: o.kind, reverseCents: o.shareCents, placeReturned: o.placeReturned,
+        lines: alloc.map((a) => ({ lineId: String(a.lineId), cents: N(a.cents), refunded: !ids || ids.includes(String(a.lineId)) })) };
+    }) };
+  }
+
   async exportList(ctx: DiscountsCtx, f: Record<string, unknown>) {
     const r = await this.list(ctx, { ...f, page: 1, pageSize: 100 });
     const all = [...r.items];
@@ -354,6 +375,12 @@ export class DiscountsScreenController {
 
   @Get('') @RequirePermission('pos.marketing.view') @ListQuery(LIST_SPEC)
   list(@Req() req: any, @Query() q: any) { return this.r().list(this.auth(req), { q: s(q?.q), status: s(q?.status), type: s(q?.type), dateField: s(q?.dateField), serviceId: s(q?.serviceId), branchId: s(q?.branchId), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
+
+  // Refund Impact Preview (Extras · Discounts 11): refund staff see it before an authorized refund — read-only
+  @Get('refund-impact/:ticketId') @RequirePermission('pos.checkout.refund') @ListQuery({ filters: { lineIds: { type: 'text', maxLength: 4000 } }, search: false })
+  discountImpactOfRefund(@Req() req: any, @Param('ticketId') ticketId: string, @Query('lineIds') lineIds?: string): Promise<DiscountRefundImpact> {
+    return this.r().refundImpact(this.auth(req), String(ticketId), lineIds ? String(lineIds).split(',').map((x) => x.trim()).filter(Boolean) : null);
+  }
 
   @Get('redemptions') @RequirePermission('pos.marketing.view') @ListQuery(RED_SPEC)
   redemptions(@Req() req: any, @Query() q: any) { return this.r().redemptions(this.auth(req), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), branchId: s(q?.branchId), dateField: s(q?.dateField), ...per(q), page: q?.page, pageSize: q?.pageSize }); }

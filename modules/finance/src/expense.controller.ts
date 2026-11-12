@@ -16,12 +16,12 @@ import type {
   FinanceDeleteResult, FinanceAttachResult, FinanceArchiveResult, FinanceBatchResult, FinanceDuplicateResult, FinanceCategoryRecommendation, FinanceImportResult, FinanceCategoryList,
   FinanceCategoryResult, FinanceRuleList, FinanceRuleResult, FinanceSettings, FinanceExpenseCreateRequest, FinanceExpenseUpdateRequest, FinanceVersionRequest,
   FinanceReasonRequest, FinanceDuplicateDecisionRequest, FinanceBillPaymentRequest, FinanceReimbursementRequest, FinanceAttachRequest, FinanceIdsRequest,
-  FinanceCategoryRequest, FinanceRuleRequest, FinanceSettingsRequest, FinanceDuplicateCheckRequest, FinanceRecommendRequest, FinanceImportRequest,
+  FinanceCategoryRequest, FinanceRuleRequest, FinanceRulePreviewRequest, FinanceRulePreview, FinanceBillsDue, FinanceExportPreflight, FinanceSettingsRequest, FinanceDuplicateCheckRequest, FinanceRecommendRequest, FinanceImportRequest,
   FinancePaymentMatch, FinancePaymentLinkRequest, FinanceReceiptSuggestion,
 } from '@aipowersalon/api-contracts/tenant';
 import {
   FIN_EXPENSE_CREATE_BODY, FIN_EXPENSE_UPDATE_BODY, FIN_VERSION_BODY, FIN_REASON_BODY, FIN_DUPLICATE_BODY, FIN_BILL_PAYMENT_BODY, FIN_REIMBURSEMENT_BODY,
-  FIN_ATTACH_BODY, FIN_IDS_BODY, FIN_CATEGORY_BODY, FIN_RULE_BODY, FIN_SETTINGS_BODY, FIN_DUP_CHECK_BODY, FIN_RECOMMEND_BODY, FIN_IMPORT_BODY, FIN_PAYMENT_LINK_BODY,
+  FIN_ATTACH_BODY, FIN_IDS_BODY, FIN_CATEGORY_BODY, FIN_RULE_BODY, FIN_RULE_PREVIEW_BODY, FIN_SETTINGS_BODY, FIN_DUP_CHECK_BODY, FIN_RECOMMEND_BODY, FIN_IMPORT_BODY, FIN_PAYMENT_LINK_BODY,
 } from './request-schemas';
 
 interface Req { ctx?: { tenantId?: string; userId?: string; role?: string; permissions?: string[]; branchId?: string | null } }
@@ -53,6 +53,10 @@ export class ExpenseController {
   @RequirePermission('owner.expenses.view') @Get('reports') report(@Req() r: Req, @Query('period') p?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('branchId') branchId?: string): Promise<FinanceReport> {
     return financeRun(() => this.svc.report(financeCtx(r, branchId), { period: period(p), from, to, branchId: branchId || null }));
   }
+  // Accountant export preflight (Extras · Receipt Expense OCR 09): the same rows the export would write, checked; read-only
+  @RequirePermission('owner.expenses.export') @Get('expenses/export/preflight') exportPreflight(@Req() r: Req, @Query('period') p?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('branchId') branchId?: string, @Query('includeUnapproved') inc?: string, @Query('category') category?: string, @Query('paymentMethod') paymentMethod?: string, @Query('q') search?: string): Promise<FinanceExportPreflight> {
+    return financeRun(() => this.svc.exportPreflight(financeCtx(r, branchId), { period: period(p), from, to, branchId: branchId || null, includeUnapproved: inc === '1' || inc === 'true', category: category || undefined, paymentMethod: paymentMethod || undefined, q: search || undefined }));
+  }
   @AsyncExport({ kind: 'owner.finance.expenses.export', maxSyncRows: 20_000, estimate: { table: 'expenses' } })
   @RequirePermission('owner.expenses.export') @Get('expenses/export') async exportFile(@Req() r: Req, @Query('format') format?: string, @Query('period') p?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('branchId') branchId?: string, @Query('includeUnapproved') inc?: string, @Query('category') category?: string, @Query('paymentMethod') paymentMethod?: string, @Query('q') search?: string): Promise<FinanceExportPayload> {
     return financeRun(async () => {
@@ -70,6 +74,10 @@ export class ExpenseController {
   // Expenses guide (Nov 4 2026): declared before expenses/:id so "summary" is never read as an expense id
   @RequirePermission('owner.expenses.view') @Get('expenses/summary') summary(@Req() r: Req, @Query() q: Record<string, string | undefined>): Promise<FinanceExpenseSummary> {
     return financeRun(() => this.svc.summary(financeCtx(r, q.branchId), { from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, paymentMethod: q.paymentMethod, q: q.q, branchId: q.branchId || null }));
+  }
+  // Bill due calendar (Extras · Receipt Expense OCR 06): declared before expenses/:id
+  @RequirePermission('owner.expenses.view') @Get('expenses/bills-due') billsDue(@Req() r: Req, @Query('days') days?: string, @Query('branchId') branchId?: string): Promise<FinanceBillsDue> {
+    return financeRun(() => this.svc.billsDue(financeCtx(r, branchId), { days: int(days) ?? null, branchId: branchId || null }));
   }
   @RequirePermission('owner.expenses.view') @Get('expenses/:id') detail(@Req() r: Req, @Param('id') id: string): Promise<FinanceExpenseDetail> { return financeRun(() => this.svc.detail(financeCtx(r), id)); }
   @RequirePermission('owner.expenses.manage') @Post('expenses') create(@Req() r: Req, @Body(ValidatedBody(FIN_EXPENSE_CREATE_BODY, { strict: true })) b: FinanceExpenseCreateRequest): Promise<FinanceExpenseCreateResult> { return financeRun(() => this.svc.create(financeCtx(r), b as never)); }
@@ -102,6 +110,8 @@ export class ExpenseController {
   @RequirePermission('owner.expenses.categories.manage') @Post('expense-categories') createCategory(@Req() r: Req, @Body(ValidatedBody(FIN_CATEGORY_BODY, { strict: true })) b: FinanceCategoryRequest): Promise<FinanceCategoryResult> { return financeRun(() => this.svc.createCategory(financeCtx(r), { label: b.label ?? '', accountingCode: b.accountingCode ?? null })); }
   @RequirePermission('owner.expenses.categories.manage') @Patch('expense-categories/:key') updateCategory(@Req() r: Req, @Param('key') key: string, @Body(ValidatedBody(FIN_CATEGORY_BODY, { strict: true })) b: FinanceCategoryRequest): Promise<FinanceCategoryResult> { return financeRun(() => this.svc.updateCategory(financeCtx(r), key, b)); }
   @RequirePermission('owner.expenses.view') @Get('expense-rules') rules(@Req() r: Req): Promise<FinanceRuleList> { return financeRun(() => this.svc.rules(financeCtx(r))); }
+  // Vendor-rule preview (Extras · Receipt Expense OCR 05): read-only, before the rule is saved
+  @RequirePermission('owner.expenses.view') @Post('expense-rules/preview') previewRule(@Req() r: Req, @Body(ValidatedBody(FIN_RULE_PREVIEW_BODY, { strict: true })) b: FinanceRulePreviewRequest): Promise<FinanceRulePreview> { return financeRun(() => this.svc.previewRule(financeCtx(r), b)); }
   @RequirePermission('owner.expenses.categories.manage') @Post('expense-rules') createRule(@Req() r: Req, @Body(ValidatedBody(FIN_RULE_BODY, { strict: true })) b: FinanceRuleRequest): Promise<FinanceRuleResult> { return financeRun(() => this.svc.createRule(financeCtx(r), b)); }
   @RequirePermission('owner.expenses.categories.manage') @Delete('expense-rules/:id') deleteRule(@Req() r: Req, @Param('id') id: string): Promise<FinanceRuleResult> { return financeRun(() => this.svc.deleteRule(financeCtx(r), id)); }
   @RequirePermission('owner.expenses.view') @Get('expense-settings') settings(@Req() r: Req): Promise<FinanceSettings> { return financeRun(() => this.svc.settings(financeCtx(r))); }

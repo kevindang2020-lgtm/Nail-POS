@@ -19,6 +19,8 @@ import { posAIQueueAssignmentApi as api, newIdempotencyKey } from '../../api/pos
 import { posQueueApi } from '../../api/posQueueApi';
 import { isQueueConflict, queueConflictMessage } from '../../lib/queueConflict';
 import { VisitPlanPanel } from '../../components/VisitPlanPanel';
+import { useDebounced } from '../../components/FitKit';
+import { CandidateTable } from './AIQueueCandidates';
 import { card, cardHead, input, btnGold, btnGhost, btnDanger, muted, errText, okText, pill, pct, mins, pretty, errMsg, when, FEEDBACK_CODES, DECISION_LABEL } from './aiQueueUi';
 import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -50,13 +52,16 @@ export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged, s
   const [planOpen, setPlanOpen] = useState(false);
   const { ask, askUi } = useInlineAsk();
 
+  // extras (Nov 11 2026 · AI Queue Assignment 01): find a waiting guest by name or phone (the queue's own server search);
+  // the queue entry ID stays available as an advanced lookup
+  const [find, setFind] = useState(''); const dFind = useDebounced(find.trim(), 300); const [advId, setAdvId] = useState(''); const [advOpen, setAdvOpen] = useState(false);
   const loadLive = useCallback(async () => {
     try {
-      const r: any = await posQueueApi.items({ pageSize: 100 } as any);
+      const r: any = await posQueueApi.items({ pageSize: 100, ...(dFind ? { search: dFind } : {}) } as any);
       const rows: LiveItem[] = (Array.isArray(r) ? r : r?.items || []).filter((x: LiveItem) => ACTIVE.includes(x.status));
       setLive(rows); setLiveErr(null);
     } catch (e) { setLive([]); setLiveErr(errMsg(e, tx('growth.aiQueue.err.liveQueue'))); }
-  }, []);
+  }, [dFind]);
   // never clears `err`: a 409 message set just before this reload must stay on screen
   const loadPanel = useCallback(async (qid: string) => {
     try {
@@ -142,6 +147,11 @@ export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged, s
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(0, 260px) minmax(0, 1fr)' }} className="aq-panel-grid">
         {/* the live queue — pick a guest; no raw ID box */}
         <div style={{ display: 'grid', gap: 6, alignContent: 'start', maxHeight: 420, overflow: 'auto' }} aria-label={tx('pos.live_queue')}>
+          <input style={input} value={find} onChange={(e) => setFind(e.target.value)} placeholder={tx('growth.aiQueue.find.ph')} aria-label={tx('growth.aiQueue.find.ph')} data-testid="aq-find" />
+          {/* the raw ID is never the primary way in: it appears only when someone asks for the advanced lookup */}
+          <button type="button" style={{ ...btnGhost, justifySelf: 'start' }} onClick={() => setAdvOpen((v) => !v)} aria-expanded={advOpen} data-testid="aq-adv">{tx('growth.aiQueue.find.adv')}</button>
+          {advOpen ? <div style={{ display: 'flex', gap: 6 }}><input style={input} value={advId} onChange={(e) => setAdvId(e.target.value)} placeholder={tx('growth.aiQueue.find.idPh')} aria-label={tx('growth.aiQueue.find.idPh')} data-testid="aq-adv-id" />
+            <button type="button" style={btnGhost} disabled={!advId.trim()} onClick={() => pick(advId.trim())} data-testid="aq-adv-open">{tx('growth.aiQueue.find.open')}</button></div> : null}
           {live == null ? <div style={muted}>{tx('pos.loading_the_queue')}</div>
             : live.length === 0 ? <div style={muted}>{liveErr || tx('pos.nobody_is_waiting_right_now')}</div>
               : live.map((g) => (
@@ -188,6 +198,7 @@ export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged, s
                 {!showPlan ? <button style={btnGhost} disabled={busy} onClick={() => setPlanOpen(true)}>{tx('pos.plan_by_service')}</button> : null}
               </div>
 
+              {panel?.candidates?.length ? <CandidateTable candidates={panel.candidates} /> : null}
               {showPlan && selId ? (
                 <VisitPlanPanel key={selId} queueItemId={selId} customerName={guestName} roster={roster.map((r) => ({ technicianId: r.technicianId, displayName: r.name }))} can={can}
                   onChanged={() => { void loadLive(); void loadPanel(selId); onChanged(); }} onClose={split ? undefined : () => setPlanOpen(false)} />

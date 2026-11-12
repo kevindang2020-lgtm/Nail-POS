@@ -33,6 +33,22 @@ beforeEach(() => {
 const renderScreen = (path = '/tenant/marketing/promotions') => render(<MemoryRouter initialEntries={[path]}><POSPromotionsScreen /></MemoryRouter>);
 
 describe('POSPromotionsScreen', () => {
+  it('Expiring Soon opens an expiration calendar by day and branch that opens the same canonical promotion', async () => {
+    renderScreen();
+    await screen.findByText('••••NG20');
+    disc.list.mockResolvedValue({ ...page([{ ...vishal, id: 'd9', name: 'Holiday', endsAt: '2026-11-05T16:00:00Z', branchName: 'Downtown' }, { ...vishal, id: 'd8', name: 'Fall', endsAt: '2026-11-02T16:00:00Z', branchName: null }]), totalItems: 140 });
+    disc.detail.mockResolvedValue(null);
+    const kpi = screen.getByTestId('kpi-expiring');
+    fireEvent.click(kpi.querySelector('button') ?? kpi);
+    const dlg = await screen.findByTestId('dlg-expiration-calendar');
+    await waitFor(() => expect(disc.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'live', dateField: 'ends', preset: 'custom', from: '2026-10-30', to: '2026-11-29' })));
+    const days = await screen.findAllByTestId('exp-day');
+    expect(days[0].textContent).toMatch(/Fall/); expect(days[1].textContent).toMatch(/Holiday/); expect(days[1].textContent).toMatch(/Downtown/);
+    expect(screen.getByTestId('exp-capped').textContent).toMatch(/140/);   // more than shown is said, never hidden
+    fireEvent.click(screen.getAllByTestId('exp-open')[1]);
+    await waitFor(() => expect(disc.detail).toHaveBeenCalledWith('d9'));
+    expect(dlg).not.toBeInTheDocument();
+  });
   it('keeps the Promotions title, the five KPI cards (+ discount value) and the vishal 20% row with its masked code', async () => {
     renderScreen();
     expect(await screen.findByText('••••NG20')).toBeInTheDocument();

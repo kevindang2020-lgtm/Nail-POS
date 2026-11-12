@@ -419,6 +419,19 @@ describe('Round 2 — panel candidates, auto-run result, analytics + usage', () 
     expect(opts.indexOf('Mia')).toBeLessThan(opts.indexOf('Ana — on break'));   // eligible first
   });
 
+  it('extras: find a guest by name/phone through the queue search, open by entry ID, and see every candidate with availability and preference', async () => {
+    renderScreen(); await pickJessica();
+    const rows = await screen.findAllByTestId('aq-cand-row');
+    expect(rows[0].textContent).toMatch(/Mia/); expect(rows[0].textContent).toMatch(/Last time/); expect(rows[0].textContent).toMatch(/Free now/);
+    expect(rows[1].textContent).toMatch(/Ana/); expect(screen.getByTestId('aq-cand-why').textContent).toMatch(/on break/);
+    fireEvent.change(screen.getByTestId('aq-find'), { target: { value: '555' } });
+    await waitFor(() => expect(sent('GET', '/pos/queue/items').some((c) => c.url.includes('search=555'))).toBe(true));
+    fireEvent.click(screen.getByTestId('aq-adv'));
+    fireEvent.change(screen.getByTestId('aq-adv-id'), { target: { value: 'q9' } });
+    fireEvent.click(screen.getByTestId('aq-adv-open'));
+    await waitFor(() => expect(sent('GET', '/entries/q9/panel').length).toBe(1));   // the advanced lookup opens that entry's panel
+  });
+
   it('Run now reads { allowed, blockedBy } and says why nothing ran', async () => {
     renderScreen();
     fireEvent.click(await screen.findByText('Run now'));

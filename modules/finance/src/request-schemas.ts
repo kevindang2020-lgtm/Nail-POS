@@ -29,6 +29,7 @@ export const FIN_ATTACH_BODY: BodySchema = S.object({ documentId: S.uuid(), role
 export const FIN_IDS_BODY: BodySchema = S.object({ ids: S.array(S.uuid(), { minItems: 1, maxItems: 200 }), categoryKey: txt(60), threshold: S.nullable(S.number({ minimum: 0.5, maximum: 1 })) }, ['ids']);
 export const FIN_CATEGORY_BODY: BodySchema = S.object({ label: txt(60), accountingCode: txt(60), active: S.nullable(S.boolean()) });
 export const FIN_RULE_BODY: BodySchema = S.object({ vendor: S.text(200), categoryKey: S.text(60), keyword: txt(60), vendorId: S.nullable(S.uuid()) }, ['vendor', 'categoryKey']);
+export const FIN_RULE_PREVIEW_BODY: BodySchema = S.object({ vendor: S.text(200), categoryKey: S.text(60) }, ['vendor', 'categoryKey']);
 export const FIN_SETTINGS_BODY: BodySchema = S.object({
   requireApproval: S.nullable(S.boolean()), autoReady: S.nullable(S.boolean()), autoCategory: S.nullable(S.boolean()), learnFromCorrections: S.nullable(S.boolean()), duplicateDetection: S.nullable(S.boolean()),
   billReminderDays: S.nullable(S.integer({ minimum: 0, maximum: 60 })), defaultBranchId: S.nullable(S.uuid()), receptionistUpload: S.nullable(S.boolean()), technicianUpload: S.nullable(S.boolean()),

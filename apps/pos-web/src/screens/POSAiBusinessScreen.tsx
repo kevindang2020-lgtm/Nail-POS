@@ -241,6 +241,8 @@ export function POSAiBusinessScreen() {
             </div>
           )}
 
+          {s && s.previousNetCents !== undefined && s.evidence ? <ComparisonBasis ev={s.evidence} /> : null}
+
           {nums.length > 0 && (
             <div className="kpis" style={{ marginTop: 12 }}>
               {nums.map((n) => (<div className="kpi" key={n.label}><div className="l">{n.label}</div><div className="v">{n.value}</div></div>))}
@@ -277,5 +279,20 @@ export function POSAiBusinessScreen() {
       <AssistantHistory tick={histTick} onReplay={(h) => { if (h.period && h.preset === 'custom') { setRange(h.period); setPeriod('custom'); void ask({ intent: h.intent, question: h.question || undefined, from: h.period.from, to: h.period.to }); }
         else { if (h.preset) setPeriod(h.preset); void ask({ intent: h.intent, question: h.question || undefined, preset: h.preset || undefined }); } }} />
     </div>
+  );
+}
+
+/** Comparison Explainer (Extras · AI Business Assistant 03): every comparison states the periods compared, the
+ *  calculation basis (the server's metric definition) and that revenue is not profit. Read from the answer's evidence. */
+function ComparisonBasis({ ev }: { ev: { metricId?: string; definition?: string; preset?: string; comparePreset?: string; compareWindow?: string; partialCurrentPeriod?: boolean } }) {
+  const per = (p?: string) => (p ? t('bzx.period.' + p) : '—');
+  const against = ev.compareWindow === 'previous' || !ev.comparePreset ? t('bzc.prevOf', { p: per(ev.preset) }) : per(ev.comparePreset);
+  const defKey = 'bzc.def.' + (ev.metricId ?? ''); const def = t(defKey);
+  return (
+    <dl className="aifu-dl sub" style={{ marginTop: 10 }} data-testid="aib-compare-basis">
+      <dt>{t('bzc.periods')}</dt><dd data-testid="aib-compare-periods">{t('bzc.vs', { a: per(ev.preset), b: against })}{ev.partialCurrentPeriod ? ` · ${t('bzc.partial')}` : ''}</dd>
+      <dt>{t('bzc.basis')}</dt><dd data-testid="aib-compare-def">{def === defKey ? (ev.definition ?? '—') : def}</dd>
+      <dt>{t('bzc.notProfit')}</dt><dd>{t('bzc.notProfitV')}</dd>
+    </dl>
   );
 }

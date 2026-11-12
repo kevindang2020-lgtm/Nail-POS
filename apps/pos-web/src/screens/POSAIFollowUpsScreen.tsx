@@ -38,14 +38,14 @@ export function POSAIFollowUpsScreen() {
   const [data, setData] = useState<FuPage | null>(null); const [kpis, setKpis] = useState<FuKpis | null>(null); const [err, setErr] = useState<string | null>(null); const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState<{ id: string; name: string; role: string }[]>([]);
   const [openId, setOpenId] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [health, setHealth] = useState<null | { overall: string; checks: FuCheck[]; ranAt: string; cached: boolean }>(null);
-  const [prios, setPrios] = useState<FuPriority[] | null>(null); const [notice, setNotice] = useState<string | null>(null);
+  const [prios, setPrios] = useState<FuPriority[] | null>(null); const [priosAt, setPriosAt] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
 
   const query = useMemo(() => ({ status, q: dq.trim() || undefined, priority: priority || undefined, source: source || undefined, assignee: assignee || undefined, overdue: overdue ? '1' : undefined,
     sort, basis, ...periodQuery(period), page, pageSize }), [status, dq, priority, source, assignee, overdue, sort, basis, period, page, pageSize]);
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([fa.list(query), fa.kpis()]).then(([l, k]) => { setData(l); setKpis(k); setErr(null); }).catch((e) => setErr(errorTextOf(e, tx('aifu.loadFailed')))).finally(() => setLoading(false));
-    fa.priorities().then((p) => setPrios(p.items)).catch(() => setPrios(null));
+    fa.priorities().then((p) => { setPrios(p.items); setPriosAt(p.asOf ?? null); }).catch(() => setPrios(null));
   }, [query]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const h = setInterval(load, 45_000); return () => clearInterval(h); }, [load]);
@@ -142,7 +142,8 @@ export function POSAIFollowUpsScreen() {
           {prios === null ? <div className="sub">{tx('aifu.loading')}</div> : prios.length === 0 ? <div className="sub">{tx('aifu.noRecs')}</div> : prios.slice(0, 6).map((p) => (
             <div key={p.taskId + p.signal} className="aifu-rec" data-testid="aifu-rec">
               <div className="aifu-rec-t">{tx(`aifu.sig.${p.signal}`)}</div>
-              <div className="sub">{p.evidence.join(' · ')}</div>
+              <div className="sub" data-testid="aifu-rec-evidence">{p.evidence.join(' · ')}</div>
+              {priosAt ? <div className="sub" data-testid="aifu-rec-when">{tx('aifu.rec.when', { opened: fmt(new Date(Date.parse(priosAt) - p.ageMinutes * 60000).toISOString()), at: fmt(priosAt) })}</div> : null}
               <div className="aifu-row-btns">
                 <button className="btn ghost" onClick={() => { setOpenId(p.taskId); fa.decide({ taskId: p.taskId, signal: p.signal, decision: 'accept' }).catch(() => undefined); }}>{tx('aifu.accept')}</button>
                 <button className="btn ghost" onClick={() => fa.decide({ taskId: p.taskId, signal: p.signal, decision: 'dismiss' }).then(load).catch((e) => setNotice(errorTextOf(e, tx('aifu.loadFailed'))))} data-testid="aifu-rec-dismiss">{tx('aifu.dismiss')}</button>

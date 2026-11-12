@@ -127,6 +127,19 @@ describe('POSLoyaltyScreen', () => {
     expect(await within(dlg).findByRole('alert')).toBeInTheDocument();
     expect(api.updateTier).toHaveBeenCalledWith('t1', expect.objectContaining({ active: false }));
   });
+  it('the tier dialog explains the member\'s tier rule and the points to the next configured tier', async () => {
+    const m = { customerId: 'c1', customerName: 'Ann Lee', avatarUrl: null, maskedPhone: null, tier: 'Silver', pointsBalance: 100, totalEarned: 650, totalRedeemed: 550, enrolledAt: null };
+    api.members.mockResolvedValue({ ...empty, items: [m], totalItems: 1 });
+    api.tiers.mockResolvedValue({ items: [{ id: 't1', name: 'Silver', rank: 1, minPoints: 500, benefits: '', active: true, members: 1 }, { id: 't2', name: 'Gold', rank: 2, minPoints: 1000, benefits: '', active: true, members: 0 }, { id: 't3', name: 'Diamond', rank: 3, minPoints: 5000, benefits: '', active: false, members: 0 }], unconfigured: [] });
+    mount();
+    fireEvent.click(await screen.findByTestId('member-tier-c1'));
+    const why = await within(await screen.findByTestId('dlg-member-tier')).findByTestId('tier-why');
+    expect(within(why).getByTestId('tier-why-current').textContent).toMatch(/500/);
+    expect(within(why).getByTestId('tier-why-current').textContent).toMatch(/650/);   // lifetime earned, not the 100 balance
+    expect(within(why).getByTestId('tier-why-next').textContent).toMatch(/Gold/);
+    expect(within(why).getByTestId('tier-why-next').textContent).toMatch(/350/);
+    expect(why.textContent).not.toMatch(/Diamond/);   // a tier not in use is never the next rule
+  });
   it('an owner moves a member to another tier with a reason; members can be filtered by status and sorted', async () => {
     const m = { customerId: 'c1', customerName: 'Ann Lee', avatarUrl: null, maskedPhone: null, tier: 'Regular', pointsBalance: 500, totalEarned: 500, totalRedeemed: 0, enrolledAt: null };
     api.members.mockResolvedValue({ ...empty, items: [m], totalItems: 1 });

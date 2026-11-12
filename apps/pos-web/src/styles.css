@@ -2189,6 +2189,7 @@ button.ch-dif{cursor:pointer}button.ch-dif:focus-visible{outline:2px solid var(-
 .dsc-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
 .dsc-value{color:var(--aps-orange,#A96F22);font-weight:700}
 .dsc-table .fn-acts{white-space:nowrap}
+.dsc-why{font-weight:400;text-align:left;margin-top:4px}.dsc-why summary{cursor:pointer;color:var(--aps-muted,#6b6b6b);font-size:12px;min-height:32px}.dsc-why .fk-dl{font-size:12px;margin-top:4px}
 .dsc-ref{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 /* Marketing → Coupons (Coupons & Promotions Management Center, Oct 30 2026): six cards in one row on the 27" POS, wrapping below */
 .cp-kpis.fk-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
@@ -4261,3 +4262,5 @@ html[data-spacing="compact"] .tbl td { padding: 6px 8px; }
 
 /* Money Protection pinned action row (backlog MONEY PROTECTION ALERTS · 08): sticky inside the screen's own scroll area */
 .mpx-pinned { position: sticky; top: 0; z-index: 3; background: var(--page); padding-top: 4px; }
+.fk-checks{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}.fk-checks li{padding:6px 10px;border-radius:8px;background:var(--aps-surface-2,#f6f4f1)}.fk-checks li.ok::before{content:"✓ ";color:var(--aps-ok,#2e7d32)}.fk-checks li.warn::before{content:"! ";color:var(--aps-orange,#A96F22)}.fk-checks li.bad{color:var(--aps-bad,#b3261e)}
+.aic-soon td{background:rgba(169,111,34,.08)}

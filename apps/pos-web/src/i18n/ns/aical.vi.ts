@@ -191,4 +191,20 @@ export const AICAL_VI: Record<string, string> = {
   "aical.part.copilot": "thao tác Copilot",
   "aical.part.messages": "tin nhắn",
   "aical.part.audit": "nhật ký",
+  "aical.pq.title": "Đang chờ xác minh", // DRAFT — Kevin reviews
+  "aical.pq.sub": "{n} chỗ đang giữ · {c} chờ mã · {s} hết hạn trong 10 phút · lúc {at}", // DRAFT — Kevin reviews
+  "aical.pq.none": "Hiện không có chỗ nào đang giữ.", // DRAFT — Kevin reviews
+  "aical.pq.slot": "Khung giờ", // DRAFT — Kevin reviews
+  "aical.pq.state": "Trạng thái", // DRAFT — Kevin reviews
+  "aical.pq.left": "Còn lại", // DRAFT — Kevin reviews
+  "aical.pq.minutes": "{n} phút", // DRAFT — Kevin reviews
+  "aical.pq.soon": "Sắp hết hạn", // DRAFT — Kevin reviews
+  "aical.pq.note": "Chỉ xem. Gửi lại mã hoặc hủy giữ chỗ được thực hiện trong Đặt lịch bởi nhân viên có quyền.", // DRAFT — Kevin reviews
+  "aical.channel.online": "Đặt lịch trực tuyến", // DRAFT — Kevin reviews
+  "aical.channel.sms": "Tin nhắn", // DRAFT — Kevin reviews
+  "aical.channel.ai_receptionist": "Lễ tân AI", // DRAFT — Kevin reviews
+  "aical.channel.phone": "Điện thoại", // DRAFT — Kevin reviews
+  "aical.channel.phone_call": "Cuộc gọi", // DRAFT — Kevin reviews
+  "aical.channel.kiosk": "Máy kiosk", // DRAFT — Kevin reviews
+  "aical.channel.walk_in": "Khách vãng lai", // DRAFT — Kevin reviews
 };

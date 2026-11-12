@@ -40,6 +40,26 @@ describe('POSAiBusinessScreen', () => {
     expect(askMock).toHaveBeenCalledWith({ intent: 'revenue_summary', preset: 'today' });
   });
 
+  it('a revenue comparison states the periods compared, the calculation basis and that revenue is not profit', async () => {
+    askMock.mockResolvedValue({
+      ok: true, needsClarification: false, intent: 'explain_revenue', toolUsed: 'explain_revenue_change', answer: 'Up 10%.',
+      structured: { currentNetCents: 110000, previousNetCents: 100000, changeCents: 10000, changePercent: 10, contributors: [], caveats: [], evidence: { metricId: 'net_sales', definition: 'x', preset: 'week', compareWindow: 'previous', partialCurrentPeriod: false } },
+      access: { allowed: true, reason: 'ok', label: 'OK' },
+    });
+    renderScreen();
+    fireEvent.click(screen.getByText('Why did revenue change?'));
+    const basis = await screen.findByTestId('aib-compare-basis');
+    expect(screen.getByTestId('aib-compare-periods').textContent).toMatch(/This week vs the period before This week/i);
+    expect(screen.getByTestId('aib-compare-def').textContent).toMatch(/discounts, refunds and voids/);
+    expect(basis.textContent).toMatch(/not profit/);
+  });
+  it('a summary without a comparison shows no comparison basis', async () => {
+    askMock.mockResolvedValue({ ok: true, needsClarification: false, intent: 'revenue_summary', toolUsed: 't', answer: 'ok', structured: { netSalesCents: 1, evidence: { metricId: 'net_sales', preset: 'today' } }, access: null });
+    renderScreen();
+    fireEvent.click(screen.getByText('Revenue summary'));
+    await screen.findByText('ok');
+    expect(screen.queryByTestId('aib-compare-basis')).toBeNull();
+  });
   it('degrades to metrics-only when the AI package is unavailable', async () => {
     askMock.mockResolvedValue({
       ok: false, needsClarification: false, intent: 'revenue_summary', toolUsed: 'get_revenue_summary',

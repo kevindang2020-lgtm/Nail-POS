@@ -1023,4 +1023,23 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "cmx.health.k.alerts": "Cảnh báo đang bật",
   "cmx.health.k.follows": "Mục theo dõi",
   "cmx.health.k.incidents": "Sự cố riêng tư",
+  "growth.aiQueue.find.ph": "Tìm khách đang chờ theo tên hoặc số điện thoại", // DRAFT — Kevin reviews
+  "growth.aiQueue.find.adv": "Nâng cao: mở theo mã lượt chờ", // DRAFT — Kevin reviews
+  "growth.aiQueue.find.idPh": "Mã lượt chờ", // DRAFT — Kevin reviews
+  "growth.aiQueue.find.open": "Mở", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.title": "Ứng viên — {n} phù hợp trên {total}", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.tech": "Thợ", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.now": "Hiện tại", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.next": "Lịch hẹn kế tiếp", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.load": "Đang làm", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.score": "Điểm phù hợp", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.asked": "Khách yêu cầu", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.last": "Lần trước", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.break": "Đang nghỉ", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.blocked": "Bị chặn", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.free": "Đang rảnh", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.freeIn": "Rảnh sau {m}", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.shiftEnds": "Hết ca sau {m}", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.inM": "Sau {m}", // DRAFT — Kevin reviews
+  "growth.aiQueue.cand.noneBooked": "Chưa có lịch", // DRAFT — Kevin reviews
 };

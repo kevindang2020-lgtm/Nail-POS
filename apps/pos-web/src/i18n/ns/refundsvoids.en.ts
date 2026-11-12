@@ -162,4 +162,13 @@ export const REFUNDSVOIDS_EN = {
   'rv.done.unknown': 'The processor’s answer was lost. The amount is held and will be verified — do not refund again.',
   'rv.done.ticket': 'Ticket refund completed.',
   'rv.done.ticketPartial': 'Ticket refund partly completed — see each payment’s result.',
+  'rv.disc.title': 'Discounts on this ticket',
+  'rv.disc.reverse': 'Reversed: {v} of discount comes back off the books.',
+  'rv.disc.partial': 'Partly reversed: {v} on the refunded services; the use stays counted.',
+  'rv.disc.release': 'Released (the ticket was not paid).',
+  'rv.disc.keep': 'Stays applied (the ticket is not paid; only a full void releases it).',
+  'rv.disc.none': 'Not on the refunded services — unchanged.',
+  'rv.disc.keptAmount': 'Kept: an amount refund with no services selected keeps the discount (the visit happened).',
+  'rv.disc.placeBack': 'Its use, budget and code come back.',
+  'rv.disc.na': 'Discount impact could not be shown — the refund still follows the salon’s policy.',
 };

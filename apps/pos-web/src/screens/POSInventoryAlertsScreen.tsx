@@ -17,6 +17,7 @@ import { createIntentKeys } from '@aipowersalon/api-client';
 import { posInventoryAlertsApi } from '../api/posInventoryAlertsApi';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
+import { LowStockCause } from './inventory/LowStockCause';
 import { errorTextOf } from '../i18n/error-text';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
@@ -185,6 +186,7 @@ function ProductDialog({ productId, tick, canRecord, canAdjust, onClose, onRecor
           <div><span className="fk-li-s">{tx('sa.col.lastUsed')}</span><LastUsed r={d.data} testId="product-last-used" /></div>
           <div><span className="fk-li-s">{tx('sa.lastRecorded')}</span><b>{d.data.lastRecordedAt ? when(d.data.lastRecordedAt) : '—'}</b>{d.data.lastRecordedAt && d.data.lastUsedAt && d.data.lastRecordedAt !== d.data.lastUsedAt ? <span className="fk-li-s">{tx('sa.recordedDiffers')}</span> : null}</div>
         </div>
+        <LowStockCause productId={productId} tick={tick + mine} />
         <PeriodBar value={period} onChange={(x) => { setPeriod(x); setPage(1); }} server={d.data.period} allowAll compact />
         <h3 className="fk-h3">{tx('sa.allTechs')}</h3>
         {d.data.byTechnician.length === 0 ? <div className="fk-hint">{tx('sa.noUse')}</div> :

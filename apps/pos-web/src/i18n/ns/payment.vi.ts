@@ -336,4 +336,9 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "pgx.line.live": "Đã bật thanh toán thẻ thật",
   "pgx.line.notLive": "Thanh toán thẻ thật tắt cho tới khi Fiserv chứng nhận",
   "pgx.line.liveUnknown": "Chưa đọc được trạng thái thanh toán thật",
+  "payment.splitPrev.stillDue": "Còn phải trả", // DRAFT — Kevin reviews
+  "payment.splitPrev.over": "Vượt số tiền phải trả", // DRAFT — Kevin reviews
+  "payment.splitPrev.exact": "Khớp số tiền phải trả", // DRAFT — Kevin reviews
+  "payment.splitPrev.invalid": "{n} khoản thanh toán để trống hoặc không hợp lệ", // DRAFT — Kevin reviews
+  "payment.splitPrev.previewOnly": "Chỉ xem trước — chưa thu tiền cho đến khi bạn nhận thanh toán.", // DRAFT — Kevin reviews
 };

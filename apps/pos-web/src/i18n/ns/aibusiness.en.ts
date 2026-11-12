@@ -527,4 +527,12 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bcx.def.revCompleted": "Rev / Completed — Net Sales ÷ completed appointments. N/A when none completed.",
   "bcx.def.small": "Fewer than {n} bookings is marked “small sample”: compare those branches with care.",
   "bzx.a.collision": "An active alert, “{t}”, already watches this metric, comparison and period — the two would fire overlapping alerts.",
+  "bzc.periods": "Compared",
+  "bzc.vs": "{a} vs {b}",
+  "bzc.prevOf": "the period before {p}",
+  "bzc.partial": "the current period is still in progress",
+  "bzc.basis": "Calculation basis",
+  "bzc.def.net_sales": "Net sales: gross sales minus discounts, refunds and voids; excludes tips and taxes.",
+  "bzc.notProfit": "Revenue vs profit",
+  "bzc.notProfitV": "This compares revenue (net sales), not profit — profit also subtracts expenses. Ask “Profit & expenses” for that.",
 };

@@ -35,4 +35,10 @@ export const PROMOTIONS_VI: Record<keyof typeof PROMOTIONS_EN, string> = {
   'promo.pause.where': 'Áp dụng tại', // DRAFT — Kevin reviews
   'promo.pause.allBranches': 'Mọi chi nhánh', // DRAFT — Kevin reviews
   'promo.pause.effect': 'Thanh toán sẽ ngừng nhận khuyến mãi này ngay khi bạn tạm dừng. Hóa đơn đã trả vẫn giữ giảm giá và lịch sử được giữ nguyên. Chọn Tiếp tục để bật lại.', // DRAFT — Kevin reviews
+  'promo.exp.title': 'Lịch hết hạn', // DRAFT — Kevin reviews
+  'promo.exp.sub': 'Khuyến mãi kết thúc {from} – {to}', // DRAFT — Kevin reviews
+  'promo.exp.window': 'Khoảng thời gian', // DRAFT — Kevin reviews
+  'promo.exp.days': '{n} ngày tới', // DRAFT — Kevin reviews
+  'promo.exp.none': 'Không có khuyến mãi nào kết thúc trong khoảng này.', // DRAFT — Kevin reviews
+  'promo.exp.capped': 'Đang hiện {n} đầu tiên trong {total} — thu hẹp khoảng thời gian để xem phần còn lại.', // DRAFT — Kevin reviews
 };

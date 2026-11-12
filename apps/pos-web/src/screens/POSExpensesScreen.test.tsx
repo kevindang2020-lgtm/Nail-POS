@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 const m = vi.hoisted(() => ({
   expenses: vi.fn(), kpis: vi.fn(), report: vi.fn(), reportRange: vi.fn(), categories: vi.fn(), recommend: vi.fn(), createExpense: vi.fn(), update: vi.fn(), detail: vi.fn(),
   approve: vi.fn(), submit: vi.fn(), reject: vi.fn(), voidExpense: vi.fn(), duplicateDecision: vi.fn(), archive: vi.fn(), restore: vi.fn(), deleteDraft: vi.fn(), billPayment: vi.fn(), exportFile: vi.fn(),
-  paymentMatch: vi.fn(), paymentLink: vi.fn(), upload: vi.fn(), save: vi.fn(),
+  paymentMatch: vi.fn(), paymentLink: vi.fn(), upload: vi.fn(), save: vi.fn(), billsDue: vi.fn(), exportPreflight: vi.fn(), rulePreview: vi.fn(), createRule: vi.fn(),
 }));
 vi.mock('../api/posExpensesApi', () => ({ posExpensesApi: m, saveExportFile: m.save }));
 vi.mock('../api/posAiOcrReceiptApi', () => ({ posAiOcrReceiptApi: { upload: m.upload, detail: vi.fn(), previewUrl: vi.fn() } }));
@@ -35,6 +35,47 @@ const openForm = async () => { fireEvent.click(await screen.findByTestId('add-ex
 const openView = async () => { fireEvent.click(await screen.findByTestId('row-view')); return screen.findByTestId('dlg-view'); };
 
 describe('POSExpensesScreen (Expenses guide)', () => {
+  it('the detail checks a branch split adds up to the exact cents and says how it is reported', async () => {
+    m.detail.mockImplementation(async () => ({ expense: exp({ status: 'approved', amountCents: 10000, branchId: null }), lineItems: [], allocations: [{ branchId: 'b1aaaaaa', amountCents: 6000 }, { branchId: 'b2bbbbbb', amountCents: 3999 }], documents: [], billPayments: [], history: [], duplicates: { status: 'none', matches: [] } }));
+    renderIt();
+    const v = await openView();
+    expect(await within(v).findAllByTestId('alloc-row')).toHaveLength(2);
+    expect(within(v).getByTestId('alloc-verdict').textContent).toMatch(/Off by \$0\.01/);
+    expect(within(v).getByTestId('alloc-impact').textContent).toMatch(/salon total counts the full amount once/);
+  });
+  it('vendor rule: the preview says it only classifies future drafts and how this vendor was categorized, then saves', async () => {
+    m.rulePreview.mockResolvedValue({ vendorNorm: 'beautyco', categoryKey: 'supplies', categoryLabel: 'Supplies', since: '2026-04-24', matched: 5, sameCategory: 3, approved: 4, approvedDifferent: 2, open: 1, openDifferent: 0,
+      byCategory: [{ key: 'supplies', label: 'Supplies', count: 3 }, { key: 'rent', label: 'Rent / Landlord', count: 2 }], replaces: null });
+    m.createRule.mockResolvedValue({ id: 'r1' });
+    renderIt();
+    const v = await openView();
+    fireEvent.click(await within(v).findByTestId('act-vendor-rule'));
+    const dlg = await screen.findByTestId('dlg-vendor-rule');
+    await waitFor(() => expect(m.rulePreview).toHaveBeenCalledWith('BeautyCo', 'supplies'));
+    expect((await within(dlg).findByTestId('rule-future')).textContent).toMatch(/future drafts only/);
+    expect(within(dlg).getByTestId('rule-history').textContent).toMatch(/5 expenses; 3 already/);
+    expect(within(dlg).getByTestId('rule-approved').textContent).toMatch(/history never changes/);
+    expect(within(dlg).queryByTestId('rule-open')).toBeNull();
+    fireEvent.click(within(dlg).getByTestId('rule-save'));
+    await waitFor(() => expect(m.createRule).toHaveBeenCalledWith('BeautyCo', 'supplies'));
+  });
+  it('Bills tab: the bill due calendar groups open bills overdue first, then by due day, and opens the bill', async () => {
+    m.billsDue.mockResolvedValue({ today: '2026-10-21', until: '2026-11-20', days: 30, capped: false, items: [
+      exp({ id: 'b1', kind: 'bill', vendorDisplay: 'Landlord LLC', invoiceNumber: 'R-9', dueDate: '2026-10-15', billDue: 'overdue', openCents: 90000 }),
+      exp({ id: 'b2', kind: 'bill', vendorDisplay: 'PowerCo', invoiceNumber: null, dueDate: '2026-10-21', billDue: 'due_today', openCents: 12000 }),
+      exp({ id: 'b3', kind: 'bill', vendorDisplay: 'Water', invoiceNumber: null, dueDate: '2026-11-02', billDue: 'upcoming', openCents: 4000 })] });
+    renderIt();
+    fireEvent.click(await screen.findByTestId('tab-bills'));
+    fireEvent.click(await screen.findByTestId('bills-calendar'));
+    await waitFor(() => expect(m.billsDue).toHaveBeenCalledWith(30));
+    const days = await screen.findAllByTestId('bills-day');
+    expect(days.map((d) => d.querySelector('b')?.textContent)).toEqual(['Overdue', 'Due today', expect.stringMatching(/Nov/)]);
+    expect(days[0].textContent).toMatch(/900\.00/);
+    fireEvent.click(screen.getByTestId('bills-days-7'));
+    await waitFor(() => expect(m.billsDue).toHaveBeenLastCalledWith(7));
+    fireEvent.click(screen.getAllByTestId('bills-open')[0]);
+    await waitFor(() => expect(m.detail).toHaveBeenCalledWith('b1'));
+  });
   it('four KPIs from the server aggregate (Top Category by amount), the period it resolved, and the records', async () => {
     renderIt();
     expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument();
@@ -170,11 +211,21 @@ describe('POSExpensesScreen (Expenses guide)', () => {
     fireEvent.click(within(a).getByTestId('ask-confirm'));
     await waitFor(() => expect(m.reject).toHaveBeenCalledWith('e1', 'Personal purchase', 3));
   });
-  it('exports the period with the active filters', async () => {
+  it('exports the period with the active filters after the accountant preflight', async () => {
     m.exportFile.mockResolvedValue({ filename: 'expenses.csv', contentType: 'text/csv', encoding: 'base64', content: 'YQ==', rowCount: 1, totalCents: 100 });
+    m.exportPreflight.mockResolvedValue({ period: { from: '2026-10-01', to: '2026-10-31' }, branchScope: 'all_allowed', branchName: null, rows: 3, totalCents: 45000, filtered: true, includeUnapproved: false,
+      duplicates: 1, uncategorized: 0, missingReceipts: 2, unapprovedLeftOut: 4, countedTotalCents: 45000, reconciles: null });
     renderIt(); await screen.findByTestId('expense-row');
     fireEvent.change(screen.getByTestId('category'), { target: { value: 'rent' } });
     fireEvent.click(screen.getByTestId('export-csv'));
+    const pf = await screen.findByTestId('dlg-export-preflight');
+    expect(m.exportPreflight).toHaveBeenCalledWith('month', expect.objectContaining({ category: 'rent' }));
+    expect((await within(pf).findByTestId('pf-dups')).textContent).toMatch(/1 possible duplicates/);
+    expect(within(pf).getByTestId('pf-uncat').textContent).toMatch(/Every row has a category/);
+    expect(within(pf).getByTestId('pf-unapproved').textContent).toMatch(/4 unapproved/);
+    expect(within(pf).getByTestId('pf-reconcile').textContent).toMatch(/not meaningful/);   // filtered: never claimed to reconcile
+    expect(m.exportFile).not.toHaveBeenCalled();
+    fireEvent.click(within(pf).getByTestId('pf-confirm'));
     await waitFor(() => expect(m.save).toHaveBeenCalled());
     expect(m.exportFile).toHaveBeenCalledWith('csv', 'month', expect.objectContaining({ category: 'rent' }));
   });

@@ -162,4 +162,13 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.done.unknown': 'Phản hồi của đơn vị xử lý bị mất. Số tiền được giữ và sẽ được xác minh — đừng hoàn lại lần nữa.',
   'rv.done.ticket': 'Đã hoàn tất hoàn tiền theo phiếu.',
   'rv.done.ticketPartial': 'Hoàn tiền theo phiếu mới hoàn tất một phần — xem kết quả từng khoản.',
+  'rv.disc.title': 'Giảm giá trên phiếu này', // DRAFT — Kevin reviews
+  'rv.disc.reverse': 'Hoàn lại: {v} tiền giảm giá được ghi nhận lại.', // DRAFT — Kevin reviews
+  'rv.disc.partial': 'Hoàn một phần: {v} trên các dịch vụ được hoàn; lượt dùng vẫn được tính.', // DRAFT — Kevin reviews
+  'rv.disc.release': 'Đã giải phóng (phiếu chưa thanh toán).', // DRAFT — Kevin reviews
+  'rv.disc.keep': 'Vẫn áp dụng (phiếu chưa thanh toán; chỉ hủy toàn bộ mới giải phóng).', // DRAFT — Kevin reviews
+  'rv.disc.none': 'Không thuộc dịch vụ được hoàn — giữ nguyên.', // DRAFT — Kevin reviews
+  'rv.disc.keptAmount': 'Giữ nguyên: hoàn theo số tiền mà không chọn dịch vụ thì vẫn giữ giảm giá (khách đã sử dụng dịch vụ).', // DRAFT — Kevin reviews
+  'rv.disc.placeBack': 'Lượt dùng, ngân sách và mã được trả lại.', // DRAFT — Kevin reviews
+  'rv.disc.na': 'Không hiển thị được ảnh hưởng giảm giá — việc hoàn tiền vẫn theo chính sách của tiệm.', // DRAFT — Kevin reviews
 };

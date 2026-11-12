@@ -11,6 +11,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, AsyncExport, V
 import { Body, Controller, Get, Header, Headers, HttpException, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { InventoryService, InventoryError, type InvCtx } from './inventory.service';
 import { StockAlertsRepository, paging } from './stock-alerts.repository';
+import type { InventoryLowStockCause } from '@aipowersalon/api-contracts/tenant';
 import { INV_ALERT_ACK_BODY, INV_PRODUCT_USAGE_ADJUST_BODY, INV_PRODUCT_USAGE_BODY } from './request-schemas';
 
 export const STOCK_ALERTS_REPOSITORY = 'StockAlertsRepository';
@@ -55,6 +56,9 @@ export class StockAlertsController {
   @Get('usage/products/:productId') @RequirePermission('inventory.view') @ListQuery(USAGE_LIST)
   ledger(@Req() req: any, @Param('productId') productId: string, @Query() q: Record<string, string>) { return run(async () => this.r().productLedger(ctx(req), String(productId), q, await this.r().period(ctx(req), q), paging(q.page, q.pageSize, 10))); }
 
+  // Low-Stock Cause Explanation (Extras · Stock Alerts 12): measured movements, open orders and ledger agreement — read-only
+  @Get('products/:productId/cause') @RequirePermission('inventory.view')
+  cause(@Req() req: any, @Param('productId') productId: string): Promise<InventoryLowStockCause> { return run(() => this.r().lowStockCause(ctx(req), String(productId))); }
   @Get('technicians') @RequirePermission('inventory.view') @ListQuery(USAGE_LIST)
   technicians(@Req() req: any, @Query() q: Record<string, string>) { return run(async () => this.r().technicians(ctx(req), q, await this.r().period(ctx(req), q), paging(q.page, q.pageSize))); }
 

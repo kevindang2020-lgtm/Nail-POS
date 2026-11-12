@@ -116,6 +116,16 @@ describe('T31–T37 the four counters, traced to canonical rows', () => {
     await q(sql`insert into booking_holds (tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status) values (${T}, ${B}, ${TECH[0]}, ${local(DAY, '17:00')}, ${local(DAY, '18:00')}, now() - interval '1 minute', 'held')`);
     expect((await cal.summary(OWNER, DAY)).openSlots.value).toBe(before);
   });
+  it('Pending Verification Queue: live holds only, soonest to expire first, with the waiting-for-code and about-to-lapse flags', async () => {
+    const pq = await cal.pendingQueue(OWNER);
+    expect(pq.items.length).toBeGreaterThan(0);
+    expect(pq.items.every((h) => Date.parse(h.expiresAt) > Date.now())).toBe(true);           // the expired 17:00 hold is gone
+    const order = pq.items.map((h) => Date.parse(h.expiresAt)); expect([...order].sort((a, b) => a - b)).toEqual(order);
+    const coded = pq.items.find((h) => h.pendingCode && h.start === '12:00')!;
+    expect(coded).toMatchObject({ channel: 'online', expiringSoon: true }); expect(coded.minutesLeft).toBeLessThanOrEqual(10);
+    expect(pq.pendingCode).toBe(pq.items.filter((h) => h.pendingCode).length); expect(pq.timeZone).toBe(TZ);
+    const mine = new Set(pq.items.map((h) => h.id)); expect((await cal.pendingQueue(OTHER)).items.some((h) => mine.has(h.id))).toBe(false);   // never another salon's
+  });
   it('T33 Technicians On is "scheduled today" (3), not the 4 active records; the legacy number is reported beside it', async () => {
     const s = await cal.summary(OWNER, DAY);
     expect({ v: s.technicians.value, active: s.technicians.activeRoster, metric: s.technicians.metric }).toEqual({ v: 3, active: 4, metric: 'scheduled_today' });
