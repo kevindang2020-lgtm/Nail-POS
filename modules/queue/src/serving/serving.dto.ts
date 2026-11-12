@@ -266,10 +266,18 @@ export function buildServingInsights(input: {
   active: { customerName: string; customerId?: string; isVip: boolean; elapsed: number; est: number }[];
   waitingToStart: number; busyTechWaiting: number; readyForServiceDone: number;
   overloaded?: { name: string; open: number } | null; freeTechnicians: number;
+  /** Extras Serving 04 (Nov 12 2026): technicians whose current service is expected to run past their next booked
+   *  appointment today (worst first) — from buildFloorProjection; absent → no conflict insight */
+  bookingConflicts?: { name: string; minutesUntilBooking: number; remainingMinutes: number }[];
 }): ServingInsight[] {
   const out: ServingInsight[] = [];
   const overtime = input.active.filter((t) => t.est > 0 && t.elapsed > t.est).length;
   if (overtime > 0) out.push({ id: 'overtime', text: `${overtime} service${overtime === 1 ? ' is' : 's are'} past the estimated duration`, sub: 'Check the guests and update the expected finish.', action: 'Review Now', route: 'filter:delayed', severity: 'warn', vars: { count: overtime } });
+  const bc = input.bookingConflicts ?? [];
+  if (bc.length) { const w = bc[0];
+    out.push({ id: 'booking_conflict', text: `${w.name} has a booking in ${w.minutesUntilBooking} min but needs about ${w.remainingMinutes} min more (${bc.length} conflict${bc.length === 1 ? '' : 's'})`,
+      sub: 'Review the Booking board before the next guest arrives — nothing is moved automatically.', action: 'Open', route: '/booking', severity: 'warn',
+      vars: { name: w.name, minutes: w.minutesUntilBooking, remaining: w.remainingMinutes, count: bc.length } }); }
   if (input.busyTechWaiting > 0 && input.freeTechnicians > 0) out.push({ id: 'balance', text: `${input.busyTechWaiting} guest${input.busyTechWaiting === 1 ? '' : 's'} waiting on a busy technician`, sub: `${input.freeTechnicians} technician${input.freeTechnicians === 1 ? ' is' : 's are'} free — review Auto Balance.`, action: 'Balance', route: 'balance', severity: 'info', vars: { count: input.busyTechWaiting, free: input.freeTechnicians } });
   if (input.readyForServiceDone > 0) out.push({ id: 'ready', text: `${input.readyForServiceDone} guest${input.readyForServiceDone === 1 ? ' is' : 's are'} ready for Service Done`, sub: 'Hand them off so checkout can start.', action: 'Open', route: '/service-done', severity: 'info', vars: { count: input.readyForServiceDone } });
   if (input.overloaded && input.overloaded.open >= 3) out.push({ id: 'imbalance', text: `${input.overloaded.name} has ${input.overloaded.open} open services`, sub: 'Consider sharing the work with a free technician.', action: 'Balance', route: 'balance', severity: 'warn', vars: { name: input.overloaded.name, count: input.overloaded.open } });

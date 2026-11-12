@@ -1677,4 +1677,6 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.export.hint": "Một khoảng ngày tối đa 31 ngày, theo bộ lọc đang hiển thị. Nội dung nhạy cảm được che và việc xuất được ghi lại.", // DRAFT — Kevin reviews
   "lgx.export.done": "Đã xuất nhật ký đã che dữ liệu. Việc xuất đã được ghi lại.", // DRAFT — Kevin reviews
   "lgx.export.failed": "Không thể xuất nhật ký.", // DRAFT — Kevin reviews
+  "ops.serving.insight.booking_conflict": "{name} có lịch hẹn sau {minutes} phút nhưng còn cần khoảng {remaining} phút ({count} xung đột)", // DRAFT — Kevin reviews
+  "ops.serving.insightSub.booking_conflict": "Xem bảng Đặt lịch trước khi khách tiếp theo đến — không có gì bị tự động dời.", // DRAFT — Kevin reviews
 };

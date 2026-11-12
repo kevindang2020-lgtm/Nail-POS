@@ -28,6 +28,17 @@ afterEach(() => { clearStaleWindowEvent(); });
 const waitForLoaded = () => screen.findByTestId('serving-kpis');
 
 describe('POSServingScreen', () => {
+  // Extras Serving 04 (Nov 12 2026): the server's booking-conflict insight is worded in the cashier's language with its numbers + an Open action
+  it('shows the booking-conflict insight from the server (name, minutes, remaining, count) with its Open action', async () => {
+    const st = { ...servingState, insights: [{ id: 'booking_conflict', text: 'server words', sub: 'x', action: 'Open', route: '/booking', severity: 'warn', vars: { name: 'Mia', minutes: 10, remaining: 15, count: 1 } }] };
+    globalThis.fetch = mockByUrl({ '/pos/serving': st, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    await waitForLoaded();
+    const box = screen.getByTestId('sv-insights');
+    expect(box).toHaveTextContent('Mia has a booking in 10 min but needs about 15 min more (1 conflict(s))');
+    expect(box).toHaveTextContent('Review the Booking board before the next guest arrives');
+    expect(box).toHaveTextContent('Open');
+  });
   it('mounts and renders the serving board + empty state', async () => {
     globalThis.fetch = mockByUrl({ '/pos/serving': servingState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);

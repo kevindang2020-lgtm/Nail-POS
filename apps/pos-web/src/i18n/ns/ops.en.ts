@@ -1678,4 +1678,6 @@ export const OPS_EN = {
   "lgx.export.hint": "One date range of 31 days or less, with the filters shown. Messages are redacted and the export is recorded.",
   "lgx.export.done": "Sanitized logs exported. The export was recorded.",
   "lgx.export.failed": "Could not export the logs.",
+  "ops.serving.insight.booking_conflict": "{name} has a booking in {minutes} min but needs about {remaining} min more ({count} conflict(s))",
+  "ops.serving.insightSub.booking_conflict": "Review the Booking board before the next guest arrives — nothing is moved automatically.",
 };

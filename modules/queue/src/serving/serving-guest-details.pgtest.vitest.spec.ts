@@ -47,3 +47,24 @@ describe('Serving → Guest Service Details', () => {
     expect(mia.specialty).toMatch(/manicure|gel/);
   });
 });
+
+// Extras Serving 04 (Nov 12 2026): the booking-conflict insight reads each technician's next booking TODAY, on the branch clock
+describe('Serving → next booking per technician (booking conflict input)', () => {
+  it('minutes until the next booked / confirmed appointment later today; past, cancelled, arrived and other days are not counted', async () => {
+    const pg: any = (repo as any).db;
+    const plus5 = (t: string) => { const [h, m] = t.split(':').map(Number); const x = h * 60 + m + 5; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
+    const ins = (date: string, time: string, status: string) => pg.insertInto('pos_tech_appointments').values({ tenant_id: TA, branch_id: BA, technician_id: MIA, customer_name: 'G', source: 'manual', services: JSON.stringify([]), appt_date: date, start_time: time, end_time: plus5(time), duration_minutes: 5, status, deposit_status: 'not_required' } as never).execute();
+    await ins('2026-11-12', '09:30', 'booked');      // already started (10:00 now) — not next
+    await ins('2026-11-12', '10:05', 'cancelled');   // cancelled
+    await ins('2026-11-12', '10:10', 'arrived');     // already here — not a booking still to come
+    await ins('2026-11-12', '10:20', 'confirmed');   // ← the next one: 20 min
+    await ins('2026-11-12', '11:00', 'booked');
+    await ins('2026-11-13', '09:00', 'booked');      // tomorrow
+    repo.now = () => Date.parse('2026-11-12T15:00:00Z');   // 10:00 in New York
+    expect(await repo.nextBookingMinutes(ctx)).toEqual({ [MIA]: 20 });
+    repo.now = () => Date.parse('2026-11-12T16:30:00Z');   // 11:30 — nothing left today
+    expect(await repo.nextBookingMinutes(ctx)).toEqual({});
+    expect(await repo.nextBookingMinutes({ ...ctx, tenantId: id('a9') })).toEqual({});   // another salon sees none
+    repo.now = Date.now;
+  });
+});
