@@ -65,4 +65,8 @@ describe('Customer detail — advisory follow-up status (read-only)', () => {
     expect((await q(`select (select count(*) from pos_tech_appointments)::int a, (select string_agg(status, ',' order by status) from ai_receptionist_follow_ups) f, (select count(*) from notifications)::int n`)).rows[0]).toEqual(before);
     await expect(svc.detail({ ...owner, tenantId: T2, branchId: B2 }, C)).rejects.toThrow();
   });
+  it('the customer detail says whether the phone was confirmed (phone_verified_at was never read before, so every customer said "not verified")', async () => {
+    expect((await svc.detail(owner, C0)).isPhoneVerified).toBe(true);
+    expect((await svc.detail(owner, C)).isPhoneVerified).toBe(false);
+  });;
 });

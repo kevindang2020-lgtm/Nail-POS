@@ -33,6 +33,7 @@ interface Cust {
   loyaltyPoints: number; loyaltyTier: string; isVip: boolean; tags: string[]; birthdayMonth?: number; birthdayYear?: number; birthday?: string; birthdayMonthDay?: string;
   marketingOptIn: boolean; smsOptIn: boolean; emailOptIn: boolean; createdAt: string; updatedAt: string; notes: string; version?: number;
   preferredName?: string | null; preferredLanguage?: string | null; preferredBranchId?: string | null;   // Decision 1
+  phoneVerifiedAt?: string | null;   // when the customer confirmed this phone (customers.phone_verified_at); null = never
 }
 const iso = (v: any) => (v instanceof Date ? v.toISOString() : v == null ? '' : String(v));
 // pos_tech_appointments.services is a JSONB array whose element shape varies by booking source
@@ -65,7 +66,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   private async load(ctx: CustomersContext): Promise<Cust[]> {
     const rows = await this.scoped(this.db.selectFrom('customers'), ctx)
       .select(['id', 'first_name', 'last_name', 'full_name', 'normalized_phone', 'phone_display', 'email', 'birthday', 'birthday_year_known', 'status', 'avatar_url',
-        'marketing_sms_opt_in', 'marketing_email_opt_in', 'notes', 'created_at', 'updated_at', 'record_version', 'preferred_name', 'preferred_language', 'preferred_branch_id']).execute().catch(() => []);
+        'marketing_sms_opt_in', 'marketing_email_opt_in', 'notes', 'created_at', 'updated_at', 'record_version', 'preferred_name', 'preferred_language', 'preferred_branch_id', 'phone_verified_at']).execute().catch(() => []);
     const ids = rows.map((r: any) => r.id);
     // F1 §58: whole-scope reads grouped by customer (a 10,000-id IN list cost more than the rows); rows for customers
     // outside the loaded set are simply not looked up
@@ -96,7 +97,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
         birthdayMonthDay: r.birthday ? storedDateString(r.birthday)?.slice(5) : undefined,
         marketingOptIn: !!r.marketing_sms_opt_in || !!r.marketing_email_opt_in, smsOptIn: !!r.marketing_sms_opt_in, emailOptIn: !!r.marketing_email_opt_in,
         createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), notes: r.notes || '', version: Number(r.record_version ?? 1),
-        preferredName: r.preferred_name ?? null, preferredLanguage: r.preferred_language ?? null, preferredBranchId: r.preferred_branch_id ?? null,
+        preferredName: r.preferred_name ?? null, preferredLanguage: r.preferred_language ?? null, preferredBranchId: r.preferred_branch_id ?? null, phoneVerifiedAt: r.phone_verified_at ? new Date(r.phone_verified_at).toISOString() : null,
       };
     });
   }
@@ -109,7 +110,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   private toRow(ctx: CustomersContext, c: Cust, dup: Map<string, DuplicateRisk>): POSCustomerRow {
     return {
       customerId: c.customerId, tenantId: ctx.tenantId, branchId: ctx.branchId, firstName: c.firstName, lastName: c.lastName,
-      displayName: `${c.firstName} ${c.lastName}`.trim(), phone: c.phone, email: c.email, status: c.status, source: c.source, avatarUrl: c.avatarUrl || undefined, isPhoneVerified: !!(c as any).phoneVerifiedAt,
+      displayName: `${c.firstName} ${c.lastName}`.trim(), phone: c.phone, email: c.email, status: c.status, source: c.source, avatarUrl: c.avatarUrl || undefined, isPhoneVerified: !!c.phoneVerifiedAt,
       visitCount: c.visitCount, lastVisitAt: c.lastVisitAt, nextAppointmentAt: null, totalSpendCents: c.totalSpendCents,
       averageSpendCents: c.visitCount > 0 ? Math.round(c.totalSpendCents / c.visitCount) : 0, loyaltyPoints: c.loyaltyPoints, loyaltyTier: c.loyaltyTier,
       isVip: c.isVip, tags: c.tags, duplicateRisk: dup.get(c.customerId) || 'none', marketingOptIn: c.marketingOptIn, smsOptIn: c.smsOptIn, emailOptIn: c.emailOptIn,
