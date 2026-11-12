@@ -12,7 +12,7 @@ vi.mock('../api/posCouponsApi', () => ({ posCouponsApi: cp }));
 vi.mock('../api/posServicesApi', () => ({ posServicesApi: { list: vi.fn().mockResolvedValue([]) } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: vi.fn().mockResolvedValue({ items: [{ customerId: 'c-7', fullName: 'Mai Le', phone: '(856) 555-1234' }] }) } }));
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ branches: [{ id: 'b1', name: 'Main', isActive: true }, { id: 'b2', name: 'Second', isActive: true }] }) } }));
-import { POSCouponsScreen } from './POSCouponsScreen';
+import { POSCouponsScreen, Financial } from './POSCouponsScreen';
 
 const period = { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-30' };
 const kpis = { today: '2026-10-30', total: 1, activeDiscounts: 1, percentOff: 1, fixedAmount: 0, redemptions: 0, expiringSoon: 0, expiringWindowDays: 7,
@@ -102,5 +102,24 @@ describe('POSCouponsScreen', () => {
     expect(screen.getByTestId('check-customer')).toHaveTextContent('Mai Le');
     fireEvent.click(screen.getByTestId('check-run'));
     await waitFor(() => expect(cp.check).toHaveBeenCalledWith('d1', expect.objectContaining({ customerId: 'c-7', spendCents: 1000 })));
+  });
+  it('Extras Coupons 13/14: Financial shows the server ROI parts separately and the per-location scorecard (never one ROI figure)', async () => {
+    disc.performance.mockResolvedValue({ items: [{ id: 'd1', linkedTicketSalesCents: 22000, avgDiscountCents: 1125 }] });
+    const x = { id: 'd1', usage: { confirmed: 4, savingsCents: 4500, reversed: 1, pendingAtCheckout: 1 },
+      roi: { associatedRevenueCents: 22000, associatedTickets: 4, discountCostCents: 4500, redemptions: 4, campaignSpend: { campaigns: 1, messagesSent: 2, messagesCosted: 2, spendCents: 2, state: 'known' }, incrementalLift: 'unverified' },
+      byBranch: [{ branchId: 'b1', branchName: 'Main', redemptions: 3, uniqueCustomers: 2, discountCents: 3500, associatedTickets: 3, associatedRevenueCents: 17000 },
+        { branchId: 'b3', branchName: 'Haddon', redemptions: 1, uniqueCustomers: 1, discountCents: 1000, associatedTickets: 1, associatedRevenueCents: 5000 }] };
+    const v = render(<MemoryRouter><Financial x={x} /></MemoryRouter>);
+    expect(await screen.findByTestId('roi-revenue')).toHaveTextContent('$220.00 · 4 paid tickets');
+    expect(screen.getByTestId('roi-discount')).toHaveTextContent('$45.00');
+    expect(screen.getByTestId('roi-spend')).toHaveTextContent('$0.02 · 1 campaigns · 2 messages');
+    expect(screen.getByTestId('roi-lift')).toHaveTextContent(/Not verified/);
+    const rows = screen.getAllByTestId('roi-branch-row');
+    expect(rows.map((r) => r.textContent)).toEqual(['Main32$35.00$170.00 · 3 paid tickets', 'Haddon11$10.00$50.00 · 1 paid tickets']);
+    expect(screen.getByTestId('dd-roi')).not.toHaveTextContent(/ROI\s*[=:x×]|return on/i);
+    v.unmount();
+    render(<MemoryRouter><Financial x={{ ...x, roi: { ...x.roi, campaignSpend: { campaigns: 1, messagesSent: 3, messagesCosted: 1, spendCents: null, state: 'cost_unknown' } }, byBranch: [] }} /></MemoryRouter>);
+    expect(await screen.findByTestId('roi-spend')).toHaveTextContent('Not known yet — the provider has reported the cost of 1 of 3 messages.');
+    expect(screen.queryByTestId('roi-branches')).toBeNull();
   });
 });
