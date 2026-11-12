@@ -287,4 +287,26 @@ export const AIFD_VI: Record<string, string> = {
   "aifd.perf.m.handoffs": "Chuyển cho người thật", // DRAFT — Kevin reviews
   "aifd.perf.m.failed": "Cuộc gọi bị lỗi", // DRAFT — Kevin reviews
   "aifd.perf.basis": "Ngày của tiệm theo múi giờ {tz}, so với cùng số ngày ngay trước đó. Lịch hẹn đã xác nhận chỉ gồm lịch đặt hoàn tất — lịch còn chờ mã sáu số không được tính.", // DRAFT — Kevin reviews
+  "aifd.drift.title": "Kiểm tra lệch kiến thức", // DRAFT — Kevin reviews
+  "aifd.drift.status.IN_SYNC": "Đã khớp", // DRAFT — Kevin reviews
+  "aifd.drift.status.DRIFT": "Cần xem lại", // DRAFT — Kevin reviews
+  "aifd.drift.status.UNKNOWN": "Chưa kiểm tra", // DRAFT — Kevin reviews
+  "aifd.drift.note": "Giờ mở cửa, dịch vụ, giờ nghỉ lễ và câu hỏi thường gặp đã duyệt được đọc trực tiếp trong mỗi cuộc gọi. Chỉ phần chữ nhập vào trợ lý này mới có thể bị lỗi thời. Ở đây không thay đổi gì; hãy sửa trợ lý để khắc phục.", // DRAFT — Kevin reviews
+  "aifd.drift.kind.hours_time_mismatch": "{field} ghi “{value}”, không phải giờ mở hoặc đóng cửa trong giờ mở cửa hiện tại.", // DRAFT — Kevin reviews
+  "aifd.drift.kind.hours_not_set": "{field} ghi “{value}”, nhưng giờ mở cửa chưa từng được lưu.", // DRAFT — Kevin reviews
+  "aifd.drift.kind.service_not_offered": "{field} nhắc đến “{value}”, dịch vụ này không còn hoạt động.", // DRAFT — Kevin reviews
+  "aifd.drift.kind.service_price_mismatch": "{field} báo giá {value} cho {service}; giá hiện tại là {price}.", // DRAFT — Kevin reviews
+  "aifd.drift.kind.booking_not_armed": "Trợ lý này được đặt để nhận lịch hẹn, nhưng tiệm đang tắt chức năng đặt lịch, nên khách gọi sẽ được chuyển cho nhân viên.", // DRAFT — Kevin reviews
+  "aifd.drift.field.greeting": "Lời chào", // DRAFT — Kevin reviews
+  "aifd.drift.field.behavior": "Cách ứng xử", // DRAFT — Kevin reviews
+  "aifd.drift.field.after_hours_message": "Lời nhắn ngoài giờ", // DRAFT — Kevin reviews
+  "aifd.drift.source.hours": "Giờ mở cửa", // DRAFT — Kevin reviews
+  "aifd.drift.source.services": "Dịch vụ", // DRAFT — Kevin reviews
+  "aifd.drift.source.closures": "Giờ nghỉ lễ & giờ đặc biệt", // DRAFT — Kevin reviews
+  "aifd.drift.source.faqs": "Câu hỏi thường gặp đã duyệt", // DRAFT — Kevin reviews
+  "aifd.drift.changed_after": "Đổi lúc {at}, sau khi trợ lý này được lưu (đọc trực tiếp, không cần sửa trợ lý)", // DRAFT — Kevin reviews
+  "aifd.drift.changed_at": "Đổi lần cuối {at}", // DRAFT — Kevin reviews
+  "aifd.drift.no_change": "Chưa ghi nhận thay đổi", // DRAFT — Kevin reviews
+  "aifd.drift.none_found": "Không có chữ nào của trợ lý này mâu thuẫn với thiết lập hiện tại.", // DRAFT — Kevin reviews
+  "aifd.drift.saved": "Trợ lý lưu lần cuối {at}", // DRAFT — Kevin reviews
 };

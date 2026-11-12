@@ -7,7 +7,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { ReceptionistCenter, type RcCtx, type RcAccessRepo } from './receptionist-center';
-import { FrontDeskCenter, effectiveState, refSuffix } from './front-desk-center';
+import { FrontDeskCenter, effectiveState, refSuffix, knowledgeDrift } from './front-desk-center';
+import { BusinessSetupCenter } from './business-setup-center';
 import { canTransitionAgent } from './ai-agent-core';
 
 const P = 'c7560000-0000-4000-8000-0000000';
@@ -299,5 +300,50 @@ describe('Extras · AI Front Desk 08 — agent performance drill-down with a cle
     expect(r.performance.previous).toEqual({ calls: 1, answered: 1, confirmedBookings: 1, handoffs: 0, failed: 0, bookingRatePercent: 100 });
     expect(r.performance.basis).toContain('2 salon days');
     expect((await fd.calls(own, aid, {}) as any).performance).toBeNull();
+  });
+});
+
+describe('Extras · AI Front Desk 06 — knowledge drift check (agent wording vs the live salon setup, read-only)', () => {
+  it('flags a stale time, a service no longer offered, a changed price and booking-not-armed; live sources are listed with their change time', async () => {
+    const week = { monday: { isOpen: true, openTime: '09:00', closeTime: '19:00' }, tuesday: { isOpen: true, openTime: '09:00', closeTime: '19:00' }, wednesday: { isOpen: true, openTime: '09:00', closeTime: '19:00' },
+      thursday: { isOpen: true, openTime: '09:00', closeTime: '19:00' }, friday: { isOpen: true, openTime: '09:00', closeTime: '19:00' }, saturday: { isOpen: true, openTime: '10:00', closeTime: '17:00' }, sunday: { isOpen: false, openTime: null, closeTime: null } };
+    await sql`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values (${TA}, ${BA}, 'store-hours-auto-logout', ${JSON.stringify({ storeHours: week })}::jsonb)`.execute(db);
+    const cat = (await q1(sql`insert into service_categories (tenant_id, branch_id, name) values (${TA}, ${BA}, 'Nails') returning id`)).id;
+    await sql`insert into services (tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values
+      (${TA}, ${BA}, ${cat}, 'Gel Manicure', 45, 4000, 'active'), (${TA}, ${BA}, ${cat}, 'Paraffin Dip', 20, 1500, 'inactive'), (${TA}, ${BA}, ${cat}, 'Spa Pedicure', 60, 5500, 'active')`.execute(db);
+    const aid = (await q1(sql`insert into ai_receptionist_agents (tenant_id, branch_id, name, status, booking_mode, greeting, behavior, after_hours_message, created_by_user_id, updated_at)
+      values (${TA}, ${BA}, 'Drift Agent', 'draft', 'eligible', 'Hi! We are open 9 AM to 8 PM. A Gel Manicure is $35 and a Spa Pedicure is $55.', 'Offer our Paraffin Dip add-on.',
+        'We open again at 10am on Saturday.', ${OWNER}, now() - interval '1 day') returning id`)).id;
+    const before = await q1(sql`select greeting, config_version, updated_at from ai_receptionist_agents where id = ${aid}`);
+    const fdBiz = new FrontDeskCenter(db, rc, new BusinessSetupCenter(db));
+    const d: any = await fdBiz.detail(own, aid);
+    const dr = d.business.drift;
+    expect(dr.status).toBe('DRIFT');
+    expect(dr.findings).toEqual(expect.arrayContaining([
+      { kind: 'hours_time_mismatch', field: 'greeting', value: '8 PM' },
+      expect.objectContaining({ kind: 'service_price_mismatch', field: 'greeting', value: '$35', service: 'Gel Manicure', currentPriceCents: 4000 }),
+      expect.objectContaining({ kind: 'service_not_offered', field: 'behavior', value: 'Paraffin Dip' }),
+      { kind: 'booking_not_armed' },
+    ]));
+    // 9 AM (open), 10am (Saturday open) and the correct $55 Spa Pedicure are NOT findings
+    expect(dr.findings.filter((f: any) => f.value === '9 AM' || f.value === '10am' || f.value === '$55')).toEqual([]);
+    expect(dr.findings).toHaveLength(4);
+    const hrs = dr.sources.find((s: any) => s.source === 'hours');
+    expect(hrs).toMatchObject({ readLive: true, changedSinceAgentSaved: true });
+    expect(dr.sources.map((s: any) => s.source)).toEqual(['hours', 'services', 'closures', 'faqs']);
+    expect(dr.sources.find((s: any) => s.source === 'faqs')).toMatchObject({ changedAt: null, changedSinceAgentSaved: false });
+    // read-only: the agent row is untouched
+    expect(await q1(sql`select greeting, config_version, updated_at from ai_receptionist_agents where id = ${aid}`)).toEqual(before);
+  });
+  it('wording that matches the live setup is in sync; without a drift source the check says UNKNOWN (never a false green)', async () => {
+    const aid = (await q1(sql`insert into ai_receptionist_agents (tenant_id, branch_id, name, status, booking_mode, greeting, created_by_user_id)
+      values (${TA}, ${BA}, 'Synced Agent', 'draft', 'handoff_only', 'Thanks for calling! We open at 9 AM and close at 7 PM. Gel Manicure is $40.', ${OWNER}) returning id`)).id;
+    expect((await new FrontDeskCenter(db, rc, new BusinessSetupCenter(db)).detail(own, aid) as any).business.drift).toMatchObject({ status: 'IN_SYNC', findings: [] });
+    expect((await fd.detail(own, aid) as any).business.drift).toMatchObject({ status: 'UNKNOWN', findings: [], errorCode: 'NOT_AVAILABLE' });
+  });
+  it('the pure rule: no saved hours → a stated time is "hours not set"; prices are tied to the sentence naming the service', () => {
+    const src = { hours: { source: 'platform_default', timezone: 'America/New_York', storeHours: {} }, services: [{ id: 's1', name: 'Gel Manicure', active: true, priceCents: 4000 }],
+      changedAt: { hours: null, services: null, closures: null, faqs: null } };
+    expect(knowledgeDrift({ greeting: 'Open till 7:30 p.m. Gel Manicure is $40.00. Tips are $5.' }, src, true)).toEqual([{ kind: 'hours_not_set', field: 'greeting', value: '7:30 p.m.' }]);
   });
 });
