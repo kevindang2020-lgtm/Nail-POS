@@ -74,6 +74,19 @@ describe('Deposits & Settlements — empty salon', () => {
   });
 });
 
+describe('Deposits & Settlements — Provider Sync Status (extras #07)', () => {
+  it('counts the processor\'s bad-signature and unprocessed events of the last 7 days per processor; older events and other salons are not counted', async () => {
+    await q(`insert into payment_gateway_events (tenant_id, processor_type, event_id, signature_valid, processed_at, created_at) values
+      ($1,'cardpointe','ev-ok',true,now(),now() - interval '1 hour'), ($1,'cardpointe','ev-badsig',false,null,now() - interval '2 hours'),
+      ($1,'cardpointe','ev-stuck',true,null,now() - interval '3 hours'), ($1,'cardpointe','ev-old',false,null,now() - interval '10 days'),
+      ($2,'cardpointe','ev-other',false,null,now())`, [T, T2]);
+    const src: any = await st.sourceStatus(ctx);
+    expect(src.providerEvents7d).toEqual([{ processor: 'cardpointe', badSignature: 1, unprocessed: 1, lastProcessedAt: expect.any(String) }]);
+    expect((await st.sourceStatus(ctx3) as any).providerEvents7d).toEqual([]);   // nothing received: an empty list, never a made-up zero row
+    await q(`delete from payment_gateway_events where event_id in ('ev-ok','ev-badsig','ev-stuck','ev-old','ev-other')`);
+  });
+});
+
 describe('Deposits & Settlements — KPIs, refunds, search, paging', () => {
   it('six KPIs over the filtered set; refunds counted once and only completed refunds in the money', async () => {
     const p = month();

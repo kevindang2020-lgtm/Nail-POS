@@ -861,4 +861,8 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.loyalty.why.noNext': 'Không có hạng cao hơn nào đặt ngưỡng điểm.', // DRAFT — Kevin reviews
   'people.loyalty.why.lower': 'Chỉ tính theo điểm, khách phù hợp hạng {tier} ({min}).', // DRAFT — Kevin reviews
   'people.loyalty.why.manual': 'Ngưỡng chỉ để tham khảo: khách chỉ đổi hạng khi người có quyền chuyển hạng.', // DRAFT — Kevin reviews
+  'people.loyalty.health.redemption_matches_points_debit': 'Mỗi lần đổi quà trừ đúng số điểm của quà, một lần', // DRAFT — Kevin reviews
+  'people.loyalty.health.points_debit_without_redemption': 'Mỗi lần trừ điểm đổi quà đều thuộc về một lần đổi quà', // DRAFT — Kevin reviews
+  'people.loyalty.health.void_restored_once': 'Mỗi lần đổi quà bị hủy đã hoàn điểm đúng một lần', // DRAFT — Kevin reviews
+  'people.loyalty.health.used_redemption_on_ticket': 'Mỗi mã quà đã áp dụng hoặc đã dùng đều nằm trên một phiếu của tiệm này', // DRAFT — Kevin reviews
 };

@@ -25,6 +25,17 @@ describe('POSLoyaltyScreen', () => {
     expect(screen.getByTestId('kpi-members')).toHaveTextContent('2');
     expect(screen.getByTestId('panel-tiers')).toHaveTextContent('VIP');
   });
+  it('extras: the loyalty check names the redemption reconciliation results', async () => {
+    api.bonusHealth.mockResolvedValue({ checkedAt: '2026-11-12T15:00:00Z', checks: [
+      { key: 'redemption_matches_points_debit', result: 'failed', detail: 'x', affected: ['d2'] },
+      { key: 'void_restored_once', result: 'passed', detail: 'x', affected: [] },
+    ] });
+    mount();
+    fireEvent.click(await screen.findByTestId('loyalty-health-open'));
+    const dlg = await screen.findByTestId('loyalty-health-checks');
+    expect(within(dlg).getByTestId('loyalty-health-redemption_matches_points_debit')).toHaveTextContent(/exactly its cost in points.*1 record/);
+    expect(within(dlg).getByTestId('loyalty-health-void_restored_once')).toHaveTextContent(/Passed.*gave its points back exactly once/);
+  });
   it('Check Customer & Loyalty System (G1 §11): read-only checks by name, result and affected count; Check again re-reads', async () => {
     api.bonusHealth.mockResolvedValue({ checkedAt: '2026-11-05T15:00:00Z', checks: [
       { key: 'approved_bonus_posted_once', result: 'passed', detail: 'x', affected: [] },

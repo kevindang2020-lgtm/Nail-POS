@@ -26,6 +26,7 @@ import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, centsFromText
 import { money, day, when, errMsg, unitLabel } from '../components/InventoryKit';
 import { codeLabel } from '../components/peopleLabels';
 import { PoTable, PoDialog } from './TenantInventoryScreen';
+import { SystemCheckButton } from '../components/SystemCheck';
 
 type Work = 'directory' | 'orders';
 type DTab = 'overview' | 'contacts' | 'products' | 'orders' | 'receiving' | 'notes';
@@ -81,6 +82,7 @@ export function TenantSuppliersScreen() {
       <header className="fk-head">
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.suppliers')}</h1><div className="sub">{tx('pos.supplier_directory_contacts_purchase_orders_and_mls9')}</div></div>
         <div className="fk-head-actions">
+          <SystemCheckButton domain="suppliers" />
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory?tab=purchaseOrders')} data-testid="manage-pos">{tx('pos.manage_in_inventory')}</button>
           {can('inventory.vendor.manage') ? <button type="button" className="fk-btn primary big" onClick={() => setForm({ supplier: null })} data-testid="add-supplier">{tx('pos.add_supplier')}</button> : null}

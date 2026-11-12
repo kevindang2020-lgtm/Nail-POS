@@ -124,6 +124,48 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'usage_without_technician', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND u.status = 'confirmed' AND u.technician_id IS NULL`) },
     { key: 'usage_duplicate_key', severity: 'FAILED', count: (t, b) => n(sql`SELECT u.idempotency_key FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND coalesce(u.idempotency_key, '') <> '' AND u.status = 'confirmed'
         GROUP BY u.idempotency_key HAVING count(*) > 1`) },
+    // extras (Inventory #03 technician usage integrity, #04 duplicate stock movement)
+    { key: 'usage_without_movement', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND u.status = 'confirmed'
+        AND NOT EXISTS (SELECT 1 FROM inventory_stock_movements m WHERE m.tenant_id = u.tenant_id AND m.related_type = 'product_usage_event' AND m.related_id = u.id)`) },
+    { key: 'usage_technician_not_in_salon', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)}
+        AND NOT EXISTS (SELECT 1 FROM technicians te WHERE te.tenant_id = u.tenant_id AND te.id = u.technician_id)`) },
+    { key: 'usage_used_after_recorded', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND u.status = 'confirmed'
+        AND u.occurred_at > u.created_at + interval '10 minutes'`) },
+    { key: 'duplicate_usage_movement', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_type, m.related_id, m.product_id, m.movement_type FROM inventory_stock_movements m
+        WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.related_type = 'ticket_line' AND m.movement_type = 'service_usage'   -- a usage EVENT is already one movement (uq_inv_movements_usage_source, 716)
+        GROUP BY m.related_type, m.related_id, m.product_id, m.movement_type HAVING count(*) > 1`) },
+    { key: 'received_over_ordered_lines', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_id, m.product_id FROM inventory_stock_movements m
+        WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.movement_type = 'purchase_received' AND m.related_type = 'purchase_order'
+        GROUP BY m.related_id, m.product_id
+        HAVING sum(m.quantity_change) > coalesce((SELECT sum(l.quantity_received * l.units_per_purchase_unit) FROM purchase_order_lines l
+          WHERE l.tenant_id = ${t}::uuid AND l.purchase_order_id = m.related_id AND l.product_id = m.product_id), 0)`) },
+  ] },
+
+  // ── Suppliers & Purchasing (/tenant/inventory/vendors) — extras: supplier data accuracy, purchase-order integrity,
+  //    receiving & stock. Suppliers are salon-wide (no branch); purchase orders are the branch's. A line can never be
+  //    over-received (chk_po_line_not_over_received) — not repeated here.
+  suppliers: { permission: 'inventory.view', checks: [
+    { key: 'duplicate_supplier_names', severity: 'WARNING', count: (t) => n(sql`SELECT lower(btrim(v.name)) FROM inventory_vendors v WHERE v.tenant_id = ${t}::uuid AND v.active
+        GROUP BY lower(btrim(v.name)) HAVING count(*) > 1`) },
+    { key: 'supplier_no_contact', severity: 'WARNING', count: (t) => n(sql`SELECT 1 FROM inventory_vendors v WHERE v.tenant_id = ${t}::uuid AND v.active
+        AND coalesce(btrim(v.phone), '') = '' AND coalesce(btrim(v.email), '') = ''
+        AND NOT EXISTS (SELECT 1 FROM inventory_vendor_contacts vc WHERE vc.tenant_id = v.tenant_id AND vc.vendor_id = v.id)`) },
+    { key: 'po_missing_supplier', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status NOT IN ('draft', 'cancelled')
+        AND (q.vendor_id IS NULL OR NOT EXISTS (SELECT 1 FROM inventory_vendors v WHERE v.tenant_id = q.tenant_id AND v.id = q.vendor_id))`) },
+    { key: 'open_po_inactive_supplier', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q JOIN inventory_vendors v ON v.tenant_id = q.tenant_id AND v.id = q.vendor_id
+        WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status IN ('approved', 'ordered', 'partial') AND NOT v.active`) },
+    { key: 'po_total_mismatch', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status <> 'cancelled'
+        AND (q.subtotal_cents <> coalesce((SELECT sum(l.quantity_ordered::bigint * l.unit_cost_cents) FROM purchase_order_lines l WHERE l.tenant_id = q.tenant_id AND l.purchase_order_id = q.id), 0)
+          OR q.total_cents <> q.subtotal_cents + q.shipping_cents + q.tax_cents)`) },
+    { key: 'po_past_expected', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status IN ('approved', 'ordered', 'partial')
+        AND q.expected_date < ${today('q', t)}`) },
+    { key: 'po_status_vs_received', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND (
+        (q.status = 'received' AND EXISTS (SELECT 1 FROM purchase_order_lines l WHERE l.tenant_id = q.tenant_id AND l.purchase_order_id = q.id AND l.quantity_received < l.quantity_ordered))
+        OR (q.status IN ('draft', 'approved', 'ordered') AND EXISTS (SELECT 1 FROM purchase_order_lines l WHERE l.tenant_id = q.tenant_id AND l.purchase_order_id = q.id AND l.quantity_received > 0)))`) },
+    { key: 'received_without_movement', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q WHERE q.tenant_id = ${t}::uuid ${br('q', b)}
+        AND EXISTS (SELECT 1 FROM purchase_order_lines l WHERE l.tenant_id = q.tenant_id AND l.purchase_order_id = q.id AND l.quantity_received > 0)
+        AND NOT EXISTS (SELECT 1 FROM inventory_stock_movements m WHERE m.tenant_id = q.tenant_id AND m.related_type = 'purchase_order' AND m.related_id = q.id)`) },
+    { key: 'stale_drafts', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status = 'draft' AND q.created_at < now() - interval '30 days'`) },
   ] },
 
   // ── Technicians Management Center (/pos/technicians) ──────────────────────────────────────────────────────────────

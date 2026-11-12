@@ -25,7 +25,7 @@ import {
   LiveTechnicianScheduleState, LiveTechnicianScheduleKpis, LiveTechnicianDetail, LiveTechnicianColumn, LiveScheduleAppointment,
   LiveScheduleFilters, BlockTechnicianTimeRequest, LiveApptSource, LiveShift, LIVE_STATUS_LABEL, LiveTechStatus,
   lsInitials, lsDayOfWeek, lsComputeOpenSlots, lsBookedMinutes, lsShiftMinutes, lsUtilization, lsNormalizeStatus, lsRollupKpis,
-  lsMinutesOf, lsToHHMM, lsMapApptStatus,
+  lsMinutesOf, lsToHHMM, lsMapApptStatus, type LiveClockState,
 } from './live-technician-schedule.dto';
 
 const RANGE = { startTime: '09:00', endTime: '19:00', slotMinutes: 30 };
@@ -34,7 +34,7 @@ const WORKFORCE_TO_BOARD: Record<string, string> = { SERVING: 'in_service', BREA
 const parseServices = (v: any): any[] => { if (!v) return []; if (Array.isArray(v)) return v; try { const p = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; } catch { return []; } };
 
 type TechRow = { id: string; user_id: string | null; full_name: string; role_label: string | null; tech_avatar_url: string | null; gtp_avatar_url: string | null; user_avatar_url: string | null; phone_display: string | null };
-type Bundle = { techs: TechRow[]; skillsBy: Record<string, string[]>; statusBy: Record<string, string>; shiftBy: Record<string, LiveShift | undefined>; apptsBy: Record<string, LiveScheduleAppointment[]>; blocksBy: Record<string, { blockId: string; startTime: string; endTime: string; reason: string; note?: string }[]>; nowMinutes: number };
+type Bundle = { techs: TechRow[]; skillsBy: Record<string, string[]>; statusBy: Record<string, string>; clockBy: Record<string, LiveClockState>; punchShift: Set<string>; shiftBy: Record<string, LiveShift | undefined>; apptsBy: Record<string, LiveScheduleAppointment[]>; blocksBy: Record<string, { blockId: string; startTime: string; endTime: string; reason: string; note?: string }[]>; nowMinutes: number };
 
 export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort {
   constructor(private readonly db: Kysely<DB>, private readonly outbox: OutboxWriter | null = null) {}
@@ -104,6 +104,10 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
     // ONE authoritative state (579) → the board vocabulary; technicians with no workforce row yet fall back to the legacy row.
     const statusBy: Record<string, string> = {};
     for (const r of statRows) statusBy[r.technician_id] = WORKFORCE_TO_BOARD[String(r.queue_status)] ?? 'off_shift';
+    // Shift-vs-Clock-In (extras): physical presence from the ONE time clock (579) beside the planned shift — never inferred
+    const clockBy: Record<string, LiveClockState> = {};
+    for (const r of statRows) clockBy[r.technician_id] = r.clock_status === 'CLOCKED_IN' ? 'clocked_in' : r.clock_status === 'ON_BREAK' ? 'on_break' : r.clock_status === 'CLOCKED_OUT' ? 'clocked_out' : null;
+    const punchShift = new Set<string>();
     const noState = ids.filter((id) => !statusBy[id]);
     if (noState.length) {
       const legacy = await this.scoped(this.db.selectFrom('technician_statuses'), ctx).where('technician_id', 'in', noState).select(['technician_id', 'status', 'changed_at']).orderBy('changed_at', 'asc').execute().catch(() => []);
@@ -145,7 +149,9 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
       if (!p.technician_id) continue;
       const isActive = !p.end_time || p.status === 'active' || p.status === 'clocked_in';
       if (isActive) {
+        if (!(p.technician_id in clockBy)) clockBy[p.technician_id] = 'clocked_in';   // no workforce row: the open punch is the clock
         if (!shiftBy[p.technician_id]) {
+          punchShift.add(p.technician_id);   // the board shows the punch as a shift — it is NOT a scheduled one
           const st = p.start_time ? (() => { const z = zonedParts(new Date(p.start_time), tz); return lsToHHMM(z.hour * 60 + z.minute); })() : '09:00';   // the branch's clock (was the UTC hour)
           shiftBy[p.technician_id] = { startTime: st, endTime: '19:00' };
         }
@@ -165,7 +171,7 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
     for (const k of Object.keys(apptsBy)) apptsBy[k].sort((x, y) => lsMinutesOf(x.startTime) - lsMinutesOf(y.startTime));
     const blocksBy: Record<string, { blockId: string; startTime: string; endTime: string; reason: string; note?: string }[]> = {};
     for (const b of blockRows) (blocksBy[b.technician_id] ||= []).push({ blockId: b.id, startTime: b.start_time, endTime: b.end_time, reason: b.reason, note: b.note || undefined });
-    return { techs, skillsBy, statusBy, shiftBy, apptsBy, blocksBy, nowMinutes: await this.nowMinutes(ctx) };
+    return { techs, skillsBy, statusBy, clockBy, punchShift, shiftBy, apptsBy, blocksBy, nowMinutes: await this.nowMinutes(ctx) };
   }
 
   /** The shared day is read once; each technician's column is computed once per read too (board + KPIs used to build every column twice). */
@@ -186,6 +192,7 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
     return {
       technicianId: t.id, userId: t.user_id || undefined, fullName: t.full_name || t.id, initials: lsInitials(t.full_name || '?'), avatarUrl: rawPhoto ? buildMediaUrl(rawPhoto) : undefined, roleLabel: t.role_label || 'Technician',
       status, shift, skills: b.skillsBy[t.id] || [], appointments: appts, openSlots, blocks,
+      clock: t.id in b.clockBy ? b.clockBy[t.id] : null, shiftScheduled: !!shift && !b.punchShift.has(t.id),
       activeTicket: active ? { ticketId: active.ticketId || active.appointmentId, serviceSummary: active.serviceSummary, customerName: active.customerName } : undefined,
       bookedHours: Math.round((bookedMin / 60) * 10) / 10, utilizationPercent: lsUtilization(bookedMin, lsShiftMinutes(shift)),
     };

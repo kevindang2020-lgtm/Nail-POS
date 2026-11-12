@@ -137,6 +137,25 @@ describe('§11 the health check (read-only)', () => {
     const h2 = await svc.health(mgr);
     expect(h2.checks.find((c) => c.key === 'no_credit_without_owner_approval')).toMatchObject({ result: 'failed', affected: [id('dead')] });
   });
+  it('extras: redemption reconciliation — a redemption with no debit, a debit with no redemption, a void not given back, a used code with no ticket', async () => {
+    const before = Object.fromEntries((await svc.health(mgr)).checks.map((c) => [c.key, c.result]));
+    expect(before).toMatchObject({ redemption_matches_points_debit: 'passed', points_debit_without_redemption: 'passed', void_restored_once: 'passed', used_redemption_on_ticket: 'passed' });
+    const R1 = id('d1'), R2 = id('d2'), R3 = id('d3'), R4 = id('d4'), GHOST = id('d9'), RX = id('d8');
+    const red = (rid: string, tenant: string, cust: string, pts: number, status: string) => q(`insert into loyalty_redemptions (id, tenant_id, customer_id, reward_id, reward_title, points_spent, code, status)
+      values ($1,$2,$3,$4,'Free polish',$5,$6,$7)`, [rid, tenant, cust, id('dd'), pts, 'RDM' + rid.slice(-4), status]);
+    const debit = (rid: string, pts: number) => db.transaction().execute((trx: any) => applyLoyaltyEntry(trx, { tenantId: T, branchId: B, customerId: CS, entryType: 'redeem', delta: -pts, reason: 'Redeemed', sourceTable: 'loyalty_redemptions', sourceId: rid, legacyType: 'redeem_reward' }));
+    await red(R1, T, CS, 1, 'issued'); await debit(R1, 1);   // reconciles
+    await red(R2, T, CS, 2, 'issued');                         // no debit at all
+    await debit(GHOST, 1);                                     // a debit for a redemption that does not exist
+    await red(R3, T, CS, 1, 'void'); await debit(R3, 1);       // voided, but the points never came back
+    await red(R4, T, CS, 1, 'used'); await debit(R4, 1);       // used, but on no ticket
+    await red(RX, T2, CS, 9, 'issued');                        // the other salon's: never counted
+    const h = Object.fromEntries((await svc.health(mgr)).checks.map((c) => [c.key, c]));
+    expect(h.redemption_matches_points_debit).toMatchObject({ result: 'failed', affected: [R2] });
+    expect(h.points_debit_without_redemption).toMatchObject({ result: 'failed' }); expect(h.points_debit_without_redemption.affected).toHaveLength(1);
+    expect(h.void_restored_once).toMatchObject({ result: 'failed', affected: [R3] });
+    expect(h.used_redemption_on_ticket).toMatchObject({ result: 'warning', affected: [R4] });
+  });
   it('without the approvals engine the service says so (503), never silently credits', async () => {
     const lone = new LoyaltyBonusService(db);
     const e = await lone.request(mgr, { customerId: CS, points: 1, reason: 'no engine' }).catch((x) => x);

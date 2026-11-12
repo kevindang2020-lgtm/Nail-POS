@@ -191,6 +191,15 @@ export function POSSettlementsScreen() {
         </>}
       </section>
 
+      {src ? <div className="fn-sync fk-hint" role="status" data-testid="provider-sync">
+        <b>{tx('finance.st.sync.title')}</b>{src.processor ? ` · ${lbl('finance.processorName.' + src.processor, src.processor)}` : ''} · {src.state === 'connected' ? tx('finance.st.source.connected') : lbl('finance.st.source.' + src.state, src.state)}
+        {' · '}{tx('finance.st.sync.lastBatch', { t: whenTime(src.lastSettlementReceivedAt) })}{' · '}{tx('finance.st.sync.lastEvent', { t: whenTime(src.lastProviderEventAt) })}
+        {src.staleAfterHours ? <>{' · '}{tx('finance.st.sync.staleAfter', { h: fmtNumber(src.staleAfterHours) })}</> : null}
+        {Array.isArray(src.providerEvents7d) ? (src.providerEvents7d.length === 0 ? <span className="fk-li-s" data-testid="provider-sync-none">{tx('finance.st.sync.noEvents')}</span>
+          : src.providerEvents7d.some((e: any) => e.badSignature || e.unprocessed) ? src.providerEvents7d.filter((e: any) => e.badSignature || e.unprocessed).map((e: any) => <span key={e.processor} className="fk-li-s bad" data-testid="provider-sync-errors">{tx('finance.st.sync.errors', { p: lbl('finance.processorName.' + e.processor, e.processor), b: fmtNumber(e.badSignature), u: fmtNumber(e.unprocessed) })}</span>)
+          : <span className="fk-li-s" data-testid="provider-sync-ok">{tx('finance.st.sync.noErrors')}</span>) : null}
+      </div> : null}
+
       <FitPanel testId="records" className="fn-records" bodyRef={fit.ref}
         title={<span className="fk-seg fn-tabs" role="tablist">
           {(['settlements', 'refunds'] as Tab[]).map((t) => <button type="button" role="tab" key={t} aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>{tx('finance.st.tab.' + t)}{list.data && tab === t ? ` · ${fmtNumber(list.data.total)}` : q && other.data && t === otherTab ? ` · ${fmtNumber(other.data.total)}` : ''}</button>)}

@@ -408,4 +408,11 @@ export const FINANCE_EN = {
   "finance.rule.replaces": "Replaces the current rule for this vendor ({c}).",
   "finance.rule.noPerm": "You can preview, but saving a rule needs category permission.",
   "finance.rule.open": "Rule for this vendor",
+  "finance.st.sync.title": "Provider sync",
+  "finance.st.sync.lastBatch": "Last batch received {t}",
+  "finance.st.sync.lastEvent": "Last provider event {t}",
+  "finance.st.sync.staleAfter": "Stale after {h} h without data",
+  "finance.st.sync.errors": "{p}: {b} failed the signature check · {u} received but not processed (last 7 days)",
+  "finance.st.sync.noErrors": "No rejected or unprocessed provider events in the last 7 days",
+  "finance.st.sync.noEvents": "No provider events received in the last 7 days",
 };

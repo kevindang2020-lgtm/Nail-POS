@@ -99,4 +99,21 @@ describe('POSSettlementsScreen', () => {
     expect(await screen.findByText('RF-88001')).toBeInTheDocument();
     expect(api.list.mock.calls.slice(-1)[0]![0]).toMatchObject({ tab: 'refunds', page: 1 });
   });
+  it('extras: Provider sync — processor, state, last batch / event and the processor\'s own rejected or unprocessed events', async () => {
+    api.summary.mockResolvedValue(summary({ sourceStatus: { state: 'connected', processor: 'cardpointe', staleAfterHours: 72, lastSettlementReceivedAt: '2026-10-29T14:00:00Z', lastProviderEventAt: '2026-10-29T15:00:00Z',
+      providerEvents7d: [{ processor: 'cardpointe', badSignature: 2, unprocessed: 1, lastProcessedAt: '2026-10-29T15:00:00Z' }] } }));
+    api.list.mockResolvedValue(pageOf([row()]));
+    mount();
+    const sync = await screen.findByTestId('provider-sync');
+    expect(sync).toHaveTextContent('Provider sync · CardPointe · Processor connected');
+    expect(sync).toHaveTextContent('Stale after 72 h without data');
+    expect(screen.getByTestId('provider-sync-errors')).toHaveTextContent('CardPointe: 2 failed the signature check · 1 received but not processed (last 7 days)');
+  });
+  it('extras: Provider sync — no events received says so (not "no errors")', async () => {
+    api.summary.mockResolvedValue(summary({ sourceStatus: { state: 'stale', processor: 'cardpointe', staleAfterHours: 72, lastSettlementReceivedAt: null, lastProviderEventAt: null, providerEvents7d: [] } }));
+    api.list.mockResolvedValue(pageOf([]));
+    mount();
+    expect(await screen.findByTestId('provider-sync-none')).toHaveTextContent('No provider events received in the last 7 days');
+    expect(screen.queryByTestId('provider-sync-ok')).toBeNull();
+  });
 });
