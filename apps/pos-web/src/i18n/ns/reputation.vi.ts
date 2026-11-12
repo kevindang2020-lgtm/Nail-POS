@@ -244,5 +244,39 @@ export const REPUTATION_VI: Record<string, string> = {
   "rpx.health.d.tenant_isolation.PASSED": "Mọi bản nháp, hồ sơ và liên kết khách đều thuộc tiệm này.",
   "rpx.health.d.tenant_isolation.FAILED": "Có bản ghi trỏ tới tiệm khác. Hãy báo ngay.",
   "rpx.health.k.no_automatic_actions": "Không tự đăng, nhắn tin hay bồi thường",
-  "rpx.health.d.no_automatic_actions.PASSED": "Phản hồi chỉ được đăng sau khi có người duyệt và đăng; không có gì ở đây gửi tin hay chuyển tiền."
+  "rpx.health.d.no_automatic_actions.PASSED": "Phản hồi chỉ được đăng sau khi có người duyệt và đăng; không có gì ở đây gửi tin hay chuyển tiền.",
+  "rpx.pat.dist": "Phân bố số sao (cùng các tháng)", // DRAFT — Kevin reviews
+  "rpx.pat.stars": "{n} ★", // DRAFT — Kevin reviews
+  "rpx.pat.unrated": "{n} đánh giá không có số sao.", // DRAFT — Kevin reviews
+  "rpx.pat.topics": "Chủ đề phàn nàn lặp lại", // DRAFT — Kevin reviews
+  "rpx.pat.basis": "Theo lần phân loại đã lưu gần nhất của {n} đánh giá; mỗi đánh giá chỉ tính một lần cho mỗi chủ đề.", // DRAFT — Kevin reviews
+  "rpx.pat.noTopics": "Không có chủ đề phàn nàn nào được phân loại trong các tháng này.", // DRAFT — Kevin reviews
+  "rpx.pat.recurring": "Lặp lại", // DRAFT — Kevin reviews
+  "rpx.pat.topicV": "{n} đánh giá · {neg} tiêu cực", // DRAFT — Kevin reviews
+  "rpx.pat.note": "Chỉ là số đếm — một chủ đề tăng hay giảm là sự liên quan, không phải bằng chứng nguyên nhân.", // DRAFT — Kevin reviews
+  "rpx.topic.service_quality": "Chất lượng dịch vụ", // DRAFT — Kevin reviews
+  "rpx.topic.technician_behavior": "Cách làm việc của thợ", // DRAFT — Kevin reviews
+  "rpx.topic.staff_attitude": "Thái độ nhân viên", // DRAFT — Kevin reviews
+  "rpx.topic.long_wait": "Chờ lâu", // DRAFT — Kevin reviews
+  "rpx.topic.appointment_delay": "Trễ lịch hẹn", // DRAFT — Kevin reviews
+  "rpx.topic.booking_problem": "Vấn đề đặt lịch", // DRAFT — Kevin reviews
+  "rpx.topic.cancellation_problem": "Vấn đề hủy lịch", // DRAFT — Kevin reviews
+  "rpx.topic.incorrect_service": "Làm sai dịch vụ", // DRAFT — Kevin reviews
+  "rpx.topic.pricing_dispute": "Tranh chấp giá", // DRAFT — Kevin reviews
+  "rpx.topic.unauthorized_charge": "Tính tiền không được phép", // DRAFT — Kevin reviews
+  "rpx.topic.tip_dispute": "Tranh chấp tiền tip", // DRAFT — Kevin reviews
+  "rpx.topic.refund_request": "Yêu cầu hoàn tiền", // DRAFT — Kevin reviews
+  "rpx.topic.product_issue": "Vấn đề sản phẩm", // DRAFT — Kevin reviews
+  "rpx.topic.cleanliness": "Sạch sẽ", // DRAFT — Kevin reviews
+  "rpx.topic.sanitation": "Vệ sinh khử trùng", // DRAFT — Kevin reviews
+  "rpx.topic.injury_health": "Chấn thương hoặc sức khỏe", // DRAFT — Kevin reviews
+  "rpx.topic.allergic_reaction": "Dị ứng", // DRAFT — Kevin reviews
+  "rpx.topic.nail_damage": "Hư móng", // DRAFT — Kevin reviews
+  "rpx.topic.communication_problem": "Vấn đề giao tiếp", // DRAFT — Kevin reviews
+  "rpx.topic.accessibility_concern": "Vấn đề tiếp cận", // DRAFT — Kevin reviews
+  "rpx.topic.discrimination": "Phân biệt đối xử", // DRAFT — Kevin reviews
+  "rpx.topic.harassment": "Quấy rối", // DRAFT — Kevin reviews
+  "rpx.topic.privacy_concern": "Vấn đề quyền riêng tư", // DRAFT — Kevin reviews
+  "rpx.topic.fraud_allegation": "Cáo buộc gian lận", // DRAFT — Kevin reviews
+  "rpx.topic.other": "Khác", // DRAFT — Kevin reviews
 };
