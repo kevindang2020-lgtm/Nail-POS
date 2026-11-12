@@ -620,3 +620,20 @@ timeline, failure triage, compare; Campaign Center booking de-duplication (real 
 twice); gift-card closeout reconciliation; coupon ROI parts per location; review activity checks; review-request dry
 run (scheduling and preview now share one evaluate()); AI package "why on / blocked" from the access gate itself.
 Merge fix: shared system-check test ids collided (pglite DB shared across the file) — agent 5's moved to 251–260.
+
+## Extras backlog — round 6 + Kevin's four decisions (Nov 12 2026, 15:04 New York)
+Kevin decided: (1) STOP blocks in-app follow-ups too (SMS opt-out list; email unsubscribe does not); (2) churn is judged by
+Customer Retention only; (3) closed cash records CAN be reopened; (4) booking verification codes still go out after STOP.
+Built this round: (1) EOD/follow-up send refuses an SMS-opted-out customer inside the transaction, no override, audited
+(`service_follow_up_send_refused`, reason sms_opted_out) — followup-queue pgtest now pins enforcement; (2) Customer Profile
+Assistant shows Retention's segment and links to it (its own churn chip/filter removed from that page) — the separate
+Churn Watch page still scores churn itself: queued for round 7 to read Retention's verdict; (3) POST
+pos/cash-handoffs/:technicianId/reopen — permission cash_handoff.reopen (owner + manager), reason ≥10 chars, expected
+version, before/after audit, "reopened by/at/why", migration 846; (4) consent-boundary.ts: one table of what STOP and
+unsubscribe do per message type; sendSms reads it; booking codes + account texts exempt; Text Messaging Setup shows 30 days
+of evidence. Also: logs CSV export (sanitized, audited first), refund/void realtime, membership benefit/billing checks,
+gift-card delivery history, badge-count check, AI usage projection + bundle overlap, forecast capacity, loyalty branch
+usage, add-on mass-edit preview, payment-batch double-count check, inventory SKU/barcode checks, star distribution.
+Real bugs fixed: Quick View "Next appointment" always None; customer isPhoneVerified always false; Super Admin "suspicious
+sessions" always 0 (status never allowed — now "—"). check:impossible now reads schema_apply_check (it was blind to it).
+TODO 189 → 133.
