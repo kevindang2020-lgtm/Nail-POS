@@ -374,4 +374,23 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.health.tz.detail": "Múi giờ: {z} · múi giờ không hợp lệ: {bad} · lần gửi gần lúc đổi giờ: {dst} trên {n} đã lên lịch", // DRAFT — Kevin reviews
   "amk.cst.all_drafts": "Tất cả bản nháp (kể cả chờ duyệt)", // DRAFT — Kevin reviews
   "amk.sourceNote": "Chạm vào một thẻ để mở nơi số liệu được đếm: các thẻ chiến dịch lọc danh sách của Trung tâm chiến dịch bên dưới; các thẻ tin nhắn, lịch hẹn, doanh thu và chi phí mở Kết quả chiến dịch cho kỳ này.", // DRAFT — Kevin reviews
+  "amk.comp.anomalies": "Bất thường", // DRAFT — Kevin reviews
+  "amk.health.k.anomaly_cost_spike": "Chi phí tin nhắn tăng đột biến", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_cost_spike.PASSED": "Chi phí tin nhắn 24 giờ qua tương đương hai tuần trước đó.", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_cost_spike.WARNING": "Chi phí tin nhắn 24 giờ qua gấp 3 lần trở lên mức trung bình mỗi ngày của hai tuần trước. Hãy xem lại những gì đã gửi — không có gì bị tạm dừng.", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_cost_spike.INSUFFICIENT_DATA": "Chưa có tin nhắn chiến dịch nào có giá trong hai tuần qua.", // DRAFT — Kevin reviews
+  "amk.health.ad.anomaly_cost_spike": "24 giờ qua: {last24hCents} · trung bình mỗi ngày trước đó: {priorDailyAverageCents}", // DRAFT — Kevin reviews
+  "amk.health.k.anomaly_send_failures": "Gửi thất bại", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_send_failures.PASSED": "Dưới 1/5 tin nhắn chiến dịch bị lỗi trong 24 giờ qua.", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_send_failures.WARNING": "Từ 1/5 tin nhắn chiến dịch trở lên bị lỗi trong 24 giờ qua. Hãy kiểm tra người gửi và danh bạ — không có gì được gửi lại.", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_send_failures.INSUFFICIENT_DATA": "Dưới 10 tin nhắn chiến dịch trong 24 giờ qua — quá ít để đánh giá.", // DRAFT — Kevin reviews
+  "amk.health.ad.anomaly_send_failures": "{failed24h} trên {attempts24h} bị lỗi trong 24 giờ qua", // DRAFT — Kevin reviews
+  "amk.health.k.anomaly_duplicate_claims": "Nhận ưu đãi trùng lặp", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_duplicate_claims.PASSED": "Không có mã hay ưu đãi nào được dùng vượt giới hạn trong 90 ngày qua.", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_duplicate_claims.WARNING": "Có mã được dùng vượt mức cho phép, hoặc khách dùng một ưu đãi nhiều hơn giới hạn mỗi khách. Hãy xem lại các lần dùng — không có gì bị hoàn lại.", // DRAFT — Kevin reviews
+  "amk.health.ad.anomaly_duplicate_claims": "Mã vượt giới hạn: {codesOverLimit} · khách vượt giới hạn ưu đãi: {customersOverDealLimit}", // DRAFT — Kevin reviews
+  "amk.health.k.anomaly_balance_drift": "Lệch số dư điểm", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_balance_drift.PASSED": "Mọi số dư điểm tích lũy đều khớp với lịch sử.", // DRAFT — Kevin reviews
+  "amk.health.d.anomaly_balance_drift.WARNING": "Một số số dư điểm không khớp với lịch sử tích điểm. Bước kiểm tra tích điểm hằng đêm sẽ sửa theo lịch sử; ở đây không thay đổi gì.", // DRAFT — Kevin reviews
+  "amk.health.ad.anomaly_balance_drift": "{profiles} khách · lệch {pointsOff} điểm", // DRAFT — Kevin reviews
 };

@@ -501,6 +501,44 @@ export class MarketingCenter {
     for (const r of sched) { const tz = await branchTimeZone(this.db, T, r.branch_id ?? null); if (validTimeZone(tz) && nearClockChange(new Date(r.scheduled_at).getTime(), tz)) dst++; }
     checks.push({ key: 'date_timezone', component: 'campaigns', state: badZones ? 'FAILED' : dst ? 'WARNING' : 'PASSED', count: badZones + dst,
       detail: { branches: zrows.length, invalidZones: badZones, zones, scheduledOnClockChange: dst, scheduledChecked: sched.length } });
+    // Marketing Growth 12 — Alerting for Marketing Anomalies: flagged for a person with the evidence; nothing is paused,
+    // refunded, re-sent or corrected here.
+    // cost spike: provider cost of this salon's campaign messages in the last 24 h ≥ 3× its daily average over the 14 days
+    // before, and at least $1 (so a few cents never alarm)
+    const cs = await one(sql<Row>`select coalesce(sum(n.provider_cost_micros) filter (where x.updated_at > now() - interval '1 day'), 0)::bigint as recent,
+        coalesce(sum(n.provider_cost_micros) filter (where x.updated_at <= now() - interval '1 day' and x.updated_at > now() - interval '15 days'), 0)::bigint as prior
+      from ai_marketing_campaign_sends x join notifications n on n.tenant_id = x.tenant_id and x.provider_id is not null and n.provider_id = x.provider_id
+      where x.tenant_id = ${T} and x.status = 'sent' and x.updated_at > now() - interval '15 days' and n.provider_cost_micros is not null`);
+    const recentCents = Math.round(N(cs.recent) / 10000); const priorDailyCents = Math.round(N(cs.prior) / 10000 / 14);
+    const costSpike = recentCents >= 100 && recentCents >= 3 * Math.max(1, priorDailyCents);
+    checks.push({ key: 'anomaly_cost_spike', component: 'anomalies', state: !N(cs.recent) && !N(cs.prior) ? 'INSUFFICIENT_DATA' : costSpike ? 'WARNING' : 'PASSED',
+      count: costSpike ? 1 : 0, detail: { last24hCents: recentCents, priorDailyAverageCents: priorDailyCents } });
+    // send failures: in the last 24 h, at least 10 attempts and 20 %+ failed (refused at send, or failed on the delivery report)
+    const sf = await one(sql<Row>`select count(*) filter (where x.status in ('sent', 'failed'))::int as attempts,
+        count(*) filter (where x.status = 'failed' or (x.status = 'sent' and n.status = 'failed'))::int as failed
+      from ai_marketing_campaign_sends x left join notifications n on n.tenant_id = x.tenant_id and x.provider_id is not null and n.provider_id = x.provider_id
+      where x.tenant_id = ${T} and x.updated_at > now() - interval '1 day'`);
+    const failSpike = N(sf.attempts) >= 10 && N(sf.failed) * 5 >= N(sf.attempts);
+    checks.push({ key: 'anomaly_send_failures', component: 'anomalies', state: N(sf.attempts) < 10 ? 'INSUFFICIENT_DATA' : failSpike ? 'WARNING' : 'PASSED',
+      count: failSpike ? N(sf.failed) : 0, detail: { attempts24h: N(sf.attempts), failed24h: N(sf.failed) } });
+    // duplicate claims (90 days, live redemptions): a coupon code redeemed beyond what it allows (single-use more than once, or
+    // past max_uses), or a customer redeeming one deal more times than its per-customer limit
+    const dc = await one(sql<Row>`select
+        (select count(*)::int from (select k.id from deal_redemptions dr join deal_coupon_codes k on k.id = dr.coupon_code_id and k.tenant_id = dr.tenant_id
+           where dr.tenant_id = ${T} and dr.status in ('applied', 'redeemed', 'partially_reversed') and dr.created_at > now() - interval '90 days'
+           group by k.id, k.single_use, k.max_uses having (k.single_use and count(*) > 1) or (k.max_uses is not null and count(*) > k.max_uses)) a) as code_over,
+        (select count(*)::int from (select dr.deal_id, dr.customer_id from deal_redemptions dr join deals d on d.id = dr.deal_id and d.tenant_id = dr.tenant_id
+           where dr.tenant_id = ${T} and d.max_per_customer is not null and dr.status in ('applied', 'redeemed', 'partially_reversed') and dr.created_at > now() - interval '90 days'
+           group by dr.deal_id, dr.customer_id, d.max_per_customer having count(*) > d.max_per_customer) b) as customer_over`);
+    const dupClaims = N(dc.code_over) + N(dc.customer_over);
+    checks.push({ key: 'anomaly_duplicate_claims', component: 'anomalies', state: dupClaims ? 'WARNING' : 'PASSED', count: dupClaims,
+      detail: { codesOverLimit: N(dc.code_over), customersOverDealLimit: N(dc.customer_over) } });
+    // balance drift: a loyalty profile whose points balance differs from the sum of its ledger (the nightly loyalty.reconcile
+    // job repairs it FROM the ledger; this only reports what it would find now)
+    const bd = await one(sql<Row>`select count(*)::int as n, coalesce(sum(abs(p.points_balance - coalesce(l.s, 0))), 0)::bigint as pts from customer_loyalty_profiles p
+      left join (select customer_id, sum(delta) as s from loyalty_ledger where tenant_id = ${T} group by customer_id) l on l.customer_id = p.customer_id
+      where p.tenant_id = ${T} and p.points_balance <> coalesce(l.s, 0)`);
+    checks.push({ key: 'anomaly_balance_drift', component: 'anomalies', state: N(bd.n) ? 'WARNING' : 'PASSED', count: N(bd.n), detail: { profiles: N(bd.n), pointsOff: N(bd.pts) } });
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });
 
     const prev = (await sql<Row>`select c->>'key' as key, max(h.created_at) as at from ai_marketing_health_runs h cross join lateral jsonb_array_elements(h.checks) c

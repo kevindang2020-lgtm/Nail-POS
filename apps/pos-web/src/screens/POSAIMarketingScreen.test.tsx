@@ -99,6 +99,21 @@ describe('POSAIMarketingScreen', () => {
     expect(row).toHaveTextContent('missing or unknown time zone');
     expect(screen.getByTestId('amk-chk-tz-detail')).toHaveTextContent('Zones: America/New_York, UTC · unknown zones: 1 · sends near a clock change: 1 of 2 scheduled');
   });
+  it('Marketing Growth 12: anomaly checks name the spike, failures, duplicate claims and points drift with their evidence', async () => {
+    c.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-03T15:00:00Z', reused: false, checks: [
+      { key: 'anomaly_cost_spike', component: 'anomalies', state: 'WARNING', count: 1, lastPassedAt: null, detail: { last24hCents: 240, priorDailyAverageCents: 0 } },
+      { key: 'anomaly_send_failures', component: 'anomalies', state: 'WARNING', count: 4, lastPassedAt: null, detail: { attempts24h: 12, failed24h: 4 } },
+      { key: 'anomaly_duplicate_claims', component: 'anomalies', state: 'WARNING', count: 2, lastPassedAt: null, detail: { codesOverLimit: 1, customersOverDealLimit: 1 } },
+      { key: 'anomaly_balance_drift', component: 'anomalies', state: 'WARNING', count: 1, lastPassedAt: null, detail: { profiles: 1, pointsOff: 20 } }] });
+    wrap();
+    fireEvent.click(screen.getByTestId('amk-check'));
+    expect(await screen.findByTestId('amk-chk-anomaly_cost_spike')).toHaveTextContent('Message cost spike');
+    expect(screen.getByTestId('amk-chk-anomaly_cost_spike-detail')).toHaveTextContent('Last 24 hours: $2.40 · daily average before: $0.00');
+    expect(screen.getByTestId('amk-chk-anomaly_send_failures-detail')).toHaveTextContent('4 of 12 failed in the last 24 hours');
+    expect(screen.getByTestId('amk-chk-anomaly_duplicate_claims-detail')).toHaveTextContent('Codes over their limit: 1 · customers over an offer limit: 1');
+    expect(screen.getByTestId('amk-chk-anomaly_balance_drift')).toHaveTextContent('nothing was changed here');
+    expect(screen.getByTestId('amk-chk-anomaly_balance_drift-detail')).toHaveTextContent('1 customer(s) · 20 points off');
+  });
   it('AI Marketing 10 — source verification: campaign cards filter Campaign Center\'s list to their own set; message / revenue cards open Campaign Results for the same period', async () => {
     const Where = () => { const l = useLocation(); return <div data-testid="where">{l.pathname + l.search}</div>; };
     render(<MemoryRouter initialEntries={['/tenant/ai/marketing']}><Routes>
