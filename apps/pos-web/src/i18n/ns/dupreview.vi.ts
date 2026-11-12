@@ -290,4 +290,16 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "cd.rfm.cannotLose": "Không thể để mất",
   "cd.rfm.hibernating": "Lâu không quay lại",
   "cd.rfm.noVisits": "Chưa ghé tiệm"
+  "dup.health.k.orphan_references": "Bản ghi trỏ đến khách không còn tồn tại", // DRAFT — Kevin reviews
+  "dup.health.k.archived_with_bookings": "Lịch hẹn sắp tới trên hồ sơ đã lưu trữ", // DRAFT — Kevin reviews
+  "dup.health.k.loyalty_repeat_entries": "Điểm tích lũy bị ghi lặp", // DRAFT — Kevin reviews
+  "dup.health.k.consent_conflict": "Đồng ý nhận tiếp thị so với danh sách từ chối", // DRAFT — Kevin reviews
+  "dup.health.d.orphan_references.PASSED": "Mọi lịch hẹn, thẻ quà tặng, mục điểm tích lũy và gói thành viên đều trỏ đến khách của tiệm.", // DRAFT — Kevin reviews
+  "dup.health.d.orphan_references.WARNING": "Một số bản ghi trỏ đến hồ sơ khách không còn tồn tại. Gắn lại ở màn hình riêng của chúng; kiểm tra này không thay đổi gì.", // DRAFT — Kevin reviews
+  "dup.health.d.archived_with_bookings.PASSED": "Không có lịch hẹn sắp tới nào thuộc hồ sơ đã lưu trữ.", // DRAFT — Kevin reviews
+  "dup.health.d.archived_with_bookings.WARNING": "Một số lịch hẹn sắp tới thuộc hồ sơ đã lưu trữ. Chuyển sang hồ sơ đang dùng hoặc khôi phục hồ sơ.", // DRAFT — Kevin reviews
+  "dup.health.d.loyalty_repeat_entries.PASSED": "Không có mục điểm tích lũy nào bị ghi lặp cho cùng khách và cùng tham chiếu.", // DRAFT — Kevin reviews
+  "dup.health.d.loyalty_repeat_entries.WARNING": "Một số mục điểm tích lũy xuất hiện hai lần cho cùng khách và cùng tham chiếu. Xem lại trong Tích điểm — điều chỉnh bằng bút toán đảo có lý do, không sửa tay.", // DRAFT — Kevin reviews
+  "dup.health.d.consent_conflict.PASSED": "Không có hồ sơ nào đồng ý nhận tiếp thị trong khi nằm trong danh sách từ chối.", // DRAFT — Kevin reviews
+  "dup.health.d.consent_conflict.WARNING": "Một số hồ sơ được đánh dấu đồng ý nhận tiếp thị trong khi số điện thoại hoặc email nằm trong danh sách từ chối. Xác nhận với khách; danh sách từ chối luôn được ưu tiên khi gửi.", // DRAFT — Kevin reviews
 };

@@ -292,4 +292,16 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "cd.rfm.cannotLose": "Cannot Lose Them",
   "cd.rfm.hibernating": "Hibernating",
   "cd.rfm.noVisits": "No Visits Yet"
+  "dup.health.k.orphan_references": "Records naming a missing customer",
+  "dup.health.k.archived_with_bookings": "Upcoming bookings on archived profiles",
+  "dup.health.k.loyalty_repeat_entries": "Repeated loyalty postings",
+  "dup.health.k.consent_conflict": "Marketing consent vs the opt-out list",
+  "dup.health.d.orphan_references.PASSED": "Every booking, gift card, loyalty entry and membership names a customer this salon has.",
+  "dup.health.d.orphan_references.WARNING": "Some records name a customer profile that no longer exists. Reattach them in their own screens; this check changes nothing.",
+  "dup.health.d.archived_with_bookings.PASSED": "No upcoming booking belongs to an archived profile.",
+  "dup.health.d.archived_with_bookings.WARNING": "Some upcoming bookings belong to an archived profile. Move them to the live profile or restore it.",
+  "dup.health.d.loyalty_repeat_entries.PASSED": "No loyalty posting is repeated for the same customer and reference.",
+  "dup.health.d.loyalty_repeat_entries.WARNING": "Some loyalty postings appear twice for the same customer and reference. Review them in Loyalty — corrections are reasoned reversals, never hand edits.",
+  "dup.health.d.consent_conflict.PASSED": "No profile is opted in to marketing while on the opt-out list.",
+  "dup.health.d.consent_conflict.WARNING": "Some profiles are marked opted in to marketing while their phone or email is on the opt-out list. Confirm with the customer; the opt-out list always wins when sending.",
 };
