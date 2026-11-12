@@ -178,4 +178,5 @@ export const FUQ_EN = {
   'fuq.cd.more': '+{n} more in the customer timeline',
   'fuq.cd.note': 'From the customer timeline (texts, emails, reminders, receipts, follow-ups). Read only — nothing is sent from here.',
   'fuq.cc.source_cancelled': 'Visit cancelled (ticket voided, reopened or service removed) — cannot be sent',
+  'fuq.cc.optOutSms': 'Texted STOP on {time} — no follow-up is sent to this customer on any channel, and it cannot be overridden',
 };

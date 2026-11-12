@@ -178,4 +178,5 @@ export const FUQ_VI = {
   'fuq.cd.more': '+{n} tin nữa trong dòng thời gian của khách', // DRAFT — Kevin reviews
   'fuq.cd.note': 'Từ dòng thời gian của khách (tin nhắn, email, nhắc hẹn, hóa đơn, chăm sóc sau dịch vụ). Chỉ xem — không gửi gì từ đây.', // DRAFT — Kevin reviews
   'fuq.cc.source_cancelled': 'Lượt khách đã hủy (phiếu bị hủy, mở lại hoặc dịch vụ bị gỡ) — không thể gửi', // DRAFT — Kevin reviews
+  'fuq.cc.optOutSms': 'Đã nhắn STOP ngày {time} — không gửi tin theo dõi cho khách này qua bất kỳ kênh nào, và không thể bỏ qua', // DRAFT — Kevin reviews
 };

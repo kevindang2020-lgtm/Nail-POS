@@ -128,4 +128,28 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     expect(chip.className).toContain('bad');
     expect(f.mock.calls.some((c: any[]) => (c[1]?.method ?? 'GET') !== 'GET')).toBe(false);   // read only
   });
+  it('extras END-OF-DAY FOLLOW-UPS 07 / 11: a customer who texted STOP shows Opted Out (server category), the STOP line says it is enforced, and Send is disabled', async () => {
+    window.history.replaceState(null, '', '/follow-ups');
+    const detail = { id: 't1', status: 'pending', businessDate: '2026-10-30', customerId: 'c-t1', customerName: 'Olivia Brown', customerPhone: null, customerHasApp: true, technicianId: 'te1', technicianName: 'Linh Tran',
+      serviceName: 'Gel Manicure', ticketId: 'k1', ticketNumber: '1001', appointmentId: null, completedAt: null, createdAt: null, submittedAt: null, sentAt: null, expiredAt: null, rejectedAt: null, templateKey: null, draft: 'Thanks for visiting!', sentMessage: null, delivery: null };
+    const base = mockFetch();
+    const f = vi.fn(async (u: any, _init?: any) => {
+      const url = String(u);
+      const r = url.includes('/eod-follow-ups/tasks/t1') ? { status: 200, body: detail }
+        : url.includes('/contact-check') ? { status: 200, body: { taskId: 't1', category: 'opted_out', categories: ['opted_out'], channel: 'customer_app', cooldownHours: 72, lastFollowUp: null, otherChannel: null,
+          optOuts: [{ channel: 'sms', at: '2026-10-29T15:00:00Z', enforced: true }], marketing: { sms: false, email: true }, upcomingBooking: null, priority: 'normal', priorityReasons: [], priorityVersion: 'v1' } }
+        : url.includes('/follow-up-queue/customers/') ? { status: 200, body: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 } }
+        : null;
+      if (!r) return base(u);
+      return { ok: r.status < 400, status: r.status, json: async () => r.body, headers: { get: () => null } } as any;
+    });
+    globalThis.fetch = f as any;
+    view();
+    fireEvent.click((await screen.findAllByTestId('fuq-row-details'))[0]);
+    const chip = await screen.findByTestId('fuq-d-category');
+    expect(chip).toHaveTextContent('Opted Out'); expect(chip.className).toContain('bad');
+    expect(screen.getByTestId('fuq-d-optout-sms')).toHaveTextContent(/Texted STOP on .* no follow-up is sent to this customer on any channel, and it cannot be overridden/);
+    expect(screen.getByTestId('fuq-d-send')).toBeDisabled();
+    expect(f.mock.calls.some((c: any[]) => (c[1]?.method ?? 'GET') !== 'GET')).toBe(false);
+  });
 });
