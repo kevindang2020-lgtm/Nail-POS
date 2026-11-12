@@ -163,4 +163,13 @@ export const PHONEMGMT_EN = {
   "phm.pol.source.platform_default": "No policy has been saved yet, so the platform defaults apply.",
   "phm.pol.sa.none": "No Super Admin override applies to these settings. Viewing never changes them.",
   "phm.pol.sa.yes": "A Super Admin override applies to these settings.",
+  "phm.dup.titleBlocked": "This number is already on another customer profile",
+  "phm.dup.titleShared": "Recorded as a shared family phone",
+  "phm.dup.separate": "Individual profiles remain separate: sharing a number never merges customers, their visits, notes, loyalty or gift cards.",
+  "phm.dup.manager": "Several customers already use this number, so a manager must review it. Nothing was changed.",
+  "phm.dup.samePerson": "The other profile has a very similar name and may be the same person recorded twice. Nothing was changed or merged.",
+  "phm.dup.blocked": "Nothing was changed. If this is a family member sharing one phone, record it as a shared family phone.",
+  "phm.dup.other": "Use a different number",
+  "phm.dup.family": "It is a shared family phone, continue",
+  "phm.dup.continue": "Continue",
 };
