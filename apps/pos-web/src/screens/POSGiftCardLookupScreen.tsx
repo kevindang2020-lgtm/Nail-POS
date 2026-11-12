@@ -73,7 +73,7 @@ export function POSGiftCardLookupScreen() {
       <section style={sectionStyle}>
         <label htmlFor="gc-lookup" style={{ fontWeight: 700, display: 'block', marginBottom: 8 }}>{t('pos.gift_card_number_or_code')}</label>
         <div className="flex flex-col sm:flex-row gap-2">
-          <input id="gc-lookup" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookup(); }} placeholder="4827 1936 5502 8411" aria-label={t('pos.gift_card_number_or_code')} className="w-full sm:flex-1" style={{ ...inputStyle, fontFamily: 'ui-monospace, monospace' }} />
+          <input id="gc-lookup" autoComplete="off" spellCheck={false} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookup(); }} placeholder="4827 1936 5502 8411" aria-label={t('pos.gift_card_number_or_code')} className="w-full sm:flex-1" style={{ ...inputStyle, fontFamily: 'ui-monospace, monospace' }} />
           <div className="flex gap-2">
             {supported && <button onClick={() => setScanning(true)} className="flex-1 sm:flex-none" style={{ border: `1px solid ${LINE}`, background: '#fff', color: GOLD, borderRadius: 8, padding: '10px 14px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('pos.scan')}</button>}
             <button disabled={!canLook} onClick={() => lookup()} className="flex-1 sm:flex-none" style={{ border: 'none', background: canLook ? GOLD : LINE, color: canLook ? '#fff' : MUTED, borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 700, cursor: canLook ? 'pointer' : 'default' }}>{busy ? t('pos.looking') : t('pos.look_up')}</button>

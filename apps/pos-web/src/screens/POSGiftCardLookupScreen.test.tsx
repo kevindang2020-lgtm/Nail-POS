@@ -12,6 +12,12 @@ import { POSGiftCardLookupScreen } from './POSGiftCardLookupScreen';
 beforeEach(() => { lookupMock.mockReset(); replaceMock.mockReset(); });
 
 describe('POSGiftCardLookupScreen', () => {
+  it('GIFT CARDS · 06: the manual lookup field never offers a redeemable code back through browser autocomplete', () => {
+    render(<POSGiftCardLookupScreen />);
+    const input = screen.getByLabelText('Gift card number or code');
+    expect(input).toHaveAttribute('autocomplete', 'off');
+    expect(input).toHaveAttribute('spellcheck', 'false');
+  });
   it('scanning a card fills the number and looks it up', async () => {
     lookupMock.mockResolvedValue({ found: true, reference: 'GC-****-8411', cardNumberMasked: '•••• •••• •••• 8411', balanceCents: 5000, status: 'active', redeemableHere: true });
     render(<POSGiftCardLookupScreen />);

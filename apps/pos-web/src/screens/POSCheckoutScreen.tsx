@@ -820,6 +820,7 @@ export function POSCheckoutScreen() {
                         <label className="text-xs text-[var(--muted)] font-bold">{tx('pos.gift_card_code')}</label>
                         <input
                           aria-label={tx('pos.gift_card_code')}
+                          autoComplete="off" spellCheck={false} /* GIFT CARDS · 06: a redeemable code is never offered back by browser autocomplete */
                           value={giftCode}
                           onChange={(e) => setGiftCode(e.target.value)}
                           placeholder={tx('pos.enter_code')}
@@ -827,6 +828,7 @@ export function POSCheckoutScreen() {
                         />
                         <input
                           aria-label={tx('pos.gift_card_pin')}
+                          type="password" inputMode="numeric" autoComplete="off"
                           value={giftPin}
                           onChange={(e) => setGiftPin(e.target.value)}
                           placeholder="PIN"
