@@ -96,7 +96,7 @@ describe('Customer Notifications', () => {
     fireEvent.change(screen.getByTestId('cn-priority'), { target: { value: 'urgent' } });
     await waitFor(() => expect(m.list).toHaveBeenLastCalledWith(expect.objectContaining({ priority: 'urgent' })));
     fireEvent.click(await screen.findByTestId('cn-clear'));
-    await waitFor(() => expect(m.list.mock.calls.at(-1)?.[0]).not.toHaveProperty('priority'));
+    await waitFor(() => expect(m.list.mock.calls[m.list.mock.calls.length - 1]?.[0]).not.toHaveProperty('priority'));
   });
   it('extras CN-07: seeing an incident changes nothing; Acknowledge and Resolve are separate, explicit actions', async () => {
     m.incidents.mockResolvedValue({ items: [{ id: 'al1', severity: 'critical', status: 'new', title: 'Repeated failures', body: '3 failed', rule: 'repeated', channel: 'sms', category: 'auth', count: 3,
