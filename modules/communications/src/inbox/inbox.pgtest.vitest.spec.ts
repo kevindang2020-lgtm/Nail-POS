@@ -434,3 +434,58 @@ describe('callback health (missing webhook warning)', () => {
     expect((await svc.summary(owner, null)).definitions.callbackHealth).toMatch(/never counted as failed/);
   });
 });
+
+// Extras · Customer Notifications 03 — Mark all as read with a cutoff
+describe('mark all as read with a cutoff', () => {
+  const T3 = id('a3'), C1 = id('b31'), C2 = id('b32'), O3 = id('e31'), M3 = id('e32');
+  const own3: InboxCtx = { tenantId: T3, branchId: C1, userId: O3, role: 'OWNER', permissions: ALL, userName: 'Ann', authz: { branchIds: null } };
+  const mgr3: InboxCtx = { tenantId: T3, branchId: C2, userId: M3, role: 'MANAGER', permissions: ALL, userName: 'Ben', authz: { branchIds: [C2] } };
+  const view3: InboxCtx = { tenantId: T3, branchId: C1, userId: M3, role: 'RECEPTIONIST', permissions: ['pos.communications.view'], userName: 'Ben', authz: { branchIds: null } };
+  async function unread(branch: string | null, inboundAt: Date, contact: string) {
+    const t = await thread(T3, { branch, contact, activity: inboundAt.toISOString() });
+    await q(`update communication_threads set unread_count = 2, last_inbound_at = $2 where id = $1`, [t, inboundAt]);
+    return t;
+  }
+  const unreadOf = async (t: string) => Number((await q(`select unread_count from communication_threads where id = $1`, [t])).rows[0].unread_count);
+  it('marks only conversations whose customer wrote at or before the cutoff; newer texts, other branches and other salons stay unread', async () => {
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Rose LLC','Rose Nails','ib-rose','IBL003','active')`, [T3]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$3,'Rose Main','active','America/New_York'), ($2,$3,'Rose Two','active','America/New_York')`, [C1, C2, T3]);
+    await q(`insert into users (id, tenant_id, full_name, email, status, role) values ($1,$3,'Ann Owner','ann@ib.test','active','OWNER'), ($2,$3,'Ben Manager','ben@ib.test','active','MANAGER')`, [O3, M3, T3]);
+    const cutoff = new Date(Date.now() - 10 * 60_000);
+    const old1 = await unread(C1, new Date(cutoff.getTime() - 60_000), '+16095551001');
+    const old2 = await unread(C2, new Date(cutoff.getTime() - 3600_000), '+16095551002');
+    const atCut = await unread(null, cutoff, '+16095551003');
+    const newer = await unread(C2, new Date(cutoff.getTime() + 60_000), '+16095551004');   // arrived after the list was shown
+    const otherSalon = (await q(`select id from communication_threads where tenant_id = $1 limit 1`, [T])).rows[0].id;
+    await q(`update communication_threads set unread_count = 3, last_inbound_at = $2 where id = $1`, [otherSalon, new Date(cutoff.getTime() - 86_400_000)]);
+    // a viewer cannot bulk-mark; a branch manager only reaches their branch (+ salon-wide) and cannot ask for another branch
+    expect(await code(svc.markAllRead(view3, { cutoff: cutoff.toISOString() }))).toBe('PERMISSION_DENIED');
+    expect(await code(svc.markAllRead(mgr3, { cutoff: cutoff.toISOString(), branch: C1 }))).toBe('INBOX_BRANCH_NOT_AUTHORIZED');
+    expect(await code(svc.markAllRead(own3, { cutoff: 'not a date' }))).toBe('DATE_INVALID');
+    const before = events.length;
+    const m = await svc.markAllRead(mgr3, { cutoff: cutoff.toISOString() });
+    expect(m).toEqual({ cutoff: cutoff.toISOString(), branch: null, marked: 2, skippedNewer: 1 });   // old2 (C2) + atCut (salon-wide)
+    expect(await unreadOf(old2)).toBe(0); expect(await unreadOf(atCut)).toBe(0);
+    expect(await unreadOf(old1)).toBe(2);       // branch 1 is outside the manager's scope
+    expect(await unreadOf(newer)).toBe(2);      // the newer text is never erased
+    expect(await unreadOf(otherSalon)).toBe(3);
+    // the owner's pass picks up branch 1; the newer one still stays unread
+    const o = await svc.markAllRead(own3, { cutoff: cutoff.toISOString(), branch: 'all' });
+    expect(o).toMatchObject({ marked: 1, skippedNewer: 1 });
+    expect(await unreadOf(old1)).toBe(0); expect(await unreadOf(newer)).toBe(2);
+    // nothing left → a no-op with no audit row
+    expect(await svc.markAllRead(own3, { cutoff: cutoff.toISOString() })).toMatchObject({ marked: 0, skippedNewer: 1 });
+    const au = (await q(`select metadata from audit_events where tenant_id = $1 and action = 'inbox.read_all' order by occurred_at`, [T3])).rows;
+    expect(au).toHaveLength(2);
+    expect(au[0].metadata).toMatchObject({ cutoff: cutoff.toISOString(), marked: 2, skippedNewer: 1 });
+    const evs = (await q(`select thread_id, previous_value, new_value, reason from communication_thread_events where tenant_id = $1 and event_type = 'read' order by thread_id`, [T3])).rows;
+    expect(evs.map((e: any) => e.thread_id).sort()).toEqual([old1, old2, atCut].sort());
+    expect(evs.every((e: any) => e.previous_value === '2' && e.new_value === '0' && e.reason === 'mark_all_read')).toBe(true);
+    const mine = events.slice(before).filter((e) => e.event === 'conversation_updated' && e.payload.kind === 'read').map((e) => e.payload.threadId);
+    expect(new Set(mine)).toEqual(new Set([old1, old2, atCut]));
+  });
+  it('a cutoff ahead of the server clock is clamped to now, so a text that arrives later is not swallowed', async () => {
+    const r = await svc.markAllRead(own3, { cutoff: new Date(Date.now() + 3600_000).toISOString() });
+    expect(new Date(r.cutoff).getTime()).toBeLessThanOrEqual(Date.now());
+  });
+});

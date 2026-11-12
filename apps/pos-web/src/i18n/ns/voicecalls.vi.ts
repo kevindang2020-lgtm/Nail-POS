@@ -231,4 +231,11 @@ export const VOICECALLS_VI: Record<string, string> = {
   "vcx.help.open": "Mở thiết lập Lễ tân AI", // DRAFT — Kevin reviews
   "vcx.help.ask": "Bạn không có quyền vào trang đó — hãy nhờ chủ tiệm.", // DRAFT — Kevin reviews
   "vcx.help.noSecrets": "Khóa và mật khẩu nhà cung cấp không bao giờ hiển thị trên màn hình này.", // DRAFT — Kevin reviews
+  "vcx.d.booking": "Kết quả đặt lịch", // DRAFT — Kevin reviews
+  "vcx.d.booking.none": "Không có lịch hẹn nào được đặt cho khách này trong vòng 24 giờ sau cuộc gọi. Yêu cầu ở trên không phải là lịch hẹn.", // DRAFT — Kevin reviews
+  "vcx.d.booking.made": "bản ghi đặt lịch tạo lúc {at}", // DRAFT — Kevin reviews
+  "vcx.d.booking.basis": "Từ các bản ghi đặt lịch của khách này được tạo trong vòng 24 giờ sau cuộc gọi (khớp theo khách và thời gian, không theo mã cuộc gọi).", // DRAFT — Kevin reviews
+  "vcx.d.booking.hidden": "Vai trò của bạn không xem được thông tin khách, nên kết quả đặt lịch không được đối chiếu ở đây.", // DRAFT — Kevin reviews
+  "vcx.d.booking.noCustomer": "Cuộc gọi này chưa liên kết với khách nào, nên không thể truy ra lịch hẹn.", // DRAFT — Kevin reviews
+  "vcx.d.booking.reported": "Trợ lý giọng nói báo cáo: {o} (báo cáo của nhà cung cấp, không phải bản ghi đặt lịch)", // DRAFT — Kevin reviews
 };

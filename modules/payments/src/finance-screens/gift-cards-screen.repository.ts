@@ -212,7 +212,9 @@ export class GiftCardsScreenRepository {
         where g0.tenant_id = ${T} and ${sc} and g0.status not in ('pending_payment', 'draft') and g0.balance_cents <> coalesce(l.s, 0)
         order by g0.created_at, g0.id limit 200`.execute(this.db)).rows;
     const checked = N((await sql<any>`select count(*)::int as n from gift_cards g0 where g0.tenant_id = ${T} and ${sc} and g0.status not in ('pending_payment', 'draft')`.execute(this.db)).rows[0]?.n);
+    const duplicates = await this.duplicateAlerts(T, sc);
     return {
+      duplicates,
       integrity: { checkedCards: checked, unreconciledCards: drift.length, capped: drift.length >= 200,
         sample: drift.slice(0, 10).map((d: any) => ({ cardId: String(d.id), card: maskedCard(d.card_number_last4, d.code), balanceCents: N(d.bal), ledgerBalanceCents: N(d.led) })) },
       kpis: {
@@ -222,6 +224,46 @@ export class GiftCardsScreenRepository {
       },
       bases: { liability: 'as_of_now', active: 'as_of_now', totalCards: 'all_time', issued: f.period.from ? 'period' : 'all_time', redeemed: f.period.from ? 'period' : 'all_time' },
       period: f.period, asOf: new Date().toISOString(),
+    };
+  }
+
+  /** GIFT CARDS extras 08 "Duplicate issuance and double-spend alerts" — read-only signals from the ONE ledger, with the exact
+   *  card + ledger row ids behind each (nothing is corrected here; staff open the card):
+   *    repeatedPayment       one payment id on more than one redemption row (a single tender spent twice)
+   *    overlappingRedemption two redemptions of the same card within 60 seconds (concurrent / double-tapped requests)
+   *    multipleActivation    more than one sale activation (issue / activate) on one card (duplicate issuance)
+   *    activatedWhilePending an activation row on a card still awaiting its ticket's payment (activation mismatch)
+   *  Identical idempotency keys cannot reach the ledger (unique index uq_gift_card_txns_idem), so they are not a signal here. */
+  private async duplicateAlerts(T: string, sc: RawBuilder<boolean>) {
+    type Hit = { kind: string; card_id: string; last4: string | null; code: string | null; txn_ids: string[]; amount: number | string | null; at: Date | string | null };
+    const hits = (await sql<Hit>`
+      select 'repeatedPayment' as kind, g0.id as card_id, g0.card_number_last4 as last4, g0.code, array_agg(t.id::text order by t.created_at, t.id) as txn_ids, sum(abs(t.amount_cents)) as amount, max(t.created_at) as at
+        from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and ${sc} and t.type in ('redeem', 'redemption') and t.payment_id is not null
+        group by g0.id, g0.card_number_last4, g0.code, t.payment_id having count(*) > 1
+      union all
+      select 'overlappingRedemption', g0.id, g0.card_number_last4, g0.code, array[t1.id::text, t2.id::text], abs(t1.amount_cents) + abs(t2.amount_cents), t2.created_at
+        from gift_card_transactions t1 join gift_card_transactions t2 on t2.tenant_id = t1.tenant_id and t2.gift_card_id = t1.gift_card_id and t2.type in ('redeem', 'redemption')
+          and (t2.created_at, t2.id) > (t1.created_at, t1.id) and t2.created_at <= t1.created_at + interval '60 seconds'
+          and (t1.payment_id is null or t2.payment_id is null or t1.payment_id <> t2.payment_id)
+        join gift_cards g0 on g0.id = t1.gift_card_id and g0.tenant_id = t1.tenant_id
+        where t1.tenant_id = ${T} and ${sc} and t1.type in ('redeem', 'redemption')
+      union all
+      select 'multipleActivation', g0.id, g0.card_number_last4, g0.code, array_agg(t.id::text order by t.created_at, t.id), sum(t.amount_cents), max(t.created_at)
+        from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and ${sc} and t.type in ('issue', 'activate')
+        group by g0.id, g0.card_number_last4, g0.code having count(*) > 1
+      union all
+      select 'activatedWhilePending', g0.id, g0.card_number_last4, g0.code, array_agg(t.id::text order by t.created_at, t.id), sum(t.amount_cents), max(t.created_at)
+        from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and ${sc} and t.type in ('issue', 'activate') and g0.status in ('pending_payment', 'draft')
+        group by g0.id, g0.card_number_last4, g0.code
+      order by 7 desc nulls last, 2 limit 201`.execute(this.db)).rows;
+    const counts = { repeatedPayment: 0, overlappingRedemption: 0, multipleActivation: 0, activatedWhilePending: 0 } as Record<string, number>;
+    for (const h of hits.slice(0, 200)) counts[h.kind] = (counts[h.kind] ?? 0) + 1;
+    return {
+      total: Math.min(hits.length, 200), capped: hits.length > 200, counts,
+      sample: hits.slice(0, 10).map((h) => ({ kind: h.kind, cardId: String(h.card_id), card: maskedCard(h.last4, h.code), ledgerIds: (h.txn_ids ?? []).map(String), amountCents: N(h.amount), at: iso(h.at) })),
     };
   }
 

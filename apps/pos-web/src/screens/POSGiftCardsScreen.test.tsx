@@ -66,6 +66,30 @@ describe('POSGiftCardsScreen', () => {
     await waitFor(() => expect(gc.detail).toHaveBeenCalledWith('g9'));
     expect(gc.adjust).not.toHaveBeenCalled();
   });
+  it('GIFT CARDS extras 08: duplicate / double-spend alerts name each kind and card; a clean ledger shows no alert', async () => {
+    gc.summary.mockResolvedValue({ ...summary, duplicates: { total: 0, capped: false, counts: { repeatedPayment: 0, overlappingRedemption: 0, multipleActivation: 0, activatedWhilePending: 0 }, sample: [] } });
+    const v = mount();
+    await screen.findByTestId('kpis');
+    await waitFor(() => expect(gc.summary).toHaveBeenCalled());
+    expect(screen.queryByTestId('gc-duplicates')).toBeNull();
+    v.unmount();
+    gc.summary.mockResolvedValue({ ...summary, duplicates: { total: 2, capped: false, counts: { repeatedPayment: 1, overlappingRedemption: 0, multipleActivation: 1, activatedWhilePending: 0 },
+      sample: [{ kind: 'repeatedPayment', cardId: 'g7', card: '•••• 2222', ledgerIds: ['t1', 't2'], amountCents: 6000, at: null }, { kind: 'multipleActivation', cardId: 'g8', card: '•••• 4444', ledgerIds: ['t3', 't4'], amountCents: 20000, at: null }] } });
+    gc.detail.mockResolvedValue({ card: card({ id: 'g7', card: '•••• 2222' }), permissions: { void: false, reload: false },
+      totals: { originalCents: 10000, reloadedCents: 0, redeemedCents: 6000, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 4000, transactions: 3, ledgerBalanceCents: 4000, reconciled: true } });
+    gc.ledger.mockResolvedValue(pageOf([]));
+    mount();
+    const note = await screen.findByTestId('gc-duplicates');
+    expect(note).toHaveTextContent('2 possible duplicate or double-spend alert(s)');
+    expect(note).toHaveTextContent('1 payment used for more than one redemption · 1 card activated more than once');
+    expect(note).not.toHaveTextContent(/within 60 seconds|awaiting payment/);   // zero-count kinds are not listed
+    const btns = screen.getAllByTestId('gc-duplicate-card');
+    expect(btns.map((b) => b.textContent)).toEqual(['•••• 2222', '•••• 4444']);
+    expect(btns[0].getAttribute('title')).toMatch(/\$60\.00 across 2 ledger rows/);
+    fireEvent.click(btns[0]);
+    await waitFor(() => expect(gc.detail).toHaveBeenCalledWith('g7'));
+    expect(gc.adjust).not.toHaveBeenCalled();
+  });
   it('status tab and search go to the server, with chips and Clear All', async () => {
     mount(); await screen.findByText('•••• 4821');
     fireEvent.click(screen.getByTestId('tab-redeemed'));

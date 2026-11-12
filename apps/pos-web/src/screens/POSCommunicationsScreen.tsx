@@ -31,6 +31,7 @@ import { useDebounced, useEscapeToClose } from '../components/FitKit';
 import { readUrlState, writeUrlState, withFilter, listQuery, waitedFor, waitTone, deliveryTone, segmentsOf, DraftBook, atBottom, SORTS, CHANNELS, STATUSES, PRESETS, BASES, SIZES, type InboxUrlState } from './commsInboxCore';
 import { deviceToday } from '../lib/deviceToday';
 import { authApi } from '../api/authApi';
+import { useCan } from '../components/usePermissions';
 
 const when = (iso: string | null | undefined) => { if (!iso) return ''; try { return fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const waitText = (iso: string | null | undefined) => { const w = waitedFor(iso); if (!w) return ''; return w.d ? tx('ci.wait.dh', { d: String(w.d), h: String(w.h) }) : w.h ? tx('ci.wait.hm', { h: String(w.h), m: String(w.m) }) : tx('ci.wait.m', { m: String(w.m) }); };
@@ -83,10 +84,12 @@ export function POSCommunicationsScreen() {
   // ── list (one request at a time: a newer answer always wins) ──
   const [list, setList] = useState<InboxPage | null>(null); const [listErr, setListErr] = useState<string | null>(null); const [listBusy, setListBusy] = useState(false);
   const listReq = useRef(0);
+  // Customer Notifications extras 03: the moment this list was shown is the Mark-all-read cutoff (newer texts stay unread)
+  const [listAt, setListAt] = useState<string | null>(null);
   const qs = JSON.stringify(listQuery(st, q));
   useEffect(() => {
     const n = ++listReq.current; setListBusy(true);
-    posCommunicationsApi.inbox.list(JSON.parse(qs)).then((d) => { if (n !== listReq.current) return; setList(d); setListErr(null); if (d.page !== st.page) go({ ...st, page: d.page }, true); },
+    posCommunicationsApi.inbox.list(JSON.parse(qs)).then((d) => { if (n !== listReq.current) return; setList(d); setListAt(new Date().toISOString()); setListErr(null); if (d.page !== st.page) go({ ...st, page: d.page }, true); },
       (e) => { if (n !== listReq.current) return; setListErr(errText(e, tx('ci.listFailed'))); }).finally(() => { if (n === listReq.current) setListBusy(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- qs is the serialised list query; the server page correction must not re-run the list
   }, [qs, live.tick]);
@@ -186,6 +189,16 @@ export function POSCommunicationsScreen() {
     if (selId) loadDetail(selId, false); live.refreshNow();
   };
   const v = detail?.thread.version ?? 1;
+  const can = useCan();
+  const [readAllAsk, setReadAllAsk] = useState<string | null>(null);   // the cutoff being confirmed
+  const readAll = async (cutoff: string) => {
+    setReadAllAsk(null);
+    try {
+      const r = await posCommunicationsApi.inbox.readAll(cutoff, st.branch || null);
+      setNote({ tone: 'ok', text: tx('ci.readAll.done', { n: String(r.marked) }) + (r.skippedNewer ? ' ' + tx('ci.readAll.kept', { n: String(r.skippedNewer) }) : '') });
+    } catch (e) { setNote({ tone: 'bad', text: errText(e, tx('ci.actionFailed')) }); }
+    live.refreshNow();
+  };
   const book = () => {
     if (!detail) return;
     if (!detail.customer) { setDlg('link'); setNote({ tone: 'warn', text: tx('ci.book.chooseFirst') }); return; }
@@ -264,7 +277,16 @@ export function POSCommunicationsScreen() {
           <div className="ci-list-h">
             <span data-testid="ci-count">{list ? tx('ci.count', { n: String(list.total) }) : '…'}{listBusy ? ' · ' + tx('ci.loading') : ''}</span>
             <span className="ci-sortnote">{tx('ci.sortShort.' + st.sort)}</span>
+            {can('pos.communications.manage') && listAt && (sum?.conversations.unreadThreads ?? 0) > 0 && !readAllAsk
+              ? <button type="button" className="ci-link" onClick={() => setReadAllAsk(listAt)} title={tx('ci.readAll.hint')} data-testid="ci-read-all">{tx('ci.readAll')}</button> : null}
           </div>
+          {readAllAsk ? (
+            <div className="ci-note warn" role="alertdialog" aria-label={tx('ci.readAll')} data-testid="ci-read-all-confirm">
+              {tx('ci.readAll.ask', { at: when(readAllAsk) })}{' '}
+              <button type="button" className="ci-btn" onClick={() => void readAll(readAllAsk)} data-testid="ci-read-all-yes">{tx('ci.readAll.confirm')}</button>{' '}
+              <button type="button" className="ci-btn ghost" onClick={() => setReadAllAsk(null)} data-testid="ci-read-all-no">{tx('ci.cancel')}</button>
+            </div>
+          ) : null}
           <div className="ci-list-b" role="list">
             {listErr ? <div className="ci-empty bad">{listErr} <button type="button" className="ci-link" onClick={live.refreshNow}>{tx('ci.retry')}</button></div>
               : list && list.items.length === 0 ? (

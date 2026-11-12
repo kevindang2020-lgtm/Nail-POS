@@ -6,6 +6,9 @@ export interface ActivityMetric<T = number> { value: T | null; available: boolea
 // ── Communications / SMS Inbox (Oct 30 2026) — the shapes the POS reads from pos/communications/inbox/* ──────────────
 /** the period the server resolved in the SALON's time zone (from / to = local YYYY-MM-DD; null = all time) */
 export interface InboxPeriod { preset: 'all' | 'today' | 'week' | 'month' | 'year' | 'custom'; from: string | null; to: string | null; tz: string; today: string }
+/** POST pos/communications/inbox/read-all — Customer Notifications extras 03: conversations marked read up to `cutoff`;
+ *  `skippedNewer` = unread conversations whose customer wrote after the cutoff (left unread). */
+export interface InboxMarkAllReadResponse { cutoff: string; branch: string | null; marked: number; skippedNewer: number }
 export type InboxTimelineSource = 'message' | 'automated' | 'review_request' | 'call' | 'ai_follow_up' | 'appointment';
 /** one entry of the unified customer timeline — joined from the canonical records, never copied */
 export interface InboxTimelineEvent {

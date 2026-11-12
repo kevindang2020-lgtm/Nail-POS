@@ -192,6 +192,14 @@ export function POSGiftCardsScreen() {
               <button key={x.cardId} type="button" className="fk-link" data-testid="gc-integrity-card" onClick={() => setDlg({ kind: 'detail', id: x.cardId })}
                 title={tx('gc.integrity.card', { b: fmtMoney(x.balanceCents), l: fmtMoney(x.ledgerBalanceCents) })}>{x.card}</button>)}</span></div>
         : <div className="sub" data-testid="gc-integrity">{tx('gc.integrity.ok', { n: fmtNumber(sum.data.integrity.checkedCards) })}</div>) : null}
+      {/* GIFT CARDS extras 08: duplicate issuance / double-spend signals from the ledger, each naming the card (read-only — nothing is corrected) */}
+      {sum.data?.duplicates && sum.data.duplicates.total > 0 ? (
+        <div className="fk-note warn" role="status" data-testid="gc-duplicates"><span>{tx('gc.dup.title', { n: fmtNumber(sum.data.duplicates.total) + (sum.data.duplicates.capped ? '+' : '') })}{' '}
+          {(Object.entries(sum.data.duplicates.counts as Record<string, number>)).filter(([, v]) => v > 0).map(([kind, v]) => tx('gc.dup.' + kind, { n: fmtNumber(v) })).join(' · ')}</span>
+          <span className="fn-note-acts">{(sum.data.duplicates.sample as { kind: string; cardId: string; card: string; ledgerIds: string[]; amountCents: number }[]).map((x, i) =>
+            <button key={x.kind + x.cardId + i} type="button" className="fk-link" data-testid="gc-duplicate-card" onClick={() => setDlg({ kind: 'detail', id: x.cardId })}
+              title={tx('gc.dup.card', { k: tx('gc.dup.' + x.kind, { n: '1' }), a: fmtMoney(x.amountCents), r: String(x.ledgerIds.length) })}>{x.card}</button>)}</span></div>
+      ) : null}
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-liability" tone="gold" label={tx('gc.kpi.liability')} loading={!k} value={k ? fmtMoney(k.outstandingLiabilityCents) : ''} sub={tx('gc.kpi.liabilitySub')} onClick={() => setGroup('active')} />

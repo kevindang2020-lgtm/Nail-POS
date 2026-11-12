@@ -199,6 +199,28 @@ export class InboxService {
   markRead(ctx: InboxCtx, id: string) {
     return this.mutate(ctx, 'pos.communications.view', id, 'inbox.read', 'read', (trx) => this.repo.setRead(trx, ctx, id, true), (b) => ({ unreadBefore: Number(b.unread_count) || 0 }));
   }
+  /** Customer Notifications extras 03 — explicit "Mark all as read" up to a cutoff (the moment the list was shown). Needs
+   *  manage (a bulk change to every visible conversation), stays inside the session's branches, never touches a
+   *  conversation whose customer wrote after the cutoff; one audit row for the whole action, one event per conversation. */
+  async markAllRead(ctx: InboxCtx, b: { cutoff?: unknown; branch?: unknown }): Promise<{ cutoff: string; branch: string | null; marked: number; skippedNewer: number }> {
+    this.need(ctx, 'pos.communications.manage');
+    const d = typeof b?.cutoff === 'string' && b.cutoff.trim() ? new Date(b.cutoff) : null;
+    if (!d || Number.isNaN(d.getTime())) throw new InboxError('Enter a valid date and time.', 'DATE_INVALID', 400, { field: 'cutoff' });
+    // a cutoff in the future (client clock ahead) is clamped to now — it can never swallow texts that have not arrived yet
+    const cutoff = new Date(Math.min(d.getTime(), Date.now())).toISOString();
+    const branchRaw = typeof b?.branch === 'string' ? b.branch.trim() : '';
+    const branch = await this.repo.resolveBranch(ctx, branchRaw && branchRaw !== 'all' ? branchRaw : null);
+    const out = await this.repo.db.transaction().execute(async (trx: any) => {
+      const r = await this.repo.markAllRead(trx, ctx, branch, cutoff);
+      if (r.changed.length) {
+        await recordAuditStrict(trx, actorOf(ctx), { module: 'communications', action: 'inbox.read_all', resourceType: 'communication_thread', resourceId: null,
+          summary: `Marked ${r.changed.length} conversation(s) as read up to the cutoff`, metadata: { cutoff, branch, marked: r.changed.length, skippedNewer: r.skippedNewer } });
+      }
+      return r;
+    });
+    for (const c of out.changed) this.emit(ctx.tenantId, c.branchId, c.id, 'read', c.version);
+    return { cutoff, branch, marked: out.changed.length, skippedNewer: out.skippedNewer };
+  }
   markUnread(ctx: InboxCtx, id: string) {
     return this.mutate(ctx, 'pos.communications.view', id, 'inbox.unread', 'unread', (trx) => this.repo.setRead(trx, ctx, id, false), () => ({}));
   }

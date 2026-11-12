@@ -412,6 +412,32 @@ export class InboxRepository {
     await this.event(db, ctx, id, read ? 'read' : 'unread', before.unread_count, after.unread_count);
     return { before, after };
   }
+  /** Customer Notifications extras 03 — Mark all as read WITH A CUTOFF: every visible unread conversation whose latest
+   *  customer text is at or before `cutoff` goes to read; a conversation whose customer wrote after the cutoff (it arrived
+   *  while staff were looking, or during this very operation) keeps its unread count. The cutoff is re-checked on the row
+   *  being updated (Postgres re-evaluates the WHERE on a row locked by a concurrent inbound), each change is evented. */
+  async markAllRead(db: Db, ctx: InboxCtx, branch: string | null, cutoff: string): Promise<{ changed: { id: string; branchId: string | null; version: number }[]; skippedNewer: number }> {
+    const tid = ctx.tenantId;
+    const before = (await sql<{ id: string; unread_count: number }>`SELECT t.id, t.unread_count FROM communication_threads t
+      WHERE t.tenant_id = ${tid} AND ${this.branchScope(ctx, branch)} AND t.unread_count > 0 AND (t.last_inbound_at IS NULL OR t.last_inbound_at <= ${cutoff}::timestamptz)
+      ORDER BY t.id FOR UPDATE`.execute(db)).rows;
+    const changed: { id: string; branchId: string | null; version: number }[] = [];
+    if (before.length) {
+      const upd = await sql<{ id: string; branch_id: string | null; record_version: number }>`UPDATE communication_threads t SET unread_count = 0, record_version = t.record_version + 1, updated_at = now(),
+          updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}::uuid
+        WHERE t.tenant_id = ${tid} AND t.id = ANY(string_to_array(${csv(before.map((r) => String(r.id)))}, ',')::uuid[]) AND t.unread_count > 0
+          AND (t.last_inbound_at IS NULL OR t.last_inbound_at <= ${cutoff}::timestamptz)
+        RETURNING t.id, t.branch_id, t.record_version`.execute(db);
+      const prev = new Map(before.map((r) => [String(r.id), n(r.unread_count)]));
+      for (const r of upd.rows) {
+        await this.event(db, ctx, String(r.id), 'read', prev.get(String(r.id)) ?? null, 0, 'mark_all_read');
+        changed.push({ id: String(r.id), branchId: r.branch_id ? String(r.branch_id) : null, version: n(r.record_version) });
+      }
+    }
+    const skipped = (await sql<{ c: number }>`SELECT count(*)::int AS c FROM communication_threads t
+      WHERE t.tenant_id = ${tid} AND ${this.branchScope(ctx, branch)} AND t.unread_count > 0 AND t.last_inbound_at > ${cutoff}::timestamptz`.execute(db)).rows[0];
+    return { changed, skippedNewer: n(skipped?.c) };
+  }
   async assign(db: Db, ctx: InboxCtx, id: string, userId: string | null, expectedVersion: number | null): Promise<{ before: Row; after: Row }> {
     const before = await this.mustThread(ctx, id, db, true);
     let name: string | null = null;

@@ -58,6 +58,24 @@ describe('Customer Notes workspace', () => {
     await waitFor(() => expect(within(dlg).getByTestId('cnx-history')).toHaveTextContent(/Confirmed/));
     expect(cn.review).toHaveBeenLastCalledWith({ customerId: 'c1', category: 'allergy', contentHash: H, decision: 'confirmed', reason: null });
   });
+  it('Extras Customer Notes 04: each safety note shows its review receipt — who, when, decision and which text version; an older review never covers the current text', async () => {
+    const d0 = detail();
+    cn.detail.mockResolvedValueOnce(d0)
+      .mockResolvedValueOnce({ ...d0, history: [{ category: 'allergy', decision: 'confirmed', reason: null, at: '2026-11-07T10:00:00Z', reviewer: 'Owner Kim', current: false }] })
+      .mockResolvedValueOnce(detail('reviewed'));
+    render(<POSCustomerNotesScreen />);
+    const open = async () => { fireEvent.click((await screen.findAllByTestId('cnx-view'))[0]); return screen.findByTestId('cnx-detail'); };
+    let dlg = await open();
+    expect(within(dlg).getByTestId('cnx-receipt-allergy')).toHaveTextContent('No review yet for this text (version aaaaaaaa)');
+    expect(within(dlg).queryByTestId('cnx-receipt-general')).toBeNull();   // only safety notes carry a receipt
+    fireEvent.click(within(dlg).getByTestId('cnx-detail-close'));
+    dlg = await open();
+    const older = within(dlg).getByTestId('cnx-receipt-allergy');
+    expect(older).toHaveTextContent(/Last review \(Confirmed by Owner Kim · .*\) was for an earlier text — this version \(aaaaaaaa\) has not been reviewed/);
+    fireEvent.click(within(dlg).getByTestId('cnx-detail-close'));
+    dlg = await open();
+    expect(within(dlg).getByTestId('cnx-receipt-allergy')).toHaveTextContent(/Review receipt: Confirmed by Owner Kim · Nov 9, 2026.* · for this exact text \(version aaaaaaaa\)/);
+  });
   it('a correction needs a reason before it can be sent', async () => {
     cn.detail.mockResolvedValue(detail()); cn.review.mockResolvedValue(detail());
     render(<POSCustomerNotesScreen />);

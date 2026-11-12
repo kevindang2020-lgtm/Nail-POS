@@ -12,6 +12,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { deviceToday } from '../lib/deviceToday';
 import { useCan } from '../components/usePermissions';
+import { statusLabel } from '../i18n/status-label';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -222,6 +223,15 @@ function CallDialog({ id, terms, onClose }: { id: string; terms: string; onClose
           <div>{d.request.services?.length ? `${t('vcx.d.services')}: ${d.request.services.join(', ')}` : ''}{d.request.technician ? ` · ${t('vcx.d.tech')}: ${d.request.technician}` : ''}
             {d.request.date ? ` · ${t('vcx.d.day')}: ${d.request.date}` : ''}{d.request.time ? ` · ${t('vcx.d.time')}: ${d.request.time}` : ''}</div>
           <div className="sub">{t('vcx.d.requestNote')}</div></section> : null}
+        {/* Voice Call History extras 05: the booking OUTCOME from Booking records (never from the request); the agent's own report is labelled */}
+        {d.booking ? <section style={{ marginTop: 10 }} data-testid="vcx-call-booking"><div className="p-h">{t('vcx.d.booking')}</div>
+          {d.booking.basis !== 'same_customer_within_24h' ? <div className="sub" data-testid="vcx-booking-basis">{t('vcx.d.booking.' + (d.booking.basis === 'hidden' ? 'hidden' : 'noCustomer'))}</div>
+            : d.booking.appointments.length ? d.booking.appointments.map((a: { id: string; date: string; startTime: string; status: string; createdAt: string | null }) =>
+              <div key={a.id} className="rvw-ev" data-testid="vcx-booking-appt"><b>{a.date} {a.startTime}</b> <span className="chip">{statusLabel(['appointment', 'state'], a.status)}</span> <span className="sub">{t('vcx.d.booking.made', { at: when(a.createdAt) })}</span></div>)
+            : <div className="sub" data-testid="vcx-booking-none">{t('vcx.d.booking.none')}</div>}
+          {d.booking.basis === 'same_customer_within_24h' ? <div className="sub">{t('vcx.d.booking.basis')}</div> : null}
+          {d.booking.providerReported ? <div className="sub" data-testid="vcx-booking-reported">{t('vcx.d.booking.reported', { o: statusLabel(['voiceBooking', 'state'], d.booking.providerReported) })}</div> : null}
+        </section> : null}
         <section style={{ marginTop: 10 }} data-testid="vcx-call-follow"><div className="p-h">{t('vcx.d.follow')}</div>
           {d.followUps.length ? d.followUps.map((u: any) => <div key={u.type} className="rvw-ev"><b>{t('vcx.item.' + known(ITEMS, u.type))}</b> <span className={'chip ' + (FOLLOW_TONE[u.state] ?? '')}>{t('vcx.follow.' + known(FOLLOW, u.state))}</span></div>)
             : <div className="sub">{t('vcx.d.noFollow')}</div>}</section>

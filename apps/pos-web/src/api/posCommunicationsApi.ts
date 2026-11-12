@@ -71,6 +71,8 @@ export const posCommunicationsApi = {
     renderTemplate: (threadId: string, templateId: string) => api.post<{ templateId: string; version: number | null; scope: 'salon' | 'platform'; text: string; missing: string[]; unknown: string[] }>(`/pos/message-templates/render-for-thread/${enc(threadId)}`, { templateId }),
     read: (id: string) => api.post<ThreadChange>(`${I}/threads/${enc(id)}/read`, {}),
     unread: (id: string) => api.post<ThreadChange>(`${I}/threads/${enc(id)}/unread`, {}),
+    /** Customer Notifications extras 03: Mark all as read up to `cutoff` (when the list was shown) — newer texts stay unread */
+    readAll: (cutoff: string, branch?: string | null) => api.post<{ cutoff: string; branch: string | null; marked: number; skippedNewer: number }>(`${I}/read-all`, branch ? { cutoff, branch } : { cutoff }),
     assign: (id: string, userId: string | null, expectedVersion: number) => api.post<ThreadChange>(`${I}/threads/${enc(id)}/assign`, { userId, expectedVersion }),
     status: (id: string, status: string, expectedVersion: number) => api.post<ThreadChange>(`${I}/threads/${enc(id)}/status`, { status, expectedVersion }),
     followUp: (id: string, dueAt: string | null, expectedVersion: number, reason?: string) => api.post<ThreadChange>(`${I}/threads/${enc(id)}/follow-up`, { dueAt, expectedVersion, ...(reason ? { reason } : {}) }),
