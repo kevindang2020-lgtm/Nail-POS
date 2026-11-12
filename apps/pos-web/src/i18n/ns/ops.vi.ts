@@ -1718,4 +1718,52 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "sox.cap.noDemand": "Không có lịch trong giờ này.", // DRAFT — Kevin reviews
   "sox.cap.pick": "Chạm vào một giờ để xem kỹ năng.", // DRAFT — Kevin reviews
   "sox.cap.basis": "Có thợ = ca làm trừ giờ nghỉ, giờ bị chặn và ngày nghỉ đã duyệt. Sát = từ {pct}% số phút có thợ đã được đặt hoặc giữ. Đủ điều kiện = cùng quy tắc kỹ năng mà bộ tối ưu dùng. Không có gì ở đây thay đổi lịch.", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_not_paid": "Mọi khoản thu hội viên bằng hóa đơn vẫn có hóa đơn đã thanh toán đi kèm", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_not_paid.fix": "Mở hóa đơn: nếu đã hoàn tiền, hủy hoặc ghi có, hãy hoàn lại hoặc thu lại khoản hội viên.", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_over_invoice": "Không có khoản thu hội viên nào lớn hơn số tiền hóa đơn đã thu", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_over_invoice.fix": "So sánh khoản thu hội viên với tổng hóa đơn và sửa bên bị sai.", // DRAFT — Kevin reviews
+  "syschk.memberships.card_collection_without_ref": "Mọi khoản thu hoặc hoàn tiền hội viên bằng thẻ đều có mã tham chiếu của bộ xử lý", // DRAFT — Kevin reviews
+  "syschk.memberships.card_collection_without_ref.fix": "Tìm giao dịch trong báo cáo của bộ xử lý để đối chiếu với khoản tiền gửi.", // DRAFT — Kevin reviews
+  "syschk.memberships.duplicate_member_notice": "Không hội viên nào nhận cùng một thông báo hội viên hai lần", // DRAFT — Kevin reviews
+  "syschk.memberships.duplicate_member_notice.fix": "Báo cho bộ phận hỗ trợ: cơ chế mỗi sự kiện một thông báo đã không giữ được với những hội viên này.", // DRAFT — Kevin reviews
+  "syschk.memberships.failed_charge_not_told": "Mọi khoản thu hội viên bị từ chối trong 30 ngày qua đều đã báo cho hội viên", // DRAFT — Kevin reviews
+  "syschk.memberships.failed_charge_not_told.fix": "Liên hệ những hội viên này về khoản thanh toán bị từ chối và nhờ họ cập nhật thẻ.", // DRAFT — Kevin reviews
+  "syschk.memberships.branch_or_plan_other_salon": "Mọi thẻ hội viên đều dùng chi nhánh và gói của chính tiệm này", // DRAFT — Kevin reviews
+  "syschk.memberships.branch_or_plan_other_salon.fix": "Báo ngay cho bộ phận hỗ trợ: những thẻ hội viên này trỏ đến chi nhánh hoặc gói của tiệm khác.", // DRAFT — Kevin reviews
+  "syschk.memberships.money_rows_other_salon": "Không có khoản thu, tín dụng hay lần sử dụng hội viên nào bị ghi vào tiệm khác", // DRAFT — Kevin reviews
+  "syschk.memberships.money_rows_other_salon.fix": "Báo ngay cho bộ phận hỗ trợ: những dòng này bị ghi nhầm tiệm.", // DRAFT — Kevin reviews
+  "dfx.route.title": "Kiểm tra định tuyến thanh toán", // DRAFT — Kevin reviews
+  "dfx.route.v.ready": "Quầy thanh toán có thể gửi khoản thanh toán đến máy này ngay", // DRAFT — Kevin reviews
+  "dfx.route.v.busy": "Đang được giữ — một quầy khác đang dùng; quầy thứ hai sẽ được báo là máy bận", // DRAFT — Kevin reviews
+  "dfx.route.v.no_register": "Chưa ghép với quầy nào — không quầy thanh toán nào gửi đến được", // DRAFT — Kevin reviews
+  "dfx.route.v.no_processor": "Chi nhánh này chưa chọn bộ xử lý thanh toán", // DRAFT — Kevin reviews
+  "dfx.route.v.not_ready": "Chưa sẵn sàng — máy đang mất kết nối, bị tắt hoặc chưa từng phản hồi", // DRAFT — Kevin reviews
+  "dfx.route.register": "Ghép với quầy", // DRAFT — Kevin reviews
+  "dfx.route.paired": "Đã ghép với quầy", // DRAFT — Kevin reviews
+  "dfx.route.notPaired": "Chưa ghép", // DRAFT — Kevin reviews
+  "dfx.route.reserved": "Giữ máy", // DRAFT — Kevin reviews
+  "dfx.route.reservedBy.ticket": "Đang được một lần thanh toán giữ đến {t}", // DRAFT — Kevin reviews
+  "dfx.route.reservedBy.display": "Đang được màn hình khách giữ đến {t}", // DRAFT — Kevin reviews
+  "dfx.route.reservedBy.other": "Đang được giữ đến {t}", // DRAFT — Kevin reviews
+  "dfx.route.free": "Trống", // DRAFT — Kevin reviews
+  "dfx.route.processor": "Bộ xử lý", // DRAFT — Kevin reviews
+  "dfx.route.noProcessor": "Chưa đặt", // DRAFT — Kevin reviews
+  "dfx.route.ping": "Lần kiểm tra máy gần nhất", // DRAFT — Kevin reviews
+  "dfx.route.pingOk": "Có phản hồi", // DRAFT — Kevin reviews
+  "dfx.route.pingFailed": "Không phản hồi", // DRAFT — Kevin reviews
+  "dfx.route.pingNever": "Chưa từng kiểm tra", // DRAFT — Kevin reviews
+  "dfx.route.note": "Chỉ xem: không gửi gì đến máy và không có khoản tiền nào được chuyển từ đây.", // DRAFT — Kevin reviews
+  "dfx.route.gateway": "Cổng thanh toán", // DRAFT — Kevin reviews
+  "dfx.proc.clover": "Clover", // DRAFT — Kevin reviews
+  "dfx.proc.fiserv": "Fiserv", // DRAFT — Kevin reviews
+  "dfx.proc.cardpointe": "Fiserv CardPointe", // DRAFT — Kevin reviews
+  "dfx.proc.manual": "Thủ công", // DRAFT — Kevin reviews
+  "dfx.env.sandbox": "Thử nghiệm / UAT", // DRAFT — Kevin reviews
+  "dfx.env.production": "Chính thức", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_for_other_customer": "Mọi quyền lợi hội viên đều được dùng trên hóa đơn của chính hội viên", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_for_other_customer.fix": "Kiểm tra các hóa đơn đó: nếu quyền lợi được dùng cho người khác, hãy hoàn lại hoặc ghi rõ lý do.", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_line_other_ticket": "Dịch vụ của mỗi lần sử dụng quyền lợi nằm đúng trên hóa đơn đã ghi", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_line_other_ticket.fix": "Báo cho bộ phận hỗ trợ: những lần sử dụng này trỏ đến dịch vụ trên một hóa đơn khác.", // DRAFT — Kevin reviews
+  "syschk.memberships.live_membership_archived_customer": "Không có thẻ hội viên còn hiệu lực nào nằm trên hồ sơ khách đã lưu trữ", // DRAFT — Kevin reviews
+  "syschk.memberships.live_membership_archived_customer.fix": "Chuyển thẻ hội viên sang hồ sơ hiện tại của khách (gộp hồ sơ) hoặc kết thúc thẻ.", // DRAFT — Kevin reviews
 };

@@ -336,6 +336,60 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     // a renewal or installment collected AFTER the membership was cancelled
     { key: 'charged_after_cancel', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
         WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.kind IN ('renewal', 'installment') AND m.canceled_at IS NOT NULL AND p.created_at > m.canceled_at`) },
+    // ── finance reconciliation (extras Membership Overview 13 · 12, part): a membership collection must stand on the salon's
+    // own payment ledger, never on a shadow total. A collection paid by an invoice (processor 'invoice', processor_ref = the
+    // invoice id — collectFirstPayment) is only real while that invoice is still 'paid' in the Invoices ledger …
+    { key: 'invoice_collection_not_paid', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.processor = 'invoice'
+          AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref AND i.status = 'paid')`) },
+    // … and may never claim more than that invoice collected (the enrol step refuses it; a later edit of either side is drift)
+    { key: 'invoice_collection_over_invoice', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        JOIN invoices i ON i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor = 'invoice' AND p.amount_cents > i.total_cents`) },
+    // a card collection or refund with no processor reference cannot be matched to the provider's batch or settlement
+    // ('recorded' / 'manual' entries are staff-recorded and carry none by design)
+    { key: 'card_collection_without_ref', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor NOT IN ('invoice', 'recorded', 'manual')
+          AND coalesce(btrim(p.processor_ref), '') = ''`) },
+    // ── communication & consent (extras Membership Overview 16 · 07, part). Member notices are written once per reference
+    // (membership-comms: an advisory lock + exists check); the same notice twice for one customer means that guard failed …
+    { key: 'duplicate_member_notice', severity: 'WARNING', count: (t, b) => n(sql`SELECT cn.customer_id, cn.reference FROM customer_notifications cn
+        JOIN customer_memberships m ON m.tenant_id = cn.tenant_id AND m.id::text = split_part(cn.reference, ':', 2)
+        WHERE cn.tenant_id = ${t}::uuid ${br('m', b)} AND cn.reference LIKE 'membership-%'
+        GROUP BY cn.customer_id, cn.reference HAVING count(*) > 1`) },
+    // … and a declined renewal / installment of the last 30 days must have reached the member as the in-app payment-failed
+    // notice (billing writes it after the decline and goes on if writing it fails — this is where such a miss shows)
+    { key: 'failed_charge_not_told', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'failed' AND p.kind IN ('renewal', 'installment') AND p.created_at > now() - interval '30 days'
+          AND NOT EXISTS (SELECT 1 FROM customer_notifications cn WHERE cn.tenant_id = m.tenant_id AND cn.customer_id = m.customer_id
+                          AND cn.reference LIKE 'membership-payment-failed:' || m.id::text || ':%' AND cn.created_at >= p.created_at - interval '1 minute')`) },
+    // ── cross-module wiring (extras Membership Overview 16 · 06, part): Membership ↔ Checkout ↔ Customers.
+    // A benefit used on a ticket that belongs to a DIFFERENT customer than the member (the redeem step does not compare them) …
+    { key: 'redeemed_for_other_customer', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.customer_id IS NOT NULL AND k.customer_id <> m.customer_id`) },
+    // … a redemption naming a service line that sits on another ticket than the one it was recorded against …
+    { key: 'redemption_line_other_ticket', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN ticket_service_lines sl ON sl.tenant_id = r.tenant_id AND sl.id = r.service_line_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND r.ticket_id IS NOT NULL AND sl.ticket_id <> r.ticket_id`) },
+    // … and a live membership left on an archived customer profile (a merge moves memberships to the survivor)
+    { key: 'live_membership_archived_customer', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m
+        JOIN customers cu ON cu.tenant_id = m.tenant_id AND cu.id = m.customer_id
+        WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'trial', 'grace', 'past_due', 'paused') AND cu.archived_at IS NOT NULL`) },
+    // ── tenant security (extras Membership Overview 16 · 08, part). The customer link is already enforced by a trigger
+    // (trg_tc_membership_customer), so it is not repeated; the branch, the plan and the money rows are not, so a membership
+    // pointing at another salon's branch or plan, or billing / credit / redemption rows filed under another salon, show here.
+    { key: 'branch_or_plan_other_salon', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)}
+        AND (NOT EXISTS (SELECT 1 FROM branches bo WHERE bo.tenant_id = m.tenant_id AND bo.id = m.branch_id)
+          OR NOT EXISTS (SELECT 1 FROM membership_plans po WHERE po.tenant_id = m.tenant_id AND po.id = m.plan_id))`) },
+    { key: 'money_rows_other_salon', severity: 'FAILED', count: (t, b) => n(sql`
+        SELECT 1 FROM customer_memberships m JOIN membership_payments p ON p.customer_membership_id = m.id WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND p.tenant_id <> m.tenant_id
+        UNION ALL SELECT 1 FROM customer_memberships m JOIN membership_redemptions r ON r.customer_membership_id = m.id WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND r.tenant_id <> m.tenant_id
+        UNION ALL SELECT 1 FROM customer_memberships m JOIN membership_credit_ledger l ON l.customer_membership_id = m.id WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND l.tenant_id <> m.tenant_id
+        UNION ALL SELECT 1 FROM membership_payments p WHERE p.tenant_id = ${t}::uuid ${br('p', b)} AND NOT EXISTS (SELECT 1 FROM customer_memberships mo WHERE mo.tenant_id = p.tenant_id AND mo.id = p.customer_membership_id)
+        UNION ALL SELECT 1 FROM membership_redemptions r WHERE r.tenant_id = ${t}::uuid ${br('r', b)} AND NOT EXISTS (SELECT 1 FROM customer_memberships mo WHERE mo.tenant_id = r.tenant_id AND mo.id = r.customer_membership_id)`) },
   ] },
 
   // ── Live Operations / Serving / Service Done (the service flow: queue → serving → done → paid) ───────────────────

@@ -161,4 +161,23 @@ describe('Team Management read model', () => {
     await expect(repo.exportCsv(desk, {}, 'req-tm-2')).rejects.toMatchObject({ status: 403 });
     expect((await q(`select action from audit_events where request_id = 'req-tm-2'`)).rows.map((x: any) => x.action)).toEqual(['report.export.denied']);
   });
+  it('extras TEAM MANAGEMENT 09 — sync freshness: the newest record of each feed in scope; another branch or salon never moves it; a feed with nothing says so', async () => {
+    const empty: any = await repo.dashboard(other, { preset: 'month' });
+    expect(empty.syncFreshness).toMatchObject({ queueAt: null, timeClockAt: null, technicianAppAt: null });   // nothing written there yet: unknown, never "now"
+    const at = (d: string) => `2030-01-0${d}T10:00:00.000Z`;
+    // branch B (the manager's): queue + booking + punch + live state + Anna's Technician App session; branch Second and the other salon are NEWER
+    await q(`insert into pos_queue_items (tenant_id, branch_id, customer_name, updated_at) values ($1,$2,'Q one',$4), ($1,$3,'Q far',$5), ($6,$7,'Q other',$5)`, [T, B, B2, at('1'), at('9'), T2, BX]);
+    await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, updated_at) values ($1,$2,$3,'Freshness Test','[]'::jsonb,'2030-01-02','11:00','11:45',45,'booked',$4)`, [T, B, KEVIN, at('2')]);
+    await q(`insert into technician_shifts (tenant_id, branch_id, technician_id, shift_date, start_time, status, updated_at) values ($1,$2,$3,'2030-01-03',$4,'completed',$4), ($1,$5,$6,'2030-01-09',$7,'completed',$7)`, [T, B, LAN, at('3'), B2, FAR_T, at('9')]);
+    await q(`update technician_workforce_state set updated_at = $2 where technician_id = $1`, [ANNA, at('4')]);
+    await q(`insert into sessions (user_id, tenant_id, status, expires_at, last_seen_at) values ($1,$2,'active', now() + interval '1 day', $3), ($4,$2,'active', now() + interval '1 day', $5), ($6,$7,'active', now() + interval '1 day', $5)`,
+      [ANNA_U, T, at('5'), MGR, at('8'), T2_U, T2]);
+    const d: any = await repo.dashboard(mgr, { preset: 'month' });
+    expect(d.errors).toEqual([]);
+    expect(d.syncFreshness).toEqual({ queueAt: at('1'), bookingAt: at('2'), timeClockAt: at('3'), technicianStatusAt: at('4'), technicianAppAt: at('5') });   // a manager's session is not the Technician App
+    const all: any = await repo.dashboard({ ...mgr, branchId: null }, { preset: 'month' });
+    expect(all.syncFreshness.queueAt).toBe(at('9'));       // every branch: Second's newer queue row counts
+    expect(all.syncFreshness.timeClockAt).toBe(at('9'));
+    expect((await repo.dashboard(other, { preset: 'month' }) as any).syncFreshness.queueAt).toBe(at('9'));   // the other salon's own row only
+  });
 });

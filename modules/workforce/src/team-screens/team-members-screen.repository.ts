@@ -166,6 +166,16 @@ export class TeamMembersScreenRepository {
         count(*) filter (where c.revoked_reason is null and c.expires_at < ${today.today}::date)::int as expired, count(*) filter (where upper(coalesce(c.verification_status, '')) = 'VERIFIED')::int as verified,
         count(*) filter (where ${inPeriod(sql`c.created_at`, per)})::int as added
       from technician_certifications c join m on m.technician_id = c.technician_id and m.is_current where c.tenant_id = ${T}`.execute(this.db)).rows[0]);
+    // extras TEAM MANAGEMENT 09 — sync freshness: the newest record each connected feed has written for this salon (branch
+    // scope where the feed has a branch). Source timestamps only; null = that feed has never written anything here.
+    const bq = branchOf(ctx);
+    const sync = await safe('sync', async () => (await sql<any>`select
+        (select max(qi.updated_at) from pos_queue_items qi where qi.tenant_id = ${T} and (${bq}::uuid is null or qi.branch_id = ${bq})) as queue_at,
+        (select max(ap.updated_at) from pos_tech_appointments ap where ap.tenant_id = ${T} and (${bq}::uuid is null or ap.branch_id = ${bq})) as booking_at,
+        (select max(sh.updated_at) from technician_shifts sh where sh.tenant_id = ${T} and (${bq}::uuid is null or sh.branch_id = ${bq})) as clock_at,
+        (select max(ws.updated_at) from technician_workforce_state ws where ws.tenant_id = ${T} and (${bq}::uuid is null or ws.branch_id = ${bq} or ws.branch_id is null)) as status_at,
+        (select max(se.last_seen_at) from sessions se join users us on us.id = se.user_id and us.tenant_id = ${T}
+          where se.tenant_id = ${T} and us.role = 'TECHNICIAN' and se.client_app is null) as tech_app_at`.execute(this.db)).rows[0]);
     const ap = approvals; const pend = ap ? N(ap.skills) + N(ap.time_off) + N(ap.profile) + N(ap.membership) : null;
     const v = <X>(x: X | null, f: (y: X) => unknown) => (x == null ? null : f(x));
     return {
@@ -193,6 +203,7 @@ export class TeamMembersScreenRepository {
       certifications: certs ? { valid: N(certs.valid), expiringSoon: N(certs.expiring), expired: N(certs.expired), verified: N(certs.verified), addedInPeriod: N(certs.added) } : null,
       // round 2 (migration 727): the panels read /pos/team-training/summary and /pos/team-birthdays/upcoming; these flags say whether there is anything
       training: { configured: !!(await safe('training', async () => (await sql<any>`select 1 as x from team_training_courses c where c.tenant_id = ${T} and c.status = 'active' limit 1`.execute(this.db)).rows[0])) },
+      syncFreshness: sync ? { queueAt: iso(sync.queue_at), bookingAt: iso(sync.booking_at), timeClockAt: iso(sync.clock_at), technicianStatusAt: iso(sync.status_at), technicianAppAt: iso(sync.tech_app_at) } : null,
       birthdays: { recorded: !!(await safe('birthdays', async () => (await sql<any>`select 1 as x from team_staff_profiles p where p.tenant_id = ${T} and p.birthday_month is not null limit 1`.execute(this.db)).rows[0])) },
     };
   }

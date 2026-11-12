@@ -119,6 +119,22 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(screen.queryByText('Total Commission Paid')).toBeNull();
   });
 
+  it('extras TEAM MANAGEMENT 09: each connected feed shows its newest record time from the server; a feed with none says "no records"', async () => {
+    api.dashboard.mockResolvedValue(dash({ syncFreshness: { queueAt: '2026-11-12T15:04:00Z', bookingAt: '2026-11-12T14:00:00Z', timeClockAt: null, technicianStatusAt: '2026-11-12T15:00:00Z', technicianAppAt: null } }));
+    mount();
+    const line = await screen.findByTestId('sync-freshness');
+    expect(line).toHaveTextContent('Last update from each connected feed:');
+    expect(line).toHaveTextContent(/Queue Nov 12, 2026/);
+    expect(line).toHaveTextContent('Time Clock no records');
+    expect(line).toHaveTextContent('Technician App no records');
+    expect(line.textContent).toMatch(/Booking Nov 12, 2026.*Technician status Nov 12, 2026/);
+  });
+  it('an older server without sync freshness shows no freshness line (nothing invented)', async () => {
+    mount();
+    await waitFor(() => expect(screen.getByTestId('kpi-team')).toHaveTextContent('8'));
+    expect(screen.queryByTestId('sync-freshness')).toBeNull();
+  });
+
   it('a failed KPI source says so — never a verified zero', async () => {
     api.dashboard.mockResolvedValue(dash({ errors: ['sales'], kpis: { ...dash().kpis, servicesCompleted: null } }));
     mount();

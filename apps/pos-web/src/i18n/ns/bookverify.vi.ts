@@ -194,4 +194,6 @@ export const BOOKVERIFY_VI = {
   "bv.rec.note.not_permitted": "Vai trò của bạn không xem được lịch đặt hẹn.", // DRAFT — Kevin reviews
   "bv.rec.safety": "Chỉ là gợi ý — không giữ chỗ, không đặt lịch, không nhắn tin, và giờ đã hết hạn không bao giờ được xác nhận. Đặt giờ đã chọn trong POS Booking; hệ thống sẽ kiểm tra lại và yêu cầu xác minh theo quy định của tiệm.", // DRAFT — Kevin reviews
   "bv.rec.restart": "Bắt đầu lịch mới", // DRAFT — Kevin reviews
+  "bv.hk.code_rules": "Quy tắc mã đặt lịch", // DRAFT — Kevin reviews
+  "bv.hd.code_rules": "Độ dài mã, thời hạn, số lần thử và giới hạn gửi lại qua được bài tự kiểm tra an toàn — không gửi mã nào.", // DRAFT — Kevin reviews
 } as const;

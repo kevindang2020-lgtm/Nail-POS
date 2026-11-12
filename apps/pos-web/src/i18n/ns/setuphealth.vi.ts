@@ -135,4 +135,13 @@ export const SETUPHEALTH_VI = {
   'hs.code.provider_approved': 'Đã duyệt — đã xác nhận với Twilio gần đây.',
   'hs.code.not_provider_verified': 'Chưa xác nhận với Twilio gần đây. Hãy làm mới trạng thái.',
   'hs.code.nightly_failed': 'Kiểm tra hằng đêm gần nhất thất bại. Hệ thống sẽ thử lại; mở mục này để xem lý do.',
+  'hs.check.ai_billing_integrity': 'Tính toàn vẹn hóa đơn AI', // DRAFT — Kevin reviews
+  'hs.code.consistent': 'Các hóa đơn AI khớp với chính nó và với các gói.', // DRAFT — Kevin reviews
+  'hs.code.no_invoices': 'Chưa nhận được hóa đơn AI nào.', // DRAFT — Kevin reviews
+  'hs.code.refunded_over_paid': 'Một hóa đơn AI có số tiền hoàn lớn hơn số đã trả.', // DRAFT — Kevin reviews
+  'hs.code.paid_with_amount_due': 'Một hóa đơn AI đã ghi là đã trả nhưng vẫn còn số tiền phải trả.', // DRAFT — Kevin reviews
+  'hs.code.open_past_period': 'Một hóa đơn AI vẫn mở hơn 30 ngày sau khi kỳ đã kết thúc.', // DRAFT — Kevin reviews
+  'hs.code.invoice_without_subscription': 'Một hóa đơn AI dành cho gói mà tiệm chưa từng đăng ký.', // DRAFT — Kevin reviews
+  'hs.code.override_without_package': 'Một chi nhánh bật gói AI mà tiệm không có đăng ký còn hiệu lực.', // DRAFT — Kevin reviews
+  'hs.code.events_rejected': 'Nhà cung cấp thanh toán đã gửi sự kiện hóa đơn bị từ chối trong 7 ngày qua.', // DRAFT — Kevin reviews
 };

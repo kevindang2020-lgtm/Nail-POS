@@ -141,7 +141,14 @@ export class DeviceFleetCenter {
     const r = await sql<any>`
       SELECT t.id, t.label, t.status, t.branch_id, b.name AS branch_name, COALESCE(st.name, t.station_id) AS station_name, t.station_id, t.paired_at, t.disabled_at, t.last_seen_at,
              t.last_ping_at, t.last_ping_ok, t.last_transaction_at, t.hsn, t.terminal_type,
-             (SELECT l.holder FROM payment_terminal_leases l WHERE l.tenant_id::text = t.tenant_id AND l.terminal_id = t.id AND l.expires_at > now() LIMIT 1) AS lease_holder
+             (SELECT l.holder FROM payment_terminal_leases l WHERE l.tenant_id::text = t.tenant_id AND l.terminal_id = t.id AND l.expires_at > now() LIMIT 1) AS lease_holder,
+             (SELECT l.expires_at FROM payment_terminal_leases l WHERE l.tenant_id::text = t.tenant_id AND l.terminal_id = t.id AND l.expires_at > now() LIMIT 1) AS lease_until,
+             st.id AS register_id,
+             -- the processor this terminal's checkout would route through: the branch's own merchant account, else the salon default
+             COALESCE((SELECT ma.processor FROM payment_merchant_accounts ma WHERE ma.tenant_id::text = t.tenant_id AND ma.branch_id::text = t.branch_id LIMIT 1),
+                      (SELECT pc.processor FROM tenant_payment_config pc WHERE pc.tenant_id::text = t.tenant_id LIMIT 1)) AS route_processor,
+             COALESCE((SELECT ma.environment FROM payment_merchant_accounts ma WHERE ma.tenant_id::text = t.tenant_id AND ma.branch_id::text = t.branch_id LIMIT 1),
+                      (SELECT pc.environment FROM tenant_payment_config pc WHERE pc.tenant_id::text = t.tenant_id LIMIT 1)) AS route_environment
         FROM pos_payment_terminals t
         LEFT JOIN branches b ON b.id::text = t.branch_id AND b.tenant_id::text = t.tenant_id
         LEFT JOIN pos_stations st ON st.tenant_id::text = t.tenant_id AND st.id::text = t.station_id AND st.retired_at IS NULL
@@ -155,7 +162,8 @@ export class DeviceFleetCenter {
         branchId: t.branch_id ? String(t.branch_id) : null, branch: t.branch_name ?? null, station: t.station_name ?? null, status,
         reason: op === 'UNKNOWN' ? 'TERMINAL_NOT_TESTED' : op === 'DEGRADED' ? 'NOT_HEARD_FROM' : op === 'OFFLINE' ? 'TERMINAL_OFFLINE' : !t.station_id ? 'NO_REGISTER' : null,
         lastSeenAt: iso(t.last_seen_at ?? t.last_ping_at), createdAt: iso(t.paired_at), updatedAt: iso(t.last_transaction_at),
-        facts: { operational: op, hsnMasked: hsn ? '••••' + hsn.slice(-4) : null } } as DfDevice;
+        facts: { operational: op, hsnMasked: hsn ? '••••' + hsn.slice(-4) : null, routing: terminalRouting({ op, registerPaired: !!t.register_id, leaseHolder: t.lease_holder ?? null,
+          leaseUntil: iso(t.lease_until), processor: t.route_processor ?? null, environment: t.route_environment ?? null, lastPingOk: t.last_ping_ok ?? null, lastPingAt: iso(t.last_ping_at) }) } } as DfDevice;
     });
   }
 
@@ -310,4 +318,19 @@ export class DeviceFleetCenter {
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : checks.some((c) => c.state === 'NOT_CONFIGURED') ? 'NOT_CONFIGURED' : 'READY';
     return { class: cls, overall, checkedAt: this.now().toISOString(), checks };
   }
+}
+
+/** extras Device Assignments 09 — Payment Terminal Routing Guard (read-only). Whether a checkout could route a payment to this
+ *  terminal right now, from the facts the payment path itself uses: its operational status (terminalOperationalStatus), the
+ *  register it is paired with, an open reservation (payment_terminal_leases — a second POS gets TERMINAL_BUSY) and the
+ *  processor its branch routes through. Nothing here talks to the device or moves money. The holder's id never leaves —
+ *  only what kind of thing holds it. */
+export type TerminalRouteVerdict = 'ready' | 'busy' | 'no_register' | 'no_processor' | 'not_ready';
+export function terminalRouting(i: { op: string; registerPaired: boolean; leaseHolder: string | null; leaseUntil: string | null; processor: string | null; environment: string | null; lastPingOk: boolean | null; lastPingAt: string | null }) {
+  const processor = i.processor && i.processor !== 'none' ? i.processor : null;   // 'none' = no processor chosen
+  const reservedFor = i.leaseHolder ? (i.leaseHolder.startsWith('ticket:') ? 'ticket' : i.leaseHolder.startsWith('display:') ? 'display' : 'other') : null;
+  const verdict: TerminalRouteVerdict = i.op === 'DISABLED' || i.op === 'OFFLINE' || i.op === 'UNKNOWN' || i.op === 'DEGRADED' ? 'not_ready'
+    : !i.registerPaired ? 'no_register' : !processor ? 'no_processor' : reservedFor || i.op === 'BUSY' || i.op === 'PROCESSING' ? 'busy' : 'ready';
+  return { verdict, operational: i.op, registerPaired: i.registerPaired, reservedFor, reservedUntil: reservedFor ? i.leaseUntil : null,
+    processor, environment: processor ? i.environment : null, lastPingOk: i.lastPingOk, lastPingAt: i.lastPingAt, movesMoney: false as const };
 }

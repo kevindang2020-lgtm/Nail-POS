@@ -508,7 +508,7 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
           {!health ? <>
             <div className="sub" style={{ fontSize: 13, marginBottom: 8 }}>{t('bv.health.never')}</div>
             <ul className="bv-checks" data-testid="bv-checks-pending">
-              {(['twilio_identity', 'verify_service', 'sender', 'policy', 'recent_errors', 'integration'] as const).map((k) => (
+              {(['twilio_identity', 'verify_service', 'sender', 'policy', 'recent_errors', 'integration', 'code_rules'] as const).map((k) => (
                 <li key={k} data-testid={'bv-pending-' + k}>
                   <div className="bv-check-top"><strong>{t('bv.hk.' + k)}</strong><span className="pm-chip">{t('bv.hs.unchecked')}</span></div>
                   <div className="sub" style={{ fontSize: 12 }}>{t('bv.hd.' + k)}</div>

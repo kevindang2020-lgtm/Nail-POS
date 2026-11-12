@@ -55,12 +55,15 @@ describe('Campaign Center', () => {
   });
   it('a row opens the details overlay with Close; the health check never sends', async () => {
     api.detail.mockResolvedValue({ ...spring, exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {} });
-    api.healthCheck.mockResolvedValue({ overall: 'attention_required', findings: [{ subsystem: 'execution', status: 'attention_required', summary: 'Marked Completed, but no send was ever recorded', evidence: 'ledger rows 0', nextStep: null, observedAt: '2026-10-30T13:00:00Z' }], trace: { ledgerRows: 0 }, sendsAnything: false, observedAt: '2026-10-30T13:00:00Z' });
+    api.healthCheck.mockResolvedValue({ overall: 'attention_required', findings: [{ subsystem: 'execution', status: 'attention_required', summary: 'Marked Completed, but no send was ever recorded', evidence: 'ledger rows 0', nextStep: null, observedAt: '2026-10-30T13:00:00Z' },
+      { subsystem: 'costs', status: 'attention_required', summary: 'The estimated cost ($0.11) is over the budget ($0.05).', evidence: '3 segment(s) × platform price', nextStep: 'Raise the budget or narrow the audience.', observedAt: '2026-10-30T13:00:00Z' }], trace: { ledgerRows: 0 }, sendsAnything: false, observedAt: '2026-10-30T13:00:00Z' });
     mount();
     fireEvent.click(await screen.findByTestId('cc-row-c1'));
     expect((await screen.findByTestId('cc-detail-outcome')).textContent).toMatch(/no send record/i);
     fireEvent.click(screen.getByTestId('cc-detail-health'));
     expect((await screen.findByTestId('cc-h-findings')).textContent).toMatch(/no send was ever recorded/);
+    // extras Campaign Builder 16: the new cost / consent / content / drafts findings get their own labels
+    expect(screen.getByTestId('cc-h-findings').textContent).toMatch(/Cost vs budget.*over the budget \(\$0\.05\)/);
     expect(api.launch).not.toHaveBeenCalled();
   });
   it('Launch is offered only when approved + ready, and only after the confirmation box is ticked', async () => {

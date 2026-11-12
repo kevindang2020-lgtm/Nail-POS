@@ -192,6 +192,29 @@ async function ai(db: Kysely<any>, c: CheckCtx): Promise<CheckResult[]> {
     out.push(R('ai.billing_reconciliation', 'ai', st, !r || external ? 'low' : !ok ? 'high' : 'info', 'ai_billing_reconciliation_runs',
       { verifiedAt: ok ? iso(fin) : null, detail: { code: !r ? 'never_run' : external ? 'provider_not_configured' : String(r.status), errorCode: r?.error_code ?? null }, action: !ok || !r ? { code: 'open_ai_usage', route: ROUTES.ai } : null }));
   } else out.push(R('ai.billing_reconciliation', 'ai', 'unknown', 'low', 'ai_billing_events', { detail: { code: 'reconciliation_not_available' } }));
+  // extras Unfinished POS Modules 07 — AI entitlement & billing integrity over the stored provider snapshots (read-only):
+  // invoice math the provider's own figures must satisfy, links left behind, a branch override with nothing to override, and
+  // provider events the ingest refused. Duplicate events need no check: UNIQUE (provider, provider_event_id) already stops them.
+  if (await exists(db, 'ai_billing_invoice_links') && await exists(db, 'tenant_ai_branch_settings')) {
+    const live = sql`(select 1 from tenant_ai_subscriptions su where su.tenant_id = ${c.tenantId} and su.package_code = x.package_code and su.status in ('active', 'trialing'))`;
+    const g = (await sql<any>`select
+        (select count(*) from ai_billing_invoice_links il where il.tenant_id = ${c.tenantId} and il.amount_refunded_cents > il.amount_paid_cents)::int as refunded_over_paid,
+        (select count(*) from ai_billing_invoice_links il where il.tenant_id = ${c.tenantId} and il.status = 'paid' and coalesce(il.amount_due_cents, 0) > 0)::int as paid_with_due,
+        (select count(*) from ai_billing_invoice_links il where il.tenant_id = ${c.tenantId} and il.status in ('open', 'finalized')
+           and il.period_end < (${c.now.toISOString()}::timestamptz)::date - 30 and coalesce(il.amount_due_cents, il.total_cents, 0) > 0)::int as open_past_period,
+        (select count(*) from ai_billing_invoice_links x where x.tenant_id = ${c.tenantId} and x.package_code is not null
+           and not exists (select 1 from tenant_ai_subscriptions su where su.tenant_id = ${c.tenantId} and su.package_code = x.package_code))::int as no_subscription,
+        (select count(*) from tenant_ai_branch_settings x where x.tenant_id = ${c.tenantId} and x.override_enabled = true and not exists ${live})::int as override_without_package,
+        (select count(*) from ai_billing_invoice_events ev where ev.tenant_id = ${c.tenantId} and ev.outcome = 'rejected' and ev.received_at > ${new Date(c.now.getTime() - 7 * D)})::int as rejected_events,
+        (select count(*) from ai_billing_invoice_links il where il.tenant_id = ${c.tenantId})::int as invoices`.execute(db)).rows[0] ?? {};
+    const warn = N(g.paid_with_due) + N(g.open_past_period) + N(g.no_subscription) + N(g.override_without_package) + N(g.rejected_events);
+    const code = N(g.refunded_over_paid) ? 'refunded_over_paid' : N(g.paid_with_due) ? 'paid_with_amount_due' : N(g.open_past_period) ? 'open_past_period'
+      : N(g.no_subscription) ? 'invoice_without_subscription' : N(g.override_without_package) ? 'override_without_package' : N(g.rejected_events) ? 'events_rejected' : N(g.invoices) ? 'consistent' : 'no_invoices';
+    out.push(R('ai.billing_integrity', 'ai', N(g.refunded_over_paid) ? 'error' : warn ? 'warning' : 'ready', N(g.refunded_over_paid) ? 'high' : warn ? 'medium' : 'info', 'ai_billing_invoice_links',
+      { verifiedAt: c.now.toISOString(), detail: { code, refundedOverPaid: N(g.refunded_over_paid), paidWithDue: N(g.paid_with_due), openPastPeriod: N(g.open_past_period), invoiceWithoutSubscription: N(g.no_subscription),
+        overrideWithoutPackage: N(g.override_without_package), rejectedEvents7d: N(g.rejected_events), invoices: N(g.invoices) },
+        action: N(g.refunded_over_paid) || warn ? { code: 'open_ai_usage', route: ROUTES.ai } : null }));
+  }
   return out;
 }
 

@@ -469,6 +469,65 @@ describe('performance freshness', () => {
   });
 });
 
+// Extras · SMS Inbox 02 — KPI accuracy: every tile's calculation, the salon-day scope, unknown states and no double counting
+describe('KPI accuracy (extras SMS Inbox 02)', () => {
+  const T6 = id('a6'), B61 = id('b61'), B62 = id('b62'), O6 = id('e61'), M6 = id('e62');
+  const own6: InboxCtx = { tenantId: T6, branchId: B61, userId: O6, role: 'OWNER', permissions: ALL, userName: 'Gia', authz: { branchIds: null } };
+  const mgr6: InboxCtx = { tenantId: T6, branchId: B62, userId: M6, role: 'MANAGER', permissions: ALL, userName: 'Hal', authz: { branchIds: [B62] } };
+  it('counts each tile once from its own records, salon day in the branch zone, a closed thread is never awaiting, branch scope and another salon never', async () => {
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Gem LLC','Gem Nails','ib-gem','IBL006','active')`, [T6]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$3,'Gem Main','active','America/Los_Angeles'), ($2,$3,'Gem Two','active','America/Los_Angeles')`, [B61, B62, T6]);
+    const otherBefore = await svc.summary(otherOwner, null);
+    const before = await svc.summary(own6, null);
+    expect(before.conversations).toMatchObject({ total: 0, open: 0, unreadThreads: 0, unreadMessages: 0, awaiting: 0, oldestAwaitingSince: null });
+    // no call ledger yet: the 0 is flagged unknown, never presented as a clean zero
+    expect(before.freshness.warnings).toContainEqual({ metric: 'missed', kind: 'unknown', reason: 'no_call_records', count: null });
+    const hr = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+    // B61: open + awaiting (3 unread), replied, closed-with-stale-awaiting (never awaiting); B62: pending (1 unread); salon-wide email
+    const oldest = hr(5);
+    const a = await thread(T6, { branch: B61, contact: '+12135556001', activity: oldest, status: 'open', awaiting: oldest });
+    await thread(T6, { branch: B61, contact: '+12135556002', activity: hr(4), status: 'replied' });
+    await thread(T6, { branch: B61, contact: '+12135556003', activity: hr(30), status: 'closed', awaiting: hr(30) });
+    const d = await thread(T6, { branch: B62, contact: '+12135556004', activity: hr(2), status: 'pending', awaiting: hr(2) });
+    await thread(T6, { branch: null, contact: 'gem@guest.test', channel: 'email', activity: hr(1), status: 'open' });
+    await q(`update communication_threads set unread_count = 3 where id = $1`, [a]);
+    await q(`update communication_threads set unread_count = 1 where id = $1`, [d]);
+    // outbound texts on thread a: just before the salon's midnight (yesterday — never "today"), and today: one delivered
+    // (by the provider status only), one handed over and waiting, one failed at the provider, one simulated
+    const midnight = `((now() at time zone 'America/Los_Angeles')::date)::timestamp at time zone 'America/Los_Angeles'`;
+    const note = async (status: string, provider: string | null) => (await q(`insert into notifications (tenant_id, channel, to_address, body, status, provider_status) values ($1,'sms','+12135556001','x',$2,$3) returning id`, [T6, status, provider])).rows[0].id;
+    const msg = async (nid: string | null, status: string, at: string) => q(`insert into communication_messages (tenant_id, thread_id, direction, channel, body, status, notification_id, author_kind, created_at) values ($1,$2,'outbound','sms','x',$3,$4,'staff',${at})`, [T6, a, status, nid]);
+    await msg(await note('delivered', 'delivered'), 'sent', `${midnight} - interval '30 minutes'`);
+    await msg(await note('sent', 'delivered'), 'sent', `greatest(${midnight} + interval '1 second', now() - interval '1 minute')`);
+    await msg(await note('sent', null), 'sent', `greatest(${midnight} + interval '1 second', now() - interval '1 minute')`);
+    await msg(await note('failed', 'undelivered'), 'sent', `greatest(${midnight} + interval '1 second', now() - interval '1 minute')`);
+    await msg(await note('simulated', null), 'sent', `greatest(${midnight} + interval '1 second', now() - interval '1 minute')`);
+    // calls: missed today in B61, missed yesterday in B61 (not today), answered today in B62
+    await q(`insert into call_intelligence_events (tenant_id, branch_id, provider_call_id, status, started_at) values
+      ($1,$2,'GEM1','missed', greatest(${midnight} + interval '1 second', now() - interval '1 minute')),
+      ($1,$2,'GEM2','missed', ${midnight} - interval '1 hour'),
+      ($1,$3,'GEM3','answered_ai', now() - interval '2 minutes')`, [T6, B61, B62]);
+    const s = await svc.summary(own6, null);
+    expect(s.scope.tz).toBe('America/Los_Angeles');
+    expect(s.conversations).toMatchObject({ total: 5, open: 3, unreadThreads: 2, unreadMessages: 4, replied: 1, awaiting: 2, missed: 1 });
+    expect(s.conversations.oldestAwaitingSince).toBe(oldest);       // the open thread's, not the closed one's older stamp
+    expect(s.channelMix).toEqual([{ channel: 'sms', count: 4 }, { channel: 'email', count: 1 }, { channel: 'call', count: 0 }]);
+    // today only: 4 texts; the failed one never "left" (failed only); delivered once although both the status and provider say so
+    expect(s.sentToday).toEqual({ total: 3, submitted: 2, delivered: 1, failed: 1, simulated: 1 });
+    // a manager of B62 sees B62 + salon-wide threads only; B61's texts and missed call are not theirs
+    const m = await svc.summary(mgr6, null);
+    expect(m.conversations).toMatchObject({ total: 2, open: 2, unreadThreads: 1, unreadMessages: 1, awaiting: 1, missed: 0 });
+    expect(m.sentToday.total).toBe(0);
+    // one branch picked: B61 only (the salon-wide email thread is not in a branch)
+    const b1 = await svc.summary(own6, B61);
+    expect(b1.conversations).toMatchObject({ total: 3, open: 1, awaiting: 1, missed: 1 });
+    // another salon's records never move these counts
+    const o = await svc.summary(otherOwner, null);
+    expect(o.conversations).toEqual(otherBefore.conversations);
+    expect(o.sentToday).toEqual(otherBefore.sentToday);
+  });
+});
+
 // Extras · Customer Notifications 03 — Mark all as read with a cutoff
 describe('mark all as read with a cutoff', () => {
   const T3 = id('a3'), C1 = id('b31'), C2 = id('b32'), O3 = id('e31'), M3 = id('e32');

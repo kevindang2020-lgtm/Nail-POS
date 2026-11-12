@@ -435,6 +435,41 @@ describe('the emergency banner + analytics', () => {
     await expectCode(svc.analytics(ctxOf(B, B_DESK, 'RECEPTION'), {}), 'permission_denied', 403);
     await expectCode(svc.analytics(ctxOf(A, A_OWNER), { from: '2026-13-01' }), 'invalid_input', 400);
   });
+  it('extras Safety Community 07 — the alert preview runs the fan-out plan over the range for THIS salon only: counts by reason / channel / severity / category, never a source case', async () => {
+    const E = id(4701), F = id(4702), G = id(4703), F_OWNER = id(4704), G_OWNER = id(4705);
+    for (const [t, code, phone] of [[E, 'P47E', '+15550047001'], [F, 'P47F', '+15550047002'], [G, 'P47G', '+15550047003']]) {
+      await pg.exec(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status, email, business_phone) values ('${t}', 'Salon ${code}', 'Salon ${code}', 'salon-${code.toLowerCase()}', '${code}', 'active', '${code.toLowerCase()}@x.test', '${phone}')`);
+    }
+    await pg.exec(`insert into tenant_community_settings (tenant_id, enabled, critical_sms_enabled, region_preferences, notify_categories, push_enabled, email_enabled) values
+      ('${E}', true, false, '[]', '[]', true, true), ('${F}', true, true, '["NJ"]', '["gift_card_scam"]', true, true), ('${G}', false, true, '[]', '[]', true, true)`);
+    await pg.exec(`insert into community_follows (tenant_id, category, severity_min, channels) values ('${F}', 'phone_scam', 'high', '["in_app","push"]')`);
+    const jan = (d: number) => `'2025-01-${String(d).padStart(2, '0')}T15:00:00Z'::timestamptz`;
+    await insertPost(id(4710), { origin: E, category: 'gift_card_scam', severity: 'low', region: 'NJ', title: 'Secret one', published: jan(3) });    // category
+    await insertPost(id(4711), { origin: E, category: 'phone_scam', severity: 'high', region: 'NJ', title: 'Secret two', published: jan(4) });      // follow (push, no email)
+    await insertPost(id(4712), { origin: E, category: 'phone_scam', severity: 'low', region: 'NJ', title: 'Secret three', published: jan(5) });     // below the follow's severity → none
+    await insertPost(id(4713), { origin: E, category: 'gift_card_scam', severity: 'high', region: 'PA', title: 'Secret four', published: jan(6) });  // outside F's regions → none
+    await insertPost(id(4714), { origin: E, category: 'refund_abuse', severity: 'critical', region: 'PA', title: 'Secret five', published: jan(7) }); // critical → always, SMS opt-in
+    await insertPost(id(4716), { origin: F, category: 'gift_card_scam', severity: 'low', region: 'NJ', title: 'Own', published: jan(9) });
+    await insertPost(id(4717), { origin: E, category: 'gift_card_scam', severity: 'low', region: 'NJ', title: 'February', published: "'2025-02-01T15:00:00Z'::timestamptz" });
+    const sendsBefore = sends.length, pushesBefore = pushes.length, alertsBefore = (await q('select count(*)::int n from owner_alerts'))[0].n;
+    const f = await svc.analytics(ctxOf(F, F_OWNER), { from: '2025-01-01', to: '2025-01-31' }) as any;
+    expect(f.alertPreview).toEqual({
+      communityEnabled: true, considered: 5, wouldReceive: 3, truncated: false,
+      byReason: { critical: 1, follow: 1, category: 1, default: 0 },
+      channels: { inApp: 3, push: 3, email: 2, sms: 1 },
+      bySeverity: [{ severity: 'critical', count: 1 }, { severity: 'high', count: 1 }, { severity: 'low', count: 1 }],
+      byCategory: [{ category: 'gift_card_scam', count: 1 }, { category: 'phone_scam', count: 1 }, { category: 'refund_abuse', count: 1 }],
+    });
+    const json = JSON.stringify(f.alertPreview);
+    for (const secret of ['Secret', id(4710), id(4714), E, 'A salon']) expect(json).not.toContain(secret);
+    // a salon with the community switched off would receive nothing (said so, not shown as an empty pass)
+    salons[G] = { enabled: true };   // the fake core lets it read its settings page; its stored settings say off
+    const g = await svc.analytics(ctxOf(G, G_OWNER), { from: '2025-01-01', to: '2025-01-31' }) as any;
+    expect(g.alertPreview).toMatchObject({ communityEnabled: false, considered: 6, wouldReceive: 0 });
+    // read-only: nothing sent, pushed or written
+    expect(sends.length).toBe(sendsBefore); expect(pushes.length).toBe(pushesBefore);
+    expect((await q('select count(*)::int n from owner_alerts'))[0].n).toBe(alertsBefore);
+  });
 });
 
 function jobDeps(): CommunityJobDeps {

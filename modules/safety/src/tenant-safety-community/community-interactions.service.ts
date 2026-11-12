@@ -19,7 +19,7 @@ import { scanCommunityText } from './community-privacy-scan';
 import { LIMITS } from './community-abuse';
 import { buildCommentTree, commentView, replyDepth, COMMENT_MAX_LENGTH } from './community-comments';
 import { normalizeFollow, followMatches, SEV_RANK, type FollowRecord } from './community-follows';
-import { parseAnalyticsRange, shapeAnalytics } from './community-analytics';
+import { parseAnalyticsRange, shapeAnalytics, previewAlerts, ALERT_PREVIEW_MAX_POSTS } from './community-analytics';
 import {
   canAccessRawEvidence, validateEvidenceUpload, sha256HexToBase64, evidenceStorageKey, EVIDENCE_UPLOADS_PER_HOUR,
   EVIDENCE_UPLOAD_TTL_SECONDS, EVIDENCE_READ_TTL_SECONDS, type EvidenceScanner,
@@ -365,7 +365,13 @@ export class CommunityInteractionsService {
     const r = parseAnalyticsRange(q, this.now());
     if (!r.ok) throw invalid(r.field, r.message);
     await this.core.requireCapability(ctx, 'manage_tenant_settings');
-    return shapeAnalytics(r.from, r.to, await this.repo.analytics(ctx.tenantId, r.fromTs, r.toExclusiveTs));
+    const [raw, me, posts] = await Promise.all([
+      this.repo.analytics(ctx.tenantId, r.fromTs, r.toExclusiveTs),
+      this.repo.fanoutRecipientOf(ctx.tenantId),
+      this.repo.publishedForPreview(ctx.tenantId, r.fromTs, r.toExclusiveTs, ALERT_PREVIEW_MAX_POSTS),
+    ]);
+    // extras Safety Community 07: what this salon's saved alert preferences would have brought it over the same range
+    return Object.assign(shapeAnalytics(r.from, r.to, raw), { alertPreview: previewAlerts(posts, me) });
   }
 }
 

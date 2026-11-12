@@ -339,4 +339,12 @@ export const TEAMMEMBERS_VI = {
   'tmm.ev.technician': 'Hồ sơ thợ',
   'tmm.ev.periodId': 'Mã kỳ',
   'tmm.ev.serviceId': 'Mã dịch vụ',
+  'tmm.sync.title': 'Lần cập nhật gần nhất của từng nguồn kết nối:', // DRAFT — Kevin reviews
+  'tmm.sync.def': 'Bản ghi mới nhất mà mỗi nguồn đã ghi cho phạm vi này. Nguồn chưa ghi gì sẽ ghi rõ như vậy.', // DRAFT — Kevin reviews
+  'tmm.sync.queueAt': 'Hàng chờ', // DRAFT — Kevin reviews
+  'tmm.sync.bookingAt': 'Đặt lịch', // DRAFT — Kevin reviews
+  'tmm.sync.timeClockAt': 'Chấm công', // DRAFT — Kevin reviews
+  'tmm.sync.technicianStatusAt': 'Trạng thái thợ', // DRAFT — Kevin reviews
+  'tmm.sync.technicianAppAt': 'Ứng dụng Thợ', // DRAFT — Kevin reviews
+  'tmm.sync.none': 'chưa có bản ghi', // DRAFT — Kevin reviews
 };

@@ -273,7 +273,8 @@ function VersionLine({ st, newest }: { st: ReturnType<typeof appVersionStanding>
 function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {
   const nav = useNavigate();
   const owner = d.source === 'terminal' ? '/tenant/devices/payment-terminals' : d.source === 'display' || d.source === 'station' ? '/tenant/devices/customer-displays' : null;
-  const facts = Object.entries(d.facts ?? {}).filter(([, v]) => v != null && v !== '');
+  const facts = Object.entries(d.facts ?? {}).filter(([k, v]) => v != null && v !== '' && k !== 'routing');
+  const routing = d.source === 'terminal' ? (d.facts?.routing as TerminalRoutingView | undefined) : undefined;
   return (
     <FitDialog wide testId="dfx-detail" title={d.name || tt('dfx.unnamed')} subtitle={`${d.source === 'station' ? tx('pos.reception_pos') : typeLabel(d.type)} · ${d.branch ?? tt('dfx.noBranch')}`} onClose={onClose}
       footer={<>{owner ? <button className="btn" data-testid="dfx-detail-manage" onClick={() => nav(owner)}>{tt(d.source === 'terminal' ? 'dfx.manage.terminals' : 'dfx.manage.displays')}</button> : <span className="sub">{tt('dfx.kioskSupport')}</span>}
@@ -285,8 +286,34 @@ function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {
         <dt>{tt('dfx.date.created')}</dt><dd>{when(d.createdAt)}</dd>
         {facts.map(([k, v]) => <Fragment key={k}><dt>{tt('dfx.fact.' + k)}</dt><dd>{typeof v === 'string' && /^[a-z_]+$/.test(v) ? tt('dfx.val.' + v) : String(v)}</dd></Fragment>)}
       </dl>
+      {routing ? <RoutingGuard r={routing} onOpen={(to) => nav(to)} /> : null}
       <h3 className="dfx-h3">{tt('dfx.tab.history')}</h3>
       <FleetHistory cls={d.source === 'station' ? 'reception_pos' : d.source === 'kiosk' ? 'kiosk' : d.source === 'terminal' ? 'terminal' : 'display'} deviceId={d.id} />
     </FitDialog>
+  );
+}
+
+/** extras Device Assignments 09 — the server's routing verdict for a terminal (read-only; nothing is sent to the device). */
+type TerminalRoutingView = {
+  verdict: 'ready' | 'busy' | 'no_register' | 'no_processor' | 'not_ready'; operational: string; registerPaired: boolean;
+  reservedFor: string | null; reservedUntil: string | null; processor: string | null; environment: string | null; lastPingOk: boolean | null; lastPingAt: string | null;
+};
+function RoutingGuard({ r, onOpen }: { r: TerminalRoutingView; onOpen: (to: string) => void }) {
+  return (
+    <section data-testid="dfx-routing" data-verdict={r.verdict}>
+      <h3 className="dfx-h3">{tt('dfx.route.title')}</h3>
+      <div className={'pm-chip ' + (r.verdict === 'ready' ? 'ok' : r.verdict === 'busy' ? 'warn' : 'bad')}>{tt('dfx.route.v.' + r.verdict)}</div>
+      <dl className="ahx-dl">
+        <dt>{tt('dfx.route.register')}</dt><dd>{r.registerPaired ? tt('dfx.route.paired') : tt('dfx.route.notPaired')}</dd>
+        <dt>{tt('dfx.route.reserved')}</dt><dd>{r.reservedFor ? tt('dfx.route.reservedBy.' + (r.reservedFor === 'ticket' || r.reservedFor === 'display' ? r.reservedFor : 'other'), { t: r.reservedUntil ? when(r.reservedUntil) : '—' }) : tt('dfx.route.free')}</dd>
+        <dt>{tt('dfx.route.processor')}</dt><dd>{r.processor ? `${codeLabel('dfx.proc', r.processor, 'value')}${r.environment ? ' · ' + codeLabel('dfx.env', r.environment, 'value') : ''}` : tt('dfx.route.noProcessor')}</dd>
+        <dt>{tt('dfx.route.ping')}</dt><dd>{r.lastPingAt ? `${r.lastPingOk === false ? tt('dfx.route.pingFailed') : tt('dfx.route.pingOk')} · ${when(r.lastPingAt)}` : tt('dfx.route.pingNever')}</dd>
+      </dl>
+      <div className="sub">{tt('dfx.route.note')}</div>
+      <div className="row" style={{ gap: 8, marginTop: 6 }}>
+        <button type="button" className="btn ghost" data-testid="dfx-route-terminals" onClick={() => onOpen('/tenant/devices/payment-terminals')}>{tt('dfx.manage.terminals')}</button>
+        <button type="button" className="btn ghost" data-testid="dfx-route-gateway" onClick={() => onOpen('/tenant/integrations/payment-gateway')}>{tt('dfx.route.gateway')}</button>
+      </div>
+    </section>
   );
 }

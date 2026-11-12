@@ -1153,4 +1153,11 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiForecast.svc.short": "Chưa đủ dữ liệu — cần thêm {n} ngày", // DRAFT — Kevin reviews
   "growth.aiForecast.svc.note": "Đây là dự báo số lượt dịch vụ, không phải lịch hẹn đã đặt và không phải tiền. Trang này không đặt hay xếp lịch gì.", // DRAFT — Kevin reviews
   "growth.aiForecast.svc.wape": "WAPE kiểm tra lại {p}%", // DRAFT — Kevin reviews
+  "growth.community.preview.title": "Cài đặt cảnh báo đã lưu sẽ gửi cho tiệm những gì trong khoảng này", // DRAFT — Kevin reviews
+  "growth.community.preview.off": "Cộng đồng An toàn đang tắt cho tiệm này, nên sẽ không có cảnh báo nào.", // DRAFT — Kevin reviews
+  "growth.community.preview.summary": "{n} trong số {m} cảnh báo các tiệm khác đăng sẽ đến tiệm mình.", // DRAFT — Kevin reviews
+  "growth.community.preview.reasons": "Khẩn cấp (luôn gửi): {a} · Khớp mục đang theo dõi: {b} · Danh mục tiệm đã chọn: {c} · Chưa đặt ưu tiên (nhận tất cả): {d}", // DRAFT — Kevin reviews
+  "growth.community.preview.channels": "Trong ứng dụng: {a} · Thông báo đẩy: {b} · Email: {c} · Tin nhắn (chỉ khẩn cấp): {d}", // DRAFT — Kevin reviews
+  "growth.community.preview.truncated": "Chỉ kiểm tra {m} cảnh báo mới nhất.", // DRAFT — Kevin reviews
+  "growth.community.preview.note": "Chỉ là số đếm — không mở cảnh báo nào và không gửi gì từ bản xem trước này.", // DRAFT — Kevin reviews
 };

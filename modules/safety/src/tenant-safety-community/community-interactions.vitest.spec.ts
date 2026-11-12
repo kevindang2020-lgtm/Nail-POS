@@ -7,7 +7,7 @@ import { normalizeFollow, followMatches } from './community-follows';
 import { planFanout, composeChangeMessage, ownerAlertSeverity, type FanoutRecipient } from './community-notify';
 import { relationFor, relationScore, normTags } from './community-related';
 import { validateEvidenceUpload, sha256HexToBase64, evidenceStorageKey, EVIDENCE_MAX_BYTES } from './community-evidence';
-import { parseAnalyticsRange, shapeAnalytics } from './community-analytics';
+import { parseAnalyticsRange, shapeAnalytics, previewAlerts } from './community-analytics';
 import { extractIndicators } from './community-risk-matching';
 
 const T1 = '11111111-0000-4000-8000-000000000001', T2 = '11111111-0000-4000-8000-000000000002', U1 = '11111111-0000-4000-8000-0000000000a1', U2 = '11111111-0000-4000-8000-0000000000a2';
@@ -169,5 +169,21 @@ describe('risk indicators (only ever hashed, only when activated)', () => {
     const got = extractIndicators('Call 856-555-0100 or (856) 555-0100, mail Bad@Example.com / bad@example.com');
     expect(got.map((g) => g.kind)).toEqual(['phone', 'email']);
     expect(got.every((g) => g.reliability === 'reliable')).toBe(true);
+  });
+});
+
+describe('extras Safety Community 07 — previewAlerts (pure)', () => {
+  const me = { tenantId: 'me', communityEnabled: true, notifyCategories: [], regionPreferences: [], follows: [], pushEnabled: false, emailEnabled: true, criticalSmsEnabled: false, email: 'me@x.test', phone: '+15550000000' };
+  const post = (o: Partial<{ originTenantId: string; category: string; region: string | null; severity: string }> = {}) => ({ originTenantId: 'other', category: 'phone_scam', region: 'NJ', severity: 'low', ...o });
+  it('no saved settings → the community is off for this salon: nothing would arrive (never an empty pass)', () => {
+    expect(previewAlerts([post(), post()], null)).toMatchObject({ communityEnabled: false, considered: 2, wouldReceive: 0, bySeverity: [], byCategory: [] });
+  });
+  it('no preferences at all → it hears everything (the default reason); own posts never; SMS only for critical with the opt-in', () => {
+    const r = previewAlerts([post(), post({ severity: 'critical' }), post({ originTenantId: 'me' })], me);
+    expect(r).toMatchObject({ wouldReceive: 2, byReason: { critical: 1, follow: 0, category: 0, default: 1 }, channels: { inApp: 2, push: 0, email: 2, sms: 0 } });
+  });
+  it('stops at the cap and says so', () => {
+    const r = previewAlerts([post(), post(), post()], me, 2);
+    expect(r).toMatchObject({ considered: 2, wouldReceive: 2, truncated: true });
   });
 });

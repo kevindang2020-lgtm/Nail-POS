@@ -144,7 +144,10 @@ describe('Verification center (guide §10–§14)', () => {
   });
   it('health: itemized, each with state, evidence and next action — no account means Needs Setup, never Ready', async () => {
     const h = await center().health(ctx(), { enabled: false, provider: { connected: false, validated: false, blockedReason: 'x' }, platform: { requiredByPlatform: false, blockedByPlatform: false, emergencyDisabled: false, moduleDisabled: false } });
-    expect(h.items.map((i) => i.key)).toEqual(['twilio_identity', 'verify_service', 'sender', 'policy', 'recent_errors', 'integration']);
+    expect(h.items.map((i) => i.key)).toEqual(['twilio_identity', 'verify_service', 'sender', 'policy', 'recent_errors', 'integration', 'code_rules']);
+    // extras TEXT MESSAGING SETUP 12: the live code rules pass their safe self-test, stated with the real limits; nothing sent
+    expect(h.items.find((i) => i.key === 'code_rules')).toMatchObject({ state: 'ready', message: 'The code rules passed a safe self-test (8 checks; no code was sent).',
+      evidence: '6 digits · expires after 10 min · 5 tries · resend after 60 s · at most 5 codes per device and 10 per network address an hour' });
     expect(h.items.find((i) => i.key === 'twilio_identity')!.state).toBe('needs_setup');
     expect(h.items.find((i) => i.key === 'recent_errors')).toMatchObject({ state: 'degraded' });
     expect(h.items.every((i) => i.evidence && i.checkedAt)).toBe(true);

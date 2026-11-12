@@ -1152,4 +1152,11 @@ export const GROWTH_EN = {
   "growth.aiForecast.svc.short": "Not enough history — {n} more days needed",
   "growth.aiForecast.svc.note": "A forecast of services, not booked appointments and not money. Nothing is booked or scheduled from this page.",
   "growth.aiForecast.svc.wape": "backtest WAPE {p}%",
+  "growth.community.preview.title": "What our saved alert settings would have sent us in this range",
+  "growth.community.preview.off": "Safety Community is off for this salon, so no alerts would arrive.",
+  "growth.community.preview.summary": "{n} of the {m} advisories other salons published would have reached us.",
+  "growth.community.preview.reasons": "Critical (always sent): {a} · Matched a follow: {b} · A category we chose: {c} · No preferences set (we hear everything): {d}",
+  "growth.community.preview.channels": "In-app: {a} · Push: {b} · Email: {c} · Text (critical only): {d}",
+  "growth.community.preview.truncated": "Only the newest {m} advisories were checked.",
+  "growth.community.preview.note": "Counts only — no advisory is opened and nothing is sent from this preview.",
 };

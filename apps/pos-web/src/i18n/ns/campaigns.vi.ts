@@ -289,4 +289,8 @@ export const CAMPAIGNS_VI: Record<keyof typeof CAMPAIGNS_EN, string> = {
   "cc.tri.retry": "Tin đang chờ sẽ được lần gửi kế tiếp tiếp tục. Tin bị lỗi không bao giờ được gửi lại, vì nhà cung cấp có thể đã nhận tin đó.", // DRAFT — Kevin reviews
   "cc.bk.dupes": "Đã bỏ qua {n} bản ghi đặt lịch lặp lại của lịch hẹn đã được tính", // DRAFT — Kevin reviews
   "cc.bk.span": "Thời gian các lịch hẹn được tính", // DRAFT — Kevin reviews
+  "cc.h.sys.drafts": "Bản nháp chờ duyệt", // DRAFT — Kevin reviews
+  "cc.h.sys.content": "Nội dung tin nhắn", // DRAFT — Kevin reviews
+  "cc.h.sys.consent": "Sự đồng ý của người nhận", // DRAFT — Kevin reviews
+  "cc.h.sys.costs": "Chi phí so với ngân sách", // DRAFT — Kevin reviews
 };

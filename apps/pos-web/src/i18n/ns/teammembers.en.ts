@@ -339,4 +339,12 @@ export const TEAMMEMBERS_EN = {
   'tmm.ev.technician': 'Technician record',
   'tmm.ev.periodId': 'Period ID',
   'tmm.ev.serviceId': 'Service ID',
+  'tmm.sync.title': 'Last update from each connected feed:',
+  'tmm.sync.def': 'The newest record each feed has written for this scope. A feed that has written nothing here says so.',
+  'tmm.sync.queueAt': 'Queue',
+  'tmm.sync.bookingAt': 'Booking',
+  'tmm.sync.timeClockAt': 'Time Clock',
+  'tmm.sync.technicianStatusAt': 'Technician status',
+  'tmm.sync.technicianAppAt': 'Technician App',
+  'tmm.sync.none': 'no records',
 };

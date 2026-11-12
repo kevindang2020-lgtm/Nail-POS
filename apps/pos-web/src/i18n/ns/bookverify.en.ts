@@ -194,4 +194,6 @@ export const BOOKVERIFY_EN = {
   "bv.rec.note.not_permitted": "Your role cannot view the booking calendar.",
   "bv.rec.safety": "Suggestions only — nothing is held, booked or texted, and the expired time is never confirmed. Book the chosen time in POS Booking; it checks the time again and asks for verification under the salon’s rule.",
   "bv.rec.restart": "Start a new booking",
+  "bv.hk.code_rules": "Booking code rules",
+  "bv.hd.code_rules": "Code length, expiry, tries and resend limits pass a safe self-test — no code is sent.",
 } as const;
