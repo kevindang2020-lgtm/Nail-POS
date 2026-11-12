@@ -140,6 +140,13 @@ export function TicketRefundPanel({ ticketId, label, onClose, onDone }: { ticket
               <div className="s" style={{ fontWeight: 700 }}>{tx('pos.how')}{' '}{money(preview.amountCents)} {tx('pos.goes_back')}</div>
               <ul style={{ margin: '4px 0 0 18px' }}>{preview.allocations.filter((a) => a.amountToRefundCents > 0).map((a) => <li key={a.paymentId}>{method(a.method, a.giftCardLast4)}: {money(a.amountToRefundCents)}</li>)}</ul>
               <div className="s muted" style={{ marginTop: 4 }}>{tx('pos.each_part_goes_back_to_the_sb2h')}</div>
+              {preview.possibleDuplicates?.length ? (
+                <div role="alert" data-testid="refund-duplicate-warning" className="s" style={{ marginTop: 6, border: '1px solid #E8B04B', background: '#FFF7E6', borderRadius: 8, padding: 8 }}>
+                  <strong>{tx('rv.dup.title')}</strong>{' '}
+                  {preview.possibleDuplicates.map((d) => tx(d.sameTenders ? 'rv.dup.sameTenders' : 'rv.dup.sameAmount', { amount: String(money(d.amountCents)), when: since(d.at) })).join(' ')}
+                  {' '}{tx('rv.dup.check')}
+                </div>
+              ) : null}
               <RefundDiscountImpact ticketId={ticketId} lineIds={picked} whole={refundable !== null && preview.amountCents >= refundable} />
               <button className="btn" style={{ marginTop: 8 }} onClick={doRefund} disabled={busy || !reasonOk} title={reasonOk ? undefined : tx('pos.enter_a_reason_first')}>{busy ? tx('pos.refunding') : tx('pos.refund_amountcents', { amountCents: String(money(preview.amountCents)) })}</button>
             </div>

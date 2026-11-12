@@ -457,20 +457,33 @@ export function POSCheckoutScreen() {
   const goDiscount = () => { const body = wsBody.current; const el = document.getElementById('co-discount'); if (body && el) { body.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 8), behavior: 'smooth' }); (el.querySelector('input') as HTMLInputElement | null)?.focus({ preventScroll: true }); } };
   // New Checkout = the next guest waiting (never a second ticket for a visit — tickets come from Service Done, §72)
   const nextGuest = () => { const next = items.find((x) => x.ticketId !== selId && x.status !== 'paid') || items[0]; if (next) selectTicket(next.ticketId); else setNote(msg('payment.qa.noReadyGuest')); };
-  const QA: { l: string; d: string; fn: () => void }[] = [
+  // CheckOut extras #07 (role-safe quick action explanations): a quick action that cannot run right now says WHY — the
+  // missing ticket, an already-paid ticket, offline mode, an unverified card charge, a not-configured merchant or a total
+  // still loading — as a visible line + tooltip. The control is never hidden and never silently approves: a tap still
+  // shows the same note, and the server still enforces every rule.
+  const qaWhy = (k: 'ticket' | 'pay' | 'discount' | 'split'): string | null => {
+    if (!selId) return tx('pos.select_a_ticket_first');
+    if ((k === 'pay' || k === 'split') && isOffline) return tx('pos.financial_actions_are_disabled_in_offline_10x1');
+    if (k !== 'ticket' && isPaid) return tx('payment.qaWhy.paid');
+    if (!detail || detail.ticketId !== selId) return k === 'ticket' ? null : tx('payment.qaWhy.totalLoading');
+    if (k === 'pay' && unknownHere) return tx('payment.unknown.completeBlocked');
+    if (k === 'pay' && method === 'card' && ps.fiservStatus === 'not_configured') return tx('payment.qaWhy.merchantNotConfigured');
+    return null;
+  };
+  const QA: { l: string; d: string; fn: () => void; why?: string | null }[] = [
     { l: tx('pos.new_checkout'), d: 'M9 3a3 3 0 100 6 3 3 0 000-6zM3 17a6 6 0 0112 0M16 6v6M13 9h6', fn: nextGuest },
-    { l: tx('pos.apply_discount'), d: 'M5 5h7l5 5-7 7-5-5zM8 8h.01', fn: withTicket(() => { if (isPaid) { setNote(msg('pos.paid_2')); return; } goDiscount(); }) },
+    { l: tx('pos.apply_discount'), d: 'M5 5h7l5 5-7 7-5-5zM8 8h.01', fn: withTicket(() => { if (isPaid) { setNote(msg('pos.paid_2')); return; } goDiscount(); }), why: qaWhy('discount') },
     // §22–§23: Split Ticket ≠ Split Payment. This button splits the PAYMENT (several tenders for one ticket); splitting a
     // ticket into two bills is not built (a visit has one ticket across the platform) — flagged for the owner.
-    { l: tx('pos.split_payment'), d: 'M10 3v14M5 7l-2 3 2 3M15 7l2 3-2 3', fn: withTicket(() => changeMethod('split')) },
-    { l: tx('pos.take_payment'), d: 'M3 6h16v10H3zM3 9h16', fn: withTicket(() => takePayment()) },
-    { l: tx('pos.send_receipt'), d: 'M3 5l8 6 8-6M3 5h16v10H3z', fn: withTicket(() => sendReceipt()) },
-    { l: tx('pos.view_signature'), d: 'M3 15c4-6 6 3 10-2M3 17h14', fn: withTicket(() => viewSignature()) },
+    { l: tx('pos.split_payment'), d: 'M10 3v14M5 7l-2 3 2 3M15 7l2 3-2 3', fn: withTicket(() => changeMethod('split')), why: qaWhy('split') },
+    { l: tx('pos.take_payment'), d: 'M3 6h16v10H3zM3 9h16', fn: withTicket(() => takePayment()), why: qaWhy('pay') },
+    { l: tx('pos.send_receipt'), d: 'M3 5l8 6 8-6M3 5h16v10H3z', fn: withTicket(() => sendReceipt()), why: qaWhy('ticket') },
+    { l: tx('pos.view_signature'), d: 'M3 15c4-6 6 3 10-2M3 17h14', fn: withTicket(() => viewSignature()), why: qaWhy('ticket') },
     // §58: Rebook goes to the Booking domain with this guest chosen; §59: Open Customer keeps the context (filtered + profile)
-    { l: tx('pos.rebook_guest'), d: 'M5 5h12v12H5zM5 9h12M9 3v4M13 3v4', fn: withTicket(() => { const q = new URLSearchParams(); if (cust?.customerId) q.set('customerId', cust.customerId); if (cust?.fullName) q.set('customerName', cust.fullName); if (cust?.phone) q.set('customerPhone', cust.phone); nav('/booking/new' + (q.toString() ? '?' + q.toString() : '')); }) },
-    { l: tx('pos.open_customer'), d: 'M10 10a3 3 0 100-6 3 3 0 000 6zm-6 8a6 6 0 0112 0', fn: withTicket(() => { const q = new URLSearchParams(); if (cust?.fullName) q.set('q', cust.fullName); if (cust?.customerId) q.set('customerId', cust.customerId); nav('/customers' + (q.toString() ? '?' + q.toString() : '')); }) },
+    { l: tx('pos.rebook_guest'), d: 'M5 5h12v12H5zM5 9h12M9 3v4M13 3v4', fn: withTicket(() => { const q = new URLSearchParams(); if (cust?.customerId) q.set('customerId', cust.customerId); if (cust?.fullName) q.set('customerName', cust.fullName); if (cust?.phone) q.set('customerPhone', cust.phone); nav('/booking/new' + (q.toString() ? '?' + q.toString() : '')); }), why: qaWhy('ticket') },
+    { l: tx('pos.open_customer'), d: 'M10 10a3 3 0 100-6 3 3 0 000 6zm-6 8a6 6 0 0112 0', fn: withTicket(() => { const q = new URLSearchParams(); if (cust?.fullName) q.set('q', cust.fullName); if (cust?.customerId) q.set('customerId', cust.customerId); nav('/customers' + (q.toString() ? '?' + q.toString() : '')); }), why: qaWhy('ticket') },
     // §60: an authoritative read-only summary, re-read from the server when it opens
-    { l: tx('pos.view_summary'), d: 'M4 4h12v12H4zM7 8h6M7 11h6', fn: withTicket(() => { if (selId) void loadDetail(selId, method).catch(() => undefined); setOverlay('summary'); }) },
+    { l: tx('pos.view_summary'), d: 'M4 4h12v12H4zM7 8h6M7 11h6', fn: withTicket(() => { if (selId) void loadDetail(selId, method).catch(() => undefined); setOverlay('summary'); }), why: qaWhy('ticket') },
   ];
 
   const card: CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10 };
@@ -1303,9 +1316,12 @@ export function POSCheckoutScreen() {
       {/* Quick Actions — one fixed row (§66), every button wired */}
       <div className="co-qa" data-testid="checkout-quick-actions">
         {QA.map((q) => (
-          <button key={q.l} onClick={q.fn} className="dqa" title={q.l}>
+          <button key={q.l} onClick={q.fn} className="dqa" title={q.why ? `${q.l} — ${q.why}` : q.l} aria-disabled={q.why ? true : undefined} data-why={q.why || undefined} style={q.why ? { opacity: 0.6 } : undefined}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke={O} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={q.d} /></svg>
-            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)' }}>{q.l}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.15 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)' }}>{q.l}</span>
+              {q.why ? <span data-testid="qa-why" style={{ fontSize: 9.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.why}</span> : null}
+            </span>
           </button>
         ))}
       </div>

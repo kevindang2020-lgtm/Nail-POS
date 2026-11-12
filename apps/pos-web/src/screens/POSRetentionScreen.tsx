@@ -318,7 +318,16 @@ export function POSRetentionScreen() {
         footer={<Pager info={list} onPage={setPage} />}>
         {listErr ? <ErrorRetry message={listErr} onRetry={() => setReload((n) => n + 1)} /> : !list ? <div className="fk-loading">{tx('pos.loading')}</div> : rows.length === 0 ? (
           q || flt.band || flt.sms || flt.minVisits || flt.basis !== 'none' ? <Empty title={tx('people.fit.noMatch')}><button type="button" className="fk-btn ghost" onClick={() => { setSearch(''); setFlt(NO_FILTERS); }}>{tx('pos.clear_all')}</button></Empty>
-            : <Empty title={['returning', 'approaching', 'recovered'].includes(segment) ? tx('rt2.empty.' + segment) : segment === 'at_risk' ? tx('rt2.empty.at_risk', { d: String(per?.riskDays ?? 60) }) : tx(`people.retention.empty.${['never', 'contactable'].includes(segment) ? segment : 'other'}`)} />
+            : <Empty title={['returning', 'approaching', 'recovered'].includes(segment) ? tx('rt2.empty.' + segment) : segment === 'at_risk' ? tx('rt2.empty.at_risk', { d: String(per?.riskDays ?? 60) }) : tx(`people.retention.empty.${['never', 'contactable'].includes(segment) ? segment : 'other'}`)}>
+              {/* Customer Retention extras #10: zero at-risk customers is good news — say what that means and offer the next
+                  useful views (approaching risk, never visited, recovered) with their live counts, instead of a dead end */}
+              {segment === 'at_risk' ? <div data-testid="rt-empty-actions" style={{ display: 'grid', gap: 6, justifyItems: 'center' }}>
+                <div className="fk-hint">{tx('rt2.emptyAtRisk.explain', { d: String(per?.riskDays ?? 60) })}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {(['approaching', 'never', 'recovered'] as const).map((sg) => <button key={sg} type="button" className="fk-btn ghost sm" data-testid={'rt-empty-go-' + sg} onClick={() => pickSegment(sg)}>{tx('rt2.emptyAtRisk.go.' + sg, { n: (segs as any)?.[sg] != null ? nf((segs as any)[sg]) : '—' })}</button>)}
+                </div>
+              </div> : null}
+            </Empty>
         ) : (
           <table className="fk-table rt-table">
             <colgroup><col style={{ width: 44 }} /><col /><col style={{ width: '11%' }} /><col style={{ width: '9%' }} /><col style={{ width: 58 }} /><col style={{ width: 54 }} /><col style={{ width: '8%' }} />

@@ -129,4 +129,8 @@ export const RETENTION2_VI = {
   'rt2.settingsConflict': 'Người khác vừa đổi cài đặt. Đang hiện giá trị mới nhất — kiểm tra và lưu lại.',
   'rt2.settingsFailed': 'Không lưu được cài đặt.',
   'rt2.settingsSaved': 'Đã lưu cài đặt giữ chân khách.',
+  'rt2.emptyAtRisk.explain': 'Mọi khách từng ghé đều đã quay lại trong vòng {d} ngày. Hiện không cần gửi tin mời quay lại.', // DRAFT — Kevin reviews
+  'rt2.emptyAtRisk.go.approaching': 'Xem Sắp có nguy cơ ({n})', // DRAFT — Kevin reviews
+  'rt2.emptyAtRisk.go.never': 'Xem Chưa từng ghé ({n})', // DRAFT — Kevin reviews
+  'rt2.emptyAtRisk.go.recovered': 'Xem Đã quay lại ({n})', // DRAFT — Kevin reviews
 };

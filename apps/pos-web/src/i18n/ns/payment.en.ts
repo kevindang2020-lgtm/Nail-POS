@@ -341,4 +341,7 @@ export const PAYMENT_EN = {
   "payment.splitPrev.exact": "Matches the amount due",
   "payment.splitPrev.invalid": "{n} tender amounts are blank or not valid",
   "payment.splitPrev.previewOnly": "Preview only — nothing is charged until you take the payment.",
+  "payment.qaWhy.paid": "Already paid",
+  "payment.qaWhy.totalLoading": "Total is still loading",
+  "payment.qaWhy.merchantNotConfigured": "Card merchant not configured",
 };

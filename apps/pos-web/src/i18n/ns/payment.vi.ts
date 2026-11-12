@@ -341,4 +341,7 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "payment.splitPrev.exact": "Khớp số tiền phải trả", // DRAFT — Kevin reviews
   "payment.splitPrev.invalid": "{n} khoản thanh toán để trống hoặc không hợp lệ", // DRAFT — Kevin reviews
   "payment.splitPrev.previewOnly": "Chỉ xem trước — chưa thu tiền cho đến khi bạn nhận thanh toán.", // DRAFT — Kevin reviews
+  "payment.qaWhy.paid": "Đã thanh toán", // DRAFT — Kevin reviews
+  "payment.qaWhy.totalLoading": "Tổng tiền đang tải", // DRAFT — Kevin reviews
+  "payment.qaWhy.merchantNotConfigured": "Chưa cấu hình tài khoản thẻ", // DRAFT — Kevin reviews
 };

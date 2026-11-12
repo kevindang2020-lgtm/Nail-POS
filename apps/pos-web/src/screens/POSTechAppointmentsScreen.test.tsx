@@ -102,3 +102,23 @@ describe('POSTechAppointmentsScreen', () => {
     expect(leftoverEnglish(container, ['Nguyễn Thị Hương', 'Mai Pham', 'Gel Manicure', 'Mia', 'MP', 'NH', 'M', '••• 1234', 'VIP', 'pick', 'America/New_York']).join(' | ')).toBe('');
   });
 });
+
+describe('Tech Appointments — exact-time tooltip (extras #06)', () => {
+  it('the When cell carries the exact scheduled start – end and length; an unknown end shows "—", never a guess', async () => {
+    scr.appointments.mockResolvedValue(page([ROW, { ...ROW, appointmentId: 'a3', end: null, minutes: 30 }]));
+    mount();
+    const cells = await screen.findAllByTestId('appt-when');
+    expect(cells[0].getAttribute('title')).toBe('2026-10-30 · scheduled 2:30 PM – 3:15 PM (45 min)');
+    expect(cells[1].getAttribute('title')).toBe('2026-10-30 · scheduled 2:30 PM – — (30 min)');
+  });
+});
+
+describe('Tech Appointments — availability confidence (extras #02)', () => {
+  it('shows when the numbers were last verified; a failed refresh says the shown numbers are stale instead of zeroing them', async () => {
+    mount();
+    expect(await screen.findByTestId('ta-fresh')).toHaveTextContent(/^Numbers updated /);
+    scr.kpis.mockRejectedValue(new Error('network'));
+    fireEvent.click(screen.getByTestId('refresh'));
+    await waitFor(() => expect(screen.getByTestId('ta-fresh')).toHaveTextContent(/^Refresh failed — the last good numbers are from /));
+  });
+});
