@@ -405,4 +405,16 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.rule.replaces": "Thay thế quy tắc hiện tại của nhà cung cấp này ({c}).", // DRAFT — Kevin reviews
   "finance.rule.noPerm": "Bạn có thể xem trước, nhưng cần quyền danh mục để lưu quy tắc.", // DRAFT — Kevin reviews
   "finance.rule.open": "Quy tắc cho nhà cung cấp này", // DRAFT — Kevin reviews
+  "finance.iv.recon.clean": "Kiểm tra đối chiếu: không có sai lệch thanh toán–hóa đơn trong {n} hóa đơn thuộc phạm vi.", // DRAFT — Kevin reviews
+  "finance.iv.recon.flagged": "Kiểm tra đối chiếu: {f} trong {n} hóa đơn cần xem lại", // DRAFT — Kevin reviews
+  "finance.iv.recon.show": "Hiện", // DRAFT — Kevin reviews
+  "finance.iv.recon.hide": "Ẩn", // DRAFT — Kevin reviews
+  "finance.iv.recon.safe": "Chỉ là gợi ý để kiểm tra — không thay đổi gì. Sửa bằng một khoản thanh toán hoặc phiếu ghi có.", // DRAFT — Kevin reviews
+  "finance.iv.recon.detail": "Cần kiểm tra", // DRAFT — Kevin reviews
+  "finance.iv.recon.status_paid_with_balance": "Đánh dấu đã trả nhưng số dư khác $0", // DRAFT — Kevin reviews
+  "finance.iv.recon.status_partial_no_balance": "Trả một phần nhưng không còn nợ", // DRAFT — Kevin reviews
+  "finance.iv.recon.payment_on_unissued": "Có thanh toán trên hóa đơn chưa ở trạng thái thanh toán", // DRAFT — Kevin reviews
+  "finance.iv.recon.negative_balance": "Thu nhiều hơn số nợ", // DRAFT — Kevin reviews
+  "finance.iv.recon.duplicate_reference": "Mã tham chiếu thanh toán đã dùng cho khoản khác", // DRAFT — Kevin reviews
+  "finance.iv.recon.no_reference": "Thanh toán bên ngoài không có mã tham chiếu", // DRAFT — Kevin reviews
 };

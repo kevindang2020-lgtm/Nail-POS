@@ -192,3 +192,28 @@ describe('POSInvoicesScreen', () => {
     await waitFor(() => expect(api.exportCsv).toHaveBeenCalled());
   });
 });
+
+describe('Invoices Management 11 — reconciliation check', () => {
+  it('shows the flagged count, opens a flagged invoice, and the detail names what to investigate', async () => {
+    api.summary.mockResolvedValue({ ...summary, reconciliation: { checked: 5, flaggedInvoices: 1, counts: { status_paid_with_balance: 1, duplicate_reference: 0 }, items: [{ id: 'i-2', invoiceNumber: 'INV-0002', issues: ['status_paid_with_balance', 'no_reference'] }] } });
+    api.detail.mockResolvedValue({ ...detail(), reconciliation: ['status_paid_with_balance', 'no_reference'] });
+    mount();
+    const strip = await screen.findByTestId('recon-strip');
+    expect(strip).toHaveTextContent('1 of 5 invoice(s) need a look');
+    expect(strip).toHaveTextContent('Marked paid but balance is not $0 1');
+    expect(strip).not.toHaveTextContent('Payment reference used');   // a zero count is not listed
+    fireEvent.click(screen.getByTestId('recon-toggle'));
+    fireEvent.click(screen.getByTestId('recon-open'));
+    expect(await screen.findByTestId('recon-issues')).toHaveTextContent('Marked paid but balance is not $0 · External payment without a reference');
+    expect(api.detail).toHaveBeenCalledWith('i-2');
+  });
+  it('a clean check says so with the number checked; an older server without it shows nothing', async () => {
+    api.summary.mockResolvedValue({ ...summary, reconciliation: { checked: 7, flaggedInvoices: 0, counts: {}, items: [] } });
+    const { unmount } = mount();
+    expect(await screen.findByTestId('recon-strip')).toHaveTextContent('no payment-to-invoice mismatch across 7 invoice(s)');
+    unmount();
+    api.summary.mockResolvedValue(summary);
+    mount(); await screen.findByText('INV-0002');
+    expect(screen.queryByTestId('recon-strip')).toBeNull();
+  });
+});

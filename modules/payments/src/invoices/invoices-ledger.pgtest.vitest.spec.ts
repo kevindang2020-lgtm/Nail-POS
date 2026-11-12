@@ -319,3 +319,29 @@ describe('Invoices — delivery to the customer', () => {
     expect(await code(repo.deliver(ctx, inv.invoice.id, { channel: 'sms', idempotencyKey: key(914) }))).toBe('INVOICE_DELIVERY_NOT_CONNECTED');
   });
 });
+
+describe('Invoices Management 11 — payment-to-invoice reconciliation (read-only)', () => {
+  it('flags stored status vs balance disagreements, duplicate references and unreferenced external payments — and changes nothing', async () => {
+    const mk = async (n: string, num: string, status: string, total: number) => q(`insert into invoices (id, tenant_id, branch_id, invoice_number, status, issue_date, subtotal_cents, total_cents) values ($1,$2,$3,$4,$5,'2026-10-05',$6,$6)`, [id(n), T, B, num, status, total]);
+    const payIt = async (n: string, inv: string, cents: number, method: string, ref: string | null) => q(`insert into invoice_payments (id, tenant_id, invoice_id, amount_cents, currency, paid_on, method, reference, idempotency_key) values ($1,$2,$3,$4,'USD','2026-10-06',$5,$6,$7)`, [id(n), T, id(inv), cents, method, ref, key(9000 + Number.parseInt(n, 16) % 900)]);
+    await mk('d01', 'INV-R001', 'paid', 5000); await payIt('d11', 'd01', 3000, 'cash', null);                 // "paid" but $20 still owed
+    await mk('d02', 'INV-R002', 'partially_paid', 4000); await payIt('d12', 'd02', 4000, 'check', 'CHK-77'); // partially paid, nothing owed
+    await mk('d03', 'INV-R003', 'sent', 2500); await payIt('d13', 'd03', 2500, 'bank_transfer', 'chk-77 ');  // payment on a "sent" invoice; same ref as R002 (case / space)
+    await mk('d04', 'INV-R004', 'paid', 1000); await payIt('d14', 'd04', 1500, 'card_external', null);        // overpaid and no reference
+    await mk('d05', 'INV-R005', 'paid', 1200); await payIt('d15', 'd05', 1200, 'card_external', 'AUTH-1');    // clean
+    const before = (await q(`select string_agg(id::text || status || total_cents, ',' order by id) as s from invoices where tenant_id = $1`, [T])).rows[0].s;
+    const s = await repo.summary(ctx, repo.filters(ALL(), { search: 'INV-R' }));
+    const byNum = Object.fromEntries(s.reconciliation.items.map((x: any) => [x.invoiceNumber, x.issues]));
+    expect(byNum['INV-R001']).toEqual(['status_paid_with_balance']);
+    expect(byNum['INV-R002']).toEqual(['status_partial_no_balance', 'duplicate_reference']);
+    expect(byNum['INV-R003']).toEqual(['payment_on_unissued', 'duplicate_reference']);
+    expect(byNum['INV-R004']).toEqual(['status_paid_with_balance', 'negative_balance', 'no_reference']);
+    expect(byNum['INV-R005']).toBeUndefined();
+    expect(s.reconciliation).toMatchObject({ checked: 5, flaggedInvoices: 4, readOnly: true, counts: { status_paid_with_balance: 2, status_partial_no_balance: 1, payment_on_unissued: 1, negative_balance: 1, duplicate_reference: 2, no_reference: 1 } });
+    expect((await repo.detail(ctx, id('d04')))!.reconciliation).toEqual(['status_paid_with_balance', 'negative_balance', 'no_reference']);
+    expect((await repo.detail(ctx, id('d05')))!.reconciliation).toEqual([]);
+    expect((await q(`select string_agg(id::text || status || total_cents, ',' order by id) as s from invoices where tenant_id = $1`, [T])).rows[0].s).toBe(before);
+    // another salon sees none of it
+    expect((await repo.summary(ctx2, repo.filters(ALL(), { search: 'INV-R' }))).reconciliation).toMatchObject({ checked: 0, flaggedInvoices: 0 });
+  });
+});

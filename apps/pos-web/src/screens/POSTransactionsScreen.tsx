@@ -183,6 +183,7 @@ export function TxDialog({ id, tick, onClose, onChanged, onNote, onCustomer, onG
           </div>
         </div>
         <PaymentTimeline items={d.data.timeline ?? []} />
+        <DuplicateReview review={d.data.duplicateReview} />
         {tk ? <>
           <h3 className="fk-h3">{tx('txn.ticketTitle', { n: tk.ticketNumber ?? '—' })}</h3>
           <div className="fn-cols2">
@@ -223,4 +224,28 @@ export function PaymentTimeline({ items }: { items: Array<{ kind: string; at: st
       </li>)}
     </ul>
   </>;
+}
+
+// extras (TRANSACTIONS 03): Safe Duplicate-Payment Review — the server's recorded signals for this tender (a shared processor
+// reference, repeated processor callbacks, a same-method same-amount second charge on the ticket within 10 minutes, money
+// beyond what the ticket can owe). Diagnosis only: no button here voids, refunds or erases anything; a correction goes
+// through Refunds & Voids. Absent from an older server → nothing is shown (never a fabricated "all clear").
+type DupReview = { signals: number; sharedReference: Array<{ id: string; ticketNumber: string | null; amountCents: number; status: string; at: string | null }>;
+  callbacks: { deliveries: number; distinctEvents: number; repeated: number; unprocessed: number }; conflicting: Array<{ id: string; amountCents: number; at: string | null; processorRef: string | null }>; overCollectedCents: number };
+export function DuplicateReview({ review }: { review?: DupReview | null }) {
+  if (!review) return null;
+  const at = (v: string | null) => (v ? fmtInZone(v, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
+  return <section data-testid="dup-review">
+    <h3 className="fk-h3">{tx('txn.dup.title')}</h3>
+    {review.signals === 0 ? <div className="fk-hint" data-testid="dup-none">{tx('txn.dup.none', { n: fmtNumber(review.callbacks.deliveries) })}</div> : <ul className="fn-notes">
+      {review.sharedReference.length ? <li data-testid="dup-shared"><span className="fk-chip warn">{tx('txn.dup.shared', { n: fmtNumber(review.sharedReference.length) })}</span>
+        <div className="fk-li-s">{review.sharedReference.map((x) => `${x.ticketNumber ? tx('txn.ticketN', { n: x.ticketNumber }) : short(x.id)} · ${fmtMoney(x.amountCents)} · ${codeLabel('rv.raw.' + x.status, x.status)} · ${at(x.at)}`).join(' | ')}</div></li> : null}
+      {review.callbacks.repeated ? <li data-testid="dup-callbacks"><span className="fk-chip warn">{tx('txn.dup.callbacks', { d: fmtNumber(review.callbacks.deliveries), e: fmtNumber(review.callbacks.distinctEvents) })}</span>
+        <div className="fk-li-s">{tx('txn.dup.callbacksNote', { u: fmtNumber(review.callbacks.unprocessed) })}</div></li> : null}
+      {review.conflicting.length ? <li data-testid="dup-conflicting"><span className="fk-chip bad">{tx('txn.dup.conflicting', { n: fmtNumber(review.conflicting.length) })}</span>
+        <div className="fk-li-s">{review.conflicting.map((x) => `${short(x.id)} · ${fmtMoney(x.amountCents)} · ${at(x.at)}${x.processorRef ? ' · ' + x.processorRef : ''}`).join(' | ')}</div></li> : null}
+      {review.overCollectedCents ? <li data-testid="dup-over"><span className="fk-chip bad">{tx('txn.dup.over', { a: fmtMoney(review.overCollectedCents) })}</span></li> : null}
+    </ul>}
+    <div className="fk-hint">{tx('txn.dup.safe')}</div>
+  </section>;
 }

@@ -249,3 +249,29 @@ describe('TRANSACTIONS 09 — tender vs capture channel', () => {
     expect((await r.summary(ctx, await nov())).context.cardCents).toBe(2500);
   });
 });
+
+describe('TRANSACTIONS 03 — safe duplicate-payment review (diagnosis only)', () => {
+  it('flags a shared processor reference, repeated callbacks, a same-amount second charge and an over-collected ticket — and changes nothing', async () => {
+    const tid = await ticket('4950', { total: 3000, tip: 0, at: '2026-11-03T15:00:00Z' });
+    const a = await pay(tid, 'card', 3000, 0, '2026-11-03T15:00:00Z', { ref: 'DUP-REF-1' });
+    const b = await pay(tid, 'card', 3000, 0, '2026-11-03T15:03:00Z', { ref: 'DUP-REF-1' });   // same ref, same amount, 3 minutes later
+    // the processor called back twice with the same event id (the first failed processing and was re-delivered), once more with another event
+    await q(`insert into payment_gateway_events (tenant_id, processor_type, event_id, processor_transaction_id, signature_valid, matched_payment_id, processed_at) values
+      ($1,'cardpointe','EV-1','DUP-REF-1',true,$2,null), ($1,'cardpointe','EV-1','DUP-REF-1',true,$2,now()), ($1,'cardpointe','EV-2','DUP-REF-1',true,$2,now()),
+      ($3,'cardpointe','EV-1','DUP-REF-1',true,null,now())`, [T, a, T2]);   // another salon's event with the same ids is not ours
+    const before = (await q(`select count(*)::int as n, sum(amount_cents)::int as s from payments where tenant_id = $1`, [T])).rows[0];
+    const d = await r.detail(ctx, a);
+    expect(d.duplicateReview.sharedReference.map((x: any) => x.id)).toEqual([b]);
+    expect(d.duplicateReview.callbacks).toEqual({ deliveries: 3, distinctEvents: 2, repeated: 1, unprocessed: 1 });
+    expect(d.duplicateReview.conflicting.map((x: any) => x.id)).toEqual([b]);
+    expect(d.duplicateReview.overCollectedCents).toBe(3000);
+    expect(d.duplicateReview.signals).toBe(4);
+    const after = (await q(`select count(*)::int as n, sum(amount_cents)::int as s from payments where tenant_id = $1`, [T])).rows[0];
+    expect(after).toEqual(before);
+  });
+
+  it('a clean single tender has no signals; a split of two DIFFERENT amounts is not a conflict', async () => {
+    expect((await r.detail(ctx, ids.s1)).duplicateReview).toMatchObject({ signals: 0, sharedReference: [], conflicting: [], overCollectedCents: 0, callbacks: { deliveries: 0, repeated: 0 } });
+    expect((await r.detail(ctx, ids.spCard)).duplicateReview).toMatchObject({ signals: 0, conflicting: [] });
+  });
+});
