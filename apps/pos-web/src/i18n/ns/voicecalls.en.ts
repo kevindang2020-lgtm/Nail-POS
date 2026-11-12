@@ -250,4 +250,11 @@ export const VOICECALLS_EN: Record<string, string> = {
   "vcx.q.d.incomplete": "{stored} of {expected} lines stored; words cover {covered}s of a {dur}s call.",
   "vcx.q.d.intent": "Request confidence {r}; booking intent confidence {i}.",
   "vcx.q.note": "These are advisory warnings for a person to review. The transcript is shown exactly as stored; nothing was changed.",
+  "vcx.u.line": "This month ({from} – {to}): {calls} calls transcribed, {min} minutes, {ai} AI summaries ({fb} rules-only), {failed} failed transcriptions",
+  "vcx.u.billing.billable": "AI Voice Transcription package: billable",
+  "vcx.u.billing.trial": "AI Voice Transcription package: on trial",
+  "vcx.u.billing.not_billable": "AI Voice Transcription package: not billable (inactive)",
+  "vcx.u.billing.not_subscribed": "AI Voice Transcription package: not subscribed",
+  "vcx.u.noPrice": "No price is shown here; see Billing.",
+  "vcx.u.noRetries": "Retries are not recorded.",
 };

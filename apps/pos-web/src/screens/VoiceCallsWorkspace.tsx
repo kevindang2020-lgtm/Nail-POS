@@ -121,6 +121,11 @@ export function VoiceCallsWorkspace({ mode }: { mode: 'search' | 'history' }) {
             follow];
         return <div className={'rvw-kpis vcx-kpis ' + (mode === 'history' ? 'vcx-k8' : 'vcx-k4')} data-testid="vcx-kpis">{cards}</div>;
       })()}
+      {/* Voice Call History extras 08: this month's usage from the server's records — never a price */}
+      {mode === 'history' && sum?.usage ? <p className="sub" data-testid="vcx-usage">{t('vcx.u.line', { from: sum.usage.from ?? '—', to: sum.usage.to ?? '—', calls: fmtNumber(sum.usage.transcribedCalls),
+        min: fmtNumber(sum.usage.transcribedMinutes, 1), ai: fmtNumber(sum.usage.aiSummaries), fb: fmtNumber(sum.usage.fallbackSummaries), failed: fmtNumber(sum.usage.failedJobs) })}
+        {' · '}{t('vcx.u.billing.' + (['billable', 'trial', 'not_billable', 'not_subscribed'].includes(sum.usage.subscription?.billing) ? sum.usage.subscription.billing : 'not_subscribed'))}
+        {' · '}{t('vcx.u.noPrice')}{sum.usage.retriesRecorded ? '' : ` ${t('vcx.u.noRetries')}`}</p> : null}
 
       <section className="panel rvw-feed" style={{ padding: 12, marginTop: 10 }}>
         <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); submit(); }}>

@@ -134,6 +134,18 @@ describe('Call History', () => {
     fireEvent.click(await screen.findByTestId('vcx-view'));
     expect(await screen.findByTestId('vcx-booking-basis')).toHaveTextContent('not linked to a customer');
   });
+  it('Extras VCH-08: Call History states this month\'s usage from the server and never a price', async () => {
+    vc.summary.mockResolvedValue(vcSum({ usage: { from: '2026-11-01', to: '2026-11-12', timeZone: 'America/New_York', transcribedCalls: 12, transcribedMinutes: 37.5, aiSummaries: 9, fallbackSummaries: 3, failedJobs: 1,
+      retries: null, retriesRecorded: false, subscription: { status: 'trialing', billing: 'trial' }, price: null } }));
+    vc.list.mockResolvedValue(vcPage([vcRow()]));
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    const u = await screen.findByTestId('vcx-usage');
+    expect(u).toHaveTextContent('This month (2026-11-01 – 2026-11-12): 12 calls transcribed, 37.5 minutes, 9 AI summaries (3 rules-only), 1 failed transcriptions');
+    expect(u).toHaveTextContent('package: on trial');
+    expect(u).toHaveTextContent('No price is shown here');
+    expect(u).toHaveTextContent('Retries are not recorded.');
+    expect(u.textContent).not.toMatch(/\$/);
+  });
   it('Extras VCH-04: the server\'s transcript-quality flags show with their evidence and an advisory note; no flags → no section', async () => {
     const base = { call: { id: 'tr1', callRef: 'c1', callAt: '2026-11-02T15:00:00Z', direction: 'inbound', durationSeconds: 120, statusGroup: 'completed', language: 'en', branch: 'Main' },
       customer: { linked: false, id: null, name: null, phoneLast4: null, visible: true }, transcript: [{ seq: 1, speaker: 'unknown', text: 'Hola', uncertain: true }], summary: null, intents: [], request: null, followUps: [], canWorkFollowUps: false };

@@ -250,4 +250,11 @@ export const VOICECALLS_VI: Record<string, string> = {
   "vcx.q.d.incomplete": "Đã lưu {stored} trong {expected} dòng; lời nói phủ {covered}s của cuộc gọi {dur}s.", // DRAFT — Kevin reviews
   "vcx.q.d.intent": "Độ tin cậy yêu cầu {r}; độ tin cậy ý định đặt lịch {i}.", // DRAFT — Kevin reviews
   "vcx.q.note": "Đây là cảnh báo để người kiểm tra lại. Bản ghi lời được hiển thị đúng như đã lưu; không có gì bị thay đổi.", // DRAFT — Kevin reviews
+  "vcx.u.line": "Tháng này ({from} – {to}): {calls} cuộc gọi đã chép lời, {min} phút, {ai} tóm tắt AI ({fb} chỉ theo quy tắc), {failed} lần chép lời lỗi", // DRAFT — Kevin reviews
+  "vcx.u.billing.billable": "Gói AI Chép lời cuộc gọi: có tính phí", // DRAFT — Kevin reviews
+  "vcx.u.billing.trial": "Gói AI Chép lời cuộc gọi: đang dùng thử", // DRAFT — Kevin reviews
+  "vcx.u.billing.not_billable": "Gói AI Chép lời cuộc gọi: không tính phí (không hoạt động)", // DRAFT — Kevin reviews
+  "vcx.u.billing.not_subscribed": "Gói AI Chép lời cuộc gọi: chưa đăng ký", // DRAFT — Kevin reviews
+  "vcx.u.noPrice": "Không hiển thị giá ở đây; xem mục Thanh toán.", // DRAFT — Kevin reviews
+  "vcx.u.noRetries": "Số lần thử lại không được ghi nhận.", // DRAFT — Kevin reviews
 };

@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { redactText } from './ai-voice-transcription-redaction';
+import { VOICE_TRANSCRIPTION_PACKAGE } from './ai-voice-transcription-entitlement';
 import { parseTerms } from './ai-voice-transcription-search';
 import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
@@ -195,6 +196,7 @@ export class VoiceCallsCenter {
     const disabled = s ? s.transcription_enabled === false : false;
     const calls = N(p.calls);
     const emptyReason = calls ? null : disabled ? 'disabled' : 'no_calls';
+    const usage = await this.usage(ctx);
     return {
       asOf: new Date(this.now()).toISOString(),
       counters: { calls, calls7d: N(p.calls7), processing: N(p.processing), failed7d: N(p.failed7), notTranscribed: N(p.not_transcribed),
@@ -202,7 +204,30 @@ export class VoiceCallsCenter {
       lastCallAt: iso(p.last_call), transcriptionEnabled: !disabled, emptyReason,
       customersVisible: has(ctx, 'customers.view'),
       search: { source: 'live_redacted_tables', rawTextSearched: false },
+      usage,
     };
+  }
+
+  /** Voice Call History extras 08 — this month's usage (salon time) from the records that exist: transcribed calls and their
+   *  minutes, AI-written summaries (vs the rules-only fallback), failed transcription jobs, and the AI package's billing
+   *  status from tenant_ai_subscriptions (the entitlement source). No price is shown or derived; retries are not recorded,
+   *  so they are reported as not recorded rather than zero. Read only. */
+  private async usage(ctx: VcCtx) {
+    const per = await this.period(ctx, { preset: 'month' });
+    const T = ctx.tenantId; const W = this.scope(sql`t.branch_id`, ctx).w;
+    const u = (await sql<{ calls: number; seconds: number; failed: number; ai: number; fallback: number }>`select
+        count(*) filter (where t.status = any(${[...VC_GROUP.completed, ...VC_GROUP.review]}::text[]))::int as calls,
+        coalesce(sum(t.duration_seconds) filter (where t.status = any(${[...VC_GROUP.completed, ...VC_GROUP.review]}::text[])), 0)::int as seconds,
+        count(*) filter (where t.status = any(${VC_GROUP.failed}::text[]))::int as failed,
+        count(i.id) filter (where i.detailed_source = 'ai')::int as ai, count(i.id) filter (where i.detailed_source = 'fallback')::int as fallback
+      from call_transcripts t left join call_transcript_intelligence i on i.tenant_id = t.tenant_id and i.transcript_id = t.id
+      where t.tenant_id = ${T} and t.deleted_at is null and ${W} and t.created_at >= ${per.start} and t.created_at < ${per.end}`.execute(this.db)).rows[0];
+    const sub = (await sql<{ status: string }>`select status from tenant_ai_subscriptions where tenant_id = ${T} and package_code = ${VOICE_TRANSCRIPTION_PACKAGE} limit 1`.execute(this.db)).rows[0];
+    const st = sub ? String(sub.status) : null;
+    const billing = !st ? 'not_subscribed' : st === 'active' || st === 'past_due' ? 'billable' : st === 'trialing' ? 'trial' : 'not_billable';
+    return { from: per.from, to: per.to, timeZone: per.tz, transcribedCalls: N(u?.calls), transcribedMinutes: Math.round(N(u?.seconds) / 6) / 10,
+      aiSummaries: N(u?.ai), fallbackSummaries: N(u?.fallback), failedJobs: N(u?.failed), retries: null, retriesRecorded: false,
+      subscription: { status: st, billing }, price: null };
   }
 
   // ── Search and Call History ────────────────────────────────────────────────────────────────────────────────

@@ -211,6 +211,30 @@ describe('Call details overlay', () => {
   });
 });
 
+describe('Extras VCH-08 — usage this month from real records, no invented price', () => {
+  it('transcribed calls + minutes, AI vs fallback summaries, failed jobs and the package billing status; retries are "not recorded"; never a price', async () => {
+    const u0: any = (await vc.summary(ctx()) as any).usage;
+    expect(u0).toMatchObject({ timeZone: 'UTC', retries: null, retriesRecorded: false, price: null, subscription: { status: null, billing: 'not_subscribed' } });
+    const A1 = await call({ hoursAgo: 0, lines: ['hello'] });
+    await q(`update call_transcripts set duration_seconds = 90, created_at = now() where id = $1`, [A1]);
+    await q(`update call_transcript_intelligence set detailed_source = 'ai' where transcript_id = $1`, [A1]);
+    const F1 = await call({ hoursAgo: 0, status: 'provider_error' });
+    await q(`update call_transcripts set created_at = now() where id = $1`, [F1]);
+    await q(`insert into tenant_ai_subscriptions (tenant_id, package_code, status) values ($1, 'ai_voice_transcription', 'trialing')`, [T]);
+    const u1: any = (await vc.summary(ctx()) as any).usage;
+    expect(u1.transcribedCalls - u0.transcribedCalls).toBe(1);
+    expect(Math.round((u1.transcribedMinutes - u0.transcribedMinutes) * 10) / 10).toBe(1.5);
+    expect(u1.aiSummaries - u0.aiSummaries).toBe(1);
+    expect(u1.failedJobs - u0.failedJobs).toBe(1);
+    expect(u1.subscription).toEqual({ status: 'trialing', billing: 'trial' });
+    expect(u1.from.slice(8)).toBe('01');
+    // another salon's records never count
+    const X1 = await call({ t: X, b: BX, hoursAgo: 0, lines: ['x'], cust: CX });
+    await q(`update call_transcripts set duration_seconds = 600 where id = $1`, [X1]);
+    expect(((await vc.summary(ctx()) as any).usage).transcribedMinutes).toBe(u1.transcribedMinutes);
+  });
+});
+
 describe('Check Voice Transcription System', () => {
   const byKey = (h: any) => Object.fromEntries(h.checks.map((c: any) => [c.key, c]));
   it('HL-01 healthy enough: calls arriving, redaction done, nothing searchable leaks; no provider key → warning; read-only; reused within 30 s', async () => {
