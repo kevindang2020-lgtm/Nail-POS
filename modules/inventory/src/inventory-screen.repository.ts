@@ -216,6 +216,10 @@ export class InventoryScreenRepository extends StockAlertsRepository {
     const audit = (await sql<any>`SELECT a.id, a.action_type, a.created_at, a.metadata_json, ${nameOf('au')} AS actor
       FROM audit_logs a LEFT JOIN users au ON au.id = a.user_id
       WHERE a.tenant_id = ${ctx.tenantId} AND a.entity_type = 'inventory' AND a.entity_id = ${productId} ORDER BY a.created_at DESC, a.id DESC LIMIT 12`.execute(this.db)).rows;
+    const priceRows = hide ? [] : (await sql<any>`SELECT a.id, a.created_at, a.metadata_json, ${nameOf('au')} AS actor
+      FROM audit_logs a LEFT JOIN users au ON au.id = a.user_id
+      WHERE a.tenant_id = ${ctx.tenantId} AND a.entity_type = 'inventory' AND a.entity_id = ${productId} AND a.action_type = 'inventory_product_updated'
+        AND a.metadata_json ? 'price' ORDER BY a.created_at DESC, a.id DESC LIMIT 20`.execute(this.db)).rows;
     const out = this.productOut(ctx, row);
     return {
       product: { ...out, productLine: row.product_line ?? null, colorFamily: row.color_family ?? null, size: row.size_value == null ? null : `${Number(row.size_value)} ${row.size_unit ?? ''}`.trim(),
@@ -233,7 +237,9 @@ export class InventoryScreenRepository extends StockAlertsRepository {
         leadTimeDays: v.lead_time_days == null ? null : N(v.lead_time_days), preferred: !!v.is_preferred || !!v.is_product_preferred, lastOrderedAt: isoOf(v.last_ordered_at) })),
       purchaseOrders: orders.map((o: any) => ({ id: String(o.id), poNumber: o.po_number, status: o.status, expectedDate: o.expected_date ?? null, createdAt: isoOf(o.created_at),
         ordered: N(o.quantity_ordered), received: N(o.quantity_received), unitCostCents: hide ? null : N(o.unit_cost_cents), vendor: o.vendor_name ?? null })),
-      audit: audit.map((a: any) => ({ id: String(a.id), action: a.action_type, at: isoOf(a.created_at), actor: a.actor ?? null, meta: a.metadata_json ?? null })),
+      audit: audit.map((a: any) => ({ id: String(a.id), action: a.action_type, at: isoOf(a.created_at), actor: a.actor ?? null, meta: hide ? withoutPrice(a.metadata_json) : a.metadata_json ?? null })),
+      // Products backlog · 11: every audited cost / retail change, newest first, with who, when and why — none for a viewer who can't see prices
+      priceHistory: hide ? [] : priceRows.map((a: any) => priceChangeOut(a)),
       timeZone: p.tz, today: p.today,
     };
   }
@@ -412,4 +418,22 @@ export class InventoryScreenRepository extends StockAlertsRepository {
       createdAt: isoOf(r.created_at), quantity: r.reported_quantity == null ? null : N(r.reported_quantity), remainingPercent: r.estimated_remaining_percent == null ? null : N(r.estimated_remaining_percent), technician: r.technician ?? null,
     })) };
   }
+}
+
+/** Products backlog · 11: an audited price change as the Pricing tab shows it (integer cents; null = no price set) */
+function priceChangeOut(a: { id: unknown; created_at: unknown; metadata_json: any; actor?: string | null }) {
+  const m = a.metadata_json ?? {}; const p = m.price ?? {};
+  const c = (v: unknown) => (v == null ? null : N(v));
+  return {
+    id: String(a.id), at: isoOf(a.created_at), actor: a.actor ?? null, reason: typeof m.priceReason === 'string' && m.priceReason ? m.priceReason : null,
+    retail: 'retailAfter' in p ? { before: c(p.retailBefore), after: c(p.retailAfter) } : null,
+    cost: 'costAfter' in p ? { before: c(p.costBefore), after: c(p.costAfter) } : null,
+  };
+}
+/** a price-change audit row's metadata without the prices, for a viewer who may not see them */
+function withoutPrice(meta: any) {
+  if (!meta || typeof meta !== 'object') return meta ?? null;
+  const rest: Record<string, unknown> = { ...meta };
+  delete rest.price; delete rest.priceReason;
+  return rest;
 }

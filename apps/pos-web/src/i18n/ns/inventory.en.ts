@@ -457,4 +457,12 @@ export const INVENTORY_EN = {
   'sup.viewOrder': 'View order',
   'inv.col.count': 'Bottles',
   'inv.oneOfGroup': 'Applies to one bottle of this group',
+  'inv.price.history': 'Price history',
+  'inv.price.none': 'No price changes recorded yet.',
+  'inv.price.retailChange': 'Retail {v}',
+  'inv.price.costChange': 'Cost {v}',
+  'inv.price.why': 'why: {r}',
+  'inv.price.receiptsKeep': 'Past receipts keep the price charged at the time of sale — changing a price never rewrites them.',
+  'inv.price.reasonLabel': 'Why did the price change? (optional)',
+  'inv.price.reasonPh': 'e.g. supplier raised cost',
 };

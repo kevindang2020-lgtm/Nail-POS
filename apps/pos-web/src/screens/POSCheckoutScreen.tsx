@@ -68,6 +68,7 @@ type CheckoutState = {
 const money = (c?: number) => '$' + ((c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 import { TipKeypad, parseDollarsToCents, useEventCallback } from '@aipowersalon/ui';
 import { SplitPreviewBox } from './checkout/SplitPreviewBox';
+import { GiftReadinessBox } from './checkout/GiftReadinessBox';   // Gift Cards · 03 Checkout Redemption Readiness (read-only preview)
 
 // The ONE shared exact parser (no float money math). Invalid input keeps the old lenient behavior: 0.
 const dollarsToCents = (s: string) => parseDollarsToCents(s) ?? 0;
@@ -819,6 +820,7 @@ export function POSCheckoutScreen() {
                         <label className="text-xs text-[var(--muted)] font-bold">{tx('pos.gift_card_code')}</label>
                         <input
                           aria-label={tx('pos.gift_card_code')}
+                          autoComplete="off" spellCheck={false} /* GIFT CARDS · 06: a redeemable code is never offered back by browser autocomplete */
                           value={giftCode}
                           onChange={(e) => setGiftCode(e.target.value)}
                           placeholder={tx('pos.enter_code')}
@@ -826,11 +828,13 @@ export function POSCheckoutScreen() {
                         />
                         <input
                           aria-label={tx('pos.gift_card_pin')}
+                          type="password" inputMode="numeric" autoComplete="off"
                           value={giftPin}
                           onChange={(e) => setGiftPin(e.target.value)}
                           placeholder="PIN"
                           className="w-20 border border-[var(--line)] rounded-lg p-1.5 text-xs font-mono"
                         />
+                        <GiftReadinessBox code={giftCode} ticketId={selId} dueCents={detail.balanceCents ?? Math.max(0, (detail.totals.totalDueCents || 0) - (detail.paidCents || 0))} offline={isOffline} phoneClaim={!!mobileClaim} giftEnabled={s?.paymentSettings?.giftCardEnabled} />
                       </div>
                     ) : null}
                   </div>

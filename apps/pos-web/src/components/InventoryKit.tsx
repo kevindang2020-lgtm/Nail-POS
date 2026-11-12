@@ -67,7 +67,7 @@ export function ProductDetailsDialog({ productId, onClose, onChanged, can, onEdi
         </div>
         {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="pd-note"><span>{note.text}</span></div> : null}
         {tab === 'overview' ? <Overview d={d.data} can={can} busy={busy} onRecount={() => act(() => posInventoryScreenApi.recountProduct(p.id), tx('inv.recounted'))} /> : null}
-        {tab === 'pricing' ? <Pricing p={p} /> : null}
+        {tab === 'pricing' ? <Pricing p={p} history={d.data.priceHistory ?? []} /> : null}
         {tab === 'inventory' ? <Bottles d={d.data} can={can} onChanged={() => { setTick((t) => t + 1); onChanged(); }} /> : null}
         {tab === 'suppliers' ? <Suppliers d={d.data} /> : null}
         {tab === 'usage' ? <Usage productId={productId} unit={p.unit} canAdjust={can('inventory.stock.adjust')} onChanged={onChanged} /> : null}
@@ -101,7 +101,22 @@ function Overview({ d, can, busy, onRecount }: { d: any; can: (k: string) => boo
   </>;
 }
 
-function Pricing({ p }: { p: any }) {
+/** Products backlog · 11: one audited cost / retail change (integer cents; null before = no price was set) */
+type PriceChangeRow = { id: string; at: string | null; actor: string | null; reason: string | null; retail: { before: number | null; after: number | null } | null; cost: { before: number | null; after: number | null } | null };
+function PriceHistory({ rows }: { rows: PriceChangeRow[] }) {
+  const ba = (x: { before: number | null; after: number | null }) => `${money(x.before)} → ${money(x.after)}`;
+  return <div className="wide" data-testid="pd-price-history">
+    <h3 className="fk-h3">{tx('inv.price.history')}</h3>
+    {rows.length === 0 ? <div className="fk-hint">{tx('inv.price.none')}</div> :
+      <ul className="inv-audit">{rows.map((r) => <li key={r.id} data-testid="price-change">
+        <b>{[r.retail ? tx('inv.price.retailChange', { v: ba(r.retail) }) : null, r.cost ? tx('inv.price.costChange', { v: ba(r.cost) }) : null].filter(Boolean).join(' · ')}</b>
+        <span className="fk-li-s">{when(r.at)} · {r.actor ?? tx('inv.system')}{r.reason ? ` · ${tx('inv.price.why', { r: r.reason })}` : ''}</span>
+      </li>)}</ul>}
+    <div className="fk-hint" data-testid="pd-price-receipts">{tx('inv.price.receiptsKeep')}</div>
+  </div>;
+}
+
+function Pricing({ p, history }: { p: any; history: PriceChangeRow[] }) {
   return <dl className="inv-dl" data-testid="pd-pricing">
     <Field k={tx('inv.f.cost')} v={money(p.costCents)} /><Field k={tx('inv.f.retail')} v={money(p.retailCents)} />
     <Field k={tx('inv.f.margin')} v={p.marginCents == null ? '—' : money(p.marginCents)} /><Field k={tx('inv.f.retailItem')} v={p.isRetail ? tx('inv.yes') : tx('inv.no')} />
@@ -109,6 +124,7 @@ function Pricing({ p }: { p: any }) {
     <Field k={tx('inv.f.leadTime')} v={p.leadTimeDays == null ? '—' : tx('inv.days', { n: fmtNumber(p.leadTimeDays) })} />
     <div className="wide"><dt>{tx('inv.f.rules')}</dt><dd>{tx('inv.rulesText', { r: fmtNumber(p.thresholds.reorderLevel), c: fmtNumber(p.thresholds.criticalLevel), q: fmtNumber(p.reorderQuantity) })}
       {p.thresholds.reorderOverride != null || p.thresholds.criticalOverride != null ? <span className="fk-li-s">{tx('inv.overrideNote')}</span> : null}</dd></div>
+    <PriceHistory rows={history} />
   </dl>;
 }
 
@@ -218,6 +234,9 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
     reorderOv: product?.thresholds?.reorderOverride != null ? String(product.thresholds.reorderOverride) : '', criticalOv: product?.thresholds?.criticalOverride != null ? String(product.thresholds.criticalOverride) : '',
   }));
   const set = (k: keyof typeof f) => (v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
+  // Products backlog · 11: an edit that changes the cost or retail price may say why — it goes into the price history
+  const [priceReason, setPriceReason] = useState('');
+  const priceChanged = edit && (centsFromText(f.cost) !== (product?.costCents ?? null) || centsFromText(f.retail) !== (product?.retailCents ?? null));
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const int = (s: string) => (s.trim() === '' ? null : /^\d{1,6}$/.test(s.trim()) ? Number(s.trim()) : NaN);
   const problems = useMemo(() => {
@@ -243,6 +262,7 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
       let id = product?.id as string | undefined;
       // concurrent-edit protection: the save carries the updatedAt this form opened with; a product changed elsewhere since
       // then is refused by the server (409 PRODUCT_CHANGED) and the message asks to reload instead of overwriting it
+      if (edit && priceChanged && priceReason.trim()) body.priceChangeReason = priceReason.trim();
       if (edit) await inventoryApi.updateProduct(product.id, product.updatedAt ? { ...body, expectedUpdatedAt: product.updatedAt } : body);
       else id = (await inventoryApi.createProduct(body)).id;
       if (edit && (f.reorderOv !== (product.thresholds?.reorderOverride == null ? '' : String(product.thresholds.reorderOverride)) || f.criticalOv !== (product.thresholds?.criticalOverride == null ? '' : String(product.thresholds.criticalOverride))))
@@ -272,6 +292,7 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
         </section>
         <section><h3 className="fk-h3">{tx('inv.form.pricing')}</h3>
           <div className="inv-row2">{input('cost', tx('pos.cost_3'), { mode: 'decimal', ph: '4.50', testId: 'pf-cost' })}{input('retail', tx('pos.retail_2'), { mode: 'decimal', testId: 'pf-retail' })}</div>
+          {priceChanged ? <label className="fk-field wide"><span>{tx('inv.price.reasonLabel')}</span><input value={priceReason} maxLength={300} onChange={(e) => setPriceReason(e.target.value)} placeholder={tx('inv.price.reasonPh')} data-testid="pf-price-reason" /></label> : null}
           <label className="sa-check"><input type="checkbox" checked={f.isRetail} onChange={(e) => set('isRetail')(e.target.checked)} />{tx('inv.form.isRetail')}</label>
           <h3 className="fk-h3">{tx('inv.form.stock')}</h3>
           <div className="inv-row3">{input('reorder', tx('inv.form.reorder'), { mode: 'numeric', testId: 'pf-reorder' })}{input('critical', tx('inv.form.critical'), { mode: 'numeric', ph: tx('pos.auto_reorder') })}{input('reorderQty', tx('inv.form.reorderQty'), { mode: 'numeric' })}</div>

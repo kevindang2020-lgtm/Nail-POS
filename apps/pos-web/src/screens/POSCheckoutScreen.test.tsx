@@ -295,6 +295,9 @@ describe('POSCheckoutScreen — payment method selector + inputs (were unreachab
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.match(/\/tickets\/t1$/))).toBe(true));
     fireEvent.click((await screen.findAllByText('Gift Card')).find((el) => el.tagName === 'BUTTON')!);
     const code = await screen.findByLabelText('Gift card code');
+    expect(code).toHaveAttribute('autocomplete', 'off');   // GIFT CARDS · 06: no redeemable secret in browser autocomplete
+    expect(screen.getByLabelText('Gift card PIN')).toHaveAttribute('type', 'password');
+    expect(screen.getByTestId('gift-readiness')).toBeInTheDocument();   // Gift Cards · 03: the readiness check sits with the code
     fireEvent.change(code, { target: { value: 'GC-123' } });
     fireEvent.click(screen.getByText('Complete Checkout'));
     await waitFor(() => {

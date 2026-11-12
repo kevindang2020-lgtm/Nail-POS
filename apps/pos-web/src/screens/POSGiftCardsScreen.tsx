@@ -377,6 +377,27 @@ function BalanceDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (id: 
   );
 }
 
+/** Gift Cards · 05 Safe Issuance Preview: before Issue writes anything, staff see exactly what will be created — the
+ *  denomination, who pays and how it is funded (payment-first: the card stays pending until Checkout takes the money),
+ *  where it can be redeemed (the salon's cross-location setting), who receives it, and what cannot be undone once paid.
+ *  Read-only: it only restates the form and the salon's settings. */
+function IssueReview({ cents, purchaser, delivery, numberLast4, recipient, crossBranch }: { cents: number; purchaser: string; delivery: 'digital' | 'physical'; numberLast4: string | null; recipient: string | null; crossBranch: boolean }) {
+  const rows: [string, string, string][] = [
+    ['amount', tx('gc.review.amount'), fmtMoney(cents)],
+    ['funding', tx('gc.review.funding'), tx('gc.review.fundingValue', { purchaser })],
+    ['card', tx('gc.review.card'), delivery === 'physical' ? tx('gc.review.physical', { last4: numberLast4 || '—' }) : tx('gc.review.digital')],
+    ['recipient', tx('gc.review.recipient'), recipient || tx('gc.review.recipientSelf', { purchaser })],
+    ['where', tx('gc.review.where'), crossBranch ? tx('gc.review.allLocations') : tx('gc.review.thisLocation')],
+  ];
+  return (
+    <div className="fk-preview" data-testid="issue-review">
+      <b>{tx('gc.review.title')}</b>
+      {rows.map(([id, l, v]) => <div key={id} className="gc-review-row" data-testid={'issue-review-' + id}><span className="fk-li-s">{l}</span> <b>{v}</b></div>)}
+      <div className="fk-hint" data-testid="issue-review-impact">{tx('gc.review.impact')}</div>
+    </div>
+  );
+}
+
 type CustomerHit = { customerId: string; fullName: string; phone?: string };
 /** Issue: payment first. The card is created PENDING on its own ticket and activates only when Checkout takes the payment.
  *  One idempotency key per dialog — a double tap, a retry or a lost answer returns the same ticket and card. */
@@ -448,7 +469,8 @@ function IssueDialog({ onClose, onIssued }: { onClose: () => void; onIssued: (r:
           <label className="fk-field"><span>{tx('gc.f.rEmail')}</span><input inputMode="email" value={rEmail} onChange={(e) => setREmail(e.target.value)} maxLength={254} /></label>
           <label className="fk-field"><span>{tx('gc.f.rMsg')}</span><input value={rMsg} onChange={(e) => setRMsg(e.target.value)} maxLength={500} /></label>
         </div> : null}
-        <div className="fk-hint">{tx('gc.paymentFirst')}</div>
+        {ok && cust && cents != null ? <IssueReview cents={cents} purchaser={cust.fullName} delivery={delivery} numberLast4={delivery === 'physical' ? num.replace(/\s/g, '').slice(-4) : null} recipient={gift ? rName.trim() : null}
+          crossBranch={s.crossBranchRedemption !== false} /> : <div className="fk-hint">{tx('gc.paymentFirst')}</div>}
       </>}
       {err ? <div className="fk-err" role="alert" data-testid="issue-error">{err}</div> : null}
     </FitDialog>

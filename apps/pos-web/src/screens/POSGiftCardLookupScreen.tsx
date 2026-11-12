@@ -73,7 +73,7 @@ export function POSGiftCardLookupScreen() {
       <section style={sectionStyle}>
         <label htmlFor="gc-lookup" style={{ fontWeight: 700, display: 'block', marginBottom: 8 }}>{t('pos.gift_card_number_or_code')}</label>
         <div className="flex flex-col sm:flex-row gap-2">
-          <input id="gc-lookup" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookup(); }} placeholder="4827 1936 5502 8411" aria-label={t('pos.gift_card_number_or_code')} className="w-full sm:flex-1" style={{ ...inputStyle, fontFamily: 'ui-monospace, monospace' }} />
+          <input id="gc-lookup" autoComplete="off" spellCheck={false} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookup(); }} placeholder="4827 1936 5502 8411" aria-label={t('pos.gift_card_number_or_code')} className="w-full sm:flex-1" style={{ ...inputStyle, fontFamily: 'ui-monospace, monospace' }} />
           <div className="flex gap-2">
             {supported && <button onClick={() => setScanning(true)} className="flex-1 sm:flex-none" style={{ border: `1px solid ${LINE}`, background: '#fff', color: GOLD, borderRadius: 8, padding: '10px 14px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{t('pos.scan')}</button>}
             <button disabled={!canLook} onClick={() => lookup()} className="flex-1 sm:flex-none" style={{ border: 'none', background: canLook ? GOLD : LINE, color: canLook ? '#fff' : MUTED, borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 700, cursor: canLook ? 'pointer' : 'default' }}>{busy ? t('pos.looking') : t('pos.look_up')}</button>
@@ -113,6 +113,12 @@ export function POSGiftCardLookupScreen() {
           {['frozen', 'lost_stolen', 'suspended'].includes(result.status || '') && !replaced && (
             <div style={{ marginTop: 12, borderTop: `1px solid ${LINE}`, paddingTop: 12 }}>
               <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 8px' }}>{t('pos.reported_lost_or_stolen_issue_a_1o9u')}</p>
+              {/* Gift Cards · 05 Safe Replacement Preview: what the replacement will do, before the confirm — read-only */}
+              <div data-testid="replace-preview" style={{ fontSize: 12.5, background: '#FBF6EC', borderRadius: 8, padding: '8px 10px', margin: '0 0 8px' }}>
+                <div>{t('gc.replacePreview.moves', { amount: result.balanceCents == null ? '—' : money(result.balanceCents), from: result.cardNumberMasked ?? result.reference ?? '—' })}</div>
+                <div>{t('gc.replacePreview.newCard')}</div>
+                <div style={{ fontWeight: 700, color: '#a12d2d' }}>{t('gc.replacePreview.irreversible')}</div>
+              </div>
               <button disabled={replaceBusy} onClick={doReplace} style={{ border: 'none', background: replaceBusy ? LINE : GOLD, color: replaceBusy ? MUTED : '#fff', borderRadius: 8, padding: '9px 16px', fontSize: 13.5, fontWeight: 700, cursor: replaceBusy ? 'default' : 'pointer' }}>{replaceBusy ? t('pos.replacing') : t('pos.replace_this_card')}</button>
               {replaceErr && <div style={{ color: '#a12d2d', fontSize: 13, marginTop: 8 }}>{replaceErr}</div>}
             </div>

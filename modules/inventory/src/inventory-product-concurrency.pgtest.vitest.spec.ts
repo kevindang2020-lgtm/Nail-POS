@@ -4,15 +4,17 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { InventoryService } from './inventory.service';
+import { InventoryScreenRepository } from './inventory-screen.repository';
 
 const T = 'a71c0000-0000-4000-8000-000000000001', B = 'a71c0000-0000-4000-8000-0000000000b1', UM = 'a71c0000-0000-4000-8000-0000000000e9';
 const manager: any = { tenantId: T, branchId: B, userId: UM, role: 'OWNER', permissions: ['*', 'inventory.view', 'inventory.update', 'inventory.cost.view'] };
-let pg: any; let inv: InventoryService;
+let pg: any; let inv: InventoryService; let repo: InventoryScreenRepository;
+const techView: any = { tenantId: T, branchId: B, userId: UM, role: 'TECHNICIAN', permissions: ['inventory.view_limited'] };
 const q = (s: string, p: any[] = []) => pg.query(s, p).then((r: any) => r.rows as any[]);
 
 beforeAll(async () => {
   pg = await migratedPglite();
-  inv = new InventoryService(kyselyFor(pg) as any);
+  inv = new InventoryService(kyselyFor(pg) as any); repo = new InventoryScreenRepository(kyselyFor(pg) as any);
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code) values ($1,'Cc Co','Cc Salon','cc-co','CCCO')`, [T]);
   await q(`insert into branches (id, tenant_id, name, timezone) values ($1,$2,'Main','America/New_York')`, [B, T]);
   await q(`insert into users (id, tenant_id, role, email, full_name) values ($1,$2,'OWNER','o@cc.test','Olive Owner')`, [UM, T]);
@@ -33,5 +35,30 @@ describe('product edit — concurrent-edit protection', () => {
     const { id } = await inv.createProduct(manager, { name: 'Polish B', sku: 'CC-2' });
     await inv.updateProduct(manager, id, { name: 'Polish B1' });
     expect((await q(`select name from inventory_products where id = $1`, [id]))[0].name).toBe('Polish B1');
+  });
+});
+
+describe('Products backlog · 11 — readable price history', () => {
+  it('a retail edit is saved (retailPriceCents was silently dropped) and audited with before → after and the reason', async () => {
+    const { id } = await inv.createProduct(manager, { name: 'Polish P', sku: 'CC-P', costCents: 400, retailPriceCents: 1200 });
+    await inv.updateProduct(manager, id, { retailPriceCents: 1500, costCents: 450, priceChangeReason: 'Supplier raised cost' });
+    const [row] = await q(`select cost_cents, retail_price_cents from inventory_products where id = $1`, [id]);
+    expect([Number(row.cost_cents), Number(row.retail_price_cents)]).toEqual([450, 1500]);
+    await inv.updateProduct(manager, id, { name: 'Polish P2' });   // not a price change: no price history row
+    await inv.updateProduct(manager, id, { retailPriceCents: 1500 });   // same value: not a change either
+    await inv.updateProduct(manager, id, { retail_price_cents: 1400 });
+    const d: any = await repo.product(manager, id);
+    expect(d.priceHistory).toHaveLength(2);
+    expect(d.priceHistory[0]).toMatchObject({ retail: { before: 1500, after: 1400 }, cost: null, reason: null, actor: 'Olive Owner' });
+    expect(d.priceHistory[1]).toMatchObject({ retail: { before: 1200, after: 1500 }, cost: { before: 400, after: 450 }, reason: 'Supplier raised cost' });
+    const aud = d.audit.find((a: any) => a.meta?.priceReason);
+    expect(aud.meta.fields).toEqual(['retailPriceCents', 'costCents']);   // the reason is not a field
+  });
+  it('a viewer who cannot see prices gets no price history and no prices in the audit metadata', async () => {
+    const { id } = await inv.createProduct(manager, { name: 'Polish Q', sku: 'CC-Q', costCents: 400, retailPriceCents: 1200 });
+    await inv.updateProduct(manager, id, { retailPriceCents: 1300, priceChangeReason: 'promo end' });
+    const d: any = await repo.product(techView, id);
+    expect(d.priceHistory).toEqual([]);
+    expect(JSON.stringify(d.audit)).not.toMatch(/1300|retailAfter|promo end/);
   });
 });

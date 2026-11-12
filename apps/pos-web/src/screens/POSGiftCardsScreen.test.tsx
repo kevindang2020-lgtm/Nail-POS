@@ -130,6 +130,23 @@ describe('POSGiftCardsScreen', () => {
     // "Anna Lee" is also the purchaser in the cards table behind the dialog — pick the search hit (the last match, inside the dialog)
     await waitFor(() => expect(screen.getAllByText('Anna Lee').length).toBeGreaterThan(1));
     fireEvent.click(screen.getAllByText('Anna Lee').slice(-1)[0]);
+    // Gift Cards · 05 Safe Issuance Preview: the review restates exactly what will be written, before anything is
+    expect(gc.issue).not.toHaveBeenCalled();
+    expect(screen.getByTestId('issue-review-amount')).toHaveTextContent('$100.00');
+    expect(screen.getByTestId('issue-review-funding')).toHaveTextContent(/Paid by Anna Lee at Checkout/);
+    expect(screen.getByTestId('issue-review-card')).toHaveTextContent(/Digital/);
+    expect(screen.getByTestId('issue-review-recipient')).toHaveTextContent(/Anna Lee \(not sent as a gift\)/);
+    expect(screen.getByTestId('issue-review-where')).toHaveTextContent(/All of this salon's locations/);
+    expect(screen.getByTestId('issue-review-impact')).toHaveTextContent(/refund at Checkout or a void with a reason/);
+    fireEvent.click(screen.getByTestId('delivery-physical'));
+    expect(screen.queryByTestId('issue-review')).toBeNull();   // a physical sale needs its 16-digit number first — no review of an incomplete form
+    fireEvent.change(screen.getByTestId('issue-number'), { target: { value: '1234 5678 1234 9876' } });
+    expect(screen.getByTestId('issue-review-card')).toHaveTextContent(/ending 9876/);
+    fireEvent.click(screen.getByTestId('is-gift'));
+    fireEvent.change(screen.getByTestId('recipient-name'), { target: { value: 'Mai Tran' } });
+    expect(screen.getByTestId('issue-review-recipient')).toHaveTextContent('Mai Tran');
+    fireEvent.click(screen.getByTestId('is-gift'));
+    fireEvent.click(screen.getByTestId('delivery-digital'));
     fireEvent.click(screen.getByTestId('issue-submit')); fireEvent.click(screen.getByTestId('issue-submit'));
     await waitFor(() => expect(gc.issue).toHaveBeenCalledTimes(1));
     expect(gc.issue.mock.calls[0][0]).toMatchObject({ customerId: 'c1', amountCents: 10000, delivery: 'digital' });

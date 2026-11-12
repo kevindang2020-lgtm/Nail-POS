@@ -12,6 +12,12 @@ import { POSGiftCardLookupScreen } from './POSGiftCardLookupScreen';
 beforeEach(() => { lookupMock.mockReset(); replaceMock.mockReset(); });
 
 describe('POSGiftCardLookupScreen', () => {
+  it('GIFT CARDS · 06: the manual lookup field never offers a redeemable code back through browser autocomplete', () => {
+    render(<POSGiftCardLookupScreen />);
+    const input = screen.getByLabelText('Gift card number or code');
+    expect(input).toHaveAttribute('autocomplete', 'off');
+    expect(input).toHaveAttribute('spellcheck', 'false');
+  });
   it('scanning a card fills the number and looks it up', async () => {
     lookupMock.mockResolvedValue({ found: true, reference: 'GC-****-8411', cardNumberMasked: '•••• •••• •••• 8411', balanceCents: 5000, status: 'active', redeemableHere: true });
     render(<POSGiftCardLookupScreen />);
@@ -47,6 +53,10 @@ describe('POSGiftCardLookupScreen', () => {
     render(<POSGiftCardLookupScreen />);
     fireEvent.change(screen.getByLabelText('Gift card number or code'), { target: { value: '4827 1936 5502 8411' } });
     fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
+    // Gift Cards · 05: the replacement preview names the balance that moves and that the old card is retired — before any write
+    expect(await screen.findByTestId('replace-preview')).toHaveTextContent(/Balance that moves: \$50\.00, from •••• •••• •••• 8411/);
+    expect(screen.getByTestId('replace-preview')).toHaveTextContent(/retired permanently/);
+    expect(replaceMock).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole('button', { name: /Replace this card/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Issue replacement' }));
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('4827 1936 5502 8411'));
