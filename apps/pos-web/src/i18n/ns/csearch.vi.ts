@@ -528,4 +528,12 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.changes.a.customer": "Khách hàng", // DRAFT — Kevin reviews
   "ahx.changes.a.system": "Hệ thống", // DRAFT — Kevin reviews
   "ahx.changes.a.ai": "Lễ tân AI", // DRAFT — Kevin reviews
+  "ahx.rebook.title": "Theo dõi và đặt lại lịch (chỉ xem xét)", // DRAFT — Kevin reviews
+  "ahx.rebook.next": "Đã có lịch hẹn tiếp theo: {when}", // DRAFT — Kevin reviews
+  "ahx.rebook.none": "Khách này chưa có lịch hẹn nào sắp tới.", // DRAFT — Kevin reviews
+  "ahx.rebook.loading": "Đang kiểm tra lịch hẹn sắp tới…", // DRAFT — Kevin reviews
+  "ahx.rebook.unknown": "Không kiểm tra được lịch hẹn sắp tới.", // DRAFT — Kevin reviews
+  "ahx.rebook.review": "Xem xét đặt lại lịch", // DRAFT — Kevin reviews
+  "ahx.rebook.assistant": "Trợ lý đặt lịch AI", // DRAFT — Kevin reviews
+  "ahx.rebook.note": "Mở các màn hình xem xét hiện có — không đặt lịch hay gửi tin nào từ đây.", // DRAFT — Kevin reviews
 };

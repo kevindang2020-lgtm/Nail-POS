@@ -86,4 +86,17 @@ describe('POSInventoryAlertsScreen', () => {
     perms = ['inventory.view']; mount(); await screen.findAllByTestId('alert-row');
     expect(screen.queryByTestId('record-use')).toBeNull(); expect(screen.queryByTestId('create-po')).toBeNull();
   });
+  it('Restock priority: ranks by measured demand on the server and shows the advice on each row (read-only)', async () => {
+    api.active.mockResolvedValue({ total: 2, page: 1, pageSize: 10, pages: 1, rank: 'priority', rows: [
+      row({ restock: { urgency: 'now', avgDailyUse: '0.5', daysOfCover: 4, leadTimeDays: 7, windowDays: 30, marginDays: -3 } }),
+      row({ productId: 'p2', name: 'Top Coat', severity: 'critical', onHand: 1, restock: { urgency: 'unknown', avgDailyUse: null, daysOfCover: null, leadTimeDays: null, windowDays: 30, marginDays: null } })] });
+    mount(); const rows = await screen.findAllByTestId('alert-row');
+    expect(rows[0].querySelector('[data-testid="restock"]')!.textContent).toBe('Order now 0.5/day · 4 days of cover · lead time 7 d');
+    expect(rows[1].querySelector('[data-testid="restock"]')!.textContent).toBe('Demand unknown no use in 30 days · lead time not set');
+    expect(api.active).toHaveBeenLastCalledWith(expect.not.objectContaining({ rank: 'priority' }));
+    fireEvent.click(screen.getByTestId('rank-priority'));
+    await waitFor(() => expect(api.active).toHaveBeenLastCalledWith(expect.objectContaining({ rank: 'priority', page: 1 })));
+    expect(screen.getByTestId('rank-hint').textContent).toMatch(/Advice only/);
+    expect(api.record).not.toHaveBeenCalled(); expect(api.acknowledge).not.toHaveBeenCalled();
+  });
 });

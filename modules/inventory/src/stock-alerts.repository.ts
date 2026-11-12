@@ -12,7 +12,7 @@ import type { DB } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import { liveAlertState, openAlertCount, onOrderSql } from './stock-alert-state';
 import { formatQuantity } from './product-usage-core';
-import { reorderSuggestion } from './inventory-core';
+import { reorderSuggestion, restockAdvice, compareRestock } from './inventory-core';
 import { InventoryError, type InvCtx } from './inventory.service';
 import type { InventoryLowStockCause } from '@aipowersalon/api-contracts/tenant';
 
@@ -139,7 +139,9 @@ export class StockAlertsRepository {
   }
 
   // ── Active Alerts ───────────────────────────────────────────────────────────────────────────────────────────────────
-  async activeAlerts(ctx: InvCtx, q: { search?: string; severity?: string; showAcknowledged?: string }, pg: Paging) {
+  /** Restock Priority window: effective use in the last 30 days (a rolling window of elapsed time, not a salon date). */
+  static readonly RESTOCK_WINDOW_DAYS = 30;
+  async activeAlerts(ctx: InvCtx, q: { search?: string; severity?: string; showAcknowledged?: string; rank?: string }, pg: Paging) {
     const b = this.branch(ctx);
     const sev = (SEVERITIES as readonly string[]).includes(String(q.severity)) ? String(q.severity) : null;
     const showAck = q.showAcknowledged === 'true' || q.showAcknowledged === '1';
@@ -152,10 +154,15 @@ export class StockAlertsRepository {
       LEFT JOIN inventory_vendors v ON v.id = la.preferred_vendor_id AND v.tenant_id = p.tenant_id
       LEFT JOIN users au ON au.id = wa.acknowledged_by_user_id
       LEFT JOIN ${this.lastUse(ctx, b)} lu ON lu.product_id = la.product_id
+      LEFT JOIN (SELECT u.product_id, sum(u.hundredths)::int AS hundredths FROM ${this.uses(ctx, b)} u
+                  WHERE u.hundredths > 0 AND u.occurred_at >= now() - make_interval(days => ${StockAlertsRepository.RESTOCK_WINDOW_DAYS}) GROUP BY u.product_id) dm ON dm.product_id = la.product_id
       WHERE (${sev}::text IS NULL OR la.severity = ${sev}) AND (${showAck}::boolean OR wa.acknowledged_at IS NULL) AND ${this.productSearch(ctx, q.search)}`;
+    const byPriority = q.rank === 'priority';
     const total = N((await sql<{ n: number }>`SELECT count(*)::int AS n ${base}`.execute(this.db)).rows[0]?.n);
     const pages = Math.max(1, Math.ceil(total / pg.pageSize)); const page = Math.min(pg.page, pages);
-    const rows = (await sql<any>`SELECT la.product_id, la.severity, la.on_hand, la.reorder_level, la.critical_level, la.reorder_quantity,
+    // priority order is computed from measured demand, so that view ranks the whole (small) live alert set, then pages it
+    const window = byPriority ? sql`LIMIT 2000` : sql`LIMIT ${pg.pageSize} OFFSET ${(page - 1) * pg.pageSize}`;
+    const rows = (await sql<any>`SELECT la.product_id, la.severity, dm.hundredths AS used_window, v.lead_time_days, la.on_hand, la.reorder_level, la.critical_level, la.reorder_quantity,
         p.name, p.sku, p.barcode, p.color_number, p.unit_type, br.name AS brand_name, c.name AS category_name, v.id AS vendor_id, v.name AS vendor_name, v.phone AS vendor_phone,
         wa.id AS alert_id, wa.created_at AS alert_since, wa.acknowledged_at, wa.acknowledged_by_user_id,
         coalesce(nullif(au.full_name, ''), nullif(trim(coalesce(au.first_name, '') || ' ' || coalesce(au.last_name, '')), ''), au.email) AS acknowledged_by_name,
@@ -167,15 +174,23 @@ export class StockAlertsRepository {
         lu.technician_id AS last_tech_id, lu.technician_name AS last_tech_name, lu.occurred_at AS last_used_at, lu.hundredths AS last_qty, lu.source AS last_source
       ${base}
       ORDER BY wa.created_at DESC NULLS LAST, CASE la.severity WHEN 'out_of_stock' THEN 0 WHEN 'critical' THEN 1 ELSE 2 END, p.name, la.product_id
-      LIMIT ${pg.pageSize} OFFSET ${(page - 1) * pg.pageSize}`.execute(this.db)).rows;
+      ${window}`.execute(this.db)).rows;
+    const mapped = rows.map((r: any) => {
+      const suggestedReorder = reorderSuggestion(N(r.on_hand), N(r.reorder_level), N(r.reorder_quantity), N(r.on_order));
+      return { r, suggestedReorder, name: String(r.name), restock: restockAdvice({ onHand: N(r.on_hand), onOrder: N(r.on_order), suggestedReorder, usedHundredths: N(r.used_window),
+        leadTimeDays: r.lead_time_days == null ? null : N(r.lead_time_days), windowDays: StockAlertsRepository.RESTOCK_WINDOW_DAYS }) };
+    });
+    const ordered = byPriority ? [...mapped].sort(compareRestock).slice((page - 1) * pg.pageSize, page * pg.pageSize) : mapped;
     return {
-      total, page, pageSize: pg.pageSize, pages,
-      rows: rows.map((r: any) => ({
+      total, page, pageSize: pg.pageSize, pages, rank: byPriority ? 'priority' : 'newest',
+      rows: ordered.map(({ r, suggestedReorder, restock }) => ({
         productId: String(r.product_id), alertId: r.alert_id ?? null, name: r.name, sku: r.sku ?? null, barcode: r.barcode ?? null, colorNumber: r.color_number ?? null, unit: r.unit_type || 'unit',
         brand: r.brand_name ?? null, category: r.category_name ?? null, vendorId: r.vendor_id ?? null, vendor: r.vendor_name ?? null, vendorPhone: r.vendor_phone ?? null,
         severity: r.severity, onHand: N(r.on_hand), reorderLevel: N(r.reorder_level), criticalLevel: N(r.critical_level),
-        suggestedReorder: reorderSuggestion(N(r.on_hand), N(r.reorder_level), N(r.reorder_quantity), N(r.on_order)), onOrder: N(r.on_order), openPurchaseOrders: r.open_pos ?? null, draftPurchaseOrders: r.draft_pos ?? null,
+        suggestedReorder, onOrder: N(r.on_order), openPurchaseOrders: r.open_pos ?? null, draftPurchaseOrders: r.draft_pos ?? null,
         since: iso(r.alert_since), acknowledgedAt: iso(r.acknowledged_at), acknowledgedBy: r.acknowledged_by_name ?? null,
+        // Smart Restock Priority (Extras · Stock Alerts 08): measured demand vs lead time — advice only, nothing is ordered
+        restock: { ...restock, avgDailyUse: restock.avgDailyHundredths == null ? null : formatQuantity(restock.avgDailyHundredths) },
         ...this.lastUsedOut(r),
       })),
     };

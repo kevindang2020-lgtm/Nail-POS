@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 const m = vi.hoisted(() => ({ summary: vi.fn(), list: vi.fn(), options: vi.fn(), check: vi.fn(), appts: vi.fn(), quick: vi.fn() }));
 vi.mock('../api/posAppointmentHistoryApi', () => ({ posAppointmentHistoryApi: { summary: m.summary, list: m.list, options: m.options, check: m.check } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: m.quick, appointments: m.appts } }));
-import { POSAppointmentHistoryScreen } from './POSAppointmentHistoryScreen';
+import { POSAppointmentHistoryScreen, nextFutureAppointment } from './POSAppointmentHistoryScreen';
 
 const row = { id: 'p1', date: '2026-11-12', startTime: '10:00', endTime: '11:00', durationMinutes: 60, customerId: 'c1', customer: 'Ana Rivera', phone: '555-1234',
   services: 'Gel Manicure, Pedicure', technician: 'Ben', anyTechnician: false, branch: 'Main', status: 'booked', source: 'online', rescheduled: 2,
@@ -78,5 +78,27 @@ describe('Appointment History workspace', () => {
     fireEvent.click(await screen.findByTestId('ahx-view'));
     await screen.findByTestId('ahx-detail');
     expect(screen.queryByTestId('ahx-changes-none')).toBeNull(); expect(screen.queryByTestId('ahx-changes')).toBeNull();
+  });
+  it('Extras AH-03: a completed appointment shows whether a future one is booked and review-only rebooking shortcuts', async () => {
+    m.list.mockResolvedValue(listOf([{ ...row, status: 'completed', completedAt: '2026-11-12T11:00:00Z' }]));
+    const future = new Date(Date.now() + 5 * 86400_000).toISOString();
+    m.appts.mockResolvedValue([{ appointmentId: 'a0', startsAt: '2026-07-01T15:00:00Z', status: 'completed' }, { appointmentId: 'a1', startsAt: future, status: 'booked' },
+      { appointmentId: 'a2', startsAt: new Date(Date.now() + 2 * 86400_000).toISOString(), status: 'cancelled' }]);
+    render(<POSAppointmentHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('ahx-view'));
+    const r = await screen.findByTestId('ahx-rebook');
+    await waitFor(() => expect(within(r).getByTestId('ahx-rebook-next').textContent).toMatch(/Next appointment already booked/));
+    expect(within(r).getByTestId('ahx-rebook-review').getAttribute('href')).toBe('/tenant/ai/customer-profile/rebooking?customerId=c1');
+    expect(within(r).getByTestId('ahx-rebook-assistant').getAttribute('href')).toBe('/tenant/ai/booking');
+    expect(m.appts).toHaveBeenCalledWith('c1');
+  });
+  it('Extras AH-03: a booked (not completed) appointment has no rebooking shortcut; nextFutureAppointment ignores past, cancelled and completed', async () => {
+    render(<POSAppointmentHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('ahx-view'));
+    await screen.findByTestId('ahx-detail');
+    expect(screen.queryByTestId('ahx-rebook')).toBeNull();
+    const now = Date.parse('2026-11-12T12:00:00Z');
+    expect(nextFutureAppointment([{ startsAt: '2026-11-20T15:00:00Z', status: 'confirmed' }, { startsAt: '2026-11-15T15:00:00Z', status: 'booked' }, { startsAt: '2026-11-13T15:00:00Z', status: 'cancelled' }, { startsAt: '2026-11-01T15:00:00Z', status: 'booked' }], now)).toBe('2026-11-15T15:00:00.000Z');
+    expect(nextFutureAppointment([{ startsAt: '2026-11-13T15:00:00Z', status: 'completed' }], now)).toBeNull();
   });
 });

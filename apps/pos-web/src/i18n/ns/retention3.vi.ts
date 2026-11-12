@@ -101,4 +101,6 @@ export const RETENTION3_VI = {
   'rt5.template': 'Bắt đầu từ mẫu tin',
   'rt5.templateNone': '— Tự viết —',
   'rt5.placeholders': 'Hãy thay các chỗ trống trong dấu ngoặc nhọn bằng chữ thật — chiến dịch gửi cùng một nội dung cho mọi khách.',
+  'rt5.audit': 'Nhật ký kiểm tra', // DRAFT — Kevin reviews
+  'rt5.auditHint': 'Ai đã xác nhận, hủy, xuất dữ liệu hoặc đổi cài đặt giữ chân khách — mở nhật ký hoạt động đã lọc theo mục này', // DRAFT — Kevin reviews
 };

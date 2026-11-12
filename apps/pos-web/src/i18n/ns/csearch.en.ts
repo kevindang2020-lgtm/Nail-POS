@@ -528,4 +528,12 @@ export const CSEARCH_EN: Record<string, string> = {
   "ahx.changes.a.customer": "Customer",
   "ahx.changes.a.system": "System",
   "ahx.changes.a.ai": "AI receptionist",
+  "ahx.rebook.title": "Follow-up and rebooking (review only)",
+  "ahx.rebook.next": "Next appointment already booked: {when}",
+  "ahx.rebook.none": "No future appointment is booked for this customer.",
+  "ahx.rebook.loading": "Checking for a future appointment…",
+  "ahx.rebook.unknown": "Could not check for a future appointment.",
+  "ahx.rebook.review": "Review rebooking",
+  "ahx.rebook.assistant": "AI Booking Assistant",
+  "ahx.rebook.note": "Opens the existing review screens — nothing is booked or sent from here.",
 };

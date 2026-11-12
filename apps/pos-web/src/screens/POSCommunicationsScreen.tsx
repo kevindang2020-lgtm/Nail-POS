@@ -335,6 +335,10 @@ export function POSCommunicationsScreen() {
             <div><span>{tx('ci.perf.waiting')}</span><b>{n(k?.awaiting)}</b></div>
           </div>
           <div className="ci-small">{k?.oldestAwaitingSince ? tx('ci.perf.oldest', { t: waitText(k.oldestAwaitingSince) }) : tx('ci.perf.none')} · {tx('ci.perf.basis')}</div>
+          {sum?.callbacks && sum.callbacks.state !== 'ok' ? <div className="ci-small" role="status" data-testid="callback-warning" style={{ color: sum.callbacks.state === 'stale' ? 'var(--aps-danger)' : 'var(--aps-warn, #b26b00)' }}>
+            {tx(sum.callbacks.state === 'stale' ? 'ci.cb.stale' : 'ci.cb.delayed', { n: sum.callbacks.awaiting.toLocaleString(), m: String(sum.callbacks.waitMinutes), t: sum.callbacks.lastCallbackAt ? when(sum.callbacks.lastCallbackAt) : tx('ci.cb.never') })}
+            {sum.callbacks.state === 'stale' ? <> <button type="button" className="ci-btn" onClick={() => nav('/tenant/communications/messaging-setup')} data-testid="callback-fix">{tx('ci.cb.fix')}</button></> : null}
+          </div> : null}
         </div>
         <div className="ci-card">
           <div className="ci-card-t">{tx('pos.campaign_center')}</div>

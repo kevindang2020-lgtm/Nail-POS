@@ -33,6 +33,8 @@ export interface InboxSummary {
   conversations: { total: number; open: number; unreadThreads: number; unreadMessages: number; replied: number; missed: number; awaiting: number; oldestAwaitingSince: string | null };
   channelMix: { channel: string; count: number }[];
   sentToday: { total: number; submitted: number; delivered: number; failed: number; simulated: number };
+  /** Missing-webhook warning (Extras · SMS Inbox 12): timestamps only — waiting texts are never counted as failed */
+  callbacks?: { state: 'ok' | 'delayed' | 'stale'; awaiting: number; oldestAwaitingAt: string | null; lastCallbackAt: string | null; waitMinutes: number; lookbackDays: number };
   definitions: Record<string, string>; generatedAt: string;
 }
 export interface ThreadChange { id: string; version: number; status: string; unreadCount: number; assignedTo: string | null; assignedToName: string | null; followUpDueAt: string | null; customerId: string | null; changed: boolean }

@@ -141,6 +141,26 @@ export class BookingVerificationCenter {
     const holds: any = (await sql`select count(*)::int as live, count(*) filter (where expires_at <= now() + interval '2 minutes')::int as expiring
       from booking_holds where tenant_id = ${T} and kind = 'slot' and booking_session_id is not null
         and released_at is null and converted_appointment_id is null and expires_at > now()`.execute(this.db)).rows[0] ?? {};
+    // Verification Funnel Scorecard (Extras · Booking Phone Verification 09): one row per verification requested in the last
+    // 30 days, each step counted only from recorded evidence — a code sent (last_sent_at), a correct code (verified_at), the
+    // slot hold turned into an appointment (booking_holds.converted_appointment_id), and that appointment still standing
+    // (not cancelled / no-show). Staff overrides are shown apart: they are not a verification.
+    const f: any = (await sql`select count(*)::int as requested,
+        count(*) filter (where s.last_sent_at is not null)::int as sent,
+        count(*) filter (where s.verified_at is not null)::int as verified,
+        count(*) filter (where s.verified_at is not null and h.converted_appointment_id is not null)::int as hold_converted,
+        count(*) filter (where s.verified_at is not null and h.converted_appointment_id is not null
+                          and a.id is not null and a.status not in ('cancelled', 'no_show'))::int as confirmed,
+        count(*) filter (where s.override_at is not null)::int as overrides
+      from booking_verification_sessions s
+      left join booking_holds h on h.id = s.booking_hold_id and h.tenant_id = s.tenant_id
+      left join pos_tech_appointments a on a.id = h.converted_appointment_id and a.tenant_id = s.tenant_id
+      where s.tenant_id = ${T} and s.created_at >= now() - interval '30 days'`.execute(this.db)).rows[0] ?? {};
+    // Provider Failure Triage (Extras · Booking Phone Verification 12): the last 7 days of provider-side failures grouped by
+    // what to fix — from the stored reason + provider error code only (a customer's wrong guess is never a provider failure)
+    const fr = (await sql`select s.failure_reason as reason, count(*)::int as n, max(s.updated_at) as last_at
+      from booking_verification_sessions s where s.tenant_id = ${T} and s.updated_at >= now() - interval '7 days' and ${PROVIDER_ERR}
+      group by s.failure_reason`.execute(this.db)).rows as any[];
     const cred = await this.credential(ctx);
     const smsState: HealthState = !cred ? 'needs_setup' : cred.last_validation_error ? 'failed' : n(r.provider_err24) > 0 ? 'degraded' : cred.last_validated_at ? 'ready' : 'pending_provider_action';
     return {
@@ -156,6 +176,8 @@ export class BookingVerificationCenter {
           : { value: null, numerator: 0, denominator: 0, definition: 'Verified ÷ verifications requested, last 30 days. Unknown until a code is requested.' },
       },
       lastActivityAt: iso(r.last_activity),
+      providerFailures: triageFailures(fr.map((x) => ({ reason: String(x.reason), count: n(x.n), lastAt: iso(x.last_at) }))),
+      funnel: verificationFunnel({ requested: n(f.requested), sent: n(f.sent), verified: n(f.verified), holdConverted: n(f.hold_converted), confirmed: n(f.confirmed), overrides: n(f.overrides) }),
     };
   }
 
@@ -353,4 +375,57 @@ export class BookingVerificationCenter {
       summary: 'Staff resent a booking verification code', metadata: { verificationId: id, outcome: out.status } });
     return { status: out.status, message: out.message ?? null };
   }
+}
+
+/** Verification Funnel Scorecard (Extras · Booking Phone Verification 09): the five steps with their definitions and the
+ *  step-to-step conversion (null — "unknown" — when the step before it is 0, never 0 %). Counts come only from evidence. */
+export const FUNNEL_STEPS = ['requested', 'sent', 'verified', 'holdConverted', 'confirmed'] as const;
+export type FunnelStep = typeof FUNNEL_STEPS[number];
+const FUNNEL_DEFINITIONS: Record<FunnelStep, string> = {
+  requested: 'Phone verifications started for a booking in the last 30 days.',
+  sent: 'Of those, a code was actually handed to the provider (a send time is recorded).',
+  verified: 'Of those, the customer entered the correct code (staff overrides are not counted here).',
+  holdConverted: 'Of the verified, the held time slot became an appointment.',
+  confirmed: 'Of those, the appointment still stands (not cancelled or a no-show).',
+};
+export function verificationFunnel(c: Record<FunnelStep, number> & { overrides: number }) {
+  const steps = FUNNEL_STEPS.map((key, i) => {
+    const prev = i === 0 ? null : c[FUNNEL_STEPS[i - 1]];
+    return { key, count: c[key], definition: FUNNEL_DEFINITIONS[key],
+      conversionPercent: prev == null ? null : prev > 0 ? Math.round((c[key] / prev) * 1000) / 10 : null };
+  });
+  return { windowDays: 30, steps, overrides: c.overrides, overridesDefinition: 'Bookings a manager let through without a code (audited), in the same 30 days — shown apart, never as verified.' };
+}
+
+/** Provider Failure Triage (Extras · Booking Phone Verification 12): a stored failure reason ("provider_error:20003",
+ *  "rate_limited:http_429", "not_configured", …) → what to fix. Codes are Twilio's documented error codes; anything not
+ *  recognised stays "other" (never guessed into a category). */
+export const TRIAGE_CATEGORIES = ['permission', 'service', 'sender', 'rate_limit', 'unavailable', 'wrong_phone', 'other'] as const;
+export type TriageCategory = typeof TRIAGE_CATEGORIES[number];
+const TRIAGE_CODES: Record<Exclude<TriageCategory, 'other'>, string[]> = {
+  permission: ['20003', '20005', '60410', '60605', '21408', '21612'],     // auth / suspended account / blocked or geo permission
+  service: ['20404', '60223', '60224'],                                    // Verify service missing / channel disabled on the service
+  sender: ['21606', '21659', '21660', '30032', '30034', '30007'],          // the From number / registration / carrier filtering
+  rate_limit: ['20429', '60203', '60212', '14107', 'http_429'],            // too many requests / send attempts
+  unavailable: ['network', '20500', '20503', 'http_500', 'http_502', 'http_503', 'http_504'],
+  wrong_phone: ['60200', '60205', '21211', '21614', '60033', '21217'],     // invalid / landline / not a mobile number
+};
+export function triageFailure(reason: string | null | undefined): TriageCategory {
+  const [base, code = ''] = String(reason ?? '').split(':');
+  if (base === 'rate_limited') return 'rate_limit';
+  if (base === 'not_configured') return 'service';
+  if (base === 'invalid_number') return 'wrong_phone';
+  for (const c of TRIAGE_CATEGORIES) if (c !== 'other' && TRIAGE_CODES[c].includes(code)) return c;
+  return 'other';
+}
+export function triageFailures(rows: Array<{ reason: string; count: number; lastAt: string | null }>) {
+  const by = new Map<TriageCategory, { category: TriageCategory; count: number; lastAt: string | null; codes: string[] }>();
+  for (const r of rows) {
+    const cat = triageFailure(r.reason); const g = by.get(cat) ?? { category: cat, count: 0, lastAt: null, codes: [] };
+    g.count += r.count; if (r.lastAt && (!g.lastAt || r.lastAt > g.lastAt)) g.lastAt = r.lastAt;
+    const code = r.reason.split(':')[1]; if (code && !g.codes.includes(code)) g.codes.push(code);
+    by.set(cat, g);
+  }
+  const groups = [...by.values()].sort((a, b) => b.count - a.count || TRIAGE_CATEGORIES.indexOf(a.category) - TRIAGE_CATEGORIES.indexOf(b.category));
+  return { windowDays: 7, total: groups.reduce((t, g) => t + g.count, 0), groups };
 }

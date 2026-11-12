@@ -40,4 +40,9 @@ describe('POSActivityLogsScreen', () => {
       expect(last).toMatchObject({ status: 'failed', page: 1, pageSize: 12 });
     });
   });
+  it('a deep link (?module=&search=) opens the log pre-filtered — the Customer Retention audit shortcut', async () => {
+    render(<MemoryRouter initialEntries={['/tenant/account/activity-logs?module=retention&search=cmp-1']}><POSActivityLogsScreen /></MemoryRouter>);
+    await screen.findByText('Password Updated');
+    expect(eventsMock.mock.calls[0][0]).toMatchObject({ module: 'retention', search: 'cmp-1', page: 1 });
+  });
 });

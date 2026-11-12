@@ -32,6 +32,15 @@ const sevLbl = (s: string) => codeLabel('sa.sev.' + s, s);
 const sourceLbl = (s: string) => codeLabel('sa.source.' + s, s);
 const errMsg = (e: unknown) => errorTextOf(e, tx('finance.state.loadFailed'));
 const unitLbl = (u: string) => codeLabel('sa.unit.' + u, u);
+const RESTOCK_TONE: Record<string, string> = { now: 'bad', soon: 'warn', later: 'ok', covered: 'info', unknown: 'mut' };
+type RestockHint = { urgency: string; avgDailyUse: string | null; daysOfCover: number | null; leadTimeDays: number | null; windowDays: number };
+/** Smart Restock Priority (Extras · Stock Alerts 08): the server's measured-demand advice for one alert row — read-only. */
+export function RestockLine({ r }: { r?: RestockHint | null }) {
+  if (!r) return null;
+  const parts = [r.avgDailyUse != null && r.daysOfCover != null ? tx('sa.restock.detail', { d: r.avgDailyUse, c: fmtNumber(r.daysOfCover) }) : tx('sa.restock.noUse', { n: fmtNumber(r.windowDays) }),
+    r.leadTimeDays != null ? tx('sa.restock.lead', { n: fmtNumber(r.leadTimeDays) }) : tx('sa.restock.noLead')];
+  return <span className="fk-li-s" data-testid="restock"><span className={'fk-chip ' + (RESTOCK_TONE[r.urgency] ?? 'mut')}>{codeLabel('sa.restock.' + r.urgency, r.urgency)}</span> {parts.join(' · ')}</span>;
+}
 
 /** "Last Used By" as the page shows it everywhere: who, when, how much — or "No recorded use". */
 export function LastUsed({ r, testId }: { r: { lastUsedAt: string | null; lastUsedLabel: string; lastUsedQuantity?: string | null; lastUsedTechnicianId?: string | null }; testId?: string }) {
@@ -44,13 +53,13 @@ export function POSInventoryAlertsScreen() {
   const nav = useNavigate(); const can = useCan();
   const [tab, setTab] = useState<Tab>('active');
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
-  const [severity, setSeverity] = useState(''); const [showAck, setShowAck] = useState(false);
+  const [severity, setSeverity] = useState(''); const [showAck, setShowAck] = useState(false); const [byPriority, setByPriority] = useState(false);
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' }); const [basis, setBasis] = useState('occurred');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string; eventId?: string; productId?: string } | null>(null);
   const [product, setProduct] = useState<string | null>(null); const [recording, setRecording] = useState<{ productId?: string } | null>(null);
   const [busyAck, setBusyAck] = useState<string | null>(null); const [exporting, setExporting] = useState(false);
-  const scope = { search: q || undefined, ...(tab === 'active' ? { severity: severity || undefined, showAcknowledged: showAck ? 'true' : undefined } : {}),
+  const scope = { search: q || undefined, ...(tab === 'active' ? { severity: severity || undefined, showAcknowledged: showAck ? 'true' : undefined, rank: byPriority ? 'priority' : undefined } : {}),
     ...(tab === 'history' ? { severity: severity || undefined } : {}), ...(tab !== 'active' ? { ...periodQuery(period), ...(tab !== 'history' ? { dateBasis: basis } : {}) } : {}) };
   const key = tab + JSON.stringify(scope); useEffect(() => { setPage(1); }, [key]);
   const fit = useFitRows<HTMLDivElement>(46, { min: 3, max: 18, reserve: 34 });
@@ -118,7 +127,9 @@ export function POSInventoryAlertsScreen() {
           {search ? <button type="button" className="fk-x" aria-label={tx('finance.clearSearch')} onClick={() => setSearch('')}>✕</button> : null}</div>
         {tab === 'active' || tab === 'history' ? <select className="fk-select" value={severity} onChange={(e) => setSeverity(e.target.value)} aria-label={tx('sa.severity')} data-testid="severity"><option value="">{tx('sa.allSeverities')}</option>{SEVERITIES.map((s) => <option key={s} value={s}>{sevLbl(s)}</option>)}</select> : null}
         {tab === 'active' ? <label className="sa-check"><input type="checkbox" checked={showAck} onChange={(e) => setShowAck(e.target.checked)} data-testid="show-ack" />{tx('pos.show_acknowledged_alerts')}</label> : null}
+        {tab === 'active' ? <label className="sa-check" title={tx('sa.rank.hint')}><input type="checkbox" checked={byPriority} onChange={(e) => setByPriority(e.target.checked)} data-testid="rank-priority" />{tx('sa.rank.priority')}</label> : null}
       </div>
+      {tab === 'active' && byPriority ? <div className="fk-muted fk-li-s" role="note" data-testid="rank-hint">{tx('sa.rank.hint')}</div> : null}
       {tab !== 'active' ? <div className="fn-tabsrow sa-periodrow">
         <PeriodBar value={period} onChange={setPeriod} server={list.data?.period} allowAll compact {...(tab !== 'history' ? { basis, basisOptions: [{ value: 'occurred', label: tx('sa.basis.occurred') }, { value: 'recorded', label: tx('sa.basis.recorded') }], onBasis: setBasis } : {})} />
         {chips.length ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
@@ -134,7 +145,7 @@ export function POSInventoryAlertsScreen() {
               <tr key={r.productId} data-testid="alert-row" className={r.acknowledgedAt ? 'sa-acked' : ''}>
                 <td><button type="button" className="fk-li-t link" onClick={() => setProduct(r.productId)}>{r.name}</button><span className="fk-li-s">{[r.sku, r.brand, r.vendor].filter(Boolean).join(' · ') || '—'}</span></td>
                 <td><span className={'fk-chip ' + (SEV_TONE[r.severity] ?? 'mut')}>{sevLbl(r.severity)}</span>{r.acknowledgedAt ? <span className="fk-li-s">{tx('sa.ackBy', { who: r.acknowledgedBy ?? '—' })}</span> : null}</td>
-                <td className="num"><b>{fmtNumber(r.onHand)}</b></td>
+                <td className="num"><b>{fmtNumber(r.onHand)}</b><RestockLine r={r.restock} /></td>
                 <td className="num">{fmtNumber(r.reorderLevel)}<span className="fk-li-s">{[r.onOrder ? tx('sa.onOrder', { n: fmtNumber(r.onOrder) }) : '', r.suggestedReorder ? tx('sa.suggest', { n: fmtNumber(r.suggestedReorder) }) : '', r.draftPurchaseOrders ? tx('sa.draftPo', { po: r.draftPurchaseOrders }) : ''].filter(Boolean).join(' · ')}</span></td>
                 <td><LastUsed r={r} testId="last-used" /></td>
                 <td className="t-opt">{r.since ? when(r.since) : <span className="fk-muted">{tx('sa.sinceUnknown')}</span>}</td>

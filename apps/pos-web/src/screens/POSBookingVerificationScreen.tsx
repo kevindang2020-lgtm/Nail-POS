@@ -443,6 +443,31 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
         <KpiCard label={t('bv.kpi.rate')} value={c ? (c.successRate.value == null ? '—' : `${c.successRate.value}%`) : '—'} loading={!c && !sumErr} testId="bv-kpi-rate"
           sub={c ? (c.successRate.value == null ? t('bv.kpi.rateUnknown') : t('bv.kpi.rateSub', { ok: fmtNumber(c.successRate.numerator), all: fmtNumber(c.successRate.denominator) })) : ''} />
       </div>
+      {summary?.providerFailures ? (
+        <section className="panel bv-triage" data-testid="bv-triage" style={{ marginBottom: 12 }}>
+          <div className="p-h">{t('bv.triage.title', { d: String(summary.providerFailures.windowDays) })}</div>
+          {summary.providerFailures.groups.length === 0 ? <div className="sub" style={{ fontSize: 13 }} data-testid="bv-triage-none">{t('bv.triage.none', { d: String(summary.providerFailures.windowDays) })}</div> : (
+            <ul className="bv-checks">
+              {summary.providerFailures.groups.map((g) => (
+                <li key={g.category} data-testid={'bv-triage-' + g.category}>
+                  <div className="bv-check-top"><strong>{t('bv.triage.cat.' + g.category)}</strong><span className="pm-chip">{fmtNumber(g.count)}</span></div>
+                  <div className="sub" style={{ fontSize: 12 }}>{t('bv.triage.fix.' + g.category)}{g.codes.length ? ' · ' + t('bv.triage.codes', { c: g.codes.join(', ') }) : ''}{g.lastAt ? ' · ' + when(g.lastAt) : ''}</div>
+                </li>))}
+            </ul>)}
+        </section>) : null}
+      {summary?.funnel ? (
+        <section className="panel bv-funnel" data-testid="bv-funnel" style={{ marginBottom: 12 }}>
+          <div className="p-h">{t('bv.funnel.title', { d: String(summary.funnel.windowDays) })}</div>
+          <ol style={{ display: 'grid', gridTemplateColumns: `repeat(${summary.funnel.steps.length}, minmax(0, 1fr))`, gap: 8, listStyle: 'none', margin: 0, padding: 0 }}>
+            {summary.funnel.steps.map((s, i) => (
+              <li key={s.key} title={s.definition} data-testid={'bv-funnel-' + s.key}>
+                <div className="sub" style={{ fontSize: 12 }}>{t('bv.funnel.' + s.key)}</div>
+                <strong style={{ fontSize: 20 }}>{fmtNumber(s.count)}</strong>
+                {i > 0 ? <div className="sub" style={{ fontSize: 11 }}>{s.conversionPercent == null ? t('bv.funnel.convUnknown') : t('bv.funnel.conv', { p: String(s.conversionPercent) })}</div> : null}
+              </li>))}
+          </ol>
+          <div className="sub" style={{ fontSize: 12, marginTop: 6 }} title={summary.funnel.overridesDefinition} data-testid="bv-funnel-overrides">{t('bv.funnel.overrides', { n: fmtNumber(summary.funnel.overrides) })}</div>
+        </section>) : null}
 
       <div className="bv-grid">
         <div className="bv-col">{settingsPanel}</div>

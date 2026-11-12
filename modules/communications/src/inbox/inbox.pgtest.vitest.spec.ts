@@ -409,3 +409,28 @@ describe('C2 gap (Nov 5 2026): a delivery report refreshes the reminder / campai
     } finally { for (const [k, v] of [['TWILIO_ACCOUNT_SID', env.sid], ['TWILIO_AUTH_TOKEN', env.tok]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
   });
 });
+
+// Extras · SMS Inbox 12 — missing-webhook warning from timestamps only
+describe('callback health (missing webhook warning)', () => {
+  const other: InboxCtx = { tenantId: T2, branchId: BX, userId: OTHER, role: 'OWNER', permissions: ALL, userName: 'Oz Other', authz: { branchIds: null } };
+  it('a text handed off 2 h ago with no callback → stale (never "failed"); a later callback for another text → delayed; its own callback clears it', async () => {
+    const s0 = await svc.summary(other, null);
+    expect(s0.callbacks).toMatchObject({ state: 'ok', awaiting: 0, waitMinutes: 30 });
+    const th = await thread(T2, { branch: BX, contact: '+12155554444', activity: new Date(Date.now() - 2 * 3600_000).toISOString() });
+    const old = new Date(Date.now() - 2 * 3600_000);
+    const n1 = (await q(`insert into notifications (tenant_id, channel, to_address, body, status, provider_id, created_at) values ($1,'sms','+12155554444','See you Friday','sent','SMcb1',$2) returning id`, [T2, old])).rows[0].id;
+    await q(`insert into communication_messages (tenant_id, thread_id, direction, channel, body, status, notification_id, author_kind, created_at) values ($1,$2,'outbound','sms','See you Friday','sent',$3,'staff',$4)`, [T2, th, n1, old]);
+    // a fresh text (5 min ago) is not yet "waiting too long"
+    const fresh = new Date(Date.now() - 5 * 60_000);
+    const n2 = (await q(`insert into notifications (tenant_id, channel, to_address, body, status, provider_id, created_at) values ($1,'sms','+12155554444','ok','sent','SMcb2',$2) returning id`, [T2, fresh])).rows[0].id;
+    await q(`insert into communication_messages (tenant_id, thread_id, direction, channel, body, status, notification_id, author_kind, created_at) values ($1,$2,'outbound','sms','ok','sent',$3,'staff',$4)`, [T2, th, n2, fresh]);
+    const s1 = await svc.summary(other, null);
+    expect(s1.callbacks).toMatchObject({ state: 'stale', awaiting: 1, lastCallbackAt: null, oldestAwaitingAt: old.toISOString() });
+    expect(s1.sentToday.failed).toBe(s0.sentToday.failed);   // waiting is not failure
+    await q(`insert into notification_delivery_events (tenant_id, notification_id, provider_message_sid, provider_status, applied, signature_verified) values ($1,$2,'SMcb2','sent',true,true)`, [T2, n2]);
+    expect((await svc.summary(other, null)).callbacks).toMatchObject({ state: 'delayed', awaiting: 1 });
+    await q(`insert into notification_delivery_events (tenant_id, notification_id, provider_message_sid, provider_status, applied, signature_verified) values ($1,$2,'SMcb1','delivered',true,true)`, [T2, n1]);
+    expect((await svc.summary(other, null)).callbacks).toMatchObject({ state: 'ok', awaiting: 0 });
+    expect((await svc.summary(owner, null)).definitions.callbackHealth).toMatch(/never counted as failed/);
+  });
+});
