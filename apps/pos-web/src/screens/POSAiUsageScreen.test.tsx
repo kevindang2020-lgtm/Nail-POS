@@ -55,6 +55,23 @@ describe('POSAiUsageScreen', () => {
     await waitFor(() => expect(api.startTrial).toHaveBeenCalledWith('ai_review_reputation_assistant', expect.objectContaining({ confirm: true, idempotencyKey: expect.any(String) })));
   });
 
+  it('Extras · AI Usage Limits 07: Details shows the server\'s price comparison (kept below today\'s list); Start Trial shows today\'s list price before confirming', async () => {
+    const kept = card({ price: { cents: 5900, currency: 'USD', period: 'monthly', monthlyEquivalentCents: 5900, source: 'subscription', comparison: { listMonthlyCents: 6900, storedMonthlyCents: 5900, status: 'kept_below_list', deltaMonthlyCents: -1000 } } });
+    const fresh = { ...ITEMS[2]!, price: { cents: 3900, currency: 'USD', period: 'monthly', monthlyEquivalentCents: 3900, source: 'catalog_list', comparison: { listMonthlyCents: 3900, storedMonthlyCents: null, status: 'list', deltaMonthlyCents: null } } };
+    api.packages.mockResolvedValue({ items: [kept, fresh], page: 1, pageSize: 8, totalItems: 2, totalPages: 1, counts: { all: 2 }, sort: 'catalog', status: 'all' });
+    api.detail.mockImplementation(async (code: string) => ({ package: code === kept.code ? kept : fresh, usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
+      settings: { globallyEnabled: true, disabledReason: null, storedStatus: null, usageLimit: 1000, overageEnabled: false, limitSource: 'catalog' }, canManage: true, canSeeBilling: true }));
+    const r = render(<POSAiUsageScreen />);
+    fireEvent.click((await screen.findAllByTestId('aiu-card'))[0]!);
+    expect(await screen.findByTestId('aiu-price-compare')).toHaveTextContent('Your price $59.00/mo is kept — $10.00 below today\'s list price of $69.00/mo.');
+    r.unmount();
+    render(<POSAiUsageScreen />);
+    fireEvent.click((await screen.findAllByTestId('aiu-card'))[1]!);
+    const d = await screen.findByTestId('aiu-detail');
+    fireEvent.click(within(d).getByTestId('aiu-trial'));
+    expect(await within(d).findByTestId('aiu-confirm-price')).toHaveTextContent('Today\'s catalog list price: $39.00/mo.');
+  });
+
   it('Extras · AI Usage Limits 02: Subscription tab explains why — the server gate reason and the facts behind it, in words', async () => {
     api.detail.mockImplementation(async (code: string) => ({ package: ITEMS.find((c) => c.code === code), usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
       settings: { globallyEnabled: true, disabledReason: null, storedStatus: 'trialing', usageLimit: 1000, overageEnabled: false, limitSource: 'subscription' }, canManage: true, canSeeBilling: true,

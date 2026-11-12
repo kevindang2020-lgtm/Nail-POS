@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { AiUsageScreenRepository, AiUsageScreenError, usageProjection } from './ai-usage-screen.repository';
+import { AiUsageScreenRepository, AiUsageScreenError, usageProjection, priceComparison } from './ai-usage-screen.repository';
 import { displayStateOf } from './ai-usage-states';
 import { KyselyAiAccessRepo } from '../../../ai/src/ai/ai-access.kysely.repository';
 import { evaluateAiAccess } from '../../../ai/src/ai/ai-access-gate';
@@ -279,5 +279,24 @@ describe('Extras · AI Usage Limits 03 — cost & quota advisor (estimate only)'
     expect(usageProjection(475, 1000, start, end, new Date('2026-11-16T00:00:00Z'), false, 2)).toMatchObject({ verdict: 'close', projectedUsed: 950 });
     expect(usageProjection(600, 1000, start, end, new Date('2026-11-16T00:00:00Z'), true, 2)).toMatchObject({ verdict: 'likely_over', projectedUsed: 1200, projectedOverageCents: 400, atLimit: 'overage' });
     expect(usageProjection(600, 0, start, end, new Date('2026-11-16T00:00:00Z'), true, 2)).toBeNull();
+  });
+});
+
+describe('Extras · AI Usage Limits 07 — price change transparency (comparison only)', () => {
+  it('each card shows today\'s catalog list price beside the salon\'s stored price: same, kept below list (grandfathered), above list; a yearly plan compares its monthly equivalent; nothing is re-priced', async () => {
+    await q(`update tenant_ai_subscriptions set price_cents = 5900 where tenant_id = $1 and package_code = 'ai_fraud_money_protection'`, [T]);
+    try {
+      const by = Object.fromEntries((await repo.packages(ctx, { pageSize: 24 })).items.map((c) => [c.code, c]));
+      expect(by.ai_fraud_money_protection!.price.comparison).toEqual({ listMonthlyCents: 6900, storedMonthlyCents: 5900, status: 'kept_below_list', deltaMonthlyCents: -1000, listSource: 'catalog' });
+      expect(by.ai_customer_profile_assistant!.price.comparison).toMatchObject({ listMonthlyCents: 3900, storedMonthlyCents: 3900, status: 'list', deltaMonthlyCents: 0 });   // $468 / year
+      expect(by.ai_booking_assistant!.price.comparison).toMatchObject({ listMonthlyCents: 4900, storedMonthlyCents: null, status: 'list' });                                 // no subscription: list price
+      expect(by.ai_legacy_package_x!.price.comparison).toMatchObject({ listMonthlyCents: null, status: 'no_list_price' });                                                  // unknown package: no list to compare
+      expect((await q(`select price_cents from tenant_ai_subscriptions where tenant_id = $1 and package_code = 'ai_fraud_money_protection'`, [T])).rows[0].price_cents).toBe(5900);
+    } finally {
+      await q(`update tenant_ai_subscriptions set price_cents = 6900 where tenant_id = $1 and package_code = 'ai_fraud_money_protection'`, [T]);
+    }
+  });
+  it('pure: above list is reported with a positive difference', () => {
+    expect(priceComparison(3900, 4900)).toEqual({ listMonthlyCents: 3900, storedMonthlyCents: 4900, status: 'above_list', deltaMonthlyCents: 1000, listSource: 'catalog' });
   });
 });

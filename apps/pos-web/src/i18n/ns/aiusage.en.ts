@@ -254,4 +254,7 @@ export const AIUSAGE_EN = {
   'aiu.proj.overage': 'Overage is on: about {amount} extra at the overage price.',
   'aiu.proj.blocked': 'Overage is off: AI calls stop at the limit until the next period.',
   'aiu.proj.note': 'An estimate from this period\'s counted usage only — nothing is bought or changed.',
+  'aiu.priceCmp.list': 'Today\'s catalog list price: {list}/mo.',
+  'aiu.priceCmp.kept_below_list': 'Your price {yours}/mo is kept — {diff} below today\'s list price of {list}/mo.',
+  'aiu.priceCmp.above_list': 'Your price {yours}/mo is {diff} above today\'s list price of {list}/mo.',
 };

@@ -48,7 +48,11 @@ const BLOCKED_STATUSES = ['blocked_unpaid', 'blocked_limit', 'blocked_permission
 export interface PackageCard {
   code: string; name: string; description: string; category: string; posArea: string | null; known: boolean; sortOrder: number;
   state: DisplayState; storedStatus: string | null; globallyEnabled: boolean; disabledReason: string | null;
-  price: { cents: number; currency: string; period: 'monthly' | 'yearly'; monthlyEquivalentCents: number; source: 'subscription' | 'catalog_list' };
+  price: { cents: number; currency: string; period: 'monthly' | 'yearly'; monthlyEquivalentCents: number; source: 'subscription' | 'catalog_list';
+    /** extras AI Usage Limits 07 (Price Change Transparency): today's catalog list price beside the salon's own stored price —
+     *  'list' (no subscription row, or the same as list) · 'kept_below_list' (an earlier, lower price is kept: grandfathered) ·
+     *  'above_list' (the stored price is above today's list). A comparison only — nothing is re-priced. */
+    comparison?: PriceComparison };
   usage: { used: number | null; limit: number; unit: string; percent: number | null; level: UsageLevel; periodStart: string | null; periodEnd: string | null; remaining: number | null;
     /** extras AI Usage Limits 03: an ESTIMATE of the period's end from this period's pace — never a purchase, never a limit change */
     projection?: UsageProjection | null };
@@ -62,6 +66,14 @@ export interface PackageCard {
  *  where will the period end? 'too_early' before 20% of the period (or 3 days) has passed — no estimate is invented then.
  *  fits ≤ 90% of the allowance · close ≤ 100% · likely_over above it; with overage on, the extra is priced at the package's
  *  overage rate (an estimate); with it off the gate blocks at the limit. Pure arithmetic: nothing is bought, changed or sent. */
+export interface PriceComparison { listMonthlyCents: number | null; storedMonthlyCents: number | null; status: 'list' | 'kept_below_list' | 'above_list' | 'no_list_price'; deltaMonthlyCents: number | null; listSource: 'catalog' }
+/** the salon's stored price (monthly equivalent) vs today's catalog list price — pure */
+export function priceComparison(listMonthlyCents: number | null | undefined, storedMonthlyCents: number | null): PriceComparison {
+  const list = listMonthlyCents == null ? null : Math.round(listMonthlyCents);
+  if (list == null) return { listMonthlyCents: null, storedMonthlyCents, status: 'no_list_price', deltaMonthlyCents: null, listSource: 'catalog' };
+  if (storedMonthlyCents == null || storedMonthlyCents === list) return { listMonthlyCents: list, storedMonthlyCents, status: 'list', deltaMonthlyCents: storedMonthlyCents == null ? null : 0, listSource: 'catalog' };
+  return { listMonthlyCents: list, storedMonthlyCents, status: storedMonthlyCents < list ? 'kept_below_list' : 'above_list', deltaMonthlyCents: storedMonthlyCents - list, listSource: 'catalog' };
+}
 export interface UsageProjection { basis: 'period_pace'; elapsedShare: number; projectedUsed: number | null; verdict: 'too_early' | 'fits' | 'close' | 'likely_over'; projectedOverageCents: number | null; atLimit: 'overage' | 'blocked' }
 export function usageProjection(used: number, limit: number, periodStart: Date, periodEnd: Date, now: Date, overageEnabled: boolean, overageUnitCents: number): UsageProjection | null {
   const span = periodEnd.getTime() - periodStart.getTime();
@@ -122,7 +134,8 @@ export class AiUsageScreenRepository {
     return {
       code, name: def?.name ?? code, description: def?.description ?? '', category: def?.category ?? 'unknown', posArea: def?.posArea ?? null, known: !!def, sortOrder: def?.sortOrder ?? 999,
       state, storedStatus: s ? String(s.status) : null, globallyEnabled, disabledReason: g && !g.enabled ? (g.disabled_reason ?? null) : null,
-      price: { cents, currency: String(s?.currency ?? 'usd').toUpperCase(), period, monthlyEquivalentCents: period === 'yearly' ? Math.round(cents / 12) : cents, source: s && N(s.price_cents) > 0 ? 'subscription' : 'catalog_list' },
+      price: { cents, currency: String(s?.currency ?? 'usd').toUpperCase(), period, monthlyEquivalentCents: period === 'yearly' ? Math.round(cents / 12) : cents, source: s && N(s.price_cents) > 0 ? 'subscription' : 'catalog_list',
+        comparison: priceComparison(def?.monthlyPriceCents ?? null, s && N(s.price_cents) > 0 ? (period === 'yearly' ? Math.round(N(s.price_cents) / 12) : N(s.price_cents)) : null) },
       usage: { used: live ? used : null, limit, unit: def?.usageUnit ?? 'units', percent: live && limit > 0 && used != null ? Math.round((used * 1000) / limit) / 10 : null, level,
         periodStart: live ? iso(s?.current_period_starts_at) : null, periodEnd: live ? iso(s?.period_end) : null, remaining: live && limit > 0 && used != null ? Math.max(0, limit - used) : null,
         projection: live && used != null && s?.current_period_starts_at && s?.period_end ? usageProjection(used, limit, new Date(s.current_period_starts_at), new Date(s.period_end), now, overEnabled, overUnit) : null },

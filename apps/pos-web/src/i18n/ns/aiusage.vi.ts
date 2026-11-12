@@ -254,4 +254,7 @@ export const AIUSAGE_VI = {
   'aiu.proj.overage': 'Đang bật tính phí vượt mức: thêm khoảng {amount} theo giá vượt mức.', // DRAFT — Kevin reviews
   'aiu.proj.blocked': 'Đang tắt tính phí vượt mức: AI sẽ dừng khi tới giới hạn cho đến kỳ sau.', // DRAFT — Kevin reviews
   'aiu.proj.note': 'Chỉ là ước tính từ mức dùng đã đếm trong kỳ này — không mua hay thay đổi gì.', // DRAFT — Kevin reviews
+  'aiu.priceCmp.list': 'Giá niêm yết hiện tại: {list}/tháng.', // DRAFT — Kevin reviews
+  'aiu.priceCmp.kept_below_list': 'Giá của tiệm {yours}/tháng được giữ — thấp hơn {diff} so với giá niêm yết hiện tại {list}/tháng.', // DRAFT — Kevin reviews
+  'aiu.priceCmp.above_list': 'Giá của tiệm {yours}/tháng cao hơn {diff} so với giá niêm yết hiện tại {list}/tháng.', // DRAFT — Kevin reviews
 };
