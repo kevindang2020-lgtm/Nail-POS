@@ -210,4 +210,7 @@ export const CUSTAISETTINGS_VI: Record<string, string> = {
   "casx.gs.openCi": "mở Customer Intelligence và bấm Làm mới", // DRAFT — Kevin reviews
   "casx.gs.stale_sr": "Service Recommendations vẫn dùng giá trị cũ", // DRAFT — Kevin reviews
   "casx.gs.openSr": "mở Service Recommendations và bấm Làm mới", // DRAFT — Kevin reviews
+  "casx.impact.inactive": "Xem các khách mà ngưỡng này đánh dấu Không hoạt động", // DRAFT — Kevin reviews
+  "casx.impact.long_term_inactive": "Xem các khách mà ngưỡng này đánh dấu Không hoạt động lâu", // DRAFT — Kevin reviews
+  "casx.impact.insufficient_history": "Xem các khách chưa đủ số lượt này", // DRAFT — Kevin reviews
 };

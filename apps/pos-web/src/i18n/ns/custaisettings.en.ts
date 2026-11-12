@@ -210,4 +210,7 @@ export const CUSTAISETTINGS_EN: Record<string, string> = {
   "casx.gs.openCi": "open Customer Intelligence and press Refresh",
   "casx.gs.stale_sr": "Service Recommendations still use older values",
   "casx.gs.openSr": "open Service Recommendations and press Refresh",
+  "casx.impact.inactive": "See the customers this marks Inactive",
+  "casx.impact.long_term_inactive": "See the customers this marks Long-term inactive",
+  "casx.impact.insufficient_history": "See the customers still below this many visits",
 };

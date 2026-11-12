@@ -43,6 +43,9 @@ function errText(e: any, fallbackKey: string) {
 }
 const valueText = (unit: string, n: number) => t('casx.unit.' + unit, { n: fmtNumber(n) });
 
+/** Contextual Customer Impact Shortcut (extras 09): the threshold → the Customer Intelligence status it decides (the list there is
+ *  the server's classification, masked for the role); the two preference minimums have no status of their own, so no link */
+const IMPACT_STATUS: Partial<Record<Key, string>> = { inactiveDays: 'inactive', longTermInactiveDays: 'long_term_inactive', minVisitsForCadence: 'insufficient_history' };
 type DriftKey = { key: string; evaluatedValue: number | null; currentValue: number | null; onScreen: boolean };
 type DriftInfo = { drifted: boolean; keys: DriftKey[]; ruleVersion: { evaluated: string | null; current: string; changed: boolean } } | null | undefined;
 const UNIT: Record<Key, string> = { minVisitsForServicePref: 'visits', minVisitsForTechPref: 'visits', minVisitsForCadence: 'visits', inactiveDays: 'days', longTermInactiveDays: 'days' };
@@ -95,6 +98,7 @@ function GuidedStates({ s, manage, onEnable, onRetry }: { s: any; manage: boolea
 export function POSAICustomerSettingsScreen() {
   const can = useCan();
   const manage = can('pos.ai_customer_profile.churn');
+  const viewCustomers = can('pos.ai_customer_profile.view');
   const [s, setS] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -158,7 +162,8 @@ export function POSAICustomerSettingsScreen() {
             <thead><tr><th>{t('pos.setting')}</th><th style={{ textAlign: 'right' }}>{t('pos.value')}</th><th>{t('casx.col.default')}</th><th>{t('casx.col.source')}</th><th>{t('casx.col.range')}</th></tr></thead>
             <tbody>{s.thresholds.map((r: any) => (
               <tr key={r.key} data-testid={`row-${r.key}`}>
-                <td>{t(LABEL[r.key as Key])}{r.ignoredAt.length ? <div className="sub warn">{t('casx.ignored', { l: t('casx.level.' + r.ignoredAt[0]) })}</div> : null}</td>
+                <td>{t(LABEL[r.key as Key])}{r.ignoredAt.length ? <div className="sub warn">{t('casx.ignored', { l: t('casx.level.' + r.ignoredAt[0]) })}</div> : null}
+                  {viewCustomers && IMPACT_STATUS[r.key as Key] ? <div><Link className="aic-link" data-testid={`casx-impact-${r.key}`} to={`/tenant/ai/customer-profile?status=${IMPACT_STATUS[r.key as Key]}`}>{t('casx.impact.' + IMPACT_STATUS[r.key as Key])}</Link></div> : null}</td>
                 <td style={{ textAlign: 'right' }}><b data-testid={`val-${r.key}`}>{valueText(r.unit, r.value)}</b></td>
                 <td className="sub">{valueText(r.unit, r.default)}</td>
                 <td><span className={'chip ' + (r.source === 'default' ? '' : 'gold')} data-testid={`src-${r.key}`}>{t('casx.src.' + r.source)}</span></td>

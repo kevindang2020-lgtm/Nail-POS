@@ -82,6 +82,18 @@ describe('POSAICustomerSettingsScreen', () => {
     await screen.findByTestId('casx-strip');
     expect(screen.queryByTestId('casx-guided')).toBeNull();
   });
+  it('Contextual Customer Impact Shortcut: the three status thresholds link to Customer Intelligence filtered by the status they decide; none without view', async () => {
+    const v = render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
+    expect((await screen.findByTestId('casx-impact-inactiveDays')).getAttribute('href')).toBe('/tenant/ai/customer-profile?status=inactive');
+    expect(screen.getByTestId('casx-impact-longTermInactiveDays').getAttribute('href')).toBe('/tenant/ai/customer-profile?status=long_term_inactive');
+    expect(screen.getByTestId('casx-impact-minVisitsForCadence').getAttribute('href')).toBe('/tenant/ai/customer-profile?status=insufficient_history');
+    expect(screen.queryByTestId('casx-impact-minVisitsForServicePref')).toBeNull();               // no status of its own → no link
+    v.unmount();
+    perms.deny = ['pos.ai_customer_profile.view'];
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
+    await screen.findByTestId('casx-thresholds');
+    expect(screen.queryByTestId('casx-impact-inactiveDays')).toBeNull();
+  });
   it('no drift → no alert', async () => {
     render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     await screen.findByTestId('casx-strip');
