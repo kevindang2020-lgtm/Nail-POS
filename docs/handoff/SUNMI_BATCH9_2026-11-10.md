@@ -637,3 +637,15 @@ usage, add-on mass-edit preview, payment-batch double-count check, inventory SKU
 Real bugs fixed: Quick View "Next appointment" always None; customer isPhoneVerified always false; Super Admin "suspicious
 sessions" always 0 (status never allowed — now "—"). check:impossible now reads schema_apply_check (it was blind to it).
 TODO 189 → 133.
+
+## Extras backlog — round 7 (Nov 12 2026)
+TODO 133 → 90. Kevin decision 2 completed: Churn Watch's verdict is now Customer Retention's segment + days away (read via
+RetentionRepository, same as the Profile Assistant); the assistant's own churn rule appears only as labelled supporting
+reasons; pinned by churn-watch-center pgtest CW-01. The Customer Intelligence overview "Churn watch" card shows
+Retention's at-risk count ("—" if unreadable). (The scan still computes a coarse churn_watch flag server-side; no POS page
+uses it.) Also: branch-comparison evidence, like-for-like peer groups, saved comparison snapshots + manager sign-off
+(migration 848), category review decisions (migration 847), pricing export snapshot column, service demand forecast,
+AI booking exceptions, refund root-cause, booking conflict timeline, lost-booking recovery, capacity heatmap, config drift
+alert, membership integrity checks, terminal routing guard, AI billing integrity, marketing anomaly checks, catalog
+integrity audit, team feed freshness. Real bugs fixed: services export marked every service taxable; "Not enough history"
+ignored the salon's own minimum-visits setting; forecast report windows used UTC days instead of the salon's day.
