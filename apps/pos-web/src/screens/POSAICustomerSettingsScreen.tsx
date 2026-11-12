@@ -11,7 +11,9 @@
 //     whether the evaluations picked it up) and System Health (Check Customer AI System, read-only).
 // The old note said per-salon overrides are managed from Super Admin — they are not (Super Admin has the package switch); the
 // note now says what is true. Nothing here books, texts, bills or reaches another salon.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { isOfflineFailure } from '../api/offline-drafts';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCustomerAiSettingsApi as api, type CustomerAiThresholds } from '../api/posCustomerAiSettingsApi';
 import { errorTextOf } from '../i18n/error-text';
@@ -70,6 +72,26 @@ function DriftAlert({ p }: { p: { customerIntelligence: { drift?: DriftInfo }; s
   );
 }
 
+/** Guided Empty and Restricted States (extras 08): each condition the server reports, told apart, with ONE safe next action.
+ *  Nothing here changes a setting by itself — Enable opens the same confirmation as the Assistant button. */
+function GuidedStates({ s, manage, onEnable, onRetry }: { s: any; manage: boolean; onEnable: () => void; onRetry: () => void }) {
+  const out: { key: string; next: ReactNode }[] = [];
+  const e = s.entitlement; const a = s.assistant; const p = s.propagation;
+  if (e.allowed === false) out.push({ key: 'not_entitled', next: <Link className="aic-link" to="/tenant/ai/plans">{t('casx.gs.openPlans')}</Link> });
+  else if (e.allowed === null) out.push({ key: 'entitlement_unknown', next: <button className="aic-link" onClick={onRetry}>{t('casx.gs.retry')}</button> });
+  if (a.salon === 'disabled') out.push({ key: 'disabled', next: manage ? <button className="aic-link" data-testid="casx-gs-enable" onClick={onEnable}>{t('pos.enable_for_this_salon')}</button> : <span>{t('casx.gs.askManager')}</span> });
+  if (s.customerHistory && !s.customerHistory.hasCompletedVisits) out.push({ key: 'no_history', next: <span>{t('casx.gs.noHistoryNext')}</span> });
+  if (p.customerIntelligence.state === 'never') out.push({ key: 'never_evaluated', next: <Link className="aic-link" to="/tenant/ai/customer-profile">{t('casx.gs.openCi')}</Link> });
+  else if (p.customerIntelligence.state === 'pending') out.push({ key: 'stale_ci', next: <Link className="aic-link" to="/tenant/ai/customer-profile">{t('casx.gs.openCi')}</Link> });
+  if (p.serviceRecommendations.state === 'pending') out.push({ key: 'stale_sr', next: <Link className="aic-link" to="/tenant/ai/customer-profile/recommendations">{t('casx.gs.openSr')}</Link> });
+  if (!out.length) return null;
+  return (
+    <ul className="panel" data-testid="casx-guided" style={{ marginTop: 12, padding: '10px 12px 10px 28px' }}>
+      {out.map((x) => <li key={x.key} data-testid={`casx-gs-${x.key}`} style={{ marginBottom: 4 }}><b>{t('casx.gs.' + x.key)}</b> — {x.next}</li>)}
+    </ul>
+  );
+}
+
 export function POSAICustomerSettingsScreen() {
   const can = useCan();
   const manage = can('pos.ai_customer_profile.churn');
@@ -79,9 +101,11 @@ export function POSAICustomerSettingsScreen() {
   const [tab, setTab] = useState<'thresholds' | 'history' | 'health'>('thresholds');
   const [confirm, setConfirm] = useState<null | boolean>(null);
   const [editing, setEditing] = useState(false);
+  // Guided states (extras 08): a refused read and a lost connection are told apart from a broken one
+  const [loadKind, setLoadKind] = useState<'forbidden' | 'offline' | 'error' | null>(null);
   const load = useCallback(async () => {
-    setErr(null);
-    try { setS(await api.state()); } catch (e) { setErr(errText(e, 'casx.loadFailed')); }
+    setErr(null); setLoadKind(null);
+    try { setS(await api.state()); } catch (e) { setLoadKind(isForbidden(e) ? 'forbidden' : isOfflineFailure(e) ? 'offline' : 'error'); setErr(errText(e, 'casx.loadFailed')); }
   }, []);
   useEffect(() => { void load(); }, [load]);
   const a = s?.assistant; const e = s?.entitlement;
@@ -93,7 +117,10 @@ export function POSAICustomerSettingsScreen() {
         <div><h1>{t('pos.settings')}</h1><div className="sub mb-3">{t('pos.effective_ai_customer_profile_settings_for_1fmy')}</div></div>
       </div>
       {notice ? <div className="panel" role="status" data-testid="casx-notice" style={{ padding: 12, marginBottom: 10 }}>{notice}</div> : null}
-      {err ? <ErrorRetry message={err} onRetry={() => void load()} /> : null}
+      {err && loadKind === 'forbidden' ? <div className="panel" role="alert" style={{ padding: 12 }} data-testid="casx-state-forbidden"><b>{t('casx.gs.forbidden')}</b><div className="sub">{t('casx.gs.forbiddenNext')}</div></div>
+        : err && loadKind === 'offline' ? <div className="panel" role="alert" style={{ padding: 12 }} data-testid="casx-state-offline"><b>{t('casx.gs.offline')}</b><div className="sub">{t('casx.gs.offlineNext')}</div>
+          <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => void load()}>{t('casx.gs.retry')}</button></div>
+        : err ? <ErrorRetry message={err} onRetry={() => void load()} /> : null}
       {!s && !err ? <div className="state">{t('casx.loading')}</div> : null}
       {s ? <>
         <section className="panel" style={{ padding: 16 }} data-testid="casx-assistant">
@@ -117,6 +144,7 @@ export function POSAICustomerSettingsScreen() {
               <div className="sub">{t('casx.prop.sr')}: <b>{t('casx.prop.' + s.propagation.serviceRecommendations.state)}</b></div></div>
           </div>
           <DriftAlert p={s.propagation} />
+          <GuidedStates s={s} manage={manage} onEnable={() => setConfirm(true)} onRetry={() => void load()} />
         </section>
 
         <div className="rvw-tabs" role="tablist" data-testid="casx-tabs">

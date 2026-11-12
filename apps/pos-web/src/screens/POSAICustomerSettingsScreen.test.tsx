@@ -5,6 +5,7 @@
 // a change with before / after; the health check renders localized text; a view-only role cannot change anything.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 const { api, perms } = vi.hoisted(() => ({ api: { state: vi.fn(), setAssistant: vi.fn(), setThresholds: vi.fn(), preview: vi.fn(), history: vi.fn(), event: vi.fn(), check: vi.fn() }, perms: { deny: [] as string[] } }));
 vi.mock('../api/posCustomerAiSettingsApi', () => ({ posCustomerAiSettingsApi: api }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => !perms.deny.includes(p) }));
@@ -24,7 +25,7 @@ beforeEach(() => { for (const f of Object.values(api)) f.mockReset(); perms.deny
 
 describe('POSAICustomerSettingsScreen', () => {
   it('keeps the title, description, Assistant, Disable button and the five labels; values and sources come from the server', async () => {
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByText('Effective AI Customer Profile settings for this salon')).toBeInTheDocument();
     expect(await screen.findByTestId('casx-toggle')).toHaveTextContent('Disable for this salon');
@@ -40,7 +41,7 @@ describe('POSAICustomerSettingsScreen', () => {
       customerIntelligence: { state: 'pending', lastEvaluatedAt: null, drift: { drifted: true, ruleVersion: { evaluated: 'ci-1', current: 'ci-2', changed: true },
         keys: [{ key: 'longTermInactiveDays', evaluatedValue: 240, currentValue: 250, onScreen: true }, { key: 'dueMultiplier', evaluatedValue: 1.2, currentValue: 1, onScreen: false }] } },
       serviceRecommendations: { state: 'applied', lastEvaluatedAt: null, drift: { drifted: false, keys: [], ruleVersion: { evaluated: 'sr-1', current: 'sr-1', changed: false } } } } }));
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     const box = await screen.findByTestId('casx-drift');
     expect(screen.getByTestId('casx-drift-ci-longTermInactiveDays')).toHaveTextContent('Long-term inactive after: evaluated with 240 days — now 250 days');
     expect(box).toHaveTextContent('1 built-in value(s) changed since it ran');
@@ -48,14 +49,47 @@ describe('POSAICustomerSettingsScreen', () => {
     expect(screen.queryByTestId('casx-drift-sr')).toBeNull();
     expect(box).toHaveTextContent('Detection only');
   });
+  it('Guided states: refused vs disconnected reads are told apart, each with a safe next action', async () => {
+    api.state.mockRejectedValueOnce(Object.assign(new Error('Forbidden'), { status: 403 }));
+    const v = render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('casx-state-forbidden')).toHaveTextContent('Ask the owner');
+    expect(screen.queryByText('Try again')).toBeNull();                                           // retrying a refusal is not a next action
+    v.unmount();
+    api.state.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('casx-state-offline')).toHaveTextContent('Check the connection');
+    fireEvent.click(screen.getByText('Try again'));
+    expect(await screen.findByTestId('casx-guided')).toBeInTheDocument();                      // the retry loaded the state
+  });
+  it('Guided states on a loaded screen: not entitled, disabled, no history, stale — each distinct with its next step', async () => {
+    api.state.mockResolvedValue(STATE({ assistant: { effectiveEnabled: false, disabledAtLevel: 'tenant', salon: 'disabled', branchOverride: 'none', userOverride: 'none', operational: 'disabled' },
+      customerHistory: { hasCompletedVisits: false } }));
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
+    const g = await screen.findByTestId('casx-guided');
+    expect(screen.getByTestId('casx-gs-not_entitled')).toHaveTextContent('Open AI plans');
+    expect(screen.getByTestId('casx-gs-disabled')).toBeInTheDocument();
+    expect(screen.getByTestId('casx-gs-no_history')).toHaveTextContent('nothing to measure');
+    expect(screen.getByTestId('casx-gs-stale_ci')).toHaveTextContent('open Customer Intelligence and press Refresh');
+    expect(screen.queryByTestId('casx-gs-stale_sr')).toBeNull();                                // Service Recommendations are applied
+    fireEvent.click(screen.getByTestId('casx-gs-enable'));                                        // opens the SAME confirmation, saves nothing
+    expect(api.setAssistant).not.toHaveBeenCalled();
+    expect(g).toBeInTheDocument();
+  });
+  it('Guided states: everything in order → no guidance panel', async () => {
+    api.state.mockResolvedValue(STATE({ entitlement: { allowed: true, reason: 'ok', subscriptionStatus: 'active', enforcement: 'observe' }, customerHistory: { hasCompletedVisits: true },
+      propagation: { customerIntelligence: { state: 'applied', lastEvaluatedAt: null }, serviceRecommendations: { state: 'applied', lastEvaluatedAt: null } } }));
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
+    await screen.findByTestId('casx-strip');
+    expect(screen.queryByTestId('casx-guided')).toBeNull();
+  });
   it('no drift → no alert', async () => {
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     await screen.findByTestId('casx-strip');
     expect(screen.queryByTestId('casx-drift')).toBeNull();
   });
 
   it('the strip keeps the salon switch, the subscription decision and propagation apart', async () => {
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     expect(await screen.findByTestId('casx-salon-state')).toHaveTextContent('Enabled');
     expect(screen.getByTestId('casx-package')).toHaveTextContent('Trial ended');
     expect(screen.getByTestId('casx-package')).toHaveTextContent('Not enforced yet');
@@ -65,7 +99,7 @@ describe('POSAICustomerSettingsScreen', () => {
 
   it('Disable asks for confirmation, sends the version and reason; a stale version reloads', async () => {
     api.setAssistant.mockResolvedValueOnce({ version: 5, state: STATE({ assistant: { effectiveEnabled: false, disabledAtLevel: 'tenant', salon: 'disabled', branchOverride: 'none', userOverride: 'none', operational: 'disabled' } }) });
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByTestId('casx-toggle'));
     expect(screen.getByTestId('casx-confirm-text')).toHaveTextContent('Turn the AI Customer Profile assistant OFF for this salon');
     fireEvent.change(screen.getByTestId('casx-reason'), { target: { value: 'renovation' } });
@@ -83,7 +117,7 @@ describe('POSAICustomerSettingsScreen', () => {
   it('edits are validated, previewed read-only and saved with only the changed values', async () => {
     api.preview.mockResolvedValue({ items: [{ key: 'minVisitsForCadence', current: 3, proposed: 4, affected: 12, valid: true }], estimated: true });
     api.setThresholds.mockResolvedValue({ version: 5, state: STATE() });
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByTestId('casx-edit'));
     fireEvent.change(screen.getByTestId('in-inactiveDays'), { target: { value: '5' } });
     expect(screen.getByTestId('pv-inactiveDays')).toHaveTextContent('outside 14–730');
@@ -101,7 +135,7 @@ describe('POSAICustomerSettingsScreen', () => {
     api.history.mockResolvedValue({ items: [{ id: 'e1', type: 'thresholds_changed', changedKeys: ['inactiveDays'], actor: 'Owner', role: 'OWNER', version: 4, at: '2026-11-02T14:00:00Z' }], total: 1, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-02' } });
     api.event.mockResolvedValue({ id: 'e1', type: 'thresholds_changed', before: { enabled: null, tunables: {} }, after: { enabled: null, tunables: { inactiveDays: 60 } }, version: 4, actor: 'Owner', role: 'OWNER', reason: 'shorter cycle', at: '2026-11-02T14:00:00Z',
       propagation: { customerIntelligence: { state: 'pending', at: null }, serviceRecommendations: { state: 'applied', at: '2026-11-02T15:00:00Z' } } });
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByTestId('tab-history'));
     fireEvent.click(await screen.findByTestId('casx-hist-row'));
     expect(await screen.findByTestId('casx-after')).toHaveTextContent('Inactive after (no personal cadence): 60');
@@ -111,7 +145,7 @@ describe('POSAICustomerSettingsScreen', () => {
   it('the health check is localized; a view-only role cannot change anything', async () => {
     perms.deny = ['pos.ai_customer_profile.churn'];
     api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'intelligence_applied', state: 'WARNING' }, { key: 'settings_source', state: 'PASSED' }] });
-    render(<POSAICustomerSettingsScreen />);
+    render(<MemoryRouter><POSAICustomerSettingsScreen /></MemoryRouter>);
     expect(await screen.findByText('Your role can view these settings but not change them.')).toBeInTheDocument();
     expect(screen.queryByTestId('casx-toggle')).toBeNull();
     expect(screen.queryByTestId('casx-edit')).toBeNull();

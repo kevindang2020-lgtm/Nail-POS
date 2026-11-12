@@ -53,6 +53,8 @@ describe('Customer AI Settings — state and provenance', () => {
     expect(s.assistant).toMatchObject({ effectiveEnabled: true, salon: 'inherited', operational: 'operational' });
     expect(s.salonRow.version).toBe(0);
     expect(s.propagation.customerIntelligence.state).toBe('never');
+    expect(s.customerHistory).toEqual({ hasCompletedVisits: true });                          // the seeded paid tickets
+    expect((await cas.state(ctx({ tenantId: X, branchId: BX }))).customerHistory).toEqual({ hasCompletedVisits: false });   // another salon: none
   });
   it('ST-02 the package / subscription decision is kept apart from the salon switch; enforcement decides whether it blocks', async () => {
     ent = { allowed: false, reason: 'trial_expired', subscriptionStatus: 'trialing' };

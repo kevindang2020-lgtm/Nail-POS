@@ -105,7 +105,12 @@ export class CustomerAiSettingsCenter {
     const last = (await sql<Row>`select e.created_at, coalesce(u.full_name, u.email) as actor from ai_customer_profile_settings_events e left join users u on u.id = e.actor_user_id and u.tenant_id = ${T}
       where e.tenant_id = ${T} order by e.created_at desc, e.id desc limit 1`.execute(this.db)).rows[0];
     const t = rows.tenant;
+    // Guided states (extras 08): whether there is ANY completed visit with a customer — without one the thresholds have nothing
+    // to measure, which the screen states as "missing data", never as zeros
+    const visits = N((await sql<Row>`select count(*)::int as n from (select 1 from tickets where tenant_id = ${T} and customer_id is not null and removed_at is null
+      and status = any(${VISIT}::text[]) limit 1) x`.execute(this.db)).rows[0]?.n);
     return {
+      customerHistory: { hasCompletedVisits: visits > 0 },
       assistant: {
         effectiveEnabled: eff.enabled, disabledAtLevel: eff.disabledAtLevel,
         salon: t?.enabled === false ? 'disabled' : t?.enabled === true ? 'enabled' : 'inherited',
