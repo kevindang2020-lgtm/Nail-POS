@@ -89,4 +89,20 @@ describe('Campaign Center', () => {
     await waitFor(() => expect(api.saveSuggestion).toHaveBeenCalledWith(expect.objectContaining({ goal: 'inactive' })));
     expect(api.launch).not.toHaveBeenCalled();
   });
+  it('AI Marketing Assistant 11: the Audit tab shows each entry\'s recorded content version, audience snapshot, channel and spend cap', async () => {
+    api.detail.mockResolvedValue({ ...spring, exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {} });
+    const v = (o: any) => ({ messageVersion: null, snapshotVersion: null, channel: null, contentHash: null, selected: null, eligible: null, budgetCents: null, scheduledAt: null, selfApproved: null, approvalVoided: null, fields: null, ...o });
+    api.audit.mockResolvedValue({ items: [
+      { at: '2026-11-02T15:00:00Z', action: 'campaign.approved', summary: 'Approved message version 2 for audience snapshot 1', actor: 'Max Manager', version: v({ messageVersion: 2, snapshotVersion: 1, channel: 'sms', contentHash: 'abc123def456', selected: 4, eligible: 2, budgetCents: 2500, selfApproved: false }) },
+      { at: '2026-11-02T14:00:00Z', action: 'campaign.updated', summary: 'Campaign edited after approval — the approval no longer applies', actor: 'Olivia Owner', version: v({ approvalVoided: true, fields: ['messageBody'] }) },
+      { at: '2026-11-01T14:00:00Z', action: 'campaign.created', summary: 'Campaign created', actor: 'Olivia Owner', version: v({}) }] });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    fireEvent.click(await screen.findByTestId('cc-tab-audit'));
+    const facts = await screen.findAllByTestId('cc-audit-version');
+    expect(facts).toHaveLength(2);                                                          // an entry with no recorded facts shows none
+    expect(facts[0]).toHaveTextContent('Message v2 (#abc123def456) · Audience snapshot 1 · 2 eligible of 4 · SMS · Spend cap $25.00');
+    expect(facts[1]).toHaveTextContent('This edit voided the earlier approval');
+    expect(screen.getByTestId('cc-audit')).toHaveTextContent('Max Manager');
+  });
 });

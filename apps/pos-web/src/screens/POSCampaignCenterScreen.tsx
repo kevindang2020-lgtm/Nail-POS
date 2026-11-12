@@ -331,7 +331,22 @@ function AuditTab({ id }: { id: string }) {
   const [d, setD] = useState<any>(null);
   useEffect(() => { posCampaignCenterApi.audit(id).then(setD).catch(() => setD({ items: [] })); }, [id]);
   if (!d) return <div className="fk-loading">{tx('pos.loading')}</div>;
-  return d.items.length === 0 ? <Empty title={tx('cc.noAudit')} /> : <ul className="fk-list dense" data-testid="cc-audit">{d.items.map((a: any, i: number) => <li key={i} className="fk-li"><div className="fk-li-main"><div className="fk-li-t">{a.summary ?? a.action}</div><div className="fk-li-s">{a.actor} · {when(a.at)}</div></div></li>)}</ul>;
+  return d.items.length === 0 ? <Empty title={tx('cc.noAudit')} /> : <ul className="fk-list dense" data-testid="cc-audit">{d.items.map((a: any, i: number) => <li key={i} className="fk-li"><div className="fk-li-main"><div className="fk-li-t">{a.summary ?? a.action}</div><div className="fk-li-s">{a.actor} · {when(a.at)}</div>
+    {auditFacts(a.version).length ? <div className="fk-li-s" data-testid="cc-audit-version">{auditFacts(a.version).join(' · ')}</div> : null}</div></li>)}</ul>;
+}
+/** AI Marketing Assistant 11 — the server-recorded facts of one timeline entry: what content version, audience, channel and cap it was about */
+type AuditVersionView = { messageVersion: number | null; snapshotVersion: number | null; channel: string | null; contentHash: string | null; selected: number | null; eligible: number | null;
+  budgetCents: number | null; selfApproved: boolean | null; approvalVoided: boolean | null };
+function auditFacts(v: AuditVersionView | null | undefined): string[] {
+  if (!v) return [];
+  const out: string[] = [];
+  if (v.messageVersion != null) out.push(tx('cc.av.message', { v: String(v.messageVersion) }) + (v.contentHash ? ` (#${v.contentHash})` : ''));
+  if (v.snapshotVersion != null) out.push(tx('cc.av.audience', { v: String(v.snapshotVersion) }) + (v.eligible != null ? ` · ${tx('cc.av.eligible', { n: fmtNumber(v.eligible), of: v.selected == null ? '—' : fmtNumber(v.selected) })}` : ''));
+  if (v.channel) out.push(chLabel(v.channel));
+  if (v.budgetCents != null) out.push(tx('cc.av.cap', { c: v.budgetCents > 0 ? fmtMoney(v.budgetCents) : tx('cc.av.noCap') }));
+  if (v.selfApproved === true) out.push(tx('cc.av.self'));
+  if (v.approvalVoided === true) out.push(tx('cc.av.voided'));
+  return out;
 }
 
 // ── New Campaign: six steps (guide §08). Save-as-draft at every step; preview never sends; approval is a separate act. ──

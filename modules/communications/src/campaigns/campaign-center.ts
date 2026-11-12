@@ -62,6 +62,17 @@ const proposedAt = (v: unknown): string | null => {
   if (typeof v !== 'string' || !v) return null; const t = Date.parse(v);
   return Number.isFinite(t) && t > Date.now() && t < Date.now() + 366 * 86_400_000 ? new Date(t).toISOString() : null;
 };
+/** AI Marketing Assistant 11 — the versioned facts an approval-timeline entry carries, from its audit metadata (a fixed
+ *  whitelist: no recipient, contact or message text). Older entries simply have nulls. */
+export function auditVersion(meta: unknown) {
+  const m = (meta && typeof meta === 'object' ? meta : {}) as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  return { messageVersion: num(m.messageVersion), snapshotVersion: num(m.snapshotVersion), channel: typeof m.channel === 'string' ? m.channel : null,
+    contentHash: typeof m.contentHash === 'string' ? m.contentHash.slice(0, 12) : null, selected: num(m.selected), eligible: num(m.eligible), budgetCents: num(m.budgetCents),
+    scheduledAt: typeof m.scheduledAt === 'string' ? m.scheduledAt : null, selfApproved: typeof m.selfApproved === 'boolean' ? m.selfApproved : null,
+    approvalVoided: typeof m.approvalVoided === 'boolean' ? m.approvalVoided : null, fields: Array.isArray(m.fields) ? m.fields.filter((f): f is string => typeof f === 'string').slice(0, 20) : null };
+}
+
 export class CampaignCenterError extends Error {
   code: string; status: number; extra: Record<string, unknown>;
   constructor(msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) { super(msg); this.name = 'CampaignCenterError'; this.code = code; this.status = status; this.extra = extra; }
@@ -445,7 +456,7 @@ export class CampaignCenter {
     await this.one(ctx, id);
     const rows = (await sql<any>`select e.occurred_at, e.action, e.summary, e.actor_role, u.full_name as actor_name, e.metadata from audit_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id
         where e.tenant_id = ${ctx.tenantId} and e.resource_type = 'campaign' and e.resource_id = ${id} order by e.occurred_at desc, e.id desc limit 100`.execute(this.db)).rows;
-    return { items: rows.map((x) => ({ at: iso(x.occurred_at), action: x.action, summary: x.summary ?? null, actor: x.actor_name ?? x.actor_role ?? 'system' })) };
+    return { items: rows.map((x) => ({ at: iso(x.occurred_at), action: x.action, summary: x.summary ?? null, actor: x.actor_name ?? x.actor_role ?? 'system', version: auditVersion(x.metadata) })) };
   }
 
   // ── §08 wizard: create / edit / audience / preview / submit / approve / launch / unschedule ──────────────────────────
@@ -620,7 +631,12 @@ export class CampaignCenter {
           on conflict (campaign_id) do update set channel = excluded.channel, message_version = excluded.message_version, body = excluded.body, offer_name = excluded.offer_name,
             audience_definition = excluded.audience_definition, updated_at = now()
           where ai_marketing_campaign_plans.tenant_id = excluded.tenant_id`.execute(trx);
-      await this.audit1(trx, ctx, id, 'campaign.approved', `Approved message version ${version} for audience snapshot ${N(fresh.snapshot_version)}`, { messageVersion: version, snapshotVersion: N(fresh.snapshot_version), selfApproved: fresh.submitted_by_user_id ? String(fresh.submitted_by_user_id) === String(ctx.userId) : true });
+      // AI Marketing Assistant 11 — the approval timeline records WHAT was approved: content (hash + version), audience
+      // (snapshot + counts), channel and the spend cap (budget) at that moment, so a later edit cannot rewrite the record
+      const aud = (await sql<{ selected: number; eligible: number }>`select count(*)::int as selected, count(*) filter (where eligibility = 'eligible')::int as eligible from campaign_recipients
+          where tenant_id = ${ctx.tenantId} and campaign_id = ${id} and snapshot_version = ${N(fresh.snapshot_version)}`.execute(trx)).rows[0];
+      await this.audit1(trx, ctx, id, 'campaign.approved', `Approved message version ${version} for audience snapshot ${N(fresh.snapshot_version)}`, { messageVersion: version, snapshotVersion: N(fresh.snapshot_version), selfApproved: fresh.submitted_by_user_id ? String(fresh.submitted_by_user_id) === String(ctx.userId) : true,
+        channel: fresh.channel, contentHash: fresh.content_hash ? String(fresh.content_hash).slice(0, 12) : null, selected: N(aud?.selected), eligible: N(aud?.eligible), budgetCents: N(fresh.cost_cents) });
       return { id, approved: true, messageVersion: version };
     });
   }
@@ -653,7 +669,8 @@ export class CampaignCenter {
       const r = (await sql<any>`update campaigns set status = 'scheduled', scheduled_at = ${at.toISOString()}::timestamptz, updated_by = ${this.actorId(ctx)}, updated_at = now()
           where tenant_id = ${ctx.tenantId} and id = ${id} and ${canMoveToSql(CAMPAIGN, 'scheduled')} returning id`.execute(trx)).rows[0];
       if (!r) throw err('This campaign has already been launched.', 'CAMPAIGN_ALREADY_LAUNCHED', 409);
-      await this.audit1(trx, ctx, id, 'campaign.launched', `Scheduled to send to up to ${again.eligible} eligible customers at ${at.toISOString()}`, { eligible: again.eligible, scheduledAt: at.toISOString() });
+      await this.audit1(trx, ctx, id, 'campaign.launched', `Scheduled to send to up to ${again.eligible} eligible customers at ${at.toISOString()}`, { eligible: again.eligible, scheduledAt: at.toISOString(),
+        channel: c.channel, messageVersion: N(c.message_version) || 1, snapshotVersion: N(c.snapshot_version), budgetCents: N(c.cost_cents) });
       return { id, status: 'scheduled', scheduledAt: at.toISOString(), eligible: again.eligible };
     });
   }

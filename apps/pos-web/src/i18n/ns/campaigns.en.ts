@@ -264,4 +264,11 @@ export const CAMPAIGNS_EN = {
   "cc.a.when": "Suggested timing:",
   "cc.a.saveDraft": "Save as draft",
   "cc.w.proposed": "Campaign Builder proposed {at} (salon time) — filled in below. Nothing is scheduled until you launch.",
+  "cc.av.message": "Message v{v}",
+  "cc.av.audience": "Audience snapshot {v}",
+  "cc.av.eligible": "{n} eligible of {of}",
+  "cc.av.cap": "Spend cap {c}",
+  "cc.av.noCap": "none set",
+  "cc.av.self": "Approved by the person who requested it",
+  "cc.av.voided": "This edit voided the earlier approval",
 };

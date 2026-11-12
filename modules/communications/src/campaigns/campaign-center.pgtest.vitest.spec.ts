@@ -185,6 +185,26 @@ describe('§08 wizard: details → audience snapshot → message → preview →
   });
 });
 
+describe('AI Marketing Assistant 11 — campaign approval timeline (versioned audit)', () => {
+  it('each approval records reviewer, content version + hash, audience snapshot + counts, channel and spend cap; an edit says it voided the approval; launches carry the versions', async () => {
+    const a: any = await cc.audit(owner, cA);
+    const approvals = a.items.filter((x: any) => x.action === 'campaign.approved');
+    expect(approvals).toHaveLength(2);
+    const [v2, v1] = approvals;                                          // newest first
+    expect(v1.version).toMatchObject({ messageVersion: 1, snapshotVersion: 1, channel: 'sms', selected: 4, eligible: 2, budgetCents: 0, selfApproved: false });
+    expect(v2.version).toMatchObject({ messageVersion: 2, snapshotVersion: 1, channel: 'sms', selected: 4, eligible: 2 });
+    expect(v1.version.contentHash).toMatch(/^[0-9a-f]{12}$/);
+    expect(v2.version.contentHash).not.toBe(v1.version.contentHash);   // the edited message is a different content
+    expect(v1.actor).not.toBe('system'); expect(v2.actor).not.toBe(v1.actor);   // owner approved v1, the manager v2
+    const edit = a.items.find((x: any) => x.action === 'campaign.updated');
+    expect(edit.version).toMatchObject({ approvalVoided: true, fields: ['messageBody'] });
+    const launched = a.items.filter((x: any) => x.action === 'campaign.launched');
+    expect(launched.length).toBeGreaterThan(0);
+    expect(launched[0].version).toMatchObject({ messageVersion: 2, snapshotVersion: 1, channel: 'sms', eligible: 2 });
+    expect(JSON.stringify(a)).not.toMatch(/Hi from|Ava Kim|\+1\d{10}/);   // no message text, names or numbers in the timeline
+  });
+});
+
 describe('§10 execution through the REAL executor over the approved snapshot', () => {
   it('consent revoked after scheduling → skipped; opted-out → skipped; others submitted once; delivery callbacks counted; a rerun sends nothing', async () => {
     const extra = await customer('Eve Fox'); const optOut = await customer('Gus Hill');
