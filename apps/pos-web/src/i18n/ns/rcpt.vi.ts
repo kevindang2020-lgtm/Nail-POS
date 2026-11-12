@@ -262,4 +262,25 @@ export const RCPT_VI: Record<string, string> = {
   "rcpt.viewCustomer": "Xem khách",
   "rcpt.viewSetup": "Xem thiết lập",
   "rcpt.windowLabel": "{from} – {to} (giờ tiệm)",
+  "rcpt.cap.open": "AI làm được gì", // DRAFT — Kevin reviews
+  "rcpt.cap.title": "Bảng khả năng của trợ lý AI", // DRAFT — Kevin reviews
+  "rcpt.cap.sub": "Bốn dữ kiện riêng cho từng việc trợ lý giọng nói làm được — không bao giờ gộp thành một đèn xanh.", // DRAFT — Kevin reviews
+  "rcpt.cap.col.capability": "Khả năng", // DRAFT — Kevin reviews
+  "rcpt.cap.col.configured": "Đã thiết lập", // DRAFT — Kevin reviews
+  "rcpt.cap.col.tested": "Đã thử bằng cuộc gọi thật", // DRAFT — Kevin reviews
+  "rcpt.cap.col.active": "Đang hoạt động", // DRAFT — Kevin reviews
+  "rcpt.cap.col.allowed": "Được phép", // DRAFT — Kevin reviews
+  "rcpt.cap.yes": "Có", // DRAFT — Kevin reviews
+  "rcpt.cap.no": "Không", // DRAFT — Kevin reviews
+  "rcpt.cap.notTested": "Chưa", // DRAFT — Kevin reviews
+  "rcpt.cap.testedAt": "Có · gần nhất {at}", // DRAFT — Kevin reviews
+  "rcpt.cap.k.hours": "Giờ mở cửa", // DRAFT — Kevin reviews
+  "rcpt.cap.k.services": "Dịch vụ", // DRAFT — Kevin reviews
+  "rcpt.cap.k.availability": "Lịch trống", // DRAFT — Kevin reviews
+  "rcpt.cap.k.booking": "Đặt lịch hẹn", // DRAFT — Kevin reviews
+  "rcpt.cap.k.reschedule": "Đổi lịch", // DRAFT — Kevin reviews
+  "rcpt.cap.k.cancel": "Hủy lịch hẹn", // DRAFT — Kevin reviews
+  "rcpt.cap.k.sms": "Tin nhắn (mã và xác nhận)", // DRAFT — Kevin reviews
+  "rcpt.cap.k.handoff": "Chuyển cho quầy lễ tân", // DRAFT — Kevin reviews
+  "rcpt.cap.note": "Đã thiết lập = tiệm đã cài đặt. Đã thử = một cuộc gọi thật đã dùng thành công trong 90 ngày qua (một cài đặt đã lưu không phải là một lần thử). Đang hoạt động = trợ lý đã được kích hoạt, đã thiết lập và được phép. Được phép = gói dịch vụ có gói điện thoại AI; thay đổi lịch hẹn còn cần công tắc của nền tảng. — = không biết từ dữ liệu ở đây.", // DRAFT — Kevin reviews
 };

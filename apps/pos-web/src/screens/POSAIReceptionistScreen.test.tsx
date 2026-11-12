@@ -16,6 +16,11 @@ vi.mock('../api/posAiReceptionistCenterApi', () => ({
         step('phone_number', 'configured'), step('write_tools', 'incomplete'), step('test_call', 'blocked'), step('go_live', 'incomplete')],
       connections: { twilio: 'configured_route_unverified', retell: 'not_configured', integrationKey: 'not_issued', booking: 'handoff_only' },
       checks: [],
+      capabilities: [
+        { key: 'services', tool: 'get_services', configured: true, tested: true, lastTestedAt: '2026-11-01T15:00:00Z', active: false, allowed: true },
+        { key: 'booking', tool: 'create_appointment', configured: false, tested: false, lastTestedAt: null, active: false, allowed: true },
+        { key: 'sms', tool: null, configured: true, tested: null, lastTestedAt: null, active: false, allowed: null },
+      ],
     }),
     lastHealth: () => Promise.resolve(null),
     kpis: () => Promise.resolve({ window: { from: '2026-10-01', to: '2026-10-31' }, calls: 0, voiceMinutes: 0, avgDurationSeconds: null,
@@ -56,5 +61,19 @@ describe('POSAIReceptionistScreen', () => {
     expect(window.location.search).toContain('rpagent=agent_rose');
     expect(window.location.search).toContain('rpstatus=missed');
     window.history.replaceState(null, '', '/');
+  });
+
+  it('extras AI Receptionist 04: the capability matrix shows the server\'s four facts per capability; unknown is "—", never a green light', async () => {
+    render(<MemoryRouter><POSAIReceptionistScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('rcp-capabilities-open'));
+    const rows = await screen.findAllByTestId('rcp-cap-row');
+    expect(rows.map((r) => r.getAttribute('data-cap'))).toEqual(['services', 'booking', 'sms']);
+    const cells = (i: number, id: string) => rows[i]!.querySelector(`[data-testid="${id}"]`)!.textContent;
+    expect(rows[0]).toHaveTextContent('Services');
+    expect(cells(0, 'rcp-cap-tested')).toMatch(/^Yes · last /);
+    expect(cells(0, 'rcp-cap-active')).toBe('No');
+    expect(cells(1, 'rcp-cap-configured')).toBe('No'); expect(cells(1, 'rcp-cap-tested')).toBe('Not yet');
+    expect(cells(2, 'rcp-cap-tested')).toBe('—'); expect(cells(2, 'rcp-cap-allowed')).toBe('—');
+    expect(screen.getByTestId('rcp-capabilities')).toHaveTextContent('a saved setting is never a test');
   });
 });

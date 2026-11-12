@@ -41,6 +41,36 @@ export const RC_STATES = ['READY', 'WARNING', 'FAILED', 'NOT_CONFIGURED', 'DISAB
 export type RcState = typeof RC_STATES[number];
 export const RC_STAGES = ['not_configured', 'configured', 'ready_for_test', 'test_call_verified', 'live', 'degraded'] as const;
 export const RC_PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
+
+// extras AI Receptionist 04 — the AI Agent Capability Matrix: for each thing the voice agent can do, four separate facts
+// from evidence (never one green light):
+//   configured  the salon set it up (Business Setup ready + an integration key for the read tools; booking actions armed
+//               + a key for the write tools; the salon's messaging account checked for texts; a key for the handoff tool)
+//   tested      a REAL call used that tool successfully (voice_tool_executions, this salon/branch, last 90 days) — null for
+//               texts, which no voice tool proves; a saved setting is never "tested"
+//   active      the receptionist is activated AND configured AND allowed
+//   allowed     the plan allows the AI phone package; write tools also need the platform's write switch
+// null = not known from the evidence here (shown as "—"). Read-only; nothing here changes a setting or calls a provider.
+export const RC_CAPABILITIES = ['hours', 'services', 'availability', 'booking', 'reschedule', 'cancel', 'sms', 'handoff'] as const;
+export type RcCapabilityKey = (typeof RC_CAPABILITIES)[number];
+export const RC_CAPABILITY_TOOL: Record<RcCapabilityKey, string | null> = { hours: 'get_business_info', services: 'get_services', availability: 'get_availability',
+  booking: 'create_appointment', reschedule: 'reschedule_appointment', cancel: 'cancel_appointment', sms: null, handoff: 'handoff_to_front_desk' };
+const RC_WRITE_CAPS: readonly RcCapabilityKey[] = ['booking', 'reschedule', 'cancel'];
+export interface RcCapabilityRow { key: RcCapabilityKey; tool: string | null; configured: boolean | null; tested: boolean | null; lastTestedAt: string | null; active: boolean | null; allowed: boolean | null }
+const tri = (state: string | undefined): boolean | null => (state === 'READY' ? true : state === 'UNKNOWN' || state == null ? null : false);
+const and3 = (...v: (boolean | null)[]): boolean | null => (v.some((x) => x === false) ? false : v.some((x) => x == null) ? null : true);
+/** pure: the matrix from the readiness checks, the write switch, activation and the last successful use of each tool */
+export function capabilityMatrix(checks: { id: string; state: string }[], o: { writeSwitch: boolean; activated: boolean; lastUse: Record<string, string | null> }): RcCapabilityRow[] {
+  const st = (id: string) => checks.find((c) => c.id === id)?.state;
+  const entitled = tri(st('ent.package')); const key = tri(st('key.active'));
+  return RC_CAPABILITIES.map((k) => {
+    const tool = RC_CAPABILITY_TOOL[k]; const write = RC_WRITE_CAPS.includes(k);
+    const configured = k === 'sms' ? tri(st('cm.sms')) : k === 'handoff' ? key : write ? and3(st('bk.actions') === 'READY', key) : and3(tri(st('biz.setup')), key);
+    const allowed = write ? and3(entitled, o.writeSwitch) : entitled;
+    const last = tool ? (o.lastUse[tool] ?? null) : null;
+    return { key: k, tool, configured, tested: tool ? last != null : null, lastTestedAt: last, active: and3(o.activated, configured, allowed), allowed };
+  });
+}
 export const RC_CALL_STATUSES = ['completed', 'abandoned', 'failed', 'handed_off', 'missed', 'in_progress'] as const;
 /** A15 / A10 Nov 6 — a call is MISSED when the caller hung up before the agent could help (abandoned in under MISSED_SECONDS);
  *  IN PROGRESS when it has started, has no end and is younger than STALE_HOURS (older open calls are a sync gap, not live). */
@@ -289,7 +319,14 @@ export class ReceptionistCenter {
       integrationKey: st('key.active') === 'READY' ? 'issued' : st('key.active') === 'FAILED' ? 'revoked_or_expired' : 'not_issued',
       booking: st('bk.actions') === 'READY' ? 'armed' : 'handoff_only',
     };
-    return { stage, steps, verifiedSteps: verified, progressPct: Math.round((verified / steps.length) * 100), connections, checks, control: ctl ? this.ctlOut(ctl) : null, checkedAt: nowIso() };
+    const tools = Object.values(RC_CAPABILITY_TOOL).filter((x): x is string => !!x);
+    const b = this.branch(ctx);
+    const uses = (await sql<{ tool_name: string; last: unknown }>`select tool_name, max(coalesce(finished_at, created_at)) as last from voice_tool_executions
+        where tenant_id = ${ctx.tenantId} and (${b}::uuid is null or branch_id = ${b}) and status = 'succeeded' and tool_name = any(${tools}::text[])
+          and created_at > now() - interval '90 days' group by tool_name`.execute(this.db)).rows;
+    const lastUse: Record<string, string | null> = Object.fromEntries(uses.map((u) => [String(u.tool_name), iso(u.last)]));
+    const capabilities = capabilityMatrix(checks, { writeSwitch: voiceWriteToolsEnabled(this.env), activated: !!ctl?.activated, lastUse });
+    return { stage, steps, verifiedSteps: verified, progressPct: Math.round((verified / steps.length) * 100), connections, checks, control: ctl ? this.ctlOut(ctl) : null, capabilities, checkedAt: nowIso() };
   }
   private ctlOut(c: Row) {
     return { bookingArmed: !!c.booking_armed, bookingArmedAt: iso(c.booking_armed_at), testCallVerifiedAt: iso(c.test_call_verified_at), testCallRef: c.test_call_provider_call_id ? String(c.test_call_provider_call_id).slice(0, 12) + '…' : null,
