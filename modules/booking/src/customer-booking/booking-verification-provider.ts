@@ -55,6 +55,8 @@ export interface SendResult {
   plaintextCode?: string;
   error?: string;
   reason?: 'not_configured' | 'invalid_number' | 'provider_error' | 'rate_limited';
+  /** The provider's error CODE only (e.g. Twilio 20003, "http_503", "network") — for failure triage; never its message text. */
+  providerCode?: string;
 }
 
 export interface CheckResult {
@@ -101,12 +103,13 @@ export class TwilioVerifyProvider implements VerificationProvider {
       if (!res.ok) {
         // Twilio's own error text can name the account and the service. It is useful in an audit record and
         // must never reach the customer, so the caller keeps it and shows the policy's safe message instead.
-        return { ok: false, reason: res.status === 429 ? 'rate_limited' : 'provider_error', error: String(body?.message ?? `Twilio returned ${res.status}`) };
+        return { ok: false, reason: res.status === 429 ? 'rate_limited' : 'provider_error', error: String(body?.message ?? `Twilio returned ${res.status}`),
+          providerCode: body?.code != null && /^\d{3,6}$/.test(String(body.code)) ? String(body.code) : `http_${res.status}` };
       }
       // NOTE what is NOT here: a code. Verify keeps it.
       return { ok: true, providerVerificationSid: String(body?.sid ?? '') };
     } catch (e: any) {
-      return { ok: false, reason: 'provider_error', error: e?.message ?? 'Could not reach the verification provider.' };
+      return { ok: false, reason: 'provider_error', error: e?.message ?? 'Could not reach the verification provider.', providerCode: 'network' };
     }
   }
 

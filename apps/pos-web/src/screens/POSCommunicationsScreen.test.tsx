@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { POSCommunicationsScreen } from './POSCommunicationsScreen';
+import { posCommunicationsApi } from '../api/posCommunicationsApi';
 
 vi.mock('../api/posCommunicationsApi', () => {
   // the screen reads the Communications Inbox API (inbox.list / summary / detail …) — the old getState / getThread shape is retired
@@ -92,5 +93,23 @@ describe('POSCommunicationsScreen', () => {
     const sel = await screen.findByTestId('ci-campaign');
     fireEvent.change(sel, { target: { value: 'rsms:11111111-1111-4111-8111-111111111111' } });
     await waitFor(() => expect((posCommunicationsApi.inbox.list as any)).toHaveBeenLastCalledWith(expect.objectContaining({ campaign: 'rsms:11111111-1111-4111-8111-111111111111', page: '1' })));
+  });
+  it('Extras SMS-12: a stale status-callback webhook is warned about from timestamps — waiting texts are not counted as failed', async () => {
+    const base = { scope: { branch: null, tz: 'America/New_York' }, conversations: { total: 1, open: 1, unreadThreads: 1, unreadMessages: 1, replied: 0, missed: 0, awaiting: 1, oldestAwaitingSince: null },
+      channelMix: [{ channel: 'sms', count: 1 }], sentToday: { total: 12, submitted: 12, delivered: 10, failed: 0, simulated: 0 }, definitions: {}, generatedAt: '2026-06-06T14:00:00Z' };
+    const summary = posCommunicationsApi.inbox.summary as unknown as ReturnType<typeof vi.fn>;
+    summary.mockResolvedValue({ ...base, callbacks: { state: 'stale', awaiting: 3, oldestAwaitingAt: '2026-06-06T10:00:00Z', lastCallbackAt: null, waitMinutes: 30, lookbackDays: 7 } });
+    const { unmount } = render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
+    const w = await screen.findByTestId('callback-warning');
+    expect(w.textContent).toMatch(/3 sent texts have had no delivery update for over 30 min/);
+    expect(w.textContent).toMatch(/last callback: none received/);
+    expect(w.textContent).toMatch(/not counted as failed/);
+    expect(screen.getByTestId('callback-fix')).toBeInTheDocument();
+    unmount();
+    summary.mockResolvedValue({ ...base, callbacks: { state: 'ok', awaiting: 0, oldestAwaitingAt: null, lastCallbackAt: '2026-06-06T13:00:00Z', waitMinutes: 30, lookbackDays: 7 } });
+    render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
+    await screen.findByText('Olivia Brown');
+    expect(screen.queryByTestId('callback-warning')).toBeNull();
+    summary.mockResolvedValue(base);
   });
 });

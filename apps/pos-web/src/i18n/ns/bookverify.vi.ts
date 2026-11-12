@@ -118,4 +118,30 @@ export const BOOKVERIFY_VI = {
   "bv.hd.policy": "Điều đang được áp dụng cho từng nguồn đặt lịch ngay lúc này.",
   "bv.hd.recent_errors": "Lỗi từ nhà cung cấp trong 24 giờ qua.",
   "bv.hd.integration": "Giữ chỗ hết hạn đúng giờ và không lịch hẹn nào bỏ qua bước kiểm tra.",
+  "bv.funnel.title": "Phễu xác minh · {d} ngày qua", // DRAFT — Kevin reviews
+  "bv.funnel.requested": "Đã yêu cầu", // DRAFT — Kevin reviews
+  "bv.funnel.sent": "Đã gửi mã", // DRAFT — Kevin reviews
+  "bv.funnel.verified": "Đã xác minh", // DRAFT — Kevin reviews
+  "bv.funnel.holdConverted": "Giữ chỗ → lịch hẹn", // DRAFT — Kevin reviews
+  "bv.funnel.confirmed": "Đặt lịch đã xác nhận", // DRAFT — Kevin reviews
+  "bv.funnel.conv": "{p}% so với bước trước", // DRAFT — Kevin reviews
+  "bv.funnel.convUnknown": "— so với bước trước", // DRAFT — Kevin reviews
+  "bv.funnel.overrides": "Quản lý cho qua (không tính là đã xác minh): {n}", // DRAFT — Kevin reviews
+  "bv.triage.title": "Lỗi nhà cung cấp · {d} ngày qua", // DRAFT — Kevin reviews
+  "bv.triage.none": "Không có lỗi nhà cung cấp trong {d} ngày qua.", // DRAFT — Kevin reviews
+  "bv.triage.codes": "mã {c}", // DRAFT — Kevin reviews
+  "bv.triage.cat.permission": "Quyền / tài khoản", // DRAFT — Kevin reviews
+  "bv.triage.cat.service": "Dịch vụ Verify", // DRAFT — Kevin reviews
+  "bv.triage.cat.sender": "Số gửi tin", // DRAFT — Kevin reviews
+  "bv.triage.cat.rate_limit": "Giới hạn tần suất", // DRAFT — Kevin reviews
+  "bv.triage.cat.unavailable": "Nhà cung cấp không phản hồi", // DRAFT — Kevin reviews
+  "bv.triage.cat.wrong_phone": "Số điện thoại sai hoặc không dùng được", // DRAFT — Kevin reviews
+  "bv.triage.cat.other": "Khác / chưa nhận diện", // DRAFT — Kevin reviews
+  "bv.triage.fix.permission": "Kiểm tra tài khoản Twilio còn hoạt động và khóa / quyền vùng cho phép nhắn tin tại Mỹ.", // DRAFT — Kevin reviews
+  "bv.triage.fix.service": "Kiểm tra Verify Service trong Điện thoại & Nhắn tin (thiếu, hoặc đã tắt SMS).", // DRAFT — Kevin reviews
+  "bv.triage.fix.sender": "Kiểm tra số gửi tin và đăng ký A2P / số miễn phí.", // DRAFT — Kevin reviews
+  "bv.triage.fix.rate_limit": "Gửi quá nhiều — hãy chờ, và xem có yêu cầu lặp lại từ một số không.", // DRAFT — Kevin reviews
+  "bv.triage.fix.unavailable": "Không kết nối được Twilio — thường là tạm thời; hãy chạy kiểm tra hệ thống.", // DRAFT — Kevin reviews
+  "bv.triage.fix.wrong_phone": "Số không hợp lệ, là số bàn hoặc không phải di động — hãy xác nhận lại với khách.", // DRAFT — Kevin reviews
+  "bv.triage.fix.other": "Mở lịch sử xác minh và xem mã lỗi của từng lần thất bại.", // DRAFT — Kevin reviews
 } as const;

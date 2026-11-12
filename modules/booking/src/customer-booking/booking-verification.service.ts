@@ -228,7 +228,8 @@ export class BookingVerificationService {
       // Twilio generates, sends, expires and checks the code. WE NEVER SEE IT.
       const r = await this.providers.twilio_verify.send(credentials, e164, { locale: verifyLocale(ctx.locale) });
       if (!r.ok) {
-        await this.store.markSendFailed?.(sessionId, String(r.reason ?? 'provider_error'));
+        // the reason plus the provider's error CODE (never its text) so Provider Failure Triage can group it
+        await this.store.markSendFailed?.(sessionId, String(r.reason ?? 'provider_error') + (r.providerCode ? ':' + r.providerCode : ''));
         return { status: 'code_send_failed', message: 'We could not send a verification code right now. Please try again shortly.' };
       }
       await this.store.markSent(sessionId, now, r.providerVerificationSid ?? null, undefined, expiresAt);

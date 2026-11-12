@@ -24,3 +24,15 @@ describe('twilioVerifyBase', () => {
     expect(String((http.mock.calls[0] as any)[0])).toBe('http://127.0.0.1:3091/v2/Services/VA1/VerificationCheck');
   });
 });
+
+describe('send failures carry the provider error CODE (never the message) for triage — Extras BPV-12', () => {
+  const creds = { accountSid: 'AC1', authToken: 't', verifyServiceSid: 'VA1', fromNumber: null };
+  it('Twilio JSON code, else http_<status>; 429 is rate_limited; a network error is "network"', async () => {
+    const p1 = new TwilioVerifyProvider((async () => new Response(JSON.stringify({ code: 20003, message: 'Authenticate ACxxxx' }), { status: 401 })) as any, 'http://127.0.0.1:3091');
+    expect(await p1.send(creds, '+18565550199')).toMatchObject({ ok: false, reason: 'provider_error', providerCode: '20003' });
+    const p2 = new TwilioVerifyProvider((async () => new Response('busy', { status: 429 })) as any, 'http://127.0.0.1:3091');
+    expect(await p2.send(creds, '+18565550199')).toMatchObject({ ok: false, reason: 'rate_limited', providerCode: 'http_429' });
+    const p3 = new TwilioVerifyProvider((async () => { throw new Error('ECONNRESET'); }) as any, 'http://127.0.0.1:3091');
+    expect(await p3.send(creds, '+18565550199')).toMatchObject({ ok: false, reason: 'provider_error', providerCode: 'network' });
+  });
+});

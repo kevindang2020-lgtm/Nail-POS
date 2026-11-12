@@ -79,4 +79,8 @@ export const COMMSINBOX_EN = {
   'ci.f.campaign': 'Source campaign',
   'ci.f.anyCampaign': 'Any campaign',
   'ci.f.campaignHint': 'Conversations with the customers a campaign was sent to, from the send until 14 days after.',
+  'ci.cb.stale': '{n} sent texts have had no delivery update for over {m} min, and no provider callback has arrived since then (last callback: {t}). The status-callback webhook may be missing — these texts are not counted as failed.',
+  'ci.cb.delayed': '{n} sent texts are still waiting for a delivery update after {m} min. Provider callbacks are still arriving (last: {t}) — these texts are not counted as failed.',
+  'ci.cb.never': 'none received',
+  'ci.cb.fix': 'Check Messaging Setup',
 };

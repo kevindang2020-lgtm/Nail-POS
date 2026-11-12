@@ -20,6 +20,8 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { ImeSafeInput } from '../components/ImeSafeInput';
 import { statusLabel } from '../i18n/status-label';
 import { codeLabel } from '../components/peopleLabels';
+import { useInRouterContext, useNavigate } from 'react-router-dom';
+import { useCan } from '../components/usePermissions';
 
 type CustomerItem = { customerId: string; fullName: string; phone: string; visitsCount: number };
 type Appt = { 
@@ -64,6 +66,47 @@ const errText = (e: unknown) => {
   return errorTextOf(e, tt('ahx.loadFailed'));
 };
 const day = (d: string, time?: string | null) => `${fmtInTz(`${d}T12:00:00Z`, 'UTC', { month: 'short', day: '2-digit', year: 'numeric' }) || d}${time ? ` · ${time}` : ''}`;
+
+/** Smarter Follow-up and Rebooking Review (Extras · Appointment History 03): for a COMPLETED appointment, whether the customer
+ *  already has a future appointment (from their own appointment list) and review-only shortcuts to the existing Rebooking
+ *  Opportunities overlay and the AI Booking Assistant. Navigation only — nothing is booked or sent here. */
+const OPEN_STATUSES = new Set(['booked', 'confirmed', 'pending_confirmation', 'checked_in', 'waiting', 'in_service', 'arrived']);
+export function nextFutureAppointment(appts: Array<{ startsAt?: string | null; status?: string | null }>, nowMs: number): string | null {
+  let best: number | null = null;
+  for (const a of appts) {
+    const at = a.startsAt ? Date.parse(a.startsAt) : NaN;
+    if (!Number.isFinite(at) || at <= nowMs || !OPEN_STATUSES.has(String(a.status ?? '').toLowerCase())) continue;
+    if (best == null || at < best) best = at;
+  }
+  return best == null ? null : new Date(best).toISOString();
+}
+function GoButton({ to, testId, children }: { to: string; testId: string; children: React.ReactNode }) {
+  const nav = useNavigate();
+  return <button type="button" className="btn ghost sm" data-testid={testId} onClick={() => nav(to)}>{children}</button>;
+}
+function Go({ to, testId, children }: { to: string; testId: string; children: React.ReactNode }) {
+  return useInRouterContext() ? <GoButton to={to} testId={testId}>{children}</GoButton> : <a className="btn ghost sm" data-testid={testId} href={to}>{children}</a>;
+}
+function RebookingShortcut({ customerId }: { customerId: string }) {
+  const can = useCan();
+  const [next, setNext] = useState<string | null | undefined>(undefined); const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true; setNext(undefined); setFailed(false);
+    posCustomersApi.appointments(customerId).then((a) => { if (alive) setNext(nextFutureAppointment((a ?? []) as Appt[], Date.now())); }).catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [customerId]);
+  return (
+    <div data-testid="ahx-rebook" style={{ marginTop: 8 }}>
+      <h3 className="p-h" style={{ margin: '8px 0 4px' }}>{tt('ahx.rebook.title')}</h3>
+      <p className="sub" data-testid="ahx-rebook-next">{failed ? tt('ahx.rebook.unknown') : next === undefined ? tt('ahx.rebook.loading') : next ? tt('ahx.rebook.next', { when: fmtDateTime(next) }) : tt('ahx.rebook.none')}</p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {can('pos.ai_customer_profile.view') ? <Go to={`/tenant/ai/customer-profile/rebooking?customerId=${encodeURIComponent(customerId)}`} testId="ahx-rebook-review">{tt('ahx.rebook.review')}</Go> : null}
+        {can('pos.booking.create') ? <Go to="/tenant/ai/booking" testId="ahx-rebook-assistant">{tt('ahx.rebook.assistant')}</Go> : null}
+      </div>
+      <p className="sub" style={{ fontSize: 12 }}>{tt('ahx.rebook.note')}</p>
+    </div>
+  );
+}
 
 /** the original per-customer history (money details on each row) — unchanged, now in a dialog */
 function CustomerHistory({ customer, onClose }: { customer: CustomerItem; onClose: () => void }) {
@@ -305,6 +348,7 @@ export function POSAppointmentHistoryScreen() {
             {c.oldValue != null || c.newValue != null ? ` · ${changeValue(c.field, c.oldValue)} → ${changeValue(c.field, c.newValue)}` : ''}
             {` · ${fmtDateTime(c.at)} · ${c.actor ?? (c.actorType ? codeLabel('ahx.changes.a.' + c.actorType, c.actorType) : tt('ahx.changes.unknownActor'))}`}{c.source ? ` · ${statusLabel('source', c.source)}` : ''}
           </li>)}</ul> : <p className="sub" data-testid="ahx-changes-none">{tt('ahx.changes.none')}</p>}</> : null}
+        {open.customerId && String(open.status).toLowerCase() === 'completed' ? <RebookingShortcut customerId={open.customerId} /> : null}
         <p className="sub">{tt('ahx.detailNote')}</p>
       </FitDialog> : null}
       {customer ? <CustomerHistory customer={customer} onClose={() => setCustomer(null)} /> : null}

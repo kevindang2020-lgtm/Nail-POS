@@ -13,6 +13,10 @@ export interface BvSummary {
     smsHealth: { state: BvHealthState; providerErrors24h: number; codesSent24h: number; definition: string };
     successRate: { value: number | null; numerator: number; denominator: number; definition: string };
   };
+  /** Verification Funnel Scorecard (Extras · Booking Phone Verification 09) — evidence-only counts, last 30 days */
+  /** Provider Failure Triage (Extras · Booking Phone Verification 12) — grouped by what to fix; provider codes only */
+  providerFailures?: { windowDays: number; total: number; groups: Array<{ category: string; count: number; lastAt: string | null; codes: string[] }> };
+  funnel?: { windowDays: number; overrides: number; overridesDefinition: string; steps: Array<{ key: string; count: number; definition: string; conversionPercent: number | null }> };
 }
 export interface BvHealth { checkedAt: string; overall: BvHealthState; items: Array<{ key: string; state: BvHealthState; message: string; evidence: string; nextAction: string | null; checkedAt: string }> }
 export interface BvRow {

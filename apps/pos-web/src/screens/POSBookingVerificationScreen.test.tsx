@@ -99,4 +99,35 @@ describe('the activity panel and the switches', () => {
     expect(await screen.findByTestId('module-disabled')).toHaveTextContent('not available');
     expect((screen.getAllByRole('checkbox')[0] as HTMLInputElement).disabled).toBe(true);
   });
+  it('Extras BPV-09: the verification funnel shows each evidence step, conversion of the previous step ("—" when unknown) and overrides apart', async () => {
+    const base = await (api.get as any)('/pos/booking-verification-center/summary');
+    const funnel = { windowDays: 30, overrides: 1, overridesDefinition: 'apart', steps: [
+      { key: 'requested', count: 6, definition: 'd', conversionPercent: null }, { key: 'sent', count: 4, definition: 'd', conversionPercent: 66.7 },
+      { key: 'verified', count: 3, definition: 'd', conversionPercent: 75 }, { key: 'holdConverted', count: 0, definition: 'd', conversionPercent: 0 },
+      { key: 'confirmed', count: 0, definition: 'd', conversionPercent: null }] };
+    const prev = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (p: string, ...rest: any[]) => (p === '/pos/booking-verification-center/summary' ? { ...base, funnel } as never : prev(p, ...rest)));
+    render(<POSBookingVerificationScreen />);
+    const f = await screen.findByTestId('bv-funnel');
+    expect(f).toHaveTextContent('Verification funnel · last 30 days');
+    expect(screen.getByTestId('bv-funnel-requested')).toHaveTextContent('Requested6');
+    expect(screen.getByTestId('bv-funnel-sent')).toHaveTextContent('66.7% of previous step');
+    expect(screen.getByTestId('bv-funnel-confirmed')).toHaveTextContent('— of previous step');
+    expect(screen.getByTestId('bv-funnel-overrides')).toHaveTextContent('Staff overrides (not counted as verified): 1');
+  });
+  it('Extras BPV-12: provider failures are grouped by what to fix, with the provider codes; none says so', async () => {
+    const base = await (api.get as any)('/pos/booking-verification-center/summary');
+    const prev = vi.mocked(api.get).getMockImplementation()!;
+    const providerFailures = { windowDays: 7, total: 3, groups: [{ category: 'permission', count: 2, lastAt: null, codes: ['20003'] }, { category: 'wrong_phone', count: 1, lastAt: null, codes: ['21211'] }] };
+    vi.mocked(api.get).mockImplementation(async (p: string, ...rest: any[]) => (p === '/pos/booking-verification-center/summary' ? { ...base, providerFailures } as never : prev(p, ...rest)));
+    const { unmount } = render(<POSBookingVerificationScreen />);
+    expect(await screen.findByTestId('bv-triage')).toHaveTextContent('Provider failures · last 7 days');
+    expect(screen.getByTestId('bv-triage-permission')).toHaveTextContent('Permission / account2');
+    expect(screen.getByTestId('bv-triage-permission')).toHaveTextContent('codes 20003');
+    expect(screen.getByTestId('bv-triage-wrong_phone')).toHaveTextContent('confirm it with the customer');
+    unmount();
+    vi.mocked(api.get).mockImplementation(async (p: string, ...rest: any[]) => (p === '/pos/booking-verification-center/summary' ? { ...base, providerFailures: { windowDays: 7, total: 0, groups: [] } } as never : prev(p, ...rest)));
+    render(<POSBookingVerificationScreen />);
+    expect(await screen.findByTestId('bv-triage-none')).toHaveTextContent('No provider failures in the last 7 days.');
+  });
 });

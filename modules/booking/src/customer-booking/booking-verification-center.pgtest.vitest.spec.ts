@@ -14,7 +14,7 @@ import { KyselyVerificationStore } from './booking-verification.kysely';
 import { VerifiedBookingFlow } from './booking-verification-flow';
 import { BookingVerificationSettingsService } from './booking-verification-settings.service';
 import { KyselyVerificationSettingsStore } from './booking-verification-settings.kysely';
-import { BookingVerificationCenter, reasonText } from './booking-verification-center';
+import { BookingVerificationCenter, reasonText, verificationFunnel, triageFailure } from './booking-verification-center';
 
 const P = 'b7430000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -219,5 +219,67 @@ describe('Verification center (guide §10–§14)', () => {
     expect((await center().detail(ctx(), moved)).canResend).toBe(false);   // Nov 3 audit: the overlay no longer offers a resend that would be refused
     await expect(center().resend(ctx(T2), open)).rejects.toThrow(/could not be found/);
     expect(sends).toHaveLength(1);
+  });
+});
+
+// Extras · Booking Phone Verification 09 — the funnel counts only recorded evidence, in its own salon
+describe('Verification Funnel Scorecard', () => {
+  const T3 = id('a3'), B3 = id('b3'), TECH3 = id('c3'), C3 = id('d3');
+  const c3 = { tenantId: T3, branchId: B3, userId: U, role: 'OWNER', permissions: ['settings.view'] };
+  it('requested → sent → verified → hold converted → booking confirmed, with conversions; overrides apart; old rows outside', async () => {
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T3}, 'C', 'Salon C', 'bvc-c', 'BVCC01', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B3}, ${T3}, 'Third', 'America/New_York')`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values (${TECH3}, ${T3}, ${B3}, 'Mai', 'Le', 'Mai Le')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status) values (${C3}, ${T3}, ${B3}, 'Cy', 'Do', 'Cy Do', '+16095550199', 'active')`);
+    const appt = async (status: string, day: number) => String((await q(sql`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status)
+      values (${T3}, ${B3}, ${TECH3}, ${C3}, 'Cy Do', ${`2026-12-${String(day).padStart(2, '0')}`}::date, '10:00', '11:00', ${status}) returning id`))[0].id);
+    const hold = async (day: number, apptId: string | null) => String((await q(sql`insert into booking_holds (tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status, booking_session_id, channel, converted_appointment_id)
+      values (${T3}, ${B3}, ${TECH3}, ${`2026-12-${String(day).padStart(2, '0')}T15:00:00Z`}::timestamptz, ${`2026-12-${String(day).padStart(2, '0')}T16:00:00Z`}::timestamptz, now() + interval '5 minutes', ${apptId ? 'converted' : 'held'}, gen_random_uuid(), 'online', ${apptId}) returning id`))[0].id);
+    const sent = async (sid: string) => q(sql`update booking_verification_sessions set last_sent_at = now() where id = ${sid}::uuid`);
+    const s1 = await session({ tenant: T3, branch: B3, customer: C3, status: 'sent' }); await sent(s1);                 // sent, never verified
+    await session({ tenant: T3, branch: B3, customer: C3, status: 'pending' });                                         // requested, nothing sent
+    const s3 = await session({ tenant: T3, branch: B3, customer: C3, status: 'verified', hold: await hold(10, await appt('confirmed', 10)) }); await sent(s3);
+    const s4 = await session({ tenant: T3, branch: B3, customer: C3, status: 'verified', hold: await hold(11, await appt('cancelled', 11)) }); await sent(s4);
+    const s5 = await session({ tenant: T3, branch: B3, customer: C3, status: 'verified', hold: await hold(12, null) }); await sent(s5);
+    const s6 = await session({ tenant: T3, branch: B3, customer: C3, status: 'pending' });
+    await q(sql`update booking_verification_sessions set override_at = now() where id = ${s6}::uuid`);
+    const old = await session({ tenant: T3, branch: B3, customer: C3, status: 'verified', createdAgoMin: 40 * 24 * 60 }); await sent(old);
+    const f = (await center().summary(c3)).funnel;
+    expect(f.steps.map((x) => [x.key, x.count])).toEqual([['requested', 6], ['sent', 4], ['verified', 3], ['holdConverted', 2], ['confirmed', 1]]);
+    expect(f.steps.map((x) => x.conversionPercent)).toEqual([null, 66.7, 75, 66.7, 50]);
+    expect(f.overrides).toBe(1);
+    expect(f.steps.every((x) => x.definition.length > 10)).toBe(true);
+    // another salon's funnel is its own (T3 rows never counted for T2)
+    expect((await center().summary(ctx(T2))).funnel.steps.find((x) => x.key === 'confirmed')!.count).toBe(0);
+  });
+  it('a step after a zero step is unknown (null), never 0 %', () => {
+    const f = verificationFunnel({ requested: 0, sent: 0, verified: 0, holdConverted: 0, confirmed: 0, overrides: 0 });
+    expect(f.steps.map((x) => x.conversionPercent)).toEqual([null, null, null, null, null]);
+  });
+});
+
+// Extras · Booking Phone Verification 12 — failures grouped by what to fix
+describe('Provider Failure Triage', () => {
+  const T4 = id('a4'), B4 = id('b4');
+  const c4 = { tenantId: T4, branchId: B4, userId: U, role: 'OWNER', permissions: ['settings.view'] };
+  it('groups the last 7 days of provider failures by permission / service / sender / rate limit / unavailable / wrong phone; wrong guesses and old rows stay out', async () => {
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'D', 'Salon D', 'bvc-d', 'BVCD01', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B4}, ${T4}, 'Fourth', 'America/New_York')`);
+    const f = (failure: string, status = 'sent', createdAgoMin = 30) => session({ tenant: T4, branch: B4, customer: null, status, failure, createdAgoMin });
+    await f('provider_error:20003'); await f('provider_error:20003', 'failed'); await f('rate_limited:http_429'); await f('provider_error:21211');
+    await f('provider_error:network'); await f('not_configured'); await f('provider_error');                 // no code → other
+    await f('incorrect', 'failed');                                                                          // a customer's wrong guess
+    await f('provider_error:20003', 'sent', 10 * 24 * 60);                                                   // 10 days ago
+    const t = (await center().summary(c4)).providerFailures;
+    expect(t.windowDays).toBe(7); expect(t.total).toBe(7);
+    expect(t.groups.map((g) => [g.category, g.count])).toEqual([['permission', 2], ['service', 1], ['rate_limit', 1], ['unavailable', 1], ['wrong_phone', 1], ['other', 1]]);
+    expect(t.groups[0].codes).toEqual(['20003']);
+    expect(JSON.stringify(t)).not.toMatch(/Authenticate|AC[0-9a-f]/);
+  });
+  it('triageFailure never guesses: unknown codes are "other"', () => {
+    expect(triageFailure('provider_error:30007')).toBe('sender');
+    expect(triageFailure('provider_error:99999')).toBe('other');
+    expect(triageFailure('invalid_number')).toBe('wrong_phone');
+    expect(triageFailure(null)).toBe('other');
   });
 });

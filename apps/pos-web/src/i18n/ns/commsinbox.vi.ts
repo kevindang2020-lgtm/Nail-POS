@@ -80,4 +80,8 @@ export const COMMSINBOX_VI = {
   'ci.f.campaign': 'Chiến dịch nguồn',
   'ci.f.anyCampaign': 'Mọi chiến dịch',
   'ci.f.campaignHint': 'Các cuộc trò chuyện với khách đã nhận chiến dịch, từ lúc gửi đến 14 ngày sau.',
+  'ci.cb.stale': '{n} tin nhắn đã gửi chưa có cập nhật giao hàng sau hơn {m} phút, và từ đó chưa nhận được callback nào từ nhà cung cấp (callback gần nhất: {t}). Webhook trạng thái có thể bị thiếu — các tin này không bị tính là thất bại.', // DRAFT — Kevin reviews
+  'ci.cb.delayed': '{n} tin nhắn đã gửi vẫn đang chờ cập nhật giao hàng sau {m} phút. Callback từ nhà cung cấp vẫn đang đến (gần nhất: {t}) — các tin này không bị tính là thất bại.', // DRAFT — Kevin reviews
+  'ci.cb.never': 'chưa nhận được', // DRAFT — Kevin reviews
+  'ci.cb.fix': 'Kiểm tra cài đặt nhắn tin', // DRAFT — Kevin reviews
 };

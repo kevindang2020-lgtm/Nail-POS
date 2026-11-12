@@ -59,6 +59,43 @@ export function reorderSuggestion(onHand: number, reorderLevel: number, reorderQ
   return Math.max(0, Math.max(reorderQuantity, reorderLevel - onHand) - Math.max(0, onOrder));
 }
 
+/** Smart Restock Priority (Extras · Stock Alerts 08) — read-only advice for one low / out-of-stock product from MEASURED use:
+ *  the last `windowDays` of effective use (hundredths of a unit), on hand, what is already on order, and the preferred
+ *  vendor's lead time. Nothing is ordered here: a purchase still goes through the purchase-order approval flow.
+ *    now     — nothing usable left, or the stock runs out before a new order could arrive (cover ≤ lead time)
+ *    soon    — runs out within a week after the lead time
+ *    later   — more than a week of margin
+ *    covered — committed purchase orders already cover the suggested quantity
+ *    unknown — no recorded use in the window, so demand cannot be estimated (never guessed) */
+export type RestockUrgency = 'now' | 'soon' | 'later' | 'covered' | 'unknown';
+export interface RestockAdvice {
+  urgency: RestockUrgency; windowDays: number; usedHundredths: number;
+  avgDailyHundredths: number | null; daysOfCover: number | null; leadTimeDays: number | null; marginDays: number | null;
+}
+export function restockAdvice(i: { onHand: number; onOrder: number; suggestedReorder: number; usedHundredths: number; leadTimeDays: number | null; windowDays?: number }): RestockAdvice {
+  const windowDays = i.windowDays && i.windowDays > 0 ? i.windowDays : 30;
+  const used = Math.max(0, Math.trunc(i.usedHundredths || 0));
+  const lead = i.leadTimeDays != null && i.leadTimeDays >= 0 ? Math.trunc(i.leadTimeDays) : null;
+  const avg = used > 0 ? Math.max(1, Math.round(used / windowDays)) : null;          // hundredths per day
+  const cover = used > 0 ? Math.max(0, Math.round((Math.max(0, i.onHand) * 100 * windowDays / used) * 10) / 10) : null;
+  const margin = cover == null ? null : Math.round((cover - (lead ?? 0)) * 10) / 10;
+  const base = { windowDays, usedHundredths: used, avgDailyHundredths: avg, daysOfCover: cover, leadTimeDays: lead, marginDays: margin };
+  if (i.onOrder > 0 && i.suggestedReorder <= 0) return { ...base, urgency: 'covered' };
+  if (i.onHand <= 0) return { ...base, urgency: 'now' };
+  if (margin == null) return { ...base, urgency: 'unknown' };
+  return { ...base, urgency: margin <= 0 ? 'now' : margin <= 7 ? 'soon' : 'later' };
+}
+const URGENCY_RANK: Record<RestockUrgency, number> = { now: 0, soon: 1, unknown: 2, later: 3, covered: 4 };
+/** Priority order: urgency tier, then the least margin, then the highest daily demand, then name (stable, deterministic). */
+export function compareRestock(a: { name: string; restock: RestockAdvice }, b: { name: string; restock: RestockAdvice }): number {
+  const t = URGENCY_RANK[a.restock.urgency] - URGENCY_RANK[b.restock.urgency]; if (t) return t;
+  const am = a.restock.marginDays, bm = b.restock.marginDays;
+  if (am != null && bm != null && am !== bm) return am - bm;
+  if ((am == null) !== (bm == null)) return am == null ? 1 : -1;
+  const d = (b.restock.avgDailyHundredths ?? 0) - (a.restock.avgDailyHundredths ?? 0); if (d) return d;
+  return a.name.localeCompare(b.name);
+}
+
 // ---- bottle lifecycle guards ----
 const BOTTLE_TRANSITIONS: Record<BottleStatus, BottleStatus[]> = {
   unopened: ['opened', 'damaged', 'expired', 'missing', 'returned', 'sold', 'in_transit'],   // a sealed unit is what gets sold at retail

@@ -105,6 +105,7 @@ export function POSRetentionScreen() {
   const canViewCampaigns = can('marketing.view');
   const canExport = can('customers.export');
   const canEditSettings = can('settings.edit');
+  const canAudit = can('audit.view');
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' });
   const [branch, setBranch] = useState('');   // '' = all authorized branches (CR-02)
   const pq = { ...periodQuery(period), ...(branch ? { branch } : {}) };
@@ -230,6 +231,7 @@ export function POSRetentionScreen() {
           <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'recovery' })} data-testid="open-recovery">{tx('rt2.recovery')}</button>
           {canViewCampaigns ? <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'campaigns' })} data-testid="open-campaigns">{tx('people.retention.campaignHistory')}</button> : null}
           <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'settings' })} data-testid="open-settings" title={per ? tx('rt2.settingsTitle', { d: String(per.riskDays), a: String(per.approachingDays) }) : undefined}>{tx('rt2.settings')}</button>
+          {canAudit ? <button type="button" className="fk-btn ghost" onClick={() => nav(retentionAuditPath())} title={tx('rt5.auditHint')} data-testid="open-audit">{tx('rt5.audit')}</button> : null}
           {canExport ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="rt-export">{exporting ? tx('pos.loading') : tx('rt2.export')}</button> : null}
           {canViewCampaigns && sel.mode === 'ids' && sel.ids.size ? <button type="button" className="fk-btn ghost" onClick={addPicked} disabled={adding} data-testid="add-picked">{tx('wb.picked.add', { n: String(sel.ids.size) })}</button> : null}
           <button type="button" className="fk-btn primary" onClick={createWinBack} data-testid="create-winback">{tx('rt2.createWinBack')}</button>
@@ -405,7 +407,7 @@ export function POSRetentionScreen() {
         book={book} canText={!smsBlocked} canNote={can('pos.customers.notes.edit')} onText={(r) => setDlg({ kind: 'compose', single: r })}
         openCampaign={canViewCampaigns ? (id) => setDlg({ kind: 'campaign', id }) : undefined} /> : null}
       {dlg?.kind === 'campaigns' ? <CampaignsDialog onClose={() => setDlg(null)} onOpen={(id) => setDlg({ kind: 'campaign', id })} /> : null}
-      {dlg?.kind === 'campaign' ? <CampaignDialog id={dlg.id} canCancel={can('marketing.manage')} onClose={() => setDlg(null)} onBack={() => setDlg({ kind: 'campaigns' })} /> : null}
+      {dlg?.kind === 'campaign' ? <CampaignDialog id={dlg.id} canCancel={can('marketing.manage')} onAudit={canAudit ? (cid) => nav(retentionAuditPath(cid)) : undefined} onClose={() => setDlg(null)} onBack={() => setDlg({ kind: 'campaigns' })} /> : null}
       {dlg?.kind === 'recovery' ? <RecoveryDialog period={pq} onClose={() => setDlg(null)} openCustomer={(id) => setDlg({ kind: 'customer', id })} openCampaign={canViewCampaigns ? (id) => setDlg({ kind: 'campaign', id }) : undefined} /> : null}
       {dlg?.kind === 'health' ? <HealthDialog onClose={() => setDlg(null)} openCustomer={(id) => setDlg({ kind: 'customer', id })} /> : null}
       {dlg?.kind === 'assistant' ? <AssistantDialog onClose={() => setDlg(null)} canManage={can('marketing.manage')} /> : null}
@@ -662,7 +664,13 @@ function CampaignsDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (id
   );
 }
 
-function CampaignDialog({ id, canCancel = false, onClose, onBack }: { id: string; canCancel?: boolean; onClose: () => void; onBack: () => void }) {
+/** Communication audit shortcut (Extras · Customer Retention 15): the activity log filtered to retention events — and to one
+ *  campaign when given (the audit search matches resource ids). Navigation only; the log enforces audit.view on the server. */
+export function retentionAuditPath(campaignId?: string): string {
+  const q = new URLSearchParams({ module: 'retention' }); if (campaignId) q.set('search', campaignId);
+  return '/tenant/account/activity-logs?' + q.toString();
+}
+function CampaignDialog({ id, canCancel = false, onClose, onBack, onAudit }: { id: string; canCancel?: boolean; onClose: () => void; onBack: () => void; onAudit?: (campaignId: string) => void }) {
   // C5 audit (Nov 4 2026): Cancel Campaign — a reason, then every unsent text stops (sent texts stay sent)
   const [cancelOpen, setCancelOpen] = useState(false); const [why, setWhy] = useState(''); const [cancelBusy, setCancelBusy] = useState(false); const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [page, setPage] = useState(1); const [status, setStatus] = useState(''); const [d, setD] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [tick, setTick] = useState(0);
@@ -673,7 +681,7 @@ function CampaignDialog({ id, canCancel = false, onClose, onBack }: { id: string
   const STAT = useMemo(() => ['queued', 'sent', 'delivered', 'undelivered', 'blocked', 'failed', 'unknown', 'excluded'], []);
   return (
     <FitDialog wide title={c ? (c.label || tx('people.retention.campaignN', { id: c.id.slice(0, 8) })) : tx('people.retention.campaign')} subtitle={c ? `${campaignLabel(c.status)} · ${whenTime(c.confirmedAt ?? c.createdAt)}${c.senderFrom ? ' · ' + tx('people.retention.fromNumber', { from: c.senderFrom }) : ''}` : undefined} onClose={onClose} testId="dlg-campaign"
-      footer={<><Pager info={d?.recipients} onPage={setPage} /><button type="button" className="fk-btn ghost" onClick={onBack}>{tx('people.retention.allCampaigns')}</button><button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
+      footer={<><Pager info={d?.recipients} onPage={setPage} />{onAudit && c ? <button type="button" className="fk-btn ghost" onClick={() => onAudit(c.id)} title={tx('rt5.auditHint')} data-testid="campaign-audit">{tx('rt5.audit')}</button> : null}<button type="button" className="fk-btn ghost" onClick={onBack}>{tx('people.retention.allCampaigns')}</button><button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
       {err ? <div className="fk-err">{err}</div> : !c ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="rt-bubble small">{c.body}</div>
         <div className="rt-stat-row">

@@ -234,4 +234,20 @@ export const KPI_DEFINITIONS = {
   email: 'conversations on the email channel',
   totalConversations: 'all conversations (each counted once, whatever its channel)',
   awaitingReply: 'conversations whose latest customer message has no staff reply yet',
+  callbackHealth: 'staff texts handed to the provider more than 30 minutes ago (last 7 days) with no delivery callback yet; "stale" when no callback at all has arrived since the oldest of them — the webhook may be missing. These are awaiting confirmation, never counted as failed.',
 } as const;
+
+/** Missing-webhook warning (Extras · SMS Inbox 12): from TIMESTAMPS only — the outbound texts still waiting for a provider
+ *  status callback and the newest callback the salon has received. Nothing here marks a text failed:
+ *    ok       nothing has waited longer than the threshold
+ *    delayed  some texts wait, but callbacks are still arriving (the newest is after the oldest waiting text)
+ *    stale    texts wait and no callback has arrived since the oldest of them (or ever) — check the status-callback webhook */
+export const CALLBACK_WAIT_MINUTES = 30;
+export const CALLBACK_LOOKBACK_DAYS = 7;
+export type CallbackHealthState = 'ok' | 'delayed' | 'stale';
+export function callbackHealth(i: { awaiting: number; oldestAwaitingAt: string | null; lastCallbackAt: string | null }): { state: CallbackHealthState; awaiting: number; oldestAwaitingAt: string | null; lastCallbackAt: string | null; waitMinutes: number; lookbackDays: number } {
+  const base = { awaiting: Math.max(0, i.awaiting | 0), oldestAwaitingAt: i.oldestAwaitingAt, lastCallbackAt: i.lastCallbackAt, waitMinutes: CALLBACK_WAIT_MINUTES, lookbackDays: CALLBACK_LOOKBACK_DAYS };
+  if (base.awaiting === 0 || !i.oldestAwaitingAt) return { ...base, state: 'ok' };
+  const last = i.lastCallbackAt ? Date.parse(i.lastCallbackAt) : NaN;
+  return { ...base, state: Number.isFinite(last) && last > Date.parse(i.oldestAwaitingAt) ? 'delayed' : 'stale' };
+}

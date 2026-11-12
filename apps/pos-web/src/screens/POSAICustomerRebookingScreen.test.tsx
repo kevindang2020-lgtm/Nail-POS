@@ -112,4 +112,13 @@ describe('POSAICustomerRebookingScreen', () => {
     expect(await screen.findByTestId('chk-intelligence_agreement')).toHaveTextContent('equal the Rebooking card on Customer Intelligence');
     expect(screen.getByTestId('chk-bookings_since_evaluation-state')).toHaveTextContent('Warning');
   });
+  it('Extras AH-03: ?customerId= (an id only) opens that customer\'s review overlay directly; a non-id is ignored', async () => {
+    const cid = '0b5e7a8c-1111-4222-8333-444455556666';
+    const { unmount } = render(<MemoryRouter initialEntries={[`/tenant/ai/customer-profile/rebooking?customerId=${cid}`]}><POSAICustomerRebookingScreen /></MemoryRouter>);
+    await waitFor(() => expect(rb.customer).toHaveBeenCalledWith(cid));
+    unmount(); rb.customer.mockClear();
+    render(<MemoryRouter initialEntries={['/tenant/ai/customer-profile/rebooking?customerId=Ana%20Rivera']}><POSAICustomerRebookingScreen /></MemoryRouter>);
+    await screen.findAllByTestId('rbx-row');
+    expect(rb.customer).not.toHaveBeenCalled();
+  });
 });

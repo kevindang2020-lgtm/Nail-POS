@@ -65,7 +65,8 @@ export function POSAICustomerRebookingScreen() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // Appointment History → "Review rebooking" opens this customer's review overlay directly (?customerId=, an id only)
+  const [openId, setOpenId] = useState<string | null>(() => { const c = sp.get('customerId'); return c && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c) ? c : null; });
   const [health, setHealth] = useState<any | 'loading' | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [services, setServices] = useState<{ serviceId: string; name: string }[] | null>(null);

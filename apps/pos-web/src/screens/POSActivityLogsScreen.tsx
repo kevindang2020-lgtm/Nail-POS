@@ -4,7 +4,7 @@
 // and pagination. No sample data: honest loading / empty / no-permission states.
 import { useEffect, useMemo, useState } from 'react';
 import { displayLocale } from '../i18n/format';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { posAuditApi, type AuditEventRow, type AuditPage } from '../api/posAuditApi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { ImeSafeInput } from '../components/ImeSafeInput';
@@ -26,9 +26,11 @@ const emptyPage: AuditPage = { items: [], pagination: { page: 1, pageSize: PAGE_
 export function POSActivityLogsScreen() {
   const nav = useNavigate();
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [module, setModule] = useState('');
+  // deep links (e.g. Customer Retention → Audit trail) open the log pre-filtered: ?module=…&search=…
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(() => params.get('search') ?? '');
+  const [debounced, setDebounced] = useState(() => params.get('search') ?? '');
+  const [module, setModule] = useState(() => params.get('module') ?? '');
   const [severity, setSeverity] = useState('');
   const [status, setStatus] = useState('');
   const [from, setFrom] = useState('');

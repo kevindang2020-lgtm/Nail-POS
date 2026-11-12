@@ -1,7 +1,7 @@
 // inbox-core.vitest.spec — the pure rules of the SMS Inbox (Communications guide Oct 30 2026): query parsing, salon-local
 // periods (year end, DST, reversed range), search classification, evidence-only delivery states, timeline merge order + cursor.
 import { describe, it, expect } from 'vitest';
-import { parseInboxQuery, resolveInboxPeriod, parseSearch, deliveryState, answersCustomer, blockReasonCode, mergeTimeline, decodeCursor, encodeCursor, normalizePhone, maskPhone, automatedType, InboxError } from './inbox-core';
+import { parseInboxQuery, resolveInboxPeriod, parseSearch, deliveryState, answersCustomer, blockReasonCode, mergeTimeline, decodeCursor, encodeCursor, normalizePhone, maskPhone, automatedType, InboxError, callbackHealth } from './inbox-core';
 import type { InboxTimelineEvent as TimelineEvent } from '@aipowersalon/api-contracts/tenant';
 
 const ev = (id: string, at: string, source: TimelineEvent['source'] = 'message'): TimelineEvent => ({ id, source, type: 'x', channel: 'sms', direction: 'inbound', actorKind: 'customer', actorName: null, at, state: null, body: null, summary: null, ref: null, threadId: null, errorCode: null });
@@ -92,5 +92,14 @@ describe('mergeTimeline', () => {
   it('automated text kinds: one-time codes and receipts never show their body', () => {
     expect(automatedType('account')).toEqual({ type: 'verification_code', showBody: false });
     expect(automatedType('reminder').type).toBe('appointment_reminder'); expect(automatedType(null).type).toBe('automated_message');
+  });
+});
+
+describe('callbackHealth (missing webhook warning — timestamps only)', () => {
+  it('ok when nothing waits; stale when no callback since the oldest waiting text; delayed when callbacks still arrive', () => {
+    expect(callbackHealth({ awaiting: 0, oldestAwaitingAt: null, lastCallbackAt: null }).state).toBe('ok');
+    expect(callbackHealth({ awaiting: 2, oldestAwaitingAt: '2026-11-10T10:00:00Z', lastCallbackAt: null }).state).toBe('stale');
+    expect(callbackHealth({ awaiting: 2, oldestAwaitingAt: '2026-11-10T10:00:00Z', lastCallbackAt: '2026-11-10T09:00:00Z' }).state).toBe('stale');
+    expect(callbackHealth({ awaiting: 2, oldestAwaitingAt: '2026-11-10T10:00:00Z', lastCallbackAt: '2026-11-10T11:00:00Z' })).toMatchObject({ state: 'delayed', awaiting: 2, waitMinutes: 30, lookbackDays: 7 });
   });
 });

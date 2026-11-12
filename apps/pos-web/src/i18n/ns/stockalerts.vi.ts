@@ -147,4 +147,15 @@ export const STOCKALERTS_VI = {
   'sa.recon.notLow': 'Hiện trên mức đặt lại — cảnh báo tự hết theo tồn kho.', // DRAFT — Kevin reviews
   'sa.recon.partial': '{n} dòng đơn hàng mới nhận một phần.', // DRAFT — Kevin reviews
   'sa.recon.lastReceipt': 'Lần nhận gần nhất thêm {n}.', // DRAFT — Kevin reviews
+  'sa.rank.priority': 'Ưu tiên nhập hàng', // DRAFT — Kevin reviews
+  'sa.rank.hint': 'Xếp hạng theo lượng dùng thực tế 30 ngày qua và thời gian giao hàng của nhà cung cấp. Chỉ là gợi ý — mọi lần mua vẫn phải qua duyệt đơn đặt hàng.', // DRAFT — Kevin reviews
+  'sa.restock.now': 'Đặt ngay', // DRAFT — Kevin reviews
+  'sa.restock.soon': 'Đặt sớm', // DRAFT — Kevin reviews
+  'sa.restock.later': 'Có thể chờ', // DRAFT — Kevin reviews
+  'sa.restock.covered': 'Đã đặt hàng', // DRAFT — Kevin reviews
+  'sa.restock.unknown': 'Chưa rõ nhu cầu', // DRAFT — Kevin reviews
+  'sa.restock.detail': '{d}/ngày · đủ dùng {c} ngày', // DRAFT — Kevin reviews
+  'sa.restock.lead': 'giao hàng {n} ngày', // DRAFT — Kevin reviews
+  'sa.restock.noLead': 'chưa đặt thời gian giao hàng', // DRAFT — Kevin reviews
+  'sa.restock.noUse': 'không dùng trong {n} ngày', // DRAFT — Kevin reviews
 };

@@ -217,4 +217,17 @@ describe('Customer Retention — status is text + shape, not colour alone (extra
     expect(icons.every((i) => i.getAttribute('aria-hidden') === 'true')).toBe(true);
     expect(icons[1].parentElement!.textContent!.length).toBeGreaterThan(2);   // the words are still there
   });
+  it('Extras CR-15: Audit trail opens the activity log filtered to retention — and to one campaign from its details', async () => {
+    const cmp = { id: 'cmp-1111-2222', label: 'Fall', status: 'completed', confirmedAt: '2026-10-20T15:00:00Z', createdAt: '2026-10-20T15:00:00Z', queued: 0, selected: 2, body: 'Hi', counts: { sent: 2, delivered: 2 } };
+    api.campaigns.mockResolvedValue({ items: [cmp], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 });
+    api.campaign.mockResolvedValue({ campaign: cmp, recipients: { items: [], page: 1, pageSize: 8, totalItems: 0, totalPages: 1 } });
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByTestId('open-audit'));
+    expect(navigate).toHaveBeenLastCalledWith('/tenant/account/activity-logs?module=retention');
+    fireEvent.click(screen.getByTestId('open-campaigns'));
+    fireEvent.click(await screen.findByText('Details'));
+    fireEvent.click(await screen.findByTestId('campaign-audit'));
+    expect(navigate).toHaveBeenLastCalledWith('/tenant/account/activity-logs?module=retention&search=cmp-1111-2222');
+    expect(api.confirm).not.toHaveBeenCalled(); expect(api.saveSettings).not.toHaveBeenCalled();   // navigation only — nothing is sent or changed
+  });
 });

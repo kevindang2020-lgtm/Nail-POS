@@ -19,7 +19,7 @@ function ctx(req: any): InvCtx { const c = req?.ctx || {}; return { tenantId: c.
 async function run<T>(fn: () => Promise<T>): Promise<T> { try { return await fn(); } catch (e) { if (e instanceof InventoryError) throw new HttpException({ ok: false, message: e.message, ...(e.extra || {}) }, e.status); throw e; } }
 
 const PERIOD = { preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] }, dateBasis: { type: 'enum', values: ['occurred', 'recorded'] } } as const;
-const ACTIVE_LIST = { filters: { severity: { type: 'enum', values: ['out_of_stock', 'critical', 'low', 'all'] }, showAcknowledged: { type: 'enum', values: ['true', 'false'] } }, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, params: ['page'] } as const;
+const ACTIVE_LIST = { filters: { severity: { type: 'enum', values: ['out_of_stock', 'critical', 'low', 'all'] }, showAcknowledged: { type: 'enum', values: ['true', 'false'] }, rank: { type: 'enum', values: ['newest', 'priority'] } }, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, params: ['page'] } as const;
 const HISTORY_LIST = { filters: { ...PERIOD, severity: { type: 'enum', values: ['out_of_stock', 'critical', 'low', 'all'] } }, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const USAGE_LIST = { filters: { ...PERIOD, technicianId: { type: 'id' } }, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const PICKER_LIST = { search: { params: ['search'], maxLength: 100 }, maxLimit: 25, defaultLimit: 25 } as const;
