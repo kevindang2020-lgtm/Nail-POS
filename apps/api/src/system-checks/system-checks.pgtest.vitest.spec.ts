@@ -407,4 +407,43 @@ describe('shared read-only Check … System', () => {
     expect(count(b2, 'charged_after_cancel').count).toBe(0);
     expect((await q(tally)).rows).toEqual(before);
   });
+  it('extras Membership Overview 13·12 — collections against the payment ledger: invoice no longer paid, over the invoice, card without a reference; branch-scoped; never another salon; writes nothing', async () => {
+    // own salon pair (ids 4401..4449, agent-4 range) so nothing planted earlier in this shared DB is counted
+    const T4 = id(4401), X4 = id(4402), B41 = id(4403), B42 = id(4404), BX4 = id(4405), C4 = id(4406), CX4 = id(4407), PL = id(4408), PV = id(4409), PLX = id(4410), PVX = id(4411);
+    const M1 = id(4412), M2 = id(4413), MX = id(4414), I1 = id(4415), I2 = id(4416), I3 = id(4417), IX = id(4418);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'M4', 'Members4', 'sc-4401', 'SC4401', 'active'), (${X4}, 'MX4', 'Other4', 'sc-4402', 'SC4402', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C4}, ${T4}, ${B41}, 'Fin', 'Ance', 'Fin Ance', '+15550044001'), (${CX4}, ${X4}, ${BX4}, 'Oth', 'Er', 'Oth Er', '+15550044002')`);
+    await q(sql`insert into membership_plans (id, tenant_id, name, status) values (${PL}, ${T4}, 'Gold', 'active'), (${PLX}, ${X4}, 'Gold X', 'active')`);
+    await q(sql`insert into membership_plan_versions (id, plan_id, tenant_id, version_number, price_cents) values (${PV}, ${PL}, ${T4}, 1, 4900), (${PVX}, ${PLX}, ${X4}, 1, 4900)`);
+    await q(sql`insert into customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, auto_renew, auto_renew_consent_at) values
+      (${M1}, ${T4}, ${B41}, ${C4}, ${PL}, ${PV}, 'active', false, now()), (${M2}, ${T4}, ${B42}, ${C4}, ${PL}, ${PV}, 'active', false, now()),
+      (${MX}, ${X4}, ${BX4}, ${CX4}, ${PLX}, ${PVX}, 'active', false, now())`);
+    // I1 still paid (covers 4900), I2 refunded since, I3 paid but only 3000, IX the other salon's refunded invoice
+    await q(sql`insert into invoices (id, tenant_id, branch_id, customer_id, invoice_number, status, subtotal_cents, total_cents, issue_date) values
+      (${I1}, ${T4}, ${B41}, ${C4}, 'SC44-1', 'paid', 4900, 4900, current_date), (${I2}, ${T4}, ${B41}, ${C4}, 'SC44-2', 'refunded', 4900, 4900, current_date),
+      (${I3}, ${T4}, ${B42}, ${C4}, 'SC44-3', 'paid', 3000, 3000, current_date), (${IX}, ${X4}, ${BX4}, ${CX4}, 'SC44-X', 'refunded', 4900, 4900, current_date)`);
+    await q(sql`insert into membership_payments (tenant_id, branch_id, customer_membership_id, customer_id, kind, amount_cents, status, processor, processor_ref, idempotency_key) values
+      (${T4}, ${B41}, ${M1}, ${C4}, 'enrollment', 4900, 'succeeded', 'invoice', ${I1}, 'sc4401-ok'),
+      (${T4}, ${B41}, ${M1}, ${C4}, 'renewal', 4900, 'succeeded', 'invoice', ${I2}, 'sc4401-refunded-inv'),
+      (${T4}, ${B42}, ${M2}, ${C4}, 'enrollment', 4900, 'succeeded', 'invoice', ${I3}, 'sc4401-over'),
+      (${T4}, ${B42}, ${M2}, ${C4}, 'renewal', 4900, 'succeeded', 'card_on_file', null, 'sc4401-noref'),
+      (${T4}, ${B42}, ${M2}, ${C4}, 'renewal', 4900, 'failed', 'card_on_file', null, 'sc4401-failed-noref'),
+      (${T4}, ${B41}, ${M1}, ${C4}, 'renewal', 4900, 'succeeded', 'recorded', null, 'sc4401-recorded'),
+      (${T4}, ${B41}, ${M1}, ${C4}, 'renewal', 4900, 'succeeded', 'card_on_file', 'ref-1', 'sc4401-withref'),
+      (${X4}, ${BX4}, ${MX}, ${CX4}, 'enrollment', 4900, 'succeeded', 'invoice', ${IX}, 'sc4401-x'),
+      (${X4}, ${BX4}, ${MX}, ${CX4}, 'renewal', 4900, 'succeeded', 'card_on_file', null, 'sc4401-x2')`);
+    const tally = sql`select (select count(*) from membership_payments) + (select count(*) from invoices) as n`;
+    const before = (await q(tally)).rows;
+    const all = await svc.run('memberships', { tenantId: T4 });
+    expect(count(all, 'invoice_collection_not_paid')).toMatchObject({ state: 'FAILED', count: 1 });       // I2 refunded; I1 and I3 still paid
+    expect(count(all, 'invoice_collection_over_invoice')).toMatchObject({ state: 'FAILED', count: 1 });   // 4900 claimed on the 3000 I3
+    expect(count(all, 'card_collection_without_ref')).toMatchObject({ state: 'WARNING', count: 1 });      // the failed and 'recorded' rows are not counted
+    const b1 = await svc.run('memberships', { tenantId: T4, branchId: B41 });
+    expect(count(b1, 'invoice_collection_not_paid').count).toBe(1);
+    expect(count(b1, 'invoice_collection_over_invoice').count).toBe(0);
+    expect(count(b1, 'card_collection_without_ref').count).toBe(0);
+    expect((await q(tally)).rows).toEqual(before);
+  });
 });

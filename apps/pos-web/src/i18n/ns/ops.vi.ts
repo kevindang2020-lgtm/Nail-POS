@@ -1693,4 +1693,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.payment_pending_stuck.fix": "Kiểm tra khoản thu với nhà cung cấp thanh toán, rồi đánh dấu thành công hoặc thất bại.", // DRAFT — Kevin reviews
   "syschk.memberships.charged_after_cancel": "Không có khoản gia hạn nào được thu sau khi thẻ hội viên đã hủy", // DRAFT — Kevin reviews
   "syschk.memberships.charged_after_cancel.fix": "Xem lại khoản thu và hoàn tiền nếu việc hủy vẫn giữ nguyên.", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_not_paid": "Mọi khoản thu hội viên bằng hóa đơn vẫn có hóa đơn đã thanh toán đi kèm", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_not_paid.fix": "Mở hóa đơn: nếu đã hoàn tiền, hủy hoặc ghi có, hãy hoàn lại hoặc thu lại khoản hội viên.", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_over_invoice": "Không có khoản thu hội viên nào lớn hơn số tiền hóa đơn đã thu", // DRAFT — Kevin reviews
+  "syschk.memberships.invoice_collection_over_invoice.fix": "So sánh khoản thu hội viên với tổng hóa đơn và sửa bên bị sai.", // DRAFT — Kevin reviews
+  "syschk.memberships.card_collection_without_ref": "Mọi khoản thu hoặc hoàn tiền hội viên bằng thẻ đều có mã tham chiếu của bộ xử lý", // DRAFT — Kevin reviews
+  "syschk.memberships.card_collection_without_ref.fix": "Tìm giao dịch trong báo cáo của bộ xử lý để đối chiếu với khoản tiền gửi.", // DRAFT — Kevin reviews
 };

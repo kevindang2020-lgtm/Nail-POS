@@ -1694,4 +1694,10 @@ export const OPS_EN = {
   "syschk.memberships.payment_pending_stuck.fix": "Check the charge with the payment provider, then mark it succeeded or failed.",
   "syschk.memberships.charged_after_cancel": "No renewal was collected after the membership was cancelled",
   "syschk.memberships.charged_after_cancel.fix": "Review the charge and refund it if the cancellation stands.",
+  "syschk.memberships.invoice_collection_not_paid": "Every membership payment made by invoice still has a paid invoice behind it",
+  "syschk.memberships.invoice_collection_not_paid.fix": "Open the invoice: if it was refunded, voided or credited, refund or re-collect the membership payment.",
+  "syschk.memberships.invoice_collection_over_invoice": "No membership payment claims more than its invoice collected",
+  "syschk.memberships.invoice_collection_over_invoice.fix": "Compare the membership payment with the invoice total and correct the one that is wrong.",
+  "syschk.memberships.card_collection_without_ref": "Every card membership payment or refund has a processor reference",
+  "syschk.memberships.card_collection_without_ref.fix": "Find the charge in the processor report so it can be matched to the deposit.",
 };

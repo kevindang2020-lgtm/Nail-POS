@@ -336,6 +336,21 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     // a renewal or installment collected AFTER the membership was cancelled
     { key: 'charged_after_cancel', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
         WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.kind IN ('renewal', 'installment') AND m.canceled_at IS NOT NULL AND p.created_at > m.canceled_at`) },
+    // ── finance reconciliation (extras Membership Overview 13 · 12, part): a membership collection must stand on the salon's
+    // own payment ledger, never on a shadow total. A collection paid by an invoice (processor 'invoice', processor_ref = the
+    // invoice id — collectFirstPayment) is only real while that invoice is still 'paid' in the Invoices ledger …
+    { key: 'invoice_collection_not_paid', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.processor = 'invoice'
+          AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref AND i.status = 'paid')`) },
+    // … and may never claim more than that invoice collected (the enrol step refuses it; a later edit of either side is drift)
+    { key: 'invoice_collection_over_invoice', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        JOIN invoices i ON i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor = 'invoice' AND p.amount_cents > i.total_cents`) },
+    // a card collection or refund with no processor reference cannot be matched to the provider's batch or settlement
+    // ('recorded' / 'manual' entries are staff-recorded and carry none by design)
+    { key: 'card_collection_without_ref', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor NOT IN ('invoice', 'recorded', 'manual')
+          AND coalesce(btrim(p.processor_ref), '') = ''`) },
   ] },
 
   // ── Live Operations / Serving / Service Done (the service flow: queue → serving → done → paid) ───────────────────
