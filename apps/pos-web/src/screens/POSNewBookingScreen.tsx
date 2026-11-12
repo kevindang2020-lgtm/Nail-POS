@@ -647,6 +647,11 @@ export function POSNewBookingScreen() {
               {services.length === 0 && (
                 <div role="status" className="s muted" style={{ padding: 12 }}>{catalogError ? tx(catalogError) : (loading ? tx('pos.loading_services') : tx('pos.this_salon_has_no_services_in_387i'))}</div>
               )}
+              {services.length > 0 && activeCategory !== ALL_CATEGORIES && !services.some(s => s.category === activeCategory) && (
+                <div role="status" className="s muted" data-testid="empty-category-services" style={{ padding: 14 }}>
+                  {tx('pos.this_salon_has_no_services_in_387i')}
+                </div>
+              )}
               {services.filter(s => activeCategory === ALL_CATEGORIES || s.category === activeCategory).map(svc => (
                 <ServiceCard 
                   key={svc.serviceId} 
