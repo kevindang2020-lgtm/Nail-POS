@@ -77,6 +77,29 @@ describe('POSAiUsageScreen', () => {
     expect(w.textContent).not.toMatch(/trial_expired|trialing/);           // codes never raw
     expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
   });
+  it('Extras · AI Usage Limits 03: the Usage tab shows the server\'s pace estimate in words — labelled an estimate, nothing bought', async () => {
+    const withProj = (proj: unknown, overage = false) => card({ usage: { used: 400, limit: 500, unit: 'generations', percent: 80, level: 'warn_80', periodStart: '2026-10-20T00:00:00Z', periodEnd: '2026-11-20T00:00:00Z', remaining: 100, projection: proj },
+      overage: { enabled: overage, unitPriceCents: 8, estimatedCents: 0 } });
+    const show = async (c: unknown) => {
+      api.detail.mockImplementation(async () => ({ package: c, usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
+        settings: { globallyEnabled: true, disabledReason: null, storedStatus: 'active', usageLimit: 500, overageEnabled: false, limitSource: 'subscription' }, canManage: true, canSeeBilling: true }));
+      render(<POSAiUsageScreen />);
+      fireEvent.click((await screen.findAllByTestId('aiu-card'))[0]!);
+      const d = await screen.findByTestId('aiu-detail');
+      fireEvent.click(within(d).getByTestId('aiu-tab-usage'));
+      return within(d).findByTestId('aiu-projection');
+    };
+    const p1 = await show(withProj({ basis: 'period_pace', elapsedShare: 0.5, projectedUsed: 800, verdict: 'likely_over', projectedOverageCents: null, atLimit: 'blocked' }));
+    expect(p1).toHaveTextContent('Estimate: at this period\'s pace you would use about 800 generations of 500 generations (50% of the period gone) — more than the plan includes. Overage is off: AI calls stop at the limit until the next period.');
+    expect(p1).toHaveTextContent('nothing is bought or changed');
+    cleanup();
+    const p2 = await show(withProj({ basis: 'period_pace', elapsedShare: 0.5, projectedUsed: 800, verdict: 'likely_over', projectedOverageCents: 2400, atLimit: 'overage' }, true));
+    expect(p2).toHaveTextContent('Overage is on: about $24.00 extra at the overage price.');
+    cleanup();
+    const p3 = await show(withProj({ basis: 'period_pace', elapsedShare: 0.1, projectedUsed: null, verdict: 'too_early', projectedOverageCents: null, atLimit: 'blocked' }));
+    expect(p3).toHaveTextContent('only 10% of this period has passed — too early to estimate');
+    expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
+  });
   it('the cost KPI is restricted without the billing role, and the pager asks for page 2', async () => {
     api.summary.mockResolvedValue({ ...SUM, cost: { visible: false }, canSeeBilling: false });
     render(<POSAiUsageScreen />);

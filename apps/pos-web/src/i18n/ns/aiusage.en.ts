@@ -246,4 +246,12 @@ export const AIUSAGE_EN = {
   'aiu.why.pay.paid': 'paid',
   'aiu.why.pay.failed': 'failed',
   'aiu.why.pay.pending': 'pending',
+  'aiu.proj.title': 'Estimate:',
+  'aiu.proj.tooEarly': 'only {pct}% of this period has passed — too early to estimate where it will end.',
+  'aiu.proj.fits': 'at this period\'s pace you would use about {n} of {limit} ({pct}% of the period gone) — the plan fits.',
+  'aiu.proj.close': 'at this period\'s pace you would use about {n} of {limit} ({pct}% of the period gone) — close to the allowance.',
+  'aiu.proj.likely_over': 'at this period\'s pace you would use about {n} of {limit} ({pct}% of the period gone) — more than the plan includes.',
+  'aiu.proj.overage': 'Overage is on: about {amount} extra at the overage price.',
+  'aiu.proj.blocked': 'Overage is off: AI calls stop at the limit until the next period.',
+  'aiu.proj.note': 'An estimate from this period\'s counted usage only — nothing is bought or changed.',
 };

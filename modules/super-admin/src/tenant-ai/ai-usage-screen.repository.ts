@@ -49,11 +49,30 @@ export interface PackageCard {
   code: string; name: string; description: string; category: string; posArea: string | null; known: boolean; sortOrder: number;
   state: DisplayState; storedStatus: string | null; globallyEnabled: boolean; disabledReason: string | null;
   price: { cents: number; currency: string; period: 'monthly' | 'yearly'; monthlyEquivalentCents: number; source: 'subscription' | 'catalog_list' };
-  usage: { used: number | null; limit: number; unit: string; percent: number | null; level: UsageLevel; periodStart: string | null; periodEnd: string | null; remaining: number | null };
+  usage: { used: number | null; limit: number; unit: string; percent: number | null; level: UsageLevel; periodStart: string | null; periodEnd: string | null; remaining: number | null;
+    /** extras AI Usage Limits 03: an ESTIMATE of the period's end from this period's pace — never a purchase, never a limit change */
+    projection?: UsageProjection | null };
   overage: { enabled: boolean; unitPriceCents: number; estimatedCents: number };
   trial: { days: number; startsAt: string | null; endsAt: string | null; daysLeft: number | null; eligible: boolean };
   lastPaymentStatus: string | null; subscribedAt: string | null; cancelledAt: string | null;
   actions: PackageAction[]; primaryAction: PackageAction; openAlert: number | null;
+}
+
+/** Extras (AI Usage Limits 03 · Smart Cost & Quota Advisor): at this period's pace (counted usage ÷ the share of the period gone),
+ *  where will the period end? 'too_early' before 20% of the period (or 3 days) has passed — no estimate is invented then.
+ *  fits ≤ 90% of the allowance · close ≤ 100% · likely_over above it; with overage on, the extra is priced at the package's
+ *  overage rate (an estimate); with it off the gate blocks at the limit. Pure arithmetic: nothing is bought, changed or sent. */
+export interface UsageProjection { basis: 'period_pace'; elapsedShare: number; projectedUsed: number | null; verdict: 'too_early' | 'fits' | 'close' | 'likely_over'; projectedOverageCents: number | null; atLimit: 'overage' | 'blocked' }
+export function usageProjection(used: number, limit: number, periodStart: Date, periodEnd: Date, now: Date, overageEnabled: boolean, overageUnitCents: number): UsageProjection | null {
+  const span = periodEnd.getTime() - periodStart.getTime();
+  if (!(limit > 0) || !(span > 0)) return null;
+  const gone = Math.min(1, Math.max(0, (now.getTime() - periodStart.getTime()) / span));
+  const atLimit = overageEnabled ? 'overage' as const : 'blocked' as const;
+  const share = Math.round(gone * 1000) / 1000;
+  if (gone < 0.2 || now.getTime() - periodStart.getTime() < 3 * 86_400_000) return { basis: 'period_pace', elapsedShare: share, projectedUsed: null, verdict: 'too_early', projectedOverageCents: null, atLimit };
+  const projected = Math.round(used / gone);
+  const verdict = projected <= limit * 0.9 ? 'fits' : projected <= limit ? 'close' : 'likely_over';
+  return { basis: 'period_pace', elapsedShare: share, projectedUsed: projected, verdict, projectedOverageCents: overageEnabled ? Math.max(0, projected - limit) * overageUnitCents : null, atLimit };
 }
 
 const dayOf = (v: unknown) => (v == null ? null : utcDate(new Date(v as string)));   // the provider's subscription period start — a UTC billing instant
@@ -105,7 +124,8 @@ export class AiUsageScreenRepository {
       state, storedStatus: s ? String(s.status) : null, globallyEnabled, disabledReason: g && !g.enabled ? (g.disabled_reason ?? null) : null,
       price: { cents, currency: String(s?.currency ?? 'usd').toUpperCase(), period, monthlyEquivalentCents: period === 'yearly' ? Math.round(cents / 12) : cents, source: s && N(s.price_cents) > 0 ? 'subscription' : 'catalog_list' },
       usage: { used: live ? used : null, limit, unit: def?.usageUnit ?? 'units', percent: live && limit > 0 && used != null ? Math.round((used * 1000) / limit) / 10 : null, level,
-        periodStart: live ? iso(s?.current_period_starts_at) : null, periodEnd: live ? iso(s?.period_end) : null, remaining: live && limit > 0 && used != null ? Math.max(0, limit - used) : null },
+        periodStart: live ? iso(s?.current_period_starts_at) : null, periodEnd: live ? iso(s?.period_end) : null, remaining: live && limit > 0 && used != null ? Math.max(0, limit - used) : null,
+        projection: live && used != null && s?.current_period_starts_at && s?.period_end ? usageProjection(used, limit, new Date(s.current_period_starts_at), new Date(s.period_end), now, overEnabled, overUnit) : null },
       overage: { enabled: overEnabled, unitPriceCents: overUnit, estimatedCents: est },
       trial: { days: def?.trialDays ?? 0, startsAt: iso(s?.trial_starts_at), endsAt: iso(endsAt), daysLeft: state === 'trialing' && endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / 86400000)) : null, eligible },
       lastPaymentStatus: s?.last_payment_status ?? null, subscribedAt: iso(s?.created_at), cancelledAt: iso(s?.cancelled_at),
