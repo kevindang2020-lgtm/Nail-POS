@@ -5,6 +5,7 @@
 //   resolving a shortage keeps expected / counted / variance and records the reason; another salon's unit is untouched.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { TechCashHandoffService } from './tech-cash-handoff.service';
 import { TechCashHandoffRepository } from './tech-cash-handoff.repository';
 import { TechCashHandoffVersionConflict } from './tech-cash-handoff.dto';
 
@@ -75,3 +76,45 @@ describe('hand-off writer — partial hand-offs, idempotency, concurrency, drawe
     expect((await unit(BAO)).status).toBe('reconciled');
   });
 });
+
+describe('End-of-Day Cash 17 — a closed count is reopened only with the permission and a reason; history kept; re-close recomputes', () => {
+  const NIA = id('f3');
+  const svc = () => new TechCashHandoffService(r as any);
+  const mgr = { ...ctx, role: 'MANAGER', permissions: ['cash_handoff.reopen', 'pos.checkout.take_payment', 'pos.checkout.view'] };
+  const desk = { ...ctx, role: 'FRONT_DESK', permissions: ['pos.checkout.take_payment', 'pos.checkout.view'] };
+  it('a reconciled (closed) count cannot be counted again directly', async () => {
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active) values ($1,$2,$3,'Nia','X','Nia','active',true)`, [NIA, T, B]);
+    const exp = { expectedCents: 5000, paymentCount: 1 };
+    expect(await r.reconcile(ctx, NIA, DAY, exp, 5000, null, {})).toMatchObject({ status: 'reconciled', version: 1 });
+    await expect(r.reconcile(ctx, NIA, DAY, exp, 4000, 'late recount', {})).rejects.toMatchObject({ code: 'closed', httpStatus: 409 });
+    expect(await unit(NIA)).toMatchObject({ status: 'reconciled', counted_cents: 5000 });
+  });
+  it('reopen: refused without the dedicated permission, without a reason, or for a count that is not closed; nothing changes', async () => {
+    await expect(svc().posReopen(desk as any, NIA, { reason: 'Found $10 in the drawer', date: DAY })).rejects.toMatchObject({ code: 'forbidden' });
+    await expect(svc().posReopen(mgr as any, NIA, { reason: ' ', date: DAY })).rejects.toMatchObject({ code: 'bad_request' });
+    await expect(svc().posReopen(mgr as any, NIA, { reason: 'stale screen', date: DAY, expectedVersion: 9 })).rejects.toBeInstanceOf(TechCashHandoffVersionConflict);
+    await expect(r.reopen(ctx, ANNA, '2026-10-01', 'no unit that day', null)).rejects.toMatchObject({ code: 'not_found' });
+    expect(await unit(NIA)).toMatchObject({ status: 'reconciled', version: 1 });
+  });
+  it('a manager reopens with a reason: figures kept, who / when / why recorded, a reopened event and a before / after audit row', async () => {
+    const d = await svc().posReopen(mgr as any, NIA, { reason: 'Found $10 more in the envelope', date: DAY, expectedVersion: 1 });
+    expect(d.status).toBe('reopened');
+    const u = (await q(`select status, counted_cents, variance_cents, version, reopen_reason, reopened_by_user_id, reopened_at, reopen_count from tech_cash_handoffs where tenant_id = $1 and technician_id = $2`, [T, NIA])).rows[0];
+    expect({ ...u, counted_cents: Number(u.counted_cents), variance_cents: Number(u.variance_cents), reopened_at: !!u.reopened_at })
+      .toEqual({ status: 'reopened', counted_cents: 5000, variance_cents: 0, version: 2, reopen_reason: 'Found $10 more in the envelope', reopened_by_user_id: U, reopened_at: true, reopen_count: 1 });
+    expect((await events(NIA)).map((e: any) => [e.event_type, Number(e.counted_total_cents)])).toEqual([['counted', 5000], ['reopened', 5000]]);
+    const a = (await q(`select metadata from owner_audit_log where tenant_id = $1 and action = 'tech_cash_handoff_reopened'`, [T])).rows;
+    expect(a).toHaveLength(1);
+    const m = typeof a[0].metadata === 'string' ? JSON.parse(a[0].metadata) : a[0].metadata;
+    expect(m).toMatchObject({ reason: 'Found $10 more in the envelope', before: { status: 'reconciled', countedCents: 5000, varianceCents: 0, version: 1 }, after: { status: 'reopened', version: 2, reopenCount: 1 } });
+    await expect(svc().posReopen(mgr as any, NIA, { reason: 'again please', date: DAY })).rejects.toMatchObject({ code: 'not_closed' });   // already reopened
+  });
+  it('the next count recomputes from the source and closes it again; the first count stays in the history', async () => {
+    const x = await r.reconcile(ctx, NIA, DAY, { expectedCents: 6000, paymentCount: 2 }, 6000, 'recount after reopen', { expectedVersion: 2 });
+    expect(x).toMatchObject({ status: 'reconciled', varianceCents: 0, countedCents: 6000, version: 3 });
+    expect((await events(NIA)).map((e: any) => e.event_type)).toEqual(['counted', 'reopened', 'recount']);
+    expect((await q(`select reopen_reason, reopen_count from tech_cash_handoffs where tenant_id = $1 and technician_id = $2`, [T, NIA])).rows[0]).toEqual({ reopen_reason: 'Found $10 more in the envelope', reopen_count: 1 });
+    await expect(r.reopen(other, NIA, DAY, 'other salon', null)).rejects.toMatchObject({ code: 'not_found' });
+  });
+});
+

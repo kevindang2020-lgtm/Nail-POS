@@ -144,4 +144,13 @@ export const CASHHANDOFF_VI: Record<string, string> = {
   'ch.resolveTitle': 'Giải quyết chênh lệch — {who}',
   'ch.resolveReason': 'Đã giải quyết thế nào? (bắt buộc)',
   'ch.resolveNote': 'Số dự kiến, đã đếm và chênh lệch được giữ nguyên; cách giải quyết, tên bạn và thời gian được ghi lại. Không trừ vào thu nhập hay tiền tip.',
+  'ch.reopen': 'Mở lại', // DRAFT — Kevin reviews
+  'ch.reopenTitle': 'Mở lại lần đếm đã đóng của {who}', // DRAFT — Kevin reviews
+  'ch.reopenReason': 'Lý do mở lại (bắt buộc)', // DRAFT — Kevin reviews
+  'ch.reopenNote': 'Số liệu đã đóng vẫn được giữ trong lịch sử. Phải đếm lại, và tiền mặt dự kiến được tính lại từ các khoản thanh toán.', // DRAFT — Kevin reviews
+  'ch.reopenedBy': '{who} đã mở lại lúc {at} (mở lại {n} lần)', // DRAFT — Kevin reviews
+  'ch.saved.reopened': 'Đã mở lại lần đếm tiền của {who} — hãy đếm lại để đóng.', // DRAFT — Kevin reviews
+  'ch.state.reopened': 'Đã mở lại', // DRAFT — Kevin reviews
+  'ch.stateNote.reopened': 'Quản lý đã mở lại lần đếm đã đóng; đang chờ đếm lại.', // DRAFT — Kevin reviews
+  'ch.audit.tech_cash_handoff_reopened': 'Đã mở lại lần đếm đã đóng', // DRAFT — Kevin reviews
 };

@@ -22,10 +22,11 @@ import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, D
 
 type Unit = { id: string | null; technicianId: string; technician: string | null; technicianActive: boolean; businessDate: string | null; branch: string | null; expectedCents: number; paymentCount: number;
   countedCents: number | null; differenceCents: number | null; status: string; state: string; version: number; drawerTransferCents: number; submittedAt: string | null; countedAt: string | null; resolvedAt: string | null;
-  createdAt: string | null; updatedAt: string | null; countedBy: string | null; resolvedBy: string | null; notes: string | null; resolutionReason: string | null; matchedBy?: string | null };
+  createdAt: string | null; updatedAt: string | null; countedBy: string | null; resolvedBy: string | null; notes: string | null; resolutionReason: string | null; matchedBy?: string | null;
+  reopen?: { at: string | null; by: string | null; reason: string | null; count: number } | null };
 type Note = { tone: 'ok' | 'bad'; text: string; view?: { techId: string; date: string } } | null;
 
-const STATE_TONE: Record<string, string> = { balanced: 'ok', resolved: 'ok', short: 'bad', over: 'warn', open: 'warn', submitted: 'warn', cancelled: 'mut' };
+const STATE_TONE: Record<string, string> = { balanced: 'ok', resolved: 'ok', short: 'bad', over: 'warn', open: 'warn', submitted: 'warn', cancelled: 'mut', reopened: 'warn' };
 const STATUSES = ['awaiting', 'submitted', 'short', 'over', 'discrepancy', 'balanced', 'resolved', 'reconciled'];
 const SORTS = ['created_desc', 'created_asc', 'date_desc', 'expected_desc', 'variance_asc', 'variance_desc', 'technician_asc'];
 const BASES = ['business', 'counted', 'submitted', 'created'];
@@ -48,7 +49,7 @@ export function POSCashHandoffScreen() {
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [note, setNote] = useState<Note>(null); const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState<{ techId: string; date: string } | null>(null);
   const [counting, setCounting] = useState<{ techId?: string; date?: string } | null>(null);
-  const [resolving, setResolving] = useState<Unit | null>(null); const [flash, setFlash] = useState<string | null>(null);
+  const [resolving, setResolving] = useState<Unit | null>(null); const [reopening, setReopening] = useState<Unit | null>(null); const [flash, setFlash] = useState<string | null>(null);
   const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, status: status || undefined, technician: tech || undefined, sort };
   const key = JSON.stringify(scope); useEffect(() => { setPage(1); }, [key]);
   const fit = useFitRows<HTMLDivElement>(44, { min: 3, max: 18, reserve: 34 });
@@ -142,7 +143,8 @@ export function POSCashHandoffScreen() {
                   <td><span className={'fk-chip ' + (STATE_TONE[r.state] ?? 'mut')}>{stateLbl(r.state)}</span></td>
                   <td className="t-opt">{r.countedBy ?? '—'}<span className="fk-li-s">{when(r.resolvedAt ?? r.countedAt ?? r.submittedAt)}</span></td>
                   <td className="fn-acts">
-                    {perms.count && r.status !== 'cancelled' ? <button type="button" className="fk-btn sm" onClick={() => setCounting({ techId: r.technicianId, date: r.businessDate! })} data-testid="count">{counted ? tx('ch.recount') : tx('ch.count')}</button> : null}
+                    {perms.reopen && r.status === 'reconciled' ? <button type="button" className="fk-btn sm" onClick={() => setReopening(r)} data-testid="reopen">{tx('ch.reopen')}</button> : null}
+                    {perms.count && r.status !== 'cancelled' && r.status !== 'reconciled' ? <button type="button" className="fk-btn sm" onClick={() => setCounting({ techId: r.technicianId, date: r.businessDate! })} data-testid="count">{counted ? tx('ch.recount') : tx('ch.count')}</button> : null}
                     {perms.resolve && review ? <button type="button" className="fk-btn sm" onClick={() => setResolving(r)} data-testid="review">{tx('finance.review')}</button> : null}
                     <button type="button" className="fk-btn ghost sm" onClick={() => setDetail({ techId: r.technicianId, date: r.businessDate! })}>{tx('finance.view')}</button>
                   </td>
@@ -152,22 +154,24 @@ export function POSCashHandoffScreen() {
           </table>}
       </FitPanel>
       {detail ? <UnitDialog techId={detail.techId} date={detail.date} tick={tick} perms={perms} onClose={() => setDetail(null)} onCount={() => { setCounting({ techId: detail.techId, date: detail.date }); }}
-        onResolve={(u) => setResolving(u)} onTicket={(n) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(n)}`)} onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} /> : null}
+        onResolve={(u) => setResolving(u)} onReopen={(u) => setReopening(u)} onTicket={(n) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(n)}`)} onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} /> : null}
       {counting ? <CountDialog techId={counting.techId} date={counting.date} today={list.data?.period?.today ?? sum.data?.period?.today} technicians={techs.data ?? []} onClose={() => setCounting(null)}
         onSaved={(techId, date, text) => { setCounting(null); saved(techId, date, text); }} /> : null}
       {resolving ? <ResolveDialog unit={resolving} onClose={() => setResolving(null)} onSaved={(text) => { const u = resolving; setResolving(null); saved(u.technicianId, u.businessDate!, text); }} /> : null}
+      {reopening ? <ReopenDialog unit={reopening} onClose={() => setReopening(null)} onSaved={(text) => { const u = reopening; setReopening(null); saved(u.technicianId, u.businessDate!, text); }} /> : null}
     </div>
   );
 }
 
-function UnitDialog({ techId, date, tick, perms, onClose, onCount, onResolve, onTicket, onCustomer }: { techId: string; date: string; tick: number; perms: Record<string, boolean>; onClose: () => void; onCount: () => void; onResolve: (u: Unit) => void; onTicket: (n: string) => void; onCustomer: (id: string) => void }) {
+function UnitDialog({ techId, date, tick, perms, onClose, onCount, onResolve, onReopen, onTicket, onCustomer }: { techId: string; date: string; tick: number; perms: Record<string, boolean>; onClose: () => void; onCount: () => void; onResolve: (u: Unit) => void; onReopen: (u: Unit) => void; onTicket: (n: string) => void; onCustomer: (id: string) => void }) {
   const d = useLoad(() => posCashHandoffApi.unit(techId, date), [techId, date, tick]);
   const u: Unit | undefined = d.data?.unit;
   return (
     <FitDialog wide title={u ? `${u.technician ?? tx('ch.unknownTech')} · ${ymdText(u.businessDate)}` : tx('ch.detailTitle')} subtitle={u ? tx('ch.detailSub', { n: fmtNumber(u.paymentCount) }) : undefined} onClose={onClose} testId="unit-dialog"
       footer={u ? <>
         {perms.resolve && u.status === 'discrepancy' ? <button type="button" className="fk-btn" onClick={() => onResolve(u)}>{tx('ch.resolve')}</button> : null}
-        {perms.count && u.status !== 'cancelled' ? <button type="button" className="fk-btn" onClick={onCount}>{u.countedCents != null ? tx('ch.recount') : tx('ch.count')}</button> : null}
+        {perms.reopen && u.status === 'reconciled' ? <button type="button" className="fk-btn" onClick={() => onReopen(u)} data-testid="unit-reopen">{tx('ch.reopen')}</button> : null}
+        {perms.count && u.status !== 'cancelled' && u.status !== 'reconciled' ? <button type="button" className="fk-btn" onClick={onCount}>{u.countedCents != null ? tx('ch.recount') : tx('ch.count')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !u ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="fn-statusline"><span className={'fk-chip ' + (STATE_TONE[u.state] ?? 'mut')}>{stateLbl(u.state)}</span><span className="fk-hint">{tx('ch.stateNote.' + u.state)}</span></div>
@@ -177,6 +181,7 @@ function UnitDialog({ techId, date, tick, perms, onClose, onCount, onResolve, on
           <div className={u.differenceCents == null ? '' : u.differenceCents < 0 ? 'bad' : u.differenceCents > 0 ? 'warn' : 'ok'}><dt>{tx('ch.col.difference')}</dt><dd>{signed(u.differenceCents)}</dd></div>
           <div><dt>{tx('ch.f.drawer')}</dt><dd>{fmtMoney(u.drawerTransferCents)}</dd></div>
         </dl>
+        {u.reopen ? <div className="fk-note warn" data-testid="reopened-note"><span>{tx('ch.reopenedBy', { who: u.reopen.by ?? '—', at: when(u.reopen.at), n: fmtNumber(u.reopen.count) })} — {u.reopen.reason ?? '—'}</span></div> : null}
         {u.resolutionReason ? <div className="fk-note ok" data-testid="resolution"><span>{tx('ch.resolvedBy', { who: u.resolvedBy ?? '—', at: when(u.resolvedAt) })} — {u.resolutionReason}</span></div> : null}
         <h3 className="fk-h3">{tx('ch.linesTitle')}</h3>
         {d.data.lines.length === 0 ? <div className="fk-hint">{tx('ch.noLines')}</div> :
@@ -285,3 +290,31 @@ function ResolveDialog({ unit, onClose, onSaved }: { unit: Unit; onClose: () => 
     </FitDialog>
   );
 }
+
+/** End-of-Day Cash 17 (Kevin, Nov 12 2026): reopen a CLOSED count — owner / manager, a reason (10+ characters); the figures
+ *  stay in its history and it must be counted again, which recomputes the expected cash from the payments. */
+function ReopenDialog({ unit, onClose, onSaved }: { unit: Unit; onClose: () => void; onSaved: (text: string) => void }) {
+  const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const keys = useRef(createIntentKeys());
+  const ok = reason.trim().length >= 10;
+  const submit = async () => {
+    const body = { reason: reason.trim(), date: unit.businessDate!, expectedVersion: unit.version }; const intent = `reopen:${unit.technicianId}:${unit.businessDate}`;
+    setBusy(true); setErr(null);
+    try { await posCashHandoffApi.reopen(unit.technicianId, body, keys.current.keyFor(intent, body)); keys.current.done(intent); onSaved(tx('ch.saved.reopened', { who: unit.technician ?? '—' })); }
+    catch (e) { setErr(errMsg(e)); } finally { setBusy(false); }
+  };
+  return (
+    <FitDialog title={tx('ch.reopenTitle', { who: unit.technician ?? '—' })} subtitle={ymdText(unit.businessDate)} onClose={onClose} busy={busy} testId="reopen-dialog"
+      footer={<><button type="button" className="fk-btn" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" onClick={submit} disabled={busy || !ok} data-testid="save-reopen">{busy ? tx('pos.saving_2') : tx('ch.reopen')}</button></>}>
+      <dl className="ch-figures">
+        <div><dt>{tx('ch.col.expected')}</dt><dd>{fmtMoney(unit.expectedCents)}</dd></div>
+        <div><dt>{tx('ch.col.counted')}</dt><dd>{unit.countedCents != null ? fmtMoney(unit.countedCents) : '—'}</dd></div>
+        <div><dt>{tx('ch.col.difference')}</dt><dd>{signed(unit.differenceCents)}</dd></div>
+      </dl>
+      <label className="fk-field"><span>{tx('ch.reopenReason')}</span><textarea rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="reopen-reason" autoFocus /></label>
+      <div className="fk-hint">{tx('ch.reopenNote')}</div>
+      {err ? <div className="fk-error" role="alert">{err}</div> : null}
+    </FitDialog>
+  );
+}
+

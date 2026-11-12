@@ -15,8 +15,10 @@ import { withCode } from '@aipowersalon/api-contracts';
  *  canMoveToSql(TECH_CASH_HANDOFF, to): exactly the moves they have always made. */
 export const TECH_CASH_HANDOFF = defineStateMachine({
   name: 'tech_cash_handoff', table: 'tech_cash_handoffs', column: 'status',
-  states: ['open', 'submitted', 'reconciled', 'discrepancy', 'cancelled'],
-  transitions: { open: ['submitted', 'reconciled', 'discrepancy'], submitted: ['submitted', 'reconciled', 'discrepancy'], reconciled: ['reconciled', 'discrepancy'], discrepancy: ['reconciled', 'discrepancy'], cancelled: ['submitted', 'reconciled', 'discrepancy'] },
+  // End-of-Day Cash 17 (Kevin, Nov 12 2026): a reconciled unit is CLOSED — it moves only to 'reopened' (reopen, with the
+  // dedicated permission and a reason); a reopened unit is counted again and closes as reconciled / discrepancy.
+  states: ['open', 'submitted', 'reconciled', 'discrepancy', 'cancelled', 'reopened'],
+  transitions: { open: ['submitted', 'reconciled', 'discrepancy'], submitted: ['submitted', 'reconciled', 'discrepancy'], reconciled: ['reopened'], discrepancy: ['reconciled', 'discrepancy'], cancelled: ['submitted', 'reconciled', 'discrepancy'], reopened: ['reconciled', 'discrepancy'] },
   initial: ['submitted', 'reconciled', 'discrepancy'],
 });
 
@@ -178,6 +180,7 @@ export class TechCashHandoffRepository {
       if (opts.expectedVersion != null && existing && num(existing.version) !== opts.expectedVersion) {
         throw new TechCashHandoffVersionConflict(num(existing.version), existing.counted_cents != null ? num(existing.counted_cents) : null, String(existing.status));
       }
+      if (existing && existing.status === 'reconciled') throw withCode(new TechCashHandoffError('closed', 'This cash count is closed. A manager can reopen it with a reason.', 409), 'HANDOFF_NOT_COUNTABLE');
       const previous = existing && existing.counted_cents != null ? num(existing.counted_cents) : 0;
       const total = opts.mode === 'add' ? previous + countedCents : countedCents;
       const variance = total - exp.expectedCents;
@@ -236,6 +239,35 @@ export class TechCashHandoffRepository {
         values (${T}, ${B}, ${technicianId}::uuid, ${date}::date, ${row.id}::uuid, 'resolved', ${row.counted_cents}, ${row.expected_cents}, ${row.counted_cents}, ${row.variance_cents}, ${reason}, ${actor})`.execute(trx);
       await this.fact(trx, ctx, DOMAIN_EVENTS.CASH_HANDOFF_RECONCILED, technicianId, date, { expectedCents: num(row.expected_cents), countedCents: num(row.counted_cents), varianceCents: num(row.variance_cents), status: 'reconciled', resolved: true });
       return { version: num(up.version), varianceCents: num(row.variance_cents) };
+    });
+  }
+
+  /**
+   * End-of-Day Cash 17 (Kevin, Nov 12 2026): reopen a CLOSED (reconciled) unit. Nothing is erased: expected / counted /
+   * variance and any resolution stay on the unit and the 'reopened' event records them as they were; the unit says who
+   * reopened it, when and why (reopen_count counts every reopen). The next count recomputes the expected cash from the source
+   * payments and closes it again. Returns the before / after the audit row keeps.
+   */
+  async reopen(ctx: TCHCtx, technicianId: string, date: string, reason: string, expectedVersion: number | null) {
+    const T = ctx.tenantId; const B = isUuid(ctx.branchId) ? ctx.branchId : null; const actor = isUuid(ctx.userId) ? ctx.userId : null;
+    type Row = UnitRow & { resolution_reason: string | null; resolved_at: string | null; reconciled_at: string | null; reopen_count: number | string };
+    return this.db.transaction().execute(async (trx) => {
+      const row = (await sql<Row>`select id, status, version, counted_cents, expected_cents, variance_cents, resolution_reason, resolved_at, reconciled_at, reopen_count from tech_cash_handoffs
+        where tenant_id = ${T} and technician_id = ${technicianId}::uuid and business_date = ${date}::date and (${B}::uuid is null or branch_id is null or branch_id = ${B}::uuid) for update`.execute(trx)).rows[0];
+      if (!row) throw withCode(new TechCashHandoffError('not_found', 'That cash hand-off could not be found.', 404), 'HANDOFF_NOT_FOUND');
+      if (expectedVersion != null && num(row.version) !== expectedVersion) throw new TechCashHandoffVersionConflict(num(row.version), row.counted_cents != null ? num(row.counted_cents) : null, String(row.status));
+      const notClosed = () => withCode(new TechCashHandoffError('not_closed', 'Only a closed (reconciled) cash count can be reopened.', 409), 'INVALID_STATE_TRANSITION');
+      if (row.status !== 'reconciled') throw notClosed();
+      const up = (await sql<{ version: number }>`update tech_cash_handoffs set status = 'reopened', reopened_at = now(), reopened_by_user_id = ${actor}, reopen_reason = ${reason}, reopen_count = reopen_count + 1,
+          version = version + 1, updated_at = now()
+        where tenant_id = ${T} and id = ${row.id}::uuid and ${canMoveToSql(TECH_CASH_HANDOFF, 'reopened', 'tech_cash_handoffs')} returning version`.execute(trx)).rows[0];
+      if (!up) throw notClosed();
+      const ev = (await sql<{ id: string }>`insert into tech_cash_handoff_events (tenant_id, branch_id, technician_id, business_date, handoff_id, event_type, amount_cents, expected_cents, counted_total_cents, variance_cents, reason, actor_user_id)
+        values (${T}, ${B}, ${technicianId}::uuid, ${date}::date, ${row.id}::uuid, 'reopened', ${row.counted_cents}, ${row.expected_cents}, ${row.counted_cents}, ${row.variance_cents}, ${reason}, ${actor}) returning id`.execute(trx)).rows[0];
+      const before = { status: String(row.status), expectedCents: num(row.expected_cents), countedCents: row.counted_cents == null ? null : num(row.counted_cents), varianceCents: row.variance_cents == null ? null : num(row.variance_cents),
+        resolutionReason: row.resolution_reason ?? null, closedAt: row.reconciled_at ? new Date(row.reconciled_at).toISOString() : null, version: num(row.version) };
+      const after = { ...before, status: 'reopened', version: num(up.version), reopenReason: reason, reopenCount: num(row.reopen_count) + 1 };
+      return { before, after, eventId: String(ev.id) };
     });
   }
 

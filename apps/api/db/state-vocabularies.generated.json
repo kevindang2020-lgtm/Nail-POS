@@ -2538,6 +2538,7 @@
    "discrepancy",
    "open",
    "reconciled",
+   "reopened",
    "submitted"
   ],
   "tech_dm_reports.status": [

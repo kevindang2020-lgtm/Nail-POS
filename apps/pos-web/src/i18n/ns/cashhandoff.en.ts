@@ -144,4 +144,13 @@ export const CASHHANDOFF_EN = {
   'ch.resolveTitle': 'Resolve difference — {who}',
   'ch.resolveReason': 'How was it resolved? (required)',
   'ch.resolveNote': 'The expected, counted and difference figures are kept; the resolution, your name and the time are recorded. Nothing is deducted from earnings or tips.',
+  'ch.reopen': 'Reopen',
+  'ch.reopenTitle': 'Reopen the closed count for {who}',
+  'ch.reopenReason': 'Why reopen it (required)',
+  'ch.reopenNote': 'The closed figures stay in the history. The count must be done again, and the expected cash is worked out again from the payments.',
+  'ch.reopenedBy': 'Reopened by {who} at {at} (reopened {n}×)',
+  'ch.saved.reopened': 'Reopened the cash count for {who} — count it again to close it.',
+  'ch.state.reopened': 'Reopened',
+  'ch.stateNote.reopened': 'A manager reopened this closed count; it waits for a new count.',
+  'ch.audit.tech_cash_handoff_reopened': 'Closed count reopened',
 };

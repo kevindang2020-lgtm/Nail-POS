@@ -36,6 +36,7 @@ export const PERMISSIONS = [
   // Weekly Paycheck mandate (Oct 21 2026, §10–§12 / §16): issuing / delivering / voiding paychecks and preparing / handing
   // over payroll cash are their own keys (owner + manager by default) — paying out what the OWNER approved, never approving it.
   'payroll.issue_check','payroll.cash_handoff',
+  'cash_handoff.reopen',
   'super_admin.tenants.view','super_admin.tenants.create','super_admin.tenants.edit',
   'super_admin.tenants.suspend','super_admin.users.manage',
   'super_admin.subscriptions.manage','super_admin.billing.view','super_admin.billing.invoices.create','super_admin.billing.invoices.finalize','super_admin.billing.credits.apply','super_admin.billing.payments.retry','super_admin.billing.plans.change','super_admin.billing.addons.manage','super_admin.billing.trials.extend','super_admin.billing.discounts.manage','super_admin.billing.pause','super_admin.billing.cancel','super_admin.billing.requests.review','super_admin.billing.export','super_admin.ai_packages.manage','super_admin.catalog.manage','super_admin.disputes.view','super_admin.disputes.manage','super_admin.disputes.evidence.submit','super_admin.disputes.outcome.record','super_admin.disputes.risk.flag','super_admin.disputes.override','super_admin.disputes.export','super_admin.memberships.view','super_admin.memberships.manage','super_admin.memberships.export','super_admin.memberships.support_mode','super_admin.memberships.correct','super_admin.memberships.disable','super_admin.audit_logs.view',
@@ -271,6 +272,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   MANAGER: [
     ...COMMUNITY_MANAGER,
     ...POS_VIEW, ...POS_MANAGE, 'checkout.manage_overrides', 'booking.override',
+    'cash_handoff.reopen',   // End-of-Day Cash 17 (Kevin, Nov 12 2026): reopen a closed cash record — owner and manager, with a reason
     'mobile_checkout.login','mobile_checkout.view_queue','mobile_checkout.open_ticket','mobile_checkout.add_product','mobile_checkout.tip','mobile_checkout.split_payment','mobile_checkout.tap_to_pay','mobile_checkout.send_receipt','mobile_checkout.view_history','mobile_checkout.view_reports','mobile_checkout.refund_request','mobile_checkout.void_request',
     'technicians.edit','services.edit','reports.view','reports.export','settings.view','ai.use','ai_business.view','ai_inventory.view','ai_inventory.manage_recipes','ai_analytics.view',
     // View-tier for the AI modules built in package B. The AI CENTER sidebar section is roles: MGMT (OWNER+MANAGER),

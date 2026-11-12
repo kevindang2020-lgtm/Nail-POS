@@ -150,3 +150,17 @@ describe('End-of-Day Cash — the detail', () => {
     expect(csv.split('\n').filter((l) => /^2026-10-28,/.test(l)).length).toBe(5);
   });
 });
+
+describe('End-of-Day Cash 17 — a reopened count shows who / when / why and waits for a new count', () => {
+  it('state "reopened", the reopen note on the row, counted as awaiting; another salon never sees it', async () => {
+    await q(`update tech_cash_handoffs set status = 'reopened', reopened_at = '2026-10-29T14:00:00Z', reopened_by_user_id = $1, reopen_reason = 'Found $10 more in the envelope', reopen_count = 1 where id = $2`, [U, annaHandoff]);
+    const l = await r.list(ctx, await range('2026-10-28', '2026-10-28'), pr);
+    const anna = l.items.find((x) => x.technician === 'Anna Lee')!;
+    expect(anna).toMatchObject({ status: 'reopened', state: 'reopened', countedCents: 30000, reopen: { at: '2026-10-29T14:00:00.000Z', by: 'Pat Owner', reason: 'Found $10 more in the envelope', count: 1 } });
+    expect(l.items.find((x) => x.technician === 'Ben Tran')!.reopen).toBeNull();
+    expect((await r.list(ctx, await all({ status: 'awaiting' }), pr)).items.map((x) => x.technician)).toContain('Anna Lee');
+    expect((await r.list(ctx, await all({ status: 'reconciled' }), pr)).items.map((x) => x.technician)).toEqual(['Cara Nguyen']);
+    await q(`update tech_cash_handoffs set status = 'reconciled', reopened_at = null, reopened_by_user_id = null, reopen_reason = null, reopen_count = 0 where id = $1`, [annaHandoff]);
+  });
+});
+

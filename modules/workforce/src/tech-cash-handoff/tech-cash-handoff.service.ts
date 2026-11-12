@@ -90,7 +90,7 @@ export class TechCashHandoffService {
     try {
       r = await this.repo.reconcile(ctx, technicianId, d, exp, counted, notes, { mode, denominations, expectedVersion, idempotencyKey: typeof body?.idempotencyKey === 'string' && body.idempotencyKey ? body.idempotencyKey.slice(0, 120) : null,
         transferToDrawer: body?.transferToDrawer === true, registerId: typeof body?.registerId === 'string' && body.registerId ? body.registerId.slice(0, 64) : null });
-    } catch (e) { throw e instanceof TechCashHandoffVersionConflict ? withCode(e, 'HANDOFF_VERSION_CONFLICT') : e instanceof TechCashHandoffError && e.code === 'not_countable' ? withCode(e, 'HANDOFF_NOT_COUNTABLE') : e; }
+    } catch (e) { throw e instanceof TechCashHandoffVersionConflict ? withCode(e, 'HANDOFF_VERSION_CONFLICT') : e instanceof TechCashHandoffError && e.code === 'not_countable' ? withCode(e, 'HANDOFF_NOT_COUNTABLE') : e instanceof TechCashHandoffError && e.code === 'closed' ? withCode(e, 'HANDOFF_NOT_COUNTABLE') : e; }
     const detail = await this.repo.handoffForTech(ctx, technicianId, d);
     if (r.replayed) return { ...detail, result: { status: r.status, varianceCents: r.varianceCents, version: r.version, eventId: r.eventId, drawerMovementId: r.drawerMovementId, replayed: true } };
     const { status, varianceCents } = r;
@@ -122,6 +122,26 @@ export class TechCashHandoffService {
     await this.repo.audit(ctx, 'tech_cash_handoff_resolved', technicianId, { businessDate: d, reason, varianceCents: r.varianceCents, version: r.version });
     const detail = await this.repo.handoffForTech(ctx, technicianId, d);
     if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, TCH_EVENTS.handoffReconciled, { technicianId, businessDate: d, expectedCents: detail.expectedCents, countedCents: detail.countedCents, varianceCents: r.varianceCents, status: 'reconciled', resolved: true });
+    return detail;
+  }
+
+  /** End-of-Day Cash 17 (Kevin, Nov 12 2026): reopen a closed (reconciled) count — the dedicated permission cash_handoff.reopen
+   *  (owner / manager), a required reason; the audit row carries before / after; nothing is erased (the repository keeps the
+   *  figures and writes a 'reopened' event); the next count recomputes from the source payments and closes it again. */
+  async posReopen(ctx: TCHCtx, technicianId: string, body: any): Promise<CashHandoffDetail> {
+    if (!this.has(ctx, 'cash_handoff.reopen')) throw withCode(new TechCashHandoffError('forbidden', 'Reopening a closed cash count needs an owner or manager.', 403), 'PERMISSION_DENIED');
+    if (!isUuid(technicianId)) throw withCode(new TechCashHandoffError('bad_request', 'Invalid technician.', 400), 'TECHNICIAN_NOT_FOUND');
+    const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
+    if (reason.length < 10) throw withCode(new TechCashHandoffError('bad_request', 'Say why this closed count is being reopened.', 400), 'REASON_REQUIRED');
+    const expectedVersion = body?.expectedVersion == null || body.expectedVersion === '' ? null : Math.round(Number(body.expectedVersion));
+    if (expectedVersion != null && !Number.isFinite(expectedVersion)) throw withCode(new TechCashHandoffError('bad_request', 'Invalid version.', 400), 'VALIDATION_FAILED');
+    const d = normDate(body?.date, await this.today(ctx));
+    let r: { before: Record<string, unknown>; after: Record<string, unknown>; eventId: string };
+    try { r = await this.repo.reopen(ctx, technicianId, d, reason, expectedVersion); }
+    catch (e) { throw e instanceof TechCashHandoffVersionConflict ? withCode(e, 'HANDOFF_VERSION_CONFLICT') : e instanceof TechCashHandoffError && e.code === 'not_closed' ? withCode(e, 'INVALID_STATE_TRANSITION') : e instanceof TechCashHandoffError && e.code === 'not_found' ? withCode(e, 'HANDOFF_NOT_FOUND') : e; }
+    await this.repo.audit(ctx, 'tech_cash_handoff_reopened', technicianId, { businessDate: d, reason, before: r.before, after: r.after, eventId: r.eventId });
+    const detail = await this.repo.handoffForTech(ctx, technicianId, d);
+    if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, TCH_EVENTS.handoffReconciled, { technicianId, businessDate: d, expectedCents: detail.expectedCents, countedCents: detail.countedCents, varianceCents: detail.varianceCents, status: 'reopened' });
     return detail;
   }
 }

@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
-const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), technicians: vi.fn(), unit: vi.fn(), exportCsv: vi.fn(), reconcile: vi.fn(), resolve: vi.fn(), state: vi.fn(), detail: vi.fn() }));
+const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), technicians: vi.fn(), unit: vi.fn(), exportCsv: vi.fn(), reconcile: vi.fn(), resolve: vi.fn(), reopen: vi.fn(), state: vi.fn(), detail: vi.fn() }));
 vi.mock('../api/posCashHandoffApi', () => ({ posCashHandoffApi: api }));
 import { POSCashHandoffScreen } from './POSCashHandoffScreen';
 
@@ -73,5 +73,31 @@ describe('POSCashHandoffScreen', () => {
     fireEvent.click(screen.getByTestId('refresh'));
     expect(await screen.findByText(/Refresh failed — the last good numbers are from/)).toBeInTheDocument();
     expect(screen.queryByTestId('kpi-expected')).toBeNull();
+  });
+  it('End-of-Day Cash 17: a closed count offers Reopen (not Recount) only with the permission; Reopen needs a 10+ character reason and sends the version', async () => {
+    const closed = u({ technicianId: 't2', technician: 'Anna Lee', countedCents: 25000, differenceCents: 0, status: 'reconciled', state: 'balanced', version: 3 });
+    api.list.mockResolvedValue(pageOf([closed]));
+    api.summary.mockResolvedValue({ ...summary, permissions: { ...summary.permissions, reopen: true } });
+    api.reopen.mockResolvedValue({});
+    const v = mount(); await screen.findAllByTestId('handoff-row');
+    expect(screen.queryByTestId('count')).toBeNull();                                  // a closed count is never recounted directly
+    fireEvent.click(screen.getByTestId('reopen'));
+    fireEvent.change(screen.getByTestId('reopen-reason'), { target: { value: 'short' } });
+    expect(screen.getByTestId('save-reopen')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('reopen-reason'), { target: { value: 'Found $10 more in the envelope' } });
+    fireEvent.click(screen.getByTestId('save-reopen'));
+    await waitFor(() => expect(api.reopen).toHaveBeenCalledWith('t2', { reason: 'Found $10 more in the envelope', date: '2026-10-29', expectedVersion: 3 }, expect.any(String)));
+    v.unmount();
+    api.summary.mockResolvedValue(summary);                                            // no cash_handoff.reopen → no Reopen button
+    mount(); await screen.findAllByTestId('handoff-row');
+    expect(screen.queryByTestId('reopen')).toBeNull();
+  });
+  it('End-of-Day Cash 17: a reopened count shows who reopened it, when and why', async () => {
+    const re = u({ status: 'reopened', state: 'reopened', reopen: { at: '2026-10-29T23:30:00Z', by: 'Pat Owner', reason: 'Found $10 more in the envelope', count: 1 } });
+    api.unit.mockResolvedValue({ unit: re, lines: [], events: [], drawerMovements: [], audit: [], permissions: { count: true } });
+    api.list.mockResolvedValue(pageOf([re]));
+    mount(); await screen.findAllByTestId('handoff-row'); fireEvent.click(screen.getByText('Bao Tran', { selector: 'button' }));
+    const note = await screen.findByTestId('reopened-note');
+    expect(note).toHaveTextContent(/Reopened by Pat Owner at .* \(reopened 1×\) — Found \$10 more in the envelope/);
   });
 });

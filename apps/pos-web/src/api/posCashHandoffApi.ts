@@ -31,6 +31,9 @@ export const posCashHandoffApi = {
   // writes (workforce routes): count / partial / recount, and a manager's resolution of a difference
   reconcile: (techId: string, input: CashCountInput) =>
     http<CashHandoffDetail & { result: { status: HandoffStatus; varianceCents: number; version: number; eventId: string | null; drawerMovementId: string | null; replayed: boolean } }>(`/pos/cash-handoffs/${id(techId)}/reconcile`, { method: 'POST', body: JSON.stringify(input), headers: input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : {} }),
+  /** End-of-Day Cash 17: reopen a closed (reconciled) count with a reason — owner / manager (cash_handoff.reopen); figures kept */
+  reopen: (techId: string, body: { reason: string; date: string; expectedVersion?: number | null }, idempotencyKey?: string) =>
+    http<CashHandoffDetail>(`/pos/cash-handoffs/${id(techId)}/reopen`, { method: 'POST', body: JSON.stringify(body), headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {} }),
   resolve: (techId: string, body: { reason: string; date: string; expectedVersion?: number | null }, idempotencyKey?: string) =>
     http<CashHandoffDetail>(`/pos/cash-handoffs/${id(techId)}/resolve`, { method: 'POST', body: JSON.stringify(body), headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {} }),
 };

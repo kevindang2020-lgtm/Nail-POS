@@ -57,6 +57,7 @@ export const EXPLICIT_PERMISSION_METADATA: Readonly<Record<string, Explicit>> = 
   'payroll.export': e('high', false, TENANT_ONLY, 'Download a pay period as CSV / Excel for the accountant or a payroll provider (every export is audited).'),
   'payroll.adjust': e('high', false, ALL_BRANCH, 'Add bonuses, corrections and configured deductions to an open pay period (large ones wait for an owner\'s approval).'),
   'payroll.issue_check': e('critical', true, TENANT_ONLY, 'Issue, deliver, void and replace payroll checks for an approved pay week (check numbers are recorded).'),
+  'cash_handoff.reopen': e('high', false, ALL_BRANCH, 'Reopen a closed end-of-day cash count with a reason (the earlier figures stay in its history and it must be counted again).'),
   'payroll.cash_handoff': e('critical', true, TENANT_ONLY, 'Prepare payroll cash (from the register drawer, the safe or the bank), hand it to a technician and take their PIN confirmation.'),
   'payouts.manage': e('critical', true, TENANT_ONLY, 'Record what was actually paid to technicians for an approved pay period (cash, check, direct deposit).'),
   'owner.finance.view': e('high', false, ['SELECTED_BRANCHES', 'TENANT'], 'See revenue, deposits, fees and profit in the Owner App.'),
