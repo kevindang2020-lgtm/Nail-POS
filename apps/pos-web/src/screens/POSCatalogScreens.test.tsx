@@ -69,6 +69,16 @@ describe('Services & Products', () => {
     expect(document.cookie).not.toMatch(/branchOverrides/);
     for (const q of ['qa-addService', 'qa-addProduct', 'qa-editPricing', 'qa-createBundle', 'qa-manageInventory', 'qa-updateBooking', 'qa-importCatalog', 'qa-viewReports']) expect(screen.getByTestId(q)).toBeInTheDocument();
   });
+  it('extras (Services & Products 2 · 11): financial labels say which basis they use — menu price, catalog cost proxy, or paid sales', async () => {
+    mount(<POSServicesScreen />);
+    expect(await screen.findByText('$66.33')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-avg-price')).toHaveTextContent('Menu price, not sales');
+    expect(screen.getByTestId('kpi-top-category')).toHaveTextContent('By paid sales in the period');
+    const col = await screen.findByTestId('col-list-margin');
+    expect(col).toHaveTextContent('List margin');
+    expect(col.getAttribute('title')).toMatch(/not from sales/);
+    expect(screen.getByTestId('chart-rule')).toHaveTextContent(/paid ticket lines/);
+  });
   it('a phone search shows customer history (what was charged), not a service filter', async () => {
     cat.customerHistory.mockResolvedValue({ ...page([{ lineId: 'l1', ticketId: 't1', ticketNumber: '101', paid: true, at: '2026-10-29T12:00:00Z', customerId: 'cu1', customerName: 'Mai Le', maskedPhone: '••• 1234', item: 'Gel Manicure', kind: 'service', categoryAtSale: 'Nails', catalogPriceAtSaleCents: 5500, chargedCents: 5500, minutes: 45, technician: 'Vy Tran' }]), needsQuery: false });
     mount(<POSServicesScreen />);

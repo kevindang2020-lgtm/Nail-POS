@@ -13,6 +13,7 @@ const list = vi.fn((_q?: any) => Promise.resolve(page([row])));
 const create = vi.fn((_b?: any) => Promise.resolve({ id: 'fu2', duplicate: false }));
 const prepareText = vi.fn((_id: string, _b: any) => Promise.resolve({ state: 'awaiting_confirmation', blocked: [], warnings: [], notices: [], token: 't1', proposed: { to: '•••0000' } }));
 const confirmText = vi.fn();
+const healthRun = vi.fn((): Promise<any> => Promise.resolve({ overall: 'READY', checks: [], ranAt: '2026-11-06T15:00:00Z', cached: false }));
 const edit = vi.fn((_id: string, _b: any) => Promise.resolve(row));
 const detail = vi.fn((_id: string) => Promise.resolve({ overview: { ...row, resolution: null, resolutionCategory: null, notes: null, createdBy: 'AI receptionist', branchId: null, dueTimeZone: null, reopenedCount: 0, waitingUntil: null },
   customer: { id: null, name: null, phone: '•••0000', unmatched: true, match: 'unmatched', smsOptedOut: false, sharedPhoneProfiles: 0 }, call: null, attempts: [], booking: { linked: null, upcoming: 0 }, activity: [],
@@ -25,7 +26,7 @@ vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: {
   importSources: () => importSources(), healthHistory: () => healthHistory(), recommendedAssignee: () => Promise.resolve({ userId: 'u9', name: 'Fran Desk', role: 'FRONT_DESK', openTasks: 0, reason: 'x' }),
   list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [] }), priorities: () => priorities(),
   create: (b: any) => create(b), detail: (id: string) => detail(id), prepareText: (id: string, b: any) => prepareText(id, b), confirmText: (...a: any[]) => confirmText(...a),
-  edit: (id: string, b: any) => edit(id, b), health: vi.fn(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
+  edit: (id: string, b: any) => edit(id, b), health: () => healthRun(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
 } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: vi.fn().mockResolvedValue({ items: [] }) } }));
 
@@ -118,5 +119,38 @@ describe('POSAIFollowUpsScreen', () => {
     fireEvent.click(screen.getAllByTestId('aifu-row')[0]);
     await waitFor(() => expect(screen.getByTestId('aifu-d-close')).toBeInTheDocument());
     expect(screen.queryByTestId('aifu-d-recent')).toBeNull();
+  });
+});
+
+describe('AI Follow-Ups — data-quality signals (extras #14)', () => {
+  it('a row with server signals says "Check data" with each issue in words; a clean row shows nothing', async () => {
+    list.mockImplementationOnce(() => Promise.resolve(page([{ ...row, dataQuality: ['missing_branch', 'unlinked_call', 'no_due'] }, { ...row, id: 'fu9', dataQuality: [] }])));
+    render(<MemoryRouter><POSAIFollowUpsScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByTestId('aifu-row')).toHaveLength(2));
+    const dq = screen.getAllByTestId('aifu-dq');
+    expect(dq).toHaveLength(1);
+    expect(dq[0]).toHaveTextContent('Check data: no branch · call not found · no due time');
+    expect(dq[0].textContent).not.toMatch(/missing_branch|unlinked_call/);
+  });
+});
+
+describe('AI Follow-Ups — stale event reconciler (extras #07)', () => {
+  it('Check lists each handoff with no follow-up; Create follow-up opens the form for that call and sends its call id — nothing is created until Save', async () => {
+    healthRun.mockResolvedValueOnce({ overall: 'FAILED', ranAt: '2026-11-06T15:00:00Z', cached: false, checks: [{ domain: 'handoff_detection', status: 'FAILED', detail: '1 handoff', evidence: 'x', nextAction: 'Review', responsibleRole: 'Owner / manager', checkedAt: '',
+      items: [{ eventId: 'e1', providerCallId: 'call_orphan_123456789', kind: 'callback_requested', reason: 'asked for a person', at: '2026-11-06T14:00:00Z' }] }] });
+    render(<MemoryRouter><POSAIFollowUpsScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByTestId('aifu-row')).toHaveLength(1));
+    fireEvent.click(screen.getByTestId('aifu-health'));
+    const o = await screen.findByTestId('aifu-orphan');
+    expect(o).toHaveTextContent('Callback requested'); expect(o).toHaveTextContent('asked for a person');
+    expect(create).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('aifu-orphan-create'));
+    expect(await screen.findByTestId('aifu-c-call')).toHaveTextContent('For call call_orphan_1234');
+    expect(create).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId('aifu-c-phone'), { target: { value: '+16095550199' } });
+    fireEvent.change(screen.getByTestId('aifu-c-desc'), { target: { value: 'Call the guest back' } });
+    fireEvent.click(screen.getByTestId('aifu-create-save'));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0]).toMatchObject({ reason: 'CALLBACK', providerCallId: 'call_orphan_123456789', callerPhone: '+16095550199' });
   });
 });

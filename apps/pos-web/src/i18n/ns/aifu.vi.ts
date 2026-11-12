@@ -256,4 +256,21 @@ export const AIFU_VI: Record<string, string> = {
   "aifu.recent.title": "Đã liên hệ gần đây — {n} lần liên hệ khác trong 7 ngày qua. Kiểm tra trước khi liên hệ lại.", // DRAFT — Kevin reviews
   "aifu.recent.src.ai_follow_up": "Một việc theo dõi khác", // DRAFT — Kevin reviews
   "aifu.recent.src.end_of_day": "Theo dõi cuối ngày của thợ", // DRAFT — Kevin reviews
+  "aifu.dq.check": "Kiểm tra dữ liệu:", // DRAFT — Kevin reviews
+  "aifu.dq.why": "Việc này thiếu hoặc có thông tin không khớp. Không có gì được tự động sửa.", // DRAFT — Kevin reviews
+  "aifu.dq.missing_branch": "không có chi nhánh", // DRAFT — Kevin reviews
+  "aifu.dq.ambiguous_customer": "chưa rõ khách (số dùng chung)", // DRAFT — Kevin reviews
+  "aifu.dq.invalid_due": "hạn trước lúc tạo", // DRAFT — Kevin reviews
+  "aifu.dq.no_due": "chưa có hạn", // DRAFT — Kevin reviews
+  "aifu.dq.unlinked_call": "không tìm thấy cuộc gọi", // DRAFT — Kevin reviews
+  "aifu.dq.caller_not_e164": "số thiếu mã quốc gia", // DRAFT — Kevin reviews
+  "aifu.orph.title": "Cuộc gọi cần gọi lại nhưng chưa có việc theo dõi", // DRAFT — Kevin reviews
+  "aifu.orph.note": "Xem từng cuộc gọi. Không có gì được tạo tự động — bạn tự tạo việc theo dõi.", // DRAFT — Kevin reviews
+  "aifu.orph.create": "Tạo việc theo dõi", // DRAFT — Kevin reviews
+  "aifu.orph.forCall": "Cho cuộc gọi {c}", // DRAFT — Kevin reviews
+  "aifu.orph.kind.callback_requested": "Khách yêu cầu gọi lại", // DRAFT — Kevin reviews
+  "aifu.orph.kind.transfer_failed": "Chuyển máy không thành công", // DRAFT — Kevin reviews
+  "aifu.orph.kind.handoff_requested": "Khách muốn gặp nhân viên", // DRAFT — Kevin reviews
+  "aifu.orph.kind.complaint": "Khiếu nại", // DRAFT — Kevin reviews
+  "aifu.orph.kind.transfer_attempted": "Đã thử chuyển máy", // DRAFT — Kevin reviews
 };

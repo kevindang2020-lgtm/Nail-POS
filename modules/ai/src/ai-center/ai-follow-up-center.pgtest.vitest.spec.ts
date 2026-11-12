@@ -356,3 +356,51 @@ describe('AI Follow Ups 05 — duplicate contact guard (warning only)', () => {
     expect(N((await q1(sql`select count(*)::int n from ai_follow_up_contact_attempts where follow_up_id = ${b}`)).n)).toBe(before);
   });
 });
+
+describe('data-quality signals (AI Follow Ups Human Handoff extras #14)', () => {
+  it('flags missing branch, ambiguous customer, a due time before creation, no due time, an unlinked AI call and a non-E.164 caller', async () => {
+    const { fuDataQuality } = await import('./ai-follow-up-center');
+    const base = { branch_id: BA, customer_match: 'linked', status: 'open', due_at: '2026-11-03T15:00:00Z', created_at: '2026-11-03T14:00:00Z', source: 'manual', provider_call_id: null, caller_phone: '+16095550142' };
+    expect(fuDataQuality(base)).toEqual([]);
+    expect(fuDataQuality({ ...base, branch_id: null })).toEqual(['missing_branch']);
+    expect(fuDataQuality({ ...base, customer_match: 'ambiguous' })).toEqual(['ambiguous_customer']);
+    expect(fuDataQuality({ ...base, due_at: '2026-11-03T13:00:00Z' })).toEqual(['invalid_due']);
+    expect(fuDataQuality({ ...base, due_at: null })).toEqual(['no_due']);
+    expect(fuDataQuality({ ...base, due_at: null, status: 'resolved' })).toEqual([]);
+    expect(fuDataQuality({ ...base, source: 'ai_receptionist', provider_call_id: 'call_x', call_started_at: null })).toEqual(['unlinked_call']);
+    expect(fuDataQuality({ ...base, source: 'ai_receptionist', provider_call_id: 'call_x', call_started_at: '2026-11-03T13:59:00Z' })).toEqual([]);
+    expect(fuDataQuality({ ...base, source: 'ai_receptionist', provider_call_id: 'call_x' })).toEqual([]);   // no join on this row → not judged
+    expect(fuDataQuality({ ...base, caller_phone: '6095550142' })).toEqual(['caller_not_e164']);
+  });
+  it('the list returns the signals on each row', async () => {
+    const r = await fc.list(own, { status: 'all', page: 1, pageSize: 50 });
+    expect(r.items.length).toBeGreaterThan(0);
+    for (const it of r.items) expect(Array.isArray(it.dataQuality)).toBe(true);
+    const ai = r.items.find((x: any) => x.source === 'ai_receptionist' && x.providerCallId);
+    expect(ai).toBeTruthy();
+    expect(ai!.dataQuality.includes('unlinked_call')).toBe(!ai!.callStartedAt);
+  });
+});
+
+describe('stale event reconciler (AI Follow Ups Human Handoff extras #07)', () => {
+  it('Check lists each handoff that required a callback but has no follow-up; creating its follow-up (by a person) links it; nothing is created silently', async () => {
+    await sql`insert into voice_call_outcomes (tenant_id, branch_id, provider_call_id) values (${TA}, ${BA}, 'call_orphan')`.execute(db);
+    await sql`insert into ai_handoff_events (tenant_id, branch_id, provider_call_id, source, source_key, kind, callback_required, reason) values (${TA}, ${BA}, 'call_orphan', 'retell_webhook', 'orph-1', 'callback_requested', true, 'caller asked for a person')`.execute(db);
+    const before = N((await q1(sql`select count(*) n from ai_receptionist_follow_ups where provider_call_id = 'call_orphan'`)).n);
+    await sql`delete from ai_follow_up_health_runs where tenant_id = ${TA}`.execute(db);
+    const h = await fc.health(own);
+    type HRow = { domain: string; status: string; items?: { providerCallId: string; kind: string; reason: string | null }[] };
+    const row = (h.checks as HRow[]).find((c) => c.domain === 'handoff_detection')!;
+    expect(row.status).toBe('FAILED');
+    expect((row.items ?? []).map((i) => i.providerCallId)).toContain('call_orphan');
+    expect((row.items ?? []).find((i) => i.providerCallId === 'call_orphan')).toMatchObject({ kind: 'callback_requested', reason: 'caller asked for a person' });
+    expect(N((await q1(sql`select count(*) n from ai_receptionist_follow_ups where provider_call_id = 'call_orphan'`)).n)).toBe(before);   // the check created nothing
+    const r = await fc.create(own, { reason: 'CALLBACK', description: 'Call the guest back', callerPhone: '+16095550199', providerCallId: 'call_orphan', idempotencyKey: 'reconcile-orphan-1' });
+    expect(r.linkedHandoffEvents).toBe(1);
+    expect((await q1(sql`select follow_up_id from ai_handoff_events where source_key = 'orph-1'`)).follow_up_id).toBe(r.id);
+    await sql`delete from ai_follow_up_health_runs where tenant_id = ${TA}`.execute(db);
+    const h2 = await fc.health(own);
+    const row2 = (h2.checks as HRow[]).find((c) => c.domain === 'handoff_detection')!;
+    expect((row2.items ?? []).map((i) => i.providerCallId)).not.toContain('call_orphan');
+  });
+});

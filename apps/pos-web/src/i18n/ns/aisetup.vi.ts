@@ -224,4 +224,9 @@ export const AISETUP_VI: Record<string, string> = {
   "aiset.sample.bookTomorrow": "Tôi đặt lịch 3 giờ chiều mai được không?",
   "aiset.sample.cancellation": "Chính sách hủy lịch của tiệm thế nào?",
   "aiset.faqDup": "Đã có câu hỏi tương tự — bạn vẫn có thể lưu:", // DRAFT — Kevin reviews
+  "aiset.stale": "Không làm mới được. Đang hiện danh sách tải lúc {t}.", // DRAFT — Kevin reviews
+  "aiset.forbidden": "Vai trò của bạn không xem được Thiết lập doanh nghiệp AI.", // DRAFT — Kevin reviews
+  "aiset.noMatch": "Không có kết quả khớp tìm kiếm hoặc bộ lọc này. Xóa lọc để xem tất cả.", // DRAFT — Kevin reviews
+  "aiset.noFaqsYet": "Chưa có câu hỏi thường gặp. Thêm câu đầu tiên ở trên.", // DRAFT — Kevin reviews
+  "aiset.noHistoryYet": "Chưa ghi nhận thay đổi nào.", // DRAFT — Kevin reviews
 };

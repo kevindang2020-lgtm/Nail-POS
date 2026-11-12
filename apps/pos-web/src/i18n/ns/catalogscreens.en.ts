@@ -431,4 +431,7 @@ export const CATALOGSCREENS_EN = {
   "cg.scope.salon": "Counting all {k} branches, each separately:",
   "cg.scope.shared": "shared salon-wide {m}",
   "cg.scope.salonNote": "Each branch keeps its own service rows, so the same service at two branches counts twice.",
+  "cg.col.listMargin": "List margin",
+  "cg.col.listMarginWhy": "From the catalog retail price and unit cost — not from sales.",
+  "cg.kpi.avgMenuSub": "Menu price, not sales · active services with a price ({n})",
 };

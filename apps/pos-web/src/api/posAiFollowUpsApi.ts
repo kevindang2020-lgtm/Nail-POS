@@ -7,12 +7,16 @@ export interface FuRow {
   customer: { id: string; name: string } | null; caller: string | null; customerMatch: string; providerCallId: string | null; callStartedAt: string | null;
   handoffOutcome: string | null; appointmentId: string | null; assignee: { id: string; name: string | null } | null; dueAt: string | null; overdue: boolean;
   contactAttempts: number; lastContactAt: string | null; escalationLevel: number; createdAt: string | null; updatedAt: string | null; resolvedAt: string | null; version: number;
+  /** data-quality signals (extras #14): missing_branch · ambiguous_customer · invalid_due · no_due · unlinked_call · caller_not_e164 */
+  dataQuality?: string[];
 }
 export interface FuPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
 export interface FuPage { items: FuRow[]; page: number; pageSize: number; totalItems: number; totalPages: number; filters: { status: string; basis: string; sort: string; period: FuPeriod; q: string | null } }
 export interface FuKpis { asOf: string; timeZone: string; today: string; cards: { open: number; assigned: number; inProgress: number; waiting: number; overdue: number; resolved: number; resolvedToday: number; unassigned: number; total: number }; handoffs30d: { needsStaff: number; transfersCompleted: number }; definitions: Record<string, string> }
 interface FuQuery { q?: string; status?: string; priority?: string; source?: string; assignee?: string; overdue?: string; basis?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number }
-export interface FuCheck { domain: string; status: string; detail: string; evidence: string; nextAction: string | null; responsibleRole: string; checkedAt: string }
+/** a handoff that required a callback but has no follow-up (stale event reconciler, extras #07) */
+export interface FuOrphanHandoff { eventId: string; providerCallId: string; kind: string; reason: string | null; at: string | null }
+export interface FuCheck { domain: string; status: string; detail: string; evidence: string; nextAction: string | null; responsibleRole: string; checkedAt: string; items?: FuOrphanHandoff[] }
 export interface FuDetail {
   overview: FuRow & { resolution: string | null; resolutionCategory: string | null; notes: string | null; createdBy: string; branchId: string | null; dueTimeZone: string | null; reopenedCount: number; waitingUntil: string | null };
   customer: { id: string | null; name: string | null; phone: string | null; email?: string | null; completedVisits?: number; upcoming?: { id: string; date: string; start: string; status: string }[]; unmatched?: boolean; match?: string; smsOptedOut: boolean; sharedPhoneProfiles: number };

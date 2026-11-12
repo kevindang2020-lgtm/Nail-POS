@@ -123,6 +123,13 @@ export function AICheckoutUpsellSettingsScreen() {
         <KpiCard testId="ucx-kpi-limits" label={t('ucx.kpi.limits')} value={sum.limits ? `${sum.limits.maxTotal ?? '—'} / ${sum.limits.maxAddOn ?? '—'} / ${sum.limits.maxProduct ?? '—'}` : '—'} />
         <KpiCard testId="ucx-kpi-health" label={t('ucx.kpi.health')} value={sum.lastCheck ? t('ucx.health.' + sum.lastCheck.overall) : t('ucx.notTested')} tone={sum.lastCheck ? (STATE_TONE[sum.lastCheck.overall] as 'ok' | 'warn' | 'bad' | undefined) : undefined} onClick={() => setTab('health')} />
       </div> : null}
+      {/* extras (Checkout Upsell Settings · 13): three INDEPENDENT states, never folded into one "on" — the salon's saved preference,
+          whether suggestions can actually run now (subscription / higher level / settings readable), and payment authority (none) */}
+      {s ? <div className="panel ucx-states" data-testid="ucx-states" style={{ marginBottom: 12, padding: '8px 12px', display: 'grid', gap: 4 }}>
+        <div data-testid="ucx-state-pref"><b>{t('ucx.st.pref')}</b> {s.salon?.enabled == null ? t('ucx.st.prefInherit', { v: t(s.enabled ? 'ucx.eff.enabled' : 'ucx.eff.disabled') }) : t(s.salon.enabled ? 'ucx.eff.enabled' : 'ucx.eff.disabled')}</div>
+        <div data-testid="ucx-state-run" data-kind={eff ?? 'unknown'}><b>{t('ucx.st.run')}</b> {eff === 'enabled' ? t('ucx.st.runYes') : eff ? t('ucx.st.runNo', { why: t('ucx.eff.' + eff) }) : t('ucx.eff.unknown')}</div>
+        <div data-testid="ucx-state-pay"><b>{t('ucx.st.pay')}</b> {t('ucx.st.payNone')}</div>
+      </div> : null}
       {sum?.subscription && !sum.subscription.allowed ? <div className="err" role="status" data-testid="ucx-sub" style={{ marginBottom: 12 }}>{t('ucx.subRestricted')}</div> : null}
 
       {/* SUNMI guide Addendum 5: two equal configuration cards (seven switches | three limits), same height, stacked when narrow */}

@@ -156,3 +156,30 @@ describe('Money Protection alerts — offline-safe (extras #15)', () => {
     expect(screen.queryByTestId('mpx-alerts-stale')).toBeNull();
   });
 });
+
+describe('Money Protection — staff-fairness guardrails on peer-comparison alerts (Rules extras #13)', () => {
+  it('a baseline alert shows the sample, the minimum, the peers compared and their range, a small-sample caution and that it is not a conclusion', async () => {
+    mc.alert.mockResolvedValue(detail({ evidence: { summary: 'x', currentValues: { reversalRatePct: 30, reversals: 9, capturedTransactions: 30 },
+      baselineValues: { peerMeanRatePct: 2.1, peerCount: 4, comparedPeers: 3, minSampleSize: 20, minPeers: 3, peerCapturedMin: 30, peerCapturedMax: 70 } } }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-alert-view'));
+    expect(await screen.findByTestId('mpx-fair-sample')).toHaveTextContent('9 reversals out of 30 payments (minimum to be compared: 20)');
+    expect(screen.getByTestId('mpx-fair-peers')).toHaveTextContent('Compared with 3 staff members who had 30–70 payments each; their average reversal rate is 2.1%');
+    expect(screen.getByTestId('mpx-fair-small')).toBeInTheDocument();
+    expect(screen.getByTestId('mpx-fair')).toHaveTextContent('not a conclusion');
+  });
+  it('an older baseline alert without the new fields shows "—", and a non-baseline alert shows no fairness note', async () => {
+    mc.alert.mockResolvedValueOnce(detail({ evidence: { summary: 'x', currentValues: { reversals: 15, capturedTransactions: 50 }, baselineValues: { peerMeanRatePct: 2, peerCount: 5 } } }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-alert-view'));
+    expect(await screen.findByTestId('mpx-fair-sample')).toHaveTextContent('(minimum to be compared: —)');
+    expect(screen.getByTestId('mpx-fair-peers')).toHaveTextContent('Compared with 4 staff members who had — payments');
+    expect(screen.queryByTestId('mpx-fair-small')).toBeNull();
+  });
+  it('a deterministic alert has no fairness note', async () => {
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-alert-view'));
+    await screen.findByTestId('mpx-d-evidence');
+    expect(screen.queryByTestId('mpx-fair')).toBeNull();
+  });
+});

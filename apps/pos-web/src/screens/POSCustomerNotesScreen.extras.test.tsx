@@ -6,7 +6,8 @@ vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: {
   getNotes: vi.fn(async () => ({ salonNotes: 'Likes almond shape', preferredStyle: 'Prefers nude tones' })),
   setNotes: vi.fn(),
 } }));
-import { POSCustomerNotesScreen, applyQuickNote } from './POSCustomerNotesScreen';
+import { POSCustomerNotesScreen, applyQuickNote, noteConflicts } from './POSCustomerNotesScreen';
+import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 const openGrace = async () => {
   render(<POSCustomerNotesScreen />);
@@ -69,5 +70,25 @@ describe('Customer Profiles 06 — version check before saving notes', () => {
     api.getNotes.mockResolvedValueOnce({ salonNotes: 'Theirs', preferredStyle: 'Prefers nude tones' });
     fireEvent.click(screen.getByTestId('cnx-ed-save'));
     await waitFor(() => expect(api.setNotes).toHaveBeenCalledWith('c1', expect.objectContaining({ salonNotes: 'Theirs + mine' })));
+  });
+});
+
+describe('conflicting preferences (extras Customer Notes 6 · 02)', () => {
+  const L = (k: string) => tx(k);
+  it('two different values of one group across the preference fields are flagged with where each came from; one value, or "Squoval" vs "Oval", is not', () => {
+    const c = noteConflicts({ preferredStyle: 'Shape: Almond\nPrefers nude tones', servicePreferences: 'Wants square tips, short length' }, L);
+    expect(c).toEqual([{ group: 'Shape', hits: [{ value: 'Almond', field: 'preferredStyle' }, { value: 'Square', field: 'servicePreferences' }] }]);
+    expect(noteConflicts({ preferredStyle: 'Shape: Almond', servicePreferences: 'almond again' }, L)).toEqual([]);
+    expect(noteConflicts({ preferredStyle: 'Shape: Squoval', servicePreferences: '' }, L)).toEqual([]);
+    expect(noteConflicts({ preferredStyle: 'Length: Short', servicePreferences: 'grow them long' }, L).map((x) => x.group)).toEqual(['Length']);
+  });
+  it('the editor shows the review note when a chip creates a conflict, and changes nothing else', async () => {
+    await openGrace();
+    expect(screen.queryByTestId('cnx-pref-conflict')).toBeNull();
+    fireEvent.change(screen.getByTestId('cnx-ed-servicePreferences'), { target: { value: 'Square tips' } });
+    fireEvent.click(screen.getByTestId('cnx-q-shape-almond'));
+    const row = await screen.findByTestId('cnx-pref-conflict-row');
+    expect(row).toHaveTextContent('Shape: Almond (Preferred Style) · Square (Service Preferences)');
+    expect(screen.getByTestId('cnx-ed-servicePreferences')).toHaveValue('Square tips');
   });
 });

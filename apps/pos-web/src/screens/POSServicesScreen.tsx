@@ -154,7 +154,7 @@ export function POSServicesScreen() {
           <KpiCard testId="kpi-active-products" label={tx('pos.active_products')} loading={!k} value={k ? nf(k.activeProducts) : ''} sub={k ? tx('cg.kpi.productsSub', { n: nf(k.allProducts) }) : ''} onClick={() => setScope('products')} />
           <KpiCard testId="kpi-online" label={tx('pos.online_bookable')} loading={!k} value={k ? nf(k.onlineBookable) : ''} sub={k ? (k.onlinePctOfActive == null ? tx('cg.kpi.noActive') : tx('cg.kpi.onlineSub', { p: nf(k.onlinePctOfActive) })) : ''} />
           <KpiCard testId="kpi-low-stock" tone={sum && sum.openAlerts > 0 ? 'warn' : undefined} label={tx('pos.low_stock_alerts')} loading={!!can('inventory.view') && !sum} value={sum ? nf(sum.openAlerts) : '—'} sub={sum ? tx('cg.kpi.alertsSub', { o: nf(sum.outOfStock), c: nf(sum.critical) }) : tx('cg.kpi.noInventoryAccess')} onClick={() => nav('/tenant/inventory/alerts')} />
-          <KpiCard testId="kpi-avg-price" tone="gold" label={tx('pos.avg_service_price')} loading={!k} value={k ? money(k.avgServicePriceCents) : ''} sub={k ? tx('cg.kpi.avgSub', { n: nf(k.pricedServices) }) : ''} onClick={() => nav('/tenant/services/pricing')} />
+          <KpiCard testId="kpi-avg-price" tone="gold" label={tx('pos.avg_service_price')} loading={!k} value={k ? money(k.avgServicePriceCents) : ''} sub={k ? tx('cg.kpi.avgMenuSub', { n: nf(k.pricedServices) }) : ''} onClick={() => nav('/tenant/services/pricing')} />
         </>}
       </div>
       <div className="fk-kpis five cg-kpis" data-testid="kpis-2">
@@ -197,7 +197,7 @@ export function POSServicesScreen() {
           {!can('inventory.view') ? <div className="fk-hint">{tx('cg.kpi.noInventoryAccess')}</div> : prds.error ? <StateBlock error={prds.error} onRetry={prds.reload} /> : !prds.data ? <div className="fk-loading">{tx('pos.loading')}</div>
             : prds.data.rows.length === 0 ? <Empty title={q ? tx('cg.noMatchSearch', { q }) : tx('cg.noProducts')} />
             : <table className="fk-table fn-table cg-table" data-testid="products-table">
-              <thead><tr><th>{tx('cg.col.product')}</th><th className="t-opt">{tx('cg.col.sku')}</th><th className="num">{tx('cg.col.onHand')}</th><th className="num">{tx('cg.col.retail')}</th><th className="num t-opt">{tx('cg.col.margin')}</th></tr></thead>
+              <thead><tr><th>{tx('cg.col.product')}</th><th className="t-opt">{tx('cg.col.sku')}</th><th className="num">{tx('cg.col.onHand')}</th><th className="num">{tx('cg.col.retail')}</th><th className="num t-opt" title={tx('cg.col.listMarginWhy')} data-testid="col-list-margin">{tx('cg.col.listMargin')}</th></tr></thead>
               <tbody>{prds.data.rows.map((p: any) => <tr key={p.id} data-testid="product-row" className={'inv2-click' + (p.id === prdId && detailTab === 'product' ? ' sel' : '')} onClick={() => { setSelPrd(p.id); setDetailTab('product'); }}>
                 <td><span className="fk-li-t">{p.name}</span><span className="fk-li-s">{[p.brand, p.category].filter(Boolean).join(' · ') || '—'}</span></td>
                 <td className="t-opt cg-mono">{p.sku ?? '—'}</td>

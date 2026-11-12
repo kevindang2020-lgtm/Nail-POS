@@ -165,5 +165,12 @@ export const UPSELLSETTINGS_EN: Record<string, string> = {
   "ucx.health.d.settings_history.PASSED": "Settings changes are recorded.",
   "ucx.health.d.settings_history.WARNING": "The settings were changed but no history was recorded.",
   "ucx.health.k.no_side_effects": "Nothing changed by this check",
-  "ucx.health.d.no_side_effects.PASSED": "This page and this check never add to a ticket, charge, enroll, redeem, issue, book or message."
+  "ucx.health.d.no_side_effects.PASSED": "This page and this check never add to a ticket, charge, enroll, redeem, issue, book or message.",
+  "ucx.st.pref": "Salon preference:",
+  "ucx.st.prefInherit": "not set here — follows the default ({v})",
+  "ucx.st.run": "Can suggest now:",
+  "ucx.st.runYes": "Yes",
+  "ucx.st.runNo": "No — {why}",
+  "ucx.st.pay": "Payment authority:",
+  "ucx.st.payNone": "None. Suggestions never charge, discount or change a ticket; the cashier adds an item and the customer pays at checkout.",
 };

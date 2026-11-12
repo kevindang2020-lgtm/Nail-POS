@@ -431,4 +431,7 @@ export const CATALOGSCREENS_VI = {
   "cg.scope.salon": "Đang tính cả {k} chi nhánh, từng chi nhánh riêng:", // DRAFT — Kevin reviews
   "cg.scope.shared": "dùng chung toàn tiệm {m}", // DRAFT — Kevin reviews
   "cg.scope.salonNote": "Mỗi chi nhánh có dịch vụ riêng, nên cùng một dịch vụ ở hai chi nhánh được tính hai lần.", // DRAFT — Kevin reviews
+  "cg.col.listMargin": "Biên lợi nhuận niêm yết", // DRAFT — Kevin reviews
+  "cg.col.listMarginWhy": "Tính từ giá bán lẻ và giá vốn trong danh mục — không phải từ doanh số.", // DRAFT — Kevin reviews
+  "cg.kpi.avgMenuSub": "Giá niêm yết, không phải doanh số · dịch vụ đang hoạt động có giá ({n})", // DRAFT — Kevin reviews
 };

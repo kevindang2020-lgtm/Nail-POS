@@ -16,7 +16,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtInZone as fmtInZoneOpts } from '../i18n/format';
 const fmtInZone = (x: string | null | undefined) => fmtInZoneOpts(x, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
-import { RangeCalendar } from '../components/FinanceKit';
+import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { similarFaqs, faqWords } from './faqDup';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
@@ -58,6 +58,17 @@ function presetDays(p: 'today' | 'week' | 'month' | 'year', today: string): { fr
   return { from: today.slice(0, 5) + '01-01', to: today };
 }
 
+/** extras (AI Business Setup · 10): true empty, filtered no-match, unauthorized, stale and API failure are different states */
+export function setupListState(x: { err: string | null; forbidden: boolean; list: { items?: unknown[] } | null; sameQuery: boolean; filtered: boolean }):
+  'forbidden' | 'error' | 'stale' | 'loading' | 'noMatch' | 'empty' | 'rows' {
+  if (x.err && x.forbidden) return 'forbidden';
+  if (x.err && !(x.list && x.sameQuery)) return 'error';
+  if (x.err) return 'stale';
+  if (!x.list) return 'loading';
+  if (!x.list.items?.length) return x.filtered ? 'noMatch' : 'empty';
+  return 'rows';
+}
+
 export function POSAIBusinessSetupScreen() {
   const nav = useNavigate(); const can = useCan(); const canManage = can('ai.manage');
   const [ready, setReady] = useState<any>(null); const [readyErr, setReadyErr] = useState<string | null>(null);
@@ -66,7 +77,7 @@ export function POSAIBusinessSetupScreen() {
   const [scope, setScope] = useState<typeof SCOPES[number]>('faqs');
   const [search, setSearch] = useState(''); const dq = useDebounced(search, 300);
   const [f, setF] = useState<FaqQuery & { basis?: string }>({ page: 1, pageSize: 20, sort: 'newest', dateBasis: 'created', basis: 'faq_change' });
-  const [list, setList] = useState<any>(null); const [listErr, setListErr] = useState<string | null>(null); const [loading, setLoading] = useState(true);
+  const [list, setList] = useState<any>(null); const [listErr, setListErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | 'health' | 'preview' | 'assistant'>(null);
@@ -76,14 +87,23 @@ export function POSAIBusinessSetupScreen() {
 
   const loadReady = useCallback(() => { setReadyErr(null); posAiBusinessSetupApi.readiness().then(setReady).catch((e) => setReadyErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { loadReady(); }, [loadReady]);
+  // extras (AI Business Setup · 10): which query the shown list answered and when — a failed REFRESH of that same query keeps the
+  // rows, marked stale with the time; a failure for another query (or nothing loaded) is an error; 403 is its own state.
+  const [listOk, setListOk] = useState<{ key: string; at: Date } | null>(null);
+  const [listForbidden, setListForbidden] = useState(false);
+  const listKey = JSON.stringify({ scope, dq, f });
   const loadList = useCallback(async () => {
-    setLoading(true); setListErr(null);
+    setListErr(null); setListForbidden(false);
+    const key = JSON.stringify({ scope, dq, f });
     try {
       if (scope === 'faqs') setList(await posAiBusinessSetupApi.faqs({ q: dq, status: f.status, category: f.category, tag: f.tag, dateBasis: f.dateBasis, from: f.from, to: f.to, sort: f.sort, page: f.page, pageSize: f.pageSize }));
       else if (scope === 'history') setList(await posAiBusinessSetupApi.history({ basis: f.basis, from: f.from, to: f.to, page: f.page, pageSize: f.pageSize }));
       else setList(await posAiBusinessSetupApi.search({ scope, q: dq, page: f.page, pageSize: f.pageSize }));
-    } catch (e) { setListErr(errorTextOf(e, tx('pos.something_went_wrong'))); setList(null); } finally { setLoading(false); }
+      setListOk({ key, at: new Date() });
+    } catch (e) { setListErr(errorTextOf(e, tx('pos.something_went_wrong'))); setListForbidden(isForbidden(e)); }
   }, [scope, dq, f]);
+  const lst = setupListState({ err: listErr, forbidden: listForbidden, list, sameQuery: !!listOk && listOk.key === listKey,
+    filtered: !!(dq || (scope === 'faqs' && (f.status || f.category || f.tag)) || ((scope === 'faqs' || scope === 'history') && f.from)) });
   useEffect(() => { void loadList(); }, [loadList]);
   useEffect(() => { setF((x) => ({ ...x, page: 1 })); }, [dq, scope]);
   const setFilter = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch, page: 1 }));
@@ -186,8 +206,12 @@ export function POSAIBusinessSetupScreen() {
         {cal ? <div className="ais-cal" data-testid="ais-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={today()}
           onApply={(r) => { setFilter({ from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setFilter({ from: undefined, to: undefined }); setCal(false); }} /></div> : null}
         {f.from && (scope === 'faqs' || scope === 'history') ? <div className="sub ais-note">{t('aiset.rangeNote', { basis: t(scope === 'faqs' ? `aiset.basis.${f.dateBasis}` : `aiset.hbasis.${f.basis}`), from: f.from, to: f.to ?? f.from })}</div> : null}
-        {listErr ? <ErrorRetry message={listErr} onRetry={loadList} /> : loading && !list ? <div className="state">{t('aiset.loading')}</div>
-          : !list?.items?.length ? <Empty title={t(scope === 'faqs' ? 'aiset.noFaqs' : 'aiset.noResults')} />
+        {lst === 'stale' ? <div className="fk-note warn" role="status" data-testid="ais-list-state" data-kind="stale"><span>{t('aiset.stale', { t: listOk ? fmtInZoneOpts(listOk.at.toISOString(), { hour: 'numeric', minute: '2-digit' }) || '—' : '—' })}</span> <button type="button" className="btn ghost sm" onClick={() => void loadList()}>{tx('pos.retry')}</button></div> : null}
+        {lst === 'forbidden' ? <div data-testid="ais-list-state" data-kind="forbidden"><Empty title={t('aiset.forbidden')} /></div>
+          : lst === 'error' ? <div data-testid="ais-list-state" data-kind="error"><ErrorRetry message={listErr ?? ''} onRetry={loadList} /></div>
+          : lst === 'loading' ? <div className="state">{t('aiset.loading')}</div>
+          : lst === 'noMatch' ? <div data-testid="ais-list-state" data-kind="noMatch"><Empty title={t('aiset.noMatch')} /></div>
+          : lst === 'empty' ? <div data-testid="ais-list-state" data-kind="empty"><Empty title={t(scope === 'faqs' ? 'aiset.noFaqsYet' : scope === 'history' ? 'aiset.noHistoryYet' : 'aiset.noResults')} /></div>
           : scope === 'faqs' ? (
             <div className="ais-faqs" data-testid="ais-faq-rows">{list.items.map((x: any) => (
               <button key={x.id} className="ais-faq" onClick={() => setOpen(x.id)} data-testid="ais-faq-row">

@@ -53,6 +53,25 @@ export function applyQuickNote(text: string, groupLabel: string, valueLabel: str
   return [`${groupLabel}: ${valueLabel}`, ...kept].join('\n').replace(/\n+$/, '');
 }
 
+/** extras (Customer Notes 6 · 02): stale / conflicting preference detection — two different values of one nail-service group
+ *  (shape, length, finish) named in the preference fields (e.g. "Almond" in Preferred style but "Square" in Service preferences)
+ *  is flagged for a person to review, with where each came from. Nothing is changed or chosen automatically. */
+export function noteConflicts(n: Pick<Notes, 'preferredStyle' | 'servicePreferences'>, label: (k: string) => string): { group: string; hits: { value: string; field: 'preferredStyle' | 'servicePreferences' }[] }[] {
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const out: { group: string; hits: { value: string; field: 'preferredStyle' | 'servicePreferences' }[] }[] = [];
+  for (const g of QUICK) {
+    const hits: { value: string; field: 'preferredStyle' | 'servicePreferences' }[] = [];
+    for (const field of ['preferredStyle', 'servicePreferences'] as const) {
+      const text = String(n[field] ?? '');
+      for (const v of g.values) {
+        const word = label('cnx.q.' + g.group + '.' + v);
+        if (new RegExp(`(^|[^\\p{L}])${esc(word)}([^\\p{L}]|$)`, 'iu').test(text) && !hits.some((h) => h.value === word && h.field === field)) hits.push({ value: word, field });
+      }
+    }
+    if (new Set(hits.map((h) => h.value.toLowerCase())).size > 1) out.push({ group: label('cnx.q.' + g.group), hits });
+  }
+  return out;
+}
 /** the original notes editor — same fields, same save (and offline draft) */
 function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: string; fullName: string; phone?: string | null }; onClose: () => void; onSaved: () => void }) {
   const [notes, setNotes] = useState<Notes | null>(null);
@@ -116,6 +135,9 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
             </div>
           ))}
         </div>
+        {(() => { const cs = noteConflicts(notes, (k) => t(k)); return cs.length ? <div className="fk-note warn" role="status" data-testid="cnx-pref-conflict">
+          <b>{t('cnx.pc.title')}</b>{cs.map((c) => <div key={c.group} data-testid="cnx-pref-conflict-row">{c.group}: {c.hits.map((h) => `${h.value} (${h.field === 'preferredStyle' ? t('pos.preferred_style') : t('people.customer.notes.servicePreferencesTitle')})`).join(' · ')}</div>)}
+          <div className="sub">{t('cnx.pc.note')}</div></div> : null; })()}
         <div className="cnx-two">{field(t('pos.preferred_style'), 'preferredStyle', 2)}{field(t('people.customer.notes.servicePreferencesTitle'), 'servicePreferences', 2)}</div>
         {field(t('people.customer.notes.preferredTechnicianTitle'), 'preferredTechnician', 1)}
         <label className="cnx-visible"><input type="checkbox" checked={notes.customerVisible} onChange={(e) => setNotes({ ...notes, customerVisible: e.target.checked })} data-testid="cnx-ed-visible" />

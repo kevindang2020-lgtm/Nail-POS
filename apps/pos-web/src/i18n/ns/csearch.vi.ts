@@ -536,4 +536,6 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.rebook.review": "Xem xét đặt lại lịch", // DRAFT — Kevin reviews
   "ahx.rebook.assistant": "Trợ lý đặt lịch AI", // DRAFT — Kevin reviews
   "ahx.rebook.note": "Mở các màn hình xem xét hiện có — không đặt lịch hay gửi tin nào từ đây.", // DRAFT — Kevin reviews
+  "cnx.pc.title": "Có thể có sở thích mâu thuẫn — vui lòng xem lại:", // DRAFT — Kevin reviews
+  "cnx.pc.note": "Không có gì bị thay đổi. Giữ cái đang đúng và xóa cái còn lại.", // DRAFT — Kevin reviews
 };

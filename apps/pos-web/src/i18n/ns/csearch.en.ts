@@ -536,4 +536,6 @@ export const CSEARCH_EN: Record<string, string> = {
   "ahx.rebook.review": "Review rebooking",
   "ahx.rebook.assistant": "AI Booking Assistant",
   "ahx.rebook.note": "Opens the existing review screens — nothing is booked or sent from here.",
+  "cnx.pc.title": "Possible conflicting preferences — please review:",
+  "cnx.pc.note": "Nothing was changed. Keep the one that is current and remove the other.",
 };

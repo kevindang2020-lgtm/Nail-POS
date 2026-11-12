@@ -4,6 +4,7 @@
 // date basis, numbered pages 10/20/50, the full task overlay (overview · customer · original AI call · contact attempts ·
 // booking & messaging · assignments & audit), Check Follow-Up System and the Priority & Escalation Assistant.
 // Server: /pos/ai/follow-ups-center/*. A text is prepared, shown, then confirmed — "submitted" is never shown as "delivered".
+import { codeLabel } from '../components/codeLabel';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SavedViews, vStr, vNum, vBool, periodToView, periodFromView } from '../components/SavedViews';
 import { useNavigate } from 'react-router-dom';
@@ -37,7 +38,7 @@ export function POSAIFollowUpsScreen() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(20);
   const [data, setData] = useState<FuPage | null>(null); const [kpis, setKpis] = useState<FuKpis | null>(null); const [err, setErr] = useState<string | null>(null); const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState<{ id: string; name: string; role: string }[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [health, setHealth] = useState<null | { overall: string; checks: FuCheck[]; ranAt: string; cached: boolean }>(null);
+  const [openId, setOpenId] = useState<string | null>(null); const [creating, setCreating] = useState(false); const [prefill, setPrefill] = useState<{ providerCallId: string; reason: string } | null>(null); const [health, setHealth] = useState<null | { overall: string; checks: FuCheck[]; ranAt: string; cached: boolean }>(null);
   const [prios, setPrios] = useState<FuPriority[] | null>(null); const [priosAt, setPriosAt] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
 
   const query = useMemo(() => ({ status, q: dq.trim() || undefined, priority: priority || undefined, source: source || undefined, assignee: assignee || undefined, overdue: overdue ? '1' : undefined,
@@ -120,7 +121,8 @@ export function POSAIFollowUpsScreen() {
                 <thead><tr><th>{tx('aifu.col.customer')}</th><th>{tx('aifu.col.reason')}</th><th>{tx('aifu.col.call')}</th><th>{tx('aifu.col.priority')}</th><th>{tx('aifu.col.owner')}</th><th>{tx('aifu.col.due')}</th><th>{tx('aifu.col.status')}</th><th>{tx('aifu.col.lastContact')}</th></tr></thead>
                 <tbody>{data.items.map((r) => (
                   <tr key={r.id} onClick={() => setOpenId(r.id)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setOpenId(r.id); }} className={r.overdue ? 'aifu-overdue' : ''} data-testid="aifu-row">
-                    <td><div className="aifu-name">{r.customer?.name ?? tx('aifu.unmatchedCaller')}</div><div className="sub">{r.caller ?? tx('aifu.none')}{r.customerMatch === 'ambiguous' ? ` · ${tx('aifu.sharedPhone')}` : ''}</div></td>
+                    <td><div className="aifu-name">{r.customer?.name ?? tx('aifu.unmatchedCaller')}</div><div className="sub">{r.caller ?? tx('aifu.none')}{r.customerMatch === 'ambiguous' ? ` · ${tx('aifu.sharedPhone')}` : ''}</div>
+                      {r.dataQuality?.length ? <div className="sub warn" data-testid="aifu-dq" title={tx('aifu.dq.why')}>{tx('aifu.dq.check')} {r.dataQuality.map((k) => codeLabel('aifu.dq', k, 'issue')).join(' · ')}</div> : null}</td>
                     <td>{label('reason', r.reason)}<div className="sub aifu-desc">{label('src', r.source === 'ai_receptionist' ? 'ai' : r.source === 'missed_call' ? 'missed_call' : r.source === 'reception_copilot' ? 'copilot' : 'manual')}{r.description ? ` · ${r.description}` : ''}</div></td>
                     <td className="sub">{r.providerCallId ? `${r.providerCallId.slice(0, 12)}…` : tx('aifu.none')}</td>
                     <td><span className={`aifu-pill p-${r.priority}`}>{label('prio', r.priority)}</span>{r.escalationLevel ? <span className="aifu-pill esc">{tx('aifu.escalated')}</span> : null}</td>
@@ -152,31 +154,39 @@ export function POSAIFollowUpsScreen() {
             </div>))}
         </aside>
       </div>
-      {creating ? <CreateDialog staff={staff} onClose={() => setCreating(false)} onSaved={(id, dup) => { setCreating(false); setStatus(dup ? status : 'all'); setPage(1); setNotice(dup ? tx('aifu.created.dup') : tx('aifu.created.ok')); setOpenId(id); load(); }} /> : null}
+      {creating ? <CreateDialog staff={staff} prefill={prefill} onClose={() => { setCreating(false); setPrefill(null); }} onSaved={(id, dup) => { setCreating(false); setPrefill(null); setStatus(dup ? status : 'all'); setPage(1); setNotice(dup ? tx('aifu.created.dup') : tx('aifu.created.ok')); setOpenId(id); load(); }} /> : null}
       {openId ? <TaskDialog id={openId} staff={staff} onClose={() => { setOpenId(null); load(); }} onBooking={(cid) => nav(`/booking/new?customerId=${cid}&from=follow-up`)} /> : null}
       {health ? <FitDialog title={tx('aifu.check')} subtitle={`${label('hs', health.overall)} · ${fmt(health.ranAt)}${health.cached ? ` · ${tx('aifu.cached')}` : ''}`} onClose={() => setHealth(null)} wide testId="aifu-health-dialog">
         <table className="tbl"><thead><tr><th>{tx('aifu.h.domain')}</th><th>{tx('aifu.h.status')}</th><th>{tx('aifu.h.detail')}</th><th>{tx('aifu.h.next')}</th></tr></thead>
           <tbody>{health.checks.map((h) => <tr key={h.domain} data-testid={`aifu-h-${h.domain}`}><td>{tx(`aifu.hd.${h.domain}`)}</td><td><span className={`aifu-pill t-${tone(h.status) ?? 'none'}`}>{label('hs', h.status)}</span></td><td>{h.detail}<div className="sub">{h.evidence}</div></td><td className="sub">{h.nextAction ?? tx('aifu.none')}<div>{h.responsibleRole}</div></td></tr>)}</tbody></table>
+        {/* extras #07 — stale event reconciler: each handoff that needed a callback but has no follow-up, for a person to review */}
+        {health.checks.flatMap((h) => h.items ?? []).length ? <section data-testid="aifu-orphans" style={{ marginTop: 10 }}>
+          <b>{tx('aifu.orph.title')}</b><div className="sub">{tx('aifu.orph.note')}</div>
+          <table className="tbl"><tbody>{health.checks.flatMap((h) => h.items ?? []).map((o) => <tr key={o.eventId} data-testid="aifu-orphan">
+            <td className="nowrap">{fmt(o.at)}</td><td>{codeLabel('aifu.orph.kind', o.kind, 'event')}{o.reason ? <div className="sub">{o.reason}</div> : null}</td><td className="sub">{o.providerCallId.slice(0, 16)}</td>
+            <td><button className="btn ghost sm" data-testid="aifu-orphan-create" onClick={() => { setPrefill({ providerCallId: o.providerCallId, reason: o.kind === 'complaint' ? 'COMPLAINT' : 'CALLBACK' }); setHealth(null); setCreating(true); }}>{tx('aifu.orph.create')}</button></td></tr>)}</tbody></table>
+        </section> : null}
       </FitDialog> : null}
     </div>
   );
 }
 
-function CreateDialog({ staff, onClose, onSaved }: { staff: { id: string; name: string }[]; onClose: () => void; onSaved: (id: string, dup: boolean) => void }) {
+function CreateDialog({ staff, prefill, onClose, onSaved }: { staff: { id: string; name: string }[]; prefill?: { providerCallId: string; reason: string } | null; onClose: () => void; onSaved: (id: string, dup: boolean) => void }) {
   const [reqKey] = useState(key);
-  const [f, setF] = useState({ reason: 'CALLBACK', description: '', priority: 'normal', dueLocal: '', callerPhone: '', assignedUserId: '' });
+  const [f, setF] = useState({ reason: prefill?.reason ?? 'CALLBACK', description: '', priority: 'normal', dueLocal: '', callerPhone: '', assignedUserId: '' });
   const [cq, setCq] = useState(''); const dcq = useDebounced(cq, 300); const [hits, setHits] = useState<any[]>([]); const [cust, setCust] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { let live = true; if (dcq.trim().length < 2) { setHits([]); return; } posCustomersApi.quickSearch(dcq.trim()).then((r: any) => { if (live) setHits((r?.items ?? r ?? []).slice(0, 6)); }).catch(() => { if (live) setHits([]); }); return () => { live = false; }; }, [dcq]);
   const save = async () => {
     setBusy(true); setErr(null);
-    try { const r = await fa.create({ reason: f.reason, description: f.description, priority: f.priority, dueLocal: f.dueLocal || null, customerId: cust?.id ?? null, callerPhone: cust ? null : (f.callerPhone || null), assignedUserId: f.assignedUserId || null, idempotencyKey: reqKey }); onSaved(r.id, r.duplicate); }
+    try { const r = await fa.create({ reason: f.reason, description: f.description, priority: f.priority, dueLocal: f.dueLocal || null, customerId: cust?.id ?? null, callerPhone: cust ? null : (f.callerPhone || null), assignedUserId: f.assignedUserId || null, providerCallId: prefill?.providerCallId ?? null, idempotencyKey: reqKey }); onSaved(r.id, r.duplicate); }
     catch (e) { setErr(errorTextOf(e, tx('aifu.saveFailed'))); } finally { setBusy(false); }
   };
   return (
     <FitDialog title={tx('aifu.new')} subtitle={tx('aifu.createNote')} onClose={onClose} busy={busy} testId="aifu-create"
       footer={<><button className="btn ghost" onClick={onClose}>{tx('aifu.cancel')}</button><button className="btn" onClick={save} disabled={busy || f.description.trim().length < 3 || (!cust && !f.callerPhone.trim())} data-testid="aifu-create-save">{tx('aifu.save')}</button></>}>
       {err ? <div className="err" role="alert">{err}</div> : null}
+      {prefill ? <div className="sub" data-testid="aifu-c-call">{tx('aifu.orph.forCall', { c: prefill.providerCallId.slice(0, 16) })}</div> : null}
       <div className="aifu-form">
         <label>{tx('aifu.c.customer')}{cust ? <div className="aifu-picked">{cust.name} <button className="link" onClick={() => setCust(null)}>{tx('aifu.change')}</button></div>
           : <><input value={cq} onChange={(e) => setCq(e.target.value)} placeholder={tx('aifu.c.customerPh')} data-testid="aifu-c-search" />{hits.length ? <div className="aifu-hits">{hits.map((h: any) => <button key={h.customerId ?? h.id} className="btn ghost" onClick={() => { setCust({ id: h.customerId ?? h.id, name: h.displayName ?? h.fullName ?? `${h.firstName ?? ''} ${h.lastName ?? ''}`.trim() }); setCq(''); }} data-testid="aifu-c-hit">{h.displayName ?? h.fullName ?? `${h.firstName ?? ''} ${h.lastName ?? ''}`}</button>)}</div> : null}</>}</label>

@@ -97,6 +97,22 @@ export function localToUtc(local: string, tz: string): string {
   return new Date(t).toISOString();
 }
 
+/** AI Follow Ups Human Handoff extras #14 — data-quality signals on a task row, instead of a deceptively normal row: no branch,
+ *  an ambiguous customer (shared phone), a due time before the task was created, an active task with no due time, an AI
+ *  receptionist task whose provider call is missing or not found among recorded calls, a caller number not in E.164. Read-only. */
+export function fuDataQuality(r: Row): string[] {
+  const out: string[] = [];
+  if (!r.branch_id) out.push('missing_branch');
+  if (r.customer_match === 'ambiguous') out.push('ambiguous_customer');
+  const active = ACTIVE.includes(r.status);
+  if (r.due_at && r.created_at && new Date(r.due_at).getTime() < new Date(r.created_at).getTime()) out.push('invalid_due');
+  else if (active && !r.due_at) out.push('no_due');
+  // the recorded-call join is only on list rows; elsewhere a missing provider call id is still a signal
+  if (r.source === 'ai_receptionist' && (!r.provider_call_id || ('call_started_at' in r && !r.call_started_at))) out.push('unlinked_call');
+  if (r.caller_phone && !/^\+[1-9][0-9]{7,14}$/.test(String(r.caller_phone))) out.push('caller_not_e164');
+  return out;
+}
+
 export class AiFollowUpCenter {
   constructor(private readonly db: Kysely<any>, private readonly text: FuTextPort | null) {}
 
@@ -207,7 +223,7 @@ export class AiFollowUpCenter {
       providerCallId: r.provider_call_id ?? null, callStartedAt: iso(r.call_started_at), handoffOutcome: r.handoff_outcome ?? null, appointmentId: r.appointment_id ?? null,
       assignee: r.assigned_user_id ? { id: r.assigned_user_id, name: r.assignee_name ?? null } : null,
       dueAt: iso(r.due_at), overdue: !!overdue, contactAttempts: n(r.contact_attempts), lastContactAt: iso(r.last_contact_at), escalationLevel: n(r.escalation_level),
-      createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), resolvedAt: iso(r.resolved_at), version: n(r.version) || 1 };
+      createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), resolvedAt: iso(r.resolved_at), version: n(r.version) || 1, dataQuality: fuDataQuality(r) };
   }
 
   /** active staff who can work tasks in this branch */
@@ -260,8 +276,12 @@ export class AiFollowUpCenter {
         return { id: String(ex.id), duplicate: true };
       }
       await this.activity(trx, ctx, ctx.tenantId, ins.id, 'created', null, status, description, { source: 'manual', priority, assignedUserId: b.assignedUserId ?? null });
-      await this.audit(ctx, trx, 'follow_up.created', ins.id, `Follow-up created (${b.reason})`, { after: { status, priority, reason: b.reason } });
-      return { id: String(ins.id), duplicate: false };
+      // AI Follow Ups extras #07 (stale event reconciler): a person who creates the follow-up for a call whose handoff required a
+      // callback but has none closes that discrepancy — the orphan handoff events of THAT call now point at this task (never silent)
+      const linked = b.providerCallId ? (await sql<Row>`update ai_handoff_events set follow_up_id = ${ins.id} where tenant_id = ${ctx.tenantId} and provider_call_id = ${b.providerCallId}
+          and callback_required and follow_up_id is null returning id`.execute(trx)).rows.length : 0;
+      await this.audit(ctx, trx, 'follow_up.created', ins.id, `Follow-up created (${b.reason})`, { after: { status, priority, reason: b.reason }, ...(linked ? { linkedHandoffEvents: linked } : {}) });
+      return { id: String(ins.id), duplicate: false, linkedHandoffEvents: linked };
     });
   }
 
@@ -600,7 +620,13 @@ export class AiFollowUpCenter {
     });
     await guard('handoff_detection', async () => {
       const h: Row = (await sql<Row>`select count(*)::int n, count(*) filter (where callback_required and follow_up_id is null)::int orphan from ai_handoff_events where tenant_id = ${T}`.execute(this.db)).rows[0];
-      if (n(h.orphan)) add('handoff_detection', 'FAILED', `${n(h.orphan)} handoff event(s) required a callback but have no follow-up.`, 'ai_handoff_events.follow_up_id is null', 'Open Reconciliation and create the missing follow-ups.');
+      if (n(h.orphan)) {
+        add('handoff_detection', 'FAILED', `${n(h.orphan)} handoff event(s) required a callback but have no follow-up.`, 'ai_handoff_events.follow_up_id is null', 'Review each call below and create its follow-up.');
+        // the discrepancies themselves, newest first (read-only — nothing is created here; a person creates each follow-up)
+        const orphans: Row[] = (await sql<Row>`select id, provider_call_id, kind, reason, created_at from ai_handoff_events where tenant_id = ${T} and callback_required and follow_up_id is null
+            order by created_at desc, id desc limit 20`.execute(this.db)).rows;
+        out[out.length - 1].items = orphans.map((o) => ({ eventId: String(o.id), providerCallId: String(o.provider_call_id), kind: String(o.kind), reason: o.reason ?? null, at: iso(o.created_at) }));
+      }
       else if (!n(h.n)) add('handoff_detection', 'UNKNOWN', 'No handoff has been detected yet, so the mapping is unproven.', 'ai_handoff_events: 0', 'Place an authorized test call that asks for a person.');
       else add('handoff_detection', 'READY', `${n(h.n)} handoff event(s), each mapped.`, 'no orphan callbacks', null);
     });

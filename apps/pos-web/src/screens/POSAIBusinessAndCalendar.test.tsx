@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
+const faqsOverride: { fn: null | ((q: any) => Promise<any>) } = { fn: null };
 const addClosure = vi.fn((_b: any) => Promise.resolve({ id: 'c2' }));
 const closureItems: any[] = [{ id: 'c1', date: '2026-11-26', scope: 'salon', closed: true, opensAt: null, closesAt: null, note: 'Thanksgiving', createdAt: null }];
 const setTags = vi.fn((_id: string, tags: string[]) => Promise.resolve({ id: 'faq1', tags }));
@@ -13,8 +14,8 @@ vi.mock('../api/posAiBusinessSetupApi', () => ({
         { key: 'services', status: 'READY', source: 'Services & Products (services)', rawCount: 4, eligibleCount: 2, exclusions: [{ reason: 'other_branch', count: 1 }], warnings: [], detail: '2 of 4 service(s) can be booked by the AI.', action: { label: 'Open', route: '/services' }, checkedAt: '', traceId: 'bs_2' },
         { key: 'technicians', status: 'UNKNOWN', source: 'Team Management', rawCount: null, eligibleCount: null, exclusions: [], warnings: [], detail: '', action: null, checkedAt: '', traceId: 'bs_3' },
       ], supplemental: [] }),
-    faqs: () => Promise.resolve({ items: [{ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', status: 'approved', aiServable: true, hasPendingChange: false, createdAt: '2026-10-30T12:00:00Z', approvedAt: '2026-10-30T13:00:00Z' }],
-      page: 1, pageSize: 20, totalItems: 1, totalPages: 1, categories: ['General'] }),
+    faqs: (q: any) => (faqsOverride.fn ? faqsOverride.fn(q) : Promise.resolve({ items: [{ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', status: 'approved', aiServable: true, hasPendingChange: false, createdAt: '2026-10-30T12:00:00Z', approvedAt: '2026-10-30T13:00:00Z' }],
+      page: 1, pageSize: 20, totalItems: 1, totalPages: 1, categories: ['General'] })),
     search: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
     history: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
     createFaq: vi.fn(), act: vi.fn(), preview: vi.fn(), health: vi.fn(), assistant: vi.fn(),
@@ -39,7 +40,7 @@ vi.mock('../api/posAiCalendarApi', () => ({ posAiCalendarApi: {
     { id: 'h2', technicianId: 't1', technicianName: 'Bella', date: '2026-07-05', start: '09:00', end: '10:00', expiresAt: '2026-07-04T15:40:00Z', minutesLeft: 40, channel: null, pendingCode: false, expiringSoon: false }] }),
 } }));
 
-import { POSAIBusinessSetupScreen } from './POSAIBusinessSetupScreen';
+import { POSAIBusinessSetupScreen, setupListState } from './POSAIBusinessSetupScreen';
 import { POSAICalendarScreen } from './POSAICalendarScreen';
 
 describe('POSAIBusinessSetupScreen', () => {
@@ -91,5 +92,38 @@ describe('POSAICalendarScreen', () => {
     expect(rows[0].textContent).toMatch(/12:00–13:00/); expect(rows[0].textContent).toMatch(/Expiring soon/);
     expect(screen.getAllByTestId('aic-pq-left').map((x) => x.textContent)).toEqual([expect.stringMatching(/^4 min/), expect.stringMatching(/^40 min/)]);
     expect(screen.getByTestId('aic-pending').textContent).toMatch(/1 waiting for a code/);
+  });
+});
+
+describe('AI Business Setup — empty / error separation (extras #10)', () => {
+  const emptyPage = { items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1, categories: [] };
+  it('true empty and filtered no-match read differently', async () => {
+    faqsOverride.fn = () => Promise.resolve(emptyPage);
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-list-state')).toHaveAttribute('data-kind', 'empty');
+    expect(screen.getByTestId('ais-list-state')).toHaveTextContent('No FAQs yet');
+    fireEvent.change(screen.getByTestId('ais-search'), { target: { value: 'parking' } });
+    await waitFor(() => expect(screen.getByTestId('ais-list-state')).toHaveAttribute('data-kind', 'noMatch'), { timeout: 2000 });
+    faqsOverride.fn = null;
+  });
+  it('unauthorized and API failure are their own states; a failed refresh of the same query keeps the rows marked stale', async () => {
+    faqsOverride.fn = () => Promise.reject({ status: 403 });
+    const a = render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-list-state')).toHaveAttribute('data-kind', 'forbidden');
+    a.unmount();
+    faqsOverride.fn = () => Promise.reject(new Error('Failed to fetch'));
+    const b = render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-list-state')).toHaveAttribute('data-kind', 'error');
+    expect(screen.queryByTestId('ais-faq-row')).toBeNull();
+    b.unmount();
+    faqsOverride.fn = null;
+  });
+  it('the state function: a failed refresh of the query already shown is stale (rows kept), of another query is an error', () => {
+    const list = { items: [{ id: 'x' }] };
+    expect(setupListState({ err: 'down', forbidden: false, list, sameQuery: true, filtered: false })).toBe('stale');
+    expect(setupListState({ err: 'down', forbidden: false, list, sameQuery: false, filtered: false })).toBe('error');
+    expect(setupListState({ err: 'no', forbidden: true, list, sameQuery: true, filtered: false })).toBe('forbidden');
+    expect(setupListState({ err: null, forbidden: false, list: { items: [] }, sameQuery: true, filtered: true })).toBe('noMatch');
+    expect(setupListState({ err: null, forbidden: false, list: null, sameQuery: false, filtered: false })).toBe('loading');
   });
 });

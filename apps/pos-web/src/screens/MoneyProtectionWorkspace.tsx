@@ -77,6 +77,25 @@ export function alertsEmpty(f: Record<string, any>, period: { preset?: string | 
   return t('mpx.empty.verified', { at: m.lastSuccessAt ? fmtInZone(m.lastSuccessAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—', n: String(m.lastEvaluated ?? 0) });
 }
 
+/** Money Protection Rules extras #13 — staff-fairness guardrails: a peer-comparison (baseline) alert says how sure it can be —
+ *  this person's sample, the minimum sample required, how many peers were compared and their sample range, and that it is a
+ *  statistical comparison to review, never a conclusion. Values the alert did not record show "—". */
+export function FairnessNote({ ev }: { ev: any }) {
+  const b = ev?.baselineValues; const c = ev?.currentValues;
+  if (!b || b.peerMeanRatePct == null) return null;   // only peer-comparison (baseline) alerts carry a peer mean
+  const n = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? fmtNumber(v, d) : '—');
+  const range = typeof b.peerCapturedMin === 'number' && typeof b.peerCapturedMax === 'number' ? `${fmtNumber(b.peerCapturedMin)}–${fmtNumber(b.peerCapturedMax)}` : '—';
+  const small = typeof c?.capturedTransactions === 'number' && typeof b.minSampleSize === 'number' && c.capturedTransactions < b.minSampleSize * 2;
+  return (
+    <div className="fk-note" role="note" data-testid="mpx-fair" style={{ margin: '6px 0' }}>
+      <b>{t('mpx.fair.title')}</b>
+      <div data-testid="mpx-fair-sample">{t('mpx.fair.sample', { n: n(c?.capturedTransactions), r: n(c?.reversals), min: n(b.minSampleSize) })}</div>
+      <div data-testid="mpx-fair-peers">{t('mpx.fair.peers', { p: n(b.comparedPeers ?? (typeof b.peerCount === 'number' ? b.peerCount - 1 : undefined)), range, avg: n(b.peerMeanRatePct, 1) })}</div>
+      {small ? <div className="warn" data-testid="mpx-fair-small">{t('mpx.fair.small')}</div> : null}
+      <div className="sub">{t('mpx.fair.caution')}</div>
+    </div>
+  );
+}
 export function mpErr(e: unknown) {
   const c = codeOf(e);
   if (c && ['MC_INVALID_PERIOD', 'MC_NOT_FOUND', 'MC_REASON_REQUIRED', 'MC_STALE', 'MC_STATE_INVALID', 'MC_DETECTION_FAILED', 'SEGREGATION_OF_DUTIES'].includes(c)) return t('mpx.err.' + c);
@@ -184,14 +203,18 @@ export function MpOverview() {
   const [s, setS] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const load = useCallback(() => { setErr(null); mc.summary().then(setS).catch((e) => setErr(mpErr(e))); }, []);
+  // extras (AI Money Protection 5 · 12): failure-aware snapshot — a failed refresh keeps the last figures, labelled "as of" their
+  // read time and stale, instead of an error wall or zeros; with nothing ever read the cards stay "—"
+  const [okAt, setOkAt] = useState<Date | null>(null);
+  const load = useCallback(() => { setErr(null); mc.summary().then((x) => { setS(x); setOkAt(new Date()); }).catch((e) => setErr(mpErr(e))); }, []);
   useEffect(() => { load(); }, [load, tick]);
   const runs = useList(mc.runs, { page: 1, pageSize: 10 }, tick);
   const c = s?.cards;
   const monAt = s?.monitoring === 'last_run_failed' ? when(s?.lastRun?.startedAt) : when(s?.lastSuccessAt);
   return (
     <MpShell title={tx('pos.ai_money_protection')} sub={tx('pos.possible_financial_anomalies_from_your_real_z6vv')} tab="overview" onChanged={() => setTick((n) => n + 1)}>
-      {err ? <ErrorRetry message={err} onRetry={load} /> : null}
+      {err && s ? <div className="fk-note warn" role="status" data-testid="mpx-asof"><span>{t('mpx.asof', { t: okAt ? when(okAt.toISOString()) : '—' })}</span> <button type="button" className="btn ghost sm" data-testid="mpx-asof-retry" onClick={load}>{t('mpx.stale.retry')}</button></div>
+        : err ? <ErrorRetry message={err} onRetry={load} /> : null}
       {s ? <div className={'panel' + (s.monitoring === 'current' ? '' : ' warn')} data-testid="mpx-monitoring" style={{ padding: 10, marginBottom: 8 }}>
         <b>{t('mpx.mon.' + s.monitoring, { at: monAt })}</b> <span className="sub">{s.scheduled ? t('mpx.mon.scheduledOn') : t('mpx.mon.scheduledOff')}</span></div> : null}
       <div className="rvw-kpis" data-testid="mpx-kpis">
@@ -315,6 +338,7 @@ function AlertDialog({ id, onClose, onChanged }: { id: string; onClose: () => vo
         <section style={{ marginTop: 10 }} data-testid="mpx-d-evidence"><div className="p-h">{t('mpx.d.evidence')}</div>
           <p>{d.evidence?.summary ? codedText(mpTextCoded(d.evidence.summary), d.evidence.summary) : d.rule?.description ?? ''}</p>
           <div className="sub">{tx('pos.risk_score')}{' '}{a.riskScore} {tx('pos.confidence_2')}{' '}{a.confidence}</div>
+          <FairnessNote ev={d.evidence} />
           {Array.isArray(d.evidence?.recommendedReview) && d.evidence.recommendedReview.length ? <><b>{tx('pos.recommended_review')}</b><ul>{d.evidence.recommendedReview.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}
           {Array.isArray(d.evidence?.alternativeExplanations) && d.evidence.alternativeExplanations.length ? <><b>{tx('pos.possible_benign_explanations')}</b><ul>{d.evidence.alternativeExplanations.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}</section>
         <section style={{ marginTop: 10 }} data-testid="mpx-d-sources"><div className="p-h">{t('mpx.d.sources')}</div>
@@ -429,9 +453,24 @@ function CaseDialog({ row, onClose, onChanged }: { row: any; onClose: () => void
 function useRules(tick: number) {
   const [r, setR] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); mc.rules().then(setR).catch((e) => setErr(mpErr(e))); }, []);
+  const [forbidden, setForbidden] = useState(false);
+  const [okAt, setOkAt] = useState<Date | null>(null);
+  const load = useCallback(() => { setErr(null); setForbidden(false); mc.rules().then((x) => { setR(x); setOkAt(new Date()); }).catch((e) => { setErr(mpErr(e)); setForbidden(isForbidden(e)); }); }, []);
   useEffect(() => { load(); }, [load, tick]);
-  return { r, err, load };
+  return { r, err, load, forbidden, okAt };
+}
+/** Money Protection Rules extras #08 — consistent empty states: which "nothing here" it is. Permission denied, an API outage with
+ *  nothing loaded, a failed refresh of rules already shown (stale, with the time), no rules at all, and rules that are on but have
+ *  no recorded evaluation yet — each worded differently, never a blank table or a false green. */
+export function rulesState(x: { r: any; err: string | null; forbidden: boolean }): 'forbidden' | 'outage' | 'loading' | 'stale' | 'none' | 'unevaluated' | 'ok' {
+  if (x.err && !x.r) return x.forbidden ? 'forbidden' : 'outage';
+  if (!x.r) return 'loading';
+  if (x.err) return 'stale';
+  const rs: any[] = x.r.rules ?? [];
+  if (!rs.length) return 'none';
+  const on = rs.filter((y) => y.effective);
+  if (on.length && on.every((y) => !y.lastCheckedAt)) return 'unevaluated';
+  return 'ok';
 }
 function RuleState({ x }: { x: any }) {
   return !x.layerOn ? <span className="chip warn">{t('mpx.rules.layerOff')}</span> : <span className={'chip ' + (x.enabled ? 'ok' : 'warn')} data-testid="mpx-rule-state">{x.enabled ? t('mpx.rules.on') : t('mpx.rules.off')}</span>;
@@ -447,12 +486,18 @@ function EffectiveChip({ x }: { x: any }) {
 }
 export function MpRules() {
   const [tick, setTick] = useState(0);
-  const { r, err, load } = useRules(tick);
+  const { r, err, load, forbidden, okAt } = useRules(tick);
   const [open, setOpen] = useState<any>(null);
+  const st = rulesState({ r, err, forbidden });
   return (
     <MpShell title={tx('pos.money_protection_rules_detection')} sub={t('mpx.rules.note')} tab="rules" onChanged={() => setTick((n) => n + 1)}>
-      {err ? <ErrorRetry message={err} onRetry={load} /> : !r ? <div className="state">{t('mpx.loading')}</div> : (
+      {st === 'forbidden' ? <div data-testid="mpx-rules-state" data-kind="forbidden"><Empty title={t('mpx.err.forbidden')} /></div>
+        : st === 'outage' ? <div data-testid="mpx-rules-state" data-kind="outage"><ErrorRetry message={err ?? t('mpx.loadFailed')} onRetry={load} /></div>
+        : st === 'loading' ? <div className="state">{t('mpx.loading')}</div>
+        : st === 'none' ? <div data-testid="mpx-rules-state" data-kind="none"><Empty title={t('mpx.rules.none')} /></div> : (
         <>
+        {st === 'stale' ? <div className="fk-note warn" role="status" data-testid="mpx-rules-state" data-kind="stale"><span>{t('mpx.stale.note', { t: okAt ? fmtInZone(okAt.toISOString(), { hour: 'numeric', minute: '2-digit' }) || '—' : '—' })}</span> <button type="button" className="btn ghost sm" onClick={load}>{t('mpx.stale.retry')}</button></div> : null}
+        {st === 'unevaluated' ? <div className="fk-note" role="status" data-testid="mpx-rules-state" data-kind="unevaluated">{t('mpx.rules.noEvaluations')}</div> : null}
         {/* SUNMI addendum (Nov 8 2026): seven even summary tiles over the rule table, counted from the rules this page shows —
             Total · Enabled · Disabled · Exact comparison · Normal levels · Reconciliation · Not running (switched on, layer off) */}
         {(() => {
@@ -541,6 +586,24 @@ export function MpSettings() {
   );
 }
 
+/** Money Protection Settings extras #05 — safe recovery: after a failed Save (refused, stale version, lost connection) the editor
+ *  offers Reload Current (discard my edits, take what is saved now), Compare Changes (mine next to what is saved now) and Retry —
+ *  Retry always asks first, and it is sent with the version this person last SAW, so a concurrent edit is never silently overwritten
+ *  (the server refuses a stale version; only after Reload or Compare does the editor carry the newer version). */
+export function ruleDraftDiff(mine: { enabled: boolean; sev: string; th: Record<string, string> }, cur: any): { field: string; mine: string; now: string }[] {
+  const out: { field: string; mine: string; now: string }[] = [];
+  const onOff = (b: boolean) => (b ? t('mpx.rules.on') : t('mpx.rules.off'));
+  const sevOf = (s: string) => (s ? t('mpx.sev.' + s) : t('mpx.rules.defaultSev', { s: t('mpx.sev.' + cur.defaultSeverity) }));
+  if (mine.enabled !== cur.enabled) out.push({ field: t('mpx.rules.enabled'), mine: onOff(mine.enabled), now: onOff(cur.enabled) });
+  const curSev = cur.severityOverridden ? cur.severity : '';
+  if (mine.sev !== curSev) out.push({ field: t('mpx.rules.severity'), mine: sevOf(mine.sev), now: sevOf(curSev) });
+  const keys = Array.from(new Set([...Object.keys(mine.th), ...Object.keys(cur.thresholds ?? {})]));
+  for (const k of keys) {
+    const a = mine.th[k] ?? '—'; const b = cur.thresholds?.[k] != null ? String(cur.thresholds[k]) : '—';
+    if (a !== b) out.push({ field: k, mine: a, now: b });
+  }
+  return out;
+}
 function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void; onSaved: () => void }) {
   const [enabled, setEnabled] = useState<boolean>(rule.enabled);
   const [sev, setSev] = useState<string>(rule.severityOverridden ? rule.severity : '');
@@ -548,17 +611,51 @@ function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [base, setBase] = useState<string | null>(rule.updatedAt ?? null);   // the version this person last saw
+  const [cur, setCur] = useState<any>(null);                                  // what is saved now (after Reload / Compare)
+  const [confirmRetry, setConfirmRetry] = useState(false);
   const save = () => {
-    setBusy(true); setMsg(null);
+    setBusy(true); setMsg(null); setConfirmRetry(false);
     const thresholds = Object.fromEntries(Object.entries(th).map(([k, v]) => [k, v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v]));
-    mc.saveRule({ ruleId: rule.id, enabled, severityOverride: sev || null, thresholds, reason: reason.trim() || null, expectedUpdatedAt: rule.updatedAt ?? null })
-      .then(() => onSaved()).catch((e) => setMsg(mpErr(e))).finally(() => setBusy(false));
+    mc.saveRule({ ruleId: rule.id, enabled, severityOverride: sev || null, thresholds, reason: reason.trim() || null, expectedUpdatedAt: base })
+      .then(() => onSaved()).catch((e) => { setMsg(mpErr(e)); setFailed(true); }).finally(() => setBusy(false));
   };
+  const fetchCurrent = (apply: boolean) => {
+    setBusy(true);
+    mc.rules().then((rs: any) => {
+      const x = (rs?.rules ?? []).find((y: any) => y.id === rule.id);
+      if (!x) { setMsg(t('mpx.rec.gone')); return; }
+      setCur(x); setBase(x.updatedAt ?? null);
+      if (apply) {
+        setEnabled(x.enabled); setSev(x.severityOverridden ? x.severity : '');
+        setTh(Object.fromEntries(Object.entries(x.thresholds ?? {}).map(([k, v]) => [k, String(v)])));
+        setMsg(null); setFailed(false); setCur(null);
+      }
+    }).catch((e) => setMsg(mpErr(e))).finally(() => setBusy(false));
+  };
+  const diff = cur ? ruleDraftDiff({ enabled, sev, th }, cur) : null;
   return (
     <FitDialog wide testId="mpx-rule-editor" title={ruleName(rule.id, rule.name)} onClose={onClose}
       footer={<><button className="btn ghost" onClick={onClose}>{t('mpx.cancel')}</button><button className="btn" data-testid="mpx-rule-save" disabled={busy} onClick={save}>{t('mpx.save')}</button></>}>
       <p className="sub">{rule.description}</p>
       {msg ? <div className="err" data-testid="mpx-rule-msg">{msg}</div> : null}
+      {failed ? <div className="panel" data-testid="mpx-rec" style={{ padding: 8, margin: '6px 0' }}>
+        <div className="sub">{t('mpx.rec.why')}</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+          <button type="button" className="btn ghost sm" data-testid="mpx-rec-reload" disabled={busy} onClick={() => fetchCurrent(true)}>{t('mpx.rec.reload')}</button>
+          <button type="button" className="btn ghost sm" data-testid="mpx-rec-compare" disabled={busy} onClick={() => fetchCurrent(false)}>{t('mpx.rec.compare')}</button>
+          <button type="button" className="btn ghost sm" data-testid="mpx-rec-retry" disabled={busy} onClick={() => setConfirmRetry(true)}>{t('mpx.rec.retry')}</button>
+        </div>
+        {confirmRetry ? <div className="fk-note warn" role="alert" data-testid="mpx-rec-confirm" style={{ marginTop: 6 }}>
+          <span>{cur ? t('mpx.rec.confirmOver') : t('mpx.rec.confirm')}</span>{' '}
+          <button type="button" className="btn sm" data-testid="mpx-rec-yes" disabled={busy} onClick={save}>{t('mpx.rec.yes')}</button>{' '}
+          <button type="button" className="btn ghost sm" data-testid="mpx-rec-no" onClick={() => setConfirmRetry(false)}>{t('mpx.cancel')}</button>
+        </div> : null}
+        {diff ? (diff.length ? <table className="tbl" data-testid="mpx-rec-diff" style={{ marginTop: 6 }}><thead><tr><th>{t('mpx.rec.field')}</th><th>{t('mpx.rec.mine')}</th><th>{t('mpx.rec.now')}</th></tr></thead>
+          <tbody>{diff.map((d) => <tr key={d.field} data-testid="mpx-rec-diff-row"><td>{d.field}</td><td>{d.mine}</td><td>{d.now}</td></tr>)}</tbody></table>
+          : <div className="sub" data-testid="mpx-rec-same">{t('mpx.rec.same')}</div>) : null}
+      </div> : null}
       <label className="rvw-f"><input type="checkbox" data-testid="mpx-rule-enabled" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> <span>{t('mpx.rules.enabled')}</span></label>
       <label className="rvw-f"><span>{t('mpx.rules.severity')}</span><select data-testid="mpx-rule-sev" value={sev} onChange={(e) => setSev(e.target.value)}>
         <option value="">{t('mpx.rules.defaultSev', { s: t('mpx.sev.' + rule.defaultSeverity) })}</option>{SEVS.filter((s) => s !== 'all').map((s) => <option key={s} value={s}>{t('mpx.sev.' + s)}</option>)}</select></label>

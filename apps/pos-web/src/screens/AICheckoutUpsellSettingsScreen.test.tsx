@@ -114,3 +114,20 @@ describe('Checkout upsell settings in Vietnamese', () => {
     expect(leftoverEnglish(container, NAMES).join(' | ')).toBe('');
   });
 });
+
+describe('Checkout Upsell Settings — independent states (extras #13)', () => {
+  it('salon preference, can-suggest-now and payment authority are shown separately; a restricted subscription says No with why while the preference stays On', async () => {
+    A.settings.mockResolvedValue({ ...settings, salon: { ...settings.salon, enabled: true } });
+    A.center.summary.mockResolvedValue({ ...summary, effective: 'subscription_restricted', subscription: { allowed: false, reason: 'lapsed', status: 'past_due' } });
+    renderIt();
+    expect(await screen.findByTestId('ucx-state-pref')).toHaveTextContent('Salon preference: Enabled');
+    await waitFor(() => expect(screen.getByTestId('ucx-state-run')).toHaveAttribute('data-kind', 'subscription_restricted'));
+    expect(screen.getByTestId('ucx-state-run')).toHaveTextContent('Can suggest now: No — Subscription restricted');
+    expect(screen.getByTestId('ucx-state-pay')).toHaveTextContent('Suggestions never charge');
+  });
+  it('no salon-level value says it follows the default; an effective assistant says Yes', async () => {
+    renderIt();
+    expect(await screen.findByTestId('ucx-state-pref')).toHaveTextContent('not set here — follows the default (Enabled)');
+    await waitFor(() => expect(screen.getByTestId('ucx-state-run')).toHaveTextContent('Can suggest now: Yes'));
+  });
+});

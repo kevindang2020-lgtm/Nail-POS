@@ -55,3 +55,38 @@ describe('POSAIMoneyProtectionRulesScreen', () => {
   });
 });
 
+
+describe('Money Protection Rules — consistent empty states (extras #08)', () => {
+  it('permission denied and an API outage read differently', async () => {
+    mc.rules.mockRejectedValueOnce({ status: 403 });
+    const a = wrap(<POSAIMoneyProtectionRulesScreen />);
+    expect(await screen.findByTestId('mpx-rules-state')).toHaveAttribute('data-kind', 'forbidden');
+    expect(screen.getByTestId('mpx-rules-state')).toHaveTextContent('Your role cannot do this');
+    a.unmount();
+    mc.rules.mockRejectedValueOnce(new Error('Failed to fetch'));
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    expect(await screen.findByTestId('mpx-rules-state')).toHaveAttribute('data-kind', 'outage');
+    expect(screen.queryByTestId('mpx-rule-row')).toBeNull();
+  });
+  it('no rules at all, and rules on with no recorded evaluation, are their own states', async () => {
+    mc.rules.mockResolvedValueOnce({ rules: [], canEdit: false });
+    const a = wrap(<POSAIMoneyProtectionRulesScreen />);
+    expect(await screen.findByTestId('mpx-rules-state')).toHaveAttribute('data-kind', 'none');
+    a.unmount();
+    mc.rules.mockResolvedValueOnce({ rules: [rule({ lastCheckedAt: null })], canEdit: false });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    expect(await screen.findByTestId('mpx-rules-state')).toHaveAttribute('data-kind', 'unevaluated');
+    expect(screen.getAllByTestId('mpx-rule-row')).toHaveLength(1);
+  });
+  it('a failed refresh keeps the rules shown, marked stale', async () => {
+    mc.rules.mockResolvedValueOnce({ rules: [rule({ lastCheckedAt: new Date().toISOString() })], canEdit: false });
+    mc.runDetection.mockResolvedValue({ created: 0, updated: 0 });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    await screen.findAllByTestId('mpx-rule-row');
+    expect(screen.queryByTestId('mpx-rules-state')).toBeNull();
+    mc.rules.mockRejectedValueOnce(new Error('Failed to fetch'));
+    fireEvent.click(screen.getByTestId('mpx-run'));
+    expect(await screen.findByTestId('mpx-rules-state')).toHaveAttribute('data-kind', 'stale');
+    expect(screen.getAllByTestId('mpx-rule-row')).toHaveLength(1);
+  });
+});
