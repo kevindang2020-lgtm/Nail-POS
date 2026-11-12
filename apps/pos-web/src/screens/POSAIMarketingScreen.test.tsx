@@ -3,7 +3,7 @@
 // campaign list, Check AI Marketing System. Nothing on the page sends.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 const { c, cc } = vi.hoisted(() => ({ c: { summary: vi.fn(), recommendations: vi.fn(), eligibility: vi.fn(), estimate: vi.fn(), saveDraft: vi.fn(), check: vi.fn() }, cc: { list: vi.fn() } }));
 vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { center: c, generateDraft: vi.fn() } }));
 vi.mock('../api/posCampaignCenterApi', () => ({ posCampaignCenterApi: cc }));
@@ -98,6 +98,21 @@ describe('POSAIMarketingScreen', () => {
     expect(row).toHaveTextContent('Dates and time zones');
     expect(row).toHaveTextContent('missing or unknown time zone');
     expect(screen.getByTestId('amk-chk-tz-detail')).toHaveTextContent('Zones: America/New_York, UTC · unknown zones: 1 · sends near a clock change: 1 of 2 scheduled');
+  });
+  it('AI Marketing 10 — source verification: campaign cards filter Campaign Center\'s list to their own set; message / revenue cards open Campaign Results for the same period', async () => {
+    const Where = () => { const l = useLocation(); return <div data-testid="where">{l.pathname + l.search}</div>; };
+    render(<MemoryRouter initialEntries={['/tenant/ai/marketing']}><Routes>
+      <Route path="/tenant/ai/marketing" element={<POSAIMarketingScreen />} />
+      <Route path="/tenant/ai/marketing/results" element={<Where />} />
+    </Routes></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('amk-kpi-drafts'));
+    await vi.waitFor(() => expect(cc.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'all_drafts', preset: 'all' })));
+    expect((screen.getByTestId('amk-lib-status') as HTMLSelectElement).value).toBe('all_drafts');
+    fireEvent.click(screen.getByTestId('amk-kpi-active'));
+    await vi.waitFor(() => expect(cc.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'sending' })));
+    fireEvent.click(screen.getByTestId('amk-preset-last_30'));
+    fireEvent.click(screen.getByTestId('amk-kpi-revenue'));
+    expect(await screen.findByTestId('where')).toHaveTextContent('/tenant/ai/marketing/results?preset=last_30');
   });
   it('a failed summary is an error with retry, never zeros', async () => {
     c.summary.mockRejectedValue({ status: 500 });

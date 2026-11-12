@@ -372,4 +372,6 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.health.d.date_timezone.WARNING": "Có lần gửi đã lên lịch trong vòng một ngày quanh lúc đổi giờ mùa hè; hãy kiểm tra để gửi đúng giờ tiệm mong muốn.", // DRAFT — Kevin reviews
   "amk.health.d.date_timezone.FAILED": "Có chi nhánh thiếu múi giờ hoặc múi giờ không hợp lệ, nên ngày, giờ chốt và giờ gửi của chi nhánh đó dùng múi giờ mặc định. Hãy sửa trong cài đặt chi nhánh.", // DRAFT — Kevin reviews
   "amk.health.tz.detail": "Múi giờ: {z} · múi giờ không hợp lệ: {bad} · lần gửi gần lúc đổi giờ: {dst} trên {n} đã lên lịch", // DRAFT — Kevin reviews
+  "amk.cst.all_drafts": "Tất cả bản nháp (kể cả chờ duyệt)", // DRAFT — Kevin reviews
+  "amk.sourceNote": "Chạm vào một thẻ để mở nơi số liệu được đếm: các thẻ chiến dịch lọc danh sách của Trung tâm chiến dịch bên dưới; các thẻ tin nhắn, lịch hẹn, doanh thu và chi phí mở Kết quả chiến dịch cho kỳ này.", // DRAFT — Kevin reviews
 };

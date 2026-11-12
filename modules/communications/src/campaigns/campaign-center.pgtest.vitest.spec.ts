@@ -153,12 +153,16 @@ describe('§08 wizard: details → audience snapshot → message → preview →
     expect(await code(cc.launch(owner, cA, { confirm: true }))).toBe('CAMPAIGN_APPROVAL_REQUIRED');
     await cc.submit(manager, cA);
     expect((await cc.list(owner, { status: 'awaiting_approval' })).items.map((x: any) => x.id)).toContain(cA);
+    // AI Marketing 10 (source verification): 'all_drafts' is the Drafts card's own set — every campaign still in status draft
+    expect((await cc.list(owner, { status: 'all_drafts' })).items.map((x: any) => x.id)).toContain(cA);
+    expect((await cc.list(owner, { status: 'draft' })).items.map((x: any) => x.id)).not.toContain(cA);
     expect(await code(cc.approve(viewer, cA))).toBe('PERMISSION_DENIED');
     expect(await cc.approve(owner, cA)).toMatchObject({ approved: true, messageVersion: 1 });
     const plan = (await q(sql`select message_version, body, audience_definition from ai_marketing_campaign_plans where campaign_id = ${cA}`))[0];
     expect(plan).toMatchObject({ message_version: 1, body: 'Hi from Pilot Nail Salon! 15% off this week.' });
     expect(plan.audience_definition).toMatchObject({ campaignSnapshot: true, snapshotVersion: 1 });
     expect((await cc.list(owner, { status: 'approved' })).items.map((x: any) => x.id)).toContain(cA);
+    expect((await cc.list(owner, { status: 'all_drafts' })).items.map((x: any) => x.id)).toContain(cA);   // approved, not yet launched: still a draft
     expect(await cc.updateDraft(owner, cA, { messageBody: 'Hi from {salon_name}! {offer} — this week only.' })).toMatchObject({ approvalVoided: true });
     expect(await campaignSendReadiness(db, T, cA)).toMatchObject({ ok: false, code: 'CAMPAIGN_APPROVAL_STALE' });
     expect(await code(cc.launch(owner, cA, { confirm: true }))).toBe('CAMPAIGN_APPROVAL_STALE');
@@ -168,6 +172,7 @@ describe('§08 wizard: details → audience snapshot → message → preview →
   it('launch moves it to scheduled once; a second launch is refused; scheduled → draft is allowed before sending', async () => {
     const at = new Date(Date.now() - 1000).toISOString();
     expect(await cc.launch(owner, cA, { confirm: true, at })).toMatchObject({ status: 'scheduled', eligible: 2 });
+    expect((await cc.list(owner, { status: 'all_drafts' })).items.map((x: any) => x.id)).not.toContain(cA);   // launched: no longer a draft
     expect(await code(cc.launch(owner, cA, { confirm: true }))).toBe('CAMPAIGN_ALREADY_LAUNCHED');
     expect(await cc.unschedule(owner, cA)).toMatchObject({ status: 'draft' });
     expect(await campaignSendReadiness(db, T, cA)).toMatchObject({ ok: true, eligible: 2 });   // approval still matches the content

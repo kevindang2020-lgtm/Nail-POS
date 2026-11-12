@@ -155,7 +155,7 @@ describe('AI Business Setup — Readiness Change History (extras #11)', () => {
     await screen.findByDisplayValue('FAQ changes');
     const basis = screen.getAllByRole('combobox').find((x) => (x as HTMLSelectElement).value === 'faq_change') as HTMLSelectElement;
     fireEvent.change(basis, { target: { value: 'readiness' } });
-    await waitFor(() => expect(historyCalls.at(-1)).toMatchObject({ basis: 'readiness' }));
+    await waitFor(() => expect(historyCalls[historyCalls.length - 1]).toMatchObject({ basis: 'readiness' }));
     const row = await screen.findByTestId('ais-readiness-change');
     expect(row).toHaveTextContent('Business hours');
     expect(row).toHaveTextContent('Ready');

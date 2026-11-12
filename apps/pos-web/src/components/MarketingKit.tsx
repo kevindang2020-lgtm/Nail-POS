@@ -114,11 +114,14 @@ export function MkEstimate({ channel, body, recipients, budgetCents, onResult }:
 }
 
 const CC_PRESET: Record<string, string> = { today: 'today', week: 'week', month: 'month', year: 'year', all: 'all' };
-const STATUSES = ['', 'draft', 'awaiting_approval', 'approved', 'scheduled', 'sending', 'completed', 'cancelled'];
+const STATUSES = ['', 'all_drafts', 'draft', 'awaiting_approval', 'approved', 'scheduled', 'sending', 'completed', 'cancelled'];
 /** Campaign Center's own list — search · status · channel · period · numbered pages, newest first; rows open in Campaign Center */
-export function CampaignLibrary({ tick = 0, title, onOpen, selectedId, compare = false }: { tick?: number; title?: string; onOpen?: (c: any) => void;
+export function CampaignLibrary({ tick = 0, title, onOpen, selectedId, compare = false, focus }: { tick?: number; title?: string; onOpen?: (c: any) => void;
   /** Campaign Results 08: the campaign whose results are open stays highlighted in the list */ selectedId?: string | null;
-  /** Campaign Results 17: tick up to four campaigns and compare them side by side (figures as the server reports them) */ compare?: boolean }) {
+  /** Campaign Results 17: tick up to four campaigns and compare them side by side (figures as the server reports them) */ compare?: boolean;
+  /** AI Marketing 10 (source verification): a card asks the list to show its own campaigns — status set, all time, scrolled into view */
+  focus?: { status: string; n: number } | null }) {
+  const boxRef = useRef<HTMLElement | null>(null);
   const [picked, setPicked] = useState<any[]>([]);
   const [comparing, setComparing] = useState(false);
   const togglePick = (c: any) => setPicked((p) => (p.some((x) => x.id === c.id) ? p.filter((x) => x.id !== c.id) : p.length >= 4 ? p : [...p, c]));
@@ -132,11 +135,16 @@ export function CampaignLibrary({ tick = 0, title, onOpen, selectedId, compare =
       .then(setList).catch((e) => setErr(mkErr(e)));
   }, [f]);
   useEffect(() => { load(); }, [load, tick]);
+  useEffect(() => {
+    if (!focus) return;
+    setF((y) => ({ ...y, q: undefined, status: focus.status, channel: '', preset: 'all', from: undefined, to: undefined, page: 1 }));
+    boxRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }, [focus]);
   const set = (x: Partial<typeof f>) => setF((y) => ({ ...y, ...x, page: x.page ?? 1 }));
   const rows: any[] = list?.items ?? [];
   const filtered = !!(f.q || f.status || f.channel || f.preset !== 'all');
   return (
-    <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="amk-campaigns">
+    <section ref={boxRef} className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="amk-campaigns">
       <div className="p-h">{title ?? mt('amk.lib.title')}</div>
       <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
         <input className="rvw-search" type="search" data-testid="amk-lib-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={mt('amk.lib.searchPh')} aria-label={mt('amk.lib.searchPh')} />

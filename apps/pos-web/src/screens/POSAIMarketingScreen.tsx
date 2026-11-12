@@ -10,7 +10,7 @@
 //   • Check AI Marketing System (read-only).
 // Nothing here sends, schedules or approves; drafts are saved into Campaign Center from the Campaign Builder.
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { KpiCard, ErrorRetry, FitDialog } from '../components/FitKit';
 import { MkPeriodBar, MkHealthButton, MkFunnel, CampaignLibrary, mt, mkErr, mkMoney, mkNum, mkWhen, type MkPeriod } from '../components/MarketingKit';
 import { posAIMarketingApi, type MkKind } from '../api/posAIMarketingApi';
@@ -25,6 +25,17 @@ export function POSAIMarketingScreen() {
   const [recs, setRecs] = useState<any>(null);
   const [rErr, setRErr] = useState<string | null>(null);
   const [funnel, setFunnel] = useState<MkKind | null>(null);
+  const nav = useNavigate();
+  // AI Marketing 10 — Source verification: each card opens the existing source it is counted from (no new ledger):
+  // the campaign cards → Campaign Center's list below with the card's own status set; message / booking / revenue / cost
+  // cards → Campaign Results for the same period (per-campaign send ledger, delivery reports, bookings, redemptions).
+  const [libFocus, setLibFocus] = useState<{ status: string; n: number } | null>(null);
+  const LIB_STATUS: Record<string, string> = { active: 'sending', scheduled: 'scheduled', drafts: 'all_drafts' };
+  const openSource = (key: string) => {
+    if (LIB_STATUS[key]) { setLibFocus((x) => ({ status: LIB_STATUS[key], n: (x?.n ?? 0) + 1 })); return; }
+    const qs = new URLSearchParams({ preset: period.preset, ...(period.from ? { from: period.from } : {}), ...(period.to ? { to: period.to } : {}) });
+    nav(`/tenant/ai/marketing/results?${qs.toString()}`);
+  };
 
   const loadS = useCallback(() => { setSErr(null); posAIMarketingApi.center.summary(period).then(setS).catch((e) => setSErr(mkErr(e))); }, [period]);
   useEffect(() => { loadS(); }, [loadS, tick]);
@@ -59,8 +70,9 @@ export function POSAIMarketingScreen() {
       <MkPeriodBar value={period} onChange={setPeriod} today={s?.period?.today} />
       {sErr ? <ErrorRetry message={sErr} onRetry={loadS} /> : null}
       <div className="amk-kpis" data-testid="amk-kpis">
-        {cards.map((c) => <KpiCard key={c.key} testId={`amk-kpi-${c.key}`} label={mt('amk.kpi.' + c.key)} value={s ? c.v : '—'} sub={c.sub} loading={!s && !sErr} />)}
+        {cards.map((c) => <KpiCard key={c.key} testId={`amk-kpi-${c.key}`} label={mt('amk.kpi.' + c.key)} value={s ? c.v : '—'} sub={c.sub} loading={!s && !sErr} onClick={() => openSource(c.key)} />)}
       </div>
+      <p className="sub" data-testid="amk-source-note">{mt('amk.sourceNote')}</p>
       {k && !k.costComplete ? <p className="sub" data-testid="amk-cost-partial">{mt('amk.costPartial', { n: mkNum(k.costedMessages), t: mkNum(k.messagesSent) })}</p> : null}
 
       <div className="rvw-analysis">
@@ -113,7 +125,7 @@ export function POSAIMarketingScreen() {
         </section>
       </div>
 
-      <CampaignLibrary tick={tick} />
+      <CampaignLibrary tick={tick} focus={libFocus} />
       {funnel ? <FitDialog wide testId="amk-funnel-dialog" title={mt('amk.funnelTitle', { k: mt('amk.kind.' + funnel) })} onClose={() => setFunnel(null)}
         footer={<button className="btn ghost" onClick={() => setFunnel(null)}>{mt('amk.close')}</button>}>
         <MkFunnel kind={funnel} channel="both" />

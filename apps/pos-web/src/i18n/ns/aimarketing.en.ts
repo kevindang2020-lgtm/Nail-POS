@@ -372,4 +372,6 @@ export const AIMARKETING_EN: Record<string, string> = {
   "amk.health.d.date_timezone.WARNING": "A scheduled send falls within a day of a daylight-saving clock change; check it goes out at the salon time you meant.",
   "amk.health.d.date_timezone.FAILED": "A branch has a missing or unknown time zone, so its days, cutoffs and send times fall back to a default zone. Fix it in the branch settings.",
   "amk.health.tz.detail": "Zones: {z} · unknown zones: {bad} · sends near a clock change: {dst} of {n} scheduled",
+  "amk.cst.all_drafts": "All drafts (incl. awaiting approval)",
+  "amk.sourceNote": "Tap a card to open where it is counted: the campaign cards filter Campaign Center's list below; the message, booking, revenue and cost cards open Campaign Results for this period.",
 };
