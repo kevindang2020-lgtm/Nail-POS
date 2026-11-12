@@ -55,6 +55,28 @@ describe('POSAiUsageScreen', () => {
     await waitFor(() => expect(api.startTrial).toHaveBeenCalledWith('ai_review_reputation_assistant', expect.objectContaining({ confirm: true, idempotencyKey: expect.any(String) })));
   });
 
+  it('Extras · AI Usage Limits 02: Subscription tab explains why — the server gate reason and the facts behind it, in words', async () => {
+    api.detail.mockImplementation(async (code: string) => ({ package: ITEMS.find((c) => c.code === code), usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
+      settings: { globallyEnabled: true, disabledReason: null, storedStatus: 'trialing', usageLimit: 1000, overageEnabled: false, limitSource: 'subscription' }, canManage: true, canSeeBilling: true,
+      why: { entitled: false, gate: { allowed: false, reason: 'trial_expired' }, forYou: { allowed: false, reason: 'trial_expired' }, state: 'trial_expired',
+        platform: { enabled: true, disabledReason: null }, subscription: { status: 'trialing', provider: null, lastPaymentStatus: null, period: 'monthly', priceSource: 'subscription' },
+        trial: { startsAt: '2026-10-14T15:00:00Z', endsAt: '2026-10-28T15:00:00Z', daysLeft: null },
+        plans: [{ code: 'plan_ops', name: 'Operations', status: null, trialEndsAt: null, cancelledAt: null }], lastVerified: null } }));
+    render(<POSAiUsageScreen />);
+    fireEvent.click((await screen.findAllByTestId('aiu-card'))[1]!);
+    const d = await screen.findByTestId('aiu-detail');
+    fireEvent.click(within(d).getByTestId('aiu-tab-subscription'));
+    const w = await within(d).findByTestId('aiu-why');
+    expect(w).toHaveTextContent('Why it is blocked');
+    expect(within(w).getByTestId('aiu-why-gate')).toHaveTextContent('The AI access check says: the free trial has ended');
+    expect(within(w).queryByTestId('aiu-why-you')).toBeNull();           // same answer for the user: not repeated
+    expect(within(w).getByTestId('aiu-why-sub')).toHaveTextContent('On trial · ');
+    expect(within(w).getByTestId('aiu-why-trial')).toHaveTextContent(/^Ended Oct 28, 2026$/);
+    expect(within(w).getByTestId('aiu-why-plans')).toHaveTextContent('Operations · not subscribed');
+    expect(within(w).getByTestId('aiu-why-verified')).toHaveTextContent('No billing event recorded yet');
+    expect(w.textContent).not.toMatch(/trial_expired|trialing/);           // codes never raw
+    expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
+  });
   it('the cost KPI is restricted without the billing role, and the pager asks for page 2', async () => {
     api.summary.mockResolvedValue({ ...SUM, cost: { visible: false }, canSeeBilling: false });
     render(<POSAiUsageScreen />);

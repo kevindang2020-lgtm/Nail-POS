@@ -12,7 +12,7 @@
 // overage figure is an ESTIMATE until invoiced; the total is "from subscription records" unless every paying package
 // has a recorded successful payment in its current period ("reconciled").
 import { sql, type Kysely } from 'kysely';
-import { AI_PACKAGES, TENANT_AI_SUBSCRIPTION, getAiPackage, evaluateAiAccess, KyselyAiAccessRepo, syncUsageAlerts, AiInvoiceLedger, UnconfiguredInvoiceClient, effectiveBranchAccess, validateBranchSettings, branchSettingFields, type AiInvoiceProviderClient } from '@aipowersalon/ai';
+import { AI_PACKAGES, AI_PLANS, TENANT_AI_SUBSCRIPTION, getAiPackage, evaluateAiAccess, KyselyAiAccessRepo, syncUsageAlerts, AiInvoiceLedger, UnconfiguredInvoiceClient, effectiveBranchAccess, validateBranchSettings, branchSettingFields, type AiInvoiceProviderClient } from '@aipowersalon/ai';
 import { invoiceViewOf, invoicedAmounts, inPeriodFrom, ESTIMATE_ASSUMPTIONS, type InvoiceView } from './ai-usage-invoices.view';
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { displayStateOf, actionsFor, primaryAction, usageLevelOf, type DisplayState, type PackageAction, type UsageLevel } from './ai-usage-states';
@@ -201,7 +201,8 @@ export class AiUsageScreenRepository {
       ...admin.map((a: any) => ({ at: iso(a.created_at), kind: a.role === 'system' ? 'billing' as const : 'platform' as const, type: String(a.action_type), from: null, to: (typeof a.metadata_json === 'string' ? JSON.parse(a.metadata_json || '{}') : a.metadata_json || {}).to ?? null, actor: a.role ?? null })),
       ...(billing ?? []).map((b: any) => ({ at: iso(b.created_at), kind: 'billing' as const, type: String(b.event_type), from: b.from_status ?? null, to: b.to_status ?? null, actor: b.provider ?? null })),
     ].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 40);
-    return { package: c,
+    const why = await this.why(ctx, c, s);
+    return { package: c, why,
       usage: { daily: daily.map((r: any) => ({ date: String(r.d), used: N(r.used), failed: N(r.failed) })), countsRule: 'success_only', timeZone: tz },
       billing: billing ? { visible: true as const, events: billing.map((b: any) => ({ type: String(b.event_type), provider: b.provider ?? null, from: b.from_status ?? null, to: b.to_status ?? null, paymentStatus: b.payment_status ?? null, applied: !!b.applied, at: iso(b.created_at) })),
         invoiced: await this.invoicedBlock(ctx, cards, facts, code, c.price.cents + c.overage.estimatedCents) } : { visible: false as const },
@@ -442,6 +443,44 @@ export class AiUsageScreenRepository {
   // "accessible and not trialing". This returns, per assistant: the stored status, the honest state, the gate's decision right
   // now (the same evaluateAiAccess the AI platform runs before EVERY model call), what the old page counted it as, and its usage
   // this calendar month in its own unit — plus the counts both ways and how the gate is enforced. Read-only.
+  /** The AI-call gate's own decision for one package (evaluateAiAccess over the gate's snapshot): `gate` = the SALON (permission
+   *  set aside), `forYou` = the signed-in user. Used by reconcile and the entitlement explainer — one source, never re-derived. */
+  private async gateFor(ctx: UsageCtx, code: string, gateRepo = new KyselyAiAccessRepo(this.db)) {
+    let gate: { allowed: boolean; reason: string } = { allowed: false, reason: 'unknown' };
+    let forYou: { allowed: boolean; reason: string } | null = null;
+    try {
+      const snap: any = await gateRepo.loadSnapshot(ctx.tenantId, code, ctx.userId ?? null, { branchId: null });
+      const d: any = evaluateAiAccess({ ...snap, hasPermission: true }); gate = { allowed: !!d.allowed, reason: String(d.reason ?? (d.allowed ? 'ok' : 'denied')) };
+      const y: any = evaluateAiAccess(snap); forYou = { allowed: !!y.allowed, reason: String(y.reason ?? (y.allowed ? 'ok' : 'denied')) };
+    } catch { gate = { allowed: false, reason: 'unable_to_check' }; }
+    return { gate, forYou };
+  }
+
+  /** Extras (AI Usage Limits 02 "Effective Entitlement Explainer"): why a package is Active / Blocked — the gate's decision (the
+   *  same call reconcile makes) beside the facts it rests on: the platform switch, the salon's own subscription row (status,
+   *  provider, last payment), the trial, any plan (bundle) that lists the package, and when a provider billing event last
+   *  confirmed it. Read-only; nothing is inferred beyond the stored rows. */
+  private async why(ctx: UsageCtx, c: PackageCard, s: any) {
+    const T = ctx.tenantId;
+    const { gate, forYou } = await this.gateFor(ctx, c.code);
+    const owning = AI_PLANS.filter((pl) => pl.packageCodes.includes(c.code));
+    type PlanRow = { plan_code: string; status: string; trial_ends_at: Date | string | null; cancelled_at: Date | string | null };
+    const planRows = owning.length ? (await sql<PlanRow>`select plan_code, status, trial_ends_at, cancelled_at from tenant_ai_plan_subscriptions
+        where tenant_id = ${T} and plan_code = any(${owning.map((pl) => pl.code)}::text[])`.execute(this.db)).rows : [];
+    const byPlan = new Map(planRows.map((r) => [String(r.plan_code), r]));
+    type BillRow = { at: Date | string | null; provider: string | null; event_type: string | null };
+    const last = (await sql<BillRow>`select created_at as at, provider, event_type from ai_billing_events where tenant_id = ${T} and package_code = ${c.code}
+        order by created_at desc limit 1`.execute(this.db)).rows[0];
+    return {
+      entitled: gate.allowed, gate, forYou, state: c.state,
+      platform: { enabled: c.globallyEnabled, disabledReason: c.disabledReason },
+      subscription: s ? { status: String(s.status), provider: s.payment_provider ?? null, lastPaymentStatus: s.last_payment_status ?? null, period: c.price.period, priceSource: c.price.source } : null,
+      trial: c.trial.startsAt || c.trial.endsAt ? { startsAt: c.trial.startsAt, endsAt: c.trial.endsAt, daysLeft: c.trial.daysLeft } : null,
+      plans: owning.map((pl) => { const r = byPlan.get(pl.code); return { code: pl.code, name: pl.name, status: r ? String(r.status) : null, trialEndsAt: iso(r?.trial_ends_at), cancelledAt: iso(r?.cancelled_at) }; }),
+      lastVerified: last ? { at: iso(last.at), provider: last.provider ?? null, eventType: last.event_type ?? null } : null,
+    };
+  }
+
   async reconcile(ctx: UsageCtx, env: NodeJS.ProcessEnv = process.env) {
     const T = ctx.tenantId;
     const { cards } = await this.cards(ctx);
@@ -457,13 +496,7 @@ export class AiUsageScreenRepository {
     for (const c of cards) {
       // The SALON's entitlement (permission set aside — a role without ai permission is not a package state); `forYou` is the
       // same gate for the signed-in user, so "your role cannot use it" is told apart from "the salon cannot".
-      let gate: { allowed: boolean; reason: string } = { allowed: false, reason: 'unknown' };
-      let forYou: { allowed: boolean; reason: string } | null = null;
-      try {
-        const snap: any = await gateRepo.loadSnapshot(T, c.code, ctx.userId ?? null, { branchId: null });
-        const d: any = evaluateAiAccess({ ...snap, hasPermission: true }); gate = { allowed: !!d.allowed, reason: String(d.reason ?? (d.allowed ? 'ok' : 'denied')) };
-        const y: any = evaluateAiAccess(snap); forYou = { allowed: !!y.allowed, reason: String(y.reason ?? (y.allowed ? 'ok' : 'denied')) };
-      } catch { gate = { allowed: false, reason: 'unable_to_check' }; }
+      const { gate, forYou } = await this.gateFor(ctx, c.code, gateRepo);
       const old = c.storedStatus === 'active' ? 'active' : c.storedStatus === 'trialing' ? 'trial' : null;
       const x: any = u.get(c.code) ?? {};
       rows.push({ code: c.code, name: c.name, category: c.category, state: c.state, storedStatus: c.storedStatus, trialEndsAt: c.trial.endsAt, cancelledAt: c.cancelledAt, globallyEnabled: c.globallyEnabled,

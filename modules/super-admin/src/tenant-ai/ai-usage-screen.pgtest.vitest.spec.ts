@@ -229,3 +229,32 @@ describe('§16 global switch', () => {
     expect((await admin.packageAvailability()).items.find((i) => i.code === 'ai_customer_profile_assistant')).toMatchObject({ enabled: false, version: 1 });
   });
 });
+
+describe('Extras · AI Usage Limits 02 — effective entitlement explainer (read-only)', () => {
+  it('why: the gate\'s own decision beside the platform switch, the subscription row, the trial, the plans that list it and the last provider event', async () => {
+    await q(`insert into tenant_ai_plan_subscriptions (tenant_id, plan_code, status, started_at) values ($1, 'plan_client_growth', 'active', now() - interval '20 days')`, [T]);
+    const before = (await q(`select package_code, status from tenant_ai_subscriptions where tenant_id = $1 order by package_code`, [T])).rows;
+    const live = (await repo.detail(ctx, 'ai_inventory_assistant'))!.why;     // a running trial
+    expect(live).toMatchObject({ entitled: true, gate: { allowed: true, reason: 'ok' }, state: 'trialing', platform: { enabled: true, disabledReason: null },
+      subscription: { status: 'trialing' }, lastVerified: null });
+    expect(live.trial?.daysLeft).toBeGreaterThan(0);
+    // paid yearly, but the Super Admin switched the package off earlier in this file ("Model recall"): the switch decides
+    const profile = (await repo.detail(ctx, 'ai_customer_profile_assistant'))!.why;
+    expect(profile).toMatchObject({ entitled: false, gate: { allowed: false, reason: 'package_disabled' }, state: 'disabled_by_admin', platform: { enabled: false, disabledReason: 'Model recall' },
+      subscription: { status: 'active', period: 'yearly', priceSource: 'subscription' }, trial: null });
+    expect(profile.plans).toEqual([{ code: 'plan_client_growth', name: 'Client & Growth', status: 'active', trialEndsAt: null, cancelledAt: null }]);
+    const lapsed = (await repo.detail(ctx, 'ai_business_assistant'))!.why;   // stored "trialing", trial ended 2 days ago
+    expect(lapsed).toMatchObject({ entitled: false, state: 'trial_expired', subscription: { status: 'trialing' } });
+    expect(lapsed.gate.allowed).toBe(false); expect(lapsed.trial?.endsAt).toBeTruthy();
+    const off = (await repo.detail(ctx, 'ai_voice_transcription'))!.why;      // Super Admin switch off, never subscribed
+    expect(off).toMatchObject({ entitled: false, platform: { enabled: false, disabledReason: 'Provider maintenance' }, subscription: null });
+    expect(off.gate.allowed).toBe(false);
+    const full = (await repo.detail(ctx, 'ai_checkout_upsell_assistant'))!.why;   // active but this period's allowance is used up
+    expect(full).toMatchObject({ state: 'active', entitled: false, gate: { reason: 'limit_exceeded' } });
+    const stored = (await q(`select provider, event_type from ai_billing_events where tenant_id = $1 and package_code = 'ai_marketing_assistant' order by created_at desc limit 1`, [T])).rows[0];
+    expect((await repo.detail(ctx, 'ai_marketing_assistant'))!.why.lastVerified).toMatchObject({ provider: stored.provider, eventType: stored.event_type });
+    expect((await q(`select package_code, status from tenant_ai_subscriptions where tenant_id = $1 order by package_code`, [T])).rows).toEqual(before);   // nothing changed
+    // another salon: its own row only
+    expect((await repo.detail(ctx2, 'ai_customer_profile_assistant'))!.why).toMatchObject({ entitled: false, subscription: null, plans: [{ code: 'plan_client_growth', status: null }] });
+  });
+});

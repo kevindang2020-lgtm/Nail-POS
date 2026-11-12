@@ -203,4 +203,47 @@ export const AIUSAGE_VI = {
   'aiu.bp.previous': 'Trước đó',
   'aiu.bp.none': '—',
   'aiu.fewerAlerts': 'Thu gọn',
+  'aiu.why.titleOn': 'Vì sao đang bật', // DRAFT — Kevin reviews
+  'aiu.why.titleOff': 'Vì sao bị chặn', // DRAFT — Kevin reviews
+  'aiu.why.gate': 'Kiểm tra quyền dùng AI cho biết: {r}', // DRAFT — Kevin reviews
+  'aiu.why.you': 'Với bạn (theo vai trò): {r}', // DRAFT — Kevin reviews
+  'aiu.why.platform': 'Công tắc nền tảng', // DRAFT — Kevin reviews
+  'aiu.why.own': 'Gói đăng ký của tiệm', // DRAFT — Kevin reviews
+  'aiu.why.sub': '{s} · {p}', // DRAFT — Kevin reviews
+  'aiu.why.lastPay': 'lần thanh toán gần nhất: {s}', // DRAFT — Kevin reviews
+  'aiu.why.noSub': 'Tiệm chưa đăng ký gói này', // DRAFT — Kevin reviews
+  'aiu.why.trial': 'Dùng thử', // DRAFT — Kevin reviews
+  'aiu.why.trialLeft': 'còn {n} ngày', // DRAFT — Kevin reviews
+  'aiu.why.trialEnded': 'Đã kết thúc {d}', // DRAFT — Kevin reviews
+  'aiu.why.plans': 'Gói tổng hợp có chứa', // DRAFT — Kevin reviews
+  'aiu.why.noPlan': 'Không thuộc gói tổng hợp nào', // DRAFT — Kevin reviews
+  'aiu.why.planNone': 'chưa đăng ký', // DRAFT — Kevin reviews
+  'aiu.why.verified': 'Lần cuối được xác nhận qua thanh toán', // DRAFT — Kevin reviews
+  'aiu.why.verifiedAt': '{d} · {p}', // DRAFT — Kevin reviews
+  'aiu.why.neverVerified': 'Chưa có sự kiện thanh toán nào', // DRAFT — Kevin reviews
+  'aiu.why.r.ok': 'được phép', // DRAFT — Kevin reviews
+  'aiu.why.r.tenant_not_active': 'tài khoản tiệm chưa hoạt động', // DRAFT — Kevin reviews
+  'aiu.why.r.package_disabled': 'Super Admin đã tắt cho mọi tiệm', // DRAFT — Kevin reviews
+  'aiu.why.r.not_subscribed': 'chưa đăng ký', // DRAFT — Kevin reviews
+  'aiu.why.r.trial_expired': 'thời gian dùng thử đã hết', // DRAFT — Kevin reviews
+  'aiu.why.r.past_due': 'thanh toán đã quá hạn', // DRAFT — Kevin reviews
+  'aiu.why.r.unpaid': 'chưa thanh toán', // DRAFT — Kevin reviews
+  'aiu.why.r.cancelled': 'đã hủy', // DRAFT — Kevin reviews
+  'aiu.why.r.expired': 'gói đăng ký đã hết hạn', // DRAFT — Kevin reviews
+  'aiu.why.r.subscription_suspended': 'gói đăng ký bị tạm ngưng', // DRAFT — Kevin reviews
+  'aiu.why.r.permission_denied': 'vai trò của bạn không được dùng', // DRAFT — Kevin reviews
+  'aiu.why.r.limit_exceeded': 'đã hết hạn mức sử dụng của kỳ này', // DRAFT — Kevin reviews
+  'aiu.why.r.branch_disabled': 'đã tắt cho chi nhánh này', // DRAFT — Kevin reviews
+  'aiu.why.r.unable_to_check': 'hiện không kiểm tra được', // DRAFT — Kevin reviews
+  'aiu.why.s.trialing': 'Đang dùng thử', // DRAFT — Kevin reviews
+  'aiu.why.s.active': 'Đang hoạt động', // DRAFT — Kevin reviews
+  'aiu.why.s.past_due': 'Quá hạn thanh toán', // DRAFT — Kevin reviews
+  'aiu.why.s.unpaid': 'Chưa thanh toán', // DRAFT — Kevin reviews
+  'aiu.why.s.cancelled': 'Đã hủy', // DRAFT — Kevin reviews
+  'aiu.why.s.expired': 'Đã hết hạn', // DRAFT — Kevin reviews
+  'aiu.why.s.suspended': 'Tạm ngưng', // DRAFT — Kevin reviews
+  'aiu.why.s.disabled': 'Đã tắt', // DRAFT — Kevin reviews
+  'aiu.why.pay.paid': 'đã thanh toán', // DRAFT — Kevin reviews
+  'aiu.why.pay.failed': 'thất bại', // DRAFT — Kevin reviews
+  'aiu.why.pay.pending': 'đang chờ', // DRAFT — Kevin reviews
 };
