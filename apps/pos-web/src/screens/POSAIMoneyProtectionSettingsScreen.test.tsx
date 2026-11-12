@@ -50,3 +50,19 @@ describe('POSAIMoneyProtectionSettingsScreen', () => {
   });
 });
 
+
+describe('Money Protection Settings — Saved vs Effective (extras #02)', () => {
+  it('each row shows what detection is actually doing next to the saved state: running, saved-on-but-not-running (with why), off', async () => {
+    mc.rules.mockResolvedValue({ canEdit: true, rules: [rule,
+      { ...rule, id: 'MP_B', name: 'B', layerOn: false, effective: false },
+      { ...rule, id: 'MP_C', name: 'C', enabled: false, effective: false }] });
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    await screen.findAllByTestId('mpx-set-row');
+    const chips = screen.getAllByTestId('mpx-set-effective');
+    expect(chips.map((c) => c.getAttribute('data-state'))).toEqual(['running', 'drift', 'off']);
+    expect(chips[0]).toHaveTextContent('Effective: running');
+    expect(chips[1]).toHaveTextContent('Saved on · not running');
+    expect(chips[1].getAttribute('title')).toMatch(/detection layer is off/);
+    expect(chips[2]).toHaveTextContent('Effective: off');
+  });
+});

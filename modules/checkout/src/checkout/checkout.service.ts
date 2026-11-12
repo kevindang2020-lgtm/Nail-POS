@@ -1,6 +1,7 @@
 // checkout.service.ts — tenant POS Checkout & Payment. Resolves tenant/role from session; enforces per-action
 // permissions; computes money via dto helpers; NEVER fakes a card charge; honest disabled reasons; audits everything.
 // ASYNC: the repository is async (Postgres/Kysely or in-memory), so every use-case awaits the repo.
+import { groupRefundEvents, possibleDuplicateRefunds } from './refund-duplicate-warning';
 import { TechTipsGuardError } from './technician-tips-guard';   // G4 follow-up: the front-desk tip confirmation guard
 import type { UnsettledTender } from './unsettled-tenders';
 import { taxCents } from '@aipowersalon/money';
@@ -1614,7 +1615,12 @@ export class CheckoutService {
     // BUILD_PLAN Phase 5: what each service actually cost after its discounts — a line refund gives back THAT, not the menu price
     const paid = await this.linePaidCents(ctx, tk);
     const lines = (tk?.lines || []).map((l: any) => ({ serviceLineId: l.serviceLineId, serviceName: l.serviceName, priceCents: l.priceCents, ...(paid.get(l.serviceLineId) ?? { netCents: l.priceCents, taxCents: 0, paidCents: l.priceCents }) }));
-    return { ticketId, amountCents, refundableCents: pos.capturedCents - pos.refundedCents, allocations, tenders: tenders.map((t) => ({ ...t, remainingCents: t.amountCents - t.refundedCents })), lines };
+    // REFUNDS & VOIDS extras #03: an earlier refund on this ticket of the SAME amount is named as a possible duplicate
+    // (warning only — true retries are blocked by the idempotency key and the atomic refund cap)
+    const refundRows = (await this.repo.paymentsForTicket(ctx, ticketId)).filter((x) => x.status === 'refunded');
+    const earlierRefunds = groupRefundEvents(refundRows);
+    const possibleDuplicates = possibleDuplicateRefunds(earlierRefunds, { amountCents, methods: allocations.map((a) => a.method) });
+    return { ticketId, amountCents, refundableCents: pos.capturedCents - pos.refundedCents, allocations, tenders: tenders.map((t) => ({ ...t, remainingCents: t.amountCents - t.refundedCents })), lines, earlierRefundCount: earlierRefunds.length, possibleDuplicates };
   }
 
   /**

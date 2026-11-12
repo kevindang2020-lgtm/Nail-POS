@@ -35,6 +35,11 @@ export const TA_LANE_PAGE_SIZE = 12;
 const STATUSES = ['all', 'booked', 'checked_in', 'in_service', 'completed', 'cancelled', 'no_show', 'conflict'];
 const TONE: Record<string, string> = { confirmed: 'ok', booked: 'ok', completed: 'ok', arrived: 'info', checked_in: 'info', waiting: 'warn', in_service: 'warn', cancelled: 'bad', no_show: 'bad' };
 
+/** TECH APPOINTMENTS extras #06 — the exact scheduled start and end on hover (the list shows only the start). The list row
+ *  carries no buffer minutes, so none are claimed here; an unknown end shows "—", never a guess. */
+export const exactTime = (a: { date?: string | null; start?: string | null; end?: string | null; minutes?: number | null }) =>
+  tx('tm.exactTime', { d: a.date ?? '—', s: a.start ? hm12(a.start) : '—', e: a.end ? hm12(a.end) : '—', n: a.minutes != null ? nf(a.minutes) : '—' });
+
 export function POSTechAppointmentsScreen() {
   const nav = useNavigate(); const can = useCan();
   const [date, setDate] = useState<string | null>(null);
@@ -160,7 +165,7 @@ export function POSTechAppointmentsScreen() {
               <td><span className="fk-li-t">{a.customer ?? '—'}{a.vip ? ' · ' + tx('tm.vip') : ''}</span><span className="fk-li-s">{a.phone ?? ''}{a.matchedVia ? ` · ${tx('tm.via.' + a.matchedVia)}` : ''}</span></td>
               <td>{a.services.join(', ') || '—'}<span className="fk-li-s">{a.online ? tx('tm.onlineBooked') : tx('tm.inSalonBooked')}</span></td>
               <td>{a.technician ?? (a.anyTechnician ? tx('tm.anyTech') : '—')}</td>
-              <td>{a.date} · {hm12(a.start)}<span className="fk-li-s">{tx('cg.min', { n: nf(a.minutes) })}</span></td>
+              <td title={exactTime(a)} data-testid="appt-when">{a.date} · {hm12(a.start)}<span className="fk-li-s">{tx('cg.min', { n: nf(a.minutes) })}</span></td>
               <td><span className={'fk-chip ' + (TONE[a.status] ?? 'mut')}>{apptStatus(a.status)}</span>{a.conflict ? <span className="fk-chip bad" data-testid="conflict-chip">{tx('pos.conflict')}</span> : null}</td>
               <td className="fn-acts" onClick={(e) => e.stopPropagation()}><button type="button" className="fk-btn ghost sm" onClick={() => openAppt(a.appointmentId)} data-testid="appt-details">{tx('pos.details')}</button></td>
             </tr>)}</tbody></table>}

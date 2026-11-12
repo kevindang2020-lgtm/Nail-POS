@@ -215,3 +215,28 @@ describe('BUILD_PLAN Phase 5 — refunding services on a discounted ticket', () 
     expect(screen.queryByText(/cancel/i)).toBeNull();
   });
 });
+
+describe('TicketRefundPanel — smart duplicate warning (REFUNDS & VOIDS extras #03)', () => {
+  it('an earlier equal refund on the ticket is named before confirming; the Refund button stays available (warning, not block)', async () => {
+    const at = new Date(Date.now() - 5 * 60_000).toISOString();
+    refundPreview.mockImplementation(async (_t: string, cents: number) => cents === 1 ? preview(1, [['pc', 'card', 1]])
+      : { ...preview(cents, [['pk', 'cash', cents]]), earlierRefundCount: 1, possibleDuplicates: [{ at, amountCents: cents, methods: ['cash'], refundPaymentIds: ['r1'], sameTenders: true }] });
+    render(<TicketRefundPanel ticketId="t1" onClose={() => {}} />);
+    await screen.findByText('This ticket can still return $100.00.');
+    fireEvent.change(screen.getByLabelText('Refund amount'), { target: { value: '20' } });
+    fireEvent.click(screen.getByText('Preview split'));
+    const w = await screen.findByTestId('refund-duplicate-warning');
+    expect(w.textContent).toContain('Possible duplicate refund.');
+    expect(w.textContent).toContain('$20.00 was already refunded on this ticket to the same tenders 5 min ago.');
+    fireEvent.change(screen.getByLabelText('Refund reason'), { target: { value: 'Second visit fix' } });
+    expect(screen.getByText('Refund $20.00').closest('button')!.disabled).toBe(false);
+    expect(refundTicket).not.toHaveBeenCalled();
+  });
+  it('no earlier equal refund → no warning', async () => {
+    render(<TicketRefundPanel ticketId="t1" onClose={() => {}} />);
+    await screen.findByText('This ticket can still return $100.00.');
+    fireEvent.click(screen.getByText('Preview split'));
+    await screen.findByText('Card: $100.00');
+    expect(screen.queryByTestId('refund-duplicate-warning')).toBeNull();
+  });
+});

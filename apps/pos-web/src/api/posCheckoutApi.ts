@@ -110,6 +110,9 @@ export interface TicketRefundPreview {
   tenders: { paymentId: string; method: string; amountCents: number; refundedCents: number; remainingCents: number; giftCardLast4?: string }[];
   /** BUILD_PLAN Phase 5: each service and what it was actually paid — after its discounts, with the tax on that (a service refund returns THAT) */
   lines?: { serviceLineId: string; serviceName: string; priceCents: number; netCents: number; taxCents?: number; paidCents?: number }[];
+  /** REFUNDS & VOIDS extras #03: earlier refunds on this ticket of the SAME amount (a warning — a retry is blocked server-side) */
+  earlierRefundCount?: number;
+  possibleDuplicates?: { at: string; amountCents: number; methods: string[]; refundPaymentIds: string[]; sameTenders: boolean }[];
 }
 export interface UnsettledRefunds {
   ticketId: string;

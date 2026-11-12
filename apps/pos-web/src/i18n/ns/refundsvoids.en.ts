@@ -171,4 +171,8 @@ export const REFUNDSVOIDS_EN = {
   'rv.disc.keptAmount': 'Kept: an amount refund with no services selected keeps the discount (the visit happened).',
   'rv.disc.placeBack': 'Its use, budget and code come back.',
   'rv.disc.na': 'Discount impact could not be shown — the refund still follows the salon’s policy.',
+  'rv.dup.title': 'Possible duplicate refund.',
+  'rv.dup.sameTenders': '{amount} was already refunded on this ticket to the same tenders {when}.',
+  'rv.dup.sameAmount': '{amount} was already refunded on this ticket {when}.',
+  'rv.dup.check': 'Check this is a new refund before you confirm.',
 };

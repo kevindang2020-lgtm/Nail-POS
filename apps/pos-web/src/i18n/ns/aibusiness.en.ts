@@ -535,4 +535,11 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzc.def.net_sales": "Net sales: gross sales minus discounts, refunds and voids; excludes tips and taxes.",
   "bzc.notProfit": "Revenue vs profit",
   "bzc.notProfitV": "This compares revenue (net sales), not profit — profit also subtracts expenses. Ask “Profit & expenses” for that.",
+  "bzx.a.confirmChange": "Confirm change",
+  "bzx.a.compareTitle": "Review the change",
+  "bzx.a.current": "Current",
+  "bzx.a.proposed": "Proposed",
+  "bzx.a.unchanged": "Unchanged",
+  "bzx.a.noChanges": "Nothing changed — there is nothing to save.",
+  "bzx.a.compareNote": "Nothing is saved until you confirm. The next evaluation uses the proposed values.",
 };

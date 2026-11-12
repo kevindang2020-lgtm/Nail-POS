@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { DeviceFleetCenter, DeviceFleetError } from './device-fleet-center';
+import { DeviceFleetCenter, DeviceFleetError, duplicateNameCount } from './device-fleet-center';
 
 const P = 'c8450000-0000-4000-8000-';
 const id = (n: number) => P + String(n).padStart(12, '0');
@@ -121,5 +121,21 @@ describe('device fleet — history, receipts and the check', () => {
     expect(c.overall).toBe('WARNING');
     expect(c.checks.find((x) => x.key === 'devices_reporting')).toMatchObject({ state: 'WARNING', count: 1 });
     expect(c.checks.find((x) => x.key === 'assignments_complete')).toMatchObject({ state: 'WARNING', count: 1 });
+  });
+  it('DF-09 duplicate identity (extras #06): same name in one branch is a WARNING with the count; nothing is merged', async () => {
+    const clean = await fc.check(ctx(), 'kiosk');
+    expect(clean.checks.find((x) => x.key === 'duplicate_names')).toMatchObject({ state: 'READY', count: 0 });
+    await q(sql`insert into go_checkin_devices (tenant_id, branch_id, device_name, device_type, checkin_slug, status, last_seen_at) values (${T}, ${B}, '  lobby  KIOSK ', 'kiosk', 'df-k5', 'active', now())`);
+    const before = (await q(sql`select count(*)::int n from go_checkin_devices where tenant_id = ${T}`))[0].n;
+    const c = await fc.check(ctx(), 'kiosk');
+    expect(c.checks.find((x) => x.key === 'duplicate_names')).toMatchObject({ state: 'WARNING', count: 2 });
+    expect((await q(sql`select count(*)::int n from go_checkin_devices where tenant_id = ${T}`))[0].n).toBe(before);   // read-only: both stay registered
+  });
+});
+
+describe('duplicateNameCount (pure)', () => {
+  it('counts only names shared inside the same branch; blank names are ignored', () => {
+    expect(duplicateNameCount([{ name: 'Front', branchId: 'b1' }, { name: 'front ', branchId: 'b1' }, { name: 'Front', branchId: 'b2' }, { name: '', branchId: 'b1' }, { name: '', branchId: 'b1' }] as any)).toBe(2);
+    expect(duplicateNameCount([{ name: 'A', branchId: 'b1' }, { name: 'B', branchId: 'b1' }] as any)).toBe(0);
   });
 });

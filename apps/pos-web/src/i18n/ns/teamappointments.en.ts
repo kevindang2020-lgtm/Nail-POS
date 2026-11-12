@@ -153,4 +153,5 @@ export const TEAMAPPOINTMENTS_EN = {
   'tm.noGap': 'No free gap left in this shift.',
   'tm.tipsV': 'tips {v}',
   'tm.commissionV': 'commission est. {v}',
+  'tm.exactTime': '{d} · scheduled {s} – {e} ({n} min)',
 };

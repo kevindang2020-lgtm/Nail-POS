@@ -536,4 +536,11 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzc.def.net_sales": "Doanh thu thuần: doanh thu gộp trừ giảm giá, hoàn tiền và hủy; không gồm tiền tip và thuế.", // DRAFT — Kevin reviews
   "bzc.notProfit": "Doanh thu và lợi nhuận", // DRAFT — Kevin reviews
   "bzc.notProfitV": "Đây là so sánh doanh thu (doanh thu thuần), không phải lợi nhuận — lợi nhuận còn trừ chi phí. Hãy hỏi “Lợi nhuận & chi phí” để xem.", // DRAFT — Kevin reviews
+  "bzx.a.confirmChange": "Xác nhận thay đổi", // DRAFT — Kevin reviews
+  "bzx.a.compareTitle": "Xem lại thay đổi", // DRAFT — Kevin reviews
+  "bzx.a.current": "Hiện tại", // DRAFT — Kevin reviews
+  "bzx.a.proposed": "Đề xuất", // DRAFT — Kevin reviews
+  "bzx.a.unchanged": "Không đổi", // DRAFT — Kevin reviews
+  "bzx.a.noChanges": "Không có gì thay đổi — không có gì để lưu.", // DRAFT — Kevin reviews
+  "bzx.a.compareNote": "Chưa lưu gì cho đến khi bạn xác nhận. Lần đánh giá tiếp theo dùng giá trị đề xuất.", // DRAFT — Kevin reviews
 };

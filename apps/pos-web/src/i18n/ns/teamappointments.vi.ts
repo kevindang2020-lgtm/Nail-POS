@@ -153,4 +153,5 @@ export const TEAMAPPOINTMENTS_VI = {
   'tm.noGap': 'Không còn khoảng trống nào trong ca này.',
   'tm.tipsV': 'tiền tip {v}',
   'tm.commissionV': 'hoa hồng ước tính {v}',
+  'tm.exactTime': '{d} · lịch hẹn {s} – {e} ({n} phút)', // DRAFT — Kevin reviews
 };

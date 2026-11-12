@@ -129,4 +129,8 @@ export const RETENTION2_EN = {
   'rt2.settingsConflict': 'Someone else changed these settings. The latest values are shown — check and save again.',
   'rt2.settingsFailed': 'The settings could not be saved.',
   'rt2.settingsSaved': 'Retention settings saved.',
+  'rt2.emptyAtRisk.explain': 'Every customer who has visited before came back within {d} days. Nothing needs a win-back text right now.',
+  'rt2.emptyAtRisk.go.approaching': 'View Approaching Risk ({n})',
+  'rt2.emptyAtRisk.go.never': 'View Never Visited ({n})',
+  'rt2.emptyAtRisk.go.recovered': 'View Recovered ({n})',
 };

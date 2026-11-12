@@ -171,4 +171,8 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.disc.keptAmount': 'Giữ nguyên: hoàn theo số tiền mà không chọn dịch vụ thì vẫn giữ giảm giá (khách đã sử dụng dịch vụ).', // DRAFT — Kevin reviews
   'rv.disc.placeBack': 'Lượt dùng, ngân sách và mã được trả lại.', // DRAFT — Kevin reviews
   'rv.disc.na': 'Không hiển thị được ảnh hưởng giảm giá — việc hoàn tiền vẫn theo chính sách của tiệm.', // DRAFT — Kevin reviews
+  'rv.dup.title': 'Có thể hoàn tiền trùng.', // DRAFT — Kevin reviews
+  'rv.dup.sameTenders': '{amount} đã được hoàn trên hóa đơn này về cùng phương thức {when}.', // DRAFT — Kevin reviews
+  'rv.dup.sameAmount': '{amount} đã được hoàn trên hóa đơn này {when}.', // DRAFT — Kevin reviews
+  'rv.dup.check': 'Hãy kiểm tra đây là lần hoàn tiền mới trước khi xác nhận.', // DRAFT — Kevin reviews
 };

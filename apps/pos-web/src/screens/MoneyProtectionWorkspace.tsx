@@ -130,9 +130,9 @@ function MpShell({ title, sub, tab, children, onChanged }: { title: string; sub:
 }
 
 /** the shared list frame: search · filters · presets + calendar · table · pager */
-function ListFrame({ testId, surface, f, set, period, setPer, today, searchPh, filters, list, err, onRetry, empty, children, total }: {
+function ListFrame({ testId, surface, f, set, period, setPer, today, searchPh, filters, list, err, onRetry, empty, children, total, staleAt }: {
   testId: string; surface: string; f: Record<string, any>; set: (x: Record<string, any>, keep?: boolean) => void; period: Period; setPer: (p: Period) => void; today?: string; searchPh: string;
-  filters: ReactNode; list: any; err: string | null; onRetry: () => void; empty: string; children: ReactNode; total?: number }) {
+  filters: ReactNode; list: any; err: string | null; onRetry: () => void; empty: string; children: ReactNode; total?: number; staleAt?: Date | null }) {
   const [draft, setDraft] = useState(f.q ?? '');
   const [cal, setCal] = useState(false);
   return (
@@ -152,7 +152,8 @@ function ListFrame({ testId, surface, f, set, period, setPer, today, searchPh, f
       </div>
       {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={today ?? deviceToday()}
         onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
-      {err ? <ErrorRetry message={err} onRetry={onRetry} /> : !list ? <div className="state">{t('mpx.loading')}</div> : !total ? <Empty title={empty} /> : children}
+      {staleAt ? <div className="fk-note warn" role="status" data-testid={`${testId}-stale`}><span>{t('mpx.stale.note', { t: fmtInZone(staleAt.toISOString(), { hour: 'numeric', minute: '2-digit' }) || '—' })}</span> <button type="button" className="btn ghost sm" data-testid={`${testId}-stale-retry`} onClick={onRetry}>{t('mpx.stale.retry')}</button></div> : null}
+      {err && !staleAt ? <ErrorRetry message={err} onRetry={onRetry} /> : !list ? <div className="state">{t('mpx.loading')}</div> : !total ? <Empty title={empty} /> : children}
       <div className="rvw-pager">
         <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(n) => set({ page: n }, true)} />
         <label className="rvw-f"><span>{t('mpx.rows')}</span><select data-testid="mpx-rows" value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
@@ -165,11 +166,17 @@ function useList<F extends Record<string, any>>(fetch: (q: Record<string, any>) 
   const [period, setPeriod] = useState<Period>({});
   const [list, setList] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); fetch({ ...f, ...period }).then(setList).catch((e) => setErr(mpErr(e))); }, [f, period, fetch]);
+  // MONEY PROTECTION ALERTS extras #15 (offline-safe): remember which query the shown list answered and when. A failed REFRESH
+  // of that same query keeps the last-known rows on screen, marked Stale with the time and a Retry — never a blank or a zero.
+  // A failed read for a DIFFERENT query (new filter / page) is an error: the old rows would not answer it.
+  const [ok, setOk] = useState<{ key: string; at: Date } | null>(null);
+  const qKey = JSON.stringify({ ...f, ...period });
+  const load = useCallback(() => { setErr(null); const k = JSON.stringify({ ...f, ...period }); fetch({ ...f, ...period }).then((d) => { setList(d); setOk({ key: k, at: new Date() }); }).catch((e) => setErr(mpErr(e))); }, [f, period, fetch]);
   useEffect(() => { load(); }, [load, tick]);
   const set = (x: Record<string, any>, keep = false) => setF((y) => ({ ...y, ...x, page: keep ? (x.page ?? y.page) : 1 }));
   const setPer = (p: Period) => { setPeriod(p); setF((y) => ({ ...y, page: 1 })); };
-  return { f, set, period, setPer, list, err, load };
+  const staleAt = err && list && ok && ok.key === qKey ? ok.at : null;
+  return { f, set, period, setPer, list, err, load, staleAt };
 }
 
 // ── Overview ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -233,7 +240,7 @@ export function MpAlerts() {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }} role="tablist">
         {GROUPS.map((g) => <button key={g} role="tab" aria-selected={L.f.status === g} className={'btn ghost' + (L.f.status === g ? ' on' : '')} data-testid={`mpx-grp-${g}`} onClick={() => L.set({ status: g })}>{t('mpx.grp.' + g)}</button>)}
       </div>
-      <ListFrame testId="mpx-alerts" surface="money-protection.alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
+      <ListFrame testId="mpx-alerts" surface="money-protection.alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} staleAt={L.staleAt} total={L.list?.total}
         searchPh={L.list?.customersVisible === false ? t('mpx.searchPhNoCustomer') : t('mpx.searchPh')} empty={alertsEmpty(L.f, L.period, L.list)}
         filters={<>
           <select data-testid="mpx-severity" aria-label={t('mpx.severityLabel')} value={L.f.severity} onChange={(e) => L.set({ severity: e.target.value })}>{SEVS.map((k) => <option key={k} value={k}>{t('mpx.sev.' + k)}</option>)}</select>
@@ -354,7 +361,7 @@ export function MpInvestigations() {
             onClick={() => L.set(k === 'high' ? { status: 'active', severity: 'HIGH' } : k === 'aging' ? { status: 'active', sort: 'oldest' } : { status: 'active', severity: 'all' })}>
             {t('mpx.wl.' + k)}: <b>{L.list.workload[k]}</b></button>))}
       </div> : null}
-      <ListFrame testId="mpx-invs" surface="money-protection.investigations" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
+      <ListFrame testId="mpx-invs" surface="money-protection.investigations" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} staleAt={L.staleAt} total={L.list?.total}
         searchPh={t('mpx.inv.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.inv.empty')}
         filters={<>
           <select data-testid="mpx-istatus" aria-label={t('mpx.statusLabel')} value={L.f.status} onChange={(e) => L.set({ status: e.target.value })}>{I_STATUS.map((k) => <option key={k} value={k}>{t('mpx.ist.' + k)}</option>)}</select>
@@ -428,6 +435,15 @@ function useRules(tick: number) {
 }
 function RuleState({ x }: { x: any }) {
   return !x.layerOn ? <span className="chip warn">{t('mpx.rules.layerOff')}</span> : <span className={'chip ' + (x.enabled ? 'ok' : 'warn')} data-testid="mpx-rule-state">{x.enabled ? t('mpx.rules.on') : t('mpx.rules.off')}</span>;
+}
+/** Money Protection Settings extras #02 — "Saved" is not "Effective": next to the saved On/Off, what detection is actually doing
+ *  with the rule (the server's `effective` flag: saved on AND its layer on). A saved-on rule that is not running is said in red
+ *  with why; nothing is claimed about a worker version (the server reports none). */
+function EffectiveChip({ x }: { x: any }) {
+  if (x.effective == null) return <span className="chip" data-testid="mpx-set-effective" data-state="unknown">{t('mpx.set.eff.unknown')}</span>;
+  if (x.effective) return <span className="chip ok" data-testid="mpx-set-effective" data-state="running">{t('mpx.set.eff.running')}</span>;
+  if (x.enabled) return <span className="chip bad" data-testid="mpx-set-effective" data-state="drift" title={t('mpx.set.eff.driftWhy')}>{t('mpx.set.eff.drift')}</span>;
+  return <span className="chip" data-testid="mpx-set-effective" data-state="off">{t('mpx.set.eff.off')}</span>;
 }
 export function MpRules() {
   const [tick, setTick] = useState(0);
@@ -509,11 +525,11 @@ export function MpSettings() {
         <section className="panel" style={{ padding: 12 }} data-testid="mpx-settings"><div className="p-h">{t('mpx.set.title')}</div>
           <div className="rvw-table-wrap mpx-set-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th>{t('mpx.sk.colEnabled')}</th><th>{t('mpx.sk.colSeverity')}</th><th>{t('mpx.rules.col.thresholds')}</th><th /></tr></thead><tbody>{r.rules.map((x: any) => (
             <tr key={x.id} data-testid="mpx-set-row"><td><b>{ruleName(x.id, x.name)}</b><div className="sub">{t('mpx.rules.default', { s: t('mpx.sev.' + x.defaultSeverity) })}</div></td>
-              <td><RuleState x={x} /></td><td><span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span></td>
+              <td><RuleState x={x} /> <EffectiveChip x={x} /></td><td><span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span></td>
               <td className="sub">{Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</td>
               <td className="mpx-acts">{r.canEdit ? <button className="btn ghost sm" data-testid="mpx-rule-edit" onClick={() => setEdit(x)}>{t('mpx.rules.edit')}</button> : null}</td></tr>))}</tbody></table></div>
         </section></>)}
-      <ListFrame testId="mpx-history" surface="money-protection.history" f={H.f} set={H.set} period={H.period} setPer={H.setPer} today={H.list?.period?.today} list={H.list} err={H.err} onRetry={H.load} total={H.list?.total}
+      <ListFrame testId="mpx-history" surface="money-protection.history" f={H.f} set={H.set} period={H.period} setPer={H.setPer} today={H.list?.period?.today} list={H.list} err={H.err} onRetry={H.load} staleAt={H.staleAt} total={H.list?.total}
         searchPh={t('mpx.set.history')} empty={t('mpx.set.noHistory')} filters={null}>
         <div className="p-h">{t('mpx.set.history')}</div>
         {(H.list?.items ?? []).map((h: any) => <div key={h.id} className="rvw-ev" data-testid="mpx-hist-row">
