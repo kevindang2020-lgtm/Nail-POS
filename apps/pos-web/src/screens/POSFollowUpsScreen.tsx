@@ -346,7 +346,7 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
   const ov = needOverride && reason.trim().length >= 5 ? { reason: reason.trim() } : null;
   const unsent = d && ['pending', 'pending_manager_approval', 'rejected'].includes(d.status);
   const retryable = d?.status === 'customer_not_available' && d.customerHasApp;
-  const blocked = cc ? cc.categories.some((c) => c === 'blocked' || c === 'already_sent' || c === 'missing_contact') : false;
+  const blocked = cc ? cc.categories.some((c) => c === 'blocked' || c === 'already_sent' || c === 'missing_contact' || c === 'opted_out') : false;
   const body = d ? (d.sentMessage ?? d.draft) : '';
   const footer = d ? (
     <div className="eod-dfoot">
@@ -379,7 +379,7 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
               <div className="s">{tx('fuq.cc.channel')} {tx('fuq.cc.cooldown', { h: String(cc.cooldownHours) })}</div>
               {cc.lastFollowUp ? <div className="s">{tx('fuq.cc.lastFollowUp', { time: when(cc.lastFollowUp.at, tz), tech: cc.lastFollowUp.technicianName })}</div> : null}
               {cc.otherChannel ? <div className="s" data-testid="fuq-d-other">{tx('fuq.cc.other', { channel: cc.otherChannel.channel, purpose: cc.otherChannel.purpose ?? '', time: when(cc.otherChannel.at, tz) })}</div> : null}
-              {cc.optOuts.map((o) => <div key={o.channel} className="s">{tx('fuq.cc.optOut', { channel: o.channel, time: when(o.at, tz) })}</div>)}
+              {cc.optOuts.map((o) => <div key={o.channel} className="s" data-testid={`fuq-d-optout-${o.channel}`}>{tx(o.channel === 'sms' ? 'fuq.cc.optOutSms' : 'fuq.cc.optOut', { channel: o.channel, time: when(o.at, tz) })}</div>)}
               <h4>{tx('fuq.pr.why')} · <span className={`fuq-pr pr-${cc.priority}`}>{tx(`fuq.pr.${cc.priority}`)}</span></h4>
               <ul className="fuq-reasons" data-testid="fuq-d-reasons">{cc.priorityReasons.length ? cc.priorityReasons.map((r, i) => <li key={i}>{reasonText(r, tz)}</li>) : <li>{tx('fuq.pr.none')}</li>}</ul>
               <div className="s">{tx('fuq.pr.note')}</div>

@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent } from '../../api/posRewardsNetworkApi';
+import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent, type RewardsNetBranchSplit } from '../../api/posRewardsNetworkApi';
 import { errorTextOf } from '../../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced } from '../../components/FitKit';
@@ -57,7 +57,7 @@ const ALERT_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'gold'> = { ok: 'gold',
 /** a <input type="datetime-local"> value (the device's clock, which at the desk is the salon's) → ISO */
 const localToIso = (v: string): string | null => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
-type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' };
+type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' };
 
 /** a server-paged list whose page size is however many rows fit right now */
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
@@ -207,7 +207,7 @@ export function RewardsNetworkPanel() {
         </FitPanel>
 
         <FitPanel testId="rn-wallet" title={tx('rn.wallet.title')} bodyRef={purFit.ref}
-          actions={<>{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
+          actions={<>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
           {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
@@ -265,6 +265,7 @@ export function RewardsNetworkPanel() {
 
       {dlg?.kind === 'custom' && st ? <CustomRuleDialog st={st} draft={dlg.draft} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'global' && st ? <UseGlobalDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
+      {dlg?.kind === 'branches' && w?.branchUsage ? <BranchUsageDialog u={w.branchUsage} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'levels' && st ? <LevelsDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'buy' && st ? <BuyTokensDialog st={st} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={(msg, id) => { done(msg); if (id) setDlg({ kind: 'purchase', id }); }} /> : null}
       {dlg?.kind === 'purchase' ? <PurchaseDialog id={dlg.id} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
@@ -572,6 +573,36 @@ function PurchaseDialog({ id, tokenValueCents, onClose }: { id: string; tokenVal
           </ul>
         ) : null}
       </>}
+    </FitDialog>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 13): ONE salon wallet, attributed per branch for this salon month — every number is the server's,
+ *  including whether the branch rows add up to the wallet and whether any earning was funded twice. Read-only. */
+function BranchUsageDialog({ u, tokenValueCents, onClose }: { u: RewardsNetBranchSplit; tokenValueCents: number; onClose: () => void }) {
+  return (
+    <FitDialog title={tx('rn.branches.title')} onClose={onClose} testId="rn-branches-dlg">
+      <p className="fk-hint">{tx('rn.branches.since', { date: whenTime(u.since) })}</p>
+      {u.rows.length === 0 ? <Empty title={tx('rn.branches.none')} /> : (
+        <table className="rn-table" data-testid="rn-branches-table">
+          <thead><tr><th>{tx('rn.branches.branch')}</th><th>{tx('rn.branches.earnings')}</th><th>{tx('rn.branches.points')}</th><th>{tx('rn.branches.funded')}</th><th>{tx('rn.branches.redeemed')}</th></tr></thead>
+          <tbody>
+            {u.rows.map((r) => (
+              <tr key={r.branchId ?? 'none'} data-testid="rn-branch-row">
+                <td>{r.branchName ?? (r.branchId ? '—' : tx('rn.branches.unassigned'))}</td>
+                <td>{fmtNumber(r.earnings)}</td>
+                <td>{pointsOf(r.pointTenths)}</td>
+                <td>{tokensOf(r.fundedCents, tokenValueCents)}</td>
+                <td>{tx('rn.branches.redeemedCell', { n: fmtNumber(r.redemptions), amount: fmtMoney(r.redeemedValueCents) })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className={'fk-hint' + (u.matchesWallet ? '' : ' warn')} data-testid="rn-branches-match">{u.matchesWallet
+        ? tx('rn.branches.matches', { n: tokensOf(u.totalFundedCents, tokenValueCents) })
+        : tx('rn.branches.mismatch', { a: tokensOf(u.totalFundedCents, tokenValueCents), b: tokensOf(u.walletUsedCents, tokenValueCents) })}</p>
+      <p className={'fk-hint' + (u.doubleFunded ? ' warn' : '')} data-testid="rn-branches-double">{u.doubleFunded ? tx('rn.branches.double', { n: fmtNumber(u.doubleFunded) }) : tx('rn.branches.noDouble')}</p>
     </FitDialog>
   );
 }

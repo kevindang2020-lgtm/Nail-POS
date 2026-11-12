@@ -216,6 +216,9 @@ export class FollowUpQueue {
     if (SENT.includes(r.status)) cats.push('already_sent');
     else if (r.source_cancelled) cats.push('source_cancelled');   // extras 05: the visit was voided / the line removed — never sendable
     if (r.customer_status === 'archived') cats.push('blocked');
+    // Kevin's decision (Nov 12 2026): an SMS STOP blocks follow-ups too — the send path refuses it (claimAndSendTask)
+    const smsStop = optOuts.some((o: any) => o.channel === 'sms');
+    if (smsStop && !SENT.includes(r.status)) cats.push('opted_out');
     if (!r.customer_app_user_id) cats.push('missing_contact');
     if (r.rc_at) cats.push('recently_contacted');
     if (r.status === 'pending_manager_approval' || (requireApproval && !r.approved_by_user_id && r.status === 'pending')) cats.push('needs_approval');
@@ -224,7 +227,7 @@ export class FollowUpQueue {
       taskId: r.id, category, categories: cats.length ? cats : ['eligible'], channel: 'customer_app', cooldownHours,
       lastFollowUp: lastFollowUp ? { taskId: lastFollowUp.id, at: iso(lastFollowUp.sent_at), technicianName: lastFollowUp.technician_name_snapshot } : null,
       otherChannel: lastMessage ? { channel: lastMessage.channel, purpose: lastMessage.purpose ?? null, status: lastMessage.status, at: iso(lastMessage.created_at), enforced: false } : null,
-      optOuts: optOuts.map((o: any) => ({ channel: o.channel, at: iso(o.opted_out_at) })),
+      optOuts: optOuts.map((o: any) => ({ channel: o.channel, at: iso(o.opted_out_at), enforced: o.channel === 'sms' })),
       marketing: { sms: r.marketing_sms_opt_in === true, email: r.marketing_email_opt_in === true },
       upcomingBooking: r.bk_d ?? null,
       priority: priorityOf((UNSENT.includes(r.status) && r.business_date < today ? 2 : 0) + (r.cn_at ? 2 : 0) - (r.bk_d ? 2 : 0) - (r.rc_at ? 1 : 0) - (n(r.un_n) >= 2 ? 1 : 0)),

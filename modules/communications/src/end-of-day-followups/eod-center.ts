@@ -105,7 +105,7 @@ export function summarizeCandidates(c: EodCandidate[]) {
 }
 
 // ── send ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-export type SendRefusal = 'not_found' | 'invalid_state' | 'expired' | 'customer_archived' | 'already_booked' | 'recently_contacted' | 'source_cancelled';
+export type SendRefusal = 'not_found' | 'invalid_state' | 'expired' | 'customer_archived' | 'already_booked' | 'recently_contacted' | 'source_cancelled' | 'sms_opted_out';
 /** extras FOLLOW-UP QUEUE 05: the visit a task was made for must still be what generation accepted — a paid / completed /
  *  closed ticket and a service line that was not removed. A voided / reopened / removed ticket or a removed line is a cancelled
  *  source: the task can never be sent (no manager override), and the contact check says why. */
@@ -141,8 +141,13 @@ export async function claimAndSendTask(db: Kysely<any>, outbox: OutboxWriter | n
     if (t.source_cancelled) return { outcome: 'refused', reason: 'source_cancelled' } as const;   // never overridable
     // one decision at a time per customer: two technicians' tasks for the same client cannot both pass the cooldown
     await sql`select pg_advisory_xact_lock(hashtextextended(${`eod:${a.tenantId}:${t.customer_id}`}, 0))`.execute(trx);
-    const cust = (await sql<any>`select status from customers where id = ${t.customer_id}::uuid and tenant_id = ${a.tenantId}::uuid`.execute(trx)).rows[0];
+    const cust = (await sql<any>`select status, normalized_phone from customers where id = ${t.customer_id}::uuid and tenant_id = ${a.tenantId}::uuid`.execute(trx)).rows[0];
     if (!cust || cust.status === 'archived') return { outcome: 'refused', reason: 'customer_archived' } as const;
+    // Kevin's decision (Nov 12 2026): a customer on the SMS opt-out list (texted STOP) gets no End-of-Day / follow-up message on
+    // ANY channel — checked at dispatch, inside the claim, and never overridable by staff (END-OF-DAY FOLLOW-UPS 07 / 11).
+    // Email opt-out is not part of that decision.
+    if (cust.normalized_phone && (await sql<{ x: number }>`select 1 as x from notification_opt_outs oo where oo.tenant_id = ${a.tenantId}::uuid and oo.channel = 'sms'
+        and oo.address = ${String(cust.normalized_phone)} limit 1`.execute(trx)).rows.length) return { outcome: 'refused', reason: 'sms_opted_out' } as const;
     if (!t.customer_app_user_id) {
       await transitionStatus(trx, FOLLOW_UP_TASK, { where: { tenant_id: a.tenantId, id: a.taskId }, to: 'customer_not_available', set: { updated_at: sql`now()` } });
       return { outcome: 'no_app' } as const;

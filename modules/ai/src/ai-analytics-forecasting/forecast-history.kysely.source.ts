@@ -53,3 +53,55 @@ export class ZeroFilledRevenueSource implements RevenueSeriesSource {
     return zeroFill(pts.filter((p) => p.date <= to), pts[0].date, to);
   }
 }
+
+// ── Extras (AI Analytics Forecasting 03): forecast-to-capacity inputs, read-only ─────────────────────────────────────────
+// Scheduled technician minutes per salon-local date: a date override (technician_shift_overrides) wins over the weekly
+// template (technician_schedules), the same precedence booking uses; lunch / override breaks are subtracted. Approved time off
+// and overnight carry-over are NOT subtracted (said on the screen). The minutes one appointment takes are the average booked
+// duration of this branch's non-cancelled appointments over the last 56 salon days. Nothing is written.
+export interface ForecastCapacityDay { date: string; scheduledMinutes: number; technicians: number }
+export interface ForecastCapacityInputs { days: ForecastCapacityDay[]; avgAppointmentMinutes: number | null; durationSample: number; durationWindowDays: number }
+const minutesOf = (t: unknown): number | null => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t ?? '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+const dowOf = (ymd: string) => new Date(ymd + 'T12:00:00Z').getUTCDay();
+/** working minutes of one override (DAY_OFF → 0; CUSTOM_SHIFT → its window minus its breaks; an overnight shift counts its full length) */
+export function overrideMinutes(o: { override_type: string; start_local_time: unknown; end_local_time: unknown; ends_next_day: boolean; breaks_json: unknown }): number {
+  if (o.override_type !== 'CUSTOM_SHIFT') return 0;
+  const s = minutesOf(o.start_local_time), e = minutesOf(o.end_local_time);
+  if (s == null || e == null) return 0;
+  const span = o.ends_next_day ? 1440 - s + e : e - s;
+  const breaks = (Array.isArray(o.breaks_json) ? o.breaks_json : []).reduce((a: number, b: { startLocalTime?: string; endLocalTime?: string }) => {
+    const bs = minutesOf(b?.startLocalTime), be = minutesOf(b?.endLocalTime);
+    return bs == null || be == null ? a : a + Math.max(0, be >= bs ? be - bs : 1440 - bs + be);
+  }, 0);
+  return Math.max(0, span - breaks);
+}
+export class ScheduleCapacitySource {
+  constructor(private readonly db: Kysely<DB>, private readonly now: () => Date = () => new Date()) {}
+  async getCapacity(ctx: AiForecastContext, dates: string[]): Promise<ForecastCapacityInputs> {
+    const WINDOW = 56;
+    if (!isUuid(ctx.branchId) || !dates.length) return { days: dates.map((d) => ({ date: d, scheduledMinutes: 0, technicians: 0 })), avgAppointmentMinutes: null, durationSample: 0, durationWindowDays: WINDOW };
+    const templ = (await sql<{ technician_id: string; day_of_week: number; minutes: number }>`select s.technician_id, s.day_of_week,
+        extract(epoch from (s.end_time - s.start_time)) / 60.0 - coalesce(extract(epoch from (s.lunch_end_time - s.lunch_start_time)) / 60.0, 0) as minutes
+      from technician_schedules s join technicians t on t.id = s.technician_id and t.tenant_id = s.tenant_id
+      where s.tenant_id = ${ctx.tenantId} and s.branch_id = ${ctx.branchId}::uuid and s.is_working = true and t.is_active = true and t.archived_at is null`.execute(this.db)).rows;
+    const sorted = [...dates].sort();
+    const ovr = (await sql<{ technician_id: string; d: string; override_type: string; start_local_time: unknown; end_local_time: unknown; ends_next_day: boolean; breaks_json: unknown }>`select o.technician_id, to_char(o.local_shift_date, 'YYYY-MM-DD') as d,
+        o.override_type, o.start_local_time, o.end_local_time, o.ends_next_day, o.breaks_json
+      from technician_shift_overrides o join technicians t on t.id = o.technician_id and t.tenant_id = o.tenant_id
+      where o.tenant_id = ${ctx.tenantId} and o.branch_id = ${ctx.branchId}::uuid and t.is_active = true and t.archived_at is null
+        and o.local_shift_date >= ${sorted[0]}::date and o.local_shift_date <= ${sorted[sorted.length - 1]}::date`.execute(this.db)).rows;
+    const days = dates.map((date) => {
+      const per = new Map<string, number>();
+      for (const r of templ) if (Number(r.day_of_week) === dowOf(date)) per.set(String(r.technician_id), (per.get(String(r.technician_id)) ?? 0) + Math.max(0, Number(r.minutes ?? 0)));
+      for (const o of ovr) if (o.d === date) per.set(String(o.technician_id), overrideMinutes(o));
+      const working = [...per.values()].filter((m) => m > 0);
+      return { date, scheduledMinutes: Math.round(working.reduce((a, m) => a + m, 0)), technicians: working.length };
+    });
+    const today = await salonToday(this.db, ctx, this.now());
+    const dur = (await sql<{ n: number; avg: number | null }>`select count(*)::int as n, avg(duration_minutes)::float8 as avg from pos_tech_appointments
+      where tenant_id = ${ctx.tenantId} and branch_id = ${ctx.branchId}::uuid and status <> 'cancelled' and duration_minutes > 0
+        and appt_date >= ${addDays(today, -WINDOW)}::date and appt_date < ${today}::date`.execute(this.db)).rows[0];
+    const n = Number(dur?.n ?? 0);
+    return { days, avgAppointmentMinutes: n > 0 && dur?.avg != null ? Math.round(Number(dur.avg)) : null, durationSample: n, durationWindowDays: WINDOW };
+  }
+}

@@ -25,6 +25,35 @@ export interface AppointmentForecast {
   horizon: { step: number; date: string; point: number; lower: number; upper: number }[];
   generatedAt: string;
   disclaimer: string;
+  /** Extras (AI Analytics Forecasting 03): forecast workload vs scheduled technician hours — advisory only, never a shift */
+  capacity?: ForecastCapacityGap;
+}
+
+/** the capacity reader the gap needs (ScheduleCapacitySource in prod) */
+export interface ForecastCapacityReader {
+  getCapacity(ctx: AiForecastContext, dates: string[]): Promise<{ days: { date: string; scheduledMinutes: number; technicians: number }[]; avgAppointmentMinutes: number | null; durationSample: number; durationWindowDays: number }>;
+}
+export type CapacityState = 'short' | 'tight' | 'ok' | 'no_schedule' | 'unknown';
+export interface ForecastCapacityGap {
+  avgAppointmentMinutes: number | null; durationSample: number; durationWindowDays: number;
+  days: { date: string; expectedMinutes: number | null; lowerMinutes: number | null; upperMinutes: number | null; scheduledMinutes: number; technicians: number; gapMinutes: number | null; state: CapacityState }[];
+  basis: string;
+}
+/** PURE: workload = forecast appointments × the average booked minutes; gap = scheduled − expected (negative = short).
+ *  short: the expected workload is above the scheduled hours; tight: only the upper 80% bound is; no_schedule: work expected,
+ *  nobody scheduled; unknown: no duration history to convert appointments into minutes. */
+export function capacityGap(horizon: { date: string; point: number; lower: number; upper: number }[], cap: Awaited<ReturnType<ForecastCapacityReader['getCapacity']>>): ForecastCapacityGap {
+  const by = new Map(cap.days.map((d) => [d.date, d]));
+  const avg = cap.avgAppointmentMinutes;
+  const days = horizon.map((h) => {
+    const c = by.get(h.date) ?? { scheduledMinutes: 0, technicians: 0 };
+    if (avg == null) return { date: h.date, expectedMinutes: null, lowerMinutes: null, upperMinutes: null, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: null, state: 'unknown' as CapacityState };
+    const exp = Math.round(Math.max(0, h.point) * avg), lo = Math.round(Math.max(0, h.lower) * avg), hi = Math.round(Math.max(0, h.upper) * avg);
+    const state: CapacityState = c.scheduledMinutes === 0 ? (exp > 0 ? 'no_schedule' : 'ok') : exp > c.scheduledMinutes ? 'short' : hi > c.scheduledMinutes ? 'tight' : 'ok';
+    return { date: h.date, expectedMinutes: exp, lowerMinutes: lo, upperMinutes: hi, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: c.scheduledMinutes - exp, state };
+  });
+  return { avgAppointmentMinutes: avg, durationSample: cap.durationSample, durationWindowDays: cap.durationWindowDays, days,
+    basis: 'Workload = forecast appointments x average booked minutes. Scheduled = weekly schedule with date overrides, breaks removed; time off is not subtracted. Advisory only: no shift is created or changed.' };
 }
 
 function addDays(iso: string, n: number): string {
@@ -34,7 +63,7 @@ function addDays(iso: string, n: number): string {
 }
 
 export class AppointmentForecastService {
-  constructor(private readonly source: AppointmentSeriesSource) {}
+  constructor(private readonly source: AppointmentSeriesSource, private readonly capacityReader: ForecastCapacityReader | null = null) {}
 
   /** AI Analytics & Forecasting guide (Nov 2026): how much history the model has — the SAME series the forecast uses, so the
    *  "have N of 14 days" the screen shows is the number the forecast was refused on. Read-only. */
@@ -94,6 +123,7 @@ export class AppointmentForecastService {
       horizon,
       generatedAt: new Date().toISOString(),
       disclaimer: 'Forecast is decision-support, not a guaranteed outcome. Ranges are 80% prediction intervals.',
+      ...(this.capacityReader ? { capacity: capacityGap(horizon, await this.capacityReader.getCapacity(ctx, horizon.map((h) => h.date))) } : {}),
     };
   }
 }

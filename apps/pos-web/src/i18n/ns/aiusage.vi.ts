@@ -246,4 +246,12 @@ export const AIUSAGE_VI = {
   'aiu.why.pay.paid': 'đã thanh toán', // DRAFT — Kevin reviews
   'aiu.why.pay.failed': 'thất bại', // DRAFT — Kevin reviews
   'aiu.why.pay.pending': 'đang chờ', // DRAFT — Kevin reviews
+  'aiu.proj.title': 'Ước tính:', // DRAFT — Kevin reviews
+  'aiu.proj.tooEarly': 'kỳ này mới qua {pct}% — còn quá sớm để ước tính cuối kỳ.', // DRAFT — Kevin reviews
+  'aiu.proj.fits': 'theo mức dùng kỳ này, bạn sẽ dùng khoảng {n} trên {limit} (đã qua {pct}% kỳ) — gói vẫn đủ.', // DRAFT — Kevin reviews
+  'aiu.proj.close': 'theo mức dùng kỳ này, bạn sẽ dùng khoảng {n} trên {limit} (đã qua {pct}% kỳ) — gần hết mức của gói.', // DRAFT — Kevin reviews
+  'aiu.proj.likely_over': 'theo mức dùng kỳ này, bạn sẽ dùng khoảng {n} trên {limit} (đã qua {pct}% kỳ) — vượt mức gói bao gồm.', // DRAFT — Kevin reviews
+  'aiu.proj.overage': 'Đang bật tính phí vượt mức: thêm khoảng {amount} theo giá vượt mức.', // DRAFT — Kevin reviews
+  'aiu.proj.blocked': 'Đang tắt tính phí vượt mức: AI sẽ dừng khi tới giới hạn cho đến kỳ sau.', // DRAFT — Kevin reviews
+  'aiu.proj.note': 'Chỉ là ước tính từ mức dùng đã đếm trong kỳ này — không mua hay thay đổi gì.', // DRAFT — Kevin reviews
 };

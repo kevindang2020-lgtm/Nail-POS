@@ -77,6 +77,29 @@ describe('POSAiUsageScreen', () => {
     expect(w.textContent).not.toMatch(/trial_expired|trialing/);           // codes never raw
     expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
   });
+  it('Extras · AI Usage Limits 03: the Usage tab shows the server\'s pace estimate in words — labelled an estimate, nothing bought', async () => {
+    const withProj = (proj: unknown, overage = false) => card({ usage: { used: 400, limit: 500, unit: 'generations', percent: 80, level: 'warn_80', periodStart: '2026-10-20T00:00:00Z', periodEnd: '2026-11-20T00:00:00Z', remaining: 100, projection: proj },
+      overage: { enabled: overage, unitPriceCents: 8, estimatedCents: 0 } });
+    const show = async (c: unknown) => {
+      api.detail.mockImplementation(async () => ({ package: c, usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
+        settings: { globallyEnabled: true, disabledReason: null, storedStatus: 'active', usageLimit: 500, overageEnabled: false, limitSource: 'subscription' }, canManage: true, canSeeBilling: true }));
+      render(<POSAiUsageScreen />);
+      fireEvent.click((await screen.findAllByTestId('aiu-card'))[0]!);
+      const d = await screen.findByTestId('aiu-detail');
+      fireEvent.click(within(d).getByTestId('aiu-tab-usage'));
+      return within(d).findByTestId('aiu-projection');
+    };
+    const p1 = await show(withProj({ basis: 'period_pace', elapsedShare: 0.5, projectedUsed: 800, verdict: 'likely_over', projectedOverageCents: null, atLimit: 'blocked' }));
+    expect(p1).toHaveTextContent('Estimate: at this period\'s pace you would use about 800 generations of 500 generations (50% of the period gone) — more than the plan includes. Overage is off: AI calls stop at the limit until the next period.');
+    expect(p1).toHaveTextContent('nothing is bought or changed');
+    cleanup();
+    const p2 = await show(withProj({ basis: 'period_pace', elapsedShare: 0.5, projectedUsed: 800, verdict: 'likely_over', projectedOverageCents: 2400, atLimit: 'overage' }, true));
+    expect(p2).toHaveTextContent('Overage is on: about $24.00 extra at the overage price.');
+    cleanup();
+    const p3 = await show(withProj({ basis: 'period_pace', elapsedShare: 0.1, projectedUsed: null, verdict: 'too_early', projectedOverageCents: null, atLimit: 'blocked' }));
+    expect(p3).toHaveTextContent('only 10% of this period has passed — too early to estimate');
+    expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
+  });
   it('the cost KPI is restricted without the billing role, and the pager asks for page 2', async () => {
     api.summary.mockResolvedValue({ ...SUM, cost: { visible: false }, canSeeBilling: false });
     render(<POSAiUsageScreen />);
@@ -101,6 +124,16 @@ describe('POSAiUsageScreen', () => {
     expect(screen.getByTestId('chk-duplicate_usage_events')).toHaveTextContent(/One request counted twice · 2.*nothing was removed or refunded/);
     expect(screen.getByTestId('chk-metering_stale')).toHaveTextContent(/Not enough data.*No live package/);
     expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
+  });
+  it('Extras · AI Usage Limits 04: the check names an assistant paid on its own and inside a paid plan, for review — nothing is cancelled', async () => {
+    api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [
+      { key: 'bundle_overlap', state: 'WARNING', count: 1, detail: { overlaps: [{ code: 'ai_fraud_money_protection', name: 'AI Fraud & Money Protection', plans: ['Money & Owner'], paidOnItsOwnSince: '2026-10-01T15:00:00Z' }] } }] });
+    render(<POSAiUsageScreen />);
+    fireEvent.click(await screen.findByTestId('aiu-check'));
+    const c = await screen.findByTestId('chk-bundle_overlap');
+    expect(c).toHaveTextContent(/Paid twice for the same assistant · 1.*nothing was cancelled or refunded/);
+    expect(within(c).getByTestId('chk-bundle-overlaps')).toHaveTextContent('AI Fraud & Money ProtectionIn plan: Money & Owner · paid on its own since Oct 1, 2026');
+    expect(api.cancel).not.toHaveBeenCalled();
   });
   it('AI Plans tabs (SUNMI §07): ?view=subscriptions lists active subscriptions; ?view=billing opens cost & invoices — only for a role that may see cost', async () => {
     const { unmount } = render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=subscriptions']}><Screen /></MemoryRouter>);

@@ -147,13 +147,33 @@ describe('Smart Priority + Duplicate Message Protection (guide §10, §11)', () 
     expect(bk.priority).toBe('low'); expect(bk.upcomingBooking).toBe('2026-12-01');
     expect([priorityOf(2), priorityOf(1), priorityOf(0), priorityOf(-1)]).toEqual(['high', 'normal', 'normal', 'low']);
   });
-  it('another channel within the window is SHOWN (not enforced); an SMS STOP is listed', async () => {
+  it('another channel within the window is SHOWN (not enforced); an SMS STOP is now ENFORCED (Kevin, Nov 12 2026): Opted Out, the send is refused at dispatch and audited, no override', async () => {
     await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, purpose, created_at) values ($1,'sms','+16095551026','Promo','${C(26)}','sent','marketing', now() - interval '1 hour')`, [T]);
     await q(`insert into notification_opt_outs (tenant_id, channel, address, reason) values ($1,'sms','+16095551026','STOP')`, [T]);
     const t26 = await task(26);
     const r = (await fq.contactCheck(T, B, TODAY, t26, 24, false))!;
-    expect(r.otherChannel).toMatchObject({ channel: 'sms', enforced: false }); expect(r.optOuts.map((o) => o.channel)).toEqual(['sms']);
-    expect(r.category).toBe('eligible');
+    expect(r.otherChannel).toMatchObject({ channel: 'sms', enforced: false });
+    expect(r.optOuts).toEqual([expect.objectContaining({ channel: 'sms', enforced: true })]);
+    expect(r.category).toBe('opted_out');
+    // extras END-OF-DAY FOLLOW-UPS 07 / 11: the in-app follow-up is refused at dispatch — even with a manager's written override
+    const mgr = { tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: ['customers.edit'] };
+    const code = async (p: Promise<unknown>) => { try { await p; return 'ok'; } catch (e: any) { return e?.apiCode ?? String(e?.message); } };
+    expect(await code(svc.managerSend(mgr as any, t26))).toBe('FOLLOWUP_STATE_INVALID');
+    expect(await code(svc.managerSend(mgr as any, t26, undefined, { reason: 'Customer asked us to text her anyway' }))).toBe('FOLLOWUP_STATE_INVALID');
+    expect((await q(`select status, sent_at from service_follow_up_tasks where id = $1`, [t26]))[0]).toMatchObject({ status: 'pending', sent_at: null });
+    expect((await q(`select count(*)::int n from customer_notifications where tenant_id = $1 and reference = $2`, [T, t26]))[0].n).toBe(0);
+    const audits = await q(`select metadata_json as m from audit_logs where tenant_id = $1 and action_type = 'service_follow_up_send_refused' and entity_id = $2`, [T, t26]);
+    expect(audits.map((a: any) => (typeof a.m === 'string' ? JSON.parse(a.m) : a.m).reason)).toEqual(['sms_opted_out', 'sms_opted_out']);
+    // the opt-out is checked at dispatch, not remembered: once the STOP is lifted (START), the same task sends
+    await q(`delete from notification_opt_outs where tenant_id = $1 and channel = 'sms' and address = '+16095551026'`, [T]);
+    expect((await svc.managerSend(mgr as any, t26)).status).toBe('sent');
+  });
+  it('an EMAIL unsubscribe alone does not block the follow-up (not part of the decision)', async () => {
+    await q(`insert into notification_opt_outs (tenant_id, channel, address, reason) values ($1,'email','c28@fuq.test','unsubscribe')`, [T]);
+    const t28 = await task(28);
+    const r = (await fq.contactCheck(T, B, TODAY, t28, 0, false))!;
+    expect(r.optOuts).toEqual([expect.objectContaining({ channel: 'email', enforced: false })]);
+    expect(r.categories).not.toContain('opted_out');
   });
 });
 

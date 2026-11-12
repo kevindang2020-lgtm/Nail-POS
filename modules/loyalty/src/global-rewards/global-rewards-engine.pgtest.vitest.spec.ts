@@ -3,7 +3,6 @@
 // Salons: A (global), B (custom), C (global, short wallet). One verified, opted-in customer identity linked to all
 // three; one unverified identity (phone only matched, never proven) that must never earn.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { GlobalRewardsRepository, type GrCtx } from './global-rewards.repository';
 import { earnForTicket, reverseEarnForRefund, TenantMismatchError } from './rewards-earn';
@@ -214,6 +213,22 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
     expect(await wallet(TA)).toBe(9740 - 25);
     expect((await q(`select count(*)::int as n from token_wallet_ledger where tenant_id = $1 and entry_type = 'earn_allocation'`, [TA]))[0].n).toBe(5);
   });
+  it('extras GLOBAL LOYALTY REWARDS 13: one wallet, truthful per-branch earning attribution that adds up to the wallet; no double funding', async () => {
+    const BA2 = id('b7');
+    await q(`insert into branches (id, tenant_id, name, timezone) values ($1, $2, 'A North', 'America/New_York')`, [BA2, TA]);
+    expect((await earn(TA, await paidTicket(TA, BA2, custOf[TA], 2000))).status).toBe('EARNED');   // $20 → 2 points, 0.20 tokens from the ONE wallet
+    const w: any = await repo.walletSummary(TA);
+    const u = w.branchUsage;
+    expect(u.rows.map((r: any) => [r.branchId, r.earnings, r.pointTenths, r.fundedCents])).toEqual([[BA, 5, 285, 285], [BA2, 1, 20, 20]]);
+    expect(u.rows[1].branchName).toBe('A North');
+    expect(u.totalFundedCents).toBe(305);
+    expect(u.walletUsedCents).toBe(w.usedThisMonthCents);
+    expect(u.matchesWallet).toBe(true);
+    expect(u.doubleFunded).toBe(0);
+    expect(await wallet(TA)).toBe(9740 - 25 - 20);   // reading it moved nothing
+    // a wallet figure the branch rows do not add up to is said, not hidden
+    expect((await repo.branchUsage(TA, u.since, 999)).matchesWallet).toBe(false);
+  });
   it('Nov 3 audit — the rewards liability is the platform\'s on every line (earn used to tag it to the salon, redeem did not)', async () => {
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability' and tenant_id is not null`))[0].n)).toBe(0);
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability'`))[0].n)).toBeGreaterThan(0);
@@ -223,7 +238,7 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
     const before = await points();
     const r = await earn(TB, await paidTicket(TB, BB, custOf[TB], 10000));
     expect(r).toMatchObject({ status: 'EARNED', pointTenths: 200, backingCents: 200, ruleSource: 'TENANT_OVERRIDE' });
-    expect(await wallet(TB)).toBe(800); expect(await wallet(TA)).toBe(9715); expect(await points()).toBe(before + 200);
+    expect(await wallet(TB)).toBe(800); expect(await wallet(TA)).toBe(9695); expect(await points()).toBe(before + 200);
   });
   it('T09 custom needs 2.00 but B has 1.00: blocked — no fallback to the cheaper global rate, no partial points, owner alerted', async () => {
     await earn(TB, await paidTicket(TB, BB, custOf[TB], 30000));   // uses 6.00 → 2.00 left

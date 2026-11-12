@@ -310,6 +310,17 @@ describe('LoyaltyRules §8.2 — T13 exactly as written', () => {
     expect(Number((await q(`select available_cents from tenant_token_wallets where tenant_id = $1`, [TA]))[0].available_cents)).toBe(walletA0);
     expect((await q(`select count(*)::int n from token_wallet_ledger where tenant_id = $1`, [TA]))[0].n).toBe(ledA0);
     expect(await unbalanced()).toBe(0);
+    // extras Global Loyalty Rewards 02 (Money Flow Explorer): the redemption traces to the token-backed earning at C, the hold on
+    // A's ticket, A's payable (no payout yet) and its journal entries — read-only, stable references, no customer identity
+    const { lineage } = await import('./rewards-books-check');
+    const ln: any = await lineage(db, h.redemptionId);
+    expect(ln.redemption).toMatchObject({ id: h.redemptionId, redeemingSalonId: TA, ticketId: t, valueCents: 200, status: 'CONFIRMED_REDEEMED' });
+    expect(ln.funding.find((f: any) => f.earningSalonId === TC)).toMatchObject({ pointTenths: 200, backingCents: 200, ruleSource: 'TENANT_OVERRIDE' });
+    expect(ln.payable).toMatchObject({ status: 'ACCRUED_OWED', amountCents: 200, adjustedCents: 0 });
+    expect(ln.payouts).toEqual([]);
+    expect(ln.journal.length).toBeGreaterThan(0);
+    expect(ln.journal.every((j: any) => j.source.startsWith('reward_redemptions:' + h.redemptionId))).toBe(true);
+    expect(JSON.stringify(ln)).not.toContain(IDV);   // the customer's identity id never leaves
   });
 });
 

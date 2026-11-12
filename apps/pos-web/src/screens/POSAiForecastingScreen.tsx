@@ -81,6 +81,53 @@ function forecastTrendText(horizon: any[], fmt: (n: number) => string): string |
     lo: fmt(Math.min(...horizon.map(lo))), hi: fmt(Math.max(...horizon.map(hi))) });
 }
 
+// Extras (AI Analytics Forecasting 03): forecast workload vs scheduled technician hours, from the server's own answer (capacityGap).
+// Read-only and advisory: the only action is a link to the Scheduling Optimizer; no shift is created or changed here.
+const CAP_COLOR: Record<string, string> = { short: '#B85B4D', tight: '#C6772E', no_schedule: '#B85B4D', ok: 'var(--muted)', unknown: 'var(--muted)' };
+const hrs = (m: number | null | undefined) => (m == null ? '—' : tx('growth.aiForecast.cap.hours', { h: fmtNumber(Math.round(m / 6) / 10) }));
+function CapacityGapPanel({ cap }: { cap: any }) {
+  const days: any[] = Array.isArray(cap?.days) ? cap.days : [];
+  if (!days.length) return null;
+  const max = Math.max(1, ...days.map((d) => Math.max(d.upperMinutes ?? 0, d.scheduledMinutes ?? 0)));
+  const shortDays = days.filter((d) => d.state === 'short' || d.state === 'no_schedule').length;
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="fc-cap">
+      <div className="p-h">{tx('growth.aiForecast.cap.title')}</div>
+      <div className="sub" data-testid="fc-cap-basis">{cap.avgAppointmentMinutes == null ? tx('growth.aiForecast.cap.noDuration')
+        : tx('growth.aiForecast.cap.avg', { m: fmtNumber(cap.avgAppointmentMinutes), n: fmtNumber(cap.durationSample), d: fmtNumber(cap.durationWindowDays) })}</div>
+      <div className="sub" data-testid="fc-cap-summary" style={{ marginTop: 4 }}>{tx('growth.aiForecast.cap.summary', { n: fmtNumber(shortDays), t: fmtNumber(days.length) })}</div>
+      <div role="img" aria-label={tx('growth.aiForecast.cap.chartLabel')} style={{ display: 'grid', gap: 4, marginTop: 8 }}>
+        {days.map((d) => (
+          <div key={d.date} style={{ display: 'grid', gridTemplateColumns: '92px 1fr', gap: 8, alignItems: 'center' }}>
+            <span className="sub">{d.date}</span>
+            <div style={{ display: 'grid', gap: 2 }}>
+              <div style={{ height: 8, width: `${((d.expectedMinutes ?? 0) / max) * 100}%`, background: 'var(--aps-orange)', borderRadius: 4 }} />
+              <div style={{ height: 8, width: `${((d.scheduledMinutes ?? 0) / max) * 100}%`, background: 'var(--muted)', opacity: 0.5, borderRadius: 4 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="sub" style={{ marginTop: 4 }}>{tx('growth.aiForecast.cap.legend')}</div>
+      <div className="overflow-x-auto w-full" style={{ marginTop: 8 }}><table className="tbl w-full min-w-max">
+        <thead><tr><th>{tx('pos.date')}</th><th>{tx('growth.aiForecast.cap.expected')}</th><th>{tx('growth.aiForecast.cap.scheduled')}</th><th>{tx('growth.aiForecast.cap.gap')}</th><th>{tx('growth.aiForecast.cap.status')}</th></tr></thead>
+        <tbody>
+          {days.map((d) => (
+            <tr key={d.date} data-testid="fc-cap-row">
+              <td>{d.date}</td>
+              <td>{hrs(d.expectedMinutes)}{d.expectedMinutes != null ? <div className="sub">{hrs(d.lowerMinutes)} – {hrs(d.upperMinutes)}</div> : null}</td>
+              <td>{hrs(d.scheduledMinutes)}<div className="sub">{tx('growth.aiForecast.cap.techs', { n: fmtNumber(d.technicians ?? 0) })}</div></td>
+              <td>{d.gapMinutes == null ? '—' : (d.gapMinutes < 0 ? '−' : '+') + hrs(Math.abs(d.gapMinutes))}</td>
+              <td><span className="chip" style={{ color: CAP_COLOR[d.state], borderColor: CAP_COLOR[d.state] }}>{tx('growth.aiForecast.cap.state.' + (CAP_COLOR[d.state] ? d.state : 'unknown'))}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <div className="sub" style={{ marginTop: 8 }}>{tx('growth.aiForecast.cap.note')}{' '}
+        <a className="link-44" href="/tenant/ai/scheduling-optimizer" data-testid="fc-cap-optimizer" style={{ color: 'var(--aps-orange)' }}>{tx('growth.aiForecast.cap.openOptimizer')}</a></div>
+    </section>
+  );
+}
+
 function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments' | 'revenue'; accuracy?: any }) {
   const isMoney = kind === 'revenue';
   const fmt = (n: number) => (isMoney ? money(n) : String(Math.round(n)));
@@ -136,6 +183,7 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
           </tbody>
         </table></div>
       </section>
+      {kind === 'appointments' && data.capacity ? <CapacityGapPanel cap={data.capacity} /> : null}
       <div className="sub" style={{ marginTop: 10 }}>{data.selectionReason} · {data.disclaimer}</div>
     </>
   );

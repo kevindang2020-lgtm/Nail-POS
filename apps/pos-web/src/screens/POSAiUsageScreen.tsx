@@ -27,7 +27,9 @@ type Level = 'ok' | 'warn_80' | 'critical_90' | 'exhausted_100' | 'unlimited' | 
 type Action = 'view_details' | 'start_trial' | 'cancel' | 'upgrade' | 'reactivate' | 'update_billing' | 'open_module';
 export type Card = { code: string; name: string; description: string; category: string; posArea: string | null; known: boolean; state: State; storedStatus: string | null; globallyEnabled: boolean; disabledReason: string | null;
   price: { cents: number; currency: string; period: 'monthly' | 'yearly'; monthlyEquivalentCents: number; source: 'subscription' | 'catalog_list' };
-  usage: { used: number | null; limit: number; unit: string; percent: number | null; level: Level; periodStart: string | null; periodEnd: string | null; remaining: number | null };
+  usage: { used: number | null; limit: number; unit: string; percent: number | null; level: Level; periodStart: string | null; periodEnd: string | null; remaining: number | null;
+    /** extras AI Usage Limits 03: the server's estimate of the period's end at this period's pace (never a purchase) */
+    projection?: { basis: string; elapsedShare: number; projectedUsed: number | null; verdict: 'too_early' | 'fits' | 'close' | 'likely_over'; projectedOverageCents: number | null; atLimit: 'overage' | 'blocked' } | null };
   overage: { enabled: boolean; unitPriceCents: number; estimatedCents: number };
   trial: { days: number; startsAt: string | null; endsAt: string | null; daysLeft: number | null; eligible: boolean };
   lastPaymentStatus: string | null; subscribedAt: string | null; cancelledAt: string | null; actions: Action[]; primaryAction: Action; openAlert: number | null };
@@ -143,7 +145,10 @@ export function POSAiUsageScreen() {
           <p className="sub">{tx('aiux.readOnly')}{health.reused ? ` ${tx('aiux.recent')}` : ''}</p>
           {health.checks.map((x: any) => <div key={x.key} className="rvw-check" data-testid={`chk-${x.key}`}>
             <div><span className={'chip ' + (x.state === 'FAILED' ? 'bad' : x.state === 'WARNING' ? 'warn' : x.state === 'PASSED' ? 'ok' : '')}>{tx('aiux.state.' + x.state)}</span> <b>{tx('aiux.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
-            <div className="sub">{tx('aiux.d.' + x.key + '.' + x.state)}</div></div>)}
+            <div className="sub">{tx('aiux.d.' + x.key + '.' + x.state)}</div>
+            {x.key === 'bundle_overlap' && Array.isArray(x.detail?.overlaps) && x.detail.overlaps.length ? <ul className="fk-list dense" data-testid="chk-bundle-overlaps">{x.detail.overlaps.map((o: any) => (
+              <li key={o.code} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{o.name}</span>
+                <span className="fk-li-s">{tx('aiux.overlap.plans', { plans: (o.plans ?? []).join(', ') || '—' })}{o.paidOnItsOwnSince ? ' · ' + tx('aiux.overlap.ownSince', { d: day(o.paidOnItsOwnSince) }) : ''}</span></div></li>))}</ul> : null}</div>)}
         </>}
       </FitDialog> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
@@ -305,6 +310,14 @@ export function DetailDialog({ code, onClose, onChanged, openHistory, openModule
             <dt>{tx('aiu.periodLabel')}</dt><dd>{c.usage.periodStart ? `${day(c.usage.periodStart)} – ${day(c.usage.periodEnd)}` : '—'}</dd>
             <dt>{tx('aiu.atLimit')}</dt><dd>{c.overage.enabled ? tx('aiu.overageOn', { p: fmtMoney(c.overage.unitPriceCents), u: unitLabel(c.usage.unit, 1) }) : tx('aiu.overageOff')}</dd></dl>
           <div className="fk-hint">{tx('aiu.countsRule')}</div>
+          {c.usage.projection ? (() => { const p = c.usage.projection; return (
+            <div className={'fk-hint' + (p.verdict === 'likely_over' ? ' warn' : '')} data-testid="aiu-projection">
+              <b>{tx('aiu.proj.title')}</b>{' '}
+              {p.verdict === 'too_early' || p.projectedUsed == null ? tx('aiu.proj.tooEarly', { pct: fmtNumber(Math.round(p.elapsedShare * 100)) })
+                : tx('aiu.proj.' + p.verdict, { n: unitLabel(c.usage.unit, p.projectedUsed), limit: unitLabel(c.usage.unit, c.usage.limit), pct: fmtNumber(Math.round(p.elapsedShare * 100)) })}
+              {p.verdict === 'likely_over' ? ' ' + (p.atLimit === 'overage' && p.projectedOverageCents != null ? tx('aiu.proj.overage', { amount: fmtMoney(p.projectedOverageCents) }) : tx('aiu.proj.blocked')) : ''}
+              {' '}{tx('aiu.proj.note')}
+            </div>); })() : null}
           {d.usage.daily.length ? <div className="aiu-days" data-testid="aiu-daily">{d.usage.daily.map((x: any) => <div key={x.date} title={`${x.date}: ${nf(x.used)}`}><i style={{ height: `${(x.used / max) * 100}%` }} /><span>{x.date.slice(8)}</span></div>)}</div> : null}
           {d.alerts.length ? <ul className="fk-list dense">{d.alerts.map((a: any, i: number) => <li key={i} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{a.threshold}% · {nf(a.used)} / {unitLabel(a.unit, a.limit)}</span><span className="fk-li-s">{when(a.at)}</span></div>
             {a.acknowledgedAt ? <span className="fk-chip mut">{tx('aiu.acked')}</span> : <span className="fk-chip warn">{tx('aiu.open')}</span>}</li>)}</ul> : null}

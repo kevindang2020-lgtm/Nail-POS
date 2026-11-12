@@ -22,7 +22,7 @@ export interface ContactCheck {
   taskId: string; category: ContactCategory; categories: ContactCategory[]; channel: string; cooldownHours: number;
   lastFollowUp: { taskId: string; at: string | null; technicianName: string } | null;
   otherChannel: { channel: string; purpose: string | null; status: string; at: string | null; enforced: boolean } | null;
-  optOuts: { channel: string; at: string | null }[]; marketing: { sms: boolean; email: boolean }; upcomingBooking: string | null;
+  optOuts: { channel: string; at: string | null; enforced?: boolean }[]; marketing: { sms: boolean; email: boolean }; upcomingBooking: string | null;
   priority: Priority; priorityReasons: FollowUpPriorityReason[]; priorityVersion: string;
 }
 export interface MissedCallRow { id: string; type: 'missed_call'; customerId: string | null; customerName: string | null; callerLast4: string | null; at: string | null; aiHandled: boolean; state: 'recovered' | 'replied' | 'awaiting_callback'; recoveredAppointmentId: string | null }

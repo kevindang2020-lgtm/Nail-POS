@@ -1085,4 +1085,23 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.community.access.none": "Chưa ai mở tệp này.", // DRAFT — Kevin reviews
   "growth.community.access.moderator": "Người kiểm duyệt của nền tảng, theo một hồ sơ kiểm duyệt", // DRAFT — Kevin reviews
   "growth.community.access.staff": "Một nhân viên của tiệm", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.title": "Khối lượng dự báo so với giờ làm của thợ", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.hours": "{h} giờ", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.avg": "Một lịch hẹn ≈ {m} phút (trung bình của {n} lịch hẹn đã đặt, {d} ngày qua).", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.noDuration": "Chưa có thời lượng lịch hẹn nào, nên chưa đổi dự báo ra giờ được (hiện —).", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.summary": "{n} trên {t} ngày có thể cần nhiều giờ thợ hơn lịch đã xếp.", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.chartLabel": "Khối lượng dự kiến (cam) và giờ thợ đã xếp lịch (xám) theo ngày", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.legend": "Cam: khối lượng dự kiến · Xám: giờ thợ đã xếp lịch", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.expected": "Khối lượng dự kiến", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.scheduled": "Giờ đã xếp lịch", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.gap": "Chênh lệch", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.status": "Trạng thái", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.techs": "{n} thợ", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.state.short": "Thiếu", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.state.tight": "Sát ở mức cao", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.state.ok": "Đủ", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.state.no_schedule": "Không ai được xếp lịch", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.state.unknown": "Chưa rõ", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.note": "Giờ đã xếp lịch = lịch tuần cộng thay đổi theo ngày, đã trừ giờ nghỉ; chưa trừ ngày nghỉ phép. Chỉ để tham khảo — không tạo hay đổi ca nào.", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.openOptimizer": "Mở Tối ưu lịch hẹn", // DRAFT — Kevin reviews
 };

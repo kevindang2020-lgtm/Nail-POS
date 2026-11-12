@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { AiUsageScreenRepository, AiUsageScreenError } from './ai-usage-screen.repository';
+import { AiUsageScreenRepository, AiUsageScreenError, usageProjection } from './ai-usage-screen.repository';
 import { displayStateOf } from './ai-usage-states';
 import { KyselyAiAccessRepo } from '../../../ai/src/ai/ai-access.kysely.repository';
 import { evaluateAiAccess } from '../../../ai/src/ai/ai-access-gate';
@@ -256,5 +256,28 @@ describe('Extras · AI Usage Limits 02 — effective entitlement explainer (read
     expect((await q(`select package_code, status from tenant_ai_subscriptions where tenant_id = $1 order by package_code`, [T])).rows).toEqual(before);   // nothing changed
     // another salon: its own row only
     expect((await repo.detail(ctx2, 'ai_customer_profile_assistant'))!.why).toMatchObject({ entitled: false, subscription: null, plans: [{ code: 'plan_client_growth', status: null }] });
+  });
+});
+
+describe('Extras · AI Usage Limits 03 — cost & quota advisor (estimate only)', () => {
+  it('each live metered card carries this period\'s pace estimate; nothing is bought or changed', async () => {
+    const by = Object.fromEntries((await repo.packages(ctx, { pageSize: 24 })).items.map((c) => [c.code, c]));
+    const m = by.ai_checkout_upsell_assistant!.usage.projection!;   // all 3000 used 10 days into a ~month (earlier tests cancel marketing)
+    expect(m).toMatchObject({ basis: 'period_pace', verdict: 'likely_over', atLimit: 'blocked', projectedOverageCents: null });
+    expect(m.projectedUsed!).toBeGreaterThan(8000); expect(m.projectedUsed!).toBeLessThan(9500);
+    expect(m.elapsedShare).toBeGreaterThan(0.3); expect(m.elapsedShare).toBeLessThan(0.36);
+    expect(by.ai_reception_copilot!.usage.projection).toBeNull();      // cancelled: no estimate
+    expect(by.ai_legacy_package_x!.usage.projection).toBeNull();       // no fixed limit: nothing to fit
+    expect(by.ai_review_reputation_assistant!.usage.projection?.verdict).toBe('too_early');   // a trial that just started: no number invented
+    const sub = (await q(`select status, usage_limit, overage_enabled from tenant_ai_subscriptions where tenant_id = $1 and package_code = 'ai_checkout_upsell_assistant'`, [T])).rows[0];
+    expect(sub).toMatchObject({ status: 'active', usage_limit: 3000, overage_enabled: false });
+  });
+  it('pure: too early → no number; fits / close / likely over; overage priced only when it is on', () => {
+    const start = new Date('2026-11-01T00:00:00Z'), end = new Date('2026-12-01T00:00:00Z');
+    expect(usageProjection(50, 1000, start, end, new Date('2026-11-03T00:00:00Z'), false, 2)).toMatchObject({ verdict: 'too_early', projectedUsed: null });
+    expect(usageProjection(300, 1000, start, end, new Date('2026-11-16T00:00:00Z'), false, 2)).toMatchObject({ verdict: 'fits', projectedUsed: 600, elapsedShare: 0.5 });
+    expect(usageProjection(475, 1000, start, end, new Date('2026-11-16T00:00:00Z'), false, 2)).toMatchObject({ verdict: 'close', projectedUsed: 950 });
+    expect(usageProjection(600, 1000, start, end, new Date('2026-11-16T00:00:00Z'), true, 2)).toMatchObject({ verdict: 'likely_over', projectedUsed: 1200, projectedOverageCents: 400, atLimit: 'overage' });
+    expect(usageProjection(600, 0, start, end, new Date('2026-11-16T00:00:00Z'), true, 2)).toBeNull();
   });
 });

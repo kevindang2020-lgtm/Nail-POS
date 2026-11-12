@@ -49,11 +49,30 @@ export interface PackageCard {
   code: string; name: string; description: string; category: string; posArea: string | null; known: boolean; sortOrder: number;
   state: DisplayState; storedStatus: string | null; globallyEnabled: boolean; disabledReason: string | null;
   price: { cents: number; currency: string; period: 'monthly' | 'yearly'; monthlyEquivalentCents: number; source: 'subscription' | 'catalog_list' };
-  usage: { used: number | null; limit: number; unit: string; percent: number | null; level: UsageLevel; periodStart: string | null; periodEnd: string | null; remaining: number | null };
+  usage: { used: number | null; limit: number; unit: string; percent: number | null; level: UsageLevel; periodStart: string | null; periodEnd: string | null; remaining: number | null;
+    /** extras AI Usage Limits 03: an ESTIMATE of the period's end from this period's pace — never a purchase, never a limit change */
+    projection?: UsageProjection | null };
   overage: { enabled: boolean; unitPriceCents: number; estimatedCents: number };
   trial: { days: number; startsAt: string | null; endsAt: string | null; daysLeft: number | null; eligible: boolean };
   lastPaymentStatus: string | null; subscribedAt: string | null; cancelledAt: string | null;
   actions: PackageAction[]; primaryAction: PackageAction; openAlert: number | null;
+}
+
+/** Extras (AI Usage Limits 03 · Smart Cost & Quota Advisor): at this period's pace (counted usage ÷ the share of the period gone),
+ *  where will the period end? 'too_early' before 20% of the period (or 3 days) has passed — no estimate is invented then.
+ *  fits ≤ 90% of the allowance · close ≤ 100% · likely_over above it; with overage on, the extra is priced at the package's
+ *  overage rate (an estimate); with it off the gate blocks at the limit. Pure arithmetic: nothing is bought, changed or sent. */
+export interface UsageProjection { basis: 'period_pace'; elapsedShare: number; projectedUsed: number | null; verdict: 'too_early' | 'fits' | 'close' | 'likely_over'; projectedOverageCents: number | null; atLimit: 'overage' | 'blocked' }
+export function usageProjection(used: number, limit: number, periodStart: Date, periodEnd: Date, now: Date, overageEnabled: boolean, overageUnitCents: number): UsageProjection | null {
+  const span = periodEnd.getTime() - periodStart.getTime();
+  if (!(limit > 0) || !(span > 0)) return null;
+  const gone = Math.min(1, Math.max(0, (now.getTime() - periodStart.getTime()) / span));
+  const atLimit = overageEnabled ? 'overage' as const : 'blocked' as const;
+  const share = Math.round(gone * 1000) / 1000;
+  if (gone < 0.2 || now.getTime() - periodStart.getTime() < 3 * 86_400_000) return { basis: 'period_pace', elapsedShare: share, projectedUsed: null, verdict: 'too_early', projectedOverageCents: null, atLimit };
+  const projected = Math.round(used / gone);
+  const verdict = projected <= limit * 0.9 ? 'fits' : projected <= limit ? 'close' : 'likely_over';
+  return { basis: 'period_pace', elapsedShare: share, projectedUsed: projected, verdict, projectedOverageCents: overageEnabled ? Math.max(0, projected - limit) * overageUnitCents : null, atLimit };
 }
 
 const dayOf = (v: unknown) => (v == null ? null : utcDate(new Date(v as string)));   // the provider's subscription period start — a UTC billing instant
@@ -105,7 +124,8 @@ export class AiUsageScreenRepository {
       state, storedStatus: s ? String(s.status) : null, globallyEnabled, disabledReason: g && !g.enabled ? (g.disabled_reason ?? null) : null,
       price: { cents, currency: String(s?.currency ?? 'usd').toUpperCase(), period, monthlyEquivalentCents: period === 'yearly' ? Math.round(cents / 12) : cents, source: s && N(s.price_cents) > 0 ? 'subscription' : 'catalog_list' },
       usage: { used: live ? used : null, limit, unit: def?.usageUnit ?? 'units', percent: live && limit > 0 && used != null ? Math.round((used * 1000) / limit) / 10 : null, level,
-        periodStart: live ? iso(s?.current_period_starts_at) : null, periodEnd: live ? iso(s?.period_end) : null, remaining: live && limit > 0 && used != null ? Math.max(0, limit - used) : null },
+        periodStart: live ? iso(s?.current_period_starts_at) : null, periodEnd: live ? iso(s?.period_end) : null, remaining: live && limit > 0 && used != null ? Math.max(0, limit - used) : null,
+        projection: live && used != null && s?.current_period_starts_at && s?.period_end ? usageProjection(used, limit, new Date(s.current_period_starts_at), new Date(s.period_end), now, overEnabled, overUnit) : null },
       overage: { enabled: overEnabled, unitPriceCents: overUnit, estimatedCents: est },
       trial: { days: def?.trialDays ?? 0, startsAt: iso(s?.trial_starts_at), endsAt: iso(endsAt), daysLeft: state === 'trialing' && endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / 86400000)) : null, eligible },
       lastPaymentStatus: s?.last_payment_status ?? null, subscribedAt: iso(s?.created_at), cancelledAt: iso(s?.cancelled_at),
@@ -585,6 +605,23 @@ export class AiUsageScreenRepository {
       and (p.trial_ends_at is null or p.trial_ends_at > now())`)).n);
     const planMembers = cards.filter((c) => c.state === 'cancelled' || c.state === 'expired' || c.state === 'trial_expired').length;
     checks.push({ key: 'plans_in_step', state: planGap && planMembers ? 'WARNING' : 'PASSED', count: planGap && planMembers ? planMembers : 0 });
+    // extras AI Usage Limits 04 (Bundle Overlap Detector): an assistant the salon pays for on its own AND inside a paid plan (the
+    // assistant's own paid subscription began before the plan did — the plan path creates its members at the plan's start), or one
+    // listed by two live plans. Review only: nothing is cancelled, refunded or re-priced; the owner decides.
+    type OvRow = { package_code: string; status: string; price_cents: number; created_at: Date | string };
+    type PlRow = { plan_code: string; status: string; started_at: Date | string; trial_ends_at: Date | string | null };
+    const livePlans = (await sql<PlRow>`select plan_code, status, started_at, trial_ends_at from tenant_ai_plan_subscriptions where tenant_id = ${T} and status in ('active', 'trialing')
+      and (status = 'active' or trial_ends_at is null or trial_ends_at > now())`.execute(this.db)).rows;
+    const ownRows = new Map((await sql<OvRow>`select package_code, status, price_cents, created_at from tenant_ai_subscriptions where tenant_id = ${T}
+      and status in ('active', 'past_due') and price_cents > 0`.execute(this.db)).rows.map((r) => [String(r.package_code), r]));
+    const overlaps: { code: string; name: string; plans: string[]; paidOnItsOwnSince: string | null }[] = [];
+    for (const def of AI_PACKAGES) {
+      const plansFor = livePlans.filter((pl) => AI_PLANS.find((x) => x.code === pl.plan_code)?.packageCodes.includes(def.code));
+      const own = ownRows.get(def.code);
+      const ownBeforePaidPlan = !!own && plansFor.some((pl) => pl.status === 'active' && new Date(own.created_at).getTime() < new Date(pl.started_at).getTime());
+      if (plansFor.length >= 2 || ownBeforePaidPlan) overlaps.push({ code: def.code, name: def.name, plans: plansFor.map((pl) => AI_PLANS.find((x) => x.code === pl.plan_code)?.name ?? pl.plan_code), paidOnItsOwnSince: ownBeforePaidPlan ? iso(own!.created_at) : null });
+    }
+    checks.push({ key: 'bundle_overlap', state: overlaps.length ? 'WARNING' : 'PASSED', count: overlaps.length, detail: { overlaps } });
     const disabled = cards.filter((c) => c.state === 'disabled_by_admin').length;
     checks.push({ key: 'admin_switches', state: disabled ? 'WARNING' : 'PASSED', count: disabled });
     // AI Center guide (P0): the gate the AI platform runs before every model call agrees with what the page shows — an expired trial,
