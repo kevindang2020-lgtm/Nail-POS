@@ -157,3 +157,37 @@ describe('Phase 9 — the phone policy is edited by permission (customers.phone_
     await expect(svc.update({ ...reception, permissions: [...permissionsFor('RECEPTION'), 'customers.phone_manage'] }, {})).resolves.toBeTruthy();
   });
 });
+
+describe('PHONE NUMBER MANAGEMENT 4 · 10 — effective policy explanation (read-only)', () => {
+  function store(rows: Record<string, any>) {
+    const writes: unknown[] = [];
+    const key = (b: string | null) => b ?? 'salon';
+    return { writes, s: {
+      async get(_t: string, b: string | null) { return rows[key(b)] ?? (b ? rows.salon ?? null : null); },
+      async getOwn(_t: string, b: string) { return rows[b] ?? null; },
+      async upsert(...a: unknown[]) { writes.push(a); },
+    } as any };
+  }
+  it('nothing saved → every value is the platform default; no Super Admin override is claimed', async () => {
+    const { s, writes } = store({});
+    const e = await new CustomerPhoneSettingsService(s).explain('t1', null);
+    expect(e).toMatchObject({ scope: 'salon', source: 'platform_default', salonPolicySaved: false, superAdminOverride: false });
+    expect(e.keys.allowManualConfirmation).toEqual({ value: false, source: 'platform_default', salonValue: null, platformDefault: false, differsFromSalon: false, differsFromDefault: false });
+    expect(Object.keys(e.keys)).toHaveLength(9);
+    expect(writes).toEqual([]);
+  });
+  it('a branch without its own row inherits the salon policy; a branch override says which values differ from the salon and the default', async () => {
+    const salon = { ...PHONE_SETTINGS_DEFAULTS, requireManagerApproval: true };
+    const { s, writes } = store({ salon, 'b-own': { ...salon, requireSmsVerification: false } });
+    const svc = new CustomerPhoneSettingsService(s);
+    const inh = await svc.explain('t1', 'b-mine');
+    expect(inh).toMatchObject({ scope: 'branch', source: 'salon_policy', salonPolicySaved: true });
+    expect(inh.keys.requireManagerApproval).toMatchObject({ value: true, source: 'salon_policy', salonValue: true, differsFromSalon: false, differsFromDefault: true });
+    const own = await svc.explain('t1', 'b-own');
+    expect(own.source).toBe('branch_override');
+    expect(own.keys.requireSmsVerification).toMatchObject({ value: false, salonValue: true, platformDefault: true, differsFromSalon: true, differsFromDefault: true });
+    expect(own.keys.requireManagerApproval).toMatchObject({ value: true, differsFromSalon: false });
+    expect(Object.entries(own.keys).filter(([, v]) => v.differsFromSalon).map(([k]) => k)).toEqual(['requireSmsVerification']);
+    expect(writes).toEqual([]);
+  });
+});

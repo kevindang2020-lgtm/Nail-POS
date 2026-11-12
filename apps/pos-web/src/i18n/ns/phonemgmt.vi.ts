@@ -150,4 +150,17 @@ export const PHONEMGMT_VI = {
   "phm.up.reviewText": "{name}: {old} → {new}. Số hiện tại vẫn dùng đến khi số mới được xác minh.",
   "phm.up.back": "Quay lại",
   "phm.up.none": "Không có khách nào khớp.",
+  "phm.pol.on": "Bật", // DRAFT — Kevin reviews
+  "phm.pol.off": "Tắt", // DRAFT — Kevin reviews
+  "phm.pol.tag.branchDiffers": "Đặt riêng cho chi nhánh này (toàn tiệm: {v})", // DRAFT — Kevin reviews
+  "phm.pol.tag.branchSame": "Đặt riêng cho chi nhánh này (giống toàn tiệm)", // DRAFT — Kevin reviews
+  "phm.pol.tag.inherited": "Theo chính sách toàn tiệm", // DRAFT — Kevin reviews
+  "phm.pol.tag.salonDiffers": "Tiệm tự chọn (mặc định nền tảng: {v})", // DRAFT — Kevin reviews
+  "phm.pol.tag.salonSame": "Tiệm tự chọn (giống mặc định nền tảng)", // DRAFT — Kevin reviews
+  "phm.pol.tag.default": "Mặc định nền tảng (chưa từng lưu)", // DRAFT — Kevin reviews
+  "phm.pol.source.branch_override": "Chi nhánh này có chính sách riêng đã lưu; các giá trị dưới đây là của chi nhánh.", // DRAFT — Kevin reviews
+  "phm.pol.source.salon_policy": "Các giá trị này lấy từ chính sách toàn tiệm.", // DRAFT — Kevin reviews
+  "phm.pol.source.platform_default": "Chưa lưu chính sách nào, nên áp dụng mặc định của nền tảng.", // DRAFT — Kevin reviews
+  "phm.pol.sa.none": "Không có thiết lập nào của Super Admin ghi đè các mục này. Xem không làm thay đổi gì.", // DRAFT — Kevin reviews
+  "phm.pol.sa.yes": "Có thiết lập của Super Admin ghi đè các mục này.", // DRAFT — Kevin reviews
 };
