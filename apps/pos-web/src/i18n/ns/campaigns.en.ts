@@ -286,4 +286,6 @@ export const CAMPAIGNS_EN = {
   "cc.tri.next.callback": "Delivery reports may be delayed; check the messaging webhook",
   "cc.tri.next.waiting": "The next send run picks these up",
   "cc.tri.retry": "Waiting messages are resumed by the next send run. A failed message is never sent again, because the provider may already have accepted it.",
+  "cc.bk.dupes": "{n} repeated booking record(s) for an appointment already counted were ignored",
+  "cc.bk.span": "Counted bookings made",
 };

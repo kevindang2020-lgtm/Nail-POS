@@ -285,7 +285,8 @@ function DetailDialog({ id, canManage, onClose, onChanged, onEdit, onHealth, onO
           {tab === 'recipients' ? <RecipientsTab id={id} /> : null}
           {tab === 'message' ? <div className="cc-msg">{d.emailSubject ? <div><b>{tx('cc.subject')}</b> {d.emailSubject}</div> : null}<pre className="cc-pre" data-testid="cc-message">{d.messageBody ?? d.offer ?? '—'}</pre><div className="fk-hint">{tx('cc.messageVersion', { v: String(d.messageVersion) })}</div></div> : null}
           {tab === 'events' ? <EventsTab id={id} /> : null}
-          {tab === 'bookings' ? <dl className="cc-facts"><dt>{tx('cc.count.booked')}</dt><dd>{nf(c.booked)}</dd><dt>{tx('cc.redemptions')}</dt><dd>{nf(c.redemptions)}</dd><dt>{tx('cc.discountGiven')}</dt><dd>{fmtMoney(c.discountCents)}</dd></dl> : null}
+          {tab === 'bookings' ? <dl className="cc-facts" data-testid="cc-bookings"><dt>{tx('cc.count.booked')}</dt><dd>{nf(c.booked)}{c.bookedDuplicatesIgnored ? <span className="fk-muted"> · {tx('cc.bk.dupes', { n: nf(c.bookedDuplicatesIgnored) })}</span> : null}</dd>
+            {c.firstBookedAt ? <><dt>{tx('cc.bk.span')}</dt><dd>{when(c.firstBookedAt)} – {when(c.lastBookedAt)}</dd></> : null}<dt>{tx('cc.redemptions')}</dt><dd>{nf(c.redemptions)}</dd><dt>{tx('cc.discountGiven')}</dt><dd>{fmtMoney(c.discountCents)}</dd></dl> : null}
           {tab === 'financial' ? <dl className="cc-facts" data-testid="cc-financial">
             <dt>{tx('cc.associatedRevenue')}</dt><dd>{fmtMoney(c.associatedRevenueCents)}</dd><dt>{tx('cc.discountGiven')}</dt><dd>{fmtMoney(c.discountCents)}</dd>
             <dt>{tx('cc.providerCost')}</dt><dd>{money(c.actualCostCents)}</dd><dt>{tx('cc.budget')}</dt><dd>{fmtMoney(d.budgetCents)}</dd>

@@ -185,6 +185,22 @@ describe('§08 wizard: details → audience snapshot → message → preview →
   });
 });
 
+describe('AI Marketing Assistant 05 — campaign bookings are de-duplicated', () => {
+  it('a booking recorded twice for one appointment counts once (list, details, cost per booking); duplicates and the booking span are reported', async () => {
+    const cid = String((await q(sql`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values (${T}, ${B}, 'Dedupe test', 'sms', 'completed', 0) returning id`))[0].id);
+    const ev = (appt: string, hoursAgo: number) => q(sql`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, campaign_id, appointment_id, created_at)
+      values (${T}, ${B}, 'link', 'BOOKING_SUCCEEDED', 'succeeded', ${cid}, ${appt}, now() - make_interval(hours => ${hoursAgo}))`);
+    await ev('appt-dd-1', 30); await ev('appt-dd-1', 29); await ev('appt-dd-2', 5);
+    await q(sql`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, campaign_id, appointment_id, created_at) values (${T}, ${B}, 'link', 'BOOKING_FAILED', 'failed', ${cid}, 'appt-dd-3', now())`);
+    const d: any = await cc.detail(owner, cid);
+    expect(d.counts).toMatchObject({ booked: 2, bookedDuplicatesIgnored: 1 });
+    expect(new Date(d.counts.firstBookedAt).getTime()).toBeLessThan(new Date(d.counts.lastBookedAt).getTime());
+    expect(d.definitions.booked).toMatch(/each appointment counts once/);
+    const row = (await cc.list(owner, { q: 'Dedupe test' })).items.find((x: any) => x.id === cid);
+    expect(row.counts.booked).toBe(2);
+  });
+});
+
 describe('AI Marketing Assistant 09 — delivery failure triage', () => {
   it('splits invalid contacts, provider refusals, carrier failures, missing callbacks and waiting sends; states the retry rule; reads only', async () => {
     const cid = (await q(sql`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values (${T}, ${B}, 'Triage test', 'sms', 'in_progress', 0) returning id`))[0].id;

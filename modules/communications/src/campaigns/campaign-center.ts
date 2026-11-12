@@ -120,7 +120,9 @@ function countsCte(T: string) {
             from ai_marketing_campaign_sends s
             left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
             where s.tenant_id = ${T} group by s.campaign_id),
-    conv as (select campaign_id, count(*)::int as booked from ai_booking_conversion_events
+    conv as (select campaign_id, count(distinct coalesce(appointment_id::text, id::text))::int as booked,   -- AI Marketing Assistant 05: one appointment counts once
+               (count(*) - count(distinct coalesce(appointment_id::text, id::text)))::int as booked_dupes, min(created_at) as booked_first, max(created_at) as booked_last
+             from ai_booking_conversion_events
              where tenant_id = ${T} and campaign_id is not null and stage = 'BOOKING_SUCCEEDED' and (outcome = 'succeeded' or outcome is null) group by campaign_id),
     red as (select b.campaign_id, count(distinct dr.id)::int as redemptions, coalesce(sum(dr.amount_discounted_cents - coalesce(dr.reversed_cents, 0)), 0)::bigint as discount_cents,
               coalesce(sum(paid_t.total), 0)::bigint as revenue_cents
@@ -138,6 +140,8 @@ export interface CampaignCounts {
   actualCostCents: number | null; roi: number | null; roiNote: string;
   /** Campaign Results 17 — comparison ratios, computed HERE once (null when the denominator is 0 / the cost is not reported) */
   deliveryRatePercent: number | null; costPerBookingCents: number | null;
+  /** AI Marketing Assistant 05 — repeated conversion events for an appointment already counted, and the span of the counted bookings */
+  bookedDuplicatesIgnored: number; firstBookedAt: string | null; lastBookedAt: string | null;
 }
 /** provider error codes that mean the destination number itself is bad (invalid, not a mobile, unknown / unreachable
  *  handset, landline) — a contact problem to fix on the customer profile, not a delivery outage */
@@ -161,6 +165,7 @@ export function countsOf(r: any): CampaignCounts {
       : submitted === 0 ? 'Not available: nothing was sent, so there is no cost.' : 'Not available: the provider has not reported the cost of every message.',
     deliveryRatePercent: submitted > 0 ? Math.round((delivered / submitted) * 1000) / 10 : null,
     costPerBookingCents: actualCostCents != null && N(r.booked) > 0 ? Math.round(actualCostCents / N(r.booked)) : null,
+    bookedDuplicatesIgnored: N(r.booked_dupes), firstBookedAt: iso(r.booked_first ?? null), lastBookedAt: iso(r.booked_last ?? null),
   };
 }
 
@@ -220,7 +225,7 @@ export class CampaignCenter {
         coalesce(led.ledger_rows, 0) as ledger_rows, coalesce(led.queued, 0) as queued, coalesce(led.attempted, 0) as attempted, coalesce(led.submitted, 0) as submitted,
         coalesce(led.skipped_at_send, 0) as skipped_at_send, coalesce(led.failed_send, 0) as failed_send, coalesce(led.delivered, 0) as delivered,
         coalesce(led.failed_delivery, 0) as failed_delivery, coalesce(led.simulated, 0) as simulated, coalesce(led.cost_micros, 0) as cost_micros, coalesce(led.costed, 0) as costed,
-        coalesce(conv.booked, 0) as booked, coalesce(red.redemptions, 0) as redemptions, coalesce(red.discount_cents, 0) as discount_cents, coalesce(red.revenue_cents, 0) as revenue_cents,
+        coalesce(conv.booked, 0) as booked, coalesce(conv.booked_dupes, 0) as booked_dupes, conv.booked_first, conv.booked_last, coalesce(red.redemptions, 0) as redemptions, coalesce(red.discount_cents, 0) as discount_cents, coalesce(red.revenue_cents, 0) as revenue_cents,
         d.title as deal_name, u.full_name as creator_name, a.full_name as approver_name
       from campaigns c
       left join snap on snap.campaign_id = c.id left join led on led.campaign_id = c.id left join conv on conv.campaign_id = c.id left join red on red.campaign_id = c.id
@@ -394,7 +399,7 @@ export class CampaignCenter {
         queued: 'Send records waiting for the worker.', attempted: 'Send records the worker handed to the provider (accepted or failed).',
         submitted: 'Accepted by the provider, or by the test sender in a test environment (shown separately as simulated).',
         delivered: 'Delivery confirmed by the provider callback.', failed: 'Refused by the provider at send time or reported failed later.',
-        unknown: 'Accepted but no delivery callback yet.', booked: 'Bookings made through a link carrying this campaign.',
+        unknown: 'Accepted but no delivery callback yet.', booked: 'Bookings made through a link carrying this campaign; each appointment counts once however many booking events it has. No time limit is applied after the send.',
       },
     };
   }
@@ -455,7 +460,7 @@ export class CampaignCenter {
     const sv = served(page, pageSize, total);
     const rows = (await sql<any>`select cr.customer_id, cr.eligibility, cr.destination_masked, s.id as send_id, s.status as send_status, s.skip_reason, s.created_at as send_at, s.updated_at as send_updated,
         n.status as delivery_status, n.provider_error_code, n.delivered_at, cu.full_name, cu.marketing_sms_opt_in, cu.marketing_email_opt_in,
-        (select count(*)::int from ai_booking_conversion_events e where e.tenant_id = cr.tenant_id and e.campaign_id = cr.campaign_id and e.stage = 'BOOKING_SUCCEEDED'
+        (select count(distinct e.appointment_id::text)::int from ai_booking_conversion_events e where e.tenant_id = cr.tenant_id and e.campaign_id = cr.campaign_id and e.stage = 'BOOKING_SUCCEEDED'
            and exists (select 1 from pos_tech_appointments ap where ap.id::text = e.appointment_id::text and ap.tenant_id = e.tenant_id and ap.customer_id = cr.customer_id)) as booked,
         (select count(*)::int from deal_redemptions dr join deal_coupon_codes k on k.id = dr.coupon_code_id join deal_coupon_batches b on b.id = k.batch_id
            where dr.tenant_id = cr.tenant_id and b.campaign_id = cr.campaign_id and dr.customer_id = cr.customer_id and dr.status in ('redeemed', 'partially_reversed')) as redeemed

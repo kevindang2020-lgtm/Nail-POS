@@ -13,6 +13,8 @@ export interface CcCounts {
   queued: number; attempted: number; submitted: number; skippedAtSend: number; failed: number; delivered: number; unknown: number; simulated: number;
   booked: number; redemptions: number; discountCents: number; associatedRevenueCents: number; legacyRevenueCents: number; legacySentCount: number;
   actualCostCents: number | null; roi: number | null; roiNote: string;
+  /** server-computed (extras): comparison ratios and booking de-duplication facts — optional for older servers */
+  deliveryRatePercent?: number | null; costPerBookingCents?: number | null; bookedDuplicatesIgnored?: number; firstBookedAt?: string | null; lastBookedAt?: string | null;
 }
 export interface CcCampaign {
   id: string; name: string; goal: string | null; description: string | null; offer: string | null; channel: 'sms' | 'email' | 'push'; branchId: string | null;

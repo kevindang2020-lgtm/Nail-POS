@@ -119,4 +119,14 @@ describe('Campaign Center', () => {
     expect(screen.queryByTestId('cc-tri-carrier')).toBeNull(); expect(screen.queryByTestId('cc-tri-waiting')).toBeNull();
     expect(tri).toHaveTextContent('never sent again');
   });
+  it('AI Marketing Assistant 05: the Bookings tab says how many repeated booking records were ignored and when the counted bookings were made', async () => {
+    api.detail.mockResolvedValue({ ...spring, counts: { ...spring.counts, booked: 2, bookedDuplicatesIgnored: 1, firstBookedAt: '2026-11-01T14:00:00Z', lastBookedAt: '2026-11-02T14:00:00Z' },
+      exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {} });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    fireEvent.click(await screen.findByTestId('cc-tab-bookings'));
+    const b = await screen.findByTestId('cc-bookings');
+    expect(b).toHaveTextContent('1 repeated booking record(s) for an appointment already counted were ignored');
+    expect(b).toHaveTextContent('Counted bookings made');
+  });
 });

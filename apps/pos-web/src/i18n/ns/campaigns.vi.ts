@@ -287,4 +287,6 @@ export const CAMPAIGNS_VI: Record<keyof typeof CAMPAIGNS_EN, string> = {
   "cc.tri.next.callback": "Báo cáo giao có thể bị chậm; kiểm tra webhook nhắn tin", // DRAFT — Kevin reviews
   "cc.tri.next.waiting": "Lần gửi kế tiếp sẽ xử lý các tin này", // DRAFT — Kevin reviews
   "cc.tri.retry": "Tin đang chờ sẽ được lần gửi kế tiếp tiếp tục. Tin bị lỗi không bao giờ được gửi lại, vì nhà cung cấp có thể đã nhận tin đó.", // DRAFT — Kevin reviews
+  "cc.bk.dupes": "Đã bỏ qua {n} bản ghi đặt lịch lặp lại của lịch hẹn đã được tính", // DRAFT — Kevin reviews
+  "cc.bk.span": "Thời gian các lịch hẹn được tính", // DRAFT — Kevin reviews
 };
