@@ -109,4 +109,7 @@ export const TEAMTECHQUEUE_EN = {
   'tq.thru.turn': 'Avg turn {a} min = {m} min ÷ {n} timed services',
   'tq.thru.turnNone': 'Avg turn: no timed services yet',
   'tq.thru.rule': 'Served = tickets marked service done today ÷ guests checked in today. Salon day in {tz}.',
+  'tq.live.gone': 'That ticket was finished, moved or cancelled on another screen — the panel was closed so nothing is done to an old ticket.',
+  'tq.live.changed': 'Changed on another screen while you were here: now {s} · {t} · {p}. Check before you act — your typed note is kept.',
+  'tq.live.ack': 'OK, I have checked',
 };

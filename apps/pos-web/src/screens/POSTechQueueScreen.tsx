@@ -123,6 +123,9 @@ export function POSTechQueueScreen() {
   const [note, setNote] = useState<Msg | null>(null);   // a key + vars, translated at render (a language switch re-labels it)
   const [busyId, setBusyId] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  // extras (TECH QUEUE 13): what the ticket looked like when its drawer opened — a live update that changes it shows a
+  // warning in the drawer (typed text kept); a live update that removes it closes the drawer with a note, never a stale act
+  const [openSnap, setOpenSnap] = useState<{ status: string; tech: string; priority: string } | null>(null);
   const [techSel, setTechSel] = useState('');
   const [prioSel, setPrioSel] = useState('');
   const [reason, setReason] = useState('');
@@ -173,6 +176,11 @@ export function POSTechQueueScreen() {
   useEffect(() => { load(); }, [load]);
   const refreshAll = useCallback(() => { void load(); setTick((n) => n + 1); }, [load]);
   useRealtime('tech-queue', refreshAll);
+  useEffect(() => {
+    if (!openId || !s) return;
+    const now = (s.tickets?.items || []).find((x) => x.techQueueTicketId === openId);
+    if (!now || !TQ_LIVE.includes(now.status)) { setOpenId(null); setOpenSnap(null); setNote(msg('tq.live.gone')); }
+  }, [s, openId]);
 
   const act = async (tid: string, fn: () => Promise<any>, kind: string, closeDrawer?: boolean) => {
     setNote(null); setBusyId(tid + kind);
@@ -187,7 +195,7 @@ export function POSTechQueueScreen() {
 
   const toggleDrawer = (t: TQRow) => {
     if (openId === t.techQueueTicketId) { setOpenId(null); return; }
-    setOpenId(t.techQueueTicketId); setNote(null); setReason(''); setTechSel(''); setPrioSel(t.priority || ''); setDelayMin('');
+    setOpenId(t.techQueueTicketId); setOpenSnap({ status: t.status, tech: t.assignedTechnicianName || '', priority: t.priority }); setNote(null); setReason(''); setTechSel(''); setPrioSel(t.priority || ''); setDelayMin('');
   };
   const doReassign = (tid: string) => { if (!techSel) { setNote(msg('pos.pick_a_technician_2')); return; } if (!reason.trim()) { setNote(msg('pos.reassigning_requires_a_reason')); return; } act(tid, () => posTechQueueApi.reassignTechnician(tid, { technicianId: techSel, reason: reason.trim() }), 'reassign', true); };
   const doPriority = (tid: string) => { if (!prioSel) { setNote(msg('pos.pick_a_priority')); return; } act(tid, () => posTechQueueApi.updatePriority(tid, { priority: prioSel }), 'prio', true); };
@@ -545,6 +553,9 @@ export function POSTechQueueScreen() {
                   </tr>
                   {openId === t.techQueueTicketId ? (
                     <tr className="tq-drawer"><td colSpan={8}>
+                      {openSnap && (openSnap.status !== t.status || openSnap.tech !== (t.assignedTechnicianName || '') || openSnap.priority !== t.priority)
+                        ? <div className="fk-note warn" role="status" data-testid="tq-live-changed">{tx('tq.live.changed', { s: statusLabel('techTicket', t.status), t: t.assignedTechnicianName || '—', p: prioLabel(t.priority) })}
+                          {' '}<button type="button" className="fk-link" onClick={() => setOpenSnap({ status: t.status, tech: t.assignedTechnicianName || '', priority: t.priority })} data-testid="tq-live-ack">{tx('tq.live.ack')}</button></div> : null}
                       <div className="cg-form">
                         <label className="fk-field">{tx('pos.reassign_to_technician')}<TechnicianPickerButton value={techSel} emptyLabel={tx('pos.select_technician')} ariaLabel={tx('pos.reassign_to_technician')}
                           serviceIds={t.requestedServices.map((x) => x.serviceId || '').filter(Boolean)} onChange={(id) => setTechSel(id)} style={{ maxWidth: '100%' }} /></label>

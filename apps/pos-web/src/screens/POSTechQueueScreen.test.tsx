@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
+import { REALTIME_EVENT } from '../realtime/realtime-client';
 import { MemoryRouter } from 'react-router-dom';
 import { POSTechQueueScreen, filterTechRows, TQ_LANE_PAGE_SIZE } from './POSTechQueueScreen';
 
@@ -554,5 +555,74 @@ describe('POSTechQueueScreen — Live / History, tabs, assignment details, scope
     expect(await screen.findByTestId('search-results')).toHaveTextContent('Technicians (1)');
     expect(screen.getByTestId('search-results')).toHaveTextContent('History (1)');
     expect(screen.getAllByTestId('hit-history')).toHaveLength(1);
+  });
+});
+
+// ── extras TECH QUEUE 13 (Nov 12 2026): a live update arriving while staff work keeps their context — the ticket search,
+// the open Manage drawer and the typed note survive; a ticket changed elsewhere warns inside the drawer; a ticket that
+// left the live queue closes its drawer with a note, so no action is taken on an old ticket. Every test proves the refetch.
+describe('POSTechQueueScreen — live updates preserve the user context (extras 13)', () => {
+  const tk = (over: Record<string, unknown> = {}) => ({ techQueueTicketId: 'tk1', customerName: 'Jessica Miller', isVip: false, requestedServices: [{ serviceName: 'Gel Manicure' }], serviceCount: 1, priority: 'normal', status: 'assigned', assignedTechnicianName: 'Mia', assignedWaitMinutes: 5, ...over });
+  const live = (items: unknown[]) => ({ ...ticketState, tickets: { items, pagination: { totalItems: items.length } } });
+  const server = () => {
+    const ctl = { body: live([tk()]) as unknown, stateCalls: 0, calls: [] as string[] };
+    const fn = vi.fn(async (url: any) => {
+      const u = String(url); ctl.calls.push(u);
+      const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
+      if (u.includes('/pos/tech-queue/state')) { ctl.stateCalls++; return ok(ctl.body); }
+      return ok({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 });
+    });
+    return { ctl, fn };
+  };
+  const pushEvent = () => act(async () => { window.dispatchEvent(new CustomEvent(REALTIME_EVENT, { detail: { event: 'tech_queue_updated', screens: ['tech-queue'] } })); await new Promise((r) => setTimeout(r, 300)); });
+
+  it('search text, the open drawer and the typed note survive a live refetch of the same ticket', async () => {
+    const { ctl, fn } = server(); globalThis.fetch = fn as any;
+    render(<MemoryRouter><POSTechQueueScreen /></MemoryRouter>);
+    await screen.findByText('Assigned Tickets');
+    fireEvent.click(screen.getByText('Manage'));
+    const note = screen.getByPlaceholderText(/guest requested a different tech/);
+    fireEvent.change(note, { target: { value: 'guest asked for Leo' } });
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'jess' } });
+    const before = ctl.stateCalls;
+    await pushEvent();
+    await waitFor(() => expect(ctl.stateCalls).toBeGreaterThan(before));
+    expect((screen.getByTestId('search') as HTMLInputElement).value).toBe('jess');
+    expect((screen.getByPlaceholderText(/guest requested a different tech/) as HTMLInputElement).value).toBe('guest asked for Leo');
+    expect(screen.getByText('Cancel Ticket')).toBeInTheDocument();          // the drawer is still open
+    expect(screen.queryByTestId('tq-live-changed')).toBeNull();             // nothing changed → no warning
+  });
+
+  it('a ticket changed on another screen warns inside the drawer (note kept) until staff confirm they checked', async () => {
+    const { ctl, fn } = server(); globalThis.fetch = fn as any;
+    render(<MemoryRouter><POSTechQueueScreen /></MemoryRouter>);
+    await screen.findByText('Assigned Tickets');
+    fireEvent.click(screen.getByText('Manage'));
+    fireEvent.change(screen.getByPlaceholderText(/guest requested a different tech/), { target: { value: 'keep me' } });
+    ctl.body = live([tk({ assignedTechnicianName: 'Leo', status: 'accepted' })]);
+    const before = ctl.stateCalls;
+    await pushEvent();
+    await waitFor(() => expect(ctl.stateCalls).toBeGreaterThan(before));
+    const warn = await screen.findByTestId('tq-live-changed');
+    expect(warn).toHaveTextContent('Leo');
+    expect(warn).toHaveTextContent(/Changed on another screen/);
+    expect((screen.getByPlaceholderText(/guest requested a different tech/) as HTMLInputElement).value).toBe('keep me');
+    fireEvent.click(screen.getByTestId('tq-live-ack'));
+    expect(screen.queryByTestId('tq-live-changed')).toBeNull();
+  });
+
+  it('a ticket that left the live queue closes its drawer with a note — no action can be sent for it', async () => {
+    const { ctl, fn } = server(); globalThis.fetch = fn as any;
+    render(<MemoryRouter><POSTechQueueScreen /></MemoryRouter>);
+    await screen.findByText('Assigned Tickets');
+    fireEvent.click(screen.getByText('Manage'));
+    expect(screen.getByText('Cancel Ticket')).toBeInTheDocument();
+    ctl.body = live([]);
+    const before = ctl.stateCalls;
+    await pushEvent();
+    await waitFor(() => expect(ctl.stateCalls).toBeGreaterThan(before));
+    expect(await screen.findByText(/finished, moved or cancelled on another screen/)).toBeInTheDocument();
+    expect(screen.queryByText('Cancel Ticket')).toBeNull();
+    expect(ctl.calls.some((u) => /\/tickets\/tk1\//.test(u))).toBe(false);
   });
 });
