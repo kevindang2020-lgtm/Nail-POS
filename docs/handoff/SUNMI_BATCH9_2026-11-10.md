@@ -595,3 +595,14 @@ Merged extras-agent1..5: TODO 355 → 307 (counted from EXTRAS_BACKLOG.md; marks
   preview, customer KPI definitions, register-conflict warning, renewal reminder STOP counts, call → booking outcome,
   safety-note review receipt, AI booking service breakdown.
 Role-matrix snapshot accepted the 2 new routes after review (same roles as their siblings).
+
+## Extras backlog — round 4 of the 5 parallel agents (Nov 12 2026)
+A server restart stopped all five agents ~8 min in; each resumed from its uncommitted worktree. Merged extras-agent1..5:
+TODO 307 → 278 (counted from EXTRAS_BACKLOG.md). Highlights: Money Protection batch readiness; branch-comparison
+readiness; SMS delivery evidence for booking codes; inbox metric freshness/warnings; coupon stacking inspector;
+moderation queue ages and draft completeness; "what changed?" on stale scheduling suggestions; deal-by-location costs;
+front-desk performance vs the prior window; loyalty earning rule version (Customer App, English only); discount checks
+for closed branches / unavailable services; AI Calendar vs POS Booking appointment reconciliation; "Why can't I book?".
+Duplicate caught at merge: the pricing engine's combination rules existed twice (server inspector + a POS re-derivation).
+Now ONE: GET/PATCH pos/deals/settings return `stackingExplained` from the inspector; the POS copy is gone.
+New decision for Kevin: should STOP block booking verification codes? (today it does not).
