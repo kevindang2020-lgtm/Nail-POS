@@ -96,6 +96,23 @@ describe('POSAICalendarScreen', () => {
   });
 });
 
+describe('AI Calendar extras #05 — Conflict Explanation drawer', () => {
+  it('explains a booked time from the day view on screen, and an open time reads as open (nothing is booked)', async () => {
+    render(<MemoryRouter><POSAICalendarScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('aic-why-btn'));
+    fireEvent.change(screen.getByTestId('aic-why-start'), { target: { value: '10:15' } });
+    const reasons = screen.getAllByTestId('aic-why-reason');
+    expect(reasons.map((r) => r.getAttribute('data-code'))).toEqual(['APPOINTMENT']);
+    expect(reasons[0].textContent).toMatch(/Already booked 10:00–10:30/);
+    fireEvent.change(screen.getByTestId('aic-why-start'), { target: { value: '18:45' } });
+    expect(screen.getAllByTestId('aic-why-reason').map((r) => r.getAttribute('data-code'))).toEqual(['OUTSIDE_HOURS', 'OUTSIDE_SHIFT']);
+    expect(screen.getAllByTestId('aic-why-reason')[0].textContent).toMatch(/Outside salon hours \(09:00–19:00\)/);
+    fireEvent.change(screen.getByTestId('aic-why-start'), { target: { value: '11:00' } });
+    expect(screen.getByTestId('aic-why-free').textContent).toMatch(/11:00–11:45 is open/);
+    expect(document.body.textContent).not.toMatch(/aical\.why\./);
+  });
+});
+
 describe('AI Calendar extras #02 — Verified Appointment Timeline tab', () => {
   it('lists the stored steps in order with their row ids; a recorded status outside the known words still reads', async () => {
     const base = { overview: { id: 'bk1', date: '2026-07-04', start: '10:00', end: '10:30', status: 'completed', source: 'online', aiCreated: false, aiEvidence: 'x', verification: 'verified', timeZone: 'America/New_York', createdAt: null, updatedAt: null },

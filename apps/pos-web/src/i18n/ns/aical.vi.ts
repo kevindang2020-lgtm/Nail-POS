@@ -224,4 +224,21 @@ export const AICAL_VI: Record<string, string> = {
   "aical.tl.ref.booking_verification_sessions": "xác minh", // DRAFT — Kevin reviews
   "aical.tl.ref.pos_tech_appointments": "lịch hẹn", // DRAFT — Kevin reviews
   "aical.tl.ref.appointment_change_log": "thay đổi", // DRAFT — Kevin reviews
+  "aical.why.open": "Vì sao không đặt được?", // DRAFT — Kevin reviews
+  "aical.why.title": "Vì sao giờ này không đặt được?", // DRAFT — Kevin reviews
+  "aical.why.sub": "Đọc từ giờ mở cửa, lịch làm, giữ chỗ và lịch hẹn của POS Booking trong ngày này. Ở đây không giữ chỗ hay đặt lịch.", // DRAFT — Kevin reviews
+  "aical.why.start": "Bắt đầu", // DRAFT — Kevin reviews
+  "aical.why.length": "Thời lượng", // DRAFT — Kevin reviews
+  "aical.why.minutes": "{n} phút", // DRAFT — Kevin reviews
+  "aical.why.pick": "Chọn thợ và giờ bắt đầu.", // DRAFT — Kevin reviews
+  "aical.why.free": "{start}–{end} còn trống cho thợ này. Hãy đặt trong POS Booking, nơi kiểm tra lần cuối.", // DRAFT — Kevin reviews
+  "aical.why.outsideHours": "Ngoài giờ mở cửa ({start}–{end}).", // DRAFT — Kevin reviews
+  "aical.why.offToday": "Thợ này không có giờ làm hôm nay.", // DRAFT — Kevin reviews
+  "aical.why.outsideShift": "Ngoài giờ làm của thợ này ({windows}).", // DRAFT — Kevin reviews
+  "aical.why.timeOff": "Nghỉ phép đã duyệt {start}–{end} ({reason}).", // DRAFT — Kevin reviews
+  "aical.why.blocked": "Giờ bị chặn {start}–{end} ({reason}).", // DRAFT — Kevin reviews
+  "aical.why.hold": "Đang giữ chỗ cho lượt đặt khác {start}–{end}.", // DRAFT — Kevin reviews
+  "aical.why.holdCode": "Đang giữ {start}–{end} trong lúc khách nhập mã.", // DRAFT — Kevin reviews
+  "aical.why.appointment": "Đã có lịch hẹn {start}–{end} ({status}).", // DRAFT — Kevin reviews
+  "aical.why.note": "Tay nghề cho dịch vụ và thời gian đệm giữa các lịch hẹn do POS Booking kiểm tra khi chọn dịch vụ.", // DRAFT — Kevin reviews
 };

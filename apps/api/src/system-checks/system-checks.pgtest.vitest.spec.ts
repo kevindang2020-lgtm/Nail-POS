@@ -181,4 +181,34 @@ describe('shared read-only Check … System', () => {
     const b2 = await svc.run('discounts', { tenantId: T, branchId: B2 });
     expect(['redemption_pending_on_paid', 'redeemed_ticket_unpaid', 'coupon_use_count_drift', 'single_use_code_reused'].map((k) => count(b2, k).count)).toEqual([0, 0, 0, 0]);
   });
+
+  it('Discounts #14 configuration drift: live deals on a closed branch or an unavailable service — read-only', async () => {
+    const BC = id(70), BCX = id(71), SA = id(72), SB = id(73), SX = id(74);
+    const DL1 = id(75), DL2 = id(76), DL3 = id(77), DL4 = id(78), DLX = id(79), DLD = id(80);
+    await q(sql`insert into branches (id, tenant_id, name, status) values (${BC}, ${T}, 'Closed', 'inactive'), (${BCX}, ${X}, 'Other closed', 'inactive')`);
+    const CAT = id(83), CATX = id(84);
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name, status) values (${CAT}, ${T}, ${B2}, 'Nails', 'active'), (${CATX}, ${X}, ${BX}, 'Nails', 'active')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values
+      (${SA}, ${T}, ${B2}, ${CAT}, 'Gel', 45, 4000, 'active'), (${SX}, ${X}, ${BX}, ${CATX}, 'Gel', 45, 4000, 'active')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, archived_at) values (${SB}, ${T}, ${B2}, ${CAT}, 'Old acrylic', 60, 5000, 'archived', now())`);
+    await q(sql`insert into deals (id, tenant_id, branch_id, owner_type, title, discount_type, discount_percent, status, starts_at, ends_at) values
+      (${DL1}, ${T}, ${BC}, 'salon', 'Closed shop deal', 'percent', 10, 'active', now() - interval '1 day', now() + interval '5 days'),
+      (${DL2}, ${T}, ${B2}, 'salon', 'Archived service deal', 'percent', 10, 'scheduled', now() + interval '1 day', now() + interval '5 days'),
+      (${DL3}, ${T}, ${B2}, 'salon', 'Healthy deal', 'percent', 10, 'active', now() - interval '1 day', now() + interval '5 days'),
+      (${DL4}, ${T}, ${B2}, 'salon', 'Gone service deal', 'percent', 10, 'active', now() - interval '1 day', now() + interval '5 days'),
+      (${DLD}, ${T}, ${BC}, 'salon', 'Archived deal on closed shop', 'percent', 10, 'archived', now() - interval '9 days', now() - interval '5 days'),
+      (${DLX}, ${X}, ${BCX}, 'salon', 'Other salon', 'percent', 10, 'active', now() - interval '1 day', now() + interval '5 days')`);
+    await q(sql`insert into deal_services (deal_id, service_id, tenant_id) values (${DL2}, ${SA}, ${T}), (${DL2}, ${SB}, ${T}), (${DL3}, ${SA}, ${T}),
+      (${DL4}, ${id(81)}, ${T}), (${DLX}, ${id(82)}, ${X})`);
+    const before = await q(sql`select count(*)::int as n from deals`);
+    const r = await svc.run('discounts', { tenantId: T });
+    expect(count(r, 'live_deal_branch_closed')).toMatchObject({ state: 'WARNING', count: 1 });          // DL1 only (archived DLD and the other salon's skipped)
+    expect(count(r, 'live_deal_service_unavailable')).toMatchObject({ state: 'WARNING', count: 2 });    // DL2 (one archived of two) + DL4 (missing) — counted once each
+    const b2 = await svc.run('discounts', { tenantId: T, branchId: B2 });
+    expect(count(b2, 'live_deal_branch_closed').count).toBe(0);
+    expect(count(b2, 'live_deal_service_unavailable').count).toBe(2);
+    const b1 = await svc.run('discounts', { tenantId: T, branchId: B1 });
+    expect(count(b1, 'live_deal_service_unavailable').count).toBe(0);
+    expect((await q(sql`select count(*)::int as n from deals`)).rows).toEqual(before.rows);
+  });
 });

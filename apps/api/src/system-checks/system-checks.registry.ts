@@ -116,6 +116,14 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'single_use_code_reused', severity: 'FAILED', count: (t, b) => n(sql`SELECT c.id FROM deal_coupon_codes c JOIN deals d ON d.tenant_id = c.tenant_id AND d.id = c.deal_id
         JOIN deal_redemptions u ON u.tenant_id = c.tenant_id AND u.coupon_code_id = c.id AND u.status IN ('applied', 'redeemed', 'partially_reversed')
         WHERE c.tenant_id = ${t}::uuid ${br('d', b)} AND c.single_use GROUP BY c.id HAVING count(*) > 1`) },
+    // extras (Discounts #14 Configuration Drift Monitor): a deal shown as live while the config it depends on is not —
+    // its branch is closed / removed, or a service it applies to is archived, inactive or gone from the catalog
+    { key: 'live_deal_branch_closed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM deals d JOIN branches bx ON bx.tenant_id = d.tenant_id AND bx.id = d.branch_id
+        WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.status IN ('active', 'scheduled', 'approved') AND (bx.status <> 'active' OR bx.deleted_at IS NOT NULL)`) },
+    { key: 'live_deal_service_unavailable', severity: 'WARNING', count: (t, b) => n(sql`SELECT DISTINCT d.id FROM deals d JOIN deal_services ds ON ds.tenant_id = d.tenant_id AND ds.deal_id = d.id
+        LEFT JOIN services sv ON sv.tenant_id = ds.tenant_id AND sv.id = ds.service_id
+        WHERE d.tenant_id = ${t}::uuid ${br('d', b)} AND d.status IN ('active', 'scheduled', 'approved')
+          AND (sv.id IS NULL OR sv.archived_at IS NOT NULL OR sv.status <> 'active')`) },
   ] },
 
   // ── Services / Categories / Pricing / Add-ons (/pos/services) ─────────────────────────────────────────────────────
