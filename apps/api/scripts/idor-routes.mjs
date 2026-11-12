@@ -122,6 +122,7 @@ export const SEGMENT_FIXTURES = [
   ['/pos/ai-business/center/alerts/incidents/{id}', F('ai_business_alert_events')],   // an incident is an alert event row
   ['/pos/ai-business/center/alerts/{id}', F('ai_business_alerts')],                   // delivery settings of one alert rule
   ['/pos/ai-business/center/assistant/history/{id}', F('ai_business_conversations')],
+  ['/pos/ai-business/center/branches/snapshots/{id}', F('ai_branch_comparison_snapshots')],   // round 7: a saved branch comparison (+ its /signoffs)
   ['/pos/ai/business-setup/closures/{id}', F('business_closures')],
   ['/pos/ai/business-setup/faqs/{id}', F('ai_receptionist_faqs')],                 // Business Setup Center
   ['/pos/ai/calendar-center/appointments/{id}', F('pos_tech_appointments')],       // AI Calendar Center
@@ -255,6 +256,7 @@ export const BRANCH_TABLES = {
   reviews: SW('reviews are read salon-wide by the reputation tools'),
   inventory_service_recipes: SW('a service recipe is part of the salon menu'),
   ai_business_report_jobs: SW('salon-level AI business reports'),
+  ai_branch_comparison_snapshots: SW('a saved comparison ACROSS the salon\'s locations (owner / manager) — salon-level by design'),
   ai_receptionist_agents: SW('the AI receptionist is configured for the salon'),
   ai_receptionist_provisioning_jobs: SW('provisioning of the salon\'s AI receptionist'),
   api_operations: SW('keyed by the acting user (actor_user_id): a person reads only their own operations'),
