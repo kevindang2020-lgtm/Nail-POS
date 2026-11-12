@@ -231,3 +231,36 @@ describe('tenant isolation', () => {
     expect((await center.history(pc(undefined, T2), {}) as any).totalItems).toBe(1);
   });
 });
+
+describe('PHONE NUMBER MANAGEMENT 4 · 06 — suspicious number change review (review only)', () => {
+  it('frequent changes, repeated failed requests and several channels go to review with their reasons; an ordinary change does not; nothing is changed', async () => {
+    // bare change requests (only the session rows the review reads)
+    const sess = async (cid: string, phone: string, o: { state?: string; minAgo?: number; source?: string; t?: string; done?: boolean } = {}) => String((await sql<any>`insert into customer_phone_update_sessions
+        (tenant_id, branch_id, customer_id, proposed_phone, proposed_phone_hash, proposed_phone_mask, state, update_source, requested_by_role, created_at, updated_at, completed_at)
+      values (${o.t ?? T}, ${(o.t ?? T) === T ? B : B2}, ${cid}, ${phone}, ${phoneKey(phone)}, ${maskPhone(phone)}, ${o.state ?? 'pending_phone_saved'}, ${o.source ?? 'staff_pos'}, 'RECEPTION',
+        now() - make_interval(mins => ${o.minAgo ?? 0}), now(), ${o.done ? sql`now()` : null}) returning id`.execute(db)).rows[0].id);
+    const often = await customer(num(901), T, 'Often Changer');
+    await sess(often, num(902), { state: 'update_canceled', minAgo: 300, done: true });
+    await sess(often, num(903), { state: 'update_canceled', minAgo: 200, done: true });
+    const latest = await sess(often, num(904), { minAgo: 10 });
+    const failing = await customer(num(911), T, 'Code Misser');
+    await sess(failing, num(912), { state: 'verification_failed', minAgo: 60, done: true });
+    await sess(failing, num(913), { state: 'verification_expired', minAgo: 30, source: 'customer_app' });
+    const calm = await customer(num(921), T, 'Calm Customer');
+    await sess(calm, num(922), { minAgo: 5 });
+    const elsewhere = await customer(num(931), T2, 'Other Salon');
+    for (const i of [932, 933, 934]) await sess(elsewhere, num(i), { t: T2, state: 'update_canceled', done: true });
+    const before = (await sql<any>`select id, state from customer_phone_update_sessions where tenant_id = ${T} order by id`.execute(db)).rows;
+    const r: any = (await center.summary(pc())).risk;
+    expect(r).toMatchObject({ windowDays: 30, action: 'review_only', thresholds: { changes: 3, failedRequests: 2 } });
+    const by = Object.fromEntries(r.items.map((x: any) => [x.customerId, x]));
+    expect(by[often]).toMatchObject({ customerName: 'Often Changer', changes: 3, latestRequestId: latest });
+    expect(by[often].reasons).toContain('frequent_changes');
+    expect(by[failing]).toMatchObject({ changes: 2, failedRequests: 2, channels: 2 });
+    expect(by[failing].reasons).toEqual(['failed_codes', 'cross_device']);
+    expect(by[calm]).toBeUndefined();
+    expect(by[elsewhere]).toBeUndefined();
+    expect(JSON.stringify(r)).not.toMatch(/\+1856/);                       // never a phone number (or an address)
+    expect((await sql<any>`select id, state from customer_phone_update_sessions where tenant_id = ${T} order by id`.execute(db)).rows).toEqual(before);
+  });
+});

@@ -280,11 +280,13 @@ function DetailDialog({ id, canManage, onClose, onChanged, onEdit, onHealth, onO
             {d.exclusionReasons.length ? <div className="fk-hint">{tx('cc.excludedBecause')} {d.exclusionReasons.map((r: any) => `${tr('cc.reason.' + r.reason, r.reason)} ${r.count}`).join(' · ')}</div> : null}
             {d.sendTimeReasons.length ? <div className="fk-hint">{tx('cc.skippedAtSend')} {d.sendTimeReasons.map((r: any) => `${tr('cc.reason.' + r.reason, r.reason)} ${r.count}`).join(' · ')}</div> : null}
             {d.providerErrors.length ? <div className="fk-hint">{tx('cc.providerErrors')} {d.providerErrors.map((r: any) => `${r.code} × ${r.count}`).join(' · ')}</div> : null}
+            {d.triage ? <Triage t={d.triage} /> : null}
           </> : null}
           {tab === 'recipients' ? <RecipientsTab id={id} /> : null}
           {tab === 'message' ? <div className="cc-msg">{d.emailSubject ? <div><b>{tx('cc.subject')}</b> {d.emailSubject}</div> : null}<pre className="cc-pre" data-testid="cc-message">{d.messageBody ?? d.offer ?? '—'}</pre><div className="fk-hint">{tx('cc.messageVersion', { v: String(d.messageVersion) })}</div></div> : null}
           {tab === 'events' ? <EventsTab id={id} /> : null}
-          {tab === 'bookings' ? <dl className="cc-facts"><dt>{tx('cc.count.booked')}</dt><dd>{nf(c.booked)}</dd><dt>{tx('cc.redemptions')}</dt><dd>{nf(c.redemptions)}</dd><dt>{tx('cc.discountGiven')}</dt><dd>{fmtMoney(c.discountCents)}</dd></dl> : null}
+          {tab === 'bookings' ? <dl className="cc-facts" data-testid="cc-bookings"><dt>{tx('cc.count.booked')}</dt><dd>{nf(c.booked)}{c.bookedDuplicatesIgnored ? <span className="fk-muted"> · {tx('cc.bk.dupes', { n: nf(c.bookedDuplicatesIgnored) })}</span> : null}</dd>
+            {c.firstBookedAt ? <><dt>{tx('cc.bk.span')}</dt><dd>{when(c.firstBookedAt)} – {when(c.lastBookedAt)}</dd></> : null}<dt>{tx('cc.redemptions')}</dt><dd>{nf(c.redemptions)}</dd><dt>{tx('cc.discountGiven')}</dt><dd>{fmtMoney(c.discountCents)}</dd></dl> : null}
           {tab === 'financial' ? <dl className="cc-facts" data-testid="cc-financial">
             <dt>{tx('cc.associatedRevenue')}</dt><dd>{fmtMoney(c.associatedRevenueCents)}</dd><dt>{tx('cc.discountGiven')}</dt><dd>{fmtMoney(c.discountCents)}</dd>
             <dt>{tx('cc.providerCost')}</dt><dd>{money(c.actualCostCents)}</dd><dt>{tx('cc.budget')}</dt><dd>{fmtMoney(d.budgetCents)}</dd>
@@ -327,11 +329,48 @@ function EventsTab({ id }: { id: string }) {
     <tbody>{d.items.map((e: any) => <tr key={e.id}><td>{when(e.updatedAt)}</td><td>{tx('cc.send.' + e.status)}</td><td>{e.deliveryStatus ? tr('cc.delivery.' + e.deliveryStatus, e.deliveryStatus) : '—'}{e.providerErrorCode ? ` (${e.providerErrorCode})` : ''}</td><td>{e.reason ? tr('cc.reason.' + e.reason, e.reason) : '—'}</td><td>v{e.messageVersion}</td></tr>)}</tbody></table>
     <Pager compact info={d.pagination} onPage={setPage} /></>;
 }
+/** AI Marketing Assistant 09 — the server's delivery failure triage for this campaign; nothing here retries or sends */
+type TriageView = { invalidContact: number; missingContact: number; invalidNumber: number; refusedAtSend: number; refusedReasons: { reason: string; count: number }[];
+  carrierFailed: number; noCallbackOver1h: number; oldestNoCallbackAt: string | null; waitingToSend: number; oldestWaitingAt: string | null };
+function Triage({ t }: { t: TriageView }) {
+  const rows: { key: string; n: number; extra?: string }[] = [
+    { key: 'invalid', n: t.invalidContact, extra: tx('cc.tri.invalidSplit', { m: nf(t.missingContact), b: nf(t.invalidNumber) }) },
+    { key: 'refused', n: t.refusedAtSend, extra: t.refusedReasons.length ? t.refusedReasons.map((r) => `${r.reason} × ${nf(r.count)}`).join(' · ') : undefined },
+    { key: 'carrier', n: t.carrierFailed },
+    { key: 'callback', n: t.noCallbackOver1h, extra: t.oldestNoCallbackAt ? tx('cc.tri.since', { at: when(t.oldestNoCallbackAt) }) : undefined },
+    { key: 'waiting', n: t.waitingToSend, extra: t.oldestWaitingAt ? tx('cc.tri.since', { at: when(t.oldestWaitingAt) }) : undefined },
+  ];
+  const any = rows.some((r) => r.n > 0);
+  return (
+    <div className="fk-note" data-testid="cc-triage">
+      <b>{tx('cc.tri.title')}</b>
+      {!any ? <div className="fk-hint">{tx('cc.tri.none')}</div> : <ul className="fk-list dense">{rows.filter((r) => r.n > 0).map((r) => (
+        <li key={r.key} className="fk-li" data-testid={'cc-tri-' + r.key}><div className="fk-li-main"><div className="fk-li-t">{tx('cc.tri.' + r.key, { n: nf(r.n) })}</div>
+          <div className="fk-li-s">{tx('cc.tri.next.' + r.key)}{r.extra ? ` · ${r.extra}` : ''}</div></div></li>))}</ul>}
+      <div className="fk-hint">{tx('cc.tri.retry')}</div>
+    </div>
+  );
+}
 function AuditTab({ id }: { id: string }) {
   const [d, setD] = useState<any>(null);
   useEffect(() => { posCampaignCenterApi.audit(id).then(setD).catch(() => setD({ items: [] })); }, [id]);
   if (!d) return <div className="fk-loading">{tx('pos.loading')}</div>;
-  return d.items.length === 0 ? <Empty title={tx('cc.noAudit')} /> : <ul className="fk-list dense" data-testid="cc-audit">{d.items.map((a: any, i: number) => <li key={i} className="fk-li"><div className="fk-li-main"><div className="fk-li-t">{a.summary ?? a.action}</div><div className="fk-li-s">{a.actor} · {when(a.at)}</div></div></li>)}</ul>;
+  return d.items.length === 0 ? <Empty title={tx('cc.noAudit')} /> : <ul className="fk-list dense" data-testid="cc-audit">{d.items.map((a: any, i: number) => <li key={i} className="fk-li"><div className="fk-li-main"><div className="fk-li-t">{a.summary ?? a.action}</div><div className="fk-li-s">{a.actor} · {when(a.at)}</div>
+    {auditFacts(a.version).length ? <div className="fk-li-s" data-testid="cc-audit-version">{auditFacts(a.version).join(' · ')}</div> : null}</div></li>)}</ul>;
+}
+/** AI Marketing Assistant 11 — the server-recorded facts of one timeline entry: what content version, audience, channel and cap it was about */
+type AuditVersionView = { messageVersion: number | null; snapshotVersion: number | null; channel: string | null; contentHash: string | null; selected: number | null; eligible: number | null;
+  budgetCents: number | null; selfApproved: boolean | null; approvalVoided: boolean | null };
+function auditFacts(v: AuditVersionView | null | undefined): string[] {
+  if (!v) return [];
+  const out: string[] = [];
+  if (v.messageVersion != null) out.push(tx('cc.av.message', { v: String(v.messageVersion) }) + (v.contentHash ? ` (#${v.contentHash})` : ''));
+  if (v.snapshotVersion != null) out.push(tx('cc.av.audience', { v: String(v.snapshotVersion) }) + (v.eligible != null ? ` · ${tx('cc.av.eligible', { n: fmtNumber(v.eligible), of: v.selected == null ? '—' : fmtNumber(v.selected) })}` : ''));
+  if (v.channel) out.push(chLabel(v.channel));
+  if (v.budgetCents != null) out.push(tx('cc.av.cap', { c: v.budgetCents > 0 ? fmtMoney(v.budgetCents) : tx('cc.av.noCap') }));
+  if (v.selfApproved === true) out.push(tx('cc.av.self'));
+  if (v.approvalVoided === true) out.push(tx('cc.av.voided'));
+  return out;
 }
 
 // ── New Campaign: six steps (guide §08). Save-as-draft at every step; preview never sends; approval is a separate act. ──

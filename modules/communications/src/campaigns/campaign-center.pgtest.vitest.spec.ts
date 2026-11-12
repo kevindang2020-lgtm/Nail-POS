@@ -185,6 +185,78 @@ describe('§08 wizard: details → audience snapshot → message → preview →
   });
 });
 
+describe('AI Marketing Assistant 05 — campaign bookings are de-duplicated', () => {
+  it('a booking recorded twice for one appointment counts once (list, details, cost per booking); duplicates and the booking span are reported', async () => {
+    const cid = String((await q(sql`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values (${T}, ${B}, 'Dedupe test', 'sms', 'completed', 0) returning id`))[0].id);
+    const ev = (appt: string, hoursAgo: number) => q(sql`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, campaign_id, appointment_id, created_at)
+      values (${T}, ${B}, 'link', 'BOOKING_SUCCEEDED', 'succeeded', ${cid}, ${appt}, now() - make_interval(hours => ${hoursAgo}))`);
+    await ev('appt-dd-1', 30); await ev('appt-dd-1', 29); await ev('appt-dd-2', 5);
+    await q(sql`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, campaign_id, appointment_id, created_at) values (${T}, ${B}, 'link', 'BOOKING_FAILED', 'failed', ${cid}, 'appt-dd-3', now())`);
+    const d: any = await cc.detail(owner, cid);
+    expect(d.counts).toMatchObject({ booked: 2, bookedDuplicatesIgnored: 1 });
+    expect(new Date(d.counts.firstBookedAt).getTime()).toBeLessThan(new Date(d.counts.lastBookedAt).getTime());
+    expect(d.definitions.booked).toMatch(/each appointment counts once/);
+    const row = (await cc.list(owner, { q: 'Dedupe test' })).items.find((x: any) => x.id === cid);
+    expect(row.counts.booked).toBe(2);
+  });
+});
+
+describe('AI Marketing Assistant 09 — delivery failure triage', () => {
+  it('splits invalid contacts, provider refusals, carrier failures, missing callbacks and waiting sends; states the retry rule; reads only', async () => {
+    const cid = (await q(sql`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values (${T}, ${B}, 'Triage test', 'sms', 'in_progress', 0) returning id`))[0].id;
+    const people = [];
+    for (let i = 0; i < 7; i++) people.push(await customer('Tri Age' + i));
+    const send = async (cu: string, status: string, o: { reason?: string; pid?: string; nStatus?: string; code?: string; hoursAgo?: number } = {}) => {
+      if (o.pid) await q(sql`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id, provider_error_code) values (${T}, 'sms', '+1', 'x', ${cu}, ${o.nStatus ?? 'sent'}, ${o.pid}, ${o.code ?? null})`);
+      await q(sql`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, message_version, status, skip_reason, provider_id, created_at, updated_at)
+        values (${T}, ${B}, ${cid}, ${cu}, 'sms', 1, ${status}, ${o.reason ?? null}, ${o.pid ?? null}, now() - make_interval(hours => ${o.hoursAgo ?? 0}), now() - make_interval(hours => ${o.hoursAgo ?? 0}))`);
+    };
+    await send(people[0], 'skipped', { reason: 'missing_contact' });
+    await send(people[1], 'sent', { pid: 'TRI1', nStatus: 'failed', code: '21614' });          // not a mobile number
+    await send(people[2], 'sent', { pid: 'TRI2', nStatus: 'failed', code: '30007' });          // carrier filtered
+    await send(people[3], 'failed', { reason: 'Sender is not configured' });
+    await send(people[4], 'sent', { pid: 'TRI3', nStatus: 'sent', hoursAgo: 3 });              // no callback after 3 h
+    await send(people[5], 'sent', { pid: 'TRI4', nStatus: 'delivered', hoursAgo: 3 });
+    await send(people[6], 'queued', { hoursAgo: 2 });
+    const before = await q(sql`select status, skip_reason from ai_marketing_campaign_sends where campaign_id = ${cid} order by customer_id`);
+    const d: any = await cc.detail(owner, String(cid));
+    expect(d.triage).toMatchObject({ invalidContact: 2, missingContact: 1, invalidNumber: 1, refusedAtSend: 1, refusedReasons: [{ reason: 'Sender is not configured', count: 1 }],
+      carrierFailed: 1, noCallbackOver1h: 1, waitingToSend: 1, retry: { waitingResumedByNextSweep: true, failedResent: false } });
+    expect(d.triage.oldestNoCallbackAt).toEqual(expect.any(String)); expect(d.triage.oldestWaitingAt).toEqual(expect.any(String));
+    expect(await q(sql`select status, skip_reason from ai_marketing_campaign_sends where campaign_id = ${cid} order by customer_id`)).toEqual(before);
+  });
+});
+
+describe('Campaign Results 17 — comparison ratios come from the server', () => {
+  it('delivery rate = delivered / submitted and cost per booking = reported cost / bookings; N/A (null) for a zero denominator or unreported cost', () => {
+    const snap = { audience_source: 'segment_snapshot', snapshot_version: 1, selected: 10, eligible: 8 };
+    expect(countsOf({ ...snap, submitted: 8, delivered: 6, costed: 8, cost_micros: 60_000, booked: 3 })).toMatchObject({ deliveryRatePercent: 75, actualCostCents: 6, costPerBookingCents: 2 });
+    expect(countsOf({ ...snap, submitted: 3, delivered: 1, costed: 3, cost_micros: 0, booked: 0 })).toMatchObject({ deliveryRatePercent: 33.3, costPerBookingCents: null });
+    expect(countsOf({ ...snap, submitted: 4, delivered: 4, costed: 2, cost_micros: 20_000, booked: 2 })).toMatchObject({ actualCostCents: null, costPerBookingCents: null });   // cost not reported for every message
+    expect(countsOf({ ...snap, submitted: 0 })).toMatchObject({ deliveryRatePercent: null, costPerBookingCents: null });
+  });
+});
+
+describe('AI Marketing Assistant 11 — campaign approval timeline (versioned audit)', () => {
+  it('each approval records reviewer, content version + hash, audience snapshot + counts, channel and spend cap; an edit says it voided the approval; launches carry the versions', async () => {
+    const a: any = await cc.audit(owner, cA);
+    const approvals = a.items.filter((x: any) => x.action === 'campaign.approved');
+    expect(approvals).toHaveLength(2);
+    const [v2, v1] = approvals;                                          // newest first
+    expect(v1.version).toMatchObject({ messageVersion: 1, snapshotVersion: 1, channel: 'sms', selected: 4, eligible: 2, budgetCents: 0, selfApproved: false });
+    expect(v2.version).toMatchObject({ messageVersion: 2, snapshotVersion: 1, channel: 'sms', selected: 4, eligible: 2 });
+    expect(v1.version.contentHash).toMatch(/^[0-9a-f]{12}$/);
+    expect(v2.version.contentHash).not.toBe(v1.version.contentHash);   // the edited message is a different content
+    expect(v1.actor).not.toBe('system'); expect(v2.actor).not.toBe(v1.actor);   // owner approved v1, the manager v2
+    const edit = a.items.find((x: any) => x.action === 'campaign.updated');
+    expect(edit.version).toMatchObject({ approvalVoided: true, fields: ['messageBody'] });
+    const launched = a.items.filter((x: any) => x.action === 'campaign.launched');
+    expect(launched.length).toBeGreaterThan(0);
+    expect(launched[0].version).toMatchObject({ messageVersion: 2, snapshotVersion: 1, channel: 'sms', eligible: 2 });
+    expect(JSON.stringify(a)).not.toMatch(/Hi from|Ava Kim|\+1\d{10}/);   // no message text, names or numbers in the timeline
+  });
+});
+
 describe('§10 execution through the REAL executor over the approved snapshot', () => {
   it('consent revoked after scheduling → skipped; opted-out → skipped; others submitted once; delivery callbacks counted; a rerun sends nothing', async () => {
     const extra = await customer('Eve Fox'); const optOut = await customer('Gus Hill');

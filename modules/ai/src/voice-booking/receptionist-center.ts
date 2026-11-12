@@ -35,7 +35,14 @@ import { voiceWriteToolsEnabled } from './voice-tools';
 type Row = Record<string, any>;
 export interface RcCtx { tenantId: string; branchId: string | null; userId: string; role?: string; permissions?: string[] }
 export interface RcAccessRepo { loadSnapshot(tenantId: string, packageCode: string, userId: string | null, opts?: { branchId?: string | null }): Promise<AiAccessSnapshot> }
-export interface RcBusinessReadiness { readiness(ctx: RcCtx): Promise<{ core: { key: string; status: string; detail: string }[] }> }
+export interface RcBusinessReadiness { readiness(ctx: RcCtx): Promise<{ core: { key: string; status: string; detail: string }[] }>
+  /** Extras · AI Front Desk 06 — the live knowledge sources an agent's own wording can drift from (read-only; optional) */
+  driftSources?(ctx: RcCtx): Promise<RcDriftSources> }
+export interface RcDriftSources {
+  hours: { source: string; timezone: string; storeHours: Record<string, { isOpen?: boolean; openTime?: string | null; closeTime?: string | null } | undefined> };
+  services: { id: string; name: string; active: boolean; priceCents: number | null }[];
+  changedAt: { hours: string | null; services: string | null; closures: string | null; faqs: string | null };
+}
 
 export const RC_STATES = ['READY', 'WARNING', 'FAILED', 'NOT_CONFIGURED', 'DISABLED', 'UNKNOWN', 'BLOCKED_EXTERNAL'] as const;
 export type RcState = typeof RC_STATES[number];

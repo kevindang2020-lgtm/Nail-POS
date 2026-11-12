@@ -265,4 +265,28 @@ export const CAMPAIGNS_VI: Record<keyof typeof CAMPAIGNS_EN, string> = {
   "cc.a.when": "Thời điểm gợi ý:",
   "cc.a.saveDraft": "Lưu thành bản nháp",
   "cc.w.proposed": "Trình tạo chiến dịch đề xuất {at} (giờ tiệm) — đã điền sẵn bên dưới. Chưa có gì được lên lịch cho đến khi bạn bắt đầu chiến dịch.",
+  "cc.av.message": "Tin nhắn v{v}", // DRAFT — Kevin reviews
+  "cc.av.audience": "Ảnh chụp đối tượng {v}", // DRAFT — Kevin reviews
+  "cc.av.eligible": "{n} đủ điều kiện trên {of}", // DRAFT — Kevin reviews
+  "cc.av.cap": "Mức chi tối đa {c}", // DRAFT — Kevin reviews
+  "cc.av.noCap": "chưa đặt", // DRAFT — Kevin reviews
+  "cc.av.self": "Người yêu cầu tự phê duyệt", // DRAFT — Kevin reviews
+  "cc.av.voided": "Lần sửa này đã hủy phê duyệt trước đó", // DRAFT — Kevin reviews
+  "cc.tri.title": "Phân loại lỗi gửi", // DRAFT — Kevin reviews
+  "cc.tri.none": "Chiến dịch này không có tin nhắn bị lỗi, bị từ chối, chưa xác nhận hay đang chờ.", // DRAFT — Kevin reviews
+  "cc.tri.invalid": "{n} liên hệ không hợp lệ", // DRAFT — Kevin reviews
+  "cc.tri.invalidSplit": "{m} không có liên hệ dùng được lúc gửi, {b} bị từ chối vì số sai", // DRAFT — Kevin reviews
+  "cc.tri.refused": "{n} bị nhà cung cấp từ chối lúc gửi", // DRAFT — Kevin reviews
+  "cc.tri.carrier": "{n} lỗi sau khi gửi (nhà mạng hoặc nhà cung cấp)", // DRAFT — Kevin reviews
+  "cc.tri.callback": "{n} chưa có báo cáo giao sau một giờ", // DRAFT — Kevin reviews
+  "cc.tri.waiting": "{n} vẫn đang chờ gửi", // DRAFT — Kevin reviews
+  "cc.tri.since": "cũ nhất {at}", // DRAFT — Kevin reviews
+  "cc.tri.next.invalid": "Sửa số điện thoại trên hồ sơ khách", // DRAFT — Kevin reviews
+  "cc.tri.next.refused": "Kiểm tra thiết lập nhắn tin (số gửi và đăng ký)", // DRAFT — Kevin reviews
+  "cc.tri.next.carrier": "Xem mã lỗi của nhà cung cấp ở trên", // DRAFT — Kevin reviews
+  "cc.tri.next.callback": "Báo cáo giao có thể bị chậm; kiểm tra webhook nhắn tin", // DRAFT — Kevin reviews
+  "cc.tri.next.waiting": "Lần gửi kế tiếp sẽ xử lý các tin này", // DRAFT — Kevin reviews
+  "cc.tri.retry": "Tin đang chờ sẽ được lần gửi kế tiếp tiếp tục. Tin bị lỗi không bao giờ được gửi lại, vì nhà cung cấp có thể đã nhận tin đó.", // DRAFT — Kevin reviews
+  "cc.bk.dupes": "Đã bỏ qua {n} bản ghi đặt lịch lặp lại của lịch hẹn đã được tính", // DRAFT — Kevin reviews
+  "cc.bk.span": "Thời gian các lịch hẹn được tính", // DRAFT — Kevin reviews
 };

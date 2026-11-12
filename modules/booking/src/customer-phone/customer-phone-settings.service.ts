@@ -16,6 +16,13 @@ import type { PhoneSettings } from './customer-phone-update.service';
 import { hasPermission } from '@aipowersalon/permissions';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
+export type PhonePolicySource = 'branch_override' | 'salon_policy' | 'platform_default';
+/** No platform-level (Super Admin) control exists for these nine settings today: superAdminOverride is reported as false, never guessed. */
+export interface PhonePolicyExplain {
+  scope: 'salon' | 'branch'; source: PhonePolicySource; salonPolicySaved: boolean; superAdminOverride: false;
+  keys: Record<keyof PhoneSettings, { value: boolean; source: PhonePolicySource; salonValue: boolean | null; platformDefault: boolean; differsFromSalon: boolean; differsFromDefault: boolean }>;
+}
+
 export class PhoneSettingsError extends Error {
   constructor(msg: string, readonly code: 'forbidden' | 'invalid' | 'not_found') { super(msg); }
 }
@@ -71,6 +78,22 @@ export class CustomerPhoneSettingsService {
     if (this.store.branchBelongs && !(await this.store.branchBelongs(tenantId, branchId))) throw withCode(new PhoneSettingsError('Branch not found.', 'not_found'), 'BRANCH_NOT_FOUND');
     const own = this.store.getOwn ? await this.store.getOwn(tenantId, branchId) : null;
     return { ...(await this.get(tenantId, branchId)), branchOverride: !!own };
+  }
+
+  /** PHONE NUMBER MANAGEMENT 4 · 10 — where each effective value comes from (branch's own policy, the salon-wide policy or the
+   *  platform default) and whether a platform (Super Admin) override applies. Read-only: explaining never writes a row. */
+  async explain(tenantId: string, branchId: string | null): Promise<PhonePolicyExplain> {
+    const own = branchId && this.store.getOwn ? await this.store.getOwn(tenantId, branchId) : null;
+    const salon = await this.store.get(tenantId, null);
+    const source: PhonePolicySource = own ? 'branch_override' : salon ? 'salon_policy' : 'platform_default';
+    const eff = own ?? salon ?? PHONE_SETTINGS_DEFAULTS;
+    const salonEff = salon ?? PHONE_SETTINGS_DEFAULTS;
+    const keys = {} as PhonePolicyExplain['keys'];
+    for (const k of SETTING_KEYS) {
+      keys[k] = { value: eff[k], source, salonValue: branchId ? salonEff[k] : null, platformDefault: PHONE_SETTINGS_DEFAULTS[k],
+        differsFromSalon: branchId ? eff[k] !== salonEff[k] : false, differsFromDefault: eff[k] !== PHONE_SETTINGS_DEFAULTS[k] };
+    }
+    return { scope: branchId ? 'branch' : 'salon', source, salonPolicySaved: !!salon, superAdminOverride: false, keys };
   }
 
   async clearBranch(actor: { tenantId: string; branchId: string; userId: string; role: string; permissions?: readonly string[] }): Promise<{ ok: true; removed: boolean }> {

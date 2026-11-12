@@ -3,7 +3,7 @@
 // DT = details overlay (audited, scoped, request never "booked") · HL = Check Voice Transcription System (read-only).
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { VoiceCallsCenter, VoiceCallsError, safeExcerpt } from './voice-calls-center';
+import { VoiceCallsCenter, VoiceCallsError, safeExcerpt, transcriptQualityFlags } from './voice-calls-center';
 import { KyselyVoiceTranscriptionRepository } from './ai-voice-transcription.kysely.repository';
 import { VoiceTranscriptionService } from './ai-voice-transcription.service';
 import { InMemoryVoiceEntitlement } from './ai-voice-transcription-entitlement';
@@ -163,6 +163,34 @@ describe('Call details overlay', () => {
     const U = await call({ cust: null, hoursAgo: 2 });
     expect((await vc.call(ctx(), U) as any).booking).toMatchObject({ basis: 'no_linked_customer', appointments: [] });
   });
+  it('Extras VCH-04 quality flags: unknown speaker, low confidence, mixed language, missing audio, uncertain request — advisory; the transcript itself is unchanged', async () => {
+    const Q = await call({ hoursAgo: 4, ref: 'call-vch04', lines: ['Hola, quiero una cita', 'Yes for Saturday maybe'] });
+    // provider stored: 3 expected segments but 2 arrived, a 120 s call covered only to 30 s, one segment with no speaker and one at 0.42
+    await q(`update call_transcripts set segment_count = 3, duration_seconds = 120, confidence = 0.81, language_confidence = 0.55 where id = $1`, [Q]);
+    await q(`update call_transcript_segments set speaker_role = 'unknown', language = 'es', confidence = 0.42, end_ms = 12000 where transcript_id = $1 and seq = 1`, [Q]);
+    await q(`update call_transcript_segments set language = 'en-US', confidence = 0.93, end_ms = 30000 where transcript_id = $1 and seq = 2`, [Q]);
+    const before = await q(`select seq, redacted_text, raw_text, speaker_role from call_transcript_segments where transcript_id = $1 order by seq`, [Q]);
+    const d: any = await vc.call(ctx(), Q);
+    const by = Object.fromEntries(d.quality.flags.map((f: any) => [f.code, f.evidence]));
+    expect(Object.keys(by).sort()).toEqual(['incomplete_recording', 'low_confidence', 'mixed_language', 'speaker_attribution', 'uncertain_booking_intent']);
+    expect(by.speaker_attribution).toEqual({ unattributedSegments: 1, totalSegments: 2 });
+    expect(by.low_confidence).toMatchObject({ transcriptConfidence: 0.81, uncertainSegments: 1 });
+    expect(by.mixed_language).toMatchObject({ languages: ['en', 'es'], languageConfidence: 0.55, providerMarkedMixed: false });
+    expect(by.incomplete_recording).toEqual({ status: 'completed', expectedSegments: 3, storedSegments: 2, coveredSeconds: 30, durationSeconds: 120 });
+    expect(by.uncertain_booking_intent).toEqual({ requestConfidence: 0.6, bookingIntentConfidence: null });   // the seeded request is 0.6
+    expect(d.quality.advisory).toBe(true);
+    expect(d.transcript[1].uncertain).toBe(false); expect(d.transcript[0].uncertain).toBe(true);
+    expect(await q(`select seq, redacted_text, raw_text, speaker_role from call_transcript_segments where transcript_id = $1 order by seq`, [Q])).toEqual(before);
+    expect((await q(`select status from call_transcripts where id = $1`, [Q]))[0].status).toBe('completed');
+  });
+  it('Extras VCH-04 a clean, fully covered, sure call has no flags; the rule alone', () => {
+    const segs = [{ speaker_role: 'customer', language: 'en', confidence: 0.95, end_ms: 50000 }, { speaker_role: 'ai_receptionist', language: 'en', confidence: 0.9, end_ms: 58000 }];
+    const sure = { intents: [{ intent: 'booking', confidence: 0.92 }], appointment: { requestedServices: ['pedicure'], confidence: 0.9 } };
+    expect(transcriptQualityFlags({ status: 'completed', confidence: 0.9, language_confidence: 0.97, mixed_language: false, duration_seconds: 60, segment_count: 2 }, segs, sure)).toEqual([]);
+    expect(transcriptQualityFlags({ status: 'partial', segment_count: 2, duration_seconds: 60 }, segs, { intents: [{ intent: 'booking', confidence: 0.5 }], appointment: null }).map((f) => f.code))
+      .toEqual(['incomplete_recording', 'uncertain_booking_intent']);
+    expect(transcriptQualityFlags({ status: 'completed', mixed_language: true, primary_language: 'vi' }, [], null)).toEqual([{ code: 'mixed_language', evidence: { languages: ['vi'], languageConfidence: null, providerMarkedMixed: true } }]);
+  });
   it('DT-02 another branch, another salon, a bad id → not found', async () => {
     expect(await code(vc.call(ctx(), E))).toBe('VC_CALL_NOT_FOUND');
     expect(await code(vc.call(ctx(), F))).toBe('VC_CALL_NOT_FOUND');
@@ -180,6 +208,30 @@ describe('Call details overlay', () => {
     const found = (await svc.search(sctx, { q: 'gel', branchId: B2 })).items.map((i: any) => i.header.id);
     expect(found).not.toContain(E);
     expect(found).toContain(A);
+  });
+});
+
+describe('Extras VCH-08 — usage this month from real records, no invented price', () => {
+  it('transcribed calls + minutes, AI vs fallback summaries, failed jobs and the package billing status; retries are "not recorded"; never a price', async () => {
+    const u0: any = (await vc.summary(ctx()) as any).usage;
+    expect(u0).toMatchObject({ timeZone: 'UTC', retries: null, retriesRecorded: false, price: null, subscription: { status: null, billing: 'not_subscribed' } });
+    const A1 = await call({ hoursAgo: 0, lines: ['hello'] });
+    await q(`update call_transcripts set duration_seconds = 90, created_at = now() where id = $1`, [A1]);
+    await q(`update call_transcript_intelligence set detailed_source = 'ai' where transcript_id = $1`, [A1]);
+    const F1 = await call({ hoursAgo: 0, status: 'provider_error' });
+    await q(`update call_transcripts set created_at = now() where id = $1`, [F1]);
+    await q(`insert into tenant_ai_subscriptions (tenant_id, package_code, status) values ($1, 'ai_voice_transcription', 'trialing')`, [T]);
+    const u1: any = (await vc.summary(ctx()) as any).usage;
+    expect(u1.transcribedCalls - u0.transcribedCalls).toBe(1);
+    expect(Math.round((u1.transcribedMinutes - u0.transcribedMinutes) * 10) / 10).toBe(1.5);
+    expect(u1.aiSummaries - u0.aiSummaries).toBe(1);
+    expect(u1.failedJobs - u0.failedJobs).toBe(1);
+    expect(u1.subscription).toEqual({ status: 'trialing', billing: 'trial' });
+    expect(u1.from.slice(8)).toBe('01');
+    // another salon's records never count
+    const X1 = await call({ t: X, b: BX, hoursAgo: 0, lines: ['x'], cust: CX });
+    await q(`update call_transcripts set duration_seconds = 600 where id = $1`, [X1]);
+    expect(((await vc.summary(ctx()) as any).usage).transcribedMinutes).toBe(u1.transcribedMinutes);
   });
 });
 

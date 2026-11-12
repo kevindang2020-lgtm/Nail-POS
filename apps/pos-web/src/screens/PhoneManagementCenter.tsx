@@ -23,6 +23,7 @@ type Tab = 'pending' | 'history' | 'sync';
 const GROUPS = ['pending', 'code_sent', 'retry_allowed', 'expired', 'failed', 'manager_review', 'cancelled', 'completed', 'sync_attention'] as const;
 const SOURCES = ['staff_pos', 'customer_app', 'kiosk', 'ai_receptionist', 'import'] as const;
 const BASES = ['requested', 'verified', 'applied', 'failed', 'audit'] as const;
+const RISK_REASONS = ['frequent_changes', 'failed_codes', 'cross_device'];
 const SYNCS = ['attention', 'retry_scheduled', 'failed', 'in_progress', 'pending', 'synced'] as const;
 const isForbidden = (e: unknown) => { const x = e as { status?: number; code?: string } | null; return !!x && (x.status === 403 || x.code === 'PERMISSION_DENIED'); };
 const errText = (e: unknown) => errorTextOf(e, tx('phm.loadError'));
@@ -136,6 +137,19 @@ export function PhoneManagementCenter() {
           )}
         </section>
       </div>
+
+      {summary?.risk?.items.length ? (
+        <section className="pm-card" data-testid="pm-risk" aria-labelledby="pm-risk-h">
+          <h2 id="pm-risk-h" className="pm-h2">{tx('phm.risk.title')}</h2>
+          <div className="sub">{tx('phm.risk.sub', { d: String(summary.risk.windowDays) })}</div>
+          <ul className="pm-pick">{summary.risk.items.map((r) => (
+            <li key={r.customerId} data-testid="pm-risk-row">
+              <span><b>{r.customerName ?? '—'}</b> <span className="pm-small">{r.reasons.filter((x) => RISK_REASONS.includes(x)).map((x) => tx('phm.risk.r.' + x)).join(' · ')}</span>
+                <span className="pm-small"> · {tx('phm.risk.facts', { c: fmtNumber(r.changes), f: fmtNumber(r.failedRequests), a: fmtNumber(r.codeAttempts), ch: fmtNumber(r.channels) })}</span></span>
+              <button type="button" className="fk-btn ghost sm" onClick={() => setOpenId(r.latestRequestId)} data-testid="pm-risk-open">{tx('phm.risk.review')}</button>
+            </li>))}</ul>
+        </section>
+      ) : null}
 
       <section className="pm-card pm-lists" data-testid="pm-lists">
         <div className="fk-seg pm-tabs" role="tablist">
@@ -337,6 +351,14 @@ function ChangeOverlay({ id, tz, onClose, onChanged }: { id: string; tz?: string
 }
 
 // ── Update Phone: find the customer, enter the new number, review, save as pending ──────────────────────────
+type DupGuard = { blocked: boolean; requiresManager: boolean; outcome: string; matches: { maskedName: string }[]; sessionId?: string };
+/** the server's DuplicateResult (masked names, tenant-scoped) → what the guard shows; nothing to show when no one else is on the number */
+function dupGuardOf(d: unknown, blocked: boolean): DupGuard | null {
+  const x = d as { outcome?: string; requiresManager?: boolean; matches?: { maskedName?: string }[] } | null | undefined;
+  const matches = Array.isArray(x?.matches) ? x!.matches.map((m) => ({ maskedName: String(m?.maskedName ?? '—') })) : [];
+  if (!matches.length) return null;
+  return { blocked, requiresManager: !!x?.requiresManager, outcome: String(x?.outcome ?? ''), matches };
+}
 function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (requestId: string) => void }) {
   const [text, setText] = useState('');
   const q = useDebounced(text.trim(), 300);
@@ -352,23 +374,48 @@ function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (
   const [key] = useState(() => requestId());
   useEffect(() => { setPage(1); }, [q]);
   useEffect(() => { let live = true; pcApi.customers({ q: q || undefined, page, pageSize: 10 }).then((r) => { if (live) { setRes(r); setErr(null); } }, (e) => { if (live) setErr(e); }); return () => { live = false; }; }, [q, page]);
-  const save = async () => {
+  // PHONE NUMBER MANAGEMENT 4 · 05 — Duplicate and Family Identity Guard. The server's duplicate check (tenant-scoped, masked
+  // names only) decides; this shows its answer BEFORE the change goes on: who else is on the number and the reminder that
+  // each person keeps their own profile. A conflict creates nothing; a shared family phone is shown before the request opens.
+  const [dup, setDup] = useState<DupGuard | null>(null);
+  const save = async (asFamily = family) => {
     if (!pick) return;
     setBusy(true); setErr(null);
-    try { const r = await posCustomersApi.phoneStart(pick.customerId, { phone: phone.trim(), reason: reason.trim() || undefined, sharedFamilyPhone: family || undefined, idempotencyKey: key }); onOpen(r.sessionId); }
-    catch (e) { setErr(e); setReview(false); }
+    try {
+      const r = await posCustomersApi.phoneStart(pick.customerId, { phone: phone.trim(), reason: reason.trim() || undefined, sharedFamilyPhone: asFamily || undefined, idempotencyKey: asFamily === family ? key : requestId() });
+      const g = dupGuardOf(r?.duplicates, false);
+      if (g) setDup({ ...g, sessionId: r.sessionId }); else onOpen(r.sessionId);
+    }
+    catch (e) {
+      const x = e as { code?: string; details?: { duplicates?: unknown; requiresManager?: boolean; error?: { details?: { duplicates?: unknown } } } } | null;
+      const g = x?.code === 'duplicate_conflict' ? dupGuardOf(x.details?.duplicates ?? x.details?.error?.details?.duplicates, true) : null;
+      if (g) { setDup(g); setReview(false); } else { setErr(e); setReview(false); }
+    }
     finally { setBusy(false); }
   };
   return (
     <FitDialog title={tx('phm.up.title')} onClose={onClose} busy={busy} testId="pm-update-dialog"
       footer={<>
         <button type="button" className="fk-btn ghost" onClick={review ? () => setReview(false) : onClose} disabled={busy}>{review ? tx('phm.up.back') : tx('phm.ov.close')}</button>
-        {pick ? (review
+        {pick && !dup ? (review
           ? <button type="button" className="fk-btn" onClick={() => void save()} disabled={busy} data-testid="pm-up-confirm">{tx('phm.up.confirm')}</button>
           : <button type="button" className="fk-btn" onClick={() => setReview(true)} disabled={!phone.trim()} data-testid="pm-up-review">{tx('phm.up.review')}</button>) : null}
       </>}>
       {err ? <div className="err" role="alert">{errText(err)}</div> : null}
-      {!pick ? (
+      {dup ? (
+        <div className="pm-note gold" data-testid="pm-up-dupguard">
+          <b>{tx(dup.blocked ? 'phm.dup.titleBlocked' : 'phm.dup.titleShared')}</b>
+          <ul data-testid="pm-up-dupmatches">{dup.matches.map((m, i) => <li key={i}>{m.maskedName}</li>)}</ul>
+          <div data-testid="pm-up-dupreminder">{tx('phm.dup.separate')}</div>
+          {dup.blocked ? <div className="sub">{tx(dup.requiresManager ? 'phm.dup.manager' : dup.outcome === 'probable_duplicate' ? 'phm.dup.samePerson' : 'phm.dup.blocked')}</div> : null}
+          <div className="pm-actions">
+            {dup.blocked ? <>
+              <button type="button" className="fk-btn ghost" onClick={() => { setDup(null); setPhone(''); }} disabled={busy} data-testid="pm-up-dup-other">{tx('phm.dup.other')}</button>
+              {!dup.requiresManager ? <button type="button" className="fk-btn" onClick={() => { setFamily(true); setDup(null); void save(true); }} disabled={busy} data-testid="pm-up-dup-family">{tx('phm.dup.family')}</button> : null}
+            </> : <button type="button" className="fk-btn" onClick={() => dup.sessionId && onOpen(dup.sessionId)} data-testid="pm-up-dup-continue">{tx('phm.dup.continue')}</button>}
+          </div>
+        </div>
+      ) : !pick ? (
         <>
           <input className="fk-input" type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder={tx('phm.up.find')} aria-label={tx('phm.up.find')} data-testid="pm-up-search" autoFocus />
           {!res ? <div className="state" role="status">{tx('pos.loading')}</div> : res.items.length === 0 ? <Empty title={tx('phm.up.none')} /> : (

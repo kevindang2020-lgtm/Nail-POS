@@ -134,6 +134,43 @@ describe('Call History', () => {
     fireEvent.click(await screen.findByTestId('vcx-view'));
     expect(await screen.findByTestId('vcx-booking-basis')).toHaveTextContent('not linked to a customer');
   });
+  it('Extras VCH-08: Call History states this month\'s usage from the server and never a price', async () => {
+    vc.summary.mockResolvedValue(vcSum({ usage: { from: '2026-11-01', to: '2026-11-12', timeZone: 'America/New_York', transcribedCalls: 12, transcribedMinutes: 37.5, aiSummaries: 9, fallbackSummaries: 3, failedJobs: 1,
+      retries: null, retriesRecorded: false, subscription: { status: 'trialing', billing: 'trial' }, price: null } }));
+    vc.list.mockResolvedValue(vcPage([vcRow()]));
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    const u = await screen.findByTestId('vcx-usage');
+    expect(u).toHaveTextContent('This month (2026-11-01 – 2026-11-12): 12 calls transcribed, 37.5 minutes, 9 AI summaries (3 rules-only), 1 failed transcriptions');
+    expect(u).toHaveTextContent('package: on trial');
+    expect(u).toHaveTextContent('No price is shown here');
+    expect(u).toHaveTextContent('Retries are not recorded.');
+    expect(u.textContent).not.toMatch(/\$/);
+  });
+  it('Extras VCH-04: the server\'s transcript-quality flags show with their evidence and an advisory note; no flags → no section', async () => {
+    const base = { call: { id: 'tr1', callRef: 'c1', callAt: '2026-11-02T15:00:00Z', direction: 'inbound', durationSeconds: 120, statusGroup: 'completed', language: 'en', branch: 'Main' },
+      customer: { linked: false, id: null, name: null, phoneLast4: null, visible: true }, transcript: [{ seq: 1, speaker: 'unknown', text: 'Hola', uncertain: true }], summary: null, intents: [], request: null, followUps: [], canWorkFollowUps: false };
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([vcRow()]));
+    vc.detail.mockResolvedValueOnce({ ...base, quality: { advisory: true, flags: [
+      { code: 'speaker_attribution', evidence: { unattributedSegments: 1, totalSegments: 2 } },
+      { code: 'mixed_language', evidence: { languages: ['en', 'es'], languageConfidence: 0.55, providerMarkedMixed: false } },
+      { code: 'incomplete_recording', evidence: { status: 'completed', expectedSegments: 3, storedSegments: 2, coveredSeconds: 30, durationSeconds: 120 } },
+      { code: 'uncertain_booking_intent', evidence: { requestConfidence: 0.6, bookingIntentConfidence: null } }] } })
+      .mockResolvedValueOnce({ ...base, quality: { advisory: true, flags: [] } });
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('vcx-view'));
+    const box = await screen.findByTestId('vcx-call-quality');
+    expect(screen.getByTestId('vcx-q-speaker_attribution')).toHaveTextContent('Speaker unclear');
+    expect(screen.getByTestId('vcx-q-speaker_attribution')).toHaveTextContent('1 of 2 lines have no identified speaker.');
+    expect(screen.getByTestId('vcx-q-mixed_language')).toHaveTextContent('Languages heard: en, es; language confidence 55%.');
+    expect(screen.getByTestId('vcx-q-incomplete_recording')).toHaveTextContent('2 of 3 lines stored; words cover 30s of a 120s call.');
+    expect(screen.getByTestId('vcx-q-uncertain_booking_intent')).toHaveTextContent('Request confidence 60%; booking intent confidence —.');
+    expect(box).toHaveTextContent('nothing was changed');
+    expect(screen.getAllByTestId('vcx-line')[0]).toHaveTextContent('Hola');
+    fireEvent.click(screen.getByTestId('vcx-call-close'));
+    fireEvent.click(await screen.findByTestId('vcx-view'));
+    await screen.findAllByTestId('vcx-line');
+    expect(screen.queryByTestId('vcx-call-quality')).toBeNull();
+  });
   it('Check Voice Transcription System: every check with its part and last pass; a failed request is an error, never a pass', async () => {
     vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([]));
     vc.check.mockResolvedValueOnce({ overall: 'FAILED', checkedAt: '2026-11-03T05:00:00Z', reused: false, checks: [{ key: 'no_card_numbers_searchable', component: 'privacy', state: 'FAILED', count: 1, lastPassedAt: null },

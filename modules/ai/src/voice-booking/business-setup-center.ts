@@ -128,6 +128,23 @@ export class BusinessSetupCenter {
     if (!j?.storeHours) return { source: 'platform_default', timezone, storeHours: { ...dflt }, updatedAt: null };
     return { source: pick.branch_id ? 'branch' : 'tenant', timezone, storeHours: { ...dflt, ...j.storeHours }, updatedAt: pick.updated_at ? new Date(pick.updated_at).toISOString() : null };
   }
+  /** Extras · AI Front Desk 06 — what an agent's own wording can drift from: the hours the AI is told, every service for
+   *  this branch (active or not) and when each live source last changed. Read-only. */
+  async driftSources(ctx: BsCtx) {
+    const b = this.branch(ctx);
+    const h = await this.hours(ctx);
+    const svc: Row[] = (await sql<Row>`select id, name, status, price_cents from services where tenant_id = ${ctx.tenantId}
+      and (${b}::uuid is null or branch_id = ${b} or branch_id is null) order by name asc, id asc limit 500`.execute(this.db)).rows;
+    const ch: Row = (await sql<Row>`select
+        (select max(s.updated_at) from services s where s.tenant_id = ${ctx.tenantId} and (${b}::uuid is null or s.branch_id = ${b} or s.branch_id is null)) services_at,
+        (select max(coalesce(c.archived_at, c.created_at)) from business_closures c where c.tenant_id = ${ctx.tenantId} and (c.branch_id is null or c.branch_id = ${b})) closures_at,
+        (select max(f.approved_at) from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and f.status = 'approved' and (f.branch_id is null or f.branch_id = ${b})) faqs_at`.execute(this.db)).rows[0] ?? {};
+    return {
+      hours: { source: h.source, timezone: h.timezone, storeHours: h.storeHours },
+      services: svc.map((r) => ({ id: String(r.id), name: String(r.name ?? ''), active: r.status === 'active', priceCents: r.price_cents == null ? null : N(r.price_cents) })),
+      changedAt: { hours: h.updatedAt, services: iso(ch.services_at), closures: iso(ch.closures_at), faqs: iso(ch.faqs_at) },
+    };
+  }
   /** services the AI and online booking offer: tenant + (branch OR no branch) + active (CustomerBooking listServices) */
   private async eligibleServices(ctx: BsCtx): Promise<Row[]> {
     const b = this.branch(ctx);

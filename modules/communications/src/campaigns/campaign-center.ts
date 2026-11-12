@@ -62,6 +62,17 @@ const proposedAt = (v: unknown): string | null => {
   if (typeof v !== 'string' || !v) return null; const t = Date.parse(v);
   return Number.isFinite(t) && t > Date.now() && t < Date.now() + 366 * 86_400_000 ? new Date(t).toISOString() : null;
 };
+/** AI Marketing Assistant 11 — the versioned facts an approval-timeline entry carries, from its audit metadata (a fixed
+ *  whitelist: no recipient, contact or message text). Older entries simply have nulls. */
+export function auditVersion(meta: unknown) {
+  const m = (meta && typeof meta === 'object' ? meta : {}) as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  return { messageVersion: num(m.messageVersion), snapshotVersion: num(m.snapshotVersion), channel: typeof m.channel === 'string' ? m.channel : null,
+    contentHash: typeof m.contentHash === 'string' ? m.contentHash.slice(0, 12) : null, selected: num(m.selected), eligible: num(m.eligible), budgetCents: num(m.budgetCents),
+    scheduledAt: typeof m.scheduledAt === 'string' ? m.scheduledAt : null, selfApproved: typeof m.selfApproved === 'boolean' ? m.selfApproved : null,
+    approvalVoided: typeof m.approvalVoided === 'boolean' ? m.approvalVoided : null, fields: Array.isArray(m.fields) ? m.fields.filter((f): f is string => typeof f === 'string').slice(0, 20) : null };
+}
+
 export class CampaignCenterError extends Error {
   code: string; status: number; extra: Record<string, unknown>;
   constructor(msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) { super(msg); this.name = 'CampaignCenterError'; this.code = code; this.status = status; this.extra = extra; }
@@ -109,7 +120,9 @@ function countsCte(T: string) {
             from ai_marketing_campaign_sends s
             left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
             where s.tenant_id = ${T} group by s.campaign_id),
-    conv as (select campaign_id, count(*)::int as booked from ai_booking_conversion_events
+    conv as (select campaign_id, count(distinct coalesce(appointment_id::text, id::text))::int as booked,   -- AI Marketing Assistant 05: one appointment counts once
+               (count(*) - count(distinct coalesce(appointment_id::text, id::text)))::int as booked_dupes, min(created_at) as booked_first, max(created_at) as booked_last
+             from ai_booking_conversion_events
              where tenant_id = ${T} and campaign_id is not null and stage = 'BOOKING_SUCCEEDED' and (outcome = 'succeeded' or outcome is null) group by campaign_id),
     red as (select b.campaign_id, count(distinct dr.id)::int as redemptions, coalesce(sum(dr.amount_discounted_cents - coalesce(dr.reversed_cents, 0)), 0)::bigint as discount_cents,
               coalesce(sum(paid_t.total), 0)::bigint as revenue_cents
@@ -125,7 +138,14 @@ export interface CampaignCounts {
   queued: number; attempted: number; submitted: number; skippedAtSend: number; failed: number; delivered: number; unknown: number; simulated: number;
   booked: number; redemptions: number; discountCents: number; associatedRevenueCents: number; legacyRevenueCents: number; legacySentCount: number;
   actualCostCents: number | null; roi: number | null; roiNote: string;
+  /** Campaign Results 17 — comparison ratios, computed HERE once (null when the denominator is 0 / the cost is not reported) */
+  deliveryRatePercent: number | null; costPerBookingCents: number | null;
+  /** AI Marketing Assistant 05 — repeated conversion events for an appointment already counted, and the span of the counted bookings */
+  bookedDuplicatesIgnored: number; firstBookedAt: string | null; lastBookedAt: string | null;
 }
+/** provider error codes that mean the destination number itself is bad (invalid, not a mobile, unknown / unreachable
+ *  handset, landline) — a contact problem to fix on the customer profile, not a delivery outage */
+export const CC_INVALID_NUMBER_CODES = ['21211', '21214', '21217', '21407', '21421', '21612', '21614', '30003', '30005', '30006'];
 export function countsOf(r: any): CampaignCounts {
   const snapshot = r.audience_source === 'segment_snapshot' && N(r.snapshot_version) > 0;
   const selected = snapshot ? N(r.selected) : (N(r.audience_size) > 0 ? N(r.audience_size) : null);
@@ -143,6 +163,9 @@ export function countsOf(r: any): CampaignCounts {
     legacyRevenueCents: N(r.legacy_revenue), legacySentCount: N(r.sent_count), actualCostCents, roi,
     roiNote: roi != null ? 'ROI = (revenue on tickets that redeemed this campaign\'s codes − provider cost) / provider cost.'
       : submitted === 0 ? 'Not available: nothing was sent, so there is no cost.' : 'Not available: the provider has not reported the cost of every message.',
+    deliveryRatePercent: submitted > 0 ? Math.round((delivered / submitted) * 1000) / 10 : null,
+    costPerBookingCents: actualCostCents != null && N(r.booked) > 0 ? Math.round(actualCostCents / N(r.booked)) : null,
+    bookedDuplicatesIgnored: N(r.booked_dupes), firstBookedAt: iso(r.booked_first ?? null), lastBookedAt: iso(r.booked_last ?? null),
   };
 }
 
@@ -202,7 +225,7 @@ export class CampaignCenter {
         coalesce(led.ledger_rows, 0) as ledger_rows, coalesce(led.queued, 0) as queued, coalesce(led.attempted, 0) as attempted, coalesce(led.submitted, 0) as submitted,
         coalesce(led.skipped_at_send, 0) as skipped_at_send, coalesce(led.failed_send, 0) as failed_send, coalesce(led.delivered, 0) as delivered,
         coalesce(led.failed_delivery, 0) as failed_delivery, coalesce(led.simulated, 0) as simulated, coalesce(led.cost_micros, 0) as cost_micros, coalesce(led.costed, 0) as costed,
-        coalesce(conv.booked, 0) as booked, coalesce(red.redemptions, 0) as redemptions, coalesce(red.discount_cents, 0) as discount_cents, coalesce(red.revenue_cents, 0) as revenue_cents,
+        coalesce(conv.booked, 0) as booked, coalesce(conv.booked_dupes, 0) as booked_dupes, conv.booked_first, conv.booked_last, coalesce(red.redemptions, 0) as redemptions, coalesce(red.discount_cents, 0) as discount_cents, coalesce(red.revenue_cents, 0) as revenue_cents,
         d.title as deal_name, u.full_name as creator_name, a.full_name as approver_name
       from campaigns c
       left join snap on snap.campaign_id = c.id left join led on led.campaign_id = c.id left join conv on conv.campaign_id = c.id left join red on red.campaign_id = c.id
@@ -360,6 +383,7 @@ export class CampaignCenter {
     const providerErrors = (await sql<any>`select coalesce(n.provider_error_code, n.failure_reason, 'unknown') as code, count(*)::int as n from ai_marketing_campaign_sends s
         join notifications n on n.tenant_id = s.tenant_id and n.provider_id = s.provider_id where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id} and n.status = 'failed' group by 1 order by n desc`.execute(this.db)).rows;
     const readiness = r.status === 'draft' ? await campaignSendReadiness(this.db, ctx.tenantId, id) : null;
+    const triage = await this.deliveryTriage(ctx, id);
     // the Campaign Builder's proposal in SALON time ("YYYY-MM-DDTHH:MM") so the launch dialog can start from it (migration 842)
     let proposedSendLocal: string | null = null;
     if (r.proposed_send_at) { const tz = await branchTimeZone(this.db, ctx.tenantId, r.branch_id ?? ctx.branchId ?? null); const p = zonedParts(new Date(r.proposed_send_at), tz);
@@ -368,14 +392,41 @@ export class CampaignCenter {
       ...v, proposedSendLocal, exclusionReasons: reasons.map((x) => ({ reason: x.reason, count: N(x.n) })), sendTimeReasons: sendReasons.map((x) => ({ reason: x.reason, count: N(x.n) })),
       providerErrors: providerErrors.map((x) => ({ code: x.code, count: N(x.n) })),
       readiness: readiness ? (readiness.ok ? { ok: true, eligible: readiness.eligible } : { ok: false, code: readiness.code, message: readiness.message }) : null,
+      triage,
       definitions: {
         selected: 'Customers in the saved audience snapshot. For older campaigns this is the hand-typed estimate and is marked as such.',
         eligible: 'Selected customers who had consent and a usable contact when the audience was saved.',
         queued: 'Send records waiting for the worker.', attempted: 'Send records the worker handed to the provider (accepted or failed).',
         submitted: 'Accepted by the provider, or by the test sender in a test environment (shown separately as simulated).',
         delivered: 'Delivery confirmed by the provider callback.', failed: 'Refused by the provider at send time or reported failed later.',
-        unknown: 'Accepted but no delivery callback yet.', booked: 'Bookings made through a link carrying this campaign.',
+        unknown: 'Accepted but no delivery callback yet.', booked: 'Bookings made through a link carrying this campaign; each appointment counts once however many booking events it has. No time limit is applied after the send.',
       },
+    };
+  }
+  /** AI Marketing Assistant 09 — delivery failure triage for one campaign, from its own send ledger and the provider's
+   *  delivery reports: invalid contacts (no usable contact at send time, or a provider "bad number" code), sends the
+   *  provider refused outright, carrier failures, messages with no delivery callback after an hour, and what is still
+   *  waiting. Retry facts are stated, not invented: a waiting (claimed, unfinished) send is resumed by the next sweep; a
+   *  failed one is never re-sent (the provider may have accepted it). Read only. */
+  private async deliveryTriage(ctx: CampaignsContext, id: string) {
+    const t = (await sql<{ missing_contact: number; invalid_number: number; refused: number; carrier_failed: number; no_callback: number; oldest_no_callback: Date | string | null; waiting: number; oldest_waiting: Date | string | null }>`select
+        count(*) filter (where s.status = 'skipped' and s.skip_reason = 'missing_contact')::int as missing_contact,
+        count(*) filter (where s.status = 'sent' and n.status = 'failed' and coalesce(n.provider_error_code, '') = any(${CC_INVALID_NUMBER_CODES}::text[]))::int as invalid_number,
+        count(*) filter (where s.status = 'failed')::int as refused,
+        count(*) filter (where s.status = 'sent' and n.status = 'failed' and not (coalesce(n.provider_error_code, '') = any(${CC_INVALID_NUMBER_CODES}::text[])))::int as carrier_failed,
+        count(*) filter (where s.status = 'sent' and coalesce(n.status, 'sent') not in ('delivered', 'failed', 'simulated') and s.updated_at < now() - interval '1 hour')::int as no_callback,
+        min(s.updated_at) filter (where s.status = 'sent' and coalesce(n.status, 'sent') not in ('delivered', 'failed', 'simulated') and s.updated_at < now() - interval '1 hour') as oldest_no_callback,
+        count(*) filter (where s.status = 'queued')::int as waiting, min(s.created_at) filter (where s.status = 'queued') as oldest_waiting
+      from ai_marketing_campaign_sends s left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
+      where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id}`.execute(this.db)).rows[0];
+    const refusedWhy = (await sql<{ reason: string; n: number }>`select left(coalesce(s.skip_reason, 'provider_error'), 80) as reason, count(*)::int as n from ai_marketing_campaign_sends s
+      where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id} and s.status = 'failed' group by 1 order by n desc limit 5`.execute(this.db)).rows;
+    return {
+      invalidContact: N(t?.missing_contact) + N(t?.invalid_number), missingContact: N(t?.missing_contact), invalidNumber: N(t?.invalid_number),
+      refusedAtSend: N(t?.refused), refusedReasons: refusedWhy.map((x) => ({ reason: String(x.reason), count: N(x.n) })),
+      carrierFailed: N(t?.carrier_failed), noCallbackOver1h: N(t?.no_callback), oldestNoCallbackAt: iso(t?.oldest_no_callback ?? null),
+      waitingToSend: N(t?.waiting), oldestWaitingAt: iso(t?.oldest_waiting ?? null),
+      retry: { waitingResumedByNextSweep: true, failedResent: false },
     };
   }
   async recipients(ctx: CampaignsContext, id: string, q: Record<string, any>) {
@@ -409,7 +460,7 @@ export class CampaignCenter {
     const sv = served(page, pageSize, total);
     const rows = (await sql<any>`select cr.customer_id, cr.eligibility, cr.destination_masked, s.id as send_id, s.status as send_status, s.skip_reason, s.created_at as send_at, s.updated_at as send_updated,
         n.status as delivery_status, n.provider_error_code, n.delivered_at, cu.full_name, cu.marketing_sms_opt_in, cu.marketing_email_opt_in,
-        (select count(*)::int from ai_booking_conversion_events e where e.tenant_id = cr.tenant_id and e.campaign_id = cr.campaign_id and e.stage = 'BOOKING_SUCCEEDED'
+        (select count(distinct e.appointment_id::text)::int from ai_booking_conversion_events e where e.tenant_id = cr.tenant_id and e.campaign_id = cr.campaign_id and e.stage = 'BOOKING_SUCCEEDED'
            and exists (select 1 from pos_tech_appointments ap where ap.id::text = e.appointment_id::text and ap.tenant_id = e.tenant_id and ap.customer_id = cr.customer_id)) as booked,
         (select count(*)::int from deal_redemptions dr join deal_coupon_codes k on k.id = dr.coupon_code_id join deal_coupon_batches b on b.id = k.batch_id
            where dr.tenant_id = cr.tenant_id and b.campaign_id = cr.campaign_id and dr.customer_id = cr.customer_id and dr.status in ('redeemed', 'partially_reversed')) as redeemed
@@ -445,7 +496,7 @@ export class CampaignCenter {
     await this.one(ctx, id);
     const rows = (await sql<any>`select e.occurred_at, e.action, e.summary, e.actor_role, u.full_name as actor_name, e.metadata from audit_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id
         where e.tenant_id = ${ctx.tenantId} and e.resource_type = 'campaign' and e.resource_id = ${id} order by e.occurred_at desc, e.id desc limit 100`.execute(this.db)).rows;
-    return { items: rows.map((x) => ({ at: iso(x.occurred_at), action: x.action, summary: x.summary ?? null, actor: x.actor_name ?? x.actor_role ?? 'system' })) };
+    return { items: rows.map((x) => ({ at: iso(x.occurred_at), action: x.action, summary: x.summary ?? null, actor: x.actor_name ?? x.actor_role ?? 'system', version: auditVersion(x.metadata) })) };
   }
 
   // ── §08 wizard: create / edit / audience / preview / submit / approve / launch / unschedule ──────────────────────────
@@ -620,7 +671,12 @@ export class CampaignCenter {
           on conflict (campaign_id) do update set channel = excluded.channel, message_version = excluded.message_version, body = excluded.body, offer_name = excluded.offer_name,
             audience_definition = excluded.audience_definition, updated_at = now()
           where ai_marketing_campaign_plans.tenant_id = excluded.tenant_id`.execute(trx);
-      await this.audit1(trx, ctx, id, 'campaign.approved', `Approved message version ${version} for audience snapshot ${N(fresh.snapshot_version)}`, { messageVersion: version, snapshotVersion: N(fresh.snapshot_version), selfApproved: fresh.submitted_by_user_id ? String(fresh.submitted_by_user_id) === String(ctx.userId) : true });
+      // AI Marketing Assistant 11 — the approval timeline records WHAT was approved: content (hash + version), audience
+      // (snapshot + counts), channel and the spend cap (budget) at that moment, so a later edit cannot rewrite the record
+      const aud = (await sql<{ selected: number; eligible: number }>`select count(*)::int as selected, count(*) filter (where eligibility = 'eligible')::int as eligible from campaign_recipients
+          where tenant_id = ${ctx.tenantId} and campaign_id = ${id} and snapshot_version = ${N(fresh.snapshot_version)}`.execute(trx)).rows[0];
+      await this.audit1(trx, ctx, id, 'campaign.approved', `Approved message version ${version} for audience snapshot ${N(fresh.snapshot_version)}`, { messageVersion: version, snapshotVersion: N(fresh.snapshot_version), selfApproved: fresh.submitted_by_user_id ? String(fresh.submitted_by_user_id) === String(ctx.userId) : true,
+        channel: fresh.channel, contentHash: fresh.content_hash ? String(fresh.content_hash).slice(0, 12) : null, selected: N(aud?.selected), eligible: N(aud?.eligible), budgetCents: N(fresh.cost_cents) });
       return { id, approved: true, messageVersion: version };
     });
   }
@@ -653,7 +709,8 @@ export class CampaignCenter {
       const r = (await sql<any>`update campaigns set status = 'scheduled', scheduled_at = ${at.toISOString()}::timestamptz, updated_by = ${this.actorId(ctx)}, updated_at = now()
           where tenant_id = ${ctx.tenantId} and id = ${id} and ${canMoveToSql(CAMPAIGN, 'scheduled')} returning id`.execute(trx)).rows[0];
       if (!r) throw err('This campaign has already been launched.', 'CAMPAIGN_ALREADY_LAUNCHED', 409);
-      await this.audit1(trx, ctx, id, 'campaign.launched', `Scheduled to send to up to ${again.eligible} eligible customers at ${at.toISOString()}`, { eligible: again.eligible, scheduledAt: at.toISOString() });
+      await this.audit1(trx, ctx, id, 'campaign.launched', `Scheduled to send to up to ${again.eligible} eligible customers at ${at.toISOString()}`, { eligible: again.eligible, scheduledAt: at.toISOString(),
+        channel: c.channel, messageVersion: N(c.message_version) || 1, snapshotVersion: N(c.snapshot_version), budgetCents: N(c.cost_cents) });
       return { id, status: 'scheduled', scheduledAt: at.toISOString(), eligible: again.eligible };
     });
   }

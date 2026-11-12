@@ -150,4 +150,33 @@ export const PHONEMGMT_VI = {
   "phm.up.reviewText": "{name}: {old} → {new}. Số hiện tại vẫn dùng đến khi số mới được xác minh.",
   "phm.up.back": "Quay lại",
   "phm.up.none": "Không có khách nào khớp.",
+  "phm.pol.on": "Bật", // DRAFT — Kevin reviews
+  "phm.pol.off": "Tắt", // DRAFT — Kevin reviews
+  "phm.pol.tag.branchDiffers": "Đặt riêng cho chi nhánh này (toàn tiệm: {v})", // DRAFT — Kevin reviews
+  "phm.pol.tag.branchSame": "Đặt riêng cho chi nhánh này (giống toàn tiệm)", // DRAFT — Kevin reviews
+  "phm.pol.tag.inherited": "Theo chính sách toàn tiệm", // DRAFT — Kevin reviews
+  "phm.pol.tag.salonDiffers": "Tiệm tự chọn (mặc định nền tảng: {v})", // DRAFT — Kevin reviews
+  "phm.pol.tag.salonSame": "Tiệm tự chọn (giống mặc định nền tảng)", // DRAFT — Kevin reviews
+  "phm.pol.tag.default": "Mặc định nền tảng (chưa từng lưu)", // DRAFT — Kevin reviews
+  "phm.pol.source.branch_override": "Chi nhánh này có chính sách riêng đã lưu; các giá trị dưới đây là của chi nhánh.", // DRAFT — Kevin reviews
+  "phm.pol.source.salon_policy": "Các giá trị này lấy từ chính sách toàn tiệm.", // DRAFT — Kevin reviews
+  "phm.pol.source.platform_default": "Chưa lưu chính sách nào, nên áp dụng mặc định của nền tảng.", // DRAFT — Kevin reviews
+  "phm.pol.sa.none": "Không có thiết lập nào của Super Admin ghi đè các mục này. Xem không làm thay đổi gì.", // DRAFT — Kevin reviews
+  "phm.pol.sa.yes": "Có thiết lập của Super Admin ghi đè các mục này.", // DRAFT — Kevin reviews
+  "phm.dup.titleBlocked": "Số này đã có trên hồ sơ của khách khác", // DRAFT — Kevin reviews
+  "phm.dup.titleShared": "Đã ghi nhận là số điện thoại dùng chung trong gia đình", // DRAFT — Kevin reviews
+  "phm.dup.separate": "Mỗi hồ sơ vẫn riêng biệt: dùng chung số không bao giờ gộp khách, lượt ghé, ghi chú, điểm thưởng hay thẻ quà tặng của họ.", // DRAFT — Kevin reviews
+  "phm.dup.manager": "Nhiều khách đã dùng số này, nên quản lý phải xem lại. Chưa có gì thay đổi.", // DRAFT — Kevin reviews
+  "phm.dup.samePerson": "Hồ sơ kia có tên rất giống và có thể là cùng một người bị ghi hai lần. Chưa có gì bị thay đổi hay gộp.", // DRAFT — Kevin reviews
+  "phm.dup.blocked": "Chưa có gì thay đổi. Nếu đây là người nhà dùng chung một điện thoại, hãy ghi nhận là số dùng chung trong gia đình.", // DRAFT — Kevin reviews
+  "phm.dup.other": "Dùng số khác", // DRAFT — Kevin reviews
+  "phm.dup.family": "Đây là số dùng chung trong gia đình, tiếp tục", // DRAFT — Kevin reviews
+  "phm.dup.continue": "Tiếp tục", // DRAFT — Kevin reviews
+  "phm.risk.title": "Thay đổi số cần xem lại", // DRAFT — Kevin reviews
+  "phm.risk.sub": "Các lần đổi số điện thoại bất thường trong {d} ngày qua. Để người có thẩm quyền xem lại: ở đây không khóa khách hay đổi số nào.", // DRAFT — Kevin reviews
+  "phm.risk.r.frequent_changes": "Đổi số nhiều lần", // DRAFT — Kevin reviews
+  "phm.risk.r.failed_codes": "Nhập mã sai nhiều lần", // DRAFT — Kevin reviews
+  "phm.risk.r.cross_device": "Nhiều thiết bị hoặc kênh", // DRAFT — Kevin reviews
+  "phm.risk.facts": "{c} yêu cầu, {f} lỗi hoặc hết hạn, {a} lần nhập mã, {ch} kênh", // DRAFT — Kevin reviews
+  "phm.risk.review": "Xem yêu cầu mới nhất", // DRAFT — Kevin reviews
 };

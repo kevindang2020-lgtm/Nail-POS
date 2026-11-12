@@ -15,7 +15,7 @@ import { posAiApi } from '../api/posAiApi';
 import { useCan } from '../components/usePermissions';
 import { useAuth } from '../auth/AuthContext';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtDateTime } from '../i18n/format';
+import { fmtDateTime, fmtMoney } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { useInlineConfirm } from '@aipowersalon/ui';
@@ -347,7 +347,7 @@ function AgentOverlay({ id, manage, isOwner, onClose, onEdit, onAct, onDuplicate
               <dt>{t('aifd.col.branch')}</dt><dd>{o.branchName ?? t('aifd.all_branches')}</dd><dt>{t('aifd.ov.creator')}</dt><dd>{d.overview.creatorName ?? '—'}</dd>
               <dt>{t('aifd.ov.created')}</dt><dd>{when(o.createdAt)}</dd><dt>{t('aifd.col.updated')}</dt><dd>{when(o.updatedAt)}</dd>
               <dt>{t('aifd.ov.verified')}</dt><dd>{when(o.lastVerifiedAt)}</dd><dt>{t('aifd.ov.version')}</dt><dd>{o.configVersion}</dd></dl> : null}
-            {tab === 'business' ? <div>{(d.business.core ?? []).map((b: any) => <div key={b.key} className="fd-hrow"><b>{bizLabel(b.key)}</b> <span className="fd-muted">{statusLabel('state', b.status)}</span><div className="fd-detail">{b.detail}</div></div>)}<div className="fd-muted">{t('aifd.versions', { n: d.business.versions })}</div></div> : null}
+            {tab === 'business' ? <div>{(d.business.core ?? []).map((b: any) => <div key={b.key} className="fd-hrow"><b>{bizLabel(b.key)}</b> <span className="fd-muted">{statusLabel('state', b.status)}</span><div className="fd-detail">{b.detail}</div></div>)}<div className="fd-muted">{t('aifd.versions', { n: d.business.versions })}</div>{d.business.drift ? <KnowledgeDrift dr={d.business.drift} /> : null}</div> : null}
             {tab === 'voice' ? <dl className="fd-dl"><dt>{t('aifd.f.greeting')}</dt><dd>{d.voice.greeting ?? '—'}</dd><dt>{t('aifd.f.behavior')}</dt><dd className="fd-pre-wrap">{d.voice.behavior ?? '—'}</dd>
               <dt>{t('aifd.f.after_hours')}</dt><dd>{d.voice.afterHoursMessage ?? '—'}</dd><dt>{t('aifd.col.provider')}</dt><dd>{d.voice.providerRef ?? t('aifd.not_linked')}{d.voice.sharedWithOtherSalon ? <span className="fd-warn-t"> {t('aifd.shared')}</span> : null}</dd>
               <dt>{t('aifd.ov.language')}</dt><dd>{t('aifd.english_only')}</dd></dl> : null}
@@ -427,6 +427,32 @@ function AgentPerformance({ p }: { p: { from: string; to: string; timeZone: stri
       <table className="tbl fd-tbl"><thead><tr><th>{t('aifd.perf.metric')}</th><th>{t('aifd.perf.range', { from: p.from, to: p.to })}</th><th>{t('aifd.perf.range', { from: p.previousFrom, to: p.previousTo })}</th></tr></thead>
         <tbody>{rows.map(([k, f]) => <tr key={k} data-testid={'fd-perf-' + k}><td>{t('aifd.perf.m.' + k)}</td><td>{f(p.current)}</td><td>{f(p.previous)}</td></tr>)}</tbody></table>
       <div className="fd-muted">{t('aifd.perf.basis', { tz: p.timeZone })}</div>
+    </div>
+  );
+}
+
+// Extras · AI Front Desk 06 — the server's knowledge drift check (agent wording vs the live salon setup). Read-only: it lists
+// what the server found; the owner fixes it by editing the agent. Hours/services/holidays/FAQs are read live on every call.
+type FdDriftView = { status: 'IN_SYNC' | 'DRIFT' | 'UNKNOWN'; savedAt: string | null; errorCode: string | null;
+  findings: { kind: string; field?: string; value?: string; service?: string; currentPriceCents?: number | null }[];
+  sources: { source: string; changedAt: string | null; changedSinceAgentSaved: boolean }[] };
+const DRIFT_KINDS = ['hours_time_mismatch', 'hours_not_set', 'service_not_offered', 'service_price_mismatch', 'booking_not_armed'];
+const DRIFT_FIELDS = ['greeting', 'behavior', 'after_hours_message'];
+const DRIFT_SOURCES = ['hours', 'services', 'closures', 'faqs'];
+function KnowledgeDrift({ dr }: { dr: FdDriftView }) {
+  const badge = dr.status === 'IN_SYNC' ? 'READY' : dr.status === 'DRIFT' ? 'WARNING' : 'UNKNOWN';
+  return (
+    <div className="fd-hrow" data-testid="fd-drift">
+      <b>{t('aifd.drift.title')}</b> <Badge s={badge} label={t('aifd.drift.status.' + dr.status)} />
+      <div className="fd-detail">{t('aifd.drift.note')}</div>
+      {dr.findings.length ? <ul data-testid="fd-drift-findings">{dr.findings.map((f, i) => (
+        <li key={i}>{DRIFT_KINDS.includes(f.kind) ? t('aifd.drift.kind.' + f.kind, { field: f.field && DRIFT_FIELDS.includes(f.field) ? t('aifd.drift.field.' + f.field) : '—', value: f.value ?? '—', service: f.service ?? '—', price: f.currentPriceCents == null ? '—' : fmtMoney(f.currentPriceCents) }) : f.kind}</li>
+      ))}</ul> : dr.status === 'IN_SYNC' ? <div className="fd-muted">{t('aifd.drift.none_found')}</div> : null}
+      {dr.sources.length ? <dl className="fd-dl">{dr.sources.filter((x) => DRIFT_SOURCES.includes(x.source)).map((x) => [
+        <dt key={x.source + 'k'}>{t('aifd.drift.source.' + x.source)}</dt>,
+        <dd key={x.source + 'v'} data-testid={'fd-drift-src-' + x.source}>{x.changedAt ? (x.changedSinceAgentSaved ? t('aifd.drift.changed_after', { at: when(x.changedAt) }) : t('aifd.drift.changed_at', { at: when(x.changedAt) })) : t('aifd.drift.no_change')}</dd>,
+      ])}</dl> : null}
+      <div className="fd-muted">{t('aifd.drift.saved', { at: when(dr.savedAt) })}</div>
     </div>
   );
 }

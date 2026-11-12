@@ -11,6 +11,7 @@ const live = { ...draft, id: 'a2', name: 'Live Desk', status: 'live', effective:
 let rows: any[] = [];
 const create = vi.fn((_b?: any) => Promise.resolve({ agent: { ...draft, id: 'new1', name: 'After-Hours Agent' }, replayed: false }));
 const role = { value: 'OWNER' };
+const drift: { value: any } = { value: undefined };
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ principal: { role: role.value, permissions: ['ai.use', 'ai.manage'] } }) }));
 vi.mock('../api/posAiApi', () => ({ posAiApi: { provisionReceptionistAgent: vi.fn(), receptionistProvisioningJob: vi.fn() } }));
@@ -25,7 +26,7 @@ vi.mock('../api/posAiFrontDeskApi', () => ({
     create: (b: any) => create(b),
     calls: (_id: string, q: any) => fdCalls(q),
     wizard: vi.fn(() => Promise.resolve({ agent: { ...draft, id: 'new1', name: 'After-Hours Agent' }, config: { name: 'After-Hours Agent' }, steps: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ step: n, key: ['identity', 'knowledge', 'conversation', 'booking', 'retell', 'twilio', 'review', 'activate'][n - 1], done: n === 1 })) })),
-    detail: vi.fn(() => Promise.resolve({ overview: live, business: { core: [], versions: 1 }, voice: {}, routing: { rollbackTo: null }, booking: { mode: 'handoff_only' }, usage: { entitlement: 'READY' }, health: { last: null, recentErrors: [] } })),
+    detail: vi.fn(() => Promise.resolve({ overview: live, business: { core: [], versions: 1, drift: drift.value }, voice: {}, routing: { rollbackTo: null }, booking: { mode: 'handoff_only' }, usage: { entitlement: 'READY' }, health: { last: null, recentErrors: [] } })),
   },
 }));
 
@@ -91,5 +92,29 @@ describe('POSAIFrontDeskScreen', () => {
     expect(screen.getByTestId('fd-perf-booked')).toHaveTextContent(/Confirmed bookings\s*1\s*0/);
     expect(screen.getByTestId('fd-perf-rate')).toHaveTextContent('33.3%'); expect(screen.getByTestId('fd-perf-rate')).toHaveTextContent('—');
     expect(perf).toHaveTextContent('America/New_York');
+  });
+  it('Extras · AI Front Desk 06: the Business tab lists the server\'s knowledge-drift findings and when each live source last changed', async () => {
+    rows = [live];
+    drift.value = { status: 'DRIFT', savedAt: '2026-11-01T14:00:00Z', errorCode: null,
+      findings: [{ kind: 'hours_time_mismatch', field: 'greeting', value: '8 PM' }, { kind: 'service_price_mismatch', field: 'greeting', value: '$35', service: 'Gel Manicure', currentPriceCents: 4000 },
+        { kind: 'service_not_offered', field: 'behavior', value: 'Paraffin Dip' }, { kind: 'booking_not_armed' }],
+      sources: [{ source: 'hours', changedAt: '2026-11-05T14:00:00Z', changedSinceAgentSaved: true }, { source: 'services', changedAt: '2026-10-01T14:00:00Z', changedSinceAgentSaved: false },
+        { source: 'closures', changedAt: null, changedSinceAgentSaved: false }, { source: 'faqs', changedAt: null, changedSinceAgentSaved: false }] };
+    render(<MemoryRouter><POSAIFrontDeskScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText('Live Desk')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('fd-row-a2'));
+    fireEvent.click(await screen.findByTestId('fd-ov-tab-business'));
+    const box = await screen.findByTestId('fd-drift');
+    expect(box).toHaveTextContent('Needs review');
+    const items = screen.getByTestId('fd-drift-findings').querySelectorAll('li');
+    expect(items).toHaveLength(4);
+    expect(items[0]).toHaveTextContent('Greeting says “8 PM”, which is not an opening or closing time');
+    expect(items[1]).toHaveTextContent('Greeting quotes $35 for Gel Manicure; the current price is $40.00.');
+    expect(items[2]).toHaveTextContent('Behavior mentions “Paraffin Dip”');
+    expect(items[3]).toHaveTextContent('booking actions are off');
+    expect(screen.getByTestId('fd-drift-src-hours')).toHaveTextContent('after this agent was saved');
+    expect(screen.getByTestId('fd-drift-src-services')).not.toHaveTextContent('after this agent was saved');
+    expect(screen.getByTestId('fd-drift-src-faqs')).toHaveTextContent('No change recorded');
+    drift.value = undefined;
   });
 });

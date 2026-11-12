@@ -89,4 +89,44 @@ describe('Campaign Center', () => {
     await waitFor(() => expect(api.saveSuggestion).toHaveBeenCalledWith(expect.objectContaining({ goal: 'inactive' })));
     expect(api.launch).not.toHaveBeenCalled();
   });
+  it('AI Marketing Assistant 11: the Audit tab shows each entry\'s recorded content version, audience snapshot, channel and spend cap', async () => {
+    api.detail.mockResolvedValue({ ...spring, exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {} });
+    const v = (o: any) => ({ messageVersion: null, snapshotVersion: null, channel: null, contentHash: null, selected: null, eligible: null, budgetCents: null, scheduledAt: null, selfApproved: null, approvalVoided: null, fields: null, ...o });
+    api.audit.mockResolvedValue({ items: [
+      { at: '2026-11-02T15:00:00Z', action: 'campaign.approved', summary: 'Approved message version 2 for audience snapshot 1', actor: 'Max Manager', version: v({ messageVersion: 2, snapshotVersion: 1, channel: 'sms', contentHash: 'abc123def456', selected: 4, eligible: 2, budgetCents: 2500, selfApproved: false }) },
+      { at: '2026-11-02T14:00:00Z', action: 'campaign.updated', summary: 'Campaign edited after approval — the approval no longer applies', actor: 'Olivia Owner', version: v({ approvalVoided: true, fields: ['messageBody'] }) },
+      { at: '2026-11-01T14:00:00Z', action: 'campaign.created', summary: 'Campaign created', actor: 'Olivia Owner', version: v({}) }] });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    fireEvent.click(await screen.findByTestId('cc-tab-audit'));
+    const facts = await screen.findAllByTestId('cc-audit-version');
+    expect(facts).toHaveLength(2);                                                          // an entry with no recorded facts shows none
+    expect(facts[0]).toHaveTextContent('Message v2 (#abc123def456) · Audience snapshot 1 · 2 eligible of 4 · SMS · Spend cap $25.00');
+    expect(facts[1]).toHaveTextContent('This edit voided the earlier approval');
+    expect(screen.getByTestId('cc-audit')).toHaveTextContent('Max Manager');
+  });
+  it('AI Marketing Assistant 09: the overview shows the server\'s delivery triage with the next step for each kind and the retry rule', async () => {
+    api.detail.mockResolvedValue({ ...spring, exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {},
+      triage: { invalidContact: 2, missingContact: 1, invalidNumber: 1, refusedAtSend: 1, refusedReasons: [{ reason: 'Sender is not configured', count: 1 }], carrierFailed: 0, noCallbackOver1h: 1,
+        oldestNoCallbackAt: '2026-11-02T12:00:00Z', waitingToSend: 0, oldestWaitingAt: null, retry: { waitingResumedByNextSweep: true, failedResent: false } } });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    const tri = await screen.findByTestId('cc-triage');
+    expect(screen.getByTestId('cc-tri-invalid')).toHaveTextContent('2 invalid contact(s)');
+    expect(screen.getByTestId('cc-tri-invalid')).toHaveTextContent('1 had no usable contact at send time, 1 rejected as a bad number');
+    expect(screen.getByTestId('cc-tri-refused')).toHaveTextContent('Sender is not configured × 1');
+    expect(screen.getByTestId('cc-tri-callback')).toHaveTextContent('check the messaging webhook');
+    expect(screen.queryByTestId('cc-tri-carrier')).toBeNull(); expect(screen.queryByTestId('cc-tri-waiting')).toBeNull();
+    expect(tri).toHaveTextContent('never sent again');
+  });
+  it('AI Marketing Assistant 05: the Bookings tab says how many repeated booking records were ignored and when the counted bookings were made', async () => {
+    api.detail.mockResolvedValue({ ...spring, counts: { ...spring.counts, booked: 2, bookedDuplicatesIgnored: 1, firstBookedAt: '2026-11-01T14:00:00Z', lastBookedAt: '2026-11-02T14:00:00Z' },
+      exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {} });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    fireEvent.click(await screen.findByTestId('cc-tab-bookings'));
+    const b = await screen.findByTestId('cc-bookings');
+    expect(b).toHaveTextContent('1 repeated booking record(s) for an appointment already counted were ignored');
+    expect(b).toHaveTextContent('Counted bookings made');
+  });
 });

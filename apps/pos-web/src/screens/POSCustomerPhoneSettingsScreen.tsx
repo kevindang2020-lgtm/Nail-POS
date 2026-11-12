@@ -27,12 +27,26 @@ interface Settings {
   requireReauthentication: boolean;
   /** Branch view only: whether this branch has its own policy (else it inherits the salon-wide one). */
   branchOverride?: boolean;
+  /** PHONE NUMBER MANAGEMENT 4 · 10: the server's explanation of where each value comes from (read-only). */
+  policy?: PhonePolicyView;
+}
+type PolicySource = 'branch_override' | 'salon_policy' | 'platform_default';
+type PhonePolicyView = { scope: 'salon' | 'branch'; source: PolicySource; superAdminOverride: boolean;
+  keys: Partial<Record<string, { value: boolean; source: PolicySource; salonValue: boolean | null; platformDefault: boolean; differsFromSalon: boolean; differsFromDefault: boolean }>> };
+const SOURCES: PolicySource[] = ['branch_override', 'salon_policy', 'platform_default'];
+const onOff = (v: boolean) => (v ? t('phm.pol.on') : t('phm.pol.off'));
+/** one short line per toggle: where its value comes from, and the value it would otherwise have */
+function sourceTag(p: PhonePolicyView | undefined, key: string): string | undefined {
+  const k = p?.keys?.[key]; if (!k || !SOURCES.includes(k.source)) return undefined;
+  if (k.source === 'branch_override') return k.differsFromSalon ? t('phm.pol.tag.branchDiffers', { v: onOff(k.salonValue ?? k.platformDefault) }) : t('phm.pol.tag.branchSame');
+  if (k.source === 'salon_policy') return p!.scope === 'branch' ? t('phm.pol.tag.inherited') : k.differsFromDefault ? t('phm.pol.tag.salonDiffers', { v: onOff(k.platformDefault) }) : t('phm.pol.tag.salonSame');
+  return t('phm.pol.tag.default');
 }
 
 const card: React.CSSProperties = { background: '#fff', border: `1px solid ${LINE}`, borderRadius: 12, padding: 16, marginBottom: 12 };
 
-function Toggle({ on, onChange, label, hint, danger, disabled }: {
-  on: boolean; onChange: (v: boolean) => void; label: string; hint?: string; danger?: boolean; disabled?: boolean;
+function Toggle({ on, onChange, label, hint, danger, disabled, tag }: {
+  on: boolean; onChange: (v: boolean) => void; label: string; hint?: string; danger?: boolean; disabled?: boolean; tag?: string;
 }) {
   return (
     <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '9px 0', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1 }}>
@@ -40,6 +54,7 @@ function Toggle({ on, onChange, label, hint, danger, disabled }: {
       <span>
         <span style={{ fontSize: 13.5, fontWeight: 600, color: danger && on ? '#8F3226' : TEXT }}>{label}</span>
         {hint ? <span style={{ display: 'block', fontSize: 11.5, color: danger && on ? '#8F3226' : MUTED, marginTop: 2, lineHeight: 1.45 }}>{hint}</span> : null}
+        {tag ? <span style={{ display: 'block', fontSize: 11.5, color: GOLD, marginTop: 2 }} data-testid="phone-policy-tag">{tag}</span> : null}
       </span>
     </label>
   );
@@ -121,12 +136,19 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
         </section>
       ) : null}
 
+      {s.policy && SOURCES.includes(s.policy.source) ? (
+        <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 10px' }} data-testid="phone-policy-source">
+          {t('phm.pol.source.' + s.policy.source)} {s.policy.superAdminOverride ? t('phm.pol.sa.yes') : t('phm.pol.sa.none')}
+        </p>
+      ) : null}
+
       <section style={card}>
         <div style={{ font: '600 15px/1.2 "Playfair Display",serif', color: TEXT, marginBottom: 4 }}>{t('pos.who_may_change_a_number')}</div>
         <Toggle
           label={t('pos.receptionists_may_update_a_customer_s_tiyg')}
           hint={t('pos.a_receptionist_is_who_a_social_s12i')}
           on={s.allowReceptionistUpdates}
+          tag={sourceTag(s.policy, 'allowReceptionistUpdates')}
           disabled={busy2}
           onChange={(v) => save({ allowReceptionistUpdates: v })}
         />
@@ -134,6 +156,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
           label={t('pos.customers_may_change_their_own_number_ds55')}
           hint={t('pos.the_app_verifies_the_new_number_rx9p')}
           on={s.customerAppSelfService}
+          tag={sourceTag(s.policy, 'customerAppSelfService')}
           disabled={busy2}
           onChange={(v) => save({ customerAppSelfService: v })}
         />
@@ -141,6 +164,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
           label={t('pos.a_manager_must_approve_a_receptionist_1omt')}
           hint={t('pos.the_change_waits_nothing_is_texted_pk27')}
           on={s.requireManagerApproval}
+          tag={sourceTag(s.policy, 'requireManagerApproval')}
           disabled={busy2}
           onChange={(v) => save({ requireManagerApproval: v })}
         />
@@ -148,6 +172,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
           label={t('pos.customers_re_enter_their_password_to_17wb')}
           hint={t('pos.a_stolen_phone_or_an_unlocked_wzs3')}
           on={s.requireReauthentication}
+          tag={sourceTag(s.policy, 'requireReauthentication')}
           disabled={busy2}
           onChange={(v) => save({ requireReauthentication: v })}
         />
@@ -163,6 +188,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
               : t('pos.off_a_staff_change_takes_effect_12dj')
           }
           on={s.requireSmsVerification}
+          tag={sourceTag(s.policy, 'requireSmsVerification')}
           disabled={busy2}
           onChange={(v) => save({ requireSmsVerification: v })}
         />
@@ -170,6 +196,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
           label={t('pos.save_an_unverified_number_as_pending')}
           hint={t('pos.staff_can_record_the_number_the_1i2b')}
           on={s.allowPendingUnverified}
+          tag={sourceTag(s.policy, 'allowPendingUnverified')}
           disabled={busy2}
           onChange={(v) => save({ allowPendingUnverified: v })}
         />
@@ -184,6 +211,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
               : t('pos.off_a_manager_s_judgement_is_6ywg')
           }
           on={s.allowManualConfirmation}
+          tag={sourceTag(s.policy, 'allowManualConfirmation')}
           disabled={busy2}
           onChange={(v) => save({ allowManualConfirmation: v })}
         />
@@ -195,6 +223,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
           label={t('pos.allow_shared_family_phone_numbers')}
           hint={t('pos.two_customers_may_share_one_number_1xgk')}
           on={s.allowSharedFamilyPhones}
+          tag={sourceTag(s.policy, 'allowSharedFamilyPhones')}
           disabled={busy2}
           onChange={(v) => save({ allowSharedFamilyPhones: v })}
         />
@@ -202,6 +231,7 @@ export function PhoneSettingsPanel({ canEdit = true }: { canEdit?: boolean }) {
           label={t('pos.notify_the_old_number_when_a_v3l8')}
           hint={t('pos.how_someone_finds_out_if_their_1ag1')}
           on={s.notifyOldNumber}
+          tag={sourceTag(s.policy, 'notifyOldNumber')}
           disabled={busy2}
           onChange={(v) => save({ notifyOldNumber: v })}
         />

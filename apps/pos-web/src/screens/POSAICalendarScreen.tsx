@@ -6,7 +6,7 @@
 // Next, the single-day picker, Open in POS Booking, the four counters, the day list and its genuine empty state.
 // Fixed: literal "‹" / "–" text (double-escaped catalog strings + JSX text escapes), the browser-UTC "today",
 // the AI substring heuristic, and counters with no definition.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiCalendarApi, type AicListQuery, type AicView } from '../api/posAiCalendarApi';
@@ -19,6 +19,7 @@ import { useCopilotAction, PreparedCard, ActionOutcome } from './receptionCopilo
 import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 import { PendingHolds } from './aiCalendar/PendingHolds';
 import { SlotExplain } from './aiCalendar/SlotExplain';
+import { useContainerDensity } from './aiCalendar/density';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const shift = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
@@ -50,6 +51,8 @@ export function POSAICalendarScreen() {
   const [healthBusy, setHealthBusy] = useState(false);
   const [showAssist, setShowAssist] = useState(false); const [pending, setPending] = useState(false);
   const [showDefs, setShowDefs] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const density = useContainerDensity(rootRef);   // Extras · AI Calendar 08: spacing only — fonts never shrink
 
   const loadSummary = useCallback(async () => {
     setSumErr(null);
@@ -66,7 +69,7 @@ export function POSAICalendarScreen() {
   const stale = asOf && Date.now() - new Date(asOf).getTime() > 120_000;
 
   return (
-    <div className="work aic" data-testid="aic">
+    <div className="work aic" data-testid="aic" ref={rootRef} data-density={density}>
       <div className="vh aic-head">
         <div>
           <h1>{t('aical.title')}</h1>

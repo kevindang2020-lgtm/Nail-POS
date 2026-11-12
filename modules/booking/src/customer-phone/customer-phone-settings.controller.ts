@@ -28,7 +28,8 @@ export class CustomerPhoneSettingsController {
 
   @Get() @RequirePermission('settings.view')
   get(@Req() r: any, @Query('branchId') branchId?: string) {
-    return run(() => this.svc.get(r?.ctx?.tenantId, branchId || null));
+    // PHONE NUMBER MANAGEMENT 4 · 10: `policy` explains where each value comes from (read-only)
+    return run(async () => ({ ...(await this.svc.get(r?.ctx?.tenantId, branchId || null)), policy: await this.svc.explain(r?.ctx?.tenantId, branchId || null) }));
   }
 
   // The salon-wide policy. `pos.customers.phone.settings` → customers.phone_manage (owners and managers — it used to
@@ -38,10 +39,10 @@ export class CustomerPhoneSettingsController {
   @Patch() @RequirePermission('pos.customers.phone.settings')
   patch(@Req() r: any, @Body(ValidatedBody(PHONE_SETTINGS_BODY, { strict: true })) b: any) {
     const c = r?.ctx || {};
-    return run(() => this.svc.update(
+    return run(async () => ({ ...(await this.svc.update(
       { tenantId: c.tenantId, branchId: null, userId: c.userId, role: String(c.role ?? ''), permissions: c.permissions ?? [] },
       b ?? {},
-    ));
+    )), policy: await this.svc.explain(c.tenantId, null) }));
   }
 
   // ── One branch's own policy (audit E10) ────────────────────────────────────────────────────────────────
@@ -49,13 +50,13 @@ export class CustomerPhoneSettingsController {
   // its own scope) — so overrides were unreachable. The branch is in the PATH now, and must belong to this salon.
   @Get('branches/:branchId') @RequirePermission('settings.view')
   getBranch(@Req() r: any, @Param('branchId') branchId: string) {
-    return run(() => this.svc.getBranch(r?.ctx?.tenantId, branchId));
+    return run(async () => ({ ...(await this.svc.getBranch(r?.ctx?.tenantId, branchId)), policy: await this.svc.explain(r?.ctx?.tenantId, branchId) }));
   }
 
   @Patch('branches/:branchId') @RequirePermission('pos.customers.phone.settings')
   patchBranch(@Req() r: any, @Param('branchId') branchId: string, @Body(ValidatedBody(PHONE_SETTINGS_BODY, { strict: true })) b: any) {
     const c = r?.ctx || {};
-    return run(() => this.svc.update({ tenantId: c.tenantId, branchId, userId: c.userId, role: String(c.role ?? ''), permissions: c.permissions ?? [] }, b ?? {}));
+    return run(async () => ({ ...(await this.svc.update({ tenantId: c.tenantId, branchId, userId: c.userId, role: String(c.role ?? ''), permissions: c.permissions ?? [] }, b ?? {})), policy: await this.svc.explain(c.tenantId, branchId) }));
   }
 
   /** Remove a branch's override: it inherits the salon-wide policy again. */

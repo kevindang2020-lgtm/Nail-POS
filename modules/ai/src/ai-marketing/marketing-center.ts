@@ -33,6 +33,22 @@ import { addDays as addYmdDays, localDateTimeToEpochMs, zonedParts } from '@aipo
 
 type Row = Record<string, any>;
 export interface McCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[]; salonName?: string; authz?: { scope?: string | null; branchIds?: readonly string[] | null } | null }
+/** Marketing Growth 07 — a zone name the runtime can actually use (an unknown one makes every "today" fall back to a default) */
+export function validTimeZone(tz: unknown): tz is string {
+  if (typeof tz !== 'string' || !tz.trim()) return false;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(0); return true; } catch (e) { if (e instanceof RangeError) return false; throw e; }   // RangeError = unknown zone
+}
+/** the salon clock's UTC offset at an instant, in minutes */
+function offsetMinutes(ms: number, tz: string): number {
+  const p = zonedParts(new Date(ms), tz);
+  return Math.round((Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) - Math.floor(ms / 60_000) * 60_000) / 60_000);
+}
+/** true when the clocks change within 24 h either side of this instant in this zone (daylight saving) */
+export function nearClockChange(ms: number, tz: string): boolean {
+  const o = offsetMinutes(ms, tz);
+  return offsetMinutes(ms - 86_400_000, tz) !== o || offsetMinutes(ms + 86_400_000, tz) !== o;
+}
+
 export class MarketingCenterError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400) { super(message); }
 }
@@ -475,6 +491,16 @@ export class MarketingCenter {
     checks.push({ key: 'attribution', component: 'results', state: !N(sent90.n) ? 'INSUFFICIENT_DATA' : 'PASSED', count: N(att.n), detail: { lastAt: iso(att.last), sent90: N(sent90.n) } });
     const cross = await one(sql<Row>`select count(*)::int as n from ai_marketing_campaign_sends x join campaigns c on c.id = x.campaign_id where x.tenant_id = ${T} and c.tenant_id <> x.tenant_id`);
     checks.push({ key: 'tenant_isolation', component: 'security', state: N(cross.n) ? 'FAILED' : 'PASSED', count: N(cross.n) });
+    // Marketing Growth 07 — Date/Timezone Diagnostics: every period, cutoff and send time is judged in the branch's zone, so a
+    // missing / unknown zone silently falls back, and a send set on a clock-change day lands an hour off what was meant.
+    const zrows = (await sql<Row>`select br.id, br.timezone from branches br where br.tenant_id = ${T} and coalesce(br.status, 'active') <> 'archived' and (${B}::uuid is null or br.id = ${B}::uuid)`.execute(this.db)).rows;
+    const badZones = zrows.filter((r) => !validTimeZone(r.timezone)).length;
+    const zones = [...new Set(zrows.map((r) => String(r.timezone ?? '')).filter(validTimeZone))].sort();
+    const sched = (await sql<Row>`select c.id, c.scheduled_at, c.branch_id from campaigns c where c.tenant_id = ${T} and ${CW} and c.status = 'scheduled' and c.scheduled_at > now() order by c.scheduled_at limit 200`.execute(this.db)).rows;
+    let dst = 0;
+    for (const r of sched) { const tz = await branchTimeZone(this.db, T, r.branch_id ?? null); if (validTimeZone(tz) && nearClockChange(new Date(r.scheduled_at).getTime(), tz)) dst++; }
+    checks.push({ key: 'date_timezone', component: 'campaigns', state: badZones ? 'FAILED' : dst ? 'WARNING' : 'PASSED', count: badZones + dst,
+      detail: { branches: zrows.length, invalidZones: badZones, zones, scheduledOnClockChange: dst, scheduledChecked: sched.length } });
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });
 
     const prev = (await sql<Row>`select c->>'key' as key, max(h.created_at) as at from ai_marketing_health_runs h cross join lateral jsonb_array_elements(h.checks) c

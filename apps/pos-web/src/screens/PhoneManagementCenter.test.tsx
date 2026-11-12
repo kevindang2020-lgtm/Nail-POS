@@ -7,6 +7,7 @@ vi.mock('../api/posPhoneCenterApi', () => ({ posPhoneCenterApi: { summary: vi.fn
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { phoneStart: vi.fn(), phoneSend: vi.fn(), phoneVerify: vi.fn(), phoneCancel: vi.fn(), phoneApprove: vi.fn(), phoneRetrySync: vi.fn(), phoneManualConfirm: vi.fn() } }));
 vi.mock('./POSCustomerPhoneSettingsScreen', () => ({ PhoneSettingsPanel: ({ canEdit }: { canEdit: boolean }) => <div data-testid="phone-settings">{canEdit ? 'editable' : 'read-only'}</div> }));
 import { posPhoneCenterApi as api } from '../api/posPhoneCenterApi';
+import { posCustomersApi } from '../api/posCustomersApi';
 import { PhoneManagementCenter } from './PhoneManagementCenter';
 
 const kpi = (value: number | string) => ({ value, source: 'test' });
@@ -54,5 +55,46 @@ describe('Phone Number Management center', () => {
     vi.mocked(api.summary).mockRejectedValue(Object.assign(new Error('no'), { status: 403 }) as never);
     ui();
     expect(await screen.findByTestId('pm-forbidden')).toBeTruthy();
+  });
+  it('PHONE NUMBER MANAGEMENT 4 · 05: a number already on another profile shows who (masked) and that profiles stay separate; "shared family phone" retries with the flag; a recorded family share is shown before the request opens', async () => {
+    vi.mocked(api.customers).mockResolvedValue(page([{ customerId: 'c9', name: 'Lan Tran', phoneMasked: '•••• 1111', proof: 'sms_verified', sharedWith: 0, openRequestId: null }]) as never);
+    vi.mocked(api.detail).mockResolvedValue(undefined as never);
+    vi.mocked(posCustomersApi.phoneStart).mockReset()
+      .mockRejectedValueOnce(Object.assign(new Error('in use'), { code: 'duplicate_conflict', details: { duplicates: { outcome: 'phone_in_use', requiresResolution: true, requiresManager: false, matches: [{ customerId: 'c2', maskedName: 'Minh T.', status: 'active_verified' }] } } }) as never)
+      .mockResolvedValueOnce({ sessionId: 's1', state: 'pending_phone_saved', maskedPhone: '•••• 2222', duplicates: { outcome: 'shared_family_phone', requiresResolution: false, requiresManager: false, matches: [{ customerId: 'c2', maskedName: 'Minh T.', status: 'active_verified' }] } } as never);
+    ui();
+    fireEvent.click(await screen.findByTestId('pm-update'));
+    fireEvent.click(await screen.findByTestId('pm-up-pick'));
+    fireEvent.change(screen.getByTestId('pm-up-phone'), { target: { value: '6095552222' } });
+    fireEvent.click(screen.getByTestId('pm-up-review'));
+    fireEvent.click(screen.getByTestId('pm-up-confirm'));
+    const g = await screen.findByTestId('pm-up-dupguard');
+    expect(g).toHaveTextContent('already on another customer profile');
+    expect(screen.getByTestId('pm-up-dupmatches')).toHaveTextContent('Minh T.');
+    expect(screen.getByTestId('pm-up-dupreminder')).toHaveTextContent('Individual profiles remain separate');
+    expect(screen.queryByRole('alert')).toBeNull();                       // a guard, not a failure
+    expect(vi.mocked(posCustomersApi.phoneStart).mock.calls[0][1]).not.toHaveProperty('sharedFamilyPhone', true);
+    fireEvent.click(screen.getByTestId('pm-up-dup-family'));
+    await waitFor(() => expect(vi.mocked(posCustomersApi.phoneStart).mock.calls[1][1]).toMatchObject({ phone: '6095552222', sharedFamilyPhone: true }));
+    expect(vi.mocked(posCustomersApi.phoneStart).mock.calls[1][1].idempotencyKey).not.toBe(vi.mocked(posCustomersApi.phoneStart).mock.calls[0][1].idempotencyKey);
+    expect(await screen.findByTestId('pm-up-dupguard')).toHaveTextContent('Recorded as a shared family phone');
+    fireEvent.click(screen.getByTestId('pm-up-dup-continue'));
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('s1'));
+  });
+  it('PHONE NUMBER MANAGEMENT 4 · 06: the server\'s suspicious-change list shows reasons and facts; Review opens the latest request; nothing else happens', async () => {
+    vi.mocked(api.summary).mockResolvedValue({ ...summary(), risk: { windowDays: 30, items: [{ customerId: 'c7', customerName: 'Often Changer', changes: 3, failedRequests: 0, codeAttempts: 2, channels: 1, addresses: 1,
+      reasons: ['frequent_changes'], latestRequestId: 'r1', latestAt: '2026-10-31T11:58:00Z' }] } } as never);
+    ui();
+    const row = await screen.findByTestId('pm-risk-row');
+    expect(row).toHaveTextContent('Often Changer'); expect(row).toHaveTextContent('Frequent changes'); expect(row).toHaveTextContent('3 requests, 0 failed or expired, 2 code tries, 1 channels');
+    expect(screen.getByTestId('pm-risk')).toHaveTextContent('nothing here locks a customer out');
+    fireEvent.click(screen.getByTestId('pm-risk-open'));
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('r1'));
+    expect(vi.mocked(posCustomersApi.phoneCancel)).not.toHaveBeenCalled();
+  });
+  it('no review section when the server lists none', async () => {
+    ui();
+    await screen.findByTestId('pm-kpi-verified');
+    expect(screen.queryByTestId('pm-risk')).toBeNull();
   });
 });

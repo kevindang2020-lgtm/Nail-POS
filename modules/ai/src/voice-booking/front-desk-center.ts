@@ -29,7 +29,7 @@ import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { AI_RECEPTIONIST_AGENT } from '../ai-lifecycles';
 import { normalizeAgentConfig, DEFAULT_BEHAVIOR, DEFAULT_GREETING } from './ai-agent-core';
-import { RC_PERIODS, HANDOFF_COMPLETED, HANDOFF_FAILED, isUuid, type ReceptionistCenter, type RcCtx, type RcCheck, type RcState, type RcBusinessReadiness } from './receptionist-center';
+import { RC_PERIODS, HANDOFF_COMPLETED, HANDOFF_FAILED, isUuid, type ReceptionistCenter, type RcCtx, type RcCheck, type RcState, type RcBusinessReadiness, type RcDriftSources } from './receptionist-center';
 
 type Row = Record<string, any>;
 export type FdCtx = RcCtx;
@@ -91,6 +91,56 @@ export function effectiveState(a: { status: string; providerAgentId: string | nu
 }
 
 interface Route { salonLive: boolean; stage: string; routedAgentRef: string | null; routed: { branchId: string | null; agentRef: string }[]; routedAt: string | null; routedCallRef: string | null; testAgentRef: string | null; control: Row | null }
+
+// ── Extras · AI Front Desk 06 — Knowledge Drift Check ─────────────────────────────────────────────────────────────────
+// Hours, services, closures and approved FAQs are read LIVE on every call (get_business_info), so they cannot go stale in
+// the agent. What CAN go stale is wording typed into the agent itself (greeting, behaviour, after-hours message): a time
+// that is no longer an opening/closing time, a service that is no longer offered, a price that changed — and an agent set
+// to book while the salon's booking actions are off. Read-only: nothing is changed, the owner edits the agent.
+export const FD_DRIFT_FIELDS = ['greeting', 'behavior', 'after_hours_message'] as const;
+export type FdDriftFinding =
+  | { kind: 'hours_time_mismatch'; field: typeof FD_DRIFT_FIELDS[number]; value: string }
+  | { kind: 'hours_not_set'; field: typeof FD_DRIFT_FIELDS[number]; value: string }
+  | { kind: 'service_not_offered'; field: typeof FD_DRIFT_FIELDS[number]; value: string; serviceId: string }
+  | { kind: 'service_price_mismatch'; field: typeof FD_DRIFT_FIELDS[number]; value: string; serviceId: string; service: string; currentPriceCents: number | null }
+  | { kind: 'booking_not_armed' };
+const TIME_RE = /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/gi;
+const PRICE_RE = /\$\s?(\d{1,4})(?:\.(\d{2}))?/g;
+const hhmm = (h: number, m: number) => String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+export function knowledgeDrift(agent: { greeting?: string | null; behavior?: string | null; after_hours_message?: string | null; booking_mode?: string | null },
+  src: RcDriftSources, bookingArmed: boolean): FdDriftFinding[] {
+  const out: FdDriftFinding[] = [];
+  const times = new Set<string>();
+  for (const d of Object.values(src.hours.storeHours ?? {})) if (d?.isOpen) { if (d.openTime) times.add(String(d.openTime).slice(0, 5)); if (d.closeTime) times.add(String(d.closeTime).slice(0, 5)); }
+  const hoursSet = src.hours.source !== 'platform_default';
+  for (const field of FD_DRIFT_FIELDS) {
+    const text = String(agent[field] ?? ''); if (!text.trim()) continue;
+    const seen = new Set<string>();
+    for (const m of text.matchAll(TIME_RE)) {
+      const pm = m[3].toLowerCase().startsWith('p'); const h12 = Number(m[1]) % 12; const t = hhmm(h12 + (pm ? 12 : 0), Number(m[2] ?? 0));
+      if (seen.has(t)) continue; seen.add(t);
+      const value = /^[^.]*[ap]m\.$/i.test(m[0].trim()) ? m[0].trim().slice(0, -1) : m[0].trim();   // "8 PM." → "8 PM" (keep "p.m.")
+      if (!hoursSet) out.push({ kind: 'hours_not_set', field, value });
+      else if (!times.has(t)) out.push({ kind: 'hours_time_mismatch', field, value });
+    }
+    const lower = text.toLowerCase();
+    const named = src.services.filter((sv) => sv.name.trim().length >= 4 && lower.includes(sv.name.trim().toLowerCase()));
+    for (const sv of named) if (!sv.active) out.push({ kind: 'service_not_offered', field, value: sv.name.trim(), serviceId: sv.id });
+    // a quoted price belongs to the active service named closest BEFORE it in the same sentence
+    for (const sen of text.split(/(?<=[.!?])\s+|\n+/)) {
+      const sl = sen.toLowerCase();
+      for (const pm of sen.matchAll(PRICE_RE)) {
+        const at = pm.index ?? 0; let best: { sv: typeof named[number]; pos: number } | null = null;
+        for (const sv of named) { if (!sv.active) continue; const pos = sl.lastIndexOf(sv.name.trim().toLowerCase(), at); if (pos >= 0 && (!best || pos > best.pos)) best = { sv, pos }; }
+        if (!best) continue;
+        const cents = Number(pm[1]) * 100 + Number(pm[2] ?? 0);
+        if (best.sv.priceCents == null || cents !== best.sv.priceCents) out.push({ kind: 'service_price_mismatch', field, value: pm[0].replace(/\s/g, ''), serviceId: best.sv.id, service: best.sv.name.trim(), currentPriceCents: best.sv.priceCents });
+      }
+    }
+  }
+  if (agent.booking_mode === 'eligible' && !bookingArmed) out.push({ kind: 'booking_not_armed' });
+  return out;
+}
 
 export class FrontDeskCenter {
   constructor(private readonly db: Kysely<any>, private readonly rc: ReceptionistCenter, private readonly business: RcBusinessReadiness | null = null) {}
@@ -216,6 +266,19 @@ export class FrontDeskCenter {
     return a;
   }
 
+  /** Extras · AI Front Desk 06 — wording in this agent that no longer matches the live salon setup (read-only) */
+  private async knowledgeDriftFor(ctx: FdCtx, a: Row, bookingArmed: boolean) {
+    const savedAt = iso(a.updated_at);
+    if (!this.business?.driftSources) return { status: 'UNKNOWN' as const, findings: [] as FdDriftFinding[], sources: [], savedAt, checkedAt: nowIso(), errorCode: 'NOT_AVAILABLE' };
+    let src: RcDriftSources;
+    try { src = await this.business.driftSources({ ...ctx, branchId: a.branch_id ?? ctx.branchId }); }
+    catch (e) { return { status: 'UNKNOWN' as const, findings: [] as FdDriftFinding[], sources: [], savedAt, checkedAt: nowIso(), errorCode: String((e as { code?: string })?.code ?? 'QUERY_FAILED') }; }
+    const findings = knowledgeDrift(a, src, bookingArmed);
+    const after = (at: string | null) => !!(at && savedAt && at > savedAt);
+    const sources = (['hours', 'services', 'closures', 'faqs'] as const).map((k) => ({ source: k, changedAt: src.changedAt[k], changedSinceAgentSaved: after(src.changedAt[k]), readLive: true }));
+    return { status: findings.length ? 'DRIFT' as const : 'IN_SYNC' as const, findings, sources, savedAt, checkedAt: nowIso(), errorCode: null };
+  }
+
   // ── agent profile overlay (guide §6) ───────────────────────────────────────────────────────────────────────────────────
   async detail(ctx: FdCtx, id: string) {
     const T = ctx.tenantId;
@@ -245,9 +308,10 @@ export class FrontDeskCenter {
     const lastActivation: Row | undefined = (await sql<Row>`select prior_agent_id, created_at, actor_user_id from ai_receptionist_agent_events where tenant_id = ${T} and agent_id = ${a.id}
       and action in ('activated', 'rolled_back') order by created_at desc, id desc limit 1`.execute(this.db)).rows[0];
     const ent = st('ent.package');
+    const knowledgeDrift = await this.knowledgeDriftFor(ctx, a, !!route.control?.booking_armed);
     return {
       overview: { ...this.rowOut(a, route), creatorName: a.creator_name ?? null },
-      business: { versions, knowledgeVersion: N(a.knowledge_version), core: biz?.core ?? null },
+      business: { versions, knowledgeVersion: N(a.knowledge_version), core: biz?.core ?? null, drift: knowledgeDrift },
       voice: { callType: a.call_type, language: a.language, greeting: a.greeting, behavior: a.behavior, useCase: a.use_case, afterHoursMessage: a.after_hours_message ?? null,
         providerRef: refSuffix(a.provider_agent_id), provider: a.provider ?? null, sharedWithOtherSalon: shared > 0 },
       routing: { current: liveOnRoute ? { agentId: liveOnRoute.id, name: liveOnRoute.name } : null, thisAgentIsLive: liveOnRoute?.id === a.id, ...this.routeOut(route),
