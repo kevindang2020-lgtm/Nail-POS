@@ -341,7 +341,7 @@ GET /pos/ai-business/center/assistant/history  realm=staff  auth=session  domain
 GET /pos/ai-business/center/branches/explain  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/branches/scorecard  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/branches/snapshots  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/ai-business/center/branches/snapshots/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-business/center/branches/snapshots/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/summary  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -2545,7 +2545,7 @@ POST /pos/ai-business/center/alerts/{id}/evaluate  realm=staff  auth=session  do
 POST /pos/ai-business/center/assistant/check  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/branches/check  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/branches/snapshots  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/ai-business/center/branches/snapshots/{id}/signoffs  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-business/center/branches/snapshots/{id}/signoffs  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/check  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/generate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/{id}/regenerate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
