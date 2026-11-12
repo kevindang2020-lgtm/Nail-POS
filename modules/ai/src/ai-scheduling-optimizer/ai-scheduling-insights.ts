@@ -56,19 +56,24 @@ export function durationObserved(st: { n: number; median: number; p25: number; p
   return { sampleSize: st.n, medianMin: r1(st.median), p25Min: r1(st.p25), p75Min: r1(st.p75), p90Min: r1(st.p90), stddevMin: r1(st.stddev), variability, spreadPct: spread == null ? null : Math.round(spread * 100) };
 }
 
-export interface DayCapacityInput { capacityMin: number; confirmedMin: number; historyDailyMin: number[]; unscheduledTechnicianIds: string[] }
+export interface DayCapacityInput { capacityMin: number; confirmedMin: number; historyDailyMin: number[]; unscheduledTechnicianIds: string[];
+  /** extras 200-Technician 06 (skill coverage): the services booked that day and the ones at least one SCHEDULED technician is
+   *  approved for (technician_services, the one eligibility table). A booked service nobody scheduled may do is a gap. */
+  bookedServices?: string[]; coveredServices?: string[] }
 /** Staffing + availability suggestions for one location-day. Pure. */
 export function dayInsights(d: DayCapacityInput) {
   const forecastAvailable = d.historyDailyMin.length >= 2;
   const avg = forecastAvailable ? d.historyDailyMin.reduce((a, b) => a + b, 0) / d.historyDailyMin.length : 0;
   const forecastExtra = Math.max(0, Math.round(avg - d.confirmedMin));
-  const staffing = detectUnderstaffing({ confirmedDemandMin: d.confirmedMin, forecastDemandMin: forecastAvailable ? forecastExtra : null, capacityMin: d.capacityMin, forecastAvailable, sampleSize: d.capacityMin > 0 || d.confirmedMin > 0 ? 1 : 0 });
+  const staffing = detectUnderstaffing({ confirmedDemandMin: d.confirmedMin, forecastDemandMin: forecastAvailable ? forecastExtra : null, capacityMin: d.capacityMin, forecastAvailable, sampleSize: d.capacityMin > 0 || d.confirmedMin > 0 ? 1 : 0,
+    requiredSkills: d.bookedServices ?? [], availableSkills: d.coveredServices ?? [] });
   const demand = d.confirmedMin + forecastExtra;
   const projected = d.capacityMin > 0 ? demand / d.capacityMin : null;
   let availability: { direction: 'open' | 'close'; technicianId: string | null; reason: string; confidence: number } | null = null;
   if (projected != null && forecastAvailable && projected < 0.35) availability = { direction: 'close', technicianId: null, reason: `Projected utilization ${Math.round(projected * 100)} % — consider closing some open time.`, confidence: 0.6 };
   else if (projected != null && projected > 1 && d.unscheduledTechnicianIds.length) availability = { direction: 'open', technicianId: d.unscheduledTechnicianIds[0], reason: `Projected demand is ${Math.round(projected * 100)} % of scheduled time — a technician who is not scheduled could open availability.`, confidence: forecastAvailable ? 0.7 : 0.5 };
-  const understaffed = staffing.state === 'understaffed' || staffing.state === 'severely_understaffed';
+  // a booked service with no qualified technician on the schedule is worth a review even when total hours are enough
+  const understaffed = staffing.state === 'understaffed' || staffing.state === 'severely_understaffed' || staffing.missingSkills.length > 0;
   return { staffing: understaffed ? staffing : null, availability };
 }
 
@@ -88,7 +93,7 @@ export interface InsightStore {
   upsertDuration(tenantId: string, r: { branchId: string | null; serviceId: string; technicianId: string | null; action: string; currentMin: number; suggestedMin: number; reason: string; confidence: number; sampleSize: number }): Promise<string | null>;
   branches(tenantId: string): Promise<{ branchId: string; tz: string }[]>;
   dayInputs(tenantId: string, branchId: string, date: string): Promise<DayCapacityInput>;
-  upsertStaffing(tenantId: string, r: { branchId: string; date: string; state: string; missingMinutes: number; missingSkills: string[]; action: string; confidence: number }): Promise<string | null>;
+  upsertStaffing(tenantId: string, r: { branchId: string; date: string; state: string; missingMinutes: number; missingSkills: string[]; action: string | null; confidence: number }): Promise<string | null>;
   upsertAvailability(tenantId: string, r: { branchId: string; date: string; direction: 'open' | 'close'; technicianId: string | null; reason: string; confidence: number }): Promise<string | null>;
 }
 
@@ -203,14 +208,24 @@ export class KyselyInsightStore implements InsightStore {
                                      and appt_date in (${sql.join([7, 14, 21, 28].map((d) => sql`${addDaysYmd(date, -d)}::date`))})
                                    group by appt_date`.execute(this.db));
     const techs = rowsOf(await sql`select id from technicians where tenant_id = ${tenantId} and branch_id = ${branchId} and is_active = true and archived_at is null`.execute(this.db));
+    // extras 200-Technician 06: booked services of the day vs the services a scheduled, active technician is approved for
+    const booked = rowsOf(await sql`select distinct sv.id, sv.name from pos_tech_appointments a
+                                     cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e
+                                     join services sv on sv.tenant_id = a.tenant_id and sv.id::text = e->>'serviceId'
+                                    where a.tenant_id = ${tenantId} and a.branch_id = ${branchId} and a.appt_date = ${date}::date and a.status not in ('cancelled','no_show')`.execute(this.db));
+    const activeScheduled = techs.map((t) => String(t.id)).filter((id) => scheduled.has(id));
+    const covered = new Set(activeScheduled.length && booked.length ? rowsOf(await sql`select distinct ts.service_id from technician_services ts
+                                     where ts.tenant_id = ${tenantId} and ts.technician_id = any(${activeScheduled}::uuid[]) and ts.service_id = any(${booked.map((b) => String(b.id))}::uuid[])`.execute(this.db)).map((r) => String(r.service_id)) : []);
     return { capacityMin, confirmedMin: Number(confirmed?.m ?? 0), historyDailyMin: hist.map((h) => Number(h.m)).filter((m) => m > 0),
-      unscheduledTechnicianIds: techs.map((t) => String(t.id)).filter((id) => !scheduled.has(id)) };
+      unscheduledTechnicianIds: techs.map((t) => String(t.id)).filter((id) => !scheduled.has(id)),
+      bookedServices: booked.map((b) => String(b.name)), coveredServices: booked.filter((b) => covered.has(String(b.id))).map((b) => String(b.name)) };
   }
-  async upsertStaffing(tenantId: string, r: { branchId: string; date: string; state: string; missingMinutes: number; missingSkills: string[]; action: string; confidence: number }) {
+  async upsertStaffing(tenantId: string, r: { branchId: string; date: string; state: string; missingMinutes: number; missingSkills: string[]; action: string | null; confidence: number }) {
     return this.db.transaction().execute(async (trx) => {
-      const open = rowsOf(await sql`select id, state, missing_minutes from staffing_coverage_recommendations where tenant_id = ${tenantId} and branch_id = ${r.branchId}
+      const open = rowsOf(await sql`select id, state, missing_minutes, missing_skills from staffing_coverage_recommendations where tenant_id = ${tenantId} and branch_id = ${r.branchId}
                                       and date = ${r.date}::date and status = 'review_required' for update`.execute(trx));
-      if (open.some((o) => o.state === r.state && Number(o.missing_minutes) === r.missingMinutes)) return null;
+      const skillsKey = JSON.stringify([...r.missingSkills].sort());
+      if (open.some((o) => o.state === r.state && Number(o.missing_minutes) === r.missingMinutes && JSON.stringify([...(Array.isArray(o.missing_skills) ? o.missing_skills : [])].map(String).sort()) === skillsKey)) return null;
       if (open.length) await sql`update staffing_coverage_recommendations set status = 'superseded', version = version + 1, updated_at = now() where tenant_id = ${tenantId} and id in (${sql.join(open.map((o) => o.id))}) and ${canMoveToSql(STAFFING_COVERAGE_RECOMMENDATION, 'superseded')}`.execute(trx);
       const ins = rowsOf(await sql`insert into staffing_coverage_recommendations (tenant_id, branch_id, date, state, missing_minutes, missing_skills, recommended_action, confidence)
                                     values (${tenantId}, ${r.branchId}, ${r.date}::date, ${r.state}, ${r.missingMinutes}, ${JSON.stringify(r.missingSkills)}::jsonb, ${r.action}, ${r.confidence}) returning id`.execute(trx))[0];
@@ -313,8 +328,9 @@ export class SchedInsightService {
         const out = dayInsights(await this.store.dayInputs(ctx.tenantId, b.branchId, date));
         if (out.staffing) {
           const hours = Math.ceil(out.staffing.missingMinutes / 60);
+          // a skills-only gap carries no hours action (the missing services are listed on the suggestion itself)
           const id = await this.store.upsertStaffing(ctx.tenantId, { branchId: b.branchId, date, state: out.staffing.state, missingMinutes: out.staffing.missingMinutes, missingSkills: out.staffing.missingSkills,
-            action: `Schedule about ${hours} more technician hour${hours === 1 ? '' : 's'}.`, confidence: out.staffing.confidence });
+            action: hours > 0 ? `Schedule about ${hours} more technician hour${hours === 1 ? '' : 's'}.` : null, confidence: out.staffing.confidence });
           if (id) { staffing++; await this.emit(ctx, DOMAIN_EVENTS.SCHEDULE_INSIGHT_GENERATED, { id, kind: 'staffing', status: 'review_required', version: 1, branchId: b.branchId }); }
         }
         if (out.availability) {
