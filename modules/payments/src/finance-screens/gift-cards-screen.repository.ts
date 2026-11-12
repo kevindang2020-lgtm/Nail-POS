@@ -19,6 +19,7 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { Logger } from '@nestjs/common';
 import { hasPermission } from '@aipowersalon/permissions';
+import { REVENUE_BEARING_STATUSES } from '@aipowersalon/api-contracts';
 import {
   FinanceError, N, iso, isUuid, clampPage, resolvePeriod, salonTimeZone, tsInPeriod, digitsOf, likeOf, oneOf, csvDocument, usd, audit,
   type FinanceCtx, type PageReq, type Period, type AuditRecorder,
@@ -31,6 +32,8 @@ export const GC_BASES = ['issued', 'created', 'activity', 'redemption', 'expirat
 export const GC_ROLES = ['purchaser', 'recipient'] as const;
 const OWED = ['active', 'partially_redeemed', 'frozen'];
 const SPENDABLE = ['active', 'partially_redeemed'];
+/** a tender the register actually took (the same set Money Overview and Transactions count) */
+const CLOSEOUT_CONFIRMED = [...new Set([...REVENUE_BEARING_STATUSES, 'completed', 'succeeded', 'settled', 'partially_refunded'])];
 const GROUP_STATUSES: Record<GcGroup, string[]> = {
   active: SPENDABLE, redeemed: ['redeemed'], void: ['void', 'canceled', 'refunded', 'replaced', 'expired', 'lost_stolen'],
   pending: ['pending_payment', 'draft', 'pending_review', 'scheduled'], frozen: ['frozen', 'suspended'],
@@ -213,8 +216,9 @@ export class GiftCardsScreenRepository {
         order by g0.created_at, g0.id limit 200`.execute(this.db)).rows;
     const checked = N((await sql<any>`select count(*)::int as n from gift_cards g0 where g0.tenant_id = ${T} and ${sc} and g0.status not in ('pending_payment', 'draft')`.execute(this.db)).rows[0]?.n);
     const duplicates = await this.duplicateAlerts(T, sc);
+    const closeout = await this.closeout(T, sc, scope(sql`p.branch_id`), f.period);
     return {
-      duplicates,
+      duplicates, closeout,
       integrity: { checkedCards: checked, unreconciledCards: drift.length, capped: drift.length >= 200,
         sample: drift.slice(0, 10).map((d: any) => ({ cardId: String(d.id), card: maskedCard(d.card_number_last4, d.code), balanceCents: N(d.bal), ledgerBalanceCents: N(d.led) })) },
       kpis: {
@@ -224,6 +228,62 @@ export class GiftCardsScreenRepository {
       },
       bases: { liability: 'as_of_now', active: 'as_of_now', totalCards: 'all_time', issued: f.period.from ? 'period' : 'all_time', redeemed: f.period.from ? 'period' : 'all_time' },
       period: f.period, asOf: new Date().toISOString(),
+    };
+  }
+
+  /** GIFT CARDS extras 12 "Reconciliation to daily closeout" — for the selected period (Today = today's closeout, in the salon's
+   *  time zone), read-only, from the ONE ledger and the payments table (nothing estimated, nothing corrected):
+   *    redemption ↔ tender   Σ gift-card redemptions on the ledger vs Σ confirmed gift-card tenders the register took
+   *                          (payments.method gift_card / gift), with the exact rows on either side that have no partner:
+   *                          a redemption with no confirmed tender behind it, a tender with no redemption row on the ledger
+   *    issuance ↔ sale       activations in the period, and those whose card has no PAID sale ticket behind them
+   *    liability movement    the period's net ledger change split into its parts (issued + reloaded − redeemed + refunded back
+   *                          ± other adjustments − expired / canceled); the parts add up to the net by construction */
+  private async closeout(T: string, sc: RawBuilder<boolean>, scP: RawBuilder<boolean>, period: Period) {
+    const perT = tsInPeriod(sql`t.created_at`, period);
+    const perP = tsInPeriod(sql`coalesce(p.approved_at, p.created_at)`, period);
+    const GIFT = sql`p.method in ('gift_card', 'gift')`;
+    const okTender = sql`p.status in (${sql.join(CLOSEOUT_CONFIRMED)})`;
+    type Mv = { redeemed: string | number; redemption_rows: number; issued: string | number; issued_rows: number; reloaded: string | number; refunded_back: string | number;
+      other_adjust: string | number; expired: string | number; net: string | number };
+    const mv = (await sql<Mv>`select coalesce(sum(abs(t.amount_cents)) filter (where t.type in ('redeem', 'redemption')), 0)::bigint as redeemed,
+          count(*) filter (where t.type in ('redeem', 'redemption'))::int as redemption_rows,
+          coalesce(sum(t.amount_cents) filter (where t.type in ('issue', 'activate', 'purchase')), 0)::bigint as issued,
+          count(*) filter (where t.type in ('issue', 'activate', 'purchase'))::int as issued_rows,
+          coalesce(sum(t.amount_cents) filter (where t.type = 'adjust' and t.idempotency_key like 'reload:%'), 0)::bigint as reloaded,
+          coalesce(sum(t.amount_cents) filter (where t.type = 'refund'), 0)::bigint as refunded_back,
+          coalesce(sum(${SIGNED}) filter (where t.type in ('adjust', 'transfer', 'promo_bonus', 'reactivate') and not (t.type = 'adjust' and coalesce(t.idempotency_key, '') like 'reload:%')), 0)::bigint as other_adjust,
+          coalesce(sum(abs(t.amount_cents)) filter (where t.type in ('expire', 'cancel', 'chargeback')), 0)::bigint as expired,
+          coalesce(sum(${SIGNED}), 0)::bigint as net
+        from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and ${sc} and ${perT}`.execute(this.db)).rows[0];
+    const tn = (await sql<{ cents: string | number; n: number }>`select coalesce(sum(p.amount_cents), 0)::bigint as cents, count(*)::int as n
+        from payments p where p.tenant_id = ${T} and ${scP} and ${GIFT} and ${okTender} and ${perP}`.execute(this.db)).rows[0];
+    type Orph = { id: string; card_id: string | null; last4: string | null; code: string | null; amount: string | number; at: Date | string | null };
+    const noTender = (await sql<Orph>`select t.id::text as id, g0.id::text as card_id, g0.card_number_last4 as last4, g0.code, abs(t.amount_cents)::bigint as amount, t.created_at as at
+        from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and ${sc} and ${perT} and t.type in ('redeem', 'redemption')
+          and not exists (select 1 from payments p where p.tenant_id = t.tenant_id and p.id = t.payment_id and ${GIFT} and ${okTender})
+        order by t.created_at, t.id limit 51`.execute(this.db)).rows;
+    const noLedger = (await sql<Orph>`select p.id::text as id, null::text as card_id, null::text as last4, null::text as code, p.amount_cents::bigint as amount, coalesce(p.approved_at, p.created_at) as at
+        from payments p where p.tenant_id = ${T} and ${scP} and ${GIFT} and ${okTender} and ${perP}
+          and not exists (select 1 from gift_card_transactions t where t.tenant_id = p.tenant_id and t.payment_id = p.id and t.type in ('redeem', 'redemption'))
+        order by coalesce(p.approved_at, p.created_at), p.id limit 51`.execute(this.db)).rows;
+    const unpaidSale = (await sql<Orph>`select t.id::text as id, g0.id::text as card_id, g0.card_number_last4 as last4, g0.code, t.amount_cents::bigint as amount, t.created_at as at
+        from gift_card_transactions t join gift_cards g0 on g0.id = t.gift_card_id and g0.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and ${sc} and ${perT} and t.type in ('issue', 'activate', 'purchase')
+          and not exists (select 1 from tickets k where k.tenant_id = g0.tenant_id and k.id = g0.sale_ticket_id and k.status = 'paid')
+        order by t.created_at, t.id limit 51`.execute(this.db)).rows;
+    const view = (rows: Orph[], kind: 'ledger' | 'payment') => ({ count: Math.min(rows.length, 50), capped: rows.length > 50,
+      sample: rows.slice(0, 10).map((x) => ({ [kind === 'ledger' ? 'ledgerId' : 'paymentId']: String(x.id), ...(x.card_id ? { cardId: String(x.card_id), card: maskedCard(x.last4, x.code) } : {}), amountCents: N(x.amount), at: iso(x.at) })) });
+    const redeemed = N(mv?.redeemed); const tenders = N(tn?.cents);
+    return {
+      redemptions: { ledgerCents: redeemed, ledgerRows: N(mv?.redemption_rows), tenderCents: tenders, tenders: N(tn?.n), differenceCents: tenders - redeemed,
+        withoutTender: view(noTender, 'ledger'), withoutLedger: view(noLedger, 'payment') },
+      issuance: { ledgerCents: N(mv?.issued), ledgerRows: N(mv?.issued_rows), withoutPaidSale: view(unpaidSale, 'ledger') },
+      liability: { issuedCents: N(mv?.issued), reloadedCents: N(mv?.reloaded), redeemedCents: redeemed, refundedBackCents: N(mv?.refunded_back),
+        otherAdjustmentsCents: N(mv?.other_adjust), expiredCents: N(mv?.expired), netChangeCents: N(mv?.net) },
+      basis: period.from ? 'period' as const : 'all_time' as const,
     };
   }
 

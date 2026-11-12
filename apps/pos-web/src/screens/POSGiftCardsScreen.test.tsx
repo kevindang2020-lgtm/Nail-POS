@@ -90,6 +90,37 @@ describe('POSGiftCardsScreen', () => {
     await waitFor(() => expect(gc.detail).toHaveBeenCalledWith('g7'));
     expect(gc.adjust).not.toHaveBeenCalled();
   });
+  it('closeout check (extras 12): the server comparison for the period — match line, unpartnered rows, liability parts; read-only', async () => {
+    const none = { count: 0, capped: false, sample: [] };
+    const clean = { redemptions: { ledgerCents: 700, ledgerRows: 1, tenderCents: 700, tenders: 1, differenceCents: 0, withoutTender: none, withoutLedger: none },
+      issuance: { ledgerCents: 0, ledgerRows: 0, withoutPaidSale: none },
+      liability: { issuedCents: 0, reloadedCents: 0, redeemedCents: 700, refundedBackCents: 0, otherAdjustmentsCents: 0, expiredCents: 0, netChangeCents: -700 }, basis: 'all_time' };
+    gc.summary.mockResolvedValue({ ...summary, closeout: clean });
+    const v = mount();
+    expect(await screen.findByTestId('gc-closeout')).toHaveTextContent('Closeout check (all time): gift-card redemptions $7.00 on the ledger vs $7.00 gift-card tenders taken. They match.');
+    v.unmount();
+    gc.summary.mockResolvedValue({ ...summary, period: { ...PERIOD, preset: 'today', from: '2026-10-29', to: '2026-10-29' }, closeout: {
+      redemptions: { ledgerCents: 7000, ledgerRows: 4, tenderCents: 6000, tenders: 4, differenceCents: -1000,
+        withoutTender: { count: 1, capped: false, sample: [{ ledgerId: 'l1', cardId: 'g7', card: '•••• 1111', amountCents: 2500, at: '2026-10-29T16:00:00Z' }] },
+        withoutLedger: { count: 1, capped: false, sample: [{ paymentId: 'p4abcdef-0000', amountCents: 1500, at: '2026-10-29T20:00:00Z' }] } },
+      issuance: { ledgerCents: 25000, ledgerRows: 3, withoutPaidSale: none },
+      liability: { issuedCents: 25000, reloadedCents: 2000, redeemedCents: 7000, refundedBackCents: 1000, otherAdjustmentsCents: -500, expiredCents: 4500, netChangeCents: 16000 }, basis: 'period' } });
+    gc.detail.mockResolvedValue({ card: card({ id: 'g7', card: '•••• 1111' }), permissions: { void: false, reload: false },
+      totals: { originalCents: 10000, reloadedCents: 0, redeemedCents: 5500, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 4500, transactions: 3, ledgerBalanceCents: 4500, reconciled: true } });
+    gc.ledger.mockResolvedValue(pageOf([]));
+    mount();
+    const line = await screen.findByTestId('gc-closeout');
+    expect(line).toHaveTextContent('Difference −$10.00 · 2 rows to look at.');
+    fireEvent.click(screen.getByTestId('gc-closeout-open'));
+    const dlg = await screen.findByTestId('dlg-gc-closeout');
+    expect(screen.getByTestId('gc-co-diff')).toHaveTextContent('−$10.00');
+    expect(screen.getByTestId('gc-co-no-ledger')).toHaveTextContent('Payment p4abcdef · $15.00');
+    expect(screen.getByTestId('gc-co-net')).toHaveTextContent('$160.00');
+    expect(dlg).toHaveTextContent('Activations with no paid sale ticket: 0');
+    fireEvent.click(screen.getByRole('button', { name: '•••• 1111' }));
+    await waitFor(() => expect(gc.detail).toHaveBeenCalledWith('g7'));
+    expect(gc.adjust).not.toHaveBeenCalled(); expect(gc.voidCard).not.toHaveBeenCalled();
+  });
   it('status tab and search go to the server, with chips and Clear All', async () => {
     mount(); await screen.findByText('•••• 4821');
     fireEvent.click(screen.getByTestId('tab-redeemed'));

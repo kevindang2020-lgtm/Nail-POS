@@ -86,4 +86,30 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.dup.multipleActivation": "{n} thẻ được kích hoạt nhiều lần", // DRAFT — Kevin reviews
   "gc.dup.activatedWhilePending": "{n} thẻ được kích hoạt khi vẫn chờ thanh toán", // DRAFT — Kevin reviews
   "gc.dup.card": "{k} · {a} trên {r} dòng sổ cái", // DRAFT — Kevin reviews
+  "gc.co.line": "Kiểm tra chốt ca ({p}): đã dùng thẻ quà tặng {r} trên sổ cái so với {t} thanh toán bằng thẻ quà tặng.", // DRAFT — Kevin reviews
+  "gc.co.ok": "Khớp nhau.", // DRAFT — Kevin reviews
+  "gc.co.diff": "Chênh lệch {d} · {n} dòng cần xem.", // DRAFT — Kevin reviews
+  "gc.co.open": "Chi tiết", // DRAFT — Kevin reviews
+  "gc.co.title": "Thẻ quà tặng so với chốt ca quầy", // DRAFT — Kevin reviews
+  "gc.co.basis": "Kỳ: {p} (giờ tiệm). Chỉ xem — không thay đổi gì ở đây.", // DRAFT — Kevin reviews
+  "gc.co.allTime": "toàn thời gian", // DRAFT — Kevin reviews
+  "gc.co.ledger": "Lượt dùng trên sổ cái thẻ quà tặng", // DRAFT — Kevin reviews
+  "gc.co.tenders": "Thanh toán bằng thẻ quà tặng tại quầy", // DRAFT — Kevin reviews
+  "gc.co.difference": "Thanh toán − lượt dùng", // DRAFT — Kevin reviews
+  "gc.co.rows": "{n} dòng", // DRAFT — Kevin reviews
+  "gc.co.noTender": "Lượt dùng không có thanh toán xác nhận ({n})", // DRAFT — Kevin reviews
+  "gc.co.noLedger": "Thanh toán thẻ quà tặng không có lượt dùng trên sổ cái ({n})", // DRAFT — Kevin reviews
+  "gc.co.issued": "Đã kích hoạt {a} ({n} dòng)", // DRAFT — Kevin reviews
+  "gc.co.noSale": "Kích hoạt không có phiếu bán đã thanh toán: {n}", // DRAFT — Kevin reviews
+  "gc.co.none": "Không có.", // DRAFT — Kevin reviews
+  "gc.co.payment": "Thanh toán", // DRAFT — Kevin reviews
+  "gc.co.liability": "Biến động số dư còn nợ", // DRAFT — Kevin reviews
+  "gc.co.l.issued": "Phát hành", // DRAFT — Kevin reviews
+  "gc.co.l.reloaded": "Nạp thêm", // DRAFT — Kevin reviews
+  "gc.co.l.redeemed": "Đã dùng", // DRAFT — Kevin reviews
+  "gc.co.l.refunded": "Hoàn lại vào thẻ", // DRAFT — Kevin reviews
+  "gc.co.l.other": "Điều chỉnh khác", // DRAFT — Kevin reviews
+  "gc.co.l.expired": "Hết hạn / hủy", // DRAFT — Kevin reviews
+  "gc.co.l.net": "Thay đổi ròng", // DRAFT — Kevin reviews
+  "gc.co.readOnly": "Mở thẻ để kiểm tra. Việc chỉnh sửa vẫn làm trên thẻ (Điều chỉnh số dư, kèm lý do).", // DRAFT — Kevin reviews
 };

@@ -100,6 +100,58 @@ function GiftCardClearingStrip({ onOpen, tick }: { onOpen: () => void; tick: num
   );
 }
 
+/** GIFT CARDS extras 12 "Reconciliation to daily closeout": the server's read-only comparison for the selected period (Today =
+ *  today's closeout, salon time zone) — ledger redemptions vs gift-card tenders the register took, rows with no partner on
+ *  either side, activations with no paid sale ticket, and the liability movement in parts. Nothing is computed or corrected here. */
+type CloseoutSample = { ledgerId?: string; paymentId?: string; cardId?: string; card?: string; amountCents: number; at: string | null };
+type CloseoutRows = { count: number; capped: boolean; sample: CloseoutSample[] };
+type GcCloseoutView = {
+  redemptions: { ledgerCents: number; ledgerRows: number; tenderCents: number; tenders: number; differenceCents: number; withoutTender: CloseoutRows; withoutLedger: CloseoutRows };
+  issuance: { ledgerCents: number; ledgerRows: number; withoutPaidSale: CloseoutRows };
+  liability: { issuedCents: number; reloadedCents: number; redeemedCents: number; refundedBackCents: number; otherAdjustmentsCents: number; expiredCents: number; netChangeCents: number };
+  basis: 'period' | 'all_time';
+};
+function GiftCardCloseout({ c, periodLabel, onOpenCard }: { c: GcCloseoutView; periodLabel: string; onOpenCard: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const r = c.redemptions; const flagged = r.withoutTender.count + r.withoutLedger.count + c.issuance.withoutPaidSale.count;
+  const ok = r.differenceCents === 0 && flagged === 0;
+  const n = (x: CloseoutRows) => fmtNumber(x.count) + (x.capped ? '+' : '');
+  const list = (x: CloseoutRows, id: string) => x.count === 0 ? <span className="fk-muted">{tx('gc.co.none')}</span> : <ul className="fk-list" data-testid={id}>{x.sample.map((s, i) =>
+    <li key={(s.ledgerId ?? s.paymentId ?? '') + i}>{s.card && s.cardId ? <button type="button" className="fk-link" onClick={() => { setOpen(false); onOpenCard(String(s.cardId)); }}>{s.card}</button> : <span>{tx('gc.co.payment')} {String(s.paymentId ?? '').slice(0, 8)}</span>}
+      {' · '}{fmtMoney(s.amountCents)}{' · '}{when(s.at)}</li>)}</ul>;
+  const L = c.liability;
+  return (
+    <div className={'fk-note ' + (ok ? 'ok' : 'warn')} role="status" data-testid="gc-closeout">
+      <span>{tx('gc.co.line', { p: periodLabel, r: fmtMoney(r.ledgerCents), t: fmtMoney(r.tenderCents) })}{' '}
+        {ok ? tx('gc.co.ok') : tx('gc.co.diff', { d: fmtMoney(r.differenceCents), n: fmtNumber(flagged) })}</span>
+      <span className="fn-note-acts"><button type="button" className="fk-link" onClick={() => setOpen(true)} data-testid="gc-closeout-open">{tx('gc.co.open')}</button></span>
+      {open ? <FitDialog title={tx('gc.co.title')} onClose={() => setOpen(false)} side testId="dlg-gc-closeout">
+        <div className="sub">{tx('gc.co.basis', { p: periodLabel })}</div>
+        <dl className="fk-dl" data-testid="gc-co-red">
+          <dt>{tx('gc.co.ledger')}</dt><dd>{fmtMoney(r.ledgerCents)} · {tx('gc.co.rows', { n: fmtNumber(r.ledgerRows) })}</dd>
+          <dt>{tx('gc.co.tenders')}</dt><dd>{fmtMoney(r.tenderCents)} · {tx('gc.co.rows', { n: fmtNumber(r.tenders) })}</dd>
+          <dt>{tx('gc.co.difference')}</dt><dd data-testid="gc-co-diff"><b>{fmtMoney(r.differenceCents)}</b></dd>
+        </dl>
+        <h3 className="fk-sub">{tx('gc.co.noTender', { n: n(r.withoutTender) })}</h3>{list(r.withoutTender, 'gc-co-no-tender')}
+        <h3 className="fk-sub">{tx('gc.co.noLedger', { n: n(r.withoutLedger) })}</h3>{list(r.withoutLedger, 'gc-co-no-ledger')}
+        <h3 className="fk-sub">{tx('gc.co.issued', { a: fmtMoney(c.issuance.ledgerCents), n: fmtNumber(c.issuance.ledgerRows) })}</h3>
+        <div className="sub">{tx('gc.co.noSale', { n: n(c.issuance.withoutPaidSale) })}</div>{list(c.issuance.withoutPaidSale, 'gc-co-no-sale')}
+        <h3 className="fk-sub">{tx('gc.co.liability')}</h3>
+        <dl className="fk-dl" data-testid="gc-co-liability">
+          <dt>{tx('gc.co.l.issued')}</dt><dd>+{fmtMoney(L.issuedCents)}</dd>
+          <dt>{tx('gc.co.l.reloaded')}</dt><dd>+{fmtMoney(L.reloadedCents)}</dd>
+          <dt>{tx('gc.co.l.redeemed')}</dt><dd>−{fmtMoney(L.redeemedCents)}</dd>
+          <dt>{tx('gc.co.l.refunded')}</dt><dd>+{fmtMoney(L.refundedBackCents)}</dd>
+          <dt>{tx('gc.co.l.other')}</dt><dd>{fmtMoney(L.otherAdjustmentsCents)}</dd>
+          <dt>{tx('gc.co.l.expired')}</dt><dd>−{fmtMoney(L.expiredCents)}</dd>
+          <dt><b>{tx('gc.co.l.net')}</b></dt><dd data-testid="gc-co-net"><b>{fmtMoney(L.netChangeCents)}</b></dd>
+        </dl>
+        <div className="fk-hint">{tx('gc.co.readOnly')}</div>
+      </FitDialog> : null}
+    </div>
+  );
+}
+
 type Person = { id?: string; customerId?: string | null; name: string | null; phone: string | null; email: string | null };
 type Card = { id: string; card: string; reference: string | null; status: string; spendable: boolean; originalCents: number; balanceCents: number; issuedAt: string | null; createdAt: string | null;
   lastActivityAt: string | null; lastRedeemedAt: string | null; expiresAt: string | null; purchaser: Person | null; recipient: Person | null; delivery: 'digital' | 'physical'; hasPin: boolean; branch: string | null;
@@ -200,6 +252,7 @@ export function POSGiftCardsScreen() {
             <button key={x.kind + x.cardId + i} type="button" className="fk-link" data-testid="gc-duplicate-card" onClick={() => setDlg({ kind: 'detail', id: x.cardId })}
               title={tx('gc.dup.card', { k: tx('gc.dup.' + x.kind, { n: '1' }), a: fmtMoney(x.amountCents), r: String(x.ledgerIds.length) })}>{x.card}</button>)}</span></div>
       ) : null}
+      {sum.data?.closeout ? <GiftCardCloseout c={sum.data.closeout as GcCloseoutView} periodLabel={sum.data.closeout.basis === 'period' ? periodText(sum.data?.period) : tx('gc.co.allTime')} onOpenCard={(id) => setDlg({ kind: 'detail', id })} /> : null}
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-liability" tone="gold" label={tx('gc.kpi.liability')} loading={!k} value={k ? fmtMoney(k.outstandingLiabilityCents) : ''} sub={tx('gc.kpi.liabilitySub')} onClick={() => setGroup('active')} />
