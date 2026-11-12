@@ -435,21 +435,21 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.health.d.batch_readiness.PASSED": "Sổ thẻ thành viên, thẻ quà tặng và đóng két đều đọc được và phát hiện đã được lên lịch.", // DRAFT — Kevin reviews
   "mpx.health.d.batch_readiness.WARNING": "Kiểm tra theo lô đang tắt hoặc chưa lên lịch. Có thể thiếu cảnh báo theo lô.", // DRAFT — Kevin reviews
   "mpx.health.d.batch_readiness.FAILED": "Không đọc được một sổ mà kiểm tra theo lô cần. Cảnh báo theo lô bị thiếu. Hãy báo lại.", // DRAFT — Kevin reviews
-  "mpx.batch.select": "Chọn để xử lý hàng loạt", // DRAFT — Kevin reviews
-  "mpx.batch.selected": "Đã chọn {n} cảnh báo", // DRAFT — Kevin reviews
-  "mpx.batch.open": "Xử lý hàng loạt…", // DRAFT — Kevin reviews
-  "mpx.batch.clear": "Bỏ chọn", // DRAFT — Kevin reviews
-  "mpx.batch.title": "Xử lý hàng loạt", // DRAFT — Kevin reviews
-  "mpx.batch.sub": "Xem trước điều gì sẽ xảy ra với từng cảnh báo đã chọn trước khi có thay đổi.", // DRAFT — Kevin reviews
-  "mpx.batch.action": "Thao tác", // DRAFT — Kevin reviews
-  "mpx.batch.ready": "{n} cảnh báo sẽ thay đổi.", // DRAFT — Kevin reviews
-  "mpx.batch.stateInvalid": "{n} cảnh báo không thể làm thao tác này ở trạng thái hiện tại — giữ nguyên.", // DRAFT — Kevin reviews
-  "mpx.batch.ownActivity": "{n} cảnh báo liên quan đến hoạt động của chính bạn — người khác phải xem xét.", // DRAFT — Kevin reviews
-  "mpx.batch.notFound": "{n} cảnh báo không còn hiển thị ở đây.", // DRAFT — Kevin reviews
-  "mpx.batch.reason": "Lý do (ít nhất 5 ký tự, lưu trên mỗi cảnh báo)", // DRAFT — Kevin reviews
-  "mpx.batch.confirm": "Tôi đã xem {n} cảnh báo này và muốn áp dụng thao tác", // DRAFT — Kevin reviews
-  "mpx.batch.apply": "Áp dụng cho {n}", // DRAFT — Kevin reviews
-  "mpx.batch.result": "{a} đã thay đổi · {r} giữ nguyên", // DRAFT — Kevin reviews
-  "mpx.batch.failed": "Không tải được xử lý hàng loạt.", // DRAFT — Kevin reviews
-  "mpx.batch.noMoney": "Xử lý hàng loạt chỉ xác nhận, bỏ qua hoặc mở lại cảnh báo. Không bao giờ trả tiền, thu tiền, hoàn tiền hay xóa nợ.", // DRAFT — Kevin reviews
+  "mpx.triage.select": "Chọn để xử lý hàng loạt", // DRAFT — Kevin reviews
+  "mpx.triage.selected": "Đã chọn {n} cảnh báo", // DRAFT — Kevin reviews
+  "mpx.triage.open": "Xử lý hàng loạt…", // DRAFT — Kevin reviews
+  "mpx.triage.clear": "Bỏ chọn", // DRAFT — Kevin reviews
+  "mpx.triage.title": "Xử lý hàng loạt", // DRAFT — Kevin reviews
+  "mpx.triage.sub": "Xem trước điều gì sẽ xảy ra với từng cảnh báo đã chọn trước khi có thay đổi.", // DRAFT — Kevin reviews
+  "mpx.triage.action": "Thao tác", // DRAFT — Kevin reviews
+  "mpx.triage.ready": "{n} cảnh báo sẽ thay đổi.", // DRAFT — Kevin reviews
+  "mpx.triage.stateInvalid": "{n} cảnh báo không thể làm thao tác này ở trạng thái hiện tại — giữ nguyên.", // DRAFT — Kevin reviews
+  "mpx.triage.ownActivity": "{n} cảnh báo liên quan đến hoạt động của chính bạn — người khác phải xem xét.", // DRAFT — Kevin reviews
+  "mpx.triage.notFound": "{n} cảnh báo không còn hiển thị ở đây.", // DRAFT — Kevin reviews
+  "mpx.triage.reason": "Lý do (ít nhất 5 ký tự, lưu trên mỗi cảnh báo)", // DRAFT — Kevin reviews
+  "mpx.triage.confirm": "Tôi đã xem {n} cảnh báo này và muốn áp dụng thao tác", // DRAFT — Kevin reviews
+  "mpx.triage.apply": "Áp dụng cho {n}", // DRAFT — Kevin reviews
+  "mpx.triage.result": "{a} đã thay đổi · {r} giữ nguyên", // DRAFT — Kevin reviews
+  "mpx.triage.failed": "Không tải được xử lý hàng loạt.", // DRAFT — Kevin reviews
+  "mpx.triage.noMoney": "Xử lý hàng loạt chỉ xác nhận, bỏ qua hoặc mở lại cảnh báo. Không bao giờ trả tiền, thu tiền, hoàn tiền hay xóa nợ.", // DRAFT — Kevin reviews
 };
