@@ -211,4 +211,40 @@ describe('shared read-only Check … System', () => {
     expect(count(b1, 'live_deal_service_unavailable').count).toBe(0);
     expect((await q(sql`select count(*)::int as n from deals`)).rows).toEqual(before.rows);
   });
+  it('extras Team Management #08: overdue training, a completed course without its certificate link, verified certificates without a date or past expiry, profile changes waiting — never the other salon', async () => {
+    const TA = id(90), TB = id(91), TXX = id(92), CO = id(93), COX = id(94), CN = id(95), GP = id(96), GPX = id(97), U1 = id(98);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, global_tech_profile_id) values
+      (${TA}, ${T}, ${B1}, 'Tr', 'One', 'Tr One', ${GP}), (${TB}, ${T}, ${B2}, 'Tr', 'Two', 'Tr Two', null), (${TXX}, ${X}, ${BX}, 'Tr', 'X', 'Tr X', ${GPX})`);
+    await q(sql`insert into team_training_courses (id, tenant_id, name, certification_name) values (${CO}, ${T}, 'Gel safety', 'Gel certificate'), (${CN}, ${T}, 'Front desk', null), (${COX}, ${X}, 'Gel safety', 'Gel certificate')`);
+    await q(sql`insert into team_training_assignments (tenant_id, branch_id, course_id, technician_id, status, due_date, completed_at) values
+      (${T}, ${B1}, ${CO}, ${TA}, 'assigned', current_date - 5, null),
+      (${T}, ${B2}, ${CN}, ${TB}, 'in_progress', current_date + 5, null),
+      (${T}, ${B2}, ${CO}, ${TB}, 'completed', current_date - 9, now()),
+      (${T}, ${B1}, ${CN}, ${TA}, 'completed', null, now()),
+      (${X}, ${BX}, ${COX}, ${TXX}, 'assigned', current_date - 5, null),
+      (${X}, ${BX}, ${COX}, ${TXX}, 'canceled', null, null)`);
+    await q(sql`insert into technician_certifications (tenant_id, technician_id, name, issued_at, expires_at, verification_status) values
+      (${T}, ${TA}, 'No date', null, null, 'VERIFIED'), (${T}, ${TA}, 'Lapsed', current_date - 400, current_date - 10, 'VERIFIED'),
+      (${T}, ${TB}, 'Fine', current_date - 30, current_date + 300, 'VERIFIED'), (${T}, ${TB}, 'Unverified no date', null, null, 'UNVERIFIED'),
+      (${X}, ${TXX}, 'Other no date', null, current_date - 10, 'VERIFIED')`);
+    await q(sql`insert into team_staff_certifications (tenant_id, user_id, name, issued_on, expires_on, verification_status) values
+      (${T}, ${U1}, 'Desk no date', null, null, 'VERIFIED'), (${X}, ${U1}, 'Other desk', null, null, 'VERIFIED')`);
+    await q(sql`insert into global_tech_profiles (id, public_slug, display_name, tech_code) values (${GP}, 'tr-one-845', 'Tr One', 'TC8451'), (${GPX}, 'tr-x-845', 'Tr X', 'TC8452')`);
+    await q(sql`insert into tech_profile_change_requests (global_tech_profile_id, changes, status, created_at) values
+      (${GP}, '{}'::jsonb, 'pending', now() - interval '10 days'), (${GPX}, '{}'::jsonb, 'pending', now() - interval '10 days')`);
+    const before = await q(sql`select (select count(*) from team_training_assignments) + (select count(*) from technician_certifications) + (select count(*) from tech_profile_change_requests) as n`);
+    const all = await svc.run('technicians', { tenantId: T });
+    expect(count(all, 'training_overdue')).toMatchObject({ state: 'WARNING', count: 1 });                  // TA's open course; the future one and the other salon's skipped
+    expect(count(all, 'training_certificate_unlinked')).toMatchObject({ state: 'WARNING', count: 1 });     // TB's completed Gel course; Front desk awards no certificate
+    expect(count(all, 'verified_certificate_no_date')).toMatchObject({ state: 'WARNING', count: 2 });      // TA 'No date' + the staff 'Desk no date'
+    expect(count(all, 'verified_certificate_expired')).toMatchObject({ state: 'WARNING', count: 1 });      // TA 'Lapsed'
+    expect(count(all, 'profile_change_waiting')).toMatchObject({ state: 'WARNING', count: 1 });            // GP only — GPX is the other salon's technician
+    const b2 = await svc.run('technicians', { tenantId: T, branchId: B2 });
+    expect(count(b2, 'training_overdue')).toMatchObject({ state: 'READY', count: 0 });
+    expect(count(b2, 'training_certificate_unlinked').count).toBe(1);
+    expect(count(b2, 'verified_certificate_no_date').count).toBe(0);                                         // staff certificates are salon-wide: every-branch scope only
+    expect(count(b2, 'verified_certificate_expired').count).toBe(0);
+    expect(count(b2, 'profile_change_waiting').count).toBe(0);
+    expect((await q(sql`select (select count(*) from team_training_assignments) + (select count(*) from technician_certifications) + (select count(*) from tech_profile_change_requests) as n`)).rows).toEqual(before.rows);
+  });
 });

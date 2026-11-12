@@ -32,6 +32,7 @@ import { AddTeamMemberDialog, TeamBirthdaysPanel, TeamTrainingPanel, TeamTrainin
 
 const TABS = ['all', 'stylists', 'nail_technicians', 'receptionists', 'assistants', 'managers'] as const;
 import { deviceToday } from '../lib/deviceToday';
+import { SystemCheckButton } from '../components/SystemCheck';   // extras TM-08 / TM-14: the read-only team health check + its evidence report
 const ROLES = ['owner', 'manager', 'receptionist', 'stylist', 'nail_technician', 'assistant', 'other'];
 const STATUSES = ['available', 'in_service', 'assigned', 'on_break', 'on_shift', 'off', 'time_off', 'not_tracked'];
 const SHIFTS = ['scheduled', 'unscheduled', 'clocked_in', 'day_off'];
@@ -122,6 +123,7 @@ export function POSTeamScreen() {
           <button type="button" className="fk-btn ghost" onClick={() => setFinder(true)} data-testid="open-finder">{tx('tmm.finder')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setDateShift('pick')} data-testid="open-date-shift">{tx('tmm.editDateShift')}</button>
           {alertsAllowed ? <button type="button" className={'fk-btn ' + (alertsOpen ? '' : 'ghost')} aria-expanded={alertsOpen} onClick={() => setAlertsOpen((v) => !v)} data-testid="open-alerts">{tx('tmm.al.title')}{openAlerts ? <span className="tq-n">{nf(openAlerts)}</span> : null}</button> : null}
+          <SystemCheckButton domain="technicians" testId="syschk-team" />
           <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} aria-busy={exporting} data-testid="export">{exporting ? tx('tmm.exporting') : tx('pos.export')}</button>
           <button type="button" className="fk-btn primary" title={tx('tms.add.rule')} onClick={() => setAddOpen(true)} data-testid="add-member">{tx('pos.add_team_member')}</button>
         </div>

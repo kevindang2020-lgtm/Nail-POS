@@ -207,6 +207,31 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'split_out_of_range', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL
         AND x.default_commission_split_percent IS NOT NULL AND (x.default_commission_split_percent < 0 OR x.default_commission_split_percent > 100)`) },
     { key: 'no_app_account', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND x.user_id IS NULL`) },
+    // extras (Team Management #08 Approvals / Training): unresolved requests, missing training links, real certification dates
+    // an open training assignment past its due date (the branch's own calendar day)
+    { key: 'training_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM team_training_assignments a WHERE a.tenant_id = ${t}::uuid ${br('a', b)}
+        AND a.status IN ('assigned', 'in_progress') AND a.due_date IS NOT NULL AND a.due_date < ${today('a', t)}`) },
+    // a completed course that awards a certification, but the completion links to no certification record
+    { key: 'training_certificate_unlinked', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM team_training_assignments a
+        JOIN team_training_courses co ON co.tenant_id = a.tenant_id AND co.id = a.course_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'completed' AND coalesce(btrim(co.certification_name), '') <> ''
+          AND a.technician_certification_id IS NULL AND a.staff_certification_id IS NULL`) },
+    // a VERIFIED certification with no issue date — "verified" needs a real date behind it. Staff (non-technician)
+    // certifications belong to a person, not a branch, so they are counted only for the every-branch scope.
+    { key: 'verified_certificate_no_date', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_certifications tc
+        JOIN technicians x ON x.tenant_id = ${t}::uuid AND x.id = tc.technician_id
+        WHERE (tc.tenant_id = ${t}::uuid OR tc.tenant_id IS NULL) ${br('x', b)} AND x.archived_at IS NULL AND tc.verification_status = 'VERIFIED' AND tc.issued_at IS NULL
+        ${b ? sql`` : sql`UNION ALL SELECT 1 FROM team_staff_certifications sc WHERE sc.tenant_id = ${t}::uuid AND sc.verification_status = 'VERIFIED' AND sc.issued_on IS NULL`}`) },
+    // a certification still shown as VERIFIED after its expiry date (the technician's branch day; a staff certification uses
+    // the salon's first branch day — it has no branch of its own)
+    { key: 'verified_certificate_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_certifications tc
+        JOIN technicians x ON x.tenant_id = ${t}::uuid AND x.id = tc.technician_id
+        WHERE (tc.tenant_id = ${t}::uuid OR tc.tenant_id IS NULL) ${br('x', b)} AND x.archived_at IS NULL AND tc.verification_status = 'VERIFIED' AND tc.expires_at < ${today('x', t)}
+        ${b ? sql`` : sql`UNION ALL SELECT 1 FROM team_staff_certifications sc WHERE sc.tenant_id = ${t}::uuid AND sc.verification_status = 'VERIFIED'
+          AND sc.expires_on < (now() AT TIME ZONE coalesce((SELECT bz.timezone FROM branches bz WHERE bz.tenant_id = ${t}::uuid ORDER BY bz.created_at, bz.id LIMIT 1), 'UTC'))::date`}`) },
+    // a held public-profile change of one of this salon's technicians, waiting more than 7 days for a decision
+    { key: 'profile_change_waiting', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tech_profile_change_requests pr WHERE pr.status = 'pending' AND pr.created_at < now() - interval '7 days'
+        AND EXISTS (SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND x.global_tech_profile_id = pr.global_tech_profile_id)`) },
   ] },
 
   // ── Membership Overview (/pos/memberships) ────────────────────────────────────────────────────────────────────────

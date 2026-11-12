@@ -1628,4 +1628,22 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.discounts.live_deal_branch_closed.fix": "Chi nhánh không còn mở nhưng ưu đãi vẫn hiện là đang chạy — hãy kết thúc ưu đãi hoặc chuyển sang chi nhánh đang mở.", // DRAFT — Kevin reviews
   "syschk.discounts.live_deal_service_unavailable": "Mọi ưu đãi đang chạy chỉ áp dụng cho dịch vụ vẫn còn cung cấp", // DRAFT — Kevin reviews
   "syschk.discounts.live_deal_service_unavailable.fix": "Một dịch vụ của ưu đãi đã được lưu trữ, tắt hoặc xóa — cập nhật dịch vụ của ưu đãi để khách không thấy mức giảm không thể dùng.", // DRAFT — Kevin reviews
+  "syschk.download": "Tải báo cáo", // DRAFT — Kevin reviews
+  "syschk.csv.checkedAt": "Kiểm tra lúc", // DRAFT — Kevin reviews
+  "syschk.csv.scope": "Phạm vi", // DRAFT — Kevin reviews
+  "syschk.csv.overall": "Kết quả", // DRAFT — Kevin reviews
+  "syschk.csv.check": "Mục kiểm tra", // DRAFT — Kevin reviews
+  "syschk.csv.state": "Trạng thái", // DRAFT — Kevin reviews
+  "syschk.csv.count": "Số dòng tìm thấy", // DRAFT — Kevin reviews
+  "syschk.csv.fix": "Cần làm gì", // DRAFT — Kevin reviews
+  "syschk.technicians.training_overdue": "Không có khóa đào tạo nào đang mở mà quá hạn", // DRAFT — Kevin reviews
+  "syschk.technicians.training_overdue.fix": "Nhắc những người đó hoặc dời ngày hạn.", // DRAFT — Kevin reviews
+  "syschk.technicians.training_certificate_unlinked": "Mọi khóa học đã hoàn thành có cấp chứng chỉ đều được liên kết với chứng chỉ", // DRAFT — Kevin reviews
+  "syschk.technicians.training_certificate_unlinked.fix": "Ghi chứng chỉ vào thẻ Đào tạo của người đó.", // DRAFT — Kevin reviews
+  "syschk.technicians.verified_certificate_no_date": "Mọi chứng chỉ đã xác minh đều có ngày cấp", // DRAFT — Kevin reviews
+  "syschk.technicians.verified_certificate_no_date.fix": "Thêm ngày cấp thật ghi trên chứng chỉ.", // DRAFT — Kevin reviews
+  "syschk.technicians.verified_certificate_expired": "Không có chứng chỉ đã xác minh nào quá ngày hết hạn", // DRAFT — Kevin reviews
+  "syschk.technicians.verified_certificate_expired.fix": "Xin chứng chỉ đã gia hạn rồi xác minh lại.", // DRAFT — Kevin reviews
+  "syschk.technicians.profile_change_waiting": "Không có thay đổi hồ sơ nào chờ duyệt quá 7 ngày", // DRAFT — Kevin reviews
+  "syschk.technicians.profile_change_waiting.fix": "Duyệt hoặc từ chối các thay đổi hồ sơ đang chờ.", // DRAFT — Kevin reviews
 };
