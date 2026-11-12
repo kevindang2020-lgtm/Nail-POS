@@ -183,4 +183,10 @@ export const EMAILCENTER_EN: Record<string, string> = {
   "emc.c.id.supMarketing": "This address unsubscribed from marketing; this staff email is not marketing.",
   "emc.c.id.supAll": "This address is suppressed (bounce or complaint) — the email will be blocked.",
   "emc.c.id.unknown": "Could not check this recipient — confirm the customer before sending.",
+  "emc.use.title": "Usage and provider cost",
+  "emc.use.sent": "{n} emails handed to the provider",
+  "emc.use.cost": "Provider cost",
+  "emc.use.unknown": "Not known — the provider reported the cost of {c} of {n} emails",
+  "emc.use.notAuthorized": "Shown to managers only",
+  "emc.use.basis": "This period. The cost is the provider’s own reported cost, shown only when it reported every email — never estimated.",
 };

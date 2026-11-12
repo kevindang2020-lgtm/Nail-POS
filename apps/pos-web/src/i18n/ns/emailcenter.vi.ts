@@ -183,4 +183,10 @@ export const EMAILCENTER_VI: Record<string, string> = {
   "emc.c.id.supMarketing": "Địa chỉ này đã hủy nhận tiếp thị; email của nhân viên này không phải tiếp thị.", // DRAFT — Kevin reviews
   "emc.c.id.supAll": "Địa chỉ này bị chặn (trả lại hoặc báo spam) — email sẽ bị chặn.", // DRAFT — Kevin reviews
   "emc.c.id.unknown": "Không kiểm tra được người nhận — hãy xác nhận khách trước khi gửi.", // DRAFT — Kevin reviews
+  "emc.use.title": "Mức dùng và chi phí nhà cung cấp", // DRAFT — Kevin reviews
+  "emc.use.sent": "{n} email đã giao cho nhà cung cấp", // DRAFT — Kevin reviews
+  "emc.use.cost": "Chi phí nhà cung cấp", // DRAFT — Kevin reviews
+  "emc.use.unknown": "Chưa biết — nhà cung cấp mới báo chi phí của {c} trên {n} email", // DRAFT — Kevin reviews
+  "emc.use.notAuthorized": "Chỉ quản lý mới xem được", // DRAFT — Kevin reviews
+  "emc.use.basis": "Trong kỳ này. Chi phí là số nhà cung cấp tự báo, chỉ hiện khi họ đã báo cho mọi email — không bao giờ ước tính.", // DRAFT — Kevin reviews
 };
