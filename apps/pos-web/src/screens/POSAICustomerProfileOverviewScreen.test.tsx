@@ -61,8 +61,6 @@ describe('POSAICustomerProfileOverviewScreen', () => {
     mount();
     fireEvent.click(await screen.findByTestId('kpi-inactive'));
     await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'inactive_all', page: 1 })));
-    fireEvent.click(screen.getByTestId('kpi-churn'));
-    await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ flag: 'churn_watch' })));
     fireEvent.click(screen.getByTestId('preset-last_90'));
     await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'last_90' })));
     fireEvent.change(screen.getByTestId('cix-search'), { target: { value: 'gel manicure' } });
@@ -70,6 +68,31 @@ describe('POSAICustomerProfileOverviewScreen', () => {
     await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'gel manicure' })));
     fireEvent.click(screen.getByTestId('kpi-dup'));
     expect(navigate).toHaveBeenCalledWith('/tenant/ai/customer-profile/duplicates');
+  });
+
+  it('Kevin decision 2: the churn card is Customer Retention\'s at-risk count with a source line and link; rows show Retention\'s segment; no churn_watch filter of its own', async () => {
+    ci.summary.mockResolvedValue(SUM({ cards: { duplicateGroups: null, active: 1, withUpcoming: 0, inactive: 0, churnWatch: 3, rebooking: 0, scanned: 15 },
+      retention: { atRisk: 12, approaching: 4, active: 20, never: 2, atRiskDays: 60, source: 'customer_retention' } }));
+    ci.customers.mockResolvedValue({ ...LIST, items: [{ ...ROW, churnWatch: true, retention: { segment: 'approaching', daysAway: 50 } }] });
+    render(<MemoryRouter initialEntries={['/tenant/ai/customer-profile?flag=churn_watch']}><POSAICustomerProfileOverviewScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId('kpi-churn')).toHaveTextContent('12'));     // Retention's count, never the coarse 3
+    expect(screen.getByTestId('kpi-churn')).toHaveTextContent('At risk (Customer Retention)');
+    expect(screen.getByTestId('kpi-churn')).not.toHaveTextContent('3');
+    expect(screen.getByTestId('cix-retention-source')).toHaveTextContent('come from Customer Retention');
+    expect(await screen.findByTestId('cix-retention')).toHaveTextContent('Approaching');
+    expect(screen.queryByText('Churn watch', { selector: '.chip' })).toBeNull();
+    expect(ci.customers).not.toHaveBeenCalledWith(expect.objectContaining({ flag: 'churn_watch' }));   // an old link's flag is dropped
+    expect([...(screen.getByTestId('flt-flag') as HTMLSelectElement).options].map((o) => o.value)).not.toContain('churn_watch');
+    fireEvent.click(screen.getByTestId('kpi-churn'));
+    expect(navigate).toHaveBeenCalledWith('/tenant/customers/retention');
+    navigate.mockClear();
+    fireEvent.click(screen.getByTestId('cix-retention-link'));
+    expect(navigate).toHaveBeenCalledWith('/tenant/customers/retention');
+  });
+  it('Kevin decision 2: Retention unavailable → the card says "—", never 0', async () => {
+    ci.summary.mockResolvedValue(SUM({ retention: null }));
+    mount();
+    await waitFor(() => expect(screen.getByTestId('kpi-churn')).toHaveTextContent('—'));
   });
 
   it('the overlay shows the classification evidence and the recorded preference, and opens the owning modules', async () => {

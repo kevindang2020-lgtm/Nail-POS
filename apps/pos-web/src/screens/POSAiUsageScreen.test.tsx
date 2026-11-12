@@ -55,6 +55,23 @@ describe('POSAiUsageScreen', () => {
     await waitFor(() => expect(api.startTrial).toHaveBeenCalledWith('ai_review_reputation_assistant', expect.objectContaining({ confirm: true, idempotencyKey: expect.any(String) })));
   });
 
+  it('Extras · AI Usage Limits 07: Details shows the server\'s price comparison (kept below today\'s list); Start Trial shows today\'s list price before confirming', async () => {
+    const kept = card({ price: { cents: 5900, currency: 'USD', period: 'monthly', monthlyEquivalentCents: 5900, source: 'subscription', comparison: { listMonthlyCents: 6900, storedMonthlyCents: 5900, status: 'kept_below_list', deltaMonthlyCents: -1000 } } });
+    const fresh = { ...ITEMS[2]!, price: { cents: 3900, currency: 'USD', period: 'monthly', monthlyEquivalentCents: 3900, source: 'catalog_list', comparison: { listMonthlyCents: 3900, storedMonthlyCents: null, status: 'list', deltaMonthlyCents: null } } };
+    api.packages.mockResolvedValue({ items: [kept, fresh], page: 1, pageSize: 8, totalItems: 2, totalPages: 1, counts: { all: 2 }, sort: 'catalog', status: 'all' });
+    api.detail.mockImplementation(async (code: string) => ({ package: code === kept.code ? kept : fresh, usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
+      settings: { globallyEnabled: true, disabledReason: null, storedStatus: null, usageLimit: 1000, overageEnabled: false, limitSource: 'catalog' }, canManage: true, canSeeBilling: true }));
+    const r = render(<POSAiUsageScreen />);
+    fireEvent.click((await screen.findAllByTestId('aiu-card'))[0]!);
+    expect(await screen.findByTestId('aiu-price-compare')).toHaveTextContent('Your price $59.00/mo is kept — $10.00 below today\'s list price of $69.00/mo.');
+    r.unmount();
+    render(<POSAiUsageScreen />);
+    fireEvent.click((await screen.findAllByTestId('aiu-card'))[1]!);
+    const d = await screen.findByTestId('aiu-detail');
+    fireEvent.click(within(d).getByTestId('aiu-trial'));
+    expect(await within(d).findByTestId('aiu-confirm-price')).toHaveTextContent('Today\'s catalog list price: $39.00/mo.');
+  });
+
   it('Extras · AI Usage Limits 02: Subscription tab explains why — the server gate reason and the facts behind it, in words', async () => {
     api.detail.mockImplementation(async (code: string) => ({ package: ITEMS.find((c) => c.code === code), usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
       settings: { globallyEnabled: true, disabledReason: null, storedStatus: 'trialing', usageLimit: 1000, overageEnabled: false, limitSource: 'subscription' }, canManage: true, canSeeBilling: true,
@@ -124,6 +141,21 @@ describe('POSAiUsageScreen', () => {
     expect(screen.getByTestId('chk-duplicate_usage_events')).toHaveTextContent(/One request counted twice · 2.*nothing was removed or refunded/);
     expect(screen.getByTestId('chk-metering_stale')).toHaveTextContent(/Not enough data.*No live package/);
     expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
+  });
+  it('Extras · AI Usage Limits 01: the catalog-integrity check drills down to each unknown code and each stored price that differs', async () => {
+    api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [
+      { key: 'catalog_integrity', state: 'WARNING', count: 2, detail: { packages: 15, bundles: 5,
+        discrepancies: { duplicateCodes: [], bundleMembersNotInCatalog: [], packagesInNoBundle: [], packagesInTwoBundles: [], subscriptionsUnknownToCatalog: ['ai_old_assistant'], planRowsUnknownToCatalog: [], meteredCodesUnknownToCatalog: ['ai_ghost_meter'], switchesUnknownToCatalog: [] },
+        priceDifferences: [{ kind: 'package', code: 'ai_marketing_assistant', name: 'AI Marketing Assistant', storedCents: 4900, currentCents: 5900 }] } }] });
+    render(<POSAiUsageScreen />);
+    fireEvent.click(await screen.findByTestId('aiu-check'));
+    const c = await screen.findByTestId('chk-catalog_integrity');
+    expect(c).toHaveTextContent(/Catalog integrity \(15 assistants, 5 plans\) · 2.*nothing was changed/);
+    expect(within(c).getByTestId('chk-catalog-drill')).toHaveTextContent('Catalog: 15 assistants · 5 plans');
+    expect(within(c).getByTestId('chk-cat-subscriptionsUnknownToCatalog')).toHaveTextContent('Subscriptions for codes not in the catalogAi old assistant');
+    expect(within(c).getByTestId('chk-cat-meteredCodesUnknownToCatalog')).toHaveTextContent('Ai ghost meter');
+    expect(within(c).queryByTestId('chk-cat-duplicateCodes')).toBeNull();
+    expect(within(c).getByTestId('chk-cat-price')).toHaveTextContent('AI Marketing Assistantstored $49.00/mo · today $59.00/mo');
   });
   it('Extras · AI Usage Limits 04: the check names an assistant paid on its own and inside a paid plan, for review — nothing is cancelled', async () => {
     api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [

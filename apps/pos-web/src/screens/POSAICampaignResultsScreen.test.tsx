@@ -26,6 +26,12 @@ describe('POSAICampaignResultsScreen', () => {
     fireEvent.click(screen.getByTestId('amk-preset-year'));
     expect(c.summary).toHaveBeenLastCalledWith({ preset: 'year' });
   });
+  it('AI Marketing 10: opened from an AI Marketing card, it reads that card\'s period from the link', async () => {
+    render(<MemoryRouter initialEntries={['/tenant/ai/marketing/results?preset=custom&from=2026-10-01&to=2026-10-31']}><POSAICampaignResultsScreen /></MemoryRouter>);
+    await screen.findByTestId('amk-res-sent');
+    expect(c.summary).toHaveBeenCalledWith({ preset: 'custom', from: '2026-10-01', to: '2026-10-31' });
+    expect(c.summary).not.toHaveBeenCalledWith({ preset: 'month' });
+  });
   it('a campaign opens its funnel: each stage, its source, money spent vs budget', async () => {
     render(<MemoryRouter><POSAICampaignResultsScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByTestId('amk-lib-open'));

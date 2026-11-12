@@ -185,5 +185,6 @@ export const CINTEL_EN: Record<string, string> = {
   "cix.health.d.phone_normalizer.FAILED": "The phone normalizer failed on a test number. Report this.",
   "cix.health.k.indexes": "Indexes",
   "cix.health.d.indexes.PASSED": "Classification and visit indexes are present.",
-  "cix.health.d.indexes.WARNING": "Some indexes are missing; the list may be slow. Apply the latest database update."
+  "cix.health.d.indexes.WARNING": "Some indexes are missing; the list may be slow. Apply the latest database update.",
+  "cix.ret.sub": "From Customer Retention — open it to act",
 };

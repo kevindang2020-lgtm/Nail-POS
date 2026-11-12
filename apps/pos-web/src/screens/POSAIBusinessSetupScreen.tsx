@@ -193,7 +193,7 @@ export function POSAIBusinessSetupScreen() {
             <select aria-label={t('aiset.dateBasis')} value={f.dateBasis} onChange={(e) => setFilter({ dateBasis: e.target.value })}>{['created', 'updated', 'approved'].map((b) => <option key={b} value={b}>{t(`aiset.basis.${b}`)}</option>)}</select>
             <select aria-label={t('aiset.sort')} value={f.sort} onChange={(e) => setFilter({ sort: e.target.value })}>{['newest', 'oldest', 'updated', 'approved', 'question_az'].map((s) => <option key={s} value={s}>{t(`aiset.sortBy.${s}`)}</option>)}</select>
           </> : null}
-          {scope === 'history' ? <select aria-label={t('aiset.dateBasis')} value={f.basis} onChange={(e) => setFilter({ basis: e.target.value })}>{['faq_change', 'approval', 'preview'].map((b) => <option key={b} value={b}>{t(`aiset.hbasis.${b}`)}</option>)}</select> : null}
+          {scope === 'history' ? <select aria-label={t('aiset.dateBasis')} value={f.basis} onChange={(e) => setFilter({ basis: e.target.value })}>{['faq_change', 'approval', 'preview', 'readiness'].map((b) => <option key={b} value={b}>{t(`aiset.hbasis.${b}`)}</option>)}</select> : null}
           {scope === 'faqs' || scope === 'history' ? (['today', 'week', 'month', 'year'] as const).map((p) => {
             // Business Setup guide: Today / This week / This month / This year beside the From–To calendar (salon device day)
             const r = presetDays(p, today());
@@ -221,10 +221,11 @@ export function POSAIBusinessSetupScreen() {
               </button>))}</div>
           ) : (
             <div className="ais-faqs">{list.items.map((x: any, i: number) => (
-              <div key={x.id + i} className="ais-faq ais-static" onClick={() => (scope === 'history' || x.kind === 'faq') && setOpen(x.id)}>
-                <div className="ais-faq-top"><b>{x.title}</b>
+              <div key={x.id + i} className="ais-faq ais-static" data-testid={x.readiness ? 'ais-readiness-change' : undefined} onClick={() => ((scope === 'history' && !x.readiness) || x.kind === 'faq') && setOpen(x.id)}>
+                <div className="ais-faq-top"><b>{x.readiness ? t(`aiset.check.${x.readiness.key}`) : x.title}</b>
                   {scope === 'history' ? <span className="ais-chip">{t(`aiset.ev.${x.kind}`)}</span> : x.kind === 'history' ? <span className="ais-chip">{t(`aiset.ev.${x.subtitle}`)}</span> : x.subtitle ? <span className="ais-chip">{t(`aiset.sub.${x.subtitle}`)}</span> : null}</div>
-                {x.at ? <div className="ais-source">{fmtInZone(x.at)}</div> : null}
+                {x.readiness ? <div className="ais-faq-a"><StatusBadge s={x.readiness.from} /> → <StatusBadge s={x.readiness.to} />{x.readiness.reason ? ` · ${x.readiness.reason}` : ''}</div> : null}
+                {x.at ? <div className="ais-source">{fmtInZone(x.at)}{x.readiness ? ` · ${t('aiset.readinessBy', { by: x.readiness.actor ?? '—' })} · ${t('aiset.readinessSource', { s: x.readiness.source ?? '—' })}` : ''}</div> : null}
                 {scope === 'services' ? <a className="ais-link" onClick={(e) => { e.stopPropagation(); nav('/services'); }}>{t('aiset.openServices')}</a> : scope === 'technicians' ? <a className="ais-link" onClick={(e) => { e.stopPropagation(); nav('/technicians'); }}>{t('aiset.openTeam')}</a> : null}
               </div>))}</div>
           )}

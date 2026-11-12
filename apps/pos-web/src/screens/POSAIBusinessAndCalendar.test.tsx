@@ -6,6 +6,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom';
 
 const faqsOverride: { fn: null | ((q: any) => Promise<any>) } = { fn: null };
+const historyCalls: any[] = [];
 const addClosure = vi.fn((_b: any) => Promise.resolve({ id: 'c2' }));
 const closureItems: any[] = [{ id: 'c1', date: '2026-11-26', scope: 'salon', closed: true, opensAt: null, closesAt: null, note: 'Thanksgiving', createdAt: null }];
 const setTags = vi.fn((_id: string, tags: string[]) => Promise.resolve({ id: 'faq1', tags }));
@@ -20,7 +21,10 @@ vi.mock('../api/posAiBusinessSetupApi', () => ({
     faqs: (q: any) => (faqsOverride.fn ? faqsOverride.fn(q) : Promise.resolve({ items: [{ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', status: 'approved', aiServable: true, hasPendingChange: false, createdAt: '2026-10-30T12:00:00Z', approvedAt: '2026-10-30T13:00:00Z' }],
       page: 1, pageSize: 20, totalItems: 1, totalPages: 1, categories: ['General'] })),
     search: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
-    history: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
+    history: (q: any) => { historyCalls.push(q); return Promise.resolve(q?.basis === 'readiness'
+      ? { basis: 'readiness', items: [{ id: 'r3:business_hours', kind: 'readiness', title: 'business_hours', detail: 'READY → FAILED', at: '2026-11-10T15:00:00Z',
+          readiness: { key: 'business_hours', from: 'READY', to: 'FAILED', source: 'Settings → Store hours (this branch)', reason: 'monday is invalid', actor: 'Olivia Owner', runId: 'r3', previousRunId: 'r2' } }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+      : { items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }); },
     createFaq: vi.fn(), act: vi.fn(), preview: vi.fn(), health: vi.fn(), assistant: vi.fn(),
     faq: () => Promise.resolve({ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', tags: ['policy'], status: 'approved', aiServable: true, hasPendingChange: false, version: 3, createdAt: '2026-10-01T12:00:00Z', revisions: [], events: [], previewUses: 0 }),
     closures: () => Promise.resolve({ timezone: 'America/New_York', items: closureItems }), addClosure: (b: any) => addClosure(b), removeClosure: vi.fn(), setTags: (id: string, t: string[]) => setTags(id, t),
@@ -166,6 +170,26 @@ describe('AI Calendar extras #02 — Verified Appointment Timeline tab', () => {
       expect(items[5]!.textContent).not.toMatch(/aical\.|undefined/);
       expect(items[3]!.querySelector('code')!.getAttribute('title')).toBe('cccccccc-1111-4000-8000-000000000003');
     } finally { api.detail = orig; }
+  });
+});
+
+describe('AI Business Setup — Readiness Change History (extras #11)', () => {
+  it('History → Readiness changes asks the server for status changes and shows part, from → to, reason, who ran the check and the source; a change row opens no FAQ', async () => {
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('ais-scope-history'));
+    await screen.findByDisplayValue('FAQ changes');
+    const basis = screen.getAllByRole('combobox').find((x) => (x as HTMLSelectElement).value === 'faq_change') as HTMLSelectElement;
+    fireEvent.change(basis, { target: { value: 'readiness' } });
+    await waitFor(() => expect(historyCalls[historyCalls.length - 1]).toMatchObject({ basis: 'readiness' }));
+    const row = await screen.findByTestId('ais-readiness-change');
+    expect(row).toHaveTextContent('Business hours');
+    expect(row).toHaveTextContent('Ready');
+    expect(row).toHaveTextContent('Failed');
+    expect(row).toHaveTextContent('monday is invalid');
+    expect(row).toHaveTextContent('check run by Olivia Owner');
+    expect(row).toHaveTextContent('source: Settings → Store hours (this branch)');
+    fireEvent.click(row);
+    expect(screen.queryByTestId('ais-overlay')).toBeNull();
   });
 });
 

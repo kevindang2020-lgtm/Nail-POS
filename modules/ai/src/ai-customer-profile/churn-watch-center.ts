@@ -1,20 +1,26 @@
 // churn-watch-center.ts — Churn Watch guide (Nov 1 2026): `/pos/churn-watch/*`.
 //
-// An INTERNAL, cautious review queue — never shown to customers, never a certainty. It keeps no second rules engine and no
-// second customer list: the signals are the assistant's existing churn rule (evaluateChurnRisk), computed for every live
-// customer by the ONE Customer Intelligence scan (customer_intelligence_snapshots, migrations 763/764). Churn Watch adds only
-// its review workflow (churn_watch_reviews + append-only churn_watch_review_events) and a read-only health check.
+// An INTERNAL, cautious review queue — never shown to customers, never a certainty.
 //
-// Signal taxonomy (guide §06), mapped from the persisted rule levels without renaming them:
-//   possible → Needs Review · elevated / high → Higher-Priority Review · low → No Current Signal ·
-//   insufficient → Insufficient History · no completed scan / failed scan → Data Unavailable.
-// A review is current while the signal has not RISEN above the level it was reviewed at (and a deferral has not passed its
-// date); a rising signal returns to Needs Review. Nothing here texts, books, edits a customer or changes points.
+// Kevin, Nov 12 2026 (decision 2): churn belongs to Customer Retention. THE verdict on every row is Retention's own
+// classification — its segment and days away, read through RetentionRepository.base() (the same CTE the Customer Retention
+// page and Customer Intelligence read; the salon's own At Risk / Approaching thresholds; salon time). Churn Watch keeps
+// no churn rule of its own. The assistant's evaluateChurnRisk signals (customer_intelligence_snapshots.churn_evidence, from
+// the ONE Customer Intelligence scan) stay ONLY as labelled supporting "why" reasons — never a level, a verdict or a filter.
+//
+// Taxonomy (Retention segment → queue state, segments never renamed):
+//   approaching → Needs Review · at_risk → Higher-Priority Review · active → No Current Signal ·
+//   never_visited → Insufficient History (Retention's "Never Visited"); a customer Retention does not list → Data Unavailable.
+// A review is current while Retention's segment has not RISEN above the segment it was reviewed at (and a deferral has not
+// passed its date). Reviews recorded before Nov 12 stored the old rule's level, which ranks below every segment, so those
+// customers return to Needs Review once — never silently kept as reviewed. Nothing here texts, books, edits a customer or
+// changes points. Its only writes are churn_watch_reviews (+ append-only events) and the health run.
 import { sql, type Kysely } from 'kysely';
 import { canMoveToSql, tenantTimeZone } from '@aipowersalon/database';
 import { CHURN_WATCH_REVIEW } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
+type Win = Awaited<ReturnType<RetentionRepository['window']>>;
 import { customerSearchPredicate, CI_RULE_VERSION } from './customer-intelligence-center';
 import { businessDate } from '@aipowersalon/date-time';   // §87
 
@@ -32,16 +38,19 @@ export const CW_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month
 export const CW_SORTS = ['signal_newest', 'priority', 'last_visit', 'days_since', 'name'] as const;
 export const CW_ACTIONS = ['reviewed', 'deferred', 'reopened', 'note'] as const;
 export const CW_PAGE_SIZES = [10, 25, 50, 100] as const;
-const FLAGGED = ['possible', 'elevated', 'high'];
+const FLAGGED_LEVELS = ['possible', 'elevated', 'high'];   // the assistant's supporting signals (health check only)
 const HEALTH_GAP_SECONDS = 30;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const N = (v: unknown) => (v == null ? 0 : Number(v));
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
 const uuidOrNull = (v: unknown) => (isUuid(String(v ?? '')) ? String(v) : null);
-/** the guide's state for one persisted rule level */
-export const churnState = (level: string | null | undefined) => (level === 'possible' ? 'needs_review' : level === 'elevated' || level === 'high' ? 'higher_priority'
-  : level === 'low' ? 'no_current_signal' : level === 'insufficient' ? 'insufficient_history' : 'data_unavailable');
+/** the queue state for one Customer Retention segment (Retention's names, never renamed) */
+export const churnState = (segment: string | null | undefined) => (segment === 'approaching' ? 'needs_review' : segment === 'at_risk' ? 'higher_priority'
+  : segment === 'active' ? 'no_current_signal' : segment === 'never_visited' ? 'insufficient_history' : 'data_unavailable');
+/** the Retention segments that put a customer in the review queue */
+export const CW_FLAGGED_SEGMENTS = ['approaching', 'at_risk'] as const;
+const FLAGGED: string[] = [...CW_FLAGGED_SEGMENTS];
 
 export interface CwQuery { q?: unknown; tab?: unknown; priority?: unknown; branch?: unknown; dateField?: unknown; preset?: unknown; from?: unknown; to?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown }
 export type CwCheckState = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
@@ -63,11 +72,32 @@ export class ChurnWatchCenter {
       or exists (select 1 from tickets t where t.tenant_id = c.tenant_id and t.customer_id = c.id and t.branch_id = any(${ids}::uuid[]) and t.removed_at is null)
       or exists (select 1 from pos_tech_appointments a where a.tenant_id = c.tenant_id and a.customer_id = c.id and a.branch_id = any(${ids}::uuid[])))`;
   }
-  private rank(col: ReturnType<typeof sql>) { return sql`(case ${col} when 'possible' then 1 when 'elevated' then 2 when 'high' then 3 else 0 end)`; }
-  /** a review still stands: the signal has not risen above what was reviewed, and a deferral has not passed its date */
+  /** Retention's segment order (anything else — incl. a pre-Nov-12 rule level stored on an old review — ranks 0) */
+  private rank(col: ReturnType<typeof sql>) { return sql`(case ${col} when 'approaching' then 1 when 'at_risk' then 2 else 0 end)`; }
+  /** a review still stands: Retention's segment has not risen above what was reviewed, and a deferral has not passed its date */
   private reviewCurrent(today: string) {
-    return sql`(r.customer_id is not null and ${this.rank(sql`sn.churn_level`)} <= ${this.rank(sql`r.level_at_review`)}
+    return sql`(r.customer_id is not null and ${this.rank(sql`b.segment`)} <= ${this.rank(sql`r.level_at_review`)}
       and (r.status = 'reviewed' or r.due_on is null or r.due_on > ${today}::date))`;
+  }
+  /** Retention's window for this request (its thresholds, salon clock and authorized branch scope) */
+  private async retWindow(ctx: CwCtx, branch?: unknown) {
+    try { return await this.ret.window(ctx, { branch }); }
+    catch (e: any) { throw new ChurnWatchError(e?.message ?? 'Unknown branch.', e?.code === 'BRANCH_NOT_AUTHORIZED' ? 'BRANCH_NOT_AUTHORIZED' : 'CHURN_INVALID_BRANCH', e?.status ?? 400); }
+  }
+  /** the day Retention's current segment began: last completed visit (salon day) + the salon's threshold for it */
+  private verdictSince(k: Win) {
+    return sql`(case b.segment when 'at_risk' then (b.last_visit at time zone ${k.tz})::date + ${k.risk}::int
+      when 'approaching' then (b.last_visit at time zone ${k.tz})::date + ${k.approaching}::int end)`;
+  }
+  /** Retention's rows (b) joined to the live customer (c), the assistant's supporting signals (sn) and the review (r) */
+  private from(ctx: CwCtx, k: Win) {
+    return { cte: this.ret.base(ctx, k), join: sql`b join customers c on c.id = b.id and c.tenant_id = ${ctx.tenantId}
+      left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id
+      left join churn_watch_reviews r on r.tenant_id = c.tenant_id and r.customer_id = c.id` };
+  }
+  private verdictOut(r: Row, k: Win) {
+    return { source: 'customer_retention' as const, segment: String(r.segment), state: churnState(r.segment), daysAway: r.days_away == null ? null : N(r.days_away),
+      since: r.verdict_since ? String(r.verdict_since).slice(0, 10) : null, riskDays: k.risk, approachingDays: k.approaching };
   }
   private async latestScan(T: string) {
     return (await sql<Row>`select id, status, scanned, counts, finished_at, rule_version, started_at, error_code from customer_intelligence_scans
@@ -97,28 +127,30 @@ export class ChurnWatchCenter {
     return { state, lastEvaluatedAt: iso(ok?.finished_at), lastError: latest?.status === 'failed' ? latest.error_code : null, ruleVersion: CI_RULE_VERSION };
   }
 
-  // ── the six metrics ───────────────────────────────────────────────────────────────────────────────────────────
+  // ── the six metrics (Retention's segments; live — they never wait for a scan) ─────────────────────────────────
   async summary(ctx: CwCtx) {
     await this.gate(ctx);
     const T = ctx.tenantId;
     const s = await this.scope(ctx);
-    const { today } = await this.ret.window(ctx, { preset: 'today' });
+    const k = await this.retWindow(ctx);
+    const today = k.today;
     const [latest, ok] = [await this.latestScan(T), await this.lastOk(T)];
     const fr = this.freshness(latest, ok);
-    if (!ok || ok.rule_version !== CI_RULE_VERSION) return { metrics: null, freshness: fr, unavailable: true };
-    const m = (await sql<Row>`select count(*)::int as evaluated,
-        count(*) filter (where sn.churn_level = 'possible' and not ${this.reviewCurrent(today)})::int as needs_review,
-        count(*) filter (where sn.churn_level in ('elevated', 'high') and not ${this.reviewCurrent(today)})::int as higher_priority,
-        count(*) filter (where sn.churn_level = 'insufficient')::int as insufficient,
-        count(*) filter (where sn.has_upcoming)::int as upcoming,
-        count(*) filter (where sn.churn_level = any(${FLAGGED}::text[]) and ${this.reviewCurrent(today)})::int as reviewed,
-        count(*) filter (where sn.churn_level = 'low')::int as no_signal
-      from customer_intelligence_snapshots sn join customers c on c.id = sn.customer_id and c.tenant_id = sn.tenant_id
-      left join churn_watch_reviews r on r.tenant_id = sn.tenant_id and r.customer_id = sn.customer_id
-      where sn.tenant_id = ${T} and c.archived_at is null and ${this.custVisible(s)}`.execute(this.db)).rows[0] ?? {};
+    const F = this.from(ctx, k);
+    const m = (await sql<Row>`${F.cte} select count(*)::int as evaluated,
+        count(*) filter (where b.segment = 'approaching' and not ${this.reviewCurrent(today)})::int as needs_review,
+        count(*) filter (where b.segment = 'at_risk' and not ${this.reviewCurrent(today)})::int as higher_priority,
+        count(*) filter (where b.segment = 'never_visited')::int as insufficient,
+        count(*) filter (where b.next_date is not null)::int as upcoming,
+        count(*) filter (where b.segment = any(${FLAGGED}::text[]) and ${this.reviewCurrent(today)})::int as reviewed,
+        count(*) filter (where b.segment = 'active')::int as no_signal
+      from ${F.join} where c.archived_at is null and ${this.custVisible(s)}`.execute(this.db)).rows[0] ?? {};
     return {
       metrics: { evaluated: N(m.evaluated), needsReview: N(m.needs_review), higherPriority: N(m.higher_priority), insufficientHistory: N(m.insufficient), upcomingBooking: N(m.upcoming), reviewed: N(m.reviewed), noSignal: N(m.no_signal) },
-      definitions: { ruleVersion: CI_RULE_VERSION, needsReview: 'possible', higherPriority: ['elevated', 'high'], reviewStandsUntil: 'the signal rises above the reviewed level, or a deferral date passes' },
+      definitions: { verdictSource: 'customer_retention', riskDays: k.risk, approachingDays: k.approaching, settingsVersion: k.settingsVersion,
+        needsReview: 'approaching', higherPriority: 'at_risk', insufficientHistory: 'never_visited', noSignal: 'active',
+        supportingReasons: { source: 'assistant_signals', ruleVersion: CI_RULE_VERSION, role: 'why_only' },
+        reviewStandsUntil: 'the Retention segment rises above the reviewed segment, or a deferral date passes' },
       freshness: fr, unavailable: false, scope: { label: s.label, confined: s.confined },
     };
   }
@@ -137,86 +169,92 @@ export class ChurnWatchCenter {
     const q = String(f.q ?? '').trim().slice(0, 100);
     if (q && q.length < 2) throw new ChurnWatchError('Type at least 2 characters.', 'CHURN_SEARCH_TOO_SHORT');
     const per = await this.period(ctx, f);
+    const k = await this.retWindow(ctx, f.branch);
     const ok = await this.lastOk(T);
-    if (!ok || ok.rule_version !== CI_RULE_VERSION) return { items: [], total: 0, page: 1, pageSize, totalPages: 1, unavailable: true, freshness: this.freshness(await this.latestScan(T), ok) };
     const today = per.today;
-    const where = [sql`sn.tenant_id = ${T}`, sql`c.archived_at is null`, this.custVisible(s)];
-    if (tab === 'needs_review') where.push(sql`sn.churn_level = any(${FLAGGED}::text[]) and not ${this.reviewCurrent(today)}`);
-    if (tab === 'reviewed') where.push(sql`sn.churn_level = any(${FLAGGED}::text[]) and ${this.reviewCurrent(today)}`);
-    if (tab === 'all_signals') where.push(sql`sn.churn_level = any(${FLAGGED}::text[])`);
-    if (tab === 'insufficient') where.push(sql`sn.churn_level = 'insufficient'`);
-    if (tab === 'no_signal') where.push(sql`sn.churn_level = 'low'`);
-    if (priority === 'higher') where.push(sql`sn.churn_level in ('elevated', 'high')`);
-    if (priority === 'normal') where.push(sql`sn.churn_level = 'possible'`);
+    const since = this.verdictSince(k);
+    const where = [sql`c.archived_at is null`, this.custVisible(s)];
+    if (tab === 'needs_review') where.push(sql`b.segment = any(${FLAGGED}::text[]) and not ${this.reviewCurrent(today)}`);
+    if (tab === 'reviewed') where.push(sql`b.segment = any(${FLAGGED}::text[]) and ${this.reviewCurrent(today)}`);
+    if (tab === 'all_signals') where.push(sql`b.segment = any(${FLAGGED}::text[])`);
+    if (tab === 'insufficient') where.push(sql`b.segment = 'never_visited'`);
+    if (tab === 'no_signal') where.push(sql`b.segment = 'active'`);
+    if (priority === 'higher') where.push(sql`b.segment = 'at_risk'`);
+    if (priority === 'normal') where.push(sql`b.segment = 'approaching'`);
     if (per.start && per.end) {
-      if (dateField === 'last_visit') where.push(sql`sn.last_visit_at >= ${per.start} and sn.last_visit_at < ${per.end}`);
-      else if (dateField === 'next_appointment') where.push(sql`sn.next_appointment_date >= ${per.from}::date and sn.next_appointment_date <= ${per.to}::date`);
+      if (dateField === 'last_visit') where.push(sql`b.last_visit >= ${per.start} and b.last_visit < ${per.end}`);
+      else if (dateField === 'next_appointment') where.push(sql`b.next_date::date >= ${per.from}::date and b.next_date::date <= ${per.to}::date`);
       else if (dateField === 'created') where.push(sql`c.created_at >= ${per.start} and c.created_at < ${per.end}`);
       else if (dateField === 'reviewed') where.push(sql`r.reviewed_at >= ${per.start} and r.reviewed_at < ${per.end}`);
       else if (dateField === 'evaluated') where.push(sql`sn.computed_at >= ${per.start} and sn.computed_at < ${per.end}`);
-      else where.push(sql`sn.churn_since >= ${per.start} and sn.churn_since < ${per.end}`);
+      else where.push(sql`${since} >= ${per.from}::date and ${since} <= ${per.to}::date`);
     }
     if (q) where.push(customerSearchPredicate(T, q));
     const W = sql.join(where, sql` and `);
-    const order = sort === 'priority' ? sql`${this.rank(sql`sn.churn_level`)} desc, sn.churn_since desc nulls last, c.id desc`
-      : sort === 'last_visit' ? sql`sn.last_visit_at desc nulls last, c.id desc`
-      : sort === 'days_since' ? sql`sn.days_since_last desc nulls last, c.id desc`
+    const order = sort === 'priority' ? sql`${this.rank(sql`b.segment`)} desc, b.days_away desc nulls last, c.id desc`
+      : sort === 'last_visit' ? sql`b.last_visit desc nulls last, c.id desc`
+      : sort === 'days_since' ? sql`b.days_away desc nulls last, c.id desc`
       : sort === 'name' ? sql`lower(coalesce(c.full_name, c.first_name)) asc, c.id asc`
-      : sql`sn.churn_since desc nulls last, sn.computed_at desc, c.id desc`;
-    const FROM = sql`customer_intelligence_snapshots sn join customers c on c.id = sn.customer_id and c.tenant_id = sn.tenant_id
-      left join churn_watch_reviews r on r.tenant_id = sn.tenant_id and r.customer_id = sn.customer_id`;
-    const total = N((await sql<Row>`select count(*)::int as n from ${FROM} where sn.tenant_id = ${T} and ${W}`.execute(this.db)).rows[0]?.n);
-    const rows = (await sql<Row>`select c.id, c.full_name, c.first_name, c.last_name, c.normalized_phone, c.phone_display, c.email,
-        sn.churn_level, sn.churn_confidence, sn.churn_evidence, sn.churn_since, sn.last_visit_at, sn.days_since_last, sn.typical_interval_days, sn.completed_visits,
-        sn.has_upcoming, sn.next_appointment_date, sn.computed_at, sn.rebooking, r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on,
-        ${this.reviewCurrent(today)} as review_current
-      from ${FROM} where sn.tenant_id = ${T} and ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+      : sql`${since} desc nulls last, c.id desc`;
+    const F = this.from(ctx, k);
+    const total = N((await sql<Row>`${F.cte} select count(*)::int as n from ${F.join} where ${W}`.execute(this.db)).rows[0]?.n);
+    const rows = (await sql<Row>`${F.cte} select c.id, c.full_name, c.first_name, c.last_name, c.normalized_phone, c.phone_display, c.email,
+        b.segment, b.days_away, b.last_visit, b.visits, b.next_date, ${since}::text as verdict_since,
+        sn.churn_evidence, sn.typical_interval_days, sn.computed_at, sn.rebooking,
+        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, ${this.reviewCurrent(today)} as review_current
+      from ${F.join} where ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     return {
       items: rows.map((r) => ({
         id: String(r.id), name: String(r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '').trim() || null,
         phone: r.normalized_phone ? (opts.fullContact ? (r.phone_display || r.normalized_phone) : maskStoredPhone(r.normalized_phone)) : null,
         email: r.email ? (opts.fullContact ? String(r.email) : maskEmail(String(r.email))) : null,
-        level: r.churn_level, state: churnState(r.churn_level), confidence: r.churn_confidence ?? null, evidence: (r.churn_evidence ?? []) as string[],
-        signalSince: iso(r.churn_since), lastVisitAt: iso(r.last_visit_at), daysSinceLast: r.days_since_last == null ? null : N(r.days_since_last),
-        typicalIntervalDays: r.typical_interval_days == null ? null : N(r.typical_interval_days), completedVisits: N(r.completed_visits),
-        hasUpcoming: !!r.has_upcoming, nextAppointmentDate: r.next_appointment_date ? String(r.next_appointment_date).slice(0, 10) : null, rebooking: !!r.rebooking,
-        evaluatedAt: iso(r.computed_at),
+        // THE verdict: Customer Retention's segment + days away
+        verdict: this.verdictOut(r, k), state: churnState(r.segment),
+        // supporting "why" only (the assistant's signals from the last scan) — never a level or a filter
+        supporting: r.computed_at == null ? null : { source: 'assistant_signals' as const, reasons: (r.churn_evidence ?? []) as string[], evaluatedAt: iso(r.computed_at) },
+        lastVisitAt: iso(r.last_visit), daysSinceLast: r.days_away == null ? null : N(r.days_away), completedVisits: N(r.visits),
+        typicalIntervalDays: r.typical_interval_days == null ? null : N(r.typical_interval_days),
+        hasUpcoming: r.next_date != null, nextAppointmentDate: r.next_date ? String(r.next_date).slice(0, 10) : null, rebooking: !!r.rebooking,
         review: r.review_status ? { status: r.review_status, at: iso(r.reviewed_at), levelAtReview: r.level_at_review, dueOn: r.due_on ?? null, current: !!r.review_current } : null,
       })),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), unavailable: false,
       applied: { q: q || null, tab, priority: priority ?? null, dateField, preset: per.preset, from: per.from, to: per.to, sort },
       period: { from: per.from, to: per.to, timeZone: per.tz, today: per.today }, contact: opts.fullContact ? 'full' : 'masked',
+      verdictSource: { module: 'customer_retention', riskDays: k.risk, approachingDays: k.approaching, settingsVersion: k.settingsVersion },
       freshness: this.freshness(await this.latestScan(T), ok),
     };
   }
 
-  /** the Retention Evidence overlay: the rule's evidence, its inputs, the review state and history — audited */
+  /** the Retention Evidence overlay: Retention's verdict, the supporting reasons and inputs, the review state and history — audited */
   async customer(ctx: CwCtx, id: string, audit: AuditFn) {
     await this.gate(ctx);
     const T = ctx.tenantId;
     const s = await this.scope(ctx);
     if (!isUuid(`${id}`)) throw new ChurnWatchError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
-    const { today } = await this.ret.window(ctx, { preset: 'today' });
-    const r = (await sql<Row>`select c.id, sn.churn_level, sn.churn_confidence, sn.churn_evidence, sn.churn_since, sn.status as activity, sn.evidence as activity_evidence,
+    const k = await this.retWindow(ctx);
+    const F = this.from(ctx, k);
+    const r = (await sql<Row>`${F.cte} select c.id, b.segment, b.days_away, b.last_visit, b.visits, b.next_date, ${this.verdictSince(k)}::text as verdict_since,
+        sn.churn_level, sn.churn_evidence, sn.churn_since, sn.status as activity, sn.evidence as activity_evidence,
         sn.completed_visits, sn.first_visit_at, sn.last_visit_at, sn.typical_interval_days, sn.days_since_last, sn.has_upcoming, sn.next_appointment_date,
         sn.canceled_count, sn.no_show_count, sn.membership_canceled, sn.rebooking, sn.rebooking_reason, sn.computed_at, sn.scan_id,
-        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, r.version as review_version, ${this.reviewCurrent(today)} as review_current
-      from customers c left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id
-      left join churn_watch_reviews r on r.tenant_id = c.tenant_id and r.customer_id = c.id
-      where c.tenant_id = ${T} and c.id = ${id}::uuid and ${this.custVisible(s)}`.execute(this.db)).rows[0];
+        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, r.version as review_version, ${this.reviewCurrent(k.today)} as review_current
+      from ${F.join} where c.id = ${id}::uuid and ${this.custVisible(s)}`.execute(this.db)).rows[0];
     if (!r) throw new ChurnWatchError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
     const scan = r.scan_id ? (await sql<Row>`select tunables, rule_version, finished_at from customer_intelligence_scans where tenant_id = ${T} and id = ${r.scan_id}`.execute(this.db)).rows[0] : null;
     const events = (await sql<Row>`select e.id, e.event_type, e.level, e.note, e.created_at, coalesce(u.full_name, u.email) as actor
       from churn_watch_review_events e left join users u on u.id = e.actor_user_id and u.tenant_id = ${T}
       where e.tenant_id = ${T} and e.customer_id = ${id}::uuid order by e.created_at desc, e.id desc limit 50`.execute(this.db)).rows;
-    await this.db.transaction().execute(async (trx) => { await audit(trx as unknown as Kysely<any>, { customerId: id, level: r.churn_level ?? null }); });
+    await this.db.transaction().execute(async (trx) => { await audit(trx as unknown as Kysely<any>, { customerId: id, segment: r.segment ?? null }); });
+    const evaluated = r.churn_level != null;
     return {
-      customerId: id, evaluated: r.churn_level != null,
-      signal: r.churn_level == null ? null : {
-        level: r.churn_level, state: churnState(r.churn_level), confidence: r.churn_confidence ?? null, evidence: (r.churn_evidence ?? []) as string[], since: iso(r.churn_since),
-        note: 'This is a risk indicator, not a confirmed decision to leave.',
+      customerId: id, evaluated,
+      verdict: { ...this.verdictOut(r, k), lastVisitAt: iso(r.last_visit), completedVisits: N(r.visits), nextAppointmentDate: r.next_date ? String(r.next_date).slice(0, 10) : null,
+        note: 'Customer Retention\'s classification — a risk indicator, not a confirmed decision to leave.' },
+      supporting: !evaluated ? null : {
+        source: 'assistant_signals' as const, reasons: (r.churn_evidence ?? []) as string[], since: iso(r.churn_since),
+        note: 'Supporting reasons only — the verdict above is Customer Retention\'s.',
       },
-      inputs: r.churn_level == null ? null : {
+      inputs: !evaluated ? null : {
         completedVisits: N(r.completed_visits), firstVisitAt: iso(r.first_visit_at), lastVisitAt: iso(r.last_visit_at), typicalIntervalDays: r.typical_interval_days == null ? null : N(r.typical_interval_days),
         daysSinceLast: r.days_since_last == null ? null : N(r.days_since_last), hasUpcoming: !!r.has_upcoming, nextAppointmentDate: r.next_appointment_date ? String(r.next_appointment_date).slice(0, 10) : null,
         canceledCount: N(r.canceled_count), noShowCount: N(r.no_show_count), membershipCanceled: !!r.membership_canceled,
@@ -238,25 +276,27 @@ export class ChurnWatchCenter {
     if (action === 'note' && !note) throw new ChurnWatchError('Write a note first.', 'CHURN_NOTE_REQUIRED');
     const dueOn = typeof b.dueOn === 'string' && DAY.test(b.dueOn) ? b.dueOn : null;
     const s = await this.scope(ctx);
+    const k = await this.retWindow(ctx);
+    const F = this.from(ctx, k);
     return this.db.transaction().execute(async (trx) => {
-      const c = (await sql<Row>`select c.id, sn.churn_level from customers c left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id
-        where c.tenant_id = ${T} and c.id = ${isUuid(`${id}`) ? id : '00000000-0000-0000-0000-000000000000'}::uuid and c.archived_at is null and ${this.custVisible(s)}`.execute(trx)).rows[0];
+      const c = (await sql<Row>`${F.cte} select c.id, b.segment from ${F.join}
+        where c.id = ${isUuid(`${id}`) ? id : '00000000-0000-0000-0000-000000000000'}::uuid and c.archived_at is null and ${this.custVisible(s)}`.execute(trx)).rows[0];
       if (!c) throw new ChurnWatchError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
       const cur = (await sql<Row>`select version from churn_watch_reviews where tenant_id = ${T} and customer_id = ${id}::uuid for update`.execute(trx)).rows[0];
       if (b.expectedVersion != null && N(b.expectedVersion) !== N(cur?.version ?? 0))
         throw new ChurnWatchError('Someone else updated this review. Reload it and try again.', 'CHURN_STALE_VERSION', 409, { currentVersion: N(cur?.version ?? 0) });
-      if ((action === 'reviewed' || action === 'deferred') && !FLAGGED.includes(String(c.churn_level))) throw new ChurnWatchError('There is no current signal to review.', 'CHURN_NO_SIGNAL', 409);
+      if ((action === 'reviewed' || action === 'deferred') && !FLAGGED.includes(String(c.segment))) throw new ChurnWatchError('There is no current signal to review.', 'CHURN_NO_SIGNAL', 409);
       if (action === 'reviewed' || action === 'deferred') {
         await sql`insert into churn_watch_reviews (tenant_id, customer_id, status, level_at_review, due_on, reviewed_by, reviewed_at, updated_by, version)
-          values (${T}, ${id}::uuid, ${action}, ${c.churn_level}, ${action === 'deferred' ? dueOn : null}::date, ${uuidOrNull(ctx.userId)}, now(), ${uuidOrNull(ctx.userId)}, 1)
+          values (${T}, ${id}::uuid, ${action}, ${c.segment}, ${action === 'deferred' ? dueOn : null}::date, ${uuidOrNull(ctx.userId)}, now(), ${uuidOrNull(ctx.userId)}, 1)
           on conflict (tenant_id, customer_id) do update set status = excluded.status, level_at_review = excluded.level_at_review, due_on = excluded.due_on,
             reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = churn_watch_reviews.version + 1
           where ${canMoveToSql(CHURN_WATCH_REVIEW, action, 'churn_watch_reviews')}`.execute(trx);
       }
       if (action === 'reopened') await sql`delete from churn_watch_reviews where tenant_id = ${T} and customer_id = ${id}::uuid`.execute(trx);
       await sql`insert into churn_watch_review_events (id, tenant_id, customer_id, event_type, level, note, actor_user_id)
-        values (${randomUUID()}, ${T}, ${id}::uuid, ${action}, ${c.churn_level ?? null}, ${note}, ${uuidOrNull(ctx.userId)})`.execute(trx);
-      await audit(trx as unknown as Kysely<any>, { customerId: id, action, level: c.churn_level ?? null });
+        values (${randomUUID()}, ${T}, ${id}::uuid, ${action}, ${c.segment ?? null}, ${note}, ${uuidOrNull(ctx.userId)})`.execute(trx);
+      await audit(trx as unknown as Kysely<any>, { customerId: id, action, segment: c.segment ?? null });
       const v = (await sql<Row>`select version, status from churn_watch_reviews where tenant_id = ${T} and customer_id = ${id}::uuid`.execute(trx)).rows[0];
       return { customerId: id, action, review: v ? { status: v.status, version: N(v.version) } : null };
     });
@@ -296,6 +336,13 @@ export class ChurnWatchCenter {
     const one = async (q: any): Promise<Row> => (await q.execute(this.db)).rows[0] ?? {};
     let on = true; try { on = await this.enabled(ctx); } catch { on = false; }
     checks.push({ key: 'assistant_enabled', state: on ? 'PASSED' : 'WARNING' });
+    // Kevin decision 2: the verdict is Customer Retention's — this check proves it can be read (and with which thresholds)
+    try {
+      const k = await this.ret.window(ctx);
+      checks.push({ key: 'verdict_source', state: 'PASSED', detail: { source: 'customer_retention', riskDays: k.risk, approachingDays: k.approaching, settingsVersion: k.settingsVersion } });
+    } catch (e) {
+      checks.push({ key: 'verdict_source', state: 'UNAVAILABLE', detail: { source: 'customer_retention', errorCode: String((e as { code?: unknown })?.code ?? 'RETENTION_UNAVAILABLE').slice(0, 60) } });
+    }
     const latest = await this.latestScan(T); const ok = await this.lastOk(T);
     const fr = this.freshness(latest, ok);
     checks.push({ key: 'evaluation_freshness', state: fr.state === 'up_to_date' ? 'PASSED' : fr.state === 'never' ? 'INSUFFICIENT_DATA' : fr.state === 'failed' ? 'FAILED' : 'WARNING', detail: { state: fr.state, lastEvaluatedAt: fr.lastEvaluatedAt } });
@@ -306,7 +353,7 @@ export class ChurnWatchCenter {
     const unevaluated = N((await one(sql<Row>`select count(*)::int as n from customer_intelligence_snapshots where tenant_id = ${T} and churn_level is null`)).n);
     checks.push({ key: 'rule_applied', state: !ok ? 'INSUFFICIENT_DATA' : unevaluated ? 'WARNING' : 'PASSED', count: unevaluated });
     const upcomingMismatch = N((await one(sql<Row>`select count(*)::int as n from customer_intelligence_snapshots sn where sn.tenant_id = ${T} and not sn.has_upcoming
-      and sn.churn_level = any(${FLAGGED}::text[]) and exists (select 1 from pos_tech_appointments a where a.tenant_id = sn.tenant_id and a.customer_id = sn.customer_id
+      and sn.churn_level = any(${FLAGGED_LEVELS}::text[]) and exists (select 1 from pos_tech_appointments a where a.tenant_id = sn.tenant_id and a.customer_id = sn.customer_id
       and a.appt_date >= (now() at time zone coalesce((select bz.timezone from branches bz where bz.id = a.branch_id and bz.tenant_id = a.tenant_id), 'America/New_York'))::date and a.status in ('booked', 'confirmed') and a.created_at > sn.computed_at)`)).n);
     checks.push({ key: 'bookings_since_evaluation', state: upcomingMismatch ? 'WARNING' : 'PASSED', count: upcomingMismatch });
     const orphanReviews = N((await one(sql<Row>`select count(*)::int as n from churn_watch_reviews r where r.tenant_id = ${T}

@@ -229,4 +229,8 @@ export const AISETUP_VI: Record<string, string> = {
   "aiset.noMatch": "Không có kết quả khớp tìm kiếm hoặc bộ lọc này. Xóa lọc để xem tất cả.", // DRAFT — Kevin reviews
   "aiset.noFaqsYet": "Chưa có câu hỏi thường gặp. Thêm câu đầu tiên ở trên.", // DRAFT — Kevin reviews
   "aiset.noHistoryYet": "Chưa ghi nhận thay đổi nào.", // DRAFT — Kevin reviews
+  "aiset.hbasis.readiness": "Thay đổi mức sẵn sàng", // DRAFT — Kevin reviews
+  "aiset.ev.readiness": "Đổi trạng thái", // DRAFT — Kevin reviews
+  "aiset.readinessBy": "người chạy kiểm tra: {by}", // DRAFT — Kevin reviews
+  "aiset.readinessSource": "nguồn: {s}", // DRAFT — Kevin reviews
 };

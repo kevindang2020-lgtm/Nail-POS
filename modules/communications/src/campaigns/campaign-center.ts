@@ -46,7 +46,8 @@ export const maskEmail = (e: string | null | undefined) => { if (!e) return null
 function paging(page: unknown, pageSize: unknown, def = 10) { const ps = Math.trunc(Number(pageSize)) || def; return { page: Math.max(1, Math.trunc(Number(page)) || 1), pageSize: [10, 20, 50].includes(ps) ? ps : Math.max(1, Math.min(50, ps)) }; }
 function served(page: number, pageSize: number, total: number) { const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages); return { page: p, totalPages, offset: (p - 1) * pageSize }; }
 
-export const CC_STATUSES = ['draft', 'awaiting_approval', 'approved', 'scheduled', 'sending', 'completed', 'cancelled'] as const;
+// all_drafts = every campaign still in status 'draft' (unsubmitted + awaiting approval + approved) — the AI Marketing "Drafts" card's own set
+export const CC_STATUSES = ['draft', 'awaiting_approval', 'approved', 'scheduled', 'sending', 'completed', 'cancelled', 'all_drafts'] as const;
 export const CC_CHANNELS = ['sms', 'email', 'push'] as const;
 export const CC_DATE_BASES = ['created', 'scheduled', 'started', 'completed'] as const;
 export const CC_SORTS = ['newest', 'oldest', 'name', 'scheduled'] as const;
@@ -263,6 +264,7 @@ export class CampaignCenter {
     else if (st === 'awaiting_approval') conds.push(sql`c.status = 'draft' and c.submitted_at is not null and c.approved_at is null`);
     else if (st === 'approved') conds.push(sql`c.status = 'draft' and c.approved_at is not null`);
     else if (st === 'sending') conds.push(sql`c.status = 'in_progress'`);
+    else if (st === 'all_drafts') conds.push(sql`c.status = 'draft'`);
     else if (['scheduled', 'completed', 'cancelled'].includes(st)) conds.push(sql`c.status = ${st}`);
     const text = String(q.q ?? '').trim().slice(0, 100);
     if (text) {

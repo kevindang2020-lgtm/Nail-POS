@@ -204,6 +204,59 @@ describe('AI Marketing — Check AI Marketing System', () => {
   });
 });
 
+describe('Marketing Growth 12 — Alerting for Marketing Anomalies in Check AI Marketing System', () => {
+  it('a cost spike, a send-failure spike, duplicate claims and a points balance off its ledger are each flagged with evidence; nothing is changed', async () => {
+    const TA = id(751), BA = id(752), CA = id(753), CB = id(754), CC = id(755), DEAL = id(756), CODE = id(757), TK1 = id(758), TK2 = id(759), TK3 = id(760), TK4 = id(761);
+    const cA = (o: any = {}) => ({ tenantId: TA, branchId: BA, userId: OWNER, role: 'OWNER', permissions: [...VIEW, 'pos.marketing.manage'], ...o });
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'A','Anomaly','mk-781a','MK781A','active')`, [TA]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','UTC')`, [BA, TA]);
+    for (const cid of [CA, CB, CC]) await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, created_at) values ($1,$2,$3,'A','X','A X', now() - interval '100 days')`, [cid, TA, BA]);
+    const quiet: any = await mc.check(cA());
+    const q0 = Object.fromEntries(quiet.checks.map((x: any) => [x.key, x]));
+    expect(q0.anomaly_cost_spike.state).toBe('INSUFFICIENT_DATA');                 // nothing sent: no baseline, no alarm
+    expect(q0.anomaly_send_failures.state).toBe('INSUFFICIENT_DATA');
+    expect(q0.anomaly_duplicate_claims).toMatchObject({ state: 'PASSED', count: 0 });
+    expect(q0.anomaly_balance_drift).toMatchObject({ state: 'PASSED', count: 0 });
+    await q(`delete from ai_marketing_health_runs where tenant_id = $1`, [TA]);
+    const [camp] = await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values ($1,$2,'Blast','sms','completed',12) returning id`, [TA, BA]);
+    // 14 days before: two 1-cent messages · last 24 h: twelve 20-cent messages, four of them failed on the delivery report
+    let k = 0;
+    const send = async (ago: string, costMicros: number, st: string) => {
+      const pid = `AN${++k}`; const cust = [CA, CB, CC][k % 3];
+      await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id, provider_cost_micros) values ($1,'sms','+1','hi',$2,$3,$4,$5)`, [TA, cust, st, pid, costMicros]);
+      await q(`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, status, provider_id, message_version, created_at, updated_at) values ($1,$2,$3,$4,'sms','sent',$5,$6, now() - $7::interval, now() - $7::interval)`, [TA, BA, camp.id, cust, pid, k, ago]);
+    };
+    await send('5 days', 10000, 'delivered'); await send('9 days', 10000, 'delivered');
+    for (let i = 0; i < 12; i++) await send('2 hours', 200000, i < 4 ? 'failed' : 'delivered');
+    // claims: a single-use code redeemed on two tickets; a deal limited to one per customer redeemed twice by CC (two tickets)
+    await q(`set session_replication_role = replica`);
+    await q(`insert into deals (id, tenant_id, owner_type, title, discount_type, discount_percent, max_per_customer) values ($1,$2,'salon','One per customer','percent',10,1)`, [DEAL, TA]);
+    await q(`insert into deal_coupon_codes (id, tenant_id, deal_id, code_hash, code_hint, single_use) values ($1,$2,$3,'h','ABCD',true)`, [CODE, TA, DEAL]);
+    await q(`insert into deal_redemptions (tenant_id, deal_id, customer_id, ticket_id, coupon_code_id, deal_version, amount_discounted_cents, status) values
+      ($1,$2,$3,$4,$5,1,500,'redeemed'), ($1,$2,$6,$7,$5,1,500,'redeemed'), ($1,$2,$8,$9,null,1,500,'redeemed'), ($1,$2,$8,$10,null,1,500,'redeemed')`, [TA, DEAL, CA, TK1, CODE, CB, TK2, CC, TK3, TK4]);
+    await q(`set session_replication_role = origin`);
+    // loyalty: CA's balance says 100, its ledger adds to 80
+    await q(`insert into customer_loyalty_profiles (tenant_id, branch_id, customer_id, points_balance) values ($1,$2,$3,100), ($1,$2,$4,30)`, [TA, BA, CA, CB]);
+    await q(`insert into loyalty_ledger (tenant_id, branch_id, customer_id, type, amount, source, running_balance, entry_type, delta, balance_after) values
+      ($1,$2,$3,'earn',80,'ticket',80,'earn',80,80), ($1,$2,$4,'earn',30,'ticket',30,'earn',30,30)`, [TA, BA, CA, CB]);
+    const before = { sends: await q(`select id, status from ai_marketing_campaign_sends where tenant_id = $1 order by id`, [TA]), pts: await q(`select customer_id, points_balance from customer_loyalty_profiles where tenant_id = $1 order by customer_id`, [TA]) };
+    const h: any = await mc.check(cA());
+    const by = Object.fromEntries(h.checks.map((x: any) => [x.key, x]));
+    expect(by.anomaly_cost_spike).toMatchObject({ state: 'WARNING', component: 'anomalies', count: 1, detail: { last24hCents: 240, priorDailyAverageCents: 0 } });
+    expect(by.anomaly_send_failures).toMatchObject({ state: 'WARNING', count: 4, detail: { attempts24h: 12, failed24h: 4 } });
+    expect(by.anomaly_duplicate_claims).toMatchObject({ state: 'WARNING', count: 2, detail: { codesOverLimit: 1, customersOverDealLimit: 1 } });
+    expect(by.anomaly_balance_drift).toMatchObject({ state: 'WARNING', count: 1, detail: { profiles: 1, pointsOff: 20 } });
+    expect(h.sendsAnything).toBe(false);
+    expect(await q(`select id, status from ai_marketing_campaign_sends where tenant_id = $1 order by id`, [TA])).toEqual(before.sends);
+    expect(await q(`select customer_id, points_balance from customer_loyalty_profiles where tenant_id = $1 order by customer_id`, [TA])).toEqual(before.pts);   // reported, never corrected here
+    // the original salon's own data has no such anomalies (another salon's spike never leaks in)
+    await q(`delete from ai_marketing_health_runs where tenant_id = $1`, [T]);
+    const own: any = await mc.check(ctx());
+    expect(own.checks.find((x: any) => x.key === 'anomaly_duplicate_claims')).toMatchObject({ state: 'PASSED', count: 0 });
+    expect(own.checks.find((x: any) => x.key === 'anomaly_cost_spike').state).not.toBe('WARNING');
+  });
+});
+
 describe('Marketing Growth 07 — Date/Timezone Diagnostics in Check AI Marketing System', () => {
   it('an unknown branch zone FAILS; a send scheduled on a clock-change day WARNS; zones are listed; nothing is changed', async () => {
     const B2 = id(5), B3 = id(6);

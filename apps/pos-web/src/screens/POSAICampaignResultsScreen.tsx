@@ -9,7 +9,7 @@
 //     booking-link conversions, code redemptions on paid tickets — with what each figure is checked against.
 // Loading or refreshing this page never sends, schedules or changes a campaign.
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { KpiCard, ErrorRetry, FitDialog } from '../components/FitKit';
 import { MkPeriodBar, MkHealthButton, CampaignLibrary, mt, mkErr, mkMoney, mkNum, mkWhen, type MkPeriod } from '../components/MarketingKit';
 import { posAIMarketingApi } from '../api/posAIMarketingApi';
@@ -18,7 +18,12 @@ import { posCampaignCenterApi } from '../api/posCampaignCenterApi';
 const STAGES = ['selected', 'eligible', 'excluded', 'queued', 'attempted', 'submitted', 'delivered', 'failed', 'unknown', 'simulated', 'skippedAtSend', 'booked', 'redemptions'] as const;
 
 export function POSAICampaignResultsScreen() {
-  const [period, setPeriod] = useState<MkPeriod>({ preset: 'month' });
+  // AI Marketing 10: a card on the AI Marketing page opens this source for ITS period (?preset=&from=&to=)
+  const [sp] = useSearchParams();
+  const [period, setPeriod] = useState<MkPeriod>(() => {
+    const preset = sp.get('preset'); const from = sp.get('from') ?? undefined; const to = sp.get('to') ?? undefined;
+    return preset ? { preset, ...(from ? { from } : {}), ...(to ? { to } : {}) } : { preset: 'month' };
+  });
   const [s, setS] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
