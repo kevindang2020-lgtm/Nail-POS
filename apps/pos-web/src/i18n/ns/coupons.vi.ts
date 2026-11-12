@@ -92,4 +92,18 @@ export const COUPONS_VI = {
   'cp.stk.r.price_floor.floor_unset': 'Không đặt phần tối thiểu — một dòng có thể giảm về 0, không thấp hơn.', // DRAFT — Kevin reviews
   'cp.stk.r.discount_cap.cap_set': 'Tổng mọi giảm giá tối đa {v}% tổng phụ; phần vượt bị cắt, cắt cái sau cùng trước.', // DRAFT — Kevin reviews
   'cp.stk.r.discount_cap.cap_unset': 'Không có tổng giảm giá tối đa ngoài giá tối thiểu.', // DRAFT — Kevin reviews
+  'cp.roi.title': 'Nguồn gốc số tiền (toàn thời gian)', // DRAFT — Kevin reviews
+  'cp.roi.revenue': 'Doanh số có dùng ưu đãi', // DRAFT — Kevin reviews
+  'cp.roi.tickets': '{n} phiếu đã thanh toán', // DRAFT — Kevin reviews
+  'cp.roi.discount': 'Chi phí giảm giá', // DRAFT — Kevin reviews
+  'cp.roi.spend': 'Chi phí chiến dịch', // DRAFT — Kevin reviews
+  'cp.roi.spendKnown': '{a} · {n} chiến dịch · {m} tin nhắn', // DRAFT — Kevin reviews
+  'cp.roi.spendUnknown': 'Chưa biết — nhà cung cấp mới báo chi phí của {c} trên {m} tin nhắn.', // DRAFT — Kevin reviews
+  'cp.roi.noCampaign': 'Không có chiến dịch nào gắn với ưu đãi này.', // DRAFT — Kevin reviews
+  'cp.roi.lift': 'Lượt ghé thêm do ưu đãi', // DRAFT — Kevin reviews
+  'cp.roi.liftUnverified': 'Chưa xác minh — không có nhóm so sánh nên không đưa ra con số.', // DRAFT — Kevin reviews
+  'cp.roi.branches': 'Theo chi nhánh', // DRAFT — Kevin reviews
+  'cp.roi.branch': 'Chi nhánh', // DRAFT — Kevin reviews
+  'cp.roi.customers': 'Khách hàng', // DRAFT — Kevin reviews
+  'cp.roi.noBranch': 'Không có chi nhánh', // DRAFT — Kevin reviews
 } as const;

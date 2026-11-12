@@ -20,6 +20,7 @@ import { TENANT_NAV, EXISTING_ROUTES } from '../shell/tenant-nav';
 import { useCan } from '../components/usePermissions';
 import { InvoicedFigures, InvoiceTable, BranchSettings } from './aiUsageRound2';
 import { statusLabel } from '../i18n/status-label';
+import { codeLabel } from '../components/peopleLabels';
 
 type State = 'available' | 'trial_available' | 'trialing' | 'trial_expired' | 'active' | 'cancelled' | 'expired' | 'past_due' | 'suspended' | 'disabled_by_admin' | 'unable_to_verify';
 type Level = 'ok' | 'warn_80' | 'critical_90' | 'exhausted_100' | 'unlimited' | 'not_metered' | 'unknown';
@@ -296,6 +297,7 @@ export function DetailDialog({ code, onClose, onChanged, openHistory, openModule
           <dt>{tx('aiu.subscribedOn')}</dt><dd>{day(c.subscribedAt)}</dd><dt>{tx('aiu.cancelledOn')}</dt><dd>{day(c.cancelledAt)}</dd>
           <dt>{tx('aiu.lastPayment')}</dt><dd>{c.lastPaymentStatus ?? '—'}</dd>
         </dl> : null}
+        {tab === 'subscription' && d.why ? <EntitlementWhy why={d.why} /> : null}
         {tab === 'usage' ? <div className="aiu-d">
           <dl className="fk-dl"><dt>{tx('aiu.used')}</dt><dd>{c.usage.used == null ? tx(c.usage.level === 'unknown' ? 'aiu.usageUnknown' : 'aiu.notMetered') : unitLabel(c.usage.unit, c.usage.used)}</dd>
             <dt>{tx('aiu.limit')}</dt><dd>{c.usage.limit > 0 ? unitLabel(c.usage.unit, c.usage.limit) : tx('aiu.noFixedLimit')}</dd>
@@ -383,4 +385,31 @@ export function HistoryDialog({ initialCode, canExport, onClose }: { initialCode
       )}
     </FitDialog>
   );
+}
+
+/** Extras (AI Usage Limits 02): why the package is Active / Blocked — the server returns the AI-call gate's own decision and the
+ *  facts behind it (platform switch, subscription row, trial, plans that list it, last provider event); nothing is decided here. */
+type GateAnswer = { allowed: boolean; reason: string };
+type EntitlementWhyView = { entitled: boolean; gate: GateAnswer; forYou: GateAnswer | null; state: string;
+  platform: { enabled: boolean; disabledReason: string | null };
+  subscription: { status: string; provider: string | null; lastPaymentStatus: string | null; period: string; priceSource: string } | null;
+  trial: { startsAt: string | null; endsAt: string | null; daysLeft: number | null } | null;
+  plans: { code: string; name: string; status: string | null; trialEndsAt: string | null; cancelledAt: string | null }[];
+  lastVerified: { at: string | null; provider: string | null; eventType: string | null } | null };
+const gateText = (r: string) => codeLabel('aiu.why.r.' + r, r);
+const subText = (st: string) => codeLabel('aiu.why.s.' + st, st);
+export function EntitlementWhy({ why }: { why: EntitlementWhyView }) {
+  return <section className="aiu-d" data-testid="aiu-why">
+    <h3 className="fk-h3">{why.entitled ? tx('aiu.why.titleOn') : tx('aiu.why.titleOff')}</h3>
+    <div className={'fk-note ' + (why.entitled ? 'ok' : 'warn')} data-testid="aiu-why-gate">{tx('aiu.why.gate', { r: gateText(why.gate.reason) })}</div>
+    {why.forYou && why.forYou.allowed !== why.gate.allowed ? <div className="fk-hint" data-testid="aiu-why-you">{tx('aiu.why.you', { r: gateText(why.forYou.reason) })}</div> : null}
+    <dl className="fk-dl">
+      <dt>{tx('aiu.why.platform')}</dt><dd data-testid="aiu-why-platform">{why.platform.enabled ? tx('aiu.platformOn') : tx('aiu.platformOff', { r: why.platform.disabledReason ?? '—' })}</dd>
+      <dt>{tx('aiu.why.own')}</dt><dd data-testid="aiu-why-sub">{why.subscription ? tx('aiu.why.sub', { s: subText(why.subscription.status), p: tx('aiu.period.' + why.subscription.period) })
+        + (why.subscription.lastPaymentStatus ? ' · ' + tx('aiu.why.lastPay', { s: codeLabel('aiu.why.pay.' + why.subscription.lastPaymentStatus, why.subscription.lastPaymentStatus) }) : '') : tx('aiu.why.noSub')}</dd>
+      <dt>{tx('aiu.why.trial')}</dt><dd data-testid="aiu-why-trial">{why.trial ? (why.trial.daysLeft != null ? tx('aiu.why.trialLeft', { n: nf(why.trial.daysLeft) }) : tx('aiu.why.trialEnded', { d: day(why.trial.endsAt) })) : '—'}</dd>
+      <dt>{tx('aiu.why.plans')}</dt><dd data-testid="aiu-why-plans">{why.plans.length === 0 ? tx('aiu.why.noPlan') : why.plans.map((pl) => `${pl.name} · ${pl.status ? subText(pl.status) : tx('aiu.why.planNone')}`).join(' | ')}</dd>
+      <dt>{tx('aiu.why.verified')}</dt><dd data-testid="aiu-why-verified">{why.lastVerified?.at ? tx('aiu.why.verifiedAt', { d: when(why.lastVerified.at), p: why.lastVerified.provider ?? '—' }) : tx('aiu.why.neverVerified')}</dd>
+    </dl>
+  </section>;
 }

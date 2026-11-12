@@ -293,6 +293,7 @@ export class DiscountsScreenRepository {
       from deal_redemptions r where r.tenant_id = ${T} and r.deal_id = ${dealId}`.execute(this.db)).rows[0];
     const versions = (await sql<any>`select v.id, v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from deal_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = v.tenant_id
       where v.tenant_id = ${T} and v.deal_id = ${dealId} order by v.version desc, v.created_at desc limit 20`.execute(this.db)).rows;
+    const roi = await this.roiExplained(ctx, dealId);
     const rules = r.rules && typeof r.rules === 'object' ? r.rules : null;
     const ruleCount = rules ? JSON.stringify(rules).split('"type"').length - 1 : 0;
     return {
@@ -306,6 +307,50 @@ export class DiscountsScreenRepository {
       services: services.map((s: any) => ({ id: String(s.id), name: String(s.name) })),
       usage: { confirmed: N(usage?.confirmed), pendingAtCheckout: N(usage?.pending), released: N(usage?.released), reversed: N(usage?.reversed), uniqueCustomers: N(usage?.customers), savingsCents: N(usage?.saved), lastRedeemedAt: iso(usage?.last_at) },
       history: versions.map((v: any) => ({ id: String(v.id), version: N(v.version), at: iso(v.created_at), actor: v.actor ?? null, terms: summarizeTerms(v.terms) })),
+      roi: roi.roi, byBranch: roi.byBranch,
+    };
+  }
+
+  /** Extras (Coupons & Promotions 13 "Source-Based ROI Explanation" + 14 "Advanced Branch Scorecard"), all time, read-only:
+   *    associated revenue   Σ total of the DISTINCT paid / closed tickets that carry a confirmed redemption of this offer — the
+   *                         sales the offer was used on, NOT revenue it caused
+   *    discount cost        Σ discount given on confirmed redemptions, net of reversals (the same figure as usage.savingsCents)
+   *    campaign spend       provider cost of the messages sent by campaigns linked to this offer (campaigns.deal_id); null
+   *                         ("not known") unless the provider reported the cost of EVERY sent message — never estimated
+   *    incremental lift     always 'unverified': there is no control group, so no figure is claimed
+   *  byBranch: the same counts per ticket location (a branch user sees only their location's tickets). */
+  private async roiExplained(ctx: DiscountsCtx, dealId: string) {
+    const T = ctx.tenantId;
+    const tb = ctx.branchId && UUID.test(ctx.branchId) ? sql`tk.branch_id = ${ctx.branchId}` : sql`true`;
+    type BrRow = { branch_id: string | null; branch_name: string | null; n: number; customers: number; saved: string | number; tickets: number; sales: string | number };
+    const rows = (await sql<BrRow>`with red as (
+          select r.id, r.customer_id, r.ticket_id, (r.amount_discounted_cents - coalesce(r.reversed_cents, 0)) as saved, tk.branch_id, tk.total_cents, tk.status as tk_status
+          from deal_redemptions r left join tickets tk on tk.id = r.ticket_id and tk.tenant_id = r.tenant_id
+          where r.tenant_id = ${T} and r.deal_id = ${dealId} and ${CONFIRMED} and ${tb})
+        select red.branch_id, b.name as branch_name, count(*)::int as n, count(distinct red.customer_id)::int as customers, coalesce(sum(red.saved), 0)::bigint as saved,
+          (select count(*)::int from (select distinct x.ticket_id from red x where x.branch_id is not distinct from red.branch_id and x.tk_status in ('paid', 'closed')) d) as tickets,
+          (select coalesce(sum(y.total_cents), 0)::bigint from (select distinct on (x.ticket_id) x.ticket_id, x.total_cents from red x where x.branch_id is not distinct from red.branch_id and x.tk_status in ('paid', 'closed')) y) as sales
+        from red left join branches b on b.id = red.branch_id and b.tenant_id = ${T}
+        group by red.branch_id, b.name order by sales desc, b.name nulls last`.execute(this.db)).rows;
+    type SpRow = { campaigns: number; submitted: number; costed: number; cost_micros: string | number };
+    const sp = (await sql<SpRow>`select count(distinct c.id)::int as campaigns, count(s.id) filter (where s.status = 'sent')::int as submitted,
+          count(s.id) filter (where s.status = 'sent' and n.provider_cost_micros is not null)::int as costed,
+          coalesce(sum(n.provider_cost_micros) filter (where s.status = 'sent'), 0)::bigint as cost_micros
+        from campaigns c left join ai_marketing_campaign_sends s on s.tenant_id = c.tenant_id and s.campaign_id = c.id
+          left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
+        where c.tenant_id = ${T} and c.deal_id = ${dealId}`.execute(this.db)).rows[0];
+    const campaigns = N(sp?.campaigns), submitted = N(sp?.submitted), costed = N(sp?.costed);
+    const spendCents = submitted > 0 && costed === submitted ? Math.round(N(sp?.cost_micros) / 10_000) : submitted === 0 && campaigns > 0 ? 0 : null;
+    const sum = (k: 'saved' | 'sales' | 'tickets' | 'n') => rows.reduce((a, x) => a + N(x[k]), 0);
+    return {
+      roi: {
+        associatedRevenueCents: sum('sales'), associatedTickets: sum('tickets'), discountCostCents: sum('saved'), redemptions: sum('n'),
+        campaignSpend: { campaigns, messagesSent: submitted, messagesCosted: costed, spendCents,
+          state: campaigns === 0 ? 'no_campaign' as const : spendCents == null ? 'cost_unknown' as const : 'known' as const },
+        incrementalLift: 'unverified' as const,
+      },
+      byBranch: rows.map((x) => ({ branchId: x.branch_id ? String(x.branch_id) : null, branchName: x.branch_name ?? null, redemptions: N(x.n), uniqueCustomers: N(x.customers),
+        discountCents: N(x.saved), associatedTickets: N(x.tickets), associatedRevenueCents: N(x.sales) })),
     };
   }
 

@@ -195,6 +195,22 @@ export class AppointmentHistoryCenter {
         and a.appt_date >= ${(await this.ret.window(ctx, { preset: 'today' })).today}::date
         ${s.branchIds ? sql`and a.branch_id = any(${s.branchIds}::uuid[])` : sql``}`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'deposit_failed_upcoming', state: depFail ? 'WARNING' : 'READY', count: depFail });
+    // extras (Appointment History 02 "Booking-to-History Accuracy Monitor"): History reads Booking's own rows live (no copy, no
+    // cache, no worker — so nothing can go stale between them); what CAN drift is named here, read-only:
+    //   inactive_technician an upcoming open booking whose technician (not "first available") is archived or inactive — the
+    //                       technician link itself is a foreign key, so a missing technician cannot happen and is not checked
+    //   status_log_mismatch a booking whose current status differs from the last status its lifecycle log recorded
+    const BR = s.branchIds ? sql`and a.branch_id = any(${s.branchIds}::uuid[])` : sql``;
+    const today = (await this.ret.window(ctx, { preset: 'today' })).today;
+    const offTech = N((await sql<Row>`select count(*)::int as n from pos_tech_appointments a join technicians te on te.id = a.technician_id and te.tenant_id = a.tenant_id
+        where a.tenant_id = ${T} and coalesce(a.any_technician, false) = false and a.status = any(${OPEN}::text[]) and a.appt_date >= ${today}::date
+          and (te.archived_at is not null or te.is_active = false) ${BR}`.execute(this.db)).rows[0]?.n);
+    checks.push({ key: 'inactive_technician', state: offTech ? 'WARNING' : 'READY', count: offTech });
+    const drift = N((await sql<Row>`select count(*)::int as n from pos_tech_appointments a
+        join lateral (select l.new_value from appointment_change_log l where l.tenant_id = a.tenant_id and l.appointment_id = a.id
+          and (l.change_type = 'status_changed' or l.change_type = 'cancelled') and l.new_value is not null order by l.created_at desc, l.id desc limit 1) last on true
+        where a.tenant_id = ${T} and last.new_value <> a.status ${BR}`.execute(this.db)).rows[0]?.n);
+    checks.push({ key: 'status_log_mismatch', state: drift ? 'WARNING' : 'READY', count: drift });
     checks.push({ key: 'no_side_effects', state: 'READY' });
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : 'READY';
     return { overall, checkedAt: new Date(this.now()).toISOString(), checks };

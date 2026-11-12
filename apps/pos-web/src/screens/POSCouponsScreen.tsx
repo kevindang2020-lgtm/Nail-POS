@@ -242,7 +242,7 @@ export function Actions({ x, canManage, onCheck, onEdit, onDuplicate, onDone, co
 export function Financial({ x }: { x: any }) {
   const perf = useLoad(() => posDiscountsApi.performance({ q: x.id, preset: 'all', page: 1, pageSize: 1 }), [x.id]);
   const p = perf.data?.items?.find((i: any) => i.id === x.id);
-  return <dl className="fk-dl mo-dl" data-testid="dd-financial-body">
+  return <><dl className="fk-dl mo-dl" data-testid="dd-financial-body">
     <dt>{tx('dsc.tot.events')}</dt><dd><b>{nf(x.usage.confirmed)}</b></dd>
     <dt>{tx('cp.fin.net')}</dt><dd>{fmtMoney(x.usage.savingsCents)}</dd>
     <dt>{tx('dsc.state.reversed')}</dt><dd>{nf(x.usage.reversed)}</dd>
@@ -250,7 +250,32 @@ export function Financial({ x }: { x: any }) {
     <dt>{tx('cp.fin.linked')}</dt><dd>{p ? fmtMoney(p.linkedTicketSalesCents) : '—'}</dd>
     <dt>{tx('cp.fin.avg')}</dt><dd>{p && p.avgDiscountCents != null ? fmtMoney(p.avgDiscountCents) : '—'}</dd>
     <dd className="fk-hint" style={{ gridColumn: '1 / -1' }}>{tx('cp.fin.note')}</dd>
-  </dl>;
+  </dl>{x.roi ? <RoiExplained roi={x.roi} byBranch={x.byBranch ?? []} /> : null}</>;
+}
+
+/** Extras (Coupons & Promotions 13 + 14): the server's source-based ROI parts, never combined into one "ROI" figure here —
+ *  associated revenue (sales the offer was used on, not caused by it), discount cost, campaign spend (only when the provider
+ *  reported every message's cost) and incremental lift (always unverified) — and the same counts per location. Read-only. */
+type OfferRoiView = { associatedRevenueCents: number; associatedTickets: number; discountCostCents: number; redemptions: number;
+  campaignSpend: { campaigns: number; messagesSent: number; messagesCosted: number; spendCents: number | null; state: 'no_campaign' | 'cost_unknown' | 'known' }; incrementalLift: 'unverified' };
+type OfferBranchRow = { branchId: string | null; branchName: string | null; redemptions: number; uniqueCustomers: number; discountCents: number; associatedTickets: number; associatedRevenueCents: number };
+export function RoiExplained({ roi, byBranch }: { roi: OfferRoiView; byBranch: OfferBranchRow[] }) {
+  const sp = roi.campaignSpend;
+  return <div data-testid="dd-roi">
+    <h4 className="fk-sub">{tx('cp.roi.title')}</h4>
+    <dl className="fk-dl mo-dl">
+      <dt>{tx('cp.roi.revenue')}</dt><dd data-testid="roi-revenue">{fmtMoney(roi.associatedRevenueCents)} · {tx('cp.roi.tickets', { n: nf(roi.associatedTickets) })}</dd>
+      <dt>{tx('cp.roi.discount')}</dt><dd data-testid="roi-discount">{fmtMoney(roi.discountCostCents)}</dd>
+      <dt>{tx('cp.roi.spend')}</dt><dd data-testid="roi-spend">{sp.state === 'known' && sp.spendCents != null ? tx('cp.roi.spendKnown', { a: fmtMoney(sp.spendCents), n: nf(sp.campaigns), m: nf(sp.messagesSent) })
+        : sp.state === 'cost_unknown' ? tx('cp.roi.spendUnknown', { c: nf(sp.messagesCosted), m: nf(sp.messagesSent) }) : tx('cp.roi.noCampaign')}</dd>
+      <dt>{tx('cp.roi.lift')}</dt><dd data-testid="roi-lift">{tx('cp.roi.liftUnverified')}</dd>
+    </dl>
+    {byBranch.length ? <>
+      <h4 className="fk-sub">{tx('cp.roi.branches')}</h4>
+      <table className="fk-table" data-testid="roi-branches"><thead><tr><th scope="col">{tx('cp.roi.branch')}</th><th scope="col">{tx('dsc.tot.events')}</th><th scope="col">{tx('cp.roi.customers')}</th><th scope="col">{tx('cp.roi.discount')}</th><th scope="col">{tx('cp.roi.revenue')}</th></tr></thead>
+        <tbody>{byBranch.map((b) => <tr key={b.branchId ?? 'none'} data-testid="roi-branch-row"><th scope="row">{b.branchName ?? tx('cp.roi.noBranch')}</th><td>{nf(b.redemptions)}</td><td>{nf(b.uniqueCustomers)}</td><td>{fmtMoney(b.discountCents)}</td><td>{fmtMoney(b.associatedRevenueCents)} · {tx('cp.roi.tickets', { n: nf(b.associatedTickets) })}</td></tr>)}</tbody></table>
+    </> : null}
+  </div>;
 }
 
 export function Campaigns({ dealId }: { dealId: string }) {

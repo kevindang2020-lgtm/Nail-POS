@@ -546,4 +546,12 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.detail.minutes": "{n} phút", // DRAFT — Kevin reviews
   "ahx.detail.tz": "giờ của tiệm ({tz})", // DRAFT — Kevin reviews
   "ahx.detail.contact": "Liên hệ", // DRAFT — Kevin reviews
+  "ahx.health.k.inactive_technician": "Lịch hẹn sắp tới với thợ không còn hoạt động", // DRAFT — Kevin reviews
+  "ahx.health.d.inactive_technician.READY": "Mọi lịch hẹn sắp tới đều với thợ đang hoạt động.", // DRAFT — Kevin reviews
+  "ahx.health.d.inactive_technician.WARNING": "Một số lịch hẹn sắp tới với thợ đã lưu trữ hoặc ngưng hoạt động — hãy đổi thợ trong Đặt lịch.", // DRAFT — Kevin reviews
+  "ahx.health.d.inactive_technician.FAILED": "Không kiểm tra được trạng thái thợ.", // DRAFT — Kevin reviews
+  "ahx.health.k.status_log_mismatch": "Trạng thái so với lịch sử thay đổi", // DRAFT — Kevin reviews
+  "ahx.health.d.status_log_mismatch.READY": "Trạng thái của mọi lịch hẹn khớp với trạng thái cuối cùng trong lịch sử thay đổi.", // DRAFT — Kevin reviews
+  "ahx.health.d.status_log_mismatch.WARNING": "Một số lịch hẹn có trạng thái khác với trạng thái cuối cùng được ghi trong lịch sử — hãy mở trong Đặt lịch để xác nhận.", // DRAFT — Kevin reviews
+  "ahx.health.d.status_log_mismatch.FAILED": "Không so sánh được lịch sử trạng thái.", // DRAFT — Kevin reviews
 };

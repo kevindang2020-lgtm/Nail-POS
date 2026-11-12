@@ -1670,4 +1670,8 @@ export const OPS_EN = {
   "syschk.technicians.no_service_mapping.fix": "Map their services in the Service Mapping Assistant.",
   "syschk.technicians.certification_expired": "No active technician has an expired certificate",
   "syschk.technicians.certification_expired.fix": "Upload the renewed certificate or mark the old one replaced.",
+  "syschk.inventory.recipe_inactive_product": "No service recipe uses an archived or inactive product",
+  "syschk.inventory.recipe_inactive_product.fix": "Open Inventory → Recipes and replace the product in those services’ recipes.",
+  "syschk.inventory.recipe_short_deduction": "Service Done took each recipe’s full amount from stock (last 30 days)",
+  "syschk.inventory.recipe_short_deduction.fix": "Stock ran short when the service was done — recount the product and receive stock; the deduction itself is not changed.",
 };

@@ -199,6 +199,13 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.resolved_at IS NULL
           AND NOT (coalesce(ip.active, false) = true AND ip.archived_at IS NULL AND coalesce(ls.reorder_level_override, ip.reorder_level, 0) > 0
                    AND coalesce(ls.quantity_on_hand, 0) <= coalesce(ls.reorder_level_override, ip.reorder_level, 0))`) },
+    // extras (Stock Alerts 05 product-to-service consumption review): recipes are deducted automatically at Service Done for
+    // every salon (D4, RecipeUsageConsumer — not a per-salon setting), so what can go wrong is the recipe itself or the stock
+    { key: 'recipe_inactive_product', severity: 'WARNING', count: (t) => n(sql`SELECT 1 FROM service_product_recipes rp JOIN inventory_products p ON p.tenant_id = rp.tenant_id AND p.id = rp.product_id
+        WHERE rp.tenant_id = ${t}::uuid AND (p.archived_at IS NOT NULL OR NOT p.active)`) },
+    { key: 'recipe_short_deduction', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_stock_movements m WHERE m.tenant_id = ${t}::uuid ${br('m', b)}
+        AND m.movement_type = 'service_usage' AND m.related_type = 'ticket_line' AND m.created_at >= now() - interval '30 days'
+        AND coalesce((m.metadata_json->>'shortHundredths')::numeric, 0) > 0`) },
     { key: 'received_over_ordered_lines', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_id, m.product_id FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.movement_type = 'purchase_received' AND m.related_type = 'purchase_order'
         GROUP BY m.related_id, m.product_id

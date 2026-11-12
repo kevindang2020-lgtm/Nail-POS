@@ -224,6 +224,23 @@ describe('shared read-only Check … System', () => {
     expect(count(r, 'addon_duplicate_charge')).toMatchObject({ state: 'WARNING', count: 1 });           // Paraffin ×2 on A
     expect(count(await svc.run('catalog', { tenantId: T, branchId: B2 }), 'addon_duplicate_charge')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('extras: Stock Alerts 05 — a recipe naming an archived product; a Service Done recipe that could only take part of the amount', async () => {
+    const PA = id(251), PB = id(252), SV = id(253), PX = id(254), SVX = id(255);
+    await q(sql`insert into inventory_products (id, tenant_id, name, active, archived_at) values (${PA}, ${T}, 'Old Gel', false, now()), (${PB}, ${T}, 'Cuticle Oil', true, null), (${PX}, ${X}, 'Old Gel X', false, now())`);
+    const CA = id(259), CAX = id(260);
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name, status) values (${CA}, ${T}, ${B1}, 'Feet', 'active'), (${CAX}, ${X}, ${BX}, 'Feet', 'active')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values (${SV}, ${T}, ${B1}, ${CA}, 'Gel Pedicure', 45, 5000), (${SVX}, ${X}, ${BX}, ${CAX}, 'Other', 30, 3000)`);
+    await q(sql`insert into service_product_recipes (tenant_id, service_id, product_id, quantity) values (${T}, ${SV}, ${PA}, 1), (${T}, ${SV}, ${PB}, 1), (${X}, ${SVX}, ${PX}, 1)`);
+    const mv = (branch: string, line: string, meta: string, at: any) => q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, related_type, related_id, metadata_json, created_at)
+      values (${T}, ${branch}, ${PB}, 'service_usage', -1, 'ticket_line', ${line}, ${meta}::jsonb, ${at})`);
+    await mv(B1, id(256), '{"quantityHundredths":40,"requestedHundredths":100,"shortHundredths":60}', sql`now()`);           // short
+    await mv(B1, id(257), '{"quantityHundredths":100,"requestedHundredths":100,"shortHundredths":0}', sql`now()`);          // full
+    await mv(B1, id(258), '{"quantityHundredths":10,"requestedHundredths":100,"shortHundredths":90}', sql`now() - interval '45 days'`);   // older than 30 days
+    const r = await svc.run('inventory', { tenantId: T });
+    expect(count(r, 'recipe_inactive_product')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'recipe_short_deduction')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(await svc.run('inventory', { tenantId: T, branchId: B2 }), 'recipe_short_deduction')).toMatchObject({ state: 'READY', count: 0 });
+  });
   it('extras: Discounts — redemption integrity: pending on a paid ticket, redeemed on an unpaid one, bad timestamps, coupon use counter drift, a single-use code used twice', async () => {
     const D = id(91), DX = id(92), CODE = id(93), CODE2 = id(94), CODEX = id(95), K1 = id(96), K2 = id(97), K3 = id(98), KX = id(99);
     await q(sql`insert into deals (id, tenant_id, branch_id, owner_type, title, discount_type, discount_percent, status, starts_at, ends_at) values

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { posAiBusinessApi } from '../../api/posAiBusinessApi';
 import { Empty, ErrorRetry, FitDialog } from '../../components/FitKit';
-import { bt, bzErr, bzNum } from '../../components/BusinessKit';
+import { bt, bzErr, bzNum, bzValue, bzWhen } from '../../components/BusinessKit';
 
 const money = (c: number | null | undefined) => (c == null ? bt('bcx.na') : `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 const hrs = (h: number | null | undefined) => (h == null ? bt('bcx.na') : bt('bcx.s.hours', { n: h }));
@@ -70,6 +70,7 @@ export function BranchInsightsPanel({ period, tick }: { period: { preset?: strin
         {s.advice.length === 0 ? <div className="sub" data-testid="bcx-advice-none">{bt('bcx.a.none')}</div> : (
           <ul className="rvw-list" data-testid="bcx-advice">{s.advice.map((a: any, i: number) => (
             <li key={i}><span className={'chip ' + (a.severity === 'warning' ? 'warn' : '')}>{bt('bcx.a.k.' + a.kind)}</span> {adviceText(a)} <Link to={a.route} style={{ color: 'var(--aps-orange)' }}>{bt('bcx.a.go')}</Link></li>))}</ul>)}
+        <TrendFlags rows={rows} />
         <ul className="sub" style={{ marginTop: 8, paddingLeft: 18 }}><li>{bt('bcx.s.note1')}</li><li>{bt('bcx.s.note2')}</li>{!s.financialsIncluded ? <li>{bt('bcx.s.note3')}</li> : null}</ul>
       </>)}
       {explain ? <ExplainDialog rows={rows} period={p} onClose={() => setExplain(false)} /> : null}
@@ -95,4 +96,23 @@ function ExplainDialog({ rows, period, onClose }: { rows: any[]; period: Record<
       {r ? <ul data-testid="bcx-e-lines" style={{ paddingLeft: 18 }}>{explainLines(r, rows.find((x) => x.branchId === a), rows.find((x) => x.branchId === b)).map((l, i) => <li key={i} style={{ marginBottom: 4 }}>{l}</li>)}</ul> : <p className="sub">{bt('bcx.e.hint')}</p>}
     </FitDialog>
   );
+}
+
+/** AI BRANCH COMPARISON 09: what the salon's existing alert rules flagged per branch in the period (server: scorecard
+ *  trendFlags from ai_business_alert_events) — no second detector; each line links to AI Business Alerts. */
+type BranchTrendFlag = { family: string; metricId: string; unit: string; triggered: number; openIncidents: number; latestValue: number | null; threshold: number | null; operator: string; latestAt: string | null; route: string };
+export function TrendFlags({ rows }: { rows: Array<{ branchId: string; branchName: string; trendFlags?: BranchTrendFlag[] }> }) {
+  const items = rows.flatMap((r) => (r.trendFlags ?? []).map((f) => ({ r, f })));
+  return <>
+    <div className="p-h" style={{ marginTop: 12 }}>{bt('bcx.t.title')}</div>
+    {items.length === 0 ? <div className="sub" data-testid="bcx-trend-none">{bt('bcx.t.none')}</div> : (
+      <ul className="rvw-list" data-testid="bcx-trends">{items.map(({ r, f }) => (
+        <li key={r.branchId + f.metricId} data-testid="bcx-trend">
+          <span className={'chip ' + (f.openIncidents ? 'warn' : '')}>{bt('bcx.t.f.' + f.family)}</span>{' '}
+          {bt('bcx.t.line', { b: r.branchName, m: bt('bzx.metric.' + f.metricId), n: bzNum(f.triggered), v: bzValue(f.latestValue, f.unit), t: bzValue(f.threshold, f.unit), at: bzWhen(f.latestAt) })}
+          {f.openIncidents ? ' ' + bt('bcx.t.open', { n: bzNum(f.openIncidents) }) : ''}{' '}
+          <Link to={f.route} style={{ color: 'var(--aps-orange)' }}>{bt('bcx.t.go')}</Link>
+        </li>))}</ul>)}
+    <div className="sub">{bt('bcx.t.note')}</div>
+  </>;
 }

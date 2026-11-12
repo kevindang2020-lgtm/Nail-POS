@@ -44,6 +44,18 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     expect(screen.getByTestId('rssx-save')).toBeDisabled();
   });
 
+  it('Settings 05: provider freshness (last sync, a failing provider) and the publish / request queues are shown; nothing changes', async () => {
+    rs.state.mockResolvedValue({ ...STATE(), providers: { connected: 2, lastSuccessfulSyncAt: '2026-11-11T13:00:00Z', lastFailedSyncAt: '2026-11-11T17:00:00Z', failing: 1 },
+      publishQueue: { approvedNotPublished: 2, publishFailed: 1 } });
+    mount();
+    expect(await screen.findByTestId('rssx-provider-sync')).toHaveTextContent(/^Last successful sync: Nov 11, 2026/);
+    expect(screen.getByTestId('rssx-provider-failing')).toHaveTextContent('1 provider(s) failed their latest sync');
+    const r = screen.getByTestId('rssx-risks');
+    expect(r).toHaveTextContent('2 approved public reply(ies) waiting to be published.');
+    expect(r).toHaveTextContent('1 public reply(ies) failed to publish');
+    expect(r).toHaveTextContent('2 review request(s) are past their send time and not sent.');
+    expect(rs.save).not.toHaveBeenCalled();
+  });
   it('a change is marked unsaved; Save confirms the change and sends ONLY it with the version and reason', async () => {
     rs.save.mockResolvedValue({ version: 1, state: STATE({ requestsEnabled: true }, 1) });
     mount();
@@ -106,7 +118,8 @@ describe('POSAIReviewReputationSettingsScreen', () => {
       total: 1, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-02' } });
     rs.event.mockResolvedValue({ id: 'e1', level: 'tenant', type: 'settings_changed', changes: [{ key: 'responseTone', before: 'professional', after: 'warm', beforeKnown: true }], actor: 'Owner', role: 'OWNER', version: 2, reason: null,
       at: '2026-11-02T15:00:00Z', legacy: false, propagation: { mode: 'live', aiDraftsSince: 3, requestsScheduledSince: 0 } });
-    rs.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'requests_sender', state: 'WARNING' }] });
+    rs.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'requests_sender', state: 'WARNING' }, { key: 'request_dry_run', state: 'WARNING', count: 3,
+      detail: { days: 7, visits: 6, capped: false, wouldAsk: 3, skipped: 3, byReason: { opted_out: 1, no_contact_method: 1, frequency_cap: 1 }, quietHoursShifted: 1, channel: 'sms', channelReady: false, requestsEnabled: false } }] });
     mount();
     fireEvent.click(await screen.findByTestId('tab-history'));
     expect(await screen.findByTestId('rssx-hist-row')).toHaveTextContent('Response tone');
@@ -118,5 +131,13 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     fireEvent.click(screen.getByTestId('tab-health'));
     fireEvent.click(screen.getByTestId('rssx-check'));
     expect(await screen.findByTestId('chk-requests_sender')).toHaveTextContent(/nothing is sent/);
+    // extras 03: the dry run of the current request policy, worded from the server's counts and reason codes
+    expect(screen.getByTestId('chk-request_dry_run')).toHaveTextContent('Dry run of review requests (last 7 days) · 3');
+    const dry = screen.getByTestId('rssx-dry-run');
+    expect(dry).toHaveTextContent('Last 7 days: 6 paid visits — 3 would be asked, 3 would be skipped (opted out or suppressed 1 · no phone / email 1 · already asked this period 1)');
+    expect(dry).toHaveTextContent('1 would be moved out of quiet hours. Channel: SMS. The salon’s SMS sender is not connected.');
+    expect(dry).toHaveTextContent('Review requests are turned off');
+    expect(dry.textContent).not.toMatch(/frequency_cap|no_contact_method|opted_out/);
+    expect(rs.save).not.toHaveBeenCalled();
   });
 });

@@ -1669,4 +1669,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.technicians.no_service_mapping.fix": "Gán dịch vụ cho họ trong Trợ lý gán dịch vụ.", // DRAFT — Kevin reviews
   "syschk.technicians.certification_expired": "Không có thợ đang hoạt động nào có chứng chỉ hết hạn", // DRAFT — Kevin reviews
   "syschk.technicians.certification_expired.fix": "Tải lên chứng chỉ đã gia hạn hoặc đánh dấu chứng chỉ cũ đã được thay thế.", // DRAFT — Kevin reviews
+  "syschk.inventory.recipe_inactive_product": "Không có công thức dịch vụ nào dùng sản phẩm đã lưu trữ hoặc ngưng hoạt động", // DRAFT — Kevin reviews
+  "syschk.inventory.recipe_inactive_product.fix": "Mở Kho hàng → Công thức và thay sản phẩm trong công thức của các dịch vụ đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.recipe_short_deduction": "Khi hoàn tất dịch vụ, kho đã trừ đủ lượng theo công thức (30 ngày qua)", // DRAFT — Kevin reviews
+  "syschk.inventory.recipe_short_deduction.fix": "Kho bị thiếu khi làm dịch vụ — hãy kiểm đếm lại sản phẩm và nhập thêm hàng; lượng đã trừ không bị thay đổi.", // DRAFT — Kevin reviews
 };

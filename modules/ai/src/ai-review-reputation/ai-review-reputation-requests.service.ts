@@ -37,9 +37,9 @@ export class ReviewRequestService {
   private audit(ctx: ReqCtx, action: string, metadata?: Record<string, unknown>) { this.auditSvc?.record({ tenantId: ctx.tenantId, userId: ctx.userId, role: ctx.role }, { action, metadata }); }
 
   /** Schedule a request for a completed visit. System-invoked from checkout pay-success. Idempotent per visit. */
-  async scheduleForCompletedVisit(ctx: ReqCtx, visit: CompletedVisit, config: ReviewRequestPolicy, now: Date = new Date()): Promise<{ scheduled: boolean; requestId?: string; reason: string }> {
-    if (!ctx?.tenantId) throw new RequestForbiddenError('TENANT_REQUIRED');
-    if (!visit.customerId) return { scheduled: false, reason: 'no_customer' };
+  /** The ONE eligibility evaluation (consent, contact, cooldown, frequency cap, minimum value — never the rating), used by
+   *  scheduling and by the read-only dry-run preview. */
+  private async evaluate(ctx: ReqCtx, visit: CompletedVisit & { customerId: string }, config: ReviewRequestPolicy, now: Date) {
     const channel = config.channel === 'in_app' ? 'app' : config.channel;
     const checks: EligibilityChecks = {
       optedOut: await this.consent.isOptedOut(ctx, visit.customerId, channel),
@@ -48,9 +48,28 @@ export class ReviewRequestService {
       requestsInPeriod: await this.store.countInPeriod(ctx, visit.customerId, new Date(now.getTime() - config.cooldownDays * 86_400_000).toISOString()),
     };
     const elig = evaluateRequestEligibility(visit, config, checks, now);   // no rating passed — gating impossible
+    const idem = reviewRequestIdempotencyKey({ tenantId: ctx.tenantId, appointmentId: visit.appointmentId, ticketId: visit.ticketId, customerId: visit.customerId, channel });
+    return { channel, elig, idem };
+  }
+
+  /** Read-only dry run (Review & Reputation Settings extras 03): what scheduling WOULD decide for this visit under `config` —
+   *  the same evaluation, the same idempotency lookup and send-time rule — and writes nothing, audits nothing, sends nothing. */
+  async preview(ctx: ReqCtx, visit: CompletedVisit, config: ReviewRequestPolicy, now: Date = new Date()): Promise<{ eligible: boolean; reason: string; scheduledFor: string | null; channel: string }> {
+    if (!ctx?.tenantId) throw new RequestForbiddenError('TENANT_REQUIRED');
+    const channel0 = config.channel === 'in_app' ? 'app' : config.channel;
+    if (!visit.customerId) return { eligible: false, reason: 'no_customer', scheduledFor: null, channel: channel0 };
+    const { channel, elig, idem } = await this.evaluate(ctx, { ...visit, customerId: visit.customerId }, config, now);
+    if (!elig.eligible) return { eligible: false, reason: elig.reason, scheduledFor: null, channel };
+    if (await this.store.findByIdem(ctx, idem)) return { eligible: false, reason: 'already_requested', scheduledFor: null, channel };
+    return { eligible: true, reason: 'ok', scheduledFor: computeSendTime(visit.completedAt, config, now, visit.timeZone ?? null).toISOString(), channel };
+  }
+
+  async scheduleForCompletedVisit(ctx: ReqCtx, visit: CompletedVisit, config: ReviewRequestPolicy, now: Date = new Date()): Promise<{ scheduled: boolean; requestId?: string; reason: string }> {
+    if (!ctx?.tenantId) throw new RequestForbiddenError('TENANT_REQUIRED');
+    if (!visit.customerId) return { scheduled: false, reason: 'no_customer' };
+    const { channel, elig, idem } = await this.evaluate(ctx, { ...visit, customerId: visit.customerId }, config, now);
     if (!elig.eligible) { this.audit(ctx, 'review_request_skipped', { reason: elig.reason }); return { scheduled: false, reason: elig.reason }; }
 
-    const idem = reviewRequestIdempotencyKey({ tenantId: ctx.tenantId, appointmentId: visit.appointmentId, ticketId: visit.ticketId, customerId: visit.customerId, channel });
     const existing = await this.store.findByIdem(ctx, idem);
     if (existing) return { scheduled: false, requestId: existing.id, reason: 'already_requested' };   // idempotent
 

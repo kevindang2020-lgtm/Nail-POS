@@ -17,6 +17,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posReputationSettingsApi as api, type ReputationSettingsValues } from '../api/posReputationSettingsApi';
 import { errorTextOf } from '../i18n/error-text';
 import { statusLabel } from '../i18n/status-label';
+import { codeLabel } from '../components/peopleLabels';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
@@ -122,8 +123,15 @@ export function POSAIReviewReputationSettingsScreen() {
           <div className="kpi" data-testid="rssx-package"><div className="l">{t('rssx.strip.package')}</div><div className="v" style={{ fontSize: 15 }}>{t('rssx.ent.' + e.reason)}</div><div className="sub">{t('rssx.mode.' + e.enforcement)}</div></div>
           <div className="kpi" data-testid="rssx-sms"><div className="l">{t('rssx.strip.sms')}</div><div className="v" style={{ fontSize: 15 }}>{s.sms.configured ? t('rssx.sms.configured') : t('rssx.sms.notConfigured')}</div>
             {s.sms.lastError ? <div className="sub warn">{t('rssx.sms.validationFailed')}</div> : null}</div>
-          <div className="kpi" data-testid="rssx-providers"><div className="l">{t('rssx.strip.providers')}</div><div className="v" style={{ fontSize: 15 }}>{s.providers.connected ? t('rssx.providers.n', { n: fmtNumber(s.providers.connected) }) : t('rssx.providers.none')}</div></div>
+          <div className="kpi" data-testid="rssx-providers"><div className="l">{t('rssx.strip.providers')}</div><div className="v" style={{ fontSize: 15 }}>{s.providers.connected ? t('rssx.providers.n', { n: fmtNumber(s.providers.connected) }) : t('rssx.providers.none')}</div>
+            {s.providers.connected ? <div className="sub" data-testid="rssx-provider-sync">{s.providers.lastSuccessfulSyncAt ? t('rssx.fresh.lastSync', { at: when(s.providers.lastSuccessfulSyncAt) }) : t('rssx.fresh.neverSynced')}</div> : null}
+            {s.providers.failing ? <div className="sub warn" data-testid="rssx-provider-failing">{t('rssx.fresh.failing', { n: fmtNumber(s.providers.failing) })}</div> : null}</div>
         </div>
+        {s.publishQueue && (s.publishQueue.approvedNotPublished || s.publishQueue.publishFailed || rt.reviewRequests.overdueNotSent) ? <div className="panel" role="status" data-testid="rssx-risks" style={{ padding: 10, marginBottom: 10 }}>
+          {s.publishQueue.approvedNotPublished ? <div>{t('rssx.fresh.waiting', { n: fmtNumber(s.publishQueue.approvedNotPublished) })}</div> : null}
+          {s.publishQueue.publishFailed ? <div className="warn">{t('rssx.fresh.publishFailed', { n: fmtNumber(s.publishQueue.publishFailed) })}</div> : null}
+          {rt.reviewRequests.overdueNotSent ? <div className="warn">{t('rssx.fresh.overdue', { n: fmtNumber(rt.reviewRequests.overdueNotSent) })}</div> : null}
+        </div> : null}
 
         <div className="rvw-tabs" role="tablist" data-testid="rssx-tabs">
           {(['settings', 'history', 'health'] as const).map((x) => <button key={x} role="tab" aria-selected={tab === x} className={'btn ghost' + (tab === x ? ' on' : '')} data-testid={`tab-${x}`} onClick={() => setTab(x)}>{t('rssx.tab.' + x)}</button>)}
@@ -304,9 +312,22 @@ function HealthTab() {
           <div key={x.key} className="rvw-check" data-testid={`chk-${x.key}`}>
             <div><span className={'chip ' + (STATE_TONE[x.state] ?? '')} data-testid={`chk-${x.key}-state`}>{t('rssx.health.' + x.state)}</span> <b>{t('rssx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
             <div className="sub">{t('rssx.health.d.' + x.key + '.' + x.state)}</div>
+            {x.key === 'request_dry_run' && x.detail ? <DryRunLine d={x.detail} /> : null}
           </div>
         ))}
       </>}
     </section>
   );
+}
+
+/** Extras (Review & Reputation Settings 03): the server's dry run of the current request policy over the last 7 days of paid
+ *  visits — counts and reasons only, worded here; nothing was scheduled or sent. */
+type DryRunDetail = { days: number; visits: number; capped: boolean; wouldAsk: number; skipped: number; byReason: Record<string, number>; quietHoursShifted: number; channel: string; channelReady: boolean | null; requestsEnabled: boolean };
+function DryRunLine({ d }: { d: DryRunDetail }) {
+  const reasons = Object.entries(d.byReason).filter(([, n]) => n > 0).map(([r, n]) => `${codeLabel('rssx.dry.r.' + r, r)} ${fmtNumber(n)}`).join(' · ');
+  return <div className="sub" data-testid="rssx-dry-run">
+    <div>{t('rssx.dry.line', { days: fmtNumber(d.days), v: fmtNumber(d.visits) + (d.capped ? '+' : ''), a: fmtNumber(d.wouldAsk), s: fmtNumber(d.skipped) })}{reasons ? ` (${reasons})` : ''}</div>
+    <div>{t('rssx.dry.quiet', { n: fmtNumber(d.quietHoursShifted) })} {t('rssx.dry.channel', { c: codeLabel('rssx.dry.ch.' + d.channel, d.channel) })}{d.channelReady === false ? ' ' + t('rssx.dry.notReady') : ''}</div>
+    {!d.requestsEnabled ? <div>{t('rssx.dry.off')}</div> : null}
+  </div>;
 }
