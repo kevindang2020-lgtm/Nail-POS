@@ -14,6 +14,7 @@ import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitK
 import { RangeCalendar } from '../components/FinanceKit';
 import { bt, bzWhen, bzNum, bzValue, bzDays, BzHealthButton } from '../components/BusinessKit';
 import { BranchInsightsPanel } from './ai-business/BranchInsights';
+import { BranchSnapshotsPanel } from './ai-business/BranchSnapshots';
 import { reportError } from './reportsCommon';
 import { deviceToday } from '../lib/deviceToday';
 
@@ -161,6 +162,8 @@ export function POSAiBranchCompareScreen() {
       </section>
 
       <BranchInsightsPanel period={period} tick={tick} />
+      {/* AI BRANCH COMPARISON 14: save this comparison (frozen by the server) and sign off on it */}
+      <BranchSnapshotsPanel period={period} tick={tick} />
       {s ? <div className="sub" style={{ marginTop: 10 }}><Link className="link-44" to={s.drilldownRoute} style={{ color: 'var(--aps-orange)' }}>{bt('pos.open_the_sales_report')}</Link></div> : null}
       {s?.notes.length ? <ul className="sub" style={{ marginTop: 10, paddingLeft: 18 }}>{s.notes.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}</ul> : null}
 

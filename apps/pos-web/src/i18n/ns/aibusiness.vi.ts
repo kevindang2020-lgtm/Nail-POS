@@ -614,4 +614,26 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.l.r.no_staffing": "Chưa có giờ chấm công", // DRAFT — Kevin reviews
   "bcx.l.r.no_opening_hours": "Chưa đặt giờ mở cửa", // DRAFT — Kevin reviews
   "bcx.l.r.no_services": "Chưa có dịch vụ đã thanh toán", // DRAFT — Kevin reviews
+  "bcx.snap.title": "So sánh đã lưu & xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.sub": "Lưu so sánh này để giữ nguyên số liệu như hiện tại; người duyệt thêm ghi chú xác nhận. Ghi chú không bao giờ thay đổi số liệu đã lưu.", // DRAFT — Kevin reviews
+  "bcx.snap.save": "Lưu so sánh này", // DRAFT — Kevin reviews
+  "bcx.snap.namePh": "Tên (không bắt buộc)", // DRAFT — Kevin reviews
+  "bcx.snap.confirm": "Lưu", // DRAFT — Kevin reviews
+  "bcx.snap.saved": "Đã lưu so sánh. Số liệu sẽ không thay đổi.", // DRAFT — Kevin reviews
+  "bcx.snap.none": "Chưa có so sánh nào được lưu", // DRAFT — Kevin reviews
+  "bcx.snap.line": "{p} · đọc lúc {at} · lưu bởi {who} · {n} chi nhánh", // DRAFT — Kevin reviews
+  "bcx.snap.unreviewed": "Chưa được xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.d.approved": "Đã duyệt", // DRAFT — Kevin reviews
+  "bcx.snap.d.needs_follow_up": "Cần theo dõi", // DRAFT — Kevin reviews
+  "bcx.snap.d.noted": "Đã ghi nhận", // DRAFT — Kevin reviews
+  "bcx.snap.frozen": "Số liệu cho {p} đọc lúc {at}, lưu bởi {who}. Không thay đổi.", // DRAFT — Kevin reviews
+  "bcx.snap.moneyHidden": "Doanh thu bị ẩn với vai trò của bạn.", // DRAFT — Kevin reviews
+  "bcx.snap.signoffs": "Ghi chú xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.by": "— {who}, {at}", // DRAFT — Kevin reviews
+  "bcx.snap.decision": "Quyết định", // DRAFT — Kevin reviews
+  "bcx.snap.note": "Ghi chú (bắt buộc)", // DRAFT — Kevin reviews
+  "bcx.snap.sign": "Thêm xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.noteRequired": "Hãy viết ghi chú ngắn (ít nhất 3 ký tự).", // DRAFT — Kevin reviews
+  "bcx.snap.cannotSign": "Cần quyền xem số liệu doanh thu để xác nhận.", // DRAFT — Kevin reviews
+  "bcx.snap.rule": "Ghi chú xác nhận được giữ theo thứ tự và không thể sửa hay xóa. Không có gì ở đây thay đổi doanh thu, lịch hẹn hay lịch làm việc.", // DRAFT — Kevin reviews
 };
