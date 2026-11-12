@@ -606,3 +606,17 @@ for closed branches / unavailable services; AI Calendar vs POS Booking appointme
 Duplicate caught at merge: the pricing engine's combination rules existed twice (server inspector + a POS re-derivation).
 Now ONE: GET/PATCH pos/deals/settings return `stackingExplained` from the inspector; the POS copy is gone.
 New decision for Kevin: should STOP block booking verification codes? (today it does not).
+
+## Extras backlog — round 5 of the 5 parallel agents (Nov 12 2026)
+Merged extras-agent1..5: TODO 278 → 189 (counted from EXTRAS_BACKLOG.md). Highlights: Team/Technicians system checks
+(training, certificates, clock state, service mapping) + a CSV download on every Check … System; notification
+priority (derived at read); OCR receipt evidence beside the image; quarantined files never get a preview link; AI plan
+"Save $X" verified against member prices; email suppression / latency / recipient preview; refund escalation inbox;
+Money Protection batch triage (preview, then the existing single action per alert); evidence access log; device-log
+trace filter; tech-queue drawer survives live updates; win-back phone-verified filter; follow-ups refused when the
+visit was voided; receptionist capabilities; payout forecast; staffing skill gaps; AI front-desk knowledge drift;
+voice transcript quality + usage; phone policy / duplicate guard / suspicious-change review; campaign approval
+timeline, failure triage, compare; Campaign Center booking de-duplication (real bug: a twice-recorded booking counted
+twice); gift-card closeout reconciliation; coupon ROI parts per location; review activity checks; review-request dry
+run (scheduling and preview now share one evaluate()); AI package "why on / blocked" from the access gate itself.
+Merge fix: shared system-check test ids collided (pglite DB shared across the file) — agent 5's moved to 251–260.
