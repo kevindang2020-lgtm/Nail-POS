@@ -323,4 +323,34 @@ describe('POSExpensesScreen (Expenses guide)', () => {
     expect(screen.getByTestId('kpi-top')).toHaveTextContent('—');
     expect(screen.getByRole('button', { name: 'Try another date' })).toBeInTheDocument();
   });
+  it('duplicate workspace: a flagged expense is shown side by side with the server match; same fields marked; nothing changes until a decision', async () => {
+    m.expenses.mockResolvedValue(page([exp({ duplicateStatus: 'possible' })]));
+    const self = exp({ duplicateStatus: 'possible', invoiceNumber: 'INV-77', receiptNumber: null });
+    const saved = exp({ id: 'e9', status: 'approved', incurredOn: '2026-10-04', invoiceNumber: 'inv 77', receiptNumber: 'R1', description: 'Acetone refill', paymentMethod: 'cash' });
+    m.detail.mockImplementation(async (id: string) => id === 'e9'
+      ? { expense: saved, lineItems: [], allocations: [], documents: [], billPayments: [], history: [], duplicates: { status: 'none', matches: [] } }
+      : { expense: self, lineItems: [], allocations: [], documents: [], billPayments: [], history: [], duplicates: { status: 'possible', matches: [{ id: 'e9', status: 'possible', reason: 'Same vendor and total, one day apart.' }] } });
+    renderIt();
+    const dlg = await openView();
+    const table = await within(dlg).findByTestId('dup-compare-table');
+    expect(m.detail).toHaveBeenCalledWith('e9');
+    expect(within(dlg).getByTestId('dup-reason')).toHaveTextContent('Possible duplicate · Same vendor and total, one day apart.');
+    expect(within(table).getByTestId('dup-row-amount')).toHaveTextContent('$125.00$125.00');
+    expect(within(table).getByTestId('dup-same-amount')).toBeInTheDocument();
+    expect(within(table).getByTestId('dup-same-vendor')).toBeInTheDocument();
+    expect(within(table).getByTestId('dup-same-invoice')).toBeInTheDocument();   // INV-77 vs "inv 77" — same reference
+    expect(within(table).queryByTestId('dup-same-date')).toBeNull();
+    expect(within(table).queryByTestId('dup-same-receiptNo')).toBeNull();          // one side not recorded → not "same"
+    expect(within(table).getByTestId('dup-row-receiptNo')).toHaveTextContent('—R1');
+    expect(within(table).queryByTestId('dup-same-notes')).toBeNull();
+    expect(table).toHaveTextContent('Already saved · Approved');
+    expect(m.duplicateDecision).not.toHaveBeenCalled(); expect(m.approve).not.toHaveBeenCalled(); expect(m.update).not.toHaveBeenCalled();
+  });
+  it('duplicate workspace: absent when the expense is not flagged', async () => {
+    renderIt();
+    const dlg = await openView();
+    await within(dlg).findByTestId('view-fields');
+    expect(within(dlg).queryByTestId('dup-compare')).toBeNull();
+    expect(m.detail).toHaveBeenCalledTimes(1);
+  });
 });

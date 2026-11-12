@@ -31,6 +31,7 @@ import { BillsCalendar } from './expenses/BillsCalendar';
 import { AllocationCheck } from './expenses/AllocationCheck';
 import { ExportPreflightDialog } from './expenses/ExportPreflight';
 import { VendorRuleDialog } from './expenses/VendorRuleDialog';
+import { DuplicateCompare } from './expenses/DuplicateCompare';
 
 type Tab = ExpenseTab | 'all';
 const TABS: Tab[] = ['all', 'inbox', 'needs_review', 'approved', 'bills', 'duplicates', 'archived'];
@@ -371,6 +372,7 @@ function ExpenseView({ id, canManage, canApprove, can, catLabel, categories = []
           {x.rejectedReason ? <><dt>{tx('pos.reject')}</dt><dd>{x.rejectedReason}</dd></> : null}
           <dt>{tx('finance.ex.created', { d: '' }).trim()}</dt><dd>{x.createdAt ? fmtInZone(x.createdAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</dd>
         </dl>
+        {dup ? <DuplicateCompare self={x} matches={d.data?.duplicates?.matches ?? []} methodLabel={methodLabel} statusLabel={(s) => (STATUS_KEY[s] ? tx(STATUS_KEY[s]) : s)} /> : null}
         <AllocationCheck allocations={d.data?.allocations ?? []} amountCents={x.amountCents} branchId={x.branchId ?? null} counted={x.status === 'approved'} />
         {receipt ? (receipt.url ? <a className="fk-btn" href={receipt.url} target="_blank" rel="noreferrer noopener" data-testid="receipt-link">{tx('finance.ex.openReceipt')} ↗</a>
           : <div className="fk-hint">{tx('finance.ex.receiptPreviewOff')} <Link to="/tenant/ai/ocr-receipt">{tx('pos.receipt_ai_review')}</Link></div>) : null}

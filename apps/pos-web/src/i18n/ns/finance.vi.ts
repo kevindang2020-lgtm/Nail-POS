@@ -438,4 +438,22 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.ex.vendor.didYouMean": "Nhà cung cấp tương tự tiệm đã có — chạm để chọn:", // DRAFT — Kevin reviews
   "finance.ex.vendor.newOnApproval": "Nhà cung cấp mới — sẽ được thêm vào danh sách khi khoản chi này được duyệt.", // DRAFT — Kevin reviews
   "finance.ex.vendor.nearNote": "Giữ cách viết của bạn? Khoản chi sẽ không liên kết để tránh tạo nhà cung cấp trùng; chủ tiệm có thể liên kết sau.", // DRAFT — Kevin reviews
+  "finance.dup.title": "So sánh với chi phí đã lưu", // DRAFT — Kevin reviews
+  "finance.dup.match": "Trùng khớp {n}", // DRAFT — Kevin reviews
+  "finance.dup.exact": "Trùng hoàn toàn", // DRAFT — Kevin reviews
+  "finance.dup.possible": "Có thể trùng", // DRAFT — Kevin reviews
+  "finance.dup.loadFailed": "Không tải được chi phí trùng khớp.", // DRAFT — Kevin reviews
+  "finance.dup.field": "Mục", // DRAFT — Kevin reviews
+  "finance.dup.thisOne": "Chi phí này", // DRAFT — Kevin reviews
+  "finance.dup.savedOne": "Đã lưu trước", // DRAFT — Kevin reviews
+  "finance.dup.same": "Giống nhau", // DRAFT — Kevin reviews
+  "finance.dup.receiptNo": "Số hóa đơn mua hàng", // DRAFT — Kevin reviews
+  "finance.dup.noMatch": "Không còn so sánh được với chi phí trùng khớp (có thể đã bị hủy). Hãy quyết định bằng các nút bên dưới.", // DRAFT — Kevin reviews
+  "finance.dup.decideHint": "Quyết định bằng nút Không trùng hoặc Trùng bên dưới — lý do của bạn được lưu trong lịch sử chi phí này.", // DRAFT — Kevin reviews
+  "finance.dup.r.file": "Tệp hóa đơn này đã được tải lên trước đó.", // DRAFT — Kevin reviews
+  "finance.dup.r.invoice": "Cùng nhà cung cấp và số hóa đơn.", // DRAFT — Kevin reviews
+  "finance.dup.r.receipt": "Cùng nhà cung cấp, số hóa đơn mua hàng và tổng tiền.", // DRAFT — Kevin reviews
+  "finance.dup.r.sameDay": "Cùng nhà cung cấp, ngày và tổng tiền.", // DRAFT — Kevin reviews
+  "finance.dup.r.oneDay": "Cùng nhà cung cấp và tổng tiền, cách nhau một ngày.", // DRAFT — Kevin reviews
+  "finance.dup.r.photo": "Cùng tổng tiền và ngày, ảnh hóa đơn trông giống nhau.", // DRAFT — Kevin reviews
 };
