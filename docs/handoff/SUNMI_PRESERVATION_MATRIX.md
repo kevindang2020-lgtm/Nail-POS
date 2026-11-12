@@ -442,7 +442,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSServiceCategoriesScreen.tsx`
 - Guide: AI_PowerSalon_SERVICE_CATEGORIES
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.categories`, `posCatalogApi.category`, `posCatalogApi.categorySummary`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.reassign`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posServicesApi.archiveCategory`, `posServicesApi.create`, `posServicesApi.createCategory`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posServicesApi.updateCategory`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.categories`, `posCatalogApi.category`, `posCatalogApi.categorySummary`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.reassign`, `posCatalogApi.reviewDecision`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posServicesApi.archiveCategory`, `posServicesApi.create`, `posServicesApi.createCategory`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posServicesApi.updateCategory`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1555,7 +1555,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAICalendarScreen.tsx`
 - Guide: AI_PowerSalon_AI_Calendar
 - Scroll: vertical page scroll allowed (AI Calendar addendum: day grid and list scroll within their regions.)
-- API calls on this page: `posAiCalendarApi.assistant`, `posAiCalendarApi.day`, `posAiCalendarApi.detail`, `posAiCalendarApi.health`, `posAiCalendarApi.list`, `posAiCalendarApi.pendingHolds`, `posAiCalendarApi.range`, `posAiCalendarApi.summary`, `posCopilotCenterApi.activity`, `posCopilotCenterApi.confirm`, `posCopilotCenterApi.customer`, `posCopilotCenterApi.health`, `posCopilotCenterApi.overview`, `posCopilotCenterApi.prepare`, `posCopilotCenterApi.priorities`, `posCopilotCenterApi.search`
+- API calls on this page: `posAiCalendarApi.assistant`, `posAiCalendarApi.day`, `posAiCalendarApi.detail`, `posAiCalendarApi.health`, `posAiCalendarApi.list`, `posAiCalendarApi.pendingHolds`, `posAiCalendarApi.provenance`, `posAiCalendarApi.range`, `posAiCalendarApi.summary`, `posCopilotCenterApi.activity`, `posCopilotCenterApi.confirm`, `posCopilotCenterApi.customer`, `posCopilotCenterApi.health`, `posCopilotCenterApi.overview`, `posCopilotCenterApi.prepare`, `posCopilotCenterApi.priorities`, `posCopilotCenterApi.search`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1769,7 +1769,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAiForecastingScreen.tsx`, `screens/ForecastHistory.tsx`
 - Guide: AI_PowerSalon_AI_Analytics_Forecasting
 - Scroll: vertical page scroll allowed (AI Analytics & Forecasting SUNMI addendum: charts and the history list keep meaningful height; explicit page scrolling is allowed; no sideways scroll.)
-- API calls on this page: `posAiForecastingApi.accuracy`, `posAiForecastingApi.appointments`, `posAiForecastingApi.noShowRisk`, `posAiForecastingApi.readiness`, `posAiForecastingApi.revenue`
+- API calls on this page: `posAiForecastingApi.accuracy`, `posAiForecastingApi.appointments`, `posAiForecastingApi.noShowRisk`, `posAiForecastingApi.readiness`, `posAiForecastingApi.revenue`, `posAiForecastingApi.serviceDemand`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
