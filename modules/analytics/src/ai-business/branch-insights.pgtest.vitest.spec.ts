@@ -55,6 +55,25 @@ describe('A3 — fair scorecard', () => {
     expect(big.rank.perOperatingHour).toBe(1); expect(small.rank.perOperatingHour).toBeNull();
     expect(s.advice.map((a) => [a.branchName, a.kind])).toEqual(expect.arrayContaining([['Small Annex', 'no_opening_hours']]));
   });
+  it('BI-09 trend flags come from the EXISTING alert rules: triggered evaluations in the period per branch and metric; open incidents counted; salon-wide and out-of-period rows not attributed', async () => {
+    const rule = async (branch: string | null, metric: string) => (await q(`insert into ai_business_alerts (tenant_id, branch_id, created_by_user_id, title, metric_id, operator, threshold, preset, min_sample_size, frequency, channel, active)
+      values ($1,$2,$3,'r','${metric}','lt',50000,'week',1,'daily','in_app',true) returning id`, [T, branch, OWNER]))[0].id as string;
+    const ev = (rid: string, branch: string | null, metric: string, at: string, o: { triggered?: boolean; value?: number; status?: string | null; sampleOk?: boolean } = {}) =>
+      q(`insert into ai_business_alert_events (tenant_id, branch_id, alert_id, source, metric_id, operator, threshold, preset, value, sample_size, min_sample_size, sample_ok, triggered, state_change, evaluated_at, incident_status)
+        values ($1,$2,$3,'scheduled',$4,'lt',50000,'week',$5,10,1,$6,$7,'triggered',$8::timestamptz,$9)`, [T, branch, rid, metric, o.value ?? 30000, o.sampleOk ?? true, o.triggered ?? true, at, o.status === undefined ? 'open' : o.status]);
+    const rs = await rule(SMALL, 'net_sales'), rn = await rule(SMALL, 'no_show_rate'), rb = await rule(BIG, 'customer_retention'), rall = await rule(null, 'net_sales');
+    await ev(rs, SMALL, 'net_sales', '2026-11-03T15:00:00Z', { value: 40000, status: 'resolved' });
+    await ev(rs, SMALL, 'net_sales', '2026-11-05T15:00:00Z', { value: 30000 });                 // latest, still open
+    await ev(rs, SMALL, 'net_sales', '2026-10-20T15:00:00Z');                                    // before the week: not counted
+    await ev(rn, SMALL, 'no_show_rate', '2026-11-04T15:00:00Z', { triggered: false, status: null });   // evaluated, not triggered
+    await ev(rn, SMALL, 'no_show_rate', '2026-11-04T16:00:00Z', { sampleOk: false });                 // too small a sample
+    await ev(rb, BIG, 'customer_retention', '2026-11-06T10:00:00Z', { value: 20, status: 'resolved' });
+    await ev(rall, null, 'net_sales', '2026-11-04T15:00:00Z');                                   // salon-wide rule: no branch
+    const s = await bi.scorecard(ctx(), { preset: 'week' });
+    const small = s.rows.find((r) => r.branchId === SMALL)!, big = s.rows.find((r) => r.branchId === BIG)!;
+    expect(small.trendFlags).toEqual([{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00.000Z', route: '/tenant/ai/business/alerts' }]);
+    expect(big.trendFlags).toEqual([expect.objectContaining({ family: 'retention', metricId: 'customer_retention', unit: 'percent', triggered: 1, openIncidents: 0, latestValue: 20 })]);
+  });
   it('BI-02 opening hours honour closed days and effective dates', () => {
     const rows = [{ day_of_week: 1, opens_at: '09:00', closes_at: '17:30', is_closed: false }, { day_of_week: 0, opens_at: '10:00', closes_at: '15:00', is_closed: true },
       { day_of_week: 2, opens_at: '09:00', closes_at: '17:00', is_closed: false, effective_from: '2026-11-04' }];

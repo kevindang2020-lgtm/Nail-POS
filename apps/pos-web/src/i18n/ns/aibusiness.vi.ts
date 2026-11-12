@@ -575,4 +575,14 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.ready.r.small_sample": "{n} chi nhánh có ít hơn 5 lịch hẹn", // DRAFT — Kevin reviews
   "bcx.ready.r.revenue_hidden": "Doanh thu bị ẩn với vai trò của bạn", // DRAFT — Kevin reviews
   "bcx.ready.r.partial_period": "Hôm nay vẫn đang diễn ra", // DRAFT — Kevin reviews
+  "bcx.t.title": "Dấu hiệu xu hướng từ quy tắc cảnh báo", // DRAFT — Kevin reviews
+  "bcx.t.none": "Quy tắc cảnh báo không ghi nhận gì cho các chi nhánh này trong kỳ.", // DRAFT — Kevin reviews
+  "bcx.t.f.revenue": "Doanh thu", // DRAFT — Kevin reviews
+  "bcx.t.f.bookings": "Lịch hẹn", // DRAFT — Kevin reviews
+  "bcx.t.f.retention": "Giữ chân khách", // DRAFT — Kevin reviews
+  "bcx.t.f.other": "Khác", // DRAFT — Kevin reviews
+  "bcx.t.line": "{b}: {m} đã vượt quy tắc {n} lần — gần nhất {v} so với {t} ({at}).", // DRAFT — Kevin reviews
+  "bcx.t.open": "{n} vẫn đang mở.", // DRAFT — Kevin reviews
+  "bcx.t.go": "Mở cảnh báo", // DRAFT — Kevin reviews
+  "bcx.t.note": "Chỉ hiện các quy tắc đặt cho từng chi nhánh; quy tắc cho toàn tiệm nằm trong Cảnh báo AI Kinh doanh. Trang này không tự phát hiện gì.", // DRAFT — Kevin reviews
 };

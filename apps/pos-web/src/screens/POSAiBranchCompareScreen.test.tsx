@@ -9,7 +9,7 @@ const render1 = () => render(<MemoryRouter><POSAiBranchCompareScreen /></MemoryR
 
 const ROW = (o: any) => ({ status: 'active', timeZone: 'UTC', averageTicketCents: 5000, totalBookings: 10, completed: 9, completionRate: 90, noShowPercent: 2, cancelledPercent: 1, customers: 10, returningCustomers: 5, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
 const SC = { preset: 'month', range: null, financialsIncluded: true, notes: [], rows: [
-  ROW({ branchId: 'b1', branchName: 'Marlton', netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
+  ROW({ branchId: 'b1', branchName: 'Marlton', trendFlags: [{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00Z', route: '/tenant/ai/business/alerts' }], netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
   ROW({ branchId: 'b2', branchName: 'Deptford', netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
   advice: [{ branchId: 'b2', branchName: 'Deptford', kind: 'no_opening_hours', severity: 'info', message: 'x', basis: {}, route: '/tenant/management/locations' }] };
 beforeEach(() => { center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset(); });
@@ -25,6 +25,12 @@ describe('AI Branch Comparison screen', () => {
     expect(rows[1]).toHaveTextContent('Deptford');
     expect(rows[1]).toHaveTextContent('$100.00 · #1');
     expect(screen.getByTestId('bcx-advice')).toHaveTextContent('Deptford has no opening hours set');
+    // AI BRANCH COMPARISON 09: the existing alert rules' flags, worded, linking to Alerts
+    const tf = screen.getAllByTestId('bcx-trend');
+    expect(tf).toHaveLength(1);
+    expect(tf[0]).toHaveTextContent(/Revenue\s+Marlton: Net sales crossed its rule 2 time\(s\) — latest \$300\.00 against \$500\.00/);
+    expect(tf[0]).toHaveTextContent('1 still open.');
+    expect(within(tf[0]).getByRole('link', { name: 'Open alerts' }).getAttribute('href')).toBe('/tenant/ai/business/alerts');
     fireEvent.click(screen.getByTestId('bcx-explain'));
     fireEvent.click(await screen.findByTestId('bcx-e-run'));
     expect(center.branchExplain).toHaveBeenCalledWith({ preset: 'month', a: 'b1', b: 'b2' });

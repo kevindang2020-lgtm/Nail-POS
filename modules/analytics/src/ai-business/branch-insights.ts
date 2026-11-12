@@ -33,7 +33,15 @@ export interface ScorecardRow {
   technicianHours: number | null; operatingHours: number | null; customers: number; returningCustomers: number;
   netPerTechnicianHourCents: number | null; netPerOperatingHourCents: number | null; returningRate: number | null;
   rank: { perTechnicianHour: number | null; perOperatingHour: number | null; returningRate: number | null };
+  /** AI BRANCH COMPARISON 09: what the salon's EXISTING alert rules flagged for this branch in the period (no second detector) */
+  trendFlags?: TrendFlag[];
 }
+/** One metric family the existing AI Business Alerts engine triggered on for a branch: how many triggered evaluations, the
+ *  latest one's value vs its rule threshold, and how many of those incidents are still open. */
+export interface TrendFlag { family: 'revenue' | 'bookings' | 'retention' | 'other'; metricId: string; unit: 'cents' | 'percent' | 'count'; triggered: number; openIncidents: number; latestValue: number | null; threshold: number | null; operator: string; latestAt: string | null; route: string }
+/** the alert rules' own metrics (ALERT_METRICS) by family */
+const UNIT: Record<string, TrendFlag['unit']> = { net_sales: 'cents', average_ticket: 'cents', completed_appointments: 'count', cancellation_rate: 'percent', no_show_rate: 'percent', customer_retention: 'percent' };
+const FAMILY: Record<string, TrendFlag['family']> = { net_sales: 'revenue', average_ticket: 'revenue', completed_appointments: 'bookings', cancellation_rate: 'bookings', no_show_rate: 'bookings', customer_retention: 'retention' };
 export interface Advice { branchId: string; branchName: string; kind: string; severity: 'info' | 'warning'; message: string; basis: Record<string, number | string | null>; route: string }
 
 /** Opening hours over [from, to] from tenant_location_hours rows ({ day_of_week 0=Sun, opens_at 'HH:MM', closes_at, is_closed, effective_from/to }). */
@@ -138,6 +146,29 @@ export class BranchInsights {
         netPerOperatingHourCents: b.netSalesCents != null && opH ? Math.round(b.netSalesCents / opH) : null,
         returningRate: customers > 0 ? Math.round((returning / customers) * 100) : null,
         rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null } });
+    }
+    // AI BRANCH COMPARISON 09 — trend flags FROM the existing alerts engine (ai_business_alert_events written by its rules):
+    // triggered evaluations of a branch-scoped rule whose evaluated day falls in the period, per metric; salon-wide rules
+    // (no branch) are not attributed to a branch. Nothing is detected here.
+    const flagRange = cmp.range ?? presetRange(String(cmp.preset), new Date(this.now()), 'UTC');
+    type FlagRow = { branch_id: string; metric_id: string; operator: string; n: number; open_n: number; latest_value: string | number | null; latest_threshold: string | number | null; latest_at: Date | string | null };
+    const flagRows = ids.length ? (await sql<FlagRow>`select ev.branch_id, ev.metric_id, max(ev.operator) as operator, count(*)::int as n,
+          count(*) filter (where ev.incident_status in ('open', 'investigating', 'snoozed'))::int as open_n,
+          (array_agg(ev.value order by ev.evaluated_at desc, ev.id desc))[1] as latest_value, (array_agg(ev.threshold order by ev.evaluated_at desc, ev.id desc))[1] as latest_threshold,
+          max(ev.evaluated_at) as latest_at
+        from ai_business_alert_events ev
+        where ev.tenant_id = ${ctx.tenantId} and ev.branch_id = any(${ids}::uuid[]) and ev.triggered = true and ev.sample_ok = true
+          and (ev.evaluated_at at time zone coalesce((select bz.timezone from branches bz where bz.tenant_id = ev.tenant_id and bz.id = ev.branch_id), 'UTC'))::date between ${flagRange.from}::date and ${flagRange.to}::date
+        group by ev.branch_id, ev.metric_id order by ev.branch_id, count(*) desc, ev.metric_id`.execute(this.db)).rows : [];
+    for (const r of rows) {
+      r.trendFlags = flagRows.filter((f) => String(f.branch_id) === r.branchId).map((f) => {
+        const family = FAMILY[String(f.metric_id)] ?? 'other';
+        const money = family === 'revenue';
+        return { family, metricId: String(f.metric_id), unit: UNIT[String(f.metric_id)] ?? 'count', triggered: Number(f.n), openIncidents: Number(f.open_n),
+          latestValue: !cmp.financialsIncluded && money ? null : f.latest_value == null ? null : Number(f.latest_value),
+          threshold: !cmp.financialsIncluded && money ? null : f.latest_threshold == null ? null : Number(f.latest_threshold),
+          operator: String(f.operator), latestAt: f.latest_at == null ? null : new Date(f.latest_at).toISOString(), route: '/tenant/ai/business/alerts' };
+      });
     }
     const rankBy = (k: 'netPerTechnicianHourCents' | 'netPerOperatingHourCents' | 'returningRate', slot: keyof ScorecardRow['rank']) => {
       const sorted = rows.filter((r) => r[k] != null).sort((a, b) => (b[k] as number) - (a[k] as number));
