@@ -25,6 +25,19 @@ const INTENTS = ['all', 'new_booking', 'reschedule', 'cancellation', 'confirmati
 const DATES = ['call', 'summary', 'followup'] as const;
 const PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_month', 'year'] as const;
 const ITEMS = ['callback_requested', 'manager_requested', 'health_safety', 'refund_requested', 'complaint', 'pricing_unanswered'];
+const QUALITY = ['speaker_attribution', 'low_confidence', 'mixed_language', 'incomplete_recording', 'uncertain_booking_intent'];
+const pct = (v: unknown) => (v == null ? '—' : `${Math.round(Number(v) * 100)}%`);
+function qualityDetail(f: { code: string; evidence: Record<string, unknown> }): string {
+  const e = f.evidence ?? {};
+  switch (f.code) {
+    case 'speaker_attribution': return t('vcx.q.d.speaker', { n: String(e.unattributedSegments ?? '—'), total: String(e.totalSegments ?? '—') });
+    case 'low_confidence': return t('vcx.q.d.low', { c: pct(e.transcriptConfidence), n: String(e.uncertainSegments ?? 0) });
+    case 'mixed_language': return t('vcx.q.d.mixed', { l: Array.isArray(e.languages) && e.languages.length ? e.languages.join(', ') : '—', c: pct(e.languageConfidence) });
+    case 'incomplete_recording': return t('vcx.q.d.incomplete', { stored: String(e.storedSegments ?? '—'), expected: String(e.expectedSegments ?? '—'), covered: e.coveredSeconds == null ? '—' : String(e.coveredSeconds), dur: e.durationSeconds == null ? '—' : String(e.durationSeconds) });
+    case 'uncertain_booking_intent': return t('vcx.q.d.intent', { r: pct(e.requestConfidence), i: pct(e.bookingIntentConfidence) });
+    default: return '';
+  }
+}
 const SPEAKERS = ['customer', 'ai_receptionist', 'human_receptionist', 'technician', 'manager', 'additional_caller'];
 const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAILED: 'bad', INSUFFICIENT_DATA: '', UNAVAILABLE: 'bad' };
 const STATUS_TONE: Record<string, string> = { completed: 'ok', processing: 'warn', review: 'warn', failed: 'bad', not_transcribed: '' };
@@ -232,6 +245,11 @@ function CallDialog({ id, terms, onClose }: { id: string; terms: string; onClose
           {d.booking.basis === 'same_customer_within_24h' ? <div className="sub">{t('vcx.d.booking.basis')}</div> : null}
           {d.booking.providerReported ? <div className="sub" data-testid="vcx-booking-reported">{t('vcx.d.booking.reported', { o: statusLabel(['voiceBooking', 'state'], d.booking.providerReported) })}</div> : null}
         </section> : null}
+        {/* Voice Call History extras 04: the server's advisory transcript-quality flags; the transcript below stays as stored */}
+        {d.quality?.flags?.length ? <section style={{ marginTop: 10 }} data-testid="vcx-call-quality"><div className="p-h">{t('vcx.q.title')}</div>
+          {d.quality.flags.map((f: { code: string; evidence: Record<string, unknown> }) => <div key={f.code} className="rvw-ev" data-testid={'vcx-q-' + f.code}>
+            <span className="chip warn">{QUALITY.includes(f.code) ? t('vcx.q.' + f.code) : f.code}</span> <span className="sub">{qualityDetail(f)}</span></div>)}
+          <div className="sub">{t('vcx.q.note')}</div></section> : null}
         <section style={{ marginTop: 10 }} data-testid="vcx-call-follow"><div className="p-h">{t('vcx.d.follow')}</div>
           {d.followUps.length ? d.followUps.map((u: any) => <div key={u.type} className="rvw-ev"><b>{t('vcx.item.' + known(ITEMS, u.type))}</b> <span className={'chip ' + (FOLLOW_TONE[u.state] ?? '')}>{t('vcx.follow.' + known(FOLLOW, u.state))}</span></div>)
             : <div className="sub">{t('vcx.d.noFollow')}</div>}</section>

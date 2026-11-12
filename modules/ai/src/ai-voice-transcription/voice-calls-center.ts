@@ -51,6 +51,44 @@ export const VC_GROUP: Record<string, string[]> = {
   failed: ['provider_error', 'failed', 'audio_unavailable'],
   not_transcribed: ['transcription_disabled', 'consent_missing', 'consent_declined', 'recording_disabled'],
 };
+// Voice Call History extras 04 — transcript quality flags. Advisory only: computed from what the provider stored (speaker
+// roles, confidences, languages, segment coverage, the extracted request) so a person reviews before trusting the words.
+// The original transcript, its provenance and the human review workflow are untouched.
+export const VC_QUALITY_FLAGS = ['speaker_attribution', 'low_confidence', 'mixed_language', 'incomplete_recording', 'uncertain_booking_intent'] as const;
+export type VcQualityFlag = { code: typeof VC_QUALITY_FLAGS[number]; evidence: Record<string, unknown> };
+const VC_LOW_CONF = 0.6;            // the same line the transcript uses to mark a segment "uncertain"
+const VC_INTENT_SURE = 0.7;         // an extracted booking request below this is "uncertain"
+const VC_INCOMPLETE_STATUSES = ['partial', 'audio_unavailable', 'provider_error', 'failed', 'manual_review_required'];
+export function transcriptQualityFlags(h: { status?: string | null; confidence?: unknown; language_confidence?: unknown; mixed_language?: boolean | null; primary_language?: string | null;
+  duration_seconds?: unknown; segment_count?: unknown },
+segs: { speaker_role?: string | null; language?: string | null; confidence?: unknown; end_ms?: unknown }[],
+intel: { intents?: unknown; appointment?: unknown } | null): VcQualityFlag[] {
+  const out: VcQualityFlag[] = [];
+  const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
+  if (segs.length) {
+    const unknown = segs.filter((x) => !x.speaker_role || x.speaker_role === 'unknown').length;
+    if (unknown > 0) out.push({ code: 'speaker_attribution', evidence: { unattributedSegments: unknown, totalSegments: segs.length } });
+  }
+  const tc = num(h.confidence); const uncertain = segs.filter((x) => num(x.confidence) != null && Number(x.confidence) < VC_LOW_CONF).length;
+  if (h.status === 'low_confidence' || (tc != null && tc < VC_LOW_CONF) || uncertain > 0) out.push({ code: 'low_confidence', evidence: { transcriptConfidence: tc, uncertainSegments: uncertain, status: h.status ?? null } });
+  const langs = [...new Set(segs.map((x) => String(x.language ?? '').trim().toLowerCase().slice(0, 2)).filter(Boolean))].sort();
+  const lc = num(h.language_confidence);
+  if (h.mixed_language || langs.length > 1 || (lc != null && lc < VC_LOW_CONF)) out.push({ code: 'mixed_language', evidence: { languages: langs.length ? langs : (h.primary_language ? [h.primary_language] : []), languageConfidence: lc, providerMarkedMixed: !!h.mixed_language } });
+  const expected = num(h.segment_count) ?? 0; const dur = num(h.duration_seconds);
+  const lastEnd = segs.reduce((m, x) => Math.max(m, num(x.end_ms) ?? 0), 0);
+  const covered = lastEnd > 0 ? Math.round(lastEnd / 1000) : null;
+  const shortTail = dur != null && dur > 0 && covered != null && dur - covered >= 10 && covered < dur * 0.75;
+  if (VC_INCOMPLETE_STATUSES.includes(String(h.status)) || expected > segs.length || shortTail)
+    out.push({ code: 'incomplete_recording', evidence: { status: h.status ?? null, expectedSegments: expected, storedSegments: segs.length, coveredSeconds: covered, durationSeconds: dur } });
+  const appt = intel?.appointment && typeof intel.appointment === 'object' ? intel.appointment as Record<string, unknown> : null;
+  const hasRequest = !!appt && ((Array.isArray(appt.requestedServices) && appt.requestedServices.length > 0) || !!appt.preferredDate || !!appt.preferredTime || !!appt.requestedTechnician);
+  const reqConf = hasRequest ? num(appt!.confidence) : null;
+  const bookingIntent = (Array.isArray(intel?.intents) ? intel!.intents as { intent?: string; confidence?: unknown }[] : []).find((x) => x?.intent === 'booking' || x?.intent === 'appointment');
+  const intentConf = bookingIntent ? num(bookingIntent.confidence) : null;
+  if ((hasRequest && (reqConf == null || reqConf < VC_INTENT_SURE)) || (intentConf != null && intentConf < VC_INTENT_SURE))
+    out.push({ code: 'uncertain_booking_intent', evidence: { requestConfidence: reqConf, bookingIntentConfidence: intentConf } });
+  return out;
+}
 const groupOf = (s: string) => Object.keys(VC_GROUP).find((g) => VC_GROUP[g].includes(s)) ?? 'other';
 const DONE_TASK = ['resolved', 'closed'];
 const HEALTH_GAP_SECONDS = 30;
@@ -120,7 +158,7 @@ export class VoiceCallsCenter {
   private calls(ctx: VcCtx) {
     const T = ctx.tenantId;
     return sql`(select t.id, t.provider, t.provider_call_id, t.customer_id, t.branch_id, t.direction, t.handler, t.status, t.redaction_status, t.primary_language,
-          t.mixed_language, t.duration_seconds, t.segment_count, t.created_at, t.updated_at,
+          t.mixed_language, t.duration_seconds, t.segment_count, t.confidence, t.language_confidence, t.created_at, t.updated_at,
           i.quick_summary, i.intents, i.appointment, i.created_at as summary_at, coalesce(jsonb_array_length(i.unresolved), 0) as items,
           fu.open_items, fu.task_items, fu.last_decision_at
         from call_transcripts t
@@ -310,6 +348,7 @@ export class VoiceCallsCenter {
           state: st, taskId: rv?.follow_up_id ? String(rv.follow_up_id) : null };
       }),
       canWorkFollowUps: has(ctx, 'communications.manage') || has(ctx, 'ai.manage'),
+      quality: { flags: transcriptQualityFlags(r, segs, intel ?? null), advisory: true },
     };
   }
 

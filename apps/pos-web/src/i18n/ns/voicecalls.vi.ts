@@ -238,4 +238,16 @@ export const VOICECALLS_VI: Record<string, string> = {
   "vcx.d.booking.hidden": "Vai trò của bạn không xem được thông tin khách, nên kết quả đặt lịch không được đối chiếu ở đây.", // DRAFT — Kevin reviews
   "vcx.d.booking.noCustomer": "Cuộc gọi này chưa liên kết với khách nào, nên không thể truy ra lịch hẹn.", // DRAFT — Kevin reviews
   "vcx.d.booking.reported": "Trợ lý giọng nói báo cáo: {o} (báo cáo của nhà cung cấp, không phải bản ghi đặt lịch)", // DRAFT — Kevin reviews
+  "vcx.q.title": "Chất lượng bản ghi lời", // DRAFT — Kevin reviews
+  "vcx.q.speaker_attribution": "Không rõ người nói", // DRAFT — Kevin reviews
+  "vcx.q.low_confidence": "Độ tin cậy thấp", // DRAFT — Kevin reviews
+  "vcx.q.mixed_language": "Nhiều ngôn ngữ", // DRAFT — Kevin reviews
+  "vcx.q.incomplete_recording": "Ghi âm không đầy đủ", // DRAFT — Kevin reviews
+  "vcx.q.uncertain_booking_intent": "Yêu cầu đặt lịch chưa chắc chắn", // DRAFT — Kevin reviews
+  "vcx.q.d.speaker": "{n} trong {total} dòng chưa xác định người nói.", // DRAFT — Kevin reviews
+  "vcx.q.d.low": "Độ tin cậy bản ghi {c}; {n} dòng được đánh dấu không rõ.", // DRAFT — Kevin reviews
+  "vcx.q.d.mixed": "Ngôn ngữ nghe được: {l}; độ tin cậy ngôn ngữ {c}.", // DRAFT — Kevin reviews
+  "vcx.q.d.incomplete": "Đã lưu {stored} trong {expected} dòng; lời nói phủ {covered}s của cuộc gọi {dur}s.", // DRAFT — Kevin reviews
+  "vcx.q.d.intent": "Độ tin cậy yêu cầu {r}; độ tin cậy ý định đặt lịch {i}.", // DRAFT — Kevin reviews
+  "vcx.q.note": "Đây là cảnh báo để người kiểm tra lại. Bản ghi lời được hiển thị đúng như đã lưu; không có gì bị thay đổi.", // DRAFT — Kevin reviews
 };
