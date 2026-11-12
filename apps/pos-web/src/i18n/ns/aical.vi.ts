@@ -207,4 +207,21 @@ export const AICAL_VI: Record<string, string> = {
   "aical.channel.phone_call": "Cuộc gọi", // DRAFT — Kevin reviews
   "aical.channel.kiosk": "Máy kiosk", // DRAFT — Kevin reviews
   "aical.channel.walk_in": "Khách vãng lai", // DRAFT — Kevin reviews
+  "aical.tab.timeline": "Dòng thời gian", // DRAFT — Kevin reviews
+  "aical.tl.none": "Không có bước nào được ghi cho lịch hẹn này.", // DRAFT — Kevin reviews
+  "aical.tl.noTime": "không ghi thời gian", // DRAFT — Kevin reviews
+  "aical.tl.held": "Đã giữ chỗ", // DRAFT — Kevin reviews
+  "aical.tl.hold_released": "Đã hủy giữ chỗ", // DRAFT — Kevin reviews
+  "aical.tl.otp_sent": "Đã gửi mã", // DRAFT — Kevin reviews
+  "aical.tl.otp_verified": "Đã xác minh mã", // DRAFT — Kevin reviews
+  "aical.tl.otp_failed": "Kiểm tra mã thất bại", // DRAFT — Kevin reviews
+  "aical.tl.otp_expired": "Mã đã hết hạn", // DRAFT — Kevin reviews
+  "aical.tl.otp_locked": "Mã bị khóa (nhập sai quá nhiều)", // DRAFT — Kevin reviews
+  "aical.tl.otp_canceled": "Mã đã bị hủy", // DRAFT — Kevin reviews
+  "aical.tl.booked": "Đã đặt lịch hẹn", // DRAFT — Kevin reviews
+  "aical.tl.status": "Trạng thái → {s}", // DRAFT — Kevin reviews
+  "aical.tl.ref.booking_holds": "giữ chỗ", // DRAFT — Kevin reviews
+  "aical.tl.ref.booking_verification_sessions": "xác minh", // DRAFT — Kevin reviews
+  "aical.tl.ref.pos_tech_appointments": "lịch hẹn", // DRAFT — Kevin reviews
+  "aical.tl.ref.appointment_change_log": "thay đổi", // DRAFT — Kevin reviews
 };

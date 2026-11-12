@@ -42,6 +42,7 @@ vi.mock('../api/posAiCalendarApi', () => ({ posAiCalendarApi: {
 
 import { POSAIBusinessSetupScreen, setupListState } from './POSAIBusinessSetupScreen';
 import { POSAICalendarScreen } from './POSAICalendarScreen';
+import { posAiCalendarApi } from '../api/posAiCalendarApi';
 
 describe('POSAIBusinessSetupScreen', () => {
   it('FAQ Duplicate Warning: a new question that asks the same thing shows the existing one; Add stays enabled', async () => {
@@ -92,6 +93,34 @@ describe('POSAICalendarScreen', () => {
     expect(rows[0].textContent).toMatch(/12:00–13:00/); expect(rows[0].textContent).toMatch(/Expiring soon/);
     expect(screen.getAllByTestId('aic-pq-left').map((x) => x.textContent)).toEqual([expect.stringMatching(/^4 min/), expect.stringMatching(/^40 min/)]);
     expect(screen.getByTestId('aic-pending').textContent).toMatch(/1 waiting for a code/);
+  });
+});
+
+describe('AI Calendar extras #02 — Verified Appointment Timeline tab', () => {
+  it('lists the stored steps in order with their row ids; a recorded status outside the known words still reads', async () => {
+    const base = { overview: { id: 'bk1', date: '2026-07-04', start: '10:00', end: '10:30', status: 'completed', source: 'online', aiCreated: false, aiEvidence: 'x', verification: 'verified', timeZone: 'America/New_York', createdAt: null, updatedAt: null },
+      customer: { name: 'Ann', phone: '•••0142', email: null, phoneVerified: true, contactMasked: true }, services: [], technician: null, bookingHistory: [], unreadable: [], aiActivity: { toolResults: [], copilotActions: [] },
+      verificationAndHolds: [], communications: { reminders: [], messages: [] }, auditTrail: [], links: { openBooking: '/booking', customer: null, technicianSchedule: null } };
+    const api = posAiCalendarApi as unknown as { detail: (id: string) => Promise<unknown> };
+    const orig = api.detail;
+    api.detail = () => Promise.resolve({ ...base, timeline: [
+      { step: 'held', at: '2026-07-01T15:00:00Z', ref: { table: 'booking_holds', id: 'aaaaaaaa-1111-4000-8000-000000000001' }, detail: 'online' },
+      { step: 'otp_sent', at: '2026-07-01T15:01:00Z', ref: { table: 'booking_verification_sessions', id: 'bbbbbbbb-1111-4000-8000-000000000002' }, detail: 'online' },
+      { step: 'otp_verified', at: '2026-07-01T15:03:00Z', ref: { table: 'booking_verification_sessions', id: 'bbbbbbbb-1111-4000-8000-000000000002' }, detail: null },
+      { step: 'booked', at: '2026-07-01T15:05:00Z', ref: { table: 'pos_tech_appointments', id: 'cccccccc-1111-4000-8000-000000000003' }, detail: 'online' },
+      { step: 'status:checked_in', at: '2026-07-04T13:55:00Z', ref: { table: 'appointment_change_log', id: 'dddddddd-1111-4000-8000-000000000004' }, detail: 'from booked' },
+      { step: 'status:started', at: '2026-07-04T14:00:00Z', ref: { table: 'appointment_change_log', id: 'eeeeeeee-1111-4000-8000-000000000005' }, detail: null }] });
+    try {
+      render(<MemoryRouter><POSAICalendarScreen /></MemoryRouter>);
+      fireEvent.click(await screen.findByText('Ann'));
+      fireEvent.click(await screen.findByTestId('aic-tab-timeline'));
+      const items = (await screen.findByTestId('aic-timeline')).querySelectorAll('li');
+      expect([...items].map((li) => li.getAttribute('data-step'))).toEqual(['held', 'otp_sent', 'otp_verified', 'booked', 'status:checked_in', 'status:started']);
+      expect(items[0]!.textContent).toMatch(/Slot held/); expect(items[0]!.textContent).toMatch(/hold aaaaaaaa/);
+      expect(items[2]!.textContent).toMatch(/Code verified/); expect(items[4]!.textContent).toMatch(/Status → Checked in/);
+      expect(items[5]!.textContent).not.toMatch(/aical\.|undefined/);
+      expect(items[3]!.querySelector('code')!.getAttribute('title')).toBe('cccccccc-1111-4000-8000-000000000003');
+    } finally { api.detail = orig; }
   });
 });
 

@@ -113,7 +113,15 @@ export interface PeriodInput { preset?: unknown; from?: unknown; to?: unknown; b
 /** A19 Nov 6: where the search looks (all = name, email, phone, ids, services); spend bands in cents */
 export const SEARCH_SCOPES = ['all', 'name', 'phone', 'email', 'service', 'id'] as const;
 export const SPEND_BANDS = { low: [0, 10_000], mid: [10_000, 50_000], high: [50_000, null] } as const;
-export interface ListFilters extends PeriodInput { segment?: string; q?: string; sort?: string; scope?: string; category?: string; technician?: string; spend?: string; basis?: string; band?: string; sms?: string; email?: string; future?: string; minDays?: unknown; minVisits?: unknown; page?: unknown; pageSize?: unknown }
+/** Win-Back §01: a North American area code (3 digits, first 2–9) matched against the stored E.164 number (+1 NPA NXX XXXX) */
+export const AREA_CODE_RE = /^[2-9][0-9]{2}$/;
+export function areaCodeOf(v: unknown): string | null {
+  const raw = typeof v === 'string' ? v.trim() : '';
+  if (!raw) return null;
+  if (!AREA_CODE_RE.test(raw)) throw new RetentionError('Enter a 3-digit area code, for example 856.', 'RETENTION_INVALID_FILTER', 400, { field: 'areaCode' });
+  return raw;
+}
+export interface ListFilters extends PeriodInput { areaCode?: string; segment?: string; q?: string; sort?: string; scope?: string; category?: string; technician?: string; spend?: string; basis?: string; band?: string; sms?: string; email?: string; future?: string; minDays?: unknown; minVisits?: unknown; page?: unknown; pageSize?: unknown }
 /** Win-Back guide §06: the inactivity presets (salon days since the last completed visit); custom = any whole number 1–3650 */
 export const INACTIVITY_PRESETS = [30, 60, 90, 120] as const;
 /** the resolved window every read uses: salon time zone, the period [start, end) and the effective thresholds */
@@ -358,8 +366,10 @@ export class RetentionRepository {
     if (f.email === 'eligible') parts.push(sql`b.email_status = 'eligible'`); else if (f.email === 'not_eligible') parts.push(sql`b.email_status <> 'eligible'`);
     else if (f.email === 'opted_out') parts.push(sql`(b.email_status = 'opted_out' or b.sms_status = 'opted_out')`);
     if (f.future === 'yes') parts.push(sql`b.next_date is not null`); else if (f.future === 'no') parts.push(sql`b.next_date is null`);
+    const areaCode = areaCodeOf(f.areaCode);
+    if (areaCode) parts.push(sql`coalesce(b.normalized_phone, '') ~ ${'^\\+1' + areaCode + '[0-9]{7}$'}`);   // this salon's stored numbers only (b is tenant-keyed)
     return { where: sql.join(parts, sql` and `), applied: { scope: pick(SEARCH_SCOPES, f.scope) ?? 'all', category: isUuid(f.category) ? f.category : null, technician: isUuid(f.technician) ? f.technician : null, spend: sb ? f.spend : null, basis, band: band ?? null, sms: f.sms === 'eligible' || f.sms === 'not_eligible' ? f.sms : null, minVisits: minVisits || null,
-      minDays, email: ['eligible', 'not_eligible', 'opted_out'].includes(String(f.email)) ? String(f.email) : null, future: f.future === 'yes' || f.future === 'no' ? f.future : null } };
+      minDays, email: ['eligible', 'not_eligible', 'opted_out'].includes(String(f.email)) ? String(f.email) : null, future: f.future === 'yes' || f.future === 'no' ? f.future : null, areaCode } };
   }
   /** spec §10: All Customers = newest profile first; Win-Back (At Risk) = Smart Priority; the others their natural order */
   private defaultSort(seg: RetentionSegment): RetentionSort {

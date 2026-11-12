@@ -230,4 +230,35 @@ describe('Customer Retention — status is text + shape, not colour alone (extra
     expect(navigate).toHaveBeenLastCalledWith('/tenant/account/activity-logs?module=retention&search=cmp-1111-2222');
     expect(api.confirm).not.toHaveBeenCalled(); expect(api.saveSettings).not.toHaveBeenCalled();   // navigation only — nothing is sent or changed
   });
+  it('Win-Back §01/§02/§07: Area Code searches at 3 digits, reaches the list query and the select-all filter; an empty code result says so honestly', async () => {
+    api.customers.mockImplementation(async (q: any) => (q.areaCode === '609' ? list([], { totalItems: 0 }) : list(AT_RISK)));
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    const box = screen.getByTestId('flt-areacode');
+    fireEvent.change(box, { target: { value: '8a5' } });            // non-digits dropped, incomplete → not sent, hint shown
+    expect(box).toHaveValue('85'); expect(screen.getByTestId('flt-areacode-hint')).toHaveTextContent('Enter 3 digits');
+    expect(api.customers).not.toHaveBeenCalledWith(expect.objectContaining({ areaCode: expect.anything() }));
+    fireEvent.change(box, { target: { value: '856' } });
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ areaCode: '856', page: 1 })));
+    expect(await screen.findByTestId('rt-areacode-count')).toHaveTextContent('Area code 856: 2 matching');
+    expect(screen.queryByTestId('flt-areacode-hint')).toBeNull();
+    fireEvent.click(screen.getByTestId('select-all-matching'));
+    fireEvent.click(await screen.findByTestId('select-all-confirm'));
+    fireEvent.click(screen.getByTestId('send-sms'));
+    fireEvent.change(await screen.findByRole('textbox', { name: /message/i }), { target: { value: 'We miss you, come back soon!' } });
+    fireEvent.click(screen.getByTestId('sms-preview'));
+    await waitFor(() => expect(api.preview).toHaveBeenCalledWith(expect.objectContaining({ selection: expect.objectContaining({ areaCode: '856' }) })));
+  });
+
+  it('Win-Back §07: a code with no stored numbers shows the empty result with examples and a clear button', async () => {
+    api.customers.mockImplementation(async (q: any) => (q.areaCode === '609' ? list([], { totalItems: 0 }) : list(AT_RISK)));
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    fireEvent.change(screen.getByTestId('flt-areacode'), { target: { value: '609' } });
+    expect(await screen.findByText('No stored numbers with area code 609')).toBeInTheDocument();
+    expect(screen.getByTestId('rt-areacode-empty')).toHaveTextContent('Only this salon');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear area code' }));
+    expect(await screen.findByText('Ana Rivera')).toBeInTheDocument();
+    expect(screen.getByTestId('flt-areacode')).toHaveValue('');
+  });
 });

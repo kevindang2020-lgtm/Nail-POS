@@ -81,7 +81,7 @@ export const RETENTION_SMS_PREVIEW_BODY: BodySchema = S.object({
   selection: S.nullable(S.object({ segment: str(32), q: str(120), excludeIds: S.nullable(S.array(S.uuid(), { maxItems: 5000 })),
     preset: str(16), from: str(10), to: str(10), basis: str(24), band: str(12), sms: str(16), minVisits: S.nullable(S.integer()), sort: str(24), branch: str(40),
     email: str(16), future: str(8), minDays: S.nullable(S.integer()),
-    scope: str(16), category: str(40), technician: str(40), spend: str(8) })),   // A19 Nov 6 filters   // listFilters() reads these too
+    scope: str(16), category: str(40), technician: str(40), spend: str(8), areaCode: str(3) })),   // A19 Nov 6 filters · Win-Back §01 area code   // listFilters() reads these too
   body: S.text(600), label: str(120), audience: S.nullable(S.enumOf(['win_back', 'first_visit'])),
 }, ['body']);
 /** PUT /pos/retention/settings — the salon's thresholds (Complete Build Guide §05), optimistic version */

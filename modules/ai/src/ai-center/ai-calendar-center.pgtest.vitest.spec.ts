@@ -228,6 +228,29 @@ describe('T40/T42 overlay, T44 health, T43 assistant', () => {
     const n = (await sql<any>`select count(*)::int c from audit_events where tenant_id = ${T} and module = 'ai_calendar' and resource_id = ${id}`.execute(db)).rows[0].c;
     expect(n).toBe(2);
   });
+  it('extras #02 Verified Appointment Timeline: held → code sent → verified → booked → confirmed → checked in → completed, each with its stored row id; no code or phone', async () => {
+    const id = await appt({ tech: TECH[3], date: '2026-11-25', s: '10:00', e: '10:45', source: 'online', cust: C1, created: '2026-11-20T15:05:00Z' });
+    const hold = randomUUID(), vs = randomUUID(), sess = randomUUID();
+    await q(sql`insert into booking_holds (id, tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status, booking_session_id, channel, converted_appointment_id, created_at)
+      values (${hold}, ${T}, ${B}, ${TECH[3]}, ${local('2026-11-25', '10:00')}, ${local('2026-11-25', '10:45')}, '2026-11-20T15:10:00Z', 'converted', ${sess}, 'online', ${id}, '2026-11-20T15:00:00Z')`);
+    await q(sql`insert into booking_verification_sessions (id, tenant_id, branch_id, booking_session_id, booking_hold_id, customer_id, phone_hash, phone_mask, channel, status, expires_at, last_sent_at, verified_at, created_at)
+      values (${vs}, ${T}, ${B}, ${sess}, ${hold}, ${C1}, 'h4sh', '•••0142', 'online', 'verified', '2026-11-20T15:10:00Z', '2026-11-20T15:01:00Z', '2026-11-20T15:03:00Z', '2026-11-20T15:01:00Z')`);
+    const ch = async (from: string | null, to: string, at: string) => { const cid = randomUUID(); await q(sql`insert into appointment_change_log (id, tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, source, created_at)
+      values (${cid}, ${T}, ${B}, ${id}, 'status_changed', 'status', ${from}, ${to}, 'pos', ${at}::timestamptz)`); return cid; };
+    const c1 = await ch('booked', 'confirmed', '2026-11-21T14:00:00Z'); await ch('confirmed', 'checked_in', '2026-11-25T14:55:00Z'); const c3 = await ch('checked_in', 'completed', '2026-11-25T15:50:00Z');
+    await q(sql`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, source) values (${T}, ${B}, ${id}, 'updated', 'notes', 'a', 'b', 'pos')`);   // not a status step
+    const d = await cal.detail(OWNER, id);
+    expect(d.timeline.map((x) => x.step)).toEqual(['held', 'otp_sent', 'otp_verified', 'booked', 'status:confirmed', 'status:checked_in', 'status:completed']);
+    expect(d.timeline[0]!.ref).toEqual({ table: 'booking_holds', id: hold });
+    expect(d.timeline[2]!.ref).toEqual({ table: 'booking_verification_sessions', id: vs });
+    expect(d.timeline[3]!.ref).toEqual({ table: 'pos_tech_appointments', id });
+    expect(d.timeline[4]!.ref.id).toBe(c1); expect(d.timeline[6]!.ref.id).toBe(c3); expect(d.timeline[6]!.detail).toBe('from checked_in');
+    expect(JSON.stringify(d.timeline)).not.toMatch(/h4sh|0142/);
+    // an appointment with no hold and no recorded change has ONE step: booked (nothing inferred)
+    const bare = await appt({ tech: TECH[3], date: '2026-11-26', s: '10:00', e: '10:45', status: 'confirmed' });
+    expect((await cal.detail(OWNER, bare)).timeline.map((x) => x.step)).toEqual(['booked']);
+  });
+
   it('health: 8 groups, parity READY, a real overlap is FAILED, the run is recorded and a repeat within 30 s returns it', async () => {
     // legacy data from before the exclusion constraint (this spec's own database only): an unapproved overlap
     await q(sql`alter table pos_tech_appointments drop constraint pos_tech_appointments_no_overlap`);

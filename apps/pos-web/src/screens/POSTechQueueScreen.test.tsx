@@ -27,6 +27,22 @@ describe('POSTechQueueScreen', () => {
     expect(document.querySelector('.tq-mix-c .fk-li-s')?.textContent).toBe('—');
   });
 
+  it('TECH QUEUE extras #11: throughput shows numerator / denominator and the salon day; no data says so (never 0 %)', async () => {
+    const thru = { businessDate: '2026-11-12', timeZone: 'America/New_York', checkedInGuests: 4, completedServices: 3, servedRatePercent: 75, serviceMinutes: 90, timedServices: 2, avgTurnMinutes: 45 };
+    globalThis.fetch = mockFetch({ ...state, analytics: { utilizationTrend: [], serviceMixByTechnician: [], serviceCategories: [], assignmentSource: [], assignmentSourceTotal: 0, topRevenueTechs: [], throughput: thru } }) as any;
+    const { unmount } = render(<MemoryRouter><POSTechQueueScreen /></MemoryRouter>);
+    const line = await screen.findByTestId('tq-throughput');
+    expect(line).toHaveTextContent('Salon day 2026-11-12: 3 of 4 checked-in guests served (75%)');
+    expect(line).toHaveTextContent('Avg turn 45 min = 90 min ÷ 2 timed services');
+    expect(line.getAttribute('title')).toMatch(/America\/New_York/);
+    unmount();
+    globalThis.fetch = mockFetch({ ...state, analytics: { utilizationTrend: [], serviceMixByTechnician: [], serviceCategories: [], assignmentSource: [], assignmentSourceTotal: 0, topRevenueTechs: [],
+      throughput: { ...thru, checkedInGuests: 0, completedServices: 0, servedRatePercent: null, serviceMinutes: 0, timedServices: 0, avgTurnMinutes: null } } }) as any;
+    render(<MemoryRouter><POSTechQueueScreen /></MemoryRouter>);
+    const none = await screen.findByTestId('tq-throughput');
+    expect(none).toHaveTextContent('No queue activity yet on salon day 2026-11-12'); expect(none).not.toHaveTextContent('%');
+  });
+
   it('renders AI Assignment Insights + Available Technicians from lanes', async () => {
     const withLanes = {
       kpis: { assignedTickets: 2, waitingForAcceptance: 1, acceptedTickets: 1, readyToStart: 0, delayedTickets: 1, activeTechnicians: 1, availableTechnicians: 1, averageAssignedWaitMinutes: 12, laborRevenueTodayCents: 84050, utilizationTodayPercent: 72, upsellCapturePercent: 40 },

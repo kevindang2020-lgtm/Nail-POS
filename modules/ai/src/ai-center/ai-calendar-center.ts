@@ -325,6 +325,11 @@ export class AiCalendarCenter {
     const reminders = (await sql<Row>`select state, channel, intended_send_at, appt_start_at, created_at from appointment_reminders_sent where tenant_id = ${T} and appointment_id = ${id} order by created_at desc limit 10`.execute(this.db).catch(() => { unreadable.add('messages'); return { rows: [] as Row[] }; })).rows;
     const msgs = c ? (await sql<Row>`select channel, status, provider_status, purpose, created_at, delivered_at from notifications where tenant_id = ${T} and customer_id = ${c.id} order by created_at desc, id desc limit 10`.execute(this.db).catch(() => { unreadable.add('messages'); return { rows: [] as Row[] }; })).rows : [];
     const audit = (await sql<Row>`select action, summary, occurred_at, module from audit_events where tenant_id = ${T} and resource_id = ${id} order by occurred_at desc limit 25`.execute(this.db).catch(() => { unreadable.add('audit'); return { rows: [] as Row[] }; })).rows;
+    // AI Calendar extras #02 Verified Appointment Timeline: only steps with a stored row (id + time); never a code, a phone or a provider id
+    const verif = holds.length ? (await sql<Row>`select v.id, v.booking_hold_id, v.status, v.channel, v.last_sent_at, v.verified_at, v.updated_at, v.attempt_count from booking_verification_sessions v
+      where v.tenant_id = ${T} and v.booking_hold_id = any(${holds.map((h) => String(h.id))}::uuid[]) order by v.created_at asc, v.id asc limit 20`.execute(this.db)).rows : [];
+    const changes = (await sql<Row>`select cl.id, cl.change_type, cl.field, cl.old_value, cl.new_value, cl.actor_type, cl.source, cl.created_at from appointment_change_log cl
+      where cl.tenant_id = ${T} and cl.appointment_id = ${id} and (cl.field = 'status' or cl.change_type = 'cancelled') order by cl.created_at asc, cl.id asc limit 50`.execute(this.db)).rows;
     const history = c ? (await sql<Row>`select id, appt_date::text d, start_time, status, source from pos_tech_appointments where tenant_id = ${T} and customer_id = ${c.id} and id <> ${id} order by appt_date desc, start_time desc, id desc limit 10`.execute(this.db)).rows : [];
     await recordAuditStrict(this.db, { tenantId: T, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role }, {
       module: 'ai_calendar', action: 'appointment_overlay.viewed', resourceType: 'appointment', resourceId: id, summary: 'Appointment details viewed in AI Calendar',
@@ -346,6 +351,7 @@ export class AiCalendarCenter {
       communications: { reminders: reminders.map((r) => ({ state: r.state, channel: r.channel, intendedAt: iso(r.intended_send_at), forStart: iso(r.appt_start_at) })),
         messages: msgs.map((m) => ({ channel: m.channel, purpose: m.purpose ?? null, state: m.status === 'failed' ? 'failed' : m.delivered_at ? 'delivered' : m.provider_status ? 'provider_accepted' : 'unknown', at: iso(m.created_at) })) },
       auditTrail: audit.map((x) => ({ module: x.module, action: x.action, summary: x.summary, at: iso(x.occurred_at) })),
+      timeline: buildAppointmentTimeline({ id: String(a.id), createdAt: a.created_at, source: a.source ?? null, status: a.status ?? null }, holds, verif, changes),
       links: { openBooking: `/booking?date=${a.appt_day}&appointmentId=${a.id}`, customer: c ? `/tenant/customers/profiles?customerId=${c.id}` : null, technicianSchedule: a.technician_id ? `/booking?date=${a.appt_day}&technicianId=${a.technician_id}` : null },
     };
   }
@@ -477,4 +483,37 @@ export class AiCalendarCenter {
       note: 'Inspect both appointments. Moving one goes through Review → Confirm with the canonical Booking rules; nothing moves by itself.', proposal: { type: 'reschedule_review', appointmentId: o.b, date: o.d } });
     return { date, timeZone: clk.tz, checkedAt, cards, guarantee: 'Suggestions only. Every change is reviewed and confirmed by staff and executed by POS Booking.' };
   }
+}
+
+/** AI Calendar extras #02 — one auditable step of an appointment's verified timeline; `ref` = the stored row it comes from */
+export interface AicTimelineStep { step: string; at: string | null; ref: { table: 'booking_holds' | 'booking_verification_sessions' | 'pos_tech_appointments' | 'appointment_change_log'; id: string }; detail: string | null }
+/** Pure: held → code sent → code verified (or failed / expired / locked / canceled) → booked → each recorded status change, oldest first.
+ *  A step appears only when its row and time exist (no inferred "confirmed" without a recorded change); codes are never read. */
+export type AicTimelineRow = Record<string, any>;
+export function buildAppointmentTimeline(a: { id: string; createdAt: unknown; source: string | null; status: string | null }, holds: AicTimelineRow[], verif: AicTimelineRow[], changes: AicTimelineRow[]): AicTimelineStep[] {
+  const at = (v: unknown) => (v ? iso(v) : null);
+  const out: AicTimelineStep[] = [];
+  for (const h of holds) {
+    out.push({ step: 'held', at: at(h.created_at), ref: { table: 'booking_holds', id: String(h.id) }, detail: h.channel ?? null });
+    if (h.released_at) out.push({ step: 'hold_released', at: at(h.released_at), ref: { table: 'booking_holds', id: String(h.id) }, detail: h.release_reason ?? null });
+  }
+  for (const v of verif) {
+    const ref = { table: 'booking_verification_sessions' as const, id: String(v.id) };
+    if (v.last_sent_at) out.push({ step: 'otp_sent', at: at(v.last_sent_at), ref, detail: v.channel ?? null });
+    if (v.verified_at) out.push({ step: 'otp_verified', at: at(v.verified_at), ref, detail: null });
+    else if (['failed', 'expired', 'locked', 'canceled'].includes(String(v.status))) out.push({ step: 'otp_' + String(v.status), at: at(v.updated_at), ref, detail: v.attempt_count != null ? `attempts ${Number(v.attempt_count)}` : null });
+  }
+  out.push({ step: 'booked', at: at(a.createdAt), ref: { table: 'pos_tech_appointments', id: a.id }, detail: a.source });
+  for (const ch of changes) {
+    const to = ch.change_type === 'cancelled' && ch.field !== 'status' ? 'cancelled' : String(ch.new_value ?? '');
+    if (!to) continue;
+    out.push({ step: 'status:' + to, at: at(ch.created_at), ref: { table: 'appointment_change_log', id: String(ch.id) }, detail: ch.old_value != null ? `from ${String(ch.old_value)}` : null });
+  }
+  const rank = (st: string) => ['held', 'otp_sent', 'otp_verified', 'otp_failed', 'otp_expired', 'otp_locked', 'otp_canceled', 'hold_released', 'booked'].indexOf(st);
+  return out.map((x, i) => ({ x, i })).sort((p, q) => {
+    const ta = p.x.at ? Date.parse(p.x.at) : Number.POSITIVE_INFINITY, tb = q.x.at ? Date.parse(q.x.at) : Number.POSITIVE_INFINITY;
+    if (ta !== tb) return ta - tb;
+    const ra = rank(p.x.step), rb = rank(q.x.step);
+    return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb) || p.i - q.i;
+  }).map((y) => y.x);
 }

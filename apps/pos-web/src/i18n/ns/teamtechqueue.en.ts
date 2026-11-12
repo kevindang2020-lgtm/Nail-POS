@@ -104,4 +104,9 @@ export const TEAMTECHQUEUE_EN = {
   'tq.ev.no_show': 'No-show',
   'tq.ev.paid': 'Paid',
   'tq.hold.AWAITING_MANAGER_POSITION': 'Waiting for a manager to set her place',
+  'tq.thru.none': 'No queue activity yet on salon day {d}',
+  'tq.thru.served': 'Salon day {d}: {done} of {n} checked-in guests served ({p})',
+  'tq.thru.turn': 'Avg turn {a} min = {m} min ÷ {n} timed services',
+  'tq.thru.turnNone': 'Avg turn: no timed services yet',
+  'tq.thru.rule': 'Served = tickets marked service done today ÷ guests checked in today. Salon day in {tz}.',
 };

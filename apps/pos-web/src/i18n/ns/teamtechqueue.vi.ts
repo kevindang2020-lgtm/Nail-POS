@@ -104,4 +104,9 @@ export const TEAMTECHQUEUE_VI = {
   'tq.ev.no_show': 'Vắng mặt',
   'tq.ev.paid': 'Đã thanh toán',
   'tq.hold.AWAITING_MANAGER_POSITION': 'Chờ quản lý xếp vị trí',
+  'tq.thru.none': 'Chưa có hoạt động hàng chờ trong ngày {d}', // DRAFT — Kevin reviews
+  'tq.thru.served': 'Ngày {d}: đã phục vụ {done} trên {n} khách đã check-in ({p})', // DRAFT — Kevin reviews
+  'tq.thru.turn': 'Thời gian phục vụ TB {a} phút = {m} phút ÷ {n} dịch vụ có giờ', // DRAFT — Kevin reviews
+  'tq.thru.turnNone': 'Thời gian phục vụ TB: chưa có dịch vụ có giờ', // DRAFT — Kevin reviews
+  'tq.thru.rule': 'Đã phục vụ = phiếu đã xong dịch vụ hôm nay ÷ khách check-in hôm nay. Ngày của tiệm theo {tz}.', // DRAFT — Kevin reviews
 };
