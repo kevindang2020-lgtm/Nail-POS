@@ -25,6 +25,10 @@ const SIZES = [10, 20, 50] as const;
 const TABS = ['all', 'sms', 'email', 'failed', 'blocked', 'pending', 'unknown', 'optouts'] as const;
 const BASES = ['created', 'delivered', 'callback'] as const;
 const TYPES = ['receipt', 'reminder', 'followup', 'marketing', 'account', 'notification', 'conversation', 'unknown'] as const;
+/** extras CN-05: the server's read-time priority class (customer-notifications cnPriorityOf) — shown and filtered, never derived here */
+const PRIORITIES = ['urgent', 'transactional', 'information', 'marketing', 'unclassified'] as const;
+const PRIORITY_TONE: Record<string, string> = { urgent: 'bad', transactional: 'info', information: 'mut', marketing: 'warn', unclassified: 'mut' };
+function PriorityChip({ p }: { p: string | null | undefined }) { return p ? <span className={'fk-chip cn-mini ' + (PRIORITY_TONE[p] ?? 'mut')} data-testid={'cn-prio-' + p}>{tx('cn.prio.' + p)}</span> : null; }
 const TONE: Record<string, string> = { delivered: 'ok', sent: 'info', pending: 'mut', unknown: 'warn', failed: 'bad', blocked: 'bad', simulated: 'mut', received: 'info', ready: 'ok', pending_h: 'mut', attention: 'warn', not_applicable: 'mut' };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const nf = (n: number) => fmtNumber(n);
@@ -55,6 +59,7 @@ export function POSNotificationsScreen() {
   const pageSize = (SIZES as readonly number[]).includes(Number(sp.get('size'))) ? Number(sp.get('size')) : 20;
   const basis = (BASES as readonly string[]).includes(sp.get('basis') ?? '') ? String(sp.get('basis')) : 'created';
   const type = (TYPES as readonly string[]).includes(sp.get('type') ?? '') ? String(sp.get('type')) : '';
+  const priority = (PRIORITIES as readonly string[]).includes(sp.get('priority') ?? '') ? String(sp.get('priority')) : '';
   const sort = sp.get('sort') === 'oldest' ? 'oldest' : 'newest';
   const period = periodState(sp);
   const record = UUID.test(sp.get('record') ?? '') ? String(sp.get('record')) : null;
@@ -76,7 +81,7 @@ export function POSNotificationsScreen() {
   const sq = JSON.stringify({ ...periodQuery(period), basis });
   useEffect(() => { setSumErr(null); api.summary(JSON.parse(sq)).then(setSummary, setSumErr); }, [sq, reload]);
   useEffect(() => { api.health().then(setHealth, () => setHealth(null)); api.incidents({}).then(setIncidents, () => setIncidents(null)); }, [reload]);
-  const lq = JSON.stringify({ ...periodQuery(period), basis, tab: tab === 'optouts' ? 'all' : tab, type: type || undefined, sort, q: q || undefined, page, pageSize });
+  const lq = JSON.stringify({ ...periodQuery(period), basis, tab: tab === 'optouts' ? 'all' : tab, type: type || undefined, priority: priority || undefined, sort, q: q || undefined, page, pageSize });
   useEffect(() => {
     if (tab === 'optouts') return;
     const my = ++seq.current; setListErr(null);
@@ -85,7 +90,7 @@ export function POSNotificationsScreen() {
   useRealtime(['notifications', 'communications'], () => refresh(), { intervalMs: SYNC_POLICY.detailMs });
 
   const k = summary?.kpis; const tz = summary?.window.tz;
-  const anyFilter = !!(search || type || sp.get('preset') || sp.get('basis') || sp.get('sort') || (tab !== 'all' && tab !== 'optouts'));
+  const anyFilter = !!(search || type || priority || sp.get('preset') || sp.get('basis') || sp.get('sort') || (tab !== 'all' && tab !== 'optouts'));
   if (sumErr && isForbidden(sumErr)) return <div className="work"><div className="err" style={{ marginTop: 12 }} data-testid="cn-forbidden">{tx('cn.noPermission')}</div></div>;
   const openIncidents = (incidents?.items ?? []).filter((i) => i.status === 'new' || i.status === 'acknowledged' || i.status === 'in_progress');
 
@@ -133,10 +138,13 @@ export function POSNotificationsScreen() {
             <select className="fk-select" aria-label={tx('cn.col.type')} value={type} onChange={(e) => setView({ type: e.target.value || null })} data-testid="cn-type">
               <option value="">{tx('cn.allTypes')}</option>{TYPES.map((x) => <option key={x} value={x}>{typeLabel(x)}</option>)}
             </select>
+            <select className="fk-select" aria-label={tx('cn.prio.label')} value={priority} onChange={(e) => setView({ priority: e.target.value || null })} data-testid="cn-priority">
+              <option value="">{tx('cn.prio.all')}</option>{PRIORITIES.map((x) => <option key={x} value={x}>{tx('cn.prio.' + x)}</option>)}
+            </select>
             <select className="fk-select" aria-label={tx('pos.sort_by')} value={sort} onChange={(e) => setView({ sort: e.target.value === 'newest' ? null : e.target.value })} data-testid="cn-sort">
               <option value="newest">↓ {tx('cn.col.when')}</option><option value="oldest">↑ {tx('cn.col.when')}</option>
             </select>
-            {anyFilter ? <button type="button" className="fk-link" onClick={() => { setSearch(''); setView({ type: null, preset: null, from: null, to: null, basis: null, sort: null, tab: null }); }} data-testid="cn-clear">{tx('cn.clearAll')}</button> : null}
+            {anyFilter ? <button type="button" className="fk-link" onClick={() => { setSearch(''); setView({ type: null, priority: null, preset: null, from: null, to: null, basis: null, sort: null, tab: null }); }} data-testid="cn-clear">{tx('cn.clearAll')}</button> : null}
           </div>
           <PeriodBar compact allowAll value={period} server={serverOf(summary?.window)}
             onChange={(p) => setView(p.preset === 'custom' ? { preset: 'custom', from: p.from ?? null, to: p.to ?? null } : { preset: p.preset === 'month' ? null : p.preset, from: null, to: null })}
@@ -177,7 +185,7 @@ export function POSNotificationsScreen() {
                       <td>{r.customer ? <button type="button" className="fk-link" onClick={() => setDlg({ kind: 'timeline', customerId: r.customer!.id })} data-testid="cn-cust">{r.customer.name ?? '—'}</button> : <span className="fk-muted">{tx('cn.unknownCustomer')}</span>}</td>
                       <td className="nowrap" data-testid="cn-recipient">{r.recipient}{!r.recipientValid ? <span className="fk-chip bad cn-mini">!</span> : null}</td>
                       <td>{tx('cn.ch.' + r.channel)}</td>
-                      <td>{typeLabel(r.type)}</td>
+                      <td>{typeLabel(r.type)} <PriorityChip p={r.priority} /></td>
                       <td><Chip s={r.state} />{r.resent ? <span className="fk-chip info cn-mini" data-testid="cn-resent">{tx('cn.resent')}</span> : null}{r.retryOf ? <span className="fk-chip mut cn-mini" title={tx('cn.retryOf')}>↻</span> : null}</td>
                       <td className="cn-detail">{r.failure ? <><b>{tx('cn.fc.' + r.failure.category)}</b>{r.detail ? <span className="fk-muted"> — {r.detail}</span> : null}</> : (r.detail ?? '')}</td>
                       <td><button type="button" className="fk-btn ghost sm" onClick={() => setView({ record: r.id, page })} data-testid="cn-view">{tx('cn.view')}</button></td>
@@ -236,7 +244,7 @@ function DetailDialog({ id, tz, onClose, onTimeline, onGo, onChanged, onNote }: 
   };
   const L = d?.links ?? {};
   return (
-    <FitDialog title={tx('cn.d.title')} subtitle={d ? <span>{d.header.category ? typeLabel(d.header.category) + ' · ' : ''}<Chip s={d.state} /> {d.customer?.name ?? ''}</span> : undefined} onClose={onClose} wide side testId="cn-detail"
+    <FitDialog title={tx('cn.d.title')} subtitle={d ? <span>{d.header.category ? typeLabel(d.header.category) + ' · ' : ''}<Chip s={d.state} /> <PriorityChip p={d.priority} /> {d.customer?.name ?? ''}</span> : undefined} onClose={onClose} wide side testId="cn-detail"
       footer={<button type="button" className="fk-btn ghost" onClick={onClose} data-testid="cn-detail-close">{tx('cn.d.close')}</button>}>
       {e ? <ErrorRetry message={errText(e)} onRetry={load} /> : !d ? <div className="state">{tx('cn.loading')}</div> : (
         <div className="cn-detail-body">

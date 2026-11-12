@@ -278,4 +278,11 @@ export const CUSTNOTIF_EN = {
   "cn.o.done": "Re-subscribed. The consent note is kept in the history.",
   "cn.o.rules": "STOP / HELP / START from the customer's phone are handled automatically. A customer's STOP cannot be overridden by staff.",
   "cn.d.acceptedNoTime": "Accepted by the provider (time not recorded)",
+  "cn.prio.label": "Priority",
+  "cn.prio.all": "All priorities",
+  "cn.prio.urgent": "Urgent · security",
+  "cn.prio.transactional": "Transactional",
+  "cn.prio.information": "Information",
+  "cn.prio.marketing": "Marketing",
+  "cn.prio.unclassified": "Not classified",
 };

@@ -20,6 +20,7 @@ const LIST_SPEC = {
     preset: PRESET, tab: { type: 'enum', values: ['all', 'sms', 'email', 'failed', 'blocked', 'pending', 'unknown', 'delivered'] },
     basis: { type: 'enum', values: ['created', 'delivered', 'callback'] }, status: { type: 'enum', values: ['sent', 'delivered', 'failed', 'blocked', 'simulated'] },
     channel: { type: 'enum', values: ['sms', 'email'] }, type: { type: 'enum', values: ['receipt', 'reminder', 'followup', 'marketing', 'account', 'notification', 'conversation', 'unknown'] },
+    priority: { type: 'enum', values: ['urgent', 'transactional', 'information', 'marketing', 'unclassified'] },   // extras CN-05: read-time class from the purpose
     branchId: { type: 'uuid' },
   },
   sort: { allowed: ['newest', 'oldest'], default: 'newest' }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 20, dateRange: { maxDays: 3700 }, params: ['page'],
@@ -50,7 +51,7 @@ export class CustomerNotificationsController {
 
   @Get('records') @RequirePermission('pos.communications.view') @ListQuery(LIST_SPEC)
   list(@Req() r: any, @Query() q: any) {
-    return run(() => this.c().list(ctxOf(r), { q: s(q?.q), tab: s(q?.tab), basis: s(q?.basis), status: s(q?.status), channel: s(q?.channel), type: s(q?.type), branchId: s(q?.branchId),
+    return run(() => this.c().list(ctxOf(r), { q: s(q?.q), tab: s(q?.tab), basis: s(q?.basis), status: s(q?.status), channel: s(q?.channel), type: s(q?.type), priority: s(q?.priority), branchId: s(q?.branchId),
       sort: s(q?.sort), preset: s(q?.preset), from: s(q?.from), to: s(q?.to), page: q?.page, pageSize: q?.pageSize ?? q?.limit }));
   }
 
@@ -58,7 +59,7 @@ export class CustomerNotificationsController {
   @AsyncExport({ kind: 'pos.customer-notifications.export' }) @Get('records/export') @RequirePermission('pos.communications.view') @ListQuery({ ...LIST_SPEC, maxLimit: undefined, defaultLimit: undefined })
   @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="customer-notifications.csv"')
   exportCsv(@Req() r: any, @Query() q: any) {
-    return run(() => this.c().exportCsv(ctxOf(r), { q: s(q?.q), tab: s(q?.tab), basis: s(q?.basis), status: s(q?.status), channel: s(q?.channel), type: s(q?.type), branchId: s(q?.branchId),
+    return run(() => this.c().exportCsv(ctxOf(r), { q: s(q?.q), tab: s(q?.tab), basis: s(q?.basis), status: s(q?.status), channel: s(q?.channel), type: s(q?.type), priority: s(q?.priority), branchId: s(q?.branchId),
       sort: s(q?.sort), preset: s(q?.preset), from: s(q?.from), to: s(q?.to) }));
   }
 

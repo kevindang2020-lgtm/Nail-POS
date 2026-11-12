@@ -33,6 +33,8 @@ export interface PosAiPlan {
   state: string; trialEndsAt: string | null; cancelledAt: string | null; canCancel: boolean;
   /** members this salon already has on their own (SUNMI purchase-overlap preview); absent from older servers */
   overlap?: { owned: { code: string; name: string; status: string; monthlyPriceCents: number }[]; ownedMonthlyCents: number };
+  /** extras AI Plans #03: the server's price check against the members bought separately; absent from older servers */
+  priceCheck?: { standaloneCents: number; realSavingsCents: number; claimedSavingsCents: number; state: 'verified' | 'overstated' | 'no_saving' | 'unknown' };
   packages: PosAiPlanPkg[];
 }
 

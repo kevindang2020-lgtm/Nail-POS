@@ -892,4 +892,18 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.customers.kpiScope.branch': 'Khách của chi nhánh này cùng các hồ sơ chung của tiệm', // DRAFT — Kevin reviews
   'people.customers.kpiScope.salon': 'Tất cả khách của tiệm', // DRAFT — Kevin reviews
   'people.customers.kpiScope.tz': 'múi giờ {tz}', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.item': 'Mục', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.qty': 'SL', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.unit': 'Đơn giá', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.lineTotal': 'Thành tiền', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.subtotal': 'Tạm tính', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.tax': 'Thuế', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.fees': 'Phí', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.discount': 'Giảm giá', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.total': 'Tổng', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.check.line_items_vs_subtotal': 'Các dòng mục cộng lại khớp', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.check.components_vs_total': 'Tạm tính + thuế + phí − giảm giá bằng tổng', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.mismatch': 'cần {expected}, đọc được {actual} ({delta})', // DRAFT — Kevin reviews
+  'people.receiptAi.ev.noCheck': 'Chưa đọc đủ số tiền để kiểm tra phép tính.', // DRAFT — Kevin reviews
+  'people.receiptAi.previewBlocked': 'Đã chặn xem trước: lần quét bảo mật chưa xác nhận tệp này an toàn. Hãy bấm Quét lại.', // DRAFT — Kevin reviews
 };

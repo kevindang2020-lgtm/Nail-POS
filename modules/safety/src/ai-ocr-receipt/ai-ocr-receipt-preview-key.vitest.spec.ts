@@ -22,3 +22,24 @@ describe('previewUrl with no storage key', () => {
     await expect(svc.previewUrl(ctx, 'doc-1', 'tenants/tenant-a/documents/doc-1/original.png')).resolves.toBe('https://signed');
   });
 });
+
+describe('extras Receipt Document Recognition #02 — unsafe preview blocked', () => {
+  it('a quarantined or still-scanning document gets no signed link (422 MALWARE_QUARANTINE); a cleared one does', async () => {
+    let state = 'quarantined'; const signed: string[] = [];
+    const docs: any = { get: async () => ({ id: 'doc-1', pipelineState: state }) };
+    const files: any = { signedPreview: async (_c: unknown, k: string) => { signed.push(k); return 'https://signed'; } };
+    const svc = new (AiOcrReceiptService as any)(docs, {}, files, {}, {}, {});
+    const ctx: any = { tenantId: 'tenant-a', branchId: 'b', userId: 'u', permissions: [] };
+    const key = 'tenants/tenant-a/documents/doc-1/original.png';
+    for (const s of ['quarantined', 'scanning']) {
+      state = s;
+      const err = await svc.previewUrl(ctx, 'doc-1', key).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(OcrError);
+      expect(err).toMatchObject({ code: 'MALWARE_QUARANTINE', status: 422 });
+    }
+    expect(signed).toEqual([]);
+    state = 'review_required';
+    await expect(svc.previewUrl(ctx, 'doc-1', key)).resolves.toBe('https://signed');
+    expect(signed).toEqual([key]);
+  });
+});

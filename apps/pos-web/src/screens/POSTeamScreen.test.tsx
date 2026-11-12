@@ -137,6 +137,12 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(await screen.findByTestId('training')).toHaveTextContent('Not configured');   // no rings when the catalog is not configured
   });
 
+  it('extras TM-08: the header has the read-only team health check (training, certificates, waiting approvals)', async () => {
+    mount();
+    await screen.findAllByTestId('member-row');
+    expect(screen.getByTestId('syschk-team')).toHaveTextContent('Check system');
+  });
+
   it('search goes to the server (the whole salon, not the page) and resets to page 1', async () => {
     mount(); await screen.findAllByTestId('member-row');
     fireEvent.change(screen.getByTestId('search'), { target: { value: '(856) 555-7001' } });

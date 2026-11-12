@@ -39,6 +39,25 @@ export const CN_BASES = ['created', 'delivered', 'callback'] as const;
 export const CN_SORTS = ['newest', 'oldest'] as const;
 export const CN_TYPES = ['receipt', 'reminder', 'followup', 'marketing', 'account', 'notification', 'conversation', 'unknown'] as const;
 export const CN_STATUSES = ['sent', 'delivered', 'failed', 'blocked', 'simulated'] as const;
+/**
+ * Notification priority (extras: Customer Notifications #05) — a READ-TIME class derived from the message's stored purpose,
+ * so urgent security messages are separated from transactional notices, information and marketing without changing a
+ * single ledger row (the original event history stays exactly as written). The mapping lives here, once; the POS shows it.
+ *   urgent        account / security codes (sign-in, phone change, booking verification codes)
+ *   transactional receipts, appointment reminders, two-way conversation texts, operational notifications
+ *   information   follow-ups (care tips, check-ins)
+ *   marketing     promotional campaigns (opt-out rules apply)
+ *   unclassified  no purpose was recorded — never guessed
+ */
+export const CN_PRIORITIES = ['urgent', 'transactional', 'information', 'marketing', 'unclassified'] as const;
+export type CnPriority = typeof CN_PRIORITIES[number];
+const PRIORITY_PURPOSES: Record<Exclude<CnPriority, 'unclassified'>, readonly string[]> = {
+  urgent: ['account'], transactional: ['receipt', 'reminder', 'conversation', 'notification'], information: ['followup'], marketing: ['marketing'],
+};
+export function cnPriorityOf(purpose: string | null | undefined): CnPriority {
+  for (const k of ['urgent', 'transactional', 'information', 'marketing'] as const) if (purpose && PRIORITY_PURPOSES[k].includes(purpose)) return k;
+  return 'unclassified';
+}
 export const CN_TIMELINE_CHANNELS = ['all', 'sms', 'email', 'booking', 'follow_up', 'receipt'] as const;
 
 const N = (v: unknown) => Number(v ?? 0) || 0;
@@ -207,7 +226,7 @@ export class CustomerNotificationsCenter {
     }
     return sql`(${sql.join(parts, sql` or `)})`;
   }
-  private listWhere(T: string, tab: string, status: string | null, type: string | null, channel: string | null, branch: string | null) {
+  private listWhere(T: string, tab: string, status: string | null, type: string | null, channel: string | null, branch: string | null, priority: CnPriority | null = null) {
     const unknownCut = new Date(this.now() - UNKNOWN_AFTER_MS).toISOString();
     const w: any[] = [sql`n.tenant_id = ${T}`];
     if (tab === 'sms' || tab === 'email') w.push(sql`n.channel = ${tab}`);
@@ -220,6 +239,8 @@ export class CustomerNotificationsCenter {
     if (channel) w.push(sql`n.channel = ${channel}`);
     if (type === 'unknown') w.push(sql`n.purpose is null`); else if (type) w.push(sql`n.purpose = ${type}`);
     if (branch) w.push(sql`n.branch_id = ${branch}`);
+    if (priority === 'unclassified') w.push(sql`(n.purpose is null or n.purpose not in (${sql.join(Object.values(PRIORITY_PURPOSES).flat())}))`);
+    else if (priority) w.push(sql`n.purpose in (${sql.join([...PRIORITY_PURPOSES[priority]])})`);
     return sql.join(w, sql` and `);
   }
   /** C2 audit (Nov 4 2026): Customer Notifications export — exactly the filtered list, every page; recipients masked unless the
@@ -233,7 +254,7 @@ export class CustomerNotificationsCenter {
     const head = ['Created', 'Channel', 'Type', 'Status', 'Customer', 'Recipient', 'Delivered', 'Failure', 'Provider code', 'Location', 'Notification ID'];
     const lines = [head, ...all.map((x) => [x.createdAt ?? '', x.channel, x.type ?? '', x.state ?? x.status, x.customer?.name ?? '', x.recipient, x.deliveredAt ?? '',
       x.failure ? (x.failure as { category?: string }).category ?? '' : '', x.providerErrorCode ?? '', x.branchId ?? '', x.id])].map((r) => r.map(cell).join(','));
-    await this.audit(ctx, 'notifications.exported', null, `Exported ${all.length} notification record(s)`, { rows: all.length, filters: { tab: q.tab ?? null, channel: q.channel ?? null, type: q.type ?? null, status: q.status ?? null, preset: q.preset ?? null, branchId: q.branchId ?? null } });
+    await this.audit(ctx, 'notifications.exported', null, `Exported ${all.length} notification record(s)`, { rows: all.length, filters: { tab: q.tab ?? null, channel: q.channel ?? null, type: q.type ?? null, priority: q.priority ?? null, status: q.status ?? null, preset: q.preset ?? null, branchId: q.branchId ?? null } });
     return lines.join('\r\n') + '\r\n';
   }
 
@@ -242,7 +263,7 @@ export class CustomerNotificationsCenter {
     const fail = classifyFailure({ status: r.status, channel: r.channel, toAddress: r.to_address, failureReason: r.failure_reason, providerErrorCode: r.provider_error_code, providerStatus: r.provider_status });
     const detail = r.status === 'failed' || r.status === 'blocked' ? sanitizeProviderText(r.failure_reason) : (r.subject ?? null);
     return {
-      id: String(r.id), createdAt: iso(r.created_at), channel: r.channel === 'email' ? 'email' : 'sms', type: r.purpose ?? null, status: String(r.status),
+      id: String(r.id), createdAt: iso(r.created_at), channel: r.channel === 'email' ? 'email' : 'sms', type: r.purpose ?? null, priority: cnPriorityOf(r.purpose), status: String(r.status),
       state: displayState({ status: r.status, createdAt: r.created_at, deliveredAt: r.delivered_at }, this.now()),
       customer: r.customer_id ? { id: String(r.customer_id), name: r.customer_name ?? null } : null,
       recipient: full ? String(r.to_address) : maskRecipient(r.channel, r.to_address), recipientMasked: maskRecipient(r.channel, r.to_address),
@@ -257,9 +278,10 @@ export class CustomerNotificationsCenter {
     const T = ctx.tenantId; const p = await this.period(ctx, q, 'month');
     const basis = oneOf(q.basis, CN_BASES, 'created'); const tab = oneOf(q.tab, CN_TABS, 'all'); const sort = oneOf(q.sort, CN_SORTS, 'newest');
     const status = q.status ? oneOf(q.status, CN_STATUSES, 'sent') : null; const type = q.type ? oneOf(q.type, CN_TYPES, 'unknown') : null;
+    const priority = q.priority ? oneOf(q.priority, CN_PRIORITIES, 'unclassified') : null;
     const channel = q.channel === 'sms' || q.channel === 'email' ? String(q.channel) : null;
     const branch = await this.branchFilter(ctx, q.branchId);
-    const where = sql`${this.listWhere(T, tab, status, type, channel, branch)} and ${this.inP(this.basisCol(basis), p)} and ${this.searchWhere(T, q.q)}`;
+    const where = sql`${this.listWhere(T, tab, status, type, channel, branch, priority)} and ${this.inP(this.basisCol(basis), p)} and ${this.searchWhere(T, q.q)}`;
     const { page, pageSize } = paging(q.page, q.pageSize, 20);
     const total = N((await sql<any>`select count(*)::int as n from notifications n where n.tenant_id = ${T} and ${where}`.execute(this.db)).rows[0]?.n);
     const sv = served(page, pageSize, total);

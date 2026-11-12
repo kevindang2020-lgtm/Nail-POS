@@ -178,7 +178,11 @@ export class KyselyDocStore implements DocStorePort {
   async extraction(ctx: OcrCtx, id: string) {
     const fields = await rows<any>(this.db, sql`select field_key, value_text, value_cents, confidence, state, source_page, corrected_value from ocr_extracted_fields where tenant_id = ${ctx.tenantId} and document_id = ${id} order by created_at`);
     const lines = await rows<any>(this.db, sql`select line_number, description, quantity, unit_price_cents, line_total_cents, confidence from ocr_line_items where tenant_id = ${ctx.tenantId} and document_id = ${id} order by line_number`);
+    const amt = (await rows<{ subtotal_cents: unknown; tax_cents: unknown; fees_cents: unknown; discount_cents: unknown; total_cents: unknown }>(this.db,
+      sql`select subtotal_cents, tax_cents, fees_cents, discount_cents, total_cents from ocr_documents where tenant_id = ${ctx.tenantId} and id = ${id}`))[0];
+    const c = (v: unknown) => (v == null ? null : Number(v));
     return {
+      amounts: amt ? { subtotalCents: c(amt.subtotal_cents), taxCents: c(amt.tax_cents), feesCents: c(amt.fees_cents), discountCents: c(amt.discount_cents), totalCents: c(amt.total_cents) } : undefined,
       fields: fields.map((f): StoredField => ({ key: String(f.field_key), text: f.value_text ?? null, cents: f.value_cents == null ? null : Number(f.value_cents), confidence: Number(f.confidence ?? 0), state: (f.state ?? 'missing') as ConfidenceState, page: f.source_page == null ? null : Number(f.source_page), correctedValue: f.corrected_value ?? null })),
       lineItems: lines.map((l) => ({ lineNumber: Number(l.line_number), description: l.description ?? null, quantity: l.quantity == null ? null : Number(l.quantity), unitPriceCents: l.unit_price_cents == null ? null : Number(l.unit_price_cents), lineTotalCents: l.line_total_cents == null ? null : Number(l.line_total_cents), confidence: Number(l.confidence ?? 0) })),
     };

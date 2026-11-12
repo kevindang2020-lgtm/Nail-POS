@@ -88,4 +88,35 @@ describe('Customer Notifications', () => {
     ui();
     expect(await screen.findByTestId('cn-forbidden')).toHaveTextContent(/do not have permission/i);
   });
+  it('extras CN-05: each row shows the server\'s priority; the priority filter goes to the server and Clear removes it', async () => {
+    m.list.mockResolvedValue(page([{ ...failedRow, type: 'account', priority: 'urgent' }, { ...failedRow, id: '22222222-2222-4222-8222-222222222222', type: 'marketing', priority: 'marketing' }]));
+    ui();
+    expect(await screen.findByTestId('cn-prio-urgent')).toHaveTextContent('Urgent · security');
+    expect(screen.getByTestId('cn-prio-marketing')).toHaveTextContent('Marketing');
+    fireEvent.change(screen.getByTestId('cn-priority'), { target: { value: 'urgent' } });
+    await waitFor(() => expect(m.list).toHaveBeenLastCalledWith(expect.objectContaining({ priority: 'urgent' })));
+    fireEvent.click(await screen.findByTestId('cn-clear'));
+    await waitFor(() => expect(m.list.mock.calls[m.list.mock.calls.length - 1]?.[0]).not.toHaveProperty('priority'));
+  });
+  it('extras CN-07: seeing an incident changes nothing; Acknowledge and Resolve are separate, explicit actions', async () => {
+    m.incidents.mockResolvedValue({ items: [{ id: 'al1', severity: 'critical', status: 'new', title: 'Repeated failures', body: '3 failed', rule: 'repeated', channel: 'sms', category: 'auth', count: 3,
+      firstEventAt: null, lastEventAt: null, detections: 1, openedAt: null, updatedAt: null, resolvedAt: null, resolvedBy: null }], page: 1, pageSize: 10, totalItems: 1, totalPages: 1, canResolve: true, evaluatedAt: null });
+    m.acknowledgeIncident.mockResolvedValue({});
+    ui();
+    expect(await screen.findByTestId('cn-incident')).toHaveTextContent('Repeated failures');
+    expect(m.acknowledgeIncident).not.toHaveBeenCalled();
+    expect(m.resolveIncident).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('cn-incident-ack'));
+    await waitFor(() => expect(m.acknowledgeIncident).toHaveBeenCalledWith('al1'));
+    expect(m.resolveIncident).not.toHaveBeenCalled();
+  });
+  it('extras CN-06: a deep link (?record=) is re-checked by the server on open — another salon\'s or a gone record shows the error, never data', async () => {
+    m.detail.mockRejectedValue(Object.assign(new Error('Notification not found.'), { status: 404, code: 'NOTIFICATION_NOT_FOUND' }));
+    ui('/tenant/communications/notifications?record=33333333-3333-4333-8333-333333333333');
+    await waitFor(() => expect(m.detail).toHaveBeenCalledWith('33333333-3333-4333-8333-333333333333'));
+    const dlg = await screen.findByTestId('cn-detail');
+    await waitFor(() => expect(dlg.querySelector('.cn-detail-body')).toBeNull());
+    expect(screen.queryByTestId('cn-d-message')).toBeNull();
+    expect(screen.queryByTestId('cn-d-retry')).toBeNull();
+  });
 });

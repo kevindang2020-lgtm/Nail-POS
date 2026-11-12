@@ -140,4 +140,9 @@ export const AIPLANS_EN: Record<string, string> = {
   "aiux.k.duplicate_usage_events": "One request counted twice",
   "aiux.d.duplicate_usage_events.PASSED": "No request was counted more than once in the last 30 days.",
   "aiux.d.duplicate_usage_events.WARNING": "The same request was counted more than once in the last 30 days. Report it — nothing was removed or refunded.",
+  "plx.pc.separately": "Bought separately: {price}/mo",
+  "plx.pc.verified": "you really save {real}/mo",
+  "plx.pc.overstated": "the real saving is {real}/mo, not the {claimed} shown (the plan list price was set above the assistants' own prices)",
+  "plx.pc.noSaving": "this plan costs {price}/mo more than buying them separately",
+  "plx.pc.same": "no saving versus buying them separately",
 };

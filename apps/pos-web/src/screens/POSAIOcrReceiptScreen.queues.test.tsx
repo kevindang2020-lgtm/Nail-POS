@@ -65,4 +65,41 @@ describe('POSAIOcrReceiptScreen — queues', () => {
     fireEvent.click(screen.getByTestId('rrx-reason-go'));
     await waitFor(() => expect(m.reject).toHaveBeenCalledWith('d1', 'Personal purchase'));
   });
+  it('extras OCR #02 / RDR #05: beside the original, every read line, the amounts as they stand and the SERVER\'s arithmetic checks (mismatch with expected / read / difference)', async () => {
+    m.detail.mockResolvedValue({ ...doc, lineItems: [{ lineNumber: 1, description: 'Gel polish', quantity: 2, unitPriceCents: 1250, lineTotalCents: 2500, confidence: 0.9 }, { lineNumber: 2, description: 'Acetone', quantity: 1, unitPriceCents: 899, lineTotalCents: 899, confidence: 0.4 }],
+      amounts: { subtotalCents: 3399, taxCents: 238, feesCents: null, discountCents: null, totalCents: 3737 },
+      arithmetic: [{ name: 'line_items_vs_subtotal', passed: true, expectedCents: 3399, actualCents: 3399, deltaCents: 0 }, { name: 'components_vs_total', passed: false, expectedCents: 3637, actualCents: 3737, deltaCents: 100 }] });
+    mount('/tenant/ai/ocr-receipt?doc=d1');
+    const lines = await screen.findAllByTestId('rrx-line');
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toHaveTextContent('Gel polish');
+    expect(lines[0]).toHaveTextContent('$12.50');
+    expect(lines[0]).toHaveTextContent('$25.00');
+    expect(screen.getByTestId('rrx-amounts')).toHaveTextContent('Subtotal $33.99');
+    expect(screen.getByTestId('rrx-amounts')).toHaveTextContent('Fees —');
+    expect(screen.getByTestId('rrx-check-line_items_vs_subtotal')).toHaveAttribute('data-passed', 'yes');
+    const bad = screen.getByTestId('rrx-check-components_vs_total');
+    expect(bad).toHaveAttribute('data-passed', 'no');
+    expect(bad).toHaveTextContent('expected $36.37, read $37.37 (+$1.00)');
+    expect(m.approve).not.toHaveBeenCalled();
+    expect(m.correctField).not.toHaveBeenCalled();
+  });
+  it('extras OCR #02: amounts without enough parts say the arithmetic could not be checked — never a pass', async () => {
+    m.detail.mockResolvedValue({ ...doc, amounts: { subtotalCents: null, taxCents: null, feesCents: null, discountCents: null, totalCents: 3737 }, arithmetic: [] });
+    mount('/tenant/ai/ocr-receipt?doc=d1');
+    expect(await screen.findByTestId('rrx-check-none')).toHaveTextContent('Not enough amounts');
+    expect(screen.queryByTestId('rrx-lines')).toBeNull();
+  });
+  it('extras RDR #02: a quarantined receipt never asks for a preview link — the panel says the preview is blocked until the scan clears it', async () => {
+    m.detail.mockResolvedValue({ ...doc, pipelineState: 'quarantined', storageKey: 'tenants/t/documents/d1/original.png' });
+    mount('/tenant/ai/ocr-receipt?doc=d1');
+    expect(await screen.findByTestId('rrx-preview-blocked')).toHaveTextContent('security scan');
+    expect(m.previewUrl).not.toHaveBeenCalled();
+  });
+  it('extras RDR #02: a cleared receipt asks for its preview as before', async () => {
+    m.detail.mockResolvedValue({ ...doc, pipelineState: 'review_required', storageKey: 'tenants/t/documents/d1/original.png' });
+    mount('/tenant/ai/ocr-receipt?doc=d1');
+    await waitFor(() => expect(m.previewUrl).toHaveBeenCalledWith('d1', 'tenants/t/documents/d1/original.png'));
+    expect(screen.queryByTestId('rrx-preview-blocked')).toBeNull();
+  });
 });

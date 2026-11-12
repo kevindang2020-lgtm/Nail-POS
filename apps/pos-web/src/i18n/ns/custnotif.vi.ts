@@ -277,4 +277,11 @@ export const CUSTNOTIF_VI = {
   "cn.o.done": "Đã đăng ký lại. Ghi chú đồng ý được lưu trong lịch sử.",
   "cn.o.rules": "STOP / HELP / START từ điện thoại của khách được xử lý tự động. Nhân viên không thể ghi đè lệnh STOP của khách.",
   "cn.d.acceptedNoTime": "Nhà cung cấp đã nhận (không ghi thời gian)",
+  "cn.prio.label": "Mức ưu tiên", // DRAFT — Kevin reviews
+  "cn.prio.all": "Mọi mức ưu tiên", // DRAFT — Kevin reviews
+  "cn.prio.urgent": "Khẩn · bảo mật", // DRAFT — Kevin reviews
+  "cn.prio.transactional": "Giao dịch", // DRAFT — Kevin reviews
+  "cn.prio.information": "Thông tin", // DRAFT — Kevin reviews
+  "cn.prio.marketing": "Tiếp thị", // DRAFT — Kevin reviews
+  "cn.prio.unclassified": "Chưa phân loại", // DRAFT — Kevin reviews
 };

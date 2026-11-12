@@ -5,7 +5,7 @@ import { api } from './client';
 export type CnState = 'delivered' | 'sent' | 'pending' | 'unknown' | 'failed' | 'blocked' | 'simulated';
 export interface CnFailure { category: string; retry: 'never' | 'after_fix' | 'allowed'; action: string; rootCause: string | null }
 export interface CnRow {
-  id: string; createdAt: string | null; channel: 'sms' | 'email'; type: string | null; status: string; state: CnState;
+  id: string; createdAt: string | null; channel: 'sms' | 'email'; type: string | null; /** extras CN-05: server read-time class from the purpose (optional: older servers omit it) */ priority?: 'urgent' | 'transactional' | 'information' | 'marketing' | 'unclassified'; status: string; state: CnState;
   customer: { id: string; name: string | null } | null; recipient: string; recipientMasked: string; recipientValid: boolean; detail: string | null;
   providerErrorCode: string | null; deliveredAt: string | null; branchId: string | null; failure: CnFailure | null; retryOf: string | null; resent: boolean; source: { type: string; id: string } | null;
 }
