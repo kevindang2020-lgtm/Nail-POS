@@ -44,6 +44,18 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     expect(screen.getByTestId('rssx-save')).toBeDisabled();
   });
 
+  it('Settings 05: provider freshness (last sync, a failing provider) and the publish / request queues are shown; nothing changes', async () => {
+    rs.state.mockResolvedValue({ ...STATE(), providers: { connected: 2, lastSuccessfulSyncAt: '2026-11-11T13:00:00Z', lastFailedSyncAt: '2026-11-11T17:00:00Z', failing: 1 },
+      publishQueue: { approvedNotPublished: 2, publishFailed: 1 } });
+    mount();
+    expect(await screen.findByTestId('rssx-provider-sync')).toHaveTextContent(/^Last successful sync: Nov 11, 2026/);
+    expect(screen.getByTestId('rssx-provider-failing')).toHaveTextContent('1 provider(s) failed their latest sync');
+    const r = screen.getByTestId('rssx-risks');
+    expect(r).toHaveTextContent('2 approved public reply(ies) waiting to be published.');
+    expect(r).toHaveTextContent('1 public reply(ies) failed to publish');
+    expect(r).toHaveTextContent('2 review request(s) are past their send time and not sent.');
+    expect(rs.save).not.toHaveBeenCalled();
+  });
   it('a change is marked unsaved; Save confirms the change and sends ONLY it with the version and reason', async () => {
     rs.save.mockResolvedValue({ version: 1, state: STATE({ requestsEnabled: true }, 1) });
     mount();

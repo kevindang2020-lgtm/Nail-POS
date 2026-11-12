@@ -217,4 +217,10 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.dry.ch.sms": "SMS", // DRAFT — Kevin reviews
   "rssx.dry.ch.email": "Email", // DRAFT — Kevin reviews
   "rssx.dry.ch.app": "Ứng dụng", // DRAFT — Kevin reviews
+  "rssx.fresh.lastSync": "Đồng bộ thành công gần nhất: {at}", // DRAFT — Kevin reviews
+  "rssx.fresh.neverSynced": "Chưa đồng bộ lần nào", // DRAFT — Kevin reviews
+  "rssx.fresh.failing": "{n} nhà cung cấp bị lỗi ở lần đồng bộ gần nhất", // DRAFT — Kevin reviews
+  "rssx.fresh.waiting": "{n} phản hồi công khai đã duyệt đang chờ đăng.", // DRAFT — Kevin reviews
+  "rssx.fresh.publishFailed": "{n} phản hồi công khai đăng không thành công — mở Trợ lý đánh giá AI để thử lại.", // DRAFT — Kevin reviews
+  "rssx.fresh.overdue": "{n} yêu cầu đánh giá đã quá giờ gửi mà chưa gửi.", // DRAFT — Kevin reviews
 };

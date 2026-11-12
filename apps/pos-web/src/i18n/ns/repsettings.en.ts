@@ -217,4 +217,10 @@ export const REPSETTINGS_EN: Record<string, string> = {
   "rssx.dry.ch.sms": "SMS",
   "rssx.dry.ch.email": "Email",
   "rssx.dry.ch.app": "App",
+  "rssx.fresh.lastSync": "Last successful sync: {at}",
+  "rssx.fresh.neverSynced": "Never synced yet",
+  "rssx.fresh.failing": "{n} provider(s) failed their latest sync",
+  "rssx.fresh.waiting": "{n} approved public reply(ies) waiting to be published.",
+  "rssx.fresh.publishFailed": "{n} public reply(ies) failed to publish — open the AI Review Assistant to retry.",
+  "rssx.fresh.overdue": "{n} review request(s) are past their send time and not sent.",
 };

@@ -123,8 +123,15 @@ export function POSAIReviewReputationSettingsScreen() {
           <div className="kpi" data-testid="rssx-package"><div className="l">{t('rssx.strip.package')}</div><div className="v" style={{ fontSize: 15 }}>{t('rssx.ent.' + e.reason)}</div><div className="sub">{t('rssx.mode.' + e.enforcement)}</div></div>
           <div className="kpi" data-testid="rssx-sms"><div className="l">{t('rssx.strip.sms')}</div><div className="v" style={{ fontSize: 15 }}>{s.sms.configured ? t('rssx.sms.configured') : t('rssx.sms.notConfigured')}</div>
             {s.sms.lastError ? <div className="sub warn">{t('rssx.sms.validationFailed')}</div> : null}</div>
-          <div className="kpi" data-testid="rssx-providers"><div className="l">{t('rssx.strip.providers')}</div><div className="v" style={{ fontSize: 15 }}>{s.providers.connected ? t('rssx.providers.n', { n: fmtNumber(s.providers.connected) }) : t('rssx.providers.none')}</div></div>
+          <div className="kpi" data-testid="rssx-providers"><div className="l">{t('rssx.strip.providers')}</div><div className="v" style={{ fontSize: 15 }}>{s.providers.connected ? t('rssx.providers.n', { n: fmtNumber(s.providers.connected) }) : t('rssx.providers.none')}</div>
+            {s.providers.connected ? <div className="sub" data-testid="rssx-provider-sync">{s.providers.lastSuccessfulSyncAt ? t('rssx.fresh.lastSync', { at: when(s.providers.lastSuccessfulSyncAt) }) : t('rssx.fresh.neverSynced')}</div> : null}
+            {s.providers.failing ? <div className="sub warn" data-testid="rssx-provider-failing">{t('rssx.fresh.failing', { n: fmtNumber(s.providers.failing) })}</div> : null}</div>
         </div>
+        {s.publishQueue && (s.publishQueue.approvedNotPublished || s.publishQueue.publishFailed || rt.reviewRequests.overdueNotSent) ? <div className="panel" role="status" data-testid="rssx-risks" style={{ padding: 10, marginBottom: 10 }}>
+          {s.publishQueue.approvedNotPublished ? <div>{t('rssx.fresh.waiting', { n: fmtNumber(s.publishQueue.approvedNotPublished) })}</div> : null}
+          {s.publishQueue.publishFailed ? <div className="warn">{t('rssx.fresh.publishFailed', { n: fmtNumber(s.publishQueue.publishFailed) })}</div> : null}
+          {rt.reviewRequests.overdueNotSent ? <div className="warn">{t('rssx.fresh.overdue', { n: fmtNumber(rt.reviewRequests.overdueNotSent) })}</div> : null}
+        </div> : null}
 
         <div className="rvw-tabs" role="tablist" data-testid="rssx-tabs">
           {(['settings', 'history', 'health'] as const).map((x) => <button key={x} role="tab" aria-selected={tab === x} className={'btn ghost' + (tab === x ? ' on' : '')} data-testid={`tab-${x}`} onClick={() => setTab(x)}>{t('rssx.tab.' + x)}</button>)}

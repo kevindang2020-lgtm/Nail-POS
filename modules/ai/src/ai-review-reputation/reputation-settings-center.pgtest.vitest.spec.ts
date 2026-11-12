@@ -169,6 +169,23 @@ describe('Review & Reputation Settings — health and fail-closed', () => {
     expect((await q(sql`select count(*)::int as n from review_requests where tenant_id = ${T3}`))[0].n).toBe(reqBefore);   // nothing scheduled
     expect((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T3}`))[0].n).toBe(0);              // nothing sent
   });
+  it('HL-03 integration freshness: the review providers\' real sync times (a later failure counts as failing) and the publish queue', async () => {
+    const T4 = id(70);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S4', 'Fresh', 'rss-769f', 'RSS769F', 'active')`);
+    await q(sql`insert into integration_connections (tenant_id, provider_key, category, connection_status, last_successful_sync_at, last_failed_sync_at) values
+      (${T4}, 'google_business_profile', 'reviews', 'active', '2026-11-10T12:00:00Z', '2026-11-11T12:00:00Z'),
+      (${T4}, 'facebook_pages', 'reviews', 'active', '2026-11-11T08:00:00Z', null),
+      (${T4}, 'yelp', 'reviews', 'disconnected', '2026-10-01T08:00:00Z', null)`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${id(79)}, ${T4}, 'F', 'America/New_York')`);
+    for (const [n, st] of [[71, 'approved'], [72, 'approved'], [73, 'publish_failed'], [74, 'published']] as const) {
+      await q(sql`insert into reviews (id, tenant_id, branch_id, rating, comment, source) values (${id(n)}, ${T4}, ${id(79)}, 4, 'ok', 'google')`);
+      await q(sql`insert into review_response_drafts (tenant_id, review_id, status, current_text) values (${T4}, ${id(n)}, ${st}, 'Thanks')`);
+    }
+    const s4 = await rss.state(ctx({ tenantId: T4, branchId: null }));
+    expect(s4.providers).toEqual({ connected: 2, lastSuccessfulSyncAt: '2026-11-11T08:00:00.000Z', lastFailedSyncAt: '2026-11-11T12:00:00.000Z', failing: 1 });
+    expect(s4.publishQueue).toEqual({ approvedNotPublished: 2, publishFailed: 1 });
+    expect((await rss.state(ctx())).publishQueue.approvedNotPublished).toBe(0);   // another salon's queue is not counted
+  });
   it('FC-01 a settings read error is an error — never the defaults (which would re-enable a disabled assistant)', async () => {
     const broken = new KyselySettings({ selectFrom: () => ({ select: () => ({ where: () => ({ execute: async () => { throw new Error('DB_DOWN'); } }) }) }) } as any);
     expect(await code(broken.load(ctx()))).toBe('DB_DOWN');

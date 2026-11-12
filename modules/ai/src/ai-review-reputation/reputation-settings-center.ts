@@ -127,7 +127,14 @@ export class ReputationSettingsCenter {
     const mode = this.enforcement();
     const sms = (await sql<Row>`select status, from_number is not null as has_number, messaging_service_sid is not null as has_service, last_validated_at, last_validation_error
       from tenant_messaging_credentials where tenant_id = ${T} and provider = 'twilio' limit 1`.execute(this.db)).rows[0];
-    const providers = N((await sql<Row>`select count(*)::int as n from integration_connections where tenant_id = ${T} and provider_key = any(${REVIEW_PROVIDERS}::text[]) and connection_status = 'active'`.execute(this.db)).rows[0]?.n);
+    // extras (Review & Reputation Settings 05 "Integration Freshness & Risk Alerts"): the review providers' real sync times and
+    // the public-reply publish queue, beside the SMS sender, the request queue and the entitlement already shown
+    const prov = (await sql<Row>`select count(*) filter (where connection_status = 'active')::int as n, max(last_successful_sync_at) as last_ok, max(last_failed_sync_at) as last_failed,
+        count(*) filter (where connection_status = 'active' and last_failed_sync_at is not null and (last_successful_sync_at is null or last_failed_sync_at > last_successful_sync_at))::int as failing
+      from integration_connections where tenant_id = ${T} and provider_key = any(${REVIEW_PROVIDERS}::text[])`.execute(this.db)).rows[0] ?? {};
+    const providers = N(prov.n);
+    const pub = (await sql<Row>`select count(*) filter (where status = 'approved')::int as waiting, count(*) filter (where status = 'publish_failed')::int as failed
+      from review_response_drafts where tenant_id = ${T}`.execute(this.db)).rows[0] ?? {};
     const req = (await sql<Row>`select count(*) filter (where status = 'scheduled')::int as scheduled, count(*) filter (where status = 'scheduled' and scheduled_for < now())::int as overdue,
       count(*) filter (where status in ('sent', 'delivered', 'converted'))::int as sent from review_requests where tenant_id = ${T}`.execute(this.db)).rows[0] ?? {};
     const last = (await sql<Row>`select v.created_at, coalesce(u.full_name, u.email) as actor from ai_reputation_config_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = ${T}
@@ -154,7 +161,8 @@ export class ReputationSettingsCenter {
         propagation: 'live',                                                  // drafting and checkout read the settings on every call
       },
       sms: { configured: sms?.status === 'configured', sender: sms ? (sms.has_service ? 'messaging_service' : sms.has_number ? 'number' : 'none') : 'none', lastValidatedAt: iso(sms?.last_validated_at), lastError: sms?.last_validation_error ? 'validation_failed' : null },
-      providers: { connected: providers },
+      providers: { connected: providers, lastSuccessfulSyncAt: iso(prov.last_ok), lastFailedSyncAt: iso(prov.last_failed), failing: N(prov.failing) },
+      publishQueue: { approvedNotPublished: N(pub.waiting), publishFailed: N(pub.failed) },
       salonRow: { version: N(tenant?.version ?? 0), exists: !!tenant, updatedAt: iso(tenant?.updated_at) },
       lastChange: last ? { at: iso(last.created_at), by: last.actor ?? null } : null,
       checkedAt: new Date(this.now()).toISOString(),
