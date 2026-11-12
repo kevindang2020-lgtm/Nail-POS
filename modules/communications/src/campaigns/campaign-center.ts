@@ -139,6 +139,9 @@ export interface CampaignCounts {
   /** Campaign Results 17 — comparison ratios, computed HERE once (null when the denominator is 0 / the cost is not reported) */
   deliveryRatePercent: number | null; costPerBookingCents: number | null;
 }
+/** provider error codes that mean the destination number itself is bad (invalid, not a mobile, unknown / unreachable
+ *  handset, landline) — a contact problem to fix on the customer profile, not a delivery outage */
+export const CC_INVALID_NUMBER_CODES = ['21211', '21214', '21217', '21407', '21421', '21612', '21614', '30003', '30005', '30006'];
 export function countsOf(r: any): CampaignCounts {
   const snapshot = r.audience_source === 'segment_snapshot' && N(r.snapshot_version) > 0;
   const selected = snapshot ? N(r.selected) : (N(r.audience_size) > 0 ? N(r.audience_size) : null);
@@ -375,6 +378,7 @@ export class CampaignCenter {
     const providerErrors = (await sql<any>`select coalesce(n.provider_error_code, n.failure_reason, 'unknown') as code, count(*)::int as n from ai_marketing_campaign_sends s
         join notifications n on n.tenant_id = s.tenant_id and n.provider_id = s.provider_id where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id} and n.status = 'failed' group by 1 order by n desc`.execute(this.db)).rows;
     const readiness = r.status === 'draft' ? await campaignSendReadiness(this.db, ctx.tenantId, id) : null;
+    const triage = await this.deliveryTriage(ctx, id);
     // the Campaign Builder's proposal in SALON time ("YYYY-MM-DDTHH:MM") so the launch dialog can start from it (migration 842)
     let proposedSendLocal: string | null = null;
     if (r.proposed_send_at) { const tz = await branchTimeZone(this.db, ctx.tenantId, r.branch_id ?? ctx.branchId ?? null); const p = zonedParts(new Date(r.proposed_send_at), tz);
@@ -383,6 +387,7 @@ export class CampaignCenter {
       ...v, proposedSendLocal, exclusionReasons: reasons.map((x) => ({ reason: x.reason, count: N(x.n) })), sendTimeReasons: sendReasons.map((x) => ({ reason: x.reason, count: N(x.n) })),
       providerErrors: providerErrors.map((x) => ({ code: x.code, count: N(x.n) })),
       readiness: readiness ? (readiness.ok ? { ok: true, eligible: readiness.eligible } : { ok: false, code: readiness.code, message: readiness.message }) : null,
+      triage,
       definitions: {
         selected: 'Customers in the saved audience snapshot. For older campaigns this is the hand-typed estimate and is marked as such.',
         eligible: 'Selected customers who had consent and a usable contact when the audience was saved.',
@@ -391,6 +396,32 @@ export class CampaignCenter {
         delivered: 'Delivery confirmed by the provider callback.', failed: 'Refused by the provider at send time or reported failed later.',
         unknown: 'Accepted but no delivery callback yet.', booked: 'Bookings made through a link carrying this campaign.',
       },
+    };
+  }
+  /** AI Marketing Assistant 09 — delivery failure triage for one campaign, from its own send ledger and the provider's
+   *  delivery reports: invalid contacts (no usable contact at send time, or a provider "bad number" code), sends the
+   *  provider refused outright, carrier failures, messages with no delivery callback after an hour, and what is still
+   *  waiting. Retry facts are stated, not invented: a waiting (claimed, unfinished) send is resumed by the next sweep; a
+   *  failed one is never re-sent (the provider may have accepted it). Read only. */
+  private async deliveryTriage(ctx: CampaignsContext, id: string) {
+    const t = (await sql<{ missing_contact: number; invalid_number: number; refused: number; carrier_failed: number; no_callback: number; oldest_no_callback: Date | string | null; waiting: number; oldest_waiting: Date | string | null }>`select
+        count(*) filter (where s.status = 'skipped' and s.skip_reason = 'missing_contact')::int as missing_contact,
+        count(*) filter (where s.status = 'sent' and n.status = 'failed' and coalesce(n.provider_error_code, '') = any(${CC_INVALID_NUMBER_CODES}::text[]))::int as invalid_number,
+        count(*) filter (where s.status = 'failed')::int as refused,
+        count(*) filter (where s.status = 'sent' and n.status = 'failed' and not (coalesce(n.provider_error_code, '') = any(${CC_INVALID_NUMBER_CODES}::text[])))::int as carrier_failed,
+        count(*) filter (where s.status = 'sent' and coalesce(n.status, 'sent') not in ('delivered', 'failed', 'simulated') and s.updated_at < now() - interval '1 hour')::int as no_callback,
+        min(s.updated_at) filter (where s.status = 'sent' and coalesce(n.status, 'sent') not in ('delivered', 'failed', 'simulated') and s.updated_at < now() - interval '1 hour') as oldest_no_callback,
+        count(*) filter (where s.status = 'queued')::int as waiting, min(s.created_at) filter (where s.status = 'queued') as oldest_waiting
+      from ai_marketing_campaign_sends s left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
+      where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id}`.execute(this.db)).rows[0];
+    const refusedWhy = (await sql<{ reason: string; n: number }>`select left(coalesce(s.skip_reason, 'provider_error'), 80) as reason, count(*)::int as n from ai_marketing_campaign_sends s
+      where s.tenant_id = ${ctx.tenantId} and s.campaign_id = ${id} and s.status = 'failed' group by 1 order by n desc limit 5`.execute(this.db)).rows;
+    return {
+      invalidContact: N(t?.missing_contact) + N(t?.invalid_number), missingContact: N(t?.missing_contact), invalidNumber: N(t?.invalid_number),
+      refusedAtSend: N(t?.refused), refusedReasons: refusedWhy.map((x) => ({ reason: String(x.reason), count: N(x.n) })),
+      carrierFailed: N(t?.carrier_failed), noCallbackOver1h: N(t?.no_callback), oldestNoCallbackAt: iso(t?.oldest_no_callback ?? null),
+      waitingToSend: N(t?.waiting), oldestWaitingAt: iso(t?.oldest_waiting ?? null),
+      retry: { waitingResumedByNextSweep: true, failedResent: false },
     };
   }
   async recipients(ctx: CampaignsContext, id: string, q: Record<string, any>) {

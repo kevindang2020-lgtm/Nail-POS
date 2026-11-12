@@ -105,4 +105,18 @@ describe('Campaign Center', () => {
     expect(facts[1]).toHaveTextContent('This edit voided the earlier approval');
     expect(screen.getByTestId('cc-audit')).toHaveTextContent('Max Manager');
   });
+  it('AI Marketing Assistant 09: the overview shows the server\'s delivery triage with the next step for each kind and the retry rule', async () => {
+    api.detail.mockResolvedValue({ ...spring, exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {},
+      triage: { invalidContact: 2, missingContact: 1, invalidNumber: 1, refusedAtSend: 1, refusedReasons: [{ reason: 'Sender is not configured', count: 1 }], carrierFailed: 0, noCallbackOver1h: 1,
+        oldestNoCallbackAt: '2026-11-02T12:00:00Z', waitingToSend: 0, oldestWaitingAt: null, retry: { waitingResumedByNextSweep: true, failedResent: false } } });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    const tri = await screen.findByTestId('cc-triage');
+    expect(screen.getByTestId('cc-tri-invalid')).toHaveTextContent('2 invalid contact(s)');
+    expect(screen.getByTestId('cc-tri-invalid')).toHaveTextContent('1 had no usable contact at send time, 1 rejected as a bad number');
+    expect(screen.getByTestId('cc-tri-refused')).toHaveTextContent('Sender is not configured × 1');
+    expect(screen.getByTestId('cc-tri-callback')).toHaveTextContent('check the messaging webhook');
+    expect(screen.queryByTestId('cc-tri-carrier')).toBeNull(); expect(screen.queryByTestId('cc-tri-waiting')).toBeNull();
+    expect(tri).toHaveTextContent('never sent again');
+  });
 });

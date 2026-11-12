@@ -280,6 +280,7 @@ function DetailDialog({ id, canManage, onClose, onChanged, onEdit, onHealth, onO
             {d.exclusionReasons.length ? <div className="fk-hint">{tx('cc.excludedBecause')} {d.exclusionReasons.map((r: any) => `${tr('cc.reason.' + r.reason, r.reason)} ${r.count}`).join(' · ')}</div> : null}
             {d.sendTimeReasons.length ? <div className="fk-hint">{tx('cc.skippedAtSend')} {d.sendTimeReasons.map((r: any) => `${tr('cc.reason.' + r.reason, r.reason)} ${r.count}`).join(' · ')}</div> : null}
             {d.providerErrors.length ? <div className="fk-hint">{tx('cc.providerErrors')} {d.providerErrors.map((r: any) => `${r.code} × ${r.count}`).join(' · ')}</div> : null}
+            {d.triage ? <Triage t={d.triage} /> : null}
           </> : null}
           {tab === 'recipients' ? <RecipientsTab id={id} /> : null}
           {tab === 'message' ? <div className="cc-msg">{d.emailSubject ? <div><b>{tx('cc.subject')}</b> {d.emailSubject}</div> : null}<pre className="cc-pre" data-testid="cc-message">{d.messageBody ?? d.offer ?? '—'}</pre><div className="fk-hint">{tx('cc.messageVersion', { v: String(d.messageVersion) })}</div></div> : null}
@@ -326,6 +327,28 @@ function EventsTab({ id }: { id: string }) {
   return <><table className="tbl" data-testid="cc-events"><thead><tr><th>{tx('cc.r.at')}</th><th>{tx('cc.r.send')}</th><th>{tx('cc.r.delivery')}</th><th>{tx('cc.r.reason')}</th><th>{tx('cc.version')}</th></tr></thead>
     <tbody>{d.items.map((e: any) => <tr key={e.id}><td>{when(e.updatedAt)}</td><td>{tx('cc.send.' + e.status)}</td><td>{e.deliveryStatus ? tr('cc.delivery.' + e.deliveryStatus, e.deliveryStatus) : '—'}{e.providerErrorCode ? ` (${e.providerErrorCode})` : ''}</td><td>{e.reason ? tr('cc.reason.' + e.reason, e.reason) : '—'}</td><td>v{e.messageVersion}</td></tr>)}</tbody></table>
     <Pager compact info={d.pagination} onPage={setPage} /></>;
+}
+/** AI Marketing Assistant 09 — the server's delivery failure triage for this campaign; nothing here retries or sends */
+type TriageView = { invalidContact: number; missingContact: number; invalidNumber: number; refusedAtSend: number; refusedReasons: { reason: string; count: number }[];
+  carrierFailed: number; noCallbackOver1h: number; oldestNoCallbackAt: string | null; waitingToSend: number; oldestWaitingAt: string | null };
+function Triage({ t }: { t: TriageView }) {
+  const rows: { key: string; n: number; extra?: string }[] = [
+    { key: 'invalid', n: t.invalidContact, extra: tx('cc.tri.invalidSplit', { m: nf(t.missingContact), b: nf(t.invalidNumber) }) },
+    { key: 'refused', n: t.refusedAtSend, extra: t.refusedReasons.length ? t.refusedReasons.map((r) => `${r.reason} × ${nf(r.count)}`).join(' · ') : undefined },
+    { key: 'carrier', n: t.carrierFailed },
+    { key: 'callback', n: t.noCallbackOver1h, extra: t.oldestNoCallbackAt ? tx('cc.tri.since', { at: when(t.oldestNoCallbackAt) }) : undefined },
+    { key: 'waiting', n: t.waitingToSend, extra: t.oldestWaitingAt ? tx('cc.tri.since', { at: when(t.oldestWaitingAt) }) : undefined },
+  ];
+  const any = rows.some((r) => r.n > 0);
+  return (
+    <div className="fk-note" data-testid="cc-triage">
+      <b>{tx('cc.tri.title')}</b>
+      {!any ? <div className="fk-hint">{tx('cc.tri.none')}</div> : <ul className="fk-list dense">{rows.filter((r) => r.n > 0).map((r) => (
+        <li key={r.key} className="fk-li" data-testid={'cc-tri-' + r.key}><div className="fk-li-main"><div className="fk-li-t">{tx('cc.tri.' + r.key, { n: nf(r.n) })}</div>
+          <div className="fk-li-s">{tx('cc.tri.next.' + r.key)}{r.extra ? ` · ${r.extra}` : ''}</div></div></li>))}</ul>}
+      <div className="fk-hint">{tx('cc.tri.retry')}</div>
+    </div>
+  );
 }
 function AuditTab({ id }: { id: string }) {
   const [d, setD] = useState<any>(null);

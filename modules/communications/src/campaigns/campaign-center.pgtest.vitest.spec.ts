@@ -185,6 +185,32 @@ describe('§08 wizard: details → audience snapshot → message → preview →
   });
 });
 
+describe('AI Marketing Assistant 09 — delivery failure triage', () => {
+  it('splits invalid contacts, provider refusals, carrier failures, missing callbacks and waiting sends; states the retry rule; reads only', async () => {
+    const cid = (await q(sql`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values (${T}, ${B}, 'Triage test', 'sms', 'in_progress', 0) returning id`))[0].id;
+    const people = [];
+    for (let i = 0; i < 7; i++) people.push(await customer('Tri Age' + i));
+    const send = async (cu: string, status: string, o: { reason?: string; pid?: string; nStatus?: string; code?: string; hoursAgo?: number } = {}) => {
+      if (o.pid) await q(sql`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id, provider_error_code) values (${T}, 'sms', '+1', 'x', ${cu}, ${o.nStatus ?? 'sent'}, ${o.pid}, ${o.code ?? null})`);
+      await q(sql`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, message_version, status, skip_reason, provider_id, created_at, updated_at)
+        values (${T}, ${B}, ${cid}, ${cu}, 'sms', 1, ${status}, ${o.reason ?? null}, ${o.pid ?? null}, now() - make_interval(hours => ${o.hoursAgo ?? 0}), now() - make_interval(hours => ${o.hoursAgo ?? 0}))`);
+    };
+    await send(people[0], 'skipped', { reason: 'missing_contact' });
+    await send(people[1], 'sent', { pid: 'TRI1', nStatus: 'failed', code: '21614' });          // not a mobile number
+    await send(people[2], 'sent', { pid: 'TRI2', nStatus: 'failed', code: '30007' });          // carrier filtered
+    await send(people[3], 'failed', { reason: 'Sender is not configured' });
+    await send(people[4], 'sent', { pid: 'TRI3', nStatus: 'sent', hoursAgo: 3 });              // no callback after 3 h
+    await send(people[5], 'sent', { pid: 'TRI4', nStatus: 'delivered', hoursAgo: 3 });
+    await send(people[6], 'queued', { hoursAgo: 2 });
+    const before = await q(sql`select status, skip_reason from ai_marketing_campaign_sends where campaign_id = ${cid} order by customer_id`);
+    const d: any = await cc.detail(owner, String(cid));
+    expect(d.triage).toMatchObject({ invalidContact: 2, missingContact: 1, invalidNumber: 1, refusedAtSend: 1, refusedReasons: [{ reason: 'Sender is not configured', count: 1 }],
+      carrierFailed: 1, noCallbackOver1h: 1, waitingToSend: 1, retry: { waitingResumedByNextSweep: true, failedResent: false } });
+    expect(d.triage.oldestNoCallbackAt).toEqual(expect.any(String)); expect(d.triage.oldestWaitingAt).toEqual(expect.any(String));
+    expect(await q(sql`select status, skip_reason from ai_marketing_campaign_sends where campaign_id = ${cid} order by customer_id`)).toEqual(before);
+  });
+});
+
 describe('Campaign Results 17 — comparison ratios come from the server', () => {
   it('delivery rate = delivered / submitted and cost per booking = reported cost / bookings; N/A (null) for a zero denominator or unreported cost', () => {
     const snap = { audience_source: 'segment_snapshot', snapshot_version: 1, selected: 10, eligible: 8 };
