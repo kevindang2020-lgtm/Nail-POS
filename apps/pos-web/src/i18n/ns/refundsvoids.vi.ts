@@ -190,4 +190,16 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.rcpt.to.gift_card': 'Cùng thẻ quà tặng ({m})', // DRAFT — Kevin reviews
   'rv.rcpt.left': 'Còn có thể hoàn sau lần này', // DRAFT — Kevin reviews
   'rv.rcpt.note': 'Đây chỉ là bản xem trước. Không gửi, in hay lưu gì cho đến khi bạn xác nhận, và kết quả hiện sau khi Xác nhận là câu trả lời của bộ xử lý — hoàn tiền thẻ vẫn có thể đang chờ duyệt hoặc đang xử lý.', // DRAFT — Kevin reviews
+  'rv.esc.open': 'Cần xử lý · {n}', // DRAFT — Kevin reviews
+  'rv.esc.title': 'Hộp thư cần xử lý', // DRAFT — Kevin reviews
+  'rv.esc.sub': 'Các khoản hoàn tiền quản lý nên xem, nhóm theo lý do — chi nhánh này, mọi thời gian.', // DRAFT — Kevin reviews
+  'rv.esc.none': 'Không có gì cần xử lý.', // DRAFT — Kevin reviews
+  'rv.esc.g.provider_timeout': 'Mất phản hồi từ bộ xử lý', // DRAFT — Kevin reviews
+  'rv.esc.g.stale_pending': 'Đang chờ quá {h} giờ', // DRAFT — Kevin reviews
+  'rv.esc.g.broken_link': 'Liên kết sổ sách bị hỏng', // DRAFT — Kevin reviews
+  'rv.esc.why.provider_timeout': 'Bộ xử lý không trả lời và hệ thống không xác định được. Đây không phải bị từ chối — hãy xử lý trong chi tiết hoàn tiền khi bộ xử lý xác nhận.', // DRAFT — Kevin reviews
+  'rv.esc.why.stale_pending': 'Khoản hoàn tiền vẫn đang giữ hoặc đang xử lý quá thời hạn; số tiền vẫn bị giữ trên thanh toán gốc.', // DRAFT — Kevin reviews
+  'rv.esc.why.broken_link': 'Một khoản hoàn tiền đã xong có mã hoàn tiền của bộ xử lý nhưng không có bản ghi hoàn trả, hoặc thanh toán gốc không gắn với phiếu.', // DRAFT — Kevin reviews
+  'rv.esc.more': 'Còn {n} khoản — dùng bộ lọc trạng thái để xem hết.', // DRAFT — Kevin reviews
+  'rv.esc.readOnly': 'Danh sách này chỉ hiển thị vấn đề. Không bao giờ thử lại, xử lý hay đổi trạng thái hoàn tiền.', // DRAFT — Kevin reviews
 };
