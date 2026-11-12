@@ -234,6 +234,24 @@ export class InventoryCenter {
     checks.push({ key: 'orders_received', component: 'purchasing', state: overdue ? 'WARNING' : 'PASSED', count: overdue });
     const needLead = k.filter((x) => (x.k.status === 'critical' || x.k.status === 'low' || x.k.status === 'out_of_stock') && (x.r.vendor == null || x.r.lead_time_days == null)).length;
     checks.push({ key: 'reorder_data', component: 'purchasing', state: needLead ? 'WARNING' : 'PASSED', count: needLead });
+    // extras (AI Inventory Assistant 12 · catalog & units): two active products with the same SKU or barcode make a scan or a
+    // search land on the wrong one — nothing in the table refuses it, so it is counted here (products in a shared group)
+    const dupOf = (col: 'sku' | 'barcode') => sql<Row>`select coalesce(sum(g.n), 0)::int as n from (select count(*)::int as n from inventory_products ip
+      where ip.tenant_id = ${T} and ip.active and ip.archived_at is null and coalesce(btrim(${col === 'sku' ? sql`ip.sku` : sql`ip.barcode`}), '') <> ''
+      group by lower(btrim(${col === 'sku' ? sql`ip.sku` : sql`ip.barcode`})) having count(*) > 1) g`;
+    const dupSku = N((await one(dupOf('sku'))).n);
+    checks.push({ key: 'sku_unique', component: 'catalog', state: !n ? 'INSUFFICIENT_DATA' : dupSku ? 'WARNING' : 'PASSED', count: dupSku });
+    const dupBar = N((await one(dupOf('barcode'))).n);
+    checks.push({ key: 'barcode_unique', component: 'catalog', state: !n ? 'INSUFFICIENT_DATA' : dupBar ? 'WARNING' : 'PASSED', count: dupBar });
+    // extras (AI Inventory Assistant 18 · physical count vs ledger): a reconciled count must have moved the ledger by exactly
+    // counted − expected for each counted product (the adjustment movements carry the count as their source). A line whose
+    // movements differ (e.g. fewer bottles on hand than the count said were missing) is named here.
+    const cnt = await one(sql<Row>`select count(*)::int as lines, count(*) filter (where coalesce(mv.applied, 0) <> l.counted_qty - l.expected_qty)::int as off
+      from inventory_count_lines l join inventory_counts ct on ct.tenant_id = l.tenant_id and ct.id = l.count_id
+      left join lateral (select sum(m.quantity_change)::int as applied from inventory_stock_movements m where m.tenant_id = l.tenant_id
+        and m.related_type = 'inventory_count' and m.related_id = l.count_id and m.product_id = l.product_id) mv on true
+      where l.tenant_id = ${T} ${B ? sql`and ct.branch_id = ${B}::uuid` : sql``} and ct.status = 'reconciled' and l.is_counted and l.counted_qty is not null`);
+    checks.push({ key: 'count_variance_applied', component: 'ledger', state: !N(cnt.lines) ? 'INSUFFICIENT_DATA' : N(cnt.off) ? 'FAILED' : 'PASSED', count: N(cnt.off), detail: { countedLines: N(cnt.lines) } });
     const cross = N((await one(sql<Row>`select count(*)::int as n from inventory_location_stock s join inventory_products p on p.id = s.product_id where s.tenant_id = ${T} and p.tenant_id <> s.tenant_id`)).n);
     checks.push({ key: 'tenant_isolation', component: 'security', state: cross ? 'FAILED' : 'PASSED', count: cross });
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });

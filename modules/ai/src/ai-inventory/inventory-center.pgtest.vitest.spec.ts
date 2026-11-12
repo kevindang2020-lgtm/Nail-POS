@@ -105,9 +105,30 @@ describe('Check Inventory System', () => {
     expect(k.movements_recorded.state).toBe('PASSED');
     expect(k.reorder_data).toMatchObject({ state: 'WARNING', count: 1 });   // the OPI polish has no vendor
     expect(k.tenant_isolation.state).toBe('PASSED');
+    expect(k.sku_unique).toMatchObject({ state: 'PASSED', count: 0 });          // extras AI Inventory 12
+    expect(k.count_variance_applied.state).toBe('INSUFFICIENT_DATA');           // extras AI Inventory 18: no reconciled count yet
     expect(h.overall).toBe('FAILED');
     expect(h.checks[0].state).toBe('FAILED');
     expect((await q(`select count(*)::int as n from inventory_location_stock`))[0].n).toBe(before);
     expect((await ic.check(ctx()) as any).reused).toBe(true);
+  });
+  it('HL-02 extras (AI Inventory 12 / 18): duplicate active SKU / barcode; a reconciled count whose adjustments do not match counted − expected', async () => {
+    const D1 = id(641), D2 = id(642), D3 = id(643), DX = id(644), C1 = id(645), C2 = id(646);
+    await q(`insert into inventory_products (id, tenant_id, name, sku, barcode, active, archived_at) values
+      ($1,$5,'Top coat A','DUP-9','0001',true,null), ($2,$5,'Top coat B',' dup-9 ','0001',true,null), ($3,$5,'Old top coat','DUP-9','0001',false,now()),
+      ($4,$6,'Other top coat','DUP-9','0001',true,null), ($7,$6,'Other top coat 2','DUP-9','0001',true,null)`, [D1, D2, D3, DX, T, X, id(647)]);
+    await q(`insert into inventory_counts (id, tenant_id, branch_id, status, reconciled_at) values ($1,$3,$4,'reconciled',now()), ($2,$3,$4,'in_progress',null)`, [C1, C2, T, B2]);
+    // C1: gel expected 9 counted 7 but only ONE unit was marked missing (−1 posted, −2 owed) · files counted as expected · C2 not reconciled yet
+    await q(`insert into inventory_count_lines (tenant_id, count_id, product_id, expected_qty, counted_qty, is_counted) values
+      ($1,$2,$4,9,7,true), ($1,$2,$5,0,0,true), ($1,$3,$4,9,1,true)`, [T, C1, C2, P.gel, P.files]);
+    await q(`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_before, quantity_change, quantity_after, related_type, related_id, reason) values
+      ($1,$2,$3,'adjustment_decrease',9,-1,8,'inventory_count',$4,'Count 1')`, [T, B2, P.gel, C1]);
+    const before = (await q(`select count(*)::int as n from inventory_stock_movements`))[0].n;
+    const h: any = await ic.check(ctx({ branchId: B2 }));
+    const k = Object.fromEntries(h.checks.map((c: any) => [c.key, c]));
+    expect(k.sku_unique).toMatchObject({ state: 'WARNING', count: 2, component: 'catalog' });       // A + B; the archived one and the other salon's are not counted
+    expect(k.barcode_unique).toMatchObject({ state: 'WARNING', count: 2 });
+    expect(k.count_variance_applied).toMatchObject({ state: 'FAILED', count: 1, detail: { countedLines: 2 } });
+    expect((await q(`select count(*)::int as n from inventory_stock_movements`))[0].n).toBe(before);
   });
 });

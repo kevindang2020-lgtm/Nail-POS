@@ -140,5 +140,17 @@ export const INVENTORYCENTER_EN: Record<string, string> = {
   "icx.health.d.tenant_isolation.PASSED": "Every stock record belongs to this salon's products.",
   "icx.health.d.tenant_isolation.FAILED": "A stock record points at another salon's product. Report this immediately.",
   "icx.health.k.no_side_effects": "Nothing changed by this check",
-  "icx.health.d.no_side_effects.PASSED": "This page and this check never order, count, transfer or adjust stock."
+  "icx.health.d.no_side_effects.PASSED": "This page and this check never order, count, transfer or adjust stock.",
+  "icx.health.k.sku_unique": "Every SKU belongs to one product",
+  "icx.health.d.sku_unique.PASSED": "No two active products share a SKU.",
+  "icx.health.d.sku_unique.WARNING": "Some active products share a SKU, so a search or a scan can land on the wrong one. Give each its own SKU or archive the duplicate.",
+  "icx.health.d.sku_unique.INSUFFICIENT_DATA": "No products to check yet.",
+  "icx.health.k.barcode_unique": "Every barcode belongs to one product",
+  "icx.health.d.barcode_unique.PASSED": "No two active products share a barcode.",
+  "icx.health.d.barcode_unique.WARNING": "Some active products share a barcode, so scanning it can pick the wrong product. Correct the barcode on one of them.",
+  "icx.health.d.barcode_unique.INSUFFICIENT_DATA": "No products to check yet.",
+  "icx.health.k.count_variance_applied": "Physical counts reached the ledger",
+  "icx.health.d.count_variance_applied.PASSED": "Every reconciled count moved the stock ledger by exactly counted minus expected.",
+  "icx.health.d.count_variance_applied.FAILED": "A reconciled count did not move the ledger by its full difference (for example fewer bottles were on hand than the count said were missing). Recount those products.",
+  "icx.health.d.count_variance_applied.INSUFFICIENT_DATA": "No reconciled physical count yet.",
 };
