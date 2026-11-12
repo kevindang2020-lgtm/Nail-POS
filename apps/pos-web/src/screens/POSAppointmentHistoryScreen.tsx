@@ -19,6 +19,7 @@ import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { ImeSafeInput } from '../components/ImeSafeInput';
 import { statusLabel } from '../i18n/status-label';
+import { codeLabel } from '../components/peopleLabels';
 
 type CustomerItem = { customerId: string; fullName: string; phone: string; visitsCount: number };
 type Appt = { 
@@ -49,6 +50,9 @@ const statusChip = (status: string) => {
   return <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: m.bg, color: m.fg, border: `1px solid ${m.border}` }}>{label}</span>;
 };
 
+// a recorded change value: a status through its label, a record id never shown raw, anything else as recorded
+const changeValue = (field: string | null, v: string | null) => v == null || v === '' ? '—' : field === 'status' ? statusLabel('appointment', v.replace(/-/g, '_'))
+  : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? t('ahx.changes.record') : v;
 const tt = (k: string, v?: Record<string, string | number>) => t(k, v as Parameters<typeof t>[1]);
 const STATUSES = ['all', 'upcoming', 'completed', 'canceled', 'no_show', 'rescheduled'] as const;
 const DATE_FIELDS = ['scheduled', 'created', 'updated', 'completed', 'canceled'] as const;
@@ -293,6 +297,14 @@ export function POSAppointmentHistoryScreen() {
           {open.canceledAt ? <><dt>{tt('ahx.canceledAt')}</dt><dd>{fmtDateTime(open.canceledAt)}</dd></> : null}
           <dt>{tt('ahx.kpi.rescheduled')}</dt><dd>{open.rescheduled ? tt('ahx.moved', { n: open.rescheduled }) : tt('ahx.never')}</dd>
         </dl>
+        {/* extras (Appointment History 04) — change & source evidence: what the append-only change log recorded (original → new
+            value, who, which booking path, when), newest first. Read-only; changes are made in Booking. */}
+        {open.changes ? <><h3 className="p-h" style={{ margin: '8px 0 4px' }}>{tt('ahx.changes.title')}</h3>
+          {open.changes.length ? <ul className="sub" data-testid="ahx-changes" style={{ margin: 0, paddingLeft: 18 }}>{open.changes.map((c) => <li key={c.id} data-testid="ahx-change">
+            <b>{codeLabel('ahx.changes.k.' + c.changeType, c.changeType)}</b>{c.field ? ` · ${codeLabel('ahx.changes.f.' + c.field, c.field)}` : ''}
+            {c.oldValue != null || c.newValue != null ? ` · ${changeValue(c.field, c.oldValue)} → ${changeValue(c.field, c.newValue)}` : ''}
+            {` · ${fmtDateTime(c.at)} · ${c.actor ?? (c.actorType ? codeLabel('ahx.changes.a.' + c.actorType, c.actorType) : tt('ahx.changes.unknownActor'))}`}{c.source ? ` · ${statusLabel('source', c.source)}` : ''}
+          </li>)}</ul> : <p className="sub" data-testid="ahx-changes-none">{tt('ahx.changes.none')}</p>}</> : null}
         <p className="sub">{tt('ahx.detailNote')}</p>
       </FitDialog> : null}
       {customer ? <CustomerHistory customer={customer} onClose={() => setCustomer(null)} /> : null}

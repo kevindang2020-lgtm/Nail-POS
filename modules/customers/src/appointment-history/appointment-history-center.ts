@@ -12,7 +12,7 @@
 //   Rescheduled   appointments with at least one recorded `rescheduled` change (a move is not a cancellation)
 // Scope: a branch-confined role sees only appointments of its branches.
 import { sql, type Kysely } from 'kysely';
-import type { AhSummaryResponse, AhListResponse, AhCheckResponse, AhOptionsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { AhSummaryResponse, AhListResponse, AhCheckResponse, AhOptionsResponse, AhChange } from '@aipowersalon/api-contracts/tenant';
 import { RetentionRepository, isUuid, maskPhone, type RetentionContext, type BranchScope } from '../retention/retention.repository';
 
 type Row = Record<string, any>;
@@ -139,13 +139,27 @@ export class AppointmentHistoryCenter {
     const total = N((await sql<Row>`select count(*)::int as n from ${this.rows(T, s)} r where ${w}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages);
     const rows = (await sql<Row>`select r.*, to_char(r.appt_date, 'YYYY-MM-DD') as day from ${this.rows(T, s)} r where ${w} order by ${order} limit ${pageSize} offset ${(p - 1) * pageSize}`.execute(this.db)).rows;
+    // extras (Appointment History 04) — change & source evidence for the details overlay: what the append-only change log
+    // recorded for the appointments on THIS page (original → new value, who, which path, when), newest first, ≤ 10 each.
+    // Read-only; the Booking event history itself is never rewritten.
+    const ids = rows.map((r) => String(r.id));
+    const changeRows = ids.length ? (await sql<Row>`select * from (select l.id, l.appointment_id, l.change_type, l.field, l.old_value, l.new_value, l.actor_type, l.source, l.created_at,
+        coalesce(nullif(u.full_name, ''), u.email) as actor, row_number() over (partition by l.appointment_id order by l.created_at desc, l.id desc) as rn
+      from appointment_change_log l left join users u on u.id = l.actor_id and u.tenant_id = l.tenant_id
+      where l.tenant_id = ${T} and l.appointment_id = any(${ids}::uuid[])) x where x.rn <= 10 order by x.created_at desc, x.id desc`.execute(this.db)).rows : [];
+    const changesBy = new Map<string, AhChange[]>();
+    for (const c of changeRows) {
+      const k = String(c.appointment_id); if (!changesBy.has(k)) changesBy.set(k, []);
+      changesBy.get(k)!.push({ id: String(c.id), changeType: String(c.change_type), field: c.field ?? null, oldValue: c.old_value ?? null, newValue: c.new_value ?? null,
+        actor: c.actor ?? null, actorType: c.actor_type ?? null, source: c.source ?? null, at: iso(c.created_at) });
+    }
     return {
       items: rows.map((r) => ({
         id: String(r.id), date: String(r.day), startTime: r.start_time ?? null, endTime: r.end_time ?? null, durationMinutes: r.duration_minutes == null ? null : N(r.duration_minutes),
         customerId: r.customer_id ? String(r.customer_id) : null, customer: r.customer_name ?? null, phone: maskPhone(r.phone),
         services: r.services ?? null, technician: r.technician_name ?? null, anyTechnician: !!r.any_technician, branch: r.branch_name ?? null,
         status: String(r.status), source: r.source ?? null, rescheduled: N(r.reschedules), createdAt: iso(r.created_at), updatedAt: iso(r.updated_at),
-        completedAt: iso(r.completed_at), canceledAt: iso(r.canceled_at),
+        completedAt: iso(r.completed_at), canceledAt: iso(r.canceled_at), changes: changesBy.get(String(r.id)) ?? [],
       })),
       total, page: p, pageSize, totalPages,
       applied: { q: q || null, status, dateField, sort, preset: per.preset, from: per.from, to: per.to },

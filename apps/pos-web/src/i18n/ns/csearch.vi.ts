@@ -509,4 +509,23 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.conflict": "Có người đã thay đổi ghi chú này sau khi bạn mở. Chưa lưu gì.", // DRAFT — Kevin reviews
   "cnx.loadTheirs": "Tải phiên bản của họ", // DRAFT — Kevin reviews
   "cnx.saveAnyway": "Vẫn lưu bản của tôi", // DRAFT — Kevin reviews
+  "ahx.changes.title": "Các thay đổi đã ghi", // DRAFT — Kevin reviews
+  "ahx.changes.none": "Chưa ghi nhận thay đổi nào cho lịch hẹn này.", // DRAFT — Kevin reviews
+  "ahx.changes.unknownActor": "Không ghi nhận", // DRAFT — Kevin reviews
+  "ahx.changes.record": "(một bản ghi)", // DRAFT — Kevin reviews
+  "ahx.changes.k.created": "Đã tạo", // DRAFT — Kevin reviews
+  "ahx.changes.k.updated": "Đã cập nhật", // DRAFT — Kevin reviews
+  "ahx.changes.k.status_changed": "Đổi trạng thái", // DRAFT — Kevin reviews
+  "ahx.changes.k.rescheduled": "Đổi lịch", // DRAFT — Kevin reviews
+  "ahx.changes.k.cancelled": "Đã hủy", // DRAFT — Kevin reviews
+  "ahx.changes.k.assigned": "Đã gán thợ", // DRAFT — Kevin reviews
+  "ahx.changes.f.status": "Trạng thái", // DRAFT — Kevin reviews
+  "ahx.changes.f.appt_date": "Ngày", // DRAFT — Kevin reviews
+  "ahx.changes.f.start_time": "Giờ bắt đầu", // DRAFT — Kevin reviews
+  "ahx.changes.f.end_time": "Giờ kết thúc", // DRAFT — Kevin reviews
+  "ahx.changes.f.technician_id": "Thợ", // DRAFT — Kevin reviews
+  "ahx.changes.a.user": "Nhân viên", // DRAFT — Kevin reviews
+  "ahx.changes.a.customer": "Khách hàng", // DRAFT — Kevin reviews
+  "ahx.changes.a.system": "Hệ thống", // DRAFT — Kevin reviews
+  "ahx.changes.a.ai": "Lễ tân AI", // DRAFT — Kevin reviews
 };

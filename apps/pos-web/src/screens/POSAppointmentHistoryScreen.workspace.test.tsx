@@ -54,4 +54,29 @@ describe('Appointment History workspace', () => {
     expect(await within(h).findByTestId('ahx-chk-past_open_appointments')).toBeInTheDocument();
     expect(within(h).getByText(/before today are still booked/)).toBeInTheDocument();
   });
+  it('Appointment History 04: details list the recorded changes — original → new, who, which path — with statuses labelled and ids never raw', async () => {
+    m.list.mockResolvedValue(listOf([{ ...row, changes: [
+      { id: 'h2', changeType: 'status_changed', field: 'status', oldValue: 'booked', newValue: 'cancelled', actor: 'Dana Desk', actorType: 'user', source: 'online', at: '2026-11-03T15:00:00Z' },
+      { id: 'h1', changeType: 'assigned', field: 'technician_id', oldValue: null, newValue: '0b5e7a8c-1111-4222-8333-444455556666', actor: null, actorType: 'system', source: null, at: '2026-11-02T15:00:00Z' },
+      { id: 'h0', changeType: 'rescheduled', field: 'start_time', oldValue: '09:00', newValue: '10:00', actor: null, actorType: null, source: null, at: '2026-11-01T15:00:00Z' }] }]));
+    render(<POSAppointmentHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('ahx-view'));
+    const d = await screen.findByTestId('ahx-detail');
+    const rows = within(d).getAllByTestId('ahx-change');
+    expect(rows[0]).toHaveTextContent('Status changed · Status · Booked → Cancel'); expect(rows[0]).toHaveTextContent('Dana Desk');
+    expect(rows[1]).toHaveTextContent('Technician assigned · Technician · — → (a record)'); expect(rows[1]).toHaveTextContent('System');
+    expect(rows[1].textContent).not.toContain('0b5e7a8c');
+    expect(rows[2]).toHaveTextContent('Rescheduled · Start time · 09:00 → 10:00'); expect(rows[2]).toHaveTextContent('Not recorded');
+  });
+  it('Appointment History 04: no recorded change says so; an older server without changes shows nothing', async () => {
+    m.list.mockResolvedValue(listOf([{ ...row, changes: [] }]));
+    const { unmount } = render(<POSAppointmentHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('ahx-view'));
+    expect(await screen.findByTestId('ahx-changes-none')).toBeInTheDocument();
+    unmount(); m.list.mockResolvedValue(listOf([row]));
+    render(<POSAppointmentHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('ahx-view'));
+    await screen.findByTestId('ahx-detail');
+    expect(screen.queryByTestId('ahx-changes-none')).toBeNull(); expect(screen.queryByTestId('ahx-changes')).toBeNull();
+  });
 });

@@ -45,7 +45,10 @@ export interface AhListItem {
   id: string; date: string; startTime: string | null; endTime: string | null; durationMinutes: number | null;
   customerId: string | null; customer: string | null; phone: string | null; services: string | null; technician: string | null; anyTechnician: boolean;
   branch: string | null; status: string; source: string | null; rescheduled: number; createdAt: string | null; updatedAt: string | null; completedAt: string | null; canceledAt: string | null;
+  /** extras (Appointment History 04): the recorded changes of this appointment (append-only appointment_change_log), newest first, at most 10 */
+  changes?: AhChange[];
 }
+export interface AhChange { id: string; changeType: string; field: string | null; oldValue: string | null; newValue: string | null; actor: string | null; actorType: string | null; source: string | null; at: string | null }
 export interface AhListResponse {
   items: AhListItem[]; total: number; page: number; pageSize: number; totalPages: number;
   applied: { q: string | null; status: string; dateField: string; sort: string; preset: string; from: string | null; to: string | null };

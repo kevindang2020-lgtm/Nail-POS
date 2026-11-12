@@ -83,3 +83,23 @@ describe('Appointment History workspace', () => {
     expect(h.checks.find((c) => c.key === 'deposit_failed_upcoming')).toMatchObject({ state: 'READY', count: 0 });
   });
 });
+
+describe('Appointment History 04 — change & source evidence on each row (read-only)', () => {
+  it('each listed appointment carries its recorded changes, newest first, with who and which path; another salon\'s log never appears', async () => {
+    const r0 = await ah.list(owner(), {});
+    const moved = r0.items.find((i) => i.rescheduled === 2)!;
+    await q(sql`insert into users (id, tenant_id, email, full_name, role, status) values (${id(11)}, ${T}, 'desk@ah.test', 'Dana Desk', 'FRONT_DESK', 'active')`);
+    await q(sql`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, actor_type, actor_id, source, created_at) values
+      (${T}, ${B}, ${moved.id}, 'assigned', 'technician_id', null, 'Lan Tran', 'user', ${id(11)}, 'pos_booking', now() + interval '1 minute'),
+      (${X}, ${BX}, ${moved.id}, 'cancelled', 'status', 'booked', 'cancelled', 'user', null, 'other_salon', now() + interval '2 minutes')`);
+    const before = (await q(sql`select count(*)::int as n from appointment_change_log where tenant_id = ${T}`))[0].n;
+    const row = (await ah.list(owner(), {})).items.find((i) => i.id === moved.id)!;
+    const ch = row.changes!.map((c) => [c.changeType, c.field, c.oldValue, c.newValue]);
+    expect(ch[0]).toEqual(['assigned', 'technician_id', null, 'Lan Tran']);   // newest first (the two moves share one timestamp)
+    expect(ch.slice(1).sort()).toEqual([['rescheduled', 'appt_date', 'x', 'y'], ['rescheduled', 'start_time', '09:00', '10:00']]);
+    expect(row.changes![0]).toMatchObject({ actor: 'Dana Desk', actorType: 'user', source: 'pos_booking' });
+    expect(row.changes!.some((c) => c.source === 'other_salon')).toBe(false);
+    expect((await ah.list(owner(), {})).items.find((i) => i.rescheduled === 0 && i.status === 'completed')!.changes).toEqual([]);
+    expect((await q(sql`select count(*)::int as n from appointment_change_log where tenant_id = ${T}`))[0].n).toBe(before);
+  });
+});
