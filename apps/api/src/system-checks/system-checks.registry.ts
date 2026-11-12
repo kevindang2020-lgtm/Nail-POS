@@ -164,6 +164,21 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'duplicate_usage_movement', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_type, m.related_id, m.product_id, m.movement_type FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.related_type = 'ticket_line' AND m.movement_type = 'service_usage'   -- a usage EVENT is already one movement (uq_inv_movements_usage_source, 716)
         GROUP BY m.related_type, m.related_id, m.product_id, m.movement_type HAVING count(*) > 1`) },
+    // extras (Services & Products 2 · 04 inventory alert reconciliation): the dashboard's inventory card counts every live
+    // low product; the sidebar badge / Open Alerts leave out the ones acknowledged in this episode; the persisted alert rows
+    // keep the workflow. These two name the rows where those surfaces can disagree with the canonical stock.
+    { key: 'acknowledged_still_low', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_alerts a
+        JOIN inventory_products ip ON ip.tenant_id = a.tenant_id AND ip.id = a.product_id
+        LEFT JOIN inventory_location_stock ls ON ls.tenant_id = a.tenant_id AND ls.product_id = a.product_id AND ls.branch_id = a.branch_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.resolved_at IS NULL AND a.acknowledged_at IS NOT NULL
+          AND ip.active = true AND ip.archived_at IS NULL AND coalesce(ls.reorder_level_override, ip.reorder_level, 0) > 0
+          AND coalesce(ls.quantity_on_hand, 0) <= coalesce(ls.reorder_level_override, ip.reorder_level, 0)`) },
+    { key: 'open_alert_not_live', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_alerts a
+        LEFT JOIN inventory_products ip ON ip.tenant_id = a.tenant_id AND ip.id = a.product_id
+        LEFT JOIN inventory_location_stock ls ON ls.tenant_id = a.tenant_id AND ls.product_id = a.product_id AND ls.branch_id = a.branch_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.resolved_at IS NULL
+          AND NOT (coalesce(ip.active, false) = true AND ip.archived_at IS NULL AND coalesce(ls.reorder_level_override, ip.reorder_level, 0) > 0
+                   AND coalesce(ls.quantity_on_hand, 0) <= coalesce(ls.reorder_level_override, ip.reorder_level, 0))`) },
     { key: 'received_over_ordered_lines', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_id, m.product_id FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.movement_type = 'purchase_received' AND m.related_type = 'purchase_order'
         GROUP BY m.related_id, m.product_id

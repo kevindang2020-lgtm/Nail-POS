@@ -1629,4 +1629,8 @@ export const OPS_EN = {
   "syschk.discounts.live_deal_branch_closed.fix": "The branch is no longer open but its deal still shows as live — end the deal or move it to an open branch.",
   "syschk.discounts.live_deal_service_unavailable": "Every live deal applies only to services that are still offered",
   "syschk.discounts.live_deal_service_unavailable.fix": "A service the deal applies to was archived, turned off or removed — update the deal’s services so customers are not shown a saving they cannot get.",
+  "syschk.inventory.acknowledged_still_low": "No acknowledged stock alert is still at or below its reorder level (these stay on the dashboard card but leave the sidebar badge)",
+  "syschk.inventory.acknowledged_still_low.fix": "Reorder or receive those products; the dashboard and the sidebar agree again once stock is above the reorder level.",
+  "syschk.inventory.open_alert_not_live": "No open stock alert is left for a product that is restocked, archived or has no reorder level",
+  "syschk.inventory.open_alert_not_live.fix": "Open Stock Alerts and resolve those alerts; the counts already follow the live stock.",
 };

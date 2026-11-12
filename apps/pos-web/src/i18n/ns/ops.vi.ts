@@ -1628,4 +1628,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.discounts.live_deal_branch_closed.fix": "Chi nhánh không còn mở nhưng ưu đãi vẫn hiện là đang chạy — hãy kết thúc ưu đãi hoặc chuyển sang chi nhánh đang mở.", // DRAFT — Kevin reviews
   "syschk.discounts.live_deal_service_unavailable": "Mọi ưu đãi đang chạy chỉ áp dụng cho dịch vụ vẫn còn cung cấp", // DRAFT — Kevin reviews
   "syschk.discounts.live_deal_service_unavailable.fix": "Một dịch vụ của ưu đãi đã được lưu trữ, tắt hoặc xóa — cập nhật dịch vụ của ưu đãi để khách không thấy mức giảm không thể dùng.", // DRAFT — Kevin reviews
+  "syschk.inventory.acknowledged_still_low": "Không có cảnh báo tồn kho đã xác nhận nào vẫn ở mức cần đặt hàng (các mục này vẫn hiện trên thẻ bảng điều khiển nhưng không có trong số trên thanh bên)", // DRAFT — Kevin reviews
+  "syschk.inventory.acknowledged_still_low.fix": "Đặt hoặc nhận thêm các sản phẩm đó; bảng điều khiển và thanh bên sẽ khớp lại khi tồn kho vượt mức cần đặt hàng.", // DRAFT — Kevin reviews
+  "syschk.inventory.open_alert_not_live": "Không còn cảnh báo tồn kho mở nào cho sản phẩm đã nhập thêm, đã lưu trữ hoặc không có mức đặt hàng", // DRAFT — Kevin reviews
+  "syschk.inventory.open_alert_not_live.fix": "Mở Cảnh báo tồn kho và đóng các cảnh báo đó; các con số đã theo tồn kho thực tế.", // DRAFT — Kevin reviews
 };
