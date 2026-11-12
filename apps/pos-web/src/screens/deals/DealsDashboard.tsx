@@ -55,6 +55,16 @@ export function DealsDashboard() {
           ))}</tbody>
         </table>
       )}
+      {d.byBranch && d.byBranch.length > 0 && (
+        <table style={{ width: '100%', marginTop: 12, fontSize: 12 }} data-testid="deals-by-branch">
+          <thead><tr><th align="left">{tx('do.byBranch.title')}</th><th align="right">{tx('do.byBranch.uses')}</th><th align="right">{tx('do.byBranch.customers')}</th><th align="right">{tx('do.byBranch.cost')}</th><th align="right">{tx('do.byBranch.avg')}</th></tr></thead>
+          <tbody>{d.byBranch.map((b) => (
+            <tr key={b.branchId ?? 'none'} data-testid="deals-branch-row"><td>{b.branchName ?? tx('do.byBranch.noBranch')}</td><td align="right">{b.uses}</td><td align="right">{b.customers}</td>
+              <td align="right">{money(b.netDiscountCents)}</td><td align="right">{b.avgDiscountCents == null ? '—' : money(b.avgDiscountCents)}</td></tr>
+          ))}</tbody>
+        </table>
+      )}
+      {d.byBranch && d.byBranch.length > 0 && <div className="sub" style={{ fontSize: 11, marginTop: 4 }}>{tx('do.byBranch.note')}</div>}
     </section>
   );
 }

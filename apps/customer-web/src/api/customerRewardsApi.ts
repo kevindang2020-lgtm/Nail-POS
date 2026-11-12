@@ -6,7 +6,7 @@ export interface GlobalRewardsView {
   program: { available: boolean; pointsPerRedeemBlock: number; redeemBlockValueCents: number };
   terms: { version: string; title: string; summary: string[]; privacyPath: string };
   account: { availablePoints: string; heldPoints: string; availableTenths: number; heldTenths: number; redemptionValueCents: number; lifetimeEarnedPoints: string; lifetimeRedeemedPoints: string; joinedAt: string | null; termsVersion: string; withdrawnAt: string | null; expires: null } | null;
-  earned: { ref: string; salon: string; at: string | null; points: string; eligibleCents: number; rate: string; status: string }[];
+  earned: { ref: string; salon: string; at: string | null; points: string; eligibleCents: number; rate: string; status: string; rule?: { kind: 'network' | 'salon'; versionNo: number | null } | null; spendableFrom?: string | null }[];
   redemptions: { ref: string; salon: string; at: string | null; points: string; valueCents: number; status: string; reason: string | null; ticketRef: string }[];
 }
 export const customerRewardsApi = {

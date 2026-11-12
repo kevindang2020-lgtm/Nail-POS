@@ -272,4 +272,19 @@ export const AIFD_VI: Record<string, string> = {
   "aifd.wz.test_note": "Cuộc gọi thử chỉ được chứng minh bằng cuộc gọi thật đã ghi nhận. Xác minh tại Lễ tân AI.",
   "aifd.wz.twilio": "Định tuyến Twilio",
   "aifd.wz.twilio_note": "Định tuyến giọng nói của số được đặt trong trang nhà cung cấp; giọng nói và SMS được kiểm tra riêng.",
+  "aifd.perf.window": "Khoảng thời gian hiệu suất", // DRAFT — Kevin reviews
+  "aifd.perf.p.all": "Tất cả cuộc gọi (không so sánh)", // DRAFT — Kevin reviews
+  "aifd.perf.p.today": "Hôm nay", // DRAFT — Kevin reviews
+  "aifd.perf.p.week": "Tuần này", // DRAFT — Kevin reviews
+  "aifd.perf.p.month": "Tháng này", // DRAFT — Kevin reviews
+  "aifd.perf.p.year": "Năm nay", // DRAFT — Kevin reviews
+  "aifd.perf.metric": "Cuộc gọi đã ghi nhận", // DRAFT — Kevin reviews
+  "aifd.perf.range": "{from} – {to}", // DRAFT — Kevin reviews
+  "aifd.perf.m.calls": "Cuộc gọi", // DRAFT — Kevin reviews
+  "aifd.perf.m.answered": "Đã trả lời (khách không cúp máy)", // DRAFT — Kevin reviews
+  "aifd.perf.m.booked": "Lịch hẹn đã xác nhận", // DRAFT — Kevin reviews
+  "aifd.perf.m.rate": "Lịch hẹn đã xác nhận trên mỗi cuộc gọi", // DRAFT — Kevin reviews
+  "aifd.perf.m.handoffs": "Chuyển cho người thật", // DRAFT — Kevin reviews
+  "aifd.perf.m.failed": "Cuộc gọi bị lỗi", // DRAFT — Kevin reviews
+  "aifd.perf.basis": "Ngày của tiệm theo múi giờ {tz}, so với cùng số ngày ngay trước đó. Lịch hẹn đã xác nhận chỉ gồm lịch đặt hoàn tất — lịch còn chờ mã sáu số không được tính.", // DRAFT — Kevin reviews
 };

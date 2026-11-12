@@ -73,4 +73,23 @@ describe('POSAIFrontDeskScreen', () => {
     await waitFor(() => expect(fdCalls).toHaveBeenLastCalledWith(expect.objectContaining({ q: '6095554411', page: 1 })));
     expect(screen.getByTestId('fd-call-open')).toBeInTheDocument();
   });
+  it('Extras · AI Front Desk 08: choosing a window asks the server for it and shows this window vs the one before, with the basis', async () => {
+    rows = [live];
+    fdCalls.mockImplementation((q: any) => Promise.resolve({ items: [], avgDurationSeconds: null, pagination: { page: 1, pageSize: 10, totalItems: 0, totalPages: 1 },
+      performance: q.period === 'week' ? { from: '2026-11-09', to: '2026-11-12', timeZone: 'America/New_York', previousFrom: '2026-11-05', previousTo: '2026-11-08',
+        current: { calls: 3, answered: 2, confirmedBookings: 1, handoffs: 1, failed: 0, bookingRatePercent: 33.3 }, previous: { calls: 0, answered: 0, confirmedBookings: 0, handoffs: 0, failed: 0, bookingRatePercent: null } } : null }) as any);
+    render(<MemoryRouter><POSAIFrontDeskScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText('Live Desk')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('fd-row-a2'));
+    fireEvent.click(await screen.findByTestId('fd-ov-tab-calls'));
+    await waitFor(() => expect(fdCalls).toHaveBeenLastCalledWith(expect.objectContaining({ period: undefined })));
+    expect(screen.queryByTestId('fd-perf')).toBeNull();                                   // no window → no comparison
+    fireEvent.change(screen.getByTestId('fd-calls-period'), { target: { value: 'week' } });
+    await waitFor(() => expect(fdCalls).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'week', page: 1 })));
+    const perf = await screen.findByTestId('fd-perf');
+    expect(perf).toHaveTextContent('2026-11-09 – 2026-11-12'); expect(perf).toHaveTextContent('2026-11-05 – 2026-11-08');
+    expect(screen.getByTestId('fd-perf-booked')).toHaveTextContent(/Confirmed bookings\s*1\s*0/);
+    expect(screen.getByTestId('fd-perf-rate')).toHaveTextContent('33.3%'); expect(screen.getByTestId('fd-perf-rate')).toHaveTextContent('—');
+    expect(perf).toHaveTextContent('America/New_York');
+  });
 });

@@ -46,8 +46,14 @@ export async function customerRewards(db: Kysely<any>, c: AppCtx) {
   const state = !id.verified ? 'NOT_VERIFIED' : !a || !a.opted_in_at ? 'NOT_JOINED' : a.withdrawn_at ? 'WITHDRAWN' : a.status !== 'active' ? 'SUSPENDED' : 'ACTIVE';
   if (!a) return { ...base, state, account: null, earned: [], redemptions: [] };
   // the customer's OWN activity across salons: salon name, date, points, rate, a short reference — nothing else about any salon
-  const earned = (await sql<Row>`SELECT e.id, t.display_name, e.created_at, e.point_tenths, e.eligible_cents, e.spend_increment_cents, e.point_tenths_per_increment, e.status, e.reversed_tenths
-    FROM reward_earn_transactions e JOIN tenants t ON t.id = e.tenant_id WHERE e.identity_id = ${id.identityId}::uuid AND e.status IN ('EARNED', 'PARTIALLY_REVERSED', 'REVERSED')
+  // Extras · GLOBAL LOYALTY 05: each earning also says which rule version applied (the network rate or the salon's own rate, by
+  // its version number — read from the snapshot taken at earn time, never today's rule) and since when the points were
+  // spendable (credited to the balance at earn time; nothing is spendable from a fully refunded earning).
+  const earned = (await sql<Row>`SELECT e.id, t.display_name, e.created_at, e.point_tenths, e.eligible_cents, e.spend_increment_cents, e.point_tenths_per_increment, e.status, e.reversed_tenths,
+      e.rule_source, coalesce(gv.version_no, tv.version_no) AS rule_version_no
+    FROM reward_earn_transactions e JOIN tenants t ON t.id = e.tenant_id
+    LEFT JOIN global_earning_rule_versions gv ON e.rule_source = 'GLOBAL_DEFAULT' AND gv.id = e.rule_version_id
+    LEFT JOIN tenant_earning_policy_versions tv ON e.rule_source = 'TENANT_OVERRIDE' AND tv.id = e.rule_version_id AND tv.tenant_id = e.tenant_id WHERE e.identity_id = ${id.identityId}::uuid AND e.status IN ('EARNED', 'PARTIALLY_REVERSED', 'REVERSED')
     ORDER BY e.created_at DESC LIMIT 50`.execute(db)).rows;
   const reds = (await sql<Row>`SELECT r.id, t.display_name, r.created_at, r.confirmed_at, r.point_tenths, r.value_cents, r.status, r.release_reason, r.ticket_id
     FROM reward_redemptions r JOIN tenants t ON t.id = r.tenant_id WHERE r.identity_id = ${id.identityId}::uuid ORDER BY r.created_at DESC LIMIT 50`.execute(db)).rows;
@@ -57,7 +63,9 @@ export async function customerRewards(db: Kysely<any>, c: AppCtx) {
     account: { availablePoints: tenthsLabel(available), heldPoints: tenthsLabel(held), availableTenths: available, heldTenths: held, redemptionValueCents: available * cpt,
       lifetimeEarnedPoints: tenthsLabel(n(a.lifetime_earned_tenths)), lifetimeRedeemedPoints: tenthsLabel(n(a.lifetime_redeemed_tenths)), joinedAt: iso(a.opted_in_at), termsVersion: a.terms_version, withdrawnAt: iso(a.withdrawn_at), expires: null },
     earned: earned.map((e) => ({ ref: 'E-' + String(e.id).slice(-6).toUpperCase(), salon: e.display_name ?? 'Salon', at: iso(e.created_at), points: tenthsLabel(n(e.point_tenths) - n(e.reversed_tenths)), eligibleCents: n(e.eligible_cents),
-      rate: `$${(n(e.spend_increment_cents) / 100).toFixed(2)} = ${tenthsLabel(n(e.point_tenths_per_increment))} ${n(e.point_tenths_per_increment) === 10 ? 'point' : 'points'}`, status: e.status })),
+      rate: `$${(n(e.spend_increment_cents) / 100).toFixed(2)} = ${tenthsLabel(n(e.point_tenths_per_increment))} ${n(e.point_tenths_per_increment) === 10 ? 'point' : 'points'}`, status: e.status,
+      rule: e.rule_source ? { kind: e.rule_source === 'TENANT_OVERRIDE' ? 'salon' as const : 'network' as const, versionNo: e.rule_version_no == null ? null : n(e.rule_version_no) } : null,
+      spendableFrom: e.status === 'REVERSED' ? null : iso(e.created_at) })),
     redemptions: reds.map((r) => ({ ref: 'R-' + String(r.id).slice(-6).toUpperCase(), salon: r.display_name ?? 'Salon', at: iso(r.confirmed_at ?? r.created_at), points: tenthsLabel(n(r.point_tenths)), valueCents: n(r.value_cents),
       status: r.status, reason: r.status === 'RELEASED' ? 'Removed at checkout' : r.status === 'EXPIRED' ? 'Checkout not completed in time' : r.status === 'REVERSED' ? 'Refunded — points returned' : null, ticketRef: 'T-' + String(r.ticket_id).slice(-6).toUpperCase() })),
   };

@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { posDealsApi, type DealSettings } from '../../api/posDealsApi';
 import { t, enPlural } from '@aipowersalon/mobile-sdk/i18n';
+import { stackingMatrix, stackingLimits, type StackingInputs } from './stackingExplorer';
 
 const POLICIES = (): [string, string][] => [
   ['best_single', t('growth.deals.policy.best_single')],
@@ -48,6 +49,33 @@ export function DealsSettingsPanel({ settings, onSaved }: { settings: DealSettin
         <label style={{ fontSize: 13 }}><input type="checkbox" aria-label={t('pos.returning_customer_deals_allowed')} checked={s.allowedExistingCustomer !== false} disabled={busy} onChange={(e) => void save({ allowedExistingCustomer: e.target.checked })} /> {t('pos.deals_for_returning_customers')}</label>
       </div>
       {note && <div className="sub" style={{ marginTop: 8, fontSize: 13 }}>{note}</div>}
+      <StackingExplorer settings={s} />
     </section>
+  );
+}
+
+const VERDICT_TONE: Record<string, string> = { allowed: 'ok', conditional: 'warn', blocked: 'bad' };
+
+/** Deals 10 — read-only: which offer types combine on one ticket under the settings above (the pricing engine's rules). */
+export function StackingExplorer({ settings }: { settings: StackingInputs }) {
+  const rows = stackingMatrix(settings);
+  const lim = stackingLimits(settings);
+  return (
+    <div data-testid="stacking-explorer" style={{ marginTop: 12 }}>
+      <div className="p-h">{t('do.stack.title')}</div>
+      <div className="sub" style={{ fontSize: 12 }}>{t('do.stack.note')}</div>
+      <table className="fk-table" style={{ width: '100%', marginTop: 6 }}>
+        <thead><tr><th>{t('do.stack.combination')}</th><th>{t('do.stack.result')}</th><th>{t('do.stack.why')}</th></tr></thead>
+        <tbody>{rows.map((r) => (
+          <tr key={r.pair} data-testid={'stack-' + r.pair}>
+            <td>{t('do.stack.pair.' + r.pair)}</td>
+            <td><span className={'fk-chip ' + VERDICT_TONE[r.verdict]} data-testid="stack-verdict">{t('do.stack.verdict.' + r.verdict)}</span></td>
+            <td style={{ fontSize: 12 }}>{t('do.stack.reason.' + r.reason)}</td>
+          </tr>))}
+        </tbody>
+      </table>
+      {lim.floorPercent != null || lim.maxPercent != null ? <div className="sub" style={{ fontSize: 12, marginTop: 4 }} data-testid="stack-limits">
+        {lim.floorPercent != null ? t('do.stack.floor', { v: lim.floorPercent }) : null}{' '}{lim.maxPercent != null ? t('do.stack.max', { v: lim.maxPercent }) : null}</div> : null}
+    </div>
   );
 }

@@ -316,7 +316,9 @@ function AgentOverlay({ id, manage, isOwner, onClose, onEdit, onAct, onDuplicate
   // A14 Nov 6: search the agent's calls (caller / dialed digits, customer name, appointment id); a row opens the call record
   const [cq, setCq] = useState(''); const dcq = useDebounced(cq, 300); const navTo = useNavigate();
   useEffect(() => { setCPage(1); }, [dcq]);
-  useEffect(() => { if (tab === 'calls') posAiFrontDeskApi.calls(id, { page: cPage, pageSize: 10, q: dcq || undefined }).then(setCalls).catch((e) => setCalls({ error: errorTextOf(e, t('aifd.load_failed')) })); }, [tab, id, cPage, dcq]);
+  // Extras · AI Front Desk 08: an optional salon-local window turns on the performance drill-down (vs the equal window before)
+  const [cPer, setCPer] = useState('');
+  useEffect(() => { if (tab === 'calls') posAiFrontDeskApi.calls(id, { page: cPage, pageSize: 10, q: dcq || undefined, period: cPer || undefined }).then(setCalls).catch((e) => setCalls({ error: errorTextOf(e, t('aifd.load_failed')) })); }, [tab, id, cPage, dcq, cPer]);
   useEffect(() => { if (tab === 'health') posAiFrontDeskApi.events({ agentId: id, pageSize: 10 }).then(setEv).catch((e) => setEv({ error: errorTextOf(e, t('aifd.load_failed')) })); }, [tab, id]);
   const o = d?.overview;
   const footer = o ? (
@@ -358,6 +360,9 @@ function AgentOverlay({ id, manage, isOwner, onClose, onEdit, onAct, onDuplicate
               <dt>{t('aifd.ov.last_booking')}</dt><dd>{when(d.booking.lastBookingSuccessAt)}</dd><dt>{t('aifd.f.handoff')}</dt><dd>{d.booking.handoffDestination ?? t('aifd.not_set')}</dd>
               <dt /><dd className="fd-muted">{t('aifd.pending_rule')}</dd><dt /><dd><button className="btn ghost sm" onClick={onOpenBooking}>{t('aifd.open_booking')}</button></dd></dl> : null}
             {tab === 'calls' ? <input className="fd-search" value={cq} onChange={(e) => setCq(e.target.value)} placeholder={t('aifd.calls_search')} aria-label={t('aifd.calls_search')} data-testid="fd-calls-q" /> : null}
+            {tab === 'calls' ? <select value={cPer} onChange={(e) => { setCPer(e.target.value); setCPage(1); }} aria-label={t('aifd.perf.window')} data-testid="fd-calls-period">
+              {['', 'today', 'week', 'month', 'year'].map((p) => <option key={p} value={p}>{t('aifd.perf.p.' + (p || 'all'))}</option>)}</select> : null}
+            {tab === 'calls' && calls && !calls.error && calls.performance ? <AgentPerformance p={calls.performance} /> : null}
             {tab === 'calls' && calls && !calls.error ? <div className="fd-muted" data-testid="fd-calls-avg">{t('aifd.avg_call', { v: calls.avgDurationSeconds == null ? '—' : `${calls.avgDurationSeconds}s` })}</div> : null}
             {tab === 'calls' ? (!calls ? <div className="fd-muted">{t('aifd.loading')}</div> : calls.error ? <div className="err">{calls.error}</div> : calls.items.length === 0 ? <div className="fd-muted">{calls.note ?? (dcq ? t('aifd.no_match') : t('aifd.no_calls'))}</div> : <>
               <table className="tbl fd-tbl"><thead><tr><th>{t('aifd.col.when')}</th><th>{t('aifd.col.call')}</th><th>{t('aifd.col.duration')}</th><th>{t('aifd.col.booking')}</th><th>{t('aifd.col.handoff')}</th><th>{t('aifd.col.error')}</th></tr></thead>
@@ -407,5 +412,21 @@ function ActionDialog({ act, isOwner, onClose, onDone }: { act: Act; isOwner: bo
         {err ? <div className="err" data-testid="fd-action-err">{err}</div> : null}
       </div>
     </FitDialog>
+  );
+}
+
+type FdPerfCounts = { calls: number; answered: number; confirmedBookings: number; handoffs: number; failed: number; bookingRatePercent: number | null };
+/** Extras · AI Front Desk 08 — the agent's recorded calls in the chosen window next to the equal window just before it. */
+function AgentPerformance({ p }: { p: { from: string; to: string; timeZone: string; previousFrom: string; previousTo: string; current: FdPerfCounts; previous: FdPerfCounts } }) {
+  const rows: [string, (c: FdPerfCounts) => string][] = [
+    ['calls', (c) => String(c.calls)], ['answered', (c) => String(c.answered)], ['booked', (c) => String(c.confirmedBookings)],
+    ['rate', (c) => (c.bookingRatePercent == null ? '—' : c.bookingRatePercent + '%')], ['handoffs', (c) => String(c.handoffs)], ['failed', (c) => String(c.failed)],
+  ];
+  return (
+    <div data-testid="fd-perf">
+      <table className="tbl fd-tbl"><thead><tr><th>{t('aifd.perf.metric')}</th><th>{t('aifd.perf.range', { from: p.from, to: p.to })}</th><th>{t('aifd.perf.range', { from: p.previousFrom, to: p.previousTo })}</th></tr></thead>
+        <tbody>{rows.map(([k, f]) => <tr key={k} data-testid={'fd-perf-' + k}><td>{t('aifd.perf.m.' + k)}</td><td>{f(p.current)}</td><td>{f(p.previous)}</td></tr>)}</tbody></table>
+      <div className="fd-muted">{t('aifd.perf.basis', { tz: p.timeZone })}</div>
+    </div>
   );
 }
