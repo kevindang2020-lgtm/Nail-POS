@@ -32,3 +32,31 @@ describe('Transactions → Refund', () => {
     expect(await screen.findByText('Refund panel for t1 (Grace Kim)')).toBeInTheDocument();
   });
 });
+describe('Transactions → Duplicate-payment review (TRANSACTIONS 03)', () => {
+  it('shows each recorded signal from the server, offers no money action of its own', async () => {
+    api.detail.mockResolvedValue({ ...detail(false), duplicateReview: { signals: 4, sharedReference: [{ id: 'p2', ticketNumber: '4002', amountCents: 6000, status: 'approved', at: '2026-10-22T13:20:00Z' }],
+      callbacks: { deliveries: 3, distinctEvents: 2, repeated: 1, unprocessed: 1 }, conflicting: [{ id: 'p2', amountCents: 6000, at: '2026-10-22T13:20:00Z', processorRef: 'RR1' }], overCollectedCents: 6000 } });
+    render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('view'));
+    const box = await screen.findByTestId('dup-review');
+    expect(screen.getByTestId('dup-shared')).toHaveTextContent('Reference also on 1 other payment(s)');
+    expect(screen.getByTestId('dup-shared')).toHaveTextContent('Ticket #4002');
+    expect(screen.getByTestId('dup-callbacks')).toHaveTextContent('Processor called back 3 times for 2 event(s)');
+    expect(screen.getByTestId('dup-conflicting')).toHaveTextContent('1 other same-amount charge(s)');
+    expect(screen.getByTestId('dup-over')).toHaveTextContent('$60.00');
+    expect(box.querySelectorAll('button')).toHaveLength(0);
+    expect(screen.queryByTestId('dup-none')).toBeNull();
+  });
+  it('no signals → a plain statement; an older server without the review → nothing (no fabricated all-clear)', async () => {
+    api.detail.mockResolvedValue({ ...detail(false), duplicateReview: { signals: 0, sharedReference: [], callbacks: { deliveries: 1, distinctEvents: 1, repeated: 0, unprocessed: 0 }, conflicting: [], overCollectedCents: 0 } });
+    const { unmount } = render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('view'));
+    expect(await screen.findByTestId('dup-none')).toHaveTextContent('1 recorded');
+    unmount();
+    api.detail.mockResolvedValue(detail(false));
+    render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('view'));
+    await screen.findByTestId('tender-facts');
+    expect(screen.queryByTestId('dup-review')).toBeNull();
+  });
+});

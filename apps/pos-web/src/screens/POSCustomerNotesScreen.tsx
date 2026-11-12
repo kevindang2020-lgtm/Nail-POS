@@ -68,9 +68,18 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
   const dirty = !!notes && !!base && JSON.stringify(notes) !== JSON.stringify(base);
   const [askClose, setAskClose] = useState(false);
   const tryClose = () => { if (dirty && !saving) setAskClose(true); else onClose(); };
-  const save = async () => {
+  // extras (Customer Profiles 06) — version check before a save: the notes are read again and compared with what this
+  // editor loaded; when someone else changed them meanwhile, nothing is written until the user picks "Load theirs" (their
+  // version replaces the form) or "Save mine anyway" (a confirmed overwrite). A failed re-read never blocks the save.
+  const [conflict, setConflict] = useState<Notes | null>(null);
+  const save = async (force = false) => {
     if (!notes) return;
     setSaving(true); setNote(null);
+    if (!force && base) {
+      const current = await posCustomersApi.getNotes(customer.customerId).then((n) => ({ ...EMPTY, ...(n || {}) }) as Notes, () => null);
+      if (current && JSON.stringify(current) !== JSON.stringify(base)) { setConflict(current); setSaving(false); return; }
+    }
+    setConflict(null);
     try { const saved = await posCustomersApi.setNotes(customer.customerId, notes as any); setNotes({ ...EMPTY, ...(saved || notes) }); setBase({ ...EMPTY, ...(saved || notes) }); setNote({ ok: true, text: t('cnx.saved') }); onSaved(); }
     catch (e: any) {
       if (isOfflineFailure(e) && saveDraft({ kind: 'customer_notes', targetId: customer.customerId, label: customer.fullName, payload: notes as any, base: (base ?? EMPTY) as any })) setNote({ ok: true, text: t('pos.you_re_offline_these_notes_are_1uh7') });
@@ -87,8 +96,11 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
         <button className="btn ghost" data-testid="cnx-ed-keep" onClick={() => setAskClose(false)}>{t('cnx.keepEditing')}</button>
         <button className="btn danger" data-testid="cnx-ed-discard" onClick={onClose}>{t('cnx.discard')}</button></> : <>{note ? <span className={note.ok ? 'ok' : 'err'} role="status" data-testid="cnx-ed-note">{note.text}</span> : null}
         <button className="btn ghost" data-testid="cnx-ed-close" onClick={tryClose}>{t('pos.close')}</button>
-        <button className="btn" data-testid="cnx-ed-save" disabled={!notes || saving} onClick={save}>{saving ? t('pos.saving_2') : t('pos.save_notes')}</button></>}>
+        <button className="btn" data-testid="cnx-ed-save" disabled={!notes || saving} onClick={() => save()}>{saving ? t('pos.saving_2') : t('pos.save_notes')}</button></>}>
       {error ? <div className="err">{error}</div> : !notes ? <div className="state">{t('pos.loading_notes')}</div> : <>
+        {conflict ? <div className="err" role="alert" data-testid="cnx-ed-conflict">{t('cnx.conflict')}
+          <button className="btn ghost" data-testid="cnx-ed-load-theirs" onClick={() => { setNotes(conflict); setBase(conflict); setConflict(null); }}>{t('cnx.loadTheirs')}</button>
+          <button className="btn danger" data-testid="cnx-ed-save-anyway" disabled={saving} onClick={() => save(true)}>{t('cnx.saveAnyway')}</button></div> : null}
         {field(t('pos.warnings'), 'warnings', 2, t('people.customer.notes.warningsHint'))}
         {field(t('pos.allergies'), 'allergyNotes', 2)}
         {field(t('pos.salon_notes'), 'salonNotes', 3)}

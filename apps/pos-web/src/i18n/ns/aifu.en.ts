@@ -253,4 +253,7 @@ export const AIFU_EN: Record<string, string> = {
   "aifu.wait": "Mark waiting",
   "aifu.edit": "Edit details",
   "aifu.rec.when": "Task opened {opened} · checked {at}",
+  "aifu.recent.title": "Contacted recently — {n} other contact(s) in the last 7 days. Check before reaching out again.",
+  "aifu.recent.src.ai_follow_up": "Another follow-up task",
+  "aifu.recent.src.end_of_day": "End-of-day technician follow-up",
 };

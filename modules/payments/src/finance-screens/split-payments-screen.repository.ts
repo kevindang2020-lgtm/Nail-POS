@@ -229,7 +229,9 @@ export class SplitPaymentsScreenRepository {
     const auditRows = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor from audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.entity_id = ${ticketId} and (a.action_type like '%pay%' or a.action_type like '%refund%' or a.action_type like '%void%' or a.action_type like '%split%') order by a.created_at desc limit 20`.execute(this.db)).rows;
     const state = (st: string) => (CONFIRMED as readonly string[]).includes(st) ? 'confirmed' : (REFUNDS as readonly string[]).includes(st) ? 'reversal' : FAILED.includes(st) ? 'failed' : 'pending';
+    const duplicateEvents = await this.duplicateEvents(ctx, ticketId);
     return {
+      duplicateEvents,
       ticket,
       tenders: tenders.filter((p: any) => !(REFUNDS as readonly string[]).includes(String(p.status))).map((p: any) => ({ id: String(p.id), method: methodKey(p.method), rawMethod: String(p.method ?? ''), channel: p.payment_surface ?? null, deviceId: p.device_id ?? null, amountCents: N(p.amount_cents), tipCents: N(p.tip_cents), surchargeCents: N(p.surcharge_cents),
         state: state(String(p.status)), rawStatus: String(p.status), processorRef: p.processor_transaction_id ?? p.processor_reference_id ?? null, card: p.card_brand || p.card_last4 ? `${p.card_brand ?? ''} ••${p.card_last4 ?? '••'}`.trim() : null,
@@ -244,6 +246,35 @@ export class SplitPaymentsScreenRepository {
       audit: auditRows.map((a: any) => ({ action: String(a.action_type), at: iso(a.created_at), actor: a.actor ?? a.role ?? null })),
       permissions: { refund: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.refund'), customer: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.customers.view') },
     };
+  }
+
+  /** extras (Split Payments 13) — Duplicate event detector for one ticket's tenders. DIAGNOSIS ONLY: nothing is erased,
+   *  merged or reversed. Three recorded signals:
+   *   • repeatedCallbacks — a tender whose processor callbacks (payment_gateway_events by matched payment / reference)
+   *                         repeat an event id;
+   *   • repeatedOperation — another tender of this salon carrying the same processor reference (the same operation
+   *                         recorded twice);
+   *   • duplicatePosting  — a tender posted more than once to a local ledger: more than one gift-card redemption entry or
+   *                         more than one live cash-drawer movement for the same payment. */
+  private async duplicateEvents(ctx: FinanceCtx, ticketId: string) {
+    const T = ctx.tenantId;
+    const rows = (await sql<any>`select p.id, p.processor_transaction_id as ref,
+        (select count(*)::int from payment_gateway_events e where e.tenant_id = p.tenant_id and (e.matched_payment_id = p.id or (p.processor_transaction_id is not null and e.processor_transaction_id = p.processor_transaction_id))) as deliveries,
+        (select count(distinct coalesce(e.event_id, e.id::text))::int from payment_gateway_events e where e.tenant_id = p.tenant_id and (e.matched_payment_id = p.id or (p.processor_transaction_id is not null and e.processor_transaction_id = p.processor_transaction_id))) as events,
+        (select count(*)::int from payments o where o.tenant_id = p.tenant_id and p.processor_transaction_id is not null and o.processor_transaction_id = p.processor_transaction_id and o.id <> p.id
+           and not (o.status in (${sql.join([...REFUNDS])}) or (o.status in ('voided', 'void') and o.amount_cents = 0))) as same_ref,
+        (select count(*)::int from gift_card_transactions x where x.tenant_id = p.tenant_id and x.payment_id = p.id and x.type in ('redeem', 'redemption')) as gift_posts,
+        (select count(*)::int from cash_drawer_movements m where m.tenant_id = p.tenant_id and m.source_type = 'payment' and m.source_id = p.id and m.voided_at is null) as drawer_posts
+      from payments p where p.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid and not (p.status in (${sql.join([...REFUNDS])})) order by p.created_at, p.id`.execute(this.db)).rows;
+    const out: Array<{ paymentId: string; kind: 'repeated_callbacks' | 'repeated_operation' | 'duplicate_gift_posting' | 'duplicate_drawer_posting'; count: number; ref: string | null }> = [];
+    for (const r of rows) {
+      const pid = String(r.id), ref = r.ref ?? null;
+      if (N(r.deliveries) > N(r.events)) out.push({ paymentId: pid, kind: 'repeated_callbacks', count: N(r.deliveries) - N(r.events), ref });
+      if (N(r.same_ref) > 0) out.push({ paymentId: pid, kind: 'repeated_operation', count: N(r.same_ref), ref });
+      if (N(r.gift_posts) > 1) out.push({ paymentId: pid, kind: 'duplicate_gift_posting', count: N(r.gift_posts), ref });
+      if (N(r.drawer_posts) > 1) out.push({ paymentId: pid, kind: 'duplicate_drawer_posting', count: N(r.drawer_posts), ref });
+    }
+    return { checkedTenders: rows.length, findings: out };
   }
 
   /** The registers that took a listed ticket (the filter list). */

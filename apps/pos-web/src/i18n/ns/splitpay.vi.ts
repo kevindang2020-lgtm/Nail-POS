@@ -33,4 +33,12 @@ export const SPLITPAY_VI: Record<string, string> = {
   'sp.linesTitle': 'Dịch vụ & Sản phẩm', 'sp.auditTitle': 'Nhật ký',
   'sp.refundNote': 'Hoàn tiền được thực hiện từ mục Hoàn tiền & Hủy, về đúng khoản gốc, qua bộ xử lý. Trang này không chuyển tiền.',
   'sp.pendingBanner': '{n} hóa đơn có thanh toán thẻ đang chờ kết quả. Khoản này chưa được tính là đã trả — hãy kiểm tra lần thanh toán gốc trong hóa đơn trước khi quẹt lại.', // DRAFT — Kevin reviews
+  'sp.dup.title': 'Kiểm tra sự kiện trùng', // DRAFT — Kevin reviews
+  'sp.dup.none': 'Không có sự kiện trùng trong {n} khoản thanh toán: không có callback lặp lại, không có mã tham chiếu lặp lại, không ghi sổ hai lần.', // DRAFT — Kevin reviews
+  'sp.dup.row': '{t} — {n}', // DRAFT — Kevin reviews
+  'sp.dup.k.repeated_callbacks': 'Callback bộ xử lý lặp lại', // DRAFT — Kevin reviews
+  'sp.dup.k.repeated_operation': 'Cùng mã tham chiếu trên khoản khác', // DRAFT — Kevin reviews
+  'sp.dup.k.duplicate_gift_posting': 'Ghi hai lần vào sổ thẻ quà tặng', // DRAFT — Kevin reviews
+  'sp.dup.k.duplicate_drawer_posting': 'Ghi hai lần vào ngăn kéo tiền', // DRAFT — Kevin reviews
+  'sp.dup.safe': 'Chỉ để chẩn đoán — không xóa hay đảo ngược gì ở đây. Xác minh, sau đó sửa qua Hoàn tiền & Hủy hoặc ngăn kéo tiền kèm lý do.', // DRAFT — Kevin reviews
 };

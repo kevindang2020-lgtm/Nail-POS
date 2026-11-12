@@ -412,4 +412,16 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.st.sync.errors": "{p}: {b} sai chữ ký · {u} đã nhận nhưng chưa xử lý (7 ngày qua)", // DRAFT — Kevin reviews
   "finance.st.sync.noErrors": "Không có sự kiện bị từ chối hay chưa xử lý trong 7 ngày qua", // DRAFT — Kevin reviews
   "finance.st.sync.noEvents": "Không nhận được sự kiện nào từ nhà xử lý trong 7 ngày qua", // DRAFT — Kevin reviews
+  "finance.iv.recon.clean": "Kiểm tra đối chiếu: không có sai lệch thanh toán–hóa đơn trong {n} hóa đơn thuộc phạm vi.", // DRAFT — Kevin reviews
+  "finance.iv.recon.flagged": "Kiểm tra đối chiếu: {f} trong {n} hóa đơn cần xem lại", // DRAFT — Kevin reviews
+  "finance.iv.recon.show": "Hiện", // DRAFT — Kevin reviews
+  "finance.iv.recon.hide": "Ẩn", // DRAFT — Kevin reviews
+  "finance.iv.recon.safe": "Chỉ là gợi ý để kiểm tra — không thay đổi gì. Sửa bằng một khoản thanh toán hoặc phiếu ghi có.", // DRAFT — Kevin reviews
+  "finance.iv.recon.detail": "Cần kiểm tra", // DRAFT — Kevin reviews
+  "finance.iv.recon.status_paid_with_balance": "Đánh dấu đã trả nhưng số dư khác $0", // DRAFT — Kevin reviews
+  "finance.iv.recon.status_partial_no_balance": "Trả một phần nhưng không còn nợ", // DRAFT — Kevin reviews
+  "finance.iv.recon.payment_on_unissued": "Có thanh toán trên hóa đơn chưa ở trạng thái thanh toán", // DRAFT — Kevin reviews
+  "finance.iv.recon.negative_balance": "Thu nhiều hơn số nợ", // DRAFT — Kevin reviews
+  "finance.iv.recon.duplicate_reference": "Mã tham chiếu thanh toán đã dùng cho khoản khác", // DRAFT — Kevin reviews
+  "finance.iv.recon.no_reference": "Thanh toán bên ngoài không có mã tham chiếu", // DRAFT — Kevin reviews
 };

@@ -108,4 +108,12 @@ export const TRANSACTIONS_VI = {
   'txn.trend': 'Kỳ trước ({from} – {to}): doanh thu gộp {g} trên {n} giao dịch', // DRAFT — Kevin reviews
   'txn.trendUp': 'doanh thu gộp tăng {p}%', // DRAFT — Kevin reviews
   'txn.trendDown': 'doanh thu gộp giảm {p}%', // DRAFT — Kevin reviews
+  'txn.dup.title': 'Kiểm tra thanh toán trùng', // DRAFT — Kevin reviews
+  'txn.dup.none': 'Không có dấu hiệu trùng: không thanh toán nào khác dùng mã tham chiếu này, không có callback lặp lại ({n} đã ghi), không có lần tính tiền thứ hai cùng số tiền trên phiếu này.', // DRAFT — Kevin reviews
+  'txn.dup.shared': 'Mã tham chiếu cũng có trên {n} thanh toán khác', // DRAFT — Kevin reviews
+  'txn.dup.callbacks': 'Bộ xử lý đã gọi lại {d} lần cho {e} sự kiện', // DRAFT — Kevin reviews
+  'txn.dup.callbacksNote': 'Callback lặp lại chỉ được áp dụng một lần; {u} lần gửi chưa được xử lý.', // DRAFT — Kevin reviews
+  'txn.dup.conflicting': '{n} lần tính tiền khác cùng số tiền trên phiếu này trong vòng 10 phút', // DRAFT — Kevin reviews
+  'txn.dup.over': 'Phiếu đã thu nhiều hơn mức có thể nợ {a}', // DRAFT — Kevin reviews
+  'txn.dup.safe': 'Chỉ để chẩn đoán — không hủy, hoàn tiền hay xóa gì ở đây. Xác minh với bộ xử lý, sau đó sửa qua Hoàn tiền & Hủy.', // DRAFT — Kevin reviews
 };

@@ -250,8 +250,10 @@ export class TransactionsScreenRepository {
       if (settlement.actual_deposit_date) push('deposited', `${String(settlement.actual_deposit_date).slice(0, 10)}T12:00:00Z`, { ref: settlement.settlement_id ?? null });
     }
     timeline.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+    const duplicateReview = await this.duplicateReview(ctx, paymentId, r, ticket);
     return {
       timeline,
+      duplicateReview,
       tender: { ...tender, surchargeCents: N(r.surcharge_cents), refundableCents: tender.counted ? Math.max(0, tender.grossCents - tender.refundedCents - tender.refundPendingCents) : 0 },
       refunds: refunds.map((x: any) => ({ id: String(x.id), amountCents: N(x.amount_cents), reason: x.reason ?? null, status: String(x.status), processorRefundId: x.processor_refund_id ?? null, at: iso(x.created_at), settledAt: iso(x.settled_at), actor: x.actor ?? null })),
       ticket,
@@ -261,6 +263,37 @@ export class TransactionsScreenRepository {
       permissions: { refund: can('pos.checkout.refund') && tender.counted && tender.method !== 'gift_card', sendReceipt: can('pos.receipts.send'), customer: can('pos.customers.view') },
       definitions: TX_DEFINITIONS,
     };
+  }
+
+  /** extras (TRANSACTIONS 03) — Safe Duplicate-Payment Review. DIAGNOSIS ONLY: nothing here voids, refunds, merges or
+   *  erases anything. Four recorded signals, each from rows that exist (never inferred from a matching amount alone):
+   *   • sharedReference — OTHER tenders of this salon carrying the same processor reference;
+   *   • callbacks       — processor callbacks recorded for this payment (by matched payment or reference): deliveries and
+   *                       how many of them repeated an event id already seen;
+   *   • conflicting     — other CONFIRMED tenders on the same ticket with the same method and amount within 10 minutes;
+   *   • overCollected   — the ticket's confirmed tenders exceed the most it can owe (total + tip + surcharge). */
+  private async duplicateReview(ctx: FinanceCtx, paymentId: string, r: any, ticket: Awaited<ReturnType<TransactionsScreenRepository['ticket']>>) {
+    const T = ctx.tenantId;
+    const ref: string | null = r.processor_transaction_id ?? null;
+    const shared = ref ? (await sql<any>`select p.id, p.amount_cents, p.status, p.created_at, t.ticket_number from payments p left join tickets t on t.id = p.ticket_id and t.tenant_id = p.tenant_id
+        where p.tenant_id = ${T} and p.processor_transaction_id = ${ref} and p.id <> ${paymentId}::uuid and not (p.status in (${sql.join(REVERSAL_ROWS)}) or (p.status in (${sql.join(VOIDED)}) and p.amount_cents = 0))
+        order by p.created_at, p.id limit 20`.execute(this.db)).rows : [];
+    const cb = (await sql<any>`select count(*)::int as deliveries, count(distinct coalesce(e.event_id, e.id::text))::int as distinct_events,
+        count(*) filter (where e.processed_at is null)::int as unprocessed
+        from payment_gateway_events e where e.tenant_id = ${T} and (e.matched_payment_id = ${paymentId}::uuid ${ref ? sql`or e.processor_transaction_id = ${ref}` : sql``})`.execute(this.db)).rows[0] ?? {};
+    const deliveries = N(cb.deliveries), distinct = N(cb.distinct_events);
+    const me = (ticket?.tenders ?? []).find((x) => x.id === paymentId);
+    const meAt = me?.at ? Date.parse(me.at) : NaN;
+    const conflicting = me && me.state === 'confirmed' ? (ticket?.tenders ?? []).filter((x) => x.id !== paymentId && x.state === 'confirmed' && x.method === me.method && x.amountCents === me.amountCents
+      && x.at && Number.isFinite(meAt) && Math.abs(Date.parse(x.at) - meAt) <= 10 * 60_000).map((x) => ({ id: x.id, amountCents: x.amountCents, at: x.at, processorRef: x.processorRef })) : [];
+    const f = ticket?.financials;
+    // conservative: a paid ticket's stored total may or may not already include the tip / surcharge, so only money beyond
+    // total + tip + surcharge (the most it can owe) is flagged — never a false alarm on a normal tipped ticket
+    const ceiling = f ? f.totalCents + f.tipCents + f.surchargeCents : 0;
+    const overCollectedCents = f && f.totalCents > 0 && f.paidCents > ceiling ? f.paidCents - ceiling : 0;
+    const sharedReference = shared.map((x: any) => ({ id: String(x.id), ticketNumber: x.ticket_number ?? null, amountCents: N(x.amount_cents), status: String(x.status), at: iso(x.created_at) }));
+    const signals = (sharedReference.length ? 1 : 0) + (deliveries > distinct ? 1 : 0) + (conflicting.length ? 1 : 0) + (overCollectedCents ? 1 : 0);
+    return { signals, sharedReference, callbacks: { deliveries, distinctEvents: distinct, repeated: Math.max(0, deliveries - distinct), unprocessed: N(cb.unprocessed) }, conflicting, overCollectedCents };
   }
 
   /** The ticket behind a tender — any ticket, a single-tender one included: its lines (with technicians), every tender

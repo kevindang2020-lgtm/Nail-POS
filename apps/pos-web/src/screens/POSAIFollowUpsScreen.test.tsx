@@ -101,4 +101,22 @@ describe('POSAIFollowUpsScreen', () => {
     const src = screen.getByTestId('aifu-f-source') as HTMLSelectElement;
     expect([...src.options].map((o) => o.value)).toEqual(expect.arrayContaining(['missed_call', 'copilot']));
   });
+  it('AI Follow Ups 05: a customer reached recently by another task or an end-of-day follow-up shows a warning (none → no warning)', async () => {
+    const base = await detail('x');
+    detail.mockResolvedValueOnce({ ...base, recentContacts: [{ source: 'ai_follow_up', at: '2026-11-10T15:00:00Z', channel: 'phone_call', outcome: 'reached', by: 'Fiona Desk', ref: 't2' },
+      { source: 'end_of_day', at: '2026-11-09T23:00:00Z', channel: 'customer_app', outcome: 'sent', by: 'Lan Tran', ref: 'e1' }] } as any);
+    mount();
+    await waitFor(() => expect(screen.getAllByTestId('aifu-row')).toHaveLength(1));
+    fireEvent.click(screen.getAllByTestId('aifu-row')[0]);
+    const w = await screen.findByTestId('aifu-d-recent');
+    expect(w).toHaveTextContent('2 other contact(s) in the last 7 days');
+    const rows = screen.getAllByTestId('aifu-d-recent-row');
+    expect(rows[0]).toHaveTextContent('Another follow-up task'); expect(rows[0]).toHaveTextContent('Fiona Desk'); expect(rows[0]).toHaveTextContent('Reached');
+    expect(rows[1]).toHaveTextContent('End-of-day technician follow-up'); expect(rows[1]).toHaveTextContent('Lan Tran'); expect(rows[1]).not.toHaveTextContent('sent');
+    expect(w.querySelectorAll('button')).toHaveLength(0);
+    fireEvent.click(screen.getByTestId('aifu-d-close'));
+    fireEvent.click(screen.getAllByTestId('aifu-row')[0]);
+    await waitFor(() => expect(screen.getByTestId('aifu-d-close')).toBeInTheDocument());
+    expect(screen.queryByTestId('aifu-d-recent')).toBeNull();
+  });
 });

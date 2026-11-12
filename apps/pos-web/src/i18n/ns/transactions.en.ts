@@ -108,4 +108,12 @@ export const TRANSACTIONS_EN = {
   'txn.trend': 'Period before ({from} – {to}): {g} gross over {n} transactions',
   'txn.trendUp': 'gross up {p}%',
   'txn.trendDown': 'gross down {p}%',
+  'txn.dup.title': 'Duplicate-payment review',
+  'txn.dup.none': 'No duplicate signals: no other payment shares this reference, no repeated callbacks ({n} recorded), no same-amount second charge on this ticket.',
+  'txn.dup.shared': 'Reference also on {n} other payment(s)',
+  'txn.dup.callbacks': 'Processor called back {d} times for {e} event(s)',
+  'txn.dup.callbacksNote': 'A repeated callback is applied once; {u} delivery(ies) were not processed.',
+  'txn.dup.conflicting': '{n} other same-amount charge(s) on this ticket within 10 minutes',
+  'txn.dup.over': 'Ticket collected {a} more than it can owe',
+  'txn.dup.safe': 'Diagnosis only — nothing is voided, refunded or erased here. Verify with the processor, then correct through Refunds & Voids.',
 };

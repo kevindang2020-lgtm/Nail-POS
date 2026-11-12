@@ -27,7 +27,7 @@ type Row = { id: string; invoiceNumber: string; status: string; displayStatus: D
   subtotalCents: number; discountCents: number; taxCents: number; totalCents: number; paidCents: number; balanceCents: number; payments: number; customer: Customer; notes: string | null;
   creditedCents?: number; refundedCents?: number; credits?: number;
   actions: { edit: boolean; send: boolean; recordPayment: boolean; void: boolean; linkCustomer: boolean; credit?: boolean } };
-type Detail = { invoice: Row; lines: Array<{ id: string; description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }>; payments: Array<{ id: string; amountCents: number; paidOn: string | null; method: string; reference: string | null; note: string | null; createdAt: string | null; recordedBy: string | null }>;
+type Detail = { invoice: Row; reconciliation?: string[]; lines: Array<{ id: string; description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }>; payments: Array<{ id: string; amountCents: number; paidOn: string | null; method: string; reference: string | null; note: string | null; createdAt: string | null; recordedBy: string | null }>;
   credits?: Array<{ id: string; creditNumber: string; creditCents: number; refundCents: number; refundMethod: string | null; refundReference: string | null; reason: string; issuedOn: string | null; issuedBy: string | null }>;
   delivery: { note: string; email?: 'available' | 'not_connected'; sms?: 'available' | 'not_connected'; canSend?: { email: boolean; sms: boolean }; destination?: { email: string | null; phone: string | null };
     attempts?: Array<{ id: string; channel: string; destination: string; status: string; reason: string | null; createdAt: string | null; deliveredAt: string | null }> }; permissions: { recordPayment: boolean; send: boolean; manage: boolean } };
@@ -128,6 +128,7 @@ export function POSInvoicesScreen() {
         </>}
       </div>
       <div className="fn-scope" data-testid="kpi-scope">{tx('finance.iv.kpiScope')}: {scopeLabel}</div>
+      <ReconStrip r={summary.data?.reconciliation} onOpen={(id) => setDlg({ kind: 'detail', id })} />
 
       <div className="fn-toolbar iv-toolbar" role="toolbar" aria-label={tx('finance.filters')}>
         <div className="fn-search wide">
@@ -239,6 +240,7 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
           {inv.displayStatus === 'void' && inv.voidReason ? <span className="fk-hint">{tx('finance.iv.voidReasonShown', { r: inv.voidReason })}</span> : null}</div>
         {/* extras (Nov 11 2026) — Readable Receivable Explanations: why this status, from the invoice's own recorded amounts */}
         <div className="fk-hint" data-testid="status-why">{explainStatus(inv)}</div>
+        {d.data?.reconciliation?.length ? <div className="fk-note warn" data-testid="recon-issues">{tx('finance.iv.recon.detail')}: {d.data.reconciliation.map((c) => lbl('finance.iv.recon.' + c, c)).join(' · ')}</div> : null}
         <div className="fn-cols2">
           <dl className="fk-dl">
             <dt>{tx('finance.iv.billTo')}</dt><dd>{inv.customer.name ?? <span className="fk-muted">{customerText(inv.customer)}</span>}{inv.customer.id ? <> · <button type="button" className="fk-link" onClick={() => onProfile(inv.customer.id!)} data-testid="open-profile">{tx('finance.openCustomer')}</button></> : null}</dd>
@@ -303,6 +305,25 @@ function CatalogPicker({ onPick }: { onPick: (it: { name: string; unitPriceCents
 type Line = { description: string; quantity: string; unit: string };
 const addYmd = (ymd: string, k: number) => { const [y, m, d] = ymd.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + k)); return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`; };
 /** why an invoice has its status — from its own recorded totals, payments, credits and due date (nothing inferred) */
+// extras (Invoices Management 11) — Payment-to-Invoice Reconciliation: the server's read-only check over the invoices in
+// scope (stored status vs computed balance, payments on unissued invoices, overpaid balances, a payment reference also used
+// on another invoice payment, an external payment with no reference). It only points at invoices to investigate — every
+// correction stays a credit note / payment entry with its own guard. Absent from an older server → nothing shown.
+type Recon = { checked: number; flaggedInvoices: number; counts: Record<string, number>; items: Array<{ id: string; invoiceNumber: string; issues: string[] }> };
+export function ReconStrip({ r, onOpen }: { r?: Recon | null; onOpen: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!r) return null;
+  if (!r.flaggedInvoices) return <div className="fn-scope" data-testid="recon-strip">{tx('finance.iv.recon.clean', { n: fmtNumber(r.checked) })}</div>;
+  return <div className="fn-scope" data-testid="recon-strip">
+    <span className="fk-chip warn">{tx('finance.iv.recon.flagged', { f: fmtNumber(r.flaggedInvoices), n: fmtNumber(r.checked) })}</span>{' '}
+    <span className="fk-hint">{Object.entries(r.counts).filter(([, n]) => n > 0).map(([c, n]) => `${lbl('finance.iv.recon.' + c, c)} ${fmtNumber(n)}`).join(' · ')}</span>{' '}
+    <button type="button" className="fk-link" onClick={() => setOpen((o) => !o)} data-testid="recon-toggle">{tx(open ? 'finance.iv.recon.hide' : 'finance.iv.recon.show')}</button>
+    {open ? <ul className="fn-notes" data-testid="recon-list">{r.items.map((x) => <li key={x.id}><button type="button" className="fk-link" onClick={() => onOpen(x.id)} data-testid="recon-open">{x.invoiceNumber}</button>
+      <span className="fk-li-s"> {x.issues.map((c) => lbl('finance.iv.recon.' + c, c)).join(' · ')}</span></li>)}</ul> : null}
+    <div className="fk-hint">{tx('finance.iv.recon.safe')}</div>
+  </div>;
+}
+
 export function explainStatus(inv: { displayStatus: string; totalCents: number; paidCents: number; balanceCents: number; creditedCents?: number; dueDate: string | null }): string {
   const due = inv.dueDate ? fmtYmdSafe(inv.dueDate) : null;
   switch (inv.displayStatus) {

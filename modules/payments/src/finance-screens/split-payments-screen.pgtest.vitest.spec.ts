@@ -151,3 +151,26 @@ describe('Split Payments — pending card outcomes (banner count)', () => {
     expect((await r.summary(ctx, await all())).kpis.pendingAttemptTickets).toBe(before + 1);
   });
 });
+
+describe('Split Payments 13 — duplicate event detector (diagnosis only)', () => {
+  it('flags repeated callbacks, a repeated operation reference and a tender posted twice to the drawer / gift ledger; a clean split has none', async () => {
+    const t = await ticket({ total: 9000, number: 'T-DUP-1' });
+    const card = await pay(t, 'card', 5000, 'approved', 'RR-DUP-9');
+    const cash = await pay(t, 'cash', 2000);
+    const gift = await pay(t, 'gift_card', 2000);
+    const elsewhere = await ticket({ total: 5000, number: 'T-DUP-2' }); await pay(elsewhere, 'card', 5000, 'approved', 'RR-DUP-9');   // the same operation recorded on another ticket
+    await q(`insert into payment_gateway_events (tenant_id, processor_type, event_id, processor_transaction_id, signature_valid, matched_payment_id, processed_at) values ($1,'cardpointe','E9','RR-DUP-9',true,$2,null), ($1,'cardpointe','E9','RR-DUP-9',true,$2,now())`, [T, card]);
+    await q(`insert into cash_drawer_movements (tenant_id, branch_id, business_date, direction, amount_cents, reason, source_type, source_id) values ($1,$2,'2026-10-20','in',2000,'sale','payment',$3), ($1,$2,'2026-10-20','in',2000,'sale','payment',$3)`, [T, B, cash]);
+    await q(`insert into gift_card_transactions (tenant_id, branch_id, gift_card_id, type, amount_cents, balance_after_cents, ticket_id, payment_id) values ($1,$2,$3,'redeem',2000,0,$4,$5), ($1,$2,$3,'redeem',2000,0,$4,$5)`, [T, B, id('71'), t, gift]);
+    const before = (await q(`select (select count(*) from cash_drawer_movements where tenant_id = $1)::int as d, (select count(*) from gift_card_transactions where tenant_id = $1)::int as g, (select count(*) from payments where tenant_id = $1)::int as p`, [T])).rows[0];
+    const d = await r.detail(ctx, t);
+    expect(d.duplicateEvents.checkedTenders).toBe(3);
+    expect(d.duplicateEvents.findings).toEqual([
+      { paymentId: card, kind: 'repeated_callbacks', count: 1, ref: 'RR-DUP-9' }, { paymentId: card, kind: 'repeated_operation', count: 1, ref: 'RR-DUP-9' },
+      { paymentId: cash, kind: 'duplicate_drawer_posting', count: 2, ref: null }, { paymentId: gift, kind: 'duplicate_gift_posting', count: 2, ref: null },
+    ]);
+    expect((await q(`select (select count(*) from cash_drawer_movements where tenant_id = $1)::int as d, (select count(*) from gift_card_transactions where tenant_id = $1)::int as g, (select count(*) from payments where tenant_id = $1)::int as p`, [T])).rows[0]).toEqual(before);
+    expect((await r.detail(ctx, t100)).duplicateEvents.findings).toEqual([]);
+    expect((await r.detail(ctx, t80)).duplicateEvents.findings).toEqual([]);   // one gift ledger entry is normal
+  });
+});

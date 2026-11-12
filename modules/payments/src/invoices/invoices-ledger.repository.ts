@@ -206,7 +206,9 @@ export class InvoicesLedgerRepository {
     // money handed back on credit notes leaves the collected figure on the day it was refunded; credits issued are shown beside it
     const back = (await sql<any>`${fw ? sql`${this.base(ctx, tz)} ` : sql``}select coalesce(sum(ic.refund_cents), 0)::bigint as refunded, coalesce(sum(ic.credit_cents), 0)::bigint as credited, count(*)::int as n from invoice_credits ic
       where ic.tenant_id = ${T} and ${dateInPeriod(sql`ic.issued_on`, f.period)} ${fw ? sql`and ic.invoice_id in (select ib.id from ib where ${fw.where})` : sql``}`.execute(this.db)).rows[0] || {};
+    const reconciliation = await this.reconciliation(ctx, tz, w.where);
     return {
+      reconciliation,
       period: f.period, dateBasis: f.basis, scope: f.q || f.amountMin != null || f.amountMax != null ? 'period_and_filters' : 'period',
       kpis: {
         outstandingCents: N(k.outstanding), outstandingInvoices: N(k.outstanding_n), overdueInvoices: N(k.overdue_n), overdueCents: N(k.overdue_cents),
@@ -215,6 +217,40 @@ export class InvoicesLedgerRepository {
       },
       dataAsOf: new Date().toISOString(),
     };
+  }
+
+  /** extras (Invoices Management 11) — Payment-to-Invoice Reconciliation. READ-ONLY: it suggests what to investigate and
+   *  never changes a status, a payment or a balance. Over the invoices in scope (`where` on the ib relation), each flag is
+   *  a recorded disagreement:
+   *    • status_paid_with_balance — stored 'paid' but the computed balance is not 0;
+   *    • status_partial_no_balance — stored 'partially_paid' but nothing (or less than nothing) is still owed;
+   *    • payment_on_unissued      — payments recorded on a draft / sent-without-progress / void invoice;
+   *    • negative_balance         — more collected than the invoice asks (and not returned on a credit note);
+   *    • duplicate_reference      — a payment reference also recorded on ANOTHER invoice payment of this salon;
+   *    • no_reference             — a check / external card / bank transfer payment with no reference to match it to the
+   *                                 bank or processor ("unlinked posted payment"). */
+  async reconciliation(ctx: FinanceCtx, tz: string, where: RawBuilder<boolean> = sql<boolean>`true`, onlyId?: string) {
+    const T = ctx.tenantId;
+    const rows = (await sql<any>`${this.base(ctx, tz)},
+        refs as (select lower(trim(ip.reference)) as ref, count(*)::int as n from invoice_payments ip where ip.tenant_id = ${T} and coalesce(trim(ip.reference), '') <> '' group by 1 having count(*) > 1),
+        flags as (select ib.id, ib.invoice_number, ib.created_at,
+          (ib.status = 'paid' and ib.balance_cents <> 0) as paid_bal,
+          (ib.status = 'partially_paid' and ib.balance_cents <= 0) as partial_none,
+          (ib.status in ('draft', 'sent', 'void') and ib.payments_n > 0) as unissued,
+          (ib.status <> 'void' and ib.balance_cents < 0) as negative,
+          exists (select 1 from invoice_payments ip join refs on refs.ref = lower(trim(ip.reference)) where ip.tenant_id = ${T} and ip.invoice_id = ib.id) as dup_ref,
+          exists (select 1 from invoice_payments ip where ip.tenant_id = ${T} and ip.invoice_id = ib.id and ip.method in ('check', 'card_external', 'bank_transfer') and coalesce(trim(ip.reference), '') = '') as no_ref
+          from ib where ${where} ${onlyId ? sql`and ib.id = ${onlyId}::uuid` : sql``})
+      select f.*, count(*) over ()::int as checked from flags f order by f.created_at desc, f.id desc`.execute(this.db)).rows;
+    const KEYS = [['paid_bal', 'status_paid_with_balance'], ['partial_none', 'status_partial_no_balance'], ['unissued', 'payment_on_unissued'], ['negative', 'negative_balance'], ['dup_ref', 'duplicate_reference'], ['no_ref', 'no_reference']] as const;
+    const counts = Object.fromEntries(KEYS.map(([, k]) => [k, 0])) as Record<(typeof KEYS)[number][1], number>;
+    const flagged: Array<{ id: string; invoiceNumber: string; issues: string[] }> = [];
+    for (const r of rows) {
+      const issues = KEYS.filter(([c]) => r[c] === true).map(([, k]) => k);
+      for (const k of issues) counts[k]++;
+      if (issues.length) flagged.push({ id: String(r.id), invoiceNumber: String(r.invoice_number), issues });
+    }
+    return { checked: rows.length, flaggedInvoices: flagged.length, counts, items: flagged.slice(0, 25), readOnly: true as const };
   }
 
   async detail(ctx: FinanceCtx, id: string) {
@@ -235,6 +271,7 @@ export class InvoicesLedgerRepository {
       lines: lines.map((l: any) => ({ id: String(l.id), description: String(l.description), quantity: N(l.quantity), unitPriceCents: N(l.unit_price_cents), lineTotalCents: N(l.line_total_cents), position: N(l.position) })),
       payments: payments.map((p: any) => ({ id: String(p.id), amountCents: N(p.amount_cents), paidOn: ymd(p.paid_on), method: String(p.method), reference: p.reference ?? null, note: p.note ?? null, createdAt: iso(p.created_at), recordedBy: p.recorded_by ?? null })),
       delivery: await this.deliveryState(ctx, id, r),
+      reconciliation: (await this.reconciliation(ctx, tz, sql<boolean>`true`, id)).items[0]?.issues ?? [],
     };
   }
 
