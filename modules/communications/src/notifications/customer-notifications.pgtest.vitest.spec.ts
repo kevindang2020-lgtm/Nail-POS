@@ -9,7 +9,7 @@ import { systemContext } from '@aipowersalon/tenant-context';
 import { NotificationsService } from './notifications.service';
 import { KyselyNotificationsRepository } from './notifications.kysely.repository';
 import { KyselyOptOutRepository } from './notifications.optout.kysely.repository';
-import { CustomerNotificationsCenter, evaluateMessagingIncidents, type CnContext, type CnReadiness, type CnReadinessView, type CnSender } from './customer-notifications';
+import { CustomerNotificationsCenter, evaluateMessagingIncidents, cnPriorityOf, type CnContext, type CnReadiness, type CnReadinessView, type CnSender } from './customer-notifications';
 
 const P = 'd7410000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -320,5 +320,34 @@ describe('Customer Notifications export', () => {
     expect(out).not.toMatch(/\+1\d{10}/);   // a masked viewer never gets a full number
     expect(lines.slice(1).every((l) => l.includes(',sms,'))).toBe(true);
     expect((await q(sql`select count(*)::int n from audit_events where tenant_id = ${T} and action = 'notifications.exported'`))[0].n).toBeGreaterThan(0);
+  });
+});
+
+describe('extras Customer Notifications #05 — priority and categories (read-time, history unchanged)', () => {
+  it('each row carries a priority derived from its stored purpose; the priority filter narrows the list; no ledger row changes', async () => {
+    const before = await q(sql`select id, purpose, status, delivered_at from notifications order by id`);
+    expect(['account', 'receipt', 'reminder', 'conversation', 'notification', 'followup', 'marketing', null, 'something_new'].map(cnPriorityOf))
+      .toEqual(['urgent', 'transactional', 'transactional', 'transactional', 'transactional', 'information', 'marketing', 'unclassified', 'unclassified']);
+    const at = ago(30);
+    await ledger({ to: '+15551230001', status: 'delivered', at, purpose: 'account', customer: C2 });
+    await ledger({ to: '+15551230001', status: 'delivered', at, purpose: 'marketing', customer: C2 });
+    await ledger({ to: '+15551230001', status: 'sent', at, purpose: null, customer: C2 });
+    await ledger({ to: '+15559990000', status: 'delivered', at, purpose: 'account', tenant: T2, branch: B2 });   // the other salon: never listed
+    const counts = (await q(sql`select count(*) filter (where purpose = 'account')::int as urgent, count(*) filter (where purpose = 'marketing')::int as mkt,
+      count(*) filter (where purpose is null)::int as unc, count(*) filter (where purpose in ('receipt', 'reminder', 'conversation', 'notification'))::int as tr from notifications where tenant_id = ${T}`))[0];
+    const urgent = await center.list(owner, { preset: 'all', priority: 'urgent', pageSize: 50 });
+    expect(urgent.totalItems).toBe(counts.urgent);
+    expect(urgent.items.length).toBeGreaterThan(0);
+    expect(urgent.items.every((r: any) => r.priority === 'urgent' && r.type === 'account')).toBe(true);
+    expect((await center.list(owner, { preset: 'all', priority: 'marketing', pageSize: 50 })).totalItems).toBe(counts.mkt);
+    expect((await center.list(owner, { preset: 'all', priority: 'unclassified', pageSize: 50 })).totalItems).toBe(counts.unc);
+    expect((await center.list(owner, { preset: 'all', priority: 'transactional', pageSize: 50 })).totalItems).toBe(counts.tr);
+    const all = await center.list(owner, { preset: 'all', pageSize: 50 });
+    expect(all.items.every((r: any) => r.priority === cnPriorityOf(r.type))).toBe(true);
+    const one = urgent.items[0];
+    expect((await center.detail(owner, one.id)).priority).toBe('urgent');
+    // the class is computed when read — the rows written before this test are exactly as they were
+    const after = await q(sql`select id, purpose, status, delivered_at from notifications where id in (${sql.join(before.map((r: any) => r.id))}) order by id`);
+    expect(after).toEqual(before);
   });
 });

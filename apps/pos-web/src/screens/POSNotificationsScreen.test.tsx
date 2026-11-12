@@ -88,4 +88,26 @@ describe('Customer Notifications', () => {
     ui();
     expect(await screen.findByTestId('cn-forbidden')).toHaveTextContent(/do not have permission/i);
   });
+  it('extras CN-05: each row shows the server\'s priority; the priority filter goes to the server and Clear removes it', async () => {
+    m.list.mockResolvedValue(page([{ ...failedRow, type: 'account', priority: 'urgent' }, { ...failedRow, id: '22222222-2222-4222-8222-222222222222', type: 'marketing', priority: 'marketing' }]));
+    ui();
+    expect(await screen.findByTestId('cn-prio-urgent')).toHaveTextContent('Urgent · security');
+    expect(screen.getByTestId('cn-prio-marketing')).toHaveTextContent('Marketing');
+    fireEvent.change(screen.getByTestId('cn-priority'), { target: { value: 'urgent' } });
+    await waitFor(() => expect(m.list).toHaveBeenLastCalledWith(expect.objectContaining({ priority: 'urgent' })));
+    fireEvent.click(await screen.findByTestId('cn-clear'));
+    await waitFor(() => expect(m.list.mock.calls.at(-1)?.[0]).not.toHaveProperty('priority'));
+  });
+  it('extras CN-07: seeing an incident changes nothing; Acknowledge and Resolve are separate, explicit actions', async () => {
+    m.incidents.mockResolvedValue({ items: [{ id: 'al1', severity: 'critical', status: 'new', title: 'Repeated failures', body: '3 failed', rule: 'repeated', channel: 'sms', category: 'auth', count: 3,
+      firstEventAt: null, lastEventAt: null, detections: 1, openedAt: null, updatedAt: null, resolvedAt: null, resolvedBy: null }], page: 1, pageSize: 10, totalItems: 1, totalPages: 1, canResolve: true, evaluatedAt: null });
+    m.acknowledgeIncident.mockResolvedValue({});
+    ui();
+    expect(await screen.findByTestId('cn-incident')).toHaveTextContent('Repeated failures');
+    expect(m.acknowledgeIncident).not.toHaveBeenCalled();
+    expect(m.resolveIncident).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('cn-incident-ack'));
+    await waitFor(() => expect(m.acknowledgeIncident).toHaveBeenCalledWith('al1'));
+    expect(m.resolveIncident).not.toHaveBeenCalled();
+  });
 });
