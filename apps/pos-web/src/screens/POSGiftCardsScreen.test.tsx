@@ -89,7 +89,11 @@ describe('POSGiftCardsScreen', () => {
     mount();
     fireEvent.click(await screen.findByText('•••• 4821'));
     fireEvent.click(await screen.findByTestId('adjust'));
+    fireEvent.change(screen.getByTestId('adjust-amount'), { target: { value: '40.00' } });
+    expect(screen.getByTestId('adjust-preview').textContent).toMatch(/cannot take a card below zero/);   // $40 off a $35 card
     fireEvent.change(screen.getByTestId('adjust-amount'), { target: { value: '10.00' } });
+    expect(screen.getByTestId('adjust-preview').textContent).toMatch(/Balance now \$35\.00 · change −\$10\.00 · balance after \$25\.00/);
+    expect(screen.getByTestId('adjust-preview').textContent).toMatch(/Not linked to a ticket/);
     expect(screen.getByTestId('adjust-submit')).toBeDisabled();
     fireEvent.change(screen.getByTestId('adjust-reason'), { target: { value: 'charged twice' } });
     fireEvent.click(screen.getByTestId('adjust-submit'));

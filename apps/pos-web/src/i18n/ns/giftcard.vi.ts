@@ -58,4 +58,7 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.adjusted": "Đã điều chỉnh {card} — số dư hiện là {a}.",
   "gc.amount": "Số tiền",
   "gc.source": "Nguồn: số dư thẻ (nợ phải trả, đang dùng, tổng) và sổ giao dịch thẻ quà tặng (đã phát hành, đã dùng) trong phạm vi chi nhánh của bạn, đọc trực tiếp vào thời điểm trên. Chạm vào ô để xem chi tiết.", // DRAFT — Kevin reviews
+  "gc.adjPreview": "Số dư hiện tại {now} · thay đổi {d} · số dư sau {after}", // DRAFT — Kevin reviews
+  "gc.adjOver": "Vượt quá số dư — điều chỉnh không thể làm thẻ âm.", // DRAFT — Kevin reviews
+  "gc.adjAudit": "Không gắn với phiếu: ghi nhận là điều chỉnh của quản lý kèm lý do, sau khi xác nhận mật khẩu, trong sổ thẻ và nhật ký kiểm tra.", // DRAFT — Kevin reviews
 };

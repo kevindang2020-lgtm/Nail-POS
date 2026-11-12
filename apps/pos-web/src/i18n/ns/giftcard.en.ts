@@ -63,4 +63,7 @@ export const GIFTCARD_EN = {
   "gc.adjusted": "{card} adjusted — balance now {a}.",
   "gc.amount": "Amount",
   "gc.source": "Source: card balances (liability, active, total) and the gift-card transaction ledger (issued, redeemed) for your branch scope, read live at the time above. Tap a card to drill into its records.",
+  "gc.adjPreview": "Balance now {now} · change {d} · balance after {after}",
+  "gc.adjOver": "That is more than the balance — a correction cannot take a card below zero.",
+  "gc.adjAudit": "Not linked to a ticket: recorded as a manager correction with your reason, after password confirmation, in the card ledger and audit log.",
 } as const;

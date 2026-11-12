@@ -99,4 +99,13 @@ export const TRANSACTIONS_VI = {
   'txn.channel.customer_display': 'Màn hình khách',
   'txn.channel.manual_external': 'Ghi nhận bên ngoài',
   'txn.channel.online': 'Trực tuyến',
+  'txn.src.ticket': 'Khớp: Phiếu', // DRAFT — Kevin reviews
+  'txn.src.refund': 'Khớp: Hoàn tiền', // DRAFT — Kevin reviews
+  'txn.src.payment': 'Khớp: Thanh toán', // DRAFT — Kevin reviews
+  'txn.src.customer': 'Khớp: Khách hàng', // DRAFT — Kevin reviews
+  'txn.src.technician': 'Khớp: Thợ', // DRAFT — Kevin reviews
+  'txn.channel.tap_to_pay': 'Chạm để thanh toán', // DRAFT — Kevin reviews
+  'txn.trend': 'Kỳ trước ({from} – {to}): doanh thu gộp {g} trên {n} giao dịch', // DRAFT — Kevin reviews
+  'txn.trendUp': 'doanh thu gộp tăng {p}%', // DRAFT — Kevin reviews
+  'txn.trendDown': 'doanh thu gộp giảm {p}%', // DRAFT — Kevin reviews
 };

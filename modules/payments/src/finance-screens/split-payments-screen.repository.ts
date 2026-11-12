@@ -39,7 +39,7 @@ const FAILED = ['declined', 'failed', 'error', 'timeout', 'canceled', 'cancelled
 const REFUND_DONE = ['refunded'];
 const maskPhone = (p: string | null | undefined) => { const d = (p ?? '').replace(/\D/g, ''); return d.length >= 4 ? `(•••) •••-${d.slice(-4)}` : null; };
 const showPhone = (p: string | null | undefined) => { const d = (p ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (p ?? null); };
-const METHOD_KEY: Record<string, string> = { card: 'card', credit_card: 'card', debit_card: 'card', cash: 'cash', gift_card: 'gift_card', gift: 'gift_card', check: 'check', deposit: 'deposit', loyalty: 'loyalty', other: 'other' };
+const METHOD_KEY: Record<string, string> = { card: 'card', credit_card: 'card', debit_card: 'card', tap_to_pay: 'card', cash: 'cash', gift_card: 'gift_card', gift: 'gift_card', check: 'check', deposit: 'deposit', loyalty: 'loyalty', other: 'other' };
 export const methodKey = (m: string | null | undefined) => METHOD_KEY[String(m ?? '').toLowerCase()] ?? (String(m ?? '') || 'other');
 
 export class SplitPaymentsScreenRepository {

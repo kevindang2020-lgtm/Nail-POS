@@ -2728,7 +2728,9 @@
    "tx-dialog",
    "tx-row",
    "tx-table",
+   "tx-trend",
    "tx-view",
+   "txn-match-source",
    "view"
   ],
   "transactions": [
@@ -2797,6 +2799,8 @@
    "transactions-screen",
    "tx-dialog",
    "tx-row",
+   "tx-trend",
+   "txn-match-source",
    "view"
   ],
   "eod-cash": [
@@ -3054,6 +3058,7 @@
    "adjust-",
    "adjust-amount",
    "adjust-form",
+   "adjust-preview",
    "adjust-reason",
    "adjust-submit",
    "balance-dialog",

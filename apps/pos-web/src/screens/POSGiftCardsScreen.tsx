@@ -324,8 +324,12 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
           <div className="fk-seg" role="radiogroup" aria-label={tx('gc.adjust')}>{(['down', 'up'] as const).map((x) => <button key={x} type="button" role="radio" aria-checked={adjDir === x} className={adjDir === x ? 'on' : ''} onClick={() => setAdjDir(x)} data-testid={'adjust-' + x}>{tx('gc.adjust.' + x)}</button>)}</div>
           <label className="fk-field"><span>{tx('gc.amount')} *</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} data-testid="adjust-amount" /></label>
           <label className="fk-field"><span>{tx('gc.adjustReason')} *</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-testid="adjust-reason" /></label>
+          {(() => { const cents = centsFromText(amount); if (cents == null || cents <= 0) return null;   // extras (GIFT CARDS 10): the correction previewed before it is made
+            const delta = adjDir === 'down' ? -cents : cents; const after = c.balanceCents + delta;
+            return <div className={'fk-preview' + (after < 0 ? ' bad' : '')} data-testid="adjust-preview">{tx('gc.adjPreview', { now: fmtMoney(c.balanceCents), d: (delta < 0 ? '−' : '+') + fmtMoney(Math.abs(delta)), after: fmtMoney(Math.max(0, after)) })}
+              {after < 0 ? <div>{tx('gc.adjOver')}</div> : null}<div className="fk-hint">{tx('gc.adjAudit')}</div></div>; })()}
           <button type="button" className="fk-btn" onClick={() => setMode(null)} disabled={busy}>{tx('pos.cancel')}</button>
-          <button type="button" className="fk-btn primary" onClick={doAdjust} disabled={busy || reason.trim().length < 3} data-testid="adjust-submit">{busy ? tx('pos.saving') : tx('gc.adjust')}</button></div> : null}
+          <button type="button" className="fk-btn primary" onClick={doAdjust} disabled={busy || reason.trim().length < 3 || (adjDir === 'down' && (centsFromText(amount) ?? 0) > c.balanceCents)} data-testid="adjust-submit">{busy ? tx('pos.saving') : tx('gc.adjust')}</button></div> : null}
         {mode === 'void' ? <div className="fk-void" data-testid="void-form"><span>{tx('gc.voidConfirm', { a: fmtMoney(c.balanceCents) })}</span>
           <label className="fk-field"><span>{tx('gc.voidReason')} *</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-autofocus data-testid="void-reason" /></label>
           <button type="button" className="fk-btn" onClick={() => setMode(null)} disabled={busy}>{tx('pos.cancel')}</button>

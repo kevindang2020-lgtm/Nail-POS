@@ -21,11 +21,11 @@ import { errorTextOf } from '../i18n/error-text';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
 import { ExportPreview } from '../components/ExportPreview';
-import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, fmtYmdSafe, type PeriodState } from '../components/FinanceKit';
 
 type Row = { id: string; ticketId: string | null; ticketNumber: string | null; state: string; rawStatus: string; createdAt: string | null; paidAt: string | null; lastRefundAt: string | null;
   customer: { id: string; name: string | null; phone: string | null } | null; technicians: string | null; method: string; channel: string | null; card: string | null; giftCardLast4: string | null;
-  grossCents: number; tipCents: number; refundedCents: number; refundPendingCents: number; netCents: number; counted: boolean; processor: string | null; processorRef: string | null; settlementId: string | null; matchedBy?: string };
+  grossCents: number; tipCents: number; refundedCents: number; refundPendingCents: number; netCents: number; counted: boolean; processor: string | null; processorRef: string | null; settlementId: string | null; matchedBy?: string; matchSource?: 'ticket' | 'refund' | 'payment' | 'customer' | 'technician' | null };
 const STATE_TONE: Record<string, string> = { completed: 'ok', partially_refunded: 'warn', refunded: 'warn', voided: 'mut', pending: 'info', failed: 'bad' };
 const STATES = ['completed', 'partially_refunded', 'refunded', 'voided', 'pending', 'failed'];
 const METHODS = ['card', 'cash', 'gift_card', 'other'];
@@ -89,6 +89,9 @@ export function POSTransactionsScreen() {
           <KpiCard testId="kpi-net" label={tx('pos.net')} loading={!k} value={k ? fmtMoney(k.netCents) : ''} sub={ctx ? tx('txn.kpi.netSub', { r: fmtMoney(ctx.refundedCents) }) : ''} />
         </>}
       </div>
+      {sum.data?.previous && k ? (() => { const pv = sum.data.previous; const chg = (a: number, b: number) => (b === 0 ? null : Math.round(((a - b) / b) * 1000) / 10);
+        const g = chg(k.grossCents, pv.grossCents);   // extras (TRANSACTIONS 13): one compact line, never displacing the ledger or KPIs
+        return <div className="fk-hint" data-testid="tx-trend">{tx('txn.trend', { from: fmtYmdSafe(pv.from), to: fmtYmdSafe(pv.to), g: fmtMoney(pv.grossCents), n: fmtNumber(pv.transactions) })}{g != null ? ` · ${tx(g >= 0 ? 'txn.trendUp' : 'txn.trendDown', { p: String(Math.abs(g)) })}` : ''}</div>; })() : null}
       {sum.data ? <details className="tn-defs" data-testid="definitions"><summary>{tx('txn.howCounted')}</summary><dl className="fk-dl">{['transactions', 'gross', 'tips', 'net'].map((x) => <div key={x} className="tn-def"><dt>{tx('txn.def.' + x)}</dt><dd>{tx('txn.defText.' + x)}</dd></div>)}</dl></details> : null}
       <div className="fn-tabsrow tn-toolbar">
         <div className="fn-search tn-search"><input className="fk-search wide" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('txn.searchPh')} aria-label={tx('txn.searchPh')} data-testid="search" />
@@ -115,7 +118,7 @@ export function POSTransactionsScreen() {
             <tbody>{rows.map((r) => (
               <tr key={r.id} data-testid="tx-row">
                 <td>{when(basis === 'created' ? r.createdAt : basis === 'refunded' ? r.lastRefundAt : (r.paidAt ?? r.createdAt))}</td>
-                <td className="fn-id"><span className="fn-mono">{short(r.id)}</span><span className="fk-li-s">{r.ticketNumber ? tx('txn.ticketN', { n: r.ticketNumber }) : tx('rv.notLinked')}{r.matchedBy && q ? ' · ' + tx('txn.matched.' + r.matchedBy) : ''}</span></td>
+                <td className="fn-id"><span className="fn-mono">{short(r.id)}</span><span className="fk-li-s">{r.ticketNumber ? tx('txn.ticketN', { n: r.ticketNumber }) : tx('rv.notLinked')}{r.matchedBy && q && !r.matchSource ? ' · ' + tx('txn.matched.' + r.matchedBy) : ''}</span>{r.matchSource && q ? <span className="fk-chip mut" data-testid="txn-match-source">{tx('txn.src.' + r.matchSource)}</span> : null}</td>
                 <td>{r.customer?.name ?? tx('rv.walkIn')}{r.customer?.phone ? <span className="fk-li-s">{r.customer.phone}</span> : null}</td>
                 <td className="t-opt tn-techs">{r.technicians ?? '—'}</td>
                 <td>{methodLbl(r.method, r.giftCardLast4)}{r.card || r.channel ? <span className="fk-li-s">{[r.card, r.channel ? codeLabel('txn.channel.' + r.channel, r.channel) : null].filter(Boolean).join(' · ')}</span> : null}</td>

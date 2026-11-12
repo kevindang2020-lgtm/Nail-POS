@@ -115,6 +115,12 @@ describe('Transactions — the screenshot drill and the definitions', () => {
     expect(l.total).toBe(0);
     const sep = await r.list(ctx, r.filters(await r.period(ctx, { preset: 'custom', from: '2026-09-30', to: '2026-09-30' }), {}), pr);
     expect(sep.items.map((x) => x.id)).toEqual([ids.edge]);
+    // extras (TRANSACTIONS 13): October's comparison is the 31 days before — Aug 31 to Sep 30 — with the same filters
+    const s = await r.summary(ctx, await oct());
+    expect(s.previous).toMatchObject({ from: '2026-08-31', to: '2026-09-30' });
+    const sepOnly = await r.summary(ctx, r.filters(await r.period(ctx, { preset: 'custom', from: '2026-08-31', to: '2026-09-30' }), {}));
+    expect(s.previous!.grossCents).toBe(sepOnly.kpis.grossCents); expect(s.previous!.transactions).toBe(sepOnly.kpis.transactions);
+    expect((await r.summary(ctx, r.filters(await r.period(ctx, { preset: 'all' }), {}))).previous).toBeNull();   // all time: no comparison
   });
   it('the whole month: KPIs over every matching tender, independent of the page', async () => {
     const s = await r.summary(ctx, await oct());
@@ -146,6 +152,16 @@ describe('Transactions — search, filters, paging', () => {
     const bao = await r.list(ctx, await oct({ search: 'bao' }), pr);
     expect(bao.items.map((x) => x.id).sort()).toEqual([ids.s2, ids.spCard, ids.spCash, ids.spCash2].sort());
     expect((await r.list(ctx, await oct({ technician: TB }), pr)).total).toBe(4);
+    // extras (TRANSACTIONS 14): each match says which record it matched
+    const src = async (search: string) => (await r.list(ctx, await oct({ search }), pr)).items.map((x: any) => x.matchSource);
+    expect(await src('#4002')).toEqual(['ticket']);
+    expect(await src(ids.s1)).toEqual(['payment']);
+    expect(await src('RR4003')).toEqual(['payment']);
+    expect(await src('RF4010')).toEqual(['refund']);
+    expect(await src('$53.27')).toEqual(['payment']);
+    expect(new Set(await src('bao'))).toEqual(new Set(['technician']));
+    expect(new Set(await src('john smith'))).toEqual(new Set(['customer']));
+    expect((await r.list(ctx, await oct({}), pr)).items.every((x: any) => x.matchSource === undefined)).toBe(true);   // no search → no label
   });
   it('status, method and amount filters; the KPIs keep counting money when the list is narrowed by status', async () => {
     expect((await r.list(ctx, await oct({ status: 'partially_refunded' }), pr)).items.map((x) => x.id)).toEqual([ids.spCard]);
@@ -218,5 +234,18 @@ describe('Transactions — detail, privacy, isolation', () => {
     const csv = await r.exportCsv(ctx, await day('2026-10-22'));
     expect(csv).toContain('Gross,168.15'); expect(csv).toContain('Tips (once per ticket),9.60');
     expect(csv).not.toContain('(856) 555-1234');
+  });
+});
+
+describe('TRANSACTIONS 09 — tender vs capture channel', () => {
+  it('a Tap to Pay payment is a Card tender (filter, KPI, row) with its capture channel shown apart', async () => {
+    const tid = await ticket('4901', { total: 2500, tip: 0, at: '2026-11-02T15:00:00Z' });
+    const pid = await pay(tid, 'tap_to_pay', 2500, 0, '2026-11-02T15:00:00Z');
+    const nov = async (extra: Record<string, unknown> = {}) => r.filters(await r.period(ctx, { preset: 'custom', from: '2026-11-02', to: '2026-11-02' }), extra);
+    const row = (await r.list(ctx, await nov(), pr)).items.find((x: any) => x.id === pid)!;
+    expect(row).toMatchObject({ method: 'card', rawMethod: 'tap_to_pay', channel: 'tap_to_pay' });
+    expect((await r.list(ctx, await nov({ method: 'card' }), pr)).items.map((x: any) => x.id)).toContain(pid);
+    expect((await r.list(ctx, await nov({ method: 'other' }), pr)).items.map((x: any) => x.id)).not.toContain(pid);
+    expect((await r.summary(ctx, await nov())).context.cardCents).toBe(2500);
   });
 });

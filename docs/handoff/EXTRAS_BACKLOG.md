@@ -10,10 +10,10 @@ Nothing is marked BUILT or EXISTS without the code being opened and the test nam
 
 | Status | Rows |
 |---|---|
-| BUILT this arc | 109 (incl. part) |
-| EXISTS (opened and named) | 739 (incl. part) |
+| BUILT this arc | 113 (incl. part) |
+| EXISTS (opened and named) | 740 (incl. part) |
 | NOISE (parser picked up acceptance / instruction text) | 436 |
-| TODO | 530 |
+| TODO | 525 |
 | REMOVED (Kevin: no receipt printer) | 4 |
 
 Built so far:
@@ -1491,14 +1491,14 @@ Decisions:
 | 03 | Safe Duplicate-Payment Review Warn on duplicate external references, repeated callbacks and conflicting payment attempts without | TODO |
 | 04 | KPI cards Transactions, Gross, Tips, Net with correct period/filter labels and backend-derived values. Date presets and calendars Today / This Week / This Month / This Year / Custom Range; From Date and To Date month pic | EXISTS — Transactions · Gross · Tips · Net from the server over every matching tender with period / filter labels |
 | 05 | Refund Eligibility Preview From Details, preview eligible remaining refundable amount and direct users to the existing authorized refund workflow. 6. “Data Last Verified” Indicator Add subtle freshness messaging when tra | EXISTS — details overlay shows refunds and what is still refundable, with the existing guarded refund |
-| 07 | Sticky Ledger Header and Footer Keep headers and pager visible while rows scroll inside the bounded central work area. These are additions or improvements. Audit the repository first; if equivalent features already exist | TODO |
+| 07 | Sticky Ledger Header and Footer Keep headers and pager visible while rows scroll inside the bounded central work area. These are additions or improvements. Audit the repository first; if equivalent features already exist | EXISTS — POSTransactionsScreen ledger: .fn-table thead th is position:sticky (styles.css) and the Pager sits in the FitPanel footer outside the scrolling body, sized by useFitRows to the bounded work area |
 | 08 | Customer & Ticket Context Preview Show compact authorized customer identity and ticket details without requiring many page changes. | EXISTS (part) — details: the tender, its ticket's lines / tenders / tips |
-| 09 | Payment Method Explanation Separate tender type from capture channel, so Clover Compact and Tap to Pay do not appear to be different financial tender currencies. | TODO |
+| 09 | Payment Method Explanation Separate tender type from capture channel, so Clover Compact and Tap to Pay do not appear to be different financial tender currencies. | BUILT — Tap to Pay is a Card tender: transactions METHOD_SQL card filter + Card KPI include tap_to_pay, methodKey maps it to card (Split Payments / Money Overview too), the row keeps rawMethod and shows the capture channel apart (payment_surface, or tap_to_pay) — the existing sub-line "VISA ••4242 · Clover terminal / Tap to Pay" (tests: transactions-screen.pgtest "TRANSACTIONS 09"; split/money-overview pgtests green) |
 | 10 | Export Scope & Privacy Preview For existing exports, display selected dates/filters, records and role-based masking before the user downloads. | BUILT — Export opens a scope & privacy preview: server record count for the same filters, period + date basis, active filters, masking, 20,000-row cap note; nothing generated until Download (components/ExportPreview.tsx; POSPaymentsScreens.test) |
 | 11 | Localized Empty and Error States Add clear English/Vietnamese text for no transactions, no matches, unavailable provider status and retry; never fabricate $0.00. | EXISTS — EN/VI empty / error states behind t() |
 | 12 | Reconciliation Shortcut Open verified related settlement or deposit details without inventing a connection from matching amounts. | EXISTS (part) — the settlement is shown only when linked |
-| 13 | Transaction Trend Mini-Summary Optional small period comparison if data exists. Keep compact and never displace main ledger or KPIs. | TODO |
-| 14 | Search Result Type Indicators Label matched source as Ticket, Payment, Customer or Refund so staff can distinguish similar identifiers. Never enable unapproved money movement, alter revenue calculation rules, or remove e | TODO |
+| 13 | Transaction Trend Mini-Summary Optional small period comparison if data exists. Keep compact and never displace main ledger or KPIs. | BUILT — transactions-screen.repository summary() returns previous (same filters over the equal-length period just before, salon-local dates; null for all time) + one compact tx-trend line under the KPIs (gross and count of the period before, % change) (tests: transactions-screen.pgtest Oct vs Aug 31–Sep 30, POSPaymentsScreens.test "compact comparison") |
+| 14 | Search Result Type Indicators Label matched source as Ticket, Payment, Customer or Refund so staff can distinguish similar identifiers. Never enable unapproved money movement, alter revenue calculation rules, or remove e | BUILT — transactions-screen.repository search() returns matchSource per row (ticket / refund / payment / customer / technician — the same conditions as the WHERE, read in order) + a "Matched: …" chip on each searched row in POSTransactionsScreen; no search → no label; read-only (tests: transactions-screen.pgtest "finds by ticket number…" match sources, POSPaymentsScreens.test "labels each row") |
 
 ## AI Receptionist (10)
 
@@ -1930,7 +1930,7 @@ Decisions:
 | 07 | Guided gift card issuance overlay Create a concise, touch-friendly workflow with input validation and a clear payment-confirmation step. Make primary buttons consistently sized. CLAUDE BUILD ADDENDUM / NOVEMBER 7, 2026 A | EXISTS (part) — Issue Gift Card is payment-first: it opens a ticket Checkout pays; the card holds value only after payment (POSGiftCardsScreen) |
 | 08 | Duplicate issuance and double-spend alerts Detect repeated payment references, identical idempotency keys, overlapping redemption requests and mismatched gift-card activation events. | TODO |
 | 09 | Gift-card liability by branch report Show funded liability, outstanding balances, issued value and redeemed value by authorized branch and as-of date, respecting existing cross-branch rules. | EXISTS — liability by branch with clearing exceptions (Branch Liability & Clearing panel; POSGiftCardsScreen.liability.test) |
-| 10 | Refund/reversal preview Before permitted corrections, display current balance, proposed delta, resulting balance, linked ticket and an explicit approver/audit reason. | TODO |
+| 10 | Refund/reversal preview Before permitted corrections, display current balance, proposed delta, resulting balance, linked ticket and an explicit approver/audit reason. | BUILT — POSGiftCardsScreen Adjust balance: before saving, the preview shows balance now, the proposed change and the balance after, warns (and blocks) a take-off larger than the balance (the server also refuses below_zero), and states it is not ticket-linked — a manager correction with a required reason, step-up password, card ledger + audit (test: POSGiftCardsScreen.test adjust preview) |
 | 11 | Gift-card eligibility explanation Explain active/void/redeemed/pending/locked status, allowed locations and permitted spend rather than showing a vague disabled button. | EXISTS (part) — status tabs All / Active / Redeemed / Void; Void is a manager's reasoned, step-up, ledgered action |
 | 12 | Reconciliation to daily closeout Compare gift-card issuance tenders, redemption amounts, receipt totals and outstanding liability movements to daily register closeout. | TODO |
 | 13 | Secure digital delivery monitoring If delivery by SMS/email exists, show sent/failed status and consent eligibility without revealing complete redeemable secrets in routine messages or audit logs. | TODO |

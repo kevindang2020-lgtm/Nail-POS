@@ -23,6 +23,18 @@ describe('POSTransactionsScreen', () => {
     expect(await screen.findAllByTestId('tx-row')).toHaveLength(2);
     expect(api.list).toHaveBeenCalledWith(expect.objectContaining({ preset: 'month', dateField: 'paid', sort: 'created_desc', page: 1 }));
   });
+  it('a compact comparison with the equal-length period before, only when the server sends one', async () => {
+    api.summary.mockResolvedValue({ kpis: { transactions: 3, grossCents: 16815, tipsCents: 960, netCents: 16815 }, previous: { from: '2026-08-31', to: '2026-09-30', transactions: 2, grossCents: 15000, netCents: 15000 },
+      context: { tickets: 3, refundedCents: 0, refundPendingCents: 0, voided: 0, pending: 0, failed: 1, cashCents: 0, cardCents: 16815, giftCardCents: 0 }, definitions: {}, period: PERIOD, dateBasis: 'paid', scope: 'salon' });
+    render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>);
+    expect((await screen.findByTestId('tx-trend')).textContent).toMatch(/\$150\.00 gross over 2 transactions · gross up 12\.1%/);
+  });
+  it('a search labels each row with the record it matched (Ticket / Payment / Customer …)', async () => {
+    api.list.mockResolvedValue({ items: [tender({ matchedBy: 'reference', matchSource: 'ticket' }), tender({ id: 'p3', ticketNumber: '4003', matchedBy: 'reference', matchSource: 'payment' })], total: 2, page: 1, pageSize: 10, pageCount: 1, period: PERIOD });
+    render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>); await screen.findAllByTestId('tx-row');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: '4003' } });
+    await waitFor(() => expect(screen.getAllByTestId('txn-match-source').map((x) => x.textContent)).toEqual(['Matched: Ticket', 'Matched: Payment']));
+  });
   it('search, status and the period go to the server and reset to page 1', async () => {
     render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>); await screen.findAllByTestId('tx-row');
     fireEvent.change(screen.getByTestId('search'), { target: { value: '(856) 555-1234' } });

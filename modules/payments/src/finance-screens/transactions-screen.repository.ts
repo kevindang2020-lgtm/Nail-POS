@@ -24,6 +24,7 @@ import {
   csvDocument, usd, audit, type AuditRecorder, oneOf, moneyToCents,
 } from './finance-scope';
 import { methodKey } from './split-payments-screen.repository';
+import { addDays } from '@aipowersalon/date-time';
 
 export const TX_BASES = ['paid', 'created', 'refunded'] as const;
 export const TX_STATUSES = ['completed', 'partially_refunded', 'refunded', 'voided', 'pending', 'failed'] as const;
@@ -42,8 +43,10 @@ const COUNTED = ['completed', 'partially_refunded', 'refunded'];
 const maskPhone = (p: string | null | undefined) => { const d = (p ?? '').replace(/\D/g, ''); return d.length >= 4 ? `(•••) •••-${d.slice(-4)}` : null; };
 const showPhone = (p: string | null | undefined) => { const d = (p ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (p ?? null); };
 const METHOD_SQL: Record<string, RawBuilder<boolean>> = {
-  cash: sql<boolean>`a.method = 'cash'`, card: sql<boolean>`a.method in ('card', 'credit_card', 'debit_card')`, gift_card: sql<boolean>`a.method in ('gift_card', 'gift')`,
-  other: sql<boolean>`coalesce(a.method, '') not in ('cash', 'card', 'credit_card', 'debit_card', 'gift_card', 'gift')`,
+  // extras (TRANSACTIONS 09): Tap to Pay is a CARD tender captured on a phone — the capture channel is shown apart (payment_surface),
+  // never a separate "currency" of tender
+  cash: sql<boolean>`a.method = 'cash'`, card: sql<boolean>`a.method in ('card', 'credit_card', 'debit_card', 'tap_to_pay')`, gift_card: sql<boolean>`a.method in ('gift_card', 'gift')`,
+  other: sql<boolean>`coalesce(a.method, '') not in ('cash', 'card', 'credit_card', 'debit_card', 'tap_to_pay', 'gift_card', 'gift')`,
 };
 export const TX_DEFINITIONS = {
   transactions: 'Confirmed payment tenders in the selected period. Declined, pending and voided attempts are listed but not counted; a ticket paid with two tenders counts twice.',
@@ -113,7 +116,7 @@ export class TransactionsScreenRepository {
   }
   /** customer name / phone (any format) / email · ticket # · payment / ticket / customer / refund id · processor reference ·
    *  technician · exact amount — exact references rank first, then phone / email, then names. */
-  private search(ctx: FinanceCtx, q: string): { where: RawBuilder<boolean>; rank: RawBuilder<number> } {
+  private search(ctx: FinanceCtx, q: string): { where: RawBuilder<boolean>; rank: RawBuilder<number>; source: RawBuilder<string> } {
     const T = ctx.tenantId; const lower = q.toLowerCase(), d = digitsOf(q).replace(/^1(?=\d{10}$)/, ''); const tn = q.replace(/^#/, '').trim();
     const ref: RawBuilder<boolean>[] = []; const contact: RawBuilder<boolean>[] = []; const part: RawBuilder<boolean>[] = [];
     if (isUuid(q)) ref.push(sql<boolean>`(a.id = ${q}::uuid or a.ticket_id = ${q}::uuid or a.customer_id = ${q}::uuid or a.settlement_batch_id = ${q}::uuid
@@ -132,7 +135,19 @@ export class TransactionsScreenRepository {
     if (/^\d{2,8}$/.test(tn)) part.push(sql<boolean>`a.ticket_number like ${tn + '%'}`);
     const or = (xs: RawBuilder<boolean>[]) => (xs.length ? sql<boolean>`(${sql.join(xs, sql` or `)})` : sql<boolean>`false`);
     const R = or(ref), C = or(contact), P = or(part);
-    return { where: sql<boolean>`(${R} or ${C} or ${P})`, rank: sql<number>`(case when ${R} then 3 when ${C} then 2 when ${P} then 1 else 0 end)` };
+    // extras (TRANSACTIONS 14): WHICH record the search matched — ticket, refund, payment, customer or technician — so staff
+    // can tell similar identifiers apart (ticket #12 vs an amount of $12.00); the same conditions as the WHERE, read in order
+    const tk: RawBuilder<boolean>[] = []; const rf: RawBuilder<boolean>[] = []; const py: RawBuilder<boolean>[] = []; const cu: RawBuilder<boolean>[] = [];
+    if (isUuid(q)) { tk.push(sql<boolean>`a.ticket_id = ${q}::uuid`); rf.push(sql<boolean>`exists (select 1 from payment_refunds r where r.tenant_id = ${T} and r.payment_id = a.id and r.id = ${q}::uuid)`);
+      py.push(sql<boolean>`(a.id = ${q}::uuid or a.settlement_batch_id = ${q}::uuid)`); cu.push(sql<boolean>`a.customer_id = ${q}::uuid`); }
+    if (/^\d{1,8}$/.test(tn)) tk.push(sql<boolean>`a.ticket_number = ${tn}`);
+    if (/^[A-Za-z0-9_-]{4,}$/.test(q)) { rf.push(sql<boolean>`exists (select 1 from payment_refunds r where r.tenant_id = ${T} and r.payment_id = a.id and r.processor_refund_id = ${q})`);
+      py.push(sql<boolean>`(a.processor_transaction_id = ${q} or a.processor_reference_id = ${q})`); }
+    if (amt != null && amt > 0) py.push(sql<boolean>`a.amount_cents = ${amt}`);
+    const source = sql<string>`(case when ${or(tk)} then 'ticket' when ${or(rf)} then 'refund' when ${or(py)} then 'payment' when ${C} or ${or(cu)} then 'customer'
+      when ${P} then (case when ${/^\d{2,8}$/.test(tn) ? sql`a.ticket_number like ${tn + '%'}` : sql`false`} then 'ticket' when lower(coalesce(a.customer_name, '')) like ${likeOf(lower)} or lower(coalesce(a.customer_email, '')) like ${likeOf(lower)} then 'customer' else 'technician' end)
+      else null end)`;
+    return { where: sql<boolean>`(${R} or ${C} or ${P})`, rank: sql<number>`(case when ${R} then 3 when ${C} then 2 when ${P} then 1 else 0 end)`, source };
   }
   private static readonly ORDER = {
     created_desc: sql`a.created_at desc, a.id desc`, paid_desc: sql`coalesce(a.paid_at, a.created_at) desc, a.id desc`, created_asc: sql`a.created_at asc, a.id asc`,
@@ -146,12 +161,12 @@ export class TransactionsScreenRepository {
       createdAt: iso(r.created_at), paidAt: iso(r.paid_at), lastRefundAt: iso(r.last_refund_at),
       customer: r.customer_id ? { id: String(r.customer_id), name: r.customer_name ?? null, phone: canContact ? showPhone(r.customer_phone) : maskPhone(r.customer_phone) } : null,
       technicians: r.technician_names ? String(r.technician_names) : null,
-      method: methodKey(r.method), rawMethod: String(r.method ?? ''), channel: r.payment_surface ?? null,
+      method: methodKey(r.method), rawMethod: String(r.method ?? ''), channel: r.payment_surface ?? (String(r.method ?? '').toLowerCase() === 'tap_to_pay' ? 'tap_to_pay' : null),
       card: r.card_brand || r.card_last4 ? `${r.card_brand ?? ''} ••${r.card_last4 ?? '••'}`.trim() : null, giftCardLast4: r.gift_card_last4 ?? null,
       grossCents: N(r.amount_cents), tipCents: N(r.tender_tip_cents), refundedCents: N(r.refunded_cents), refundPendingCents: N(r.refund_pending_cents),
       netCents: counted ? N(r.amount_cents) - N(r.refunded_cents) : 0, counted,
       processor: r.processor ?? null, processorRef: r.processor_transaction_id ?? r.processor_reference_id ?? null, settlementId: r.settlement_batch_id ? String(r.settlement_batch_id) : null,
-      branch: r.branch_name ?? null, ...(r.rank ? { matchedBy: r.rank === 3 ? 'reference' : r.rank === 2 ? 'contact' : 'name' } : {}),
+      branch: r.branch_name ?? null, ...(r.rank ? { matchedBy: r.rank === 3 ? 'reference' : r.rank === 2 ? 'contact' : 'name', matchSource: (r.match_source ?? null) as 'ticket' | 'refund' | 'payment' | 'customer' | 'technician' | null } : {}),
     };
   }
 
@@ -159,9 +174,9 @@ export class TransactionsScreenRepository {
     const w = this.where(ctx, f);
     const total = N((await sql<{ n: number }>`select count(*)::int as n from (${this.base(ctx)}) a where ${w}`.execute(this.db)).rows[0]?.n);
     const c = clampPage(pg, total);
-    const rank = f.q ? this.search(ctx, f.q).rank : sql<number>`0`;
+    const srch = f.q ? this.search(ctx, f.q) : null; const rank = srch ? srch.rank : sql<number>`0`;
     // a search ranks exact references first; otherwise (and within a rank) the chosen sort — newest created by default
-    const rows = (await sql<any>`select a.*, ${rank} as rank from (${this.base(ctx)}) a where ${w}
+    const rows = (await sql<any>`select a.*, ${rank} as rank, ${srch ? srch.source : sql`null`} as match_source from (${this.base(ctx)}) a where ${w}
       order by ${f.q ? sql`${rank} desc, ` : sql``}${TransactionsScreenRepository.ORDER[f.sort]} limit ${c.pageSize} offset ${c.offset}`.execute(this.db)).rows;
     return { items: rows.map((r: any) => this.row(ctx, { ...r, rank: N(r.rank) })), total, page: c.page, pageSize: c.pageSize, pageCount: c.pageCount };
   }
@@ -176,7 +191,7 @@ export class TransactionsScreenRepository {
         count(distinct a.ticket_id) filter (where a.state in (${sql.join(COUNTED)}))::int as tickets,
         count(*) filter (where a.state = 'voided')::int as voided, count(*) filter (where a.state = 'pending')::int as pending, count(*) filter (where a.state = 'failed')::int as failed,
         coalesce(sum(a.amount_cents) filter (where a.state in (${sql.join(COUNTED)}) and a.method = 'cash'), 0)::bigint as cash,
-        coalesce(sum(a.amount_cents) filter (where a.state in (${sql.join(COUNTED)}) and a.method in ('card', 'credit_card', 'debit_card')), 0)::bigint as card,
+        coalesce(sum(a.amount_cents) filter (where a.state in (${sql.join(COUNTED)}) and a.method in ('card', 'credit_card', 'debit_card', 'tap_to_pay')), 0)::bigint as card,
         coalesce(sum(a.amount_cents) filter (where a.state in (${sql.join(COUNTED)}) and a.method in ('gift_card', 'gift')), 0)::bigint as gift
       from (${this.base(ctx)}) a where ${w}`.execute(this.db)).rows[0] ?? {};
     // the tip once per ticket: the distinct tickets behind the counted tenders (a tender with no ticket carries its own)
@@ -184,7 +199,21 @@ export class TransactionsScreenRepository {
         select coalesce(a.ticket_id::text, a.id::text) as k, max(case when a.ticket_id is null then a.tender_tip_cents else a.ticket_tip_cents end) as tip
           from (${this.base(ctx)}) a where ${w} and a.state in (${sql.join(COUNTED)}) group by 1) x`.execute(this.db)).rows[0];
     const gross = N(r.gross), refunded = N(r.refunded);
+    // extras (TRANSACTIONS 13): the same filters over the equal-length period just before (salon-local dates, same basis) —
+    // only when the period has both ends; never shown for "all time"
+    let previous: { from: string; to: string; transactions: number; grossCents: number; netCents: number } | null = null;
+    if (f.period.from && f.period.to) {
+      const len = Math.round((Date.parse(f.period.to + 'T00:00:00Z') - Date.parse(f.period.from + 'T00:00:00Z')) / 86400000) + 1;
+      const pf = addDays(f.period.from, -len), pt = addDays(f.period.from, -1);
+      const pw = this.where(ctx, { ...f, period: { ...f.period, from: pf, to: pt } }, { status: false });
+      const p = (await sql<any>`select count(*) filter (where a.state in (${sql.join(COUNTED)}))::int as transactions,
+          coalesce(sum(a.amount_cents) filter (where a.state in (${sql.join(COUNTED)})), 0)::bigint as gross,
+          coalesce(sum(a.refunded_cents) filter (where a.state in (${sql.join(COUNTED)})), 0)::bigint as refunded
+        from (${this.base(ctx)}) a where ${pw}`.execute(this.db)).rows[0] ?? {};
+      previous = { from: pf, to: pt, transactions: N(p.transactions), grossCents: N(p.gross), netCents: N(p.gross) - N(p.refunded) };
+    }
     return {
+      previous,
       kpis: { transactions: N(r.transactions), grossCents: gross, tipsCents: N(tips?.tips), netCents: gross - refunded },
       context: { tickets: N(r.tickets), refundedCents: refunded, refundPendingCents: N(r.refund_pending), voided: N(r.voided), pending: N(r.pending), failed: N(r.failed), cashCents: N(r.cash), cardCents: N(r.card), giftCardCents: N(r.gift) },
       definitions: TX_DEFINITIONS, period: f.period, dateBasis: f.basis,

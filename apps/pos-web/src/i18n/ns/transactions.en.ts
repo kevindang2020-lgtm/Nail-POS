@@ -99,4 +99,13 @@ export const TRANSACTIONS_EN = {
   'txn.channel.customer_display': 'Customer display',
   'txn.channel.manual_external': 'Recorded externally',
   'txn.channel.online': 'Online',
+  'txn.src.ticket': 'Matched: Ticket',
+  'txn.src.refund': 'Matched: Refund',
+  'txn.src.payment': 'Matched: Payment',
+  'txn.src.customer': 'Matched: Customer',
+  'txn.src.technician': 'Matched: Technician',
+  'txn.channel.tap_to_pay': 'Tap to Pay',
+  'txn.trend': 'Period before ({from} – {to}): {g} gross over {n} transactions',
+  'txn.trendUp': 'gross up {p}%',
+  'txn.trendDown': 'gross down {p}%',
 };
