@@ -329,11 +329,16 @@ export function POSAppointmentHistoryScreen() {
         footer={<>{open.customerId ? <button className="btn" data-testid="ahx-detail-customer" onClick={() => { setCustomer({ customerId: open.customerId!, fullName: open.customer ?? '', phone: open.phone ?? '', visitsCount: 0 }); setOpen(null); }}>{tt('ahx.customerHistory')}</button> : null}
           <button className="btn ghost" onClick={() => setOpen(null)}>{t('pos.close')}</button></>}>
         <dl className="ahx-dl">
+          {/* extras (Appointment History 12 · A): header and customer context — booking reference, scheduled time in the
+              salon's time zone, the masked contact the list already returned (never the full number) */}
+          <dt>{tt('ahx.detail.bookingId')}</dt><dd><code data-testid="ahx-detail-id" title={open.id}>{open.id.slice(0, 8).toUpperCase()}</code></dd>
+          <dt>{tt('ahx.detail.scheduled')}</dt><dd data-testid="ahx-detail-when">{day(open.date, open.startTime)}{open.endTime ? `–${open.endTime}` : ''}{open.durationMinutes ? ` · ${tt('ahx.detail.minutes', { n: open.durationMinutes })}` : ''}{list?.period.timeZone ? <span className="sub"> · {tt('ahx.detail.tz', { tz: list.period.timeZone })}</span> : null}</dd>
+          <dt>{tt('ahx.detail.contact')}</dt><dd data-testid="ahx-detail-contact">{open.phone ?? '—'}</dd>
           <dt>{tt('ahx.col.services')}</dt><dd>{open.services ?? '—'}</dd>
           <dt>{t('pos.technician')}</dt><dd>{open.technician ?? (open.anyTechnician ? tt('ahx.anyTechnician') : '—')}</dd>
           <dt>{t('pos.status')}</dt><dd>{statusChip(open.status)}</dd>
           <dt>{t('pos.branch_2')}</dt><dd>{open.branch ?? '—'}</dd>
-          <dt>{t('pos.source_2')}</dt><dd>{open.source ?? '—'}</dd>
+          <dt>{t('pos.source_2')}</dt><dd data-testid="ahx-detail-source">{open.source ? statusLabel('source', open.source) : '—'}</dd>
           <dt>{tt('ahx.col.created')}</dt><dd>{fmtDateTime(open.createdAt)}</dd>
           <dt>{tt('ahx.updated')}</dt><dd>{fmtDateTime(open.updatedAt)}</dd>
           {open.completedAt ? <><dt>{tt('ahx.completedAt')}</dt><dd>{fmtDateTime(open.completedAt)}</dd></> : null}

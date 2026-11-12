@@ -197,4 +197,13 @@ export const SCHEDCENTER_VI: Record<string, string> = {
   "scx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không dời lịch hẹn, không áp dụng thay đổi, không gửi tin nhắn.",
   "scx.preset.yesterday": "Hôm qua",
   "scx.preset.last_7": "7 ngày qua",
+  "scx.changed.title": "Những thay đổi từ khi có đề xuất này:", // DRAFT — Kevin reviews
+  "scx.changed.record": "(một bản ghi)", // DRAFT — Kevin reviews
+  "scx.changed.k.created": "Đã tạo", // DRAFT — Kevin reviews
+  "scx.changed.k.updated": "Đã cập nhật", // DRAFT — Kevin reviews
+  "scx.changed.k.status_changed": "Đổi trạng thái", // DRAFT — Kevin reviews
+  "scx.changed.k.rescheduled": "Đổi giờ hẹn", // DRAFT — Kevin reviews
+  "scx.changed.k.cancelled": "Đã hủy", // DRAFT — Kevin reviews
+  "scx.changed.k.assigned": "Đã giao thợ", // DRAFT — Kevin reviews
+  "scx.changed.k.other": "Đã thay đổi", // DRAFT — Kevin reviews
 };

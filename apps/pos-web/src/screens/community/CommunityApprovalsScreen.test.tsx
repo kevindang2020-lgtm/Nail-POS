@@ -7,7 +7,7 @@ import { B, calls, err, installFetch, myPost, page, sent, type Route as R } from
 const perms = { deny: new Set<string>() };
 vi.mock('../../components/usePermissions', () => ({ useCan: () => (p: string) => !perms.deny.has(p) }));
 vi.mock('../../auth/AuthContext', () => ({ useAuth: () => ({ principal: { role: 'MANAGER', userId: 'u2' } }) }));
-import { CommunityApprovalsScreen } from './CommunityApprovalsScreen';
+import { CommunityApprovalsScreen, approvalBacklog } from './CommunityApprovalsScreen';
 
 let routes: Record<string, R>;
 const waiting = () => [myPost({ id: 'd1', title: 'Caller asked for our login code', status: 'manager_approval', version: 3, awaitingMyApproval: true, createdByMe: false, privacyScanFlags: ['phone'] }),
@@ -67,5 +67,24 @@ describe('advisory approvals', () => {
     routes[`GET ${B}/mine`] = { body: page([]) };
     renderIt();
     expect(await screen.findByTestId('community-approvals-empty')).toBeTruthy();
+  });
+  it('extras (Safety Community 02): the SLA view counts the backlog and ages from each record, and approves nothing', async () => {
+    const now = Date.now();
+    const iso = (h: number) => new Date(now - h * 3_600_000).toISOString();
+    routes[`GET ${B}/mine`] = { body: page([myPost({ id: 'd1', title: 'Old one', status: 'manager_approval', updatedAt: iso(80) }), myPost({ id: 'd2', title: 'Day one', status: 'manager_approval', updatedAt: iso(30) }), myPost({ id: 'd3', title: 'New one', status: 'manager_approval', updatedAt: iso(2) })], { total: 7 }) };
+    renderIt();
+    const sla = await screen.findByTestId('community-approval-sla');
+    expect(sla).toHaveTextContent('7 waiting for approval');
+    expect(screen.getByTestId('community-approval-oldest')).toHaveTextContent('Oldest of the 3 shown waiting 3 days');
+    expect(screen.getByTestId('community-approval-over24')).toHaveTextContent('2 over 24 h');
+    expect(screen.getByTestId('community-approval-over72')).toHaveTextContent('1 over 3 days');
+    expect(screen.getAllByTestId('community-approval-age').map((e) => e.textContent)).toEqual([' · waiting 3 days', ' · waiting 30 h', ' · waiting 2 h']);
+    expect(calls.filter((c) => c.method !== 'GET')).toEqual([]);
+  });
+  it('approvalBacklog: full list → plain oldest; unreadable times are skipped, not counted as zero', () => {
+    const now = Date.parse('2026-11-10T12:00:00Z');
+    const b = approvalBacklog([{ updatedAt: '2026-11-10T11:00:00Z' }, { updatedAt: 'nope' }], 2, now);
+    expect(b).toEqual({ waiting: 2, shown: 2, oldestMs: 3_600_000, over24h: 0, over72h: 0 });
+    expect(approvalBacklog([], 0, now).oldestMs).toBeNull();
   });
 });

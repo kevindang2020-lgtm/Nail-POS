@@ -541,4 +541,9 @@ export const CSEARCH_EN: Record<string, string> = {
   "cnx.receipt.current": "Review receipt: {d} by {who} · {at} · for this exact text (version {v})",
   "cnx.receipt.older": "Last review ({d} by {who} · {at}) was for an earlier text — this version ({v}) has not been reviewed",
   "cnx.receipt.none": "No review yet for this text (version {v})",
+  "ahx.detail.bookingId": "Booking ID",
+  "ahx.detail.scheduled": "Scheduled",
+  "ahx.detail.minutes": "{n} min",
+  "ahx.detail.tz": "salon time ({tz})",
+  "ahx.detail.contact": "Contact",
 };

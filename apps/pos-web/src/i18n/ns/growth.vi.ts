@@ -1060,4 +1060,25 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiBooking.svc.catalogTotal": "Theo giá danh mục: {p}", // DRAFT — Kevin reviews
   "growth.aiBooking.svc.overrides": "{n} giá chỉnh tay — do nhân viên đặt, không theo danh mục", // DRAFT — Kevin reviews
   "growth.aiBooking.svc.note": "Giá và thời lượng theo lịch đã đặt; cột danh mục là giá hiện tại của tiệm. Màn hình này không đổi giá lịch hẹn.", // DRAFT — Kevin reviews
+  "growth.community.sla.title": "Hàng chờ duyệt", // DRAFT — Kevin reviews
+  "growth.community.sla.backlog": "{n} bài đang chờ duyệt", // DRAFT — Kevin reviews
+  "growth.community.sla.oldest": "Bài chờ lâu nhất: {age}", // DRAFT — Kevin reviews
+  "growth.community.sla.oldestShown": "Lâu nhất trong {n} bài đang hiện: {age}", // DRAFT — Kevin reviews
+  "growth.community.sla.over24": "{n} bài quá 24 giờ", // DRAFT — Kevin reviews
+  "growth.community.sla.over72": "{n} bài quá 3 ngày", // DRAFT — Kevin reviews
+  "growth.community.sla.rule": "Thời gian chờ tính từ lúc mỗi bài được gửi hoặc sửa lần cuối. Không có bài nào được duyệt tự động.", // DRAFT — Kevin reviews
+  "growth.community.sla.waiting": "đã chờ {age}", // DRAFT — Kevin reviews
+  "growth.community.sla.age.min": "{n} phút", // DRAFT — Kevin reviews
+  "growth.community.sla.age.hours": "{n} giờ", // DRAFT — Kevin reviews
+  "growth.community.sla.age.days": "{n} ngày", // DRAFT — Kevin reviews
+  "growth.community.gaps.title": "Trước khi gửi", // DRAFT — Kevin reviews
+  "growth.community.gaps.none": "Bản nháp đã có đủ thông tin các tiệm khác cần.", // DRAFT — Kevin reviews
+  "growth.community.gaps.region": "Chưa có khu vực — các tiệm khác không biết có gần họ không.", // DRAFT — Kevin reviews
+  "growth.community.gaps.incidentDate": "Chưa có ngày — hãy ghi lúc sự việc xảy ra.", // DRAFT — Kevin reviews
+  "growth.community.gaps.scamMethod": "Chưa mô tả cách thức thực hiện.", // DRAFT — Kevin reviews
+  "growth.community.gaps.channels": "Chưa chọn kênh (điện thoại, tin nhắn, email…).", // DRAFT — Kevin reviews
+  "growth.community.gaps.recommendation": "Chưa có lời khuyên — các tiệm khác nên làm gì?", // DRAFT — Kevin reviews
+  "growth.community.gaps.evidence": "Chưa đính kèm bằng chứng. Tệp được giữ riêng tư; người kiểm duyệt có thể xem.", // DRAFT — Kevin reviews
+  "growth.community.gaps.evidenceAfterSave": "Lưu bản nháp để đính kèm bằng chứng (tệp được giữ riêng tư).", // DRAFT — Kevin reviews
+  "growth.community.gaps.wording": "Đây chỉ là gợi ý, không bắt buộc. Hãy mô tả việc đã xảy ra, không nêu ai làm; dùng từ trung lập như “nghi ngờ lừa đảo”. Phần kiểm tra cách dùng từ chạy khi bạn lưu, và nút “Gợi ý cách diễn đạt trung lập” có thể giúp.", // DRAFT — Kevin reviews
 };

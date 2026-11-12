@@ -9,7 +9,7 @@ import { B, err, installFetch, myPost, scanSummary, sent, settings, type Route a
 const perms = { deny: new Set<string>() };
 vi.mock('../../components/usePermissions', () => ({ useCan: () => (p: string) => !perms.deny.has(p) }));
 vi.mock('../../auth/AuthContext', () => ({ useAuth: () => ({ principal: { role: 'RECEPTION', userId: 'u1' } }) }));
-import { CommunityAdvisoryEditor } from './CommunityAdvisoryEditor';
+import { CommunityAdvisoryEditor, draftGaps } from './CommunityAdvisoryEditor';
 
 let routes: Record<string, R>;
 const defaults = (): Record<string, R> => ({
@@ -145,5 +145,25 @@ describe('advisory editor', () => {
     renderAt('/community/new');
     await screen.findByLabelText('Title');
     expect(screen.queryByRole('option', { name: /Anonymous/ })).toBeNull();
+  });
+  it('extras (Safety Community 03): the completeness list warns on missing context and evidence, never blocks, and calls nothing', async () => {
+    renderAt('/community/new');
+    await screen.findByLabelText('Title');
+    const box = screen.getByTestId('community-draft-gaps');
+    for (const g of ['region', 'incidentDate', 'scamMethod', 'channels', 'recommendation', 'evidenceAfterSave']) expect(within(box).getByTestId(`community-gap-${g}`)).toBeTruthy();
+    expect(box).toHaveTextContent('Save the draft to attach evidence');
+    expect(box).toHaveTextContent('suspected scam attempt');
+    fireEvent.change(screen.getByLabelText(/Region/), { target: { value: 'NJ' } });
+    fireEvent.click(screen.getByLabelText('Phone call'));
+    expect(within(box).queryByTestId('community-gap-region')).toBeNull();
+    expect(within(box).queryByTestId('community-gap-channels')).toBeNull();
+    expect(sent('POST', `${B}/advisories`)).toEqual([]);
+  });
+  it('extras (Safety Community 03): a saved draft with full context lists only missing evidence; with evidence it says complete', async () => {
+    renderAt('/community/drafts/d1');
+    expect(await screen.findByTestId('community-gap-evidence')).toHaveTextContent('No evidence attached');
+    expect(screen.getAllByTestId(/^community-gap-/).length).toBe(1);
+    expect(draftGaps({ region: 'NJ', incidentDate: '2026-10-07', scamMethod: 'Phone', channels: ['phone'], recommendation: 'x' }, 2)).toEqual([]);
+    expect(draftGaps({ region: ' ', incidentDate: '', scamMethod: '', channels: [], recommendation: '' }, 0)).toEqual(['region', 'incidentDate', 'scamMethod', 'channels', 'recommendation', 'evidence']);
   });
 });

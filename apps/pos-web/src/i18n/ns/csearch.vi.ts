@@ -541,4 +541,9 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.receipt.current": "Đã xem xét: {d} bởi {who} · {at} · cho đúng nội dung này (phiên bản {v})", // DRAFT — Kevin reviews
   "cnx.receipt.older": "Lần xem xét gần nhất ({d} bởi {who} · {at}) là cho nội dung trước — phiên bản này ({v}) chưa được xem xét", // DRAFT — Kevin reviews
   "cnx.receipt.none": "Nội dung này chưa được xem xét (phiên bản {v})", // DRAFT — Kevin reviews
+  "ahx.detail.bookingId": "Mã lịch hẹn", // DRAFT — Kevin reviews
+  "ahx.detail.scheduled": "Thời gian hẹn", // DRAFT — Kevin reviews
+  "ahx.detail.minutes": "{n} phút", // DRAFT — Kevin reviews
+  "ahx.detail.tz": "giờ của tiệm ({tz})", // DRAFT — Kevin reviews
+  "ahx.detail.contact": "Liên hệ", // DRAFT — Kevin reviews
 };

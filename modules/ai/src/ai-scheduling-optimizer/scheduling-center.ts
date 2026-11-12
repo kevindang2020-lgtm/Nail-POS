@@ -198,6 +198,26 @@ export class SchedulingCenter {
         ${staleExpr} as stale
       from ${FROM} where ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     const nowMs = this.now();
+    // extras (AI Scheduling Optimizer 13 · 11) — "What changed?": for a LIVE suggestion, the appointment's own recorded
+    // changes (append-only appointment_change_log) made AFTER the suggestion was computed, newest first, ≤ 5 each. Read
+    // only; values that are record ids stay out of the response. Shift / queue events are not in this log and are not shown.
+    const liveIds = rows.filter((r) => LIVE_STATES.includes(String(r.status)) && r.appt_id).map((r) => ({ rec: String(r.id), appt: String(r.appt_id), since: r.created_at }));
+    const changedBy = new Map<string, { changeType: string; field: string | null; oldValue: string | null; newValue: string | null; at: string | null; actorType: string | null }[]>();
+    if (liveIds.length) {
+      const chg = (await sql<{ rec_id: string; change_type: string; field: string | null; old_value: string | null; new_value: string | null; actor_type: string | null; created_at: unknown; rn: number }>`
+        select x.rec_id, x.change_type, x.field, x.old_value, x.new_value, x.actor_type, x.created_at, x.rn from (
+          select w.rec as rec_id, l.change_type, l.field, l.old_value, l.new_value, l.actor_type, l.created_at,
+            row_number() over (partition by w.rec order by l.created_at desc, l.id desc) as rn
+          from jsonb_to_recordset(${JSON.stringify(liveIds)}::jsonb) as w(rec text, appt text, since timestamptz)
+          join appointment_change_log l on l.tenant_id = ${T} and l.appointment_id::text = w.appt and l.created_at > w.since
+        ) x where x.rn <= 5 order by x.created_at desc`.execute(this.db)).rows;
+      const idLike = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+      for (const c of chg) {
+        const k = String(c.rec_id); if (!changedBy.has(k)) changedBy.set(k, []);
+        const safe = (v: string | null) => (v != null && idLike.test(v) ? '(record)' : v);
+        changedBy.get(k)!.push({ changeType: String(c.change_type), field: c.field ?? null, oldValue: safe(c.old_value ?? null), newValue: safe(c.new_value ?? null), at: iso(c.created_at), actorType: c.actor_type ?? null });
+      }
+    }
     return {
       items: rows.map((r) => {
         const cur = obj(r.current_state); const prop = obj(r.proposed_state);
@@ -216,6 +236,7 @@ export class SchedulingCenter {
           // live rows only: a closed row's appointment is expected to have moved
           stale: live && !!r.stale, appointmentMissing: live && !r.appt_id,
           pastExpiry: live && !!r.expires_at && new Date(r.expires_at).getTime() <= nowMs,
+          changedSince: live ? (changedBy.get(String(r.id)) ?? []) : null,
         };
       }),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),

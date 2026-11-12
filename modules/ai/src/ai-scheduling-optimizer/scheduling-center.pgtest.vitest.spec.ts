@@ -204,3 +204,24 @@ describe('Scheduling optimizer — Check Scheduling System', () => {
     expect(r.checks.find((c: any) => c.key === 'tenant_isolation')).toMatchObject({ state: 'FAILED', count: 1 });
   });
 });
+
+describe('Scheduling optimizer — what changed since a suggestion (extras AI Scheduling Optimizer 13 · 11)', () => {
+  it('WC-01 a live suggestion lists only its appointment\'s changes recorded AFTER it was computed, newest first, ids hidden; closed rows get null; another salon\'s log never', async () => {
+    const A9 = id(49);
+    await q(`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_name, appt_date, start_time, end_time, duration_minutes, status, services, version)
+      values ($1,$2,$3,$4,'Wc Guest',current_date,'15:00','16:00',60,'booked','[{"name":"WC Polish"}]',1)`, [A9, T, B, TECH]);
+    const R = await rec({ appt: A9, daysAgo: 1 });
+    const CLOSED = await rec({ appt: A9, daysAgo: 1, status: 'rejected' });
+    await q(`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, actor_type, created_at) values
+      ($1,$2,$3,'rescheduled','start_time','14:00','15:00','user', now() - interval '3 days'),
+      ($1,$2,$3,'rescheduled','start_time','15:00','15:30','user', now() - interval '2 hours'),
+      ($1,$2,$3,'assigned','technician_id',null,$4,'system', now() - interval '1 hour'),
+      ($5,$6,$3,'status_changed','status','booked','cancelled','user', now() - interval '30 minutes')`, [T, B, A9, TECH2, X, BX]);
+    const r: any = await sc.recommendations(ctx(), { q: 'WC Polish', pageSize: '100' });
+    const live = r.items.find((x: any) => x.id === R);
+    expect(live.changedSince.map((c: any) => [c.changeType, c.oldValue, c.newValue, c.actorType])).toEqual([
+      ['assigned', null, '(record)', 'system'], ['rescheduled', '15:00', '15:30', 'user']]);
+    expect(JSON.stringify(live.changedSince)).not.toContain(TECH2);
+    expect(r.items.find((x: any) => x.id === CLOSED).changedSince).toBeNull();
+  });
+});
