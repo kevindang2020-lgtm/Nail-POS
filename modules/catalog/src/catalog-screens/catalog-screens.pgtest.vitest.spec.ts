@@ -3,9 +3,7 @@
 // CD Mani 4432 30m $50 · CD Mani 6805 30m $50 · Haircut 30m $45 · Hair Coloring 120m $150), categories Nails 4 / CD 4432 1 /
 // CD 6805 1, and "French tips" ($10, +10m, taxable) offered on Gel Manicure, Classic Pedicure, Haircut and Hair Coloring.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { migratedPglite, kyselyFor, applyMigrationToPglite } from '@aipowersalon/testing';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { CatalogScreensRepository } from './catalog-screens.repository';
 import { KyselyServicesRepository } from '../services/services.kysely.repository';
 
@@ -22,8 +20,6 @@ const q = (s: string, p: unknown[] = []) => pg.query(s, p);
 
 beforeAll(async () => {
   pg = await migratedPglite();
-  // migration 847 (SERVICE PRICING 13) — replayed here when the shared schema snapshot predates it (idempotent)
-  if (!(await q(`select to_regclass('catalog_category_reviews') as t`)).rows[0].t) await applyMigrationToPglite(pg, readFileSync(join(__dirname, '../../../../apps/api/db/migrations/847_catalog_category_reviews.sql'), 'utf8'));
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Pilot LLC','Pilot','cat-a','CTA001','active'), ($2,'Other LLC','Other','cat-b','CTB001','active')`, [T, T2]);
   await q(`insert into branches (id, tenant_id, name, status, timezone, created_at) values ($1,$3,'Main','active','America/New_York', now() - interval '2 days'), ($2,$3,'Uptown','active','America/New_York', now() - interval '1 day'), ($4,$5,'Elsewhere','active','America/New_York', now())`, [B, B2, T, BX, T2]);
   await q(`insert into users (id, tenant_id, email, full_name, role, status) values ($1,$2,'owner@cat.test','Pat Owner','OWNER','active')`, [U, T]);

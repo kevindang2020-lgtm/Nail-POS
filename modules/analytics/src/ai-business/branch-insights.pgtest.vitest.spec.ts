@@ -2,9 +2,7 @@
 // fair scorecard (per worked technician hour, per operating hour, returning customers), the measured explanation of a
 // difference, the growth advisor, the recorded Branch Data Health Checker.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { migratedPglite, kyselyFor, applyMigrationToPglite } from '@aipowersalon/testing';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, explainEvidence, adviseBranches, likeForLikeGroups, mixOverlap, type ScorecardRow } from './branch-insights';
 
 const id = (n: number) => `82700000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -28,8 +26,6 @@ const compare = {
 
 beforeAll(async () => {
   pg = await migratedPglite();
-  // migration 848 (AI BRANCH COMPARISON 14) — replayed here when the shared schema snapshot predates it (idempotent)
-  if (!(await pg.query(`select to_regclass('ai_branch_comparison_snapshots') as t`)).rows[0].t) await applyMigrationToPglite(pg, readFileSync(join(__dirname, '../../../../apps/api/db/migrations/848_ai_branch_comparison_snapshots.sql'), 'utf8'));
   db = kyselyFor(pg);
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'S','Lux','bi-827','BI827','active')`, [T]);
   await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$3,'Big Main St','active','UTC'), ($2,$3,'Small Annex','active','UTC')`, [BIG, SMALL, T]);
