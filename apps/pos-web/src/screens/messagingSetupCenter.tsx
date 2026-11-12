@@ -41,13 +41,75 @@ export function StateChip({ state, testId }: { state: MsgSetupPartState; testId?
   return <span className={'ms-chip ' + TONE[state]} data-testid={testId} data-state={state}>{STATE[state]()}</span>;
 }
 
+/** extras TEXT MESSAGING 15 — scrub anything that could identify a customer or the salon's internal records from text that
+ *  leaves the screen: ids (UUIDs), provider SIDs, email addresses, phone numbers / long digit runs (last 4 kept), secrets
+ *  that look like tokens. The server already masks account SIDs and recipients; this is the second line of defence. */
+export function redactSupportText(v: string): string {
+  return v
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[id]')
+    .replace(/\b(AC|SK|MG|VA|PN|SM|MM|CA|BN|QE)[0-9a-f]{32}\b/gi, (m) => `${m.slice(0, 2)}…${m.slice(-4)}`)
+    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[email]')
+    .replace(/[+(]?\d[\d\s().-]{6,}\d/g, (m) => { if (/^\d{4}-\d{2}-\d{2}/.test(m)) return m; const d = m.replace(/\D/g, ''); return d.length >= 7 ? `…${d.slice(-4)}` : m; })
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, '[hidden]');
+}
+
+/** extras TEXT MESSAGING 15 — a plain-text setup / health report for AI PowerSalon support, built only from what this page
+ *  already shows (the readiness parts and the branch senders), with every line passed through redactSupportText. No
+ *  tokens, no customer destinations, no tenant / branch ids. Nothing is sent: the person copies it. */
+export function buildSupportReport(ov: SetupOverview, br: BranchSendersView | null): string {
+  const L: string[] = [];
+  L.push(t('ms.rep.head'));
+  L.push(t('ms.rep.generated', { when: when(ov.generatedAt) }));
+  L.push(t('ms.rep.scope', { scope: ov.scope.branchName ?? t('ms.br.default') }));
+  L.push(t('ms.ready.overall', { state: STATE[ov.overall]() }));
+  L.push('');
+  for (const p of ov.parts) {
+    L.push(`• ${PART[p.key]()}: ${STATE[p.state]()} — ${p.summary}`);
+    L.push(`  ${p.evidence} · ${t('ms.part.source', { source: p.source })} · ${p.checkedAt ? t('ms.part.checked', { when: when(p.checkedAt) }) : t('ms.part.never')}`);
+    if (p.nextAction) L.push(`  ${t('ms.part.next', { action: p.nextAction })}`);
+  }
+  L.push('');
+  L.push(t('ms.rep.delivery', { failed: String(ov.delivery.failedTests24h + ov.delivery.failedSms24h), waiting: String(ov.delivery.waitingOver2h), last: when(ov.delivery.lastStatusEventAt) }));
+  L.push(ov.schedule.enabled ? t('ms.schedule.on', { when: ov.schedule.runsAt, last: when(ov.schedule.lastScheduledAt) }) : t('ms.schedule.off', { last: when(ov.schedule.lastCheckAt) }));
+  L.push('');
+  if (!br) L.push(t('ms.rep.noBranches'));
+  else {
+    L.push(t('ms.rep.branches'));
+    L.push(`• ${t('ms.br.default')}: ${br.salonDefault.accountSidMasked ?? '—'} · ${br.salonDefault.sender ?? '—'}${br.salonDefault.senderType ? ` (${br.salonDefault.senderType})` : ''}`);
+    for (const b of br.branches) L.push(`• ${b.name ?? '—'}: ${b.inherits ? t('ms.br.inherits') : t('ms.br.own')} · ${b.accountSidMasked ?? '—'} · ${b.sender ?? '—'}${b.senderType ? ` (${b.senderType})` : ''} · ${t('ms.br.col.registration')}: ${STATE[b.registration]()}`);
+  }
+  L.push('');
+  L.push(t('ms.rep.excluded'));
+  return L.map(redactSupportText).join('\n');
+}
+
+function SupportReportDialog({ ov, onClose }: { ov: SetupOverview; onClose: () => void }) {
+  const [text, setText] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let live = true;
+    api.branches().then((b) => { if (live) setText(buildSupportReport(ov, b)); }, () => { if (live) setText(buildSupportReport(ov, null)); });
+    return () => { live = false; };
+  }, [ov]);
+  const copy = () => { if (!text) return; Promise.resolve(navigator.clipboard?.writeText(text)).then(() => setCopied(true), () => setCopied(false)); };
+  return (
+    <FitDialog title={t('ms.rep.title')} subtitle={t('ms.rep.sub')} onClose={onClose} wide testId="ms-report"
+      footer={<><button type="button" className="fk-btn" onClick={onClose}>{t('ms.wiz.close')}</button><button type="button" className="fk-btn primary" onClick={copy} disabled={!text} data-testid="ms-report-copy">{copied ? t('ms.rep.copied') : t('ms.rep.copy')}</button></>}>
+      {!text ? <div className="pmc-muted" role="status">…</div> : <textarea className="ms-report-text" readOnly value={text} rows={18} style={{ width: '100%', fontFamily: 'monospace' }} data-testid="ms-report-text" aria-label={t('ms.rep.title')} />}
+    </FitDialog>
+  );
+}
+
 /** §11 the six-part panel */
 export function SmsReadinessPanel({ ov, error, onOpen }: { ov: SetupOverview | null; error: string | null; onOpen: (link: string) => void }) {
+  const [report, setReport] = useState(false);
   if (error) return <div className="pmc-warn" role="status">{t('ms.loadFailed', { msg: error })}</div>;
   if (!ov) return <div className="pmc-muted" role="status">…</div>;
   return (
     <section className="fk-panel ms-ready" data-testid="ms-readiness" aria-label={t('ms.ready.title')}>
-      <div className="fk-panel-head"><h2>{t('ms.ready.title')}</h2><span className="ms-overall">{t('ms.ready.overall', { state: STATE[ov.overall]() })}</span></div>
+      <div className="fk-panel-head"><h2>{t('ms.ready.title')}</h2><span className="ms-overall">{t('ms.ready.overall', { state: STATE[ov.overall]() })}</span>
+        <button type="button" className="fk-btn sm" onClick={() => setReport(true)} data-testid="ms-report-open">{t('ms.rep.open')}</button></div>
+      {report ? <SupportReportDialog ov={ov} onClose={() => setReport(false)} /> : null}
       <div className="ms-note">{t('ms.ready.note')}</div>
       <div className="ms-parts">
         {ov.parts.map((p) => (
