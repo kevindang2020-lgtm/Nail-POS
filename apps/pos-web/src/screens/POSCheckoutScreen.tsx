@@ -68,6 +68,7 @@ type CheckoutState = {
 const money = (c?: number) => '$' + ((c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 import { TipKeypad, parseDollarsToCents, useEventCallback } from '@aipowersalon/ui';
 import { SplitPreviewBox } from './checkout/SplitPreviewBox';
+import { GiftReadinessBox } from './checkout/GiftReadinessBox';   // Gift Cards · 03 Checkout Redemption Readiness (read-only preview)
 
 // The ONE shared exact parser (no float money math). Invalid input keeps the old lenient behavior: 0.
 const dollarsToCents = (s: string) => parseDollarsToCents(s) ?? 0;
@@ -831,6 +832,7 @@ export function POSCheckoutScreen() {
                           placeholder="PIN"
                           className="w-20 border border-[var(--line)] rounded-lg p-1.5 text-xs font-mono"
                         />
+                        <GiftReadinessBox code={giftCode} ticketId={selId} dueCents={detail.balanceCents ?? Math.max(0, (detail.totals.totalDueCents || 0) - (detail.paidCents || 0))} offline={isOffline} phoneClaim={!!mobileClaim} giftEnabled={s?.paymentSettings?.giftCardEnabled} />
                       </div>
                     ) : null}
                   </div>

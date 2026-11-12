@@ -47,6 +47,10 @@ describe('POSGiftCardLookupScreen', () => {
     render(<POSGiftCardLookupScreen />);
     fireEvent.change(screen.getByLabelText('Gift card number or code'), { target: { value: '4827 1936 5502 8411' } });
     fireEvent.click(screen.getByRole('button', { name: 'Look up' }));
+    // Gift Cards · 05: the replacement preview names the balance that moves and that the old card is retired — before any write
+    expect(await screen.findByTestId('replace-preview')).toHaveTextContent(/Balance that moves: \$50\.00, from •••• •••• •••• 8411/);
+    expect(screen.getByTestId('replace-preview')).toHaveTextContent(/retired permanently/);
+    expect(replaceMock).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole('button', { name: /Replace this card/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Issue replacement' }));
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('4827 1936 5502 8411'));

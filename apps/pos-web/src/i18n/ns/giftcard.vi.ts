@@ -64,4 +64,20 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.integrity.ok": "Kiểm tra sổ: số dư của cả {n} thẻ đã thanh toán khớp với lịch sử giao dịch.", // DRAFT — Kevin reviews
   "gc.integrity.bad": "Kiểm tra sổ: {n} thẻ có số dư không khớp với lịch sử giao dịch của chính thẻ đó. Chưa thay đổi gì — mở thẻ để xem:", // DRAFT — Kevin reviews
   "gc.integrity.card": "Số dư {b} · sổ cộng lại {l}", // DRAFT — Kevin reviews
+  "gc.review.title": "Xem lại trước khi phát hành", // DRAFT — Kevin reviews
+  "gc.review.amount": "Số tiền", // DRAFT — Kevin reviews
+  "gc.review.funding": "Nguồn tiền", // DRAFT — Kevin reviews
+  "gc.review.fundingValue": "{purchaser} trả tại Thanh toán — thẻ ở trạng thái chờ (chưa có giá trị) cho đến khi nhận tiền", // DRAFT — Kevin reviews
+  "gc.review.card": "Thẻ", // DRAFT — Kevin reviews
+  "gc.review.physical": "Thẻ vật lý số cuối {last4}, lấy từ kho thẻ", // DRAFT — Kevin reviews
+  "gc.review.digital": "Thẻ điện tử — số thẻ mới chỉ hiện một lần sau khi phát hành", // DRAFT — Kevin reviews
+  "gc.review.recipient": "Người nhận", // DRAFT — Kevin reviews
+  "gc.review.recipientSelf": "{purchaser} (không gửi tặng)", // DRAFT — Kevin reviews
+  "gc.review.where": "Dùng được tại", // DRAFT — Kevin reviews
+  "gc.review.allLocations": "Tất cả chi nhánh của tiệm (Cài đặt thẻ quà)", // DRAFT — Kevin reviews
+  "gc.review.thisLocation": "Chỉ chi nhánh này (Cài đặt thẻ quà)", // DRAFT — Kevin reviews
+  "gc.review.impact": "Sau khi Thanh toán nhận tiền, thẻ có giá trị sử dụng. Muốn hoàn tác phải hoàn tiền tại Thanh toán hoặc hủy thẻ kèm lý do — không bao giờ tự động đảo ngược.", // DRAFT — Kevin reviews
+  "gc.replacePreview.moves": "Số dư được chuyển: {amount}, từ {from}", // DRAFT — Kevin reviews
+  "gc.replacePreview.newCard": "Số dư chuyển sang một thẻ mới tại tiệm này; lịch sử đầy đủ vẫn lưu trên cả hai thẻ.", // DRAFT — Kevin reviews
+  "gc.replacePreview.irreversible": "Thẻ cũ bị ngưng vĩnh viễn và không bao giờ dùng lại được.", // DRAFT — Kevin reviews
 };

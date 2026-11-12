@@ -344,4 +344,26 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "payment.qaWhy.paid": "Đã thanh toán", // DRAFT — Kevin reviews
   "payment.qaWhy.totalLoading": "Tổng tiền đang tải", // DRAFT — Kevin reviews
   "payment.qaWhy.merchantNotConfigured": "Chưa cấu hình tài khoản thẻ", // DRAFT — Kevin reviews
+  "payment.giftReady.title": "Sẵn sàng thanh toán bằng thẻ quà", // DRAFT — Kevin reviews
+  "payment.giftReady.check": "Kiểm tra thẻ", // DRAFT — Kevin reviews
+  "payment.giftReady.failed": "Không kiểm tra được thẻ", // DRAFT — Kevin reviews
+  "payment.giftReady.ready": "Sẵn sàng áp dụng", // DRAFT — Kevin reviews
+  "payment.giftReady.blocked": "Chưa thể áp dụng", // DRAFT — Kevin reviews
+  "payment.giftReady.status": "Trạng thái thẻ", // DRAFT — Kevin reviews
+  "payment.giftReady.network": "thẻ liên kết", // DRAFT — Kevin reviews
+  "payment.giftReady.balance": "Số dư thẻ", // DRAFT — Kevin reviews
+  "payment.giftReady.due": "Hóa đơn còn nợ", // DRAFT — Kevin reviews
+  "payment.giftReady.applied": "Thẻ sẽ trả", // DRAFT — Kevin reviews
+  "payment.giftReady.remaining": "Còn phải trả", // DRAFT — Kevin reviews
+  "payment.giftReady.remainingSplit": "Còn phải trả bằng hình thức khác (chia thanh toán)", // DRAFT — Kevin reviews
+  "payment.giftReady.cardAfter": "Số dư thẻ sau đó", // DRAFT — Kevin reviews
+  "payment.giftReady.previewOnly": "Chỉ xem trước — chưa trừ tiền hay giữ chỗ cho đến khi bấm Thanh toán.", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.not_found": "Không tìm thấy thẻ — kiểm tra lại mã", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.status": "Thẻ chưa kích hoạt", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.no_balance": "Thẻ hết số dư", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.not_here": "Thẻ không dùng được tại tiệm này", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.already_paid": "Hóa đơn này đã trả đủ", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.offline": "Mất kết nối — tạm dừng thanh toán", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.phone_claim": "Một điện thoại thanh toán đang giữ hóa đơn này", // DRAFT — Kevin reviews
+  "payment.giftReady.blocker.disabled": "Thanh toán bằng thẻ quà đang tắt trong Cài đặt thanh toán", // DRAFT — Kevin reviews
 };

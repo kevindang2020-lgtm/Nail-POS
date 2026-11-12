@@ -457,4 +457,12 @@ export const INVENTORY_VI = {
   'sup.viewOrder': 'Xem đơn',
   'inv.col.count': 'Số chai',
   'inv.oneOfGroup': 'Áp dụng cho một chai trong nhóm này',
+  'inv.price.history': 'Lịch sử giá', // DRAFT — Kevin reviews
+  'inv.price.none': 'Chưa có thay đổi giá nào.', // DRAFT — Kevin reviews
+  'inv.price.retailChange': 'Giá bán {v}', // DRAFT — Kevin reviews
+  'inv.price.costChange': 'Giá vốn {v}', // DRAFT — Kevin reviews
+  'inv.price.why': 'lý do: {r}', // DRAFT — Kevin reviews
+  'inv.price.receiptsKeep': 'Hóa đơn cũ giữ nguyên giá đã tính lúc bán — đổi giá không bao giờ sửa lại hóa đơn cũ.', // DRAFT — Kevin reviews
+  'inv.price.reasonLabel': 'Vì sao đổi giá? (không bắt buộc)', // DRAFT — Kevin reviews
+  'inv.price.reasonPh': 'vd: nhà cung cấp tăng giá vốn', // DRAFT — Kevin reviews
 };

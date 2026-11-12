@@ -601,7 +601,7 @@ export class InventoryService {
     await this.product(ctx, id);
     if ((b && ('sku' in b || 'barcode' in b))) await this.uniqueCodes(ctx, id, b.sku, b.barcode);
     const W = ['name', 'product_line', 'color_name', 'color_number', 'color_family', 'finish', 'sku', 'barcode', 'upc', 'unit_type', 'tracking_mode', 'cost_cents', 'retail_price_cents', 'reorder_level', 'reorder_quantity', 'maximum_stock', 'critical_level', 'lead_time_days', 'image_url', 'button_color', 'track_expiration', 'is_retail', 'is_service', 'category_id', 'brand_id', 'preferred_vendor_id'];
-    const map: Record<string, string> = { productLine: 'product_line', colorName: 'color_name', colorNumber: 'color_number', colorFamily: 'color_family', unitType: 'unit_type', trackingMode: 'tracking_mode', costCents: 'cost_cents', reorderLevel: 'reorder_level', reorderQuantity: 'reorder_quantity', maximumStock: 'maximum_stock', criticalLevel: 'critical_level', leadTimeDays: 'lead_time_days', imageUrl: 'image_url', buttonColor: 'button_color', trackExpiration: 'track_expiration', isRetail: 'is_retail', isService: 'is_service', categoryId: 'category_id', brandId: 'brand_id', preferredVendorId: 'preferred_vendor_id' };
+    const map: Record<string, string> = { productLine: 'product_line', colorName: 'color_name', colorNumber: 'color_number', colorFamily: 'color_family', unitType: 'unit_type', trackingMode: 'tracking_mode', costCents: 'cost_cents', retailPriceCents: 'retail_price_cents', reorderLevel: 'reorder_level', reorderQuantity: 'reorder_quantity', maximumStock: 'maximum_stock', criticalLevel: 'critical_level', leadTimeDays: 'lead_time_days', imageUrl: 'image_url', buttonColor: 'button_color', trackExpiration: 'track_expiration', isRetail: 'is_retail', isService: 'is_service', categoryId: 'category_id', brandId: 'brand_id', preferredVendorId: 'preferred_vendor_id' };
     const sets: any[] = [];
     for (const k of Object.keys(b || {})) {
       const col = map[k] || k;
@@ -613,6 +613,26 @@ export class InventoryService {
         sets.push(sql`${sql.ref(col)} = ${val}`);
       }
     }
+    // Products backlog · 11 readable price history: a cost / retail change is audited with its before → after and the
+    // optional reason, so Product Details can show when and why a price changed (past receipts keep their own line price)
+    const priceKeys = { cost: ['costCents', 'cost_cents'], retail: ['retailPriceCents', 'retail_price_cents'] } as const;
+    const touches = (ks: readonly string[]) => ks.some((k) => b && k in b);
+    const priceBefore = touches(priceKeys.cost) || touches(priceKeys.retail)
+      ? (await sql<{ cost_cents: number | null; retail_price_cents: number | null }>`SELECT cost_cents, retail_price_cents FROM inventory_products WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0]
+      : undefined;
+    const pick = (ks: readonly string[]) => { for (const k of ks) if (b && k in b) return b[k] == null ? null : Number(b[k]); return undefined; };
+    const priceMeta = (): Record<string, unknown> => {
+      if (!priceBefore) return {};
+      const price: Record<string, number | null> = {};
+      const c = pick(priceKeys.cost), r = pick(priceKeys.retail);
+      const cb = priceBefore.cost_cents == null ? null : Number(priceBefore.cost_cents), rb = priceBefore.retail_price_cents == null ? null : Number(priceBefore.retail_price_cents);
+      if (c !== undefined && c !== cb) { price.costBefore = cb; price.costAfter = c; }
+      if (r !== undefined && r !== rb) { price.retailBefore = rb; price.retailAfter = r; }
+      if (!Object.keys(price).length) return {};
+      const reason = typeof b?.priceChangeReason === 'string' ? b.priceChangeReason.trim().slice(0, 300) : '';
+      return { price, ...(reason ? { priceReason: reason } : {}) };
+    };
+    const fieldsOf = () => Object.keys(b || {}).filter((k) => k !== 'expectedUpdatedAt' && k !== 'priceChangeReason');
     // concurrent-edit protection (Products backlog · 17): with expectedUpdatedAt (the updatedAt the form was opened with), a
     // product changed elsewhere since then is refused with 409 PRODUCT_CHANGED instead of being silently overwritten
     const expected = typeof b?.expectedUpdatedAt === 'string' && b.expectedUpdatedAt && !Number.isNaN(Date.parse(b.expectedUpdatedAt)) ? new Date(b.expectedUpdatedAt).toISOString() : null;
@@ -620,10 +640,10 @@ export class InventoryService {
       const upd = await sql`UPDATE inventory_products SET ${sql.join(sets, sql`, `)}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}
         AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ${expected}::timestamptz)`.execute(this.need());
       if (!Number(upd.numAffectedRows ?? 0)) throw new InventoryError(409, 'This product was changed on another device since you opened it. Reload and try again.', { code: 'PRODUCT_CHANGED' });
-      await this.audit(ctx, 'inventory_product_updated', id, null, { fields: Object.keys(b || {}).filter((k) => k !== 'expectedUpdatedAt') });
+      await this.audit(ctx, 'inventory_product_updated', id, null, { fields: fieldsOf(), ...priceMeta() });
       return this.getProduct(ctx, id);
     }
-    if (sets.length) { await sql`UPDATE inventory_products SET ${sql.join(sets, sql`, `)}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need()); await this.audit(ctx, 'inventory_product_updated', id, null, { fields: Object.keys(b || {}) }); }
+    if (sets.length) { await sql`UPDATE inventory_products SET ${sql.join(sets, sql`, `)}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need()); await this.audit(ctx, 'inventory_product_updated', id, null, { fields: fieldsOf(), ...priceMeta() }); }
     return this.getProduct(ctx, id);
   }
 
