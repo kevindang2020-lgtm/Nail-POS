@@ -177,4 +177,5 @@ export const FUQ_VI = {
   'fuq.cd.unavailable': 'Vai trò của bạn không xem được tin nhắn gần đây.', // DRAFT — Kevin reviews
   'fuq.cd.more': '+{n} tin nữa trong dòng thời gian của khách', // DRAFT — Kevin reviews
   'fuq.cd.note': 'Từ dòng thời gian của khách (tin nhắn, email, nhắc hẹn, hóa đơn, chăm sóc sau dịch vụ). Chỉ xem — không gửi gì từ đây.', // DRAFT — Kevin reviews
+  'fuq.cc.source_cancelled': 'Lượt khách đã hủy (phiếu bị hủy, mở lại hoặc dịch vụ bị gỡ) — không thể gửi', // DRAFT — Kevin reviews
 };

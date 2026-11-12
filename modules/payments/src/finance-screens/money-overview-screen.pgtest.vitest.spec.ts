@@ -201,3 +201,24 @@ describe('PAYMENTS 05 (Nov 12 2026): Revenue vs Collections explainer', () => {
     await q(`delete from payments where id in ($1,$2)`, [id('d900'), id('d901')]); await q(`delete from tickets where id = $1`, [tid]);
   });
 });
+
+// extras Payments & Money 12 — Payout Forecast: pending processor payouts by expected arrival and processor, with the
+// date's source (the processor's own date vs settlement date + funding days, labelled estimated); a date before the salon's
+// today is "late", never "arrived"; deposited payouts and other salons never appear.
+describe('Payout forecast (extras Payments & Money 12)', () => {
+  it('groups pending payouts by date and processor with an honest source; late is not arrived; deposited and other salons excluded', async () => {
+    // no processor date, settled 11 PM Oct 24 New York (03:00Z Oct 25) → estimated Oct 24 + 3 = Oct 27
+    await q(`insert into payment_settlements (id, tenant_id, branch_id, processor_type, settlement_id, gross_cents, fee_cents, net_cents, status, settled_at, created_at) values
+      ($1,$3,$4,'cardpointe','BATCH-301',5000,150,4850,'pending','2026-10-25T03:00:00Z','2026-10-25T03:00:00Z'),
+      ($2,$5,$6,'cardpointe','BATCH-OTHER',7000,0,7000,'pending','2026-10-25T03:00:00Z','2026-10-25T03:00:00Z')`, [id('73'), id('74'), T, B, T2, B2]);
+    const o = await r.overview(ctx, await on('2026-10-23'));
+    const f = o.payoutForecast;
+    expect(f.fundingDays).toBe(3);
+    expect(f.items).toEqual([
+      { expectedDate: '2026-10-24', processor: 'cardpointe', source: 'processor', payouts: 1, netCents: 11293, late: f.today > '2026-10-24' },
+      { expectedDate: '2026-10-27', processor: 'cardpointe', source: 'estimated', payouts: 1, netCents: 4850, late: f.today > '2026-10-27' },
+    ]);
+    expect(f.totalCents).toBe(11293 + 4850);                       // BATCH-200 is deposited; the other salon's batch is not here
+    expect((await r.overview(other, await on('2026-10-23', other))).payoutForecast.items.map((x: any) => x.netCents)).toEqual([7000]);
+  });
+});

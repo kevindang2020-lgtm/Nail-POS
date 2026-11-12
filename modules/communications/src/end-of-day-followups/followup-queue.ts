@@ -24,6 +24,7 @@
  *   customerHistory   a customer's follow-ups newest first (guide §13).
  */
 import { sql, type Kysely } from 'kysely';
+import { sourceCancelledSql } from './eod-center';
 
 export const FUQ_PRIORITY_VERSION = 'fuq-priority-v1';
 export const FUQ_KPI_BASIS = 'due_date';                  // every counter is on the task's salon-local due (business) date
@@ -34,7 +35,7 @@ export const QUEUE_STATUS = ['all', 'unsent', 'pending', 'pending_manager_approv
 export const QUEUE_PRIORITY = ['high', 'normal', 'low'] as const;
 export const QUEUE_DUE = ['overdue', 'due_today', 'upcoming'] as const;
 export const SKIP_REASONS = ['customer_declined', 'contacted_another_way', 'already_booked', 'no_follow_up_needed', 'wrong_customer', 'other'] as const;
-export const CONTACT_CATEGORIES = ['eligible', 'recently_contacted', 'already_sent', 'opted_out', 'missing_contact', 'blocked', 'needs_approval'] as const;
+export const CONTACT_CATEGORIES = ['eligible', 'recently_contacted', 'already_sent', 'opted_out', 'missing_contact', 'blocked', 'needs_approval', 'source_cancelled'] as const;
 export type ContactCategory = typeof CONTACT_CATEGORIES[number];
 
 const UNSENT = ['pending', 'pending_manager_approval', 'rejected'];
@@ -200,7 +201,7 @@ export class FollowUpQueue {
     if (!UUID.test(id)) return null;
     const r = (await sql<any>`select f.id, f.status, f.customer_id, f.customer_app_user_id, f.business_date::text as business_date, f.created_at, f.approved_by_user_id,
           c.status as customer_status, c.normalized_phone, c.email, c.marketing_sms_opt_in, c.marketing_email_opt_in,
-          cn.at as cn_at, cn.rating as cn_rating, bk.d as bk_d, rc.at as rc_at, un.n as un_n
+          cn.at as cn_at, cn.rating as cn_rating, bk.d as bk_d, rc.at as rc_at, un.n as un_n, ${sourceCancelledSql('f')} as source_cancelled
         from service_follow_up_tasks f left join customers c on c.id = f.customer_id and c.tenant_id = f.tenant_id ${this.factsSql(T, today, cooldownHours)}
        where f.id = ${id}::uuid and f.tenant_id = ${T}::uuid and f.branch_id = ${B}::uuid and f.deleted_at is null`.execute(this.db)).rows[0];
     if (!r) return null;
@@ -213,6 +214,7 @@ export class FollowUpQueue {
         and ((oo.channel = 'sms' and ${r.normalized_phone ?? ''} <> '' and oo.address = ${r.normalized_phone ?? ''}) or (oo.channel = 'email' and ${r.email ?? ''} <> '' and lower(oo.address) = lower(${r.email ?? ''})))`.execute(this.db)).rows;
     const cats: ContactCategory[] = [];
     if (SENT.includes(r.status)) cats.push('already_sent');
+    else if (r.source_cancelled) cats.push('source_cancelled');   // extras 05: the visit was voided / the line removed — never sendable
     if (r.customer_status === 'archived') cats.push('blocked');
     if (!r.customer_app_user_id) cats.push('missing_contact');
     if (r.rc_at) cats.push('recently_contacted');

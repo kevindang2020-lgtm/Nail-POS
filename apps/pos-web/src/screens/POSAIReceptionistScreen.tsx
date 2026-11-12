@@ -79,7 +79,7 @@ export function POSAIReceptionistScreen() {
   const [cal, setCal] = useState<null | 'kpi' | 'calls'>(null);
   const [prio, setPrio] = useState<any>(null); const [prioPage, setPrioPage] = useState(1); const [prioErr, setPrioErr] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<null | 'health' | 'history'>(null);
+  const [dialog, setDialog] = useState<null | 'health' | 'history' | 'capabilities'>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
 
@@ -200,6 +200,7 @@ export function POSAIReceptionistScreen() {
               </dl>
             ) : <div className="state">{t('rcpt.loading')}</div>}
             <div className="rcp-muted">{t('rcpt.connNote')}</div>
+            {ready && Array.isArray(ready.capabilities) ? <button type="button" className="btn ghost" data-testid="rcp-capabilities-open" onClick={() => setDialog('capabilities')}>{t('rcpt.cap.open')}</button> : null}
             {canManage && ready ? (
               <div className="rcp-controls" data-testid="rcp-controls">
                 {ctl?.bookingArmed ? <button className="btn ghost" onClick={() => control('disarm_booking')}>{t('rcpt.ctl.disarm')}</button>
@@ -334,6 +335,7 @@ export function POSAIReceptionistScreen() {
       {pending ? <ReasonDialog action={pending.action} onCancel={() => setPending(null)} onSubmit={submitControl} /> : null}
       {dialog === 'health' ? <HealthDialog onClose={() => { setDialog(null); loadReady(); posAiReceptionistCenterApi.lastHealth().then(setLastCheck).catch((e) => setNotice(errorTextOf(e, tx('pos.something_went_wrong')))); }} /> : null}
       {dialog === 'history' ? <ControlHistory onClose={() => setDialog(null)} /> : null}
+      {dialog === 'capabilities' && ready && Array.isArray(ready.capabilities) ? <CapabilityMatrix rows={ready.capabilities} onClose={() => setDialog(null)} /> : null}
     </div>
   );
 }
@@ -423,6 +425,25 @@ function CallOverlay({ callRef, canManage, onClose, nav, onVerifyTest }: { callR
           <section><h3>{t('rcpt.ov.messages')}</h3><div className="rcp-muted">{t('rcpt.messagesNote')}</div></section>
         </div>
       )}
+    </FitDialog>
+  );
+}
+
+// extras AI Receptionist 04 — AI Agent Capability Matrix: the server's four facts per capability (Configured / Tested /
+// Active / Allowed), each from its own evidence; null = not known here → "—". Read-only.
+type CapRow = { key: string; tool: string | null; configured: boolean | null; tested: boolean | null; lastTestedAt: string | null; active: boolean | null; allowed: boolean | null };
+function CapabilityMatrix({ rows, onClose }: { rows: CapRow[]; onClose: () => void }) {
+  const cell = (v: boolean | null, testId: string) => <td data-testid={testId} className={v == null ? 'rcp-muted' : v ? 'rcp-ok' : 'rcp-no'}>{v == null ? '—' : v ? t('rcpt.cap.yes') : t('rcpt.cap.no')}</td>;
+  return (
+    <FitDialog title={t('rcpt.cap.title')} subtitle={t('rcpt.cap.sub')} onClose={onClose} testId="rcp-capabilities">
+      <table className="fk-table" data-testid="rcp-cap-table">
+        <thead><tr><th>{t('rcpt.cap.col.capability')}</th><th>{t('rcpt.cap.col.configured')}</th><th>{t('rcpt.cap.col.tested')}</th><th>{t('rcpt.cap.col.active')}</th><th>{t('rcpt.cap.col.allowed')}</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.key} data-testid="rcp-cap-row" data-cap={r.key}>
+          <td>{t('rcpt.cap.k.' + r.key)}</td>{cell(r.configured, 'rcp-cap-configured')}
+          <td data-testid="rcp-cap-tested" className={r.tested == null ? 'rcp-muted' : r.tested ? 'rcp-ok' : 'rcp-no'}>{r.tested == null ? '—' : r.tested ? t('rcpt.cap.testedAt', { at: r.lastTestedAt ? fmtDateTime(r.lastTestedAt) : '—' }) : t('rcpt.cap.notTested')}</td>
+          {cell(r.active, 'rcp-cap-active')}{cell(r.allowed, 'rcp-cap-allowed')}</tr>)}</tbody>
+      </table>
+      <p className="rcp-muted">{t('rcpt.cap.note')}</p>
     </FitDialog>
   );
 }

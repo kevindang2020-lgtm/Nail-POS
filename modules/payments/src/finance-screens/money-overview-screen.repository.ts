@@ -31,6 +31,7 @@ import {
 } from './finance-scope';
 import { methodKey } from './split-payments-screen.repository';
 import { TransactionsScreenRepository } from './transactions-screen.repository';
+import { FUNDING_DAYS } from './recon-workspace.repository';
 
 const CONFIRMED = [...new Set([...REVENUE_BEARING_STATUSES, 'completed', 'succeeded', 'settled', 'partially_refunded'])];
 const FAILED = ['declined', 'failed', 'error', 'rejected'];
@@ -143,6 +144,22 @@ export class MoneyOverviewScreenRepository {
     return { successful: N(r.ok), failed: N(r.failed), unresolved: N(r.unresolved), chargebacks: N(cb.n), chargebackCents: N(cb.cents), latestPaymentAt: iso(r.latest) };
   }
 
+  /** extras Payments & Money 12 — Payout Forecast: the processor payouts still pending, by expected arrival date and
+   *  processor, each date labelled with its source: 'processor' = the processor's own expected deposit date; 'estimated' =
+   *  settlement date + FUNDING_DAYS (the same estimate Deposit Reconciliation uses). A date before the salon's today is
+   *  'late' — never shown as arrived: only a recorded bank deposit is. Read-only. */
+  async payoutForecast(ctx: FinanceCtx, p: Period) {
+    const rows = (await sql<{ d: string | null; processor: string | null; sourced: boolean; n: number; cents: number | string }>`
+      select to_char(coalesce(s.expected_deposit_date, ((coalesce(s.settled_at, s.created_at) at time zone ${p.tz})::date + ${FUNDING_DAYS}::int)), 'YYYY-MM-DD') as d,
+             s.processor_type as processor, (s.expected_deposit_date is not null) as sourced, count(*)::int as n, coalesce(sum(coalesce(s.net_cents, s.gross_cents)), 0)::bigint as cents
+        from payment_settlements s
+       where s.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`s.branch_id`)} and lower(coalesce(s.status, '')) in (${sql.join(PENDING_PAYOUT)}) and s.actual_deposit_date is null
+       group by 1, 2, 3 order by 1 asc, 2 asc nulls last, 3 desc limit 60`.execute(this.db)).rows;
+    const items = rows.map((r) => ({ expectedDate: r.d, processor: r.processor ?? null, source: r.sourced ? 'processor' as const : 'estimated' as const,
+      payouts: N(r.n), netCents: N(r.cents), late: r.d != null && r.d < p.today }));
+    return { today: p.today, fundingDays: FUNDING_DAYS, items, totalCents: items.reduce((a, x) => a + x.netCents, 0) };
+  }
+
   /** The Overview: KPIs (period / as of now), the four analytics panels, recent activity, payouts, all-time totals. */
   async overview(ctx: FinanceCtx, p: Period) {
     const [rev, col, rf, out, pay, att, allRev, allCol, allRf] = await Promise.all([
@@ -157,7 +174,7 @@ export class MoneyOverviewScreenRepository {
     if (att.failed > 0) reasons.push('failed_payments'); if (att.unresolved > 0) reasons.push('unresolved_payments'); if (att.chargebacks > 0) reasons.push('chargebacks');
     if (rf.pendingRefunds > 0) reasons.push('pending_refunds');
     const status = att.successful + att.failed + att.unresolved === 0 ? 'no_activity' : reasons.length ? 'attention' : 'healthy';
-    const [revenueBridge, trend, methods, services, recent, upcoming] = await Promise.all([this.bridge(ctx, p, rev.revenueCents, col.collectionsCents), this.trend(ctx, p), this.methods(ctx, p), this.services(ctx, p, { page: 1, pageSize: 5 }), this.recent(ctx, p), this.payoutList(ctx, { page: 1, pageSize: 4 })]);
+    const [revenueBridge, trend, methods, services, recent, upcoming, payoutForecast] = await Promise.all([this.bridge(ctx, p, rev.revenueCents, col.collectionsCents), this.trend(ctx, p), this.methods(ctx, p), this.services(ctx, p, { page: 1, pageSize: 5 }), this.recent(ctx, p), this.payoutList(ctx, { page: 1, pageSize: 4 }), this.payoutForecast(ctx, p)]);
     return {
       period: p, scope: ctx.branchId && isUuid(ctx.branchId) ? 'location' : 'salon', generatedAt: new Date().toISOString(),
       kpis: {
@@ -170,7 +187,7 @@ export class MoneyOverviewScreenRepository {
       revenueTrend: trend, paymentMethods: methods, topServices: services,
       health: { status, reasons, successful: att.successful, failed: att.failed, unresolved: att.unresolved, chargebacks: att.chargebacks, chargebackCents: att.chargebackCents,
         successRatePercent: successRate, refundRatePercent: refundRate, collectionRatePercent: collectionRate, latestPaymentAt: att.latestPaymentAt, latestSettlementAt: pay.latestSettlementAt },
-      recentTransactions: recent, upcomingPayouts: upcoming,
+      recentTransactions: recent, upcomingPayouts: upcoming, payoutForecast,
       definitions: MONEY_DEFINITIONS,
     };
   }

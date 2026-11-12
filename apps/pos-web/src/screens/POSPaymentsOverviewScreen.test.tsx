@@ -82,4 +82,32 @@ describe('POSPaymentsOverviewScreen', () => {
     await screen.findByTestId('panel-trend-wide');
     expect(screen.queryByTestId('revenue-bridge-open')).toBeNull();
   });
+
+  it('extras PAYMENTS 12: the payout forecast lists the server\'s pending payouts by date and processor with the date\'s source; a late one is never "arrived"', async () => {
+    mo.overview.mockResolvedValue({ ...overview, payoutForecast: { today: '2026-10-26', fundingDays: 3, totalCents: 16143, items: [
+      { expectedDate: '2026-10-24', processor: 'cardpointe', source: 'processor', payouts: 1, netCents: 11293, late: true },
+      { expectedDate: '2026-10-27', processor: 'cardpointe', source: 'estimated', payouts: 1, netCents: 4850, late: false }] } });
+    mo.payouts.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 5, pageCount: 1 });
+    render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('space-payouts'));
+    const rows = await screen.findAllByTestId('payout-forecast-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('2026-10-24'); expect(rows[0]).toHaveTextContent('CardPointe'); expect(rows[0]).toHaveTextContent('$112.93');
+    expect(rows[0]).toHaveTextContent('Date from the processor'); expect(rows[0]).toHaveTextContent('not deposited yet');
+    expect(rows[1]).toHaveTextContent('Estimated: settlement date + 3 days'); expect(rows[1].querySelector('[data-testid="payout-forecast-late"]')).toBeNull();
+    expect(screen.getByTestId('payout-forecast')).toHaveTextContent('$161.43');
+  });
+  it('extras PAYMENTS 12: no pending payouts says so; an older server without the forecast shows nothing', async () => {
+    mo.overview.mockResolvedValue({ ...overview, payoutForecast: { today: '2026-10-26', fundingDays: 3, totalCents: 0, items: [] } });
+    mo.payouts.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 5, pageCount: 1 });
+    const v = render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('space-payouts'));
+    expect(await screen.findByTestId('payout-forecast-none')).toHaveTextContent('No processor payouts are waiting.');
+    v.unmount();
+    mo.overview.mockResolvedValue(overview);
+    render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('space-payouts'));
+    await screen.findByTestId('panel-health-wide');
+    expect(screen.queryByTestId('payout-forecast')).toBeNull();
+  });
 });

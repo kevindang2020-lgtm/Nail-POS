@@ -27,6 +27,8 @@ const REFUSAL: Record<string, (detail?: string) => Error> = {
   customer_archived: () => withCode(new FollowUpError('forbidden', 'This customer is archived and is not contacted.'), 'FOLLOWUP_CUSTOMER_ARCHIVED'),
   already_booked: (d) => withCode(new FollowUpError('forbidden', `The customer already booked their next visit${d ? ` (${d})` : ''}. A manager can send anyway with a reason.`), 'FOLLOWUP_ALREADY_BOOKED'),
   recently_contacted: () => withCode(new FollowUpError('forbidden', 'The customer already received a follow-up recently. A manager can send anyway with a reason.'), 'FOLLOWUP_RECENTLY_CONTACTED'),
+  // extras FOLLOW-UP QUEUE 05 — the registry has no code of its own yet: the state code, with the exact English reason
+  source_cancelled: () => withCode(new FollowUpError('invalid_state', 'The visit this follow-up was for was voided, reopened or had the service removed — it can no longer be sent.'), 'FOLLOWUP_STATE_INVALID'),
 };
 
 

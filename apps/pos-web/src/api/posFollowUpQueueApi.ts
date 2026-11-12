@@ -17,7 +17,7 @@ export interface FollowUpQueueRow {
 }
 export interface QueuePage<T> { items: T[]; total: number; page: number; pageSize: number; totalPages: number }
 export interface FollowUpQueueQuery { view?: string; q?: string; status?: string; technicianId?: string; priority?: string; due?: string; basis?: string; from?: string; to?: string; page?: number; pageSize?: number }
-type ContactCategory = 'eligible' | 'recently_contacted' | 'already_sent' | 'opted_out' | 'missing_contact' | 'blocked' | 'needs_approval';
+type ContactCategory = 'eligible' | 'recently_contacted' | 'already_sent' | 'opted_out' | 'missing_contact' | 'blocked' | 'needs_approval' | 'source_cancelled';
 export interface ContactCheck {
   taskId: string; category: ContactCategory; categories: ContactCategory[]; channel: string; cooldownHours: number;
   lastFollowUp: { taskId: string; at: string | null; technicianName: string } | null;

@@ -1661,4 +1661,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.trace": "Chuỗi sự kiện của yêu cầu này", // DRAFT — Kevin reviews
   "lgx.traceOnly": "Chỉ một chuỗi sự kiện", // DRAFT — Kevin reviews
   "lgx.traceOnlyClear": "Hiện lại mọi yêu cầu", // DRAFT — Kevin reviews
+  "syschk.technicians.clocked_in_not_active": "Không có thợ đã lưu trữ hoặc ngưng hoạt động nào vẫn đang chấm công vào", // DRAFT — Kevin reviews
+  "syschk.technicians.clocked_in_not_active.fix": "Chấm công ra cho những thợ đó (hoặc khôi phục họ) trong Chấm công.", // DRAFT — Kevin reviews
+  "syschk.technicians.punch_open_past_day": "Không có lượt chấm công vào nào còn mở từ ngày trước", // DRAFT — Kevin reviews
+  "syschk.technicians.punch_open_past_day.fix": "Đóng các lượt đó với giờ ra đúng trong Chấm công.", // DRAFT — Kevin reviews
+  "syschk.technicians.no_service_mapping": "Mỗi thợ đang hoạt động được duyệt ít nhất một dịch vụ", // DRAFT — Kevin reviews
+  "syschk.technicians.no_service_mapping.fix": "Gán dịch vụ cho họ trong Trợ lý gán dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.technicians.certification_expired": "Không có thợ đang hoạt động nào có chứng chỉ hết hạn", // DRAFT — Kevin reviews
+  "syschk.technicians.certification_expired.fix": "Tải lên chứng chỉ đã gia hạn hoặc đánh dấu chứng chỉ cũ đã được thay thế.", // DRAFT — Kevin reviews
 };

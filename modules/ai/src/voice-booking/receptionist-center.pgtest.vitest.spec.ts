@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { ReceptionistCenter, stageOf, maskPhone, type RcCtx, type RcAccessRepo } from './receptionist-center';
+import { ReceptionistCenter, stageOf, maskPhone, capabilityMatrix, type RcCtx, type RcAccessRepo } from './receptionist-center';
 
 const P = 'c7540000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -254,4 +254,46 @@ describe('KPIs, history, search, priority — guide §06–§08, §12, §14', ()
     expect((await mk(ENV_FULL).lastHealth(own))!.overall).toBe('FAILED');
   });
   it('maskPhone shows the last four only', () => { expect(maskPhone('+1 (609) 555-0142')).toBe('•••• 0142'); expect(maskPhone(null)).toBeNull(); });
+});
+
+// extras AI Receptionist 04 — AI Agent Capability Matrix: Configured / Tested / Active / Allowed per capability, each from
+// its own evidence; "tested" only from a SUCCESSFUL real tool use of this salon in 90 days; unknown stays null ("—").
+describe('AI Agent Capability Matrix (extras AI Receptionist 04)', () => {
+  const ready = (ids: string[], state = 'READY') => ids.map((x) => ({ id: x, state }));
+  it('capabilityMatrix: four separate facts; writes need armed booking AND the platform switch; unknown is null, never green', () => {
+    const all = [...ready(['ent.package', 'key.active', 'biz.setup', 'bk.actions', 'cm.sms'])];
+    const m = Object.fromEntries(capabilityMatrix(all, { writeSwitch: true, activated: true, lastUse: { get_services: '2026-11-01T15:00:00.000Z' } }).map((r) => [r.key, r]));
+    expect(Object.keys(m)).toEqual(['hours', 'services', 'availability', 'booking', 'reschedule', 'cancel', 'sms', 'handoff']);
+    expect(m.services).toMatchObject({ configured: true, tested: true, lastTestedAt: '2026-11-01T15:00:00.000Z', active: true, allowed: true });
+    expect(m.booking).toMatchObject({ configured: true, tested: false, active: true, allowed: true });   // configured + allowed, no real use yet
+    expect(m.sms).toMatchObject({ tool: null, tested: null });                                        // no voice tool proves texts
+    const off = Object.fromEntries(capabilityMatrix(all, { writeSwitch: false, activated: true, lastUse: {} }).map((r) => [r.key, r]));
+    expect(off.booking).toMatchObject({ allowed: false, active: false }); expect(off.hours).toMatchObject({ allowed: true, active: true });
+    const notArmed = [...ready(['ent.package', 'key.active', 'biz.setup', 'cm.sms']), { id: 'bk.actions', state: 'DISABLED' }];
+    expect(capabilityMatrix(notArmed, { writeSwitch: true, activated: true, lastUse: {} }).find((r) => r.key === 'cancel')).toMatchObject({ configured: false, active: false });
+    const unknownPlan = [{ id: 'ent.package', state: 'UNKNOWN' }, ...ready(['key.active', 'biz.setup'])];
+    expect(capabilityMatrix(unknownPlan, { writeSwitch: true, activated: false, lastUse: {} }).find((r) => r.key === 'hours')).toMatchObject({ configured: true, allowed: null, active: false });
+    const denied2 = [{ id: 'ent.package', state: 'FAILED' }, ...ready(['key.active', 'biz.setup'])];
+    expect(capabilityMatrix(denied2, { writeSwitch: true, activated: true, lastUse: {} }).find((r) => r.key === 'services')).toMatchObject({ allowed: false, active: false });
+  });
+  it('readiness carries the matrix; "tested" counts only this salon’s successful tool uses in the last 90 days', async () => {
+    const ex = (t: string, b: string, tool: string, status: string, ref: string, daysAgo = 1) => sql`insert into voice_tool_executions (tenant_id, branch_id, provider_call_id, invocation_key, tool_name, tool_kind, status, finished_at, created_at, requested_at)
+      values (${t}, ${b}, ${ref}, ${ref + tool}, ${tool}, 'read', ${status}, now() - make_interval(days => ${daysAgo}), now() - make_interval(days => ${daysAgo}), now() - make_interval(days => ${daysAgo}))`.execute(db);
+    await ex(TA, BA, 'get_services', 'succeeded', 'cm-1'); await ex(TA, BA, 'create_appointment', 'failed', 'cm-2');
+    await ex(TA, BA, 'cancel_appointment', 'succeeded', 'cm-3', 120); await ex(TB, BB, 'get_business_info', 'succeeded', 'cm-4');
+    const before = N(await q1(sql`select count(*)::int n from voice_tool_executions`));
+    const r = await mk(ENV_FULL).readiness(own);
+    const m = Object.fromEntries(r.capabilities.map((c: any) => [c.key, c]));
+    expect(m.services.tested).toBe(true); expect(m.services.lastTestedAt).toBeTruthy();
+    expect(m.booking.tested).toBe(false);     // a failed attempt is not a test
+    expect(m.cancel.tested).toBe(false);      // older than 90 days
+    expect(m.hours.tested).toBe(false);       // the other salon's use never counts here
+    expect(m.sms.tested).toBeNull();
+    expect(m.booking.active).toBe(false);     // disarmed above: not configured, so not active
+    const b = Object.fromEntries((await mk(ENV_FULL).readiness(ownB)).capabilities.map((c: any) => [c.key, c]));
+    expect(b.hours.tested).toBe(true); expect(b.services.tested).toBe(false);
+    const sw = Object.fromEntries((await mk({ ...ENV_FULL, VOICE_WRITE_TOOLS_ENABLED: '' }).readiness(own)).capabilities.map((c: any) => [c.key, c]));
+    expect(sw.reschedule.allowed).toBe(false); expect(sw.services.allowed).toBe(true);
+    expect(N(await q1(sql`select count(*)::int n from voice_tool_executions`))).toBe(before);   // read-only
+  });
 });

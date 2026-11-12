@@ -72,3 +72,30 @@ describe('Win-Back area code finder', () => {
     expect(ids.sort()).toEqual([A1, A2, A3].sort());
   });
 });
+
+// extras Win-Back 10 — Phone Contact Verification: a confirmed number (customers.phone_verified_at) is shown and filterable
+// as verified / unverified; verification never implies consent (no SMS opt-in stays no_consent) and changes no profile.
+describe('Win-Back phone contact verification', () => {
+  it('rows carry verified / unverified / no_number; the filter narrows to valid numbers; consent is not inferred', async () => {
+    await q(`update customers set phone_verified_at = now() - interval '3 days' where id = any($1::uuid[])`, [[A1, A2]]);
+    await q(`update customers set marketing_sms_opt_in = false where id = $1`, [A2]);   // verified, but never agreed to texts
+    const before = (await q(`select id, full_name, normalized_phone, marketing_sms_opt_in, updated_at from customers where tenant_id = $1 order by id`, [T])).rows;
+    const all = await repo.customers(ctx, { segment: 'all', pageSize: 50 });
+    const by = Object.fromEntries(all.items.map((r) => [r.customerId, r]));
+    expect(by[A1].phoneVerification).toBe('verified');
+    expect(by[A2].phoneVerification).toBe('verified');
+    expect(by[A2].smsStatus).toBe('no_consent');                 // verified is NOT consent
+    expect(by[A3].phoneVerification).toBe('unverified');
+    expect(by[NP].phoneVerification).toBe('no_number');
+    const ver = await repo.customers(ctx, { segment: 'all', phoneCheck: 'verified', pageSize: 50 });
+    expect(ver.items.map((r) => r.customerId).sort()).toEqual([A1, A2].sort()); expect(ver.filters.phoneCheck).toBe('verified');
+    const unv = await repo.customers(ctx, { segment: 'all', phoneCheck: 'unverified', pageSize: 50 });
+    expect(unv.items.map((r) => r.customerId).sort()).toEqual([A3, M1].sort());   // valid numbers only — NP (no phone) is neither
+    const combo = await repo.customers(ctx, { segment: 'all', phoneCheck: 'verified', areaCode: '856', minDays: 60, pageSize: 50 });
+    expect(combo.items.map((r) => r.customerId)).toEqual([A1]);
+    const other = await repo.customers({ ...ctx, tenantId: T2, branchId: B2 }, { segment: 'all', phoneCheck: 'verified', pageSize: 50 });
+    expect(other.items).toEqual([]);                              // another salon's list is never affected
+    const after = (await q(`select id, full_name, normalized_phone, marketing_sms_opt_in, updated_at from customers where tenant_id = $1 order by id`, [T])).rows;
+    expect(after).toEqual(before);                                // reading verification changes no profile
+  });
+});

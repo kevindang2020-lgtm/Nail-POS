@@ -53,13 +53,13 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : unde
 function listFilters(f: any): ListFilters {
   return { segment: str(f?.segment), q: str(f?.q), sort: str(f?.sort), preset: str(f?.preset), from: str(f?.from), to: str(f?.to), basis: str(f?.basis), band: str(f?.band),
     sms: str(f?.sms), email: str(f?.email), future: str(f?.future), minDays: f?.minDays, minVisits: f?.minVisits, page: f?.page, pageSize: f?.pageSize, branch: str(f?.branch),
-    scope: str(f?.scope), category: str(f?.category), technician: str(f?.technician), spend: str(f?.spend), areaCode: str(f?.areaCode) };   // A19 Nov 6 · Win-Back §01 area code
+    scope: str(f?.scope), category: str(f?.category), technician: str(f?.technician), spend: str(f?.spend), areaCode: str(f?.areaCode), phoneCheck: str(f?.phoneCheck) };   // A19 Nov 6 · Win-Back §01 area code
 }
 const LIST_QUERY = { filters: { segment: { type: 'enum', values: RETENTION_SEGMENTS }, preset: { type: 'enum', values: PERIOD_PRESETS },
   basis: { type: 'enum', values: DATE_BASES }, band: { type: 'enum', values: PRIORITY_BANDS }, sms: { type: 'enum', values: ['eligible', 'not_eligible'] }, minVisits: { type: 'int', min: 0, max: 1000 },
   scope: { type: 'enum', values: SEARCH_SCOPES }, category: { type: 'uuid' }, technician: { type: 'uuid' }, spend: { type: 'enum', values: ['low', 'mid', 'high'] },
   email: { type: 'enum', values: ['eligible', 'not_eligible', 'opted_out'] }, future: { type: 'enum', values: ['yes', 'no'] }, minDays: { type: 'int', min: 1, max: 3650 },
-  branch: { type: 'text', maxLength: 40 }, areaCode: { type: 'text', maxLength: 3 } },
+  branch: { type: 'text', maxLength: 40 }, areaCode: { type: 'text', maxLength: 3 }, phoneCheck: { type: 'enum', values: ['verified', 'unverified'] } },
   sorts: { priority: null, created_desc: null, oldest_visit: null, newest_visit: null, name: null, spend: null, visits: null }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 1830 }, params: ['page'] } satisfies ListQuerySpec;
 const actor = (c: RetentionContext) => ({ tenantId: c.tenantId, branchId: isUuid(c.branchId) ? c.branchId : null, userId: c.userId, role: c.role });
 

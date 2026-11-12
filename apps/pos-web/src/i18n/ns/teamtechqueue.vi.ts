@@ -109,4 +109,7 @@ export const TEAMTECHQUEUE_VI = {
   'tq.thru.turn': 'Thời gian phục vụ TB {a} phút = {m} phút ÷ {n} dịch vụ có giờ', // DRAFT — Kevin reviews
   'tq.thru.turnNone': 'Thời gian phục vụ TB: chưa có dịch vụ có giờ', // DRAFT — Kevin reviews
   'tq.thru.rule': 'Đã phục vụ = phiếu đã xong dịch vụ hôm nay ÷ khách check-in hôm nay. Ngày của tiệm theo {tz}.', // DRAFT — Kevin reviews
+  'tq.live.gone': 'Phiếu đó đã xong, đã chuyển hoặc đã hủy trên màn hình khác — bảng đã đóng để không thao tác trên phiếu cũ.', // DRAFT — Kevin reviews
+  'tq.live.changed': 'Đã thay đổi trên màn hình khác khi bạn đang xem: hiện là {s} · {t} · {p}. Hãy kiểm tra trước khi thao tác — ghi chú bạn đã gõ vẫn được giữ.', // DRAFT — Kevin reviews
+  'tq.live.ack': 'OK, tôi đã kiểm tra', // DRAFT — Kevin reviews
 };

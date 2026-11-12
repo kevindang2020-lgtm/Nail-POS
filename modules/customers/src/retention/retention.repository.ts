@@ -121,7 +121,7 @@ export function areaCodeOf(v: unknown): string | null {
   if (!AREA_CODE_RE.test(raw)) throw new RetentionError('Enter a 3-digit area code, for example 856.', 'RETENTION_INVALID_FILTER', 400, { field: 'areaCode' });
   return raw;
 }
-export interface ListFilters extends PeriodInput { areaCode?: string; segment?: string; q?: string; sort?: string; scope?: string; category?: string; technician?: string; spend?: string; basis?: string; band?: string; sms?: string; email?: string; future?: string; minDays?: unknown; minVisits?: unknown; page?: unknown; pageSize?: unknown }
+export interface ListFilters extends PeriodInput { areaCode?: string; phoneCheck?: string; segment?: string; q?: string; sort?: string; scope?: string; category?: string; technician?: string; spend?: string; basis?: string; band?: string; sms?: string; email?: string; future?: string; minDays?: unknown; minVisits?: unknown; page?: unknown; pageSize?: unknown }
 /** Win-Back guide §06: the inactivity presets (salon days since the last completed visit); custom = any whole number 1–3650 */
 export const INACTIVITY_PRESETS = [30, 60, 90, 120] as const;
 /** the resolved window every read uses: salon time zone, the period [start, end) and the effective thresholds */
@@ -131,7 +131,11 @@ export type PriorityBand = (typeof PRIORITY_BANDS)[number];
 export interface PriorityInfo { score: number; band: PriorityBand; formulaVersion: string; components: { inactivity: number; frequency: number; spend: number }; topDriver: 'inactivity' | 'frequency' | 'spend'; explanation: string }
 export interface RetentionRow {
   customerId: string; customerName: string; avatarUrl: string | null; maskedPhone: string | null;
-  phoneStatus: 'ok' | 'missing' | 'invalid'; smsStatus: 'eligible' | 'no_phone' | 'invalid_phone' | 'no_consent' | 'opted_out' | 'recently_contacted' | 'upcoming_booking';
+  phoneStatus: 'ok' | 'missing' | 'invalid';
+  /** extras Win-Back 10: was this stored number confirmed by a code sent to it (customers.phone_verified_at)? A fact about
+   *  reachability only — never consent (smsStatus decides that) and never an identity change. 'no_number' = missing / invalid. */
+  phoneVerification: 'verified' | 'unverified' | 'no_number';
+  smsStatus: 'eligible' | 'no_phone' | 'invalid_phone' | 'no_consent' | 'opted_out' | 'recently_contacted' | 'upcoming_booking';
   /** Win-Back guide §06 / §11: marketing email eligibility (consent + not unsubscribed / bounced; the email ledger's suppression list) */
   emailStatus: 'eligible' | 'no_email' | 'invalid_email' | 'no_consent' | 'opted_out'; maskedEmail: string | null;
   /** a marketing message (Retention SMS or Campaign Center, any channel) was submitted in the selected period */ contactedInPeriod: boolean;
@@ -279,6 +283,7 @@ export class RetentionRepository {
         where a.tenant_id = ${T} and a.customer_id is not null and a.appt_date >= ${k.today}::date and a.status = any(${UPCOMING}::text[]) group by a.customer_id),
       b0 as (
         select c.id, c.full_name, c.avatar_url, c.normalized_phone, c.created_at, c.marketing_sms_opt_in, c.email,
+               (c.phone_verified_at is not null) as phone_verified,
                case when coalesce(c.email, '') = '' then 'no_email'
                     when c.email !~* ${EMAIL_RE} then 'invalid_email'
                     when not coalesce(c.marketing_email_opt_in, false) then 'no_consent'
@@ -368,8 +373,11 @@ export class RetentionRepository {
     if (f.future === 'yes') parts.push(sql`b.next_date is not null`); else if (f.future === 'no') parts.push(sql`b.next_date is null`);
     const areaCode = areaCodeOf(f.areaCode);
     if (areaCode) parts.push(sql`coalesce(b.normalized_phone, '') ~ ${'^\\+1' + areaCode + '[0-9]{7}$'}`);   // this salon's stored numbers only (b is tenant-keyed)
+    // extras Win-Back 10: verified / unverified reachable number (a valid stored number either way; consent is not implied)
+    const phoneCheck = f.phoneCheck === 'verified' || f.phoneCheck === 'unverified' ? f.phoneCheck : null;
+    if (phoneCheck) parts.push(sql`coalesce(b.normalized_phone, '') ~ ${E164} and b.phone_verified = ${phoneCheck === 'verified'}`);
     return { where: sql.join(parts, sql` and `), applied: { scope: pick(SEARCH_SCOPES, f.scope) ?? 'all', category: isUuid(f.category) ? f.category : null, technician: isUuid(f.technician) ? f.technician : null, spend: sb ? f.spend : null, basis, band: band ?? null, sms: f.sms === 'eligible' || f.sms === 'not_eligible' ? f.sms : null, minVisits: minVisits || null,
-      minDays, email: ['eligible', 'not_eligible', 'opted_out'].includes(String(f.email)) ? String(f.email) : null, future: f.future === 'yes' || f.future === 'no' ? f.future : null, areaCode } };
+      minDays, email: ['eligible', 'not_eligible', 'opted_out'].includes(String(f.email)) ? String(f.email) : null, future: f.future === 'yes' || f.future === 'no' ? f.future : null, areaCode, phoneCheck } };
   }
   /** spec §10: All Customers = newest profile first; Win-Back (At Risk) = Smart Priority; the others their natural order */
   private defaultSort(seg: RetentionSegment): RetentionSort {
@@ -430,7 +438,8 @@ export class RetentionRepository {
     const st = String(r.sms_status) as RetentionRow['smsStatus'];
     const days = r.days_away == null ? null : N(r.days_away);
     return { customerId: String(r.id), customerName: String(r.full_name || ''), avatarUrl: r.avatar_url ?? null, maskedPhone: maskPhone(r.normalized_phone),
-      phoneStatus: st === 'no_phone' ? 'missing' : st === 'invalid_phone' ? 'invalid' : 'ok', smsStatus: st, segment: String(r.segment) as RetentionRow['segment'],
+      phoneStatus: st === 'no_phone' ? 'missing' : st === 'invalid_phone' ? 'invalid' : 'ok', smsStatus: st,
+      phoneVerification: st === 'no_phone' || st === 'invalid_phone' ? 'no_number' : r.phone_verified ? 'verified' : 'unverified', segment: String(r.segment) as RetentionRow['segment'],
       emailStatus: (String(r.email_status ?? 'no_email')) as RetentionRow['emailStatus'], maskedEmail: maskEmail(r.email), contactedInPeriod: !!r.contacted_in,
       returningInPeriod: !!r.returned_in, recoveredInPeriod: !!r.recovered_in,
       lastVisitAt: iso(r.last_visit), firstVisitAt: iso(r.first_visit), daysAway: days, visits: N(r.visits), lifetimeSpendCents: N(r.spend), createdAt: iso(r.created_at),

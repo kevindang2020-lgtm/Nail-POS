@@ -267,6 +267,15 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     // a held public-profile change of one of this salon's technicians, waiting more than 7 days for a decision
     { key: 'profile_change_waiting', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tech_profile_change_requests pr WHERE pr.status = 'pending' AND pr.created_at < now() - interval '7 days'
         AND EXISTS (SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND x.global_tech_profile_id = pr.global_tech_profile_id)`) },
+    // extras Unfinished POS Modules 06 (Team Integrity): clock state, skills and training — counts only, never a change
+    { key: 'clocked_in_not_active', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM technician_workforce_state w JOIN technicians x ON x.id = w.technician_id AND x.tenant_id = w.tenant_id
+        WHERE w.tenant_id = ${t}::uuid ${br('x', b)} AND w.clock_status IN ('CLOCKED_IN', 'ON_BREAK') AND (x.archived_at IS NOT NULL OR NOT coalesce(x.is_active, true) OR coalesce(x.status, 'active') <> 'active')`) },
+    { key: 'punch_open_past_day', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_shifts x WHERE x.tenant_id = ${t}::uuid ${br('x', b)}
+        AND x.start_time IS NOT NULL AND x.end_time IS NULL AND x.shift_date < ${today('x', t)}`) },
+    { key: 'no_service_mapping', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM technician_services ts WHERE ts.tenant_id = x.tenant_id AND ts.technician_id = x.id)`) },
+    { key: 'certification_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT DISTINCT x.id FROM technician_certifications c JOIN technicians x ON x.id = c.technician_id AND x.tenant_id = c.tenant_id
+        WHERE c.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND c.revoked_reason IS NULL AND c.expires_at IS NOT NULL AND c.expires_at < ${today('x', t)}`) },
   ] },
 
   // ── Membership Overview (/pos/memberships) ────────────────────────────────────────────────────────────────────────

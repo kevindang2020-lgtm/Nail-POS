@@ -1662,4 +1662,12 @@ export const OPS_EN = {
   "lgx.trace": "This request’s trace",
   "lgx.traceOnly": "One trace only",
   "lgx.traceOnlyClear": "Show every request again",
+  "syschk.technicians.clocked_in_not_active": "No archived or inactive technician is still clocked in",
+  "syschk.technicians.clocked_in_not_active.fix": "Clock those technicians out (or restore them) from Time Clock.",
+  "syschk.technicians.punch_open_past_day": "No clock-in is left open from an earlier day",
+  "syschk.technicians.punch_open_past_day.fix": "Close those punches with the correct clock-out time in Time Clock.",
+  "syschk.technicians.no_service_mapping": "Every active technician is approved for at least one service",
+  "syschk.technicians.no_service_mapping.fix": "Map their services in the Service Mapping Assistant.",
+  "syschk.technicians.certification_expired": "No active technician has an expired certificate",
+  "syschk.technicians.certification_expired.fix": "Upload the renewed certificate or mark the old one replaced.",
 };

@@ -105,7 +105,14 @@ export function summarizeCandidates(c: EodCandidate[]) {
 }
 
 // ── send ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-export type SendRefusal = 'not_found' | 'invalid_state' | 'expired' | 'customer_archived' | 'already_booked' | 'recently_contacted';
+export type SendRefusal = 'not_found' | 'invalid_state' | 'expired' | 'customer_archived' | 'already_booked' | 'recently_contacted' | 'source_cancelled';
+/** extras FOLLOW-UP QUEUE 05: the visit a task was made for must still be what generation accepted — a paid / completed /
+ *  closed ticket and a service line that was not removed. A voided / reopened / removed ticket or a removed line is a cancelled
+ *  source: the task can never be sent (no manager override), and the contact check says why. */
+export const EOD_SOURCE_TICKET_STATUSES = ['paid', 'completed', 'closed'] as const;
+export const sourceCancelledSql = (taskAlias: string) => sql`(exists (select 1 from tickets st where st.tenant_id = ${sql.ref(taskAlias + '.tenant_id')} and st.id = ${sql.ref(taskAlias + '.ticket_id')}
+      and (st.removed_at is not null or st.status <> all(${[...EOD_SOURCE_TICKET_STATUSES]}::text[])))
+    or exists (select 1 from ticket_service_lines sl where sl.tenant_id = ${sql.ref(taskAlias + '.tenant_id')} and sl.id = ${sql.ref(taskAlias + '.ticket_service_line_id')} and sl.removed_at is not null))`;
 export type ClaimResult =
   | { outcome: 'sent'; notificationId: string; overridden: string[] }
   | { outcome: 'already_sent' }
@@ -119,12 +126,14 @@ export async function claimAndSendTask(db: Kysely<any>, outbox: OutboxWriter | n
   override: { reason: string } | null; cooldownHours: number; today: string; title: (techName: string) => string;
 }): Promise<ClaimResult> {
   return db.transaction().execute(async (trx: Kysely<any>) => {
-    const t = (await sql<any>`select id, tenant_id, branch_id, status, customer_id, technician_id, technician_name_snapshot, customer_app_user_id, suggested_message
-        from service_follow_up_tasks where id = ${a.taskId}::uuid and tenant_id = ${a.tenantId}::uuid and deleted_at is null for update`.execute(trx)).rows[0];
+    const t = (await sql<any>`select id, tenant_id, branch_id, status, customer_id, technician_id, technician_name_snapshot, customer_app_user_id, suggested_message,
+          ${sourceCancelledSql('sfu')} as source_cancelled
+        from service_follow_up_tasks sfu where id = ${a.taskId}::uuid and tenant_id = ${a.tenantId}::uuid and deleted_at is null for update`.execute(trx)).rows[0];
     if (!t) return { outcome: 'refused', reason: 'not_found' } as const;
     if (SENT_STATES.includes(t.status)) return { outcome: 'already_sent' } as const;
     if (t.status === 'expired') return { outcome: 'refused', reason: 'expired' } as const;
     if (!a.allowedFrom.includes(t.status)) return { outcome: 'refused', reason: 'invalid_state', detail: t.status } as const;
+    if (t.source_cancelled) return { outcome: 'refused', reason: 'source_cancelled' } as const;   // never overridable
     // one decision at a time per customer: two technicians' tasks for the same client cannot both pass the cooldown
     await sql`select pg_advisory_xact_lock(hashtextextended(${`eod:${a.tenantId}:${t.customer_id}`}, 0))`.execute(trx);
     const cust = (await sql<any>`select status from customers where id = ${t.customer_id}::uuid and tenant_id = ${a.tenantId}::uuid`.execute(trx)).rows[0];

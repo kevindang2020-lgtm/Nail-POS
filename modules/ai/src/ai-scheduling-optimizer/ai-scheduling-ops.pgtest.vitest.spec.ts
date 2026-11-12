@@ -8,7 +8,7 @@ import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import type { SchedRecommendation } from '@aipowersalon/api-contracts/tenant';
 import { KyselyProposalStore, ScheduleProposalService } from './ai-scheduling-proposals';
 import { KyselyUsageStore, SchedUsageService } from './ai-scheduling-usage';
-import { KyselyInsightStore, SchedInsightService } from './ai-scheduling-insights';
+import { KyselyInsightStore, SchedInsightService, dayInsights } from './ai-scheduling-insights';
 import { KyselyAutomationApplier } from './ai-scheduling-automation';
 import { KyselyOwnerSummaryRead } from './ai-scheduling-owner';
 import { KyselyTechChangeRead } from './ai-scheduling-tech';
@@ -243,5 +243,38 @@ describe('job dispatch (Kysely)', () => {
     // switched off at salon level → no scan
     await q(`insert into tenant_scheduling_ai_settings (tenant_id, level, enabled) values ($1, 'tenant', false)`, [T]);
     expect((await dispatchSchedJobs(db, now + 86400_000)).scans).toBe(0);
+  });
+});
+
+// extras 200-Technician 06 — Technician Skill Coverage: a service booked for a day that no SCHEDULED, active technician is
+// approved for (technician_services) becomes a staffing suggestion for review even when total hours are enough — named on
+// the suggestion, no hours action invented, nothing assigned or changed; another salon's data never counts.
+describe('skill coverage (extras 200-Technician 06)', () => {
+  it('a booked service nobody on the schedule may do is a reviewable gap; covered services are not; a re-run does not duplicate', async () => {
+    const SVC_X = id(62), APPT_X = id(42), DATE = '2026-10-22';
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Acrylic Full Set',60,6000)`, [SVC_X, T, B, CAT]);
+    await q(`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values ($1,$2,$3,$4), ($1,$2,$5,$6)`, [T, B, TECH, SVC, TECH2, SVC_X]);   // only Bea does acrylic — and she is not scheduled
+    await q(`insert into technician_schedules (tenant_id, branch_id, technician_id, day_of_week, start_time, end_time, is_working) values ($1,$2,$3,$4,'09:00','19:00',true)`, [T, B, TECH, new Date(DATE + 'T00:00:00Z').getUTCDay()]);
+    await q(`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, duration_minutes, status, services) values ($1,$2,$3,$4,$5,'Ann Lee',$6,'10:00','11:30',90,'booked',$7::jsonb)`,
+      [APPT_X, T, B, TECH, CUST, DATE, JSON.stringify([{ serviceId: SVC, serviceName: 'Gel' }, { serviceId: SVC_X, serviceName: 'Acrylic Full Set' }])]);
+    const s = new KyselyInsightStore(db);
+    const d = await s.dayInputs(T, B, DATE);
+    expect([...d.bookedServices!].sort()).toEqual(['Acrylic Full Set', 'Gel']);
+    expect(d.coveredServices).toEqual(['Gel']);
+    const out = dayInsights(d);
+    expect(d.capacityMin).toBeGreaterThan(d.confirmedMin);                 // hours are enough…
+    expect(out.staffing).toMatchObject({ missingSkills: ['Acrylic Full Set'], missingMinutes: 0 });   // …but acrylic has nobody
+    const before = (await q(`select count(*)::int n from pos_tech_appointments where tenant_id = $1 and technician_id = $2`, [T, TECH2]))[0].n;
+    const first = await s.upsertStaffing(T, { branchId: B, date: DATE, state: out.staffing!.state, missingMinutes: 0, missingSkills: out.staffing!.missingSkills, action: null, confidence: out.staffing!.confidence });
+    expect(first).toBeTruthy();
+    expect(await s.upsertStaffing(T, { branchId: B, date: DATE, state: out.staffing!.state, missingMinutes: 0, missingSkills: ['Acrylic Full Set'], action: null, confidence: 0.5 })).toBeNull();
+    const row = (await q(`select missing_skills, recommended_action, status from staffing_coverage_recommendations where id = $1`, [first]))[0];
+    expect(row).toMatchObject({ missing_skills: ['Acrylic Full Set'], recommended_action: null, status: 'review_required' });
+    expect((await q(`select count(*)::int n from pos_tech_appointments where tenant_id = $1 and technician_id = $2`, [T, TECH2]))[0].n).toBe(before);   // nothing assigned
+    // once Amy is approved for acrylic too, the day is covered
+    await q(`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values ($1,$2,$3,$4)`, [T, B, TECH, SVC_X]);
+    const d2 = await s.dayInputs(T, B, DATE);
+    expect([...d2.coveredServices!].sort()).toEqual(['Acrylic Full Set', 'Gel']); expect(dayInsights(d2).staffing).toBeNull();
+    expect((await s.dayInputs(T2, B2, DATE)).bookedServices).toEqual([]);   // another salon never sees these bookings
   });
 });

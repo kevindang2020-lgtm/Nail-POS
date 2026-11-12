@@ -239,3 +239,49 @@ describe('settings + summary + health (guide §5, §7, §17)', () => {
     expect(h.rows.find((r) => r.key === 'scheduler')!.state).toBe('ready');
   });
 });
+
+// extras FOLLOW-UP QUEUE 05 — a stale / cancelled source: the visit a task was made for is voided, reopened or removed, or
+// its service line removed, after the task was created. The send refuses it inside the transaction (no manager override,
+// nothing written to the customer), and the queue's contact check says "source cancelled"; an intact visit still sends.
+describe('a cancelled source is never sent (extras FOLLOW-UP QUEUE 05)', () => {
+  const NEWC = (n: number) => id(`da${n}`); const NEWAPP = (n: number) => id(`fa${n}`);
+  async function sourcedTask(n: number, ticketStatus = 'paid') {
+    await q(`insert into users (id, tenant_id, full_name, email, status, role) values ($1,$2,$3,$4,'active','CUSTOMER')`, [NEWAPP(n), T, `Src ${n}`, `src${n}@eod.test`]);
+    await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status, user_id) values ($1,$2,$3,'Src',$4,$5,$6,'active',$7)`,
+      [NEWC(n), T, B, String(n), `Src ${n}`, `+1609555077${n}`, NEWAPP(n)]);
+    const tk = (await q(`insert into tickets (tenant_id, branch_id, customer_id, status, paid_at, total_cents, ticket_number) values ($1,$2,$3,$4,'2026-09-01T15:00:00Z',5000,$5) returning id`, [T, B, NEWC(n), ticketStatus, `S-${n}`]))[0].id;
+    const ln = (await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, technician_id, status, completed_at)
+      values ($1,$2,$3,$4,'Gel manicure',5000,60,5000,$5,'completed','2026-09-01T15:00:00Z') returning id`, [T, B, tk, SVC, T1]))[0].id;
+    const task = (await q(`insert into service_follow_up_tasks (tenant_id, branch_id, business_date, customer_id, technician_id, ticket_id, ticket_service_line_id, customer_name_snapshot, technician_name_snapshot, customer_app_user_id, status, suggested_message)
+      values ($1,$2,'2026-09-01',$3,$4,$5,$6,'Src','Ana One',$7,'pending','Thanks for visiting!') returning id`, [T, B, NEWC(n), T1, tk, ln, NEWAPP(n)]))[0].id as string;
+    return { tk, ln, task };
+  }
+  const notesFor = async (cust: string) => (await q(`select count(*)::int n from customer_notifications where tenant_id = $1 and customer_id = $2`, [T, cust]))[0].n;
+
+  it('a voided ticket or a removed service line is refused at send, even with a manager reason; nothing reaches the customer', async () => {
+    const voided = await sourcedTask(1); await q(`update tickets set status = 'void' where id = $1`, [voided.tk]);
+    const removedLine = await sourcedTask(2); await q(`update ticket_service_lines set removed_at = now() where id = $1`, [removedLine.ln]);
+    const removedTicket = await sourcedTask(3); await q(`update tickets set removed_at = now() where id = $1`, [removedTicket.tk]);
+    for (const [x, n] of [[voided, 1], [removedLine, 2], [removedTicket, 3]] as const) {
+      const err: any = await svc.techSend(tech1, x.task).then(() => null, (e) => e);
+      expect(err?.apiCode).toBe('FOLLOWUP_STATE_INVALID'); expect(String(err?.message)).toMatch(/voided, reopened or had the service removed/);
+      expect(await code(svc.managerSend(mgr, x.task, undefined, { reason: 'Owner wants it sent anyway' }))).toBe('FOLLOWUP_STATE_INVALID');
+      expect((await q(`select status, sent_at from service_follow_up_tasks where id = $1`, [x.task]))[0]).toMatchObject({ status: 'pending', sent_at: null });
+      expect(await notesFor(NEWC(n))).toBe(0);
+    }
+    const audits = await q(`select metadata_json as metadata from audit_logs where tenant_id = $1 and action_type = 'service_follow_up_send_refused' and entity_id = $2`, [T, voided.task]);
+    expect(audits.some((a: any) => (typeof a.metadata === 'string' ? JSON.parse(a.metadata) : a.metadata)?.reason === 'source_cancelled')).toBe(true);
+  });
+
+  it('the contact check names the cancelled source; an intact visit is eligible and still sends', async () => {
+    const { FollowUpQueue } = await import('./followup-queue');
+    const fq = new FollowUpQueue(db);
+    const reopened = await sourcedTask(4); await q(`update tickets set status = 'open' where id = $1`, [reopened.tk]);
+    expect((await fq.contactCheck(T, B, '2026-11-01', reopened.task, 24, false))!.categories).toContain('source_cancelled');
+    const ok = await sourcedTask(5);
+    const cc = await fq.contactCheck(T, B, '2026-11-01', ok.task, 24, false);
+    expect(cc!.categories).not.toContain('source_cancelled'); expect(cc!.category).toBe('eligible');
+    expect((await svc.techSend(tech1, ok.task)).status).toBe('sent');
+    expect(await notesFor(NEWC(5))).toBe(1);
+  });
+});

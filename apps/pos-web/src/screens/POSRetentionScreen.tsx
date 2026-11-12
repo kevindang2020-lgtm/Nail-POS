@@ -46,6 +46,7 @@ type Segment = 'all' | 'returning' | 'approaching' | 'at_risk' | 'never' | 'reco
 type SmsStatus = 'eligible' | 'no_phone' | 'invalid_phone' | 'no_consent' | 'opted_out' | 'recently_contacted' | 'upcoming_booking';
 type Priority = { score: number; band: 'high' | 'medium' | 'low'; formulaVersion: string; components: { inactivity: number; frequency: number; spend: number }; topDriver: 'inactivity' | 'frequency' | 'spend'; explanation: string };
 type Row = { customerId: string; customerName: string; avatarUrl: string | null; maskedPhone: string | null; phoneStatus: 'ok' | 'missing' | 'invalid'; smsStatus: SmsStatus;
+  /** extras Win-Back 10 — absent from an older server → nothing shown */ phoneVerification?: 'verified' | 'unverified' | 'no_number';
   segment: 'never_visited' | 'active' | 'approaching' | 'at_risk'; returningInPeriod: boolean; recoveredInPeriod: boolean;
   lastVisitAt: string | null; firstVisitAt: string | null; daysAway: number | null; visits: number; lifetimeSpendCents: number; createdAt: string | null;
   lastOutreachAt: string | null; lastOutreachStatus: string | null; nextAppointmentDate: string | null; priority: Priority | null };
@@ -89,8 +90,8 @@ export const whyText = (p: Priority, r: { daysAway: number | null; visits: numbe
   tx('rt2.why.' + p.topDriver, { d: nf(r.daysAway ?? 0), v: nf(r.visits), s: fmtMoney(r.lifetimeSpendCents) });
 const serverPeriod = (p?: Period | null): ServerPeriod | null => (p ? { preset: p.preset as ServerPeriod['preset'], from: p.from, to: p.to, tz: p.timeZone, today: p.today } : null);
 
-type Filters = { basis: string; band: string; sms: string; minVisits: number; inactivity: string; customDays: string; email: string; future: string; scope: string; category: string; technician: string; spend: string; areaCode: string };
-const NO_FILTERS: Filters = { basis: 'none', band: '', sms: '', minVisits: 0, inactivity: '', customDays: '', email: '', future: '', scope: '', category: '', technician: '', spend: '', areaCode: '' };
+type Filters = { basis: string; band: string; sms: string; minVisits: number; inactivity: string; customDays: string; email: string; future: string; scope: string; category: string; technician: string; spend: string; areaCode: string; phoneCheck: string };
+const NO_FILTERS: Filters = { basis: 'none', band: '', sms: '', minVisits: 0, inactivity: '', customDays: '', email: '', future: '', scope: '', category: '', technician: '', spend: '', areaCode: '', phoneCheck: '' };
 /** Win-Back §01: a complete North American area code (3 digits, first 2–9) searches at once; anything shorter is not sent */
 const areaCodeOk = (v: string) => /^[2-9][0-9]{2}$/.test(v);
 /** Win-Back guide §06: 30 / 60 / 90 / 120 or a custom number of salon days; '' = not filtered */
@@ -137,7 +138,7 @@ export function POSRetentionScreen() {
   const seq = useRef(0);
   const query = useMemo(() => ({ segment, ...JSON.parse(pKey), q: q.trim() || undefined, sort: sort || undefined, basis: flt.basis !== 'none' ? flt.basis : undefined,
     band: flt.band || undefined, sms: flt.sms || undefined, minVisits: flt.minVisits || undefined, minDays: minDaysOf(flt), email: flt.email || undefined, future: flt.future || undefined,
-    scope: flt.scope || undefined, category: flt.category || undefined, technician: flt.technician || undefined, spend: flt.spend || undefined, areaCode: areaCodeOk(flt.areaCode) ? flt.areaCode : undefined }), [segment, pKey, q, sort, flt]);
+    scope: flt.scope || undefined, category: flt.category || undefined, technician: flt.technician || undefined, spend: flt.spend || undefined, areaCode: areaCodeOk(flt.areaCode) ? flt.areaCode : undefined, phoneCheck: flt.phoneCheck || undefined }), [segment, pKey, q, sort, flt]);
   useEffect(() => {
     const my = ++seq.current; setListErr(null);
     posRetentionApi.customers({ ...query, page, pageSize: fit.rows })
@@ -300,7 +301,11 @@ export function POSRetentionScreen() {
         <select className="fk-select" aria-label={tx('wb.flt.future')} value={flt.future} onChange={(e) => setFilter({ future: e.target.value })} data-testid="flt-future">
           <option value="">{tx('wb.flt.future.any')}</option><option value="yes">{tx('wb.flt.future.yes')}</option><option value="no">{tx('wb.flt.future.no')}</option>
         </select>
-        {(flt.basis !== 'none' || flt.band || flt.sms || flt.minVisits || flt.inactivity || flt.email || flt.future || flt.category || flt.technician || flt.spend || flt.scope || flt.areaCode || search) ? <button type="button" className="fk-link" onClick={() => { setFlt(NO_FILTERS); setSearch(''); clearSelIfAny(); }} data-testid="flt-clear">{tx('pos.clear_all')}</button> : null}
+        {/* extras Win-Back 10: a confirmed number is about reaching the person — it is never consent (SMS eligibility stays the server's) */}
+        <select className="fk-select" aria-label={tx('wb.flt.phoneCheck')} value={flt.phoneCheck} onChange={(e) => setFilter({ phoneCheck: e.target.value })} data-testid="flt-phonecheck" title={tx('wb.phoneCheck.note')}>
+          <option value="">{tx('wb.flt.phoneCheck.any')}</option><option value="verified">{tx('wb.phoneCheck.verified')}</option><option value="unverified">{tx('wb.phoneCheck.unverified')}</option>
+        </select>
+        {(flt.basis !== 'none' || flt.band || flt.sms || flt.minVisits || flt.inactivity || flt.email || flt.future || flt.category || flt.technician || flt.spend || flt.scope || flt.areaCode || flt.phoneCheck || search) ? <button type="button" className="fk-link" onClick={() => { setFlt(NO_FILTERS); setSearch(''); clearSelIfAny(); }} data-testid="flt-clear">{tx('pos.clear_all')}</button> : null}
       </div>
 
       <div className="rt-filters" role="tablist" aria-label={tx('people.retention.segments')}>
@@ -365,7 +370,8 @@ export function POSRetentionScreen() {
                     title={!pickable ? (r.segment !== 'at_risk' ? tx('rt2.onlyAtRiskSelectable') : smsLabel(r.smsStatus)) : undefined} /></label></td>
                   <td><span className="rt-name"><ProfileAvatarWithPreview name={r.customerName || '—'} url={r.avatarUrl ?? undefined} size={26} type="customer" />
                     <button type="button" className="fk-li-t link" onClick={() => setDlg({ kind: 'customer', id: r.customerId })}>{r.customerName || '—'}</button></span></td>
-                  <td>{r.maskedPhone ?? <span className="fk-muted">{tx('people.retention.phoneMissing')}</span>}{r.phoneStatus === 'invalid' ? <span className="fk-muted"> · {tx('people.retention.phoneInvalid')}</span> : null}</td>
+                  <td>{r.maskedPhone ?? <span className="fk-muted">{tx('people.retention.phoneMissing')}</span>}{r.phoneStatus === 'invalid' ? <span className="fk-muted"> · {tx('people.retention.phoneInvalid')}</span> : null}
+                    {r.phoneVerification === 'verified' || r.phoneVerification === 'unverified' ? <span className={'fk-li-s rt-pv ' + r.phoneVerification} data-testid="rt-phone-verification" title={tx('wb.phoneCheck.note')}>{tx('wb.phoneCheck.' + r.phoneVerification)}</span> : null}</td>
                   <td>{r.lastVisitAt ? when(r.lastVisitAt) : <span className="fk-muted">{tx('people.retention.never')}</span>}</td>
                   <td className="num"><b className={r.segment === 'at_risk' ? 'rt-away' : ''}>{r.daysAway == null ? '—' : nf(r.daysAway)}</b></td>
                   <td className="num">{nf(r.visits)}</td>

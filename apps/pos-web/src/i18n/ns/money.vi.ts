@@ -240,4 +240,14 @@ export const MONEY_VI = {
   "pm.bridge.collectionsWhy": "các khoản thanh toán đã xác nhận theo ngày thanh toán (= tổng trên Giao dịch)", // DRAFT — Kevin reviews
   "pm.bridge.unbalanced": "Các bước này không cộng ra đúng Tiền thu — một số dòng thanh toán không khớp được. Mở Giao dịch để xem lại.", // DRAFT — Kevin reviews
   "pm.bridge.refunds": "Hoàn tiền là một con số riêng, không trừ vào hai số này. Chỉ xem.", // DRAFT — Kevin reviews
+  "pm.fc.title": "Dự báo tiền về", // DRAFT — Kevin reviews
+  "pm.fc.none": "Không có khoản chuyển tiền nào của bộ xử lý thanh toán đang chờ.", // DRAFT — Kevin reviews
+  "pm.fc.count": "{n} khoản", // DRAFT — Kevin reviews
+  "pm.fc.source.processor": "Ngày do bộ xử lý thanh toán báo", // DRAFT — Kevin reviews
+  "pm.fc.source.estimated": "Ước tính: ngày quyết toán + {d} ngày", // DRAFT — Kevin reviews
+  "pm.fc.late": "Đã quá ngày dự kiến — chưa vào ngân hàng", // DRAFT — Kevin reviews
+  "pm.fc.note": "Chỉ là tiền dự kiến. Một khoản chỉ được tính là đã vào ngân hàng khi có ghi nhận tiền gửi ngân hàng cho khoản đó.", // DRAFT — Kevin reviews
+  "pm.fc.proc.fiserv": "Fiserv", // DRAFT — Kevin reviews
+  "pm.fc.proc.cardpointe": "CardPointe", // DRAFT — Kevin reviews
+  "pm.fc.proc.clover": "Clover", // DRAFT — Kevin reviews
 };
