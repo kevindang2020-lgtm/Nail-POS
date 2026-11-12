@@ -1,6 +1,6 @@
 // ai-money-protection.vitest.spec.ts — deterministic rule engine + service (tenant isolation, idempotency).
 import { describe, it, expect } from 'vitest';
-import { detectDuplicateCharge, detectRefundExceedsCapture, runDeterministicRules, type NormalizedPayment, type NormalizedRefund } from './ai-money-protection-rules';
+import { detectDuplicateCharge, detectRefundExceedsCapture, previewRuleThresholds, type NormalizedAttempt, type NormalizedPayment, type NormalizedRefund } from './ai-money-protection-rules';
 import { MoneyProtectionService, MoneyProtectionForbiddenError } from './ai-money-protection.service';
 import { InMemoryMoneyProtectionRepository } from './ai-money-protection.repository';
 import type { MoneyProtectionContext } from './ai-money-protection.dto';
@@ -168,5 +168,28 @@ describe('slice-3 reconciliation + retry-loop', () => {
     const refunds: NormalizedRefund[] = [{ id: 'r1', branchId: 'b1', ticketId: 't2', amountCents: 5000, status: 'refunded', createdAtMs: T }];
     const out = detectCaptureOnCancelledTicket(payments, refunds, tickets);
     expect(out.map((a) => a.related.ticketIds?.[0])).toEqual(['t1']); // t2 net-zero (refunded) excluded
+  });
+});
+
+describe('previewRuleThresholds (Money Protection 5 · 07 Safe Rule Preview)', () => {
+  const att = (id: string, ticketId: string, minute: number): NormalizedAttempt => ({ id, branchId: 'b1', ticketId, status: 'declined', method: 'card', createdAtMs: T + minute * 60_000 });
+  // ticket A: 4 declines in 10 minutes · ticket B: 3 declines in 5 minutes
+  const activity = { payments: [] as NormalizedPayment[], refunds: [], tickets: [], attempts: [att('a1', 'A', 0), att('a2', 'A', 3), att('a3', 'A', 6), att('a4', 'A', 10), att('b1', 'B', 0), att('b2', 'B', 2), att('b3', 'B', 5)] };
+  it('lowering minDeclines to 3 adds ticket B; nothing is removed', () => {
+    const r = previewRuleThresholds(activity, 'MP_FAILED_PAYMENT_RETRY_LOOP', {}, { minDeclines: 3 });
+    expect(r).toMatchObject({ thresholdsUsed: true, current: 1, proposed: 2, added: 1, removed: 0 });
+  });
+  it('a 5-minute window drops ticket A (its 4 declines span 10 minutes) — counted as removed', () => {
+    const r = previewRuleThresholds(activity, 'MP_FAILED_PAYMENT_RETRY_LOOP', {}, { windowMinutes: 5 });
+    expect(r).toMatchObject({ current: 1, proposed: 0, added: 0, removed: 1 });
+  });
+  it('compares against the salon\'s CURRENT override, not the default', () => {
+    const r = previewRuleThresholds(activity, 'MP_FAILED_PAYMENT_RETRY_LOOP', { MP_FAILED_PAYMENT_RETRY_LOOP: { minDeclines: 3 } }, { minDeclines: 4 });
+    expect(r).toMatchObject({ current: 2, proposed: 1, removed: 1 });
+  });
+  it('a rule the engine reads no thresholds for says so and never changes', () => {
+    const p = [pay({ id: 'p1', processorTxnId: 'TX1' }), pay({ id: 'p2', processorTxnId: 'TX1' })];
+    const r = previewRuleThresholds({ payments: p, refunds: [], tickets: [], attempts: [] }, 'MP_DUP_CHARGE_EXACT', {}, {});
+    expect(r).toMatchObject({ thresholdsUsed: false, current: 1, proposed: 1, added: 0, removed: 0, amountCentsCurrent: 5000, amountCentsProposed: 5000 });
   });
 });

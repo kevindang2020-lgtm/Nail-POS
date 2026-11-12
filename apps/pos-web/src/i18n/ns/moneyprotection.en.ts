@@ -401,4 +401,9 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.fp.reasonN": "“{r}” × {n}",
   "mpx.fp.noPattern": "No repeated reason",
   "mpx.fp.policy": "Insight from your team's own decisions. Rules are never switched off or relaxed automatically — change a rule above, with a reason, if the pattern is expected.",
+  "mpx.prev.run": "Preview impact",
+  "mpx.prev.counts": "Last {days} days: {now} matches with the values in force now, {next} with these values.",
+  "mpx.prev.delta": "{added} would be new · {removed} would no longer match.",
+  "mpx.prev.unused": "This rule does not use these values to decide a match, so changing them does not change what it finds.",
+  "mpx.prev.note": "Estimate only, from this salon's own history. Nothing is saved, no alert is raised and the rule does not change until you press Save.",
 };

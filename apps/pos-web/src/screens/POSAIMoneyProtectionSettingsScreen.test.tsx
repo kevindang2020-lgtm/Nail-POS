@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { mc, api } = vi.hoisted(() => {
-  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), previewRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
   return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
 });
 vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
@@ -112,5 +112,34 @@ describe('Money Protection Settings — safe recovery after a failed Save (extra
     await waitFor(() => expect((screen.getByLabelText('windowSeconds') as HTMLInputElement).value).toBe('150'));
     expect(screen.queryByTestId('mpx-rec')).toBeNull();
     expect(mc.saveRule).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('Money Protection 5 · 07 — Safe Rule Preview', () => {
+  it('previews the edited thresholds read-only (never saves); editing a value clears the old estimate', async () => {
+    mc.previewRule.mockResolvedValue({ dryRun: true, saved: false, preview: { thresholdsUsed: true, current: 2, proposed: 5, added: 3, removed: 0, windowDays: 30 } });
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rule-edit'));
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '900' } });
+    fireEvent.click(screen.getByTestId('mpx-rule-preview-run'));
+    const res = await screen.findByTestId('mpx-rule-preview-result');
+    expect(mc.previewRule).toHaveBeenCalledWith({ ruleId: 'MP_DUP_CHARGE_LIKELY', thresholds: { windowSeconds: 900 } });
+    expect(res).toHaveTextContent('Last 30 days: 2 matches with the values in force now, 5 with these values.');
+    expect(res).toHaveTextContent('3 would be new · 0 would no longer match.');
+    expect(screen.getByTestId('mpx-rule-preview')).toHaveTextContent('Nothing is saved');
+    expect(mc.saveRule).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '600' } });
+    expect(screen.queryByTestId('mpx-rule-preview-result')).toBeNull();
+  });
+  it('a rule whose matches do not depend on its values says so; a refused preview shows the reason', async () => {
+    mc.previewRule.mockResolvedValueOnce({ preview: { thresholdsUsed: false, current: 1, proposed: 1, added: 0, removed: 0, windowDays: 30 } })
+      .mockRejectedValueOnce({ status: 403 });
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rule-edit'));
+    fireEvent.click(screen.getByTestId('mpx-rule-preview-run'));
+    expect(await screen.findByTestId('mpx-rule-preview-unused')).toHaveTextContent('does not use these values');
+    fireEvent.click(screen.getByTestId('mpx-rule-preview-run'));
+    expect(await screen.findByTestId('mpx-rule-preview-err')).toHaveTextContent('Your role cannot do this');
+    expect(mc.saveRule).not.toHaveBeenCalled();
   });
 });

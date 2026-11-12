@@ -34,6 +34,7 @@ beforeAll(async () => {
       return { evaluated: d.evaluated + r.evaluated, created: d.created + r.created, updated: d.updated + r.updated, layers: { d, r } };
     },
     saveRule: (c, ruleId, input) => svc.updateSetting(c as any, ruleId, input),
+    previewRule: (c, ruleId, th) => svc.previewRule(c as any, ruleId, th),
   };
   mc = new MoneyProtectionCenter(db, deps);
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'S','Pilot','mp-778','MP778','active'), ($2,'X','Other','mp-778x','MP778X','active')`, [T, X]);
@@ -240,5 +241,32 @@ describe('Check AI Money Protection System', () => {
     expect(h.overall).toBe('FAILED');
     expect((await q(`select count(*)::int as n from money_protection_alerts where tenant_id = $1`, [T]))[0].n).toBe(before);
     expect((await mc.check(ctx()) as any).reused).toBe(true);
+  });
+});
+
+describe('Money Protection 5 · 07 — Safe Rule Preview (rules/save dryRun)', () => {
+  it('RU-04 estimates current vs proposed matches on the salon\'s own history; saves nothing, records nothing, never activates', async () => {
+    const TK3 = id(22);
+    await q(`set session_replication_role = replica`);
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents, tip_cents, ticket_number, created_at, updated_at)
+      values ($1,$2,$3,$4,'paid',1234,0,0,1234,0,'T-3001', now(), now())`, [TK3, T, B, C1]);
+    // same hóa đơn, amount and method, 10 minutes apart: outside the default 120-second window, inside a 15-minute one
+    await q(`insert into payments (id, tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, tax_cents, discount_cents, change_due_cents, status, created_by_user_id, created_at, updated_at)
+      values ($1,$3,$4,$5,'card',1234,0,0,0,0,'approved',$6, now() - interval '20 minutes', now()), ($2,$3,$4,$5,'card',1234,0,0,0,0,'approved',$6, now() - interval '10 minutes', now())`, [id(44), id(45), T, B, TK3, CASHIER]);
+    await q(`set session_replication_role = origin`);
+    const settingsBefore = await q(`select rule_id, enabled, thresholds, updated_at from money_protection_rule_settings where tenant_id = $1 order by rule_id`, [T]);
+    const eventsBefore = (await q(`select count(*)::int as n from money_protection_events where tenant_id = $1`, [T]))[0].n;
+    const alertsBefore = (await q(`select count(*)::int as n from money_protection_alerts where tenant_id = $1`, [T]))[0].n;
+    const r: any = await mc.saveRule(ctx(), 'MP_DUP_CHARGE_LIKELY', { thresholds: { windowSeconds: 900 }, dryRun: true });
+    expect(r).toMatchObject({ dryRun: true, saved: false, ruleId: 'MP_DUP_CHARGE_LIKELY', currentThresholds: { windowSeconds: 120 }, proposedThresholds: { windowSeconds: 900 } });
+    expect(r.preview).toMatchObject({ thresholdsUsed: true, current: 0, proposed: 1, added: 1, removed: 0, amountCentsProposed: 1234, windowDays: 30 });
+    expect(r.preview.paymentsEvaluated).toBeGreaterThanOrEqual(6);
+    expect(await q(`select rule_id, enabled, thresholds, updated_at from money_protection_rule_settings where tenant_id = $1 order by rule_id`, [T])).toEqual(settingsBefore);
+    expect((await q(`select count(*)::int as n from money_protection_events where tenant_id = $1`, [T]))[0].n).toBe(eventsBefore);
+    expect((await q(`select count(*)::int as n from money_protection_alerts where tenant_id = $1`, [T]))[0].n).toBe(alertsBefore);
+    // refusals: a threshold the rule does not use, an out-of-bounds value (the save's own bounds), a viewer without manage_settings
+    expect(await code(mc.saveRule(ctx(), 'MP_DUP_CHARGE_LIKELY', { thresholds: { minDeclines: 3 }, dryRun: true }))).toBe('VALIDATION_FAILED');
+    expect(await code(mc.saveRule(ctx(), 'MP_DUP_CHARGE_LIKELY', { thresholds: { windowSeconds: 5 }, dryRun: true }))).toBe('VALIDATION_FAILED');
+    expect(await code(mc.saveRule(ctx({ permissions: ['ai_money_protection.view'] }), 'MP_DUP_CHARGE_LIKELY', { thresholds: { windowSeconds: 900 }, dryRun: true }))).toBe('PERMISSION_DENIED');
   });
 });

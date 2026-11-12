@@ -25,6 +25,8 @@ export interface MembershipCommsRepositoryPort {
   membersExpiringAllTenants?(now: Date, withinDays: number, limit: number): Promise<Array<DueMember & { tenantId: string }>>;
   /** Insert the notification unless one with this reference exists — atomically (two sweeps → one row). true = inserted. */
   insertNotificationOnce?(ctx: CommsContext, customerId: string, n: NotificationInsert): Promise<boolean>;
+  /** Membership Overview 10: which of these phones texted STOP / were opted out of SMS for this salon (notification_opt_outs). */
+  smsOptedOut?(ctx: CommsContext, phones: string[]): Promise<Set<string>>;
 }
 
 interface StoredNotification { tenantId: string; customerId: string; type: string; title: string; body: string; reference: string }
@@ -32,6 +34,8 @@ interface StoredNotification { tenantId: string; customerId: string; type: strin
 export class InMemoryMembershipCommsRepository implements MembershipCommsRepositoryPort {
   private members = new Map<string, MemberCommInfo & { autoRenew: boolean; tenantId: string; phone?: string | null; salonName?: string | null; endsAt?: string | null }>();
   readonly notifications: StoredNotification[] = [];
+  readonly optedOut = new Set<string>();   // `${tenantId}|${phone}`
+  async smsOptedOut(ctx: CommsContext, phones: string[]): Promise<Set<string>> { return new Set(phones.filter((p) => this.optedOut.has(`${ctx.tenantId}|${p}`))); }
 
   seedMember(membershipId: string, info: MemberCommInfo, autoRenew = true, tenantId = 't1', extra: { phone?: string | null; salonName?: string | null; endsAt?: string | null } = {}) { this.members.set(membershipId, { ...info, autoRenew, tenantId, ...extra }); }
 

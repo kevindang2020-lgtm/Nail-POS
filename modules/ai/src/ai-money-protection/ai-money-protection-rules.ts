@@ -368,3 +368,39 @@ export function runDeterministicRules(
 }
 
 function uniq<T>(xs: (T | null)[]): T[] { return [...new Set(xs.filter((x): x is T => x != null))]; }
+
+// ── Safe Rule Preview (Money Protection 5 · 07, Nov 12 2026) ───────────────────────────────────────────────────
+// Before a manager saves a threshold edit: run ONE rule over already-loaded activity twice — with the salon's current
+// thresholds and with the proposed ones — and compare what it would have matched. Pure: nothing is stored, no alert is
+// raised, no setting changes. Only rules whose thresholds the deterministic engine reads can move; for the others the
+// preview says so (thresholdsUsed: false) instead of pretending a change would matter.
+export const THRESHOLD_DRIVEN_RULES = new Set(['MP_DUP_CHARGE_LIKELY', 'MP_FAILED_PAYMENT_RETRY_LOOP']);
+export interface RuleThresholdPreview {
+  ruleId: string;
+  thresholdsUsed: boolean;
+  current: number;     // matches with the thresholds in force now
+  proposed: number;    // matches with the proposed thresholds
+  added: number;       // matched only with the proposed thresholds
+  removed: number;     // matched only with the current thresholds
+  amountCentsCurrent: number;
+  amountCentsProposed: number;
+}
+export function previewRuleThresholds(
+  activity: { payments: NormalizedPayment[]; refunds: NormalizedRefund[]; tickets: NormalizedTicket[]; attempts: NormalizedAttempt[] },
+  ruleId: string,
+  currentOverrides: Record<string, Record<string, number>>,
+  proposedThresholds: Record<string, number>,
+): RuleThresholdPreview {
+  const run = (o: Record<string, Record<string, number>>) =>
+    runDeterministicRules(activity.payments, activity.refunds, activity.tickets, activity.attempts, o).filter((c) => c.ruleId === ruleId);
+  const now = run(currentOverrides);
+  const next = run({ ...currentOverrides, [ruleId]: { ...(currentOverrides[ruleId] ?? {}), ...proposedThresholds } });
+  const a = new Set(now.map((c) => c.entityFingerprint)); const b = new Set(next.map((c) => c.entityFingerprint));
+  const sum = (xs: AlertCandidate[]) => xs.reduce((s, c) => s + Math.max(0, c.amountCents | 0), 0);
+  return {
+    ruleId, thresholdsUsed: THRESHOLD_DRIVEN_RULES.has(ruleId),
+    current: a.size, proposed: b.size,
+    added: [...b].filter((k) => !a.has(k)).length, removed: [...a].filter((k) => !b.has(k)).length,
+    amountCentsCurrent: sum(now), amountCentsProposed: sum(next),
+  };
+}

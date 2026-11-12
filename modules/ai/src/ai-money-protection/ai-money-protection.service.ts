@@ -5,7 +5,7 @@ import type {
   MoneyProtectionContext, MoneyProtectionState, MoneyProtectionAlert,
 } from './ai-money-protection.dto';
 import type { MoneyProtectionRepositoryPort, AlertFilters } from './ai-money-protection.repository';
-import { runDeterministicRules } from './ai-money-protection-rules';
+import { runDeterministicRules, previewRuleThresholds, type RuleThresholdPreview } from './ai-money-protection-rules';
 import { scoreReversalRateOutliers } from './ai-money-protection-baselines';
 import { runReconciliation } from './ai-money-protection-reconciliation';
 import { moneyProtectionFlags, type MoneyProtectionFlags } from './ai-money-protection-flags';
@@ -73,6 +73,20 @@ export class MoneyProtectionService {
     const v = validateRuleSetting(ruleId, input, known);
     if (!v.ok || !v.value) throw new MoneyProtectionValidationError(v.errors.join('; ') || 'Invalid setting');
     return this.repo.upsertRuleSetting(ctx, v.value, ctx.userId);
+  }
+
+  // Safe Rule Preview (Money Protection 5 · 07): what one rule would have matched over the salon's last `days` of
+  // authoritative activity with the current vs the proposed thresholds. Read-only — no alert, no setting, no event.
+  async previewRule(ctx: MoneyProtectionContext, ruleId: string, thresholds: unknown, days = 30): Promise<RuleThresholdPreview & { windowDays: number; paymentsEvaluated: number; attemptsEvaluated: number }> {
+    this.need(ctx, 'ai_money_protection.manage_settings');
+    await this.assertEnabled(ctx);
+    const known = new Set(RULE_CATALOG.map((r) => r.id));
+    const v = validateRuleSetting(ruleId, { thresholds: thresholds ?? {} }, known);
+    if (!v.ok || !v.value) throw new MoneyProtectionValidationError(v.errors.join('; ') || 'Invalid setting');
+    const settings = await this.repo.getRuleSettings(ctx);
+    const activity = await this.repo.loadActivity(ctx, Date.now() - days * 24 * 60 * 60 * 1000);
+    const p = previewRuleThresholds(activity, ruleId, thresholdOverrides(settings), v.value.thresholds);
+    return { ...p, windowDays: days, paymentsEvaluated: activity.payments.length, attemptsEvaluated: activity.attempts.length };
   }
 
   async listAlerts(ctx: MoneyProtectionContext, f: AlertFilters): Promise<{ items: MoneyProtectionAlert[]; nextCursor: string | null }> {

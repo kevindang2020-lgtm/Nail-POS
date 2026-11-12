@@ -18,7 +18,7 @@ import type { CustomersContext, CustomersRepositoryPort } from './customers.repo
 import {
   POSCustomersFullState, POSCustomerRow, POSCustomerDetail, buildCustomersAnalytics, CustomerFilters, CustomerListItem, CustomerListResponse,
   CustomerSource, DuplicateRisk, CustomerVisitRow, CustomerAppointmentRow, CustomerTicketRow, CustomerReceiptRow,
-  CustomerNotes, CustomerLoyalty, CustomerMembership, CustomerGiftCard, DuplicateGroup, CreateCustomerRequest,
+  CustomerNotes, CustomerLoyalty, CustomerMembership, DuplicateGroup, CreateCustomerRequest,
   EditCustomerRequest, CustomerKpis, POSCustomersKpisFull, Pagination, detectDuplicates, BulkCustomerInsert, BulkCustomerUpdate, CustomerVersionConflict } from './customers.dto';
 import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
@@ -121,7 +121,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   private bool(v?: string) { return v === 'true' || v === 'yes' || v === '1'; }
   private filtered(all: Cust[], f: CustomerFilters, dup: Map<string, DuplicateRisk>, riskDays = INACTIVE_DAYS): Cust[] {
     let r = all.slice();
-    if (f.search) { const q = foldVi(f.search);   /* WP-E §41: accent-insensitive ("nguyen" finds "Nguyễn") */ const digits = f.search.replace(/\D/g, ''); const byPhone = digits.length >= 3 && /^[\d\s()+.\-]+$/.test(f.search.trim());   /* F1 §14: "(555) 123-4567", "555.123.4567" and "5551234567" all find the same customer; stored values untouched */ r = r.filter((c) => [`${c.firstName ?? ''} ${c.lastName ?? ''}`, c.firstName, c.lastName, c.preferredName, c.phone, c.email, ...c.tags].some((x) => foldVi(x).includes(q)) || (byPhone && [c.phone, c.normalizedPhone].some((x) => (x ?? '').replace(/\D/g, '').includes(digits)))); }   /* the whole name too: "nguyen thi huong" */
+    if (f.search) { const q = foldVi(f.search);   /* WP-E §41: accent-insensitive ("nguyen" finds "Nguyễn") */ const digits = f.search.replace(/\D/g, ''); const byPhone = digits.length >= 3 && /^[\d\s()+.-]+$/.test(f.search.trim());   /* F1 §14: "(555) 123-4567", "555.123.4567" and "5551234567" all find the same customer; stored values untouched */ r = r.filter((c) => [`${c.firstName ?? ''} ${c.lastName ?? ''}`, c.firstName, c.lastName, c.preferredName, c.phone, c.email, ...c.tags].some((x) => foldVi(x).includes(q)) || (byPhone && [c.phone, c.normalizedPhone].some((x) => (x ?? '').replace(/\D/g, '').includes(digits)))); }   /* the whole name too: "nguyen thi huong" */
     // F1 §29: Archived is a lifecycle status — hidden from All Customers and every tab unless the Archived status is chosen
     if (f.status) r = r.filter((c) => c.status === f.status); else r = r.filter((c) => c.status !== 'archived');
     if (f.loyaltyTier) r = r.filter((c) => c.loyaltyTier === f.loyaltyTier);
@@ -256,7 +256,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return {
       kpis, customers: { items: listItems, pagination } as CustomerListResponse,
       filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
-      kpisFull, analytics: roll.analytics, rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts: counts.segmentCounts, ...(unavailable.length ? { unavailable } : {}),
+      kpisFull, analytics: roll.analytics, rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts: counts.segmentCounts, scope: { branchConfined: !!ctx.branchId, timeZone: tz }, ...(unavailable.length ? { unavailable } : {}),
       filterFacets: {
         segments: ['never', 'new', 'returning', 'vip', 'at_risk'], statuses: ['active', 'inactive', 'archived'],
         loyaltyTiers: roll.tiers, visitRanges: ['0', '1-3', '4-9', '10+'],
@@ -394,7 +394,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return {
       kpis, customers: { items: listItems, pagination } as CustomerListResponse,
       filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
-      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts, ...(unavailable.length ? { unavailable } : {}),
+      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts, scope: { branchConfined: !!ctx.branchId, timeZone: tz }, ...(unavailable.length ? { unavailable } : {}),
       filterFacets: {
         segments: ['never', 'new', 'returning', 'vip', 'at_risk'], statuses: ['active', 'inactive', 'archived'],
         loyaltyTiers: [...new Set(all.map((c) => c.loyaltyTier))], visitRanges: ['0', '1-3', '4-9', '10+'],

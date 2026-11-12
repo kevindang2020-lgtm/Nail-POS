@@ -558,4 +558,10 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.cmp.prior.month": "tháng trước, từ ngày 1 đến cùng ngày", // DRAFT — Kevin reviews
   "bcx.cmp.prior.quarter": "quý trước, đến cùng ngày", // DRAFT — Kevin reviews
   "bcx.cmp.prior.year": "năm trước, đến cùng ngày", // DRAFT — Kevin reviews
+  "bcx.fair.shareNet": "Tỷ lệ trong doanh thu thuần của tiệm", // DRAFT — Kevin reviews
+  "bcx.fair.shareBookings": "Tỷ lệ trong lượt đặt hẹn của tiệm", // DRAFT — Kevin reviews
+  "bcx.fair.ofTotal": "{pct}% của {total}", // DRAFT — Kevin reviews
+  "bcx.fair.ofCount": "{pct}% ({n} trên {total})", // DRAFT — Kevin reviews
+  "bcx.fair.note": "Tỷ lệ tính trên tổng của tất cả {n} chi nhánh trong phần so sánh này. Chi nhánh lớn hơn (nhiều ghế, nhân viên hoặc giờ mở cửa hơn) đương nhiên có tổng cao hơn — hãy so sánh các tỷ lệ (hóa đơn trung bình, tỷ lệ hoàn thành, doanh thu mỗi lượt hẹn hoàn thành) để đánh giá chi nhánh. Số nhân viên và giờ mở cửa không được dùng để điều chỉnh các số liệu này.", // DRAFT — Kevin reviews
+  "bcx.def.fair": "Công bằng — tổng phụ thuộc vào quy mô chi nhánh; mở một chi nhánh để xem tỷ lệ của nó trong tổng của tiệm và mẫu số. Các tỷ lệ tính theo hóa đơn hoặc lượt đặt hẹn, nên so sánh được các chi nhánh khác quy mô.", // DRAFT — Kevin reviews
 };

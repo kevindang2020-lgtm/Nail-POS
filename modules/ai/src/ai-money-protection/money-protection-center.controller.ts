@@ -3,7 +3,7 @@
 //   ai_money_protection.view           summary · investigations · investigations/timeline · rules · settings/history · detection/runs · check
 //   ai_money_protection.view_alerts    alerts · alerts/detail
 //   ai_money_protection.investigate    alerts/action (acknowledge · dismiss · reopen — reason; never about your own activity)
-//   ai_money_protection.manage_settings rules/save (reason to turn a rule off or lower it; stale edits refused)
+//   ai_money_protection.manage_settings rules/save (reason to turn a rule off or lower it; stale edits refused; dryRun = read-only preview)
 //   ai_money_protection.manage_rules   detection/run (one recorded pass; once per 2 minutes)
 // Nothing here moves money: no charge, refund, reversal, settlement or write-off.
 import { ListQuery } from '@aipowersalon/database';
@@ -18,7 +18,7 @@ const str = (max: number): BodySchema => S.nullable(S.string({ maxLength: max })
 export const MC_EMPTY_BODY: BodySchema = S.object({});
 export const MC_ACTION_BODY: BodySchema = S.object({ id: str(64), action: str(20), reason: str(1000), expectedStatus: str(40) });
 export const MC_RULE_BODY: BodySchema = S.object({ ruleId: str(64), enabled: S.nullable(S.boolean()), severityOverride: str(16), thresholds: S.nullable(S.bounded(S.freeObject(), 2, 40)),
-  reason: str(1000), expectedUpdatedAt: str(40) });
+  reason: str(1000), expectedUpdatedAt: str(40), dryRun: S.nullable(S.boolean()) });
 function ctxFrom(req: any): McCtx {
   const c = req?.ctx || {};
   return { tenantId: c.tenantId, branchId: c.branchId ?? null, userId: c.userId, role: c.role, permissions: c.permissions || [] };

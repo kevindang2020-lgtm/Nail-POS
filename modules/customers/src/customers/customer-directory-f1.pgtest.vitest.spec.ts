@@ -195,3 +195,10 @@ describe('F1 Customer Directory — check-ins and profile edits are their own fe
     await q(`update customers set status = 'active' where id = $1`, [id('c3')]);
   });
 });
+
+describe('Customer 06 — the KPI explanation knows the scope it was counted in', () => {
+  it('whole salon for an unconfined role; this location for a confined one; the salon calendar time zone', async () => {
+    expect((await repo.query(ctx, {})).scope).toEqual({ branchConfined: false, timeZone: 'America/New_York' });
+    expect((await repo.query({ ...ctx, branchId: B }, {})).scope).toEqual({ branchConfined: true, timeZone: 'America/New_York' });
+  });
+});

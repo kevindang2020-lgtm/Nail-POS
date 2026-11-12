@@ -6,7 +6,7 @@ import { systemContext } from '@aipowersalon/tenant-context';
 import { composeMemberComm, composeMemberSms, renewalReminderReference, expiryReminderReference, welcomeReference, paymentFailedReference, type MemberCommEvent } from './membership-comms-core';
 import type { DueMember } from './membership-comms.repository';
 import type { TenantMessenger } from '@aipowersalon/notifications';
-import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
+import { withCode, estimateSmsSegments } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 export class ValidationError extends Error {}
 
@@ -65,11 +65,24 @@ export class MembershipCommsService {
   async previewRenewalReminders(ctx: CommsContext, withinDays = 7) {
     const days = Math.min(60, Math.max(1, Math.round(withinDays) || 7));
     const due = await this.repo.membersDueForReminder(ctx, days);
-    const rows = [] as { membershipId: string; customerId: string; customerName: string | null; planName: string | null; nextBillingAt: string | null; alreadyReminded: boolean; hasPhone: boolean }[];
-    for (const m of due) rows.push({ membershipId: m.membershipId, customerId: m.customerId, customerName: m.customerName, planName: m.planName, nextBillingAt: m.nextBillingAt,
-      alreadyReminded: await this.repo.notificationExists(ctx, m.customerId, renewalReminderReference(m.membershipId, m.nextBillingAt)), hasPhone: !!m.phone });
-    return { withinDays: days, due: rows.length, toRemind: rows.filter((r) => !r.alreadyReminded).length, alreadyReminded: rows.filter((r) => r.alreadyReminded).length,
-      inAppOnly: rows.filter((r) => !r.alreadyReminded && !r.hasPhone).length, texting: !!this.messenger, members: rows.slice(0, 200) };
+    // Membership Overview 10 (Nov 12 2026): consent-aware — a member whose phone is opted out of SMS here gets the in-app
+    // reminder only (the messenger refuses the text anyway); the estimate counts the texts and segments that WOULD go out.
+    const optedOut = this.repo.smsOptedOut ? await this.repo.smsOptedOut(ctx, due.map((m) => m.phone).filter((p): p is string => !!p)) : null;
+    const rows = [] as { membershipId: string; customerId: string; customerName: string | null; planName: string | null; nextBillingAt: string | null; alreadyReminded: boolean; hasPhone: boolean; textOptedOut: boolean | null; segments: number }[];
+    for (const m of due) {
+      const textOptedOut = m.phone ? (optedOut ? optedOut.has(m.phone) : null) : false;
+      const willText = !!this.messenger && !!m.phone && textOptedOut !== true;
+      rows.push({ membershipId: m.membershipId, customerId: m.customerId, customerName: m.customerName, planName: m.planName, nextBillingAt: m.nextBillingAt,
+        alreadyReminded: await this.repo.notificationExists(ctx, m.customerId, renewalReminderReference(m.membershipId, m.nextBillingAt)), hasPhone: !!m.phone, textOptedOut,
+        segments: willText ? estimateSmsSegments(composeMemberSms('renewal_reminder', { customerName: m.customerName, planName: m.planName, nextBillingAt: m.nextBillingAt, salonName: m.salonName })).segments : 0 });
+    }
+    const pending = rows.filter((r) => !r.alreadyReminded);
+    const texts = pending.filter((r) => r.segments > 0);
+    return { withinDays: days, due: rows.length, toRemind: pending.length, alreadyReminded: rows.filter((r) => r.alreadyReminded).length,
+      inAppOnly: pending.filter((r) => !r.hasPhone).length, texting: !!this.messenger, members: rows.slice(0, 200),
+      // null = this server cannot read the opt-out list (never shown as "0 opted out")
+      textOptedOut: optedOut ? pending.filter((r) => r.textOptedOut === true).length : null,
+      textEstimate: { texts: texts.length, segments: texts.reduce((n, r) => n + r.segments, 0), metered: false as const } };
   }
 
   /** Engine behind the POS "Send Reminder" action: notify every active/trial auto-renewing member whose next billing is

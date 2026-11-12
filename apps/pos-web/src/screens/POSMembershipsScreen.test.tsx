@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 const { api } = vi.hoisted(() => ({ api: { overview: vi.fn(), members: vi.fn(), memberDetail: vi.fn(), activity: vi.fn(), payments: vi.fn(), redemptions: vi.fn(), planList: vi.fn(), planPerformance: vi.fn(), discounts: vi.fn(),
   exportMembers: vi.fn(), exportPayments: vi.fn(), exportRedemptions: vi.fn(), previewReminders: vi.fn(), runReminders: vi.fn() } }));
 vi.mock('../api/posMembershipsApi', () => ({ posMembershipsApi: api }));
-import { POSMembershipsScreen } from './POSMembershipsScreen';
+import { POSMembershipsScreen, ReminderDialog } from './POSMembershipsScreen';
 
 const period = { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-29' };
 const ov = {
@@ -54,5 +54,31 @@ describe('POSMembershipsScreen', () => {
     fireEvent.click(screen.getByTestId('export-preview-go'));
     await waitFor(() => expect(url.createObjectURL).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId('export-preview')).toBeNull();
+  });
+});
+
+describe('Membership Overview 10 — consent-aware reminder preview with a text estimate', () => {
+  const pv = (o: any = {}) => ({ withinDays: 7, due: 2, toRemind: 2, alreadyReminded: 0, inAppOnly: 0, texting: true,
+    members: [{ membershipId: 'm1', customerId: 'c1', customerName: 'Mai Le', planName: 'VIP Nail Club', nextBillingAt: '2026-11-14T12:00:00Z', alreadyReminded: false, hasPhone: true, textOptedOut: true, segments: 0 },
+      { membershipId: 'm2', customerId: 'c2', customerName: 'Linh Vo', planName: 'VIP Nail Club', nextBillingAt: '2026-11-15T12:00:00Z', alreadyReminded: false, hasPhone: true, textOptedOut: false, segments: 1 }],
+    textOptedOut: 1, textEstimate: { texts: 1, segments: 1, metered: false }, ...o });
+  it('shows who opted out (in-app only) and how many texts / segments would go out — nothing is sent by previewing', async () => {
+    api.previewReminders.mockResolvedValue(pv());
+    render(<MemoryRouter><ReminderDialog onClose={() => {}} onSent={() => {}} /></MemoryRouter>);
+    expect(await screen.findByTestId('reminder-optout')).toHaveTextContent('1 opted out of texts (STOP)');
+    expect(screen.getByTestId('reminder-estimate')).toHaveTextContent('Estimate: 1 texts · 1 SMS segments. Reminders are not counted against your SMS package.');
+    expect(screen.getAllByTestId('reminder-stop')).toHaveLength(1);
+    expect(api.runReminders).not.toHaveBeenCalled();
+  });
+  it('an older server (no opt-out data) or an in-app-only salon shows no consent or estimate line — never a made-up 0', async () => {
+    api.previewReminders.mockResolvedValue(pv({ textOptedOut: null, textEstimate: undefined }));
+    const v = render(<MemoryRouter><ReminderDialog onClose={() => {}} onSent={() => {}} /></MemoryRouter>);
+    await screen.findAllByText('Mai Le');
+    expect(screen.queryByTestId('reminder-optout')).toBeNull(); expect(screen.queryByTestId('reminder-estimate')).toBeNull();
+    v.unmount();
+    api.previewReminders.mockResolvedValue(pv({ texting: false }));
+    render(<MemoryRouter><ReminderDialog onClose={() => {}} onSent={() => {}} /></MemoryRouter>);
+    await screen.findAllByText('Mai Le');
+    expect(screen.queryByTestId('reminder-estimate')).toBeNull();
   });
 });

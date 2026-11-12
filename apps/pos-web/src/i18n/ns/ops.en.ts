@@ -1604,4 +1604,7 @@ export const OPS_EN = {
   "lgx.env.proc.cardpointe": "CardPointe",
   "lgx.env.proc.clover": "Clover",
   "lgx.env.proc.none": "none",
+  "ops.devices.regConflict": "{register} is already served by {others}. If {label} serves it too, a card charge started at that register could go to either terminal.",
+  "ops.devices.regConflictYes": "Assign anyway",
+  "ops.devices.pairConflict": "{register} is already served by {others}. Pairing this terminal to it means two terminals serve one register.",
 };

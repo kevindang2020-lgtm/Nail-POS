@@ -559,7 +559,7 @@ function PerfDl({ p }: { p: any }) {
   );
 }
 
-function ReminderDialog({ onClose, onSent }: { onClose: () => void; onSent: (msg: string) => void }) {
+export function ReminderDialog({ onClose, onSent }: { onClose: () => void; onSent: (msg: string) => void }) {
   const [days, setDays] = useState(7); const [pv, setPv] = useState<any>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { let alive = true; setPv(null); setErr(null); posMembershipsApi.previewReminders(days).then((r) => alive && setPv(r)).catch((e) => alive && setErr(errText(e, tx('people.mo.loadFailed')))); return () => { alive = false; }; }, [days]);
   const send = async () => {
@@ -574,7 +574,10 @@ function ReminderDialog({ onClose, onSent }: { onClose: () => void; onSent: (msg
       {err ? <div className="fk-err">{err}</div> : !pv ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="rt-counts"><div><b>{nf(pv.due)}</b><span>{tx('people.mo.renewingSoon')}</span></div><div className="ok"><b>{nf(pv.toRemind)}</b><span>{tx('people.mo.willBeReminded')}</span></div><div className="mut"><b>{nf(pv.alreadyReminded)}</b><span>{tx('people.mo.alreadyReminded')}</span></div></div>
         <div className="fk-hint">{pv.texting ? tx('people.mo.channelText', { n: nf(pv.inAppOnly) }) : tx('people.mo.channelInApp')}</div>
-        {pv.members.length ? <ul className="fk-list dense rt-roster">{pv.members.map((m: any) => <li key={m.membershipId} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{m.customerName || '—'}</span><span className="fk-li-s">{m.planName || '—'} · {tx('people.mo.renews', { date: when(m.nextBillingAt) })}</span></div><span className={'fk-chip ' + (m.alreadyReminded ? 'mut' : 'ok')}>{m.alreadyReminded ? tx('people.mo.alreadyReminded') : tx('people.mo.willBeReminded')}</span></li>)}</ul> : <Empty title={tx('pos.no_members_are_due_for_a_13zy')} />}
+        {/* Membership Overview 10: consent + text estimate, read-only (null from an older server → not shown, never "0") */}
+        {pv.texting && pv.textOptedOut != null ? <div className="fk-hint" data-testid="reminder-optout">{tx('people.mo.optedOut', { n: nf(pv.textOptedOut) })}</div> : null}
+        {pv.texting && pv.textEstimate ? <div className="fk-hint" data-testid="reminder-estimate">{tx('people.mo.textEstimate', { texts: nf(pv.textEstimate.texts), segments: nf(pv.textEstimate.segments) })}{pv.textEstimate.metered === false ? ' ' + tx('people.mo.notMetered') : ''}</div> : null}
+        {pv.members.length ? <ul className="fk-list dense rt-roster">{pv.members.map((m: any) => <li key={m.membershipId} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{m.customerName || '—'}</span><span className="fk-li-s">{m.planName || '—'} · {tx('people.mo.renews', { date: when(m.nextBillingAt) })}</span></div>{m.textOptedOut === true && !m.alreadyReminded ? <span className="fk-chip mut" data-testid="reminder-stop">{tx('people.mo.inAppOnlyStop')}</span> : null}<span className={'fk-chip ' + (m.alreadyReminded ? 'mut' : 'ok')}>{m.alreadyReminded ? tx('people.mo.alreadyReminded') : tx('people.mo.willBeReminded')}</span></li>)}</ul> : <Empty title={tx('pos.no_members_are_due_for_a_13zy')} />}
         <div className="fk-hint">{tx('people.mo.reminderRule')}</div>
       </>}
     </FitDialog>

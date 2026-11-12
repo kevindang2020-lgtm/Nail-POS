@@ -77,6 +77,8 @@ export interface McDeps {
   /** the existing validated rule save (service.updateSetting) */
   saveRule: (ctx: McCtx, ruleId: string, input: { enabled: boolean; severityOverride: string | null; thresholds: Record<string, unknown> }) => Promise<unknown>;
   scheduled: () => boolean;
+  /** Safe Rule Preview (Money Protection 5 · 07): read-only current vs proposed matches for one rule (service.previewRule) */
+  previewRule?: (ctx: McCtx, ruleId: string, thresholds: Record<string, unknown>) => Promise<unknown>;
 }
 
 export class MoneyProtectionCenter {
@@ -459,12 +461,23 @@ export class MoneyProtectionCenter {
     };
   }
 
-  async saveRule(ctx: McCtx, ruleId: string, b: { enabled?: unknown; severityOverride?: unknown; thresholds?: unknown; reason?: unknown; expectedUpdatedAt?: unknown }) {
+  async saveRule(ctx: McCtx, ruleId: string, b: { enabled?: unknown; severityOverride?: unknown; thresholds?: unknown; reason?: unknown; expectedUpdatedAt?: unknown; dryRun?: unknown }) {
     this.need(ctx, 'ai_money_protection.manage_settings');
     const d = RULE.get(ruleId);
     if (!d) throw new MoneyCenterError('That rule does not exist.', 'MC_NOT_FOUND', 404);
     const T = ctx.tenantId;
     const before = (await sql<Row>`select enabled, severity_override, thresholds, updated_at from money_protection_rule_settings where tenant_id = ${T} and rule_id = ${ruleId}`.execute(this.db)).rows[0];
+    if (b.dryRun === true) {
+      // Safe Rule Preview (Money Protection 5 · 07): estimate only — nothing is saved, no event, no audit row, never activates.
+      const proposed = b.thresholds && typeof b.thresholds === 'object' && !Array.isArray(b.thresholds) ? b.thresholds as Record<string, unknown> : {};
+      const bad = Object.entries(proposed).find(([k, v]) => !(k in d.defaultThresholds) || !Number.isFinite(Number(v)));
+      if (bad) throw new MoneyCenterError(`Threshold "${bad[0]}" is not a number this rule uses.`, 'VALIDATION_FAILED');
+      if (!this.deps.previewRule) throw new MoneyCenterError('Preview is not available.', 'MC_DETECTION_FAILED', 503);
+      const current = { ...d.defaultThresholds, ...((before?.thresholds as Record<string, unknown>) ?? {}) };
+      const preview = await this.deps.previewRule(ctx, ruleId, Object.fromEntries(Object.entries(proposed).map(([k, v]) => [k, Number(v)])))
+        .catch((e: Error) => { if (e?.name === 'MoneyProtectionValidationError') throw new MoneyCenterError(e.message, 'VALIDATION_FAILED'); throw e; });
+      return { dryRun: true as const, saved: false as const, ruleId, currentThresholds: current, proposedThresholds: { ...current, ...proposed }, preview };
+    }
     const exp = typeof b.expectedUpdatedAt === 'string' ? b.expectedUpdatedAt : null;
     if ((before && exp !== iso(before.updated_at)) || (!before && exp)) throw new MoneyCenterError('This rule was changed by someone else. Reload it.', 'MC_STALE', 409);
     const prev = { enabled: before ? !!before.enabled : true, severity: before?.severity_override ?? d.severity, thresholds: { ...d.defaultThresholds, ...((before?.thresholds as Record<string, unknown>) ?? {}) } };

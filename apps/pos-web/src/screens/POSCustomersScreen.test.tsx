@@ -438,3 +438,27 @@ describe('Smooth Refresh spec §28/§62 — the Customers list is on the sync la
     expect(screen.queryByText('Bad gateway')).toBeNull();
   });
 });
+
+describe('Customer 06 — KPI explanation overlay', () => {
+  it('tapping a KPI shows its definition, period, scope (from the server) and last refresh — the same number as the card', async () => {
+    globalThis.fetch = mockFetch({ ...state, kpisFull: { ...state.kpisFull, returningCustomersToday: 12, totalCustomers: 100 }, scope: { branchConfined: true, timeZone: 'America/New_York' } }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('cust-kpi-returning'));
+    const d = await screen.findByTestId('cust-kpi-explain');
+    expect(within(d).getByTestId('cust-kpi-explain-value')).toHaveTextContent('12');
+    expect(within(d).getByTestId('cust-kpi-explain-def')).toHaveTextContent('2 or more settled visits whose last visit was today');
+    expect(within(d).getByTestId('cust-kpi-explain-period')).toHaveTextContent('Today, salon calendar');
+    expect(within(d).getByTestId('cust-kpi-explain-scope')).toHaveTextContent("This location's customers plus salon-wide profiles · time zone America/New_York");
+    expect(within(d).getByTestId('cust-kpi-explain-fresh').textContent).not.toBe('—');
+    fireEvent.click(screen.getByTestId('cust-kpi-total'));
+    expect(await screen.findByTestId('cust-kpi-explain-def')).toHaveTextContent('Customer profiles that are not archived.');
+    expect(screen.getByTestId('cust-kpi-explain-scope')).toHaveTextContent("This location's customers");
+  });
+  it('an older server without scope says "—" for the scope, never a guess', async () => {
+    globalThis.fetch = mockFetch(state) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('cust-kpi-inactive'));
+    expect(await screen.findByTestId('cust-kpi-explain-scope')).toHaveTextContent(/^—$/);
+    expect(screen.getByTestId('cust-kpi-explain-period')).toHaveTextContent('The last 60 days');
+  });
+});

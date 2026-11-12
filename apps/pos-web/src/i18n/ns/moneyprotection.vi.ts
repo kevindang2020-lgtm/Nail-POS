@@ -401,4 +401,9 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.fp.reasonN": "“{r}” × {n}", // DRAFT — Kevin reviews
   "mpx.fp.noPattern": "Không có lý do lặp lại", // DRAFT — Kevin reviews
   "mpx.fp.policy": "Thông tin từ chính quyết định của nhân viên. Quy tắc không bao giờ tự tắt hay tự nới lỏng — nếu mẫu này là bình thường, hãy đổi quy tắc ở trên kèm lý do.", // DRAFT — Kevin reviews
+  "mpx.prev.run": "Xem trước tác động", // DRAFT — Kevin reviews
+  "mpx.prev.counts": "{days} ngày qua: {now} trường hợp khớp với giá trị hiện hành, {next} với giá trị này.", // DRAFT — Kevin reviews
+  "mpx.prev.delta": "{added} sẽ là mới · {removed} sẽ không còn khớp.", // DRAFT — Kevin reviews
+  "mpx.prev.unused": "Quy tắc này không dùng các giá trị này để xác định khớp, nên thay đổi chúng không làm thay đổi kết quả.", // DRAFT — Kevin reviews
+  "mpx.prev.note": "Chỉ là ước tính, từ lịch sử của chính tiệm này. Không có gì được lưu, không tạo cảnh báo và quy tắc không đổi cho đến khi bạn bấm Lưu.", // DRAFT — Kevin reviews
 };

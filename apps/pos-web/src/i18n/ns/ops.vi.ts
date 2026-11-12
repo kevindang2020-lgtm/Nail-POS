@@ -1603,4 +1603,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.env.proc.cardpointe": "CardPointe", // DRAFT — Kevin reviews
   "lgx.env.proc.clover": "Clover", // DRAFT — Kevin reviews
   "lgx.env.proc.none": "không có", // DRAFT — Kevin reviews
+  "ops.devices.regConflict": "{register} đang do {others} phục vụ. Nếu {label} cũng phục vụ quầy này, lần quẹt thẻ bắt đầu tại quầy có thể đi đến một trong hai máy.", // DRAFT — Kevin reviews
+  "ops.devices.regConflictYes": "Vẫn gán", // DRAFT — Kevin reviews
+  "ops.devices.pairConflict": "{register} đang do {others} phục vụ. Ghép máy này vào quầy đó nghĩa là hai máy cùng phục vụ một quầy.", // DRAFT — Kevin reviews
 };

@@ -126,6 +126,19 @@ export function POSDevicesScreen() {
     try { await stepUp.run(() => posDevicesApi.unpairTerminal(id)); setMsg({ tone: 'ok', text: tx('pos.label_unpaired', { label: String(label) }) }); reloadOverview(); }
     catch (e: any) { if (!isStepUpCancelled(e)) setMsg({ tone: 'err', text: e?.message || tx('pos.unpair_failed') }); } finally { setBusy(null); }
   };
+  // Tablets 04 Assignment Conflict Preview: a register already served by another paired terminal is named BEFORE the change
+  // is sent (the list select asks to confirm; the pairing form warns), so two terminals never silently claim one register.
+  const [regConflict, setRegConflict] = useState<{ id: string; label: string; stationId: string; register: string; others: string } | null>(null);
+  const claimedBy = (stationId: string, exceptId: string | null): string => {
+    const name = registers.find((r) => r.id === stationId)?.name;
+    if (!stationId || !name) return '';
+    return (ov?.terminals ?? []).filter((x) => x.id !== exceptId && x.station === name).map((x) => x.label).join(', ');
+  };
+  const pickTerminalRegister = (id: string, label: string, stationId: string) => {
+    const others = claimedBy(stationId, id);
+    if (others) { setRegConflict({ id, label, stationId, register: registers.find((r) => r.id === stationId)?.name ?? '', others }); return; }
+    setRegConflict(null); void setTerminalRegister(id, label, stationId);
+  };
   const setTerminalRegister = async (id: string, label: string, stationId: string) => {
     setBusy('tr' + id); setMsg(null);
     try { const t = await stepUp.run(() => posDevicesApi.setTerminalRegister(id, stationId || null)); setMsg({ tone: 'ok', text: t?.registerName ? tx('pos.label_now_serves_registername', { label: String(label), registerName: String(t.registerName) }) : tx('pos.label_serves_no_register', { label: String(label) }) }); reloadOverview(); }
@@ -246,10 +259,17 @@ export function POSDevicesScreen() {
           {ov && ov.terminals.length > 0 ? (
             <div className="overflow-x-auto w-full">
               <div className="list w-full min-w-max" style={{ maxHeight: 150 }}>
-                {ov.terminals.map((t) => (<div className="row" key={t.id}><div className="t" style={{ flex: 1 }}>{t.label}</div><select aria-label={tx('pos.register_for_label', { label: String(t.label) })} disabled={busy === 'tr' + t.id} value={registers.find((r) => r.name === t.station)?.id ?? ''} onChange={(e) => setTerminalRegister(t.id, t.label, e.target.value)} style={{ ...fieldStyle, height: 24, marginRight: 8 }}><option value="">{t.station && !registers.some((r) => r.name === t.station) ? tx('pos.station_not_a_register', { station: String(t.station) }) : tx('pos.no_register')}</option>{registers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select><span className={'pill ' + (t.operationalStatus === 'ONLINE' ? 'ok' : '')} title={t.operationalStatus}>{t.operationalLabel ?? ((t.status || '').toLowerCase() === 'paired' ? tx('pos.not_tested_yet') : t.status)}</span><span style={{ display: 'flex', gap: 4, marginLeft: 8 }}><button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 6px', fontSize: 11 }} disabled={busy === 'tt' + t.id} onClick={() => testTerminal(t.id, t.label)}>{busy === 'tt' + t.id ? '…' : tx('pos.test_2')}</button><button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 6px', fontSize: 11 }} disabled={busy === 'ut' + t.id} onClick={() => unpairTerminal(t.id, t.label)}>{busy === 'ut' + t.id ? '…' : tx('pos.unpair')}</button></span></div>))}
+                {ov.terminals.map((t) => (<div className="row" key={t.id}><div className="t" style={{ flex: 1 }}>{t.label}</div><select aria-label={tx('pos.register_for_label', { label: String(t.label) })} disabled={busy === 'tr' + t.id} value={registers.find((r) => r.name === t.station)?.id ?? ''} onChange={(e) => pickTerminalRegister(t.id, t.label, e.target.value)} style={{ ...fieldStyle, height: 24, marginRight: 8 }}><option value="">{t.station && !registers.some((r) => r.name === t.station) ? tx('pos.station_not_a_register', { station: String(t.station) }) : tx('pos.no_register')}</option>{registers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select><span className={'pill ' + (t.operationalStatus === 'ONLINE' ? 'ok' : '')} title={t.operationalStatus}>{t.operationalLabel ?? ((t.status || '').toLowerCase() === 'paired' ? tx('pos.not_tested_yet') : t.status)}</span><span style={{ display: 'flex', gap: 4, marginLeft: 8 }}><button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 6px', fontSize: 11 }} disabled={busy === 'tt' + t.id} onClick={() => testTerminal(t.id, t.label)}>{busy === 'tt' + t.id ? '…' : tx('pos.test_2')}</button><button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 6px', fontSize: 11 }} disabled={busy === 'ut' + t.id} onClick={() => unpairTerminal(t.id, t.label)}>{busy === 'ut' + t.id ? '…' : tx('pos.unpair')}</button></span></div>))}
               </div>
             </div>
           ) : <div className="muted">{tx('pos.no_terminals_paired')}</div>}
+          {regConflict ? (
+            <div className="fk-note warn" role="alert" data-testid="register-conflict" style={{ marginTop: 6 }}>
+              <span>{tx('ops.devices.regConflict', { register: regConflict.register, others: regConflict.others, label: regConflict.label })}</span>{' '}
+              <button className="btn ghost whitespace-nowrap w-fit" data-testid="register-conflict-yes" onClick={() => { const c = regConflict; setRegConflict(null); void setTerminalRegister(c.id, c.label, c.stationId); }}>{tx('ops.devices.regConflictYes')}</button>{' '}
+              <button className="btn ghost whitespace-nowrap w-fit" data-testid="register-conflict-no" onClick={() => setRegConflict(null)}>{tx('pos.cancel')}</button>
+            </div>
+          ) : null}
           {pairOpen ? (
             <div style={{ marginTop: 8, padding: 8, border: '1px dashed var(--line)', borderRadius: 10 }}>
               <div className="s" style={{ fontWeight: 700, marginBottom: 6 }}>{tx('pos.pair_a_terminal')}</div>
@@ -262,6 +282,7 @@ export function POSDevicesScreen() {
                 </select>
                 <input value={pf.hsn} onChange={(e) => setPf({ ...pf, hsn: e.target.value })} placeholder={tx('pos.terminal_hsn_cardpointe_device_serial_optional_19fy')} style={fieldStyle} />
               </div>
+              {claimedBy(pf.station, null) ? <div className="fk-note warn" data-testid="pair-register-conflict" style={{ marginTop: 6 }}>{tx('ops.devices.pairConflict', { register: registers.find((r) => r.id === pf.station)?.name ?? '', others: claimedBy(pf.station, null) })}</div> : null}
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button className="btn" disabled={busy === 'pair'} onClick={submitPair}>{busy === 'pair' ? tx('pos.pairing_2') : tx('pos.pair')}</button>
                 <button className="btn ghost whitespace-nowrap w-fit" onClick={() => { setPairOpen(false); setPf({ code: '', label: '', station: '', hsn: '' }); }}>{tx('pos.cancel')}</button>
