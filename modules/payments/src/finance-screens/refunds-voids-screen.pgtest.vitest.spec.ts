@@ -179,3 +179,32 @@ describe('Refunds & Voids — detail and Find Original Payment', () => {
     expect(csv).not.toContain('4242'); expect(csv).not.toContain('555-1234');
   });
 });
+
+describe('REFUNDS 06 — Escalation Inbox (read only)', () => {
+  it('groups lost processor answers, refunds pending > 24 h and broken ledger links; another salon never; nothing is changed', async () => {
+    const before = (await q(`select id, status from payment_refunds where tenant_id = $1 order by id`, [T])).rows;
+    const e = await r.escalations(ctx);
+    const g = Object.fromEntries(e.groups.map((x) => [x.key, x]));
+    expect(g.provider_timeout).toMatchObject({ count: 1, cents: 2500 }); expect(g.provider_timeout.items[0]).toMatchObject({ id: ids.r4, ticketNumber: '3004', reviewReason: 'processor_status_unavailable' });
+    expect(g.stale_pending).toMatchObject({ count: 1, cents: 2000 }); expect(g.stale_pending.items[0].id).toBe(ids.r1b);   // reserved Oct 20 — long past 24 h
+    expect(g.broken_link.count).toBe(0);   // every completed fixture refund has its reversal row
+    expect(e.total).toBe(2);
+    // a completed refund naming a processor refund id with NO reversal row in the ledger → broken link
+    const t7 = await ticket('3007', 1500, { h: 14 }); const p7 = await pay(t7, 'card', 1500, { ref: 'RR3007', h: 14 });
+    const r7 = await refund(p7, 1500, 'refunded', { h: 15, ref: 'RF-LOST-3007', processor: 'cardpointe', settled: true });
+    const e2 = await r.escalations(ctx);
+    expect(e2.groups.find((x) => x.key === 'broken_link')).toMatchObject({ count: 1, cents: 1500 });
+    expect(e2.groups.find((x) => x.key === 'broken_link')!.items[0]).toMatchObject({ id: r7, ticketNumber: '3007' });
+    // a fresh reservation (< 24 h) is not stale
+    const p8 = await pay(t7, 'card', 500, { ref: 'RR3008', h: 14 });
+    await q(`insert into payment_refunds (id, tenant_id, branch_id, payment_id, processor_type, amount_cents, reason, status, created_at) values ($1,$2,$3,$4,'cardpointe',500,'x','reserved',now())`, [id('f990'), T, B, p8]);
+    expect((await r.escalations(ctx)).groups.find((x) => x.key === 'stale_pending')!.count).toBe(1);
+    const o = await r.escalations(other);   // the other salon sees only its own: its $99 refund names RF9999 with no reversal row
+    expect(o.total).toBe(1); expect(o.groups.find((x) => x.key === 'broken_link')!.cents).toBe(9900);
+    expect(JSON.stringify(o)).not.toContain(ids.r4);
+    const s = await r.summary(ctx, await all());
+    expect(s.escalations.total).toBe(3);
+    expect((await q(`select id, status from payment_refunds where tenant_id = $1 and id = any($2) order by id`, [T, before.map((b: any) => b.id)])).rows).toEqual(before);
+    await q(`delete from payment_refunds where id = any($1)`, [[r7, id('f990')]]);
+  });
+});

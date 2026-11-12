@@ -24,6 +24,7 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
     if (f.source) q = q.where(sql`lower(source)`, '=', f.source);
     if (f.search) q = q.where(sql`lower(message || ' ' || source)`, 'like', `%${escapeLike(String(f.search).toLowerCase())}%`);
     if (f.relatedId) q = q.where('related_id', '=', f.relatedId);
+    if (f.correlationId) q = q.where('correlation_id', '=', f.correlationId);
     const rows = await q.orderBy('created_at', 'desc').limit(f.limit).execute().catch(() => []);
     return rows.map(this.map);
   }
@@ -66,7 +67,7 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
       ...(f.category ? [sql`x.category = ${f.category}`] : []), ...(f.severity ? [sql`x.severity = ${f.severity}`] : []),
       ...(f.source ? [sql`lower(x.source) = ${f.source}`] : []),
       ...(f.search ? [sql`lower(x.message || ' ' || x.source) LIKE ${'%' + escapeLike(String(f.search).toLowerCase()) + '%'}`] : []),
-      ...(f.relatedId ? [sql`x.related_id = ${f.relatedId}`] : [])], sql` AND `);
+      ...(f.relatedId ? [sql`x.related_id = ${f.relatedId}`] : []), ...(f.correlationId ? [sql`x.correlation_id = ${f.correlationId}`] : [])], sql` AND `);
     const rows = await sql<any>`SELECT x.* FROM (${all}) x WHERE ${where}
         ORDER BY x.created_at DESC, x.id DESC LIMIT ${f.pageSize} OFFSET ${(f.page - 1) * f.pageSize}`.execute(this.db);
     const sum = await sql<any>`SELECT count(*)::int AS events, count(*) FILTER (WHERE x.severity = 'warning')::int AS warnings,

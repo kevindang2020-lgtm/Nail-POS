@@ -14,6 +14,8 @@ export const posAIMoneyProtectionApi = {
     alerts: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/alerts`, clean(q)),
     alert: (id: string) => api.get<any>(`/pos/money-protection-center/alerts/detail`, { id }),
     alertAction: (b: { id: string; action: 'acknowledge' | 'dismiss' | 'reopen'; reason?: string | null; expectedStatus?: string | null }) => api.post<any>(`/pos/money-protection-center/alerts/action`, b),
+    /** MONEY PROTECTION ALERTS 13 — batch triage: without confirm the server previews per alert; confirm: true runs the single-alert action per alert */
+    alertBatch: (b: { ids: string[]; action: 'acknowledge' | 'dismiss' | 'reopen'; reason?: string | null; confirm?: boolean }) => api.post<any>(`/pos/money-protection-center/alerts/action`, b),
     investigations: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/investigations`, clean(q)),
     timeline: (id: string) => api.get<any>(`/pos/money-protection-center/investigations/timeline`, { id }),
     rules: () => api.get<any>(`/pos/money-protection-center/rules`),

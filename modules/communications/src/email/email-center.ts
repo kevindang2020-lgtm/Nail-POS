@@ -98,6 +98,8 @@ export class EmailCenter {
     const health = await this.health(ctx);
     // Delivered / rate exist only where verified events exist; otherwise N/A (null), never 0
     const eventsKnown = everEvents && (await this.callbacksConfigured());
+    const latency = eventsKnown ? await this.deliveryLatency(T, p) : null;
+    const suppression = await this.suppressionHygiene(T);
     return {
       window: { preset: p.preset, from: p.from, to: p.to, tz: p.tz, today: p.today, basis: 'created' },
       provider: health.overall,
@@ -105,8 +107,43 @@ export class EmailCenter {
       bookingConfirmations: N(r.booking), receipts: N(r.receipts),
       deliveryRate: eventsKnown && N(r.with_events) > 0 ? Math.round((N(r.delivered) / N(r.with_events)) * 1000) / 10 : null,
       deliveryRateDenominator: eventsKnown ? 'emails the provider accepted that have at least one verified provider event — delivered, still pending, or bounced / blocked by the receiver (emails with no event yet are excluded as Unknown)' : null,
+      latency, suppression,
       definitions: { accepted: 'handed to the provider and accepted (not proof of delivery)', delivered: 'verified provider "delivered" events only', bounced: 'provider bounce / block events', blocked: 'never handed to the provider (setting off, suppressed, not configured, invalid address)' },
     };
+  }
+
+  // ── Email 11: accepted-to-confirmed delivery latency — only from verified "delivered" events (the caller passes it only
+  // when signed events are configured and have ever arrived); the start is the ledger row's created_at (written when the
+  // email was handed to the provider), the end is the provider's own delivered timestamp. No events → null, never 0.
+  private async deliveryLatency(T: string, p: { from: string | null; to: string | null; tz: string }) {
+    const r = (await sql<{ measured: number; median: number | null; p90: number | null; slowest: number | null }>`select count(*)::int as measured,
+        percentile_cont(0.5) within group (order by extract(epoch from (n.delivered_at - n.created_at))) as median,
+        percentile_cont(0.9) within group (order by extract(epoch from (n.delivered_at - n.created_at))) as p90,
+        max(extract(epoch from (n.delivered_at - n.created_at))) as slowest
+      from notifications n where n.tenant_id = ${T}::uuid and n.channel = 'email' and n.status = 'delivered' and n.delivered_at is not null
+        and n.delivered_at >= n.created_at and ${this.inP(sql`n.created_at`, p)}`.execute(this.db)).rows[0];
+    const measured = N(r?.measured);
+    const secs = (v: unknown) => (measured > 0 && v !== null && v !== undefined ? Math.round(Number(v)) : null);
+    return { measured, medianSeconds: secs(r?.median), p90Seconds: secs(r?.p90), slowestSeconds: secs(r?.slowest),
+      basis: 'time from the email being handed to the provider to the provider\'s verified "delivered" event; emails without that event are not measured' };
+  }
+
+  // ── Email 05: bounce / complaint hygiene — the CURRENT suppression list for email, split by why it is there (a hard
+  // bounce, a spam complaint, a marketing unsubscribe, anything else such as staff or legacy), each with the one approved
+  // next step. Read only: nothing here removes a suppression (only the customer's own opt-in or a corrected address does).
+  private async suppressionHygiene(T: string) {
+    const rows = (await sql<{ bucket: string; addresses: number; latest: string | null }>`select case when o.reason = 'provider_bounce' then 'hard_bounce' when o.reason = 'provider_complaint' then 'complaint'
+          when o.reason = 'email_unsubscribe' and o.scope = 'marketing' then 'unsubscribe' else 'other' end as bucket, count(*)::int as addresses, max(o.opted_out_at) as latest
+      from notification_opt_outs o where o.tenant_id = ${T}::uuid and o.channel = 'email' group by 1`.execute(this.db)).rows;
+    const NEXT: Record<string, { scope: 'all' | 'marketing' | 'mixed'; next: string }> = {
+      hard_bounce: { scope: 'all', next: 'correct_address' }, complaint: { scope: 'all', next: 'do_not_resend' },
+      unsubscribe: { scope: 'marketing', next: 'customer_opt_in_only' }, other: { scope: 'mixed', next: 'review_reason' },
+    };
+    const buckets = (['hard_bounce', 'complaint', 'unsubscribe', 'other'] as const).map((key) => {
+      const r = rows.find((x) => x.bucket === key);
+      return { key, addresses: N(r?.addresses), latestAt: iso(r?.latest), scope: NEXT[key].scope, next: NEXT[key].next };
+    });
+    return { total: buckets.reduce((a, b) => a + b.addresses, 0), buckets, basis: 'addresses on this salon\'s email suppression list now (not limited to the period)' };
   }
 
   // ── health (§05 state machine; recommendation 4.1) ──────────────────────────────────────────────────────────────────
@@ -275,9 +312,33 @@ export class EmailCenter {
     return this.result(r);
   }
 
+  /** Email 10 — customer identity confidence, BEFORE any send: the composer asks with preview = true once a customer is
+   *  picked. Counts only (no other customer's name or address): other customers of THIS salon on the same address, other
+   *  customers with the same name, and whether the address is on the suppression list. Read only — sends, records and
+   *  audits nothing; no idempotency key is used. */
+  private async recipientCheck(ctx: EcContext, customerId: unknown) {
+    const cid = String(customerId ?? '');
+    if (!UUID.test(cid)) throw err('Choose a customer.', 'EMAIL_RECIPIENT_INVALID');
+    const T = ctx.tenantId;
+    const c = (await sql<{ email: string | null; full_name: string | null }>`select email, full_name from customers where tenant_id = ${T}::uuid and id = ${cid}::uuid and coalesce(status, 'active') <> 'archived'`.execute(this.db)).rows[0];
+    if (!c) throw err('That customer was not found.', 'CUSTOMER_NOT_FOUND', 404);
+    const addr = String(c.email ?? '').trim().toLowerCase(); const valid = EMAIL_RE.test(addr);
+    const name = String(c.full_name ?? '').trim().toLowerCase();
+    const r = (await sql<{ shared: number; same_name: number }>`select
+        count(*) filter (where ${valid ? sql`lower(trim(o.email)) = ${addr}` : sql`false`})::int as shared,
+        count(*) filter (where ${name ? sql`lower(trim(o.full_name)) = ${name}` : sql`false`})::int as same_name
+      from customers o where o.tenant_id = ${T}::uuid and o.id <> ${cid}::uuid and coalesce(o.status, 'active') <> 'archived'`.execute(this.db)).rows[0];
+    const sup = valid ? (await sql<{ scope: string }>`select scope from notification_opt_outs where tenant_id = ${T}::uuid and channel = 'email' and address = ${addr}`.execute(this.db)).rows[0] : undefined;
+    const shared = N(r?.shared); const sameName = N(r?.same_name);
+    const confidence = !valid ? 'no_address' : shared > 0 ? 'shared_address' : sameName > 0 ? 'similar_name' : 'unique';
+    return { outcome: 'preview', reason: null, notificationId: null, providerReference: null, replayed: false,
+      recipient: { addressMasked: valid ? mask(addr) : null, validAddress: valid, sharedAddressCustomers: shared, sameNameCustomers: sameName, suppression: sup?.scope ?? null, confidence } };
+  }
+
   /** a staff email to ONE customer of this salon; the address comes from the customer record (no free-text recipients) */
-  async compose(ctx: EcContext, body: { customerId?: unknown; subject?: unknown; body?: unknown; idempotencyKey?: unknown; confirm?: unknown }) {
+  async compose(ctx: EcContext, body: { customerId?: unknown; subject?: unknown; body?: unknown; idempotencyKey?: unknown; confirm?: unknown; preview?: unknown }) {
     this.need(ctx, 'pos.communications.manage');
+    if (body?.preview === true) return this.recipientCheck(ctx, body?.customerId);
     const key = await this.sendGuard(ctx, body);
     const cid = String(body?.customerId ?? '');
     if (!UUID.test(cid)) throw err('Choose a customer.', 'EMAIL_RECIPIENT_INVALID');

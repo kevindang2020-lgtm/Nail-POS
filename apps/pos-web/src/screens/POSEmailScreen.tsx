@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { posSettingsApi } from '../api/posSettingsApi';
 import { posCustomersApi } from '../api/posCustomersApi';
-import { posEmailCenterApi, type EmSettings, type EmSummary, type EmHealth, type EmPage, type EmDetail, type EmStatus } from '../api/posEmailCenterApi';
+import { posEmailCenterApi, type EmSettings, type EmSummary, type EmHealth, type EmPage, type EmDetail, type EmStatus, type EmRecipientCheck } from '../api/posEmailCenterApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { PeriodBar, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { reportError } from './reportsCommon';
@@ -148,6 +148,8 @@ export function POSEmailScreen() {
         </section>
       </div>
 
+      <DeliveryHygiene summary={summary} tz={tz} />
+
       <section className="panel emc-history" data-testid="emc-history">
         <div className="emc-row"><h3>{t('emc.hist.title')}</h3><span className="sub" data-testid="emc-count">{page ? t('emc.hist.count', { n: page.total }) : ''}</span></div>
         <div className="emc-filters">
@@ -223,6 +225,38 @@ export function POSEmailScreen() {
   );
 }
 
+const dur = (sec: number | null) => (sec == null ? '—' : sec < 90 ? t('emc.lat.sec', { n: sec }) : sec < 5400 ? t('emc.lat.min', { n: Math.round(sec / 60) }) : t('emc.lat.hr', { n: Math.round(sec / 360) / 10 }));
+/** Email 11 (accepted → verified delivered) + Email 05 (suppression list by reason, with the approved next step). Both come
+ *  from the server's summary; nothing here changes a suppression or sends anything. */
+function DeliveryHygiene({ summary, tz }: { summary: EmSummary | null; tz?: string }) {
+  if (!summary) return null;
+  const lat = summary.latency; const hy = summary.suppression;
+  return (
+    <section className="panel emc-hygiene" data-testid="emc-hygiene">
+      <div className="emc-row"><h3>{t('emc.lat.title')}</h3></div>
+      {lat == null ? <div className="sub" data-testid="emc-lat-na">{t('emc.lat.na')}</div>
+        : lat.measured === 0 ? <div className="sub" data-testid="emc-lat-none">{t('emc.lat.none')}</div>
+        : <div data-testid="emc-lat">
+            <div className="emc-row"><span>{t('emc.lat.median')}</span><b data-testid="emc-lat-median">{dur(lat.medianSeconds)}</b><span>{t('emc.lat.p90')}</span><b>{dur(lat.p90Seconds)}</b><span>{t('emc.lat.slowest')}</span><b>{dur(lat.slowestSeconds)}</b></div>
+            <div className="sub">{t('emc.lat.basis', { n: lat.measured })}</div>
+          </div>}
+      {hy ? <>
+        <div className="emc-row"><h3>{t('emc.hy.title')}</h3><span className="sub" data-testid="emc-hy-total">{t('emc.hy.total', { n: hy.total })}</span></div>
+        <ul className="emc-layers">
+          {hy.buckets.map((b) => (
+            <li key={b.key} data-testid={`emc-hy-${b.key}`}>
+              <div className="emc-row"><b>{t('emc.hy.' + b.key)}</b><span className={`emc-badge ${b.addresses > 0 && (b.key === 'hard_bounce' || b.key === 'complaint') ? 'warn' : ''}`}>{b.addresses}</span></div>
+              <div className="sub">{t('emc.hy.scope.' + b.scope)}{b.latestAt ? ` · ${t('emc.hy.latest')} ${at(b.latestAt, tz)}` : ''}</div>
+              {b.addresses > 0 ? <div className="emc-next">→ {t('emc.hy.next.' + b.next)}</div> : null}
+            </li>
+          ))}
+        </ul>
+        <div className="sub">{t('emc.hy.basis')}</div>
+      </> : null}
+    </section>
+  );
+}
+
 const EMAIL_DRAFT_KEY = 'aps.emc.draft';
 function readEmailDraft(): { subject: string; body: string } {
   try { const v = JSON.parse(sessionStorage.getItem(EMAIL_DRAFT_KEY) || 'null'); if (v && typeof v === 'object') return { subject: String(v.subject ?? '').slice(0, 150), body: String(v.body ?? '').slice(0, 5000) }; } catch { /* no storage */ }
@@ -249,6 +283,18 @@ function Composer({ onClose, onSent }: { onClose: () => void; onSent: () => void
     return () => { live = false; };
   }, [dq, cust]);
   const email = cust ? String(cust.email ?? '') : '';
+  // Email 10: once a customer is picked, the server checks the recipient (counts only; nothing is sent). A shared address
+  // must be acknowledged before Send is enabled.
+  const [check, setCheck] = useState<EmRecipientCheck | null>(null); const [checkFailed, setCheckFailed] = useState(false); const [ackShared, setAckShared] = useState(false);
+  const custId = cust ? String(cust.customerId ?? cust.id) : '';
+  useEffect(() => {
+    setCheck(null); setCheckFailed(false); setAckShared(false);
+    if (!custId) return;
+    let live = true;
+    posEmailCenterApi.recipientCheck(custId).then((r) => { if (live) setCheck(r?.recipient ?? null); }).catch(() => { if (live) setCheckFailed(true); });
+    return () => { live = false; };
+  }, [custId]);
+  const needsAck = check?.confidence === 'shared_address';
   const send = async () => {
     if (!cust) return; setBusy(true); setMsg(null);
     try { const r = await posEmailCenterApi.compose({ customerId: String(cust.customerId ?? cust.id), subject: subject.trim(), body: body.trim() }, requestId()); writeEmailDraft('', ''); setMsg(t('emc.c.sent', { o: outcome(r.outcome) + (r.reason ? ` (${r.reason})` : '') })); setOk(false); onSent(); }
@@ -258,12 +304,19 @@ function Composer({ onClose, onSent }: { onClose: () => void; onSent: () => void
   return (
     <FitDialog title={t('emc.c.title')} onClose={onClose} busy={busy} wide testId="emc-composer"
       footer={<><button type="button" className="btn ghost" onClick={onClose} data-testid="emc-c-close">{t('emc.d.close')}</button>
-        <button type="button" className="btn" disabled={!cust || !email || !subject.trim() || !body.trim() || !ok || busy} onClick={() => void send()} data-testid="emc-c-send">{t('emc.c.send')}</button></>}>
+        <button type="button" className="btn" disabled={!cust || !email || !subject.trim() || !body.trim() || !ok || busy || (needsAck && !ackShared)} onClick={() => void send()} data-testid="emc-c-send">{t('emc.c.send')}</button></>}>
       <label className="emc-field">{t('emc.c.customer')}
         {cust ? <div className="emc-row"><span className="emc-strong" data-testid="emc-c-picked">{cust.displayName ?? cust.fullName ?? `${cust.firstName ?? ''} ${cust.lastName ?? ''}`}</span><span className="sub">{email || t('emc.c.noEmail')}</span>
           <button type="button" className="btn ghost sm" onClick={() => { setCust(null); setQuery(''); }}>×</button></div>
           : <input className="fk-search" placeholder={t('emc.c.search')} value={query} onChange={(e) => setQuery(e.target.value)} data-testid="emc-c-search" />}
       </label>
+      {cust && check && check.confidence !== 'unique' && check.confidence !== 'no_address' ? (
+        <div className="fk-note" role="alert" data-testid="emc-c-identity">
+          {check.confidence === 'shared_address' ? t('emc.c.id.shared', { n: check.sharedAddressCustomers, a: check.addressMasked ?? '—' }) : t('emc.c.id.name', { n: check.sameNameCustomers })}
+          {needsAck ? <label className="emc-check"><input type="checkbox" checked={ackShared} onChange={(e) => setAckShared(e.target.checked)} data-testid="emc-c-identity-ack" />{t('emc.c.id.ack')}</label> : null}
+        </div>) : null}
+      {cust && check?.suppression ? <div className="fk-note" role="status" data-testid="emc-c-suppressed">{t(check.suppression === 'marketing' ? 'emc.c.id.supMarketing' : 'emc.c.id.supAll')}</div> : null}
+      {cust && checkFailed ? <div className="sub" role="status" data-testid="emc-c-identity-unknown">{t('emc.c.id.unknown')}</div> : null}
       {!cust && hits.length ? <ul className="emc-hits">{hits.map((h: any) => <li key={h.customerId ?? h.id}><button type="button" className="btn ghost sm" onClick={() => setCust(h)} data-testid="emc-c-hit">{h.displayName ?? h.fullName ?? `${h.firstName ?? ''} ${h.lastName ?? ''}`} · {h.email || t('emc.c.noEmail')}</button></li>)}</ul> : null}
       {restored ? <div className="fk-note" role="status" data-testid="emc-c-restored">{t('emc.c.restored')}</div> : null}
       <label className="emc-field">{t('emc.c.subject')}<input value={subject} maxLength={150} onChange={(e) => setSubject(e.target.value)} data-testid="emc-c-subject" /></label>

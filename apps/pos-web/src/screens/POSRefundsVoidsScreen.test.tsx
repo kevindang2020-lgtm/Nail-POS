@@ -72,4 +72,22 @@ describe('POSRefundsVoidsScreen', () => {
     api.summary.mockRejectedValue({ status: 503 }); api.list.mockRejectedValue({ status: 503 });
     mount(); expect((await screen.findAllByText(/could not be reached/i)).length).toBeGreaterThan(0); expect(screen.queryByTestId('kpi-refunds')).toBeNull();
   });
+  it('REFUNDS 06: the Escalation Inbox lists the server groups and opens the existing detail; it never calls a Checkout action', async () => {
+    api.summary.mockResolvedValue({ ...summary, escalations: { total: 2, stalePendingHours: 24, groups: [
+      { key: 'provider_timeout', count: 1, cents: 2500, oldestAt: '2026-10-20T21:00:00Z', items: [{ id: 'r4', kind: 'refund', ticketNumber: '3004', reversedCents: 2500, requestedAt: '2026-10-20T21:00:00Z', reviewReason: 'processor_status_unavailable' }] },
+      { key: 'stale_pending', count: 1, cents: 2000, oldestAt: null, items: [{ id: 'r1b', kind: 'refund', ticketNumber: '3001', reversedCents: 2000, requestedAt: null, reviewReason: null }] },
+      { key: 'broken_link', count: 0, cents: 0, oldestAt: null, items: [] }] } });
+    api.detail.mockResolvedValue(null);
+    mount();
+    fireEvent.click(await screen.findByTestId('rv-escalations'));
+    expect(screen.getByTestId('rv-escalations')).toHaveTextContent('Escalations · 2');
+    expect(screen.getByTestId('rv-esc-provider_timeout')).toHaveTextContent('Processor answer lost · 1 · $25.00');
+    expect(screen.getByTestId('rv-esc-provider_timeout')).toHaveTextContent('Processor status unavailable');
+    expect(screen.getByTestId('rv-esc-stale_pending')).toHaveTextContent('Pending over 24 hours');
+    expect(screen.getByTestId('rv-esc-broken_link')).toHaveTextContent('· 0');
+    fireEvent.click(screen.getAllByTestId('rv-esc-item')[0]);
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('refund', 'r4'));
+    expect(screen.queryByTestId('rv-esc-dialog')).toBeNull();
+    expect(co.refund).not.toHaveBeenCalled(); expect(co.void).not.toHaveBeenCalled();
+  });
 });

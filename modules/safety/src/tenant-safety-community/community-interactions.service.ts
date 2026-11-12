@@ -313,7 +313,16 @@ export class CommunityInteractionsService {
     requireId(postId, 'postId');
     await this.core.requireCapability(ctx, 'upload_evidence');
     if (!(await this.repo.ownPostExists(ctx.tenantId, postId))) throw new CommunityError('post_not_found', 404);
-    return (await this.repo.listOwnEvidenceForPost(ctx.tenantId, postId)).map(evidenceView);
+    const list = await this.repo.listOwnEvidenceForPost(ctx.tenantId, postId);
+    // Safety Community 05 — Private Evidence Access Timeline: each file carries who opened it (read from the access log the
+    // access route already writes); shown only to people who may open the files themselves (upload_evidence, own salon).
+    const log = await this.repo.evidenceAccessLog(ctx.tenantId, list.map((e) => e.id));
+    return list.map((e) => {
+      const view: CommunityEvidenceView & { accessLog: { at: string; byName: string | null; byRole: string | null; moderator: boolean; reason: string | null }[] } = {
+        ...evidenceView(e), accessLog: log.filter((l) => l.evidenceId === e.id).map(({ evidenceId: _x, ...rest }) => rest),
+      };
+      return view;
+    });
   }
 
   async accessEvidence(ctx: CommunityCtx, evidenceId: string, reasonIn: unknown): Promise<CommunityEvidenceAccess> {

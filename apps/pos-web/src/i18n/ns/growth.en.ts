@@ -1080,4 +1080,8 @@ export const GROWTH_EN = {
   "growth.community.gaps.evidence": "No evidence attached. Files stay private; moderators can review them.",
   "growth.community.gaps.evidenceAfterSave": "Save the draft to attach evidence (files stay private).",
   "growth.community.gaps.wording": "These are suggestions, not required. Describe what happened, not who did it; use neutral words such as “suspected scam attempt”. The wording check runs when you save, and “Suggest neutral wording” can help.",
+  "growth.community.access.title": "Who opened this file ({n})",
+  "growth.community.access.none": "Nobody has opened this file yet.",
+  "growth.community.access.moderator": "A platform moderator, under a moderation case",
+  "growth.community.access.staff": "A staff member of your salon",
 };

@@ -231,6 +231,7 @@ export class MoneyProtectionCenter {
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, status: group, severity, category, rule, dateField, sort, preset: per.preset, from: per.from, to: per.to },
       period: { today: per.today, timeZone: per.tz }, customersVisible: customers,
+      canAct: has(ctx, 'ai_money_protection.investigate'),   // MONEY PROTECTION ALERTS 13: batch triage shown only when the person may act
       // extras (Money Protection 5 · 14): why a list is empty — paused, never checked, failed, stale, no data, or verified
       monitor: await this.monitorState(T),
     };
@@ -342,6 +343,51 @@ export class MoneyProtectionCenter {
           summary: `Money Protection alert ${action} (${r.rule_id})`, reason: reason || undefined, before: { status: r.status }, after: { status: to } });
       return { id, status: to, from: r.status };
     });
+  }
+
+  /** MONEY PROTECTION ALERTS 13 — Batch triage preview. Without confirm: for each selected alert (≤ 50, this salon / branch),
+   *  what the action WOULD do — ready (with the status it moves to), not_found, state_invalid, own_activity — nothing written.
+   *  With confirm = true: the SAME single-alert action (its lock, stale check, segregation of duties, transition guard and
+   *  audit) runs once per alert; a refusal is reported per alert, never retried. Only acknowledge / dismiss / reopen exist:
+   *  there is no bulk payout, charge, refund or write-off here. */
+  async alertBatch(ctx: McCtx, b: { ids?: unknown; action?: unknown; reason?: unknown; confirm?: unknown }) {
+    this.need(ctx, 'ai_money_protection.investigate');
+    const action = pick(MC_ALERT_ACTIONS, b.action);
+    if (!action) throw new MoneyCenterError('Choose acknowledge, dismiss or reopen.', 'VALIDATION_FAILED');
+    const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map((x) => String(x)).filter(isUuid))];
+    if (!ids.length || ids.length > 50) throw new MoneyCenterError('Select between 1 and 50 alerts.', 'VALIDATION_FAILED');
+    const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 1000) : '';
+    const T = ctx.tenantId;
+    const to = action === 'dismiss' ? 'DISMISSED_FALSE_POSITIVE' : 'ACKNOWLEDGED';
+    const rows = (await sql<Row>`select id, status, related from money_protection_alerts where tenant_id = ${T} and id = any(${ids}::uuid[]) and ${this.scope(sql`branch_id`, ctx).w}`.execute(this.db)).rows;
+    const byId = new Map(rows.map((r) => [String(r.id), r]));
+    const items: { id: string; status: string | null; outcome: 'ready' | 'not_found' | 'state_invalid' | 'own_activity'; to: string | null; code?: string | null }[] = [];
+    for (const id of ids) {
+      const r = byId.get(id);
+      if (!r) { items.push({ id, status: null, outcome: 'not_found', to: null }); continue; }
+      const st = String(r.status);
+      const allowed = action === 'acknowledge' ? st === 'NEW' : action === 'dismiss' ? MC_OPEN.includes(st) : !MC_OPEN.includes(st);
+      const own = isUuid(ctx.userId) && (await this.involved(this.db, T, r.related)).includes(String(ctx.userId));
+      items.push({ id, status: st, outcome: own ? 'own_activity' : allowed ? 'ready' : 'state_invalid', to: own || !allowed ? null : to });
+    }
+    const count = (o: string) => items.filter((i) => i.outcome === o).length;
+    const needsReason = action === 'dismiss' || action === 'reopen';
+    if (b.confirm !== true) {
+      return { action, preview: true, needsReason, items, counts: { ready: count('ready'), notFound: count('not_found'), stateInvalid: count('state_invalid'), ownActivity: count('own_activity') }, movesMoney: false };
+    }
+    if (needsReason && reason.length < 5) throw new MoneyCenterError('Write a reason (at least 5 characters).', 'MC_REASON_REQUIRED');
+    const results: { id: string; outcome: 'applied' | 'refused'; status: string | null; code: string | null }[] = [];
+    for (const it of items) {
+      if (it.outcome !== 'ready') { results.push({ id: it.id, outcome: 'refused', status: it.status, code: it.outcome }); continue; }
+      try {
+        const r = await this.alertAction(ctx, it.id, { action, reason, expectedStatus: it.status ?? undefined });
+        results.push({ id: it.id, outcome: 'applied', status: r.status, code: null });
+      } catch (e) {
+        if (!(e instanceof MoneyCenterError)) throw e;
+        results.push({ id: it.id, outcome: 'refused', status: it.status, code: e.code });   // reported to the person, per alert
+      }
+    }
+    return { action, preview: false, results, applied: results.filter((r) => r.outcome === 'applied').length, refused: results.filter((r) => r.outcome === 'refused').length, movesMoney: false };
   }
 
   // ── investigations ─────────────────────────────────────────────────────────────────────────────────────────

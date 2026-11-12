@@ -30,6 +30,28 @@ type Tender = { id: string; ticketId: string | null; ticketNumber?: string | nul
   refundedCents: number; pendingCents: number; refundableCents: number; settlementId: string | null; customer?: { id: string; name: string | null; phone: string | null } | null; branch?: string | null;
   eligibility: { refund: boolean; refundWhy: string | null; void: boolean; voidWhy: string | null } };
 type Note = { tone: 'ok' | 'bad' | 'warn'; text: string; filtersHide?: boolean } | null;
+/** REFUNDS 06 — the server's Escalation Inbox (summary.escalations): grouped, read only */
+type RvEscalations = { total: number; stalePendingHours: number; groups: { key: string; count: number; cents: number; oldestAt: string | null;
+  items: { id: string; kind: 'refund' | 'void'; ticketNumber: string | null; reversedCents: number; requestedAt: string | null; reviewReason: string | null }[] }[] };
+
+function EscalationInbox({ data, onClose, onOpen }: { data: RvEscalations; onClose: () => void; onOpen: (kind: 'refund' | 'void', id: string) => void }) {
+  return (
+    <FitDialog title={tx('rv.esc.title')} subtitle={tx('rv.esc.sub')} onClose={onClose} wide testId="rv-esc-dialog">
+      {data.total === 0 ? <Empty title={tx('rv.esc.none')} /> : data.groups.map((g) => (
+        <section key={g.key} className="rv-esc-group" data-testid={'rv-esc-' + g.key}>
+          <h4>{tx('rv.esc.g.' + g.key, { h: data.stalePendingHours })} · {fmtNumber(g.count)}{g.count ? ` · ${fmtMoney(g.cents)}` : ''}</h4>
+          <div className="fk-hint">{tx('rv.esc.why.' + g.key)}</div>
+          {g.items.length ? <ul className="fk-list">{g.items.map((it) => (
+            <li key={it.id}><button type="button" className="fk-btn ghost sm" onClick={() => onOpen(it.kind, it.id)} data-testid="rv-esc-item">
+              {it.ticketNumber ? '#' + it.ticketNumber : tx('rv.notLinked')} · {fmtMoney(it.reversedCents)} · {when(it.requestedAt)}{it.reviewReason ? ' · ' + codeLabel('rv.review.' + it.reviewReason, it.reviewReason) : ''}</button></li>
+          ))}</ul> : null}
+          {g.count > g.items.length ? <div className="fk-hint">{tx('rv.esc.more', { n: fmtNumber(g.count - g.items.length) })}</div> : null}
+        </section>
+      ))}
+      <div className="fk-hint">{tx('rv.esc.readOnly')}</div>
+    </FitDialog>
+  );
+}
 
 const STATE_TONE: Record<string, string> = { completed: 'ok', pending: 'warn', processing: 'warn', failed: 'bad', needs_review: 'bad', cancelled: 'mut' };
 const TYPE_TONE: Record<string, string> = { refund: 'warn', partial_refund: 'warn', void: 'bad' };
@@ -52,7 +74,7 @@ export function POSRefundsVoidsScreen() {
   const [type, setType] = useState(''); const [state, setState] = useState(''); const [method, setMethod] = useState(''); const [processor, setProcessor] = useState(''); const [register, setRegister] = useState(''); const [sort, setSort] = useState('created_desc');
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' }); const [basis, setBasis] = useState('requested');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [note, setNote] = useState<Note>(null); const [exporting, setExporting] = useState(false);
-  const [detail, setDetail] = useState<{ kind: 'refund' | 'void'; id: string } | null>(null); const [finding, setFinding] = useState(false);
+  const [detail, setDetail] = useState<{ kind: 'refund' | 'void'; id: string } | null>(null); const [finding, setFinding] = useState(false); const [inbox, setInbox] = useState(false);
   const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, type: type || undefined, status: state || undefined, method: method || undefined, processor: processor || undefined, register: register || undefined, sort };
   const key = JSON.stringify(scope); useEffect(() => { setPage(1); }, [key]);
   const fit = useFitRows<HTMLDivElement>(44, { min: 3, max: 18, reserve: 34 });
@@ -60,7 +82,7 @@ export function POSRefundsVoidsScreen() {
   const sum = useLoad(() => posRefundsVoidsApi.summary({ ...periodQuery(period), dateField: basis, method: method || undefined, processor: processor || undefined, register: register || undefined }), [JSON.stringify(period), basis, method, processor, register, tick]);
   const facets = useLoad(() => posRefundsVoidsApi.facets(), []);
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const k = sum.data?.kpis; const perms = sum.data?.permissions ?? {}; const rows: Rev[] = list.data?.items ?? [];
+  const esc: RvEscalations | undefined = sum.data?.escalations; const k = sum.data?.kpis; const perms = sum.data?.permissions ?? {}; const rows: Rev[] = list.data?.items ?? [];
   const chips = [...(q ? [{ label: tx('rv.chip.search', { q }), clear: () => setSearch('') }] : []), ...(type ? [{ label: typeLbl(type), clear: () => setType('') }] : []), ...(state ? [{ label: stateLbl(state), clear: () => setState('') }] : []),
     ...(method ? [{ label: methodLbl(method), clear: () => setMethod('') }] : []), ...(processor ? [{ label: processor, clear: () => setProcessor('') }] : []),
     ...(register ? [{ label: (facets.data?.registers ?? []).find((r) => r.id === register)?.name ?? tx('rv.register'), clear: () => setRegister('') }] : [])];
@@ -79,6 +101,7 @@ export function POSRefundsVoidsScreen() {
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.refunds_voids')}</h1><div className="sub">{tx('rv.subtitle')}</div></div>
         <div className="fk-head-actions">
           <button type="button" className="fk-btn primary" onClick={() => setFinding(true)} data-testid="find-payment">{tx('rv.find')}</button>
+          {esc ? <button type="button" className={'fk-btn' + (esc.total > 0 ? ' warn' : '')} onClick={() => setInbox(true)} data-testid="rv-escalations">{tx('rv.esc.open', { n: fmtNumber(esc.total) })}</button> : null}
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           {perms.export ? <button type="button" className="fk-btn" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
         </div>
@@ -136,6 +159,7 @@ export function POSRefundsVoidsScreen() {
             })}</tbody>
           </table>}
       </FitPanel>
+      {inbox && esc ? <EscalationInbox data={esc} onClose={() => setInbox(false)} onOpen={(kind, id) => { setInbox(false); setDetail({ kind, id }); }} /> : null}
       {detail ? <ReversalDialog kind={detail.kind} id={detail.id} tick={tick} onClose={() => setDetail(null)} onDone={done}
         onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} onSettlement={() => nav('/tenant/payments/settlements')} /> : null}
       {finding ? <FindDialog onClose={() => setFinding(false)} onDone={(tone, text) => { setFinding(false); done(tone, text); }} /> : null}

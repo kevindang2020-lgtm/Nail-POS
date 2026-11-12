@@ -169,10 +169,36 @@ export class RefundsVoidsScreenRepository {
         byMethod: { cashCents: N(r.cash_refunded), cardCents: N(r.card_refunded), giftCardCents: N(r.gift_refunded) } },
       definitions: { refunds: 'completed refunds (the processor, cash or gift-card ledger confirmed them) — pending and failed ones are counted apart', voids: 'original authorisations / payments successfully voided, at face value — not cash returned',
         totalReversed: 'completed refund amounts + voided face values (operational; not cash returned)', pending: 'reservations without a final answer (reserved, pending, processing)', needsReview: 'failed, or the processor answer was lost and the sweep could not decide' },
+      escalations: await this.escalations(ctx),
       period: f.period, basis: f.basis, asOf: new Date().toISOString(),
       permissions: { refund: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.refund'), void: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.void'),
         approve: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'checkout.approve_refund'), export: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.reports.export'), customer: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.customers.view') },
     };
+  }
+
+  /** REFUNDS 06 — the Escalation Inbox: reversals a manager should look at, grouped by why, over the WHOLE history of this
+   *  location (an old stuck refund matters whatever period the page shows): provider_timeout = the processor answer was lost
+   *  and the sweep could not decide (Needs review, not a decline); stale_pending = a reservation still pending / processing
+   *  after 24 hours; broken_link = a completed refund that names a processor refund but has no reversal row in the ledger,
+   *  or a reversal whose original tender is not linked to a ticket. Read only — it never retries, settles or changes a status;
+   *  each item opens the existing detail (where the authorised Checkout actions live). */
+  static readonly STALE_PENDING_HOURS = 24;
+  async escalations(ctx: FinanceCtx) {
+    const hrs = RefundsVoidsScreenRepository.STALE_PENDING_HOURS;
+    const grp = sql<string>`(case when a.state = 'needs_review' then 'provider_timeout'
+        when a.state in ('pending', 'processing') and a.requested_at < now() - make_interval(hours => ${hrs}) then 'stale_pending'
+        when (a.kind = 'refund' and a.state = 'completed' and a.provider_ref is not null and a.reversal_payment_id is null) or a.ticket_number is null then 'broken_link' end)`;
+    const rows = (await sql<{ grp: string; id: string; kind: 'refund' | 'void'; ticket_number: string | null; reversed_cents: string | number; requested_at: string | null; review_reason: string | null; n: number; cents: string | number; oldest: string | null; rk: number }>`
+      select x.* from (select ${grp} as grp, a.id, a.kind, a.ticket_number, a.reversed_cents, a.requested_at, a.review_reason,
+          count(*) over (partition by ${grp})::int as n, sum(a.reversed_cents) over (partition by ${grp}) as cents, min(a.requested_at) over (partition by ${grp}) as oldest,
+          row_number() over (partition by ${grp} order by a.requested_at asc nulls last, a.id) as rk
+        from (${this.base(ctx)}) a where ${this.scope(ctx)}) x where x.grp is not null and x.rk <= 5 order by x.grp, x.rk`.execute(this.db)).rows;
+    const groups = (['provider_timeout', 'stale_pending', 'broken_link'] as const).map((key) => {
+      const g = rows.filter((r) => r.grp === key);
+      return { key, count: g.length ? N(g[0].n) : 0, cents: g.length ? N(g[0].cents) : 0, oldestAt: g.length ? iso(g[0].oldest) : null,
+        items: g.map((r) => ({ id: String(r.id), kind: r.kind, ticketNumber: r.ticket_number ?? null, reversedCents: N(r.reversed_cents), requestedAt: iso(r.requested_at), reviewReason: r.review_reason ?? null })) };
+    });
+    return { total: groups.reduce((a, g) => a + g.count, 0), groups, stalePendingHours: hrs, scope: 'this location, all time (not limited to the period)', readOnly: true };
   }
 
   /** The reversal with its original tender, the ticket's other tenders, every refund on that tender, ledger links and the audit trail. */

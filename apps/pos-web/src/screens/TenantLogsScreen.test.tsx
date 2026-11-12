@@ -41,6 +41,22 @@ describe('TenantLogsScreen', () => {
     fireEvent.click(await screen.findByTestId('lgx-device-chip'));
     await waitFor(() => expect(pageMock.mock.calls.slice(-1)[0]![0].relatedId).toBeUndefined());
   });
+  it('Device Integration Logs · 02: an event with a correlation id opens that request\'s trace on the server (every category); the chip clears it; no id → no button', async () => {
+    pageMock.mockResolvedValue({ logs: [{ id: 't1', category: 'integration', severity: 'warning', source: 'payment_terminal', message: 'provider response timeout', correlationId: 'trm-req.7f3a', relatedId: null, status: null, metadata: null, createdIso: '2026-05-06T14:00:00Z' },
+      { id: 't2', category: 'device', severity: 'info', source: 'kiosk', message: 'guest checked in', correlationId: null, relatedId: null, status: null, metadata: null, createdIso: '2026-05-06T13:00:00Z' }], total: 2, page: 1, pageSize: 25, totalPages: 1, summary: { events: 2, warnings: 1, errors: 0, device: 1, integration: 1 } });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[1]);
+    await screen.findByTestId('lgx-detail');
+    expect(screen.queryByTestId('lgx-trace')).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('lgx-detail')).toBeNull());
+    fireEvent.click(screen.getAllByTestId('lgx-view')[0]);
+    fireEvent.click(await screen.findByTestId('lgx-trace'));
+    await waitFor(() => expect(pageMock).toHaveBeenLastCalledWith(expect.objectContaining({ correlationId: 'trm-req.7f3a', category: 'all', severity: 'all', page: 1 })));
+    expect(pageMock.mock.calls.slice(-1)[0]![0].relatedId).toBeUndefined();
+    fireEvent.click(await screen.findByTestId('lgx-trace-chip'));
+    await waitFor(() => expect(pageMock.mock.calls.slice(-1)[0]![0].correlationId).toBeUndefined());
+  });
   it('an event opens its details', async () => {
     render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
     fireEvent.click((await screen.findAllByTestId('lgx-view'))[1]);

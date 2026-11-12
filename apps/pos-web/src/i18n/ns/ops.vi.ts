@@ -1646,4 +1646,19 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.technicians.verified_certificate_expired.fix": "Xin chứng chỉ đã gia hạn rồi xác minh lại.", // DRAFT — Kevin reviews
   "syschk.technicians.profile_change_waiting": "Không có thay đổi hồ sơ nào chờ duyệt quá 7 ngày", // DRAFT — Kevin reviews
   "syschk.technicians.profile_change_waiting.fix": "Duyệt hoặc từ chối các thay đổi hồ sơ đang chờ.", // DRAFT — Kevin reviews
+  "syschk.inventory.acknowledged_still_low": "Không có cảnh báo tồn kho đã xác nhận nào vẫn ở mức cần đặt hàng (các mục này vẫn hiện trên thẻ bảng điều khiển nhưng không có trong số trên thanh bên)", // DRAFT — Kevin reviews
+  "syschk.inventory.acknowledged_still_low.fix": "Đặt hoặc nhận thêm các sản phẩm đó; bảng điều khiển và thanh bên sẽ khớp lại khi tồn kho vượt mức cần đặt hàng.", // DRAFT — Kevin reviews
+  "syschk.inventory.open_alert_not_live": "Không còn cảnh báo tồn kho mở nào cho sản phẩm đã nhập thêm, đã lưu trữ hoặc không có mức đặt hàng", // DRAFT — Kevin reviews
+  "syschk.inventory.open_alert_not_live.fix": "Mở Cảnh báo tồn kho và đóng các cảnh báo đó; các con số đã theo tồn kho thực tế.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_paid_no_technician": "Mọi dịch vụ thêm đã bán trên phiếu đã thanh toán đều ghi thợ thực hiện", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_paid_no_technician.fix": "Mở các phiếu đó và chọn thợ, để hoa hồng và tiền tip được chia đúng.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_technician_not_on_ticket": "Mọi dịch vụ thêm đã bán đều ghi cho thợ đã làm dịch vụ trên phiếu đó", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_technician_not_on_ticket.fix": "Kiểm tra các phiếu đó: dịch vụ thêm có thể ghi nhầm thợ.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_without_base_service": "Không phiếu nào có dịch vụ thêm mà thiếu dịch vụ chính", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_without_base_service.fix": "Thêm dịch vụ chính vào các phiếu đó hoặc bỏ dịch vụ thêm trước khi thanh toán.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_duplicate_charge": "Không phiếu nào tính cùng một dịch vụ thêm hai lần cho cùng một thợ", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_duplicate_charge.fix": "Xem lại các phiếu đó; nếu chỉ làm một lần, hãy bỏ dòng thừa (hoặc hoàn tiền nếu đã thanh toán).", // DRAFT — Kevin reviews
+  "lgx.trace": "Chuỗi sự kiện của yêu cầu này", // DRAFT — Kevin reviews
+  "lgx.traceOnly": "Chỉ một chuỗi sự kiện", // DRAFT — Kevin reviews
+  "lgx.traceOnlyClear": "Hiện lại mọi yêu cầu", // DRAFT — Kevin reviews
 };

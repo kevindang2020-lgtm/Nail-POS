@@ -33,6 +33,12 @@ const PAY_OK = sql`('approved','captured','completed','settled','succeeded','par
 const PAY_OPEN = sql`('created','open','pending','processing','requires_action')`;
 const INV_OPEN = sql`('open','sent','pending','partially_paid','past_due')`;
 
+/** a live add-on line on a ticket (k = ticket_service_lines) / a live base service line under another alias */
+const ADDON_LINE = sql`coalesce(k.line_kind, CASE WHEN k.is_add_on THEN 'add_on' ELSE 'service' END) = 'add_on' AND k.removed_at IS NULL AND coalesce(k.status, '') NOT IN ('cancelled', 'removed', 'voided')`;
+const BASE_LINE = (alias: 'sv') => (alias === 'sv'
+  ? sql`coalesce(sv.line_kind, CASE WHEN sv.is_add_on THEN 'add_on' ELSE 'service' END) = 'service' AND sv.removed_at IS NULL AND coalesce(sv.status, '') NOT IN ('cancelled', 'removed', 'voided')`
+  : sql`false`);
+
 export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
   // ── Expenses (/owner/finance/expenses) ─────────────────────────────────────────────────────────────────────────────
   expenses: { permission: 'owner.expenses.view', checks: [
@@ -137,6 +143,20 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'duplicate_names', severity: 'WARNING', count: (t, b) => n(sql`SELECT s.branch_id, lower(btrim(s.name)) FROM services s WHERE s.tenant_id = ${t}::uuid ${br('s', b)} AND s.status = 'active' AND s.archived_at IS NULL
         GROUP BY s.branch_id, lower(btrim(s.name)) HAVING count(*) > 1`) },
     { key: 'addon_negative_price', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM service_add_ons a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.price_cents < 0`) },
+    // extras (ADD-ONS MANAGEMENT 05 checkout wiring): a sold add-on line must be one charge, on a ticket that has the
+    // service it adds to, allocated to a technician who worked that ticket. Lines removed / cancelled / voided never count.
+    { key: 'addon_paid_no_technician', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM ticket_service_lines k JOIN tickets tk ON tk.tenant_id = k.tenant_id AND tk.id = k.ticket_id
+        WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ${ADDON_LINE} AND tk.paid_at IS NOT NULL AND k.technician_id IS NULL`) },
+    { key: 'addon_technician_not_on_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM ticket_service_lines k
+        WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ${ADDON_LINE} AND k.technician_id IS NOT NULL
+          AND EXISTS (SELECT 1 FROM ticket_service_lines sv WHERE sv.tenant_id = k.tenant_id AND sv.ticket_id = k.ticket_id AND ${BASE_LINE('sv')})
+          AND NOT EXISTS (SELECT 1 FROM ticket_service_lines sv WHERE sv.tenant_id = k.tenant_id AND sv.ticket_id = k.ticket_id AND ${BASE_LINE('sv')} AND sv.technician_id = k.technician_id)`) },
+    { key: 'addon_without_base_service', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM ticket_service_lines k
+        WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ${ADDON_LINE}
+          AND NOT EXISTS (SELECT 1 FROM ticket_service_lines sv WHERE sv.tenant_id = k.tenant_id AND sv.ticket_id = k.ticket_id AND ${BASE_LINE('sv')})`) },
+    { key: 'addon_duplicate_charge', severity: 'WARNING', count: (t, b) => n(sql`SELECT k.ticket_id FROM ticket_service_lines k
+        WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ${ADDON_LINE}
+        GROUP BY k.ticket_id, lower(btrim(k.service_name_snapshot)), k.technician_id HAVING count(*) > 1`) },
     { key: 'addon_on_archived_service', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM service_add_ons a JOIN services s ON s.tenant_id = a.tenant_id AND s.id = a.service_id
         WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.is_active AND (s.archived_at IS NOT NULL OR s.status <> 'active')`) },
   ] },
@@ -164,6 +184,21 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'duplicate_usage_movement', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_type, m.related_id, m.product_id, m.movement_type FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.related_type = 'ticket_line' AND m.movement_type = 'service_usage'   -- a usage EVENT is already one movement (uq_inv_movements_usage_source, 716)
         GROUP BY m.related_type, m.related_id, m.product_id, m.movement_type HAVING count(*) > 1`) },
+    // extras (Services & Products 2 · 04 inventory alert reconciliation): the dashboard's inventory card counts every live
+    // low product; the sidebar badge / Open Alerts leave out the ones acknowledged in this episode; the persisted alert rows
+    // keep the workflow. These two name the rows where those surfaces can disagree with the canonical stock.
+    { key: 'acknowledged_still_low', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_alerts a
+        JOIN inventory_products ip ON ip.tenant_id = a.tenant_id AND ip.id = a.product_id
+        LEFT JOIN inventory_location_stock ls ON ls.tenant_id = a.tenant_id AND ls.product_id = a.product_id AND ls.branch_id = a.branch_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.resolved_at IS NULL AND a.acknowledged_at IS NOT NULL
+          AND ip.active = true AND ip.archived_at IS NULL AND coalesce(ls.reorder_level_override, ip.reorder_level, 0) > 0
+          AND coalesce(ls.quantity_on_hand, 0) <= coalesce(ls.reorder_level_override, ip.reorder_level, 0)`) },
+    { key: 'open_alert_not_live', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_alerts a
+        LEFT JOIN inventory_products ip ON ip.tenant_id = a.tenant_id AND ip.id = a.product_id
+        LEFT JOIN inventory_location_stock ls ON ls.tenant_id = a.tenant_id AND ls.product_id = a.product_id AND ls.branch_id = a.branch_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.resolved_at IS NULL
+          AND NOT (coalesce(ip.active, false) = true AND ip.archived_at IS NULL AND coalesce(ls.reorder_level_override, ip.reorder_level, 0) > 0
+                   AND coalesce(ls.quantity_on_hand, 0) <= coalesce(ls.reorder_level_override, ip.reorder_level, 0))`) },
     { key: 'received_over_ordered_lines', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_id, m.product_id FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.movement_type = 'purchase_received' AND m.related_type = 'purchase_order'
         GROUP BY m.related_id, m.product_id

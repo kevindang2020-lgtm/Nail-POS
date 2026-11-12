@@ -231,6 +231,21 @@ export class KyselyInteractionsRepo {
     }
     return toEvidence(r);
   }
+  /** Safety Community 05 — who opened each of THIS salon's evidence files (newest first, ≤ 20 per file). Staff of the salon
+   *  are named; a platform moderator is never named (only "under a moderation case"); no user id leaves here. */
+  async evidenceAccessLog(tenantId: string, evidenceIds: string[]): Promise<{ evidenceId: string; at: string; byName: string | null; byRole: string | null; moderator: boolean; reason: string | null }[]> {
+    if (!evidenceIds.length) return [];
+    const rows = rowsOf(await sql`select x.evidence_id, x.created_at, x.full_name, x.role, x.moderator, x.reason from (
+        select l.evidence_id, l.created_at, (l.tenant_id is null or l.tenant_id <> ${tenantId}) as moderator,
+          case when l.tenant_id = ${tenantId} then u.full_name end as full_name, case when l.tenant_id = ${tenantId} then u.role end as role,
+          case when l.tenant_id = ${tenantId} then l.reason end as reason,
+          row_number() over (partition by l.evidence_id order by l.created_at desc, l.id desc) as rk
+        from community_evidence_access_log l
+        join community_evidence ce on ce.id = l.evidence_id and ce.tenant_id = ${tenantId}
+        left join users u on u.id = l.user_id and u.tenant_id = ${tenantId}
+        where l.evidence_id = any(${evidenceIds}::uuid[])) x where x.rk <= 20 order by x.evidence_id, x.created_at desc`.execute(this.db));
+    return rows.map((r: any) => ({ evidenceId: String(r.evidence_id), at: new Date(r.created_at).toISOString(), byName: r.full_name ?? null, byRole: r.role ?? null, moderator: !!r.moderator, reason: r.reason ?? null }));
+  }
   async logEvidenceAccess(a: { evidenceId: string; tenantId: string | null; userId: string; caseId: string | null; reason: string }): Promise<void> {
     await sql`insert into community_evidence_access_log (evidence_id, tenant_id, user_id, case_id, reason) values (${a.evidenceId}, ${a.tenantId}, ${a.userId}, ${a.caseId}, ${a.reason})`.execute(this.db);
   }

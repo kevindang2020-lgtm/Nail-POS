@@ -159,6 +159,27 @@ describe('Alerts', () => {
     expect((await q(`select count(*)::int as n from audit_events where tenant_id = $1 and action like 'money_protection_alert.%'`, [T]))[0].n).toBe(3);
     expect((await q(`select count(*)::int as n from payments where tenant_id = $1`, [T]))[0].n).toBe(4);   // nothing moved
   });
+  it('AL-06 batch triage (MONEY PROTECTION ALERTS 13): preview says per alert what would happen and writes nothing; confirm runs the single-alert action per alert', async () => {
+    const all = ctx({ branchId: null });
+    const audits = async () => (await q(`select count(*)::int as n from audit_events where tenant_id = $1 and action like 'money_protection_alert.%'`, [T]))[0].n;
+    const a0 = await audits();
+    const p: any = await mc.alertBatch(all, { action: 'acknowledge', ids: [A1, A2, id(999), 'not-a-uuid'] });
+    expect(p).toMatchObject({ preview: true, movesMoney: false, counts: { ready: 1, notFound: 1, stateInvalid: 1, ownActivity: 0 } });
+    expect(p.items.find((i: any) => i.id === A2)).toMatchObject({ outcome: 'ready', status: 'NEW', to: 'ACKNOWLEDGED' });
+    expect(p.items.find((i: any) => i.id === A1)).toMatchObject({ outcome: 'state_invalid', status: 'ACKNOWLEDGED', to: null });
+    expect((await mc.alertBatch(ctx(), { action: 'acknowledge', ids: [A2] }) as any).counts.notFound).toBe(1);            // another branch: not seen
+    expect((await mc.alertBatch(ctx({ userId: CASHIER, branchId: null }), { action: 'dismiss', ids: [A1] }) as any).items[0].outcome).toBe('own_activity');
+    expect(await audits()).toBe(a0);                                                                                      // a preview writes nothing
+    expect(await code(mc.alertBatch(all, { action: 'dismiss', ids: [A2], confirm: true, reason: 'no' }))).toBe('MC_REASON_REQUIRED');
+    expect(await code(mc.alertBatch(all, { action: 'acknowledge', ids: [] }))).toBe('VALIDATION_FAILED');
+    expect(await code(mc.alertBatch(ctx({ permissions: ['ai_money_protection.view_alerts'] }), { action: 'acknowledge', ids: [A2] }))).toBe('PERMISSION_DENIED');
+    const r: any = await mc.alertBatch(all, { action: 'acknowledge', ids: [A1, A2], confirm: true });
+    expect(r).toMatchObject({ preview: false, applied: 1, refused: 1 });
+    expect(r.results.find((x: any) => x.id === A2)).toMatchObject({ outcome: 'applied', status: 'ACKNOWLEDGED' });
+    expect(r.results.find((x: any) => x.id === A1)).toMatchObject({ outcome: 'refused', code: 'state_invalid' });
+    expect(await audits()).toBe(a0 + 1);
+    expect((await q(`select count(*)::int as n from payments where tenant_id = $1`, [T]))[0].n).toBe(4);   // nothing moved
+  });
 });
 
 describe('Investigations', () => {

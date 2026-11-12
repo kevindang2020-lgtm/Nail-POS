@@ -2,7 +2,7 @@
 // Guards: TenantAuthGuard + RolePermissionGuard; tenant / branch / role from req.ctx. Permissions (re-checked in the center):
 //   ai_money_protection.view           summary · investigations · investigations/timeline · rules · settings/history · detection/runs · check
 //   ai_money_protection.view_alerts    alerts · alerts/detail
-//   ai_money_protection.investigate    alerts/action (acknowledge · dismiss · reopen — reason; never about your own activity)
+//   ai_money_protection.investigate    alerts/action (acknowledge · dismiss · reopen — reason; never about your own activity; ids[] = batch triage: preview, then confirm: true)
 //   ai_money_protection.manage_settings rules/save (reason to turn a rule off or lower it; stale edits refused; dryRun: true = Threshold Change Preview, nothing saved)
 //   ai_money_protection.manage_rules   detection/run (one recorded pass; once per 2 minutes)
 // Nothing here moves money: no charge, refund, reversal, settlement or write-off.
@@ -16,7 +16,7 @@ import { MoneyProtectionCenter, MoneyCenterError, MC_ALERT_GROUPS, MC_SEVERITIES
 export const MONEY_PROTECTION_CENTER = 'MoneyProtectionCenter';
 const str = (max: number): BodySchema => S.nullable(S.string({ maxLength: max }));
 export const MC_EMPTY_BODY: BodySchema = S.object({});
-export const MC_ACTION_BODY: BodySchema = S.object({ id: str(64), action: str(20), reason: str(1000), expectedStatus: str(40) });
+export const MC_ACTION_BODY: BodySchema = S.object({ id: str(64), action: str(20), reason: str(1000), expectedStatus: str(40), ids: S.nullable(S.array(S.string({ maxLength: 64 }), { maxItems: 50 })), confirm: S.nullable(S.boolean()) });
 export const MC_RULE_BODY: BodySchema = S.object({ ruleId: str(64), enabled: S.nullable(S.boolean()), severityOverride: str(16), thresholds: S.nullable(S.bounded(S.freeObject(), 2, 40)),
   reason: str(1000), expectedUpdatedAt: str(40), dryRun: S.nullable(S.boolean()) });
 function ctxFrom(req: any): McCtx {
@@ -55,7 +55,7 @@ export class MoneyProtectionCenterController {
 
   /** acknowledge · dismiss · reopen (append-only, audited) */
   @Post('alerts/action') @RequirePermission('ai_money_protection.view_alerts')
-  alertAction(@Req() q: any, @Body(ValidatedBody(MC_ACTION_BODY, { strict: true })) b: any) { const c = ctxFrom(q); authed(c); return run(() => this.c().alertAction(c, String(b?.id ?? ''), b ?? {})); }
+  alertAction(@Req() q: any, @Body(ValidatedBody(MC_ACTION_BODY, { strict: true })) b: any) { const c = ctxFrom(q); authed(c); if (Array.isArray(b?.ids)) return run(() => this.c().alertBatch(c, b)); return run(() => this.c().alertAction(c, String(b?.id ?? ''), b ?? {})); }
 
   @Get('investigations') @RequirePermission('ai_money_protection.view') @ListQuery(INVS)
   investigations(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); authed(c); return run(() => this.c().investigations(c, f ?? {})); }

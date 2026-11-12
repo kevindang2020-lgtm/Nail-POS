@@ -32,7 +32,8 @@ const defaults = (): Record<string, R> => ({
   [`POST ${B}/posts/p1/appeal`]: { body: { id: 'a1', postId: 'p1', subject: 'post_removed', reason: 'x', status: 'submitted', decisionNote: null, createdAt: '', decidedAt: null } },
   [`POST ${B}/posts/p1/updates`]: { body: {} },
   [`POST ${B}/posts/p1/resolve`]: { body: {} },
-  [`GET ${B}/posts/p1/evidence`]: { body: [{ id: 'e1', mimeType: 'image/png', sizeBytes: 2048, uploadStatus: 'uploaded', scanStatus: 'clean', redactionStatus: 'not_required', createdAt: '2026-10-08T12:00:00Z' }] },
+  [`GET ${B}/posts/p1/evidence`]: { body: [{ id: 'e1', mimeType: 'image/png', sizeBytes: 2048, uploadStatus: 'uploaded', scanStatus: 'clean', redactionStatus: 'not_required', createdAt: '2026-10-08T12:00:00Z',
+    accessLog: [{ at: '2026-10-09T15:00:00Z', byName: null, byRole: null, moderator: true, reason: null }, { at: '2026-10-08T13:00:00Z', byName: 'Amy Owner', byRole: 'OWNER', moderator: false, reason: 'checking before a dispute' }] }] },
   [`GET ${B}/evidence/e1/access`]: { body: { url: 'https://s3.example/e1?sig', expiresAt: '' } },
 });
 const renderPost = (id = 'p1') => render(<MemoryRouter initialEntries={[`/community/posts/${id}`]}><Routes><Route path="/community/posts/:id" element={<CommunityPostScreen />} /><Route path="/community/drafts/:id" element={<div data-testid="editor-route" />} /></Routes></MemoryRouter>);
@@ -184,6 +185,15 @@ describe('post detail (the deep link)', () => {
     await waitFor(() => expect(open).toHaveBeenCalledWith('https://s3.example/e1?sig', '_blank', 'noopener'));
     expect(sent('GET', `${B}/evidence/e1/access`)[0].query.get('reason')).toBe('checking the screenshot');
     open.mockRestore();
+  });
+  it('Safety Community 05: each private file lists who opened it, when and why — a moderator is never named', async () => {
+    server.post = own();
+    renderPost();
+    const tl = await screen.findByTestId('community-evidence-access');
+    expect(tl).toHaveTextContent('Who opened this file (2)');
+    const rows = screen.getAllByTestId('community-evidence-access-row');
+    expect(rows[0]).toHaveTextContent('A platform moderator, under a moderation case');
+    expect(rows[1]).toHaveTextContent('Amy Owner — checking before a dispute');
   });
   it('a post another salon cannot see → plain message, no crash', async () => {
     routes[`GET ${B}/posts/p1`] = err(403, 'not_visible');
