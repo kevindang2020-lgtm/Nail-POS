@@ -1538,4 +1538,7 @@ export const OPS_EN = {
   "lgx.role.checkout": "Runs checkout and front-desk work at its station",
   "lgx.role.display": "Shows customers their total and tip prompt at checkout",
   "lgx.role.checkin": "Lets customers check themselves in",
+  "lgx.deviceHistory": "This device’s history",
+  "lgx.deviceOnly": "One device only",
+  "lgx.deviceOnlyClear": "Show every device again",
 };

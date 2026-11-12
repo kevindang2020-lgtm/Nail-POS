@@ -115,6 +115,15 @@ export class CouponCenter {
           or (d.max_per_customer is not null and exists (select 1 from deal_redemptions r where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed') and r.customer_id is not null
                 group by r.customer_id having count(*) > d.max_per_customer)))
         order by d.created_at, d.id limit 50`.execute(this.db)).rows);
+    // Promotions backlog · 11 "Fraud/Abuse Signals" (repeat-account part): one phone number behind two or more customer
+    // records that each completed the SAME offer — a way around a per-customer limit. A signal for a person to review; no
+    // customer, redemption or offer is changed or penalised.
+    await run('repeat_accounts', 'No offer was used by several customer records that share one phone number.', (n) => `${n} coupon(s) were used by two or more customer records with the same phone number (possible duplicate accounts getting around a per-customer limit). Review the redemptions; nothing was changed.`,
+      async () => (await sql<any>`select d.id from deals d where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and exists (
+          select 1 from deal_redemptions r join customers c on c.id = r.customer_id and c.tenant_id = r.tenant_id
+          where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed') and c.normalized_phone is not null and c.normalized_phone <> ''
+          group by c.normalized_phone having count(distinct r.customer_id) > 1)
+        order by d.created_at, d.id limit 50`.execute(this.db)).rows);
     // Promotions backlog · 07 "Code Conflict Finder": codes themselves are unique per salon (uq_deal_coupon_code), so the real
     // conflict is two live / scheduled offers that are BOTH marked combinable, cover the same service (no service list = every
     // service), the same branch scope and overlapping dates — Checkout may stack them on one ticket. Flagged for a person to

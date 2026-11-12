@@ -229,7 +229,7 @@ describe('§11 related campaigns, §19 health, §16 assistant (draft only)', () 
   });
   it('health is ready from verified checks; a drifted counter and a payment that never marked its coupon are flagged — nothing is auto-fixed', async () => {
     const h0 = await center.health(ctx);
-    expect(h0.checks.map((c) => [c.key, c.status])).toEqual([['counters', 'ready'], ['paid_not_marked', 'ready'], ['stuck_holds', 'ready'], ['confirmed_unpaid', 'ready'], ['expiry_lag', 'ready'], ['cap_exceeded', 'ready'], ['stacking_overlap', 'ready']]);
+    expect(h0.checks.map((c) => [c.key, c.status])).toEqual([['counters', 'ready'], ['paid_not_marked', 'ready'], ['stuck_holds', 'ready'], ['confirmed_unpaid', 'ready'], ['expiry_lag', 'ready'], ['cap_exceeded', 'ready'], ['repeat_accounts', 'ready'], ['stacking_overlap', 'ready']]);
     await q(`update deals set redemption_count = redemption_count + 3 where id = $1`, [vishal.id]);
     const t = await ticket(C1, [[S10, 1000]]); await applyAtCheckout(t, { code: 'VISHALNG20' });
     await q(`update tickets set status = 'paid' where id = $1`, [t]);   // paid, but onPaid never ran
@@ -314,6 +314,23 @@ describe('Coupons — stacking conflict check', () => {
     await q(`update deals set max_per_customer = null, max_redemptions = 1 where id = $1`, [once.id]);   // total cap 1, two completed uses
     expect((await key())).toMatchObject({ status: 'attention', sample: [once.id] });
     await q(`update deals set max_redemptions = null where id = $1`, [once.id]);
+  });
+  it('Fraud/Abuse (repeat accounts): two customer records with ONE phone both completing the same offer is a signal; nothing is changed', async () => {
+    const key = async () => (await center.health(ctx)).checks.find((c) => c.key === 'repeat_accounts')!;
+    const before = await key();
+    const twin = id('c3');
+    await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status) values ($1,$2,$3,'Ava','K','Ava K','+16095550101','active')`, [twin, T, B]);   // C1's phone
+    const promo = await coupon('Welcome', 'WELCOMEONE', { maxPerCustomer: 1 });
+    const ins = (cust: string, st = 'redeemed') => q(`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, deal_version, status, amount_discounted_cents) values ($1,$2,$3,$4,1,$5,100)`, [promo.id, T, B, cust, st]);
+    await ins(C1); await ins(C2);                          // two people, two phones: fine
+    expect((await key()).sample).not.toContain(promo.id);
+    await ins(twin, 'released');                           // a released hold is not a completed use
+    expect((await key()).sample).not.toContain(promo.id);
+    await ins(twin);                                       // same phone as C1, completed
+    const k = await key();
+    expect(k.status).toBe('attention'); expect(k.sample).toContain(promo.id); expect(k.count).toBe((before.count ?? 0) + 1);
+    expect((await q(`select count(*)::int n from customers where id = any($1::uuid[]) and status = 'active'`, [[C1, twin]]))[0].n).toBe(2);   // nobody merged or blocked
+    expect((await redemptions(promo.id)).filter((r: any) => r.status === 'redeemed').length).toBe(3);
   });
 });
 

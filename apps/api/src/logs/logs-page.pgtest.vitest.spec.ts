@@ -41,6 +41,21 @@ describe('Device & Integration Logs — pages', () => {
     expect(p2.logs).toHaveLength(0); expect(p2.total).toBe(2);
     await expect(svc.query(ctx, { page: 1, from: '2026-11-09', to: '2026-11-01' })).rejects.toBeInstanceOf(ValidationError);
   });
+  // Device Integration Logs backlog · 03: one device's connection timeline — only the events that point at that device, newest first
+  it('LG-04 one device\'s history: relatedId keeps that device\'s events only (newest first) and the counts follow', async () => {
+    const D1 = 'c8460000-0000-4000-8000-0000000000d1', D2 = 'c8460000-0000-4000-8000-0000000000d2';
+    await q(sql`insert into audit_logs (tenant_id, branch_id, action_type, entity_type, entity_id, created_at) values
+      (${T}, ${B}, 'customer_display_registered', 'customer_display', ${D1}, '2026-11-01T09:00:00Z'),
+      (${T}, ${B}, 'customer_display_offline', 'customer_display', ${D1}, '2026-11-02T09:00:00Z'),
+      (${T}, ${B}, 'customer_display_reconnected', 'customer_display', ${D1}, '2026-11-02T09:05:00Z'),
+      (${T}, ${B}, 'customer_display_registered', 'customer_display', ${D2}, '2026-11-02T10:00:00Z'),
+      (${X}, null, 'customer_display_registered', 'customer_display', ${D1}, '2026-11-02T11:00:00Z')`);
+    const r = await svc.query(ctx, { page: 1, pageSize: 10, relatedId: D1 });
+    expect(r.logs.map((l) => l.message)).toEqual(['customer display reconnected', 'customer display offline', 'customer display registered']);
+    expect(r.logs.every((l) => l.relatedId === D1)).toBe(true);
+    expect(r.summary).toEqual({ events: 3, warnings: 1, errors: 0, device: 3, integration: 0 });   // "offline" is a warning; another salon's row is not here
+    expect((await svc.query(ctx, { page: 1, pageSize: 10, relatedId: "x' or 1=1 --" })).total).toBe(8);   // an unsafe id is ignored, never interpolated
+  });
   it('LG-03 the legacy shape (no page) is unchanged', async () => {
     const r = await svc.query(ctx, { limit: 50 });
     expect(Object.keys(r)).toEqual(['logs']);

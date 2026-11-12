@@ -26,6 +26,21 @@ describe('TenantLogsScreen', () => {
     fireEvent.change(screen.getByDisplayValue('All severities'), { target: { value: 'error' } });
     await waitFor(() => expect(pageMock).toHaveBeenLastCalledWith(expect.objectContaining({ severity: 'error', page: 1 })));
   });
+  it('Device Integration Logs · 03: a device event opens that device\'s own timeline on the server; the chip clears it; an integration event has no such button', async () => {
+    pageMock.mockResolvedValue({ logs: [{ id: 'd1', category: 'device', severity: 'warning', source: 'customer_display', message: 'customer display offline', correlationId: null, relatedId: 'disp-1', status: null, metadata: null, createdIso: '2026-05-06T14:00:00Z' }, logs[1]], total: 2, page: 1, pageSize: 25, totalPages: 1, summary: { events: 2, warnings: 1, errors: 1, device: 1, integration: 1 } });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[1]);
+    await screen.findByTestId('lgx-detail');
+    expect(screen.queryByTestId('lgx-device-history')).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('lgx-detail')).toBeNull());
+    fireEvent.click(screen.getAllByTestId('lgx-view')[0]);
+    fireEvent.click(await screen.findByTestId('lgx-device-history'));
+    await waitFor(() => expect(pageMock).toHaveBeenLastCalledWith(expect.objectContaining({ relatedId: 'disp-1', category: 'device', severity: 'all', page: 1 })));
+    expect(screen.queryByTestId('lgx-detail')).toBeNull();
+    fireEvent.click(await screen.findByTestId('lgx-device-chip'));
+    await waitFor(() => expect(pageMock.mock.calls.slice(-1)[0]![0].relatedId).toBeUndefined());
+  });
   it('an event opens its details', async () => {
     render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
     fireEvent.click((await screen.findAllByTestId('lgx-view'))[1]);

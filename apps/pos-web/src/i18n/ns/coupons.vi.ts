@@ -58,4 +58,5 @@ export const COUPONS_VI = {
   'cp.assistSave': 'Lưu bản nháp', 'cp.assistSafety': 'Lưu chỉ tạo bản nháp. Kích hoạt và gửi cho khách là các bước riêng, cần duyệt.',
   'cp.check.stacking_overlap': 'Không có phiếu đang chạy nào vô tình cộng dồn với nhau', // DRAFT — Kevin reviews
   'cp.check.cap_exceeded': 'Không có phiếu nào bị dùng quá giới hạn', // DRAFT — Kevin reviews
+  'cp.check.repeat_accounts': 'Không có phiếu nào bị dùng bởi hồ sơ khách trùng nhau', // DRAFT — Kevin reviews
 } as const;

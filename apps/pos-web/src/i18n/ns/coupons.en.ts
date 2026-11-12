@@ -59,4 +59,5 @@ export const COUPONS_EN = {
   'cp.assistSave': 'Save as draft', 'cp.assistSafety': 'Saving makes a draft only. Activating it and sending it to anyone are separate, approved steps.',
   'cp.check.stacking_overlap': 'No accidental stacking between live coupons',
   'cp.check.cap_exceeded': 'No coupon used past its limits',
+  'cp.check.repeat_accounts': 'No coupon used by duplicate customer records',
 } as const;

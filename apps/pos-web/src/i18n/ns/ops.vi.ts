@@ -1537,4 +1537,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.role.checkout": "Chạy thanh toán và việc quầy lễ tân tại trạm của nó", // DRAFT — Kevin reviews
   "lgx.role.display": "Cho khách xem tổng tiền và lời mời tip khi thanh toán", // DRAFT — Kevin reviews
   "lgx.role.checkin": "Cho khách tự check-in", // DRAFT — Kevin reviews
+  "lgx.deviceHistory": "Lịch sử của thiết bị này", // DRAFT — Kevin reviews
+  "lgx.deviceOnly": "Chỉ một thiết bị", // DRAFT — Kevin reviews
+  "lgx.deviceOnlyClear": "Hiện lại mọi thiết bị", // DRAFT — Kevin reviews
 };

@@ -5,7 +5,7 @@ export type LogsPage = { logs: LogEntryView[]; total: number; page: number; page
 export const posLogsApi = {
   list: (params?: { category?: string; severity?: string; source?: string; search?: string; limit?: number }) => api.get<{ logs: LogEntryView[] }>('/pos/logs', params as any),
   /** SUNMI batch 8 (Nov 9 2026): dated, numbered pages (newest first) + the range's counts — device events included */
-  page: (p: { category?: string; severity?: string; search?: string; from?: string; to?: string; page: number; pageSize: number }) =>
+  page: (p: { category?: string; severity?: string; search?: string; relatedId?: string; from?: string; to?: string; page: number; pageSize: number }) =>
     api.get<LogsPage>('/pos/logs', Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== '' && v !== 'all'))),
 };
 export type { LogEntryView };

@@ -41,4 +41,5 @@ export const DEALSOFFERS_VI = {
   'do.sla.passed': 'Đã qua giờ bắt đầu — vẫn chờ quyết định', // DRAFT — Kevin reviews
   'do.check.stacking_overlap': 'Không có ưu đãi đang chạy nào vô tình cộng dồn với nhau', // DRAFT — Kevin reviews
   'do.check.cap_exceeded': 'Không có ưu đãi nào bị dùng quá giới hạn', // DRAFT — Kevin reviews
+  'do.check.repeat_accounts': 'Không có ưu đãi nào bị dùng bởi hồ sơ khách trùng nhau', // DRAFT — Kevin reviews
 } as const;

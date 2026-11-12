@@ -42,4 +42,5 @@ export const DEALSOFFERS_EN = {
   'do.sla.passed': 'Start time passed — still waiting for a decision',
   'do.check.stacking_overlap': 'No accidental stacking between live offers',
   'do.check.cap_exceeded': 'No offer used past its limits',
+  'do.check.repeat_accounts': 'No offer used by duplicate customer records',
 } as const;
