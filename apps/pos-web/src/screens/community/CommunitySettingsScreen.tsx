@@ -203,8 +203,42 @@ function CommunityAnalyticsCard() {
           </div>
           {data.topCategories.length ? <div style={{ fontSize: 12.5 }}>{tx('pos.top_categories')}{' '}{data.topCategories.map((t) => `${CATEGORY_LABEL[t.category] ?? t.category} (${t.count})`).join(', ')}</div> : null}
           {Object.keys(data.posts).length ? <div style={muted}>{tx('pos.by_status_2')}{' '}{Object.entries(data.posts).map(([k, v]) => `${pretty(k)} ${v}`).join(' · ')}</div> : null}
+          <AlertPreview preview={(data as CommunityTenantAnalytics & { alertPreview?: AlertPreviewView }).alertPreview} />
         </>
       ) : null}
     </section>
+  );
+}
+
+/** extras Safety Community 07 — the server runs the fan-out's own plan over the range for this salon (counts only). */
+type AlertPreviewView = {
+  communityEnabled: boolean; considered: number; wouldReceive: number; truncated: boolean;
+  byReason: { critical: number; follow: number; category: number; default: number };
+  channels: { inApp: number; push: number; email: number; sms: number };
+  bySeverity: { severity: string; count: number }[]; byCategory: { category: string; count: number }[];
+};
+function AlertPreview({ preview: p }: { preview: AlertPreviewView | undefined }) {
+  if (!p) return null;
+  const sev = (s: string) => SEVERITY_LABEL[s as CommunitySeverity] ?? pretty(s);
+  const cat = (c: string) => CATEGORY_LABEL[c as CommunityCategory] ?? pretty(c);
+  return (
+    <div style={{ display: 'grid', gap: 4, borderTop: '1px solid rgba(0,0,0,.08)', paddingTop: 8 }} data-testid="community-alert-preview">
+      <strong style={{ fontSize: 13.5 }}>{tx('growth.community.preview.title')}</strong>
+      {!p.communityEnabled ? <div style={muted}>{tx('growth.community.preview.off')}</div> : (
+        <>
+          <div style={{ fontSize: 13 }}>{tx('growth.community.preview.summary', { n: String(p.wouldReceive), m: String(p.considered) })}</div>
+          {p.wouldReceive > 0 ? (
+            <>
+              <div style={{ fontSize: 12.5 }}>{tx('growth.community.preview.reasons', { a: String(p.byReason.critical), b: String(p.byReason.follow), c: String(p.byReason.category), d: String(p.byReason.default) })}</div>
+              <div style={{ fontSize: 12.5 }}>{tx('growth.community.preview.channels', { a: String(p.channels.inApp), b: String(p.channels.push), c: String(p.channels.email), d: String(p.channels.sms) })}</div>
+              <div style={muted}>{p.bySeverity.map((x) => `${sev(x.severity)} ${x.count}`).join(' · ')}</div>
+              <div style={muted}>{p.byCategory.map((x) => `${cat(x.category)} (${x.count})`).join(', ')}</div>
+            </>
+          ) : null}
+          {p.truncated ? <div style={muted}>{tx('growth.community.preview.truncated', { m: String(p.considered) })}</div> : null}
+        </>
+      )}
+      <div style={muted}>{tx('growth.community.preview.note')}</div>
+    </div>
   );
 }

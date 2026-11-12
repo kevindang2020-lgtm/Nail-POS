@@ -85,6 +85,27 @@ describe('community settings', () => {
     const q = sent('GET', `${B}/analytics`)[0].query;
     expect(q.get('from')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(q.get('to')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(screen.queryByTestId('community-alert-preview')).toBeNull();   // an older server sends no preview: nothing invented
+  });
+  it('extras Safety Community 07 — the alert preview shows the server\'s counts by reason, channel, severity and category; off says so', async () => {
+    const preview = { communityEnabled: true, considered: 5, wouldReceive: 3, truncated: false, byReason: { critical: 1, follow: 1, category: 1, default: 0 },
+      channels: { inApp: 3, push: 3, email: 2, sms: 1 }, bySeverity: [{ severity: 'critical', count: 1 }, { severity: 'high', count: 1 }], byCategory: [{ category: 'phone_scam', count: 2 }] };
+    routes[`GET ${B}/analytics`] = { body: { from: '2026-09-08', to: '2026-10-08', posts: {}, published: 0, comments: 0, similarReports: 0, followers: 0, avgHoursToPublish: null, topCategories: [], alertPreview: preview } };
+    const { unmount } = renderIt();
+    const p = await screen.findByTestId('community-alert-preview');
+    expect(p).toHaveTextContent('3 of the 5 advisories other salons published would have reached us.');
+    expect(p).toHaveTextContent('Critical (always sent): 1 · Matched a follow: 1 · A category we chose: 1 · No preferences set (we hear everything): 0');
+    expect(p).toHaveTextContent('In-app: 3 · Push: 3 · Email: 2 · Text (critical only): 1');
+    expect(p).toHaveTextContent('Critical 1 · High 1');
+    expect(p).toHaveTextContent('Phone scam (2)');
+    expect(p).toHaveTextContent('nothing is sent');
+    unmount();
+    routes[`GET ${B}/analytics`] = { body: { from: '2026-09-08', to: '2026-10-08', posts: {}, published: 0, comments: 0, similarReports: 0, followers: 0, avgHoursToPublish: null, topCategories: [],
+      alertPreview: { ...preview, communityEnabled: false, wouldReceive: 0 } } };
+    renderIt();
+    const off = await screen.findByTestId('community-alert-preview');
+    expect(off).toHaveTextContent('Safety Community is off for this salon, so no alerts would arrive.');
+    expect(off).not.toHaveTextContent('would have reached us');
   });
 });
 

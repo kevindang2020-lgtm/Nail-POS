@@ -3,6 +3,7 @@
 // parser and the response shape. Only the salon's OWN posts are counted — never another salon's activity.
 import type { CommunityCategory, CommunityTenantAnalytics } from '@aipowersalon/api-contracts/tenant';
 import { utcDate, addDays } from '@aipowersalon/date-time';
+import { planFanout, type FanoutRecipient } from './community-notify';
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 export const ANALYTICS_MAX_DAYS = 366;
@@ -39,4 +40,46 @@ export function shapeAnalytics(from: string, to: string, r: AnalyticsRaw): Commu
     topCategories: [...r.categories].sort((a, b) => Number(b.n) - Number(a.n) || a.category.localeCompare(b.category)).slice(0, 5)
       .map((c) => ({ category: c.category as CommunityCategory, count: Number(c.n) })),
   };
+}
+
+// ── extras Safety Community 07: Region Alert Preferences Preview ─────────────────────────────────────────────────────
+// What THIS salon's saved alert preferences would have brought it over the same range: every advisory another salon
+// published (still published) is run through the fan-out's own plan (planFanout — the one rule, never a second copy) with
+// this salon as the only recipient. Only counts leave — by reason, channel, severity and category; never a title, body,
+// id or author, so no source case is exposed. Read-only: nothing is sent and nothing is stored.
+export const ALERT_PREVIEW_MAX_POSTS = 2000;
+export interface AlertPreviewSummary {
+  /** false = the community is off for this salon (or never set up): it would receive nothing */
+  communityEnabled: boolean;
+  considered: number; wouldReceive: number; truncated: boolean;
+  byReason: { critical: number; follow: number; category: number; default: number };
+  channels: { inApp: number; push: number; email: number; sms: number };
+  bySeverity: { severity: string; count: number }[];
+  byCategory: { category: string; count: number }[];
+}
+export function previewAlerts(
+  posts: { originTenantId: string; category: string; region: string | null; severity: string }[],
+  me: FanoutRecipient | null,
+  limit = ALERT_PREVIEW_MAX_POSTS,
+): AlertPreviewSummary {
+  const out: AlertPreviewSummary = {
+    communityEnabled: !!me?.communityEnabled, considered: Math.min(posts.length, limit), wouldReceive: 0, truncated: posts.length >= limit,
+    byReason: { critical: 0, follow: 0, category: 0, default: 0 }, channels: { inApp: 0, push: 0, email: 0, sms: 0 }, bySeverity: [], byCategory: [],
+  };
+  if (!me) return out;
+  const sev = new Map<string, number>(); const cat = new Map<string, number>();
+  for (const p of posts.slice(0, limit)) {
+    const hit = planFanout(p, [me])[0];
+    if (!hit) continue;
+    out.wouldReceive++; out.byReason[hit.reason]++;
+    out.channels.inApp++;
+    if (hit.push) out.channels.push++;
+    if (hit.email) out.channels.email++;
+    if (hit.sms) out.channels.sms++;
+    sev.set(p.severity, (sev.get(p.severity) ?? 0) + 1); cat.set(p.category, (cat.get(p.category) ?? 0) + 1);
+  }
+  const RANK: Record<string, number> = { critical: 0, high: 1, moderate: 2, low: 3, informational: 4 };
+  out.bySeverity = [...sev].map(([severity, count]) => ({ severity, count })).sort((a, b) => (RANK[a.severity] ?? 9) - (RANK[b.severity] ?? 9));
+  out.byCategory = [...cat].map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+  return out;
 }

@@ -161,4 +161,15 @@ export interface CommunityTenantAnalytics {
   published: number; comments: number; similarReports: number; followers: number;
   avgHoursToPublish: number | null;
   topCategories: { category: CommunityCategory; count: number }[];
+  /** extras Safety Community 07: what THIS salon's saved alert preferences would have brought it over the same range —
+   *  counts only (the fan-out's own plan per advisory another salon published); never a title, body, id or author. */
+  alertPreview?: CommunityAlertPreview;
+}
+export interface CommunityAlertPreview {
+  communityEnabled: boolean;
+  considered: number; wouldReceive: number; truncated: boolean;
+  byReason: { critical: number; follow: number; category: number; default: number };
+  channels: { inApp: number; push: number; email: number; sms: number };
+  bySeverity: { severity: string; count: number }[];
+  byCategory: { category: string; count: number }[];
 }

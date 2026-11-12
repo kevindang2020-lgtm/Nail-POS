@@ -8,7 +8,7 @@
 // Everything a salon OWNS (its follows, its evidence, its similar report, its analytics, its retention purge) is
 // scoped by `tenant_id` / `origin_tenant_id` = the caller's salon from the server-side session.
 import { randomUUID } from 'crypto';
-import { sql, type Kysely, type Transaction } from 'kysely';
+import { sql, type Kysely, type RawBuilder, type Transaction } from 'kysely';
 import { canMoveToSql, InvalidStateTransitionError } from '@aipowersalon/database';
 import { COMMUNITY_EVIDENCE_REDACTION, COMMUNITY_EVIDENCE_SCAN, COMMUNITY_EVIDENCE_UPLOAD, COMMUNITY_POST } from './community-lifecycles';
 import type { CommentRecord } from './community-comments';
@@ -290,13 +290,21 @@ export class KyselyInteractionsRepo {
   }
   /** Every ENABLED, ACTIVE salon except the author, with its alert preferences and contact (never invented). */
   async fanoutRecipients(excludeTenantId: string): Promise<FanoutRecipient[]> {
+    return this.recipients(sql`s.enabled = true and t.status = 'active' and s.tenant_id <> ${excludeTenantId}`);
+  }
+  /** ONE salon's own alert preferences, enabled or not (extras Safety Community 07 — the alert preview reads exactly what
+   *  the fan-out would read for it). null when the salon has never saved community settings. */
+  async fanoutRecipientOf(tenantId: string): Promise<FanoutRecipient | null> {
+    return (await this.recipients(sql`s.tenant_id = ${tenantId}`))[0] ?? null;
+  }
+  private async recipients(where: RawBuilder<unknown>): Promise<FanoutRecipient[]> {
     return rowsOf(await sql`
       select s.tenant_id, s.enabled, s.notify_categories, s.region_preferences, s.push_enabled, s.email_enabled, s.critical_sms_enabled,
              t.email, t.business_phone,
              coalesce((select json_agg(json_build_object('category', f.category, 'region', f.region, 'severityMin', f.severity_min, 'channels', f.channels))
                          from community_follows f where f.tenant_id = s.tenant_id), '[]'::json) as follows
         from tenant_community_settings s join tenants t on t.id = s.tenant_id
-       where s.enabled = true and t.status = 'active' and s.tenant_id <> ${excludeTenantId}`.execute(this.db))
+       where ${where}`.execute(this.db))
       .map((r) => ({
         tenantId: String(r.tenant_id), communityEnabled: !!r.enabled,
         notifyCategories: jarr(r.notify_categories).map(String), regionPreferences: jarr(r.region_preferences).map(String),
@@ -304,6 +312,15 @@ export class KyselyInteractionsRepo {
         pushEnabled: !!r.push_enabled, emailEnabled: !!r.email_enabled, criticalSmsEnabled: !!r.critical_sms_enabled,
         email: r.email ? String(r.email) : null, phone: r.business_phone ? String(r.business_phone) : null,
       }));
+  }
+  /** Advisories OTHER salons published in [from, to) that are still published — only what the fan-out plan reads
+   *  (category, region, severity, author salon); never a title, body or id (extras Safety Community 07). */
+  async publishedForPreview(excludeTenantId: string, fromTs: string, toTs: string, limit: number): Promise<{ originTenantId: string; category: string; region: string | null; severity: string }[]> {
+    return rowsOf(await sql`select origin_tenant_id, category, region, severity from community_posts
+       where visibility = 'community_published' and origin_tenant_id <> ${excludeTenantId}
+         and published_at >= ${fromTs}::timestamptz and published_at < ${toTs}::timestamptz
+       order by published_at desc limit ${limit}`.execute(this.db))
+      .map((r) => ({ originTenantId: String(r.origin_tenant_id), category: String(r.category), region: r.region == null ? null : String(r.region), severity: String(r.severity) }));
   }
   async activeBranchIds(tenantId: string): Promise<string[]> {
     return rowsOf(await sql`select id from branches where tenant_id = ${tenantId} and status = 'active' order by id limit 200`.execute(this.db)).map((r) => String(r.id));
