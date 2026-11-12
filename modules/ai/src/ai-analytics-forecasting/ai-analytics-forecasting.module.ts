@@ -30,7 +30,8 @@ import { BookingCalendarAppointmentSource, ZeroFilledRevenueSource, ScheduleCapa
 import { AiInventoryModule } from '../ai-inventory/ai-inventory.module';
 import { AiInventoryPositionService } from '../ai-inventory/ai-inventory-position.service';
 import { AiInventoryError } from '../ai-inventory/ai-inventory.dto';
-import { DATABASE, DATABASE_READ, type AppDatabase } from '@aipowersalon/database';
+import { DATABASE, DATABASE_READ, branchTimeZone, type AppDatabase } from '@aipowersalon/database';
+import { businessDate, addDays as addYmdDays } from '@aipowersalon/date-time';
 
 /** Adapts the ai_inventory position service into the forecasting position provider — closes the loop demand↔stock without
  *  duplicating any inventory logic. Returns null when the product has no stock record at this branch. */
@@ -47,15 +48,22 @@ export class InventoryPositionProvider implements ProductPositionProvider {
   }
 }
 
+/** The forecast window as the SALON's calendar days (branch time zone): `to` = the salon's today, `from` = lookbackDays
+ *  earlier. A UTC-day window (toISOString().slice(0, 10)) started a day off for a salon west of UTC in its evening. */
+async function salonWindow(db: AppDatabase | null | undefined, ctx: AiForecastContext, lookbackDays: number): Promise<{ from: string; to: string }> {
+  const tz = await branchTimeZone(db ?? null, ctx.tenantId, ctx.branchId);
+  const to = businessDate(tz);
+  return { from: addYmdDays(to, -lookbackDays), to };
+}
+
 /** Adapts the existing ReportsService appointment trend into the forecasting series source. Read-only; tenant+branch
  *  scoped via the ctx it forwards. Maps each dated point's `bookings` to the demand value. */
 export class ReportsAppointmentSource implements AppointmentSeriesSource {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(private readonly reports: ReportsService, private readonly db: AppDatabase | null = null) {}
   async getDailyAppointments(ctx: AiForecastContext, lookbackDays: number): Promise<SeriesPoint[]> {
-    const to = new Date();
-    const from = new Date(to.getTime() - lookbackDays * 86400000);
+    const win = await salonWindow(this.db, ctx, lookbackDays);
     const rctx: ReportsContext = { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };
-    const trend = await this.reports.getAppointmentsTrend(rctx, { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) });
+    const trend = await this.reports.getAppointmentsTrend(rctx, win);
     return (trend?.points ?? [])
       .filter((p) => p && p.date)
       .map((p) => ({ date: p.date, value: Number(p.bookings ?? 0) }));
@@ -65,12 +73,11 @@ export class ReportsAppointmentSource implements AppointmentSeriesSource {
 /** Adapts the financial-gated ReportsService revenue overview (dated) into the forecasting series source. The financial
  *  permission check is enforced inside getRevenueOverview (requireFinancial), so this preserves revenue authorization. */
 export class ReportsRevenueSource implements RevenueSeriesSource {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(private readonly reports: ReportsService, private readonly db: AppDatabase | null = null) {}
   async getDailyRevenue(ctx: AiForecastContext, lookbackDays: number): Promise<SeriesPoint[]> {
-    const to = new Date();
-    const from = new Date(to.getTime() - lookbackDays * 86400000);
+    const win = await salonWindow(this.db, ctx, lookbackDays);
     const rctx: ReportsContext = { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };
-    const overview = await this.reports.getRevenueOverview(rctx, { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) });
+    const overview = await this.reports.getRevenueOverview(rctx, win);
     return (overview?.points ?? [])
       .filter((p) => p && p.date)
       .map((p) => ({ date: p.date, value: Number(p.revenueCents ?? 0) }));
@@ -92,7 +99,7 @@ export class ReportsRevenueSource implements RevenueSeriesSource {
     { provide: 'AppointmentSeriesSource', useFactory: (reports: ReportsService, db: AppDatabase) => (db ? new BookingCalendarAppointmentSource(db) : new ReportsAppointmentSource(reports)), inject: [ReportsService, DATABASE_READ] },
     // extras (AI Analytics Forecasting 03): the forecast also carries workload vs scheduled technician hours (read-only)
     { provide: AppointmentForecastService, useFactory: (src: AppointmentSeriesSource, db: AppDatabase) => new AppointmentForecastService(src, db ? new ScheduleCapacitySource(db) : null), inject: ['AppointmentSeriesSource', DATABASE_READ] },
-    { provide: 'RevenueSeriesSource', useFactory: (reports: ReportsService, db: AppDatabase) => new ZeroFilledRevenueSource(new ReportsRevenueSource(reports), db ?? null), inject: [ReportsService, DATABASE_READ] },
+    { provide: 'RevenueSeriesSource', useFactory: (reports: ReportsService, db: AppDatabase) => new ZeroFilledRevenueSource(new ReportsRevenueSource(reports, db ?? null), db ?? null), inject: [ReportsService, DATABASE_READ] },
     { provide: RevenueForecastService, useFactory: (src: RevenueSeriesSource) => new RevenueForecastService(src), inject: ['RevenueSeriesSource'] },
     // extras (AI Analytics Forecasting 21): per service category, from the paid tickets' service lines (read-only)
     { provide: ServiceDemandForecastService, useFactory: (db: AppDatabase) => new ServiceDemandForecastService(db ? new KyselyServiceDemandSource(db) : null), inject: [DATABASE_READ] },
