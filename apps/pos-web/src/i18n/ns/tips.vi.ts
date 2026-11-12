@@ -49,4 +49,11 @@ export const TIPS_VI: Record<string, string> = {
   'tp.freeConfirm': 'Sẽ ghi {a} cho {n} trên hóa đơn này.',
   'tp.freeNote': 'Được ghi là điều chỉnh tiền tip kèm tên và lý do của bạn. Tiền tip đã thu và khoản thu thẻ không đổi; hoàn tiền thẻ làm ở mục Hoàn tiền. Nếu kỳ lương đã duyệt hoặc đã trả, khoản này chuyển sang kỳ đang mở tiếp theo.',
   'tp.audit.ticket.tip_adjusted': 'Đã điều chỉnh tiền tip',
+  'tp.split.even': 'Chia đều', // DRAFT — Kevin reviews
+  'tp.split.now': 'Hiện tại', // DRAFT — Kevin reviews
+  'tp.split.after': 'Sau khi đổi', // DRAFT — Kevin reviews
+  'tp.split.change': 'Thay đổi', // DRAFT — Kevin reviews
+  'tp.split.remainder': 'Phần lẻ làm tròn: {c}¢, mỗi người một xu cho {n}', // DRAFT — Kevin reviews
+  'tp.split.diff': 'Lệch {a} — các phần phải cộng đúng bằng tiền tip đã thu', // DRAFT — Kevin reviews
+  'tp.split.nothingSaved': 'Chỉ xem trước — không có gì thay đổi cho đến khi bạn lưu kèm lý do.', // DRAFT — Kevin reviews
 };

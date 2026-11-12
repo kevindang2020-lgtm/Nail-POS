@@ -97,6 +97,9 @@ const snapshot = (e: ExpenseRow) => ({ status: e.status, category: e.category, a
   invoiceNumber: e.invoiceNumber, receiptNumber: e.receiptNumber, dueDate: e.dueDate, billStatus: e.billStatus, paidCents: e.paidCents, reimbursementStatus: e.reimbursementStatus,
   duplicateStatus: e.duplicateStatus, archivedAt: e.archivedAt, version: e.version });
 
+/** Extras (Expenses Management 01): an expense waiting in review longer than this is shown as overdue */
+export const REVIEW_OVERDUE_DAYS = 7;
+
 export class ExpenseService {
   readonly repo: ExpenseRepository;
   vendors: VendorDirectoryPort | null = null;
@@ -335,7 +338,8 @@ export class ExpenseService {
     let { from, to } = f;
     if (f.period && !from && !to) ({ from, to } = periodWindow(f.period, await this.today(ctx.tenantId), { from: f.from, to: f.to }));
     for (const d of [from, to]) if (d && !isYmd(d)) throw new ExpenseError('EXPENSE_INVALID', 'Dates must be YYYY-MM-DD.');
-    const { items, total, page } = await this.repo.list(s, { ...f, from, to });
+    const attention = f.attention === 'no_receipt' || f.attention === 'uncategorized' || f.attention === 'overdue_review' ? f.attention : undefined;
+    const { items, total, page } = await this.repo.list(s, { ...f, from, to, attention, overdueBefore: attention ? this.overdueBefore() : undefined });
     const { custom } = await this.validKeys(ctx.tenantId);
     return { items: items.map((e) => this.view(e, custom)), total, page, pageSize: Math.min(Math.max(1, f.pageSize ?? 50), 200) };
   }
@@ -361,12 +365,16 @@ export class ExpenseService {
     for (const d of [from, to]) if (d && !isYmd(d)) throw new ExpenseError('EXPENSE_INVALID', 'Dates must be YYYY-MM-DD.');
     if (from && to && from > to) throw new ExpenseError('EXPENSE_INVALID', 'The start date must be on or before the end date.');
     if (f.period && f.period !== 'custom' && !from && !to) ({ from, to } = periodWindow(f.period, today));
-    const k = await this.repo.summary(s, { from, to, category: f.category, paymentMethod: f.paymentMethod, q: f.q });
+    const scopeF = { from, to, category: f.category, paymentMethod: f.paymentMethod, q: f.q };
+    const [k, att] = await Promise.all([this.repo.summary(s, scopeF), this.repo.attention(s, scopeF, this.overdueBefore())]);
     const { custom } = await this.validKeys(ctx.tenantId);
     return { period: { preset: (preset ?? 'all') as 'today' | 'week' | 'month' | 'year' | 'custom' | 'all', from: from ?? null, to: to ?? null, tz, today },
       totalCents: k.totalCents, entries: k.entries, categoriesUsed: k.categoriesUsed,
-      topCategory: k.top ? { key: k.top.key, label: categoryLabel(k.top.key, custom), totalCents: k.top.totalCents } : null };
+      topCategory: k.top ? { key: k.top.key, label: categoryLabel(k.top.key, custom), totalCents: k.top.totalCents } : null,
+      attention: { ...att, overdueAfterDays: REVIEW_OVERDUE_DAYS } };
   }
+  /** a review waiting longer than this (since it last changed) is overdue on the attention bar */
+  private overdueBefore() { return new Date(this.now().getTime() - REVIEW_OVERDUE_DAYS * 86400000); }
   private view(e: ExpenseRow, custom: Array<{ key: string; label: string }> = [], today?: string) {
     return { ...e, categoryLabel: categoryLabel(e.category, custom), vendorDisplay: e.vendorName ?? e.vendor,
       billDue: e.kind === 'bill' ? billDueState(e.dueDate, today ?? e.dueDate ?? '9999-12-31', e.billStatus ?? 'open') : null, openCents: e.kind === 'bill' ? Math.max(0, e.amountCents - e.paidCents) : 0 };

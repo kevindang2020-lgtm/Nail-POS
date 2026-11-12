@@ -35,6 +35,26 @@ const openForm = async () => { fireEvent.click(await screen.findByTestId('add-ex
 const openView = async () => { fireEvent.click(await screen.findByTestId('row-view')); return screen.findByTestId('dlg-view'); };
 
 describe('POSExpensesScreen (Expenses guide)', () => {
+  it('attention bar: only non-zero counts from the server; a click lists by the same rule (or opens Duplicates); nothing changes', async () => {
+    m.kpis.mockResolvedValue({ ...kpis, attention: { missingReceipts: 4, uncategorized: 0, overdueReviews: 2, duplicateRisk: 1, overdueAfterDays: 7 } });
+    renderIt();
+    const bar = await screen.findByTestId('attention-bar');
+    expect(within(bar).getByTestId('att-no_receipt').textContent).toBe('4 without a receipt');
+    expect(within(bar).getByTestId('att-overdue_review').textContent).toBe('2 waiting for review over 7 days');
+    expect(within(bar).queryByTestId('att-uncategorized')).toBeNull();
+    fireEvent.click(within(bar).getByTestId('att-overdue_review'));
+    await waitFor(() => expect(m.expenses).toHaveBeenLastCalledWith(expect.objectContaining({ tab: 'all', attention: 'overdue_review', page: 1 })));
+    expect(within(bar).getByTestId('att-overdue_review').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(bar).getByTestId('att-duplicates'));
+    await waitFor(() => expect(m.expenses).toHaveBeenLastCalledWith(expect.objectContaining({ tab: 'duplicates', attention: undefined })));
+    expect(m.approve).not.toHaveBeenCalled(); expect(m.update).not.toHaveBeenCalled(); expect(m.voidExpense).not.toHaveBeenCalled();
+  });
+  it('attention bar: nothing to show when every count is zero', async () => {
+    m.kpis.mockResolvedValue({ ...kpis, attention: { missingReceipts: 0, uncategorized: 0, overdueReviews: 0, duplicateRisk: 0, overdueAfterDays: 7 } });
+    renderIt();
+    await screen.findByTestId('kpi-total'); await waitFor(() => expect(m.kpis).toHaveBeenCalled());
+    expect(screen.queryByTestId('attention-bar')).toBeNull();
+  });
   it('the detail checks a branch split adds up to the exact cents and says how it is reported', async () => {
     m.detail.mockImplementation(async () => ({ expense: exp({ status: 'approved', amountCents: 10000, branchId: null }), lineItems: [], allocations: [{ branchId: 'b1aaaaaa', amountCents: 6000 }, { branchId: 'b2bbbbbb', amountCents: 3999 }], documents: [], billPayments: [], history: [], duplicates: { status: 'none', matches: [] } }));
     renderIt();

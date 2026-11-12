@@ -86,6 +86,17 @@ export type InboxTab = 'all' | 'inbox' | 'needs_review' | 'approved' | 'bills' |
 export interface ListFilters {
   tab?: InboxTab; from?: string; to?: string; category?: string; vendorId?: string; status?: string; paymentMethod?: string;
   q?: string; minCents?: number; maxCents?: number; page?: number; pageSize?: number; sort?: 'date' | 'amount' | 'created';
+  /** Extras (Expenses Management 01): the attention bar's click-through — the same rule its count uses */
+  attention?: ExpenseAttention; overdueBefore?: Date;
+}
+export type ExpenseAttention = 'no_receipt' | 'uncategorized' | 'overdue_review';
+const HAS_RECEIPT = sql`(e.receipt_document_id IS NOT NULL OR EXISTS (SELECT 1 FROM expense_documents d WHERE d.tenant_id = e.tenant_id AND d.expense_id = e.id))`;
+const NOT_VOIDED_LIVE = sql`e.status <> 'voided' AND e.status <> 'rejected' AND e.archived_at IS NULL`;
+function attentionWhere(a: ExpenseAttention, overdueBefore: Date) {
+  if (a === 'no_receipt') return sql`${NOT_VOIDED_LIVE} AND NOT ${HAS_RECEIPT}`;
+  // no category, or the engine fell back to "Other" and flagged it unsure (create's category_unsure) — a person has not decided
+  if (a === 'uncategorized') return sql`${NOT_VOIDED_LIVE} AND (e.category IS NULL OR e.category = '' OR e.review_flags @> '["category_unsure"]'::jsonb)`;
+  return sql`e.status = 'pending_review' AND e.archived_at IS NULL AND e.updated_at < ${overdueBefore}`;
 }
 
 export class ExpenseRepository {
@@ -146,6 +157,7 @@ export class ExpenseRepository {
       default: where.push(sql`e.archived_at IS NULL`);
     }
     where.push(...this.filterWhere(f));
+    if (f.attention && f.overdueBefore) where.push(attentionWhere(f.attention, f.overdueBefore));
     const cond = sql.join(where, sql` AND `);
     const pageSize = Math.min(Math.max(1, f.pageSize ?? 50), 200);
     const page = Math.max(1, f.page ?? 1);
@@ -179,6 +191,20 @@ export class ExpenseRepository {
     ]);
     const r = t.rows[0];
     return { totalCents: n(r?.total), entries: n(r?.c), categoriesUsed: n(r?.cats), top: top.rows[0] ? { key: String(top.rows[0].k), totalCents: n(top.rows[0].total) } : null };
+  }
+
+  /** Extras (Expenses Management 01): the attention bar — counts over the screen's filters (dates, category, method,
+   *  search) and branch scope, each by the same rule the list uses when the count is clicked. Read-only. */
+  async attention(s: Scope, f: ListFilters, overdueBefore: Date): Promise<{ missingReceipts: number; uncategorized: number; overdueReviews: number; duplicateRisk: number }> {
+    const where = this.filterWhere(f);
+    const base = sql`FROM expenses e LEFT JOIN inventory_vendors v ON v.id = e.vendor_id AND v.tenant_id = e.tenant_id WHERE e.tenant_id = ${s.tenantId} ${scoped(s)}${where.length ? sql` AND ${sql.join(where, sql` AND `)}` : sql``}`;
+    const r = await sql<{ nr: string; uc: string; ov: string; du: string }>`SELECT
+        count(*) FILTER (WHERE ${attentionWhere('no_receipt', overdueBefore)})::text AS nr,
+        count(*) FILTER (WHERE ${attentionWhere('uncategorized', overdueBefore)})::text AS uc,
+        count(*) FILTER (WHERE ${attentionWhere('overdue_review', overdueBefore)})::text AS ov,
+        count(*) FILTER (WHERE e.duplicate_status IN ('possible', 'exact') AND e.status <> 'voided')::text AS du ${base}`.execute(this.db);
+    const x = r.rows[0];
+    return { missingReceipts: n(x?.nr), uncategorized: n(x?.uc), overdueReviews: n(x?.ov), duplicateRisk: n(x?.du) };
   }
 
   /** duplicate candidates: the tenant's non-voided expenses near this one (same total ±0, dates ±3 days) or same refs */

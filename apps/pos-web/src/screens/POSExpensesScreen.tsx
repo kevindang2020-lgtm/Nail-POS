@@ -18,7 +18,7 @@ import { SystemCheckButton } from '../components/SystemCheck';
 import { Link } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { FinanceExpenseCreateRequest } from '@aipowersalon/api-contracts/tenant';
-import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail } from '../api/posExpensesApi';
+import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail, type FinSummary, type ExpenseAttention } from '../api/posExpensesApi';
 import { posAiOcrReceiptApi } from '../api/posAiOcrReceiptApi';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
@@ -57,6 +57,7 @@ export function POSExpensesScreen() {
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [category, setCategory] = useState(''); const [method, setMethod] = useState(''); const [sort, setSort] = useState<Sort>('created');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
+  const [attention, setAttention] = useState<ExpenseAttention | ''>('');
   const [note, setNote] = useState<Note | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
@@ -70,18 +71,18 @@ export function POSExpensesScreen() {
   const pq = periodQuery(period);
   const dates = pq.preset === 'custom' ? { period: 'custom', from: pq.from, to: pq.to } : pq.preset === 'all' ? {} : { period: pq.preset };
   const filters = { q: q || undefined, category: category || undefined, paymentMethod: method || undefined };
-  const scopeKey = JSON.stringify([tab, dates, filters, sort]);
+  const scopeKey = JSON.stringify([tab, dates, filters, sort, attention]);
   useEffect(() => setPage(1), [scopeKey]);   // a new period / search / filter / sort / tab starts at Page 1
   // each answer carries the reload it answers, so a save is judged only against a list read AFTER it
-  const list = useLoad(() => posExpensesApi.expenses({ tab, ...dates, ...filters, sort, page, pageSize: fit.rows }).then((d) => ({ ...d, forTick: tick })), [scopeKey, page, fit.rows, tick]);
+  const list = useLoad(() => posExpensesApi.expenses({ tab, ...dates, ...filters, sort, page, pageSize: fit.rows, attention: attention || undefined }).then((d) => ({ ...d, forTick: tick })), [scopeKey, page, fit.rows, tick]);
   const summary = useLoad(() => posExpensesApi.kpis({ ...dates, ...filters }), [JSON.stringify([dates, filters]), tick]);
   const catList = useLoad(() => posExpensesApi.categories(), [tick]);
   const categories: FinCategory[] = (catList.data?.categories ?? []).filter((c) => c.active);
   const catLabel = (key: string | null | undefined, label?: string | null) => (label ? serverText(label) : key ? serverText(categories.find((c) => c.key === key)?.label ?? key) : '—');
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const reload = () => setTick((n) => n + 1);
-  const filtered = !!(q || category || method || tab !== 'all');
-  const clearFilters = () => { setSearch(''); setCategory(''); setMethod(''); setTab('all'); setSort('created'); };
+  const filtered = !!(q || category || method || tab !== 'all' || attention);
+  const clearFilters = () => { setSearch(''); setCategory(''); setMethod(''); setTab('all'); setSort('created'); setAttention(''); };
 
   // after a save: the authoritative list decides whether the new / edited row is in view
   const pendingRow = useRef<{ id: string; kind: 'create' | 'edit'; after: number } | null>(null);
@@ -155,10 +156,11 @@ export function POSExpensesScreen() {
         </>}
       </div>
       <div className="fn-scope" data-testid="kpi-scope">{tx('finance.ex.scope')}</div>
+      {k?.attention ? <AttentionBar a={k.attention} active={attention} onPick={(x) => { if (x === 'duplicates') { setAttention(''); setTab('duplicates'); } else { setTab('all'); setAttention(x); } }} onClear={() => setAttention('')} /> : null}
 
       <div className="fn-toolbar ex-toolbar" role="toolbar" aria-label={tx('finance.filters')}>
         <div className="fk-seg ex-tabs" role="tablist">
-          {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={'tab-' + x}>{tx(TAB_LABEL[x])}</button>)}
+          {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => { setTab(x); setAttention(''); }} data-testid={'tab-' + x}>{tx(TAB_LABEL[x])}</button>)}
         </div>
         {tab === 'bills' ? <button type="button" className="fk-btn ghost" onClick={() => setBillsCal(true)} data-testid="bills-calendar">{tx('finance.bills.calTitle')}</button> : null}
         <div className="fn-search wide">
@@ -430,6 +432,24 @@ function CategoryBreakdown({ dates, onClose }: { dates: { period?: string; from?
 
 // extras arc (Nov 10 2026): the expense's own history (expense_history — who did what, when, and why), newest first.
 type ExpenseHistoryItem = { id: string; action: string; actorUserId: string | null; actorName?: string | null; reason?: string | null; at: string };
+/** Extras (Expenses Management 01): small attention chips under the KPIs — missing receipts, category still unsure, reviews
+ *  waiting more than N days, duplicate risk — counted by the server over the same filters; a click opens the list by the
+ *  same rule (or the Duplicates tab). Nothing is changed from here. Zero counts are not shown. */
+export function AttentionBar({ a, active, onPick, onClear }: { a: NonNullable<FinSummary['attention']>; active: ExpenseAttention | ''; onPick: (x: ExpenseAttention | 'duplicates') => void; onClear: () => void }) {
+  const items: Array<{ id: ExpenseAttention | 'duplicates'; n: number; key: string }> = [
+    { id: 'no_receipt', n: a.missingReceipts, key: 'finance.ex.att.noReceipt' }, { id: 'uncategorized', n: a.uncategorized, key: 'finance.ex.att.uncat' },
+    { id: 'overdue_review', n: a.overdueReviews, key: 'finance.ex.att.overdue' }, { id: 'duplicates', n: a.duplicateRisk, key: 'finance.ex.att.dups' }];
+  const shown = items.filter((x) => x.n > 0 || x.id === active);
+  if (!shown.length) return null;
+  return (
+    <div className="fn-chips ex-attention" role="group" aria-label={tx('finance.ex.att.label')} data-testid="attention-bar">
+      <span className="fk-muted">{tx('finance.ex.att.label')}</span>
+      {shown.map((x) => <button key={x.id} type="button" className={'fk-chip ' + (active === x.id ? 'info' : 'warn')} aria-pressed={active === x.id} onClick={() => (active === x.id ? onClear() : onPick(x.id))} data-testid={'att-' + x.id}>
+        {tx(x.key, { n: fmtNumber(x.n), d: fmtNumber(a.overdueAfterDays) })}</button>)}
+    </div>
+  );
+}
+
 export function ExpenseHistory({ items }: { items: ExpenseHistoryItem[] }) {
   const rows = [...items].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   const label = (a: string) => { const k = `exh.a.${a}`; const v = tx(k); return v === k ? tx('exh.a.other') : v; };

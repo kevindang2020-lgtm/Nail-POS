@@ -329,3 +329,41 @@ describe('finance — an expense entered on a branch device', () => {
     expect((await q(`select branch_id from expenses where id = $1`, [wid]))[0]?.branch_id).toBeNull();
   });
 });
+
+// Extras (Expenses Management 01): the attention bar — missing receipts, no category, reviews waiting > 7 days, duplicate
+// risk — counted over the screen's own filters and branch scope; each count opens the list by the SAME rule. Read-only.
+describe('finance — the expense attention bar', () => {
+  const T4 = 'f9000000-0000-4000-8000-000000000004', O4 = 'f9000000-0000-4000-8000-0000000000e4';
+  const own4: FinanceCtx = { tenantId: T4, userId: O4, role: 'OWNER', permissions: ALL };
+  it('counts each attention kind truthfully, honours filters, and the click-through lists exactly those rows', async () => {
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code) values ($1,'S4','S4','fin-d','FIND')`, [T4]);
+    await q(`insert into tenant_settings (id, tenant_id, branch_id, category, settings_json) values (gen_random_uuid(), $1, NULL, 'business-branch', '{"timezone":"UTC"}'::jsonb)`, [T4]);
+    await q(`insert into users (id, tenant_id, first_name, last_name, full_name, email, status, role) values ($1,$2,'A','A','A A','a4@fin.test','active','OWNER')`, [O4, T4]);
+    const mk = async (k: string, x: Record<string, unknown>) => (await svc.create(own4, { amountCents: 1000 + k.length, incurredOn: today, vendor: 'V ' + k, paymentMethod: 'cash', idempotencyKey: 'att-' + k, ...x } as never)).expense;
+    const withReceipt = await mk('rcpt', { category: 'supplies', intent: 'approve' });
+    const doc = (await q(`insert into ocr_documents (tenant_id, document_type, total_cents, document_date, pipeline_status) values ($1,'receipt',100,$2::date,'approved') returning id`, [T4, today]))[0].id as string;
+    await q(`insert into expense_documents (tenant_id, expense_id, document_id, role) values ($1,$2,$3,'receipt')`, [T4, withReceipt.id, doc]);
+    const noCat = await mk('nocat', { category: null, intent: 'approve', paymentMethod: 'business_card' });
+    const fresh = await mk('fresh', { category: 'supplies', intent: 'submit' });
+    const stale = await mk('stale', { category: 'supplies', intent: 'submit' });
+    await q(`update expenses set updated_at = now() - interval '9 days' where id = $1`, [stale.id]);
+    const voided = await mk('void', { category: null, intent: 'approve' });
+    await svc.void(own4, voided.id, 'mistake', (await svc.detail(own4, voided.id)).expense.version);
+    await q(`update expenses set duplicate_status = 'possible' where id = $1`, [fresh.id]);
+
+    const s = await svc.summary(own4, { period: 'month' });
+    // 3 live rows without a receipt (voided not counted), 1 uncategorized (voided not counted), 1 overdue, 1 duplicate risk
+    expect(s.attention).toEqual({ missingReceipts: 3, uncategorized: 1, overdueReviews: 1, duplicateRisk: 1, overdueAfterDays: 7 });
+    // the screen's filters apply: business card only → just the uncategorized one
+    expect((await svc.summary(own4, { period: 'month', paymentMethod: 'business_card' })).attention).toMatchObject({ missingReceipts: 1, uncategorized: 1, overdueReviews: 0, duplicateRisk: 0 });
+    // click-through: the list by the same rule
+    const ids = async (attention: string) => (await svc.list(own4, { tab: 'all', attention } as never)).items.map((x: { id: string }) => x.id).sort();
+    expect(await ids('no_receipt')).toEqual([noCat.id, fresh.id, stale.id].sort());
+    expect(await ids('uncategorized')).toEqual([noCat.id]);
+    expect(await ids('overdue_review')).toEqual([stale.id]);
+    // an unknown value is ignored, never an error or an empty list
+    expect((await svc.list(own4, { tab: 'all', attention: 'bogus' } as never)).total).toBe(5);
+    // another salon sees none of it
+    expect((await svc.summary(other, { from: today, to: today })).attention?.overdueReviews ?? 0).toBe(0);
+  });
+});

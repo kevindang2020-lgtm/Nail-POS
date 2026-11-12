@@ -408,4 +408,9 @@ export const FINANCE_EN = {
   "finance.rule.replaces": "Replaces the current rule for this vendor ({c}).",
   "finance.rule.noPerm": "You can preview, but saving a rule needs category permission.",
   "finance.rule.open": "Rule for this vendor",
+  "finance.ex.att.label": "Needs attention:",
+  "finance.ex.att.noReceipt": "{n} without a receipt",
+  "finance.ex.att.uncat": "{n} category not confirmed",
+  "finance.ex.att.overdue": "{n} waiting for review over {d} days",
+  "finance.ex.att.dups": "{n} possible duplicates",
 };

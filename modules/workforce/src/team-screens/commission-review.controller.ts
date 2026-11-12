@@ -13,7 +13,7 @@ import { CDR_ASSIGN_BODY, CDR_INVESTIGATE_BODY, CDR_NOTE_BODY, CDR_POLICY_BODY, 
 export const COMMISSION_REVIEW = 'CommissionReviewRepository';
 const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const LIST = { filters: { status: { type: 'enum', values: [...REVIEW_STATUSES, 'open_all', 'all'] }, severity: { type: 'enum', values: ['low', 'medium', 'high'] }, type: { type: 'enum', values: FINDING_TYPES },
-  assignee: { type: 'text', maxLength: 64 }, from: { type: 'text', maxLength: 10 }, to: { type: 'text', maxLength: 10 } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 8, params: ['page'] } as const;
+  assignee: { type: 'text', maxLength: 64 }, from: { type: 'text', maxLength: 10 }, to: { type: 'text', maxLength: 10 }, age: { type: 'enum', values: ['new', 'week', 'overdue'] }, sort: { type: 'enum', values: ['newest', 'oldest'] } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 8, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/commission-discrepancies')
@@ -23,7 +23,7 @@ export class CommissionReviewController {
 
   @Get('') @RequirePermission('pos.reports.view') @ListQuery(LIST)
   list(@Req() req: any, @Query() q: any) {
-    return this.r().list(teamCtx(req), { status: s(q?.status), severity: s(q?.severity), type: s(q?.type), assignee: s(q?.assignee), q: s(q?.q), from: s(q?.from), to: s(q?.to), page: q?.page, pageSize: q?.pageSize });
+    return this.r().list(teamCtx(req), { status: s(q?.status), severity: s(q?.severity), type: s(q?.type), assignee: s(q?.assignee), q: s(q?.q), from: s(q?.from), to: s(q?.to), age: s(q?.age), sort: s(q?.sort), page: q?.page, pageSize: q?.pageSize });
   }
   @Get('assignees') @RequirePermission('pos.reports.view')
   assignees(@Req() req: any, @Query('q') q?: string) { return this.r().assignees(teamCtx(req), s(q)); }

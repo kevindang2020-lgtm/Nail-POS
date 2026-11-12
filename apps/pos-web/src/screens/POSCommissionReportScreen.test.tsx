@@ -4,7 +4,7 @@
 // cross-check against the payroll calculation, and the empty state.
 import { MemoryRouter } from 'react-router-dom';   // the review slide-over links to Payroll
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 const { cm, cr, stateMock } = vi.hoisted(() => ({ cm: { summary: vi.fn(), technicians: vi.fn(), lines: vi.fn(), tips: vi.fn(), adjustments: vi.fn(), payouts: vi.fn(), exportCsv: vi.fn(), exportHistory: vi.fn() },
   cr: { list: vi.fn(), detail: vi.fn(), assignees: vi.fn(), runCheck: vi.fn(), setRefundPolicy: vi.fn(), assign: vi.fn(), investigate: vi.fn(), note: vi.fn(), resolve: vi.fn(), dismiss: vi.fn(), reopen: vi.fn() }, stateMock: vi.fn() }));
 vi.mock('../api/posTeamScreensApi', () => ({ posCommissionScreenApi: cm, posCommissionReviewApi: cr }));
@@ -92,6 +92,20 @@ describe('POSCommissionReportScreen', () => {
     expect(await screen.findByTestId('review-done')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId('review-status')).toHaveTextContent('Resolved'));
     expect(screen.getAllByTestId('history-row')[0]).toHaveTextContent('Resolved');
+  });
+  it('Finish the Five 05: open findings by age — overdue chip filters on the server, oldest first, each open row says how long it has waited', async () => {
+    cr.list.mockResolvedValue({ ...page([{ ...REVIEW, ageDays: 10, overdue: true }]), counts: { OPEN: 1, ASSIGNED: 0, INVESTIGATING: 0, RESOLVED: 0, DISMISSED: 0 }, lastRun: null, policy: null,
+      ageCounts: { new: 0, week: 2, overdue: 1, overdueAfterDays: 7 } });
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
+    const ages = await screen.findByTestId('cr-age');
+    expect(within(ages).getByTestId('cr-age-overdue').textContent).toBe('Overdue (over 7 days) · 1');
+    expect(within(ages).getByTestId('cr-age-week').textContent).toBe('1–7 days · 2');
+    expect((await screen.findAllByTestId('disc-age'))[0].textContent).toBe('Overdue · 10 d');
+    fireEvent.click(within(ages).getByTestId('cr-age-overdue'));
+    await waitFor(() => expect(cr.list).toHaveBeenLastCalledWith(expect.objectContaining({ age: 'overdue', page: 1 })));
+    fireEvent.click(within(ages).getByTestId('cr-oldest'));
+    await waitFor(() => expect(cr.list).toHaveBeenLastCalledWith(expect.objectContaining({ age: 'overdue', sort: 'oldest' })));
+    expect(cr.resolve).not.toHaveBeenCalled();
   });
   it('F1: a stale version (409) says someone else changed it and reloads; nothing claims success', async () => {
     cr.investigate.mockRejectedValue({ status: 409, code: 'VERSION_CONFLICT' });

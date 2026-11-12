@@ -405,4 +405,9 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.rule.replaces": "Thay thế quy tắc hiện tại của nhà cung cấp này ({c}).", // DRAFT — Kevin reviews
   "finance.rule.noPerm": "Bạn có thể xem trước, nhưng cần quyền danh mục để lưu quy tắc.", // DRAFT — Kevin reviews
   "finance.rule.open": "Quy tắc cho nhà cung cấp này", // DRAFT — Kevin reviews
+  "finance.ex.att.label": "Cần xem lại:", // DRAFT — Kevin reviews
+  "finance.ex.att.noReceipt": "{n} chưa có hóa đơn", // DRAFT — Kevin reviews
+  "finance.ex.att.uncat": "{n} chưa xác nhận danh mục", // DRAFT — Kevin reviews
+  "finance.ex.att.overdue": "{n} chờ duyệt quá {d} ngày", // DRAFT — Kevin reviews
+  "finance.ex.att.dups": "{n} có thể bị trùng", // DRAFT — Kevin reviews
 };

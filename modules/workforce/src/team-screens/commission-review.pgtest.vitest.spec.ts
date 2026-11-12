@@ -199,4 +199,23 @@ describe('review workflow (F1)', () => {
     const t = (await repo.list(mgr, { pageSize: 100 })).items.map((x: any) => x.detectedAt);
     expect([...t].sort().reverse()).toEqual(t);
   });
+  it('Extras (Finish the Five 05): open findings grouped by age — new / this week / overdue (> 7 days), filterable, oldest first on request', async () => {
+    const open = (await repo.list(mgr, { status: 'open_all', pageSize: 100 })).items;
+    expect(open.length).toBeGreaterThanOrEqual(2);
+    // age two open findings: one 3 days, one 10 days (closed findings never count)
+    await q(`update commission_discrepancy_reviews set detected_at = now() - interval '3 days' where id = $1`, [open[0].id]);
+    await q(`update commission_discrepancy_reviews set detected_at = now() - interval '10 days' where id = $1`, [open[1].id]);
+    await q(`update commission_discrepancy_reviews set detected_at = now() - interval '30 days' where id = $1`, [rid]);   // RESOLVED
+    const l = await repo.list(mgr, { status: 'open_all', pageSize: 100 });
+    const openN = l.counts.OPEN + l.counts.ASSIGNED + l.counts.INVESTIGATING;
+    expect(l.ageCounts.overdue).toBe(1); expect(l.ageCounts.week).toBe(1); expect(l.ageCounts.new).toBe(openN - 2); expect(l.ageCounts.overdueAfterDays).toBe(7);
+    const od = await repo.list(mgr, { status: 'all', age: 'overdue' });
+    expect(od.items.map((x: any) => x.id)).toEqual([open[1].id]);   // the 30-day RESOLVED one is not overdue work
+    expect(od.items[0]).toMatchObject({ ageDays: 10, overdue: true });
+    expect((await repo.list(mgr, { status: 'open_all', age: 'week' })).items.map((x: any) => x.id)).toEqual([open[0].id]);
+    const oldestFirst = (await repo.list(mgr, { status: 'open_all', sort: 'oldest', pageSize: 100 })).items;
+    expect(oldestFirst[0].id).toBe(open[1].id);
+    expect(oldestFirst.find((x: any) => x.id === open[0].id)).toMatchObject({ ageDays: 3, overdue: false });
+    expect((await repo.list(other, { age: 'overdue' })).totalItems).toBe(0);
+  });
 });

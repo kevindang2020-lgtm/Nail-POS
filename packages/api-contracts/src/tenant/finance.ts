@@ -30,6 +30,9 @@ export interface FinanceExpenseSummary {
   period: { preset: 'today' | 'week' | 'month' | 'year' | 'custom' | 'all'; from: string | null; to: string | null; tz: string; today: string };
   totalCents: number; entries: number; categoriesUsed: number;
   topCategory: { key: string; label: string; totalCents: number } | null;
+  /** Extras (Expenses Management 01): the attention bar — every count over the same filters and branch scope; clicking one
+   *  opens the list by the same rule (attention=no_receipt|uncategorized|overdue_review, or the duplicates tab). */
+  attention?: { missingReceipts: number; uncategorized: number; overdueReviews: number; duplicateRisk: number; overdueAfterDays: number };
 }
 export interface FinanceDuplicateMatch { id: string; status: 'exact' | 'possible'; reason: string }
 export interface FinanceDuplicateResult { status: 'exact' | 'possible' | 'none'; matches: FinanceDuplicateMatch[] }

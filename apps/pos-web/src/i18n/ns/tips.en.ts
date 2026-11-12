@@ -56,4 +56,11 @@ export const TIPS_EN = {
   'tp.freeConfirm': 'This records {a} for {n} on this ticket.',
   'tp.freeNote': 'Recorded as a tip adjustment with your name and reason. The collected tip and the card charge do not change; a card refund goes through Refunds. If the pay period is already approved or paid, it goes to the next open period.',
   'tp.audit.ticket.tip_adjusted': 'Tip adjusted',
+  'tp.split.even': 'Split evenly',
+  'tp.split.now': 'Now',
+  'tp.split.after': 'After',
+  'tp.split.change': 'Change',
+  'tp.split.remainder': 'Rounding remainder: {c}¢, one cent each to {n}',
+  'tp.split.diff': 'Off by {a} — the shares must add up to the collected tip',
+  'tp.split.nothingSaved': 'Preview only — nothing changes until you save with a reason.',
 } as const;
