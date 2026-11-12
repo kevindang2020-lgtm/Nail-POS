@@ -906,4 +906,5 @@ export const PEOPLE_EN = {
   'people.receiptAi.ev.check.components_vs_total': 'Subtotal + tax + fees − discount equals the total',
   'people.receiptAi.ev.mismatch': 'expected {expected}, read {actual} ({delta})',
   'people.receiptAi.ev.noCheck': 'Not enough amounts were read to check the arithmetic.',
+  'people.receiptAi.previewBlocked': 'Preview blocked: the security scan has not cleared this file yet. Use Re-check scan.',
 };

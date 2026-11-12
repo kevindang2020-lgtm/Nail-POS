@@ -90,4 +90,16 @@ describe('POSAIOcrReceiptScreen — queues', () => {
     expect(await screen.findByTestId('rrx-check-none')).toHaveTextContent('Not enough amounts');
     expect(screen.queryByTestId('rrx-lines')).toBeNull();
   });
+  it('extras RDR #02: a quarantined receipt never asks for a preview link — the panel says the preview is blocked until the scan clears it', async () => {
+    m.detail.mockResolvedValue({ ...doc, pipelineState: 'quarantined', storageKey: 'tenants/t/documents/d1/original.png' });
+    mount('/tenant/ai/ocr-receipt?doc=d1');
+    expect(await screen.findByTestId('rrx-preview-blocked')).toHaveTextContent('security scan');
+    expect(m.previewUrl).not.toHaveBeenCalled();
+  });
+  it('extras RDR #02: a cleared receipt asks for its preview as before', async () => {
+    m.detail.mockResolvedValue({ ...doc, pipelineState: 'review_required', storageKey: 'tenants/t/documents/d1/original.png' });
+    mount('/tenant/ai/ocr-receipt?doc=d1');
+    await waitFor(() => expect(m.previewUrl).toHaveBeenCalledWith('d1', 'tenants/t/documents/d1/original.png'));
+    expect(screen.queryByTestId('rrx-preview-blocked')).toBeNull();
+  });
 });

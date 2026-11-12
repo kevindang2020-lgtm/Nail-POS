@@ -905,4 +905,5 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.receiptAi.ev.check.components_vs_total': 'Tạm tính + thuế + phí − giảm giá bằng tổng', // DRAFT — Kevin reviews
   'people.receiptAi.ev.mismatch': 'cần {expected}, đọc được {actual} ({delta})', // DRAFT — Kevin reviews
   'people.receiptAi.ev.noCheck': 'Chưa đọc đủ số tiền để kiểm tra phép tính.', // DRAFT — Kevin reviews
+  'people.receiptAi.previewBlocked': 'Đã chặn xem trước: lần quét bảo mật chưa xác nhận tệp này an toàn. Hãy bấm Quét lại.', // DRAFT — Kevin reviews
 };

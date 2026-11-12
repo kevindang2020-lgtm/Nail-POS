@@ -780,7 +780,11 @@ export class AiOcrReceiptService {
 
   async previewUrl(ctx: OcrCtx, id: string, storageKey: string) {
     requireTenant(ctx);
-    if (!(await this.scopedDoc(ctx, id))) throw new OcrError('NOT_FOUND');
+    const doc = await this.scopedDoc(ctx, id);
+    if (!doc) throw new OcrError('NOT_FOUND');
+    // extras (Receipt Document Recognition #02): an unsafe preview is blocked — a file the security scan has not cleared
+    // (quarantined / still scanning) is never handed out as a signed link, original or derivative. Re-check the scan first.
+    if (doc.pipelineState === 'quarantined' || doc.pipelineState === 'scanning') throw new OcrError('MALWARE_QUARANTINE', 'This file has not been cleared by the security scan, so it cannot be previewed yet.');
     // a missing / non-string key is outside the namespace too (Phase 14: `?key=` absent crashed with a TypeError → 500)
     // Security Deep Scan E8: the key must belong to THIS document (its own folder) — a key from another of the salon's
     // documents (another branch's receipt) was accepted because only the tenant prefix was checked. No path tricks.

@@ -227,12 +227,12 @@ function ReviewPanel({ doc, busy, onClose, act }: { doc: any; busy: boolean; onC
   // Return / Reject ask for the reason (it is kept in the audit trail) — they used to send a fixed English word
   const [deciding, setDeciding] = useState<null | 'reject' | 'return'>(null);
   const [reason, setReason] = useState('');
-  useEffect(() => { let live = true; (async () => { try { if (doc.storageKey) { const r = await apiO.previewUrl(doc.id, doc.storageKey); const u = r?.url ?? null;
+  useEffect(() => { let live = true; (async () => { try { if (doc.storageKey && doc.pipelineState !== 'quarantined' && doc.pipelineState !== 'scanning') { const r = await apiO.previewUrl(doc.id, doc.storageKey); const u = r?.url ?? null;
     // The blob store is NotConnected: DbFileStore records file METADATA only, and signedPreview returns a
     // `notconnected:<key>` marker rather than fabricating a signed URL. Feeding that to an <img src> would paint a
     // broken-image icon, which reads as "this document is corrupt" — worse than saying nothing. So a marker is
     // treated as "no preview available", and the honest label below is shown instead.
-    if (live) setPreview(u && !u.startsWith('notconnected:') ? u : null); } } catch { /* preview optional */ } })(); return () => { live = false; }; }, [doc.id, doc.storageKey]);
+    if (live) setPreview(u && !u.startsWith('notconnected:') ? u : null); } } catch { /* preview optional */ } })(); return () => { live = false; }; }, [doc.id, doc.storageKey, doc.pipelineState]);
   const approved = doc.pipelineState === 'approved';
   const inReview = doc.pipelineState === 'in_review';
   const quarantined = doc.pipelineState === 'quarantined' || doc.pipelineState === 'scanning';
@@ -251,7 +251,8 @@ function ReviewPanel({ doc, busy, onClose, act }: { doc: any; busy: boolean; onC
       </div>
       <div style={{  gap: 10, minHeight: 0, overflow: 'auto' }} className="grid grid-cols-1 sm:grid-cols-2">
         <div style={{ border: `1px solid ${LINE}`, borderRadius: 8, background: '#faf6ee', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220 }}>
-          {preview ? <img src={preview} alt={tx('pos.document')} style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain' }} /> : <span style={{ color: MUTED, fontSize: 12 }}>{tx('pos.image_preview_not_connected_review_the_140m')}</span>}
+          {quarantined ? <span style={{ color: '#B0413E', fontSize: 12, padding: 12, textAlign: 'center' }} data-testid="rrx-preview-blocked">{tx('people.receiptAi.previewBlocked')}</span>
+            : preview ? <img src={preview} alt={tx('pos.document')} style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain' }} /> : <span style={{ color: MUTED, fontSize: 12 }}>{tx('pos.image_preview_not_connected_review_the_140m')}</span>}
         </div>
         <div style={{ display: 'grid', gap: 6, alignContent: 'start', fontSize: 13 }}>
           <Field label={tx('pos.type')} value={doc.documentType} />
