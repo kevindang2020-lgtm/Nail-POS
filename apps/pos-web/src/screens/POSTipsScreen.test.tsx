@@ -110,4 +110,32 @@ describe('POSTipsScreen', () => {
     expect(await screen.findByText(/Your role cannot see this information/i)).toBeInTheDocument();
     expect(screen.queryByTestId('export')).toBeNull();
   });
+  it('Tips 10: each tipped row and the detail say verified / pending / adjusted / needs review from the server fields', async () => {
+    api.transactions.mockResolvedValue(pageOf([row(), row({ ticketId: 't2', ticketNumber: '1053', snapshotCents: 960, snapshotMismatch: false }), row({ ticketId: 't3', ticketNumber: '1054', snapshotCents: null, snapshotMismatch: false }),
+      row({ ticketId: 't4', ticketNumber: '1055', snapshotCents: 960, snapshotMismatch: false, reversedCents: -960 }), row({ ticketId: 't5', ticketNumber: '1056', amountCents: 0 })]));
+    mount(); await screen.findByTestId('tech-bars');
+    fireEvent.click(screen.getByTestId('tab-transactions'));
+    await screen.findByTestId('transactions-table');
+    expect(screen.getAllByTestId('tip-source-row').map((e) => e.textContent)).toEqual(['Needs review', 'Verified', 'Pending', 'Adjusted']);   // no label on the zero tip
+  });
+  it('Tips 05: the refund impact preview explains the collected total, each allocation and payable — and posts nothing', async () => {
+    api.detail.mockResolvedValue({ tip: row({ snapshotCents: 960, snapshotMismatch: false, payout: { state: 'paid', periodId: 'p1', periodLabel: 'Oct 1–15', paidAt: '2026-10-16T12:00:00Z' } }), payments: [],
+      allocations: [{ technicianId: 'v', name: 'Vishal verma', allocatedCents: 600, snapshotCents: 600, snapshotMismatch: false, manualCorrectionCents: 0, reversedCents: 0, netCents: 600 }, { technicianId: 'a', name: 'Anna Lee', allocatedCents: 360, snapshotCents: 360, snapshotMismatch: false, manualCorrectionCents: 0, reversedCents: 0, netCents: 360 }],
+      splitRule: 'manual', unallocatedCents: 0, adjustments: [], audit: [], permissions: { adjust: true, customer: true } });
+    mount(); await screen.findByTestId('tech-bars');
+    fireEvent.click(screen.getByTestId('tab-transactions'));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'View' }))[0]);
+    expect(await screen.findByTestId('tip-source')).toHaveTextContent('Verified');
+    fireEvent.click(screen.getByTestId('refund-impact-open'));
+    expect(screen.getByTestId('refund-impact-posting')).toHaveTextContent('No change');
+    expect(screen.getByTestId('refund-impact-totals')).toHaveTextContent('$9.60 → $9.60');
+    fireEvent.change(screen.getByTestId('refund-impact-scenario'), { target: { value: 'full_with_tip' } });
+    expect(screen.getByTestId('refund-impact-totals')).toHaveTextContent('$9.60 → $0.00');
+    expect(screen.getByTestId('refund-impact-totals')).toHaveTextContent('stays as collected');
+    expect(screen.getByTestId('refund-impact-posting')).toHaveTextContent('already paid: the reversal goes to a future period');
+    const rows = screen.getByTestId('refund-impact-rows'); expect(rows).toHaveTextContent('Vishal verma'); expect(rows).toHaveTextContent('−$6.00'); expect(rows).toHaveTextContent('−$3.60');
+    fireEvent.change(screen.getByTestId('refund-impact-scenario'), { target: { value: 'chargeback' } });
+    expect(screen.getByTestId('refund-impact-posting')).toHaveTextContent('waits for a manager review');
+    expect(payroll.setTicketTip).not.toHaveBeenCalled(); expect(payroll.adjustTicketTip).not.toHaveBeenCalled();
+  });
 });

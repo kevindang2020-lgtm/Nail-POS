@@ -7,6 +7,7 @@
 import { type ReportsContext, type ReportFilters, type DatePreset, type SalesKpis, type SalesTrend, type BookingsOverview, ForbiddenError } from '@aipowersalon/reports';
 import { getMetric } from './ai-business-metrics';
 import { withCode } from '@aipowersalon/api-contracts';
+import { addDays } from '@aipowersalon/date-time';
 import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
 import type { BranchScopeResolver } from './ai-business-branch-scope';
 
@@ -32,7 +33,18 @@ export interface BranchComparisonRow {
   completionRate: number | null;
   status: string;
 }
-export interface BranchCompareQuery { preset?: string; from?: string; to?: string; q?: string; includeInactive?: boolean; page?: number; pageSize?: number; /** internal callers (assistant, saved reports): every branch on one page */ all?: boolean }
+/** AI BRANCH COMPARISON 08 (Nov 12 2026): the same figures for the PREVIOUS equal period, per branch, read by the same Sales /
+ *  Booking reports with the same definitions. A preset uses the Sales Report's own previous-period rule in each branch's
+ *  time zone (ReportFilters.period 'previous': today → yesterday, month 1st..today → last month 1st..the same day, …); a
+ *  custom From–To uses the same number of days immediately before it. Never mixed into the current figures. */
+export interface BranchPriorFigures { netSalesCents: number | null; ticketsCount: number | null; totalBookings: number; completed: number; completionRate: number | null }
+export interface BranchPeriodComparison { basis: 'previous_equal_period'; preset: string; range: { from: string; to: string } | null; priorRange: { from: string; to: string } | null;
+  totals: BranchPriorFigures; byBranch: Record<string, BranchPriorFigures> }
+export function priorCustomRange(r: { from: string; to: string }): { from: string; to: string } {
+  const len = Math.round((Date.parse(r.to + 'T12:00:00Z') - Date.parse(r.from + 'T12:00:00Z')) / 86_400_000) + 1;
+  return { from: addDays(r.from, -len), to: addDays(r.from, -1) };
+}
+export interface BranchCompareQuery { preset?: string; from?: string; to?: string; q?: string; includeInactive?: boolean; page?: number; pageSize?: number; compare?: 'prior'; /** internal callers (assistant, saved reports): every branch on one page */ all?: boolean }
 
 export interface BranchComparison {
   preset: DatePreset | 'custom';
@@ -49,6 +61,8 @@ export interface BranchComparison {
   truncated: boolean;                  // true when authorized branches exceeded the fan-out cap
   drilldownRoute: string;
   notes: string[];
+  /** only when compare = 'prior' was asked for */
+  comparison?: BranchPeriodComparison;
 }
 
 const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
@@ -110,6 +124,31 @@ export class AiBusinessBranchesService {
         revenuePerCompletedAppointmentCents: revPerCompleted,
         completionRate: booking.totalBookings > 0 ? Math.round((booking.completed / booking.totalBookings) * 100) : null });
     }
+    let comparison: BranchPeriodComparison | undefined;
+    if (q.compare === 'prior') {
+      const priorRange = range ? priorCustomRange(range) : null;
+      const pf: ReportFilters = priorRange ? { preset: 'custom' as DatePreset, from: priorRange.from, to: priorRange.to } : { preset: preset as DatePreset, period: 'previous' };
+      const byBranch: Record<string, BranchPriorFigures> = {};
+      for (const b of matched) {
+        const bctx: ReportsContext = { tenantId: ctx.tenantId, branchId: b.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };
+        let booking: BookingsOverview;
+        try { booking = await this.reports.getBooking(bctx, pf); }
+        catch (e) { if (e instanceof ForbiddenError) throw new AiBusinessForbiddenError(e.message); throw e; }
+        let net: number | null = null, tickets: number | null = null;
+        if (financialsIncluded) {
+          try { const { kpis } = await this.reports.getSales(bctx, pf); net = kpis.netSalesCents; tickets = kpis.ticketsCount; }
+          catch (e) { if (e instanceof ForbiddenError) financialsIncluded = false; else throw e; }
+        }
+        byBranch[b.branchId] = { netSalesCents: net, ticketsCount: tickets, totalBookings: booking.totalBookings, completed: booking.completed,
+          completionRate: booking.totalBookings > 0 ? Math.round((booking.completed / booking.totalBookings) * 100) : null };
+      }
+      const pr = Object.values(byBranch);
+      if (!financialsIncluded) for (const x of pr) { x.netSalesCents = null; x.ticketsCount = null; }
+      const pBk = pr.reduce((a, x) => a + x.totalBookings, 0), pDone = pr.reduce((a, x) => a + x.completed, 0);
+      comparison = { basis: 'previous_equal_period', preset, range, priorRange, byBranch,
+        totals: { netSalesCents: financialsIncluded ? pr.reduce((a, x) => a + (x.netSalesCents ?? 0), 0) : null, ticketsCount: financialsIncluded ? pr.reduce((a, x) => a + (x.ticketsCount ?? 0), 0) : null,
+          totalBookings: pBk, completed: pDone, completionRate: pBk > 0 ? Math.round((pDone / pBk) * 100) : null } };
+    }
     if (!financialsIncluded) for (const r of all) { r.netSalesCents = null; r.averageTicketCents = null; r.ticketsCount = null; r.revenuePerCompletedAppointmentCents = null; }
     const sum = (f: (r: BranchComparisonRow) => number | null) => all.reduce((a, r) => a + (f(r) ?? 0), 0);
     const tNet = financialsIncluded ? sum((r) => r.netSalesCents) : null, tTk = financialsIncluded ? sum((r) => r.ticketsCount) : null;
@@ -129,7 +168,7 @@ export class AiBusinessBranchesService {
       totals: { netSalesCents: tNet, ticketsCount: tTk, averageTicketCents: tNet != null && tTk ? Math.round(tNet / tTk) : null, totalBookings: tBk, completed: tDone,
         completionRate: tBk > 0 ? Math.round((tDone / tBk) * 100) : null, branches: all.length },
       branches: rows, branchCount: all.length, truncated: false, page, pageSize, totalItems: all.length, totalPages, inactiveHidden,
-      drilldownRoute: getMetric('net_sales')!.drilldownRoute, notes,
+      drilldownRoute: getMetric('net_sales')!.drilldownRoute, notes, ...(comparison ? { comparison } : {}),
     };
   }
 }

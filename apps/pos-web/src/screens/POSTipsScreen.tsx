@@ -20,6 +20,8 @@ import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } 
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
 import { evenSplit, splitPreview } from './tips/tipSplitPreview';
+import { tipRefundImpact, REFUND_SCENARIOS, type RefundScenario } from './tips/tipRefundImpact';
+import { tipSourceLabel, TIP_SOURCE_TONE } from './tips/tipSourceLabel';
 
 type Tab = 'overview' | 'transactions' | 'distribution' | 'adjustments';
 type Tech = { id: string; name: string | null };
@@ -172,7 +174,7 @@ function TransactionsTab({ scope, sort, setSort, tick, onOpen, chips, clearAll, 
             <td>{techNames(r)}{r.technicians.length > 1 ? <span className="fk-li-s">{tx('tp.techCount', { n: fmtNumber(r.technicians.length) })}</span> : null}</td>
             <td>{tx('tp.method.' + r.method)}{r.method === 'split' ? <span className="fk-li-s">{fmtMoney(r.cardCents)} / {fmtMoney(r.cashCents)}</span> : null}</td>
             <td className="num"><b>{fmtMoney(r.amountCents)}</b>{r.reversedCents ? <span className="fk-li-s tp-neg">−{fmtMoney(-r.reversedCents)} {tx('tp.reversed')}</span> : null}</td>
-            <td>{r.amountCents === 0 ? <span className="fk-chip mut">{tx('tp.alloc.none')}</span> : <span className={'fk-chip ' + (ALLOC_TONE[r.allocationState] ?? 'mut')}>{tx('tp.alloc.' + r.allocationState)}</span>}{r.snapshotMismatch ? <span className="fk-chip bad">{tx('tp.mismatch')}</span> : null}</td>
+            <td>{r.amountCents === 0 ? <span className="fk-chip mut">{tx('tp.alloc.none')}</span> : <span className={'fk-chip ' + (ALLOC_TONE[r.allocationState] ?? 'mut')}>{tx('tp.alloc.' + r.allocationState)}</span>}{r.snapshotMismatch ? <span className="fk-chip bad">{tx('tp.mismatch')}</span> : null}<SourceChip r={r} /></td>
             <td>{r.amountCents === 0 ? '—' : <span className={'fk-chip ' + (PAYOUT_TONE[r.payout.state] ?? 'mut')}>{tx('tp.payout.' + r.payout.state)}</span>}{r.payout.periodLabel ? <span className="fk-li-s">{r.payout.periodLabel}</span> : null}</td>
             <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onOpen(r.ticketId)}>{tx('finance.view')}</button></td>
           </tr>)}</tbody>
@@ -231,6 +233,37 @@ function AdjustmentsTab({ period, tick, onOpen, onExport, canExport, rec }: { pe
 
 /** One tip event. The correction is a re-allocation with a reason on the existing tips.adjust route (step-up): Σ must equal
  *  the collected tip; a paid ticket's change becomes posted correction entries, the frozen snapshot is never rewritten. */
+/** Extras (Tips & Gratuity 10): verified / pending / adjusted / needs review — from the server's own fields (tipSourceLabel). */
+function SourceChip({ r, long }: { r: Row; long?: boolean }) {
+  const l = tipSourceLabel(r);
+  if (!l) return null;
+  return <span className={'fk-chip ' + TIP_SOURCE_TONE[l]} data-testid={long ? 'tip-source' : 'tip-source-row'} title={tx('tp.src.' + l + '.why')}>{tx('tp.src.' + l)}{long ? ` — ${tx('tp.src.' + l + '.why')}` : ''}</span>;
+}
+
+/** Extras (Tips & Gratuity 05): what a refund / void / chargeback WOULD do to this tip — collected total, each technician's
+ *  allocation, where the reversal is booked — by the compensation engine's own rules (tips/tipRefundImpact). Read only. */
+function RefundImpactPanel({ t, allocs }: { t: Row; allocs: Array<{ technicianId: string; name: string | null; netCents: number }> }) {
+  const [open, setOpen] = useState(false); const [sc, setSc] = useState<RefundScenario>('service_only');
+  if (!open) return <button type="button" className="fk-btn sm" onClick={() => setOpen(true)} data-testid="refund-impact-open">{tx('tp.ri.open')}</button>;
+  const r = tipRefundImpact({ collectedCents: t.amountCents, reversedCents: t.reversedCents, payoutState: t.payout.state, allocations: allocs }, sc);
+  return (
+    <div className="fk-void" data-testid="refund-impact">
+      <h3 className="fk-h3">{tx('tp.ri.title')}</h3>
+      <label className="fk-field"><span>{tx('tp.ri.scenario')}</span><select className="fk-select" value={sc} onChange={(e) => setSc(e.target.value as RefundScenario)} data-testid="refund-impact-scenario">
+        {REFUND_SCENARIOS.map((x) => <option key={x} value={x}>{tx('tp.ri.sc.' + x)}</option>)}</select></label>
+      <dl className="fk-dl" data-testid="refund-impact-totals">
+        <dt>{tx('tp.ri.collected')}</dt><dd>{fmtMoney(r.collectedCents)} · {tx('tp.ri.collectedSame')}</dd>
+        <dt>{tx('tp.ri.net')}</dt><dd>{fmtMoney(r.netNowCents)} → <b>{fmtMoney(r.netAfterCents)}</b></dd>
+        <dt>{tx('tp.ri.payable')}</dt><dd data-testid="refund-impact-posting">{tx('tp.ri.post.' + r.posting)}</dd>
+      </dl>
+      {r.rows.length ? <table className="fk-table" data-testid="refund-impact-rows"><thead><tr><th>{tx('pos.technician')}</th><th className="num">{tx('tp.split.now')}</th><th className="num">{tx('tp.split.change')}</th><th className="num">{tx('tp.split.after')}</th></tr></thead>
+        <tbody>{r.rows.map((x) => <tr key={x.technicianId}><td>{x.name ?? '—'}</td><td className="num">{fmtMoney(x.nowCents)}</td><td className={'num' + (x.changeCents < 0 ? ' tp-neg' : '')}>{x.changeCents ? fmtMoney(x.changeCents) : '—'}</td><td className="num"><b>{fmtMoney(x.afterCents)}</b></td></tr>)}</tbody></table> : null}
+      <div className="fk-hint">{tx('tp.ri.readOnly')}</div>
+      <button type="button" className="fk-btn sm" onClick={() => setOpen(false)}>{tx('pos.close')}</button>
+    </div>
+  );
+}
+
 function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: { id: string; onClose: () => void; onChanged: (t: string) => void; onCustomer: (id: string) => void; onTicket: (n: string) => void; onTech: (id: string) => void }) {
   const d = useLoad(() => api.detail(id), [id]);
   const stepUp = useStepUp(tx('tp.stepup'));
@@ -281,6 +314,7 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !t ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="gc-balance"><span className="fk-li-s">{tx('tp.col.amount')}</span><b>{fmtMoney(t.amountCents)}</b><span className="fk-chip mut">{tx('tp.method.' + t.method)}</span>
           <span className={'fk-chip ' + (ALLOC_TONE[t.allocationState] ?? 'mut')}>{tx('tp.alloc.' + t.allocationState)}</span><span className={'fk-chip ' + (PAYOUT_TONE[t.payout.state] ?? 'mut')}>{tx('tp.payout.' + t.payout.state)}</span>
+          <SourceChip r={t} long />
           {t.snapshotMismatch ? <span className="fk-chip bad" data-testid="mismatch-flag">{tx('tp.mismatchLong', { s: fmtMoney(t.snapshotCents ?? 0), c: fmtMoney(t.amountCents) })}</span> : null}</div>
         <div className="fn-cols2">
           <dl className="fk-dl">
@@ -304,6 +338,7 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
             <td className="num">{a.snapshotCents == null ? '—' : fmtMoney(a.snapshotCents)}{a.snapshotMismatch ? <span className="fk-chip bad"> {tx('tp.mismatch')}</span> : null}</td>
             <td className={'num' + (a.manualCorrectionCents + a.reversedCents < 0 ? ' tp-neg' : '')}>{a.manualCorrectionCents + a.reversedCents ? fmtMoney(a.manualCorrectionCents + a.reversedCents) : '—'}</td><td className="num">{fmtMoney(a.netCents)}</td></tr>)}
             {allocs.length === 0 ? <tr><td colSpan={5} className="fk-muted">{tx('tp.noAllocations')}</td></tr> : null}</tbody></table>
+        {t.amountCents > 0 ? <RefundImpactPanel t={t} allocs={allocs} /> : null}
         {editing ? <div className="fk-void tp-edit" data-testid="adjust-form">
           <div className="tp-edit-rows">{eligible.map((e) => <label key={e.technicianId} className="fk-field"><span>{e.name ?? e.technicianId}</span><input inputMode="decimal" value={amounts[e.technicianId] ?? ''} onChange={(ev) => { setEvenRem(null); setAmounts({ ...amounts, [e.technicianId]: ev.target.value }); }} data-testid={'alloc-' + e.technicianId} /></label>)}</div>
           <div className={'fk-hint' + (sum !== t.amountCents ? ' tp-warn' : '')}>{tx('tp.sumCheck', { s: fmtMoney(sum), t: fmtMoney(t.amountCents) })}</div>

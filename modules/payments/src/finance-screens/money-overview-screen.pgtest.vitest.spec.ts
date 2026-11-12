@@ -181,3 +181,23 @@ describe('Payments & Money — search and isolation', () => {
     expect((await r.overview(ctx, await on('2026-10-22'))).kpis.collectionsCents).toBe(16815);
   });
 });
+
+describe('PAYMENTS 05 (Nov 12 2026): Revenue vs Collections explainer', () => {
+  it('Oct 22 bridges $108.83 revenue to $168.15 collected: + $7.60 tips, + $51.72 taken on a ticket that is not paid yet', async () => {
+    const o: any = await r.overview(ctx, await on('2026-10-22'));
+    expect(o.revenueBridge).toMatchObject({ revenueCents: 10883, taxCents: 0, tipsCents: 760, expectedCents: 11643, collectedOnPaidTicketsCents: 11643, otherDifferenceCents: 0,
+      collectedOtherDaysCents: 0, collectedForOtherTicketsCents: 5172, otherTicketsCount: 1, collectionsCents: 16815, balanced: true });
+  });
+  it('a ticket paid on Oct 23 with a deposit taken Oct 22: the deposit is "another day" for Oct 23 and "other tickets" for Oct 22; every period balances', async () => {
+    const tid = id('c900');
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, discount_cents, tax_cents, total_cents, tip_cents, ticket_number, paid_at, created_at) values ($1,$2,$3,$4,'paid',2000,0,150,2150,0,'5090','2026-10-23T17:00:00Z','2026-10-22T17:00:00Z')`, [tid, T, B, id('94')]);
+    await q(`insert into payments (id, tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, status, created_at, approved_at, updated_at) values ($1,$3,$4,$5,'card',1000,0,'approved','2026-10-22T17:05:00Z','2026-10-22T17:05:00Z','2026-10-22T17:05:00Z'), ($2,$3,$4,$5,'cash',1150,0,'approved','2026-10-23T17:00:00Z','2026-10-23T17:00:00Z','2026-10-23T17:00:00Z')`, [id('d900'), id('d901'), T, B, tid]);
+    const d23: any = (await r.overview(ctx, await on('2026-10-23'))).revenueBridge;
+    expect(d23).toMatchObject({ taxCents: 150, collectedOtherDaysCents: 1000, balanced: true });
+    expect(d23.collectedOnPaidTicketsCents - d23.collectedOtherDaysCents + d23.collectedForOtherTicketsCents).toBe(d23.collectionsCents);
+    const d22: any = (await r.overview(ctx, await on('2026-10-22'))).revenueBridge;
+    expect(d22).toMatchObject({ collectedForOtherTicketsCents: 5172 + 1000, otherTicketsCount: 2, balanced: true });
+    expect((await r.overview(other, await on('2026-10-22')) as any).revenueBridge).toMatchObject({ collectedForOtherTicketsCents: 0, balanced: true });   // another salon sees only its own
+    await q(`delete from payments where id in ($1,$2)`, [id('d900'), id('d901')]); await q(`delete from tickets where id = $1`, [tid]);
+  });
+});

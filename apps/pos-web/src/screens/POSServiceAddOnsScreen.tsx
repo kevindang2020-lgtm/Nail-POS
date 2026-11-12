@@ -144,6 +144,34 @@ export function POSServiceAddOnsScreen() {
   );
 }
 
+/** ADD-ONS 14: why the charged amount differs from the default price — the server's reason codes, each explained; the
+ *  quoted price the line was added at is shown when it differs from what was charged. Nothing is recalculated here. */
+const PRICE_REASONS = ['quantity', 'line_reduced', 'line_increased', 'menu_price_changed', 'price_varies_by_service', 'no_active_menu_price', 'tax_on_ticket'] as const;
+function PriceReasons({ row }: { row: { chargedCents?: number; quotedCents?: number | null; menuPriceCents?: number | null; quantity?: number; priceReasons?: string[] } }) {
+  const codes = (row.priceReasons ?? []).filter((c) => (PRICE_REASONS as readonly string[]).includes(c));
+  if (!codes.length) return null;
+  const vars = { q: row.quotedCents == null ? '—' : fmtMoney(row.quotedCents), m: row.menuPriceCents == null ? '—' : fmtMoney(row.menuPriceCents), n: nf(row.quantity ?? 1) };
+  return <span className="fk-li-s" data-testid="price-reasons" title={codes.map((c) => tx('cg.ao.why.' + c, vars)).join(' · ')}>{codes.map((c) => tx('cg.ao.why.' + c, vars)).join(' · ')}</span>;
+}
+
+/** ADD-ONS 07: booking impact preview — the upcoming appointments that booked this add-on (from the add-on detail). For an
+ *  edit it says how many would run longer at the new +time; for an archive, who still has it booked. Read only: booked
+ *  appointments keep the add-on, price and minutes they were quoted. */
+type AddOnUpcoming = { appointments: number; items: { appointmentId: string; day: string; time: string; customer: string | null; serviceId: string | null; serviceName: string | null; bookedMinutes: number; quotedCents: number }[] };
+function AddOnBookingImpact({ upcoming, serviceId, newMinutes, archiving }: { upcoming?: AddOnUpcoming | null; serviceId?: string | null; newMinutes?: number | null; archiving?: boolean }) {
+  if (!upcoming) return null;
+  const items = serviceId ? upcoming.items.filter((a) => a.serviceId === serviceId) : upcoming.items;
+  const total = serviceId ? items.length : upcoming.appointments;
+  if (!total) return <p className="fk-hint" data-testid="add-on-impact-none">{tx('cg.ao.impact.none')}</p>;
+  const longer = newMinutes == null ? 0 : items.filter((a) => newMinutes > a.bookedMinutes).length;
+  return (
+    <div className="fk-note warn" data-testid="add-on-impact">
+      <span>{tx(archiving ? 'cg.ao.impact.archive' : 'cg.ao.impact.some', { n: nf(total) })}{!archiving && longer ? ' ' + tx('cg.ao.impact.longer', { n: nf(longer) }) : ''} {tx('cg.ao.impact.kept')}</span>
+      <ul className="fn-notes" data-testid="add-on-impact-list">{items.slice(0, 5).map((a) => <li key={a.appointmentId + (a.serviceId ?? '')}>{a.day} {a.time} · {a.customer ?? tx('cg.impact.customerHidden')} · {a.serviceName ?? '—'} · {fmtMoney(a.quotedCents)} · {plusMin(a.bookedMinutes)}</li>)}</ul>
+    </div>
+  );
+}
+
 function UsageTable({ rows }: { rows: any[] }) {
   return (
     <table className="fk-table fn-table cg-table" data-testid="usage-table">
@@ -153,7 +181,7 @@ function UsageTable({ rows }: { rows: any[] }) {
         <td>{r.customerName ?? tx('cg.walkIn')}<span className="fk-li-s">{r.maskedPhone ?? ''}</span></td>
         <td>{r.addOn}{r.minutes ? <span className="fk-li-s">{plusMin(r.minutes)}</span> : null}</td>
         <td className="t-opt">{r.mainServices ?? '—'}</td>
-        <td className="num"><b>{fmtMoney(r.chargedCents)}</b></td>
+        <td className="num"><b>{fmtMoney(r.chargedCents)}</b><PriceReasons row={r} /></td>
         <td className="t-opt">{r.technician ?? '—'}</td>
         <td>{r.ticketNumber ? `#${r.ticketNumber}` : '—'}</td>
       </tr>)}</tbody>
@@ -258,6 +286,7 @@ function AddOnEditor({ addOnKey, row, onClose, onSaved }: { addOnKey: string; ro
           {removes.length ? <div className="fk-note warn"><span>{tx('cg.ao.removeRule', { n: nf(removes.length) })}</span></div> : null}
           <ServicePicker picked={adds} onChange={setAdds} exclude={x.offerings.filter((o: any) => o.active).map((o: any) => o.serviceId)} />
         </> : null}
+        <AddOnBookingImpact upcoming={x.upcoming} serviceId={scope === 'offering' && row ? row.serviceId : null} newMinutes={/^\d+$/.test(dur) ? Number(dur) : null} />
         {err ? <div className="fk-note bad" role="alert" data-testid="edit-error"><span>{err}</span></div> : null}
       </>}
     </FitDialog>
@@ -266,6 +295,7 @@ function AddOnEditor({ addOnKey, row, onClose, onSaved }: { addOnKey: string; ro
 
 function ArchiveAddOn({ row, restore, onClose, onDone }: { row: any; restore: boolean; onClose: () => void; onDone: (m: string) => void }) {
   const [all, setAll] = useState(false); const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const impact = useLoad(() => (restore ? Promise.resolve(null) : posCatalogApi.addOn(row.key)), [row.key, restore]);
   const go = async () => {
     setBusy(true); setErr(null);
     try {
@@ -280,6 +310,7 @@ function ArchiveAddOn({ row, restore, onClose, onDone }: { row: any; restore: bo
       <p>{tx(restore ? 'cg.ao.restoreBody' : 'cg.ao.archiveBody', { s: row.serviceName })}</p>
       {row.sharedWith > 1 ? <label className="cg-chk"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} data-testid="archive-all" /> {tx(restore ? 'cg.ao.restoreAll' : 'cg.ao.archiveAll', { n: nf(row.sharedWith) })}</label> : null}
       <label className="fk-field wide">{tx('cg.f.reasonOptional')}<input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} /></label>
+      {!restore ? <AddOnBookingImpact upcoming={impact.data?.upcoming} serviceId={all ? null : row.serviceId} archiving /> : null}
       {err ? <div className="fk-note bad" role="alert"><span>{err}</span></div> : null}
     </FitDialog>
   );

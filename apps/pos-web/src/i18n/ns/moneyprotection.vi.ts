@@ -371,4 +371,14 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.set.eff.unknown": "Hiệu lực: —", // DRAFT — Kevin reviews
   "mpx.stale.note": "Dữ liệu cũ — không làm mới được. Đang hiển thị kết quả tải lúc {t}.", // DRAFT — Kevin reviews
   "mpx.stale.retry": "Thử lại", // DRAFT — Kevin reviews
+  "mpx.fp.title": "Xem lại báo động nhầm — 90 ngày qua", // DRAFT — Kevin reviews
+  "mpx.fp.none": "Không có báo động nào bị bỏ qua vì nhầm trong 90 ngày qua.", // DRAFT — Kevin reviews
+  "mpx.fp.reviewed": "Đã xem xét", // DRAFT — Kevin reviews
+  "mpx.fp.dismissed": "Đã bỏ qua", // DRAFT — Kevin reviews
+  "mpx.fp.reopened": "Mở lại sau đó", // DRAFT — Kevin reviews
+  "mpx.fp.reasons": "Lý do lặp lại", // DRAFT — Kevin reviews
+  "mpx.fp.rate": "{n}% số đã xem xét", // DRAFT — Kevin reviews
+  "mpx.fp.reasonN": "“{r}” × {n}", // DRAFT — Kevin reviews
+  "mpx.fp.noPattern": "Không có lý do lặp lại", // DRAFT — Kevin reviews
+  "mpx.fp.policy": "Thông tin từ chính quyết định của nhân viên. Quy tắc không bao giờ tự tắt hay tự nới lỏng — nếu mẫu này là bình thường, hãy đổi quy tắc ở trên kèm lý do.", // DRAFT — Kevin reviews
 };

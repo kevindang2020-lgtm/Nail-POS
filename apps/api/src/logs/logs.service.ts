@@ -4,7 +4,7 @@
 import { hasPermission } from '@aipowersalon/permissions';
 import { normalizeFilters, isSeverity, type LogSeverity } from './logs-core';
 import type { LogsContext, LogWriteCtx, LogEntryInput, LogEntryView, LogSink } from './logs.dto';
-import type { LogsRepositoryPort, StoredLog, LogSummary } from './logs.repository';
+import type { LogsRepositoryPort, StoredLog, LogSummary, LogPaymentEnvironment } from './logs.repository';
 import { matchesFilters } from './logs-core';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
@@ -32,7 +32,7 @@ export class LogsService implements LogSink {
     } catch { /* logging must never break the caller */ }
   }
 
-  async query(ctx: LogsContext, raw: { category?: string; severity?: string; source?: string; search?: string; relatedId?: string; limit?: unknown; from?: string; to?: string; page?: unknown; pageSize?: unknown }): Promise<{ logs: LogEntryView[]; total?: number; page?: number; pageSize?: number; totalPages?: number; summary?: LogSummary }> {
+  async query(ctx: LogsContext, raw: { category?: string; severity?: string; source?: string; search?: string; relatedId?: string; limit?: unknown; from?: string; to?: string; page?: unknown; pageSize?: unknown }): Promise<{ logs: LogEntryView[]; total?: number; page?: number; pageSize?: number; totalPages?: number; summary?: LogSummary; paymentEnvironment?: LogPaymentEnvironment }> {
     if (!ctx?.userId || !ctx?.tenantId) throw new ForbiddenError('Not authenticated');
     if (!hasPermission(ctx as any, 'pos.logs.view')) throw new ForbiddenError('Missing pos.logs.view');
     const f = normalizeFilters(raw);
@@ -52,6 +52,7 @@ export class LogsService implements LogSink {
       summary = { events: total, warnings: all.filter((r) => r.severity === 'warning').length, errors: all.filter((r) => r.severity === 'error' || r.severity === 'critical').length,
         device: all.filter((r) => r.category === 'device').length, integration: all.filter((r) => r.category === 'integration').length };
     }
-    return { logs: rows.map((r) => this.view(r)), total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), summary };
+    const paymentEnvironment = this.repo.paymentEnvironment ? await this.repo.paymentEnvironment(ctx) : undefined;
+    return { logs: rows.map((r) => this.view(r)), total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), summary, ...(paymentEnvironment ? { paymentEnvironment } : {}) };
   }
 }

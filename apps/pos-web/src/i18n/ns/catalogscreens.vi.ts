@@ -427,4 +427,16 @@ export const CATALOGSCREENS_VI = {
   'cg.csv.created': 'Ngày tạo',
   "cg.drill": "Danh mục đang lọc theo {c} từ biểu đồ.", // DRAFT — Kevin reviews
   "cg.svc.lookAlike": "Có vẻ giống dịch vụ đã có: {names}. Vẫn lưu được — hãy kiểm tra để tránh trùng.", // DRAFT — Kevin reviews
+  "cg.ao.impact.none": "Không có lịch hẹn sắp tới nào đặt dịch vụ thêm này.", // DRAFT — Kevin reviews
+  "cg.ao.impact.some": "{n} lịch hẹn sắp tới đã đặt dịch vụ thêm này.", // DRAFT — Kevin reviews
+  "cg.ao.impact.archive": "{n} lịch hẹn sắp tới vẫn đặt dịch vụ thêm này — hãy báo cho nhân viên trước khi lưu trữ.", // DRAFT — Kevin reviews
+  "cg.ao.impact.longer": "{n} lịch sẽ kéo dài hơn với thời gian mới.", // DRAFT — Kevin reviews
+  "cg.ao.impact.kept": "Lịch hẹn đã đặt giữ nguyên giá và số phút đã báo.", // DRAFT — Kevin reviews
+  "cg.ao.why.quantity": "Số lượng {n}", // DRAFT — Kevin reviews
+  "cg.ao.why.line_reduced": "Tính thấp hơn giá {q} lúc thêm (giảm giá hoặc chỉnh giá)", // DRAFT — Kevin reviews
+  "cg.ao.why.line_increased": "Tính cao hơn giá {q} lúc thêm (chỉnh giá)", // DRAFT — Kevin reviews
+  "cg.ao.why.menu_price_changed": "Giá menu hiện là {m}; lúc thêm là {q}", // DRAFT — Kevin reviews
+  "cg.ao.why.price_varies_by_service": "Giá mặc định khác nhau theo dịch vụ", // DRAFT — Kevin reviews
+  "cg.ao.why.no_active_menu_price": "Hiện không có giá menu đang hoạt động cho dịch vụ thêm này", // DRAFT — Kevin reviews
+  "cg.ao.why.tax_on_ticket": "Chịu thuế — thuế được cộng trên phiếu, không nằm trong dòng này", // DRAFT — Kevin reviews
 };

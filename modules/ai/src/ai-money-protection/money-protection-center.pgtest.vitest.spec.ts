@@ -207,6 +207,17 @@ describe('Rules and safe settings', () => {
     expect(after.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_EXACT').lastCheckedAt).toEqual(expect.any(String));
     expect(after.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_LIKELY').lastCheckedAt).toBeNull();
   });
+  it('RU-03 (MONEY PROTECTION ALERTS 11) false-positive insights: reviewed / dismissed / reopened per rule and the dismissal reasons that repeat — the rule stays on', async () => {
+    // two more recorded dismissals of the same alert with the same wording (a repeated pattern), one with its own wording
+    for (const reason of ['Webhook retry', '  webhook RETRY ', 'One-off terminal glitch']) await q(`insert into money_protection_events (tenant_id, branch_id, entity_type, entity_id, action, from_state, to_state, reason) values ($1,$2,'alert',$3,'dismiss','ACKNOWLEDGED','DISMISSED_FALSE_POSITIVE',$4)`, [T, B, A1, reason]);
+    const r: any = await mc.rules(ctx());
+    expect(r.falsePositivePolicy).toBe('insight_only_rules_never_auto_disabled');
+    const fp = r.falsePositiveInsights.find((x: any) => x.ruleId === 'MP_DUP_CHARGE_EXACT');
+    expect(fp).toMatchObject({ name: expect.any(String), reviewed90d: 1, dismissed90d: 1, reopened90d: 1, dismissRatePct: 100 });
+    expect(fp.repeatedReasons).toEqual([{ reason: 'webhook retry', count: 2 }]);   // one-off wording is not a pattern
+    expect(r.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_EXACT')).toMatchObject({ enabled: true, effective: true });   // never self-disabled
+    expect(((await mc.rules(ctx({ branchId: B2 }))) as any).falsePositiveInsights).toEqual([]);   // North's view: no decisions there
+  });
 });
 
 describe('Check AI Money Protection System', () => {

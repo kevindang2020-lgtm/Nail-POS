@@ -27,6 +27,20 @@ const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parame
 const sevChip = (s: string) => <span className={'chip ' + (s === 'warning' ? 'warn' : s === 'error' || s === 'critical' ? 'bad' : '')}>{codeLabel('admin.logs.severity', s, ['level', 'priority'])}</span>;
 type F = { category: string; severity: string; search?: string; relatedId?: string; from?: string; to?: string; page: number; pageSize: number };
 
+/** Device Integration Logs 06: say plainly whether payment events here come from a sandbox (test / UAT) or a production
+ *  merchant, and whether a production validation is recorded — so a test log is never read as certification or readiness. */
+function PaymentEnvLabel({ e }: { e: NonNullable<LogsPage['paymentEnvironment']> }) {
+  const env = e.environment ?? 'none';
+  const tone = env === 'production' ? 'ok' : env === 'sandbox' ? 'warn' : '';
+  return (
+    <div className="sub" data-testid="lgx-env" data-env={env} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+      <span className={'chip ' + tone}>{tt('lgx.env.' + env)}</span>
+      <span>{tt('lgx.env.' + env + 'Why', { p: e.processor ? codeLabel('lgx.env.proc', e.processor) : dash })}{e.source ? ' · ' + tt('lgx.env.src.' + e.source) : ''}</span>
+      {e.environment ? <span data-testid="lgx-env-cert">{e.certification ? tt('lgx.env.cert', { s: codeLabel('lgx.env.certStatus', e.certification) }) : tt('lgx.env.noCert')}</span> : null}
+    </div>
+  );
+}
+
 export function TenantLogsScreen() {
   const nav = useNavigate();
   const [f, setFState] = useState<F>({ category: 'all', severity: 'all', page: 1, pageSize: 25 });
@@ -54,6 +68,7 @@ export function TenantLogsScreen() {
         <button className="btn ghost" data-testid="lgx-health" onClick={() => nav('/tenant/devices/health')}>{tt('lgx.toHealth')}</button>
         <button className="btn ghost" data-testid="lgx-refresh" onClick={load}>{tx('pos.refresh')}</button>
       </div>
+      {d?.paymentEnvironment ? <PaymentEnvLabel e={d.paymentEnvironment} /> : null}
       <div className="rvw-kpis lgx-kpis" data-testid="lgx-kpis">
         {card('events', tt('lgx.kpi.events'), 'gold')}
         {card('warnings', tt('lgx.kpi.warnings'), 'warn', { severity: 'warning' })}

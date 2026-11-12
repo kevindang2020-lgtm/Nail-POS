@@ -175,8 +175,8 @@ export class AiBusinessController {
   // ---- branch comparison over AUTHORIZED branches only, totals + normalized (§14, §30) ----
   @Get('branches/compare') @RequirePermission('pos.ai_business.view')
   async compareBranches(@Req() r: any, @Query('preset') preset?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string,
-    @Query('includeInactive') includeInactive?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-    try { return await this.branches.compareBranches(ctxFrom(r), { preset, from, to, q, includeInactive: includeInactive === 'true', page: Number(page) || 1, pageSize: Number(pageSize) || undefined }); }
+    @Query('includeInactive') includeInactive?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('compare') compare?: string) {
+    try { return await this.branches.compareBranches(ctxFrom(r), { preset, from, to, q, includeInactive: includeInactive === 'true', page: Number(page) || 1, pageSize: Number(pageSize) || undefined, compare: compare === 'prior' ? 'prior' : undefined }); }
     catch (e) { throw toHttp(e); }
   }
 

@@ -543,4 +543,14 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.a.unchanged": "Không đổi", // DRAFT — Kevin reviews
   "bzx.a.noChanges": "Không có gì thay đổi — không có gì để lưu.", // DRAFT — Kevin reviews
   "bzx.a.compareNote": "Chưa lưu gì cho đến khi bạn xác nhận. Lần đánh giá tiếp theo dùng giá trị đề xuất.", // DRAFT — Kevin reviews
+  "bcx.cmp.toggle": "So sánh với kỳ trước", // DRAFT — Kevin reviews
+  "bcx.cmp.vs": "{d} so với kỳ trước", // DRAFT — Kevin reviews
+  "bcx.cmp.pts": "{n} điểm", // DRAFT — Kevin reviews
+  "bcx.cmp.basis": "{cur} so với {prior} — cùng định nghĩa, mỗi chi nhánh theo múi giờ riêng", // DRAFT — Kevin reviews
+  "bcx.cmp.prior.today": "hôm qua", // DRAFT — Kevin reviews
+  "bcx.cmp.prior.yesterday": "hôm kia", // DRAFT — Kevin reviews
+  "bcx.cmp.prior.week": "tuần trước, từ thứ Hai đến cùng thứ", // DRAFT — Kevin reviews
+  "bcx.cmp.prior.month": "tháng trước, từ ngày 1 đến cùng ngày", // DRAFT — Kevin reviews
+  "bcx.cmp.prior.quarter": "quý trước, đến cùng ngày", // DRAFT — Kevin reviews
+  "bcx.cmp.prior.year": "năm trước, đến cùng ngày", // DRAFT — Kevin reviews
 };

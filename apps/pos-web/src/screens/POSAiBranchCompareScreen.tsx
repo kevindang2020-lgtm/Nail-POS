@@ -27,7 +27,13 @@ type Comparison = {
   preset: string; range: { from: string; to: string } | null; asOf: string; partialCurrentPeriod: boolean; financialsIncluded: boolean;
   totals: { netSalesCents: number | null; ticketsCount: number | null; averageTicketCents: number | null; totalBookings: number; completed: number; completionRate: number | null; branches: number };
   branches: Row[]; page: number; pageSize: number; totalItems: number; totalPages: number; inactiveHidden: number; drilldownRoute: string; notes: string[];
+  comparison?: { basis: string; preset: string; range: { from: string; to: string } | null; priorRange: { from: string; to: string } | null; totals: PriorFigures; byBranch: Record<string, PriorFigures> };
 };
+type PriorFigures = { netSalesCents: number | null; ticketsCount: number | null; totalBookings: number; completed: number; completionRate: number | null };
+/** AI BRANCH COMPARISON 08: the change against the previous equal period — money as ± cents, rates as ± points; '—' when either side is unknown */
+const dMoney = (cur: number | null | undefined, prev: number | null | undefined) => (cur == null || prev == null ? '—' : (cur - prev >= 0 ? '+' : '−') + money(Math.abs(cur - prev)));
+const dNum = (cur: number | null | undefined, prev: number | null | undefined) => (cur == null || prev == null ? '—' : (cur - prev >= 0 ? '+' : '−') + bzNum(Math.abs(cur - prev)));
+const dPts = (cur: number | null | undefined, prev: number | null | undefined) => (cur == null || prev == null ? '—' : bt('bcx.cmp.pts', { n: (cur - prev >= 0 ? '+' : '−') + String(Math.abs(cur - prev)) }));
 const PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'] as const;
 const money = (c: number | null | undefined) => bzValue(c ?? null, 'cents');
 const pct = (n: number | null | undefined) => (n == null ? bt('bcx.na') : `${n}%`);
@@ -49,19 +55,23 @@ export function POSAiBranchCompareScreen() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Row | null>(null);
   const [tick, setTick] = useState(0);
+  const [cmp, setCmp] = useState(false);
 
   const load = useCallback(() => {
     setError(null);
     const p = period.preset === 'custom' ? { from: period.from, to: period.to } : { preset: period.preset };
-    posAiBusinessApi.compareBranches({ ...p, q: q || undefined, includeInactive: inactive ? 'true' : undefined, page, pageSize })
+    posAiBusinessApi.compareBranches({ ...p, q: q || undefined, includeInactive: inactive ? 'true' : undefined, page, pageSize, compare: cmp ? 'prior' : undefined })
       .then((x) => setS(x as Comparison)).catch((e) => setError(reportError(e, bt('growth.noun.theBranchComparison'))));
-  }, [period, q, inactive, page, pageSize]);
+  }, [period, q, inactive, page, pageSize, cmp]);
   useEffect(() => { load(); }, [load, tick]);
   const pick = (p: typeof period) => { setPeriod(p); setPage(1); };
 
   const rows = s?.branches ?? [];
   const fin = s?.financialsIncluded !== false;
   const T = s?.totals;
+  const C = cmp ? s?.comparison : undefined; const PT = C?.totals;
+  const priorLabel = C ? (C.priorRange ? bzDays(C.priorRange) : bt('bcx.cmp.prior.' + C.preset)) : '';
+  const vs = (d: string) => (PT ? bt('bcx.cmp.vs', { d }) : undefined);
   return (
     <div className="work rvw" data-testid="bcx">
       <div className="rvw-head">
@@ -83,12 +93,16 @@ export function POSAiBranchCompareScreen() {
 
       {error ? <ErrorRetry message={error} onRetry={load} /> : null}
       <div className="rvw-kpis" data-testid="bcx-kpis">
-        <KpiCard testId="bcx-k-net" label={bt('bcx.k.net')} value={T ? (fin ? money(T.netSalesCents) : '—') : '—'} loading={!s && !error} />
+        <KpiCard testId="bcx-k-net" label={bt('bcx.k.net')} value={T ? (fin ? money(T.netSalesCents) : '—') : '—'} sub={PT && T && fin ? vs(dMoney(T.netSalesCents, PT.netSalesCents)) : undefined} loading={!s && !error} />
         <KpiCard testId="bcx-k-avg" label={bt('bcx.k.avg')} value={T ? (fin ? na(T.averageTicketCents == null ? null : money(T.averageTicketCents)) : '—') : '—'} loading={!s && !error} />
-        <KpiCard testId="bcx-k-bookings" label={bt('bcx.k.bookings')} value={T ? bzNum(T.totalBookings) : '—'} loading={!s && !error} />
-        <KpiCard testId="bcx-k-completed" label={bt('bcx.k.completed')} value={T ? bzNum(T.completed) : '—'} loading={!s && !error} />
-        <KpiCard testId="bcx-k-completion" label={bt('bcx.k.completion')} value={T ? pct(T.completionRate) : '—'} loading={!s && !error} />
+        <KpiCard testId="bcx-k-bookings" label={bt('bcx.k.bookings')} value={T ? bzNum(T.totalBookings) : '—'} sub={PT && T ? vs(dNum(T.totalBookings, PT.totalBookings)) : undefined} loading={!s && !error} />
+        <KpiCard testId="bcx-k-completed" label={bt('bcx.k.completed')} value={T ? bzNum(T.completed) : '—'} sub={PT && T ? vs(dNum(T.completed, PT.completed)) : undefined} loading={!s && !error} />
+        <KpiCard testId="bcx-k-completion" label={bt('bcx.k.completion')} value={T ? pct(T.completionRate) : '—'} sub={PT && T ? vs(dPts(T.completionRate, PT.completionRate)) : undefined} loading={!s && !error} />
         <KpiCard testId="bcx-k-branches" label={bt('bcx.k.branches')} value={T ? bzNum(T.branches) : '—'} sub={s?.inactiveHidden ? bt('bcx.inactiveHidden', { n: s.inactiveHidden }) : undefined} loading={!s && !error} />
+      </div>
+      <div className="rvw-filters" style={{ marginTop: 8 }}>
+        <label className="rvw-f" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><input type="checkbox" data-testid="bcx-compare" checked={cmp} onChange={(e) => setCmp(e.target.checked)} /><span>{bt('bcx.cmp.toggle')}</span></label>
+        {C ? <span className="sub" data-testid="bcx-compare-basis">{bt('bcx.cmp.basis', { cur: C.range ? bzDays(C.range) : bt('bzx.period.' + C.preset), prior: priorLabel })}</span> : null}
       </div>
       {s?.partialCurrentPeriod ? <div className="sub">{bt('pos.today_is_partial_figures_are_still_1a7b')}</div> : null}
 
@@ -109,9 +123,9 @@ export function POSAiBranchCompareScreen() {
             <tbody>{rows.map((r) => (
               <tr key={r.branchId} data-testid="bcx-row" tabIndex={0} role="button" style={{ cursor: 'pointer' }} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(r); }}>
                 <td><b>{r.branchName}</b>{r.status !== 'active' ? <span className="chip" style={{ marginLeft: 6 }}>{bt('bcx.inactive')}</span> : null}</td>
-                <td className="num">{fin && r.netSalesCents != null ? money(r.netSalesCents) : '—'}</td>
+                <td className="num">{fin && r.netSalesCents != null ? money(r.netSalesCents) : '—'}{C && fin ? <span className="sub" style={{ display: 'block' }} data-testid="bcx-d-net">{dMoney(r.netSalesCents, C.byBranch[r.branchId]?.netSalesCents)}</span> : null}</td>
                 <td className="num">{!fin ? '—' : r.averageTicketCents == null ? bt('bcx.na') : money(r.averageTicketCents)}</td>
-                <td className="num">{bzNum(r.totalBookings)}</td>
+                <td className="num">{bzNum(r.totalBookings)}{C ? <span className="sub" style={{ display: 'block' }} data-testid="bcx-d-bookings">{dNum(r.totalBookings, C.byBranch[r.branchId]?.totalBookings)}</span> : null}</td>
                 <td className="num">{bzNum(r.completed)}</td>
                 <td className="num" data-testid="bcx-completion">{pct(r.completionRate)}{small(r) ? <span className="chip" style={{ marginLeft: 4 }} title={bt('bcx.smallTip', { n: String(r.totalBookings ?? 0) })} data-testid="bcx-small">{bt('bcx.small')}</span> : null}</td>
                 <td className="num">{!fin ? '—' : r.revenuePerCompletedAppointmentCents == null ? bt('bcx.na') : money(r.revenuePerCompletedAppointmentCents)}</td>

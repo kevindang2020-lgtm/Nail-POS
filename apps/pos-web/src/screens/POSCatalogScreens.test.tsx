@@ -187,6 +187,55 @@ describe('Add-Ons', () => {
     fireEvent.click(screen.getByTestId('add-on-edit-save'));
     await waitFor(() => expect(cat.updateAddOn).toHaveBeenCalledWith('ao_french', expect.objectContaining({ scope: 'offering', serviceId: 's1', priceCents: 1200, reason: 'gel tips cost more' })));
   });
+  it('ADD-ONS 07: editing +time shows the upcoming appointments that booked it and how many would run longer; archive warns too', async () => {
+    const up = { appointments: 2, policy: 'booked_quotes_kept', items: [
+      { appointmentId: 'ap1', day: '2026-11-20', time: '09:00', customer: null, serviceId: 's1', serviceName: 'Gel Manicure', bookedMinutes: 10, quotedCents: 1000 },
+      { appointmentId: 'ap2', day: '2026-11-21', time: '11:00', customer: null, serviceId: 's2', serviceName: 'Classic Pedicure', bookedMinutes: 20, quotedCents: 1000 }] };
+    cat.addOn.mockResolvedValue({ key: 'ao_french', name: 'French tips', upcoming: up, offerings: [AO('s1', 'Gel Manicure'), AO('s2', 'Classic Pedicure')].map((o) => ({ ...o, withServicePriceCents: 6500, withServiceMinutes: 55 })), differsByService: false, usage: { paidLines: 0, cents: 0, lastAt: null } });
+    mount(<POSServiceAddOnsScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-edit'))[0]);   // the Gel Manicure offering
+    const note = await screen.findByTestId('add-on-impact');
+    expect(note).toHaveTextContent('1 upcoming appointments have this add-on booked.');   // only this offering's service
+    fireEvent.change(screen.getByTestId('edit-minutes'), { target: { value: '15' } });
+    expect(screen.getByTestId('add-on-impact')).toHaveTextContent('1 would run longer at the new time.');
+    fireEvent.click(screen.getByTestId('scope-definition'));
+    expect(screen.getByTestId('add-on-impact')).toHaveTextContent('2 upcoming appointments');
+    expect(screen.getByTestId('add-on-impact-list').querySelectorAll('li')).toHaveLength(2);
+    expect(cat.updateAddOn).not.toHaveBeenCalled();
+  });
+  it('ADD-ONS 07: archiving one offering names who still has it booked (only that service), before anything is archived', async () => {
+    const up = { appointments: 2, items: [
+      { appointmentId: 'ap1', day: '2026-11-20', time: '09:00', customer: 'Mai Le', serviceId: 's1', serviceName: 'Gel Manicure', bookedMinutes: 10, quotedCents: 1000 },
+      { appointmentId: 'ap2', day: '2026-11-21', time: '11:00', customer: null, serviceId: 's2', serviceName: 'Classic Pedicure', bookedMinutes: 10, quotedCents: 1000 }] };
+    cat.addOn.mockResolvedValue({ key: 'ao_french', name: 'French tips', upcoming: up, offerings: [], differsByService: false, usage: { paidLines: 0, cents: 0, lastAt: null } });
+    mount(<POSServiceAddOnsScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-archive'))[0]);
+    const note = await screen.findByTestId('add-on-impact');
+    expect(note).toHaveTextContent('1 upcoming appointments still have this add-on booked');
+    expect(note).toHaveTextContent('Mai Le');
+    fireEvent.click(screen.getByTestId('archive-all'));
+    expect(screen.getByTestId('add-on-impact')).toHaveTextContent('2 upcoming appointments');
+    expect(cat.archiveAddOn).not.toHaveBeenCalled();
+  });
+  it('ADD-ONS 07: with nothing booked the editor says so quietly', async () => {
+    cat.addOn.mockResolvedValue({ key: 'ao_french', name: 'French tips', upcoming: { appointments: 0, items: [] }, offerings: [AO('s1', 'Gel Manicure')].map((o) => ({ ...o, withServicePriceCents: 6500, withServiceMinutes: 55 })), differsByService: false, usage: { paidLines: 0, cents: 0, lastAt: null } });
+    mount(<POSServiceAddOnsScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-edit'))[0]);
+    expect(await screen.findByTestId('add-on-impact-none')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-on-impact')).toBeNull();
+  });
+  it('ADD-ONS 14: a usage row explains why the charged amount differs from the default price', async () => {
+    cat.addOnUsage.mockResolvedValue({ ...page([{ lineId: 'l1', addOn: 'French tips', chargedCents: 1500, minutes: 10, at: '2026-10-29T12:00:00Z', paid: true, ticketId: 't1', ticketNumber: '102', customerName: 'Mai Le', maskedPhone: '••• 1234', technician: 'Vy Tran', mainServices: 'Classic Pedicure',
+      quantity: 2, quotedCents: 1000, menuPriceCents: null, priceReasons: ['quantity', 'line_reduced', 'price_varies_by_service', 'tax_on_ticket', 'not_a_known_code'] }]), totals: { paidLines: 1, paidCents: 1500 } });
+    mount(<POSServiceAddOnsScreen />);
+    fireEvent.click(await screen.findByTestId('tab-usage'));
+    const why = await screen.findByTestId('price-reasons');
+    expect(why).toHaveTextContent('Quantity 2');
+    expect(why).toHaveTextContent('Charged below the $10.00 it was added at');
+    expect(why).toHaveTextContent('Default price differs by service');
+    expect(why).toHaveTextContent('tax is added on the ticket');
+    expect(why.textContent).not.toMatch(/not_a_known_code/);
+  });
   it('a new add-on must name its services (never all by default)', async () => {
     mount(<POSServiceAddOnsScreen />);
     fireEvent.click(await screen.findByTestId('new-add-on'));

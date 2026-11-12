@@ -16,7 +16,7 @@
 //   legacy add-on      = a service_add_ons row (one OFFERING: an add-on key on one service); rows sharing an add_on_key are
 //                        one DEFINITION. Add-ons-category services (packages/database add-on-authority) are listed apart.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 import { withCode, isAddOnCategory, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { tenantTimeZone, transitionStatus } from '@aipowersalon/database';
 import { SERVICE_PRICE_SCHEDULE } from '../catalog-lifecycles';
@@ -60,6 +60,24 @@ const ADD_ON_ORDER: Record<string, RawBuilder<unknown>> = {
   newest: sql`a.created_at desc, a.id desc`, name: sql`lower(a.name) asc, a.id asc`, price_desc: sql`a.price_cents desc, a.id desc`,
   price_asc: sql`a.price_cents asc, a.id asc`, updated: sql`a.updated_at desc nulls last, a.id desc`, service: sql`lower(s.name) asc, a.id asc`,
 };
+
+/** ADD-ONS 14 (Nov 12 2026): why a charged add-on line differs from the add-on's default price — from the line's own
+ *  snapshot (the price quoted when it was added, its quantity, its taxable flag) and today's active menu price for that
+ *  name (null when the offerings disagree or none is active). Tax is charged on the ticket, never inside a line total, so a
+ *  taxable line says so instead of folding tax into the number. Codes are explained on screen; nothing is recalculated. */
+export function addOnPriceReasons(r: { line_total_cents?: unknown; price_cents_snapshot?: unknown; quantity?: unknown; is_taxable?: unknown; menu_cents?: unknown; menu_rows?: unknown }) {
+  const qty = Math.max(1, N(r.quantity) || 1); const charged = N(r.line_total_cents);
+  const quoted = r.price_cents_snapshot == null ? null : N(r.price_cents_snapshot);
+  const menu = r.menu_cents == null ? null : N(r.menu_cents);
+  const reasons: string[] = [];
+  if (qty > 1) reasons.push('quantity');
+  if (quoted != null && charged !== quoted * qty) reasons.push(charged < quoted * qty ? 'line_reduced' : 'line_increased');
+  if (quoted != null && menu != null && quoted !== menu) reasons.push('menu_price_changed');
+  if (menu == null && N(r.menu_rows) > 1) reasons.push('price_varies_by_service');
+  if (menu == null && N(r.menu_rows) === 0) reasons.push('no_active_menu_price');
+  if (r.is_taxable === true) reasons.push('tax_on_ticket');
+  return { quantity: qty, quotedCents: quoted, menuPriceCents: menu, priceReasons: reasons };
+}
 
 export class CatalogScreensRepository {
   constructor(private readonly db: Kysely<any>) {}
@@ -614,12 +632,35 @@ export class CatalogScreensRepository {
     const usage = (await sql<any>`select count(*)::int as n, coalesce(sum(l.line_total_cents), 0)::bigint as cents, max(t.paid_at) as last_at from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
       where l.tenant_id = ${T} and l.removed_at is null and t.paid_at is not null and coalesce(l.is_add_on, false) and lower(l.service_name_snapshot) = lower(${String(rows[0].name)}) and ${this.tb(ctx)}`.execute(this.db)).rows[0];
     const first = rows[0];
-    return { key: String(key), name: String(first.name), offerings: rows.map((r: any) => ({ offeringId: String(r.id), serviceId: String(r.service_id), serviceName: String(r.service_name), serviceStatus: String(r.service_status ?? 'active'),
+    const upcoming = await this.addOnUpcoming(ctx, String(key), String(first.name));
+    return { key: String(key), name: String(first.name), upcoming, offerings: rows.map((r: any) => ({ offeringId: String(r.id), serviceId: String(r.service_id), serviceName: String(r.service_name), serviceStatus: String(r.service_status ?? 'active'),
       categoryName: r.category_name ?? null, priceCents: N(r.price_cents), durationMinutes: N(r.duration_delta_minutes), taxable: !!r.is_taxable, active: !!r.is_active,
       withServicePriceCents: N(r.service_price) + N(r.price_cents), withServiceMinutes: N(r.service_minutes) + N(r.duration_delta_minutes), createdAt: iso(r.created_at), updatedAt: iso(r.updated_at) })),
       differsByService: new Set(rows.map((r: any) => `${r.price_cents}|${r.duration_delta_minutes}|${r.is_taxable}`)).size > 1,
       usage: { paidLines: N(usage?.n), cents: N(usage?.cents), lastAt: iso(usage?.last_at), matchedBy: 'add_on_name_on_ticket_line' } };
   }
+  /** ADD-ONS 07 (Nov 12 2026): booking impact preview — the upcoming appointments that booked this add-on (by its key, or its
+   *  name for a row booked before keys were carried), so an edit to its +time or an archive can say who needs a look first.
+   *  Read only: a booked appointment keeps the add-on, price and minutes it was quoted (nothing is repriced or removed).
+   *  Upcoming = from the salon's today, not cancelled / no-show / completed; names only with customers.view. */
+  private async addOnUpcoming(ctx: CatCtx, key: string, name: string) {
+    const T = ctx.tenantId; const b = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
+    const tz = await tenantTimeZone(this.db, T);
+    const from = sql`from (select id, tenant_id, branch_id, appt_date, start_time, status, customer_name, services from pos_tech_appointments where tenant_id = ${T}) a
+      cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e
+      cross join lateral jsonb_array_elements(case when jsonb_typeof(e->'addOns') = 'array' then e->'addOns' else '[]'::jsonb end) x`;
+    const w = sql`(x->>'addOnId' = ${key} or lower(coalesce(x->>'name', '')) = lower(${name})) and a.appt_date >= (now() at time zone ${tz})::date
+      and a.status not in ('cancelled', 'no_show', 'completed') and (${b}::uuid is null or a.branch_id = ${b} or a.branch_id is null)`;
+    const agg = (await sql<any>`select count(distinct a.id)::int as n ${from} where ${w}`.execute(this.db)).rows[0] ?? {};
+    const showCust = (ctx.permissions ?? []).some((p) => p === '*' || p === 'customers.view');
+    const rows = (await sql<any>`select a.id, to_char(a.appt_date, 'YYYY-MM-DD') as day, a.start_time, a.status, a.customer_name, e->>'serviceId' as service_id, e->>'serviceName' as service_name,
+        coalesce(nullif(x->>'durationDeltaMinutes', '')::int, 0) as minutes, coalesce(nullif(x->>'priceCents', '')::int, 0) as quoted
+      ${from} where ${w} order by a.appt_date, a.start_time, a.id limit 20`.execute(this.db)).rows;
+    return { appointments: N(agg.n), policy: 'booked_quotes_kept' as const, basis: 'upcoming_not_finished' as const,
+      items: rows.map((r: any) => ({ appointmentId: String(r.id), day: String(r.day), time: String(r.start_time), status: String(r.status), customer: showCust ? r.customer_name ?? null : null,
+        serviceId: r.service_id ?? null, serviceName: r.service_name ?? null, bookedMinutes: N(r.minutes), quotedCents: N(r.quoted) })) };
+  }
+
   /** Add-On usage: real paid / open ticket add-on lines (a legacy add-on line names the add-on in its snapshot; an Add-ons
    *  category line names the service). Search by customer name, phone in any format, ticket number, add-on or service. */
   async addOnUsage(ctx: CatCtx, f: { q?: string; key?: string; dateField?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
@@ -639,13 +680,15 @@ export class CatalogScreensRepository {
     const total = N((await sql<any>`select count(*)::int as n ${from} where ${w}`.execute(this.db)).rows[0]?.n);
     const sums = (await sql<any>`select coalesce(sum(l.line_total_cents) filter (where t.paid_at is not null), 0)::bigint as paid_cents, count(*) filter (where t.paid_at is not null)::int as paid ${from} where ${w}`.execute(this.db)).rows[0];
     const sp = served(page, pageSize, total);
-    const rows = (await sql<any>`select l.id, l.service_name_snapshot, l.line_total_cents, l.price_cents_snapshot, l.duration_minutes_snapshot, l.created_at, t.paid_at, t.ticket_number, t.id as ticket_id, t.status as ticket_status,
+    const rows = (await sql<any>`select l.id, l.service_name_snapshot, l.line_total_cents, l.price_cents_snapshot, l.duration_minutes_snapshot, l.created_at, t.paid_at, l.quantity, l.is_taxable,
+        (select case when count(distinct m.price_cents) = 1 then min(m.price_cents) end from service_add_ons m where m.tenant_id = l.tenant_id and m.is_active and lower(m.name) = lower(l.service_name_snapshot)) as menu_cents,
+        (select count(*) from service_add_ons m where m.tenant_id = l.tenant_id and m.is_active and lower(m.name) = lower(l.service_name_snapshot))::int as menu_rows, t.ticket_number, t.id as ticket_id, t.status as ticket_status,
         cu.full_name, cu.phone_display, cu.normalized_phone, coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) as technician,
         (select string_agg(m.service_name_snapshot, ', ' order by m.created_at) from ticket_service_lines m where m.tenant_id = l.tenant_id and m.ticket_id = l.ticket_id and m.removed_at is null and not coalesce(m.is_add_on, false) and lower(coalesce(m.line_kind, 'service')) = 'service') as main_services
       ${from} where ${w} order by ${col} desc, l.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     return { period: per, totals: { paidLines: N(sums?.paid), paidCents: N(sums?.paid_cents) }, items: rows.map((r: any) => ({ lineId: String(r.id), addOn: String(r.service_name_snapshot ?? ''), chargedCents: N(r.line_total_cents),
       minutes: r.duration_minutes_snapshot == null ? null : N(r.duration_minutes_snapshot), at: iso(r.paid_at ?? r.created_at), paid: !!r.paid_at, ticketId: String(r.ticket_id), ticketNumber: r.ticket_number == null ? null : String(r.ticket_number),
-      ticketStatus: r.ticket_status ?? null, customerName: r.full_name ?? null, maskedPhone: maskPhone(r.phone_display ?? r.normalized_phone), technician: r.technician || null, mainServices: r.main_services ?? null })),
+      ticketStatus: r.ticket_status ?? null, ...addOnPriceReasons(r), customerName: r.full_name ?? null, maskedPhone: maskPhone(r.phone_display ?? r.normalized_phone), technician: r.technician || null, mainServices: r.main_services ?? null })),
       page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
 

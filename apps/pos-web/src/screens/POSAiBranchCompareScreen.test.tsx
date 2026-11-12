@@ -99,4 +99,26 @@ describe('AI Branch Comparison screen', () => {
     fireEvent.click(screen.getByTestId('bcx-row'));
     expect(await screen.findByTestId('bcx-detail')).toHaveTextContent('Cherry Hill');
   });
+  it('AI BRANCH COMPARISON 08: the previous-period toggle asks the server, names both periods and shows the change per KPI and branch', async () => {
+    const base = { preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 1, truncated: false, page: 1, pageSize: 25, totalItems: 1, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: 500000, ticketsCount: 100, averageTicketCents: 5000, totalBookings: 20, completed: 18, completionRate: 90, branches: 1 }, drilldownRoute: '/tenant/reports/sales', notes: [],
+      branches: [{ branchId: 'b1', branchName: 'Marlton', status: 'active', netSalesCents: 500000, averageTicketCents: 5000, ticketsCount: 100, totalBookings: 20, completed: 18, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 27778, completionRate: 90 }] };
+    compareMock.mockReset().mockImplementation(async (q: any) => (q.compare === 'prior' ? { ...base, comparison: { basis: 'previous_equal_period', preset: 'month', range: null, priorRange: null,
+      totals: { netSalesCents: 450000, ticketsCount: 90, totalBookings: 25, completed: 20, completionRate: 80 }, byBranch: { b1: { netSalesCents: 450000, ticketsCount: 90, totalBookings: 25, completed: 20, completionRate: 80 } } } } : base));
+    render1();
+    await screen.findAllByTestId('bcx-row');
+    expect(screen.queryByTestId('bcx-compare-basis')).toBeNull();
+    expect(compareMock.mock.calls[0][0].compare).toBeUndefined();
+    fireEvent.click(screen.getByTestId('bcx-compare'));
+    expect(await screen.findByTestId('bcx-compare-basis')).toHaveTextContent('compared with last month, the 1st to the same day');
+    expect(compareMock).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'month', compare: 'prior' }));
+    expect(screen.getByTestId('bcx-k-net')).toHaveTextContent('+$500.00 vs previous');
+    expect(screen.getByTestId('bcx-k-bookings')).toHaveTextContent('−5 vs previous');
+    expect(screen.getByTestId('bcx-k-completion')).toHaveTextContent('+10 pts vs previous');
+    expect(screen.getByTestId('bcx-d-net')).toHaveTextContent('+$500.00');
+    expect(screen.getByTestId('bcx-d-bookings')).toHaveTextContent('−5');
+    fireEvent.click(screen.getByTestId('bcx-compare'));
+    await screen.findAllByTestId('bcx-row');
+    expect(screen.queryByTestId('bcx-d-net')).toBeNull();
+  });
 });

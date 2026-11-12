@@ -126,3 +126,47 @@ describe('compareBranches — single branch + validation', () => {
     expect((await svc.compareBranches(CTX(), { from: '2026-10-01', to: '2026-10-31' })).range).toEqual({ from: '2026-10-01', to: '2026-10-31' });
   });
 });
+
+describe('compareBranches — AI BRANCH COMPARISON 08: previous equal period (Nov 12 2026)', () => {
+  // the source answers by the filters it is given, so we can prove which period each figure came from
+  class PeriodSource implements BranchCompareSource {
+    seen: ReportFilters[] = [];
+    private pick(ctx: ReportsContext, f?: ReportFilters) { this.seen.push(f ?? {}); const prev = f?.period === 'previous' || f?.from === '2026-08-31'; return { b: ctx.branchId, prev }; }
+    async getSales(ctx: ReportsContext, f?: ReportFilters) { const { b, prev } = this.pick(ctx, f); return { kpis: kpis({ netSalesCents: (b === 'b1' ? 1000 : 400) * (prev ? 1 : 2), ticketsCount: prev ? 10 : 20 }), trend }; }
+    async getBooking(ctx: ReportsContext, f?: ReportFilters) { const { prev } = this.pick(ctx, f); return booking(prev ? { totalBookings: 10, completed: 5 } : { totalBookings: 10, completed: 9 }); }
+  }
+  const scope = new FakeScope([{ branchId: 'b1', branchName: 'Marlton', status: 'active' }, { branchId: 'b2', branchName: 'Deptford', status: 'active' }]);
+
+  it('a preset reads the reports\' own previous period per branch (period: previous) and keeps it apart from the current figures', async () => {
+    const src = new PeriodSource();
+    const r = await new AiBusinessBranchesService(src, scope).compareBranches(CTX(), { preset: 'month', compare: 'prior' });
+    expect(r.totals.netSalesCents).toBe(2800);                     // current figures untouched
+    expect(r.comparison).toMatchObject({ basis: 'previous_equal_period', preset: 'month', range: null, priorRange: null });
+    expect(r.comparison!.byBranch.b1).toMatchObject({ netSalesCents: 1000, completed: 5, completionRate: 50 });
+    expect(r.comparison!.totals).toMatchObject({ netSalesCents: 1400, ticketsCount: 20, totalBookings: 20, completed: 10, completionRate: 50 });
+    expect(src.seen.filter((f) => f.period === 'previous').every((f) => f.preset === 'month')).toBe(true);
+  });
+  it('a custom range compares with the same number of days immediately before it — named, never silently moved', async () => {
+    const src = new PeriodSource();
+    const r = await new AiBusinessBranchesService(src, scope).compareBranches(CTX(), { from: '2026-10-01', to: '2026-10-31', compare: 'prior' });
+    expect(r.comparison).toMatchObject({ range: { from: '2026-10-01', to: '2026-10-31' }, priorRange: { from: '2026-08-31', to: '2026-09-30' } });
+    expect(src.seen.some((f) => f.from === '2026-08-31' && f.to === '2026-09-30')).toBe(true);
+    expect(r.comparison!.byBranch.b2).toMatchObject({ netSalesCents: 400, completionRate: 50 });   // the prior window's own figures
+  });
+  it('no compare asked → no comparison and no extra reads; financial view denied → prior money is hidden too', async () => {
+    const src = new PeriodSource();
+    expect((await new AiBusinessBranchesService(src, scope).compareBranches(CTX(), { preset: 'week' })).comparison).toBeUndefined();
+    expect(src.seen.some((f) => f.period === 'previous')).toBe(false);
+    const denied = new FakeBranchSource({ b1: { kpis: kpis({ netSalesCents: 5 }), booking: booking({ totalBookings: 4, completed: 2 }) } }, true);
+    const r = await new AiBusinessBranchesService(denied, scope).compareBranches(CTX(), { preset: 'week', compare: 'prior' });
+    expect(r.comparison!.totals.netSalesCents).toBeNull(); expect(r.comparison!.byBranch.b1.netSalesCents).toBeNull();
+  });
+});
+
+import { priorCustomRange } from './ai-business-branches.service';
+describe('priorCustomRange', () => {
+  it('equal length, ending the day before; across months and a leap day', () => {
+    expect(priorCustomRange({ from: '2026-11-12', to: '2026-11-12' })).toEqual({ from: '2026-11-11', to: '2026-11-11' });
+    expect(priorCustomRange({ from: '2028-03-01', to: '2028-03-07' })).toEqual({ from: '2028-02-23', to: '2028-02-29' });
+  });
+});

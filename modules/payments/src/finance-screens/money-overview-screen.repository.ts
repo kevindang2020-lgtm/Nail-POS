@@ -27,7 +27,7 @@ import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { REVENUE_BEARING_STATUSES } from '@aipowersalon/api-contracts';
 import {
-  type FinanceCtx, type Period, type PageReq, type Paged, FinanceError, resolvePeriod, salonTimeZone, tsInPeriod, clampPage, isUuid, N, iso, likeOf, digitsOf, daysBetween, addDaysYmd,
+  type FinanceCtx, type Period, type PageReq, type Paged, FinanceError, resolvePeriod, salonTimeZone, tsInPeriod, clampPage, isUuid, N, iso, likeOf, digitsOf, daysBetween,
 } from './finance-scope';
 import { methodKey } from './split-payments-screen.repository';
 import { TransactionsScreenRepository } from './transactions-screen.repository';
@@ -38,8 +38,8 @@ const UNRESOLVED_EXCLUDE = [...CONFIRMED, ...FAILED, 'refunded', 'refund', 'reve
 const PENDING_PAYOUT = ['pending', 'scheduled', 'in_transit', 'processing', 'queued', 'sent'];
 const PAID_PAYOUT = ['paid', 'deposited', 'settled', 'completed', 'complete', 'posted'];
 const OPEN_INVOICE = ['sent', 'partially_paid', 'open', 'past_due', 'pending'];
-const VOID_TICKET = ['void', 'voided', 'canceled', 'cancelled'];
 export const MONEY_DEFINITIONS = {
+  revenueBridge: 'Revenue + tax + tips on the tickets paid in the period, the difference collected on those tickets, minus what was collected for them on another day, plus what was collected in the period for other tickets (open, paid in another period, or none) = Collections.',
   revenue: 'Services and products sold on tickets paid in the period (subtotal minus discounts). Tax and tips are not revenue; a partly paid ticket counts when it is paid.',
   collections: 'Confirmed payment tenders by payment date — the same as Gross on Transactions (tips included). Gift-card redemptions are shown inside it.',
   refunds: 'Completed refunds by the date they completed. Pending refunds are shown separately.',
@@ -82,6 +82,30 @@ export class MoneyOverviewScreenRepository {
       from payments p where p.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`p.branch_id`)} and p.status in (${sql.join(CONFIRMED)})
         and ${p ? tsInPeriod(sql`coalesce(p.approved_at, p.created_at)`, p) : sql<boolean>`true`}`.execute(this.db)).rows[0] ?? {};
     return { transactions: N(r.n), collectionsCents: N(r.cents), giftCardCents: N(r.gift) };
+  }
+  /** PAYMENTS 05 (Nov 12 2026): Revenue vs Collections explainer — an exact bridge from earned Revenue to collected tenders
+   *  for the period, from the same rows as the two KPIs (nothing estimated):
+   *    Revenue + tax + tips on the tickets paid in the period          = expected for those tickets
+   *    collected on those tickets (any day) − expected                  = other charges / difference on them
+   *    − collected for those tickets on another day (outside the period)
+   *    + collected in the period for other tickets (still open, paid in another period, or with no ticket)
+   *    = Collections.   Refunds are not in either figure (they are their own KPI). */
+  private async bridge(ctx: FinanceCtx, p: Period, revenueCents: number, collectionsCents: number) {
+    const paidIn = sql<boolean>`t.status = 'paid' and t.paid_at is not null and t.removed_at is null and ${tsInPeriod(sql`t.paid_at`, p)}`;
+    const tk = (await sql<any>`select coalesce(sum(coalesce(t.tax_cents, 0)), 0)::bigint as tax, coalesce(sum(coalesce(t.tip_cents, 0)), 0)::bigint as tips
+      from tickets t where t.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`t.branch_id`)} and ${paidIn}`.execute(this.db)).rows[0] ?? {};
+    const inP = tsInPeriod(sql`coalesce(p.approved_at, p.created_at)`, p);
+    const pm = (await sql<any>`select coalesce(sum(p.amount_cents) filter (where x.id is not null), 0)::bigint as on_paid,
+        coalesce(sum(p.amount_cents) filter (where x.id is not null and not ${inP}), 0)::bigint as other_days,
+        coalesce(sum(p.amount_cents) filter (where x.id is null and ${inP}), 0)::bigint as other_tickets,
+        count(distinct coalesce(p.ticket_id::text, p.id::text)) filter (where x.id is null and ${inP})::int as other_n
+      from payments p left join lateral (select t.id from tickets t where t.tenant_id = p.tenant_id and t.id = p.ticket_id and ${this.pScope(ctx, sql`t.branch_id`)} and ${paidIn}) x on true
+      where p.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`p.branch_id`)} and p.status in (${sql.join(CONFIRMED)}) and (x.id is not null or ${inP})`.execute(this.db)).rows[0] ?? {};
+    const expected = revenueCents + N(tk.tax) + N(tk.tips);
+    const onPaid = N(pm.on_paid), otherDays = N(pm.other_days), otherTickets = N(pm.other_tickets);
+    return { revenueCents, taxCents: N(tk.tax), tipsCents: N(tk.tips), expectedCents: expected, collectedOnPaidTicketsCents: onPaid, otherDifferenceCents: onPaid - expected,
+      collectedOtherDaysCents: otherDays, collectedForOtherTicketsCents: otherTickets, otherTicketsCount: N(pm.other_n), collectionsCents,
+      balanced: onPaid - otherDays + otherTickets === collectionsCents };
   }
   private async refunds(ctx: FinanceCtx, p: Period | null) {
     const r = (await sql<any>`select coalesce(sum(r.amount_cents) filter (where r.status = 'refunded'), 0)::bigint as done, count(*) filter (where r.status = 'refunded')::int as done_n,
@@ -133,7 +157,7 @@ export class MoneyOverviewScreenRepository {
     if (att.failed > 0) reasons.push('failed_payments'); if (att.unresolved > 0) reasons.push('unresolved_payments'); if (att.chargebacks > 0) reasons.push('chargebacks');
     if (rf.pendingRefunds > 0) reasons.push('pending_refunds');
     const status = att.successful + att.failed + att.unresolved === 0 ? 'no_activity' : reasons.length ? 'attention' : 'healthy';
-    const [trend, methods, services, recent, upcoming] = await Promise.all([this.trend(ctx, p), this.methods(ctx, p), this.services(ctx, p, { page: 1, pageSize: 5 }), this.recent(ctx, p), this.payoutList(ctx, { page: 1, pageSize: 4 })]);
+    const [revenueBridge, trend, methods, services, recent, upcoming] = await Promise.all([this.bridge(ctx, p, rev.revenueCents, col.collectionsCents), this.trend(ctx, p), this.methods(ctx, p), this.services(ctx, p, { page: 1, pageSize: 5 }), this.recent(ctx, p), this.payoutList(ctx, { page: 1, pageSize: 4 })]);
     return {
       period: p, scope: ctx.branchId && isUuid(ctx.branchId) ? 'location' : 'salon', generatedAt: new Date().toISOString(),
       kpis: {
@@ -141,7 +165,7 @@ export class MoneyOverviewScreenRepository {
         outstandingBalanceCents: out.outstandingCents, totalTransactions: col.transactions, averageTicketCents: rev.paidTickets ? Math.round(rev.revenueCents / rev.paidTickets) : 0, paidTickets: rev.paidTickets,
         failedTransactions: att.failed, unresolvedTransactions: att.unresolved, pendingPayoutsCents: pay.pendingPayoutsCents, pendingPayouts: pay.pendingPayouts,
       },
-      outstanding: out,
+      outstanding: out, revenueBridge,
       totals: { totalRevenueCents: allRev.revenueCents, totalCollectedCents: allCol.collectionsCents, totalRefundsCents: allRf.refundsCents, outstandingBalanceCents: out.outstandingCents, totalTipsCents: allRev.tipsCents, totalPayoutsCents: pay.totalPayoutsCents },
       revenueTrend: trend, paymentMethods: methods, topServices: services,
       health: { status, reasons, successful: att.successful, failed: att.failed, unresolved: att.unresolved, chargebacks: att.chargebacks, chargebackCents: att.chargebackCents,

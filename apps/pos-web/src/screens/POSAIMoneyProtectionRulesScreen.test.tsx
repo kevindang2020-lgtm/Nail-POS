@@ -53,5 +53,23 @@ describe('POSAIMoneyProtectionRulesScreen', () => {
     const rows = screen.getAllByTestId('mpx-rule-row');
     expect(rows[1]).toHaveTextContent('Scheduled batch'); expect(rows[1]).toHaveTextContent('Not required'); expect(rows[0]).toHaveTextContent('Required');
   });
+  it('MONEY PROTECTION ALERTS 11: false-positive insights show reviewed / dismissed / reopened and repeated reasons; nothing is saved', async () => {
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: true, falsePositivePolicy: 'insight_only_rules_never_auto_disabled',
+      falsePositiveInsights: [{ ruleId: 'MP_DUP_CHARGE_LIKELY', name: 'Likely duplicate charge', reviewed90d: 4, dismissed90d: 3, reopened90d: 1, dismissRatePct: 75, repeatedReasons: [{ reason: 'split tender', count: 2 }] }] });
+    const v = wrap(<POSAIMoneyProtectionRulesScreen />);
+    const row = await screen.findByTestId('mpx-fp-row');
+    expect(row).toHaveTextContent('4'); expect(row).toHaveTextContent('75% of reviewed'); expect(row).toHaveTextContent('“split tender” × 2');
+    expect(screen.getByTestId('mpx-fp-policy')).toHaveTextContent('never switched off or relaxed automatically');
+    expect(mc.saveRule).not.toHaveBeenCalled();
+    v.unmount();
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: true, falsePositiveInsights: [] });
+    const v2 = wrap(<POSAIMoneyProtectionRulesScreen />);
+    expect(await screen.findByTestId('mpx-fp-none')).toBeInTheDocument();
+    v2.unmount();
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: true });   // older server: no panel
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    await screen.findAllByTestId('mpx-rule-row');
+    expect(screen.queryByTestId('mpx-fp')).toBeNull();
+  });
 });
 
