@@ -63,6 +63,33 @@ export interface BranchComparison {
   notes: string[];
   /** only when compare = 'prior' was asked for */
   comparison?: BranchPeriodComparison;
+  /** AI BRANCH COMPARISON 01: how far the numbers can be trusted for comparing, shown BEFORE any ranking */
+  readiness: BranchComparisonReadiness;
+}
+/** AI BRANCH COMPARISON 01 (Nov 12 2026) — Comparison Readiness. Over every matched branch (not just this page): how many had
+ *  any activity (a booking or a ticket) in the period, how many are a small sample (1–4 bookings), whether revenue could be
+ *  read for this viewer and whether the period is still running. `coveragePercent` = branches with activity ÷ matched
+ *  branches. Level: not_ready (fewer than two branches with activity — nothing to compare), limited (a branch without
+ *  activity, a small sample, revenue hidden or a partial day), ready otherwise. Freshness: the figures are read live from
+ *  the Sales / Booking reports at `asOf` (no cached snapshot). */
+export interface BranchComparisonReadiness {
+  level: 'ready' | 'limited' | 'not_ready'; coveragePercent: number | null; branches: number; withActivity: number; noActivity: number; smallSample: number;
+  financialCoverage: boolean; partialPeriod: boolean; source: 'live_reports'; asOf: string;
+  reasons: Array<'single_branch' | 'too_few_with_activity' | 'branch_without_activity' | 'small_sample' | 'revenue_hidden' | 'partial_period'>;
+}
+export const SMALL_SAMPLE_BOOKINGS = 5;
+export function comparisonReadiness(rows: Array<Pick<BranchComparisonRow, 'totalBookings' | 'ticketsCount'>>, o: { financialsIncluded: boolean; partialPeriod: boolean; asOf: string }): BranchComparisonReadiness {
+  const active = rows.filter((r) => r.totalBookings > 0 || (r.ticketsCount ?? 0) > 0).length;
+  const smallSample = rows.filter((r) => r.totalBookings > 0 && r.totalBookings < SMALL_SAMPLE_BOOKINGS).length;
+  const reasons: BranchComparisonReadiness['reasons'] = [];
+  if (rows.length < 2) reasons.push('single_branch'); else if (active < 2) reasons.push('too_few_with_activity');
+  if (rows.length - active > 0) reasons.push('branch_without_activity');
+  if (smallSample) reasons.push('small_sample');
+  if (!o.financialsIncluded) reasons.push('revenue_hidden');
+  if (o.partialPeriod) reasons.push('partial_period');
+  const level = rows.length < 2 || active < 2 ? 'not_ready' : reasons.length ? 'limited' : 'ready';
+  return { level, coveragePercent: rows.length ? Math.round((active / rows.length) * 100) : null, branches: rows.length, withActivity: active, noActivity: rows.length - active, smallSample,
+    financialCoverage: o.financialsIncluded, partialPeriod: o.partialPeriod, source: 'live_reports', asOf: o.asOf, reasons };
 }
 
 const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
@@ -163,8 +190,10 @@ export class AiBusinessBranchesService {
     const inactiveHidden = authorized.length - visible.length;
     if (inactiveHidden) notes.push(`${inactiveHidden} inactive branch${inactiveHidden === 1 ? ' is' : 'es are'} hidden.`);
 
+    const asOf = new Date().toISOString();
     return {
-      preset, range, asOf: new Date().toISOString(), partialCurrentPeriod: preset === 'today', financialsIncluded,
+      readiness: comparisonReadiness(all, { financialsIncluded, partialPeriod: preset === 'today', asOf }),
+      preset, range, asOf, partialCurrentPeriod: preset === 'today', financialsIncluded,
       totals: { netSalesCents: tNet, ticketsCount: tTk, averageTicketCents: tNet != null && tTk ? Math.round(tNet / tTk) : null, totalBookings: tBk, completed: tDone,
         completionRate: tBk > 0 ? Math.round((tDone / tBk) * 100) : null, branches: all.length },
       branches: rows, branchCount: all.length, truncated: false, page, pageSize, totalItems: all.length, totalPages, inactiveHidden,

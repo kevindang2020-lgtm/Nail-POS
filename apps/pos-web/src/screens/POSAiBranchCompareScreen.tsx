@@ -27,8 +27,23 @@ type Comparison = {
   preset: string; range: { from: string; to: string } | null; asOf: string; partialCurrentPeriod: boolean; financialsIncluded: boolean;
   totals: { netSalesCents: number | null; ticketsCount: number | null; averageTicketCents: number | null; totalBookings: number; completed: number; completionRate: number | null; branches: number };
   branches: Row[]; page: number; pageSize: number; totalItems: number; totalPages: number; inactiveHidden: number; drilldownRoute: string; notes: string[];
+  readiness?: Readiness;
   comparison?: { basis: string; preset: string; range: { from: string; to: string } | null; priorRange: { from: string; to: string } | null; totals: PriorFigures; byBranch: Record<string, PriorFigures> };
 };
+/** AI BRANCH COMPARISON 01: how far the numbers can be trusted for comparing (server-computed over every matched branch) */
+type Readiness = { level: 'ready' | 'limited' | 'not_ready'; coveragePercent: number | null; branches: number; withActivity: number; noActivity: number; smallSample: number; financialCoverage: boolean; partialPeriod: boolean; asOf: string; reasons: string[] };
+function ReadinessLine({ r }: { r?: Readiness }) {
+  if (!r) return null;   // an older server: nothing claimed
+  const tone = r.level === 'ready' ? 'ok' : r.level === 'limited' ? 'warn' : 'bad';
+  return (
+    <div className={'fk-note' + (r.level === 'ready' ? '' : ' warn')} role="status" data-testid="bcx-ready" data-level={r.level} style={{ marginTop: 8 }}>
+      <span className={'chip ' + tone}>{bt('bcx.ready.' + r.level)}</span>{' '}
+      <span data-testid="bcx-ready-cov">{bt('bcx.ready.coverage', { n: bzNum(r.withActivity), of: bzNum(r.branches), p: r.coveragePercent == null ? '—' : String(r.coveragePercent) })}</span>
+      {' · '}<span>{bt('bcx.ready.fresh', { at: bzWhen(r.asOf) })}</span>
+      {r.reasons.length ? <div className="sub" data-testid="bcx-ready-why">{r.reasons.map((x) => bt('bcx.ready.r.' + x, { n: x === 'small_sample' ? bzNum(r.smallSample) : bzNum(r.noActivity) })).join(' · ')}</div> : null}
+    </div>
+  );
+}
 type PriorFigures = { netSalesCents: number | null; ticketsCount: number | null; totalBookings: number; completed: number; completionRate: number | null };
 /** AI BRANCH COMPARISON 08: the change against the previous equal period — money as ± cents, rates as ± points; '—' when either side is unknown */
 const dMoney = (cur: number | null | undefined, prev: number | null | undefined) => (cur == null || prev == null ? '—' : (cur - prev >= 0 ? '+' : '−') + money(Math.abs(cur - prev)));
@@ -110,6 +125,7 @@ export function POSAiBranchCompareScreen() {
         {C ? <span className="sub" data-testid="bcx-compare-basis">{bt('bcx.cmp.basis', { cur: C.range ? bzDays(C.range) : bt('bzx.period.' + C.preset), prior: priorLabel })}</span> : null}
       </div>
       {s?.partialCurrentPeriod ? <div className="sub">{bt('pos.today_is_partial_figures_are_still_1a7b')}</div> : null}
+      <ReadinessLine r={s?.readiness} />
 
       <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }}>
         <div className="p-h">{bt('pos.branches')}</div>

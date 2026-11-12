@@ -410,4 +410,29 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.thp.ex.severity": "Mức độ {from} → {to} · {n} phiếu", // DRAFT — Kevin reviews
   "mpx.thp.dry": "Chỉ chạy thử — không lưu gì và không tạo cảnh báo nào. Bấm Lưu để áp dụng.", // DRAFT — Kevin reviews
   "mpx.thp.unsupported": "Bộ phát hiện chưa đọc cài đặt này cho quy tắc này, nên không thể xem trước ảnh hưởng lên các lần phát hiện trước.", // DRAFT — Kevin reviews
+  "mpx.batch.title": "Sẵn sàng kiểm tra theo lô", // DRAFT — Kevin reviews
+  "mpx.batch.warn": "Có {n} vấn đề — cảnh báo theo lô cho thẻ thành viên, thẻ quà tặng hoặc đóng két tiền mặt có thể bị thiếu.", // DRAFT — Kevin reviews
+  "mpx.batch.ok": "Cả ba sổ đều đọc được và kiểm tra theo lô đã được lên lịch.", // DRAFT — Kevin reviews
+  "mpx.batch.col.ledger": "Sổ", // DRAFT — Kevin reviews
+  "mpx.batch.col.state": "Trạng thái", // DRAFT — Kevin reviews
+  "mpx.batch.col.records": "Bản ghi (30 ngày)", // DRAFT — Kevin reviews
+  "mpx.batch.col.last": "Bản ghi mới nhất", // DRAFT — Kevin reviews
+  "mpx.batch.col.rules": "Quy tắc bật", // DRAFT — Kevin reviews
+  "mpx.batch.src.membership": "Phí thành viên", // DRAFT — Kevin reviews
+  "mpx.batch.src.gift_cards": "Hoạt động thẻ quà tặng", // DRAFT — Kevin reviews
+  "mpx.batch.src.cash_close": "Đóng két tiền mặt", // DRAFT — Kevin reviews
+  "mpx.batch.st.ready": "Sẵn sàng", // DRAFT — Kevin reviews
+  "mpx.batch.st.no_recent_records": "Không có bản ghi trong 30 ngày", // DRAFT — Kevin reviews
+  "mpx.batch.st.rules_off": "Quy tắc tắt", // DRAFT — Kevin reviews
+  "mpx.batch.st.layer_off": "Kiểm tra theo lô đang tắt trên máy chủ", // DRAFT — Kevin reviews
+  "mpx.batch.st.ledger_unavailable": "Không đọc được", // DRAFT — Kevin reviews
+  "mpx.batch.rulesOn": "{on} trên {n}", // DRAFT — Kevin reviews
+  "mpx.batch.scheduled": "Phát hiện chạy theo lịch", // DRAFT — Kevin reviews
+  "mpx.batch.notScheduled": "Phát hiện chưa được lên lịch — chỉ chạy khi có người bấm Chạy phát hiện ngay", // DRAFT — Kevin reviews
+  "mpx.batch.lastPass": "lần chạy thành công gần nhất {at}", // DRAFT — Kevin reviews
+  "mpx.batch.noPass": "chưa có lần chạy thành công", // DRAFT — Kevin reviews
+  "mpx.health.k.batch_readiness": "Kiểm tra theo lô sẵn sàng", // DRAFT — Kevin reviews
+  "mpx.health.d.batch_readiness.PASSED": "Sổ thẻ thành viên, thẻ quà tặng và đóng két đều đọc được và phát hiện đã được lên lịch.", // DRAFT — Kevin reviews
+  "mpx.health.d.batch_readiness.WARNING": "Kiểm tra theo lô đang tắt hoặc chưa lên lịch. Có thể thiếu cảnh báo theo lô.", // DRAFT — Kevin reviews
+  "mpx.health.d.batch_readiness.FAILED": "Không đọc được một sổ mà kiểm tra theo lô cần. Cảnh báo theo lô bị thiếu. Hãy báo lại.", // DRAFT — Kevin reviews
 };

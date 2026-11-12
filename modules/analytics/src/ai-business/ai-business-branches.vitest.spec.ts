@@ -170,3 +170,31 @@ describe('priorCustomRange', () => {
     expect(priorCustomRange({ from: '2028-03-01', to: '2028-03-07' })).toEqual({ from: '2028-02-23', to: '2028-02-29' });
   });
 });
+
+describe('compareBranches — AI BRANCH COMPARISON 01: comparison readiness (Nov 12 2026)', () => {
+  const scope3 = new FakeScope([{ branchId: 'b1', branchName: 'Marlton', status: 'active' }, { branchId: 'b2', branchName: 'Deptford', status: 'active' }, { branchId: 'b3', branchName: 'Cherry Hill', status: 'active' }]);
+  it('ready: every branch had activity, none is a small sample, revenue readable, period closed — coverage over ALL matched branches, not the page', async () => {
+    const src = new FakeBranchSource({ b1: { kpis: kpis({ netSalesCents: 1000, ticketsCount: 10 }), booking: booking({ totalBookings: 12, completed: 10 }) },
+      b2: { kpis: kpis({ netSalesCents: 800, ticketsCount: 8 }), booking: booking({ totalBookings: 9, completed: 8 }) },
+      b3: { kpis: kpis({ netSalesCents: 500, ticketsCount: 5 }), booking: booking({ totalBookings: 6, completed: 5 }) } });
+    const r = await new AiBusinessBranchesService(src, scope3).compareBranches(CTX(), { preset: 'month', pageSize: 10, page: 1 });
+    expect(r.readiness).toMatchObject({ level: 'ready', coveragePercent: 100, branches: 3, withActivity: 3, noActivity: 0, smallSample: 0, financialCoverage: true, partialPeriod: false, source: 'live_reports', reasons: [] });
+    expect(r.readiness.asOf).toBe(r.asOf);
+  });
+  it('limited: a branch with no activity and a small sample are named; coverage 67 %', async () => {
+    const src = new FakeBranchSource({ b1: { kpis: kpis({ netSalesCents: 1000, ticketsCount: 10 }), booking: booking({ totalBookings: 12, completed: 10 }) },
+      b2: { kpis: kpis({ netSalesCents: 100, ticketsCount: 1 }), booking: booking({ totalBookings: 2, completed: 1 }) } });
+    const r = await new AiBusinessBranchesService(src, scope3).compareBranches(CTX(), 'month');
+    expect(r.readiness).toMatchObject({ level: 'limited', coveragePercent: 67, withActivity: 2, noActivity: 1, smallSample: 1, reasons: ['branch_without_activity', 'small_sample'] });
+  });
+  it('not ready: fewer than two branches with activity; a single authorized branch; revenue hidden and a partial day are reasons too', async () => {
+    const one = new FakeBranchSource({ b1: { kpis: kpis({ ticketsCount: 3 }), booking: booking({ totalBookings: 7, completed: 6 }) } }, true);
+    const r = await new AiBusinessBranchesService(one, scope3).compareBranches(CTX(), 'today');
+    expect(r.readiness).toMatchObject({ level: 'not_ready', withActivity: 1, financialCoverage: false, partialPeriod: true });
+    expect(r.readiness.reasons).toEqual(['too_few_with_activity', 'branch_without_activity', 'revenue_hidden', 'partial_period']);
+    const single = await new AiBusinessBranchesService(one, new FakeScope([{ branchId: 'b1', branchName: 'Marlton', status: 'active' }])).compareBranches(CTX(), 'month');
+    expect(single.readiness).toMatchObject({ level: 'not_ready', branches: 1, reasons: ['single_branch', 'revenue_hidden'] });
+    const none = await new AiBusinessBranchesService(one, new FakeScope([])).compareBranches(CTX(), 'month');
+    expect(none.readiness.coveragePercent).toBeNull();
+  });
+});

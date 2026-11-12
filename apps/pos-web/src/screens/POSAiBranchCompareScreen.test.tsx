@@ -123,6 +123,33 @@ describe('AI Branch Comparison screen', () => {
   });
 });
 
+describe('AI BRANCH COMPARISON 01 — comparison readiness', () => {
+  const base = { preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 1, truncated: false, page: 1, pageSize: 25, totalItems: 1, totalPages: 1, inactiveHidden: 0,
+    totals: { netSalesCents: 500000, ticketsCount: 100, averageTicketCents: 5000, totalBookings: 20, completed: 18, completionRate: 90, branches: 1 }, drilldownRoute: '/tenant/reports/sales', notes: [],
+    branches: [{ branchId: 'b1', branchName: 'Marlton', status: 'active', netSalesCents: 500000, averageTicketCents: 5000, ticketsCount: 100, totalBookings: 20, completed: 18, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 27778, completionRate: 90 }] };
+  it('shows the server readiness before the table: level, coverage over all matched branches, live as-of, and each reason', async () => {
+    compareMock.mockReset().mockResolvedValue({ ...base, readiness: { level: 'limited', coveragePercent: 67, branches: 3, withActivity: 2, noActivity: 1, smallSample: 1, financialCoverage: true, partialPeriod: false, source: 'live_reports', asOf: '2026-11-03T18:00:00Z', reasons: ['branch_without_activity', 'small_sample'] } });
+    render1();
+    const r = await screen.findByTestId('bcx-ready');
+    expect(r).toHaveAttribute('data-level', 'limited');
+    expect(r).toHaveTextContent('Compare with care');
+    expect(screen.getByTestId('bcx-ready-cov')).toHaveTextContent('2 of 3 branches had bookings or sales in this period (67%)');
+    expect(screen.getByTestId('bcx-ready-why')).toHaveTextContent('1 branch(es) had no bookings or sales · 1 branch(es) had fewer than 5 bookings');
+    expect(r.compareDocumentPosition(await screen.findByTestId('bcx-table')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();   // before the ranking table
+  });
+  it('not ready says rankings mean nothing; an older server without readiness shows nothing', async () => {
+    compareMock.mockReset().mockResolvedValue({ ...base, readiness: { level: 'not_ready', coveragePercent: 50, branches: 2, withActivity: 1, noActivity: 1, smallSample: 0, financialCoverage: true, partialPeriod: false, source: 'live_reports', asOf: '2026-11-03T18:00:00Z', reasons: ['too_few_with_activity', 'branch_without_activity'] } });
+    const v = render1();
+    expect(await screen.findByTestId('bcx-ready')).toHaveTextContent('Not enough data to compare');
+    expect(screen.getByTestId('bcx-ready-why')).toHaveTextContent('rankings would mean nothing');
+    v.unmount();
+    compareMock.mockReset().mockResolvedValue(base);
+    render1();
+    await screen.findAllByTestId('bcx-row');
+    expect(screen.queryByTestId('bcx-ready')).toBeNull();
+  });
+});
+
 describe('AI Business Assistant 09 — multi-branch fairness notes', () => {
   it('a branch opens with its share of the salon totals and the denominators, plus the larger-branch note; N/A when the total is 0', async () => {
     const base = { preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
