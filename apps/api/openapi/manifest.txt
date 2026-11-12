@@ -2491,6 +2491,7 @@ POST /owner/finance/expenses/batch/categorize  realm=staff  auth=session  domain
 POST /owner/finance/expenses/check-duplicates  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/import  realm=staff  auth=session  domain=finance  perm=owner.expenses.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/recommend-category  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /owner/finance/expenses/vendor-match  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/{id}/approve  realm=staff  auth=session  domain=finance  perm=owner.expenses.approve  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/{id}/archive  realm=staff  auth=session  domain=finance  perm=owner.expenses.archive  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/finance/expenses/{id}/bill-payments  realm=staff  auth=session  domain=finance  perm=owner.expenses.bills.manage  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -2801,6 +2802,7 @@ POST /pos/commission-discrepancies/{id}/notes  realm=staff  auth=session  domain
 POST /pos/commission-discrepancies/{id}/reopen  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/commission-discrepancies/{id}/resolve  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/conversations  realm=staff  auth=session  domain=communications  perm=pos.communications.send  resource=BRANCH/permission  idempotency=optional  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/read-all  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  resource=BRANCH/permission  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/assign  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  resource=TENANT/records  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/booking  realm=staff  auth=session  domain=communications  perm=pos.communications.view  resource=TENANT/records  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/follow-up  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  resource=TENANT/records  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
