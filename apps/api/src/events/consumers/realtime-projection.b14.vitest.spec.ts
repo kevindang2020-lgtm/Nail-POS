@@ -91,3 +91,20 @@ describe('resourceVersion on every projected event', () => {
     expect(ev[3]).toMatchObject({ resourceType: 'appointment', resourceId: 'appt-8', resourceVersion: null, resourceVersionSource: null });
   });
 });
+
+// Extras REFUNDS & VOIDS 08 (Nov 12 2026): confirmed reversals refresh the money screens through the existing routing
+describe('REFUNDS & VOIDS 08: confirmed reversal → existing refresh events', () => {
+  it('payment.voided → checkout_total_recalculated (the ticket) + reports_updated, to the branch room, ids only', async () => {
+    const sent = await run({ eventType: DOMAIN_EVENTS.PAYMENT_VOIDED, aggregateId: 'pay1', payload: { paymentId: 'pay1', ticketId: 'tk1', method: 'card', amountCents: 4200 } });
+    expect(sent.map((s) => s[1])).toEqual([EVENTS.checkoutTotalRecalculated, EVENTS.reportsUpdated]);
+    expect(sent.every((s) => s[0] === 'tenant' && (s[2] as any).branchId === B)).toBe(true);
+    expect(sent[0][3]).toMatchObject({ ticketId: 'tk1', paymentId: 'pay1' });
+    expect(JSON.stringify(sent)).not.toContain('4200');
+  });
+  it('payment.refunded → reports_updated with the refund + payment ids (no amount)', async () => {
+    const sent = await run({ eventType: DOMAIN_EVENTS.PAYMENT_REFUNDED, aggregateId: 'rf1', payload: { refundId: 'rf1', paymentId: 'pay1', amountCents: 1500 } });
+    expect(sent.map((s) => s[1])).toEqual([EVENTS.reportsUpdated]);
+    expect(sent[0][3]).toMatchObject({ refundId: 'rf1', paymentId: 'pay1' });
+    expect(JSON.stringify(sent)).not.toContain('1500');
+  });
+});

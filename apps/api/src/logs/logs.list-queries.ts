@@ -6,4 +6,6 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 
 export const LogsControllerListQueries = {
   list: { filters: { category: { type: 'text' }, severity: { type: 'text' }, source: { type: 'text' }, relatedId: { type: 'text' }, correlationId: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page', 'pageSize', 'limit'] },
+  // Device Integration Logs 08: the sanitized export — the same filters, one bounded range
+  exportCsv: { filters: { category: { type: 'text' }, severity: { type: 'text' }, source: { type: 'text' }, relatedId: { type: 'text' }, correlationId: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 31 } },
 } satisfies Record<string, ListQuerySpec>;

@@ -4,7 +4,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyLogsRepository } from './logs.kysely.repository';
-import { LogsService, ValidationError } from './logs.service';
+import { LogsService, ValidationError, ForbiddenError, ExportUnavailableError } from './logs.service';
+import { redactLogText } from './logs-core';
 
 const T = 'c8460000-0000-4000-8000-000000000001', B = 'c8460000-0000-4000-8000-000000000002', X = 'c8460000-0000-4000-8000-000000000003', U = 'c8460000-0000-4000-8000-000000000004';
 const ctx = { tenantId: T, branchId: B, userId: U, role: 'OWNER', permissions: ['pos.logs.view'] };
@@ -96,3 +97,43 @@ describe('Device Integration Logs 06 (Nov 12 2026): payment environment label', 
     expect((await svc.query(ctx, { limit: 50, correlationId: C })).logs).toHaveLength(3);                       // the legacy shape filters too
   });
 });
+
+// Device Integration Logs backlog · 08 (Nov 12 2026): the sanitized, role-gated, audited export of one fixed range
+describe('Device Integration Logs 08: sanitized export', () => {
+  const exp = { ...ctx, permissions: ['pos.logs.view', 'pos.reports.export'] };
+  it('LG-08a needs pos.reports.export as well as view; needs a from + to of at most 31 days', async () => {
+    await expect(svc.exportCsv(ctx, { from: '2026-11-01', to: '2026-11-10' })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(svc.exportCsv(exp, { from: '2026-11-01' })).rejects.toMatchObject({ code: 'LOGS_INVALID_PERIOD' });
+    await expect(svc.exportCsv(exp, { from: '2026-11-10', to: '2026-11-01' })).rejects.toMatchObject({ code: 'LOGS_INVALID_PERIOD' });
+    await expect(svc.exportCsv(exp, { from: '2026-10-01', to: '2026-11-01' })).rejects.toMatchObject({ code: 'LOGS_EXPORT_RANGE_TOO_LONG' });   // 32 days
+    expect(await auditCount()).toBe(0);   // nothing refused was recorded as an export
+  });
+  it('LG-08b redacts messages, never writes metadata, keeps the range + filters, stays in the salon, and is audited (counts only)', async () => {
+    await q(sql`insert into tenant_event_logs (tenant_id, branch_id, category, severity, source, message, metadata, created_at) values
+      (${T}, ${B}, 'integration', 'error', 'sms', 'send to (215) 555-0142 failed for ann@example.com token=abc123', '{"apiKey":"zz","body":"hello"}', '2026-11-03T10:00:00Z'),
+      (${T}, ${B}, 'integration', 'warning', 'payment_terminal', '=HYPERLINK("x") card 4111 1111 1111 1111 declined', null, '2026-11-03T11:00:00Z'),
+      (${X}, null, 'integration', 'error', 'sms', 'other salon secret', null, '2026-11-03T10:00:00Z')`);
+    const csv = await svc.exportCsv(exp, { from: '2026-11-03', to: '2026-11-03', category: 'integration' });
+    expect(csv).toContain('Period,"2026-11-03 to 2026-11-03');
+    expect(csv).toContain('Category,integration');
+    expect(csv).toContain('Rows,2'); expect(csv).toContain('Truncated,no');
+    expect(csv).toContain('•••0142'); expect(csv).toContain('[email]'); expect(csv).toContain('token=[redacted]'); expect(csv).toContain('•••1111');
+    for (const leak of ['555-0142', 'ann@example.com', 'abc123', '4111 1111', 'apiKey', 'hello', 'other salon']) expect(csv).not.toContain(leak);
+    expect(csv).toContain(`"'=HYPERLINK(""x"") card •••1111 declined"`);   // formula-safe cell
+    expect(csv.indexOf('payment_terminal')).toBeLessThan(csv.indexOf(',sms,'));   // newest first
+    const a = (await q(sql`select actor_user_id, module, action, resource_type, metadata from audit_events where tenant_id = ${T} and action = 'logs_exported'`))[0];
+    expect(a).toMatchObject({ actor_user_id: U, module: 'logs', action: 'logs_exported', resource_type: 'tenant_event_logs' });
+    expect(a.metadata).toMatchObject({ from: '2026-11-03', to: '2026-11-03', rows: 2, total: 2, category: 'integration', search: 'no' });
+    expect(JSON.stringify(a.metadata)).not.toContain('example.com');
+  });
+  it('LG-08c no audit store → no file (fail-closed)', async () => {
+    const bare = new LogsService({ insert: async () => { throw new Error('unused'); }, query: async () => [] });
+    await expect(bare.exportCsv(exp, { from: '2026-11-03', to: '2026-11-03' })).rejects.toBeInstanceOf(ExportUnavailableError);
+  });
+  it('LG-08d redactLogText keeps dates and ids readable', () => {
+    expect(redactLogText('sync 2026-11-03 for c8460000-0000-4000-8000-000000000001 ok')).toBe('sync 2026-11-03 for c8460000-0000-4000-8000-000000000001 ok');
+    expect(redactLogText('retry at 2026-11-03 10:00 failed')).toBe('retry at 2026-11-03 10:00 failed');
+    expect(redactLogText('call +1 215 555 0142; password: "p w"')).toBe('call •••0142; password: [redacted]');
+  });
+});
+async function auditCount(): Promise<number> { return Number((await q(sql`select count(*)::int as n from audit_events where action = 'logs_exported'`))[0].n); }

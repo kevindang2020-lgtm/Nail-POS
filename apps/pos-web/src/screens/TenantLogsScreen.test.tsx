@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { pageMock } = vi.hoisted(() => ({ pageMock: vi.fn() }));
-vi.mock('../api/posLogsApi', () => ({ posLogsApi: { page: pageMock } }));
+const { pageMock, exportMock } = vi.hoisted(() => ({ pageMock: vi.fn(), exportMock: vi.fn() }));
+vi.mock('../api/posLogsApi', () => ({ posLogsApi: { page: pageMock, exportCsv: exportMock } }));
 import { TenantLogsScreen } from './TenantLogsScreen';
 
 const logs = [
@@ -93,5 +93,22 @@ describe('TenantLogsScreen', () => {
     render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
     await screen.findByText('Delivery failed for CRM');
     expect(screen.queryByTestId('lgx-env')).toBeNull();
+  });
+  it('Device Integration Logs 08: Export sends the page\'s range + filters to the server export and says it was recorded; a refusal shows the server\'s words', async () => {
+    exportMock.mockReset(); exportMock.mockResolvedValue('Time,Category\r\n');
+    const createObjectURL = vi.fn(() => 'blob:x'); const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    await screen.findByText('Delivery failed for CRM');
+    fireEvent.change(screen.getByDisplayValue('All severities'), { target: { value: 'error' } });
+    fireEvent.click(screen.getByTestId('lgx-export'));
+    await waitFor(() => expect(exportMock).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', category: 'all' })));
+    expect(await screen.findByTestId('lgx-export-note')).toHaveTextContent('Sanitized logs exported. The export was recorded.');
+    expect(createObjectURL).toHaveBeenCalled(); expect(click).toHaveBeenCalledTimes(1);
+    exportMock.mockRejectedValueOnce(Object.assign(new Error('Pick a start and an end date (start on or before end) to export.'), { status: 400 }));
+    fireEvent.click(screen.getByTestId('lgx-export'));
+    await waitFor(() => expect(screen.getByTestId('lgx-export-note')).toHaveTextContent('Pick a start and an end date'));
+    click.mockRestore();
   });
 });

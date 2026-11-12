@@ -1673,4 +1673,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.inventory.recipe_inactive_product.fix": "Mở Kho hàng → Công thức và thay sản phẩm trong công thức của các dịch vụ đó.", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_short_deduction": "Khi hoàn tất dịch vụ, kho đã trừ đủ lượng theo công thức (30 ngày qua)", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_short_deduction.fix": "Kho bị thiếu khi làm dịch vụ — hãy kiểm đếm lại sản phẩm và nhập thêm hàng; lượng đã trừ không bị thay đổi.", // DRAFT — Kevin reviews
+  "lgx.export.btn": "Xuất CSV đã che dữ liệu", // DRAFT — Kevin reviews
+  "lgx.export.hint": "Một khoảng ngày tối đa 31 ngày, theo bộ lọc đang hiển thị. Nội dung nhạy cảm được che và việc xuất được ghi lại.", // DRAFT — Kevin reviews
+  "lgx.export.done": "Đã xuất nhật ký đã che dữ liệu. Việc xuất đã được ghi lại.", // DRAFT — Kevin reviews
+  "lgx.export.failed": "Không thể xuất nhật ký.", // DRAFT — Kevin reviews
+  "ops.serving.insight.booking_conflict": "{name} có lịch hẹn sau {minutes} phút nhưng còn cần khoảng {remaining} phút ({count} xung đột)", // DRAFT — Kevin reviews
+  "ops.serving.insightSub.booking_conflict": "Xem bảng Đặt lịch trước khi khách tiếp theo đến — không có gì bị tự động dời.", // DRAFT — Kevin reviews
 };

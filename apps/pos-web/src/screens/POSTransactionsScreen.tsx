@@ -10,6 +10,7 @@
 // UTC days drawn as midnight UTC (Oct 22 showed as Oct 21 8:00 PM), a partial tender showed "completed", Net was Gross.
 import { useEffect, useState } from 'react';
 import { SystemCheckButton } from '../components/SystemCheck';
+import { useRealtime } from '../realtime/useRealtime';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTransactionsApi } from '../api/posTransactionsApi';
@@ -58,6 +59,10 @@ export function POSTransactionsScreen() {
   const list = useLoad(() => posTransactionsApi.list({ ...scope, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
   const sum = useLoad(() => posTransactionsApi.summary(filters), [JSON.stringify(filters), tick]);
   const techs = useLoad(() => posTransactionsApi.technicians(), []);
+  // Extras REFUNDS & VOIDS 08: a confirmed refund / void / payment elsewhere (another register, the owner app) refreshes
+  // this ledger in place through the existing realtime routing ("reports": reports_updated / ticket_paid / payment_approved) —
+  // events only (no timer), data kept while it reloads
+  useRealtime('reports', () => { list.reload(); sum.reload(); }, { intervalMs: 0, hiddenMs: 0 });
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const k = sum.data?.kpis; const ctx = sum.data?.context; const rows: Row[] = list.data?.items ?? [];
   const chips = [...(q ? [{ label: tx('rv.chip.search', { q }), clear: () => setSearch('') }] : []), ...(status ? [{ label: stateLbl(status), clear: () => setStatus('') }] : []),

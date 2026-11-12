@@ -15,7 +15,11 @@ export interface LogsRepositoryPort {
   page?(ctx: LogsContext, f: LogPageFilters): Promise<{ rows: StoredLog[]; total: number; summary: LogSummary }>;
   /** Device Integration Logs 06 (Nov 12 2026): the payment environment these logs come from (optional — no store, no label) */
   paymentEnvironment?(ctx: LogsContext): Promise<LogPaymentEnvironment>;
+  /** Device Integration Logs 08 (Nov 12 2026): the exporter's audit row, fail-closed (throws when it cannot be written).
+   *  Optional — a store without it cannot export. Only the range, filters and counts are recorded, never the rows. */
+  recordExport?(ctx: LogsContext, e: LogExportAudit): Promise<void>;
 }
+export interface LogExportAudit { from: string; to: string; rows: number; total: number; filters: Record<string, string> }
 /** sandbox = test / UAT traffic (never certification or production evidence); production = live merchant. `certification`
  *  is the latest recorded production validation for that processor, null when none is recorded or it cannot be told. */
 export interface LogPaymentEnvironment { environment: 'sandbox' | 'production' | null; source: 'branch' | 'salon' | null; processor: string | null; certification: string | null }

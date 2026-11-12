@@ -1674,4 +1674,10 @@ export const OPS_EN = {
   "syschk.inventory.recipe_inactive_product.fix": "Open Inventory → Recipes and replace the product in those services’ recipes.",
   "syschk.inventory.recipe_short_deduction": "Service Done took each recipe’s full amount from stock (last 30 days)",
   "syschk.inventory.recipe_short_deduction.fix": "Stock ran short when the service was done — recount the product and receive stock; the deduction itself is not changed.",
+  "lgx.export.btn": "Export sanitized CSV",
+  "lgx.export.hint": "One date range of 31 days or less, with the filters shown. Messages are redacted and the export is recorded.",
+  "lgx.export.done": "Sanitized logs exported. The export was recorded.",
+  "lgx.export.failed": "Could not export the logs.",
+  "ops.serving.insight.booking_conflict": "{name} has a booking in {minutes} min but needs about {remaining} min more ({count} conflict(s))",
+  "ops.serving.insightSub.booking_conflict": "Review the Booking board before the next guest arrives — nothing is moved automatically.",
 };

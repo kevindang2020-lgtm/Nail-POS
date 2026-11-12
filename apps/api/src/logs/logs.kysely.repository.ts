@@ -3,7 +3,8 @@ import { escapeLike } from '@aipowersalon/database';   // Security Deep Scan D8:
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { LogsContext, LogWriteCtx, LogEntryInput } from './logs.dto';
-import type { LogsRepositoryPort, StoredLog, LogPageFilters, LogSummary, LogPaymentEnvironment } from './logs.repository';
+import type { LogsRepositoryPort, StoredLog, LogPageFilters, LogSummary, LogPaymentEnvironment, LogExportAudit } from './logs.repository';
+import { recordAuditStrict } from '@aipowersalon/audit';
 import type { LogFilters } from './logs-core';
 
 const toMs = (v: unknown): number => { if (v instanceof Date) return v.getTime(); const n = Date.parse(String(v)); return Number.isNaN(n) ? Date.now() : n; };
@@ -76,5 +77,12 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
     const s = sum.rows[0] ?? {};
     return { rows: rows.rows.map((r: any) => this.map(r)), total: Number(s.events ?? 0),   // the count comes from the summary (a page past the end still knows the total)
       summary: { events: Number(s.events ?? 0), warnings: Number(s.warnings ?? 0), errors: Number(s.errors ?? 0), device: Number(s.device ?? 0), integration: Number(s.integration ?? 0) } };
+  }
+
+  /** Device Integration Logs 08: the export's audit_events row (fail-closed — the audit module's strict write) */
+  async recordExport(ctx: LogsContext, e: LogExportAudit): Promise<void> {
+    await recordAuditStrict(this.db, { tenantId: ctx.tenantId, branchId: ctx.branchId || null, userId: ctx.userId, role: ctx.role ?? null },
+      { module: 'logs', action: 'logs_exported', resourceType: 'tenant_event_logs', summary: `Device & integration logs exported (${e.rows} rows, ${e.from} to ${e.to})`,
+        metadata: { from: e.from, to: e.to, rows: e.rows, total: e.total, ...e.filters } });
   }
 }

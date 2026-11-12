@@ -48,7 +48,9 @@ export function computeServingAddOnMetrics(tickets: { lines: SVLine[] }[]): { ad
 /** Serving mandate §17 / §59–§62 / §109 — the floor projection BOTH adapters build from the same loaded facts: stage counts
  *  over every matched ticket (not the visible page), line-owner-aware technician load, the capped Available / Finishing
  *  panel with counts for everyone on duty, and the advisory insights. Pure; exported for tests. */
-export function buildFloorProjection(all: SVTicket[], elapsedOf: (t: SVTicket) => number, staffRows: ServingStaffRow[], roster: number) {
+export function buildFloorProjection(all: SVTicket[], elapsedOf: (t: SVTicket) => number, staffRows: ServingStaffRow[], roster: number,
+  /** Extras Serving 04: minutes until each technician's next booked appointment today (technicianId → minutes); absent → no conflict check */
+  nextBookingMinutes?: Record<string, number>) {
   const LIVE = ['in_service', 'paused', 'delayed'];
   const active = all.filter((t) => LIVE.includes(t.status));
   const finishing = (t: SVTicket) => t.estimatedDurationMinutes > 0 && elapsedOf(t) >= t.estimatedDurationMinutes * FINISHING_SOON_FRACTION;
@@ -71,7 +73,19 @@ export function buildFloorProjection(all: SVTicket[], elapsedOf: (t: SVTicket) =
   const busyTechWaiting = notStarted.filter((t) => !t.primaryTechId || busyTechs.has(t.primaryTechId)).length;
   let overloaded: { name: string; open: number } | null = null;
   for (const [tid, n] of Object.entries(load)) if (!overloaded || n > overloaded.open) { const nm = rows.find((r) => r.technicianId === tid)?.name ?? all.find((t) => t.primaryTechId === tid)?.primaryTechName ?? all.flatMap((t) => t.lines).find((l) => l.technicianId === tid)?.technicianName; if (nm) overloaded = { name: nm, open: n }; }
-  const insights: ServingInsight[] = buildServingInsights({
+  // Extras Serving 04: a live service expected to run past the same technician's next booking today (the estimate is
+  // the ticket's own; a ticket without one is never guessed). One entry per technician, the biggest overrun first.
+  const conflicts = new Map<string, { name: string; minutesUntilBooking: number; remainingMinutes: number }>();
+  if (nextBookingMinutes) for (const t of active) {
+    const tid = t.primaryTechId; if (!tid || !(t.estimatedDurationMinutes > 0)) continue;
+    const until = nextBookingMinutes[tid]; if (until == null) continue;
+    const remaining = Math.max(0, t.estimatedDurationMinutes - elapsedOf(t));
+    if (remaining <= until) continue;
+    const prev = conflicts.get(tid);
+    if (!prev || remaining - until > prev.remainingMinutes - prev.minutesUntilBooking) conflicts.set(tid, { name: t.primaryTechName || rows.find((r) => r.technicianId === tid)?.name || 'Technician', minutesUntilBooking: until, remainingMinutes: remaining });
+  }
+  const bookingConflicts = [...conflicts.values()].sort((a, b) => (b.remainingMinutes - b.minutesUntilBooking) - (a.remainingMinutes - a.minutesUntilBooking));
+  const insights: ServingInsight[] = buildServingInsights({ bookingConflicts,
     active: active.map((t) => ({ customerName: t.customerName, customerId: t.customerId || undefined, isVip: t.isVip, elapsed: elapsedOf(t), est: t.estimatedDurationMinutes })),
     waitingToStart: notStarted.length, busyTechWaiting, readyForServiceDone: stageCounts.ready, overloaded, freeTechnicians,
   });

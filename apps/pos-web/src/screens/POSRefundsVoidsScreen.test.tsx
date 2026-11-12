@@ -7,6 +7,8 @@ const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), facets: vi.fn()
 vi.mock('../api/posRefundsVoidsApi', () => ({ posRefundsVoidsApi: api }));
 const co = vi.hoisted(() => ({ refund: vi.fn(), void: vi.fn() }));
 vi.mock('../api/posCheckoutApi', () => ({ posCheckoutApi: co }));
+const rt = vi.hoisted(() => ({ subs: [] as Array<{ screen: unknown; cb: () => void; opts: unknown }> }));
+vi.mock('../realtime/useRealtime', () => ({ useRealtime: (screen: unknown, cb: () => void, opts: unknown) => { rt.subs.push({ screen, cb, opts }); } }));
 import { POSRefundsVoidsScreen } from './POSRefundsVoidsScreen';
 
 const PERIOD = { preset: 'month', from: '2026-10-01', to: '2026-10-31', tz: 'America/New_York', today: '2026-10-29' };
@@ -89,5 +91,18 @@ describe('POSRefundsVoidsScreen', () => {
     await waitFor(() => expect(api.detail).toHaveBeenCalledWith('refund', 'r4'));
     expect(screen.queryByTestId('rv-esc-dialog')).toBeNull();
     expect(co.refund).not.toHaveBeenCalled(); expect(co.void).not.toHaveBeenCalled();
+  });
+  it('Extras REFUNDS & VOIDS 08: listens on the existing "reports" refresh routing (events only, no timer); a confirmed reversal elsewhere reloads the ledger and the KPIs in place', async () => {
+    rt.subs.length = 0;
+    mount();
+    expect(await screen.findByTestId('reversal-row')).toBeInTheDocument();
+    const sub = rt.subs[rt.subs.length - 1];
+    expect(sub.screen).toBe('reports'); expect(sub.opts).toEqual({ intervalMs: 0, hiddenMs: 0 });
+    const l = api.list.mock.calls.length, s0 = api.summary.mock.calls.length;
+    api.summary.mockResolvedValue({ ...summary, kpis: { ...summary.kpis, refundedCents: 9500 } });
+    sub.cb();
+    await waitFor(() => expect(screen.getByTestId('kpi-refunds')).toHaveTextContent('$95.00'));
+    expect(api.list.mock.calls.length).toBe(l + 1); expect(api.summary.mock.calls.length).toBe(s0 + 1);
+    expect(screen.getByTestId('reversal-row')).toBeInTheDocument();   // the rows stayed on screen while it reloaded
   });
 });

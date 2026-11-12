@@ -199,6 +199,22 @@ describe('200-technician tenant (§62, §86–§87)', () => {
     expect(f.techniciansInService).toBe(40);
     expect(f.insights.length).toBeLessThanOrEqual(5);
   });
+  // Extras Serving 04 (Nov 12 2026): a live service expected to run past the same technician's next booking today
+  it('booking conflict: needs 15 min more but the next booking is in 10 → a warn insight naming the worst one; enough time / no estimate / no booking → none', () => {
+    const staff: ServingStaffRow[] = [{ technicianId: 'k1', name: 'Tech 1', status: 'Busy' }, { technicianId: 'k2', name: 'Tech 2', status: 'Busy' }, { technicianId: 'k3', name: 'Tech 3', status: 'Busy' }];
+    const noEst = { ...mk(3, 'in_service', 'k3'), estimatedDurationMinutes: 0 };
+    const tickets = [mk(1, 'in_service', 'k1'), mk(2, 'in_service', 'k2'), noEst];
+    // elapsed 30 of 45 → 15 min left; k1's next booking in 10 (conflict, 5 over), k2's in 20 (fits), k3 has no estimate
+    const f = buildFloorProjection(tickets, () => 30, staff, 3, { k1: 10, k2: 20, k3: 1 });
+    const c = f.insights.filter((i) => i.id === 'booking_conflict');
+    expect(c).toHaveLength(1);
+    expect(c[0]).toMatchObject({ severity: 'warn', route: '/booking', vars: { name: 'k1', minutes: 10, remaining: 15, count: 1 } });
+    // two conflicts → the biggest overrun is named, the count says two
+    const g = buildFloorProjection(tickets, () => 30, staff, 3, { k1: 10, k2: 2 });
+    expect(g.insights.find((i) => i.id === 'booking_conflict')?.vars).toMatchObject({ name: 'k2', minutes: 2, remaining: 15, count: 2 });
+    expect(buildFloorProjection(tickets, () => 30, staff, 3).insights.some((i) => i.id === 'booking_conflict')).toBe(false);
+    expect(buildFloorProjection(tickets, () => 30, staff, 3, { k2: 20 }).insights.some((i) => i.id === 'booking_conflict')).toBe(false);
+  });
 });
 
 describe('AI is advisory, Auto Balance only recommends (§54–§57)', () => {

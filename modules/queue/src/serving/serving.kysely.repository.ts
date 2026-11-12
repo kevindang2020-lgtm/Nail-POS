@@ -95,6 +95,21 @@ export class KyselyServingRepository implements ServingRepositoryPort {
     await this.outbox.write(trx, createDomainEvent({ eventType: type as any, tenantId: ctx.tenantId, branchId: ctx.branchId || undefined, aggregateType: 'ticket', aggregateId: ticketId,
       actorId: ctx.userId || undefined, actorType: 'user', correlationId: `ticket:${ticketId}`, payload: { ticketId, technicianId, source: 'pos' } }));
   }   // not merely "has an outbox": the publisher must be ON
+  /** Extras Serving 04 (Nov 12 2026): minutes from now until each technician's next booked appointment TODAY (the branch's
+   *  day and clock), from the one appointment store; only bookings still to come (booked / confirmed, start not passed). */
+  async nextBookingMinutes(ctx: ServingContext): Promise<Record<string, number>> {
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId ?? null);
+    const at = new Date(this.now()).toISOString(); const br = ctx.branchId || null;
+    const rows = (await sql<{ technician_id: string; mins: number }>`select a.technician_id,
+        min(floor(extract(epoch from ((a.appt_date::date + a.start_time::time) - (${at}::timestamptz at time zone ${tz}))) / 60))::int as mins
+      from pos_tech_appointments a
+      where a.tenant_id = ${ctx.tenantId} and (${br}::text is null or a.branch_id::text = ${br}) and a.status in ('booked', 'confirmed')
+        and a.appt_date = (${at}::timestamptz at time zone ${tz})::date and (a.appt_date::date + a.start_time::time) >= (${at}::timestamptz at time zone ${tz})
+      group by a.technician_id`.execute(this.db)).rows;
+    const out: Record<string, number> = {};
+    for (const r of rows) if (r.technician_id && Number.isFinite(Number(r.mins))) out[String(r.technician_id)] = Number(r.mins);
+    return out;
+  }
   private scoped(qb: any, ctx: ServingContext, a?: string): any {
     const col = (n: string) => (a ? `${a}.${n}` : n);
     let q = qb.where(col('tenant_id'), '=', ctx.tenantId);
@@ -395,7 +410,7 @@ export class KyselyServingRepository implements ServingRepositoryPort {
     // duty; `active=true` alone is not availability (a technician with no status row is not shown as free)
     const staffRows: ServingStaffRow[] = (techRows as Row[]).map((r) => { const raw = statBy[r.id]; const label = raw ? SV_STATUS[String(raw).toLowerCase()] : undefined; if (!label) return null; return { technicianId: r.id, name: r.full_name || r.id, specialty: specOf(skillsBy[r.id]), currentLoad: 0, nextAvailable: label === 'Available' ? 'Now' : label === 'Finishing Soon' ? 'Soon' : '—', status: label }; }).filter(Boolean) as ServingStaffRow[];
     // §62 / §17: capped panel + counts for everyone, stage counts over all tickets, line-owner-aware busy count, insights
-    const floor = buildFloorProjection(all, (t) => this.elapsed(t), staffRows, Number(kpis.techniciansTotal || 0));
+    const floor = buildFloorProjection(all, (t) => this.elapsed(t), staffRows, Number(kpis.techniciansTotal || 0), await this.nextBookingMinutes(ctx));
     kpis.techniciansInService = floor.techniciansInService;
     kpis.techniciansOnDuty = staffRows.length || Number(kpis.techniciansTotal || 0);
     kpis.readyToStart = floor.readyToStart;

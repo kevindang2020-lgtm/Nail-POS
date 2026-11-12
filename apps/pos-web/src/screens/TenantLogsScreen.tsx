@@ -21,6 +21,8 @@ const DEVICE_ROLE: Record<string, string> = { payment_terminal: 'card', pos_stat
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 import { reportError } from './reportsCommon';
+import { useCan } from '../components/usePermissions';
+import { errorTextOf } from '../i18n/error-text';
 
 const dash = '—';
 const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
@@ -50,6 +52,17 @@ export function TenantLogsScreen() {
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<LogEntryView | null>(null);
   const seq = useRef(0);
+  // Device Integration Logs 08: the sanitized export (the server checks the range, redacts, and records who exported)
+  const can = useCan();
+  const [exp, setExp] = useState<{ busy: boolean; note?: { ok: boolean; text: string } }>({ busy: false });
+  const doExport = async () => {
+    setExp({ busy: true });
+    try {
+      const csv = await posLogsApi.exportCsv({ category: f.category, severity: f.severity, search: f.search, relatedId: f.relatedId, correlationId: f.correlationId, from: f.from, to: f.to });
+      const blob = new Blob([String(csv)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'device-integration-logs.csv'; a.click(); URL.revokeObjectURL(a.href);
+      setExp({ busy: false, note: { ok: true, text: tt('lgx.export.done') } });
+    } catch (e) { setExp({ busy: false, note: { ok: false, text: errorTextOf(e, tt('lgx.export.failed')) } }); }
+  };
   const setF = (p: Partial<F>, keepPage = false) => setFState((c) => ({ ...c, ...p, page: keepPage ? (p.page ?? c.page) : 1 }));
   const load = useCallback(() => {
     const my = ++seq.current; setErr(null);
@@ -67,7 +80,9 @@ export function TenantLogsScreen() {
         <div style={{ flex: '1 1 320px', minWidth: 0 }}><h1>{tx('pos.device_integration_logs')}</h1><div className="sub">{tt('lgx.subtitle')}</div></div>
         <button className="btn ghost" data-testid="lgx-health" onClick={() => nav('/tenant/devices/health')}>{tt('lgx.toHealth')}</button>
         <button className="btn ghost" data-testid="lgx-refresh" onClick={load}>{tx('pos.refresh')}</button>
+        {can('pos.reports.export') ? <button className="btn ghost" data-testid="lgx-export" disabled={exp.busy} title={tt('lgx.export.hint')} onClick={doExport}>{exp.busy ? tx('pos.exporting') : tt('lgx.export.btn')}</button> : null}
       </div>
+      {exp.note ? <div className={'fk-note ' + (exp.note.ok ? 'ok' : 'bad')} role={exp.note.ok ? 'status' : 'alert'} data-testid="lgx-export-note"><span>{exp.note.text}</span></div> : null}
       {d?.paymentEnvironment ? <PaymentEnvLabel e={d.paymentEnvironment} /> : null}
       <div className="rvw-kpis lgx-kpis" data-testid="lgx-kpis">
         {card('events', tt('lgx.kpi.events'), 'gold')}
