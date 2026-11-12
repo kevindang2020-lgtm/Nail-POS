@@ -1621,4 +1621,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.discounts.coupon_use_count_drift.fix": "Một lần ghi bị lặp hoặc bị mất đã làm lệch bộ đếm — xem lại các lượt dùng của mã trước khi khách khác dùng.", // DRAFT — Kevin reviews
   "syschk.discounts.single_use_code_reused": "Không có mã dùng một lần nào bị dùng hơn một lần", // DRAFT — Kevin reviews
   "syschk.discounts.single_use_code_reused.fix": "Thu hồi mã và xem lại cả hai phiếu.", // DRAFT — Kevin reviews
+  "ops.devices.regConflict": "{register} đang do {others} phục vụ. Nếu {label} cũng phục vụ quầy này, lần quẹt thẻ bắt đầu tại quầy có thể đi đến một trong hai máy.", // DRAFT — Kevin reviews
+  "ops.devices.regConflictYes": "Vẫn gán", // DRAFT — Kevin reviews
+  "ops.devices.pairConflict": "{register} đang do {others} phục vụ. Ghép máy này vào quầy đó nghĩa là hai máy cùng phục vụ một quầy.", // DRAFT — Kevin reviews
 };

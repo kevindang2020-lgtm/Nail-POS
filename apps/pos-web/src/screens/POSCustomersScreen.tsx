@@ -51,6 +51,7 @@ type CustomersState = {
   directory?: { topTags: { name: string; count: number }[]; allTags?: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
   unavailable?: string[];
   segmentCounts?: Partial<Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>>;
+  scope?: { branchConfined: boolean; timeZone: string };   // Customer 06: where / in which calendar every number was counted
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
   recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty' | 'checked_in' | 'edited'; at: string }[];
 };
@@ -181,7 +182,8 @@ export function POSCustomersScreen() {
   const buildQ = useEventCallback(() => ({ search: search || undefined, status: status || undefined, segment: segment || undefined, source: source || undefined, tag: tag || undefined, loyaltyTier: loyaltyTier || undefined, spendBand: spendBand || undefined, page, pageSize }));
   const load = useCallback((q: Record<string, unknown>) => (api.get('/pos/customers/state', q) as Promise<CustomersState>).then((d) => { setS(d); setError(null); }).catch((e: any) => setError(e?.message || tx('pos.failed_to_load_customers'))), []);
   const refetch = () => load(buildQ());
-  const freshAt = useFreshAt(s);   // extras (Customer Profiles 02): the as-of time of the last good read; a failed refresh keeps it and says stale
+  const freshAt = useFreshAt(s);
+  const [kpiInfo, setKpiInfo] = useState<string | null>(null);   // Customer 06: which KPI's explanation is open   // extras (Customer Profiles 02): the as-of time of the last good read; a failed refresh keeps it and says stale
   // Smooth Refresh spec §28/§62: a customer created or edited on another device appears on this list — refetch on
   // customer events (routed to the 'customers' screen) and every 45 s while visible (the §81 detail class). The list
   // keeps its search/filters (buildQ) and the open edit form survives (state lives in this component, not the rows).
@@ -284,14 +286,14 @@ export function POSCustomersScreen() {
   const topSpenders = s.directory?.topSpendersCount ?? rows.filter((r) => r.totalSpendCents >= 100000).length; // full-base top 5%, else page-scoped ($1k+)
 
   const kpis8 = [
-    { l: tx('pos.total_customers'), v: nv(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, ic: 'group', color: '#2E7D32', bg: '#EAF4EC' },
-    { l: tx('pos.new_customers'), v: nv(k.newCustomersToday), sub: tx('people.customers.kpi.recent'), trend: tr?.newCustomers, ic: 'userplus', color: '#6E59C7', bg: '#EFEAFA' },
-    { l: tx('pos.returning_customers_2'), v: nv(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, ic: 'repeat', color: '#2C6BB0', bg: '#E9F1FA' },
-    { l: tx('pos.vip_customers'), v: nv(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, ic: 'crown', color: '#E8852B', bg: '#FDEFE0' },
-    { l: tx('pos.inactive_customers_2'), v: nv(k.inactiveCustomers), sub: tx('pos.needs_attention_2'), trend: undefined, ic: 'userx', color: '#C0392B', bg: '#FBEAE8' },
-    { l: tx('pos.retention_rate'), v: an ? `${an.retentionRatePercent}%` : '—', sub: tx('pos.repeat_rate_2'), trend: undefined, ic: 'dollar', color: '#2E7D32', bg: '#EAF4EC' },
-    { l: tx('pos.avg_spend_per_customer'), v: k.averageSpendCents == null ? '—' : money(k.averageSpendCents), sub: tx('pos.per_customer_2'), trend: tr?.avgSpend, ic: 'card', color: '#2C6BB0', bg: '#E9F1FA' },
-    { l: tx('pos.loyalty_members'), v: nv(k.loyaltyMembers), sub: tx('pos.loyaltymembers_of_total', { loyaltyMembers: String(pct(k.loyaltyMembers)) }), trend: undefined, ic: 'loyalty', color: '#C0392B', bg: '#FBEAE8' },
+    { id: 'total', l: tx('pos.total_customers'), v: nv(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, ic: 'group', color: '#2E7D32', bg: '#EAF4EC' },
+    { id: 'new', l: tx('pos.new_customers'), v: nv(k.newCustomersToday), sub: tx('people.customers.kpi.recent'), trend: tr?.newCustomers, ic: 'userplus', color: '#6E59C7', bg: '#EFEAFA' },
+    { id: 'returning', l: tx('pos.returning_customers_2'), v: nv(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, ic: 'repeat', color: '#2C6BB0', bg: '#E9F1FA' },
+    { id: 'vip', l: tx('pos.vip_customers'), v: nv(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, ic: 'crown', color: '#E8852B', bg: '#FDEFE0' },
+    { id: 'inactive', l: tx('pos.inactive_customers_2'), v: nv(k.inactiveCustomers), sub: tx('pos.needs_attention_2'), trend: undefined, ic: 'userx', color: '#C0392B', bg: '#FBEAE8' },
+    { id: 'retention', l: tx('pos.retention_rate'), v: an ? `${an.retentionRatePercent}%` : '—', sub: tx('pos.repeat_rate_2'), trend: undefined, ic: 'dollar', color: '#2E7D32', bg: '#EAF4EC' },
+    { id: 'avgSpend', l: tx('pos.avg_spend_per_customer'), v: k.averageSpendCents == null ? '—' : money(k.averageSpendCents), sub: tx('pos.per_customer_2'), trend: tr?.avgSpend, ic: 'card', color: '#2C6BB0', bg: '#E9F1FA' },
+    { id: 'loyalty', l: tx('pos.loyalty_members'), v: nv(k.loyaltyMembers), sub: tx('pos.loyaltymembers_of_total', { loyaltyMembers: String(pct(k.loyaltyMembers)) }), trend: undefined, ic: 'loyalty', color: '#C0392B', bg: '#FBEAE8' },
   ];
   const summary6 = [
     { l: tx('pos.total_customers'), v: nf(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, seg: '' },
@@ -344,6 +346,8 @@ export function POSCustomersScreen() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 28, height: 28, borderRadius: '50%', background: c.bg, color: c.color, display: 'grid', placeItems: 'center', flex: 'none' }}><KIcon name={c.ic} /></span>
               <span style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 700, lineHeight: 1.1 }}>{c.l}</span>
+              <button type="button" data-testid={'cust-kpi-' + c.id} aria-label={tx('people.customers.kpiExplain.open', { kpi: c.l })} title={tx('people.customers.kpiExplain.open', { kpi: c.l })} onClick={() => setKpiInfo(c.id)}
+                style={{ marginLeft: 'auto', minWidth: 28, minHeight: 28, border: 'none', background: 'transparent', color: 'var(--muted)', fontWeight: 700, cursor: 'pointer', flex: 'none' }}>ⓘ</button>
             </div>
             <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 21, fontWeight: 800, marginTop: 7 }}>{c.v}</div>
             {(() => { const tt = fmtTrend(c.trend); return tt ? <div style={{ fontSize: 10.5, marginTop: 2, color: tt.up ? '#2E7D32' : '#C0392B', fontWeight: 700 }}>{tt.text} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{tx('pos.vs_last_month')}</span></div> : <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>{c.sub}</div>; })()}
@@ -351,6 +355,22 @@ export function POSCustomersScreen() {
         ))}
       </div>
 
+      {kpiInfo ? (() => {
+        // Customer 06: the exact definition, period, scope and last refresh of one KPI — read-only, the same server number
+        const c = kpis8.find((x) => x.id === kpiInfo);
+        if (!c) return null;
+        const sc = s.scope;
+        return <FitDialog title={c.l} onClose={() => setKpiInfo(null)} testId="cust-kpi-explain">
+          <dl className="fk-dl">
+            <dt>{tx('people.customers.kpiExplain.value')}</dt><dd data-testid="cust-kpi-explain-value">{c.v}</dd>
+            <dt>{tx('people.customers.kpiExplain.definition')}</dt><dd data-testid="cust-kpi-explain-def">{tx('people.customers.kpiDef.' + c.id)}</dd>
+            <dt>{tx('people.customers.kpiExplain.period')}</dt><dd data-testid="cust-kpi-explain-period">{tx('people.customers.kpiPeriod.' + (c.id === 'new' || c.id === 'returning' ? 'today' : c.id === 'inactive' ? 'last60' : 'now'))}</dd>
+            <dt>{tx('people.customers.kpiExplain.scope')}</dt><dd data-testid="cust-kpi-explain-scope">{!sc ? '—' : sc.branchConfined ? tx('people.customers.kpiScope.branch') : tx('people.customers.kpiScope.salon')}{sc?.timeZone ? ' · ' + tx('people.customers.kpiScope.tz', { tz: sc.timeZone }) : ''}</dd>
+            <dt>{tx('people.customers.kpiExplain.refreshed')}</dt><dd data-testid="cust-kpi-explain-fresh">{freshAt ? fmtInZone(freshAt.toISOString(), { hour: 'numeric', minute: '2-digit' }) : '—'}{error ? ' · ' + tx('people.customers.kpiExplain.stale') : ''}</dd>
+          </dl>
+          <div className="fk-hint">{tx('people.customers.kpiExplain.note')}</div>
+        </FitDialog>;
+      })() : null}
       {/* Header */}
 
 

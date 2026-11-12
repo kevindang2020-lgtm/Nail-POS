@@ -866,4 +866,30 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.loyalty.health.void_restored_once': 'Mỗi lần đổi quà bị hủy đã hoàn điểm đúng một lần', // DRAFT — Kevin reviews
   'people.loyalty.health.used_redemption_on_ticket': 'Mỗi mã quà đã áp dụng hoặc đã dùng đều nằm trên một phiếu của tiệm này', // DRAFT — Kevin reviews
   'people.receiptAi.fields.needCheck': '{n} trường cần kiểm tra — hiển thị trước', // DRAFT — Kevin reviews
+  'people.mo.optedOut': '{n} khách đã từ chối tin nhắn (STOP) — chỉ nhận thông báo trong ứng dụng.', // DRAFT — Kevin reviews
+  'people.mo.textEstimate': 'Ước tính: {texts} tin nhắn · {segments} phần SMS.', // DRAFT — Kevin reviews
+  'people.mo.notMetered': 'Lời nhắc không bị trừ vào gói SMS của tiệm.', // DRAFT — Kevin reviews
+  'people.mo.inAppOnlyStop': 'Chỉ trong ứng dụng (STOP)', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.open': 'Cách tính {kpi}', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.value': 'Giá trị', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.definition': 'Đếm những gì', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.period': 'Khoảng thời gian', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.scope': 'Phạm vi', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.refreshed': 'Cập nhật lần cuối', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.stale': 'lần cập nhật gần nhất bị lỗi; đây là số liệu trước đó', // DRAFT — Kevin reviews
+  'people.customers.kpiExplain.note': 'Được tính trên máy chủ — cùng con số với thẻ, không phải ước tính riêng. Hồ sơ đã lưu trữ không được tính.', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.total': 'Hồ sơ khách hàng chưa bị lưu trữ.', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.new': 'Hồ sơ được tạo hôm nay.', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.returning': 'Khách có từ 2 lượt ghé đã thanh toán trở lên và lượt gần nhất là hôm nay.', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.vip': 'Hồ sơ được đánh dấu VIP (là phân loại, không phải trạng thái).', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.inactive': 'Không có lượt ghé đã thanh toán trong 60 ngày, kể cả khách chưa từng ghé.', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.retention': 'Khách có từ 2 lượt ghé đã thanh toán trở lên ÷ tất cả khách trong phạm vi (kể cả khách chưa từng ghé).', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.avgSpend': 'Tổng chi tiêu đã thanh toán của từng khách, trừ các khoản hoàn tiền đã hoàn tất ÷ tất cả khách trong phạm vi.', // DRAFT — Kevin reviews
+  'people.customers.kpiDef.loyalty': 'Khách có điểm tích lũy lớn hơn 0 hoặc hạng khác Thường.', // DRAFT — Kevin reviews
+  'people.customers.kpiPeriod.today': 'Hôm nay, theo lịch của tiệm', // DRAFT — Kevin reviews
+  'people.customers.kpiPeriod.last60': '60 ngày gần nhất tính đến hiện tại', // DRAFT — Kevin reviews
+  'people.customers.kpiPeriod.now': 'Số liệu hiện tại (mọi thời gian, tính đến lần cập nhật cuối)', // DRAFT — Kevin reviews
+  'people.customers.kpiScope.branch': 'Khách của chi nhánh này cùng các hồ sơ chung của tiệm', // DRAFT — Kevin reviews
+  'people.customers.kpiScope.salon': 'Tất cả khách của tiệm', // DRAFT — Kevin reviews
+  'people.customers.kpiScope.tz': 'múi giờ {tz}', // DRAFT — Kevin reviews
 };

@@ -557,4 +557,10 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bcx.cmp.prior.month": "last month, the 1st to the same day",
   "bcx.cmp.prior.quarter": "last quarter, to the same day",
   "bcx.cmp.prior.year": "last year, to the same day",
+  "bcx.fair.shareNet": "Share of salon net sales",
+  "bcx.fair.shareBookings": "Share of salon bookings",
+  "bcx.fair.ofTotal": "{pct}% of {total}",
+  "bcx.fair.ofCount": "{pct}% ({n} of {total})",
+  "bcx.fair.note": "Shares are of the totals over all {n} branches in this comparison. A larger branch (more chairs, staff or open hours) naturally has higher totals — compare the rates (average ticket, completion, revenue per completed appointment) to judge how a branch is doing. Staff and opening hours are not used to adjust these figures.",
+  "bcx.def.fair": "Fairness — totals depend on branch size; open a branch to see its share of the salon totals and the denominators. Rates are per ticket or per booking, so they compare branches of different sizes.",
 };

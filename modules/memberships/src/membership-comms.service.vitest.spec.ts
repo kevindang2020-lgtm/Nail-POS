@@ -117,3 +117,27 @@ describe('§151 (Oct 28 2026): renewal and expiry reminders are also TEXTED, in 
     expect(none.texted).toBe(0);
   });
 });
+
+describe('previewRenewalReminders — Membership Overview 10: consent-aware preview + text estimate (sends nothing)', () => {
+  const sent: unknown[] = [];
+  const messenger = { sendSms: async (x: unknown) => { sent.push(x); return { sent: true }; } } as never;
+  it('an opted-out phone is in-app only; the estimate counts only texts that would go out, never metered', async () => {
+    repo.seedMember('m4', { customerId: 'c4', customerName: 'Mai Tran', planName: 'Polish Pass', nextBillingAt: soon, status: 'active' }, true, 'T1', { phone: '+18565550104', salonName: 'Pilot' });
+    repo.seedMember('m5', { customerId: 'c5', customerName: 'Linh Vo', planName: 'Polish Pass', nextBillingAt: soon, status: 'active' }, true, 'T1', { phone: '+18565550105', salonName: 'Pilot' });
+    repo.optedOut.add('T1|+18565550105');
+    const p: any = await new MembershipCommsService(repo, messenger).previewRenewalReminders(ctx, 7);
+    expect(p).toMatchObject({ due: 3, toRemind: 3, inAppOnly: 1, texting: true, textOptedOut: 1 });   // m1 no phone · m5 STOP
+    expect(p.textEstimate).toMatchObject({ texts: 1, metered: false });
+    expect(p.textEstimate.segments).toBeGreaterThanOrEqual(1);
+    expect(p.members.find((m: any) => m.membershipId === 'm5')).toMatchObject({ textOptedOut: true, segments: 0 });
+    expect(p.members.find((m: any) => m.membershipId === 'm4')).toMatchObject({ textOptedOut: false });
+    expect(sent).toHaveLength(0);
+    expect(repo.notifications).toHaveLength(0);
+  });
+  it('in-app only salon (no messenger): no texts estimated; already-reminded members are not counted', async () => {
+    repo.seedMember('m4', { customerId: 'c4', customerName: 'Mai Tran', planName: 'Polish Pass', nextBillingAt: soon, status: 'active' }, true, 'T1', { phone: '+18565550104' });
+    await svc.runRenewalReminders(ctx, 7);
+    const p: any = await svc.previewRenewalReminders(ctx, 7);
+    expect(p).toMatchObject({ due: 2, toRemind: 0, alreadyReminded: 2, textOptedOut: 0, textEstimate: { texts: 0, segments: 0, metered: false } });
+  });
+});

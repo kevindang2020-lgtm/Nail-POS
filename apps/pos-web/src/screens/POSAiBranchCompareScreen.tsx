@@ -42,6 +42,11 @@ const na = (v: string | null) => v ?? bt('bcx.na');
 /** fewer bookings than this in the period: rates are shown, but marked as a small sample (no ranking conclusion) */
 const SMALL_N = 5;
 const small = (r: { totalBookings?: number | null }) => (r.totalBookings ?? 0) > 0 && (r.totalBookings ?? 0) < SMALL_N;
+/** AI Business Assistant 09 (fairness): a branch's part of the salon total over every matched branch, with its denominator — null (N/A) when either side is unknown or the total is 0 */
+function branchShare(part: number | null | undefined, whole: number | null | undefined): number | null {
+  if (part == null || whole == null || !Number.isFinite(part) || !Number.isFinite(whole) || whole <= 0) return null;
+  return Math.round((part / whole) * 1000) / 10;
+}
 
 export function POSAiBranchCompareScreen() {
   const [period, setPeriod] = useState<{ preset?: string; from?: string; to?: string }>({ preset: 'month' });
@@ -132,7 +137,7 @@ export function POSAiBranchCompareScreen() {
               </tr>))}</tbody></table></div>)}
         {/* extras (Nov 11 2026) — metric definitions (denominator, exclusions, time basis, why N/A) and the small-sample rule */}
         {rows.length ? <details style={{ marginTop: 8 }} data-testid="bcx-defs"><summary className="sub" style={{ cursor: 'pointer', minHeight: 32 }}>{bt('bcx.defs')}</summary>
-          <ul className="sub" style={{ paddingLeft: 18, margin: '6px 0' }}>{['net', 'avg', 'bookings', 'completed', 'completion', 'revCompleted', 'small'].map((k) => <li key={k}>{bt('bcx.def.' + k, { n: String(SMALL_N) })}</li>)}</ul></details> : null}
+          <ul className="sub" style={{ paddingLeft: 18, margin: '6px 0' }}>{['net', 'avg', 'bookings', 'completed', 'completion', 'revCompleted', 'small', 'fair'].map((k) => <li key={k}>{bt('bcx.def.' + k, { n: String(SMALL_N) })}</li>)}</ul></details> : null}
         <div className="rvw-pager">
           <Pager info={s ? { page: s.page, pageSize: s.pageSize, totalItems: s.totalItems, totalPages: s.totalPages } : null} onPage={setPage} />
           <label className="rvw-f"><span>{bt('bzx.rows')}</span><select data-testid="bcx-size" value={String(pageSize)} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>{['10', '25', '50'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
@@ -155,7 +160,11 @@ export function POSAiBranchCompareScreen() {
           <tr><td>{bt('bcx.d.cancelled')}</td><td className="num">{open.totalBookings ? `${open.cancelledPercent}%` : bt('bcx.na')}</td></tr>
           <tr><td>{bt('bcx.d.noShow')}</td><td className="num">{open.totalBookings ? `${open.noShowPercent}%` : bt('bcx.na')}</td></tr>
           <tr><td>{bt('pos.rev_completed')}</td><td className="num">{!fin ? '—' : open.revenuePerCompletedAppointmentCents == null ? bt('bcx.na') : money(open.revenuePerCompletedAppointmentCents)}</td></tr>
+          {/* AI Business Assistant 09: share of the salon totals with the denominators shown — a bigger branch naturally has bigger totals */}
+          <tr data-testid="bcx-share-net"><td>{bt('bcx.fair.shareNet')}</td><td className="num">{!fin ? '—' : (() => { const v = branchShare(open.netSalesCents, T?.netSalesCents); return v == null ? bt('bcx.na') : bt('bcx.fair.ofTotal', { pct: String(v), total: money(T?.netSalesCents) }); })()}</td></tr>
+          <tr data-testid="bcx-share-bookings"><td>{bt('bcx.fair.shareBookings')}</td><td className="num">{(() => { const v = branchShare(open.totalBookings, T?.totalBookings); return v == null ? bt('bcx.na') : bt('bcx.fair.ofCount', { pct: String(v), n: bzNum(open.totalBookings), total: bzNum(T?.totalBookings ?? 0) }); })()}</td></tr>
         </tbody></table>
+        <p className="sub" data-testid="bcx-fair-note">{bt('bcx.fair.note', { n: bzNum(T?.branches ?? 0) })}</p>
         <p className="sub">{bt('bcx.d.note')}</p>
       </FitDialog> : null}
     </div>

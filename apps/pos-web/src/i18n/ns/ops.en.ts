@@ -1622,4 +1622,7 @@ export const OPS_EN = {
   "syschk.discounts.coupon_use_count_drift.fix": "A repeated or lost commit changed the counter — review the code’s redemptions before more customers use it.",
   "syschk.discounts.single_use_code_reused": "No single-use code was used more than once",
   "syschk.discounts.single_use_code_reused.fix": "Revoke the code and review both tickets.",
+  "ops.devices.regConflict": "{register} is already served by {others}. If {label} serves it too, a card charge started at that register could go to either terminal.",
+  "ops.devices.regConflictYes": "Assign anyway",
+  "ops.devices.pairConflict": "{register} is already served by {others}. Pairing this terminal to it means two terminals serve one register.",
 };

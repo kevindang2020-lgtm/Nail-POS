@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { compareMock, center } = vi.hoisted(() => ({ compareMock: vi.fn(), center: { branchScorecard: vi.fn(), branchExplain: vi.fn(), branchCheck: vi.fn() } }));
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { compareBranches: compareMock, center } }));
@@ -120,5 +120,29 @@ describe('AI Branch Comparison screen', () => {
     fireEvent.click(screen.getByTestId('bcx-compare'));
     await screen.findAllByTestId('bcx-row');
     expect(screen.queryByTestId('bcx-d-net')).toBeNull();
+  });
+});
+
+describe('AI Business Assistant 09 — multi-branch fairness notes', () => {
+  it('a branch opens with its share of the salon totals and the denominators, plus the larger-branch note; N/A when the total is 0', async () => {
+    const base = { preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: 800000, ticketsCount: 160, averageTicketCents: 5000, totalBookings: 200, completed: 180, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [],
+      branches: [{ branchId: 'b1', branchName: 'Marlton', status: 'active', netSalesCents: 600000, averageTicketCents: 5000, ticketsCount: 120, totalBookings: 150, completed: 135, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 4444, completionRate: 90 },
+        { branchId: 'b2', branchName: 'Deptford', status: 'active', netSalesCents: 200000, averageTicketCents: 5000, ticketsCount: 40, totalBookings: 50, completed: 45, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 4444, completionRate: 90 }] };
+    compareMock.mockReset().mockResolvedValue(base);
+    const v = render1();
+    fireEvent.click((await screen.findAllByTestId('bcx-row'))[1]);
+    const d = await screen.findByTestId('bcx-detail');
+    expect(within(d).getByTestId('bcx-share-net')).toHaveTextContent('25% of $8,000.00');
+    expect(within(d).getByTestId('bcx-share-bookings')).toHaveTextContent('25% (50 of 200)');
+    expect(within(d).getByTestId('bcx-fair-note')).toHaveTextContent('totals over all 2 branches');
+    expect(within(d).getByTestId('bcx-fair-note')).toHaveTextContent('naturally has higher totals');
+    expect(screen.getByTestId('bcx-defs')).toHaveTextContent('Fairness');
+    v.unmount();
+    compareMock.mockReset().mockResolvedValue({ ...base, totals: { ...base.totals, netSalesCents: 0, totalBookings: 0 } });
+    render1();
+    fireEvent.click((await screen.findAllByTestId('bcx-row'))[0]);
+    expect(await screen.findByTestId('bcx-share-net')).toHaveTextContent('N/A');
+    expect(screen.getByTestId('bcx-share-bookings')).toHaveTextContent('N/A');
   });
 });

@@ -1,6 +1,6 @@
 // ai-money-protection.vitest.spec.ts — deterministic rule engine + service (tenant isolation, idempotency).
 import { describe, it, expect } from 'vitest';
-import { detectDuplicateCharge, detectRefundExceedsCapture, runDeterministicRules, type NormalizedPayment, type NormalizedRefund } from './ai-money-protection-rules';
+import { detectDuplicateCharge, detectRefundExceedsCapture, type NormalizedAttempt, type NormalizedPayment, type NormalizedRefund } from './ai-money-protection-rules';
 import { MoneyProtectionService, MoneyProtectionForbiddenError } from './ai-money-protection.service';
 import { InMemoryMoneyProtectionRepository } from './ai-money-protection.repository';
 import type { MoneyProtectionContext } from './ai-money-protection.dto';

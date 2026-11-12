@@ -138,4 +138,30 @@ describe('POSDevicesScreen', () => {
     await screen.findByText('Terminal paired.');
     expect((mod.posDevicesApi.pairTerminal as any)).toHaveBeenCalledWith(expect.objectContaining({ code: '123456', stationId: 'reg-back' }));
   });
+  // Tablets 04 Assignment Conflict Preview
+  it('choosing a register another terminal already serves names it first and sends nothing until confirmed', async () => {
+    const mod = await import('../api/posDevicesApi');
+    (mod.posDevicesApi.overview as any).mockResolvedValue({ ...overview, terminals: [{ id: 't1', label: 'Clover Flex #1', station: 'Front Desk', status: 'paired' }, { id: 't2', label: 'Clover Flex #2', station: 'Back Register', status: 'paired' }] });
+    (mod.posDevicesApi.setTerminalRegister as any).mockClear();
+    render(<MemoryRouter><POSDevicesScreen /></MemoryRouter>);
+    const sel = await screen.findByLabelText('Register for Clover Flex #1') as HTMLSelectElement;
+    await screen.findAllByRole('option', { name: 'Back Register' });
+    fireEvent.change(sel, { target: { value: 'reg-back' } });
+    expect(await screen.findByTestId('register-conflict')).toHaveTextContent('Back Register is already served by Clover Flex #2. If Clover Flex #1 serves it too');
+    expect((mod.posDevicesApi.setTerminalRegister as any)).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('register-conflict-no'));
+    expect(screen.queryByTestId('register-conflict')).toBeNull();
+    expect((mod.posDevicesApi.setTerminalRegister as any)).not.toHaveBeenCalled();
+    fireEvent.change(sel, { target: { value: 'reg-back' } });
+    fireEvent.click(await screen.findByTestId('register-conflict-yes'));
+    expect((mod.posDevicesApi.setTerminalRegister as any)).toHaveBeenCalledWith('t1', 'reg-back');
+    // a free register goes straight through; the pairing form warns about a taken one
+    (mod.posDevicesApi.setTerminalRegister as any).mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Pair Terminal' }));
+    fireEvent.change(screen.getByLabelText('Register'), { target: { value: 'reg-front' } });
+    expect(screen.getByTestId('pair-register-conflict')).toHaveTextContent('Front Desk is already served by Clover Flex #1.');
+    fireEvent.change(screen.getByLabelText('Register'), { target: { value: '' } });
+    expect(screen.queryByTestId('pair-register-conflict')).toBeNull();
+    (mod.posDevicesApi.overview as any).mockResolvedValue(overview);
+  });
 });

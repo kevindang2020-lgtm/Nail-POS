@@ -306,6 +306,9 @@ export interface POSCustomersFullState extends POSCustomersState {
   // F1 §16: analytics parts that could not be read this time ('retentionSeries' | 'recentActivity'); the list is unaffected
   unavailable?: string[];
   segmentCounts?: Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
+  // Customer 06 (Nov 12 2026): the scope every number was counted in — a location-confined role counts that location + salon-wide
+  // profiles; 'this month' / 'today' are the salon calendar in timeZone. Shown in the KPI explanation overlay.
+  scope?: { branchConfined: boolean; timeZone: string };
   recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty' | 'checked_in' | 'edited'; at: string }[];
 }
 

@@ -14,3 +14,15 @@ describe('membership comms sweeps', () => {
     expect(await repo.membersExpiringAllTenants(new Date('2026-11-03T12:00:00Z'), 7, 50)).toEqual([]);
   });
 });
+
+describe('Membership Overview 10 — SMS opt-outs read for the reminder preview', () => {
+  it('returns only this salon\'s opted-out phones (sms channel)', async () => {
+    const db = (repo as unknown as { db: { executeQuery: unknown } }).db as never;
+    const { sql } = await import('kysely');
+    const T = '77790000-0000-4000-8000-000000000001', X = '77790000-0000-4000-8000-000000000002';
+    await sql`insert into notification_opt_outs (tenant_id, channel, address) values (${T}::uuid, 'sms', '+18565550105'), (${X}::uuid, 'sms', '+18565550104'), (${T}::uuid, 'email', '+18565550104')`.execute(db);
+    const ctx = { tenantId: T, branchId: 'b', userId: 'u', role: 'OWNER', permissions: [] };
+    expect([...await repo.smsOptedOut(ctx, ['+18565550104', '+18565550105'])]).toEqual(['+18565550105']);
+    expect([...await repo.smsOptedOut(ctx, [])]).toEqual([]);
+  });
+});

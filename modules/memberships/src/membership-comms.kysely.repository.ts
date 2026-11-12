@@ -10,6 +10,12 @@ const iso = (v: unknown): string | null => (v == null ? null : new Date(v as any
 export class KyselyMembershipCommsRepository implements MembershipCommsRepositoryPort {
   constructor(private readonly db: Kysely<DB>) {}
 
+  async smsOptedOut(ctx: CommsContext, phones: string[]): Promise<Set<string>> {
+    if (!phones.length) return new Set();
+    const r = await sql<{ address: string }>`select address from notification_opt_outs where tenant_id = ${ctx.tenantId} and channel = 'sms' and address = any(${phones}::text[])`.execute(this.db);
+    return new Set(r.rows.map((x) => x.address));
+  }
+
   async memberCommInfo(ctx: CommsContext, membershipId: string): Promise<MemberCommInfo | null> {
     const r = await sql<{ customer_id: string; full_name: string | null; plan_name: string | null; next_billing_at: unknown; status: string }>`
       select cm.customer_id, c.full_name, p.name as plan_name, cm.next_billing_at, cm.status
