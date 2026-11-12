@@ -5,6 +5,7 @@ import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { CustomerIntelligenceCenter, CustomerIntelligenceError, CI_STATES } from './customer-intelligence-center';
 import { aggregateTenant, DEFAULT_TUNABLES, type TenantScanItem } from './ai-customer-profile-core';
+import { RetentionRepository } from '@aipowersalon/customers';
 
 const P = 'c7630000-0000-4000-8000-';
 const id = (n: number) => P + String(n).padStart(12, '0');
@@ -149,5 +150,20 @@ describe('Customer Intelligence — security + health', () => {
     expect(await q(sql`select count(*)::int n from customer_intelligence_snapshots`)).toEqual(before);
     expect((await ci.check(ctx()) as any).reused).toBe(true);
     expect(CI_STATES).toHaveLength(6);
+  });
+  it('CPA-12 (Kevin, Nov 12 2026: churn belongs to Customer Retention) — the summary and each listed customer carry Retention\'s OWN classification', async () => {
+    const ret = new RetentionRepository(db);
+    const rs: any = await ret.summary(ctx());
+    const s: any = await ci.summary(ctx());
+    expect(s.retention).toEqual({ atRisk: rs.segments.at_risk, approaching: rs.segments.approaching, active: rs.segments.active, never: rs.segments.never, atRiskDays: rs.period.riskDays, source: 'customer_retention' });
+    expect(s.retention.atRisk).toBeGreaterThan(0);
+    // per row: exactly the customers Retention's own At Risk list names are at_risk here
+    const retAtRisk = new Set((await ret.matchingIds(ctx(), { segment: 'at_risk' })).map(String));
+    const list: any = await ci.customers(ctx(), { pageSize: 100 } as any, { fullContact: false });
+    for (const it of list.items) expect(it.retention?.segment === 'at_risk').toBe(retAtRisk.has(it.id));
+    const by = Object.fromEntries(list.items.map((x: any) => [x.id, x.retention]));
+    expect(by[C.gone]).toMatchObject({ segment: 'at_risk' });
+    expect(by[C.never]).toMatchObject({ segment: 'never_visited', daysAway: null });
+    expect(by[C.regular]).toMatchObject({ segment: 'active' });
   });
 });

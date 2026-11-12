@@ -113,4 +113,12 @@ export const ASSISTANTS_VI: Record<string, string> = {
   "cpx.anyFlag": "Mọi đánh dấu",
   "cpx.daysAgo": "{n} ngày trước",
   "cpx.snapshot.open": "Mở thông tin nhanh của khách {name}", // DRAFT — Kevin reviews
+  "cpx.kpi.retAtRisk": "Có nguy cơ mất khách (Giữ chân khách)", // DRAFT — Kevin reviews
+  "cpx.col.retention": "Giữ chân khách", // DRAFT — Kevin reviews
+  "cpx.ret.seg.at_risk": "Nguy cơ", // DRAFT — Kevin reviews
+  "cpx.ret.seg.approaching": "Sắp đến hạn", // DRAFT — Kevin reviews
+  "cpx.ret.seg.active": "Đang hoạt động", // DRAFT — Kevin reviews
+  "cpx.ret.seg.never_visited": "Chưa từng ghé", // DRAFT — Kevin reviews
+  "cpx.ret.open": "Mở Giữ chân khách", // DRAFT — Kevin reviews
+  "cpx.ret.source": "Tình trạng mất khách và có nguy cơ lấy từ Giữ chân khách — trợ lý này không tự phân loại.", // DRAFT — Kevin reviews
 };

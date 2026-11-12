@@ -112,4 +112,12 @@ export const ASSISTANTS_EN: Record<string, string> = {
   "cpx.anyFlag": "Any flag",
   "cpx.daysAgo": "{n} days ago",
   "cpx.snapshot.open": "Open the customer snapshot for {name}",
+  "cpx.kpi.retAtRisk": "At risk (Customer Retention)",
+  "cpx.col.retention": "Retention",
+  "cpx.ret.seg.at_risk": "At risk",
+  "cpx.ret.seg.approaching": "Approaching",
+  "cpx.ret.seg.active": "Active",
+  "cpx.ret.seg.never_visited": "Never visited",
+  "cpx.ret.open": "Open Customer Retention",
+  "cpx.ret.source": "Churn and at-risk status come from Customer Retention — this assistant does not classify churn itself.",
 };

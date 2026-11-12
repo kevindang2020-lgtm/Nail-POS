@@ -273,8 +273,35 @@ export class CustomerIntelligenceCenter {
         dueMultiplier: t.dueMultiplier, inactiveMultiplier: t.inactiveMultiplier, visitStatuses: VISIT,
       },
       duplicateReview: { lastScanAt: iso(dup.last), open: dup.last ? N(dup.open) : null },
+      retention: await this.retentionCounts(ctx),
       scan, freshness: await this.freshness(T),
     };
+  }
+
+  /** Kevin, Nov 12 2026: churn belongs to Customer Retention. The assistant SHOWS Retention's classification (its own
+   *  RetentionRepository — the same summary the Customer Retention page reads) and never computes a churn class of its own. */
+  private async retentionCounts(ctx: CiCtx): Promise<{ atRisk: number; approaching: number; active: number; never: number; atRiskDays: number; source: 'customer_retention' } | null> {
+    try {
+      const r = await this.ret.summary(ctx);
+      return { atRisk: N(r.segments.at_risk), approaching: N(r.segments.approaching), active: N(r.segments.active), never: N(r.segments.never),
+        atRiskDays: N(r.period.riskDays), source: 'customer_retention' };
+    } catch (e) {
+      log.warn(`retention summary unavailable: ${(e as Error)?.message ?? e}`);
+      return null;   // shown as unknown ("—"), never as zero
+    }
+  }
+  /** Retention's segment for each listed customer (the same base() the Customer Retention list reads; salon time) */
+  private async retentionSegments(ctx: CiCtx, ids: string[]): Promise<Map<string, { segment: string; daysAway: number | null }>> {
+    const out = new Map<string, { segment: string; daysAway: number | null }>();
+    if (!ids.length) return out;
+    try {
+      const k = await this.ret.window(ctx);
+      const rows = (await sql<{ id: string; segment: string; days_away: number | null }>`${this.ret.base(ctx, k)} select b.id, b.segment, b.days_away from b where b.id = any(${ids}::uuid[])`.execute(this.db)).rows;
+      for (const r of rows) out.set(String(r.id), { segment: String(r.segment), daysAway: r.days_away == null ? null : N(r.days_away) });
+    } catch (e) {
+      log.warn(`retention segments unavailable: ${(e as Error)?.message ?? e}`);
+    }
+    return out;
   }
 
   // ── authorized customer list ──────────────────────────────────────────────────────────────────────────────────
@@ -329,8 +356,10 @@ export class CustomerIntelligenceCenter {
       left join technicians pt on pt.tenant_id = c.tenant_id and pt.id = c.preferred_technician_id
       left join customer_loyalty_profiles lp on lp.tenant_id = c.tenant_id and lp.customer_id = c.id
       where c.tenant_id = ${T} and ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+    const retention = await this.retentionSegments(ctx, rows.map((r) => String(r.id)));
     return {
       items: rows.map((r) => ({
+        retention: retention.get(String(r.id)) ?? null,
         id: String(r.id), name: String(r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '').trim() || null,
         phone: r.normalized_phone ? (opts.fullContact ? (r.phone_display || r.normalized_phone) : maskStoredPhone(r.normalized_phone)) : null,
         email: r.email ? (opts.fullContact ? String(r.email) : maskEmail(String(r.email))) : null, createdAt: iso(r.created_at),

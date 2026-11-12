@@ -15,7 +15,11 @@ import { CustomerQuickView, type CpxCard } from '../components/CustomerProfilesD
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const STATUSES = ['all', 'active', 'rebooking_soon', 'due_for_return', 'inactive_all', 'inactive', 'long_term_inactive', 'insufficient_history', 'never_served', 'not_scanned'];
-const FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate'];
+// Kevin, Nov 12 2026: churn belongs to Customer Retention — this page shows Retention's classification (summary.retention,
+// row.retention, read by the server from the Retention module) and links to it; it has no churn rule, flag or filter of its own.
+const FLAGS = ['rebooking', 'upcoming', 'duplicate'];
+const RET_TONE: Record<string, string> = { at_risk: 'warn', approaching: 'gold', active: 'ok', never_visited: '' };
+const RETENTION_ROUTE = '/tenant/customers/retention';
 const DATES = ['last_visit', 'created', 'next_appointment', 'profile_updated'];
 const SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since'];
 const day = (iso?: string | null) => (iso ? fmtInZone(iso.length === 10 ? iso + 'T12:00:00Z' : iso, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
@@ -38,7 +42,7 @@ export function POSAICustomerProfileAssistantScreen() {
           { key: 'active', label: t('cpx.kpi.active'), value: (s) => card(s, 'active') },
           { key: 'upcoming', label: t('cpx.kpi.upcoming'), value: (s) => card(s, 'withUpcoming') },
           { key: 'inactive', label: t('cpx.kpi.inactive'), value: (s) => card(s, 'inactive') },
-          { key: 'churn', label: t('cpx.kpi.churn'), value: (s) => card(s, 'churnWatch'), tone: (s) => (s?.cards?.churnWatch ? 'warn' : undefined) },
+          { key: 'churn', label: t('cpx.kpi.retAtRisk'), value: (s) => (s?.retention ? fmtNumber(s.retention.atRisk) : '—'), tone: (s) => (s?.retention?.atRisk ? 'warn' : undefined) },
           { key: 'rebooking', label: t('cpx.kpi.rebooking'), value: (s) => card(s, 'rebooking'), tone: (s) => (s?.cards?.rebooking ? 'gold' : undefined) },
         ]}
         list={ci.customers}
@@ -49,7 +53,8 @@ export function POSAICustomerProfileAssistantScreen() {
           { key: 'last', label: t('cpx.col.last'), render: (r) => <>{day(r.lastVisitAt)}{r.daysSinceLast != null ? <div className="sub">{t('cpx.daysAgo', { n: fmtNumber(r.daysSinceLast) })}</div> : null}</> },
           { key: 'visits', label: t('cpx.col.visits'), render: (r) => (r.completedVisits == null ? '—' : fmtNumber(r.completedVisits)) },
           { key: 'next', label: t('cpx.col.next'), render: (r) => day(r.nextAppointmentDate) },
-          { key: 'flags', label: t('cpx.col.flags'), render: (r) => <>{r.churnWatch ? <span className="chip warn">{t('cix.flag.churn_watch')}</span> : null} {r.rebooking ? <span className="chip">{t('cix.flag.rebooking')}</span> : null} {r.duplicate ? <span className="chip">{t('cix.flag.duplicate')}</span> : null}</> },
+          { key: 'retention', label: t('cpx.col.retention'), render: (r) => (r.retention ? <button type="button" className={'chip ' + (RET_TONE[r.retention.segment] ?? '')} data-testid="cpx-retention" onClick={() => nav(RETENTION_ROUTE)} title={t('cpx.ret.open')}>{t('cpx.ret.seg.' + r.retention.segment)}</button> : '—') },
+          { key: 'flags', label: t('cpx.col.flags'), render: (r) => <>{r.rebooking ? <span className="chip">{t('cix.flag.rebooking')}</span> : null} {r.duplicate ? <span className="chip">{t('cix.flag.duplicate')}</span> : null}</> },
         ]}
         filters={[
           { key: 'status', label: t('cpx.f.status'), options: STATUSES.map((v) => ({ value: v, label: v === 'all' ? t('cpx.anyStatus') : t('cix.status.' + v) })) },
@@ -64,6 +69,7 @@ export function POSAICustomerProfileAssistantScreen() {
         checkText={{ title: (k) => t('cix.health.k.' + k), detail: (k, s, x) => (k === 'eligibility' && x?.detail ? t('cix.health.eligibility', { s: fmtNumber(x.detail.scanned), a: fmtNumber(x.detail.active), i: fmtNumber(x.detail.inactiveCard),
           n: fmtNumber(x.detail.neverServed), u: fmtNumber(x.detail.underCadence), r: fmtNumber(x.detail.rebookingSoon + x.detail.dueForReturn) }) : t('cix.health.d.' + k + '.' + s)) }}
         openTo="/tenant/ai/customer-profile" openLabel={t('cpx.open')} note={t('cpx.note')} />
+      <div className="sub" data-testid="cpx-retention-source">{t('cpx.ret.source')} <button type="button" className="aic-link" data-testid="cpx-retention-link" onClick={() => nav(RETENTION_ROUTE)}>{t('cpx.ret.open')}</button></div>
     </AiPackagePanel>
     {snap ? <CustomerQuickView customer={snap} onClose={() => setSnap(null)} onFullView={() => { const id = snap.id; setSnap(null); nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(id)}`); }} /> : null}
     </>

@@ -3,7 +3,7 @@
 // Customer Intelligence's localized checks (incl. the eligibility reconciliation).
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 const { ci, pkg } = vi.hoisted(() => ({ ci: { summary: vi.fn(), customers: vi.fn(), check: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
 vi.mock('../api/posCustomerIntelligenceApi', () => ({ posCustomerIntelligenceApi: ci }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: pkg }));
@@ -31,12 +31,12 @@ describe('AI Customer Profile Assistant', () => {
   it('CP-02 scanned cards; status / flag / which date / presets reach the query', async () => {
     ci.summary.mockResolvedValue({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 } });
     wrap();
-    await waitFor(() => expect(screen.getByTestId('as-kpi-churn')).toHaveTextContent('3'));
+    await waitFor(() => expect(screen.getByTestId('as-kpi-rebooking')).toHaveTextContent('5'));
     fireEvent.change(screen.getByTestId('as-f-status'), { target: { value: 'inactive_all' } });
-    fireEvent.change(screen.getByTestId('as-f-flag'), { target: { value: 'churn_watch' } });
+    fireEvent.change(screen.getByTestId('as-f-flag'), { target: { value: 'rebooking' } });
     fireEvent.change(screen.getByTestId('as-f-dateField'), { target: { value: 'created' } });
     fireEvent.click(screen.getByTestId('as-preset-last_90'));
-    await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'inactive_all', flag: 'churn_watch', dateField: 'created', preset: 'last_90', page: 1 })));
+    await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'inactive_all', flag: 'rebooking', dateField: 'created', preset: 'last_90', page: 1 })));
   });
   it('CP-03 the check renders the eligibility reconciliation, not a raw key', async () => {
     ci.summary.mockResolvedValue({ cards: null });
@@ -62,5 +62,26 @@ describe('AI Customer Profile Assistant', () => {
     expect(q.textContent).not.toMatch(/cpf\.|cpx\.snapshot/);
     fireEvent.click(screen.getByTestId('cpx-full'));
     await waitFor(() => expect(screen.queryByTestId('cpx-quick')).toBeNull());
+  });
+  it('CPA-12 churn belongs to Customer Retention: the card and each row show Retention\'s classification and link to it; no churn rule, flag or filter of its own', async () => {
+    ci.summary.mockResolvedValue({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 }, retention: { atRisk: 12, approaching: 4, active: 20, never: 2, atRiskDays: 90, source: 'customer_retention' } });
+    ci.customers.mockResolvedValue(page([{ ...ROW, churnWatch: true, retention: { segment: 'approaching', daysAway: 63 } }]));
+    render(<MemoryRouter initialEntries={['/tenant/ai/customer-insights']}><Routes><Route path="/tenant/ai/customer-insights" element={<POSAICustomerProfileAssistantScreen />} /><Route path="/tenant/customers/retention" element={<div data-testid="retention-page" />} /></Routes></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId('as-kpi-churn')).toHaveTextContent('12'));   // Retention's at-risk count, never the assistant's own (3)
+    expect(screen.getByTestId('as-kpi-churn')).toHaveTextContent('At risk (Customer Retention)');
+    const row = await screen.findByTestId('as-row');
+    expect(screen.getByTestId('cpx-retention')).toHaveTextContent('Approaching');
+    expect(row.textContent).not.toMatch(/Churn watch/);                                        // the assistant's own churn flag is gone
+    const flagOpts = Array.from((screen.getByTestId('as-f-flag') as HTMLSelectElement).options).map((o) => o.value);
+    expect(flagOpts).not.toContain('churn_watch');
+    expect(screen.getByTestId('cpx-retention-source')).toHaveTextContent('come from Customer Retention');
+    fireEvent.click(screen.getByTestId('cpx-retention-link'));
+    expect(await screen.findByTestId('retention-page')).toBeInTheDocument();                       // navigated to Customer Retention
+  });
+  it('CPA-12 Retention unavailable → the card says "—", never 0', async () => {
+    ci.summary.mockResolvedValue({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 }, retention: null });
+    wrap();
+    await waitFor(() => expect(screen.getByTestId('as-kpi-rebooking')).toHaveTextContent('5'));
+    expect(screen.getByTestId('as-kpi-churn')).toHaveTextContent('—');
   });
 });
