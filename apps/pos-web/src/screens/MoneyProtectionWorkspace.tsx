@@ -506,6 +506,30 @@ function FalsePositiveInsights({ items }: { items?: FpInsight[] }) {
   );
 }
 
+/** Money Protection Rules 07 — Safer Batch Readiness: the three ledgers the batch (reconciliation) rules read. A ledger that
+ *  cannot be read, a layer that is off or a pass that is not scheduled is a warning (batch alerts may be missing); no recent
+ *  records is only said. Read-only; an older server sends nothing and nothing is shown. */
+type BatchSource = { source: string; rules: string[]; rulesOn: number; layerOn: boolean; state: string; warning: boolean; records30d: number | null; lastRecordAt: string | null };
+type BatchReadinessView = { sources: BatchSource[]; scheduled: boolean; lastReconciliationAt: string | null; warnings: number };
+function BatchReadiness({ b }: { b?: BatchReadinessView }) {
+  if (!b) return null;
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="mpx-batch">
+      <div className="p-h">{t('mpx.batch.title')}</div>
+      {b.warnings ? <div className="fk-note warn" role="status" data-testid="mpx-batch-warn">{t('mpx.batch.warn', { n: fmtNumber(b.warnings) })}</div> : <div className="sub" data-testid="mpx-batch-ok">{t('mpx.batch.ok')}</div>}
+      <table className="tbl rvw-table"><thead><tr><th>{t('mpx.batch.col.ledger')}</th><th>{t('mpx.batch.col.state')}</th><th className="num">{t('mpx.batch.col.records')}</th><th>{t('mpx.batch.col.last')}</th><th className="num">{t('mpx.batch.col.rules')}</th></tr></thead>
+        <tbody>{b.sources.map((x) => <tr key={x.source} data-testid="mpx-batch-row" data-state={x.state}>
+          <td><b>{t('mpx.batch.src.' + x.source)}</b></td>
+          <td><span className={'chip ' + (x.warning ? 'bad' : x.state === 'ready' ? 'ok' : '')}>{t('mpx.batch.st.' + x.state)}</span></td>
+          <td className="num">{x.records30d == null ? '—' : fmtNumber(x.records30d)}</td>
+          <td>{x.lastRecordAt ? when(x.lastRecordAt) : '—'}</td>
+          <td className="num">{t('mpx.batch.rulesOn', { on: fmtNumber(x.rulesOn), n: fmtNumber(x.rules.length) })}</td>
+        </tr>)}</tbody></table>
+      <p className={'sub' + (b.scheduled ? '' : ' warn')} data-testid="mpx-batch-schedule">{b.scheduled ? t('mpx.batch.scheduled') : t('mpx.batch.notScheduled')} · {b.lastReconciliationAt ? t('mpx.batch.lastPass', { at: when(b.lastReconciliationAt) }) : t('mpx.batch.noPass')}</p>
+    </section>
+  );
+}
+
 export function MpRules() {
   const [tick, setTick] = useState(0);
   const { r, err, load, forbidden, okAt } = useRules(tick);
@@ -555,6 +579,7 @@ export function MpRules() {
                   <Link className="btn ghost sm" to={`/tenant/ai/money-protection/alerts?rule=${x.id}`}>{t('mpx.rules.seeAlerts')}</Link></div></td>
               </tr>))}</tbody></table></div>
         </section>
+        <BatchReadiness b={r.batchReadiness} />
         <FalsePositiveInsights items={r.falsePositiveInsights} /></>)}
       {open ? <FitDialog wide testId="mpx-rule" title={ruleName(open.id, open.name)} onClose={() => setOpen(null)} footer={<button className="btn ghost" onClick={() => setOpen(null)}>{t('mpx.close')}</button>}>
         <p>{open.description}</p>

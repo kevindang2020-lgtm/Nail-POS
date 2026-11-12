@@ -53,6 +53,29 @@ describe('POSAIMoneyProtectionRulesScreen', () => {
     const rows = screen.getAllByTestId('mpx-rule-row');
     expect(rows[1]).toHaveTextContent('Scheduled batch'); expect(rows[1]).toHaveTextContent('Not required'); expect(rows[0]).toHaveTextContent('Required');
   });
+  it('Money Protection Rules 07: batch readiness lists the three ledgers, warns on an unreadable ledger / no schedule, says (never warns) no recent records', async () => {
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: false, batchReadiness: { scheduled: false, lastReconciliationAt: null, warnings: 2, sources: [
+      { source: 'membership', rules: ['MP_MEMBERSHIP_DUP_CHARGE'], rulesOn: 1, layerOn: true, state: 'no_recent_records', warning: false, records30d: 0, lastRecordAt: null },
+      { source: 'gift_cards', rules: ['A', 'B'], rulesOn: 2, layerOn: true, state: 'ready', warning: false, records30d: 14, lastRecordAt: '2026-11-10T15:00:00Z' },
+      { source: 'cash_close', rules: ['MP_CASH_DRAWER_VARIANCE'], rulesOn: 1, layerOn: true, state: 'ledger_unavailable', warning: true, records30d: null, lastRecordAt: null }] } });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    const rows = await screen.findAllByTestId('mpx-batch-row');
+    expect(rows.map((r) => r.getAttribute('data-state'))).toEqual(['no_recent_records', 'ready', 'ledger_unavailable']);
+    expect(rows[0]).toHaveTextContent('Membership charges'); expect(rows[0]).toHaveTextContent('No records in 30 days');
+    expect(rows[1]).toHaveTextContent('14'); expect(rows[1]).toHaveTextContent('2 of 2');
+    expect(rows[2]).toHaveTextContent('Cannot be read'); expect(rows[2]).toHaveTextContent('—');
+    expect(rows[2].querySelector('.chip')!.className).toContain('bad'); expect(rows[0].querySelector('.chip')!.className).not.toContain('bad');
+    expect(screen.getByTestId('mpx-batch-warn')).toHaveTextContent('2 problem(s) found');
+    expect(screen.getByTestId('mpx-batch-schedule')).toHaveTextContent('Detection is not scheduled');
+    expect(screen.getByTestId('mpx-batch-schedule')).toHaveTextContent('no successful pass yet');
+    expect(mc.saveRule).not.toHaveBeenCalled();
+  });
+  it('Money Protection Rules 07: an older server without batchReadiness shows no section', async () => {
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: false });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    await screen.findAllByTestId('mpx-rule-row');
+    expect(screen.queryByTestId('mpx-batch')).toBeNull();
+  });
   it('MONEY PROTECTION ALERTS 11: false-positive insights show reviewed / dismissed / reopened and repeated reasons; nothing is saved', async () => {
     mc.rules.mockResolvedValue({ rules: [rule()], canEdit: true, falsePositivePolicy: 'insight_only_rules_never_auto_disabled',
       falsePositiveInsights: [{ ruleId: 'MP_DUP_CHARGE_LIKELY', name: 'Likely duplicate charge', reviewed90d: 4, dismissed90d: 3, reopened90d: 1, dismissRatePct: 75, repeatedReasons: [{ reason: 'split tender', count: 2 }] }] });

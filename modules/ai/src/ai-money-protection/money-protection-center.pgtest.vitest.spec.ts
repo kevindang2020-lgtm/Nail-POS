@@ -232,6 +232,39 @@ describe('Rules and safe settings', () => {
     expect(r.rules.find((x: any) => x.id === 'MP_DUP_CHARGE_EXACT')).toMatchObject({ enabled: true, effective: true });   // never self-disabled
     expect(((await mc.rules(ctx({ branchId: B2 }))) as any).falsePositiveInsights).toEqual([]);   // North's view: no decisions there
   });
+  it('RU-07 (Money Protection Rules 07) Safer Batch Readiness: per ledger read state, 30-day records, rules on, layer and schedule; an unreadable ledger or a layer off warns', async () => {
+    await q(`set session_replication_role = replica`);
+    await q(`insert into gift_cards (id, tenant_id, code, initial_balance_cents, balance_cents) values ($1,$2,'GC-RU7',5000,4000)`, [id(60), T]);
+    await q(`insert into gift_card_transactions (tenant_id, gift_card_id, type, amount_cents, balance_after_cents) values ($1,$2,'issue',5000,5000), ($1,$2,'redeem',1000,4000)`, [T, id(60)]);
+    await q(`insert into gift_card_transactions (tenant_id, gift_card_id, type, amount_cents, balance_after_cents) values ($1,$2,'issue',100,100)`, [X, id(60)]);   // another salon: not counted
+    await q(`set session_replication_role = origin`);
+    const r: any = (await mc.rules(ctx())).batchReadiness;
+    const by = Object.fromEntries(r.sources.map((s: any) => [s.source, s]));
+    expect(by.gift_cards).toMatchObject({ state: 'ready', records30d: 2, rulesOn: 2, layerOn: true, warning: false, lastRecordAt: expect.any(String) });
+    expect(by.membership).toMatchObject({ state: 'no_recent_records', records30d: 0, warning: false, lastRecordAt: null });   // said, never warned
+    expect(by.cash_close.rules).toEqual(['MP_CASH_DRAWER_VARIANCE']);
+    expect(r.scheduled).toBe(false);
+    expect(r.warnings).toBe(1);                                   // only the missing schedule
+    expect(r.lastReconciliationAt).toEqual(expect.any(String));   // the recorded pass from DT-01
+    // the reconciliation layer switched off → every ledger warns "layer_off"
+    FLAGS.reconciliation = false;
+    try {
+      const off: any = (await mc.rules(ctx())).batchReadiness;
+      expect(off.sources.map((s: any) => s.state)).toEqual(['layer_off', 'layer_off', 'layer_off']);
+      expect(off.warnings).toBe(4);
+    } finally { FLAGS.reconciliation = true; }
+    // a ledger that cannot be read is "ledger_unavailable" (never 0 records) and the system check FAILS that line
+    await q(`alter table cash_drawer_sessions rename to cash_drawer_sessions_ru7`);
+    try {
+      const un: any = (await mc.rules(ctx())).batchReadiness;
+      expect(un.sources.find((s: any) => s.source === 'cash_close')).toMatchObject({ state: 'ledger_unavailable', records30d: null, warning: true, errorCode: 'ledger_read_failed' });
+      const h: any = await mc.check(ctx());
+      expect(h.checks.find((c: any) => c.key === 'batch_readiness')).toMatchObject({ state: 'FAILED', detail: { unreadable: ['cash_close'] } });
+    } finally {
+      await q(`alter table cash_drawer_sessions_ru7 rename to cash_drawer_sessions`);
+      await q(`delete from money_protection_health_runs where tenant_id = $1`, [T]);
+    }
+  });
 });
 
 describe('Check AI Money Protection System', () => {
@@ -250,6 +283,7 @@ describe('Check AI Money Protection System', () => {
     expect(k.dismissals_explained).toMatchObject({ state: 'WARNING', count: 1 });
     expect(k.urgent_reviewed).toMatchObject({ state: 'FAILED', count: 1 });
     expect(k.subscription.state).toBe('PASSED');
+    expect(k.batch_readiness.state).toBe('PASSED');   // Rules 07: ledgers readable, layer on, scheduled
     expect(k.detection_recent.lastPassedAt).toBe(h.checkedAt);
     expect(h.overall).toBe('FAILED');
     expect((await q(`select count(*)::int as n from money_protection_alerts where tenant_id = $1`, [T]))[0].n).toBe(before);

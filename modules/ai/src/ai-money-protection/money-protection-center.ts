@@ -445,7 +445,9 @@ export class MoneyProtectionCenter {
     }).sort((a, b) => b.dismissed90d - a.dismissed90d || a.ruleId.localeCompare(b.ruleId));
     const f = this.deps.flags();
     const layerOn = (l: string) => f.enabled && (l === 'deterministic' ? f.deterministicRules : l === 'baseline' ? f.baselines : f.reconciliation);
+    const off = new Set(settings.filter((s) => !s.enabled).map((s) => String(s.rule_id)));
     return {
+      batchReadiness: await this.batchReadiness(T, off),
       falsePositiveInsights, falsePositivePolicy: 'insight_only_rules_never_auto_disabled' as const,
       rules: RULE_CATALOG.map((d) => {
         const s = settings.find((x) => x.rule_id === d.id); const c = counts.find((x) => x.rule_id === d.id);
@@ -459,6 +461,37 @@ export class MoneyProtectionCenter {
       }),
       canEdit: has(ctx, 'ai_money_protection.manage_settings'),
     };
+  }
+
+  /** Money Protection Rules 07 — Safer Batch Readiness. The batch (reconciliation) rules read three ledgers: membership
+   *  charges, gift-card activity and cash-drawer closes. Per ledger: can it be read at all, how many records it has in the
+   *  last 30 days and the newest one, whether its rules are switched on and the reconciliation layer is on — plus whether
+   *  the detection pass is scheduled and when a pass (every pass runs all three layers) last succeeded. A ledger that cannot be read, a layer
+   *  that is off or a pass that is not scheduled is a WARNING ("batch alerts may be missing"); no recent records is only
+   *  said, never warned (a salon may sell no memberships). Read-only, tenant-wide (the batch pass is tenant-wide). */
+  private async batchReadiness(T: string, disabledRules: Set<string>) {
+    const f = this.deps.flags();
+    const layer = f.enabled && f.reconciliation;
+    const ledgers: Array<{ source: 'membership' | 'gift_cards' | 'cash_close'; rules: string[]; read: () => Promise<Row | undefined> }> = [
+      { source: 'membership', rules: ['MP_MEMBERSHIP_DUP_CHARGE'],
+        read: async () => (await sql<Row>`select count(*) filter (where created_at > now() - interval '30 days')::int as n30, max(created_at) as last from membership_payments where tenant_id = ${T}`.execute(this.db)).rows[0] },
+      { source: 'gift_cards', rules: ['MP_GIFTCARD_NEGATIVE_BALANCE', 'MP_GIFTCARD_REDEEM_EXCEEDS'],
+        read: async () => (await sql<Row>`select count(*) filter (where created_at > now() - interval '30 days')::int as n30, max(created_at) as last from gift_card_transactions where tenant_id = ${T}`.execute(this.db)).rows[0] },
+      { source: 'cash_close', rules: ['MP_CASH_DRAWER_VARIANCE'],
+        read: async () => (await sql<Row>`select count(*) filter (where created_at > now() - interval '30 days')::int as n30, max(created_at) as last from cash_drawer_sessions where tenant_id = ${T}`.execute(this.db)).rows[0] },
+    ];
+    const sources = [];
+    for (const l of ledgers) {
+      let row: Row | undefined; let readError: string | null = null;
+      try { row = await l.read(); } catch (e) { readError = e instanceof Error ? 'ledger_read_failed' : 'ledger_read_failed_unknown'; row = undefined; }
+      const rulesOn = l.rules.filter((id) => !disabledRules.has(id)).length;
+      const state = readError ? 'ledger_unavailable' : !layer ? 'layer_off' : rulesOn === 0 ? 'rules_off' : N(row?.n30) === 0 ? 'no_recent_records' : 'ready';
+      sources.push({ source: l.source, rules: l.rules, rulesOn, layerOn: layer, state, warning: state === 'ledger_unavailable' || state === 'layer_off',
+        records30d: readError ? null : N(row?.n30), lastRecordAt: readError ? null : iso(row?.last), errorCode: readError });
+    }
+    const lastOk = (await sql<Row>`select max(finished_at) as at from money_protection_detection_runs where tenant_id = ${T} and status = 'succeeded'`.execute(this.db)).rows[0]?.at ?? null;
+    const scheduled = this.deps.scheduled();
+    return { sources, scheduled, lastReconciliationAt: iso(lastOk), warnings: sources.filter((s) => s.warning).length + (scheduled ? 0 : 1), scope: 'tenant' as const };
   }
 
   async saveRule(ctx: McCtx, ruleId: string, b: { enabled?: unknown; severityOverride?: unknown; thresholds?: unknown; reason?: unknown; expectedUpdatedAt?: unknown; dryRun?: unknown }) {
@@ -599,6 +632,11 @@ export class MoneyProtectionCenter {
     const disabled = (await sql<Row>`select rule_id from money_protection_rule_settings where tenant_id = ${T} and enabled = false`.execute(this.db)).rows.map((r) => String(r.rule_id));
     const critOff = disabled.filter((id) => RULE.get(id)?.severity === 'CRITICAL');
     checks.push({ key: 'rules_enabled', component: 'rules', state: critOff.length ? 'WARNING' : 'PASSED', count: disabled.length, detail: { off: disabled, criticalOff: critOff, total: RULE_CATALOG.length } });
+    // Rules 07: batch (reconciliation) readiness — a ledger that cannot be read FAILS; a layer off or no schedule WARNS
+    const br = await this.batchReadiness(T, new Set(disabled));
+    const unreadable = br.sources.filter((s) => s.state === 'ledger_unavailable').map((s) => s.source);
+    checks.push({ key: 'batch_readiness', component: 'sources', state: unreadable.length ? 'FAILED' : br.warnings ? 'WARNING' : 'PASSED', count: br.warnings,
+      detail: { unreadable, layerOff: br.sources.some((s) => s.state === 'layer_off'), scheduled: br.scheduled } });
     const S = this.scope(sql`a.branch_id`, ctx).w;
     const al = await one(sql<Row>`select count(*) filter (where a.status = 'NEW' and a.severity in ('CRITICAL', 'HIGH') and a.first_seen_at < now() - interval '24 hours')::int as stale,
         count(*) filter (where a.status = 'DISMISSED_FALSE_POSITIVE' and not exists (select 1 from money_protection_events e where e.tenant_id = a.tenant_id and e.entity_type = 'alert'

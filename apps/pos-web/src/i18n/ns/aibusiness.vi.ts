@@ -564,4 +564,15 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.fair.ofCount": "{pct}% ({n} trên {total})", // DRAFT — Kevin reviews
   "bcx.fair.note": "Tỷ lệ tính trên tổng của tất cả {n} chi nhánh trong phần so sánh này. Chi nhánh lớn hơn (nhiều ghế, nhân viên hoặc giờ mở cửa hơn) đương nhiên có tổng cao hơn — hãy so sánh các tỷ lệ (hóa đơn trung bình, tỷ lệ hoàn thành, doanh thu mỗi lượt hẹn hoàn thành) để đánh giá chi nhánh. Số nhân viên và giờ mở cửa không được dùng để điều chỉnh các số liệu này.", // DRAFT — Kevin reviews
   "bcx.def.fair": "Công bằng — tổng phụ thuộc vào quy mô chi nhánh; mở một chi nhánh để xem tỷ lệ của nó trong tổng của tiệm và mẫu số. Các tỷ lệ tính theo hóa đơn hoặc lượt đặt hẹn, nên so sánh được các chi nhánh khác quy mô.", // DRAFT — Kevin reviews
+  "bcx.ready.ready": "Sẵn sàng so sánh", // DRAFT — Kevin reviews
+  "bcx.ready.limited": "So sánh thận trọng", // DRAFT — Kevin reviews
+  "bcx.ready.not_ready": "Chưa đủ dữ liệu để so sánh", // DRAFT — Kevin reviews
+  "bcx.ready.coverage": "{n} trên {of} chi nhánh có lịch hẹn hoặc doanh thu trong kỳ này ({p}%)", // DRAFT — Kevin reviews
+  "bcx.ready.fresh": "đọc trực tiếp từ báo cáo lúc {at}", // DRAFT — Kevin reviews
+  "bcx.ready.r.single_branch": "Chỉ có một chi nhánh — không có gì để so sánh", // DRAFT — Kevin reviews
+  "bcx.ready.r.too_few_with_activity": "Ít hơn hai chi nhánh có hoạt động — xếp hạng sẽ không có ý nghĩa", // DRAFT — Kevin reviews
+  "bcx.ready.r.branch_without_activity": "{n} chi nhánh không có lịch hẹn hoặc doanh thu", // DRAFT — Kevin reviews
+  "bcx.ready.r.small_sample": "{n} chi nhánh có ít hơn 5 lịch hẹn", // DRAFT — Kevin reviews
+  "bcx.ready.r.revenue_hidden": "Doanh thu bị ẩn với vai trò của bạn", // DRAFT — Kevin reviews
+  "bcx.ready.r.partial_period": "Hôm nay vẫn đang diễn ra", // DRAFT — Kevin reviews
 };
