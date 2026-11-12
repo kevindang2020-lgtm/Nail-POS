@@ -112,4 +112,28 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.co.l.expired": "Hết hạn / hủy", // DRAFT — Kevin reviews
   "gc.co.l.net": "Thay đổi ròng", // DRAFT — Kevin reviews
   "gc.co.readOnly": "Mở thẻ để kiểm tra. Việc chỉnh sửa vẫn làm trên thẻ (Điều chỉnh số dư, kèm lý do).", // DRAFT — Kevin reviews
+  "gc.dl.title": "Gửi điện tử", // DRAFT — Kevin reviews
+  "gc.dl.counts": "{s} đã gửi · {f} thất bại · {p} đang chờ", // DRAFT — Kevin reviews
+  "gc.dl.optedOutNote": "{n} địa chỉ nhận hiện đang trong danh sách từ chối — gửi lại sẽ bị chặn.", // DRAFT — Kevin reviews
+  "gc.dl.channel": "Kênh", // DRAFT — Kevin reviews
+  "gc.dl.to": "Gửi đến", // DRAFT — Kevin reviews
+  "gc.dl.consent": "Có thể nhận", // DRAFT — Kevin reviews
+  "gc.dl.ch.sms": "Tin nhắn", // DRAFT — Kevin reviews
+  "gc.dl.ch.email": "Email", // DRAFT — Kevin reviews
+  "gc.dl.ch.in_app": "Trong ứng dụng", // DRAFT — Kevin reviews
+  "gc.dl.ch.link": "Liên kết", // DRAFT — Kevin reviews
+  "gc.dl.st.sent": "Đã gửi", // DRAFT — Kevin reviews
+  "gc.dl.st.delivered": "Đã nhận", // DRAFT — Kevin reviews
+  "gc.dl.st.failed": "Thất bại", // DRAFT — Kevin reviews
+  "gc.dl.st.pending": "Đang chờ", // DRAFT — Kevin reviews
+  "gc.dl.st.scheduled": "Đã lên lịch", // DRAFT — Kevin reviews
+  "gc.dl.st.sending": "Đang gửi", // DRAFT — Kevin reviews
+  "gc.dl.st.canceled": "Đã hủy", // DRAFT — Kevin reviews
+  "gc.dl.fail.opted_out": "Người nhận đã từ chối", // DRAFT — Kevin reviews
+  "gc.dl.fail.not_configured": "Chưa cài đặt người gửi", // DRAFT — Kevin reviews
+  "gc.dl.fail.invalid_destination": "Số điện thoại hoặc email không hợp lệ", // DRAFT — Kevin reviews
+  "gc.dl.fail.provider_error": "Lỗi nhà cung cấp", // DRAFT — Kevin reviews
+  "gc.dl.optedOut": "Đã từ chối", // DRAFT — Kevin reviews
+  "gc.dl.canReceive": "Có", // DRAFT — Kevin reviews
+  "gc.dl.note": "Địa chỉ nhận được che bớt; liên kết nhận và mã thẻ không bao giờ hiển thị ở đây. Màn hình này không gửi lại gì.", // DRAFT — Kevin reviews
 };
