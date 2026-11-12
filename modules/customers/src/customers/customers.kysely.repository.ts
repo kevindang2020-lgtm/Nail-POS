@@ -14,7 +14,7 @@ import { sql, type Kysely } from 'kysely';
 import { toStoredCustomerPhone, normalizePhone } from '../customer-activation-rules/customer-activation-core';
 import type { DB } from '@aipowersalon/database';
 import { VISIT_TICKET_STATUSES, RETURNING_MIN_VISITS, INACTIVE_DAYS } from './customer-segments';
-import type { CustomersContext, CustomersRepositoryPort } from './customers.repository';
+import type { CustomersContext, CustomersRepositoryPort, CustomerFollowUpIndicators } from './customers.repository';
 import {
   POSCustomersFullState, POSCustomerRow, POSCustomerDetail, buildCustomersAnalytics, CustomerFilters, CustomerListItem, CustomerListResponse,
   CustomerSource, DuplicateRisk, CustomerVisitRow, CustomerAppointmentRow, CustomerTicketRow, CustomerReceiptRow,
@@ -415,6 +415,33 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
       this.getNotes(ctx, id)
     ]);
     return { ...this.toRow(ctx, c, dup), tags: tags || [], notes: notes || defNotes(c.notes), loyalty: loy || defLoyalty(c.loyaltyPoints, c.loyaltyTier), membership: mem || defMembership(), giftCards: gc || [], recentVisits: visits || [], auditSummary: [{ lastAction: 'updated', lastActorRole: ctx.role, lastAt: c.updatedAt }] };
+  }
+
+  /** extras Customer 05 — read-only: this customer's upcoming bookings (booked / confirmed from today in the salon's time
+   *  zone, the Booking module's own rows) and, when the viewer may see them, the open AI follow-ups and how many are past due. */
+  async followUpIndicators(ctx: CustomersContext, id: string, o: { followUps: boolean }): Promise<CustomerFollowUpIndicators> {
+    const T = ctx.tenantId;
+    const today = (await sql<{ d: string }>`select (now() at time zone coalesce(
+        (select b.timezone from branches b where b.tenant_id = ${T} and b.id = ${ctx.branchId}::uuid),
+        (select b.timezone from branches b where b.tenant_id = ${T} order by b.created_at, b.id limit 1), 'America/New_York'))::date::text as d`.execute(this.db)).rows[0]?.d ?? null;
+    const ap = (await sql<{ n: number; next_date: string | null; next_time: string | null }>`
+      select count(*)::int as n, (array_agg(a.appt_date::text order by a.appt_date, a.start_time))[1] as next_date,
+             (array_agg(a.start_time::text order by a.appt_date, a.start_time))[1] as next_time
+        from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = ${id}::uuid
+         and a.status in ('booked', 'confirmed') and a.appt_date >= ${today}::date`.execute(this.db)).rows[0];
+    let followUps: CustomerFollowUpIndicators['followUps'] = null;
+    if (o.followUps) {
+      const f = (await sql<{ active: number; overdue: number; next_due: Date | string | null }>`
+        select count(*)::int as active, count(*) filter (where f.due_at < now())::int as overdue, min(f.due_at) as next_due
+          from ai_receptionist_follow_ups f where f.tenant_id = ${T} and f.customer_id = ${id}::uuid
+           and f.status in ('open', 'assigned', 'in_progress', 'waiting')`.execute(this.db)).rows[0];
+      followUps = { active: Number(f?.active ?? 0), overdue: Number(f?.overdue ?? 0), nextDueAt: f?.next_due ? new Date(f.next_due).toISOString() : null };
+    }
+    const c = (await sql<{ has_phone: boolean; verified: boolean; has_email: boolean }>`select coalesce(btrim(c.normalized_phone), '') <> '' as has_phone,
+        c.phone_verified_at is not null as verified, coalesce(btrim(c.email), '') <> '' as has_email
+        from customers c where c.tenant_id = ${T} and c.id = ${id}::uuid`.execute(this.db)).rows[0];
+    return { upcoming: { count: Number(ap?.n ?? 0), nextDate: ap?.next_date ?? null, nextTime: ap?.next_time ? String(ap.next_time).slice(0, 5) : null }, followUps,
+      contact: { hasPhone: !!c?.has_phone, phoneVerified: !!c?.verified, hasEmail: !!c?.has_email }, asOf: new Date().toISOString(), salonDate: today };
   }
 
   async findByContact(ctx: CustomersContext, phone?: string, email?: string, excludeId?: string): Promise<POSCustomerRow | null> {
