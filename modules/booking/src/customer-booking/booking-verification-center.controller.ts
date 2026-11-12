@@ -8,6 +8,7 @@ import { ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { BVC_RESEND_BODY } from '../request-schemas';
 import { BookingVerificationSettingsService } from './booking-verification-settings.service';
+import { BookingService } from '../booking/booking.service';
 import type { BookingVerificationCenter, BvcContext } from './booking-verification-center';
 
 export const BOOKING_VERIFICATION_CENTER = 'BOOKING_VERIFICATION_CENTER';
@@ -37,7 +38,12 @@ const LIVE_SPEC = { filters: {}, sort: { allowed: ['nearest_expiry'], default: '
 @Controller('pos/booking-verification-center')
 export class BookingVerificationCenterController {
   private readonly center: BookingVerificationCenter | null;
-  constructor(@Optional() @Inject(BOOKING_VERIFICATION_CENTER) center: BookingVerificationCenter | null, @Optional() private readonly settings?: BookingVerificationSettingsService | null) { this.center = center; }
+  constructor(@Optional() @Inject(BOOKING_VERIFICATION_CENTER) center: BookingVerificationCenter | null, @Optional() private readonly settings?: BookingVerificationSettingsService | null,
+    @Optional() booking?: BookingService | null) {
+    this.center = center;
+    // extras 10 Lost-Booking Recovery: fresh open times come from POS Booking's own availability engine (nothing is held or booked)
+    if (center && booking) center.availability = (c, q) => booking.availability({ tenantId: c.tenantId, branchId: c.branchId, userId: c.userId, role: c.role, permissions: c.permissions }, q);
+  }
   private c(): BookingVerificationCenter {
     if (!this.center) throw withCode(new HttpException({ code: 'INTERNAL_ERROR', message: 'Booking verification is not available here.' }, HttpStatus.SERVICE_UNAVAILABLE), 'INTERNAL_ERROR');
     return this.center;

@@ -183,4 +183,15 @@ export const BOOKVERIFY_VI = {
   "bv.cmp.src.branch": "Chi nhánh này", // DRAFT — Kevin reviews
   "bv.cmp.src.salon": "Cài đặt của tiệm", // DRAFT — Kevin reviews
   "bv.cmp.src.default": "Mặc định có sẵn", // DRAFT — Kevin reviews
+  "bv.rec.title": "Lịch bị lỡ — giờ trống mới", // DRAFT — Kevin reviews
+  "bv.rec.lead": "Giờ giữ chỗ đã hết hạn trước khi lịch được xác nhận. Giờ trống ngày {date} cho cùng dịch vụ:", // DRAFT — Kevin reviews
+  "bv.rec.sameTech": "cùng thợ", // DRAFT — Kevin reviews
+  "bv.rec.more": "Còn {n} giờ trống khác trong POS Booking", // DRAFT — Kevin reviews
+  "bv.rec.note.no_staff": "Không có thợ nào làm ngày đó.", // DRAFT — Kevin reviews
+  "bv.rec.note.no_open": "Không có thợ đủ điều kiện còn giờ trống ngày đó.", // DRAFT — Kevin reviews
+  "bv.rec.note.default_length": "Yêu cầu không nêu dịch vụ nên dùng thời lượng dịch vụ mặc định của tiệm.", // DRAFT — Kevin reviews
+  "bv.rec.note.not_connected": "Không đọc được giờ trống ở đây — dùng Tìm giờ trong POS Booking.", // DRAFT — Kevin reviews
+  "bv.rec.note.not_permitted": "Vai trò của bạn không xem được lịch đặt hẹn.", // DRAFT — Kevin reviews
+  "bv.rec.safety": "Chỉ là gợi ý — không giữ chỗ, không đặt lịch, không nhắn tin, và giờ đã hết hạn không bao giờ được xác nhận. Đặt giờ đã chọn trong POS Booking; hệ thống sẽ kiểm tra lại và yêu cầu xác minh theo quy định của tiệm.", // DRAFT — Kevin reviews
+  "bv.rec.restart": "Bắt đầu lịch mới", // DRAFT — Kevin reviews
 } as const;

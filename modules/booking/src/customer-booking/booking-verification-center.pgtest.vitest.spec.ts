@@ -318,3 +318,39 @@ describe('Verified SMS Delivery Evidence', () => {
     expect(e.sender.definition).toMatch(/not proof/);
   });
 });
+
+describe('extras 10 — Lost-Booking Recovery (fresh times after an expired hold; never auto-confirms)', () => {
+  it('an expired, unconverted hold offers POS Booking\'s open starts for the same services, the held technician first; nothing is written', async () => {
+    const h = await q(sql`insert into booking_holds (tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status, released_at, release_reason, booking_session_id, channel, service_ids_json)
+      values (${T}, ${B}, ${TECH}, now() + interval '3 days', now() + interval '3 days 1 hour', now() - interval '5 minutes', 'expired', now() - interval '4 minutes', 'hold_expired', gen_random_uuid(), 'online', ${JSON.stringify([SVC_LO])}::jsonb) returning id`);
+    const lost = await session({ hold: String(h[0].id), status: 'expired', minutesLeft: -5 });
+    const asked: any[] = [];
+    const c = center();
+    c.availability = async (cx, qq) => { asked.push({ cx, qq }); return [{ technicianId: id('c2'), name: 'Mai', slots: ['09:00', '10:30'] }, { technicianId: TECH, name: 'Lan Pham', slots: ['11:00'] }]; };
+    const holdsBefore = await q(sql`select count(*)::int n from booking_holds where tenant_id = ${T}`);
+    const d: any = await c.detail({ ...ctx(), permissions: ['settings.view', 'pos.booking.view'] }, lost);
+    expect(d.recovery).toMatchObject({ state: 'offered', noteCode: null, totalOpen: 3 });
+    expect(asked[0].qq.serviceIds).toEqual([SVC_LO]);
+    expect(asked[0].cx.branchId).toBe(B);
+    expect(d.recovery.date).toBe(asked[0].qq.date);
+    expect(d.recovery.alternatives.map((x: any) => [x.technicianName, x.start, x.preferred])).toEqual([['Lan Pham', '11:00', true], ['Mai', '09:00', false], ['Mai', '10:30', false]]);
+    expect(d.recovery.safety).toMatch(/never confirmed/);
+    expect(await q(sql`select count(*)::int n from booking_holds where tenant_id = ${T}`)).toEqual(holdsBefore);   // nothing held or booked
+    // a role that cannot view the booking calendar is told so (not an empty list that reads as fully booked)
+    const d2: any = await c.detail(ctx(), lost);
+    expect(d2.recovery).toMatchObject({ state: 'not_permitted', noteCode: 'not_permitted', alternatives: [] });
+    c.availability = async () => [];
+    expect((await c.detail({ ...ctx(), permissions: ['settings.view', 'pos.booking.view'] }, lost) as any).recovery).toMatchObject({ state: 'offered', noteCode: 'no_staff', totalOpen: 0 });
+    // no engine wired → says so
+    expect((await center().detail({ ...ctx(), permissions: ['settings.view', 'pos.booking.view'] }, lost) as any).recovery.state).toBe('not_connected');
+  });
+  it('a live or converted hold, and a record without a hold, get no recovery block', async () => {
+    const h = await q(sql`insert into booking_holds (tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status, booking_session_id, channel)
+      values (${T}, ${B}, ${TECH}, now() + interval '4 days', now() + interval '4 days 1 hour', now() + interval '8 minutes', 'held', gen_random_uuid(), 'online') returning id`);
+    const live = await session({ hold: String(h[0].id) });
+    const c = center(); c.availability = async () => { throw new Error('must not be called'); };
+    expect((await c.detail({ ...ctx(), permissions: ['settings.view', 'pos.booking.view'] }, live) as any).recovery).toBeNull();
+    const none = await session({ hold: null, status: 'expired', minutesLeft: -1 });
+    expect((await c.detail({ ...ctx(), permissions: ['settings.view', 'pos.booking.view'] }, none) as any).recovery).toBeNull();
+  });
+});
