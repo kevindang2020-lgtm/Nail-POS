@@ -173,6 +173,35 @@ describe('§10 Win-Back Assistant', () => {
     expect(await code(wb.plan(ctx, { goal: 'promote_service', service: 'ge' }))).toBe('WINBACK_GOAL_INVALID');
     expect(await code(wb.plan(ctx, { goal: 'everyone' }))).toBe('WINBACK_GOAL_INVALID');
   });
+  // extras Win-Back 14 — Quiet-Time Filling: the slow-weekday goal names this salon's quietest weekday from its own paid
+  // visits (last 8 weeks, salon time zone) and offers ONLY the salon's live, already-approved offers — never a draft, an
+  // expired one, a new-customers-only one or another salon's; no price changes, nothing sent, nothing written.
+  it('Quiet-Time Filling: names the quietest weekday from real visits and lists only live approved offers; writes nothing', async () => {
+    const deal = (did: string, tenant: string, status: string, title: string, ends: string | null, newOnly = false) => q(`insert into deals (id, tenant_id, owner_type, kind, title, discount_type, discount_percent, status, ends_at, new_customers_only)
+      values ($1,$2,'salon','coupon',$3,'percent',10,$4, ${ends ? `now() + interval '${ends}'` : 'null'}, $5)`, [did, tenant, title, status, newOnly]);
+    await deal(id('a901'), T, 'active', 'Tuesday 10% off', '20 days'); await deal(id('a902'), T, 'draft', 'Draft offer', null);
+    await deal(id('a903'), T, 'active', 'Expired offer', '-1 days'); await deal(id('a904'), T, 'active', 'First visit only', null, true);
+    await deal(id('a905'), T2, 'active', 'Other salon offer', null);
+    const before = (await one(`select (select count(*) from deals)::int d, (select count(*) from segment_audience_drafts)::int a, (select count(*) from notifications)::int n,
+      (select coalesce(sum(price_cents), 0) from services)::bigint p`));
+    const p = await wb.plan(ctx, { goal: 'slow_weekdays', channel: 'sms' });
+    expect(p.offers.map((o: any) => o.title)).toEqual(['Tuesday 10% off']);     // preapproved + live only
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const named = days.find((d) => p.message.name === `${d} special`);
+    expect(named).toBeTruthy(); expect(p.message.body).toContain(`this ${named}`);
+    // the named day really is the quietest weekday of THIS salon's visits in the window (ties → earliest)
+    const counts = (await q(`select extract(isodow from (coalesce(paid_at, created_at) at time zone 'America/New_York'))::int dow, count(*)::int n from tickets
+      where tenant_id = $1 and removed_at is null and coalesce(paid_at, created_at) > now() - interval '56 days' group by 1`, [T])).rows;
+    const c = (i: number) => Number(counts.find((r: any) => r.dow === i)?.n ?? 0);
+    const ni = days.indexOf(named!) + 1;
+    for (let i = 1; i <= 5; i++) expect(c(ni) < c(i) || (c(ni) === c(i) && ni <= i)).toBe(true);
+    expect(p.next).toMatch(/Nothing is sent/);
+    const after = (await one(`select (select count(*) from deals)::int d, (select count(*) from segment_audience_drafts)::int a, (select count(*) from notifications)::int n,
+      (select coalesce(sum(price_cents), 0) from services)::bigint p`));
+    expect(after).toEqual(before);
+    const other = await wb.plan(ctx2, { goal: 'slow_weekdays', channel: 'sms' });
+    expect(other.offers.map((o: any) => o.title)).toEqual(['Other salon offer']);
+  });
   it('saves an UNSENT win_back audience (idempotent, audited) — nothing is sent or queued', async () => {
     const recips0 = (await one(`select count(*)::int n from retention_sms_recipients`)).n; const notes0 = (await one(`select count(*)::int n from notifications`)).n;
     const audits: any[] = [];
