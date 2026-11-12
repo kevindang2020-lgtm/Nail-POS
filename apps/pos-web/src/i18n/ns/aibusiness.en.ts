@@ -542,4 +542,9 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzx.a.unchanged": "Unchanged",
   "bzx.a.noChanges": "Nothing changed — there is nothing to save.",
   "bzx.a.compareNote": "Nothing is saved until you confirm. The next evaluation uses the proposed values.",
+  "aib.related.title": "Related questions",
+  "aib.related.note": "Read only — each question reads your reports for the selected period. The assistant never sends messages, charges or changes anything.",
+  "aib.brief.toggle": "Summary first",
+  "aib.brief.expand": "Show full answer",
+  "aib.brief.collapse": "Show summary",
 };

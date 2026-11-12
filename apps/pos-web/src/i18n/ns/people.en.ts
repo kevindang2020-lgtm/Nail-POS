@@ -866,4 +866,5 @@ export const PEOPLE_EN = {
   'people.loyalty.health.points_debit_without_redemption': 'Every redemption points debit belongs to a redemption',
   'people.loyalty.health.void_restored_once': 'Each voided redemption gave its points back exactly once',
   'people.loyalty.health.used_redemption_on_ticket': 'Each applied or used reward code is on a ticket of this salon',
+  'people.receiptAi.fields.needCheck': '{n} field(s) to check — shown first',
 };

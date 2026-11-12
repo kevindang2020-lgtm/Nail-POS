@@ -10,6 +10,8 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posFollowUpQueueApi as qa, type FollowUpQueueKpis, type FollowUpQueueRow, type QueuePage, type FollowUpQueueQuery, type ContactCheck, type MissedCallRow, type QueueResults, type CustomerFollowUp, type GenerateOutcome, type FollowUpPriorityReason } from '../api/posFollowUpQueueApi';
 import { posEodFollowUpsApi as eod, type EodTaskDetail, type EodHealthRow, type EodHealthState } from '../api/posEodFollowUpsApi';
 import { posFollowUpApi, type FollowUpTaskView } from '../api/posFollowUpApi';
+import { posCustomerNotificationsApi as cnApi, type CnTimelineItem } from '../api/posCustomerNotificationsApi';
+import { statusLabel } from '../i18n/status-label';
 import { FollowUpTechnicianSummary } from '../components/FollowUpTechnicianSummary';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
@@ -18,6 +20,15 @@ import { errorTextOf } from '../i18n/error-text';
 import { useRealtime } from '../realtime/useRealtime';
 import { deviceToday } from '../lib/deviceToday';
 
+/** Extras (Follow-Up Queue row 11): the contact cooldown window shown in the task details */
+const COOLDOWN_TIMELINE_DAYS = 14;
+const NOT_SENT = new Set(['pending', 'pending_manager_approval', 'skipped', 'expired', 'rejected', 'cancelled', 'canceled']);
+/** what actually went OUT to this customer recently, across every tool that writes the customer timeline (SMS / email ledger,
+ *  reminders, receipts, follow-ups) — unsent follow-up drafts and this task itself are not "contact" */
+function recentContact(items: readonly CnTimelineItem[], taskId: string, nowMs: number): CnTimelineItem[] {
+  const since = nowMs - COOLDOWN_TIMELINE_DAYS * 86_400_000;
+  return items.filter((it) => it.direction === 'outbound' && it.id !== taskId && !!it.at && Date.parse(it.at) >= since && !(it.kind === 'follow_up' && NOT_SENT.has(it.status)));
+}
 const when = (iso: string | null | undefined, tz?: string) => (iso ? new Date(iso).toLocaleString(undefined, { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 const stText = (s: string) => tx(`eod.st.${s}`);
 const errText = (e: unknown) => errorTextOf(e, tx('fuq.loadError'));
@@ -306,6 +317,7 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
   const [d, setD] = useState<EodTaskDetail | null>(null);
   const [cc, setCc] = useState<ContactCheck | null>(null);
   const [hist, setHist] = useState<QueuePage<CustomerFollowUp> | null>(null);
+  const [recent, setRecent] = useState<CnTimelineItem[] | 'unavailable' | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -316,9 +328,11 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
   const load = useCallback(async () => {
     try {
       const det = await eod.task(id); setD(det);
-      const [c, h] = await Promise.allSettled([qa.contactCheck(id), qa.customerHistory(det.customerId)]);
+      const [c, h, tl] = await Promise.allSettled([qa.contactCheck(id), qa.customerHistory(det.customerId), cnApi.timeline(det.customerId, { channel: 'all', page: 1, pageSize: 50 })]);
       if (c.status === 'fulfilled') setCc(c.value);
       if (h.status === 'fulfilled') setHist(h.value);
+      // read-only; a role without Communications access (or a failed read) says "not available" — never an empty "no contact"
+      setRecent(tl.status === 'fulfilled' ? recentContact(tl.value.items ?? [], det.id, Date.now()) : 'unavailable');
       setErr(null);
     } catch (e) { setErr(e); }
   }, [id]);
@@ -371,6 +385,15 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
               <div className="s">{tx('fuq.pr.note')}</div>
             </div>
           ) : null}
+          <div className="fuq-cooldown" data-testid="fuq-d-recent">
+            <h4>{tx('fuq.cd.title', { n: String(COOLDOWN_TIMELINE_DAYS) })}</h4>
+            {recent === null ? <div className="s">…</div> : recent === 'unavailable' ? <div className="s" data-testid="fuq-d-recent-na">{tx('fuq.cd.unavailable')}</div>
+              : recent.length === 0 ? <div className="s" data-testid="fuq-d-recent-none">{tx('fuq.cd.none', { n: String(COOLDOWN_TIMELINE_DAYS) })}</div>
+              : <ul className="fuq-hist" data-testid="fuq-d-recent-list">{recent.slice(0, 10).map((it) => (
+                <li key={it.kind + it.id} data-testid="fuq-d-recent-row">{when(it.at, tz)} · {tx('cn.t.kind.' + it.kind)} · {tx('cn.ch.' + (['sms', 'email', 'follow_up', 'receipt'].includes(it.channel) ? it.channel : 'sms'))} · <span className={`eod-chip ${it.failed ? 'bad' : ''}`}>{statusLabel('state', it.status)}</span>{it.summary ? <span className="s"> · {it.summary}</span> : null}</li>))}</ul>}
+            {Array.isArray(recent) && recent.length > 10 ? <div className="s">{tx('fuq.cd.more', { n: String(recent.length - 10) })}</div> : null}
+            <div className="s">{tx('fuq.cd.note')}</div>
+          </div>
           <h4>{d.sentMessage ? tx('fuq.d.sentMessage') : tx('fuq.d.message')}</h4>
           <div className="eod-msg" data-testid="fuq-d-preview">{body}</div>
           <div className="s">{tx('fuq.d.chars', { n: String(body.length) })}</div>

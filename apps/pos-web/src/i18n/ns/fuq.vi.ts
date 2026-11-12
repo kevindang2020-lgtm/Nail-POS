@@ -172,4 +172,9 @@ export const FUQ_VI = {
   'fuq.r.col.sent': 'Đã gửi',
   'fuq.r.col.skipped': 'Bỏ qua',
   'fuq.r.col.booked': 'Đặt lịch sau đó',
+  'fuq.cd.title': 'Tin nhắn đã gửi cho khách — {n} ngày qua', // DRAFT — Kevin reviews
+  'fuq.cd.none': 'Không có tin nào gửi cho khách trong {n} ngày qua.', // DRAFT — Kevin reviews
+  'fuq.cd.unavailable': 'Vai trò của bạn không xem được tin nhắn gần đây.', // DRAFT — Kevin reviews
+  'fuq.cd.more': '+{n} tin nữa trong dòng thời gian của khách', // DRAFT — Kevin reviews
+  'fuq.cd.note': 'Từ dòng thời gian của khách (tin nhắn, email, nhắc hẹn, hóa đơn, chăm sóc sau dịch vụ). Chỉ xem — không gửi gì từ đây.', // DRAFT — Kevin reviews
 };

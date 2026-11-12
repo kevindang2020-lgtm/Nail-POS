@@ -427,4 +427,8 @@ export const CATALOGSCREENS_EN = {
   'cg.csv.created': 'Created',
   "cg.drill": "Directory filtered to {c} from the chart.",
   "cg.svc.lookAlike": "Looks like a service you already have: {names}. You can still save — check this is not a duplicate.",
+  "cg.scope.branch": "Counting {b}: its own {n} service rows plus {m} shared salon-wide rows.",
+  "cg.scope.salon": "Counting all {k} branches, each separately:",
+  "cg.scope.shared": "shared salon-wide {m}",
+  "cg.scope.salonNote": "Each branch keeps its own service rows, so the same service at two branches counts twice.",
 };

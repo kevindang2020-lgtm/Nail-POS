@@ -53,6 +53,48 @@ describe('POSAiBusinessScreen', () => {
     expect(screen.getByTestId('aib-compare-def').textContent).toMatch(/discounts, refunds and voids/);
     expect(basis.textContent).toMatch(/not profit/);
   });
+  it('extras row 04: after an answer, related read-only questions are offered (never the one just asked); tapping one asks that intent for the same period', async () => {
+    askMock.mockResolvedValueOnce({ ok: true, needsClarification: false, intent: 'revenue_summary', toolUsed: 'get_revenue_summary', answer: 'Net sales steady.', structured: null, access: { allowed: true } })
+      .mockResolvedValueOnce({ ok: true, needsClarification: false, intent: 'profit_expenses', toolUsed: 'profit', answer: 'Profit view.', structured: null, access: { allowed: true } });
+    renderScreen();
+    expect(screen.queryByTestId('aib-related')).toBeNull();
+    fireEvent.click(screen.getByText('Revenue summary'));
+    const box = await screen.findByTestId('aib-related');
+    expect(box.querySelectorAll('button')).toHaveLength(3);
+    expect(screen.queryByTestId('aib-related-revenue_summary')).toBeNull();
+    expect(screen.getByTestId('aib-related-explain_revenue')).toHaveTextContent('Why did revenue change?');
+    expect(box.textContent).toMatch(/never sends messages, charges or changes anything/);
+    fireEvent.click(screen.getByTestId('aib-related-profit_expenses'));
+    await screen.findByText('Profit view.');
+    expect(askMock).toHaveBeenLastCalledWith({ intent: 'profit_expenses', preset: 'today' });
+    expect(screen.getByTestId('aib-related-revenue_summary')).toBeInTheDocument();   // the new answer's own related set
+  });
+  it('extras row 08: Summary first shows the first two sentences with Show full answer; the full answer comes back and nothing else is hidden', async () => {
+    sessionStorage.removeItem('aps.bza.brief');
+    const long = 'Net sales are $842.00 today. That is 12% above last Friday. Gel services led the gain. Two technicians were off, so walk-ins waited longer.';
+    askMock.mockResolvedValue({ ok: true, needsClarification: false, intent: 'revenue_summary', toolUsed: 'get_revenue_summary', answer: long, structured: { netSalesCents: 84200 }, access: { allowed: true } });
+    renderScreen();
+    fireEvent.click(screen.getByText('Revenue summary'));
+    expect(await screen.findByTestId('aib-answer-text')).toHaveTextContent(long);   // off by default: the whole answer
+    fireEvent.click(screen.getByTestId('aib-brief'));
+    expect(screen.getByTestId('aib-answer-text').textContent).toBe('Net sales are $842.00 today. That is 12% above last Friday.');
+    expect(screen.getByText('$842.00')).toBeInTheDocument();                         // the key numbers stay
+    fireEvent.click(screen.getByTestId('aib-expand'));
+    expect(screen.getByTestId('aib-answer-text').textContent).toBe(long);
+    fireEvent.click(screen.getByTestId('aib-collapse'));
+    expect(screen.getByTestId('aib-expand')).toBeInTheDocument();
+    expect(JSON.parse(sessionStorage.getItem('aps.bza.brief') ?? 'false')).toBe(true);   // kept for this tab
+    sessionStorage.removeItem('aps.bza.brief');
+  });
+  it('extras row 08: a short answer has nothing to expand in Summary first', async () => {
+    sessionStorage.setItem('aps.bza.brief', 'true');
+    askMock.mockResolvedValue({ ok: true, needsClarification: false, intent: 'revenue_summary', toolUsed: 't', answer: 'Steady day.', structured: null, access: { allowed: true } });
+    renderScreen();
+    fireEvent.click(screen.getByText('Revenue summary'));
+    expect(await screen.findByTestId('aib-answer-text')).toHaveTextContent('Steady day.');
+    expect(screen.queryByTestId('aib-expand')).toBeNull();
+    sessionStorage.removeItem('aps.bza.brief');
+  });
   it('a summary without a comparison shows no comparison basis', async () => {
     askMock.mockResolvedValue({ ok: true, needsClarification: false, intent: 'revenue_summary', toolUsed: 't', answer: 'ok', structured: { netSalesCents: 1, evidence: { metricId: 'net_sales', preset: 'today' } }, access: null });
     renderScreen();

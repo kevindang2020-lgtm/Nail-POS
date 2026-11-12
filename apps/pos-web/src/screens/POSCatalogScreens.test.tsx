@@ -141,6 +141,23 @@ describe('Service Categories', () => {
     expect(screen.getByTestId('review-service_category_mismatch')).toHaveTextContent('Haircut');
     expect(cat.reassign).not.toHaveBeenCalled();
   });
+  it('extras row 10: the counted scope is stated — one branch with its shared rows, or every branch listed separately; nothing when the server sends no scope', async () => {
+    const base = await cat.categorySummary();
+    cat.categorySummary.mockResolvedValue({ ...base, scope: { mode: 'branch', branchId: 'b1', branchName: 'Main', branchServices: 6, salonWideServices: 2, branches: [{ branchId: 'b1', name: 'Main', services: 6 }] } });
+    const v = mount(<POSServiceCategoriesScreen />);
+    expect(await screen.findByTestId('catalog-scope')).toHaveTextContent('Counting Main: its own 6 service rows plus 2 shared salon-wide rows.');
+    v.unmount();
+    cat.categorySummary.mockResolvedValue({ ...base, scope: { mode: 'salon', branchId: null, branchName: null, branchServices: null, salonWideServices: 0, branches: [{ branchId: 'b1', name: 'Main', services: 6 }, { branchId: 'b2', name: 'Uptown', services: 1 }] } });
+    const v2 = mount(<POSServiceCategoriesScreen />);
+    const line = await screen.findByTestId('catalog-scope');
+    expect(line).toHaveTextContent('Counting all 2 branches, each separately: Main 6 · Uptown 1.');
+    expect(line).toHaveTextContent('the same service at two branches counts twice');
+    v2.unmount();
+    cat.categorySummary.mockResolvedValue(base);
+    mount(<POSServiceCategoriesScreen />);
+    await screen.findByTestId('breakdown-table');
+    expect(screen.queryByTestId('catalog-scope')).toBeNull();
+  });
   it('extras (Nov 11 2026): a chart bar filters the directory to that category, with a visible Clear', async () => {
     mount(<POSServiceCategoriesScreen />);
     await screen.findByTestId('breakdown-table');

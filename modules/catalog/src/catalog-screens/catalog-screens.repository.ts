@@ -16,7 +16,7 @@
 //   legacy add-on      = a service_add_ons row (one OFFERING: an add-on key on one service); rows sharing an add_on_key are
 //                        one DEFINITION. Add-ons-category services (packages/database add-on-authority) are listed apart.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 import { withCode, isAddOnCategory, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { tenantTimeZone, transitionStatus } from '@aipowersalon/database';
 import { SERVICE_PRICE_SCHEDULE } from '../catalog-lifecycles';
@@ -475,10 +475,25 @@ export class CatalogScreensRepository {
       where s.tenant_id = ${T} and s.status <> 'archived' and ${this.branch(ctx, 's')} and (s.category_id is null or c.id is null or c.status = 'archived')`.execute(this.db)).rows[0]?.n);
     const totalServices = rows.reduce((a: number, r: any) => a + N(r.services), 0) + unassigned;
     const pct = (n: number) => (totalServices ? Math.round((n / totalServices) * 1000) / 10 : 0);
-    return { asOf: new Date().toISOString(), categories: rows.length, totalServices, unassigned,
+    return { asOf: new Date().toISOString(), categories: rows.length, totalServices, unassigned, scope: await this.catalogScope(ctx),
       breakdown: [...rows.map((r: any) => ({ categoryId: String(r.id), name: String(r.name), colorKey: r.color_key ?? null, services: N(r.services), sharePct: pct(N(r.services)), isAddOnCategory: isAddOnCategory(r.name) })),
         ...(unassigned ? [{ categoryId: null, name: null, colorKey: null, services: unassigned, sharePct: pct(unassigned), isAddOnCategory: false }] : [])],
       review: await this.categoryReview(ctx) };
+  }
+  /** Extras (Service Categories row 10): which part of the catalog these counts cover, so a total is never ambiguous. A branch
+   *  session counts its own branch's service rows plus salon-wide rows (branch_id null); a salon-wide session counts every
+   *  branch — and then says per branch how many rows each holds (every branch keeps its OWN rows, so the same service at two
+   *  branches is two rows). Only this salon's branches; read only. */
+  private async catalogScope(ctx: CatCtx) {
+    const T = ctx.tenantId;
+    const b = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
+    const per = (await sql<any>`select br.id, br.name, (select count(*) from services s where s.tenant_id = br.tenant_id and s.branch_id = br.id and s.status <> 'archived')::int as services
+      from branches br where br.tenant_id = ${T} and coalesce(br.status, 'active') <> 'archived' and (${b}::uuid is null or br.id = ${b}) order by lower(br.name), br.id`.execute(this.db)).rows;
+    const salonWide = N((await sql<any>`select count(*)::int as n from services s where s.tenant_id = ${T} and s.branch_id is null and s.status <> 'archived'`.execute(this.db)).rows[0]?.n);
+    const branches = per.map((r: any) => ({ branchId: String(r.id), name: String(r.name ?? ''), services: N(r.services) }));
+    return b
+      ? { mode: 'branch' as const, branchId: b, branchName: branches[0]?.name ?? null, branchServices: branches[0]?.services ?? 0, salonWideServices: salonWide, branches }
+      : { mode: 'salon' as const, branchId: null, branchName: null, branchServices: null, salonWideServices: salonWide, branches };
   }
   /** Things a person should look at — never auto-fixed: a category named like a code (e.g. "CD 4432"), a hair-sounding
    *  service in a nails-sounding category, an empty category. */

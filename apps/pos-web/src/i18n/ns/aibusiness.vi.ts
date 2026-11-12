@@ -543,4 +543,9 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.a.unchanged": "Không đổi", // DRAFT — Kevin reviews
   "bzx.a.noChanges": "Không có gì thay đổi — không có gì để lưu.", // DRAFT — Kevin reviews
   "bzx.a.compareNote": "Chưa lưu gì cho đến khi bạn xác nhận. Lần đánh giá tiếp theo dùng giá trị đề xuất.", // DRAFT — Kevin reviews
+  "aib.related.title": "Câu hỏi liên quan", // DRAFT — Kevin reviews
+  "aib.related.note": "Chỉ xem — mỗi câu hỏi chỉ đọc báo cáo của kỳ đã chọn. Trợ lý không bao giờ gửi tin nhắn, thu tiền hay thay đổi gì.", // DRAFT — Kevin reviews
+  "aib.brief.toggle": "Tóm tắt trước", // DRAFT — Kevin reviews
+  "aib.brief.expand": "Xem toàn bộ câu trả lời", // DRAFT — Kevin reviews
+  "aib.brief.collapse": "Xem bản tóm tắt", // DRAFT — Kevin reviews
 };

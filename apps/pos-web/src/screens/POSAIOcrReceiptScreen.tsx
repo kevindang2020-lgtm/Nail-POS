@@ -314,6 +314,17 @@ function Thumb({ doc }: { doc: any }) {
   return <img src={url} alt="" width={36} height={48} style={{ objectFit: 'cover', borderRadius: 4, border: `1px solid ${LINE}` }} />;
 }
 
+const fieldNeedsCheck = (f: any): boolean => (f?.state === 'low' || f?.state === 'medium' || f?.state === 'missing');
+/** stable: needs-check fields by ascending confidence, then the rest in the order the server gave */
+function orderFieldsForReview<F extends { state?: string; confidence?: number | null }>(fields: readonly F[]): F[] {
+  const idx = fields.map((f, i) => ({ f, i }));
+  return idx.sort((a, b) => {
+    const wa = fieldNeedsCheck(a.f) ? 0 : 1, wb = fieldNeedsCheck(b.f) ? 0 : 1;
+    if (wa !== wb) return wa - wb;
+    if (wa === 0) { const d = (a.f.confidence ?? 0) - (b.f.confidence ?? 0); if (d !== 0) return d; }
+    return a.i - b.i;
+  }).map((x) => x.f);
+}
 /** §36–§38: the read fields, the weak ones marked Verify; confirm keeps the value (manually_confirmed), an edit stores a correction */
 function FieldReview({ doc, busy, act }: { doc: any; busy: boolean; act: (fn: () => Promise<any>) => Promise<void> }) {
   const [editing, setEditing] = useState<string | null>(null);
@@ -326,10 +337,15 @@ function FieldReview({ doc, busy, act }: { doc: any; busy: boolean; act: (fn: ()
     setEditing(null);
     return act(() => apiO.correctField(doc.id, key, MONEY_FIELDS.has(key) ? { value: v, valueCents: cents } : { value: v }));
   };
+  // Extras (Receipt OCR row 03) confidence-first: the fields a person still has to check come first, weakest first; confident and
+  // already-confirmed values stay listed below (never hidden, never retyped). Display order only — nothing is changed or saved.
+  const ordered = orderFieldsForReview(doc.fields);
+  const needCheck = ordered.filter(fieldNeedsCheck).length;
   return (
     <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 6, display: 'grid', gap: 4 }}>
       <div style={{ fontSize: 11, color: MUTED }}>{tx('people.receiptAi.fields.heading')}</div>
-      {doc.fields.map((f: any) => {
+      {needCheck > 0 ? <div style={{ fontSize: 11, color: '#A33A3A' }}>{tx('people.receiptAi.fields.needCheck', { n: String(needCheck) })}</div> : null}
+      {ordered.map((f: any) => {
         const weak = f.state === 'low' || f.state === 'medium' || f.state === 'missing';
         const done = f.state === 'manually_confirmed' || f.state === 'manually_corrected';
         const shown = f.correctedValue ?? f.text ?? '—';

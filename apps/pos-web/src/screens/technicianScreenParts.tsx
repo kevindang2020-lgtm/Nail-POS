@@ -19,6 +19,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, Pager, Empty, useDebounced } from '../components/FitKit';
 import { useLoad, StateBlock } from '../components/FinanceKit';
 import { codeLabel } from '../components/peopleLabels';
+import { ConflictPanel } from './teamShared';
 type Rating = { ratingId?: string; id?: string; rating?: number; stars?: number; comment?: string | null };
 const ratingList = (d: unknown): Rating[] => (Array.isArray(d) ? d : Array.isArray((d as { items?: unknown } | null)?.items) ? (d as { items: Rating[] }).items : []);
 export const roleText = (r: string) => codeLabel('people.techs.role.' + r.toLowerCase().replace(/\s+/g, '_'), r);
@@ -129,7 +130,7 @@ export function QualifiedFinder({ today, onClose }: { today: string; onClose: ()
   const nav = useNavigate();
   const [find, setFind] = useState(''); const fq = useDebounced(find.trim(), 250);
   const [picked, setPicked] = useState<{ serviceId: string; name: string; durationMinutes: number }[]>([]);
-  const [date, setDate] = useState(today); const [offset, setOffset] = useState(0);
+  const [date, setDate] = useState(today); const [offset, setOffset] = useState(0); const [why, setWhy] = useState(false);
   const svc = useLoad(() => posCatalogApi.services({ q: fq || undefined, status: 'active', sort: 'name', pageSize: 8 }), [fq]);
   const ids = picked.map((p) => p.serviceId);
   const res = useLoad(() => (ids.length ? posBookingApi.openings({ date, serviceIds: ids, limit: 10, offset }) : Promise.resolve(null)), [ids.join(','), date, offset]);
@@ -151,6 +152,12 @@ export function QualifiedFinder({ today, onClose }: { today: string; onClose: ()
               <td className="fn-acts"><button type="button" className="fk-btn sm primary" data-testid="finder-select" onClick={() => nav(`/booking/new?technicianId=${encodeURIComponent(o.technicianId)}&date=${date}&time=${encodeURIComponent(o.time)}&serviceId=${encodeURIComponent(ids[0])}`)}>{tx('tc.select')}</button></td></tr>)}</tbody></table>}
         {r.hasMore ? <button type="button" className="fk-btn ghost" onClick={() => setOffset(offset + 10)}>{tx('tc.more')}</button> : null}
         <div className="fk-hint">{tx('tc.finderRule')}</div>
+        {/* Extras (Live Technician Schedule row 10): why is a technician NOT listed? The same read-only check the conflict
+            warning uses — it cites the technician's actual service mapping (technician_services) by service name, plus
+            shift / break / time off / booked time for the chosen start. Nothing is saved or booked. */}
+        <button type="button" className="fk-link" aria-expanded={why} onClick={() => setWhy((v) => !v)} data-testid="finder-why-toggle">{tx('tc.finderWhy')}</button>
+        {why ? <ConflictPanel key={ids.join(',') + '|' + date} today={today} testId="finder-why"
+          initial={{ date, serviceIds: ids, minutes: r.durationMinutes || picked.reduce((a, p) => a + (Number(p.durationMinutes) || 0), 0) || 45, start: r.openings[0]?.time ?? undefined }} /> : null}
       </>}
     </FitDialog>
   );

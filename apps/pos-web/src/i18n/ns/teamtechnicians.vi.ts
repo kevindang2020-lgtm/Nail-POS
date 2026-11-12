@@ -228,4 +228,5 @@ export const TEAMTECHNICIANS_VI = {
   'tc.apptStatus.completed': 'Hoàn thành',
   'tc.apptStatus.cancelled': 'Đã hủy',
   'tc.apptStatus.no_show': 'Không đến',
+  'tc.finderWhy': 'Tại sao một thợ không có trong danh sách? Kiểm tra từng người', // DRAFT — Kevin reviews
 };

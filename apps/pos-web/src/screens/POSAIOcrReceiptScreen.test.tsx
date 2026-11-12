@@ -97,14 +97,34 @@ describe('POSAIOcrReceiptScreen — close-out', () => {
     expect(await screen.findByText('What was read (confirm or correct)')).toBeInTheDocument();
     expect(screen.getByText('Verify · 55%')).toBeInTheDocument();
     expect(screen.queryByText('Verify · 98%')).toBeNull();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Confirm' })[1]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Confirm' })[0]);   // confidence-first: the weak Total is listed first
     await waitFor(() => expect(m.correctField).toHaveBeenCalledWith('d1', 'total', { confirmOnly: true }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[1]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
     const box = screen.getByLabelText('Edit Total') as HTMLInputElement;
     fireEvent.change(box, { target: { value: '$89.99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(m.correctField).toHaveBeenCalledWith('d1', 'total', { value: '$89.99', valueCents: 8999 }));
     expect(screen.getByText('1 line items read')).toBeInTheDocument();
+  });
+  it('extras row 03 confidence-first: fields to check come first (weakest first), confident and confirmed ones stay listed below; the count is shown; nothing is saved by ordering', async () => {
+    m.detail.mockResolvedValue(doc({ fields: [
+      { key: 'vendor', text: 'ABC Nail Supply', cents: null, confidence: 0.98, state: 'high', page: 1, correctedValue: null },
+      { key: 'date', text: '2026-10-11', cents: null, confidence: 0.7, state: 'medium', page: 1, correctedValue: null },
+      { key: 'tax', text: '$5.00', cents: 500, confidence: 0.4, state: 'low', page: 1, correctedValue: null },
+      { key: 'subtotal', text: '$83.99', cents: 8399, confidence: 0.5, state: 'manually_confirmed', page: 1, correctedValue: null },
+      { key: 'total', text: '$88.99', cents: 8899, confidence: 0.55, state: 'low', page: 1, correctedValue: null },
+    ] }));
+    render(<POSAIOcrReceiptScreen />);
+    fireEvent.click(await screen.findByRole('tab', { name: /Review Required/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Review' }));
+    expect(await screen.findByText('3 field(s) to check — shown first')).toBeInTheDocument();
+    // the field rows live under the heading's container (the vendor / date also appear in the document summary above it)
+    const box = screen.getByText('What was read (confirm or correct)').parentElement as HTMLElement;
+    const values = Array.from(box.querySelectorAll('span')).map((e) => e.textContent).filter((t) => ['$5.00', '$88.99', '2026-10-11', 'ABC Nail Supply', '$83.99'].includes(String(t)));
+    // weakest first (tax 40%, total 55%, date 70%), then the rest in the server's order (vendor, confirmed subtotal)
+    expect(values).toEqual(['$5.00', '$88.99', '2026-10-11', 'ABC Nail Supply', '$83.99']);
+    expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(m.correctField).not.toHaveBeenCalled();
   });
   it('§142: a matched existing expense is offered with "Link to that expense" (attach as the receipt) — and nothing is linked until the person taps; §115 a reading that gave up offers Retry reading', async () => {
     m.detail.mockResolvedValue(doc({ suggestedMatch: 'matched', suggestedExpenseId: 'e9', pageCount: 2, qualityFlags: ['likely_blurry'] }));

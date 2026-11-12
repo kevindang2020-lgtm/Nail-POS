@@ -83,6 +83,12 @@ export function POSServiceCategoriesScreen() {
         </>}
       </div>
 
+      {/* Extras (Service Categories row 10): the authorized scope behind these counts — one branch (+ shared rows) or every
+          branch listed separately, never a merged total that hides which branch holds what */}
+      {s?.scope ? <div className="fk-hint" data-testid="catalog-scope">{s.scope.mode === 'branch'
+        ? tx('cg.scope.branch', { b: s.scope.branchName ?? '—', n: nf(s.scope.branchServices ?? 0), m: nf(s.scope.salonWideServices ?? 0) })
+        : <>{tx('cg.scope.salon', { k: nf((s.scope.branches ?? []).length) })} {(s.scope.branches ?? []).map((b: { branchId: string; name: string; services: number }) => `${b.name} ${nf(b.services)}`).join(' · ')}{s.scope.salonWideServices ? ` · ${tx('cg.scope.shared', { m: nf(s.scope.salonWideServices) })}` : ''}. {tx('cg.scope.salonNote')}</>}</div> : null}
+
       <div className="mos-row two cg-row">
         <FitPanel testId="chart" title={tx('pos.services_per_category')}>
           {!s ? <div className="fk-loading">{tx('pos.loading_categories')}</div> : <Bars items={s.breakdown.map((b: any) => ({ name: breakdownName(b), value: b.services }))} testId="bars-categories" empty={tx('pos.no_categories_yet')} fmt={(n) => nf(n)}

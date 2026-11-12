@@ -1042,4 +1042,11 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiQueue.cand.shiftEnds": "Hết ca sau {m}", // DRAFT — Kevin reviews
   "growth.aiQueue.cand.inM": "Sau {m}", // DRAFT — Kevin reviews
   "growth.aiQueue.cand.noneBooked": "Chưa có lịch", // DRAFT — Kevin reviews
+  "growth.aiForecast.point": "{d}: dự báo {v} (khoảng 80% {lo} – {hi})", // DRAFT — Kevin reviews
+  "growth.aiForecast.tapHint": "Chạm hoặc chọn một điểm để xem ngày đó.", // DRAFT — Kevin reviews
+  "growth.aiForecast.trend.up": "Từ {a} đến {b}, dự báo tăng từ {from} lên {to}; ngày cao nhất là {pd} với {pv}. Khoảng 80% trong kỳ từ {lo} đến {hi}.", // DRAFT — Kevin reviews
+  "growth.aiForecast.trend.down": "Từ {a} đến {b}, dự báo giảm từ {from} xuống {to}; ngày cao nhất là {pd} với {pv}. Khoảng 80% trong kỳ từ {lo} đến {hi}.", // DRAFT — Kevin reviews
+  "growth.aiForecast.trend.flat": "Từ {a} đến {b}, dự báo giữ ở mức {from}; ngày cao nhất là {pd} với {pv}. Khoảng 80% trong kỳ từ {lo} đến {hi}.", // DRAFT — Kevin reviews
+  "growth.aiForecast.fullScreen": "Toàn màn hình", // DRAFT — Kevin reviews
+  "growth.aiForecast.fullTitle": "Dự báo {n} ngày", // DRAFT — Kevin reviews
 };

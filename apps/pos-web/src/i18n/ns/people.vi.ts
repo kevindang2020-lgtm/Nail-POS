@@ -865,4 +865,5 @@ export const PEOPLE_VI: Record<keyof typeof PEOPLE_EN, string> = {
   'people.loyalty.health.points_debit_without_redemption': 'Mỗi lần trừ điểm đổi quà đều thuộc về một lần đổi quà', // DRAFT — Kevin reviews
   'people.loyalty.health.void_restored_once': 'Mỗi lần đổi quà bị hủy đã hoàn điểm đúng một lần', // DRAFT — Kevin reviews
   'people.loyalty.health.used_redemption_on_ticket': 'Mỗi mã quà đã áp dụng hoặc đã dùng đều nằm trên một phiếu của tiệm này', // DRAFT — Kevin reviews
+  'people.receiptAi.fields.needCheck': '{n} trường cần kiểm tra — hiển thị trước', // DRAFT — Kevin reviews
 };
