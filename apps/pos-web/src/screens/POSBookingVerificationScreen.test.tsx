@@ -160,3 +160,21 @@ describe('the activity panel and the switches', () => {
     expect(api.patch).not.toHaveBeenCalled();
   });
 });
+
+describe('extras TEXT MESSAGING SETUP 12 — Booking Code Health Test', () => {
+  it('before a check the code-rules item is listed as not checked; after a check the server result and its rules are shown', async () => {
+    render(<POSBookingVerificationScreen />);
+    const pending = await screen.findByTestId('bv-pending-code_rules');
+    expect(pending).toHaveTextContent('Booking code rules');
+    expect(pending).toHaveTextContent('no code is sent');
+    vi.mocked(api.get).mockImplementation(async (p: string) => {
+      if (p === '/pos/booking-verification-center/health') return { checkedAt: '2026-11-12T12:00:00Z', overall: 'ready', items: [{ key: 'code_rules', state: 'ready', message: 'The code rules passed a safe self-test (8 checks; no code was sent).', evidence: '6 digits · expires after 10 min · 5 tries', nextAction: null, checkedAt: '2026-11-12T12:00:00Z' }] } as never;
+      return { items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 } as never;
+    });
+    fireEvent.click(screen.getByTestId('bv-check-inline'));
+    const item = await screen.findByTestId('bv-check-code_rules');
+    expect(item).toHaveTextContent('Booking code rules');
+    expect(item).toHaveTextContent('6 digits · expires after 10 min · 5 tries');
+    expect(vi.mocked(api.post)).not.toHaveBeenCalled();
+  });
+});

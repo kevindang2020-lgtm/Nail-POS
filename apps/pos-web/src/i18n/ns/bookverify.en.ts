@@ -183,4 +183,6 @@ export const BOOKVERIFY_EN = {
   "bv.cmp.src.branch": "This location",
   "bv.cmp.src.salon": "Salon setting",
   "bv.cmp.src.default": "Built-in default",
+  "bv.hk.code_rules": "Booking code rules",
+  "bv.hd.code_rules": "Code length, expiry, tries and resend limits pass a safe self-test — no code is sent.",
 } as const;

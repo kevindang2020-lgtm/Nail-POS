@@ -183,4 +183,6 @@ export const BOOKVERIFY_VI = {
   "bv.cmp.src.branch": "Chi nhánh này", // DRAFT — Kevin reviews
   "bv.cmp.src.salon": "Cài đặt của tiệm", // DRAFT — Kevin reviews
   "bv.cmp.src.default": "Mặc định có sẵn", // DRAFT — Kevin reviews
+  "bv.hk.code_rules": "Quy tắc mã đặt lịch", // DRAFT — Kevin reviews
+  "bv.hd.code_rules": "Độ dài mã, thời hạn, số lần thử và giới hạn gửi lại qua được bài tự kiểm tra an toàn — không gửi mã nào.", // DRAFT — Kevin reviews
 } as const;

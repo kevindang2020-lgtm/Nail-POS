@@ -22,6 +22,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import type { AppDatabase } from '@aipowersalon/database';
 import type { AuditSink } from '@aipowersalon/audit';
 import { normalizePhone, phoneKey } from '@aipowersalon/customers';
+import { bookingCodeSelfTest, BOOKING_CODE_RULES } from './booking-code-rules';
 import type { BookingChannel } from './booking-verification-policy';
 
 export interface BvcContext { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
@@ -254,6 +255,12 @@ export class BookingVerificationCenter {
         and status in ('pending','sent') and expires_at < now() - interval '15 minutes'`.execute(this.db)).rows[0] ?? {};
     if (n(sweep.overdue) > 0) add('integration', 'degraded', `${n(sweep.overdue)} expired slot hold(s) have not been handed back to the calendar — the hold clean-up job may be stalled.`, 'holds past expiry by more than 5 minutes (the job runs every minute)', 'Check the API worker; new holds still expire lapsed holds on the same time automatically.');
     else add('integration', 'ready', 'Slot holds are being released on time; booking confirmation is guarded on the server.', `${n(openOld.n)} stale open code(s) older than 15 minutes`, null);
+    // extras TEXT MESSAGING SETUP 12 — Booking Code Health Test: the live code rules run against made-up states (no code sent)
+    const st = bookingCodeSelfTest();
+    const R = BOOKING_CODE_RULES;
+    const rules = `${R.codeDigits} digits · expires after ${Math.round(R.codeTtlSeconds / 60)} min · ${R.maxAttempts} tries · resend after ${R.resendCooldownSeconds} s · at most ${R.maxCodesPerDeviceHour} codes per device and ${R.maxCodesPerIpHour} per network address an hour`;
+    if (st.passed) add('code_rules', 'ready', `The code rules passed a safe self-test (${st.probes} checks; no code was sent).`, rules, null);
+    else add('code_rules', 'failed', `The code rules failed ${st.failed.length} of ${st.probes} self-test checks (no code was sent).`, `${rules} — failed: ${st.failed.join(', ')}`, 'Contact AI PowerSalon support: booking codes may not be checked correctly.');
     const worst: HealthState = (['failed', 'needs_setup', 'degraded', 'pending_provider_action', 'unknown'] as HealthState[]).find((s) => items.some((i) => i.state === s)) ?? 'ready';
     return { checkedAt, overall: worst, items };
   }
