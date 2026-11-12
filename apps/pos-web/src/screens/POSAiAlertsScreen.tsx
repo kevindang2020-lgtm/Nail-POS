@@ -248,23 +248,44 @@ function EditDialog({ alert, onClose, onSaved }: { alert: any; onClose: () => vo
   const [minSample, setMinSample] = useState(String(alert.minSampleSize));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // AI BUSINESS ALERTS extras #07 (rule change comparison): Save first shows Current → Proposed for every field that changes;
+  // only Confirm sends the change. Editing a field again goes back to the form (the comparison is never stale).
+  const [review, setReview] = useState<null | { title: string; threshold: number; preset: string; minSampleSize: number }>(null);
   const save = () => {
     const raw = Number(amount); const ms = Math.trunc(Number(minSample));
     if (!title.trim() || amount.trim() === '' || !Number.isFinite(raw) || raw < 0) { setErr(bt('bzx.a.formInvalid')); return; }
     if (!Number.isFinite(ms) || ms < 1) { setErr(bt('bzx.a.sampleInvalid')); return; }
-    setBusy(true); setErr(null);
-    posAiBusinessApi.alertUpdate(alert.id, { title: title.trim(), threshold: unit === 'cents' ? Math.round(raw * 100) : raw, preset, minSampleSize: ms })
-      .then(() => onSaved(title.trim())).catch((e) => setErr(bzErr(e))).finally(() => setBusy(false));
+    setErr(null);
+    setReview({ title: title.trim(), threshold: unit === 'cents' ? Math.round(raw * 100) : raw, preset, minSampleSize: ms });
   };
+  const confirm = () => {
+    if (!review) return;
+    setBusy(true); setErr(null);
+    posAiBusinessApi.alertUpdate(alert.id, review)
+      .then(() => onSaved(review.title)).catch((e) => setErr(bzErr(e))).finally(() => setBusy(false));
+  };
+  const edited = <T,>(fn: (v: T) => void) => (v: T) => { setReview(null); fn(v); };
+  const diffRows: [string, string, string][] = review ? ([
+    [bt('bzx.a.name'), alert.title, review.title],
+    [bt('bzx.a.amount.' + unit), bzValue(alert.threshold, unit), bzValue(review.threshold, unit)],
+    [bt('bzx.a.period'), bt('bzx.period.' + alert.preset), bt('bzx.period.' + review.preset)],
+    [bt('bzx.a.minSample'), String(alert.minSampleSize), String(review.minSampleSize)],
+  ] as [string, string, string][]) : [];
   return (
     <FitDialog testId="bzx-edit" title={bt('bzx.a.editTitle', { t: alert.title })} onClose={onClose} busy={busy}
-      footer={<><button className="btn" data-testid="bzx-edit-save" disabled={busy} onClick={save}>{bt('bzx.a.save')}</button><button className="btn ghost" onClick={onClose}>{bt('bzx.cancel')}</button></>}>
+      footer={<>{review ? <button className="btn" data-testid="bzx-edit-confirm" disabled={busy || diffRows.every(([, c, p]) => c === p)} onClick={confirm}>{bt('bzx.a.confirmChange')}</button> : <button className="btn" data-testid="bzx-edit-save" disabled={busy} onClick={save}>{bt('bzx.a.save')}</button>}<button className="btn ghost" onClick={onClose}>{bt('bzx.cancel')}</button></>}>
       <div className="rvw-filters">
-        <label className="rvw-f"><span>{bt('bzx.a.name')}</span><input data-testid="bzx-edit-title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></label>
-        <label className="rvw-f"><span>{bt('bzx.a.amount.' + unit)}</span><input data-testid="bzx-edit-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-        <label className="rvw-f"><span>{bt('bzx.a.period')}</span><select data-testid="bzx-edit-preset" value={preset} onChange={(e) => setPreset(e.target.value)}>{PRESETS.map((p) => <option key={p} value={p}>{bt('bzx.period.' + p)}</option>)}</select></label>
-        <label className="rvw-f"><span>{bt('bzx.a.minSample')}</span><input data-testid="bzx-edit-min" inputMode="numeric" value={minSample} onChange={(e) => setMinSample(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.name')}</span><input data-testid="bzx-edit-title" value={title} maxLength={120} onChange={(e) => edited(setTitle)(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.amount.' + unit)}</span><input data-testid="bzx-edit-amount" inputMode="decimal" value={amount} onChange={(e) => edited(setAmount)(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.period')}</span><select data-testid="bzx-edit-preset" value={preset} onChange={(e) => edited(setPreset)(e.target.value)}>{PRESETS.map((p) => <option key={p} value={p}>{bt('bzx.period.' + p)}</option>)}</select></label>
+        <label className="rvw-f"><span>{bt('bzx.a.minSample')}</span><input data-testid="bzx-edit-min" inputMode="numeric" value={minSample} onChange={(e) => edited(setMinSample)(e.target.value)} /></label>
       </div>
+      {review ? <div data-testid="bzx-edit-compare" style={{ marginTop: 8 }}>
+        <div className="p-h">{bt('bzx.a.compareTitle')}</div>
+        <table className="tbl"><thead><tr><th /><th>{bt('bzx.a.current')}</th><th>{bt('bzx.a.proposed')}</th></tr></thead>
+          <tbody>{diffRows.map(([l, c, p]) => <tr key={l} data-testid="bzx-edit-diff" data-changed={c !== p ? 'yes' : 'no'}><td>{l}</td><td>{c}</td><td>{c !== p ? <b>{p}</b> : <span className="sub">{bt('bzx.a.unchanged')}</span>}</td></tr>)}</tbody></table>
+        {diffRows.every(([, c, p]) => c === p) ? <div className="sub">{bt('bzx.a.noChanges')}</div> : <div className="sub">{bt('bzx.a.compareNote')}</div>}
+      </div> : null}
       {err ? <div className="err" role="alert">{err}</div> : null}
     </FitDialog>
   );

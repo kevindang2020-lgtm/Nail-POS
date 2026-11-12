@@ -110,6 +110,12 @@ describe('POSAiAlertsScreen', () => {
     fireEvent.change(screen.getByTestId('bzx-edit-amount'), { target: { value: '1500' } });
     fireEvent.change(screen.getByTestId('bzx-edit-preset'), { target: { value: 'quarter' } });
     fireEvent.click(screen.getByTestId('bzx-edit-save'));
+    // extras #07: Save shows Current → Proposed first; nothing is sent until Confirm
+    const diffs = await screen.findAllByTestId('bzx-edit-diff');
+    expect(diffs.map((d) => d.getAttribute('data-changed'))).toEqual(['no', 'yes', 'yes', 'no']);
+    expect(diffs[1]).toHaveTextContent('$1,235.00'); expect(diffs[1]).toHaveTextContent('$1,500.00');
+    expect(api.alertUpdate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('bzx-edit-confirm'));
     expect(await screen.findByText('Alert “test” saved.')).toBeInTheDocument();
     expect(api.alertUpdate).toHaveBeenCalledWith('a1', { title: 'test', threshold: 150000, preset: 'quarter', minSampleSize: 5 });
     fireEvent.click(screen.getByTestId('bzx-a-dup'));
@@ -166,5 +172,19 @@ describe('POSAiAlertsScreen', () => {
     wrap();
     expect((await screen.findByTestId('bzx-a-search') as HTMLInputElement).value).toBe('ticket');
     await waitFor(() => expect(c.rules).toHaveBeenCalledWith(expect.objectContaining({ q: 'ticket' })));
+  });
+});
+
+describe('AI Business Alerts — rule change comparison (extras #07)', () => {
+  it('no change → Confirm stays off and says nothing changed; editing a field again returns to the form', async () => {
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-a-edit'));
+    fireEvent.click(screen.getByTestId('bzx-edit-save'));
+    expect(await screen.findByTestId('bzx-edit-compare')).toHaveTextContent('Nothing changed');
+    expect(screen.getByTestId('bzx-edit-confirm')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('bzx-edit-min'), { target: { value: '9' } });
+    expect(screen.queryByTestId('bzx-edit-compare')).toBeNull();
+    expect(screen.getByTestId('bzx-edit-save')).toBeInTheDocument();
+    expect(api.alertUpdate).not.toHaveBeenCalled();
   });
 });
