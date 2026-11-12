@@ -67,6 +67,6 @@ export class EmailCenterController {
 
   @Post('compose') @RequirePermission('pos.communications.manage')
   compose(@Req() r: any, @Headers('idempotency-key') key: string | undefined, @Body(ValidatedBody(EMAIL_COMPOSE_BODY, { strict: true })) b: any) {
-    return run(() => this.c().compose(ctxOf(r), { customerId: b?.customerId, subject: b?.subject, body: b?.body, idempotencyKey: key ?? b?.idempotencyKey, confirm: b?.confirm }));
+    return run(() => this.c().compose(ctxOf(r), { customerId: b?.customerId, subject: b?.subject, body: b?.body, idempotencyKey: key ?? b?.idempotencyKey, confirm: b?.confirm, preview: b?.preview }));
   }
 }

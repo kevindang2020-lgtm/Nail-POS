@@ -166,6 +166,28 @@ describe('the center — honest KPIs, health, history, isolation (guide §07, §
     const noEvents = await new EmailCenter(db, cn, svc, mail, new KyselyEmailPolicy(db, ENV), { ...ENV, SENDGRID_WEBHOOK_VERIFICATION_KEY: '' }).summary(owner, { preset: 'today' });
     expect(noEvents.delivered).toBeNull(); expect(noEvents.deliveryRate).toBeNull();
   });
+  it('Email 11 latency + Email 05 hygiene: measured only from verified delivered events; suppression split by why, another salon never counted', async () => {
+    const del = (await q(sql`select id from notifications where tenant_id = ${T} and provider_id = 'SGmsg001'`))[0];
+    await q(sql`update notifications set created_at = now() - interval '10 minutes', delivered_at = now() - interval '10 minutes' + interval '90 seconds' where id = ${del.id}`);
+    const s: any = await center.summary(owner, { preset: 'today' });
+    expect(s.latency).toMatchObject({ measured: 1, medianSeconds: 90, p90Seconds: 90, slowestSeconds: 90 });
+    const noEvents: any = await new EmailCenter(db, cn, svc, mail, new KyselyEmailPolicy(db, ENV), { ...ENV, SENDGRID_WEBHOOK_VERIFICATION_KEY: '' }).summary(owner, { preset: 'today' });
+    expect(noEvents.latency).toBeNull();   // no verified event source → not measured, never 0
+    const b = Object.fromEntries(s.suppression.buckets.map((x: any) => [x.key, x]));
+    const hard = Number((await q(sql`select count(*)::int as n from notification_opt_outs where tenant_id = ${T} and channel = 'email' and reason = 'provider_bounce'`))[0].n);
+    expect(hard).toBeGreaterThanOrEqual(1);   // gone@example.com (+ zed@ from the late bounce: kept as suppression evidence)
+    expect(b.hard_bounce).toMatchObject({ addresses: hard, scope: 'all', next: 'correct_address' });
+    expect(b.complaint).toMatchObject({ addresses: 1, scope: 'all', next: 'do_not_resend' });              // spam@example.com
+    expect(b.unsubscribe).toMatchObject({ addresses: 1, scope: 'marketing', next: 'customer_opt_in_only' }); // ava@example.com
+    expect(s.suppression.total).toBe(b.hard_bounce.addresses + b.complaint.addresses + b.unsubscribe.addresses + b.other.addresses);
+    await q(sql`insert into notification_opt_outs (tenant_id, channel, address, reason, scope) values (${T2}, 'email', 'x@other.test', 'provider_bounce', 'all')`);
+    const again: any = await center.summary(owner, { preset: 'today' });
+    expect(again.suppression.buckets.find((x: any) => x.key === 'hard_bounce').addresses).toBe(hard);
+    const other: any = await center.summary(owner2, { preset: 'today' });
+    expect(other.suppression.buckets.find((x: any) => x.key === 'hard_bounce').addresses).toBe(1);
+    expect(other.latency?.measured ?? 0).toBe(0);
+    await q(sql`delete from notification_opt_outs where tenant_id = ${T2}`);
+  });
   it('health: never checked → Unknown (never green); the provider check is recorded, rate-limited, and with signed events receiving it reads Ready', async () => {
     const h0 = await center.health(owner);
     expect(h0.overall).toBe('unknown'); expect(h0.layers.find((l) => l.key === 'provider_health')?.state).toBe('not_checked');
@@ -241,6 +263,28 @@ describe('actions — controlled test, composer, protected resend (guide §06, �
     expect(r.outcome).toBe('simulated'); expect(lastSent().to).toBe('ava@example.com');
     expect(await code(center.compose(owner, { customerId: C2, subject: 's', body: 'b', idempotencyKey: 'em-comp-0002', confirm: true }))).toBe('EMAIL_RECIPIENT_INVALID');
     expect(await code(center.compose(viewer, { customerId: C1, subject: 's', body: 'b', idempotencyKey: 'em-comp-0003', confirm: true }))).toBe('PERMISSION_DENIED');
+  });
+  it('Email 10 identity confidence: preview = true checks the recipient BEFORE sending — counts only, nothing sent or recorded', async () => {
+    const n0 = mail.sent.length; const rows0 = Number((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T}`))[0].n);
+    const one: any = await center.compose(owner, { customerId: C1, preview: true });
+    expect(one.outcome).toBe('preview');
+    expect(one.recipient).toMatchObject({ addressMasked: 'a•••@example.com', validAddress: true, sharedAddressCustomers: 0, sameNameCustomers: 0, confidence: 'unique' });
+    expect(one.recipient.suppression).toBe('marketing');   // ava@ unsubscribed from marketing earlier — receipts still go
+    // the other salon's Ava Kim (same name + same address) is never counted; a second Ava in THIS salon is
+    const C3 = id('c3'), C4 = id('c4');
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, email, status) values
+      (${C3}, ${T}, ${B}, 'Ava', 'Kim', 'Ava Kim', 'other.ava@example.com', 'active'), (${C4}, ${T}, ${B}, 'Al', 'Bo', 'Al Bo', 'AVA@example.com ', 'active')`);
+    const two: any = await center.compose(owner, { customerId: C1, preview: true });
+    expect(two.recipient).toMatchObject({ sharedAddressCustomers: 1, sameNameCustomers: 1, confidence: 'shared_address' });
+    expect(JSON.stringify(two)).not.toMatch(/Al Bo|other\.ava/);
+    const nameOnly: any = await center.compose(owner, { customerId: C3, preview: true });
+    expect(nameOnly.recipient.confidence).toBe('similar_name');
+    expect((await center.compose(owner, { customerId: C2, preview: true }) as any).recipient).toMatchObject({ validAddress: false, confidence: 'no_address', addressMasked: null });
+    expect(await code(center.compose(owner2, { customerId: C1, preview: true }))).toBe('CUSTOMER_NOT_FOUND');
+    expect(await code(center.compose(viewer, { customerId: C1, preview: true }))).toBe('PERMISSION_DENIED');
+    expect(mail.sent.length).toBe(n0);
+    expect(Number((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T}`))[0].n)).toBe(rows0);
+    await q(sql`update customers set status = 'archived' where id in (${C3}, ${C4})`);
   });
   it('protected resend: a failed email is resent once as a NEW linked attempt (original kept); a second resend is refused', async () => {
     const f = (await q(sql`insert into notifications (tenant_id, channel, to_address, subject, body, customer_id, status, failure_reason, purpose, branch_id, created_at)

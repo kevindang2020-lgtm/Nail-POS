@@ -152,4 +152,35 @@ export const EMAILCENTER_VI: Record<string, string> = {
   "emc.sub": "Cài đặt email, tình trạng gửi và mọi email tiệm đã gửi",
   "emc.title": "Email",
   "emc.c.restored": "Tiêu đề và nội dung chưa gửi đã được khôi phục. Hãy chọn lại khách hàng trước khi gửi.", // DRAFT — Kevin reviews
+  "emc.lat.title": "Tốc độ giao email", // DRAFT — Kevin reviews
+  "emc.lat.na": "Chưa đo — chưa có sự kiện giao thư đã xác minh từ nhà cung cấp.", // DRAFT — Kevin reviews
+  "emc.lat.none": "Không có email đã xác minh giao trong kỳ này.", // DRAFT — Kevin reviews
+  "emc.lat.median": "Thường", // DRAFT — Kevin reviews
+  "emc.lat.p90": "9/10 trong vòng", // DRAFT — Kevin reviews
+  "emc.lat.slowest": "Chậm nhất", // DRAFT — Kevin reviews
+  "emc.lat.basis": "Từ lúc giao email cho nhà cung cấp đến sự kiện đã giao được xác minh, đo {n} email; email chưa có sự kiện đó không được tính.", // DRAFT — Kevin reviews
+  "emc.lat.sec": "{n} giây", // DRAFT — Kevin reviews
+  "emc.lat.min": "{n} phút", // DRAFT — Kevin reviews
+  "emc.lat.hr": "{n} giờ", // DRAFT — Kevin reviews
+  "emc.hy.title": "Thư bị trả lại và danh sách chặn", // DRAFT — Kevin reviews
+  "emc.hy.total": "{n} địa chỉ bị chặn", // DRAFT — Kevin reviews
+  "emc.hy.hard_bounce": "Bị trả lại vĩnh viễn", // DRAFT — Kevin reviews
+  "emc.hy.complaint": "Báo cáo spam", // DRAFT — Kevin reviews
+  "emc.hy.unsubscribe": "Hủy nhận tiếp thị", // DRAFT — Kevin reviews
+  "emc.hy.other": "Lý do khác", // DRAFT — Kevin reviews
+  "emc.hy.scope.all": "Không gửi email nào tới các địa chỉ này", // DRAFT — Kevin reviews
+  "emc.hy.scope.marketing": "Ngừng tiếp thị; hóa đơn và email đặt lịch vẫn gửi", // DRAFT — Kevin reviews
+  "emc.hy.scope.mixed": "Chặn mọi email hoặc chỉ tiếp thị, theo lý do đã ghi", // DRAFT — Kevin reviews
+  "emc.hy.latest": "gần nhất", // DRAFT — Kevin reviews
+  "emc.hy.next.correct_address": "Hỏi khách địa chỉ đúng và cập nhật hồ sơ — địa chỉ bị trả lại vẫn bị chặn.", // DRAFT — Kevin reviews
+  "emc.hy.next.do_not_resend": "Không gửi email tới các địa chỉ này nữa; chỉ khách mới có thể đăng ký lại.", // DRAFT — Kevin reviews
+  "emc.hy.next.customer_opt_in_only": "Không cần sửa — tiếp thị chỉ gửi lại khi khách đăng ký lại.", // DRAFT — Kevin reviews
+  "emc.hy.next.review_reason": "Mở hồ sơ khách để xem lý do đã ghi trước khi liên hệ cách khác.", // DRAFT — Kevin reviews
+  "emc.hy.basis": "Danh sách chặn hiện tại (không giới hạn theo kỳ). Không có gì ở đây gỡ địa chỉ.", // DRAFT — Kevin reviews
+  "emc.c.id.shared": "Kiểm tra người nhận: {n} khách khác của tiệm dùng cùng địa chỉ ({a}).", // DRAFT — Kevin reviews
+  "emc.c.id.name": "Kiểm tra người nhận: {n} khách khác của tiệm trùng tên.", // DRAFT — Kevin reviews
+  "emc.c.id.ack": "Tôi đã kiểm tra đúng khách này", // DRAFT — Kevin reviews
+  "emc.c.id.supMarketing": "Địa chỉ này đã hủy nhận tiếp thị; email của nhân viên này không phải tiếp thị.", // DRAFT — Kevin reviews
+  "emc.c.id.supAll": "Địa chỉ này bị chặn (trả lại hoặc báo spam) — email sẽ bị chặn.", // DRAFT — Kevin reviews
+  "emc.c.id.unknown": "Không kiểm tra được người nhận — hãy xác nhận khách trước khi gửi.", // DRAFT — Kevin reviews
 };
