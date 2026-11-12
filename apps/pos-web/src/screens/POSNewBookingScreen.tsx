@@ -237,7 +237,7 @@ export function POSNewBookingScreen() {
         if (!alive || !Array.isArray(rows)) return;
         const active = rows.filter((c: any) => c?.status === 'active' && typeof c?.name === 'string' && c.name.trim())
           .map((c: any) => c.name as string);
-        setCategories((prior) => [ALL_CATEGORIES, ...Array.from(new Set<string>([...active, ...prior.filter((c) => c !== ALL_CATEGORIES)]))]);
+        setCategories([ALL_CATEGORIES, ...Array.from(new Set<string>(active))]);
       }).catch(() => { /* Booking still works with the tenant-scoped booking-state categories. */ });
       setLoading(false);
     }).catch((e: any) => {
