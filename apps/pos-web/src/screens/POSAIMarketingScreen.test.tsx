@@ -89,6 +89,16 @@ describe('POSAIMarketingScreen', () => {
     expect(await screen.findByTestId('amk-chk-send_worker')).toHaveTextContent('Background sending is off on this server');
     expect(screen.getByTestId('amk-health')).toHaveTextContent('Read-only');
   });
+  it('Marketing Growth 07: the Dates and time zones check says what is wrong with zones and clock-change sends', async () => {
+    c.check.mockResolvedValue({ overall: 'FAILED', checkedAt: '2026-11-03T15:00:00Z', reused: false, checks: [
+      { key: 'date_timezone', component: 'campaigns', state: 'FAILED', count: 2, lastPassedAt: null, detail: { branches: 3, invalidZones: 1, zones: ['America/New_York', 'UTC'], scheduledOnClockChange: 1, scheduledChecked: 2 } }] });
+    wrap();
+    fireEvent.click(screen.getByTestId('amk-check'));
+    const row = await screen.findByTestId('amk-chk-date_timezone');
+    expect(row).toHaveTextContent('Dates and time zones');
+    expect(row).toHaveTextContent('missing or unknown time zone');
+    expect(screen.getByTestId('amk-chk-tz-detail')).toHaveTextContent('Zones: America/New_York, UTC · unknown zones: 1 · sends near a clock change: 1 of 2 scheduled');
+  });
   it('a failed summary is an error with retry, never zeros', async () => {
     c.summary.mockRejectedValue({ status: 500 });
     wrap();

@@ -367,4 +367,9 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.cmp.row.costPerBooking": "Chi phí mỗi lịch hẹn", // DRAFT — Kevin reviews
   "amk.cmp.row.created": "Ngày tạo", // DRAFT — Kevin reviews
   "amk.cmp.note": "Số liệu theo báo cáo của từng chiến dịch; N/A nghĩa là không có gì để chia hoặc chi phí chưa được báo.", // DRAFT — Kevin reviews
+  "amk.health.k.date_timezone": "Ngày và múi giờ", // DRAFT — Kevin reviews
+  "amk.health.d.date_timezone.PASSED": "Mọi chi nhánh đều có múi giờ hợp lệ và không có lần gửi nào được lên lịch vào ngày đổi giờ.", // DRAFT — Kevin reviews
+  "amk.health.d.date_timezone.WARNING": "Có lần gửi đã lên lịch trong vòng một ngày quanh lúc đổi giờ mùa hè; hãy kiểm tra để gửi đúng giờ tiệm mong muốn.", // DRAFT — Kevin reviews
+  "amk.health.d.date_timezone.FAILED": "Có chi nhánh thiếu múi giờ hoặc múi giờ không hợp lệ, nên ngày, giờ chốt và giờ gửi của chi nhánh đó dùng múi giờ mặc định. Hãy sửa trong cài đặt chi nhánh.", // DRAFT — Kevin reviews
+  "amk.health.tz.detail": "Múi giờ: {z} · múi giờ không hợp lệ: {bad} · lần gửi gần lúc đổi giờ: {dst} trên {n} đã lên lịch", // DRAFT — Kevin reviews
 };

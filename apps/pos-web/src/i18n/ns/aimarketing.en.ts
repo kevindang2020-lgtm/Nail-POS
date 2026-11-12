@@ -367,4 +367,9 @@ export const AIMARKETING_EN: Record<string, string> = {
   "amk.cmp.row.costPerBooking": "Cost per booking",
   "amk.cmp.row.created": "Created",
   "amk.cmp.note": "Figures are as each campaign reports them; N/A means there is nothing to divide by or the cost was not reported.",
+  "amk.health.k.date_timezone": "Dates and time zones",
+  "amk.health.d.date_timezone.PASSED": "Every branch has a real time zone and no scheduled send falls on a clock-change day.",
+  "amk.health.d.date_timezone.WARNING": "A scheduled send falls within a day of a daylight-saving clock change; check it goes out at the salon time you meant.",
+  "amk.health.d.date_timezone.FAILED": "A branch has a missing or unknown time zone, so its days, cutoffs and send times fall back to a default zone. Fix it in the branch settings.",
+  "amk.health.tz.detail": "Zones: {z} · unknown zones: {bad} · sends near a clock change: {dst} of {n} scheduled",
 };

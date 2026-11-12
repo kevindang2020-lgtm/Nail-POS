@@ -52,6 +52,7 @@ export function MkHealthButton({ label }: { label?: string }) {
           <div key={x.key} className="rvw-check" data-testid={`amk-chk-${x.key}`}>
             <div><span className={'chip ' + (TONE[x.state] ?? '')}>{mt('amk.health.' + x.state)}</span> <b>{mt('amk.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
             <div className="sub">{mt(`amk.health.d.${x.key}.${x.state}`)}</div>
+            {x.key === 'date_timezone' && x.detail ? <div className="sub" data-testid="amk-chk-tz-detail">{mt('amk.health.tz.detail', { z: (x.detail.zones ?? []).join(', ') || '—', bad: fmtNumber(x.detail.invalidZones ?? 0), dst: fmtNumber(x.detail.scheduledOnClockChange ?? 0), n: fmtNumber(x.detail.scheduledChecked ?? 0) })}</div> : null}
             <div className="sub">{[mt('amk.health.part', { c: mt('amk.comp.' + x.component) }), x.lastPassedAt ? mt('amk.health.lastPassed', { at: mkWhen(x.lastPassedAt) }) : mt('amk.health.neverPassed')].join(' · ')}</div>
           </div>))}
       </>}

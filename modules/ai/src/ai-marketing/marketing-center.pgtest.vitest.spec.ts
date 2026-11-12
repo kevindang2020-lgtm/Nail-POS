@@ -8,7 +8,7 @@ import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { clearBranchTimeZoneCache } from '@aipowersalon/database';
 import { CampaignCenter, CampaignsService, KyselyCampaignsRepository } from '@aipowersalon/communications';
 import { WinBackCenter } from '@aipowersalon/customers';
-import { MarketingCenter, MarketingCenterError, toCampaignText } from './marketing-center';
+import { MarketingCenter, MarketingCenterError, toCampaignText, validTimeZone, nearClockChange } from './marketing-center';
 import { AiMarketingCampaignService } from './ai-marketing-campaign.service';
 
 const id = (n: number) => `77800000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -201,5 +201,32 @@ describe('AI Marketing — Check AI Marketing System', () => {
     const again: any = await mc.check(ctx());
     expect(again).toMatchObject({ reused: true, id: h.id });
     expect((await q(`select count(*)::int as n from campaigns where tenant_id = $1`, [T]))[0].n).toBe(before);
+  });
+});
+
+describe('Marketing Growth 07 — Date/Timezone Diagnostics in Check AI Marketing System', () => {
+  it('an unknown branch zone FAILS; a send scheduled on a clock-change day WARNS; zones are listed; nothing is changed', async () => {
+    const B2 = id(5), B3 = id(6);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$3,'Uptown','active','America/New_York'), ($2,$3,'Typo','active','America/Nowhere')`, [B2, B3, T]);
+    // 2027-03-14 is the US spring-forward day: 15:00 UTC that day is the morning after the clocks jumped
+    await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size, scheduled_at) values ($1,$2,'Spring forward','sms','scheduled',0,'2027-03-14T15:00:00Z'), ($1,$2,'Ordinary day','sms','scheduled',0,'2027-04-20T15:00:00Z')`, [T, B2]);
+    clearBranchTimeZoneCache();
+    const before = await q(`select id, status, scheduled_at from campaigns where tenant_id = $1 order by id`, [T]);
+    const h: any = await mc.check(ctx({ branchId: null }));
+    const tz = h.checks.find((x: any) => x.key === 'date_timezone');
+    expect(tz).toMatchObject({ state: 'FAILED', component: 'campaigns', count: 2, detail: { invalidZones: 1, scheduledOnClockChange: 1, scheduledChecked: 2 } });
+    expect(tz.detail.zones).toEqual(['America/New_York', 'UTC']);
+    expect(await q(`select id, status, scheduled_at from campaigns where tenant_id = $1 order by id`, [T])).toEqual(before);
+    // one branch with a good zone: only the clock-change send remains → WARNING
+    const h2: any = await mc.check(ctx({ branchId: B2 }));
+    expect(h2.checks.find((x: any) => x.key === 'date_timezone')).toMatchObject({ state: 'WARNING', count: 1, detail: { invalidZones: 0, zones: ['America/New_York'] } });
+  });
+  it('the rules alone: a real zone is valid, a made-up one is not; a clock change within a day either side is "near"', () => {
+    expect(validTimeZone('America/New_York')).toBe(true); expect(validTimeZone('UTC')).toBe(true);
+    expect(validTimeZone('America/Nowhere')).toBe(false); expect(validTimeZone('')).toBe(false); expect(validTimeZone(null)).toBe(false);
+    expect(nearClockChange(Date.parse('2027-03-14T15:00:00Z'), 'America/New_York')).toBe(true);
+    expect(nearClockChange(Date.parse('2027-03-13T12:00:00Z'), 'America/New_York')).toBe(true);    // the day before
+    expect(nearClockChange(Date.parse('2027-04-20T15:00:00Z'), 'America/New_York')).toBe(false);
+    expect(nearClockChange(Date.parse('2027-03-14T15:00:00Z'), 'UTC')).toBe(false);
   });
 });
