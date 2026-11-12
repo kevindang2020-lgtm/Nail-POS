@@ -121,4 +121,13 @@ export const ASSISTANTS_VI: Record<string, string> = {
   "cpx.ret.seg.never_visited": "Chưa từng ghé", // DRAFT — Kevin reviews
   "cpx.ret.open": "Mở Giữ chân khách", // DRAFT — Kevin reviews
   "cpx.ret.source": "Tình trạng mất khách và có nguy cơ lấy từ Giữ chân khách — trợ lý này không tự phân loại.", // DRAFT — Kevin reviews
+  "cpx.ev.title": "Các số liệu này lấy từ đâu", // DRAFT — Kevin reviews
+  "cpx.ev.scan": "Trạng thái, thẻ số liệu và cờ đặt lại lịch: lần quét Customer Intelligence gần nhất —", // DRAFT — Kevin reviews
+  "cpx.ev.stale": "Cũ hơn {n} phút hoặc theo quy tắc cũ. Bấm Làm mới trong Customer Intelligence để quét lại.", // DRAFT — Kevin reviews
+  "cpx.ev.newSince": "{n} khách thêm sau lần quét đó chưa được phân loại.", // DRAFT — Kevin reviews
+  "cpx.ev.retention": "Trạng thái giữ chân (Có nguy cơ / Sắp có nguy cơ): Customer Retention, đọc trực tiếp khi mở trang — có nguy cơ sau {d} ngày không đến.", // DRAFT — Kevin reviews
+  "cpx.ev.retentionUnknown": "Trạng thái giữ chân: hiện không đọc được Customer Retention — hiển thị —.", // DRAFT — Kevin reviews
+  "cpx.ev.dup": "Khách có thể trùng: phần rà soát trùng, kiểm tra lần cuối {at}.", // DRAFT — Kevin reviews
+  "cpx.ev.dupNever": "Khách có thể trùng: phần rà soát trùng chưa chạy.", // DRAFT — Kevin reviews
+  "cpx.ev.prefs": "Sở thích, dịch vụ yêu thích và ghi chú hiển thị trên hồ sơ từng khách từ dữ liệu gốc; trang này không lưu bản sao.", // DRAFT — Kevin reviews
 };
