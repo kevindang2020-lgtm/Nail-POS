@@ -2632,6 +2632,7 @@
   "POST /pos/cash-drawer/open": "AAAADRRRRRRRRRRRR",
   "POST /pos/cash-drawer/reconcile": "AAAADRRRRRRRRRRRR",
   "POST /pos/cash-handoffs/{technicianId}/reconcile": "AAAADRRRRRRRRRRRR",
+  "POST /pos/cash-handoffs/{technicianId}/reopen": "AADDDRRRRRRRRRRRR",
   "POST /pos/cash-handoffs/{technicianId}/resolve": "AADDDRRRRRRRRRRRR",
   "POST /pos/catalog/add-ons": "AADDDRRRRRRRRRRRR",
   "POST /pos/catalog/add-ons/{key}/archive": "AADDDRRRRRRRRRRRR",

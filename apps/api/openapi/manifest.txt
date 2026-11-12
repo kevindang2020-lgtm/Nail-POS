@@ -800,6 +800,7 @@ GET /pos/live-schedule-screen/kpis  realm=staff  auth=session  domain=workforce 
 GET /pos/live-schedule-screen/search  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/live-schedule-screen/shift-impact  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/logs  realm=staff  auth=session  domain=operations  perm=pos.logs.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/logs/export  realm=staff  auth=session  domain=operations  perm=pos.reports.export  resource=BRANCH/permission  async=pos.logs.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/bonus-requests  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/bonus-requests/health  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/bonus-requests/preview  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
@@ -2730,6 +2731,7 @@ POST /pos/cash-drawer/movement/void  realm=staff  auth=session  domain=payments 
 POST /pos/cash-drawer/open  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  resource=BRANCH/permission  idempotency=optional
 POST /pos/cash-drawer/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  resource=BRANCH/permission  idempotency=optional
 POST /pos/cash-handoffs/{technicianId}/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  resource=TENANT/records  idempotency=optional
+POST /pos/cash-handoffs/{technicianId}/reopen  realm=staff  auth=session  domain=payments  perm=cash_handoff.reopen  resource=TENANT/records  idempotency=optional
 POST /pos/cash-handoffs/{technicianId}/resolve  realm=staff  auth=session  domain=payments  perm=checkout.manage_overrides  resource=TENANT/records  idempotency=optional
 POST /pos/catalog/add-ons  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/catalog/add-ons/{key}/archive  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard

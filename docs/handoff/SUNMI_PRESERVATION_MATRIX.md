@@ -616,7 +616,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSCashHandoffScreen.tsx`
 - Guide: AI_PowerSalon_End-of-Day_Cash
 - Scroll: one screen
-- API calls on this page: `posCashHandoffApi.exportCsv`, `posCashHandoffApi.list`, `posCashHandoffApi.reconcile`, `posCashHandoffApi.resolve`, `posCashHandoffApi.summary`, `posCashHandoffApi.technicians`, `posCashHandoffApi.unit`
+- API calls on this page: `posCashHandoffApi.exportCsv`, `posCashHandoffApi.list`, `posCashHandoffApi.reconcile`, `posCashHandoffApi.reopen`, `posCashHandoffApi.resolve`, `posCashHandoffApi.summary`, `posCashHandoffApi.technicians`, `posCashHandoffApi.unit`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -723,7 +723,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSBookingVerificationScreen.tsx`
 - Guide: AI_PowerSalon_BOOKING_PHONE_VERIFICATION_3
 - Scroll: vertical page scroll allowed (Booking Phone Verification SUNMI addendum §03: allow the main content to scroll vertically; never truncate OTP / hold alerts to fit one screen. No sideways scroll; every module present.)
-- API calls on this page: `bvApi.detail`, `bvApi.health`, `bvApi.history`, `bvApi.live`, `bvApi.resend`, `bvApi.summary`
+- API calls on this page: `authApi.branches`, `bvApi.detail`, `bvApi.health`, `bvApi.history`, `bvApi.live`, `bvApi.resend`, `bvApi.summary`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2211,7 +2211,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/TenantLogsScreen.tsx`
 - Guide: AI_PowerSalon_Device_Integration_Logs
 - Scroll: vertical page scroll allowed (Device Logs SUNMI guide: cards and filters on top; the event list pages (numbered) and scrolls with the page.)
-- API calls on this page: `posLogsApi.page`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posLogsApi.exportCsv`, `posLogsApi.page`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
