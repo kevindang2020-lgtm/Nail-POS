@@ -222,4 +222,6 @@ export const REVIEWS_EN: Record<string, string> = {
   "rvw.health.a.delivery_off": "Turn on review requests in the AI Review Assistant settings if the salon wants them.",
   "rvw.health.a.delivery_stale": "Check that the review-request job is running.",
   "rvw.health.a.delivery_failed": "Open Notifications to see why the requests failed.",
+  "rvw.health.k.anomalies": "Unusual review activity",
+  "rvw.health.a.anomalies_investigate": "Open the flagged reviews and investigate; nothing is hidden, merged or removed automatically.",
 };

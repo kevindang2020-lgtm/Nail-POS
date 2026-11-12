@@ -96,4 +96,14 @@ describe('POSReviewsScreen', () => {
     fireEvent.click(screen.getByTestId('ov-tab-communication'));
     expect(await screen.findByTestId('ov-comm-messages')).toHaveTextContent('Thanks for visiting!');
   });
+  it('Reviews & Reputation 05: the check names unusual review activity in the screen language and changes nothing', async () => {
+    api.checkRun.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-12T15:00:00Z', checks: [
+      { key: 'anomalies', state: 'WARNING', title: 'Unusual review activity', evidence: '1 burst day(s) in the last 30 days (2026-11-09: 6)', active: true, action: 'x', actionCode: 'anomalies_investigate', checkedAt: '2026-11-12T15:00:00Z' }] });
+    mount();
+    fireEvent.click(await screen.findByTestId('rvw-check'));
+    const c = await screen.findByTestId('chk-anomalies');
+    expect(c).toHaveTextContent('Unusual review activity');
+    expect(c).toHaveTextContent('Open the flagged reviews and investigate; nothing is hidden, merged or removed automatically.');
+    expect(api.moderate).not.toHaveBeenCalled();
+  });
 });

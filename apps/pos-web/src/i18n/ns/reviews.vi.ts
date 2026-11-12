@@ -222,4 +222,6 @@ export const REVIEWS_VI: Record<string, string> = {
   "rvw.health.a.delivery_off": "Bật yêu cầu đánh giá trong phần cài đặt Trợ lý đánh giá AI nếu tiệm muốn dùng.",
   "rvw.health.a.delivery_stale": "Kiểm tra xem tác vụ gửi yêu cầu đánh giá có đang chạy không.",
   "rvw.health.a.delivery_failed": "Mở Thông báo để xem vì sao các yêu cầu bị lỗi.",
+  "rvw.health.k.anomalies": "Hoạt động đánh giá bất thường", // DRAFT — Kevin reviews
+  "rvw.health.a.anomalies_investigate": "Mở các đánh giá bị đánh dấu và kiểm tra; không có gì bị ẩn, gộp hay xóa tự động.", // DRAFT — Kevin reviews
 };

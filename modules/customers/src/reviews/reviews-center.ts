@@ -78,6 +78,7 @@ const RV_ACTION_CODES: Readonly<Record<string, string>> = {
   'Hidden reviews without a trail predate the history; record a reason by unhiding and hiding them again if appropriate.': 'moderation_no_trail',
   'Confirm each hidden 1–2★ review was hidden for a policy reason (open it → Moderation history).': 'moderation_hidden_low',
   'Answer the low ratings (sort: Needs attention).': 'moderation_attention',
+  'Open the flagged reviews and investigate; nothing is hidden, merged or removed automatically.': 'anomalies_investigate',
   'Turn on review requests in the AI Review Assistant settings if the salon wants them.': 'delivery_off',
   'Check that the review-request job is running.': 'delivery_stale',
   'Open Notifications to see why the requests failed.': 'delivery_failed',
@@ -485,6 +486,31 @@ export class ReviewsCenter {
       add('moderation', state, 'Moderation and providers',
         `${N(r.hidden)} hidden review(s), ${N(r.no_trail)} without a recorded moderation event; ${N(r.hidden_low)} hidden review(s) rated 1–2★; ${N(r.attention)} low rating(s) still need a response. ${N(r.external)} review(s) from Google / Facebook / Yelp${N(r.external) ? `, last synced ${r.last_sync ? new Date(r.last_sync).toISOString() : 'never'}` : ''}. Replies to Google need an active Google Business Profile connection; Facebook and Yelp replies are not supported here.`,
         N(r.no_trail) ? 'Hidden reviews without a trail predate the history; record a reason by unhiding and hiding them again if appropriate.' : N(r.hidden_low) ? 'Confirm each hidden 1–2★ review was hidden for a policy reason (open it → Moderation history).' : N(r.attention) ? 'Answer the low ratings (sort: Needs attention).' : null);
+    });
+    // extras (Reviews & Reputation 05 "Reputation Anomaly Monitor"): bursts, repeated text and provider-sync gaps — flagged for a
+    // person to investigate, never suppressed. Burst = a salon day in the last 30 with at least 5 reviews and at least 3× the
+    // 30-day daily average; repeated text = the same written comment (15+ characters, case / spacing folded) on more than
+    // one review in 90 days; sync gap = a Google / Facebook / Yelp review with no provider id (cannot be matched back) or not
+    // re-synced within 7 days of that source's newest sync.
+    await safe('anomalies', 'Unusual review activity', async () => {
+      const { tz } = await this.tz(ctx);
+      const day = sql`(coalesce(r.review_date, r.created_at) at time zone ${tz})::date`;
+      const days = (await sql<{ d: string; n: number }>`select to_char(${day}, 'YYYY-MM-DD') as d, count(*)::int as n from reviews r
+          where r.tenant_id = ${T} and ${B} and coalesce(r.review_date, r.created_at) >= now() - interval '30 days' group by 1`.execute(this.db)).rows;
+      const avg = days.reduce((a, x) => a + N(x.n), 0) / 30;
+      const bursts = days.filter((x) => N(x.n) >= 5 && N(x.n) >= 3 * avg).sort((a, z) => a.d.localeCompare(z.d));
+      const rep = (await sql<{ groups: number; reviews: number }>`select count(*)::int as groups, coalesce(sum(k.n), 0)::int as reviews from (
+          select lower(regexp_replace(btrim(r.comment), '\\s+', ' ', 'g')) as body, count(*)::int as n from reviews r
+          where r.tenant_id = ${T} and ${B} and length(btrim(coalesce(r.comment, ''))) >= 15 and coalesce(r.review_date, r.created_at) >= now() - interval '90 days'
+          group by 1 having count(*) > 1) k`.execute(this.db)).rows[0];
+      const gap = (await sql<{ no_id: number; stale: number }>`select count(*) filter (where r.external_review_id is null)::int as no_id,
+          count(*) filter (where r.external_review_id is not null and (r.last_synced_at is null or r.last_synced_at < src.newest - interval '7 days'))::int as stale
+        from reviews r join (select r2.source, max(r2.last_synced_at) as newest from reviews r2 where r2.tenant_id = ${T} group by r2.source) src on src.source = r.source
+        where r.tenant_id = ${T} and ${B} and r.source = any(${[...RV_EXTERNAL_SOURCES]}::text[])`.execute(this.db)).rows[0];
+      const flagged = bursts.length + N(rep?.groups) + N(gap?.no_id) + N(gap?.stale);
+      add('anomalies', flagged ? 'WARNING' : 'READY', 'Unusual review activity',
+        `${bursts.length} burst day(s) in the last 30 days${bursts.length ? ` (${bursts.map((b) => `${b.d}: ${N(b.n)}`).join(', ')})` : ''} against a daily average of ${Math.round(avg * 10) / 10}; ${N(rep?.groups)} written comment(s) repeated on more than one review (${N(rep?.reviews)} reviews, last 90 days); ${N(gap?.no_id)} provider review(s) with no provider id; ${N(gap?.stale)} provider review(s) not re-synced within 7 days of their source's latest sync.`,
+        flagged ? 'Open the flagged reviews and investigate; nothing is hidden, merged or removed automatically.' : null);
     });
     await safe('delivery', 'Review requests and jobs', async () => {
       const r = (await sql<any>`select count(*)::int as n, count(*) filter (where status = 'scheduled' and scheduled_for < now() - interval '24 hours')::int as stale,

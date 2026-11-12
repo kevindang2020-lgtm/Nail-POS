@@ -197,7 +197,7 @@ describe('assistant, requests, health (REV-19, REV-22, Check Review System)', ()
   it('Check Review System is read-only and honest: calculation READY, a hidden review without a trail FAILS the moderation check', async () => {
     const before = (await q(sql`select count(*)::int as n, coalesce(sum(moderation_version), 0)::int as v from reviews where tenant_id = ${T}`))[0];
     const c1 = await rc.check(ctx());
-    expect(c1.checks.map((c) => c.key)).toEqual(['records', 'aggregation', 'relationships', 'cross_module', 'moderation', 'delivery']);
+    expect(c1.checks.map((c) => c.key)).toEqual(['records', 'aggregation', 'relationships', 'cross_module', 'moderation', 'anomalies', 'delivery']);
     expect(c1.checks.find((c) => c.key === 'aggregation')!.state).toBe('READY');
     expect(c1.checks.find((c) => c.key === 'cross_module')!.state).toBe('READY');
     const legacy = await review({ rating: 5, tech: TECH2 });
@@ -260,5 +260,27 @@ describe('A17 Nov 6 — assign, first/last name search, communication history, r
     const last = await rc.lastCheck(ctx());
     expect(last?.overall).toBe(r.overall);
     expect(await rc.lastCheck(ctx(X, BX))).toBeNull();
+  });
+});
+
+describe('Reviews & Reputation 05 — reputation anomaly monitor (read-only)', () => {
+  it('flags a burst day, repeated text and provider-sync gaps for investigation; nothing is hidden or changed; another salon is not counted', async () => {
+    const c0 = (await rc.check(ctx())).checks.find((c) => c.key === 'anomalies')!;
+    const before = (await q(sql`select id, is_hidden_by_manager, is_spam, moderation_version from reviews where tenant_id = ${T} order by id`));
+    const burstAt = new Date(Date.now() - 3 * 86400000); burstAt.setUTCHours(16, 0, 0, 0);
+    for (let i = 0; i < 6; i++) await review({ rating: 5, tech: TECH2, at: new Date(burstAt.getTime() + i * 60000).toISOString(), comment: i < 2 ? 'Amazing   service, best nails ever!' : null });
+    await review({ rating: 1, tech: TECH2, comment: 'amazing service, best nails ever!', at: new Date(Date.now() - 10 * 86400000).toISOString() });                          // same text, other case / spacing
+    await q(sql`update reviews set last_synced_at = now() where id = ${await review({ rating: 4, tech: null, source: 'google', ext: 'g-1', at: new Date(Date.now() - 20 * 86400000).toISOString() })}`);
+    await q(sql`update reviews set last_synced_at = now() - interval '10 days' where id = ${await review({ rating: 3, tech: null, source: 'google', ext: 'g-2', at: new Date(Date.now() - 21 * 86400000).toISOString() })}`);
+    await review({ rating: 2, tech: null, source: 'google', at: new Date(Date.now() - 22 * 86400000).toISOString() });                                                           // no provider id
+    for (let i = 0; i < 6; i++) await review({ rating: 5, tech: XT, tenant: X, branch: BX, at: burstAt.toISOString(), comment: 'Amazing service, best nails ever!' });
+    const c = (await rc.check(ctx())).checks.find((x) => x.key === 'anomalies')!;
+    expect(c.state).toBe('WARNING'); expect(c.actionCode).toBe('anomalies_investigate');
+    const nums = (e: string) => { const m = /^(\d+) burst.*?; (\d+) written comment\(s\) repeated on more than one review \((\d+) reviews.*?; (\d+) provider review\(s\) with no provider id; (\d+) provider review\(s\) not re-synced/.exec(e); return m ? m.slice(1).map(Number) : null; };
+    const [b0, g0, r0, n0, s0] = nums(c0.evidence)!; const [b1, g1, r1, n1, s1] = nums(c.evidence)!;
+    expect([b1 - b0, g1 - g0, r1 - r0, n1 - n0, s1 - s0]).toEqual([1, 1, 3, 1, 1]);   // the burst day, one repeated text on 3 reviews, one without a provider id, one stale
+    expect(c.evidence).toMatch(/\(\d{4}-\d{2}-\d{2}: 6\)/);
+    const after = (await q(sql`select id, is_hidden_by_manager, is_spam, moderation_version from reviews where tenant_id = ${T} and id = any(${before.map((r: any) => r.id)}::uuid[]) order by id`));
+    expect(after).toEqual(before);   // flagged, never suppressed
   });
 });
