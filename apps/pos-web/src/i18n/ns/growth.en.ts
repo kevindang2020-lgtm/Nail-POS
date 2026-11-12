@@ -1041,4 +1041,11 @@ export const GROWTH_EN = {
   "growth.aiQueue.cand.shiftEnds": "Shift ends in {m}",
   "growth.aiQueue.cand.inM": "In {m}",
   "growth.aiQueue.cand.noneBooked": "None booked",
+  "growth.aiForecast.point": "{d}: forecast {v} (80% range {lo} – {hi})",
+  "growth.aiForecast.tapHint": "Tap or focus a point to read that day.",
+  "growth.aiForecast.trend.up": "From {a} to {b} the forecast rises from {from} to {to}; the highest day is {pd} at {pv}. The 80% range across the period runs from {lo} to {hi}.",
+  "growth.aiForecast.trend.down": "From {a} to {b} the forecast falls from {from} to {to}; the highest day is {pd} at {pv}. The 80% range across the period runs from {lo} to {hi}.",
+  "growth.aiForecast.trend.flat": "From {a} to {b} the forecast stays at {from}; the highest day is {pd} at {pv}. The 80% range across the period runs from {lo} to {hi}.",
+  "growth.aiForecast.fullScreen": "Full screen",
+  "growth.aiForecast.fullTitle": "{n}-day forecast",
 };

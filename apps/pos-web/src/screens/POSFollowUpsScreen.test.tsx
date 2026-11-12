@@ -63,4 +63,47 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     await waitFor(() => expect(f.mock.calls.map((c: any[]) => String(c[0])).some((u) => u.includes('/follow-up-queue/tasks') && u.includes('status=sent') && u.includes('view=history'))).toBe(true));
     expect(screen.getByTestId('fuq-tab-sent').getAttribute('aria-selected')).toBe('true');
   });
+  it('extras row 11 contact cooldown timeline: the task details list what actually went out to this customer in the last 14 days (unsent drafts, older items and this task excluded); a role without access sees "not available", never "nothing sent"', async () => {
+    window.history.replaceState(null, '', '/follow-ups');
+    const ago = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+    const detail = { id: 't1', status: 'pending', businessDate: '2026-10-30', customerId: 'c-t1', customerName: 'Olivia Brown', customerPhone: null, customerHasApp: true, technicianId: 'te1', technicianName: 'Linh Tran',
+      serviceName: 'Gel Manicure', ticketId: 'k1', ticketNumber: '1001', appointmentId: null, completedAt: null, createdAt: null, submittedAt: null, sentAt: null, expiredAt: null, rejectedAt: null, templateKey: null, draft: 'Thanks for visiting!', sentMessage: null, delivery: null };
+    const timeline = { customer: { id: 'c-t1', name: 'Olivia Brown' }, channel: 'all', capped: false, links: { profile: '', booking: '' }, page: 1, pageSize: 50, totalItems: 5, totalPages: 1, items: [
+      { kind: 'notification', id: 'n1', channel: 'sms', direction: 'outbound', at: ago(2), type: 'reminder', status: 'delivered', summary: null },
+      { kind: 'receipt', id: 'r1', channel: 'email', direction: 'outbound', at: ago(5), type: 'receipt', status: 'sent', summary: 'Receipt 1001' },
+      { kind: 'follow_up', id: 't1', channel: 'follow_up', direction: 'outbound', at: ago(0), type: 'followup', status: 'pending', summary: 'Gel Manicure' },
+      { kind: 'follow_up', id: 'f0', channel: 'follow_up', direction: 'outbound', at: ago(1), type: 'followup', status: 'skipped', summary: 'Pedicure' },
+      { kind: 'inbound_message', id: 'i1', channel: 'sms', direction: 'inbound', at: ago(1), type: 'conversation', status: 'received', summary: null },
+      { kind: 'notification', id: 'n0', channel: 'sms', direction: 'outbound', at: ago(30), type: 'marketing', status: 'delivered', summary: null },
+    ] };
+    let timelineStatus = 200;
+    const base = mockFetch();
+    const f = vi.fn(async (u: any, _init?: any) => {
+      const url = String(u);
+      const r = url.includes('/eod-follow-ups/tasks/t1') ? { status: 200, body: detail }
+        : url.includes('/contact-check') ? { status: 200, body: { taskId: 't1', category: 'eligible', categories: ['eligible'], channel: 'customer_app', cooldownHours: 72, lastFollowUp: null, otherChannel: null, optOuts: [], marketing: { sms: true, email: true }, upcomingBooking: null, priority: 'normal', priorityReasons: [], priorityVersion: 'v1' } }
+        : url.includes('/follow-up-queue/customers/') ? { status: 200, body: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 } }
+        : url.includes('/customer-notifications/customers/c-t1/timeline') ? (timelineStatus === 200 ? { status: 200, body: timeline } : { status: 403, body: { code: 'PERMISSION_DENIED', message: 'no' } })
+        : null;
+      if (!r) return base(u);
+      return { ok: r.status < 400, status: r.status, json: async () => r.body, headers: { get: () => null } } as any;
+    });
+    globalThis.fetch = f as any;
+    view();
+    fireEvent.click((await screen.findAllByTestId('fuq-row-details'))[0]);
+    const rows = await screen.findAllByTestId('fuq-d-recent-row');
+    expect(rows).toHaveLength(2);                                   // the reminder text 2 days ago + the emailed receipt 5 days ago
+    expect(rows[0]).toHaveTextContent('Message'); expect(rows[0]).toHaveTextContent('SMS');
+    expect(rows[1]).toHaveTextContent('Receipt 1001');
+    expect(screen.getByText('Messages sent to this customer — last 14 days')).toBeInTheDocument();
+    expect(f.mock.calls.some((c: any[]) => String(c[0]).includes('/customer-notifications/customers/c-t1/timeline') && String(c[0]).includes('pageSize=50'))).toBe(true);
+    // read only: nothing was posted by opening the details
+    expect(f.mock.calls.some((c: any[]) => (c[1]?.method ?? 'GET') !== 'GET')).toBe(false);
+    // a role that may not read the customer timeline
+    fireEvent.click(screen.getByTestId('fuq-d-close'));
+    timelineStatus = 403;
+    fireEvent.click((await screen.findAllByTestId('fuq-row-details'))[0]);
+    expect(await screen.findByTestId('fuq-d-recent-na')).toHaveTextContent('Recent messages are not available for your role.');
+    expect(screen.queryByTestId('fuq-d-recent-none')).toBeNull();
+  });
 });

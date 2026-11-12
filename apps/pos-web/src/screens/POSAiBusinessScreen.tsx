@@ -41,6 +41,30 @@ const CHIPS: { label: string; intent: string }[] = [
   { get label() { return t('aib.chip.profit'); }, intent: 'profit_expenses' },   // A4 (Nov 6 2026)
   { get label() { return t('aib.chip.growth'); }, intent: 'growth_advice' },
 ];
+/** Extras (AI Business Assistant row 04): related read-only questions after an answer — a fixed map over the SAME chips (each
+ *  one runs one read-only report tool for the selected period); nothing here can send, charge or change anything. */
+const RELATED: Record<string, readonly string[]> = {
+  daily_summary: ['explain_revenue', 'appointments', 'technician_performance'],
+  explain_revenue: ['revenue_summary', 'profit_expenses', 'appointments'],
+  revenue_summary: ['explain_revenue', 'profit_expenses', 'compare_branches'],
+  appointments: ['customer_growth', 'technician_performance', 'explain_revenue'],
+  compare_branches: ['revenue_summary', 'technician_performance'],
+  customer_growth: ['appointments', 'growth_advice'],
+  technician_performance: ['appointments', 'revenue_summary'],
+  profit_expenses: ['revenue_summary', 'explain_revenue'],
+  growth_advice: ['customer_growth', 'profit_expenses'],
+};
+/** the first two sentences (or ~220 characters at a word break) — null when the answer is already that short */
+function executiveSummary(text: string): string | null {
+  const clean = text.trim();
+  // a sentence ends at . ! ? followed by a space or line break ($842.00 is not a sentence end)
+  const parts = clean.split(/(?<=[.!?])\s+/).filter(Boolean);
+  let out = parts.slice(0, 2).join(' ').trim();
+  if (out.length > 220) { const cut = out.slice(0, 220); out = cut.slice(0, Math.max(cut.lastIndexOf(' '), 120)).trim() + '…'; }
+  return out.length < clean.length - 1 ? out : null;
+}
+const relatedChips = (intent: string | null | undefined) => (intent ? (RELATED[intent] ?? []).filter((x) => x !== intent).map((x) => CHIPS.find((c) => c.intent === x)).filter((c): c is { label: string; intent: string } => !!c) : []);
+
 
 // Whitelisted headline fields pulled from whichever tool answered — shown only when present (never fabricated).
 function keyNumbers(s: any): { label: string; value: string }[] {
@@ -70,7 +94,11 @@ export function POSAiBusinessScreen() {
   // Session-safe workspace: period, custom range and the typed question come back after browsing away (this tab only;
   // dropped when another user signs in or on sign-out — useSessionState / AuthContext)
   const [period, setPeriod] = useSessionState('aps.bza.period', 'today');
-  const [range, setRange] = useSessionState<{ from: string; to: string } | null>('aps.bza.range', null);   // A4: a custom From–To (period === 'custom')
+  const [range, setRange] = useSessionState<{ from: string; to: string } | null>('aps.bza.range', null);
+  // Extras (AI Business Assistant row 08): optional Executive Summary mode — the answer opens as its first sentences with
+  // "Show full answer"; the full text, numbers, charts and history are never removed (display only, kept for this tab)
+  const [brief, setBrief] = useSessionState<boolean>('aps.bza.brief', false);
+  const [expanded, setExpanded] = useState(false);   // A4: a custom From–To (period === 'custom')
   const [cal, setCal] = useState(false);
   const [histTick, setHistTick] = useState(0);
   const [question, setQuestion] = useSessionState('aps.bza.question', '');
@@ -100,7 +128,7 @@ export function POSAiBusinessScreen() {
     setLast({ ...body, preset });
     try {
       const custom = preset === 'custom' && range && !body.from ? { from: range.from, to: range.to } : {};
-      const out = await posAiBusinessApi.ask(preset === 'custom' ? { ...body, ...custom, preset: undefined } : { ...body, preset }) as Ask; setRes(out); setCopied(false); setHistTick((n) => n + 1);
+      const out = await posAiBusinessApi.ask(preset === 'custom' ? { ...body, ...custom, preset: undefined } : { ...body, preset }) as Ask; setRes(out); setCopied(false); setExpanded(false); setHistTick((n) => n + 1);
       // this session's questions and answers, newest first (nothing is stored on the server)
       setSessionLog((l) => [{ at: new Date().toISOString(), label: body.question ?? (CHIPS.find((c) => c.intent === body.intent)?.label ?? String(body.intent)), preset, answer: out?.answer ?? null }, ...l].slice(0, 50));
     }
@@ -218,8 +246,15 @@ export function POSAiBusinessScreen() {
           )}
           {res.answer && (
             <section className="panel" style={{ marginTop: 12, padding: 14 }}>
-              <div className="p-h" style={{ padding: 0, marginBottom: 6 }}>{t('pos.answer')}</div>
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{res.answer}</div>
+              <div className="p-h" style={{ padding: 0, marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span>{t('pos.answer')}</span>
+                <label style={{ fontSize: 12, fontWeight: 400, display: 'inline-flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={brief} onChange={(e) => { setBrief(e.target.checked); setExpanded(false); }} data-testid="aib-brief" />{t('aib.brief.toggle')}</label>
+              </div>
+              {(() => { const short = brief && !expanded ? executiveSummary(res.answer) : null; return <>
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }} data-testid="aib-answer-text">{short ?? res.answer}</div>
+                {short ? <button type="button" className="btn ghost" style={{ marginTop: 6 }} onClick={() => setExpanded(true)} data-testid="aib-expand">{t('aib.brief.expand')}</button>
+                  : brief && expanded ? <button type="button" className="btn ghost" style={{ marginTop: 6 }} onClick={() => setExpanded(false)} data-testid="aib-collapse">{t('aib.brief.collapse')}</button> : null}
+              </>; })()}
               <div className="rvw-actions" style={{ marginTop: 8 }}>
                 <button type="button" className="btn ghost" data-testid="aib-copy" onClick={() => { try { void navigator.clipboard?.writeText(res.answer ?? ''); setCopied(true); } catch { setCopied(false); } }}>{copied ? t('aib.copied') : t('aib.copy')}</button>
                 {last && last.preset !== period ? <button type="button" className="btn ghost" data-testid="aib-rerun" onClick={() => ask({ intent: last.intent, question: last.question, preset: period })}>{t('aib.rerun', { p: t('bzx.period.' + period) })}</button> : null}
@@ -227,6 +262,15 @@ export function POSAiBusinessScreen() {
             </section>
           )}
 
+          {relatedChips(res.intent).length ? (
+            <div className="panel" style={{ marginTop: 12, padding: 12 }} data-testid="aib-related">
+              <div style={{ fontSize: 12, marginBottom: 6 }}>{t('aib.related.title')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {relatedChips(res.intent).map((c) => <button key={c.intent} type="button" className="chip" data-testid={'aib-related-' + c.intent} onClick={() => ask({ intent: c.intent })} disabled={loading}>{c.label}</button>)}
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>{t('aib.related.note')}</div>
+            </div>
+          ) : null}
           {res.intent === 'find_record' ? <RecordResults s={s} /> : null}
           {res.intent === 'profit_expenses' ? <ProfitResults s={s} /> : null}
           {res.intent === 'growth_advice' ? <GrowthResults s={s} /> : null}

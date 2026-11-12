@@ -172,4 +172,9 @@ export const FUQ_EN = {
   'fuq.r.col.sent': 'Sent',
   'fuq.r.col.skipped': 'Skipped',
   'fuq.r.col.booked': 'Booked after',
+  'fuq.cd.title': 'Messages sent to this customer — last {n} days',
+  'fuq.cd.none': 'Nothing was sent to this customer in the last {n} days.',
+  'fuq.cd.unavailable': 'Recent messages are not available for your role.',
+  'fuq.cd.more': '+{n} more in the customer timeline',
+  'fuq.cd.note': 'From the customer timeline (texts, emails, reminders, receipts, follow-ups). Read only — nothing is sent from here.',
 };

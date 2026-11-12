@@ -427,4 +427,8 @@ export const CATALOGSCREENS_VI = {
   'cg.csv.created': 'Ngày tạo',
   "cg.drill": "Danh mục đang lọc theo {c} từ biểu đồ.", // DRAFT — Kevin reviews
   "cg.svc.lookAlike": "Có vẻ giống dịch vụ đã có: {names}. Vẫn lưu được — hãy kiểm tra để tránh trùng.", // DRAFT — Kevin reviews
+  "cg.scope.branch": "Đang tính {b}: {n} dịch vụ riêng của chi nhánh cộng {m} dịch vụ dùng chung toàn tiệm.", // DRAFT — Kevin reviews
+  "cg.scope.salon": "Đang tính cả {k} chi nhánh, từng chi nhánh riêng:", // DRAFT — Kevin reviews
+  "cg.scope.shared": "dùng chung toàn tiệm {m}", // DRAFT — Kevin reviews
+  "cg.scope.salonNote": "Mỗi chi nhánh có dịch vụ riêng, nên cùng một dịch vụ ở hai chi nhánh được tính hai lần.", // DRAFT — Kevin reviews
 };

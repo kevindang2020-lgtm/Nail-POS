@@ -228,4 +228,5 @@ export const TEAMTECHNICIANS_EN = {
   'tc.apptStatus.completed': 'Completed',
   'tc.apptStatus.cancelled': 'Cancelled',
   'tc.apptStatus.no_show': 'No-show',
+  'tc.finderWhy': 'Why is a technician not listed? Check one',
 };

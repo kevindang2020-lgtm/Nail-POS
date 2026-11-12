@@ -27,6 +27,25 @@ describe('POSAiForecastingScreen', () => {
     expect(await screen.findByText('11.0%')).toBeInTheDocument(); // realized WAPE strip
   });
 
+  it('extras row 08: each day is a tappable / focusable point read out as text, a trend sentence summarizes the chart, and a full-screen view keeps every point', async () => {
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 3, accuracy: { wape: 0.12, folds: 30 },
+      horizon: [{ step: 1, date: '2026-03-01', point: 18, lower: 15, upper: 21 }, { step: 2, date: '2026-03-02', point: 25, lower: 20, upper: 30 }, { step: 3, date: '2026-03-03', point: 22, lower: 18, upper: 27 }], selectionReason: 'lowest WAPE', disclaimer: 'decision-support' });
+    render(<POSAiForecastingScreen />);
+    await screen.findByText('Seasonal naive');
+    expect(screen.getByTestId('fc-trend')).toHaveTextContent('From 2026-03-01 to 2026-03-03 the forecast rises from 18 to 22; the highest day is 2026-03-02 at 25. The 80% range across the period runs from 15 to 30.');
+    const pts = screen.getAllByTestId('fc-point');
+    expect(pts).toHaveLength(3);
+    expect(pts[1].getAttribute('aria-label')).toBe('2026-03-02: forecast 25 (80% range 20 – 30)');
+    expect(screen.getByTestId('fc-point-readout')).toHaveTextContent('Tap or focus a point');
+    fireEvent.click(pts[1]);
+    expect(screen.getByTestId('fc-point-readout')).toHaveTextContent('2026-03-02: forecast 25 (80% range 20 – 30)');
+    fireEvent.keyDown(pts[2], { key: 'Enter' });
+    expect(screen.getByTestId('fc-point-readout')).toHaveTextContent('2026-03-03: forecast 22');
+    fireEvent.click(screen.getByTestId('fc-fullscreen'));
+    const full = await screen.findByTestId('fc-full');
+    expect(full.querySelectorAll('[data-testid="fc-point"]')).toHaveLength(3);
+  });
+
   it('switches to the No-Show risk tab and shows non-punitive actions', async () => {
     render(<POSAiForecastingScreen />);
     await screen.findByText('Seasonal naive');

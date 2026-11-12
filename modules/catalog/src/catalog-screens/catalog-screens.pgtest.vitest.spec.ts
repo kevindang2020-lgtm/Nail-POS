@@ -152,6 +152,17 @@ describe('Service Categories', () => {
     expect(s.review.filter((r) => r.kind === 'empty').map((r) => r.categoryName)).toEqual(['Brows']);
   });
 
+  it('extras row 10: the summary says which catalog scope it counts — a branch session its branch (+ salon-wide rows); a salon-wide session every branch separately, never another salon', async () => {
+    const br = (await repo.categorySummary(ctx)).scope;
+    expect(br).toMatchObject({ mode: 'branch', branchId: B, branchName: 'Main', branchServices: 6, salonWideServices: 0 });
+    expect(br.branches.map((x) => x.name)).toEqual(['Main']);
+    const all = (await repo.categorySummary(ctxAll)).scope;
+    expect(all).toMatchObject({ mode: 'salon', branchId: null, branchName: null, branchServices: null, salonWideServices: 0 });
+    // Main's six rows and Uptown's own Gel Manicure row (the archived Old Polish Change is not counted); the other salon's branch never appears
+    expect(all.branches.map((x) => [x.name, x.services])).toEqual([['Main', 6], ['Uptown', 1]]);
+    expect((await repo.categorySummary(ctx2)).scope.branches.map((x) => x.name)).toEqual(['Elsewhere']);
+  });
+
   it('directory newest first; searching a service finds its category; reassignment previews then moves with history', async () => {
     const d = await repo.categories(ctx, { page: 1, pageSize: 10 });
     expect(d.items.map((x) => x.name)).toEqual(['Brows', 'CD 6805', 'CD 4432', 'Nails']);

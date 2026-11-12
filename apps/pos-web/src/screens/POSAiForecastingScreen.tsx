@@ -11,7 +11,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { growthCode } from './growthLabels';
 import { ForecastHistory, ForecastCheckButton } from './ForecastHistory';
 import { fmtInZone, fmtNumber } from '../i18n/format';   // the location's clock (not the device's)
-import { KpiCard } from '../components/FitKit';
+import { KpiCard, FitDialog } from '../components/FitKit';
 type Tab = 'appointments' | 'revenue' | 'noshow';
 const TAB_IDS: Tab[] = ['appointments', 'revenue', 'noshow'];
 export function readTab(search: string = typeof window !== 'undefined' ? window.location.search : ''): Tab {
@@ -31,7 +31,10 @@ const LEVEL_COLOR: Record<string, string> = {
 };
 
 // Compact confidence-band chart: shaded lower..upper band with the point line. Pure SVG, no deps.
-function BandChart({ horizon, fmt }: { horizon: any[]; fmt: (n: number) => string }) {
+// Extras (AI Analytics Forecasting row 08): every day is a focusable / tappable point (keyboard Enter / Space too) that reads
+// out its date, forecast and 80% range; the readout is a live region. Display only.
+function BandChart({ horizon, fmt, height = 140 }: { horizon: any[]; fmt: (n: number) => string; height?: number }) {
+  const [sel, setSel] = useState<number | null>(null);
   if (!horizon || horizon.length === 0) return null;
   const W = 640, H = 140, pad = 28;
   const ys = horizon.flatMap((h) => [h.lower ?? h.lowerCents ?? 0, h.upper ?? h.upperCents ?? 0]);
@@ -44,7 +47,8 @@ function BandChart({ horizon, fmt }: { horizon: any[]; fmt: (n: number) => strin
   const hi = (h: any) => (h.upper ?? h.upperCents ?? 0);
   const band = `${horizon.map((h, i) => `${x(i)},${y(hi(h))}`).join(' ')} ${horizon.slice().reverse().map((h, i) => `${x(horizon.length - 1 - i)},${y(lo(h))}`).join(' ')}`;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="140" role="img" aria-label={tx('pos.forecast_with_prediction_interval')}>
+    <>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={height} role="group" aria-label={tx('pos.forecast_with_prediction_interval')}>
       <polygon points={band} fill="var(--aps-orange)" opacity="0.12" />
       <polyline points={P(hi)} fill="none" stroke="var(--aps-orange)" strokeWidth="1" opacity="0.35" strokeDasharray="3 3" />
       <polyline points={P(lo)} fill="none" stroke="var(--aps-orange)" strokeWidth="1" opacity="0.35" strokeDasharray="3 3" />
@@ -52,8 +56,29 @@ function BandChart({ horizon, fmt }: { horizon: any[]; fmt: (n: number) => strin
       <text x={pad} y={H - 6} fontSize="10" fill="var(--muted)">{horizon[0]?.date}</text>
       <text x={W - pad} y={H - 6} fontSize="10" fill="var(--muted)" textAnchor="end">{horizon[horizon.length - 1]?.date}</text>
       <text x={pad} y={14} fontSize="10" fill="var(--muted)">{fmt(max)}</text>
+      {horizon.map((h, i) => {
+        const label = tx('growth.aiForecast.point', { d: String(h.date ?? ''), v: fmt(pt(h)), lo: fmt(lo(h)), hi: fmt(hi(h)) });
+        return <circle key={h.step ?? i} cx={x(i)} cy={y(pt(h))} r={sel === i ? 6 : 4} fill={sel === i ? 'var(--aps-orange)' : '#fff'} stroke="var(--aps-orange)" strokeWidth="2"
+          tabIndex={0} role="button" aria-label={label} aria-pressed={sel === i} data-testid="fc-point" style={{ cursor: 'pointer' }}
+          onClick={() => setSel(i)} onFocus={() => setSel(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(i); } }} />;
+      })}
     </svg>
+    <div className="sub" aria-live="polite" data-testid="fc-point-readout" style={{ minHeight: 18 }}>
+      {sel != null && horizon[sel] ? tx('growth.aiForecast.point', { d: String(horizon[sel].date ?? ''), v: fmt(pt(horizon[sel])), lo: fmt(lo(horizon[sel])), hi: fmt(hi(horizon[sel])) }) : tx('growth.aiForecast.tapHint')}
+    </div>
+    </>
   );
+}
+
+/** a plain-language trend sentence from the same horizon the chart draws — first vs last day, the peak, the widest range */
+function forecastTrendText(horizon: any[], fmt: (n: number) => string): string | null {
+  if (!horizon?.length) return null;
+  const pt = (h: any) => Number(h.point ?? h.pointCents ?? 0); const lo = (h: any) => Number(h.lower ?? h.lowerCents ?? 0); const hi = (h: any) => Number(h.upper ?? h.upperCents ?? 0);
+  const first = horizon[0], last = horizon[horizon.length - 1];
+  const peak = horizon.reduce((a, h) => (pt(h) > pt(a) ? h : a), first);
+  const dir = pt(last) > pt(first) ? 'up' : pt(last) < pt(first) ? 'down' : 'flat';
+  return tx('growth.aiForecast.trend.' + dir, { a: String(first.date ?? ''), b: String(last.date ?? ''), from: fmt(pt(first)), to: fmt(pt(last)), pd: String(peak.date ?? ''), pv: fmt(pt(peak)),
+    lo: fmt(Math.min(...horizon.map(lo))), hi: fmt(Math.max(...horizon.map(hi))) });
 }
 
 function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments' | 'revenue'; accuracy?: any }) {
@@ -61,6 +86,8 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
   const fmt = (n: number) => (isMoney ? money(n) : String(Math.round(n)));
   const total = isMoney ? data.forecastTotalCents : data.horizon.reduce((a: number, h: any) => a + (h.point ?? 0), 0);
   const trackedPct = (w: number | null | undefined) => (w == null ? null : `${(w * 100).toFixed(1)}%`);
+  const [full, setFull] = useState(false);
+  const trend = forecastTrendText(data.horizon, fmt);
   return (
     <>
       {accuracy && (
@@ -83,9 +110,17 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
         <div className="kpi"><div className="k-l">{data.horizonDays}{tx('pos.day_total')}</div><div className="k-v" style={{ fontSize: 18 }}>{fmt(total)}</div></div>
       </div>
       <div className="panel" style={{ padding: 12, marginTop: 12 }}>
-        <div className="sub" style={{ marginBottom: 6 }}>{data.horizonDays}{tx('pos.day_forecast_shaded_band_80_prediction_1hs5')}</div>
+        <div className="sub" style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+          <span>{data.horizonDays}{tx('pos.day_forecast_shaded_band_80_prediction_1hs5')}</span>
+          <button type="button" className="btn ghost" onClick={() => setFull(true)} data-testid="fc-fullscreen">{tx('growth.aiForecast.fullScreen')}</button>
+        </div>
         <BandChart horizon={data.horizon} fmt={fmt} />
+        {trend ? <p className="sub" data-testid="fc-trend" style={{ marginTop: 4 }}>{trend}</p> : null}
       </div>
+      {full ? <FitDialog wide title={tx('growth.aiForecast.fullTitle', { n: String(data.horizonDays) })} onClose={() => setFull(false)} testId="fc-full">
+        <BandChart horizon={data.horizon} fmt={fmt} height={320} />
+        {trend ? <p className="sub">{trend}</p> : null}
+      </FitDialog> : null}
       <section className="panel" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
         <div className="overflow-x-auto w-full"><table className="tbl w-full min-w-max">
           <thead><tr><th>{tx('pos.date')}</th><th>{tx('pos.forecast')}</th><th>{tx('pos.low_80')}</th><th>{tx('pos.high_80')}</th></tr></thead>
