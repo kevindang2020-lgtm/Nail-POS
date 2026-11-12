@@ -47,4 +47,13 @@ describe('Products · 11 price history', () => {
     await waitFor(() => expect(inv.updateProduct).toHaveBeenCalled());
     expect(inv.updateProduct.mock.calls[0][1]).not.toHaveProperty('priceChangeReason');
   });
+  it('an edit by a viewer whose prices are hidden (blank) never sends a price, so it cannot wipe one', async () => {
+    inv.updateProduct.mockClear();
+    render(<ProductFormDialog product={{ ...product, costCents: null, retailCents: null }} onClose={() => {}} onSaved={() => {}} />);
+    fireEvent.click(screen.getByTestId('product-save'));
+    await waitFor(() => expect(inv.updateProduct).toHaveBeenCalled());
+    const body = inv.updateProduct.mock.calls[0][1];
+    expect(body).not.toHaveProperty('costCents');
+    expect(body).not.toHaveProperty('retailPriceCents');
+  });
 });

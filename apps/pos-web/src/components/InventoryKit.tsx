@@ -254,10 +254,14 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
     const body: Record<string, unknown> = {
       name: f.name.trim(), brandId: f.brandId || null, categoryId: f.categoryId || null, colorNumber: f.colorNumber.trim() || null, colorName: f.colorName.trim() || null, finish: f.finish.trim() || null,
       sku: f.sku.trim() || null, barcode: f.barcode.trim() || null, upc: f.upc.trim() || null, unitType: f.unitType, trackingMode: f.trackingMode,
-      costCents: f.cost ? centsFromText(f.cost) : null, retailPriceCents: f.retail ? centsFromText(f.retail) : null, isRetail: f.isRetail,
+      isRetail: f.isRetail,
       reorderLevel: int(f.reorder) ?? 0, criticalLevel: int(f.critical), reorderQuantity: int(f.reorderQty) ?? 0, maximumStock: int(f.max), leadTimeDays: int(f.leadTime),
       preferredVendorId: f.vendorId || null, trackExpiration: f.trackExpiration,
     };
+    // an edit sends a price only when it changed — a viewer whose prices are hidden (shown blank) never wipes them
+    const costCents = f.cost ? centsFromText(f.cost) : null, retailCents = f.retail ? centsFromText(f.retail) : null;
+    if (!edit || costCents !== (product?.costCents ?? null)) body.costCents = costCents;
+    if (!edit || retailCents !== (product?.retailCents ?? null)) body.retailPriceCents = retailCents;
     try {
       let id = product?.id as string | undefined;
       // concurrent-edit protection: the save carries the updatedAt this form opened with; a product changed elsewhere since
