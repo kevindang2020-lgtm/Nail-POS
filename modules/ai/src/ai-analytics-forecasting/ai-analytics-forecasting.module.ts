@@ -25,7 +25,7 @@ import { KyselyForecastRunRepository } from './forecast-run.kysely.repository';
 import { InMemoryProductDemandSource, type ProductDemandSource, type ProductPositionProvider } from './ai-analytics-forecasting.dto';
 import type { AppointmentSeriesSource, RevenueSeriesSource, AiForecastContext } from './ai-analytics-forecasting.dto';
 import type { SeriesPoint } from './forecast-core';
-import { BookingCalendarAppointmentSource, ZeroFilledRevenueSource } from './forecast-history.kysely.source';
+import { BookingCalendarAppointmentSource, ZeroFilledRevenueSource, ScheduleCapacitySource } from './forecast-history.kysely.source';
 import { AiInventoryModule } from '../ai-inventory/ai-inventory.module';
 import { AiInventoryPositionService } from '../ai-inventory/ai-inventory-position.service';
 import { AiInventoryError } from '../ai-inventory/ai-inventory.dto';
@@ -83,7 +83,8 @@ export class ReportsRevenueSource implements RevenueSeriesSource {
     // AI Analytics & Forecasting guide (Nov 2026): appointments come from the booking calendar, zero-filled per salon day (the sales
     // report's paid-ticket days were used before, with quiet days missing); revenue stays on the report, zero-filled
     { provide: 'AppointmentSeriesSource', useFactory: (reports: ReportsService, db: AppDatabase) => (db ? new BookingCalendarAppointmentSource(db) : new ReportsAppointmentSource(reports)), inject: [ReportsService, DATABASE_READ] },
-    { provide: AppointmentForecastService, useFactory: (src: AppointmentSeriesSource) => new AppointmentForecastService(src), inject: ['AppointmentSeriesSource'] },
+    // extras (AI Analytics Forecasting 03): the forecast also carries workload vs scheduled technician hours (read-only)
+    { provide: AppointmentForecastService, useFactory: (src: AppointmentSeriesSource, db: AppDatabase) => new AppointmentForecastService(src, db ? new ScheduleCapacitySource(db) : null), inject: ['AppointmentSeriesSource', DATABASE_READ] },
     { provide: 'RevenueSeriesSource', useFactory: (reports: ReportsService, db: AppDatabase) => new ZeroFilledRevenueSource(new ReportsRevenueSource(reports), db ?? null), inject: [ReportsService, DATABASE_READ] },
     { provide: RevenueForecastService, useFactory: (src: RevenueSeriesSource) => new RevenueForecastService(src), inject: ['RevenueSeriesSource'] },
     { provide: 'NoShowRiskSource', useFactory: (db: AppDatabase): NoShowRiskSource => (db ? new KyselyNoShowSource(db) : new InMemoryNoShowSource()), inject: [DATABASE_READ] },

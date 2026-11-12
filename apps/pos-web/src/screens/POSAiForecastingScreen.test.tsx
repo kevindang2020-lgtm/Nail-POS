@@ -72,4 +72,34 @@ describe('POSAiForecastingScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Revenue$/ }));
     expect(await screen.findByTestId('fcx-restricted')).toHaveTextContent(/cannot see revenue/);
   });
+  it('extras AI Analytics Forecasting 03: the server\'s workload-vs-technician-hours gap is shown per day, read-only, with a link to the Scheduling Optimizer', async () => {
+    window.history.replaceState(null, '', '/');   // an earlier test left ?tab=noshow in the address
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 2, accuracy: null, horizon: horizon(10).slice(0, 2), selectionReason: 'x', disclaimer: 'd',
+      capacity: { avgAppointmentMinutes: 45, durationSample: 120, durationWindowDays: 56, basis: 'b', days: [
+        { date: '2026-03-01', expectedMinutes: 540, lowerMinutes: 450, upperMinutes: 630, scheduledMinutes: 420, technicians: 1, gapMinutes: -120, state: 'short' },
+        { date: '2026-03-02', expectedMinutes: 300, lowerMinutes: 240, upperMinutes: 360, scheduledMinutes: 660, technicians: 2, gapMinutes: 360, state: 'ok' }] } });
+    render(<POSAiForecastingScreen />);
+    const panel = await screen.findByTestId('fc-cap');
+    expect(screen.getByTestId('fc-cap-basis')).toHaveTextContent('One appointment ≈ 45 min (average of 120 booked appointments, last 56 days).');
+    expect(screen.getByTestId('fc-cap-summary')).toHaveTextContent('1 of 2 days may need more technician hours than are scheduled.');
+    const rows = screen.getAllByTestId('fc-cap-row');
+    expect(rows[0]).toHaveTextContent('9 h'); expect(rows[0]).toHaveTextContent('7 h'); expect(rows[0]).toHaveTextContent('−2 h'); expect(rows[0]).toHaveTextContent('Short');
+    expect(rows[1]).toHaveTextContent('+6 h'); expect(rows[1]).toHaveTextContent('Covered'); expect(rows[1]).toHaveTextContent('2 technicians');
+    expect(screen.getByTestId('fc-cap-optimizer').getAttribute('href')).toBe('/tenant/ai/scheduling-optimizer');
+    expect(panel.querySelectorAll('button')).toHaveLength(0);   // nothing to press but the link: no shift is created here
+  });
+  it('extras AI Analytics Forecasting 03: without duration history the hours are "—" and the state is Unknown; no capacity → no panel', async () => {
+    window.history.replaceState(null, '', '/');
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 1, accuracy: null, horizon: horizon(10).slice(0, 1), selectionReason: 'x', disclaimer: 'd',
+      capacity: { avgAppointmentMinutes: null, durationSample: 0, durationWindowDays: 56, days: [{ date: '2026-03-01', expectedMinutes: null, lowerMinutes: null, upperMinutes: null, scheduledMinutes: 0, technicians: 0, gapMinutes: null, state: 'unknown' }] } });
+    const { unmount } = render(<POSAiForecastingScreen />);
+    await screen.findByTestId('fc-cap');
+    expect(screen.getByTestId('fc-cap-basis')).toHaveTextContent('No booked appointment durations yet');
+    expect(screen.getByTestId('fc-cap-row')).toHaveTextContent('Unknown');
+    unmount();
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 1, accuracy: null, horizon: horizon(10).slice(0, 1), selectionReason: 'x', disclaimer: 'd' });
+    render(<POSAiForecastingScreen />);
+    await screen.findByText('Seasonal naive');
+    expect(screen.queryByTestId('fc-cap')).toBeNull();
+  });
 });
