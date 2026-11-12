@@ -4288,3 +4288,19 @@ html[data-spacing="compact"] .tbl td { padding: 6px 8px; }
 /* Campaign Results 08 — the campaign whose results are open stays highlighted in the list */
 .rvw-table tr.on td { background: #FBF3E4; }
 .rvw-table tr.on td:first-child { box-shadow: inset 3px 0 0 #A96F22; }
+/* extras (Finish the Five 10): Booking Conflict Timeline — every block has a colour AND its words */
+.so-tl{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--card)}
+.so-tl-axis{position:relative;height:16px;margin-left:96px;font-size:11px;color:var(--muted)}
+.so-tl-axis>span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.so-tl-lane{display:flex;align-items:center;gap:8px}
+.so-tl-name{width:88px;flex:none;font-size:12px;color:var(--muted)}
+.so-tl-track{position:relative;flex:1;height:30px;border-radius:8px;background:var(--page);overflow:hidden}
+.so-tl-b{position:absolute;top:3px;bottom:3px;border-radius:6px;padding:0 6px;font-size:11px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--line);color:var(--text)}
+.so-tl-b.shift,.so-tl-dot.shift{background:var(--ok-bg);border-color:var(--ok)}
+.so-tl-b.break,.so-tl-dot.break{background:var(--warn-bg);border-color:var(--warn)}
+.so-tl-b.ok,.so-tl-dot.ok{background:var(--card);border-color:var(--info)}
+.so-tl-b.unchecked,.so-tl-dot.unchecked{background:var(--card);border-style:dashed;border-color:var(--muted)}
+.so-tl-b.conflict,.so-tl-dot.conflict{background:repeating-linear-gradient(45deg,var(--card) 0 6px,var(--warn-bg) 6px 12px);border:2px solid var(--danger)}
+.so-tl-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:12px}
+.so-tl-list>li{display:flex;align-items:center;gap:6px}
+.so-tl-dot{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);flex:none}

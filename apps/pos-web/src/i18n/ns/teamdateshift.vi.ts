@@ -65,4 +65,15 @@ export const TEAMDATESHIFT_VI = {
   'so.h.SAVED': 'Đã lưu',
   'so.h.RESTORED_BASELINE': 'Đã khôi phục ca lặp lại',
   'so.rule': 'Chỉ một ngày: lịch tuần và các tuần khác giữ nguyên. Thứ tự ưu tiên: thay đổi của ngày này, rồi lịch tuần, rồi giờ tiệm; nghỉ phép đã duyệt vẫn áp dụng.',
+  'so.tl.title': 'Dòng thời gian trong ngày', // DRAFT — Kevin reviews
+  'so.tl.shift': 'Ca làm', // DRAFT — Kevin reviews
+  'so.tl.booking': 'Lịch hẹn', // DRAFT — Kevin reviews
+  'so.tl.unchecked': 'chưa kiểm tra', // DRAFT — Kevin reviews
+  'so.tl.noConflict': 'không có xung đột', // DRAFT — Kevin reviews
+  'so.tl.empty': 'Không có ca làm hay lịch hẹn nào trong ngày này.', // DRAFT — Kevin reviews
+  'so.tl.checkFirst': 'Đang hiện ngày đã lưu. Bấm Xem xung đột để thấy giờ đề xuất và lịch hẹn nào bị trùng.', // DRAFT — Kevin reviews
+  'so.tl.fromCheck': 'Giờ đề xuất cùng các chỗ trùng do máy chủ kiểm tra.', // DRAFT — Kevin reviews
+  'so.tl.lane.shift': 'Ca làm', // DRAFT — Kevin reviews
+  'so.tl.lane.break': 'Giờ nghỉ', // DRAFT — Kevin reviews
+  'so.tl.lane.booking': 'Lịch hẹn', // DRAFT — Kevin reviews
 };

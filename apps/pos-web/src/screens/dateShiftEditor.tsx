@@ -14,6 +14,7 @@ import { FitDialog, Empty } from '../components/FitKit';
 import { MonthView, useLoad, StateBlock, fmtYmdSafe } from '../components/FinanceKit';
 import { whenTime } from './technicianScreenParts';
 import { hm12, apptStatus } from './teamShared';
+import { ShiftConflictTimeline } from './shiftConflictTimeline';
 
 type Mode = 'CUSTOM_SHIFT' | 'DAY_OFF' | 'RESTORE_BASELINE';
 interface Brk { type: string; startLocalTime: string; endLocalTime: string }
@@ -127,6 +128,10 @@ export function DateShiftEditor({ technicianId, technicianName, initialDate, tod
                 <Link to="/tech-appointments" className="fk-link" data-testid="so-reschedule">{tx('so.reschedule')}</Link>
                 {blocking && preview.canAcknowledge !== false ? <label className="ls-ack"><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} data-testid="so-ack" /> {tx('so.ack')}</label>
                   : blocking ? <p>{tx('so.cannotAck')}</p> : null}</span></div>) : null}
+            {/* extras (Finish the Five 10): the day on one time axis — colour AND words; overlaps only from the server check */}
+            <ShiftConflictTimeline date={x.date ?? date} bookings={x.appointments ?? []}
+              day={preview?.effective !== undefined ? preview.effective : x.effective}
+              conflicts={preview?.effective !== undefined ? (preview.conflicts ?? []) : null} />
             <h3 className="fk-h3">{tx('so.dayHolds')}</h3>
             {x.appointments.length === 0 ? <p className="fk-hint">{tx('so.noBookings')}</p> : <ul className="fk-list dense" data-testid="so-bookings">{x.appointments.map((a: any) => <li key={a.id} className="fk-li"><span className="fk-li-t">{a.date !== date ? `${a.date.slice(5)} ` : ''}{hm12(a.startTime)} – {hm12(a.endTime)} · {a.customer ?? '—'}<span className="fk-li-s">{apptStatus(a.status)}</span></span></li>)}</ul>}
             {x.timeOff.length ? <p className="fk-hint">{tx('so.timeOff', { n: String(x.timeOff.length) })}</p> : null}
