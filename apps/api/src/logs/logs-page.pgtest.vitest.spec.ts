@@ -78,4 +78,21 @@ describe('Device Integration Logs 06 (Nov 12 2026): payment environment label', 
     r = await svc.query({ ...ctx, tenantId: X, branchId: '' }, { page: 1, pageSize: 10 });
     expect(r.paymentEnvironment).toEqual({ environment: null, source: null, processor: null, certification: null });
   });
+  // Device Integration Logs backlog · 02: a terminal trace — every event recorded under one correlation id, read in order
+  it('LG-05 one trace: correlationId keeps the events of that payment-terminal request only; another salon and an unsafe id never', async () => {
+    const C = 'trm-req.7f3a:01';
+    await q(sql`insert into tenant_event_logs (tenant_id, branch_id, category, severity, source, message, correlation_id, created_at) values
+      (${T}, ${B}, 'device', 'info', 'payment_terminal', 'sale command sent', ${C}, '2026-11-05T10:00:00Z'),
+      (${T}, ${B}, 'integration', 'warning', 'payment_terminal', 'provider response timeout', ${C}, '2026-11-05T10:00:30Z'),
+      (${T}, ${B}, 'integration', 'info', 'payment_terminal', 'status inquiry: approved', ${C}, '2026-11-05T10:01:00Z'),
+      (${T}, ${B}, 'device', 'info', 'payment_terminal', 'another request', 'trm-req.other', '2026-11-05T10:02:00Z'),
+      (${X}, null, 'device', 'info', 'payment_terminal', 'other salon same id', ${C}, '2026-11-05T10:03:00Z')`);
+    const r = await svc.query(ctx, { page: 1, pageSize: 10, correlationId: C });
+    expect(r.logs.map((l) => l.message)).toEqual(['status inquiry: approved', 'provider response timeout', 'sale command sent']);
+    expect(r.logs.every((l) => l.correlationId === C)).toBe(true);
+    expect(r.summary).toEqual({ events: 3, warnings: 1, errors: 0, device: 1, integration: 2 });
+    const all = (await svc.query(ctx, { page: 1, pageSize: 10 })).total;
+    expect((await svc.query(ctx, { page: 1, pageSize: 10, correlationId: "x' or 1=1 --" })).total).toBe(all);   // unsafe → ignored, never interpolated
+    expect((await svc.query(ctx, { limit: 50, correlationId: C })).logs).toHaveLength(3);                       // the legacy shape filters too
+  });
 });

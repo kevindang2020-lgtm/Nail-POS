@@ -25,7 +25,7 @@ import { reportError } from './reportsCommon';
 const dash = '—';
 const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const sevChip = (s: string) => <span className={'chip ' + (s === 'warning' ? 'warn' : s === 'error' || s === 'critical' ? 'bad' : '')}>{codeLabel('admin.logs.severity', s, ['level', 'priority'])}</span>;
-type F = { category: string; severity: string; search?: string; relatedId?: string; from?: string; to?: string; page: number; pageSize: number };
+type F = { category: string; severity: string; search?: string; relatedId?: string; correlationId?: string; from?: string; to?: string; page: number; pageSize: number };
 
 /** Device Integration Logs 06: say plainly whether payment events here come from a sandbox (test / UAT) or a production
  *  merchant, and whether a production validation is recorded — so a test log is never read as certification or readiness. */
@@ -59,7 +59,7 @@ export function TenantLogsScreen() {
   const s = d?.summary;
   const card = (k: keyof NonNullable<typeof s>, label: string, tone?: 'warn' | 'bad' | 'gold', go?: Partial<F>) =>
     <KpiCard key={k} testId={`lgx-kpi-${k}`} label={label} value={s ? fmtNumber(s[k]) : err ? dash : ''} loading={!d && !err} tone={s && s[k] ? tone : undefined} onClick={go ? () => setF(go) : undefined} />;
-  const anyFilter = f.category !== 'all' || f.severity !== 'all' || !!f.search || !!f.relatedId || !!f.from || !!f.to;
+  const anyFilter = f.category !== 'all' || f.severity !== 'all' || !!f.search || !!f.relatedId || !!f.correlationId || !!f.from || !!f.to;
 
   return (
     <div className="work" data-testid="lgx-screen" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -85,6 +85,7 @@ export function TenantLogsScreen() {
         </form>
         <button className={'btn ghost' + (f.from || f.to ? ' on' : '')} data-testid="lgx-range" onClick={() => setCal(true)}>{f.from || f.to ? `${f.from ?? '…'} → ${f.to ?? '…'}` : tt('dfx.range')}</button>
         {f.relatedId ? <button className="btn ghost on" data-testid="lgx-device-chip" title={tt('lgx.deviceOnlyClear')} onClick={() => setF({ relatedId: undefined })}>{tt('lgx.deviceOnly')} ✕</button> : null}
+        {f.correlationId ? <button className="btn ghost on" data-testid="lgx-trace-chip" title={tt('lgx.traceOnlyClear')} onClick={() => setF({ correlationId: undefined })}>{tt('lgx.traceOnly')} ✕</button> : null}
         {anyFilter ? <button className="btn ghost" data-testid="lgx-clear" onClick={() => { setDraft(''); setFState({ category: 'all', severity: 'all', page: 1, pageSize: f.pageSize }); }}>{tt('dfx.clear')}</button> : null}
         {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={deviceToday()} onApply={(r) => { setF({ from: r.from, to: r.to }); setCal(false); }}
           onCancel={() => setCal(false)} onClear={() => { setF({ from: undefined, to: undefined }); setCal(false); }} /></div> : null}
@@ -117,6 +118,8 @@ export function TenantLogsScreen() {
       {open ? <FitDialog wide testId="lgx-detail" title={open.message} subtitle={open.createdIso ? fmtDateTime(open.createdIso) : undefined} onClose={() => setOpen(null)} footer={<>
         {/* backlog Device Integration Logs · 03: this device's own timeline (every event that points at it, newest first) */}
         {open.category === 'device' && open.relatedId && f.relatedId !== open.relatedId ? <button className="btn" data-testid="lgx-device-history" onClick={() => { setDraft(''); setF({ category: 'device', severity: 'all', search: undefined, relatedId: open.relatedId ?? undefined }); setOpen(null); }}>{tt('lgx.deviceHistory')}</button> : null}
+        {/* backlog Device Integration Logs · 02: the request's trace — every event under the same correlation id (command, provider response, status inquiry) */}
+        {open.correlationId && f.correlationId !== open.correlationId ? <button className="btn" data-testid="lgx-trace" onClick={() => { setDraft(''); setF({ category: 'all', severity: 'all', search: undefined, relatedId: undefined, correlationId: open.correlationId ?? undefined }); setOpen(null); }}>{tt('lgx.trace')}</button> : null}
         <button className="btn ghost" onClick={() => setOpen(null)}>{tx('pos.close')}</button></>}>
         <dl className="ahx-dl">
           <dt>{tx('pos.severity_2')}</dt><dd>{sevChip(open.severity)}</dd>

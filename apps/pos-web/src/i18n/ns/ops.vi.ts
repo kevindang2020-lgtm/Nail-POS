@@ -1640,4 +1640,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.catalog.addon_without_base_service.fix": "Thêm dịch vụ chính vào các phiếu đó hoặc bỏ dịch vụ thêm trước khi thanh toán.", // DRAFT — Kevin reviews
   "syschk.catalog.addon_duplicate_charge": "Không phiếu nào tính cùng một dịch vụ thêm hai lần cho cùng một thợ", // DRAFT — Kevin reviews
   "syschk.catalog.addon_duplicate_charge.fix": "Xem lại các phiếu đó; nếu chỉ làm một lần, hãy bỏ dòng thừa (hoặc hoàn tiền nếu đã thanh toán).", // DRAFT — Kevin reviews
+  "lgx.trace": "Chuỗi sự kiện của yêu cầu này", // DRAFT — Kevin reviews
+  "lgx.traceOnly": "Chỉ một chuỗi sự kiện", // DRAFT — Kevin reviews
+  "lgx.traceOnlyClear": "Hiện lại mọi yêu cầu", // DRAFT — Kevin reviews
 };

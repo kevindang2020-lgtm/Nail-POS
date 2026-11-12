@@ -32,7 +32,7 @@ export class LogsService implements LogSink {
     } catch { /* logging must never break the caller */ }
   }
 
-  async query(ctx: LogsContext, raw: { category?: string; severity?: string; source?: string; search?: string; relatedId?: string; limit?: unknown; from?: string; to?: string; page?: unknown; pageSize?: unknown }): Promise<{ logs: LogEntryView[]; total?: number; page?: number; pageSize?: number; totalPages?: number; summary?: LogSummary; paymentEnvironment?: LogPaymentEnvironment }> {
+  async query(ctx: LogsContext, raw: { category?: string; severity?: string; source?: string; search?: string; relatedId?: string; correlationId?: string; limit?: unknown; from?: string; to?: string; page?: unknown; pageSize?: unknown }): Promise<{ logs: LogEntryView[]; total?: number; page?: number; pageSize?: number; totalPages?: number; summary?: LogSummary; paymentEnvironment?: LogPaymentEnvironment }> {
     if (!ctx?.userId || !ctx?.tenantId) throw new ForbiddenError('Not authenticated');
     if (!hasPermission(ctx as any, 'pos.logs.view')) throw new ForbiddenError('Missing pos.logs.view');
     const f = normalizeFilters(raw);

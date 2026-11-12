@@ -1641,4 +1641,7 @@ export const OPS_EN = {
   "syschk.catalog.addon_without_base_service.fix": "Add the service to those tickets or remove the add-on before checkout.",
   "syschk.catalog.addon_duplicate_charge": "No ticket charges the same add-on twice for the same technician",
   "syschk.catalog.addon_duplicate_charge.fix": "Review those tickets; if it was done once, remove the extra line (or refund it if already paid).",
+  "lgx.trace": "This request’s trace",
+  "lgx.traceOnly": "One trace only",
+  "lgx.traceOnlyClear": "Show every request again",
 };
