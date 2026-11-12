@@ -22,7 +22,11 @@ const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, wi
 const URL_KEYS = ['status', 'flag', 'dateField', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
 const STATES = ['active', 'rebooking_soon', 'due_for_return', 'inactive', 'long_term_inactive', 'insufficient_history'];
 const STATUS_FILTERS = ['active', 'rebooking_soon', 'due_for_return', 'inactive_all', 'inactive', 'long_term_inactive', 'insufficient_history', 'never_served', 'not_scanned'];
-const FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate'];
+// Kevin, Nov 12 2026 (decision 2): churn belongs to Customer Retention — no churn flag or filter of this page's own; the card
+// shows Retention's at-risk count (summary.retention) and each row Retention's segment (row.retention), both linking there.
+const FLAGS = ['rebooking', 'upcoming', 'duplicate'];
+const RETENTION_ROUTE = '/tenant/customers/retention';
+const RET_TONE: Record<string, string> = { at_risk: 'bad', approaching: 'warn', active: 'ok', never_visited: '' };
 const DATE_FIELDS = ['last_visit', 'created', 'next_appointment', 'profile_updated'];
 const PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'last_90', 'year'] as const;
 const SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since'];
@@ -40,7 +44,7 @@ function errText(e: any, fallbackKey: string) {
 export function POSAICustomerProfileOverviewScreen() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
-  const f = useMemo(() => { const o: Record<string, string> = {}; for (const k of URL_KEYS) { const v = sp.get(k); if (v) o[k] = v; } return o; }, [sp]);
+  const f = useMemo(() => { const o: Record<string, string> = {}; for (const k of URL_KEYS) { const v = sp.get(k); if (v && !(k === 'flag' && !FLAGS.includes(v))) o[k] = v; } return o; }, [sp]);   // an old ?flag=churn_watch link is ignored
   const setF = (patch: Record<string, string | null>, keepPage = false) => {
     const next = new URLSearchParams(sp);
     for (const [k, v] of Object.entries(patch)) { if (v) next.set(k, v); else next.delete(k); }
@@ -123,10 +127,11 @@ export function POSAICustomerProfileOverviewScreen() {
         {card('kpi-dup', t('pos.duplicate_candidate_groups'), c?.duplicateGroups, c && c.duplicateGroups == null ? t('cix.dupNotScanned') : t('pos.needs_review'), () => nav('/tenant/ai/customer-profile/duplicates'), 'gold')}
         {card('kpi-active', t('pos.active_customers'), c?.active, c ? t('pos.withupcomingappointment_with_upcoming', { withUpcomingAppointment: String(c.withUpcoming) }) : '', () => setF({ status: 'active', flag: null }))}
         {card('kpi-inactive', t('pos.inactive_customers'), c?.inactive, t('pos.no_recent_completed_visit'), () => setF({ status: 'inactive_all', flag: null }))}
-        {card('kpi-churn', t('pos.churn_watch_coarse'), c?.churnWatch, t('pos.review_shortlist_not_a_verdict'), () => setF({ flag: 'churn_watch', status: null }))}
+        {card('kpi-churn', t('cpx.kpi.retAtRisk'), sum ? (sum.retention ? sum.retention.atRisk : null) : undefined, t('cix.ret.sub'), () => nav(RETENTION_ROUTE), sum?.retention?.atRisk ? 'warn' : undefined)}
         {card('kpi-rebook', t('pos.rebooking_opportunities'), c?.rebooking, t('pos.no_future_appointment'), () => setF({ flag: 'rebooking', status: null }))}
         {card('kpi-scanned', t('pos.customers_scanned'), c?.scanned, t('pos.full_directory'), () => setWhy(true))}
       </div>
+      <div className="sub" data-testid="cix-retention-source">{t('cpx.ret.source')} <button type="button" className="aic-link" data-testid="cix-retention-link" onClick={() => nav(RETENTION_ROUTE)}>{t('cpx.ret.open')}</button></div>
       <p className="sub" data-testid="cix-updated">{sum?.scan ? t('cix.updated', { at: when(sum.scan.finishedAt, true), ms: fmtNumber(sum.scan.durationMs ?? 0) }) : !loading ? t('cix.noScanYet') : ''}
         {b ? <> · <button className="link" data-testid="cix-why" onClick={() => setWhy(true)}>{t('cix.whyNumbers')}</button></> : null}</p>
 
@@ -178,7 +183,7 @@ export function POSAICustomerProfileOverviewScreen() {
                 <td className="nowrap">{r.nextAppointmentDate ?? t('cix.none')}</td>
                 <td>{r.lastTechnician ? t('cix.lastTech', { n: r.lastTechnician }) : '—'}{r.preferredTechnician ? <div className="sub">{t('cix.prefTech', { n: r.preferredTechnician })}</div> : null}</td>
                 <td>{!r.scanned ? <span className="chip">{t('cix.status.not_scanned')}</span> : <span className={'chip ' + (STATUS_TONE[r.status] ?? '')}>{t(r.neverServed ? 'cix.status.never_served' : 'cix.status.' + r.status)}</span>}
-                  {r.churnWatch ? <span className="chip warn">{t('cix.flag.churn_watch')}</span> : null}{r.rebooking ? <span className="chip">{t('cix.flag.rebooking')}</span> : null}{r.duplicate ? <span className="chip warn">{t('cix.flag.duplicate')}</span> : null}</td>
+                  {r.retention ? <button type="button" className={'chip ' + (RET_TONE[r.retention.segment] ?? '')} data-testid="cix-retention" title={t('cpx.ret.open')} onClick={(e) => { e.stopPropagation(); nav(RETENTION_ROUTE); }}>{t('cpx.ret.seg.' + r.retention.segment)}</button> : null}{r.rebooking ? <span className="chip">{t('cix.flag.rebooking')}</span> : null}{r.duplicate ? <span className="chip warn">{t('cix.flag.duplicate')}</span> : null}</td>
                 <td>{r.loyalty ? t('cix.points', { n: fmtNumber(r.loyalty.points) }) : '—'}{r.member ? <span className="chip ok">{t('cix.member')}</span> : null}</td>
                 <td><button className="btn ghost sm" data-testid="cix-view" onClick={(e) => { e.stopPropagation(); setOpenId(r.id); }}>{t('cix.view')}</button></td>
               </tr>))}</tbody></table></div>}
@@ -239,7 +244,6 @@ function CustomerOverlay({ id, onClose, nav }: { id: string; onClose: () => void
           <dt>{t('cix.ov.interval')}</dt><dd>{k.typicalIntervalDays ? t('cix.ov.days', { n: k.typicalIntervalDays }) : t('cix.ov.noCadence')}</dd>
           <dt>{t('cix.ov.next')}</dt><dd>{k.nextAppointmentDate ?? t('cix.none')}</dd>
           <dt>{t('cix.ov.evidence')}</dt><dd data-testid="ov-evidence">{k.evidence.length ? k.evidence.join(' · ') : '—'}</dd>
-          {k.churnWatch ? <><dt>{t('cix.flag.churn_watch')}</dt><dd>{t('pos.review_shortlist_not_a_verdict')}</dd></> : null}
           {k.rebooking ? <><dt>{t('cix.flag.rebooking')}</dt><dd>{k.rebookingReason ?? ''}</dd></> : null}
           <dt>{t('cix.ov.computed')}</dt><dd>{when(k.computedAt, true)}</dd>
         </dl>}

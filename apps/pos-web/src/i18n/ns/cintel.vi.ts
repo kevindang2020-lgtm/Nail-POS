@@ -184,5 +184,6 @@ export const CINTEL_VI: Record<string, string> = {
   "cix.health.d.phone_normalizer.FAILED": "Bộ chuẩn hóa số điện thoại lỗi trên số mẫu. Hãy báo lại.",
   "cix.health.k.indexes": "Chỉ mục",
   "cix.health.d.indexes.PASSED": "Đã có chỉ mục phân loại và lượt khách.",
-  "cix.health.d.indexes.WARNING": "Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất."
+  "cix.health.d.indexes.WARNING": "Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất.",
+  "cix.ret.sub": "Lấy từ Giữ chân khách — mở để xử lý", // DRAFT — Kevin reviews
 };
