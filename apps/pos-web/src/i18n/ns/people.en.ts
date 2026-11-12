@@ -862,4 +862,8 @@ export const PEOPLE_EN = {
   'people.loyalty.why.noNext': 'No higher configured tier has a points threshold.',
   'people.loyalty.why.lower': 'By points alone this member fits {tier} ({min}).',
   'people.loyalty.why.manual': 'Thresholds are a guide: a member changes tier only when someone with permission moves them.',
+  'people.loyalty.health.redemption_matches_points_debit': 'Each reward redemption took exactly its cost in points, once',
+  'people.loyalty.health.points_debit_without_redemption': 'Every redemption points debit belongs to a redemption',
+  'people.loyalty.health.void_restored_once': 'Each voided redemption gave its points back exactly once',
+  'people.loyalty.health.used_redemption_on_ticket': 'Each applied or used reward code is on a ticket of this salon',
 };

@@ -93,4 +93,64 @@ describe('shared read-only Check … System', () => {
     for (const d of SYSTEM_CHECK_DOMAINS) await svc.run(d, { tenantId: T });
     expect((await q(sql`select (select count(*) from expenses) + (select count(*) from deals) + (select count(*) from technicians) as n`)).rows[0].n).toBe(before);
   });
+  it('extras: Suppliers & Purchasing — duplicate / contactless suppliers, PO totals, status vs receiving, received without stock; never the other salon', async () => {
+    const V1 = id(61), V2 = id(62), V3 = id(63), VX = id(64), PR = id(65), PRX = id(66);
+    await q(sql`insert into inventory_vendors (id, tenant_id, name, phone, email, active) values (${V1}, ${T}, 'Nail Supply Co', '5550001', null, true), (${V2}, ${T}, ' nail supply co', null, 'a@b.co', true),
+      (${V3}, ${T}, 'Quiet Vendor', null, null, false), (${VX}, ${X}, 'Nail Supply Co', null, null, true), (${id(67)}, ${X}, 'nail supply co', null, null, true)`);
+    await q(sql`insert into inventory_products (id, tenant_id, name) values (${PR}, ${T}, 'Gel Base'), (${PRX}, ${X}, 'Gel Base')`);
+    // P1: totals do not add up (2 × 500 = 1000, stored 900). P2: open, with an inactive supplier, past its expected date.
+    // P3: "received" but a line is short, and no stock movement. P4: sent with no supplier. PX: the other salon's identical mess.
+    await q(sql`insert into purchase_orders (id, tenant_id, branch_id, vendor_id, status, expected_date, subtotal_cents, shipping_cents, tax_cents, total_cents) values
+      (${id(71)}, ${T}, ${B1}, ${V1}, 'ordered', current_date + 5, 900, 0, 0, 900),
+      (${id(72)}, ${T}, ${B1}, ${V3}, 'ordered', current_date - 3, 0, 0, 0, 0),
+      (${id(73)}, ${T}, ${B2}, ${V1}, 'received', null, 1000, 0, 0, 1000),
+      (${id(74)}, ${T}, ${B2}, null, 'approved', null, 0, 0, 0, 0),
+      (${id(75)}, ${X}, ${BX}, null, 'received', current_date - 3, 900, 0, 0, 900)`);
+    await q(sql`insert into purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, quantity_received, unit_cost_cents) values
+      (${T}, ${id(71)}, ${PR}, 2, 0, 500), (${T}, ${id(73)}, ${PR}, 2, 1, 500), (${X}, ${id(75)}, ${PRX}, 2, 1, 500)`);
+    const r = await svc.run('suppliers', { tenantId: T });
+    expect(count(r, 'duplicate_supplier_names')).toMatchObject({ state: 'WARNING', count: 1 });   // "Nail Supply Co" / " nail supply co"; the inactive one is not counted
+    expect(count(r, 'supplier_no_contact')).toMatchObject({ state: 'READY', count: 0 });          // the contactless vendor is inactive
+    expect(count(r, 'po_missing_supplier')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'open_po_inactive_supplier')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'po_total_mismatch')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'po_past_expected')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'po_status_vs_received')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'received_without_movement')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'stale_drafts')).toMatchObject({ state: 'READY', count: 0 });
+    // the branch scope: B1 has the totals and late order, not B2's receiving problem
+    const b1 = await svc.run('suppliers', { tenantId: T, branchId: B1 });
+    expect(count(b1, 'received_without_movement')).toMatchObject({ state: 'READY', count: 0 });
+    expect(count(b1, 'po_total_mismatch').count).toBe(1);
+    // a stock movement for the received order clears it
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, related_type, related_id) values (${T}, ${B2}, ${PR}, 'receive', 1, 'purchase_order', ${id(73)})`);
+    expect(count(await svc.run('suppliers', { tenantId: T }), 'received_without_movement')).toMatchObject({ state: 'READY', count: 0 });
+  });
+  it('extras: Inventory — usage without a stock movement, a technician of another salon, used after recorded, double usage movements, over-received stock', async () => {
+    const PR = id(81), TE = id(82), TEX = id(83), PO = id(84), U1 = id(85), U2 = id(86), U3 = id(87), UX = id(88);
+    await q(sql`insert into inventory_products (id, tenant_id, name) values (${PR}, ${T}, 'Top Coat')`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values (${TE}, ${T}, ${B1}, 'U', 'Ser', 'U Ser'), (${TEX}, ${X}, ${BX}, 'O', 'Ther', 'O Ther')`);
+    const ev = (u: string, tenant: string, branch: string, tech: string, occurred: any) => q(sql`insert into product_usage_events (id, tenant_id, branch_id, product_id, technician_id, quantity_hundredths, unit, occurred_at, source,
+      stock_before_hundredths, stock_after_hundredths, bottles_before, bottles_after) values (${u}, ${tenant}, ${branch}, ${PR}, ${tech}, 100, 'bottle', ${occurred}, 'front_desk', 500, 400, 5, 4)`);
+    await ev(U1, T, B1, TE, sql`now()`);                         // fine: has its movement below
+    await ev(U2, T, B1, TEX, sql`now() + interval '2 days'`);    // another salon's technician, dated after it was recorded, no movement
+    await ev(U3, T, B1, TE, sql`now()`);                         // fine
+    await ev(UX, X, BX, TE, sql`now() + interval '2 days'`);     // the other salon's: never counted
+    const mv = (rt: string, rid: string, type: string, change: number) => q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, related_type, related_id)
+      values (${T}, ${B1}, ${PR}, ${type}, ${change}, ${rt}, ${rid})`);
+    await mv('product_usage_event', U1, 'technician_usage', -1); await mv('product_usage_event', U3, 'technician_usage', -1);
+    // one service line's recipe took the product off twice (a usage event cannot: uq_inv_movements_usage_source)
+    await mv('ticket_line', id(89), 'service_usage', -1); await mv('ticket_line', id(89), 'service_usage', -1);
+    // a PO line that received 2 cases of 6 = 12 bottles, but 18 went on the shelf
+    await q(sql`insert into purchase_orders (id, tenant_id, branch_id, status, subtotal_cents, total_cents) values (${PO}, ${T}, ${B1}, 'received', 0, 0)`);
+    await q(sql`insert into purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, quantity_received, unit_cost_cents, units_per_purchase_unit) values (${T}, ${PO}, ${PR}, 2, 2, 0, 6)`);
+    await mv('purchase_order', PO, 'purchase_received', 12); await mv('purchase_order', PO, 'purchase_received', 6);
+    const r = await svc.run('inventory', { tenantId: T });
+    expect(count(r, 'usage_without_movement')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'usage_technician_not_in_salon')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'usage_used_after_recorded')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'duplicate_usage_movement')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'received_over_ordered_lines')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(await svc.run('inventory', { tenantId: T, branchId: B2 }), 'duplicate_usage_movement')).toMatchObject({ state: 'READY', count: 0 });
+  });
 });

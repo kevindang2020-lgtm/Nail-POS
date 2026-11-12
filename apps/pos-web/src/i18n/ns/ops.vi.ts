@@ -1537,4 +1537,41 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.role.checkout": "Chạy thanh toán và việc quầy lễ tân tại trạm của nó", // DRAFT — Kevin reviews
   "lgx.role.display": "Cho khách xem tổng tiền và lời mời tip khi thanh toán", // DRAFT — Kevin reviews
   "lgx.role.checkin": "Cho khách tự check-in", // DRAFT — Kevin reviews
+  "locx.next": "Bước tiếp theo", // DRAFT — Kevin reviews
+  "locx.step.set_pin": "Đặt ghim bản đồ", // DRAFT — Kevin reviews
+  "locx.step.confirm_pin": "Xác nhận ghim bản đồ", // DRAFT — Kevin reviews
+  "locx.step.add_address": "Thêm địa chỉ công khai", // DRAFT — Kevin reviews
+  "locx.step.add_contact": "Thêm số điện thoại hoặc email công khai", // DRAFT — Kevin reviews
+  "locx.step.blocked_by_review": "Trạng thái xét duyệt đang chặn việc đăng", // DRAFT — Kevin reviews
+  "locx.step.publish": "Sẵn sàng đăng", // DRAFT — Kevin reviews
+  "locx.step.awaiting_review": "Đã đăng, đang chờ xác minh", // DRAFT — Kevin reviews
+  "syschk.suppliers.title": "Kiểm tra hệ thống nhà cung cấp", // DRAFT — Kevin reviews
+  "syschk.suppliers.duplicate_supplier_names": "Không có hai nhà cung cấp đang hoạt động trùng tên", // DRAFT — Kevin reviews
+  "syschk.suppliers.duplicate_supplier_names.fix": "Gộp hoặc đổi tên các bản trùng, hoặc ngừng một bản.", // DRAFT — Kevin reviews
+  "syschk.suppliers.supplier_no_contact": "Mỗi nhà cung cấp đang hoạt động có số điện thoại, email hoặc người liên hệ", // DRAFT — Kevin reviews
+  "syschk.suppliers.supplier_no_contact.fix": "Thêm số điện thoại, email hoặc người liên hệ cho các nhà cung cấp đó.", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_missing_supplier": "Mỗi đơn đặt hàng đã gửi có nhà cung cấp của tiệm này", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_missing_supplier.fix": "Mở các đơn đó và chọn nhà cung cấp.", // DRAFT — Kevin reviews
+  "syschk.suppliers.open_po_inactive_supplier": "Không có đơn đặt hàng đang mở với nhà cung cấp đã ngừng", // DRAFT — Kevin reviews
+  "syschk.suppliers.open_po_inactive_supplier.fix": "Kích hoạt lại nhà cung cấp hoặc hủy đơn.", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_total_mismatch": "Tổng đơn đặt hàng khớp với các dòng (số lượng × giá vốn, cộng phí vận chuyển và thuế)", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_total_mismatch.fix": "Mở các đơn đó và lưu lại để tính lại tổng.", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_past_expected": "Không có đơn đang mở nào quá ngày giao dự kiến", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_past_expected.fix": "Hỏi nhà cung cấp và cập nhật ngày dự kiến.", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_status_vs_received": "Trạng thái đơn khớp với hàng đã nhận", // DRAFT — Kevin reviews
+  "syschk.suppliers.po_status_vs_received.fix": "Xem lại các đơn đó: đơn đã nhận nhưng thiếu dòng, hoặc đơn chưa gửi mà đã nhận hàng.", // DRAFT — Kevin reviews
+  "syschk.suppliers.received_without_movement": "Mỗi đơn đã nhận đều đưa hàng vào kho (có phiếu xuất nhập kho)", // DRAFT — Kevin reviews
+  "syschk.suppliers.received_without_movement.fix": "Kiểm kê các đơn đó trước khi nhận lại.", // DRAFT — Kevin reviews
+  "syschk.suppliers.stale_drafts": "Không có đơn nháp nào quá 30 ngày", // DRAFT — Kevin reviews
+  "syschk.suppliers.stale_drafts.fix": "Gửi hoặc xóa các đơn nháp đó.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_without_movement": "Mỗi lần dùng sản phẩm đã ghi đều trừ hàng trong kho (có phiếu xuất nhập kho)", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_without_movement.fix": "Kiểm kê các sản phẩm đó và hoàn tác hoặc ghi lại lần dùng.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_technician_not_in_salon": "Mỗi lần dùng sản phẩm đều ghi thợ của tiệm này", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_technician_not_in_salon.fix": "Hoàn tác các lần dùng đó và ghi lại cho đúng thợ.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_used_after_recorded": "Không có lần dùng nào có giờ dùng sau giờ ghi", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_used_after_recorded.fix": "Kiểm tra giờ dùng của các lần đó; Người dùng gần nhất dựa theo giờ này.", // DRAFT — Kevin reviews
+  "syschk.inventory.duplicate_usage_movement": "Không có lần dùng hay dịch vụ nào trừ kho hai lần", // DRAFT — Kevin reviews
+  "syschk.inventory.duplicate_usage_movement.fix": "Kiểm kê các sản phẩm đó và sửa phiếu bị thừa.", // DRAFT — Kevin reviews
+  "syschk.inventory.received_over_ordered_lines": "Hàng nhận theo đơn đặt hàng khớp với số lượng đã nhận trên các dòng", // DRAFT — Kevin reviews
+  "syschk.inventory.received_over_ordered_lines.fix": "So đơn với kết quả kiểm kê và sửa phần nhận thừa.", // DRAFT — Kevin reviews
 };

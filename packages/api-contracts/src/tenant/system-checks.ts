@@ -2,7 +2,7 @@
 // "One-click … Health / Integrity / Accuracy Checker" on pages that had none). Each check counts problem rows in the salon's
 // own data; nothing is changed. A check that could not run is NOT_TESTED — never a pass.
 export const SYSTEM_CHECK_DOMAINS = ['expenses', 'invoices', 'settlements', 'payments', 'discounts', 'catalog', 'inventory', 'technicians', 'memberships',
-  'service-flow', 'terminals', 'approvals', 'reports'] as const;
+  'service-flow', 'terminals', 'approvals', 'reports', 'suppliers'] as const;
 export type SystemCheckDomain = (typeof SYSTEM_CHECK_DOMAINS)[number];
 export type SystemCheckState = 'READY' | 'WARNING' | 'FAILED' | 'NOT_TESTED';
 export interface SystemCheckItem { key: string; state: SystemCheckState; /** rows with the problem; null when the check could not run */ count: number | null }

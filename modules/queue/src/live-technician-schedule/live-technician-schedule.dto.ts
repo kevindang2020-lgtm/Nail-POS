@@ -40,7 +40,11 @@ export interface LiveTechnicianColumn {
   status: LiveTechStatus; shift?: LiveShift; skills: string[];
   appointments: LiveScheduleAppointment[]; openSlots: LiveScheduleOpenSlot[]; blocks: LiveScheduleBlock[];
   activeTicket?: LiveScheduleActiveTicket; bookedHours: number; utilizationPercent: number;
+  /** Shift-vs-Clock-In (extras): the time clock's state (null = no clock record — unknown, never guessed) and whether the
+   *  shift is a SCHEDULED one (false when the board only shows an open punch as the shift) */
+  clock?: LiveClockState; shiftScheduled?: boolean;
 }
+export type LiveClockState = 'clocked_in' | 'on_break' | 'clocked_out' | null;
 
 export interface LiveTechnicianScheduleKpis {
   workingToday: number; availableNow: number; inService: number; onBreakOrLunch: number; bookedHours: number; utilizationPercent: number;

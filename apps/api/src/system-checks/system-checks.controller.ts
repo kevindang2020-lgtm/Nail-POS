@@ -34,6 +34,9 @@ export class SystemChecksController {
   @RequirePermission('inventory.view') @Get('inventory')
   inventory(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('inventory', ctxOf(req)); }
 
+  @RequirePermission('inventory.view') @Get('suppliers')
+  suppliers(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('suppliers', ctxOf(req)); }
+
   @RequirePermission('pos.technicians.view') @Get('technicians')
   technicians(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('technicians', ctxOf(req)); }
 

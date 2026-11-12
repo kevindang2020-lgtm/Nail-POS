@@ -28,4 +28,16 @@ describe('SystemCheckButton (extras arc, Nov 9 2026)', () => {
     expect(await screen.findByTestId('syschk-expenses-error')).toBeInTheDocument();
     expect(screen.queryByTestId('syschk-expenses-overall')).toBeNull();
   });
+  it('extras: Suppliers & Purchasing has its own check (supplier data, purchase-order integrity, receiving & stock)', async () => {
+    vi.mocked(posSystemChecksApi.run).mockResolvedValue({ domain: 'suppliers', overall: 'FAILED', checkedAt: '2026-11-12T20:00:00Z', branchId: null, checks: [
+      { key: 'po_total_mismatch', state: 'FAILED', count: 1 }, { key: 'duplicate_supplier_names', state: 'WARNING', count: 2 }, { key: 'received_without_movement', state: 'READY', count: 0 },
+    ] });
+    render(<SystemCheckButton domain="suppliers" />);
+    fireEvent.click(screen.getByTestId('syschk-suppliers'));
+    expect(posSystemChecksApi.run).toHaveBeenCalledWith('suppliers');
+    const rows = await screen.findAllByTestId('syschk-suppliers-row');
+    expect(rows[0]).toHaveTextContent('Purchase order totals match their lines');
+    expect(rows[1]).toHaveTextContent('No two active suppliers share a name');
+    expect(rows[1]).toHaveTextContent('2 found');
+  });
 });

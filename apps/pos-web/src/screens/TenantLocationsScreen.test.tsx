@@ -41,4 +41,10 @@ describe('TenantLocationsScreen — Nov 9 2026 guide', () => {
     fireEvent.click(await screen.findByText('Unpublish'));
     expect(await screen.findByText('Nope')).toBeInTheDocument();
   });
+  it('extras: Next actions — a draft lists what the publish check still needs; a verified published location shows none', async () => {
+    vi.mocked(posLocationsApi.page).mockResolvedValue({ locations: [loc('d', 'Draft'), { ...loc('p', 'Pub'), latitude: 29.7, longitude: -95.3, map_pin_confirmed_at: '2026-01-01', phone: '+17135550100', is_public: true, verification_status: 'verified' }], summary, page: 1, pageSize: 10, total: 2, totalPages: 1 } as never);
+    render(<TenantLocationsScreen />);
+    expect(await screen.findByTestId('loc-next-d')).toHaveTextContent('Next steps: Set the map pin · Add a public phone or email');
+    expect(screen.queryByTestId('loc-next-p')).toBeNull();
+  });
 });

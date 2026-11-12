@@ -145,4 +145,26 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     expect(await screen.findByTestId('so-reload')).toBeInTheDocument();
     expect(screen.getByTestId('so-start')).toHaveValue('10:00');   // the typed edit is kept
   });
+  it('extras: Shift-vs-Clock-In — the selected technician shows the planned shift AND the clock, each with its true label', async () => {
+    live.state.mockResolvedValue({ ...state, schedule: { ...state.schedule, technicians: [{ ...COL, clock: 'clocked_out', shiftScheduled: true }] } });
+    mount(); await openLinh();
+    expect(await screen.findByTestId('presence')).toHaveTextContent('Scheduled · not clocked in');   // 10:00, the 9–5 shift has started
+  });
+  it('extras: no clock record reads "unknown", never "clocked out"', async () => {
+    mount(); await openLinh();
+    expect(await screen.findByTestId('presence')).toHaveTextContent('Clock status unknown');
+  });
+  it('extras: one-click Schedule Health — read-only checks over the board; a double booking is listed with its times', async () => {
+    const two = [...COL.appointments, { appointmentId: 'a2', customerName: 'Lan', serviceSummary: 'Pedicure', startTime: '14:30', endTime: '15:30', status: 'confirmed', source: 'pos' }];
+    live.state.mockResolvedValue({ ...state, schedule: { ...state.schedule, technicians: [{ ...COL, appointments: two }] } });
+    mount(); await screen.findByTestId('live-schedule-pager');
+    fireEvent.click(screen.getByTestId('open-health'));
+    expect(await screen.findByTestId('health-conflicts')).toHaveTextContent('Check');
+    expect(screen.getByTestId('health-conflicts')).toHaveTextContent('Trần Mỹ Linh · 14:00–15:00 × 14:30–15:30');
+    expect(screen.getByTestId('health-outside_shift')).toHaveTextContent('Pass');
+    expect(screen.getByTestId('health-kpi_wiring')).toHaveTextContent('1 / 2');   // KPI says 1 appointment, the board has 2
+    for (const f of Object.values(live)) if (f !== live.state && f !== live.detail) expect(f).not.toHaveBeenCalled();   // nothing was written
+    fireEvent.click(screen.getByTestId('health-close'));
+    expect(screen.queryByTestId('health')).toBeNull();
+  });
 });

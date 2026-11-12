@@ -36,6 +36,7 @@ import { TechTimeline, FullDayOverlay, ConflictPanel, nf, hm12, addDay, apptStat
 import { QualifiedFinder, pageOf, whenTime } from './technicianScreenParts';
 import { fmtYmd } from '../i18n/format';
 import { DateShiftEditor } from './dateShiftEditor';
+import { presenceBadge, scheduleHealth, type HealthCheck } from './liveScheduleChecks';
 
 /** 200-technician §2: technician rows a page */
 export const LS_LANE_PAGE_SIZE = 12;
@@ -53,7 +54,7 @@ export function POSLiveTechnicianScheduleScreen() {
   const [status, setStatus] = useState(''); const [skill, setSkill] = useState('');
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 250);
   const [lanePage, setLanePage] = useState(1);
-  const [tick, setTick] = useState(0); const [updated, setUpdated] = useState(clockNow());
+  const [tick, setTick] = useState(0); const [updated, setUpdated] = useState(clockNow()); const [readAt, setReadAt] = useState<number | null>(null); const [health, setHealth] = useState<HealthCheck[] | null>(null);
   const reload = useCallback(() => { setTick((n) => n + 1); }, []);
   const [sel, setSel] = useState<string | null>(null); const [fullDay, setFullDay] = useState<{ id: string; date: string } | null>(null); const [finder, setFinder] = useState(false);
   const [aPeriod, setAPeriod] = useState<PeriodState>({ preset: 'week' }); const [aKind, setAKind] = useState('all'); const [aSearch, setASearch] = useState(''); const aq = useDebounced(aSearch.trim(), 300); const [ap, setAp] = useState(1);
@@ -67,7 +68,7 @@ export function POSLiveTechnicianScheduleScreen() {
   const paging = { lanePage, lanePageSize: LS_LANE_PAGE_SIZE, laneSearch: lane || undefined, roster: 'none' as const };
   const st = useLoad(() => (day ? api.state({ date: day, view: 'day', status, skill, ...paging }) : Promise.resolve(null)), [day, status, skill, lanePage, lane, tick]);
   // "Updated" is the time the board was last READ successfully (not the time Refresh was pressed); a failed read keeps it
-  useEffect(() => { if (st.data) setUpdated(clockNow()); }, [st.data]);
+  useEffect(() => { if (st.data) { setUpdated(clockNow()); setReadAt(Date.now()); } }, [st.data]);
   const wk = useLoad(() => (view === 'week' && day ? api.week({ date: day, status, skill, ...paging }) : Promise.resolve(null)), [view, day, status, skill, lanePage, lane, tick]);
   const found = useLoad(() => (q.length >= 2 && !q.startsWith('#') ? posLiveScheduleScreenApi.search({ q }) : Promise.resolve(null)), [q]);
   const act = useLoad(() => posLiveScheduleScreenApi.activity({ ...periodQuery(aPeriod), kind: aKind, q: aq || undefined, page: ap, pageSize: 8 }), [JSON.stringify(aPeriod), aKind, aq, ap, tick]);
@@ -79,6 +80,10 @@ export function POSLiveTechnicianScheduleScreen() {
   const selCol = cols.find((c) => c.technicianId === sel) ?? null;
   const openDay = (id: string, d?: string) => { setSel(id); setFullDay({ id, date: d ?? day ?? today }); };
   const na = (v: number | null | undefined) => (v == null ? '—' : nf(v));
+  // One-click Schedule Health (extras #02): read-only checks over the board already read — nothing is changed
+  const runHealth = () => setHealth(scheduleHealth({ cols, live, ageMinutes: readAt == null ? null : Math.floor((Date.now() - readAt) / 60000), kpis: k ?? null,
+    wholeRoster: !status && !skill && !lane && (s?.schedule?.lanes?.totalPages ?? 1) <= 1 }));
+  const presence = selCol ? presenceBadge(selCol, live, kp.data?.nowMinute ?? null) : null;
 
   if (isForbidden(kp.error)) return <div className="work mos lts" data-testid="live-schedule-screen"><h1>{tx('pos.live_technician_schedule')}</h1><StateBlock error={kp.error} onRetry={kp.reload} /></div>;
   return (
@@ -88,6 +93,7 @@ export function POSLiveTechnicianScheduleScreen() {
         <div className="fk-head-actions">
           <span className="fk-hint" data-testid="updated"><span className="ls-live" aria-hidden="true" />{tx('ls.updated', { t: hm12(updated) })}</span>
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
+          <button type="button" className="fk-btn ghost" onClick={runHealth} disabled={!s} data-testid="open-health">{tx('ls.health')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setFinder(true)} data-testid="open-finder">{tx('tm.findNext')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/booking')} data-testid="open-booking">{tx('ls.openBooking')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/tech-queue')} data-testid="open-queue">{tx('ls.techQueue')}</button>
@@ -137,6 +143,15 @@ export function POSLiveTechnicianScheduleScreen() {
       </div>
       {k && !live ? <div className="fk-note info" data-testid="not-live"><span>{tx(kp.data.when === 'past' ? 'ls.pastDay' : 'ls.futureDay', { d: day ?? '' })}</span></div> : null}
 
+      {health ? <FitPanel testId="health" title={tx('ls.health')} actions={<button type="button" className="fk-link" onClick={() => setHealth(null)} data-testid="health-close">{tx('ls.h.close')}</button>}>
+        <p className="fk-hint">{tx('ls.healthSub')}</p>
+        <ul className="fk-list dense">{health.map((h) => <li key={h.code} className="fk-li" data-testid={'health-' + h.code}>
+          <span className="fk-li-t"><span className={'fk-chip ' + (h.state === 'pass' ? 'ok' : h.state === 'warn' ? 'warn' : 'mut')}>{tx('ls.hs.' + h.state)}</span> {tx('ls.h.' + h.code)}
+            {h.reason ? <span className="fk-li-s">{tx('ls.hr.' + h.reason)}</span> : null}
+            {h.code === 'stale' && h.state === 'warn' ? <span className="fk-li-s">{tx('ls.h.staleAge', { n: h.findings[0]?.detail ?? '—' })}</span>
+              : h.findings.slice(0, 8).map((f, i) => <span key={i} className="fk-li-s">{f.technician ? `${f.technician} · ` : ''}{f.detail}</span>)}</span></li>)}</ul>
+      </FitPanel> : null}
+
       <FitPanel testId="board" title={<>{tx('tm.board')} · {day ? dayLabel(day) : ''}</>}>
         {view === 'day' ? (st.error ? <StateBlock error={st.error} onRetry={st.reload} /> : !s ? <div className="fk-loading">{tx('pos.loading')}</div>
           : cols.length === 0 ? <Empty title={tx('pos.no_technicians_scheduled_today')}><button type="button" className="fk-btn" onClick={() => nav('/technicians')}>{tx('pos.add_technician_create_shift')}</button></Empty>
@@ -152,6 +167,7 @@ export function POSLiveTechnicianScheduleScreen() {
           {!selCol ? <p className="fk-hint" data-testid="select-prompt">{tx('pos.select_a_technician_to_see_their_1ja8')}</p> : <div data-testid="selected-card">
             <div className="tm-card-h"><ProfileAvatarWithPreview name={selCol.fullName} url={selCol.avatarUrl} size={40} type="technician" /><span><b>{selCol.fullName}</b><span className={'fk-chip ' + liveTone(selCol.status)}>{liveStatus(selCol.status)}</span></span></div>
             <dl className="fk-dl mo-dl">
+              {presence ? <><dt>{tx('ls.presence')}</dt><dd><span className={'fk-chip ' + presence.tone} data-testid="presence">{tx('ls.pr.' + presence.code)}</span></dd></> : null}
               <dt>{tx('tm.shift')}</dt><dd>{selCol.shift ? `${hm12(selCol.shift.startTime)} – ${hm12(selCol.shift.endTime)}` : tx('tm.noShift')}</dd>
               <dt>{tx('tm.next')}</dt><dd>{(() => { const n = (selCol.appointments ?? []).find((a: any) => !['cancelled', 'no_show', 'completed'].includes(a.status)); return n ? `${hm12(n.startTime)} · ${n.serviceSummary ?? ''}` : tx('tm.none'); })()}</dd>
               <dt>{tx('tm.nextOpen')}</dt><dd>{selCol.openSlots?.[0] ? `${hm12(selCol.openSlots[0].startTime)} – ${hm12(selCol.openSlots[0].endTime)}` : tx('tm.none')}</dd>

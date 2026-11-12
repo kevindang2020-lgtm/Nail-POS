@@ -307,6 +307,11 @@ export class SettlementsScreenRepository {
     const cfg = (await sql<any>`select processor, status, configured_at from tenant_payment_config where tenant_id = ${T} limit 1`.execute(this.db)).rows[0];
     const last = (await sql<any>`select max(created_at) as last_at, count(*)::int as n from payment_settlements where tenant_id = ${T}`.execute(this.db)).rows[0] || {};
     const lastEvent = (await sql<any>`select max(created_at) as at from payment_gateway_events where tenant_id = ${T}`.execute(this.db)).rows[0] || {};
+    // Provider Sync Status (extras #07): the processor's own delivery problems over the last 7 days — events that failed
+    // signature checks or were recorded but never processed — counted per processor, never turned into "failed payments"
+    const errs = (await sql<any>`select processor_type, count(*) filter (where not signature_valid)::int as bad_signature,
+        count(*) filter (where signature_valid and processed_at is null)::int as unprocessed, max(created_at) filter (where processed_at is not null) as last_ok
+      from payment_gateway_events where tenant_id = ${T} and created_at > now() - interval '7 days' group by processor_type order by processor_type`.execute(this.db)).rows;
     // Settlements guide (Nov 4 2026): a connected feed that has sent nothing for 3 days is STALE — said to the owner, never shown as current
     const newest = Math.max(last.last_at ? new Date(last.last_at).getTime() : 0, lastEvent.at ? new Date(lastEvent.at).getTime() : 0);
     const state = !cfg ? 'not_configured' : String(cfg.status) !== 'active' ? 'inactive' : N(last.n) === 0 ? 'awaiting_first_settlement'
@@ -314,6 +319,7 @@ export class SettlementsScreenRepository {
     return {
       state: state as 'not_configured' | 'inactive' | 'awaiting_first_settlement' | 'stale' | 'connected', staleAfterHours: STALE_FEED_MS / 3_600_000, processor: cfg?.processor ?? null,
       lastSettlementReceivedAt: iso(last.last_at), lastProviderEventAt: iso(lastEvent.at), ingestion: 'processor_webhook' as const,
+      providerEvents7d: errs.map((e: any) => ({ processor: String(e.processor_type), badSignature: N(e.bad_signature), unprocessed: N(e.unprocessed), lastProcessedAt: iso(e.last_ok) })),
       // what the processor feed does NOT carry today (spec §14 boundary — listed, never invented)
       notSupplied: ['fee_components', 'separately_billed_fees', 'expected_payout_date', 'refund_netting_batch', 'reserves'],
     };

@@ -206,6 +206,26 @@ export class LoyaltyBonusService {
     const stale = (await sql<Row>`SELECT id FROM tenant_approval_requests WHERE tenant_id = ${T}::uuid AND kind = 'loyalty_bonus' AND status = 'pending' AND expires_at <= now()`.execute(db)).rows;
     checks.push({ key: 'pending_past_deadline', result: stale.length ? 'warning' : 'passed', affected: stale.map((r) => String(r.id)),
       detail: stale.length ? `${stale.length} request(s) passed their decision deadline (shown as expired; nothing moved)` : 'No request is waiting past its deadline' });
+    // extras (Loyalty #04 / #07): redemption reconciliation — every reward redemption against its points debit, every void
+    // against its single restore, every used code against a ticket of this salon; and points debits with no redemption.
+    const rd = (await sql<Row>`SELECT r.id FROM loyalty_redemptions r WHERE r.tenant_id = ${T}::uuid AND NOT (
+        (SELECT count(*) FROM loyalty_ledger l WHERE l.tenant_id = r.tenant_id AND l.source_table = 'loyalty_redemptions' AND l.source_id::text = r.id::text AND l.entry_type = 'redeem') = 1
+        AND coalesce((SELECT sum(l.delta) FROM loyalty_ledger l WHERE l.tenant_id = r.tenant_id AND l.source_table = 'loyalty_redemptions' AND l.source_id::text = r.id::text AND l.entry_type = 'redeem'), 0) = -r.points_spent)
+      ORDER BY r.created_at DESC LIMIT 50`.execute(db)).rows;
+    checks.push({ key: 'redemption_matches_points_debit', result: rd.length ? 'failed' : 'passed', affected: rd.map((r) => String(r.id)),
+      detail: rd.length ? `${rd.length} redemption(s) without exactly one points debit of the reward's cost` : 'Every redemption has exactly one points debit of its cost' });
+    const orphanDebit = (await sql<Row>`SELECT l.id FROM loyalty_ledger l WHERE l.tenant_id = ${T}::uuid AND l.source_table = 'loyalty_redemptions'
+        AND NOT EXISTS (SELECT 1 FROM loyalty_redemptions r WHERE r.tenant_id = l.tenant_id AND r.id::text = l.source_id::text) ORDER BY l.created_at DESC LIMIT 50`.execute(db)).rows;
+    checks.push({ key: 'points_debit_without_redemption', result: orphanDebit.length ? 'failed' : 'passed', affected: orphanDebit.map((r) => String(r.id)),
+      detail: orphanDebit.length ? `${orphanDebit.length} points debit(s) point at a redemption that does not exist` : 'Every redemption debit belongs to a redemption' });
+    const voids = (await sql<Row>`SELECT r.id FROM loyalty_redemptions r WHERE r.tenant_id = ${T}::uuid AND r.status = 'void' AND coalesce((SELECT sum(l.delta) FROM loyalty_ledger l
+        WHERE l.tenant_id = r.tenant_id AND l.source_table = 'loyalty_redemption_voids' AND l.source_id::text = r.id::text), 0) <> r.points_spent ORDER BY r.created_at DESC LIMIT 50`.execute(db)).rows;
+    checks.push({ key: 'void_restored_once', result: voids.length ? 'failed' : 'passed', affected: voids.map((r) => String(r.id)),
+      detail: voids.length ? `${voids.length} voided redemption(s) whose points were not given back exactly once` : 'Every voided redemption gave its points back once' });
+    const used = (await sql<Row>`SELECT r.id FROM loyalty_redemptions r WHERE r.tenant_id = ${T}::uuid AND r.status IN ('applied', 'used')
+        AND (r.ticket_id IS NULL OR NOT EXISTS (SELECT 1 FROM tickets t WHERE t.tenant_id = r.tenant_id AND t.id = r.ticket_id)) ORDER BY r.created_at DESC LIMIT 50`.execute(db)).rows;
+    checks.push({ key: 'used_redemption_on_ticket', result: used.length ? 'warning' : 'passed', affected: used.map((r) => String(r.id)),
+      detail: used.length ? `${used.length} applied / used code(s) without a ticket of this salon` : 'Every applied or used code is on a ticket of this salon' });
     return { checkedAt: new Date().toISOString(), checks };
   }
 }

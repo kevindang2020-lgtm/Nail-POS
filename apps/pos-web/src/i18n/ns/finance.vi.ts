@@ -405,4 +405,11 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.rule.replaces": "Thay thế quy tắc hiện tại của nhà cung cấp này ({c}).", // DRAFT — Kevin reviews
   "finance.rule.noPerm": "Bạn có thể xem trước, nhưng cần quyền danh mục để lưu quy tắc.", // DRAFT — Kevin reviews
   "finance.rule.open": "Quy tắc cho nhà cung cấp này", // DRAFT — Kevin reviews
+  "finance.st.sync.title": "Đồng bộ nhà xử lý", // DRAFT — Kevin reviews
+  "finance.st.sync.lastBatch": "Lô gần nhất nhận lúc {t}", // DRAFT — Kevin reviews
+  "finance.st.sync.lastEvent": "Sự kiện gần nhất từ nhà xử lý {t}", // DRAFT — Kevin reviews
+  "finance.st.sync.staleAfter": "Coi là cũ sau {h} giờ không có dữ liệu", // DRAFT — Kevin reviews
+  "finance.st.sync.errors": "{p}: {b} sai chữ ký · {u} đã nhận nhưng chưa xử lý (7 ngày qua)", // DRAFT — Kevin reviews
+  "finance.st.sync.noErrors": "Không có sự kiện bị từ chối hay chưa xử lý trong 7 ngày qua", // DRAFT — Kevin reviews
+  "finance.st.sync.noEvents": "Không nhận được sự kiện nào từ nhà xử lý trong 7 ngày qua", // DRAFT — Kevin reviews
 };

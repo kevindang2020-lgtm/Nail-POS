@@ -8,6 +8,7 @@ import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 import { reportError } from './reportsCommon';
 import { SalonLocationMapEditor } from './locations/SalonLocationMapEditor';
+import { locationNextSteps } from './locations/nextSteps';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
@@ -18,6 +19,11 @@ const TOGGLE = (label: string, value: boolean, set: (v: boolean) => void) => (
   <label className="lt"><input type="checkbox" checked={!!value} onChange={(e) => set(e.target.checked)} /><span>{label}</span></label>
 );
 
+/** Next actions (extras #07): the steps the server's publish check still needs — never a fabricated published state */
+function NextSteps({ l, testId }: { l: SalonLocation; testId: string }) {
+  const steps = locationNextSteps(l as any); if (!steps.length) return null;
+  return <div className="lc-sub" data-testid={testId}><b>{tx('locx.next')}:</b> {steps.map((x) => tx('locx.step.' + x)).join(' · ')}</div>;
+}
 function StatusPill({ l }: { l: SalonLocation }) {
   const v = l.verification_status || 'draft';
   const pub = l.is_public === true;
@@ -129,6 +135,7 @@ export function TenantLocationsScreen() {
                     {l.salon_code && <span className="lchip mut">{tx('pos.code')}{' '}{l.salon_code}</span>}
                     <span className={`lchip ${l.is_online_booking_enabled !== false ? 'ok' : 'mut'}`}>{l.is_online_booking_enabled !== false ? tx('pos.online_booking_2') : tx('pos.booking_off')}</span>
                   </div>
+                  <NextSteps l={l} testId={'loc-next-' + l.id} />
                 </div>
                 <div className="lc-actions ">
                   <button className="btn whitespace-nowrap" onClick={() => setEditing(l)}>{tx('pos.edit_map_pin')}</button>
@@ -180,6 +187,7 @@ function LocationEditor({ location, onBack, onSaved }: { location: SalonLocation
           <button className="btn ghost" onClick={onBack}>{tx('pos.all_locations')}</button>
           <h1 style={{ marginTop: 8 }}>{l.public_display_name || l.name}</h1>
           <p className="sub"><StatusPill l={l} /></p>
+          <NextSteps l={l} testId="loc-edit-next" />
         </div>
         <div className="loc-actions flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button className="btn whitespace-nowrap" onClick={save} disabled={saving}>{saving ? tx('pos.saving_2') : tx('pos.save_changes')}</button>

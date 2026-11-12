@@ -93,4 +93,29 @@ export const TEAMLIVESCHEDULE_VI = {
   'ls.hoursSaved': 'Đã lưu giờ làm hằng tuần cho {d}.',
   'ls.hoursRace': 'Giờ làm đã được đổi trên thiết bị khác. Đã tải lại — hãy kiểm tra và lưu lại.',
   'ls.sub': 'Ai đang làm, đang phục vụ, đang nghỉ hay đang rảnh — ca, lịch hẹn và giờ trống trong một ngày.',
+  'ls.presence': 'Có mặt', // DRAFT — Kevin reviews
+  'ls.pr.on_shift_in': 'Trong ca · đã chấm công vào', // DRAFT — Kevin reviews
+  'ls.pr.on_shift_break': 'Trong ca · đang nghỉ', // DRAFT — Kevin reviews
+  'ls.pr.expected_not_in': 'Có lịch · chưa chấm công vào', // DRAFT — Kevin reviews
+  'ls.pr.scheduled_later': 'Ca bắt đầu sau · chưa chấm công', // DRAFT — Kevin reviews
+  'ls.pr.shift_over_out': 'Hết ca · đã chấm công ra', // DRAFT — Kevin reviews
+  'ls.pr.in_no_shift': 'Đã chấm công vào · không có ca theo lịch', // DRAFT — Kevin reviews
+  'ls.pr.off': 'Nghỉ · chưa chấm công', // DRAFT — Kevin reviews
+  'ls.pr.clock_unknown': 'Chưa rõ trạng thái chấm công', // DRAFT — Kevin reviews
+  'ls.health': 'Kiểm tra lịch', // DRAFT — Kevin reviews
+  'ls.healthSub': 'Chỉ kiểm tra bảng đang hiển thị. Không thay đổi, đặt hay dời lịch nào.', // DRAFT — Kevin reviews
+  'ls.h.conflicts': 'Giờ bị đặt trùng', // DRAFT — Kevin reviews
+  'ls.h.outside_shift': 'Lịch hẹn ngoài ca', // DRAFT — Kevin reviews
+  'ls.h.no_shift': 'Lịch hẹn không có ca theo lịch', // DRAFT — Kevin reviews
+  'ls.h.blocked_over_appt': 'Giờ khóa trùng lịch hẹn', // DRAFT — Kevin reviews
+  'ls.h.stale': 'Độ mới của bảng', // DRAFT — Kevin reviews
+  'ls.h.kpi_wiring': 'Hàng chỉ số khớp với bảng (chỉ số / lịch hẹn trên bảng)', // DRAFT — Kevin reviews
+  'ls.hs.pass': 'Đạt', // DRAFT — Kevin reviews
+  'ls.hs.warn': 'Cần xem', // DRAFT — Kevin reviews
+  'ls.hs.not_checked': 'Chưa kiểm tra', // DRAFT — Kevin reviews
+  'ls.hr.paged': 'Bảng đang lọc hoặc chia trang nên không so được tổng', // DRAFT — Kevin reviews
+  'ls.hr.not_live': 'Chỉ kiểm tra cho hôm nay', // DRAFT — Kevin reviews
+  'ls.hr.no_kpis': 'Hàng chỉ số chưa tải được', // DRAFT — Kevin reviews
+  'ls.h.staleAge': 'Đọc lần cuối {n} phút trước', // DRAFT — Kevin reviews
+  'ls.h.close': 'Đóng', // DRAFT — Kevin reviews
 };
