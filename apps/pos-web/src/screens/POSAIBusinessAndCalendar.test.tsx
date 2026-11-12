@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { calendarDensity } from './aiCalendar/density';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const faqsOverride: { fn: null | ((q: any) => Promise<any>) } = { fn: null };
@@ -171,5 +174,40 @@ describe('AI Business Setup — empty / error separation (extras #10)', () => {
     expect(setupListState({ err: 'no', forbidden: true, list, sameQuery: true, filtered: false })).toBe('forbidden');
     expect(setupListState({ err: null, forbidden: false, list: { items: [] }, sameQuery: true, filtered: true })).toBe('noMatch');
     expect(setupListState({ err: null, forbidden: false, list: null, sameQuery: false, filtered: false })).toBe('loading');
+  });
+});
+
+describe('AI Calendar extras #08 — automatic responsive density (spacing only, never smaller fonts)', () => {
+  it('the rule: compact below 1280px of container, back to spacious only past the hysteresis band; an unmeasured box keeps its density', () => {
+    expect(calendarDensity(1920)).toBe('spacious');
+    expect(calendarDensity(1100)).toBe('compact');
+    expect(calendarDensity(1290, 'compact')).toBe('compact');          // inside the 24px band: no flapping
+    expect(calendarDensity(1310, 'compact')).toBe('spacious');
+    expect(calendarDensity(0, 'compact')).toBe('compact');
+  });
+  it('the screen switches data-density from its own container width and keeps every control; compact CSS never touches font sizes', async () => {
+    let fire: ((w: number) => void) | null = null;
+    const Orig = (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+    class RO { constructor(cb: (e: { contentRect: { width: number } }[]) => void) { fire = (w) => cb([{ contentRect: { width: w } }]); } observe() {} disconnect() {} }
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver = RO;
+    try {
+      render(<MemoryRouter><POSAICalendarScreen /></MemoryRouter>);
+      await waitFor(() => expect(screen.getByText('Ann')).toBeInTheDocument());
+      const root = screen.getByTestId('aic');
+      const controls = () => ['aic-open-booking', 'aic-health-btn', 'aic-pending-btn', 'aic-refresh', 'aic-prev', 'aic-today', 'aic-next', 'aic-date', 'aic-view-day', 'aic-view-week', 'aic-view-month', 'aic-view-list', 'aic-assist-btn', 'aic-kpi-appointments', 'aic-kpi-ai', 'aic-kpi-slots', 'aic-kpi-techs'].filter((id) => screen.queryByTestId(id)).length;
+      expect(controls()).toBe(17);
+      act(() => fire!(1000));
+      expect(root).toHaveAttribute('data-density', 'compact');
+      expect(controls()).toBe(17);
+      act(() => fire!(1290));
+      expect(root).toHaveAttribute('data-density', 'compact');
+      act(() => fire!(1600));
+      expect(root).toHaveAttribute('data-density', 'spacious');
+    } finally { (globalThis as { ResizeObserver?: unknown }).ResizeObserver = Orig; }
+    const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8');
+    const compact = css.split('\n').filter((l) => l.includes('[data-density="compact"]'));
+    expect(compact.length).toBeGreaterThanOrEqual(8);
+    expect(compact.filter((l) => /font(-size)?\s*:/.test(l))).toEqual([]);
+    expect(compact.filter((l) => /min-height:\s*(\d+)px/.test(l) && Number(/min-height:\s*(\d+)px/.exec(l)![1]) < 44)).toEqual([]);
   });
 });

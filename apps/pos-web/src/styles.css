@@ -3685,6 +3685,18 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .aic-dow { font-size: 11px; color: #8A7A66; text-align: center; font-weight: 700; }
 .aic-daycell { min-height: 64px; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 10px; border: 1px solid #EFE6D7; background: #FFF; cursor: pointer; text-align: left; font-family: inherit; font-size: 12px; min-width: 0; }
 .aic-daycell b { font-size: 16px; color: #3A342E; } .aic-daycell.today { border-color: #A96F22; } .aic-daycell.sel { background: #FBF3E4; }
+/* Extras · AI Calendar 08 — compact density (container < 1280px): tighter SPACING only. No font-size changes here, touch
+   targets keep their 44px minimum, the four KPIs stay equal (one grid track each) and every control stays visible. */
+.aic[data-density="compact"] { gap: 8px; }
+.aic[data-density="compact"] .aic-panel { padding: 8px 10px; gap: 6px; }
+.aic[data-density="compact"] .aic-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.aic[data-density="compact"] .aic-kpi { padding: 8px 10px; }
+.aic[data-density="compact"] .aic-cols { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.aic[data-density="compact"] .aic-col { padding: 6px; gap: 4px; }
+.aic[data-density="compact"] .aic-appt { padding: 4px 6px; }
+.aic[data-density="compact"] .aic-week { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; }
+.aic[data-density="compact"] .aic-month { gap: 4px; }
+.aic[data-density="compact"] .aic-daycell { min-height: 52px; padding: 4px; }
 .aic-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; min-height: 44px; }
 .aic-scroll { overflow-x: auto; max-width: 100%; }
 .aic-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
