@@ -18,6 +18,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, sql } from 'kysely';
 import { KyselyPhoneStore } from './customer-phone.kysely';
+import { KyselyBookingVerificationConfig } from '../customer-booking/booking-verification.kysely';
+import type { TenantCredentialResolver } from '../customer-booking/booking-verification-provider';
 import { phoneKey, maskPhone, normalizePhone } from '@aipowersalon/customers';
 
 class PgliteDriver {
@@ -209,5 +211,48 @@ describe('tenant isolation on the customer lookup', () => {
     // The check that makes a wrong id a "not found" rather than a breach.
     expect(await store.customer(T2, C1)).toBeNull();
     expect(await store.customer(T, C1)).not.toBeNull();
+  });
+});
+
+// extras (PHONE NUMBER MANAGEMENT 4 · 12): Safe Reverification on Changed Contact — after a change, NOTHING proved on the old
+// number vouches for the new destination: the customer's phone_verified_at follows the NEW proof only (a change confirmed
+// without an SMS clears it, even though the old number was SMS-verified), the old number's booking trust is revoked (not
+// deleted), and the booking verification lookup the booking flow uses reports the old number as revoked and the new number
+// as never verified — so Booking asks for a fresh code on the new number.
+describe('a changed contact is re-verified, never trusted on the old proof (extras PHONE NUMBER MANAGEMENT 4 · 12)', () => {
+  it('manual change: phone_verified_at cleared, old booking trust revoked, the booking lookup trusts neither number', async () => {
+    const C3 = '33333333-3333-3333-3333-333333333333';
+    const OLD = '+15554443333', NEW = '+15554446666';
+    await sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, phone_verified_at) values (${C3}, ${T}, ${B}, 'Lan', 'Vo', 'Lan Vo', ${OLD}, now() - interval '2 days')`.execute(db);
+    const old: any = await sql`insert into customer_phones (tenant_id, branch_id, customer_id, normalized_phone, phone_mask, phone_hash, status, verified_at)
+      values (${T}, ${B}, ${C3}, ${OLD}, ${maskPhone(OLD)}, ${phoneKey(OLD)}, 'active_verified', now() - interval '2 days') returning id`.execute(db);
+    await sql`insert into booking_verified_phones (tenant_id, customer_id, phone_hash, phone_mask, provider, verified_at) values (${T}, ${C3}, ${phoneKey(OLD)}, ${maskPhone(OLD)}, 'twilio_verify', now() - interval '1 day')`.execute(db);
+    const pending: any = await sql`insert into customer_phones (tenant_id, branch_id, customer_id, normalized_phone, phone_mask, phone_hash, status)
+      values (${T}, ${B}, ${C3}, ${NEW}, ${maskPhone(NEW)}, ${phoneKey(NEW)}, 'pending_verification') returning id`.execute(db);
+    const v = Number(((await sql`select record_version from customers where id = ${C3}`.execute(db)) as any).rows[0].record_version);
+    expect(await store.activate({ tenantId: T, customerId: C3, newPhoneId: pending.rows[0].id, oldPhoneId: old.rows[0].id, normalizedPhone: NEW, phoneMask: maskPhone(NEW),
+      status: 'active_unverified', method: 'manager_confirmed', expectedVersion: v })).toBe(true);
+    const c: any = await sql`select normalized_phone, phone_verified_at from customers where id = ${C3}`.execute(db);
+    expect(c.rows[0]).toEqual({ normalized_phone: NEW, phone_verified_at: null });   // the old SMS proof does not carry over
+    const bvp: any = await sql`select phone_hash, revoked_at, revoked_reason from booking_verified_phones where tenant_id = ${T} and customer_id = ${C3}`.execute(db);
+    expect(bvp.rows).toHaveLength(1);   // revoked, not deleted — and no trust row was created for the new number
+    expect(bvp.rows[0]).toMatchObject({ phone_hash: phoneKey(OLD), revoked_reason: 'customer_phone_replaced' }); expect(bvp.rows[0].revoked_at).toBeTruthy();
+    const cfg = new KyselyBookingVerificationConfig(db, undefined as unknown as TenantCredentialResolver);
+    expect(await cfg.lastVerified(T, phoneKey(OLD))).toMatchObject({ revoked: true });
+    expect(await cfg.lastVerified(T, phoneKey(NEW))).toBeNull();
+  });
+  it('SMS-verified change: the new number is verified NOW (its own proof), the old trust is still revoked', async () => {
+    const C4 = '33333333-3333-3333-3333-333333333334';
+    const OLD = '+15554447777', NEW = '+15554448888';
+    await sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, phone_verified_at) values (${C4}, ${T}, ${B}, 'Mai', 'Ho', 'Mai Ho', ${OLD}, now() - interval '30 days')`.execute(db);
+    await sql`insert into booking_verified_phones (tenant_id, customer_id, phone_hash, phone_mask, provider, verified_at) values (${T}, ${C4}, ${phoneKey(OLD)}, ${maskPhone(OLD)}, 'twilio_verify', now() - interval '1 day')`.execute(db);
+    const old: any = await sql`insert into customer_phones (tenant_id, branch_id, customer_id, normalized_phone, phone_mask, phone_hash, status) values (${T}, ${B}, ${C4}, ${OLD}, ${maskPhone(OLD)}, ${phoneKey(OLD)}, 'active_verified') returning id`.execute(db);
+    const pending: any = await sql`insert into customer_phones (tenant_id, branch_id, customer_id, normalized_phone, phone_mask, phone_hash, status) values (${T}, ${B}, ${C4}, ${NEW}, ${maskPhone(NEW)}, ${phoneKey(NEW)}, 'pending_verification') returning id`.execute(db);
+    const v = Number(((await sql`select record_version from customers where id = ${C4}`.execute(db)) as any).rows[0].record_version);
+    expect(await store.activate({ tenantId: T, customerId: C4, newPhoneId: pending.rows[0].id, oldPhoneId: old.rows[0].id, normalizedPhone: NEW, phoneMask: maskPhone(NEW), status: 'active_verified', method: 'sms_otp', expectedVersion: v })).toBe(true);
+    const c: any = await sql`select phone_verified_at > now() - interval '1 minute' as fresh from customers where id = ${C4}`.execute(db);
+    expect(c.rows[0].fresh).toBe(true);   // proved by the code sent to the NEW number, not the 30-day-old proof
+    const cfg = new KyselyBookingVerificationConfig(db, undefined as unknown as TenantCredentialResolver);
+    expect(await cfg.lastVerified(T, phoneKey(OLD))).toMatchObject({ revoked: true });
   });
 });

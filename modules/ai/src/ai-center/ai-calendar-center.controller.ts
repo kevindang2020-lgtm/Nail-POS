@@ -8,8 +8,8 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowe
 import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
-import { AiCalendarCenter, AiCalendarError, AI_CALENDAR_CENTER, AIC_PACKAGE, AIC_PERIODS, AIC_BASES, AIC_SORTS, AIC_SOURCES, AIC_STATUSES, type AicCtx } from './ai-calendar-center';
-import type { AiCalendarPendingQueue } from '@aipowersalon/api-contracts/tenant';
+import { AiCalendarCenter, AiCalendarError, AI_CALENDAR_CENTER, AIC_PACKAGE, AIC_PERIODS, AIC_BASES, AIC_SOURCES, AIC_STATUSES, type AicCtx } from './ai-calendar-center';
+import type { AiCalendarPendingQueue, AiCalendarProvenanceReview } from '@aipowersalon/api-contracts/tenant';
 
 function ctxFrom(req: any): AicCtx {
   const c = req?.ctx || {};
@@ -64,6 +64,10 @@ export class AiCalendarCenterController {
   /** Pending Verification Queue (Extras · AI Calendar 04): live holds, soonest to expire first — read-only */
   @Get('holds/pending') @RequirePermission('pos.booking.view')
   pending(@Req() r: any): Promise<AiCalendarPendingQueue> { const x = ctxFrom(r); need(x); return run(() => this.c().pendingQueue(x)); }
+
+  /** AI booking provenance & exception review (Extras · AI Calendar 10): last 30 days, stored ids, redacted — read-only */
+  @Get('provenance/exceptions') @RequirePermission('pos.booking.view')
+  provenance(@Req() r: any): Promise<AiCalendarProvenanceReview> { const x = ctxFrom(r); need(x); return run(() => this.c().provenanceReview(x)); }
 
   /** Appointment & Customer History overlay — the view itself is audited */
   @Get('appointments/:id') @RequirePermission('pos.booking.view')

@@ -21,7 +21,7 @@ import { branchTimeZone } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { pbComputeAvailabilityInWindows, pbOpenRanges, type BookingService, type BookingContext, type PBStatus } from '@aipowersalon/booking';
-import type { BookingTechnicianQuery, AiCalendarPendingQueue } from '@aipowersalon/api-contracts/tenant';
+import type { BookingTechnicianQuery, AiCalendarPendingQueue, AiCalendarProvenanceReview } from '@aipowersalon/api-contracts/tenant';
 
 export const AI_CALENDAR_CENTER = Symbol('AI_CALENDAR_CENTER');
 export const AIC_PACKAGE = 'ai_phone_call_assistant';
@@ -139,6 +139,55 @@ export class AiCalendarCenter {
   }
 
   // ── four KPI cards + reconciliation (P1 metric integrity) ────────────────────────────────────────────────────────
+  /** AI booking provenance & exception review (Extras · AI Calendar 10). Over the last 30 days of THIS branch, four kinds, each
+   *  from stored rows and named by their ids: tool_failed — an AI write tool call that failed or was refused; verification_incomplete
+   *  — a hold the AI placed (slot_hold / booking_session tool result) that lapsed or was released without ever becoming an
+   *  appointment, with its last code status; source_unlinked — an appointment whose source is "ai" with no succeeded AI tool call
+   *  pointing at it (attribution not proven); source_mismatch — a succeeded AI tool call that created an appointment whose source is
+   *  NOT "ai". Redacted: never a code, a phone, a customer name or a full provider call id (last four only). Read only. */
+  static readonly PROVENANCE_DAYS = 30;
+  async provenanceReview(ctx: AicCtx): Promise<AiCalendarProvenanceReview> {
+    const T = ctx.tenantId; const clk = await this.clock(ctx); const days = AiCalendarCenter.PROVENANCE_DAYS;
+    const since = sql`now() - make_interval(days => ${days})`;
+    const [failed, lapsed, unlinked, mismatch] = await Promise.all([
+      sql<Row>`select x.id, x.tool_name, x.status, coalesce(x.error_category, x.business_result) result, right(x.provider_call_id, 4) call4, x.requested_at at from voice_tool_executions x
+        where x.tenant_id = ${T} and ${this.scope(ctx, 'x')} and x.tool_kind = 'write' and x.status in ('failed', 'refused') and x.requested_at > ${since}
+        order by x.requested_at desc, x.id desc limit 100`.execute(this.db),
+      sql<Row>`select h.id hold_id, h.status hold_status, h.release_reason, h.created_at at, x.id tool_id, x.tool_name, right(x.provider_call_id, 4) call4,
+          (select v.id from booking_verification_sessions v where v.tenant_id = h.tenant_id and v.booking_hold_id = h.id order by v.created_at desc, v.id desc limit 1) vs_id,
+          (select v.status from booking_verification_sessions v where v.tenant_id = h.tenant_id and v.booking_hold_id = h.id order by v.created_at desc, v.id desc limit 1) vs_status
+        from voice_tool_executions x join booking_holds h on h.tenant_id = x.tenant_id
+          and ((x.related_type = 'slot_hold' and h.id::text = x.related_id) or (x.related_type = 'booking_session' and h.booking_session_id::text = x.related_id))
+        where x.tenant_id = ${T} and ${this.scope(ctx, 'x')} and x.status = 'succeeded' and x.requested_at > ${since}
+          and h.converted_appointment_id is null and (h.released_at is not null or h.expires_at <= now())
+        order by h.created_at desc, h.id desc limit 100`.execute(this.db),
+      sql<Row>`select a.id, a.status, a.source, a.created_at at from pos_tech_appointments a
+        where a.tenant_id = ${T} and ${this.scope(ctx, 'a')} and a.source = 'ai' and a.created_at > ${since}
+          and not exists (select 1 from voice_tool_executions y where y.tenant_id = a.tenant_id and y.related_type = 'appointment' and y.related_id = a.id::text and y.status = 'succeeded')
+        order by a.created_at desc, a.id desc limit 100`.execute(this.db),
+      sql<Row>`select a.id, a.status, a.source, x.id tool_id, x.tool_name, right(x.provider_call_id, 4) call4, x.requested_at at from voice_tool_executions x
+          join pos_tech_appointments a on a.tenant_id = x.tenant_id and a.id::text = x.related_id
+        where x.tenant_id = ${T} and ${this.scope(ctx, 'x')} and x.related_type = 'appointment' and x.status = 'succeeded' and x.requested_at > ${since} and coalesce(a.source, '') <> 'ai'
+        order by x.requested_at desc, x.id desc limit 100`.execute(this.db),
+    ]);
+    const blank = { tool: null, result: null, call: null, holdStatus: null, releaseReason: null, verification: null, source: null, appointmentStatus: null };
+    const call = (c: unknown) => (c ? '…' + String(c) : null);
+    type Item = AiCalendarProvenanceReview['items'][number];
+    const items: Item[] = [
+      ...failed.rows.map((r): Item => ({ kind: 'tool_failed', at: iso(r.at), appointmentId: null, refs: [{ table: 'voice_tool_executions', id: String(r.id) }],
+        detail: { ...blank, tool: r.tool_name ?? null, result: r.result ?? r.status ?? null, call: call(r.call4) } })),
+      ...lapsed.rows.map((r): Item => ({ kind: 'verification_incomplete', at: iso(r.at), appointmentId: null,
+        refs: [{ table: 'booking_holds', id: String(r.hold_id) }, { table: 'voice_tool_executions', id: String(r.tool_id) }, ...(r.vs_id ? [{ table: 'booking_verification_sessions' as const, id: String(r.vs_id) }] : [])],
+        detail: { ...blank, tool: r.tool_name ?? null, call: call(r.call4), holdStatus: r.hold_status ?? null, releaseReason: r.release_reason ?? null, verification: r.vs_status ?? null } })),
+      ...unlinked.rows.map((r): Item => ({ kind: 'source_unlinked', at: iso(r.at), appointmentId: String(r.id), refs: [{ table: 'pos_tech_appointments', id: String(r.id) }],
+        detail: { ...blank, source: r.source ?? null, appointmentStatus: r.status ?? null } })),
+      ...mismatch.rows.map((r): Item => ({ kind: 'source_mismatch', at: iso(r.at), appointmentId: String(r.id), refs: [{ table: 'pos_tech_appointments', id: String(r.id) }, { table: 'voice_tool_executions', id: String(r.tool_id) }],
+        detail: { ...blank, tool: r.tool_name ?? null, call: call(r.call4), source: r.source ?? null, appointmentStatus: r.status ?? null } })),
+    ].sort((x, y) => String(y.at ?? '').localeCompare(String(x.at ?? '')));
+    const counts = { toolFailed: failed.rows.length, verificationIncomplete: lapsed.rows.length, sourceUnlinked: unlinked.rows.length, sourceMismatch: mismatch.rows.length, total: items.length };
+    return { asOf: new Date().toISOString(), timeZone: clk.tz, windowDays: days, readOnly: true, counts, items: items.slice(0, 200) };
+  }
+
   async summary(ctx: AicCtx, dateArg?: string) {
     const T = ctx.tenantId; const clk = await this.clock(ctx); const date = this.day(dateArg, clk.today);
     const a = (await sql<Row>`select count(*) filter (where a.status <> all(${NOT_COUNTED}::text[]))::int active,

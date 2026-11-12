@@ -198,6 +198,7 @@ function ReversalDialog({ kind, id, tick, onClose, onDone, onCustomer, onSettlem
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !r ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="fn-statusline"><span className={'fk-chip ' + (STATE_TONE[r.state] ?? 'mut')}>{stateLbl(r.state)}</span><span className="fk-hint">{tx('rv.stateNote.' + r.state)}</span></div>
+        <RootCausePanel rc={d.data.rootCause} />
         <div className="fn-cols2">
           <dl className="fk-dl" data-testid="reversal-facts">
             <dt>{tx('rv.f.amount')}</dt><dd><b>{fmtMoney(r.reversedCents)}</b> {r.kind === 'void' ? <span className="fk-li-s">{tx('rv.f.faceValue')}</span> : null}</dd>
@@ -230,6 +231,34 @@ function ReversalDialog({ kind, id, tick, onClose, onDone, onCustomer, onSettlem
       {action === 'ticket' && r?.ticketId ? <FitDialog wide title={tx('rv.checkStatus')} subtitle={r.ticketNumber ? '#' + r.ticketNumber : undefined} onClose={() => { setAction(null); d.reload(); }} testId="ticket-refund-dialog">
         <TicketRefundPanel ticketId={r.ticketId} label={r.customer?.name ?? undefined} onClose={() => { setAction(null); d.reload(); }} onDone={() => onDone('ok', tx('rv.done.ticket'))} /></FitDialog> : null}
     </FitDialog>
+  );
+}
+
+/** REFUNDS 10 — Exception Root-Cause Advisor: the server's evidence summary for this reversal (detail.rootCause) — the Inbox's
+ *  own group, each line naming the record it came from, and the next step for a person. Read only: no retry / settle here. */
+interface RvRootCause { exception: boolean; cause: string | null; nextStep: string | null; readOnly: boolean;
+  evidence: { code: string; value: string | number | null; sourceType: string; sourceId: string | null }[] }
+function rcValue(e: RvRootCause['evidence'][number]): string {
+  switch (e.code) {
+    case 'raw_status': return codeLabel('rv.raw.' + String(e.value ?? ''), String(e.value ?? ''));
+    case 'review_reason': return codeLabel('rv.review.' + String(e.value ?? ''), String(e.value ?? ''));
+    case 'stranded_at': return when(e.value == null ? null : String(e.value));
+    case 'waiting_hours': return tx('rv.rc.hours', { n: fmtNumber(Number(e.value ?? 0)) });
+    case 'provider_ref': return String(e.value ?? '—');
+    case 'ticket_link': return '#' + String(e.value ?? '—');
+    case 'ledger_reversal': case 'settlement': return e.sourceId ? short(e.sourceId) : '—';
+    default: return '';   // missing-* lines and the processor error are named, never echoed
+  }
+}
+function RootCausePanel({ rc }: { rc: RvRootCause | undefined }) {
+  if (!rc || !rc.exception) return null;
+  return (
+    <div className="fk-note warn" data-testid="rv-root-cause"><span>
+      <b>{tx('rv.rc.title')}: {codeLabel('rv.rc.cause.' + (rc.cause ?? ''), rc.cause ?? '—')}</b>
+      <ul className="tm-reasons">{rc.evidence.map((e, i) => { const v = rcValue(e); return <li key={i} data-testid="rv-rc-ev">{codeLabel('rv.rc.ev.' + e.code, e.code)}{v ? `: ${v}` : ''}</li>; })}</ul>
+      {rc.nextStep ? <div data-testid="rv-rc-next"><b>{tx('rv.rc.nextTitle')}</b> {codeLabel('rv.rc.next.' + rc.nextStep, rc.nextStep)}</div> : null}
+      <span className="fk-li-s">{tx('rv.rc.readOnly')}</span>
+    </span></div>
   );
 }
 

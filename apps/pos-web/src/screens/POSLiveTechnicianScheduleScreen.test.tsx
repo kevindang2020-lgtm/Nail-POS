@@ -145,6 +145,48 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     expect(await screen.findByTestId('so-reload')).toBeInTheDocument();
     expect(screen.getByTestId('so-start')).toHaveValue('10:00');   // the typed edit is kept
   });
+  it('extras (Finish the Five 10): Booking Conflict Timeline — shift, breaks and bookings on one axis, colour AND words; overlaps only from the server check', async () => {
+    so.save.mockClear();
+    const appts = [{ id: 'a1', date: '2026-11-06', startTime: '09:30', endTime: '10:30', status: 'booked', customer: 'Mai Le' },
+      { id: 'a2', date: '2026-11-06', startTime: '12:15', endTime: '13:00', status: 'confirmed', customer: 'Lan' },
+      { id: 'a3', date: '2026-11-06', startTime: '15:00', endTime: '16:00', status: 'booked', customer: 'Hoa' }];
+    so.editor.mockResolvedValue({ technician: { technicianId: 't1', name: 'Linh' }, date: '2026-11-06', tz: 'America/New_York', today: '2026-10-30', past: false, canEdit: true,
+      baseline: { isWorking: true, startTime: '09:00', endTime: '19:00' }, override: null, previousNightCarry: null, effective: { isWorking: true, startTime: '09:00', endTime: '19:00' },
+      appointments: appts, timeOff: [], activeQueue: [], month: { month: '2026-11', overrides: [] }, history: [] });
+    so.preview.mockResolvedValue({ conflicts: [
+      { kind: 'OUTSIDE_SHIFT', blocking: true, appointmentId: 'a1', date: '2026-11-06', startTime: '09:30', endTime: '10:30', detail: 'Booked 09:30–10:30 is outside the new hours.' },
+      { kind: 'BREAK_OVERLAP', blocking: true, appointmentId: 'a2', date: '2026-11-06', startTime: '12:15', endTime: '13:00', detail: 'Booked 12:15–13:00 overlaps the lunch break 12:00–12:30.' }],
+      blocking: true, canAcknowledge: true, effective: { isWorking: true, shifts: [{ startTime: '10:00', endTime: '18:00' }], breaks: [{ startTime: '12:00', endTime: '12:30', type: 'lunch' }] } });
+    mount(); await screen.findByTestId('kpi-utilization');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'linh' } }); fireEvent.click(await screen.findByTestId('hit-tech'));
+    await screen.findByTestId('dlg-full-day'); fireEvent.click(await screen.findByTestId('edit-date-shift'));
+    // before the check: the saved day, and no booking is called fine — each says it is not checked yet
+    const tl = await screen.findByTestId('so-timeline');
+    expect(tl).toHaveTextContent('Press View conflicts');
+    expect(screen.getAllByTestId('so-tl-shift')).toHaveLength(1);
+    expect(screen.getAllByTestId('so-tl-unchecked')).toHaveLength(3);
+    expect(screen.queryByTestId('so-tl-conflict')).toBeNull();
+    expect(screen.getAllByTestId('so-tl-row').map((r) => r.textContent)).toEqual([
+      'Shift 9:00 AM – 7:00 PM',
+      'Booking · Mai Le 9:30 AM – 10:30 AM · Booked — not checked yet',
+      'Booking · Lan 12:15 PM – 1:00 PM · Confirmed — not checked yet',
+      'Booking · Hoa 3:00 PM – 4:00 PM · Booked — not checked yet']);
+    fireEvent.change(screen.getByTestId('so-start'), { target: { value: '10:00' } }); fireEvent.change(screen.getByTestId('so-end'), { target: { value: '18:00' } });
+    fireEvent.click(screen.getByTestId('so-check'));
+    await screen.findByTestId('so-conflicts');
+    // after: the proposed hours + lunch, two conflicting bookings in their own colour with the server's words, one with none
+    expect(screen.getByTestId('so-timeline')).toHaveTextContent('found by the server check');
+    expect(screen.getAllByTestId('so-tl-conflict')).toHaveLength(2);
+    expect(screen.getAllByTestId('so-tl-ok')).toHaveLength(1);
+    expect(screen.getAllByTestId('so-tl-break')[0]).toHaveTextContent('Lunch');
+    expect(screen.getAllByTestId('so-tl-row').map((r) => r.textContent)).toEqual([
+      'Shift 10:00 AM – 6:00 PM',
+      'Lunch 12:00 PM – 12:30 PM',
+      'Booking · Mai Le 9:30 AM – 10:30 AM · Booked — Outside the shift',
+      'Booking · Lan 12:15 PM – 1:00 PM · Confirmed — In a break',
+      'Booking · Hoa 3:00 PM – 4:00 PM · Booked — no conflict reported']);
+    expect(so.save).not.toHaveBeenCalled();   // the timeline writes nothing
+  });
   it('extras: Shift-vs-Clock-In — the selected technician shows the planned shift AND the clock, each with its true label', async () => {
     live.state.mockResolvedValue({ ...state, schedule: { ...state.schedule, technicians: [{ ...COL, clock: 'clocked_out', shiftScheduled: true }] } });
     mount(); await openLinh();

@@ -208,3 +208,38 @@ describe('REFUNDS 06 — Escalation Inbox (read only)', () => {
     await q(`delete from payment_refunds where id = any($1)`, [[r7, id('f990')]]);
   });
 });
+
+describe('REFUNDS 10 — Exception Root-Cause Advisor (read only, evidence from the shared ledger)', () => {
+  it('a lost processor answer: same group as the Inbox, evidence names the refund row, next step is verify — nothing changes', async () => {
+    const before = (await q(`select id, status, review_reason, stranded_at from payment_refunds where tenant_id = $1 order by id`, [T])).rows;
+    const d = await r.detail(ctx, 'refund', ids.r4);
+    const inbox = (await r.escalations(ctx)).groups.find((g) => g.items.some((i) => i.id === ids.r4))!;
+    expect(d.rootCause).toMatchObject({ exception: true, cause: inbox.key, nextStep: 'verify_with_processor', readOnly: true });
+    expect(inbox.key).toBe('provider_timeout');
+    const codes = Object.fromEntries(d.rootCause.evidence.map((e) => [e.code, e]));
+    expect(codes.raw_status).toMatchObject({ value: 'processing', sourceType: 'payment_refund', sourceId: ids.r4 });
+    expect(codes.review_reason).toMatchObject({ value: 'processor_status_unavailable', sourceId: ids.r4 });
+    expect(codes.stranded_at.value).toBe(at(10));
+    expect(codes.provider_ref_missing).toBeTruthy();
+    expect(codes.ticket_link).toMatchObject({ value: '3004' });
+    expect(Number(codes.waiting_hours.value)).toBeGreaterThan(24);
+    expect((await q(`select id, status, review_reason, stranded_at from payment_refunds where tenant_id = $1 order by id`, [T])).rows).toEqual(before);
+  });
+  it('a stale reservation → check reservation; a decline → review decline; a healthy completed refund is not an exception', async () => {
+    const stale = await r.detail(ctx, 'refund', ids.r1b);
+    expect(stale.rootCause).toMatchObject({ exception: true, cause: 'stale_pending', nextStep: 'check_reservation' });
+    const failed = await r.detail(ctx, 'refund', ids.r5);
+    expect(failed.rootCause).toMatchObject({ exception: true, cause: 'failed', nextStep: 'review_decline' });
+    const ok = await r.detail(ctx, 'refund', ids.r1);
+    expect(ok.rootCause).toMatchObject({ exception: false, cause: null, nextStep: null });
+    expect(ok.rootCause.evidence.map((e) => e.code)).toEqual(expect.arrayContaining(['raw_status', 'provider_ref', 'ledger_reversal', 'ticket_link']));
+  });
+  it('a completed refund with no reversal row in the ledger → broken link, ledger reversal missing', async () => {
+    const t9 = await ticket('3009', 1200, { h: 16 }); const p9 = await pay(t9, 'card', 1200, { ref: 'RR3009', h: 16 });
+    const r9 = await refund(p9, 1200, 'refunded', { h: 17, ref: 'RF-LOST-3009', processor: 'cardpointe', settled: true });
+    const d = await r.detail(ctx, 'refund', r9);
+    expect(d.rootCause).toMatchObject({ exception: true, cause: 'broken_link', nextStep: 'ledger_reversal_missing' });
+    expect(d.rootCause.evidence.find((e) => e.code === 'ledger_reversal_missing')).toBeTruthy();
+    await q(`delete from payment_refunds where id = $1`, [r9]);
+  });
+});

@@ -3,7 +3,7 @@
 // server-side search and date bases, the appointment overlay, Check Calendar System and the Scheduling Assistant. There is
 // no write route: a move is reviewed and confirmed through the Reception Copilot (posCopilotCenterApi.prepare / confirm).
 import { api } from './client';
-import type { AiCalendarPendingQueue } from '@aipowersalon/api-contracts/tenant';
+import type { AiCalendarPendingQueue, AiCalendarProvenanceReview } from '@aipowersalon/api-contracts/tenant';
 const enc = encodeURIComponent;
 const qs = (o: Record<string, unknown>) => { const p = Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null).map(([k, v]) => `${enc(k)}=${enc(String(v))}`); return p.length ? `?${p.join('&')}` : ''; };
 
@@ -14,6 +14,8 @@ export const posAiCalendarApi = {
   summary: (date?: string) => api.get<any>(`/pos/ai/calendar-center/summary${qs({ date })}`),
   /** Pending Verification Queue (Extras · AI Calendar 04): live holds, soonest to expire first */
   pendingHolds: () => api.get<AiCalendarPendingQueue>(`/pos/ai/calendar-center/holds/pending`),
+  /** AI booking provenance & exception review (Extras · AI Calendar 10): last 30 days, redacted, read-only */
+  provenance: () => api.get<AiCalendarProvenanceReview>(`/pos/ai/calendar-center/provenance/exceptions`),
   day: (date?: string, techPage?: number) => api.get<any>(`/pos/ai/calendar-center/day${qs({ date, techPage })}`),
   range: (view: 'week' | 'month', date?: string) => api.get<any>(`/pos/ai/calendar-center/range${qs({ view, date })}`),
   list: (f: AicListQuery) => api.get<any>(`/pos/ai/calendar-center/appointments${qs(f)}`),

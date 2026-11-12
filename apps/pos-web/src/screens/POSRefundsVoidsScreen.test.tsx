@@ -1,7 +1,7 @@
 // Payments & Money → Refunds & Voids (Oct 29 2026 one-screen rebuild): five server KPIs, one row per reversal, server filters,
 // Find Original Payment with each tender's refundable amount and eligibility, a refund of ONE tender through Checkout.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), facets: vi.fn(), find: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
 vi.mock('../api/posRefundsVoidsApi', () => ({ posRefundsVoidsApi: api }));
@@ -91,6 +91,31 @@ describe('POSRefundsVoidsScreen', () => {
     await waitFor(() => expect(api.detail).toHaveBeenCalledWith('refund', 'r4'));
     expect(screen.queryByTestId('rv-esc-dialog')).toBeNull();
     expect(co.refund).not.toHaveBeenCalled(); expect(co.void).not.toHaveBeenCalled();
+  });
+  it('Extras REFUNDS & VOIDS 10: the detail shows the server root-cause summary — cause, evidence with its records, next step; the processor error text is never echoed; nothing is retried', async () => {
+    const stuck = { ...rev, state: 'needs_review', rawStatus: 'processing', reviewReason: 'processor_status_unavailable', lastError: 'GATEWAY 504 raw text' };
+    api.detail.mockResolvedValue({ reversal: stuck, original: tender, tenders: [], refunds: [], giftLedger: [], settlement: null, financials: null, tipAllocations: [], loyalty: [], audit: [], permissions: { refund: true, void: true, customer: true },
+      rootCause: { exception: true, cause: 'provider_timeout', nextStep: 'verify_with_processor', readOnly: true, basis: 'x', evidence: [
+        { code: 'raw_status', value: 'processing', sourceType: 'payment_refund', sourceId: stuck.id },
+        { code: 'review_reason', value: 'processor_status_unavailable', sourceType: 'payment_refund', sourceId: stuck.id },
+        { code: 'last_error', value: 'GATEWAY 504 raw text', sourceType: 'payment_refund', sourceId: stuck.id },
+        { code: 'provider_ref_missing', value: null, sourceType: 'payment_refund', sourceId: stuck.id },
+        { code: 'ticket_link', value: '6001', sourceType: 'ticket', sourceId: 't1' },
+        { code: 'waiting_hours', value: 30, sourceType: 'payment_refund', sourceId: stuck.id }] } });
+    mount(); fireEvent.click(within(await screen.findByTestId('reversal-row')).getByRole('button'));
+    const rc = await screen.findByTestId('rv-root-cause');
+    expect(rc).toHaveTextContent('Root cause from the ledger: Processor answer lost');
+    expect(screen.getAllByTestId('rv-rc-ev').map((e) => e.textContent)).toEqual(['Recorded status: processing', 'Review reason: Processor status unavailable', 'The processor returned an error', 'No processor refund reference', 'Ticket: #6001', 'Waiting for: 30 h']);
+    expect(screen.getByTestId('rv-rc-next')).toHaveTextContent('Confirm the result with the processor');
+    expect(rc).not.toHaveTextContent('GATEWAY 504');
+    expect(co.refund).not.toHaveBeenCalled(); expect(co.void).not.toHaveBeenCalled();
+  });
+  it('Extras REFUNDS & VOIDS 10: a healthy reversal shows no root-cause panel', async () => {
+    api.detail.mockResolvedValue({ reversal: { ...rev, state: 'completed', rawStatus: 'refunded' }, original: tender, tenders: [], refunds: [], giftLedger: [], settlement: null, financials: null, tipAllocations: [], loyalty: [], audit: [], permissions: {},
+      rootCause: { exception: false, cause: null, nextStep: null, readOnly: true, basis: 'x', evidence: [{ code: 'raw_status', value: 'refunded', sourceType: 'payment_refund', sourceId: rev.id }] } });
+    mount(); fireEvent.click(within(await screen.findByTestId('reversal-row')).getByRole('button'));
+    await screen.findByTestId('reversal-facts');
+    expect(screen.queryByTestId('rv-root-cause')).toBeNull();
   });
   it('Extras REFUNDS & VOIDS 08: listens on the existing "reports" refresh routing (events only, no timer); a confirmed reversal elsewhere reloads the ledger and the KPIs in place', async () => {
     rt.subs.length = 0;

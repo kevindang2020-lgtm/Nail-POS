@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-const { apptMock, revMock, nsMock, accMock, readyMock } = vi.hoisted(() => ({ apptMock: vi.fn(), revMock: vi.fn(), nsMock: vi.fn(), accMock: vi.fn(), readyMock: vi.fn() }));
-vi.mock('../api/posAiForecastingApi', () => ({ posAiForecastingApi: { appointments: apptMock, revenue: revMock, noShowRisk: nsMock, accuracy: accMock, readiness: readyMock,
+const { apptMock, revMock, nsMock, accMock, readyMock, svcMock } = vi.hoisted(() => ({ apptMock: vi.fn(), revMock: vi.fn(), nsMock: vi.fn(), accMock: vi.fn(), readyMock: vi.fn(), svcMock: vi.fn() }));
+vi.mock('../api/posAiForecastingApi', () => ({ posAiForecastingApi: { appointments: apptMock, revenue: revMock, noShowRisk: nsMock, serviceDemand: svcMock, accuracy: accMock, readiness: readyMock,
   center: { summary: vi.fn().mockResolvedValue({ counters: { runs: 0, runs30d: 0, awaitingActual: 0, evaluatedDays: 0 }, lastRun: {}, domains: ['appointments'] }), runs: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25, totalPages: 1, domains: ['appointments'] }), run: vi.fn(), check: vi.fn() } } }));
 import { POSAiForecastingScreen } from './POSAiForecastingScreen';
 
@@ -102,4 +102,45 @@ describe('POSAiForecastingScreen', () => {
     await screen.findByText('Seasonal naive');
     expect(screen.queryByTestId('fc-cap')).toBeNull();
   });
+  it('extras AI Analytics Forecasting 06: Source-to-Report — the trained history beside the Sales report\'s own totals for the same days, the basis in words, a link to the report', async () => {
+    window.history.replaceState(null, '', '/?tab=revenue');
+    revMock.mockResolvedValue({ method: 'holt_linear', confidence: 'moderate', dataQuality: 'healthy', horizonDays: 3, accuracy: null, forecastTotalCents: 90000, selectionReason: 'x', disclaimer: 'd',
+      horizon: horizon(30000).map((h) => ({ step: h.step, date: h.date, pointCents: 30000, lowerCents: 28000, upperCents: 32000 })),
+      source: { from: '2026-01-01', to: '2026-02-29', days: 60, trainedTotalCents: 1234500, status: 'matches', differenceCents: 0, unavailableReason: null, readOnly: true,
+        report: { grossSalesCents: 1234500, discountsCents: 5000, refundsCents: 8500, netSalesCents: 1229500, ticketsCount: 120 } } });
+    const { unmount } = render(<POSAiForecastingScreen />);
+    await screen.findByTestId('fc-src');
+    expect(screen.getByTestId('fc-src-window')).toHaveTextContent('Salon days 2026-01-01 to 2026-02-29 (60 days)');
+    expect(screen.getByTestId('fc-src-gross')).toHaveTextContent('$12,345.00');
+    expect(screen.getByTestId('fc-src-gross').textContent!.match(/\$12,345\.00/g)).toHaveLength(2);   // trained = report
+    expect(screen.getByTestId('fc-src-refunds')).toHaveTextContent('not subtracted'); expect(screen.getByTestId('fc-src-refunds')).toHaveTextContent('$85.00');
+    expect(screen.getByTestId('fc-src-net')).toHaveTextContent('$12,295.00');
+    expect(screen.getByTestId('fc-src-status')).toHaveTextContent('adds up to the Sales report');
+    expect(screen.getByTestId('fc-src-open').getAttribute('href')).toBe('/tenant/reports/sales?preset=custom&from=2026-01-01&to=2026-02-29');
+    unmount();
+    revMock.mockResolvedValue({ method: 'holt_linear', confidence: 'moderate', dataQuality: 'healthy', horizonDays: 1, accuracy: null, forecastTotalCents: 1, selectionReason: 'x', disclaimer: 'd',
+      horizon: [{ step: 1, date: '2026-03-01', pointCents: 1, lowerCents: 0, upperCents: 2 }],
+      source: { from: '2026-01-01', to: '2026-02-29', days: 60, trainedTotalCents: 1234500, status: 'unavailable', differenceCents: null, unavailableReason: 'error', report: null } });
+    render(<POSAiForecastingScreen />);
+    expect(await screen.findByTestId('fc-src-status')).toHaveTextContent('could not be read');
+    expect(screen.getByTestId('fc-src-net')).toHaveTextContent('—');   // never a confident $0.00
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('extras AI Analytics Forecasting 21: Service Demand — per category from the server; a forecast category shows units and range, a short one says how many days are missing', async () => {
+    window.history.replaceState(null, '', '/?tab=services');
+    svcMock.mockResolvedValue({ branchId: 'b', timeZone: 'America/New_York', horizonDays: 7, lookbackDays: 120, minimumHistoryDays: 14, historyFrom: '2026-07-01', historyTo: '2026-10-28', basis: 'paid_ticket_service_lines_by_paid_day', generatedAt: 'x', disclaimer: 'd',
+      categories: [
+        { category: 'Manicure', historyDays: 30, historyUnits: 60, lastSaleDay: '2026-10-28', status: 'forecast', method: 'seasonal_naive', confidence: 'moderate', dataQuality: 'healthy', wape: 0.123, forecastUnits: 14, lowerUnits: 10, upperUnits: 18.5, horizon: [] },
+        { category: 'Pedicure', historyDays: 5, historyUnits: 5, lastSaleDay: '2026-10-28', status: 'insufficient_history', method: null, confidence: null, dataQuality: null, wape: null, forecastUnits: null, lowerUnits: null, upperUnits: null, horizon: [] }] });
+    render(<POSAiForecastingScreen />);
+    const rows = await screen.findAllByTestId('fc-svc-row');
+    expect(rows[0]).toHaveTextContent('Manicure'); expect(rows[0]).toHaveTextContent('60 services over 30 days'); expect(rows[0]).toHaveTextContent('14'); expect(rows[0]).toHaveTextContent('10 – 18.5'); expect(rows[0]).toHaveTextContent('backtest WAPE 12.3%');
+    expect(rows[1]).toHaveTextContent('Not enough history — 9 more days needed');
+    expect(screen.getByTestId('fc-svc-basis')).toHaveTextContent('2026-07-01 to 2026-10-28');
+    expect(screen.getByTestId('fcx-svc-ready')).toBeInTheDocument();
+    expect(screen.queryByTestId('fcx-ready-cards')).toBeNull();   // the appointment readiness is not shown as if it were the services'
+    window.history.replaceState(null, '', '/');
+  });
+
 });

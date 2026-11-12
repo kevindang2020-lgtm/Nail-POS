@@ -241,3 +241,21 @@ export interface AibAlternatives { key: string; date: string; serviceIds: string
 export interface AqLastHealth { run: AqHealthRun | null }
 export interface AibLastHealth { run: AibHealthRun | null }
 export interface AibDismissResult { dismissed: boolean; key: string }
+
+/** AI Analytics & Forecasting · Service demand (Extras · AI Analytics Forecasting 21): per service category, the units of
+ *  service performed on paid tickets per branch day, forecast with the same validated engine as appointments and revenue. */
+export interface AiServiceDemandCategory {
+  category: string;                          // the line's recorded category (snapshot) or the service's category; 'Uncategorized' when neither
+  historyDays: number; historyUnits: number; lastSaleDay: string | null;
+  status: 'forecast' | 'insufficient_history';
+  method: string | null; confidence: string | null; dataQuality: string | null; wape: number | null;
+  forecastUnits: number | null; lowerUnits: number | null; upperUnits: number | null;
+  horizon: { date: string; point: number; lower: number; upper: number }[];
+}
+export interface AiServiceDemandForecast {
+  branchId: string; timeZone: string; horizonDays: number; lookbackDays: number; minimumHistoryDays: number;
+  historyFrom: string; historyTo: string;
+  basis: 'paid_ticket_service_lines_by_paid_day';
+  categories: AiServiceDemandCategory[];
+  generatedAt: string; disclaimer: string;
+}
