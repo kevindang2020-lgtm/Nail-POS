@@ -101,4 +101,16 @@ export const SMSSETUP_VI = {
   "ms.test.textHint": "Để trống để gửi tin thử mặc định.",
   "ms.test.cost": "Chi phí: không có — tiệm chưa cấu hình giá mỗi tin.",
   "ms.loadFailed": "Không tải được: {msg}",
+  "ms.rep.open": "Báo cáo hỗ trợ", // DRAFT — Kevin reviews
+  "ms.rep.title": "Báo cáo cài đặt SMS cho bộ phận hỗ trợ", // DRAFT — Kevin reviews
+  "ms.rep.sub": "Đã che: không có mã bảo mật, không có số điện thoại hay email khách, không có mã nội bộ. Không gửi gì — hãy sao chép và dán cho bộ phận hỗ trợ.", // DRAFT — Kevin reviews
+  "ms.rep.head": "AI PowerSalon — báo cáo cài đặt và mức sẵn sàng SMS", // DRAFT — Kevin reviews
+  "ms.rep.generated": "Tạo lúc: {when}", // DRAFT — Kevin reviews
+  "ms.rep.scope": "Phạm vi: {scope}", // DRAFT — Kevin reviews
+  "ms.rep.delivery": "Gửi tin: {failed} thất bại trong 24 giờ · {waiting} chờ quá 2 giờ · báo cáo gần nhất {last}", // DRAFT — Kevin reviews
+  "ms.rep.branches": "Người gửi theo chi nhánh:", // DRAFT — Kevin reviews
+  "ms.rep.noBranches": "Người gửi theo chi nhánh: không đọc được.", // DRAFT — Kevin reviews
+  "ms.rep.excluded": "Không có trong báo cáo: thông tin đăng nhập và mã bảo mật, số điện thoại và email khách, mã nội bộ.", // DRAFT — Kevin reviews
+  "ms.rep.copy": "Sao chép báo cáo", // DRAFT — Kevin reviews
+  "ms.rep.copied": "Đã sao chép", // DRAFT — Kevin reviews
 } as const;

@@ -15,7 +15,7 @@ import {
   parseCustomerCsv, detectCustomerColumns, splitFullName, normalizeImportPhone, cleanImportEmail, parseImportBirthday,
   PREFERRED_NAME_MAX, PREFERRED_LANGUAGE_MAX,
 } from './customers.dto';
-import { CustomersContext, CustomersRepositoryPort } from './customers.repository';
+import { CustomersContext, CustomersRepositoryPort, type CustomerFollowUpIndicators } from './customers.repository';
 import type { AuditService } from '@aipowersalon/audit';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
@@ -106,14 +106,18 @@ export class CustomersService {
     return res; 
   }
   async search(ctx: CustomersContext, f: CustomerFilters = {}): Promise<CustomerListResponse> { return this.list(ctx, f); }
-  async detail(ctx: CustomersContext, id: string): Promise<POSCustomerDetail> { 
+  async detail(ctx: CustomersContext, id: string): Promise<POSCustomerDetail & { followUpStatus?: CustomerFollowUpIndicators | null }> { 
     this.need(ctx, 'pos.customers.view'); 
     const d = this.mustFind(await this.repo.detail(ctx, id)); 
     const canSeeFinancial = this.canSeeMoney(ctx);
     if (!canSeeFinancial) { d.totalSpendCents = 0; d.averageSpendCents = 0; d.recentVisits = []; d.giftCards = []; }
     const canSeeNotes = hasPermission(ctx as any, 'pos.customers.notes.view');
     if (!canSeeNotes) { d.notes = { salonNotes: '', allergyNotes: '', preferredStyle: '', preferredTechnician: '', servicePreferences: '', warnings: '', customerVisible: false }; }
-    return d; 
+    // extras Customer 05 — advisory follow-up status (read-only; nothing is sent): upcoming bookings, open / overdue
+    // follow-ups (only for a viewer of the follow-up queue) and whether the contact details are complete and verified.
+    if (!this.repo.followUpIndicators) return d;
+    const fu = await this.repo.followUpIndicators(ctx, id, { followUps: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'ai.use') });
+    return { ...d, followUpStatus: fu };
   }
 
   // ---- create / edit (with duplicate flagging) ----

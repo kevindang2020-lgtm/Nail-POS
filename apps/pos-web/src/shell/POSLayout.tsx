@@ -10,6 +10,7 @@ import { api } from '../api/client';
 import { TENANT_NAV, Icon, type NavItem, type BadgeKey } from './tenant-nav';
 import { useTenantNavAccess, useSidebarBadges, useSystemStatus, gateFor, type Badges } from './tenant-access';
 import { ProfileMenu } from './ProfileMenu';
+import { BadgeCheckDialog } from './BadgeCheckDialog';
 import { TopSearch } from './TopSearch';
 import { PlatformAnnouncementBar } from './PlatformAnnouncementBar';
 import RealtimeStatusPill from '../realtime/RealtimeStatusPill';
@@ -77,6 +78,7 @@ function TopClock() {
 function NotificationBell({ badges }: { badges: Badges }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const [check, setCheck] = useState(false);   // extras Customer Notifications 02: badge accuracy self-check
   const low = badges.inventoryAlerts || 0;
   const reports = badges.techReportsPending || 0;
   const total = badges.notifications || 0;
@@ -110,9 +112,11 @@ function NotificationBell({ badges }: { badges: Badges }) {
               )}
             </div>
             <button className="panel-f" onClick={() => { setOpen(false); nav('/tenant/account/activity-logs'); }}>{tx('pos.view_all_activity_2')}</button>
+            <button className="panel-f" data-testid="badge-check-open" onClick={() => { setOpen(false); setCheck(true); }}>{tx('nav.badgechk.open')}</button>
           </div>
         </>
       )}
+      {check ? <BadgeCheckDialog shown={badges} onClose={() => setCheck(false)} /> : null}
     </div>
   );
 }

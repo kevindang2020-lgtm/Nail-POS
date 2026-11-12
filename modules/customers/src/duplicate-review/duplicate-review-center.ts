@@ -737,6 +737,43 @@ export class DuplicateReviewCenter {
         evidence: N(lastOk.oversized_keys) ? `${N(lastOk.oversized_keys)} phone/email/name value(s) are shared by more than ${DR_MAX_KEY_MEMBERS} profiles and were not grouped (for example the salon's own number).` : 'No over-shared phone, email or name.',
         action: N(lastOk.oversized_keys) ? 'Clean up placeholder phones/emails on those profiles in Customers.' : null });
 
+      // ── extras Customer 02: customer data integrity beyond the merge workspace (each a count; nothing is repaired here) ──
+      // records in other systems that still name a customer id this salon no longer has (a deleted profile)
+      const orphan = await q1(sql<Row>`select
+          (select count(*)::int from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id is not null
+             and not exists (select 1 from customers c where c.tenant_id = ${T} and c.id = a.customer_id)) as appts,
+          (select count(*)::int from gift_cards g where g.tenant_id = ${T} and g.customer_id is not null
+             and not exists (select 1 from customers c where c.tenant_id = ${T} and c.id = g.customer_id)) as cards,
+          (select count(*)::int from loyalty_ledger l where l.tenant_id = ${T}
+             and not exists (select 1 from customers c where c.tenant_id = ${T} and c.id = l.customer_id)) as points,
+          (select count(*)::int from customer_memberships m where m.tenant_id = ${T}
+             and not exists (select 1 from customers c where c.tenant_id = ${T} and c.id = m.customer_id)) as plans`);
+      const orphanN = N(orphan.appts) + N(orphan.cards) + N(orphan.points) + N(orphan.plans);
+      add({ key: 'orphan_references', state: orphanN ? 'WARNING' : 'PASSED', count: orphanN,
+        evidence: orphanN ? `Records naming a missing customer: ${N(orphan.appts)} booking(s), ${N(orphan.cards)} gift card(s), ${N(orphan.points)} loyalty entr(ies), ${N(orphan.plans)} membership(s).` : 'Every booking, gift card, loyalty entry and membership names a customer this salon has.',
+        action: orphanN ? 'Look these up in their own screens; reattach them to the right customer there. Nothing is changed by this check.' : null });
+      // live bookings still on an archived profile (a merged source is merge_integrity's)
+      const archBooked = N((await q1(sql<Row>`select count(*)::int as n from pos_tech_appointments a join customers c on c.tenant_id = a.tenant_id and c.id = a.customer_id
+        where a.tenant_id = ${T} and c.archived_at is not null and a.status in ('booked', 'confirmed')
+          and a.appt_date >= (now() at time zone coalesce((select bz.timezone from branches bz where bz.tenant_id = a.tenant_id and bz.id = a.branch_id), 'America/New_York'))::date
+          and not exists (select 1 from customer_duplicate_merge_ops o where o.tenant_id = a.tenant_id and o.status = 'completed' and a.customer_id = any(o.source_ids))`)).n);
+      add({ key: 'archived_with_bookings', state: archBooked ? 'WARNING' : 'PASSED', count: archBooked,
+        evidence: archBooked ? `${archBooked} upcoming booking(s) belong to an archived customer profile.` : 'No upcoming booking belongs to an archived profile.',
+        action: archBooked ? 'Open the bookings and move them to the customer\'s live profile, or restore the profile.' : null });
+      // the same loyalty posting twice (same customer, type, source and reference) where the ledger's unique key does not apply
+      const repeatPts = N((await q1(sql<Row>`select count(*)::int as n from (select 1 from loyalty_ledger l where l.tenant_id = ${T} and l.source_id is null and l.reference_id is not null
+        group by l.customer_id, l.type, l.source, l.reference_id having count(*) > 1) x`)).n);
+      add({ key: 'loyalty_repeat_entries', state: repeatPts ? 'WARNING' : 'PASSED', count: repeatPts,
+        evidence: repeatPts ? `${repeatPts} loyalty posting(s) appear more than once for the same customer and reference.` : 'No loyalty posting is repeated for the same customer and reference.',
+        action: repeatPts ? 'Review them in Loyalty; a correction is a reasoned reversal there, never a hand edit.' : null });
+      // marketing consent on the profile while the same phone / email is on the opt-out list (the send is blocked either way)
+      const consent = N((await q1(sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and c.archived_at is null and (
+          (c.marketing_sms_opt_in and exists (select 1 from notification_opt_outs o where o.tenant_id = c.tenant_id and o.channel = 'sms' and o.address = c.normalized_phone))
+          or (c.marketing_email_opt_in and exists (select 1 from notification_opt_outs o where o.tenant_id = c.tenant_id and o.channel = 'email' and o.address = lower(btrim(c.email)))))`)).n);
+      add({ key: 'consent_conflict', state: consent ? 'WARNING' : 'PASSED', count: consent,
+        evidence: consent ? `${consent} profile(s) are marked opted in to marketing while their phone or email is on the opt-out list.` : 'No profile is opted in to marketing while on the opt-out list.',
+        action: consent ? 'Confirm with the customer and update the profile; the opt-out list always wins when sending.' : null });
+
       const order = ['FAILED', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
       const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING'
         : checks.every((c) => c.state === 'INSUFFICIENT_DATA' || c.state === 'PASSED') && checks.some((c) => c.state === 'PASSED') ? 'PASSED' : 'INSUFFICIENT_DATA';

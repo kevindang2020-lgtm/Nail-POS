@@ -554,4 +554,16 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.health.d.status_log_mismatch.READY": "Trạng thái của mọi lịch hẹn khớp với trạng thái cuối cùng trong lịch sử thay đổi.", // DRAFT — Kevin reviews
   "ahx.health.d.status_log_mismatch.WARNING": "Một số lịch hẹn có trạng thái khác với trạng thái cuối cùng được ghi trong lịch sử — hãy mở trong Đặt lịch để xác nhận.", // DRAFT — Kevin reviews
   "ahx.health.d.status_log_mismatch.FAILED": "Không so sánh được lịch sử trạng thái.", // DRAFT — Kevin reviews
+  "cpf.fu.title": "Tình trạng theo dõi", // DRAFT — Kevin reviews
+  "cpf.fu.upcoming": "{n} lịch hẹn sắp tới", // DRAFT — Kevin reviews
+  "cpf.fu.noUpcoming": "Không có lịch hẹn sắp tới", // DRAFT — Kevin reviews
+  "cpf.fu.overdue": "{n} việc theo dõi quá hạn trong {a} việc đang mở", // DRAFT — Kevin reviews
+  "cpf.fu.open": "{n} việc theo dõi đang mở", // DRAFT — Kevin reviews
+  "cpf.fu.noTasks": "Không có việc theo dõi đang mở", // DRAFT — Kevin reviews
+  "cpf.fu.tasksUnknown": "Việc theo dõi: —", // DRAFT — Kevin reviews
+  "cpf.fu.noPhone": "Chưa có số điện thoại", // DRAFT — Kevin reviews
+  "cpf.fu.phoneUnverified": "Số điện thoại chưa xác minh", // DRAFT — Kevin reviews
+  "cpf.fu.noEmail": "Chưa có email", // DRAFT — Kevin reviews
+  "cpf.fu.contactOk": "Thông tin liên hệ đầy đủ", // DRAFT — Kevin reviews
+  "cpf.fu.note": "Chỉ để tham khảo — không gửi gì từ đây.", // DRAFT — Kevin reviews
 };

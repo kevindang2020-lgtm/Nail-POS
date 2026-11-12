@@ -116,6 +116,21 @@ export function CustomerProfilesDirectory({ onOpen }: { onOpen: (c: CpxCard) => 
 
 const QV_TABS = ['overview', 'loyalty', 'visits', 'notes'] as const;
 /** Customer 360 Quick View — the same GET /pos/customers/:id the Full View reads; four tabs. */
+/** extras Customer 05 — advisory follow-up status from the server's detail read (Booking, AI Follow-Ups, the profile's contact
+ *  fields). Indicators only: nothing here messages the customer or changes a booking. Unknown (no permission) shows "—". */
+type CpxFollowUpView = { upcoming: { count: number; nextDate: string | null; nextTime: string | null }; followUps: { active: number; overdue: number; nextDueAt: string | null } | null; contact: { hasPhone: boolean; phoneVerified: boolean; hasEmail: boolean } };
+function FollowUpStatusStrip({ f }: { f: CpxFollowUpView }) {
+  const contactGaps = [!f.contact.hasPhone ? tt('cpf.fu.noPhone') : !f.contact.phoneVerified ? tt('cpf.fu.phoneUnverified') : null, !f.contact.hasEmail ? tt('cpf.fu.noEmail') : null].filter(Boolean) as string[];
+  return <div className="cpx-wide cpx-fu" data-testid="cpx-followup" role="group" aria-label={tt('cpf.fu.title')}>
+    <b>{tt('cpf.fu.title')}</b>
+    <span className={'chip ' + (f.upcoming.count ? 'ok' : 'muted')} data-testid="cpx-fu-upcoming">{f.upcoming.count ? tt('cpf.fu.upcoming', { n: fmtNumber(f.upcoming.count) }) : tt('cpf.fu.noUpcoming')}</span>
+    <span className={'chip ' + (!f.followUps ? 'muted' : f.followUps.overdue ? 'bad' : f.followUps.active ? 'warn' : 'muted')} data-testid="cpx-fu-tasks">
+      {!f.followUps ? tt('cpf.fu.tasksUnknown') : f.followUps.overdue ? tt('cpf.fu.overdue', { n: fmtNumber(f.followUps.overdue), a: fmtNumber(f.followUps.active) }) : f.followUps.active ? tt('cpf.fu.open', { n: fmtNumber(f.followUps.active) }) : tt('cpf.fu.noTasks')}</span>
+    <span className={'chip ' + (contactGaps.length ? 'warn' : 'ok')} data-testid="cpx-fu-contact">{contactGaps.length ? contactGaps.join(' · ') : tt('cpf.fu.contactOk')}</span>
+    <span className="hint">{tt('cpf.fu.note')}</span>
+  </div>;
+}
+
 export function CustomerQuickView({ customer, onClose, onFullView }: { customer: CpxCard; onClose: () => void; onFullView: () => void }) {
   const nav = useNavigate();
   const can = useCan();
@@ -148,7 +163,8 @@ export function CustomerQuickView({ customer, onClose, onFullView }: { customer:
               {field(tt('cpf.f.consent'), [d.smsOptIn ? 'SMS' : null, d.emailOptIn ? 'Email' : null, d.marketingOptIn ? tt('cpf.marketing') : null].filter(Boolean).join(' · ') || tt('cpf.noConsent'))}</dl>
             <dl className="cpx-dl">{field(tt('cpf.f.visits'), fmtNumber(Number(d.visitCount ?? 0)))}{field(tt('cpf.f.spend'), money(Number(d.totalSpendCents ?? 0)))}
               {field(tt('cpf.f.avg'), money(Number(d.averageSpendCents ?? 0)))}{field(tt('cpf.f.last'), d.lastVisitAt ? day(d.lastVisitAt) : tt('cpf.noVisitYet'))}
-              {field(tt('cpf.f.next'), d.nextAppointmentAt ? day(d.nextAppointmentAt) : tt('cpf.none'))}</dl>
+              {field(tt('cpf.f.next'), d.followUpStatus?.upcoming?.nextDate ? fmtYmd(d.followUpStatus.upcoming.nextDate) + (d.followUpStatus.upcoming.nextTime ? ` · ${d.followUpStatus.upcoming.nextTime}` : '') : d.nextAppointmentAt ? day(d.nextAppointmentAt) : tt('cpf.none'))}</dl>
+            {d.followUpStatus ? <FollowUpStatusStrip f={d.followUpStatus as CpxFollowUpView} /> : null}
           </div> : null}
           {tab === 'loyalty' ? <div className="cpx-two">
             <dl className="cpx-dl">{field(tt('cpf.f.points'), fmtNumber(Number(d.loyalty?.points ?? d.loyaltyPoints ?? 0)))}{field(tt('cpf.f.tier'), d.loyalty?.tier || d.loyaltyTier || null)}

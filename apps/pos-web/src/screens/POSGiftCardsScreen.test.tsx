@@ -217,4 +217,27 @@ describe('POSGiftCardsScreen', () => {
     expect(await screen.findByTestId('balance-result')).toHaveTextContent('$35.00');
     expect(co.giftCardLookup).toHaveBeenCalledWith('1234567812344821');
   });
+  it('GIFT CARDS extras 13: the detail lists digital sends masked with status, failure reason and opt-out; none → no section', async () => {
+    const totals = { originalCents: 10000, reloadedCents: 0, redeemedCents: 6500, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 3500, transactions: 2, ledgerBalanceCents: 3500, reconciled: true };
+    gc.ledger.mockResolvedValue(pageOf([]));
+    gc.detail.mockResolvedValue({ card: card(), permissions: { void: false, reload: false }, totals, deliveries: { items: [], sent: 0, failed: 0, pending: 0, optedOut: 0 } });
+    const v = mount();
+    fireEvent.click((await screen.findAllByText('•••• 4821'))[0]);
+    await screen.findByTestId('detail-balance');
+    expect(screen.queryByTestId('gc-deliveries')).toBeNull();
+    v.unmount();
+    gc.detail.mockResolvedValue({ card: card(), permissions: { void: false, reload: false }, totals, deliveries: { sent: 1, failed: 1, pending: 0, optedOut: 1, items: [
+      { id: 'd2', channel: 'email', status: 'sent', to: 'a•••@example.com', failure: null, optedOut: false, at: '2026-10-21T15:00:00Z' },
+      { id: 'd1', channel: 'sms', status: 'failed', to: '(•••) •••-0123', failure: 'opted_out', optedOut: true, at: '2026-10-20T15:00:00Z' }] } });
+    mount();
+    fireEvent.click((await screen.findAllByText('•••• 4821'))[0]);
+    const sec = await screen.findByTestId('gc-deliveries');
+    expect(sec).toHaveTextContent('1 sent · 1 failed · 0 pending');
+    expect(screen.getByTestId('gc-deliveries-optout')).toHaveTextContent(/1 destination\(s\) are on the opt-out list/);
+    const rows = screen.getAllByTestId('gc-delivery-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent(/Email.*a•••@example\.com.*Sent.*Yes/);
+    expect(rows[1]).toHaveTextContent(/Text.*\(•••\) •••-0123.*Failed.*Recipient opted out.*Opted out/);
+    expect(gc.reload).not.toHaveBeenCalled(); expect(gc.adjust).not.toHaveBeenCalled();
+  });
 });

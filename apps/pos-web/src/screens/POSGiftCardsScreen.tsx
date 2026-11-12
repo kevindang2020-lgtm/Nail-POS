@@ -384,6 +384,7 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
             <dt>{tx('gc.t.transactions')}</dt><dd>{fmtNumber(tot.transactions)}</dd>
           </dl>
         </div>
+        {d.data?.deliveries?.items?.length ? <GiftCardDeliveries v={d.data.deliveries as GcDeliveriesView} /> : null}
         {mode === 'reload' ? <div className="fk-void" data-testid="reload-form"><label className="fk-field"><span>{tx('gc.reloadAmount')}</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="50.00" data-autofocus data-testid="reload-amount" /></label>
           <span className="fk-hint">{tx('gc.reloadNote')}</span>
           <button type="button" className="fk-btn" onClick={() => setMode(null)} disabled={busy}>{tx('pos.cancel')}</button>
@@ -415,6 +416,22 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
       {stepUp.prompt}
     </FitDialog>
   );
+}
+
+/** extras GIFT CARDS 13 — the card's digital sends (claim link by text / email) as the server recorded them: status, the
+ *  destination masked, a failure category and whether that destination is opted out now. Read-only; nothing is resent. */
+type GcDeliveriesView = { items: Array<{ id: string; channel: string; status: string; to: string | null; failure: string | null; optedOut: boolean | null; at: string | null }>; sent: number; failed: number; pending: number; optedOut: number };
+const DELIVERY_TONE: Record<string, string> = { sent: 'ok', delivered: 'ok', failed: 'bad', pending: 'warn', scheduled: 'warn', sending: 'warn', canceled: 'mut' };
+function GiftCardDeliveries({ v }: { v: GcDeliveriesView }) {
+  return <section data-testid="gc-deliveries">
+    <h3 className="fk-h3">{tx('gc.dl.title')}<span className="fk-muted"> · {tx('gc.dl.counts', { s: fmtNumber(v.sent), f: fmtNumber(v.failed), p: fmtNumber(v.pending) })}</span></h3>
+    {v.optedOut ? <div className="fk-preview bad" data-testid="gc-deliveries-optout">{tx('gc.dl.optedOutNote', { n: fmtNumber(v.optedOut) })}</div> : null}
+    <table className="fk-table"><thead><tr><th>{tx('gc.l.date')}</th><th>{tx('gc.dl.channel')}</th><th>{tx('gc.dl.to')}</th><th>{tx('finance.status')}</th><th>{tx('gc.dl.consent')}</th></tr></thead>
+      <tbody>{v.items.map((x) => <tr key={x.id} data-testid="gc-delivery-row"><td>{when(x.at)}</td><td>{codeLabel('gc.dl.ch.' + x.channel, x.channel)}</td><td className="fn-mono">{x.to ?? '—'}</td>
+        <td><span className={'fk-chip ' + (DELIVERY_TONE[x.status] ?? 'mut')}>{codeLabel('gc.dl.st.' + x.status, x.status)}</span>{x.failure ? <span className="fk-li-s">{codeLabel('gc.dl.fail.' + x.failure, x.failure)}</span> : null}</td>
+        <td>{x.optedOut == null ? '—' : x.optedOut ? <span className="fk-chip bad">{tx('gc.dl.optedOut')}</span> : tx('gc.dl.canReceive')}</td></tr>)}</tbody></table>
+    <div className="fk-hint">{tx('gc.dl.note')}</div>
+  </section>;
 }
 
 /** The protected balance check: exact code / number only, rate limited and audited on the server; answers masked. */

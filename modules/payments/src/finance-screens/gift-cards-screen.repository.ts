@@ -48,6 +48,14 @@ const maskContact = (v: string | null | undefined, kind: 'phone' | 'email') => {
   const [u, dom] = v.split('@'); return dom ? `${u.slice(0, 1)}•••@${dom}` : null;
 };
 const displayPhone = (v: string | null | undefined) => { const d = (v ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (v ?? null); };
+/** A stored provider failure as a category — the raw text can carry a destination or a link, so it is never returned. */
+export const deliveryFailure = (reason: string | null | undefined): 'opted_out' | 'not_configured' | 'invalid_destination' | 'provider_error' => {
+  const t = String(reason ?? '').toLowerCase();
+  if (/opt(ed)?[ _-]?out|unsubscrib|21610/.test(t)) return 'opted_out';
+  if (/not[ _-]?configured|no (sms|email) provider|missing credential/.test(t)) return 'not_configured';
+  if (/invalid|not a valid|21211|21614|bounce/.test(t)) return 'invalid_destination';
+  return 'provider_error';
+};
 export const maskedCard = (last4: string | null | undefined, code: string | null | undefined) => (last4 ? `•••• ${last4}` : code ? `GC-****-${String(code).slice(-4)}` : '••••');
 
 export interface GcFilters {
@@ -343,14 +351,39 @@ export class GiftCardsScreenRepository {
         from gift_card_transactions t where t.tenant_id = ${T} and t.gift_card_id = ${id}::uuid`.execute(this.db)).rows[0] ?? {};
     const card = this.row(ctx, r);
     const ledgerBalance = N(tot.ledger_balance);
+    const deliveries = await this.deliveries(T, id);
     return {
-      card,
+      card, deliveries,
       totals: { originalCents: card.originalCents, reloadedCents: N(tot.reloaded), redeemedCents: N(tot.redeemed), refundedBackCents: N(tot.refunded_back), adjustedCents: N(tot.adjusted),
         transferredCents: N(tot.transferred), pendingReloadCents: N(tot.pending_reload), balanceCents: card.balanceCents, transactions: N(tot.n),
         // the balance column against the ledger: a card whose rows do not add up says so (it is never silently "fixed")
         ledgerBalanceCents: ledgerBalance, reconciled: card.status === 'pending_payment' ? true : ledgerBalance === card.balanceCents },
       permissions: { void: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.void'), reload: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.checkout.gift_card_issue') },
     };
+  }
+
+  /**
+   * extras GIFT CARDS 13 — secure digital delivery monitoring: each recorded SMS / email send of this card's claim link
+   * (gift_card_deliveries, written by the customer app's send) with its sent / failed / pending status, the destination
+   * MASKED, and whether that destination is on the salon's opt-out list now (notification_opt_outs, the list every send
+   * honours). Never the claim link / token, the provider message id or the raw provider error — a failure is a category.
+   */
+  private async deliveries(T: string, id: string) {
+    const rows = (await sql<{ id: string; channel: string; destination: string | null; status: string; failure_reason: string | null; created_at: Date | string; updated_at: Date | string; opted_out: boolean }>`
+      select d.id, d.channel, d.destination, d.status, d.failure_reason, d.created_at, d.updated_at,
+             exists (select 1 from notification_opt_outs o where o.tenant_id = d.tenant_id and o.channel = d.channel and o.scope = 'all'
+               and o.address = case when d.channel = 'email' then lower(trim(d.destination)) else trim(d.destination) end) as opted_out
+        from gift_card_deliveries d where d.tenant_id = ${T} and d.gift_card_id = ${id}::uuid
+       order by d.created_at desc, d.id desc limit 20`.execute(this.db)).rows;
+    const items = rows.map((d) => ({
+      id: String(d.id), channel: d.channel, status: d.status,
+      to: d.channel === 'sms' ? maskContact(d.destination, 'phone') : d.channel === 'email' ? maskContact(d.destination, 'email') : null,
+      failure: d.status === 'failed' ? deliveryFailure(d.failure_reason) : null,
+      optedOut: d.channel === 'sms' || d.channel === 'email' ? Boolean(d.opted_out) : null,
+      at: iso(d.created_at), updatedAt: iso(d.updated_at),
+    }));
+    const count = (s: string[]) => items.filter((x) => s.includes(x.status)).length;
+    return { items, sent: count(['sent', 'delivered']), failed: count(['failed']), pending: count(['pending', 'scheduled', 'sending']), optedOut: items.filter((x) => x.optedOut).length };
   }
 
   async ledger(ctx: FinanceCtx, id: string, period: Period, pr: PageReq) {

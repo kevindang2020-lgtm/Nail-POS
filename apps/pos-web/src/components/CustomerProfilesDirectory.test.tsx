@@ -56,4 +56,19 @@ describe('Customer 360 Quick View', () => {
     fireEvent.click(screen.getByTestId('cpx-tab-notes')); expect(within(screen.getByTestId('cpx-panel-notes')).getByText('Latex')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cpx-full')); expect(full).toHaveBeenCalled();
   });
+  it('extras Customer 05: advisory follow-up status from the server — upcoming, overdue follow-ups, contact gaps; unknown stays "—"', async () => {
+    const base = { displayName: 'Ana Rivera', status: 'active', visitCount: 1, loyalty: {}, membership: {}, giftCards: [], recentVisits: [], notes: {} };
+    m.detail.mockResolvedValue({ ...base, followUpStatus: { upcoming: { count: 2, nextDate: '2026-11-15', nextTime: '14:00' }, followUps: { active: 2, overdue: 1, nextDueAt: '2026-11-12T13:00:00Z' }, contact: { hasPhone: true, phoneVerified: false, hasEmail: false } } });
+    const v = render(<MemoryRouter><CustomerQuickView customer={{ id: 'c1', name: 'Ana Rivera' }} onClose={() => {}} onFullView={() => {}} /></MemoryRouter>);
+    expect(await screen.findByTestId('cpx-fu-upcoming')).toHaveTextContent('2 upcoming booking(s)');
+    expect(screen.getByTestId('cpx-fu-tasks')).toHaveTextContent('1 overdue follow-up(s) of 2 open');
+    expect(screen.getByTestId('cpx-fu-contact')).toHaveTextContent('Phone not verified · No email');
+    expect(screen.getByTestId('cpx-panel-overview')).toHaveTextContent(/Nov 15.*14:00/);
+    v.unmount();
+    m.detail.mockResolvedValue({ ...base, followUpStatus: { upcoming: { count: 0, nextDate: null, nextTime: null }, followUps: null, contact: { hasPhone: true, phoneVerified: true, hasEmail: true } } });
+    render(<MemoryRouter><CustomerQuickView customer={{ id: 'c1', name: 'Ana Rivera' }} onClose={() => {}} onFullView={() => {}} /></MemoryRouter>);
+    expect(await screen.findByTestId('cpx-fu-tasks')).toHaveTextContent('Follow-ups: —');
+    expect(screen.getByTestId('cpx-fu-upcoming')).toHaveTextContent('No upcoming booking');
+    expect(screen.getByTestId('cpx-fu-contact')).toHaveTextContent('Contact details complete');
+  });
 });

@@ -4172,6 +4172,8 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .cpx-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 @media (max-width:900px){.cpx-two{grid-template-columns:minmax(0,1fr)}}
 .cpx-wide{grid-column:1/-1}
+.cpx-fu{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cpx-fu .hint{flex-basis:100%;font-size:12px;opacity:.75}
 .cpx-dl{margin:0;display:grid;gap:8px}
 .cpx-f{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:8px;font-size:15px}
 .cpx-f dt{color:#7A6A4F}.cpx-f dd{margin:0;overflow-wrap:anywhere}

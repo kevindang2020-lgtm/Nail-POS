@@ -314,4 +314,36 @@ describe('Duplicate Review — history + health', () => {
     clock += 16 * 60_000;
     expect((await dr.freshness(other)).state).toBe('stale');
   });
+  it('HL-03 extras Customer 02: customer data integrity — orphaned references, bookings on archived profiles, repeated loyalty postings, consent vs opt-out', async () => {
+    const fresh = async () => { await q(sql`delete from customer_duplicate_health_runs where tenant_id = ${T}`); const r = await dr.check(owner()); return Object.fromEntries(r.checks.map((c: any) => [c.key, c])); };
+    let by = await fresh();
+    for (const k of ['orphan_references', 'archived_with_bookings', 'loyalty_repeat_entries', 'consent_conflict']) expect(by[k].state).toBe('PASSED');
+    // an orphan: a booking whose customer was deleted (no ticket holds the profile, so nothing stops the delete)
+    const gone = id(620), arch = id(621), opt = id(622);
+    await cust(gone, 'Gone Guest', '+16095550620', null); await appt(gone, 41);
+    await q(sql`delete from customers where id = ${gone}`);
+    // an archived (not merged) profile with an upcoming booking; its past booking does not count
+    await cust(arch, 'Archie Old', '+16095550621', null); await appt(arch, 42); await appt(arch, -43);
+    await q(sql`update customers set archived_at = now(), status = 'archived' where id = ${arch}`);
+    // the same loyalty posting twice (legacy rows without a source key)
+    await cust(opt, 'Opal Opt', '+16095550622', 'opal@example.com');
+    const ref = id(623);
+    for (let i = 0; i < 2; i++) await q(sql`insert into loyalty_ledger (tenant_id, customer_id, type, amount, source, reference_id, running_balance) values (${T}, ${opt}, 'earn', 10, 'ticket', ${ref}, ${10 * (i + 1)})`);
+    // opted in to SMS marketing while the phone is on the opt-out list
+    await q(sql`update customers set marketing_sms_opt_in = true where id = ${opt}`);
+    await q(sql`insert into notification_opt_outs (tenant_id, channel, address, reason) values (${T}, 'sms', '+16095550622', 'STOP')`);
+    const before = await q(sql`select id, archived_at, marketing_sms_opt_in from customers where tenant_id = ${T} order by id`);
+    by = await fresh();
+    expect(by.orphan_references).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by.orphan_references.evidence).toMatch(/1 booking\(s\), 0 gift card/);
+    expect(by.archived_with_bookings).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by.loyalty_repeat_entries).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by.consent_conflict).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(await q(sql`select id, archived_at, marketing_sms_opt_in from customers where tenant_id = ${T} order by id`)).toEqual(before);   // read-only
+    expect((await q(sql`select count(*)::int as n from loyalty_ledger where customer_id = ${opt}`))[0].n).toBe(2);
+    // another salon's check sees none of it
+    const other = { tenantId: X, branchId: BX, userId: OWNER, role: 'OWNER', permissions: ['pos.customers.view'] } as any;
+    const ob = Object.fromEntries((await dr.check(other)).checks.map((c: any) => [c.key, c]));
+    for (const k of ['orphan_references', 'archived_with_bookings', 'loyalty_repeat_entries', 'consent_conflict']) expect(ob[k].state).toBe('PASSED');
+  });
 });

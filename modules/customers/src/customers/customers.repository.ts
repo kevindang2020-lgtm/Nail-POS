@@ -25,7 +25,18 @@ interface Cust {
   version?: number;
 }
 
+/** extras Customer 05 — advisory follow-up indicators on a customer's detail, each from its own system of record
+ *  (Booking: pos_tech_appointments; AI Follow-Ups: ai_receptionist_follow_ups; the customers row's phone / verified / email). */
+export interface CustomerFollowUpIndicators {
+  upcoming: { count: number; nextDate: string | null; nextTime: string | null };
+  /** null when this viewer may not see the follow-up queue (ai.use) — shown as unknown, never as zero */
+  followUps: { active: number; overdue: number; nextDueAt: string | null } | null;
+  contact: { hasPhone: boolean; phoneVerified: boolean; hasEmail: boolean };
+  asOf: string; salonDate: string | null;
+}
 export interface CustomersRepositoryPort {
+  /** extras Customer 05: upcoming bookings + open follow-ups for one customer (read-only) */
+  followUpIndicators?(ctx: CustomersContext, id: string, o: { followUps: boolean }): Promise<CustomerFollowUpIndicators>;
   /** Constitution 8: true when the repository writes domain events in its transactions. */
   emitsDomainEvents?(): boolean;
   /** Decision 1: is this one of the tenant's branches (for a customer's preferred branch)? */
