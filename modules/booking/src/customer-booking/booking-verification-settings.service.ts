@@ -21,6 +21,7 @@ import type { AuditSink } from '@aipowersalon/audit';
 import type { TenantCredentialResolver } from './booking-verification-provider';
 import { clampHoldSeconds } from './booking-hold-core';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
+import { branchConfigComparison, tenantPolicyFromRow, branchPolicyFromRow, DEFAULT_SALON_POLICY } from './booking-verification-policy';
 
 /**
  * The rows this service reads and writes. A PORT, not a raw db handle — the project's own convention, and the
@@ -74,6 +75,9 @@ export interface VerificationSettingsView {
     /** Phase 4: the platform has the module switched off (for everyone, or this salon). */
     moduleDisabled: boolean;
   };
+  /** Extras (Booking Phone Verification 11): only when a location is asked for — the salon vs location vs effective value of
+   *  each setting and its source (branchConfigComparison, the resolver's own inheritance). Read-only. */
+  comparison?: ReturnType<typeof branchConfigComparison>;
 }
 
 const DEFAULTS = {
@@ -103,7 +107,15 @@ export class BookingVerificationSettingsService {
     const row = await this.row(tenantId, branchId ?? null);
     const provider = await this.providerState(tenantId, branchId ?? '');
     const platform = await this.platformState(tenantId);
-    return this.view(row, provider, platform);
+    const view = this.view(row, provider, platform);
+    if (!branchId) return view;
+    const p = await this.store.platformPolicy(tenantId);
+    const salonRow = await this.store.settingsRow(tenantId, null);
+    const branchRow = await this.store.settingsRow(tenantId, branchId);
+    const comparison = branchConfigComparison(
+      { emergencyDisabled: !!p.emergencyDisabled, moduleEnabled: p.moduleEnabled !== false, requiredForTenant: !!p.requiredForTenant, blockedForTenant: !!p.blockedForTenant, version: null },
+      salonRow ? tenantPolicyFromRow(salonRow) : null, DEFAULT_SALON_POLICY, branchRow ? branchPolicyFromRow(branchRow) : null);
+    return { ...view, comparison };
   }
 
   /**

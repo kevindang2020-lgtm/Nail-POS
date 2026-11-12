@@ -6,6 +6,7 @@
 // ever shown; enforcement lives on the server (BookingVerificationGuard / VerifiedBookingFlow / the hold constraint).
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api/client';
+import { authApi } from '../api/authApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInlineAsk } from '@aipowersalon/ui';
 import type { BookingVerificationUsageView, PendingVerificationView } from '@aipowersalon/api-contracts';
@@ -287,6 +288,7 @@ export function POSBookingVerificationScreen() {
         </section>
       ) : null}
 
+      <ConfigComparison />
       {usage ? (
         <section className="panel" data-testid="verification-usage" style={{ marginTop: 14 }}>
           <div className="p-h">{t('pos.last')}{' '}{usage.days} {t('pos.days')}</div>
@@ -649,5 +651,42 @@ function VerificationDetail({ id, when, onClose, onOpenCustomer, onOpenBooking, 
         </div>
       )}
     </FitDialog>
+  );
+}
+
+/** Extras (Booking Phone Verification 11 "Tenant Configuration Comparison"): pick one of the salon's locations and see, per
+ *  setting, the salon value, the location's own value (or "inherits"), the effective value and where it comes from — the
+ *  server computes it with the resolver's own inheritance (settings GET ?branchId= → comparison). Read-only. */
+type CmpRow = { field: string; salon: boolean | number; branch: boolean | number | null; effective: boolean | number; source: 'platform' | 'branch' | 'salon' | 'default' };
+type CmpView = { comparison?: { branchHasOwnSettings: boolean; salonHasSettings: boolean; rows: CmpRow[] } };
+export function ConfigComparison() {
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [branchId, setBranchId] = useState('');
+  const [view, setView] = useState<CmpView | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  useEffect(() => { (authApi.branches() as Promise<{ branches?: { id: string; name: string; isActive?: boolean }[] }>).then((r) => setBranches((r.branches ?? []).filter((b) => b.isActive !== false))).catch(() => setBranches([])); }, []);
+  useEffect(() => {
+    if (!branchId) { setView(null); return; }
+    setError(null);
+    api.get<CmpView>('/pos/settings/booking-phone-verification?branchId=' + encodeURIComponent(branchId)).then(setView).catch((e) => { setView(null); setError(e); });
+  }, [branchId]);
+  if (branches.length < 1) return null;
+  const val = (f: string, v: boolean | number | null) => (v == null ? t('bv.cmp.inherits') : typeof v === 'number' ? (f === 'reverifyAfterSeconds' ? t('bv.cmp.hours', { n: fmtNumber(Math.round(v / 360) / 10) }) : fmtNumber(v)) : v ? t('bv.cmp.on') : t('bv.cmp.off'));
+  const c = view?.comparison;
+  return (
+    <section className="panel" data-testid="bv-compare" style={{ marginTop: 14 }}>
+      <div className="p-h">{t('bv.cmp.title')}</div>
+      <label className="sub">{t('bv.cmp.location')}{' '}
+        <select className="fk-select" value={branchId} onChange={(e) => setBranchId(e.target.value)} data-testid="bv-cmp-branch">
+          <option value="">{t('bv.cmp.pick')}</option>
+          {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select></label>
+      {error ? <div className="err" data-testid="bv-cmp-error">{errorTextOf(error, t('bv.cmp.failed'))}</div> : null}
+      {c ? <>
+        <div className="sub" data-testid="bv-cmp-state">{c.branchHasOwnSettings ? t('bv.cmp.own') : t('bv.cmp.inheritsAll')}{c.salonHasSettings ? '' : ' ' + t('bv.cmp.noSalon')}</div>
+        <table className="fk-table" data-testid="bv-cmp-table"><thead><tr><th scope="col">{t('bv.cmp.setting')}</th><th scope="col">{t('bv.cmp.salon')}</th><th scope="col">{t('bv.cmp.branch')}</th><th scope="col">{t('bv.cmp.effective')}</th><th scope="col">{t('bv.cmp.source')}</th></tr></thead>
+          <tbody>{c.rows.map((r) => <tr key={r.field} data-testid={'bv-cmp-' + r.field}><th scope="row">{t('bv.cmp.f.' + r.field)}</th><td>{val(r.field, r.salon)}</td><td>{val(r.field, r.branch)}</td><td><b>{val(r.field, r.effective)}</b></td><td>{t('bv.cmp.src.' + r.source)}</td></tr>)}</tbody></table>
+      </> : null}
+    </section>
   );
 }
