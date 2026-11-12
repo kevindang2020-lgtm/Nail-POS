@@ -1633,4 +1633,12 @@ export const OPS_EN = {
   "syschk.inventory.acknowledged_still_low.fix": "Reorder or receive those products; the dashboard and the sidebar agree again once stock is above the reorder level.",
   "syschk.inventory.open_alert_not_live": "No open stock alert is left for a product that is restocked, archived or has no reorder level",
   "syschk.inventory.open_alert_not_live.fix": "Open Stock Alerts and resolve those alerts; the counts already follow the live stock.",
+  "syschk.catalog.addon_paid_no_technician": "Every add-on sold on a paid ticket names the technician who did it",
+  "syschk.catalog.addon_paid_no_technician.fix": "Open those tickets and assign the technician, so commission and tips are allocated correctly.",
+  "syschk.catalog.addon_technician_not_on_ticket": "Every sold add-on is credited to a technician who worked a service on that ticket",
+  "syschk.catalog.addon_technician_not_on_ticket.fix": "Check those tickets: the add-on may be credited to the wrong technician.",
+  "syschk.catalog.addon_without_base_service": "No ticket has an add-on without the service it adds to",
+  "syschk.catalog.addon_without_base_service.fix": "Add the service to those tickets or remove the add-on before checkout.",
+  "syschk.catalog.addon_duplicate_charge": "No ticket charges the same add-on twice for the same technician",
+  "syschk.catalog.addon_duplicate_charge.fix": "Review those tickets; if it was done once, remove the extra line (or refund it if already paid).",
 };

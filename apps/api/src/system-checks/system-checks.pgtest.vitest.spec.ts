@@ -170,6 +170,31 @@ describe('shared read-only Check … System', () => {
     await q(sql`update inventory_alerts set resolved_at = now() where tenant_id = ${T} and product_id in (${OK}, ${ARC})`);
     expect(count(await svc.run('inventory', { tenantId: T }), 'open_alert_not_live')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('extras: ADD-ONS 05 — sold add-on lines: no technician on a paid ticket, a technician who did not work the ticket, no base service, a double charge; removed lines and another salon never', async () => {
+    const TA = id(301), TB = id(302), TC = id(303), TXX = id(304), TE1 = id(305), TE2 = id(306), TEX = id(307);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values (${TE1}, ${T}, ${B1}, 'Ann', 'A', 'Ann A'), (${TE2}, ${T}, ${B1}, 'Bea', 'B', 'Bea B'), (${TEX}, ${X}, ${BX}, 'Xo', 'X', 'Xo X')`);
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, paid_at, subtotal_cents, tax_cents, discount_cents, total_cents) values
+      (${TA}, ${T}, ${B1}, ${id(21)}, 'paid', now(), 0, 0, 0, 0), (${TB}, ${T}, ${B1}, ${id(21)}, 'open', null, 0, 0, 0, 0), (${TC}, ${T}, ${B1}, ${id(21)}, 'paid', now(), 0, 0, 0, 0), (${TXX}, ${X}, ${BX}, ${id(22)}, 'paid', now(), 0, 0, 0, 0)`);
+    const line = (tenant: string, branch: string, ticket: string, name: string, tech: string | null, kind: string, removed = false) => q(sql`insert into ticket_service_lines
+      (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, line_kind, is_add_on, removed_at)
+      values (${tenant}, ${branch}, ${ticket}, ${id(399)}, ${tech}, ${name}, 500, 10, 500, ${kind}, ${kind === 'add_on'}, ${removed ? sql`now()` : null})`);
+    // ticket A (paid): Gel manicure by Ann; add-ons — French tips by Bea (not on the ticket), Chrome with nobody, Paraffin by Ann twice (a double charge)
+    await line(T, B1, TA, 'Gel manicure', TE1, 'service'); await line(T, B1, TA, 'French tips', TE2, 'add_on'); await line(T, B1, TA, 'Chrome', null, 'add_on');
+    await line(T, B1, TA, 'Paraffin', TE1, 'add_on'); await line(T, B1, TA, 'paraffin ', TE1, 'add_on');
+    await line(T, B1, TA, 'Glitter', TE2, 'add_on', true);   // removed: never counted
+    // ticket B (open): an add-on with no base service (unpaid, so no-technician does not count here)
+    await line(T, B1, TB, 'Nail repair', null, 'add_on');
+    // ticket C (paid): fine — Pedicure by Bea + Callus by Bea
+    await line(T, B1, TC, 'Pedicure', TE2, 'service'); await line(T, B1, TC, 'Callus', TE2, 'add_on');
+    // the other salon: every problem at once
+    await line(X, BX, TXX, 'Chrome', null, 'add_on'); await line(X, BX, TXX, 'Chrome', null, 'add_on');
+    const r = await svc.run('catalog', { tenantId: T });
+    expect(count(r, 'addon_paid_no_technician')).toMatchObject({ state: 'WARNING', count: 1 });         // Chrome on A
+    expect(count(r, 'addon_technician_not_on_ticket')).toMatchObject({ state: 'WARNING', count: 1 });   // French tips by Bea on A
+    expect(count(r, 'addon_without_base_service')).toMatchObject({ state: 'WARNING', count: 1 });       // Nail repair on B
+    expect(count(r, 'addon_duplicate_charge')).toMatchObject({ state: 'WARNING', count: 1 });           // Paraffin ×2 on A
+    expect(count(await svc.run('catalog', { tenantId: T, branchId: B2 }), 'addon_duplicate_charge')).toMatchObject({ state: 'READY', count: 0 });
+  });
   it('extras: Discounts — redemption integrity: pending on a paid ticket, redeemed on an unpaid one, bad timestamps, coupon use counter drift, a single-use code used twice', async () => {
     const D = id(91), DX = id(92), CODE = id(93), CODE2 = id(94), CODEX = id(95), K1 = id(96), K2 = id(97), K3 = id(98), KX = id(99);
     await q(sql`insert into deals (id, tenant_id, branch_id, owner_type, title, discount_type, discount_percent, status, starts_at, ends_at) values
