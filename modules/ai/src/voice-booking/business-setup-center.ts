@@ -42,7 +42,7 @@ export const FAQ_STATUSES = ['draft', 'pending_review', 'approved', 'needs_revie
 export const FAQ_ACTIONS = ['edit', 'submit', 'approve', 'reject', 'archive', 'restore'] as const;
 export const FAQ_SORTS = ['newest', 'oldest', 'updated', 'approved', 'question_az'] as const;
 export const FAQ_DATE_BASES = ['created', 'updated', 'approved'] as const;
-export const HISTORY_BASES = ['faq_change', 'approval', 'preview'] as const;
+export const HISTORY_BASES = ['faq_change', 'approval', 'preview', 'readiness'] as const;   // readiness = status changes between recorded health runs
 export const SEARCH_SCOPES = ['faqs', 'services', 'technicians', 'tests', 'history'] as const;
 export const PAGE_SIZES = [10, 20, 50] as const;
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
@@ -629,6 +629,24 @@ export class BusinessSetupCenter {
     const lo = f.from ? sql`(${f.from}::date)::timestamp at time zone ${tz}` : sql`'-infinity'::timestamptz`;
     const hi = f.to ? sql`((${f.to}::date + 1))::timestamp at time zone ${tz}` : sql`'infinity'::timestamptz`;
     let total = 0; let rows: Row[] = [];
+    if (basis === 'readiness') {
+      // Readiness Change History: one row per readiness part whose status CHANGED between two consecutive recorded health runs
+      // of this scope (the run is the source version; who ran it, when, and the check's own reason). Read-only; the date range
+      // filters the change time, after the comparison with the earlier run.
+      const tr = sql`with runs as (select r.id, r.created_at, r.run_by, r.checks from business_setup_health_runs r
+            where r.tenant_id = ${ctx.tenantId} and r.branch_id is not distinct from ${this.branch(ctx)}),
+          el as (select runs.id as run_id, runs.created_at, runs.run_by, ch->>'key' as key, ch->>'status' as status, ch->>'source' as source, ch->>'detail' as reason
+            from runs cross join lateral jsonb_array_elements(case when jsonb_typeof(runs.checks) = 'array' then runs.checks else '[]'::jsonb end) ch),
+          tr as (select el.*, lag(el.status) over (partition by el.key order by el.created_at, el.run_id) as prev, lag(el.run_id) over (partition by el.key order by el.created_at, el.run_id) as prev_run from el)`;
+      const where = sql`tr.prev is not null and tr.prev is distinct from tr.status and tr.created_at >= ${lo} and tr.created_at < ${hi}`;
+      total = N((await sql<Row>`${tr} select count(*)::int n from tr where ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`${tr} select tr.run_id, tr.prev_run, tr.key, tr.prev, tr.status, tr.source, tr.reason, tr.created_at, coalesce(u.full_name, u.email) as actor
+        from tr left join users u on u.id = tr.run_by and u.tenant_id = ${ctx.tenantId} where ${where}
+        order by tr.created_at desc, tr.run_id desc, tr.key limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+      return { basis, timezone: tz, items: rows.map((r) => ({ id: `${r.run_id}:${r.key}`, kind: 'readiness', title: String(r.key ?? ''), detail: `${r.prev} → ${r.status}`, at: iso(r.created_at),
+        readiness: { key: String(r.key ?? ''), from: String(r.prev), to: String(r.status), source: r.source ?? null, reason: r.reason ?? null, actor: r.actor ?? null, runId: String(r.run_id), previousRunId: r.prev_run ? String(r.prev_run) : null } })),
+        page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) };
+    }
     if (basis === 'preview') {
       const where = sql`created_at >= ${lo} and created_at < ${hi}`;
       total = N((await sql<Row>`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);

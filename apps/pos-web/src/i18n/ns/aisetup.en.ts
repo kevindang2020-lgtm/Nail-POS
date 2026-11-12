@@ -229,4 +229,8 @@ export const AISETUP_EN: Record<string, string> = {
   "aiset.noMatch": "Nothing matches this search or these filters. Clear them to see everything.",
   "aiset.noFaqsYet": "No FAQs yet. Add the first one above.",
   "aiset.noHistoryYet": "No changes have been recorded yet.",
+  "aiset.hbasis.readiness": "Readiness changes",
+  "aiset.ev.readiness": "Status changed",
+  "aiset.readinessBy": "check run by {by}",
+  "aiset.readinessSource": "source: {s}",
 };

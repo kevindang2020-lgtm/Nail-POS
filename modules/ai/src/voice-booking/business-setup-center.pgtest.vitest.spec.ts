@@ -283,4 +283,27 @@ describe('A12 Nov 6 — holiday closures / special hours, FAQ tags, recorded hea
     expect((await c.lastHealth(own))?.id).toBe(r.runId);
     expect((await c.lastHealth(ownB))).toBeNull();
   });
+  it('Readiness Change History: only parts whose status CHANGED between consecutive recorded runs of this scope, with run (source version), actor, time and reason', async () => {
+    const up: BsCtx = { ...own, branchId: BA2 };
+    const chk = (k2: string, st: string, detail: string) => ({ key: k2, status: st, source: 'src:' + k2, detail });
+    const runAt = async (tenant: string, branch: string, hoursAgo: number, checks: unknown[]) => (await q1(sql`insert into business_setup_health_runs (tenant_id, branch_id, overall, checks, run_by, created_at)
+      values (${tenant}, ${branch}, 'READY', ${JSON.stringify(checks)}::jsonb, ${tenant === TA ? OWNER : null}, now() - (${hoursAgo} || ' hours')::interval) returning id`)).id;
+    const r1 = await runAt(TA, BA2, 30, [chk('services', 'NEEDS_SETUP', 'No services'), chk('business_hours', 'READY', 'Open 6 days')]);
+    const r2 = await runAt(TA, BA2, 20, [chk('services', 'READY', '3 of 3 bookable'), chk('business_hours', 'READY', 'Open 6 days')]);
+    const r3 = await runAt(TA, BA2, 10, [chk('services', 'READY', '3 of 3 bookable'), chk('business_hours', 'FAILED', 'monday is invalid')]);
+    await runAt(TB, BB, 5, [chk('services', 'FAILED', 'other salon')]);                          // another salon: never in this history
+    const h: any = await c.history(up, { basis: 'readiness' });
+    expect(h.totalItems).toBe(2);                                                                 // unchanged parts and the first run are not changes
+    expect(h.items.map((x: any) => x.readiness)).toEqual([
+      { key: 'business_hours', from: 'READY', to: 'FAILED', source: 'src:business_hours', reason: 'monday is invalid', actor: 'Olivia Owner', runId: r3, previousRunId: r2 },
+      { key: 'services', from: 'NEEDS_SETUP', to: 'READY', source: 'src:services', reason: '3 of 3 bookable', actor: 'Olivia Owner', runId: r2, previousRunId: r1 },
+    ]);
+    expect(h.items[0]).toMatchObject({ kind: 'readiness', title: 'business_hours', detail: 'READY → FAILED' });
+    expect((await c.history(ownB, { basis: 'readiness' })).totalItems).toBe(0);                 // a single run: nothing changed yet
+    // the date range filters the change time, but the comparison still sees the earlier run
+    const ny = (hAgo: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(Date.now() - hAgo * 3600_000));
+    const only: any = await c.history(up, { basis: 'readiness', from: ny(10), to: ny(10) });
+    expect(only.items.map((x: any) => x.readiness.key)).toContain('business_hours');
+    expect(only.items.every((x: any) => x.readiness.previousRunId)).toBe(true);
+  });
 });
