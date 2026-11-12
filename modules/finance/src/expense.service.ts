@@ -29,7 +29,7 @@ import { businessDate, isYmd, addDays } from '@aipowersalon/date-time';
 import { ExpenseRepository, type Exec, type ExpenseRow, type ListFilters, type Scope } from './expense.repository';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_CATEGORY_KEYS, normalizeCategory, customCategoryKey, categoryLabel, FALLBACK_CATEGORY } from './expense-categories';
 import { recommendCategory, learnFromCorrection, type CategoryRecommendation } from './category-engine';
-import { normalizeVendorName, matchVendor } from './vendor-normalize';
+import { normalizeVendorName, matchVendor, vendorSimilarity } from './vendor-normalize';
 import { reconcileBreakdown, allocate, rescaleAllocations, billStatusFor, billDueState, type AllocationInput } from './expense-money';
 import { detectExpenseDuplicates, type DupResult } from './expense-duplicates';
 import { EXPENSE, EXPENSE_BILL, EXPENSE_REIMBURSEMENT, EXPENSE_DUPLICATE } from './expense-lifecycles';
@@ -411,6 +411,17 @@ export class ExpenseService {
     this.require(ctx, PERM.view);
     const cands = await this.repo.dupCandidates(this.db, ctx.tenantId, { totalCents: x.amountCents, incurredOn: x.incurredOn, invoiceNumber: x.invoiceNumber, receiptNumber: x.receiptNumber });
     return detectExpenseDuplicates({ id: x.excludeId ?? null, vendorRaw: x.vendor ?? null, vendorId: x.vendorId ?? null, incurredOn: x.incurredOn, totalCents: x.amountCents, invoiceNumber: x.invoiceNumber, receiptNumber: x.receiptNumber }, cands);
+  }
+  /** Extras (Expenses Management 05): tenant-scoped vendor lookup for the expense form — the salon's canonical vendor for
+   *  these words (exact normalized match) or up to three similar ones to pick from. Read-only: never creates or merges. */
+  async vendorMatch(ctx: FinanceCtx, x: { vendor: string }): Promise<{ query: string; exact: { id: string; name: string } | null; suggestions: Array<{ id: string; name: string; score: number }>; willCreateOnApproval: boolean }> {
+    this.require(ctx, PERM.view);
+    const query = String(x.vendor ?? '').trim().slice(0, 200);
+    if (!normalizeVendorName(query)) return { query, exact: null, suggestions: [], willCreateOnApproval: false };
+    const list = await sql<{ id: string; name: string }>`SELECT id, name FROM inventory_vendors WHERE tenant_id = ${ctx.tenantId} AND COALESCE(active, true) ORDER BY name`.execute(this.db);
+    const m = matchVendor(query, list.rows);
+    const suggestions = m.suggestions.map((v) => ({ id: v.id, name: v.name, score: Math.round(vendorSimilarity(query, v.name) * 100) / 100 }));
+    return { query, exact: m.vendor ? { id: m.vendor.id, name: m.vendor.name } : null, suggestions, willCreateOnApproval: !m.vendor && suggestions.length === 0 };
   }
   async recommend(ctx: FinanceCtx, x: { vendor?: string | null; lines?: string[] }): Promise<CategoryRecommendation> {
     this.require(ctx, PERM.view);
@@ -886,7 +897,10 @@ export class ExpenseService {
       const e = await this.repo.get(this.db, { tenantId: ctx.tenantId, branchId: null, allowed: null }, id);
       if (!e || e.vendorId || !e.vendor || !this.vendors) return;
       const list = await sql<{ id: string; name: string }>`SELECT id, name FROM inventory_vendors WHERE tenant_id = ${ctx.tenantId}`.execute(this.db);
-      let v = matchVendor(e.vendor, list.rows).vendor;
+      const found = matchVendor(e.vendor, list.rows);
+      let v = found.vendor;
+      // Extras (Expenses Management 05): a similar vendor already exists — leave it for a person to link, never add a near-duplicate
+      if (!v && found.suggestions.length) { financeLog.warn(`vendor link left for review on expense ${id}: ${found.suggestions.length} similar vendor(s)`); return; }
       if (!v) { const name = e.vendor.replace(/\s*#\s*\d+\s*$/, '').trim(); if (normalizeVendorName(name)) v = { id: (await this.vendors.create(ctx, name)).id, name }; }
       if (v) await sql`UPDATE expenses SET vendor_id = ${v.id} WHERE tenant_id = ${ctx.tenantId} AND id = ${id} AND vendor_id IS NULL`.execute(this.db);
       if (v && e.category !== 'other') await this.repo.bumpRule(this.db, ctx.tenantId, normalizeVendorName(e.vendor));

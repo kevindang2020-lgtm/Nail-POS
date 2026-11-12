@@ -527,6 +527,22 @@ export class AiUsageScreenRepository {
     const live = cards.filter((c) => c.state === 'active' || c.state === 'trialing');
     const lastUse = (await one(sql<any>`select max(created_at) as at from ai_usage_logs where tenant_id = ${T} and status = 'success'`)).at;
     checks.push({ key: 'metering', state: !live.length ? 'INSUFFICIENT_DATA' : lastUse ? 'PASSED' : 'WARNING', detail: { lastSuccessAt: iso(lastUse) } });
+    // Extras (AI Usage Limits 06): metering anomalies — flagged for a person, never corrected; hard caps and the records stand
+    // stale ingestion: live packages but nothing counted for 14 days (a meter that stopped, or simply unused — said both ways)
+    const staleDays = lastUse ? Math.floor((Date.now() - new Date(lastUse).getTime()) / 86_400_000) : null;
+    checks.push({ key: 'metering_stale', state: !live.length || !lastUse ? 'INSUFFICIENT_DATA' : staleDays! >= 14 ? 'WARNING' : 'PASSED', count: staleDays != null && staleDays >= 14 ? staleDays : 0, detail: { lastSuccessAt: iso(lastUse) } });
+    // a sudden spike: a package's last 24 h at least 3× its daily average over the 14 days before (and 20+ calls)
+    const spikes = (await sql<{ package_code: string; recent: number; prior: number }>`select package_code,
+        count(*) filter (where created_at > now() - interval '1 day')::int as recent,
+        count(*) filter (where created_at <= now() - interval '1 day' and created_at > now() - interval '15 days')::int as prior
+      from ai_usage_logs where tenant_id = ${T} and status = 'success' and created_at > now() - interval '15 days' group by package_code`.execute(this.db)).rows
+      .filter((r) => N(r.recent) >= 20 && N(r.recent) >= 3 * Math.max(1, N(r.prior) / 14));
+    const anyHistory = N((await one(sql<any>`select count(*)::int as n from ai_usage_logs where tenant_id = ${T} and status = 'success' and created_at <= now() - interval '1 day' and created_at > now() - interval '15 days'`)).n);
+    checks.push({ key: 'usage_spike', state: spikes.length ? 'WARNING' : !anyHistory ? 'INSUFFICIENT_DATA' : 'PASSED', count: spikes.length, detail: { packages: spikes.map((r) => r.package_code) } });
+    // one request metered more than once (the same request id on two rows, e.g. under two packages) in the last 30 days
+    const dupes = N((await one(sql<any>`select count(*)::int as n from (select request_id from ai_usage_logs where tenant_id = ${T} and request_id is not null and status = 'success'
+      and created_at > now() - interval '30 days' group by request_id having count(*) > 1) d`)).n);
+    checks.push({ key: 'duplicate_usage_events', state: dupes ? 'WARNING' : 'PASSED', count: dupes });
     const errors = N((await one(sql<any>`select count(*)::int as n from ai_usage_logs where tenant_id = ${T} and status in ('failed', 'provider_error') and created_at > now() - interval '7 days'`)).n);
     checks.push({ key: 'recent_errors', state: errors ? 'WARNING' : 'PASSED', count: errors });
     const exhausted = cards.filter((c) => c.usage.level === 'exhausted_100' && !c.overage.enabled).length;

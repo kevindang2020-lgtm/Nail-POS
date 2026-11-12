@@ -434,4 +434,8 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.ex.trend.subFiltered": "Chi phí đã duyệt mỗi tháng, 12 tháng gần nhất, theo bộ lọc danh mục / phương thức / tìm kiếm của bạn. Chạm vào một tháng để xem danh sách.", // DRAFT — Kevin reviews
   "finance.ex.trend.count": "{n} khoản chi", // DRAFT — Kevin reviews
   "finance.ex.trend.basis": "Theo ngày chi theo lịch của tiệm. Bản nháp, khoản đang chờ duyệt và khoản đã hủy không được tính.", // DRAFT — Kevin reviews
+  "finance.ex.vendor.linked": "Khớp với nhà cung cấp của tiệm: {name}", // DRAFT — Kevin reviews
+  "finance.ex.vendor.didYouMean": "Nhà cung cấp tương tự tiệm đã có — chạm để chọn:", // DRAFT — Kevin reviews
+  "finance.ex.vendor.newOnApproval": "Nhà cung cấp mới — sẽ được thêm vào danh sách khi khoản chi này được duyệt.", // DRAFT — Kevin reviews
+  "finance.ex.vendor.nearNote": "Giữ cách viết của bạn? Khoản chi sẽ không liên kết để tránh tạo nhà cung cấp trùng; chủ tiệm có thể liên kết sau.", // DRAFT — Kevin reviews
 };

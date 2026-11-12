@@ -130,6 +130,41 @@ describe('finance — duplicates (§75–§82: flagged, a person decides, never 
   });
 });
 
+describe('finance — vendor lookup (Extras · Expenses Management 05)', () => {
+  it('finds the salon\'s canonical vendor for another spelling, suggests similar ones, stays in its tenant and never creates', async () => {
+    await q(`insert into inventory_vendors (tenant_id, name) values ($1, 'Sally Beauty Supply'), ($1, 'Nail Depot Wholesale'), ($2, 'Other Salon Vendor Supply')`, [T, T2]);
+    const before = (await q(`select count(*)::int c from inventory_vendors where tenant_id = $1`, [T]))[0].c;
+    const exact = await svc.vendorMatch(owner, { vendor: 'SALLY BEAUTY SUPPLY #4471' });
+    expect(exact.exact?.name).toBe('Sally Beauty Supply');
+    expect(exact.suggestions).toEqual([]);
+    expect(exact.willCreateOnApproval).toBe(false);
+    const near = await svc.vendorMatch(owner, { vendor: 'Nail Depot' });
+    expect(near.exact).toBeNull();
+    expect(near.suggestions.map((v) => v.name)).toEqual(['Nail Depot Wholesale']);
+    expect(near.suggestions[0].score).toBeGreaterThanOrEqual(0.5);
+    expect(near.willCreateOnApproval).toBe(false);
+    const fresh = await svc.vendorMatch(owner, { vendor: 'Brand New Florist' });
+    expect(fresh).toMatchObject({ exact: null, suggestions: [], willCreateOnApproval: true });
+    // another salon's vendor is never offered
+    expect((await svc.vendorMatch(owner, { vendor: 'Other Salon Vendor Supply' })).exact).toBeNull();
+    expect((await svc.vendorMatch(other, { vendor: 'Sally Beauty Supply' })).exact).toBeNull();
+    expect((await svc.vendorMatch(owner, { vendor: '   ' })).willCreateOnApproval).toBe(false);
+    expect((await q(`select count(*)::int c from inventory_vendors where tenant_id = $1`, [T]))[0].c).toBe(before);   // read-only
+  });
+  it('approval links an exact vendor, creates a truly new one, and leaves a near-duplicate unlinked for a person', async () => {
+    const created: string[] = [];
+    const s2 = new ExpenseService(kyselyFor(pg as never) as never, scopes, new OutboxWriter());
+    s2.vendors = { async create(ctx, name) { created.push(name); const r = await q(`insert into inventory_vendors (tenant_id, name) values ($1, $2) returning id`, [ctx.tenantId, name]); return { id: String(r[0].id) }; } };
+    const approve = async (vendor: string, key: string) => { const { expense } = await s2.create(owner, { amountCents: 1234, incurredOn: today, vendor, category: 'supplies', intent: 'submit', idempotencyKey: key }); await s2.approve(owner, expense.id, expense.version); return (await q(`select vendor_id from expenses where id = $1`, [expense.id]))[0].vendor_id; };
+    const sally = (await q(`select id from inventory_vendors where tenant_id = $1 and name = 'Sally Beauty Supply'`, [T]))[0].id;
+    expect(await approve('Sally Beauty Supply LLC', 'vm-exact')).toBe(sally);
+    expect(await approve('Nail Depot', 'vm-near')).toBeNull();          // similar to "Nail Depot Wholesale": not merged, not duplicated
+    expect(created).not.toContain('Nail Depot');
+    expect(await approve('Brand New Florist', 'vm-new')).not.toBeNull();
+    expect(created).toEqual(['Brand New Florist']);
+  });
+});
+
 describe('finance — categories', () => {
   it('owner rule beats the system rule; the system rule beats Other', async () => {
     const sys = await svc.recommend(owner, { vendor: 'PSE&G' });

@@ -3,7 +3,7 @@
 // activity (server search, numbered pages, statuses that keep "booked" and "confirmed" apart), the overlay tabs and the
 // read-only system check. EN + VI.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
 const { bk, pkg } = vi.hoisted(() => ({ bk: { overview: vi.fn(), activity: vi.fn(), detail: vi.fn(), recovery: vi.fn(), dismiss: vi.fn(), lastHealth: vi.fn(), runHealth: vi.fn(), alternatives: vi.fn(), requestApproval: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
@@ -81,6 +81,43 @@ describe('A7 AI Booking Assistant', () => {
     fireEvent.click(screen.getByTestId('bko-tab-verification'));
     expect(screen.getByTestId('bko-panel-verification').textContent).toContain('never shown');
     expect(screen.getByTestId('bko-panel-verification').textContent).toContain('Verified');
+  });
+  it('Extras · AI Booking Assistant 10: services tab separates manual prices from catalog prices, marks add-ons and totals the booking', async () => {
+    bk.detail.mockResolvedValue({ ...row('r9', 'pending_confirmation', { appointmentId: 'a9', appointmentDate: '2026-11-07', appointmentTime: '10:00', appointmentStatus: 'booked', services: ['Gel Manicure', 'Nail Art'] }), branchId: 'b1',
+      customer: { customerId: 'c1', name: 'Thảo Nguyễn', maskedPhone: '••• 1234', verified: false, appointments: [] },
+      serviceLines: [
+        { name: 'Gel Manicure', priceCents: 4000, durationMinutes: 45, serviceId: 's1', isAddon: false, manualOverride: true, overrideReason: 'Loyal guest', catalogPriceCents: 5000, catalogDurationMinutes: 45, inCatalog: true },
+        { name: 'Nail Art', priceCents: 1500, durationMinutes: 15, serviceId: 's2', isAddon: true, parentServiceId: 's1', manualOverride: false, overrideReason: null, catalogPriceCents: 1500, catalogDurationMinutes: 15, inCatalog: true },
+        { name: 'Old Service', priceCents: 900, durationMinutes: 10, serviceId: 's3', isAddon: false, manualOverride: false, overrideReason: null, catalogPriceCents: null, catalogDurationMinutes: null, inCatalog: false }],
+      serviceSummary: { lines: 3, addOns: 1, totalPriceCents: 6400, totalDurationMinutes: 70, catalogTotalCents: null, overrides: 1, notInCatalog: 1 },
+      timeline: [], verification: [], communications: [], holds: [], tools: [] });
+    renderIt();
+    fireEvent.click((await screen.findAllByTestId('bk-row'))[1]);
+    fireEvent.click(await screen.findByTestId('bko-tab-services'));
+    const lines = await screen.findAllByTestId('bko-svc-line');
+    expect(lines).toHaveLength(3);
+    expect(within(lines[0]).getByTestId('bko-svc-manual').textContent).toBe('Manual price');
+    expect(within(lines[0]).queryByTestId('bko-svc-catalog')).toBeNull();
+    expect(within(lines[0]).getByTestId('bko-svc-catalog-now').textContent).toContain('$50.00');
+    expect(lines[0].textContent).toContain('Reason: Loyal guest');
+    expect(within(lines[1]).getByTestId('bko-svc-addon')).toBeTruthy();
+    expect(within(lines[1]).getByTestId('bko-svc-catalog').textContent).toBe('Catalog price');
+    expect(within(lines[1]).queryByTestId('bko-svc-manual')).toBeNull();
+    expect(within(lines[2]).getByTestId('bko-svc-gone')).toBeTruthy();
+    expect(screen.getByTestId('bko-svc-total').textContent).toBe('Total $64.00 · 70 min');
+    expect(screen.queryByTestId('bko-svc-catalog-total')).toBeNull();          // one line has no catalog price — no invented total
+    expect(screen.getByTestId('bko-svc-overrides').textContent).toContain('1 manual price');
+  });
+  it('services tab from an older server (name / price / duration only) claims no catalog price', async () => {
+    bk.detail.mockResolvedValue({ ...row('r1', 'confirmed', { appointmentId: 'a1', services: ['Gel Manicure'] }), branchId: 'b1', customer: { customerId: null, name: null, maskedPhone: null, verified: false, appointments: [] },
+      serviceLines: [{ name: 'Gel Manicure', priceCents: 4500, durationMinutes: 45 }], timeline: [], verification: [], communications: [], holds: [], tools: [] });
+    renderIt();
+    fireEvent.click((await screen.findAllByTestId('bk-row'))[1]);
+    fireEvent.click(await screen.findByTestId('bko-tab-services'));
+    const line = await screen.findByTestId('bko-svc-line');
+    expect(line.textContent).toContain('$45.00');
+    expect(screen.queryByTestId('bko-svc-catalog')).toBeNull(); expect(screen.queryByTestId('bko-svc-manual')).toBeNull(); expect(screen.queryByTestId('bko-svc-gone')).toBeNull();
+    expect(screen.queryByTestId('bko-svc-summary')).toBeNull();
   });
   it('Check AI Booking System words each part (EN / VI) and says it changes nothing', async () => {
     await setLanguage('vi');

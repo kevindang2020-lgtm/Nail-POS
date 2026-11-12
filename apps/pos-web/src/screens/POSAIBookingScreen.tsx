@@ -234,6 +234,33 @@ function ActivityCard({ tick, onOpen }: { tick: number; onOpen: (id: string) => 
   );
 }
 
+// Extras (AI Booking Assistant 10): the booked lines beside the salon's current catalog (fields optional — older servers
+// send name / price / duration only, and then nothing claims a catalog price)
+type BookedLine = AibRequestDetail['serviceLines'][number] & { isAddon?: boolean; manualOverride?: boolean; overrideReason?: string | null; catalogPriceCents?: number | null; catalogDurationMinutes?: number | null; inCatalog?: boolean };
+type BookedServicesView = Omit<AibRequestDetail, 'serviceLines'> & { serviceLines: BookedLine[];
+  serviceSummary?: { lines: number; addOns: number; totalPriceCents: number | null; totalDurationMinutes: number | null; catalogTotalCents: number | null; overrides: number; notInCatalog: number } };
+function ServiceBreakdown({ d, list }: { d: BookedServicesView; list: (items: ReactNode[], empty: string) => ReactNode }) {
+  const sm = d.serviceSummary;
+  const known = d.serviceLines.some((s) => s.inCatalog !== undefined);
+  return <>
+    {list(d.serviceLines.map((s) => <span data-testid="bko-svc-line" style={s.isAddon ? { paddingLeft: 18, display: 'block' } : { display: 'block' }}>
+      {s.isAddon ? <span className="fk-chip" data-testid="bko-svc-addon">{t('growth.aiBooking.svc.addon')}</span> : null} {s.name ?? '—'}
+      {s.durationMinutes ? ` · ${t('pos.n_min', { n: String(s.durationMinutes) })}` : ''}{s.priceCents != null ? ` · ${money(s.priceCents)}` : ''}
+      {s.manualOverride ? <span className="fk-chip warn" data-testid="bko-svc-manual">{t('growth.aiBooking.svc.manual')}</span>
+        : s.inCatalog && s.catalogPriceCents === s.priceCents ? <span className="fk-chip ok" data-testid="bko-svc-catalog">{t('growth.aiBooking.svc.catalog')}</span> : null}
+      {s.inCatalog && s.catalogPriceCents != null && s.catalogPriceCents !== s.priceCents ? <span className="sub" data-testid="bko-svc-catalog-now"> · {t('growth.aiBooking.svc.catalogNow', { p: money(s.catalogPriceCents) })}</span> : null}
+      {s.inCatalog && s.catalogDurationMinutes != null && s.durationMinutes != null && s.catalogDurationMinutes !== s.durationMinutes ? <span className="sub"> · {t('growth.aiBooking.svc.durDiff', { n: String(s.catalogDurationMinutes) })}</span> : null}
+      {s.manualOverride && s.overrideReason ? <span className="sub" style={{ display: 'block' }}>{t('growth.aiBooking.svc.manualReason', { r: s.overrideReason })}</span> : null}
+      {known && s.inCatalog === false ? <span className="sub" style={{ display: 'block' }} data-testid="bko-svc-gone">{t('growth.aiBooking.svc.notInCatalog')}</span> : null}
+    </span>), t('growth.aiBooking.ov.noServices'))}
+    {sm && sm.lines ? <div className="fk-note info" data-testid="bko-svc-summary" style={{ marginTop: 8 }}><span>
+      {sm.totalPriceCents != null && sm.totalDurationMinutes != null ? <b data-testid="bko-svc-total">{t('growth.aiBooking.svc.total', { p: money(sm.totalPriceCents), n: String(sm.totalDurationMinutes) })}</b> : null}
+      {sm.catalogTotalCents != null && sm.catalogTotalCents !== sm.totalPriceCents ? <span data-testid="bko-svc-catalog-total"> · {t('growth.aiBooking.svc.catalogTotal', { p: money(sm.catalogTotalCents) })}</span> : null}
+      {sm.overrides ? <span style={{ display: 'block' }} data-testid="bko-svc-overrides">{t('growth.aiBooking.svc.overrides', { n: String(sm.overrides) })}</span> : null}
+      <span className="sub" style={{ display: 'block' }}>{t('growth.aiBooking.svc.note')}</span></span></div> : null}
+  </>;
+}
+
 const TABS = ['overview', 'customer', 'services', 'ai', 'execution', 'verification', 'communications', 'audit'] as const;
 function RequestOverlay({ requestId, onClose, onBooking, onCustomer }: { requestId: string; onClose: () => void; onBooking: (date?: string | null) => void; onCustomer: (id: string) => void }) {
   const [tab, setTab] = useState<typeof TABS[number]>('overview');
@@ -265,7 +292,7 @@ function RequestOverlay({ requestId, onClose, onBooking, onCustomer }: { request
           {row(t('growth.aiBooking.ov.verified'), d.customer.verified ? t('pos.yes') : t('pos.no'))}
           <div className="sub" style={{ margin: '10px 0 4px' }}>{t('growth.aiBooking.ov.otherAppointments')}</div>
           {list(d.customer.appointments.map((a) => `${a.date ?? ''} ${a.time ?? ''} · ${word('growth.aiQueue.ov.st.', a.status)}`), t('growth.aiQueue.ov.noAppointments'))}</> : null}
-        {tab === 'services' ? <>{list(d.serviceLines.map((s) => <span>{s.name ?? '—'}{s.durationMinutes ? ` · ${t('pos.n_min', { n: String(s.durationMinutes) })}` : ''}{s.priceCents != null ? ` · ${money(s.priceCents)}` : ''}</span>), t('growth.aiBooking.ov.noServices'))}
+        {tab === 'services' ? <><ServiceBreakdown d={d as BookedServicesView} list={list} />
           {row(t('glossary.people.technician'), d.technicianName)}</> : null}
         {tab === 'ai' ? <><div className="sub" style={{ marginBottom: 6 }}>{t('growth.aiBooking.ov.aiNote')}</div>{list(proposals.map((x) => `${when(x.at)} · ${word('growth.aiBooking.stage.', x.stage)}`), t('growth.aiBooking.ov.noProposals'))}</> : null}
         {tab === 'execution' ? <>{row(t('growth.aiBooking.ov.attempts'), String(d.attempts))}

@@ -1049,4 +1049,15 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiForecast.trend.flat": "Từ {a} đến {b}, dự báo giữ ở mức {from}; ngày cao nhất là {pd} với {pv}. Khoảng 80% trong kỳ từ {lo} đến {hi}.", // DRAFT — Kevin reviews
   "growth.aiForecast.fullScreen": "Toàn màn hình", // DRAFT — Kevin reviews
   "growth.aiForecast.fullTitle": "Dự báo {n} ngày", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.addon": "Dịch vụ thêm", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.catalog": "Giá theo danh mục", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.manual": "Giá chỉnh tay", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.manualReason": "Lý do: {r}", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.catalogNow": "danh mục hiện tại {p}", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.notInCatalog": "Không còn trong danh mục", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.durDiff": "thời lượng theo danh mục {n} phút", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.total": "Tổng {p} · {n} phút", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.catalogTotal": "Theo giá danh mục: {p}", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.overrides": "{n} giá chỉnh tay — do nhân viên đặt, không theo danh mục", // DRAFT — Kevin reviews
+  "growth.aiBooking.svc.note": "Giá và thời lượng theo lịch đã đặt; cột danh mục là giá hiện tại của tiệm. Màn hình này không đổi giá lịch hẹn.", // DRAFT — Kevin reviews
 };
