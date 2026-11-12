@@ -8,6 +8,6 @@ export const AiSchedulingControllerListQueries = {
   list: { filters: { status: { type: 'text' }, type: { type: 'text' }, runId: { type: 'id' }, technicianId: { type: 'id' }, date: { type: 'date' } }, search: false },
   listOwn: { filters: { status: { type: 'text' }, date: { type: 'date' } }, search: false },
   runs: { filters: { date: { type: 'date' } }, search: false },
-  calendar: { filters: { date: { type: 'date' } }, search: false },
+  calendar: { filters: { date: { type: 'date' } }, search: false, params: ['capacity'] },
   timeOff: { filters: { technicianId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
 } satisfies Record<string, ListQuerySpec>;

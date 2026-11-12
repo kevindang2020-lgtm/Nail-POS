@@ -1693,4 +1693,29 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.payment_pending_stuck.fix": "Kiểm tra khoản thu với nhà cung cấp thanh toán, rồi đánh dấu thành công hoặc thất bại.", // DRAFT — Kevin reviews
   "syschk.memberships.charged_after_cancel": "Không có khoản gia hạn nào được thu sau khi thẻ hội viên đã hủy", // DRAFT — Kevin reviews
   "syschk.memberships.charged_after_cancel.fix": "Xem lại khoản thu và hoàn tiền nếu việc hủy vẫn giữ nguyên.", // DRAFT — Kevin reviews
+  "sox.cap.title": "Rủi ro công suất theo giờ", // DRAFT — Kevin reviews
+  "sox.cap.show": "Xem công suất", // DRAFT — Kevin reviews
+  "sox.cap.hide": "Ẩn", // DRAFT — Kevin reviews
+  "sox.cap.intro": "Tùy chọn: mỗi giờ, số phút có thợ so với nhu cầu đã đặt và từng kỹ năng so với số thợ đủ điều kiện đang trong ca. Chỉ xem — đặt và dời lịch trên bảng đặt lịch.", // DRAFT — Kevin reviews
+  "sox.cap.loading": "Đang tải…", // DRAFT — Kevin reviews
+  "sox.cap.none": "Không có dữ liệu công suất cho ngày này.", // DRAFT — Kevin reviews
+  "sox.cap.failed": "Không tải được công suất.", // DRAFT — Kevin reviews
+  "sox.cap.totals": "Quá công suất: {over} giờ · Sát: {tight} giờ · Có lịch mà không ai trong ca: {unstaffed} giờ · Thiếu kỹ năng: {skill} giờ", // DRAFT — Kevin reviews
+  "sox.cap.risk.ok": "Ổn", // DRAFT — Kevin reviews
+  "sox.cap.risk.tight": "Sát", // DRAFT — Kevin reviews
+  "sox.cap.risk.over": "Quá tải", // DRAFT — Kevin reviews
+  "sox.cap.risk.unstaffed": "Không có thợ", // DRAFT — Kevin reviews
+  "sox.cap.risk.closed": "Đóng", // DRAFT — Kevin reviews
+  "sox.cap.skillShortShort": "kỹ năng", // DRAFT — Kevin reviews
+  "sox.cap.detail": "{hour}: {techs} thợ trong ca · có thợ {staffed} phút · đã đặt {booked} phút · đang giữ {held} phút · sử dụng {use}", // DRAFT — Kevin reviews
+  "sox.cap.unassigned": "{n} phút đã đặt chưa có thợ", // DRAFT — Kevin reviews
+  "sox.cap.col.skill": "Kỹ năng (nhóm dịch vụ)", // DRAFT — Kevin reviews
+  "sox.cap.col.demand": "Nhu cầu", // DRAFT — Kevin reviews
+  "sox.cap.col.needed": "Số thợ cần", // DRAFT — Kevin reviews
+  "sox.cap.col.qualified": "Thợ đủ điều kiện trong ca", // DRAFT — Kevin reviews
+  "sox.cap.min": "{n} phút", // DRAFT — Kevin reviews
+  "sox.cap.short": "thiếu", // DRAFT — Kevin reviews
+  "sox.cap.noDemand": "Không có lịch trong giờ này.", // DRAFT — Kevin reviews
+  "sox.cap.pick": "Chạm vào một giờ để xem kỹ năng.", // DRAFT — Kevin reviews
+  "sox.cap.basis": "Có thợ = ca làm trừ giờ nghỉ, giờ bị chặn và ngày nghỉ đã duyệt. Sát = từ {pct}% số phút có thợ đã được đặt hoặc giữ. Đủ điều kiện = cùng quy tắc kỹ năng mà bộ tối ưu dùng. Không có gì ở đây thay đổi lịch.", // DRAFT — Kevin reviews
 };

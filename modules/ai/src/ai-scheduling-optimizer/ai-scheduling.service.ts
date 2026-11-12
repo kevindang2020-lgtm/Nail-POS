@@ -30,6 +30,7 @@ import {
   type DayData, type MoveTarget, isLockedAppt, checkMove, dayMetrics, sumMetrics, withMove, detectDay, enumerateOptions, touchesConfirmed,
   hhmm, toMin, INACTIVE_STATUSES,
 } from './ai-scheduling-day';
+import { capacityHeatmap, type CapacityHeatmap } from './ai-scheduling-capacity';
 import { SchedError } from './ai-scheduling-errors';
 import type { SchedStore } from './ai-scheduling.store';
 import { LIVE_STATUSES, EXPIRABLE_STATUSES } from './ai-scheduling.store';
@@ -767,7 +768,7 @@ export class AiSchedulingService {
   }
 
   // ── calendar overlay ──────────────────────────────────────────────────────────────────────────────────────────────
-  async calendar(ctx: SchedCtx, date: string): Promise<SchedCalendarIndicators> {
+  async calendar(ctx: SchedCtx, date: string, opts: { capacity?: boolean } = {}): Promise<SchedCalendarIndicators> {
     this.need(ctx, 'ai_scheduling.view');
     if (!isYmd(date)) throw new SchedError('VALIDATION_FAILED', 'date must be YYYY-MM-DD');
     const branchId = this.sessionBranch(ctx);
@@ -781,7 +782,10 @@ export class AiSchedulingService {
     const locked = new Set(locks.map((l) => l.appointmentId));
     const appointments: SchedCalendarIndicators['appointments'] = {};
     for (const r of recs.items) for (const apptId of r.affectedAppointmentIds) if (!appointments[apptId]) appointments[apptId] = { recommendationId: r.id, status: r.status, type: r.type, locked: locked.has(apptId) };
-    return { date, gaps, conflicts: conflicts.filter((c) => !c.resolved), appointments, utilizationPct: run?.metrics?.utilizationPct ?? null };
+    const out: SchedCalendarIndicators & { capacity?: CapacityHeatmap } = { date, gaps, conflicts: conflicts.filter((c) => !c.resolved), appointments, utilizationPct: run?.metrics?.utilizationPct ?? null };
+    // Extras "Capacity Risk Heatmap": only when asked (it reads the whole day); read-only, from the gate's own day model
+    if (opts.capacity) out.capacity = capacityHeatmap(await this.d.reader.loadDay(ctx, branchId, date));
+    return out;
   }
 
   // ── gate inputs: time off, locks, service profiles ───────────────────────────────────────────────────────────────

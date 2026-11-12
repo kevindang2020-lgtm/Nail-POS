@@ -371,6 +371,10 @@ describe('9 · runs', () => {
     const cal = await w.svc.calendar(owner(), DATE);
     expect(cal.conflicts.length).toBe(d2.conflicts.length);
     expect(Object.keys(cal.appointments)).toContain(A2);
+    expect((cal as { capacity?: unknown }).capacity).toBeUndefined();                  // the heatmap is opt-in
+    const withCap = await w.svc.calendar(owner(), DATE, { capacity: true }) as typeof cal & { capacity?: { date: string; hours: { bookedMin: number }[] } };
+    expect(withCap.capacity?.date).toBe(DATE);
+    expect(withCap.capacity!.hours.reduce((n, h) => n + h.bookedMin, 0)).toBeGreaterThan(0);   // the seeded appointments are counted
   });
 });
 

@@ -63,6 +63,8 @@ export const posAiSchedulingOptimizerApi = {
 
   // ── booking calendar overlay ──
   calendar: (date: string) => api.get<SchedCalendarIndicators>(`${BASE}/calendar`, { date }),
+  /** Extras Capacity Risk Heatmap — the same calendar read with ?capacity=1 (read-only; the server computes every number) */
+  capacity: (date: string) => api.get<SchedCalendarIndicators & { capacity?: CapacityHeatmapView }>(`${BASE}/calendar`, { date, capacity: '1' }),
 
   // ── inputs the hard-constraint gate reads ──
   timeOff: () => api.get<SchedTimeOff[] | { items: SchedTimeOff[] }>(`${BASE}/time-off`).then((r) => items<SchedTimeOff>(r)),
@@ -95,3 +97,11 @@ export const posAiSchedulingOptimizerApi = {
    *  Prefer: respond-async → poll → download, read as text. Errors carry { status, code, message } as before. */
   exportCsv: (kind: SchedExportKind, from: string, to: string): Promise<string> => api.exportAsync<string>(`${BASE}/export`, { kind, from, to }, 'text'),
 };
+
+/** the calendar's optional `capacity` block (api-contracts SchedCapacityHeatmap) as this client reads it */
+export interface CapacityHeatmapView {
+  date: string; timeZone: string; tightAtPct: number; basis: string;
+  hours: { hour: string; techsOnShift: number; staffedMin: number; bookedMin: number; unassignedMin: number; heldMin: number; utilizationPct: number | null;
+    risk: 'closed' | 'unstaffed' | 'over' | 'tight' | 'ok'; skillShort: boolean; skills: { category: string; demandMin: number; techsNeeded: number; qualifiedOnShift: number; short: boolean }[] }[];
+  totals: { staffedMin: number; bookedMin: number; overHours: number; tightHours: number; unstaffedHours: number; skillShortHours: number };
+}

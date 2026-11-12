@@ -180,6 +180,19 @@ export interface SchedCalendarIndicators {
   /** appointmentId → the open recommendation touching it (status + id), for the badge on the calendar card. */
   appointments: Record<string, { recommendationId: string; status: SchedRecStatus; type: SchedRecType; locked: boolean }>;
   utilizationPct: number | null;
+  /** Extras "Capacity Risk Heatmap" — present only with ?capacity=1: per hour staffed vs booked minutes and per-skill demand vs qualified technicians on shift (read-only). */
+  capacity?: SchedCapacityHeatmap;
+}
+export type SchedCapacityRisk = 'closed' | 'unstaffed' | 'over' | 'tight' | 'ok';
+export interface SchedCapacityHour {
+  hour: string; startMin: number; endMin: number; techsOnShift: number; staffedMin: number; bookedMin: number; unassignedMin: number; heldMin: number;
+  utilizationPct: number | null; risk: SchedCapacityRisk; skillShort: boolean;
+  skills: { category: string; demandMin: number; techsNeeded: number; qualifiedOnShift: number; short: boolean }[];
+}
+export interface SchedCapacityHeatmap {
+  date: string; branchId: string; timeZone: string; tightAtPct: number; hours: SchedCapacityHour[];
+  totals: { staffedMin: number; bookedMin: number; overHours: number; tightHours: number; unstaffedHours: number; skillShortHours: number };
+  basis: string;
 }
 
 // ── usage + export ──────────────────────────────────────────────────────────────────────────────────────────────────

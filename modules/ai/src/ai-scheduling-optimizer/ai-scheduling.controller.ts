@@ -98,7 +98,7 @@ export class AiSchedulingController {
 
   // ── booking-calendar overlay ──
   @Get('calendar') @RequirePermission('ai_scheduling.view')
-  calendar(@Req() r: any, @Query('date') date: string): Promise<SchedCalendarIndicators> { return schedRun(() => this.svc.calendar(schedCtx(r), date)); }
+  calendar(@Req() r: any, @Query('date') date: string, @Query('capacity') capacity?: string): Promise<SchedCalendarIndicators> { return schedRun(() => this.svc.calendar(schedCtx(r), date, { capacity: capacity === '1' || capacity === 'true' })); }
 
   // ── gate inputs ──
   @Get('time-off') @RequirePermission('ai_scheduling.view')
