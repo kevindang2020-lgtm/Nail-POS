@@ -87,6 +87,10 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         AND p.status IN ${PAY_OK} GROUP BY p.processor, p.processor_transaction_id HAVING count(*) > 1`) },
     { key: 'negative_amount', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM payments p WHERE p.tenant_id = ${t}::uuid ${br('p', b)} AND (p.amount_cents < 0 OR coalesce(p.tip_cents, 0) < 0 OR coalesce(p.surcharge_cents, 0) < 0)`) },
     { key: 'test_payments', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM payments p WHERE p.tenant_id = ${t}::uuid ${br('p', b)} AND coalesce(p.is_test, false) AND p.status IN ${PAY_OK} AND p.created_at > now() - interval '30 days'`) },
+    // extras (PAYMENTS & MONEY 04 cash-to-settlement trace): cash is counted by the cash drawer and gift cards by their own
+    // ledger — a cash or gift-card tender tied to a PROCESSOR settlement batch would be counted a second time in the payout
+    { key: 'non_card_in_processor_batch', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM payments p WHERE p.tenant_id = ${t}::uuid ${br('p', b)} AND p.settlement_batch_id IS NOT NULL
+        AND lower(coalesce(p.method, '')) IN ('cash', 'gift_card', 'gift') AND p.status IN ${PAY_OK}`) },
   ] },
 
   // ── Discounts / Deals / Coupons (/pos/discounts) ──────────────────────────────────────────────────────────────────

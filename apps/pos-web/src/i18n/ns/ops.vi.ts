@@ -1673,4 +1673,6 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.inventory.recipe_inactive_product.fix": "Mở Kho hàng → Công thức và thay sản phẩm trong công thức của các dịch vụ đó.", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_short_deduction": "Khi hoàn tất dịch vụ, kho đã trừ đủ lượng theo công thức (30 ngày qua)", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_short_deduction.fix": "Kho bị thiếu khi làm dịch vụ — hãy kiểm đếm lại sản phẩm và nhập thêm hàng; lượng đã trừ không bị thay đổi.", // DRAFT — Kevin reviews
+  "syschk.payments.non_card_in_processor_batch": "Không có thanh toán tiền mặt hoặc thẻ quà tặng nào gắn với lô của đơn vị xử lý thẻ", // DRAFT — Kevin reviews
+  "syschk.payments.non_card_in_processor_batch.fix": "Tiền mặt được tính trong ngăn kéo tiền, thẻ quà tặng được tính trong sổ của nó. Mở từng thanh toán và sửa liên kết lô để tiền không bị tính hai lần.", // DRAFT — Kevin reviews
 };

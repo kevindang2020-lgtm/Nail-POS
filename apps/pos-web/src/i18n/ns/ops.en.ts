@@ -1674,4 +1674,6 @@ export const OPS_EN = {
   "syschk.inventory.recipe_inactive_product.fix": "Open Inventory → Recipes and replace the product in those services’ recipes.",
   "syschk.inventory.recipe_short_deduction": "Service Done took each recipe’s full amount from stock (last 30 days)",
   "syschk.inventory.recipe_short_deduction.fix": "Stock ran short when the service was done — recount the product and receive stock; the deduction itself is not changed.",
+  "syschk.payments.non_card_in_processor_batch": "No cash or gift-card payment is tied to a card processor batch",
+  "syschk.payments.non_card_in_processor_batch.fix": "Cash is counted by the cash drawer and gift cards by their ledger. Open each payment and have the processor batch link corrected so the money is not counted twice.",
 };
