@@ -155,7 +155,8 @@ export function POSAiUsageScreen() {
             <div className="sub">{tx('aiux.d.' + x.key + '.' + x.state)}</div>
             {x.key === 'bundle_overlap' && Array.isArray(x.detail?.overlaps) && x.detail.overlaps.length ? <ul className="fk-list dense" data-testid="chk-bundle-overlaps">{x.detail.overlaps.map((o: any) => (
               <li key={o.code} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{o.name}</span>
-                <span className="fk-li-s">{tx('aiux.overlap.plans', { plans: (o.plans ?? []).join(', ') || '—' })}{o.paidOnItsOwnSince ? ' · ' + tx('aiux.overlap.ownSince', { d: day(o.paidOnItsOwnSince) }) : ''}</span></div></li>))}</ul> : null}</div>)}
+                <span className="fk-li-s">{tx('aiux.overlap.plans', { plans: (o.plans ?? []).join(', ') || '—' })}{o.paidOnItsOwnSince ? ' · ' + tx('aiux.overlap.ownSince', { d: day(o.paidOnItsOwnSince) }) : ''}</span></div></li>))}</ul> : null}
+            {x.key === 'catalog_integrity' && x.detail ? <CatalogDrill detail={x.detail} /> : null}</div>)}
         </>}
       </FitDialog> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
@@ -433,4 +434,20 @@ export function EntitlementWhy({ why }: { why: EntitlementWhyView }) {
       <dt>{tx('aiu.why.verified')}</dt><dd data-testid="aiu-why-verified">{why.lastVerified?.at ? tx('aiu.why.verifiedAt', { d: when(why.lastVerified.at), p: why.lastVerified.provider ?? '—' }) : tx('aiu.why.neverVerified')}</dd>
     </dl>
   </section>;
+}
+
+/** extras AI Usage Limits 01: the catalog-integrity drill-down — each discrepancy group with its codes, and stored prices that
+ *  differ from today's (listed, not a defect). Codes the catalog does not know have no name, so they are humanised. */
+function CatalogDrill({ detail }: { detail: { packages?: number; bundles?: number; discrepancies?: Record<string, string[]>; priceDifferences?: { kind: string; code: string; name: string | null; storedCents: number; currentCents: number }[] } }) {
+  const groups = Object.entries(detail.discrepancies ?? {}).filter(([, v]) => Array.isArray(v) && v.length);
+  const prices = detail.priceDifferences ?? [];
+  return (
+    <div data-testid="chk-catalog-drill">
+      <div className="sub">{tx('aiux.cat.counts', { p: fmtNumber(detail.packages ?? 0), b: fmtNumber(detail.bundles ?? 0) })}</div>
+      {groups.length ? <ul className="fk-list dense">{groups.map(([k, v]) => <li key={k} className="fk-li" data-testid={`chk-cat-${k}`}><div className="fk-li-main"><span className="fk-li-t">{tx('aiux.cat.' + k)}</span>
+        <span className="fk-li-s">{v.map((c) => codeLabel(`aiux.code.${c}`, c)).join(', ')}</span></div></li>)}</ul> : null}
+      {prices.length ? <><div className="sub">{tx('aiux.cat.prices')}</div><ul className="fk-list dense">{prices.map((d) => <li key={d.kind + d.code} className="fk-li" data-testid="chk-cat-price"><div className="fk-li-main">
+        <span className="fk-li-t">{d.name ?? codeLabel(`aiux.code.${d.code}`, d.code)}</span><span className="fk-li-s">{tx('aiux.cat.priceLine', { stored: fmtMoney(d.storedCents), current: fmtMoney(d.currentCents) })}</span></div></li>)}</ul></> : null}
+    </div>
+  );
 }

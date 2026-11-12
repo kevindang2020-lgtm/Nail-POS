@@ -150,4 +150,20 @@ export const AIPLANS_VI: Record<string, string> = {
   "aiux.d.bundle_overlap.WARNING": "Có trợ lý vừa trả tiền riêng vừa nằm trong một gói đã trả tiền (hoặc có trong hai gói đang chạy). Hãy xem lại với chủ tiệm — chưa hủy hay hoàn tiền gì.", // DRAFT — Kevin reviews
   "aiux.overlap.plans": "Trong gói: {plans}", // DRAFT — Kevin reviews
   "aiux.overlap.ownSince": "trả riêng từ {d}", // DRAFT — Kevin reviews
+  "aiux.k.catalog_integrity": "Tính nhất quán của danh mục (15 trợ lý, 5 gói)", // DRAFT — Kevin reviews
+  "aiux.d.catalog_integrity.PASSED": "Mọi mã tiệm đang dùng — đăng ký, gói, ghi nhận sử dụng và công tắc nền tảng — đều có trong danh mục, và mỗi trợ lý thuộc đúng một gói.", // DRAFT — Kevin reviews
+  "aiux.d.catalog_integrity.WARNING": "Có mã không nằm trong danh mục (hoặc trợ lý không thuộc gói nào / thuộc hai gói). Từng mục được liệt kê bên dưới — không có gì bị thay đổi.", // DRAFT — Kevin reviews
+  "aiux.d.catalog_integrity.FAILED": "Bản thân danh mục không nhất quán (không đủ 15 trợ lý / 5 gói, mã trùng, hoặc thiếu thành phần của gói). Hãy báo lỗi này.", // DRAFT — Kevin reviews
+  "aiux.d.catalog_integrity.UNAVAILABLE": "Hiện không so sánh được danh mục. Hãy thử lại.", // DRAFT — Kevin reviews
+  "aiux.cat.counts": "Danh mục: {p} trợ lý · {b} gói", // DRAFT — Kevin reviews
+  "aiux.cat.duplicateCodes": "Mã bị liệt kê hai lần", // DRAFT — Kevin reviews
+  "aiux.cat.bundleMembersNotInCatalog": "Thành phần gói không có trong danh mục", // DRAFT — Kevin reviews
+  "aiux.cat.packagesInNoBundle": "Trợ lý không thuộc gói nào", // DRAFT — Kevin reviews
+  "aiux.cat.packagesInTwoBundles": "Trợ lý thuộc hai gói", // DRAFT — Kevin reviews
+  "aiux.cat.subscriptionsUnknownToCatalog": "Đăng ký cho mã không có trong danh mục", // DRAFT — Kevin reviews
+  "aiux.cat.planRowsUnknownToCatalog": "Đăng ký gói cho gói không có trong danh mục", // DRAFT — Kevin reviews
+  "aiux.cat.meteredCodesUnknownToCatalog": "Sử dụng được ghi nhận (90 ngày qua) cho mã không có trong danh mục", // DRAFT — Kevin reviews
+  "aiux.cat.switchesUnknownToCatalog": "Công tắc nền tảng cho mã không có trong danh mục", // DRAFT — Kevin reviews
+  "aiux.cat.prices": "Giá đã lưu khác với giá hiện tại (liệt kê để xem lại — giữ giá cũ là được phép):", // DRAFT — Kevin reviews
+  "aiux.cat.priceLine": "đã lưu {stored}/tháng · hiện tại {current}/tháng", // DRAFT — Kevin reviews
 };

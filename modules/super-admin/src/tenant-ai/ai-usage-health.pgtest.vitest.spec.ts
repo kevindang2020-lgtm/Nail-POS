@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { AiUsageScreenRepository } from './ai-usage-screen.repository';
+import { AiUsageScreenRepository, catalogIntegrity } from './ai-usage-screen.repository';
+import { AI_PACKAGES, AI_PLANS } from '@aipowersalon/ai';
 
 const T = 'c7720000-0000-4000-8000-000000000001', U = 'c7720000-0000-4000-8000-000000000010';
 const ctx = { tenantId: T, userId: U, role: 'OWNER', permissions: ['ai.use', 'ai.manage', 'subscription.manage'] };
@@ -27,6 +28,7 @@ describe('Check AI Usage & Subscriptions', () => {
     const c: any = await repo.check(ctx);
     const by = (k: string) => c.checks.find((x: any) => x.key === k);
     expect(by('catalog')).toMatchObject({ state: 'PASSED', count: 15 });
+    expect(by('catalog_integrity')).toMatchObject({ state: 'PASSED', count: 0, detail: { packages: 15, bundles: 5, priceDifferences: [] } });
     expect(by('states_readable').state).toBe('PASSED');
     expect(by('cost_basis').state).toBe('INSUFFICIENT_DATA');
     expect(by('no_side_effects').state).toBe('PASSED');
@@ -134,5 +136,42 @@ describe('Check AI Usage & Subscriptions — bundle overlap (review only)', () =
     expect(x.detail.overlaps[0].paidOnItsOwnSince).toBeTruthy();
     expect(await q(sql`select package_code, status, price_cents from tenant_ai_subscriptions where tenant_id = ${T4} order by package_code`)).toEqual(before);   // nothing cancelled or re-priced
     expect((await q(sql`select status from tenant_ai_plan_subscriptions where tenant_id = ${T4} and plan_code = 'plan_money_owner'`))[0].status).toBe('active');
+  });
+});
+
+// extras AI Usage Limits 01: catalog integrity — 15 codes / five bundles vs subscriptions, plan rows, metering and switches, with a drill-down
+describe('Check AI Usage & Subscriptions — catalog integrity (read-only drill-down)', () => {
+  const T5 = 'c7720000-0000-4000-8000-000000000051';
+  const c5 = { tenantId: T5, userId: U, role: 'OWNER', permissions: ['ai.use', 'ai.manage', 'subscription.manage'] };
+  it('CI-01 names every code the catalog does not know and every stored price that differs from today\'s; changes nothing', async () => {
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T5}, 'S5', 'Catalog', 'aiu-775', 'AIU775', 'active')`);
+    await q(sql`insert into tenant_ai_subscriptions (id, tenant_id, package_code, status, billing_period, price_cents, currency, usage_limit, overage_enabled, current_period_starts_at) values
+      (gen_random_uuid(), ${T5}, 'ai_old_assistant', 'active', 'monthly', 1500, 'usd', 0, false, now()),
+      (gen_random_uuid(), ${T5}, 'ai_marketing_assistant', 'active', 'yearly', 58800, 'usd', 500, false, now()),
+      (gen_random_uuid(), ${T5}, 'ai_booking_assistant', 'active', 'monthly', 4900, 'usd', 1000, false, now())`);
+    await q(sql`insert into tenant_ai_plan_subscriptions (tenant_id, plan_code, status, price_cents, full_cents, started_at) values (${T5}, 'plan_retired', 'active', 1000, 1000, now()), (${T5}, 'plan_money_owner', 'active', 12000, 12000, now())`);
+    await q(sql`insert into ai_usage_logs (tenant_id, package_code, usage_unit, usage_amount, status, request_id, created_at) values (${T5}, 'ai_ghost_meter', 'calls', 1, 'success', gen_random_uuid()::text, now() - interval '2 days')`);
+    const before = await q(sql`select package_code, price_cents from tenant_ai_subscriptions where tenant_id = ${T5} order by package_code`);
+    const x: any = (await repo.check(c5)).checks.find((k: any) => k.key === 'catalog_integrity');
+    expect(x.state).toBe('WARNING');
+    expect(x.detail.discrepancies).toMatchObject({ subscriptionsUnknownToCatalog: ['ai_old_assistant'], planRowsUnknownToCatalog: ['plan_retired'], meteredCodesUnknownToCatalog: ['ai_ghost_meter'],
+      duplicateCodes: [], bundleMembersNotInCatalog: [], packagesInNoBundle: [], packagesInTwoBundles: [] });
+    expect(x.count).toBe(3);
+    // $588 / year = $49 / month vs a $59 list; Money & Owner stored $120 vs today's sum of its members ($69 + $29 + $59 = $157); booking matches → not listed
+    expect(x.detail.priceDifferences).toEqual([
+      { kind: 'package', code: 'ai_marketing_assistant', storedCents: 4900, currentCents: 5900, name: 'AI Marketing Assistant' },
+      { kind: 'plan', code: 'plan_money_owner', storedCents: 12000, currentCents: 15700, name: 'Money & Owner' },
+    ]);
+    expect(await q(sql`select package_code, price_cents from tenant_ai_subscriptions where tenant_id = ${T5} order by package_code`)).toEqual(before);
+  });
+  it('CI-02 pure: a broken catalog (14 codes, a duplicate, a bundle member the catalog lacks) FAILS; a package in no bundle warns', () => {
+    const codes = AI_PACKAGES.map((p) => p.code);
+    const plans = AI_PLANS.map((p) => ({ code: p.code, packageCodes: [...p.packageCodes] }));
+    const none = { subscriptionCodes: [], planSubscriptionCodes: [], meteredCodes: [], switchCodes: [], packagePrices: [], planPrices: [] };
+    expect(catalogIntegrity({ packageCodes: codes, plans, ...none }).state).toBe('PASSED');
+    expect(catalogIntegrity({ packageCodes: codes.slice(1), plans, ...none })).toMatchObject({ state: 'FAILED', detail: { packages: 14, discrepancies: { bundleMembersNotInCatalog: [codes[0]] } } });
+    expect(catalogIntegrity({ packageCodes: [...codes.slice(0, 14), codes[0]!], plans, ...none }).detail.discrepancies.duplicateCodes).toEqual([codes[0]]);
+    const short = plans.map((p, i) => (i === 0 ? { ...p, packageCodes: p.packageCodes.slice(1) } : p));
+    expect(catalogIntegrity({ packageCodes: codes, plans: short, ...none })).toMatchObject({ state: 'WARNING', detail: { discrepancies: { packagesInNoBundle: [plans[0]!.packageCodes[0]] } } });
   });
 });

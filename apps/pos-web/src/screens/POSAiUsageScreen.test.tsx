@@ -142,6 +142,21 @@ describe('POSAiUsageScreen', () => {
     expect(screen.getByTestId('chk-metering_stale')).toHaveTextContent(/Not enough data.*No live package/);
     expect(api.startTrial).not.toHaveBeenCalled(); expect(api.cancel).not.toHaveBeenCalled();
   });
+  it('Extras · AI Usage Limits 01: the catalog-integrity check drills down to each unknown code and each stored price that differs', async () => {
+    api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [
+      { key: 'catalog_integrity', state: 'WARNING', count: 2, detail: { packages: 15, bundles: 5,
+        discrepancies: { duplicateCodes: [], bundleMembersNotInCatalog: [], packagesInNoBundle: [], packagesInTwoBundles: [], subscriptionsUnknownToCatalog: ['ai_old_assistant'], planRowsUnknownToCatalog: [], meteredCodesUnknownToCatalog: ['ai_ghost_meter'], switchesUnknownToCatalog: [] },
+        priceDifferences: [{ kind: 'package', code: 'ai_marketing_assistant', name: 'AI Marketing Assistant', storedCents: 4900, currentCents: 5900 }] } }] });
+    render(<POSAiUsageScreen />);
+    fireEvent.click(await screen.findByTestId('aiu-check'));
+    const c = await screen.findByTestId('chk-catalog_integrity');
+    expect(c).toHaveTextContent(/Catalog integrity \(15 assistants, 5 plans\) · 2.*nothing was changed/);
+    expect(within(c).getByTestId('chk-catalog-drill')).toHaveTextContent('Catalog: 15 assistants · 5 plans');
+    expect(within(c).getByTestId('chk-cat-subscriptionsUnknownToCatalog')).toHaveTextContent('Subscriptions for codes not in the catalogAi old assistant');
+    expect(within(c).getByTestId('chk-cat-meteredCodesUnknownToCatalog')).toHaveTextContent('Ai ghost meter');
+    expect(within(c).queryByTestId('chk-cat-duplicateCodes')).toBeNull();
+    expect(within(c).getByTestId('chk-cat-price')).toHaveTextContent('AI Marketing Assistantstored $49.00/mo · today $59.00/mo');
+  });
   it('Extras · AI Usage Limits 04: the check names an assistant paid on its own and inside a paid plan, for review — nothing is cancelled', async () => {
     api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [
       { key: 'bundle_overlap', state: 'WARNING', count: 1, detail: { overlaps: [{ code: 'ai_fraud_money_protection', name: 'AI Fraud & Money Protection', plans: ['Money & Owner'], paidOnItsOwnSince: '2026-10-01T15:00:00Z' }] } }] });

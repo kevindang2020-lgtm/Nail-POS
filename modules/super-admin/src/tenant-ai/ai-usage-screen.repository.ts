@@ -12,7 +12,7 @@
 // overage figure is an ESTIMATE until invoiced; the total is "from subscription records" unless every paying package
 // has a recorded successful payment in its current period ("reconciled").
 import { sql, type Kysely } from 'kysely';
-import { AI_PACKAGES, AI_PLANS, TENANT_AI_SUBSCRIPTION, getAiPackage, evaluateAiAccess, KyselyAiAccessRepo, syncUsageAlerts, AiInvoiceLedger, UnconfiguredInvoiceClient, effectiveBranchAccess, validateBranchSettings, branchSettingFields, type AiInvoiceProviderClient } from '@aipowersalon/ai';
+import { AI_PACKAGES, AI_PLANS, effectivePlanPriceCents, TENANT_AI_SUBSCRIPTION, getAiPackage, evaluateAiAccess, KyselyAiAccessRepo, syncUsageAlerts, AiInvoiceLedger, UnconfiguredInvoiceClient, effectiveBranchAccess, validateBranchSettings, branchSettingFields, type AiInvoiceProviderClient } from '@aipowersalon/ai';
 import { invoiceViewOf, invoicedAmounts, inPeriodFrom, ESTIMATE_ASSUMPTIONS, type InvoiceView } from './ai-usage-invoices.view';
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { displayStateOf, actionsFor, primaryAction, usageLevelOf, type DisplayState, type PackageAction, type UsageLevel } from './ai-usage-states';
@@ -73,6 +73,40 @@ export function priceComparison(listMonthlyCents: number | null | undefined, sto
   if (list == null) return { listMonthlyCents: null, storedMonthlyCents, status: 'no_list_price', deltaMonthlyCents: null, listSource: 'catalog' };
   if (storedMonthlyCents == null || storedMonthlyCents === list) return { listMonthlyCents: list, storedMonthlyCents, status: 'list', deltaMonthlyCents: storedMonthlyCents == null ? null : 0, listSource: 'catalog' };
   return { listMonthlyCents: list, storedMonthlyCents, status: storedMonthlyCents < list ? 'kept_below_list' : 'above_list', deltaMonthlyCents: storedMonthlyCents - list, listSource: 'catalog' };
+}
+/** extras AI Usage Limits 01 (Catalog Integrity Audit): the 15 package codes and five bundles of the code catalog, compared
+ *  with the codes this salon's subscriptions, plan rows, metering (ai_usage_logs — what the AI gateway records) and the
+ *  platform switches use, and stored prices vs today's (plan price = Super Admin override/discount, else the members' sum).
+ *  Drill-down lists name each discrepancy. A stored price that differs is listed, never a defect (a kept earlier price is
+ *  legitimate). Pure: the caller reads the facts; nothing is changed. */
+export interface CatalogFacts {
+  packageCodes: string[]; plans: { code: string; packageCodes: string[] }[];
+  subscriptionCodes: string[]; planSubscriptionCodes: string[]; meteredCodes: string[]; switchCodes: string[];
+  packagePrices: { code: string; storedMonthlyCents: number; listMonthlyCents: number | null }[];
+  planPrices: { code: string; storedCents: number; currentCents: number | null }[];
+}
+export function catalogIntegrity(f: CatalogFacts) {
+  const known = new Set(f.packageCodes); const planCodes = new Set(f.plans.map((p) => p.code));
+  const dupes = f.packageCodes.filter((c, i) => f.packageCodes.indexOf(c) !== i);
+  const inPlans = f.plans.flatMap((p) => p.packageCodes);
+  const bundleUnknown = [...new Set(inPlans.filter((c) => !known.has(c)))];
+  const inNoPlan = f.packageCodes.filter((c) => !inPlans.includes(c));
+  const inTwoPlans = [...new Set(inPlans.filter((c, i) => inPlans.indexOf(c) !== i))];
+  const unknownIn = (codes: string[], ok: Set<string>) => [...new Set(codes.filter((c) => !ok.has(c)))].sort();
+  const discrepancies = {
+    duplicateCodes: [...new Set(dupes)], bundleMembersNotInCatalog: bundleUnknown, packagesInNoBundle: inNoPlan, packagesInTwoBundles: inTwoPlans,
+    subscriptionsUnknownToCatalog: unknownIn(f.subscriptionCodes, known), planRowsUnknownToCatalog: unknownIn(f.planSubscriptionCodes, planCodes),
+    meteredCodesUnknownToCatalog: unknownIn(f.meteredCodes, known), switchesUnknownToCatalog: unknownIn(f.switchCodes, known),
+  };
+  const priceDifferences = [
+    ...f.packagePrices.filter((p) => p.listMonthlyCents != null && p.storedMonthlyCents !== p.listMonthlyCents).map((p) => ({ kind: 'package' as const, code: p.code, storedCents: p.storedMonthlyCents, currentCents: p.listMonthlyCents! })),
+    ...f.planPrices.filter((p) => p.currentCents != null && p.storedCents !== p.currentCents).map((p) => ({ kind: 'plan' as const, code: p.code, storedCents: p.storedCents, currentCents: p.currentCents! })),
+  ];
+  const structural = f.packageCodes.length !== 15 || f.plans.length !== 5 || dupes.length > 0 || bundleUnknown.length > 0;
+  const unknownCount = discrepancies.subscriptionsUnknownToCatalog.length + discrepancies.planRowsUnknownToCatalog.length + discrepancies.meteredCodesUnknownToCatalog.length + discrepancies.switchesUnknownToCatalog.length;
+  const state: 'PASSED' | 'WARNING' | 'FAILED' = structural ? 'FAILED' : unknownCount || inNoPlan.length || inTwoPlans.length ? 'WARNING' : 'PASSED';
+  return { state, count: unknownCount + (structural ? 1 : 0) + inNoPlan.length + inTwoPlans.length,
+    detail: { packages: f.packageCodes.length, bundles: f.plans.length, discrepancies, priceDifferences } };
 }
 export interface UsageProjection { basis: 'period_pace'; elapsedShare: number; projectedUsed: number | null; verdict: 'too_early' | 'fits' | 'close' | 'likely_over'; projectedOverageCents: number | null; atLimit: 'overage' | 'blocked' }
 export function usageProjection(used: number, limit: number, periodStart: Date, periodEnd: Date, now: Date, overageEnabled: boolean, overageUnitCents: number): UsageProjection | null {
@@ -571,6 +605,26 @@ export class AiUsageScreenRepository {
     try { cards = (await this.cards(ctx)).cards; checks.push({ key: 'states_readable', state: 'PASSED', count: cards.length }); }
     catch { checks.push({ key: 'states_readable', state: 'FAILED' }); }
     checks.push({ key: 'catalog', state: AI_PACKAGES.length === 15 && cards.length === AI_PACKAGES.length ? 'PASSED' : 'WARNING', count: AI_PACKAGES.length });
+    // extras AI Usage Limits 01: catalog integrity with a drill-down of every discrepancy (read-only)
+    try {
+      const subRows = (await sql<{ package_code: string; billing_period: string; price_cents: number }>`select package_code, billing_period, price_cents from tenant_ai_subscriptions where tenant_id = ${T}`.execute(this.db)).rows;
+      const planRows = (await sql<{ plan_code: string; full_cents: number; price_override: number | null; discount_type: string | null; discount_value: number | null }>`select p.plan_code, p.full_cents, st.price_cents_override as price_override, st.discount_type, st.discount_value
+        from tenant_ai_plan_subscriptions p left join ai_plan_settings st on st.plan_code = p.plan_code where p.tenant_id = ${T}`.execute(this.db)).rows;
+      const metered = (await sql<{ package_code: string }>`select distinct package_code from ai_usage_logs where tenant_id = ${T} and created_at > now() - interval '90 days'`.execute(this.db)).rows;
+      const switches = (await sql<{ package_code: string }>`select package_code from platform_ai_package_settings`.execute(this.db)).rows;
+      const r = catalogIntegrity({
+        packageCodes: AI_PACKAGES.map((p) => p.code), plans: AI_PLANS.map((p) => ({ code: p.code, packageCodes: [...p.packageCodes] })),
+        subscriptionCodes: subRows.map((x) => String(x.package_code)), planSubscriptionCodes: planRows.map((x) => String(x.plan_code)),
+        meteredCodes: metered.map((x) => String(x.package_code)), switchCodes: switches.map((x) => String(x.package_code)),
+        packagePrices: subRows.filter((x) => N(x.price_cents) > 0).map((x) => ({ code: String(x.package_code), storedMonthlyCents: x.billing_period === 'yearly' ? Math.round(N(x.price_cents) / 12) : N(x.price_cents), listMonthlyCents: getAiPackage(String(x.package_code))?.monthlyPriceCents ?? null })),
+        planPrices: planRows.map((x) => ({ code: String(x.plan_code), storedCents: N(x.full_cents),
+          currentCents: AI_PLANS.some((p) => p.code === x.plan_code) ? effectivePlanPriceCents(String(x.plan_code), { priceCentsOverride: x.price_override, discountType: (x.discount_type as 'percent' | 'flat' | null) ?? undefined, discountValue: x.discount_value }).fullCents : null })),
+      });
+      const nameOf = (kind: 'package' | 'plan', code: string) => (kind === 'package' ? getAiPackage(code)?.name : AI_PLANS.find((p) => p.code === code)?.name) ?? null;
+      checks.push({ key: 'catalog_integrity', state: r.state, count: r.count, detail: { ...r.detail, priceDifferences: r.detail.priceDifferences.map((d) => ({ ...d, name: nameOf(d.kind, d.code) })) } });
+    } catch (e) {
+      checks.push({ key: 'catalog_integrity', state: 'UNAVAILABLE', detail: { errorCode: String((e as { code?: unknown })?.code ?? 'QUERY_FAILED').slice(0, 60) } });
+    }
     const unknown = cards.filter((c) => c.state === 'unable_to_verify').length;
     checks.push({ key: 'statuses_known', state: unknown ? 'WARNING' : 'PASSED', count: unknown });
     // a stored "trialing" whose trial already ended: the page says Trial expired and the gate denies — the row itself is stale
