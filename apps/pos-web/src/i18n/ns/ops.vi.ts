@@ -1699,4 +1699,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.invoice_collection_over_invoice.fix": "So sánh khoản thu hội viên với tổng hóa đơn và sửa bên bị sai.", // DRAFT — Kevin reviews
   "syschk.memberships.card_collection_without_ref": "Mọi khoản thu hoặc hoàn tiền hội viên bằng thẻ đều có mã tham chiếu của bộ xử lý", // DRAFT — Kevin reviews
   "syschk.memberships.card_collection_without_ref.fix": "Tìm giao dịch trong báo cáo của bộ xử lý để đối chiếu với khoản tiền gửi.", // DRAFT — Kevin reviews
+  "syschk.memberships.duplicate_member_notice": "Không hội viên nào nhận cùng một thông báo hội viên hai lần", // DRAFT — Kevin reviews
+  "syschk.memberships.duplicate_member_notice.fix": "Báo cho bộ phận hỗ trợ: cơ chế mỗi sự kiện một thông báo đã không giữ được với những hội viên này.", // DRAFT — Kevin reviews
+  "syschk.memberships.failed_charge_not_told": "Mọi khoản thu hội viên bị từ chối trong 30 ngày qua đều đã báo cho hội viên", // DRAFT — Kevin reviews
+  "syschk.memberships.failed_charge_not_told.fix": "Liên hệ những hội viên này về khoản thanh toán bị từ chối và nhờ họ cập nhật thẻ.", // DRAFT — Kevin reviews
+  "syschk.memberships.branch_or_plan_other_salon": "Mọi thẻ hội viên đều dùng chi nhánh và gói của chính tiệm này", // DRAFT — Kevin reviews
+  "syschk.memberships.branch_or_plan_other_salon.fix": "Báo ngay cho bộ phận hỗ trợ: những thẻ hội viên này trỏ đến chi nhánh hoặc gói của tiệm khác.", // DRAFT — Kevin reviews
+  "syschk.memberships.money_rows_other_salon": "Không có khoản thu, tín dụng hay lần sử dụng hội viên nào bị ghi vào tiệm khác", // DRAFT — Kevin reviews
+  "syschk.memberships.money_rows_other_salon.fix": "Báo ngay cho bộ phận hỗ trợ: những dòng này bị ghi nhầm tiệm.", // DRAFT — Kevin reviews
 };

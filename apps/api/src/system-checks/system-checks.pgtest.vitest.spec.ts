@@ -446,4 +446,50 @@ describe('shared read-only Check … System', () => {
     expect(count(b1, 'card_collection_without_ref').count).toBe(0);
     expect((await q(tally)).rows).toEqual(before);
   });
+  it('extras Membership Overview 16·07 / 16·08 — duplicate member notices, a decline the member was never told about, another salon\'s branch / plan / money rows; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 4450..4499, agent-4 range)
+    const T4 = id(4450), X4 = id(4451), B41 = id(4452), B42 = id(4453), BX4 = id(4454), C4 = id(4455), CX4 = id(4456), PL = id(4457), PV = id(4458), PLX = id(4459), PVX = id(4460);
+    const M1 = id(4461), M2 = id(4462), M3 = id(4463), MX = id(4464);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'M5', 'Members5', 'sc-4450', 'SC4450', 'active'), (${X4}, 'MX5', 'Other5', 'sc-4451', 'SC4451', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C4}, ${T4}, ${B41}, 'Con', 'Sent', 'Con Sent', '+15550044501'), (${CX4}, ${X4}, ${BX4}, 'Oth', 'Er', 'Oth Er', '+15550044502')`);
+    await q(sql`insert into membership_plans (id, tenant_id, name, status) values (${PL}, ${T4}, 'Gold', 'active'), (${PLX}, ${X4}, 'Gold X', 'active')`);
+    await q(sql`insert into membership_plan_versions (id, plan_id, tenant_id, version_number, price_cents) values (${PV}, ${PL}, ${T4}, 1, 4900), (${PVX}, ${PLX}, ${X4}, 1, 4900)`);
+    // M1 (B1) fine; M2 (B2) points at the OTHER salon's plan; M3 sits in the other salon's branch; MX the other salon's own
+    await q(sql`insert into customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, auto_renew, auto_renew_consent_at) values
+      (${M1}, ${T4}, ${B41}, ${C4}, ${PL}, ${PV}, 'active', false, now()), (${M2}, ${T4}, ${B42}, ${C4}, ${PLX}, ${PV}, 'active', false, now()),
+      (${M3}, ${T4}, ${BX4}, ${C4}, ${PL}, ${PV}, 'active', false, now()), (${MX}, ${X4}, ${BX4}, ${CX4}, ${PLX}, ${PVX}, 'active', false, now())`);
+    // M1: two declines — one told, one not; an old untold decline (> 30 days) is not counted; M2's decline told.
+    // A payment filed under the other salon for M1 (leak), and the other salon's own untold decline (never counted).
+    await q(sql`insert into membership_payments (tenant_id, branch_id, customer_membership_id, customer_id, kind, amount_cents, status, idempotency_key, created_at) values
+      (${T4}, ${B41}, ${M1}, ${C4}, 'renewal', 4900, 'failed', 'sc4450-told', now() - interval '2 days'),
+      (${T4}, ${B41}, ${M1}, ${C4}, 'renewal', 4900, 'failed', 'sc4450-untold', now() - interval '1 hour'),
+      (${T4}, ${B41}, ${M1}, ${C4}, 'renewal', 4900, 'failed', 'sc4450-old', now() - interval '40 days'),
+      (${T4}, ${B42}, ${M2}, ${C4}, 'installment', 4900, 'failed', 'sc4450-m2', now() - interval '3 hours'),
+      (${X4}, ${BX4}, ${M1}, ${C4}, 'renewal', 4900, 'succeeded', 'sc4450-leak', now()),
+      (${X4}, ${BX4}, ${MX}, ${CX4}, 'renewal', 4900, 'failed', 'sc4450-x', now())`);
+    // notices: M1's decline told at -2 days (its later decline has none after it); M1's welcome twice (duplicate); M2 told
+    await q(sql`insert into customer_notifications (tenant_id, customer_id, type, title, reference, created_at) values
+      (${T4}, ${C4}, 'membership', 'Payment issue', ${'membership-payment-failed:' + M1 + ':2026-11-10'}, now() - interval '2 days'),
+      (${T4}, ${C4}, 'membership', 'Welcome', ${'membership-welcome:' + M1}, now() - interval '9 days'),
+      (${T4}, ${C4}, 'membership', 'Welcome', ${'membership-welcome:' + M1}, now() - interval '9 days'),
+      (${T4}, ${C4}, 'membership', 'Payment issue', ${'membership-payment-failed:' + M2 + ':2026-11-12'}, now() - interval '2 hours'),
+      (${X4}, ${CX4}, 'membership', 'Welcome', ${'membership-welcome:' + MX}, now()), (${X4}, ${CX4}, 'membership', 'Welcome', ${'membership-welcome:' + MX}, now())`);
+    const tally = sql`select (select count(*) from membership_payments) + (select count(*) from customer_notifications) + (select count(*) from customer_memberships) as n`;
+    const before = (await q(tally)).rows;
+    const all = await svc.run('memberships', { tenantId: T4 });
+    expect(count(all, 'duplicate_member_notice')).toMatchObject({ state: 'WARNING', count: 1 });      // M1's welcome; the other salon's pair never
+    expect(count(all, 'failed_charge_not_told')).toMatchObject({ state: 'WARNING', count: 1 });       // the 1-hour decline only
+    expect(count(all, 'branch_or_plan_other_salon')).toMatchObject({ state: 'FAILED', count: 2 });    // M2 (plan) and M3 (branch)
+    expect(count(all, 'money_rows_other_salon')).toMatchObject({ state: 'FAILED', count: 1 });        // the payment filed under the other salon for M1
+    const x = await svc.run('memberships', { tenantId: X4 });
+    expect(count(x, 'money_rows_other_salon').count).toBe(1);                                          // seen from the other side too (it holds a row for T's member)
+    const b2 = await svc.run('memberships', { tenantId: T4, branchId: B42 });
+    expect(count(b2, 'duplicate_member_notice').count).toBe(0);
+    expect(count(b2, 'failed_charge_not_told').count).toBe(0);
+    expect(count(b2, 'branch_or_plan_other_salon').count).toBe(1);
+    expect(count(b2, 'money_rows_other_salon').count).toBe(0);
+    expect((await q(tally)).rows).toEqual(before);
+  });
 });

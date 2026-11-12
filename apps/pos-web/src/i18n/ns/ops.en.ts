@@ -1700,4 +1700,12 @@ export const OPS_EN = {
   "syschk.memberships.invoice_collection_over_invoice.fix": "Compare the membership payment with the invoice total and correct the one that is wrong.",
   "syschk.memberships.card_collection_without_ref": "Every card membership payment or refund has a processor reference",
   "syschk.memberships.card_collection_without_ref.fix": "Find the charge in the processor report so it can be matched to the deposit.",
+  "syschk.memberships.duplicate_member_notice": "No member received the same membership notice twice",
+  "syschk.memberships.duplicate_member_notice.fix": "Tell support: the one-notice-per-event guard did not hold for those members.",
+  "syschk.memberships.failed_charge_not_told": "Every declined membership charge in the last 30 days told the member",
+  "syschk.memberships.failed_charge_not_told.fix": "Contact those members about the declined payment and ask them to update their card.",
+  "syschk.memberships.branch_or_plan_other_salon": "Every membership uses this salon's own branch and plan",
+  "syschk.memberships.branch_or_plan_other_salon.fix": "Tell support at once: those memberships point at another salon's branch or plan.",
+  "syschk.memberships.money_rows_other_salon": "No membership payment, credit or redemption is filed under another salon",
+  "syschk.memberships.money_rows_other_salon.fix": "Tell support at once: those rows are filed under the wrong salon.",
 };
