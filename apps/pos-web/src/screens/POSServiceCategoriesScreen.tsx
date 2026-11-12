@@ -38,6 +38,7 @@ export function POSServiceCategoriesScreen() {
   const [page, setPage] = useSessionState('aps.cg.page', 1); const [cpage, setCpage] = useSessionState('aps.cg.cpage', 1);
   const [tick, setTick] = useState(0); const reload = () => setTick((n) => n + 1);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
+  const [deciding, setDeciding] = useState<any>(null);   // SERVICE PRICING 13: the review finding being approved as is / reopened
   const [detail, setDetail] = useState<{ id: string; tab?: DTab } | null>(null);
   const [form, setForm] = useState<{ cat: any | null } | null>(null);
   const [archiving, setArchiving] = useState<any | null>(null);
@@ -108,13 +109,18 @@ export function POSServiceCategoriesScreen() {
         </FitPanel>
       </div>
 
-      {s && s.review.length ? <FitPanel testId="review" title={<>{tx('cg.review')}<span className="fk-muted"> · {nf(s.review.length)}</span></>}>
-        <ul className="fk-list dense" data-testid="review-list">{s.review.map((r: any, i: number) => <li key={i} className="fk-li" data-testid={'review-' + r.kind}>
-          <span className="fk-li-t">{tx('cg.review.' + r.kind, { c: r.categoryName, s: r.serviceName ?? '' })}<span className="fk-li-s">{tx('cg.review.' + r.kind + '.hint')}</span></span>
+      {s && s.review.length ? <FitPanel testId="review" title={<>{tx('cg.review')}<span className="fk-muted"> · {nf(s.review.filter((r: any) => r.status !== 'approved').length)}</span></>}>
+        <ul className="fk-list dense" data-testid="review-list">{s.review.map((r: any, i: number) => <li key={i} className="fk-li" data-testid={'review-' + r.kind} data-status={r.status ?? 'open'}>
+          <span className="fk-li-t">{tx('cg.review.' + r.kind, { c: r.categoryName, s: r.serviceName ?? '' })}
+            {r.status === 'approved' && r.lastDecision
+              ? <span className="fk-li-s" data-testid="review-approved"><span className="fk-chip ok">{tx('cg.rv.approved')}</span> {tx('cg.rv.by', { who: r.lastDecision.by ?? '—', when: day(r.lastDecision.at) })} — {r.lastDecision.note}</span>
+              : <span className="fk-li-s">{tx('cg.review.' + r.kind + '.hint')}</span>}</span>
           <button type="button" className="fk-btn ghost sm" onClick={() => setDetail({ id: r.categoryId, tab: r.serviceId ? 'services' : 'overview' })}>{tx('cg.review.open')}</button>
+          {can('services.edit') && r.status ? <button type="button" className="fk-btn ghost sm" data-testid="review-decide" onClick={() => setDeciding(r)}>{tx(r.status === 'approved' ? 'cg.rv.reopen' : 'cg.rv.approve')}</button> : null}
         </li>)}</ul>
         <div className="fk-hint">{tx('cg.reviewRule')}</div>
       </FitPanel> : null}
+      {deciding ? <ReviewDecisionDialog item={deciding} onClose={() => setDeciding(null)} onDone={(m) => { setDeciding(null); setNote({ tone: 'ok', text: m }); reload(); }} /> : null}
 
       <div className="mos-tools" data-testid="toolbar">
         <div className="fn-search mos-search"><input className="fk-search wide" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx(mode === 'customers' ? 'cg.custSearchPh' : 'cg.catSearchPh')} aria-label={tx('cg.search')} data-testid="search" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} />
@@ -236,6 +242,31 @@ function CategoryDetails({ id, initialTab, canEdit, onClose, onEdit, onArchive, 
         {t === 'history' ? (h.error ? <StateBlock error={h.error} onRetry={h.reload} /> : !h.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : h.data.items.length === 0 ? <Empty title={tx('cg.noHistory')} /> : <><ChangeHistoryTable rows={h.data.items} /><Pager info={pageOf(h.data)} onPage={setHp} /></>) : null}
       </>}
+    </FitDialog>
+  );
+}
+
+/** SERVICE PRICING 13 — Owner review: approve a finding as is, or reopen an approved one, with a note. The server keeps the
+ *  decision (append-only, tied to the original ids and names) and changes nothing in the catalog; fixing a real mistake
+ *  stays Manage Services. */
+function ReviewDecisionDialog({ item, onClose, onDone }: { item: any; onClose: () => void; onDone: (m: string) => void }) {
+  const reopen = item.status === 'approved';
+  const [text, setText] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const save = async () => {
+    if (text.trim().length < 3) { setErr(tx('cg.rv.noteRequired')); return; }
+    setBusy(true); setErr(null);
+    try {
+      await posCatalogApi.reviewDecision(item.categoryId, { kind: item.kind, serviceId: item.serviceId ?? null, decision: reopen ? 'reopen' : 'approve', note: text.trim() });
+      onDone(tx(reopen ? 'cg.rv.reopened' : 'cg.rv.done'));
+    } catch (e) { setErr(errorTextOf(e, tx('pos.save_failed'))); } finally { setBusy(false); }
+  };
+  return (
+    <FitDialog title={tx(reopen ? 'cg.rv.reopenTitle' : 'cg.rv.approveTitle')} onClose={onClose} busy={busy} testId="dlg-review-decision"
+      footer={<><button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" onClick={() => void save()} disabled={busy} data-testid="review-decision-save">{tx(reopen ? 'cg.rv.reopen' : 'cg.rv.approve')}</button></>}>
+      <p>{tx('cg.review.' + item.kind, { c: item.categoryName, s: item.serviceName ?? '' })}</p>
+      <p className="fk-hint">{tx(reopen ? 'cg.rv.reopenHint' : 'cg.rv.approveHint')}</p>
+      <label className="fk-field">{tx('cg.rv.note')}<textarea className="fk-input" rows={3} maxLength={500} value={text} onChange={(e) => setText(e.target.value)} data-testid="review-decision-note" /></label>
+      {err ? <div className="fk-note bad" role="alert">{err}</div> : null}
     </FitDialog>
   );
 }

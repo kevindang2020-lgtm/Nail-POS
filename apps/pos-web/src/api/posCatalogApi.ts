@@ -23,6 +23,8 @@ export const posCatalogApi = {
   categories: (q: Q) => api.get<any>(`${C}/categories`, clean(q)),
   category: (id: string, q: Q = {}) => api.get<any>(`${C}/categories/${enc(id)}`, clean(q)),
   reassign: (id: string, b: Q) => api.post<any>(`${C}/categories/${enc(id)}/reassign`, b),
+  /** SERVICE PRICING 13: approve a review finding as is / reopen it (a note; the catalog itself never changes) */
+  reviewDecision: (id: string, b: Q) => api.post<any>(`${C}/categories/${enc(id)}/review`, b),
   addOnSummary: () => api.get<any>(`${C}/add-ons/summary`),
   addOns: (q: Q) => api.get<any>(`${C}/add-ons`, clean(q)),
   addOn: (key: string) => api.get<any>(`${C}/add-ons/${enc(key)}`),
