@@ -109,6 +109,20 @@ export interface BookingOpeningsResponse {
   limit: number;
 }
 
+/** AI Calendar · AI booking provenance & exception review (Extras · AI Calendar 10): AI-origin failures, incomplete
+ *  verification and source attribution that does not hold up, each with its stored source ids — read only, redacted */
+export interface AiCalendarProvenanceReview {
+  asOf: string; timeZone: string; windowDays: number; readOnly: true;
+  counts: { toolFailed: number; verificationIncomplete: number; sourceUnlinked: number; sourceMismatch: number; total: number };
+  items: {
+    kind: 'tool_failed' | 'verification_incomplete' | 'source_unlinked' | 'source_mismatch';
+    at: string | null;
+    refs: { table: 'voice_tool_executions' | 'booking_holds' | 'booking_verification_sessions' | 'pos_tech_appointments'; id: string }[];
+    appointmentId: string | null;
+    detail: { tool: string | null; result: string | null; call: string | null; holdStatus: string | null; releaseReason: string | null; verification: string | null; source: string | null; appointmentStatus: string | null };
+  }[];
+}
+
 /** AI Calendar · Pending Verification Queue (Extras · AI Calendar 04): live slot holds, soonest to expire first */
 export interface AiCalendarPendingQueue {
   asOf: string; timeZone: string; pendingCode: number; expiringSoon: number;

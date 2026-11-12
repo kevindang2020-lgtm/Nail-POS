@@ -18,6 +18,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { useCopilotAction, PreparedCard, ActionOutcome } from './receptionCopilotCenter';
 import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 import { PendingHolds } from './aiCalendar/PendingHolds';
+import { ProvenanceReview } from './aiCalendar/ProvenanceReview';
 import { SlotExplain } from './aiCalendar/SlotExplain';
 import { useContainerDensity } from './aiCalendar/density';
 
@@ -49,7 +50,7 @@ export function POSAICalendarScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [health, setHealth] = useState<any | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
-  const [showAssist, setShowAssist] = useState(false); const [pending, setPending] = useState(false);
+  const [showAssist, setShowAssist] = useState(false); const [pending, setPending] = useState(false); const [provenance, setProvenance] = useState(false);
   const [showDefs, setShowDefs] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const density = useContainerDensity(rootRef);   // Extras · AI Calendar 08: spacing only — fonts never shrink
@@ -80,11 +81,13 @@ export function POSAICalendarScreen() {
           <button className="btn" onClick={() => nav(date ? `/booking?date=${date}` : '/booking')} data-testid="aic-open-booking">{t('aical.openBooking')}</button>
           <button className="btn ghost" onClick={() => { void runHealth(); }} disabled={healthBusy} data-testid="aic-health-btn">{healthBusy ? t('aical.checking') : t('aical.checkSystem')}</button>
           <button className="btn ghost" onClick={() => setPending(true)} data-testid="aic-pending-btn">{t('aical.pq.title')}</button>
+          <button className="btn ghost" onClick={() => setProvenance(true)} data-testid="aic-provenance-btn">{t('aical.pv.title')}</button>
           <button className="btn ghost" onClick={refresh} data-testid="aic-refresh">{t('aical.refresh')}</button>
         </div>
       </div>
 
       {pending ? <PendingHolds onClose={() => setPending(false)} onBooking={(d) => nav(`/booking?date=${d}`)} /> : null}
+      {provenance ? <ProvenanceReview onClose={() => setProvenance(false)} onOpen={(id) => { setProvenance(false); setOpenId(id); }} /> : null}
       <section className="aic-panel" aria-label={t('aical.navigation')}>
         <div className="aic-row">
           <button className="btn" onClick={() => step(-1)} disabled={!date} data-testid="aic-prev">{t('aical.prev')}</button>

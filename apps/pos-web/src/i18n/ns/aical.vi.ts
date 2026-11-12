@@ -241,4 +241,51 @@ export const AICAL_VI: Record<string, string> = {
   "aical.why.holdCode": "Đang giữ {start}–{end} trong lúc khách nhập mã.", // DRAFT — Kevin reviews
   "aical.why.appointment": "Đã có lịch hẹn {start}–{end} ({status}).", // DRAFT — Kevin reviews
   "aical.why.note": "Tay nghề cho dịch vụ và thời gian đệm giữa các lịch hẹn do POS Booking kiểm tra khi chọn dịch vụ.", // DRAFT — Kevin reviews
+  "aical.pv.title": "Ngoại lệ đặt lịch bằng AI", // DRAFT — Kevin reviews
+  "aical.pv.sub": "{n} ngày gần nhất · lúc {at}", // DRAFT — Kevin reviews
+  "aical.pv.none": "Không có ngoại lệ đặt lịch bằng AI trong khoảng này.", // DRAFT — Kevin reviews
+  "aical.pv.when": "Lúc", // DRAFT — Kevin reviews
+  "aical.pv.kind": "Ngoại lệ", // DRAFT — Kevin reviews
+  "aical.pv.detail": "Bản ghi cho thấy", // DRAFT — Kevin reviews
+  "aical.pv.refs": "Bản ghi nguồn", // DRAFT — Kevin reviews
+  "aical.pv.open": "Mở lịch hẹn", // DRAFT — Kevin reviews
+  "aical.pv.note": "Chỉ xem. Dựng từ các bản ghi đã lưu; không bao giờ hiện mã, số điện thoại, tên hay mã cuộc gọi đầy đủ. Hãy sửa trong Đặt lịch hoặc Cuộc gọi AI — ở đây không thử lại hay đổi nhãn gì.", // DRAFT — Kevin reviews
+  "aical.pv.k.tool_failed": "Lệnh đặt lịch của AI bị lỗi", // DRAFT — Kevin reviews
+  "aical.pv.k.verification_incomplete": "Chưa xác minh xong", // DRAFT — Kevin reviews
+  "aical.pv.k.source_unlinked": "Nguồn AI chưa được chứng minh", // DRAFT — Kevin reviews
+  "aical.pv.k.source_mismatch": "Lịch do AI đặt nhưng không ghi nguồn AI", // DRAFT — Kevin reviews
+  "aical.pv.why.tool_failed": "Một thao tác đặt lịch của AI bị lỗi hoặc bị từ chối.", // DRAFT — Kevin reviews
+  "aical.pv.why.verification_incomplete": "AI đã giữ chỗ nhưng chỗ giữ hết hạn hoặc bị nhả trước khi mã được xác nhận; không có lịch hẹn nào được tạo.", // DRAFT — Kevin reviews
+  "aical.pv.why.source_unlinked": "Lịch hẹn ghi nguồn AI nhưng không có cuộc gọi AI hoàn tất nào trỏ tới.", // DRAFT — Kevin reviews
+  "aical.pv.why.source_mismatch": "Một cuộc gọi AI hoàn tất đã tạo lịch hẹn này nhưng nguồn của nó không phải AI.", // DRAFT — Kevin reviews
+  "aical.pv.d.tool": "Thao tác: {v}", // DRAFT — Kevin reviews
+  "aical.pv.d.result": "Kết quả: {v}", // DRAFT — Kevin reviews
+  "aical.pv.d.call": "Cuộc gọi {v}", // DRAFT — Kevin reviews
+  "aical.pv.d.hold": "Giữ chỗ: {v}", // DRAFT — Kevin reviews
+  "aical.pv.d.release": "Lý do nhả: {v}", // DRAFT — Kevin reviews
+  "aical.pv.d.code": "Mã: {v}", // DRAFT — Kevin reviews
+  "aical.pv.noCode": "chưa từng gửi", // DRAFT — Kevin reviews
+  "aical.pv.d.source": "Nguồn: {v}", // DRAFT — Kevin reviews
+  "aical.pv.d.status": "Trạng thái: {v}", // DRAFT — Kevin reviews
+  "aical.pv.t.voice_tool_executions": "Thao tác cuộc gọi AI", // DRAFT — Kevin reviews
+  "aical.pv.t.booking_holds": "Giữ chỗ", // DRAFT — Kevin reviews
+  "aical.pv.t.booking_verification_sessions": "Kiểm tra mã", // DRAFT — Kevin reviews
+  "aical.pv.t.pos_tech_appointments": "Lịch hẹn", // DRAFT — Kevin reviews
+  "aical.pv.tool.book_appointment": "Đặt lịch hẹn", // DRAFT — Kevin reviews
+  "aical.pv.tool.hold_slot": "Giữ giờ", // DRAFT — Kevin reviews
+  "aical.pv.tool.cancel_appointment": "Hủy lịch hẹn", // DRAFT — Kevin reviews
+  "aical.pv.tool.reschedule_appointment": "Dời lịch hẹn", // DRAFT — Kevin reviews
+  "aical.pv.result.slot_taken": "giờ đã có người đặt", // DRAFT — Kevin reviews
+  "aical.pv.result.no_availability": "không còn chỗ", // DRAFT — Kevin reviews
+  "aical.pv.result.refused": "bị từ chối", // DRAFT — Kevin reviews
+  "aical.pv.result.failed": "lỗi", // DRAFT — Kevin reviews
+  "aical.pv.hold.released": "đã nhả", // DRAFT — Kevin reviews
+  "aical.pv.hold.held": "đã hết hạn", // DRAFT — Kevin reviews
+  "aical.pv.hold.expired": "đã hết hạn", // DRAFT — Kevin reviews
+  "aical.pv.code.pending": "chưa gửi", // DRAFT — Kevin reviews
+  "aical.pv.code.sent": "đã gửi, chưa nhập", // DRAFT — Kevin reviews
+  "aical.pv.code.failed": "sai mã", // DRAFT — Kevin reviews
+  "aical.pv.code.expired": "đã hết hạn", // DRAFT — Kevin reviews
+  "aical.pv.code.locked": "bị khóa do thử quá nhiều lần", // DRAFT — Kevin reviews
+  "aical.pv.code.canceled": "đã hủy", // DRAFT — Kevin reviews
 };

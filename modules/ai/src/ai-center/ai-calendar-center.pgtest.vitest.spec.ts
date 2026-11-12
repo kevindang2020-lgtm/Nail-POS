@@ -319,3 +319,61 @@ describe('AI Calendar #06 one-click POS Booking reconciliation (read-only)', () 
     expect((await sql<any>`select count(*)::int c, max(updated_at) u from pos_tech_appointments where tenant_id = ${T2}`.execute(db)).rows[0]).toEqual(before);
   });
 });
+
+describe('extras AI Calendar 10 — AI booking provenance & exception review (read only, redacted, stored ids)', () => {
+  it('lists failed AI write calls, AI holds that lapsed without an appointment, "ai" appointments with no call link and AI-created appointments not labelled "ai"; nothing else, nothing written', async () => {
+    const T3 = randomUUID(), B3 = randomUUID(), TT = randomUUID();
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T3}, 'aical-c', 'aical-c', 'aical-c', 'AICALC', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B3}, ${T3}, 'Main', ${TZ})`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active) values (${TT}, ${T3}, ${B3}, 'Eve', 'Ho', 'Eve Ho', true)`);
+    const ctx3: AicCtx = { tenantId: T3, branchId: B3, userId: randomUUID(), role: 'OWNER', permissions: ['pos.booking.view'] };
+    const tool = async (o: { name: string; kind?: string; status: string; type?: string | null; rel?: string | null; err?: string | null; ago?: string; tenant?: string; branch?: string }) => {
+      const id = randomUUID();
+      await q(sql`insert into voice_tool_executions (id, tenant_id, branch_id, provider_call_id, invocation_key, tool_name, tool_kind, status, related_type, related_id, error_category, requested_at)
+        values (${id}, ${o.tenant ?? T3}, ${o.branch ?? B3}, ${'call_secret_9876'}, ${randomUUID()}, ${o.name}, ${o.kind ?? 'write'}, ${o.status}, ${o.type ?? null}, ${o.rel ?? null}, ${o.err ?? null}, now() - ${o.ago ?? '1 hour'}::interval)`);
+      return id;
+    };
+    const hold = async (o: { live?: boolean; released?: boolean; converted?: string | null; session?: string }) => {
+      const id = randomUUID();
+      await q(sql`insert into booking_holds (id, tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status, booking_session_id, channel, released_at, release_reason, converted_appointment_id)
+        values (${id}, ${T3}, ${B3}, ${TT}, ${local('2026-11-28', '10:00')}, ${local('2026-11-28', '11:00')}, ${o.live ? sql`now() + interval '5 minutes'` : sql`now() - interval '5 minutes'`},
+          ${o.converted ? 'converted' : o.released ? 'released' : 'held'}, ${o.session ?? randomUUID()}, 'ai_receptionist', ${o.released ? sql`now() - interval '10 minutes'` : null}, ${o.released ? 'customer_hung_up' : null}, ${o.converted ?? null})`);
+      return id;
+    };
+    // 1. a failed AI write call (counted) · a refused READ call (not a booking attempt) · a 40-day-old failure (outside the window) · another salon's failure
+    const fail = await tool({ name: 'book_appointment', status: 'failed', err: 'slot_taken' });
+    await tool({ name: 'check_availability', kind: 'read', status: 'refused' });
+    await tool({ name: 'book_appointment', status: 'failed', ago: '40 days' });
+    await tool({ name: 'book_appointment', status: 'failed', tenant: T2, branch: B2 });
+    // 2. an AI hold that lapsed with its code expired (counted) · one still live · one that became an appointment (neither counted)
+    const lapsed = await hold({ released: true });
+    const vs = randomUUID();
+    await q(sql`insert into booking_verification_sessions (id, tenant_id, branch_id, booking_session_id, booking_hold_id, phone_hash, phone_mask, channel, status, expires_at)
+      values (${vs}, ${T3}, ${B3}, ${randomUUID()}, ${lapsed}, 'h4sh', '•••0142', 'online', 'expired', now() - interval '5 minutes')`);
+    const lapsedTool = await tool({ name: 'hold_slot', status: 'succeeded', type: 'slot_hold', rel: lapsed });
+    await tool({ name: 'hold_slot', status: 'succeeded', type: 'slot_hold', rel: await hold({ live: true }) });
+    const ok = await appt({ tech: TT, date: '2026-11-28', s: '12:00', e: '13:00', source: 'ai', tenant: T3, branch: B3 });
+    await tool({ name: 'hold_slot', status: 'succeeded', type: 'slot_hold', rel: await hold({ converted: ok }) });
+    await tool({ name: 'book_appointment', status: 'succeeded', type: 'appointment', rel: ok });   // properly linked "ai" appointment
+    // 3. an "ai" appointment with no succeeded call link · 4. an AI-created appointment whose source says "online"
+    const unlinked = await appt({ tech: TT, date: '2026-11-28', s: '14:00', e: '15:00', source: 'ai', tenant: T3, branch: B3, name: 'Secret Customer', phone: '+16095550111' });
+    const mis = await appt({ tech: TT, date: '2026-11-28', s: '16:00', e: '17:00', source: 'online', tenant: T3, branch: B3 });
+    const misTool = await tool({ name: 'book_appointment', status: 'succeeded', type: 'appointment', rel: mis });
+    const before = (await sql<any>`select (select count(*) from booking_holds where tenant_id = ${T3})::int h, (select count(*) from voice_tool_executions where tenant_id = ${T3})::int v, (select max(updated_at) from pos_tech_appointments where tenant_id = ${T3}) u`.execute(db)).rows[0];
+
+    const r = await cal.provenanceReview(ctx3);
+    expect(r.counts).toEqual({ toolFailed: 1, verificationIncomplete: 1, sourceUnlinked: 1, sourceMismatch: 1, total: 4 });
+    expect(r).toMatchObject({ windowDays: 30, readOnly: true, timeZone: TZ });
+    const by = Object.fromEntries(r.items.map((i) => [i.kind, i]));
+    expect(by.tool_failed).toMatchObject({ refs: [{ table: 'voice_tool_executions', id: fail }], detail: { tool: 'book_appointment', result: 'slot_taken', call: '…9876' } });
+    expect(by.verification_incomplete.refs).toEqual([{ table: 'booking_holds', id: lapsed }, { table: 'voice_tool_executions', id: lapsedTool }, { table: 'booking_verification_sessions', id: vs }]);
+    expect(by.verification_incomplete.detail).toMatchObject({ holdStatus: 'released', releaseReason: 'customer_hung_up', verification: 'expired' });
+    expect(by.source_unlinked).toMatchObject({ appointmentId: unlinked, detail: { source: 'ai', appointmentStatus: 'booked' } });
+    expect(by.source_mismatch).toMatchObject({ appointmentId: mis, refs: [{ table: 'pos_tech_appointments', id: mis }, { table: 'voice_tool_executions', id: misTool }], detail: { source: 'online' } });
+    const text = JSON.stringify(r);
+    for (const secret of ['call_secret', 'Secret Customer', '0111', 'h4sh']) expect(text).not.toContain(secret);   // redacted
+    expect(text).not.toContain(ok);   // the properly linked AI booking is not an exception
+    expect((await cal.provenanceReview(OTHER)).items.every((i) => !i.refs.some((x) => x.id === fail || x.id === lapsed))).toBe(true);
+    expect((await sql<any>`select (select count(*) from booking_holds where tenant_id = ${T3})::int h, (select count(*) from voice_tool_executions where tenant_id = ${T3})::int v, (select max(updated_at) from pos_tech_appointments where tenant_id = ${T3}) u`.execute(db)).rows[0]).toEqual(before);
+  });
+});

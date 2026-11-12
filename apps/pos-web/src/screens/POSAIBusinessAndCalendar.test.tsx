@@ -41,6 +41,15 @@ vi.mock('../api/posAiCalendarApi', () => ({ posAiCalendarApi: {
   pendingHolds: () => Promise.resolve({ asOf: '2026-07-04T15:00:00Z', timeZone: 'America/New_York', pendingCode: 1, expiringSoon: 1, items: [
     { id: 'h1', technicianId: 't1', technicianName: 'Bella', date: '2026-07-04', start: '12:00', end: '13:00', expiresAt: '2026-07-04T15:04:00Z', minutesLeft: 4, channel: 'online', pendingCode: true, expiringSoon: true },
     { id: 'h2', technicianId: 't1', technicianName: 'Bella', date: '2026-07-05', start: '09:00', end: '10:00', expiresAt: '2026-07-04T15:40:00Z', minutesLeft: 40, channel: null, pendingCode: false, expiringSoon: false }] }),
+  provenance: () => Promise.resolve({ asOf: '2026-07-04T15:00:00Z', timeZone: 'America/New_York', windowDays: 30, readOnly: true,
+    counts: { toolFailed: 1, verificationIncomplete: 1, sourceUnlinked: 1, sourceMismatch: 0, total: 3 },
+    items: [
+      { kind: 'verification_incomplete', at: '2026-07-04T14:00:00Z', appointmentId: null, refs: [{ table: 'booking_holds', id: 'aaaaaaaa-1111-4000-8000-000000000001' }, { table: 'booking_verification_sessions', id: 'bbbbbbbb-2222-4000-8000-000000000002' }],
+        detail: { tool: 'hold_slot', result: null, call: '…9876', holdStatus: 'released', releaseReason: null, verification: 'expired', source: null, appointmentStatus: null } },
+      { kind: 'tool_failed', at: '2026-07-04T13:00:00Z', appointmentId: null, refs: [{ table: 'voice_tool_executions', id: 'cccccccc-3333-4000-8000-000000000003' }],
+        detail: { tool: 'book_appointment', result: 'slot_taken', call: '…1234', holdStatus: null, releaseReason: null, verification: null, source: null, appointmentStatus: null } },
+      { kind: 'source_unlinked', at: '2026-07-04T12:00:00Z', appointmentId: 'bk1', refs: [{ table: 'pos_tech_appointments', id: 'dddddddd-4444-4000-8000-000000000004' }],
+        detail: { tool: null, result: null, call: null, holdStatus: null, releaseReason: null, verification: null, source: 'ai', appointmentStatus: 'booked' } }] }),
 } }));
 
 import { POSAIBusinessSetupScreen, setupListState } from './POSAIBusinessSetupScreen';
@@ -96,6 +105,22 @@ describe('POSAICalendarScreen', () => {
     expect(rows[0].textContent).toMatch(/12:00–13:00/); expect(rows[0].textContent).toMatch(/Expiring soon/);
     expect(screen.getAllByTestId('aic-pq-left').map((x) => x.textContent)).toEqual([expect.stringMatching(/^4 min/), expect.stringMatching(/^40 min/)]);
     expect(screen.getByTestId('aic-pending').textContent).toMatch(/1 waiting for a code/);
+  });
+  it('extras AI Calendar 10: AI booking exceptions — counts per kind, words for every code, the stored record ids, an appointment opens the overlay; read only', async () => {
+    render(<MemoryRouter><POSAICalendarScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('aic-provenance-btn'));
+    const rows = await screen.findAllByTestId('aic-pv-row');
+    expect(rows).toHaveLength(3);
+    expect(screen.getByTestId('aic-pv-count-tool_failed')).toHaveTextContent('AI booking call failed · 1');
+    expect(screen.getByTestId('aic-pv-count-source_mismatch')).toHaveTextContent('AI booking not labelled AI · 0');
+    const det = screen.getAllByTestId('aic-pv-detail').map((x) => x.textContent);
+    expect(det[0]).toBe('Action: Hold a time · Call …9876 · Hold: released · Code: expired');
+    expect(det[1]).toBe('Action: Book appointment · Result: time already taken · Call …1234');
+    expect(det[2]).toMatch(/^Source: AI · Status: /);
+    expect(screen.getAllByTestId('aic-pv-refs')[0]).toHaveTextContent('Hold aaaaaaaa · Code check bbbbbbbb');
+    expect(rows[0].querySelector('button')).toBeNull();   // nothing to retry or release here
+    fireEvent.click(screen.getByTestId('aic-pv-open'));
+    expect(screen.queryByTestId('aic-provenance')).toBeNull();
   });
 });
 
