@@ -546,4 +546,12 @@ export const CSEARCH_EN: Record<string, string> = {
   "ahx.detail.minutes": "{n} min",
   "ahx.detail.tz": "salon time ({tz})",
   "ahx.detail.contact": "Contact",
+  "ahx.health.k.inactive_technician": "Upcoming bookings with an inactive technician",
+  "ahx.health.d.inactive_technician.READY": "Every upcoming booking is with an active technician.",
+  "ahx.health.d.inactive_technician.WARNING": "Some upcoming bookings are with an archived or inactive technician — reassign them in Booking.",
+  "ahx.health.d.inactive_technician.FAILED": "Technician status could not be checked.",
+  "ahx.health.k.status_log_mismatch": "Status vs change history",
+  "ahx.health.d.status_log_mismatch.READY": "Every booking’s status matches the last status in its change history.",
+  "ahx.health.d.status_log_mismatch.WARNING": "Some bookings show a status different from the last one their change history recorded — open them in Booking to confirm.",
+  "ahx.health.d.status_log_mismatch.FAILED": "Status history could not be compared.",
 };

@@ -103,3 +103,28 @@ describe('Appointment History 04 — change & source evidence on each row (read-
     expect((await q(sql`select count(*)::int as n from appointment_change_log where tenant_id = ${T}`))[0].n).toBe(before);
   });
 });
+
+describe('Appointment History 02 — booking-to-history accuracy (read-only)', () => {
+  it('names an upcoming booking with an archived technician and one whose status differs from its last logged status', async () => {
+    const before = await ah.check(owner());
+    expect(before.checks.find((c) => c.key === 'inactive_technician')).toMatchObject({ state: 'READY', count: 0 });
+    expect(before.checks.find((c) => c.key === 'status_log_mismatch')).toMatchObject({ state: 'READY', count: 0 });   // a3: cancelled + logged cancelled
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, archived_at) values (${id(23)}, ${T}, ${B}, 'Old', 'Tech', 'Old Tech', false, now())`);
+    await appt({ days: 5, tech: id(23) });                                        // upcoming, technician archived
+    await appt({ days: -5, tech: id(23), status: 'completed', createdDaysAgo: 6 }); // past: history, not a problem
+    const drifted = await appt({ days: -3, status: 'completed', createdDaysAgo: 4 });
+    await q(sql`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, created_at) values
+      (${T}, ${B}, ${drifted}, 'status_changed', 'status', 'booked', 'completed', now() - interval '2 hours'),
+      (${T}, ${B}, ${drifted}, 'status_changed', 'status', 'completed', 'no_show', now() - interval '1 hour')`);   // last logged: no_show
+    const rows = (await q(sql`select id, status from pos_tech_appointments where tenant_id = ${T} order by id`));
+    const h = await ah.check(owner());
+    expect(h.checks.find((c) => c.key === 'inactive_technician')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(h.checks.find((c) => c.key === 'status_log_mismatch')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(h.overall).toBe('WARNING');
+    expect(await q(sql`select id, status from pos_tech_appointments where tenant_id = ${T} order by id`)).toEqual(rows);   // read-only
+    // a branch-confined role does not see the main branch's drift
+    const c2 = await ah.check(confinedB2());
+    expect(c2.checks.find((c) => c.key === 'status_log_mismatch')).toMatchObject({ count: 0 });
+    expect(c2.checks.find((c) => c.key === 'inactive_technician')).toMatchObject({ count: 0 });
+  });
+});
