@@ -2,7 +2,7 @@
 // Duplicate Review, Approved, Posted, Rejected, Upload. Cream/gold design, desktop-POS fixed shell (internal table scroll).
 // Reads are honest — empty backend reads show empty states, never fabricated data. The Post action is disabled unless the
 // document is approved (the server enforces this too); nothing is finalized from unreviewed AI output.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { posAiOcrReceiptApi as apiO } from '../api/posAiOcrReceiptApi';
 import { posReceiptCenterApi as rc } from '../api/posReceiptCenterApi';
 import { useSearchParams } from 'react-router-dom';
@@ -268,6 +268,7 @@ function ReviewPanel({ doc, busy, onClose, act }: { doc: any; busy: boolean; onC
           {/* §38 (Oct 27 2026): each read field with its confidence — a weak one says Verify; a person confirms or edits it inline */}
           {Array.isArray(doc.fields) && doc.fields.length ? <FieldReview doc={doc} busy={busy} act={act} /> : null}
           {Array.isArray(doc.lineItems) && doc.lineItems.length ? <div style={{ fontSize: 12, color: MUTED }}>{tx('people.receiptAi.lines', { n: String(doc.lineItems.length) })}</div> : null}
+          <ReceiptEvidence doc={doc} />
           {/* §142: the existing expense this receipt could be the evidence for — a person links it instead of posting a second expense */}
           {(doc.suggestedMatch === 'matched' || doc.suggestedMatch === 'possible_match') && doc.suggestedExpenseId ? (
             <div style={{ border: `1px solid ${GOLD}55`, background: '#fff8ea', borderRadius: 8, padding: 8, fontSize: 12 }}>
@@ -305,6 +306,53 @@ const QUALITY_KEYS: Record<string, string> = { low_resolution: 'people.receiptAi
 const qualityLabel = (f: string) => (QUALITY_KEYS[f] ? tx(QUALITY_KEYS[f]) : f);
 const FIELD_LABEL: Record<string, () => string> = { vendor: () => tx('pos.vendor'), total: () => tx('pos.total'), subtotal: () => tx('people.receiptAi.field.subtotal'), tax: () => tx('people.receiptAi.field.tax'), document_date: () => tx('pos.date'), document_number: () => tx('pos.document_2'), discount: () => tx('people.receiptAi.field.discount'), fees: () => tx('people.receiptAi.field.fees') };
 const MONEY_FIELDS = new Set(['total', 'subtotal', 'tax', 'discount', 'fees']);
+
+/**
+ * extras OCR Receipt Scanner #02 / Receipt Document Recognition #05 — the review workspace's evidence beside the original:
+ * every line the reader found (description, qty, unit, line total), the money parts as they stand now,
+ * and the SERVER's arithmetic checks (the same reconcileDocument rule + tolerance the extraction used; nothing is
+ * re-computed here). Read-only: approving stays the separate, explicit action below.
+ */
+type OcrLineView = { lineNumber: number; description: string | null; quantity: number | null; unitPriceCents: number | null; lineTotalCents: number | null };
+type OcrCheckView = { name: string; passed: boolean; expectedCents?: number; actualCents?: number; deltaCents?: number };
+type OcrAmountsView = { subtotalCents: number | null; taxCents: number | null; feesCents: number | null; discountCents: number | null; totalCents: number | null };
+function ReceiptEvidence({ doc }: { doc: { lineItems?: OcrLineView[]; amounts?: OcrAmountsView | null; arithmetic?: OcrCheckView[] } }) {
+  const lines = Array.isArray(doc.lineItems) ? doc.lineItems : [];
+  const checks = Array.isArray(doc.arithmetic) ? doc.arithmetic : [];
+  const a = doc.amounts ?? null;
+  if (!lines.length && !a && !checks.length) return null;
+  const cell: CSSProperties = { padding: '3px 6px', borderBottom: `1px solid ${LINE}`, textAlign: 'right', whiteSpace: 'nowrap' };
+  const signed = (c: number | undefined) => (c == null ? '—' : (c < 0 ? '−' : '+') + money(c));
+  return (
+    <div data-testid="rrx-evidence" style={{ border: `1px solid ${LINE}`, borderRadius: 8, padding: 8, fontSize: 12, display: 'grid', gap: 6 }}>
+      {lines.length ? (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="rrx-lines">
+          <thead><tr style={{ color: MUTED }}><th style={{ ...cell, textAlign: 'left' }}>{tx('people.receiptAi.ev.item')}</th><th style={cell}>{tx('people.receiptAi.ev.qty')}</th><th style={cell}>{tx('people.receiptAi.ev.unit')}</th><th style={cell}>{tx('people.receiptAi.ev.lineTotal')}</th></tr></thead>
+          <tbody>{lines.map((l) => (
+            <tr key={l.lineNumber} data-testid="rrx-line">
+              <td style={{ ...cell, textAlign: 'left', whiteSpace: 'normal' }}>{l.description || '—'}</td>
+              <td style={cell}>{l.quantity ?? '—'}</td><td style={cell}>{money(l.unitPriceCents)}</td><td style={cell}>{money(l.lineTotalCents)}</td>
+            </tr>))}</tbody>
+        </table>
+      ) : null}
+      {a ? (
+        <div data-testid="rrx-amounts" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', color: MUTED }}>
+          <span>{tx('people.receiptAi.ev.subtotal')} <b style={{ color: 'inherit' }}>{money(a.subtotalCents)}</b></span>
+          <span>{tx('people.receiptAi.ev.tax')} <b>{money(a.taxCents)}</b></span>
+          <span>{tx('people.receiptAi.ev.fees')} <b>{money(a.feesCents)}</b></span>
+          <span>{tx('people.receiptAi.ev.discount')} <b>{money(a.discountCents)}</b></span>
+          <span>{tx('people.receiptAi.ev.total')} <b>{money(a.totalCents)}</b></span>
+        </div>
+      ) : null}
+      {checks.length ? checks.map((c) => (
+        <div key={c.name} data-testid={'rrx-check-' + c.name} data-passed={c.passed ? 'yes' : 'no'} style={{ color: c.passed ? '#1F7A3F' : '#B0413E' }}>
+          {c.passed ? '✓ ' : '⚠ '}{tx('people.receiptAi.ev.check.' + c.name)}
+          {!c.passed ? <span> — {tx('people.receiptAi.ev.mismatch', { expected: money(c.expectedCents), actual: money(c.actualCents), delta: signed(c.deltaCents) })}</span> : null}
+        </div>
+      )) : a ? <div style={{ color: MUTED }} data-testid="rrx-check-none">{tx('people.receiptAi.ev.noCheck')}</div> : null}
+    </div>
+  );
+}
 
 /** §159: the document's thumbnail in the list — only when one was made (a bucket); never the original */
 function Thumb({ doc }: { doc: any }) {

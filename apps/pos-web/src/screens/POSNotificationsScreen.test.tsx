@@ -110,4 +110,13 @@ describe('Customer Notifications', () => {
     await waitFor(() => expect(m.acknowledgeIncident).toHaveBeenCalledWith('al1'));
     expect(m.resolveIncident).not.toHaveBeenCalled();
   });
+  it('extras CN-06: a deep link (?record=) is re-checked by the server on open — another salon\'s or a gone record shows the error, never data', async () => {
+    m.detail.mockRejectedValue(Object.assign(new Error('Notification not found.'), { status: 404, code: 'NOTIFICATION_NOT_FOUND' }));
+    ui('/tenant/communications/notifications?record=33333333-3333-4333-8333-333333333333');
+    await waitFor(() => expect(m.detail).toHaveBeenCalledWith('33333333-3333-4333-8333-333333333333'));
+    const dlg = await screen.findByTestId('cn-detail');
+    await waitFor(() => expect(dlg.querySelector('.cn-detail-body')).toBeNull());
+    expect(screen.queryByTestId('cn-d-message')).toBeNull();
+    expect(screen.queryByTestId('cn-d-retry')).toBeNull();
+  });
 });

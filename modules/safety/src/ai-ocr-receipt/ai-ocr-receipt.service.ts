@@ -5,7 +5,7 @@
 import { systemContext } from '@aipowersalon/tenant-context';
 import { type AiUsageLogger, evaluateAiAccess, accessReasonLabel, type AiAccessSnapshot, type AiProviderTaskGateway } from '@aipowersalon/ai';
 import { classifyDocument } from './ai-ocr-receipt-core';
-import { buildValidationReport, type DocumentFinancials } from './ai-ocr-receipt-validation';
+import { buildValidationReport, reconcileDocument, type DocumentFinancials, type ValidationCheck } from './ai-ocr-receipt-validation';
 import { detectDuplicates, type DuplicateCandidate, type DedupSubject } from './ai-ocr-receipt-dedup';
 import { resolveSettings, rowsToLayers, PLATFORM_DEFAULTS, type SettingsRow, type OcrReceiptConfig } from './ai-ocr-receipt-settings';
 import { validateUpload, storageKeyFor, resolveScanDisposition, type UploadInput, type MalwareScanPort, type ScanStatus } from './ai-ocr-receipt-upload';
@@ -15,6 +15,9 @@ import { toFinancials, toDedupSubject } from './ai-ocr-receipt.textract';
 
 /** The tenant's AI entitlement for this package. Same repo the AI assistant and tenant-ai surfaces already use —
  *  one gate, one source of truth, no second opinion about whether a tenant may run AI. */
+/** extras OCR #02: a document's money parts (integer cents) as stored on ocr_documents — null when not read / not entered */
+export interface OcrDocumentAmounts { subtotalCents: number | null; taxCents: number | null; feesCents: number | null; discountCents: number | null; totalCents: number | null }
+
 export interface OcrAccessRepo { loadSnapshot(tenantId: string, packageCode: string, userId: string | null): Promise<AiAccessSnapshot>; }
 import { applyFieldCorrection, evaluateApprovalRequirement, applyDecision, type ReviewDecisionState, type CorrectableField } from './ai-ocr-receipt-review';
 import { PostingService, type ApprovedDocument, type PostingCtx } from './ai-ocr-receipt-posting';
@@ -133,7 +136,9 @@ export interface DocStorePort {
   // §35–§38 (Oct 27 2026): the per-field reading is PERSISTED (ocr_extracted_fields / ocr_line_items) — the reviewer's
   // "verify this field" marks and the posting's line items and breakdown read it; a correction is stored, never just audited
   saveExtraction?(ctx: OcrCtx, id: string, x: { fields: OcrFieldOut[]; lineItems: OcrLineOut[]; financials: DocumentFinancials; overallConfidence: number; lowConfidenceThreshold: number }): Promise<void>;
-  extraction?(ctx: OcrCtx, id: string): Promise<{ fields: StoredField[]; lineItems: Array<{ lineNumber: number; description: string | null; quantity: number | null; unitPriceCents: number | null; lineTotalCents: number | null; confidence: number }> }>;
+  extraction?(ctx: OcrCtx, id: string): Promise<{ fields: StoredField[]; lineItems: Array<{ lineNumber: number; description: string | null; quantity: number | null; unitPriceCents: number | null; lineTotalCents: number | null; confidence: number }>;
+    /** the document row's money parts as they stand now (a person's corrections included) — optional for older stores */
+    amounts?: OcrDocumentAmounts }>;
   saveFieldCorrection?(ctx: OcrCtx, id: string, field: CorrectableField): Promise<void>;
 }
 export interface StoredField { key: string; text: string | null; cents: number | null; confidence: number; state: ConfidenceState; page: number | null; correctedValue: string | null }
@@ -638,8 +643,21 @@ export class AiOcrReceiptService {
   /** the per-field reading + line items for the review screen (§37/§38): which field is weak, which a person confirmed */
   async extraction(ctx: OcrCtx, id: string) {
     requireTenant(ctx);
-    if (!(await this.scopedDoc(ctx, id))) throw new OcrError('NOT_FOUND');
-    return this.docs.extraction ? this.docs.extraction(ctx, id) : { fields: [], lineItems: [] };
+    const doc = await this.scopedDoc(ctx, id);
+    if (!doc) throw new OcrError('NOT_FOUND');
+    const x = this.docs.extraction ? await this.docs.extraction(ctx, id) : { fields: [], lineItems: [] };
+    // extras (OCR Receipt Scanner #02 / Receipt Document Recognition #05): the arithmetic evidence for the review workspace —
+    // the SAME reconcileDocument rule (and the salon's tolerance) the extraction used, run on the amounts as they stand now,
+    // so a person sees whether the lines add up to the subtotal and the parts to the total. Read-only: it changes nothing.
+    const amounts = x.amounts ?? null;
+    let arithmetic: ValidationCheck[] = [];
+    if (amounts) {
+      const { config } = await this.effectiveConfig(ctx);
+      arithmetic = reconcileDocument({ type: (doc.documentType ?? 'unknown') as DocumentFinancials['type'], vendor: doc.vendor ?? null, documentDate: doc.documentDate ?? null, dateAmbiguous: false,
+        subtotalCents: amounts.subtotalCents, taxCents: amounts.taxCents, feesCents: amounts.feesCents, discountCents: amounts.discountCents, totalCents: amounts.totalCents,
+        isCreditOrRefund: false, lineItems: x.lineItems.map((l) => ({ lineTotalCents: l.lineTotalCents })), fieldConfidences: [] }, config.tolerance);
+    }
+    return { fields: x.fields, lineItems: x.lineItems, amounts, arithmetic };
   }
 
   async startReview(ctx: OcrCtx, id: string) {

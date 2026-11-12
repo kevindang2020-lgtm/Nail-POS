@@ -255,6 +255,18 @@ describe('§35–§38 the per-field reading is stored; a correction is stored', 
     expect((await pg.query(`SELECT subtotal_cents::int AS s, tax_cents::int AS t, fees_cents::int AS f, discount_cents::int AS d FROM ocr_documents WHERE id = $1`, [r.documentId])).rows[0])
       .toEqual({ s: 5737, t: 410, f: 0, d: 100 });
     await expect(svc.correctField(ctx(T1), r.documentId, 'tax', { valueCents: -5 })).rejects.toMatchObject({ code: 'INVALID_UPLOAD' });
+    // extras OCR #02 / RDR #05: the review workspace gets the money parts as they stand now and the arithmetic evidence
+    // (the same reconcileDocument rule): 3 lines × $1.00 ≠ the $57.37 subtotal; $57.37 + $4.10 + $0 − $1.00 = $60.47 ≠ the $61.47 total
+    const ev2 = await svc.extraction(ctx(T1), r.documentId);
+    expect(ev2.amounts).toEqual({ subtotalCents: 5737, taxCents: 410, feesCents: 0, discountCents: 100, totalCents: 6147 });
+    expect(ev2.arithmetic).toEqual([
+      { name: 'line_items_vs_subtotal', passed: false, expectedCents: 5737, actualCents: 300, deltaCents: 300 - 5737 },
+      { name: 'components_vs_total', passed: false, expectedCents: 6047, actualCents: 6147, deltaCents: 100 },
+    ]);
+    const before2 = (await pg.query(`SELECT total_cents::int AS t, subtotal_cents::int AS s, pipeline_status FROM ocr_documents WHERE id = $1`, [r.documentId])).rows[0];
+    await svc.correctField(ctx(T1), r.documentId, 'total', { value: '$60.47', valueCents: 6047 });
+    expect((await svc.extraction(ctx(T1), r.documentId)).arithmetic.find((c) => c.name === 'components_vs_total')).toMatchObject({ passed: true, deltaCents: 0 });
+    expect(before2.s).toBe(5737);   // reading the evidence never changed the row (only the person's correction did)
   });
 });
 
