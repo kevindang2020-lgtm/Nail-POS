@@ -36,7 +36,7 @@ import { TechTimeline, FullDayOverlay, ConflictPanel, nf, hm12, addDay, apptStat
 import { QualifiedFinder, pageOf, whenTime } from './technicianScreenParts';
 import { fmtYmd } from '../i18n/format';
 import { DateShiftEditor } from './dateShiftEditor';
-import { presenceBadge, scheduleHealth, type HealthCheck } from './liveScheduleChecks';
+import { presenceBadge, scheduleHealth, type ScheduleHealthCheck } from './liveScheduleChecks';
 
 /** 200-technician §2: technician rows a page */
 export const LS_LANE_PAGE_SIZE = 12;
@@ -54,7 +54,7 @@ export function POSLiveTechnicianScheduleScreen() {
   const [status, setStatus] = useState(''); const [skill, setSkill] = useState('');
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 250);
   const [lanePage, setLanePage] = useState(1);
-  const [tick, setTick] = useState(0); const [updated, setUpdated] = useState(clockNow()); const [readAt, setReadAt] = useState<number | null>(null); const [health, setHealth] = useState<HealthCheck[] | null>(null);
+  const [tick, setTick] = useState(0); const [updated, setUpdated] = useState(clockNow()); const [readAt, setReadAt] = useState<number | null>(null); const [health, setHealth] = useState<ScheduleHealthCheck[] | null>(null);
   const reload = useCallback(() => { setTick((n) => n + 1); }, []);
   const [sel, setSel] = useState<string | null>(null); const [fullDay, setFullDay] = useState<{ id: string; date: string } | null>(null); const [finder, setFinder] = useState(false);
   const [aPeriod, setAPeriod] = useState<PeriodState>({ preset: 'week' }); const [aKind, setAKind] = useState('all'); const [aSearch, setASearch] = useState(''); const aq = useDebounced(aSearch.trim(), 300); const [ap, setAp] = useState(1);

@@ -130,7 +130,7 @@ export class CouponCenter {
     // review; nothing is paused or edited here. The sample is the earlier-created offer of each pair.
     await run('stacking_overlap', 'No two live offers can be combined on the same service by accident.', (n) => `${n} live or scheduled coupon(s) are marked combinable with another live coupon on the same service and dates — they can stack on one ticket. Review whether that is intended.`,
       async () => (await sql<any>`select distinct a.id, a.created_at from deals a join deals b on b.tenant_id = a.tenant_id and b.id <> a.id and (b.created_at, b.id) > (a.created_at, a.id)
-        where a.tenant_id = ${T} and ${sql.raw(this.scope === 'coupon' ? `a.kind = 'coupon' and b.kind = 'coupon' and ` : '')}a.status in ('active', 'scheduled') and b.status in ('active', 'scheduled')
+        where a.tenant_id = ${T} and ${this.scope === 'coupon' ? sql`a.kind = 'coupon' and b.kind = 'coupon' and ` : sql``}a.status in ('active', 'scheduled') and b.status in ('active', 'scheduled')
           and a.stackable and b.stackable
           and (a.branch_id is null or b.branch_id is null or a.branch_id = b.branch_id)
           and ${ctx.branchId && UUID.test(ctx.branchId) ? sql`(a.branch_id = ${ctx.branchId} or a.branch_id is null)` : sql`true`}

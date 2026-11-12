@@ -96,6 +96,9 @@ const minDaysOf = (f: Filters): number | undefined => { const n = Math.trunc(Num
 type Selection = { mode: 'ids'; ids: Map<string, Row> } | { mode: 'matching'; filter: RetentionSelection; segment: Segment; total: number; excludeIds: Set<string> };
 const EMPTY_SEL: Selection = { mode: 'ids', ids: new Map() };
 
+/** a segment count from the summary, or null when the server did not send it */
+const segVal = (segs: unknown, k: string): number | null => { const v = segs && typeof segs === 'object' ? (segs as Record<string, unknown>)[k] : null; return typeof v === 'number' ? v : null; };
+
 export function POSRetentionScreen() {
   const nav = useNavigate();
   const can = useCan();
@@ -328,7 +331,7 @@ export function POSRetentionScreen() {
               {segment === 'at_risk' ? <div data-testid="rt-empty-actions" style={{ display: 'grid', gap: 6, justifyItems: 'center' }}>
                 <div className="fk-hint">{tx('rt2.emptyAtRisk.explain', { d: String(per?.riskDays ?? 60) })}</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {(['approaching', 'never', 'recovered'] as const).map((sg) => <button key={sg} type="button" className="fk-btn ghost sm" data-testid={'rt-empty-go-' + sg} onClick={() => pickSegment(sg)}>{tx('rt2.emptyAtRisk.go.' + sg, { n: (segs as any)?.[sg] != null ? nf((segs as any)[sg]) : '—' })}</button>)}
+                  {(['approaching', 'never', 'recovered'] as const).map((sg) => <button key={sg} type="button" className="fk-btn ghost sm" data-testid={'rt-empty-go-' + sg} onClick={() => pickSegment(sg)}>{tx('rt2.emptyAtRisk.go.' + sg, { n: segVal(segs, sg) != null ? nf(segVal(segs, sg) as number) : '—' })}</button>)}
                 </div>
               </div> : null}
             </Empty>

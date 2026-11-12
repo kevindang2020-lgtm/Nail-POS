@@ -8915,6 +8915,4 @@ export const POS_VI: Record<keyof typeof POS_EN, string> = {
   'pos.tq_showing_x_of_y': 'Hiển thị {shown}/{total}',
   'pos.payroll_ex_UNALLOCATED_TIP': 'Tiền tip chưa chia',
   'pos.payroll_ex_MISSING_COMMISSION_RULE': 'Thiếu quy tắc hoa hồng',
-  'pos.qa_needs_permission': 'Vai trò của bạn không dùng được — cần quyền: {p}', // DRAFT — Kevin reviews
-  'pos.qa_locked': 'Không có quyền', // DRAFT — Kevin reviews
 };

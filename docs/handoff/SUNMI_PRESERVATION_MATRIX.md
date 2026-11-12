@@ -1786,7 +1786,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAIVoiceTranscriptionHistoryScreen.tsx`, `screens/VoiceCallsWorkspace.tsx`
 - Guide: AI_PowerSalon_Voice_Call_History
 - Scroll: vertical page scroll allowed (Voice Call History SUNMI addendum: 4 × 2 KPI cards, compact filters; the call list keeps its height and scrolls in the page; no sideways scroll.)
-- API calls on this page: NOT VERIFIED (no typed API client call found in the component tree)
+- API calls on this page: `authApi.logout`, `authApi.me`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1808,7 +1808,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAIVoiceTranscriptionSearchScreen.tsx`, `screens/VoiceCallsWorkspace.tsx`
 - Guide: AI_PowerSalon_Voice_Transcription_Search_Call_History
 - Scroll: vertical page scroll allowed (Voice Search SUNMI addendum: four status cards and the filter row; results keep their height and scroll in the page; no sideways scroll.)
-- API calls on this page: NOT VERIFIED (no typed API client call found in the component tree)
+- API calls on this page: `authApi.logout`, `authApi.me`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|

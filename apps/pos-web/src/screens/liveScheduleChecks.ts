@@ -6,12 +6,12 @@
 //                    whether the KPI row agrees with the board. Nothing is changed, booked or moved.
 // Pure; no i18n here — the screen turns the codes into words.
 
-export type ClockState = 'clocked_in' | 'on_break' | 'clocked_out' | null | undefined;
+export type TechClockState = 'clocked_in' | 'on_break' | 'clocked_out' | null | undefined;
 export interface BoardAppt { appointmentId: string; customerName?: string; startTime: string; endTime: string; status: string }
 export interface BoardBlock { blockId: string; startTime: string; endTime: string }
 export interface BoardCol {
   technicianId: string; fullName: string; status?: string;
-  shift?: { startTime: string; endTime: string } | null; shiftScheduled?: boolean; clock?: ClockState;
+  shift?: { startTime: string; endTime: string } | null; shiftScheduled?: boolean; clock?: TechClockState;
   appointments?: BoardAppt[]; blocks?: BoardBlock[];
 }
 
@@ -47,7 +47,7 @@ export function presenceBadge(c: BoardCol, live: boolean, nowMinute: number | nu
 const DEAD = new Set(['cancelled', 'canceled', 'no_show']);
 export type HealthCode = 'conflicts' | 'outside_shift' | 'no_shift' | 'blocked_over_appt' | 'stale' | 'kpi_wiring';
 export interface HealthFinding { technician?: string; detail: string }
-export interface HealthCheck { code: HealthCode; state: 'pass' | 'warn' | 'not_checked'; findings: HealthFinding[]; reason?: 'paged' | 'not_live' | 'no_kpis' }
+export interface ScheduleHealthCheck { code: HealthCode; state: 'pass' | 'warn' | 'not_checked'; findings: HealthFinding[]; reason?: 'paged' | 'not_live' | 'no_kpis' }
 export interface HealthInput {
   cols: BoardCol[];
   /** minutes since the board was last read successfully (null = never read) */
@@ -61,7 +61,7 @@ export interface HealthInput {
 }
 const span = (a: { startTime: string; endTime: string }) => `${a.startTime}–${a.endTime}`;
 
-export function scheduleHealth(i: HealthInput): HealthCheck[] {
+export function scheduleHealth(i: HealthInput): ScheduleHealthCheck[] {
   const conflicts: HealthFinding[] = [], outside: HealthFinding[] = [], noShift: HealthFinding[] = [], blocked: HealthFinding[] = [];
   let liveAppts = 0;
   for (const c of i.cols) {
@@ -78,7 +78,7 @@ export function scheduleHealth(i: HealthInput): HealthCheck[] {
     }
   }
   const st = (f: HealthFinding[]): 'pass' | 'warn' => (f.length ? 'warn' : 'pass');
-  const out: HealthCheck[] = [
+  const out: ScheduleHealthCheck[] = [
     { code: 'conflicts', state: st(conflicts), findings: conflicts },
     { code: 'outside_shift', state: st(outside), findings: outside },
     { code: 'no_shift', state: st(noShift), findings: noShift },

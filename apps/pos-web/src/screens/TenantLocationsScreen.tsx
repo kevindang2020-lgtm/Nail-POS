@@ -21,7 +21,7 @@ const TOGGLE = (label: string, value: boolean, set: (v: boolean) => void) => (
 
 /** Next actions (extras #07): the steps the server's publish check still needs — never a fabricated published state */
 function NextSteps({ l, testId }: { l: SalonLocation; testId: string }) {
-  const steps = locationNextSteps(l as any); if (!steps.length) return null;
+  const steps = locationNextSteps(l); if (!steps.length) return null;
   return <div className="lc-sub" data-testid={testId}><b>{tx('locx.next')}:</b> {steps.map((x) => tx('locx.step.' + x)).join(' · ')}</div>;
 }
 function StatusPill({ l }: { l: SalonLocation }) {

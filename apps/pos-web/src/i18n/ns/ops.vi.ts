@@ -1578,4 +1578,6 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.inventory.received_over_ordered_lines": "Hàng nhận theo đơn đặt hàng khớp với số lượng đã nhận trên các dòng", // DRAFT — Kevin reviews
   "syschk.inventory.received_over_ordered_lines.fix": "So đơn với kết quả kiểm kê và sửa phần nhận thừa.", // DRAFT — Kevin reviews
   "dfx.hk.duplicate_names": "Thiết bị trùng tên trong cùng chi nhánh (không bao giờ tự gộp)", // DRAFT — Kevin reviews
+  "ops.qa.needsPermission": "Vai trò của bạn không dùng được — cần quyền: {p}", // DRAFT — Kevin reviews
+  "ops.qa.locked": "Không có quyền", // DRAFT — Kevin reviews
 };

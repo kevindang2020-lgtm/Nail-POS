@@ -8914,6 +8914,4 @@ export const POS_EN = {
   'pos.tq_showing_x_of_y': 'Showing {shown} of {total}',
   'pos.payroll_ex_UNALLOCATED_TIP': 'Tip not allocated',
   'pos.payroll_ex_MISSING_COMMISSION_RULE': 'No commission rule',
-  'pos.qa_needs_permission': 'Not available for your role — needs the permission: {p}',
-  'pos.qa_locked': 'No access',
 };

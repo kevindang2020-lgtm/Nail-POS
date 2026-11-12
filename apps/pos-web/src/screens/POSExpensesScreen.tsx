@@ -18,7 +18,7 @@ import { SystemCheckButton } from '../components/SystemCheck';
 import { Link } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { FinanceExpenseCreateRequest } from '@aipowersalon/api-contracts/tenant';
-import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail, type FinSummary, type ExpenseAttention } from '../api/posExpensesApi';
+import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail, type FinSummary, type ExpenseAttentionFilter } from '../api/posExpensesApi';
 import { posAiOcrReceiptApi } from '../api/posAiOcrReceiptApi';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
@@ -57,7 +57,7 @@ export function POSExpensesScreen() {
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [category, setCategory] = useState(''); const [method, setMethod] = useState(''); const [sort, setSort] = useState<Sort>('created');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
-  const [attention, setAttention] = useState<ExpenseAttention | ''>('');
+  const [attention, setAttention] = useState<ExpenseAttentionFilter | ''>('');
   const [note, setNote] = useState<Note | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
@@ -461,8 +461,8 @@ type ExpenseHistoryItem = { id: string; action: string; actorUserId: string | nu
 /** Extras (Expenses Management 01): small attention chips under the KPIs — missing receipts, category still unsure, reviews
  *  waiting more than N days, duplicate risk — counted by the server over the same filters; a click opens the list by the
  *  same rule (or the Duplicates tab). Nothing is changed from here. Zero counts are not shown. */
-export function AttentionBar({ a, active, onPick, onClear }: { a: NonNullable<FinSummary['attention']>; active: ExpenseAttention | ''; onPick: (x: ExpenseAttention | 'duplicates') => void; onClear: () => void }) {
-  const items: Array<{ id: ExpenseAttention | 'duplicates'; n: number; key: string }> = [
+export function AttentionBar({ a, active, onPick, onClear }: { a: NonNullable<FinSummary['attention']>; active: ExpenseAttentionFilter | ''; onPick: (x: ExpenseAttentionFilter | 'duplicates') => void; onClear: () => void }) {
+  const items: Array<{ id: ExpenseAttentionFilter | 'duplicates'; n: number; key: string }> = [
     { id: 'no_receipt', n: a.missingReceipts, key: 'finance.ex.att.noReceipt' }, { id: 'uncategorized', n: a.uncategorized, key: 'finance.ex.att.uncat' },
     { id: 'overdue_review', n: a.overdueReviews, key: 'finance.ex.att.overdue' }, { id: 'duplicates', n: a.duplicateRisk, key: 'finance.ex.att.dups' }];
   const shown = items.filter((x) => x.n > 0 || x.id === active);

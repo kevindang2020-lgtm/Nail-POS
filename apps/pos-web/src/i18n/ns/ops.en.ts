@@ -1579,4 +1579,6 @@ export const OPS_EN = {
   "syschk.inventory.received_over_ordered_lines": "Stock received on a purchase order matches what its lines say arrived",
   "syschk.inventory.received_over_ordered_lines.fix": "Compare the order with a stock count and correct the extra receiving.",
   "dfx.hk.duplicate_names": "Devices sharing a name in one location (never merged automatically)",
+  "ops.qa.needsPermission": "Not available for your role — needs the permission: {p}",
+  "ops.qa.locked": "No access",
 };

@@ -1147,6 +1147,7 @@ GET /pos/system-checks/payments  realm=staff  auth=session  domain=operations  p
 GET /pos/system-checks/reports  realm=staff  auth=session  domain=operations  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/service-flow  realm=staff  auth=session  domain=operations  perm=pos.serving.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/settlements  realm=staff  auth=session  domain=operations  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/suppliers  realm=staff  auth=session  domain=operations  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/technicians  realm=staff  auth=session  domain=operations  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/terminals  realm=staff  auth=session  domain=operations  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

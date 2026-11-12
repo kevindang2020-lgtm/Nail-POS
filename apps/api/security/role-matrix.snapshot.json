@@ -1130,6 +1130,7 @@
   "GET /pos/system-checks/reports": "AADDDRRRRRRRRRRRR",
   "GET /pos/system-checks/service-flow": "AAAAARRRRRRRRRRRR",
   "GET /pos/system-checks/settlements": "AADDDRRRRRRRRRRRR",
+  "GET /pos/system-checks/suppliers": "AAAADRRRRRRRRRRRR",
   "GET /pos/system-checks/technicians": "AAAADRRRRRRRRRRRR",
   "GET /pos/system-checks/terminals": "AADDDRRRRRRRRRRRR",
   "GET /pos/team": "AAAADRRRRRRRRRRRR",
