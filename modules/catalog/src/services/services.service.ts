@@ -152,8 +152,12 @@ export class ServicesService {
 
   // ---- import / export ----
   async export(ctx: ServicesContext, f: ServiceFilters = {}): Promise<{ format: 'csv'; filename: string; csv: string }> {
-    this.need(ctx, 'pos.services.export'); const { headers, rows } = await this.repo.exportRows(ctx, f); const csv = servicesToCsv(headers, rows);
-    this.log(ctx, 'pos_services_exported', 'pos_services_export', undefined, undefined, undefined, { rows: rows.length, filters: f }); return { format: 'csv', filename: 'pos-services.csv', csv };
+    this.need(ctx, 'pos.services.export'); const { headers, rows } = await this.repo.exportRows(ctx, f);
+    // SERVICE PRICING 16 (Nov 12 2026): every row says WHEN its price was read — the snapshot time of this export (UTC ISO).
+    // The import ignores unknown columns, so a re-imported export still round-trips.
+    const snapshotAt = new Date().toISOString();
+    const csv = servicesToCsv([...headers, 'Price Snapshot At'], rows.map((r) => [...r, snapshotAt]));
+    this.log(ctx, 'pos_services_exported', 'pos_services_export', undefined, undefined, undefined, { rows: rows.length, filters: f, snapshotAt }); return { format: 'csv', filename: 'pos-services.csv', csv };
   }
   // CSV import — preview (read-only) and commit. Round-trips with export (Id, Name, Category, Price, Duration, Status):
   // rows are matched to existing services by Id, else by Name (case-insensitive). Unknown categories are created on

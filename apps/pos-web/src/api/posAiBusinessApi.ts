@@ -49,6 +49,11 @@ export const posAiBusinessApi = {
     branchScorecard: (q: Q = {}) => api.get<any>('/pos/ai-business/center/branches/scorecard', clean(q)),
     branchExplain: (q: Q) => api.get<any>('/pos/ai-business/center/branches/explain', clean(q)),
     branchCheck: () => api.post<any>('/pos/ai-business/center/branches/check', {}),
+    // AI BRANCH COMPARISON 14 (Nov 12 2026): saved comparisons (frozen by the server) + manager sign-off notes
+    branchSnapshots: (q: Q = {}) => api.get<any>('/pos/ai-business/center/branches/snapshots', clean(q)),
+    branchSnapshot: (id: string) => api.get<any>(`/pos/ai-business/center/branches/snapshots/${enc(id)}`),
+    saveBranchSnapshot: (b: Q) => api.post<any>('/pos/ai-business/center/branches/snapshots', clean(b)),
+    signOffBranchSnapshot: (id: string, b: Q) => api.post<any>(`/pos/ai-business/center/branches/snapshots/${enc(id)}/signoffs`, b),
     // A4 (Nov 6 2026): stored assistant history + Check Business Data
     assistantHistory: (q: Q = {}) => api.get<any>('/pos/ai-business/center/assistant/history', clean(q)),
     assistantHistoryDelete: (id: string) => api.del<any>(`/pos/ai-business/center/assistant/history/${enc(id)}`),

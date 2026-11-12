@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
   cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
-    addOnSummary: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
+    addOnSummary: vi.fn(), reviewDecision: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },
   bundles: { state: vi.fn(), create: vi.fn() }, insights: { get: vi.fn() }, alerts: { summary: vi.fn(), active: vi.fn() }, invScreen: { products: vi.fn(), product: vi.fn() },
 }));
@@ -176,6 +176,35 @@ describe('Service Categories', () => {
     expect(screen.getByTestId('kpi-total-services')).toHaveTextContent('6');
     expect(screen.getByTestId('review-code_like_name')).toHaveTextContent('CD 4432');
     expect(screen.getByTestId('review-service_category_mismatch')).toHaveTextContent('Haircut');
+    expect(cat.reassign).not.toHaveBeenCalled();
+  });
+  it('SERVICE PRICING 13: owner review — approve a finding as is with a required note (the catalog is not changed), approved findings show who/when/why and can be reopened', async () => {
+    const base = await cat.categorySummary();
+    cat.categorySummary.mockResolvedValue({ ...base, review: [
+      { kind: 'code_like_name', categoryId: 'c-4432', categoryName: 'CD 4432', status: 'open', lastDecision: null },
+      { kind: 'service_category_mismatch', categoryId: 'c-Nails', categoryName: 'Nails', serviceId: 's5', serviceName: 'Haircut', status: 'approved',
+        lastDecision: { decision: 'approved_as_is', note: 'Kids combo', by: 'Pat Owner', at: '2026-11-10T15:00:00Z' } }] });
+    cat.reviewDecision.mockResolvedValue({ item: {}, history: [], changesCatalog: false });
+    mount(<POSServiceCategoriesScreen />);
+    const panel = await screen.findByTestId('review');
+    expect(panel).toHaveTextContent('Review notes · 1');                       // open findings only
+    const approved = screen.getByTestId('review-service_category_mismatch');
+    expect(approved.getAttribute('data-status')).toBe('approved');
+    expect(within(approved).getByTestId('review-approved')).toHaveTextContent(/Approved as is\s*by Pat Owner on Nov 10, 2026 — Kids combo/);
+    // approve the open one: a note is required
+    fireEvent.click(within(screen.getByTestId('review-code_like_name')).getByTestId('review-decide'));
+    fireEvent.click(await screen.findByTestId('review-decision-save'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Write a short note');
+    expect(cat.reviewDecision).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId('review-decision-note'), { target: { value: 'Supplier code — we keep it' } });
+    fireEvent.click(screen.getByTestId('review-decision-save'));
+    await waitFor(() => expect(cat.reviewDecision).toHaveBeenCalledWith('c-4432', { kind: 'code_like_name', serviceId: null, decision: 'approve', note: 'Supplier code — we keep it' }));
+    expect(await screen.findByTestId('note')).toHaveTextContent('Nothing in the catalog was changed.');
+    // reopen the approved one
+    fireEvent.click(within(screen.getByTestId('review-service_category_mismatch')).getByTestId('review-decide'));
+    fireEvent.change(await screen.findByTestId('review-decision-note'), { target: { value: 'Move it after all' } });
+    fireEvent.click(screen.getByTestId('review-decision-save'));
+    await waitFor(() => expect(cat.reviewDecision).toHaveBeenLastCalledWith('c-Nails', { kind: 'service_category_mismatch', serviceId: 's5', decision: 'reopen', note: 'Move it after all' }));
     expect(cat.reassign).not.toHaveBeenCalled();
   });
   it('extras row 10: the counted scope is stated — one branch with its shared rows, or every branch listed separately; nothing when the server sends no scope', async () => {

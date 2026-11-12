@@ -3,7 +3,7 @@
 // difference, the growth advisor, the recorded Branch Data Health Checker.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, adviseBranches, type ScorecardRow } from './branch-insights';
+import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, explainEvidence, adviseBranches, likeForLikeGroups, mixOverlap, type ScorecardRow } from './branch-insights';
 
 const id = (n: number) => `82700000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const T = id(1), BIG = id(2), SMALL = id(3), OWNER = id(10), C1 = id(20), C2 = id(21), C3 = id(22), TECH = id(30);
@@ -74,6 +74,41 @@ describe('A3 — fair scorecard', () => {
     expect(small.trendFlags).toEqual([{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00.000Z', route: '/tenant/ai/business/alerts' }]);
     expect(big.trendFlags).toEqual([expect.objectContaining({ family: 'retention', metricId: 'customer_retention', unit: 'percent', triggered: 1, openIncidents: 0, latestValue: 20 })]);
   });
+  it('BI-07 like-for-like: service mix is read from paid service lines (products, add-ons and removed lines left out); a branch without opening hours has no group, never a size-based one', async () => {
+    const big = (await q(`select id, paid_at from tickets where tenant_id = $1 and branch_id = $2 and paid_at >= '2026-11-02' order by paid_at`, [T, BIG])).map((r) => String(r.id));
+    const line = (ticket: string, cat: string | null, o: { product?: boolean; addOn?: boolean; removed?: boolean } = {}) =>
+      q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, category_snapshot, is_add_on, product_id, removed_at)
+        values ($1,$2,$3,$4,'svc',2500,30,2500,$5,$6,$7,$8)`, [T, BIG, ticket, o.product ? null : id(76), cat, o.addOn ?? false, o.product ? id(77) : null, o.removed ? '2026-11-04T16:00:00Z' : null]);
+    await line(big[0], 'Manicure'); await line(big[0], 'Manicure'); await line(big[1], 'Manicure'); await line(big[1], 'Pedicure');
+    await line(big[1], 'Pedicure', { addOn: true }); await line(big[1], 'Retail', { product: true }); await line(big[1], 'Waxing', { removed: true });
+    const s = await bi.scorecard(ctx(), { preset: 'week' });
+    const b = s.rows.find((r) => r.branchId === BIG)!, sm = s.rows.find((r) => r.branchId === SMALL)!;
+    expect(b.likeForLike!.mix).toEqual([{ category: 'Manicure', sharePercent: 75 }, { category: 'Pedicure', sharePercent: 25 }]);
+    expect(b.likeForLike).toMatchObject({ peers: [], reason: 'no_peers', rankPerTechnicianHour: null, of: 1 });
+    expect(sm.likeForLike).toMatchObject({ peers: [], reason: 'no_opening_hours' });
+    expect(s.notes.join(' ')).toMatch(/Like-for-like: .*1.5× .*60%/);
+  });
+  it('BI-08 like-for-like grouping: staffing and opening hours within 1.5× AND service mix overlap ≥ 60 %; rank only inside the group', () => {
+    const row = (o: Partial<ScorecardRow>): ScorecardRow => ({ branchId: 'x', branchName: 'X', status: 'active', timeZone: 'UTC', netSalesCents: 1, ticketsCount: 1, averageTicketCents: 1, totalBookings: 1, completed: 1,
+      completionRate: 100, noShowPercent: 0, cancelledPercent: 0, technicianHours: 100, operatingHours: 60, customers: 1, returningCustomers: 0, netPerTechnicianHourCents: 5000,
+      netPerOperatingHourCents: 1, returningRate: 0, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
+    const rows = [row({ branchId: 'a', branchName: 'A', netPerTechnicianHourCents: 4000 }), row({ branchId: 'b', branchName: 'B', technicianHours: 140, netPerTechnicianHourCents: 6000 }),
+      row({ branchId: 'c', branchName: 'C', technicianHours: 400, netPerTechnicianHourCents: 9000 }),          // 4× the staffing of A
+      row({ branchId: 'd', branchName: 'D' }),                                                                  // same size, different mix
+      row({ branchId: 'e', branchName: 'E', technicianHours: null })];
+    const nails = new Map([['Manicure', 50], ['Pedicure', 50]]), lashes = new Map([['Lashes', 80], ['Manicure', 20]]);
+    const mixes = new Map([['a', nails], ['b', new Map([['Manicure', 60], ['Pedicure', 30], ['Waxing', 10]])], ['c', nails], ['d', lashes], ['e', nails]]);
+    expect(mixOverlap(nails, lashes)).toBe(20);
+    likeForLikeGroups(rows, mixes);
+    const by = Object.fromEntries(rows.map((r) => [r.branchId, r.likeForLike!]));
+    expect(by.a.peers.map((p) => p.branchId)).toEqual(['b']);                  // C too big, D other mix, E no shifts
+    expect(by.a.peers[0].mixOverlapPercent).toBe(80);
+    expect(by.a).toMatchObject({ of: 2, rankPerTechnicianHour: 2, reason: null });
+    expect(by.b).toMatchObject({ of: 2, rankPerTechnicianHour: 1 });
+    expect(by.c).toMatchObject({ peers: [], reason: 'no_peers', rankPerTechnicianHour: null });
+    expect(by.d.reason).toBe('no_peers');
+    expect(by.e).toMatchObject({ reason: 'no_staffing', peers: [] });
+  });
   it('BI-02 opening hours honour closed days and effective dates', () => {
     const rows = [{ day_of_week: 1, opens_at: '09:00', closes_at: '17:30', is_closed: false }, { day_of_week: 0, opens_at: '10:00', closes_at: '15:00', is_closed: true },
       { day_of_week: 2, opens_at: '09:00', closes_at: '17:00', is_closed: false, effective_from: '2026-11-04' }];
@@ -92,6 +127,34 @@ describe('A3 — explanation and advisor', () => {
     expect(await code(bi.explain(ctx(), { a: BIG, b: BIG }))).toBe('VALIDATION_FAILED');
     expect(await code(bi.explain(ctx(), { a: BIG, b: id(99) }))).toBe('BRANCH_NOT_AUTHORIZED');
   });
+  it('BI-06 Source-to-Answer: the explanation carries every figure it rests on for both branches, the source of each, the salon days and the as-of time; read-only', async () => {
+    const before = (await q(`select (select count(*) from ai_business_health_runs)::int as h, (select count(*) from tickets)::int as t`))[0];
+    const e = await bi.explain(ctx(), { preset: 'week', a: BIG, b: SMALL });
+    const ev = e.evidence;
+    expect(ev.asOf).toBe('2026-11-06T20:00:00.000Z');
+    expect(ev.a).toEqual({ branchId: BIG, branchName: 'Big Main St', timeZone: 'UTC', range: { from: '2026-11-02', to: '2026-11-06' } });
+    expect(ev.b.branchId).toBe(SMALL);
+    const by = Object.fromEntries(ev.figures.map((x) => [x.key, x]));
+    // the same numbers the bridge used: net 3000 vs 1000, tickets 60 vs 16 — from the Sales Report
+    expect(by.net_sales).toEqual({ key: 'net_sales', unit: 'cents', a: 300000, b: 100000, source: 'sales_report', hidden: false });
+    expect(by.paid_tickets).toMatchObject({ a: 60, b: 16, source: 'sales_report' });
+    expect(e.bridge!.totalCents).toBe(by.net_sales.a! - by.net_sales.b!);
+    expect(by.no_show_rate).toMatchObject({ a: 9, b: 2, source: 'booking_report' });
+    expect(by.technician_hours).toMatchObject({ a: 50, b: 10, unit: 'hours', source: 'time_clock' });
+    expect(by.operating_hours).toMatchObject({ a: 50, b: null, source: 'opening_hours' });     // SMALL has no hours: unknown, never 0
+    expect(by.returning_customers).toMatchObject({ a: 1, b: 0, source: 'paid_tickets' });
+    expect(ev.sources.map((x) => x.source).sort()).toEqual(['booking_report', 'opening_hours', 'paid_tickets', 'sales_report', 'time_clock']);
+    expect(ev.sources.find((x) => x.source === 'sales_report')!.route).toBe('/tenant/reports/sales');
+    const after = (await q(`select (select count(*) from ai_business_health_runs)::int as h, (select count(*) from tickets)::int as t`))[0];
+    expect(after).toEqual(before);
+    // revenue hidden for the viewer: money figures are null and marked hidden, counts stay
+    const row = (await bi.scorecard(ctx(), { preset: 'week' })).rows;
+    const hid = explainEvidence(row[0], row[1], { asOf: 'x', preset: 'week', financialsIncluded: false });
+    const hb = Object.fromEntries(hid.figures.map((x) => [x.key, x]));
+    expect(hb.net_sales).toMatchObject({ a: null, b: null, hidden: true });
+    expect(hb.average_ticket).toMatchObject({ a: null, b: null, hidden: true });
+    expect(hb.bookings).toMatchObject({ hidden: false, a: 70 });
+  });
   it('BI-04 advisor rules state their numbers: low yield per technician hour, high no-shows, low return rate', () => {
     const base = (o: Partial<ScorecardRow>): ScorecardRow => ({ branchId: 'x', branchName: 'X', status: 'active', timeZone: 'UTC', netSalesCents: 1, ticketsCount: 1, averageTicketCents: 1, totalBookings: 1, completed: 1,
       completionRate: 100, noShowPercent: 2, cancelledPercent: 0, technicianHours: 10, operatingHours: 10, customers: 20, returningCustomers: 10, netPerTechnicianHourCents: 10000,
@@ -102,6 +165,41 @@ describe('A3 — explanation and advisor', () => {
     expect(adv.find((a) => a.kind === 'low_yield_per_tech_hour')!.message).toMatch(/C earns \$50\.00 per technician hour, below the salon median of \$100\.00/);
     expect(adviseBranches([rows[0]])).toEqual([]);                   // nothing to compare against
     expect(explainDifference({ ...rows[0], netSalesCents: null, ticketsCount: null }, rows[1]).lines[0]).toMatch(/Revenue is hidden/);
+  });
+});
+
+describe('AI BRANCH COMPARISON 14 — saved comparison + manager sign-off notes', () => {
+  it('BI-10 the server freezes its own figures; sign-off notes are append-only and never change the snapshot; money masked without financial view; salon-scoped', async () => {
+    const FIN = ['pos.ai_business.view', 'pos.reports.financial_view'];
+    const saved = await bi.saveSnapshot(ctx({ permissions: FIN }), { preset: 'week', title: 'Week 45 review' });
+    expect(saved).toMatchObject({ title: 'Week 45 review', preset: 'week', range: { from: '2026-11-02', to: '2026-11-06' }, savedBy: 'Owner', branches: 2, financialsIncluded: true, signOffs: 0, lastDecision: null, immutable: true, canSignOff: true });
+    expect(saved.rows.map((r) => [r.branchName, r.netSalesCents, r.totalBookings])).toEqual([['Big Main St', 300000, 70], ['Small Annex', 100000, 18]]);
+    // the live comparison changes later (another source) — the saved figures do not
+    const later = new BranchInsights(db, { async compareBranches() { return { ...(await compare.compareBranches(ctx())), branches: [] } as any; } }, () => NOW);
+    expect((await later.snapshot(ctx({ permissions: FIN }), saved.id)).rows.map((r) => r.netSalesCents)).toEqual([300000, 100000]);
+    // a viewer without financial view: money null, cannot sign off
+    const plain = await bi.snapshot(ctx(), saved.id);
+    expect(plain).toMatchObject({ canSignOff: false, financialsIncluded: false });
+    expect(plain.rows[0]).toMatchObject({ netSalesCents: null, averageTicketCents: null, totalBookings: 70 });
+    expect(plain.totals.netSalesCents ?? null).toBeNull();
+    expect(await code(bi.signOff(ctx(), saved.id, { decision: 'approved', note: 'Looks right' }))).toBe('PERMISSION_DENIED');
+    expect(await code(bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'approved', note: 'ok' }))).toBe('REASON_REQUIRED');
+    expect(await code(bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'delete_it', note: 'Looks right' }))).toBe('VALIDATION_FAILED');
+    await bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'approved', note: 'Numbers match the Sales Report' });
+    const two = await bi.signOff(ctx({ permissions: FIN }), saved.id, { decision: 'needs_follow_up', note: 'Ask Small Annex about the no-shows' });
+    expect(two.signOffList.map((x) => [x.decision, x.reviewer])).toEqual([['needs_follow_up', 'Owner'], ['approved', 'Owner']]);
+    expect(two).toMatchObject({ signOffs: 2, lastDecision: 'needs_follow_up' });
+    expect(two.rows.map((r) => r.netSalesCents)).toEqual([300000, 100000]);              // the snapshot is untouched by the notes
+    // immutable / append-only in the database itself
+    await expect(pg.query(`update ai_branch_comparison_snapshots set title = 'x'`)).rejects.toThrow(/append-only/);
+    await expect(pg.query(`delete from ai_branch_comparison_signoffs`)).rejects.toThrow(/append-only/);
+    // list, newest first; another salon sees nothing
+    await bi.saveSnapshot(ctx({ permissions: FIN }), { preset: 'week' });
+    const list = await bi.listSnapshots(ctx(), {});
+    expect(list).toMatchObject({ totalItems: 2, page: 1, totalPages: 1 });
+    expect(list.items[1]).toMatchObject({ id: saved.id, signOffs: 2, lastDecision: 'needs_follow_up' });
+    expect(await code(bi.snapshot(ctx({ tenantId: id(98) }), saved.id))).toBe('RESOURCE_NOT_FOUND');
+    expect(await code(bi.snapshot(ctx(), 'nope'))).toBe('RESOURCE_NOT_FOUND');
   });
 });
 

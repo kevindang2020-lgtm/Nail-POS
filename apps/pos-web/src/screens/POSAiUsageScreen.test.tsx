@@ -141,6 +141,12 @@ describe('POSAiUsageScreen', () => {
     unmount();
     render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=billing']}><Screen /></MemoryRouter>);
     expect(await screen.findByTestId('aiu-cost')).toBeInTheDocument();
+    // extras AI Plans 07 (billing freshness): no billing event recorded → said so, never an implied "paid"
+    expect(screen.getByTestId('aiu-cost')).toHaveTextContent('No billing events are recorded yet.');
+    cleanup();
+    api.summary.mockResolvedValue({ ...SUM, cost: { ...SUM.cost, lastBillingEventAt: '2026-10-29T14:30:00Z', billingEvents: 3 } });
+    render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=billing']}><Screen /></MemoryRouter>);
+    expect(await screen.findByTestId('aiu-cost')).toHaveTextContent('Last billing event Oct 29, 2:30 PM (3 recorded).');
     cleanup();
     api.summary.mockResolvedValue({ ...SUM, cost: { visible: false }, canSeeBilling: false });
     render(<MemoryRouter initialEntries={['/tenant/ai/usage?view=billing']}><Screen /></MemoryRouter>);

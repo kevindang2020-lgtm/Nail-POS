@@ -529,7 +529,55 @@ export class CatalogScreensRepository {
       if (!r.service_id) { if (!rows.some((x: any) => String(x.category_id) === cid && x.service_id)) { if (!out.some((o) => o.kind === 'empty' && o.categoryId === cid)) out.push({ kind: 'empty', categoryId: cid, categoryName: r.category_name }); } continue; }
       if (NAILS.test(r.category_name) && HAIR.test(r.service_name) && !NAILS.test(r.service_name)) out.push({ kind: 'service_category_mismatch', categoryId: cid, categoryName: r.category_name, serviceId: String(r.service_id), serviceName: r.service_name });
     }
-    return out;
+    return this.withReviewDecisions(T, out);
+  }
+  /** SERVICE PRICING 13 (Nov 12 2026) — Owner Review for Suspicious Categories: each finding carries its original ids and the
+   *  latest human decision made on THESE names (catalog_category_reviews, append-only, migration 847). Approved as is →
+   *  status 'approved' (kept in the list, with who/when/why); never decided, reopened, or decided on a name since changed →
+   *  'open'. Open findings first. Nothing in the catalog changes. */
+  private async withReviewDecisions(T: string, out: Array<{ kind: string; categoryId: string; categoryName: string; serviceId?: string; serviceName?: string }>) {
+    if (!out.length) return [];
+    type DecRow = { kind: string; category_id: string; service_id: string | null; category_name: string; service_name: string | null; decision: string; note: string; created_at: Date | string; reviewer: string | null };
+    const rows = (await sql<DecRow>`select distinct on (r.kind, r.category_id, r.service_id) r.kind, r.category_id, r.service_id, r.category_name, r.service_name, r.decision, r.note, r.created_at,
+        nullif(u.full_name, '') as reviewer
+      from catalog_category_reviews r left join users u on u.id = r.reviewer_user_id and u.tenant_id = r.tenant_id
+      where r.tenant_id = ${T} and r.category_id = any(${out.map((o) => o.categoryId)}::uuid[])
+      order by r.kind, r.category_id, r.service_id, r.created_at desc, r.id desc`.execute(this.db)).rows;
+    const items = out.map((o) => {
+      const d = rows.find((x) => x.kind === o.kind && String(x.category_id) === o.categoryId && (x.service_id ? String(x.service_id) : undefined) === o.serviceId);
+      const same = !!d && d.category_name === o.categoryName && (d.service_name ?? undefined) === (o.serviceName ?? undefined);
+      const lastDecision = d && same ? { decision: d.decision as 'approved_as_is' | 'reopened', note: String(d.note), by: d.reviewer ?? null, at: new Date(d.created_at).toISOString() } : null;
+      return { ...o, status: (lastDecision?.decision === 'approved_as_is' ? 'approved' : 'open') as 'open' | 'approved', lastDecision };
+    });
+    return [...items.filter((i) => i.status === 'open'), ...items.filter((i) => i.status !== 'open')];
+  }
+  /** SERVICE PRICING 13 — approve a review finding as is, or reopen it. The finding must still be on the list (same ids);
+   *  a note is required; append-only; returns the item and its decision history. Never changes a category or a service. */
+  async decideCategoryReview(ctx: CatCtx, categoryId: string, b: { kind?: unknown; serviceId?: unknown; decision?: unknown; note?: unknown }) {
+    const T = ctx.tenantId;
+    const kind = String(b.kind ?? ''), decision = String(b.decision ?? ''), note = String(b.note ?? '').trim();
+    const serviceId = b.serviceId == null || b.serviceId === '' ? undefined : String(b.serviceId);
+    if (!UUID.test(String(categoryId)) || !['code_like_name', 'service_category_mismatch', 'empty'].includes(kind) || !['approve', 'reopen'].includes(decision)
+      || (serviceId !== undefined && !UUID.test(serviceId)) || (kind === 'service_category_mismatch') !== (serviceId !== undefined))
+      throw err(400, 'VALIDATION_FAILED', 'Choose a finding and approve or reopen it.');
+    if (note.length < 3) throw err(400, 'REASON_REQUIRED', 'Write a short note (at least 3 characters).');
+    const list = await this.categoryReview(ctx);
+    const item = list.find((i) => i.kind === kind && i.categoryId === categoryId && i.serviceId === serviceId);
+    if (!item) throw err(404, 'CATEGORY_NOT_FOUND', 'This finding is no longer on the review list.');
+    if (decision === 'approve' && item.status === 'approved') throw err(409, 'REQUEST_ALREADY_DECIDED', 'This finding is already approved as is.');
+    if (decision === 'reopen' && item.status !== 'approved') throw err(409, 'INVALID_STATE_TRANSITION', 'Only an approved finding can be reopened.');
+    const B = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
+    await sql`insert into catalog_category_reviews (tenant_id, branch_id, kind, category_id, service_id, category_name, service_name, decision, note, reviewer_user_id)
+      values (${T}, ${B}, ${kind}, ${categoryId}::uuid, ${serviceId ?? null}::uuid, ${item.categoryName}, ${item.serviceName ?? null}, ${decision === 'approve' ? 'approved_as_is' : 'reopened'}, ${note.slice(0, 500)},
+        ${UUID.test(String(ctx.userId)) ? ctx.userId : null}::uuid)`.execute(this.db);
+    const now = (await this.categoryReview(ctx)).find((i) => i.kind === kind && i.categoryId === categoryId && i.serviceId === serviceId)!;
+    type HRow = { decision: string; note: string; created_at: Date | string; reviewer: string | null };
+    const history = (await sql<HRow>`select r.decision, r.note, r.created_at, nullif(u.full_name, '') as reviewer from catalog_category_reviews r
+        left join users u on u.id = r.reviewer_user_id and u.tenant_id = r.tenant_id
+      where r.tenant_id = ${T} and r.kind = ${kind} and r.category_id = ${categoryId}::uuid and r.service_id is not distinct from ${serviceId ?? null}::uuid
+      order by r.created_at desc, r.id desc limit 50`.execute(this.db)).rows
+      .map((h) => ({ decision: h.decision as 'approved_as_is' | 'reopened', note: String(h.note), by: h.reviewer ?? null, at: new Date(h.created_at).toISOString() }));
+    return { item: now, history, changesCatalog: false as const };
   }
 
   async categories(ctx: CatCtx, f: { q?: string; status?: string; dateField?: string; sort?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {

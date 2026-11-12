@@ -452,4 +452,16 @@ export const CATALOGSCREENS_VI = {
   "cg.ao.mp.none": "Không có gì thay đổi — mọi lượt áp dụng đã có các giá trị này.", // DRAFT — Kevin reviews
   "cg.ao.mp.count": "{n} thay đổi trên {o} lượt áp dụng — chưa lưu gì cho đến khi bạn nhấn Lưu thay đổi.", // DRAFT — Kevin reviews
   "cg.ao.mp.undo": "Để hoàn tác sau khi lưu, hãy sửa lại theo các giá trị cũ hiển thị ở đây; mỗi thay đổi được giữ trong Nhật ký của dịch vụ thêm này.", // DRAFT — Kevin reviews
+  "cg.rv.approve": "Duyệt giữ nguyên", // DRAFT — Kevin reviews
+  "cg.rv.reopen": "Mở lại", // DRAFT — Kevin reviews
+  "cg.rv.approved": "Đã duyệt giữ nguyên", // DRAFT — Kevin reviews
+  "cg.rv.by": "bởi {who} ngày {when}", // DRAFT — Kevin reviews
+  "cg.rv.approveTitle": "Duyệt giữ nguyên mục này", // DRAFT — Kevin reviews
+  "cg.rv.reopenTitle": "Mở lại mục này", // DRAFT — Kevin reviews
+  "cg.rv.approveHint": "Danh mục không thay đổi gì. Mục này vẫn được liệt kê là đã duyệt, kèm tên và ghi chú của bạn, cho đến khi tên thay đổi.", // DRAFT — Kevin reviews
+  "cg.rv.reopenHint": "Mục này quay lại danh sách cần xem xét. Ghi chú của bạn được lưu cùng quyết định trước.", // DRAFT — Kevin reviews
+  "cg.rv.note": "Ghi chú (bắt buộc)", // DRAFT — Kevin reviews
+  "cg.rv.noteRequired": "Hãy viết ghi chú ngắn (ít nhất 3 ký tự).", // DRAFT — Kevin reviews
+  "cg.rv.done": "Đã duyệt giữ nguyên. Danh mục không bị thay đổi.", // DRAFT — Kevin reviews
+  "cg.rv.reopened": "Đã mở lại để xem xét.", // DRAFT — Kevin reviews
 };

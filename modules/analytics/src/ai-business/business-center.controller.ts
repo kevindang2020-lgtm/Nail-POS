@@ -5,7 +5,7 @@
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import type { AlertIncidentListResponse, AlertIncidentDetail, AlertIncidentActionRequest, AlertIncidentActionResponse, AlertIncidentNoteRequest, AlertDeliverySettings, AlertDeliverySettingsResponse, AlertDeliveryUpdateRequest,
-  BranchScorecardResponse, BranchExplainResponse, BranchDataCheckResponse, AssistantHistoryResponse, AssistantDataCheckResponse, AssistantHistoryDeleteResponse } from '@aipowersalon/api-contracts/tenant';
+  BranchScorecardResponse, BranchExplainResponse, BranchDataCheckResponse, BranchSnapshotDetail, BranchSnapshotListResponse, AssistantHistoryResponse, AssistantDataCheckResponse, AssistantHistoryDeleteResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Delete, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject, Optional } from '@nestjs/common';
@@ -22,6 +22,9 @@ export const BC_GENERATE_BODY: BodySchema = S.object({ reportType: str(40), pres
 export const BC_ACK_BODY: BodySchema = S.object({ note: str(500) });
 export const BC_INCIDENT_ACTION_BODY: BodySchema = S.object({ action: str(20), expectedVersion: S.nullable(S.number()), note: str(1000), assigneeUserId: str(40), snoozeMinutes: S.nullable(S.number()) });
 export const BC_INCIDENT_NOTE_BODY: BodySchema = S.object({ note: str(1000) });
+/** AI BRANCH COMPARISON 14: save a comparison (the period only — the figures are read by the server) / a sign-off note */
+export const BC_BRANCH_SNAPSHOT_BODY: BodySchema = S.object({ preset: str(20), from: str(10), to: str(10), title: str(120) });
+export const BC_BRANCH_SIGNOFF_BODY: BodySchema = S.object({ decision: str(20), note: str(1000) });
 export const BC_DELIVERY_BODY: BodySchema = S.object({ severity: str(10), channels: S.nullable(S.array(S.string({ maxLength: 10 }), { maxItems: 3 })), recipientUserIds: S.nullable(S.array(S.string({ maxLength: 40 }), { maxItems: 20 })),
   quietHoursStart: S.nullable(S.number()), quietHoursEnd: S.nullable(S.number()), cooldownMinutes: S.nullable(S.number()) });
 function ctxFrom(req: any): AiBusinessContext {
@@ -48,6 +51,7 @@ const HISTORY = { filters: { state: { type: 'enum', values: BC_EVENT_STATES }, p
   search: { maxLength: 80 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
 const HISTORY_Q = { search: { maxLength: 80 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
+const SNAPSHOTS_Q = { maxLimit: 10, defaultLimit: 10, params: ['page'] } as const;
 const INCIDENTS = { filters: { status: { type: 'enum', values: INCIDENT_STATUSES } }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
@@ -110,6 +114,15 @@ export class BusinessCenterController {
   scorecard(@Req() q: any, @Query() f: any): Promise<BranchScorecardResponse> { const c = ctxFrom(q); authed(c); return run(() => this.bi().scorecard(c, f ?? {}) as Promise<BranchScorecardResponse>); }
   @Get('branches/explain') @RequirePermission('pos.ai_business.view')
   branchExplain(@Req() q: any, @Query() f: any): Promise<BranchExplainResponse> { const c = ctxFrom(q); authed(c); return run(() => this.bi().explain(c, f ?? {}) as Promise<BranchExplainResponse>); }
+  // AI BRANCH COMPARISON 14 (Nov 12 2026): saved comparisons (immutable) + manager sign-off notes (append-only); money masked without financial view
+  @Post('branches/snapshots') @RequirePermission('pos.ai_business.view')
+  saveBranchSnapshot(@Req() q: any, @Body(ValidatedBody(BC_BRANCH_SNAPSHOT_BODY, { strict: true })) b: any): Promise<BranchSnapshotDetail> { const c = ctxFrom(q); authed(c); return run(() => this.bi().saveSnapshot(c, b ?? {}) as Promise<BranchSnapshotDetail>); }
+  @Get('branches/snapshots') @RequirePermission('pos.ai_business.view') @ListQuery(SNAPSHOTS_Q)
+  branchSnapshots(@Req() q: any, @Query() f: any): Promise<BranchSnapshotListResponse> { const c = ctxFrom(q); authed(c); return run(() => this.bi().listSnapshots(c, f ?? {}) as Promise<BranchSnapshotListResponse>); }
+  @Get('branches/snapshots/:id') @RequirePermission('pos.ai_business.view')
+  branchSnapshot(@Req() q: any, @Param('id') id: string): Promise<BranchSnapshotDetail> { const c = ctxFrom(q); authed(c); return run(() => this.bi().snapshot(c, id) as Promise<BranchSnapshotDetail>); }
+  @Post('branches/snapshots/:id/signoffs') @RequirePermission('pos.ai_business.view')
+  branchSignOff(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(BC_BRANCH_SIGNOFF_BODY, { strict: true })) b: any): Promise<BranchSnapshotDetail> { const c = ctxFrom(q); authed(c); return run(() => this.bi().signOff(c, id, b ?? {}) as Promise<BranchSnapshotDetail>); }
   @Post('branches/check') @RequirePermission('pos.ai_business.view')
   branchCheck(@Req() q: any, @Body(ValidatedBody(BC_EMPTY_BODY, { strict: true })) _b: unknown): Promise<BranchDataCheckResponse> { const c = ctxFrom(q); authed(c); return run(() => this.bi().check(c) as Promise<BranchDataCheckResponse>); }
   // ── A4 assistant history + Check Business Data (Nov 6 2026; ai-business-assistant-extras.ts) ──

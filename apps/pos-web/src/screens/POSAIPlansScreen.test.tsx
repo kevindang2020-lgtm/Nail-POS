@@ -33,6 +33,15 @@ describe('POSAIPlansScreen', () => {
     fireEvent.click(screen.getByTestId('plan-confirm-go-plan_money_owner'));
     await waitFor(() => expect(api.startPlanTrial).toHaveBeenCalledWith('plan_money_owner'));
   });
+  it('extras AI Plans 07: the state badge is the server\'s re-read after Start trial — never taken from the trial request\'s response', async () => {
+    // the trial call answers "trialing", but the server's plan list still says available (e.g. activation pending): no badge
+    api.plans.mockResolvedValue({ plans: [plan()] }); api.startPlanTrial.mockResolvedValue({ ok: true, planCode: 'plan_money_owner', status: 'trialing', activated: 0 });
+    mount();
+    fireEvent.click(await screen.findByTestId('plan-trial-start-plan_money_owner'));
+    fireEvent.click(screen.getByTestId('plan-confirm-go-plan_money_owner'));
+    await waitFor(() => expect(api.plans).toHaveBeenCalledTimes(2));            // re-read from the server
+    expect(screen.queryByTestId('plan-state-plan_money_owner')).toBeNull();     // no "On trial" / "Active" from the response
+  });
   it('a refused re-trial says the free trial was already used', async () => {
     api.plans.mockResolvedValue({ plans: [plan()] }); api.startPlanTrial.mockRejectedValue({ status: 400, message: 'trial_already_used' });
     mount();

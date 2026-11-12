@@ -44,3 +44,4 @@ export const CATALOG_REASSIGN_BODY: BodySchema = S.object({ serviceIds: ids, toC
 export const CATALOG_ADD_ON_CREATE_BODY: BodySchema = S.object({ name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, serviceIds: ids, confirmDuplicate: flag });
 export const CATALOG_ADD_ON_UPDATE_BODY: BodySchema = S.object({ scope: str(16), serviceId: id, name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, addServiceIds: ids, removeServiceIds: ids, reason: str(500), dryRun: flag });
 export const CATALOG_ADD_ON_STATE_BODY: BodySchema = S.object({ serviceId: id, reason: str(500) });
+export const CATALOG_CATEGORY_REVIEW_BODY: BodySchema = S.object({ kind: str(40), serviceId: id, decision: str(16), note: str(500) });   // SERVICE PRICING 13

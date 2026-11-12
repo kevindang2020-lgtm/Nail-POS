@@ -393,6 +393,6 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
     const all = await this.loadRows(ctx); const cats = await this.cats(ctx);
     const catName = (id: string) => cats.find((c) => c.categoryId === id)?.name || '';
     const rows = this.applyFilters(all, catName, f);
-    return { headers: ['Id', 'Name', 'Category', 'Price', 'Duration', 'Status', 'Taxable', 'Bookings', 'Revenue'], rows: rows.map((s) => [s.serviceId, s.name, catName(s.categoryId), (s.basePriceCents/100).toFixed(2), s.durationMinutes, s.status, 'yes', s.bookingsCount, s.revenueCents]) };
+    return { headers: ['Id', 'Name', 'Category', 'Price', 'Duration', 'Status', 'Taxable', 'Bookings', 'Revenue'], rows: rows.map((s) => [s.serviceId, s.name, catName(s.categoryId), (s.basePriceCents/100).toFixed(2), s.durationMinutes, s.status, s.isTaxable ? 'yes' : 'no', s.bookingsCount, s.revenueCents]) };   // Taxable is the service's own flag (it said 'yes' for every row)
   }
 }

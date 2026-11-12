@@ -126,6 +126,15 @@ describe('Service Pricing — audited edits and history', () => {
     expect((await repo.history(ctx2, { page: 1, pageSize: 10 })).totalItems).toBe(0);
   });
 
+  it('SERVICE PRICING 16: the services export reports each service\'s own Taxable flag (it said yes for every row)', async () => {
+    await q(`update services set is_taxable = false where id = $1`, [CUT]);
+    const { headers, rows } = await svcRepo.exportRows(ctx as never, {} as never);
+    const ti = headers.indexOf('Taxable'), ni = headers.indexOf('Name');
+    const by = Object.fromEntries(rows.map((r) => [String(r[ni]), r[ti]]));
+    expect(by['Haircut']).toBe('no');
+    expect(by['Gel Manicure']).toBe('yes');
+    await q(`update services set is_taxable = true where id = $1`, [CUT]);
+  });
   it('customer history: phone in any format, name, ticket number → the charged snapshot; never a list of everyone', async () => {
     expect((await repo.customerHistory(ctx, { q: '' })).needsQuery).toBe(true);
     for (const p of ['8565551234', '(856) 555-1234', '856-555-1234', '+1 856 555 1234']) expect((await repo.customerHistory(ctx, { q: p, page: 1, pageSize: 10 })).totalItems).toBe(5);
@@ -150,6 +159,44 @@ describe('Service Categories', () => {
     expect(s.review.filter((r) => r.kind === 'code_like_name').map((r) => r.categoryName)).toEqual(['CD 4432', 'CD 6805']);
     expect(s.review.filter((r) => r.kind === 'service_category_mismatch').map((r) => r.serviceName).sort()).toEqual(['Hair Coloring', 'Haircut']);
     expect(s.review.filter((r) => r.kind === 'empty').map((r) => r.categoryName)).toEqual(['Brows']);
+  });
+
+  it('SERVICE PRICING 13: owner review — approve a finding as is (note required, original ids kept, nothing in the catalog changes), reopen it; a rename puts it back in the queue; append-only', async () => {
+    const edit = { ...ctx, permissions: ['pos.services.view', 'pos.services.edit'] };
+    const code = async (p: Promise<unknown>) => { try { await p; return 'ok'; } catch (e: any) { return e?.response?.code ?? e?.code ?? e?.message; } };
+    const catalogBefore = (await q(`select id, name, category_id, status from services where tenant_id = $1 order by id`, [T])).rows;
+    const s0 = await repo.categorySummary(ctx);
+    expect(s0.review.every((r) => r.status === 'open' && r.lastDecision === null)).toBe(true);
+    expect(await code(repo.decideCategoryReview(edit, CUT, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'fine as is' }))).toBe('CATEGORY_NOT_FOUND');    // the category id, not the service id
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'x' }))).toBe('REASON_REQUIRED');
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', decision: 'approve', note: 'no service' }))).toBe('VALIDATION_FAILED');
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: GEL, decision: 'approve', note: 'not flagged' }))).toBe('CATEGORY_NOT_FOUND');
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'reopen', note: 'nothing to reopen' }))).toBe('INVALID_STATE_TRANSITION');
+    const r = await repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'We offer kids nail + haircut combo here' });
+    expect(r.changesCatalog).toBe(false);
+    expect(r.item).toMatchObject({ kind: 'service_category_mismatch', categoryId: NAILS, categoryName: 'Nails', serviceId: CUT, serviceName: 'Haircut', status: 'approved',
+      lastDecision: { decision: 'approved_as_is', note: 'We offer kids nail + haircut combo here', by: 'Pat Owner' } });
+    expect(await code(repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'approve', note: 'again' }))).toBe('REQUEST_ALREADY_DECIDED');
+    // still listed (after the open ones), with who / when / why; the other findings stay open
+    const s1 = await repo.categorySummary(ctx);
+    expect(s1.review.at(-1)).toMatchObject({ serviceId: CUT, status: 'approved' });
+    expect(s1.review.filter((x) => x.status === 'open')).toHaveLength(s0.review.length - 1);
+    // the catalog is untouched
+    expect((await q(`select id, name, category_id, status from services where tenant_id = $1 order by id`, [T])).rows).toEqual(catalogBefore);
+    // reopen → open again, history newest first
+    const ro = await repo.decideCategoryReview(edit, NAILS, { kind: 'service_category_mismatch', serviceId: CUT, decision: 'reopen', note: 'Owner wants to move it after all' });
+    expect(ro.item.status).toBe('open');
+    expect(ro.history.map((h) => h.decision)).toEqual(['reopened', 'approved_as_is']);
+    // a decision is tied to the name it was made on: rename the empty category → back in the queue; the old name again → approved again
+    await repo.decideCategoryReview(edit, EMPTY, { kind: 'empty', decision: 'approve', note: 'Brows services start next month' });
+    await q(`update service_categories set name = 'Brows & Lashes' where id = $1`, [EMPTY]);
+    expect((await repo.categorySummary(ctx)).review.find((x) => x.categoryId === EMPTY)).toMatchObject({ categoryName: 'Brows & Lashes', status: 'open', lastDecision: null });
+    await q(`update service_categories set name = 'Brows' where id = $1`, [EMPTY]);
+    expect((await repo.categorySummary(ctx)).review.find((x) => x.categoryId === EMPTY)!.status).toBe('approved');
+    // append-only; another salon sees none of it
+    await expect(q(`update catalog_category_reviews set note = 'changed'`)).rejects.toThrow(/append-only/);
+    await expect(q(`delete from catalog_category_reviews`)).rejects.toThrow(/append-only/);
+    expect((await repo.categorySummary(ctx2)).review.every((x) => x.lastDecision === null)).toBe(true);
   });
 
   it('extras row 10: the summary says which catalog scope it counts — a branch session its branch (+ salon-wide rows); a salon-wide session every branch separately, never another salon', async () => {

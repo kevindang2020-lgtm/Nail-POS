@@ -55,7 +55,7 @@ export function BranchInsightsPanel({ period, tick }: { period: { preset?: strin
       {err ? <ErrorRetry message={err} onRetry={load} /> : !s ? <div className="state">{bt('bzx.loading')}</div> : rows.length === 0 ? <Empty title={bt('pos.no_authorized_branches_to_compare')} /> : (<>
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>
           <th>{bt('pos.branch')}</th><th className="num">{bt('bcx.s.techHours')}</th><th className="num">{bt('bcx.s.perTechHour')}</th>
-          <th className="num">{bt('bcx.s.openHours')}</th><th className="num">{bt('bcx.s.perOpenHour')}</th><th className="num">{bt('bcx.s.returning')}</th></tr></thead>
+          <th className="num">{bt('bcx.s.openHours')}</th><th className="num">{bt('bcx.s.perOpenHour')}</th><th className="num">{bt('bcx.s.returning')}</th><th>{bt('bcx.l.col')}</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.branchId} data-testid="bcx-s-row">
               <td><b>{r.branchName}</b></td>
@@ -64,6 +64,7 @@ export function BranchInsightsPanel({ period, tick }: { period: { preset?: strin
               <td className="num">{hrs(r.operatingHours)}</td>
               <td className="num">{s.financialsIncluded ? money(r.netPerOperatingHourCents) : '—'}{rank(r.rank.perOperatingHour)}</td>
               <td className="num">{r.returningRate == null ? bt('bcx.na') : `${r.returningRate}% (${bzNum(r.returningCustomers)}/${bzNum(r.customers)})`}{rank(r.rank.returningRate)}</td>
+              <td data-testid="bcx-s-like"><LikeCell l={r.likeForLike} fin={s.financialsIncluded} /></td>
             </tr>))}</tbody></table></div>
         {rows.length > 1 ? <button type="button" className="btn ghost" data-testid="bcx-explain" onClick={() => setExplain(true)}>{bt('bcx.e.open')}</button> : null}
         <div className="p-h" style={{ marginTop: 12 }}>{bt('bcx.a.title')}</div>
@@ -94,7 +95,47 @@ function ExplainDialog({ rows, period, onClose }: { rows: any[]; period: Record<
       </div>
       {err ? <div className="err" role="alert">{err}</div> : null}
       {r ? <ul data-testid="bcx-e-lines" style={{ paddingLeft: 18 }}>{explainLines(r, rows.find((x) => x.branchId === a), rows.find((x) => x.branchId === b)).map((l, i) => <li key={i} style={{ marginBottom: 4 }}>{l}</li>)}</ul> : <p className="sub">{bt('bcx.e.hint')}</p>}
+      {r?.evidence ? <ExplainEvidence ev={r.evidence} /> : null}
     </FitDialog>
+  );
+}
+
+/** AI BRANCH COMPARISON 04 — like-for-like group (server: branch-insights likeForLikeGroups — similar technician hours, opening
+ *  hours and service mix). Shows the rank among those branches only, or why the branch has no group; never a size ranking. */
+type LikeView = { peers: Array<{ branchId: string; branchName: string; mixOverlapPercent: number }>; rankPerTechnicianHour: number | null; of: number; mix: Array<{ category: string; sharePercent: number }>; reason: string | null };
+export function LikeCell({ l, fin }: { l?: LikeView; fin: boolean }) {
+  if (!l) return <>—</>;
+  const mix = l.mix.slice(0, 3).map((m) => `${m.category} ${m.sharePercent}%`).join(', ');
+  if (!l.peers.length) return <span className="sub" title={mix || undefined}>{bt('bcx.l.r.' + (l.reason ?? 'no_peers'))}</span>;
+  return <span title={mix || undefined}>
+    {fin && l.rankPerTechnicianHour != null ? bt('bcx.l.rank', { n: l.rankPerTechnicianHour, of: l.of }) + ' · ' : ''}
+    {bt('bcx.l.with', { names: l.peers.map((p) => p.branchName).join(', ') })}
+  </span>;
+}
+
+/** AI BRANCH COMPARISON 06 — Source-to-Answer: every figure the explanation rests on, for both branches, with the report or
+ *  record it was read from, the salon days and the time it was read (server: branch-insights explainEvidence). Nothing is
+ *  recomputed here; a figure the server did not send stays '—'. */
+type EvidenceFigure = { key: string; unit: 'cents' | 'count' | 'percent' | 'hours'; a: number | null; b: number | null; source: string; hidden: boolean };
+type EvidenceSide = { branchId: string; branchName: string; timeZone: string; range: { from: string; to: string } | null };
+type ExplainEvidenceView = { asOf: string; preset: string; a: EvidenceSide; b: EvidenceSide; financialsIncluded: boolean; figures: EvidenceFigure[]; sources: Array<{ source: string; route: string }> };
+const evValue = (f: EvidenceFigure, v: number | null) => (f.hidden ? '—' : v == null ? bt('bcx.na') : f.unit === 'cents' ? money(v) : f.unit === 'percent' ? `${v}%` : f.unit === 'hours' ? hrs(v) : bzNum(v));
+const evDays = (s: EvidenceSide) => (s.range ? bt('bcx.ev.days', { from: s.range.from, to: s.range.to, tz: s.timeZone }) : '—');
+export function ExplainEvidence({ ev }: { ev: ExplainEvidenceView }) {
+  return (
+    <details data-testid="bcx-e-evidence" style={{ marginTop: 8 }}>
+      <summary className="sub" style={{ cursor: 'pointer', minHeight: 32 }}>{bt('bcx.ev.title')}</summary>
+      <div className="sub" data-testid="bcx-ev-asof">{bt('bcx.ev.asOf', { at: bzWhen(ev.asOf) })}</div>
+      <div className="sub" data-testid="bcx-ev-days">{ev.a.branchName}: {evDays(ev.a)} · {ev.b.branchName}: {evDays(ev.b)}</div>
+      <div className="rvw-table-wrap"><table className="tbl" data-testid="bcx-ev-table"><thead><tr>
+        <th>{bt('bcx.ev.figure')}</th><th className="num">{ev.a.branchName}</th><th className="num">{ev.b.branchName}</th><th>{bt('bcx.ev.source')}</th></tr></thead>
+        <tbody>{ev.figures.map((f) => (
+          <tr key={f.key} data-testid="bcx-ev-row" data-key={f.key}>
+            <td>{bt('bcx.ev.f.' + f.key)}</td><td className="num">{evValue(f, f.a)}</td><td className="num">{evValue(f, f.b)}</td><td className="sub">{bt('bcx.ev.s.' + f.source)}</td>
+          </tr>))}</tbody></table></div>
+      {!ev.financialsIncluded ? <div className="sub">{bt('bcx.e.l.hidden')}</div> : null}
+      <div className="sub" data-testid="bcx-ev-links">{ev.sources.map((x, i) => <span key={x.source}>{i ? ' · ' : ''}<Link to={x.route} style={{ color: 'var(--aps-orange)' }}>{bt('bcx.ev.s.' + x.source)}</Link></span>)}</div>
+    </details>
   );
 }
 

@@ -585,4 +585,55 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.t.open": "{n} vẫn đang mở.", // DRAFT — Kevin reviews
   "bcx.t.go": "Mở cảnh báo", // DRAFT — Kevin reviews
   "bcx.t.note": "Chỉ hiện các quy tắc đặt cho từng chi nhánh; quy tắc cho toàn tiệm nằm trong Cảnh báo AI Kinh doanh. Trang này không tự phát hiện gì.", // DRAFT — Kevin reviews
+  "bcx.ev.title": "Các số liệu này lấy từ đâu", // DRAFT — Kevin reviews
+  "bcx.ev.asOf": "Đọc lúc {at}", // DRAFT — Kevin reviews
+  "bcx.ev.days": "{from} – {to} ({tz})", // DRAFT — Kevin reviews
+  "bcx.ev.figure": "Số liệu", // DRAFT — Kevin reviews
+  "bcx.ev.source": "Nguồn", // DRAFT — Kevin reviews
+  "bcx.ev.f.net_sales": "Doanh thu thuần", // DRAFT — Kevin reviews
+  "bcx.ev.f.paid_tickets": "Phiếu đã thanh toán", // DRAFT — Kevin reviews
+  "bcx.ev.f.average_ticket": "Phiếu trung bình", // DRAFT — Kevin reviews
+  "bcx.ev.f.bookings": "Lịch hẹn", // DRAFT — Kevin reviews
+  "bcx.ev.f.completed": "Đã hoàn thành", // DRAFT — Kevin reviews
+  "bcx.ev.f.completion_rate": "Tỷ lệ hoàn thành", // DRAFT — Kevin reviews
+  "bcx.ev.f.no_show_rate": "Không đến", // DRAFT — Kevin reviews
+  "bcx.ev.f.technician_hours": "Giờ làm của thợ", // DRAFT — Kevin reviews
+  "bcx.ev.f.operating_hours": "Giờ mở cửa", // DRAFT — Kevin reviews
+  "bcx.ev.f.customers": "Khách hàng", // DRAFT — Kevin reviews
+  "bcx.ev.f.returning_customers": "Khách quay lại", // DRAFT — Kevin reviews
+  "bcx.ev.f.returning_rate": "Tỷ lệ quay lại", // DRAFT — Kevin reviews
+  "bcx.ev.s.sales_report": "Báo cáo doanh thu", // DRAFT — Kevin reviews
+  "bcx.ev.s.booking_report": "Báo cáo lịch hẹn", // DRAFT — Kevin reviews
+  "bcx.ev.s.time_clock": "Ca chấm công", // DRAFT — Kevin reviews
+  "bcx.ev.s.opening_hours": "Giờ mở cửa của địa điểm", // DRAFT — Kevin reviews
+  "bcx.ev.s.paid_tickets": "Phiếu đã thanh toán (Báo cáo khách hàng)", // DRAFT — Kevin reviews
+  "bcx.l.col": "So sánh tương đương", // DRAFT — Kevin reviews
+  "bcx.l.rank": "#{n} trên {of} theo giờ làm của thợ", // DRAFT — Kevin reviews
+  "bcx.l.with": "tương tự {names}", // DRAFT — Kevin reviews
+  "bcx.l.r.no_peers": "Không có chi nhánh tương tự", // DRAFT — Kevin reviews
+  "bcx.l.r.no_staffing": "Chưa có giờ chấm công", // DRAFT — Kevin reviews
+  "bcx.l.r.no_opening_hours": "Chưa đặt giờ mở cửa", // DRAFT — Kevin reviews
+  "bcx.l.r.no_services": "Chưa có dịch vụ đã thanh toán", // DRAFT — Kevin reviews
+  "bcx.snap.title": "So sánh đã lưu & xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.sub": "Lưu so sánh này để giữ nguyên số liệu như hiện tại; người duyệt thêm ghi chú xác nhận. Ghi chú không bao giờ thay đổi số liệu đã lưu.", // DRAFT — Kevin reviews
+  "bcx.snap.save": "Lưu so sánh này", // DRAFT — Kevin reviews
+  "bcx.snap.namePh": "Tên (không bắt buộc)", // DRAFT — Kevin reviews
+  "bcx.snap.confirm": "Lưu", // DRAFT — Kevin reviews
+  "bcx.snap.saved": "Đã lưu so sánh. Số liệu sẽ không thay đổi.", // DRAFT — Kevin reviews
+  "bcx.snap.none": "Chưa có so sánh nào được lưu", // DRAFT — Kevin reviews
+  "bcx.snap.line": "{p} · đọc lúc {at} · lưu bởi {who} · {n} chi nhánh", // DRAFT — Kevin reviews
+  "bcx.snap.unreviewed": "Chưa được xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.d.approved": "Đã duyệt", // DRAFT — Kevin reviews
+  "bcx.snap.d.needs_follow_up": "Cần theo dõi", // DRAFT — Kevin reviews
+  "bcx.snap.d.noted": "Đã ghi nhận", // DRAFT — Kevin reviews
+  "bcx.snap.frozen": "Số liệu cho {p} đọc lúc {at}, lưu bởi {who}. Không thay đổi.", // DRAFT — Kevin reviews
+  "bcx.snap.moneyHidden": "Doanh thu bị ẩn với vai trò của bạn.", // DRAFT — Kevin reviews
+  "bcx.snap.signoffs": "Ghi chú xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.by": "— {who}, {at}", // DRAFT — Kevin reviews
+  "bcx.snap.decision": "Quyết định", // DRAFT — Kevin reviews
+  "bcx.snap.note": "Ghi chú (bắt buộc)", // DRAFT — Kevin reviews
+  "bcx.snap.sign": "Thêm xác nhận", // DRAFT — Kevin reviews
+  "bcx.snap.noteRequired": "Hãy viết ghi chú ngắn (ít nhất 3 ký tự).", // DRAFT — Kevin reviews
+  "bcx.snap.cannotSign": "Cần quyền xem số liệu doanh thu để xác nhận.", // DRAFT — Kevin reviews
+  "bcx.snap.rule": "Ghi chú xác nhận được giữ theo thứ tự và không thể sửa hay xóa. Không có gì ở đây thay đổi doanh thu, lịch hẹn hay lịch làm việc.", // DRAFT — Kevin reviews
 };

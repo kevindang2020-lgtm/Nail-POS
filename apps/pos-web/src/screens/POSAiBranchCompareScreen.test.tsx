@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { compareMock, center } = vi.hoisted(() => ({ compareMock: vi.fn(), center: { branchScorecard: vi.fn(), branchExplain: vi.fn(), branchCheck: vi.fn() } }));
+const { compareMock, center } = vi.hoisted(() => ({ compareMock: vi.fn(), center: { branchScorecard: vi.fn(), branchExplain: vi.fn(), branchCheck: vi.fn(), branchSnapshots: vi.fn(), branchSnapshot: vi.fn(), saveBranchSnapshot: vi.fn(), signOffBranchSnapshot: vi.fn() } }));
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { compareBranches: compareMock, center } }));
 import { POSAiBranchCompareScreen } from './POSAiBranchCompareScreen';
 
@@ -9,10 +9,11 @@ const render1 = () => render(<MemoryRouter><POSAiBranchCompareScreen /></MemoryR
 
 const ROW = (o: any) => ({ status: 'active', timeZone: 'UTC', averageTicketCents: 5000, totalBookings: 10, completed: 9, completionRate: 90, noShowPercent: 2, cancelledPercent: 1, customers: 10, returningCustomers: 5, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
 const SC = { preset: 'month', range: null, financialsIncluded: true, notes: [], rows: [
-  ROW({ branchId: 'b1', branchName: 'Marlton', trendFlags: [{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00Z', route: '/tenant/ai/business/alerts' }], netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
-  ROW({ branchId: 'b2', branchName: 'Deptford', netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
+  ROW({ branchId: 'b1', branchName: 'Marlton', likeForLike: { peers: [{ branchId: 'b3', branchName: 'Cherry Hill', mixOverlapPercent: 80 }, { branchId: 'b4', branchName: 'Voorhees', mixOverlapPercent: 70 }], rankPerTechnicianHour: 2, of: 3, mix: [{ category: 'Manicure', sharePercent: 60 }], reason: null }, trendFlags: [{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00Z', route: '/tenant/ai/business/alerts' }], netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
+  ROW({ branchId: 'b2', branchName: 'Deptford', likeForLike: { peers: [], rankPerTechnicianHour: null, of: 1, mix: [], reason: 'no_opening_hours' }, netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
   advice: [{ branchId: 'b2', branchName: 'Deptford', kind: 'no_opening_hours', severity: 'info', message: 'x', basis: {}, route: '/tenant/management/locations' }] };
-beforeEach(() => { center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset(); });
+beforeEach(() => { center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset();
+  center.branchSnapshots.mockReset().mockResolvedValue({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 }); center.branchSnapshot.mockReset(); center.saveBranchSnapshot.mockReset(); center.signOffBranchSnapshot.mockReset(); });
 
 describe('AI Branch Comparison screen', () => {
   it('A3: the fair scorecard ranks per technician hour; the advisor speaks the screen language; Explain renders the measured bridge', async () => {
@@ -25,6 +26,10 @@ describe('AI Branch Comparison screen', () => {
     expect(rows[1]).toHaveTextContent('Deptford');
     expect(rows[1]).toHaveTextContent('$100.00 · #1');
     expect(screen.getByTestId('bcx-advice')).toHaveTextContent('Deptford has no opening hours set');
+    // AI BRANCH COMPARISON 04: like-for-like group from the server — rank among similar branches, or why there is none
+    const like = screen.getAllByTestId('bcx-s-like');
+    expect(like[0]).toHaveTextContent('#2 of 3 per technician hour · similar to Cherry Hill, Voorhees');
+    expect(like[1]).toHaveTextContent('No opening hours set');
     // AI BRANCH COMPARISON 09: the existing alert rules' flags, worded, linking to Alerts
     const tf = screen.getAllByTestId('bcx-trend');
     expect(tf).toHaveLength(1);
@@ -38,6 +43,79 @@ describe('AI Branch Comparison screen', () => {
     expect(lines).toHaveTextContent('Marlton took $3,000.00 more than Deptford.');
     expect(lines).toHaveTextContent('$2,000.00 of that comes from 50 more paid tickets (100 vs 50)');
     expect(lines).toHaveTextContent('These are measured differences, not causes');
+  });
+
+  it('AI BRANCH COMPARISON 06: the explanation shows the figures it rests on, their source, the salon days and the as-of time; hidden revenue stays —', async () => {
+    compareMock.mockResolvedValue({ preset: 'week', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: false, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: null, ticketsCount: null, averageTicketCents: null, totalBookings: 20, completed: 18, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [], branches: [] });
+    center.branchScorecard.mockResolvedValue(SC);
+    const side = (id: string, name: string) => ({ branchId: id, branchName: name, timeZone: 'America/New_York', range: { from: '2026-11-02', to: '2026-11-08' } });
+    center.branchExplain.mockResolvedValue({ a: 'Marlton', b: 'Deptford', preset: 'week', range: null, lines: [], bridge: null,
+      evidence: { asOf: '2026-11-06T20:00:00Z', preset: 'week', a: side('b1', 'Marlton'), b: side('b2', 'Deptford'), financialsIncluded: false,
+        figures: [{ key: 'net_sales', unit: 'cents', a: null, b: null, source: 'sales_report', hidden: true },
+          { key: 'technician_hours', unit: 'hours', a: 50, b: 10, source: 'time_clock', hidden: false },
+          { key: 'operating_hours', unit: 'hours', a: 50, b: null, source: 'opening_hours', hidden: false },
+          { key: 'no_show_rate', unit: 'percent', a: 9, b: 2, source: 'booking_report', hidden: false }],
+        sources: [{ source: 'sales_report', route: '/tenant/reports/sales' }, { source: 'time_clock', route: '/tenant/team/time-clock' }] } });
+    render1();
+    fireEvent.click(await screen.findByTestId('bcx-explain'));
+    fireEvent.click(await screen.findByTestId('bcx-e-run'));
+    const ev = await screen.findByTestId('bcx-e-evidence');
+    expect(within(ev).getByTestId('bcx-ev-days')).toHaveTextContent('Marlton: 2026-11-02 – 2026-11-08 (America/New_York)');
+    expect(within(ev).getByTestId('bcx-ev-asof')).toHaveTextContent(/Read .*2026/);
+    const rows = within(ev).getAllByTestId('bcx-ev-row');
+    const byKey = (k: string) => rows.find((r) => r.getAttribute('data-key') === k)!;
+    expect(byKey('net_sales')).toHaveTextContent(/Net sales\s*—\s*—\s*Sales Report/);
+    expect(byKey('technician_hours')).toHaveTextContent('Time clock shifts');
+    expect(byKey('operating_hours').textContent).toContain('N/A');          // unknown, never 0
+    expect(byKey('no_show_rate')).toHaveTextContent(/9%\s*2%/);
+    expect(within(ev).getByRole('link', { name: 'Time clock shifts' }).getAttribute('href')).toBe('/tenant/team/time-clock');
+  });
+
+  it('AI BRANCH COMPARISON 14: save sends only the period + a name (the server freezes its own figures); a saved comparison shows its frozen figures and append-only sign-off notes', async () => {
+    compareMock.mockResolvedValue({ preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 0, truncated: false, page: 1, pageSize: 25, totalItems: 0, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: 0, ticketsCount: 0, averageTicketCents: null, totalBookings: 0, completed: 0, completionRate: null, branches: 0 }, drilldownRoute: '/tenant/reports/sales', notes: [], branches: [] });
+    const sum = { id: 'snap1', title: 'Week 45', preset: 'month', range: null, asOf: '2026-11-06T20:00:00Z', savedBy: 'Pat Owner', savedAt: '2026-11-06T20:00:00Z', branches: 2, financialsIncluded: true, signOffs: 0, lastDecision: null };
+    const detail = { ...sum, totals: { netSalesCents: 400000 }, rows: [{ branchId: 'b1', branchName: 'Marlton', netSalesCents: 300000, totalBookings: 70, completed: 60, completionRate: 86 }], signOffList: [], canSignOff: true, immutable: true };
+    center.saveBranchSnapshot.mockResolvedValue(detail);
+    center.branchSnapshot.mockResolvedValue(detail);
+    center.signOffBranchSnapshot.mockResolvedValue({ ...detail, signOffs: 1, lastDecision: 'needs_follow_up', signOffList: [{ id: 's1', decision: 'needs_follow_up', note: 'Ask about no-shows', reviewer: 'Pat Owner', at: '2026-11-07T15:00:00Z' }] });
+    render1();
+    expect(await screen.findByTestId('bcx-snaps')).toHaveTextContent('No saved comparisons yet');
+    center.branchSnapshots.mockResolvedValue({ items: [sum], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 });
+    fireEvent.click(screen.getByTestId('bcx-snap-save'));
+    fireEvent.change(screen.getByTestId('bcx-snap-name'), { target: { value: 'Week 45' } });
+    fireEvent.click(screen.getByTestId('bcx-snap-confirm'));
+    await waitFor(() => expect(center.saveBranchSnapshot).toHaveBeenCalledWith({ preset: 'month', title: 'Week 45' }));     // no figures sent
+    const dlg = await screen.findByTestId('bcx-snap-dlg');
+    expect(within(dlg).getByTestId('bcx-snap-frozen')).toHaveTextContent('saved by Pat Owner. They do not change.');
+    expect(within(dlg).getByTestId('bcx-snap-trow')).toHaveTextContent(/Marlton\s*\$3,000\.00\s*70\s*60\s*86%/);
+    expect(within(dlg).getByTestId('bcx-snap-nosign')).toHaveTextContent('Not signed off yet');
+    fireEvent.click(within(dlg).getByTestId('bcx-snap-sign'));
+    expect(await within(dlg).findByRole('alert')).toHaveTextContent('Write a short note');
+    expect(center.signOffBranchSnapshot).not.toHaveBeenCalled();
+    fireEvent.change(within(dlg).getByTestId('bcx-snap-decision'), { target: { value: 'needs_follow_up' } });
+    fireEvent.change(within(dlg).getByTestId('bcx-snap-text'), { target: { value: 'Ask about no-shows' } });
+    fireEvent.click(within(dlg).getByTestId('bcx-snap-sign'));
+    await waitFor(() => expect(center.signOffBranchSnapshot).toHaveBeenCalledWith('snap1', { decision: 'needs_follow_up', note: 'Ask about no-shows' }));
+    expect(await within(dlg).findByTestId('bcx-snap-signoff')).toHaveTextContent(/Needs follow-up\s*Ask about no-shows\s*— Pat Owner/);
+    expect(await screen.findAllByTestId('bcx-snap-row')).toHaveLength(1);
+  });
+
+  it('AI BRANCH COMPARISON 14: without financial view the saved figures show — and signing off is not offered', async () => {
+    compareMock.mockResolvedValue({ preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: false, branchCount: 0, truncated: false, page: 1, pageSize: 25, totalItems: 0, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: null, ticketsCount: null, averageTicketCents: null, totalBookings: 0, completed: 0, completionRate: null, branches: 0 }, drilldownRoute: '/tenant/reports/sales', notes: [], branches: [] });
+    const sum = { id: 'snap2', title: null, preset: 'week', range: null, asOf: '2026-11-06T20:00:00Z', savedBy: 'Pat Owner', savedAt: '2026-11-06T20:00:00Z', branches: 1, financialsIncluded: false, signOffs: 1, lastDecision: 'approved' };
+    center.branchSnapshots.mockResolvedValue({ items: [sum], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 });
+    center.branchSnapshot.mockResolvedValue({ ...sum, totals: {}, rows: [{ branchId: 'b1', branchName: 'Marlton', netSalesCents: null, totalBookings: 70, completed: 60, completionRate: 86 }], signOffList: [], canSignOff: false, immutable: true });
+    render1();
+    const row = await screen.findByTestId('bcx-snap-row');
+    expect(within(row).getByTestId('bcx-snap-last')).toHaveTextContent('Approved');
+    fireEvent.click(within(row).getByRole('button'));
+    const dlg = await screen.findByTestId('bcx-snap-dlg');
+    expect(await within(dlg).findByTestId('bcx-snap-trow')).toHaveTextContent(/Marlton\s*—\s*70/);
+    expect(within(dlg).getByTestId('bcx-snap-cannot')).toBeInTheDocument();
+    expect(within(dlg).queryByTestId('bcx-snap-signform')).toBeNull();
   });
 
   it('renders a per-branch row with totals and normalized revenue-per-completed', async () => {
