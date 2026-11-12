@@ -166,6 +166,8 @@ export function POSTeamScreen() {
         <KpiCard testId="kpi-positions" label={tx('pos.open_positions')} loading={!d && !dash.error} value={d ? tx('tmm.notConfigured') : ''} sub={tx('tmm.kpi.positionsSub')} />
       </div>
       <p className="fk-hint" data-testid="kpi-defs">{tx('tmm.kpi.defs')}</p>
+      {d?.syncFreshness ? <p className="fk-hint" data-testid="sync-freshness" title={tx('tmm.sync.def')}>{tx('tmm.sync.title')}{' '}
+        {(['queueAt', 'bookingAt', 'timeClockAt', 'technicianStatusAt', 'technicianAppAt'] as const).map((key) => `${tx('tmm.sync.' + key)} ${d.syncFreshness[key] ? whenTime(d.syncFreshness[key]) : tx('tmm.sync.none')}`).join(' · ')}</p> : null}
 
       {mode === 'customer' ? <CustomerLinkedStaff q={q} tick={tick + live.tick} onOpenMember={(id) => setProfile({ id })} /> :
       <FitPanel testId="directory" className="tmm-dir" title={<>{tx('tmm.directory')}{dirD ? <span className="fk-muted"> · {tx('cg.matching', { n: nf(dirD.totalItems) })}</span> : null}</>}
