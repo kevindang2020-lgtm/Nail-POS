@@ -89,8 +89,10 @@ export const whyText = (p: Priority, r: { daysAway: number | null; visits: numbe
   tx('rt2.why.' + p.topDriver, { d: nf(r.daysAway ?? 0), v: nf(r.visits), s: fmtMoney(r.lifetimeSpendCents) });
 const serverPeriod = (p?: Period | null): ServerPeriod | null => (p ? { preset: p.preset as ServerPeriod['preset'], from: p.from, to: p.to, tz: p.timeZone, today: p.today } : null);
 
-type Filters = { basis: string; band: string; sms: string; minVisits: number; inactivity: string; customDays: string; email: string; future: string; scope: string; category: string; technician: string; spend: string };
-const NO_FILTERS: Filters = { basis: 'none', band: '', sms: '', minVisits: 0, inactivity: '', customDays: '', email: '', future: '', scope: '', category: '', technician: '', spend: '' };
+type Filters = { basis: string; band: string; sms: string; minVisits: number; inactivity: string; customDays: string; email: string; future: string; scope: string; category: string; technician: string; spend: string; areaCode: string };
+const NO_FILTERS: Filters = { basis: 'none', band: '', sms: '', minVisits: 0, inactivity: '', customDays: '', email: '', future: '', scope: '', category: '', technician: '', spend: '', areaCode: '' };
+/** Win-Back §01: a complete North American area code (3 digits, first 2–9) searches at once; anything shorter is not sent */
+const areaCodeOk = (v: string) => /^[2-9][0-9]{2}$/.test(v);
 /** Win-Back guide §06: 30 / 60 / 90 / 120 or a custom number of salon days; '' = not filtered */
 const minDaysOf = (f: Filters): number | undefined => { const n = Math.trunc(Number(f.inactivity === 'custom' ? f.customDays : f.inactivity)); return Number.isFinite(n) && n >= 1 && n <= 3650 ? n : undefined; };
 type Selection = { mode: 'ids'; ids: Map<string, Row> } | { mode: 'matching'; filter: RetentionSelection; segment: Segment; total: number; excludeIds: Set<string> };
@@ -135,7 +137,7 @@ export function POSRetentionScreen() {
   const seq = useRef(0);
   const query = useMemo(() => ({ segment, ...JSON.parse(pKey), q: q.trim() || undefined, sort: sort || undefined, basis: flt.basis !== 'none' ? flt.basis : undefined,
     band: flt.band || undefined, sms: flt.sms || undefined, minVisits: flt.minVisits || undefined, minDays: minDaysOf(flt), email: flt.email || undefined, future: flt.future || undefined,
-    scope: flt.scope || undefined, category: flt.category || undefined, technician: flt.technician || undefined, spend: flt.spend || undefined }), [segment, pKey, q, sort, flt]);
+    scope: flt.scope || undefined, category: flt.category || undefined, technician: flt.technician || undefined, spend: flt.spend || undefined, areaCode: areaCodeOk(flt.areaCode) ? flt.areaCode : undefined }), [segment, pKey, q, sort, flt]);
   useEffect(() => {
     const my = ++seq.current; setListErr(null);
     posRetentionApi.customers({ ...query, page, pageSize: fit.rows })
@@ -280,6 +282,11 @@ export function POSRetentionScreen() {
         </select>
         {flt.inactivity === 'custom' ? <input className="fk-input rt-days" type="number" min={1} max={3650} inputMode="numeric" aria-label={tx('wb.flt.inactivity.customLabel')} value={flt.customDays}
           onChange={(e) => setFilter({ customDays: e.target.value })} data-testid="flt-days" /> : null}
+        {/* Win-Back §01/§02: Area Code — this salon's stored numbers with that +1 area code, across every page; searches as soon as 3 digits are in */}
+        <input className="fk-input rt-areacode" type="text" inputMode="numeric" maxLength={3} size={6} aria-label={tx('wb.areaCode.label')} placeholder={tx('wb.areaCode.placeholder')}
+          value={flt.areaCode} onChange={(e) => setFilter({ areaCode: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })} data-testid="flt-areacode"
+          aria-invalid={flt.areaCode !== '' && !areaCodeOk(flt.areaCode)} />
+        {flt.areaCode !== '' && !areaCodeOk(flt.areaCode) ? <span className="fk-hint" role="status" data-testid="flt-areacode-hint">{tx('wb.areaCode.hint')}</span> : null}
         <select className="fk-select" aria-label={tx('wb.flt.email')} value={flt.email} onChange={(e) => setFilter({ email: e.target.value })} data-testid="flt-email">
           <option value="">{tx('wb.flt.email.any')}</option>{(['eligible', 'not_eligible', 'opted_out'] as const).map((v) => <option key={v} value={v}>{tx('wb.flt.email.' + v)}</option>)}
         </select>
@@ -293,7 +300,7 @@ export function POSRetentionScreen() {
         <select className="fk-select" aria-label={tx('wb.flt.future')} value={flt.future} onChange={(e) => setFilter({ future: e.target.value })} data-testid="flt-future">
           <option value="">{tx('wb.flt.future.any')}</option><option value="yes">{tx('wb.flt.future.yes')}</option><option value="no">{tx('wb.flt.future.no')}</option>
         </select>
-        {(flt.basis !== 'none' || flt.band || flt.sms || flt.minVisits || flt.inactivity || flt.email || flt.future || flt.category || flt.technician || flt.spend || flt.scope || search) ? <button type="button" className="fk-link" onClick={() => { setFlt(NO_FILTERS); setSearch(''); clearSelIfAny(); }} data-testid="flt-clear">{tx('pos.clear_all')}</button> : null}
+        {(flt.basis !== 'none' || flt.band || flt.sms || flt.minVisits || flt.inactivity || flt.email || flt.future || flt.category || flt.technician || flt.spend || flt.scope || flt.areaCode || search) ? <button type="button" className="fk-link" onClick={() => { setFlt(NO_FILTERS); setSearch(''); clearSelIfAny(); }} data-testid="flt-clear">{tx('pos.clear_all')}</button> : null}
       </div>
 
       <div className="rt-filters" role="tablist" aria-label={tx('people.retention.segments')}>
@@ -309,6 +316,7 @@ export function POSRetentionScreen() {
 
       <FitPanel testId="panel-winback" className="rt-table-panel" title={<>{segLabel(segment, per)} <span className="rt-sortnote">· {sortLabel(currentSort)}{segment === 'returning' || segment === 'recovered' || segment === 'new_visitors' ? ' · ' + periodWord : ''}</span>
           {scopeText ? <span className={'rt3-scope ' + (scope?.label ?? '')} data-testid="rt-scope" title={scopeText}>{scopeText}</span> : null}
+          {areaCodeOk(flt.areaCode) && list ? <span className="rt3-scope" data-testid="rt-areacode-count">{tx('wb.areaCode.matching', { c: flt.areaCode, n: nf(list.totalItems) })}</span> : null}
           {scope?.unknownBranchVisits ? <span className="rt3-unknown" data-testid="rt-unknown-branch" title={tx('rt3.scope.unknown', { n: nf(scope.unknownBranchVisits) })}>{tx('rt3.scope.unknownShort', { n: nf(scope.unknownBranchVisits) })}</span> : null}</>} bodyRef={fit.ref}
         actions={<>
           <select className="fk-select rt3-branch" aria-label={tx('rt3.branch.label')} value={branch} onChange={(e) => changeBranch(e.target.value)} data-testid="flt-branch" title={scopeText}>
@@ -326,7 +334,10 @@ export function POSRetentionScreen() {
         </>}
         footer={<Pager info={list} onPage={setPage} />}>
         {listErr ? <ErrorRetry message={listErr} onRetry={() => setReload((n) => n + 1)} /> : !list ? <div className="fk-loading">{tx('pos.loading')}</div> : rows.length === 0 ? (
-          q || flt.band || flt.sms || flt.minVisits || flt.basis !== 'none' ? <Empty title={tx('people.fit.noMatch')}><button type="button" className="fk-btn ghost" onClick={() => { setSearch(''); setFlt(NO_FILTERS); }}>{tx('pos.clear_all')}</button></Empty>
+          areaCodeOk(flt.areaCode) ? <Empty title={tx('wb.areaCode.none', { c: flt.areaCode })}>
+              <div className="fk-hint" data-testid="rt-areacode-empty">{tx('wb.areaCode.noneHint')}</div>
+              <button type="button" className="fk-btn ghost" onClick={() => setFilter({ areaCode: '' })}>{tx('wb.areaCode.clear')}</button></Empty>
+          : q || flt.band || flt.sms || flt.minVisits || flt.basis !== 'none' ? <Empty title={tx('people.fit.noMatch')}><button type="button" className="fk-btn ghost" onClick={() => { setSearch(''); setFlt(NO_FILTERS); }}>{tx('pos.clear_all')}</button></Empty>
             : <Empty title={['returning', 'approaching', 'recovered'].includes(segment) ? tx('rt2.empty.' + segment) : segment === 'at_risk' ? tx('rt2.empty.at_risk', { d: String(per?.riskDays ?? 60) }) : tx(`people.retention.empty.${['never', 'contactable'].includes(segment) ? segment : 'other'}`)}>
               {/* Customer Retention extras #10: zero at-risk customers is good news — say what that means and offer the next
                   useful views (approaching risk, never visited, recovered) with their live counts, instead of a dead end */}

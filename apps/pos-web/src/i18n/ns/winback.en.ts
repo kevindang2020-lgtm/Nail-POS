@@ -122,4 +122,11 @@ export const WINBACK_EN: Record<string, string> = {
   'wb.ov.refundsVal': '{n} · {c}',
   'wb.yes': 'Yes',
   'wb.no': 'No',
+  'wb.areaCode.label': 'Area code',
+  'wb.areaCode.placeholder': 'Area code',
+  'wb.areaCode.hint': 'Enter 3 digits, for example 856.',
+  'wb.areaCode.none': 'No stored numbers with area code {c}',
+  'wb.areaCode.noneHint': 'Only this salon’s customer phone numbers are searched. Try another code, for example 609 or 215.',
+  'wb.areaCode.clear': 'Clear area code',
+  'wb.areaCode.matching': 'Area code {c}: {n} matching',
 };

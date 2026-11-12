@@ -63,7 +63,9 @@ type TechRow = { rotationPosition: number; technicianId: string; technicianName:
 type WaitGuest = { queueItemId?: string; customerName: string; serviceName: string; preferredTechName?: string; priority: string; waitMinutes: number; bestMatchTechnicianName?: string; bestMatchTechnicianId?: string; assignedTechnicianId?: string | null; version?: number; bestMatchMode?: 'single' | 'split'; bestMatchTechnicianNames?: string[] };
 type AvailRow = { technicianId: string; technicianName: string; status: string; nextAvailableLabel: string; nextAvailable?: string; specialties: string[] };
 type MixCol = { technicianId: string; technicianName: string; cells: { category: string; percent: number; count: number; revenueCents: number }[] };
-type TQAnalytics = { utilizationTrend: { hour: number; utilizationPercent: number }[]; serviceMixByTechnician: MixCol[]; serviceCategories: string[]; assignmentSource: { source: string; code?: string; count: number; percent: number }[]; assignmentSourceTotal: number; topRevenueTechs: { technicianId: string; technicianName: string; revenueCents: number }[] };
+type TQAnalytics = { utilizationTrend: { hour: number; utilizationPercent: number }[]; serviceMixByTechnician: MixCol[]; serviceCategories: string[]; assignmentSource: { source: string; code?: string; count: number; percent: number }[]; assignmentSourceTotal: number; topRevenueTechs: { technicianId: string; technicianName: string; revenueCents: number }[]; throughput?: TQThroughputView };
+/** TECH QUEUE extras #11: the server's throughput for the salon day — every rate with its numerator / denominator; null rate = no data */
+type TQThroughputView = { businessDate: string; timeZone: string; checkedInGuests: number; completedServices: number; servedRatePercent: number | null; serviceMinutes: number; timedServices: number; avgTurnMinutes: number | null };
 type TQInsight = { id: string; text: string; sub?: string; action?: string; route?: string; severity?: 'info' | 'warn' | 'danger'; vars?: Record<string, string | number> };
 type WorkloadCol = { count: number; items: TechRow[] };
 type TQState = {
@@ -103,6 +105,16 @@ const partLabel = (t: { visitPart?: number | null; sharedWith?: TechQueueSharedP
   const others = t.sharedWith.map((o) => `${o.technicianName || tx('pos.another_technician')}${o.serviceNames.length ? ` (${o.serviceNames.join(', ')})` : ''}`).join('; ');
   return tx('pos.part_v0_of_of_with_others', { v0: String(t.visitPart ?? '?'), of: String(of), others: String(others) });
 };
+
+/** TECH QUEUE extras #11: "Salon day 2026-11-12: 3 of 4 checked-in guests served (75%) · Avg turn 45 min = 90 min ÷ 2 timed services" */
+function ThroughputLine({ t }: { t: TQThroughputView }) {
+  if (!t.checkedInGuests && !t.completedServices) return <p className="fk-hint" data-testid="tq-throughput">{tx('tq.thru.none', { d: t.businessDate })}</p>;
+  const rate = t.servedRatePercent == null ? '—' : `${t.servedRatePercent}%`;
+  return <p className="fk-hint" data-testid="tq-throughput" title={tx('tq.thru.rule', { tz: t.timeZone })}>
+    {tx('tq.thru.served', { d: t.businessDate, done: String(t.completedServices), n: String(t.checkedInGuests), p: rate })}
+    {' · '}{t.avgTurnMinutes == null ? tx('tq.thru.turnNone') : tx('tq.thru.turn', { a: String(t.avgTurnMinutes), m: String(t.serviceMinutes), n: String(t.timedServices) })}
+  </p>;
+}
 
 export function POSTechQueueScreen() {
   const nav = useNavigate();
@@ -602,7 +614,8 @@ export function POSTechQueueScreen() {
       </div>
 
       <div className="mos-row four cg-row tq-e">
-        <FitPanel testId="e1" title={<>{tx('pos.e1_utilization_trend')} <span className="fk-muted">{tx('pos.today_7')}</span></>} actions={<span className="fk-hint">{tx('pos.avg')} {k.utilizationTodayPercent ?? 0}%</span>}>
+        <FitPanel testId="e1" title={<>{tx('pos.e1_utilization_trend')} <span className="fk-muted">{tx('pos.today_7')}</span></>} actions={<span className="fk-hint">{tx('pos.avg')} {k.utilizationTodayPercent ?? 0}%</span>}
+          footer={a?.throughput ? <ThroughputLine t={a.throughput} /> : undefined}>
           {(() => { const pts = a?.utilizationTrend || []; if (!pts.length) return <Empty title={tx('pos.hourly_trend_builds_through_the_day')} />; const w = 240, h = 92; const xs = (i: number) => (pts.length === 1 ? w / 2 : (i / (pts.length - 1)) * w); const ys = (v: number) => h - (v / 100) * (h - 8) - 4;
             const dd = pts.map((p, i) => `${i ? 'L' : 'M'}${xs(i).toFixed(1)} ${ys(p.utilizationPercent).toFixed(1)}`).join(' ');
             return <svg viewBox={`0 0 ${w} ${h}`} className="tq-spark" role="img" aria-label={tx('pos.e1_utilization_trend')}>{[0.25, 0.5, 0.75].map((g) => <line key={g} x1="0" x2={w} y1={h * g} y2={h * g} stroke="var(--line)" strokeWidth="1" />)}<path d={dd} fill="none" stroke="#A96F22" strokeWidth="2" />{pts.map((p, i) => <circle key={i} cx={xs(i)} cy={ys(p.utilizationPercent)} r="2.6" fill="#A96F22"><title>{`${p.hour}:00 · ${p.utilizationPercent}%`}</title></circle>)}</svg>; })()}

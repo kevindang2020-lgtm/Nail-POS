@@ -176,6 +176,27 @@ export interface TechQueueAnalytics {
   assignmentSource: TechQueueSourceSlice[];
   assignmentSourceTotal: number;
   topRevenueTechs: { technicianId: string; technicianName: string; revenueCents: number }[];
+  /** TECH QUEUE extras #11: today's throughput with its numerator / denominator and the salon day it covers */
+  throughput?: TechQueueThroughput;
+}
+/** TECH QUEUE extras #11 — every rate carries the counts it is made of; null = no data yet (never 0 % from nothing).
+ *  Salon day = the branch time zone's business date, [00:00, next 00:00). */
+export interface TechQueueThroughput {
+  businessDate: string; timeZone: string;
+  /** guests checked in to the Customer Queue during the salon day (denominator of the served rate) */ checkedInGuests: number;
+  /** tickets whose service was marked done during the salon day (numerator) */ completedServices: number;
+  servedRatePercent: number | null;
+  /** service minutes (serving start → service done) of the completed tickets that have both times, and how many those are */ serviceMinutes: number; timedServices: number;
+  avgTurnMinutes: number | null;
+}
+/** Pure: the throughput figures from the day's counts (no data → null rates, never a made-up 0 %). */
+export function buildTechQueueThroughput(day: { businessDate: string; timeZone: string }, c: { checkedInGuests: number; completedServices: number; serviceMinutes: number; timedServices: number }): TechQueueThroughput {
+  const n = (v: number) => (Number.isFinite(v) && v > 0 ? v : 0);
+  const checkedInGuests = Math.trunc(n(c.checkedInGuests)); const completedServices = Math.trunc(n(c.completedServices));
+  const timedServices = Math.trunc(n(c.timedServices)); const serviceMinutes = Math.round(n(c.serviceMinutes));
+  return { businessDate: day.businessDate, timeZone: day.timeZone, checkedInGuests, completedServices,
+    servedRatePercent: checkedInGuests ? Math.round((completedServices / checkedInGuests) * 1000) / 10 : null,
+    serviceMinutes, timedServices, avgTurnMinutes: timedServices ? Math.round(serviceMinutes / timedServices) : null };
 }
 export interface TechQueueInsight { id: string; text: string; sub?: string; action?: string; route?: string; severity?: "info" | "warn" | "danger"; /** the numbers / name in the text — the POS writes the insight from `id` + `vars` in the user's language */ vars?: Record<string, string | number>; }
 

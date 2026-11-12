@@ -9,7 +9,8 @@ import { api } from './client';
 const enc = encodeURIComponent;
 export type RetentionPeriodQuery = { preset?: string; from?: string; to?: string; branch?: string };
 export type RetentionListQuery = RetentionPeriodQuery & { segment: string; page: number; pageSize: number; q?: string; scope?: string; category?: string; technician?: string; spend?: string; sort?: string; basis?: string; band?: string; sms?: string; minVisits?: number;
-  /** Win-Back guide §06: inactivity threshold (salon days), marketing-email eligibility, upcoming booking yes / no */ minDays?: number; email?: string; future?: string };
+  /** Win-Back guide §06: inactivity threshold (salon days), marketing-email eligibility, upcoming booking yes / no */ minDays?: number; email?: string; future?: string;
+  /** Win-Back §01: a 3-digit area code (+1 numbers stored for this salon) */ areaCode?: string };
 export type RetentionSelection = Omit<RetentionListQuery, 'page' | 'pageSize'> & { excludeIds?: string[] };
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
 export const posRetentionApi = {

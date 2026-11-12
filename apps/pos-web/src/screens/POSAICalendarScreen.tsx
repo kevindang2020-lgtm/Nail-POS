@@ -265,7 +265,10 @@ function ListView({ tick, today, onOpen }: { tick: number; today: string; onOpen
 }
 
 // ── Appointment & Customer History overlay ─────────────────────────────────────────────────────────────────────────
-const TABS = ['overview', 'customer', 'services', 'history', 'ai', 'holds', 'comms', 'audit'] as const;
+const TABS = ['overview', 'timeline', 'customer', 'services', 'history', 'ai', 'holds', 'comms', 'audit'] as const;
+/** extras #02: the status words the overlay already has; any other recorded status goes through statusLabel */
+const KNOWN_STATUS = new Set(['arrived', 'booked', 'cancelled', 'checked_in', 'completed', 'confirmed', 'in_service', 'no_show', 'waiting']);
+const tlStep = (step: string) => { if (!step.startsWith('status:')) return t('aical.tl.' + step); const st = step.slice(7); return t('aical.tl.status', { s: KNOWN_STATUS.has(st) ? t(`aical.status.${st}`) : statusLabel('state', st) }); };
 function AppointmentOverlay({ id, onClose, nav }: { id: string; onClose: () => void; nav: (to: string) => void }) {
   const [d, setD] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -290,6 +293,10 @@ function AppointmentOverlay({ id, onClose, nav }: { id: string; onClose: () => v
           <div className="aic-ov-body" data-testid={`aic-ov-${tab}`}>
             {tab === 'overview' ? <KV rows={[[t('aical.f.id'), <code key="id">{o.id}</code>], [t('aical.f.status'), t(`aical.status.${o.status}`)], [t('aical.f.source'), o.aiCreated ? <AiBadge key="ai" /> : t(`aical.source.${o.source}`)],
               [t('aical.f.aiEvidence'), o.aiEvidence], [t('aical.f.verification'), t(`aical.verify.${o.verification}`)], [t('aical.f.timeZone'), o.timeZone], [t('aical.f.created'), when(o.createdAt)], [t('aical.f.updated'), when(o.updatedAt)]]} /> : null}
+            {/* extras #02 Verified Appointment Timeline: each step is a stored row (table + id); no step is inferred, no code is shown */}
+            {tab === 'timeline' ? (Array.isArray(d.timeline) && d.timeline.length ? <ol className="aic-timeline" data-testid="aic-timeline">{d.timeline.map((x: { step: string; at: string | null; ref: { table: string; id: string }; detail: string | null }, i: number) =>
+              <li key={`${x.ref.id}-${x.step}-${i}`} data-step={x.step}><b>{tlStep(x.step)}</b> · {x.at ? when(x.at) : t('aical.tl.noTime')} · <span className="aic-muted">{t('aical.tl.ref.' + x.ref.table)}</span> <code title={x.ref.id}>{x.ref.id.slice(0, 8)}</code></li>)}</ol>
+              : <div className="aic-muted">{t('aical.tl.none')}</div>) : null}
             {tab === 'customer' ? <KV rows={[[t('aical.f.name'), d.customer.name ?? '—'], [t('aical.f.phone'), d.customer.phone ?? '—'], [t('aical.f.email'), d.customer.email ?? '—'], [t('aical.f.phoneVerified'), d.customer.phoneVerified ? t('aical.yes') : t('aical.no')],
               ...(d.customer.contactMasked ? [[t('aical.f.privacy'), t('aical.masked')] as [string, string]] : [])]} /> : null}
             {tab === 'services' ? <ul>{d.services.map((s: any, i: number) => <li key={i}>{s.name ?? '—'}{s.minutes ? ` · ${t('aical.minutes', { n: s.minutes })}` : ''}</li>)}<li>{t('aical.f.technician')}: {d.technician?.name ?? t('aical.unassigned')}</li></ul> : null}

@@ -121,4 +121,11 @@ export const WINBACK_VI: Record<string, string> = {
   'wb.ov.refundsVal': '{n} · {c}',
   'wb.yes': 'Có',
   'wb.no': 'Không',
+  'wb.areaCode.label': 'Mã vùng', // DRAFT — Kevin reviews
+  'wb.areaCode.placeholder': 'Mã vùng', // DRAFT — Kevin reviews
+  'wb.areaCode.hint': 'Nhập 3 chữ số, ví dụ 856.', // DRAFT — Kevin reviews
+  'wb.areaCode.none': 'Không có số điện thoại nào với mã vùng {c}', // DRAFT — Kevin reviews
+  'wb.areaCode.noneHint': 'Chỉ tìm trong số điện thoại khách hàng của tiệm này. Thử mã khác, ví dụ 609 hoặc 215.', // DRAFT — Kevin reviews
+  'wb.areaCode.clear': 'Xóa mã vùng', // DRAFT — Kevin reviews
+  'wb.areaCode.matching': 'Mã vùng {c}: {n} khách khớp', // DRAFT — Kevin reviews
 };

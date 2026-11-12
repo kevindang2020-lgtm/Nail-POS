@@ -22,7 +22,7 @@ import {
   TechQueueFilters, TQTicketStatus, TQPriority, TQSource, TQDelayStatus, TQWorkingStatus, TQRequestedService,
   TechQueueWorkflowSettings, DEFAULT_TQ_SETTINGS, deriveDelayStatus, workloadMinutes, computeUtilizationPercent, computeUpsellCapturePercent,
   TechQueueTechRow, TechQueueWaitingGuest, TechQueueAvailRow, TechQueueAnalytics, TechQueueServiceMixCol, TechQueueInsight, buildAssignmentSourceMix, deriveFinishingSoon, computeUtilizationTrend, TechQueueTrendPoint,
-  type TechQueueWorkload, type TechQueueNextAvailable,
+  type TechQueueWorkload, type TechQueueNextAvailable, type TechQueueThroughput, buildTechQueueThroughput,
 } from './tech-queue.dto';
 import { PosKpiSnapshots } from '@aipowersalon/reports';
 import { clampPageSize, clampPage } from '@aipowersalon/api-contracts';
@@ -194,6 +194,20 @@ export class KyselyTechQueueRepository implements TechQueueRepositoryPort {
         estimatedWorkloadMinutes: workloadMinutes(tickets.map((t) => ({ requestedServices: t.services, status: t.status }))), tickets: tickets.map((t) => this.toRow(ctx, t)),
       };
     });
+  }
+
+  /** TECH QUEUE extras #11: today's throughput (salon day of the branch) — checked-in guests, completed services, service minutes */
+  async throughput(ctx: TechQueueContext): Promise<TechQueueThroughput> {
+    const bday = await this.branchDay(ctx);
+    const end = new Date(localDateTimeToEpochMs(addDays(bday.today, 1), '00:00', bday.tz));
+    const inRow = await this.scoped(this.db.selectFrom('pos_queue_items'), ctx).where('checked_in_at', '>=', bday.start).where('checked_in_at', '<', end)
+      .select(sql<number>`count(*)`.as('n')).executeTakeFirst();
+    const doneRow = await this.scoped(this.db.selectFrom('tickets'), ctx).where('service_done_at', '>=', bday.start).where('service_done_at', '<', end)
+      .select([sql<number>`count(*)`.as('n'), sql<number>`count(*) filter (where serving_started_at is not null and serving_started_at <= service_done_at)`.as('timed'),
+        sql<number>`coalesce(sum(extract(epoch from (service_done_at - serving_started_at)) / 60.0) filter (where serving_started_at is not null and serving_started_at <= service_done_at), 0)`.as('mins')])
+      .executeTakeFirst();
+    return buildTechQueueThroughput({ businessDate: bday.today, timeZone: bday.tz },
+      { checkedInGuests: Number(inRow?.n ?? 0), completedServices: Number(doneRow?.n ?? 0), serviceMinutes: Number(doneRow?.mins ?? 0), timedServices: Number(doneRow?.timed ?? 0) });
   }
 
   // Hourly utilization trend for today (real, scoped): service sessions vs scheduled shift windows, bucketed per hour
@@ -397,6 +411,7 @@ export class KyselyTechQueueRepository implements TechQueueRepositoryPort {
     }
     const analytics: TechQueueAnalytics = {
       utilizationTrend: await this.utilizationTrend(ctx), serviceMixByTechnician, serviceCategories: [...mixCategories], assignmentSource: asrc.slices, assignmentSourceTotal: asrc.total, topRevenueTechs,
+      throughput: await this.throughput(ctx),
     };
     // Deterministic insights from current data
     const insights: TechQueueInsight[] = [];
