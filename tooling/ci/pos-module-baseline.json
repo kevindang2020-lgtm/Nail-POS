@@ -6143,7 +6143,7 @@
    "simulator",
    "simulator-result",
    "stack-",
-   "stack-limits",
+   "stack-unavailable",
    "stack-verdict",
    "stacking-explorer",
    "status",
