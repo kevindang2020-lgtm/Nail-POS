@@ -35,6 +35,27 @@ function describe(i: SchedInsight, techName: (id: string | null | undefined) => 
   return `${t(i.direction === 'open' ? 'ops.sched.insight.open' : 'ops.sched.insight.close', { when: `${i.date ?? ''} ${hm(i.startTime)}–${hm(i.endTime)}`.trim() })}${i.technicianId ? ` · ${techName(i.technicianId)}` : ''}${i.serviceId ? ` · ${serviceName(i.serviceId)}` : ''}${i.reason ? ` · ${codedText(i.reasonCoded, i.reason)}` : ''}`;
 }
 
+/** round 10 (AI Scheduling Optimizer 05 · 11): an open staffing insight's coverage by clock hour and by service category, as the
+ *  server computed it from confirmed bookings and schedules (the same rule as the day) — shown, never recomputed here */
+type CoverageView = { byHour: { hour: number; demandMinutes: number; capacityMinutes: number; state: string; missingMinutes: number }[];
+  byCategory: { category: string; demandMinutes: number; capacityMinutes: number; qualifiedTechnicians: number; state: string; missingMinutes: number }[]; basis: string };
+const hourLabel = (h: number) => `${String(h).padStart(2, '0')}:00`;
+function CoverageBreakdown({ i }: { i: SchedInsight }) {
+  const c = (i as SchedInsight & { coverage?: CoverageView }).coverage;
+  if (i.kind !== 'staffing' || !c) return null;
+  const tight = (st: string) => st === 'understaffed' || st === 'severely_understaffed';
+  return (
+    <div style={{ flexBasis: '100%', fontSize: 12 }} data-testid="sched-coverage">
+      {c.byHour.length ? <div data-testid="sched-coverage-hours"><b>{t('ops.sched10.byHour')}</b>{' '}
+        {c.byHour.map((h) => <span key={h.hour} data-testid="sched-cov-hour" style={{ ...pill(tight(h.state) ? '#FBE9E7' : '#F3ECE1', tight(h.state) ? '#9A2B1F' : '#6C6965'), marginRight: 4 }}
+          title={t('ops.sched10.hourTip', { d: String(h.demandMinutes), c: String(h.capacityMinutes) })}>{hourLabel(h.hour)} {pretty(h.state)}</span>)}</div> : <div style={muted}>{t('ops.sched10.noHours')}</div>}
+      {c.byCategory.length ? <div data-testid="sched-coverage-cats" style={{ marginTop: 4 }}><b>{t('ops.sched10.byCategory')}</b>{' '}
+        {c.byCategory.map((k) => <span key={k.category} data-testid="sched-cov-cat" style={{ marginRight: 8 }}>{t('ops.sched10.cat', { name: k.category === 'uncategorized' ? t('ops.sched10.uncategorized') : k.category, d: String(k.demandMinutes), c: String(k.capacityMinutes), n: String(k.qualifiedTechnicians), s: pretty(k.state) })}</span>)}</div> : null}
+      <div style={muted}>{t('ops.sched10.basis')}</div>
+    </div>
+  );
+}
+
 export function SchedInsightsCard({ tick, can, techName, onChanged, services }: SchedCardProps & { services: { serviceId: string; name: string }[] }) {
   const [kind, setKind] = useState<SchedInsightKind>('duration');
   const [status, setStatus] = useState<SchedInsightStatus | ''>('review_required');
@@ -90,6 +111,7 @@ export function SchedInsightsCard({ tick, can, techName, onChanged, services }: 
                 <button style={btnDanger} disabled={!!busy} onClick={() => decide(i, 'reject')}>{t('pos.reject')}</button>
               </> : null}
               <DurationSpread i={i} />
+              <CoverageBreakdown i={i} />
             </div>
           ))}
         </div>

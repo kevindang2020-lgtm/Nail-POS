@@ -8,7 +8,7 @@ import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import type { SchedRecommendation } from '@aipowersalon/api-contracts/tenant';
 import { KyselyProposalStore, ScheduleProposalService } from './ai-scheduling-proposals';
 import { KyselyUsageStore, SchedUsageService } from './ai-scheduling-usage';
-import { KyselyInsightStore, SchedInsightService, dayInsights } from './ai-scheduling-insights';
+import { KyselyInsightStore, SchedInsightService, dayInsights, hourlyCoverage, categoryCoverage } from './ai-scheduling-insights';
 import { KyselyAutomationApplier } from './ai-scheduling-automation';
 import { KyselyOwnerSummaryRead } from './ai-scheduling-owner';
 import { KyselyTechChangeRead } from './ai-scheduling-tech';
@@ -276,5 +276,44 @@ describe('skill coverage (extras 200-Technician 06)', () => {
     const d2 = await s.dayInputs(T, B, DATE);
     expect([...d2.coveredServices!].sort()).toEqual(['Acrylic Full Set', 'Gel']); expect(dayInsights(d2).staffing).toBeNull();
     expect((await s.dayInputs(T2, B2, DATE)).bookedServices).toEqual([]);   // another salon never sees these bookings
+  });
+});
+
+describe('round 10 — AI Scheduling Optimizer 05 · 11: coverage by hour and by service category', () => {
+  it('pure: per hour = booked minutes in the hour vs scheduled minutes (lunch removed), same rule as the day; per category = qualified technicians only', () => {
+    const shifts = [{ technicianId: 'a', startMin: 540, endMin: 720, lunchStartMin: 600, lunchEndMin: 630 }, { technicianId: 'b', startMin: 600, endMin: 720, lunchStartMin: null, lunchEndMin: null }];
+    const bookings = [{ startMin: 540, endMin: 600, services: [{ serviceId: 'gel', minutes: 60 }] }, { startMin: 600, endMin: 720, services: [{ serviceId: 'gel', minutes: 60 }, { serviceId: 'lash', minutes: 60 }] }, { startMin: 600, endMin: 660, services: [{ serviceId: 'lash', minutes: 60 }] }];
+    const h = hourlyCoverage(shifts, bookings);
+    expect(h.map((x) => [x.hour, x.demandMinutes, x.capacityMinutes, x.state])).toEqual([[9, 60, 60, 'slightly_understaffed'], [10, 120, 90, 'severely_understaffed'], [11, 60, 120, 'adequately_staffed']]);
+    const c = categoryCoverage(shifts, bookings, { gel: 'Nails', lash: 'Lashes' }, { gel: ['a', 'b'], lash: ['b'] });
+    expect(c).toEqual([
+      { category: 'Lashes', demandMinutes: 120, capacityMinutes: 120, qualifiedTechnicians: 1, state: 'slightly_understaffed', missingMinutes: 0 },
+      { category: 'Nails', demandMinutes: 120, capacityMinutes: 270, qualifiedTechnicians: 2, state: 'adequately_staffed', missingMinutes: 0 }]);
+    expect(hourlyCoverage([], [])).toEqual([]);
+  });
+  it('real schema: an open staffing insight in the list carries its hour and category coverage; another salon sees none', async () => {
+    const day = '2026-10-27', dow = new Date(day + 'T00:00:00Z').getUTCDay();
+    const LASH = id(70), LCAT = id(71);
+    await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Lashes') on conflict do nothing`, [LCAT, T, B]);
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Lash fill',60,6000) on conflict do nothing`, [LASH, T, B, LCAT]);
+    await q(`insert into technician_schedules (tenant_id, branch_id, technician_id, day_of_week, start_time, end_time, is_working) values ($1,$2,$3,$4,'09:00','11:00',true)`, [T, B, TECH2, dow]);
+    await q(`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values ($1,$4,$2,$3) on conflict do nothing`, [T, TECH2, LASH, B]);
+    const T3 = id(72), T4 = id(73), T5 = id(74);
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active) values ($1,$4,$5,'Cat','C','Cat C',true), ($2,$4,$5,'Dee','D','Dee D',true), ($3,$4,$5,'Eve','E','Eve E',true)`, [T3, T4, T5, T, B]);
+    await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, duration_minutes, status, services) values
+      ($1,$2,$3,$5,'Ann Lee',$6,'09:00','10:00',60,'booked',$7), ($1,$2,$4,$5,'Ann Lee',$6,'09:30','10:30',60,'booked',$7), ($1,$2,$8,$5,'Ann Lee',$6,'10:00','11:00',60,'booked',$7)`,
+      [T, B, T3, T4, CUST, day, JSON.stringify([{ serviceId: LASH, name: 'Lash fill' }]), id(74)]);
+    const store = new KyselyInsightStore(db);
+    const inputs = await store.coverageInputs(T, B, day);
+    expect(inputs.categoryOf[LASH]).toBe('Lashes');
+    await store.upsertStaffing(T, { branchId: B, date: day, state: 'understaffed', missingMinutes: 60, missingSkills: [], action: 'x', confidence: 0.8 });
+    const svc = new SchedInsightService(store, null);
+    const mgr = { ...staff, permissions: ['ai_scheduling.view'] };
+    const it: any = (await svc.list(mgr, { kind: 'staffing' })).items.find((x: any) => x.date === day && x.status === 'review_required');
+    expect(it.coverage.basis).toBe('confirmed_bookings_only');
+    // Amy works 09–17 (lunch 12:00–12:30, from the test above) and Bea 09–11: hours 9 and 10 have 120 scheduled minutes each
+    expect(it.coverage.byHour.slice(0, 4).map((x: any) => [x.hour, x.demandMinutes, x.capacityMinutes])).toEqual([[9, 90, 120], [10, 90, 120], [11, 0, 60], [12, 0, 30]]);
+    expect(it.coverage.byCategory).toEqual([{ category: 'Lashes', demandMinutes: 180, capacityMinutes: 120, qualifiedTechnicians: 1, state: 'severely_understaffed', missingMinutes: 60 }]);
+    expect((await svc.list({ ...mgr, tenantId: T2, branchId: B2 }, { kind: 'staffing' })).items).toEqual([]);
   });
 });

@@ -2114,4 +2114,11 @@ export const OPS_EN = {
   "syschk.inventory.usage_by_archived_technician.fix": "Last Used By names a technician who was already archived — check who really used it and correct the use.",
   "syschk.inventory.recipe_usage_shared_line": "Service Done recipe use on shared service lines (last 30 days)",
   "syschk.inventory.recipe_usage_shared_line.fix": "These lines were shared by more than one technician, but the recipe use is on the line’s main technician — review only; it is not split automatically.",
+  "ops.sched10.byHour": "By hour:",
+  "ops.sched10.byCategory": "By service type:",
+  "ops.sched10.hourTip": "{d} booked min · {c} scheduled min",
+  "ops.sched10.noHours": "No bookings or schedules by hour for this day.",
+  "ops.sched10.cat": "{name}: {d} booked min · {c} min from {n} qualified technicians ({s})",
+  "ops.sched10.uncategorized": "No category",
+  "ops.sched10.basis": "From confirmed bookings and the work schedule only — no forecast is spread over the hours.",
 };

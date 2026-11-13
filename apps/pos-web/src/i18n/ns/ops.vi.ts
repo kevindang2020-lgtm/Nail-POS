@@ -2113,4 +2113,11 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.inventory.usage_by_archived_technician.fix": "Người dùng gần nhất là một thợ đã được lưu trữ — hãy xem ai thật sự đã dùng và điều chỉnh lần dùng.", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_usage_shared_line": "Lượng dùng theo công thức trên dòng dịch vụ có nhiều thợ (30 ngày qua)", // DRAFT — Kevin reviews
   "syschk.inventory.recipe_usage_shared_line.fix": "Các dòng này có nhiều thợ cùng làm nhưng lượng dùng ghi cho thợ chính của dòng — chỉ để xem lại; không tự động chia.", // DRAFT — Kevin reviews
+  "ops.sched10.byHour": "Theo giờ:", // DRAFT — Kevin reviews
+  "ops.sched10.byCategory": "Theo loại dịch vụ:", // DRAFT — Kevin reviews
+  "ops.sched10.hourTip": "{d} phút đã đặt · {c} phút có lịch làm", // DRAFT — Kevin reviews
+  "ops.sched10.noHours": "Không có lịch hẹn hay lịch làm theo giờ cho ngày này.", // DRAFT — Kevin reviews
+  "ops.sched10.cat": "{name}: {d} phút đã đặt · {c} phút từ {n} thợ đủ tay nghề ({s})", // DRAFT — Kevin reviews
+  "ops.sched10.uncategorized": "Chưa có loại", // DRAFT — Kevin reviews
+  "ops.sched10.basis": "Chỉ tính từ lịch hẹn đã xác nhận và lịch làm việc — không chia dự báo theo giờ.", // DRAFT — Kevin reviews
 };
