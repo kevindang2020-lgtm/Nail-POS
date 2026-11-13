@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { ReceptionistCenter, stageOf, maskPhone, capabilityMatrix, maskInsightLabel, topCounts, type RcCtx, type RcAccessRepo } from './receptionist-center';
+import { ReceptionistCenter, stageOf, maskPhone, capabilityMatrix, maskInsightLabel, topCounts, restorePlan, ctlStateOf, type RcCtx, type RcAccessRepo } from './receptionist-center';
 
 const P = 'c7540000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -137,6 +137,84 @@ describe('per-salon control — BK-05 handoff-only, test call, activation (gated
   });
 });
 const N = (v: any) => Number(v?.n ?? v ?? 0);
+
+// AI Receptionist Settings backlog · 06 — history search / salon-local From–To / stable pages / detail / restore controls
+describe('Extras · AI Receptionist Settings 06 — settings history search, From/To, restore through the gated actions', () => {
+  const events = async () => N(await q1(sql`select count(*)::int n from ai_receptionist_control_events where tenant_id = ${TA}`));
+  it('search (action / reason / person), salon-local From–To, stable newest-first pages, the person\'s name, a restore plan per row', async () => {
+    await sql`insert into users (id, tenant_id, full_name, email, status, role) values (${OWNER}, ${TA}, 'Kim Owner', 'kim-rc06@example.test', 'active', 'OWNER') on conflict (id) do nothing`.execute(db);
+    const all = await mk(ENV_FULL).controlHistory(own, {});
+    expect(all.items.map((x: any) => x.action)).toEqual(['disarm_booking', 'activate', 'verify_test_call', 'arm_booking']);
+    expect(all.items[0].actorName).toBe('Kim Owner');
+    expect(all.current).toMatchObject({ bookingArmed: false, activated: false });
+    expect(all.items[1].restore).toEqual({ actions: ['arm_booking', 'activate'], blockers: [] });     // back to "live": arm, then activate (the test call is still verified)
+    expect(all.items[3].restore).toEqual({ actions: ['clear_test_call', 'arm_booking'], blockers: [] });
+    expect((await mk(ENV_FULL).controlHistory(own, { q: 'activate' })).items.map((x: any) => x.action)).toEqual(['activate']);
+    expect((await mk(ENV_FULL).controlHistory(own, { q: 'pause' })).items.map((x: any) => x.action)).toEqual(['disarm_booking']);
+    expect((await mk(ENV_FULL).controlHistory(own, { q: 'kim own' })).pagination.totalItems).toBe(4);
+    const today = String((await q1(sql`select (now() at time zone 'America/New_York')::date::text d`)).d);
+    const day = await mk(ENV_FULL).controlHistory(own, { from: today, to: today });
+    expect(day.pagination.totalItems).toBe(4); expect(day.window).toMatchObject({ tz: 'America/New_York', from: today, to: today });
+    const next = String((await q1(sql`select (${today}::date + 1)::text d`)).d);
+    expect((await mk(ENV_FULL).controlHistory(own, { from: next, to: next })).pagination.totalItems).toBe(0);
+    expect(await code(mk(ENV_FULL).controlHistory(own, { from: next, to: today }))).toBe('AI_RCPT_INVALID_FILTER');
+    const p1 = await mk(ENV_FULL).controlHistory(own, { page: 1, pageSize: 10 }); const p1again = await mk(ENV_FULL).controlHistory(own, { page: 1, pageSize: 10 });
+    expect(p1.items.map((x: any) => x.id)).toEqual(p1again.items.map((x: any) => x.id));   // stable order (created_at, id)
+    expect((await mk(ENV_FULL).controlHistory(ownB, {})).pagination.totalItems).toBe(0);   // another salon never sees these
+  });
+  it('a refused gate, a stale version or another salon\'s change writes nothing', async () => {
+    const h = await mk(ENV_FULL).controlHistory(own, {});
+    const verify = h.items.find((x: any) => x.action === 'verify_test_call');
+    const v = h.current.version; const before = await events();
+    expect(await code(mk(ENV_FULL, denied).restoreControl(own, { eventId: verify.id, expectedVersion: v, reason: 'bring booking back', idempotencyKey: key() }))).toBe('AI_RCPT_GATES_NOT_MET');
+    expect(await code(mk(ENV_FULL).restoreControl(own, { eventId: verify.id, expectedVersion: v - 1, reason: 'bring booking back', idempotencyKey: key() }))).toBe('AI_RCPT_VERSION_CONFLICT');
+    expect(await code(mk(ENV_FULL).restoreControl(ownB, { eventId: verify.id, expectedVersion: 0, reason: 'bring booking back', idempotencyKey: key() }))).toBe('AI_RCPT_HISTORY_NOT_FOUND');
+    expect(await code(mk(ENV_FULL).restoreControl(own, { eventId: verify.id, expectedVersion: v, reason: 'x', idempotencyKey: key() }))).toBe('AI_RCPT_REASON_REQUIRED');
+    expect(await events()).toBe(before);
+    expect((await mk(ENV_FULL).control(own))!.version).toBe(v);
+  });
+  it('restore runs the plan through controlAction (each step versioned, audited, append-only, reason says restore); a replay does nothing more', async () => {
+    const h = await mk(ENV_FULL).controlHistory(own, {});
+    const live = h.items.find((x: any) => x.action === 'activate');
+    const audits = N(await q1(sql`select count(*)::int n from audit_events where tenant_id = ${TA} and module = 'ai_receptionist' and action like 'control.%'`));
+    const k1 = key();
+    const r = await mk(ENV_FULL).restoreControl(own, { eventId: live.id, expectedVersion: h.current.version, reason: 'owner wants it live again', idempotencyKey: k1 });
+    expect(r.actions).toEqual(['arm_booking', 'activate']);
+    expect(r.control).toMatchObject({ bookingArmed: true, activated: true });
+    const after = await mk(ENV_FULL).controlHistory(own, { pageSize: 10 });
+    expect(after.items.slice(0, 2).map((x: any) => x.action)).toEqual(['activate', 'arm_booking']);
+    expect(after.items[0].reason).toMatch(/^Restore to the version of .* UTC: owner wants it live again$/);
+    expect(N(await q1(sql`select count(*)::int n from audit_events where tenant_id = ${TA} and module = 'ai_receptionist' and action like 'control.%'`))).toBe(audits + 2);
+    const n = await events();
+    const again = await mk(ENV_FULL).restoreControl(own, { eventId: live.id, expectedVersion: 0, reason: 'owner wants it live again', idempotencyKey: k1 });
+    expect(again.replayed).toBe(true); expect(await events()).toBe(n);
+    // already matching → nothing to do, nothing written
+    const same = await mk(ENV_FULL).restoreControl(own, { eventId: live.id, expectedVersion: (r.control as any).version, reason: 'check it matches', idempotencyKey: key() });
+    expect(same.actions).toEqual([]); expect(await events()).toBe(n);
+  });
+  it('a verified test call is never restored from history: back to a version without one, then forward again → refused, nothing written', async () => {
+    const h = await mk(ENV_FULL).controlHistory(own, { q: 'arm' , pageSize: 50 });
+    const firstArm = h.items[h.items.length - 1];   // the very first change: armed, no test call yet
+    const r = await mk(ENV_FULL).restoreControl(own, { eventId: firstArm.id, expectedVersion: h.current.version, reason: 'go back to the start', idempotencyKey: key() });
+    expect(r.actions).toEqual(['deactivate', 'clear_test_call']);
+    expect(r.control).toMatchObject({ bookingArmed: true, activated: false, testCallVerifiedAt: null });
+    const h2 = await mk(ENV_FULL).controlHistory(own, { q: 'activate', pageSize: 50 });
+    const liveAgain = h2.items.find((x: any) => x.action === 'activate');
+    expect(liveAgain.restore).toEqual({ actions: [], blockers: ['test_call_needs_new_verification', 'activation_needs_verified_test_call'] });
+    const n = await events();
+    const e = await mk(ENV_FULL).restoreControl(own, { eventId: liveAgain.id, expectedVersion: h2.current.version, reason: 'live again please', idempotencyKey: key() }).catch((x) => x);
+    expect(e.code).toBe('AI_RCPT_RESTORE_BLOCKED'); expect(e.details.blockers).toContain('test_call_needs_new_verification');
+    expect(await events()).toBe(n);
+  });
+  it('restorePlan / ctlStateOf (pure): safe direction first; unreadable snapshots count as off', () => {
+    const S = (a: boolean, t: boolean, l: boolean) => ({ bookingArmed: a, testCallVerifiedAt: t ? '2026-11-01T00:00:00Z' : null, activated: l });
+    expect(restorePlan(S(true, true, true), S(false, false, false))).toEqual({ actions: ['deactivate', 'disarm_booking', 'clear_test_call'], blockers: [] });
+    expect(restorePlan(S(false, true, false), S(true, true, true))).toEqual({ actions: ['arm_booking', 'activate'], blockers: [] });
+    expect(restorePlan(S(true, true, true), S(true, true, true))).toEqual({ actions: [], blockers: [] });
+    expect(ctlStateOf(null)).toEqual({ bookingArmed: false, testCallVerifiedAt: null, activated: false });
+    expect(ctlStateOf({ bookingArmed: 'yes', activated: 1 })).toEqual({ bookingArmed: false, testCallVerifiedAt: null, activated: false });
+  });
+});
 
 describe('KPIs, history, search, priority — guide §06–§08, §12, §14', () => {
   it('KPI definitions: booked vs requested, handoff requested/completed/failed, abandoned flag, avg of ended only; salon-day window across DST', async () => {

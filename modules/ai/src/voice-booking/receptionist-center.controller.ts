@@ -7,6 +7,7 @@
 // Transcript records are only linked (never returned) and only to ai.manage holders; the access is audited.
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
+import type { RcControlRestoreResult } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
@@ -18,6 +19,9 @@ import { RECEPTIONIST_CENTER } from './receptionist-center';
 export const RC_CONTROL_BODY: BodySchema = S.object({
   action: S.enumOf([...RC_CONTROL_ACTIONS]), expectedVersion: S.integer(), reason: S.nullable(S.text(500)), providerCallRef: S.nullable(S.text(128)), idempotencyKey: S.text(120),
 }, ['action', 'expectedVersion', 'idempotencyKey']);
+export const RC_RESTORE_BODY: BodySchema = S.object({
+  eventId: S.text(64), expectedVersion: S.integer(), reason: S.text(500), idempotencyKey: S.text(100),
+}, ['eventId', 'expectedVersion', 'reason', 'idempotencyKey']);
 export const RC_PREPARE_BODY: BodySchema = S.object({
   sourceType: S.enumOf(['call', 'handoff']), sourceRef: S.text(128), kind: S.text(40), reason: S.nullable(S.text(500)), idempotencyKey: S.text(120),
 }, ['sourceType', 'sourceRef', 'kind', 'idempotencyKey']);
@@ -47,6 +51,8 @@ const CALLS_LIST = {
 } as const;
 const SEARCH_LIST = { filters: { scope: { type: 'enum', values: RC_SCOPES } }, sorts: {}, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
 const PAGED_LIST = { filters: {}, sorts: {}, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
+/** AI Receptionist Settings 06: the protected-settings history — search, salon-local From/To, numbered pages */
+const HISTORY_LIST = { filters: {}, sorts: {}, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/ai/receptionist-center')
@@ -101,6 +107,11 @@ export class ReceptionistCenterController {
   @Post('control') @RequirePermission('ai.manage')
   control(@Req() q: any, @Body(ValidatedBody(RC_CONTROL_BODY, { strict: true })) b: any) { const c = ctxFrom(q); need(c, 'ai.manage'); return run(() => this.r().controlAction(c, b ?? {})); }
 
-  @Get('control/history') @RequirePermission('ai.use') @ListQuery(PAGED_LIST)
-  controlHistory(@Req() q: any, @Query() p: any) { const c = ctxFrom(q); need(c, 'ai.use'); return run(() => this.r().controlHistory(c, { page: p?.page, pageSize: p?.pageSize })); }
+  @Get('control/history') @RequirePermission('ai.use') @ListQuery(HISTORY_LIST)
+  controlHistory(@Req() q: any, @Query() p: any) { const c = ctxFrom(q); need(c, 'ai.use'); return run(() => this.r().controlHistory(c, { page: p?.page, pageSize: p?.pageSize, q: p?.q, from: p?.from, to: p?.to })); }
+
+  /** AI Receptionist Settings 06: restore the protected settings to a past version — through the same gated, versioned,
+   *  audited control actions (a verified test call is never restored from history) */
+  @Post('control/restore') @RequirePermission('ai.manage')
+  restoreControl(@Req() q: any, @Body(ValidatedBody(RC_RESTORE_BODY, { strict: true })) b: any): Promise<RcControlRestoreResult> { const c = ctxFrom(q); need(c, 'ai.manage'); return run(() => this.r().restoreControl(c, b ?? {})); }
 }

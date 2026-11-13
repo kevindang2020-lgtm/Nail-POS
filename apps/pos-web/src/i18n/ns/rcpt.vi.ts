@@ -290,4 +290,25 @@ export const RCPT_VI: Record<string, string> = {
   "rcpt.ins.servicesSub": "Dịch vụ trong các lịch hẹn AI đã đặt trong kỳ này (đã ghi nhận)", // DRAFT — Kevin reviews
   "rcpt.ins.none": "Không có dữ liệu trong kỳ này.", // DRAFT — Kevin reviews
   "rcpt.ins.privacy": "Chỉ hiển thị số lượng, từ các bản ghi cuộc gọi tiệm còn lưu. Không hiển thị tên, số điện thoại hay tóm tắt cuộc gọi; thông tin liên lạc trong nhãn được che.", // DRAFT — Kevin reviews
+  "rcpt.hist.searchPh": "Tìm thay đổi, lý do hoặc người thực hiện", // DRAFT — Kevin reviews
+  "rcpt.hist.search": "Tìm", // DRAFT — Kevin reviews
+  "rcpt.hist.clear": "Xóa lọc", // DRAFT — Kevin reviews
+  "rcpt.hist.noMatch": "Không có thay đổi nào khớp với tìm kiếm hoặc khoảng ngày này.", // DRAFT — Kevin reviews
+  "rcpt.hist.who": "Người thực hiện", // DRAFT — Kevin reviews
+  "rcpt.hist.view": "Xem", // DRAFT — Kevin reviews
+  "rcpt.hist.before": "Trước", // DRAFT — Kevin reviews
+  "rcpt.hist.after": "Sau", // DRAFT — Kevin reviews
+  "rcpt.hist.yes": "Có", // DRAFT — Kevin reviews
+  "rcpt.hist.no": "Không", // DRAFT — Kevin reviews
+  "rcpt.hist.f.bookingArmed": "Đã bật thao tác đặt lịch", // DRAFT — Kevin reviews
+  "rcpt.hist.f.testCallVerifiedAt": "Đã xác minh cuộc gọi thử", // DRAFT — Kevin reviews
+  "rcpt.hist.f.activated": "Lễ tân đang hoạt động", // DRAFT — Kevin reviews
+  "rcpt.hist.reason": "Lý do: {r}", // DRAFT — Kevin reviews
+  "rcpt.hist.plan": "Khôi phục phiên bản này sẽ: {list}. Mỗi bước được kiểm tra và ghi lại như một thay đổi bình thường.", // DRAFT — Kevin reviews
+  "rcpt.hist.matchesNow": "Cài đặt hiện tại đã giống phiên bản này.", // DRAFT — Kevin reviews
+  "rcpt.hist.restore": "Khôi phục phiên bản này", // DRAFT — Kevin reviews
+  "rcpt.hist.restored": "Đã khôi phục. {list}", // DRAFT — Kevin reviews
+  "rcpt.hist.alreadyMatches": "Không có gì để đổi — cài đặt đã giống phiên bản này.", // DRAFT — Kevin reviews
+  "rcpt.hist.block.test_call_needs_new_verification": "Phiên bản này có cuộc gọi thử đã xác minh. Không thể khôi phục cuộc gọi thử từ lịch sử — hãy xác minh một cuộc gọi thật mới trước.", // DRAFT — Kevin reviews
+  "rcpt.hist.block.activation_needs_verified_test_call": "Kích hoạt cần cuộc gọi thử đã xác minh, nên chưa thể khôi phục.", // DRAFT — Kevin reviews
 };

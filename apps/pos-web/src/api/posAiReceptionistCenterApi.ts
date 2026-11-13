@@ -4,6 +4,7 @@
 // the call overlay, the priority worklist (prepare → owner/manager confirm) and the per-salon controls (arm booking,
 // verify the test call, activate) — every change version-checked with a request key. Tenant / branch come from the session.
 import { api } from './client';
+import type { RcControlRestoreResult } from '@aipowersalon/api-contracts/tenant';
 const enc = encodeURIComponent;
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
 export type RcCallsQuery = { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number;
@@ -21,5 +22,7 @@ export const posAiReceptionistCenterApi = {
   prepare: (b: { sourceType: 'call' | 'handoff'; sourceRef: string; kind: 'create_follow_up'; reason?: string | null; idempotencyKey: string }) => api.post<any>(`/pos/ai/receptionist-center/actions`, b),
   decide: (id: string, b: { decision: 'confirm' | 'cancel'; expectedVersion: number; reason?: string | null }) => api.post<any>(`/pos/ai/receptionist-center/actions/${enc(id)}/decision`, b),
   control: (b: { action: RcControlAction; expectedVersion: number; reason?: string | null; providerCallRef?: string | null; idempotencyKey: string }) => api.post<any>(`/pos/ai/receptionist-center/control`, b),
-  controlHistory: (q: { page?: number; pageSize?: number }) => api.get<any>(`/pos/ai/receptionist-center/control/history`, clean(q)),
+  controlHistory: (q: { page?: number; pageSize?: number; q?: string; from?: string; to?: string }) => api.get<any>(`/pos/ai/receptionist-center/control/history`, clean(q)),
+  /** AI Receptionist Settings 06: restore the protected settings to a past version (ai.manage; the server plans + gates it) */
+  restore: (b: { eventId: string; expectedVersion: number; reason: string; idempotencyKey: string }) => api.post<RcControlRestoreResult>(`/pos/ai/receptionist-center/control/restore`, b),
 };

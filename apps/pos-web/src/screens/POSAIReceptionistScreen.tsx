@@ -360,7 +360,7 @@ export function POSAIReceptionistScreen() {
         onVerifyTest={(ref) => { setOpen(null); control('verify_test_call', { providerCallRef: ref }); }} /> : null}
       {pending ? <ReasonDialog action={pending.action} onCancel={() => setPending(null)} onSubmit={submitControl} /> : null}
       {dialog === 'health' ? <HealthDialog onClose={() => { setDialog(null); loadReady(); posAiReceptionistCenterApi.lastHealth().then(setLastCheck).catch((e) => setNotice(errorTextOf(e, tx('pos.something_went_wrong')))); }} /> : null}
-      {dialog === 'history' ? <ControlHistory onClose={() => setDialog(null)} /> : null}
+      {dialog === 'history' ? <ControlHistory canManage={canManage} onClose={() => setDialog(null)} onRestored={loadReady} /> : null}
       {dialog === 'capabilities' && ready && Array.isArray(ready.capabilities) ? <CapabilityMatrix rows={ready.capabilities} onClose={() => setDialog(null)} /> : null}
     </div>
   );
@@ -404,16 +404,70 @@ function HealthDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ControlHistory({ onClose }: { onClose: () => void }) {
+// AI Receptionist Settings backlog · 06 — the protected-settings history: server search (action / reason / person), a full-month
+// From/To calendar (salon-local whole days), stable numbered pages, a detail overlay (before → after) and Restore to that
+// version. The restore plan and every gate are the SERVER's (restorePlan + the ordinary control actions); a verified test call
+// is never restored from history — the overlay says what blocks a restore instead of offering it.
+type CtlSnap = { bookingArmed?: boolean; testCallVerifiedAt?: string | null; activated?: boolean };
+const SNAP_FIELDS = ['bookingArmed', 'testCallVerifiedAt', 'activated'] as const;
+export function ControlHistory({ onClose, canManage = false, onRestored }: { onClose: () => void; canManage?: boolean; onRestored?: () => void }) {
   const [page, setPage] = useState(1); const [r, setR] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { posAiReceptionistCenterApi.controlHistory({ page, pageSize: 10 }).then(setR).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [page]);
+  const [draft, setDraft] = useState(''); const [q, setQ] = useState(''); const [range, setRange] = useState<{ from?: string; to?: string }>({}); const [cal, setCal] = useState(false);
+  const [open, setOpen] = useState<any>(null); const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const seq = useRef(0);
+  const load = useCallback(() => {
+    const my = ++seq.current; setErr(null);
+    posAiReceptionistCenterApi.controlHistory({ page, pageSize: 10, q: q || undefined, from: range.from, to: range.to })
+      .then((x) => { if (my === seq.current) setR(x); }).catch((e) => { if (my === seq.current) setErr(errorTextOf(e, tx('pos.something_went_wrong'))); });
+  }, [page, q, range.from, range.to]);
+  useEffect(load, [load]);
+  const snapVal = (s: CtlSnap | null | undefined, k: typeof SNAP_FIELDS[number]) => (k === 'testCallVerifiedAt' ? (s?.testCallVerifiedAt ? fmtDateTime(s.testCallVerifiedAt) : t('rcpt.hist.no')) : s?.[k] ? t('rcpt.hist.yes') : t('rcpt.hist.no'));
+  const restore = async () => {
+    if (!open) return;
+    setBusy(true); setNote(null);
+    try {
+      const out = await posAiReceptionistCenterApi.restore({ eventId: open.id, expectedVersion: r?.current?.version ?? 0, reason: reason.trim(), idempotencyKey: requestId() });
+      setNote({ ok: true, text: out.actions.length ? t('rcpt.hist.restored', { list: out.actions.map((a: string) => t(`rcpt.done.${a}`)).join(' ') }) : t('rcpt.hist.alreadyMatches') });
+      setOpen(null); setReason(''); load(); onRestored?.();
+    } catch (e: any) {
+      const d = e?.body?.details ?? e?.details ?? {};
+      const extra = [...(Array.isArray(d.blockers) ? d.blockers.map((b: string) => t(`rcpt.hist.block.${b}`)) : []), ...(Array.isArray(d.failing) && d.failing.length ? [t('rcpt.failingGates', { list: d.failing.map((x: string) => t(`rcpt.gate.${x}`)).join(', ') })] : [])];
+      setNote({ ok: false, text: [errorTextOf(e, tx('pos.something_went_wrong')), ...extra].join(' ') });
+    } finally { setBusy(false); }
+  };
   return (
-    <FitDialog title={t('rcpt.ctl.history')} onClose={onClose} testId="rcp-ctl-history">
-      {err ? <div className="err">{err}</div> : !r ? <div className="state">{t('rcpt.loading')}</div> : r.items.length === 0 ? <Empty title={t('rcpt.noHistory')} /> : (
-        <><table className="tbl rcp-tbl"><thead><tr><th>{t('rcpt.col.when')}</th><th>{t('rcpt.col.item')}</th><th>{t('rcpt.col.detail')}</th></tr></thead>
-          <tbody>{r.items.map((x: any) => <tr key={x.id}><td>{when(x.at)}</td><td>{t(`rcpt.done.${x.action}`)}</td><td>{x.reason ?? '—'}</td></tr>)}</tbody></table>
+    <FitDialog title={t('rcpt.ctl.history')} onClose={onClose} testId="rcp-ctl-history" wide>
+      <form className="rcp-hist-filters" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }} onSubmit={(e) => { e.preventDefault(); setPage(1); setQ(draft.trim()); }}>
+        <input type="search" data-testid="rcp-hist-q" value={draft} maxLength={100} onChange={(e) => setDraft(e.target.value)} placeholder={t('rcpt.hist.searchPh')} aria-label={t('rcpt.hist.searchPh')} />
+        <button className="btn" type="submit" data-testid="rcp-hist-search">{t('rcpt.hist.search')}</button>
+        <button type="button" className={'btn ghost' + (range.from || range.to ? ' on' : '')} data-testid="rcp-hist-range" onClick={() => setCal(true)}>{range.from || range.to ? `${range.from ?? '…'} → ${range.to ?? '…'}` : t('rcpt.fromTo')}</button>
+        {q || range.from || range.to ? <button type="button" className="btn ghost" data-testid="rcp-hist-clear" onClick={() => { setDraft(''); setQ(''); setRange({}); setPage(1); }}>{t('rcpt.hist.clear')}</button> : null}
+      </form>
+      {cal ? <RangeCalendar today={deviceToday()} initial={range} onApply={(x) => { setRange({ from: x.from, to: x.to }); setPage(1); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setRange({}); setPage(1); setCal(false); }} /> : null}
+      {note ? <div className={'fk-note ' + (note.ok ? 'ok' : 'bad')} role={note.ok ? 'status' : 'alert'} data-testid="rcp-hist-note"><span>{note.text}</span></div> : null}
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !r ? <div className="state">{t('rcpt.loading')}</div> : r.items.length === 0 ? <Empty title={q || range.from || range.to ? t('rcpt.hist.noMatch') : t('rcpt.noHistory')} /> : (
+        <><table className="tbl rcp-tbl"><thead><tr><th>{t('rcpt.col.when')}</th><th>{t('rcpt.col.item')}</th><th>{t('rcpt.hist.who')}</th><th>{t('rcpt.col.detail')}</th><th /></tr></thead>
+          <tbody>{r.items.map((x: any) => <tr key={x.id} data-testid="rcp-hist-row"><td>{when(x.at)}</td><td>{t(`rcpt.done.${x.action}`)}</td><td>{x.actorName ?? '—'}</td><td>{x.reason ?? '—'}</td>
+            <td><button className="btn ghost sm" data-testid="rcp-hist-view" onClick={() => { setOpen(x); setReason(''); setNote(null); }}>{t('rcpt.hist.view')}</button></td></tr>)}</tbody></table>
         <Pager info={r.pagination} onPage={setPage} /></>
       )}
+      {open ? (
+        <FitDialog title={t(`rcpt.done.${open.action}`)} subtitle={`${when(open.at)} · ${open.actorName ?? '—'}`} onClose={() => setOpen(null)} busy={busy} testId="rcp-hist-detail"
+          footer={<div className="rcp-ov-actions">
+            {canManage && open.restore && open.restore.actions.length && !open.restore.blockers.length
+              ? <button className="btn" data-testid="rcp-hist-restore" disabled={busy || reason.trim().length < 5} onClick={restore}>{t('rcpt.hist.restore')}</button> : null}
+            <button className="btn ghost" onClick={() => setOpen(null)}>{t('rcpt.close')}</button></div>}>
+          <table className="tbl rcp-tbl" data-testid="rcp-hist-diff"><thead><tr><th /><th>{t('rcpt.hist.before')}</th><th>{t('rcpt.hist.after')}</th></tr></thead>
+            <tbody>{SNAP_FIELDS.map((k) => <tr key={k} className={snapVal(open.before, k) !== snapVal(open.after, k) ? 'rcp-changed' : ''}><td>{t(`rcpt.hist.f.${k}`)}</td><td>{snapVal(open.before, k)}</td><td>{snapVal(open.after, k)}</td></tr>)}</tbody></table>
+          <div className="rcp-muted">{t('rcpt.hist.reason', { r: open.reason ?? '—' })}</div>
+          {open.restore ? (open.restore.blockers.length
+            ? <div className="fk-note bad" data-testid="rcp-hist-blocked"><span>{open.restore.blockers.map((b: string) => t(`rcpt.hist.block.${b}`)).join(' ')}</span></div>
+            : !open.restore.actions.length ? <div className="rcp-muted" data-testid="rcp-hist-matches">{t('rcpt.hist.matchesNow')}</div>
+            : <div data-testid="rcp-hist-plan"><div className="rcp-muted">{t('rcpt.hist.plan', { list: open.restore.actions.map((a: string) => t(`rcpt.ctlTitle.${a}`)).join(' → ') })}</div>
+              {canManage ? <label className="rcp-label">{t('rcpt.reasonLabel')}<textarea data-testid="rcp-hist-reason" className="rcp-textarea" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} /></label> : null}
+              {canManage ? <div className="rcp-muted">{t('rcpt.reasonMin')}</div> : null}</div>) : null}
+        </FitDialog>
+      ) : null}
     </FitDialog>
   );
 }

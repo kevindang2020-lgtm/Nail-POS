@@ -31,6 +31,7 @@ import { recordAuditStrict } from '@aipowersalon/audit';
 import { evaluateAiAccess, type AiAccessSnapshot } from '../ai/ai-access-gate';
 import { AI_RECEPTIONIST_ACTION } from '../ai-lifecycles';
 import { voiceWriteToolsEnabled } from './voice-tools';
+import type { RcControlRestoreResult } from '@aipowersalon/api-contracts/tenant';
 
 type Row = Record<string, any>;
 /** AI Receptionist 08: a label the voice AI wrote may carry contact details — an email or a phone-like number is masked */
@@ -108,6 +109,34 @@ export const RC_SORTS = ['newest', 'oldest', 'longest'] as const;
 export const RC_SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
 export const RC_CONTROL_ACTIONS = ['arm_booking', 'disarm_booking', 'verify_test_call', 'clear_test_call', 'activate', 'deactivate'] as const;
 export const RC_ACTION_DECISIONS = ['confirm', 'cancel'] as const;
+/** the readiness checks each gated control action needs READY (one table — controlAction and the restore pre-check read it) */
+export const RC_GATES = {
+  arm_booking: ['ent.package', 'rt.agent', 'key.active', 'biz.setup'],
+  verify_test_call: ['rt.agent', 'key.active'],
+  activate: ['ent.package', 'tw.account', 'tw.route', 'rt.agent', 'key.active', 'biz.setup', 'rd.test_call'],
+} as const satisfies Record<string, readonly string[]>;
+
+/** AI Receptionist Settings backlog · 06 (Nov 12 2026) — the restore plan: the control actions (in order, the safe direction
+ *  first) that move the CURRENT protected settings to a past version, and what cannot be restored from history. Pure.
+ *  A verified test call is never restored from history — it must be proven again by a real recorded call — so a target that
+ *  had one (and an activation that depends on it) becomes a blocker instead. Every action still runs through controlAction
+ *  (gates re-checked, versioned, audited, append-only); nothing here writes. */
+export interface RcCtlState { bookingArmed: boolean; testCallVerifiedAt: string | null; activated: boolean }
+export function restorePlan(cur: RcCtlState, target: RcCtlState): { actions: Array<typeof RC_CONTROL_ACTIONS[number]>; blockers: string[] } {
+  const actions: Array<typeof RC_CONTROL_ACTIONS[number]> = []; const blockers: string[] = [];
+  let armed = cur.bookingArmed, tested = !!cur.testCallVerifiedAt, active = cur.activated;
+  const wantTested = !!target.testCallVerifiedAt;
+  if (active && !target.activated) { actions.push('deactivate'); active = false; }
+  if (armed && !target.bookingArmed) { actions.push('disarm_booking'); armed = false; active = false; }
+  if (tested && !wantTested) { actions.push('clear_test_call'); tested = false; active = false; }
+  if (!armed && target.bookingArmed) { actions.push('arm_booking'); armed = true; }
+  if (!tested && wantTested) blockers.push('test_call_needs_new_verification');
+  if (!active && target.activated) {
+    if (!tested) blockers.push('activation_needs_verified_test_call');
+    else actions.push('activate');
+  }
+  return { actions, blockers };
+}
 export const RC_PAGE_SIZES = [10, 20, 50] as const;
 export const RC_PACKAGE = 'ai_phone_call_assistant';
 /** handoff outcome vocabulary (documented rule, guide §14): requested = any value but none; completed / failed below */
@@ -133,6 +162,12 @@ export const RECEPTIONIST_CENTER = 'ReceptionistCenter';
 
 const CTL_COLS = sql.raw('id, tenant_id, branch_id, booking_armed, booking_armed_at, booking_arm_reason, test_call_provider_call_id, test_call_verified_at, activated, activated_at, version');
 const ACTION_COLS = sql.raw('id, branch_id, kind, status, source_type, source_ref, payload, result_ref, version');
+
+/** a stored before/after snapshot (ctlOut shape) → the three protected facts; anything unreadable counts as "off" (safe) */
+export function ctlStateOf(v: unknown): RcCtlState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return { bookingArmed: o.bookingArmed === true, testCallVerifiedAt: typeof o.testCallVerifiedAt === 'string' ? o.testCallVerifiedAt : null, activated: o.activated === true };
+}
 
 export class ReceptionistCenterError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details?: Record<string, unknown>) { super(message); }
@@ -724,7 +759,7 @@ export class ReceptionistCenter {
     const r = (['arm_booking', 'activate', 'verify_test_call'].includes(input.action)) ? await this.readiness(ctx) : null;
     const st = (id: string) => r?.checks.find((c) => c.id === id)?.state;
     if (input.action === 'arm_booking') {
-      const failing = ['ent.package', 'rt.agent', 'key.active', 'biz.setup'].filter((id) => st(id) !== 'READY');
+      const failing: string[] = RC_GATES.arm_booking.filter((id) => st(id) !== 'READY');
       if (!voiceWriteToolsEnabled(this.env)) failing.unshift('platform_switch');
       if (failing.length) throw new ReceptionistCenterError('Booking actions cannot be armed yet.', 'AI_RCPT_GATES_NOT_MET', 409, { failing });
     }
@@ -735,12 +770,12 @@ export class ReceptionistCenter {
         and provider_call_id = ${ref} and created_at > now() - interval '7 days'`.execute(this.db)).rows[0] : undefined;
       if (!o) throw new ReceptionistCenterError('Pick a call the provider recorded for this salon in the last 7 days. A test call is proven only by a real recorded call.', 'AI_RCPT_TEST_CALL_NOT_FOUND', 404);
       if (o.error_category) throw new ReceptionistCenterError('That call recorded an error, so it cannot be the verified test call.', 'AI_RCPT_TEST_CALL_FAILED', 409);
-      const failing = ['rt.agent', 'key.active'].filter((id) => st(id) !== 'READY');
+      const failing = RC_GATES.verify_test_call.filter((id) => st(id) !== 'READY');
       if (failing.length) throw new ReceptionistCenterError('A test call can be verified only once the agent and key are ready.', 'AI_RCPT_GATES_NOT_MET', 409, { failing });
       callRef = String(o.provider_call_id);
     }
     if (input.action === 'activate') {
-      const failing = ['ent.package', 'tw.account', 'tw.route', 'rt.agent', 'key.active', 'biz.setup', 'rd.test_call'].filter((id) => st(id) !== 'READY');
+      const failing = RC_GATES.activate.filter((id) => st(id) !== 'READY');
       if (failing.length) throw new ReceptionistCenterError('The receptionist cannot be activated until every gate passes, including a verified test call.', 'AI_RCPT_GATES_NOT_MET', 409, { failing });
     }
     return this.db.transaction().execute(async (trx) => {
@@ -767,14 +802,67 @@ export class ReceptionistCenter {
     });
   }
 
-  /** protected-setting change history (append-only), newest first */
-  async controlHistory(ctx: RcCtx, f: { page?: unknown; pageSize?: unknown }) {
+  /** protected-setting change history (append-only), newest first. AI Receptionist Settings 06: server search (action,
+   *  reason, who), a salon-local From/To (whole days in the branch's time zone), stable numbered pages (created_at, id), the
+   *  person's name, and per row the restore plan back to that version (computed against the current settings — read-only). */
+  async controlHistory(ctx: RcCtx, f: { page?: unknown; pageSize?: unknown; q?: string; from?: string; to?: string }) {
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
     const B = this.branch(ctx);   // control rows are per branch: a branch sees its own changes and the salon-wide ones (Nov 3 audit)
-    const total = N((await sql<Row>`select count(*)::int n from ai_receptionist_control_events where tenant_id = ${ctx.tenantId} and (${B}::uuid is null or branch_id = ${B} or branch_id is null)`.execute(this.db)).rows[0]?.n);
-    const rows: Row[] = (await sql<Row>`select id, action, before_state, after_state, reason, actor_user_id, created_at from ai_receptionist_control_events where tenant_id = ${ctx.tenantId}
-      and (${B}::uuid is null or branch_id = ${B} or branch_id is null) order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
-    return { items: rows.map((r) => ({ id: r.id, action: r.action, before: r.before_state, after: r.after_state, reason: r.reason, actorUserId: r.actor_user_id, at: iso(r.created_at) })),
-      pagination: { page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) } };
+    const conds = [sql`e.tenant_id = ${ctx.tenantId}`, sql`(${B}::uuid is null or e.branch_id = ${B} or e.branch_id is null)`];
+    const q = String(f.q ?? '').trim().slice(0, 100);
+    if (q) {
+      const actionHits = RC_CONTROL_ACTIONS.filter((a) => a.replace(/_/g, ' ').includes(q.toLowerCase()) || a.includes(q.toLowerCase()));
+      conds.push(sql`(coalesce(e.reason, '') ilike ${like(q)} or coalesce(u.full_name, '') ilike ${like(q)} or e.action = any(${actionHits}::text[]))`);
+    }
+    const w = f.from || f.to ? await this.window(ctx, { period: 'custom', from: f.from, to: f.to }) : null;
+    if (w) { conds.push(sql`e.created_at >= (${w.from}::date)::timestamp at time zone ${w.tz}`); conds.push(sql`e.created_at < ((${w.to}::date + 1))::timestamp at time zone ${w.tz}`); }
+    const where = sql.join(conds, sql` and `);
+    const total = N((await sql<Row>`select count(*)::int n from ai_receptionist_control_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where ${where}`.execute(this.db)).rows[0]?.n);
+    const rows: Row[] = (await sql<Row>`select e.id, e.action, e.before_state, e.after_state, e.reason, e.actor_user_id, u.full_name actor_name, e.created_at
+      from ai_receptionist_control_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id
+      where ${where} order by e.created_at desc, e.id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+    const curRow = await this.control(ctx); const cur = curRow ? this.ctlOut(curRow) : null;
+    return { items: rows.map((r) => ({ id: r.id, action: r.action, before: r.before_state, after: r.after_state, reason: r.reason, actorUserId: r.actor_user_id, actorName: r.actor_name ?? null, at: iso(r.created_at),
+        restore: cur ? restorePlan(cur, ctlStateOf(r.after_state)) : null })),
+      pagination: { page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) },
+      window: w, current: cur };
   }
+
+  /** AI Receptionist Settings 06 — restore the protected settings to a past version (the state right after history row
+   *  `eventId`). The plan is restorePlan against the current settings; blockers (a test call to prove again) refuse it before
+   *  anything is written; gated steps (arm / activate) are pre-checked against readiness so a refused gate writes nothing.
+   *  Each step then runs through controlAction — version-checked, idempotent (key:n), append-only + audited — with the
+   *  reason saying it is a restore. ai.manage only (controller). */
+  async restoreControl(ctx: RcCtx, input: { eventId: string; expectedVersion: number; reason?: string | null; idempotencyKey: string }): Promise<RcControlRestoreResult> {
+    if (!isUuid(input.eventId)) throw new ReceptionistCenterError('That change was not found.', 'AI_RCPT_HISTORY_NOT_FOUND', 404);
+    const reason = String(input.reason ?? '').trim();
+    if (reason.length < 5) throw new ReceptionistCenterError('Give a short reason (at least 5 characters).', 'AI_RCPT_REASON_REQUIRED');
+    const B = this.branch(ctx);
+    const ev: Row | undefined = (await sql<Row>`select id, action, after_state, created_at from ai_receptionist_control_events where tenant_id = ${ctx.tenantId} and id = ${input.eventId}
+      and (${B}::uuid is null or branch_id = ${B} or branch_id is null)`.execute(this.db)).rows[0];
+    if (!ev) throw new ReceptionistCenterError('That change was not found.', 'AI_RCPT_HISTORY_NOT_FOUND', 404);
+    const curRow = await this.control(ctx);
+    const cur = curRow ? this.ctlOut(curRow) : { bookingArmed: false, testCallVerifiedAt: null, activated: false, version: 0 };
+    const prior: Row | undefined = (await sql<Row>`select id from ai_receptionist_control_events where tenant_id = ${ctx.tenantId} and idempotency_key = ${input.idempotencyKey + ':0'}`.execute(this.db)).rows[0];
+    if (prior) return { restoredFrom: String(ev.id), actions: [], blockers: [], control: cur, replayed: true };
+    if (N(cur.version) !== Number(input.expectedVersion) && !(Number(input.expectedVersion) === 0 && N(cur.version) <= 1)) throw new ReceptionistCenterError('Someone else changed these settings. Refresh and try again.', 'AI_RCPT_VERSION_CONFLICT', 409);
+    const plan = restorePlan(cur, ctlStateOf(ev.after_state));
+    if (plan.blockers.length) throw new ReceptionistCenterError('This version cannot be restored as it is: a test call must be verified again with a real recorded call.', 'AI_RCPT_RESTORE_BLOCKED', 409, { blockers: plan.blockers, actions: plan.actions });
+    if (!plan.actions.length) return { restoredFrom: String(ev.id), actions: [], blockers: [], control: cur, replayed: false };
+    const gated = plan.actions.filter((a) => a === 'arm_booking' || a === 'activate');
+    if (gated.length) {
+      const r = await this.readiness(ctx); const st = (id: string) => r.checks.find((c) => c.id === id)?.state;
+      const failing: string[] = [...new Set(gated.flatMap((a) => RC_GATES[a as 'arm_booking' | 'activate'].filter((id) => st(id) !== 'READY')))];
+      if (gated.includes('arm_booking') && !voiceWriteToolsEnabled(this.env)) failing.unshift('platform_switch');
+      if (failing.length) throw new ReceptionistCenterError('This version cannot be restored until its gates pass again.', 'AI_RCPT_GATES_NOT_MET', 409, { failing, actions: plan.actions });
+    }
+    const when = iso(ev.created_at)?.slice(0, 16).replace('T', ' ') ?? '';
+    let version = N(cur.version); let control: unknown = cur;
+    for (const [i, action] of plan.actions.entries()) {
+      const out = await this.controlAction(ctx, { action, expectedVersion: version, reason: `Restore to the version of ${when} UTC: ${reason}`.slice(0, 500), idempotencyKey: `${input.idempotencyKey}:${i}` });
+      control = out.control; version = N((out.control as { version?: number } | null)?.version);
+    }
+    return { restoredFrom: String(ev.id), actions: plan.actions, blockers: [], control, replayed: false };
+  }
+
 }

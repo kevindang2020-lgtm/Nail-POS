@@ -92,3 +92,10 @@ export interface WinbackPickedResult { draftId: string; status: string; channel:
 /** F5 §73 (Nov 6 2026): the technician's Today / Week / Month metrics */
 export interface TechMetricsResponse { period: 'today' | 'week' | 'month'; from: string; to: string; timezone: string;
   clockedMinutes: number | null; breakMinutes: number | null; serviceMinutes: number | null; readyMinutes: number | null; turnUnits: number | null; services: number | null }
+
+/** AI Receptionist Settings backlog · 06 (Nov 12 2026): POST /pos/ai/receptionist-center/control/restore — the protected
+ *  settings moved back to a past version through the ordinary gated control actions (each version-checked, audited,
+ *  append-only). `actions` = the steps taken, in order (empty when the settings already match); `control` = the settings now. */
+export interface RcControlRestoreResult {
+  restoredFrom: string; actions: string[]; blockers: string[]; control: unknown; replayed: boolean;
+}
