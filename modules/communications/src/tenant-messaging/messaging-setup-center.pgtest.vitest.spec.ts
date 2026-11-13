@@ -251,3 +251,24 @@ describe('controlled nightly run (§11)', () => {
     await sql`update branches set timezone = 'America/New_York' where tenant_id = ${A}`.execute(db);
   });
 });
+
+// extras TEXT MESSAGING SETUP 10 (round 10): a registration whose provider status has been stuck pending past the stale window
+// becomes ATTENTION, so the nightly check opens its ONE deduplicated owner alert (an ordinary fresh wait stays Pending)
+describe('stale registration status alerts', () => {
+  it('pending for longer than the stale window → registration needs attention and the nightly run alerts once; fresh pending → Pending', async () => {
+    await sql`delete from tenant_a2p_registrations where tenant_id = ${A}`.execute(db);
+    await sql`insert into tenant_a2p_registrations (tenant_id, brand_sid, brand_status, campaign_sid, campaign_status, messaging_service_sid, status, updated_at)
+      values (${A}, ${'BN' + 'b'.repeat(32)}, 'APPROVED', ${'QE' + 'c'.repeat(32)}, 'IN_PROGRESS', ${'MG' + 'd'.repeat(32)}, 'campaign_submitted', now() - interval '10 days')`.execute(db);
+    const o: any = await center().overview(ctxA, null, null);
+    const reg = part(o, 'registration');
+    expect(reg).toMatchObject({ state: 'attention_required' });
+    expect(reg.summary).toMatch(/stale/); expect(reg.evidence).toMatch(/stale/); expect(reg.nextAction).toMatch(/Refresh Status/);
+    const r1 = await runScheduledHealthJob(db, readiness(true), A, { night: `${A}:2026-11-13` });
+    const r2 = await runScheduledHealthJob(db, readiness(true), A, { night: `${A}:2026-11-13` });
+    expect(r1.opened + r1.updated).toBeGreaterThanOrEqual(1); expect(r2.opened).toBe(0);
+    const keys = (await sql<any>`select metadata->>'dedupeKey' as k from owner_alerts where tenant_id = ${A} and metadata->>'rule' = 'sms_setup' and metadata->>'dedupeKey' = 'sms_setup:registration'`.execute(db)).rows;
+    expect(keys).toHaveLength(1);
+    await sql`update tenant_a2p_registrations set updated_at = now() where tenant_id = ${A}`.execute(db);
+    expect(part(await center().overview(ctxA, null, null), 'registration').state).toBe('pending');
+  });
+});

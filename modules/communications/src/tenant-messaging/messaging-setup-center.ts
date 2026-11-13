@@ -85,16 +85,19 @@ export function sixParts(r: ReadinessView, d: DeliveryEvidence): ReadinessPart[]
 
   // Registration — 10DLC brand + campaign for a US long code, toll-free verification for a toll-free sender; never both
   const tf = r.tollFree; const reg = r.a2p;
-  const regOf = (state: string, label: string, evidence: string, checkedAt: string | null, fixLink: string) => {
+  const regOf = (state: string, label: string, evidence: string, checkedAt: string | null, fixLink: string, stale = false) => {
     if (state === 'approved') P('registration', 'ready', `${label}: approved by the provider.`, evidence, 'provider status', checkedAt, null, fixLink);
+    // extras TEXT MESSAGING SETUP 10 (round 10): a submission whose provider status has not moved past the stale window is
+    // ATTENTION (so the nightly check opens its one deduplicated owner alert) — never left looking like an ordinary wait
+    else if (state === 'pending' && stale) P('registration', 'attention_required', `${label}: still pending and the provider status has not changed for a long time (stale).`, evidence, 'provider status', checkedAt, 'Press Refresh Status in Registration; if it stays pending, contact AI PowerSalon support with the evidence shown.', fixLink);
     else if (state === 'pending') P('registration', 'pending', `${label}: submitted, waiting for the carriers — not approved yet.`, evidence, 'provider status', checkedAt, 'Nothing to do but wait; press Refresh Status to read the latest.', fixLink);
     else if (state === 'rejected' || state === 'suspended') P('registration', 'failed', `${label}: ${state}.`, evidence, 'provider status', checkedAt, 'Open the registration details for the reason; resubmission is done in the provider workflow (it may cost a fee — owner approval).', fixLink);
     else if (state === 'not_started') P('registration', 'attention_required', `${label}: not started — texts to US numbers may be filtered.`, evidence, 'provider status', checkedAt, 'Start registration with AI PowerSalon support (paid carrier registration needs owner approval).', fixLink);
     else if (state === 'not_applicable') P('registration', 'ready', 'No carrier registration applies to this sender.', evidence, 'sender type', checkedAt, null, fixLink);
     else P('registration', 'unknown', `${label}: could not be verified with the provider.`, evidence, 'provider status', checkedAt, 'Press Refresh Status in Registration.', fixLink);
   };
-  if (s.senderType === 'toll_free') regOf(tf.state, 'Toll-free verification', `toll-free · ${tf.providerStatus ?? 'no provider status'}${tf.stale ? ' · stale' : ''}`, tf.checkedAt, `${SETUP}#registration`);
-  else if (reg.applicable) regOf(reg.state, '10DLC brand & campaign', `brand ${reg.brand.providerStatus ?? reg.brand.state} · campaign ${reg.campaign.providerStatus ?? reg.campaign.state}${reg.stale ? ' · stale' : ''}${reg.providerVerified ? '' : ' · not verified with the provider'}`, reg.lastProviderCheckAt, reg.fixLink);
+  if (s.senderType === 'toll_free') regOf(tf.state, 'Toll-free verification', `toll-free · ${tf.providerStatus ?? 'no provider status'}${tf.stale ? ' · stale' : ''}`, tf.checkedAt, `${SETUP}#registration`, !!tf.stale);
+  else if (reg.applicable) regOf(reg.state, '10DLC brand & campaign', `brand ${reg.brand.providerStatus ?? reg.brand.state} · campaign ${reg.campaign.providerStatus ?? reg.campaign.state}${reg.stale ? ' · stale' : ''}${reg.providerVerified ? '' : ' · not verified with the provider'}`, reg.lastProviderCheckAt, reg.fixLink, !!reg.stale);
   else if (!s.number) P('registration', 'unknown', 'No sender yet — registration depends on the number type.', 'no sender', 'saved settings', null, 'Set a sending number first.', `${SETUP}#number`);
   else regOf('not_applicable', '', `sender type ${s.senderType ?? 'unknown'}`, reg.lastProviderCheckAt, reg.fixLink);
 
