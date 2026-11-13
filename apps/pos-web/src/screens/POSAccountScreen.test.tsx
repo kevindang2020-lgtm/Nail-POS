@@ -183,7 +183,7 @@ describe('POSAccountScreen', () => {
     const booking = await screen.findByTestId('acx-ncard-bookingAlerts');
     expect(within(booking).getByTestId('acx-applies')).toHaveTextContent('Applies now — while Off, these messages to you are held');
     expect(within(screen.getByTestId('acx-ncard-missedCallAlerts')).getByTestId('acx-applies')).toHaveTextContent('Nothing of this kind is sent yet');
-    expect(screen.getByTestId('acx-notif-always')).toHaveTextContent('Security and sign-in messages always go');
+    expect(screen.getByTestId('acx-notif-always')).toHaveTextContent(/Security and sign-in messages, and urgent \(high or critical\) platform notices about your salon's account, always go/);
     expect(await screen.findByTestId('acx-dh-error')).toHaveTextContent('Held — you switched this kind of message off');
   });
   it('Account Finder (extras Account Claude Guide 15): finds Account panels and pages by keyword, gated like the sidebar', async () => {
