@@ -1840,4 +1840,55 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.issue.openSupport": "Mở Trợ giúp & Hỗ trợ", // DRAFT — Kevin reviews
   "lgx.issue.event": "Sự kiện nhật ký", // DRAFT — Kevin reviews
   "lgx.issue.when": "Ghi lúc", // DRAFT — Kevin reviews
+  "dfx.hw.btn": "Mức sẵn sàng của máy này", // DRAFT — Kevin reviews
+  "dfx.hw.title": "Mức sẵn sàng phần cứng của máy POS này", // DRAFT — Kevin reviews
+  "dfx.hw.sub": "Đo ngay trong trình duyệt này. Không thay đổi hay gửi gì; điều trình duyệt không báo được sẽ ghi rõ.", // DRAFT — Kevin reviews
+  "dfx.hw.again": "Đo lại", // DRAFT — Kevin reviews
+  "dfx.hw.k.screen": "Màn hình", // DRAFT — Kevin reviews
+  "dfx.hw.k.viewport": "Vùng sử dụng", // DRAFT — Kevin reviews
+  "dfx.hw.k.touch": "Cảm ứng", // DRAFT — Kevin reviews
+  "dfx.hw.k.browser": "Trình duyệt", // DRAFT — Kevin reviews
+  "dfx.hw.k.os": "Hệ điều hành", // DRAFT — Kevin reviews
+  "dfx.hw.k.mode": "Chế độ hiển thị", // DRAFT — Kevin reviews
+  "dfx.hw.k.network": "Mạng", // DRAFT — Kevin reviews
+  "dfx.hw.k.reconnect": "Cập nhật trực tiếp", // DRAFT — Kevin reviews
+  "dfx.hw.k.agent": "Phần mềm cài trên máy", // DRAFT — Kevin reviews
+  "dfx.hw.k.peripherals": "Thiết bị ngoại vi", // DRAFT — Kevin reviews
+  "dfx.hw.s.ok": "Tốt", // DRAFT — Kevin reviews
+  "dfx.hw.s.warn": "Cần kiểm tra", // DRAFT — Kevin reviews
+  "dfx.hw.s.info": "Thông tin", // DRAFT — Kevin reviews
+  "dfx.hw.s.not_reported": "Không có dữ liệu", // DRAFT — Kevin reviews
+  "dfx.hw.d.screen.ok": "Đủ lớn cho bố cục SUNMI 27 inch đã chứng nhận.", // DRAFT — Kevin reviews
+  "dfx.hw.d.screen.warn": "Nhỏ hơn màn hình SUNMI 27 inch đã chứng nhận — các trang dùng bố cục gọn.", // DRAFT — Kevin reviews
+  "dfx.hw.d.viewport.ok": "Vùng trình duyệt sử dụng được vừa với bố cục đã chứng nhận.", // DRAFT — Kevin reviews
+  "dfx.hw.d.viewport.warn": "Vùng sử dụng nhỏ hơn chuẩn — đóng thanh trình duyệt hoặc dùng toàn màn hình.", // DRAFT — Kevin reviews
+  "dfx.hw.d.touch.ok": "Có cảm ứng.", // DRAFT — Kevin reviews
+  "dfx.hw.d.touch.warn": "Không phát hiện cảm ứng trên máy này.", // DRAFT — Kevin reviews
+  "dfx.hw.d.browser.ok": "Trình duyệt Chromium, loại các màn hình đã được chứng nhận.", // DRAFT — Kevin reviews
+  "dfx.hw.d.browser.warn": "Không phải trình duyệt đã chứng nhận — hãy dùng Chrome trên máy này.", // DRAFT — Kevin reviews
+  "dfx.hw.d.browser.not_reported": "Trình duyệt không báo tên.", // DRAFT — Kevin reviews
+  "dfx.hw.d.os.info": "Theo thông tin trình duyệt báo.", // DRAFT — Kevin reviews
+  "dfx.hw.d.os.not_reported": "Trình duyệt không báo hệ điều hành.", // DRAFT — Kevin reviews
+  "dfx.hw.d.mode.info": "Toàn màn hình hoặc chế độ ứng dụng sẽ ẩn thanh trình duyệt.", // DRAFT — Kevin reviews
+  "dfx.hw.d.network.ok": "Trình duyệt báo có kết nối mạng.", // DRAFT — Kevin reviews
+  "dfx.hw.d.network.warn": "Trình duyệt báo không có kết nối mạng.", // DRAFT — Kevin reviews
+  "dfx.hw.d.reconnect.ok": "Đã kết nối cập nhật trực tiếp.", // DRAFT — Kevin reviews
+  "dfx.hw.d.reconnect.warn": "Hiện chưa kết nối cập nhật trực tiếp — ứng dụng tự thử lại.", // DRAFT — Kevin reviews
+  "dfx.hw.d.agent.not_reported": "AI PowerSalon chạy trong trình duyệt và không ghi nhận phần mềm cài trên máy này.", // DRAFT — Kevin reviews
+  "dfx.hw.d.peripherals.not_reported": "Không khẳng định hỗ trợ trình điều khiển nào ở đây. Máy quẹt thẻ và màn hình khách được kiểm tra ở dòng riêng của chúng trên trang này.", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.comfortable": "Lớn", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.compact": "Kích thước chuẩn", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.tight": "Nhỏ hơn", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.fallback": "Nhỏ", // DRAFT — Kevin reviews
+  "dfx.hw.c.mode.browser": "Cửa sổ trình duyệt", // DRAFT — Kevin reviews
+  "dfx.hw.c.mode.fullscreen": "Toàn màn hình", // DRAFT — Kevin reviews
+  "dfx.hw.c.mode.standalone": "Ứng dụng đã cài", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.CONNECTED": "Đã kết nối", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.RECONNECTING": "Đang kết nối lại", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.OFFLINE": "Ngoại tuyến", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.DEGRADED": "Suy giảm", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.android": "Android", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.windows": "Windows", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.macos": "macOS", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.linux": "Linux", // DRAFT — Kevin reviews
 };

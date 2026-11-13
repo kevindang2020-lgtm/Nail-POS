@@ -145,4 +145,21 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     expect(screen.queryByTestId('dfx-ver')).toBeNull();
     expect(screen.queryByTestId('dfx-ver-policy')).toBeNull();
   });
+
+  it('extras Device Assignments 08: Device Assignments opens this register\'s hardware readiness (measured live, read only); other views have no such button', async () => {
+    r('assignments');
+    fireEvent.click(await screen.findByTestId('dfx-hw-open'));
+    const dlg = await screen.findByTestId('dfx-hw');
+    for (const k of ['screen', 'viewport', 'touch', 'browser', 'os', 'mode', 'network', 'reconnect', 'agent', 'peripherals']) expect(within(dlg).getByTestId(`dfx-hw-${k}`)).toBeInTheDocument();
+    expect(within(dlg).getByTestId('dfx-hw-agent').getAttribute('data-state')).toBe('not_reported');
+    expect(within(dlg).getByTestId('dfx-hw-peripherals')).toHaveTextContent('No driver support is claimed here.');
+    expect(m.check).not.toHaveBeenCalled();
+    fireEvent.click(within(dlg).getByTestId('dfx-hw-again'));
+    expect(screen.getByTestId('dfx-hw')).toBeInTheDocument();
+  });
+  it('extras Device Assignments 08: the Reception POS view has no hardware readiness button', async () => {
+    r('reception-pos');
+    await screen.findByRole('heading', { name: 'Reception POS' });
+    expect(screen.queryByTestId('dfx-hw-open')).toBeNull();
+  });
 });

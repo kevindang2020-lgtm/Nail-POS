@@ -25,6 +25,7 @@ import { codeLabel, agoLabel } from '../components/codeLabel';
 import { fmtInZone, fmtNumber } from '../i18n/format';
 import { deviceToday } from '../lib/deviceToday';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { HardwareReadinessDialog } from './hardwareReadiness';
 
 /** extras (Tablets · 08) — App lifecycle: a device's reported app version against the NEWEST version reported by the devices
  *  listed. There is no minimum-version policy in the product, so nothing is called "unsupported" and no upgrade is required —
@@ -98,6 +99,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   useEffect(loadTop, [loadTop]);
   useEffect(loadList, [loadList]);
   const refresh = () => { loadTop(); loadList(); };
+  const [hwOpen, setHwOpen] = useState(false);   // extras Device Assignments 08 — this register's hardware readiness (measured live, read only)
   const runCheck = () => { setHealth('loading'); posDeviceFleetApi.check(cfg.cls).then(setHealth).catch((e) => setHealth({ error: reportError(e, 'devices') })); };
 
   const n = (v: number | undefined | null) => (v == null ? '—' : fmtNumber(v));
@@ -145,9 +147,11 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
           <div className="sub" data-testid="dfx-connected">{connected == null ? '—' : connected} {tx('pos.connected')}{sum ? ` · ${tt('dfx.checkedAt', { at: when(sum.checkedAt) })}` : ''}</div>
         </div>
         {cfg.manage ? <button className="btn ghost" data-testid="dfx-manage" onClick={() => nav(cfg.manage!.to)}>{tt(cfg.manage.label)}</button> : null}
+        {view === 'assignments' ? <button className="btn ghost" data-testid="dfx-hw-open" onClick={() => setHwOpen(true)}>{tt('dfx.hw.btn')}</button> : null}
         <button className="btn ghost" data-testid="dfx-refresh" onClick={refresh}>{tt('dfx.refresh')}</button>
         <button className="btn" data-testid="dfx-check" onClick={runCheck}>{tt(`dfx.check.${cfg.key}`)}</button>
       </div>
+      {hwOpen ? <HardwareReadinessDialog onClose={() => setHwOpen(false)} /> : null}
       {topErr ? <ErrorRetry message={topErr} onRetry={loadTop} /> : null}
       <div className="rvw-kpis dfx-kpis" data-testid="dfx-kpis">{kpis()}</div>
       </>}
