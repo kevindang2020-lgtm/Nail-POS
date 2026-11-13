@@ -27,7 +27,8 @@ const st = (branchUsage: unknown) => ({
 const attempt = (o: object) => ({ id: 'pa1', status: 'SETTLED', provider: 'p', amountCents: 500, settlementRef: null, signatureVerified: false, settledAt: null, failureCode: null, requestedAt: '2026-11-10T15:00:00Z', ...o });
 const row = (o: object) => ({ id: 'm1', redemptionId: 'r1', ticketId: 't1', amountCents: 500, adjustedCents: 0, owedCents: 500, status: 'PAID', stage: 'PAID', why: 'paid_verified_settlement',
   holdReason: null, settlementRef: null, paidAt: null, eligibleAt: null, createdAt: '2026-11-09T15:00:00Z', attempts: [], adjustments: [], journal: [], ...o });
-const page = (o: object) => ({ provider: { connected: false, state: 'BLOCKED_EXTERNAL' },
+const noX = { expiredHolds: { count: 0, items: [] }, unreconciledPaid: { count: 0, items: [] }, disputedReversals: { count: 0, items: [] } };
+const page = (o: object) => ({ exceptionQueue: noX, provider: { connected: false, state: 'BLOCKED_EXTERNAL' },
   settlement: { lastVerifiedAt: '2026-11-11T16:30:00Z', waitingOnProvider: 2, oldestWaitingSince: '2026-11-10T15:00:00Z', unknownAnswer: 1, oldestUnknownSince: '2026-11-10T18:00:00Z' },
   totals: [{ status: 'PAID', stage: 'PAID', count: 1, owedCents: 500 }, { status: 'PAYOUT_PENDING', stage: 'PROCESSING', count: 1, owedCents: 300 }], total: 2, page: 1, pageSize: 8, pageCount: 1, items: [
     row({ id: 'm1', settlementRef: 'stl_9', paidAt: '2026-11-11T16:30:00Z', attempts: [attempt({ settlementRef: 'stl_9', signatureVerified: true, settledAt: '2026-11-11T16:30:00Z' })],
@@ -129,5 +130,29 @@ describe('RewardsNetworkPanel — owner finance export (extras GLOBAL LOYALTY RE
     render(<RewardsNetworkPanel />);
     await screen.findByTestId('rn-kpis'); await screen.findByTestId('rn-fresh');
     expect(screen.queryByTestId('rn-export')).toBeNull();
+  });
+});
+
+describe('RewardsNetworkPanel — redemption exception queue (extras Global Loyalty Rewards 07)', () => {
+  it('counts each kind and lists them on demand; none says none', async () => {
+    payMock.mockResolvedValueOnce(page({ exceptionQueue: {
+      expiredHolds: { count: 2, items: [{ redemptionId: 'r9', ticketId: 'aaaa-ticket-000111', valueCents: 100, at: '2026-11-10T15:00:00Z' }] },
+      unreconciledPaid: { count: 1, items: [{ redemptionId: 'r8', ticketId: 'bbbb-ticket-000222', valueCents: 200, at: '2026-11-11T15:00:00Z' }] },
+      disputedReversals: { count: 1, items: [{ payableId: 'm1', status: 'OFFSET', ticketId: 'cccc-ticket-000333', reversedCents: 100, holdReason: null, at: '2026-11-11T16:00:00Z' }] } } }));
+    render(<RewardsNetworkPanel />);
+    fireEvent.click(await screen.findByTestId('rn-payables'));
+    const box = await screen.findByTestId('rn-pay-exceptions');
+    expect(box).toHaveTextContent('Exceptions: 1 paid ticket(s) whose reward was never confirmed · 1 refund(s) after payout started · 2 expired hold(s)');
+    fireEvent.click(screen.getByTestId('rn-pay-x-toggle'));
+    expect(screen.getByTestId('rn-pay-x-unreconciled')).toHaveTextContent('Ticket #000222 is paid but its $2.00 reward is still on hold');
+    expect(screen.getByTestId('rn-pay-x-disputed')).toHaveTextContent('Refund of $1.00 on ticket #000333 after payout started · Recovery claim');
+    expect(screen.getByTestId('rn-pay-x-expired')).toHaveTextContent('$1.00 reward hold on ticket #000111 expired');
+  });
+  it('no exceptions is said plainly', async () => {
+    payMock.mockResolvedValue(page({}));
+    render(<RewardsNetworkPanel />);
+    fireEvent.click(await screen.findByTestId('rn-payables'));
+    expect(await screen.findByTestId('rn-pay-exceptions')).toHaveTextContent('Exceptions: none');
+    expect(screen.queryByTestId('rn-pay-x-toggle')).toBeNull();
   });
 });

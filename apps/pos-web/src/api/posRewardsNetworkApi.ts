@@ -51,6 +51,11 @@ export interface RewardsNetPayableRow {
   journal: { entryType: string; account: string; debitCents: number; creditCents: number; at: string | null }[];
 }
 export interface RewardsNetPayables {
+  exceptionQueue: {
+    expiredHolds: { count: number; items: { redemptionId: string; ticketId: string; valueCents: number; at: string | null }[] };
+    unreconciledPaid: { count: number; items: { redemptionId: string; ticketId: string; valueCents: number; at: string | null }[] };
+    disputedReversals: { count: number; items: { payableId: string; status: string; ticketId: string | null; reversedCents: number; holdReason: string | null; at: string | null }[] };
+  };
   provider: { connected: boolean; state: 'CONNECTED' | 'BLOCKED_EXTERNAL' };
   settlement: { lastVerifiedAt: string | null; waitingOnProvider: number; oldestWaitingSince: string | null; unknownAnswer: number; oldestUnknownSince: string | null };
   totals: { status: string; stage: RewardsNetPayableStage; count: number; owedCents: number }[];

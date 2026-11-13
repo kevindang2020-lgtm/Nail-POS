@@ -91,7 +91,32 @@ export async function salonPayables(db: Kysely<any>, tenantId: string, q: SalonP
     WHERE jl.account IN ('reimbursement_payable', 'merchant_recovery_receivable') AND jl.tenant_id = ${tenantId}::uuid AND (je.source_table || ':' || je.source_id) = ANY(${keys}::text[])
     ORDER BY je.created_at, je.id, jl.account`.execute(db)).rows : [];
 
+  // extras Global Loyalty Rewards 07 — the redemption EXCEPTION queue (read-only; this salon only; newest first, 10 each):
+  //   expired holds      points held on a ticket here that lapsed (last 90 days) — the customer kept the points, the ticket did not get them
+  //   unreconciled paid  a ticket here is PAID but its reward hold is still HELD (the paid-ticket step never confirmed it)
+  //   disputed reversals a refund touched a payable that was in payout or already paid (ON_HOLD after a refund / OFFSET claim)
+  const expired = (await sql<{ id: string; ticket_id: string; value_cents: string | number; expires_at: Date | string | null; total: string | number }>`SELECT
+      r.id, r.ticket_id, r.value_cents, r.expires_at, count(*) OVER () AS total
+    FROM reward_redemptions r WHERE r.tenant_id = ${tenantId}::uuid AND r.status = 'EXPIRED' AND r.created_at >= now() - interval '90 days'
+    ORDER BY r.expires_at DESC NULLS LAST, r.id DESC LIMIT 10`.execute(db)).rows;
+  const unreconciled = (await sql<{ id: string; ticket_id: string; value_cents: string | number; paid_at: Date | string | null; total: string | number }>`SELECT
+      r.id, r.ticket_id, r.value_cents, t.paid_at, count(*) OVER () AS total
+    FROM reward_redemptions r JOIN tickets t ON t.id = r.ticket_id AND t.tenant_id = r.tenant_id
+    WHERE r.tenant_id = ${tenantId}::uuid AND r.status = 'HELD' AND t.status = 'paid'
+    ORDER BY t.paid_at DESC NULLS LAST, r.id DESC LIMIT 10`.execute(db)).rows;
+  const disputed = (await sql<{ id: string; status: string; ticket_id: string | null; reversed: string | number; hold_reason: string | null; last_at: Date | string; total: string | number }>`SELECT
+      m.id, m.status, m.ticket_id, sum(ra.amount_cents) AS reversed, m.hold_reason, max(ra.created_at) AS last_at, count(*) OVER () AS total
+    FROM merchant_reimbursements m JOIN reimbursement_adjustments ra ON ra.reimbursement_id = m.id AND ra.tenant_id = m.tenant_id
+    WHERE m.tenant_id = ${tenantId}::uuid AND m.status IN ('ON_HOLD', 'OFFSET')
+    GROUP BY m.id, m.status, m.ticket_id, m.hold_reason ORDER BY max(ra.created_at) DESC, m.id DESC LIMIT 10`.execute(db)).rows;
+  const exceptionQueue = {
+    expiredHolds: { count: n(expired[0]?.total), items: expired.map((r) => ({ redemptionId: String(r.id), ticketId: String(r.ticket_id), valueCents: n(r.value_cents), at: iso(r.expires_at) })) },
+    unreconciledPaid: { count: n(unreconciled[0]?.total), items: unreconciled.map((r) => ({ redemptionId: String(r.id), ticketId: String(r.ticket_id), valueCents: n(r.value_cents), at: iso(r.paid_at) })) },
+    disputedReversals: { count: n(disputed[0]?.total), items: disputed.map((r) => ({ payableId: String(r.id), status: r.status, ticketId: r.ticket_id ? String(r.ticket_id) : null, reversedCents: n(r.reversed), holdReason: r.hold_reason ?? null, at: iso(r.last_at) })) },
+  };
+
   return {
+    exceptionQueue,
     provider: { connected: providerConnected, state: (providerConnected ? 'CONNECTED' : 'BLOCKED_EXTERNAL') as 'CONNECTED' | 'BLOCKED_EXTERNAL' },
     settlement: {
       lastVerifiedAt: iso(fresh?.last_verified),

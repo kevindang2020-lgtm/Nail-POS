@@ -12,6 +12,12 @@ export interface RewardInput { title?: string; description?: string; pointsCost?
  *  (extras GLOBAL LOYALTY REWARDS 07 reimbursement drill-down + 10 stale-provider indicator). Read-only. */
 export type RewardsPayableStage = 'PAYABLE' | 'PROCESSING' | 'PAID' | 'EXCEPTION' | 'CLOSED';
 export interface RewardsSalonPayables {
+  /** extras Global Loyalty Rewards 07: the redemption exception queue (this salon, newest first, at most 10 each) */
+  exceptionQueue: {
+    expiredHolds: { count: number; items: Array<{ redemptionId: string; ticketId: string; valueCents: number; at: string | null }> };
+    unreconciledPaid: { count: number; items: Array<{ redemptionId: string; ticketId: string; valueCents: number; at: string | null }> };
+    disputedReversals: { count: number; items: Array<{ payableId: string; status: string; ticketId: string | null; reversedCents: number; holdReason: string | null; at: string | null }> };
+  };
   provider: { connected: boolean; state: 'CONNECTED' | 'BLOCKED_EXTERNAL' };
   settlement: { lastVerifiedAt: string | null; waitingOnProvider: number; oldestWaitingSince: string | null; unknownAnswer: number; oldestUnknownSince: string | null };
   totals: Array<{ status: string; stage: RewardsPayableStage; count: number; owedCents: number }>;

@@ -644,6 +644,7 @@ function PayablesDialog({ onClose }: { onClose: () => void }) {
           <div data-testid="rn-pay-waiting">{s && s.waitingOnProvider > 0 ? tx('rn.pay.waiting', { n: fmtNumber(s.waitingOnProvider), date: whenTime(s.oldestWaitingSince) }) : tx('rn.pay.noWaiting')}</div>
           <div data-testid="rn-pay-unknown" className={s && s.unknownAnswer > 0 ? 'warn' : ''}>{s && s.unknownAnswer > 0 ? tx('rn.pay.unknown', { n: fmtNumber(s.unknownAnswer), date: whenTime(s.oldestUnknownSince) }) : tx('rn.pay.noUnknown')}</div>
         </div>
+        <ExceptionQueue q={data.exceptionQueue} />
         <div className="fk-seg" role="group" aria-label={tx('rn.status')} data-testid="rn-pay-filter">
           <button type="button" className={status === '' ? 'on' : ''} onClick={() => { setStatus(''); setPage(1); }}>{tx('rn.pay.all', { n: fmtNumber(data.totals.reduce((a, t) => a + t.count, 0)) })}</button>
           {data.totals.map((t) => (
@@ -763,5 +764,25 @@ function FinanceExportDialog({ onClose }: { onClose: () => void }) {
       {err ? <div className="fk-note bad" role="alert">{err}</div> : null}
       {done ? <div className="fk-note ok" role="status" data-testid="rn-export-done">{tx('rn.export.done', { n: fmtNumber(done.rows), x: fmtNumber(done.exceptions) })}</div> : null}
     </FitDialog>
+  );
+}
+
+/** Extras (Global Loyalty Rewards 07): the redemption exception queue — expired holds, paid tickets whose reward hold was never
+ *  confirmed, and refunds that hit a payable in payout or already paid. The server lists them (this salon only); nothing is
+ *  changed from here. Assigning an exception to a person is not built (there is no assignment record). */
+function ExceptionQueue({ q }: { q: RewardsNetPayables['exceptionQueue'] }) {
+  const total = q.expiredHolds.count + q.unreconciledPaid.count + q.disputedReversals.count;
+  const [open, setOpen] = useState(false);
+  const ref = (id: string | null) => (id ? '#' + id.slice(-6) : '—');
+  return (
+    <div className={'rn-banner' + (total ? ' warn' : '')} role="note" data-testid="rn-pay-exceptions">
+      <div>{total ? tx('rn.pay.x.summary', { a: fmtNumber(q.unreconciledPaid.count), b: fmtNumber(q.disputedReversals.count), c: fmtNumber(q.expiredHolds.count) }) : tx('rn.pay.x.none')}
+        {total ? <> <button type="button" className="fk-btn ghost" data-testid="rn-pay-x-toggle" onClick={() => setOpen(!open)}>{open ? tx('rn.pay.x.hide') : tx('rn.pay.x.show')}</button></> : null}</div>
+      {open ? <ul className="fk-list rn-mini" data-testid="rn-pay-x-list">
+        {q.unreconciledPaid.items.map((x) => <li key={'u' + x.redemptionId} className="fk-li" data-testid="rn-pay-x-unreconciled"><div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.x.unreconciled', { amount: fmtMoney(x.valueCents), ticket: ref(x.ticketId) })}</span><span className="fk-li-s">{whenTime(x.at)}</span></div></li>)}
+        {q.disputedReversals.items.map((x) => <li key={'d' + x.payableId} className="fk-li" data-testid="rn-pay-x-disputed"><div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.x.disputed', { amount: fmtMoney(x.reversedCents), status: label('rn.pay.st', x.status), ticket: ref(x.ticketId) })}</span><span className="fk-li-s">{whenTime(x.at)}{x.holdReason ? ` · ${x.holdReason}` : ''}</span></div></li>)}
+        {q.expiredHolds.items.map((x) => <li key={'e' + x.redemptionId} className="fk-li" data-testid="rn-pay-x-expired"><div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.x.expired', { amount: fmtMoney(x.valueCents), ticket: ref(x.ticketId) })}</span><span className="fk-li-s">{whenTime(x.at)}</span></div></li>)}
+      </ul> : null}
+    </div>
   );
 }

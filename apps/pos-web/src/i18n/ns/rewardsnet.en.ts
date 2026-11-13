@@ -211,4 +211,11 @@ export const REWARDSNET_EN = {
   'rn.export.go': 'Download CSV',
   'rn.export.failed': 'The export could not be made.',
   'rn.export.done': 'Downloaded {n} rows ({x} exceptions).',
+  'rn.pay.x.summary': 'Exceptions: {a} paid ticket(s) whose reward was never confirmed · {b} refund(s) after payout started · {c} expired hold(s) in the last 90 days.',
+  'rn.pay.x.none': 'Exceptions: none — no expired holds, unconfirmed paid tickets or disputed refunds.',
+  'rn.pay.x.show': 'Show',
+  'rn.pay.x.hide': 'Hide',
+  'rn.pay.x.unreconciled': 'Ticket {ticket} is paid but its {amount} reward is still on hold',
+  'rn.pay.x.disputed': 'Refund of {amount} on ticket {ticket} after payout started · {status}',
+  'rn.pay.x.expired': '{amount} reward hold on ticket {ticket} expired',
 };

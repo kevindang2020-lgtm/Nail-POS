@@ -212,4 +212,11 @@ export const REWARDSNET_VI = {
   'rn.export.go': 'Tải CSV', // DRAFT — Kevin reviews
   'rn.export.failed': 'Không thể tạo tệp xuất.', // DRAFT — Kevin reviews
   'rn.export.done': 'Đã tải {n} dòng ({x} ngoại lệ).', // DRAFT — Kevin reviews
+  'rn.pay.x.summary': 'Ngoại lệ: {a} hóa đơn đã thanh toán nhưng phần thưởng chưa được xác nhận · {b} lần hoàn tiền sau khi đã bắt đầu chi trả · {c} lượt giữ điểm hết hạn trong 90 ngày qua.', // DRAFT — Kevin reviews
+  'rn.pay.x.none': 'Ngoại lệ: không có — không có lượt giữ điểm hết hạn, hóa đơn chưa xác nhận hay hoàn tiền tranh chấp.', // DRAFT — Kevin reviews
+  'rn.pay.x.show': 'Xem', // DRAFT — Kevin reviews
+  'rn.pay.x.hide': 'Ẩn', // DRAFT — Kevin reviews
+  'rn.pay.x.unreconciled': 'Hóa đơn {ticket} đã thanh toán nhưng phần thưởng {amount} vẫn đang được giữ', // DRAFT — Kevin reviews
+  'rn.pay.x.disputed': 'Hoàn {amount} trên hóa đơn {ticket} sau khi đã bắt đầu chi trả · {status}', // DRAFT — Kevin reviews
+  'rn.pay.x.expired': 'Lượt giữ phần thưởng {amount} trên hóa đơn {ticket} đã hết hạn', // DRAFT — Kevin reviews
 };

@@ -369,6 +369,11 @@ describe("extras GLOBAL LOYALTY REWARDS 07 + 10 — the salon's own reimbursemen
     const waitingId = await mk('sp-wait'); const unknownId = await mk('sp-unknown');
     await requestPayout(db, { name: 'test-verified-provider', submit: async (p) => ({ status: 'SUBMITTED', providerPayoutId: 'po_' + p.attemptId }) }, { reimbursementId: waitingId, actorUserId: SA, idempotencyKey: 'sp-wait-1' });
     await requestPayout(db, { name: 'test-verified-provider', submit: async () => { throw new Error('timeout'); } }, { reimbursementId: unknownId, actorUserId: SA, idempotencyKey: 'sp-unknown-1' });
+    // a paid ticket whose reward hold was never confirmed (the paid-ticket step did not run): an unreconciled exception
+    // (fixture: the customer has no points left, so the left-behind hold row is written directly — it is what the queue reads)
+    const tu = await openTicket(TC, BC, custOf[TC], 1000); await payRest(TC, BC, tu, 1000);
+    const hu = { redemptionId: (await q(`insert into reward_redemptions (tenant_id, branch_id, ticket_id, identity_id, point_tenths, value_cents, status, idempotency_key, expires_at)
+      values ($1,$2,$3,$4,100,100,'HELD','sp-unrec',now() + interval '1 hour') returning id`, [TC, BC, tu, IDV]))[0].id as string };
     const snap = async () => q(`select id, status, version from merchant_reimbursements order by id`);
     const before = await snap();
 
@@ -407,6 +412,14 @@ describe("extras GLOBAL LOYALTY REWARDS 07 + 10 — the salon's own reimbursemen
     const a = await salonPayables(db, TA, {}, false);   // T13: A accepted $2 and has one owed payable
     expect(a.items).toEqual([expect.objectContaining({ status: 'ACCRUED_OWED', stage: 'PAYABLE', why: 'owed_no_provider', owedCents: 200, attempts: [] })]);
     expect(a.items.some((x) => byId[x.id])).toBe(false);
+    // extras Global Loyalty Rewards 07: the exception queue — expired holds (the two from the expiry test), the unreconciled paid
+    // ticket, and the disputed reversal (the payout that was refunded after it was paid → OFFSET claim of $1.00)
+    const xq = r.exceptionQueue;
+    expect(xq.expiredHolds.count).toBe(2); expect(xq.expiredHolds.items.every((x) => x.valueCents === 100 && !!x.at)).toBe(true);
+    expect(xq.unreconciledPaid).toEqual({ count: 1, items: [expect.objectContaining({ redemptionId: hu.redemptionId, ticketId: tu, valueCents: 100 })] });
+    expect(xq.disputedReversals.items.find((x) => x.payableId === paid.id)).toMatchObject({ status: 'OFFSET', reversedCents: 100 });
+    expect(b.exceptionQueue.unreconciledPaid.count).toBe(0);
+    expect(b.exceptionQueue.expiredHolds.items.some((x) => xq.expiredHolds.items.some((y) => y.redemptionId === x.redemptionId))).toBe(false);
     expect(await snap()).toEqual(before);   // read-only
   });
   it('extras GLOBAL LOYALTY REWARDS 16: the owner finance export — purchases, allocations, payables with exception flags, source ids, rule and date basis; audited; another salon sees none', async () => {
