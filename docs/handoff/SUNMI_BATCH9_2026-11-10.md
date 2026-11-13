@@ -682,6 +682,17 @@ aside ("needs a table / too large / needs design") were built with the safest re
   upsell loyalty redemption (one redeem rule) + missed-service record checks; add-on profitability; checkout conflict
   simulator; front-desk usage budget; device inventory export; AI plans technical readiness.
 Partial, stated: AI Front Desk 09 provider-charge alert needs the Retell/Twilio usage-billing API + credentials;
-200-Technician 08 bulk INVITE needs Kevin's decision on SMS/email volume and consent; Promotions 15 has no POS screen.
+200-Technician 08 bulk INVITE needs Kevin's decision on SMS/email volume and consent; Promotions 15's screen came in round 10.
 Merge fixes: removed a 'Print selected' control (Kevin: no printing); community checks use capabilities not role names;
 merged two report features into one business-center file; aged a test's prior jobs so the double-tap guard can't reuse them.
+
+## Round 10 — leftovers after the final rows (Nov 13 2026)
+- Logs: From/To are now the salon's calendar days in the branch time zone (were UTC days); a customer-display
+  "disconnected" event is a warning, not info (logs-page.pgtest LG-10).
+- AI Center: its Check / Checking / Refresh keys renamed `aicen.*` (they collided with another namespace).
+- Kevin's churn decision applied server-side too: Customer Intelligence's churn_watch filter, each row's churn flag and
+  the card all equal Customer Retention's at-risk list (customer-intelligence-center.pgtest CI-02 / LS-01).
+- Lint: pre-existing errors in files touched this batch cleared (no behavior change; inbox/campaign 200 tests, team
+  members 12/12).
+- Promotions 15 now has its screen: Promotions → Conflict simulator renders GET pos/deals/conflict-simulator
+  (pos.marketing.view, same access as the deals dashboard); practice tickets only, the POS never re-prices.
