@@ -1943,4 +1943,39 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.catalog.checkout_discount_over_lines.fix": "Xem lại giảm giá trên các phiếu đó (ưu đãi, mã giảm giá, giảm tay hoặc thành viên) và ai đã duyệt.", // DRAFT — Kevin reviews
   "syschk.catalog.checkout_tax_without_taxable_line": "Không phiếu đã thanh toán nào tính thuế khi không có dòng chịu thuế", // DRAFT — Kevin reviews
   "syschk.catalog.checkout_tax_without_taxable_line.fix": "Kiểm tra cài đặt Chịu thuế của từng dịch vụ và tiền thuế trên các phiếu đó; hoàn lại thuế nếu tính nhầm.", // DRAFT — Kevin reviews
+  "ops.serving.review.title": "Xem lại trước khi xác nhận", // DRAFT — Kevin reviews
+  "ops.serving.review.action.mark_ready": "Đánh dấu xong", // DRAFT — Kevin reviews
+  "ops.serving.review.action.assign_technician": "Chuyển sang thợ khác", // DRAFT — Kevin reviews
+  "ops.serving.review.action.add_service": "Thêm dịch vụ phụ", // DRAFT — Kevin reviews
+  "ops.serving.review.guest": "Khách", // DRAFT — Kevin reviews
+  "ops.serving.review.move": "Từ {from} → sang {to}", // DRAFT — Kevin reviews
+  "ops.serving.review.priceCatalog": "Giá {price} (giá niêm yết)", // DRAFT — Kevin reviews
+  "ops.serving.review.priceManual": "Giá nhập tay {price} (giá niêm yết {catalog})", // DRAFT — Kevin reviews
+  "ops.serving.review.affected": "Dịch vụ bị thay đổi", // DRAFT — Kevin reviews
+  "ops.serving.review.new": "mới", // DRAFT — Kevin reviews
+  "ops.serving.review.permYes": "Bạn được phép: {what}", // DRAFT — Kevin reviews
+  "ops.serving.review.permNo": "Vai trò của bạn không được phép: {what}", // DRAFT — Kevin reviews
+  "ops.serving.review.overrideYes": "bạn có quyền quản lý ghi đè", // DRAFT — Kevin reviews
+  "ops.serving.review.overrideNo": "không có quyền quản lý ghi đè", // DRAFT — Kevin reviews
+  "ops.serving.review.noConflicts": "Không có xung đột.", // DRAFT — Kevin reviews
+  "ops.serving.review.confirm": "Xác nhận", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TICKET_LOCKED_AT_SERVICE_DONE": "Phiếu này đã khóa ở Hoàn tất dịch vụ — hãy mở lại trước.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.ALREADY_DONE": "Khách này đã ở Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.NOT_IN_SERVICE": "Dịch vụ chưa bắt đầu nên chưa thể đánh dấu xong.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.NOTES_REQUIRED": "Tiệm yêu cầu ghi chú dịch vụ trước khi đánh dấu xong.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.CANNOT_MARK_DONE": "Hiện chưa thể đánh dấu khách này xong.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.OPEN_SERVICE_LINES": "{n} dòng dịch vụ chưa đánh dấu xong (vẫn được phép).", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_FOUND": "Thợ này không thuộc tiệm.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.SAME_TECHNICIAN": "Khách đang ở với thợ này rồi.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_ACTIVE": "Thợ này không còn hoạt động.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_BRANCH_ACCESS_DENIED": "Thợ này không thuộc chi nhánh này.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_SKILLED": "Thợ này chưa được duyệt làm {service}.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_AVAILABLE": "Thợ này hiện không rảnh.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_ALREADY_SERVING": "Thợ này đang phục vụ khách khác.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.SCHEDULE_CONFLICT": "Thợ này có lịch hẹn vào giờ này.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.BOOKING_SOON": "{name} có lịch hẹn sau {minutes} phút; việc này cần khoảng {needs} phút.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.MANAGER_OVERRIDE_REQUIRED": "Tiệm chỉ cho đổi dịch vụ khi đang làm nếu có quản lý ghi đè.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.MANUAL_PRICE": "Giá nhập tay {priceCents} thay cho giá niêm yết {catalogCents} (quản lý ghi đè).", // DRAFT — Kevin reviews
+  "ops.serving.review.c.PRICE_OVERRIDE_NOT_PERMITTED": "Giá nhập tay cần quản lý ghi đè, vai trò của bạn không có quyền này.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.ALREADY_ON_TICKET": "{service} đã có trên phiếu này.", // DRAFT — Kevin reviews
 };

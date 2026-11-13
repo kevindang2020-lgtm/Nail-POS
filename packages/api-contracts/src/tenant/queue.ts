@@ -188,3 +188,26 @@ export interface TechQueueSharedPart { technicianId: string; technicianName: str
 export interface TechQueueSharedPartFields { visitPart?: number | null; sharedWith?: TechQueueSharedPart[] }
 /** POST pos/queue/groups/:groupId/move-to-tech-queue */
 export interface MoveGroupToTechQueueResult { moved: { queueItemId: string; techQueueTicketIds: string[]; duplicate: boolean }[] }
+
+// ── Serving 07 — Touch Safe Action Review (GET pos/serving/tickets/:ticketId/action-review, pos.serving.view). Before an
+//    impactful serving action (Mark Ready, move to another technician, an add-on — at its catalog price or a manual price)
+//    the screen shows the guest, the service lines the action touches, the permission it needs and whether THIS person
+//    holds it, and every conflict THE action's own gates would raise — computed by the same checks the action runs
+//    (canMarkDone, the Service Done lock, the workflow settings, the ONE technician eligibility authority). Read only:
+//    nothing is written, moved, priced or sent. Integer cents.
+export type ServingReviewAction = 'mark_ready' | 'assign_technician' | 'add_service';
+export interface ServingActionReviewConflict { code: string; severity: 'block' | 'warn' | 'info'; vars?: Record<string, string | number> }
+export interface ServingActionReview {
+  ticketId: string; action: ServingReviewAction;
+  guest: { customerName: string; ticketNumber: string; isVip: boolean };
+  /** the lines the action touches: Mark Ready → every line; a move → the lines the primary technician performs; an add-on → the new line */
+  affected: { serviceLineId: string | null; serviceName: string; technicianName: string | null; priceCents: number; isNew: boolean }[];
+  change: { fromTechnicianName?: string | null; toTechnicianName?: string | null; catalogPriceCents?: number; priceCents?: number; priceSource?: 'catalog' | 'manual' } | null;
+  permission: { key: string; allowed: boolean; overrideKey?: string; overrideAllowed?: boolean };
+  conflicts: ServingActionReviewConflict[];
+  /** true when no conflict blocks and the permission is held — the real action would be accepted as reviewed */
+  canProceed: boolean;
+  /** the server's call whether the screen must stop for a confirmation: always for a move or an add-on; for Mark Ready only
+   *  when something blocks or warns (or the permission is missing) — a clean Mark Ready stays one tap */
+  needsConfirmation: boolean;
+}

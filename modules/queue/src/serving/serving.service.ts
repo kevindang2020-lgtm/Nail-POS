@@ -4,6 +4,7 @@
 // ASYNC: the repository is async (Postgres/Kysely or in-memory), so every use-case awaits the repo.
 import { type RealtimeEmitter, EVENTS } from '@aipowersalon/realtime-contracts';
 import { isAddOnCategory, coded, type CodedText, withCode } from '@aipowersalon/api-contracts';
+import type { ServingActionReview, ServingActionReviewConflict, ServingReviewAction } from '@aipowersalon/api-contracts/tenant';
 import { hasPermission, isStaffPrincipal } from '@aipowersalon/permissions';
 import { randomUUID } from 'node:crypto';
 import {
@@ -154,6 +155,81 @@ export class ServingService {
   async getKpis(ctx: ServingContext) { return (await this.getState(ctx)).kpis; }
   async tickets(ctx: ServingContext, f: ServingFilters = {}): Promise<{ items: POSServingTicketRow[]; pagination: any }> { this.need(ctx, 'pos.serving.view'); return (await this.repo.query(ctx, f)).tickets; }
   async detail(ctx: ServingContext, id: string): Promise<POSServingTicketDetailFull> { this.need(ctx, 'pos.serving.view'); const d = await this.repo.detail(ctx, id); if (!d) throw withCode(new ValidationError('Ticket not found'), 'TICKET_NOT_FOUND'); d.addOnSuggestions = await this.buildAddOnSuggestions(ctx, d); const settings = await this.repo.settings(ctx); d.allowedActions = this.actionsFor(ctx, d.status, settings); d.serviceDoneReadiness = this.readinessFor(ctx, d, settings); this.log(ctx, 'pos_serving_ticket_viewed', 'pos_serving_ticket', id); return d; }
+
+  /** Serving 07 — Touch Safe Action Review: what an impactful action would touch and every refusal ITS OWN gates would raise,
+   *  for THIS person, before they confirm. The same checks the action runs (canMarkDone, the Service Done lock, the workflow
+   *  settings, the manager-override authority, THE eligibility authority) — a conflict here is the refusal the action would
+   *  answer, never a second rule. Read only: nothing is written, moved, priced, sent or audited to the database. */
+  async actionReview(ctx: ServingContext, id: string, q: { action?: string; technicianId?: string; serviceId?: string; priceCents?: string | number }): Promise<ServingActionReview> {
+    this.need(ctx, 'pos.serving.view');
+    const action = q?.action as ServingReviewAction;
+    if (!['mark_ready', 'assign_technician', 'add_service'].includes(action)) throw withCode(new ValidationError('Unknown action to review'), 'VALIDATION_FAILED');
+    const t = await this.ticketOr404(ctx, id); const d = (await this.repo.detail(ctx, id))!; const settings = await this.repo.settings(ctx);
+    const can = (k: string) => hasPermission(ctx as Parameters<typeof hasPermission>[0], k);
+    const OVERRIDE = 'pos.booking.override_conflict';
+    const conflicts: ServingActionReviewConflict[] = [];
+    const locked = action !== 'mark_ready' && !!(await this.repo.serviceDoneLock(ctx, id));
+    if (locked) conflicts.push({ code: 'TICKET_LOCKED_AT_SERVICE_DONE', severity: 'block' });
+    const lineOut = (l: SVLine, isNew = false) => ({ serviceLineId: isNew ? null : l.serviceLineId, serviceName: l.serviceName, technicianName: l.technicianName ?? t.primaryTechName ?? null, priceCents: l.priceCents, isNew });
+    const remaining = d.estimatedDurationMinutes && d.estimatedDurationMinutes > 0 ? Math.max(0, d.estimatedDurationMinutes - (d.elapsedMinutes ?? 0)) : null;
+    // the technician's next booking today vs the time this visit still needs (+ an add-on's own length) — a warning, never a block
+    const bookingSoon = async (technicianId: string | undefined, name: string | null | undefined, extraMinutes: number) => {
+      if (!technicianId || remaining == null || !this.repo.nextBookingMinutes) return;
+      const until = (await this.repo.nextBookingMinutes(ctx))[technicianId];
+      if (until != null && remaining + extraMinutes > until) conflicts.push({ code: 'BOOKING_SOON', severity: 'warn', vars: { name: name || '—', minutes: until, needs: remaining + extraMinutes } });
+    };
+    const eligibilityConflict = async (technicianId: string, serviceIds: string[], requireNotServing: boolean, overrideConflicts: boolean) => {
+      if (!this.eligibility) return;
+      try { await this.eligibility.assert({ tenantId: ctx.tenantId, branchId: ctx.branchId || null, technicianId, serviceIds, requireNotServing, actor: { userId: ctx.userId, role: ctx.role, permissions: ctx.permissions, overrideConflicts } }); }
+      catch (e) { if (!(e instanceof TechnicianEligibilityError)) throw e; conflicts.push({ code: e.code, severity: 'block', ...(e.details && typeof e.details.serviceName === 'string' ? { vars: { service: e.details.serviceName } } : {}) }); }
+    };
+    let affected: ServingActionReview['affected'] = []; let change: ServingActionReview['change'] = null; let permission: ServingActionReview['permission'];
+    if (action === 'mark_ready') {
+      permission = { key: SERVING_ACTION_PERMISSION.mark_ready, allowed: can(SERVING_ACTION_PERMISSION.mark_ready) };
+      affected = t.lines.map((l) => lineOut(l));
+      if (t.status === 'completed' || t.status === 'sent_to_service_done') conflicts.push({ code: 'ALREADY_DONE', severity: 'block' });
+      else { const gate = canMarkDone(t.status, t.notes, settings); if (!gate.ok) conflicts.push({ code: gate.reason || 'CANNOT_MARK_DONE', severity: 'block' }); }
+      const open = t.lines.filter((l) => l.status !== 'done').length;
+      if (open > 0 && t.status !== 'completed' && t.status !== 'sent_to_service_done') conflicts.push({ code: 'OPEN_SERVICE_LINES', severity: 'info', vars: { n: open } });   // information only — the gate does not require it
+    } else if (action === 'assign_technician') {
+      permission = { key: 'pos.serving.assign_technician', allowed: can('pos.serving.assign_technician'), overrideKey: OVERRIDE, overrideAllowed: can(OVERRIDE) };
+      const to = q?.technicianId ? (await this.repo.technicians(ctx)).find((x) => x.technicianId === q.technicianId) : undefined;
+      if (!q?.technicianId) throw new ValidationError('A technician is required', 'TECHNICIAN_REQUIRED');
+      affected = t.lines.filter((l) => !l.technicianId || !t.primaryTechId || l.technicianId === t.primaryTechId).map((l) => lineOut(l));
+      change = { fromTechnicianName: t.primaryTechName ?? null, toTechnicianName: to?.name ?? null };
+      if (!to) conflicts.push({ code: 'TECHNICIAN_NOT_FOUND', severity: 'block' });
+      else if (to.technicianId === t.primaryTechId) conflicts.push({ code: 'SAME_TECHNICIAN', severity: 'warn' });
+      else {
+        const live = ['in_service', 'paused', 'delayed'].includes(t.status);
+        await eligibilityConflict(to.technicianId, this.ownServiceIdsOf(t, t.primaryTechId), live, false);
+        await bookingSoon(to.technicianId, to.name, 0);
+      }
+    } else {
+      permission = { key: 'pos.serving.edit_services', allowed: can('pos.serving.edit_services'), overrideKey: OVERRIDE, overrideAllowed: can(OVERRIDE) };
+      if (!q?.serviceId) throw withCode(new ValidationError('A service is required'), 'VALIDATION_FAILED');
+      const svc = await this.repo.serviceCatalog(ctx, String(q.serviceId)); if (!svc) throw withCode(new ValidationError('Unknown service'), 'SERVICE_UNKNOWN');
+      const asked = q.priceCents === undefined || q.priceCents === '' ? null : Number(q.priceCents);
+      if (asked != null && (!Number.isInteger(asked) || asked < 0)) throw withCode(new ValidationError('The price must be whole cents'), 'VALIDATION_FAILED');
+      const manual = asked != null && asked !== svc.priceCents;
+      const price = asked ?? svc.priceCents;
+      const tech = q.technicianId ? (await this.repo.technicians(ctx)).find((x) => x.technicianId === q.technicianId) : t.primaryTechId ? { technicianId: t.primaryTechId, name: t.primaryTechName ?? '' } : undefined;
+      affected = [{ serviceLineId: null, serviceName: svc.name, technicianName: tech?.name ?? null, priceCents: price, isNew: true }];
+      change = { catalogPriceCents: svc.priceCents, priceCents: price, priceSource: manual ? 'manual' : 'catalog' };
+      // the same two refusals addService answers: editing during service needs the override; a manual price needs it too
+      if (!settings.allowServiceEditDuringServing) conflicts.push({ code: 'MANAGER_OVERRIDE_REQUIRED', severity: can(OVERRIDE) ? 'warn' : 'block' });
+      if (manual) conflicts.push(can(OVERRIDE) ? { code: 'MANUAL_PRICE', severity: 'warn', vars: { catalogCents: svc.priceCents, priceCents: price } } : { code: 'PRICE_OVERRIDE_NOT_PERMITTED', severity: 'block' });
+      if (q.technicianId && !tech) conflicts.push({ code: 'TECHNICIAN_NOT_FOUND', severity: 'block' });
+      if (t.lines.some((l) => l.serviceId === svc.serviceId)) conflicts.push({ code: 'ALREADY_ON_TICKET', severity: 'warn', vars: { service: svc.name } });
+      if (q.technicianId && tech) await eligibilityConflict(tech.technicianId, [svc.serviceId], false, false);
+      await bookingSoon(tech?.technicianId, tech?.name, svc.durationMinutes || 0);
+    }
+    return {
+      ticketId: id, action, guest: { customerName: d.customer?.fullName ?? t.customerName, ticketNumber: d.ticketNumber, isVip: !!t.isVip },
+      affected, change, permission, conflicts,
+      canProceed: permission.allowed && !conflicts.some((c) => c.severity === 'block'),
+      needsConfirmation: action !== 'mark_ready' || !permission.allowed || conflicts.some((c) => c.severity !== 'info'),
+    };
+  }
 
   /** Canonical add-on suggestion builder (master doc §Serving "Add-ons"): active catalog services in the 'Add-on'
    *  category that are not already on the ticket. Used by BOTH the POS detail above and the tech app read below —

@@ -19,6 +19,7 @@ import { fmtDateTime, fmtTime, fmtMoney, displayLocale } from '../i18n/format';
 import { codedText } from '../i18n/coded-text';
 import { codeLabel } from '../components/codeLabel';
 import type { CodedText } from '@aipowersalon/api-contracts';
+import type { ServingActionReview } from '@aipowersalon/api-contracts/tenant';
 // POS Serving — the live service floor (Serving mandate, Oct 28 2026). One fixed 1920×1080 screen at 100 % zoom: title +
 // filters + live · 9 KPIs · Live Service Floor | Service Progress Board | AI Service Insights · Technician Service
 // Performance | Guest Service Details | Available / Finishing Technicians · analytics · 7 Quick Actions. Every list scrolls
@@ -196,12 +197,22 @@ export function POSServingScreen() {
     catch (e: any) { setNote(e?.message || tx('pos.action_failed')); }
     finally { setBusyId(null); }
   };
+  // Serving 07 — Touch Safe Action Review: the server says what the action touches, the permission and every conflict ITS OWN
+  // gates raise; a move / an add-on always stops here, a clean Mark Ready stays one tap (needsConfirmation is the server's call)
+  const [review, setReview] = useState<{ data: ServingActionReview; run: () => void } | null>(null);
+  const reviewThen = (tid: string, p: Parameters<typeof posServingApi.actionReview>[1], run: () => void) => {
+    setNote(null); setBusyId(tid + 'review');
+    posServingApi.actionReview(tid, p)
+      .then((r) => { if (!r.needsConfirmation && r.canProceed) { run(); return; } setReview({ data: r, run }); })
+      .catch((e: any) => setNote(e?.message || tx('pos.action_failed')))
+      .finally(() => setBusyId((b) => (b === tid + 'review' ? null : b)));
+  };
   const doAction = (tid: string, a: Action) => {
     setOverlay(null);
     if (a === 'start') return act(tid, () => posServingApi.start(tid), 'start', (r) => setNote(r?.duplicate ? tx('ops.serving.alreadyStarted') : tx('ops.serving.started')));
     if (a === 'pause') return act(tid, () => posServingApi.pause(tid), 'pause', () => setNote(tx('ops.serving.paused')));
     if (a === 'resume') return act(tid, () => posServingApi.resume(tid), 'resume', () => setNote(tx('ops.serving.resumed')));
-    if (a === 'mark_ready') return act(tid, () => posServingApi.markServiceDone(tid), 'ready', (r) => setNote(r?.duplicate ? tx('ops.serving.alreadyReady') : tx('ops.serving.markedReady')));
+    if (a === 'mark_ready') return reviewThen(tid, { action: 'mark_ready' }, () => { void act(tid, () => posServingApi.markServiceDone(tid), 'ready', (r) => setNote(r?.duplicate ? tx('ops.serving.alreadyReady') : tx('ops.serving.markedReady'))); });
     if (a === 'send_to_service_done') return act(tid, () => posServingApi.sendToServiceDone(tid), 'send', (r) => setNote(r?.duplicate ? tx('ops.serving.alreadySent') : tx('ops.serving.sent')));
     if (a === 'report_delay' || a === 'clear_delay') { setText(''); setDelayMin(''); setHelperSel(''); setOverlay({ kind: 'manage', id: tid }); }
   };
@@ -606,7 +617,7 @@ export function POSServingScreen() {
                 </div>
                 {moveTechOpen && selId ? (
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-                    <select aria-label={tx('pos.move_to_technician')} defaultValue="" onChange={(e) => e.target.value && doMoveTech(selId, e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+                    <select aria-label={tx('pos.move_to_technician')} defaultValue="" onChange={(e) => { const v = e.target.value; if (v) reviewThen(selId, { action: 'assign_technician', technicianId: v }, () => doMoveTech(selId, v)); }} style={{ ...inputStyle, flex: 1 }}>
                       <option value="">{tx('pos.move_to_technician_2')}</option>
                       {roster.map((r) => <option key={r.technicianId} value={r.technicianId}>{r.displayName}</option>)}
                     </select>
@@ -754,7 +765,7 @@ export function POSServingScreen() {
               </label>
               {(detail?.addOnSuggestions || []).length === 0 ? <div style={{ fontSize: 12, color: 'var(--muted)' }}>{tx('ops.serving.noAddOns')}</div> : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="sv-addon-list">
-                  {(detail?.addOnSuggestions || []).map((ad) => <button key={ad.serviceId} disabled={busyId === selId + 'addon'} style={{ ...ghostBtn, minHeight: 44, fontSize: 12, padding: '0 12px' }} onClick={() => addAddOn(selId, ad.serviceId, ad.serviceName)}>{ad.serviceName} · {m2(ad.priceCents)}</button>)}
+                  {(detail?.addOnSuggestions || []).map((ad) => <button key={ad.serviceId} disabled={busyId === selId + 'addon'} style={{ ...ghostBtn, minHeight: 44, fontSize: 12, padding: '0 12px' }} onClick={() => reviewThen(selId, { action: 'add_service', serviceId: ad.serviceId, ...(upTech ? { technicianId: upTech } : {}) }, () => addAddOn(selId, ad.serviceId, ad.serviceName))}>{ad.serviceName} · {m2(ad.priceCents)}</button>)}
                 </div>
               )}
             </>
@@ -823,6 +834,29 @@ export function POSServingScreen() {
           {allInsights.map((raw) => { const ins = { ...raw, ...floorInsight('serving', raw) }; return <div key={ins.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--line)' }}><div style={{ flex: 1 }}><div style={{ fontSize: 12.5 }}>{ins.text}</div>{ins.sub ? <div style={{ fontSize: 11, color: 'var(--muted)' }}>{ins.sub}</div> : null}</div>{ins.actionText && raw.route ? <button style={{ ...ghostBtn, minHeight: 44 }} onClick={() => { setOverlay(null); insightAct(raw); }}>{ins.actionText}</button> : null}</div>; })}
         </OverlayBox>
       ) : null}
+      {review ? (() => { const r = review.data; const rvText = (c: ServingActionReview['conflicts'][number]) => {
+        const vars: Record<string, string> = {}; for (const [k, v] of Object.entries(c.vars || {})) vars[k] = /Cents$/.test(k) ? m2(Number(v)) : String(v);
+        const k = `ops.serving.review.c.${c.code}`; const out = tx(k, vars); return out !== k ? out : codeLabel('ops.serving.review.c', c.code);
+      }; return (
+        <OverlayBox onClose={() => setReview(null)} title={tx('ops.serving.review.title')} sub={tx(`ops.serving.review.action.${r.action}`)}>
+          <div data-testid="sv-review" data-can-proceed={String(r.canProceed)} style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12.5 }}>
+            <div><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.review.guest')}: </span><b>{r.guest.customerName}</b>{r.guest.isVip ? ' · VIP' : ''} · {r.guest.ticketNumber}</div>
+            {r.change && r.action === 'assign_technician' ? <div data-testid="sv-review-change">{tx('ops.serving.review.move', { from: r.change.fromTechnicianName || '—', to: r.change.toTechnicianName || '—' })}</div> : null}
+            {r.change && r.action === 'add_service' ? <div data-testid="sv-review-change">{r.change.priceSource === 'manual' ? tx('ops.serving.review.priceManual', { price: m2(r.change.priceCents), catalog: m2(r.change.catalogPriceCents) }) : tx('ops.serving.review.priceCatalog', { price: m2(r.change.priceCents) })}</div> : null}
+            <div>
+              <div style={{ color: 'var(--muted)', fontSize: 11, fontWeight: 700 }}>{tx('ops.serving.review.affected')}</div>
+              {r.affected.map((l, i) => <div key={l.serviceLineId || 'new' + i} data-testid="sv-review-line" style={{ display: 'flex', gap: 6 }}><span style={{ flex: 1 }}>{l.serviceName}{l.isNew ? ` · ${tx('ops.serving.review.new')}` : ''} <span style={{ color: 'var(--soft)' }}>· {l.technicianName || '—'}</span></span><b>{m2(l.priceCents)}</b></div>)}
+            </div>
+            <div data-testid="sv-review-perm" data-allowed={String(r.permission.allowed)}>{r.permission.allowed ? tx('ops.serving.review.permYes', { what: tx(`ops.serving.review.action.${r.action}`) }) : tx('ops.serving.review.permNo', { what: tx(`ops.serving.review.action.${r.action}`) })}{r.permission.overrideKey ? ` · ${r.permission.overrideAllowed ? tx('ops.serving.review.overrideYes') : tx('ops.serving.review.overrideNo')}` : ''}</div>
+            {r.conflicts.length === 0 ? <div style={{ color: '#1F7A3F' }} data-testid="sv-review-clear">{tx('ops.serving.review.noConflicts')}</div> : r.conflicts.map((c) => (
+              <div key={c.code} data-testid={`sv-review-conflict-${c.code}`} data-severity={c.severity} style={{ color: c.severity === 'block' ? '#A8321F' : c.severity === 'warn' ? '#9a6a12' : 'var(--soft)' }}>{c.severity === 'block' ? '⛔ ' : c.severity === 'warn' ? '⚠ ' : ''}{rvText(c)}</div>
+            ))}
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <button data-testid="sv-review-confirm" disabled={!r.canProceed} style={{ ...orangeBtn, minHeight: 48, flex: 1, ...(r.canProceed ? {} : off) }} onClick={() => { const run = review.run; setReview(null); run(); }}>{tx('ops.serving.review.confirm')}</button>
+              <button style={{ ...ghostBtn, minHeight: 48, flex: 1 }} onClick={() => setReview(null)}>{tx('pos.cancel')}</button>
+            </div>
+          </div>
+        </OverlayBox>); })() : null}
     </div>
   );
 }

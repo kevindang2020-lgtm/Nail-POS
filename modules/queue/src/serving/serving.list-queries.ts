@@ -8,4 +8,6 @@ export const ServingControllerListQueries = {
   state: { filters: { status: { type: 'text' }, technicianId: { type: 'id' }, serviceCategory: { type: 'text' }, station: { type: 'text' }, delayStatus: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
   list: { filters: { status: { type: 'text' }, technicianId: { type: 'id' }, serviceCategory: { type: 'text' }, station: { type: 'text' }, delayStatus: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
   retailCatalog: { search: { params: ['search'] } },
+  // Serving 07: the action to review and its target (a technician / a catalog service / a proposed price in cents)
+  actionReview: { filters: { action: { type: 'text', maxLength: 40 }, technicianId: { type: 'id' }, serviceId: { type: 'id' }, priceCents: { type: 'text', maxLength: 10 } }, search: false },
 } satisfies Record<string, ListQuerySpec>;
