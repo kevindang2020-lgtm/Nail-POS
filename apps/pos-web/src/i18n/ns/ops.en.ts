@@ -2104,4 +2104,10 @@ export const OPS_EN = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Customer retention",
   "ops.liveOps.kc.k.aiBookingConversionPercent": "AI booking conversion",
   "ops.serving.review.vip": "VIP",
+  "syschk.technicians.duplicate_app_account": "No login is linked to two technician records",
+  "syschk.technicians.duplicate_app_account.fix": "Archive the extra technician record so the person shows once and their work is not split.",
+  "syschk.technicians.duplicate_name": "No two current technicians share the same name",
+  "syschk.technicians.duplicate_name.fix": "Check whether the two records are the same person.",
+  "syschk.technicians.employee_id_collision": "Every team member has a unique employee ID",
+  "syschk.technicians.employee_id_collision.fix": "Two team members show the same employee ID — ask support to review the records.",
 };

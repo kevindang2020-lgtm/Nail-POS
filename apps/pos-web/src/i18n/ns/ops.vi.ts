@@ -2103,4 +2103,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
   "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_app_account": "Không có tài khoản đăng nhập nào gắn với hai hồ sơ thợ", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_app_account.fix": "Lưu trữ hồ sơ thợ thừa để người đó chỉ hiện một lần và công việc không bị chia.", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_name": "Không có hai thợ hiện tại trùng tên", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_name.fix": "Kiểm tra xem hai hồ sơ có phải cùng một người không.", // DRAFT — Kevin reviews
+  "syschk.technicians.employee_id_collision": "Mỗi thành viên có mã nhân viên riêng", // DRAFT — Kevin reviews
+  "syschk.technicians.employee_id_collision.fix": "Hai thành viên hiện cùng mã nhân viên — nhờ bộ phận hỗ trợ xem lại hồ sơ.", // DRAFT — Kevin reviews
 };

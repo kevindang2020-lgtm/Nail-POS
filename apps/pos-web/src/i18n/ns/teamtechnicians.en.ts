@@ -229,4 +229,6 @@ export const TEAMTECHNICIANS_EN = {
   'tc.apptStatus.cancelled': 'Cancelled',
   'tc.apptStatus.no_show': 'No-show',
   'tc.finderWhy': 'Why is a technician not listed? Check one',
+  'tc.col.branch': 'Bookable at',
+  'tc.branch.salonWide': 'Any location (salon-wide)',
 };

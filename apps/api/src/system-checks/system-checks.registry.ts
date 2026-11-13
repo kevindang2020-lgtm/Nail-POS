@@ -276,6 +276,19 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'split_out_of_range', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL
         AND x.default_commission_split_percent IS NOT NULL AND (x.default_commission_split_percent < 0 OR x.default_commission_split_percent > 100)`) },
     { key: 'no_app_account', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND x.user_id IS NULL`) },
+    // extras TEAM MANAGEMENT 03 (round 10) — Directory Integrity: one login behind two technician rows (the person shows twice and
+    // their work splits), two current technicians with the same name (a possible duplicated row), and two team members whose
+    // displayed employee ID collides (Team shows 'EMP-' + the last 8 characters of the member id — staff users and technicians
+    // without a login, the same member set the directory lists)
+    { key: 'duplicate_app_account', severity: 'FAILED', count: (t, b) => n(sql`SELECT x.user_id FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND x.user_id IS NOT NULL
+        GROUP BY x.user_id HAVING count(*) > 1`) },
+    { key: 'duplicate_name', severity: 'WARNING', count: (t, b) => n(sql`SELECT lower(btrim(coalesce(nullif(btrim(x.full_name), ''), concat_ws(' ', x.first_name, x.last_name)))) FROM technicians x
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND coalesce(btrim(x.full_name), btrim(concat_ws(' ', x.first_name, x.last_name)), '') <> ''
+        GROUP BY 1 HAVING count(*) > 1`) },
+    { key: 'employee_id_collision', severity: 'FAILED', count: (t) => n(sql`SELECT g.code FROM (
+          SELECT upper(right(u.id::text, 8)) AS code FROM users u WHERE u.tenant_id = ${t}::uuid AND coalesce(u.role, '') NOT IN ('CUSTOMER', 'SUPER_ADMIN')
+          UNION ALL SELECT upper(right(x.id::text, 8)) FROM technicians x WHERE x.tenant_id = ${t}::uuid AND x.user_id IS NULL) g
+        GROUP BY g.code HAVING count(*) > 1`) },
     // extras (Team Management #08 Approvals / Training): unresolved requests, missing training links, real certification dates
     // an open training assignment past its due date (the branch's own calendar day)
     { key: 'training_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM team_training_assignments a WHERE a.tenant_id = ${t}::uuid ${br('a', b)}
