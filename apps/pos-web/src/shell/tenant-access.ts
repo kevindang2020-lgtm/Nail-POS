@@ -11,6 +11,7 @@ import { REALTIME_EVENT } from '../realtime/realtime-client';
 import { requiredPermissions, type BadgeKey, type NavPermission } from './tenant-nav';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { serverText } from '../i18n/server-text';
+import { alertReadsApi, onAlertReadsElsewhere } from './alertReads';
 
 /** Fired when the API says this session's authorization changed (x-authorization-changed: 1) — see api/client.ts. */
 export const AUTHORIZATION_CHANGED_EVENT = 'aps:authorization-changed';
@@ -66,7 +67,14 @@ export function useSidebarBadges(pollMs = 30000): Badges {
   const [b, setB] = useState<Badges>({});
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  const load = useCallback(() => api.get<Badges>('/tenant/navigation/badges').then((r) => { if (alive.current && r) setB(r); }), []);
+  // extras Customer Notifications 04: after this session APPLIED a fresh count it reports it (when + the alert unread count it
+  // shows), so the Badge check's Devices list can tell an in-sync device from a stale or broken one. Never blocks the badges.
+  const load = useCallback(() => api.get<Badges>('/tenant/navigation/badges').then((r) => {
+    if (alive.current && r) {
+      setB(r);
+      void Promise.resolve().then(() => alertReadsApi.sync(typeof r.alertsUnread === 'number' ? r.alertsUnread : 0)).catch(() => undefined);
+    }
+  }), []);
   useEffect(() => { load().catch(() => {}); }, [load]);
   // Smooth Refresh spec §95/§40: badges refresh on the shared safety sync (visible-gated, jittered, single-flight),
   // not on a raw 30 s interval that also ran in hidden tabs.
@@ -74,6 +82,13 @@ export function useSidebarBadges(pollMs = 30000): Badges {
   // Stock Alerts mandate (Oct 29 2026): a screen that changed a counted thing (a product use, an acknowledged alert) asks
   // the shell to read the badges again now, so the sidebar and the page never disagree until the next sync
   useEffect(() => { const on = () => { load().catch(() => {}); }; window.addEventListener('aps:nav-counts-changed', on); return () => window.removeEventListener('aps:nav-counts-changed', on); }, [load]);
+  // extras round 9 (AI BUSINESS ALERTS 05 / Global Loyalty Rewards 08): an alert read in another tab of mine, or a new / changed
+  // salon alert (the realtime 'alerts' screen), re-reads the badges now — the unread count is per person and server-side
+  useEffect(() => onAlertReadsElsewhere(() => { load().catch(() => {}); }), [load]);
+  useEffect(() => {
+    const on = (e: Event) => { const d = (e as CustomEvent<{ screens?: string[] }>).detail; if (d && Array.isArray(d.screens) && d.screens.includes('alerts')) load().catch(() => {}); };
+    window.addEventListener(REALTIME_EVENT, on); return () => window.removeEventListener(REALTIME_EVENT, on);
+  }, [load]);
   return b;
 }
 

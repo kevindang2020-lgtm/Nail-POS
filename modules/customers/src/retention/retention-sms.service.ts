@@ -68,6 +68,9 @@ export class RetentionSmsService {
     }).filter((v) => isUuid(v.customerId));
     const seg = smsSegments(body);
     const campaignId = await this.repo.createDraft(ctx, { body, segments: seg.segments, audience, verdicts: list });
+    // Retention Win-Back 15: a selection over the salon's warning size names its count and criteria here, and confirm()
+    // asks for that exact count back before anything is queued (Cancel / Edit message discard the unsent draft)
+    const warnAt = (await this.repo.settings(ctx)).bulkSelectionWarnAt;
     const sender = await this.repo.sender(ctx);
     const quiet = await this.repo.quietUntil(ctx);
     const excluded: Record<string, number> = {};
@@ -84,11 +87,12 @@ export class RetentionSmsService {
       estimatedSegments: eligible * seg.segments, costEstimateCents: estimate.totalCents, estimate,
       roster: await this.repo.draftRoster(ctx, campaignId, 100),
       expiresInMinutes: 20,
+      largeSelection: { warnAt, over: list.length > warnAt, selected: list.length, criteria: audience },
     };
   }
 
   /** Confirm a preview: revalidate, queue, enqueue — one transaction. Same idempotency key → the same campaign. */
-  async confirm(ctx: RetentionContext, b: { previewId: string; idempotencyKey: string; acceptChanges?: boolean; label?: string }) {
+  async confirm(ctx: RetentionContext, b: { previewId: string; idempotencyKey: string; acceptChanges?: boolean; label?: string; confirmLargeSelection?: number | null }) {
     if (!isUuid(b.idempotencyKey)) throw new RetentionError('A request id is required.', 'IDEMPOTENCY_KEY_REQUIRED');
     if (!isUuid(b.previewId)) throw new RetentionError('That preview was not found.', 'SMS_PREVIEW_NOT_FOUND', 404);
     const prior = (await sql<any>`select id from retention_sms_campaigns where tenant_id = ${ctx.tenantId} and idempotency_key = ${b.idempotencyKey}`.execute(this.db)).rows[0];
@@ -105,6 +109,11 @@ export class RetentionSmsService {
       }
       if (!c.fresh) { await sql`update retention_sms_campaigns set status = 'expired', updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}::uuid, updated_at = now() where tenant_id = ${ctx.tenantId} and id = ${b.previewId} and ${canMoveToSql(RETENTION_SMS_CAMPAIGN, 'expired')}`.execute(trx); throw new RetentionError('The preview expired. Preview again.', 'SMS_PREVIEW_EXPIRED', 409); }
       const recips = (await sql<any>`select id, customer_id, destination, eligibility from retention_sms_recipients where tenant_id = ${ctx.tenantId} and campaign_id = ${b.previewId} for update`.execute(trx)).rows;
+      // Retention Win-Back 15: over the salon's warning size, the operator must type back the exact selected count
+      const warnAt = (await this.repo.settings(ctx, trx)).bulkSelectionWarnAt;
+      if (recips.length > warnAt && b.confirmLargeSelection !== recips.length) {
+        throw new RetentionError(`This selection has ${recips.length} customers — more than this salon's warning size of ${warnAt}. Confirm the exact count to continue.`, 'CONFIRMATION_REQUIRED', 409, { selected: recips.length, warnAt });
+      }
       const eligibleBefore = recips.filter((r: any) => r.eligibility === 'eligible');
       const now = await this.repo.verdicts(trx, ctx, eligibleBefore.map((r: any) => String(r.customer_id)), c.audience_json?.kind === 'first_visit' ? 'first_visit' : 'win_back');
       const changed = eligibleBefore.filter((r: any) => { const v = now.get(String(r.customer_id)); return !v || v.status !== 'eligible' || v.phone !== r.destination; });

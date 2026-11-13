@@ -4,7 +4,7 @@ import { SystemCheckButton, systemCheckCsv } from './SystemCheck';
 import { downloadText } from './FitKit';
 import { posSystemChecksApi } from '../api/posSystemChecksApi';
 
-vi.mock('../api/posSystemChecksApi', () => ({ posSystemChecksApi: { run: vi.fn() } }));
+vi.mock('../api/posSystemChecksApi', () => ({ posSystemChecksApi: { run: vi.fn(), rows: vi.fn() } }));
 vi.mock('./FitKit', async (orig) => ({ ...(await orig<typeof import('./FitKit')>()), downloadText: vi.fn() }));
 
 describe('SystemCheckButton (extras arc, Nov 9 2026)', () => {
@@ -81,5 +81,28 @@ describe('SystemCheckButton (extras arc, Nov 9 2026)', () => {
   it('a value with a comma or quote is quoted in the CSV', () => {
     const csv = systemCheckCsv('invoices', { domain: 'invoices', overall: 'READY', checkedAt: 'x', branchId: null, checks: [{ key: 'total_mismatch', state: 'READY', count: 0 }] });
     expect(csv).toContain('"Subtotal, tax and discount add up to the total",');
+  });
+  it('extras Membership Overview 16·15: a discrepant membership check opens its source rows (ledger / payment / redemption) on demand', async () => {
+    vi.mocked(posSystemChecksApi.run).mockResolvedValue({ domain: 'memberships', overall: 'FAILED', checkedAt: '2026-11-12T20:00:00Z', branchId: null, checks: [
+      { key: 'redemption_ledger_mismatch', state: 'FAILED', count: 1 }, { key: 'charged_after_cancel', state: 'READY', count: 0 }, { key: 'payment_pending_stuck', state: 'WARNING', count: 1 },
+    ] });
+    vi.mocked(posSystemChecksApi.rows).mockImplementation(async (_d, key) => (key === 'redemption_ledger_mismatch'
+      ? { domain: 'memberships', key, checkedAt: '2026-11-12T20:00:00Z', branchId: null, available: true, truncated: false, limit: 25,
+        rows: [{ membershipId: 'm1', memberNumber: 'M-0042', customerName: 'Mem Ber', source: 'redemption_vs_ledger', sourceId: 'b1', ticketId: 't1', ticketNumber: '1007', amountCents: null, at: null, detail: '1/2' }] }
+      : { domain: 'memberships', key, checkedAt: '2026-11-12T20:00:00Z', branchId: null, available: true, truncated: true, limit: 25,
+        rows: [{ membershipId: 'm2', memberNumber: null, customerName: 'Ann', source: 'payment', sourceId: 'p1', ticketId: null, ticketNumber: null, amountCents: 4900, at: '2026-11-09T15:00:00Z', detail: 'pending' }] }));
+    render(<SystemCheckButton domain="memberships" />);
+    fireEvent.click(screen.getByTestId('syschk-memberships'));
+    await screen.findAllByTestId('syschk-memberships-row');
+    expect(screen.queryByTestId('syschk-memberships-src-charged_after_cancel')).toBeNull();   // a passing check has nothing to drill
+    expect(posSystemChecksApi.rows).not.toHaveBeenCalled();                                  // asked only when opened
+    fireEvent.click(screen.getByTestId('syschk-memberships-src-redemption_ledger_mismatch'));
+    expect(posSystemChecksApi.rows).toHaveBeenCalledWith('memberships', 'redemption_ledger_mismatch');
+    const row = await screen.findByTestId('syschk-memberships-src-redemption_ledger_mismatch-row');
+    expect(row).toHaveTextContent(/Redemptions vs ledger.*#M-0042 · Mem Ber.*#1007.*—.*1 redemption record\(s\) vs 2 ledger entry\(ies\)/);
+    fireEvent.click(screen.getByTestId('syschk-memberships-src-payment_pending_stuck'));
+    const pay = await screen.findByTestId('syschk-memberships-src-payment_pending_stuck-row');
+    expect(pay).toHaveTextContent(/Membership payment.*Ann.*\$49\.00.*Pending/);
+    expect(screen.getByTestId('syschk-memberships-src-payment_pending_stuck-table')).toHaveTextContent('Showing the newest 25; more exist.');
   });
 });

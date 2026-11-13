@@ -1,10 +1,10 @@
 // system-checks.controller.ts — the shared read-only "Check … System" (extras arc, Nov 9 2026). One route per page, each
 // behind THAT page's own read permission, so a check never shows counts to someone who cannot open the page. Read-only:
 // GET, no body, nothing written.
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpException, Param, Req, UseGuards } from '@nestjs/common';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
-import type { SystemCheckResult } from '@aipowersalon/api-contracts/tenant';
-import { SystemChecksService } from './system-checks.service';
+import type { SystemCheckResult, SystemCheckRows } from '@aipowersalon/api-contracts/tenant';
+import { SystemChecksService, SystemCheckNotFound } from './system-checks.service';
 
 const ctxOf = (req: any) => { const c = req?.ctx || {}; return { tenantId: c.tenantId as string | undefined, branchId: (c.branchId as string | null | undefined) ?? null }; };
 
@@ -42,6 +42,15 @@ export class SystemChecksController {
 
   @RequirePermission('pos.memberships.view') @Get('memberships')
   memberships(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('memberships', ctxOf(req)); }
+  /** extras Membership Overview 16 · 15 — Reconciliation Drill-Down: the source rows (payment / ledger entry / redemption /
+   *  benefit balance / membership) behind one discrepant check; same permission as the page; read-only */
+  @RequirePermission('pos.memberships.view') @Get('memberships/:checkKey/rows')
+  membershipCheckRows(@Req() req: any, @Param('checkKey') checkKey: string): Promise<SystemCheckRows> {
+    return this.svc.rows('memberships', String(checkKey ?? ''), ctxOf(req)).catch((e: unknown) => {
+      if (e instanceof SystemCheckNotFound) throw new HttpException({ code: e.code, message: e.message }, 404);
+      throw e;
+    });
+  }
   @RequirePermission('pos.serving.view') @Get('service-flow')
   serviceFlow(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('service-flow', ctxOf(req)); }
 

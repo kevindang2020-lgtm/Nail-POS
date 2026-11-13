@@ -14,3 +14,31 @@ export interface SystemCheckResult {
   branchId: string | null;
   checks: SystemCheckItem[];
 }
+
+/** extras Membership Overview 16 · 15 — Reconciliation Drill-Down: the source rows behind one non-zero check (read-only). */
+export interface SystemCheckSourceRow {
+  membershipId: string;
+  /** the member's number and name, for the person who may already see the Membership page */
+  memberNumber: string | null;
+  customerName: string | null;
+  source: 'membership' | 'payment' | 'redemption' | 'ledger_entry' | 'benefit_balance' | 'redemption_vs_ledger' | 'notice';
+  sourceId: string | null;
+  ticketId: string | null;
+  ticketNumber: string | null;
+  amountCents: number | null;
+  at: string | null;
+  /** a code from the source row (its status / kind / processor), a credit balance (benefit_balance) or 'redemptions/ledger' counts — never free text */
+  detail: string | null;
+}
+export interface SystemCheckRows {
+  domain: SystemCheckDomain;
+  key: string;
+  checkedAt: string;
+  branchId: string | null;
+  /** false when this check has no drill-down (or could not run) — rows is then empty, never a guess */
+  available: boolean;
+  rows: SystemCheckSourceRow[];
+  /** more rows exist than were returned */
+  truncated: boolean;
+  limit: number;
+}

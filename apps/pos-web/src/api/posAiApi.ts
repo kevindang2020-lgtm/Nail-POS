@@ -35,6 +35,9 @@ export interface PosAiPlan {
   overlap?: { owned: { code: string; name: string; status: string; monthlyPriceCents: number }[]; ownedMonthlyCents: number };
   /** extras AI Plans #03: the server's price check against the members bought separately; absent from older servers */
   priceCheck?: { standaloneCents: number; realSavingsCents: number; claimedSavingsCents: number; state: 'verified' | 'overstated' | 'no_saving' | 'unknown' };
+  /** extras AI Plans #05: TECHNICAL readiness, apart from the commercial `state` (absent from older servers) */
+  readiness?: { state: 'ready' | 'setup_required' | 'provider_down'; provider: { state: string; reason: string | null }; checkedAt: string;
+    packages: { code: string; state: 'ready' | 'setup_required' | 'provider_down'; reason: string | null }[] };
   packages: PosAiPlanPkg[];
 }
 

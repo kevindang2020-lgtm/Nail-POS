@@ -10,9 +10,12 @@ import { api } from '../api/client';
 import { fmtDateTime, fmtNumber } from '../i18n/format';
 import type { BadgeKey } from './tenant-nav';
 import type { Badges } from './tenant-access';
+import type { BadgeSyncMonitor } from '@aipowersalon/api-contracts/tenant';
+import { alertReadsApi } from './alertReads';
+import { agoLabel } from '../components/codeLabel';
 
 export const BADGE_KEYS: BadgeKey[] = ['checkIn', 'techQueue', 'customerQueue', 'serviceDone', 'checkout', 'messages', 'notifications', 'techReportsPending',
-  'inventoryAlerts', 'reviews', 'payrollPending', 'billingAlerts', 'aiUsageAlerts', 'supportTickets', 'setupHealthAlerts'];
+  'inventoryAlerts', 'reviews', 'payrollPending', 'billingAlerts', 'aiUsageAlerts', 'supportTickets', 'setupHealthAlerts', 'alertsUnread'];
 export interface BadgeCompareRow { key: BadgeKey; shown: number | null; server: number | null; match: boolean }
 
 /** shown (what the shell renders) vs server (a fresh read); a key the server does not return for this person is not compared */
@@ -48,7 +51,42 @@ export function BadgeCheckDialog({ shown, onClose }: { shown: Badges; onClose: (
             <td><span className={'fk-chip ' + (r.match ? 'ok' : 'bad')}>{r.match ? tx('nav.badgechk.match') : tx('nav.badgechk.mismatch')}</span></td></tr>)}</tbody></table>
         <div className="fk-hint">{tx('nav.badgechk.evidence', { when: at ? fmtDateTime(at) : '—' })}</div>
         {asked ? <div className="fk-hint" data-testid="badge-check-asked">{tx('nav.badgechk.asked')}</div> : null}
+        <BadgeSyncDevices />
       </>}
     </FitDialog>
+  );
+}
+
+/** extras Customer Notifications 04 "Cross-Device Reconciliation Monitor": each of MY signed-in sessions with when it last
+ *  applied a fresh unread count and what it showed, against the count the server computes now — in sync / behind / stale /
+ *  broken / never — and the repair step for each. Read-only (the server's GET /tenant/navigation/badge-sync). */
+export function BadgeSyncDevices() {
+  const [m, setM] = useState<BadgeSyncMonitor | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.resolve().then(() => alertReadsApi.monitor()).then((r) => { if (alive) setM(r && Array.isArray(r.sessions) ? r : null); }, (e: unknown) => { if (alive) setErr((e as Error)?.message || tx('nav.badgesync.failed')); });
+    return () => { alive = false; };
+  }, []);
+  if (err) return <div className="fk-err" role="alert" data-testid="badge-sync-error">{err}</div>;
+  if (!m) return null;
+  const bad = m.summary.stale + m.summary.broken + m.summary.never + m.summary.behind;
+  return (
+    <section data-testid="badge-sync">
+      <h4>{tx('nav.badgesync.title')}</h4>
+      <div className={'fk-preview' + (m.summary.broken ? ' bad' : '')} data-testid="badge-sync-verdict">
+        {bad ? tx('nav.badgesync.some', { n: fmtNumber(bad), total: fmtNumber(m.sessions.length) }) : tx('nav.badgesync.all', { total: fmtNumber(m.sessions.length) })}
+        {' '}{tx('nav.badgesync.now', { n: fmtNumber(m.currentUnread) })}
+      </div>
+      {m.sessions.length === 0 ? <div className="fk-hint">{tx('nav.badgesync.none')}</div> :
+        <table className="fk-table" data-testid="badge-sync-table"><thead><tr><th>{tx('nav.badgesync.col.device')}</th><th>{tx('nav.badgesync.col.synced')}</th><th className="num">{tx('nav.badgesync.col.showed')}</th><th>{tx('nav.badgesync.col.state')}</th><th>{tx('nav.badgesync.col.repair')}</th></tr></thead>
+          <tbody>{m.sessions.map((s) => <tr key={s.sessionRef} data-testid={'badge-sync-' + s.sessionRef}>
+            <td>{s.deviceName || s.platform || tx('nav.badgesync.unnamed')} <small>…{s.sessionRef}</small>{s.current ? <span className="fk-chip">{tx('nav.badgesync.thisDevice')}</span> : null}</td>
+            <td>{s.lastSyncAt ? agoLabel(s.lastSyncAt) : '—'}</td>
+            <td className="num">{s.lastUnread == null ? '—' : fmtNumber(s.lastUnread)}</td>
+            <td><span className={'fk-chip ' + (s.state === 'in_sync' ? 'ok' : s.state === 'broken' ? 'bad' : 'warn')}>{tx('nav.badgesync.st.' + s.state)}</span></td>
+            <td>{tx('nav.badgesync.fix.' + s.state, { min: fmtNumber(m.staleAfterMinutes) })}</td></tr>)}</tbody></table>}
+      <div className="fk-hint">{tx('nav.badgesync.how', { min: fmtNumber(m.staleAfterMinutes) })}</div>
+    </section>
   );
 }

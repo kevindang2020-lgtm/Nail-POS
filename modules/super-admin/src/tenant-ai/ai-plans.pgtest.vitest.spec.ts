@@ -1,7 +1,7 @@
 // ai-plans.pgtest — AI Plans guide (Nov 1 2026) on the REAL schema. The plan storefront tells the truth about a lapsed trial, a
 // plan's free trial cannot be re-opened by cancelling (the plan path used to re-trial cancelled packages and re-open the plan),
 // and Cancel reports an error when nothing was cancelled instead of answering "ok".
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { TenantAiService, TenantAiError } from './tenant-ai.service';
@@ -89,3 +89,40 @@ describe('AI Plans', () => {
   });
 });
 
+
+describe('AI Plans #05 — subscription vs readiness split (extras round 9)', () => {
+  const KEY = 'GEMINI_API_KEY';
+  const was = process.env[KEY];
+  const off = { OPENAI_API_KEY: process.env.OPENAI_API_KEY, ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY };
+  beforeAll(() => { delete process.env.OPENAI_API_KEY; delete process.env.ANTHROPIC_API_KEY; delete process.env[KEY]; });
+  afterAll(() => { if (was === undefined) delete process.env[KEY]; else process.env[KEY] = was; for (const [k, v] of Object.entries(off)) if (v !== undefined) process.env[k] = v; });
+  it('RD-01 no provider key: every plan is provider_down (no_provider_connected) while its commercial state stays as it is', async () => {
+    const p = await plan('plan_booking_calls');
+    expect(p.readiness).toMatchObject({ state: 'provider_down', provider: { state: 'not_connected', reason: 'no_provider_connected' } });
+    expect(['trial_available', 'available']).toContain(p.state);                 // commercial: untouched by readiness
+    const trialing = await plan('plan_money_owner');
+    expect(trialing.readiness.state).toBe('provider_down');
+    expect(trialing.state).not.toBe('provider_down');
+  });
+  it('RD-02 with a provider: the phone plan needs the receptionist set up; other plans are ready; a ready agent makes it ready', async () => {
+    process.env[KEY] = 'present';                                                // presence only — the value is never read
+    let p = await plan('plan_booking_calls');
+    expect(p.readiness.state).toBe('setup_required');
+    expect(p.readiness.packages).toEqual([{ code: 'ai_booking_assistant', state: 'ready', reason: null }, { code: 'ai_phone_call_assistant', state: 'setup_required', reason: 'receptionist_not_set_up' }]);
+    expect((await plan('plan_checkin_queue')).readiness).toMatchObject({ state: 'ready', provider: { state: 'connected', reason: null } });
+    await q(sql`insert into ai_receptionist_agents (tenant_id, name, status) values (${T}, 'Front desk', 'ready')`);
+    p = await plan('plan_booking_calls');
+    expect(p.readiness.state).toBe('ready');
+  });
+  it('RD-03 Super Admin turned an assistant off platform-wide → provider_down for that member; every configured provider in error → provider_error', async () => {
+    await q(sql`insert into platform_ai_package_settings (package_code, enabled, disabled_reason) values ('ai_booking_assistant', false, 'maintenance window')`);
+    let p = await plan('plan_booking_calls');
+    expect(p.readiness.state).toBe('provider_down');
+    expect(p.readiness.packages[0]).toEqual({ code: 'ai_booking_assistant', state: 'provider_down', reason: 'turned_off_by_platform' });
+    await q(sql`delete from platform_ai_package_settings where package_code = 'ai_booking_assistant'`);
+    await q(sql`insert into ai_providers (provider_key, display_name, status) values ('rd-test', 'RD test provider', 'error')`);
+    p = await plan('plan_checkin_queue');
+    expect(p.readiness).toMatchObject({ state: 'provider_down', provider: { state: 'error', reason: 'provider_error' } });
+    await q(sql`delete from ai_providers where provider_key = 'rd-test'`);
+  });
+});

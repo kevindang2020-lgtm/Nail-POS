@@ -686,4 +686,5 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.opp.retention": "Chỉ {retentionRatePercent}% khách quay lại. Chiến dịch mời lại khách đã vắng 60 ngày là bước thường làm tiếp theo.", // DRAFT — Kevin reviews
   "bzx.opp.new_customers": "Khách mới giảm {trendPercent}% ({newCustomers} trong kỳ này). Phần thưởng giới thiệu giúp có thêm bạn bè của khách quen.", // DRAFT — Kevin reviews
   "bzx.opp.retail": "Không có hóa đơn nào trong {ticketsCount} hóa đơn đã thanh toán có sản phẩm. Gợi ý khi thanh toán có thể giới thiệu sản phẩm chăm sóc đúng lúc.", // DRAFT — Kevin reviews
+  "bzx.i.unread": "Chưa đọc", // DRAFT — Kevin reviews
 };

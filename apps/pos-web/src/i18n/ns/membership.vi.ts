@@ -107,4 +107,56 @@ export const MEMBERSHIP_VI = {
   'mos.evt.sent': 'Đã gửi',
   'mos.evt.skipped': 'Bỏ qua',
   'mos.openDiscounts': 'Mở Giảm giá & Khuyến mãi',
+  'mpc.title': 'Đổi giá và điều khoản (phiên bản mới)', // DRAFT — Kevin reviews
+  'mpc.price': 'Giá mới ($)', // DRAFT — Kevin reviews
+  'mpc.trial': 'Số ngày dùng thử', // DRAFT — Kevin reviews
+  'mpc.fee': 'Phí đăng ký ($)', // DRAFT — Kevin reviews
+  'mpc.keep': 'Giữ nguyên', // DRAFT — Kevin reviews
+  'mpc.carry': 'Để trống ô nào thì giữ nguyên ô đó. Mọi điều khoản khác và tất cả quyền lợi vẫn như cũ.', // DRAFT — Kevin reviews
+  'mpc.preview': 'Xem trước thay đổi', // DRAFT — Kevin reviews
+  'mpc.failed': 'Không xem trước được thay đổi này.', // DRAFT — Kevin reviews
+  'mpc.publishFailed': 'Không phát hành được phiên bản mới.', // DRAFT — Kevin reviews
+  'mpc.yes': 'Có', // DRAFT — Kevin reviews
+  'mpc.no': 'Không', // DRAFT — Kevin reviews
+  'mpc.blocker.no_change': 'Không có gì thay đổi — đề xuất giống phiên bản hiện tại.', // DRAFT — Kevin reviews
+  'mpc.blocker.plan_archived': 'Gói này đã lưu trữ; không thể phát hành phiên bản mới.', // DRAFT — Kevin reviews
+  'mpc.col.term': 'Điều khoản', // DRAFT — Kevin reviews
+  'mpc.col.now': 'Hiện tại (v{v})', // DRAFT — Kevin reviews
+  'mpc.col.next': 'Mới (v{v})', // DRAFT — Kevin reviews
+  'mpc.f.priceCents': 'Giá', // DRAFT — Kevin reviews
+  'mpc.f.billingInterval': 'Chu kỳ thanh toán', // DRAFT — Kevin reviews
+  'mpc.f.intervalCount': 'Thanh toán mỗi', // DRAFT — Kevin reviews
+  'mpc.f.trialDays': 'Số ngày dùng thử', // DRAFT — Kevin reviews
+  'mpc.f.enrollmentFeeCents': 'Phí đăng ký', // DRAFT — Kevin reviews
+  'mpc.f.setupFeeCents': 'Phí thiết lập', // DRAFT — Kevin reviews
+  'mpc.f.autoRenew': 'Tự động gia hạn', // DRAFT — Kevin reviews
+  'mpc.f.cancellationPolicy': 'Hủy gói', // DRAFT — Kevin reviews
+  'mpc.f.techSplitPct': 'Phần của Thợ %', // DRAFT — Kevin reviews
+  'mpc.f.ownerSplitPct': 'Phần của tiệm %', // DRAFT — Kevin reviews
+  'mpc.f.allocationTiming': 'Thời điểm tính hoa hồng', // DRAFT — Kevin reviews
+  'mpc.f.creditExpiryDays': 'Lượt hết hạn sau (ngày)', // DRAFT — Kevin reviews
+  'mpc.f.rolloverAllowed': 'Cộng dồn', // DRAFT — Kevin reviews
+  'mpc.f.minCommitmentCycles': 'Số chu kỳ tối thiểu', // DRAFT — Kevin reviews
+  'mpc.f.benefits': 'Quyền lợi', // DRAFT — Kevin reviews
+  'mpc.code.month': 'tháng', // DRAFT — Kevin reviews
+  'mpc.code.quarter': 'quý', // DRAFT — Kevin reviews
+  'mpc.code.six_month': '6 tháng', // DRAFT — Kevin reviews
+  'mpc.code.year': 'năm', // DRAFT — Kevin reviews
+  'mpc.code.none': 'một lần', // DRAFT — Kevin reviews
+  'mpc.code.custom': 'tùy chỉnh', // DRAFT — Kevin reviews
+  'mpc.code.period_end': 'cuối kỳ', // DRAFT — Kevin reviews
+  'mpc.code.immediate': 'ngay lập tức', // DRAFT — Kevin reviews
+  'mpc.code.term_end': 'cuối hạn', // DRAFT — Kevin reviews
+  'mpc.code.on_redemption': 'khi sử dụng', // DRAFT — Kevin reviews
+  'mpc.code.on_billing': 'khi thanh toán', // DRAFT — Kevin reviews
+  'mpc.code.hybrid': 'kết hợp', // DRAFT — Kevin reviews
+  'mpc.current': 'Hội viên hiện tại: {n} — họ giữ điều khoản lúc tham gia (gia hạn tính theo phiên bản của họ).', // DRAFT — Kevin reviews
+  'mpc.byVersion': 'v{v} · {price} / {interval} · {n} hội viên', // DRAFT — Kevin reviews
+  'mpc.future': 'Người tham gia sau khi phát hành sẽ trả {price} / {interval}.', // DRAFT — Kevin reviews
+  'mpc.up': 'Cao hơn hiện tại {d}.', // DRAFT — Kevin reviews
+  'mpc.down': 'Thấp hơn hiện tại {d}.', // DRAFT — Kevin reviews
+  'mpc.benefitsKept': 'Quyền lợi: giữ nguyên cả {n} quyền lợi.', // DRAFT — Kevin reviews
+  'mpc.benefitsCount': 'Quyền lợi: hiện có {a} → {b} trong phiên bản mới.', // DRAFT — Kevin reviews
+  'mpc.publish': 'Phát hành phiên bản {v}', // DRAFT — Kevin reviews
+  'mpc.published': '{name}: đã phát hành phiên bản {v}. Hội viên hiện tại giữ điều khoản của họ.', // DRAFT — Kevin reviews
 };

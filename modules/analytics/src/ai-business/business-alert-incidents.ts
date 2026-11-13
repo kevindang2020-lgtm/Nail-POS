@@ -359,13 +359,25 @@ export class BusinessAlertIncidents {
     const cond = status === 'all' ? sql`e.incident_status is not null` : status === 'active' ? sql`e.incident_status in ('open', 'investigating', 'snoozed')` : sql`e.incident_status = ${status}`;
     const where = sql`${cond} and ${this.scope(ctx, 'e')}`;
     const total = Number((await sql<Row>`select count(*)::int as n from ai_business_alert_events e where e.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n ?? 0);
-    const rows = (await sql<Row>`select e.id, e.metric_id, e.value, e.threshold, e.evaluated_at, e.incident_status, e.incident_version, e.snoozed_until, a.title, a.severity, u.full_name as assignee
+    // extras AI BUSINESS ALERTS 05: the incident's in-app alerts (owner_alerts written by deliver()) that THIS person has not
+    // read (staff_alert_reads, migration 873) — per-person read state, separate from incident_status / acknowledged_at. Only
+    // for a person who may read salon alerts (owner.alerts.view); otherwise no read state is shown.
+    const me = ctx.permissions.includes('owner.alerts.view') && /^[0-9a-f-]{36}$/i.test(ctx.userId || '') ? ctx.userId : null;
+    const myUnread = me ? sql`(select coalesce(array_agg(oa.id::text order by oa.created_at), '{}') from owner_alerts oa
+        where oa.tenant_id = e.tenant_id and oa.category = 'ai_business_alert' and oa.metadata->>'eventId' = e.id::text
+          and not exists (select 1 from staff_alert_reads sr where sr.tenant_id = oa.tenant_id and sr.user_id = ${me}::uuid and sr.alert_id = oa.id))`
+      : sql`'{}'::text[]`;
+    const inApp = sql`exists (select 1 from owner_alerts ob where ob.tenant_id = e.tenant_id and ob.category = 'ai_business_alert' and ob.metadata->>'eventId' = e.id::text)`;
+    const rows = (await sql<Row>`select e.id, e.metric_id, e.value, e.threshold, e.evaluated_at, e.incident_status, e.incident_version, e.snoozed_until, a.title, a.severity, u.full_name as assignee,
+        ${myUnread} as my_unread, ${inApp} as in_app
       from ai_business_alert_events e join ai_business_alerts a on a.id = e.alert_id left join users u on u.id = e.assignee_user_id and u.tenant_id = e.tenant_id
       where e.tenant_id = ${ctx.tenantId} and ${where} order by case e.incident_status when 'open' then 0 when 'investigating' then 1 when 'snoozed' then 2 else 3 end, e.evaluated_at desc, e.id
       limit ${limit} offset ${(page - 1) * limit}`.execute(this.db)).rows;
     const counts = (await sql<Row>`select e.incident_status as s, count(*)::int as n from ai_business_alert_events e where e.tenant_id = ${ctx.tenantId} and e.incident_status is not null and ${this.scope(ctx, 'e')} group by 1`.execute(this.db)).rows;
     return { status, page, limit, total, counts: Object.fromEntries(counts.map((c) => [c.s, Number(c.n)])),
       items: rows.map((r) => ({ eventId: String(r.id), title: r.title, severity: r.severity, incidentStatus: r.incident_status, version: Number(r.incident_version), evaluatedAt: iso(r.evaluated_at),
-        snoozedUntil: iso(r.snoozed_until), assignee: r.assignee ?? null, display: { value: formatAlertValue(r.metric_id, r.value), threshold: formatAlertValue(r.metric_id, r.threshold) } })) };
+        snoozedUntil: iso(r.snoozed_until), assignee: r.assignee ?? null,
+        readState: me && r.in_app ? { unreadAlertIds: (r.my_unread as string[] | null) ?? [], unread: ((r.my_unread as string[] | null) ?? []).length > 0 } : null,
+        display: { value: formatAlertValue(r.metric_id, r.value), threshold: formatAlertValue(r.metric_id, r.threshold) } })) };
   }
 }

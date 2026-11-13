@@ -9,6 +9,8 @@ const { c, api } = vi.hoisted(() => {
   return { c, api: { center: c, alertCreate: vi.fn(), alertUpdate: vi.fn(), alertDelete: vi.fn() } };
 });
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: api }));
+const reads = vi.hoisted(() => ({ markAlertsReadEverywhere: vi.fn() }));
+vi.mock('../shell/alertReads', () => reads);
 import { POSAiAlertsScreen } from './POSAiAlertsScreen';
 const RULE = { id: 'a1', title: 'test', metricId: 'average_ticket', operator: 'gt', threshold: 123500, preset: 'today', minSampleSize: 5, active: true, createdBy: 'Owner Kim',
   latest: { id: 'e1', triggered: true, sampleOk: true, value: 130000, stateChange: 'triggered', evaluatedAt: '2026-11-03T15:00:00Z', acknowledgedAt: null } };
@@ -150,6 +152,26 @@ describe('POSAiAlertsScreen', () => {
     await vi.waitFor(() => expect(screen.getByTestId('bzx-i-resolve')).not.toBeDisabled());
     fireEvent.click(screen.getByTestId('bzx-i-resolve'));
     await vi.waitFor(() => expect(c.incidentAction).toHaveBeenCalledWith('e1', expect.objectContaining({ action: 'resolve', expectedVersion: 1, note: 'busy day, fine' })));
+  });
+  it('extras AI BUSINESS ALERTS 05: an incident unread for me is marked; opening it marks only MY read (no incident action)', async () => {
+    reads.markAlertsReadEverywhere.mockResolvedValue({ marked: 1, unread: 0, lifecycleChanged: false });
+    c.incidents.mockResolvedValueOnce({ status: 'active', page: 1, limit: 25, total: 1, counts: { open: 1 }, items: [{ ...INC, readState: { unread: true, unreadAlertIds: ['oa1'] } }] })
+      .mockResolvedValue({ status: 'active', page: 1, limit: 25, total: 1, counts: { open: 1 }, items: [{ ...INC, readState: { unread: false, unreadAlertIds: [] } }] });
+    wrap();
+    expect(await screen.findByTestId('bzx-i-unread')).toHaveTextContent('Unread');
+    fireEvent.click(screen.getByTestId('bzx-i-open'));
+    await screen.findByTestId('bzx-incident');
+    expect(reads.markAlertsReadEverywhere).toHaveBeenCalledWith(['oa1']);
+    await waitFor(() => expect(screen.queryByTestId('bzx-i-unread')).toBeNull());
+    expect(c.incidentAction).not.toHaveBeenCalled();                    // reading is not acknowledging
+    expect(screen.getByTestId('bzx-incident')).toBeInTheDocument();
+  });
+  it('an incident already read (or with no in-app alert) sends no read', async () => {
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-i-open'));
+    await screen.findByTestId('bzx-incident');
+    expect(screen.queryByTestId('bzx-i-unread')).toBeNull();
+    expect(reads.markAlertsReadEverywhere).not.toHaveBeenCalled();
   });
   it('Notifications: channels, recipients, quiet hours and cooldown are saved for the rule; no channel is refused', async () => {
     c.alertSetDelivery.mockResolvedValue({});

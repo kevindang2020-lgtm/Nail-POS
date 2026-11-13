@@ -19,7 +19,7 @@ export const posRetentionApi = {
   customer: (id: string) => api.get<any>(`/pos/retention/customers/${enc(id)}`),
   recovery: (q: RetentionPeriodQuery & { page?: number; pageSize?: number }) => api.get<any>(`/pos/retention/recovery`, clean(q)),
   settings: () => api.get<any>(`/pos/retention/settings`),
-  saveSettings: (b: { riskDays: number; approachingDays: number; observationWindowDays: number; expectedVersion: number }) => api.put<any>(`/pos/retention/settings`, b as Record<string, unknown>),
+  saveSettings: (b: { riskDays: number; approachingDays: number; observationWindowDays: number; bulkSelectionWarnAt?: number | null; expectedVersion: number }) => api.put<any>(`/pos/retention/settings`, b as Record<string, unknown>),
   /** text/csv through the ONE async export contract; audited on the server (requested → succeeded | failed | denied) */
   exportCsv: (q: Omit<RetentionListQuery, 'page' | 'pageSize'>) => api.exportAsync<string>(`/pos/retention/customers/export`, clean(q), 'text'),
   readiness: () => api.get<any>(`/pos/retention/sms/readiness`),
@@ -31,7 +31,7 @@ export const posRetentionApi = {
   winbackPicked: (b: { customerIds: string[]; channel?: 'sms' | 'email'; idempotencyKey: string }) => api.post<any>(`/pos/retention/winback/audience/picked`, b),
   winbackAudience: (b: { goal: string; channel?: 'sms' | 'email'; service?: string; message?: string; idempotencyKey: string }) => api.post<any>(`/pos/retention/winback/audience`, b),
   preview: (b: { customerIds?: string[]; selection?: RetentionSelection; body: string; label?: string; audience?: 'win_back' | 'first_visit' }) => api.post<any>(`/pos/retention/sms/preview`, b as Record<string, unknown>),
-  confirm: (b: { previewId: string; idempotencyKey: string; acceptChanges?: boolean; label?: string }) => api.post<any>(`/pos/retention/sms/campaigns`, b as Record<string, unknown>),
+  confirm: (b: { previewId: string; idempotencyKey: string; acceptChanges?: boolean; label?: string; confirmLargeSelection?: number }) => api.post<any>(`/pos/retention/sms/campaigns`, b as Record<string, unknown>),
   snapshotDay: (date: string, branch?: string) => api.get<any>(`/pos/retention/snapshots/day`, clean({ date, branch })),
   snapshotMembers: (q: { date: string; segment?: string; q?: string; branch?: string; page: number; pageSize: number }) => api.get<any>(`/pos/retention/snapshots/members`, clean(q)),
   snapshotCompare: (a: string, b: string, branch?: string) => api.get<any>(`/pos/retention/snapshots/compare`, clean({ a, b, branch })),

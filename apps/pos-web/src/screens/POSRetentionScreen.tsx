@@ -149,6 +149,12 @@ export function POSRetentionScreen() {
 
   // selection (customer ids; kept across pages; cleared when the cohort / filters change — never carried into another list)
   const [sel, setSel] = useState<Selection>(EMPTY_SEL);
+  // Retention Win-Back 15 (bulk selection guardrails): the salon's warning size (Settings; server default 200) and one-step
+  // Undo of the last Clear / Select all matching — nothing is sent until the preview's count is confirmed
+  const [warnAt, setWarnAt] = useState<number | null>(null);
+  useEffect(() => { Promise.resolve().then(() => posRetentionApi.settings()).then((r) => setWarnAt(typeof r?.bulkSelectionWarnAt === 'number' ? r.bulkSelectionWarnAt : null), () => setWarnAt(null)); }, [reload]);
+  const [undoSel, setUndoSel] = useState<Selection | null>(null);
+  const replaceSel = (next: Selection) => { setUndoSel(sel); setSel(next); };
   // A19 Nov 6: filter lists (real categories / technicians) and Add to eligible audience (an unsent draft for Campaign Center)
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]); const [techs, setTechs] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
@@ -194,7 +200,7 @@ export function POSRetentionScreen() {
   const selectAllMatching = () => {
     // only eligible At Risk customers of the CURRENT filters; the server resolves the ids again at preview time
     const { segment: _s, ...rest } = query; void _s;
-    setSel({ mode: 'matching', segment, filter: { ...rest, segment: WINBACK.has(segment) ? segment : 'at_risk', sms: 'eligible' }, total: eligibleMatching, excludeIds: new Set() }); setAskAll(false);
+    replaceSel({ mode: 'matching', segment, filter: { ...rest, segment: WINBACK.has(segment) ? segment : 'at_risk', sms: 'eligible' }, total: eligibleMatching, excludeIds: new Set() }); setAskAll(false);
   };
   const createWinBack = () => { pickSegment('at_risk'); setFlt((f) => ({ ...f, sms: 'eligible' })); setNote({ tone: 'ok', text: tx('rt2.createWinBackNote') }); };
 
@@ -402,7 +408,9 @@ export function POSRetentionScreen() {
             ? tx('people.retention.selectedMatching', { n: nf(selectedCount), seg: segLabel(sel.segment, per) })
             : selectedCount === 0 ? tx('people.retention.noneSelected') : tx('people.retention.selectedN', { n: nf(selectedCount), e: nf(selectedEligible ?? 0) })}
         </span>
-        {(sel.mode === 'matching' || selectedCount > 0) ? <button type="button" className="fk-link" onClick={() => setSel(EMPTY_SEL)}>{tx('people.retention.clear')}</button> : null}
+        {(sel.mode === 'matching' || selectedCount > 0) ? <button type="button" className="fk-link" onClick={() => replaceSel(EMPTY_SEL)} data-testid="sel-clear">{tx('people.retention.clear')}</button> : null}
+        {undoSel ? <button type="button" className="fk-link" onClick={() => { setSel(undoSel); setUndoSel(null); }} data-testid="sel-undo">{tx('rt9.undo')}</button> : null}
+        {warnAt != null && selectedCount > warnAt ? <span className="fk-chip warn" role="status" data-testid="sel-large">{tx('rt9.large', { n: nf(selectedCount), w: nf(warnAt) })}</span> : null}
         <span className="rt-selspace" />
         {smsBlocked === 'config' ? <span className="fk-hint rt-block">{tx('people.retention.smsNotConfigured')}</span> : smsBlocked === 'perm' ? <span className="fk-hint rt-block">{tx('people.retention.smsNoPermission')}</span> : null}
         <button type="button" className="fk-btn primary" data-testid="send-sms" disabled={!!smsBlocked || selectedCount === 0 || (sel.mode === 'ids' && (selectedEligible ?? 0) === 0)} onClick={() => setDlg({ kind: 'compose' })}>{tx('rt2.previewBulk')}</button>
@@ -415,6 +423,7 @@ export function POSRetentionScreen() {
           <p className="rt-p">{tx('rt2.selectAllExplain', { n: nf(eligibleMatching), seg: segLabel(WINBACK.has(segment) ? segment : 'at_risk', per) })}</p>
           {q.trim() ? <p className="fk-hint">{tx('people.retention.selectAllSearch', { q: q.trim() })}</p> : null}
           <p className="fk-hint">{tx('people.retention.selectAllRule')}</p>
+          {warnAt != null && eligibleMatching > warnAt ? <div className="fk-note warn" data-testid="select-all-large"><span>{tx('rt9.largeAll', { n: nf(eligibleMatching), w: nf(warnAt) })}</span></div> : null}
         </FitDialog>
       ) : null}
       {dlg?.kind === 'compose' ? <ComposeDialog ready={ready} sel={dlg.single ? { mode: 'ids', ids: new Map([[dlg.single.customerId, dlg.single]]) } : sel} onClose={() => setDlg(null)}
@@ -437,7 +446,8 @@ export function POSRetentionScreen() {
 // ── compose → preview → confirm ────────────────────────────────────────────────────────────────────────────────────────
 type Preview = { previewId: string; finalBody: string; segments: { segments: number; encoding: string; characters: number }; selected: number; eligible: number; excluded: number; excludedReasons: Record<string, number>;
   sender: Readiness['sender']; canSend: boolean; blockedReason: string | null; quietHours: { deferredUntil: string; start: number; end: number } | null; estimatedSegments: number; costEstimateCents: number | null; estimate?: Estimate;
-  roster: { customerId: string; customerName: string; maskedPhone: string | null; eligibility: string }[]; expiresInMinutes: number };
+  roster: { customerId: string; customerName: string; maskedPhone: string | null; eligibility: string }[]; expiresInMinutes: number;
+  largeSelection?: { warnAt: number; over: boolean; selected: number; criteria: { kind?: string; mode?: string; segment?: string; q?: string | null; excluded?: number; count?: number; filters?: Record<string, unknown> } } };
 
 function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }: { ready: Readiness | null; sel: Selection; onClose: () => void; onQueued: (r: { campaignId: string; queued: number; duplicate: boolean }) => void; audience?: 'win_back' | 'first_visit' }) {
   const [body, setBody] = useState(''); const [label, setLabel] = useState('');
@@ -451,6 +461,7 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
   const [pv, setPv] = useState<Preview | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [changed, setChanged] = useState<{ noLongerEligible: number; stillEligible: number; reasons: Record<string, number> } | null>(null);
   const [showRoster, setShowRoster] = useState(false);
+  const [typed, setTyped] = useState('');   // Retention Win-Back 15: the exact count, typed back for a large selection
   const key = useRef(requestId());
   const count = sel.mode === 'ids' ? sel.ids.size : Math.max(0, sel.total - sel.excludeIds.size);
   const doPreview = async () => {
@@ -463,7 +474,7 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
   };
   const doConfirm = async (acceptChanges = false) => {
     if (!pv || busy) return; setBusy(true); setErr(null);
-    try { const r = await posRetentionApi.confirm({ previewId: pv.previewId, idempotencyKey: key.current, acceptChanges, label: label.trim() || undefined }); onQueued({ campaignId: r.campaignId, queued: Number(r.queued || 0), duplicate: !!r.duplicate }); }
+    try { const r = await posRetentionApi.confirm({ previewId: pv.previewId, idempotencyKey: key.current, acceptChanges, label: label.trim() || undefined, ...(pv.largeSelection?.over ? { confirmLargeSelection: Number(typed) } : {}) }); onQueued({ campaignId: r.campaignId, queued: Number(r.queued || 0), duplicate: !!r.duplicate }); }
     catch (e: any) {
       if (e?.code === 'SMS_AUDIENCE_CHANGED') { const d = errDetails(e); setChanged({ noLongerEligible: Number(d.noLongerEligible || 0), stillEligible: Number(d.stillEligible || 0), reasons: d.reasons || {} }); }
       else if (e?.code === 'SMS_PREVIEW_EXPIRED') { setPv(null); setErr(tx('people.retention.previewExpired')); }
@@ -475,6 +486,8 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
   const senderText = !sender ? '…' : sender.route === 'tenant_account' ? tx('people.retention.sender.tenant', { from: sender.from ?? '' }) : sender.route === 'shared' ? tx('people.retention.sender.shared', { from: sender.from ?? '' })
     : sender.route === 'simulated' ? tx('people.retention.sender.simulated') : tx('people.retention.smsNotConfigured');
   const len = body.trim().length;
+  const large = pv?.largeSelection?.over ? pv.largeSelection : null;
+  const countOk = !large || Number(typed) === large.selected;
   return (
     <FitDialog wide title={audience === 'first_visit' ? tx('rt2.fv.title') : tx('people.retention.composeTitle')} subtitle={<>{pv ? tx('people.retention.previewCounts', { s: nf(pv.selected), e: nf(pv.eligible), x: nf(pv.excluded) }) : tx('people.retention.composeCount', { n: nf(count) })} · {senderText}</>}
       onClose={onClose} busy={busy} testId="dlg-compose"
@@ -483,8 +496,8 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
         <button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
         {!pv ? <button type="button" className="fk-btn primary" disabled={busy || len < 5 || placeholders} onClick={doPreview} data-testid="sms-preview">{busy ? tx('pos.loading') : tx('people.retention.preview')}</button> : <>
           <button type="button" className="fk-btn ghost" disabled={busy} onClick={() => setPv(null)}>{tx('people.retention.editMessage')}</button>
-          {changed ? <button type="button" className="fk-btn primary" disabled={busy || changed.stillEligible === 0} onClick={() => doConfirm(true)} data-testid="sms-confirm-changed">{tx('people.retention.confirmChanged', { n: nf(changed.stillEligible) })}</button>
-            : <button type="button" className="fk-btn primary" disabled={busy || !pv.canSend} onClick={() => doConfirm(false)} data-testid="sms-confirm">{busy ? tx('pos.saving_2') : tx('people.retention.confirmSend', { n: nf(pv.eligible) })}</button>}
+          {changed ? <button type="button" className="fk-btn primary" disabled={busy || changed.stillEligible === 0 || !countOk} onClick={() => doConfirm(true)} data-testid="sms-confirm-changed">{tx('people.retention.confirmChanged', { n: nf(changed.stillEligible) })}</button>
+            : <button type="button" className="fk-btn primary" disabled={busy || !pv.canSend || !countOk} onClick={() => doConfirm(false)} data-testid="sms-confirm">{busy ? tx('pos.saving_2') : tx('people.retention.confirmSend', { n: nf(pv.eligible) })}</button>}
         </>}
       </>}>
       {audience === 'first_visit' ? <div className="fk-note info" data-testid="fv-note"><span>{tx('rt2.fv.note')}</span></div> : null}
@@ -498,6 +511,14 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
       </> : <>
         <div className="rt-final"><div className="rt-final-h">{tx('people.retention.finalText')}</div><div className="rt-bubble">{pv.finalBody}</div>
           <div className="fk-hint">{tx('people.retention.segmentsInfo', { c: nf(pv.segments.characters), s: nf(pv.segments.segments), enc: pv.segments.encoding, total: nf(pv.estimatedSegments) })}</div></div>
+        {large ? <div className="fk-note warn" data-testid="rt-large">
+          <b>{tx('rt9.confirmTitle', { n: nf(large.selected), w: nf(large.warnAt) })}</b>
+          <span>{large.criteria.mode === 'all_matching'
+            ? tx('rt9.criteriaMatching', { seg: large.criteria.segment ? segLabel(large.criteria.segment, null) : '—', f: nf(Object.keys(large.criteria.filters ?? {}).length), q: large.criteria.q || '—', x: nf(large.criteria.excluded ?? 0) })
+            : tx('rt9.criteriaPicked', { n: nf(large.criteria.count ?? large.selected) })}</span>
+          <label className="fk-field"><span>{tx('rt9.typeCount', { n: nf(large.selected) })}</span><input inputMode="numeric" value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, ''))} data-testid="rt-large-count" /></label>
+          <span className="fk-hint">{tx('rt9.cancelSafe')}</span>
+        </div> : null}
         <EstimateBlock e={pv.estimate} />
         <div className="rt-counts">
           <div><b>{nf(pv.selected)}</b><span>{tx('people.retention.c.selected')}</span></div>
@@ -635,14 +656,15 @@ function RecoveryDialog({ period, onClose, openCustomer, openCampaign }: { perio
 // ── the salon's thresholds (guide §05): audited, versioned; only pos.settings.edit may change them ────────────────────────
 function SettingsDialog({ onClose, onSaved, canPricing }: { onClose: () => void; onSaved: () => void; canPricing: boolean }) {
   const [s, setS] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
-  const [risk, setRisk] = useState(''); const [appr, setAppr] = useState(''); const [obs, setObs] = useState('');
-  const load = useCallback(() => { setErr(null); posRetentionApi.settings().then((r) => { setS(r); setRisk(String(r.riskDays)); setAppr(String(r.approachingDays)); setObs(String(r.observationWindowDays)); }).catch((e) => setErr(errText(e, tx('people.retention.loadFailed')))); }, []);
+  const [risk, setRisk] = useState(''); const [appr, setAppr] = useState(''); const [obs, setObs] = useState(''); const [warn, setWarn] = useState('');
+  const load = useCallback(() => { setErr(null); posRetentionApi.settings().then((r) => { setS(r); setRisk(String(r.riskDays)); setAppr(String(r.approachingDays)); setObs(String(r.observationWindowDays)); setWarn(r.bulkSelectionWarnAt != null ? String(r.bulkSelectionWarnAt) : ''); }).catch((e) => setErr(errText(e, tx('people.retention.loadFailed')))); }, []);
   useEffect(() => { load(); }, [load]);
-  const r = Number(risk), a = Number(appr), o = Number(obs);
-  const invalid = !Number.isInteger(r) || r < 14 || r > 730 ? 'risk' : !Number.isInteger(a) || a < 7 || a >= r ? 'approaching' : !Number.isInteger(o) || o < 1 || o > 180 ? 'window' : null;
+  const r = Number(risk), a = Number(appr), o = Number(obs), w = Number(warn);
+  const invalid = !Number.isInteger(r) || r < 14 || r > 730 ? 'risk' : !Number.isInteger(a) || a < 7 || a >= r ? 'approaching' : !Number.isInteger(o) || o < 1 || o > 180 ? 'window'
+    : warn !== '' && (!Number.isInteger(w) || w < 10 || w > 5000) ? 'bulk' : null;
   const save = async () => {
     if (!s || invalid || busy) return; setBusy(true); setErr(null);
-    try { await posRetentionApi.saveSettings({ riskDays: r, approachingDays: a, observationWindowDays: o, expectedVersion: s.version }); onSaved(); }
+    try { await posRetentionApi.saveSettings({ riskDays: r, approachingDays: a, observationWindowDays: o, ...(s.bulkSelectionWarnAt !== undefined ? { bulkSelectionWarnAt: warn === '' ? null : w } : {}), expectedVersion: s.version }); onSaved(); }
     catch (e: any) { if (e?.code === 'SETTINGS_VERSION_CONFLICT') { setErr(tx('rt2.settingsConflict')); load(); } else setErr(errText(e, tx('rt2.settingsFailed'))); } finally { setBusy(false); }
   };
   const ro = !s?.canEdit;
@@ -655,7 +677,8 @@ function SettingsDialog({ onClose, onSaved, canPricing }: { onClose: () => void;
         <label className="fk-field"><span>{tx('rt2.set.risk')}</span><input type="number" inputMode="numeric" min={14} max={730} value={risk} disabled={ro} onChange={(e) => setRisk(e.target.value)} data-testid="set-risk" /></label>
         <label className="fk-field"><span>{tx('rt2.set.approaching')}</span><input type="number" inputMode="numeric" min={7} max={729} value={appr} disabled={ro} onChange={(e) => setAppr(e.target.value)} data-testid="set-approaching" /></label>
         <label className="fk-field"><span>{tx('rt2.set.window')}</span><input type="number" inputMode="numeric" min={1} max={180} value={obs} disabled={ro} onChange={(e) => setObs(e.target.value)} data-testid="set-window" /></label>
-        {invalid ? <div className="fk-err" role="alert">{tx('rt2.set.invalid.' + invalid)}</div> : null}
+        {s.bulkSelectionWarnAt !== undefined ? <label className="fk-field"><span>{tx('rt9.set.bulk')}</span><input type="number" inputMode="numeric" min={10} max={5000} value={warn} disabled={ro} placeholder="200" onChange={(e) => setWarn(e.target.value)} data-testid="set-bulk" /></label> : null}
+        {invalid ? <div className="fk-err" role="alert">{invalid === 'bulk' ? tx('rt9.set.invalidBulk') : tx('rt2.set.invalid.' + invalid)}</div> : null}
         <div className="fk-hint">{tx('rt2.set.help')}</div>
         {ro ? <div className="fk-hint warn">{tx('rt2.set.readOnly')}</div> : null}
       </> : null}

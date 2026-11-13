@@ -2,7 +2,7 @@
 // plan can never publish with a split that doesn't total 100%, and product types are constrained. Permission enforcement
 // lives in the controller guard (pos.memberships.*); this layer adds input validation and tenant-safe shaping.
 import type { MembershipsRepositoryPort, MembershipsContext } from './memberships.repository';
-import type { MembershipOverview, OverviewFilters, PlanRow, PlanDetail, CreatePlanRequest, PublishVersionRequest, MemberExportRow, PaymentExportRow, RedemptionExportRow } from './memberships.dto';
+import type { MembershipOverview, OverviewFilters, PlanRow, PlanDetail, CreatePlanRequest, PublishVersionRequest, MemberExportRow, PaymentExportRow, RedemptionExportRow, PlanVersionChangePreviewDto, VersionChangeFacts, VersionField } from './memberships.dto';
 import { PRODUCT_TYPES, isValidSplit } from './memberships-core';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
@@ -47,7 +47,53 @@ export class MembershipsService {
   async publishVersion(ctx: MembershipsContext, planId: string, body: PublishVersionRequest): Promise<{ versionId: string; versionNumber: number }> {
     const existing = await this.repo.getPlan(ctx, planId);
     if (!existing) throw withCode(new ValidationError('Plan not found'), 'PLAN_NOT_FOUND');
+    const facts = body.carryForward ? await this.facts(ctx, planId) : null;
+    return this.repo.publishVersion(ctx, planId, this.normalizeVersion(body, facts));
+  }
 
+  /** extras Membership Overview 13 · 10 "Smart subscription change preview": the SAME normalisation and validation as
+   *  publishVersion (a refused change is refused here too), compared with the current version, and who it affects: live
+   *  members keep the version they joined (renewals bill their own version — membership-billing reads cm.plan_version_id),
+   *  only people who join after publishing get the new terms. Writes nothing. */
+  async previewVersion(ctx: MembershipsContext, planId: string, body: PublishVersionRequest): Promise<PlanVersionChangePreviewDto> {
+    const existing = await this.repo.getPlan(ctx, planId);
+    if (!existing) throw withCode(new ValidationError('Plan not found'), 'PLAN_NOT_FOUND');
+    const facts = await this.facts(ctx, planId);
+    const next = this.normalizeVersion(body, body.carryForward ? facts : null);
+    const cur = facts.current;
+    const FIELDS: VersionField[] = ['priceCents', 'billingInterval', 'intervalCount', 'trialDays', 'enrollmentFeeCents', 'setupFeeCents', 'autoRenew', 'cancellationPolicy',
+      'techSplitPct', 'ownerSplitPct', 'allocationTiming', 'creditExpiryDays', 'rolloverAllowed', 'minCommitmentCycles'];
+    const val = (o: Record<string, unknown> | null | undefined, f: string): string | number | boolean | null => { const v = o?.[f]; return v === undefined ? null : (v as string | number | boolean | null); };
+    const changes = FIELDS.map((f) => ({ field: f, from: val(cur as Record<string, unknown> | null, f), to: val(next as Record<string, unknown>, f) })).filter((c) => (cur ? c.from !== c.to : true));
+    const proposedBenefits = next.benefits ?? [];
+    const sameBenefits = !!cur && JSON.stringify(proposedBenefits) === JSON.stringify(cur.benefits);
+    if (cur && !sameBenefits) changes.push({ field: 'benefits', from: cur.benefits.length, to: proposedBenefits.length });
+    const blockers: PlanVersionChangePreviewDto['blockers'] = [];
+    if (facts.planStatus === 'archived') blockers.push('plan_archived');
+    if (cur && changes.length === 0) blockers.push('no_change');
+    const priceCents = Number(next.priceCents ?? 0);
+    return {
+      planId, blockers, currentVersionNumber: cur?.versionNumber ?? null, nextVersionNumber: facts.nextVersionNumber, changes,
+      benefits: { current: cur?.benefits.length ?? 0, proposed: proposedBenefits.length, carriedForward: !!body.carryForward && !(body.benefits && body.benefits.length) && !!cur },
+      currentSubscribers: { total: facts.subscribers.reduce((a, x) => a + x.members, 0), byVersion: facts.subscribers, keepTheirTerms: true },
+      futureSubscribers: { priceCents, billingInterval: String(next.billingInterval), priceDeltaCents: cur ? priceCents - cur.priceCents : null },
+      readOnly: true,
+    };
+  }
+
+  private async facts(ctx: MembershipsContext, planId: string): Promise<VersionChangeFacts> {
+    const f = this.repo.versionChangeFacts ? await this.repo.versionChangeFacts(ctx, planId) : null;
+    if (!f) throw withCode(new ValidationError('Plan not found'), 'PLAN_NOT_FOUND');
+    return f;
+  }
+
+  /** The ONE normalisation + validation of a new version (publish and preview). With carryForward, every term not sent is
+   *  the current version's, and its benefits are kept when none are sent. */
+  private normalizeVersion(raw: PublishVersionRequest, facts: VersionChangeFacts | null): PublishVersionRequest {
+    const sent = Object.fromEntries(Object.entries(raw ?? {}).filter(([k, v]) => v !== undefined && k !== 'carryForward')) as PublishVersionRequest;
+    const body: PublishVersionRequest = facts?.current
+      ? { ...(({ versionNumber: _v, ...rest }) => rest)(facts.current), ...sent, benefits: sent.benefits && sent.benefits.length ? sent.benefits : facts.current.benefits }
+      : sent;
     const techSplit = numOr(body.techSplitPct, 60);
     const ownerSplit = numOr(body.ownerSplitPct, 40);
     if (!isValidSplit(techSplit, ownerSplit)) throw withCode(new ValidationError('Technician and owner split must total 100%'), 'SPLIT_MUST_TOTAL_100');
@@ -62,9 +108,7 @@ export class MembershipsService {
     if (body.allocationTiming && !ALLOCATION_TIMINGS.has(body.allocationTiming)) throw new ValidationError('Unknown allocation timing');
     if (body.cancellationPolicy && !CANCELLATION_POLICIES.has(body.cancellationPolicy)) throw new ValidationError('Unknown cancellation policy');
 
-    return this.repo.publishVersion(ctx, planId, {
-      ...body, techSplitPct: techSplit, ownerSplitPct: ownerSplit, billingInterval: interval, priceCents: price, isCustomPricing: isCustom,
-    });
+    return { ...body, techSplitPct: techSplit, ownerSplitPct: ownerSplit, billingInterval: interval, priceCents: price, isCustomPricing: isCustom };
   }
 
   exportMembers(ctx: MembershipsContext, branchId?: string): Promise<MemberExportRow[]> { return this.repo.exportMembers(ctx, branchId || undefined); }

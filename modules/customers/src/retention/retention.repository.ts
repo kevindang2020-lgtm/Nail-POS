@@ -51,6 +51,9 @@ export type DateBasis = (typeof DATE_BASES)[number];
 export const PRIORITY_BANDS = ['high', 'medium', 'low'] as const;
 export const RECENT_CONTACT_DAYS = 7;
 export const MAX_SELECTION = 5000;
+/** Retention Win-Back 15 (migration 883): a selection larger than this asks for the exact count to be confirmed before a
+ *  campaign is queued — the salon's own number (Settings), or this default. A warning threshold, never a cap. */
+export const DEFAULT_BULK_SELECTION_WARN_AT = 200;
 export const PREVIEW_TTL_MINUTES = 20;
 export const SENDS_PER_MINUTE = 60;
 export const DEFAULT_RISK_DAYS = INACTIVE_DAYS;        // 60 full salon-local days (spec §05)
@@ -86,7 +89,7 @@ const pick = <T extends string>(list: readonly T[], v: unknown): T | undefined =
 export class RetentionError extends Error {
   constructor(message: string, readonly code: 'RETENTION_INVALID_SEGMENT' | 'RETENTION_INVALID_PERIOD' | 'RETENTION_INVALID_SETTINGS' | 'SETTINGS_VERSION_CONFLICT' | 'SMS_BODY_INVALID' | 'SMS_NO_RECIPIENTS' | 'SMS_SELECTION_TOO_LARGE' | 'SMS_PREVIEW_NOT_FOUND'
     | 'SMS_PREVIEW_EXPIRED' | 'SMS_AUDIENCE_CHANGED' | 'SMS_NOT_CONFIGURED' | 'SMS_NO_ELIGIBLE' | 'IDEMPOTENCY_KEY_REQUIRED' | 'CAMPAIGN_NOT_FOUND' | 'CUSTOMER_NOT_FOUND'
-    | 'RETENTION_INVALID_BRANCH' | 'BRANCH_NOT_AUTHORIZED' | 'SNAPSHOT_INVALID_DATE' | 'SNAPSHOT_INVALID_RANGE' | 'SMS_PRICING_INVALID'
+    | 'CONFIRMATION_REQUIRED' | 'RETENTION_INVALID_BRANCH' | 'BRANCH_NOT_AUTHORIZED' | 'SNAPSHOT_INVALID_DATE' | 'SNAPSHOT_INVALID_RANGE' | 'SMS_PRICING_INVALID'
     | 'RETENTION_INVALID_FILTER' | 'WINBACK_GOAL_INVALID' | 'WINBACK_AUDIENCE_EMPTY' | 'WINBACK_HEALTH_RATE_LIMITED' | 'REASON_REQUIRED' | 'CAMPAIGN_NOT_CANCELABLE',
     readonly status: 400 | 403 | 404 | 409 | 429 | 503 = 400, readonly details?: Record<string, unknown>) { super(message); this.name = 'RetentionError'; }
 }
@@ -108,7 +111,7 @@ export function composeRetentionSms(body: string, salonName?: string | null): st
   return t;
 }
 
-export interface RetentionSettings { riskDays: number; approachingDays: number; observationWindowDays: number; version: number; isDefault: boolean; updatedAt: string | null; updatedByUserId: string | null }
+export interface RetentionSettings { riskDays: number; approachingDays: number; observationWindowDays: number; bulkSelectionWarnAt: number; bulkSelectionWarnAtIsDefault: boolean; version: number; isDefault: boolean; updatedAt: string | null; updatedByUserId: string | null }
 export interface PeriodInput { preset?: unknown; from?: unknown; to?: unknown; branch?: unknown }
 /** A19 Nov 6: where the search looks (all = name, email, phone, ids, services); spend bands in cents */
 export const SEARCH_SCOPES = ['all', 'name', 'phone', 'email', 'service', 'id'] as const;
@@ -163,26 +166,33 @@ export class RetentionRepository {
 
   // ── settings (spec §05: tenant-configurable threshold, versioned, audited) ────────────────────────────────────────────
   async settings(ctx: RetentionContext, db: Kysely<any> = this.db): Promise<RetentionSettings> {
-    const r = (await sql<any>`select risk_days, approaching_days, observation_window_days, version, updated_at, updated_by_user_id from tenant_retention_settings where tenant_id = ${ctx.tenantId}`.execute(db)).rows[0];
-    if (!r) return { riskDays: DEFAULT_RISK_DAYS, approachingDays: DEFAULT_APPROACHING_DAYS, observationWindowDays: DEFAULT_OBSERVATION_DAYS, version: 0, isDefault: true, updatedAt: null, updatedByUserId: null };
-    return { riskDays: N(r.risk_days), approachingDays: N(r.approaching_days), observationWindowDays: N(r.observation_window_days), version: N(r.version), isDefault: false, updatedAt: iso(r.updated_at), updatedByUserId: r.updated_by_user_id ? String(r.updated_by_user_id) : null };
+    const r = (await sql<any>`select risk_days, approaching_days, observation_window_days, bulk_selection_warn_at, version, updated_at, updated_by_user_id from tenant_retention_settings where tenant_id = ${ctx.tenantId}`.execute(db)).rows[0];
+    if (!r) return { riskDays: DEFAULT_RISK_DAYS, approachingDays: DEFAULT_APPROACHING_DAYS, observationWindowDays: DEFAULT_OBSERVATION_DAYS, bulkSelectionWarnAt: DEFAULT_BULK_SELECTION_WARN_AT, bulkSelectionWarnAtIsDefault: true, version: 0, isDefault: true, updatedAt: null, updatedByUserId: null };
+    return { riskDays: N(r.risk_days), approachingDays: N(r.approaching_days), observationWindowDays: N(r.observation_window_days),
+      bulkSelectionWarnAt: r.bulk_selection_warn_at == null ? DEFAULT_BULK_SELECTION_WARN_AT : N(r.bulk_selection_warn_at), bulkSelectionWarnAtIsDefault: r.bulk_selection_warn_at == null,
+      version: N(r.version), isDefault: false, updatedAt: iso(r.updated_at), updatedByUserId: r.updated_by_user_id ? String(r.updated_by_user_id) : null };
   }
   /** Validate + write the thresholds under optimistic concurrency; `audit` runs in the SAME transaction (fail-closed). */
-  async updateSettings(ctx: RetentionContext, b: { riskDays: unknown; approachingDays: unknown; observationWindowDays?: unknown; expectedVersion: unknown },
+  async updateSettings(ctx: RetentionContext, b: { riskDays: unknown; approachingDays: unknown; observationWindowDays?: unknown; bulkSelectionWarnAt?: unknown; expectedVersion: unknown },
     audit: (trx: Kysely<any>, before: RetentionSettings, after: RetentionSettings) => Promise<void>): Promise<RetentionSettings> {
     const risk = Math.trunc(Number(b.riskDays)), appr = Math.trunc(Number(b.approachingDays));
     const obs = b.observationWindowDays == null ? DEFAULT_OBSERVATION_DAYS : Math.trunc(Number(b.observationWindowDays));
     if (!Number.isFinite(risk) || risk < 14 || risk > 730) throw new RetentionError('At Risk must be between 14 and 730 days.', 'RETENTION_INVALID_SETTINGS', 400, { field: 'riskDays' });
     if (!Number.isFinite(appr) || appr < 7 || appr >= risk) throw new RetentionError('Approaching Risk must start at least 7 days and before the At Risk threshold.', 'RETENTION_INVALID_SETTINGS', 400, { field: 'approachingDays' });
     if (!Number.isFinite(obs) || obs < 1 || obs > 180) throw new RetentionError('The campaign observation window must be 1–180 days.', 'RETENTION_INVALID_SETTINGS', 400, { field: 'observationWindowDays' });
+    // Retention Win-Back 15: undefined = keep the saved value; null = back to the default; else 10 … MAX_SELECTION
+    const warnGiven = b.bulkSelectionWarnAt !== undefined;
+    const warn = b.bulkSelectionWarnAt == null ? null : Math.trunc(Number(b.bulkSelectionWarnAt));
+    if (warnGiven && warn != null && (!Number.isFinite(warn) || warn < 10 || warn > MAX_SELECTION)) throw new RetentionError(`The large-selection warning must be between 10 and ${MAX_SELECTION} customers.`, 'RETENTION_INVALID_SETTINGS', 400, { field: 'bulkSelectionWarnAt' });
     return this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext(${'retention-settings:' + ctx.tenantId}))`.execute(trx);
       const before = await this.settings(ctx, trx);
       if (Math.trunc(Number(b.expectedVersion)) !== before.version) throw new RetentionError('Someone else changed these settings. Reload and try again.', 'SETTINGS_VERSION_CONFLICT', 409, { currentVersion: before.version });
       const user = isUuid(ctx.userId) ? ctx.userId : null;
-      await sql`insert into tenant_retention_settings (tenant_id, risk_days, approaching_days, observation_window_days, version, updated_by_user_id, updated_by)
-        values (${ctx.tenantId}, ${risk}, ${appr}, ${obs}, 1, ${user}, ${user}::uuid)
-        on conflict (tenant_id) do update set risk_days = excluded.risk_days, approaching_days = excluded.approaching_days, observation_window_days = excluded.observation_window_days,
+      const warnAt = warnGiven ? warn : (before.bulkSelectionWarnAtIsDefault ? null : before.bulkSelectionWarnAt);
+      await sql`insert into tenant_retention_settings (tenant_id, risk_days, approaching_days, observation_window_days, bulk_selection_warn_at, version, updated_by_user_id, updated_by)
+        values (${ctx.tenantId}, ${risk}, ${appr}, ${obs}, ${warnAt}, 1, ${user}, ${user}::uuid)
+        on conflict (tenant_id) do update set risk_days = excluded.risk_days, approaching_days = excluded.approaching_days, observation_window_days = excluded.observation_window_days, bulk_selection_warn_at = excluded.bulk_selection_warn_at,
           version = tenant_retention_settings.version + 1, updated_by_user_id = excluded.updated_by_user_id, updated_by = excluded.updated_by, updated_at = now()`.execute(trx);
       const after = await this.settings(ctx, trx);
       // CR-01: every version is kept with the instant it took effect — a past date is read with the definition IN FORCE then

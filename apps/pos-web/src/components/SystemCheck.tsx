@@ -6,8 +6,9 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { FitDialog, downloadText } from './FitKit';
 import { useCan } from './usePermissions';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtInZone, fmtNumber } from '../i18n/format';
-import { posSystemChecksApi, type SystemCheckDomain, type SystemCheckResult } from '../api/posSystemChecksApi';
+import { fmtInZone, fmtMoney, fmtNumber } from '../i18n/format';
+import { posSystemChecksApi, type SystemCheckDomain, type SystemCheckResult, type SystemCheckRows } from '../api/posSystemChecksApi';
+import { codeLabel } from './codeLabel';
 
 const ct = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 /** the page's own read permission (the server checks the same one on GET pos/system-checks/<page>) */
@@ -76,6 +77,7 @@ export function SystemCheckButton({ domain, testId = `syschk-${domain}` }: { dom
                       {c.state === 'NOT_TESTED' ? <div className="muted">{ct('syschk.notTested')}</div> : null}
                     </span>
                     <span className="muted">{c.count ? ct('syschk.count', { n: fmtNumber(c.count) }) : c.count === 0 ? '0' : '—'}</span>
+                    {domain === 'memberships' && c.count && (c.state === 'WARNING' || c.state === 'FAILED') ? <SourceRows checkKey={c.key} testId={`${testId}-src-${c.key}`} /> : null}
                   </li>
                 ))}
               </ul>
@@ -84,5 +86,44 @@ export function SystemCheckButton({ domain, testId = `syschk-${domain}` }: { dom
         </FitDialog>
       ) : null}
     </>
+  );
+}
+
+/** extras Membership Overview 16 · 15 "Reconciliation Drill-Down": from a discrepant check to the source rows behind it —
+ *  the membership payment, credit-ledger entry, redemption, benefit balance or membership — with the member, the ticket
+ *  (receipt) number, the amount and when. Asked only when opened; read-only; the same page permission as the check. */
+function SourceRows({ checkKey, testId }: { checkKey: string; testId: string }) {
+  const [open, setOpen] = useState(false);
+  const [d, setD] = useState<SystemCheckRows | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const toggle = () => {
+    const next = !open; setOpen(next);
+    if (next && !d) posSystemChecksApi.rows('memberships', checkKey).then(setD, (e: unknown) => setErr(errorTextOf(e, ct('syschk.src.failed'))));
+  };
+  const detail = (source: string, v: string | null) => {
+    if (v == null) return '';
+    if (source === 'benefit_balance') return ct('syschk.src.credits', { n: v });
+    if (source === 'redemption_vs_ledger') { const [r, l] = v.split('/'); return ct('syschk.src.mismatch', { r: r ?? '—', l: l ?? '—' }); }
+    return codeLabel('syschk.src.code', v);
+  };
+  return (
+    <div style={{ gridColumn: '1 / -1' }}>
+      <button type="button" className="fk-link" aria-expanded={open} onClick={toggle} data-testid={testId}>{open ? ct('syschk.src.hide') : ct('syschk.src.show')}</button>
+      {open ? (err ? <div role="alert" className="fk-error">{err}</div> : !d ? <div className="muted">{ct('syschk.running')}</div> : !d.available ? <div className="muted">{ct('syschk.src.none')}</div> : (
+        <table className="fk-table" data-testid={`${testId}-table`}>
+          <thead><tr><th>{ct('syschk.src.col.source')}</th><th>{ct('syschk.src.col.member')}</th><th>{ct('syschk.src.col.ticket')}</th><th className="num">{ct('syschk.src.col.amount')}</th><th>{ct('syschk.src.col.when')}</th><th>{ct('syschk.src.col.detail')}</th></tr></thead>
+          <tbody>{d.rows.map((r, i) => (
+            <tr key={`${r.sourceId ?? ''}-${r.ticketId ?? ''}-${i}`} data-testid={`${testId}-row`}>
+              <td>{ct('syschk.src.kind.' + r.source)}</td>
+              <td>{[r.memberNumber ? '#' + r.memberNumber : null, r.customerName].filter(Boolean).join(' · ') || '—'}</td>
+              <td>{r.ticketNumber ? '#' + r.ticketNumber : r.ticketId ? '…' + r.ticketId.slice(-6) : '—'}</td>
+              <td className="num">{r.amountCents == null ? '—' : fmtMoney(r.amountCents)}</td>
+              <td>{r.at ? fmtInZone(r.at, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</td>
+              <td>{detail(r.source, r.detail)}</td>
+            </tr>))}
+          </tbody>
+          {d.truncated ? <caption className="muted">{ct('syschk.src.more', { n: fmtNumber(d.limit) })}</caption> : null}
+        </table>)) : null}
+    </div>
   );
 }

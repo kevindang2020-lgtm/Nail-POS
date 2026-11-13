@@ -6,6 +6,7 @@ import { Pager, Empty, ErrorRetry, FitDialog } from '../../components/FitKit';
 import { bt, bzErr, bzWhen, bzNum } from '../../components/BusinessKit';
 import { fmtMoney } from '../../i18n/format';
 import { posAiBusinessApi } from '../../api/posAiBusinessApi';
+import { markAlertsReadEverywhere } from '../../shell/alertReads';
 
 const STATUSES = ['active', 'open', 'investigating', 'snoozed', 'resolved', 'all'] as const;
 const SNOOZE = [30, 60, 120, 240, 480, 1440];
@@ -19,6 +20,13 @@ export function IncidentsPanel({ tick, onChanged }: { tick: number; onChanged: (
   const [open, setOpen] = useState<string | null>(null);
   const load = useCallback(() => { setErr(null); posAiBusinessApi.center.incidents({ status: f.status, page: f.page, limit: 25 }).then(setList).catch((e) => setErr(bzErr(e))); }, [f]);
   useEffect(() => { load(); }, [load, tick]);
+  // extras AI BUSINESS ALERTS 05: opening an incident marks ITS in-app alerts read for me only (my badge clears on all my
+  // tabs and devices); it does not acknowledge the incident — Acknowledge / Investigate stay separate actions in the dialog
+  const openIncident = (i: { eventId: string; readState?: { unread: boolean; unreadAlertIds: string[] } | null }) => {
+    setOpen(i.eventId);
+    const ids = i.readState?.unread ? i.readState.unreadAlertIds : [];
+    if (ids.length) markAlertsReadEverywhere(ids).then(() => load(), () => undefined);
+  };
   const c = list?.counts ?? {};
   return (
     <section className="panel" data-testid="bzx-incidents">
@@ -34,12 +42,12 @@ export function IncidentsPanel({ tick, onChanged }: { tick: number; onChanged: (
         </tr></thead><tbody>
           {list.items.map((i: any) => (
             <tr key={i.eventId} data-testid="bzx-i-row">
-              <td><b>{i.title}</b><div className="sub">{bt('bzx.i.sev.' + i.severity)}</div></td>
+              <td><b>{i.title}</b>{i.readState?.unread ? <span className="chip err" data-testid="bzx-i-unread">{bt('bzx.i.unread')}</span> : null}<div className="sub">{bt('bzx.i.sev.' + i.severity)}</div></td>
               <td>{bt('bzx.a.valueVs', { v: i.display.value, t: i.display.threshold })}</td>
               <td><span className={'chip ' + chipTone(i.incidentStatus)}>{bt('bzx.i.st.' + i.incidentStatus)}</span>{i.snoozedUntil ? <div className="sub">{bt('bzx.i.until', { t: bzWhen(i.snoozedUntil) })}</div> : null}</td>
               <td>{i.assignee ?? '—'}</td>
               <td>{bzWhen(i.evaluatedAt)}</td>
-              <td><button type="button" className="btn ghost" data-testid="bzx-i-open" onClick={() => setOpen(i.eventId)}>{bt('bzx.i.open')}</button></td>
+              <td><button type="button" className="btn ghost" data-testid="bzx-i-open" onClick={() => openIncident(i)}>{bt('bzx.i.open')}</button></td>
             </tr>))}
         </tbody></table></div>)}
       {list ? <Pager info={{ page: list.page, pageSize: list.limit, totalItems: list.total, totalPages: Math.max(1, Math.ceil(list.total / list.limit)) }} onPage={(p) => setF({ ...f, page: p })} /> : null}

@@ -12,6 +12,7 @@ import { SuperAdminLocationsController as SL } from './tenant-locations/super-ad
 import { SuperAdminBrandingController as B } from './branding/branding.controller';
 import { OwnerPortfolioController as OP } from './owner-portfolio/owner-portfolio.controller';
 import { SocialController as SO } from './pos-social/pos-social.controller';
+import { TenantNavigationController as NAV } from './tenant-navigation/tenant-navigation.controller';
 
 const U = '11111111-1111-4111-8111-111111111111';
 const CASES: RouteBodyCase[] = [
@@ -52,6 +53,9 @@ const CASES: RouteBodyCase[] = [
   { route: 'POST /owner/context/switch', ctl: OP, handler: 'switchSalon', today: [{ salonId: U, branchId: null }, { salonId: U, branchId: U }], bad: [{ salonId: { id: U } }, 'salonId'] },
   { route: 'POST /pos/social-posts', ctl: SO, handler: 'create', today: [{ platform: 'instagram', caption: 'Fall colors', scheduledAt: '2026-10-10T15:00:00Z' }, { platform: 'facebook', caption: 'x', scheduledAt: null }], bad: [{ platform: 'instagram', caption: 'x'.repeat(5001) }, 'caption'] },
   { route: 'POST /pos/social-posts/:id/status', ctl: SO, handler: 'setStatus', today: [{ status: 'posted' }], bad: [{ status: ['posted'] }, 'status'] },
+  // extras round 9 (pos-web shell/alertReads.ts): my alert reads + this session's badge sync
+  { route: 'POST /tenant/notifications/alerts/read', ctl: NAV, handler: 'markAlertsRead', today: [{ alertIds: [U] }], bad: [{ alertIds: 'x' }, 'alertIds'] },
+  { route: 'POST /tenant/navigation/badges/sync', ctl: NAV, handler: 'recordBadgeSync', today: [{ unread: 3, surface: 'pos' }, { unread: 0 }], bad: [{ unread: -1 }, 'unread'] },
 ];
 
 describe('tenants — validated bodies, route by route', () => {

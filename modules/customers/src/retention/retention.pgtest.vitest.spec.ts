@@ -6,7 +6,10 @@
 //     idempotent and revalidates (an audience that shrank needs a second confirmation); one job per recipient; the worker
 //     sends ONCE, re-checks consent at send time, and a recipient interrupted mid-hand-off becomes `unknown`, never re-sent.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { MIGRATIONS_DIR } from '@aipowersalon/database';
+import { migratedPglite, kyselyFor, applyMigrationToPglite } from '@aipowersalon/testing';
 import { RetentionRepository, RetentionError, composeRetentionSms } from './retention.repository';
 import { RetentionSmsService, RETENTION_SMS_JOB } from './retention-sms.service';
 import { runRetentionSmsJob } from './retention-sms.worker';
@@ -224,5 +227,41 @@ describe('Customer Retention — win-back SMS', () => {
     const l = await repo.listCampaigns(ctx, { page: 1, pageSize: 10 });
     expect(l.items.length).toBe(2); expect(l.items[0]!.createdAt! >= l.items[1]!.createdAt!).toBe(true);
     expect((await repo.listCampaigns(ctx2, { page: 1, pageSize: 10 })).totalItems).toBe(0);
+  });
+});
+
+describe('Retention Win-Back 15 — bulk selection guardrails (migration 883)', () => {
+  beforeAll(async () => {
+    const f883 = join(MIGRATIONS_DIR, '883_retention_bulk_selection_guard.sql');   // applied again when present (idempotent)
+    if (existsSync(f883)) await applyMigrationToPglite(pg, readFileSync(f883, 'utf8'));
+  });
+  const settingsCtx = { ...ctx, permissions: [...ctx.permissions, 'pos.settings.edit'] };
+  const noAudit = async () => undefined;
+  it('the warning size is the salon\'s (versioned with the thresholds), 200 by default, 10 … 5000, kept when a save leaves it out', async () => {
+    const s0 = await repo.settings(ctx);
+    expect(s0).toMatchObject({ bulkSelectionWarnAt: 200, bulkSelectionWarnAtIsDefault: true });
+    expect(await code(repo.updateSettings(settingsCtx, { riskDays: s0.riskDays, approachingDays: s0.approachingDays, bulkSelectionWarnAt: 5, expectedVersion: s0.version }, noAudit))).toBe('RETENTION_INVALID_SETTINGS');
+    const s1 = await repo.updateSettings(settingsCtx, { riskDays: s0.riskDays, approachingDays: s0.approachingDays, bulkSelectionWarnAt: 10, expectedVersion: s0.version }, noAudit);
+    expect(s1).toMatchObject({ bulkSelectionWarnAt: 10, bulkSelectionWarnAtIsDefault: false, version: s0.version + 1 });
+    const s2 = await repo.updateSettings(settingsCtx, { riskDays: s1.riskDays, approachingDays: s1.approachingDays, expectedVersion: s1.version }, noAudit);
+    expect(s2.bulkSelectionWarnAt).toBe(10);                                // a thresholds-only save keeps it
+    expect((await repo.settings(ctx2)).bulkSelectionWarnAt).toBe(200);      // another salon keeps its own
+  });
+  it('a selection over the size names its count + criteria at preview; confirm needs the exact count typed back; nothing is queued until then', async () => {
+    const ids = [A, Bc, C, D, E, E2, F, G, H, I, J];                      // 11 > 10
+    await q(`update customers set marketing_sms_opt_in = true where id = $1`, [E2]);
+    const jobsBefore = (await q(`select count(*)::int n from jobs where job_type = $1 and tenant_id = $2`, [RETENTION_SMS_JOB, T])).rows[0].n;
+    const p = await svc.preview(ctx, { customerIds: ids, body: 'We miss you! Book your next visit soon.' });
+    expect(p.largeSelection).toEqual({ warnAt: 10, over: true, selected: 11, criteria: { kind: 'win_back', mode: 'selected', count: 11 } });
+    expect(await code(svc.confirm(ctx, { previewId: p.previewId, idempotencyKey: key(901) }))).toBe('CONFIRMATION_REQUIRED');
+    expect(await code(svc.confirm(ctx, { previewId: p.previewId, idempotencyKey: key(902), confirmLargeSelection: 10 }))).toBe('CONFIRMATION_REQUIRED');
+    expect((await q(`select count(*)::int n from jobs where job_type = $1 and tenant_id = $2`, [RETENTION_SMS_JOB, T])).rows[0].n).toBe(jobsBefore);
+    expect((await q(`select status from retention_sms_campaigns where id = $1`, [p.previewId])).rows[0].status).toBe('draft');   // still an unsent draft
+    const ok = await svc.confirm(ctx, { previewId: p.previewId, idempotencyKey: key(903), confirmLargeSelection: 11 });
+    expect(ok.duplicate).toBe(false);
+    expect(ok.queued).toBeGreaterThan(0);
+    // a small selection is not asked
+    const small = await svc.preview(ctx, { customerIds: [E2], body: 'We miss you! Book your next visit soon.' });
+    expect(small.largeSelection.over).toBe(false);
   });
 });

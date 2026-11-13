@@ -4,7 +4,7 @@
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
-import type { SystemCheckDomain, SystemCheckItem, SystemCheckResult } from '@aipowersalon/api-contracts/tenant';
+import type { SystemCheckDomain, SystemCheckItem, SystemCheckResult, SystemCheckRows, SystemCheckSourceRow } from '@aipowersalon/api-contracts/tenant';
 import { SYSTEM_CHECKS } from './system-checks.registry';
 
 const log = new Logger('SystemChecks');
@@ -35,4 +35,40 @@ export class SystemChecksService {
     const overall = has('FAILED') ? 'FAILED' : has('WARNING') ? 'WARNING' : has('NOT_TESTED') ? 'NOT_TESTED' : 'READY';
     return { domain, overall, checkedAt: new Date().toISOString(), branchId, checks };
   }
+
+  /** extras Membership Overview 16 · 15 — Reconciliation Drill-Down: the source rows behind ONE check (the same predicate as
+   *  its count), newest first, at most `limit`, with the member number / name and the ticket number joined in. Read-only
+   *  transaction; the salon from the session; the person's branch when the request has one. */
+  async rows(domain: SystemCheckDomain, key: string, ctx: { tenantId?: string; branchId?: string | null }, limit = 25): Promise<SystemCheckRows> {
+    const branchId = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
+    const base = { domain, key, checkedAt: new Date().toISOString(), branchId, limit };
+    const c = SYSTEM_CHECKS[domain]?.checks.find((x) => x.key === key);
+    if (!c) throw new SystemCheckNotFound();
+    if (!c.rows || !this.db || !ctx.tenantId || !UUID.test(ctx.tenantId)) return { ...base, available: false, rows: [], truncated: false };
+    const t = ctx.tenantId;
+    try {
+      const out = await this.db.transaction().execute(async (tx) => {
+        await sql`SET TRANSACTION READ ONLY`.execute(tx);
+        await sql`SET LOCAL statement_timeout = '5s'`.execute(tx);
+        return (await sql<{ membership_id: string; source: SystemCheckSourceRow['source']; source_id: string | null; ticket_id: string | null; amount_cents: number | null; at: string | null; detail: string | null;
+            member_number: string | null; customer_name: string | null; ticket_number: string | null }>`
+          SELECT z.membership_id, z.source, z.source_id, z.ticket_id, z.amount_cents, z.at, z.detail,
+                 cm.member_number::text AS member_number, cu.full_name AS customer_name, tk.ticket_number::text AS ticket_number
+            FROM (${c.rows!(t, branchId)} LIMIT ${limit + 1}) z
+            LEFT JOIN customer_memberships cm ON cm.tenant_id = ${t}::uuid AND cm.id::text = z.membership_id
+            LEFT JOIN customers cu ON cu.tenant_id = cm.tenant_id AND cu.id = cm.customer_id
+            LEFT JOIN tickets tk ON tk.tenant_id = ${t}::uuid AND tk.id::text = z.ticket_id`.execute(tx)).rows;
+      });
+      const rows = out.slice(0, limit).map((r): SystemCheckSourceRow => ({ membershipId: String(r.membership_id), memberNumber: r.member_number ?? null, customerName: r.customer_name ?? null,
+        source: r.source, sourceId: r.source_id ?? null, ticketId: r.ticket_id ?? null, ticketNumber: r.ticket_number ?? null,
+        amountCents: r.amount_cents == null ? null : Number(r.amount_cents), at: r.at ? new Date(r.at).toISOString() : null, detail: r.detail ?? null }));
+      return { ...base, available: true, rows, truncated: out.length > limit };
+    } catch (e) {
+      log.warn(`${domain}.${key} rows could not run: ${String((e as Error)?.message ?? e).slice(0, 200)}`);
+      return { ...base, available: false, rows: [], truncated: false };
+    }
+  }
 }
+
+/** an unknown check key for the domain (the route answers 404 with RESOURCE_NOT_FOUND) */
+export class SystemCheckNotFound extends Error { readonly code = 'RESOURCE_NOT_FOUND'; constructor() { super('That check was not found.'); } }

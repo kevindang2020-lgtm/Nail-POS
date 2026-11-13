@@ -74,6 +74,17 @@ export function POSAIPlansScreen() {
                 {p.essential ? <span style={essTag}>{t('pos.daily_essential')}</span> : null}
                 {p.state && p.state !== 'available' && p.state !== 'trial_available' ? <span className={'pill ' + (p.state === 'active' || p.state === 'trialing' ? 'ok' : '')} data-testid={`plan-state-${p.code}`}>{t('aiu.state.' + p.state)}</span> : null}
               </div>
+              {/* extras AI Plans #05: Access (commercial — may the salon use it) vs Setup (technical — can it work now), never merged */}
+              {p.readiness ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, fontSize: 12 }} data-testid={`plan-split-${p.code}`}>
+                  <span className="pill" data-testid={`plan-access-${p.code}`}>{t('plx.rd.access', { s: t('aiu.state.' + (p.state || 'available')) })}</span>
+                  <span className={'pill ' + (p.readiness.state === 'ready' ? 'ok' : '')} data-testid={`plan-ready-${p.code}`} data-state={p.readiness.state}>{t('plx.rd.setup', { s: t('plx.rd.st.' + p.readiness.state) })}</span>
+                </div>) : null}
+              {p.readiness && p.readiness.state !== 'ready' ? (
+                <div className="warn" style={{ marginTop: 4, fontSize: 12.5 }} data-testid={`plan-ready-why-${p.code}`}>
+                  {p.readiness.packages.filter((x) => x.state !== 'ready').map((x) => `${p.packages.find((pk) => pk.code === x.code)?.name ?? x.code}: ${t('plx.rd.why.' + (x.reason ?? 'unknown'))}`).join(' · ')}
+                  {' '}{p.subscribed ? t('plx.rd.paidNote') : null}
+                </div>) : null}
               <div style={{ fontSize: 12.5, color: '#6F6253', marginTop: 4 }}>{p.description}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, margin: '12px 0 2px' }}>
                 {discounted ? <span style={{ fontSize: 15, color: '#9b8b73', textDecoration: 'line-through' }}>{money(p.fullCents)}</span> : null}

@@ -3,7 +3,7 @@
 // the overview identically in shape; on empty data the overview is all zeros/empties — never faked.
 import type {
   MembershipOverview, OverviewFilters, PlanRow, PlanDetail, CreatePlanRequest, PublishVersionRequest,
-  MemberExportRow, PaymentExportRow, RedemptionExportRow,
+  MemberExportRow, PaymentExportRow, RedemptionExportRow, VersionChangeFacts,
 } from './memberships.dto';
 
 export interface MembershipsContext {
@@ -20,6 +20,8 @@ export interface MembershipsRepositoryPort {
   getPlan(ctx: MembershipsContext, planId: string): Promise<PlanDetail | null>;
   createPlan(ctx: MembershipsContext, input: CreatePlanRequest): Promise<{ planId: string }>;
   publishVersion(ctx: MembershipsContext, planId: string, input: PublishVersionRequest): Promise<{ versionId: string; versionNumber: number }>;
+  /** extras Membership Overview 13 · 10 (read-only): the current version's full terms + live members by version */
+  versionChangeFacts?(ctx: MembershipsContext, planId: string): Promise<VersionChangeFacts | null>;
   exportMembers(ctx: MembershipsContext, branchId?: string): Promise<MemberExportRow[]>;
   exportPayments(ctx: MembershipsContext, branchId?: string): Promise<PaymentExportRow[]>;
   exportRedemptions(ctx: MembershipsContext, branchId?: string): Promise<RedemptionExportRow[]>;

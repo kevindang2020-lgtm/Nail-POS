@@ -685,4 +685,5 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzx.opp.retention": "Only {retentionRatePercent}% of customers came back. A win-back campaign to customers away 60 days is the usual next step.",
   "bzx.opp.new_customers": "New customers are down {trendPercent}% ({newCustomers} this period). A referral reward brings in friends of your regulars.",
   "bzx.opp.retail": "None of the {ticketsCount} paid tickets included a product. Checkout suggestions can offer aftercare at the right moment.",
+  "bzx.i.unread": "Unread",
 };

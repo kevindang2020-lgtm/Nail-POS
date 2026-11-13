@@ -65,3 +65,4 @@ export * from './system-checks';   // shared read-only Check … System (extras 
 export * from './access-requests';   // requestable roles policy (batch 8 decision 6, Nov 9 2026)
 export * from './report-delivery';   // Daily Summary Email / Schedule Report (Nov 10 2026)
 export * from './ai-business-report-automation';   // AI Business Reports 14 automated reports + 15 executive summary (Nov 12 2026)
+export * from './staff-alert-reads';   // per-person alert read state + badge-sync monitor (extras round 9, Nov 12 2026)

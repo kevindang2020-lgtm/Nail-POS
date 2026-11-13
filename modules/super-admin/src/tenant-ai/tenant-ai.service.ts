@@ -9,6 +9,7 @@ import type { TenantAiRepo } from './tenant-ai.repository';
 import { canMoveToSql } from '@aipowersalon/database';
 import { TENANT_AI_PLAN_SUBSCRIPTION } from '../lifecycles';
 import { logException } from '@aipowersalon/observability';
+import { planReadiness, readinessFacts } from './ai-plan-readiness';
 
 export class TenantAiError extends Error { constructor(public code: 'forbidden' | 'not_found' | 'bad_request', message: string) { super(message); } }
 export interface TenantCtx { tenantId?: string; userId?: string; role?: string; permissions?: string[] }
@@ -105,6 +106,8 @@ export class TenantAiService {
       const psRows = await sql<any>`SELECT plan_code, status, price_cents, trial_ends_at, cancelled_at FROM tenant_ai_plan_subscriptions WHERE tenant_id = ${tenantId}`.execute(this.db);
       psRows.rows.forEach((r: any) => planSubs.set(r.plan_code, r));
     }
+    // AI Plans #05: the TECHNICAL readiness, read once for the salon and kept apart from the commercial `state` below
+    const facts = await readinessFacts(this.db, tenantId);
     const plans = AI_PLANS.filter((pl) => settings.get(pl.code)?.active ?? true).map((pl) => {
       const s = settings.get(pl.code);
       const { fullCents, effectiveCents, discountCents } = effectivePlanPriceCents(pl.code, { priceCentsOverride: s?.price_cents_override ?? null, discountType: s?.discount_type ?? null, discountValue: s?.discount_value ?? 0 });
@@ -143,6 +146,9 @@ export class TenantAiService {
         subscribed, status: planSub?.status ?? (subscribed ? 'active' : null), trialAvailable,
         state, trialEndsAt: trialEndsAt ? trialEndsAt.toISOString() : null, cancelledAt: planRow?.cancelled_at ? new Date(planRow.cancelled_at).toISOString() : null,
         canCancel: subscribed || lapsed,
+        // AI Plans #05 "Subscription vs Readiness Split": `state` above is commercial (may the salon use it); readiness is
+        // technical (can it work now) — ready / setup_required / provider_down with the reason, per member and for the plan
+        readiness: planReadiness(pl.packageCodes, facts),
         packages: pkgs.map((p) => ({ code: p.code, name: p.name, monthlyPriceCents: p.monthlyPriceCents, usageUnit: p.usageUnit, posArea: p.posArea })),
       };
     });

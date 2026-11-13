@@ -1,4 +1,5 @@
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
+import type { PlanVersionSubscribers } from '@aipowersalon/api-contracts/tenant';
 export type { MemberExportRow, PaymentExportRow, RedemptionExportRow } from '@aipowersalon/api-contracts/tenant';
 import type { MemberExportRow, PaymentExportRow, RedemptionExportRow } from '@aipowersalon/api-contracts/tenant';
 // memberships.dto.ts — request/response contracts for the Memberships surface. Re-exports the pure engine helpers from
@@ -148,7 +149,19 @@ export interface PublishVersionRequest {
   autoRenewDisclosure?: string | null;
   estMarginCents?: number;
   benefits?: BenefitInput[];
+  /** extras Membership Overview 13 · 10: a CHANGE to an existing plan — every term not sent is copied from the plan's
+   *  current version (benefits too when none are sent), so changing the price never resets the other terms to defaults */
+  carryForward?: boolean;
 }
+
+/** extras Membership Overview 13 · 10: what the plan's current version is, who is on which version (read for the preview) */
+export interface VersionChangeFacts {
+  planStatus: string;
+  nextVersionNumber: number;
+  current: (Required<Omit<PublishVersionRequest, 'carryForward' | 'benefits'>> & { versionNumber: number; benefits: BenefitInput[] }) | null;
+  subscribers: PlanVersionSubscribers[];
+}
+export type { PlanVersionField as VersionField, PlanVersionChangePreview as PlanVersionChangePreviewDto } from '@aipowersalon/api-contracts/tenant';
 
 export interface PlanDetail extends PlanRow {
   branchId: string | null;

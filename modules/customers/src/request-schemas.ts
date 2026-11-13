@@ -85,7 +85,7 @@ export const RETENTION_SMS_PREVIEW_BODY: BodySchema = S.object({
   body: S.text(600), label: str(120), audience: S.nullable(S.enumOf(['win_back', 'first_visit'])),
 }, ['body']);
 /** PUT /pos/retention/settings — the salon's thresholds (Complete Build Guide §05), optimistic version */
-export const RETENTION_SETTINGS_BODY: BodySchema = S.object({ riskDays: S.integer(), approachingDays: S.integer(), observationWindowDays: S.nullable(S.integer()), expectedVersion: S.integer() },
+export const RETENTION_SETTINGS_BODY: BodySchema = S.object({ riskDays: S.integer(), approachingDays: S.integer(), observationWindowDays: S.nullable(S.integer()), bulkSelectionWarnAt: S.nullable(S.integer()), expectedVersion: S.integer() },
   ['riskDays', 'approachingDays', 'expectedVersion']);
 /** POST /pos/retention/snapshots/backfill — Four-Module Completion Guide CR-01: a bounded range of past salon days */
 export const RETENTION_SNAPSHOT_BACKFILL_BODY: BodySchema = S.object({ from: S.text(10), to: S.text(10) }, ['from', 'to']);
@@ -93,7 +93,7 @@ export const RETENTION_SNAPSHOT_BACKFILL_BODY: BodySchema = S.object({ from: S.t
 export const RETENTION_SMS_PRICING_BODY: BodySchema = S.object({ retailPricePerSegment: scalar(20), carrierFeePerSegment: scalar(20), taxRatePercent: scalar(20),
   currency: str(3), effectiveFrom: str(40), note: str(200) }, ['retailPricePerSegment']);
 /** POST /pos/retention/sms/campaigns — confirm a preview (idempotent per key) */
-export const RETENTION_SMS_CONFIRM_BODY: BodySchema = S.object({ previewId: S.uuid(), idempotencyKey: S.uuid(), acceptChanges: bool, label: str(120) }, ['previewId', 'idempotencyKey']);
+export const RETENTION_SMS_CONFIRM_BODY: BodySchema = S.object({ previewId: S.uuid(), idempotencyKey: S.uuid(), acceptChanges: bool, label: str(120), confirmLargeSelection: S.nullable(S.integer({ minimum: 0 })) }, ['previewId', 'idempotencyKey']);
 /** Customer Segments guide §10 C — POST /pos/marketing/segments/audience-drafts: an UNSENT audience (idempotent per key) */
 export const SEGMENT_AUDIENCE_DRAFT_BODY: BodySchema = S.object({
   channel: S.enumOf(['sms', 'email']), purpose: S.nullable(S.enumOf(['general', 'win_back'])), selectionMode: S.enumOf(['page', 'selected', 'all_matching']),
