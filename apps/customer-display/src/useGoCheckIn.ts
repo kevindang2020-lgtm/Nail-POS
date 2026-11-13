@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as gci from './goCheckInApi';
 import type { Session, WalkInInput } from './goCheckInApi';
+import type { WalkInConfirmInput, WalkInSelectionLine } from '@aipowersalon/api-contracts/customer';
 import type { KioskConfig } from '@aipowersalon/api-contracts/customer';
 import { DisplayApiError } from './api';
 
@@ -131,6 +132,12 @@ export function useGoCheckIn(deviceToken: string | null | undefined) {
     listServices: () => withSession((s) => gci.listServices(s), false),
     listTechnicians: (serviceIds: string[] = []) => withSession((s) => gci.listTechnicians(s, serviceIds), false),
     checkInWalkIn: (input: WalkInInput) => withSession((s) => gci.checkInWalkIn(s, input)),
+    // 4A: the catalog and the preview are the screen's (not the guest's) — they do not make the session "used"; the confirm does
+    // …and asked WITHOUT the gone-session retry: an older server answers this route with a plain 404 (no such route), which
+    // must read as "no service selection here", never as "your session ended" (that would restart the guest's session)
+    walkInCatalog: (revision?: string) => { const p = current.current; return p ? p.then((s) => gci.walkInCatalog(s, revision)) : Promise.reject(new Error('Check-in is getting ready. Please try again in a moment.')); },
+    walkInPreview: (lines: WalkInSelectionLine[], revision: string) => withSession((s) => gci.walkInPreview(s, lines, revision), false),
+    walkInConfirm: (input: WalkInConfirmInput) => withSession((s) => gci.walkInConfirm(s, input)),
     placeInLine: (checkInId: string) => withSession((s) => gci.placeInLine(s, checkInId), false),
     renew,
   }), [withSession, renew]);

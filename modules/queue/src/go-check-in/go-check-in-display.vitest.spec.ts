@@ -37,7 +37,8 @@ beforeEach(async () => {
   checkIn = stubCheckIn();
   svc = new GoCheckInService(repo as any, checkIn as any);
   svc.now = () => new Date('2026-10-06T14:52:00Z');   // 10:52 at the branch (America/New_York)
-  await repo.upsertSettings(T, { enabled: true });
+  // the salon allows asking for a technician (SUNMI guide 4A.9 / migration 990 made the default OFF)
+  await repo.upsertSettings(T, { enabled: true, technicianPreferenceEnabled: true });
   repo.seedSalon(T, 'Luxury Nails', B2, 'Voorhees');
   repo.seedDisplay({ ...DISPLAY, usable: true });
   // §23: the same service at two branches, each its own row and price

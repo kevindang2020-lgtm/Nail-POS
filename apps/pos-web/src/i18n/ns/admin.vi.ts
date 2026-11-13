@@ -563,4 +563,13 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   "apx.guard.f.cashThresholdCents": "hạn mức tiền mặt", // DRAFT — Kevin reviews
   "apx.guard.f.approverLimitCents": "hạn mức của quản lý", // DRAFT — Kevin reviews
   "apx.guard.f.expiresAfterHours": "thời hạn", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinRequireServices": "Bắt buộc chọn dịch vụ khi check-in", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinRequireServicesDesc": "Tắt: khách có thể bỏ qua, quầy lễ tân sẽ giúp khách chọn (dịch vụ chờ chọn).", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinShowPrices": "Hiện giá cho khách", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinShowPricesDesc": "Giá niêm yết, ghi rõ là giá ước tính.", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinShowDurations": "Hiện thời gian dự kiến", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinShowDurationsDesc": "Chỉ với dịch vụ đã có thời gian.", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinAllowAddOns": "Khách được chọn dịch vụ thêm", // DRAFT — Kevin reviews
+  "admin.display.toggle.walkinAllowAddOnsDesc": "Các dịch vụ trong danh mục Add-ons của tiệm.", // DRAFT — Kevin reviews
+  "admin.display.walkinSection": "Khách vãng lai tự chọn dịch vụ", // DRAFT — Kevin reviews
 };

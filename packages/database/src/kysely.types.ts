@@ -7454,6 +7454,7 @@ export interface DB {
   technician_help_requests: TechnicianHelpRequestsTable;
   service_categories: ServiceCategoriesTable;
   services: ServicesCatalogTable;
+  walkin_service_requests: WalkinServiceRequestsTable;
   technician_services: TechnicianServicesTable;
   customers: CustomersTable;
   customer_loyalty_profiles: CustomerLoyaltyProfilesTable;
@@ -8400,6 +8401,13 @@ export interface TenantCheckinSettingsTable {
   confirmation_timeout_seconds: Generated<number>;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   display_languages: Generated<string[]>;   // migration 620 (Dual-Screen mandate §118–§119)
+  walkin_require_services: Generated<boolean>; walkin_show_prices: Generated<boolean>; walkin_show_durations: Generated<boolean>; walkin_allow_add_ons: Generated<boolean>;   // migration 990 (SUNMI guide 4A.9)
+}
+/** migration 990 — a guest's walk-in service request from a display / kiosk (SUNMI guide 4A.7); never a ticket or a charge */
+export interface WalkinServiceRequestsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string; device_ref: string; checkin_request_id: string; payload_hash: string; catalog_revision: string;
+  lines: Generated<unknown>; services_pending: Generated<boolean>; estimated_total_cents: Generated<number | string>; estimated_minutes: Generated<number>;
+  status: Generated<string>; queue_item_id: string | null; result: unknown | null; created_at: Ts; updated_at: Ts;
 }
 export interface DevicePushTokensTable {
   id: Generated<string>; tenant_id: string | null; user_id: string; platform: string; token: string;

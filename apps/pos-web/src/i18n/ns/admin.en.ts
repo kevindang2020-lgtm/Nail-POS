@@ -563,4 +563,13 @@ export const ADMIN_EN = {
   "apx.guard.f.cashThresholdCents": "the cash limit",
   "apx.guard.f.approverLimitCents": "the manager limit",
   "apx.guard.f.expiresAfterHours": "the expiry",
+  "admin.display.toggle.walkinRequireServices": "Require a service before check-in",
+  "admin.display.toggle.walkinRequireServicesDesc": "Off: guests may skip and the front desk helps them choose (services pending).",
+  "admin.display.toggle.walkinShowPrices": "Show prices to guests",
+  "admin.display.toggle.walkinShowPricesDesc": "Public catalog prices, labelled as estimates.",
+  "admin.display.toggle.walkinShowDurations": "Show estimated times",
+  "admin.display.toggle.walkinShowDurationsDesc": "Only for services that have a time set.",
+  "admin.display.toggle.walkinAllowAddOns": "Guests may add add-ons",
+  "admin.display.toggle.walkinAllowAddOnsDesc": "Services in your Add-ons category.",
+  "admin.display.walkinSection": "Walk-in service selection",
 };

@@ -15,6 +15,7 @@ import type { CustomerDisplayState } from '@aipowersalon/api-contracts/customer'
 import { AdFallbackPanel, AdRotator } from '@aipowersalon/ui';
 import { CheckoutPanel, rightPanelMode, type CheckoutActions } from './CheckoutPanel';
 import { CheckInDetails, CheckInLookup, CheckInResult } from './CheckIn23';
+import { WalkInPicker } from './WalkInPicker';
 import { PoweredBy, SalonBrand, SalonMark } from './Branding';
 import { TechnicianClockBody } from './GoCheckIn';
 import { useGoCheckIn } from './useGoCheckIn';
@@ -125,6 +126,7 @@ export function Display23({ d, a, ads, deviceToken, offline = false, onCheckInSt
           </div>
         )}
 
+        {hasCheckIn && f.mode === 'customer' && mode !== 'ads' ? <WalkInPicker f={f} branding={d.branding} salonName={salonName} inMain /> : null}
         <footer className="d23-foot">
           {hasCheckIn ? <CheckInResult f={f} idleMessage={d.branding?.idleMessage ?? null} /> : <div className="d23-foot-idle">{companion ? t('tip.frontDeskCompletes') : t('d23.frontDeskSoon')}</div>}
           <PoweredBy />
@@ -133,9 +135,13 @@ export function Display23({ d, a, ads, deviceToken, offline = false, onCheckInSt
 
       <aside className="d23-right" data-testid="right-panel" data-mode={mode} aria-label={mode === 'ads' ? t('d23.fromSalon') : t('d23.yourCheckout')}>
         {mode === 'ads'
-          ? (fullscreen ? null : <AdRotator ads={ads.panelAds} onShown={ads.onShown} fallback={fallback} />)
+          ? (fullscreen || (hasCheckIn && f.ws.open) ? null : <AdRotator ads={ads.panelAds} onShown={ads.onShown} fallback={fallback} />)   // 4A: no adverts during active input (nor counted as shown)
           : <CheckoutPanel s={d} a={a} />}
       </aside>
+
+      {/* 4A: the service picker takes the whole screen (the ads leave) — but never covers a checkout in progress: then it
+          takes the check-in side only */}
+      {hasCheckIn && f.mode === 'customer' && mode === 'ads' ? <WalkInPicker f={f} branding={d.branding} salonName={salonName} /> : null}
 
       {fullscreen ? (
         <div className={`d23-fullscreen${leaving ? ' leaving' : ''}`} data-testid="fullscreen-ads" role="button" tabIndex={-1}

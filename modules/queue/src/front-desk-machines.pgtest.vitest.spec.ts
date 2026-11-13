@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { InvalidStateTransitionError } from '@aipowersalon/database';
 import { APPOINTMENT, QUEUE_ITEM, TECH_QUEUE_TICKET } from '@aipowersalon/appointments';
-import { QUEUE_SERVICE_ASSIGNMENT, GO_CHECKIN_DEVICE, GO_CHECKIN_SESSION, TICKET_CHANGE_REQUEST, SKILL_CHANGE_REQUEST, MANAGER_MESSAGE } from './queue-lifecycles';
+import { QUEUE_SERVICE_ASSIGNMENT, GO_CHECKIN_DEVICE, GO_CHECKIN_SESSION, TICKET_CHANGE_REQUEST, SKILL_CHANGE_REQUEST, MANAGER_MESSAGE, WALKIN_SERVICE_REQUEST } from './queue-lifecycles';
 import { KyselyQueueRepository } from './queue/queue.kysely.repository';
 import { KyselyCheckInRepository } from './check-in/check-in.kysely.repository';
 import { KyselyTechRepository } from './tech/tech.kysely.repository';
@@ -53,7 +53,7 @@ beforeAll(async () => {
 
 describe('the transition tables', () => {
   const vocab = JSON.parse(readFileSync(join(__dirname, '../../../apps/api/db/state-vocabularies.generated.json'), 'utf8')).vocabularies;
-  const all = [APPOINTMENT, QUEUE_ITEM, TECH_QUEUE_TICKET, QUEUE_SERVICE_ASSIGNMENT, GO_CHECKIN_DEVICE, GO_CHECKIN_SESSION, TICKET_CHANGE_REQUEST, SKILL_CHANGE_REQUEST, MANAGER_MESSAGE];
+  const all = [APPOINTMENT, QUEUE_ITEM, TECH_QUEUE_TICKET, QUEUE_SERVICE_ASSIGNMENT, GO_CHECKIN_DEVICE, GO_CHECKIN_SESSION, TICKET_CHANGE_REQUEST, SKILL_CHANGE_REQUEST, MANAGER_MESSAGE, WALKIN_SERVICE_REQUEST];
   it('every state is in its column’s CHECK vocabulary', () => {
     for (const m of all) expect(m.states.filter((s) => !(vocab[`${m.table}.${m.column}`] ?? []).includes(s)), m.name).toEqual([]);
   });
@@ -68,6 +68,8 @@ describe('the transition tables', () => {
     for (const [f, t] of [['cancelled', 'service_done'], ['declined', 'service_done'], ['in_service', 'declined'], ['service_done', 'cancelled'], ['cancelled', 'in_service'], ['service_done', 'delayed']]) expect(TECH_QUEUE_TICKET.can(f, t), `${f}>${t}`).toBe(false);
     expect(GO_CHECKIN_DEVICE.can('revoked', 'active')).toBe(false);
     expect(MANAGER_MESSAGE.can('resolved', 'resolved')).toBe(true);
+    expect(WALKIN_SERVICE_REQUEST.can('queued', 'pending')).toBe(false);   // migration 990: a queued walk-in request is final
+    expect(WALKIN_SERVICE_REQUEST.can('failed', 'pending')).toBe(true);    // …a failed one is retried by the same request
   });
 });
 

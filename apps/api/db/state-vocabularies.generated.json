@@ -2998,6 +2998,12 @@
    "requested",
    "succeeded"
   ],
+  "walkin_service_requests.status": [
+   "existing_visit",
+   "failed",
+   "pending",
+   "queued"
+  ],
   "wallet_topup_intents.status": [
    "APPROVED",
    "CANCELED",

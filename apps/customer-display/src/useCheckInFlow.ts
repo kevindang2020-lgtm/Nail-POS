@@ -15,6 +15,7 @@ import type { DisplayCheckInStep } from '@aipowersalon/api-contracts';
 import type { useGoCheckIn } from './useGoCheckIn';
 import type { KioskService, KioskTechnician } from './goCheckInApi';
 import { useIdle } from './useIdle';
+import { useWalkInSelection } from './useWalkInSelection';
 import { useT } from './i18n';
 
 /** A guest mid-check-in who has not touched the screen for this long has walked away: the screen is cleared. Longer than
@@ -32,12 +33,12 @@ export type CheckInFlow = ReturnType<typeof useCheckInFlow>;
 
 /** Dual-Screen mandate §11: where the guest is, in the display model's words (CHECK_IN · CHECK_IN_LOOKUP ·
  *  APPOINTMENT_FOUND · WALK_IN · CHECK_IN_SUCCESS). A technician at the clock uses the screen too: CHECK_IN. */
-export function checkInStepOf(f: Pick<CheckInFlow, 'mode' | 'phone' | 'lookup' | 'name' | 'picked' | 'addOns' | 'tech' | 'confirmation' | 'busy' | 'appointment'>): DisplayCheckInStep {
+export function checkInStepOf(f: Pick<CheckInFlow, 'mode' | 'phone' | 'lookup' | 'name' | 'picked' | 'addOns' | 'tech' | 'confirmation' | 'busy' | 'appointment'> & { selecting?: boolean }): DisplayCheckInStep {
   if (f.mode === 'technician') return 'phone';
   if (f.confirmation) return 'success';
   if (f.appointment) return 'appointment';
   if (f.busy && !f.lookup) return 'lookup';
-  if (f.lookup || f.name || f.picked.length || f.addOns.length || f.tech) return 'walk_in';
+  if (f.lookup || f.name || f.picked.length || f.addOns.length || f.tech || f.selecting) return 'walk_in';
   if (f.phone) return 'phone';
   return 'none';
 }
@@ -85,12 +86,16 @@ export function useCheckInFlow(gci: ReturnType<typeof useGoCheckIn>) {
     return () => { live = false; };
   }, [phase, config, pickedKey, listTechnicians]);
 
+  // SUNMI guide 4A: the walk-in service selection (categories → services → review → confirm) — the salon's own live catalog
+  const ws = useWalkInSelection(gci, !!config?.settings.serviceSelectionEnabled && config?.settings.walkinCheckinEnabled !== false);
+  const { clear: clearSelection } = ws;
+
   const mains = useMemo(() => services.filter((s) => !s.isAddOn), [services]);
   const addOnOptions = useMemo(() => services.filter((s) => s.isAddOn), [services]);
   const digits = phone.replace(/\D/g, '');
 
   /** Clear what the customer typed (not the confirmation). */
-  const clearInputs = useCallback(() => { setPhone(''); setLookup(null); setName(''); setPicked([]); setAddOns([]); setTech(''); setErr(null); }, []);
+  const clearInputs = useCallback(() => { setPhone(''); setLookup(null); setName(''); setPicked([]); setAddOns([]); setTech(''); setErr(null); clearSelection(); }, [clearSelection]);
   /** The guest's turn is over: an empty screen, and the next guest gets a fresh session. */
   const reset = useCallback(() => { clearInputs(); setConfirmation(null); renew(); }, [clearInputs, renew]);
 
@@ -127,8 +132,40 @@ export function useCheckInFlow(gci: ReturnType<typeof useGoCheckIn>) {
   };
 
   // §20–§21: the quick walk-in — first name, phone, service(s); nothing else is asked for
+  /** The 4A service selection is this salon's walk-in (an older server without it keeps the plain list). */
+  const selecting = ws.status === 'ready' || ws.status === 'loading' || ws.status === 'unavailable';
+  /** §20 existing customer: a number typed but never looked up is looked up first. False → stop (shown instead). */
+  const ensureLookup = async (): Promise<LookupResult | null> => {
+    if (lookup) return lookup;
+    const lk = await gci.lookupPhone(digits);
+    setLookup(lk);
+    if (lk.askFrontDesk || lk.canWalkIn === false) { setErr(t('ci.err.seeFrontDesk')); return null; }
+    if (lk.appointment) return null;   // the appointment card replaces the walk-in: "I'm Here" checks them in
+    return lk;
+  };
+  /** 4A step 4: the walk-in's name and phone are in → the salon's categories open (or the review, when picks exist). */
+  const startSelection = async () => {
+    if (busy) return;
+    if (!name.trim()) { setErr(t('ci.err.firstName')); return; }
+    if (digits.length !== 10) { setErr(t('ci.err.phoneLeft')); return; }
+    if (ws.status !== 'ready') { setErr(t(ws.status === 'loading' ? 'wis.loading' : 'wis.err.unavailableAll')); return; }   // 4A.15: fail closed
+    setBusy(true); setErr(null);
+    try {
+      const lk = await ensureLookup();
+      if (lk) ws.setView(ws.picks.length || ws.skip ? { kind: 'review' } : { kind: 'browse' });
+    } catch (e: any) { setErr(e?.message || t('ci.err.lookup')); }
+    finally { setBusy(false); }
+  };
+  /** 4A steps 6–7: Confirm Check-In on the review — one request, the server's answer is the confirmation. */
+  const confirmSelection = async () => {
+    const lk = lookup;
+    const out = await ws.confirm({ customerId: lk?.match?.source === 'tenant' ? lk.match.customerId : undefined, customerName: name.trim(), phone: digits });
+    if (out) confirmed(out);
+  };
+
   const doWalkIn = async () => {
     if (busy) return;
+    if (selecting) { await startSelection(); return; }
     if (!name.trim()) { setErr(t('ci.err.firstName')); return; }
     if (digits.length !== 10) { setErr(t('ci.err.phoneLeft')); return; }
     if (settings?.serviceSelectionEnabled && mains.length > 0 && picked.length === 0) { setErr(t('ci.err.service')); return; }
@@ -171,7 +208,7 @@ export function useCheckInFlow(gci: ReturnType<typeof useGoCheckIn>) {
   const exitTechnician = () => { setMode('customer'); renew(); };
 
   /** Nothing typed, nothing showing — the screen belongs to nobody (full-screen idle ads may take over, §7). */
-  const idle = mode === 'customer' && !phone && !lookup && !name && picked.length === 0 && addOns.length === 0 && !tech && !confirmation && !busy;
+  const idle = mode === 'customer' && !phone && !lookup && !name && picked.length === 0 && addOns.length === 0 && !tech && !confirmation && !busy && !ws.active;
   // a guest (or a technician at the clock) who walked away: cleared after WALK_AWAY_MS without a touch
   const walkedAway = useIdle(!idle && !confirmation ? WALK_AWAY_MS : null);
   useEffect(() => { if (walkedAway) { setMode('customer'); reset(); } }, [walkedAway, reset]);
@@ -181,6 +218,7 @@ export function useCheckInFlow(gci: ReturnType<typeof useGoCheckIn>) {
 
   return {
     gci, settings, phone, digits, lookup, name, services, mains, addOnOptions, techs, picked, addOns, tech, confirmation, mode, busy, err, idle, appointment, canWalkIn,
-    setName, setTech, setErr, press, clearPhone, doLookup, imHere, doWalkIn, toggleSvc, toggleAddOn, reset, clearInputs, enterTechnician, exitTechnician,
+    ws, selectionOn: selecting, selecting: ws.active,
+    setName, setTech, setErr, press, clearPhone, doLookup, imHere, doWalkIn, toggleSvc, toggleAddOn, reset, clearInputs, enterTechnician, exitTechnician, confirmSelection,
   };
 }

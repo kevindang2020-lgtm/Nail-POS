@@ -8,7 +8,8 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { posDisplaySettingsApi, type DisplaySettingsPatch, type GoCheckInSettings } from '../../api/posDisplaySettingsApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
-type Toggle = 'appointmentCheckinEnabled' | 'walkinCheckinEnabled' | 'newCustomerEnabled' | 'serviceSelectionEnabled' | 'technicianPreferenceEnabled' | 'showWaitEstimate';
+type Toggle = 'appointmentCheckinEnabled' | 'walkinCheckinEnabled' | 'newCustomerEnabled' | 'serviceSelectionEnabled' | 'technicianPreferenceEnabled' | 'showWaitEstimate'
+  | 'walkinRequireServices' | 'walkinShowPrices' | 'walkinShowDurations' | 'walkinAllowAddOns';
 // developer merge (Oct 2026): each option carries a one-line description under its label on the redesigned option tiles
 // (read at render, so a language switch re-reads it)
 const TOGGLES: [Toggle, () => string, () => string][] = [
@@ -19,6 +20,14 @@ const TOGGLES: [Toggle, () => string, () => string][] = [
   ['technicianPreferenceEnabled', () => t('admin.display.toggle.askTechnician'), () => t('pos.allow_requesting_a_specific_technician')],
   ['showWaitEstimate', () => t('admin.display.toggle.showWait'), () => t('pos.show_ai_queue_wait_estimate_on_display')],
 ];
+// SUNMI guide 4A.9 (migration 990): the walk-in service selection switches — shown under their own heading in this same card
+// ("Guests choose their services" above turns the selection itself on or off; "ask for a technician" is a request, OFF by default)
+const WALKIN_TOGGLES: [Toggle, () => string, () => string][] = [
+  ['walkinRequireServices', () => t('admin.display.toggle.walkinRequireServices'), () => t('admin.display.toggle.walkinRequireServicesDesc')],
+  ['walkinShowPrices', () => t('admin.display.toggle.walkinShowPrices'), () => t('admin.display.toggle.walkinShowPricesDesc')],
+  ['walkinShowDurations', () => t('admin.display.toggle.walkinShowDurations'), () => t('admin.display.toggle.walkinShowDurationsDesc')],
+  ['walkinAllowAddOns', () => t('admin.display.toggle.walkinAllowAddOns'), () => t('admin.display.toggle.walkinAllowAddOnsDesc')],
+];
 const SHOW_DISPLAY_LANGUAGES = false;
 const LANGS: { code: string; label: string; flag: string }[] = [{ code: 'en', get label() { return t('pos.english'); }, flag: 'EN' }, { code: 'vi', get label() { return t('pos.ti_ng_vi_t_vietnamese'); }, flag: 'VI' }];
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -26,10 +35,15 @@ const headStyle: CSSProperties = { fontWeight: 800, fontSize: 13.5, fontFamily: 
 const panel: CSSProperties = { background: '#FFFCF6', border: '1px solid var(--line, #E8DFD1)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column' };
 const sectionLabel: CSSProperties = { fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8A7A66' };
 
+/** 4A.9: an older server that does not send the walk-in switches yet means the guide's defaults (all ON). */
+export function withWalkInDefaults(s: GoCheckInSettings): GoCheckInSettings {
+  return { ...s, walkinRequireServices: s.walkinRequireServices ?? true, walkinShowPrices: s.walkinShowPrices ?? true, walkinShowDurations: s.walkinShowDurations ?? true, walkinAllowAddOns: s.walkinAllowAddOns ?? true };
+}
+
 /** What changed, and only that (pure). */
 export function settingsPatch(saved: GoCheckInSettings, form: GoCheckInSettings): DisplaySettingsPatch {
   const p: DisplaySettingsPatch = {};
-  for (const [k] of TOGGLES) if (saved[k] !== form[k]) p[k] = form[k];
+  for (const [k] of [...TOGGLES, ...WALKIN_TOGGLES]) if (saved[k] !== form[k]) p[k] = form[k];
   if (!sameList(saved.displayLanguages ?? ['en'], form.displayLanguages ?? ['en'])) p.displayLanguages = form.displayLanguages;
   return p;
 }
@@ -43,7 +57,7 @@ export function DisplaySettingsCard() {
 
   useEffect(() => {
     let live = true;
-    posDisplaySettingsApi.get().then((s) => { if (live) { setSaved(s); setForm(s); } })
+    posDisplaySettingsApi.get().then((raw) => { const s = withWalkInDefaults(raw); if (live) { setSaved(s); setForm(s); } })
       .catch((e: any) => { if (!live) return; if (e?.status === 403) setHidden(true); else setNote({ ok: false, msg: e?.message || t('pos.could_not_load_the_display_settings') }); });
     return () => { live = false; };
   }, []);
@@ -60,10 +74,24 @@ export function DisplaySettingsCard() {
   const dirty = Object.keys(patch).length > 0;
   const save = async () => {
     setBusy(true); setNote(null);
-    try { const s = await posDisplaySettingsApi.save(patch); setSaved(s); setForm(s); setNote({ ok: true, msg: t('pos.display_settings_saved') }); }
+    try { const s = withWalkInDefaults(await posDisplaySettingsApi.save(patch)); setSaved(s); setForm(s); setNote({ ok: true, msg: t('pos.display_settings_saved') }); }
     catch (e: any) { setNote({ ok: false, msg: e?.message || t('pos.the_display_settings_could_not_be_1bcd') }); }
     finally { setBusy(false); }
   };
+
+  const tile = ([k, labelOf, desc]: [Toggle, () => string, () => string]) => {
+          const checked = !!form[k];
+          const label = labelOf();
+          return (
+            <label key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, border: checked ? '1px solid #A96F22' : '1px solid var(--line, #E8DFD1)', background: checked ? '#FFFDF8' : '#FAF8F4', cursor: busy ? 'not-allowed' : 'pointer', transition: 'all 0.15s ease' }}>
+              <input type="checkbox" checked={checked} disabled={busy} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} aria-label={label} style={{ width: 16, height: 16, accentColor: '#A96F22', cursor: 'pointer', marginTop: 2 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: checked ? 700 : 600, color: 'var(--text, #2A2118)', lineHeight: 1.25 }}>{label}</div>
+                <div style={{ fontSize: 11, color: '#8A7A66', marginTop: 3, lineHeight: 1.3 }}>{desc()}</div>
+              </div>
+            </label>
+          );
+        };
 
   return (
     <section style={panel} data-testid="display-settings-card">
@@ -77,19 +105,12 @@ export function DisplaySettingsCard() {
 
       <div style={{ ...sectionLabel, marginBottom: 8 }}>{t('pos.guest_check_in_features')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8, marginBottom: 16 }}>
-        {TOGGLES.map(([k, labelOf, desc]) => {
-          const checked = !!form[k];
-          const label = labelOf();
-          return (
-            <label key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 10, border: checked ? '1px solid #A96F22' : '1px solid var(--line, #E8DFD1)', background: checked ? '#FFFDF8' : '#FAF8F4', cursor: busy ? 'not-allowed' : 'pointer', transition: 'all 0.15s ease' }}>
-              <input type="checkbox" checked={checked} disabled={busy} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} aria-label={label} style={{ width: 16, height: 16, accentColor: '#A96F22', cursor: 'pointer', marginTop: 2 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: checked ? 700 : 600, color: 'var(--text, #2A2118)', lineHeight: 1.25 }}>{label}</div>
-                <div style={{ fontSize: 11, color: '#8A7A66', marginTop: 3, lineHeight: 1.3 }}>{desc()}</div>
-              </div>
-            </label>
-          );
-        })}
+        {TOGGLES.map(tile)}
+      </div>
+
+      <div style={{ ...sectionLabel, marginBottom: 8 }}>{t('admin.display.walkinSection')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8, marginBottom: 16 }} data-testid="display-settings-walkin">
+        {WALKIN_TOGGLES.map(tile)}
       </div>
 
       {/* Kevin (Oct 28 2026): the customer display is English only — no language choice here (the server keeps it English) */}

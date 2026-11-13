@@ -131,7 +131,9 @@ export function CheckInDetails({ f, branding, salonName }: { f: CheckInFlow; bra
       </div>
     );
   }
-  const choose = !!s?.serviceSelectionEnabled && f.mains.length > 0;
+  // SUNMI guide 4A: with the walk-in service selection on, the services are chosen on their own full screen
+  // (WalkInPicker) — this column keeps the name and a summary; an older server keeps the plain list below
+  const choose = !f.selectionOn && !!s?.serviceSelectionEnabled && f.mains.length > 0;
   const services = allServices ? f.mains : f.mains.slice(0, 6);
   return (
     <div className="d23-walkin">
@@ -169,7 +171,8 @@ export function CheckInDetails({ f, branding, salonName }: { f: CheckInFlow; bra
           </div>
         </div>
       ) : null}
-      {s?.technicianPreferenceEnabled && f.techs.length > 0 ? (
+      {f.selectionOn ? <SelectionSummary f={f} className="d23-picks" /> : null}
+      {!f.selectionOn && s?.technicianPreferenceEnabled && f.techs.length > 0 ? (
         <label className="d23-field">
           <span>{t('ci.technician')}</span>
           <select className="d23-input" value={f.tech} onChange={(e) => f.setTech(e.target.value)}>
@@ -179,9 +182,29 @@ export function CheckInDetails({ f, branding, salonName }: { f: CheckInFlow; bra
         </label>
       ) : null}
       {f.canWalkIn ? (
-        <button type="button" className="d23-primary d23-walkin-go" disabled={f.busy} onClick={f.doWalkIn}>{f.busy ? t('ci.checkingIn') : t('ci.checkIn')}</button>
+        <button type="button" className="d23-primary d23-walkin-go" disabled={f.busy || (f.selectionOn && f.ws.status !== 'ready')} onClick={f.doWalkIn}>{f.busy ? t('ci.checkingIn') : f.selectionOn ? selectionLabel(f, t) : t('ci.checkIn')}</button>
       ) : null}
       {f.err ? <div className="kiosk-err" onClick={() => f.setErr(null)}>{f.err}</div> : null}
+    </div>
+  );
+}
+
+/** 4A: the walk-in button's words — choose first, then review (the check-in itself happens on the review). */
+export function selectionLabel(f: CheckInFlow, t: ReturnType<typeof useT>): string {
+  if (f.ws.status === 'loading') return t('wis.loading');
+  return f.ws.picks.length || f.ws.skip ? t('wis.reviewAndCheckIn') : t('wis.chooseServicesBtn');
+}
+/** 4A: what the guest picked so far (names only), or why choosing is unavailable (4A.15: fail closed → the front desk). */
+export function SelectionSummary({ f, className }: { f: CheckInFlow; className: string }) {
+  const t = useT();
+  const ws = f.ws;
+  if (ws.status === 'unavailable') return <div className={`${className} unavailable`} role="status">{t('wis.err.unavailableAll')}</div>;
+  if (!ws.picks.length) return null;
+  const names = ws.picks.map((p) => p.shownName);
+  return (
+    <div className={className} data-testid="selection-summary">
+      <span className="l">{t('wis.yourPicks')}</span>
+      <span className="v">{names.join(' · ')}</span>
     </div>
   );
 }

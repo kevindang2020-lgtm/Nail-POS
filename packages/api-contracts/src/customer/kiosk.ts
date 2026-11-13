@@ -12,6 +12,8 @@ export interface KioskSettings {
   tenantPhoneLookupEnabled: boolean; centralLookupEnabled: boolean; customerLinkingEnabled: boolean;
   showWaitEstimate: boolean; autoSendToQueue: boolean; requireFrontDeskApproval: boolean;
   confirmationTimeoutSeconds: number;   // idle auto-return after "You're Checked In!" (seconds)
+  /** 4A.9 walk-in service selection switches (migration 990); absent from an older server = the guide's defaults (ON). */
+  walkinRequireServices?: boolean; walkinShowPrices?: boolean; walkinShowDurations?: boolean; walkinAllowAddOns?: boolean;
 }
 export interface KioskConfig {
   salonName: string; branchName?: string; welcomeMessage?: string;
@@ -74,6 +76,79 @@ export interface CheckInConfirmation {
   requestedTechnician?: { technicianId: string; name: string; busy: boolean; availableInMinutes: number | null } | null;
   alternates?: { technicianId: string; name: string; availableInMinutes: number | null }[];
 }
+// ── CPad 14 Walk-In service selection (SUNMI guide Section 4A) ───────────────────────────────────────────────────────
+/** 4A.9: the owner's walk-in switches as the screen must obey them (the server already applied them to the catalog). */
+export interface WalkInSelectionRules {
+  /** 4A.2: at least one service before Check-In (OFF → the guest may skip to "Services pending"). */
+  requireServices: boolean;
+  showPrices: boolean; showDurations: boolean; allowAddOns: boolean;
+  /** Preferred technician — a REQUEST, never a promised assignment (OFF by default). */
+  allowTechnicianPreference: boolean;
+  /** 4A.4: the guest's note is at most this many characters. */
+  notesMaxLength: number;
+}
+/** An add-on the guest may add to a service: a service of the salon's "Add-ons" category (the D1 add-on authority). */
+export interface WalkInAddOnOption { id: string; name: string; priceCents: number | null; durationMinutes: number | null; }
+/** One service of the public walk-in catalog (4A.3): public fields only — never cost, commission or margin. `priceCents`
+ *  is null when the salon hides prices; `durationMinutes` null when hidden or not set. `priceIsFrom` would say "From $X"
+ *  for a variable price — the catalog has no variable-price field today, so it is always false. */
+export interface WalkInServiceOption {
+  id: string; name: string; description: string | null; categoryId: string;
+  priceCents: number | null; priceIsFrom: boolean; durationMinutes: number | null;
+  /** add-on ids allowed with this service (empty when add-ons are off) */
+  addOnIds: string[];
+}
+/** A category tile: only active categories of THIS branch with at least one customer-visible service, in the salon's order. */
+export interface WalkInCategoryOption { id: string; name: string; description: string | null; iconKey: string | null; serviceCount: number; }
+/** GET go-check-in/session/:id/walk-in/catalog — the branch's live, customer-visible catalog with its revision (an ETag:
+ *  any catalog edit or switch change gives a new one). `notModified` when the caller already holds this revision. */
+export interface WalkInCatalog {
+  revision: string;
+  notModified?: boolean;
+  rules: WalkInSelectionRules;
+  categories: WalkInCategoryOption[];
+  services: WalkInServiceOption[];
+  addOns: WalkInAddOnOption[];
+}
+/** One selected line the guest sends: a service, its add-ons, and what the screen SHOWED (so a change is caught). */
+export interface WalkInSelectionLine { serviceId: string; addOnIds?: string[]; shownPriceCents?: number | null; shownName?: string; }
+export type WalkInLineState = 'ok' | 'changed' | 'unavailable';
+/** A line as the server re-priced it (4A.4 / 4A.8). `changed`: renamed or repriced since the guest saw it — the review
+ *  shows the current values and needs a new confirmation; `unavailable`: removed, disabled or hidden — it cannot be confirmed. */
+export interface WalkInPreviewLine {
+  serviceId: string; name: string; state: WalkInLineState;
+  priceCents: number | null; durationMinutes: number | null;
+  addOns: { id: string; name: string; state: WalkInLineState; priceCents: number | null; durationMinutes: number | null }[];
+}
+/** POST go-check-in/session/:id/walk-in/preview — re-priced, validated, nothing written. `estimatedTotalCents` is the
+ *  ESTIMATED service total (final prices, tax, discounts and tips are the POS's at checkout); null when prices are hidden. */
+export interface WalkInPreview {
+  revision: string;
+  lines: WalkInPreviewLine[];
+  estimatedTotalCents: number | null;
+  estimatedMinutes: number | null;
+  /** every line ok and the guest's revision is current: Confirm may be sent with this revision */
+  confirmable: boolean;
+  /** codes, e.g. SERVICE_CHANGED / SERVICE_UNAVAILABLE / SERVICES_REQUIRED (the screen words them) */
+  warnings: string[];
+}
+/** POST go-check-in/session/:id/walk-in/confirm body. */
+export interface WalkInConfirmInput {
+  checkinRequestId: string; approvedRevision: string;
+  customerId?: string; customerName: string; phone?: string;
+  lines: WalkInSelectionLine[];
+  /** 4A.2: the guest chose "Skip services / need staff assistance" (only when the salon allows it) */
+  skipServices?: boolean;
+  technicianId?: string; notes?: string;
+}
+export type WalkInRequestState = 'pending' | 'queued' | 'existing_visit' | 'failed';
+/** The confirm answer (also its idempotent replay): the check-in confirmation plus the request's own state. */
+export interface WalkInConfirmResult extends CheckInConfirmation {
+  checkinRequestId: string; requestState: WalkInRequestState; replayed: boolean; servicesPending: boolean;
+}
+/** GET go-check-in/session/:id/walk-in/status?checkinRequestId= — sanitized: no name, phone or services. */
+export interface WalkInRequestStatus { checkinRequestId: string; requestState: WalkInRequestState | 'not_found'; queued: boolean; }
+
 /** POST /customer-display/device/check-in/session — a paired display starts a guest's check-in with ITS credential. */
 export interface DisplayCheckInSession { sessionId: string; sessionToken: string; config: KioskConfig; }
 

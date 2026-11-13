@@ -10,4 +10,7 @@ export const GoCheckInPublicControllerListQueries = {
   technicians: { filters: { serviceIds: { type: 'id', multi: true }, token: { type: 'text', maxLength: 4096 } }, search: false },
   status: { filters: { token: { type: 'text', maxLength: 4096 } }, search: false },
   place: { filters: { checkInId: { type: 'id' }, token: { type: 'text', maxLength: 4096 } }, search: false },
+  // SUNMI guide 4A.6: the walk-in catalog (revision = the ETag the screen already holds) and a request's sanitized status
+  walkInCatalog: { filters: { revision: { type: 'text', maxLength: 128 }, token: { type: 'text', maxLength: 4096 } }, search: false },
+  walkInStatus: { filters: { checkinRequestId: { type: 'text', maxLength: 64 }, token: { type: 'text', maxLength: 4096 } }, search: false },
 } satisfies Record<string, ListQuerySpec>;
