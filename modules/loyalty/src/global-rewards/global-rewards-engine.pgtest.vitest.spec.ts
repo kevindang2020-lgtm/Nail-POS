@@ -228,6 +228,11 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
     expect(await wallet(TA)).toBe(9740 - 25 - 20);   // reading it moved nothing
     // a wallet figure the branch rows do not add up to is said, not hidden
     expect((await repo.branchUsage(TA, u.since, 999)).matchesWallet).toBe(false);
+    // extras GLOBAL LOYALTY REWARDS 03 (round 10): the funding forecast is the ledger's own last-30-days use — 305¢ of
+    // earn_allocation debits → 11¢/day (rounded up), never a purchase; a salon with no use has no estimate
+    expect(w.forecast).toEqual({ basisDays: 30, usedCents: 305, dailyCents: 11, daysLeft: Math.floor(w.availableCents / 11),
+      daysToLow: Math.max(0, Math.floor((w.availableCents - w.lowBalanceCents) / 11)), fundingNeededCents: Math.max(0, 11 * 30 - w.availableCents - w.pendingCents), automaticPurchase: false });
+    expect((await repo.walletSummary(TX)).forecast).toMatchObject({ usedCents: 0, dailyCents: null, daysLeft: null, fundingNeededCents: null });
   });
   it('Nov 3 audit — the rewards liability is the platform\'s on every line (earn used to tag it to the salon, redeem did not)', async () => {
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability' and tenant_id is not null`))[0].n)).toBe(0);

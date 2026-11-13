@@ -4,7 +4,8 @@ import { describe, it, expect } from 'vitest';
 import {
   computeEarn, validateCustomRate, previewRows, policyVersionAt, policyDisplay, versionDisplayState, globalVersionAt, eligibleCentsOf,
   redeemableBlocks, alertLevel, tenthsLabel, tokensLabel, rateLabel, purchaseQuantity, isSpendable, centsPerPointTenth, GlobalRewardsError,
-  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf } from './global-rewards-core';
+  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf, walletFundingForecast,
+} from './global-rewards-core';
 
 const program: ProgramPolicy = {
   earnPaused: false, redeemPaused: false, purchasesPaused: false, reimbursementsPaused: false,
@@ -139,5 +140,17 @@ describe('refundedEligibleCentsOf (Nov 3 audit: tip / tax refunds never take bac
   });
   it('a refund marked with the tip takes the tip first, then service money', () => {
     expect(refundedEligibleCentsOf({ paidCents: 12000, taxCents: 0, tipCents: 2000, eligibleCents: 10000, refunds: [{ amountCents: 7000, tipRefunded: true }] })).toBe(5000);
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 03 (round 10): the funding forecast arithmetic (verified use only, nothing bought)
+describe('walletFundingForecast', () => {
+  it('daily pace from the window, days left / to the low level, funding needed beyond available + pending', () => {
+    expect(walletFundingForecast(10_000, 0, 9_000, 30, 2_000)).toEqual({ basisDays: 30, usedCents: 9_000, dailyCents: 300, daysLeft: 33, daysToLow: 26, fundingNeededCents: 0, automaticPurchase: false });
+    expect(walletFundingForecast(1_000, 2_000, 9_000, 30, 2_000)).toMatchObject({ daysLeft: 3, daysToLow: 0, fundingNeededCents: 9_000 - 1_000 - 2_000 });
+    expect(walletFundingForecast(0, 0, 100, 30, 0)).toMatchObject({ dailyCents: 4, daysLeft: 0 });   // 3.33 rounds UP — never flatters
+  });
+  it('no verified use → no estimate (never invented)', () => {
+    expect(walletFundingForecast(10_000, 0, 0, 30, 2_000)).toEqual({ basisDays: 30, usedCents: 0, dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false });
   });
 });

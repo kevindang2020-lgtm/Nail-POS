@@ -219,4 +219,7 @@ export const REWARDSNET_VI = {
   'rn.pay.x.unreconciled': 'Hóa đơn {ticket} đã thanh toán nhưng phần thưởng {amount} vẫn đang được giữ', // DRAFT — Kevin reviews
   'rn.pay.x.disputed': 'Hoàn {amount} trên hóa đơn {ticket} sau khi đã bắt đầu chi trả · {status}', // DRAFT — Kevin reviews
   'rn.pay.x.expired': 'Lượt giữ phần thưởng {amount} trên hóa đơn {ticket} đã hết hạn', // DRAFT — Kevin reviews
+  'rn.forecast.days30': 'Ước tính: còn khoảng {n} ngày token theo mức dùng 30 ngày qua (~{daily} token mỗi ngày)', // DRAFT — Kevin reviews
+  'rn.forecast.none30': 'Chưa dùng token trong 30 ngày qua — chưa có ước tính', // DRAFT — Kevin reviews
+  'rn.forecast.need': 'Cần thêm khoảng {t} token để đủ cho {days} ngày tới theo mức đó. Không có giao dịch mua tự động.', // DRAFT — Kevin reviews
 };

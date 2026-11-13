@@ -257,3 +257,17 @@ export type ReimbursementStatus = (typeof REIMBURSEMENT_STATUSES)[number];
 export const isOwed = (s: string): boolean => ['ACCRUED_OWED', 'PAYOUT_ELIGIBLE', 'PAYOUT_PENDING', 'PAYOUT_FAILED', 'ON_HOLD'].includes(s);
 export const HOLD_STATUSES = ['CREATED', 'HELD', 'CONFIRMED_REDEEMED', 'RELEASED', 'EXPIRED', 'REVERSED'] as const;
 export type HoldStatus = (typeof HOLD_STATUSES)[number];
+
+/** extras GLOBAL LOYALTY REWARDS 03 (round 10) — Smart Wallet Funding Alert: an ESTIMATE from verified use only. dailyCents =
+ *  the wallet's earn_allocation debits over the last `basisDays` ÷ basisDays (integer cents, rounded up so it never flatters);
+ *  daysLeft = how many days the available balance lasts at that pace (rounded down) and daysToLow = until the low-balance
+ *  level; fundingNeededCents = what would cover the next `basisDays` at that pace beyond what is available and already being
+ *  purchased (pending). No use in the window → every estimate null (never invented). Nothing is ever bought automatically. */
+export const FORECAST_BASIS_DAYS = 30;
+export function walletFundingForecast(availableCents: number, pendingCents: number, usedInBasisCents: number, basisDays: number, lowBalanceCents: number) {
+  if (!(usedInBasisCents > 0) || !(basisDays > 0)) return { basisDays, usedCents: Math.max(0, usedInBasisCents), dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false as const };
+  const daily = Math.ceil(usedInBasisCents / basisDays);
+  const avail = Math.max(0, availableCents);
+  return { basisDays, usedCents: usedInBasisCents, dailyCents: daily, daysLeft: Math.floor(avail / daily), daysToLow: Math.max(0, Math.floor((avail - Math.max(0, lowBalanceCents)) / daily)),
+    fundingNeededCents: Math.max(0, daily * basisDays - avail - Math.max(0, pendingCents)), automaticPurchase: false as const };
+}

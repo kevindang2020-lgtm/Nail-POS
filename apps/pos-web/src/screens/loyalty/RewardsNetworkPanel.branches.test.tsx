@@ -55,3 +55,29 @@ describe('RewardsNetworkPanel — wallet use by branch', () => {
     expect(screen.queryByTestId('rn-branches')).toBeNull();
   });
 });
+
+// extras GLOBAL LOYALTY REWARDS 03 (round 10): the depletion estimate and funding need are the SERVER's (last 30 days of verified use)
+describe('RewardsNetworkPanel — smart wallet funding alert', () => {
+  it('shows the server forecast: days left at the 30-day pace and the tokens that would cover the next 30 days; nothing bought', async () => {
+    const s0: any = st(undefined);
+    s0.wallet = { ...s0.wallet, availableCents: 300, forecast: { basisDays: 30, usedCents: 3000, dailyCents: 100, daysLeft: 3, daysToLow: 0, fundingNeededCents: 2700, automaticPurchase: false } };
+    stateMock.mockResolvedValue(s0);
+    render(<RewardsNetworkPanel />);
+    const f = await screen.findByTestId('rn-forecast');
+    expect(f).toHaveTextContent('about 3 days of tokens left at the last 30 days’ pace (~1 tokens a day)');
+    expect(f.className).toContain('warn');
+    expect(screen.getByTestId('rn-forecast-need')).toHaveTextContent('About 27 more tokens would cover the next 30 days at that pace. Nothing is bought automatically.');
+  });
+  it('no verified use (or an older server) → no estimate, never invented', async () => {
+    const s0: any = st(undefined);
+    s0.wallet = { ...s0.wallet, forecast: { basisDays: 30, usedCents: 0, dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false } };
+    stateMock.mockResolvedValue(s0);
+    const { unmount } = render(<RewardsNetworkPanel />);
+    expect(await screen.findByTestId('rn-forecast')).toHaveTextContent('No tokens used in the last 30 days — no depletion estimate');
+    expect(screen.queryByTestId('rn-forecast-need')).toBeNull();
+    unmount();
+    stateMock.mockResolvedValue(st(undefined));   // no forecast field at all
+    render(<RewardsNetworkPanel />);
+    expect(await screen.findByTestId('rn-forecast')).toHaveTextContent('no depletion estimate');
+  });
+});

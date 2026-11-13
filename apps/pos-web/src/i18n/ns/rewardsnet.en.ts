@@ -218,4 +218,7 @@ export const REWARDSNET_EN = {
   'rn.pay.x.unreconciled': 'Ticket {ticket} is paid but its {amount} reward is still on hold',
   'rn.pay.x.disputed': 'Refund of {amount} on ticket {ticket} after payout started · {status}',
   'rn.pay.x.expired': '{amount} reward hold on ticket {ticket} expired',
+  'rn.forecast.days30': 'Estimate: about {n} days of tokens left at the last 30 days’ pace (~{daily} tokens a day)',
+  'rn.forecast.none30': 'No tokens used in the last 30 days — no depletion estimate',
+  'rn.forecast.need': 'About {t} more tokens would cover the next {days} days at that pace. Nothing is bought automatically.',
 };

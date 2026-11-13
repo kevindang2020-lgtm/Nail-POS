@@ -14,6 +14,8 @@ export interface WalletSummary {
   lowBalanceCents?: number; criticalBalanceCents?: number; levelsOwn?: boolean; platformLowBalanceCents?: number; platformCriticalBalanceCents?: number;
   /** extras GLOBAL LOYALTY REWARDS 13: this salon month's earning / redemptions per branch from the ONE wallet (server-computed) */
   branchUsage?: RewardsNetBranchSplit;
+  /** extras GLOBAL LOYALTY REWARDS 03: the server's funding forecast from the last 30 days of verified wallet use (null fields = no estimate) */
+  forecast?: { basisDays: number; usedCents: number; dailyCents: number | null; daysLeft: number | null; daysToLow: number | null; fundingNeededCents: number | null; automaticPurchase: false };
 }
 export interface RewardsNetBranchSplit {
   since: string; totalFundedCents: number; walletUsedCents: number; matchesWallet: boolean; doubleFunded: number;

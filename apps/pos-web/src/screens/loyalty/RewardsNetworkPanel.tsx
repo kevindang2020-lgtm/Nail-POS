@@ -32,13 +32,6 @@ const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short'
 export const pointsOf = (tenths: number) => fmtNumber((Number(tenths) || 0) / 10, 1);
 /** wallet cents → tokens (1 token = tokenValueCents) */
 export const tokensOf = (cents: number, tokenValueCents = 100) => fmtNumber((Number(cents) || 0) / Math.max(1, tokenValueCents), 2);
-/** Wallet low-balance forecast (backlog GLOBAL LOYALTY · 03): an ESTIMATE from this month's verified token use — available ÷
- *  (used this month ÷ days elapsed). No use this month → null (no estimate is invented). */
-export function walletForecastDays(availableCents: number, usedThisMonthCents: number, dayOfMonth: number): number | null {
-  if (!(usedThisMonthCents > 0) || !(dayOfMonth >= 1)) return null;
-  const perDay = usedThisMonthCents / dayOfMonth;
-  return Math.max(0, Math.floor(availableCents / perDay));
-}
 
 export function rateText(r: Pick<RewardsNetEarningRate, 'spendIncrementCents' | 'pointTenthsPerIncrement'> | null | undefined): string {
   if (!r) return '—';
@@ -215,8 +208,10 @@ export function RewardsNetworkPanel() {
           actions={<><button type="button" className="fk-btn ghost" data-testid="rn-payables" onClick={() => setDlg({ kind: 'payables' })}>{tx('rn.pay.btn')}</button>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-export" onClick={() => setDlg({ kind: 'export' })}>{tx('rn.export.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
-          {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
-            return <div className={'fk-hint' + (d != null && d <= 14 ? ' warn' : '')} data-testid="rn-forecast">{d == null ? tx('rn.forecast.none') : tx('rn.forecast.days', { n: fmtNumber(d) })}</div>; })() : null}
+          {/* GLOBAL LOYALTY · 03 (round 10): the SERVER's funding forecast from the wallet ledger's last 30 days — never computed here, nothing bought */}
+          {w ? (() => { const f = w.forecast; const d = f?.daysLeft ?? null;
+            return <div className={'fk-hint' + (d != null && d <= 14 ? ' warn' : '')} data-testid="rn-forecast">{!f || d == null ? tx('rn.forecast.none30') : tx('rn.forecast.days30', { n: fmtNumber(d), daily: tokensOf(f.dailyCents ?? 0, w.tokenValueCents) })}
+              {f && f.fundingNeededCents != null && f.fundingNeededCents > 0 ? <span className="fk-li-s" data-testid="rn-forecast-need">{' '}{tx('rn.forecast.need', { t: tokensOf(f.fundingNeededCents, w.tokenValueCents), days: fmtNumber(f.basisDays) })}</span> : null}</div>; })() : null}
           {purchases.err ? <ErrorRetry message={purchases.err} onRetry={purchases.refresh} /> : !purchases.data ? <div className="fk-loading">{tx('pos.loading')}</div> : purchases.data.items.length === 0 ? (
             <Empty title={tx('rn.noPurchases')}>{st && !buyBlockedReason ? <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button> : null}</Empty>
           ) : (

@@ -15,7 +15,7 @@ import { monthStartMs } from '@aipowersalon/date-time';
 import { logException } from '@aipowersalon/observability';
 import {
   GlobalRewardsError, alertLevel, walletLevels, clampRateToPolicy, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
-  purchaseQuantity, isPending, rateLabel, tokensLabel,
+  purchaseQuantity, isPending, rateLabel, tokensLabel, walletFundingForecast, FORECAST_BASIS_DAYS,
   type EarningRate, type EffectiveEarningRule, type PolicyVersion, type ProgramPolicy, type PurchaseStatus,
 } from './global-rewards-core';
 import { TENANT_EARNING_POLICY_VERSION, TOKEN_PURCHASE_INTENT, GLOBAL_EARNING_RULE_VERSION, GLOBAL_REWARDS_ENROLLMENT, TENANT_TOKEN_WALLET } from './global-rewards-lifecycles';
@@ -343,6 +343,11 @@ export class GlobalRewardsRepository {
       WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation' AND l.created_at >= ${monthStart}::timestamptz`.execute(x)).rows[0];
     const available = n(w?.available_cents);
     const branchUsage = await this.branchUsage(tenantId, monthStart, n(month?.used), x);
+    // extras GLOBAL LOYALTY REWARDS 03 (round 10): the funding forecast from VERIFIED history — the wallet's own earn_allocation
+    // ledger rows over the last FORECAST_BASIS_DAYS (a rolling window, not the calendar month), never a guess; nothing is bought
+    const basis = (await sql<Row>`SELECT coalesce(-sum(l.delta_cents), 0) AS used, min(l.created_at) AS first_at FROM token_wallet_ledger l
+      WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation' AND l.created_at >= now() - make_interval(days => ${FORECAST_BASIS_DAYS})`.execute(x)).rows[0];
+    const forecast = walletFundingForecast(available, n(pend?.pending), n(basis?.used), FORECAST_BASIS_DAYS, walletLevels(program, w).lowBalanceCents);
     return {
       // wallet amounts are money cents: 1 token = tokenValueCents cents, so the funded dollar value IS availableCents
       exists: !!w, availableCents: available, available: tokensLabel(available, program.tokenValueCents), availableValueCents: available,
@@ -352,7 +357,7 @@ export class GlobalRewardsRepository {
       // C1 audit §5.6: the warning levels in force (the salon's own when set) and the platform defaults
       lowBalanceCents: walletLevels(program, w).lowBalanceCents, criticalBalanceCents: walletLevels(program, w).criticalBalanceCents, levelsOwn: w?.low_balance_cents_override != null || w?.critical_balance_cents_override != null,
       platformLowBalanceCents: program.lowBalanceCents, platformCriticalBalanceCents: program.criticalBalanceCents,
-      branchUsage,
+      branchUsage, forecast,
     };
   }
 
