@@ -55,7 +55,8 @@ export interface AddOnMutationPort { addServiceLine(ctx: AiCheckoutUpsellContext
 export interface MembershipMutationPort { enroll(ctx: AiCheckoutUpsellContext, input: { customerId: string; planId: string; checkoutId: string }): Promise<{ membershipId: string }>; }
 export interface LoyaltyMutationPort {
   enroll(ctx: AiCheckoutUpsellContext, input: { customerId: string; checkoutId: string }): Promise<{ enrolled: true }>;
-  redeem(ctx: AiCheckoutUpsellContext, input: { customerId: string; rewardId: string; checkoutId: string }): Promise<{ redemptionId: string }>;
+  /** requestKey = the upsell's own idempotency key for this redeem, so a retried request reuses the same redemption */
+  redeem(ctx: AiCheckoutUpsellContext, input: { customerId: string; rewardId: string; checkoutId: string; requestKey?: string }): Promise<{ redemptionId: string }>;
 }
 export interface PromotionMutationPort { apply(ctx: AiCheckoutUpsellContext, checkoutId: string, promotionId: string): Promise<{ applied: true }>; }
 export interface NextAppointmentMutationPort { openBooking(ctx: AiCheckoutUpsellContext, input: { customerId: string; serviceId: string }): Promise<{ bookingDraftId: string }>; }
@@ -334,8 +335,9 @@ export class AiCheckoutUpsellService {
     const reward = loy.redeem.rewards.find(r => r.rewardId === rewardId);
     if (!reward) throw new Error('LOYALTY_NOT_ELIGIBLE');
     if (reward.pointsCost > loy.redeem.balancePoints) throw new Error('LOYALTY_BALANCE_INSUFFICIENT'); // revalidate against authoritative balance
-    const result = await runOnce(mut.idem, this.idem(ctx, checkoutId, 'redeem_loyalty', rewardId, opts.idempotencyKey || ''), { rewardId, customerId: ticket.customerId }, async () => {
-      const red = await mut.loyalty.redeem(ctx, { customerId: ticket.customerId!, rewardId, checkoutId });
+    const key = this.idem(ctx, checkoutId, 'redeem_loyalty', rewardId, opts.idempotencyKey || '');
+    const result = await runOnce(mut.idem, key, { rewardId, customerId: ticket.customerId }, async () => {
+      const red = await mut.loyalty.redeem(ctx, { customerId: ticket.customerId!, rewardId, checkoutId, requestKey: key });
       const totals = await mut.recalc.recalculate(ctx, checkoutId);
       return { redemptionId: red.redemptionId, totals };
     });

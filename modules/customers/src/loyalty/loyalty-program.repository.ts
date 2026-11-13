@@ -11,7 +11,7 @@
 // with a unique-id tie-break (spec §09) and server-side numbered pages; a page past the end is clamped.
 import { sql, type Kysely } from 'kysely';
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
-import { applyLoyaltyEntry, lockLoyaltyCustomer, LoyaltyLedgerError } from './loyalty-ledger.service';
+import { applyLoyaltyEntry, lockLoyaltyCustomer } from './loyalty-ledger.service';
 import { secureString } from '@aipowersalon/security';
 import { logException } from '@aipowersalon/observability';
 import { LOYALTY_REDEMPTION } from './loyalty-redemption-machine';
@@ -54,6 +54,34 @@ function rewardRules(r: any, today: string) {
   return { startsOn, endsOn, stockTotal, stockLeft, perMemberLimit: r.per_member_limit == null ? null : N(r.per_member_limit),
     eligibleTiers: Array.isArray(r.eligible_tiers) && r.eligible_tiers.length ? r.eligible_tiers.map(String) : null, availability };
 }
+
+/** THE redemption rules, in the order the front desk has always checked them (dates → stock → per-member limit → active
+ *  and worth something → enrolled → tier → points). One function: redeem() refuses with it inside the locked transaction,
+ *  and redeemOptions() (Checkout Upsell Assistant Settings 05) explains with it, read-only — never a second copy. */
+export type RedeemBlockCode = 'REWARD_NOT_STARTED' | 'REWARD_EXPIRED' | 'REWARD_OUT_OF_STOCK' | 'REWARD_MEMBER_LIMIT' | 'REWARD_NOT_AVAILABLE' | 'LOYALTY_NOT_ENROLLED' | 'REWARD_TIER_NOT_ELIGIBLE' | 'LOYALTY_INSUFFICIENT_POINTS';
+export function redeemBlock(
+  reward: { starts_on?: unknown; ends_on?: unknown; stock_total?: unknown; per_member_limit?: unknown; active?: unknown; reward_type?: unknown; percent?: unknown; value_cents?: unknown; eligible_tiers?: unknown; points_cost?: unknown },
+  member: { pointsBalance: number; tier: string | null } | null,
+  used: { stockUsed: number; memberUsed: number },
+  today: string,
+): { code: RedeemBlockCode; message: string } | null {
+  if (reward.starts_on && today < String(reward.starts_on)) return { code: 'REWARD_NOT_STARTED', message: 'This reward is not available yet.' };
+  if (reward.ends_on && today > String(reward.ends_on)) return { code: 'REWARD_EXPIRED', message: 'This reward has ended.' };
+  if (reward.stock_total != null && used.stockUsed >= N(reward.stock_total)) return { code: 'REWARD_OUT_OF_STOCK', message: 'This reward is out of stock.' };
+  if (reward.per_member_limit != null && used.memberUsed >= N(reward.per_member_limit)) return { code: 'REWARD_MEMBER_LIMIT', message: 'This member has reached the limit for this reward.' };
+  const worth = (reward.reward_type === 'percent_off' && N(reward.percent) > 0) || (reward.reward_type !== 'percent_off' && N(reward.value_cents) > 0);
+  if (!reward.active || !worth) return { code: 'REWARD_NOT_AVAILABLE', message: 'That reward is not available right now.' };
+  if (!member) return { code: 'LOYALTY_NOT_ENROLLED', message: 'Enrol the customer before redeeming.' };
+  if (Array.isArray(reward.eligible_tiers) && reward.eligible_tiers.length && !reward.eligible_tiers.map(String).includes(String(member.tier || DEFAULT_TIER)))
+    return { code: 'REWARD_TIER_NOT_ELIGIBLE', message: "This reward is not available for the member's tier." };
+  if (member.pointsBalance < N(reward.points_cost)) return { code: 'LOYALTY_INSUFFICIENT_POINTS', message: 'Not enough points for this reward.' };
+  return null;
+}
+
+/** One customer's redeem picker (Checkout Upsell Assistant Settings 05): the AUTHORITATIVE balance and tier from the
+ *  loyalty profile, and every reward the salon funds with the redeem rule's answer for this member. Read-only. */
+export interface RedeemOption { rewardId: string; title: string; pointsCost: number; rewardType: 'amount_off' | 'percent_off'; valueCents: number; percent: number; blockedBy: RedeemBlockCode | null }
+export interface RedeemOptions { enrolled: boolean; balancePoints: number; tier: string | null; rewards: RedeemOption[] }
 
 export class LoyaltyProgramError extends Error {
   constructor(message: string, readonly code: 'CUSTOMER_NOT_FOUND' | 'LOYALTY_ALREADY_ENROLLED' | 'LOYALTY_NOT_ENROLLED' | 'REWARD_NOT_FOUND' | 'REWARD_NOT_AVAILABLE'
@@ -385,20 +413,12 @@ export class LoyaltyProgramRepository {
       // Loyalty guide (Nov 4 2026): dates, stock, the per-member limit and the eligible tiers are checked here, atomically
       const tz = await tenantTimeZone(trx as unknown as Kysely<any>, ctx.tenantId).catch(() => 'America/New_York');
       const today = (await sql<{ d: string }>`select to_char((now() at time zone ${tz})::date, 'YYYY-MM-DD') as d`.execute(trx)).rows[0]!.d;
-      if (reward.starts_on && today < String(reward.starts_on)) throw new LoyaltyProgramError('This reward is not available yet.', 'REWARD_NOT_STARTED', 409);
-      if (reward.ends_on && today > String(reward.ends_on)) throw new LoyaltyProgramError('This reward has ended.', 'REWARD_EXPIRED', 409);
-      if (reward.stock_total != null && N((await sql<any>`select count(*)::int as n from loyalty_redemptions where tenant_id = ${ctx.tenantId} and reward_id = ${b.rewardId} and status <> 'void'`.execute(trx)).rows[0]?.n) >= N(reward.stock_total))
-        throw new LoyaltyProgramError('This reward is out of stock.', 'REWARD_OUT_OF_STOCK', 409);
-      if (reward.per_member_limit != null && N((await sql<any>`select count(*)::int as n from loyalty_redemptions where tenant_id = ${ctx.tenantId} and reward_id = ${b.rewardId} and customer_id = ${b.customerId} and status <> 'void'`.execute(trx)).rows[0]?.n) >= N(reward.per_member_limit))
-        throw new LoyaltyProgramError('This member has reached the limit for this reward.', 'REWARD_MEMBER_LIMIT', 409);
-      const worth = (reward.reward_type === 'percent_off' && N(reward.percent) > 0) || (reward.reward_type !== 'percent_off' && N(reward.value_cents) > 0);
-      if (!reward.active || !worth) throw new LoyaltyProgramError('That reward is not available right now.', 'REWARD_NOT_AVAILABLE', 409);
+      const stockUsed = reward.stock_total != null ? N((await sql<any>`select count(*)::int as n from loyalty_redemptions where tenant_id = ${ctx.tenantId} and reward_id = ${b.rewardId} and status <> 'void'`.execute(trx)).rows[0]?.n) : 0;
+      const memberUsed = reward.per_member_limit != null ? N((await sql<any>`select count(*)::int as n from loyalty_redemptions where tenant_id = ${ctx.tenantId} and reward_id = ${b.rewardId} and customer_id = ${b.customerId} and status <> 'void'`.execute(trx)).rows[0]?.n) : 0;
       const prof = (await sql<any>`select points_balance, loyalty_tier from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0];
-      if (!prof) throw new LoyaltyProgramError('Enrol the customer before redeeming.', 'LOYALTY_NOT_ENROLLED', 409);
-      if (Array.isArray(reward.eligible_tiers) && reward.eligible_tiers.length && !reward.eligible_tiers.map(String).includes(String(prof.loyalty_tier || DEFAULT_TIER)))
-        throw new LoyaltyProgramError("This reward is not available for the member's tier.", 'REWARD_TIER_NOT_ELIGIBLE', 409);
+      const block = redeemBlock(reward, prof ? { pointsBalance: N(prof.points_balance), tier: prof.loyalty_tier ?? null } : null, { stockUsed, memberUsed }, today);
+      if (block) throw new LoyaltyProgramError(block.message, block.code, 409);
       const cost = N(reward.points_cost);
-      if (N(prof.points_balance) < cost) throw new LoyaltyProgramError('Not enough points for this reward.', 'LOYALTY_INSUFFICIENT_POINTS', 409);
       const code = 'RDM' + secureString(8);
       const pct = reward.reward_type === 'percent_off';
       await sql`insert into loyalty_redemptions (id, tenant_id, customer_id, reward_id, reward_title, points_spent, code, status, reward_type, value_cents, percent, expires_at)
@@ -412,6 +432,28 @@ export class LoyaltyProgramRepository {
     await this.flush(ctx, audits);
     const d = await this.redemptionDetail(ctx, out.id);
     return { redemption: d!.redemption, code: out.code, balanceAfter: out.balanceAfter, duplicate: out.duplicate };
+  }
+
+  /** Read-only: what this customer could redeem right now and, for each reward, which redeem rule would refuse it. Uses
+   *  the SAME redeemBlock() the redemption transaction enforces, so a suggestion never promises what redeem() refuses. */
+  async redeemOptions(ctx: LoyaltyProgramContext, customerId: string): Promise<RedeemOptions> {
+    const T = ctx.tenantId;
+    if (!isUuid(customerId)) return { enrolled: false, balancePoints: 0, tier: null, rewards: [] };
+    const prof = (await sql<{ points_balance: number; loyalty_tier: string | null }>`select points_balance, loyalty_tier from customer_loyalty_profiles where tenant_id = ${T} and customer_id = ${customerId}`.execute(this.db)).rows[0];
+    const member = prof ? { pointsBalance: N(prof.points_balance), tier: prof.loyalty_tier ?? null } : null;
+    const tz = await tenantTimeZone(this.db, T).catch(() => 'America/New_York');
+    const today = (await sql<{ d: string }>`select to_char((now() at time zone ${tz})::date, 'YYYY-MM-DD') as d`.execute(this.db)).rows[0]!.d;
+    const rows = (await sql<{ id: string; title: string; points_cost: number; active: boolean; reward_type: string; value_cents: number; percent: number; starts_on: string | null; ends_on: string | null;
+        stock_total: number | null; per_member_limit: number | null; eligible_tiers: string[] | null; stock_used: number; member_used: number }>`select r.id, r.title, r.points_cost, r.active, r.reward_type, r.value_cents, r.percent,
+        to_char(r.starts_on, 'YYYY-MM-DD') as starts_on, to_char(r.ends_on, 'YYYY-MM-DD') as ends_on, r.stock_total, r.per_member_limit, r.eligible_tiers,
+        (select count(*) from loyalty_redemptions d where d.tenant_id = r.tenant_id and d.reward_id = r.id and d.status <> 'void')::int as stock_used,
+        (select count(*) from loyalty_redemptions d where d.tenant_id = r.tenant_id and d.reward_id = r.id and d.customer_id = ${customerId} and d.status <> 'void')::int as member_used
+      from loyalty_rewards r where r.tenant_id = ${T} and r.active order by r.points_cost asc, r.id asc limit 100`.execute(this.db)).rows;
+    return {
+      enrolled: !!member, balancePoints: member?.pointsBalance ?? 0, tier: member ? String(member.tier || DEFAULT_TIER) : null,
+      rewards: rows.map((r) => ({ rewardId: String(r.id), title: String(r.title), pointsCost: N(r.points_cost), rewardType: r.reward_type === 'percent_off' ? 'percent_off' as const : 'amount_off' as const,
+        valueCents: N(r.value_cents), percent: N(r.percent), blockedBy: redeemBlock(r, member, { stockUsed: N(r.stock_used), memberUsed: N(r.member_used) }, today)?.code ?? null })),
+    };
   }
 
   /** Void an ISSUED code (not yet on a ticket): the status moves to void and the points come back through ONE ledger
