@@ -161,4 +161,11 @@ export const EODFOLLOW_VI = {
   'eod.a.done': 'Xong.',
   'eod.loadError': 'Không tải được danh sách chăm sóc.',
   'eod.noPermission': 'Bạn không có quyền quản lý chăm sóc khách.',
+  'eod.hk.reconcile': 'Khớp với các mục khác', // DRAFT — Kevin reviews
+  'eod.rec.open': 'Đã đối chiếu {n} tin chăm sóc chưa gửi với Thanh toán, Hồ sơ khách hàng, Đặt lịch và danh sách thợ.', // DRAFT — Kevin reviews
+  'eod.rec.ok': 'Tất cả vẫn khớp.', // DRAFT — Kevin reviews
+  'eod.rec.source': '{n}: lượt khách đã bị hủy, mở lại hoặc bỏ dịch vụ ở Thanh toán — không bao giờ gửi được.', // DRAFT — Kevin reviews
+  'eod.rec.archived': '{n}: khách hàng đã lưu trữ hoặc không còn trong hồ sơ — không bao giờ gửi được.', // DRAFT — Kevin reviews
+  'eod.rec.booked': '{n}: khách hàng đã có lịch hẹn sắp tới — tạm giữ trừ khi quản lý cho phép.', // DRAFT — Kevin reviews
+  'eod.rec.tech': '{n}: thợ không còn hoạt động — không nằm trong danh sách của thợ nào.', // DRAFT — Kevin reviews
 } as const;

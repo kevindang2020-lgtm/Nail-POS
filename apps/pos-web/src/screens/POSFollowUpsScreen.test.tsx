@@ -152,4 +152,21 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     expect(screen.getByTestId('fuq-d-send')).toBeDisabled();
     expect(f.mock.calls.some((c: any[]) => (c[1]?.method ?? 'GET') !== 'GET')).toBe(false);
   });
+
+  it('extras FOLLOW-UP QUEUE 09: the health panel shows the server\'s cross-module reconciliation in words (counts read, never recomputed)', async () => {
+    window.history.replaceState(null, '', '/follow-ups');
+    const base = mockFetch();
+    const rec = { open: 5, sourceCancelled: 1, customerArchived: 0, alreadyBooked: 2, technicianInactive: 0 };
+    globalThis.fetch = vi.fn(async (u: any) => String(u).includes('/eod-follow-ups/health')
+      ? ({ ok: true, status: 200, json: async () => ({ overall: 'ready', rows: [{ key: 'reconcile', state: 'attention_required', detail: 'English detail', evidence: 'e', nextStep: null, reconcile: rec }] }), headers: { get: () => null } } as any)
+      : base(u)) as any;
+    view();
+    const box = await screen.findByTestId('eod-reconcile');
+    expect(box).toHaveTextContent('5 unsent follow-up(s) checked against Checkout, Customer Profile, Booking and the technician list.');
+    expect(screen.getByTestId('eod-rec-sourceCancelled')).toHaveTextContent('1: the visit was voided, reopened or a service removed in Checkout');
+    expect(screen.getByTestId('eod-rec-alreadyBooked')).toHaveTextContent('2: the customer already has an upcoming booking');
+    expect(screen.queryByTestId('eod-rec-customerArchived')).toBeNull();
+    expect(screen.queryByText('English detail')).toBeNull();
+    expect(screen.getByText('Matches other modules')).toBeInTheDocument();
+  });
 });

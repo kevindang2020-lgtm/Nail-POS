@@ -4,7 +4,9 @@
 import { api } from './client';
 
 export type EodHealthState = 'ready' | 'pending' | 'attention_required' | 'failed' | 'unknown' | 'not_used' | 'off';
-export interface EodHealthRow { key: string; state: EodHealthState; detail: string; evidence: string; nextStep: string | null }
+export interface EodHealthRow { key: string; state: EodHealthState; detail: string; evidence: string; nextStep: string | null;
+  /** extras FOLLOW-UP QUEUE 09 — the 'reconcile' row's counts (server: EodCenter.reconciliation) */
+  reconcile?: { open: number; sourceCancelled: number; customerArchived: number; alreadyBooked: number; technicianInactive: number } }
 export interface EodNextRun { businessDate: string; localTime: string; timezone: string; at: string | null; dueNow: boolean }
 export interface EodSummary {
   settings: import('./posFollowUpApi').FollowUpSettings;

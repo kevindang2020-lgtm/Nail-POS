@@ -285,3 +285,42 @@ describe('a cancelled source is never sent (extras FOLLOW-UP QUEUE 05)', () => {
     expect(await notesFor(NEWC(5))).toBe(1);
   });
 });
+
+// extras FOLLOW-UP QUEUE 09 — cross-module reconciliation in the health panel: the unsent tasks re-read against Checkout,
+// Customer Profile, Booking and the technician list with the send path's own rules. Its own branch, so earlier tests'
+// tasks never count here.
+describe('cross-module reconciliation of unsent follow-ups (extras FOLLOW-UP QUEUE 09)', () => {
+  const BR = id('b5'), T3 = id('73'), RC = (n: number) => id(`db${n}`);
+  async function task(cust: string, tech: string, ticket: string, status = 'pending') {
+    line++;
+    await q(`insert into service_follow_up_tasks (tenant_id, branch_id, business_date, customer_id, technician_id, ticket_id, ticket_service_line_id, customer_name_snapshot, technician_name_snapshot, status, suggested_message)
+      values ($1,$2,'2026-10-31',$3,$4,$5,$6,'Rec','Tech',$7,'Thanks!')`, [T, BR, cust, tech, ticket, id('7' + line), status]);
+  }
+  it('counts each unsent task the owning module now disagrees with; sent tasks and other branches never count; reading writes nothing', async () => {
+    await q(`insert into branches (id, tenant_id, name, timezone, status) values ($1,$2,'Rec',$3,'active')`, [BR, T, TZ]);
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active) values ($1,$2,$3,'Old','Tech','Old Tech',false)`, [T3, T, BR]);
+    for (const [n, status] of [[1, 'active'], [2, 'active'], [3, 'archived'], [4, 'active'], [5, 'active']] as const)
+      await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, status) values ($1,$2,$3,'Rec',$4,$5,$6)`, [RC(n), T, BR, String(n), `Rec ${n}`, status]);
+    const voided = (await q(`insert into tickets (tenant_id, branch_id, customer_id, status, paid_at, total_cents, ticket_number) values ($1,$2,$3,'void','2026-10-31T15:00:00Z',5000,'R-1') returning id`, [T, BR, RC(2)]))[0].id;
+    const paid = (await q(`insert into tickets (tenant_id, branch_id, customer_id, status, paid_at, total_cents, ticket_number) values ($1,$2,$3,'paid','2026-10-31T15:00:00Z',5000,'R-2') returning id`, [T, BR, RC(1)]))[0].id;
+    await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status) values ($1,$2,$3,$4,'Rec 4','2099-01-05','10:00','10:45','booked')`, [T, BR, T1, RC(4)]);
+    await task(RC(1), T1, paid);                 // intact
+    await task(RC(2), T1, voided);               // Checkout: the visit was voided
+    await task(RC(3), T1, paid, 'rejected');     // Customer Profile: archived (an unsent state)
+    await task(RC(4), T1, paid, 'pending_manager_approval');   // Booking: already booked
+    await task(RC(5), T3, paid);                 // Technician app: the technician is inactive
+    await task(RC(3), T1, paid, 'sent');         // already sent — not reconciled
+    const before = await counts();
+    const rec = await center.reconciliation(T, BR, '2026-11-12');
+    expect(rec).toEqual({ open: 5, sourceCancelled: 1, customerArchived: 1, alreadyBooked: 1, technicianInactive: 1 });
+    const h = await center.health(T, BR, await repo.settingsFor(T, BR), new Date());
+    const row = h.rows.find((r) => r.key === 'reconcile')!;
+    expect(row.state).toBe('attention_required');
+    expect(row.reconcile).toEqual(rec);
+    expect(await center.reconciliation(TX, BX, '2026-11-12')).toEqual({ open: 0, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0 });
+    expect(await counts()).toEqual(before);   // read only
+    await q(`update service_follow_up_tasks set status = 'expired' where tenant_id = $1 and branch_id = $2 and customer_id <> $3`, [T, BR, RC(1)]);
+    const clean = await center.health(T, BR, await repo.settingsFor(T, BR), new Date());
+    expect(clean.rows.find((r) => r.key === 'reconcile')).toMatchObject({ state: 'ready', reconcile: { open: 1, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0 } });
+  });
+});

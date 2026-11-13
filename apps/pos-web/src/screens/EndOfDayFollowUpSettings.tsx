@@ -14,6 +14,7 @@ import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
 import { deviceToday } from '../lib/deviceToday';
 import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
+import { EodReconcile } from './eodReconcile';
 
 const TIME_OPTS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
 const EXPIRE_OPTS = [0, 12, 24, 48, 72];
@@ -149,7 +150,7 @@ export function EndOfDayFollowUpSettings() {
             <ul className="eod-health">{health.rows.map((r) => (
               <li key={r.key} data-testid={`eod-h-${r.key}`}>
                 <div className="eod-h-top"><b>{tx(`eod.hk.${r.key}`)}</b><span className={`eod-chip ${TONE[r.state] ?? 'neutral'}`}>{tx(`eod.state.${r.state}`)}</span></div>
-                <div className="s">{r.detail}</div>
+                {r.reconcile ? <EodReconcile rec={r.reconcile} /> : <div className="s">{r.detail}</div>}
                 <div className="s eod-ev">{r.evidence}{r.nextStep ? ` — ${r.nextStep}` : ''}</div>
               </li>))}</ul>
           )}
