@@ -138,4 +138,12 @@ describe('POSTipsScreen', () => {
     expect(screen.getByTestId('refund-impact-posting')).toHaveTextContent('waits for a manager review');
     expect(payroll.setTicketTip).not.toHaveBeenCalled(); expect(payroll.adjustTicketTip).not.toHaveBeenCalled();
   });
+  it('Individual Technician Tipping 05 (round 10): the distribution tab flags a technician whose tickets do not add up (server count); a balanced one shows nothing', async () => {
+    api.distribution.mockResolvedValue({ ...dist, items: [{ ...dist.items[0], unreconciledTickets: 2 }, { ...dist.items[0], technicianId: 'a', name: 'Anna Lee', unreconciledTickets: 0 }] });
+    mount();
+    fireEvent.click(await screen.findByTestId('tab-distribution'));
+    const rows = await screen.findAllByTestId('dist-row');
+    expect(rows[0]).toHaveTextContent('2 ticket(s) do not add up');
+    expect(screen.getAllByTestId('dist-unreconciled')).toHaveLength(1);
+  });
 });

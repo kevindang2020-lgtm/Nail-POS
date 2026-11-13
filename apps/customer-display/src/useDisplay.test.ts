@@ -35,6 +35,24 @@ beforeEach(() => { fetchState.mockReset(); releaseCompleted.mockReset(); submitR
 afterEach(() => vi.useRealTimers());
 
 describe('the 3-second completed screen (§43)', () => {
+  it('Individual Technician Tipping 06 (round 10): a paid per-technician tip checkout is wiped at 3000 ms — no technician, tip choice or version survives', async () => {
+    const tips = { recipients: [{ technicianId: 'a', name: 'Anna Techname', services: ['Gel Manicure'], basisCents: 4000, choice: { tipType: 'custom' as const, percent: null, tipCents: 777 } }],
+      version: 9, state: 'LOCKED' as const, stale: false, totalTipCents: 777, presetCents: [300], percents: [15] };
+    fetchState.mockResolvedValue(state({ technicianTips: tips, selectedTipCents: 777 } as Partial<CustomerDisplayState>));
+    releaseCompleted.mockImplementation(() => new Promise(() => { /* the server's answer never comes: the display clears on its own */ }));
+    const { result } = renderHook(() => useDisplay());
+    await flush();
+    expect(JSON.stringify(result.current.data)).toContain('Anna Techname');
+    await wait(COMPLETED_HOLD_MS - 50);
+    expect(JSON.stringify(result.current.data)).toContain('Anna Techname');         // still the customer's moment at 2950 ms
+    await wait(60);
+    const d = result.current.data!;
+    expect(d.state).toBe('idle');
+    expect((d as { technicianTips?: unknown }).technicianTips).toBeUndefined();
+    expect(d.selectedTipCents).toBe(0);
+    expect(JSON.stringify(d)).not.toContain('Anna Techname');
+    expect(JSON.stringify(d)).not.toContain('777');
+  });
   it('holds exactly 3000 ms, then the customer is destroyed and the session released', async () => {
     fetchState.mockResolvedValue(state());
     // the server's answer is held back: the customer must be gone from the UI state at 3000 ms by the display's OWN

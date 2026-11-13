@@ -111,6 +111,10 @@ describe('Tips & Gratuity — KPIs', () => {
     expect(d.totals.allocatedCents).toBe(5760);
     expect(d.items[0].technicianId).toBe(BAO);   // largest first
     expect(d.items.reduce((a, x) => a + x.sharePct, 0)).toBeGreaterThan(99);
+    // Individual Technician Tipping 05 (round 10): the per-recipient reconciliation — every ticket's allocations add up here
+    expect(d.items.every((x) => x.unreconciledTickets === 0)).toBe(true);
+    expect(d.totals).toMatchObject({ allocatedCents: 5760, cardCents: d.items.reduce((a, x) => a + x.cardCents, 0), cashCents: d.items.reduce((a, x) => a + x.cashCents, 0), unreconciledTechnicians: 0 });
+    expect(d.totals.cardCents + d.totals.cashCents).toBe(5760);
   });
   it('a paid-out tip: the payout state comes from the payroll period; manual corrections re-split and net to zero', async () => {
     const s = await r.summary(ctx, await all());
@@ -172,5 +176,15 @@ describe('Tips & Gratuity — transactions, detail, search', () => {
     const p1 = await r.transactions(ctx, await all(), { page: 1, pageSize: 3 }), p2 = await r.transactions(ctx, await all(), { page: 2, pageSize: 3 });
     expect(p1.pageCount).toBe(3); expect(new Set([...p1.items, ...p2.items].map((x) => x.ticketId)).size).toBe(6);
     expect(() => r.filters({ preset: 'all', from: null, to: null, tz: TZ, today: '2026-10-29' }, { minAmount: '50', maxAmount: '10' })).toThrow(FinanceError);
+  });
+  it('Individual Technician Tipping 05 (round 10): an allocation that no longer adds up to its ticket\'s collected tip marks every technician on that ticket as unreconciled', async () => {
+    await q(`update ticket_tip_allocations set tip_cents = tip_cents + 50 where tenant_id = $1 and ticket_id = $2 and technician_id = $3`, [T, trio, CHI]);   // allocations now exceed the 3-technician ticket's $20
+    const d = await r.distribution(ctx, await month(), pr);
+    const by = Object.fromEntries(d.items.map((x) => [x.technicianId, x]));
+    expect([by[ANNA].unreconciledTickets, by[BAO].unreconciledTickets, by[CHI].unreconciledTickets].every((n) => n >= 1)).toBe(true);
+    expect(by[VISHAL].unreconciledTickets).toBe(0);  // not on that ticket
+    expect(d.totals.unreconciledTechnicians).toBeGreaterThanOrEqual(3);
+    await q(`update ticket_tip_allocations set tip_cents = tip_cents - 50 where tenant_id = $1 and ticket_id = $2 and technician_id = $3`, [T, trio, CHI]);
+    expect((await r.distribution(ctx, await month(), pr)).totals.unreconciledTechnicians).toBe(0);
   });
 });

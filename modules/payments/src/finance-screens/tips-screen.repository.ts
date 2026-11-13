@@ -204,10 +204,13 @@ export class TipsScreenRepository {
     const w = this.where({ ...f, technicianId: undefined, status: undefined, method: undefined, minCents: undefined, maxCents: undefined });
     const rows = (await sql<any>`with a as (select ${TipsScreenRepository.ROW_COLS} from (${this.base(ctx, f.period.tz)}) a where ${w}),
       x as (select al.technician_id, al.ticket_id, al.tip_cents as alloc, a.card, a.cash, a.tip_cents, a.payout_state, a.paid_at from ticket_tip_allocations al join a on a.id = al.ticket_id where al.tenant_id = ${ctx.tenantId} and al.tip_cents > 0),
+      -- Individual Technician Tipping 05 (round 10): per ticket, everything allocated against the ticket's own collected tip
+      tk as (select x.ticket_id, sum(x.alloc) as allocated, max(x.tip_cents) as tip from x group by x.ticket_id),
       per as (select x.technician_id, count(distinct x.ticket_id)::int as tickets, sum(x.alloc)::bigint as allocated,
           sum(case when x.tip_cents > 0 then round(x.alloc::numeric * x.card / x.tip_cents) else 0 end)::bigint as card_alloc,
-          sum(x.alloc) filter (where x.payout_state = 'paid')::bigint as paid_out, sum(x.alloc) filter (where x.payout_state <> 'paid')::bigint as pending, max(x.paid_at) as last_at
-        from x group by x.technician_id),
+          sum(x.alloc) filter (where x.payout_state = 'paid')::bigint as paid_out, sum(x.alloc) filter (where x.payout_state <> 'paid')::bigint as pending, max(x.paid_at) as last_at,
+          count(distinct x.ticket_id) filter (where tk.allocated <> tk.tip)::int as unreconciled
+        from x join tk on tk.ticket_id = x.ticket_id group by x.technician_id),
       corr as (select j.technician_id, sum(j.amount_cents) filter (where j.source = 'manual')::bigint as manual, sum(j.amount_cents) filter (where j.source <> 'manual')::bigint as reversed
         from compensation_adjustments j join a on a.id = j.ticket_id where j.tenant_id = ${ctx.tenantId} and j.category = 'tip_correction' and j.status in (${sql.join(POSTED)}) group by j.technician_id)
       select per.*, coalesce(corr.manual, 0)::bigint as manual, coalesce(corr.reversed, 0)::bigint as reversed, tc.full_name as name, tc.status as tech_status
@@ -217,13 +220,17 @@ export class TipsScreenRepository {
       const allocated = N(r.allocated), card = Math.min(allocated, Math.max(0, N(r.card_alloc)));
       return { technicianId: String(r.technician_id), name: r.name ?? null, active: r.tech_status !== 'archived', tickets: N(r.tickets), allocatedCents: allocated, cardCents: card, cashCents: allocated - card,
         sharePct: totalAlloc > 0 ? Math.round((allocated / totalAlloc) * 1000) / 10 : 0, paidOutCents: N(r.paid_out), pendingCents: N(r.pending),
-        manualCorrectionCents: N(r.manual), reversedCents: N(r.reversed), netCents: allocated + N(r.manual) + N(r.reversed), lastAt: iso(r.last_at) };
+        manualCorrectionCents: N(r.manual), reversedCents: N(r.reversed), netCents: allocated + N(r.manual) + N(r.reversed), lastAt: iso(r.last_at),
+        // tickets this technician is on whose allocations do not add up to the ticket's collected tip (the per-recipient reconciliation)
+        unreconciledTickets: N(r.unreconciled) };
     });
     const cmp = { allocated_desc: (a: any, b: any) => b.allocatedCents - a.allocatedCents || String(a.name).localeCompare(String(b.name)), allocated_asc: (a: any, b: any) => a.allocatedCents - b.allocatedCents,
       name_asc: (a: any, b: any) => String(a.name ?? '').localeCompare(String(b.name ?? '')), tickets_desc: (a: any, b: any) => b.tickets - a.tickets || b.allocatedCents - a.allocatedCents }[sort];
     items.sort(cmp);
     const pg = clampPage(pr, items.length);
-    return { items: items.slice(pg.offset, pg.offset + pg.pageSize), total: items.length, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount, totals: { allocatedCents: totalAlloc, technicians: items.length } };
+    return { items: items.slice(pg.offset, pg.offset + pg.pageSize), total: items.length, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
+      totals: { allocatedCents: totalAlloc, technicians: items.length, cardCents: items.reduce((s2, x) => s2 + x.cardCents, 0), cashCents: items.reduce((s2, x) => s2 + x.cashCents, 0),
+        paidOutCents: items.reduce((s2, x) => s2 + x.paidOutCents, 0), pendingCents: items.reduce((s2, x) => s2 + x.pendingCents, 0), unreconciledTechnicians: items.filter((x) => x.unreconciledTickets > 0).length } };
   }
 
   /** The technicians who have tip allocations (the filter list). */
