@@ -276,11 +276,11 @@ describe('AI Business Setup — long lists (extras #09)', () => {
       expect(screen.getAllByTestId('ais-faq-row')).toHaveLength(20);
       fireEvent.click(screen.getByRole('button', { name: 'Page 2' }));
       await waitFor(() => expect(list.querySelector('.fk-pager-range')).toHaveTextContent('Showing 21–40 of 45 · Page 2 of 3'));
-      expect(calls.at(-1)).toMatchObject({ page: 2, pageSize: 20 });
+      expect(calls[calls.length - 1]).toMatchObject({ page: 2, pageSize: 20 });
       expect(screen.getByText('Question 21')).toBeInTheDocument();
       fireEvent.change(screen.getByTestId('ais-size'), { target: { value: '50' } });
       await waitFor(() => expect(list.querySelector('.fk-pager-range')).toHaveTextContent('Showing 1–45 of 45 · Page 1 of 1'));
-      expect(calls.at(-1)).toMatchObject({ page: 1, pageSize: 50 });
+      expect(calls[calls.length - 1]).toMatchObject({ page: 1, pageSize: 50 });
       // the scope tabs and the pager are the list's own sticky header / footer (direct children the CSS pins)
       expect(list.querySelector(':scope > .ais-tabs')).not.toBeNull();
       expect(list.querySelector(':scope > .ais-pager')).not.toBeNull();
