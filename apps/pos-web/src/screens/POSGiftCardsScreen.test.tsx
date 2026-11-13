@@ -240,4 +240,35 @@ describe('POSGiftCardsScreen', () => {
     expect(rows[1]).toHaveTextContent(/Text.*\(•••\) •••-0123.*Failed.*Recipient opted out.*Opted out/);
     expect(gc.reload).not.toHaveBeenCalled(); expect(gc.adjust).not.toHaveBeenCalled();
   });
+  it('extras GIFT CARDS 05 / 11 (round 10): the detail says when the balance was checked against the ledger and why the card can or cannot pay', async () => {
+    gc.detail.mockResolvedValue({ card: card({ status: 'void', spendable: false }), permissions: { void: true, reload: true },
+      totals: { originalCents: 10000, reloadedCents: 0, redeemedCents: 6500, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 3500, transactions: 2, ledgerBalanceCents: 3500, reconciled: true },
+      verification: { checkedAt: '2026-10-29T15:00:00Z', lastMovementAt: '2026-10-25T15:00:00Z', source: 'live_ledger' },
+      eligibility: { reason: 'void', canSpend: false, spendableCents: 0, pinRequired: true, locations: 'issuing_branch_only', branch: 'Main', expiresAt: null } });
+    gc.ledger.mockResolvedValue(pageOf([]));
+    mount();
+    fireEvent.click(await screen.findByText('•••• 4821'));
+    expect(await screen.findByTestId('detail-verified')).toHaveTextContent('Balance checked against the card ledger');
+    const e = screen.getByTestId('detail-eligibility');
+    expect(e).toHaveTextContent('Cannot pay: the card was voided.'); expect(e).toHaveTextContent('Redeemable only at Main'); expect(e).toHaveTextContent('the PIN is required');
+  });
+  it('extras GIFT CARDS 07 (round 10): guided issuance — the steps light up as each is done and the form says exactly what is still needed', async () => {
+    settings.getCategory.mockResolvedValue({ enabled: true, posSalesEnabled: true, presetAmountsCents: [5000], customAmountEnabled: true, minAmountCents: 1000, maxAmountCents: 50000 });
+    cust.quickSearch.mockResolvedValue({ items: [{ customerId: 'c1', fullName: 'Bo Walk', phone: '(856) 555-0000' }] });
+    mount(); await screen.findByText('•••• 4821');
+    fireEvent.click(screen.getByTestId('issue'));
+    expect(await screen.findByTestId('issue-missing')).toHaveTextContent('Still needed: purchaser · a valid amount');
+    expect(screen.getByTestId('issue-step-purchaser')).toHaveAttribute('data-done', 'false');
+    fireEvent.change(screen.getByTestId('issue-amount'), { target: { value: '50' } });
+    expect(screen.getByTestId('issue-step-amount')).toHaveAttribute('data-done', 'true');
+    expect(screen.getByTestId('issue-missing')).toHaveTextContent('Still needed: purchaser');
+    fireEvent.change(screen.getByTestId('customer-search'), { target: { value: 'Bo' } });
+    fireEvent.click(await screen.findByText('Bo Walk'));
+    expect(screen.queryByTestId('issue-missing')).toBeNull();
+    expect(screen.getByTestId('issue-step-review')).toHaveAttribute('data-done', 'true');
+    expect(screen.getByTestId('issue-step-pay')).toHaveAttribute('data-done', 'false');   // paying happens at Checkout, never here
+    expect(screen.getByTestId('issue-submit')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('delivery-physical'));
+    expect(screen.getByTestId('issue-missing')).toHaveTextContent('the 16-digit card number');
+  });
 });

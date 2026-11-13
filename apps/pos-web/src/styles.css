@@ -1883,6 +1883,7 @@ a.fk-btn{display:inline-flex;align-items:center;text-decoration:none}
 .gc-hits button{display:flex;justify-content:space-between;width:100%;min-height:44px;padding:0 10px;border:0;background:transparent;font:inherit;font-size:14px;cursor:pointer;border-radius:8px}
 .gc-hits button:hover{background:#F4EEE2}
 .gc-presets{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.gc-steps{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:6px 0;padding:0}   /* extras GIFT CARDS 07: guided issuance steps */
 .fk-btn.on{border-color:var(--aps-orange,#A96F22);box-shadow:0 0 0 1px var(--aps-orange,#A96F22) inset}
 .fn-table td.num.neg,.fk-table td.num.neg{color:var(--bad,#B4453C)}
 @media (max-height:820px){.work.fit.gc{--fk-kpi:72px}.work.fit.gc .fk-kpi-v{font-size:24px}}

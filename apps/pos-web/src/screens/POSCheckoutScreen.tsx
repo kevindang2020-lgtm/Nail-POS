@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 // one-screen §79 (Nov 6 2026): the queue row's Full View is an icon (its name is the tooltip and the accessible label) — the
 // two text buttons ran 59–79 px past the Checkout Queue card
+import { GiftCardFinder } from '../components/GiftCardFinder';
 import { FaExpand } from 'react-icons/fa';
 import { displayLocale, fmtInZone } from '../i18n/format';
 import { viIncludes } from '@aipowersalon/api-contracts';
@@ -104,6 +105,7 @@ export function POSCheckoutScreen() {
   const [waysOpen, setWaysOpen] = useState(false);   // Three Ways to Pay dialog
   const [cashStr, setCashStr] = useState('');
   const [giftCode, setGiftCode] = useState('');
+  const [gcFinder, setGcFinder] = useState(false);   // extras GIFT CARDS 04: find a customer's card without leaving the sale
   const [giftPin, setGiftPin] = useState('');
   const [discountStr, setDiscountStr] = useState('');
   const [rewardStr, setRewardStr] = useState('');   // Decision 15: a customer's loyalty reward code
@@ -834,6 +836,8 @@ export function POSCheckoutScreen() {
                           placeholder="PIN"
                           className="w-20 border border-[var(--line)] rounded-lg p-1.5 text-xs font-mono"
                         />
+                        <button type="button" className="text-xs underline text-[var(--muted)]" onClick={() => setGcFinder(true)} data-testid="gc-finder-open">{tx('gcf.open')}</button>
+                        {gcFinder ? <GiftCardFinder initialQuery={detail?.customer?.fullName ?? ''} onClose={() => setGcFinder(false)} /> : null}
                         <GiftReadinessBox code={giftCode} ticketId={selId} dueCents={detail.balanceCents ?? Math.max(0, (detail.totals.totalDueCents || 0) - (detail.paidCents || 0))} offline={isOffline} phoneClaim={!!mobileClaim} giftEnabled={s?.paymentSettings?.giftCardEnabled} />
                       </div>
                     ) : null}

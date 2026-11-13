@@ -136,4 +136,41 @@ export const GIFTCARD_VI: Record<string, string> = {
   "gc.dl.optedOut": "Đã từ chối", // DRAFT — Kevin reviews
   "gc.dl.canReceive": "Có", // DRAFT — Kevin reviews
   "gc.dl.note": "Địa chỉ nhận được che bớt; liên kết nhận và mã thẻ không bao giờ hiển thị ở đây. Màn hình này không gửi lại gì.", // DRAFT — Kevin reviews
+  "gc.verifiedAt": "Số dư đã đối chiếu với sổ thẻ lúc {at} · biến động gần nhất {last}.", // DRAFT — Kevin reviews
+  "gc.elig.active": "Có thể thanh toán tối đa {a} khi tính tiền.", // DRAFT — Kevin reviews
+  "gc.elig.no_balance": "Không thể thanh toán: thẻ đã hết tiền.", // DRAFT — Kevin reviews
+  "gc.elig.redeemed": "Không thể thanh toán: thẻ đã dùng hết.", // DRAFT — Kevin reviews
+  "gc.elig.void": "Không thể thanh toán: thẻ đã bị hủy.", // DRAFT — Kevin reviews
+  "gc.elig.pending_payment": "Chưa thể thanh toán: thẻ kích hoạt khi hóa đơn bán thẻ được trả.", // DRAFT — Kevin reviews
+  "gc.elig.frozen": "Không thể thanh toán: thẻ đang bị khóa.", // DRAFT — Kevin reviews
+  "gc.elig.suspended": "Không thể thanh toán: thẻ đang bị tạm ngưng.", // DRAFT — Kevin reviews
+  "gc.elig.partially_redeemed": "Không thể thanh toán ở trạng thái này.", // DRAFT — Kevin reviews
+  "gc.elig.not_active": "Không thể thanh toán: thẻ chưa hoạt động.", // DRAFT — Kevin reviews
+  "gc.elig.anyBranch": "Dùng được ở mọi chi nhánh của tiệm.", // DRAFT — Kevin reviews
+  "gc.elig.branchOnly": "Chỉ dùng được ở {b} (đang tắt dùng liên chi nhánh).", // DRAFT — Kevin reviews
+  "gc.elig.pin": "cần mã PIN", // DRAFT — Kevin reviews
+  "gc.guide.missing": "Còn thiếu: {list}", // DRAFT — Kevin reviews
+  "gc.guide.purchaser": "người mua", // DRAFT — Kevin reviews
+  "gc.guide.amount": "số tiền hợp lệ", // DRAFT — Kevin reviews
+  "gc.guide.number": "số thẻ 16 chữ số", // DRAFT — Kevin reviews
+  "gc.guide.recipient": "tên người nhận", // DRAFT — Kevin reviews
+  "gc.guide.steps": "Các bước", // DRAFT — Kevin reviews
+  "gc.guide.step.purchaser": "1 Người mua", // DRAFT — Kevin reviews
+  "gc.guide.step.amount": "2 Số tiền", // DRAFT — Kevin reviews
+  "gc.guide.step.card": "3 Thẻ", // DRAFT — Kevin reviews
+  "gc.guide.step.review": "4 Xem lại", // DRAFT — Kevin reviews
+  "gc.guide.step.pay": "5 Thanh toán khi tính tiền", // DRAFT — Kevin reviews
+  "gcf.open": "Tìm thẻ của khách hàng", // DRAFT — Kevin reviews
+  "gcf.title": "Tìm thẻ quà tặng", // DRAFT — Kevin reviews
+  "gcf.sub": "Chỉ hiện thẻ đã che số — hóa đơn vẫn mở phía sau.", // DRAFT — Kevin reviews
+  "gcf.ph": "Tên, điện thoại, email, 4 số cuối hoặc mã tham chiếu", // DRAFT — Kevin reviews
+  "gcf.search": "Tìm", // DRAFT — Kevin reviews
+  "gcf.min": "Nhập ít nhất 2 ký tự.", // DRAFT — Kevin reviews
+  "gcf.none": "Không có thẻ quà tặng nào khớp.", // DRAFT — Kevin reviews
+  "gcf.failed": "Không tải được thẻ quà tặng.", // DRAFT — Kevin reviews
+  "gcf.purchaser": "Người mua {n}", // DRAFT — Kevin reviews
+  "gcf.noPurchaser": "Không có người mua", // DRAFT — Kevin reviews
+  "gcf.recipient": "tặng {n}", // DRAFT — Kevin reviews
+  "gcf.notSpendable": "hiện không dùng được", // DRAFT — Kevin reviews
+  "gcf.rule": "Để thanh toán, nhập mã trên thẻ của khách (và mã PIN). Danh sách này không bao giờ hiện mã dùng được.", // DRAFT — Kevin reviews
 };
