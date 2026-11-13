@@ -501,4 +501,17 @@ export const CATALOGSCREENS_VI = {
   "cg.pp.notForWalkIn": "{n} ưu đãi cần biết khách hoặc cần mã nên không áp dụng cho khách vãng lai.", // DRAFT — Kevin reviews
   "cg.pp.surcharge": "Phụ phí thẻ (nếu có) được quyết định khi đọc thẻ.", // DRAFT — Kevin reviews
   "cg.pp.note": "Chỉ xem: dùng cùng quy tắc ưu đãi và thuế như quầy tính tiền và không thay đổi gì.", // DRAFT — Kevin reviews
+  "cg.ao.pf.title": "Lợi nhuận dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.ao.pf.window": "{n} ngày qua", // DRAFT — Kevin reviews
+  "cg.ao.pf.days": "Thời gian", // DRAFT — Kevin reviews
+  "cg.ao.pf.revenue": "Doanh thu", // DRAFT — Kevin reviews
+  "cg.ao.pf.cost": "Chi phí công thức", // DRAFT — Kevin reviews
+  "cg.ao.pf.contribution": "Sau chi phí công thức", // DRAFT — Kevin reviews
+  "cg.ao.pf.unitCost": "Chi phí mỗi lần", // DRAFT — Kevin reviews
+  "cg.ao.pf.units": "Đã bán", // DRAFT — Kevin reviews
+  "cg.ao.pf.addOn": "Dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.ao.pf.tickets": "{n} hóa đơn", // DRAFT — Kevin reviews
+  "cg.ao.pf.none": "Không có dịch vụ thêm nào được bán trên hóa đơn đã thanh toán trong thời gian này.", // DRAFT — Kevin reviews
+  "cg.ao.pf.noRecipeN": "{n} dịch vụ thêm chưa có công thức nên không hiển thị chi phí cho {v} doanh thu (không tính vào tổng chi phí).", // DRAFT — Kevin reviews
+  "cg.ao.pf.basis": "Cách tính: các dòng dịch vụ thêm trên hóa đơn đã thanh toán trong thời gian này (giờ của tiệm); bỏ qua hóa đơn đã hoàn tiền hoặc hủy. Chi phí công thức = số lượng bán × công thức theo giá vốn sản phẩm hôm nay (không phải lượng hàng thực dùng). Chưa trừ hoa hồng, thuế và công.", // DRAFT — Kevin reviews
 };

@@ -5,6 +5,7 @@ import { MenuInsightsController } from './menu-insights.controller';
 import { MenuInsightsService } from './menu-insights.service';
 import { InMemoryMenuInsightsRepository, type MenuInsightsRepositoryPort } from './menu-insights.repository';
 import { KyselyMenuInsightsRepository } from './menu-insights.kysely.repository';
+import { AddOnProfitabilityReport } from './add-on-profitability';
 import { DATABASE_READ, type AppDatabase } from '@aipowersalon/database';
 
 @Module({
@@ -12,6 +13,8 @@ import { DATABASE_READ, type AppDatabase } from '@aipowersalon/database';
   providers: [
     { provide: 'MenuInsightsRepositoryPort', useFactory: (db: AppDatabase): MenuInsightsRepositoryPort => (db ? new KyselyMenuInsightsRepository(db as any) : new InMemoryMenuInsightsRepository()), inject: [DATABASE_READ] },
     { provide: MenuInsightsService, useFactory: (repo: MenuInsightsRepositoryPort) => new MenuInsightsService(repo), inject: ['MenuInsightsRepositoryPort'] },
+    // Extras · ADD-ONS 09: null without a database — the route answers 503 instead of inventing figures
+    { provide: AddOnProfitabilityReport, useFactory: (db: AppDatabase) => (db ? new AddOnProfitabilityReport(db) : null), inject: [DATABASE_READ] },
   ],
   exports: [MenuInsightsService],
 })
