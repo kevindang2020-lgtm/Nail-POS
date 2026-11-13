@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 972,
+  "tables": 974,
   "ownership": {
-   "tenant_owned": 650,
+   "tenant_owned": 652,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 161,
    "tenant_branch_owned": 92,
@@ -27,7 +27,7 @@
    "SUPPORT": 57,
    "BOOKING": 43,
    "PAYMENTS": 60,
-   "WORKFORCE": 76,
+   "WORKFORCE": 78,
    "CUSTOMERS": 60,
    "CATALOG": 22,
    "COMMUNICATIONS": 41,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 146,
    "CONFIDENTIAL": 169,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 536,
+   "INTERNAL": 538,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -9237,6 +9237,30 @@
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "staff_alert_reads": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "WORKFORCE",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "staff_badge_syncs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "WORKFORCE",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"
   },

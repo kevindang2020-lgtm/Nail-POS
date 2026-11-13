@@ -14,7 +14,8 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 export type BadgeKey =
   | 'checkIn' | 'techQueue' | 'customerQueue' | 'serviceDone' | 'checkout' | 'messages'
   | 'notifications' | 'techReportsPending'
-  | 'inventoryAlerts' | 'reviews' | 'payrollPending' | 'billingAlerts' | 'aiUsageAlerts' | 'supportTickets' | 'setupHealthAlerts';
+  | 'inventoryAlerts' | 'reviews' | 'payrollPending' | 'billingAlerts' | 'aiUsageAlerts' | 'supportTickets' | 'setupHealthAlerts'
+  | 'alertsUnread';   // extras round 9: salon alerts THIS person has not read (per-person read state, not the alert lifecycle)
 
 /** One catalog key, or a list that must ALL be held. */
 export type NavPermission = string | string[];

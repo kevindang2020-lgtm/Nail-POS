@@ -3,7 +3,9 @@
 export type AlertIncidentStatus = 'open' | 'investigating' | 'snoozed' | 'resolved';
 export type AlertSeverity = 'info' | 'warning' | 'critical';
 export type AlertChannel = 'in_app' | 'email' | 'sms';
-export interface AlertIncidentListItem { eventId: string; title: string; severity: AlertSeverity; incidentStatus: AlertIncidentStatus; version: number; evaluatedAt: string | null; snoozedUntil: string | null; assignee: string | null; display: { value: string; threshold: string } }
+export interface AlertIncidentListItem { eventId: string; title: string; severity: AlertSeverity; incidentStatus: AlertIncidentStatus; version: number; evaluatedAt: string | null; snoozedUntil: string | null; assignee: string | null; display: { value: string; threshold: string };
+  /** extras AI BUSINESS ALERTS 05: THIS person's read state of the incident's in-app alerts (null = no in-app alert, or the person cannot read salon alerts). Never the incident lifecycle. */
+  readState?: { unread: boolean; unreadAlertIds: string[] } | null }
 export interface AlertIncidentListResponse { status: string; page: number; limit: number; total: number; counts: Partial<Record<AlertIncidentStatus, number>>; items: AlertIncidentListItem[] }
 export interface AlertIncidentDetail {
   eventId: string; alertId: string; title: string; severity: AlertSeverity; metricId: string; operator: string; value: number | null; threshold: number;

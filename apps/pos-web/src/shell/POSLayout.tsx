@@ -10,6 +10,7 @@ import { api } from '../api/client';
 import { TENANT_NAV, Icon, type NavItem, type BadgeKey } from './tenant-nav';
 import { useTenantNavAccess, useSidebarBadges, useSystemStatus, gateFor, type Badges } from './tenant-access';
 import { ProfileMenu } from './ProfileMenu';
+import { AlertReadPanel } from './AlertReadPanel';
 import { BadgeCheckDialog } from './BadgeCheckDialog';
 import { TopSearch } from './TopSearch';
 import { PlatformAnnouncementBar } from './PlatformAnnouncementBar';
@@ -45,7 +46,7 @@ const BADGE_TONE: Record<BadgeKey, string> = {
   checkIn: 'orange', techQueue: 'blue', customerQueue: 'blue', serviceDone: 'orange', checkout: 'red',
   messages: 'blue', notifications: 'red', techReportsPending: 'orange',
   inventoryAlerts: 'orange', reviews: 'purple', payrollPending: 'orange',
-  billingAlerts: 'red', aiUsageAlerts: 'purple', supportTickets: 'orange', setupHealthAlerts: 'red',
+  billingAlerts: 'red', aiUsageAlerts: 'purple', supportTickets: 'orange', setupHealthAlerts: 'red', alertsUnread: 'red',
 };
 
 function loadOpen(): Record<string, boolean> {
@@ -81,7 +82,11 @@ function NotificationBell({ badges }: { badges: Badges }) {
   const [check, setCheck] = useState(false);   // extras Customer Notifications 02: badge accuracy self-check
   const low = badges.inventoryAlerts || 0;
   const reports = badges.techReportsPending || 0;
-  const total = badges.notifications || 0;
+  // extras round 9 (AI BUSINESS ALERTS 05): salon alerts I have not read are part of the bell; reading one clears only MY count
+  const unreadAlerts = badges.alertsUnread || 0;
+  const total = (badges.notifications || 0) + unreadAlerts;
+  const { principal } = useAuth();
+  const canSeeAlerts = !!principal?.permissions?.includes('owner.alerts.view');
   const items = [
     low > 0 && { icon: 'product' as const, label: tx('pos.low_inventory_item_plural_low_on_34ro', { low: String(low), plural: String(low > 1 ? 's' : '') }), route: '/tenant/inventory?tab=alerts' },
     reports > 0 && { icon: 'team' as const, label: tx('pos.reports_technician_report_plural_awaiting_approval_1i6e', { reports: String(reports), plural: String(reports > 1 ? 's' : '') }), route: '/tenant/inventory?tab=reports' },
@@ -99,7 +104,7 @@ function NotificationBell({ badges }: { badges: Badges }) {
           <div className="notif-panel" role="dialog" aria-label={tx('pos.notifications')}>
             <div className="panel-h"><b>{tx('pos.notifications')}</b>{total > 0 && <span className="panel-count">{total}</span>}</div>
             <div className="panel-b">
-              {items.length === 0 ? (
+              {items.length === 0 && !unreadAlerts ? (
                 <div className="panel-empty">{tx('pos.you_re_all_caught_up')}</div>
               ) : (
                 items.map((it, i) => (
@@ -110,6 +115,7 @@ function NotificationBell({ badges }: { badges: Badges }) {
                   </button>
                 ))
               )}
+              {canSeeAlerts ? <AlertReadPanel /> : null}
             </div>
             <button className="panel-f" onClick={() => { setOpen(false); nav('/tenant/account/activity-logs'); }}>{tx('pos.view_all_activity_2')}</button>
             <button className="panel-f" data-testid="badge-check-open" onClick={() => { setOpen(false); setCheck(true); }}>{tx('nav.badgechk.open')}</button>

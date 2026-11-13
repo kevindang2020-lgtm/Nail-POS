@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const m = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() }));
 vi.mock('../api/client', () => ({ api: m }));
-import { BadgeCheckDialog, compareBadges } from './BadgeCheckDialog';
+import { BadgeCheckDialog, BadgeSyncDevices, compareBadges } from './BadgeCheckDialog';
 
 beforeEach(() => { Object.values(m).forEach((f) => f.mockReset()); });
 
@@ -41,5 +41,30 @@ describe('Badge accuracy self-check', () => {
     render(<BadgeCheckDialog shown={{ checkout: 1 }} onClose={() => undefined} />);
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('offline'));
     expect(screen.queryByTestId('badge-check-verdict')).toBeNull();
+  });
+
+  it('extras Customer Notifications 04: lists my signed-in devices with their last badge refresh, state and repair step (read-only)', async () => {
+    const at = new Date(Date.now() - 60_000).toISOString();
+    m.get.mockImplementation((url: string) => Promise.resolve(url === '/tenant/navigation/badge-sync' ? {
+      generatedAt: at, currentUnread: 2, staleAfterMinutes: 10, summary: { in_sync: 1, behind: 0, stale: 0, broken: 1, never: 1 },
+      sessions: [
+        { sessionRef: 'aaa111', current: true, deviceName: 'Front desk POS', platform: 'web', lastSeenAt: at, lastSyncAt: at, lastUnread: 2, syncCount: 4, state: 'in_sync' },
+        { sessionRef: 'bbb222', current: false, deviceName: 'Back tablet', platform: 'web', lastSeenAt: at, lastSyncAt: at, lastUnread: 5, syncCount: 9, state: 'broken' },
+        { sessionRef: 'ccc333', current: false, deviceName: null, platform: 'ios', lastSeenAt: null, lastSyncAt: null, lastUnread: null, syncCount: 0, state: 'never' },
+      ] } : { checkout: 1, alertsUnread: 2 }));
+    render(<BadgeCheckDialog shown={{ checkout: 1, alertsUnread: 2 }} onClose={() => undefined} />);
+    expect(await screen.findByTestId('badge-sync-verdict')).toHaveTextContent('2 of 3 signed-in devices may not show the current count. Unread alerts now: 2.');
+    expect(screen.getByTestId('badge-row-alertsUnread')).toHaveTextContent(/Unread alerts \(you\)\s*2\s*2\s*Match/);
+    expect(screen.getByTestId('badge-sync-aaa111')).toHaveTextContent(/Front desk POS.*This device.*In sync.*Nothing to do/);
+    expect(screen.getByTestId('badge-sync-bbb222')).toHaveTextContent(/Back tablet.*5.*Not refreshing.*over 10 minutes: reload the page/);
+    expect(screen.getByTestId('badge-sync-ccc333')).toHaveTextContent(/ios.*—.*Never reported.*Open the POS on that device once/);
+    expect(m.get).toHaveBeenCalledWith('/tenant/navigation/badge-sync');
+    expect(m.post).not.toHaveBeenCalled();
+  });
+  it('a failed device read says so (no false "all in sync")', async () => {
+    m.get.mockRejectedValueOnce(new Error('nope'));
+    render(<BadgeSyncDevices />);
+    await waitFor(() => expect(screen.getByTestId('badge-sync-error')).toHaveTextContent('nope'));
+    expect(screen.queryByTestId('badge-sync-verdict')).toBeNull();
   });
 });

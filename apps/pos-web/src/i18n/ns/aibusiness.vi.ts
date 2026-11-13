@@ -658,4 +658,5 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.sp.w.sender_not_configured": "Tiệm chưa thiết lập số gửi SMS.", // DRAFT — Kevin reviews
   "bzx.sp.w.no_cooldown": "Không có thời gian chờ: mỗi lần cảnh báo kích hoạt sẽ gửi tin lại.", // DRAFT — Kevin reviews
   "bzx.sp.dirty": "Bạn đã thay đổi cài đặt — hãy lưu để cập nhật ước tính.", // DRAFT — Kevin reviews
+  "bzx.i.unread": "Chưa đọc", // DRAFT — Kevin reviews
 };

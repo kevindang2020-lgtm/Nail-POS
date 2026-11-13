@@ -53,4 +53,50 @@ export const NAV_VI: Record<keyof typeof NAV_EN, string> = {
   'nav.badgechk.k.aiUsageAlerts': 'Mức dùng AI', // DRAFT — Kevin reviews
   'nav.badgechk.k.supportTickets': 'Trợ giúp & Hỗ trợ', // DRAFT — Kevin reviews
   'nav.badgechk.k.setupHealthAlerts': 'Tình trạng cài đặt', // DRAFT — Kevin reviews
+  'nav.badgechk.k.alertsUnread': 'Cảnh báo chưa đọc (bạn)', // DRAFT — Kevin reviews
+  'nav.alertreads.title': 'Cảnh báo chưa đọc', // DRAFT — Kevin reviews
+  'nav.alertreads.failed': 'Không tải được cảnh báo của bạn.', // DRAFT — Kevin reviews
+  'nav.alertreads.markAll': 'Đánh dấu đã đọc tất cả', // DRAFT — Kevin reviews
+  'nav.alertreads.mark': 'Đánh dấu đã đọc', // DRAFT — Kevin reviews
+  'nav.alertreads.read': 'Đã đọc', // DRAFT — Kevin reviews
+  'nav.alertreads.none': 'Không có cảnh báo mở trong {days} ngày qua.', // DRAFT — Kevin reviews
+  'nav.alertreads.lifecycle': 'Cảnh báo: {status}', // DRAFT — Kevin reviews
+  'nav.alertreads.note': 'Đánh dấu đã đọc chỉ xóa số chưa đọc của bạn, trên mọi thiết bị bạn đang đăng nhập. Việc này không xác nhận hay khắc phục cảnh báo — cảnh báo vẫn mở cho đến khi có người xác nhận hoặc giải quyết.', // DRAFT — Kevin reviews
+  'nav.alertreads.sev.info': 'Thông tin', // DRAFT — Kevin reviews
+  'nav.alertreads.sev.warning': 'Cảnh báo', // DRAFT — Kevin reviews
+  'nav.alertreads.sev.high': 'Cao', // DRAFT — Kevin reviews
+  'nav.alertreads.sev.critical': 'Nghiêm trọng', // DRAFT — Kevin reviews
+  'nav.alertreads.st.new': 'mới', // DRAFT — Kevin reviews
+  'nav.alertreads.st.acknowledged': 'đã xác nhận', // DRAFT — Kevin reviews
+  'nav.alertreads.st.in_progress': 'đang xử lý', // DRAFT — Kevin reviews
+  'nav.alertreads.st.resolved': 'đã giải quyết', // DRAFT — Kevin reviews
+  'nav.alertreads.st.dismissed': 'đã bỏ qua', // DRAFT — Kevin reviews
+  'nav.alertreads.cat.loyalty': 'Mạng lưới điểm thưởng', // DRAFT — Kevin reviews
+  'nav.alertreads.cat.ai_business_alert': 'Cảnh báo kinh doanh', // DRAFT — Kevin reviews
+  'nav.alertreads.cat.messaging_failure': 'Tin nhắn', // DRAFT — Kevin reviews
+  'nav.alertreads.cat.general': 'Chung', // DRAFT — Kevin reviews
+  'nav.badgesync.title': 'Thiết bị của bạn', // DRAFT — Kevin reviews
+  'nav.badgesync.failed': 'Không tải được danh sách thiết bị.', // DRAFT — Kevin reviews
+  'nav.badgesync.some': '{n} trong {total} thiết bị đang đăng nhập có thể chưa hiện đúng số hiện tại.', // DRAFT — Kevin reviews
+  'nav.badgesync.all': 'Cả {total} thiết bị đang đăng nhập đều hiện đúng số hiện tại.', // DRAFT — Kevin reviews
+  'nav.badgesync.now': 'Cảnh báo chưa đọc hiện tại: {n}.', // DRAFT — Kevin reviews
+  'nav.badgesync.none': 'Không có thiết bị nào khác đang đăng nhập.', // DRAFT — Kevin reviews
+  'nav.badgesync.col.device': 'Thiết bị', // DRAFT — Kevin reviews
+  'nav.badgesync.col.synced': 'Lần làm mới gần nhất', // DRAFT — Kevin reviews
+  'nav.badgesync.col.showed': 'Đã hiện', // DRAFT — Kevin reviews
+  'nav.badgesync.col.state': 'Trạng thái', // DRAFT — Kevin reviews
+  'nav.badgesync.col.repair': 'Cách xử lý', // DRAFT — Kevin reviews
+  'nav.badgesync.unnamed': 'Thiết bị chưa đặt tên', // DRAFT — Kevin reviews
+  'nav.badgesync.thisDevice': 'Thiết bị này', // DRAFT — Kevin reviews
+  'nav.badgesync.st.in_sync': 'Đã đồng bộ', // DRAFT — Kevin reviews
+  'nav.badgesync.st.behind': 'Chậm', // DRAFT — Kevin reviews
+  'nav.badgesync.st.stale': 'Lâu chưa dùng', // DRAFT — Kevin reviews
+  'nav.badgesync.st.broken': 'Không làm mới', // DRAFT — Kevin reviews
+  'nav.badgesync.st.never': 'Chưa từng báo', // DRAFT — Kevin reviews
+  'nav.badgesync.fix.in_sync': 'Không cần làm gì.', // DRAFT — Kevin reviews
+  'nav.badgesync.fix.behind': 'Thiết bị sẽ cập nhật ở lần làm mới tiếp theo (khoảng 30 giây), hoặc tải lại trang trên thiết bị đó.', // DRAFT — Kevin reviews
+  'nav.badgesync.fix.stale': 'Bình thường với thiết bị không ai dùng; sẽ làm mới khi mở. Nếu không còn dùng, hãy đăng xuất thiết bị trong Tài khoản → Bảo mật.', // DRAFT — Kevin reviews
+  'nav.badgesync.fix.broken': 'Thiết bị đang được dùng nhưng đã hơn {min} phút không làm mới số đếm: tải lại trang trên thiết bị; nếu vẫn không được, đăng xuất thiết bị trong Tài khoản → Bảo mật rồi đăng nhập lại.', // DRAFT — Kevin reviews
+  'nav.badgesync.fix.never': 'Mở POS trên thiết bị đó một lần; nếu vẫn không báo, tải lại trang hoặc cập nhật ứng dụng.', // DRAFT — Kevin reviews
+  'nav.badgesync.how': 'Thiết bị bị coi là lâu chưa dùng hoặc không làm mới sau {min} phút không làm mới số đếm. Chỉ có số đếm — không hiện nội dung cảnh báo ở đây.', // DRAFT — Kevin reviews
 };

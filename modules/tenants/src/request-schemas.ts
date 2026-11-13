@@ -165,3 +165,7 @@ export const OWNER_SWITCH_BODY = S.object({ salonId: text(64), branchId: text(64
 export const SOCIAL_POST_BODY = S.object({ platform: text(40), caption: text(5000), scheduledAt: text(40) });
 /** POST /pos/social-posts/:id/status — { status } (the post's lifecycle — SOCIAL_POST machine) */
 export const SOCIAL_POST_STATUS_BODY = S.object({ status: text(20) });
+/** POST /tenant/notifications/alerts/read — { alertIds } (pos-web bell panel / AI Alerts incidents): my read state only */
+export const ALERT_READ_BODY = S.object({ alertIds: S.array(S.uuid(), { minItems: 1, maxItems: 200 }) }, ['alertIds']);
+/** POST /tenant/navigation/badges/sync — { unread, surface? } (pos-web shell after a successful badge read) */
+export const BADGE_SYNC_BODY = S.object({ unread: S.integer({ minimum: 0, maximum: 100000 }), surface: S.enumOf(['pos', 'owner_app', 'tech_app']) }, ['unread']);

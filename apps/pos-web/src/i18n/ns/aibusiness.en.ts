@@ -657,4 +657,5 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzx.sp.w.sender_not_configured": "No SMS sender is set up for the salon.",
   "bzx.sp.w.no_cooldown": "No cooldown: every time this alert triggers it texts again.",
   "bzx.sp.dirty": "You changed the settings — save to update this estimate.",
+  "bzx.i.unread": "Unread",
 };

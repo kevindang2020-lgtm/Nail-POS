@@ -2,7 +2,10 @@
 // a trigger opens an incident and notifies per the rule (in-app inbox, email / SMS to recipients, quiet hours, cooldown,
 // delivery log), the incident lifecycle (investigate / assign / snooze → wakes / resolve / reopen, versioned), escalation.
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { existsSync, readFileSync } from 'node:fs';
+import { MIGRATIONS_DIR } from '@aipowersalon/database';
+import { join } from 'node:path';
+import { migratedPglite, kyselyFor, applyMigrationToPglite } from '@aipowersalon/testing';
 import { KyselyReportsRepository, ReportsService } from '@aipowersalon/reports';
 import { BusinessCenter } from './business-center';
 import { AiBusinessAlertsService } from './ai-business-alerts.service';
@@ -208,5 +211,34 @@ describe('A2 — SMS plan (budget-aware SMS protection)', () => {
     d = await inc.delivery(ctx(), a);
     expect(d.smsPlan.loopGuards.sentByRuleLast24h).toBe(2);
     expect(d.smsPlan.loopGuards.alertSmsSentLast24h).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('extras AI BUSINESS ALERTS 05 — per-person unread, separate from the incident lifecycle', () => {
+  const ALERTS = [...PERMS, 'owner.alerts.view'];
+  beforeAll(async () => {
+    // migration 873 is applied again here when present (idempotent) — a branch run before the shared schema cache holds it
+    const f873 = join(MIGRATIONS_DIR, '873_staff_alert_reads.sql');
+    if (existsSync(f873)) await applyMigrationToPglite(pg, readFileSync(f873, 'utf8'));
+  });
+  const row = async (c: any, eventId: string) => (await inc.list(c, { status: 'all', limit: 100 })).items.find((i: any) => i.eventId === eventId);
+  it('RS-01 each person has their own unread; reading (staff_alert_reads) never moves the incident, and acknowledging never marks it read', async () => {
+    const a = await rule({ title: 'Read state watch' });
+    const ev: any = await bc.alertEvaluate(ctx(), a);
+    const oa = await q(`select id from owner_alerts where tenant_id = $1 and metadata->>'eventId' = $2`, [T, ev.eventId]);
+    expect(oa).toHaveLength(1);
+    expect((await row(ctx({ permissions: ALERTS }), ev.eventId)).readState).toEqual({ unread: true, unreadAlertIds: [oa[0].id] });
+    expect((await row(ctx({ userId: MGR, role: 'MANAGER', permissions: ALERTS }), ev.eventId)).readState).toEqual({ unread: true, unreadAlertIds: [oa[0].id] });
+    // the owner reads it (the row POST /tenant/notifications/alerts/read writes)
+    await q(`insert into staff_alert_reads (tenant_id, user_id, alert_id) values ($1, $2, $3)`, [T, OWNER, oa[0].id]);
+    expect((await row(ctx({ permissions: ALERTS }), ev.eventId)).readState).toEqual({ unread: false, unreadAlertIds: [] });
+    expect((await row(ctx({ userId: MGR, role: 'MANAGER', permissions: ALERTS }), ev.eventId)).readState.unread).toBe(true);
+    expect((await inc.detail(ctx(), ev.eventId)).incidentStatus).toBe('open');                 // a read is not an acknowledgement
+    // the manager acknowledges the incident: lifecycle moves, nobody's read state does
+    await bc.alertAcknowledge(ctx({ userId: MGR, role: 'MANAGER' }), ev.eventId, { note: 'on it' });
+    expect((await inc.detail(ctx(), ev.eventId)).incidentStatus).toBe('investigating');
+    expect((await row(ctx({ userId: MGR, role: 'MANAGER', permissions: ALERTS }), ev.eventId)).readState.unread).toBe(true);
+    // without owner.alerts.view there is no read state to show
+    expect((await row(ctx(), ev.eventId)).readState).toBeNull();
   });
 });

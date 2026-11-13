@@ -3,8 +3,12 @@
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { openAlertCount } from '@aipowersalon/inventory';
+import { logException } from '@aipowersalon/observability';
+import type { BadgeSyncMonitor, BadgeSyncRecorded, StaffAlertList, StaffAlertMarkReadResponse } from '@aipowersalon/api-contracts/tenant';
+import { badgeSyncMonitor, listStaffAlerts, markStaffAlertsRead, recordBadgeSync, unreadAlertCount, StaffAlertReadError } from './staff-alert-reads';
 
-export interface NavCtx { tenantId: string; branchId: string; role: string; permissions: string[]; }
+/** userId / sessionId: the verified session's person and session row (extras round 9 — per-person alert read state). */
+export interface NavCtx { tenantId: string; branchId: string; role: string; permissions: string[]; userId?: string; sessionId?: string | null; }
 
 /** One Help Center KPI: a real numeric `value`, or `null` with `connected:false` when no canonical
  * source exists yet. The frontend renders the number when connected and an honest "—/Not connected"
@@ -84,7 +88,7 @@ export class TenantNavigationService {
     const t = ctx.tenantId, b = ctx.branchId;
     const [
       customerQueue, checkIn, techQueue, serviceDone, checkout,
-      lowStock, pendingReports, aiUsageAlerts, setupHealthAlerts,
+      lowStock, pendingReports, aiUsageAlerts, setupHealthAlerts, alertsUnread,
     ] = await Promise.all([
       this.count(sql`SELECT count(*)::int AS n FROM pos_queue_items WHERE tenant_id=${t} AND branch_id=${b} AND status='waiting'`),
       this.count(sql`SELECT count(*)::int AS n FROM pos_queue_items WHERE tenant_id=${t} AND branch_id=${b} AND status IN ('waiting','called')`),
@@ -120,6 +124,9 @@ export class TenantNavigationService {
                      AND a.period_start = s.current_period_starts_at WHERE a.tenant_id=${t} AND a.acknowledged_at IS NULL`),
       // Four-Module Completion Guide §13: open, unacknowledged high / critical Setup Health alerts (salon-wide)
       this.count(sql`SELECT count(*)::int AS n FROM health_check_alerts WHERE tenant_id=${t} AND status='open' AND severity IN ('high','critical') AND acknowledged_at IS NULL`),
+      // extras round 9 (AI BUSINESS ALERTS 05 / Global Loyalty Rewards 08): salon alerts THIS person has not read yet —
+      // per-person read state (staff_alert_reads), separate from the alert lifecycle. 0 without owner.alerts.view.
+      this.alertsUnreadFor(ctx),
     ]);
     // notifications = actionable, tenant-safe operational signals (NOT super-admin platform alerts).
     const inventoryAlerts = lowStock;
@@ -130,9 +137,24 @@ export class TenantNavigationService {
     return {
       checkIn, techQueue, customerQueue, serviceDone, checkout,
       notifications, messages, inventoryAlerts, techReportsPending: pendingReports,
-      reviews: 0, payrollPending: 0, billingAlerts: 0, aiUsageAlerts, setupHealthAlerts, supportTickets: 0,
+      reviews: 0, payrollPending: 0, billingAlerts: 0, aiUsageAlerts, setupHealthAlerts, supportTickets: 0, alertsUnread,
     };
   }
+
+  private readCtx(ctx: NavCtx) { return { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId ?? '', permissions: ctx.permissions }; }
+  private need(): Kysely<any> { if (!this.db) throw new StaffAlertReadError('Alert read state needs the database.', 'SERVICE_UNAVAILABLE', 503); return this.db as unknown as Kysely<any>; }
+  private async alertsUnreadFor(ctx: NavCtx): Promise<number> {
+    if (!this.db) return 0;
+    return unreadAlertCount(this.db as unknown as Kysely<any>, this.readCtx(ctx)).catch((e: unknown) => { logException(e, { where: 'tenant-navigation.badges.alertsUnread' }); return 0; });   // fail-soft like every badge, but logged
+  }
+  /** The bell panel's alert list: newest first, unread first, each with my read time and the alert's own lifecycle. */
+  staffAlerts(ctx: NavCtx, q: { category?: string | null; limit?: number }): Promise<StaffAlertList> { return listStaffAlerts(this.need(), this.readCtx(ctx), q); }
+  /** Mark alerts read for ME only — the alert lifecycle (acknowledge / resolve) is untouched. */
+  markAlertsRead(ctx: NavCtx, alertIds: unknown): Promise<StaffAlertMarkReadResponse> { return markStaffAlertsRead(this.need(), this.readCtx(ctx), alertIds, ctx.sessionId ?? null); }
+  /** This session applied a fresh unread count. */
+  recordBadgeSync(ctx: NavCtx, body: { unread?: unknown; surface?: unknown }): Promise<BadgeSyncRecorded> { return recordBadgeSync(this.need(), this.readCtx(ctx), ctx.sessionId ?? null, body); }
+  /** My live sessions with their last badge sync vs the count now (read-only). */
+  badgeSyncMonitor(ctx: NavCtx): Promise<BadgeSyncMonitor> { return badgeSyncMonitor(this.need(), this.readCtx(ctx), ctx.sessionId ?? null); }
 
   /** Real platform health for the bottom status card. */
   async systemStatus() {

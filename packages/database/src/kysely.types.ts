@@ -547,6 +547,15 @@ export interface TechnicianBlockedTimesTable {
   created_by_user_id: string | null; created_at: Ts; updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
+/** migration 873 (extras round 9): one person's "seen" of a salon alert — never the alert lifecycle */
+export interface StaffAlertReadsTable {
+  tenant_id: string; user_id: string; alert_id: string; read_at: Generated<Ts>; read_session_id: string | null;
+}
+/** migration 873: when each signed-in session last applied a fresh unread count (cross-device monitor) */
+export interface StaffBadgeSyncsTable {
+  tenant_id: string; user_id: string; session_id: string; surface: Generated<string>; first_sync_at: Generated<Ts>; last_sync_at: Generated<Ts>;
+  last_unread: number; sync_count: Generated<number>;
+}
 export interface OwnerAlertsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; category: string; severity: string; status: string;
   title: string; body: string | null; metadata: unknown; resolved_by_user_id: string | null;
@@ -7375,6 +7384,8 @@ export interface DB {
   support_access_sessions: SupportAccessSessionsTable;
   support_ticket_attachments: SupportTicketAttachmentsTable;
   owner_alerts: OwnerAlertsTable;
+  staff_alert_reads: StaffAlertReadsTable;
+  staff_badge_syncs: StaffBadgeSyncsTable;
   owner_audit_log: OwnerAuditLogTable;
   audit_events: AuditEventsTable;
   campaigns: CampaignsTable;
