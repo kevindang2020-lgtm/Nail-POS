@@ -2103,4 +2103,14 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
   "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_reversed_not_zero": "Lần dùng sản phẩm đã hoàn lại có tổng bằng 0 sau các điều chỉnh", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_reversed_not_zero.fix": "Một lần dùng được đánh dấu hoàn lại nhưng các điều chỉnh không bù hết — mở lần dùng trong Sản phẩm thợ đã dùng và ghi điều chỉnh còn thiếu; kiểm tra này không thay đổi gì.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_corrected_to_zero_not_reversed": "Lần dùng đã điều chỉnh về 0 được đánh dấu hoàn lại", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_corrected_to_zero_not_reversed.fix": "Một lần dùng đã điều chỉnh về 0 nhưng vẫn ở trạng thái xác nhận — hãy xem các điều chỉnh trong lịch sử của nó.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_correction_without_movement": "Mỗi điều chỉnh lần dùng đều có biến động kho", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_correction_without_movement.fix": "Một điều chỉnh được ghi mà không có biến động kho — hãy kiểm đếm lại sản phẩm để tồn kho đúng.", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_by_archived_technician": "Không có lần dùng nào ghi sau khi thợ đã được lưu trữ", // DRAFT — Kevin reviews
+  "syschk.inventory.usage_by_archived_technician.fix": "Người dùng gần nhất là một thợ đã được lưu trữ — hãy xem ai thật sự đã dùng và điều chỉnh lần dùng.", // DRAFT — Kevin reviews
+  "syschk.inventory.recipe_usage_shared_line": "Lượng dùng theo công thức trên dòng dịch vụ có nhiều thợ (30 ngày qua)", // DRAFT — Kevin reviews
+  "syschk.inventory.recipe_usage_shared_line.fix": "Các dòng này có nhiều thợ cùng làm nhưng lượng dùng ghi cho thợ chính của dòng — chỉ để xem lại; không tự động chia.", // DRAFT — Kevin reviews
 };

@@ -233,6 +233,22 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'recipe_short_deduction', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_stock_movements m WHERE m.tenant_id = ${t}::uuid ${br('m', b)}
         AND m.movement_type = 'service_usage' AND m.related_type = 'ticket_line' AND m.created_at >= now() - interval '30 days'
         AND coalesce((m.metadata_json->>'shortHundredths')::numeric, 0) > 0`) },
+    // round 10 (Stock Alerts 03 "Last Used By" verification): corrections and reversals must agree with the use they correct,
+    // and a use dated after its technician was archived names someone who no longer works here
+    { key: 'usage_reversed_not_zero', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND u.status = 'reversed'
+        AND u.quantity_hundredths + coalesce((SELECT sum(pa.delta_hundredths) FROM product_usage_adjustments pa WHERE pa.tenant_id = u.tenant_id AND pa.usage_event_id = u.id), 0) <> 0`) },
+    { key: 'usage_corrected_to_zero_not_reversed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND u.status = 'confirmed'
+        AND EXISTS (SELECT 1 FROM product_usage_adjustments pa WHERE pa.tenant_id = u.tenant_id AND pa.usage_event_id = u.id)
+        AND u.quantity_hundredths + coalesce((SELECT sum(pa.delta_hundredths) FROM product_usage_adjustments pa WHERE pa.tenant_id = u.tenant_id AND pa.usage_event_id = u.id), 0) = 0`) },
+    { key: 'usage_correction_without_movement', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM product_usage_adjustments x WHERE x.tenant_id = ${t}::uuid ${br('x', b)}
+        AND NOT EXISTS (SELECT 1 FROM inventory_stock_movements m WHERE m.tenant_id = x.tenant_id AND m.related_type = 'product_usage_adjustment' AND m.related_id = x.id)`) },
+    { key: 'usage_by_archived_technician', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM product_usage_events u JOIN technicians te ON te.tenant_id = u.tenant_id AND te.id = u.technician_id
+        WHERE u.tenant_id = ${t}::uuid ${br('u', b)} AND u.status = 'confirmed' AND te.archived_at IS NOT NULL AND u.occurred_at > te.archived_at`) },
+    // round 10 (Stock Alerts 05 multi-technician allocation review): a Service Done recipe deduction is attributed to the line's
+    // own technician; when the line was shared (more than one allocation) the use is still on one name — listed for review only
+    { key: 'recipe_usage_shared_line', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM inventory_stock_movements m WHERE m.tenant_id = ${t}::uuid ${br('m', b)}
+        AND m.movement_type = 'service_usage' AND m.related_type = 'ticket_line' AND m.created_at >= now() - interval '30 days'
+        AND (SELECT count(DISTINCT la.technician_id) FROM ticket_service_line_allocations la WHERE la.tenant_id = m.tenant_id AND la.line_id = m.related_id) > 1`) },
     { key: 'received_over_ordered_lines', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_id, m.product_id FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.movement_type = 'purchase_received' AND m.related_type = 'purchase_order'
         GROUP BY m.related_id, m.product_id

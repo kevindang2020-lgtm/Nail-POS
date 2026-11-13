@@ -78,9 +78,10 @@ export function POSInventoryAlertsScreen() {
     try { await posInventoryAlertsApi.acknowledge(productId); setNote({ tone: 'ok', text: tx('sa.acked') }); refresh(); window.dispatchEvent(new CustomEvent('aps:nav-counts-changed')); }
     catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } finally { setBusyAck(null); }
   };
-  const doExport = async () => {
+  // round 10 (Stock Alerts 14): "Every use" exports each use row (event ids, technician ids, both dates, who recorded it) for the same filters
+  const doExport = async (which: string = tab) => {
     setExporting(true);
-    try { const csv = await posInventoryAlertsApi.exportCsv({ tab, ...scope }); const blob = new Blob([String(csv)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `stock-alerts-${tab}.csv`; a.click(); URL.revokeObjectURL(a.href); setNote({ tone: 'ok', text: tx('finance.exported') }); }
+    try { const csv = await posInventoryAlertsApi.exportCsv({ tab: which, ...scope }); const blob = new Blob([String(csv)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `stock-alerts-${which}.csv`; a.click(); URL.revokeObjectURL(a.href); setNote({ tone: 'ok', text: tx('finance.exported') }); }
     catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } finally { setExporting(false); }
   };
   const recorded = (r: any) => {
@@ -91,7 +92,7 @@ export function POSInventoryAlertsScreen() {
   const chips = [...(q ? [{ label: tx('rv.chip.search', { q }), clear: () => setSearch('') }] : []), ...(severity && (tab === 'active' || tab === 'history') ? [{ label: sevLbl(severity), clear: () => setSeverity('') }] : [])];
   const clearAll = () => { setSearch(''); setSeverity(''); setShowAck(false); setPeriod({ preset: 'month' }); setBasis('occurred'); };
   if (isForbidden(sum.error)) return <div className="work fit sa" data-testid="stock-alerts-screen"><h1>{tx('pos.stock_alerts')}</h1><StateBlock error={sum.error} onRetry={sum.reload} /></div>;
-  const head = (tab === 'active' ? ['product', 'severity', 'onHand', 'reorder', 'lastUsed', 'since', ''] : tab === 'usage' ? ['product', 'used', 'uses', 'technicians', 'onHand', 'lastUsed', ''] : tab === 'technicians' ? ['technician', 'uses', 'products', 'used', 'lastProduct', 'lastAt'] : ['product', 'severity', 'onHandAt', 'created', 'state', 'ackBy']);
+  const head = (tab === 'active' ? ['product', 'severity', 'onHand', 'reorder', 'lastUsed', 'since', ''] : tab === 'usage' ? ['product', 'used', 'uses', 'technicians', 'onHand', 'lastUsed', ''] : tab === 'technicians' ? ['technician', 'uses', 'products', 'used', 'services', 'lastProduct', 'lastAt'] : ['product', 'severity', 'onHandAt', 'created', 'state', 'ackBy', 'restocked']);
   return (
     <div className="work fit sa" data-testid="stock-alerts-screen">
       <header className="fk-head">
@@ -103,7 +104,8 @@ export function POSInventoryAlertsScreen() {
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory')} data-testid="view-inventory">{tx('sa.viewInventory')}</button>
           {can('inventory.purchase_order.create') ? <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory?tab=purchaseOrders&new=1')} data-testid="create-po">{tx('sa.createPo')}</button> : null}
           {can('inventory.update') ? <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory?tab=products')} data-testid="alert-settings" title={tx('sa.settingsHint')}>{tx('sa.alertSettings')}</button> : null}
-          {can('inventory.reports.view') ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
+          {can('inventory.reports.view') ? <button type="button" className="fk-btn ghost" onClick={() => void doExport()} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
+          {can('inventory.reports.view') && (tab === 'usage' || tab === 'technicians') ? <button type="button" className="fk-btn ghost" onClick={() => void doExport('events')} disabled={exporting} data-testid="export-events">{tx('sa.exportEvents')}</button> : null}
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>
@@ -140,7 +142,7 @@ export function POSInventoryAlertsScreen() {
           : rows.length === 0 ? (chips.length ? <Empty title={tx('sa.noMatches')}><button type="button" className="fk-btn" onClick={clearAll}>{tx('finance.clearFilters')}</button></Empty>
             : <Empty title={tx('sa.empty.' + tab)}>{tab !== 'active' && canRecord ? <button type="button" className="fk-btn" onClick={() => setRecording({})}>{tx('sa.recordUse')}</button> : null}</Empty>)
           : <table className="fk-table fn-table sa-table" data-testid={'table-' + tab}>
-            <thead><tr>{head.map((h, i) => <th key={i} className={['onHand', 'reorder', 'used', 'uses', 'technicians', 'products', 'onHandAt'].includes(h) ? 'num' : h === 'since' || h === 'ackBy' ? 't-opt' : ''}>{h ? tx('sa.col.' + h) : ''}</th>)}</tr></thead>
+            <thead><tr>{head.map((h, i) => <th key={i} className={['onHand', 'reorder', 'used', 'uses', 'technicians', 'products', 'onHandAt', 'services'].includes(h) ? 'num' : h === 'since' || h === 'ackBy' ? 't-opt' : ''}>{h ? tx('sa.col.' + h) : ''}</th>)}</tr></thead>
             <tbody>{rows.map((r: any) => tab === 'active' ? (
               <tr key={r.productId} data-testid="alert-row" className={r.acknowledgedAt ? 'sa-acked' : ''}>
                 <td><button type="button" className="fk-li-t link" onClick={() => setProduct(r.productId)}>{r.name}</button><span className="fk-li-s">{[r.sku, r.brand, r.vendor].filter(Boolean).join(' · ') || '—'}</span></td>
@@ -166,6 +168,7 @@ export function POSInventoryAlertsScreen() {
               <tr key={r.technicianId ?? 'unknown'} data-testid="tech-row">
                 <td><b className={r.technicianId ? '' : 'fk-muted'}>{r.technicianId ? r.name : tx('sa.unknownTech')}</b></td>
                 <td className="num">{fmtNumber(r.uses)}</td><td className="num">{fmtNumber(r.products)}</td><td className="num">{r.used != null ? <b>{r.used}</b> : (r.usedByUnit ?? []).map((u: any, i: number) => <span key={u.unit} data-testid="used-by-unit">{i ? ' · ' : ''}<b>{u.used}</b> {unitLbl(u.unit)}</span>)}</td>
+                <td className="num" data-testid="tech-services">{r.servicesCompleted == null ? '—' : <>{fmtNumber(r.servicesCompleted)}<span className="fk-li-s">{r.usesPer10Services == null ? tx('sa.per10.na') : tx('sa.per10', { n: fmtNumber(r.usesPer10Services) })}</span></>}</td>
                 <td>{r.lastProduct ?? '—'}</td><td>{when(r.lastUsedAt)}</td>
               </tr>) : (
               <tr key={r.id} data-testid="history-row">
@@ -174,6 +177,7 @@ export function POSInventoryAlertsScreen() {
                 <td className="num">{fmtNumber(r.onHandAtAlert)}</td><td>{when(r.createdAt)}</td>
                 <td><span className={'fk-chip ' + (r.state === 'resolved' ? 'ok' : r.state === 'acknowledged' ? 'mut' : 'warn')}>{tx('sa.state.' + r.state)}</span><span className="fk-li-s">{r.resolvedAt ? when(r.resolvedAt) : r.acknowledgedAt ? when(r.acknowledgedAt) : ''}</span></td>
                 <td className="t-opt">{r.acknowledgedBy ?? '—'}</td>
+                <td data-testid="history-restocked">{r.restockedAt ? <>{when(r.restockedAt)}<span className="fk-li-s">{tx('sa.restockedQty', { n: fmtNumber(r.restockedQuantity ?? 0) })}</span></> : r.state === 'resolved' ? '—' : tx('sa.notRestocked')}</td>
               </tr>))}</tbody>
           </table>}
       </FitPanel>

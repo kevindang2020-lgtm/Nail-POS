@@ -182,6 +182,38 @@ describe('shared read-only Check … System', () => {
     expect(count(r, 'received_over_ordered_lines')).toMatchObject({ state: 'FAILED', count: 1 });
     expect(count(await svc.run('inventory', { tenantId: T, branchId: B2 }), 'duplicate_usage_movement')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('round 10: Stock Alerts 03 / 05 — reversed uses that do not cancel, uses corrected to zero, corrections without stock, uses after the technician was archived, recipe use on shared lines', async () => {
+    const PR = id(610), TA = id(611), TOK = id(612), U1 = id(613), U2 = id(614), U3 = id(615), U4 = id(616), TK = id(617), LN = id(618), CU = id(619), UX = id(620), PX = id(621), TX2 = id(622);
+    await q(sql`insert into inventory_products (id, tenant_id, name) values (${PR}, ${T}, 'Gel Base 610'), (${PX}, ${X}, 'Gel Base X')`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, archived_at) values (${TA}, ${T}, ${B1}, 'Ar', 'Chived', 'Ar Chived', now() - interval '3 days'), (${TOK}, ${T}, ${B1}, 'Ok', 'Tech', 'Ok Tech', null), (${TX2}, ${X}, ${BX}, 'X', 'Arch', 'X Arch', now() - interval '3 days')`);
+    const before = (k: string) => svc.run('inventory', { tenantId: T }).then((r) => count(r, k).count);
+    const base = { rev: await before('usage_reversed_not_zero'), zero: await before('usage_corrected_to_zero_not_reversed'), corr: await before('usage_correction_without_movement'), arch: await before('usage_by_archived_technician'), shared: await before('recipe_usage_shared_line') };
+    const ev = (u: string, tenant: string, branch: string, prod: string, tech: string, status: string, occurred: any) => q(sql`insert into product_usage_events (id, tenant_id, branch_id, product_id, technician_id, quantity_hundredths, unit, occurred_at, source, status,
+      stock_before_hundredths, stock_after_hundredths, bottles_before, bottles_after) values (${u}, ${tenant}, ${branch}, ${prod}, ${tech}, 100, 'bottle', ${occurred}, 'front_desk', ${status}, 500, 400, 5, 4)`);
+    await ev(U1, T, B1, PR, TOK, 'reversed', sql`now() - interval '5 days'`);   // reversed, but only −40 was corrected
+    await ev(U2, T, B1, PR, TOK, 'confirmed', sql`now() - interval '5 days'`);  // corrected −100 but still confirmed
+    await ev(U3, T, B1, PR, TA, 'confirmed', sql`now() - interval '1 day'`);    // after the technician was archived
+    await ev(U4, T, B1, PR, TA, 'confirmed', sql`now() - interval '5 days'`);   // before the archive — fine
+    await ev(UX, X, BX, PX, TX2, 'reversed', sql`now() - interval '1 day'`);    // other salon: never counted
+    const adj = (u: string, tenant: string, branch: string, delta: number) => q(sql`insert into product_usage_adjustments (tenant_id, branch_id, usage_event_id, delta_hundredths, reason, stock_before_hundredths, stock_after_hundredths)
+      values (${tenant}, ${branch}, ${u}, ${delta}, 'count fix', 400, 500) returning id`).then((r: any) => r.rows[0].id as string);
+    const a1 = await adj(U1, T, B1, -40); await adj(U2, T, B1, -100); await adj(UX, X, BX, -10);
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, related_type, related_id) values (${T}, ${B1}, ${PR}, 'usage_correction', 0, 'product_usage_adjustment', ${a1})`);
+    // a shared service line (two technicians) whose recipe took product at Service Done
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name) values (${CU}, ${T}, ${B1}, 'Sh', 'Ared', 'Sh Ared')`);
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, total_cents) values (${TK}, ${T}, ${B1}, ${CU}, 'paid', 4000, 4000)`);
+    await q(sql`insert into ticket_service_lines (id, tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents) values (${LN}, ${T}, ${B1}, ${TK}, ${id(623)}, 'Gel', 4000, 45, 4000)`);
+    await q(sql`insert into ticket_service_line_allocations (tenant_id, branch_id, ticket_id, line_id, technician_id, share_bps, role) values (${T}, ${B1}, ${TK}, ${LN}, ${TOK}, 5000, 'PRIMARY'), (${T}, ${B1}, ${TK}, ${LN}, ${TA}, 5000, 'HELPER')`);
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, related_type, related_id) values (${T}, ${B1}, ${PR}, 'service_usage', -1, 'ticket_line', ${LN})`);
+    const r = await svc.run('inventory', { tenantId: T });
+    expect(count(r, 'usage_reversed_not_zero')).toMatchObject({ state: 'FAILED', count: base.rev + 1 });
+    expect(count(r, 'usage_corrected_to_zero_not_reversed')).toMatchObject({ state: 'WARNING', count: base.zero + 1 });
+    expect(count(r, 'usage_correction_without_movement')).toMatchObject({ state: 'WARNING', count: base.corr + 1 });   // U2's correction (U1's has its movement)
+    expect(count(r, 'usage_by_archived_technician')).toMatchObject({ state: 'WARNING', count: base.arch + 1 });
+    expect(count(r, 'recipe_usage_shared_line')).toMatchObject({ state: 'WARNING', count: base.shared + 1 });
+    const b2 = await svc.run('inventory', { tenantId: T, branchId: B2 });
+    for (const k of ['usage_reversed_not_zero', 'usage_corrected_to_zero_not_reversed', 'usage_correction_without_movement', 'usage_by_archived_technician', 'recipe_usage_shared_line']) expect(count(b2, k).count, k).toBe(0);
+  });
   it('extras: Services & Products 2 · 04 — alert reconciliation: acknowledged-but-still-low and open alerts the canonical stock no longer supports; another salon never', async () => {
     const LOW = id(201), OK = id(202), ARC = id(203), PX = id(204);
     await q(sql`insert into inventory_products (id, tenant_id, name, reorder_level, active) values (${LOW}, ${T}, 'Base Coat', 5, true), (${OK}, ${T}, 'Cuticle Oil', 5, true), (${ARC}, ${T}, 'Old Polish', 5, true), (${PX}, ${X}, 'Base Coat', 5, true)`);

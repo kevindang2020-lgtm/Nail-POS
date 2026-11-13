@@ -158,4 +158,11 @@ export const STOCKALERTS_VI = {
   'sa.restock.lead': 'giao hàng {n} ngày', // DRAFT — Kevin reviews
   'sa.restock.noLead': 'chưa đặt thời gian giao hàng', // DRAFT — Kevin reviews
   'sa.restock.noUse': 'không dùng trong {n} ngày', // DRAFT — Kevin reviews
+  'sa.exportEvents': 'Xuất từng lần dùng', // DRAFT — Kevin reviews
+  'sa.col.services': 'Dịch vụ đã làm', // DRAFT — Kevin reviews
+  'sa.per10': '{n} lần dùng mỗi 10 dịch vụ', // DRAFT — Kevin reviews
+  'sa.per10.na': 'không có dịch vụ trong kỳ này', // DRAFT — Kevin reviews
+  'sa.col.restocked': 'Đã nhập lại', // DRAFT — Kevin reviews
+  'sa.restockedQty': '+{n} đã nhận từ đó', // DRAFT — Kevin reviews
+  'sa.notRestocked': 'Chưa nhập lại', // DRAFT — Kevin reviews
 };

@@ -99,4 +99,30 @@ describe('POSInventoryAlertsScreen', () => {
     expect(screen.getByTestId('rank-hint').textContent).toMatch(/Advice only/);
     expect(api.record).not.toHaveBeenCalled(); expect(api.acknowledge).not.toHaveBeenCalled();
   });
+  it('round 10 (Stock Alerts 11 · 13 · 14): technicians show services done + uses per 10 services; history shows what was restocked; "Export every use" asks for the events tab', async () => {
+    perms = [...perms, 'inventory.reports.view'];
+    api.technicians.mockResolvedValue({ total: 2, page: 1, pageSize: 10, pages: 1, period: PERIOD, rows: [
+      { technicianId: 't1', name: 'Anna Nguyen', uses: 6, products: 2, used: '3', usedHundredths: 300, usedByUnit: [], servicesCompleted: 12, usesPer10Services: 5, lastProduct: 'Rose Gel', lastUsedAt: '2026-10-29T15:00:00Z' },
+      { technicianId: 't2', name: 'Bao Tran', uses: 1, products: 1, used: '1', usedHundredths: 100, usedByUnit: [], servicesCompleted: 0, usesPer10Services: null, lastProduct: 'Top Coat', lastUsedAt: '2026-10-29T15:00:00Z' }] });
+    api.history.mockResolvedValue({ total: 2, page: 1, pageSize: 10, pages: 1, period: PERIOD, rows: [
+      { id: 'a1', productId: 'p1', name: 'Rose Gel', sku: 'RG-01', severity: 'low', onHandAtAlert: 1, createdAt: '2026-10-20T12:00:00Z', acknowledgedAt: '2026-10-21T12:00:00Z', acknowledgedBy: 'Mia Manager', resolvedAt: null, state: 'acknowledged', restockedAt: '2026-10-22T12:00:00Z', restockedQuantity: 6 },
+      { id: 'a2', productId: 'p2', name: 'Top Coat', sku: 'TC-01', severity: 'low', onHandAtAlert: 1, createdAt: '2026-10-20T12:00:00Z', acknowledgedAt: null, acknowledgedBy: null, resolvedAt: null, state: 'open', restockedAt: null, restockedQuantity: null }] });
+    api.exportCsv.mockResolvedValue('a,b\r\n');
+    (URL as any).createObjectURL = vi.fn(() => 'blob:x'); (URL as any).revokeObjectURL = vi.fn();
+    mount();
+    fireEvent.click(await screen.findByTestId('tab-technicians'));
+    await screen.findByText('Anna Nguyen');
+    const svcOf = (name: string) => screen.getAllByTestId('tech-row').find((r) => r.textContent!.startsWith(name))!.querySelector('[data-testid="tech-services"]')!.textContent;
+    expect(svcOf('Anna Nguyen')).toBe('125 uses per 10 services');
+    expect(svcOf('Bao Tran')).toBe('0no services in this period');
+    fireEvent.click(screen.getByTestId('export-events'));
+    await waitFor(() => expect(api.exportCsv).toHaveBeenCalled());
+    expect(api.exportCsv.mock.calls[0][0]).toMatchObject({ tab: 'events' });
+    fireEvent.click(screen.getByTestId('tab-history'));
+    await waitFor(() => expect(screen.getAllByTestId('history-row').length).toBe(2));
+    const rsOf = (name: string) => screen.getAllByTestId('history-row').find((r) => r.textContent!.startsWith(name))!.querySelector('[data-testid="history-restocked"]')!.textContent;
+    await waitFor(() => expect(rsOf('Rose Gel')).toMatch(/\+6 received since$/));
+    expect(rsOf('Top Coat')).toBe('Not restocked yet');
+    expect(screen.queryByTestId('export-events')).toBeNull();
+  });
 });

@@ -23,7 +23,7 @@ const ACTIVE_LIST = { filters: { severity: { type: 'enum', values: ['out_of_stoc
 const HISTORY_LIST = { filters: { ...PERIOD, severity: { type: 'enum', values: ['out_of_stock', 'critical', 'low', 'all'] } }, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const USAGE_LIST = { filters: { ...PERIOD, technicianId: { type: 'id' } }, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const PICKER_LIST = { search: { params: ['search'], maxLength: 100 }, maxLimit: 25, defaultLimit: 25 } as const;
-const EXPORT_LIST = { filters: { ...PERIOD, tab: { type: 'enum', values: ['active', 'history', 'usage', 'technicians'] }, severity: { type: 'enum', values: ['out_of_stock', 'critical', 'low', 'all'] }, showAcknowledged: { type: 'enum', values: ['true', 'false'] }, technicianId: { type: 'id' } }, search: { params: ['search'], maxLength: 100 }, dateRange: { maxDays: 3700 } } as const;
+const EXPORT_LIST = { filters: { ...PERIOD, tab: { type: 'enum', values: ['active', 'history', 'usage', 'technicians', 'events'] }, severity: { type: 'enum', values: ['out_of_stock', 'critical', 'low', 'all'] }, showAcknowledged: { type: 'enum', values: ['true', 'false'] }, technicianId: { type: 'id' } }, search: { params: ['search'], maxLength: 100 }, dateRange: { maxDays: 3700 } } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('tenant/inventory/stock-alerts')
@@ -82,7 +82,7 @@ export class StockAlertsController {
   @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="stock-alerts.csv"')
   exportCsv(@Req() req: any, @Query() q: Record<string, string>) {
     return run(async () => {
-      const c = ctx(req); const tab = ['active', 'history', 'usage', 'technicians'].includes(q.tab) ? q.tab : 'active';
+      const c = ctx(req); const tab = ['active', 'history', 'usage', 'technicians', 'events'].includes(q.tab) ? q.tab : 'active';
       const text = await this.r().exportCsv(c, tab, q, await this.r().period(c, q));
       await this.svc.recordAudit(c, 'inventory_stock_alerts_exported', null, { tab, rows: text.split('\r\n').length - 2 });
       return text;
