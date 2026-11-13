@@ -55,6 +55,29 @@ describe('Phase 15 — event operations', () => {
     expect((await worker.tick()).due).toBe(0);                    // nothing left due; PERMANENT rows are never picked up
   });
 
+  // extras TECH QUEUE 15 (round 10, migration 940): a duplicate delivery is still absorbed (the handler runs once) but is now
+  // COUNTED on the done marker and shown per consumer on the dashboard's health
+  it('a duplicate delivery runs the handler once, is counted on processed_events and appears in health() per consumer', async () => {
+    const dupReg = new ConsumerRegistry(); const seen: string[] = [];
+    const once: EventConsumer = { name: 'dup.consumer', eventTypes: [DOMAIN_EVENTS.APPOINTMENT_COMPLETED], async handle(e) { seen.push(e.eventId); } };
+    dupReg.register(once);
+    const e = evt('dup-1');
+    expect((await runner.run(once, e)).status).toBe('processed');
+    expect((await runner.run(once, e)).status).toBe('duplicate');
+    expect((await runner.run(once, e)).status).toBe('duplicate');
+    expect(seen).toEqual([e.eventId]);                                                  // the handler ran exactly once
+    const row = (await sql<any>`SELECT duplicate_deliveries, last_duplicate_at FROM processed_events WHERE consumer_name = 'dup.consumer' AND event_id = ${e.eventId}`.execute(db)).rows[0];
+    expect(row.duplicate_deliveries).toBe(2); expect(row.last_duplicate_at).not.toBeNull();
+    // the batch (realtime-first) lane counts a re-delivered event too, without re-running it
+    const done = await runner.runBatch(once, [e]);
+    expect(done.has(e.eventId)).toBe(true); expect(seen).toEqual([e.eventId]);
+    const h = await new EventOpsService(db, dupReg).health();
+    expect(h.consumers.find((c) => c.consumerName === 'dup.consumer')).toMatchObject({ duplicateEventsLastDay: 1, duplicateDeliveries: 3 });
+    // a duplicate older than a day is not "last day"
+    await sql`UPDATE processed_events SET last_duplicate_at = now() - interval '2 days' WHERE consumer_name = 'dup.consumer'`.execute(db);
+    expect((await new EventOpsService(db, dupReg).health()).consumers[0]).toMatchObject({ duplicateEventsLastDay: 0, duplicateDeliveries: 0 });
+  });
+
   it('search() by correlation id returns the event with its per-consumer outcomes, no payloads', async () => {
     const e = evt('a-2'); await new OutboxWriter().write(db, e); await publisher.tick();
     const s = await ops.search({ correlationId: e.correlationId });

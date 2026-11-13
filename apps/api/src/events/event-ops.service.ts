@@ -21,7 +21,9 @@ import { EVENT_DEAD_LETTER } from './event-lifecycles';
 export type OutboxHealth = {
   outbox: { pending: number; claimed: number; published: number; failed: number; oldestPendingAgeSec: number | null; publishedLastHour: number };
   deadLetters: { open: number; retrying: number; resolved: number; discarded: number; byConsumer: { consumerName: string; open: number; retrying: number }[] };
-  consumers: { consumerName: string; eventTypes: string[]; critical: boolean; processedLastHour: number; lagSec: number | null }[];
+  /** TECH QUEUE 15 (migration 940): duplicateEventsLastDay = events this consumer received AGAIN after processing them, with a
+   *  repeat in the last 24 h; duplicateDeliveries = how many repeat deliveries those events had in all (each absorbed, never re-run) */
+  consumers: { consumerName: string; eventTypes: string[]; critical: boolean; processedLastHour: number; lagSec: number | null; duplicateEventsLastDay: number; duplicateDeliveries: number }[];
 };
 
 export class EventOpsService {
@@ -49,11 +51,13 @@ export class EventOpsService {
       const types = c.eventTypes as readonly string[];
       const r: any = (await sql`
         SELECT count(p.event_id)::int AS processed_last_hour,
+               (SELECT count(*)::int FROM processed_events dp WHERE dp.consumer_name = ${c.name} AND dp.last_duplicate_at >= now() - interval '1 day') AS dup_events,
+               (SELECT coalesce(sum(dp.duplicate_deliveries), 0)::int FROM processed_events dp WHERE dp.consumer_name = ${c.name} AND dp.last_duplicate_at >= now() - interval '1 day') AS dup_deliveries,
                (SELECT extract(epoch FROM (now() - min(o.published_at)))::int FROM outbox_events o
                  WHERE o.publish_status = 'published' AND o.event_type = ANY(${types})
                    AND NOT EXISTS (SELECT 1 FROM processed_events pe WHERE pe.consumer_name = ${c.name} AND pe.event_id = o.id)) AS lag_sec
           FROM processed_events p WHERE p.consumer_name = ${c.name} AND p.processed_at >= now() - interval '1 hour'`.execute(this.db)).rows[0];
-      consumers.push({ consumerName: c.name, eventTypes: [...types], critical: !!c.critical, processedLastHour: Number(r?.processed_last_hour ?? 0), lagSec: r?.lag_sec == null ? null : Number(r.lag_sec) });
+      consumers.push({ consumerName: c.name, eventTypes: [...types], critical: !!c.critical, processedLastHour: Number(r?.processed_last_hour ?? 0), lagSec: r?.lag_sec == null ? null : Number(r.lag_sec), duplicateEventsLastDay: Number(r?.dup_events ?? 0), duplicateDeliveries: Number(r?.dup_deliveries ?? 0) });
     }
     return {
       outbox: { pending: ob.pending, claimed: ob.claimed, published: ob.published, failed: ob.failed, oldestPendingAgeSec: ob.oldest_pending_age_sec ?? null, publishedLastHour: ob.published_last_hour },

@@ -60,7 +60,12 @@ export class ConsumerRunner {
       const outcome = await this.db.transaction().execute(async (trx): Promise<RunOutcome> => {
         const seen = await trx.selectFrom('processed_events').select('event_id')
           .where('consumer_name', '=', consumer.name).where('event_id', '=', event.eventId).executeTakeFirst();
-        if (seen) return { status: 'duplicate' };                                                     // §23
+        if (seen) {                                                                                   // §23
+          // TECH QUEUE 15 (migration 940): count the duplicate delivery on the done marker — the handler is NOT run again
+          await trx.updateTable('processed_events').set((eb) => ({ duplicate_deliveries: eb('duplicate_deliveries', '+', 1), last_duplicate_at: sql`now()` }))
+            .where('consumer_name', '=', consumer.name).where('event_id', '=', event.eventId).execute();
+          return { status: 'duplicate' };
+        }
         await withTimeout(consumer.handle(event, trx), consumer.timeoutMs ?? 30_000);                // §127
         await trx.insertInto('processed_events').values({ consumer_name: consumer.name, event_id: event.eventId, tenant_id: event.tenantId ?? null }).execute();
         return { status: 'processed' };
@@ -91,6 +96,9 @@ export class ConsumerRunner {
         const now = this.hooks.now ?? (() => new Date());
         const ids = raws.map((e) => String(e?.eventId ?? '')).filter(Boolean);
         const seen = new Set((ids.length ? await this.db.selectFrom('processed_events').select('event_id').where('consumer_name', '=', consumer.name).where('event_id', 'in', ids).execute() : []).map((r: any) => String(r.event_id)));
+        // TECH QUEUE 15 (migration 940): already-processed events delivered again are counted, one statement for the batch
+        if (seen.size) await this.db.updateTable('processed_events').set((eb) => ({ duplicate_deliveries: eb('duplicate_deliveries', '+', 1), last_duplicate_at: sql`now()` }))
+          .where('consumer_name', '=', consumer.name).where('event_id', 'in', [...seen]).execute();
         const ok: DomainEvent<any>[] = [];
         for (const raw of raws) {
           if (seen.has(String(raw?.eventId))) { done.add(String(raw.eventId)); continue; }

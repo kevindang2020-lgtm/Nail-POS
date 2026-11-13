@@ -9,7 +9,7 @@
 // Nothing here is computed: every number comes from the API; a section whose request failed says so (no fake green).
 import { useCallback, useEffect, useState } from 'react';
 import { useInlineAsk, useInlineConfirm } from '@aipowersalon/ui';
-import { superAdminJobsApi, type JobClassStats, type JobListRow, type JobStatus, type EventDeadLetter } from '../api/superAdminJobsApi';
+import { superAdminJobsApi, type JobClassStats, type JobListRow, type JobStatus, type EventDeadLetter, type EventPipelineHealth } from '../api/superAdminJobsApi';
 
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—');
 export function waitLabel(seconds: number | null): string {
@@ -26,6 +26,7 @@ export function JobsDeadLettersScreen() {
   const [status, setStatus] = useState<JobStatus>('dead');
   const [jobs, setJobs] = useState<JobListRow[] | 'failed' | null>(null);
   const [letters, setLetters] = useState<EventDeadLetter[] | 'failed' | null>(null);
+  const [health, setHealth] = useState<EventPipelineHealth | 'failed' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const { ask, askUi } = useInlineAsk();
@@ -35,6 +36,7 @@ export function JobsDeadLettersScreen() {
     superAdminJobsApi.stats().then((r) => { setStats(r.classes); setHandlers(r.handlers); }).catch(() => setStats('failed'));
     superAdminJobsApi.list({ status, limit: 100 }).then((r) => setJobs(r.items)).catch(() => setJobs('failed'));
     superAdminJobsApi.deadLetters({ status: 'open', limit: 100 }).then((r) => setLetters(Array.isArray(r) ? r : [])).catch(() => setLetters('failed'));
+    superAdminJobsApi.eventHealth().then((r) => setHealth(r && Array.isArray(r.consumers) ? r : 'failed')).catch(() => setHealth('failed'));
   }, [status]);
   useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t); }, [load]);
 
@@ -126,6 +128,22 @@ export function JobsDeadLettersScreen() {
                 <button disabled={busy === d.id} onClick={() => letterAction(d, 'retry')}>Retry</button>
                 <button disabled={busy === d.id} onClick={() => letterAction(d, 'discard')}>Discard</button>
               </td>
+            </tr>))}</tbody>
+        </table>
+      )}
+
+      {/* TECH QUEUE 15 (round 10): retries / duplicates per event consumer — a duplicate delivery is absorbed (handled once) and counted */}
+      <h2>Event consumers — retries &amp; duplicates</h2>
+      {health === null && <div className="state">Loading event consumers…</div>}
+      {health === 'failed' && <div className="err" role="alert" data-testid="consumers-failed">Could not load the event consumers — this needs the events permission.</div>}
+      {health && health !== 'failed' && (
+        <table className="tbl" data-testid="consumers">
+          <thead><tr><th>Consumer</th><th>Processed (1 h)</th><th>Lag</th><th>Open dead letters</th><th>Duplicates absorbed (24 h)</th></tr></thead>
+          <tbody>{health.consumers.map((c) => (
+            <tr key={c.consumerName} data-testid={`consumer-${c.consumerName}`}>
+              <td>{c.consumerName}{c.critical ? ' · critical' : ''}</td><td>{c.processedLastHour}</td><td>{c.lagSec == null ? '—' : waitLabel(c.lagSec)}</td>
+              <td>{Array.isArray(letters) ? letters.filter((d) => d.consumer_name === c.consumerName).length : '—'}</td>
+              <td data-testid={`consumer-dups-${c.consumerName}`}>{c.duplicateDeliveries == null ? '—' : c.duplicateDeliveries === 0 ? 'none' : `${c.duplicateDeliveries} repeat(s) of ${c.duplicateEventsLastDay ?? 0} event(s) — handled once`}</td>
             </tr>))}</tbody>
         </table>
       )}

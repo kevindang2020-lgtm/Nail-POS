@@ -4609,6 +4609,8 @@ export interface ProcessedEventsTable {
   event_id: string;
   tenant_id: string | null;
   processed_at: Generated<Ts>;
+  duplicate_deliveries: Generated<number>;   // migration 940 (TECH QUEUE 15: duplicate deliveries counted)
+  last_duplicate_at: TsNull;                 // migration 940
 }
 export interface EventDeadLettersTable {
   id: Generated<string>;
