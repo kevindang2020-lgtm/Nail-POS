@@ -696,3 +696,24 @@ merged two report features into one business-center file; aged a test's prior jo
   members 12/12).
 - Promotions 15 now has its screen: Promotions → Conflict simulator renders GET pos/deals/conflict-simulator
   (pos.marketing.view, same access as the deals dashboard); practice tickets only, the POS never re-prices.
+
+## Round 10b — the 226 partly-done rows (Nov 13 2026, five agents in parallel)
+207 of the 226 "(part)" rows were finished in code with tests (BUILT 587 / EXISTS 775 incl. part; TODO 5). Migrations
+910–911, 920–925, 930–931, 940, 950–951. Notable fixes found on the way: customer receipts() always returned 0 cents;
+technician status read in no order (an old status could win); tech-appointment cancel reasons were never logged; payroll
+"Mark paid / Cancel" had no review step; Branch Comparison refresh blanked the screen.
+New: reversible customer merges (snapshot + safe unmerge), device history hash chain, device alias / asset tag, loyalty
+idempotency center, salon-side AI receptionist recommendation approvals, Customer 360 + high-value lists, Quick View
+receipts & activity, quiet hours for pushes, approval escalation + platform guardrails, deposit-case review-by dates.
+Gate fixes at merge were all in code (no baseline raised): tenant scoping on two new updates and two loyalty reads,
+literal table references for merge/unmerge, named contract types, a state machine for merge snapshots.
+
+The 19 rows still "(part)" each name the outside thing they need (docs/handoff/EXTRAS_BACKLOG.md "STILL NEEDS"):
+- provider accounts / feeds: Clover/Fiserv terminal API + certified device; processor settlement report; terminal
+  firmware feed; Retell + Twilio usage-billing access (AI Front Desk, AI Receptionist); the salon's Twilio account
+  (number webhook check); AI billing provider client; a live token-funding provider; an AI model key; Twilio A2P template;
+- Kevin's decisions: bulk technician invites (volume / consent); add-ons consuming inventory; AI usage price table;
+  review-request text pricing; who a device is assigned to;
+- hardware / review: real SUNMI + native iPhone (tips routing, 100 % zoom); Vietnamese drafts (≈4,100 strings);
+  screenshots in support reports need the OS screen-sharing prompt (staff attach their own).
+The 5 TODO rows are the K-12 console steps — docs/K12_RUNBOOK.md + tooling/k12/verify-k12.mjs.
