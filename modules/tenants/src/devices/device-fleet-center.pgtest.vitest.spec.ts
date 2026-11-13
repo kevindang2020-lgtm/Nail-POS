@@ -99,6 +99,17 @@ describe('device fleet — each page reads its own registry', () => {
     expect(k1).toMatchObject({ status: 'online', reason: 'BATTERY_LOW' });
     await q(sql`update go_checkin_devices set battery_percent = null, battery_charging = null, battery_reported_at = null, last_seen_at = now() - interval '1 minute' where checkin_slug = 'df-k1'`);
   });
+  it('round 10 (Tablets 10): the list says whose devices it shows and lists each location with its count; a location filter narrows to it', async () => {
+    const here = await fc.list(ctx(), { class: 'tablet' });
+    expect(here.scope).toEqual({ branchId: B, branchName: 'Main' });
+    expect(here.branches).toEqual([{ branchId: B, name: 'Main', devices: 2 }, { branchId: null, name: null, devices: 1 }]);   // the no-location iPad is shown as such
+    const all = await fc.list({ ...ctx(), branchId: '' }, { class: 'tablet' });
+    expect(all.scope).toEqual({ branchId: null, branchName: null });
+    expect(all.branches!.map((b) => [b.name, b.devices])).toEqual([['Main', 2], ['Second', 1], [null, 1]]);
+    const second = await fc.list({ ...ctx(), branchId: '' }, { class: 'tablet', branchId: B2 });
+    expect(second.items.map((d) => d.name)).toEqual(['Other branch display']);
+    expect(second.branches!.length).toBe(3);   // every location stays choosable while one is picked
+  });
   it('DF-04 assignments (all): displays + kiosks + terminals; filters, search, unassigned, pages', async () => {
     const all = await fc.list(ctx(), { class: 'all', pageSize: 10 });
     expect(all.total).toBe(8);

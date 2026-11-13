@@ -159,6 +159,17 @@ describe('the salon\'s displays (tenant-scoped)', () => {
     await devices.recordHeartbeat(T, devId, hb);   // a later beat without a battery reading keeps the last one with its own time
     expect((await q(`select battery_percent from customer_display_devices where id = $1`, [devId]))[0].battery_percent).toBe(12);
     await expect(q(`update customer_display_devices set battery_percent = 101 where id = $1`, [devId])).rejects.toThrow();
+    // round 10 (Tablets 09): recovery after being offline and an app update are recorded on the activity timeline; routine beats are not
+    const audits = async () => (await q(`select action_type, metadata_json from audit_logs where entity_id = $1 and action_type in ('customer_display_reconnected', 'customer_display_app_updated') order by created_at, action_type`, [devId]));
+    expect(await audits()).toEqual([]);
+    await q(`update customer_display_devices set last_seen_at = now() - interval '10 minutes' where id = $1`, [devId]);
+    await devices.recordHeartbeat(T, devId, { ...hb, appVersion: '0.2.0' });
+    const a = await audits();
+    expect(a.map((x: any) => x.action_type).sort()).toEqual(['customer_display_app_updated', 'customer_display_reconnected']);
+    expect(a.find((x: any) => x.action_type === 'customer_display_app_updated').metadata_json).toEqual({ from: '0.1.0', to: '0.2.0' });
+    expect(Number(a.find((x: any) => x.action_type === 'customer_display_reconnected').metadata_json.offlineSeconds)).toBeGreaterThanOrEqual(590);
+    await devices.recordHeartbeat(T, devId, { ...hb, appVersion: '0.2.0' });
+    expect(await audits()).toHaveLength(2);   // a routine beat writes nothing
   });
 
   it('what is ON a display: open sessions only — a released (completed), cancelled or expired one is history', async () => {

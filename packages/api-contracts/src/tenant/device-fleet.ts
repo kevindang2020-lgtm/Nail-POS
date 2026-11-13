@@ -14,6 +14,10 @@ export interface DfSummary {
 export interface DfListResponse {
   class: DfClass; items: DfDevice[]; total: number; page: number; pageSize: number; totalPages: number; checkedAt: string;
   applied: { q: string | null; status: string; branchId: string | null; from: string | null; to: string | null; dateField: string; sort: string };
+  /** round 10 (Tablets 10): whose devices these are (the session's location, or null = every location of the salon) and the
+   *  locations present in the list with their device counts (branchId null = devices with no location) */
+  scope?: { branchId: string | null; branchName: string | null };
+  branches?: { branchId: string | null; name: string | null; devices: number }[];
 }
 export interface DfHistoryItem { id: string; at: string; event: string; entity: string; deviceId: string | null; actor: string | null; actorRole: string | null; source: string }
 export interface DfReceiptEvent { id: string; at: string; choice: string; status: string | null; ticket: string | null; station: string | null }

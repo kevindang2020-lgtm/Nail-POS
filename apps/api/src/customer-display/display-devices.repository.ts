@@ -5,6 +5,7 @@
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { DisplayProfile, DisplayReportedMode } from '@aipowersalon/api-contracts';
+import { DISPLAY_ONLINE_WINDOW_MS } from '@aipowersalon/api-contracts';
 import type { DisplayActor, DisplayPairingPort, DisplayPlatform, PairingClaim, PairingRow, PickedUp } from './display-pairing.repository';
 import { deviceTypeFor, writeDisplayAudit } from './display-pairing.repository';
 
@@ -149,6 +150,13 @@ export class KyselyDisplayDevicesRepository implements DisplayDevicesPort {
     return this.db.transaction().execute(async (trx) => {
       const before = await sql<any>`${this.deviceQuery(tenantId)} AND d.id = ${deviceId} AND d.revoked_at IS NULL FOR UPDATE OF d`.execute(trx);
       if (!before.rows[0]) return null;
+      // round 10 (Tablets 09): the activity timeline also records RECOVERY (back after being offline — how long it was gone) and
+      // APP UPDATES (from → to), written by the display's own heartbeat (no staff actor); routine beats write nothing
+      const b0 = before.rows[0];
+      const lastMs = b0.last_seen_at ? new Date(b0.last_seen_at).getTime() : null;
+      const dev = { tenantId, branchId: b0.branch_id ?? null, userId: null, role: 'DEVICE' };
+      if (lastMs != null && Date.now() - lastMs > DISPLAY_ONLINE_WINDOW_MS) await writeDisplayAudit(trx, dev, 'customer_display_reconnected', 'customer_display', deviceId, { offlineSeconds: Math.round((Date.now() - lastMs) / 1000) });
+      if (b0.app_version && b0.app_version !== hb.appVersion) await writeDisplayAudit(trx, dev, 'customer_display_app_updated', 'customer_display', deviceId, { from: String(b0.app_version), to: hb.appVersion });
       await sql`
         UPDATE customer_display_devices
            SET last_seen_at = now(), reported_mode = ${hb.mode}, app_version = ${hb.appVersion}, screen_width = ${hb.width},

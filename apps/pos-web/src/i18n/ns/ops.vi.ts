@@ -2115,4 +2115,17 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.battery.notCharging": "không sạc", // DRAFT — Kevin reviews
   "dfx.battery.read": "đọc lúc {at}", // DRAFT — Kevin reviews
   "dfx.battery.stale": "số đọc cũ — không phải mức pin hiện tại", // DRAFT — Kevin reviews
+  "dsp.replace.button": "Thay thế", // DRAFT — Kevin reviews
+  "dsp.replace.go": "Thu hồi và ghép nối máy mới", // DRAFT — Kevin reviews
+  "dsp.replace.confirm": "Thay thế {name}? Màn hình cũ ngừng hoạt động ngay (quyền truy cập bị thu hồi). Sau đó ghép nối màn hình mới bằng mã nó hiển thị — không sao chép gì từ thiết bị cũ.", // DRAFT — Kevin reviews
+  "dsp.replace.revoked": "Đã thu hồi {name} — ghép nối màn hình mới bên dưới.", // DRAFT — Kevin reviews
+  "dsp.replace.note": "Đang thay thế {name}: tên và quầy đã được điền sẵn. Nhập mã mà màn hình MỚI hiển thị — nó nhận quyền truy cập mới riêng; không sao chép gì từ thiết bị cũ.", // DRAFT — Kevin reviews
+  "dfx.ev.customer_display_reconnected": "Đã kết nối lại sau khi mất kết nối", // DRAFT — Kevin reviews
+  "dfx.ev.customer_display_app_updated": "Đã cập nhật ứng dụng", // DRAFT — Kevin reviews
+  "dfx.f.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "dfx.branch.all": "Mọi chi nhánh trong danh sách", // DRAFT — Kevin reviews
+  "dfx.branch.opt": "{name} ({n})", // DRAFT — Kevin reviews
+  "dfx.scope.one": "Đang hiện thiết bị của {name} (và thiết bị chưa gắn chi nhánh).", // DRAFT — Kevin reviews
+  "dfx.scope.all": "Đang hiện thiết bị của mọi chi nhánh trong tiệm.", // DRAFT — Kevin reviews
+  "dfx.scope.noBranch": "{n} chưa gán chi nhánh", // DRAFT — Kevin reviews
 };

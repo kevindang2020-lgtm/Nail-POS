@@ -89,6 +89,10 @@ export class DeviceFleetCenter {
     const t = textTenant ? sql`${cols.tenant}::text = ${ctx.tenantId}` : sql`${cols.tenant} = ${ctx.tenantId}`;
     return ctx.branchId ? sql`${t} AND (${cols.branch}::text = ${ctx.branchId} OR ${cols.branch} IS NULL)` : t;
   }
+  private async branchName(ctx: DfCtx): Promise<string | null> {
+    const r = await sql<{ name: string | null }>`SELECT name FROM branches WHERE tenant_id = ${ctx.tenantId} AND id::text = ${ctx.branchId}`.execute(this.db);
+    return r.rows[0]?.name ?? null;
+  }
   private async todayStart(ctx: DfCtx): Promise<Date> {
     const r = await sql<{ tz: string | null }>`SELECT timezone AS tz FROM branches WHERE tenant_id = ${ctx.tenantId} AND deleted_at IS NULL
       ORDER BY (id::text = ${ctx.branchId || ''}) DESC, created_at LIMIT 1`.execute(this.db);
@@ -266,6 +270,11 @@ export class DeviceFleetCenter {
     if (term) { const f = fold(term); rows = rows.filter((r) => [r.name, r.branch, r.station, r.type, r.id, r.facts?.hsnMasked].some((v) => fold(v).includes(f))); }
     if (status === 'unassigned') rows = rows.filter((r) => r.status === 'unassigned' || (r.source === 'display' && !r.station) || (r.source === 'kiosk' && !r.branchId) || (r.source === 'terminal' && !r.station));
     else if (status !== 'all') rows = rows.filter((r) => r.status === status);
+    // round 10 (Tablets 10): the locations in this (scoped) list with their device counts — for the branch filter and the
+    // "whose devices am I looking at" line; computed BEFORE the branch filter so every location stays choosable
+    const branchMap = new Map<string, { branchId: string | null; name: string | null; devices: number }>();
+    for (const r of rows) { const k = r.branchId ?? ''; const e = branchMap.get(k) ?? { branchId: r.branchId ?? null, name: r.branch ?? null, devices: 0 }; e.devices += 1; branchMap.set(k, e); }
+    const branches = [...branchMap.values()].sort((a, b) => (a.branchId == null ? 1 : b.branchId == null ? -1 : String(a.name ?? '').localeCompare(String(b.name ?? ''))));
     if (q.branchId) rows = rows.filter((r) => r.branchId === q.branchId);
     const df = q.dateField === 'last_seen' ? 'lastSeenAt' : q.dateField === 'updated' ? 'updatedAt' : 'createdAt';
     if (q.from || q.to) {
@@ -276,7 +285,8 @@ export class DeviceFleetCenter {
     rows.sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : (by[sort as keyof typeof by](a) - by[sort as keyof typeof by](b))) || a.id.localeCompare(b.id));
     const total = rows.length; const totalPages = Math.max(1, Math.ceil(total / pageSize)); const page = Math.min(Math.max(1, Math.trunc(Number(q.page ?? 1)) || 1), totalPages);
     return { class: cls, items: rows.slice((page - 1) * pageSize, page * pageSize), total, page, pageSize, totalPages,
-      applied: { q: term || null, status, branchId: q.branchId ?? null, from: q.from ?? null, to: q.to ?? null, dateField: q.dateField ?? 'created', sort }, checkedAt: this.now().toISOString() };
+      applied: { q: term || null, status, branchId: q.branchId ?? null, from: q.from ?? null, to: q.to ?? null, dateField: q.dateField ?? 'created', sort }, checkedAt: this.now().toISOString(),
+      scope: { branchId: ctx.branchId || null, branchName: ctx.branchId ? (await this.branchName(ctx)) : null }, branches };
   }
 
   /** the canonical history — audit_logs for displays / registers / terminals, go_checkin_logs for kiosks — newest first */

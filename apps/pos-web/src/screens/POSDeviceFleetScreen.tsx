@@ -134,7 +134,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
       card('attention', tt('dfx.kpi.attention'), s?.attention, tt('dfx.kpi.attentionSub'), s?.attention ? 'warn' : undefined, 'attention'), four];
   };
   const connected = view === 'health' ? ov?.kpis.onlineDevices : view === 'receipt-devices' ? 0 : sum?.online;
-  const anyFilter = !!(f.q || (f.status && f.status !== 'all') || f.from || f.to);
+  const anyFilter = !!(f.q || (f.status && f.status !== 'all') || f.from || f.to || f.branchId);
 
   return (
     <div className={embedded ? 'dfx-embed' : 'work'} data-testid="dfx-screen" data-view={view}>
@@ -184,6 +184,8 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
           <ul className="dfx-steps"><li>{tt('dfx.receipt.1')}</li><li>{tt('dfx.receipt.2')}</li><li>{tt('dfx.receipt.3')}</li></ul>
         </section>
       ) : tab === 'devices' ? (<>
+        {list?.scope ? <div className="sub" data-testid="dfx-scope">{list.scope.branchId ? tt('dfx.scope.one', { name: list.scope.branchName ?? '—' }) : tt('dfx.scope.all')}
+          {list.branches?.some((b) => !b.branchId) ? ` · ${tt('dfx.scope.noBranch', { n: list.branches.find((b) => !b.branchId)!.devices })}` : ''}</div> : null}
         <section className="panel rvw-filters" data-testid="dfx-filters">
           <form className="cnx-searchrow" onSubmit={(e) => { e.preventDefault(); setF({ q: draft.trim() || undefined }); }}>
             <input className="rvw-search" type="search" data-testid="dfx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tt('dfx.searchPh')} aria-label={tt('dfx.searchPh')} />
@@ -191,6 +193,11 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
           </form>
           <label className="rvw-f"><span>{tt('dfx.f.status')}</span>
             <select data-testid="dfx-status" value={f.status ?? 'all'} onChange={(e) => setF({ status: e.target.value })}>{STATUSES.map((s) => <option key={s} value={s}>{tt('dfx.st.' + s)}</option>)}</select></label>
+          {/* round 10 (Tablets 10): a location filter from the server's own list of locations (with counts), and whose devices these are */}
+          {list?.branches && list.branches.length > 1 ? <label className="rvw-f"><span>{tt('dfx.f.branch')}</span>
+            <select data-testid="dfx-branch" value={f.branchId ?? ''} onChange={(e) => setF({ branchId: e.target.value || undefined })}>
+              <option value="">{tt('dfx.branch.all')}</option>
+              {list.branches.filter((b) => b.branchId).map((b) => <option key={b.branchId!} value={b.branchId!}>{tt('dfx.branch.opt', { name: b.name ?? '—', n: b.devices })}</option>)}</select></label> : null}
           <label className="rvw-f"><span>{tt('dfx.f.dateField')}</span>
             <select data-testid="dfx-datefield" value={f.dateField ?? 'created'} onChange={(e) => setF({ dateField: e.target.value === 'created' ? undefined : e.target.value })}>
               {['created', 'last_seen', 'updated'].map((d) => <option key={d} value={d}>{tt('dfx.date.' + d)}</option>)}</select></label>

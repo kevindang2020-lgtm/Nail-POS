@@ -229,4 +229,21 @@ describe('Devices → Customer Displays (§86)', () => {
     fireEvent.click(screen.getByText('Add register'));
     await waitFor(() => expect(h.createStation).toHaveBeenCalledWith('Register 3'));
   });
+
+  it('round 10 (Tablets 06): Replace revokes the old display after confirming, then opens pairing with the same name and register — the new one types its OWN code', async () => {
+    h.revoke.mockResolvedValue({ revoked: true }); h.pair.mockResolvedValue(dev({ deviceId: 'new' }));
+    render(<POSCustomerDisplaysScreen />);
+    fireEvent.click((await screen.findAllByTestId('display-replace'))[0]);
+    const go = await screen.findByRole('button', { name: 'Revoke and pair the new one' });
+    expect(h.revoke).not.toHaveBeenCalled();
+    fireEvent.click(go);
+    await waitFor(() => expect(h.revoke).toHaveBeenCalledWith('d1'));
+    expect(await screen.findByTestId('display-replace-note')).toHaveTextContent('nothing is copied from the old device');
+    expect((screen.getByLabelText('Display name') as HTMLInputElement).value).toBe('Front Display #1');
+    expect((screen.getByLabelText('Pairing code') as HTMLInputElement).value).toBe('');   // the code is the NEW display's, never carried over
+    fireEvent.change(screen.getByLabelText('Pairing code'), { target: { value: '5551 2222' } });
+    fireEvent.click(screen.getByText('Pair display'));
+    await waitFor(() => expect(h.pair).toHaveBeenCalledWith(expect.objectContaining({ code: '55512222', name: 'Front Display #1' })));
+  });
 });
+

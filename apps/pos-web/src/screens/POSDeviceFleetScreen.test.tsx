@@ -181,6 +181,16 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('80% · charging');
     expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('old reading — not the current level');
   });
+  it('round 10 (Tablets 10): says whose devices these are; the location filter lists the server\'s locations with counts and asks the server', async () => {
+    m.devices.mockResolvedValue({ ...listOf([dev({ id: 't1', source: 'display', class: 'tablet', name: 'Tab A', type: 'tablet', branch: 'Main', branchId: 'b1' })]),
+      scope: { branchId: null, branchName: null }, branches: [{ branchId: 'b1', name: 'Main', devices: 3 }, { branchId: 'b2', name: 'Second', devices: 1 }, { branchId: null, name: null, devices: 2 }] });
+    r('tablets');
+    expect(await screen.findByTestId('dfx-scope')).toHaveTextContent('Showing devices of every location of the salon. · 2 not assigned to a location');
+    const sel = screen.getByTestId('dfx-branch');
+    expect([...sel.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All locations in this list', 'Main (3)', 'Second (1)']);
+    fireEvent.change(sel, { target: { value: 'b2' } });
+    await waitFor(() => expect(m.devices).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', page: 1 })));
+  });
   it('a register (not a display) has no version line', async () => {
     r('reception-pos');
     await screen.findAllByTestId('dfx-row');

@@ -2,7 +2,7 @@
 import { api } from './client';
 import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfClass } from '@aipowersalon/api-contracts/tenant';
 
-export type DeviceFleetQuery = { class: DfClass; q?: string; status?: string; dateField?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
+export type DeviceFleetQuery = { class: DfClass; q?: string; status?: string; branchId?: string; dateField?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
 export type DeviceHistoryQuery = { class: DfClass; deviceId?: string; q?: string; from?: string; to?: string; page?: number; pageSize?: number };
 const clean = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all' || false)) as Record<string, string>;
 
