@@ -77,4 +77,11 @@ describe('owner compensation preview/validate API (§27/§28)', () => {
     expect((CompensationController.prototype as any).reportPlatform).toBeUndefined();
     expect((CompensationReportsService.prototype as any).platform).toBeUndefined();
   });
+  it('SERVICE PRICING 12: service-preview needs compensation.view_all, answers 503 without the database, maps a refusal to its code', async () => {
+    await expect(ctrl().servicePreviewGet(tech, { serviceId: 'x' })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(ctrl().servicePreviewGet(owner, { serviceId: 'x' })).rejects.toMatchObject({ status: 503 });
+    const { ServiceCompensationPreviewService } = await import('./compensation-service-preview');
+    const c = new CompensationController(new CompensationPreviewService(), new CompensationReportsService(reportsPort), undefined as any, undefined as any, undefined as any, undefined as any, undefined as any, undefined as any, undefined as any, new ServiceCompensationPreviewService({} as any));
+    await expect(c.servicePreviewGet(owner, { serviceId: 'not-a-uuid' })).rejects.toMatchObject({ status: 404, response: { code: 'SERVICE_NOT_FOUND' } });
+  });
 });

@@ -22,6 +22,7 @@ import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { AuditService } from '@aipowersalon/audit';
 import { TipAllocationController } from './compensation-tip-allocation.controller';
 import { TipAllocationService } from './compensation-tip-allocation.service';
+import { ServiceCompensationPreviewService } from './compensation-service-preview';
 
 /** Owner-facing compensation preview/validation (the engine exposed for the setup wizard + §28 calculator). Pure-compute. */
 @Module({
@@ -42,6 +43,7 @@ import { TipAllocationService } from './compensation-tip-allocation.service';
     { provide: ComplianceService, useFactory: (repo: ClassificationRepo, db: AppDatabase, rt: RealtimeEmitter) => new ComplianceService(repo, db || null, rt), inject: ['ClassificationRepo', DATABASE, REALTIME] },
     { provide: 'AgreementsRepo', useFactory: (db: AppDatabase): AgreementsRepo => (db ? new KyselyAgreementsRepo(db) : new InMemoryAgreementsRepo()), inject: [DATABASE] },
     { provide: AgreementsService, useFactory: (repo: AgreementsRepo) => new AgreementsService(repo), inject: ['AgreementsRepo'] },
+    { provide: ServiceCompensationPreviewService, useFactory: (db: AppDatabase) => new ServiceCompensationPreviewService(db || null), inject: [DATABASE] },
   ],
   exports: [CompensationPreviewService, CompensationReportsService, CompensationTipPolicyService, CompensationRulesService, TierPlansService, RetailCommissionService, BonusRulesService, ComplianceService, AgreementsService, TipAllocationService],
 })

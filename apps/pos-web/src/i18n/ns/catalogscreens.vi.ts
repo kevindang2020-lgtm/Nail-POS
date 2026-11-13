@@ -464,4 +464,26 @@ export const CATALOGSCREENS_VI = {
   "cg.rv.noteRequired": "Hãy viết ghi chú ngắn (ít nhất 3 ký tự).", // DRAFT — Kevin reviews
   "cg.rv.done": "Đã duyệt giữ nguyên. Danh mục không bị thay đổi.", // DRAFT — Kevin reviews
   "cg.rv.reopened": "Đã mở lại để xem xét.", // DRAFT — Kevin reviews
+  "cg.comp.title": "Tiền công thợ", // DRAFT — Kevin reviews
+  "cg.comp.sub": "mỗi thợ sẽ được bao nhiêu cho dịch vụ này khi giá {a} → {b}", // DRAFT — Kevin reviews
+  "cg.comp.unnamed": "Thợ chưa có tên", // DRAFT — Kevin reviews
+  "cg.comp.noTechs": "Không có thợ đang làm.", // DRAFT — Kevin reviews
+  "cg.comp.more": "+{n} thợ khác", // DRAFT — Kevin reviews
+  "cg.comp.actual": "Đã trả trong {d} ngày qua: {n} dòng, tính theo {s}", // DRAFT — Kevin reviews
+  "cg.comp.actualNone": "Không có dòng đã thanh toán cho dịch vụ này trong {d} ngày qua.", // DRAFT — Kevin reviews
+  "cg.comp.note": "Chỉ là xem trước theo quy tắc trả công của tiệm — lưu giá không bao giờ đổi tiền công đã làm, và ở đây không đổi quy tắc nào.", // DRAFT — Kevin reviews
+  "cg.comp.src.ticket_override": "Ghi đè trên phiếu", // DRAFT — Kevin reviews
+  "cg.comp.src.technician_service": "Quy tắc thợ + dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.technician_category": "Quy tắc thợ + nhóm dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.technician_default": "Quy tắc của thợ", // DRAFT — Kevin reviews
+  "cg.comp.src.branch_service": "Quy tắc chi nhánh + dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.branch_category": "Quy tắc chi nhánh + nhóm dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.service": "Quy tắc dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.category": "Quy tắc nhóm dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.branch_default": "Quy tắc mặc định chi nhánh", // DRAFT — Kevin reviews
+  "cg.comp.src.salon_default": "Quy tắc mặc định của tiệm", // DRAFT — Kevin reviews
+  "cg.comp.src.service_default": "Mức riêng của dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.tenant_default_rate": "Mức mặc định của tiệm", // DRAFT — Kevin reviews
+  "cg.comp.src.not_recorded": "Không ghi nguồn", // DRAFT — Kevin reviews
+  "cg.comp.src.unscoped": "Quy tắc không phạm vi", // DRAFT — Kevin reviews
 };
