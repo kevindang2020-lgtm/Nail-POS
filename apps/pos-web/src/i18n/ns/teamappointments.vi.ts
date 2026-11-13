@@ -154,4 +154,9 @@ export const TEAMAPPOINTMENTS_VI = {
   'tm.tipsV': 'tiền tip {v}',
   'tm.commissionV': 'hoa hồng ước tính {v}',
   'tm.exactTime': '{d} · lịch hẹn {s} – {e} ({n} phút)', // DRAFT — Kevin reviews
+  'tm.dayNotes': 'Ghi chú trong ngày', // DRAFT — Kevin reviews
+  'tm.dayNotesNone': 'Các lịch trong ngày này không có ghi chú.', // DRAFT — Kevin reviews
+  'tm.dn.appointment': 'Ghi chú lịch hẹn', // DRAFT — Kevin reviews
+  'tm.dn.blocked_time': 'Ghi chú giờ khóa', // DRAFT — Kevin reviews
+  'tm.dayNotesHidden': '{n} ghi chú lịch hẹn cần quyền xem khách hàng mới đọc được.', // DRAFT — Kevin reviews
 };

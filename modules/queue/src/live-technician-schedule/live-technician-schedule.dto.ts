@@ -59,7 +59,12 @@ export interface LiveTechnicianDetail {
   status: LiveTechStatus; shift?: LiveShift; skills: string[]; appointments: LiveScheduleAppointment[]; openSlots: LiveScheduleOpenSlot[];
   blocks: LiveScheduleBlock[]; activeTicket?: LiveScheduleActiveTicket; nextAppointment?: LiveScheduleAppointment;
   bookedHours: number; utilizationPercent: number; salesTodayCents: number | null; tipsTodayCents: number | null; commissionPreviewCents: number | null;
+  /** extras LIVE TECHNICIAN SCHEDULE 12 — Technician Day Notes: the notes ALREADY written on this technician's day by their
+   *  owning records (a blocked time's note, an appointment's note), oldest first. Appointment notes are customer data:
+   *  only for a role holding pos.customers.view — otherwise left out and counted in dayNotesHidden (never shown blank). */
+  dayNotes?: LiveDayNote[]; dayNotesHidden?: number;
 }
+export interface LiveDayNote { kind: 'blocked_time' | 'appointment'; sourceId: string; startTime: string; endTime: string; text: string; reason?: string | null; customerName?: string | null }
 export interface LiveTechnicianSchedulePageState {
   context: { tenantId: string; branchId: string; userId: string; role: string; permissions: string[] };
   kpis: LiveTechnicianScheduleKpis;

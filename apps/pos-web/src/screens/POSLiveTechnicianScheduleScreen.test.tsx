@@ -3,7 +3,7 @@
 // the one search over technicians and appointments, the full-day overlay (Close / Esc) with its actions, weekly hours that
 // show their impact BEFORE saving and send the full week with its version, Week view, and Vietnamese with no English left.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { leftoverEnglish } from './viScan.testkit';
@@ -208,5 +208,26 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     for (const f of Object.values(live)) if (f !== live.state && f !== live.detail) expect(f).not.toHaveBeenCalled();   // nothing was written
     fireEvent.click(screen.getByTestId('health-close'));
     expect(screen.queryByTestId('health')).toBeNull();
+  });
+
+  it('extras LIVE TECHNICIAN SCHEDULE 12: the full day lists the server\'s day notes; hidden appointment notes are counted, never shown', async () => {
+    live.detail.mockResolvedValue({ ...COL, bookedHours: 1, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null, nextAppointment: COL.appointments[0],
+      dayNotes: [{ kind: 'blocked_time', sourceId: 'b1', startTime: '13:00', endTime: '13:30', text: 'Gel-X refresher with the trainer', reason: 'training' }], dayNotesHidden: 2 });
+    mount(); await openLinh();
+    const list = await screen.findByTestId('day-notes');
+    expect(within(list).getByTestId('day-note-blocked_time')).toHaveTextContent('Gel-X refresher with the trainer');
+    expect(within(list).getByTestId('day-note-blocked_time')).toHaveTextContent('Blocked time note · Training');
+    expect(screen.getByTestId('day-notes-hidden')).toHaveTextContent('2 appointment note(s) need customer access to read.');
+  });
+  it('extras LIVE TECHNICIAN SCHEDULE 12: no notes says so; an older server without dayNotes shows no section', async () => {
+    live.detail.mockResolvedValue({ ...COL, bookedHours: 1, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null, dayNotes: [], dayNotesHidden: 0 });
+    const { unmount } = mount(); await openLinh();
+    expect(await screen.findByTestId('day-notes-none')).toBeInTheDocument();
+    unmount();
+    live.detail.mockResolvedValue({ ...COL, bookedHours: 1, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null });
+    mount(); await openLinh();
+    await screen.findByTestId('full-day-summary');
+    expect(screen.queryByTestId('day-notes-none')).toBeNull();
+    expect(screen.queryByTestId('day-notes')).toBeNull();
   });
 });
