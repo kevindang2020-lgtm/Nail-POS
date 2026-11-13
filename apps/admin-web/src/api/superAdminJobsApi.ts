@@ -18,7 +18,13 @@ export interface EventDeadLetter {
   status: 'open' | 'retrying' | 'resolved' | 'discarded'; next_attempt_at: string | null;
 }
 
+/** the event pipeline's per-consumer health (GET /super-admin/events/health): lag, throughput and — TECH QUEUE 15 — the
+ *  duplicate deliveries absorbed in the last day (each event still handled exactly once) */
+export interface EventConsumerHealth { consumerName: string; eventTypes: string[]; critical: boolean; processedLastHour: number; lagSec: number | null; duplicateEventsLastDay?: number; duplicateDeliveries?: number }
+export interface EventPipelineHealth { outbox: { pending: number; claimed: number; published: number; failed: number; oldestPendingAgeSec: number | null; publishedLastHour: number }; consumers: EventConsumerHealth[] }
+
 export const superAdminJobsApi = {
+  eventHealth: () => api.get<EventPipelineHealth>('/super-admin/events/health'),
   stats: () => api.get<{ classes: JobClassStats[]; handlers: string[] }>('/super-admin/jobs/stats'),
   list: (q: { status?: JobStatus; jobClass?: JobClass; limit?: number } = {}) => api.get<{ items: JobListRow[] }>('/super-admin/jobs', q as Record<string, unknown>),
   retry: (id: string, reason: string) => api.post<{ ok: true }>(`/super-admin/jobs/${encodeURIComponent(id)}/retry`, { reason }),

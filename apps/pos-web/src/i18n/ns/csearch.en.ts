@@ -631,4 +631,10 @@ export const CSEARCH_EN: Record<string, string> = {
   "cpf.qa.activity": "Recent activity",
   "cpf.qa.noActivity": "No activity yet.",
   "cpf.qa.receiptIssued": "Receipt issued · {amount}",
+  "cnx.pr.title": "Possibly stale or conflicting preferences — please review:",
+  "cnx.pr.technician_inactive": "Preferred technician {tech} is {status} at this salon",
+  "cnx.pr.technician_differs_from_profile": "The note names a different technician than the profile ({profile})",
+  "cnx.pr.notes_older_than_visits": "These notes were last updated {notes}, over a year before the latest visit ({visit})",
+  "cnx.pr.status.archived": "archived",
+  "cnx.pr.status.inactive": "inactive",
 };

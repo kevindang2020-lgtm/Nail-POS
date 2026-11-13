@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { SYNC_POLICY } from '@aipowersalon/realtime-client';
-import { posCampaignCenterApi, type CcCampaign, type CcPage } from '../api/posCampaignCenterApi';
+import { posCampaignCenterApi, type CcCampaign, type CcCounts, type CcPage } from '../api/posCampaignCenterApi';
 import { posCampaignsApi } from '../api/posCampaignsApi';
 import { useCan } from '../components/usePermissions';
 import { useRealtime } from '../realtime/useRealtime';
@@ -39,6 +39,19 @@ const chLabel = (c: string) => (c === 'sms' ? 'SMS' : c === 'email' ? tx('pos.em
 const errText = (e: unknown) => errorTextOf(e, tx('cc.failed'));
 /** a translated label, or the raw code when no label exists yet (a new provider / skip reason) — never a blank */
 const tr = (key: string, fallback: string | null | undefined) => { const v = tx(key); return v && v !== key ? v : String(fallback ?? ''); };
+
+
+/** extras Marketing 11 — Journey Attribution Labels: the three levels from the server, each with its own name and meaning —
+ *  never one number under another label. Validated is a proven link to this campaign, not proof the visit was extra. */
+function AttributionLevels({ a }: { a: NonNullable<CcCounts['attribution']> }) {
+  return (
+    <div className="cc-attr" data-testid="cc-attribution" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '8px 0' }}>
+      <div data-testid="cc-attr-exposure"><b>{tx('cc.attr.exposure')}</b><div>{tx('cc.attr.exposureVal', { d: nf(a.exposure.delivered), s: nf(a.exposure.submitted) })}</div><div className="fk-hint">{tx('cc.attr.exposureHint')}</div></div>
+      <div data-testid="cc-attr-associated"><b>{tx('cc.attr.associated')}</b><div>{tx('cc.attr.associatedVal', { n: nf(a.associated.bookings) })}</div><div className="fk-hint">{tx('cc.attr.associatedHint')}</div></div>
+      <div data-testid="cc-attr-validated"><b>{tx('cc.attr.validated')}</b><div>{tx('cc.attr.validatedVal', { n: nf(a.validated.redemptions), a: fmtMoney(a.validated.revenueCents) })}</div><div className="fk-hint">{tx('cc.attr.validatedHint')}</div></div>
+    </div>
+  );
+}
 
 function Badge({ s }: { s: string }) { return <span className={'fk-chip ' + (TONE[s] ?? 'mut')} data-testid={'cc-status-' + s}>{stLabel(s)}</span>; }
 
@@ -269,6 +282,7 @@ function DetailDialog({ id, canManage, onClose, onChanged, onEdit, onHealth, onO
               <dt>{tx('cc.approval')}</dt><dd>{d.approvedAt ? `${d.approvedBy ?? '—'} · ${when(d.approvedAt)}${d.approvalCurrent ? '' : ' · ' + tx('cc.approvalVoided')}` : tx('cc.notApproved')}</dd>
               <dt>{tx('cc.basis.scheduled')}</dt><dd>{when(d.scheduledAt)}</dd><dt>{tx('cc.basis.started')}</dt><dd>{when(d.startedAt)}</dd><dt>{tx('cc.basis.completed')}</dt><dd>{when(d.completedAt)}</dd>
             </dl>
+            {c.attribution ? <AttributionLevels a={c.attribution} /> : null}
             <div className="cc-counts" data-testid="cc-counts">
               {(['selected', 'eligible', 'excluded', 'queued', 'attempted', 'submitted', 'delivered', 'failed', 'unknown', 'booked'] as const).map((key) => (
                 <div key={key} className="cc-count" title={d.definitions?.[key] ?? ''} data-testid={'cc-count-' + key}><span>{tx('cc.count.' + key)}</span>

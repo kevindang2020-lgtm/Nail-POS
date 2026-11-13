@@ -228,6 +228,60 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
     expect(await wallet(TA)).toBe(9740 - 25 - 20);   // reading it moved nothing
     // a wallet figure the branch rows do not add up to is said, not hidden
     expect((await repo.branchUsage(TA, u.since, 999)).matchesWallet).toBe(false);
+    // extras GLOBAL LOYALTY REWARDS 03 (round 10): the funding forecast is the ledger's own last-30-days use — 305¢ of
+    // earn_allocation debits → 11¢/day (rounded up), never a purchase; a salon with no use has no estimate
+    expect(w.forecast).toEqual({ basisDays: 30, usedCents: 305, dailyCents: 11, daysLeft: Math.floor(w.availableCents / 11),
+      daysToLow: Math.max(0, Math.floor((w.availableCents - w.lowBalanceCents) / 11)), fundingNeededCents: Math.max(0, 11 * 30 - w.availableCents - w.pendingCents), automaticPurchase: false });
+    expect((await repo.walletSummary(TX)).forecast).toMatchObject({ usedCents: 0, dailyCents: null, daysLeft: null, fundingNeededCents: null });
+    // extras GLOBAL LOYALTY REWARDS 06 (round 10): funding vs liability side by side, each from its own ledger, never summed
+    expect(w.fundingVsLiability).toEqual({ backedFundingCents: w.availableCents, pointsEarnedHereTenths: 305, earnBackingCents: 305,
+      heldRedemptions: 0, heldPointTenths: 0, heldValueCents: 0, salonPayablesOpen: 0, salonPayablesOwedCents: 0, combined: false });
+    expect((await repo.walletSummary(TX)).fundingVsLiability).toMatchObject({ pointsEarnedHereTenths: 0, earnBackingCents: 0, heldRedemptions: 0 });
+  });
+  // extras GLOBAL LOYALTY REWARDS 04 (round 10): the policy impact preview — scope, the expected effect replayed with THE earn
+  // rule over this salon's own last-30-days earnings, and the approval it needs; writes nothing
+  it('extras GLOBAL LOYALTY REWARDS 04: preview shows the salon-wide scope, the expected effect from real earnings, and the approval', async () => {
+    const before = (await q(`select (select count(*) from tenant_earning_policy_versions)::int + (select count(*) from reward_earn_transactions)::int + (select count(*) from token_wallet_ledger)::int as n`))[0].n;
+    const p: any = await repo.preview(owner(TA, BA), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20 });
+    expect(p.scope).toMatchObject({ appliesTo: 'all_branches', wallet: 'one_salon_wallet' });
+    expect(p.scope.branches.map((b: any) => b.id).sort()).toEqual([BA, id('b7')].sort());
+    const earns = await q(`select eligible_cents::int c, backing_cents::int b from reward_earn_transactions where tenant_id = $1 and status = 'EARNED'`, [TA]);
+    expect(p.expected.earnings).toBe(earns.length);
+    expect(p.expected.actualBackingCents).toBe(earns.reduce((a: number, e: any) => a + e.b, 0));
+    // the proposed rule (2 points per $10) replayed: floor(eligible / 1000) × 20 tenths, 1 tenth = 1¢ of backing here
+    const replay = earns.reduce((a: number, e: any) => a + Math.floor(e.c / 1000) * 20, 0);
+    expect(p.expected.proposedBackingCents).toBe(replay);
+    expect(p.expected.differenceVsActualCents).toBe(replay - p.expected.actualBackingCents);
+    expect(p.approval).toEqual({ permission: 'pos.settings.edit', stepUp: true, canActivate: true, historyImmutable: true });
+    expect((await repo.preview(owner(TA, BA, ['pos.customers.view']), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20 }) as any).approval.canActivate).toBe(false);
+    const none: any = await repo.preview(owner(TX, id('bx')), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20 });
+    expect(none.expected).toMatchObject({ earnings: 0, actualBackingCents: null, proposedBackingCents: null });   // no history → no estimate
+    expect((await q(`select (select count(*) from tenant_earning_policy_versions)::int + (select count(*) from reward_earn_transactions)::int + (select count(*) from token_wallet_ledger)::int as n`))[0].n).toBe(before);
+  });
+  // extras GLOBAL LOYALTY REWARDS 11 (round 10): the savable history filters — type / branch / salon-local dates on the token
+  // ledger, status group / dates on purchases; newest first, server-paged; invalid values ignored; another salon never seen
+  it('extras GLOBAL LOYALTY REWARDS 11: ledger and purchase history filters (type, branch, salon dates, status), newest first', async () => {
+    const BA2 = id('b7');
+    const all: any = await repo.walletLedger(TA, 1, 50);
+    const alloc: any = await repo.walletLedger(TA, 1, 50, { entryType: 'earn_allocation' });
+    expect(alloc.items.length).toBe(all.items.filter((x: any) => x.entryType === 'earn_allocation').length);
+    expect(alloc.items.every((x: any) => x.entryType === 'earn_allocation')).toBe(true);
+    expect(alloc.applied).toMatchObject({ entryType: 'earn_allocation', branchId: null, timeZone: 'America/New_York' });
+    const north: any = await repo.walletLedger(TA, 1, 50, { entryType: 'earn_allocation', branchId: BA2 });
+    expect(north.items.map((x: any) => x.branchId)).toEqual([BA2]);
+    const ny = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    expect((await repo.walletLedger(TA, 1, 50, { from: ny, to: ny }) as any).total).toBe(all.total);   // everything here happened today
+    expect((await repo.walletLedger(TA, 1, 50, { from: '2020-01-01', to: '2020-01-31' }) as any).total).toBe(0);
+    const junk: any = await repo.walletLedger(TA, 1, 50, { entryType: 'drop table', branchId: 'x', from: '13/45/2020' });
+    expect(junk.total).toBe(all.total); expect(junk.applied).toMatchObject({ entryType: null, branchId: null, from: null });
+    const times = all.items.map((x: any) => x.at); expect([...times].sort().reverse()).toEqual(times);   // newest first
+    expect((await repo.walletLedger(TA, 1, 50, { branchId: '00000000-0000-4000-8000-000000000999' }) as any).total).toBe(0);   // a branch of no / another salon matches nothing
+    const funded: any = await repo.purchases(TA, 1, 50, { status: 'funded' });
+    expect(funded.total).toBeGreaterThan(0); expect(funded.items.every((x: any) => x.status === 'FUNDS_VERIFIED')).toBe(true);
+    const allP: any = await repo.purchases(TA, 1, 50);
+    expect((await repo.purchases(TA, 1, 50, { status: 'failed' }) as any).total + funded.total + (await repo.purchases(TA, 1, 50, { status: 'pending' }) as any).total).toBe(allP.total);
+    const taIds = new Set(allP.items.map((x: any) => x.id));
+    expect((await repo.purchases(TX, 1, 50, { status: 'funded' }) as any).items.some((x: any) => taIds.has(x.id))).toBe(false);   // another salon never sees these
   });
   it('Nov 3 audit — the rewards liability is the platform\'s on every line (earn used to tag it to the salon, redeem did not)', async () => {
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability' and tenant_id is not null`))[0].n)).toBe(0);

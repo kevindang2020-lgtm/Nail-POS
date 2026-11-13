@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { BookingCalendarAppointmentSource, zeroFill, ScheduleCapacitySource, overrideMinutes } from './forecast-history.kysely.source';
+import { BookingCalendarAppointmentSource, zeroFill, ScheduleCapacitySource, overrideMinutes, overlapMinutes } from './forecast-history.kysely.source';
 import { AppointmentForecastService, capacityGap } from './appointment-forecast.service';
 
 const T = 'c7730000-0000-4000-8000-000000000001', B = 'c7730000-0000-4000-8000-000000000002', B2 = 'c7730000-0000-4000-8000-000000000003', X = 'c7730000-0000-4000-8000-000000000004';
@@ -71,11 +71,12 @@ describe('Forecast-to-capacity gap', () => {
   });
   it('CAP-01 scheduled minutes: weekly template minus lunch, date overrides win, inactive / other-branch techs excluded; duration from booked history', async () => {
     const cap = await new ScheduleCapacitySource(db, () => NOW).getCapacity(ctx, ['2026-11-03', '2026-11-04', '2026-11-10', '2026-11-17']);
+    const z = { timeOffMinutes: 0, blockedMinutes: 0, uncoveredServices: [] };
     expect(cap.days).toEqual([
-      { date: '2026-11-03', scheduledMinutes: 660, technicians: 2 },
-      { date: '2026-11-04', scheduledMinutes: 0, technicians: 0 },
-      { date: '2026-11-10', scheduledMinutes: 420, technicians: 1 },
-      { date: '2026-11-17', scheduledMinutes: 570, technicians: 2 },
+      { date: '2026-11-03', scheduledMinutes: 660, technicians: 2, ...z },
+      { date: '2026-11-04', scheduledMinutes: 0, technicians: 0, ...z },
+      { date: '2026-11-10', scheduledMinutes: 420, technicians: 1, ...z },
+      { date: '2026-11-17', scheduledMinutes: 570, technicians: 2, ...z },
     ]);
     // the seeded appointments are 10:00–10:45; the duration column is the stored one (default 0 → excluded), so no sample yet
     expect(cap.avgAppointmentMinutes).toBeNull();
@@ -90,6 +91,33 @@ describe('Forecast-to-capacity gap', () => {
     expect(g.days.map((d) => [d.state, d.expectedMinutes, d.gapMinutes])).toEqual([['short', 720, -120], ['tight', 480, 120], ['ok', 300, 300], ['no_schedule', 120, -120]]);
     const u = capacityGap([{ date: 'a', point: 12, lower: 9, upper: 15 }], { ...cap, avgAppointmentMinutes: null });
     expect(u.days[0]).toMatchObject({ state: 'unknown', expectedMinutes: null, gapMinutes: null, scheduledMinutes: 600 });
+  });
+  it('extras AI Analytics Forecasting 20: approved time off and blocked time come off only the working windows; the most-booked services are checked against who works that day', async () => {
+    const SV = 'c7732000-0000-4000-8000-0000000000a1';
+    // Tue Nov 24: Ana 9-17 (lunch 12-13) has approved time off 08:00-10:00 local (only 60 min of it is inside her shift) and a
+    // pending one 14:00-15:00 (ignored); Bao 10-14 is blocked 13:00-15:00 (60 min inside his shift); a rejected day off is ignored
+    await q(sql`insert into technician_time_off (tenant_id, branch_id, technician_id, starts_at, ends_at, status) values
+      (${T}, ${B}, ${TA}, ('2026-11-24 08:00'::timestamp at time zone 'America/New_York'), ('2026-11-24 10:00'::timestamp at time zone 'America/New_York'), 'approved'),
+      (${T}, ${B}, ${TA}, ('2026-11-24 14:00'::timestamp at time zone 'America/New_York'), ('2026-11-24 15:00'::timestamp at time zone 'America/New_York'), 'pending'),
+      (${T}, ${B}, ${TB}, ('2026-11-24 00:00'::timestamp at time zone 'America/New_York'), ('2026-11-25 00:00'::timestamp at time zone 'America/New_York'), 'rejected')`);
+    await q(sql`insert into technician_blocked_times (tenant_id, branch_id, technician_id, block_date, start_time, end_time, reason) values (${T}, ${B}, ${TB}, '2026-11-24', '13:00', '15:00', 'training')`);
+    const cap = await new ScheduleCapacitySource(db, () => NOW).getCapacity(ctx, ['2026-11-24']);
+    expect(cap.days[0]).toMatchObject({ scheduledMinutes: 660 - 60 - 60, technicians: 2, timeOffMinutes: 60, blockedMinutes: 60 });
+    // a whole approved day off removes that technician from the day
+    await q(sql`insert into technician_time_off (tenant_id, branch_id, technician_id, starts_at, ends_at, status) values (${T}, null, ${TB}, ('2026-12-01 00:00'::timestamp at time zone 'America/New_York'), ('2026-12-02 00:00'::timestamp at time zone 'America/New_York'), 'approved')`);
+    expect((await new ScheduleCapacitySource(db, () => NOW).getCapacity(ctx, ['2026-12-01'])).days[0]).toMatchObject({ scheduledMinutes: 420, technicians: 1, timeOffMinutes: 240 });
+    // skills: a booked service only Bao is approved for is uncovered on Dec 1 (Bao off) and covered on Nov 24
+    const CAT = 'c7732000-0000-4000-8000-0000000000a2';
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name, status) values (${CAT}, ${T}, ${B}, 'Nails', 'active') on conflict do nothing`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values (${SV}, ${T}, ${B}, ${CAT}, 'Gel X', 60, 5000, 'active') on conflict do nothing`);
+    await q(sql`update pos_tech_appointments set services = ${JSON.stringify([{ serviceId: SV }])}::jsonb where tenant_id = ${T} and branch_id = ${B}`);
+    await q(sql`insert into technician_services (tenant_id, branch_id, technician_id, service_id, is_primary) values (${T}, ${B}, ${TB}, ${SV}, true)`);
+    const two = await new ScheduleCapacitySource(db, () => NOW).getCapacity(ctx, ['2026-11-24', '2026-12-01']);
+    expect(two.topServices).toEqual(['Gel X']);
+    expect(two.days.map((d) => d.uncoveredServices)).toEqual([[], ['Gel X']]);
+    const g = capacityGap([{ date: '2026-12-01', point: 3, lower: 2, upper: 4 }], two);
+    expect(g.days[0]).toMatchObject({ uncoveredServices: ['Gel X'], timeOffMinutes: 240 }); expect(g.topServices).toEqual(['Gel X']);
+    expect(overlapMinutes([[540, 720], [780, 1020]], 480, 600)).toBe(60);
   });
   it('CAP-03 overnight overrides count their full length; a day off is 0', () => {
     expect(overrideMinutes({ override_type: 'CUSTOM_SHIFT', start_local_time: '22:00', end_local_time: '02:00', ends_next_day: true, breaks_json: [] })).toBe(240);

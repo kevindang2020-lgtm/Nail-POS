@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
+const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn(), technicianEarnings: vi.fn() }));
 const payroll = vi.hoisted(() => ({ ticketTip: vi.fn(), setTicketTip: vi.fn(), adjustTicketTip: vi.fn() }));
 vi.mock('../api/posTipsScreenApi', () => ({ posTipsScreenApi: api }));
 vi.mock('../api/posPayrollApi', () => ({ posPayrollApi: payroll }));
@@ -28,6 +28,17 @@ beforeEach(() => {
 });
 
 describe('POSTipsScreen', () => {
+  // extras TIPS & GRATUITY 04 (round 10): the server says where a cash tip went — into the drawer or handed to the technician
+  it('cash source: the KPI splits cash into drawer / to technician and each cash row says where it went', async () => {
+    api.summary.mockResolvedValue({ ...summary, kpis: { ...summary.kpis, cashTipsCents: 1200, cashDrawerTipsCents: 500, cashToTechnicianTipsCents: 700 } });
+    api.transactions.mockResolvedValue(pageOf([row({ ticketId: 'tc', ticketNumber: '1060', method: 'cash', cardCents: 0, cashCents: 700, cashSource: 'technician' }), row({ ticketId: 'td', ticketNumber: '1053', method: 'cash', cardCents: 0, cashCents: 500, cashSource: 'drawer' }), row()]));
+    mount();
+    expect(await screen.findByTestId('kpi-cash')).toHaveTextContent('Drawer $5.00 · to technician $7.00');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'x' } });   // typing a search opens the transactions tab
+    expect(await screen.findByTestId('tip-cash-source-tc')).toHaveTextContent('handed to the technician');
+    expect(screen.getByTestId('tip-cash-source-td')).toHaveTextContent('into the drawer');
+    expect(screen.queryByTestId('tip-cash-source-t1')).toBeNull();   // a card tip has no cash source
+  });
   it('shows the five server KPIs and the photo reconciled: Vishal $9.60 allocated, the $19.20 snapshot flagged — not summed', async () => {
     mount();
     expect(await screen.findByRole('heading', { name: 'Tips & Gratuity' })).toBeInTheDocument();
@@ -145,5 +156,28 @@ describe('POSTipsScreen', () => {
     const rows = await screen.findAllByTestId('dist-row');
     expect(rows[0]).toHaveTextContent('2 ticket(s) do not add up');
     expect(screen.getAllByTestId('dist-unreconciled')).toHaveLength(1);
+  });
+  it('extras TIPS 01: a technician on Distribution opens one earnings overlay — allocated / paid / approved / open / not in a period, the pay periods, each ticket with their share; a ticket opens its detail', async () => {
+    api.technicianEarnings.mockResolvedValue({ technician: { id: 'v', name: 'Vishal verma', active: true },
+      totals: { allocatedCents: 1660, paidCents: 700, approvedCents: 0, openCents: 960, unscheduledCents: 0, pendingCents: 960, tickets: 2, manualCorrectionCents: -500, reversedCents: 0, netCents: 1160 },
+      periods: [{ id: 'p0', label: 'Sep 16–30', state: 'paid', allocatedCents: 700, tickets: 1, paidAt: '2026-09-30T20:00:00Z' }, { id: 'p1', label: 'This period', state: 'open', allocatedCents: 960, tickets: 1, paidAt: null }],
+      items: [{ ticketId: 't1', ticketNumber: '1052', collectedAt: '2026-10-28T16:28:00Z', ticketTipCents: 960, allocatedCents: 960, sharedWith: 0, payoutState: 'open', period: { id: 'p1', label: 'This period', paidAt: null } },
+        { ticketId: 't0', ticketNumber: '0990', collectedAt: '2026-09-20T16:28:00Z', ticketTipCents: 1200, allocatedCents: 700, sharedWith: 1, payoutState: 'paid', period: { id: 'p0', label: 'Sep 16–30', paidAt: '2026-09-30T20:00:00Z' } }],
+      total: 2, page: 1, pageSize: 10, pageCount: 1, period: PERIOD, dateBasis: 'collected' });
+    api.detail.mockResolvedValue({ tip: row(), payments: [], allocations: [], adjustments: [], audit: [], permissions: { adjust: false } });
+    mount(); fireEvent.click(await screen.findByTestId('tab-distribution'));
+    fireEvent.click(await screen.findByTestId('dist-earnings'));
+    const o = await screen.findByTestId('tip-earnings');
+    expect(api.technicianEarnings).toHaveBeenCalledWith('v', expect.objectContaining({ preset: 'month', page: 1 }));
+    expect(await screen.findByTestId('earn-allocated')).toHaveTextContent('$16.60');
+    expect(screen.getByTestId('earn-paid')).toHaveTextContent('Paid $7.00'); expect(screen.getByTestId('earn-open')).toHaveTextContent('In an open pay period $9.60');
+    expect(screen.getByTestId('earn-net')).toHaveTextContent('$11.60');
+    expect(screen.getAllByTestId('earn-period-row')[0]).toHaveTextContent('Sep 16–30');
+    const rows = screen.getAllByTestId('earn-ticket-row');
+    expect(rows.map((r) => r.getAttribute('data-state'))).toEqual(['open', 'paid']);
+    expect(rows[1]).toHaveTextContent('of $12.00, shared with 1');
+    expect(o).toBeInTheDocument();
+    fireEvent.click(screen.getByText('#0990'));
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('t0'));
   });
 });

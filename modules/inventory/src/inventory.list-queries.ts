@@ -6,6 +6,8 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 
 export const InventoryControllerListQueries = {
   products: { filters: { categoryId: { type: 'id' }, brandId: { type: 'id' } }, search: { params: ['search'] } },
+  productDuplicates: { search: false, params: ['name', 'sku', 'barcode', 'supplierSku', 'sizeValue', 'sizeUnit', 'exceptId'] },
+  stockPreview: { search: false, params: ['quantity'] },
   reports: { filters: { status: { type: 'text' } }, search: false },
   listPOs: { filters: { status: { type: 'text' } }, search: false },
   listCounts: { filters: { status: { type: 'text' } }, search: false },

@@ -53,6 +53,9 @@ export async function runGr<T>(fn: () => Promise<T>): Promise<T> {
 }
 const id = (v: string): string => { if (!UUID.test(String(v ?? ''))) throw new GlobalRewardsError('That item was not found.', 'RESOURCE_NOT_FOUND', 404); return v; };
 const PAGE = { filters: {}, search: false, maxLimit: 50, defaultLimit: 20, params: ['page', 'pageSize'] } satisfies ListQuerySpec;
+/** extras GLOBAL LOYALTY REWARDS 11: the savable history filters (salon-local dates; the handler applies the bounds itself) */
+const LEDGER_Q = { filters: { entryType: { type: 'text' }, branchId: { type: 'id' } }, search: false, maxLimit: 50, defaultLimit: 20, params: ['page', 'pageSize'], dateRange: { maxDays: 'analytics' } } satisfies ListQuerySpec;
+const PURCHASES_Q = { filters: { status: { type: 'text' } }, search: false, maxLimit: 50, defaultLimit: 20, params: ['page', 'pageSize'], dateRange: { maxDays: 'analytics' } } satisfies ListQuerySpec;
 const pg = (q: any) => ({ page: Number(q?.page) || 1, size: Number(q?.pageSize) || 20 });
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
@@ -85,10 +88,10 @@ export class GlobalRewardsController {
   // C1 audit (Nov 4 2026) §5.6: the salon's own low / critical token-balance warnings (owner)
   @Post('wallet/levels') @RequirePermission('pos.settings.edit')
   walletLevels(@Req() r: any, @Body(ValidatedBody(GR_WALLET_LEVELS_BODY, { strict: true })) b: any) { return runGr(() => this.s().setWalletLevels(grCtx(r), b ?? {})); }
-  @Get('wallet/ledger') @RequirePermission('pos.customers.view') @ListQuery(PAGE)
-  ledger(@Req() r: any, @Query() q: any) { const p = pg(q); return runGr(() => this.s().ledger(grCtx(r), p.page, p.size)); }
-  @Get('purchases') @RequirePermission('pos.customers.view') @ListQuery(PAGE)
-  purchases(@Req() r: any, @Query() q: any) { const p = pg(q); return runGr(() => this.s().purchases(grCtx(r), p.page, p.size)); }
+  @Get('wallet/ledger') @RequirePermission('pos.customers.view') @ListQuery(LEDGER_Q)
+  ledger(@Req() r: any, @Query() q: any) { const p = pg(q); return runGr(() => this.s().ledger(grCtx(r), p.page, p.size, { entryType: q?.entryType, branchId: q?.branchId, from: q?.from, to: q?.to })); }
+  @Get('purchases') @RequirePermission('pos.customers.view') @ListQuery(PURCHASES_Q)
+  purchases(@Req() r: any, @Query() q: any) { const p = pg(q); return runGr(() => this.s().purchases(grCtx(r), p.page, p.size, { status: q?.status, from: q?.from, to: q?.to })); }
   @Get('purchases/:id') @RequirePermission('pos.customers.view')
   purchase(@Req() r: any, @Param('id') pid: string) { return runGr(() => this.s().purchase(grCtx(r), id(pid))); }
   // extras GLOBAL LOYALTY REWARDS 07 / 10: this salon's payables with provider + journal evidence and settlement freshness (read-only)

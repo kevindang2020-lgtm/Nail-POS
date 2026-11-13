@@ -1,12 +1,10 @@
+// GLOBAL LOYALTY REWARDS 03 (round 10): the depletion estimate is the SERVER's (walletFundingForecast over the wallet ledger's
+// last 30 days, pinned in modules/loyalty global-rewards-core.vitest.spec.ts + global-rewards-engine.pgtest). The POS no longer
+// computes its own — the old walletForecastDays (this calendar month ÷ the DEVICE's day of month) was removed. This file pins that.
 import { describe, it, expect } from 'vitest';
-import { walletForecastDays } from './RewardsNetworkPanel';
-describe('walletForecastDays (estimate only)', () => {
-  it('available ÷ this month’s daily use, rounded down', () => {
-    expect(walletForecastDays(10_000, 3_000, 10)).toBe(33);   // 300/day → 33 days
-    expect(walletForecastDays(0, 3_000, 10)).toBe(0);
-  });
-  it('no use this month → no estimate (never invented)', () => {
-    expect(walletForecastDays(10_000, 0, 10)).toBeNull();
-    expect(walletForecastDays(10_000, 500, 0)).toBeNull();
+import * as panel from './RewardsNetworkPanel';
+describe('wallet forecast (server-owned)', () => {
+  it('the panel exports no forecast arithmetic of its own', () => {
+    expect((panel as Record<string, unknown>).walletForecastDays).toBeUndefined();
   });
 });

@@ -1259,4 +1259,7 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiInventory.never": "chưa bao giờ", // DRAFT — Kevin reviews
   "growth.aiInventory.noMovement": "không biến động", // DRAFT — Kevin reviews
   "growth.aiInventory.weeks": "{n} tuần", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.off": "Đã trừ nghỉ phép được duyệt {o} · giờ chặn {b}", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.skills": "Không thợ nào đang làm được duyệt cho: {s}", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.top": "Kỹ năng được đối chiếu với các dịch vụ đặt nhiều nhất: {s}", // DRAFT — Kevin reviews
 };

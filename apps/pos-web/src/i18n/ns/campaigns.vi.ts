@@ -293,4 +293,13 @@ export const CAMPAIGNS_VI: Record<keyof typeof CAMPAIGNS_EN, string> = {
   "cc.h.sys.content": "Nội dung tin nhắn", // DRAFT — Kevin reviews
   "cc.h.sys.consent": "Sự đồng ý của người nhận", // DRAFT — Kevin reviews
   "cc.h.sys.costs": "Chi phí so với ngân sách", // DRAFT — Kevin reviews
+  "cc.attr.exposure": "Tiếp cận", // DRAFT — Kevin reviews
+  "cc.attr.exposureVal": "{d} đã nhận trên {s} đã gửi", // DRAFT — Kevin reviews
+  "cc.attr.exposureHint": "Số người nhận được tin. Nhận được tin chưa phải là kết quả.", // DRAFT — Kevin reviews
+  "cc.attr.associated": "Lịch hẹn liên quan", // DRAFT — Kevin reviews
+  "cc.attr.associatedVal": "{n} lịch hẹn sau chiến dịch", // DRAFT — Kevin reviews
+  "cc.attr.associatedHint": "Đặt lịch sau khi nhận tin. Thời điểm trùng khớp, chưa chứng minh tin nhắn là nguyên nhân.", // DRAFT — Kevin reviews
+  "cc.attr.validated": "Kết quả đã xác nhận", // DRAFT — Kevin reviews
+  "cc.attr.validatedVal": "{n} mã chiến dịch đã dùng · {a} trên hóa đơn đã trả", // DRAFT — Kevin reviews
+  "cc.attr.validatedHint": "Lượt đã trả tiền dùng mã phát cho chiến dịch này. Có liên kết với chiến dịch, chưa chứng minh là lượt thêm.", // DRAFT — Kevin reviews
 };

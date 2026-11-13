@@ -2,7 +2,7 @@
 // refuses to fake (a failed request is "unknown", never an empty green list).
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-vi.mock('../api/superAdminJobsApi', () => ({ superAdminJobsApi: { selfTest: vi.fn(), stats: vi.fn(), list: vi.fn(), retry: vi.fn(), cancel: vi.fn(), deadLetters: vi.fn(), retryDeadLetter: vi.fn(), discardDeadLetter: vi.fn() } }));
+vi.mock('../api/superAdminJobsApi', () => ({ superAdminJobsApi: { eventHealth: vi.fn(), selfTest: vi.fn(), stats: vi.fn(), list: vi.fn(), retry: vi.fn(), cancel: vi.fn(), deadLetters: vi.fn(), retryDeadLetter: vi.fn(), discardDeadLetter: vi.fn() } }));
 import { superAdminJobsApi as api } from '../api/superAdminJobsApi';
 import { JobsDeadLettersScreen, waitLabel } from './JobsDeadLettersScreen';
 
@@ -15,6 +15,9 @@ beforeEach(() => {
   vi.mocked(api.stats).mockResolvedValue({ classes: [cls('critical'), cls('standard', { dead: 2, queued: 3, oldestQueuedSeconds: 125 })], handlers: ['reports.export'] } as never);
   vi.mocked(api.list).mockResolvedValue({ items: [job()] } as never);
   vi.mocked(api.deadLetters).mockResolvedValue([letter()] as never);
+  vi.mocked(api.eventHealth).mockResolvedValue({ outbox: { pending: 0, claimed: 0, published: 9, failed: 0, oldestPendingAgeSec: null, publishedLastHour: 9 }, consumers: [
+    { consumerName: 'loyalty.points', eventTypes: ['visit.completed'], critical: true, processedLastHour: 12, lagSec: 90, duplicateEventsLastDay: 2, duplicateDeliveries: 5 },
+    { consumerName: 'sms.receipts', eventTypes: ['payment.captured'], critical: false, processedLastHour: 3, lagSec: null, duplicateEventsLastDay: 0, duplicateDeliveries: 0 }] } as never);
 });
 
 describe('Jobs & Dead Letters', () => {
@@ -74,5 +77,20 @@ describe('Jobs & Dead Letters', () => {
   });
   it('waitLabel', () => {
     expect(waitLabel(null)).toBe('nothing waiting'); expect(waitLabel(42)).toBe('42s'); expect(waitLabel(7200)).toBe('2.0 h');
+  });
+  // extras TECH QUEUE 15 (round 10): retries / duplicates per event consumer — duplicates absorbed are counted, handled once
+  it('shows each event consumer with its lag, open dead letters and the duplicate deliveries absorbed in the last day', async () => {
+    render(<JobsDeadLettersScreen />);
+    const row = await screen.findByTestId('consumer-loyalty.points');
+    expect(row).toHaveTextContent('loyalty.points · critical'); expect(row).toHaveTextContent('2 min');
+    expect(screen.getByTestId('consumer-dups-loyalty.points')).toHaveTextContent('5 repeat(s) of 2 event(s) — handled once');
+    expect(screen.getByTestId('consumer-dups-sms.receipts')).toHaveTextContent('none');
+    await waitFor(() => expect(row.children[3]).toHaveTextContent('1'));   // the one open dead letter of loyalty.points
+  });
+  it('a failed health request says so (never an empty green table)', async () => {
+    vi.mocked(api.eventHealth).mockRejectedValue(new Error('403'));
+    render(<JobsDeadLettersScreen />);
+    expect(await screen.findByTestId('consumers-failed')).toBeInTheDocument();
+    expect(screen.queryByTestId('consumers')).toBeNull();
   });
 });

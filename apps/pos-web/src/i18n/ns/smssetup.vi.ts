@@ -142,4 +142,44 @@ export const SMSSETUP_VI = {
   "ms.cb.k.email_transactional": "Email hóa đơn / đặt lịch", // DRAFT — Kevin reviews
   "ms.cb.k.email_marketing": "Email tiếp thị", // DRAFT — Kevin reviews
   "ms.cb.note": "Chỉ xem. Mã đặt lịch là tin giao dịch nên vẫn gửi sau STOP; mọi tin khác bị chặn. Ở đây không thay đổi sự đồng ý của ai.", // DRAFT — Kevin reviews
+  "ms.br.sum": "{r} sẵn sàng · {p} đang chờ · {b} bị chặn", // DRAFT — Kevin reviews
+  "ms.br.next": "Việc tiếp theo:", // DRAFT — Kevin reviews
+  "ms.br.sim": "Chi nhánh này sẽ dùng gì", // DRAFT — Kevin reviews
+  "ms.br.sim.reminders": "Nhắc lịch & tin theo dõi", // DRAFT — Kevin reviews
+  "ms.br.sim.testSms": "Tin nhắn thử", // DRAFT — Kevin reviews
+  "ms.br.sim.otp": "Mã đặt lịch", // DRAFT — Kevin reviews
+  "ms.br.via.ms": "Messaging Service MG…{sid} (số {n})", // DRAFT — Kevin reviews
+  "ms.br.via.number": "số {n}", // DRAFT — Kevin reviews
+  "ms.br.via.verify": "dịch vụ Verify VA…{sid}", // DRAFT — Kevin reviews
+  "ms.br.via.smsCode": "mã SMS từ số gửi", // DRAFT — Kevin reviews
+  "ms.br.via.off": "mã đặt lịch đang tắt", // DRAFT — Kevin reviews
+  "ms.br.via.none": "chưa thiết lập", // DRAFT — Kevin reviews
+  "ms.br.sendable": "gửi được", // DRAFT — Kevin reviews
+  "ms.br.notSendable": "chưa gửi được", // DRAFT — Kevin reviews
+  "ms.br.stop.blocked_by_stop": "không gửi cho người đã nhắn STOP", // DRAFT — Kevin reviews
+  "ms.br.stop.sent_despite_stop": "vẫn gửi sau STOP (giao dịch)", // DRAFT — Kevin reviews
+  "ms.trace.request": "Ứng dụng gửi yêu cầu: {at}", // DRAFT — Kevin reviews
+  "ms.trace.accepted": "Nhà cung cấp đã nhận (tin {ref})", // DRAFT — Kevin reviews
+  "ms.trace.notAccepted": "Nhà cung cấp không nhận", // DRAFT — Kevin reviews
+  "ms.trace.noCallbacks": "Chưa nhận báo cáo giao tin", // DRAFT — Kevin reviews
+  "ms.trace.callback": "Báo cáo của nhà cung cấp: {status} lúc {at}", // DRAFT — Kevin reviews
+  "ms.trace.notApplied": "không đổi trạng thái (lặp lại hoặc sai thứ tự)", // DRAFT — Kevin reviews
+  "ms.trace.now": "Hiện tại: {s}", // DRAFT — Kevin reviews
+  "ms.email.title": "Báo cáo gửi e-mail", // DRAFT — Kevin reviews
+  "ms.email.hint": "Đã cài chưa có nghĩa là đang chạy: chỉ xác nhận đã gửi khi có sự kiện gửi có chữ ký từ nhà cung cấp e-mail.", // DRAFT — Kevin reviews
+  "ms.email.config": "Đã cài nhà cung cấp:", // DRAFT — Kevin reviews
+  "ms.email.callbacks": "Sự kiện gửi:", // DRAFT — Kevin reviews
+  "ms.email.lastEvent": "sự kiện gần nhất {t}", // DRAFT — Kevin reviews
+  "ms.email.error": "Không đọc được tình trạng e-mail ở đây. Mở E-mail để kiểm tra.", // DRAFT — Kevin reviews
+  "ms.email.open": "Mở E-mail", // DRAFT — Kevin reviews
+  "ms.email.overall.ready": "Sẵn sàng", // DRAFT — Kevin reviews
+  "ms.email.overall.setup_required": "Cần cài đặt", // DRAFT — Kevin reviews
+  "ms.email.overall.unknown": "Chưa kiểm tra", // DRAFT — Kevin reviews
+  "ms.email.overall.attention_required": "Cần xử lý", // DRAFT — Kevin reviews
+  "ms.email.state.receiving": "Đang nhận", // DRAFT — Kevin reviews
+  "ms.email.state.stale": "7 ngày không có", // DRAFT — Kevin reviews
+  "ms.email.state.unknown": "Chưa nhận được", // DRAFT — Kevin reviews
+  "ms.email.state.not_configured": "Chưa cài", // DRAFT — Kevin reviews
+  "ms.email.state.ready_to_check": "Đã cài", // DRAFT — Kevin reviews
+  "ms.email.state.incomplete": "Chỉ là người gửi thử", // DRAFT — Kevin reviews
 } as const;

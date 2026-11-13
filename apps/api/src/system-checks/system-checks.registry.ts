@@ -232,6 +232,18 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'duplicate_usage_movement', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_type, m.related_id, m.product_id, m.movement_type FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.related_type = 'ticket_line' AND m.movement_type = 'service_usage'   -- a usage EVENT is already one movement (uq_inv_movements_usage_source, 716)
         GROUP BY m.related_type, m.related_id, m.product_id, m.movement_type HAVING count(*) > 1`) },
+    // extras Products Management 04 (round 10) — every stock movement posts ONCE to the canonical ledger: what a purchase
+    // order says it received, and what a transfer says it moved, must equal the ledger rows written for it (per product)
+    { key: 'po_receipt_vs_ledger', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders po
+        JOIN (SELECT pl.purchase_order_id, pl.product_id, sum(pl.quantity_received * greatest(1, coalesce(pl.units_per_purchase_unit, 1)))::int AS units
+                FROM purchase_order_lines pl WHERE pl.tenant_id = ${t}::uuid GROUP BY pl.purchase_order_id, pl.product_id) rl ON rl.purchase_order_id = po.id
+        WHERE po.tenant_id = ${t}::uuid ${b ? sql`AND po.branch_id::text = ${b}` : sql``}
+          AND rl.units <> coalesce((SELECT sum(mv.quantity_change) FROM inventory_stock_movements mv WHERE mv.tenant_id = po.tenant_id AND mv.related_type = 'purchase_order'
+            AND mv.related_id::text = po.id::text AND mv.product_id = rl.product_id AND mv.movement_type = 'purchase_received'), 0)`) },
+    { key: 'transfer_vs_ledger', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM inventory_transfer_lines tl JOIN inventory_transfers tr ON tr.id = tl.transfer_id AND tr.tenant_id = tl.tenant_id
+        WHERE tl.tenant_id = ${t}::uuid ${b ? sql`AND (tr.from_branch_id::text = ${b} OR tr.to_branch_id::text = ${b})` : sql``}
+          AND coalesce(tl.quantity_moved, 0) <> coalesce((SELECT -sum(mv.quantity_change) FROM inventory_stock_movements mv WHERE mv.tenant_id = tl.tenant_id AND mv.related_type = 'transfer'
+            AND mv.related_id::text = tl.transfer_id::text AND mv.product_id = tl.product_id AND mv.movement_type = 'transfer_out'), 0)`) },
     // extras (Services & Products 2 · 04 inventory alert reconciliation): the dashboard's inventory card counts every live
     // low product; the sidebar badge / Open Alerts leave out the ones acknowledged in this episode; the persisted alert rows
     // keep the workflow. These two name the rows where those surfaces can disagree with the canonical stock.
@@ -356,6 +368,29 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         WHERE w.tenant_id = ${t}::uuid ${br('x', b)} AND w.clock_status IN ('CLOCKED_IN', 'ON_BREAK') AND (x.archived_at IS NOT NULL OR NOT coalesce(x.is_active, true) OR coalesce(x.status, 'active') <> 'active')`) },
     { key: 'punch_open_past_day', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_shifts x WHERE x.tenant_id = ${t}::uuid ${br('x', b)}
         AND x.start_time IS NOT NULL AND x.end_time IS NULL AND x.shift_date < ${today('x', t)}`) },
+    // extras TECHNICIANS MANAGEMENT CENTER 02 (round 10) — record integrity: duplicate / foreign account references, the app
+    // account that can no longer sign in or has not been used, and a technician working at a branch that is not open
+    { key: 'duplicate_app_account', severity: 'FAILED', count: (t, b) => n(sql`SELECT x.user_id FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND x.user_id IS NOT NULL
+        GROUP BY x.user_id HAVING count(*) > 1`) },
+    { key: 'app_account_foreign', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN users u ON u.id = x.user_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND u.tenant_id IS DISTINCT FROM x.tenant_id`) },
+    { key: 'app_account_not_active', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN users u ON u.id = x.user_id AND u.tenant_id = x.tenant_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND coalesce(u.status, '') <> 'active'`) },
+    { key: 'app_not_used_90d', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN users u ON u.id = x.user_id AND u.tenant_id = x.tenant_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND u.status = 'active' AND coalesce(u.last_login_at, u.created_at) < now() - interval '90 days'`) },
+    { key: 'branch_not_open', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN branches bx ON bx.id = x.branch_id AND bx.tenant_id = x.tenant_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND coalesce(bx.status, 'active') <> 'active'`) },
+    // extras TECHNICIANS MANAGEMENT CENTER 05 (round 10) — service mapping: an approval for a service that is archived /
+    // inactive, and an approval the eligibility authority would refuse because the service requires a certification the
+    // technician does not hold verified, unrevoked and unexpired (the catalog and the mapping contradict each other)
+    { key: 'service_link_archived', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_services ts JOIN technicians x ON x.id = ts.technician_id AND x.tenant_id = ts.tenant_id
+        JOIN services sx ON sx.id = ts.service_id AND sx.tenant_id = ts.tenant_id
+        WHERE ts.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND (sx.archived_at IS NOT NULL OR coalesce(sx.status, 'active') <> 'active')`) },
+    { key: 'service_certification_missing', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_services ts JOIN technicians x ON x.id = ts.technician_id AND x.tenant_id = ts.tenant_id
+        JOIN services sx ON sx.id = ts.service_id AND sx.tenant_id = ts.tenant_id
+        WHERE ts.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND sx.archived_at IS NULL AND nullif(btrim(sx.required_certification), '') IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM technician_certifications c WHERE c.tenant_id = ts.tenant_id AND c.technician_id = x.id AND lower(btrim(c.name)) = lower(btrim(sx.required_certification))
+            AND c.verification_status = 'VERIFIED' AND c.revoked_reason IS NULL AND (c.expires_at IS NULL OR c.expires_at >= ${today('x', t)}))`) },
     { key: 'no_service_mapping', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM technician_services ts WHERE ts.tenant_id = x.tenant_id AND ts.technician_id = x.id)`) },
     { key: 'certification_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT DISTINCT x.id FROM technician_certifications c JOIN technicians x ON x.id = c.technician_id AND x.tenant_id = c.tenant_id
@@ -646,6 +681,25 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'queue_waiting_long', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status IN ('waiting', 'called', 'assigned', 'ready_for_tech')
         AND q.checked_in_at < now() - interval '3 hours'`) },
     { key: 'in_service_without_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status = 'in_service' AND q.ticket_id IS NULL`) },
+    // extras Serving 08 (Nov 13 2026) — per-ticket elapsed vs expected, from the ticket's own timestamps: the floor shows
+    // elapsed = wall time since serving_started_at minus accumulated pauses, and expected = the sum of its live lines'
+    // duration snapshots. Each check finds a live ticket where that comparison would be fabricated or impossible.
+    // (1) the timestamps contradict each other: started in the future, done before it started, or paused longer than it has run
+    { key: 'serving_timing_contradicts', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at IS NOT NULL
+        AND (k.serving_started_at > now() + interval '5 minutes' OR k.service_done_at < k.serving_started_at
+          OR (k.service_done_at IS NULL AND k.paid_at IS NULL AND coalesce(k.accumulated_paused_ms, 0) > extract(epoch from (coalesce(k.serving_paused_at, now()) - k.serving_started_at)) * 1000 + 60000))`) },
+    // (2) in service with no expected duration: elapsed cannot be compared, so the floor must show "—", never a percentage
+    { key: 'serving_no_estimate', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at IS NOT NULL
+        AND k.service_done_at IS NULL AND k.paid_at IS NULL AND k.payment_status IS DISTINCT FROM 'paid'
+        AND coalesce((SELECT sum(k2.duration_minutes_snapshot) FROM ticket_service_lines k2 WHERE k2.tenant_id = k.tenant_id AND k2.ticket_id = k.id AND k2.removed_at IS NULL
+          AND coalesce(k2.status, '') NOT IN ('cancelled', 'removed', 'voided')), 0) <= 0`) },
+    // (3) elapsed (pauses taken off) is more than twice the ticket's own estimate: the timer was most likely never stopped
+    { key: 'serving_far_over_estimate', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM (SELECT k.id,
+          (extract(epoch from (coalesce(k.serving_paused_at, now()) - k.serving_started_at)) * 1000 - coalesce(k.accumulated_paused_ms, 0)) / 60000.0 AS elapsed_min,
+          (SELECT sum(k2.duration_minutes_snapshot) FROM ticket_service_lines k2 WHERE k2.tenant_id = k.tenant_id AND k2.ticket_id = k.id AND k2.removed_at IS NULL
+            AND coalesce(k2.status, '') NOT IN ('cancelled', 'removed', 'voided')) AS est_min
+        FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at IS NOT NULL AND k.service_done_at IS NULL AND k.paid_at IS NULL
+          AND k.payment_status IS DISTINCT FROM 'paid') sv WHERE sv.est_min > 0 AND sv.elapsed_min > 2 * sv.est_min`) },
   ] },
 
 
@@ -661,6 +715,28 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
 
 
 
+
+  // ── Device & Integration Logs (extras Device Integration Logs 01, round 10): logging accuracy & source coverage — the
+  //    registered devices against the events actually observed from them, and the workers that should be producing ─────
+  'device-logs': { permission: 'pos.logs.view', checks: [
+    // a check-in kiosk that is alive (seen in the last day) but has produced no event in 30 days — a silent source
+    { key: 'kiosk_alive_no_events', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM go_checkin_devices g WHERE g.tenant_id = ${t}::uuid ${br('g', b)} AND g.disabled_at IS NULL
+        AND g.last_seen_at > now() - interval '1 day'
+        AND NOT EXISTS (SELECT 1 FROM go_checkin_logs gl WHERE gl.tenant_id = g.tenant_id AND gl.device_id = g.id AND gl.created_at > now() - interval '30 days')`) },
+    // a payment terminal that is alive but has no device / integration event in 30 days — its events are not reaching the log
+    { key: 'terminal_alive_no_events', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_payment_terminals w WHERE w.tenant_id::text = ${t} ${br('w', b)} AND w.disabled_at IS NULL
+        AND coalesce(w.last_seen_at, w.last_ping_at) > now() - interval '1 day'
+        AND NOT EXISTS (SELECT 1 FROM tenant_event_logs el WHERE el.tenant_id::text = w.tenant_id::text AND el.related_id = w.id::text AND el.created_at > now() - interval '30 days')`) },
+    // a device event from a producer the salon has not registered (no terminal, display, station or kiosk has that id)
+    { key: 'device_event_unregistered_source', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_event_logs e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.category = 'device'
+        AND e.related_id IS NOT NULL AND e.created_at > now() - interval '7 days'
+        AND NOT EXISTS (SELECT 1 FROM pos_payment_terminals w2 WHERE w2.tenant_id::text = e.tenant_id::text AND w2.id::text = e.related_id)
+        AND NOT EXISTS (SELECT 1 FROM customer_display_devices cd WHERE cd.tenant_id = e.tenant_id AND cd.id::text = e.related_id)
+        AND NOT EXISTS (SELECT 1 FROM pos_stations ps WHERE ps.tenant_id = e.tenant_id AND ps.id::text = e.related_id)
+        AND NOT EXISTS (SELECT 1 FROM go_checkin_devices g2 WHERE g2.tenant_id = e.tenant_id AND g2.id::text = e.related_id)`) },
+    // a background job of this salon still 'running' after its worker lease ran out — a stuck worker
+    { key: 'job_stuck_running', severity: 'WARNING', count: (t) => n(sql`SELECT 1 FROM jobs jb WHERE jb.tenant_id = ${t}::uuid AND jb.status = 'running' AND jb.lease_until < now() - interval '5 minutes'`) },
+  ] },
 
   // ── Approvals Management & Authorization Center ───────────────────────────────────────────────────────────────────
   approvals: { permission: 'approvals.view', checks: [

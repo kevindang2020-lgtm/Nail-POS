@@ -293,6 +293,12 @@ describe('Test SMS: confirmed, idempotent, recorded — Delivered only from the 
     expect(r.lastTest).toMatchObject({ status: 'delivered', final: true });
     expect(r.inbound.statusCallback.state).toBe('verified');
     expect(r.checklist.find((c) => c.key === 'test')!.state).toBe('done');
+    // extras TEXT MESSAGING SETUP 11 (round 10): each verified callback is kept (append-only), the late one marked not applied;
+    // the forged one (bad signature) never reaches the log
+    const log = (await sql<any>`select provider_status, applied, signature_verified from notification_delivery_events where tenant_id = ${A} and provider_message_sid = ${ev.sid} order by received_at, id`.execute(db)).rows;
+    expect(log).toEqual([{ provider_status: 'delivered', applied: true, signature_verified: true }, { provider_status: 'sent', applied: false, signature_verified: true }]);
+    expect((await inbound.handleStatus({ sid: ev.sid, status: 'delivered', signature: computeTwilioSignature(TOK_A, ST_URL, p), url: ST_URL, params: p }))).toEqual({ status: 'recorded', updated: 0 });   // a repeat
+    expect((await sql<any>`select count(*)::int n from notification_delivery_events where tenant_id = ${A} and provider_message_sid = ${ev.sid}`.execute(db)).rows[0].n).toBe(2);   // deduplicated
   });
   it('a signed inbound text makes inbound "Verified" (never inferred from the outbound test)', async () => {
     const p = { From: DEST, To: NUM_A, Body: 'hello', AccountSid: AC_A };

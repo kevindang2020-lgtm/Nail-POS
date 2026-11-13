@@ -203,6 +203,7 @@ export interface CustomerAppointmentRow {
 }
 export interface CustomerTicketRow { ticketId: string; date: string; totalCents: number; paymentMethod: string; status: string; }
 export interface CustomerReceiptRow { receiptId: string; date: string; totalCents: number; channel: string; }
+export type { CustomerNotesPreferenceFlag, CustomerNotesReviewResponse } from '@aipowersalon/api-contracts/tenant';
 export interface CustomerNotes { salonNotes: string; allergyNotes: string; preferredStyle: string; preferredTechnician: string; servicePreferences: string; warnings: string; customerVisible: boolean; preferredLanguage?: string; preferredBranch?: string; preferredName?: string; preferredNailShapeColor?: string; favoriteProducts?: string; appointmentPreferences?: string; }
 export interface CustomerLoyalty { points: number; earned: number; redeemed: number; tier: string; tierThresholdPoints: number; birthdayReward: boolean; referralReward: boolean; expiresAt?: string; }
 export interface CustomerMembership { plan: string; status: "none" | "active" | "paused" | "cancelled"; startDate?: string; renewalDate?: string; benefits: string[]; billingStatus: string; }

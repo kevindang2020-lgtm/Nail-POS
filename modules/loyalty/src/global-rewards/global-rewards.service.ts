@@ -7,10 +7,10 @@ import { EVENTS, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { logException } from '@aipowersalon/observability';
 import { GlobalRewardsRepository, listIdempotencyEvents, type GrCtx } from './global-rewards.repository';
 import { GlobalRewardsPlatformRepository } from './global-rewards-platform.repository';
-import { GlobalRewardsError, validateGlobalRate, previewRows, rateLabel, type PurchaseStatus } from './global-rewards-core';
+import { GlobalRewardsError, validateGlobalRate, previewRows, rateLabel, networkReadiness, type PurchaseStatus } from './global-rewards-core';
 import type { TokenFundingProvider } from './token-funding-provider';
 import { runBooksCheck, integritySummary, listRuns, listFindings, reviewFinding, listPayables, lineage, listFraudAlerts, reviewFraudAlert, findingsCsv } from './rewards-books-check';
-import { markPayoutEligible, holdPayable, requestPayout, type PayoutProvider } from './rewards-payouts';
+import { markPayoutEligible, holdPayable, requestPayout, payoutProviderFromEnv, type PayoutProvider } from './rewards-payouts';
 import { canMoveToSql } from '@aipowersalon/database';
 import { GLOBAL_REWARDS_ACCOUNT } from './global-rewards-lifecycles';
 import { flagState } from './global-rewards-flags';
@@ -38,7 +38,10 @@ export class GlobalRewardsService {
 
   async state(ctx: GrCtx) {
     const v = await this.repo.policyView(ctx);
-    return { ...v, funding: { provider: this.provider?.name ?? null, sandbox: !!this.provider?.sandbox, available: !!this.provider } };
+    const funding = { provider: this.provider?.name ?? null, sandbox: !!this.provider?.sandbox, available: !!this.provider };
+    // extras GLOBAL LOYALTY REWARDS 14: per-feature readiness from the real flags, pauses, enrollment and connected providers
+    const readiness = networkReadiness({ flags: v.flags, program: v.program, enrolled: v.enrollment?.status === 'enrolled', funding, payoutProvider: payoutProviderFromEnv()?.name ?? null });
+    return { ...v, funding, readiness };
   }
   preview(ctx: GrCtx, body: Record<string, unknown>) { return this.repo.preview(ctx, body); }
   history(ctx: GrCtx) { return this.repo.history(ctx); }
@@ -50,8 +53,8 @@ export class GlobalRewardsService {
 
   wallet(ctx: GrCtx) { return this.repo.walletSummary(ctx.tenantId); }
   async setWalletLevels(ctx: GrCtx, body: Record<string, unknown>) { const r = await this.repo.setWalletLevels(ctx, body); await this.emit(ctx.tenantId, 'wallet'); return r; }
-  ledger(ctx: GrCtx, page: number, pageSize: number) { return this.repo.walletLedger(ctx.tenantId, page, pageSize); }
-  purchases(ctx: GrCtx, page: number, pageSize: number) { return this.repo.purchases(ctx.tenantId, page, pageSize); }
+  ledger(ctx: GrCtx, page: number, pageSize: number, f: Record<string, unknown> = {}) { return this.repo.walletLedger(ctx.tenantId, page, pageSize, f); }
+  purchases(ctx: GrCtx, page: number, pageSize: number, f: Record<string, unknown> = {}) { return this.repo.purchases(ctx.tenantId, page, pageSize, f); }
   purchase(ctx: GrCtx, id: string) { return this.repo.purchase(ctx.tenantId, id); }
   /** what the network owes THIS salon, with provider + journal evidence (read-only; extras GLOBAL LOYALTY REWARDS 07 / 10) */
   reimbursements(ctx: GrCtx, q: SalonPayablesQuery) { return salonPayables(this.repo.database, ctx.tenantId, q); }

@@ -13,6 +13,7 @@ import { createIntentKeys } from '@aipowersalon/api-client';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTipsScreenApi as api } from '../api/posTipsScreenApi';
+import type { TipsTechnicianEarningsResponse } from '@aipowersalon/api-contracts/tenant';
 import { posPayrollApi } from '../api/posPayrollApi';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
@@ -26,7 +27,7 @@ import { tipSourceLabel, TIP_SOURCE_TONE } from './tips/tipSourceLabel';
 type Tab = 'overview' | 'transactions' | 'distribution' | 'adjustments';
 type Tech = { id: string; name: string | null };
 type Row = { ticketId: string; ticketNumber: string | null; collectedAt: string | null; checkoutAt: string | null; branch: string | null; customer: { id: string; name: string | null; phone: string | null } | null; technicians: Tech[]; method: string; tenders: number; paymentRefs: string[];
-  amountCents: number; cardCents: number; cashCents: number; pretipSalesCents: number; totalCents: number; allocatedCents: number; unallocatedCents: number; allocationState: string; snapshotCents: number | null; snapshotMismatch: boolean;
+  amountCents: number; cardCents: number; cashCents: number; /** extras TIPS 04: where the cash tip went (server) */ cashSource?: 'drawer' | 'technician' | null; pretipSalesCents: number; totalCents: number; allocatedCents: number; unallocatedCents: number; allocationState: string; snapshotCents: number | null; snapshotMismatch: boolean;
   reversedCents: number; netCents: number; manualCorrectionCents: number; payout: { state: string; periodId: string | null; periodLabel: string | null; paidAt: string | null }; matchedBy?: string | null };
 type Dist = { technicianId: string; name: string | null; active: boolean; tickets: number; allocatedCents: number; cardCents: number; cashCents: number; sharePct: number; paidOutCents: number; pendingCents: number; manualCorrectionCents: number; reversedCents: number; netCents: number; lastAt: string | null; unreconciledTickets?: number };
 type Note = { tone: 'ok' | 'bad'; text: string } | null;
@@ -87,7 +88,7 @@ export function POSTipsScreen() {
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-total" tone="gold" label={tx('tp.kpi.total')} loading={!k} value={k ? fmtMoney(k.totalTipsCents) : ''} sub={k ? (k.reversedCents ? tx('tp.kpi.totalSubRev', { n: fmtNumber(k.tippedTickets), r: fmtMoney(-k.reversedCents) }) : tx('tp.kpi.totalSub', { n: fmtNumber(k.tippedTickets) })) : ''} onClick={() => { setStatus('tipped'); setTab('transactions'); }} />
           <KpiCard testId="kpi-card" label={tx('tp.kpi.card')} loading={!k} value={k ? fmtMoney(k.cardTipsCents) : ''} sub={tx('tp.kpi.cardSub')} onClick={() => { setMethod('card'); setTab('transactions'); }} />
-          <KpiCard testId="kpi-cash" label={tx('tp.kpi.cash')} loading={!k} value={k ? fmtMoney(k.cashTipsCents) : ''} sub={tx('tp.kpi.cashSub')} onClick={() => { setMethod('cash'); setTab('transactions'); }} />
+          <KpiCard testId="kpi-cash" label={tx('tp.kpi.cash')} loading={!k} value={k ? fmtMoney(k.cashTipsCents) : ''} sub={k && typeof k.cashToTechnicianTipsCents === 'number' ? tx('tp.kpi.cashSourceSub', { d: fmtMoney(k.cashDrawerTipsCents ?? 0), t: fmtMoney(k.cashToTechnicianTipsCents) }) : tx('tp.kpi.cashSub')} onClick={() => { setMethod('cash'); setTab('transactions'); }} />
           <KpiCard testId="kpi-avg" label={tx('tp.kpi.avg')} loading={!k} value={k ? (k.avgTipRatePct == null ? '—' : `${fmtNumber(k.avgTipRatePct, 1)}%`) : ''} sub={k ? (k.avgTipPerTippedTicketCents == null ? tx('tp.kpi.avgSubNone') : tx('tp.kpi.avgSub', { a: fmtMoney(k.avgTipPerTippedTicketCents) })) : ''} />
           <KpiCard testId="kpi-notip" label={tx('tp.kpi.noTip')} loading={!k} value={k ? fmtNumber(k.noTipCount) : ''} sub={k ? tx('tp.kpi.noTipSub', { n: fmtNumber(k.eligibleTickets) }) : ''} onClick={() => { setStatus('no_tip'); setTab('transactions'); }} />
         </>}
@@ -103,7 +104,7 @@ export function POSTipsScreen() {
       </div>
       {tab === 'overview' ? <OverviewTab scope={scope} tick={tick} onTech={(id) => { setTech(id); setTab('transactions'); }} onOpen={setDetail} onViewAll={(t) => setTab(t)} /> : null}
       {tab === 'transactions' ? <TransactionsTab scope={scope} sort={sort} setSort={setSort} tick={tick} onOpen={setDetail} chips={chips.length > 0} clearAll={clearAll} periodLabel={periodText(sum.data?.period)} onAll={() => setPeriod({ preset: 'all' })} /> : null}
-      {tab === 'distribution' ? <DistributionTab scope={scope} tick={tick} onTech={(id) => { setTech(id); setTab('transactions'); }} /> : null}
+      {tab === 'distribution' ? <DistributionTab scope={scope} tick={tick} onTech={(id) => { setTech(id); setTab('transactions'); }} onOpen={setDetail} onPayroll={() => nav('/tenant/team/payroll')} /> : null}
       {tab === 'adjustments' ? <AdjustmentsTab period={period} tick={tick} onOpen={setDetail} onExport={doExport} canExport={!!sum.data?.permissions?.export} rec={rec} /> : null}
       {detail ? <DetailDialog id={detail} onClose={() => setDetail(null)} onChanged={(t) => { setNote({ tone: 'ok', text: t }); setTick((x) => x + 1); }}
         onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} onTicket={(n) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(n)}`)} onTech={(id) => { setDetail(null); setTech(id); setTab('transactions'); }} /> : null}
@@ -172,7 +173,7 @@ function TransactionsTab({ scope, sort, setSort, tick, onOpen, chips, clearAll, 
             <td className="fn-id"><button type="button" className="fk-li-t link" onClick={() => onOpen(r.ticketId)}>#{r.ticketNumber ?? '—'}</button><span className="fk-li-s">{r.paymentRefs[0] ?? (r.tenders > 1 ? tx('tp.splitTender', { n: fmtNumber(r.tenders) }) : '')}{r.matchedBy && scope.search ? ` · ${tx('tp.matched.' + r.matchedBy)}` : ''}</span></td>
             <td>{r.customer?.name ?? <span className="fk-muted">{tx('sp.walkIn')}</span>}{r.customer?.phone ? <span className="fk-li-s">{r.customer.phone}</span> : null}</td>
             <td>{techNames(r)}{r.technicians.length > 1 ? <span className="fk-li-s">{tx('tp.techCount', { n: fmtNumber(r.technicians.length) })}</span> : null}</td>
-            <td>{tx('tp.method.' + r.method)}{r.method === 'split' ? <span className="fk-li-s">{fmtMoney(r.cardCents)} / {fmtMoney(r.cashCents)}</span> : null}</td>
+            <td>{tx('tp.method.' + r.method)}{r.method === 'split' ? <span className="fk-li-s">{fmtMoney(r.cardCents)} / {fmtMoney(r.cashCents)}</span> : null}{r.cashSource ? <span className="fk-li-s" data-testid={`tip-cash-source-${r.ticketId}`}>{tx(r.cashSource === 'technician' ? 'tp.cashSource.technician' : 'tp.cashSource.drawer')}</span> : null}</td>
             <td className="num"><b>{fmtMoney(r.amountCents)}</b>{r.reversedCents ? <span className="fk-li-s tp-neg">−{fmtMoney(-r.reversedCents)} {tx('tp.reversed')}</span> : null}</td>
             <td>{r.amountCents === 0 ? <span className="fk-chip mut">{tx('tp.alloc.none')}</span> : <span className={'fk-chip ' + (ALLOC_TONE[r.allocationState] ?? 'mut')}>{tx('tp.alloc.' + r.allocationState)}</span>}{r.snapshotMismatch ? <span className="fk-chip bad">{tx('tp.mismatch')}</span> : null}<SourceChip r={r} /></td>
             <td>{r.amountCents === 0 ? '—' : <span className={'fk-chip ' + (PAYOUT_TONE[r.payout.state] ?? 'mut')}>{tx('tp.payout.' + r.payout.state)}</span>}{r.payout.periodLabel ? <span className="fk-li-s">{r.payout.periodLabel}</span> : null}</td>
@@ -183,8 +184,8 @@ function TransactionsTab({ scope, sort, setSort, tick, onOpen, chips, clearAll, 
   );
 }
 
-function DistributionTab({ scope, tick, onTech }: { scope: Record<string, unknown>; tick: number; onTech: (id: string) => void }) {
-  const [page, setPage] = useState(1); const [sort, setSort] = useState('allocated_desc');
+function DistributionTab({ scope, tick, onTech, onOpen, onPayroll }: { scope: Record<string, unknown>; tick: number; onTech: (id: string) => void; onOpen: (ticketId: string) => void; onPayroll: () => void }) {
+  const [page, setPage] = useState(1); const [sort, setSort] = useState('allocated_desc'); const [overlay, setOverlay] = useState<string | null>(null);
   const q = { preset: scope.preset, from: scope.from, to: scope.to, dateField: scope.dateField, sort }; const key = JSON.stringify(q); useEffect(() => setPage(1), [key]);
   const fit = useFitRows<HTMLDivElement>(44, { min: 3, max: 18, reserve: 34 });
   const d = useLoad(() => api.distribution({ ...q, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
@@ -195,11 +196,45 @@ function DistributionTab({ scope, tick, onTech }: { scope: Record<string, unknow
       footer={<Pager info={pageInfo(d.data)} onPage={setPage} label={tx('tp.tab.distribution')} />}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !d.data ? <div className="fk-loading">{tx('pos.loading')}</div> : items.length === 0 ? <Empty title={tx('tp.noDistribution')}><span className="fk-hint">{tx('tp.noDistributionHint')}</span></Empty>
         : <table className="fk-table fn-table" data-testid="distribution-table"><thead><tr><th>{tx('pos.technician')}</th><th className="num">{tx('tp.d.card')}</th><th className="num">{tx('tp.d.cash')}</th><th className="num">{tx('tp.d.allocated')}</th><th className="num t-opt">{tx('tp.d.share')}</th><th className="num">{tx('tp.d.corrections')}</th><th className="num">{tx('tp.d.paidOut')}</th><th className="num">{tx('tp.d.pending')}</th><th className="num">{tx('tp.d.tickets')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
-          <tbody>{items.map((x) => <tr key={x.technicianId} data-testid="dist-row"><td><b>{x.name ?? '—'}</b>{!x.active ? <span className="fk-li-s">{tx('tp.archived')}</span> : null}
+          <tbody>{items.map((x) => <tr key={x.technicianId} data-testid="dist-row"><td><button type="button" className="fk-link" onClick={() => setOverlay(x.technicianId)} data-testid="dist-earnings"><b>{x.name ?? '—'}</b></button>{!x.active ? <span className="fk-li-s">{tx('tp.archived')}</span> : null}
             {x.unreconciledTickets ? <span className="fk-chip warn" data-testid="dist-unreconciled">{tx('tp.d.unreconciled', { n: fmtNumber(x.unreconciledTickets) })}</span> : null}</td><td className="num">{fmtMoney(x.cardCents)}</td><td className="num">{fmtMoney(x.cashCents)}</td><td className="num"><b>{fmtMoney(x.allocatedCents)}</b></td><td className="num t-opt">{fmtNumber(x.sharePct, 1)}%</td>
             <td className={'num' + (x.manualCorrectionCents + x.reversedCents < 0 ? ' tp-neg' : '')}>{x.manualCorrectionCents + x.reversedCents ? fmtMoney(x.manualCorrectionCents + x.reversedCents) : '—'}</td><td className="num">{fmtMoney(x.paidOutCents)}</td><td className="num">{fmtMoney(x.pendingCents)}</td><td className="num">{fmtNumber(x.tickets)}</td>
             <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onTech(x.technicianId)}>{tx('tp.viewTips')}</button></td></tr>)}</tbody></table>}
+      {overlay ? <EarningsOverlay technicianId={overlay} q={{ preset: q.preset, from: q.from, to: q.to, dateField: q.dateField }} tick={tick} onClose={() => setOverlay(null)}
+        onOpen={(id) => { setOverlay(null); onOpen(id); }} onAll={() => { const t = overlay; setOverlay(null); onTech(t); }} onPayroll={onPayroll} /> : null}
     </FitPanel>
+  );
+}
+
+/** extras TIPS 01 — Technician Earnings Overlay: one technician's tips over the same period / basis as Distribution, from the
+ *  server (allocated · paid · approved for payroll · open period · not in a period yet), the payroll periods it falls in, and
+ *  each ticket with THIS technician's share and payout state; a ticket opens its tip detail. Read-only. */
+const EARN_STATES = ['paid', 'approved', 'open', 'none'] as const;
+function EarningsOverlay({ technicianId, q, tick, onClose, onOpen, onAll, onPayroll }: { technicianId: string; q: Record<string, unknown>; tick: number; onClose: () => void; onOpen: (ticketId: string) => void; onAll: () => void; onPayroll: () => void }) {
+  const [page, setPage] = useState(1);
+  const d = useLoad(() => api.technicianEarnings(technicianId, { ...q, page, pageSize: 10 }), [technicianId, JSON.stringify(q), page, tick]);
+  const e = d.data as TipsTechnicianEarningsResponse | undefined;
+  const stCents = (s: string) => (!e ? 0 : s === 'paid' ? e.totals.paidCents : s === 'approved' ? e.totals.approvedCents : s === 'open' ? e.totals.openCents : e.totals.unscheduledCents);
+  return (
+    <FitDialog wide title={tx('tp.earn.title', { n: e?.technician.name ?? tx('pos.technician') })} subtitle={e ? tx('tp.earn.sub', { t: fmtNumber(e.totals.tickets) }) : undefined} onClose={onClose} testId="tip-earnings"
+      footer={<><button type="button" className="fk-btn ghost" onClick={onPayroll} data-testid="earn-payroll">{tx('tp.earn.payroll')}</button><button type="button" className="fk-btn" onClick={onAll} data-testid="earn-all">{tx('tp.earn.all')}</button></>}>
+      {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !e ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        <div className="fn-mini-kpis" data-testid="earn-kpis">
+          <span>{tx('tp.d.allocated')} <b data-testid="earn-allocated">{fmtMoney(e.totals.allocatedCents)}</b></span>
+          {EARN_STATES.map((s) => <span key={s} data-testid={'earn-' + s}>{tx('tp.earn.state.' + s)} <b>{fmtMoney(stCents(s))}</b></span>)}
+          <span>{tx('tp.d.corrections')} <b>{e.totals.manualCorrectionCents + e.totals.reversedCents ? fmtMoney(e.totals.manualCorrectionCents + e.totals.reversedCents) : '—'}</b></span>
+          <span>{tx('tp.earn.net')} <b data-testid="earn-net">{fmtMoney(e.totals.netCents)}</b></span>
+        </div>
+        {e.periods.length ? <table className="fk-table fn-table" data-testid="earn-periods"><thead><tr><th>{tx('tp.earn.period')}</th><th>{tx('finance.status')}</th><th className="num">{tx('tp.d.tickets')}</th><th className="num">{tx('tp.d.allocated')}</th></tr></thead>
+          <tbody>{e.periods.map((p) => <tr key={p.id ?? 'none'} data-testid="earn-period-row"><td>{p.label ?? tx('tp.earn.noPeriod')}</td><td><span className={'fk-chip ' + (PAYOUT_TONE[p.state] ?? 'mut')}>{tx('tp.earn.state.' + p.state)}</span>{p.paidAt ? <span className="fk-li-s"> {when(p.paidAt)}</span> : null}</td><td className="num">{fmtNumber(p.tickets)}</td><td className="num">{fmtMoney(p.allocatedCents)}</td></tr>)}</tbody></table> : null}
+        {e.items.length === 0 ? <Empty title={tx('tp.noDistribution')} /> :
+          <table className="fk-table fn-table" data-testid="earn-tickets"><thead><tr><th>{tx('tp.earn.ticket')}</th><th>{tx('tp.earn.when')}</th><th className="num">{tx('tp.earn.share')}</th><th>{tx('finance.status')}</th><th>{tx('tp.earn.period')}</th></tr></thead>
+            <tbody>{e.items.map((it) => <tr key={it.ticketId} data-testid="earn-ticket-row" data-state={it.payoutState}><td><button type="button" className="fk-link" onClick={() => onOpen(it.ticketId)}>{it.ticketNumber ? '#' + it.ticketNumber : it.ticketId.slice(0, 8)}</button></td><td>{when(it.collectedAt)}</td>
+              <td className="num"><b>{fmtMoney(it.allocatedCents)}</b>{it.sharedWith ? <span className="fk-li-s"> {tx('tp.earn.ofShared', { a: fmtMoney(it.ticketTipCents), n: fmtNumber(it.sharedWith) })}</span> : null}</td>
+              <td><span className={'fk-chip ' + (PAYOUT_TONE[it.payoutState] ?? 'mut')}>{tx('tp.earn.state.' + it.payoutState)}</span></td><td>{it.period?.label ?? '—'}</td></tr>)}</tbody></table>}
+        <Pager compact info={{ page: e.page, pageSize: e.pageSize, totalItems: e.total, totalPages: e.pageCount }} onPage={setPage} label={tx('tp.earn.ticket')} />
+      </>}
+    </FitDialog>
   );
 }
 

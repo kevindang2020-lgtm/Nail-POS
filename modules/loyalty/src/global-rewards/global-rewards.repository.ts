@@ -15,7 +15,7 @@ import { monthStartMs } from '@aipowersalon/date-time';
 import { logException } from '@aipowersalon/observability';
 import {
   GlobalRewardsError, alertLevel, walletLevels, clampRateToPolicy, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
-  purchaseQuantity, isPending, rateLabel, tokensLabel,
+  purchaseQuantity, isPending, rateLabel, tokensLabel, walletFundingForecast, FORECAST_BASIS_DAYS, IMPACT_BASIS_DAYS,
   type EarningRate, type EffectiveEarningRule, type PolicyVersion, type ProgramPolicy, type PurchaseStatus,
 } from './global-rewards-core';
 import { TENANT_EARNING_POLICY_VERSION, TOKEN_PURCHASE_INTENT, GLOBAL_EARNING_RULE_VERSION, GLOBAL_REWARDS_ENROLLMENT, TENANT_TOKEN_WALLET } from './global-rewards-lifecycles';
@@ -84,6 +84,19 @@ export async function listIdempotencyEvents(db: Exec, q: { outcome?: string | nu
   return { total, conflicts: n(tot?.k), page: p, pageSize: s, pageCount: Math.max(1, Math.ceil(total / s)),
     items: rows.map((r) => ({ id: String(r.id), tenantId: String(r.tenant_id), salon: r.display_name ?? null, scope: String(r.scope), outcome: String(r.outcome),
       keyRef: '…' + String(r.request_key).slice(-8), resourceId: r.resource_id ? String(r.resource_id) : null, repeats: n(r.repeats), detail: (r.detail ?? {}) as Record<string, unknown>, at: iso(r.created_at) as string })) };
+}
+/** extras GLOBAL LOYALTY REWARDS 11: the wallet ledger's entry types (its CHECK list) — the only values the type filter accepts */
+const LEDGER_TYPES = ['purchase_funded', 'earn_allocation', 'earn_reversal', 'purchase_reversal', 'adjustment'] as const;
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+/** the history filters, validated: unknown type / malformed date / non-uuid branch → null (ignored); a reversed range is swapped */
+export function histFilters(f: { entryType?: unknown; branchId?: unknown; from?: unknown; to?: unknown }, types: readonly string[]) {
+  const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const type = types.includes(s(f.entryType)) ? s(f.entryType) : null;
+  const branchId = UUID.test(s(f.branchId)) ? s(f.branchId) : null;
+  let from = YMD.test(s(f.from)) && !Number.isNaN(Date.parse(s(f.from))) ? s(f.from) : null;
+  let to = YMD.test(s(f.to)) && !Number.isNaN(Date.parse(s(f.to))) ? s(f.to) : null;
+  if (from && to && from > to) [from, to] = [to, from];
+  return { type, branchId, from, to };
 }
 
 export class GlobalRewardsRepository {
@@ -199,7 +212,27 @@ export class GlobalRewardsRepository {
     const proposed = validateCustomRate(input, program);
     const g = await this.globalRuleAt(this.db, now);
     if (!g) throw new GlobalRewardsError('No global earning rule is in force.', 'LOYALTY_DISABLED', 503);
-    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, global: { ...g, rateLabel: rateLabel(g) }, rows: previewRows(proposed, g, program).map((r) => ({ ...r, tokenCost: tokensLabel(r.tokenCostCents, program.tokenValueCents), globalTokenCost: tokensLabel(r.globalTokenCostCents, program.tokenValueCents) })) };
+    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, global: { ...g, rateLabel: rateLabel(g) }, rows: previewRows(proposed, g, program).map((r) => ({ ...r, tokenCost: tokensLabel(r.tokenCostCents, program.tokenValueCents), globalTokenCost: tokensLabel(r.globalTokenCostCents, program.tokenValueCents) })),
+      ...(await this.previewImpact(ctx, proposed, g, program, now)) };
+  }
+
+  /** extras GLOBAL LOYALTY REWARDS 04 (round 10) — Policy Impact Preview, read only: WHERE the rule applies (salon-wide, every
+   *  branch of this salon — one wallet), the EXPECTED effect replayed with THE earn rule (computeEarn) over this salon's own
+   *  earnings of the last IMPACT_BASIS_DAYS (what was actually funded vs what the proposed and the global rule would have
+   *  funded for the same eligible amounts), and the human approval it needs (pos.settings.edit + a fresh step-up; a change
+   *  only applies from its effective time — earnings already made keep their own rule and backing). Writes nothing. */
+  private async previewImpact(ctx: GrCtx, proposed: EarningRate, global: EarningRate, program: ProgramPolicy, now: Date) {
+    const branches = (await sql<Row>`SELECT b.id, b.name FROM branches b WHERE b.tenant_id = ${ctx.tenantId}::uuid AND b.deleted_at IS NULL ORDER BY b.created_at`.execute(this.db)).rows;
+    const since = new Date(now.getTime() - IMPACT_BASIS_DAYS * 86_400_000).toISOString();
+    const earns = (await sql<Row>`SELECT e.eligible_cents, e.backing_cents FROM reward_earn_transactions e
+      WHERE e.tenant_id = ${ctx.tenantId}::uuid AND e.status = 'EARNED' AND e.effective_at >= ${since}::timestamptz AND e.effective_at <= ${now.toISOString()}::timestamptz`.execute(this.db)).rows;
+    let actual = 0, prop = 0, glob = 0;
+    for (const e of earns) { const c = n(e.eligible_cents); actual += n(e.backing_cents); prop += computeEarn(c, proposed, program).backingCents; glob += computeEarn(c, global, program).backingCents; }
+    return {
+      scope: { appliesTo: 'all_branches' as const, branches: branches.map((b) => ({ id: String(b.id), name: b.name ?? null })), wallet: 'one_salon_wallet' as const },
+      expected: earns.length ? { basisDays: IMPACT_BASIS_DAYS, earnings: earns.length, actualBackingCents: actual, proposedBackingCents: prop, globalBackingCents: glob, differenceVsActualCents: prop - actual } : { basisDays: IMPACT_BASIS_DAYS, earnings: 0, actualBackingCents: null, proposedBackingCents: null, globalBackingCents: null, differenceVsActualCents: null },
+      approval: { permission: 'pos.settings.edit', stepUp: true, canActivate: canEditSettings(ctx), historyImmutable: true },
+    };
   }
 
   private async mustEditCustom(ctx: GrCtx): Promise<{ program: ProgramPolicy; flags: GrFlagState }> {
@@ -363,6 +396,11 @@ export class GlobalRewardsRepository {
       WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation' AND l.created_at >= ${monthStart}::timestamptz`.execute(x)).rows[0];
     const available = n(w?.available_cents);
     const branchUsage = await this.branchUsage(tenantId, monthStart, n(month?.used), x);
+    // extras GLOBAL LOYALTY REWARDS 03 (round 10): the funding forecast from VERIFIED history — the wallet's own earn_allocation
+    // ledger rows over the last FORECAST_BASIS_DAYS (a rolling window, not the calendar month), never a guess; nothing is bought
+    const basis = (await sql<Row>`SELECT coalesce(-sum(l.delta_cents), 0) AS used, min(l.created_at) AS first_at FROM token_wallet_ledger l
+      WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation' AND l.created_at >= now() - make_interval(days => ${FORECAST_BASIS_DAYS})`.execute(x)).rows[0];
+    const forecast = walletFundingForecast(available, n(pend?.pending), n(basis?.used), FORECAST_BASIS_DAYS, walletLevels(program, w).lowBalanceCents);
     return {
       // wallet amounts are money cents: 1 token = tokenValueCents cents, so the funded dollar value IS availableCents
       exists: !!w, availableCents: available, available: tokensLabel(available, program.tokenValueCents), availableValueCents: available,
@@ -372,7 +410,29 @@ export class GlobalRewardsRepository {
       // C1 audit §5.6: the warning levels in force (the salon's own when set) and the platform defaults
       lowBalanceCents: walletLevels(program, w).lowBalanceCents, criticalBalanceCents: walletLevels(program, w).criticalBalanceCents, levelsOwn: w?.low_balance_cents_override != null || w?.critical_balance_cents_override != null,
       platformLowBalanceCents: program.lowBalanceCents, platformCriticalBalanceCents: program.criticalBalanceCents,
-      branchUsage,
+      branchUsage, forecast, fundingVsLiability: await this.fundingVsLiability(tenantId, available, x),
+    };
+  }
+
+  /** extras GLOBAL LOYALTY REWARDS 06 (round 10) — Funding vs Liability, side by side and NEVER combined: each figure is read
+   *  from its own ledger — backed funding (this salon's token wallet balance), the points customers earned here and what
+   *  backed them (global_points_ledger earn rows at this salon vs the wallet's earn_allocation debits), points HELD on open
+   *  redemptions here (reward_redemptions HELD), and what the network still owes this salon (merchant_reimbursements not
+   *  paid / offset). Read only. */
+  async fundingVsLiability(tenantId: string, walletAvailableCents: number, x: Exec = this.db) {
+    const earned = (await sql<Row>`SELECT coalesce(sum(g.delta_tenths), 0)::bigint AS tenths FROM global_points_ledger g
+      WHERE g.tenant_id = ${tenantId}::uuid AND g.delta_tenths > 0 AND g.source_table = 'reward_earn_transactions'`.execute(x)).rows[0];
+    const backed = (await sql<Row>`SELECT coalesce(-sum(l.delta_cents), 0)::bigint AS cents FROM token_wallet_ledger l WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation'`.execute(x)).rows[0];
+    const held = (await sql<Row>`SELECT count(*)::int AS n, coalesce(sum(r.point_tenths), 0)::bigint AS tenths, coalesce(sum(r.value_cents), 0)::bigint AS cents FROM reward_redemptions r
+      WHERE r.tenant_id = ${tenantId}::uuid AND r.status = 'HELD'`.execute(x)).rows[0];
+    const owed = (await sql<Row>`SELECT count(*)::int AS n, coalesce(sum(m.amount_cents + m.adjusted_cents), 0)::bigint AS cents FROM merchant_reimbursements m
+      WHERE m.tenant_id = ${tenantId}::uuid AND m.status NOT IN ('PAID', 'OFFSET')`.execute(x)).rows[0];
+    return {
+      backedFundingCents: walletAvailableCents,
+      pointsEarnedHereTenths: n(earned?.tenths), earnBackingCents: n(backed?.cents),
+      heldRedemptions: n(held?.n), heldPointTenths: n(held?.tenths), heldValueCents: n(held?.cents),
+      salonPayablesOpen: n(owed?.n), salonPayablesOwedCents: n(owed?.cents),
+      combined: false as const,
     };
   }
 
@@ -461,13 +521,24 @@ export class GlobalRewardsRepository {
     return { ok: true, balanceAfterCents: after, duplicate: false };
   }
 
-  async walletLedger(tenantId: string, page = 1, pageSize = 20) {
+  /** extras GLOBAL LOYALTY REWARDS 11 (round 10): the history filters a person can save as a preset — entry type, branch and
+   *  a salon-local date range; newest first, server-paged. An invalid value is ignored (and not echoed in `applied`); a
+   *  branch of another salon simply matches nothing (the tenant scope is always applied). */
+  async walletLedger(tenantId: string, page = 1, pageSize = 20, f: { entryType?: unknown; branchId?: unknown; from?: unknown; to?: unknown } = {}) {
     const size = Math.max(1, Math.min(50, Math.floor(pageSize) || 20)); const p = Math.max(1, Math.min(10_000, Math.floor(page) || 1));
-    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_wallet_ledger l WHERE l.tenant_id = ${tenantId}::uuid`.execute(this.db)).rows[0]?.c);
+    const ok = histFilters(f, LEDGER_TYPES); const tz = await this.salonTz(tenantId);
+    const W = sql`l.tenant_id = ${tenantId}::uuid ${ok.type ? sql`AND l.entry_type = ${ok.type}` : sql``} ${ok.branchId ? sql`AND l.branch_id = ${ok.branchId}::uuid` : sql``}
+      ${ok.from ? sql`AND (l.created_at AT TIME ZONE ${tz})::date >= ${ok.from}::date` : sql``} ${ok.to ? sql`AND (l.created_at AT TIME ZONE ${tz})::date <= ${ok.to}::date` : sql``}`;
+    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_wallet_ledger l WHERE ${W}`.execute(this.db)).rows[0]?.c);
     const r = await sql<Row>`SELECT l.id, l.entry_type, l.delta_cents, l.balance_after_cents, l.source_table, l.source_id, l.branch_id, l.reason, l.created_at FROM token_wallet_ledger l
-      WHERE l.tenant_id = ${tenantId}::uuid ORDER BY l.created_at DESC, l.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
+      WHERE ${W} ORDER BY l.created_at DESC, l.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
     return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map((x) => ({ id: String(x.id), entryType: x.entry_type, deltaCents: n(x.delta_cents),
-      balanceAfterCents: n(x.balance_after_cents), sourceTable: x.source_table, sourceId: String(x.source_id), branchId: x.branch_id ?? null, reason: x.reason ?? null, at: iso(x.created_at) })) };
+      balanceAfterCents: n(x.balance_after_cents), sourceTable: x.source_table, sourceId: String(x.source_id), branchId: x.branch_id ?? null, reason: x.reason ?? null, at: iso(x.created_at) })),
+      applied: { entryType: ok.type, branchId: ok.branchId, from: ok.from, to: ok.to, timeZone: tz } };
+  }
+  private async salonTz(tenantId: string): Promise<string> {
+    const tzRow = (await sql<Row>`SELECT b.timezone FROM branches b WHERE b.tenant_id = ${tenantId}::uuid AND b.deleted_at IS NULL ORDER BY b.created_at LIMIT 1`.execute(this.db)).rows[0];
+    return tzRow?.timezone && isValidTimeZone(String(tzRow.timezone)) ? String(tzRow.timezone) : 'America/New_York';
   }
 
   // ── Buy Tokens (guide §5.2–§5.4) ───────────────────────────────────────────────────────────────────────────────
@@ -586,12 +657,20 @@ export class GlobalRewardsRepository {
       { resourceType: 'token_purchase_intent', resourceId: a.intentId, metadata: { clawedCents: clawed, shortfallCents: shortfall, walletLocked: shortfall > 0 } });
   }
 
-  async purchases(tenantId: string, page = 1, pageSize = 20) {
+  /** extras GLOBAL LOYALTY REWARDS 11 (round 10): purchase history filters (status group pending / funded / failed and a
+   *  salon-local date range) — newest first, server-paged; invalid values ignored */
+  async purchases(tenantId: string, page = 1, pageSize = 20, f: { status?: unknown; from?: unknown; to?: unknown } = {}) {
     const size = Math.max(1, Math.min(50, Math.floor(pageSize) || 20)); const p = Math.max(1, Math.min(10_000, Math.floor(page) || 1));
-    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid`.execute(this.db)).rows[0]?.c);
+    const ok = histFilters({ entryType: f.status, from: f.from, to: f.to }, ['pending', 'funded', 'failed']); const tz = await this.salonTz(tenantId);
+    const st = ok.type === 'pending' ? sql`AND i.status IN ('REQUESTED', 'PROCESSING', 'UNKNOWN', 'PAYMENT_CONFIRMED', 'SETTLEMENT_PENDING')`
+      : ok.type === 'funded' ? sql`AND i.status = 'FUNDS_VERIFIED'`
+      : ok.type === 'failed' ? sql`AND i.status IN ('FAILED', 'DECLINED', 'REVERSED', 'CHARGED_BACK', 'CANCELED')` : sql``;
+    const W = sql`i.tenant_id = ${tenantId}::uuid ${st} ${ok.from ? sql`AND (i.created_at AT TIME ZONE ${tz})::date >= ${ok.from}::date` : sql``} ${ok.to ? sql`AND (i.created_at AT TIME ZONE ${tz})::date <= ${ok.to}::date` : sql``}`;
+    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_purchase_intents i WHERE ${W}`.execute(this.db)).rows[0]?.c);
     const r = await sql<Row>`SELECT i.id, i.tenant_id, i.token_cents, i.amount_cents, i.fee_cents, i.status, i.provider, i.provider_ref, i.failure_code, i.initiated_by, i.created_at, i.confirmed_at, i.funded_at
-      FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid ORDER BY i.created_at DESC, i.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
-    return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map(purchaseRow) };
+      FROM token_purchase_intents i WHERE ${W} ORDER BY i.created_at DESC, i.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
+    return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map(purchaseRow),
+      applied: { status: ok.type, from: ok.from, to: ok.to, timeZone: tz } };
   }
   async purchase(tenantId: string, id: string) {
     const r = (await sql<Row>`SELECT i.id, i.tenant_id, i.token_cents, i.amount_cents, i.fee_cents, i.status, i.provider, i.provider_ref, i.failure_code, i.created_at, i.confirmed_at, i.funded_at

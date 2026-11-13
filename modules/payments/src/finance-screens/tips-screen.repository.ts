@@ -16,6 +16,7 @@
 // Date bases: collected (tickets.paid_at — default), checkout (tickets.created_at), allocation (first snapshot /
 // allocation time), adjustment (compensation_adjustments.created_at — the Adjustments view), payout (payroll_periods.paid_at).
 import { TICKET_NET_SALES_T } from './ticket-money';
+import type { TipsTechnicianEarningsResponse, TipsPayoutState } from '@aipowersalon/api-contracts/tenant';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -70,6 +71,7 @@ export class TipsScreenRepository {
         snp.snap_cents, snp.first_snap_at,
         coalesce(rev.reversed_cents, 0)::bigint as reversed_cents, coalesce(man.manual_cents, 0)::bigint as manual_cents,
         per.id as period_id, per.label as period_label, per.status as period_status, per.payout_status as period_payout_status, per.paid_at as period_paid_at,
+        exists (select 1 from cash_payment_confirmations cc where cc.tenant_id = t.tenant_id and cc.ticket_id = t.id and cc.status = 'confirmed') as cash_to_tech,
         c.full_name as customer_name, c.normalized_phone as customer_phone, c.email as customer_email, b.name as branch_name, pt.full_name as primary_tech_name
       from tickets t
       left join lateral (select
@@ -94,6 +96,10 @@ export class TipsScreenRepository {
   private static readonly CASH = sql`(case when a.card_pay + a.cash_pay = 0 then (case when a.chosen_payment_method = 'cash' then a.tip_cents else 0 end)
       when a.cash_pay >= a.card_pay then greatest(0, a.tip_cents - a.card_pay) else least(a.tip_cents, a.cash_pay) end)`;
   private static readonly CARD = sql`(a.tip_cents - ${TipsScreenRepository.CASH})`;
+  /** extras TIPS & GRATUITY 04 (round 10): WHERE the cash tip went — handed straight to the technician (the visit was settled by
+   *  Cash to Technician: a CONFIRMED cash_payment_confirmations row for the ticket — the technician confirmed receiving it)
+   *  or collected into the drawer (every other cash tip). Only splits the cash figure above; card / cash stay the engine's. */
+  private static readonly CASH_TECH = sql`(case when a.cash_to_tech then ${TipsScreenRepository.CASH} else 0 end)`;
   private basisCol(b: TipBasis): RawBuilder<unknown> {
     return { collected: sql`a.paid_at`, checkout: sql`a.created_at`, allocation: sql`coalesce(a.first_alloc_at, a.first_snap_at)`, adjustment: sql`a.paid_at`, payout: sql`a.period_paid_at` }[b];
   }
@@ -149,7 +155,7 @@ export class TipsScreenRepository {
       customer: r.customer_id ? { id: String(r.customer_id), name: r.customer_name ?? null, phone: canContact ? showPhone(r.customer_phone) : maskPhone(r.customer_phone) } : null,
       technicians: techIds.length ? techIds.map((id, i) => ({ id, name: techNames[i] ?? null })) : r.primary_technician_id ? [{ id: String(r.primary_technician_id), name: r.primary_tech_name ?? null }] : [],
       method: String(r.method), tenders: N(r.tenders), paymentRefs: String(r.refs ?? '').split(',').filter(Boolean),
-      amountCents: tip, cardCents: card, cashCents: cash, pretipSalesCents: N(r.pretip_sales_cents), totalCents: N(r.total_cents),
+      amountCents: tip, cardCents: card, cashCents: cash, cashSource: cash > 0 ? (r.cash_to_tech ? 'technician' : 'drawer') : null, cashToTechnicianCents: r.cash_to_tech ? cash : 0, cashDrawerCents: r.cash_to_tech ? 0 : cash, pretipSalesCents: N(r.pretip_sales_cents), totalCents: N(r.total_cents),
       allocatedCents: N(r.alloc_cents), unallocatedCents: Math.max(0, tip - N(r.alloc_cents)), allocationState: String(r.alloc_state),
       snapshotCents: r.snap_cents == null ? null : N(r.snap_cents), snapshotMismatch: r.snap_cents != null && N(r.snap_cents) !== tip,
       reversedCents: N(r.reversed_cents), netCents: tip + N(r.reversed_cents), manualCorrectionCents: N(r.manual_cents),
@@ -174,6 +180,7 @@ export class TipsScreenRepository {
     const w = this.where({ ...f, q: '', status: undefined, method: undefined, minCents: undefined, maxCents: undefined });
     const r = (await sql<any>`select count(*)::int as eligible, count(*) filter (where a.tip_cents > 0)::int as tipped, count(*) filter (where a.tip_cents = 0)::int as no_tip,
         coalesce(sum(a.tip_cents), 0)::bigint as collected, coalesce(sum(${TipsScreenRepository.CARD}), 0)::bigint as card, coalesce(sum(${TipsScreenRepository.CASH}), 0)::bigint as cash,
+        coalesce(sum(${TipsScreenRepository.CASH_TECH}), 0)::bigint as cash_tech,
         coalesce(sum(a.pretip_sales_cents), 0)::bigint as sales, coalesce(sum(a.reversed_cents), 0)::bigint as reversed, coalesce(sum(a.manual_cents), 0)::bigint as manual,
         coalesce(sum(a.alloc_cents), 0)::bigint as allocated, coalesce(sum(greatest(0, a.tip_cents - a.alloc_cents)), 0)::bigint as unallocated,
         count(*) filter (where a.snap_cents is not null and a.snap_cents <> a.tip_cents)::int as mismatch, coalesce(sum(a.snap_cents) filter (where a.snap_cents is not null), 0)::bigint as snapshot,
@@ -184,14 +191,14 @@ export class TipsScreenRepository {
     const collected = N(r.collected), sales = N(r.sales), tipped = N(r.tipped);
     return {
       kpis: {
-        totalTipsCents: collected, reversedCents: N(r.reversed), netTipsCents: collected + N(r.reversed), cardTipsCents: N(r.card), cashTipsCents: N(r.cash),
+        totalTipsCents: collected, reversedCents: N(r.reversed), netTipsCents: collected + N(r.reversed), cardTipsCents: N(r.card), cashTipsCents: N(r.cash), cashToTechnicianTipsCents: N(r.cash_tech), cashDrawerTipsCents: N(r.cash) - N(r.cash_tech),
         avgTipRatePct: sales > 0 ? Math.round((collected / sales) * 1000) / 10 : null, avgTipPerTippedTicketCents: tipped > 0 ? Math.round(collected / tipped) : null,
         noTipCount: N(r.no_tip), eligibleTickets: N(r.eligible), tippedTickets: tipped, splitTickets: N(r.split_tickets),
       },
       reconciliation: { collectedCents: collected, allocatedCents: N(r.allocated), unallocatedCents: N(r.unallocated), manualCorrectionCents: N(r.manual), reversedCents: N(r.reversed),
         snapshotCents: N(r.snapshot), snapshotMismatchTickets: N(r.mismatch), paidOutCents: N(r.paid_out), pendingPayoutCents: N(r.pending_payout),
         balanced: N(r.allocated) + N(r.unallocated) === collected },
-      definitions: { totalTips: 'sum of tickets.tip_cents on paid tickets, collection date', cardCash: 'settled payment rows by method; remainder to the dominant rail; the chosen method when rows carry no tip',
+      definitions: { totalTips: 'sum of tickets.tip_cents on paid tickets, collection date', cardCash: 'settled payment rows by method; remainder to the dominant rail; the chosen method when rows carry no tip', cashSource: 'cash tips of visits settled by Cash to Technician (a confirmed cash payment confirmation) were handed to the technician; every other cash tip was collected into the drawer',
         avgTipRate: 'total tips ÷ pre-tip sales (subtotal − discounts, tax excluded) of every eligible ticket, including no-tip tickets', noTip: 'paid, non-removed tickets with a zero tip', allocated: 'ticket_tip_allocations (one row per ticket and technician)' },
       period: f.period, basis: f.basis, asOf: new Date().toISOString(),
       permissions: { export: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.reports.export'), adjust: hasPermission(ctx as Parameters<typeof hasPermission>[0], 'tips.adjust') },
@@ -231,6 +238,41 @@ export class TipsScreenRepository {
     return { items: items.slice(pg.offset, pg.offset + pg.pageSize), total: items.length, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
       totals: { allocatedCents: totalAlloc, technicians: items.length, cardCents: items.reduce((s2, x) => s2 + x.cardCents, 0), cashCents: items.reduce((s2, x) => s2 + x.cashCents, 0),
         paidOutCents: items.reduce((s2, x) => s2 + x.paidOutCents, 0), pendingCents: items.reduce((s2, x) => s2 + x.pendingCents, 0), unreconciledTechnicians: items.filter((x) => x.unreconciledTickets > 0).length } };
+  }
+
+  /** extras TIPS 01 — Technician Earnings Overlay: one technician over the period (same filters / basis as Distribution, so
+   *  the totals reconcile with that row): per ticket THIS technician's allocated share (ticket_tip_allocations), the ticket's
+   *  payout state and the payroll period it falls in; totals by state; the periods with this technician's sum. Read-only. */
+  async technicianEarnings(ctx: FinanceCtx, f: TipFilters, technicianId: string, pr: PageReq): Promise<Omit<TipsTechnicianEarningsResponse, 'period' | 'dateBasis'>> {
+    if (!isUuid(technicianId)) throw new FinanceError('That tip record could not be found.', 'TIP_NOT_FOUND', 404);
+    const T = ctx.tenantId;
+    const tech = (await sql<{ id: string; full_name: string | null; status: string | null }>`select tc.id, tc.full_name, tc.status from technicians tc where tc.tenant_id = ${T} and tc.id = ${technicianId}::uuid`.execute(this.db)).rows[0];
+    if (!tech) throw new FinanceError('That tip record could not be found.', 'TIP_NOT_FOUND', 404);
+    const w = this.where({ ...f, technicianId: undefined, status: undefined, method: undefined, minCents: undefined, maxCents: undefined, q: '' });
+    const x = sql`with a as (select ${TipsScreenRepository.ROW_COLS} from (${this.base(ctx, f.period.tz)}) a where ${w}),
+      x as (select al.ticket_id, al.tip_cents as alloc, a.ticket_number, a.paid_at, a.tip_cents, a.payout_state, a.period_id, a.period_label, a.period_paid_at, a.alloc_techs
+        from ticket_tip_allocations al join a on a.id = al.ticket_id where al.tenant_id = ${T} and al.technician_id = ${technicianId}::uuid and al.tip_cents > 0)`;
+    const tot = (await sql<any>`${x} select count(*)::int as n, coalesce(sum(alloc), 0)::bigint as allocated,
+        coalesce(sum(alloc) filter (where payout_state = 'paid'), 0)::bigint as paid, coalesce(sum(alloc) filter (where payout_state = 'approved'), 0)::bigint as approved,
+        coalesce(sum(alloc) filter (where payout_state = 'open'), 0)::bigint as open, coalesce(sum(alloc) filter (where payout_state = 'none'), 0)::bigint as unscheduled from x`.execute(this.db)).rows[0] ?? {};
+    const corr = (await sql<any>`with a as (select a.id from (${this.base(ctx, f.period.tz)}) a where ${w})
+      select coalesce(sum(j.amount_cents) filter (where j.source = 'manual'), 0)::bigint as manual, coalesce(sum(j.amount_cents) filter (where j.source <> 'manual'), 0)::bigint as reversed
+      from compensation_adjustments j join a on a.id = j.ticket_id where j.tenant_id = ${T} and j.technician_id = ${technicianId}::uuid and j.category = 'tip_correction' and j.status in (${sql.join(POSTED)})`.execute(this.db)).rows[0] ?? {};
+    const per = (await sql<any>`${x} select period_id, max(period_label) as label, max(payout_state) as state, max(period_paid_at) as paid_at, sum(alloc)::bigint as allocated, count(*)::int as tickets
+      from x group by period_id order by max(period_paid_at) desc nulls first, max(period_label) desc nulls first`.execute(this.db)).rows;
+    const total = N(tot.n); const pg = clampPage(pr, total);
+    const rows = (await sql<any>`${x} select * from x order by paid_at desc, ticket_id desc limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
+    const st = (v: unknown): TipsPayoutState => (v === 'paid' || v === 'approved' || v === 'open' ? v : 'none');
+    const allocated = N(tot.allocated), paid = N(tot.paid);
+    return {
+      technician: { id: String(tech.id), name: tech.full_name ?? null, active: tech.status !== 'archived' },
+      totals: { allocatedCents: allocated, paidCents: paid, approvedCents: N(tot.approved), openCents: N(tot.open), unscheduledCents: N(tot.unscheduled), pendingCents: allocated - paid, tickets: total,
+        manualCorrectionCents: N(corr.manual), reversedCents: N(corr.reversed), netCents: allocated + N(corr.manual) + N(corr.reversed) },
+      periods: per.map((r: any) => ({ id: r.period_id ? String(r.period_id) : null, label: r.label ?? null, state: st(r.state), allocatedCents: N(r.allocated), tickets: N(r.tickets), paidAt: iso(r.paid_at) })),
+      items: rows.map((r: any) => ({ ticketId: String(r.ticket_id), ticketNumber: r.ticket_number ?? null, collectedAt: iso(r.paid_at), ticketTipCents: N(r.tip_cents), allocatedCents: N(r.alloc), sharedWith: Math.max(0, N(r.alloc_techs) - 1),
+        payoutState: st(r.payout_state), period: r.period_id ? { id: String(r.period_id), label: r.period_label ?? null, paidAt: iso(r.period_paid_at) } : null })),
+      total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
+    };
   }
 
   /** The technicians who have tip allocations (the filter list). */
@@ -308,8 +350,8 @@ export class TipsScreenRepository {
     const rows = (await sql<any>`select ${TipsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx, f.period.tz)}) a where ${w} order by a.paid_at desc, a.id desc limit 20000`.execute(this.db)).rows.map((r: any) => this.row({ ...ctx, permissions: ctx.permissions.filter((p) => p !== 'pos.customers.view') }, r));
     const sum = await this.summary(ctx, f);
     const doc = csvDocument('Tips', [['Generated', new Date().toISOString()], ['Period', f.period.from ? `${f.period.from} to ${f.period.to} (${f.basis} date, ${f.period.tz})` : 'All time'], ['Search', f.q || '—'], ['Status', f.status ?? 'all'], ['Currency', 'USD'], ['Contact', 'masked']],
-      ['Collected', 'Ticket', 'Customer', 'Technicians', 'Method', 'Tip', 'Card tip', 'Cash tip', 'Allocated', 'Allocation', 'Reversed', 'Payout', 'Payment refs'],
-      rows.map((x) => [x.collectedAt ?? '', x.ticketNumber ?? '', x.customer?.name ?? '', x.technicians.map((t) => t.name).join(' / '), x.method, usd(x.amountCents), usd(x.cardCents), usd(x.cashCents), usd(x.allocatedCents), x.allocationState, usd(x.reversedCents), x.payout.state, x.paymentRefs.join(' ')]),
+      ['Collected', 'Ticket', 'Customer', 'Technicians', 'Method', 'Tip', 'Card tip', 'Cash tip', 'Cash source', 'Allocated', 'Allocation', 'Reversed', 'Payout', 'Payment refs'],
+      rows.map((x) => [x.collectedAt ?? '', x.ticketNumber ?? '', x.customer?.name ?? '', x.technicians.map((t) => t.name).join(' / '), x.method, usd(x.amountCents), usd(x.cardCents), usd(x.cashCents), x.cashSource ?? '', usd(x.allocatedCents), x.allocationState, usd(x.reversedCents), x.payout.state, x.paymentRefs.join(' ')]),
       [['Tip events', String(rows.length)], ['Tips of these rows', usd(rows.reduce((a, x) => a + x.amountCents, 0))], ['Total tips (period)', usd(sum.kpis.totalTipsCents)], ['Allocated (period)', usd(sum.reconciliation.allocatedCents)]]);
     await audit(this.auditor, ctx, 'tips', 'tips_exported', 'ticket', null, { rows: rows.length, status: f.status ?? 'all', search: f.q ? 'yes' : 'no' }, (e) => this.log.warn(`tips export audit failed: ${(e as Error).message}`));
     return doc;

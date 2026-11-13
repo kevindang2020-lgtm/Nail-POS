@@ -460,4 +460,39 @@ export const FINANCE_VI: Record<string, string> = {
   "dr10.overdue": "Quá hạn", // DRAFT — Kevin reviews
   "dr10.dueOn": "Xem xét trước {at}", // DRAFT — Kevin reviews
   "dr10.dueOverdue": "Quá hạn — hạn xem xét là {at}", // DRAFT — Kevin reviews
+  "finance.pf.columns": "{n} cột:", // DRAFT — Kevin reviews
+  "finance.pf.formulaSafe": "Công thức bảng tính được vô hiệu hóa ở: {cols}.", // DRAFT — Kevin reviews
+  "finance.pf.noContact": "Tệp này không có thông tin liên lạc của khách hàng.", // DRAFT — Kevin reviews
+  "finance.pf.col.date": "Ngày", // DRAFT — Kevin reviews
+  "finance.pf.col.vendor": "Nhà cung cấp", // DRAFT — Kevin reviews
+  "finance.pf.col.category": "Danh mục", // DRAFT — Kevin reviews
+  "finance.pf.col.accounting_code": "Mã kế toán", // DRAFT — Kevin reviews
+  "finance.pf.col.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "finance.pf.col.description": "Mô tả", // DRAFT — Kevin reviews
+  "finance.pf.col.subtotal": "Tạm tính", // DRAFT — Kevin reviews
+  "finance.pf.col.tax": "Thuế", // DRAFT — Kevin reviews
+  "finance.pf.col.total": "Tổng", // DRAFT — Kevin reviews
+  "finance.pf.col.payment_method": "Phương thức thanh toán", // DRAFT — Kevin reviews
+  "finance.pf.col.receipt_number": "Số hóa đơn", // DRAFT — Kevin reviews
+  "finance.pf.col.invoice_number": "Số hóa đơn nhà cung cấp", // DRAFT — Kevin reviews
+  "finance.pf.col.receipt_attached": "Có đính kèm hóa đơn", // DRAFT — Kevin reviews
+  "finance.pf.col.status": "Trạng thái", // DRAFT — Kevin reviews
+  "finance.exc.card.title": "Lần quẹt thẻ chưa xử lý: {n} · {a}", // DRAFT — Kevin reviews
+  "finance.exc.card.none": "Không có lần quẹt thẻ nào chưa xử lý.", // DRAFT — Kevin reviews
+  "finance.exc.card.reason.in_flight_too_long": "vẫn đang xử lý sau {m} phút", // DRAFT — Kevin reviews
+  "finance.exc.card.reason.needs_review": "cần xem lại", // DRAFT — Kevin reviews
+  "finance.exc.card.reason.stranded": "không xác minh được với bên xử lý thẻ", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_approved_recorded": "Bên xử lý đã duyệt; đã ghi nhận.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_declined": "Bên xử lý từ chối.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_not_found": "Bên xử lý không có giao dịch này.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_approved_unrecorded": "Bên xử lý đã duyệt nhưng chưa ghi nhận thanh toán.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_ambiguous": "Câu trả lời của bên xử lý không rõ.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_no_inquiry": "Bên xử lý này không cho hỏi trạng thái.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.processor_not_connected": "Chưa kết nối bên xử lý thẻ.", // DRAFT — Kevin reviews
+  "finance.exc.card.note.provider_unreachable": "Không liên lạc được bên xử lý.", // DRAFT — Kevin reviews
+  "finance.exc.card.err": "Lỗi gần nhất: {c}", // DRAFT — Kevin reviews
+  "finance.exc.card.hours": "{n} giờ", // DRAFT — Kevin reviews
+  "finance.exc.card.minutes": "{n} phút", // DRAFT — Kevin reviews
+  "finance.exc.card.more": "Còn {n} lần nữa chưa hiện.", // DRAFT — Kevin reviews
+  "finance.exc.card.open": "Xử lý trong Chia thanh toán", // DRAFT — Kevin reviews
 };

@@ -85,6 +85,30 @@ describe('POSAICustomerChurnWatchScreen', () => {
     expect(await screen.findByTestId('cwx-notice')).toHaveTextContent(/Nothing was sent or changed/);
   });
 
+  // extras Churn Watch 07 (round 10): the opt-out checks from the messaging opt-out store are shown before anyone reaches out
+  it('shows a customer who texted STOP in the queue and the overlay states the text / e-mail consent; nothing is sent', async () => {
+    cw.customers.mockResolvedValue({ ...LIST, items: [{ ...ROW, contactConsent: { smsOptedOut: true, smsOptedOutAt: '2026-10-01T10:00:00.000Z', emailOptedOut: true, emailScope: 'marketing' } }] });
+    cw.customer.mockResolvedValue({ ...EV, contactConsent: { smsOptedOut: true, smsOptedOutAt: '2026-10-01T10:00:00.000Z', emailOptedOut: true, emailScope: 'marketing' } });
+    mount();
+    expect(await screen.findByTestId('cwx-row-sms-stop')).toHaveTextContent('Texted STOP — no follow-up texts');
+    fireEvent.click((await screen.findAllByTestId('cwx-view'))[0]);
+    expect(await screen.findByTestId('ov-consent')).toHaveTextContent('Texted STOP: follow-up and marketing texts are blocked (booking codes still go) · Unsubscribed from marketing e-mail');
+    expect(cw.review).not.toHaveBeenCalled();
+  });
+  it('no opt-out → texts / e-mail allowed; an older server without consent → nothing claimed', async () => {
+    cw.customer.mockResolvedValue({ ...EV, contactConsent: { smsOptedOut: false, smsOptedOutAt: null, emailOptedOut: false, emailScope: null } });
+    const { unmount } = mount();
+    expect(screen.queryByTestId('cwx-row-sms-stop')).toBeNull();
+    fireEvent.click((await screen.findAllByTestId('cwx-view'))[0]);
+    expect(await screen.findByTestId('ov-consent')).toHaveTextContent('Texts allowed · E-mail allowed');
+    unmount();
+    cw.customer.mockResolvedValue(EV);
+    mount();
+    fireEvent.click((await screen.findAllByTestId('cwx-view'))[0]);
+    await screen.findByTestId('ov-verdict');
+    expect(screen.queryByTestId('ov-consent')).toBeNull();
+  });
+
   it('a role without the churn permission sees the evidence but no review actions', async () => {
     perms.deny = ['pos.ai_customer_profile.churn'];
     mount();

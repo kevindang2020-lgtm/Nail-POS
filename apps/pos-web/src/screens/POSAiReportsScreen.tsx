@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitKit';
 import { BzPeriodBar, BzHealthButton, bt, bzErr, bzWhen, bzNum, bzValue, bzDays, type BzPeriod } from '../components/BusinessKit';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
-import type { ReportChangeResponse } from '@aipowersalon/api-contracts/tenant';
+import type { ReportChangeResponse, BcExecutiveWordingResponse } from '@aipowersalon/api-contracts/tenant';
 
 const TYPES = ['daily_brief', 'weekly_summary', 'monthly_review', 'branch_comparison'] as const;
 const PERIODS: Record<string, string[]> = { daily_brief: ['today', 'yesterday'], weekly_summary: ['week'], monthly_review: ['month', 'quarter', 'year'], branch_comparison: ['week', 'month', 'quarter'] };
@@ -165,7 +165,10 @@ function ReportDialog({ id, onClose, onNew }: { id: string; onClose: () => void;
   useEffect(() => { let on = true; setD(null); setErr(null); setV(null); posAiBusinessApi.center.report(id).then((x) => on && setD(x)).catch((e) => on && setErr(bzErr(e))); return () => { on = false; }; }, [id, tick]);
   const verify = () => { setV('loading'); posAiBusinessApi.center.verify(id).then(setV).catch((e) => setV({ error: bzErr(e) })); };
   const [ex, setEx] = useState<any | 'loading' | null>(null);
-  const exec = () => { setEx('loading'); posAiBusinessApi.center.executive(id).then(setEx).catch((e) => setEx({ error: bzErr(e) })); };
+  const exec = () => { setEx('loading'); setWd(null); posAiBusinessApi.center.executive(id).then(setEx).catch((e) => setEx({ error: bzErr(e) })); };
+  // extras AI Business Reports 15: AI wording of the verified figures (server-gated + metered; a number guard drops any other number)
+  const [wd, setWd] = useState<BcExecutiveWordingResponse | { error: string } | 'loading' | null>(null);
+  const word = () => { setWd('loading'); posAiBusinessApi.center.executiveWording(id).then(setWd).catch((e) => setWd({ error: bzErr(e) })); };
   // AI Business Assistant 10 — What changed since last check: pick an earlier validated report; the SERVER splits each
   // difference into corrections to the older report's own days and the actual business change
   const [others, setOthers] = useState<any[] | null>(null);
@@ -211,6 +214,14 @@ function ReportDialog({ id, onClose, onNew }: { id: string; onClose: () => void;
               <div key={o.kind} className="rvw-ev" data-testid={`bzx-exec-opp-${o.kind}`}>{bt('bzx.opp.' + o.kind, Object.fromEntries(Object.entries(o.basis ?? {}).map(([k, v]) => [k, v == null ? '—' : bzNum(k === 'trendPercent' ? Math.abs(Number(v)) : Number(v))])))}
                 {' '}<Link to={o.route}>{bt('bzx.exec.review')}</Link></div>))}
             <p className="sub">{bt('bzx.exec.proposals')}</p>
+            <div style={{ marginTop: 8 }}>
+              <button className="btn ghost" data-testid="bzx-exec-word" disabled={wd === 'loading'} onClick={word}>{bt('bzx.word.btn')}</button>
+              {wd === 'loading' ? <div className="state">{bt('bzx.loading')}</div> : wd && 'error' in wd ? <div className="err">{wd.error}</div> : wd ? (
+                <div data-testid="bzx-exec-word-result" data-state={wd.state}>
+                  {wd.state === 'worded' ? <><blockquote style={{ margin: '6px 0' }}>{wd.text}</blockquote><div className="sub">{bt('bzx.word.byModel')}</div></>
+                    : <p className="sub">{bt('bzx.word.state.' + wd.state, { n: wd.unverifiedNumbers.join(', ') })}</p>}
+                </div>) : null}
+            </div>
           </section>)) : null}
         {others ? <div data-testid="bzx-compare-panel" style={{ marginTop: 10 }}>
           <label className="sub">{bt('bzx.cmp.pick')} <select data-testid="bzx-compare-pick" defaultValue="" onChange={(e) => compare(e.target.value)}><option value="">—</option>

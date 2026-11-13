@@ -21,6 +21,7 @@ import { codeLabel } from '../components/peopleLabels';
 import { fmtDateTime, fmtInZone } from '../i18n/format';
 import { RangeCalendar } from '../components/FinanceKit';
 import { Pager } from '../components/FitKit';
+import { ActionActorLine } from '../components/ActionActorLine';
 type Status = 'draft' | 'review' | 'finalized' | 'paid';
 type Dash = 'OPEN' | 'NEEDS_REVIEW' | 'READY_TO_APPROVE' | 'HAS_EXCEPTIONS' | 'LOCKED' | 'PAID';
 type Period = { id: string; label: string | null; periodStart: string; periodEnd: string; status: Status; version?: number; previewHash?: string | null; approvalHash?: string | null; dashboardStatus?: Dash;
@@ -145,6 +146,7 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
   const [busy, setBusy] = useState(false);
   const [np, setNp] = useState({ label: '', start: '', end: '' });
   const [form, setForm] = useState<null | 'reopen' | 'sendBack' | 'pay' | 'payout' | 'adjust'>(null);
+  const [payoutAsk, setPayoutAsk] = useState<null | { id: string; status: 'paid' | 'canceled' }>(null);
   const [drawerTech, setDrawerTech] = useState<string | null>(null);
   const [exportsList, setExportsList] = useState<any[]>([]);
 
@@ -266,8 +268,15 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
                   <div key={o.id} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12, padding: '3px 0', borderBottom: '1px solid var(--aps-line)' }}>
                     <span style={{ minWidth: 140 }}>{techName(o.technicianId) || o.technicianId}</span><b>{money(o.amountCents)}</b><span style={small}>{statusLabel('paymentMethod', o.method)}{o.reference ? ` · ${o.reference}` : ''}</span>
                     <StatusBadge tone={o.status === 'paid' ? 'success' : o.status === 'failed' ? 'danger' : o.status === 'canceled' ? 'neutral' : 'warning'}>{statusLabel('payout', o.status)}</StatusBadge>
-                    {can('payouts.manage') && (o.status === 'pending' || o.status === 'processing') ? <><button style={btn()} onClick={() => act(tx('pos.payout'), () => stepUp(() => posPayrollApi.setPayoutStatus(o.id, { status: 'paid' })), tx('people.payroll.done.payoutPaid'))}>{tx('pos.mark_paid_3')}</button>
-                      <button style={btn(false, true)} onClick={() => act(tx('pos.payout'), () => stepUp(() => posPayrollApi.setPayoutStatus(o.id, { status: 'canceled' })), tx('people.payroll.done.payoutCanceled'))}>{tx('pos.cancel')}</button></> : null}
+                    {can('payouts.manage') && (o.status === 'pending' || o.status === 'processing') && payoutAsk?.id !== o.id ? <><button style={btn()} data-testid="payout-mark-paid" onClick={() => setPayoutAsk({ id: o.id, status: 'paid' })}>{tx('pos.mark_paid_3')}</button>
+                      <button style={btn(false, true)} data-testid="payout-cancel" onClick={() => setPayoutAsk({ id: o.id, status: 'canceled' })}>{tx('pos.cancel')}</button></> : null}
+                    {/* extras PAYMENTS 14: a payout status change is previewed (recipient, amount, method, reference, effect, actor and salon) before the step-up */}
+                    {payoutAsk?.id === o.id ? <div data-testid="payout-review" style={{ display: 'flex', flexDirection: 'column', gap: 4, border: '1px solid var(--aps-line)', borderRadius: 8, padding: 6 }}>
+                      <span>{tx(payoutAsk.status === 'paid' ? 'aal.payoutPaid' : 'aal.payoutCancel', { t: techName(o.technicianId) || o.technicianId, a: money(o.amountCents), m: statusLabel('paymentMethod', o.method), r: o.reference || '—' })}</span>
+                      <ActionActorLine testId="payout-actor" />
+                      <span style={{ display: 'flex', gap: 6 }}><button style={btn(true)} data-testid="payout-confirm" onClick={() => { const st = payoutAsk.status; setPayoutAsk(null); void act(tx('pos.payout'), () => stepUp(() => posPayrollApi.setPayoutStatus(o.id, { status: st })), tx(st === 'paid' ? 'people.payroll.done.payoutPaid' : 'people.payroll.done.payoutCanceled')); }}>{tx('aal.confirm')}</button>
+                        <button style={btn()} data-testid="payout-back" onClick={() => setPayoutAsk(null)}>{tx('aal.back')}</button></span>
+                    </div> : null}
                   </div>
                 ))}
               </div>
@@ -304,6 +313,7 @@ function PayForm({ onSubmit, onCancel }: { onSubmit: (method: string, reference:
       <input aria-label={tx('pos.payment_reference')} placeholder={tx('pos.reference_batch_check_no')} style={sel} value={ref} onChange={(e) => setRef(e.target.value)} />
       <button style={btn(true)} onClick={() => onSubmit(method, ref.trim())}>{tx('pos.mark_paid_3')}</button>
       <button style={btn()} onClick={onCancel}>{tx('pos.cancel')}</button>
+      <ActionActorLine testId="pay-actor" />
     </div>
   );
 }
@@ -328,6 +338,7 @@ function PayoutForm({ lines, techName, onSubmit, onCancel }: { lines: Line[]; te
       }}>{tx('pos.record')}</button>
       <button style={btn()} onClick={onCancel}>{tx('pos.cancel')}</button>
       {owed.length === 0 ? <span style={small}>{tx('pos.everyone_is_fully_paid')}</span> : null}
+      <ActionActorLine testId="record-payout-actor" />
       {err ? <span role="alert" style={{ color: 'var(--aps-danger)', fontSize: 12 }}>{err}</span> : null}
     </div>
   );

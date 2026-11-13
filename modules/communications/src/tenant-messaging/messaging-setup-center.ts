@@ -85,16 +85,19 @@ export function sixParts(r: ReadinessView, d: DeliveryEvidence): ReadinessPart[]
 
   // Registration — 10DLC brand + campaign for a US long code, toll-free verification for a toll-free sender; never both
   const tf = r.tollFree; const reg = r.a2p;
-  const regOf = (state: string, label: string, evidence: string, checkedAt: string | null, fixLink: string) => {
+  const regOf = (state: string, label: string, evidence: string, checkedAt: string | null, fixLink: string, stale = false) => {
     if (state === 'approved') P('registration', 'ready', `${label}: approved by the provider.`, evidence, 'provider status', checkedAt, null, fixLink);
+    // extras TEXT MESSAGING SETUP 10 (round 10): a submission whose provider status has not moved past the stale window is
+    // ATTENTION (so the nightly check opens its one deduplicated owner alert) — never left looking like an ordinary wait
+    else if (state === 'pending' && stale) P('registration', 'attention_required', `${label}: still pending and the provider status has not changed for a long time (stale).`, evidence, 'provider status', checkedAt, 'Press Refresh Status in Registration; if it stays pending, contact AI PowerSalon support with the evidence shown.', fixLink);
     else if (state === 'pending') P('registration', 'pending', `${label}: submitted, waiting for the carriers — not approved yet.`, evidence, 'provider status', checkedAt, 'Nothing to do but wait; press Refresh Status to read the latest.', fixLink);
     else if (state === 'rejected' || state === 'suspended') P('registration', 'failed', `${label}: ${state}.`, evidence, 'provider status', checkedAt, 'Open the registration details for the reason; resubmission is done in the provider workflow (it may cost a fee — owner approval).', fixLink);
     else if (state === 'not_started') P('registration', 'attention_required', `${label}: not started — texts to US numbers may be filtered.`, evidence, 'provider status', checkedAt, 'Start registration with AI PowerSalon support (paid carrier registration needs owner approval).', fixLink);
     else if (state === 'not_applicable') P('registration', 'ready', 'No carrier registration applies to this sender.', evidence, 'sender type', checkedAt, null, fixLink);
     else P('registration', 'unknown', `${label}: could not be verified with the provider.`, evidence, 'provider status', checkedAt, 'Press Refresh Status in Registration.', fixLink);
   };
-  if (s.senderType === 'toll_free') regOf(tf.state, 'Toll-free verification', `toll-free · ${tf.providerStatus ?? 'no provider status'}${tf.stale ? ' · stale' : ''}`, tf.checkedAt, `${SETUP}#registration`);
-  else if (reg.applicable) regOf(reg.state, '10DLC brand & campaign', `brand ${reg.brand.providerStatus ?? reg.brand.state} · campaign ${reg.campaign.providerStatus ?? reg.campaign.state}${reg.stale ? ' · stale' : ''}${reg.providerVerified ? '' : ' · not verified with the provider'}`, reg.lastProviderCheckAt, reg.fixLink);
+  if (s.senderType === 'toll_free') regOf(tf.state, 'Toll-free verification', `toll-free · ${tf.providerStatus ?? 'no provider status'}${tf.stale ? ' · stale' : ''}`, tf.checkedAt, `${SETUP}#registration`, !!tf.stale);
+  else if (reg.applicable) regOf(reg.state, '10DLC brand & campaign', `brand ${reg.brand.providerStatus ?? reg.brand.state} · campaign ${reg.campaign.providerStatus ?? reg.campaign.state}${reg.stale ? ' · stale' : ''}${reg.providerVerified ? '' : ' · not verified with the provider'}`, reg.lastProviderCheckAt, reg.fixLink, !!reg.stale);
   else if (!s.number) P('registration', 'unknown', 'No sender yet — registration depends on the number type.', 'no sender', 'saved settings', null, 'Set a sending number first.', `${SETUP}#number`);
   else regOf('not_applicable', '', `sender type ${s.senderType ?? 'unknown'}`, reg.lastProviderCheckAt, reg.fixLink);
 
@@ -124,6 +127,29 @@ export function sixParts(r: ReadinessView, d: DeliveryEvidence): ReadinessPart[]
   else if (v.requiredByPlatform) P('booking_verify', 'attention_required', 'Required by the platform but not ready.', vEvidence, 'platform policy', v.lastCheckedAt, 'Open Booking Phone Verification.', v.fixLink);
   else P('booking_verify', 'off', 'Off — remote bookings are not asked for a code (a salon choice, not an error).', vEvidence, 'salon setting', v.lastCheckedAt, null, v.fixLink);
   return parts;
+}
+
+/** extras TEXT MESSAGING SETUP 07 (round 10): one branch's parts counted Ready / Pending / Blocked and the next actions — the
+ *  parts' OWN nextAction + fixLink (sixParts), never a second rule. 'off' (a part the salon turned off) counts as ready. */
+export function branchSummary(parts: ReadinessPart[]) {
+  const READY: PartState[] = ['ready', 'off']; const BLOCKED: PartState[] = ['failed', 'attention_required'];
+  const ready = parts.filter((p) => READY.includes(p.state)).length, blocked = parts.filter((p) => BLOCKED.includes(p.state)).length;
+  return { summary: { ready, pending: parts.length - ready - blocked, blocked },
+    nextActions: parts.filter((p) => !READY.includes(p.state) && p.nextAction).map((p) => ({ key: p.key, state: p.state, nextAction: p.nextAction as string, fixLink: p.fixLink })) };
+}
+/** extras TEXT MESSAGING SETUP 09 (round 10): the Branch Sender Simulator — read only: for each kind of text, what this branch
+ *  WOULD use (account, number, Messaging Service, Verify) and the rule that governs it. Reminders / follow-ups: the sender
+ *  (through its Messaging Service when one is attached), blocked by STOP (Kevin decision 1); test SMS: the sender, from
+ *  the setup page only; booking codes (OTP): the Verify service or an SMS code, sent despite STOP — transactional (Kevin
+ *  decision 4). Nothing is sent. */
+export function branchRoutes(r: ReadinessView) {
+  const ms = r.a2p?.messagingService?.sidLast4 ?? null;
+  const canSend = r.outbound.state !== 'blocked';
+  return {
+    reminders: { account: r.account.accountSidMasked, number: r.sender.number, messagingServiceSidLast4: ms, via: ms ? 'messaging_service' : r.sender.number ? 'number' : 'none', sendable: canSend && !!r.sender.number, stopRule: 'blocked_by_stop' as const },
+    testSms: { account: r.account.accountSidMasked, number: r.sender.number, messagingServiceSidLast4: ms, via: r.sender.number ? 'number' : 'none', sendable: canSend && !!r.sender.number, stopRule: 'not_applicable' as const },
+    otp: { account: r.account.accountSidMasked, via: r.verify.tenantEnabled ? (r.verify.channel ?? 'none') : 'off', verifyServiceSidLast4: r.verify.serviceSidLast4, sendable: r.verify.tenantEnabled && r.verify.state === 'ready', stopRule: 'sent_despite_stop' as const },
+  };
 }
 
 // ── §12 the guided wizard: derived from the same evidence; resumes at the first unfinished step ────────────────────────
@@ -212,7 +238,8 @@ export class MessagingSetupCenter {
       const parts = sixParts(r, await this.deliveryEvidence(ctx.tenantId, b.branchId));
       out.push({ branchId: b.branchId, name: b.name, source: b.source, inherits: b.source !== 'branch_override', accountSidMasked: r.account.accountSidMasked,
         sender: r.sender.number, senderType: r.sender.senderType, registration: parts.find((p) => p.key === 'registration')!.state,
-        parts: parts.map((p) => ({ key: p.key, state: p.state })), lastCheckedAt: r.account.lastCheckedAt });
+        parts: parts.map((p) => ({ key: p.key, state: p.state })), lastCheckedAt: r.account.lastCheckedAt,
+        ...branchSummary(parts), routes: branchRoutes(r) });
     }
     return { salonDefault: { accountSidMasked: base.account.accountSidMasked, sender: base.sender.number, senderType: base.sender.senderType, source: base.source },
       branches: out, rule: 'Platform prohibition > salon setting > a branch\'s own Twilio > the salon default > Setup Required. A branch without its own Twilio inherits the salon default; changing it never rewrites past messages.' };
@@ -324,6 +351,13 @@ export class MessagingSetupCenter {
     const extra: Record<string, unknown> = { actor: r.actor_name ?? (r.actor_id ? 'staff member' : 'system'), configSource: r.config_source || null };
     if (kind === 'test_sms') {
       const t = (await sql<any>`select warning_codes, sender_kind from sms_test_events where tenant_id = ${ctx.tenantId} and id = ${id}::uuid`.execute(this.db)).rows[0];
+      // extras TEXT MESSAGING SETUP 11 (round 10): the end-to-end trace — every signature-verified provider callback for this
+      // test's message SID, in arrival order, with whether it moved the record (an out-of-order / repeated one did not)
+      const sidRow = (await sql<any>`select provider_message_sid, created_at from sms_test_events where tenant_id = ${ctx.tenantId} and id = ${id}::uuid`.execute(this.db)).rows[0];
+      const cbs = sidRow?.provider_message_sid ? (await sql<any>`select ev.provider_status, ev.error_code, ev.applied, ev.signature_verified, ev.received_at from notification_delivery_events ev
+        where ev.tenant_id = ${ctx.tenantId} and ev.provider_message_sid = ${sidRow.provider_message_sid} order by ev.received_at, ev.id`.execute(this.db)).rows : [];
+      Object.assign(extra, { requestedAt: iso(sidRow?.created_at), providerAccepted: !!sidRow?.provider_message_sid,
+        callbacks: cbs.map((c: any) => ({ status: String(c.provider_status), errorCode: c.error_code ?? null, applied: !!c.applied, signatureVerified: !!c.signature_verified, receivedAt: iso(c.received_at) })) });
       Object.assign(extra, { warnings: t?.warning_codes ?? [], senderKind: t?.sender_kind ?? null, accountLast4: r.account_last4 || null,
         meaning: view.rawStatus === 'delivered' ? 'The carrier reported delivery (signed callback).' : ['accepted', 'sent', 'sending'].includes(view.rawStatus) ? 'Twilio accepted the text — accepted is not delivered; waiting for the signed delivery report.' : 'The text was not delivered; see the reason code.' });
     } else if (kind === 'health_check') {

@@ -20,3 +20,16 @@ export interface BcExecutiveSummaryResponse {
   verification: { status: string; reason: string | null; checkedAt: string | null } | null;
   facts: BcExecutiveFact[]; opportunities: BcGrowthOpportunity[]; changesAnything: false; rule?: string;
 }
+
+/** extras AI Business Reports 15 — AI-model wording of the executive summary. The model only WORDS the verified figures; a
+ *  number guard drops any wording containing a number that is not one of them. `worded` is the only state with text. */
+export type BcExecutiveWordingState = 'worded' | 'not_configured' | 'denied' | 'rejected_numbers' | 'provider_error' | 'unavailable';
+export interface BcExecutiveWordingResponse {
+  id: string; state: BcExecutiveWordingState; text: string | null;
+  provider: string | null; model: string | null;
+  /** numbers the model wrote that are not among the verified figures (only for rejected_numbers) */
+  unverifiedNumbers: string[];
+  /** the access decision's reason when denied */
+  reason: string | null;
+  changesAnything: false;
+}

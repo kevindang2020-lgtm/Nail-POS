@@ -5,7 +5,7 @@
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import type { AlertIncidentListResponse, AlertIncidentDetail, AlertIncidentActionRequest, AlertIncidentActionResponse, AlertIncidentNoteRequest, AlertDeliverySettings, AlertDeliverySettingsResponse, AlertDeliveryUpdateRequest,
-  BcScheduleListResponse, BcExecutiveSummaryResponse,
+  BcScheduleListResponse, BcExecutiveSummaryResponse, BcExecutiveWordingResponse,
   BranchScorecardResponse, BranchExplainResponse, BranchDataCheckResponse, BranchSnapshotDetail, BranchSnapshotListResponse, AssistantHistoryResponse, AssistantDataCheckResponse, AssistantHistoryDeleteResponse, ReportChangeResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
@@ -21,6 +21,7 @@ const str = (max: number): BodySchema => S.nullable(S.string({ maxLength: max })
 export const BC_EMPTY_BODY: BodySchema = S.object({});
 export const BC_GENERATE_BODY: BodySchema = S.object({ reportType: str(40), preset: str(20) });
 /** AI Business Reports 14 — the caller's own schedule of one report type */
+export const BC_WORDING_BODY: BodySchema = S.object({}, []);
 export const BC_SCHEDULE_BODY: BodySchema = S.object({ reportType: S.enumOf(['daily_brief', 'weekly_summary', 'monthly_review']), active: S.nullable(S.boolean()), sendHour: S.nullable(S.number()), notifyInApp: S.nullable(S.boolean()) }, ['reportType']);
 export const BC_ACK_BODY: BodySchema = S.object({ note: str(500) });
 export const BC_INCIDENT_ACTION_BODY: BodySchema = S.object({ action: str(20), expectedVersion: S.nullable(S.number()), note: str(1000), assigneeUserId: str(40), snoozeMinutes: S.nullable(S.number()) });
@@ -82,6 +83,9 @@ export class BusinessCenterController {
   // AI Business Reports 15: executive summary (the report's verified figures) + growth advisor proposals — read-only
   @Get('reports/:id/executive') @RequirePermission('pos.ai_business.view')
   reportExecutive(@Req() q: any, @Param('id') id: string): Promise<BcExecutiveSummaryResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportExecutive(c, id) as Promise<BcExecutiveSummaryResponse>); }
+  /** extras AI Business Reports 15 — AI-model wording of the verified figures (gated + metered; a number guard drops any other number) */
+  @Post('reports/:id/executive/wording') @RequirePermission('pos.ai_business.view')
+  reportExecutiveWording(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(BC_WORDING_BODY, { strict: true })) _b: unknown): Promise<BcExecutiveWordingResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportExecutiveWording(c, id)); }
   /** AI Business Assistant 10 — what changed since the last check: data corrections vs actual business change (read only) */
   @Get('reports/:id/compare') @RequirePermission('pos.ai_business.view') @ListQuery(COMPARE_Q)
   reportCompare(@Req() q: any, @Param('id') id: string, @Query() f: any): Promise<ReportChangeResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportCompare(c, id, String(f?.with ?? ''))); }

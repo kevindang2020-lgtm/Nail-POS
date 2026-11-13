@@ -125,7 +125,13 @@ export class TwilioInboundService {
     const r: any = await sql`UPDATE sms_test_events e SET status = ${next}, error_code = COALESCE(${code}, e.error_code), status_updated_at = now(),
         delivered_at = CASE WHEN ${next} = 'delivered' THEN now() ELSE e.delivered_at END
       WHERE e.tenant_id = ${tenantId} AND e.provider_message_sid = ${sid} AND ${canMoveToSql(SMS_TEST_EVENT, next, 'e')} RETURNING e.id`.execute(this.db);
-    return r.rows?.length ?? 0;
+    const moved = r.rows?.length ?? 0;
+    // extras TEXT MESSAGING SETUP 11 (round 10): every signature-verified callback of a Test SMS is kept in the append-only
+    // delivery-event log (deduplicated per sid + status, applied = did it move the test row) — the activity trace shows them
+    await sql`INSERT INTO notification_delivery_events (tenant_id, notification_id, provider_message_sid, provider_status, error_code, applied, signature_verified)
+      VALUES (${tenantId}::uuid, NULL, ${sid}, ${s}, ${errorCode && /^[0-9]{3,6}$/.test(errorCode) ? errorCode : null}, ${moved > 0}, true)
+      ON CONFLICT ON CONSTRAINT uq_notification_delivery_events DO NOTHING`.execute(this.db);
+    return moved;
   }
 
   /** ids-only conversation_updated: to the conversation's branch room, or — salon-wide number — to every branch of the salon */

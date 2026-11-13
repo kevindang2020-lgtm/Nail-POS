@@ -13,6 +13,11 @@ export interface ExportRow {
   accountingCode?: string;
 }
 export const EXPORT_HEADERS = ['Date', 'Vendor', 'Category', 'Accounting Code', 'Branch', 'Description', 'Subtotal', 'Tax', 'Total', 'Payment Method', 'Receipt Number', 'Invoice Number', 'Receipt Attached?', 'Status'] as const;
+/** extras Expenses 09 (round 10): the same columns as codes, in file order — the export preflight lists them before the file is
+ *  made (the POS words them); one entry per EXPORT_HEADERS column */
+export const EXPORT_COLUMN_KEYS = ['date', 'vendor', 'category', 'accounting_code', 'branch', 'description', 'subtotal', 'tax', 'total', 'payment_method', 'receipt_number', 'invoice_number', 'receipt_attached', 'status'] as const;
+/** the free-text columns written through safeCell (a leading = + - @ tab / CR becomes literal) */
+export const EXPORT_FORMULA_SAFE_KEYS = ['vendor', 'category', 'accounting_code', 'branch', 'description', 'receipt_number', 'invoice_number'] as const;
 
 /** Receipt mandate §162 (Oct 28 2026): the export is bookkeeping, not tax advice. Shown in the XLSX (row 3) and by the
  *  export screens; the CSV stays purely tabular (header first, total last) because accounting imports read it as data. */

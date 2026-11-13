@@ -23,7 +23,8 @@
 //            System.
 // Nothing here edits a sale, an appointment, a customer, a price or a schedule, and nothing sends a message.
 import { hasPermission } from '@aipowersalon/permissions';
-import type { ReportChangeResponse, ReportChangeItem } from '@aipowersalon/api-contracts/tenant';
+import type { ReportChangeResponse, ReportChangeItem, BcExecutiveWordingResponse, BcExecutiveWordingState } from '@aipowersalon/api-contracts/tenant';
+import { logException } from '@aipowersalon/observability';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone, canMoveToSql } from '@aipowersalon/database';
@@ -87,6 +88,9 @@ export interface BcDeps {
   sales: Pick<ReportsService, 'getSales'>;
   /** A2 (Nov 6 2026): incidents + notifications for a triggered evaluation (business-alert-incidents.ts) */
   incidents?: Pick<BusinessAlertIncidents, 'onTriggered' | 'sweep'> | null;
+  /** extras AI Business Reports 15: the GATED, metered assistant path (AiAssistantService.run — entitlement + usage row) used
+   *  only to WORD verified figures; absent = no wording (the summary stays i18n-worded from the figures). */
+  wording?: { run(req: { tenantId: string; userId: string | null; branchId?: string | null; packageCode: string; action?: string; prompt: string; responseLanguage?: 'user' }): Promise<{ ok: boolean; text?: string; decision: { reason: string }; usage?: { provider: string; model: string } }> } | null;
 }
 
 export class BusinessCenter {
@@ -349,6 +353,30 @@ export class BusinessCenter {
       verification: { status: v.status, reason: v.reason ?? null, checkedAt: (v as Row).checkedAt ?? null },
       facts, opportunities: tips.map((t) => ({ kind: t.kind, basis: t.basis, route: t.route, status: 'proposed' as const, ownerReview: true })),
       changesAnything: false as const, rule: 'Figures are the report\'s stored canonical Sales Report numbers; nothing is estimated. Opportunities are suggestions to review.' };
+  }
+
+  /** extras AI Business Reports 15 — AI-model wording of the executive summary. The model is given ONLY the verified figures
+   *  (reportExecutive) and asked to word them; numberGuard drops any answer containing a number that is not one of those figures
+   *  (or a date of the period). Gated + metered through the assistant path; a test / unconfigured provider is never shown as
+   *  wording. Changes nothing. */
+  async reportExecutiveWording(ctx: AiBusinessContext, id: string): Promise<BcExecutiveWordingResponse> {
+    const out = (state: BcExecutiveWordingState, x: Partial<BcExecutiveWordingResponse> = {}): BcExecutiveWordingResponse =>
+      ({ id, state, text: null, provider: null, model: null, unverifiedNumbers: [], reason: null, changesAnything: false, ...x });
+    const ex = await this.reportExecutive(ctx, id);
+    if (!ex.available || !ex.facts.length) return out('unavailable');
+    if (!this.d.wording) return out('not_configured');
+    const lines = ex.facts.map((f) => `- ${f.key.replace(/_/g, ' ')}: ${figureText(f.value, f.unit)}`);
+    const prompt = ['Word a short executive summary (2-3 sentences) for the salon owner.', 'Use ONLY these verified figures, exactly as written. Do not calculate, round, estimate or add any other number.',
+      `Period: ${ex.period?.from ?? ''} to ${ex.period?.to ?? ''}.`, ...lines].join('\n');
+    let r;
+    try { r = await this.d.wording.run({ tenantId: ctx.tenantId, userId: ctx.userId, branchId: ctx.branchId ?? null, packageCode: WORDING_PACKAGE, action: 'report_executive_wording', prompt, responseLanguage: 'user' }); }
+    catch (e) { logException(e, { where: 'business-center.reportExecutiveWording' }); return out('provider_error'); }
+    if (!r.ok) return out('denied', { reason: r.decision?.reason ?? null });
+    const provider = r.usage?.provider ?? null, model = r.usage?.model ?? null;
+    if (!provider || NOT_A_MODEL.includes(provider)) return out('not_configured', { provider, model });
+    const bad = numberGuard(String(r.text ?? ''), ex.facts, ex.period ?? null);
+    if (bad.length) return out('rejected_numbers', { provider, model, unverifiedNumbers: bad });
+    return out('worded', { text: String(r.text ?? '').trim().slice(0, 1200), provider, model });
   }
 
   /** AI Business Assistant 10 — What Changed Since Last Check: two validated reports compared. The older one's days are
@@ -660,6 +688,32 @@ export class BusinessCenter {
 
 function median(v: number[]) { const s = [...v].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); }
 /** the headline figures of a completed report (server-side, so the screen shows labelled numbers, not raw JSON) */
+/** extras AI Business Reports 15 — the assistant package the wording is metered against, and provider names that are not a
+ *  real model (the deterministic test provider and the production placeholder): their echo is never shown as wording. */
+const WORDING_PACKAGE = 'ai_business_assistant';
+const NOT_A_MODEL = ['mock', 'not_configured'];
+/** a figure exactly as the model is given it: cents as $1,234.56, counts as integers, percents with one decimal */
+export function figureText(value: number, unit: 'cents' | 'count' | 'percent'): string {
+  if (unit === 'cents') { const neg = value < 0; const a = Math.abs(Math.round(value)); return `${neg ? '-' : ''}$${Math.floor(a / 100).toLocaleString('en-US')}.${String(a % 100).padStart(2, '0')}`; }
+  if (unit === 'percent') return `${Math.round(value * 10) / 10}%`;
+  return String(Math.round(value));
+}
+/** extras AI Business Reports 15 — the number guard: every number in the model's text must be one of the verified figures (in
+ *  the forms they were given: $1,234.56 → 1234.56 / 1234 / 1,234.56; counts; percents) or a part of the period's dates.
+ *  Returns the numbers that are not — any one of them means the wording is dropped. Pure. */
+export function numberGuard(text: string, facts: { value: number; unit: 'cents' | 'count' | 'percent' }[], period: { from?: string | null; to?: string | null } | null): string[] {
+  const norm = (x: string) => { const v = x.replace(/,/g, ''); const n = Number(v); return Number.isFinite(n) ? String(n) : v; };
+  const ok = new Set<string>();
+  for (const f of facts) {
+    if (f.unit === 'cents') { ok.add(norm((f.value / 100).toFixed(2))); if (f.value % 100 === 0) ok.add(norm(String(f.value / 100))); }
+    else if (f.unit === 'percent') ok.add(norm(String(Math.round(f.value * 10) / 10)));
+    else ok.add(norm(String(Math.round(f.value))));
+  }
+  for (const d of [period?.from, period?.to]) for (const part of String(d ?? '').split(/[^0-9]+/).filter(Boolean)) ok.add(norm(part));
+  const found = text.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
+  return [...new Set(found.map((x) => x.replace(/[.,]$/, '')).filter((x) => !ok.has(norm(x))))];
+}
+
 export function headline(content: Row): { key: string; value: number; unit: 'cents' | 'count' | 'percent' }[] {
   const out: { key: string; value: number; unit: 'cents' | 'count' | 'percent' }[] = [];
   const s = content.snapshot;

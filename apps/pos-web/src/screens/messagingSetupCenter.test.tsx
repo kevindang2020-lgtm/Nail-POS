@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const api = vi.hoisted(() => ({ overview: vi.fn(), branches: vi.fn(), activity: vi.fn(), detail: vi.fn() }));
 vi.mock('../api/posMessagingSetupApi', () => ({ posMessagingSetupApi: api }));
-import { SmsReadinessPanel, buildSupportReport, redactSupportText } from './messagingSetupCenter';
+import { SmsReadinessPanel, buildSupportReport, redactSupportText, BranchSenders as BranchSendersPanel, SetupActivity } from './messagingSetupCenter';
 import type { SetupOverview, BranchSenders } from '../api/posMessagingSetupApi';
 
 const BR_ID = '3f2b8c1e-1111-4222-8333-944455556666';
@@ -54,5 +54,50 @@ describe('SMS setup support report (masked)', () => {
     expect(box.readOnly).toBe(true);
     await waitFor(() => expect(api.branches).toHaveBeenCalledTimes(1));
     expect(api.overview).not.toHaveBeenCalled(); expect(api.activity).not.toHaveBeenCalled();
+  });
+});
+
+// extras TEXT MESSAGING SETUP 07 / 09 (round 10): per-branch Ready / Pending / Blocked + next actions, and the read-only sender
+// simulator (what reminders, a test text and booking codes would use, with the STOP rule)
+describe('Branch senders — summary, next actions and simulator', () => {
+  it('shows the server summary, the next actions and each route with its STOP rule', async () => {
+    api.branches.mockResolvedValue({ ...BR, branches: [{ ...BR.branches[0], summary: { ready: 3, pending: 1, blocked: 2 },
+      nextActions: [{ key: 'registration', state: 'attention_required', nextAction: 'Submit the toll-free verification', fixLink: '#registration' }, { key: 'delivery', state: 'failed', nextAction: 'Fix the status callback', fixLink: '#webhooks' }],
+      routes: { reminders: { account: 'AC…9f3a', number: '+12155550123', messagingServiceSidLast4: '7c1d', via: 'messaging_service', sendable: true, stopRule: 'blocked_by_stop' },
+        testSms: { account: 'AC…9f3a', number: '+12155550123', messagingServiceSidLast4: '7c1d', via: 'number', sendable: true, stopRule: 'not_applicable' },
+        otp: { account: 'AC…9f3a', verifyServiceSidLast4: 'b2e0', via: 'verify_service', sendable: false, stopRule: 'sent_despite_stop' } } }] });
+    render(<BranchSendersPanel onConfigure={() => {}} />);
+    expect(await screen.findByTestId('ms-br-sum-' + BR_ID)).toHaveTextContent('3 ready · 1 pending · 2 blocked');
+    expect(screen.getByTestId('ms-br-next-' + BR_ID).textContent).toMatch(/^Next: .+, .+$/);
+    expect(screen.getByTestId(`ms-br-sim-${BR_ID}-reminders`)).toHaveTextContent('Reminders & follow-ups: Messaging Service MG…7c1d (number +12155550123) · can send · not sent to people who texted STOP');
+    expect(screen.getByTestId(`ms-br-sim-${BR_ID}-testSms`)).toHaveTextContent('Test text: number +12155550123 · can send');
+    expect(screen.getByTestId(`ms-br-sim-${BR_ID}-otp`)).toHaveTextContent('Booking codes: Verify service VA…b2e0 · cannot send yet · sent even after STOP (transactional)');
+  });
+  it('an older server without them shows the row as before', async () => {
+    api.branches.mockResolvedValue(BR);
+    render(<BranchSendersPanel onConfigure={() => {}} />);
+    await screen.findByTestId('ms-br-' + BR_ID);
+    expect(screen.queryByTestId('ms-br-sum-' + BR_ID)).toBeNull(); expect(screen.queryByTestId('ms-br-sim-' + BR_ID)).toBeNull();
+  });
+});
+
+// extras TEXT MESSAGING SETUP 11 (round 10): the test-text detail shows the end-to-end trace the server returns
+describe('Setup activity — end-to-end delivery trace', () => {
+  it('request → provider acceptance → each callback (a repeat marked as not applied) → current status', async () => {
+    const row = { kind: 'test_sms', id: '9a9a9a9a-1111-4222-8333-944455556666', state: 'ok', rawStatus: 'delivered', createdAt: '2026-11-12T14:00:00Z', updatedAt: '2026-11-12T14:02:00Z', deliveredAt: '2026-11-12T14:02:00Z',
+      number: '+12155550123', recipient: '•••4444', providerRef: 'SM…9f3a', branchId: null, branchName: null, reason: null };
+    api.activity.mockResolvedValue({ items: [row], page: 1, pageSize: 10, totalItems: 1, totalPages: 1, basis: 'created', period: { from: null, to: null } });
+    api.detail.mockResolvedValue({ ...row, actor: 'Ann', configSource: 'tenant_default', meaning: 'The carrier reported delivery (signed callback).', requestedAt: '2026-11-12T14:00:00Z', providerAccepted: true,
+      callbacks: [{ status: 'sent', errorCode: null, applied: true, signatureVerified: true, receivedAt: '2026-11-12T14:01:00Z' }, { status: 'delivered', errorCode: null, applied: true, signatureVerified: true, receivedAt: '2026-11-12T14:02:00Z' },
+        { status: 'sent', errorCode: null, applied: false, signatureVerified: true, receivedAt: '2026-11-12T14:03:00Z' }] });
+    render(<SetupActivity branches={[]} refreshKey={0} />);
+    fireEvent.click(await screen.findByTestId('ms-act-view'));
+    const trace = await screen.findByTestId('ms-trace');
+    expect(screen.getByTestId('ms-trace-accepted')).toHaveTextContent('Accepted by the provider (message SM…9f3a)');
+    const cbs = screen.getAllByTestId('ms-trace-cb');
+    expect(cbs).toHaveLength(3);
+    expect(cbs[1]).toHaveTextContent('Provider report: delivered');
+    expect(cbs[2]).toHaveTextContent('did not change the status (repeat or out of order)');
+    expect(trace).toHaveTextContent('Now: ');
   });
 });

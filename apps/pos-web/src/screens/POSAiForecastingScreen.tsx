@@ -96,6 +96,7 @@ function CapacityGapPanel({ cap }: { cap: any }) {
       <div className="p-h">{tx('growth.aiForecast.cap.title')}</div>
       <div className="sub" data-testid="fc-cap-basis">{cap.avgAppointmentMinutes == null ? tx('growth.aiForecast.cap.noDuration')
         : tx('growth.aiForecast.cap.avg', { m: fmtNumber(cap.avgAppointmentMinutes), n: fmtNumber(cap.durationSample), d: fmtNumber(cap.durationWindowDays) })}</div>
+      {Array.isArray(cap.topServices) && cap.topServices.length ? <div className="sub" data-testid="fc-cap-top" style={{ marginTop: 4 }}>{tx('growth.aiForecast.cap.top', { s: cap.topServices.join(', ') })}</div> : null}
       <div className="sub" data-testid="fc-cap-summary" style={{ marginTop: 4 }}>{tx('growth.aiForecast.cap.summary', { n: fmtNumber(shortDays), t: fmtNumber(days.length) })}</div>
       <div role="img" aria-label={tx('growth.aiForecast.cap.chartLabel')} style={{ display: 'grid', gap: 4, marginTop: 8 }}>
         {days.map((d) => (
@@ -116,7 +117,9 @@ function CapacityGapPanel({ cap }: { cap: any }) {
             <tr key={d.date} data-testid="fc-cap-row">
               <td>{d.date}</td>
               <td>{hrs(d.expectedMinutes)}{d.expectedMinutes != null ? <div className="sub">{hrs(d.lowerMinutes)} – {hrs(d.upperMinutes)}</div> : null}</td>
-              <td>{hrs(d.scheduledMinutes)}<div className="sub">{tx('growth.aiForecast.cap.techs', { n: fmtNumber(d.technicians ?? 0) })}</div></td>
+              <td>{hrs(d.scheduledMinutes)}<div className="sub">{tx('growth.aiForecast.cap.techs', { n: fmtNumber(d.technicians ?? 0) })}</div>
+                {d.timeOffMinutes || d.blockedMinutes ? <div className="sub" data-testid="fc-cap-off">{tx('growth.aiForecast.cap.off', { o: hrs(d.timeOffMinutes ?? 0), b: hrs(d.blockedMinutes ?? 0) })}</div> : null}
+                {Array.isArray(d.uncoveredServices) && d.uncoveredServices.length ? <div className="sub" style={{ color: '#B85B4D' }} data-testid="fc-cap-skills">{tx('growth.aiForecast.cap.skills', { s: d.uncoveredServices.join(', ') })}</div> : null}</td>
               <td>{d.gapMinutes == null ? '—' : (d.gapMinutes < 0 ? '−' : '+') + hrs(Math.abs(d.gapMinutes))}</td>
               <td><span className="chip" style={{ color: CAP_COLOR[d.state], borderColor: CAP_COLOR[d.state] }}>{tx('growth.aiForecast.cap.state.' + (CAP_COLOR[d.state] ? d.state : 'unknown'))}</span></td>
             </tr>
@@ -227,6 +230,9 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
         <div className="kpi"><div className="k-l">{tx('pos.model')}</div><div className="k-v" style={{ fontSize: 18 }}>{titleCase(data.method)}</div></div>
         <div className="kpi"><div className="k-l">{tx('pos.confidence_3')}</div><div className="k-v" style={{ fontSize: 18, color: LEVEL_COLOR[data.confidence] }}>{titleCase(data.confidence)}</div></div>
         <div className="kpi"><div className="k-l">{tx('pos.backtest_wape')}</div><div className="k-v" style={{ fontSize: 18 }}>{pct(data.accuracy?.wape)}</div></div>
+        {/* extras AI Analytics Forecasting 05 (round 10): the seasonal-naive baseline's own backtest + the model's skill over it */}
+        <div className="kpi" data-testid="fc-baseline"><div className="k-l">{tx('fch.baselineWape')}</div><div className="k-v" style={{ fontSize: 18 }}>{data.baseline ? pct(data.baseline.wape) : tx('fch.notEvaluated')}</div>
+          {data.baseline ? <div className="sub" data-testid="fc-skill">{data.baseline.skill == null ? tx('fch.skillNa') : tx('fch.skill', { v: `${data.baseline.skill > 0 ? '+' : ''}${(data.baseline.skill * 100).toFixed(0)}%` })}</div> : null}</div>
         <div className="kpi"><div className="k-l">{tx('pos.data_quality')}</div><div className="k-v" style={{ fontSize: 18 }}>{titleCase(data.dataQuality)}</div></div>
         <div className="kpi"><div className="k-l">{data.horizonDays}{tx('pos.day_total')}</div><div className="k-v" style={{ fontSize: 18 }}>{fmt(total)}</div></div>
       </div>

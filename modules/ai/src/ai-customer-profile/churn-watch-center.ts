@@ -27,6 +27,15 @@ import { businessDate } from '@aipowersalon/date-time';   // §87
 type Row = Record<string, any>;
 export type CwCtx = RetentionContext;
 export type AuditFn = (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<unknown>;
+/** extras Churn Watch 07 (round 10) — the messaging opt-out checks, READ from the one opt-out store (notification_opt_outs,
+ *  written by inbound STOP / unsubscribe): whether this customer's phone texted STOP (follow-ups and marketing texts are
+ *  blocked; booking codes still go — Kevin's decisions 1 and 4) and whether their e-mail unsubscribed ('all' or only
+ *  'marketing'). Churn Watch never sends; this only tells the person reviewing before they reach out. */
+function consentOut(raw: unknown): { smsOptedOut: boolean; smsOptedOutAt: string | null; emailOptedOut: boolean; emailScope: 'all' | 'marketing' | null } {
+  const o = (raw && typeof raw === 'object' ? raw : typeof raw === 'string' ? JSON.parse(raw) : {}) as { sms?: boolean | null; email?: boolean | null; emailScope?: string | null; smsAt?: string | null };
+  return { smsOptedOut: !!o.sms, smsOptedOutAt: o.sms && o.smsAt ? new Date(o.smsAt).toISOString() : null, emailOptedOut: !!o.email, emailScope: o.email ? (o.emailScope === 'marketing' ? 'marketing' : 'all') : null };
+}
+
 export class ChurnWatchError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details: Record<string, unknown> = {}) { super(message); }
 }
@@ -201,7 +210,10 @@ export class ChurnWatchCenter {
     const rows = (await sql<Row>`${F.cte} select c.id, c.full_name, c.first_name, c.last_name, c.normalized_phone, c.phone_display, c.email,
         b.segment, b.days_away, b.last_visit, b.visits, b.next_date, ${since}::text as verdict_since,
         sn.churn_evidence, sn.typical_interval_days, sn.computed_at, sn.rebooking,
-        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, ${this.reviewCurrent(today)} as review_current
+        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, ${this.reviewCurrent(today)} as review_current,
+        (select json_build_object('sms', bool_or(oo.channel = 'sms'), 'email', bool_or(oo.channel = 'email'), 'emailScope', max(oo.scope) filter (where oo.channel = 'email'), 'smsAt', max(oo.opted_out_at) filter (where oo.channel = 'sms'))
+          from notification_opt_outs oo where oo.tenant_id = c.tenant_id and ((oo.channel = 'sms' and coalesce(c.normalized_phone, '') <> '' and oo.address = c.normalized_phone)
+            or (oo.channel = 'email' and coalesce(c.email, '') <> '' and lower(oo.address) = lower(c.email)))) as opt_out
       from ${F.join} where ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     return {
       items: rows.map((r) => ({
@@ -216,6 +228,7 @@ export class ChurnWatchCenter {
         typicalIntervalDays: r.typical_interval_days == null ? null : N(r.typical_interval_days),
         hasUpcoming: r.next_date != null, nextAppointmentDate: r.next_date ? String(r.next_date).slice(0, 10) : null, rebooking: !!r.rebooking,
         review: r.review_status ? { status: r.review_status, at: iso(r.reviewed_at), levelAtReview: r.level_at_review, dueOn: r.due_on ?? null, current: !!r.review_current } : null,
+        contactConsent: consentOut(r.opt_out),
       })),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), unavailable: false,
       applied: { q: q || null, tab, priority: priority ?? null, dateField, preset: per.preset, from: per.from, to: per.to, sort },
@@ -237,7 +250,10 @@ export class ChurnWatchCenter {
         sn.churn_level, sn.churn_evidence, sn.churn_since, sn.status as activity, sn.evidence as activity_evidence,
         sn.completed_visits, sn.first_visit_at, sn.last_visit_at, sn.typical_interval_days, sn.days_since_last, sn.has_upcoming, sn.next_appointment_date,
         sn.canceled_count, sn.no_show_count, sn.membership_canceled, sn.rebooking, sn.rebooking_reason, sn.computed_at, sn.scan_id,
-        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, r.version as review_version, ${this.reviewCurrent(k.today)} as review_current
+        r.status as review_status, r.reviewed_at, r.level_at_review, r.due_on::text as due_on, r.version as review_version, ${this.reviewCurrent(k.today)} as review_current,
+        (select json_build_object('sms', bool_or(oo.channel = 'sms'), 'email', bool_or(oo.channel = 'email'), 'emailScope', max(oo.scope) filter (where oo.channel = 'email'), 'smsAt', max(oo.opted_out_at) filter (where oo.channel = 'sms'))
+          from notification_opt_outs oo where oo.tenant_id = c.tenant_id and ((oo.channel = 'sms' and coalesce(c.normalized_phone, '') <> '' and oo.address = c.normalized_phone)
+            or (oo.channel = 'email' and coalesce(c.email, '') <> '' and lower(oo.address) = lower(c.email)))) as opt_out
       from ${F.join} where c.id = ${id}::uuid and ${this.custVisible(s)}`.execute(this.db)).rows[0];
     if (!r) throw new ChurnWatchError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
     const scan = r.scan_id ? (await sql<Row>`select tunables, rule_version, finished_at from customer_intelligence_scans where tenant_id = ${T} and id = ${r.scan_id}`.execute(this.db)).rows[0] : null;
@@ -263,6 +279,7 @@ export class ChurnWatchCenter {
       rule: scan ? { version: scan.rule_version, tunables: scan.tunables, evaluatedAt: iso(r.computed_at) } : null,
       review: r.review_status ? { status: r.review_status, at: iso(r.reviewed_at), levelAtReview: r.level_at_review, dueOn: r.due_on ?? null, current: !!r.review_current, version: N(r.review_version) } : null,
       history: events.map((e) => ({ id: e.id, type: e.event_type, level: e.level, note: e.note, actor: e.actor ?? null, at: iso(e.created_at) })),
+      contactConsent: consentOut(r.opt_out),
     };
   }
 

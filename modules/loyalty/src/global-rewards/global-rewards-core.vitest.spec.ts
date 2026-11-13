@@ -4,7 +4,8 @@ import { describe, it, expect } from 'vitest';
 import {
   computeEarn, validateCustomRate, previewRows, policyVersionAt, policyDisplay, versionDisplayState, globalVersionAt, eligibleCentsOf,
   redeemableBlocks, alertLevel, tenthsLabel, tokensLabel, rateLabel, purchaseQuantity, isSpendable, centsPerPointTenth, GlobalRewardsError,
-  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf } from './global-rewards-core';
+  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf, walletFundingForecast, networkReadiness,
+} from './global-rewards-core';
 
 const program: ProgramPolicy = {
   earnPaused: false, redeemPaused: false, purchasesPaused: false, reimbursementsPaused: false,
@@ -139,5 +140,38 @@ describe('refundedEligibleCentsOf (Nov 3 audit: tip / tax refunds never take bac
   });
   it('a refund marked with the tip takes the tip first, then service money', () => {
     expect(refundedEligibleCentsOf({ paidCents: 12000, taxCents: 0, tipCents: 2000, eligibleCents: 10000, refunds: [{ amountCents: 7000, tipRefunded: true }] })).toBe(5000);
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 03 (round 10): the funding forecast arithmetic (verified use only, nothing bought)
+describe('walletFundingForecast', () => {
+  it('daily pace from the window, days left / to the low level, funding needed beyond available + pending', () => {
+    expect(walletFundingForecast(10_000, 0, 9_000, 30, 2_000)).toEqual({ basisDays: 30, usedCents: 9_000, dailyCents: 300, daysLeft: 33, daysToLow: 26, fundingNeededCents: 0, automaticPurchase: false });
+    expect(walletFundingForecast(1_000, 2_000, 9_000, 30, 2_000)).toMatchObject({ daysLeft: 3, daysToLow: 0, fundingNeededCents: 9_000 - 1_000 - 2_000 });
+    expect(walletFundingForecast(0, 0, 100, 30, 0)).toMatchObject({ dailyCents: 4, daysLeft: 0 });   // 3.33 rounds UP — never flatters
+  });
+  it('no verified use → no estimate (never invented)', () => {
+    expect(walletFundingForecast(10_000, 0, 0, 30, 2_000)).toEqual({ basisDays: 30, usedCents: 0, dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false });
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 14 (round 10): per-feature readiness from the real configuration, with coded evidence
+describe('networkReadiness', () => {
+  const on = { engine: true, earn: true, redemption: true, purchases: true, customEarning: true };
+  const run = { earnPaused: false, redeemPaused: false, purchasesPaused: false };
+  const by = (r: ReturnType<typeof networkReadiness>) => Object.fromEntries(r.map((f) => [f.feature, f]));
+  it('no providers: earning / redemption ready, purchases and payouts BLOCKED_EXTERNAL — never pretended ready', () => {
+    const r = by(networkReadiness({ flags: on, program: run, enrolled: true, funding: { provider: null, sandbox: false }, payoutProvider: null }));
+    expect(r.earning).toEqual({ feature: 'earning', state: 'PRODUCTION_READY', evidence: ['enabled_no_external_dependency'] });
+    expect(r.token_purchases).toEqual({ feature: 'token_purchases', state: 'BLOCKED_EXTERNAL', evidence: ['no_funding_provider_connected'] });
+    expect(r.salon_payouts).toEqual({ feature: 'salon_payouts', state: 'BLOCKED_EXTERNAL', evidence: ['no_payout_provider_connected'] });
+  });
+  it('sandbox provider → SANDBOX_READY; real → PRODUCTION_READY; off / paused / not enrolled → CODE_READY with why', () => {
+    expect(by(networkReadiness({ flags: on, program: run, enrolled: true, funding: { provider: 'sandbox', sandbox: true }, payoutProvider: null })).token_purchases.state).toBe('SANDBOX_READY');
+    expect(by(networkReadiness({ flags: on, program: run, enrolled: true, funding: { provider: 'acme', sandbox: false }, payoutProvider: 'acme-pay' })).salon_payouts.state).toBe('PRODUCTION_READY');
+    const off = by(networkReadiness({ flags: { ...on, earn: false }, program: { ...run, redeemPaused: true, purchasesPaused: true }, enrolled: false, funding: { provider: 'acme', sandbox: false }, payoutProvider: null }));
+    expect(off.earning).toEqual({ feature: 'earning', state: 'CODE_READY', evidence: ['earn_flag_off', 'not_enrolled'] });
+    expect(off.redemption.evidence).toEqual(['redeem_paused', 'not_enrolled']);
+    expect(off.token_purchases).toMatchObject({ state: 'CODE_READY', evidence: ['purchases_paused', 'not_enrolled'] });
   });
 });

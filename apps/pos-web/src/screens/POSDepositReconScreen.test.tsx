@@ -81,4 +81,20 @@ describe('POSDepositReconScreen', () => {
     expect(due[0].textContent).toMatch(/Oct 22, 2026.*Overdue$/);
     expect(due[1].textContent).toBe('Nov 4, 2026');
   });
+  it('extras PAYMENTS 09: the exceptions inbox also lists the unresolved card attempts with their evidence and a way to settle them', async () => {
+    api.exceptions.mockResolvedValue({ ...pageOf([]), kpis: { total: 0, open: 0, inReview: 0, escalated: 0, resolved: 0, amountAtRiskCents: 0 }, cardAttempts: { total: 3, amountCents: 9500, staleAfterMinutes: 30, items: [
+      { id: 'a1', ticketId: 't1', ticketNumber: 'T-77', amountCents: 3500, state: 'needs_review', reason: 'needs_review', resolutionNote: null, lastErrorCode: 'TIMEOUT', card: null, ageMinutes: 1500 },
+      { id: 'a2', ticketId: 't2', ticketNumber: 'T-78', amountCents: 4500, state: 'processing', reason: 'stranded', resolutionNote: 'provider_unreachable', lastErrorCode: null, card: null, ageMinutes: 180 },
+      { id: 'a3', ticketId: 't1', ticketNumber: 'T-77', amountCents: 1500, state: 'processing', reason: 'in_flight_too_long', resolutionNote: null, lastErrorCode: null, card: { brand: 'visa', last4: '4242' }, ageMinutes: 120 },
+    ] } });
+    mount(); fireEvent.click(await screen.findByTestId('tab-exceptions'));
+    const box = await screen.findByTestId('exc-card-attempts');
+    expect(box).toHaveTextContent('Unresolved card attempts: 3 · $95.00');
+    const rows = screen.getAllByTestId('exc-card-row');
+    expect(rows.map((r) => r.getAttribute('data-reason'))).toEqual(['needs_review', 'stranded', 'in_flight_too_long']);
+    expect(rows[0]).toHaveTextContent('Last error: TIMEOUT'); expect(rows[0]).toHaveTextContent('1 d');
+    expect(rows[1]).toHaveTextContent('Processor could not be reached.');
+    expect(rows[2]).toHaveTextContent('still in progress after 30 min'); expect(rows[2]).toHaveTextContent('VISA ••4242');
+    expect(screen.getByTestId('exc-card-open')).toHaveTextContent('Settle in Split Payments');
+  });
 });

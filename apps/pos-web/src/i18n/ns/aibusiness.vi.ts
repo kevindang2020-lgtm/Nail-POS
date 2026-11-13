@@ -745,4 +745,11 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx10.delayed": "Dữ liệu trễ", // DRAFT — Kevin reviews
   "bcx10.delayedTip": "{n} cập nhật từ chi nhánh này đang chờ (lâu nhất {m} phút); số liệu có thể chưa mới nhất.", // DRAFT — Kevin reviews
   "bcx10.fairNote": "Mỗi giờ của thợ là chia cho thời gian ca đã ghi ở đây; mỗi giờ mở cửa là chia cho giờ mở cửa của chi nhánh — cả hai lấy từ Bảng điểm chi nhánh bên dưới.", // DRAFT — Kevin reviews
+  "bzx.word.btn": "Diễn đạt bằng AI", // DRAFT — Kevin reviews
+  "bzx.word.byModel": "AI diễn đạt từ các số liệu đã xác minh ở trên; mọi con số đều đã được đối chiếu.", // DRAFT — Kevin reviews
+  "bzx.word.state.not_configured": "Chưa diễn đạt bằng AI được: chưa kết nối mô hình AI. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
+  "bzx.word.state.denied": "Gói Trợ lý Kinh doanh AI hiện không cho phép việc này. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
+  "bzx.word.state.rejected_numbers": "Không hiện bản diễn đạt: có số không nằm trong số liệu đã xác minh ({n}).", // DRAFT — Kevin reviews
+  "bzx.word.state.provider_error": "Không kết nối được AI. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
+  "bzx.word.state.unavailable": "Báo cáo này không có số liệu đã xác minh để diễn đạt.", // DRAFT — Kevin reviews
 };

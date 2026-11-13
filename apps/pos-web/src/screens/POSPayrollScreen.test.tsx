@@ -94,6 +94,23 @@ describe('POSPayrollScreen (wave 2)', () => {
     await waitFor(() => expect(api.recordPayout).toHaveBeenCalledWith('p1', expect.objectContaining({ technicianId: 'sam', amountCents: 20005, method: 'cash', status: 'paid' })));
   });
 
+  it('extras PAYMENTS 14: marking or cancelling a payout first previews recipient, amount, method, reference, effect and actor; nothing is sent before Confirm', async () => {
+    api.getPeriod.mockResolvedValue({ ...detail('finalized'), payouts: [{ id: 'po1', technicianId: 'sam', amountCents: 20005, method: 'cash', reference: 'ENV-7', status: 'pending' }] });
+    api.setPayoutStatus.mockResolvedValue({});
+    render(<POSPayrollScreen />); fireEvent.click(await screen.findByText('Jun 1–15'));
+    fireEvent.click(await screen.findByTestId('payout-mark-paid'));
+    const r = screen.getByTestId('payout-review');
+    expect(r).toHaveTextContent('Mark the $200.05 payout to Sam Lee as paid');
+    expect(r).toHaveTextContent('reference ENV-7');
+    expect(screen.getByTestId('payout-actor')).toHaveTextContent(/Acting: .* · Salon: /);
+    expect(api.setPayoutStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('payout-back'));
+    expect(screen.queryByTestId('payout-review')).toBeNull();
+    fireEvent.click(screen.getByTestId('payout-cancel'));
+    expect(screen.getByTestId('payout-review')).toHaveTextContent('The amount goes back to what is owed.');
+    fireEvent.click(screen.getByTestId('payout-confirm'));
+    await waitFor(() => expect(api.setPayoutStatus).toHaveBeenCalledWith('po1', { status: 'canceled' }));
+  });
   it('mark paid sends the method and reference', async () => {
     api.getPeriod.mockResolvedValue(detail('finalized'));
     api.pay.mockResolvedValue({});

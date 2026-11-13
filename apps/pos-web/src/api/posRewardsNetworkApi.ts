@@ -14,6 +14,10 @@ export interface WalletSummary {
   lowBalanceCents?: number; criticalBalanceCents?: number; levelsOwn?: boolean; platformLowBalanceCents?: number; platformCriticalBalanceCents?: number;
   /** extras GLOBAL LOYALTY REWARDS 13: this salon month's earning / redemptions per branch from the ONE wallet (server-computed) */
   branchUsage?: RewardsNetBranchSplit;
+  /** extras GLOBAL LOYALTY REWARDS 03: the server's funding forecast from the last 30 days of verified wallet use (null fields = no estimate) */
+  /** extras GLOBAL LOYALTY REWARDS 06: funding vs liability — each from its own ledger, never combined (server-computed) */
+  fundingVsLiability?: { backedFundingCents: number; pointsEarnedHereTenths: number; earnBackingCents: number; heldRedemptions: number; heldPointTenths: number; heldValueCents: number; salonPayablesOpen: number; salonPayablesOwedCents: number; combined: false };
+  forecast?: { basisDays: number; usedCents: number; dailyCents: number | null; daysLeft: number | null; daysToLow: number | null; fundingNeededCents: number | null; automaticPurchase: false };
 }
 export interface RewardsNetBranchSplit {
   since: string; totalFundedCents: number; walletUsedCents: number; matchesWallet: boolean; doubleFunded: number;
@@ -33,9 +37,15 @@ export interface NetworkState {
   flags: { engine: boolean; earn: boolean; redemption: boolean; purchases: boolean; customEarning: boolean };
   permissions: { canEdit: boolean; canActivate: boolean; canBuyTokens: boolean };
   funding: { provider: string | null; sandbox: boolean; available: boolean };
+  /** extras GLOBAL LOYALTY REWARDS 14: per-feature readiness (server-computed from flags, pauses, enrollment, providers) */
+  readiness?: { feature: string; state: 'CODE_READY' | 'SANDBOX_READY' | 'PRODUCTION_READY' | 'BLOCKED_EXTERNAL'; evidence: string[] }[];
 }
 interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
-export interface Preview { proposed: RewardsNetEarningRate; global: RewardsNetEarningRate; rows: PreviewRow[] }
+export interface Preview { proposed: RewardsNetEarningRate; global: RewardsNetEarningRate; rows: PreviewRow[];
+  /** extras GLOBAL LOYALTY REWARDS 04: scope, expected effect on the salon's own last-30-days earnings, approval (server-computed) */
+  scope?: { appliesTo: 'all_branches'; branches: { id: string; name: string | null }[]; wallet: 'one_salon_wallet' };
+  expected?: { basisDays: number; earnings: number; actualBackingCents: number | null; proposedBackingCents: number | null; globalBackingCents: number | null; differenceVsActualCents: number | null };
+  approval?: { permission: string; stepUp: boolean; canActivate: boolean; historyImmutable: boolean } }
 export interface HistoryItem { id: string; versionNo: number; mode: 'GLOBAL' | 'CUSTOM'; state: 'DRAFT' | 'DISCARDED' | 'CANCELED' | 'SCHEDULED' | 'ACTIVE' | 'SUPERSEDED'; effectiveFrom: string | null; rate: RewardsNetEarningRate | null; reason: string | null; activatedAt: string | null; createdAt: string | null }
 export interface RewardsNetLedgerRow { id: string; entryType: string; deltaCents: number; balanceAfterCents: number; sourceTable: string | null; sourceId: string; reason: string | null; at: string | null }
 export interface Purchase { id: string; tokenCents: number; amountCents: number; feeCents: number; status: string; pending: boolean; provider: string | null; providerRefLast6: string | null; failureCode: string | null; createdAt: string | null; confirmedAt: string | null; fundedAt: string | null; created?: boolean }
@@ -78,8 +88,8 @@ export const posRewardsNetworkApi = {
   cancelScheduled: (id: string) => api.post<unknown>(`${B}/earning/versions/${enc(id)}/cancel`, {}),
   wallet: () => api.get<WalletSummary>(`${B}/wallet`),
   setWalletLevels: (b: { lowBalanceCents: number | null; criticalBalanceCents: number | null }) => api.post<unknown>(`${B}/wallet/levels`, b),
-  ledger: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<RewardsNetLedgerRow>>(`${B}/wallet/ledger`, q),
-  purchases: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<Purchase>>(`${B}/purchases`, q),
+  ledger: (q: { page: number; pageSize: number; entryType?: string; branchId?: string; from?: string; to?: string }) => api.get<RewardsNetPaged<RewardsNetLedgerRow>>(`${B}/wallet/ledger`, q),
+  purchases: (q: { page: number; pageSize: number; status?: string; from?: string; to?: string }) => api.get<RewardsNetPaged<Purchase>>(`${B}/purchases`, q),
   reimbursements: (q: { page: number; pageSize: number; status?: string | null }) => api.get<RewardsNetPayables>(`${B}/reimbursements`, { page: q.page, pageSize: q.pageSize, ...(q.status ? { status: q.status } : {}) }),
   financeExport: (from: string, to: string) => api.exportAsync<RewardsNetFinanceExport>(`${B}/finance-export`, { from, to }),
   purchase: (id: string) => api.get<Purchase & { events?: PurchaseEvent[] }>(`${B}/purchases/${enc(id)}`),

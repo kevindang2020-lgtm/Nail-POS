@@ -11,7 +11,7 @@
 // here charges a card (Test Connection is the provider's non-charge ping).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SystemCheckButton } from '../components/SystemCheck';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTerminalsScreenApi as api } from '../api/posTerminalsScreenApi';
 import { posDevicesApi } from '../api/posDevicesApi';
@@ -60,7 +60,9 @@ export function POSPaymentTerminalsScreen() {
   const canEdit = can('settings.edit');
   const canDevices = can('pos.devices.manage') || can('settings.edit');   // the server resolves pos.devices.manage to settings.edit (a session carries the coarse key)
   const [tab, setTab] = useState<Tab>('physical');
-  const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
+  // extras Device Integration Logs 10 (round 10): a drill-through link's stable scope (?q=<terminal id>) prefills the search
+  const [linkParams] = useSearchParams();
+  const [search, setSearch] = useState(() => (linkParams.get('q') ?? '').trim().slice(0, 100)); const q = useDebounced(search.trim(), 300);
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState<Note>(null);
   const [dlg, setDlg] = useState<Dlg>(null);

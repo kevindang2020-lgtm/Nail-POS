@@ -3,7 +3,7 @@
 // forecast with prediction intervals, a backtest-derived confidence, and a data-quality status. It never fabricates data
 // and never claims accuracy that wasn't backtested; with too little history it returns INSUFFICIENT_HISTORY rather than a
 // confident guess. This is decision-support — the output is explicitly a forecast range, not a guaranteed outcome.
-import { forecast, backtest, selectModel, classifyDataQuality, classifyConfidence, type BacktestMetrics, type SeriesPoint } from './forecast-core';
+import { forecast, backtest, selectModel, naiveBaseline, classifyDataQuality, classifyConfidence, type BacktestMetrics, type BaselineComparison, type SeriesPoint } from './forecast-core';
 import { AiForecastError, AiForecastErrorCode, type AiForecastContext, type AppointmentSeriesSource } from './ai-analytics-forecasting.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
@@ -21,6 +21,8 @@ export interface AppointmentForecast {
   dataQuality: string;
   confidence: string;
   intervalLevel: number;
+  /** extras AI Analytics Forecasting 05: the seasonal-naive baseline's own backtest and the model's skill over it; null = not evaluated */
+  baseline: BaselineComparison | null;
   accuracy: (BacktestMetrics & { note: string }) | null; // null when not backtestable — accuracy is NEVER asserted
   horizon: { step: number; date: string; point: number; lower: number; upper: number }[];
   generatedAt: string;
@@ -31,12 +33,16 @@ export interface AppointmentForecast {
 
 /** the capacity reader the gap needs (ScheduleCapacitySource in prod) */
 export interface ForecastCapacityReader {
-  getCapacity(ctx: AiForecastContext, dates: string[]): Promise<{ days: { date: string; scheduledMinutes: number; technicians: number }[]; avgAppointmentMinutes: number | null; durationSample: number; durationWindowDays: number }>;
+  getCapacity(ctx: AiForecastContext, dates: string[]): Promise<{ days: { date: string; scheduledMinutes: number; technicians: number; timeOffMinutes?: number; blockedMinutes?: number; uncoveredServices?: string[] }[]; avgAppointmentMinutes: number | null; durationSample: number; durationWindowDays: number; topServices?: string[] }>;
 }
 export type CapacityState = 'short' | 'tight' | 'ok' | 'no_schedule' | 'unknown';
 export interface ForecastCapacityGap {
   avgAppointmentMinutes: number | null; durationSample: number; durationWindowDays: number;
-  days: { date: string; expectedMinutes: number | null; lowerMinutes: number | null; upperMinutes: number | null; scheduledMinutes: number; technicians: number; gapMinutes: number | null; state: CapacityState }[];
+  days: { date: string; expectedMinutes: number | null; lowerMinutes: number | null; upperMinutes: number | null; scheduledMinutes: number; technicians: number; gapMinutes: number | null; state: CapacityState;
+    /** extras AI Analytics Forecasting 20: approved time off / blocked time removed, and most-booked services nobody working is approved for */
+    timeOffMinutes: number; blockedMinutes: number; uncoveredServices: string[] }[];
+  /** extras AI Analytics Forecasting 20: the services checked for skill coverage */
+  topServices: string[];
   basis: string;
 }
 /** PURE: workload = forecast appointments × the average booked minutes; gap = scheduled − expected (negative = short).
@@ -46,14 +52,15 @@ export function capacityGap(horizon: { date: string; point: number; lower: numbe
   const by = new Map(cap.days.map((d) => [d.date, d]));
   const avg = cap.avgAppointmentMinutes;
   const days = horizon.map((h) => {
-    const c = by.get(h.date) ?? { scheduledMinutes: 0, technicians: 0 };
-    if (avg == null) return { date: h.date, expectedMinutes: null, lowerMinutes: null, upperMinutes: null, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: null, state: 'unknown' as CapacityState };
+    const c: { scheduledMinutes: number; technicians: number; timeOffMinutes?: number; blockedMinutes?: number; uncoveredServices?: string[] } = by.get(h.date) ?? { scheduledMinutes: 0, technicians: 0 };
+    const extra = { timeOffMinutes: c.timeOffMinutes ?? 0, blockedMinutes: c.blockedMinutes ?? 0, uncoveredServices: c.uncoveredServices ?? [] };
+    if (avg == null) return { date: h.date, expectedMinutes: null, lowerMinutes: null, upperMinutes: null, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: null, state: 'unknown' as CapacityState, ...extra };
     const exp = Math.round(Math.max(0, h.point) * avg), lo = Math.round(Math.max(0, h.lower) * avg), hi = Math.round(Math.max(0, h.upper) * avg);
     const state = capacityState(exp, hi, c.scheduledMinutes);
-    return { date: h.date, expectedMinutes: exp, lowerMinutes: lo, upperMinutes: hi, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: c.scheduledMinutes - exp, state };
+    return { date: h.date, expectedMinutes: exp, lowerMinutes: lo, upperMinutes: hi, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: c.scheduledMinutes - exp, state, ...extra };
   });
-  return { avgAppointmentMinutes: avg, durationSample: cap.durationSample, durationWindowDays: cap.durationWindowDays, days,
-    basis: 'Workload = forecast appointments x average booked minutes. Scheduled = weekly schedule with date overrides, breaks removed; time off is not subtracted. Advisory only: no shift is created or changed.' };
+  return { avgAppointmentMinutes: avg, durationSample: cap.durationSample, durationWindowDays: cap.durationWindowDays, days, topServices: cap.topServices ?? [],
+    basis: 'Workload = forecast appointments x average booked minutes. Scheduled = weekly schedule with date overrides, breaks removed, approved time off and blocked time removed. Skills: the most-booked services checked against the technicians working that day. Advisory only: no shift is created or changed.' };
 }
 
 /** the one state rule (used by the real gap and by the what-if sandbox) */
@@ -166,6 +173,7 @@ export class AppointmentForecastService {
       dataQuality: classifyDataQuality(series),
       confidence: classifyConfidence(series.length, horizonDays, metrics?.wape ?? null, classifyDataQuality(series)),
       intervalLevel: out.intervalLevel,
+      baseline: naiveBaseline(selection, metrics),
       accuracy: metrics ? { ...metrics, note: `Backtested over ${metrics.folds} rolling folds (WAPE ${(metrics.wape * 100).toFixed(1)}%).` } : null,
       horizon,
       generatedAt: new Date().toISOString(),

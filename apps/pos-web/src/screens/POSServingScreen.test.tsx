@@ -39,6 +39,20 @@ describe('POSServingScreen', () => {
     expect(box).toHaveTextContent('Review the Booking board before the next guest arrives');
     expect(box).toHaveTextContent('Open');
   });
+  // Extras Serving 04 (round 10): missing confirmations + a written severity label on every insight (not colour alone)
+  it('shows the unconfirmed-bookings insight with its severity label; an info insight says Info', async () => {
+    const st = { ...servingState, insights: [
+      { id: 'unconfirmed', text: 'server words', action: 'Open', route: '/booking', severity: 'warn', vars: { count: 2, minutes: 25 } },
+      { id: 'ready', text: 'server words', action: 'Open', route: '/service-done', severity: 'info', vars: { count: 1 } }] };
+    globalThis.fetch = mockByUrl({ '/pos/serving': st, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    await waitForLoaded();
+    const box = screen.getByTestId('sv-insights');
+    expect(box).toHaveTextContent('2 booking(s) in the next 2 hours not confirmed (first in 25 min)');
+    expect(box).toHaveTextContent('nothing is sent automatically');
+    expect(screen.getByTestId('sv-insight-sev-unconfirmed')).toHaveTextContent('Warning');
+    expect(screen.getByTestId('sv-insight-sev-ready')).toHaveTextContent('Info');
+  });
   it('mounts and renders the serving board + empty state', async () => {
     globalThis.fetch = mockByUrl({ '/pos/serving': servingState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
@@ -80,6 +94,31 @@ describe('POSServingScreen', () => {
     expect(screen.getByText('82%')).toBeInTheDocument();
   });
 
+  it('extras Serving 06 (round 10): a service line opens the ownership inspector — performer, kind, progress and ONLY that line\'s history; no money / payroll figures', async () => {
+    const withTickets = { kpis: {}, tickets: { items: [{ ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', serviceNames: ['Gel X'], elapsedMinutes: 10, subtotalCents: 6000, status: 'in_service' }], pagination: { totalItems: 1 } }, filters: { statuses: [], technicians: [], serviceCategories: [], stations: [], delayStatuses: [] } };
+    const detail = { ticketId: 't1', status: 'in_service', customer: { fullName: 'Jessica Miller' }, primaryTechnician: { technicianId: 'k1', name: 'Mia' }, subtotalCents: 8000, estimatedEndAt: null,
+      services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'serving' }, { serviceLineId: 'l2', serviceName: 'Nail Art', priceCents: 2000, status: 'done', isAddOn: true, technicianName: 'Ava' }] };
+    const revData = { ticketId: 't1', currentVersion: 3, revisions: [
+      { version: 1, action: 'service_added', serviceLineId: 'l2', summary: 'Added Nail Art', actorRole: 'TECH', createdAt: '2026-06-01T00:30:00.000Z' },
+      { version: 2, action: 'technician_assigned', serviceLineId: null, summary: 'Assigned Mia', actorRole: 'MANAGER', createdAt: '2026-06-01T00:35:00.000Z' },
+      { version: 3, action: 'service_edited', serviceLineId: 'l2', summary: 'Updated Nail Art: tech Mia→Ava', actorRole: 'MANAGER', createdAt: '2026-06-01T00:40:00.000Z' } ] };
+    globalThis.fetch = mockByUrl({ '/pos/serving/tickets/t1/revisions': revData, '/pos/serving/tickets/t1': detail, '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    await screen.findByText('Added Nail Art');
+    expect(screen.queryByTestId('sv-line-drawer')).toBeNull();
+    fireEvent.click(screen.getByTestId('sv-line-l2'));
+    const dr = screen.getByTestId('sv-line-drawer');
+    expect(within(dr).getByTestId('sv-line-performer').textContent).toBe('Ava');
+    expect(dr).toHaveTextContent('Add-Ons'); expect(dr).toHaveTextContent('Done');
+    const rows = within(dr).getAllByTestId('sv-line-history-row');
+    expect(rows.map((r) => r.textContent?.slice(0, 2))).toEqual(['v3', 'v1']);   // newest first, the ticket-level v2 is not this line's
+    expect(dr.textContent).not.toMatch(/\$|commission|payroll/i);
+    fireEvent.click(screen.getByTestId('sv-line-l1'));   // the base line: performer falls back to the primary, labelled so; no history yet
+    expect(within(screen.getByTestId('sv-line-drawer')).getByTestId('sv-line-performer').textContent).toBe('Mia (primary technician)');
+    expect(screen.getByTestId('sv-line-history-empty')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sv-line-l1'));
+    expect(screen.queryByTestId('sv-line-drawer')).toBeNull();
+  });
   it('renders the P4 change-history timeline for the selected ticket from real revisions', async () => {
     const withTickets = {
       kpis: { servingNow: 1, activeTickets: 1, delayedServices: 0, nearingCompletion: 0, averageServiceDurationMinutes: 40, totalInServiceSalesCents: 6000, techniciansInService: 1, servicesCompletedToday: 0, addOnAttachRatePercent: 0, addOnRevenueCents: 0, customerSatisfactionAvg: 0, onTimeCompletionPercent: 0 },
@@ -124,6 +163,21 @@ describe('POSServingScreen', () => {
     expect(box.textContent).toContain('Not ready');
     expect(screen.getByTestId('sv-sd-why-NOTES_REQUIRED').textContent).toBe('Your salon requires a service note before Mark Ready.');
     expect(screen.getByTestId('sv-sd-open').textContent).toBe('1 service line(s) not marked done — not required to finish');
+    expect(screen.queryByTestId('sv-qualified')).toBeNull();   // the server sent no qualified-availability → nothing invented
+  });
+
+  it('extras Serving 05 (round 10): Guest Service Details names the free technicians the server says are qualified; none → says how many were checked', async () => {
+    const withTickets = { kpis: {}, tickets: { items: [{ ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', serviceNames: ['Gel X'], elapsedMinutes: 10, subtotalCents: 6000, status: 'in_service' }], pagination: { totalItems: 1 } }, filters: { statuses: [], technicians: [], serviceCategories: [], stations: [], delayStatuses: [] } };
+    const detail = { ticketId: 't1', status: 'in_service', customer: { fullName: 'Jessica Miller' }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'serving' }], subtotalCents: 6000, estimatedEndAt: null,
+      qualifiedAvailability: { technicians: [{ technicianId: 'k1', name: 'Ava' }, { technicianId: 'k2', name: 'Leo' }], checked: 3 } };
+    const routes = (d: unknown) => mockByUrl({ '/pos/serving/tickets/t1/revisions': { ticketId: 't1', currentVersion: 0, revisions: [] }, '/pos/serving/tickets/t1': d, '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    globalThis.fetch = routes(detail);
+    const { unmount } = render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    expect((await screen.findByTestId('sv-qualified')).textContent).toBe('Qualified & free nowAva, Leo');
+    unmount();
+    globalThis.fetch = routes({ ...detail, qualifiedAvailability: { technicians: [], checked: 2 } });
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    expect((await screen.findByTestId('sv-qualified')).textContent).toBe('Qualified & free nowNone of 2 free technicians');
   });
 
   it('extras Serving 05: a ready visit says which move; no readiness from the server → nothing invented', async () => {

@@ -2219,4 +2219,54 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.lbl.asset": "Mã tài sản", // DRAFT — Kevin reviews
   "dfx.lbl.save": "Lưu nhãn", // DRAFT — Kevin reviews
   "dfx.lbl.note": "Nhãn chỉ để tìm thiết bị, không đổi cài đặt nào. Để trống để xóa.", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_timing_contradicts": "Không có phiếu đang làm nào có thời gian mâu thuẫn", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_timing_contradicts.fix": "Mở phiếu: bắt đầu ở tương lai, xong trước khi bắt đầu, hoặc tạm dừng lâu hơn thời gian làm. Sửa lại đồng hồ dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_no_estimate": "Mọi phiếu đang làm đều có thời lượng dự kiến", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_no_estimate.fix": "Các phiếu này không có thời lượng dịch vụ nên tiến độ hiện \"—\". Thêm dịch vụ có thời lượng.", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_far_over_estimate": "Không có phiếu nào làm quá gấp đôi thời lượng dự kiến", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_far_over_estimate.fix": "Có lẽ đồng hồ chưa được dừng. Hoàn tất, tạm dừng hoặc sửa các dịch vụ đó.", // DRAFT — Kevin reviews
+  "ops.serving.sev.danger": "Khẩn", // DRAFT — Kevin reviews
+  "ops.serving.sev.warn": "Cảnh báo", // DRAFT — Kevin reviews
+  "ops.serving.sev.info": "Thông tin", // DRAFT — Kevin reviews
+  "ops.serving.insight.unconfirmed": "{count} lịch hẹn trong 2 giờ tới chưa xác nhận (lịch đầu tiên sau {minutes} phút)", // DRAFT — Kevin reviews
+  "ops.serving.insightSub.unconfirmed": "Xác nhận với khách từ bảng Đặt lịch — không có gì được gửi tự động.", // DRAFT — Kevin reviews
+  "ops.serving.qualifiedFree": "Thợ đủ điều kiện & đang rảnh", // DRAFT — Kevin reviews
+  "ops.serving.qualifiedNone": "Không ai trong {n} thợ đang rảnh", // DRAFT — Kevin reviews
+  "ops.serving.lineClose": "Đóng", // DRAFT — Kevin reviews
+  "ops.serving.linePerformer": "Người làm", // DRAFT — Kevin reviews
+  "ops.serving.linePrimary": "thợ chính", // DRAFT — Kevin reviews
+  "ops.serving.lineKind": "Loại dòng", // DRAFT — Kevin reviews
+  "ops.serving.lineBase": "Dịch vụ chính", // DRAFT — Kevin reviews
+  "ops.serving.lineProgress": "Tiến độ", // DRAFT — Kevin reviews
+  "ops.serving.lineHistory": "Lịch sử của dòng này", // DRAFT — Kevin reviews
+  "ops.serving.lineHistoryNone": "Chưa có thay đổi nào cho dòng này.", // DRAFT — Kevin reviews
+  "syschk.inventory.po_receipt_vs_ledger": "Mỗi lần nhận hàng theo đơn đặt hàng đều được ghi vào sổ kho đúng một lần", // DRAFT — Kevin reviews
+  "syschk.inventory.po_receipt_vs_ledger.fix": "Số lượng đơn ghi đã nhận không khớp với các biến động kho đã ghi. Mở đơn đặt hàng và đếm lại sản phẩm.", // DRAFT — Kevin reviews
+  "syschk.inventory.transfer_vs_ledger": "Mỗi lần chuyển kho đều được ghi vào sổ kho đúng một lần", // DRAFT — Kevin reviews
+  "syschk.inventory.transfer_vs_ledger.fix": "Số lượng chuyển không khớp với các biến động kho. Mở phiếu chuyển và đếm lại ở cả hai chi nhánh.", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_foreign": "Mọi tài khoản ứng dụng của thợ thuộc về tiệm này", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_foreign.fix": "Một thợ được liên kết với tài khoản của tiệm khác. Gỡ liên kết và mời lại.", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_not_active": "Mọi thợ đang làm đều đăng nhập được ứng dụng", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_not_active.fix": "Tài khoản ứng dụng bị tạm ngưng hoặc chưa kích hoạt. Kích hoạt lại hoặc gửi lời mời mới.", // DRAFT — Kevin reviews
+  "syschk.technicians.app_not_used_90d": "Mọi thợ đang làm đã dùng ứng dụng trong 90 ngày qua", // DRAFT — Kevin reviews
+  "syschk.technicians.app_not_used_90d.fix": "Kết nối ứng dụng có vẻ đã cũ. Kiểm tra thợ vẫn làm ở đây và đăng nhập được.", // DRAFT — Kevin reviews
+  "syschk.technicians.branch_not_open": "Mọi thợ đang làm đều ở chi nhánh đang mở", // DRAFT — Kevin reviews
+  "syschk.technicians.branch_not_open.fix": "Chuyển thợ sang chi nhánh đang mở hoặc ngừng hoạt động thợ.", // DRAFT — Kevin reviews
+  "syschk.technicians.service_link_archived": "Không thợ nào được gán dịch vụ đã lưu trữ", // DRAFT — Kevin reviews
+  "syschk.technicians.service_link_archived.fix": "Gỡ dịch vụ đã lưu trữ khỏi danh sách dịch vụ của thợ.", // DRAFT — Kevin reviews
+  "syschk.technicians.service_certification_missing": "Mọi dịch vụ cần chứng chỉ đều có chứng chỉ hợp lệ", // DRAFT — Kevin reviews
+  "syschk.technicians.service_certification_missing.fix": "Dịch vụ yêu cầu chứng chỉ mà thợ chưa có (đã xác minh, còn hạn). Thêm chứng chỉ hoặc gỡ dịch vụ.", // DRAFT — Kevin reviews
+  "lgx.drill.health": "Mở trong Tình trạng thiết bị", // DRAFT — Kevin reviews
+  "lgx.drill.assign": "Phân công thiết bị", // DRAFT — Kevin reviews
+  "lgx.drill.terminals": "Mở trong Máy thanh toán", // DRAFT — Kevin reviews
+  "lgx.drill.gateway": "Mở Cổng thanh toán", // DRAFT — Kevin reviews
+  "syschk.device-logs.title": "Kiểm tra hệ thống Nhật ký thiết bị", // DRAFT — Kevin reviews
+  "syschk.device-logs.kiosk_alive_no_events": "Mọi máy check-in đang chạy đều gửi sự kiện", // DRAFT — Kevin reviews
+  "syschk.device-logs.kiosk_alive_no_events.fix": "Một máy check-in đang trực tuyến nhưng 30 ngày không ghi gì. Mở lại trang check-in hoặc ghép nối lại.", // DRAFT — Kevin reviews
+  "syschk.device-logs.terminal_alive_no_events": "Mọi máy thanh toán đang chạy đều gửi sự kiện", // DRAFT — Kevin reviews
+  "syschk.device-logs.terminal_alive_no_events.fix": "Một máy thanh toán trực tuyến nhưng 30 ngày không có sự kiện nào. Kiểm tra cài đặt kết nối với hỗ trợ.", // DRAFT — Kevin reviews
+  "syschk.device-logs.device_event_unregistered_source": "Mọi sự kiện thiết bị đều từ thiết bị đã đăng ký", // DRAFT — Kevin reviews
+  "syschk.device-logs.device_event_unregistered_source.fix": "Có sự kiện từ thiết bị chưa đăng ký ở đây. Đăng ký trong Thiết bị hoặc gỡ thiết bị cũ.", // DRAFT — Kevin reviews
+  "syschk.device-logs.job_stuck_running": "Không có tác vụ nền nào bị kẹt", // DRAFT — Kevin reviews
+  "syschk.device-logs.job_stuck_running.fix": "Một tác vụ nền vẫn đang chạy sau khi tiến trình dừng. Thử lại trong bảng Thử lại hoặc liên hệ hỗ trợ.", // DRAFT — Kevin reviews
 };

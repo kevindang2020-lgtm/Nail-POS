@@ -330,6 +330,25 @@ describe('AI Deposit Reconciliation — allocations', () => {
     expect(l.items.some((x) => x.matchState === 'partial_allocation')).toBe(true);
   });
 
+  it('extras PAYMENTS 09: the exceptions inbox also lists the unresolved card attempts (stale in flight, needs review, stranded) — own salon, own branch, resolved ones never', async () => {
+    await q(`insert into payment_attempts (tenant_id, branch_id, ticket_id, amount_cents, method, status, idempotency_key, created_at, stranded_at, resolution, resolved_at, card_brand, card_last4, last_error_code) values
+      ($1,$2,$3,1500,'card','processing','pa09-stale', now() - interval '2 hours', null, null, null, 'visa', '4242', null),
+      ($1,$2,$3,2500,'card','processing','pa09-fresh', now() - interval '5 minutes', null, null, null, null, null, null),
+      ($1,$2,$3,3500,'card','needs_review','pa09-review', now() - interval '1 day', null, null, null, null, null, 'TIMEOUT'),
+      ($1,$2,$4,4500,'card','processing','pa09-stranded', now() - interval '3 hours', now() - interval '2 hours', 'provider_unreachable', null, null, null, null),
+      ($1,$2,$4,5500,'card','needs_review','pa09-resolved', now() - interval '1 day', now() - interval '20 hours', 'provider_declined', now() - interval '1 hour', null, null, null),
+      ($5,$6,$7,6500,'card','needs_review','pa09-other', now() - interval '1 day', null, null, null, null, null, null)`, [T, B, id('t01'), id('t02'), T2, B2, id('t99')]);
+    const ex = await ws.exceptions(ctx, ws.filters(month(), {}), pageReq({}), {});
+    expect(ex.cardAttempts.total).toBe(3); expect(ex.cardAttempts.amountCents).toBe(1500 + 3500 + 4500); expect(ex.cardAttempts.staleAfterMinutes).toBe(30);
+    expect(ex.cardAttempts.items.map((a: any) => a.reason)).toEqual(['needs_review', 'stranded', 'in_flight_too_long']);   // oldest first
+    const stale = ex.cardAttempts.items.find((a: any) => a.reason === 'in_flight_too_long')!;
+    expect(stale).toMatchObject({ ticketNumber: 'T-77', amountCents: 1500, state: 'processing', card: { brand: 'visa', last4: '4242' } });
+    expect(ex.cardAttempts.items.find((a: any) => a.reason === 'stranded')).toMatchObject({ ticketNumber: 'T-78', resolutionNote: 'provider_unreachable' });
+    expect(ex.cardAttempts.items.find((a: any) => a.reason === 'needs_review')).toMatchObject({ lastErrorCode: 'TIMEOUT' });
+    expect((await ws.exceptions(ctx2, ws.filters(month(), {}), pageReq({}), {})).cardAttempts.total).toBe(1);   // the other salon sees only its own
+    expect((await ws.exceptions({ ...ctx, branchId: id('b9') }, ws.filters(month(), {}), pageReq({}), {})).cardAttempts.total).toBe(0);   // another branch of mine: none
+    await q(`delete from payment_attempts where idempotency_key like 'pa09-%'`);
+  });
   it('Investigate raises one case per target and kind; the exceptions list classifies it; reports reconcile', async () => {
     const a = await ws.raiseException(ctx, { targetType: 'settlement', targetId: id('s09'), kind: 'missing_deposit', note: 'No bank credit yet' }, async (input) => {
       const r = await q(`insert into reconciliation_exceptions (tenant_id, kind, severity, title, detail, amount_cents, source_ref) values ($1,$2,'high',$3,$4,$5,$6) returning id`, [T, input.kind, input.title, input.detail, input.amountCents, input.sourceRef]);

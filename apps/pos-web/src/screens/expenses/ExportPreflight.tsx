@@ -8,6 +8,8 @@ import { useLoad, StateBlock, fmtYmdSafe } from '../../components/FinanceKit';
 import { fmtNumber } from '../../i18n/format';
 import { money } from '../reportsCommon';
 
+/** extras Expenses 09: a column code of the export file, in the cashier's language (an unknown code shows as sent) */
+const colLabel = (c: string) => { const k = 'finance.pf.col.' + c; const v = tx(k); return v === k ? c : v; };
 type Q = { period: string; from?: string; to?: string; category?: string; paymentMethod?: string; q?: string };
 export function ExportPreflightDialog({ format, query, busy, onConfirm, onClose }: { format: string; query: Q; busy: boolean; onConfirm: () => void; onClose: () => void }) {
   const { period, ...filters } = query;
@@ -31,6 +33,12 @@ export function ExportPreflightDialog({ format, query, busy, onConfirm, onClose 
           {row('unapproved', p.unapprovedLeftOut, 'finance.pf.noUnapproved', 'finance.pf.unapproved')}
           <li className={p.reconciles === false ? 'bad' : p.reconciles ? 'ok' : ''} data-testid="pf-reconcile">{p.reconciles == null ? tx('finance.pf.reconNa') : p.reconciles ? tx('finance.pf.recon', { v: money(p.countedTotalCents) }) : tx('finance.pf.reconOff', { a: money(p.totalCents), b: money(p.countedTotalCents) })}</li>
         </ul>
+        {p.columns && p.columns.length ? (
+          <div data-testid="pf-columns" style={{ margin: '6px 0', fontSize: 12 }}>
+            <b>{tx('finance.pf.columns', { n: fmtNumber(p.columns.length) })}</b>{' '}{p.columns.map((c) => colLabel(c)).join(' · ')}
+            {p.formulaSafeColumns && p.formulaSafeColumns.length ? <div className="fk-li-s" data-testid="pf-formula-safe">{tx('finance.pf.formulaSafe', { cols: p.formulaSafeColumns.map((c) => colLabel(c)).join(', ') })}</div> : null}
+            {p.customerContactColumns && p.customerContactColumns.length === 0 ? <div className="fk-li-s" data-testid="pf-no-contact">{tx('finance.pf.noContact')}</div> : null}
+          </div>) : null}
         <div className="fk-hint">{tx('finance.pf.note')}</div>
       </>}
     </FitDialog>

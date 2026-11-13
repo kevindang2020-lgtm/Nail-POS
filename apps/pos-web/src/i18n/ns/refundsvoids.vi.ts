@@ -230,4 +230,12 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.inflight.text': 'Một yêu cầu {k} {a} cho {t} đang được gửi lúc {w} thì trang tải lại. Yêu cầu chỉ được gửi một lần và sẽ không gửi lại — hãy kiểm tra trạng thái trong sổ trước khi làm gì khác; yêu cầu lại cùng số tiền sẽ tiếp tục đúng yêu cầu đó.', // DRAFT — Kevin reviews
   'rv.inflight.show': 'Xem trong sổ', // DRAFT — Kevin reviews
   'rv.inflight.clear': 'Đã kiểm tra — xóa', // DRAFT — Kevin reviews
+  'aal.line': 'Người thực hiện: {u} · Tiệm: {s}.', // DRAFT — Kevin reviews
+  'aal.stepUp': 'Cần mã PIN quản lý trước khi tiền được chuyển.', // DRAFT — Kevin reviews
+  'aal.unknownActor': 'người đang đăng nhập', // DRAFT — Kevin reviews
+  'aal.unknownSalon': 'tiệm này (chưa đặt tên)', // DRAFT — Kevin reviews
+  'aal.payoutPaid': 'Đánh dấu khoản chi {a} cho {t} là đã trả ({m}, mã tham chiếu {r}). Khoản này được tính là đã giao tiền và trừ khỏi số còn nợ.', // DRAFT — Kevin reviews
+  'aal.payoutCancel': 'Hủy khoản chi {a} cho {t} ({m}, mã tham chiếu {r}). Số tiền quay lại phần còn nợ.', // DRAFT — Kevin reviews
+  'aal.confirm': 'Xác nhận', // DRAFT — Kevin reviews
+  'aal.back': 'Quay lại', // DRAFT — Kevin reviews
 };

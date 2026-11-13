@@ -102,6 +102,9 @@ export interface FinanceBillsDue { today: string; until: string; days: number; c
 export interface FinanceExportPreflight {
   period: { from: string; to: string }; branchScope: 'branch' | 'all_allowed'; branchName: string | null; rows: number; totalCents: number; filtered: boolean; includeUnapproved: boolean;
   duplicates: number; uncategorized: number; missingReceipts: number; unapprovedLeftOut: number; countedTotalCents: number; reconciles: boolean | null;
+  /** extras Expenses 09 (round 10): the file's columns in order (codes), the free-text columns written formula-safe, and the
+   *  columns carrying customer contact data (none for expenses) */
+  columns?: string[]; formulaSafeColumns?: string[]; customerContactColumns?: string[];
 }
 export interface FinanceSettings {
   requireApproval: boolean; autoReady: boolean; autoCategory: boolean; learnFromCorrections: boolean; duplicateDetection: boolean;
@@ -175,4 +178,18 @@ export interface ReceiptProcessingResponse {
   items: ReceiptProcessingRow[]; total: number; shown: number; sort: 'oldest' | 'newest' | 'attempts' | 'phase';
   freshness: { lastJobAt: string | null; staleAfterMinutes: number; stale: number };
   generatedAt: string;
+}
+
+/** extras TIPS 01 — Technician Earnings Overlay: one technician's tips over the period, each ticket with THIS technician's
+ *  allocated share, its payout state and the payroll period it is (or will be) paid in; totals by state reconcile with the
+ *  Distribution row (allocated = pending + paid). */
+export type TipsPayoutState = 'paid' | 'approved' | 'open' | 'none';
+export interface TipsTechnicianEarningsTicket { ticketId: string; ticketNumber: string | null; collectedAt: string | null; ticketTipCents: number; allocatedCents: number; sharedWith: number; payoutState: TipsPayoutState; period: { id: string; label: string | null; paidAt: string | null } | null }
+export interface TipsTechnicianEarningsPeriod { id: string | null; label: string | null; state: TipsPayoutState; allocatedCents: number; tickets: number; paidAt: string | null }
+export interface TipsTechnicianEarningsResponse {
+  technician: { id: string; name: string | null; active: boolean };
+  totals: { allocatedCents: number; paidCents: number; approvedCents: number; openCents: number; unscheduledCents: number; pendingCents: number; tickets: number; manualCorrectionCents: number; reversedCents: number; netCents: number };
+  periods: TipsTechnicianEarningsPeriod[];
+  items: TipsTechnicianEarningsTicket[]; total: number; page: number; pageSize: number; pageCount: number;
+  period: { preset: string; from: string | null; to: string | null; tz: string; today: string }; dateBasis: string;
 }

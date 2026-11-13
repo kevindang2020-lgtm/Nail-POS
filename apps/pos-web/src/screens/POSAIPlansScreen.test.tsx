@@ -68,6 +68,17 @@ describe('POSAIPlansScreen', () => {
     expect(await screen.findByTestId('plan-confirm-overlap-plan_money_owner')).toHaveTextContent(/does not cancel/);
     expect(api.startPlanTrial).not.toHaveBeenCalled();
   });
+  it('extras AI Plans 04: the Start-trial confirm shows the server charge effect — nothing today, the price after the trial, what could be paid twice, unused credits; a guard refusal is said before anything starts', async () => {
+    api.plans.mockResolvedValue({ plans: [plan({ effectiveCents: 12900, overlap: { owned: [{ code: 'ai_ocr_receipt_scanner', name: 'AI OCR Receipt Scanner', status: 'active', monthlyPriceCents: 2900 }], ownedMonthlyCents: 2900 },
+      charge: { refusal: null, chargedTodayCents: 0, afterTrialMonthlyCents: 12900, possibleDoubleMonthlyCents: 2900, creditsRemainingCents: 2500 } })] });
+    mount();
+    fireEvent.click(await screen.findByTestId('plan-trial-start-plan_money_owner'));
+    const c = await screen.findByTestId('plan-confirm-charge-plan_money_owner');
+    expect(c).toHaveTextContent('Charged today: $0'); expect(c).toHaveTextContent('After the trial: $129 a month');
+    expect(c).toHaveTextContent('up to $29 a month could be paid twice'); expect(c).toHaveTextContent('Account credits not yet used: $25');
+    expect(screen.queryByTestId('plan-charge-refusal-plan_money_owner')).toBeNull();
+    expect(api.startPlanTrial).not.toHaveBeenCalled();
+  });
   it('extras AI Plans #03: the server\'s price check is shown — a verified saving, an overstated "Save", or no saving versus buying separately', async () => {
     api.plans.mockResolvedValue({ plans: [
       plan({ code: 'p_ok', fullCents: 10000, discountCents: 2000, effectiveCents: 8000, priceCheck: { standaloneCents: 10000, realSavingsCents: 2000, claimedSavingsCents: 2000, state: 'verified' } }),

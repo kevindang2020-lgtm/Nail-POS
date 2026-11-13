@@ -852,4 +852,142 @@ describe('Check Technicians System — booking / queue / app sync', () => {
     expect(count(b2, 'sync_queue_tech_inactive').count).toBe(0);
     expect((await q(rows)).rows).toEqual(before);
   });
+  it('extras Serving 08: per-ticket elapsed vs expected — contradicting timestamps, no estimate, far over estimate; own salon only; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 9401..4439, agent-4 round-10 range)
+    const T4 = id(9401), X4 = id(9402), B41 = id(9403), B42 = id(9404), BX4 = id(9405);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Serve', 'sc-9401', 'SC9401', 'active'), (${X4}, 'X', 'Other', 'sc-9402', 'SC9402', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other')`);
+    const C4 = id(9406), CX4 = id(9407);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C4}, ${T4}, ${B41}, 'Ser', 'Ve', 'Ser Ve', '+15550094061'), (${CX4}, ${X4}, ${BX4}, 'Oth', 'Er', 'Oth Er', '+15550094071')`);
+    const K = (n: number) => id(9410 + n);
+    // K0 healthy (started 30 min ago, 45 min estimate); K1 paused longer than it has run; K2 done before it started;
+    // K3 in service with no line at all (no estimate); K4 started 3 h ago with a 60 min estimate (far over) in B2;
+    // K5 3 h with 60 min but paused 150 min of it (net 30 min — fine); K6 far over but already done (not live);
+    // KX the other salon's far-over ticket (never counted)
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents, serving_started_at, service_done_at, accumulated_paused_ms) values
+      (${K(0)}, ${T4}, ${B41}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '30 minutes', null, 0),
+      (${K(1)}, ${T4}, ${B41}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '20 minutes', null, 3600000),
+      (${K(2)}, ${T4}, ${B41}, ${C4}, 'completed', 0, 0, 0, 0, now() - interval '20 minutes', now() - interval '40 minutes', 0),
+      (${K(3)}, ${T4}, ${B41}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '10 minutes', null, 0),
+      (${K(4)}, ${T4}, ${B42}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '3 hours', null, 0),
+      (${K(5)}, ${T4}, ${B42}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '3 hours', null, 9000000),
+      (${K(6)}, ${T4}, ${B42}, ${C4}, 'completed', 0, 0, 0, 0, now() - interval '5 hours', now() - interval '1 hour', 0),
+      (${id(9430)}, ${X4}, ${BX4}, ${CX4}, 'in_service', 0, 0, 0, 0, now() - interval '3 hours', null, 0)`);
+    const line = (tn: string, b: string, k: string, mins: number, removed = false) => sql`(${tn}, ${b}, ${k}, ${id(9431)}, 'Gel', 3000, ${mins}, 3000, ${removed ? sql`now()` : null})`;
+    await q(sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, removed_at) values
+      ${line(T4, B41, K(0), 45)}, ${line(T4, B41, K(1), 45)}, ${line(T4, B41, K(2), 45)}, ${line(T4, B41, K(3), 90, true)},
+      ${line(T4, B42, K(4), 60)}, ${line(T4, B42, K(5), 60)}, ${line(T4, B42, K(6), 60)}, ${line(X4, BX4, id(9430), 60)}`);
+    const before = (await q(sql`select (select count(*) from tickets) + (select count(*) from ticket_service_lines) as n`)).rows;
+    const all = await svc.run('service-flow', { tenantId: T4 });
+    expect(count(all, 'serving_timing_contradicts')).toMatchObject({ state: 'WARNING', count: 2 });   // K1 + K2
+    expect(count(all, 'serving_no_estimate')).toMatchObject({ state: 'WARNING', count: 1 });          // K3 (its only line was removed)
+    expect(count(all, 'serving_far_over_estimate')).toMatchObject({ state: 'WARNING', count: 1 });    // K4 — not K5 (paused), not K6 (done), not KX
+    const b1 = await svc.run('service-flow', { tenantId: T4, branchId: B41 });
+    expect(count(b1, 'serving_far_over_estimate')).toMatchObject({ state: 'READY', count: 0 });
+    expect(count(b1, 'serving_timing_contradicts').count).toBe(2);
+    const b2 = await svc.run('service-flow', { tenantId: T4, branchId: B42 });
+    expect(count(b2, 'serving_timing_contradicts').count).toBe(0);
+    expect(count(b2, 'serving_no_estimate').count).toBe(0);
+    const other = await svc.run('service-flow', { tenantId: X4 });
+    expect(count(other, 'serving_far_over_estimate').count).toBe(1);
+    expect((await q(sql`select (select count(*) from tickets) + (select count(*) from ticket_service_lines) as n`)).rows).toEqual(before);
+  });
+  it('extras Products Management 04: a PO receipt or a transfer that does not equal its ledger rows is counted; own salon only; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 9450..9479, agent-4 round-10 range)
+    const T4 = id(9450), X4 = id(9451), B41 = id(9452), B42 = id(9453), BX4 = id(9454), PR = id(9455), PRX = id(9456), BX5 = id(9457);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Stock', 'sc-9450', 'SC9450', 'active'), (${X4}, 'X', 'Other', 'sc-9451', 'SC9451', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other'), (${BX5}, ${X4}, 'Other 2')`);
+    await q(sql`insert into inventory_products (id, tenant_id, name) values (${PR}, ${T4}, 'Gel'), (${PRX}, ${X4}, 'Gel X')`);
+    // PO1 (B1): 2 packs of 3 received = 6 bottles, ledger 6 → fine. PO2 (B2): 1 pack of 4 received, ledger only 3 → counted.
+    // PO3 (B1): received 2 but NO ledger row → counted. POX: the other salon's mismatch → never counted
+    const PO1 = id(9460), PO2 = id(9461), PO3 = id(9462), POX = id(9463);
+    await q(sql`insert into purchase_orders (id, tenant_id, branch_id, status) values (${PO1}, ${T4}, ${B41}, 'received'), (${PO2}, ${T4}, ${B42}, 'partial'), (${PO3}, ${T4}, ${B41}, 'received'), (${POX}, ${X4}, ${BX4}, 'received')`);
+    await q(sql`insert into purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, quantity_received, units_per_purchase_unit) values
+      (${T4}, ${PO1}, ${PR}, 2, 2, 3), (${T4}, ${PO2}, ${PR}, 2, 1, 4), (${T4}, ${PO3}, ${PR}, 2, 2, 1), (${X4}, ${POX}, ${PRX}, 1, 1, 5)`);
+    const mv = (tn: string, b: string, p: string, type: string, change: number, rt: string, rid: string) => sql`(${tn}, ${b}, ${p}, ${type}, 0, ${change}, ${change}, ${rt}, ${rid})`;
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_before, quantity_change, quantity_after, related_type, related_id) values
+      ${mv(T4, B41, PR, 'purchase_received', 4, 'purchase_order', PO1)}, ${mv(T4, B41, PR, 'purchase_received', 2, 'purchase_order', PO1)}, ${mv(T4, B42, PR, 'purchase_received', 3, 'purchase_order', PO2)},
+      ${mv(T4, B41, PR, 'damaged', -1, 'purchase_order', PO1)}`);
+    // transfers: TR1 B1→B2 moved 3, ledger out -3 → fine; TR2 B2→B1 moved 2, ledger out -1 → counted; TRX other salon (no ledger) → never
+    const TR1 = id(9470), TR2 = id(9471), TRX = id(9472);
+    await q(sql`insert into inventory_transfers (id, tenant_id, from_branch_id, to_branch_id, status) values (${TR1}, ${T4}, ${B41}, ${B42}, 'completed'), (${TR2}, ${T4}, ${B42}, ${B41}, 'completed'), (${TRX}, ${X4}, ${BX4}, ${BX5}, 'completed')`);
+    await q(sql`insert into inventory_transfer_lines (tenant_id, transfer_id, product_id, quantity_requested, quantity_moved) values (${T4}, ${TR1}, ${PR}, 3, 3), (${T4}, ${TR2}, ${PR}, 2, 2), (${X4}, ${TRX}, ${PRX}, 1, 1)`);
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_before, quantity_change, quantity_after, related_type, related_id) values
+      ${mv(T4, B41, PR, 'transfer_out', -3, 'transfer', TR1)}, ${mv(T4, B42, PR, 'transfer_in', 3, 'transfer', TR1)}, ${mv(T4, B42, PR, 'transfer_out', -1, 'transfer', TR2)}`);
+    const before = (await q(sql`select (select count(*) from inventory_stock_movements) + (select count(*) from purchase_order_lines) as n`)).rows;
+    const all = await svc.run('inventory', { tenantId: T4 });
+    expect(count(all, 'po_receipt_vs_ledger')).toMatchObject({ state: 'FAILED', count: 2 });   // PO2 + PO3
+    expect(count(all, 'transfer_vs_ledger')).toMatchObject({ state: 'FAILED', count: 1 });     // TR2
+    expect(count(await svc.run('inventory', { tenantId: T4, branchId: B41 }), 'po_receipt_vs_ledger').count).toBe(1);   // PO3 only
+    expect(count(await svc.run('inventory', { tenantId: T4, branchId: B42 }), 'po_receipt_vs_ledger').count).toBe(1);   // PO2 only
+    expect(count(await svc.run('inventory', { tenantId: X4 }), 'po_receipt_vs_ledger').count).toBe(1);
+    expect(count(await svc.run('inventory', { tenantId: X4 }), 'transfer_vs_ledger').count).toBe(1);
+    expect((await q(sql`select (select count(*) from inventory_stock_movements) + (select count(*) from purchase_order_lines) as n`)).rows).toEqual(before);
+  });
+  it('extras TECHNICIANS MANAGEMENT CENTER 02 / 05: account references, app account, branch, archived service links, missing required certification; own salon; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 9480..9499, agent-4 round-10 range)
+    const T4 = id(9480), X4 = id(9481), B41 = id(9482), B42 = id(9483), BX4 = id(9484);
+    const U1 = id(9485), U2 = id(9486), UX = id(9487), U3 = id(9488);
+    const A = id(9490), Bt = id(9491), C = id(9492), D = id(9493), E = id(9494);
+    const CAT = id(9495), S1 = id(9496), S2 = id(9497), S3 = id(9498);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Team', 'sc-9480', 'SC9480', 'active'), (${X4}, 'X', 'Other', 'sc-9481', 'SC9481', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, status) values (${B41}, ${T4}, 'Main', 'active'), (${B42}, ${T4}, 'Closed one', 'inactive'), (${BX4}, ${X4}, 'Other', 'active')`);
+    // U1 active, used yesterday; U2 suspended; U3 active but last signed in 200 days ago; UX belongs to the other salon
+    await q(sql`insert into users (id, tenant_id, email, full_name, role, status, last_login_at) values
+      (${U1}, ${T4}, 'u1@t.test', 'U1', 'TECHNICIAN', 'active', now() - interval '1 day'), (${U2}, ${T4}, 'u2@t.test', 'U2', 'TECHNICIAN', 'suspended', now()),
+      (${U3}, ${T4}, 'u3@t.test', 'U3', 'TECHNICIAN', 'active', now() - interval '200 days'), (${UX}, ${X4}, 'ux@t.test', 'UX', 'TECHNICIAN', 'active', now())`);
+    // A + Bt share U1 (duplicate reference); C → U2 (suspended) at the closed branch; D → UX (another salon's account); E → U3 (stale)
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, user_id) values
+      (${A}, ${T4}, ${B41}, 'A', 'A', 'Tech A', true, ${U1}), (${Bt}, ${T4}, ${B41}, 'B', 'B', 'Tech B', true, ${U1}), (${C}, ${T4}, ${B42}, 'C', 'C', 'Tech C', true, ${U2}),
+      (${D}, ${T4}, ${B41}, 'D', 'D', 'Tech D', true, ${UX}), (${E}, ${T4}, ${B41}, 'E', 'E', 'Tech E', true, ${U3})`);
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name) values (${CAT}, ${T4}, ${B41}, 'Nails')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, archived_at, required_certification) values
+      (${S1}, ${T4}, ${B41}, ${CAT}, 'Gel', 30, 3000, 'active', null, null), (${S2}, ${T4}, ${B41}, ${CAT}, 'Old art', 30, 3000, 'archived', now(), null),
+      (${S3}, ${T4}, ${B41}, ${CAT}, 'Pedicure (licensed)', 45, 5000, 'active', null, 'Pedicure License')`);
+    // A: Gel + archived Old art; E: licensed pedicure WITH a verified licence; Bt: licensed pedicure with an EXPIRED licence; D: licensed pedicure, no licence
+    await q(sql`insert into technician_services (tenant_id, branch_id, technician_id, service_id, is_primary) values
+      (${T4}, ${B41}, ${A}, ${S1}, true), (${T4}, ${B41}, ${A}, ${S2}, false), (${T4}, ${B41}, ${E}, ${S3}, true), (${T4}, ${B41}, ${Bt}, ${S3}, true), (${T4}, ${B41}, ${D}, ${S3}, true)`);
+    await q(sql`insert into technician_certifications (tenant_id, technician_id, name, verification_status, expires_at) values
+      (${T4}, ${E}, 'pedicure license', 'VERIFIED', current_date + 100), (${T4}, ${Bt}, 'Pedicure License', 'VERIFIED', current_date - 5)`);
+    const before = (await q(sql`select (select count(*) from technicians) + (select count(*) from technician_services) + (select count(*) from users) as n`)).rows;
+    const all = await svc.run('technicians', { tenantId: T4 });
+    expect(count(all, 'duplicate_app_account')).toMatchObject({ state: 'FAILED', count: 1 });       // U1 on A + Bt
+    expect(count(all, 'app_account_foreign')).toMatchObject({ state: 'FAILED', count: 1 });         // D → the other salon's user
+    expect(count(all, 'app_account_not_active')).toMatchObject({ state: 'WARNING', count: 1 });     // C (suspended)
+    expect(count(all, 'app_not_used_90d')).toMatchObject({ state: 'WARNING', count: 1 });           // E
+    expect(count(all, 'branch_not_open')).toMatchObject({ state: 'WARNING', count: 1 });            // C at the inactive branch
+    expect(count(all, 'service_link_archived')).toMatchObject({ state: 'WARNING', count: 1 });      // A → Old art
+    expect(count(all, 'service_certification_missing')).toMatchObject({ state: 'WARNING', count: 2 });   // Bt (expired) + D (none); E holds it
+    const b2 = await svc.run('technicians', { tenantId: T4, branchId: B42 });
+    expect(count(b2, 'duplicate_app_account').count).toBe(0); expect(count(b2, 'branch_not_open').count).toBe(1); expect(count(b2, 'service_certification_missing').count).toBe(0);
+    const other = await svc.run('technicians', { tenantId: X4 });
+    expect(count(other, 'app_account_foreign').count).toBe(0); expect(count(other, 'service_certification_missing').count).toBe(0);
+    expect((await q(sql`select (select count(*) from technicians) + (select count(*) from technician_services) + (select count(*) from users) as n`)).rows).toEqual(before);
+  });
+  it('extras Device Integration Logs 01: source coverage — silent alive kiosk / terminal, events from an unregistered device, stuck jobs; own salon; writes nothing', async () => {
+    // own salon pair (ids 9520..9549, agent-4 round-10 range)
+    const T4 = id(9520), X4 = id(9521), B41 = id(9522), BX4 = id(9523);
+    const K1 = id(9524), K2 = id(9525), W1 = id(9526), W2 = id(9527), KX = id(9528);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Logs', 'sc-9520', 'SC9520', 'active'), (${X4}, 'X', 'Other', 'sc-9521', 'SC9521', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${BX4}, ${X4}, 'Other')`);
+    // K1 alive + silent; K2 alive with a recent event; KX the other salon's silent kiosk
+    await q(sql`insert into go_checkin_devices (id, tenant_id, branch_id, device_name, checkin_slug, last_seen_at, created_at, updated_at) values
+      (${K1}, ${T4}, ${B41}, 'Front', 'sc9520-front', now() - interval '1 hour', now(), now()), (${K2}, ${T4}, ${B41}, 'Side', 'sc9520-side', now() - interval '1 hour', now(), now()),
+      (${KX}, ${X4}, ${BX4}, 'Other', 'sc9521-other', now() - interval '1 hour', now(), now())`);
+    await q(sql`insert into go_checkin_logs (tenant_id, branch_id, device_id, event_type) values (${T4}, ${B41}, ${K2}, 'guest_checked_in')`);
+    // W1 alive + silent; W2 alive with an event
+    await q(sql`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, last_seen_at) values (${W1}, ${T4}, ${B41}, 'T1', 'active', now() - interval '1 hour'), (${W2}, ${T4}, ${B41}, 'T2', 'active', now() - interval '1 hour')`);
+    await q(sql`insert into tenant_event_logs (tenant_id, branch_id, category, severity, source, message, related_id) values
+      (${T4}, ${B41}, 'device', 'info', 'payment_terminal', 'sale', ${W2}), (${T4}, ${B41}, 'device', 'warning', 'payment_terminal', 'ghost device event', 'ghost-device-1')`);
+    await q(sql`insert into jobs (job_class, job_type, tenant_id, status, lease_owner, lease_until) values ('standard', 'reports.export', ${T4}, 'running', 'w1', now() - interval '1 hour'), ('standard', 'reports.export', ${T4}, 'running', 'w2', now() + interval '10 minutes')`);
+    const before = (await q(sql`select (select count(*) from jobs) + (select count(*) from tenant_event_logs) + (select count(*) from go_checkin_logs) as n`)).rows;
+    const r = await svc.run('device-logs', { tenantId: T4 });
+    expect(count(r, 'kiosk_alive_no_events')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'terminal_alive_no_events')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'device_event_unregistered_source')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'job_stuck_running')).toMatchObject({ state: 'WARNING', count: 1 });   // only the expired lease
+    expect(count(await svc.run('device-logs', { tenantId: X4 }), 'kiosk_alive_no_events').count).toBe(1);
+    expect((await q(sql`select (select count(*) from jobs) + (select count(*) from tenant_event_logs) + (select count(*) from go_checkin_logs) as n`)).rows).toEqual(before);
+  });
 });

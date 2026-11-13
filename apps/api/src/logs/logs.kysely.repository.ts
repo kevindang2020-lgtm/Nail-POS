@@ -56,7 +56,11 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
     const lo = f.from ? new Date(localDateTimeToEpochMs(f.from, '00:00', tz)).toISOString() : null;
     const hi = f.to ? new Date(localDateTimeToEpochMs(addYmdDays(f.to, 1), '00:00', tz) - 1).toISOString() : null;
     // the three table aliases of this UNION, as literal column refs (never request data)
-    const COLS = { a: { b: sql.ref('a.branch_id'), c: sql.ref('a.created_at') }, e: { b: sql.ref('e.branch_id'), c: sql.ref('e.created_at') }, l: { b: sql.ref('l.branch_id'), c: sql.ref('l.created_at') } } as const;
+    const COLS = { a: { b: sql.ref('a.branch_id'), c: sql.ref('a.created_at') }, e: { b: sql.ref('e.branch_id'), c: sql.ref('e.created_at') }, l: { b: sql.ref('l.branch_id'), c: sql.ref('l.created_at') },
+      v: { b: sql.ref('v.branch_id'), c: sql.ref('v.occurred_at') } } as const;
+    // extras Device Integration Logs 02 (round 10): device changes recorded by THE audit service (audit_events) carry the
+    // request's correlation id — they join a trace; the legacy audit_logs rows (no correlation) stay as they were
+    const DEVICE_ENTITIES = ['customer_display', 'pos_station', 'payment_terminal', 'pos_payment_terminal'];
     const scope = (a: keyof typeof COLS) => br ? sql`AND (${COLS[a].b} = ${br} OR ${COLS[a].b} IS NULL)` : sql``;
     const range = (a: keyof typeof COLS) => sql`${lo ? sql`AND ${COLS[a].c} >= ${lo}` : sql``} ${hi ? sql`AND ${COLS[a].c} <= ${hi}` : sql``}`;
     const devSev = (col: any) => sql`CASE WHEN ${col} ~* '(revoked|failed|error|offline|disconnect|expired|disabled)' THEN 'warning' ELSE 'info' END`;
@@ -65,7 +69,10 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
         FROM tenant_event_logs e WHERE e.tenant_id = ${T} ${scope('e')} ${range('e')}
       UNION ALL
       SELECT a.id::text, 'device', ${devSev(sql`a.action_type`)}, a.entity_type, replace(a.action_type, '_', ' '), NULL, a.entity_id::text, NULL, NULL, a.created_at
-        FROM audit_logs a WHERE a.tenant_id = ${T} AND a.entity_type = ANY(${['customer_display', 'pos_station', 'payment_terminal']}::text[]) ${scope('a')} ${range('a')}
+        FROM audit_logs a WHERE a.tenant_id = ${T} AND a.entity_type = ANY(${DEVICE_ENTITIES}::text[]) ${scope('a')} ${range('a')}
+      UNION ALL
+      SELECT v.id::text, 'device', ${devSev(sql`v.action`)}, v.resource_type, coalesce(nullif(v.summary, ''), replace(v.action, '_', ' ')), coalesce(v.correlation_id, v.request_id), v.resource_id::text, NULL, NULL, v.occurred_at
+        FROM audit_events v WHERE v.tenant_id = ${T} AND v.resource_type = ANY(${DEVICE_ENTITIES}::text[]) ${scope('v')} ${range('v')}
       UNION ALL
       SELECT l.id::text, 'device', ${devSev(sql`l.event_type`)}, 'kiosk', COALESCE(l.safe_message, replace(l.event_type, '_', ' ')), NULL, l.device_id::text, NULL, NULL, l.created_at
         FROM go_checkin_logs l WHERE l.tenant_id = ${T} ${scope('l')} ${range('l')}`;

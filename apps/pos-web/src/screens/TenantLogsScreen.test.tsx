@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 const { pageMock, exportMock, postMock, alertsMock, resolveMock, retriesMock } = vi.hoisted(() => ({ pageMock: vi.fn(), exportMock: vi.fn(), postMock: vi.fn(), alertsMock: vi.fn(), resolveMock: vi.fn(), retriesMock: vi.fn() }));
 vi.mock('../api/client', () => ({ api: { get: vi.fn().mockResolvedValue({}), post: postMock } }));
 vi.mock('../api/posLogsApi', () => ({ posLogsApi: { page: pageMock, exportCsv: exportMock, alerts: alertsMock, resolveAlert: resolveMock, retries: retriesMock } }));
@@ -57,6 +57,27 @@ describe('TenantLogsScreen', () => {
     expect(pageMock.mock.calls.slice(-1)[0]![0].relatedId).toBeUndefined();
     fireEvent.click(await screen.findByTestId('lgx-trace-chip'));
     await waitFor(() => expect(pageMock.mock.calls.slice(-1)[0]![0].correlationId).toBeUndefined());
+  });
+  // extras Device Integration Logs 10 (round 10): drill-through to the device pages, scoped to the device's id; a payment
+  // terminal also links to Payment Terminals; a payment integration event links to the Payment Gateway
+  it('Device Integration Logs · 10: a device event links to Device Health / Assignments (and Payment Terminals for a terminal) with the device id', async () => {
+    pageMock.mockResolvedValue({ logs: [{ id: 'd1', category: 'device', severity: 'warning', source: 'payment_terminal', message: 'terminal offline', correlationId: null, relatedId: 'trm-77', status: null, metadata: null, createdIso: '2026-05-06T14:00:00Z' },
+      { id: 'g1', category: 'integration', severity: 'error', source: 'payment_gateway', message: 'gateway timeout', correlationId: null, relatedId: null, status: null, metadata: null, createdIso: '2026-05-06T13:00:00Z' }], total: 2, page: 1, pageSize: 25, totalPages: 1, summary: { events: 2, warnings: 1, errors: 1, device: 1, integration: 1 } });
+    let where = '';
+    function Spy() { const l = useLocation(); where = l.pathname + l.search; return null; }
+    render(<MemoryRouter initialEntries={['/tenant/devices/logs']}><Routes><Route path="*" element={<><TenantLogsScreen /><Spy /></>} /></Routes></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[0]);
+    await screen.findByTestId('lgx-detail');
+    expect(screen.getByTestId('lgx-to-assign')).toBeInTheDocument(); expect(screen.queryByTestId('lgx-to-gateway')).toBeNull();
+    fireEvent.click(screen.getByTestId('lgx-to-terminals'));
+    await waitFor(() => expect(where).toBe('/tenant/devices/payment-terminals?q=trm-77'));
+  });
+  it('Device Integration Logs · 10: a payment integration event links to the Payment Gateway; no device links', async () => {
+    pageMock.mockResolvedValue({ logs: [{ id: 'g1', category: 'integration', severity: 'error', source: 'payment_gateway', message: 'gateway timeout', correlationId: null, relatedId: null, status: null, metadata: null, createdIso: '2026-05-06T13:00:00Z' }], total: 1, page: 1, pageSize: 25, totalPages: 1, summary: { events: 1, warnings: 0, errors: 1, device: 0, integration: 1 } });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[0]);
+    expect(await screen.findByTestId('lgx-to-gateway')).toBeInTheDocument();
+    expect(screen.queryByTestId('lgx-to-health')).toBeNull();
   });
   it('an event opens its details', async () => {
     render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);

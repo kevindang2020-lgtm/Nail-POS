@@ -257,3 +257,50 @@ export type ReimbursementStatus = (typeof REIMBURSEMENT_STATUSES)[number];
 export const isOwed = (s: string): boolean => ['ACCRUED_OWED', 'PAYOUT_ELIGIBLE', 'PAYOUT_PENDING', 'PAYOUT_FAILED', 'ON_HOLD'].includes(s);
 export const HOLD_STATUSES = ['CREATED', 'HELD', 'CONFIRMED_REDEEMED', 'RELEASED', 'EXPIRED', 'REVERSED'] as const;
 export type HoldStatus = (typeof HOLD_STATUSES)[number];
+
+/** extras GLOBAL LOYALTY REWARDS 03 (round 10) — Smart Wallet Funding Alert: an ESTIMATE from verified use only. dailyCents =
+ *  the wallet's earn_allocation debits over the last `basisDays` ÷ basisDays (integer cents, rounded up so it never flatters);
+ *  daysLeft = how many days the available balance lasts at that pace (rounded down) and daysToLow = until the low-balance
+ *  level; fundingNeededCents = what would cover the next `basisDays` at that pace beyond what is available and already being
+ *  purchased (pending). No use in the window → every estimate null (never invented). Nothing is ever bought automatically. */
+export const FORECAST_BASIS_DAYS = 30;
+/** extras GLOBAL LOYALTY REWARDS 04: the earning rule's expected effect is replayed over this many days of the salon's own earnings */
+export const IMPACT_BASIS_DAYS = 30;
+export function walletFundingForecast(availableCents: number, pendingCents: number, usedInBasisCents: number, basisDays: number, lowBalanceCents: number) {
+  if (!(usedInBasisCents > 0) || !(basisDays > 0)) return { basisDays, usedCents: Math.max(0, usedInBasisCents), dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false as const };
+  const daily = Math.ceil(usedInBasisCents / basisDays);
+  const avail = Math.max(0, availableCents);
+  return { basisDays, usedCents: usedInBasisCents, dailyCents: daily, daysLeft: Math.floor(avail / daily), daysToLow: Math.max(0, Math.floor((avail - Math.max(0, lowBalanceCents)) / daily)),
+    fundingNeededCents: Math.max(0, daily * basisDays - avail - Math.max(0, pendingCents)), automaticPurchase: false as const };
+}
+
+/** extras GLOBAL LOYALTY REWARDS 14 (round 10) — Readiness Control Center: one honest state per feature, from what is really
+ *  configured (never "ready" by default). CODE_READY = built but switched off / paused here; SANDBOX_READY = runs against a
+ *  sandbox provider only; PRODUCTION_READY = on, and needs no outside provider (or a real one is connected);
+ *  BLOCKED_EXTERNAL = needs an outside provider that is not connected. Each carries coded evidence (the facts it was read from). */
+export type ReadinessState = 'CODE_READY' | 'SANDBOX_READY' | 'PRODUCTION_READY' | 'BLOCKED_EXTERNAL';
+export interface FeatureReadiness { feature: 'earning' | 'redemption' | 'custom_earning' | 'token_purchases' | 'salon_payouts'; state: ReadinessState; evidence: string[] }
+export function networkReadiness(x: { flags: { engine: boolean; earn: boolean; redemption: boolean; purchases: boolean; customEarning: boolean }; program: { earnPaused: boolean; redeemPaused: boolean; purchasesPaused: boolean };
+  enrolled: boolean; funding: { provider: string | null; sandbox: boolean }; payoutProvider: string | null }): FeatureReadiness[] {
+  const onOff = (feature: FeatureReadiness['feature'], flag: boolean, paused: boolean, flagCode: string, pauseCode: string): FeatureReadiness => {
+    const ev: string[] = [];
+    if (!x.flags.engine) ev.push('engine_off');
+    if (!flag) ev.push(flagCode);
+    if (paused) ev.push(pauseCode);
+    if (!x.enrolled) ev.push('not_enrolled');
+    return { feature, state: ev.length ? 'CODE_READY' : 'PRODUCTION_READY', evidence: ev.length ? ev : ['enabled_no_external_dependency'] };
+  };
+  const purchases = (): FeatureReadiness => {
+    if (!x.funding.provider) return { feature: 'token_purchases', state: 'BLOCKED_EXTERNAL', evidence: ['no_funding_provider_connected'] };
+    const base = onOff('token_purchases', x.flags.purchases, x.program.purchasesPaused, 'purchases_flag_off', 'purchases_paused');
+    if (base.state === 'CODE_READY') return base;
+    return x.funding.sandbox ? { feature: 'token_purchases', state: 'SANDBOX_READY', evidence: ['sandbox_funding_provider'] } : { feature: 'token_purchases', state: 'PRODUCTION_READY', evidence: ['funding_provider_connected'] };
+  };
+  return [
+    onOff('earning', x.flags.earn, x.program.earnPaused, 'earn_flag_off', 'earn_paused'),
+    onOff('redemption', x.flags.redemption, x.program.redeemPaused, 'redemption_flag_off', 'redeem_paused'),
+    onOff('custom_earning', x.flags.customEarning, false, 'custom_earning_flag_off', 'custom_earning_paused'),
+    purchases(),
+    x.payoutProvider ? { feature: 'salon_payouts', state: 'PRODUCTION_READY', evidence: ['payout_provider_connected'] } : { feature: 'salon_payouts', state: 'BLOCKED_EXTERNAL', evidence: ['no_payout_provider_connected'] },
+  ];
+}

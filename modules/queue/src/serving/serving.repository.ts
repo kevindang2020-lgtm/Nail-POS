@@ -50,7 +50,9 @@ export function computeServingAddOnMetrics(tickets: { lines: SVLine[] }[]): { ad
  *  panel with counts for everyone on duty, and the advisory insights. Pure; exported for tests. */
 export function buildFloorProjection(all: SVTicket[], elapsedOf: (t: SVTicket) => number, staffRows: ServingStaffRow[], roster: number,
   /** Extras Serving 04: minutes until each technician's next booked appointment today (technicianId → minutes); absent → no conflict check */
-  nextBookingMinutes?: Record<string, number>) {
+  nextBookingMinutes?: Record<string, number>,
+  /** Extras Serving 04 (round 10): appointments later today still 'booked' (unconfirmed) within the next two hours; absent → no insight */
+  unconfirmedSoon?: { count: number; firstMinutes: number } | null) {
   const LIVE = ['in_service', 'paused', 'delayed'];
   const active = all.filter((t) => LIVE.includes(t.status));
   const finishing = (t: SVTicket) => t.estimatedDurationMinutes > 0 && elapsedOf(t) >= t.estimatedDurationMinutes * FINISHING_SOON_FRACTION;
@@ -85,7 +87,7 @@ export function buildFloorProjection(all: SVTicket[], elapsedOf: (t: SVTicket) =
     if (!prev || remaining - until > prev.remainingMinutes - prev.minutesUntilBooking) conflicts.set(tid, { name: t.primaryTechName || rows.find((r) => r.technicianId === tid)?.name || 'Technician', minutesUntilBooking: until, remainingMinutes: remaining });
   }
   const bookingConflicts = [...conflicts.values()].sort((a, b) => (b.remainingMinutes - b.minutesUntilBooking) - (a.remainingMinutes - a.minutesUntilBooking));
-  const insights: ServingInsight[] = buildServingInsights({ bookingConflicts,
+  const insights: ServingInsight[] = buildServingInsights({ bookingConflicts, unconfirmedSoon,
     active: active.map((t) => ({ customerName: t.customerName, customerId: t.customerId || undefined, isVip: t.isVip, elapsed: elapsedOf(t), est: t.estimatedDurationMinutes })),
     waitingToStart: notStarted.length, busyTechWaiting, readyForServiceDone: stageCounts.ready, overloaded, freeTechnicians,
   });

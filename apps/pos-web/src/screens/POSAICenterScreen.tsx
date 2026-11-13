@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { posAiApi, type PosAiPackage, type AiCenterOverview, type CallIntelSummary, type AiAssistantControl, type AiRevenueSummary, type WorkflowStat } from '../api/posAiApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabelOrNull, humanizeCode } from '../i18n/status-label';
-import { fmtMoney, displayLocale, fmtInZone } from '../i18n/format';
+import { fmtMoney, displayLocale, fmtInZone, fmtDateTime } from '../i18n/format';
 import { growthCode } from './growthLabels';
 import { posAiUsageScreenApi } from '../api/posAiUsageApi';
 import { stateLabel, DetailDialog, HistoryDialog } from './POSAiUsageScreen';
@@ -39,6 +39,27 @@ function statusOf(p: PosAiPackage, live?: any): { label: string; tone: string } 
   if (p.accessible) return { label: t('pos.active_3'), tone: 'ok' };
   if (p.trialAvailable) return { label: t('pos.trial_available'), tone: '' };
   return { label: p.lockLabel || t('growth.aiCenter.locked'), tone: 'warn' };
+}
+
+
+/** extras AI Command Center 15 — per-assistant evidence from the server check (read-only): state, the AI-call gate's decision
+ *  now, this month's runs / errors / refusals, last success and error, and the verdict. */
+type EvRow = { code: string; name: string; state: string; gateAllowed: boolean; gateReason: string | null; monthRuns: number; monthErrors: number; monthRefused: number; lastSuccessAt: string | null; lastErrorAt: string | null; verdict: string };
+function AssistantEvidence({ rows }: { rows: EvRow[] }) {
+  if (!rows.length) return <div className="s" data-testid="aic-ev-none">{t('aic.ev.none')}</div>;
+  const at = (v: string | null) => (v ? fmtDateTime(v) : '—');
+  return (
+    <table className="aic-ev" data-testid="aic-ev" style={{ fontSize: 12, marginTop: 4, borderCollapse: 'collapse' }}>
+      <thead><tr><th>{t('aic.ev.assistant')}</th><th>{t('aic.ev.gate')}</th><th>{t('aic.ev.month')}</th><th>{t('aic.ev.last')}</th><th>{t('aic.ev.verdict')}</th></tr></thead>
+      <tbody>{rows.map((r) => <tr key={r.code} data-testid="aic-ev-row" data-verdict={r.verdict}>
+        <td>{r.name}</td>
+        <td>{r.gateAllowed ? t('aic.ev.allowed') : t('aic.ev.refused', { r: r.gateReason ?? '—' })}</td>
+        <td>{t('aic.ev.counts', { ok: String(r.monthRuns), err: String(r.monthErrors), ref: String(r.monthRefused) })}</td>
+        <td>{t('aic.ev.lastVals', { ok: at(r.lastSuccessAt), err: at(r.lastErrorAt) })}</td>
+        <td><span className={'pill ' + (r.verdict === 'ok' ? 'ok' : 'warn')}>{t('aic.ev.v.' + r.verdict)}</span></td>
+      </tr>)}</tbody>
+    </table>
+  );
 }
 
 export function POSAICenterScreen() {
@@ -131,7 +152,8 @@ export function POSAICenterScreen() {
           {chk.error ? <div className="err">{chk.error}</div> : (chk.checks || []).map((c: any) => (
             <div key={c.key} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
               <span className={'pill ' + (c.state === 'PASSED' ? 'ok' : 'warn')}>{t('aiux.state.' + c.state)}</span>
-              <div><div style={{ fontWeight: 700, fontSize: 13 }}>{t('aiux.k.' + c.key)}</div><div className="s">{t(`aiux.d.${c.key}.${c.state}`)}</div></div>
+              <div><div style={{ fontWeight: 700, fontSize: 13 }}>{t('aiux.k.' + c.key)}</div><div className="s">{t(`aiux.d.${c.key}.${c.state}`)}</div>
+                {c.key === 'assistant_evidence' && Array.isArray(c.detail?.assistants) ? <AssistantEvidence rows={c.detail.assistants} /> : null}</div>
             </div>
           ))}
         </section>

@@ -20,7 +20,8 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtNumber, fmtInZone } from '../i18n/format';
+import { fmtNumber, fmtInZone, fmtYmd } from '../i18n/format';
+import { codeLabel } from '../components/peopleLabels';
 import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
@@ -88,6 +89,14 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
   useEffect(() => {
     posCustomersApi.getNotes(customer.customerId).then((n) => { setNotes({ ...EMPTY, ...(n || {}) }); setBase({ ...EMPTY, ...(n || {}) }); }).catch((e) => setError(reportError(e, 'these notes')));
   }, [customer.customerId]);
+  // extras Customer Notes 6 · 02 (round 10): the SERVER's stale / conflicting preference review of the saved notes (technician
+  // archived / differs from the profile, notes older than the latest visits) — for review only; unavailable → nothing shown
+  const [review, setReview] = useState<{ code: string; field: string; evidence: Record<string, string | null> }[]>([]);
+  useEffect(() => {
+    let live = true;
+    Promise.resolve().then(() => posCustomersApi.notesReview(customer.customerId)).then((r) => { if (live) setReview(Array.isArray(r?.flags) ? r.flags : []); }).catch(() => { if (live) setReview([]); });
+    return () => { live = false; };
+  }, [customer.customerId]);
   const up = (k: keyof Notes) => (v: string) => setNotes((n) => (n ? { ...n, [k]: v } : n));
   // extras (Nov 11 2026) — safe draft recovery: closing with unsaved edits asks first (never auto-saves, never auto-submits)
   const dirty = !!notes && !!base && JSON.stringify(notes) !== JSON.stringify(base);
@@ -144,6 +153,9 @@ function NotesEditor({ customer, onClose, onSaved }: { customer: { customerId: s
         {(() => { const cs = noteConflicts(notes, (k) => t(k)); return cs.length ? <div className="fk-note warn" role="status" data-testid="cnx-pref-conflict">
           <b>{t('cnx.pc.title')}</b>{cs.map((c) => <div key={c.group} data-testid="cnx-pref-conflict-row">{c.group}: {c.hits.map((h) => `${h.value} (${h.field === 'preferredStyle' ? t('pos.preferred_style') : t('people.customer.notes.servicePreferencesTitle')})`).join(' · ')}</div>)}
           <div className="sub">{t('cnx.pc.note')}</div></div> : null; })()}
+        {review.length ? <div className="fk-note warn" role="status" data-testid="cnx-pref-review">
+          <b>{t('cnx.pr.title')}</b>{review.map((f, i) => <div key={f.code + i} data-testid={`cnx-pref-review-${f.code}`}>{t('cnx.pr.' + f.code, { tech: f.evidence.technician ?? '—', status: f.evidence.status ? codeLabel('cnx.pr.status.' + f.evidence.status, f.evidence.status) : '—', profile: f.evidence.profileTechnician ?? '—', notes: f.evidence.notesUpdatedAt ? fmtYmd(f.evidence.notesUpdatedAt.slice(0, 10)) : '—', visit: f.evidence.lastVisitAt ? fmtYmd(f.evidence.lastVisitAt.slice(0, 10)) : '—' })}{f.evidence.note ? <span className="sub"> — “{f.evidence.note}”</span> : null}</div>)}
+          <div className="sub">{t('cnx.pc.note')}</div></div> : null}
         <div className="cnx-two">{field(t('pos.preferred_style'), 'preferredStyle', 2)}{field(t('people.customer.notes.servicePreferencesTitle'), 'servicePreferences', 2)}</div>
         {field(t('people.customer.notes.preferredTechnicianTitle'), 'preferredTechnician', 1)}
         <label className="cnx-visible"><input type="checkbox" checked={notes.customerVisible} onChange={(e) => setNotes({ ...notes, customerVisible: e.target.checked })} data-testid="cnx-ed-visible" />

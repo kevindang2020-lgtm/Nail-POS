@@ -21,6 +21,7 @@ import { TicketRefundPanel } from '../components/TicketRefundPanel';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
+import { ActionActorLine } from '../components/ActionActorLine';
 import { errorTextOf } from '../i18n/error-text';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
@@ -380,6 +381,7 @@ function RefundTenderDialog({ tender, onClose, onDone, onTicket }: { tender: Ten
           : <button type="button" className="fk-btn primary" onClick={() => setReview(true)} disabled={!valid} data-testid="review-refund">{tx('rv.reviewRefund')}</button>}</>}>
       <TenderPosition t={tender} />
       {review ? <><div className="fk-note warn" data-testid="refund-review"><span>{tx('rv.reviewText', { a: fmtMoney(cents ?? 0), m: methodLbl(tender.method, tender.giftCardLast4), o: fmtMoney(tender.amountCents), r: reason.trim() })}</span></div>
+        <ActionActorLine testId="refund-actor" />
         <RefundReceiptPreview tender={tender} cents={cents ?? 0} reason={reason.trim()} /></> : <>
         <label className="fk-field"><span>{tx('rv.amount', { max: fmtMoney(tender.refundableCents) })}</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} data-testid="refund-amount" /></label>
         {over ? <div className="fk-error" role="alert">{tx('rv.overMax', { max: fmtMoney(tender.refundableCents) })}</div> : null}
@@ -412,6 +414,7 @@ function VoidDialog({ tender, onClose, onDone }: { tender: Tender; onClose: () =
     <FitDialog title={tx('rv.voidTitle', { a: fmtMoney(tender.amountCents) })} subtitle={`${tender.ticketNumber ? '#' + tender.ticketNumber + ' · ' : ''}${methodLbl(tender.method, tender.giftCardLast4)}${tender.processorRef ? ' · ' + tender.processorRef : ''}`} onClose={onClose} busy={busy} testId="void-dialog"
       footer={<><button type="button" className="fk-btn" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" onClick={submit} disabled={busy || !reason.trim()} data-testid="confirm-void">{busy ? tx('pos.loading') : tx('rv.confirmVoid')}</button></>}>
       <div className="fk-note warn"><span>{tx('rv.voidExplain')}</span></div>
+      <ActionActorLine testId="void-actor" />
       <label className="fk-field"><span>{tx('rv.reasonRequired')}</span><textarea rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="void-reason" autoFocus /></label>
       {err ? <div className="fk-error" role="alert">{err}</div> : null}
       {stepUp.prompt}

@@ -177,6 +177,14 @@ describe('activity history (§14–§16)', () => {
     const d: any = await center().detail(ctxA, 'test_sms', aRow.id, null);
     expect(d).toMatchObject({ id: aRow.id, kind: 'test_sms' });
     expect(d.meaning).toMatch(/accepted is not delivered|carrier reported delivery|not delivered/);
+    // extras TEXT MESSAGING SETUP 11 (round 10): the end-to-end trace — request time, provider acceptance (a SID) and every
+    // verified callback for that SID in arrival order, with whether it moved the record
+    const sid = (await sql<any>`select provider_message_sid from sms_test_events where id = ${aRow.id}::uuid`.execute(db)).rows[0].provider_message_sid;
+    await sql`insert into notification_delivery_events (tenant_id, provider_message_sid, provider_status, applied, signature_verified, received_at) values
+      (${A}, ${sid}, 'sent', true, true, now() - interval '2 minutes'), (${A}, ${sid}, 'delivered', true, true, now() - interval '1 minute'), (${B}, ${sid}, 'failed', true, true, now())`.execute(db);
+    const t: any = await center().detail(ctxA, 'test_sms', aRow.id, null);
+    expect(t.providerAccepted).toBe(true); expect(t.requestedAt).toMatch(/^\d{4}-/);
+    expect(t.callbacks.map((c: any) => [c.status, c.applied, c.signatureVerified])).toEqual([['sent', true, true], ['delivered', true, true]]);   // never another salon's event
   });
   it('a branch-confined actor: rows of other branches are hidden; filtering another branch is 403', async () => {
     const confined: any = await center().activity(ctxA, { pageSize: 50, kind: 'test_sms' }, [BR_A]);
@@ -192,6 +200,25 @@ describe('branch senders (§13)', () => {
     for (const b of r.branches) { expect(b).toMatchObject({ inherits: true, sender: NUM_A }); expect(b.parts).toHaveLength(6); expect(JSON.stringify(b)).not.toContain(AC_A); }
     expect(r.salonDefault.sender).toBe(NUM_A);
     expect((await center().branches(ctxA, [BR_A])).branches.map((b: any) => b.branchId)).toEqual([BR_A]);
+  });
+  // extras TEXT MESSAGING SETUP 07 / 09 (round 10): per-branch Ready / Pending / Blocked with next actions, and what each kind of
+  // text would use — from the same six parts / readiness view; nothing sent
+  it('each branch carries its Ready / Pending / Blocked summary with the parts\' own next actions, and its routes per kind of text', async () => {
+    const r: any = await center().branches(ctxA, null);
+    const ov: any = await center().overview(ctxA, BR_A, null);
+    for (const b of r.branches) {
+      expect(b.summary.ready + b.summary.pending + b.summary.blocked).toBe(6);
+      expect(b.nextActions.every((a: any) => typeof a.nextAction === 'string' && a.nextAction.length > 0 && typeof a.fixLink === 'string')).toBe(true);
+      expect(b.nextActions.map((a: any) => a.key)).not.toContain(b.parts.find((p: any) => p.state === 'ready')?.key ?? '__none__');
+      expect(b.routes.reminders).toMatchObject({ number: NUM_A, stopRule: 'blocked_by_stop' });
+      expect(b.routes.testSms).toMatchObject({ number: NUM_A, via: 'number', stopRule: 'not_applicable' });
+      expect(b.routes.otp.stopRule).toBe('sent_despite_stop');
+      expect(JSON.stringify(b.routes)).not.toContain(AC_A);   // the account stays masked
+    }
+    const a = r.branches.find((b: any) => b.branchId === BR_A);
+    const blocked = ov.parts.filter((p: any) => p.state === 'failed' || p.state === 'attention_required').length;
+    expect(a.summary.blocked).toBe(blocked);   // the same parts the branch's own overview shows
+    expect(a.nextActions.some((x: any) => x.key === 'registration')).toBe(true);   // registration was never approved
   });
 });
 
@@ -230,5 +257,26 @@ describe('controlled nightly run (§11)', () => {
     if (left === 0) { expect(d1.enqueued).toBe(1); expect(d2).toMatchObject({ enqueued: 0, duplicates: 1 }); expect(jobs).toBe(1); }
     else { expect(d1.enqueued).toBe(0); expect(jobs).toBe(0); }   // a scheduled check within 20 h → not due tonight
     await sql`update branches set timezone = 'America/New_York' where tenant_id = ${A}`.execute(db);
+  });
+});
+
+// extras TEXT MESSAGING SETUP 10 (round 10): a registration whose provider status has been stuck pending past the stale window
+// becomes ATTENTION, so the nightly check opens its ONE deduplicated owner alert (an ordinary fresh wait stays Pending)
+describe('stale registration status alerts', () => {
+  it('pending for longer than the stale window → registration needs attention and the nightly run alerts once; fresh pending → Pending', async () => {
+    await sql`delete from tenant_a2p_registrations where tenant_id = ${A}`.execute(db);
+    await sql`insert into tenant_a2p_registrations (tenant_id, brand_sid, brand_status, campaign_sid, campaign_status, messaging_service_sid, status, updated_at)
+      values (${A}, ${'BN' + 'b'.repeat(32)}, 'APPROVED', ${'QE' + 'c'.repeat(32)}, 'IN_PROGRESS', ${'MG' + 'd'.repeat(32)}, 'campaign_submitted', now() - interval '10 days')`.execute(db);
+    const o: any = await center().overview(ctxA, null, null);
+    const reg = part(o, 'registration');
+    expect(reg).toMatchObject({ state: 'attention_required' });
+    expect(reg.summary).toMatch(/stale/); expect(reg.evidence).toMatch(/stale/); expect(reg.nextAction).toMatch(/Refresh Status/);
+    const r1 = await runScheduledHealthJob(db, readiness(true), A, { night: `${A}:2026-11-13` });
+    const r2 = await runScheduledHealthJob(db, readiness(true), A, { night: `${A}:2026-11-13` });
+    expect(r1.opened + r1.updated).toBeGreaterThanOrEqual(1); expect(r2.opened).toBe(0);
+    const keys = (await sql<any>`select metadata->>'dedupeKey' as k from owner_alerts where tenant_id = ${A} and metadata->>'rule' = 'sms_setup' and metadata->>'dedupeKey' = 'sms_setup:registration'`.execute(db)).rows;
+    expect(keys).toHaveLength(1);
+    await sql`update tenant_a2p_registrations set updated_at = now() where tenant_id = ${A}`.execute(db);
+    expect(part(await center().overview(ctxA, null, null), 'registration').state).toBe('pending');
   });
 });

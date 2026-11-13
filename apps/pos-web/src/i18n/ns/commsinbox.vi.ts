@@ -101,4 +101,75 @@ export const COMMSINBOX_VI = {
   'ci.fr.r.simulated_sends': 'có {n} lần gửi thử không qua nhà cung cấp', // DRAFT — Kevin reviews
   'ci.fr.r.awaiting_callbacks': '{n} tin nhắn vẫn chờ cập nhật giao tin', // DRAFT — Kevin reviews
   'ci.fr.r.callbacks_stale': '{n} tin nhắn đang chờ và chưa có cập nhật giao tin nào — hãy kiểm tra webhook', // DRAFT — Kevin reviews
+  'ci.prov.title': 'Nhà cung cấp tin nhắn', // DRAFT — Kevin reviews
+  'ci.prov.error': 'Không đọc được tình trạng nhà cung cấp tin nhắn. Mở Cài đặt tin nhắn để kiểm tra.', // DRAFT — Kevin reviews
+  'ci.prov.item.account': 'Tài khoản', // DRAFT — Kevin reviews
+  'ci.prov.item.sender': 'Số gửi', // DRAFT — Kevin reviews
+  'ci.prov.item.registration': 'Đăng ký nhà mạng', // DRAFT — Kevin reviews
+  'ci.prov.item.inbound': 'Tin nhắn đến', // DRAFT — Kevin reviews
+  'ci.prov.item.status': 'Báo cáo gửi', // DRAFT — Kevin reviews
+  'ci.prov.state.ready': 'Sẵn sàng', // DRAFT — Kevin reviews
+  'ci.prov.state.connected': 'Đã kết nối', // DRAFT — Kevin reviews
+  'ci.prov.state.approved': 'Đã duyệt', // DRAFT — Kevin reviews
+  'ci.prov.state.ok': 'Ổn', // DRAFT — Kevin reviews
+  'ci.prov.state.done': 'Xong', // DRAFT — Kevin reviews
+  'ci.prov.state.not_applicable': 'Không cần', // DRAFT — Kevin reviews
+  'ci.prov.state.assigned': 'Đã chỉ định', // DRAFT — Kevin reviews
+  'ci.prov.state.matches': 'Khớp', // DRAFT — Kevin reviews
+  'ci.prov.state.unknown': 'Chưa kiểm tra', // DRAFT — Kevin reviews
+  'ci.prov.state.pending': 'Đang chờ', // DRAFT — Kevin reviews
+  'ci.prov.state.not_started': 'Chưa bắt đầu', // DRAFT — Kevin reviews
+  'ci.prov.state.disabled': 'Đã tắt', // DRAFT — Kevin reviews
+  'ci.prov.state.unreachable': 'Không kết nối được', // DRAFT — Kevin reviews
+  'ci.prov.state.unable_to_verify': 'Không xác minh được', // DRAFT — Kevin reviews
+  'ci.prov.state.misconfigured': 'Cài đặt sai', // DRAFT — Kevin reviews
+  'ci.prov.state.invalid': 'Không hợp lệ', // DRAFT — Kevin reviews
+  'ci.prov.state.rejected': 'Bị từ chối', // DRAFT — Kevin reviews
+  'ci.prov.state.attention_required': 'Cần xử lý', // DRAFT — Kevin reviews
+  'ci.prov.state.not_set': 'Chưa đặt', // DRAFT — Kevin reviews
+  'ci.prov.state.not_owned': 'Không thuộc tài khoản này', // DRAFT — Kevin reviews
+  'ci.prov.state.not_configured': 'Chưa cài đặt', // DRAFT — Kevin reviews
+  'ci.prov.state.limited': 'Bị giới hạn', // DRAFT — Kevin reviews
+  'ci.prov.state.failed': 'Thất bại', // DRAFT — Kevin reviews
+  'ci.prov.state.warning': 'Cảnh báo', // DRAFT — Kevin reviews
+  'ci.prov.state.missing': 'Thiếu', // DRAFT — Kevin reviews
+  'ci.prov.state.missing_secret': 'Thiếu mã bí mật', // DRAFT — Kevin reviews
+  'ci.prov.state.error': 'Lỗi', // DRAFT — Kevin reviews
+  'ci.prov.state.configured': 'Đã cài, chưa có báo cáo', // DRAFT — Kevin reviews
+  'ci.consent.toggle': 'Đồng ý nhận tin: {n} loại bị chặn', // DRAFT — Kevin reviews
+  'ci.consent.since': 'Đã từ chối nhận tin {t} ({s}).', // DRAFT — Kevin reviews
+  'ci.consent.blocked': 'không gửi', // DRAFT — Kevin reviews
+  'ci.consent.allowed': 'được gửi', // DRAFT — Kevin reviews
+  'ci.consent.why.stop': 'khách đã từ chối', // DRAFT — Kevin reviews
+  'ci.consent.why.no_marketing_opt_in': 'chưa đồng ý nhận tiếp thị', // DRAFT — Kevin reviews
+  'ci.consent.why.exempt_transactional': 'khách yêu cầu, vẫn gửi sau STOP', // DRAFT — Kevin reviews
+  'ci.consent.why.allowed': 'được phép', // DRAFT — Kevin reviews
+  'ci.consent.history': 'Lịch sử đồng ý', // DRAFT — Kevin reviews
+  'ci.consent.noHistory': 'Chưa có thay đổi nào cho số này.', // DRAFT — Kevin reviews
+  'ci.consent.action.opt_out': 'Từ chối nhận tin', // DRAFT — Kevin reviews
+  'ci.consent.action.opt_in': 'Nhận tin lại', // DRAFT — Kevin reviews
+  'ci.consent.kind.booking_code': 'Mã đặt lịch', // DRAFT — Kevin reviews
+  'ci.consent.kind.account': 'Tin tài khoản & bảo mật', // DRAFT — Kevin reviews
+  'ci.consent.kind.receipt': 'Hóa đơn', // DRAFT — Kevin reviews
+  'ci.consent.kind.reminder': 'Nhắc lịch', // DRAFT — Kevin reviews
+  'ci.consent.kind.notification': 'Cập nhật lượt hẹn', // DRAFT — Kevin reviews
+  'ci.consent.kind.conversation': 'Tin nhân viên trả lời', // DRAFT — Kevin reviews
+  'ci.consent.kind.followup': 'Tin hỏi thăm', // DRAFT — Kevin reviews
+  'ci.consent.kind.marketing': 'Tiếp thị', // DRAFT — Kevin reviews
+  'ci.consent.src.inbound_stop': 'khách nhắn STOP', // DRAFT — Kevin reviews
+  'ci.consent.src.inbound_start': 'khách nhắn START', // DRAFT — Kevin reviews
+  'ci.consent.src.staff': 'do nhân viên', // DRAFT — Kevin reviews
+  'ci.consent.src.phone_change': 'đổi số điện thoại', // DRAFT — Kevin reviews
+  'ci.consent.src.system': 'hệ thống', // DRAFT — Kevin reviews
+  'ci.consent.src.provider_bounce': 'nhà mạng trả về', // DRAFT — Kevin reviews
+  'ci.consent.src.provider_complaint': 'nhà mạng báo phiền', // DRAFT — Kevin reviews
+  'ci.consent.src.email_unsubscribe': 'hủy nhận email', // DRAFT — Kevin reviews
+  'ci.consent.src.legacy_backfill': 'bản ghi cũ', // DRAFT — Kevin reviews
+  'ci.plan.title': 'Gói tin nhắn', // DRAFT — Kevin reviews
+  'ci.plan.error': 'Không đọc được gói tin nhắn.', // DRAFT — Kevin reviews
+  'ci.plan.usage': 'Tháng này: {n} tin, {s} phân đoạn ({d} đã nhận, {f} thất bại).', // DRAFT — Kevin reviews
+  'ci.plan.noUsage': 'Chưa có số liệu tin nhắn tháng này.', // DRAFT — Kevin reviews
+  'ci.plan.package': '{p}: còn {r} trên {i} mã đặt lịch trong kỳ.', // DRAFT — Kevin reviews
+  'ci.plan.noPackage': 'Tiệm chưa có gói mã đặt lịch.', // DRAFT — Kevin reviews
+  'ci.plan.open': 'Mở gói', // DRAFT — Kevin reviews
 };

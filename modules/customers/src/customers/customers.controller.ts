@@ -14,6 +14,7 @@ import { ListQueries } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { CustomersControllerListQueries } from './customers.list-queries';
 
+import type { CustomerNotesReviewResponse } from '@aipowersalon/api-contracts/tenant';
 import { CREATE_CUSTOMER_BODY, CUSTOMER_IMPORT_BODY, CUSTOMER_LOYALTY_BODY, CUSTOMER_MEMBERSHIP_BODY, CUSTOMER_NOTES_BODY, CUSTOMER_TAGS_BODY, DUPLICATE_MERGE_BODY, EDIT_CUSTOMER_BODY, LOYALTY_ADJUST_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
 function ctxFrom(req: any): CustomersContext { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 function filtersFrom(q: any): CustomerFilters {
@@ -68,6 +69,8 @@ export class CustomersController {
   // extras Customer 03 (Nov 13 2026): the Quick View's receipts + activity — one read-only staff read, no printing / resend controls
   @Get(':customerId/quick-activity') @RequirePermission('pos.customers.view') quickActivity(@Req() r: any, @Param('customerId') id: string): Promise<CustomerQuickActivity> { return run(() => this.svc.quickActivity(ctxFrom(r), id)); }
   @Get(':customerId/notes') @RequirePermission('pos.customers.notes.view') gNotes(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.getNotes(ctxFrom(r), id)); }
+  // extras Customer Notes 6 · 02 (round 10): stale / conflicting preferences with their evidence — read only
+  @Get(':customerId/notes/review') @RequirePermission('pos.customers.notes.view') notesReview(@Req() r: any, @Param('customerId') id: string): Promise<CustomerNotesReviewResponse> { return run(() => this.svc.notesReview(ctxFrom(r), id)); }
   @Patch(':customerId/notes') @RequirePermission('pos.customers.notes.edit') sNotes(@Req() r: any, @Param('customerId') id: string, @Body(ValidatedBody(CUSTOMER_NOTES_BODY, { strict: true })) b: any) { return run(() => this.svc.setNotes(ctxFrom(r), id, b)); }
   @Get(':customerId/tags') @RequirePermission('pos.customers.view') gTags(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.getTags(ctxFrom(r), id)); }
   @Patch(':customerId/tags') @RequirePermission('pos.customers.edit') sTags(@Req() r: any, @Param('customerId') id: string, @Body(ValidatedBody(CUSTOMER_TAGS_BODY, { strict: true })) b: any) { return run(() => this.svc.setTags(ctxFrom(r), id, b?.tags || [])); }

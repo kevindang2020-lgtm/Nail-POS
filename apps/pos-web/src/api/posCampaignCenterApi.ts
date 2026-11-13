@@ -15,6 +15,8 @@ export interface CcCounts {
   actualCostCents: number | null; roi: number | null; roiNote: string;
   /** server-computed (extras): comparison ratios and booking de-duplication facts — optional for older servers */
   deliveryRatePercent?: number | null; costPerBookingCents?: number | null; bookedDuplicatesIgnored?: number; firstBookedAt?: string | null; lastBookedAt?: string | null;
+  /** extras Marketing 11 (server): exposure / associated booking / validated (campaign code redeemed on a paid ticket), kept apart */
+  attribution?: { exposure: { delivered: number; submitted: number }; associated: { bookings: number }; validated: { redemptions: number; revenueCents: number } };
 }
 export interface CcCampaign {
   id: string; name: string; goal: string | null; description: string | null; offer: string | null; channel: 'sms' | 'email' | 'push'; branchId: string | null;

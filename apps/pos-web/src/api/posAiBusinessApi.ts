@@ -1,7 +1,7 @@
 // posAiBusinessApi.ts — client for the AI Business Assistant (/pos/ai-business/*). The server derives tenant/branch;
 // the client never sends them. `ask` posts a bounded intent or a free-text question; the rest are read-only tools.
 import { api } from "./client";
-import type { ReportChangeResponse } from '@aipowersalon/api-contracts/tenant';
+import type { ReportChangeResponse, BcExecutiveWordingResponse } from '@aipowersalon/api-contracts/tenant';
 
 type Q = Record<string, string | number | undefined | null>;
 const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Record<string, string | number>;
@@ -45,6 +45,8 @@ export const posAiBusinessApi = {
     saveSchedule: (b: { reportType: string; active?: boolean; sendHour?: number; notifyInApp?: boolean }) => api.post<any>('/pos/ai-business/center/reports/schedules', b),
     /** AI Business Reports 15 — the report's verified figures + growth proposals (read-only) */
     executive: (id: string) => api.get<any>(`/pos/ai-business/center/reports/${enc(id)}/executive`),
+    /** extras AI Business Reports 15: AI wording of the verified figures (POST — it may call the model and is metered) */
+    executiveWording: (id: string) => api.post<BcExecutiveWordingResponse>(`/pos/ai-business/center/reports/${enc(id)}/executive/wording`, {}),
     alertSummary: () => api.get<any>('/pos/ai-business/center/alerts/summary'),
     rules: (q: Q = {}) => api.get<any>('/pos/ai-business/center/alerts/rules', clean(q)),
     history: (q: Q = {}) => api.get<any>('/pos/ai-business/center/alerts/history', clean(q)),

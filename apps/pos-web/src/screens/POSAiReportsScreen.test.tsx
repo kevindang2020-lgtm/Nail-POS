@@ -1,9 +1,9 @@
 // POSAiReportsScreen — AI Business Reports guide (Nov 3 2026): the four buttons ask for a period; history with search, filters, dates and
 // pages; "completed" and "content expired" shown apart; View with labelled figures; Verify Numbers; Regenerate; the system check.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { c } = vi.hoisted(() => ({ c: { reportSummary: vi.fn(), reports: vi.fn(), report: vi.fn(), generate: vi.fn(), regenerate: vi.fn(), verify: vi.fn(), compare: vi.fn(), reportCheck: vi.fn(), schedules: vi.fn(), saveSchedule: vi.fn(), executive: vi.fn() } }));
+const { c } = vi.hoisted(() => ({ c: { reportSummary: vi.fn(), reports: vi.fn(), report: vi.fn(), generate: vi.fn(), regenerate: vi.fn(), verify: vi.fn(), compare: vi.fn(), reportCheck: vi.fn(), schedules: vi.fn(), saveSchedule: vi.fn(), executive: vi.fn(), executiveWording: vi.fn() } }));
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { center: c } }));
 import { POSAiReportsScreen } from './POSAiReportsScreen';
 const row = (o: any = {}) => ({ id: 'r1', reportType: 'monthly_review', preset: 'month', status: 'completed', availability: 'viewable', period: { preset: 'month', from: '2026-11-01', to: '2026-11-03', timeZone: 'America/New_York', partial: true },
@@ -51,6 +51,23 @@ describe('POSAiReportsScreen', () => {
     expect(screen.getByTestId('bzx-exec-opp-new_customers')).toHaveTextContent('New customers are down 30% (5 this period)');
     expect(screen.getByTestId('bzx-exec-result')).toHaveTextContent(/Nothing is changed, sent or started from here/);
     expect(c.executive).toHaveBeenCalledWith('r1');
+  });
+  it('extras AI Business Reports 15: "Word it with AI" shows the server wording only when it passed the number guard; otherwise it says why', async () => {
+    c.executive.mockResolvedValue({ id: 'r1', available: true, reportType: 'monthly_review', period: null, verification: { status: 'matched', reason: null, checkedAt: '' }, changesAnything: false,
+      facts: [{ key: 'bookings', value: 12, unit: 'count', source: 'report_section', check: 'not_checkable', salesReportNow: null }], opportunities: [] });
+    c.executiveWording.mockResolvedValueOnce({ id: 'r1', state: 'rejected_numbers', text: null, provider: 'real', model: 'm', unverifiedNumbers: ['14'], reason: null, changesAnything: false })
+      .mockResolvedValueOnce({ id: 'r1', state: 'worded', text: 'You had 12 bookings this month.', provider: 'real', model: 'm', unverifiedNumbers: [], reason: null, changesAnything: false });
+    wrap();
+    fireEvent.click((await screen.findAllByTestId('bzx-r-open'))[0]);
+    fireEvent.click(await screen.findByTestId('bzx-exec'));
+    fireEvent.click(await screen.findByTestId('bzx-exec-word'));
+    const r1 = await screen.findByTestId('bzx-exec-word-result');
+    expect(r1).toHaveAttribute('data-state', 'rejected_numbers'); expect(r1).toHaveTextContent('numbers that are not in the verified figures (14)');
+    expect(r1).not.toHaveTextContent('You had');
+    fireEvent.click(screen.getByTestId('bzx-exec-word'));
+    await waitFor(() => expect(screen.getByTestId('bzx-exec-word-result')).toHaveAttribute('data-state', 'worded'));
+    expect(screen.getByTestId('bzx-exec-word-result')).toHaveTextContent('You had 12 bookings this month.');
+    expect(c.executiveWording).toHaveBeenCalledWith('r1');
   });
   it('cards are backend counts; completed and content-expired are shown apart', async () => {
     wrap();

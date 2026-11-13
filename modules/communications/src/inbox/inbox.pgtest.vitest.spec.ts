@@ -229,6 +229,25 @@ describe('reply: one Send = one message = one provider call; delivery only from 
     expect(audit.map((a: any) => a.action)).toEqual(expect.arrayContaining(['inbox.reply.sent', 'inbox.reply.blocked']));
     expect(audit.every((a: any) => a.actor_user_id === OWNER || a.actor_user_id === MANAGER)).toBe(true);
   });
+  it('extras Communications 07: the conversation header shows what consent does to each kind of text now (one consent table) and the number\'s consent history', async () => {
+    const t7 = (await recordInboundSms(db, { tenantId: T, from: '+12675550777', to: '+18565550100', body: 'hi there', messageSid: 'SM' + 'c7'.repeat(16), numMedia: 0 })).threadId;
+    const before = (await svc.detail(owner, t7)).consent;
+    expect(before.smsOptedOut).toBe(false); expect(before.history).toEqual([]);
+    const cat = (c: typeof before, k: string) => c.categories.find((x) => x.kind === k)!;
+    expect(cat(before, 'reminder')).toMatchObject({ blocked: false, why: 'allowed' });
+    expect(cat(before, 'marketing')).toMatchObject({ blocked: true, why: 'no_marketing_opt_in', basis: 'marketing' });   // no customer opt-in on file
+    expect(cat(before, 'booking_code')).toMatchObject({ blocked: false, why: 'exempt_transactional', basis: 'transactional' });
+    await q(`insert into notification_consent_events (tenant_id, channel, address, action, source, actor_user_id, created_at) values ($1,'sms','+12675550777','opt_out','staff',$2, now() - interval '2 days'), ($1,'sms','+12675550777','opt_in','staff',$2, now() - interval '1 day'), ($1,'sms','+12675550777','opt_out','inbound_stop',null, now())`, [T, OWNER]);
+    await q(`insert into notification_opt_outs (tenant_id, channel, address, reason, scope) values ($1,'sms','+12675550777','inbound_stop','all')`, [T]);
+    const after = (await svc.detail(owner, t7)).consent;
+    expect(after.smsOptedOut).toBe(true); expect(after.optOutScope).toBe('all'); expect(after.optOutReason).toBe('inbound_stop'); expect(after.optedOutAt).toBeTruthy();
+    for (const k of ['reminder', 'receipt', 'conversation', 'followup', 'marketing', 'notification']) expect(cat(after, k)).toMatchObject({ blocked: true, why: 'stop' });
+    expect(cat(after, 'booking_code')).toMatchObject({ blocked: false, why: 'exempt_transactional' });   // Kevin: booking codes still go out after STOP
+    expect(cat(after, 'account')).toMatchObject({ blocked: false, why: 'exempt_transactional' });
+    expect(after.history.map((h) => `${h.action}:${h.source}`)).toEqual(['opt_out:inbound_stop', 'opt_in:staff', 'opt_out:staff']);
+    expect(after.history[1].actor).toBeTruthy();
+    expect((await svc.detail(owner, t7)).composer).toMatchObject({ enabled: false, reasonCode: 'OPTED_OUT' });
+  });
   it('S11: readiness blocked or unavailable → no provider call, the reply is recorded as blocked, the composer says why', async () => {
     const t2 = (await recordInboundSms(db, { tenantId: T, from: '+12675550666', to: '+18565550100', body: 'hello?', messageSid: 'SM' + 'k'.repeat(32), numMedia: 0 })).threadId;
     const before = sent.length;

@@ -38,3 +38,14 @@ export type AvailableNumber = { phoneNumber: string; friendlyName: string; local
 export interface NumberQuote { ok: true; confirmationToken: string; phoneNumber: string; capabilities: Caps | null; price: { amount: string; unit: string } | null; priceNote: string; expiresAt: string; billedTo: string; replacesNumber: string | null }
 export type TestSendResult = { ok: boolean; sid?: string; error?: string; reason?: string; eventId?: string; status?: string; displayState?: TestDisplayState; errorCode?: string | null; warnings?: string[]; replayed?: boolean; destinationMasked?: string;
   branchId?: string | null; configSource?: string; accountSidMasked?: string | null; sender?: string | null };
+
+// ── extras TEXT MESSAGING SETUP 08 (round 10) — Credential Rotation Safety preflight (POST tenant/messaging/credentials/preflight
+//    and …/branches/:branchId/preflight, settings.edit + step-up). The save's own validation with NOTHING written: what would
+//    be replaced, the provider's answer for the replacement account / API key (and whether the key has the rights the
+//    platform reads with), and whether the sender is on that account. A refusal is the same coded error the save answers.
+export interface MessagingCredentialPreflight {
+  dryRun: true; scope: 'salon' | 'branch'; existingKept: true;
+  wouldReplace: { account: boolean; authToken: boolean; apiKey: boolean; sender: boolean; firstSetup: boolean };
+  checks: { checked: boolean; account: string; apiKey: string; apiKeyRights: 'sufficient' | 'insufficient' | 'unknown' | 'not_applicable'; sender: string };
+  unverified: boolean;
+}

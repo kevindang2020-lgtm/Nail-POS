@@ -231,3 +231,16 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     await waitFor(() => expect(m.devices.mock.calls.length).toBeGreaterThan(calls));
   });
 });
+
+// extras Device Integration Logs 10 (round 10): a drill-through link's ?q= opens the list already scoped to that device
+describe('device fleet — drill-through scope', () => {
+  it('?q=<device id> is sent as the server search and shown in the box; a 1-letter value is ignored', async () => {
+    const { unmount } = render(<MemoryRouter initialEntries={['/tenant/devices/health?q=disp-1']}><POSDeviceFleetScreen view="health" /></MemoryRouter>);
+    await waitFor(() => expect(m.devices).toHaveBeenCalledWith(expect.objectContaining({ q: 'disp-1', page: 1 })));
+    expect((screen.getByTestId('dfx-search') as HTMLInputElement).value).toBe('disp-1');
+    unmount(); m.devices.mockClear();
+    render(<MemoryRouter initialEntries={['/tenant/devices/health?q=x']}><POSDeviceFleetScreen view="health" /></MemoryRouter>);
+    await waitFor(() => expect(m.devices).toHaveBeenCalled());
+    expect(m.devices.mock.calls[0][0].q).toBeUndefined();
+  });
+});

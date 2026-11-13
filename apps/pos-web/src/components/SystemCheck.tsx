@@ -14,7 +14,7 @@ const ct = (k: string, v?: Record<string, string | number>) => tx(k, v as Parame
 /** the page's own read permission (the server checks the same one on GET pos/system-checks/<page>) */
 const PERM: Record<SystemCheckDomain, string> = { expenses: 'owner.expenses.view', invoices: 'pos.checkout.view', settlements: 'reconciliation.view', payments: 'pos.reports.view',
   discounts: 'pos.marketing.view', catalog: 'pos.services.view', inventory: 'inventory.view', technicians: 'pos.technicians.view', memberships: 'pos.memberships.view',
-  'service-flow': 'pos.serving.view', terminals: 'settings.view', approvals: 'approvals.view', reports: 'pos.reports.view', suppliers: 'inventory.view' };
+  'service-flow': 'pos.serving.view', terminals: 'settings.view', approvals: 'approvals.view', reports: 'pos.reports.view', suppliers: 'inventory.view', 'device-logs': 'pos.logs.view' };
 /** one CSV cell, quoted when it holds a comma, quote or line break */
 const cell = (v: string) => (/[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
 /**

@@ -101,6 +101,8 @@ describe('guide §04 example: 100 points, Salon B holds 50, ticket paid, no payo
     expect(await code(db.transaction().execute((trx: any) => holdForTicket(trx, repo, { tenantId: TB, branchId: BB, userId: OWNER }, { ticketId: ticket, customerId: custOf[TB], blocks: 3, dueCents: 4000, paymentId: hold.paymentId, idempotencyKey: 'k-b-1' })))).toBe('IDEMPOTENCY_KEY_REUSED');
     // one live reward per ticket
     expect(await code(applyReward(TB, BB, ticket, custOf[TB], 1, 3500, 'k-b-2'))).toBe('REWARD_RESERVATION_CONFLICT');
+    // extras GLOBAL LOYALTY REWARDS 06 (round 10): the open hold shows as HELD points / value on Salon B's funding-vs-liability
+    expect((await repo.walletSummary(TB)).fundingVsLiability).toMatchObject({ heldRedemptions: 1, heldPointTenths: 500, heldValueCents: 500, salonPayablesOwedCents: 0 });
   });
   it('an unpaid ticket finalizes nothing; ticket paid → 50 remaining / 0 held, $5 owed to Salon B (ACCRUED_OWED), books balance', async () => {
     expect((await finalize(TB, ticket)).outcome).toBe('not_paid');
@@ -113,6 +115,9 @@ describe('guide §04 example: 100 points, Salon B holds 50, ticket paid, no payo
     expect(await unbalanced()).toBe(0);
     // T13: accepting points never debits Salon B's token wallet
     expect((await q(`select count(*)::int n from token_wallet_ledger where tenant_id = $1`, [TB]))[0].n).toBe(0);
+    // extras GLOBAL LOYALTY REWARDS 06 (round 10): Salon B's funding vs liability shows the $5 owed by the network beside a
+    // wallet that funded nothing — two ledgers, side by side, never netted
+    expect((await repo.walletSummary(TB)).fundingVsLiability).toMatchObject({ backedFundingCents: 0, heldRedemptions: 0, salonPayablesOpen: 1, salonPayablesOwedCents: 500, combined: false });
   });
   it('a duplicated paid-ticket event confirms nothing twice (one redemption, one payable, one ledger row)', async () => {
     expect((await finalize(TB, ticket)).outcome).toBe('none');
@@ -205,6 +210,18 @@ describe('refunds and payouts (guide §05, T15)', () => {
     expect((await settle({ providerEventId: 'evt-ok' })).outcome).toBe('paid');
     expect((await q(`select status, provider_ref from merchant_reimbursements where id = $1`, [id1]))[0]).toEqual({ status: 'PAID', provider_ref: 'stl_1' });
     expect((await settle({ providerEventId: 'evt-ok' })).outcome).toBe('duplicate');
+    // extras GLOBAL LOYALTY REWARDS 09 (round 10): an identical replay raises nothing; a replay CLAIMING something else (a
+    // FAILED for the paid payout, another amount under a new event id) changes nothing and is raised review-first, once per event
+    const alerts = async () => (await q(`select signal, severity, evidence from loyalty_fraud_alerts where signal = 'duplicate_callback' and tenant_id = $1 order by created_at`, [TC]));
+    expect(await alerts()).toEqual([]);
+    expect((await settle({ providerEventId: 'evt-ok', outcome: 'FAILED' })).outcome).toBe('duplicate');
+    expect((await settle({ providerEventId: 'evt-ok', outcome: 'FAILED' })).outcome).toBe('duplicate');   // the same replay again: still one alert
+    expect((await settle({ providerEventId: 'evt-new', amountCents: 5000 })).outcome).toBe('duplicate');
+    const al = await alerts();
+    expect(al.map((a: any) => [a.signal, a.severity])).toEqual([['duplicate_callback', 'high'], ['duplicate_callback', 'high']]);
+    expect(al[0].evidence).toMatchObject({ providerEventId: 'evt-ok', applied: { outcome: 'SETTLED', amountCents: 100, settlementRef: 'stl_1' }, claimed: { outcome: 'FAILED' } });
+    expect(al[1].evidence).toMatchObject({ providerEventId: 'evt-new', claimed: { outcome: 'SETTLED', amountCents: 5000 } });
+    expect((await q(`select status, provider_ref from merchant_reimbursements where id = $1`, [id1]))[0]).toEqual({ status: 'PAID', provider_ref: 'stl_1' });   // nothing moved
     // refund after payout: recovery claim, the payout is never rewritten
     await db.transaction().execute((trx: any) => reverseRedemptionForRefund(trx, program, { tenantId: TC, rewardPaymentId: h.paymentId, refundId: 'refund-po', refundedCents: 100 }));
     expect((await q(`select status from merchant_reimbursements where id = $1`, [id1]))[0].status).toBe('OFFSET');
@@ -528,5 +545,18 @@ describe('extras GLOBAL LOYALTY REWARDS 11 (round 10) — idempotency conflict c
     expect(all.conflicts).toBeGreaterThanOrEqual(1);
     await expect(q(`update rewards_idempotency_events set outcome = 'replay'`)).rejects.toThrow(/append-only/);
     await expect(q(`delete from rewards_idempotency_events`)).rejects.toThrow(/append-only/);
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 14 (round 10): the network state carries per-feature readiness read from the real configuration
+describe('Readiness Control Center', () => {
+  it('with no funding or payout provider connected, Buy Tokens and salon payouts are BLOCKED_EXTERNAL; earning / redemption follow the flags', async () => {
+    const st: any = await new GlobalRewardsService(repo, null, null).state({ tenantId: TB, branchId: BB, userId: OWNER, role: 'OWNER', permissions: ['pos.customers.view', 'pos.settings.edit'] });
+    const by = Object.fromEntries(st.readiness.map((f: any) => [f.feature, f]));
+    expect(Object.keys(by).sort()).toEqual(['custom_earning', 'earning', 'redemption', 'salon_payouts', 'token_purchases']);
+    expect(by.token_purchases).toEqual({ feature: 'token_purchases', state: 'BLOCKED_EXTERNAL', evidence: ['no_funding_provider_connected'] });
+    expect(by.salon_payouts.state).toBe('BLOCKED_EXTERNAL');
+    expect(by.earning.state).toBe(st.flags.engine && st.flags.earn && !st.program.earnPaused && st.enrollment.status === 'enrolled' ? 'PRODUCTION_READY' : 'CODE_READY');
+    expect(st.funding).toEqual({ provider: null, sandbox: false, available: false });
   });
 });

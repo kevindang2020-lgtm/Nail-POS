@@ -125,6 +125,29 @@ describe('Tips & Gratuity — KPIs', () => {
     expect(v.allocatedCents).toBe(700); expect(v.manualCorrectionCents).toBe(-500); expect(a.manualCorrectionCents).toBe(500);
     expect(d.adjustments.filter((x) => x.kind === 'correction').length).toBe(2);
   });
+  it('extras TIPS 01: one technician\'s earnings overlay — own share per ticket, payout state + payroll period, totals reconcile with the Distribution row; unknown / other-salon technician is 404', async () => {
+    for (const f of [await month(), await all()]) {
+      const d = await r.distribution(ctx, f, { page: 1, pageSize: 50 });
+      for (const tech of [VISHAL, ANNA, BAO, CHI]) {
+        const row = d.items.find((x) => x.technicianId === tech)!;
+        const e = await r.technicianEarnings(ctx, f, tech, { page: 1, pageSize: 50 });
+        expect(e.totals.allocatedCents).toBe(row.allocatedCents); expect(e.totals.paidCents).toBe(row.paidOutCents); expect(e.totals.pendingCents).toBe(row.pendingCents);
+        expect(e.totals.tickets).toBe(row.tickets); expect(e.totals.netCents).toBe(row.netCents);
+        expect(e.totals.paidCents + e.totals.approvedCents + e.totals.openCents + e.totals.unscheduledCents).toBe(e.totals.allocatedCents);
+        expect(e.items.reduce((a, x) => a + x.allocatedCents, 0)).toBe(e.totals.allocatedCents);
+        expect(e.periods.reduce((a, x) => a + x.allocatedCents, 0)).toBe(e.totals.allocatedCents);
+      }
+    }
+    const v = await r.technicianEarnings(ctx, await all(), VISHAL, { page: 1, pageSize: 50 });
+    const paidRow = v.items.find((x) => x.ticketId === paidOut)!;
+    expect(paidRow).toMatchObject({ payoutState: 'paid', allocatedCents: 700, period: { id: id('81'), label: 'Sep 16–30' } });
+    expect(paidRow.sharedWith).toBeGreaterThanOrEqual(1);
+    expect(v.periods.find((p) => p.id === id('81'))).toMatchObject({ state: 'paid', allocatedCents: 700, tickets: 1 });
+    const b = await r.technicianEarnings(ctx, await month(), BAO, { page: 1, pageSize: 1 });
+    expect(b.items).toHaveLength(1); expect(b.total).toBe(2); expect(b.pageCount).toBe(2);
+    await expect(r.technicianEarnings(ctx, await all(), id('f9'), { page: 1, pageSize: 10 })).rejects.toMatchObject({ code: 'TIP_NOT_FOUND', status: 404 });   // the other salon's technician
+    await expect(r.technicianEarnings(ctx, await all(), 'nope', { page: 1, pageSize: 10 })).rejects.toMatchObject({ code: 'TIP_NOT_FOUND' });
+  });
 });
 
 describe('Tips & Gratuity — transactions, detail, search', () => {
@@ -154,6 +177,15 @@ describe('Tips & Gratuity — transactions, detail, search', () => {
     expect(await find('RR9005')).toEqual(['1055']);
     expect(await find('$20.00')).toEqual(['1054']);
     expect(await find('nobody-here')).toEqual([]);
+    // extras TIPS & GRATUITY 07 (round 10): each hit says how it matched — an exact reference (ticket #, phone, payment ref,
+    // amount) ranks above a partial name / ticket-prefix match (order by rank desc)
+    const how = async (s: string) => (await r.transactions(ctx, await all({ search: s }), pr)).items.map((x) => [x.ticketNumber, x.matchedBy]);
+    expect(await how('#1054')).toEqual([['1054', 'reference']]);
+    expect(await how('RR9005')).toEqual([['1055', 'reference']]);
+    expect(await how('8565551234')).toEqual([['1052', 'reference']]);
+    expect((await how('Chi Pham')).every(([, m]) => m === 'name')).toBe(true);
+    const prefix = await how('105');   // no ticket is exactly 105: every 105x is a partial (prefix) match
+    expect(prefix.length).toBeGreaterThan(1); expect(prefix.every(([n, m]) => String(n).startsWith('105') && m === 'name')).toBe(true);
   });
   it('detail: payments with their tip parts, each technician against the frozen snapshot, the split rule, the audit', async () => {
     const d = await r.detail(ctx, trio);
@@ -186,5 +218,30 @@ describe('Tips & Gratuity — transactions, detail, search', () => {
     expect(d.totals.unreconciledTechnicians).toBeGreaterThanOrEqual(3);
     await q(`update ticket_tip_allocations set tip_cents = tip_cents - 50 where tenant_id = $1 and ticket_id = $2 and technician_id = $3`, [T, trio, CHI]);
     expect((await r.distribution(ctx, await month(), pr)).totals.unreconciledTechnicians).toBe(0);
+  });
+});
+
+// extras TIPS & GRATUITY 04 (round 10): a cash tip says WHERE it went — handed straight to the technician (the visit was
+// settled by Cash to Technician and the technician CONFIRMED it) or collected into the drawer; card / cash stay as they are
+describe('Tips & Gratuity — cash tip source labels', () => {
+  it('drawer vs handed to the technician, per row and in the KPIs; a pending (unconfirmed) cash-to-technician is still drawer; card rows have no source', async () => {
+    const tech = await ticket({ tip: 700, subtotal: 3000, number: '1060', tech: BAO, chosen: 'cash', daysAgo: 1 });
+    await pay(tech, 'cash', 3700, 700);
+    await q(`insert into cash_payment_confirmations (tenant_id, branch_id, ticket_id, technician_id, amount_cents, status, confirmed_at) values ($1,$2,$3,$4,3700,'confirmed', now())`, [T, B, tech, BAO]);
+    const pend = await ticket({ tip: 300, subtotal: 2000, number: '1061', tech: BAO, chosen: 'cash', daysAgo: 1 });
+    await pay(pend, 'cash', 2300, 300);
+    await q(`insert into cash_payment_confirmations (tenant_id, branch_id, ticket_id, technician_id, amount_cents, status) values ($1,$2,$3,$4,2300,'pending')`, [T, B, pend, BAO]);
+    const rows = (await r.transactions(ctx, await month(), { page: 1, pageSize: 50 })).items;
+    const by = (n: string) => rows.find((x) => x.ticketNumber === n)!;
+    expect(by('1060')).toMatchObject({ cashCents: 700, cashSource: 'technician', cashToTechnicianCents: 700, cashDrawerCents: 0 });
+    expect(by('1061')).toMatchObject({ cashCents: 300, cashSource: 'drawer', cashToTechnicianCents: 0, cashDrawerCents: 300 });
+    expect(by('1053')).toMatchObject({ cashSource: 'drawer', cashDrawerCents: 500 });
+    expect(by('1052')).toMatchObject({ cashCents: 0, cashSource: null });
+    const k = (await r.summary(ctx, await month())).kpis;
+    expect(k.cashToTechnicianTipsCents).toBe(700);
+    expect(k.cashDrawerTipsCents + k.cashToTechnicianTipsCents).toBe(k.cashTipsCents);   // a split of the cash figure, never added to it
+    const csv = await r.exportCsv(ctx, await month());
+    expect(csv).toContain('Cash source'); expect(csv).toMatch(/1060[^\n]*technician/);
+    expect((await r.summary(other, r.filters(await r.period(other, { preset: 'all' }), {}))).kpis.cashToTechnicianTipsCents).toBe(0);
   });
 });

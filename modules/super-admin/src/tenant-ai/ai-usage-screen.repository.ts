@@ -19,6 +19,18 @@ import { displayStateOf, actionsFor, primaryAction, usageLevelOf, type DisplaySt
 import { utcDate } from '@aipowersalon/date-time';
 
 export interface UsageCtx { tenantId: string; branchId?: string | null; userId?: string; role?: string; permissions?: string[] }
+/** extras AI Command Center 15 — one evidence row per assistant the salon has (live, or used this month), from reconcile()'s
+ *  rows (the same honest state + gate decision the AI Center shows). Pure; exported for tests. */
+export type AssistantVerdict = 'gate_mismatch' | 'failing' | 'limit' | 'idle' | 'ok';
+export function assistantEvidence(rows: Array<{ code: string; name: string; state: string; gate: { allowed: boolean; reason?: string | null }; monthEvents: number; monthErrors: number; monthBlocked: number; lastSuccessAt: string | null; lastErrorAt: string | null; mismatch: boolean; limitReached: boolean }>) {
+  return rows.filter((r) => ['active', 'trialing', 'past_due'].includes(r.state) || r.monthEvents + r.monthErrors + r.monthBlocked > 0).map((r) => {
+    const live = ['active', 'trialing'].includes(r.state);
+    const verdict: AssistantVerdict = r.mismatch ? 'gate_mismatch' : r.limitReached ? 'limit' : live && r.monthErrors > 0 && r.monthEvents === 0 ? 'failing' : live && r.monthEvents === 0 ? 'idle' : 'ok';
+    return { code: r.code, name: r.name, state: r.state, gateAllowed: !!r.gate.allowed, gateReason: r.gate.reason ?? null, monthRuns: r.monthEvents, monthErrors: r.monthErrors, monthRefused: r.monthBlocked,
+      lastSuccessAt: r.lastSuccessAt, lastErrorAt: r.lastErrorAt, verdict };
+  });
+}
+
 export class AiUsageScreenError extends Error {
   constructor(message: string, readonly code: 'AI_PACKAGE_NOT_FOUND' | 'AI_ACTION_NOT_ALLOWED' | 'AI_TRIAL_NOT_ELIGIBLE' | 'AI_STATE_CHANGED' | 'AI_CONFIRMATION_REQUIRED'
     | 'IDEMPOTENCY_KEY_REQUIRED' | 'AI_INVALID_PERIOD' | 'AI_ALERT_NOT_FOUND' | 'PERMISSION_DENIED' | 'AI_BRANCH_NOT_FOUND' | 'AI_INVALID_SETTINGS' | 'AI_BRANCH_CANNOT_ENABLE', readonly status: 400 | 403 | 404 | 409 = 400, readonly details?: Record<string, unknown>) {
@@ -697,6 +709,13 @@ export class AiUsageScreenRepository {
       const r = await this.reconcile(ctx);
       checks.push({ key: 'gate_matches_state', state: r.gateMismatches ? 'FAILED' : 'PASSED', count: r.gateMismatches, detail: { canRunNow: r.now.canRunNow } });
       checks.push({ key: 'feature_routes_gated', state: r.enforcement.featureRoutes === 'enforce' ? 'PASSED' : 'WARNING', detail: { mode: r.enforcement.featureRoutes } });
+      // extras AI Command Center 15 — per-assistant evidence (read-only): for every assistant the salon has (live, or with use this
+      // month) its honest state, the gate's decision now, this month's successful / failed / refused runs and the last success /
+      // error times, with a verdict: gate_mismatch (the gate disagrees with the state), failing (errors and no success this month
+      // while live), idle (live, no run this month), limit (allowance used up), ok. Never runs a model or changes anything.
+      const ev = assistantEvidence(r.rows);
+      checks.push({ key: 'assistant_evidence', state: ev.some((a) => a.verdict === 'gate_mismatch') ? 'FAILED' : ev.some((a) => a.verdict === 'failing' || a.verdict === 'limit') ? 'WARNING' : !ev.length ? 'INSUFFICIENT_DATA' : 'PASSED',
+        count: ev.filter((a) => a.verdict !== 'ok' && a.verdict !== 'idle').length, detail: { monthStart: r.monthStart, assistants: ev } });
     } catch { checks.push({ key: 'gate_matches_state', state: 'UNAVAILABLE' }); }
     checks.push({ key: 'no_side_effects', state: 'PASSED' });
     const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];

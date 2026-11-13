@@ -200,4 +200,10 @@ export const CHURNWATCH_VI: Record<string, string> = {
   "cwx.health.k.verdict_source": "Nguồn kết luận: Giữ chân khách", // DRAFT — Kevin reviews
   "cwx.health.d.verdict_source.PASSED": "Mọi kết luận là phân loại của Giữ chân khách; tín hiệu của trợ lý chỉ là lý do hỗ trợ.", // DRAFT — Kevin reviews
   "cwx.health.d.verdict_source.UNAVAILABLE": "Không đọc được Giữ chân khách nên không thể hiển thị kết luận. Hãy thử lại.", // DRAFT — Kevin reviews
+  "cwx.consent.smsStop": "Đã nhắn STOP — không gửi tin nhắn theo dõi", // DRAFT — Kevin reviews
+  "cwx.consent.smsStopLong": "Đã nhắn STOP: tin nhắn theo dõi và tiếp thị bị chặn (mã đặt lịch vẫn được gửi)", // DRAFT — Kevin reviews
+  "cwx.consent.smsOk": "Cho phép nhắn tin", // DRAFT — Kevin reviews
+  "cwx.consent.emailAll": "Đã hủy đăng ký e-mail", // DRAFT — Kevin reviews
+  "cwx.consent.emailMarketing": "Đã hủy nhận e-mail tiếp thị", // DRAFT — Kevin reviews
+  "cwx.consent.emailOk": "Cho phép e-mail", // DRAFT — Kevin reviews
 };

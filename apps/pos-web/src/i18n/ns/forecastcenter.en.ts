@@ -149,5 +149,9 @@ export const FORECASTCENTER_EN: Record<string, string> = {
   "fch.health.d.tenant_isolation.PASSED": "Every kept forecast belongs to one of this salon's branches.",
   "fch.health.d.tenant_isolation.FAILED": "A kept forecast points at another salon's branch. Report this immediately.",
   "fch.health.k.no_side_effects": "Nothing changed by this check",
-  "fch.health.d.no_side_effects.PASSED": "Forecasts are advice only; this page and this check never book, price or order anything."
+  "fch.health.d.no_side_effects.PASSED": "Forecasts are advice only; this page and this check never book, price or order anything.",
+  "fch.baselineWape": "Naive baseline WAPE",
+  "fch.notEvaluated": "Not evaluated",
+  "fch.skillNa": "skill: not measurable",
+  "fch.skill": "skill vs baseline {v}",
 };

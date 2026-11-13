@@ -177,6 +177,17 @@ export interface ModelSelection {
   candidates: { method: ForecastMethod; metrics: BacktestMetrics | null }[];
 }
 
+/** extras AI Analytics Forecasting 05 (round 10) — the naive BASELINE a model is judged against: the seasonal-naive candidate's
+ *  OWN backtest (same folds), and the selected model's skill over it (1 − WAPE / baseline WAPE). null = not evaluated (too
+ *  little history to backtest the baseline, or the selected model had no backtest) — never a guessed number. */
+export interface BaselineComparison { method: 'seasonal_naive'; wape: number; mae: number; folds: number; selectedWape: number | null; skill: number | null }
+export function naiveBaseline(selection: ModelSelection, selected: BacktestMetrics | null): BaselineComparison | null {
+  const b = selection.candidates.find((c) => c.method === 'seasonal_naive')?.metrics;
+  if (!b) return null;
+  const skill = selected && b.wape > 0 ? round2(1 - selected.wape / b.wape) : null;
+  return { method: 'seasonal_naive', wape: b.wape, mae: b.mae, folds: b.folds, selectedWape: selected ? selected.wape : null, skill };
+}
+
 /** Compare candidate methods by backtest WAPE and pick the best; ties/failures fall back to moving average (robust). */
 export function selectModel(series: SeriesPoint[], opts: { minTrain?: number; step?: number; period?: number; window?: number } = {}): ModelSelection {
   const candidateMethods: ForecastMethod[] = series.length >= (opts.period ?? 7) * 2

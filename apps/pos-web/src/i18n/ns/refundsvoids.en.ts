@@ -230,4 +230,12 @@ export const REFUNDSVOIDS_EN = {
   'rv.inflight.text': 'A {k} of {a} for {t} was being sent at {w} when this page reloaded. It was sent once and will not be sent again — check its status in the ledger before doing anything else; asking again for the same amount picks up that same request.',
   'rv.inflight.show': 'Show in ledger',
   'rv.inflight.clear': 'I checked — clear',
+  'aal.line': 'Acting: {u} · Salon: {s}.',
+  'aal.stepUp': 'A manager PIN is asked before anything moves.',
+  'aal.unknownActor': 'the signed-in user',
+  'aal.unknownSalon': 'this salon (name not set)',
+  'aal.payoutPaid': 'Mark the {a} payout to {t} as paid ({m}, reference {r}). It counts as money handed over and leaves the outstanding balance.',
+  'aal.payoutCancel': 'Cancel the {a} payout to {t} ({m}, reference {r}). The amount goes back to what is owed.',
+  'aal.confirm': 'Confirm',
+  'aal.back': 'Back',
 };

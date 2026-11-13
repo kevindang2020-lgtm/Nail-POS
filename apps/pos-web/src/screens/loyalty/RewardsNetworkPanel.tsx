@@ -24,6 +24,7 @@ import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, req
 import { displayTimeZone } from '../../i18n/format';
 import { useStepUp, isStepUpCancelled } from '../access/accessUi';
 import { useRealtime } from '../../realtime/useRealtime';
+import { SavedViews, vStr } from '../../components/SavedViews';
 
 // ── wording helpers (client-side, so Vietnamese never shows the server's English labels) ─────────────────────────────
 const errText = (e: unknown, fb: string) => errorTextOf(e, fb);
@@ -32,13 +33,6 @@ const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short'
 export const pointsOf = (tenths: number) => fmtNumber((Number(tenths) || 0) / 10, 1);
 /** wallet cents → tokens (1 token = tokenValueCents) */
 export const tokensOf = (cents: number, tokenValueCents = 100) => fmtNumber((Number(cents) || 0) / Math.max(1, tokenValueCents), 2);
-/** Wallet low-balance forecast (backlog GLOBAL LOYALTY · 03): an ESTIMATE from this month's verified token use — available ÷
- *  (used this month ÷ days elapsed). No use this month → null (no estimate is invented). */
-export function walletForecastDays(availableCents: number, usedThisMonthCents: number, dayOfMonth: number): number | null {
-  if (!(usedThisMonthCents > 0) || !(dayOfMonth >= 1)) return null;
-  const perDay = usedThisMonthCents / dayOfMonth;
-  return Math.max(0, Math.floor(availableCents / perDay));
-}
 
 export function rateText(r: Pick<RewardsNetEarningRate, 'spendIncrementCents' | 'pointTenthsPerIncrement'> | null | undefined): string {
   if (!r) return '—';
@@ -61,6 +55,10 @@ const localToIso = (v: string): string | null => { if (!v) return null; const d 
 type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' } | { kind: 'explain' } | { kind: 'export' };
 
 /** a server-paged list whose page size is however many rows fit right now */
+/** extras GLOBAL LOYALTY REWARDS 11: the savable history filters (values only; the server validates and applies them) */
+type HistFilters = { purStatus: string; ledType: string; branchId: string; from: string; to: string };
+const HF_EMPTY: HistFilters = { purStatus: '', ledType: '', branchId: '', from: '', to: '' };
+const LEDGER_TYPE_CODES = ['purchase_funded', 'earn_allocation', 'earn_reversal', 'purchase_reversal', 'adjustment'] as const;
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<RewardsNetPaged<T> | null>(null);
@@ -91,8 +89,16 @@ export function RewardsNetworkPanel() {
   const purFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const ledFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const histFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
-  const purchases = usePaged<Purchase>((q) => netApi.purchases(q), purFit.rows);
-  const ledger = usePaged<RewardsNetLedgerRow>((q) => netApi.ledger(q), ledFit.rows);
+  // extras GLOBAL LOYALTY REWARDS 11 (round 10): history filters the server applies (newest first, paged) — savable as presets
+  const [hf, setHf] = useState<HistFilters>(HF_EMPTY);
+  const hfq = (k: 'pur' | 'led') => { const d = { ...(hf.from ? { from: hf.from } : {}), ...(hf.to ? { to: hf.to } : {}) };
+    return k === 'pur' ? { ...d, ...(hf.purStatus ? { status: hf.purStatus } : {}) } : { ...d, ...(hf.ledType ? { entryType: hf.ledType } : {}), ...(hf.branchId ? { branchId: hf.branchId } : {}) }; };
+  const purchases = usePaged<Purchase>((q) => netApi.purchases({ ...q, ...hfq('pur') }), purFit.rows);
+  const ledger = usePaged<RewardsNetLedgerRow>((q) => netApi.ledger({ ...q, ...hfq('led') }), ledFit.rows);
+  const applyHf = (next: HistFilters) => { setHf(next); };
+  const hfKey = JSON.stringify(hf);
+  const firstHf = useRef(true);
+  useEffect(() => { if (firstHf.current) { firstHf.current = false; return; } purchases.toFirst(); ledger.toFirst(); }, [hfKey]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void loadState(); void loadHist(); }, [loadState, loadHist]);
   const refreshAll = useCallback(() => { void loadState(); void loadHist(); purchases.refresh(); ledger.refresh(); }, [loadState, loadHist]);   // eslint-disable-line react-hooks/exhaustive-deps
   // addendum §6.2: another POS, the owner app or Super Admin changed the rule / wallet → every till refetches (ids only)
@@ -153,6 +159,14 @@ export function RewardsNetworkPanel() {
             sub={w ? tx('rn.kpi.pendingSub', { n: fmtNumber(w.pendingPurchases), used: tokensOf(w.usedThisMonthCents, tv) }) : ''} onClick={() => purchases.toFirst()} />
         </>}
       </div>
+      {/* GLOBAL LOYALTY · 14 (round 10): the server's per-feature readiness with its evidence — nothing claims ready by default */}
+      {st?.readiness?.length ? (
+        <div className="fk-row" data-testid="rn-readiness" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0', fontSize: 12 }}>
+          <b>{tx('rn.ready.title')}</b>
+          {st.readiness.map((f) => (
+            <span key={f.feature} data-testid={`rn-ready-${f.feature}`} className={'fk-chip ' + (f.state === 'PRODUCTION_READY' ? 'ok' : f.state === 'BLOCKED_EXTERNAL' ? 'bad' : f.state === 'SANDBOX_READY' ? 'info' : 'mut')}
+              title={f.evidence.map((e) => label('rn.ready.ev', e)).join(' · ')}>{label('rn.ready.f', f.feature)}: {label('rn.ready.s', f.state)}</span>))}
+        </div>) : null}
 
       {st ? <div className={'fk-hint rn-fresh' + (stErr ? ' warn' : '')} data-testid="rn-fresh" aria-live="polite">
         {stErr ? tx('rn.fresh.stale', { time: whenTime(st.generatedAt) }) : tx('rn.fresh.at', { time: whenTime(st.generatedAt) })}
@@ -215,8 +229,19 @@ export function RewardsNetworkPanel() {
           actions={<><button type="button" className="fk-btn ghost" data-testid="rn-payables" onClick={() => setDlg({ kind: 'payables' })}>{tx('rn.pay.btn')}</button>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-export" onClick={() => setDlg({ kind: 'export' })}>{tx('rn.export.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
-          {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
-            return <div className={'fk-hint' + (d != null && d <= 14 ? ' warn' : '')} data-testid="rn-forecast">{d == null ? tx('rn.forecast.none') : tx('rn.forecast.days', { n: fmtNumber(d) })}</div>; })() : null}
+          {/* GLOBAL LOYALTY · 03 (round 10): the SERVER's funding forecast from the wallet ledger's last 30 days — never computed here, nothing bought */}
+          {w ? (() => { const f = w.forecast; const d = f?.daysLeft ?? null;
+            return <div className={'fk-hint' + (d != null && d <= 14 ? ' warn' : '')} data-testid="rn-forecast">{!f || d == null ? tx('rn.forecast.none30') : tx('rn.forecast.days30', { n: fmtNumber(d), daily: tokensOf(f.dailyCents ?? 0, w.tokenValueCents) })}
+              {f && f.fundingNeededCents != null && f.fundingNeededCents > 0 ? <span className="fk-li-s" data-testid="rn-forecast-need">{' '}{tx('rn.forecast.need', { t: tokensOf(f.fundingNeededCents, w.tokenValueCents), days: fmtNumber(f.basisDays) })}</span> : null}</div>; })() : null}
+          {/* GLOBAL LOYALTY · 06 (round 10): funding vs liability — each figure from its own ledger, side by side, never added up */}
+          {w?.fundingVsLiability ? (() => { const v = w.fundingVsLiability; return (
+            <dl className="fk-dl" data-testid="rn-fvl" style={{ fontSize: 12, margin: '4px 0' }}>
+              <dt>{tx('rn.fvl.backed')}</dt><dd data-testid="rn-fvl-backed">{tokensOf(v.backedFundingCents, tv)}</dd>
+              <dt>{tx('rn.fvl.earned')}</dt><dd data-testid="rn-fvl-earned">{tx('rn.fvl.earnedVal', { p: fmtNumber(v.pointsEarnedHereTenths / 10, 1), t: tokensOf(v.earnBackingCents, tv) })}</dd>
+              <dt>{tx('rn.fvl.held')}</dt><dd data-testid="rn-fvl-held">{tx('rn.fvl.heldVal', { n: fmtNumber(v.heldRedemptions), p: fmtNumber(v.heldPointTenths / 10, 1), v: fmtMoney(v.heldValueCents) })}</dd>
+              <dt>{tx('rn.fvl.owed')}</dt><dd data-testid="rn-fvl-owed">{tx('rn.fvl.owedVal', { n: fmtNumber(v.salonPayablesOpen), v: fmtMoney(v.salonPayablesOwedCents) })}</dd>
+              <dd className="fk-li-s" style={{ gridColumn: '1 / -1' }}>{tx('rn.fvl.note')}</dd>
+            </dl>); })() : null}
           {purchases.err ? <ErrorRetry message={purchases.err} onRetry={purchases.refresh} /> : !purchases.data ? <div className="fk-loading">{tx('pos.loading')}</div> : purchases.data.items.length === 0 ? (
             <Empty title={tx('rn.noPurchases')}>{st && !buyBlockedReason ? <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button> : null}</Empty>
           ) : (
@@ -233,6 +258,17 @@ export function RewardsNetworkPanel() {
         </FitPanel>
       </div>
 
+      <div className="fk-row" data-testid="rn-hist-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'end', margin: '6px 0' }}>
+        <label className="fk-field"><span>{tx('rn.hf.purStatus')}</span><select className="fk-select" data-testid="rn-hf-pur" value={hf.purStatus} onChange={(e) => applyHf({ ...hf, purStatus: e.target.value })}>
+          <option value="">{tx('rn.hf.all')}</option>{(['pending', 'funded', 'failed'] as const).map((v) => <option key={v} value={v}>{tx('rn.hf.pur.' + v)}</option>)}</select></label>
+        <label className="fk-field"><span>{tx('rn.hf.ledType')}</span><select className="fk-select" data-testid="rn-hf-led" value={hf.ledType} onChange={(e) => applyHf({ ...hf, ledType: e.target.value })}>
+          <option value="">{tx('rn.hf.all')}</option>{LEDGER_TYPE_CODES.map((v) => <option key={v} value={v}>{label('rn.le', v)}</option>)}</select></label>
+        {w?.branchUsage && w.branchUsage.rows.some((r) => r.branchId) ? <label className="fk-field"><span>{tx('rn.hf.branch')}</span><select className="fk-select" data-testid="rn-hf-branch" value={hf.branchId} onChange={(e) => applyHf({ ...hf, branchId: e.target.value })}>
+          <option value="">{tx('rn.hf.allBranches')}</option>{w.branchUsage.rows.filter((r) => r.branchId).map((r) => <option key={r.branchId as string} value={r.branchId as string}>{r.branchName ?? '—'}</option>)}</select></label> : null}
+        <label className="fk-field"><span>{tx('rn.hf.from')}</span><input type="date" data-testid="rn-hf-from" value={hf.from} onChange={(e) => applyHf({ ...hf, from: e.target.value })} /></label>
+        <label className="fk-field"><span>{tx('rn.hf.to')}</span><input type="date" data-testid="rn-hf-to" value={hf.to} onChange={(e) => applyHf({ ...hf, to: e.target.value })} /></label>
+        <SavedViews surface="loyalty.network.history" current={hf} onApply={(v) => applyHf({ purStatus: vStr(v, 'purStatus'), ledType: vStr(v, 'ledType'), branchId: vStr(v, 'branchId'), from: vStr(v, 'from'), to: vStr(v, 'to') })} testId="rn-hf-views" />
+      </div>
       <div className="fk-row two">
         <FitPanel testId="rn-ledger" title={tx('rn.ledger.title')} bodyRef={ledFit.ref} footer={<Pager compact info={ledger.data} onPage={ledger.setPage} />}>
           {ledger.err ? <ErrorRetry message={ledger.err} onRetry={ledger.refresh} /> : !ledger.data ? <div className="fk-loading">{tx('pos.loading')}</div> : ledger.data.items.length === 0 ? <Empty title={tx('rn.noLedger')} /> : (
@@ -387,7 +423,7 @@ function CustomRuleDialog({ st, draft, stepUpRun, onClose, onDone }: { st: Netwo
 
 function PreviewTable({ preview, tokenValueCents }: { preview: Preview | null; tokenValueCents: number }) {
   if (!preview) return <div className="fk-loading rn-preview-wait">{tx('rn.preview.wait')}</div>;
-  return (
+  return (<>
     <table className="rn-table" data-testid="rn-preview">
       <caption>{tx('rn.preview.caption')}</caption>
       <thead><tr><th scope="col">{tx('rn.preview.sale')}</th><th scope="col">{tx('rn.preview.points')}</th><th scope="col">{tx('rn.preview.cost')}</th><th scope="col">{tx('rn.preview.global')}</th><th scope="col">{tx('rn.preview.diff')}</th></tr></thead>
@@ -401,7 +437,17 @@ function PreviewTable({ preview, tokenValueCents }: { preview: Preview | null; t
         </tr>
       ))}</tbody>
     </table>
-  );
+    {/* GLOBAL LOYALTY · 04 (round 10): the server's impact preview — where it applies, the expected effect on this salon's own
+        last-30-days earnings (THE earn rule replayed), and the approval it needs; past earnings keep their rule */}
+    {preview.scope || preview.expected || preview.approval ? (
+      <div className="fk-hint" data-testid="rn-impact" style={{ marginTop: 6 }}>
+        {preview.scope ? <div data-testid="rn-impact-scope">{tx('rn.impact.scope', { n: fmtNumber(preview.scope.branches.length), names: preview.scope.branches.map((b) => b.name ?? '—').join(', ') })}</div> : null}
+        {preview.expected ? <div data-testid="rn-impact-expected">{preview.expected.earnings > 0 && preview.expected.proposedBackingCents != null && preview.expected.actualBackingCents != null
+          ? tx('rn.impact.expected', { n: fmtNumber(preview.expected.earnings), days: fmtNumber(preview.expected.basisDays), actual: tokensOf(preview.expected.actualBackingCents, tokenValueCents), proposed: tokensOf(preview.expected.proposedBackingCents, tokenValueCents) })
+          : tx('rn.impact.noHistory', { days: fmtNumber(preview.expected.basisDays) })}</div> : null}
+        {preview.approval ? <div data-testid="rn-impact-approval">{preview.approval.canActivate ? tx('rn.impact.approvalYou') : tx('rn.impact.approvalOther')}{' '}{tx('rn.impact.immutable')}</div> : null}
+      </div>) : null}
+  </>);
 }
 
 // ── return to the AI PowerSalon global rules (explicit confirmation) ───────────────────────────────────────────────────

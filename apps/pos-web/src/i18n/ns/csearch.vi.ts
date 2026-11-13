@@ -631,4 +631,10 @@ export const CSEARCH_VI: Record<string, string> = {
   "cpf.qa.activity": "Hoạt động gần đây", // DRAFT — Kevin reviews
   "cpf.qa.noActivity": "Chưa có hoạt động.", // DRAFT — Kevin reviews
   "cpf.qa.receiptIssued": "Đã xuất hóa đơn · {amount}", // DRAFT — Kevin reviews
+  "cnx.pr.title": "Sở thích có thể đã cũ hoặc mâu thuẫn — vui lòng xem lại:", // DRAFT — Kevin reviews
+  "cnx.pr.technician_inactive": "Thợ ưa thích {tech} hiện {status} tại tiệm", // DRAFT — Kevin reviews
+  "cnx.pr.technician_differs_from_profile": "Ghi chú ghi tên thợ khác với hồ sơ ({profile})", // DRAFT — Kevin reviews
+  "cnx.pr.notes_older_than_visits": "Ghi chú này cập nhật lần cuối {notes}, hơn một năm trước lần ghé gần nhất ({visit})", // DRAFT — Kevin reviews
+  "cnx.pr.status.archived": "đã lưu trữ", // DRAFT — Kevin reviews
+  "cnx.pr.status.inactive": "ngừng hoạt động", // DRAFT — Kevin reviews
 };

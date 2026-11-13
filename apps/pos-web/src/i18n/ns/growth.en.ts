@@ -1258,4 +1258,7 @@ export const GROWTH_EN = {
   "growth.aiInventory.never": "never",
   "growth.aiInventory.noMovement": "no movement",
   "growth.aiInventory.weeks": "{n} wk",
+  "growth.aiForecast.cap.off": "Approved time off {o} · blocked {b} already removed",
+  "growth.aiForecast.cap.skills": "No one working is approved for: {s}",
+  "growth.aiForecast.cap.top": "Skills checked against the most-booked services: {s}",
 };

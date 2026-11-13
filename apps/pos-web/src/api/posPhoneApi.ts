@@ -3,7 +3,7 @@
 // sent; a branch is named only in the PATH (the session middleware strips scope from bodies and queries).
 import { api } from "./client";
 import type { TenantTwilioCredentialsView } from '@aipowersalon/api-contracts';
-import type { Caps, StatusOf, TestDisplayState, TestEvent, RegItem, TollFree, ConfigItem, NumberInbound, CheckEvent, MessagingReadiness, AvailableNumber, NumberQuote, TestSendResult } from '@aipowersalon/api-contracts/tenant';
+import type { Caps, StatusOf, TestDisplayState, TestEvent, RegItem, TollFree, ConfigItem, NumberInbound, CheckEvent, MessagingReadiness, AvailableNumber, NumberQuote, TestSendResult, MessagingCredentialPreflight } from '@aipowersalon/api-contracts/tenant';
 // the wire shapes live in the contracts package (one definition); re-exported for this app's screens
 export type { Caps, StatusOf, TestDisplayState, TestEvent, RegItem, TollFree, ConfigItem, NumberInbound, CheckEvent, MessagingReadiness, AvailableNumber, NumberQuote, TestSendResult };
 export type CredsBody = { accountSid: string; authToken?: string; fromNumber?: string; verifyServiceSid: string; apiKeySid: string; apiKeySecret?: string; confirmUnverified?: boolean };
@@ -17,6 +17,8 @@ export const posPhoneApi = {
   healthCheck: (branchId = '') => api.post<MessagingReadiness>(branchId ? `/tenant/messaging/health-check/branches/${encodeURIComponent(branchId)}` : '/tenant/messaging/health-check', {}),
   credentials: (branchId = '') => api.get<TenantTwilioCredentialsView>(scoped('/tenant/messaging/credentials', branchId)),
   saveCredentials: (branchId: string, body: CredsBody) => api.put<TenantTwilioCredentialsView>(scoped('/tenant/messaging/credentials', branchId), body),
+  /** TEXT MESSAGING SETUP 08: the save's own validation with nothing written (rotation preflight) */
+  preflightCredentials: (branchId: string, body: CredsBody) => api.post<MessagingCredentialPreflight>(scoped('/tenant/messaging/credentials', branchId, '/preflight'), body as unknown as Record<string, unknown>),
   disconnect: (branchId = '') => api.del<{ ok: boolean }>(scoped('/tenant/messaging/credentials', branchId)),
   testVerify: (branchId = '') => api.post<{ ok: boolean; friendlyName?: string | null; error?: string; reason?: string }>(scoped('/tenant/messaging/credentials', branchId, '/test-verify'), {}),
   searchNumbers: (areaCode: string) => api.get<{ available: AvailableNumber[]; configured: boolean }>('/tenant/messaging/number/search', areaCode ? { areaCode } : undefined),

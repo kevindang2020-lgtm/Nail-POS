@@ -744,4 +744,11 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bcx10.delayed": "Data delayed",
   "bcx10.delayedTip": "{n} updates from this location are waiting (oldest {m} min); its numbers may be behind.",
   "bcx10.fairNote": "Per technician hour divides by the shift time recorded here; per open hour by this location’s opening hours — both from the Branch Scorecard below.",
+  "bzx.word.btn": "Word it with AI",
+  "bzx.word.byModel": "Worded by the AI from the verified figures above; every number was checked against them.",
+  "bzx.word.state.not_configured": "AI wording is not available: no AI model is connected. The figures above are the summary.",
+  "bzx.word.state.denied": "Your AI Business Assistant plan does not allow this right now. The figures above are the summary.",
+  "bzx.word.state.rejected_numbers": "The AI wording was not shown: it contained numbers that are not in the verified figures ({n}).",
+  "bzx.word.state.provider_error": "The AI could not be reached. The figures above are the summary.",
+  "bzx.word.state.unavailable": "There are no verified figures to word for this report.",
 };

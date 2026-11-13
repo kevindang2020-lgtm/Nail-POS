@@ -34,7 +34,7 @@ import { reconcileBreakdown, allocate, rescaleAllocations, billStatusFor, billDu
 import { detectExpenseDuplicates, type DupResult } from './expense-duplicates';
 import { EXPENSE, EXPENSE_BILL, EXPENSE_REIMBURSEMENT, EXPENSE_DUPLICATE } from './expense-lifecycles';
 import { periodWindow, previousWindow, pctChange, detectRecurring, expenseInsights, type ReportPeriod, type DateWindow } from './expense-reports';
-import { exportTotalCents, ACCOUNTING_EXPORT_ADAPTERS, type ExportRow } from './expense-export';
+import { exportTotalCents, ACCOUNTING_EXPORT_ADAPTERS, EXPORT_COLUMN_KEYS, EXPORT_FORMULA_SAFE_KEYS, type ExportRow } from './expense-export';
 import { ExpenseError } from './expense-errors';
 import { matchReceiptToExpenses, matchExpenseToPayments, autoApprovalRulesOf, autoApprovalDecision, type AutoApprovalRule, type PaymentCandidate, type MatchVerdict } from './expense-matching';
 import { digestsDue, monthWindow, lastCompletedMonth, weeklySummary, monthlySummary } from './expense-digests';
@@ -1146,6 +1146,9 @@ export class ExpenseService {
       countedTotalCents: counted.totalCents,
       // the rows reconcile to the counted total only when the export is the plain approved set (no filters, no drafts)
       reconciles: filtered || q.includeUnapproved ? null : totalCents === counted.totalCents,
+      // extras Expenses 09 (round 10): the file's columns in order, which free-text columns are formula-protected, and that
+      // the file carries no customer contact data (expenses hold vendors, never clients) — shown before anything is generated
+      columns: [...EXPORT_COLUMN_KEYS], formulaSafeColumns: [...EXPORT_FORMULA_SAFE_KEYS], customerContactColumns: [] as string[],
     };
   }
 

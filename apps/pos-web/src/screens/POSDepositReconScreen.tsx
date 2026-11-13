@@ -584,6 +584,7 @@ function ExceptionsTab({ scope, tick, onOpen }: { scope: Record<string, unknown>
         <select className="fk-select" value={severity} onChange={(e) => setSeverity(e.target.value)} aria-label={tx('finance.dr.severity')}><option value="">{tx('finance.dr.allSeverities')}</option>{['critical', 'high', 'moderate', 'low', 'info'].map((s) => <option key={s} value={s}>{tx('finance.sev.' + s)}</option>)}</select>
         <select className="fk-select" value={cls} onChange={(e) => setCls(e.target.value)} aria-label={tx('finance.dr.caseType')} data-testid="exc-class"><option value="">{tx('finance.dr.allTypes')}</option>{['missing', 'amount_mismatch', 'duplicate', 'unmatched_credit', 'fee_reversal', 'integration'].map((c) => <option key={c} value={c}>{tx('finance.excClass.' + c)}</option>)}</select></>}
       footer={<Pager info={d.data ? { page: d.data.page, pageSize: d.data.pageSize, totalItems: d.data.total, totalPages: d.data.pageCount } : null} onPage={setPage} label={tx('finance.dr.tab.exceptions')} />}>
+      {d.data?.cardAttempts ? <CardAttemptsBlock ca={d.data.cardAttempts} /> : null}
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !d.data ? <div className="fk-loading">{tx('pos.loading')}</div> : d.data.items.length === 0 ? <Empty title={tx('finance.dr.noCases')} /> :
         <table className="fk-table fn-table" data-testid="exceptions-table"><thead><tr><th>{tx('finance.dr.e.case')}</th><th>{tx('finance.dr.e.type')}</th><th>{tx('finance.dr.severity')}</th><th>{tx('finance.dr.e.reference')}</th><th className="num">{tx('finance.dr.e.amount')}</th><th className="t-opt">{tx('finance.dr.e.source')}</th><th>{tx('finance.status')}</th><th className="t-opt">{tx('finance.dr.e.reviewer')}</th><th className="num">{tx('finance.dr.e.age')}</th><th>{tx('dr10.due')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
           <tbody>{d.data.items.map((e: any) => <tr key={e.id}><td className="fn-id"><button type="button" className="fk-li-t link" onClick={() => onOpen(e.id)}>{e.title}</button><span className="fk-li-s">{e.id.slice(0, 8)}</span></td>
@@ -593,6 +594,28 @@ function ExceptionsTab({ scope, tick, onOpen }: { scope: Record<string, unknown>
             <td data-testid="exc-due">{e.dueAt ? <>{when(e.dueAt)}{e.overdue ? <span className="fk-chip bad" style={{ marginLeft: 4 }}>{tx('dr10.overdue')}</span> : null}</> : '—'}</td>
             <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onOpen(e.id)}>{tx('finance.dr.viewEvidence')}</button></td></tr>)}</tbody></table>}
     </FitPanel>
+  );
+}
+
+/** extras PAYMENTS 09 — the unresolved card attempts in the same inbox as the reconciliation cases (server list, read-only):
+ *  why each is open (stale in flight / needs review / stranded), its evidence, and a link to Split Payments to settle it. */
+interface CardAttempt { id: string; ticketId: string | null; ticketNumber: string | null; amountCents: number; state: string; reason: string; resolutionNote: string | null; lastErrorCode: string | null; card: { brand: string | null; last4: string } | null; ageMinutes: number }
+function CardAttemptsBlock({ ca }: { ca: { total: number; amountCents: number; staleAfterMinutes: number; items: CardAttempt[] } }) {
+  const nav = useNavigate();
+  if (!ca.total) return <div className="fk-hint" data-testid="exc-card-none">{tx('finance.exc.card.none')}</div>;
+  const age = (m: number) => (m >= 1440 ? tx('finance.dr.days', { n: fmtNumber(Math.floor(m / 1440)) }) : m >= 60 ? tx('finance.exc.card.hours', { n: fmtNumber(Math.floor(m / 60)) }) : tx('finance.exc.card.minutes', { n: fmtNumber(m) }));
+  return (
+    <div className="fk-note warn" data-testid="exc-card-attempts" style={{ display: 'block', marginBottom: 8 }}>
+      <b>{tx('finance.exc.card.title', { n: fmtNumber(ca.total), a: money(ca.amountCents) })}</b>
+      <ul className="tm-reasons">{ca.items.map((a) => <li key={a.id} data-testid="exc-card-row" data-reason={a.reason}>
+        {a.ticketNumber ? '#' + a.ticketNumber : tx('rv.notLinked')} · {money(a.amountCents)} · {tx('finance.exc.card.reason.' + a.reason, { m: fmtNumber(ca.staleAfterMinutes) })}
+        {a.card ? ` · ${(a.card.brand ?? '').toUpperCase()} ••${a.card.last4}` : ''} · {age(a.ageMinutes)}
+        {a.resolutionNote ? <span className="fk-li-s"> {lbl('finance.exc.card.note.' + a.resolutionNote, a.resolutionNote)}</span> : null}
+        {a.lastErrorCode ? <span className="fk-li-s"> {tx('finance.exc.card.err', { c: a.lastErrorCode })}</span> : null}
+      </li>)}</ul>
+      {ca.total > ca.items.length ? <div className="fk-li-s">{tx('finance.exc.card.more', { n: fmtNumber(ca.total - ca.items.length) })}</div> : null}
+      <button type="button" className="fk-btn sm" onClick={() => nav('/tenant/payments/split-payments')} data-testid="exc-card-open">{tx('finance.exc.card.open')}</button>
+    </div>
   );
 }
 

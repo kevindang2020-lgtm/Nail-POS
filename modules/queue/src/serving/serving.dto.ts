@@ -258,6 +258,8 @@ export function buildBalanceSuggestions(
   }
   return out;
 }
+/** Extras Serving 04 (round 10): an unconfirmed booking this close is a warning, further out it is information */
+export const UNCONFIRMED_WARN_MINUTES = 30;
 /** §54–§55 AI Service Insights — advisory only (they never reassign, change a stage, add a charge, complete or touch pay).
  *  Built from the same floor facts by both adapters; at most 5, most urgent first. `action` names what the POS offers
  *  (a filter, the balance recommendations, a customer profile, Service Done) — each one a person then confirms. */
@@ -268,6 +270,8 @@ export function buildServingInsights(input: {
   /** Extras Serving 04 (Nov 12 2026): technicians whose current service is expected to run past their next booked
    *  appointment today (worst first) — from buildFloorProjection; absent → no conflict insight */
   bookingConflicts?: { name: string; minutesUntilBooking: number; remainingMinutes: number }[];
+  /** Extras Serving 04 (round 10): bookings later today, within two hours, never confirmed — warn when the first is ≤ 30 min away */
+  unconfirmedSoon?: { count: number; firstMinutes: number } | null;
 }): ServingInsight[] {
   const out: ServingInsight[] = [];
   const overtime = input.active.filter((t) => t.est > 0 && t.elapsed > t.est).length;
@@ -277,6 +281,10 @@ export function buildServingInsights(input: {
     out.push({ id: 'booking_conflict', text: `${w.name} has a booking in ${w.minutesUntilBooking} min but needs about ${w.remainingMinutes} min more (${bc.length} conflict${bc.length === 1 ? '' : 's'})`,
       sub: 'Review the Booking board before the next guest arrives — nothing is moved automatically.', action: 'Open', route: '/booking', severity: 'warn',
       vars: { name: w.name, minutes: w.minutesUntilBooking, remaining: w.remainingMinutes, count: bc.length } }); }
+  const uc = input.unconfirmedSoon;
+  if (uc && uc.count > 0) out.push({ id: 'unconfirmed', text: `${uc.count} booking${uc.count === 1 ? '' : 's'} in the next 2 hours ${uc.count === 1 ? 'is' : 'are'} not confirmed (first in ${uc.firstMinutes} min)`,
+    sub: 'Confirm with the guest from the Booking board — nothing is sent automatically.', action: 'Open', route: '/booking',
+    severity: uc.firstMinutes <= UNCONFIRMED_WARN_MINUTES ? 'warn' : 'info', vars: { count: uc.count, minutes: uc.firstMinutes } });
   if (input.busyTechWaiting > 0 && input.freeTechnicians > 0) out.push({ id: 'balance', text: `${input.busyTechWaiting} guest${input.busyTechWaiting === 1 ? '' : 's'} waiting on a busy technician`, sub: `${input.freeTechnicians} technician${input.freeTechnicians === 1 ? ' is' : 's are'} free — review Auto Balance.`, action: 'Balance', route: 'balance', severity: 'info', vars: { count: input.busyTechWaiting, free: input.freeTechnicians } });
   if (input.readyForServiceDone > 0) out.push({ id: 'ready', text: `${input.readyForServiceDone} guest${input.readyForServiceDone === 1 ? ' is' : 's are'} ready for Service Done`, sub: 'Hand them off so checkout can start.', action: 'Open', route: '/service-done', severity: 'info', vars: { count: input.readyForServiceDone } });
   if (input.overloaded && input.overloaded.open >= 3) out.push({ id: 'imbalance', text: `${input.overloaded.name} has ${input.overloaded.open} open services`, sub: 'Consider sharing the work with a free technician.', action: 'Balance', route: 'balance', severity: 'warn', vars: { name: input.overloaded.name, count: input.overloaded.open } });
@@ -319,6 +327,10 @@ export interface POSServingTicketDetailFull {
   allowedActions?: ServingAction[];
   /** Serving 05: whether this visit can go to Service Done now, for this person, and why not (serviceDoneReadiness) */
   serviceDoneReadiness?: ServiceDoneReadiness;
+  /** Serving 05 (round 10): the OTHER technicians who are free right now AND pass THE eligibility authority for this visit's
+   *  services (skills / certification / branch / not already serving) — who could take it over. null = no eligibility
+   *  authority wired (unknown, never guessed). `checked` = how many free technicians were evaluated. Read only. */
+  qualifiedAvailability?: { technicians: { technicianId: string; name: string }[]; checked: number } | null;
 }
 
 export interface ServingTechPerformance { technicianId?: string; name: string; activeGuests: number; revenueCents: Money; tipsCents: Money; utilizationPercent: number | null; avgMinutes: number; rating: number | null; }
