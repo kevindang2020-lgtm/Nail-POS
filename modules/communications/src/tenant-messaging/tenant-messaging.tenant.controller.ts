@@ -14,6 +14,7 @@ import { Controller, Get, Put, Post, Delete, Body, Req, UseGuards, ForbiddenExce
 import { TenantAuthGuard, RequirePermission, RequireStepUp, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission } from '@aipowersalon/permissions';
 import { ERROR_REGISTRY, isRegisteredCode, codedFieldsOf } from '@aipowersalon/api-contracts';
+import type { MessagingCredentialPreflight } from '@aipowersalon/api-contracts/tenant';
 import { TenantMessagingCredentialsService, CredentialsInputError } from './tenant-messaging-credentials.service';
 import { TenantNumberService, NumberPurchaseError } from './tenant-number.service';
 import { TenantMessagingReadinessService, ReadinessInputError } from './tenant-messaging-readiness.service';
@@ -168,6 +169,21 @@ export class TenantMessagingSelfController {
   private async save(r: any, b: any, branchId: string | null) {
     const ctx = ctxFrom(r); mustEdit(ctx);
     return coded(() => this.svc.set(ctx.userId, ctx.tenantId, {
+      accountSid: b?.accountSid, authToken: b?.authToken, fromNumber: b?.fromNumber,
+      verifyServiceSid: b?.verifyServiceSid, apiKeySid: b?.apiKeySid, apiKeySecret: b?.apiKeySecret, confirmUnverified: b?.confirmUnverified === true,
+    }, branchId));
+  }
+
+  // extras TEXT MESSAGING SETUP 08 (round 10): rotation preflight — the save's own validation, nothing written
+  @RequireStepUp() @Post('credentials/preflight') @RequirePermission('settings.edit')
+  preflight(@Req() r: any, @Body(ValidatedBody(MESSAGING_CREDS_BODY, { strict: true })) b: any): Promise<MessagingCredentialPreflight> { return this.pre(r, b, null); }
+
+  @RequireStepUp() @Post('credentials/branches/:branchId/preflight') @RequirePermission('settings.edit')
+  preflightBranch(@Req() r: any, @Body(ValidatedBody(MESSAGING_CREDS_BODY, { strict: true })) b: any, @Param('branchId') branchId: string): Promise<MessagingCredentialPreflight> { return this.pre(r, b, branchId); }
+
+  private async pre(r: any, b: any, branchId: string | null): Promise<MessagingCredentialPreflight> {
+    const ctx = ctxFrom(r); mustEdit(ctx);
+    return coded(() => this.svc.preflight(ctx.userId, ctx.tenantId, {
       accountSid: b?.accountSid, authToken: b?.authToken, fromNumber: b?.fromNumber,
       verifyServiceSid: b?.verifyServiceSid, apiKeySid: b?.apiKeySid, apiKeySecret: b?.apiKeySecret, confirmUnverified: b?.confirmUnverified === true,
     }, branchId));

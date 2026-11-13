@@ -3986,9 +3986,11 @@ POST /tenant/locations/{id}/apply-address  realm=staff  auth=session  domain=ten
 POST /tenant/locations/{id}/confirm-pin  realm=staff  auth=session  domain=tenants  perm=locations.map.update  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/locations/{id}/publish  realm=staff  auth=session  domain=tenants  perm=locations.publish  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/locations/{id}/unpublish  realm=staff  auth=session  domain=tenants  perm=locations.unpublish  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/messaging/credentials/branches/{branchId}/preflight  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/records  step-up  guards=TenantAuthGuard
 POST /tenant/messaging/credentials/branches/{branchId}/reveal-sid  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/records  step-up  guards=TenantAuthGuard
 POST /tenant/messaging/credentials/branches/{branchId}/test  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/records  guards=TenantAuthGuard
 POST /tenant/messaging/credentials/branches/{branchId}/test-verify  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/records  guards=TenantAuthGuard
+POST /tenant/messaging/credentials/preflight  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  step-up  guards=TenantAuthGuard
 POST /tenant/messaging/credentials/reveal-sid  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  step-up  guards=TenantAuthGuard
 POST /tenant/messaging/credentials/test  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  guards=TenantAuthGuard
 POST /tenant/messaging/credentials/test-verify  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  guards=TenantAuthGuard

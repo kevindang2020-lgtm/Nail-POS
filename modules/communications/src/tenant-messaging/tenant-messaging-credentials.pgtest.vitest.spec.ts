@@ -113,3 +113,26 @@ describe('branch rows beside the salon default', () => {
     expect(await s.getMasked(T)).toMatchObject({ status: 'not_configured', verifyServiceSid: null });
   });
 });
+
+// extras TEXT MESSAGING SETUP 08 (round 10): rotation preflight — the save's own validation, nothing written, the stored
+// (working) credentials kept; a replacement Twilio rejects is answered with the SAME refusal the save gives
+describe('credential rotation preflight', () => {
+  it('reports what would be replaced, the API-key rights and the sender on the account; writes nothing', async () => {
+    await svc().set('u1', T, { accountSid: AC, authToken: 'tok-before-0001', verifyServiceSid: VA });
+    const before = await row(null);
+    const p = await svc().preflight('u1', T, { accountSid: AC, authToken: 'tok-rotated-0002', fromNumber: '+18565550199', apiKeySid: SK, apiKeySecret: 'key-new-4444' });
+    expect(p).toMatchObject({ dryRun: true, scope: 'salon', existingKept: true, wouldReplace: { account: false, authToken: true, apiKey: true, sender: true, firstSetup: false },
+      checks: { checked: true, account: 'connected', sender: 'assigned' }, unverified: false });
+    expect(['sufficient', 'insufficient', 'unknown']).toContain(p.checks.apiKeyRights);
+    expect(JSON.stringify(p)).not.toMatch(/tok-rotated|key-new/);   // never echoes a secret
+    const after = await row(null);
+    expect([after.auth_token_enc, after.from_number, after.api_key_sid, after.updated_at?.toString()]).toEqual([before.auth_token_enc, before.from_number, before.api_key_sid, before.updated_at?.toString()]);
+  });
+  it('a replacement Twilio rejects gets the save\'s own refusal, and the working credentials stay', async () => {
+    const before = await row(null);
+    const s = svc(); s.http = vi.fn(async (url: any) => (/\/Accounts\/AC[0-9a-f]+\.json$/.test(String(url)) ? new Response('{"code":20003}', { status: 401 }) : new Response('{}', { status: 200 }))) as any;
+    await expect(s.preflight('u1', T, { accountSid: AC, authToken: 'tok-wrong-0003' })).rejects.toBeInstanceOf(CredentialsInputError);
+    await expect(s.set('u1', T, { accountSid: AC, authToken: 'tok-wrong-0003' })).rejects.toBeInstanceOf(CredentialsInputError);   // the save agrees
+    expect((await row(null)).auth_token_enc).toBe(before.auth_token_enc);
+  });
+});

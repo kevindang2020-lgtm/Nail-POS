@@ -264,4 +264,18 @@ export const PHONEMESSAGING_VI = {
   'pm.reason.PROVIDER_REJECTED': 'Twilio từ chối tin nhắn.',
   'pm.reason.A2P_NOT_APPROVED_MAY_BE_FILTERED': 'Đăng ký nhà mạng chưa được duyệt nên nhà mạng có thể lọc tin này.',
   'pm.openShort': 'Mở',
+  'pm.pre.btn': 'Kiểm tra thông tin mới trước', // DRAFT — Kevin reviews
+  'pm.pre.refused': 'Không được chấp nhận — không có gì thay đổi.', // DRAFT — Kevin reviews
+  'pm.pre.kept': 'Chưa lưu gì; thông tin đang dùng được giữ nguyên.', // DRAFT — Kevin reviews
+  'pm.pre.replace': 'Sẽ thay: {list}.', // DRAFT — Kevin reviews
+  'pm.pre.nothing': 'không có gì', // DRAFT — Kevin reviews
+  'pm.pre.w.account': 'tài khoản Twilio', // DRAFT — Kevin reviews
+  'pm.pre.w.authToken': 'auth token', // DRAFT — Kevin reviews
+  'pm.pre.w.apiKey': 'API key', // DRAFT — Kevin reviews
+  'pm.pre.w.sender': 'số gửi', // DRAFT — Kevin reviews
+  'pm.pre.checks': 'Kiểm tra Twilio — tài khoản: {a} · quyền API key: {k} · số gửi thuộc tài khoản: {s}.', // DRAFT — Kevin reviews
+  'pm.pre.rights.sufficient': 'đủ', // DRAFT — Kevin reviews
+  'pm.pre.rights.insufficient': 'quá hạn chế', // DRAFT — Kevin reviews
+  'pm.pre.rights.unknown': 'chưa xác nhận được', // DRAFT — Kevin reviews
+  'pm.pre.rights.not_applicable': 'không có API key', // DRAFT — Kevin reviews
 };

@@ -17,6 +17,8 @@ export const posPhoneApi = {
   healthCheck: (branchId = '') => api.post<MessagingReadiness>(branchId ? `/tenant/messaging/health-check/branches/${encodeURIComponent(branchId)}` : '/tenant/messaging/health-check', {}),
   credentials: (branchId = '') => api.get<TenantTwilioCredentialsView>(scoped('/tenant/messaging/credentials', branchId)),
   saveCredentials: (branchId: string, body: CredsBody) => api.put<TenantTwilioCredentialsView>(scoped('/tenant/messaging/credentials', branchId), body),
+  /** TEXT MESSAGING SETUP 08: the save's own validation with nothing written (rotation preflight) */
+  preflightCredentials: (branchId: string, body: CredsBody) => api.post<MessagingCredentialPreflight>(scoped('/tenant/messaging/credentials', branchId, '/preflight'), body as unknown as Record<string, unknown>),
   disconnect: (branchId = '') => api.del<{ ok: boolean }>(scoped('/tenant/messaging/credentials', branchId)),
   testVerify: (branchId = '') => api.post<{ ok: boolean; friendlyName?: string | null; error?: string; reason?: string }>(scoped('/tenant/messaging/credentials', branchId, '/test-verify'), {}),
   searchNumbers: (areaCode: string) => api.get<{ available: AvailableNumber[]; configured: boolean }>('/tenant/messaging/number/search', areaCode ? { areaCode } : undefined),

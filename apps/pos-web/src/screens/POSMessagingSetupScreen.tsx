@@ -33,6 +33,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { TenantTwilioCredentialsView as Creds } from '@aipowersalon/api-contracts';
+import type { MessagingCredentialPreflight } from '@aipowersalon/api-contracts/tenant';
 import { posPhoneApi, type MessagingReadiness, type AvailableNumber, type NumberQuote, type TestSendResult, type CredsBody } from '../api/posPhoneApi';
 import { authApi, type BranchOption } from '../api/authApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -167,6 +168,20 @@ export function POSMessagingSetupScreen() {
       if (codeOf(e) === 'MESSAGING_PROVIDER_UNREACHABLE') setAskUnverified(true);
       setMsg({ ok: false, text: e?.message || t('pos.could_not_save_you_may_not_1wm7') });
     } finally { setSaving(false); }
+  };
+
+  // extras TEXT MESSAGING SETUP 08 (round 10): check a replacement first — the server runs the save's own validation and writes
+  // nothing; the working credentials stay whatever it finds
+  const [pre, setPre] = useState<MessagingCredentialPreflight | null>(null);
+  const [preBusy, setPreBusy] = useState(false);
+  const preflight = async () => {
+    setPreBusy(true); setMsg(null); setPre(null);
+    try {
+      const body: CredsBody = { accountSid: accountSid.trim(), authToken: authToken.trim() || undefined, fromNumber: fromNumber.trim() || undefined,
+        verifyServiceSid: verifySid.trim(), apiKeySid: apiKeySid.trim(), apiKeySecret: apiKeySecret.trim() || undefined };
+      setPre(await stepUp.run(() => posPhoneApi.preflightCredentials(branchId, body)));
+    } catch (e: any) { if (!isStepUpCancelled(e)) setMsg({ ok: false, text: `${t('pm.pre.refused')} ${e?.message || ''}`.trim() }); }
+    finally { setPreBusy(false); }
   };
 
   // PM-02: the full Account SID only on an explicit, audited reveal (step-up) — it then fills the field unchanged
@@ -391,6 +406,7 @@ export function POSMessagingSetupScreen() {
           </section>
 
           <div className="pmc-actions" data-testid="pm-save-bar">
+            <button type="button" className="fk-btn" data-testid="pm-preflight" onClick={() => void preflight()} disabled={!canSave || preBusy}>{preBusy ? t('pos.testing') : t('pm.pre.btn')}</button>
             <button type="button" className="fk-btn primary" onClick={() => void save(false)} disabled={!canSave}>{saving ? t('pos.saving_2') : t('pos.save_credentials')}</button>
             {configured && own ? <button type="button" className="fk-btn danger" onClick={() => { setDropTyped(''); setDropOpen(true); }}>{t('pos.disconnect')}</button> : null}
             <span className="pmc-muted">{t('pm.save.validates')}</span>
@@ -401,6 +417,12 @@ export function POSMessagingSetupScreen() {
               <button type="button" className="fk-btn" onClick={() => void save(true)} disabled={saving}>{t('pm.save.anyway')}</button>
             </div>
           ) : null}
+          {pre ? (
+            <div className={'fk-note ' + (pre.unverified || pre.checks.apiKeyRights === 'insufficient' ? 'warn' : 'ok')} role="status" data-testid="pm-preflight-result">
+              <span>{t('pm.pre.kept')}</span>
+              <span data-testid="pm-pre-replace">{t('pm.pre.replace', { list: (Object.entries(pre.wouldReplace) as [string, boolean][]).filter(([k, v]) => v && k !== 'firstSetup').map(([k]) => t('pm.pre.w.' + k)).join(', ') || t('pm.pre.nothing') })}</span>
+              <span data-testid="pm-pre-checks">{t('pm.pre.checks', { a: pre.checks.account, k: t('pm.pre.rights.' + pre.checks.apiKeyRights), s: pre.checks.sender })}</span>
+            </div>) : null}
           {msg && <div className={'pmc-msg ' + (msg.ok ? 'ok' : 'bad')} role="status">{msg.text}</div>}
         </div>
 

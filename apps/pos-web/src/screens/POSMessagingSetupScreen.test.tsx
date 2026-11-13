@@ -54,6 +54,22 @@ describe('Twilio Verify on the setup screen', () => {
     expect(vi.mocked(api.put).mock.calls[0]).toEqual(['/tenant/messaging/credentials', expect.objectContaining({ verifyServiceSid: VA, apiKeySid: 'SK' + 'c'.repeat(32), apiKeySecret: 'shh' })]);
     expect(await screen.findByText(/run "Test Verify"/)).toBeTruthy();
   });
+  // extras TEXT MESSAGING SETUP 08 (round 10): check a replacement first — the server's preflight; nothing saved
+  it('"Check replacement first" posts to the preflight route and shows what would be replaced and the rights; it never saves', async () => {
+    vi.mocked(api.post).mockResolvedValue({ dryRun: true, scope: 'salon', existingKept: true, wouldReplace: { account: false, authToken: false, apiKey: true, sender: false, firstSetup: false },
+      checks: { checked: true, account: 'connected', apiKey: 'limited', apiKeyRights: 'insufficient', sender: 'unchanged' }, unverified: false } as never);
+    renderIt();
+    fireEvent.change(await screen.findByLabelText('API key SID'), { target: { value: 'SK' + 'c'.repeat(32) } });
+    fireEvent.change(screen.getByLabelText('API key secret'), { target: { value: 'shh' } });
+    fireEvent.click(screen.getByTestId('pm-preflight'));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/tenant/messaging/credentials/preflight', expect.objectContaining({ apiKeySid: 'SK' + 'c'.repeat(32), apiKeySecret: 'shh' })));
+    const r = await screen.findByTestId('pm-preflight-result');
+    expect(r).toHaveTextContent('Nothing was saved; your working credentials stay as they are.');
+    expect(screen.getByTestId('pm-pre-replace')).toHaveTextContent('Would replace: the API key.');
+    expect(screen.getByTestId('pm-pre-checks')).toHaveTextContent('API key rights: too limited');
+    expect(r.className).toContain('warn');
+    expect(api.put).not.toHaveBeenCalled();
+  });
   it('an API key SID without its secret cannot be saved (a SID is not a secret)', async () => {
     renderIt();
     fireEvent.change(await screen.findByLabelText('API key SID'), { target: { value: 'SK' + 'c'.repeat(32) } });

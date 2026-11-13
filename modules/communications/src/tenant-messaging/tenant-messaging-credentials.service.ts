@@ -29,6 +29,13 @@ import { configFingerprint, mapCampaign, CHECK_STALE_AFTER_MS, maskSid, isMasked
 import { senderTypeOf } from './twilio-account-probe';
 
 export type MaskedCredentials = TenantTwilioCredentialsView;   // the wire shape lives in @aipowersalon/api-contracts
+/** extras TEXT MESSAGING SETUP 08: what a credential save WOULD do — never secrets, never written */
+export interface CredentialPreflight {
+  dryRun: true; scope: 'salon' | 'branch'; existingKept: true;
+  wouldReplace: { account: boolean; authToken: boolean; apiKey: boolean; sender: boolean; firstSetup: boolean };
+  checks: { checked: boolean; account: string; apiKey: string; apiKeyRights: 'sufficient' | 'insufficient' | 'unknown' | 'not_applicable'; sender: string };
+  unverified: boolean;
+}
 export interface SetCredentialsInput {
   accountSid?: string; authToken?: string; fromNumber?: string;
   verifyServiceSid?: string | null; apiKeySid?: string | null; apiKeySecret?: string | null;
@@ -137,6 +144,16 @@ export class TenantMessagingCredentialsService {
    *     must still be the version that was validated (config_version) — a concurrent save is a conflict, not an overwrite.
    */
   async set(actorUserId: string, tenantId: string, input: SetCredentialsInput, branchId?: string | null): Promise<MaskedCredentials> {
+    return (await this.apply(actorUserId, tenantId, input, branchId, false)) as MaskedCredentials;
+  }
+  /** extras TEXT MESSAGING SETUP 08 (round 10) — Credential Rotation Safety preflight: the SAME validation the save runs (input
+   *  rules, the provider check of the replacement account / auth / API key, the sender on that account) with NOTHING written —
+   *  it answers the refusal the save would answer, or what would be replaced and the API rights / sender consistency found.
+   *  The stored credentials stay as they are either way. */
+  async preflight(actorUserId: string, tenantId: string, input: SetCredentialsInput, branchId?: string | null): Promise<CredentialPreflight> {
+    return (await this.apply(actorUserId, tenantId, input, branchId, true)) as CredentialPreflight;
+  }
+  private async apply(actorUserId: string, tenantId: string, input: SetCredentialsInput, branchId: string | null | undefined, dryRun: boolean): Promise<MaskedCredentials | CredentialPreflight> {
     const scope = scopeOf(branchId);
     if (branchId && !scope) throw withCode(new CredentialsInputError('Unknown branch.'), 'BRANCH_NOT_FOUND');
     if (scope && !(await this.branchBelongs(tenantId, scope))) throw withCode(new CredentialsInputError('Unknown branch.'), 'BRANCH_NOT_FOUND');
@@ -198,6 +215,15 @@ export class TenantMessagingCredentialsService {
       if (unverified && !input.confirmUnverified) throw withCode(new CredentialsInputError('Twilio could not be reached to check these credentials. Nothing was changed.'), 'MESSAGING_PROVIDER_UNREACHABLE', { canSaveUnverified: true });
     }
 
+    if (dryRun) {
+      const ks = check?.apiKey.state ?? null;
+      return { dryRun: true, scope: scope ? 'branch' : 'salon', existingKept: true,
+        wouldReplace: { account: accountChanged, authToken: !!authToken, apiKey: keyChanged || !!apiKeySecret, sender: senderChanged, firstSetup: !existing },
+        checks: { checked: !!check, account: check?.account.state ?? 'not_checked', apiKey: nextKeySid ? (ks ?? 'not_checked') : 'none',
+          apiKeyRights: !nextKeySid ? 'not_applicable' : ks === 'connected' ? 'sufficient' : ks === 'limited' ? 'insufficient' : 'unknown',
+          sender: nextFrom ? (check ? (check.sender?.state ?? 'unknown') : 'unchanged') : 'none' },
+        unverified: !!(check && (check.account.state !== 'connected' || (!!nextKeySid && ks !== 'connected' && ks !== 'limited') || (!!nextFrom && check.sender?.state !== 'assigned'))) };
+    }
     const tokenEnc = authToken ? this.secrets.encrypt(authToken) : existing?.auth_token_enc;
     const tokenLast4 = authToken ? secretLast4(authToken) : existing?.auth_token_last4 ?? null;
     const keyEnc = !nextKeySid ? null : apiKeySecret ? this.secrets.encrypt(apiKeySecret) : existing?.api_key_secret_enc ?? null;
