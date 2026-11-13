@@ -717,3 +717,18 @@ The 19 rows still "(part)" each name the outside thing they need (docs/handoff/E
 - hardware / review: real SUNMI + native iPhone (tips routing, 100 % zoom); Vietnamese drafts (≈4,100 strings);
   screenshots in support reports need the OS screen-sharing prompt (staff attach their own).
 The 5 TODO rows are the K-12 console steps — docs/K12_RUNBOOK.md + tooling/k12/verify-k12.mjs.
+
+## Round 11 — enforcement bug + Kevin's decisions as switches (Nov 13 2026)
+- Bug fixed: staff notification switches (SMS / e-mail / push / booking / payroll / …) were saved but no sender read
+  them. One rule (`staffNotificationAllowed`, api-contracts me-prefs.ts) + one reader; the push dispatcher and AI
+  business-alert texts/e-mails now obey them; security / sign-in messages always go. Missed-call, low-stock and weekly
+  report messages to staff have no sender yet — the POS now says so instead of implying they work.
+- Built OFF / blank by default (behaviour unchanged until Kevin turns them on or sets values):
+  - bulk technician invites (salon switch + platform kill switch; preview, 200 cap, run key, step-up, per-person outcome);
+  - add-on recipes deducting stock at Service Done (salon switch; reverses on line removal / void);
+  - optional device → employee assignment (audited, names only);
+  - Super Admin AI price table (versioned, append-only, per-salon overrides; "existing salons keep previous price" must be
+    answered on every version — no default); starts empty;
+  - per-message price for review-request texts (blank → cost "not available" as before).
+- Deals: a partly refunded use counts as a live use; the same offer can't be applied twice on that ticket (migration 965).
+- Migrations 965–967, 970–971.
