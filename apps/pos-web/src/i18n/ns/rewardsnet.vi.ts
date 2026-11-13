@@ -186,4 +186,20 @@ export const REWARDSNET_VI = {
   'rn.pay.je.reimbursement_offset': 'Yêu cầu thu hồi', // DRAFT — Kevin reviews
   'rn.pay.acct.reimbursement_payable': 'Nợ tiệm', // DRAFT — Kevin reviews
   'rn.pay.acct.merchant_recovery_receivable': 'Thu hồi từ tiệm', // DRAFT — Kevin reviews
+  'rn.fresh.at': 'Số dư tính đến {time} (giờ máy chủ). Số liệu tự cập nhật khi thiết bị khác, ứng dụng chủ tiệm hoặc mạng lưới thay đổi; màn hình này không đổi gì trước khi máy chủ xác nhận.', // DRAFT — Kevin reviews
+  'rn.fresh.stale': 'Không thể làm mới. Số liệu hiển thị từ {time} và có thể đã cũ.', // DRAFT — Kevin reviews
+  'rn.explain.btn': 'Cách tính các con số', // DRAFT — Kevin reviews
+  'rn.explain.title': 'Cách tính các con số', // DRAFT — Kevin reviews
+  'rn.explain.scope': 'Phạm vi', // DRAFT — Kevin reviews
+  'rn.explain.scopeV': 'Toàn tiệm: một ví và một quy tắc tích điểm cho mọi chi nhánh.', // DRAFT — Kevin reviews
+  'rn.explain.currency': 'Tiền tệ', // DRAFT — Kevin reviews
+  'rn.explain.currencyV': 'Đô la Mỹ. 1 token = {token}.', // DRAFT — Kevin reviews
+  'rn.explain.refreshed': 'Đọc từ máy chủ lúc', // DRAFT — Kevin reviews
+  'rn.explain.mode': 'Quy tắc tích điểm đang áp dụng: quy tắc riêng của tiệm hoặc quy tắc chung của mạng lưới (phiên bản {version}). Các thay đổi nằm trong Lịch sử quy tắc tích điểm.', // DRAFT — Kevin reviews
+  'rn.explain.rate': 'Số điểm khách tích được trên mỗi khoản chi tiêu hợp lệ theo quy tắc đang áp dụng, kèm mức chi tối thiểu và giới hạn mỗi hóa đơn.', // DRAFT — Kevin reviews
+  'rn.explain.tokens': 'Số dư ví sau bút toán cuối trong Hoạt động token (mua token, trừ token cho điểm, hoàn trả khi hoàn tiền), tính bằng token (1 token = {token}).', // DRAFT — Kevin reviews
+  'rn.explain.value': 'Do AI PowerSalon đặt cho toàn mạng lưới: giá trị một khối điểm khi khách dùng. Không thể đổi ở đây.', // DRAFT — Kevin reviews
+  'rn.explain.pending': 'Các lần mua token nhà cung cấp thanh toán chưa xác minh. Chưa dùng được cho đến khi được xác minh.', // DRAFT — Kevin reviews
+  'rn.explain.noWallet': 'Chưa có ví', // DRAFT — Kevin reviews
+  'rn.explain.unknown': 'Dấu gạch (—) nghĩa là giá trị chưa được ghi nhận; không có gì được ước tính thay thế.', // DRAFT — Kevin reviews
 };

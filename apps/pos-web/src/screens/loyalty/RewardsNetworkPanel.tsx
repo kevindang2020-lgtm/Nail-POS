@@ -57,7 +57,7 @@ const ALERT_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'gold'> = { ok: 'gold',
 /** a <input type="datetime-local"> value (the device's clock, which at the desk is the salon's) → ISO */
 const localToIso = (v: string): string | null => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
-type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' };
+type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' } | { kind: 'explain' };
 
 /** a server-paged list whose page size is however many rows fit right now */
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
@@ -152,6 +152,10 @@ export function RewardsNetworkPanel() {
             sub={w ? tx('rn.kpi.pendingSub', { n: fmtNumber(w.pendingPurchases), used: tokensOf(w.usedThisMonthCents, tv) }) : ''} onClick={() => purchases.toFirst()} />
         </>}
       </div>
+
+      {st ? <div className={'fk-hint rn-fresh' + (stErr ? ' warn' : '')} data-testid="rn-fresh" aria-live="polite">
+        {stErr ? tx('rn.fresh.stale', { time: whenTime(st.generatedAt) }) : tx('rn.fresh.at', { time: whenTime(st.generatedAt) })}
+        {' '}<button type="button" className="fk-btn ghost" data-testid="rn-kpi-explain" onClick={() => setDlg({ kind: 'explain' })}>{tx('rn.explain.btn')}</button></div> : null}
 
       <div className="fk-row two">
         <FitPanel testId="rn-earning" title={tx('rn.earning.title')}
@@ -266,6 +270,7 @@ export function RewardsNetworkPanel() {
       {dlg?.kind === 'custom' && st ? <CustomRuleDialog st={st} draft={dlg.draft} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'global' && st ? <UseGlobalDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'branches' && w?.branchUsage ? <BranchUsageDialog u={w.branchUsage} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
+      {dlg?.kind === 'explain' && st ? <KpiExplainDialog st={st} onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'payables' ? <PayablesDialog onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'levels' && st ? <LevelsDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'buy' && st ? <BuyTokensDialog st={st} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={(msg, id) => { done(msg); if (id) setDlg({ kind: 'purchase', id }); }} /> : null}
@@ -694,5 +699,36 @@ function PayableEvidence({ r }: { r: RewardsNetPayableRow }) {
         </table>
       )}
     </div>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 10): where each KPI on this page comes from — formula, scope, currency, rule version and the
+ *  server time it was read — and what an unknown / missing value means. Text only; every number is the server's state. */
+function KpiExplainDialog({ st, onClose }: { st: NetworkState; onClose: () => void }) {
+  const w = st.wallet; const tv = st.program.tokenValueCents;
+  const version = st.effective?.versionNo != null ? String(st.effective.versionNo) : '—';
+  const rows: { k: string; label: string; how: string; now: string }[] = [
+    { k: 'mode', label: tx('rn.kpi.mode'), how: tx('rn.explain.mode', { version }), now: st.mode === 'CUSTOM' ? tx('rn.mode.custom') : tx('rn.mode.global') },
+    { k: 'rate', label: tx('rn.kpi.rate'), how: tx('rn.explain.rate'), now: rateText(st.effective) },
+    { k: 'tokens', label: tx('rn.kpi.tokens'), how: tx('rn.explain.tokens', { token: fmtMoney(tv) }), now: w?.exists ? tokensOf(w.availableCents, tv) : tx('rn.explain.noWallet') },
+    { k: 'value', label: tx('rn.kpi.value'), how: tx('rn.explain.value'), now: tx('rn.value', { points: fmtNumber(st.program.pointsPerRedeemBlock), amount: fmtMoney(st.program.redeemBlockValueCents) }) },
+    { k: 'pending', label: tx('rn.kpi.pending'), how: tx('rn.explain.pending'), now: w?.exists ? tokensOf(w.pendingCents, tv) : tx('rn.explain.noWallet') },
+  ];
+  return (
+    <FitDialog side testId="rn-explain-dlg" title={tx('rn.explain.title')} onClose={onClose}>
+      <dl className="rn-review" data-testid="rn-explain-common">
+        <dt>{tx('rn.explain.scope')}</dt><dd>{tx('rn.explain.scopeV')}</dd>
+        <dt>{tx('rn.explain.currency')}</dt><dd>{tx('rn.explain.currencyV', { token: fmtMoney(tv) })}</dd>
+        <dt>{tx('rn.explain.refreshed')}</dt><dd>{whenTime(st.generatedAt)}</dd>
+      </dl>
+      <ul className="fk-list rn-mini">
+        {rows.map((r) => (
+          <li key={r.k} className="fk-li" data-testid={'rn-explain-' + r.k}>
+            <div className="fk-li-main"><span className="fk-li-t">{r.label} · {r.now}</span><span className="fk-li-s">{r.how}</span></div>
+          </li>
+        ))}
+      </ul>
+      <p className="fk-hint">{tx('rn.explain.unknown')}</p>
+    </FitDialog>
   );
 }

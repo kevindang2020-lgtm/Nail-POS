@@ -1,15 +1,15 @@
 // Extras (GLOBAL LOYALTY REWARDS 07 + 10): the salon's reimbursements — stage, why, provider answers, journal lines, and the
 // stale-provider strip (last verified settlement; pending vs unknown provider answers). Every value is the server's; read-only.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
-const { stateMock, payMock } = vi.hoisted(() => ({ stateMock: vi.fn(), payMock: vi.fn() }));
+const { stateMock, payMock, live } = vi.hoisted(() => ({ stateMock: vi.fn(), payMock: vi.fn(), live: { refresh: null as null | (() => void) } }));
 vi.mock('../../api/posRewardsNetworkApi', () => ({ posRewardsNetworkApi: {
   state: stateMock, reimbursements: payMock, history: vi.fn().mockResolvedValue({ items: [] }),
   purchases: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
   ledger: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
 } }));
-vi.mock('../../realtime/useRealtime', () => ({ useRealtime: () => undefined }));
+vi.mock('../../realtime/useRealtime', () => ({ useRealtime: (_t: unknown, cb: () => void) => { live.refresh = cb; } }));
 import { RewardsNetworkPanel } from './RewardsNetworkPanel';
 
 const rate = { spendIncrementCents: 500, pointTenthsPerIncrement: 5, minEligibleCents: 0, perTicketCapTenths: null };
@@ -74,5 +74,31 @@ describe('RewardsNetworkPanel — reimbursements owed to this salon (extras GLOB
     expect(screen.getByTestId('rn-pay-unknown')).toHaveTextContent('Unknown: none.');
     fireEvent.click(screen.getByTestId('rn-pay-total-PAYOUT_PENDING'));
     await waitFor(() => expect(payMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 8, status: 'PAYOUT_PENDING' }));
+  });
+});
+
+describe('RewardsNetworkPanel — KPI sources + stale-time label (extras Global Loyalty Rewards 10 + 15)', () => {
+  it('says when the balances were read from the server, and the explainer names formula, scope, currency, rule version and missing states', async () => {
+    stateMock.mockResolvedValue({ ...st(undefined), effective: { ...rate, source: 'TENANT_OVERRIDE', versionNo: 4 }, mode: 'CUSTOM' });
+    render(<RewardsNetworkPanel />);
+    expect(await screen.findByTestId('rn-fresh')).toHaveTextContent('Balances as of');
+    expect(screen.getByTestId('rn-fresh')).toHaveTextContent('nothing is changed on this screen before the server confirms it');
+    fireEvent.click(screen.getByTestId('rn-kpi-explain'));
+    await screen.findByTestId('rn-explain-dlg');
+    expect(screen.getByTestId('rn-explain-common')).toHaveTextContent('Your whole salon: one wallet');
+    expect(screen.getByTestId('rn-explain-common')).toHaveTextContent('US dollars. 1 token = $1.00.');
+    expect(screen.getByTestId('rn-explain-mode')).toHaveTextContent('rule version 4');
+    expect(screen.getByTestId('rn-explain-tokens')).toHaveTextContent('Available tokens · 96.95');
+  });
+  it('a failed refresh keeps the numbers labelled as stale; no wallet reads "No wallet yet", never 0', async () => {
+    const base = st(undefined);
+    stateMock.mockResolvedValueOnce({ ...base, wallet: { ...base.wallet, exists: false } }).mockRejectedValueOnce(new Error('offline'));
+    render(<RewardsNetworkPanel />);
+    fireEvent.click(await screen.findByTestId('rn-kpi-explain'));
+    expect(await screen.findByTestId('rn-explain-tokens')).toHaveTextContent('No wallet yet');
+    expect(screen.getByTestId('rn-explain-pending')).toHaveTextContent('No wallet yet');
+    act(() => { live.refresh?.(); });   // a realtime nudge refetches; the refetch fails
+    await waitFor(() => expect(screen.getByTestId('rn-fresh')).toHaveTextContent('Could not refresh. Numbers shown are from'));
+    expect(screen.getByTestId('rn-fresh').className).toContain('warn');
   });
 });
