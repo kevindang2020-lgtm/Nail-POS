@@ -1,5 +1,8 @@
 # CONTINUE_HERE.md — where the work stopped and what to do next (Oct 26 2026)
 
+> **Newest handoff (Nov 13 2026): read `docs/handoff/NEW_CHAT_HANDOFF_2026-11-13.md` first** — HEAD `98dc725a`, all 160 PDFs +
+> extras done to the end of code; 24 rows wait on Kevin / outside accounts / hardware. The sections below are older.
+
 Hand this file to the next session first. **Tree:** branch `merge-github-main`, HEAD `47c4044b` (+ documentation
 commits). The build queue is `NEXT_STEPS.md` §1, and the section-by-section truth is `docs/mandates/status/*.md`.
 The narrative of what was done is in `CHANGELOG_HANDOFF.md` (M6 / M5 / M4 / Oct 26 sections).
