@@ -291,7 +291,7 @@ export const RCPT_VI: Record<string, string> = {
   "rcpt.ins.none": "Không có dữ liệu trong kỳ này.", // DRAFT — Kevin reviews
   "rcpt.ins.privacy": "Chỉ hiển thị số lượng, từ các bản ghi cuộc gọi tiệm còn lưu. Không hiển thị tên, số điện thoại hay tóm tắt cuộc gọi; thông tin liên lạc trong nhãn được che.", // DRAFT — Kevin reviews
   "rcpt.hist.searchPh": "Tìm thay đổi, lý do hoặc người thực hiện", // DRAFT — Kevin reviews
-  "rcpt.hist.search": "Tìm", // DRAFT — Kevin reviews
+  "rcpt.hist.search": "Tìm kiếm", // DRAFT — Kevin reviews
   "rcpt.hist.clear": "Xóa lọc", // DRAFT — Kevin reviews
   "rcpt.hist.noMatch": "Không có thay đổi nào khớp với tìm kiếm hoặc khoảng ngày này.", // DRAFT — Kevin reviews
   "rcpt.hist.who": "Người thực hiện", // DRAFT — Kevin reviews

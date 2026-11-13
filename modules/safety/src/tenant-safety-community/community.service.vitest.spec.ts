@@ -401,3 +401,68 @@ describe('Phase 9 — the community role is derived from the session permissions
     expect(communityRoleOf({ role: 'OWNER' })).toBe('owner');
   });
 });
+
+// Safety Community backlog · 08 — Permission-Aware Role Preview: the preview agrees with what the real checks do
+describe('extras Safety Community 08 — role preview (real permission + capability checks, read-only, no escalation)', () => {
+  const tpl = (k: string) => templatePermissions(findRoleTemplate(k)!);
+  const act = (p: Awaited<ReturnType<CommunityService['rolePreview']>>, role: string, action: string) => p.roles.find((r) => r.key === role)!.actions.find((a) => a.action === action)!;
+  it('each default role, with the reason an action is blocked; moderation is never listed or grantable', async () => {
+    const p = await svc.rolePreview(owner);
+    expect(p.roles.map((r) => r.key)).toEqual(expect.arrayContaining(['TENANT_OWNER', 'BRANCH_MANAGER', 'RECEPTIONIST', 'TECHNICIAN']));
+    expect(p.moderationGrantable).toBe(false);
+    expect(p.roles.every((r) => r.actions.every((a) => a.action !== 'moderate' && a.capability !== 'moderate'))).toBe(true);
+    expect(act(p, 'TENANT_OWNER', 'approve_advisory')).toMatchObject({ allowed: true, blockedBy: null });
+    expect(act(p, 'BRANCH_MANAGER', 'approve_advisory').allowed).toBe(true);
+    expect(act(p, 'BRANCH_MANAGER', 'manage_settings')).toMatchObject({ allowed: false, blockedBy: 'role_permission' });
+    expect(act(p, 'RECEPTIONIST', 'draft_advisory').allowed).toBe(true);
+    expect(act(p, 'RECEPTIONIST', 'submit_advisory')).toMatchObject({ allowed: false, blockedBy: 'role_permission', routeHeld: false });
+    expect(act(p, 'TECHNICIAN', 'view_feed')).toMatchObject({ allowed: false, routeHeld: true, capabilityHeld: false, blockedBy: 'community_role' });
+    expect(p.roles.find((r) => r.key === 'TECHNICIAN')!.communityRole).toBe('technician');
+  });
+  it('what the preview says matches what a session of that role really gets', async () => {
+    const p = await svc.rolePreview(owner);
+    const rec = { ...desk, permissions: tpl('RECEPTIONIST') };
+    await svc.acknowledgeRules(rec, { rulesVersion: COMMUNITY_RULES_VERSION });
+    expect(act(p, 'RECEPTIONIST', 'draft_advisory').allowed).toBe(true);
+    const d = await svc.createAdvisory(rec, gift);                                                    // allowed → works
+    expect(act(p, 'RECEPTIONIST', 'approve_advisory').allowed).toBe(false);
+    await expect(svc.approveAdvisory(rec, d.id, { expectedVersion: d.version })).rejects.toMatchObject({ code: 'permission_denied' });   // blocked → refused
+    expect(act(p, 'TECHNICIAN', 'view_feed').allowed).toBe(false);
+    await expect(svc.feed({ ...tech, permissions: tpl('TECHNICIAN') }, {})).rejects.toMatchObject({ code: 'permission_denied' });
+  });
+  it('the salon\'s removals and the on/off switch are reflected; only settings managers may preview; nothing is written', async () => {
+    await svc.updateSettings(owner, { expectedVersion: 1, roleRemovals: { receptionist: ['comment'] } });
+    const p = await svc.rolePreview(owner);
+    expect(act(p, 'RECEPTIONIST', 'comment')).toMatchObject({ allowed: false, routeHeld: true, blockedBy: 'salon_setting' });
+    expect(p.settingsVersion).toBe(2);
+    await svc.updateSettings(owner, { expectedVersion: 2, enabled: false });
+    const off = await svc.rolePreview(owner);
+    expect(off.communityEnabled).toBe(false);
+    expect(act(off, 'TENANT_OWNER', 'view_feed')).toMatchObject({ allowed: false, blockedBy: 'community_off' });
+    expect(act(off, 'TENANT_OWNER', 'manage_settings').allowed).toBe(true);           // a salon turns it back on from settings
+    await expect(svc.rolePreview(desk)).rejects.toMatchObject({ code: 'permission_denied' });
+    await expect(svc.rolePreview(manager)).rejects.toMatchObject({ code: 'permission_denied' });
+    const before = JSON.stringify(await svc.getSettings(owner));
+    await svc.rolePreview(owner);
+    expect(JSON.stringify(await svc.getSettings(owner))).toBe(before);
+  });
+});
+
+// Safety Community backlog · 09 — the diagnostics builder only ever writes codes and numbers
+describe('extras Safety Community 09 — buildDiagnosticsCsv (pure)', () => {
+  it('provenance header, codes only (free text becomes "other"), formula-safe cells, "none" rows for empty groups', async () => {
+    const { buildDiagnosticsCsv, diagCell } = await import('./community-diagnostics');
+    const csv = buildDiagnosticsCsv({ generatedAt: '2026-11-12T00:00:00.000Z', from: '2026-11-01', to: '2026-11-12', restrictions: { suspended: false, postingRestricted: true, commentingRestricted: false },
+      settings: { enabled: true, receptionistApprovalRequired: true, managerApprovalRequired: false, branchVisibility: 'tenant', retentionDays: 730, allowAnonymous: true, authorDisplay: 'Jane Smith 201-555-0148',
+        notify: { push: true, email: false, criticalSms: false, categories: 2 }, regionPreferences: 1, roleGrants: { technician: ['view_community'] }, roleRemovals: {}, rulesVersion: '2026-09', settingsVersion: 4 },
+      counts: { postsByStatus: [{ key: 'published_unverified', n: 3 }, { key: 'a title with spaces', n: 1 }], evidenceUpload: [], evidenceScan: [], evidenceRedaction: [], openCasesOnOwnPosts: 0,
+        appealsByStatus: [], disputesOnOwnPostsByStatus: [], alertsReceivedByKind: [{ key: 'published', n: 5 }], alertsReceivedByStatus: [], commentsByVisibility: [], reportsFiledByStatus: [], rulesAcknowledgedUsers: 2 } });
+    expect(csv).toContain('Safety Community diagnostics (sanitized)');
+    expect(csv).toContain('settings,author_display,other');               // free text never leaves
+    expect(csv).not.toContain('Jane Smith'); expect(csv).not.toContain('201-555-0148');
+    expect(csv).toContain('posts,status.published_unverified,3'); expect(csv).toContain('posts,status.other,1');
+    expect(csv).toContain('evidence,upload.none,0'); expect(csv).toContain('restrictions,posting_restricted,yes');
+    expect(csv).toContain('settings,role_grants.technician,view_community');
+    expect(diagCell('=cmd')).toBe("'=cmd"); expect(diagCell('a,b')).toBe('"a,b"');
+  });
+});

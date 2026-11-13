@@ -16,4 +16,8 @@ export const CommunityControllerListQueries = {
   search: FEED_SPEC,
   mine: { ...PAGED, filters: { kind: { type: 'text' } } },
   incidents: { ...PAGED, filters: { scope: { type: 'text' } } },
+  // Safety Community 06: the corrections inbox — numbered pages only
+  corrections: { ...PAGED, maxLimit: 50, defaultLimit: 10 },
+  // Safety Community 09: the sanitized diagnostics export — one bounded range
+  diagnosticsExport: { search: false, dateRange: { maxDays: 92 } },
 } satisfies Record<string, ListQuerySpec>;

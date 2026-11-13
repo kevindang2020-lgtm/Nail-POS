@@ -1174,4 +1174,78 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiForecast.whatIf.summary": "Với giả định này: {s} ngày thiếu, {t} ngày sát; {c} ngày khác với dự báo thật.", // DRAFT — Kevin reviews
   "growth.aiForecast.whatIf.state": "Trạng thái giả định", // DRAFT — Kevin reviews
   "growth.aiForecast.whatIf.was": "Trạng thái dự báo thật", // DRAFT — Kevin reviews
+  "growth.community.drafts.tab.corrections": "Đính chính", // DRAFT — Kevin reviews
+  "growth.community.roles.title": "Mỗi vai trò làm được gì", // DRAFT — Kevin reviews
+  "growth.community.roles.sub": "Bản xem trước chỉ đọc, dùng đúng các kiểm tra của máy chủ: quyền của vai trò, vai trò cộng đồng và cài đặt của tiệm. Không cấp hay thay đổi gì ở đây.", // DRAFT — Kevin reviews
+  "growth.community.roles.load": "Xem trước vai trò", // DRAFT — Kevin reviews
+  "growth.community.roles.failed": "Không tải được bản xem trước vai trò.", // DRAFT — Kevin reviews
+  "growth.community.roles.pick": "Vai trò", // DRAFT — Kevin reviews
+  "growth.community.roles.off": "Cộng đồng An toàn đang tắt ở tiệm này, nên chưa vai trò nào dùng được cho đến khi bật lại (vẫn sửa được cài đặt).", // DRAFT — Kevin reviews
+  "growth.community.roles.can": "Được", // DRAFT — Kevin reviews
+  "growth.community.roles.cannot": "Không được — {why}", // DRAFT — Kevin reviews
+  "growth.community.roles.why.role_permission": "vai trò không có quyền này", // DRAFT — Kevin reviews
+  "growth.community.roles.why.community_role": "vai trò cộng đồng này không được phép", // DRAFT — Kevin reviews
+  "growth.community.roles.why.salon_setting": "đã tắt trong cài đặt của tiệm", // DRAFT — Kevin reviews
+  "growth.community.roles.why.community_off": "cộng đồng đang tắt", // DRAFT — Kevin reviews
+  "growth.community.roles.action.view_feed": "Đọc bảng tin cộng đồng", // DRAFT — Kevin reviews
+  "growth.community.roles.action.follow": "Theo dõi cảnh báo", // DRAFT — Kevin reviews
+  "growth.community.roles.action.report": "Báo cáo bài đăng", // DRAFT — Kevin reviews
+  "growth.community.roles.action.dispute": "Phản đối bài đăng", // DRAFT — Kevin reviews
+  "growth.community.roles.action.appeal": "Kháng nghị quyết định", // DRAFT — Kevin reviews
+  "growth.community.roles.action.comment": "Bình luận", // DRAFT — Kevin reviews
+  "growth.community.roles.action.create_incident": "Ghi sự cố riêng", // DRAFT — Kevin reviews
+  "growth.community.roles.action.draft_advisory": "Soạn cảnh báo", // DRAFT — Kevin reviews
+  "growth.community.roles.action.submit_advisory": "Gửi cảnh báo", // DRAFT — Kevin reviews
+  "growth.community.roles.action.approve_advisory": "Duyệt cảnh báo để đăng", // DRAFT — Kevin reviews
+  "growth.community.roles.action.upload_evidence": "Tải lên bằng chứng", // DRAFT — Kevin reviews
+  "growth.community.roles.action.manage_settings": "Đổi cài đặt cộng đồng", // DRAFT — Kevin reviews
+  "growth.community.roles.foot": "Việc kiểm duyệt chỉ do AI PowerSalon thực hiện và không bao giờ giao cho vai trò của tiệm.", // DRAFT — Kevin reviews
+  "growth.community.roles.custom": "Tiệm còn có {n} vai trò tự tạo; chúng chỉ có thể hẹp hơn vai trò gốc.", // DRAFT — Kevin reviews
+  "growth.community.roles.name.TENANT_OWNER": "Chủ tiệm", // DRAFT — Kevin reviews
+  "growth.community.roles.name.TENANT_ADMIN": "Quản trị tiệm", // DRAFT — Kevin reviews
+  "growth.community.roles.name.GENERAL_MANAGER": "Quản lý chung", // DRAFT — Kevin reviews
+  "growth.community.roles.name.BRANCH_MANAGER": "Quản lý chi nhánh", // DRAFT — Kevin reviews
+  "growth.community.roles.name.RECEPTIONIST": "Lễ tân", // DRAFT — Kevin reviews
+  "growth.community.roles.name.TECHNICIAN": "Thợ", // DRAFT — Kevin reviews
+  "growth.community.roles.name.ACCOUNTANT": "Kế toán", // DRAFT — Kevin reviews
+  "growth.community.roles.name.INVENTORY_MANAGER": "Quản lý kho", // DRAFT — Kevin reviews
+  "growth.community.diag.title": "Chẩn đoán cho bộ phận hỗ trợ", // DRAFT — Kevin reviews
+  "growth.community.diag.sub": "Tải tệp đã che dữ liệu cho bộ phận hỗ trợ AI PowerSalon: chỉ cài đặt và số liệu cộng đồng — không bao giờ có tiêu đề, bài đăng, tên, số điện thoại, email hay tiệm khác. Tối đa 92 ngày; lượt tải được ghi lại.", // DRAFT — Kevin reviews
+  "growth.community.diag.btn": "Tải tệp chẩn đoán", // DRAFT — Kevin reviews
+  "growth.community.diag.done": "Đã tải tệp chẩn đoán.", // DRAFT — Kevin reviews
+  "growth.community.diag.failed": "Không tạo được tệp chẩn đoán.", // DRAFT — Kevin reviews
+  "growth.community.corr.failed": "Không tải được danh sách đính chính.", // DRAFT — Kevin reviews
+  "growth.community.corr.none": "Chưa có cảnh báo đã đăng nào của bạn bị thay đổi sau khi đăng.", // DRAFT — Kevin reviews
+  "growth.community.corr.sub": "Các cảnh báo đã đăng của bạn có thay đổi sau khi đăng, thay đổi mới nhất trước. Tiếp cận = số tiệm đang theo dõi đã nhận thay đổi trong ứng dụng.", // DRAFT — Kevin reviews
+  "growth.community.corr.meta": "Đăng {p} · {f} đang theo dõi · {o} phản đối đang mở", // DRAFT — Kevin reviews
+  "growth.community.corr.removedNote": "Đã gỡ: {n}", // DRAFT — Kevin reviews
+  "growth.community.corr.resolutionNote": "Kết luận: {n}", // DRAFT — Kevin reviews
+  "growth.community.corr.byMod": "do kiểm duyệt", // DRAFT — Kevin reviews
+  "growth.community.corr.byUs": "do tiệm bạn", // DRAFT — Kevin reviews
+  "growth.community.corr.reach": "đã đến {n} tiệm", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.edited": "Đã sửa", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.update_added": "Đã thêm cập nhật", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.update_removed": "Đã gỡ cập nhật", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.label": "Đổi nhãn", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.severity": "Đổi mức độ", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.resolved": "Đã giải quyết", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.disputed": "Bị phản đối", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.corrected": "Đã đính chính", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.removed": "Đã gỡ", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.restored": "Đã khôi phục", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.merged": "Đã gộp", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.archived": "Đã lưu trữ", // DRAFT — Kevin reviews
+  "growth.community.corr.kind.under_review": "Gửi lại để xem xét", // DRAFT — Kevin reviews
+  "growth.community.corr.appeal": "Kháng nghị ({s}): {st} · gửi {at}", // DRAFT — Kevin reviews
+  "growth.community.corr.subject.post_rejected": "bài bị từ chối", // DRAFT — Kevin reviews
+  "growth.community.corr.subject.post_removed": "bài bị gỡ", // DRAFT — Kevin reviews
+  "growth.community.corr.subject.comment_removed": "bình luận bị gỡ", // DRAFT — Kevin reviews
+  "growth.community.corr.subject.community_suspended": "tạm ngưng cộng đồng", // DRAFT — Kevin reviews
+  "growth.community.corr.subject.verification_status": "nhãn xác minh", // DRAFT — Kevin reviews
+  "growth.community.corr.subject.severity_change": "đổi mức độ", // DRAFT — Kevin reviews
+  "growth.community.corr.appealStatus.submitted": "đã gửi", // DRAFT — Kevin reviews
+  "growth.community.corr.appealStatus.under_review": "đang xem xét", // DRAFT — Kevin reviews
+  "growth.community.corr.appealStatus.upheld": "giữ nguyên quyết định", // DRAFT — Kevin reviews
+  "growth.community.corr.appealStatus.overturned": "đã đảo ngược quyết định", // DRAFT — Kevin reviews
+  "growth.community.corr.appealStatus.withdrawn": "đã rút", // DRAFT — Kevin reviews
 };

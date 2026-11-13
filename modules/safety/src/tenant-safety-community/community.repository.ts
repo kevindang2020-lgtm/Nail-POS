@@ -8,7 +8,10 @@
 // returns no row is an error too. Post writes are compare-and-set on `version` (+ the expected status) and return null
 // when another writer got there first — the service turns that into 409 version_conflict.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
+import type { CommunityCorrectionsInbox, CommunityCorrectionItem, CommunityCorrectionChange } from '@aipowersalon/api-contracts/tenant';
+import type { CountRow, DiagnosticsCounts } from './community-diagnostics';
 import { canMoveToSql } from '@aipowersalon/database';
+import { recordAuditStrict } from '@aipowersalon/audit';
 import { COMMUNITY_POST } from './community-lifecycles';
 import type { AppDatabase } from '@aipowersalon/database';
 import type { AdvisoryStatus, Classification } from './community-classification';
@@ -104,6 +107,13 @@ export interface CommunityRepo {
   /** run fn in ONE transaction (the change, its version row and its outbox event commit together) */
   tx<T>(fn: (repo: CommunityRepo, trx: unknown) => Promise<T>): Promise<T>;
   tenantDisplayName(tenantId: string): Promise<string | null>;
+  /** Safety Community 08: how many live custom staff roles the salon has (the role preview covers the default roles). Optional. */
+  customRoleCount?(tenantId: string): Promise<number>;
+  /** Safety Community 06: the posting salon's corrections inbox (own published posts changed after publication). Optional. */
+  correctionsInbox?(tenantId: string, page: number, pageSize: number): Promise<CommunityCorrectionsInbox>;
+  /** Safety Community 09: the sanitized diagnostics counts + the export's fail-closed audit row. Optional (no store → no export). */
+  diagnosticsCounts?(tenantId: string, fromTs: string, toExclusiveTs: string): Promise<DiagnosticsCounts>;
+  recordDiagnosticsExport?(ctx: CommunityCtx, meta: Record<string, unknown>): Promise<void>;
   getSettings(tenantId: string): Promise<TenantSettingsRow | null>;
   /** insert the first settings row (version 1); null when a row already exists */
   insertSettings(tenantId: string, patch: SettingsPatch, userId: string): Promise<TenantSettingsRow | null>;
@@ -224,6 +234,109 @@ export class KyselyCommunityRepo implements CommunityRepo {
     return this.db.transaction().execute((trx) => fn(new KyselyCommunityRepo(trx), trx));
   }
 
+  /** Safety Community backlog · 06 — Corrections & Retractions inbox. Own posts that were published, newest change first.
+   *  Changes = version rows written AFTER the first publication (author edits / corrections / resolutions; moderation's
+   *  removals, restorations, label and severity changes) + the salon's public updates. Delivery = following salons whose
+   *  in-app alert for that change exists (owner_alerts, category community_advisory — the fan-out's own record, matched by
+   *  post + `:v<version>`; an update by its 10-minute window) — a count only, never which salons. A moderation change shows no
+   *  note (moderator reasons are internal); the salon's own notes are its own. Appeals are this salon's only. */
+  async correctionsInbox(tenantId: string, page: number, pageSize: number): Promise<CommunityCorrectionsInbox> {
+    const lastAt = sql`greatest(
+        (select max(v.created_at) from community_post_versions v where v.post_id = p.id and v.created_at > p.published_at),
+        (select max(pu.created_at) from community_post_updates pu where pu.post_id = p.id),
+        (select max(ap.created_at) from community_appeals ap where ap.post_id = p.id and ap.appellant_tenant_id = p.origin_tenant_id))`;
+    const base = sql`from community_posts p where p.origin_tenant_id = ${tenantId} and p.published_at is not null and ${lastAt} is not null`;
+    const total = Number((await this.first<{ n: number }>(sql`select count(*)::int as n ${base}`))?.n ?? 0);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize)); const pg = Math.min(Math.max(1, page), totalPages);
+    const posts = await this.rows<{ id: string; title: string; status: string; published_at: unknown; follower_count: number; removed_reason: string | null; resolution_note: string | null; last_at: unknown }>(sql`
+      select p.id, p.title, p.status, p.published_at, p.follower_count, p.removed_reason, p.resolution_note, ${lastAt} as last_at ${base}
+       order by ${lastAt} desc, p.id desc limit ${pageSize} offset ${(pg - 1) * pageSize}`);
+    if (!posts.length) return { items: [], page: pg, pageSize, total, totalPages };
+    const ids = posts.map((x) => String(x.id));
+    const versions = await this.rows<{ post_id: string; version: number; status: string | null; prev_status: string | null; change_note: string | null; created_at: unknown; own_edit: boolean; published_at: unknown }>(sql`
+      select x.post_id, x.version, x.status, x.prev_status, x.change_note, x.created_at, x.own_edit, x.published_at from (
+        select v.post_id, v.version, v.status, lag(v.status) over (partition by v.post_id order by v.version) as prev_status, v.change_note, v.created_at, p.published_at,
+               exists (select 1 from users ux where ux.id = v.edited_by_user_id and ux.tenant_id = ${tenantId}) as own_edit
+          from community_post_versions v join community_posts p on p.id = v.post_id
+         where v.post_id in (${sql.join(ids)})) x
+       where x.created_at > x.published_at order by x.post_id, x.version desc`);
+    const updates = await this.rows<{ post_id: string; redacted_body: string; created_at: unknown; visibility: string }>(sql`
+      select pu.post_id, pu.redacted_body, pu.created_at, pu.visibility from community_post_updates pu where pu.post_id in (${sql.join(ids)}) order by pu.created_at desc`);
+    const alerts = await this.rows<{ post_id: string; dedupe: string; kind: string; salons: number; first_at: unknown }>(sql`
+      select oa.metadata->>'postId' as post_id, oa.metadata->>'dedupeKey' as dedupe, max(oa.metadata->>'kind') as kind, count(distinct oa.tenant_id)::int as salons, min(oa.created_at) as first_at
+        from owner_alerts oa where oa.category = 'community_advisory' and oa.metadata->>'postId' in (${sql.join(ids)}) and coalesce(oa.metadata->>'kind', '') <> 'published'
+       group by oa.metadata->>'postId', oa.metadata->>'dedupeKey'`);
+    const appeals = await this.rows<{ id: string; post_id: string; subject: string; status: string; created_at: unknown; decided_at: unknown; decision_note: string | null }>(sql`
+      select a.id, a.post_id, a.subject, a.status, a.created_at, a.decided_at, a.decision_note from community_appeals a
+       where a.appellant_tenant_id = ${tenantId} and a.post_id in (${sql.join(ids)}) order by a.created_at desc`);
+    const disputes = await this.rows<{ post_id: string; open: number; closed: number }>(sql`
+      select d.post_id, count(*) filter (where d.status in ('open', 'under_review'))::int as open, count(*) filter (where d.status not in ('open', 'under_review'))::int as closed
+        from community_disputes d where d.post_id in (${sql.join(ids)}) group by d.post_id`);
+    const ms = (v: unknown) => { const n = v instanceof Date ? v.getTime() : Date.parse(String(v)); return Number.isNaN(n) ? null : n; };
+    const derive = (st: string | null, prev: string | null): string => {
+      const pub = (x: string | null) => !!x && x.startsWith('published_');
+      if (st === prev) return 'edited';
+      if (st === 'removed' || st === 'resolved' || st === 'corrected' || st === 'disputed' || st === 'archived') return st;
+      if (pub(st) && pub(prev)) return 'label';
+      if (pub(st)) return 'restored';
+      return 'under_review';
+    };
+    const items: CommunityCorrectionItem[] = posts.map((p) => {
+      const pid = String(p.id);
+      const al = alerts.filter((a) => String(a.post_id) === pid);
+      const vChanges: CommunityCorrectionChange[] = versions.filter((v) => String(v.post_id) === pid).map((v) => {
+        const hit = al.find((a) => String(a.dedupe ?? '').endsWith(`:v${v.version}`));
+        return { at: isoOrNull(v.created_at) ?? '', version: Number(v.version), kind: hit?.kind ?? derive(v.status, v.prev_status), byModeration: !v.own_edit,
+          note: v.own_edit ? (v.change_note ?? null) : null, notifiedSalons: hit ? Number(hit.salons) : 0 };
+      });
+      const ups = updates.filter((u) => String(u.post_id) === pid);
+      const uChanges: CommunityCorrectionChange[] = ups.map((u, i) => {
+        const at = ms(u.created_at) ?? 0; const next = i > 0 ? (ms(ups[i - 1].created_at) ?? Infinity) : Infinity;   // ups are newest first
+        const n = al.filter((a) => a.kind === 'update_added').filter((a) => { const f = ms(a.first_at) ?? -1; return f >= at && f < Math.min(next, at + 10 * 60_000); }).reduce((s, a) => s + Number(a.salons), 0);
+        return { at: isoOrNull(u.created_at) ?? '', version: null, kind: u.visibility === 'removed' ? 'update_removed' : 'update_added', byModeration: false, note: String(u.redacted_body ?? '').slice(0, 200), notifiedSalons: n };
+      });
+      const d = disputes.find((x) => String(x.post_id) === pid);
+      return { postId: pid, title: String(p.title ?? ''), status: String(p.status), publishedAt: isoOrNull(p.published_at), followers: Number(p.follower_count ?? 0), lastChangeAt: isoOrNull(p.last_at),
+        removedNote: p.status === 'removed' ? (p.removed_reason ?? null) : null, resolutionNote: p.resolution_note ?? null,
+        changes: [...vChanges, ...uChanges].sort((a, b) => (ms(b.at) ?? 0) - (ms(a.at) ?? 0)).slice(0, 50),
+        appeals: appeals.filter((a) => String(a.post_id) === pid).map((a) => ({ id: String(a.id), subject: a.subject, status: a.status, createdAt: isoOrNull(a.created_at), decidedAt: isoOrNull(a.decided_at), decisionNote: a.decision_note ?? null })),
+        disputes: { open: Number(d?.open ?? 0), closed: Number(d?.closed ?? 0) } };
+    });
+    return { items, page: pg, pageSize, total, totalPages };
+  }
+  /** Safety Community 09 — counts only (codes + numbers), this salon only, over [fromTs, toExclusiveTs). */
+  async diagnosticsCounts(tenantId: string, fromTs: string, toTs: string): Promise<DiagnosticsCounts> {
+    const grp = async (q: RawBuilder<unknown>): Promise<CountRow[]> => (await this.rows<{ k: string | null; n: number }>(q)).map((r) => ({ key: String(r.k ?? 'none'), n: Number(r.n ?? 0) }));
+    const range = (col: RawBuilder<unknown>) => sql`${col} >= ${fromTs}::timestamptz and ${col} < ${toTs}::timestamptz`;
+    return {
+      postsByStatus: await grp(sql`select p.status as k, count(*)::int as n from community_posts p where p.origin_tenant_id = ${tenantId} and ${range(sql`p.created_at`)} group by p.status order by p.status`),
+      evidenceUpload: await grp(sql`select e.upload_status as k, count(*)::int as n from community_evidence e where e.tenant_id = ${tenantId} and ${range(sql`e.created_at`)} group by e.upload_status order by e.upload_status`),
+      evidenceScan: await grp(sql`select e.scan_status as k, count(*)::int as n from community_evidence e where e.tenant_id = ${tenantId} and ${range(sql`e.created_at`)} group by e.scan_status order by e.scan_status`),
+      evidenceRedaction: await grp(sql`select e.redaction_status as k, count(*)::int as n from community_evidence e where e.tenant_id = ${tenantId} and ${range(sql`e.created_at`)} group by e.redaction_status order by e.redaction_status`),
+      openCasesOnOwnPosts: Number((await this.first<{ n: number }>(sql`select count(*)::int as n from community_moderation_cases mc join community_posts p on p.id = mc.post_id
+        where p.origin_tenant_id = ${tenantId} and mc.status in ('open', 'investigating')`))?.n ?? 0),
+      appealsByStatus: await grp(sql`select a.status as k, count(*)::int as n from community_appeals a where a.appellant_tenant_id = ${tenantId} and ${range(sql`a.created_at`)} group by a.status order by a.status`),
+      disputesOnOwnPostsByStatus: await grp(sql`select d.status as k, count(*)::int as n from community_disputes d join community_posts p on p.id = d.post_id
+        where p.origin_tenant_id = ${tenantId} and ${range(sql`d.created_at`)} group by d.status order by d.status`),
+      alertsReceivedByKind: await grp(sql`select oa.metadata->>'kind' as k, count(*)::int as n from owner_alerts oa where oa.tenant_id = ${tenantId} and oa.category = 'community_advisory'
+        and ${range(sql`oa.created_at`)} group by oa.metadata->>'kind' order by 1`),
+      alertsReceivedByStatus: await grp(sql`select oa.status as k, count(*)::int as n from owner_alerts oa where oa.tenant_id = ${tenantId} and oa.category = 'community_advisory'
+        and ${range(sql`oa.created_at`)} group by oa.status order by oa.status`),
+      commentsByVisibility: await grp(sql`select c.visibility as k, count(*)::int as n from community_comments c where c.tenant_id = ${tenantId} and ${range(sql`c.created_at`)} group by c.visibility order by c.visibility`),
+      reportsFiledByStatus: await grp(sql`select r.status as k, count(*)::int as n from community_reports r where r.reporter_tenant_id = ${tenantId} and ${range(sql`r.created_at`)} group by r.status order by r.status`),
+      rulesAcknowledgedUsers: Number((await this.first<{ n: number }>(sql`select count(distinct ra.user_id)::int as n from community_rules_acknowledgments ra where ra.tenant_id = ${tenantId}`))?.n ?? 0),
+    };
+  }
+  /** Safety Community 09 — the exporter's audit row (audit_events, through the audit module's strict write); THROWS when it
+   *  cannot be written (no audit → no file). Only the range and row count are recorded, never the file. */
+  async recordDiagnosticsExport(ctx: CommunityCtx, meta: Record<string, unknown>): Promise<void> {
+    await recordAuditStrict(this.db as unknown as Kysely<any>, { tenantId: ctx.tenantId, branchId: ctx.branchId || null, userId: ctx.userId, role: ctx.role ?? null },
+      { module: 'community', action: 'diagnostics_exported', resourceType: 'tenant_community_settings', summary: `Safety Community diagnostics exported (${String(meta.from)} to ${String(meta.to)})`, metadata: meta });
+  }
+  async customRoleCount(tenantId: string): Promise<number> {
+    const r = await this.first<{ n: number }>(sql`select count(*)::int as n from tenant_custom_roles where tenant_id = ${tenantId} and archived_at is null`);
+    return Number(r?.n ?? 0);
+  }
   async tenantDisplayName(tenantId: string): Promise<string | null> {
     const r = await this.first<any>(sql`select display_name from tenants where id = ${tenantId}`);
     return r?.display_name ?? null;

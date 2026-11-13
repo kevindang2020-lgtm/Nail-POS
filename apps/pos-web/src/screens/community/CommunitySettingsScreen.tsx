@@ -15,6 +15,7 @@ import { useCan } from '../../components/usePermissions';
 import { useRealtime } from '../../realtime/useRealtime';
 import { posCommunityApi as api } from '../../api/posCommunityApi';
 import { useCommunityRules } from './CommunityRules';
+import { CommunityRolePreviewCard, CommunityDiagnosticsCard } from './CommunityOpsCards';   // extras Safety Community 08 + 09
 import {
   P, CATEGORIES, CATEGORY_LABEL, SEVERITIES, SEVERITY_LABEL, CommunityHeader, CommunitySubNav, body, btnDanger, btnGhost, btnGold,
   card, cardHead, communityErrorText, errText, input, isConflict, label, muted, okText, page, pretty, row,
@@ -130,6 +131,8 @@ export function CommunitySettingsScreen() {
         ) : <div style={muted}>{tx('pos.loading')}</div>}
         {can(P.follow) ? <CommunityFollowsCard /> : null}
         {manage ? <CommunityAnalyticsCard /> : null}
+        {manage ? <CommunityRolePreviewCard /> : null}
+        {manage ? <CommunityDiagnosticsCard /> : null}
       </div>
       {rules.modal}
     </div>

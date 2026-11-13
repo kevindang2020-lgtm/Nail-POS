@@ -173,3 +173,30 @@ export interface CommunityAlertPreview {
   bySeverity: { severity: string; count: number }[];
   byCategory: { category: string; count: number }[];
 }
+
+/** Safety Community backlog · 08 (Nov 12 2026): GET community/role-preview — which community actions each default staff role
+ *  could take in this salon, from the real route permissions + community capabilities + this salon's settings. Read-only. */
+export interface CommunityRolePreviewAction {
+  action: string; routeKey: string; capability: string | null; routeHeld: boolean; capabilityHeld: boolean; allowed: boolean;
+  blockedBy: 'role_permission' | 'community_role' | 'salon_setting' | 'community_off' | null;
+}
+export interface CommunityRolePreview {
+  communityEnabled: boolean; settingsVersion: number; customRoles: number; moderationGrantable: false;
+  roles: Array<{ key: string; name: string; baseRole: string; communityRole: string; actions: CommunityRolePreviewAction[] }>;
+}
+
+/** Safety Community backlog · 06 (Nov 12 2026): GET community/corrections — the posting salon's Corrections & Retractions
+ *  inbox: its own published advisories that changed after publication (edits, updates, corrections, resolutions, removals,
+ *  restorations), how many following salons each change reached in-app, and the salon's appeals on them. Read-only. */
+export interface CommunityCorrectionChange {
+  at: string; version: number | null; kind: string; byModeration: boolean; note: string | null;
+  /** following salons that received this change as an in-app alert; null when it cannot be told */
+  notifiedSalons: number | null;
+}
+export interface CommunityCorrectionItem {
+  postId: string; title: string; status: string; publishedAt: string | null; followers: number; lastChangeAt: string | null;
+  removedNote: string | null; resolutionNote: string | null; changes: CommunityCorrectionChange[];
+  appeals: Array<{ id: string; subject: string; status: string; createdAt: string | null; decidedAt: string | null; decisionNote: string | null }>;
+  disputes: { open: number; closed: number };
+}
+export interface CommunityCorrectionsInbox { items: CommunityCorrectionItem[]; page: number; pageSize: number; total: number; totalPages: number }

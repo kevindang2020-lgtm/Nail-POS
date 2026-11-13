@@ -111,7 +111,7 @@ export function RetryQueueDialog({ onClose }: { onClose: () => void }) {
           <tbody>{d.items.map((r) => (
             <tr key={r.store + r.id} data-testid="lgx-retry-row" data-state={r.state}>
               <td className="sub">{tt('lgx.retry.store.' + (r.store === 'job' ? 'jobs' : 'webhooks'))}</td>
-              <td className="sub" style={{ overflowWrap: 'anywhere' }}>{r.type}</td>
+              <td className="sub" style={{ overflowWrap: 'anywhere' }}>{codeLabel('lgx.retry.type', r.type)}</td>
               <td><span className={'chip ' + (r.state === 'dead' ? 'bad' : r.state === 'retrying' ? 'warn' : '')}>{codeLabel('lgx.retry.state', r.state)}</span></td>
               <td data-testid="lgx-retry-attempt">{tt('lgx.retry.attemptOf', { a: fmtNumber(r.attempt), m: fmtNumber(r.maxAttempts) })}</td>
               <td className="sub nowrap">{r.nextAttemptAt ? fmtDateTime(r.nextAttemptAt) : dash}</td>

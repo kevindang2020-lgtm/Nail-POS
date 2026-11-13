@@ -76,6 +76,8 @@ GET /auth/webauthn/status  realm=shared  auth=public  domain=identity  resource=
 GET /community/alerts/active  realm=shared  auth=session  domain=support  perm=community.feed.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/analytics  realm=shared  auth=session  domain=support  perm=community.settings.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/appeals  realm=shared  auth=session  domain=support  perm=community.appeal.create  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /community/corrections  realm=shared  auth=session  domain=support  perm=community.appeal.create  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /community/diagnostics/export  realm=shared  auth=session  domain=support  perm=community.settings.manage  resource=TENANT/permission  async=community.diagnostics.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/evidence/{id}/access  realm=shared  auth=session  domain=support  perm=community.evidence.upload  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/feed  realm=shared  auth=session  domain=support  perm=community.feed.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/follows  realm=shared  auth=session  domain=support  perm=community.follow  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -86,6 +88,7 @@ GET /community/mine/{id}  realm=shared  auth=session  domain=support  perm=commu
 GET /community/posts/{id}  realm=shared  auth=session  domain=support  perm=community.feed.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/posts/{id}/comments  realm=shared  auth=session  domain=support  perm=community.feed.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/posts/{id}/evidence  realm=shared  auth=session  domain=support  perm=community.evidence.upload  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /community/role-preview  realm=shared  auth=session  domain=support  perm=community.settings.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/search  realm=shared  auth=session  domain=support  perm=community.feed.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /community/settings  realm=shared  auth=session  domain=support  perm=community.feed.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /customer-display/checkout/{sessionId}  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm
@@ -739,6 +742,7 @@ GET /pos/deposit-reconciliation/workspace/reviewers  realm=staff  auth=session  
 GET /pos/deposit-reconciliation/workspace/search  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/device-fleet/alerts  realm=staff  auth=session  domain=operations  perm=pos.logs.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/devices  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/history  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/summary  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -807,6 +811,7 @@ GET /pos/live-schedule-screen/search  realm=staff  auth=session  domain=workforc
 GET /pos/live-schedule-screen/shift-impact  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/logs  realm=staff  auth=session  domain=operations  perm=pos.logs.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/logs/export  realm=staff  auth=session  domain=operations  perm=pos.reports.export  resource=BRANCH/permission  async=pos.logs.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/logs/retries  realm=staff  auth=session  domain=operations  perm=pos.logs.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/bonus-requests  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/bonus-requests/health  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/bonus-requests/preview  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
@@ -2692,6 +2697,7 @@ POST /pos/ai/front-desk/health  realm=staff  auth=session  domain=ai  perm=ai.us
 POST /pos/ai/receptionist-center/actions  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/receptionist-center/actions/{id}/decision  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/receptionist-center/control  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai/receptionist-center/control/restore  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/receptionist-center/health  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/api-keys  realm=staff  auth=session  domain=operations  perm=pos.api_keys.manage  resource=TENANT/permission  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/api-keys/{id}/revoke  realm=staff  auth=session  domain=operations  perm=pos.api_keys.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
