@@ -31,7 +31,9 @@ export interface TechRec { technicianId: string; name: string; available: boolea
 export interface RosterRec { technicianId: string; name: string; available: boolean; searchText: string; }
 /** query() options that only the server's own callers set (never from a request): limit the rows to some technicians'
  *  columns (+ the unassigned column) and return the whole day instead of one page (the day grid). */
-export interface BookingQueryOpts { technicianIds?: string[]; includeUnassigned?: boolean; unbounded?: boolean; }
+export interface BookingQueryOpts { technicianIds?: string[]; includeUnassigned?: boolean; unbounded?: boolean;
+  /** booking200 §08 (round 12): the KPI strip's configurable Arriving-soon window (minutes); default 60 */
+  arrivingSoonWindowMinutes?: number; }
 export interface SvcRec { serviceId: string; name: string; categoryName: string; durationMinutes: number; priceCents: Money; }
 
 /** Smooth Refresh spec §9/§11/§14: reschedule/update options — the client's expectedVersion (stale copy → VERSION_CONFLICT),
@@ -68,6 +70,12 @@ export interface BookingRepositoryPort {
    *  (stamp in whole ms, id as text) key — the order rows come in; `opts.upto` = no row stamped after it (the sweep's
    *  fixed upper bound). */
   changedSince?(ctx: BookingContext, since: Date, limit: number, opts?: { after?: { ms: number; id: string }; upto?: Date }): Promise<{ id: string; updatedAt: string }[]>;
+  /** booking200 §08 (round 12): the Customer Queue's counts for the Booking KPI strip, from the live queue table —
+   *  `waitingNow` = guests in status 'waiting' right now (the Waitlist / Standby list), `walkInVisits` = queue visits
+   *  checked in on `date` (branch day) that are NOT an appointment's queue entry (no appointment_id, source not
+   *  'appointment'), not cancelled /
+   *  removed. Optional: a repository without it makes those cards say "unavailable" — never a made-up 0. */
+  queueCounts?(ctx: BookingContext, date: string): Promise<{ waitingNow: number; walkInVisits: number }>;
   /** Every technician (not archived) of the scope; with `ids`, only those (the visible page — mandate §18/§27). */
   technicians(ctx: BookingContext, ids?: string[]): Promise<TechRec[]>;
   /** The light roster (mandate §8): optional — without it the service derives one from technicians(). */
@@ -232,7 +240,8 @@ export class InMemoryBookingRepository implements BookingRepositoryPort {
       confirmedBookings: dayAll.filter((a) => isAwaitingArrival(a.status)).length,
       arrivedBookings: dayAll.filter((a) => a.status === 'arrived').length,
       lateBookings: dayAll.filter((a) => !!pbLateness(a.date, a.startTime, a.status, this.today(), this.nowMinuteOfDay(), DEFAULT_BOOKING_SETTINGS.lateGraceMinutes).lateness).length,
-      arrivingSoonBookings: pbArrivingSoon(dayAll, this.today(), this.nowMinuteOfDay()),
+      arrivingSoonBookings: pbArrivingSoon(dayAll, this.today(), this.nowMinuteOfDay(), opts?.arrivingSoonWindowMinutes),
+      awaitingConfirmationBookings: dayAll.filter((a) => a.status === 'booked').length,
       checkedInBookings: dayAll.filter((a) => a.status === 'checked_in').length,
       waitingBookings: dayAll.filter((a) => a.status === 'waiting').length,
       inServiceBookings: dayAll.filter((a) => a.status === 'in_service').length,

@@ -142,6 +142,22 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
     for (const r of rows) out.set(String(r.id), { branchId: r.branch_id ? String(r.branch_id) : null, name: r.name ?? null });
     return out;
   }
+  /** booking200 §08 (round 12): live Customer Queue counts for the KPI strip (see the port). One aggregate read, branch
+   *  scoped like every queue read; the walk-in day is the BRANCH's day (checked_in_at at time zone). A failed read throws. */
+  async queueCounts(ctx: BookingContext, date: string): Promise<{ waitingNow: number; walkInVisits: number }> {
+    const clk = await this.clock(ctx);
+    const branch = ctx.branchId ? sql`and q.branch_id = ${ctx.branchId}::uuid` : sql``;
+    // the branch day as an instant range [local midnight, next local midnight) — index-friendly on checked_in_at
+    const dayStart = sql`(${date}::date::timestamp at time zone ${clk.timeZone})`;
+    const dayEnd = sql`((${date}::date + 1)::timestamp at time zone ${clk.timeZone})`;
+    const r = (await sql<{ waiting: number | string | null; walkins: number | string | null }>`select
+        count(*) filter (where q.status = 'waiting') as waiting,
+        count(*) filter (where q.appointment_id is null and q.source <> 'appointment' and q.status not in ('cancelled', 'removed')
+          and q.checked_in_at >= ${dayStart} and q.checked_in_at < ${dayEnd}) as walkins
+      from pos_queue_items q where q.tenant_id = ${ctx.tenantId}::uuid ${branch}
+        and (q.status = 'waiting' or (q.checked_in_at >= ${dayStart} and q.checked_in_at < ${dayEnd}))`.execute(this.db)).rows[0];
+    return { waitingNow: Number(r?.waiting ?? 0), walkInVisits: Number(r?.walkins ?? 0) };
+  }
   /** 200-technician mandate §8: the whole branch's roster in ONE light read (no skills, ratings, avatars) — the server pages,
    *  searches and filters this; only the visible page then reads its detail. */
   async technicianRoster(ctx: BookingContext): Promise<RosterRec[]> {
@@ -370,7 +386,8 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
       confirmedBookings: dayRows.filter((a: any) => isAwaitingArrival(a.status)).length,
       arrivedBookings: dayRows.filter((a: any) => a.status === 'arrived').length,   // Decision 38
       lateBookings: dayRows.filter((a: any) => !!lateOf(a)).length,                 // Decision 38 (computed)
-      arrivingSoonBookings: pbArrivingSoon(dayRows.map((a: any) => ({ date: this.isoDate(a.appt_date), startTime: String(a.start_time), status: String(a.status) })), today, nowMin),
+      arrivingSoonBookings: pbArrivingSoon(dayRows.map((a: any) => ({ date: this.isoDate(a.appt_date), startTime: String(a.start_time), status: String(a.status) })), today, nowMin, opts?.arrivingSoonWindowMinutes),
+      awaitingConfirmationBookings: dayRows.filter((a: any) => a.status === 'booked').length,
       checkedInBookings: dayRows.filter((a: any) => a.status === 'checked_in').length,
       waitingBookings: dayRows.filter((a: any) => a.status === 'waiting').length,
       inServiceBookings: dayRows.filter((a: any) => a.status === 'in_service').length,

@@ -25,11 +25,11 @@ import {
   PBAssignTechnicianRequest, PBCancelRequest, PBNoShowRequest, PBConflictCheckRequest, PBAvailabilityQuery, PBServiceLine, PBServiceLineInput,
   BookingIntegrationStatus, pbAddMinutes, pbDuration, pbWithinStoreHours, pbDetectTechnicianConflict, pbDetectCustomerOverlap,
   pbTechDayWindows, pbWithinTechWindows, pbComputeAvailabilityInWindows, pbOpenRanges, type PBMinuteRange,
-  pbCanCheckIn, pbCanMarkArrived, pbCanConfirm, pbCanStartService, pbQueueKey, pbTechQueueKey, pbServingKey, BookingConflictRace, BookingSlotHeld, BookingVersionConflict, type BookingConflictCode, type BookingSettings, type BookingChangesResponse, BookingResyncRequired, BOOKING_FEED, encodeBookingCursor, decodeBookingCursor, encodeBookingContinuation, decodeBookingContinuation,
+  pbCanCheckIn, pbCanMarkArrived, pbCanConfirm, pbCanStartService, pbQueueKey, pbTechQueueKey, pbServingKey, BookingConflictRace, BookingSlotHeld, BookingVersionConflict, type BookingConflictCode, type BookingSettings, type BookingChangesResponse, BookingResyncRequired, BOOKING_FEED, encodeBookingCursor, decodeBookingCursor, encodeBookingContinuation, decodeBookingContinuation, clampArrivingWindow,
 } from './booking.dto';
 import { BookingContext, BookingRepositoryPort, type HoldGuard, type RosterRec } from './booking.repository';
 import { CHAIR_HOLDING_STATUSES } from '@aipowersalon/api-contracts';
-import { BOOKING_TECH_PAGE_SIZE, BOOKING_TECH_PAGE_SIZE_MAX, bookingTechPageMath, bookingTechPageOf, type BookingTechnicianQuery, type BookingTechnicianPage, type BookingTechnicianSummary, type BookingOpening, type BookingOpeningsResponse } from '@aipowersalon/api-contracts/tenant';
+import { BOOKING_TECH_PAGE_SIZE, BOOKING_TECH_PAGE_SIZE_MAX, bookingTechPageMath, bookingTechPageOf, type BookingTechnicianQuery, type BookingTechnicianPage, type BookingTechnicianSummary, type BookingOpening, type BookingOpeningsResponse, type BookingKpiCards } from '@aipowersalon/api-contracts/tenant';
 import { localDateTimeToEpochMs } from '@aipowersalon/date-time';
 import type { BookingHoldGate } from '../customer-booking/booking-slot-hold';
 
@@ -424,15 +424,60 @@ export class BookingService {
         skills: d?.skills ?? [], rating: d?.rating ?? null, reviewCount: d?.reviewCount ?? 0, ...(eligibleFlag ? { eligible: true } : {}) };
     });
     // today: who is free RIGHT NOW (inside a working window, no chair-holding appointment at this minute) — whole roster
-    let availableNowCount: number | undefined;
-    if (date === clk.today) {
-      const existing = await this.repo.existingForConflict(ctx, date);
-      const busyNow = new Set(existing.filter((a) => a.technicianId && (CHAIR_HOLDING_STATUSES as readonly string[]).includes(a.status) && minuteOf(a.startTime) <= clk.nowMinute && clk.nowMinute < minuteOf(a.endTime)).map((a) => a.technicianId!));
-      availableNowCount = roster.filter((t) => t.available && !busyNow.has(t.technicianId)
-        && pbTechDayWindows(settings.openTime, settings.closeTime, scheds[t.technicianId] ?? null, blocks[t.technicianId] ?? []).some((w) => w.start <= clk.nowMinute && clk.nowMinute < w.end)).length;
-    }
+    const availableNowCount = date === clk.today ? await this.availableNowAmong(ctx, roster, settings, scheds, blocks, date, clk.nowMinute) : undefined;
     return { date, technicians, total: list.length, totalAll: roster.length, workingCount: roster.filter((t) => working.get(t.technicianId)).length, ...(availableNowCount != null ? { availableNowCount } : {}),
       page: m.page, pageSize, totalPages: m.totalPages, ...(q.locate ? { located: located ?? null } : {}) };
+  }
+
+  /** Active technicians inside a working window at `nowMinute` and not in a chair-holding appointment at that minute — ONE
+   *  rule for the technician page's availableNowCount and the KPI strip's "Available now" card. */
+  private async availableNowAmong(ctx: BookingContext, roster: { technicianId: string; available: boolean }[], settings: BookingSettings,
+    scheds: Record<string, any>, blocks: Record<string, any[]>, date: string, nowMinute: number): Promise<number> {
+    const existing = await this.repo.existingForConflict(ctx, date);
+    const busyNow = new Set(existing.filter((a) => a.technicianId && (CHAIR_HOLDING_STATUSES as readonly string[]).includes(a.status) && minuteOf(a.startTime) <= nowMinute && nowMinute < minuteOf(a.endTime)).map((a) => a.technicianId!));
+    return roster.filter((t) => t.available && !busyNow.has(t.technicianId)
+      && pbTechDayWindows(settings.openTime, settings.closeTime, scheds[t.technicianId] ?? null, blocks[t.technicianId] ?? []).some((w) => w.start <= nowMinute && nowMinute < w.end)).length;
+  }
+
+  /** booking200 addendum §08 (round 12): the Booking page's six KPI cards, each from its real source, for the board's
+   *  date. Each source is read on its own: one that fails turns ITS card(s) 'unavailable' (logged) — the others still
+   *  answer, and no card ever shows a made-up 0. Arriving soon / Waitlist / Available now mean "now": on another date
+   *  they are 'not_today' (Available now still states how many work that date). Read-only. */
+  async kpiCards(ctx: BookingContext, q: { date?: string; arrivingWindowMinutes?: number } = {}): Promise<BookingKpiCards> {
+    this.need(ctx, 'pos.booking.view');
+    const clk = await this.repo.clock(ctx);
+    const date = q.date && /^\d{4}-\d{2}-\d{2}$/.test(q.date) ? q.date : clk.today;
+    const isToday = date === clk.today;
+    const windowMin = clampArrivingWindow(q.arrivingWindowMinutes);
+    const unavailable = (what: string, e: unknown) => { this.logger.warn(`booking kpi-cards: ${what} could not be read — card shows unavailable: ${String((e as Error)?.message ?? e).slice(0, 160)}`); return null; };
+    const day = await this.repo.query(ctx, { date, roster: 'none', page: 1, pageSize: 1 }, { arrivingSoonWindowMinutes: windowMin }).catch((e) => unavailable('appointments', e));
+    const queue = !this.repo.queueCounts ? null : await this.repo.queueCounts(ctx, date).catch((e) => unavailable('customer queue', e));
+    const staff = await (async () => {
+      const settings = await this.repo.settings(ctx);
+      const roster: { technicianId: string; available: boolean }[] = this.repo.technicianRoster ? await this.repo.technicianRoster(ctx) : await this.repo.technicians(ctx);
+      const [scheds, blocks] = await Promise.all([this.repo.techSchedules(ctx, this.dowOf(date), date), this.repo.blockedTimes(ctx, date)]);
+      const workingCount = roster.filter((t) => t.available && pbTechDayWindows(settings.openTime, settings.closeTime, scheds[t.technicianId] ?? null, blocks[t.technicianId] ?? []).length > 0).length;
+      const availableNow = isToday ? await this.availableNowAmong(ctx, roster, settings, scheds, blocks, date, clk.nowMinute) : null;
+      return { workingCount, availableNow };
+    })().catch((e) => unavailable('staff schedule', e));
+    const k = day?.kpis; const agg = day?.aggregates;
+    const ok = (v: number | null | undefined) => (v == null ? { state: 'unavailable' as const, value: null } : { state: 'ok' as const, value: v });
+    const nowOnly = (v: number | null | undefined) => (!isToday ? { state: 'not_today' as const, value: null } : ok(v));
+    const inSalon = k ? (k.arrivedBookings ?? 0) + k.checkedInBookings + k.waitingBookings + k.inServiceBookings : null;
+    const walkAppt = agg ? (agg.walkInsActive ?? null) : null;
+    const walkQueue = queue ? queue.walkInVisits : null;
+    return {
+      date, today: clk.today, isToday, timeZone: clk.timeZone, asOf: new Date().toISOString(), arrivingWindowMinutes: windowMin,
+      appointments: { ...ok(k ? Math.max(0, k.totalBookingsToday - k.cancelledBookings - k.noShowBookings) : null),
+        awaitingConfirmation: k ? (k.awaitingConfirmationBookings ?? null) : null,
+        confirmed: k && k.awaitingConfirmationBookings != null ? k.confirmedBookings - k.awaitingConfirmationBookings : null,
+        inSalon, completed: k ? k.completedBookings : null },
+      arrivingSoon: nowOnly(k ? (k.arrivingSoonBookings ?? null) : null),
+      walkIns: { ...ok(walkAppt != null && walkQueue != null ? walkAppt + walkQueue : null), fromAppointments: walkAppt, fromQueue: walkQueue },
+      waitlist: nowOnly(queue ? queue.waitingNow : null),
+      availableNow: { ...nowOnly(staff ? staff.availableNow : null), workingCount: staff ? staff.workingCount : null },
+      bookedRevenue: { ...ok(agg ? agg.bookedRevenueCents : null), basis: 'booked_service_subtotal' },
+    };
   }
 
   /** 200-technician mandate §15–§17/§85/§86: Find an Opening + Best Matches on the server. Hard eligibility first (an

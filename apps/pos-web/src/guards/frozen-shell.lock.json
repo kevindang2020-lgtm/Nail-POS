@@ -1,0 +1,30 @@
+{
+  "note": "Frozen POS top bar + sidebar (owner decision Nov 13 2026). Update ONLY via apps/pos-web/scripts/frozen-shell.mjs --approve (see its header).",
+  "files": {
+    "src/shell/POSLayout.tsx": "771d200af184bd4a3d9b49ef91451626d03a27f457a61f70abaa62cbb48323ab",
+    "src/shell/tenant-nav.tsx": "266b2e5698b1ecb253d859721695de788b3d3d8d262c0530110083b1cb02d0a9",
+    "src/shell/tenant-access.ts": "0fda87a882f0a767f34fa09a587076ce962ae18fd2d48c8f9cb01d4859776841",
+    "src/shell/TopSearch.tsx": "e8e41a01542c74853c0fe8816425f6787148cb9acb806d65d354e413f0efda59",
+    "src/shell/ProfileMenu.tsx": "5d0217a737f7d50bbd90b18049189ac9980a640c819f79f1cc647c25e9e14b38",
+    "src/shell/LanguageSwitch.tsx": "474ea008a2b377e844748ca10431909e0f989d3668d002ec09cb230d2b33f27f",
+    "src/shell/PlatformAnnouncementBar.tsx": "42b2222cc03248efa7d441ff998d967ec27f764bf23653df16d168308e0cef67",
+    "src/shell/AlertReadPanel.tsx": "ad8ccb86ccfd9527e916d07d8b90cdafecd43f166fde32ddeddce47d7ffadd9c",
+    "src/shell/BadgeCheckDialog.tsx": "a2f489f865d707adec0b7c44c5e8fac46d9d984f31efb9c548a5159bb5041acb",
+    "src/realtime/RealtimeStatusPill.tsx": "d2767bdfb74e8a8a967c90347e6cee707086af3b183fbe5ac8031b6277f23df6"
+  },
+  "shellCss": {
+    "rules": 85,
+    "sha256": "447a18e23cb27f55e7ceaf1b854e3d0845bbcc83f44a5f678929cf86683546c5"
+  },
+  "approvals": [
+    {
+      "approvedBy": "Baseline at 967ef105 — owner freeze directive (Kevin, Nov 13 2026 16:18)",
+      "reason": "Initial lock: the shared top bar and the employee sidebar are frozen; any change needs the owner's explicit approval.",
+      "at": "2026-11-13T21:42:49.278Z",
+      "fingerprint": "e7c5411b64dee7d78a40bcdfaf4d95f525bc439477b4c8a1caecbfb993853583",
+      "changed": [
+        "initial lock"
+      ]
+    }
+  ]
+}

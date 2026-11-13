@@ -167,11 +167,23 @@ export interface POSBookingKpisFull {
   /** 200-technician mandate (Oct 23 2026): booked / confirmed starting in the next 60 minutes (today only) — the board's
    *  "Arriving soon" card counted only the appointments it had downloaded */
   arrivingSoonBookings?: number;
+  /** booking200 §08 (round 12): status 'booked' only — made, not yet confirmed (confirmedBookings counts booked + confirmed) */
+  awaitingConfirmationBookings?: number;
 }
-/** Booked / confirmed appointments starting within [nowMinute, nowMinute + 60] on `today` (the branch's day). */
-export function pbArrivingSoon(rows: { date: string; startTime: string; status: string }[], today: string, nowMinute: number): number {
+/** booking200 §08: the "Arriving soon" window is configurable; the board default stays 60 minutes. */
+export const ARRIVING_SOON_DEFAULT_MINUTES = 60;
+export const ARRIVING_SOON_MIN_MINUTES = 5;
+export const ARRIVING_SOON_MAX_MINUTES = 240;
+export function clampArrivingWindow(v: unknown): number {
+  const n = Math.trunc(Number(v));
+  if (!Number.isFinite(n) || n <= 0) return ARRIVING_SOON_DEFAULT_MINUTES;
+  return Math.min(ARRIVING_SOON_MAX_MINUTES, Math.max(ARRIVING_SOON_MIN_MINUTES, n));
+}
+/** Booked / confirmed appointments starting within [nowMinute, nowMinute + windowMinutes] on `today` (the branch's day). */
+export function pbArrivingSoon(rows: { date: string; startTime: string; status: string }[], today: string, nowMinute: number, windowMinutes: number = ARRIVING_SOON_DEFAULT_MINUTES): number {
   const toMin = (t: string) => { const [h, m] = String(t).split(':').map((x) => parseInt(x, 10)); return h * 60 + (m || 0); };
-  return rows.filter((a) => a.date === today && (a.status === 'booked' || a.status === 'confirmed') && toMin(a.startTime) >= nowMinute && toMin(a.startTime) <= nowMinute + 60).length;
+  const w = clampArrivingWindow(windowMinutes);
+  return rows.filter((a) => a.date === today && (a.status === 'booked' || a.status === 'confirmed') && toMin(a.startTime) >= nowMinute && toMin(a.startTime) <= nowMinute + w).length;
 }
 
 export type OverbookingPolicy = 'BLOCK' | 'WARN_REQUIRE_CONFIRMATION' | 'ALLOW_AUTHORIZED_ROLE';
@@ -211,23 +223,25 @@ export interface BookingFilterFacets { statuses: string[]; sources: string[]; te
 // Revenue + booked minutes exclude cancelled/no_show (they don't represent active booked work).
 export interface BookingAggregates {
   walkInsToday: number;
+  /** booking200 §08 (round 12): walk-in appointments of the day that still count (not cancelled / no-show) */
+  walkInsActive?: number;
   bookedRevenueCents: Money;
   bookedMinutes: number;
   sourceCounts: { source: string; count: number }[];
   serviceCounts: { name: string; count: number }[];
 }
 export function computeBookingAggregates(rows: { source: string; status?: string; services: { serviceName: string; durationMinutes?: number; priceCents?: number }[] }[]): BookingAggregates {
-  let walkInsToday = 0, bookedRevenueCents = 0, bookedMinutes = 0;
+  let walkInsToday = 0, walkInsActive = 0, bookedRevenueCents = 0, bookedMinutes = 0;
   const src: Record<string, number> = {}, svc: Record<string, number> = {};
   for (const r of rows) {
     const dead = r.status === "cancelled" || r.status === "no_show";
-    if (r.source === "walk_in") walkInsToday++;
+    if (r.source === "walk_in") { walkInsToday++; if (!dead) walkInsActive++; }
     src[r.source] = (src[r.source] || 0) + 1;
     for (const s of r.services || []) svc[s.serviceName] = (svc[s.serviceName] || 0) + 1;
     if (!dead) for (const s of r.services || []) { bookedRevenueCents += s.priceCents || 0; bookedMinutes += s.durationMinutes || 0; }
   }
   return {
-    walkInsToday, bookedRevenueCents, bookedMinutes,
+    walkInsToday, walkInsActive, bookedRevenueCents, bookedMinutes,
     sourceCounts: Object.entries(src).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
     serviceCounts: Object.entries(svc).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
   };

@@ -129,8 +129,8 @@ describe('booking calendar upgrade — day-grid render', () => {
     expect(screen.getByText('Off today')).toBeInTheDocument();
     // blocked slice labeled with its reason
     expect(screen.getByText(/training/)).toBeInTheDocument();
-    // real Open Slots KPI from the live grid
-    expect(screen.getByText('from live schedule')).toBeInTheDocument();
+    // the KPI strip (booking200 §08, round 12: server-computed cards — BookingKpiStrip.test pins their content)
+    expect(screen.getByTestId('booking-kpi-strip')).toBeInTheDocument();
   });
 
   it('clicking an Open Today chip prefills the Booking Assistant time', async () => {
@@ -719,21 +719,19 @@ describe('§1 View All Techs hides the KPI cards (removed from flow, not just vi
   it('shows KPI cards on the normal page and removes them in View All Techs', async () => {
     globalThis.fetch = routedFetch() as any;
     render(<MemoryRouter><POSBookingScreen /></MemoryRouter>);
-    // normal page: KPI labels present
-    expect(await screen.findByText('Appointments Today')).toBeInTheDocument();
-    expect(screen.getByText('Tech Utilization')).toBeInTheDocument();
+    // normal page: the KPI strip is present (booking200 §08 round 12 — BookingKpiStrip)
+    expect(await screen.findByTestId('booking-kpi-strip')).toBeInTheDocument();
     // enter View All Techs
     fireEvent.click(screen.getByText('View All Techs ⤢'));
-    // the KPI card labels are gone from the DOM (not merely hidden)
-    expect(screen.queryByText('Appointments Today')).not.toBeInTheDocument();
-    expect(screen.queryByText('Tech Utilization')).not.toBeInTheDocument();
+    // the KPI cards are gone from the DOM (not merely hidden)
+    expect(screen.queryByTestId('booking-kpi-strip')).not.toBeInTheDocument();
     // scheduling controls remain available in full screen
     expect(screen.getByLabelText('Technician search')).toBeInTheDocument();
     expect(screen.getByText('Working Today')).toBeInTheDocument();
     expect(screen.getByLabelText('Close full-screen calendar')).toBeInTheDocument();
     // close restores the normal page (KPI cards back)
     fireEvent.click(screen.getByLabelText('Close full-screen calendar'));
-    expect(screen.getByText('Appointments Today')).toBeInTheDocument();
+    expect(screen.getByTestId('booking-kpi-strip')).toBeInTheDocument();
   });
 
   it('the View-All KPI section leaves no empty band (no .kpis element while full screen)', async () => {
