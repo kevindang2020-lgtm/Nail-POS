@@ -41,6 +41,28 @@ export interface RewardsNetLedgerRow { id: string; entryType: string; deltaCents
 export interface Purchase { id: string; tokenCents: number; amountCents: number; feeCents: number; status: string; pending: boolean; provider: string | null; providerRefLast6: string | null; failureCode: string | null; createdAt: string | null; confirmedAt: string | null; fundedAt: string | null; created?: boolean }
 export interface PurchaseEvent { from: string | null; to: string; source: string; at: string | null }
 export interface RewardsNetPaged<T> { total: number; page: number; pageSize: number; pageCount: number; totalItems: number; totalPages: number; items: T[] }
+/** extras GLOBAL LOYALTY REWARDS 07 / 10: what the network owes this salon — stage, why, provider attempts, journal lines (server-built) */
+export type RewardsNetPayableStage = 'PAYABLE' | 'PROCESSING' | 'PAID' | 'EXCEPTION' | 'CLOSED';
+export interface RewardsNetPayableRow {
+  id: string; redemptionId: string; ticketId: string | null; amountCents: number; adjustedCents: number; owedCents: number;
+  status: string; stage: RewardsNetPayableStage; why: string; holdReason: string | null; settlementRef: string | null; paidAt: string | null; eligibleAt: string | null; createdAt: string | null;
+  attempts: { id: string; status: string; provider: string; amountCents: number; settlementRef: string | null; signatureVerified: boolean; settledAt: string | null; failureCode: string | null; requestedAt: string | null }[];
+  adjustments: { kind: string; amountCents: number; at: string | null }[];
+  journal: { entryType: string; account: string; debitCents: number; creditCents: number; at: string | null }[];
+}
+export interface RewardsNetPayables {
+  exceptionQueue: {
+    expiredHolds: { count: number; items: { redemptionId: string; ticketId: string; valueCents: number; at: string | null }[] };
+    unreconciledPaid: { count: number; items: { redemptionId: string; ticketId: string; valueCents: number; at: string | null }[] };
+    disputedReversals: { count: number; items: { payableId: string; status: string; ticketId: string | null; reversedCents: number; holdReason: string | null; at: string | null }[] };
+  };
+  provider: { connected: boolean; state: 'CONNECTED' | 'BLOCKED_EXTERNAL' };
+  settlement: { lastVerifiedAt: string | null; waitingOnProvider: number; oldestWaitingSince: string | null; unknownAnswer: number; oldestUnknownSince: string | null };
+  totals: { status: string; stage: RewardsNetPayableStage; count: number; owedCents: number }[];
+  total: number; page: number; pageSize: number; pageCount: number; items: RewardsNetPayableRow[];
+}
+/** extras GLOBAL LOYALTY REWARDS 16: the owner's finance audit trail (server-built, audited CSV) */
+export interface RewardsNetFinanceExport { format: 'csv'; filename: string; csv: string; rows: number; counts: { purchases: number; allocations: number; payables: number; exceptions: number } }
 
 const enc = encodeURIComponent;
 const B = '/pos/loyalty/network';
@@ -58,6 +80,8 @@ export const posRewardsNetworkApi = {
   setWalletLevels: (b: { lowBalanceCents: number | null; criticalBalanceCents: number | null }) => api.post<unknown>(`${B}/wallet/levels`, b),
   ledger: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<RewardsNetLedgerRow>>(`${B}/wallet/ledger`, q),
   purchases: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<Purchase>>(`${B}/purchases`, q),
+  reimbursements: (q: { page: number; pageSize: number; status?: string | null }) => api.get<RewardsNetPayables>(`${B}/reimbursements`, { page: q.page, pageSize: q.pageSize, ...(q.status ? { status: q.status } : {}) }),
+  financeExport: (from: string, to: string) => api.exportAsync<RewardsNetFinanceExport>(`${B}/finance-export`, { from, to }),
   purchase: (id: string) => api.get<Purchase & { events?: PurchaseEvent[] }>(`${B}/purchases/${enc(id)}`),
   /** step-up route + REQUIRED Idempotency-Key: the same key for every retry of one purchase */
   buyTokens: (tokens: number, idempotencyKey: string) => api.post<Purchase>(`${B}/purchases`, { tokens }, { 'Idempotency-Key': idempotencyKey }),

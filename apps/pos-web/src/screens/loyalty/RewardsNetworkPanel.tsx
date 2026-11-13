@@ -17,10 +17,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent, type RewardsNetBranchSplit } from '../../api/posRewardsNetworkApi';
+import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent, type RewardsNetBranchSplit, type RewardsNetPayables, type RewardsNetPayableRow } from '../../api/posRewardsNetworkApi';
 import { errorTextOf } from '../../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../../i18n/format';
-import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced } from '../../components/FitKit';
+import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, downloadText } from '../../components/FitKit';
+import { displayTimeZone } from '../../i18n/format';
 import { useStepUp, isStepUpCancelled } from '../access/accessUi';
 import { useRealtime } from '../../realtime/useRealtime';
 
@@ -57,7 +58,7 @@ const ALERT_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'gold'> = { ok: 'gold',
 /** a <input type="datetime-local"> value (the device's clock, which at the desk is the salon's) → ISO */
 const localToIso = (v: string): string | null => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
-type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' };
+type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' } | { kind: 'explain' } | { kind: 'export' };
 
 /** a server-paged list whose page size is however many rows fit right now */
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
@@ -153,6 +154,10 @@ export function RewardsNetworkPanel() {
         </>}
       </div>
 
+      {st ? <div className={'fk-hint rn-fresh' + (stErr ? ' warn' : '')} data-testid="rn-fresh" aria-live="polite">
+        {stErr ? tx('rn.fresh.stale', { time: whenTime(st.generatedAt) }) : tx('rn.fresh.at', { time: whenTime(st.generatedAt) })}
+        {' '}<button type="button" className="fk-btn ghost" data-testid="rn-kpi-explain" onClick={() => setDlg({ kind: 'explain' })}>{tx('rn.explain.btn')}</button></div> : null}
+
       <div className="fk-row two">
         <FitPanel testId="rn-earning" title={tx('rn.earning.title')}
           actions={st ? <span className="fk-hint">{tx('rn.earning.true', { source: st.effective?.source === 'TENANT_OVERRIDE' ? tx('rn.source.custom') : tx('rn.source.global') })}</span> : null}>
@@ -207,7 +212,7 @@ export function RewardsNetworkPanel() {
         </FitPanel>
 
         <FitPanel testId="rn-wallet" title={tx('rn.wallet.title')} bodyRef={purFit.ref}
-          actions={<>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
+          actions={<><button type="button" className="fk-btn ghost" data-testid="rn-payables" onClick={() => setDlg({ kind: 'payables' })}>{tx('rn.pay.btn')}</button>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-export" onClick={() => setDlg({ kind: 'export' })}>{tx('rn.export.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
           {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
@@ -266,6 +271,9 @@ export function RewardsNetworkPanel() {
       {dlg?.kind === 'custom' && st ? <CustomRuleDialog st={st} draft={dlg.draft} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'global' && st ? <UseGlobalDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'branches' && w?.branchUsage ? <BranchUsageDialog u={w.branchUsage} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
+      {dlg?.kind === 'export' ? <FinanceExportDialog onClose={() => setDlg(null)} /> : null}
+      {dlg?.kind === 'explain' && st ? <KpiExplainDialog st={st} onClose={() => setDlg(null)} /> : null}
+      {dlg?.kind === 'payables' ? <PayablesDialog onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'levels' && st ? <LevelsDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'buy' && st ? <BuyTokensDialog st={st} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={(msg, id) => { done(msg); if (id) setDlg({ kind: 'purchase', id }); }} /> : null}
       {dlg?.kind === 'purchase' ? <PurchaseDialog id={dlg.id} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
@@ -604,5 +612,177 @@ function BranchUsageDialog({ u, tokenValueCents, onClose }: { u: RewardsNetBranc
         : tx('rn.branches.mismatch', { a: tokensOf(u.totalFundedCents, tokenValueCents), b: tokensOf(u.walletUsedCents, tokenValueCents) })}</p>
       <p className={'fk-hint' + (u.doubleFunded ? ' warn' : '')} data-testid="rn-branches-double">{u.doubleFunded ? tx('rn.branches.double', { n: fmtNumber(u.doubleFunded) }) : tx('rn.branches.noDouble')}</p>
     </FitDialog>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 07 + 10): what the rewards network owes THIS salon for points it accepted. Every stage, reason,
+ *  provider answer and journal line is the server's record — read-only; payouts are never requested from here. The strip on top
+ *  says whether a payout provider is connected, the last VERIFIED settlement, and provider answers still awaited (pending)
+ *  apart from answers that never came (unknown). */
+const STAGE_TONE: Record<string, string> = { PAYABLE: 'info', PROCESSING: 'warn', PAID: 'ok', EXCEPTION: 'bad', CLOSED: 'mut' };
+const ATTEMPT_TONE: Record<string, string> = { SETTLED: 'ok', SUBMITTED: 'info', REQUESTED: 'info', UNKNOWN: 'warn', FAILED: 'bad' };
+function PayablesDialog({ onClose }: { onClose: () => void }) {
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<string>('');
+  const [data, setData] = useState<RewardsNetPayables | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    let live = true; setErr(null);
+    netApi.reimbursements({ page, pageSize: 8, status: status || null }).then((d) => { if (live) setData(d); }).catch((e) => { if (live) setErr(errText(e, tx('rn.err.load'))); });
+    return () => { live = false; };
+  }, [page, status, reload]);
+  const s = data?.settlement;
+  const info = data ? { page: data.page, pageSize: data.pageSize, totalItems: data.total, totalPages: data.pageCount } : null;
+  return (
+    <FitDialog wide testId="rn-pay-dlg" title={tx('rn.pay.title')} subtitle={tx('rn.pay.sub')} onClose={onClose} footer={<Pager compact info={info} onPage={setPage} />}>
+      {err ? <ErrorRetry message={err} onRetry={() => setReload((n) => n + 1)} /> : !data ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        <div className="rn-banner" role="note" data-testid="rn-pay-fresh">
+          <div data-testid="rn-pay-provider">{data.provider.connected ? tx('rn.pay.providerOn') : tx('rn.pay.providerOff')}</div>
+          <div data-testid="rn-pay-last">{s?.lastVerifiedAt ? tx('rn.pay.lastVerified', { date: whenTime(s.lastVerifiedAt) }) : tx('rn.pay.noVerified')}</div>
+          <div data-testid="rn-pay-waiting">{s && s.waitingOnProvider > 0 ? tx('rn.pay.waiting', { n: fmtNumber(s.waitingOnProvider), date: whenTime(s.oldestWaitingSince) }) : tx('rn.pay.noWaiting')}</div>
+          <div data-testid="rn-pay-unknown" className={s && s.unknownAnswer > 0 ? 'warn' : ''}>{s && s.unknownAnswer > 0 ? tx('rn.pay.unknown', { n: fmtNumber(s.unknownAnswer), date: whenTime(s.oldestUnknownSince) }) : tx('rn.pay.noUnknown')}</div>
+        </div>
+        <ExceptionQueue q={data.exceptionQueue} />
+        <div className="fk-seg" role="group" aria-label={tx('rn.status')} data-testid="rn-pay-filter">
+          <button type="button" className={status === '' ? 'on' : ''} onClick={() => { setStatus(''); setPage(1); }}>{tx('rn.pay.all', { n: fmtNumber(data.totals.reduce((a, t) => a + t.count, 0)) })}</button>
+          {data.totals.map((t) => (
+            <button key={t.status} type="button" className={status === t.status ? 'on' : ''} data-testid={'rn-pay-total-' + t.status} onClick={() => { setStatus(t.status); setPage(1); }}>
+              {tx('rn.pay.totalChip', { label: label('rn.pay.st', t.status), n: fmtNumber(t.count), amount: fmtMoney(t.owedCents) })}</button>
+          ))}
+        </div>
+        {data.items.length === 0 ? <Empty title={tx('rn.pay.none')} /> : (
+          <ul className="fk-list" data-testid="rn-pay-list">
+            {data.items.map((r) => (
+              <li key={r.id} className="fk-li clickable" data-testid="rn-pay-row" onClick={() => setOpen(open === r.id ? null : r.id)}>
+                <div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.line', { amount: fmtMoney(r.owedCents), status: label('rn.pay.st', r.status) })}</span>
+                  <span className="fk-li-s">{whenTime(r.createdAt)} · {label('rn.pay.why', r.why)}</span>
+                  {open === r.id ? <PayableEvidence r={r} /> : null}</div>
+                <span className={'fk-chip ' + (STAGE_TONE[r.stage] ?? 'mut')}>{label('rn.pay.stage', r.stage)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>}
+    </FitDialog>
+  );
+}
+function PayableEvidence({ r }: { r: RewardsNetPayableRow }) {
+  return (
+    <div className="rn-evidence" data-testid="rn-pay-evidence" onClick={(e) => e.stopPropagation()}>
+      <dl className="rn-review">
+        <dt>{tx('rn.pay.amount')}</dt><dd>{fmtMoney(r.amountCents)}{r.adjustedCents ? ` · ${tx('rn.pay.adjusted', { amount: fmtMoney(r.adjustedCents) })}` : ''}</dd>
+        {r.holdReason ? <><dt>{tx('rn.pay.holdReason')}</dt><dd data-testid="rn-pay-hold">{r.holdReason}</dd></> : null}
+        {r.paidAt ? <><dt>{tx('rn.pay.paidAt')}</dt><dd>{whenTime(r.paidAt)}{r.settlementRef ? ` · ${tx('rn.pay.ref', { ref: r.settlementRef })}` : ''}</dd></> : null}
+      </dl>
+      <div className="fk-hint">{tx('rn.pay.attempts')}</div>
+      {r.attempts.length === 0 ? <div className="fk-hint" data-testid="rn-pay-no-attempts">{tx('rn.pay.noAttempts')}</div> : (
+        <ul className="fk-list rn-mini">
+          {r.attempts.map((a) => (
+            <li key={a.id} className="fk-li" data-testid="rn-pay-attempt">
+              <div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.attemptLine', { amount: fmtMoney(a.amountCents), date: whenTime(a.requestedAt) })}</span>
+                <span className="fk-li-s">{[a.settlementRef ? tx('rn.pay.ref', { ref: a.settlementRef }) : null, a.signatureVerified ? tx('rn.pay.verified') : null,
+                  a.settledAt ? tx('rn.pay.settledAt', { date: whenTime(a.settledAt) }) : null, a.failureCode ? label('rn.pay.fail', a.failureCode) : null].filter(Boolean).join(' · ') || '—'}</span></div>
+              <span className={'fk-chip ' + (ATTEMPT_TONE[a.status] ?? 'mut')}>{label('rn.pay.at', a.status)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {r.adjustments.length ? <ul className="fk-list rn-mini" aria-label={tx('rn.pay.adjustments')}>
+        {r.adjustments.map((a, i) => <li key={i} className="fk-li" data-testid="rn-pay-adjustment"><div className="fk-li-main"><span className="fk-li-t">{label('rn.pay.adj', a.kind)} · {fmtMoney(a.amountCents)}</span><span className="fk-li-s">{whenTime(a.at)}</span></div></li>)}
+      </ul> : null}
+      <div className="fk-hint">{tx('rn.pay.journal')}</div>
+      {r.journal.length === 0 ? <div className="fk-hint">—</div> : (
+        <table className="rn-table" data-testid="rn-pay-journal">
+          <thead><tr><th>{tx('rn.pay.j.entry')}</th><th>{tx('rn.pay.j.account')}</th><th>{tx('rn.pay.j.debit')}</th><th>{tx('rn.pay.j.credit')}</th><th>{tx('rn.pay.j.at')}</th></tr></thead>
+          <tbody>{r.journal.map((j, i) => (
+            <tr key={i}><td>{label('rn.pay.je', j.entryType)}</td><td>{label('rn.pay.acct', j.account)}</td><td>{j.debitCents ? fmtMoney(j.debitCents) : '—'}</td><td>{j.creditCents ? fmtMoney(j.creditCents) : '—'}</td><td>{whenTime(j.at)}</td></tr>
+          ))}</tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 10): where each KPI on this page comes from — formula, scope, currency, rule version and the
+ *  server time it was read — and what an unknown / missing value means. Text only; every number is the server's state. */
+function KpiExplainDialog({ st, onClose }: { st: NetworkState; onClose: () => void }) {
+  const w = st.wallet; const tv = st.program.tokenValueCents;
+  const version = st.effective?.versionNo != null ? String(st.effective.versionNo) : '—';
+  const rows: { k: string; label: string; how: string; now: string }[] = [
+    { k: 'mode', label: tx('rn.kpi.mode'), how: tx('rn.explain.mode', { version }), now: st.mode === 'CUSTOM' ? tx('rn.mode.custom') : tx('rn.mode.global') },
+    { k: 'rate', label: tx('rn.kpi.rate'), how: tx('rn.explain.rate'), now: rateText(st.effective) },
+    { k: 'tokens', label: tx('rn.kpi.tokens'), how: tx('rn.explain.tokens', { token: fmtMoney(tv) }), now: w?.exists ? tokensOf(w.availableCents, tv) : tx('rn.explain.noWallet') },
+    { k: 'value', label: tx('rn.kpi.value'), how: tx('rn.explain.value'), now: tx('rn.value', { points: fmtNumber(st.program.pointsPerRedeemBlock), amount: fmtMoney(st.program.redeemBlockValueCents) }) },
+    { k: 'pending', label: tx('rn.kpi.pending'), how: tx('rn.explain.pending'), now: w?.exists ? tokensOf(w.pendingCents, tv) : tx('rn.explain.noWallet') },
+  ];
+  return (
+    <FitDialog side testId="rn-explain-dlg" title={tx('rn.explain.title')} onClose={onClose}>
+      <dl className="rn-review" data-testid="rn-explain-common">
+        <dt>{tx('rn.explain.scope')}</dt><dd>{tx('rn.explain.scopeV')}</dd>
+        <dt>{tx('rn.explain.currency')}</dt><dd>{tx('rn.explain.currencyV', { token: fmtMoney(tv) })}</dd>
+        <dt>{tx('rn.explain.refreshed')}</dt><dd>{whenTime(st.generatedAt)}</dd>
+      </dl>
+      <ul className="fk-list rn-mini">
+        {rows.map((r) => (
+          <li key={r.k} className="fk-li" data-testid={'rn-explain-' + r.k}>
+            <div className="fk-li-main"><span className="fk-li-t">{r.label} · {r.now}</span><span className="fk-li-s">{r.how}</span></div>
+          </li>
+        ))}
+      </ul>
+      <p className="fk-hint">{tx('rn.explain.unknown')}</p>
+    </FitDialog>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 16): the owner's finance audit trail — the server builds ONE audited CSV of token purchases,
+ *  wallet allocations and reimbursement payables over the salon days chosen, flags the exceptions, and names each row's source.
+ *  The screen only picks the days and saves the file; nothing is computed or changed here. */
+function FinanceExportDialog({ onClose }: { onClose: () => void }) {
+  // the salon's calendar day (its time zone), as YYYY-MM-DD — never the device's UTC date
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: displayTimeZone() || 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [from, setFrom] = useState(today.slice(0, 8) + '01');
+  const [to, setTo] = useState(today);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState<{ rows: number; exceptions: number } | null>(null);
+  const bad = !from || !to || from > to;
+  const run = async () => {
+    setBusy(true); setErr(null); setDone(null);
+    try { const r = await netApi.financeExport(from, to); downloadText(r.filename, r.csv); setDone({ rows: r.rows, exceptions: r.counts.exceptions }); }
+    catch (e) { setErr(errText(e, tx('rn.export.failed'))); } finally { setBusy(false); }
+  };
+  return (
+    <FitDialog side testId="rn-export-dlg" title={tx('rn.export.title')} busy={busy} onClose={onClose}
+      footer={<button type="button" className="fk-btn primary" data-testid="rn-export-go" disabled={busy || bad} onClick={() => void run()}>{busy ? tx('pos.loading') : tx('rn.export.go')}</button>}>
+      <p className="fk-hint">{tx('rn.export.what')}</p>
+      <label className="fk-field">{tx('rn.export.from')}<input type="date" data-testid="rn-export-from" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></label>
+      <label className="fk-field">{tx('rn.export.to')}<input type="date" data-testid="rn-export-to" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>
+      {bad ? <div className="fk-hint warn">{tx('rn.export.badRange')}</div> : null}
+      <p className="fk-hint">{tx('rn.export.audit')}</p>
+      {err ? <div className="fk-note bad" role="alert">{err}</div> : null}
+      {done ? <div className="fk-note ok" role="status" data-testid="rn-export-done">{tx('rn.export.done', { n: fmtNumber(done.rows), x: fmtNumber(done.exceptions) })}</div> : null}
+    </FitDialog>
+  );
+}
+
+/** Extras (Global Loyalty Rewards 07): the redemption exception queue — expired holds, paid tickets whose reward hold was never
+ *  confirmed, and refunds that hit a payable in payout or already paid. The server lists them (this salon only); nothing is
+ *  changed from here. Assigning an exception to a person is not built (there is no assignment record). */
+function ExceptionQueue({ q }: { q: RewardsNetPayables['exceptionQueue'] }) {
+  const total = q.expiredHolds.count + q.unreconciledPaid.count + q.disputedReversals.count;
+  const [open, setOpen] = useState(false);
+  const ref = (id: string | null) => (id ? '#' + id.slice(-6) : '—');
+  return (
+    <div className={'rn-banner' + (total ? ' warn' : '')} role="note" data-testid="rn-pay-exceptions">
+      <div>{total ? tx('rn.pay.x.summary', { a: fmtNumber(q.unreconciledPaid.count), b: fmtNumber(q.disputedReversals.count), c: fmtNumber(q.expiredHolds.count) }) : tx('rn.pay.x.none')}
+        {total ? <> <button type="button" className="fk-btn ghost" data-testid="rn-pay-x-toggle" onClick={() => setOpen(!open)}>{open ? tx('rn.pay.x.hide') : tx('rn.pay.x.show')}</button></> : null}</div>
+      {open ? <ul className="fk-list rn-mini" data-testid="rn-pay-x-list">
+        {q.unreconciledPaid.items.map((x) => <li key={'u' + x.redemptionId} className="fk-li" data-testid="rn-pay-x-unreconciled"><div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.x.unreconciled', { amount: fmtMoney(x.valueCents), ticket: ref(x.ticketId) })}</span><span className="fk-li-s">{whenTime(x.at)}</span></div></li>)}
+        {q.disputedReversals.items.map((x) => <li key={'d' + x.payableId} className="fk-li" data-testid="rn-pay-x-disputed"><div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.x.disputed', { amount: fmtMoney(x.reversedCents), status: label('rn.pay.st', x.status), ticket: ref(x.ticketId) })}</span><span className="fk-li-s">{whenTime(x.at)}{x.holdReason ? ` · ${x.holdReason}` : ''}</span></div></li>)}
+        {q.expiredHolds.items.map((x) => <li key={'e' + x.redemptionId} className="fk-li" data-testid="rn-pay-x-expired"><div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.x.expired', { amount: fmtMoney(x.valueCents), ticket: ref(x.ticketId) })}</span><span className="fk-li-s">{whenTime(x.at)}</span></div></li>)}
+      </ul> : null}
+    </div>
   );
 }
