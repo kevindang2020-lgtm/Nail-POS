@@ -336,10 +336,12 @@ function NoteDetail({ customerId, onClose, onEdit, onChanged }: { customerId: st
         <button className="btn ghost" data-testid="cnx-detail-close" onClick={onClose}>{t('pos.close')}</button></>}>
       {err ? <div className="err">{err}</div> : !d ? <div className="state">{t('cnx.loading')}</div> : <>
         {actErr ? <div className="err" role="alert" data-testid="cnx-act-err">{actErr}</div> : null}
+        {d.context && d.entries.length > 1 ? <p className="sub" data-testid="cnx-rel-note">{t(d.context.ticketId ? 'cnx.rel.noteVisit' : 'cnx.rel.noteSession')}</p> : null}
         {d.entries.length === 0 ? <Empty title={t('cnx.noNotes')} /> : d.entries.map((e) => (
           <div key={`${e.category}:${e.ticketId ?? ''}`} className="panel cnx-entry" data-testid={`cnx-entry-${e.category}`}>
             <div className="cnx-entry-h"><span className={'chip ' + (CAT_TONE[e.category] ?? '')}>{t('cnx.cat.' + e.category)}</span>
               <span className={'chip ' + (REVIEW_TONE[e.review] ?? '')}>{t('cnx.rv.' + e.review)}</span><span className="sub">{when(e.at)}</span></div>
+            {e.relevance?.reasons.length ? <div className="sub" data-testid="cnx-rel">{e.relevance.reasons.map((r) => t('cnx.rel.' + r)).join(' · ')}</div> : null}
             <p className="cnx-text">{e.text}</p>
             {e.safety ? <ReviewReceipt category={e.category} hash={e.hash} history={d.history} /> : null}
             {e.safety ? (correct?.category === e.category ? <div className="cnx-correct">

@@ -25,9 +25,14 @@ export interface CnListResponse {
 }
 export interface CnDetailResponse {
   customer: { id: string; name: string | null; phone: string | null; customerVisible: boolean; updatedAt: string | null };
-  entries: { category: CnCategory; text: string; hash: string; at: string | null; ticketId: string | null; review: CnReviewState; reviewedAt: string | null; safety: boolean }[];
+  entries: { category: CnCategory; text: string; hash: string; at: string | null; ticketId: string | null; review: CnReviewState; reviewedAt: string | null; safety: boolean;
+    /** Customer Notes 01 — context-aware relevance: why this note is ranked where it is for the current visit (never hides a note) */
+    relevance?: { score: number; reasons: CnRelevanceReason[] } }[];
   history: { category: 'allergy' | 'warning'; decision: 'confirmed' | 'needs_correction'; reason: string | null; at: string | null; reviewer: string | null; current: boolean }[];
+  /** the context the entries were ranked for: the ticket's (or the session's) branch, its technician(s) and services */
+  context?: { ticketId: string | null; branch: boolean; technicians: number; services: number };
 }
+export type CnRelevanceReason = 'safety' | 'same_service' | 'same_technician' | 'same_branch' | 'preference';
 export interface CnCheckResponse {
   overall: 'READY' | 'WARNING' | 'FAILED';
   checkedAt: string;

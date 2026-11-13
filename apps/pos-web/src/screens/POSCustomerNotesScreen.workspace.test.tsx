@@ -110,4 +110,20 @@ describe('Customer Notes workspace', () => {
     await waitFor(() => expect(cn.list).toHaveBeenCalledWith(expect.objectContaining({ q: 'Lan', review: 'needs_correction' })));
     expect((screen.getByTestId('cnx-search') as HTMLInputElement).value).toBe('Lan');
   });
+  it('Customer Notes 01: the server\'s relevance order is kept and each note says why it is ranked there; nothing is hidden', async () => {
+    const d = detail();
+    cn.detail.mockResolvedValue({ ...d, context: { ticketId: null, branch: true, technicians: 1, services: 0 },
+      entries: [{ ...d.entries[0], relevance: { score: 100, reasons: ['safety'] } },
+        { category: 'visit', text: 'Used soak-off', hash: 'c'.repeat(64), at: '2026-11-07T15:00:00Z', ticketId: 't9', review: 'not_required', reviewedAt: null, safety: false, relevance: { score: 30, reasons: ['same_technician', 'same_branch'] } },
+        { ...d.entries[1], relevance: { score: 0, reasons: [] } }] });
+    render(<POSCustomerNotesScreen />);
+    fireEvent.click((await screen.findAllByTestId('cnx-view'))[0]);
+    const dlg = await screen.findByTestId('cnx-detail');
+    const entries = await within(dlg).findAllByTestId(/^cnx-entry-/);
+    expect(entries.map((e) => e.getAttribute('data-testid'))).toEqual(['cnx-entry-allergy', 'cnx-entry-visit', 'cnx-entry-general']);
+    expect(within(entries[1]).getByTestId('cnx-rel')).toHaveTextContent('From a visit with the same technician · From a visit at this branch');
+    expect(within(entries[2]).queryByTestId('cnx-rel')).toBeNull();
+    expect(within(dlg).getByTestId('cnx-rel-note')).toHaveTextContent(/every note is still shown/);
+    expect(cn.detail).toHaveBeenLastCalledWith('c1');
+  });
 });

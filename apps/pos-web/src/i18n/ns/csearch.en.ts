@@ -566,4 +566,11 @@ export const CSEARCH_EN: Record<string, string> = {
   "cpf.fu.noEmail": "No email",
   "cpf.fu.contactOk": "Contact details complete",
   "cpf.fu.note": "Advisory only — nothing is sent from here.",
+  "cnx.rel.safety": "Safety — read first",
+  "cnx.rel.same_service": "From a visit for the same service",
+  "cnx.rel.same_technician": "From a visit with the same technician",
+  "cnx.rel.same_branch": "From a visit at this branch",
+  "cnx.rel.preference": "Preference",
+  "cnx.rel.noteVisit": "Notes most relevant to this visit come first; every note is still shown.",
+  "cnx.rel.noteSession": "Notes from your visits and this branch come first; every note is still shown.",
 };

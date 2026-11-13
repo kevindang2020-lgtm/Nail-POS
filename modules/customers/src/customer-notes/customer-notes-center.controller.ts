@@ -61,11 +61,12 @@ export class CustomerNotesCenterController {
 
   /** one customer's notes + review history (opening it is audited, fail-closed: notes are sensitive) */
   @Get('notes/detail') @RequirePermission('pos.customers.notes.view')
-  @ListQuery({ maxLimit: 1, defaultLimit: 1, params: ['customerId'] } as const)
-  detail(@Req() q: any, @Query('customerId') customerId: string): Promise<CnDetailResponse> {
+  @ListQuery({ maxLimit: 1, defaultLimit: 1, params: ['customerId', 'ticketId'] } as const)
+  detail(@Req() q: any, @Query('customerId') customerId: string, @Query('ticketId') ticketId?: string): Promise<CnDetailResponse> {
     const c = ctxFrom(q); need(c, 'pos.customers.notes.view');
     return run(async () => {
-      const d = await this.r().detail(c, String(customerId ?? ''));
+      // Customer Notes 01: an optional visit (ticketId) ranks the notes for it; without one the session's branch + technician do
+      const d = await this.r().detail(c, String(customerId ?? ''), { ticketId: ticketId ? String(ticketId) : null });
       await recordAuditStrict(this.r().db, actor(c), { module: 'customers', action: 'customer_notes.viewed', resourceType: 'customer', resourceId: d.customer.id, summary: 'Customer notes opened' });
       return d;
     });

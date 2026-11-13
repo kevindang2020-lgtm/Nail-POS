@@ -104,3 +104,43 @@ describe('Customer Notes workspace', () => {
     expect((await q(sql`select count(*)::int as n from customer_note_reviews`))[0].n).toBe(before);
   });
 });
+
+describe('Customer Notes 01 — context-aware relevance (nothing hidden)', () => {
+  it('a visit ranks safety first, then visit notes of the same service / technician / branch, then preferences; without a visit the session branch and technician rank them', async () => {
+    const VY = id(120), TA = id(121), TB = id(122), TC = id(123), S1 = id(131), S2 = id(132), S3 = id(133);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status, notes_json, notes_updated_at, created_at, updated_at)
+      values (${VY}, ${T}, ${B}, 'Vy', 'Visits', 'Vy Visits', '+16095550120', 'active', ${notes({ allergyNotes: 'Acetone', servicePreferences: 'Gel only', salonNotes: 'Prefers window seat' })}::jsonb, now() - interval '9 days', now(), now())`);
+    // the owner is also technician TA (technicians.user_id) — the "assigned technician" when no visit is given
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, user_id) values
+      (${TA}, ${T}, ${B}, 'Ann', 'A', 'Ann A', true, ${OWNER}), (${TB}, ${T}, ${B2}, 'Bea', 'B', 'Bea B', true, null), (${TC}, ${T}, ${B}, 'Cy', 'C', 'Cy C', true, null)`);
+    const visit = async (tid: number, branch: string, tech: string, svc: string, note: string | null, ago: string) => {
+      await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, primary_technician_id, status, total_cents, ticket_number, service_done_notes, service_done_at, created_at, paid_at)
+        values (${id(tid)}, ${T}, ${branch}, ${VY}, ${tech}, 'paid', 4000, ${tid}, ${note}, now() - ${ago}::interval, now() - ${ago}::interval, now() - ${ago}::interval)`);
+      await q(sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents)
+        values (${T}, ${branch}, ${id(tid)}, ${svc}, ${tech}, 'Svc', 4000, 30, 4000)`);
+    };
+    await visit(910, B, TA, S1, 'Visit A — same service and technician', '5 days');
+    await visit(911, B2, TB, S2, 'Visit B — same branch only', '3 days');
+    await visit(912, B, TC, S3, 'Visit C — nothing in common', '1 day');
+    await visit(913, B2, TA, S1, null, '1 hour');             // the visit being served now: Second branch, Ann, service S1
+    const order = (d: any) => d.entries.map((e: any) => e.category === 'visit' ? e.ticketId : e.category);
+    const d = await cn.detail(owner(), VY, { ticketId: id(913) });
+    expect(order(d)).toEqual(['allergy', id(910), 'service_preference', id(911), 'general', id(912)]);
+    const byTicket = Object.fromEntries(d.entries.filter((e: any) => e.ticketId).map((e: any) => [e.ticketId, e.relevance]));
+    expect(byTicket[id(910)]).toEqual({ score: 50, reasons: ['same_service', 'same_technician'] });
+    expect(byTicket[id(911)]).toEqual({ score: 10, reasons: ['same_branch'] });
+    expect(byTicket[id(912)]).toEqual({ score: 0, reasons: [] });
+    expect(d.entries.find((e: any) => e.category === 'allergy')?.relevance).toEqual({ score: 100, reasons: ['safety'] });
+    expect(d.context).toEqual({ ticketId: id(913), branch: true, technicians: 1, services: 1 });
+    // no visit: the session's branch (Main) and the signed-in technician (Ann) rank them; every note is still there
+    const s = await cn.detail(owner(), VY);
+    expect(order(s)).toEqual(['allergy', id(910), 'service_preference', id(912), 'general', id(911)]);
+    expect(s.entries.find((e: any) => e.ticketId === id(910))?.relevance).toEqual({ score: 30, reasons: ['same_technician', 'same_branch'] });
+    expect(s.context).toEqual({ ticketId: null, branch: true, technicians: 1, services: 0 });
+    expect(s.entries).toHaveLength(d.entries.length);
+    // another customer's visit, a made-up id and a visit outside a confined role's branches are "not found"
+    expect(await code(cn.detail(owner(), VY, { ticketId: id(900) }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+    expect(await code(cn.detail(owner(), VY, { ticketId: 'x' }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+    expect(await code(cn.detail(confinedB2(), VY, { ticketId: id(910) }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+  });
+});

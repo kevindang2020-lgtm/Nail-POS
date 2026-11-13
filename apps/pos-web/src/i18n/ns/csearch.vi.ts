@@ -566,4 +566,11 @@ export const CSEARCH_VI: Record<string, string> = {
   "cpf.fu.noEmail": "Chưa có email", // DRAFT — Kevin reviews
   "cpf.fu.contactOk": "Thông tin liên hệ đầy đủ", // DRAFT — Kevin reviews
   "cpf.fu.note": "Chỉ để tham khảo — không gửi gì từ đây.", // DRAFT — Kevin reviews
+  "cnx.rel.safety": "An toàn — đọc trước", // DRAFT — Kevin reviews
+  "cnx.rel.same_service": "Từ lần ghé cùng dịch vụ", // DRAFT — Kevin reviews
+  "cnx.rel.same_technician": "Từ lần ghé cùng thợ", // DRAFT — Kevin reviews
+  "cnx.rel.same_branch": "Từ lần ghé tại chi nhánh này", // DRAFT — Kevin reviews
+  "cnx.rel.preference": "Sở thích", // DRAFT — Kevin reviews
+  "cnx.rel.noteVisit": "Ghi chú liên quan nhất tới lần ghé này hiện trước; mọi ghi chú vẫn được hiện.", // DRAFT — Kevin reviews
+  "cnx.rel.noteSession": "Ghi chú từ các lần bạn làm và chi nhánh này hiện trước; mọi ghi chú vẫn được hiện.", // DRAFT — Kevin reviews
 };
