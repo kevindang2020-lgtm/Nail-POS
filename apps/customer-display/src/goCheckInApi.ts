@@ -6,13 +6,14 @@
 // credential (POST /customer-display/device/check-in/session, x-device-token) — the salon and branch are the display's;
 // no Go Check-In kiosk has to exist anywhere. It then drives the session routes with the per-session token in the
 // `x-checkin-token` header; tenant/branch stay server-derived.
-import { apiUrl, DisplayApiError } from './api';
+import { apiUrl, CheckInApiError, DisplayApiError } from './api';
 
 const base = apiUrl('/go-check-in');
 
 // The kiosk's wire types are @aipowersalon/api-contracts/customer's — the API returns the same definitions (Constitution 13 §15).
 import type {
   AppointmentToday, CheckInConfirmation, DisplayCheckInSession, KioskServiceOption, KioskTechnicianOption, LookupResult,
+  WalkInCatalog, WalkInConfirmInput, WalkInConfirmResult, WalkInPreview, WalkInRequestStatus, WalkInSelectionLine,
 } from '@aipowersalon/api-contracts/customer';
 
 // ---- contract (the backend is the source of truth) ----
@@ -28,7 +29,11 @@ export interface Session { sessionId: string; token: string }
 async function parse(res: Response): Promise<any> {
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new DisplayApiError(res.status, body?.message || res.statusText, typeof body?.code === 'string' ? body.code : undefined);
+  if (!res.ok) {
+    const code = typeof body?.code === 'string' ? body.code : undefined;
+    if (body?.details && typeof body.details === 'object') throw new CheckInApiError(res.status, body?.message || res.statusText, code, body.details);
+    throw new DisplayApiError(res.status, body?.message || res.statusText, code);
+  }
   return body;
 }
 const authGet = (s: Session, path: string) =>
@@ -65,6 +70,14 @@ export const listServices = (s: Session): Promise<{ services: KioskService[] }> 
 export const listTechnicians = (s: Session, serviceIds: string[] = []): Promise<{ technicians: KioskTechnician[] }> =>
   authGet(s, `/technicians${serviceIds.length ? `?serviceIds=${encodeURIComponent(serviceIds.join(','))}` : ''}`);
 export const checkInWalkIn = (s: Session, input: WalkInInput): Promise<CheckInConfirmation> => authPost(s, '/check-in-walk-in', input);
+
+// ---- CPad 14 Walk-In service selection (SUNMI guide 4A.6) — the branch's live catalog, preview, idempotent confirm ----
+/** `revision`: the one the screen already holds — the server answers `notModified` (no rows) when it is still current. */
+export const walkInCatalog = (s: Session, revision?: string): Promise<WalkInCatalog> =>
+  authGet(s, `/walk-in/catalog${revision ? `?revision=${encodeURIComponent(revision)}` : ''}`);
+export const walkInPreview = (s: Session, lines: WalkInSelectionLine[], revision: string): Promise<WalkInPreview> => authPost(s, '/walk-in/preview', { lines, revision });
+export const walkInConfirm = (s: Session, input: WalkInConfirmInput): Promise<WalkInConfirmResult> => authPost(s, '/walk-in/confirm', input);
+export const walkInStatus = (s: Session, checkinRequestId: string): Promise<WalkInRequestStatus> => authGet(s, `/walk-in/status?checkinRequestId=${encodeURIComponent(checkinRequestId)}`);
 
 // ---- technician time clock (PIN on the display; tenant/branch stay server-derived) ----
 export interface TechClockIdentity {

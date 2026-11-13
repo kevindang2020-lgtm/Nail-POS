@@ -585,3 +585,102 @@ img.gci-appt-logo.salon-logo { width: auto; height: 74px; max-width: 240px; bord
 /* Individual Tipping SUNMI (Nov 9 2026): equal technician cards, 1 → 2 → 3 across by width; scroll inside when there are many */
 .ttip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; align-items: stretch; max-height: 50vh; overflow-y: auto; }
 .ttip-card { min-width: 0; height: 100%; }
+
+/* ── SUNMI guide 4A — Walk-In service selection (WalkInPicker.tsx). Feature-scoped: every rule starts with .wis or
+   .d23-picks / .gci-picks; nothing here touches another screen. Laid out by the real CSS viewport (the CPad 14 is
+   1920×1200 physical, landscape, any display scale): no horizontal scroll, the lists scroll inside themselves, the
+   count and the Review / Confirm action stay pinned, every control at least 56 px tall (≈48 dp). ───────────────── */
+.wis {
+  position: fixed; inset: 0; z-index: 40; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  background: radial-gradient(1400px 900px at 30% -10%, #F7EEDC 0%, var(--bg) 60%); color: var(--text); overflow: hidden;
+  --wis-tap: 56px; --wis-pad: clamp(16px, 2.4vw, 44px);
+}
+.d23 > .d23-main { position: relative; }
+.wis.in-main { position: absolute; }
+.wis-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: clamp(10px, 1.6vh, 22px) var(--wis-pad); border-bottom: 1px solid var(--border-gold, #EADBC0); min-width: 0; }
+.wis-head-r { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.wis-crumb { font-weight: 700; color: var(--gold-dark); font-size: clamp(14px, 1.2vw, 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wis-body { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); min-height: 0; padding: clamp(10px, 2vh, 28px) var(--wis-pad) 0; gap: clamp(6px, 1vh, 12px); }
+.wis-title { font-size: clamp(24px, 2.4vw, 44px); font-weight: 700; color: var(--text); line-height: 1.15; }
+.wis-sub { color: var(--muted, #8A7A66); font-size: clamp(14px, 1.1vw, 19px); }
+.wis-search { display: flex; align-items: center; gap: 10px; min-height: var(--wis-tap); height: clamp(56px, 6vh, 72px); padding: 0 18px; border: 2px solid var(--gold-soft); border-radius: 16px; background: #fff; }
+.wis-search .ico { font-size: 24px; color: var(--gold-dark); }
+.wis-search input { flex: 1; min-width: 0; border: 0; outline: 0; font: inherit; font-size: clamp(16px, 1.3vw, 22px); background: transparent; color: var(--text); }
+.wis-search-x { min-width: var(--wis-tap); min-height: 44px; border: 0; background: transparent; font-size: 20px; color: var(--muted, #8A7A66); cursor: pointer; }
+.wis-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding-bottom: 16px; -webkit-overflow-scrolling: touch; }
+.wis-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: clamp(10px, 1.4vw, 22px); }
+.wis-tile {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 6px; min-height: clamp(96px, 14vh, 168px);
+  padding: 18px 22px; border-radius: 20px; border: 2px solid var(--border-gold, #EADBC0); background: #fff; cursor: pointer; text-align: left; font: inherit; color: var(--text);
+  box-shadow: var(--shadow); min-width: 0;
+}
+.wis-tile .n { font-size: clamp(20px, 1.8vw, 30px); font-weight: 700; overflow-wrap: anywhere; }
+.wis-tile .c { font-size: clamp(13px, 1vw, 17px); color: var(--muted, #8A7A66); }
+.wis-tile.on { border-color: var(--gold-dark); background: var(--gold-pale); }
+.wis-tile.on .c { color: var(--gold-dark); font-weight: 700; }
+.wis-cat-head { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.wis-back { min-height: var(--wis-tap); min-width: 120px; padding: 0 18px; border-radius: 14px; border: 2px solid var(--gold-soft); background: #fff; font: inherit; font-weight: 700; color: var(--gold-dark); cursor: pointer; }
+.wis-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.wis-svc { border: 2px solid var(--border-gold, #EADBC0); border-radius: 18px; background: #fff; padding: 14px 18px; min-width: 0; }
+.wis-svc.on { border-color: var(--gold-dark); background: #FFFCF6; }
+.wis-svc-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.wis-svc-text { flex: 1; min-width: 0; }
+.wis-svc-name { font-size: clamp(18px, 1.5vw, 26px); font-weight: 700; overflow-wrap: anywhere; }
+.wis-svc-desc { color: var(--muted, #8A7A66); font-size: clamp(13px, 1vw, 17px); margin-top: 2px; overflow-wrap: anywhere; }
+.wis-svc-meta { display: flex; gap: 14px; margin-top: 6px; font-size: clamp(14px, 1.1vw, 19px); }
+.wis-price { font-weight: 700; color: var(--gold-dark); }
+.wis-min { color: var(--muted, #8A7A66); }
+.wis-add { min-height: var(--wis-tap); min-width: 132px; padding: 0 20px; border-radius: 14px; border: 2px solid var(--gold-dark); background: #fff; color: var(--gold-dark); font: inherit; font-weight: 800; font-size: clamp(15px, 1.1vw, 19px); cursor: pointer; flex: none; }
+.wis-add.on { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #fff; }
+.wis-addons { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-gold, #EADBC0); }
+.wis-addons-l { font-weight: 700; color: var(--muted, #8A7A66); font-size: 14px; }
+.wis-chip { display: inline-flex; align-items: center; gap: 8px; min-height: var(--wis-tap); padding: 0 16px; border-radius: 999px; border: 2px solid var(--gold-soft); background: #fff; font: inherit; font-size: clamp(14px, 1vw, 17px); color: var(--text); cursor: pointer; }
+.wis-chip .p { font-weight: 700; color: var(--gold-dark); }
+.wis-chip .m { color: var(--muted, #8A7A66); }
+.wis-chip.on { border-color: var(--gold-dark); background: var(--gold-pale); }
+.wis-empty { padding: 32px 4px; color: var(--muted, #8A7A66); font-size: clamp(15px, 1.2vw, 20px); }
+.wis-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: clamp(10px, 1.6vh, 20px) var(--wis-pad);
+  border-top: 1px solid var(--border-gold, #EADBC0); background: rgba(255, 252, 246, 0.97); box-shadow: 0 -8px 24px rgba(90, 68, 19, 0.08); min-width: 0;
+}
+.wis-count-l { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: clamp(15px, 1.2vw, 21px); }
+.wis-stale { color: #B4453C; font-weight: 700; font-size: 14px; }
+.wis-err { color: #B4453C; font-weight: 600; font-size: clamp(13px, 1vw, 17px); cursor: pointer; }
+.wis-foot-r { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.wis-primary, .wis-ghost, .wis-cancel, .wis-remove { min-height: var(--wis-tap); padding: 0 24px; border-radius: 16px; font: inherit; font-weight: 800; font-size: clamp(15px, 1.2vw, 21px); cursor: pointer; }
+.wis-primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); box-shadow: var(--shadow-lg); min-width: 220px; }
+.wis-primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.wis-ghost, .wis-cancel { border: 2px solid var(--gold-soft); background: #fff; color: var(--gold-dark); }
+.wis-remove { border: 2px solid #E3B2AC; background: #fff; color: #B4453C; min-height: 48px; padding: 0 16px; }
+.wis-banner { margin-bottom: 12px; padding: 14px 18px; border-radius: 14px; background: #FFF3DC; border: 2px solid var(--gold); color: var(--gold-dark); font-weight: 700; font-size: clamp(14px, 1.1vw, 19px); }
+.wis-pending { margin-bottom: 12px; padding: 14px 18px; border-radius: 14px; background: #fff; border: 2px dashed var(--gold-soft); font-size: clamp(14px, 1.1vw, 19px); }
+.wis-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.wis-rline { border: 2px solid var(--border-gold, #EADBC0); border-radius: 16px; background: #fff; padding: 12px 18px; }
+.wis-rline.changed { border-color: var(--gold); }
+.wis-rline.unavailable { border-color: #E3B2AC; background: #FFF8F7; }
+.wis-rline-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wis-rline-top .n { font-size: clamp(17px, 1.4vw, 24px); font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.wis-rline-top .r, .wis-raddons .r { display: inline-flex; gap: 12px; }
+.wis-raddons { list-style: none; margin: 6px 0 0; padding: 0 0 0 12px; display: grid; gap: 4px; font-size: clamp(14px, 1vw, 17px); }
+.wis-raddons li { display: flex; justify-content: space-between; gap: 12px; }
+.wis-badge { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; }
+.wis-badge.chg { background: #FFF3DC; color: var(--gold-dark); }
+.wis-badge.na { background: #FBE4E1; color: #B4453C; }
+.wis-total { margin-top: 14px; padding: 14px 18px; border-radius: 16px; background: var(--gold-pale); display: grid; gap: 6px; }
+.wis-total .row { display: flex; justify-content: space-between; gap: 12px; font-size: clamp(16px, 1.3vw, 22px); }
+.wis-total .row b.serif { font-size: clamp(22px, 2vw, 34px); color: var(--gold-dark); }
+.wis-fine { color: var(--muted, #8A7A66); font-size: clamp(12px, .95vw, 15px); }
+.wis-notes { display: grid; gap: 6px; margin-top: 14px; font-weight: 700; font-size: clamp(14px, 1.05vw, 18px); position: relative; }
+.wis-notes textarea, .wis-notes select { font: inherit; font-weight: 400; font-size: clamp(15px, 1.15vw, 20px); min-height: var(--wis-tap); padding: 12px 14px; border-radius: 14px; border: 2px solid var(--gold-soft); background: #fff; color: var(--text); resize: none; max-width: 100%; }
+.wis-count { justify-self: end; font-weight: 400; color: var(--muted, #8A7A66); font-size: 13px; }
+.wis-ask { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(42, 33, 24, 0.35); z-index: 2; }
+.wis-ask-card { background: #fff; border-radius: 22px; padding: 28px 32px; display: grid; gap: 12px; max-width: min(560px, 92vw); box-shadow: var(--shadow-lg); }
+.wis-ask-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
+.d23-picks, .gci-picks { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--gold-pale); font-size: 16px; }
+.d23-picks .l, .gci-picks .l { font-weight: 700; color: var(--gold-dark); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.d23-picks.unavailable, .gci-picks.unavailable { background: #FFF8F7; color: #B4453C; font-weight: 600; }
+@media (max-width: 900px) {
+  .wis-crumb { display: none; }
+  .wis-primary { min-width: 0; }
+  .wis-svc-main { flex-wrap: wrap; }
+}

@@ -8,12 +8,12 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 987,
+  "tables": 988,
   "ownership": {
    "tenant_owned": 663,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 163,
-   "tenant_branch_owned": 92,
+   "tenant_branch_owned": 93,
    "cross_tenant_platform_data": 25
   },
   "domain": {
@@ -25,7 +25,7 @@
    "AUDIT": 29,
    "OPERATIONS": 79,
    "SUPPORT": 57,
-   "BOOKING": 43,
+   "BOOKING": 44,
    "PAYMENTS": 60,
    "WORKFORCE": 79,
    "CUSTOMERS": 62,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 148,
    "CONFIDENTIAL": 171,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 547,
+   "INTERNAL": 548,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -12025,6 +12025,18 @@
    "append_only": false,
    "source": "override",
    "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): append-only before/after of every voice transcription settings save"
+  },
+  "walkin_service_requests": {
+   "ownership": "tenant_branch_owned",
+   "class": "C",
+   "domain": "BOOKING",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
   },
   "wallet_topup_intents": {
    "ownership": "tenant_owned",

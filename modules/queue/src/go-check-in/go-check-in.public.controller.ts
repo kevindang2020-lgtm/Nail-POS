@@ -2,8 +2,9 @@
 // NO auth guards: a kiosk has no logged-in user. Authentication is the per-session token (header `x-checkin-token`
 // or `?token=`), and tenant/branch are resolved server-side from the device — never sent by the client.
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
-import { ACCEPT_ALTERNATE_BODY, GO_APPOINTMENT_BODY, GO_CREATE_CUSTOMER_BODY, GO_CUSTOMER_BODY, GO_PHONE_BODY, GO_HEARTBEAT_BODY, GO_PIN_BODY, GO_START_BODY, GO_WALK_IN_BODY } from '../request-schemas';
-import { Controller, Get, Post, Body, Param, Query, Req, Headers, HttpException } from '@nestjs/common';
+import { ACCEPT_ALTERNATE_BODY, GO_APPOINTMENT_BODY, GO_CREATE_CUSTOMER_BODY, GO_CUSTOMER_BODY, GO_PHONE_BODY, GO_HEARTBEAT_BODY, GO_PIN_BODY, GO_START_BODY, GO_WALK_IN_BODY, GO_WALKIN_CONFIRM_BODY, GO_WALKIN_PREVIEW_BODY } from '../request-schemas';
+import type { WalkInCatalog, WalkInConfirmResult, WalkInPreview, WalkInRequestStatus } from '@aipowersalon/api-contracts/customer';
+import { Controller, Get, Post, Body, Param, Query, Headers, HttpException } from '@nestjs/common';
 import { GoCheckInService, GoCheckInError } from './go-check-in.service';
 import { ListQueries } from '@aipowersalon/database';
 import { GoCheckInPublicControllerListQueries } from './go-check-in.public.list-queries';
@@ -12,7 +13,7 @@ import { recordDisplayEvent } from '@aipowersalon/observability';
 function tokenFrom(header?: string, q?: string): string | undefined { return header || q || undefined; }
 async function run<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); } catch (e) {
-    if (e instanceof GoCheckInError) throw new HttpException({ message: e.message, code: e.code }, e.status);
+    if (e instanceof GoCheckInError) throw new HttpException({ message: e.message, code: e.code, ...(e.details ? { details: e.details } : {}) }, e.status);
     throw e;
   }
 }
@@ -50,6 +51,12 @@ export class GoCheckInPublicController {
   // BUILD_PLAN Phase 6 round 2: the guest accepts another technician when theirs is busy (this session's guest only)
   @Post('session/:sessionId/accept-alternate') acceptAlternate(@Param('sessionId') id: string, @Body(ValidatedBody(ACCEPT_ALTERNATE_BODY, { strict: true })) b: any, @Headers('x-checkin-token') h?: string, @Query('token') q?: string) { return run(() => this.svc.acceptAlternate(id, tokenFrom(h, q), b)); }
   @Post('session/:sessionId/check-in-walk-in') walkIn(@Param('sessionId') id: string, @Body(ValidatedBody(GO_WALK_IN_BODY, { strict: true })) b: any, @Headers('x-checkin-token') h?: string, @Query('token') q?: string) { return checkInRun(() => this.svc.checkInWalkIn(id, tokenFrom(h, q), b)); }
+
+  // ---- CPad 14 Walk-In service selection (SUNMI guide 4A.6): catalog + revision, preview (nothing written), idempotent confirm ----
+  @Get('session/:sessionId/walk-in/catalog') walkInCatalog(@Param('sessionId') id: string, @Query('revision') revision?: string, @Headers('x-checkin-token') h?: string, @Query('token') q?: string): Promise<WalkInCatalog> { return run(() => this.svc.walkInCatalog(id, tokenFrom(h, q), typeof revision === 'string' ? revision : undefined)); }
+  @Post('session/:sessionId/walk-in/preview') walkInPreview(@Param('sessionId') id: string, @Body(ValidatedBody(GO_WALKIN_PREVIEW_BODY, { strict: true })) b: any, @Headers('x-checkin-token') h?: string, @Query('token') q?: string): Promise<WalkInPreview> { return run(() => this.svc.previewWalkIn(id, tokenFrom(h, q), b ?? {})); }
+  @Post('session/:sessionId/walk-in/confirm') walkInConfirm(@Param('sessionId') id: string, @Body(ValidatedBody(GO_WALKIN_CONFIRM_BODY, { strict: true })) b: any, @Headers('x-checkin-token') h?: string, @Query('token') q?: string): Promise<WalkInConfirmResult> { return checkInRun(() => this.svc.confirmWalkIn(id, tokenFrom(h, q), b ?? {})); }
+  @Get('session/:sessionId/walk-in/status') walkInStatus(@Param('sessionId') id: string, @Query('checkinRequestId') checkinRequestId: string, @Headers('x-checkin-token') h?: string, @Query('token') q?: string): Promise<WalkInRequestStatus> { return run(() => this.svc.walkInStatus(id, tokenFrom(h, q), checkinRequestId)); }
 
   // ---- status ----
   @Get('session/:sessionId/check-in-status') status(@Param('sessionId') id: string, @Headers('x-checkin-token') h?: string, @Query('token') q?: string) { return run(() => this.svc.status(id, tokenFrom(h, q))); }

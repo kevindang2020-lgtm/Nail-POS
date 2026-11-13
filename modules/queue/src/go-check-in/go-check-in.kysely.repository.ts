@@ -1,18 +1,20 @@
 // go-check-in.kysely.repository.ts — Postgres implementation of GoCheckInDataPort. Every read/write is tenant-scoped.
-import { sql, type Kysely } from 'kysely';
+import { sql, type Kysely, type SqlBool } from 'kysely';
 import { CHECK_IN_ELIGIBLE_STATUSES, isAddOnCategory } from '@aipowersalon/api-contracts';
 import { branchTimeZone, canMoveToSql } from '@aipowersalon/database';
-import { GO_CHECKIN_DEVICE, GO_CHECKIN_SESSION } from '../queue-lifecycles';
+import { GO_CHECKIN_DEVICE, GO_CHECKIN_SESSION, WALKIN_SERVICE_REQUEST } from '../queue-lifecycles';
 import type { DB } from '@aipowersalon/database';
 import { addDays } from '@aipowersalon/date-time';
 import { buildMediaUrl } from '@aipowersalon/media';
 import { ACTIVE_STATUS } from '@aipowersalon/workforce';
 import {
   GoCheckInDataPort, DeviceRow, SessionRow, CustRow, ApptRow, ServiceRow, LogRow, DisplayDeviceRow,
-  CreateDeviceInput, CreateSessionInput, InsertLogInput,
+  CreateDeviceInput, CreateSessionInput, InsertLogInput, WalkInRequestRow, NewWalkInRequest,
 } from './go-check-in.repository';
 import { GoCheckInSettings, DEFAULT_SETTINGS } from './go-check-in.dto';
 import { minutesOf, type KioskTechFacts } from './go-check-in-rules';
+import type { WalkInCatalogRow } from './walkin-selection';
+import type { WalkInRequestState } from '@aipowersalon/api-contracts/customer';
 
 const dev = (r: any): DeviceRow => ({
   id: r.id, tenantId: r.tenant_id, branchId: r.branch_id ?? null, deviceName: r.device_name, deviceType: r.device_type,
@@ -32,6 +34,9 @@ const settingsFrom = (r: any): GoCheckInSettings => !r ? { ...DEFAULT_SETTINGS }
   showWaitEstimate: r.show_wait_estimate, autoSendToQueue: r.auto_send_to_queue, requireFrontDeskApproval: r.require_front_desk_approval,
   confirmationTimeoutSeconds: r.confirmation_timeout_seconds ?? 12,
   displayLanguages: Array.isArray(r.display_languages) && r.display_languages.length ? r.display_languages : ['en'],
+  // migration 990 (SUNMI guide 4A.9): absent column (an older row read before the migration) = the guide's default, ON
+  walkinRequireServices: r.walkin_require_services !== false, walkinShowPrices: r.walkin_show_prices !== false,
+  walkinShowDurations: r.walkin_show_durations !== false, walkinAllowAddOns: r.walkin_allow_add_ons !== false,
 });
 const cust = (r: any): CustRow => ({ customerId: r.id, firstName: r.first_name, lastName: r.last_name, email: r.email ?? null });
 /** The service names on an appointment (its services JSON), in order. */
@@ -42,6 +47,11 @@ const serviceNames = (services: any): string[] => {
   } catch { return []; }
 };
 const parseJson = (v: any): any => { if (v == null) return null; if (typeof v !== 'string') return v; try { return JSON.parse(v); } catch { return null; } };
+const walkInRow = (r: { id: string; tenant_id: string; branch_id: string; device_ref: string; checkin_request_id: string; payload_hash: string; catalog_revision: string; lines: unknown; services_pending: boolean; estimated_total_cents: number | string; estimated_minutes: number; status: string; queue_item_id: string | null; result: unknown; updated_at: Date | string }): WalkInRequestRow => ({
+  id: r.id, tenantId: r.tenant_id, branchId: r.branch_id, deviceRef: r.device_ref, checkinRequestId: r.checkin_request_id, payloadHash: r.payload_hash, catalogRevision: r.catalog_revision,
+  lines: parseJson(r.lines) ?? [], servicesPending: !!r.services_pending, estimatedTotalCents: Number(r.estimated_total_cents ?? 0), estimatedMinutes: Number(r.estimated_minutes ?? 0),
+  status: r.status as WalkInRequestState, queueItemId: r.queue_item_id ?? null, result: (parseJson(r.result) as Record<string, unknown> | null) ?? null, updatedAt: new Date(r.updated_at).toISOString(),
+});
 
 export class KyselyGoCheckInRepository implements GoCheckInDataPort {
   constructor(private db: Kysely<DB>) {}
@@ -120,12 +130,14 @@ export class KyselyGoCheckInRepository implements GoCheckInDataPort {
       tenant_id: tenantId, enabled: next.enabled, appointment_checkin_enabled: next.appointmentCheckinEnabled, walkin_checkin_enabled: next.walkinCheckinEnabled,
       new_customer_enabled: next.newCustomerEnabled, service_selection_enabled: next.serviceSelectionEnabled, technician_preference_enabled: next.technicianPreferenceEnabled,
       tenant_phone_lookup_enabled: next.tenantPhoneLookupEnabled, central_lookup_enabled: next.centralLookupEnabled, customer_linking_enabled: next.customerLinkingEnabled,
-      show_wait_estimate: next.showWaitEstimate, auto_send_to_queue: next.autoSendToQueue, require_front_desk_approval: next.requireFrontDeskApproval, confirmation_timeout_seconds: next.confirmationTimeoutSeconds, display_languages: next.displayLanguages, updated_at: new Date(),
+      show_wait_estimate: next.showWaitEstimate, auto_send_to_queue: next.autoSendToQueue, require_front_desk_approval: next.requireFrontDeskApproval, confirmation_timeout_seconds: next.confirmationTimeoutSeconds, display_languages: next.displayLanguages,
+      walkin_require_services: next.walkinRequireServices, walkin_show_prices: next.walkinShowPrices, walkin_show_durations: next.walkinShowDurations, walkin_allow_add_ons: next.walkinAllowAddOns, updated_at: new Date(),
     }).onConflict((oc) => oc.column('tenant_id').doUpdateSet({
       enabled: next.enabled, appointment_checkin_enabled: next.appointmentCheckinEnabled, walkin_checkin_enabled: next.walkinCheckinEnabled,
       new_customer_enabled: next.newCustomerEnabled, service_selection_enabled: next.serviceSelectionEnabled, technician_preference_enabled: next.technicianPreferenceEnabled,
       tenant_phone_lookup_enabled: next.tenantPhoneLookupEnabled, central_lookup_enabled: next.centralLookupEnabled, customer_linking_enabled: next.customerLinkingEnabled,
-      show_wait_estimate: next.showWaitEstimate, auto_send_to_queue: next.autoSendToQueue, require_front_desk_approval: next.requireFrontDeskApproval, confirmation_timeout_seconds: next.confirmationTimeoutSeconds, display_languages: next.displayLanguages, updated_at: new Date(),
+      show_wait_estimate: next.showWaitEstimate, auto_send_to_queue: next.autoSendToQueue, require_front_desk_approval: next.requireFrontDeskApproval, confirmation_timeout_seconds: next.confirmationTimeoutSeconds, display_languages: next.displayLanguages,
+      walkin_require_services: next.walkinRequireServices, walkin_show_prices: next.walkinShowPrices, walkin_show_durations: next.walkinShowDurations, walkin_allow_add_ons: next.walkinAllowAddOns, updated_at: new Date(),
     })).execute();
     return next;
   }
@@ -189,6 +201,45 @@ export class KyselyGoCheckInRepository implements GoCheckInDataPort {
     return r?.customer_id ? String(r.customer_id) : null;
   }
   /** §22–§23: the BRANCH's active catalog (each branch has its own service rows and prices) — never the salon's whole list. */
+  // ---- CPad 14 Walk-In service selection (SUNMI guide 4A) ----
+  /** 4A.5: THIS branch's catalog rows with the facts the public catalog filters on — no cost / commission column is read. */
+  async walkInCatalogRows(tenantId: string, branchId: string): Promise<WalkInCatalogRow[]> {
+    const rows = await this.db.selectFrom('services as s')
+      .innerJoin('service_categories as c', (j) => j.onRef('c.id', '=', 's.category_id').onRef('c.tenant_id', '=', 's.tenant_id'))
+      .select(['s.id as service_id', 's.name as service_name', 's.description as description', 's.price_cents as price_cents', 's.duration_minutes as duration_minutes',
+        's.status as service_status', 's.archived_at as archived_at', 's.customer_app_booking_enabled as customer_visible', 's.sort_order as service_sort',
+        'c.id as category_id', 'c.name as category_name', 'c.description as category_description', 'c.icon_key as category_icon_key', 'c.status as category_status', 'c.sort_order as category_sort'])
+      .where('s.tenant_id', '=', tenantId).where('s.branch_id', '=', branchId).where('c.branch_id', '=', branchId)
+      .orderBy('c.sort_order', 'asc').orderBy('s.sort_order', 'asc').orderBy('s.name', 'asc').execute();
+    return rows.map((r) => ({
+      serviceId: String(r.service_id), serviceName: String(r.service_name), description: r.description ?? null, priceCents: Number(r.price_cents ?? 0), durationMinutes: Number(r.duration_minutes ?? 0),
+      serviceStatus: String(r.service_status), archived: r.archived_at != null, customerVisible: r.customer_visible !== false, serviceSort: Number(r.service_sort ?? 0),
+      categoryId: String(r.category_id), categoryName: String(r.category_name ?? '').trim() || 'Services', categoryDescription: r.category_description ?? null, categoryIconKey: r.category_icon_key ?? null,
+      categoryStatus: String(r.category_status), categorySort: Number(r.category_sort ?? 0),
+    }));
+  }
+  async walkInRequestByKey(tenantId: string, branchId: string, deviceRef: string, checkinRequestId: string): Promise<WalkInRequestRow | null> {
+    const r = await this.db.selectFrom('walkin_service_requests')
+      .select(['id', 'tenant_id', 'branch_id', 'device_ref', 'checkin_request_id', 'payload_hash', 'catalog_revision', 'lines', 'services_pending', 'estimated_total_cents', 'estimated_minutes', 'status', 'queue_item_id', 'result', 'updated_at'])
+      .where('tenant_id', '=', tenantId).where('branch_id', '=', branchId).where('device_ref', '=', deviceRef).where('checkin_request_id', '=', checkinRequestId).executeTakeFirst();
+    return r ? walkInRow(r) : null;
+  }
+  async insertWalkInRequest(i: NewWalkInRequest): Promise<WalkInRequestRow | null> {
+    const r = await this.db.insertInto('walkin_service_requests').values({
+      tenant_id: i.tenantId, branch_id: i.branchId, device_ref: i.deviceRef, checkin_request_id: i.checkinRequestId, payload_hash: i.payloadHash, catalog_revision: i.catalogRevision,
+      lines: JSON.stringify(i.lines ?? []), services_pending: i.servicesPending, estimated_total_cents: i.estimatedTotalCents, estimated_minutes: i.estimatedMinutes,
+    }).onConflict((oc) => oc.columns(['tenant_id', 'branch_id', 'device_ref', 'checkin_request_id']).doNothing())
+      .returning(['id', 'tenant_id', 'branch_id', 'device_ref', 'checkin_request_id', 'payload_hash', 'catalog_revision', 'lines', 'services_pending', 'estimated_total_cents', 'estimated_minutes', 'status', 'queue_item_id', 'result', 'updated_at'])
+      .executeTakeFirst();
+    return r ? walkInRow(r) : null;
+  }
+  async updateWalkInRequest(tenantId: string, id: string, patch: { status: WalkInRequestState; queueItemId?: string | null; result?: Record<string, unknown> | null }): Promise<void> {
+    await this.db.updateTable('walkin_service_requests').set({
+      status: patch.status, updated_at: new Date(),
+      ...(patch.queueItemId !== undefined ? { queue_item_id: patch.queueItemId } : {}),
+      ...(patch.result !== undefined ? { result: patch.result === null ? null : JSON.stringify(patch.result) } : {}),
+    }).where('tenant_id', '=', tenantId).where('id', '=', id).where(canMoveToSql(WALKIN_SERVICE_REQUEST, patch.status).$castTo<SqlBool>()).execute();   // a final request is never reopened
+  }
   async listServices(tenantId: string, branchId: string | null): Promise<ServiceRow[]> {
     if (!branchId) return [];
     const rows: any[] = await this.db.selectFrom('services as s')
@@ -257,6 +308,13 @@ export class KyselyGoCheckInRepository implements GoCheckInDataPort {
       .where('checked_in_at', '>=', new Date(dayStartMs ?? Date.parse(today + 'T00:00:00Z')))   // the branch's midnight (Oct 2 2026)
       .executeTakeFirst();
     return !!r;
+  }
+  async activeCheckInIdToday(tenantId: string, customerId: string, dayStartMs: number): Promise<string | null> {
+    const r = await this.db.selectFrom('pos_queue_items').select('id')
+      .where('tenant_id', '=', tenantId).where('customer_id', '=', customerId)
+      .where('status', 'in', ['waiting', 'checked_in', 'sent_to_queue', 'sent_to_tech_queue', 'in_service'])
+      .where('checked_in_at', '>=', new Date(dayStartMs)).orderBy('checked_in_at', 'desc').executeTakeFirst();
+    return r ? String(r.id) : null;
   }
   async markCheckedInToday(_tenantId: string, _customerId: string, _today: string): Promise<void> { /* the queue item is the source of truth in Postgres */ }
   async hasTechnicianActiveService(tenantId: string, branchId: string, technicianId: string): Promise<boolean> {

@@ -93,6 +93,9 @@ export interface GoCheckInSettings {
   confirmationTimeoutSeconds: number;   // idle auto-return after "You're Checked In!" (seconds)
   /** Dual-Screen mandate §118–§119: the customer display's languages ('en' | 'vi'), the salon's default first. */
   displayLanguages: string[];
+  /** CPad 14 Walk-In service selection (SUNMI guide 4A.9, migration 990) — all ON by default. OFF require → the guest may
+   *  skip to "Services pending". "Enable" is serviceSelectionEnabled; "technician preference" is technicianPreferenceEnabled. */
+  walkinRequireServices: boolean; walkinShowPrices: boolean; walkinShowDurations: boolean; walkinAllowAddOns: boolean;
 }
 
 /** A Go Check-In device as the Super Admin device list shows it (the service maps its row to this view). */

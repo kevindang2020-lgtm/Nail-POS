@@ -41,6 +41,21 @@ export const GO_CHECKIN_SESSION = defineStateMachine({
 
 /** ticket_change_requests.status — a technician's change to a serving line: applied at once, or pending until a manager
  *  approves (applied) or rejects it. A decided request is final. */
+/** walkin_service_requests.status (migration 990, SUNMI guide 4A.7) — a guest's walk-in request: written 'pending', then
+ *  'queued' (one visit + queue entry) or 'existing_visit' (resolved to the guest's active visit) — both final — or 'failed',
+ *  which the SAME request (same id, same payload) may take back to 'pending' on its retry. A 'pending' left by a crashed
+ *  confirm is taken over by the retry (pending → pending). */
+export const WALKIN_SERVICE_REQUEST = defineStateMachine({
+  name: 'walkin_service_request', table: 'walkin_service_requests', column: 'status',
+  states: ['pending', 'queued', 'existing_visit', 'failed'],
+  transitions: {
+    pending: ['pending', 'queued', 'existing_visit', 'failed'],
+    failed: ['failed', 'pending'],
+    queued: ['queued'], existing_visit: ['existing_visit'],
+  },
+  initial: ['pending'],
+});
+
 export const TICKET_CHANGE_REQUEST = defineStateMachine({
   name: 'ticket_change_request', table: 'ticket_change_requests', column: 'status',
   states: ['pending', 'approved', 'applied', 'rejected', 'cancelled'],

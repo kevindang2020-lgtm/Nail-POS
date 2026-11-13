@@ -10,7 +10,8 @@ import { usd, type TechClockIdentity } from './goCheckInApi';
 import type { CheckInConfirmation } from '@aipowersalon/api-contracts/customer';
 import { useCheckInFlow } from './useCheckInFlow';
 import { SalonBrand, SalonMark } from './Branding';
-import { VisitServices, thanksLine, visitItems, waitBand } from './CheckIn23';
+import { SelectionSummary, VisitServices, selectionLabel, thanksLine, visitItems, waitBand } from './CheckIn23';
+import { WalkInPicker } from './WalkInPicker';
 import { LanguageSwitch, Rich, useT } from './i18n';
 
 function Brand({ salon, branding }: { salon?: string; branding?: CustomerDisplayBranding }) {
@@ -232,7 +233,8 @@ export function GoCheckIn({ deviceToken, salon, branding }: { deviceToken: strin
                 <span>{t('ci.firstNameField')}</span>
                 <input className="gci-input" value={f.name} onChange={(e) => f.setName(e.target.value)} placeholder={t('ci.firstNamePlaceholder')} />
               </label>
-              {settings?.serviceSelectionEnabled && f.mains.length > 0 && (
+              {f.selectionOn ? <SelectionSummary f={f} className="gci-picks" /> : null}
+              {!f.selectionOn && settings?.serviceSelectionEnabled && f.mains.length > 0 && (
                 <div className="gci-svc-block">
                   <div className="gci-field-label">{t('ci.chooseServices')}</div>
                   <div className="gci-svc-grid gci-svc-scroll">
@@ -244,7 +246,7 @@ export function GoCheckIn({ deviceToken, salon, branding }: { deviceToken: strin
                   </div>
                 </div>
               )}
-              {settings?.serviceSelectionEnabled && f.mains.length > 0 && f.addOnOptions.length > 0 && (
+              {!f.selectionOn && settings?.serviceSelectionEnabled && f.mains.length > 0 && f.addOnOptions.length > 0 && (
                 <div className="gci-svc-block" role="group" aria-label={t('ci.addOns')}>
                   <div className="gci-field-label">{t('ci.addOns')} <span className="opt">{f.picked.length ? t('ci.optional') : t('ci.withService')}</span></div>
                   <div className="gci-svc-grid">
@@ -256,7 +258,7 @@ export function GoCheckIn({ deviceToken, salon, branding }: { deviceToken: strin
                   </div>
                 </div>
               )}
-              {settings?.technicianPreferenceEnabled && f.techs.length > 0 && (
+              {!f.selectionOn && settings?.technicianPreferenceEnabled && f.techs.length > 0 && (
                 <label className="gci-field">
                   <span>{t('ci.technician')}</span>
                   <select className="gci-input" value={f.tech} onChange={(e) => f.setTech(e.target.value)}>
@@ -266,13 +268,14 @@ export function GoCheckIn({ deviceToken, salon, branding }: { deviceToken: strin
                 </label>
               )}
               {f.canWalkIn && (
-                <button className="kiosk-pay gci-done-btn" disabled={f.busy} onClick={f.doWalkIn}>{f.busy ? t('ci.checkingIn') : t('ci.done')}</button>
+                <button className="kiosk-pay gci-done-btn" disabled={f.busy || (f.selectionOn && f.ws.status !== 'ready')} onClick={f.doWalkIn}>{f.busy ? t('ci.checkingIn') : f.selectionOn ? selectionLabel(f, t) : t('ci.done')}</button>
               )}
             </div>
           )}
           {f.err && <div className="kiosk-err" onClick={() => f.setErr(null)}>{f.err}</div>}
         </section>
       </main>
+      <WalkInPicker f={f} branding={branding} salonName={salonName} />
     </div>
   );
 }

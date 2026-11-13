@@ -29,6 +29,16 @@ describe('Customer display settings (§118)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save display settings' }));
     await waitFor(() => expect(h.save).toHaveBeenCalledWith({ walkinCheckinEnabled: false, showWaitEstimate: false }));
   });
+  it('SUNMI guide 4A.9: the walk-in service selection switches sit in this card, ON by default, and each saves only itself', async () => {
+    render(<DisplaySettingsCard />);   // S has no walk-in keys (an older server): the guide's defaults, ON
+    await screen.findByText(/Check-in is on for your salon/);
+    expect(screen.getByText('Walk-in service selection')).toBeInTheDocument();
+    for (const label of ['Require a service before check-in', 'Show prices to guests', 'Show estimated times', 'Guests may add add-ons']) expect(screen.getByLabelText(label)).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Require a service before check-in'));
+    fireEvent.click(screen.getByLabelText('Show estimated times'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save display settings' }));
+    await waitFor(() => expect(h.save).toHaveBeenCalledWith({ walkinRequireServices: false, walkinShowDurations: false }));
+  });
   it('nothing changed: Save is off; check-in switched off by the platform says so', async () => {
     h.get.mockResolvedValue({ ...S, enabled: false });
     render(<DisplaySettingsCard />);

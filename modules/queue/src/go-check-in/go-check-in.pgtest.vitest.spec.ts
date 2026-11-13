@@ -129,7 +129,7 @@ describe('the display\'s check-in end to end on the real tables (service + repos
   it('a display of the salon starts a session for its branch; the visit, the catalog and the technicians come back', async () => {
     const svc = new GoCheckInService(repo as any, undefined);
     svc.now = () => new Date('2026-10-06T14:52:00Z');   // 10:52 at the branch
-    await repo.upsertSettings(T, { enabled: true });
+    await repo.upsertSettings(T, { enabled: true, technicianPreferenceEnabled: true });   // 4A.9: the default is OFF since migration 990
     const s = await svc.startDisplaySession({ id: D_OK, tenantId: T, branchId: B2 });
     const row = (await q(`select device_id, display_device_id, branch_id from go_checkin_sessions where id = $1`, [s.sessionId]))[0];
     expect(row).toEqual({ device_id: null, display_device_id: D_OK, branch_id: B2 });

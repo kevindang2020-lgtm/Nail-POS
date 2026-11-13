@@ -51,10 +51,14 @@ export function lastInitial(lastName: string | null | undefined): string {
 // ---- per-tenant settings (master + feature toggles) ----
 export const DEFAULT_SETTINGS: GoCheckInSettings = {
   enabled: false, appointmentCheckinEnabled: true, walkinCheckinEnabled: true, newCustomerEnabled: true,
-  serviceSelectionEnabled: true, technicianPreferenceEnabled: true, tenantPhoneLookupEnabled: true,
+  // SUNMI guide 4A.9: "Allow technician preference — OFF until eligibility/assignment rules are verified" (migration 990
+  // changed the column default too; a salon that saved ON keeps ON)
+  serviceSelectionEnabled: true, technicianPreferenceEnabled: false, tenantPhoneLookupEnabled: true,
   centralLookupEnabled: true, customerLinkingEnabled: true, showWaitEstimate: true, autoSendToQueue: true,
   requireFrontDeskApproval: false, confirmationTimeoutSeconds: 12,
   displayLanguages: ['en'],   // Dual-Screen §118–§119: English until the owner adds Vietnamese
+  // SUNMI guide 4A.9 (migration 990): the walk-in service selection switches, all ON
+  walkinRequireServices: true, walkinShowPrices: true, walkinShowDurations: true, walkinAllowAddOns: true,
 };
 
 // ---- device + session records ----
@@ -92,7 +96,6 @@ export interface GoCheckInSession {
 // The wire types (KioskConfig, LookupResult, AppointmentToday, CustomerChoice, CheckInConfirmation, the match types) are
 // @aipowersalon/api-contracts/customer's — the kiosk app imports the same definitions (Constitution 13 §15).
 export type { KioskConfig, KioskSettings, TenantCustomerMatch, CentralCustomerMatch, AppointmentToday, CustomerChoice, LookupResult, CheckInConfirmation } from '@aipowersalon/api-contracts/customer';
-import type { KioskConfig, TenantCustomerMatch, CentralCustomerMatch, AppointmentToday, CustomerChoice, LookupResult, CheckInConfirmation } from '@aipowersalon/api-contracts/customer';
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
 export type { GoCheckInSettings } from '@aipowersalon/api-contracts/tenant';
 import type { GoCheckInSettings } from '@aipowersalon/api-contracts/tenant';

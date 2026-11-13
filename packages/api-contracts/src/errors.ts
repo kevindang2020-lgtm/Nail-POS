@@ -1187,6 +1187,8 @@ export const ERROR_REGISTRY = {
   DEVICE_ACCESS_EXPIRED:          { status: 401, message: 'This device\'s access has expired. Ask the front desk to pair it again.', domain: 'tenants', retryable: false, severity: 'info', action: 'NONE' },
   DISPLAY_NOT_AVAILABLE:          { status: 409, message: 'This display is not available right now.', domain: 'tenants', retryable: false, severity: 'info', action: 'REFRESH' },
   TOO_MANY_ATTEMPTS:              { status: 429, message: 'Too many attempts. Please ask the front desk for help.', domain: 'general', retryable: true, severity: 'info', action: 'RETRY' },
+  WALK_IN_SELECTION_CHANGED:      { status: 409, message: 'Some of your services changed. Please review them and confirm again.', domain: 'queue', retryable: false, severity: 'info', action: 'REFRESH' },
+  WALK_IN_SERVICE_UNAVAILABLE:    { status: 409, message: 'One of your services is no longer available. Please remove it and confirm again.', domain: 'queue', retryable: false, severity: 'info', action: 'REFRESH' },
   WALK_IN_CHECKIN_DISABLED:       { status: 409, message: 'Walk-in check-in is turned off here.', domain: 'queue', retryable: false, severity: 'info', action: 'REFRESH' },
   CLOCK_OUT_ACTIVE_SERVICE:       { status: 409, message: 'You are still on an active service. Finish it or hand it off before clocking out — or ask a manager.', domain: 'workforce', retryable: false, severity: 'info', action: 'REFRESH' },
   END_AFTER_START:                { status: 400, message: 'The end time must be after the start time.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },

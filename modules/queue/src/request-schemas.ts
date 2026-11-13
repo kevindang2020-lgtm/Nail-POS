@@ -144,6 +144,8 @@ const settings = {
   technicianPreferenceEnabled: flag, tenantPhoneLookupEnabled: flag, centralLookupEnabled: flag, customerLinkingEnabled: flag,
   showWaitEstimate: flag, autoSendToQueue: flag, requireFrontDeskApproval: flag, confirmationTimeoutSeconds: num,
   displayLanguages: S.nullable(S.array(str(8), { maxItems: 4 })),   // Dual-Screen §118–§119 (the service cleans + refuses)
+  // SUNMI guide 4A.9 (migration 990): the walk-in service selection switches
+  walkinRequireServices: flag, walkinShowPrices: flag, walkinShowDurations: flag, walkinAllowAddOns: flag,
 };
 /** Super Admin owns the master switch */
 export const GO_ADMIN_SETTINGS_BODY: BodySchema = S.object({ enabled: flag, ...settings });
@@ -160,4 +162,11 @@ export const GO_CUSTOMER_BODY: BodySchema = S.object({ customerId: id });
 export const GO_CREATE_CUSTOMER_BODY: BodySchema = S.object({ firstName: str(100), lastName: str(100), fullName: str(200), phone: str(40), email: str(254), smsConsent: flag });
 export const GO_APPOINTMENT_BODY: BodySchema = S.object({ appointmentId: id });
 export const GO_WALK_IN_BODY: BodySchema = S.object({ customerId: id, customerName: str(200), phone: str(40), serviceIds: ids(), addOnIds: ids(), technicianId: id, notes: str(1000) });
+// CPad 14 Walk-In service selection (SUNMI guide 4A): what the guest picked, and what the screen SHOWED for each line
+const walkInLine: BodySchema = S.object({ serviceId: id, addOnIds: ids(6), shownPriceCents: num, shownName: str(200) });
+export const GO_WALKIN_PREVIEW_BODY: BodySchema = S.object({ lines: S.nullable(S.array(walkInLine, { maxItems: 12 })), revision: str(128) });
+export const GO_WALKIN_CONFIRM_BODY: BodySchema = S.object({
+  checkinRequestId: str(64), approvedRevision: str(128), customerId: id, customerName: str(200), phone: str(40),
+  lines: S.nullable(S.array(walkInLine, { maxItems: 12 })), skipServices: flag, technicianId: id, notes: str(400),
+});
 export const GO_PIN_BODY: BodySchema = S.object({ pin: { type: ['string', 'number', 'null'], maxLength: 16 }, idempotencyKey: str(200) });

@@ -1,10 +1,12 @@
 // go-check-in.repository.ts — data port + an in-memory implementation used by unit + tenant-isolation tests.
 // The port keeps tenant_id at the boundary of every read/write so neither the service nor the kiosk can cross tenants.
 import {
-  GoCheckInSettings, DEFAULT_SETTINGS, GoCheckInDevice, GoCheckInSession, normalizePhone, sha256Hex,
+  GoCheckInSettings, DEFAULT_SETTINGS, GoCheckInDevice, GoCheckInSession, normalizePhone,
 } from './go-check-in.dto';
 import { isAddOnCategory } from '@aipowersalon/api-contracts';
 import type { KioskTechFacts } from './go-check-in-rules';
+import type { WalkInCatalogRow } from './walkin-selection';
+import type { WalkInRequestState } from '@aipowersalon/api-contracts/customer';
 
 export interface DeviceRow extends GoCheckInDevice { deviceTokenHash: string | null; }
 export interface SessionRow extends GoCheckInSession { sessionTokenHash: string; }
@@ -19,6 +21,13 @@ export interface ServiceRow { id: string; name: string; priceCents: number; dura
 export interface DisplayDeviceRow { id: string; tenantId: string; branchId: string | null; usable: boolean; }
 export interface LogRow { id: string; tenantId: string; branchId: string | null; deviceId: string | null; sessionId: string | null; eventType: string; safeMessage: string | null; metadata: any; createdAt: string; }
 
+/** A guest's walk-in service request (migration 990) — keyed by (tenant, branch, device, checkin_request_id). */
+export interface WalkInRequestRow {
+  id: string; tenantId: string; branchId: string; deviceRef: string; checkinRequestId: string; payloadHash: string; catalogRevision: string;
+  lines: unknown; servicesPending: boolean; estimatedTotalCents: number; estimatedMinutes: number; status: WalkInRequestState;
+  queueItemId: string | null; result: Record<string, unknown> | null; updatedAt: string;
+}
+export type NewWalkInRequest = Omit<WalkInRequestRow, 'id' | 'status' | 'queueItemId' | 'result' | 'updatedAt'>;
 export interface CreateDeviceInput { tenantId: string; branchId?: string | null; deviceName: string; deviceType?: string; checkinSlug: string; publicUrl?: string | null; createdByUserId?: string | null; allowedBranchIds?: string[] | null; welcomeMessage?: string | null; }
 /** Exactly one of deviceId (a Go Check-In kiosk) or displayDeviceId (a paired customer display). */
 export interface CreateSessionInput { tenantId: string; branchId: string | null; deviceId?: string | null; displayDeviceId?: string | null; sessionTokenHash: string; metadata?: any; }
@@ -80,6 +89,15 @@ export interface GoCheckInDataPort {
   appointmentCheckedIn(tenantId: string, appointmentId: string): Promise<boolean>;
   resolveSalonBranch(tenantId: string, branchId: string | null): Promise<{ salonName: string; branchName?: string }>;
   listBranchNames(tenantId: string, ids: string[]): Promise<{ id: string; name: string }[]>;
+  // ---- CPad 14 Walk-In service selection (SUNMI guide 4A) — optional: a store without them has no walk-in selection ----
+  /** The branch's catalog rows (services ⋈ categories, THIS tenant and branch only) with their visibility facts. */
+  walkInCatalogRows?(tenantId: string, branchId: string): Promise<WalkInCatalogRow[]>;
+  walkInRequestByKey?(tenantId: string, branchId: string, deviceRef: string, checkinRequestId: string): Promise<WalkInRequestRow | null>;
+  /** Insert the request; null when the key is already taken (another tap / replica won — read it back). */
+  insertWalkInRequest?(row: NewWalkInRequest): Promise<WalkInRequestRow | null>;
+  /** The customer's active visit today (any branch of the salon) — the one a second walk-in resolves to (4A.7). */
+  activeCheckInIdToday?(tenantId: string, customerId: string, dayStartMs: number): Promise<string | null>;
+  updateWalkInRequest?(tenantId: string, id: string, patch: { status: WalkInRequestState; queueItemId?: string | null; result?: Record<string, unknown> | null }): Promise<void>;
 }
 
 // ---- in-memory (tests) ----
@@ -192,4 +210,34 @@ export class InMemoryGoCheckInRepository implements GoCheckInDataPort {
   seedSalon(tenantId: string, name: string, branchId?: string, branchName?: string) { this.salonNames.set(tenantId, name); if (branchId && branchName) this.branchNames.set(branchId, branchName); }
   async resolveSalonBranch(tenantId: string, branchId: string | null) { return { salonName: this.salonNames.get(tenantId) ?? '', branchName: branchId ? this.branchNames.get(branchId) : undefined }; }
   async listBranchNames(_tenantId: string, ids: string[]) { return ids.map((id) => ({ id, name: this.branchNames.get(id) ?? id })); }
+
+  // ---- walk-in selection (4A): the same seeded catalog; extra facts (description, visibility, status) per service id ----
+  private walkInExtra = new Map<string, Partial<WalkInCatalogRow>>();
+  seedWalkInFacts(serviceId: string, facts: Partial<WalkInCatalogRow>) { this.walkInExtra.set(serviceId, { ...(this.walkInExtra.get(serviceId) ?? {}), ...facts }); }
+  async walkInCatalogRows(tenantId: string, branchId: string): Promise<WalkInCatalogRow[]> {
+    const cats: string[] = [];
+    return this.services.filter((x) => x.tenantId === tenantId && x.branchId === branchId).map((x, i) => {
+      if (!cats.includes(x.category)) cats.push(x.category);
+      return { serviceId: x.id, serviceName: x.name, description: null, priceCents: x.priceCents, durationMinutes: x.durationMinutes, serviceStatus: 'active', archived: false, customerVisible: true, serviceSort: i,
+        categoryId: 'cat:' + x.category, categoryName: x.category, categoryDescription: null, categoryIconKey: null, categoryStatus: 'active', categorySort: cats.indexOf(x.category), ...(this.walkInExtra.get(x.id) ?? {}) };
+    });
+  }
+  private walkIns: WalkInRequestRow[] = [];
+  allWalkInRequests() { return this.walkIns.map((r) => ({ ...r })); }
+  async walkInRequestByKey(tenantId: string, branchId: string, deviceRef: string, checkinRequestId: string) {
+    const r = this.walkIns.find((x) => x.tenantId === tenantId && x.branchId === branchId && x.deviceRef === deviceRef && x.checkinRequestId === checkinRequestId);
+    return r ? { ...r } : null;
+  }
+  async insertWalkInRequest(row: NewWalkInRequest) {
+    if (await this.walkInRequestByKey(row.tenantId, row.branchId, row.deviceRef, row.checkinRequestId)) return null;
+    const r: WalkInRequestRow = { ...row, id: this.id('wir'), status: 'pending', queueItemId: null, result: null, updatedAt: new Date().toISOString() };
+    this.walkIns.push(r); return { ...r };
+  }
+  /** test seam: age a request (a crashed confirm left it pending) */
+  ageWalkInRequest(id: string, ms: number) { const r = this.walkIns.find((x) => x.id === id); if (r) r.updatedAt = new Date(Date.parse(r.updatedAt) - ms).toISOString(); }
+  async activeCheckInIdToday() { return null; }   // the in-memory store has no queue; hasActiveCheckInToday answers the guard
+  async updateWalkInRequest(tenantId: string, id: string, patch: { status: WalkInRequestState; queueItemId?: string | null; result?: Record<string, unknown> | null }) {
+    const r = this.walkIns.find((x) => x.id === id && x.tenantId === tenantId);
+    if (r) { r.status = patch.status; r.updatedAt = new Date().toISOString(); if (patch.queueItemId !== undefined) r.queueItemId = patch.queueItemId; if (patch.result !== undefined) r.result = patch.result; }
+  }
 }

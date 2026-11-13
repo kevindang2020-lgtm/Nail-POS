@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   startDisplaySession: vi.fn(), completeSession: vi.fn(), heartbeat: vi.fn(), lookupPhone: vi.fn(), confirmCustomer: vi.fn(), createCustomer: vi.fn(),
   todayAppointments: vi.fn(), checkInAppointment: vi.fn(), listServices: vi.fn(), listTechnicians: vi.fn(), checkInWalkIn: vi.fn(), placeInLine: vi.fn(),
   technicianIdentify: vi.fn(), technicianClockIn: vi.fn(), technicianClockOut: vi.fn(),
+  walkInCatalog: vi.fn(), walkInPreview: vi.fn(), walkInConfirm: vi.fn(),
 }));
 vi.mock('./goCheckInApi', () => ({ ...api, usd: (c: number) => '$' + Math.round(c / 100) }));
 
@@ -37,6 +38,9 @@ const NO_MATCH = { match: null, foundInTenant: false, appointment: null, canWalk
 beforeEach(() => {
   n = 0;
   Object.values(api).forEach((f) => (f as any).mockReset());
+  // SUNMI guide 4A: these tests pin the PLAIN walk-in — the server answers the walk-in catalog with 404 (an older API);
+  // the 4A service selection has its own tests (WalkInPicker.test.tsx)
+  api.walkInCatalog.mockRejectedValue(new DisplayApiError(404, 'Not Found'));
   api.startDisplaySession.mockImplementation(async () => session());
   api.completeSession.mockResolvedValue({ ok: true });
   api.heartbeat.mockResolvedValue({ ok: true });

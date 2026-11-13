@@ -37,6 +37,11 @@ export function readCreds(): Creds | null {
 export class DisplayApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
 }
+/** A check-in refusal that carries a safe structured body — the walk-in confirm's fresh preview (SUNMI guide 4A:
+ *  WALK_IN_SELECTION_CHANGED / WALK_IN_SERVICE_UNAVAILABLE). */
+export class CheckInApiError extends DisplayApiError {
+  constructor(status: number, message: string, code: string | undefined, public details: { preview?: import('@aipowersalon/api-contracts/customer').WalkInPreview } | null) { super(status, message, code); }
+}
 
 // Resolution order: build-time VITE_API_BASE (separate-origin deploy), runtime window.APS_API_BASE override, then ""
 // (same-origin — the default, since the display device is normally served behind the API).

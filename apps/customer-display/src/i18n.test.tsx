@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   startDisplaySession: vi.fn(), completeSession: vi.fn(), heartbeat: vi.fn(), lookupPhone: vi.fn(), confirmCustomer: vi.fn(), createCustomer: vi.fn(),
   todayAppointments: vi.fn(), checkInAppointment: vi.fn(), listServices: vi.fn(), listTechnicians: vi.fn(), checkInWalkIn: vi.fn(), placeInLine: vi.fn(),
   technicianIdentify: vi.fn(), technicianClockIn: vi.fn(), technicianClockOut: vi.fn(),
+  walkInCatalog: vi.fn(), walkInPreview: vi.fn(), walkInConfirm: vi.fn(),
 }));
 vi.mock('./goCheckInApi', () => ({ ...api, usd: (c: number) => '$' + Math.round(c / 100) }));
 import * as messages from './i18n/messages';
@@ -16,6 +17,7 @@ import { EN, translate } from './i18n/messages';
 import { availableLanguages, LanguageProvider } from './i18n';
 import { Display23 } from './Display23';
 import { CheckoutTicket } from './CheckoutTicket';
+import { DisplayApiError } from './api';
 
 const idle = (o: Partial<CustomerDisplayState> = {}): CustomerDisplayState => ({
   state: 'idle', salonName: 'Luxury Nails', tipOptions: [], selectedTipCents: 0, payButtonEnabled: false, checkIn: true,
@@ -24,6 +26,9 @@ const idle = (o: Partial<CustomerDisplayState> = {}): CustomerDisplayState => ({
 const KIOSK = { sessionId: 'k1', sessionToken: 't1', config: { salonName: 'Luxury Nails', settings: { enabled: true, appointmentCheckinEnabled: true, walkinCheckinEnabled: true, newCustomerEnabled: true, serviceSelectionEnabled: true, technicianPreferenceEnabled: true, tenantPhoneLookupEnabled: true, centralLookupEnabled: false, customerLinkingEnabled: true, showWaitEstimate: true, autoSendToQueue: true, requireFrontDeskApproval: false, confirmationTimeoutSeconds: 8 } } };
 beforeEach(() => {
   Object.values(api).forEach((f) => (f as any).mockReset());
+  // SUNMI guide 4A: these tests pin the PLAIN walk-in — the server answers the walk-in catalog with 404 (an older API);
+  // the 4A service selection has its own tests (WalkInPicker.test.tsx)
+  api.walkInCatalog.mockRejectedValue(new DisplayApiError(404, 'Not Found'));
   api.startDisplaySession.mockResolvedValue(KIOSK); api.heartbeat.mockResolvedValue({ ok: true }); api.completeSession.mockResolvedValue({ ok: true });
   api.listServices.mockResolvedValue({ services: [] }); api.listTechnicians.mockResolvedValue({ technicians: [] });
 });

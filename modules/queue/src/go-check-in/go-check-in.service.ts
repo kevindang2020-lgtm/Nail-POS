@@ -9,7 +9,8 @@ import { assertTransition } from '@aipowersalon/database';
 import { GO_CHECKIN_DEVICE } from '../queue-lifecycles';
 import { businessDate, localDateTimeToEpochMs, zonedParts } from '@aipowersalon/date-time';
 import type { GoCheckInDeviceView } from '@aipowersalon/api-contracts/tenant';
-import type { AppointmentToday, KioskServiceOption, KioskTechnicianOption } from '@aipowersalon/api-contracts/customer';
+import type { AppointmentToday, KioskServiceOption, KioskTechnicianOption, WalkInCatalog, WalkInConfirmResult, WalkInPreview, WalkInRequestStatus } from '@aipowersalon/api-contracts/customer';
+import { WALKIN_REQUEST_ID, cleanLines, cleanNotes, priceWalkInSelection, publicWalkInCatalog, walkInPayloadHash } from './walkin-selection';
 import { CHECK_IN_ELIGIBLE_STATUSES, withCode } from '@aipowersalon/api-contracts';
 import { CheckInService } from '../check-in/check-in.service';
 import { QueueService } from '../queue/queue.service';
@@ -27,7 +28,7 @@ import { type CheckInContext } from '../check-in/check-in.repository';
 import { TechnicianClockPinService, KioskPinLockedError, TimeClockService, type TimeClockContext } from '@aipowersalon/workforce';
 import { REALTIME, type RealtimeEmitter, EVENTS } from '@aipowersalon/realtime-contracts';
 import { Injectable, Inject, Optional } from '@nestjs/common';
-import type { GoCheckInDataPort, DeviceRow, SessionRow, DisplayDeviceRow, ApptRow } from './go-check-in.repository';
+import type { GoCheckInDataPort, DeviceRow, SessionRow, DisplayDeviceRow, ApptRow, WalkInRequestRow } from './go-check-in.repository';
 import { clockLabel, waitRangeFor, visitFor, visitAnchoredAt, kioskTechnicians, requiredCategories } from './go-check-in-rules';
 import { BOOKING_CHECKIN_RECORDER, type BookingCheckinRecorderPort } from '@aipowersalon/reports';
 import {
@@ -47,7 +48,14 @@ export function waitEstimateFor(settings: { showWaitEstimate?: boolean }, quoted
   return typeof quoted === 'number' && Number.isFinite(quoted) ? quoted : undefined;
 }
 
-export class GoCheckInError extends Error { constructor(msg: string, public status = 400, public code = 'go_check_in_error') { super(msg); } }
+export class GoCheckInError extends Error {
+  /** a safe, structured body for the screen (e.g. the walk-in re-priced preview on WALK_IN_SELECTION_CHANGED) */
+  details?: Record<string, unknown>;
+  constructor(msg: string, public status = 400, public code = 'go_check_in_error') { super(msg); }
+}
+/** A request that sat 'pending' this long was left by a confirm that crashed after writing it: a retry may take it over
+ *  (the check-in itself is idempotent on the request's own key, so a takeover never makes a second visit). */
+export const WALKIN_PENDING_TAKEOVER_MS = 30_000;
 
 const KIOSK_PERMISSIONS = [
   'pos.check_in.view', 'pos.check_in.walk_in', 'pos.check_in.create_customer', 'pos.check_in.appointment',
@@ -461,6 +469,148 @@ export class GoCheckInService {
   /** B-82: the exact-service authority (workforce TechnicianEligibilityService, @Global); null in-memory / dev. */
   eligibility: Pick<TechnicianEligibilityService, 'eligibleAmong'> | null = null;
 
+  // ---- CPad 14 Walk-In service selection (SUNMI guide Section 4A) ----
+  // One catalog (the branch's services / categories, read through walkInCatalogRows), one check-in write (walkInCore →
+  // CheckInService.walkIn), one queue. The screen holds only what the guest picked; the server re-prices and re-checks
+  // everything at preview AND at confirm, and the confirm is idempotent on (tenant, branch, device, checkin_request_id).
+  private requireWalkInSelection(r: Resolved): void {
+    if (!r.settings.walkinCheckinEnabled) throw withCode(new GoCheckInError('Walk-in check-in is turned off here.', 403, 'WALK_IN_CHECKIN_DISABLED'), 'WALK_IN_CHECKIN_DISABLED');
+    if (!r.settings.serviceSelectionEnabled) throw withCode(new GoCheckInError('Service selection is turned off here. Please see the front desk.', 403, 'WALK_IN_CHECKIN_DISABLED'), 'WALK_IN_CHECKIN_DISABLED');
+  }
+  private async walkInCatalogFor(r: Resolved): Promise<WalkInCatalog> {
+    this.requireWalkInSelection(r);
+    if (!r.session.branchId) throw withCode(new GoCheckInError('This check-in device is not assigned to a branch.', 409, 'DEVICE_NO_BRANCH'), 'DEVICE_NO_BRANCH');
+    if (!this.repo.walkInCatalogRows) throw withCode(new GoCheckInError('Service selection is unavailable right now. Please see the front desk.', 503, 'SERVICE_UNAVAILABLE'), 'SERVICE_UNAVAILABLE');
+    return publicWalkInCatalog(await this.repo.walkInCatalogRows(r.session.tenantId, r.session.branchId), r.settings);
+  }
+  /**
+   * GET go-check-in/session/:id/walk-in/catalog[?revision=] — 4A.3 / 4A.6: the branch's customer-visible categories and
+   * services with the catalog revision. A caller that already holds the current revision gets `notModified` and no rows
+   * (the display checks this while a guest browses, so an owner's edit reaches an open screen within one poll).
+   */
+  async walkInCatalog(sessionId: string, token: string | undefined, knownRevision?: string): Promise<WalkInCatalog> {
+    const r = await this.resolveSession(sessionId, token);
+    const cat = await this.walkInCatalogFor(r);
+    if (knownRevision && knownRevision === cat.revision) return { revision: cat.revision, notModified: true, rules: cat.rules, categories: [], services: [], addOns: [] };
+    return cat;
+  }
+  /** POST go-check-in/session/:id/walk-in/preview — 4A.4: re-price and validate the guest's lines; NOTHING is written. */
+  async previewWalkIn(sessionId: string, token: string | undefined, body: { lines?: unknown; revision?: string }): Promise<WalkInPreview> {
+    const r = await this.resolveSession(sessionId, token);
+    const cat = await this.walkInCatalogFor(r);
+    return priceWalkInSelection(cat, cleanLines(body?.lines), typeof body?.revision === 'string' ? body.revision : null);
+  }
+  /** GET go-check-in/session/:id/walk-in/status?checkinRequestId= — this DEVICE's request only; no name, phone or services. */
+  async walkInStatus(sessionId: string, token: string | undefined, checkinRequestId: string): Promise<WalkInRequestStatus> {
+    const r = await this.resolveSession(sessionId, token);
+    const id = String(checkinRequestId ?? '');
+    const row = WALKIN_REQUEST_ID.test(id) && r.session.branchId && this.repo.walkInRequestByKey ? await this.repo.walkInRequestByKey(r.session.tenantId, r.session.branchId, actorOf(r), id) : null;
+    return { checkinRequestId: id, requestState: row ? row.status : 'not_found', queued: row?.status === 'queued' };
+  }
+  private walkInReplay(row: WalkInRequestRow): WalkInConfirmResult {
+    const res = (row.result ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+    return {
+      status: row.status === 'existing_visit' ? 'already_checked_in' : 'checked_in', firstName: str(res.firstName) ?? '',
+      ...(str(res.checkInId) ? { checkInId: str(res.checkInId) } : {}), ...(str(res.queueItemId) ? { queueItemId: str(res.queueItemId) } : {}),
+      ...(typeof res.estimatedServiceMinutes === 'number' ? { estimatedServiceMinutes: res.estimatedServiceMinutes } : {}),
+      checkinRequestId: row.checkinRequestId, requestState: row.status, replayed: true, servicesPending: row.servicesPending,
+    };
+  }
+  /**
+   * POST go-check-in/session/:id/walk-in/confirm — 4A.7: exactly one visit, one queue entry and one request record per
+   * (tenant, branch, device, checkin_request_id). The same id + the same payload answers with the first result (a double
+   * tap, a retry, a restored session); the same id + a different payload is refused (IDEMPOTENCY_KEY_REUSED). Before
+   * anything is written the lines are re-priced against the CURRENT catalog: a revision the guest did not approve, or a
+   * changed line, is refused with the fresh preview (WALK_IN_SELECTION_CHANGED) and a gone line with
+   * WALK_IN_SERVICE_UNAVAILABLE — never a silent substitute or an old price. A guest with an active visit is resolved to
+   * it (existing_visit), never queued twice. Never a ticket, a charge, a receipt or a points movement.
+   */
+  async confirmWalkIn(sessionId: string, token: string | undefined, body: { checkinRequestId?: string; approvedRevision?: string; customerId?: string; customerName?: string; phone?: string; lines?: unknown; skipServices?: boolean; technicianId?: string; notes?: string }): Promise<WalkInConfirmResult> {
+    const r = await this.resolveSession(sessionId, token);
+    this.requireWalkInSelection(r);
+    const requestId = String(body?.checkinRequestId ?? '');
+    if (!WALKIN_REQUEST_ID.test(requestId)) throw withCode(new GoCheckInError('This check-in needs a request id. Please try again.', 400, 'IDEMPOTENCY_KEY_REQUIRED'), 'IDEMPOTENCY_KEY_REQUIRED');
+    const name = String(body?.customerName ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!name) throw withCode(new GoCheckInError('Please enter your name.', 400, 'NAME_REQUIRED'), 'NAME_REQUIRED');
+    if (!r.session.branchId || !this.repo.walkInRequestByKey || !this.repo.insertWalkInRequest || !this.repo.updateWalkInRequest) throw withCode(new GoCheckInError('Service selection is unavailable right now. Please see the front desk.', 503, 'SERVICE_UNAVAILABLE'), 'SERVICE_UNAVAILABLE');
+    const lines = cleanLines(body?.lines);
+    const skip = lines.length === 0 && body?.skipServices === true;
+    const notes = cleanNotes(body?.notes);
+    const approvedRevision = String(body?.approvedRevision ?? '').slice(0, 128);
+    const askedTech = typeof body?.technicianId === 'string' && body.technicianId.length <= 64 ? body.technicianId : '';
+    const customerId = typeof body?.customerId === 'string' && body.customerId ? body.customerId : undefined;
+    const phone = typeof body?.phone === 'string' ? body.phone.replace(/\D/g, '').slice(-10) : undefined;
+    const tenantId = r.session.tenantId; const branchId = r.session.branchId; const deviceRef = actorOf(r);
+    const hash = walkInPayloadHash({ customerId, customerName: name, phone, lines, skipServices: skip, technicianId: askedTech || undefined, notes, approvedRevision });
+
+    // 4A.7: the same request again (double tap, retry, reconnect, restored session) — its first answer, or a refusal
+    let prior = await this.repo.walkInRequestByKey(tenantId, branchId, deviceRef, requestId);
+    if (prior) {
+      if (prior.payloadHash !== hash) throw withCode(new GoCheckInError('This check-in request was already used for different services. Please start again.', 422, 'IDEMPOTENCY_KEY_REUSED'), 'IDEMPOTENCY_KEY_REUSED');
+      if (prior.status === 'queued' || prior.status === 'existing_visit') return this.walkInReplay(prior);
+      if (prior.status === 'pending' && Date.now() - Date.parse(prior.updatedAt) < WALKIN_PENDING_TAKEOVER_MS) throw withCode(new GoCheckInError('Your check-in is still being saved. Please wait a moment.', 409, 'IDEMPOTENCY_IN_PROGRESS'), 'IDEMPOTENCY_IN_PROGRESS');
+      // 'failed', or a 'pending' a crashed confirm left behind: this retry takes it over (same payload, same key below)
+    }
+
+    // 4A.4 / 4A.8: re-price against the CURRENT catalog before anything is written
+    const cat = await this.walkInCatalogFor(r);
+    const preview = priceWalkInSelection(cat, lines, approvedRevision || '-');
+    if (preview.lines.some((l) => l.state === 'unavailable' || l.addOns.some((a) => a.state === 'unavailable'))) {
+      const e = withCode(new GoCheckInError('One of your services is no longer available. Please remove it and confirm again.', 409, 'WALK_IN_SERVICE_UNAVAILABLE'), 'WALK_IN_SERVICE_UNAVAILABLE');
+      e.details = { preview }; throw e;
+    }
+    if (approvedRevision !== cat.revision || preview.lines.some((l) => l.state === 'changed')) {
+      const e = withCode(new GoCheckInError('Some of your services changed. Please review them and confirm again.', 409, 'WALK_IN_SELECTION_CHANGED'), 'WALK_IN_SELECTION_CHANGED');
+      e.details = { preview }; throw e;
+    }
+    if (!lines.length && (cat.rules.requireServices || !skip)) throw withCode(new GoCheckInError('Please choose at least one service.', 400, 'SERVICES_REQUIRED'), 'SERVICES_REQUIRED');
+    // a preference is a REQUEST (4A.3) — only when the salon allows it, and only someone eligible for every service today
+    let technicianId: string | undefined;
+    if (askedTech && cat.rules.allowTechnicianPreference) {
+      if (!(await this.eligibleTechnicians(r, lines.map((l) => l.serviceId))).some((t) => t.technicianId === askedTech)) {
+        throw withCode(new GoCheckInError('That technician isn’t available for these services today. Choose another, or No preference.', 400, 'TECHNICIAN_UNAVAILABLE_TODAY'), 'TECHNICIAN_UNAVAILABLE_TODAY');
+      }
+      technicianId = askedTech;
+    }
+
+    // the request record: the database's unique key decides between two taps / replicas racing past the read above
+    const snapshot = preview.lines.map((l) => ({ serviceId: l.serviceId, name: l.name, priceCents: l.priceCents, durationMinutes: l.durationMinutes, addOns: l.addOns.map((a) => ({ id: a.id, name: a.name, priceCents: a.priceCents, durationMinutes: a.durationMinutes })) }));
+    let row: WalkInRequestRow | null = prior;
+    if (row) await this.repo.updateWalkInRequest(tenantId, row.id, { status: 'pending' });
+    else {
+      row = await this.repo.insertWalkInRequest({ tenantId, branchId, deviceRef, checkinRequestId: requestId, payloadHash: hash, catalogRevision: cat.revision, lines: snapshot, servicesPending: skip,
+        estimatedTotalCents: preview.estimatedTotalCents ?? 0, estimatedMinutes: preview.estimatedMinutes ?? 0 });
+      if (!row) {
+        prior = await this.repo.walkInRequestByKey(tenantId, branchId, deviceRef, requestId);
+        if (prior && prior.payloadHash !== hash) throw withCode(new GoCheckInError('This check-in request was already used for different services. Please start again.', 422, 'IDEMPOTENCY_KEY_REUSED'), 'IDEMPOTENCY_KEY_REUSED');
+        if (prior && (prior.status === 'queued' || prior.status === 'existing_visit')) return this.walkInReplay(prior);
+        throw withCode(new GoCheckInError('Your check-in is still being saved. Please wait a moment.', 409, 'IDEMPOTENCY_IN_PROGRESS'), 'IDEMPOTENCY_IN_PROGRESS');
+      }
+    }
+
+    const serviceLines = lines.flatMap((l) => [{ serviceId: l.serviceId }, ...(l.addOnIds ?? []).map((id) => ({ serviceId: id, isAddon: true, parentServiceId: l.serviceId }))]);
+    const minutes = snapshot.reduce((n, l) => n + (l.durationMinutes ?? 0) + l.addOns.reduce((m, a) => m + (a.durationMinutes ?? 0), 0), 0);
+    let conf: CheckInConfirmation;
+    try {
+      conf = await this.walkInCore(r, {
+        customerId, name, phone, lines: serviceLines, technicianId,
+        // 4A.2: a skipped selection is a visit with "Services pending" — never an invented service or a zero bill
+        notes: skip ? ['Services pending — guest asked for front-desk help choosing services', notes].filter(Boolean).join(' · ') : notes || undefined,
+        serviceMinutes: minutes, idempotencyKey: `walkin:${row.id}`,
+        event: { walkInRequest: true, requestedServiceCount: lines.length, servicesPending: skip },
+      });
+    } catch (e: any) {
+      if (e instanceof GoCheckInError && e.code === 'CHECKIN_ALREADY_EXISTS') conf = { status: 'already_checked_in', firstName: name.split(' ')[0] };
+      else { await this.repo.updateWalkInRequest(tenantId, row.id, { status: 'failed' }); throw e; }
+    }
+    const state = conf.status === 'already_checked_in' ? 'existing_visit' as const : 'queued' as const;
+    const queueItemId = conf.queueItemId ?? conf.checkInId ?? null;
+    await this.repo.updateWalkInRequest(tenantId, row.id, { status: state, queueItemId, result: { status: conf.status, firstName: conf.firstName, ...(conf.checkInId ? { checkInId: conf.checkInId } : {}), ...(queueItemId ? { queueItemId } : {}), ...(conf.estimatedServiceMinutes !== undefined ? { estimatedServiceMinutes: conf.estimatedServiceMinutes } : {}) } });
+    await this.logS(r.session, 'walkin_request_confirmed', state === 'queued' ? 'Walk-in service request queued' : 'Walk-in request resolved to the active visit', { checkinRequestId: requestId, lines: lines.length, servicesPending: skip, ...(queueItemId ? { queueItemId } : {}) });
+    return { ...conf, checkinRequestId: requestId, requestState: state, replayed: false, servicesPending: skip };
+  }
+
   // ---- Technician time clock (PIN-driven, on the kiosk) ----
   // The device's session decides tenant + branch; the PIN decides WHO. We never trust a client-supplied technicianId,
   // and every action (identify AND clock) re-verifies the PIN — so one technician cannot clock another in or out.
@@ -576,19 +726,31 @@ export class GoCheckInService {
       }
       technicianId = body.technicianId;
     }
+    const lines = [...mains.map((serviceId) => ({ serviceId })), ...addOns.map((serviceId) => ({ serviceId, isAddon: true, parentServiceId: mains[0] }))];
+    const serviceMinutes = lines.reduce((sum, l) => sum + (byId.get(l.serviceId)?.durationMinutes ?? 0), 0);
+    return this.walkInCore(r, { customerId: body.customerId, name, phone: body.phone, lines, technicianId, notes: body.notes, serviceMinutes });
+  }
+
+  /**
+   * The walk-in write both doors share (the plain walk-in above and the 4A service-selection confirm): the duplicate
+   * guard, the existing CheckInService walk-in (its catalog prices the lines, its idempotency key and the database's
+   * one-active-entry index stop a second visit), the queue entry, the event, the confirmation.
+   */
+  private async walkInCore(r: Resolved, w: { customerId?: string; name: string; phone?: string; lines: { serviceId: string; isAddon?: boolean; parentServiceId?: string }[]; technicianId?: string; notes?: string; serviceMinutes: number; idempotencyKey?: string; event?: Record<string, unknown> }): Promise<CheckInConfirmation> {
+    const { name, lines, technicianId } = w;
     const ctx = this.kioskCtx(r);
     // duplicate guard: same customer already in an active queue today
     const day = await this.todayInfo(r.session);
-    if (body.customerId && await this.repo.hasActiveCheckInToday(r.session.tenantId, body.customerId, day.today, day.dayStartMs)) {
+    if (w.customerId && await this.repo.hasActiveCheckInToday(r.session.tenantId, w.customerId, day.today, day.dayStartMs)) {
       await this.logS(r.session, 'duplicate_blocked', 'Customer already checked in today');
-      return { status: 'already_checked_in', firstName: name.split(' ')[0] };
+      const existing = this.repo.activeCheckInIdToday ? await this.repo.activeCheckInIdToday(r.session.tenantId, w.customerId, day.dayStartMs) : null;
+      return { status: 'already_checked_in', firstName: name.split(' ')[0], ...(existing ? { checkInId: existing } : {}) };
     }
-    const lines = [...mains.map((serviceId) => ({ serviceId })), ...addOns.map((serviceId) => ({ serviceId, isAddon: true, parentServiceId: mains[0] }))];
     const row = await this.requireCheckIn().walkIn(ctx, {
-      customerId: body.customerId, customerName: name, customerPhone: body.phone,
+      customerId: w.customerId, customerName: name, customerPhone: w.phone,
       serviceIds: lines.map((l) => l.serviceId), ...(lines.length ? { serviceLines: lines } : { allowNoServices: true }),
-      technicianId, notes: body.notes,
-    }).catch((e: any) => {
+      technicianId, notes: w.notes, ...(w.idempotencyKey ? { idempotencyKey: w.idempotencyKey } : {}),
+    } as Parameters<CheckInService['walkIn']>[1]).catch((e: any) => {
       // Dual-Screen §104: another screen checked this guest in a moment ago (the database's one-active-entry index)
       if (e?.code === 'CHECKIN_ALREADY_EXISTS') throw new GoCheckInError(e.message, 409, 'CHECKIN_ALREADY_EXISTS');
       throw new GoCheckInError(e?.message || 'Walk-in check-in failed', 400, 'walkin_failed');
@@ -596,12 +758,11 @@ export class GoCheckInService {
     if (row.customerId) await this.repo.markCheckedInToday(r.session.tenantId, row.customerId, day.today);
     await this.logS(r.session, 'walkin_checked_in', 'Walk-in checked in', { checkInId: row.checkInId });
     const queued = await this.maybeEnqueue(ctx, r, row.checkInId);
-    this.emit(r, EVENTS.customerCheckedIn, { checkInId: row.checkInId, customerName: row.customerName, source: 'walk_in', queueItemId: queued });
+    this.emit(r, EVENTS.customerCheckedIn, { checkInId: row.checkInId, customerName: row.customerName, source: 'walk_in', queueItemId: queued, ...(w.event ?? {}) });
     const wait = waitEstimateFor(r.settings, row.quotedWaitMinutes);
-    const serviceMinutes = lines.reduce((sum, l) => sum + (byId.get(l.serviceId)?.durationMinutes ?? 0), 0);
     return {
       status: 'checked_in', firstName: (row.customerName || name).split(' ')[0], estimatedWaitMinutes: wait,
-      ...(wait !== undefined ? { estimatedWait: waitRangeFor(wait) } : {}), ...(lines.length ? { estimatedServiceMinutes: serviceMinutes } : {}),
+      ...(wait !== undefined ? { estimatedWait: waitRangeFor(wait) } : {}), ...(lines.length ? { estimatedServiceMinutes: w.serviceMinutes } : {}),
       checkInId: queued ?? row.checkInId,
       ...(await this.queueFields(r, queued ?? row.checkInId)),   // round 2: queueItemId + requested technician + alternates
     } as CheckInConfirmation;

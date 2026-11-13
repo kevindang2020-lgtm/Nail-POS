@@ -178,6 +178,8 @@ GET /go-check-in/session/{sessionId}/place-in-line  realm=shared  auth=public  d
 GET /go-check-in/session/{sessionId}/services  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 GET /go-check-in/session/{sessionId}/technicians  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 GET /go-check-in/session/{sessionId}/today-appointments  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
+GET /go-check-in/session/{sessionId}/walk-in/catalog  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
+GET /go-check-in/session/{sessionId}/walk-in/status  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 GET /go-check-in/{slug}/config  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 GET /health  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm  unversioned
 GET /health/live  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm  unversioned
@@ -2444,6 +2446,8 @@ POST /go-check-in/session/{sessionId}/lookup-phone  realm=shared  auth=public  d
 POST /go-check-in/session/{sessionId}/technician/clock-in  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 POST /go-check-in/session/{sessionId}/technician/clock-out  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 POST /go-check-in/session/{sessionId}/technician/identify  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
+POST /go-check-in/session/{sessionId}/walk-in/confirm  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
+POST /go-check-in/session/{sessionId}/walk-in/preview  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 POST /go-check-in/{slug}/start-session  realm=shared  auth=public  domain=booking  resource=PUBLIC/realm
 POST /integrations/inbound/{connectionId}  realm=shared  auth=public  domain=operations  resource=PUBLIC/realm  unversioned
 POST /internal/ai-billing/cardpointe  realm=shared  auth=public  domain=ai  resource=PUBLIC/realm
