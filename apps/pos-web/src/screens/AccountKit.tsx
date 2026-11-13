@@ -3,7 +3,8 @@
 //   • notification switches → pos/me/notification-prefs (user_notification_prefs), saved only when the server confirms
 //   • recent activity → GET /pos/audit/events (the canonical tenant audit), newest first, server-paged
 import { useCallback, useEffect, useState } from 'react';
-import type { MessagingReadiness } from '@aipowersalon/api-contracts/tenant';
+import type { MessagingReadiness, NotificationSwitch } from '@aipowersalon/api-contracts/tenant';
+import { NOTIFICATION_SWITCH_EFFECT } from '@aipowersalon/api-contracts/tenant';   // extras round 11: which switches a real send path obeys today
 import { posMePrefsApi, type NotificationPrefs, type NotificationDeliveryPage, type DeliveryQuery } from '../api/posMePrefsApi';
 import { posAuditApi, type AuditPage, type AuditEventRow } from '../api/posAuditApi';
 import { FitDialog, Pager, ErrorRetry, Empty } from '../components/FitKit';
@@ -18,7 +19,7 @@ const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parame
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 
 /** the eight switches, in the screenshot's order — label/description keys are the existing account ones */
-export const NOTIF_ITEMS: { key: keyof NotificationPrefs; label: () => string; desc: () => string; channel?: 'sms' | 'email' | 'push' }[] = [
+export const NOTIF_ITEMS: { key: NotificationSwitch; label: () => string; desc: () => string; channel?: 'sms' | 'email' | 'push' }[] = [
   { key: 'smsNotifications', label: () => tx('admin.account.notif.sms'), desc: () => tx('admin.account.notif.smsDesc'), channel: 'sms' },
   { key: 'emailNotifications', label: () => tx('admin.account.notif.email'), desc: () => tx('admin.account.notif.emailDesc'), channel: 'email' },
   { key: 'pushNotifications', label: () => tx('admin.account.notif.push'), desc: () => tx('admin.account.notif.pushDesc'), channel: 'push' },
@@ -65,12 +66,16 @@ export function NotificationPrefsPanel({ rd, rdKnown }: { rd: MessagingReadiness
   const row = (it: (typeof NOTIF_ITEMS)[number], big = false) => {
     const on = !!prefs?.[it.key];
     const eff = prefs ? notifEffect(it, on, rd, rdKnown) : 'unknown';
+    const applies = NOTIFICATION_SWITCH_EFFECT[it.key];
     return (
       <div key={it.key} className={big ? 'acx-ncard' : 'row acx-nrow'} data-testid={big ? `acx-ncard-${it.key}` : `acx-nrow-${it.key}`}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: big ? 14 : 12.5 }}>{it.label()}</div>
           <div style={{ fontSize: big ? 12 : 10.5, color: 'var(--muted)' }}>{it.desc()}</div>
           {big || eff === 'blocked' ? <div className={'acx-eff ' + eff} data-testid="acx-eff" data-state={eff}>{tt('acx.eff.' + eff)}</div> : null}
+          {/* extras round 11: say honestly whether this switch changes anything today (the server's own table, api-contracts) */}
+          {big ? <div className="sub" style={{ fontSize: 11 }} data-testid="acx-applies" data-state={applies}>{tt('acx.applies.' + applies)}</div>
+            : applies === 'no_sender' ? <div className="sub" style={{ fontSize: 10.5 }} data-testid="acx-applies" data-state={applies}>{tt('acx.applies.short_no_sender')}</div> : null}
         </div>
         <Toggle on={on} label={it.label()} disabled={!prefs || saving != null} onChange={(v) => set(it.key, v)} testId={big ? `acx-ntoggle-big-${it.key}` : `acx-ntoggle-${it.key}`} />
       </div>
@@ -90,6 +95,7 @@ export function NotificationPrefsPanel({ rd, rdKnown }: { rd: MessagingReadiness
           {err ? <ErrorRetry message={err} onRetry={load} /> : !prefs ? <div className="state">{tx('pos.loading')}</div> : <div className="acx-ngrid">{NOTIF_ITEMS.map((it) => row(it, true))}</div>}
           {msg ? <div className={msg.tone === 'err' ? 'err' : 'sub'} style={{ marginTop: 8 }}>{msg.text}</div> : null}
           <p className="sub" style={{ marginTop: 10 }}>{tt('acx.notif.foot')}</p>
+          <p className="sub" style={{ marginTop: 4 }} data-testid="acx-notif-always">{tt('acx.notif.always')}</p>
           {prefs ? <QuietHours prefs={prefs} onSaved={(next) => { setPrefs(next); setMsg({ tone: 'ok', text: tt('acx.notif.saved') }); }} /> : null}
           <DeliveryHistory />
         </FitDialog>
@@ -209,7 +215,7 @@ export function DeliveryHistory() {
           <tbody>{d.items.map((r) => (
             <tr key={r.id} data-testid="acx-dh-row"><td className="sub nowrap">{when(r.createdAt)}</td><td style={{ fontWeight: 700 }}>{codeLabel('admin.notif.template', r.template)}</td>
               <td>{tt('acx.dh.ch.' + r.channel)}</td><td className="sub">{r.targetMasked}</td>
-              <td><span className={'chip ' + (r.status === 'delivered' || r.status === 'sent' ? 'ok' : r.status === 'failed' || r.status === 'blocked' ? 'bad' : 'warn')}>{tt('acx.dh.st.' + r.status)}</span>{r.error ? <div className="sub" style={{ fontSize: 11 }}>{r.error}</div> : null}</td></tr>))}</tbody></table></div>}
+              <td><span className={'chip ' + (r.status === 'delivered' || r.status === 'sent' ? 'ok' : r.status === 'failed' || r.status === 'blocked' ? 'bad' : 'warn')}>{tt('acx.dh.st.' + r.status)}</span>{r.error ? <div className="sub" style={{ fontSize: 11 }} data-testid="acx-dh-error">{r.error === 'staff_pref_off' ? tt('acx.dh.err.staff_pref_off') : r.error}</div> : null}</td></tr>))}</tbody></table></div>}
       <div className="rvw-pager"><Pager info={d ? { page: d.page, pageSize: d.pageSize, totalItems: d.total, totalPages: d.totalPages } : null} onPage={(p) => set({ page: p })} /></div>
     </section>
   );

@@ -5,9 +5,10 @@ import { Injectable } from '@nestjs/common';
 import type { PushRepositoryPort, PushContext } from './push.repository';
 import type { PushProvider, PushMessage, PushPlatform, DispatchSummary } from './push.types';
 import type { PushTokenRow } from './push.repository';
+import type { StaffPrefsRead } from '../notifications/staff-notification-prefs';
 import { selectPushProvider } from './push-providers';
 import { isPushApp, isPushCategory, categoryTargetsApp, pushRouteData, PUSH_FORBIDDEN_DATA_KEYS, PUSH_CATEGORIES } from '@aipowersalon/api-contracts';
-import { inQuietHours } from '@aipowersalon/api-contracts/tenant';
+import { inQuietHours, staffNotificationAllowed, staffCategoryForPush, STAFF_PREF_HOLD_REASON } from '@aipowersalon/api-contracts/tenant';
 import { Logger } from '@nestjs/common';
 
 /** §61 + §62 (Phase 13 D): the payload a provider sees — the producer's data minus every forbidden key, plus the typed
@@ -66,13 +67,36 @@ export class PushService {
     let tokens: PushTokenRow[] = [];
     try { tokens = await this.repo.activeTokensForUser(userId); } catch { tokens = []; }
     if (msg.category) tokens = tokens.filter((t) => categoryTargetsApp(msg.category!, t.app));
+    // extras round 11: the person's own notification switches (My Account → Notifications) — the ONE shared rule
+    // (api-contracts staffNotificationAllowed) on the ONE reader. Only STAFF app devices (tech / owner / manager / POS /
+    // legacy no-app) are held — a customer-app device has its own consent and is never touched here. A security push always
+    // goes. A held device is recorded in the delivery log as 'suppressed' with reason staff_pref_off. Unreadable → send, logged.
+    let heldForStaffPref = 0;
+    if (tokens.length && tenantId && this.repo.staffPrefsFor) {
+      const staffTokens = tokens.filter((t) => t.app !== 'customer');
+      if (staffTokens.length) {
+        let read: StaffPrefsRead;
+        try { read = await this.repo.staffPrefsFor(tenantId, userId); } catch (e) { read = { state: 'unreadable', prefs: null, error: String((e as Error)?.message ?? e) }; }
+        if (read.state === 'unreadable') this.log.warn(`staff notification preferences unreadable for a push; sending: ${String(read.error ?? '').slice(0, 120)}`);
+        const d = staffNotificationAllowed(read.prefs, 'push', staffCategoryForPush(msg.category, msg.data?.kind));
+        if (!d.allowed) {
+          for (const t of staffTokens) {
+            try { await this.repo.logDelivery({ tenantId, userId, token: t.token, template: msg.reference || msg.title, result: { ok: false, error: STAFF_PREF_HOLD_REASON }, suppressed: true }); }
+            catch (e) { this.log.warn(`held push not recorded: ${String((e as Error)?.message ?? e).slice(0, 120)}`); }
+          }
+          heldForStaffPref = staffTokens.length;
+          tokens = tokens.filter((t) => t.app === 'customer');
+          if (!tokens.length) return { tokens: staffTokens.length, sent: 0, failed: 0, provider: this.provider.name, heldForStaffPref };
+        }
+      }
+    }
     // extras Customer Notifications 08 (round 10): the person's own quiet hours (salon local time). A typed push that is not a
     // required notice (the 'security' channel) is HELD — not sent to their devices; the in-app record it belongs to stays.
     // An unreadable preference never silences a push (fail open for delivery, logged).
     if (tokens.length && tenantId && msg.category && PUSH_CATEGORIES[msg.category].channel !== 'security' && this.repo.quietHoursFor) {
       let qh: { start: string; end: string; timeZone: string } | null = null;
       try { qh = await this.repo.quietHoursFor(tenantId, userId); } catch (e) { this.log.warn(`quiet hours unreadable for a push; sending: ${String((e as Error)?.message ?? e).slice(0, 120)}`); }
-      if (qh && inQuietHours(minuteIn(this.now(), qh.timeZone), qh.start, qh.end)) return { tokens: tokens.length, sent: 0, failed: 0, provider: this.provider.name, heldForQuietHours: tokens.length };
+      if (qh && inQuietHours(minuteIn(this.now(), qh.timeZone), qh.start, qh.end)) return { tokens: tokens.length + heldForStaffPref, sent: 0, failed: 0, provider: this.provider.name, heldForQuietHours: tokens.length, ...(heldForStaffPref ? { heldForStaffPref } : {}) };
     }
     msg = { ...msg, data: minimizedPushData(msg) };
     let sent = 0, failed = 0;
@@ -82,6 +106,6 @@ export class PushService {
       if (result.ok) sent++; else failed++;
       if (!result.ok && result.error === 'unregistered') { try { await this.repo.revokeToken(t.token); } catch { /* best-effort */ } }
     }
-    return { tokens: tokens.length, sent, failed, provider: this.provider.name };
+    return { tokens: tokens.length + heldForStaffPref, sent, failed, provider: this.provider.name, ...(heldForStaffPref ? { heldForStaffPref } : {}) };
   }
 }

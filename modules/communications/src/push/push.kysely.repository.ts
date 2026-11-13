@@ -3,6 +3,7 @@ import { sql, type Kysely } from 'kysely';
 import { tenantTimeZone, type DB } from '@aipowersalon/database';
 import type { PushRepositoryPort, PushContext, PushTokenRow, DeliveryLogInput } from './push.repository';
 import type { PushPlatform } from './push.types';
+import { readStaffNotificationPrefs, type StaffPrefsRead } from '../notifications/staff-notification-prefs';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 
 export class KyselyPushRepository implements PushRepositoryPort {
@@ -30,10 +31,11 @@ export class KyselyPushRepository implements PushRepositoryPort {
     if (!r?.quiet_start || !r?.quiet_end) return null;
     return { start: r.quiet_start, end: r.quiet_end, timeZone: await tenantTimeZone(this.db, tenantId) };
   }
+  async staffPrefsFor(tenantId: string, userId: string): Promise<StaffPrefsRead> { return readStaffNotificationPrefs(this.db, tenantId, userId); }
   async logDelivery(input: DeliveryLogInput): Promise<void> {
     const write = async (db: Kysely<DB>) => (await db.insertInto('notification_delivery_logs').values({
       tenant_id: input.tenantId, user_id: input.userId, channel: 'push', target_masked: '***' + input.token.slice(-6),
-      template: input.template, provider_id: input.result.providerId ?? null, status: input.result.ok ? 'sent' : 'failed', error_message: input.result.error ?? null,
+      template: input.template, provider_id: input.result.providerId ?? null, status: input.suppressed ? 'suppressed' : input.result.ok ? 'sent' : 'failed', error_message: input.result.error ?? null,
     }).returning('id').executeTakeFirst())?.id as string | undefined;
     try {
       if (!this.outbox || !input.result.ok || !input.tenantId) { await write(this.db); return; }

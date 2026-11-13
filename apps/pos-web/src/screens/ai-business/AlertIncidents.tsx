@@ -124,6 +124,7 @@ function SmsPlan({ p, dirty }: { p: any; dirty: boolean }) {
       <b>{bt('bzx.sp.title')}</b>
       {dirty ? <div className="sub" data-testid="bzx-sp-dirty">{bt('bzx.sp.dirty')}</div> : null}
       <div data-testid="bzx-sp-recipients">{bt('bzx.sp.recipients', { n: p.recipientsWithPhone, total: p.recipients })}</div>
+      {Number(p.recipientsSmsOff ?? 0) > 0 ? <div className="sub" data-testid="bzx-sp-smsoff">{bt('bzx.sp.smsOff', { n: Number(p.recipientsSmsOff) })}</div> : null}
       <div data-testid="bzx-sp-segments">{bt('bzx.sp.segments', { seg: p.segmentsPerMessage, total: p.segmentsPerTrigger })}</div>
       <div data-testid="bzx-sp-cost">{p.estimatedCostCentsPerTrigger == null ? bt('bzx.sp.costUnknown') : bt('bzx.sp.cost', { cost: fmtMoney(p.estimatedCostCentsPerTrigger) })}</div>
       <div data-testid="bzx-sp-sender">{!p.senderConfigured ? bt('bzx.sp.senderMissing') : p.senderValidatedAt ? bt('bzx.sp.sender', { at: bzWhen(p.senderValidatedAt) }) : bt('bzx.sp.senderNoCheck')}</div>
