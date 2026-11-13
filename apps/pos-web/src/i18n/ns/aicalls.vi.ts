@@ -256,4 +256,40 @@ export const AICALLS_VI: Record<string, string> = {
   "aist.key.recordingEnabled": "Ghi âm",
   "aist.key.recordingConsentMessage": "Lời báo ghi âm",
   "aist.key.defaultLanguage": "Ngôn ngữ",
+  "aist.rec.title": "Đề xuất AI cần duyệt", // DRAFT — Kevin reviews
+  "aist.rec.openCount": "{n} đang chờ", // DRAFT — Kevin reviews
+  "aist.rec.filter": "Hiển thị đề xuất", // DRAFT — Kevin reviews
+  "aist.rec.rule": "Đề xuất được tạo từ các cuộc gọi và không bao giờ tự thay đổi lễ tân. Duyệt một thay đổi lời thoại chỉ lưu bản nháp; bộ phận hỗ trợ nền tảng mới đưa bản nháp vào sử dụng. Giá, giờ mở cửa, chính sách và quyền không bao giờ được đổi ở đây.", // DRAFT — Kevin reviews
+  "aist.rec.loadFailed": "Không tải được đề xuất.", // DRAFT — Kevin reviews
+  "aist.rec.decideFailed": "Không lưu được quyết định.", // DRAFT — Kevin reviews
+  "aist.rec.empty": "Không có đề xuất nào trong danh sách này.", // DRAFT — Kevin reviews
+  "aist.rec.col.when": "Ngày đề xuất", // DRAFT — Kevin reviews
+  "aist.rec.col.area": "Phần", // DRAFT — Kevin reviews
+  "aist.rec.col.reason": "Lý do", // DRAFT — Kevin reviews
+  "aist.rec.col.detail": "Đề xuất", // DRAFT — Kevin reviews
+  "aist.rec.col.status": "Trạng thái", // DRAFT — Kevin reviews
+  "aist.rec.approve": "Duyệt", // DRAFT — Kevin reviews
+  "aist.rec.reject": "Từ chối", // DRAFT — Kevin reviews
+  "aist.rec.saveDraft": "Lưu bản nháp", // DRAFT — Kevin reviews
+  "aist.rec.promptLabel": "Lời thoại mới của lễ tân", // DRAFT — Kevin reviews
+  "aist.rec.draftNote": "Nội dung được lưu thành bản nháp. Cuộc gọi vẫn dùng lời thoại hiện tại cho đến khi bản nháp được kích hoạt.", // DRAFT — Kevin reviews
+  "aist.rec.approved": "Đã duyệt đề xuất.", // DRAFT — Kevin reviews
+  "aist.rec.approvedDraft": "Đã duyệt. Đã lưu bản nháp {label}; cuộc gọi vẫn dùng lời thoại hiện tại.", // DRAFT — Kevin reviews
+  "aist.rec.rejected": "Đã từ chối đề xuất.", // DRAFT — Kevin reviews
+  "aist.rec.readOnly": "Chỉ chủ tiệm hoặc quản lý có quyền quản lý AI mới được duyệt hoặc từ chối.", // DRAFT — Kevin reviews
+  "aist.rec.status.open": "Đang chờ duyệt", // DRAFT — Kevin reviews
+  "aist.rec.status.approved": "Đã duyệt", // DRAFT — Kevin reviews
+  "aist.rec.status.rejected": "Đã từ chối", // DRAFT — Kevin reviews
+  "aist.rec.status.applied": "Đã áp dụng", // DRAFT — Kevin reviews
+  "aist.rec.target.prompt": "Lời thoại lễ tân", // DRAFT — Kevin reviews
+  "aist.rec.target.faq": "Câu hỏi thường gặp", // DRAFT — Kevin reviews
+  "aist.rec.target.knowledge": "Thông tin tiệm", // DRAFT — Kevin reviews
+  "aist.rec.target.pronunciation": "Cách phát âm", // DRAFT — Kevin reviews
+  "aist.rec.target.tool_description": "Mô tả công cụ đặt lịch", // DRAFT — Kevin reviews
+  "aist.rec.cat.tool_failure": "Một bước đặt lịch bị lỗi", // DRAFT — Kevin reviews
+  "aist.rec.cat.repeated_questions": "Khách hỏi lại nhiều lần", // DRAFT — Kevin reviews
+  "aist.rec.cat.excessive_interruptions": "Bị ngắt lời nhiều", // DRAFT — Kevin reviews
+  "aist.rec.cat.abandoned": "Khách gác máy", // DRAFT — Kevin reviews
+  "aist.rec.cat.failed_booking": "Đặt lịch không thành công", // DRAFT — Kevin reviews
+  "aist.rec.cat.bad_wording": "Lời thoại chưa rõ", // DRAFT — Kevin reviews
 };

@@ -7,6 +7,7 @@ import { posAiApi, type ReceptionistSettings } from '../api/posAiApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtDateTime } from '../i18n/format';
+import { AiRecommendationsPanel } from './AiRecommendationsPanel';
 
 const KEYS = ['enabled', 'afterHoursBehavior', 'allowInterruptions', 'silenceTimeoutSeconds', 'maxCallDurationSeconds', 'recordingEnabled', 'recordingConsentMessage'] as const;
 
@@ -159,6 +160,8 @@ export function POSAISettingsScreen() {
                 <td>{v.version !== meta?.version ? <button style={linkBtn} data-testid="aist-restore" onClick={() => restore(v)}>{t('aist.restore')}</button> : <span className="sub">{t('aist.current')}</span>}</td></tr>))}</tbody></table>)}
         {hist && !hist.error && hist.totalPages > 1 ? <div style={{ display: 'flex', gap: 8, marginTop: 6 }}><button style={linkBtn} disabled={histPage <= 1} onClick={() => setHistPage((p) => p - 1)}>{t('pos.previous')}</button><span className="sub">{histPage} / {hist.totalPages}</span><button style={linkBtn} disabled={histPage >= hist.totalPages} onClick={() => setHistPage((p) => p + 1)}>{t('pos.next')}</button></div> : null}
       </section>
+
+      <AiRecommendationsPanel />   {/* AI Receptionist Settings 07: salon-side approval of AI recommendations */}
 
       <div style={{ fontSize: 11.5, color: '#9B8B78' }}><button style={linkBtn} onClick={() => nav('/tenant/ai/receptionist')}>{t('pos.back_to_command_center')}</button></div>
     </div>

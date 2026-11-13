@@ -108,6 +108,7 @@ export const SEGMENT_FIXTURES = [
 
   ['/tech/tickets/{id}', F('tickets')],
   ['/pos/ai/front-desk/agents/{id}', F('ai_receptionist_agents')],
+  ['/tenant/ai/receptionist/learning/suggestions/{id}', F('voice_improvement_suggestions')],   // AI Receptionist Settings 07 (Nov 13 2026): salon A's recommendation
   ['/tenant/help/tickets/{id}', F('support_tickets')],
   ['/tenant/inventory/counts/{id}', F('inventory_counts')],
   ['/tenant/inventory/products/{id}', F('inventory_products')],

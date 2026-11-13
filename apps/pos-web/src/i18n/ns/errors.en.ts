@@ -1490,4 +1490,8 @@ export const ERRORS_EN = {
   'errors.WINBACK_AUDIENCE_EMPTY': 'No eligible customers match this win-back goal right now.',
   'errors.WINBACK_HEALTH_RATE_LIMITED': 'The retention data check just ran. Try again in a minute.',
   'errors.PRODUCT_CHANGED': 'This product was changed on another device since you opened it. Reload and try again.',
+  'errors.AI_RECOMMENDATION_NOT_FOUND': 'That recommendation was not found.',
+  'errors.AI_RECOMMENDATION_PROMPT_REQUIRED': 'Enter the new receptionist wording before approving.',
+  'errors.AI_RECOMMENDATION_NOT_OPEN': 'This recommendation was already reviewed.',
+  'errors.AI_RECOMMENDATION_REFUSED': 'This recommendation cannot be applied from here.',
 };
