@@ -244,4 +244,10 @@ export const REPSETTINGS_EN: Record<string, string> = {
   "rssx.inv.importOff": "Not imported automatically",
   "rssx.inv.internal": "Your own feedback (in-salon, surveys, messages, manual): {n} on record · {r} review requests sent.",
   "rssx.inv.note": "Only connections the platform supports are listed as connected; nothing here connects, imports or posts anything.",
+  "rssx.lock.branch_override": "This branch has its own value — changing the salon value will not change it here.",
+  "rssx.lock.assistant_disabled": "The assistant is off, so this setting does nothing until it is turned on.",
+  "rssx.lock.subscription_blocked": "The subscription blocks the assistant — turning it on will not make it run.",
+  "rssx.sec.line": "Last {d} days: {e} privilege-escalation and {c} cross-salon access attempt(s) were refused (latest {at}). Review roles in Team Management.",
+  "rssx.openIntegrations": "Open Integrations",
+  "rssx.applied": "Running revision v{v} (saved {at}) — drafting and checkout read it live",
 };

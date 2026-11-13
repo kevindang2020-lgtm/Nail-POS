@@ -54,12 +54,13 @@ function valueText(k: Key, v: unknown) {
   return String(v);
 }
 
-function Row({ label, hint, note, source, isLast, children, testId }: { label: string; hint?: string; note?: React.ReactNode; source?: string; isLast?: boolean; children: React.ReactNode; testId: string }) {
+function Row({ label, hint, note, source, lock, isLast, children, testId }: { label: string; hint?: string; note?: React.ReactNode; source?: string; lock?: string | null; isLast?: boolean; children: React.ReactNode; testId: string }) {
   return (
     <div data-testid={testId} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '16px 20px', borderBottom: isLast ? 'none' : '1px solid var(--line)' }}>
       <div style={{ flex: '1 1 300px' }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>{label}{source ? <span className={'chip ' + (source === 'default' ? '' : 'gold')} style={{ marginLeft: 8 }} data-testid={`${testId}-src`}>{t('rssx.src.' + source)}</span> : null}</div>
         {hint ? <div className="sub" style={{ marginTop: 4, lineHeight: 1.4 }}>{hint}</div> : null}
+        {lock ? <div className="sub warn" style={{ marginTop: 4 }} data-testid={`${testId}-lock`}>{t('rssx.lock.' + lock)}</div> : null}
         {note ? <div className="sub warn" style={{ marginTop: 4, lineHeight: 1.4 }} data-testid={`${testId}-note`}>{note}</div> : null}
       </div>
       <div style={{ flexShrink: 0 }}>{children}</div>
@@ -99,6 +100,8 @@ export function POSAIReviewReputationSettingsScreen() {
   }, [dirty]);
   const set = (k: Key, v: unknown) => { setNotice(null); setDraft((d) => ({ ...(d as Vals), [k]: v })); };
   const src = (k: Key) => s?.settings.find((x: any) => x.key === k)?.source as string | undefined;
+  // Review Reputation Settings 02 (round 10): the server's exact reason a control does not change what runs here
+  const lock = (k: Key) => (s?.settings.find((x: any) => x.key === k)?.lockReason ?? null) as string | null;
   const a = s?.assistant; const e = s?.entitlement; const rt = s?.runtime;
 
   return (
@@ -127,6 +130,11 @@ export function POSAIReviewReputationSettingsScreen() {
             {s.providers.connected ? <div className="sub" data-testid="rssx-provider-sync">{s.providers.lastSuccessfulSyncAt ? t('rssx.fresh.lastSync', { at: when(s.providers.lastSuccessfulSyncAt) }) : t('rssx.fresh.neverSynced')}</div> : null}
             {s.providers.failing ? <div className="sub warn" data-testid="rssx-provider-failing">{t('rssx.fresh.failing', { n: fmtNumber(s.providers.failing) })}</div> : null}</div>
         </div>
+        {s.securityFailures && (s.securityFailures.privilegeEscalation || s.securityFailures.crossTenant) ? <div className="panel warn" role="status" data-testid="rssx-security" style={{ padding: 10, marginBottom: 10 }}>
+          {t('rssx.sec.line', { d: fmtNumber(s.securityFailures.windowDays), e: fmtNumber(s.securityFailures.privilegeEscalation), c: fmtNumber(s.securityFailures.crossTenant), at: when(s.securityFailures.lastAt) })}
+        </div> : null}
+        <div style={{ marginBottom: 10 }}><a className="btn ghost sm" href="/tenant/integrations/apps" data-testid="rssx-open-integrations">{t('rssx.openIntegrations')}</a>
+          {s.appliedRevision ? <span className="sub" style={{ marginLeft: 8 }} data-testid="rssx-applied">{t('rssx.applied', { v: fmtNumber(s.appliedRevision.version), at: s.appliedRevision.at ? when(s.appliedRevision.at) : '—' })}</span> : null}</div>
         {s.publishQueue && (s.publishQueue.approvedNotPublished || s.publishQueue.publishFailed || rt.reviewRequests.overdueNotSent) ? <div className="panel" role="status" data-testid="rssx-risks" style={{ padding: 10, marginBottom: 10 }}>
           {s.publishQueue.approvedNotPublished ? <div>{t('rssx.fresh.waiting', { n: fmtNumber(s.publishQueue.approvedNotPublished) })}</div> : null}
           {s.publishQueue.publishFailed ? <div className="warn">{t('rssx.fresh.publishFailed', { n: fmtNumber(s.publishQueue.publishFailed) })}</div> : null}
@@ -142,22 +150,22 @@ export function POSAIReviewReputationSettingsScreen() {
         {tab === 'settings' ? <div data-testid="rssx-settings" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: 20, alignItems: 'start' }}>
           <div>
             <Section title={t('pos.assistant')} testId="rssx-sec-assistant">
-              <Row testId="row-enabled" label={t(LABEL.enabled)} hint={t('pos.turns_analysis_drafting_and_requests_on_aerb')} source={src('enabled')}>
+              <Row testId="row-enabled" label={t(LABEL.enabled)} hint={t('pos.turns_analysis_drafting_and_requests_on_aerb')} source={src('enabled')} lock={lock('enabled')}>
                 <input type="checkbox" data-testid="in-enabled" disabled={!manage} checked={!!draft.enabled} onChange={(ev) => set('enabled', ev.target.checked)} style={{ width: 18, height: 18 }} />
               </Row>
-              <Row testId="row-responseTone" label={t(LABEL.responseTone)} hint={t('rssx.toneHint')} source={src('responseTone')}>
+              <Row testId="row-responseTone" label={t(LABEL.responseTone)} hint={t('rssx.toneHint')} source={src('responseTone')} lock={lock('responseTone')}>
                 <select className="in" data-testid="in-responseTone" disabled={!manage} value={draft.responseTone} onChange={(ev) => set('responseTone', ev.target.value)} style={{ minWidth: 160 }}>
                   {TONES.map((x) => <option key={x} value={x}>{t('rssx.tone.' + x)}</option>)}
                 </select>
               </Row>
-              <Row testId="row-approvalRequired" label={t(LABEL.approvalRequired)} hint={t('pos.recommended_public_responses_wait_for_a_km03')} source={src('approvalRequired')} isLast
+              <Row testId="row-approvalRequired" label={t(LABEL.approvalRequired)} hint={t('pos.recommended_public_responses_wait_for_a_km03')} source={src('approvalRequired')} lock={lock('approvalRequired')} isLast
                 note={rt.approval === 'always_enforced' ? t('rssx.rt.approval') : undefined}>
                 <input type="checkbox" data-testid="in-approvalRequired" disabled={!manage} checked={draft.approvalRequired !== false} onChange={(ev) => set('approvalRequired', ev.target.checked)} style={{ width: 18, height: 18 }} />
               </Row>
             </Section>
             <Section title={t('pos.controlled_auto_response')} testId="rssx-sec-auto">
               <div className="sub" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', lineHeight: 1.5 }}>{t('pos.off_by_default_when_on_the_fnkg')}</div>
-              <Row testId="row-autoResponse" label={t(LABEL.autoResponse)} source={src('autoResponse')} isLast
+              <Row testId="row-autoResponse" label={t(LABEL.autoResponse)} source={src('autoResponse')} lock={lock('autoResponse')} isLast
                 note={conflict ? t('rssx.conflict') : draft.autoResponse ? t('rssx.rt.autoResponse') : undefined}>
                 <input type="checkbox" data-testid="in-autoResponse" disabled={!manage} checked={!!draft.autoResponse} onChange={(ev) => set('autoResponse', ev.target.checked)} style={{ width: 18, height: 18 }} />
               </Row>
@@ -165,7 +173,7 @@ export function POSAIReviewReputationSettingsScreen() {
           </div>
           <div>
             <Section title={t('pos.post_visit_review_requests')} testId="rssx-sec-requests">
-              <Row testId="row-requestsEnabled" label={t(LABEL.requestsEnabled)} hint={t('pos.fair_to_all_customers_never_gates_1pyz')} source={src('requestsEnabled')}
+              <Row testId="row-requestsEnabled" label={t(LABEL.requestsEnabled)} hint={t('pos.fair_to_all_customers_never_gates_1pyz')} source={src('requestsEnabled')} lock={lock('requestsEnabled')}
                 note={draft.requestsEnabled ? t('rssx.rt.requests', { n: fmtNumber(rt.reviewRequests.scheduled), o: fmtNumber(rt.reviewRequests.overdueNotSent) }) : undefined}>
                 <input type="checkbox" data-testid="in-requestsEnabled" disabled={!manage} checked={!!draft.requestsEnabled} onChange={(ev) => set('requestsEnabled', ev.target.checked)} style={{ width: 18, height: 18 }} />
               </Row>

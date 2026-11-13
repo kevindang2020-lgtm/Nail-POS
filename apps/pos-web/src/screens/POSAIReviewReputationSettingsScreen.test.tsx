@@ -155,4 +155,25 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     expect(dry.textContent).not.toMatch(/frequency_cap|no_contact_method|opted_out/);
     expect(rs.save).not.toHaveBeenCalled();
   });
+  it('Settings 02 + 05 (round 10): each control shows the server\'s exact lock reason; role-based security failures, the running revision and an Open Integrations shortcut are shown; nothing changes', async () => {
+    const base = STATE();
+    rs.state.mockResolvedValue({ ...base,
+      settings: base.settings.map((x: any) => (x.key === 'responseTone' ? { ...x, value: 'warm', source: 'branch', lockReason: 'branch_override' } : x.key === 'requestsEnabled' ? { ...x, lockReason: 'assistant_disabled' } : { ...x, lockReason: null })),
+      securityFailures: { windowDays: 7, privilegeEscalation: 2, crossTenant: 1, lastAt: '2026-11-11T13:00:00Z' },
+      appliedRevision: { version: 5, at: '2026-11-10T13:00:00Z', by: 'Owner', propagation: 'live' } });
+    mount();
+    expect(await screen.findByTestId('row-responseTone-lock')).toHaveTextContent('This branch has its own value');
+    expect(screen.getByTestId('row-requestsEnabled-lock')).toHaveTextContent('The assistant is off');
+    expect(screen.queryByTestId('row-enabled-lock')).toBeNull();
+    expect(screen.getByTestId('rssx-security')).toHaveTextContent('2 privilege-escalation and 1 cross-salon access attempt(s) were refused');
+    expect(screen.getByTestId('rssx-open-integrations').getAttribute('href')).toBe('/tenant/integrations/apps');
+    expect(screen.getByTestId('rssx-applied')).toHaveTextContent('Running revision v5');
+    expect(rs.save).not.toHaveBeenCalled();
+  });
+  it('an older server (no lock reasons, no security block) shows neither — never an invented reason', async () => {
+    mount();
+    await screen.findByTestId('row-enabled');
+    expect(screen.queryByTestId('row-responseTone-lock')).toBeNull();
+    expect(screen.queryByTestId('rssx-security')).toBeNull();
+  });
 });

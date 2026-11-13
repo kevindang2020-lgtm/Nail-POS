@@ -244,4 +244,10 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.inv.importOff": "Không tự động nhập", // DRAFT — Kevin reviews
   "rssx.inv.internal": "Phản hồi của tiệm (tại tiệm, khảo sát, tin nhắn, nhập tay): {n} đã lưu · đã gửi {r} lời mời đánh giá.", // DRAFT — Kevin reviews
   "rssx.inv.note": "Chỉ những kết nối nền tảng hỗ trợ mới được ghi là đã kết nối; ở đây không kết nối, nhập hay đăng gì.", // DRAFT — Kevin reviews
+  "rssx.lock.branch_override": "Chi nhánh này có giá trị riêng — đổi giá trị của tiệm sẽ không đổi ở đây.", // DRAFT — Kevin reviews
+  "rssx.lock.assistant_disabled": "Trợ lý đang tắt, nên cài đặt này không có tác dụng cho đến khi bật lại.", // DRAFT — Kevin reviews
+  "rssx.lock.subscription_blocked": "Gói đăng ký đang chặn trợ lý — bật lên cũng không chạy.", // DRAFT — Kevin reviews
+  "rssx.sec.line": "{d} ngày qua: {e} lần cố vượt quyền và {c} lần truy cập tiệm khác đã bị từ chối (gần nhất {at}). Hãy xem lại vai trò trong Quản lý nhóm.", // DRAFT — Kevin reviews
+  "rssx.openIntegrations": "Mở Tích hợp", // DRAFT — Kevin reviews
+  "rssx.applied": "Đang chạy bản v{v} (lưu lúc {at}) — soạn trả lời và thanh toán đọc trực tiếp", // DRAFT — Kevin reviews
 };
