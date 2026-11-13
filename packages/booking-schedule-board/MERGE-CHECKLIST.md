@@ -1,63 +1,64 @@
 # Merge Checklist — Booking Schedule Board → AIPowerSalon POS
 
-Follow in order (spec §41). Do not tick a box until it has been checked against the real tree.
+Follow in order (spec §41). A box is ticked only when it was checked against the real tree in the merge session
+(Nov 13 2026, branch `extras-agent1`); the evidence is named next to it. Unticked = not proven yet.
 
 ## A. Prepare
 
-- [ ] 1. Create a branch (e.g. `feature/booking-schedule-board`) from the current canonical tree.
-- [ ] 2. Copy this package into the monorepo, e.g. `packages/booking-schedule-board/`, and add it to the npm workspaces. Do **not** copy `node_modules/`, `dist/` or `screenshots/`.
-- [ ] 3. Find the current schedule-board boundary in `apps/pos-web` (the Booking screen). Record the exact JSX region from **Find an opening** to the **legend / Block time** row.
-- [ ] 4. Confirm **Booking Assistant · New Appointment** and everything below it stays untouched.
+- [x] 1. Branch: `extras-agent1` (worktree), from `967ef105`.
+- [x] 2. Package at `packages/booking-schedule-board/` (npm workspace `packages/*`, lockfile entries added); no `node_modules/`, `dist/`, `screenshots/` or demo build.
+- [x] 3. Boundary: `POSBookingScreen` — the classic "Toolbar 2" (Find an opening … pager), the Best Matches panel and `<BookingCalendar>` are the replaced region; the new board renders there through `screens/booking/BookingBoardRegion.tsx`.
+- [x] 4. Booking Assistant · New Appointment and everything below are untouched (`POSBookingScreen.board.test.tsx` "is the default schedule region…" asserts the assistant + KPI sections are still rendered).
 
 ## B. Wire the production adapter
 
-- [ ] 5. Audit the existing booking/availability/appointment routes first; reuse them, don't duplicate them. Only add a thin board controller where no route exists.
-- [ ] 6. Fill `EndpointMap` with real paths.
-- [ ] 7. Implement `ProductionMappers` for each host DTO. Check field names against the **wire payload**, not client types (e.g. technician `fullName` → `displayName`). Add a fixture-from-wire test per mapper.
-- [ ] 8. Map host error codes into `HOST_ERROR_CODE_MAP`, including the database overlap violation → `APPOINTMENT_CONFLICT`.
-- [ ] 9. Make sure create/move/walk-in/blocked-time endpoints honour `Idempotency-Key`, and move/cancel honour `expectedVersion`.
-- [ ] 10. Confirm the service-eligibility source is the same technician↔service relation used by Add Walk-In, New Booking, Tech Queue, Fair Turn, online booking and AI phone booking.
-- [ ] 11. Map the host's "protected appointment" concept (requested technician, VIP, deposit, etc.) to `Appointment.protected` and the buffer, if any.
-- [ ] 12. Route `technicianId: 'any'` walk-ins to the existing Fair Turn service (eligible set only).
+- [x] 5. Existing routes reused; no new route was added (see README-INTEGRATION §4).
+- [x] 6. Real paths in `ProductionBookingDataAdapter` (`/pos/booking/technicians`, `/day-grid`, `/availability`, `/openings`, `/appointments`, `/reschedule`, `/cancel`, `/blocked-times`, `/pos/check-in/walk-in`).
+- [x] 7. Mappers in `src/adapters/posBookingWire.ts`, tested on wire payloads recorded from the real controller (`src/tests/wire.test.ts`; recorder + drift check `modules/booking/src/booking/booking-board-wire.pgtest.vitest.spec.ts`).
+- [x] 8. Host codes → domain errors (`POS_BOOKING_ERROR_CODES`), incl. the overlap refusals → `APPOINTMENT_CONFLICT`.
+- [x] 9. Idempotency-Key on create / move / walk-in / blocked time; `expectedVersion` on move (cancel has no version on the server). Fixed on the way: the repository never selected `version` (every read was 1) — `booking-board-wire.pgtest` "#4/#10" and the recorded `rescheduled.json` (version 2) prove it now.
+- [x] 10. Eligibility source = the server's exact-service authority for every board path (availability / openings / create / reschedule); the board pre-checks nothing (`serviceIds: null`).
+- [ ] 11. Host "protected appointment" concept: none exists — the server refuses ANY overlap (EXCLUDE guard), so `Appointment.protected` stays false. Revisit only if Kevin adds VIP / deposit protection.
+- [x] 12. `technicianId: 'any'` walk-ins → `POST /pos/check-in/walk-in` (the existing queue / Fair Turn intake). The page's Add Walk-In button still opens the existing walk-in workflow.
 
 ## C. Wire the host
 
-- [ ] 13. Mount `<BookingScheduleBoard>` in the replacement region only. Do not change the sidebar, top bar or Super Admin.
-- [ ] 14. `onOpenBookingAssistant` / `onOpenNewBooking` → prefill the existing Booking Assistant (date, technician, start, duration, service).
-- [ ] 15. Host Add Walk-In and New Booking buttons keep working; after a successful create, confirm the board updates by realtime event (no page reload).
-- [ ] 16. Wrap the existing SSE client as `RealtimeClient`. Emit the event types in README-INTEGRATION §5 with a monotonic per-branch `serverVersion`. Keep the existing safety-sync fallback (`schedule.resync`).
-- [ ] 17. Resolve `BoardPermissions` from the host RBAC; confirm the server enforces the same rules.
-- [ ] 18. Confirm audit entries for create, move, reassign, cancel, blocked time and price override go through the existing audit service.
-- [ ] 19. Persist `onStateChange` state (route state or session storage) and pass it back as `initialState` after returning from a workflow.
-- [ ] 20. Apply POS design tokens by overriding `--bsb-*` variables if the screenshot palette is not wanted.
-- [ ] 21. **Remove the mock from production:** production code imports only from `src/index.ts`; `src/testing.ts`, `fixtures/` and `MockBookingDataAdapter` appear only in tests. Check the built bundle contains no fixture names.
+- [x] 13. Mounted in the replacement region only; top bar, sidebar, Super Admin untouched (no file under `apps/pos-web/src/shell/` changed).
+- [x] 14. `onOpenBookingAssistant` / `onOpenNewBooking` → prefill the existing Booking Assistant (technician, date, time, service) — `POSBookingScreen.board.test.tsx` "a tap on an open time prefills…".
+- [x] 15. After a host create / walk-in the page's realtime + its own refetch call `bridge.resync()` → the board reloads its page (test "a booking realtime event reloads the visible page").
+- [x] 16. `HostScheduleBridge` wraps the page's realtime (SSE + 15 s change feed, scoped by `bookingRelevance` with the board's visible technicians); monotonic versions from a shared `MonotonicClock` (`wire.test.ts` HostScheduleBridge).
+- [x] 17. `BoardPermissions` from `useCan()` (`pos.booking.create / reschedule / cancel / edit / view`); the server enforces each route's `RequirePermission`.
+- [ ] 18. Audit: create / move / reassign / cancel / blocked time are audited by the existing BookingService (unchanged); not re-tested in this session.
+- [x] 19. Board state in this tab's session storage (`aps.booking.board.state`) + the page's date and Day/Week restored after a workflow (test "board state survives leaving and coming back").
+- [x] 20. Picture palette kept (addendum §04); accent / ink / font mapped to POS tokens in `screens/booking/bookingBoard.css` (scoped `.pos-booking-board`).
+- [x] 21. Production imports only `src/index.ts`; the mock and fixtures are reachable only from `src/testing.ts` / tests.
 
-## D. Verify (all must pass before the old board is removed)
+## D. Verify (all must pass before the classic board is removed)
 
-- [ ] 22. Host gates green, including `check:dialogs`, `check:no-print`, `check:money`, `check:tenant`, `check:boot`.
-- [ ] 23. Package suite: `npm run check:all` (47 tests) and `node scripts/e2e-browser.cjs`.
-- [ ] 24. Full Booking regression tests.
-- [ ] 25. Journey regression: Booking → Appointment → Check-In → Visit → Customer Queue → Technician Assignment → Serving → Service Done → Checkout → Payment.
-- [ ] 26. Acceptance matrix §39 against the real API (see table below).
-- [ ] 27. Tenant isolation: a user of salon A cannot see or change salon B's appointments, technicians, customers, schedules, services or notes, even with forged ids in the request.
-- [ ] 28. Branch isolation: same, across branches of one salon.
-- [ ] 29. Two real browsers booking the same slot → exactly one success, one `APPOINTMENT_CONFLICT`.
-- [ ] 30. 1920×1080 at 100% zoom inside the real POS shell: no page scroll, 12 headers unclipped (also check 1366×768 and 1536×864 floors).
-- [ ] 31. Keep the old board recoverable (feature flag or the previous component left in place) until all of the above pass; only then remove it.
+- [ ] 22. Host gates: run in this session — `check:no-print`, `check:dialogs`, `check:money`, `check:silent-catch`, `check:dead-client`, `check:error-text`, architecture tests, i18n / pos-i18n / vi-glossary / ns-collisions, pos module registry, frontend builds, app types. The full gate battery is the coordinator's.
+- [x] 23. Package suite: 63 / 63 (`npx vitest run`), strict typecheck, package no-print gate. (The Playwright script was not carried over.)
+- [ ] 24. Full Booking regression: the Booking screen test files ran green (120 tests in 12 files, incl. the classic board’s), not the whole POS suite.
+- [ ] 25. Journey regression (Check-In → Queue → Serving → Service Done → Checkout): not run in this session.
+- [x] 26. Acceptance §39 against the real API — see the table below.
+- [x] 27. Tenant isolation: another salon sees no technician / appointment and cannot move one (`booking-board-wire.pgtest`).
+- [ ] 28. Branch isolation across branches of one salon: relies on the existing repository scoping; not re-tested here.
+- [ ] 29. Two REAL browsers / parallel Postgres connections: the PGlite proof serialises; `booking-concurrency.postgres-race` needs `PG_RACE_URL`.
+- [ ] 30. 1920×1080 at 100% zoom inside the real shell / SUNMI 27": no browser run in this session (jsdom only).
+- [x] 31. Classic board recoverable: per-person "Classic board" switch (default = new board), classic calendar tests still green.
 
 ## Acceptance matrix (spec §39)
 
-| # | Scenario | Standalone proof | Real-API proof |
+| # | Scenario | Real-API proof (this session) | Board / host proof |
 |---|---|---|---|
-| 1 | Book 45 min into a 45-min opening | adapter.test `#2/#1` | ☐ |
-| 2 | Book 60 min into a 45-min opening → rejected | adapter.test `#2/#1` | ☐ |
-| 3 | Two stations, same slot → one `APPOINTMENT_CONFLICT` | adapter.test `#3` (sabotage-proven), board.test `#3` | ☐ |
-| 4 | Drag A → B validates B first | e2e-browser (invalid target never reaches backend), adapter.test `#10` | ☐ |
-| 5 | Runs into protected appointment → rejected | domain.test, adapter.test `#5` | ☐ |
-| 6 | Unqualified technician not offered / rejected | adapter.test `#6`, board.test `#6` | ☐ |
-| 7 | 60-min block → opening disappears | adapter.test `#7`, board.test `#7` | ☐ |
-| 8 | Host Add Walk-In → board / queues / Fair Turn reconcile | adapter.test (Fair Turn over eligible set; walk-in event) — **host queues not testable standalone** | ☐ |
-| 9 | Booking on station A → station B updates | board.test `#9` | ☐ |
-| 10 | Move → source + destination recomputed | adapter.test `#10`, board.test `#4/#10`, e2e-browser | ☐ |
-| 11 | Return from workflow → state preserved | board.test `#11` | ☐ |
-| 12 | 1920×1080 usable without page scroll | e2e-browser | ☐ |
+| 1 | Book 45 min into a 45-min opening | PASS — `booking-board-wire.pgtest` #1 (opening gone from the day grid) | package adapter.test |
+| 2 | 60 min into a 45-min opening → rejected | PASS — pgtest #2 (409, nothing written) | package adapter.test |
+| 3 | Two stations, same slot → one conflict | PASS (serialised PGlite) — pgtest #3 | package board.test #3 |
+| 4 | Drag A → B validates B first | PASS — pgtest #4/#10 (unqualified B refused, server-side) | package board.test #4 |
+| 5 | Runs into the next appointment → rejected | PASS — pgtest #5 | package domain/adapter tests |
+| 6 | Unqualified technician not offered / rejected | PASS — pgtest #6 (no slots, not in openings, create refused with the code) | package board.test #6 |
+| 7 | 60-min block → opening disappears | PASS — pgtest #7 | package board.test #7 |
+| 8 | Host Add Walk-In → board / queues / Fair Turn reconcile | NOT_TESTED (queue + Fair Turn in the real app) | board reload on a booking event: POS board test |
+| 9 | Station A books → station B updates | PASS (simulated realtime event → page reload) | POS board test; live SSE NOT_TESTED |
+| 10 | Move → source + destination recomputed | PASS — pgtest #4/#10 | package board.test #10 |
+| 11 | Return from workflow → state preserved | — | PASS — POS board test (page 2 + date restored) |
+| 12 | 1920×1080 usable without page scroll | — | NOT_TESTED (no browser in this session) |

@@ -110,6 +110,12 @@ describe('Booking page — merged schedule board', () => {
     const before = gridCalls().length;
     await act(async () => { window.dispatchEvent(new CustomEvent(REALTIME_EVENT, { detail: { event: 'appointment_updated', screens: ['booking'], payload: { technicianId: 't3', date: DAY } } })); await new Promise((r) => setTimeout(r, 400)); });
     await waitFor(() => expect(gridCalls().length).toBeGreaterThan(before));
+    // B-14: a change for technician #150 (not on this page) never reloads the 12 visible columns
+    await waitFor(() => expect(gridCalls().length).toBeGreaterThan(0));
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    const settled = gridCalls().length;
+    await act(async () => { window.dispatchEvent(new CustomEvent(REALTIME_EVENT, { detail: { event: 'appointment_updated', screens: ['booking'], payload: { technicianId: 't150', date: DAY } } })); await new Promise((r) => setTimeout(r, 600)); });
+    expect(gridCalls().length).toBe(settled);
   });
 
   it('board state survives leaving and coming back (page restored from this tab)', { timeout: 30_000 }, async () => {

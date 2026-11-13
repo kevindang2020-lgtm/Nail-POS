@@ -6,7 +6,7 @@ export interface BookingLegendProps {
   canBlockTime: boolean;
   onBlockTime: () => void;
   /** Extra host-provided actions rendered in the action slot, left of Block time. Never a schedule-print action
-   *  (AIPowerSalon does not print schedules — check:no-print, addendum §10). */
+   *  (owner rule: schedules are never printed — enforced by the no-print gates, addendum §10). */
   actions?: ReactNode;
 }
 

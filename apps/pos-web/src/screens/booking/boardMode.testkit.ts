@@ -4,7 +4,7 @@
 import { afterEach, beforeEach } from 'vitest';
 import { boardModeKey } from './boardMode';
 
-export function useClassicBookingBoard(): void {
+export function runOnClassicBookingBoard(): void {
   beforeEach(() => { localStorage.setItem(boardModeKey(undefined, undefined), 'classic'); });
   afterEach(() => { localStorage.removeItem(boardModeKey(undefined, undefined)); });
 }
