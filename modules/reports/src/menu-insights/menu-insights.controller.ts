@@ -25,7 +25,7 @@ export class MenuInsightsController {
   @Get('') @RequirePermission('pos.services.view') get(@Req() r: any, @Query() q: any) { return run(() => this.svc.getInsights(ctxFrom(r), windowFrom(q))); }
   @Get('state') @RequirePermission('pos.services.view') state(@Req() r: any, @Query() q: any) { return run(() => this.svc.getInsights(ctxFrom(r), windowFrom(q))); }
   /** Extras · ADD-ONS 09: sold add-ons and their recipe cost, with the basis stated — cost data, so inventory.cost.view only */
-  @Get('add-on-profitability') @RequirePermission('inventory.cost.view') async addOnProfitability(@Req() r: any, @Query() q: any): Promise<AddOnProfitabilityResponse> {
+  @Get('add-on-profitability') @RequirePermission('inventory.cost.view') async profitOfAddOns(@Req() r: any, @Query() q: any): Promise<AddOnProfitabilityResponse> {
     const rep = this.addOnProfit;
     if (!rep) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Add-on profitability needs the database.' }, HttpStatus.SERVICE_UNAVAILABLE);
     const c = ctxFrom(r);
