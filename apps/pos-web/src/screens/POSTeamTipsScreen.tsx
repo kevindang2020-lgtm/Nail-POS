@@ -186,7 +186,7 @@ export function POSTeamTipsScreen() {
               <table className="fk-table ttp-table">
                 <thead><tr><th scope="col">#</th><th scope="col">{tx('tp.col.collected')}</th><th scope="col">{tx('tp.col.ticket')}</th><th scope="col">{tx('tp.col.technicians')}</th>
                   {canCustomer ? <th scope="col">{tx('tp.col.customer')}</th> : null}<th scope="col">{tx('tp.col.method')}</th><th scope="col" className="num">{tx('tp.col.amount')}</th>
-                  <th scope="col">{tx('tp.col.allocation')}</th><th scope="col">{tx('tp.team.paid')}</th></tr></thead>
+                  <th scope="col">{tx('tp.col.allocation')}</th><th scope="col">{tx('tp.col.payout')}</th></tr></thead>
                 <tbody>{hist.data.items.map((r, i) => (
                   <tr key={r.ticketId} data-testid="tt-row">
                     <td className="ttp-n">{fmtNumber((hist.data!.page - 1) * hist.data!.pageSize + i + 1)}</td>

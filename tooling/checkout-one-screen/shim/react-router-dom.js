@@ -77,6 +77,7 @@ export const Route = () => null;
 export const Outlet = () => useContext(RouteCtx).outlet;
 export function Navigate({ to, replace }) { const nav = useNavigate(); useEffect(() => { nav(to, { replace }); }, [to]); return null; }
 export const useNavigate = () => useContext(RouterCtx).navigate;
+export const useInRouterContext = () => useContext(RouterCtx) != null;
 export const useLocation = () => useContext(RouterCtx).location;
 export const useParams = () => useContext(RouteCtx).params;
 export function useSearchParams() {

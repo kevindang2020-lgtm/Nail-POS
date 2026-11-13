@@ -24,11 +24,22 @@ const FIXED = {
   'firebase/app': join(HERE, 'shim/native.js'), 'firebase/messaging': join(HERE, 'shim/native.js'),
   '@capacitor/core': join(HERE, 'shim/native.js'), 'capacitor-secure-storage-plugin': join(HERE, 'shim/native.js'), '@capgo/capacitor-native-biometric': join(HERE, 'shim/native.js'), '@tanstack/react-query': join(HERE, 'shim/native.js'),
 };
+const SCREEN_CSS = new Set();
 const plugin = {
   name: 'aps',
   setup(b) {
-    b.onResolve({ filter: /\.css$/ }, (a) => ({ path: a.path, namespace: 'css-skip' }));   // Tailwind is compiled below
+    // Tailwind is compiled below; a screen's OWN relative stylesheet (e.g. screens/teamTips.css) is appended to app.css after it
+    b.onResolve({ filter: /\.css$/ }, (a) => { if (a.path.startsWith('.') && a.resolveDir.startsWith(join(ROOT, `apps/${APP}/src`))) SCREEN_CSS.add(resolvePath(a.resolveDir, a.path)); return { path: a.path, namespace: 'css-skip' }; });
     b.onLoad({ filter: /.*/, namespace: 'css-skip' }, () => ({ contents: '', loader: 'js' }));
+    // relative imports: the EXACT-case file, .ts before .tsx (./slotExplain is slotExplain.ts, not the SlotExplain.tsx beside it)
+    b.onResolve({ filter: /^\.\.?\// }, (a) => {
+      if (a.path.endsWith('.css')) return undefined;
+      const base = resolvePath(a.resolveDir, a.path);
+      for (const c of [base, base + '.ts', base + '.tsx', join(base, 'index.ts'), join(base, 'index.tsx'), base + '.js']) {
+        if (existsSync(c) && statSync(c).isFile() && readdirSync(dirname(c)).includes(c.slice(dirname(c).length + 1))) return { path: c };
+      }
+      return undefined;
+    });
     b.onResolve({ filter: /^[^./]/ }, (a) => {
       if (FIXED[a.path]) return { path: FIXED[a.path] };
       if (a.path.startsWith('@aipowersalon/')) {
@@ -59,7 +70,7 @@ const cand = new Set(); for (const f of files) for (const m of readFileSync(f, '
 const compiler = await tw.compile(css, { base: join(ROOT, `apps/${APP}/src`), loadStylesheet: async (id, base) => { const p = id === 'tailwindcss' ? join(TOOLS, 'tailwindcss/index.css') : resolvePath(base, id); return { path: p, base: dirname(p), content: readFileSync(p, 'utf8') }; } });
 const outCss = compiler.build([...cand]);
 const FONTS = `@font-face{font-family:'Hanken Grotesk';src:local('Inter');font-weight:100 900}@font-face{font-family:'Playfair Display';src:local('DejaVu Serif');font-weight:100 900}\n`;
-writeFileSync(join(OUT, 'app.css'), FONTS + outCss);
+writeFileSync(join(OUT, 'app.css'), FONTS + outCss + [...SCREEN_CSS].filter((f) => existsSync(f)).map((f) => '\n' + readFileSync(f, 'utf8')).join(''));
 writeFileSync(join(OUT, 'index.html'), `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>AI PowerSalon — POS</title><script>window.APS_API_BASE='';</script><link rel="stylesheet" href="/app.css"/></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>`);
 const kb = (n) => Math.round(n / 1024);
 console.log(`built in ${Date.now() - t0} ms: app.js ${kb(statSync(join(OUT, 'app.js')).size)} KB, app.css ${kb(outCss.length)} KB, ${Object.keys(r.metafile.inputs).length} inputs`);

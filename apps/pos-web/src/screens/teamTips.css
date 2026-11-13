@@ -80,6 +80,13 @@
 .ttp-ov .ttp-balance.ok{background:#EEF6EC;border-color:#BCD8B5;color:#2F5A2A}
 .ttp-ov .ttp-balance.warn{background:#FFF6E6;border-color:#E8CFA0;color:#7A4E12}
 .ttp-ov .ttp-balance.bad{background:#FBEDEA;border-color:#E6B9AE;color:#8A2E1E}
+/* short windows (a browser with its address bar and the OS taskbar on a 768-px-high screen): the KPI definitions take one line,
+   the month calendar's days are a little shorter so Apply / Cancel stay inside the viewport */
+@media (max-height:800px){
+  .ttp .ttp-kpi-d{-webkit-line-clamp:1}
+  .ttp .ttp-kpi{padding:10px 14px}
+  .ttp .fn-pop .fn-day{height:32px}
+}
 /* narrower content areas (1440×900 or 1366×768 with the sidebar open, a docked browser): KPI cards 2×2, the two panels
    stacked. Decided by the page's own measured width (container query), not the device name. */
 @container ttp (max-width:1180px){
