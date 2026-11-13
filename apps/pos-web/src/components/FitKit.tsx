@@ -79,8 +79,24 @@ export function FitDialog({ title, subtitle, onClose, busy = false, wide = false
       if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
     };
     document.addEventListener('keydown', onKey);
+    // round 10 (Localization 10) — field focus recovery: when a save fails and an error appears in the dialog, focus goes to the
+    // first field marked invalid (else to the error itself, so a screen reader reads it and the soft keyboard can reopen on the
+    // field) — but never away from a field the person is typing in
+    const mo = typeof MutationObserver !== 'undefined' && node ? new MutationObserver((muts) => {
+      const appeared = muts.some((m) => Array.from(m.addedNodes).some((n) => n instanceof HTMLElement && (n.matches('[role="alert"], .fk-error') || !!n.querySelector('[role="alert"], .fk-error'))));
+      if (!appeared) return;
+      const act = document.activeElement as HTMLElement | null;
+      if (act && node.contains(act) && act.matches('input, textarea, select')) return;
+      const bad = node.querySelector<HTMLElement>('[aria-invalid="true"]:not([disabled])');
+      const alert = node.querySelector<HTMLElement>('[role="alert"], .fk-error');
+      const target = bad ?? alert;
+      if (!target) return;
+      if (!bad && !target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+      target.focus(); target.scrollIntoView?.({ block: 'nearest' });
+    }) : null;
+    if (mo && node) mo.observe(node, { childList: true, subtree: true });
     const back = opener.current as HTMLElement | null;   // the element that opened the dialog (set once, at mount)
-    return () => { document.removeEventListener('keydown', onKey); back?.focus?.(); };
+    return () => { document.removeEventListener('keydown', onKey); mo?.disconnect(); back?.focus?.(); };
   }, []);
   return (
     <div className={'fk-backdrop' + (side ? ' side' : '')} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }} data-testid={testId}>

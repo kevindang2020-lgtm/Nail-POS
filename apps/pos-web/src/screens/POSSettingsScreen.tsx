@@ -8,7 +8,8 @@ import { SalonLogoSetting } from './SalonLogoSetting';
 import { t as i18nText } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { serverText } from '../i18n/server-text';
-import { LANGUAGE_LABEL } from '../shell/LanguageSwitch';   // a language's own name is never translated
+import { LANGUAGE_LABEL } from '../shell/LanguageSwitch';
+import { TranslationCoveragePanel } from '../components/TranslationCoveragePanel';   // a language's own name is never translated
 import { api } from '../api/client';
 import { RangeCalendar } from '../components/FinanceKit';
 import { Pager } from '../components/FitKit';
@@ -346,6 +347,8 @@ export function POSSettingsScreen() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Field label={i18nText('pos.currency')} value={bizF.currency} onChange={(v) => setBF('currency', v)} w={80} /><Field label="TZ" value={bizF.timezone} onChange={(v) => setBF('timezone', v)} w={160} /><Field label={i18nText('pos.date_fmt')} value={bizF.dateFormat} onChange={(v) => setBF('dateFormat', v)} w={110} />
                 {/* Oct 21 2026: the salon's POS language for staff who never chose one (each person can still switch in the topbar) */}
                 <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{i18nText('pos.pos_language')}{' '}<select aria-label={i18nText('pos.pos_language')} value={bizF.defaultLanguage === 'vi' ? 'vi' : 'en'} onChange={(e) => setBF('defaultLanguage', e.target.value)}><option value="en">{LANGUAGE_LABEL.en}</option><option value="vi">{LANGUAGE_LABEL.vi}</option></select></label></div>
+                {/* round 10 (Localization 04): what the running POS has in Vietnamese — read-only */}
+                <TranslationCoveragePanel />
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{ckbx(!!bizF.multiBranchEnabled, (v) => setBF('multiBranchEnabled', v), 'multi-branch')}{ckbx(!!bizF.perBranchOverrides, (v) => setBF('perBranchOverrides', v), i18nText('pos.per_branch_overrides'))}</div>
               <button className="btn" disabled={busy === 'biz'} onClick={saveBiz}>{busy === 'biz' ? i18nText('pos.saving_2') : i18nText('pos.save_business_branch')}</button>
             </div>

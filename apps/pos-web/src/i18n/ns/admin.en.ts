@@ -535,4 +535,11 @@ export const ADMIN_EN = {
   "admin.timeClock.rush.result": "{a} clocked in · {b} were already on the clock · {c} refused",
   "admin.timeClock.rush.code.TECHNICIAN_NOT_FOUND": "not in this salon",
   "admin.timeClock.rush.code.REFUSED": "refused",
+  "tcov.title": "Translation coverage (English → Vietnamese)",
+  "tcov.summary": "{p}% of the screen text has Vietnamese ({d} of {t} keys).",
+  "tcov.missing": "No Vietnamese yet — shown in English: {n}",
+  "tcov.same": "Vietnamese identical to the English (probably not translated yet): {n}",
+  "tcov.errors": "Error messages without Vietnamese: {n} of {t}",
+  "tcov.more": "… and {n} more",
+  "tcov.gates": "Hard-coded screen text and glossary words are checked on every build (check-pos-i18n, check-vi-glossary). Vietnamese drafts waiting for review are listed in the VI draft review sheet.",
 };
