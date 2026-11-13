@@ -22,7 +22,8 @@ import { sql } from 'kysely';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { DISPLAY_ONLINE_WINDOW_MS, terminalOperationalStatus } from '@aipowersalon/api-contracts';
-import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent } from '@aipowersalon/api-contracts/tenant';
+import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse } from '@aipowersalon/api-contracts/tenant';
+import { evaluateDeviceAlerts, listDeviceAlerts } from './device-alert-routing';
 
 export interface DfCtx { tenantId: string; branchId: string; userId?: string | null; role?: string; permissions?: string[] }
 export class DeviceFleetError extends Error { constructor(readonly code: string, message: string, readonly status = 400) { super(message); this.name = 'DeviceFleetError'; } }
@@ -182,6 +183,19 @@ export class DeviceFleetCenter {
       case 'receipt': return [];   // no printer registry exists (digital-first receipts)
       default: return [...await this.displays(ctx, nowMs), ...await this.kiosks(ctx, nowMs), ...await this.terminals(ctx)];
     }
+  }
+
+  /** Device Integration Logs 05: the whole salon's displays, kiosks and terminals (every branch) — the alert router's input. */
+  async alertRows(tenantId: string): Promise<DfDevice[]> { return this.rows({ tenantId, branchId: '' }, 'all'); }
+
+  /** Device Integration Logs 05: the routed device / integration alerts, evaluated lazily at most once a minute per salon
+   *  (the background job does the same every 5 minutes). */
+  private readonly lastAlertEval = new Map<string, number>();
+  async alerts(ctx: DfCtx, q: { status?: string; page?: unknown; pageSize?: unknown }): Promise<DfAlertsResponse> {
+    const nowMs = this.now().getTime(); const last = this.lastAlertEval.get(ctx.tenantId) ?? 0;
+    if (nowMs - last > 60_000) { await evaluateDeviceAlerts(this.db, ctx.tenantId, (t) => this.alertRows(t), { now: nowMs }); this.lastAlertEval.set(ctx.tenantId, nowMs); }
+    const can = hasPermission({ tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId ?? '', role: (ctx.role ?? '') as never, permissions: ctx.permissions ?? [] }, 'owner.alerts.resolve');
+    return listDeviceAlerts(this.db, ctx, q, can, new Date(this.lastAlertEval.get(ctx.tenantId) ?? nowMs).toISOString());
   }
 
   private cls(v?: string): DfClass {

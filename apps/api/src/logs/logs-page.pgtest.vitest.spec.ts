@@ -136,4 +136,38 @@ describe('Device Integration Logs 08: sanitized export', () => {
     expect(redactLogText('call +1 215 555 0142; password: "p w"')).toBe('call •••0142; password: [redacted]');
   });
 });
+// Device Integration Logs backlog · 09: Worker Delay & Retry Visibility — the salon's rows in the existing retry stores
+describe('Device Integration Logs 09 — retry queue visibility', () => {
+  it('LG-09 jobs + webhook deliveries: state, attempt n of max, lag of a due item, dead letters (7 days); no payload; redacted; other salon excluded', async () => {
+    const W = 'c8460000-0000-4000-8000-0000000000e1';
+    await q(sql`insert into tenant_webhooks (id, tenant_id, name, url, signing_secret_enc) values (${W}, ${T}, 'Hook', 'https://hooks.example.test/x', 'enc')`);
+    await q(sql`insert into jobs (job_class, job_type, tenant_id, payload, status, attempts, max_attempts, run_after, last_error, correlation_id, updated_at) values
+      ('standard', 'customer.phone.sync', ${T}, '{"phone":"+12155550142"}'::jsonb, 'queued', 2, 5, now() - interval '90 seconds', 'provider said token=abc123 for owner@example.com
+  at stack line 2', 'corr-lg09', now() - interval '1 minute'),
+      ('standard', 'report.build', ${T}, '{}'::jsonb, 'queued', 0, 5, now() + interval '10 minutes', null, null, now() - interval '2 minutes'),
+      ('critical', 'receipt.send', ${T}, '{}'::jsonb, 'dead', 5, 5, now() - interval '1 day', 'gave up', null, now() - interval '1 day'),
+      ('critical', 'receipt.send', ${T}, '{}'::jsonb, 'dead', 5, 5, now() - interval '20 days', 'too old', null, now() - interval '20 days'),
+      ('standard', 'customer.phone.sync', ${T}, '{}'::jsonb, 'succeeded', 1, 5, now() - interval '1 hour', null, null, now()),
+      ('standard', 'customer.phone.sync', ${X}, '{}'::jsonb, 'dead', 5, 5, now(), 'other salon', null, now())`);
+    await q(sql`update jobs set finished_at = updated_at where status = 'dead'`);
+    await q(sql`insert into tenant_webhook_deliveries (tenant_id, webhook_id, event_type, payload, status, attempt_count, max_attempts, next_attempt_at, last_error, created_at, updated_at) values
+      (${T}, ${W}, 'appointment.created', '{"customer":"secret"}'::jsonb, 'failed', 3, 8, now() - interval '30 seconds', 'HTTP 500', now(), now() - interval '3 minutes'),
+      (${T}, ${W}, 'appointment.updated', '{}'::jsonb, 'delivered', 1, 8, null, null, now(), now())`);
+    const r = await svc.retryQueue(ctx, { page: 1, pageSize: 10 });
+    expect(r.jobs).toMatchObject({ waiting: 1, retrying: 1, running: 0, dead: 1 });
+    expect(r.webhooks).toMatchObject({ waiting: 0, retrying: 1, dead: 0 });
+    expect(r.jobs.oldestDueLagSeconds).toBeGreaterThanOrEqual(85);
+    expect(r.total).toBe(4);
+    expect(r.items.map((i) => `${i.store}:${i.state}:${i.type}`)).toEqual(['job:dead:receipt.send', 'job:retrying:customer.phone.sync', 'webhook:retrying:appointment.created', 'job:waiting:report.build']);
+    const retry = r.items[1];
+    expect(retry).toMatchObject({ attempt: 2, maxAttempts: 5, correlationId: 'corr-lg09' });
+    expect(retry.lagSeconds).toBeGreaterThanOrEqual(85);
+    expect(retry.lastError).toBe('provider said token=[redacted] for [email]');   // one line, redacted
+    expect(r.items[3].lagSeconds).toBeNull();                                         // not due yet → no lag
+    expect(JSON.stringify(r)).not.toMatch(/12155550142|secret|other salon|too old/);
+    const p2 = await svc.retryQueue(ctx, { page: 2, pageSize: 10 });
+    expect(p2.items).toHaveLength(0); expect(p2.totalPages).toBe(1);
+    await expect(svc.retryQueue({ ...ctx, permissions: [] }, {})).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
 async function auditCount(): Promise<number> { return Number((await q(sql`select count(*)::int as n from audit_events where action = 'logs_exported'`))[0].n); }

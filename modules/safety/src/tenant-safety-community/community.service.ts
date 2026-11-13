@@ -19,6 +19,9 @@ import { canView, assertExplicitAdvisorySubmission, isCommunityVisible, type Com
 import { scanCommunityText, type CommunityScanResult } from './community-privacy-scan';
 import { transition, isPublishedState, MODERATION_REQUIRED_CATEGORIES, type WorkflowContext, type WorkflowEvent, type WorkflowState } from './community-workflow';
 import { checkWording, effectiveCapabilities, type Capability } from './community-permissions';
+import { previewCommunityRoles } from './community-role-preview';
+import { buildDiagnosticsCsv, DIAG_MAX_DAYS } from './community-diagnostics';
+import type { CommunityRolePreview, CommunityCorrectionsInbox } from '@aipowersalon/api-contracts/tenant';
 import { InMemoryCommunityAuditSink, type CommunityAuditSink, type CommunityAuditAction } from './community-audit';
 import { screenQuery } from './community-search';
 import { checkAbuse, requiresEscalatedVerification, type AbuseAction } from './community-abuse';
@@ -173,6 +176,18 @@ export class CommunityService implements CommunityCorePort {
   async getSettings(ctx: CommunityCtx): Promise<CommunitySettingsView> {
     const v = await this.viewer(ctx);
     return this.settingsView(v.settings, v.rulesAcknowledged);
+  }
+
+  /** Safety Community backlog · 08: Permission-Aware Role Preview — what each default staff role could do here, from the real
+   *  route permissions + communityRoleOf + effectiveCapabilities with this salon's grants / removals (community-role-preview.ts).
+   *  Settings managers only (reachable while the community is off, like the settings). Read-only: nothing is granted or stored. */
+  async rolePreview(ctx: CommunityCtx): Promise<CommunityRolePreview> {
+    const v = await this.viewer(ctx);
+    if (v.role === 'moderator' || !v.capabilities.has('manage_tenant_settings')) throw new CommunityError('permission_denied', 403, { cap: 'manage_tenant_settings', role: v.role });
+    const s = v.settings;
+    const view = this.settingsView(s, v.rulesAcknowledged);
+    return { communityEnabled: !!s.enabled, settingsVersion: Number((view as { version?: number }).version ?? 0), customRoles: this.repo.customRoleCount ? await this.repo.customRoleCount(ctx.tenantId) : 0, moderationGrantable: false,
+      roles: previewCommunityRoles({ enabled: !!s.enabled, roleGrants: s.roleGrants ?? {}, roleRemovals: s.roleRemovals ?? {} }, communityRoleOf) };
   }
 
   async updateSettings(ctx: CommunityCtx, raw: unknown): Promise<CommunitySettingsView> {
@@ -594,6 +609,46 @@ export class CommunityService implements CommunityCorePort {
     const v = await this.viewer(ctx);
     if (!APPROVER_ROLES.has(v.role)) throw new CommunityError('permission_denied', 403, { role: v.role });
     return (await this.repo.listAppealsForTenant(ctx.tenantId, 100)).map(appealView);
+  }
+
+  /** Safety Community backlog · 06 — Corrections & Retractions inbox: the salon's own published advisories that changed after
+   *  publication, the in-app reach of each change among following salons, and the salon's appeals on them. Approvers only
+   *  (the same people who read the salon's appeals). Read-only. */
+  async correctionsInbox(ctx: CommunityCtx, raw: unknown): Promise<CommunityCorrectionsInbox> {
+    const b = bodyOf(raw);
+    const v = await this.viewer(ctx);
+    if (!APPROVER_ROLES.has(v.role)) throw new CommunityError('permission_denied', 403, { role: v.role });
+    const page = Math.max(1, Math.min(10_000, Math.trunc(Number(b.page)) || 1));
+    const pageSize = [10, 25, 50].includes(Number(b.pageSize)) ? Number(b.pageSize) : 10;
+    if (!this.repo.correctionsInbox) return { items: [], page: 1, pageSize, total: 0, totalPages: 1 };
+    return this.repo.correctionsInbox(ctx.tenantId, page, pageSize);
+  }
+
+  /** Safety Community backlog · 09 — Safe Export / Developer Incident Report: the sanitized diagnostics CSV (settings,
+   *  restrictions and counts of this salon only; never a title, body, name, phone, e-mail, user id or another salon) over one
+   *  range of at most 92 UTC days. Settings managers only. Fail-closed audit: the export is recorded (who, range, row count)
+   *  BEFORE the file is returned — no audit row, no file. Read-only otherwise. */
+  async diagnosticsExport(ctx: CommunityCtx, raw: unknown): Promise<string> {
+    const b = bodyOf(raw);
+    const ymd = /^\d{4}-\d{2}-\d{2}$/;
+    const from = typeof b.from === 'string' && ymd.test(b.from) ? b.from : null; const to = typeof b.to === 'string' && ymd.test(b.to) ? b.to : null;
+    if (!from || !to || from > to || Number.isNaN(Date.parse(`${from}T00:00:00Z`)) || Number.isNaN(Date.parse(`${to}T00:00:00Z`))) throw invalid('from', 'from_and_to_required');
+    const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+    if (days > DIAG_MAX_DAYS) throw invalid('from', `at_most_${DIAG_MAX_DAYS}_days`);
+    const v = await this.viewer(ctx);
+    if (v.role === 'moderator' || !v.capabilities.has('manage_tenant_settings')) throw new CommunityError('permission_denied', 403, { cap: 'manage_tenant_settings', role: v.role });
+    if (!this.repo.diagnosticsCounts || !this.repo.recordDiagnosticsExport) throw new CommunityError('export_unavailable', 503);
+    const toExclusive = new Date(Date.parse(`${to}T00:00:00Z`) + 86_400_000).toISOString();
+    const counts = await this.repo.diagnosticsCounts(ctx.tenantId, `${from}T00:00:00Z`, toExclusive);
+    const s = v.settings; const view = this.settingsView(s, v.rulesAcknowledged) as unknown as { version?: number; rulesVersion?: string };
+    const csv = buildDiagnosticsCsv({ generatedAt: new Date().toISOString(), from, to, restrictions: v.restrictions, counts,
+      settings: { enabled: !!s.enabled, receptionistApprovalRequired: !!s.receptionistApprovalRequired, managerApprovalRequired: !!s.managerApprovalRequired,
+        branchVisibility: String(s.branchVisibility ?? ''), retentionDays: Number(s.retentionDays ?? 0), allowAnonymous: !!s.allowAnonymous, authorDisplay: String(s.authorDisplay ?? ''),
+        notify: { push: !!s.pushEnabled, email: !!s.emailEnabled, criticalSms: !!s.criticalSmsEnabled, categories: (s.notifyCategories ?? []).length }, regionPreferences: (s.regionPreferences ?? []).length,
+        roleGrants: s.roleGrants ?? {}, roleRemovals: s.roleRemovals ?? {}, rulesVersion: String(view.rulesVersion ?? COMMUNITY_RULES_VERSION), settingsVersion: Number(view.version ?? 0) } });
+    try { await this.repo.recordDiagnosticsExport(ctx, { from, to, days, rows: csv.split('\r\n').length, format: 'csv', formatVersion: 1 }); }
+    catch { throw new CommunityError('export_unavailable', 503, { reason: 'audit_not_recorded' }); }
+    return csv;
   }
 
   // ════════════════════════════ private incidents (never cross-tenant) ════════════════════════════

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { pageMock, exportMock, postMock } = vi.hoisted(() => ({ pageMock: vi.fn(), exportMock: vi.fn(), postMock: vi.fn() }));
+const { pageMock, exportMock, postMock, alertsMock, resolveMock, retriesMock } = vi.hoisted(() => ({ pageMock: vi.fn(), exportMock: vi.fn(), postMock: vi.fn(), alertsMock: vi.fn(), resolveMock: vi.fn(), retriesMock: vi.fn() }));
 vi.mock('../api/client', () => ({ api: { get: vi.fn().mockResolvedValue({}), post: postMock } }));
-vi.mock('../api/posLogsApi', () => ({ posLogsApi: { page: pageMock, exportCsv: exportMock } }));
+vi.mock('../api/posLogsApi', () => ({ posLogsApi: { page: pageMock, exportCsv: exportMock, alerts: alertsMock, resolveAlert: resolveMock, retries: retriesMock } }));
 import { TenantLogsScreen } from './TenantLogsScreen';
 
 const logs = [
@@ -141,5 +141,51 @@ describe('TenantLogsScreen', () => {
     fireEvent.click(screen.getByTestId('lgx-issue-submit'));
     expect(await screen.findByTestId('lgx-issue-err')).toBeInTheDocument();
     expect(screen.queryByTestId('lgx-issue-done')).toBeNull();
+  });
+  it('Device Integration Logs 05: routed alerts list the server\'s deduplicated alerts with the action to take; Resolve only when the server allows; "Show these events" filters the page', async () => {
+    const item = (o: Record<string, unknown>) => ({ id: 'a1', rule: 'device_offline', severity: 'warning', status: 'new', dedupeKey: 'device_offline:display', deviceClass: 'display', source: null, count: 2, names: ['Display A', 'Display B'], action: 'check_power_network',
+      firstEventAt: null, lastEventAt: null, detections: 3, openedAt: '2026-11-12T10:00:00Z', updatedAt: '2026-11-12T10:20:00Z', resolvedAt: null, resolvedBy: null, ...o });
+    alertsMock.mockReset(); resolveMock.mockReset().mockResolvedValue({});
+    alertsMock.mockResolvedValue({ items: [item({}), item({ id: 'a2', rule: 'provider_critical', severity: 'critical', dedupeKey: 'provider_critical:payment_gateway', deviceClass: null, source: 'payment_gateway', count: 1, names: [], action: 'contact_support' })],
+      page: 1, pageSize: 10, totalItems: 2, totalPages: 1, evaluatedAt: '2026-11-12T10:20:00Z', cooldownMinutes: 30, canResolve: true });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('lgx-alerts-open'));
+    const rows = await screen.findAllByTestId('lgx-alert');
+    expect(rows).toHaveLength(2);
+    expect(alertsMock).toHaveBeenCalledWith({ status: 'open', page: 1, pageSize: 10 });
+    expect(screen.getAllByTestId('lgx-alert-title')[0].textContent).toBe('Customer displays offline: 2');
+    expect(screen.getAllByTestId('lgx-alert-names')[0].textContent).toBe('Display A, Display B');
+    expect(screen.getAllByTestId('lgx-alert-action')[0].textContent).toContain('check power and Wi-Fi');
+    expect(screen.getByTestId('lgx-alerts').textContent).toContain('30 min');
+    fireEvent.click(screen.getAllByTestId('lgx-alert-resolve')[0]);
+    await waitFor(() => expect(resolveMock).toHaveBeenCalledWith('a1'));
+    expect(await screen.findByTestId('lgx-alerts-note')).toHaveTextContent('Alert resolved.');
+    fireEvent.click(screen.getByTestId('lgx-alerts-f-closed'));
+    await waitFor(() => expect(alertsMock).toHaveBeenLastCalledWith({ status: 'closed', page: 1, pageSize: 10 }));
+    alertsMock.mockResolvedValue({ items: [item({ id: 'a2', rule: 'provider_critical', severity: 'critical', source: 'payment_gateway', names: [], action: 'contact_support' })], page: 1, pageSize: 10, totalItems: 1, totalPages: 1, evaluatedAt: null, cooldownMinutes: 30, canResolve: false });
+    fireEvent.click(screen.getByTestId('lgx-alerts-f-open'));
+    await waitFor(() => expect(screen.getAllByTestId('lgx-alert')).toHaveLength(1));
+    expect(screen.queryByTestId('lgx-alert-resolve')).toBeNull();   // the viewer may not resolve → no button
+    fireEvent.click(screen.getByTestId('lgx-alert-logs'));
+    await waitFor(() => expect(pageMock).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'integration', severity: 'critical', page: 1 })));
+    expect(screen.queryByTestId('lgx-alerts')).toBeNull();
+  });
+  it('Device Integration Logs 09: the retry queue shows each store\'s counts and lag, attempt n of max and the redacted error — read-only (no retry button)', async () => {
+    retriesMock.mockReset().mockResolvedValue({ checkedAt: '2026-11-12T10:00:00Z', deadWindowDays: 7,
+      jobs: { waiting: 1, retrying: 1, running: 0, dead: 1, oldestDueLagSeconds: 125 }, webhooks: { waiting: 0, retrying: 1, running: 0, dead: 0, oldestDueLagSeconds: 30 },
+      items: [{ id: 'j1', store: 'job', type: 'receipt.send', state: 'dead', attempt: 5, maxAttempts: 5, nextAttemptAt: null, lagSeconds: null, lastError: 'gave up', correlationId: null, createdAt: null, updatedAt: null },
+        { id: 'w1', store: 'webhook', type: 'appointment.created', state: 'retrying', attempt: 3, maxAttempts: 8, nextAttemptAt: '2026-11-12T09:59:30Z', lagSeconds: 30, lastError: 'HTTP 500', correlationId: null, createdAt: null, updatedAt: null }],
+      total: 4, page: 1, pageSize: 10, totalPages: 1 });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('lgx-retry-open'));
+    const rows = await screen.findAllByTestId('lgx-retry-row');
+    expect(rows.map((r) => r.getAttribute('data-state'))).toEqual(['dead', 'retrying']);
+    expect(screen.getAllByTestId('lgx-retry-attempt').map((c) => c.textContent)).toEqual(['5 of 5', '3 of 8']);
+    expect(screen.getAllByTestId('lgx-retry-lag').map((c) => c.textContent)).toEqual(['—', '30 s']);
+    expect(screen.getByTestId('lgx-retry-jobs').textContent).toContain('Waiting 1 · Retrying 1 · Running 0 · Dead 1');
+    expect(screen.getByTestId('lgx-retry-jobs-lag').textContent).toBe('Oldest overdue: 2 min');
+    expect(screen.getByTestId('lgx-retry').textContent).not.toMatch(/Retry now/i);
+    fireEvent.click(screen.getByTestId('lgx-retry-refresh'));
+    await waitFor(() => expect(retriesMock).toHaveBeenCalledTimes(2));
   });
 });

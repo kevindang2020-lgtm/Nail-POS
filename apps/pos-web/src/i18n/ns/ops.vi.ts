@@ -1947,4 +1947,64 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.export.hint": "Tải các thiết bị trong trang này (theo bộ lọc hiện tại) kèm kết quả kiểm tra dưới dạng CSV. Không bao giờ có mã token, mã ghép nối, mã bộ xử lý thanh toán, số sê-ri đầy đủ hay dữ liệu khách hàng.", // DRAFT — Kevin reviews
   "dfx.export.busy": "Đang chuẩn bị…", // DRAFT — Kevin reviews
   "dfx.export.done": "Đã tải danh sách thiết bị.", // DRAFT — Kevin reviews
+  "lgx.ops.sec": "{n} giây", // DRAFT — Kevin reviews
+  "lgx.ops.min": "{n} phút", // DRAFT — Kevin reviews
+  "lgx.ops.hr": "{n} giờ", // DRAFT — Kevin reviews
+  "lgx.alerts.btn": "Cảnh báo đã gửi", // DRAFT — Kevin reviews
+  "lgx.alerts.title": "Cảnh báo đã gửi", // DRAFT — Kevin reviews
+  "lgx.alerts.sub": "Sự cố thiết bị và tích hợp được gửi vào mục cảnh báo của tiệm — mỗi sự cố chỉ có một cảnh báo đang mở; cảnh báo đã xử lý sẽ im lặng {m} phút (trừ lỗi nghiêm trọng).", // DRAFT — Kevin reviews
+  "lgx.alerts.status.open": "Đang mở", // DRAFT — Kevin reviews
+  "lgx.alerts.status.closed": "Đã đóng", // DRAFT — Kevin reviews
+  "lgx.alerts.status.all": "Tất cả", // DRAFT — Kevin reviews
+  "lgx.alerts.checked": "Đã kiểm tra {t}", // DRAFT — Kevin reviews
+  "lgx.alerts.resolved": "Đã xử lý cảnh báo.", // DRAFT — Kevin reviews
+  "lgx.alerts.resolveFailed": "Không thể xử lý cảnh báo.", // DRAFT — Kevin reviews
+  "lgx.alerts.none": "Không có cảnh báo đang mở — không phát hiện sự cố thiết bị hay tích hợp.", // DRAFT — Kevin reviews
+  "lgx.alerts.noneClosed": "Không có cảnh báo đã đóng.", // DRAFT — Kevin reviews
+  "lgx.alerts.sev.info": "Thông tin", // DRAFT — Kevin reviews
+  "lgx.alerts.sev.warning": "Cảnh báo", // DRAFT — Kevin reviews
+  "lgx.alerts.sev.high": "Cao", // DRAFT — Kevin reviews
+  "lgx.alerts.sev.critical": "Nghiêm trọng", // DRAFT — Kevin reviews
+  "lgx.alerts.rule.device_offline": "{c} mất kết nối: {n}", // DRAFT — Kevin reviews
+  "lgx.alerts.rule.terminal_unavailable": "Máy quẹt thẻ không dùng được: {n}", // DRAFT — Kevin reviews
+  "lgx.alerts.rule.sync_failures": "Lỗi lặp lại từ {s}: {n} trong giờ qua", // DRAFT — Kevin reviews
+  "lgx.alerts.rule.provider_critical": "Lỗi nghiêm trọng từ {s}: {n} trong giờ qua", // DRAFT — Kevin reviews
+  "lgx.alerts.cls.display": "Màn hình khách", // DRAFT — Kevin reviews
+  "lgx.alerts.cls.kiosk": "Máy check-in", // DRAFT — Kevin reviews
+  "lgx.alerts.cls.terminal": "Máy quẹt thẻ", // DRAFT — Kevin reviews
+  "lgx.alerts.st.new": "Mới", // DRAFT — Kevin reviews
+  "lgx.alerts.st.acknowledged": "Đã ghi nhận", // DRAFT — Kevin reviews
+  "lgx.alerts.st.in_progress": "Đang xử lý", // DRAFT — Kevin reviews
+  "lgx.alerts.st.resolved": "Đã xử lý", // DRAFT — Kevin reviews
+  "lgx.alerts.st.dismissed": "Đã bỏ qua", // DRAFT — Kevin reviews
+  "lgx.alerts.action.check_power_network": "Cần làm: kiểm tra nguồn điện và Wi-Fi, rồi mở Tình trạng thiết bị.", // DRAFT — Kevin reviews
+  "lgx.alerts.action.test_terminal": "Cần làm: thử máy trong Máy quẹt thẻ; trong lúc chờ hãy thu tiền bằng máy khác.", // DRAFT — Kevin reviews
+  "lgx.alerts.action.review_integration": "Cần làm: kiểm tra kết nối tích hợp trong Thiết bị & Tích hợp.", // DRAFT — Kevin reviews
+  "lgx.alerts.action.contact_support": "Cần làm: mở nhật ký và báo lỗi cho bộ phận hỗ trợ.", // DRAFT — Kevin reviews
+  "lgx.alerts.action.none": "—", // DRAFT — Kevin reviews
+  "lgx.alerts.seen": "Phát hiện {n} lần · lần cuối {t}", // DRAFT — Kevin reviews
+  "lgx.alerts.resolvedBy": "đã xử lý {t} bởi {w}", // DRAFT — Kevin reviews
+  "lgx.alerts.openLogs": "Xem các sự kiện này", // DRAFT — Kevin reviews
+  "lgx.alerts.resolve": "Đánh dấu đã xử lý", // DRAFT — Kevin reviews
+  "lgx.alerts.foot": "Máy chủ kiểm tra mỗi 5 phút (và khi bạn mở danh sách này). Không quy tắc nào bị tự động tắt.", // DRAFT — Kevin reviews
+  "lgx.retry.btn": "Hàng chờ thử lại", // DRAFT — Kevin reviews
+  "lgx.retry.title": "Hàng chờ thử lại", // DRAFT — Kevin reviews
+  "lgx.retry.sub": "Công việc của tiệm đang chờ, đang thử lại hoặc đã bỏ cuộc (hỏng trong {n} ngày qua). Chỉ xem — hàng chờ tự thử lại.", // DRAFT — Kevin reviews
+  "lgx.retry.store.jobs": "Tác vụ nền", // DRAFT — Kevin reviews
+  "lgx.retry.store.webhooks": "Gửi webhook", // DRAFT — Kevin reviews
+  "lgx.retry.counts": "Đang chờ {w} · Đang thử lại {r} · Đang chạy {u} · Hỏng {d}", // DRAFT — Kevin reviews
+  "lgx.retry.lag": "Trễ lâu nhất: {l}", // DRAFT — Kevin reviews
+  "lgx.retry.none": "Không có việc nào đang chờ hay bị lỗi.", // DRAFT — Kevin reviews
+  "lgx.retry.col.store": "Hàng chờ", // DRAFT — Kevin reviews
+  "lgx.retry.col.type": "Công việc", // DRAFT — Kevin reviews
+  "lgx.retry.col.attempt": "Lần thử", // DRAFT — Kevin reviews
+  "lgx.retry.col.next": "Lần thử tiếp", // DRAFT — Kevin reviews
+  "lgx.retry.col.lag": "Trễ", // DRAFT — Kevin reviews
+  "lgx.retry.col.error": "Lỗi gần nhất", // DRAFT — Kevin reviews
+  "lgx.retry.state.waiting": "Đang chờ", // DRAFT — Kevin reviews
+  "lgx.retry.state.retrying": "Đang thử lại", // DRAFT — Kevin reviews
+  "lgx.retry.state.running": "Đang chạy", // DRAFT — Kevin reviews
+  "lgx.retry.state.dead": "Hỏng (đã bỏ cuộc)", // DRAFT — Kevin reviews
+  "lgx.retry.attemptOf": "{a} / {m}", // DRAFT — Kevin reviews
+  "lgx.retry.foot": "Lỗi được rút gọn và che thông tin; nội dung công việc không bao giờ được hiển thị.", // DRAFT — Kevin reviews
 };

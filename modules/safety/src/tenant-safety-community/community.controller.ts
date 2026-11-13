@@ -5,12 +5,14 @@
 // field). CommunityError → { ok:false, code, ... } with its HTTP status. Comments / follows / similar / evidence / alerts
 // live in community-interactions.controller.ts (agent C); moderation in community-moderation.controller.ts (agent B).
 import { branchOrNull } from '@aipowersalon/tenant-context';
-import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { COMMUNITY_ADVISORY_CREATE_BODY, COMMUNITY_ADVISORY_UPDATE_BODY, COMMUNITY_APPEAL_BODY, COMMUNITY_ASSIST_BODY, COMMUNITY_DISPUTE_BODY, COMMUNITY_INCIDENT_BODY, COMMUNITY_POST_UPDATE_BODY, COMMUNITY_REPORT_BODY, COMMUNITY_RULES_ACK_BODY, COMMUNITY_SETTINGS_BODY, COMMUNITY_SUBMIT_BODY, COMMUNITY_VERSIONED_BODY, COMMUNITY_VERSIONED_NOTE_BODY } from '../request-schemas';
-import { Body, Controller, Get, HttpCode, HttpException, Inject, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, HttpException, Inject, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { CommunityService, CommunityError } from './community.service';
 import type { CommunityCtx } from './community.repository';
 import { ListQueries } from '@aipowersalon/database';
+import type { CommunityRolePreview, CommunityCorrectionsInbox } from '@aipowersalon/api-contracts/tenant';
+import type { ListQuery } from '@aipowersalon/api-contracts';
 import { CommunityControllerListQueries } from './community.list-queries';
 
 export function tctx(req: any): CommunityCtx {
@@ -34,6 +36,15 @@ export class CommunityController {
 
   @Put('settings') @RequirePermission('community.settings.manage')
   updateSettings(@Req() r: any, @Body(ValidatedBody(COMMUNITY_SETTINGS_BODY)) b: any) { return run(() => this.svc.updateSettings(tctx(r), b)); }
+
+  /** Safety Community 08: which community actions each default staff role could take here (read-only, settings managers) */
+  @Get('role-preview') @RequirePermission('community.settings.manage')
+  rolePreview(@Req() r: any): Promise<CommunityRolePreview> { return run(() => this.svc.rolePreview(tctx(r))); }
+
+  /** Safety Community 09: the sanitized diagnostics CSV (settings + counts only, one range ≤ 92 days, audited before it leaves) */
+  @AsyncExport({ kind: 'community.diagnostics.export' }) @Get('diagnostics/export') @RequirePermission('community.settings.manage')
+  @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="safety-community-diagnostics.csv"')
+  diagnosticsExport(@Req() r: any, @Query() q: ListQuery): Promise<string> { return run(() => this.svc.diagnosticsExport(tctx(r), q)); }
 
   @Post('rules/acknowledge') @HttpCode(200) @RequirePermission('community.feed.view')
   acknowledge(@Req() r: any, @Body(ValidatedBody(COMMUNITY_RULES_ACK_BODY, { strict: true })) b: any) { return run(() => this.svc.acknowledgeRules(tctx(r), b)); }
@@ -100,6 +111,10 @@ export class CommunityController {
   appeals(@Req() r: any) { return run(() => this.svc.listAppeals(tctx(r))); }
 
   // ── private incidents (own salon only) ──
+  /** Safety Community 06: Corrections & Retractions inbox — own published advisories changed after publication (read-only) */
+  @Get('corrections') @RequirePermission('community.appeal.create')
+  corrections(@Req() r: any, @Query() q: any): Promise<CommunityCorrectionsInbox> { return run(() => this.svc.correctionsInbox(tctx(r), q)); }
+
   @Get('incidents') @RequirePermission('community.incident.create')
   incidents(@Req() r: any, @Query() q: any) { return run(() => this.svc.listIncidents(tctx(r), q)); }
 

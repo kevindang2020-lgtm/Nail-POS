@@ -6,6 +6,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import { normalizeFilters, isSeverity, type LogSeverity, redactLogText, logCsvCell, LOG_EXPORT_MAX_DAYS, LOG_EXPORT_MAX_ROWS, logExportRangeDays } from './logs-core';
 import type { LogsContext, LogWriteCtx, LogEntryInput, LogEntryView, LogSink } from './logs.dto';
 import type { LogsRepositoryPort, StoredLog, LogSummary, LogPaymentEnvironment } from './logs.repository';
+import type { LogRetryQueueView } from '@aipowersalon/api-contracts/tenant';
 import { matchesFilters } from './logs-core';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
@@ -95,5 +96,23 @@ export class LogsService implements LogSink {
       line(['Time', 'Category', 'Severity', 'Source', 'Message', 'Status', 'Related record', 'Trace id']),
       ...rows.map((r) => line([r.createdMs ? new Date(r.createdMs).toISOString() : '', r.category, r.severity, redactLogText(r.source), redactLogText(r.message), r.status ? redactLogText(r.status) : '', r.relatedId ?? '', r.correlationId ?? '']))];
     return '\uFEFF' + out.join('\r\n') + '\r\n';
+  }
+
+  /** Device Integration Logs backlog · 09 (Nov 12 2026): Worker Delay & Retry Visibility — the salon's work waiting in the
+   *  platform's existing retry stores (job queue + outbound webhook deliveries): attempt n of max, the next attempt, how late
+   *  a due item is (lag), dead letters of the last 7 days. Read-only: no retry button, no second retry engine — the queue's
+   *  own worker retries with its backoff. Never a payload; the last error is redacted (redactLogText) and cut to one line. */
+  async retryQueue(ctx: LogsContext, raw: { page?: unknown; pageSize?: unknown }): Promise<LogRetryQueueView> {
+    if (!ctx?.userId || !ctx?.tenantId) throw new ForbiddenError('Not authenticated');
+    if (!this.can(ctx, 'pos.logs.view')) throw new ForbiddenError('Missing pos.logs.view');
+    const pageSize = [10, 25, 50].includes(Number(raw.pageSize)) ? Number(raw.pageSize) : 10;
+    const page = Math.max(1, Math.min(10_000, Math.trunc(Number(raw.page)) || 1));
+    const deadWindowDays = 7;
+    const empty = { waiting: 0, retrying: 0, running: 0, dead: 0, oldestDueLagSeconds: null };
+    if (!this.repo.retryQueue) return { checkedAt: new Date(this.now()).toISOString(), deadWindowDays, jobs: empty, webhooks: empty, items: [], total: 0, page: 1, pageSize, totalPages: 1 };
+    const r = await this.repo.retryQueue(ctx, { page, pageSize, deadWindowDays });
+    const oneLine = (e: string | null) => (e == null ? null : redactLogText(String(e).split(/\r?\n/)[0]).slice(0, 200));
+    return { checkedAt: new Date(this.now()).toISOString(), deadWindowDays, jobs: r.jobs, webhooks: r.webhooks, total: r.total, page, pageSize, totalPages: Math.max(1, Math.ceil(r.total / pageSize)),
+      items: r.rows.map((x) => ({ ...x, lastError: oneLine(x.lastError) })) };
   }
 }

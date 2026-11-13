@@ -3,7 +3,7 @@ import { escapeLike } from '@aipowersalon/database';   // Security Deep Scan D8:
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { LogsContext, LogWriteCtx, LogEntryInput } from './logs.dto';
-import type { LogsRepositoryPort, StoredLog, LogPageFilters, LogSummary, LogPaymentEnvironment, LogExportAudit } from './logs.repository';
+import type { LogsRepositoryPort, StoredLog, LogPageFilters, LogSummary, LogPaymentEnvironment, LogExportAudit, RetryQueueRead, RetryStoreCounts } from './logs.repository';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import type { LogFilters } from './logs-core';
 
@@ -84,5 +84,43 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
     await recordAuditStrict(this.db, { tenantId: ctx.tenantId, branchId: ctx.branchId || null, userId: ctx.userId, role: ctx.role ?? null },
       { module: 'logs', action: 'logs_exported', resourceType: 'tenant_event_logs', summary: `Device & integration logs exported (${e.rows} rows, ${e.from} to ${e.to})`,
         metadata: { from: e.from, to: e.to, rows: e.rows, total: e.total, ...e.filters } });
+  }
+
+  /** Device Integration Logs 09: the salon's work in the ONE job queue (jobs) and the outbound webhook deliveries — waiting,
+   *  retrying (attempted at least once, will run again), running, and dead in the last `deadWindowDays`. Lag = how long a due
+   *  item has been waiting past its run time. Never the payload; a succeeded / delivered / canceled row is not here. */
+  async retryQueue(ctx: LogsContext, p: { page: number; pageSize: number; deadWindowDays: number }): Promise<RetryQueueRead> {
+    const T = ctx.tenantId; const deadSince = sql`now() - make_interval(days => ${p.deadWindowDays})`;
+    const all = sql`
+      SELECT j.id::text AS id, 'job' AS store, j.job_type AS type,
+             CASE WHEN j.status = 'dead' THEN 'dead' WHEN j.status = 'running' THEN 'running' WHEN j.attempts > 0 THEN 'retrying' ELSE 'waiting' END AS state,
+             j.attempts AS attempt, j.max_attempts AS max_attempts, CASE WHEN j.status = 'queued' THEN j.run_after END AS next_at, j.last_error AS last_error,
+             j.correlation_id AS correlation_id, j.created_at AS created_at, j.updated_at AS updated_at
+        FROM jobs j WHERE j.tenant_id::text = ${T} AND (j.status IN ('queued', 'running') OR (j.status = 'dead' AND coalesce(j.finished_at, j.updated_at) >= ${deadSince}))
+      UNION ALL
+      SELECT w.id::text, 'webhook', w.event_type,
+             CASE WHEN w.status = 'dead' THEN 'dead' WHEN w.attempt_count > 0 THEN 'retrying' ELSE 'waiting' END,
+             w.attempt_count, w.max_attempts, CASE WHEN w.status <> 'dead' THEN w.next_attempt_at END, w.last_error,
+             NULL, w.created_at, w.updated_at
+        FROM tenant_webhook_deliveries w WHERE w.tenant_id::text = ${T} AND (w.status IN ('pending', 'failed') OR (w.status = 'dead' AND w.updated_at >= ${deadSince}))`;
+    const rows = await sql<{ id: string; store: 'job' | 'webhook'; type: string; state: 'waiting' | 'retrying' | 'running' | 'dead'; attempt: number; max_attempts: number; next_at: unknown; lag: unknown; last_error: string | null; correlation_id: string | null; created_at: unknown; updated_at: unknown }>`
+      SELECT x.id, x.store, x.type, x.state, x.attempt, x.max_attempts, x.next_at, x.last_error, x.correlation_id, x.created_at, x.updated_at,
+             CASE WHEN x.next_at IS NOT NULL AND x.next_at <= now() THEN extract(epoch FROM now() - x.next_at) END AS lag
+        FROM (${all}) x
+       ORDER BY CASE x.state WHEN 'dead' THEN 0 WHEN 'retrying' THEN 1 WHEN 'running' THEN 2 ELSE 3 END, x.updated_at DESC, x.id DESC
+       LIMIT ${p.pageSize} OFFSET ${(p.page - 1) * p.pageSize}`.execute(this.db);
+    const cnt = await sql<{ store: string; waiting: number; retrying: number; running: number; dead: number; oldest: unknown }>`
+      SELECT x.store, count(*) FILTER (WHERE x.state = 'waiting')::int AS waiting, count(*) FILTER (WHERE x.state = 'retrying')::int AS retrying,
+             count(*) FILTER (WHERE x.state = 'running')::int AS running, count(*) FILTER (WHERE x.state = 'dead')::int AS dead,
+             max(CASE WHEN x.next_at IS NOT NULL AND x.next_at <= now() THEN extract(epoch FROM now() - x.next_at) END) AS oldest
+        FROM (${all}) x GROUP BY x.store`.execute(this.db);
+    const counts = (store: string): RetryStoreCounts => { const c = cnt.rows.find((r) => r.store === store);
+      return { waiting: Number(c?.waiting ?? 0), retrying: Number(c?.retrying ?? 0), running: Number(c?.running ?? 0), dead: Number(c?.dead ?? 0), oldestDueLagSeconds: c?.oldest == null ? null : Math.round(Number(c.oldest)) }; };
+    const isoOf = (v: unknown) => (v == null ? null : new Date(toMs(v)).toISOString());
+    const jobs = counts('job'), webhooks = counts('webhook');
+    return { jobs, webhooks, total: jobs.waiting + jobs.retrying + jobs.running + jobs.dead + webhooks.waiting + webhooks.retrying + webhooks.running + webhooks.dead,
+      rows: rows.rows.map((r) => ({ id: String(r.id), store: r.store, type: String(r.type ?? ''), state: r.state, attempt: Number(r.attempt ?? 0), maxAttempts: Number(r.max_attempts ?? 0),
+        nextAttemptAt: isoOf(r.next_at), lagSeconds: r.lag == null ? null : Math.round(Number(r.lag)), lastError: r.last_error ?? null, correlationId: r.correlation_id ?? null,
+        createdAt: isoOf(r.created_at), updatedAt: isoOf(r.updated_at) })) };
   }
 }

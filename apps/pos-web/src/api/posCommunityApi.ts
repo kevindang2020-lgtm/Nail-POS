@@ -8,6 +8,7 @@
 // reload". The evidence upload is three steps: ask for a short-lived upload ticket (sha256 + size + type), PUT the
 // bytes straight to storage with the ticket's headers, then `complete` (the server checks the object and scans it).
 import { api } from './client';
+import type { CommunityRolePreview, CommunityCorrectionsInbox } from '@aipowersalon/api-contracts/tenant';
 import type {
   CommunityActiveAlert, CommunityAdvisoryInput, CommunityAdvisoryUpdate, CommunityAppealInput, CommunityAppealView,
   CommunityCommentEdit, CommunityCommentInput, CommunityCommentView, CommunityDisputeInput, CommunityEvidenceAccess,
@@ -116,4 +117,10 @@ export const posCommunityApi = {
   // ── alerts + analytics (C) ──
   activeAlerts: () => api.get<CommunityActiveAlert[] | { items: CommunityActiveAlert[] }>(`${BASE}/alerts/active`).then((r) => list<CommunityActiveAlert>(r)),
   analytics: (from: string, to: string) => api.get<CommunityTenantAnalytics>(`${BASE}/analytics`, { from, to }),
+  /** extras Safety Community 08 — which community actions each default staff role could take here (read-only) */
+  rolePreview: () => api.get<CommunityRolePreview>(`${BASE}/role-preview`),
+  /** extras Safety Community 06 — own published advisories changed after publication: changes, in-app reach, appeals */
+  corrections: (page = 1) => api.get<CommunityCorrectionsInbox>(`${BASE}/corrections`, { page, pageSize: 10 }),
+  /** extras Safety Community 09 — the sanitized diagnostics CSV for one range (≤ 92 days); audited by the server first */
+  diagnosticsExport: (from: string, to: string) => api.exportAsync<string>(`${BASE}/diagnostics/export`, { from, to }, 'text'),
 };

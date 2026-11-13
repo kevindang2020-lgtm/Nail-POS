@@ -12,9 +12,10 @@ import {
   communityErrorText, errText, isPublished, muted, page, pretty, row, when,
 } from './communityUi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { CommunityCorrectionsList } from './CommunityOpsCards';   // extras Safety Community 06
 
-type Tab = CommunityMyListKind | 'appeals';
-const TABS = (): [Tab, string][] => [['drafts', t('growth.community.drafts.tab.drafts')], ['returned', t('growth.community.drafts.tab.returned')], ['submitted', t('growth.community.drafts.tab.submitted')], ['awaiting_approval', t('growth.community.drafts.tab.awaiting_approval')], ['published', t('growth.community.drafts.tab.published')], ['all', t('growth.community.drafts.tab.all')], ['appeals', t('growth.community.drafts.tab.appeals')]];
+type Tab = CommunityMyListKind | 'appeals' | 'corrections';
+const TABS = (): [Tab, string][] => [['drafts', t('growth.community.drafts.tab.drafts')], ['returned', t('growth.community.drafts.tab.returned')], ['submitted', t('growth.community.drafts.tab.submitted')], ['awaiting_approval', t('growth.community.drafts.tab.awaiting_approval')], ['published', t('growth.community.drafts.tab.published')], ['all', t('growth.community.drafts.tab.all')], ['appeals', t('growth.community.drafts.tab.appeals')], ['corrections', t('growth.community.drafts.tab.corrections')]];
 const tabBtn = (on: boolean): CSSProperties => ({ ...btnGhost, background: on ? '#A96F22' : '#fff', color: on ? '#fff' : '#4A4744', borderColor: on ? '#A96F22' : 'var(--line)' });
 
 export function CommunityDraftsScreen() {
@@ -29,6 +30,7 @@ export function CommunityDraftsScreen() {
   const load = useCallback(() => {
     if (!can(P.draft)) return Promise.resolve();
     setError(null);
+    if (tab === 'corrections') return Promise.resolve();   // extras Safety Community 06: the list loads itself
     if (tab === 'appeals') return api.appeals().then(setAppeals).catch((e) => setError(communityErrorText(e, t('growth.community.couldNotLoadYourAppeals'))));
     return api.mine(tab, pageNo).then(setData).catch((e) => setError(communityErrorText(e, t('growth.community.couldNotLoadYourAdvisories'))));
   }, [tab, pageNo]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -45,10 +47,10 @@ export function CommunityDraftsScreen() {
       <CommunitySubNav can={can} />
       <div style={body}>
         <div role="tablist" aria-label={t('pos.which_advisories')} style={row}>
-          {TABS().filter(([k]) => k !== 'appeals' || can(P.appeal)).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} style={tabBtn(tab === k)} onClick={() => { setTab(k); setPageNo(1); }}>{l}</button>)}
+          {TABS().filter(([k]) => (k !== 'appeals' && k !== 'corrections') || can(P.appeal)).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} style={tabBtn(tab === k)} onClick={() => { setTab(k); setPageNo(1); }}>{l}</button>)}
         </div>
         {error ? <div role="alert" style={errText}>{error}</div> : null}
-        {tab === 'appeals' ? (
+        {tab === 'corrections' ? <CommunityCorrectionsList /> : tab === 'appeals' ? (
           !appeals ? <div style={muted}>{t('pos.loading')}</div> : appeals.length === 0 ? <div style={{ ...card, ...muted }}>{t('pos.no_appeals')}</div> : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
               {appeals.map((a) => (
@@ -79,7 +81,7 @@ export function CommunityDraftsScreen() {
             ))}
           </ul>
         )}
-        {tab !== 'appeals' && data && (data.page > 1 || data.hasMore) ? (
+        {tab !== 'appeals' && tab !== 'corrections' && data && (data.page > 1 || data.hasMore) ? (
           <div style={row}>
             <button style={btnGhost} disabled={data.page <= 1} onClick={() => setPageNo((n) => Math.max(1, n - 1))}>{t('pos.previous_page')}</button>
             <span style={muted}>{t('pos.page')}{' '}{data.page} {t('pos.of')}{' '}{Math.max(1, Math.ceil(data.total / Math.max(1, data.pageSize)))}</span>

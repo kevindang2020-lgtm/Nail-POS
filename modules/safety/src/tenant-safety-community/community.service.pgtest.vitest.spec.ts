@@ -10,6 +10,7 @@ import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { OutboxWriter } from '@aipowersalon/events';
 import { COMMUNITY_RULES_VERSION } from '@aipowersalon/api-contracts/tenant';
 import { KyselyCommunityRepo } from './community.repository';
+import { KyselyInteractionsRepo } from './community-interactions.repository';
 import { CommunityService } from './community.service';
 import { OutboxCommunityEvents } from './community-events';
 import { KyselyCommunityAuditSink } from './community-audit';
@@ -194,5 +195,90 @@ describe('two salons on the real schema', () => {
     const d = await svc.createAdvisory({ ...ownerA, branchId: '' as any }, gift);
     expect((await q(`select origin_branch_id from community_posts where id = '${d.id}'`))[0].origin_branch_id).toBeNull();
     await sql`select 1`.execute(db);
+  });
+});
+
+// Safety Community backlog · 08 — the role preview on the real schema: settings from tenant_community_settings, the salon's
+// live custom-role count (archived ones and other salons excluded), settings managers only.
+describe('extras Safety Community 08 — role preview (real repo)', () => {
+  it('reads this salon\'s settings and live custom-role count; never another salon\'s', async () => {
+    await pg.exec(`INSERT INTO tenant_custom_roles (tenant_id, name, base_role, scope, permissions, archived_at) VALUES
+      ('${TA}', 'Lead receptionist', 'FRONT_DESK', 'BRANCH', '[]'::jsonb, NULL), ('${TA}', 'Old role', 'FRONT_DESK', 'BRANCH', '[]'::jsonb, now()),
+      ('${TB}', 'Rose role', 'FRONT_DESK', 'BRANCH', '[]'::jsonb, NULL)`);
+    const p = await svc.rolePreview(ownerA);
+    expect(p.customRoles).toBe(1);
+    expect(p.communityEnabled).toBe(true);
+    expect(p.roles.find((r) => r.key === 'RECEPTIONIST')!.actions.find((a) => a.action === 'submit_advisory')!.allowed).toBe(false);
+    await expect(svc.rolePreview(deskA)).rejects.toMatchObject({ code: 'permission_denied' });
+  });
+});
+
+// Safety Community backlog · 06 — Corrections & Retractions inbox on the real schema
+describe('extras Safety Community 06 — corrections & retractions inbox (real repo)', () => {
+  it('own published advisories changed after publication: each change, its in-app reach among following salons, appeals and disputes; moderation notes never shown', async () => {
+    await cool();
+    await pg.exec(`INSERT INTO users (id, tenant_id, full_name, email, status, role) VALUES
+      ('${OWNER_A}', '${TA}', 'Owner A', 'owner-a-sc06@example.test', 'active', 'OWNER'), ('${MGR_A}', '${TA}', 'Manager A', 'mgr-a-sc06@example.test', 'active', 'MANAGER'),
+      ('${DESK_A}', '${TA}', 'Desk A', 'desk-a-sc06@example.test', 'active', 'FRONT_DESK') ON CONFLICT (id) DO NOTHING`);
+    const quiet = await publish('a caller asked for gift cards — never changed', 'Untouched advisory');
+    await cool();
+    const p = await publish('a caller asked the front desk for gift cards to hold a booking', 'Corrected advisory');
+    const P = p.id;
+    const ed = await svc.editPublished(ownerA, P, { expectedVersion: p.version, recommendation: 'Call the bank before giving any code', changeNote: 'Corrected the advice' });
+    const ix = new KyselyInteractionsRepo(db);
+    await ix.insertOwnerAlert(db, { tenantId: TB, postId: P, severity: 'warning', title: 'Changed', body: 'b', link: '/x', dedupeKey: `edited:v${ed.post.version}`, kind: 'edited' });
+    const up = await svc.addUpdate(ownerA, P, { body: 'Update: the caller now uses a different number' });
+    await ix.insertOwnerAlert(db, { tenantId: TB, postId: P, severity: 'warning', title: 'Update', body: 'b', link: '/x', dedupeKey: `update_added:v${up.version}`, kind: 'update_added' });
+    await pg.exec(`INSERT INTO community_post_versions (post_id, version, title, redacted_body, status, edited_by_user_id, change_note)
+      VALUES ('${P}', ${up.version + 1}, 'Corrected advisory', 'x', 'resolved', '${MOD}', 'internal moderator reason SC06')`);
+    await pg.exec(`INSERT INTO community_appeals (post_id, appellant_tenant_id, appellant_user_id, subject, reason) VALUES
+      ('${P}', '${TA}', '${OWNER_A}', 'severity_change', 'we think the severity is too high'), ('${P}', '${TB}', '${OWNER_B}', 'severity_change', 'another salon appeal')`);
+    await pg.exec(`INSERT INTO community_disputes (post_id, raised_by_tenant_id, reason, status) VALUES ('${P}', '${TB}', 'not accurate', 'open')`);
+
+    const inbox = await svc.correctionsInbox(ownerA, {});
+    expect(inbox.items[0].postId).toBe(P);                                       // newest change first; the untouched one (and salon B's posts) are not here
+    expect(inbox.items.every((i) => i.changes.length > 0 || i.appeals.length > 0)).toBe(true);
+    expect(inbox.items.map((i) => i.postId)).not.toContain(quiet.id);
+    const it0 = inbox.items[0];
+    expect(inbox.total).toBeLessThanOrEqual(Number((await pg.query(`select count(*)::int n from community_posts where origin_tenant_id = '${TA}' and published_at is not null`)).rows[0].n));
+    const byKind = (k: string) => it0.changes.filter((c) => c.kind === k);
+    expect(byKind('edited').find((c) => !c.byModeration)).toMatchObject({ note: 'Corrected the advice', notifiedSalons: 1, version: ed.post.version });
+    expect(byKind('update_added')[0]).toMatchObject({ note: 'Update: the caller now uses a different number', notifiedSalons: 1, version: null });
+    expect(byKind('resolved')[0]).toMatchObject({ byModeration: true, note: null, notifiedSalons: 0 });
+    expect(JSON.stringify(inbox)).not.toContain('internal moderator reason SC06');
+    expect(it0.appeals).toHaveLength(1); expect(it0.appeals[0]).toMatchObject({ subject: 'severity_change', status: 'submitted' });
+    expect(it0.disputes).toEqual({ open: 1, closed: 0 });
+    expect(JSON.stringify(inbox)).not.toContain(TB);                            // reach is a count — never which salons
+    await expect(svc.correctionsInbox(deskA, {})).rejects.toMatchObject({ code: 'permission_denied' });
+    expect((await svc.correctionsInbox(ownerB, {})).items).toEqual([]);
+  });
+});
+
+// Safety Community backlog · 09 — Safe Export / Developer Incident Report on the real schema
+describe('extras Safety Community 09 — sanitized diagnostics export (real repo)', () => {
+  it('settings + counts of this salon only; no titles, bodies, names, e-mails or other salons; audited before the file leaves', async () => {
+    const before = Number((await q(`select count(*)::int as n from audit_events where module = 'community' and action = 'diagnostics_exported'`))[0].n);
+    const csv = await svc.diagnosticsExport(ownerA, { from: '2026-01-01', to: '2026-03-31' });
+    expect(csv.startsWith('﻿Safety Community diagnostics (sanitized)')).toBe(true);
+    expect(csv).toContain('settings,enabled,yes');
+    expect(csv).toMatch(/participation,rules_acknowledged_users,\d+/);
+    const d = (await q(`select to_char(now() at time zone 'UTC', 'YYYY-MM-DD') as t, to_char((now() at time zone 'UTC') - interval '80 days', 'YYYY-MM-DD') as f`))[0];
+    const wide = await svc.diagnosticsExport(ownerA, { from: d.f, to: d.t });
+    expect(wide).toMatch(/posts,status\.published_unverified,\d+/);            // this salon's posts made in this file
+    for (const s of [gift.title, 'Corrected advisory', 'Owner A', 'owner-a-sc06@example.test', TB, OWNER_A, 'Rose Spa', 'Bella Nails', 'gift cards']) expect(wide).not.toContain(s);
+    const after = await q(`select tenant_id, actor_user_id, metadata from audit_events where module = 'community' and action = 'diagnostics_exported' order by occurred_at desc limit 1`);
+    expect(Number((await q(`select count(*)::int as n from audit_events where module = 'community' and action = 'diagnostics_exported'`))[0].n)).toBe(before + 2);
+    expect(after[0]).toMatchObject({ tenant_id: TA, actor_user_id: OWNER_A });
+    expect(after[0].metadata).toMatchObject({ days: 81, format: 'csv' });
+  });
+  it('one bounded range (≤ 92 days, from ≤ to), settings managers only, and no audit row → no file', async () => {
+    await expect(svc.diagnosticsExport(ownerA, { from: '2026-01-01', to: '2026-04-30' })).rejects.toMatchObject({ code: 'invalid_input' });
+    await expect(svc.diagnosticsExport(ownerA, { from: '2026-02-01', to: '2026-01-01' })).rejects.toMatchObject({ code: 'invalid_input' });
+    await expect(svc.diagnosticsExport(ownerA, {})).rejects.toMatchObject({ code: 'invalid_input' });
+    await expect(svc.diagnosticsExport(deskA, { from: '2026-01-01', to: '2026-01-31' })).rejects.toMatchObject({ code: 'permission_denied' });
+    const repo = new KyselyCommunityRepo(db);
+    repo.recordDiagnosticsExport = async () => { throw new Error('audit down'); };
+    const broken = new CommunityService(repo, {});
+    await expect(broken.diagnosticsExport(ownerA, { from: '2026-01-01', to: '2026-01-31' })).rejects.toMatchObject({ code: 'export_unavailable', status: 503 });
   });
 });
