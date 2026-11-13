@@ -158,4 +158,11 @@ export const SMSSETUP_EN = {
   "ms.br.notSendable": "cannot send yet",
   "ms.br.stop.blocked_by_stop": "not sent to people who texted STOP",
   "ms.br.stop.sent_despite_stop": "sent even after STOP (transactional)",
+  "ms.trace.request": "Requested by the app: {at}",
+  "ms.trace.accepted": "Accepted by the provider (message {ref})",
+  "ms.trace.notAccepted": "Not accepted by the provider",
+  "ms.trace.noCallbacks": "No delivery report received yet",
+  "ms.trace.callback": "Provider report: {status} at {at}",
+  "ms.trace.notApplied": "did not change the status (repeat or out of order)",
+  "ms.trace.now": "Now: {s}",
 } as const;

@@ -351,6 +351,13 @@ export class MessagingSetupCenter {
     const extra: Record<string, unknown> = { actor: r.actor_name ?? (r.actor_id ? 'staff member' : 'system'), configSource: r.config_source || null };
     if (kind === 'test_sms') {
       const t = (await sql<any>`select warning_codes, sender_kind from sms_test_events where tenant_id = ${ctx.tenantId} and id = ${id}::uuid`.execute(this.db)).rows[0];
+      // extras TEXT MESSAGING SETUP 11 (round 10): the end-to-end trace — every signature-verified provider callback for this
+      // test's message SID, in arrival order, with whether it moved the record (an out-of-order / repeated one did not)
+      const sidRow = (await sql<any>`select provider_message_sid, created_at from sms_test_events where tenant_id = ${ctx.tenantId} and id = ${id}::uuid`.execute(this.db)).rows[0];
+      const cbs = sidRow?.provider_message_sid ? (await sql<any>`select ev.provider_status, ev.error_code, ev.applied, ev.signature_verified, ev.received_at from notification_delivery_events ev
+        where ev.tenant_id = ${ctx.tenantId} and ev.provider_message_sid = ${sidRow.provider_message_sid} order by ev.received_at, ev.id`.execute(this.db)).rows : [];
+      Object.assign(extra, { requestedAt: iso(sidRow?.created_at), providerAccepted: !!sidRow?.provider_message_sid,
+        callbacks: cbs.map((c: any) => ({ status: String(c.provider_status), errorCode: c.error_code ?? null, applied: !!c.applied, signatureVerified: !!c.signature_verified, receivedAt: iso(c.received_at) })) });
       Object.assign(extra, { warnings: t?.warning_codes ?? [], senderKind: t?.sender_kind ?? null, accountLast4: r.account_last4 || null,
         meaning: view.rawStatus === 'delivered' ? 'The carrier reported delivery (signed callback).' : ['accepted', 'sent', 'sending'].includes(view.rawStatus) ? 'Twilio accepted the text — accepted is not delivered; waiting for the signed delivery report.' : 'The text was not delivered; see the reason code.' });
     } else if (kind === 'health_check') {

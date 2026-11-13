@@ -158,4 +158,11 @@ export const SMSSETUP_VI = {
   "ms.br.notSendable": "chưa gửi được", // DRAFT — Kevin reviews
   "ms.br.stop.blocked_by_stop": "không gửi cho người đã nhắn STOP", // DRAFT — Kevin reviews
   "ms.br.stop.sent_despite_stop": "vẫn gửi sau STOP (giao dịch)", // DRAFT — Kevin reviews
+  "ms.trace.request": "Ứng dụng gửi yêu cầu: {at}", // DRAFT — Kevin reviews
+  "ms.trace.accepted": "Nhà cung cấp đã nhận (tin {ref})", // DRAFT — Kevin reviews
+  "ms.trace.notAccepted": "Nhà cung cấp không nhận", // DRAFT — Kevin reviews
+  "ms.trace.noCallbacks": "Chưa nhận báo cáo giao tin", // DRAFT — Kevin reviews
+  "ms.trace.callback": "Báo cáo của nhà cung cấp: {status} lúc {at}", // DRAFT — Kevin reviews
+  "ms.trace.notApplied": "không đổi trạng thái (lặp lại hoặc sai thứ tự)", // DRAFT — Kevin reviews
+  "ms.trace.now": "Hiện tại: {s}", // DRAFT — Kevin reviews
 } as const;

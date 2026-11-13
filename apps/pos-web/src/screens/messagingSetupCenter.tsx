@@ -271,7 +271,9 @@ export function SetupActivity({ branches, refreshKey }: { branches: { id: string
 }
 
 function ActivityDetailDialog({ d, onClose }: { d: ActivityDetail; onClose: () => void }) {
-  const skip = new Set(['kind', 'id', 'branchId', 'branchName', 'createdAt', 'updatedAt', 'deliveredAt', 'state', 'rawStatus', 'number', 'recipient', 'providerRef', 'reason', 'detail', 'actor', 'meaning', 'configSource']);
+  const skip = new Set(['kind', 'id', 'branchId', 'branchName', 'createdAt', 'updatedAt', 'deliveredAt', 'state', 'rawStatus', 'number', 'recipient', 'providerRef', 'reason', 'detail', 'actor', 'meaning', 'configSource', 'callbacks', 'requestedAt', 'providerAccepted']);
+  // extras TEXT MESSAGING SETUP 11 (round 10): the server's end-to-end trace of a test text — request, acceptance, each callback
+  const cbs = Array.isArray((d as Record<string, unknown>).callbacks) ? ((d as Record<string, unknown>).callbacks as { status: string; errorCode: string | null; applied: boolean; signatureVerified: boolean; receivedAt: string | null }[]) : null;
   // timestamps inside the details are shown in the salon's format, never as raw ISO strings
   const tidy = (x: unknown): unknown => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:/.test(x) ? fmtDateTime(x) : Array.isArray(x) ? x.map(tidy) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x as Record<string, unknown>).map(([k, v]) => [k, tidy(v)])) : x;
   const extra = Object.entries(d).filter(([k, x]) => !skip.has(k) && x !== null && x !== undefined && !(Array.isArray(x) && x.length === 0)).map(([k, x]) => [k, tidy(x)] as const);
@@ -293,6 +295,14 @@ function ActivityDetailDialog({ d, onClose }: { d: ActivityDetail; onClose: () =
         {d.providerRef ? <><dt>{t('ms.act.col.ref')}</dt><dd>{d.providerRef}</dd></> : null}
         {d.reason ? <><dt>{t('ms.act.col.reason')}</dt><dd>{d.reason}</dd></> : null}
       </dl>
+      {d.kind === 'test_sms' && cbs ? (
+        <ol className="pmc-trace" data-testid="ms-trace">
+          <li data-testid="ms-trace-request">{t('ms.trace.request', { at: when(((d as Record<string, unknown>).requestedAt as string | null) ?? d.createdAt) })}</li>
+          <li data-testid="ms-trace-accepted">{(d as Record<string, unknown>).providerAccepted ? t('ms.trace.accepted', { ref: d.providerRef ?? '—' }) : t('ms.trace.notAccepted')}</li>
+          {cbs.length === 0 ? <li data-testid="ms-trace-none">{t('ms.trace.noCallbacks')}</li> : cbs.map((c, i) => (
+            <li key={i} data-testid="ms-trace-cb">{t('ms.trace.callback', { status: c.status, at: when(c.receivedAt) })}{c.errorCode ? ` · ${c.errorCode}` : ''}{c.applied ? '' : ` · ${t('ms.trace.notApplied')}`}</li>))}
+          <li data-testid="ms-trace-now">{t('ms.trace.now', { s: ASTATE[d.state]?.() ?? d.state })}{d.reason ? ` · ${d.reason}` : ''}</li>
+        </ol>) : null}
       {extra.length ? (<><div className="pmc-sub">{t('ms.det.extra')}</div><pre className="ms-pre">{JSON.stringify(Object.fromEntries(extra), null, 2)}</pre></>) : null}
     </FitDialog>
   );

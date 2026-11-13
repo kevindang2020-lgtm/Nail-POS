@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const api = vi.hoisted(() => ({ overview: vi.fn(), branches: vi.fn(), activity: vi.fn(), detail: vi.fn() }));
 vi.mock('../api/posMessagingSetupApi', () => ({ posMessagingSetupApi: api }));
-import { SmsReadinessPanel, buildSupportReport, redactSupportText, BranchSenders as BranchSendersPanel } from './messagingSetupCenter';
+import { SmsReadinessPanel, buildSupportReport, redactSupportText, BranchSenders as BranchSendersPanel, SetupActivity } from './messagingSetupCenter';
 import type { SetupOverview, BranchSenders } from '../api/posMessagingSetupApi';
 
 const BR_ID = '3f2b8c1e-1111-4222-8333-944455556666';
@@ -78,5 +78,26 @@ describe('Branch senders — summary, next actions and simulator', () => {
     render(<BranchSendersPanel onConfigure={() => {}} />);
     await screen.findByTestId('ms-br-' + BR_ID);
     expect(screen.queryByTestId('ms-br-sum-' + BR_ID)).toBeNull(); expect(screen.queryByTestId('ms-br-sim-' + BR_ID)).toBeNull();
+  });
+});
+
+// extras TEXT MESSAGING SETUP 11 (round 10): the test-text detail shows the end-to-end trace the server returns
+describe('Setup activity — end-to-end delivery trace', () => {
+  it('request → provider acceptance → each callback (a repeat marked as not applied) → current status', async () => {
+    const row = { kind: 'test_sms', id: '9a9a9a9a-1111-4222-8333-944455556666', state: 'ok', rawStatus: 'delivered', createdAt: '2026-11-12T14:00:00Z', updatedAt: '2026-11-12T14:02:00Z', deliveredAt: '2026-11-12T14:02:00Z',
+      number: '+12155550123', recipient: '•••4444', providerRef: 'SM…9f3a', branchId: null, branchName: null, reason: null };
+    api.activity.mockResolvedValue({ items: [row], page: 1, pageSize: 10, totalItems: 1, totalPages: 1, basis: 'created', period: { from: null, to: null } });
+    api.detail.mockResolvedValue({ ...row, actor: 'Ann', configSource: 'tenant_default', meaning: 'The carrier reported delivery (signed callback).', requestedAt: '2026-11-12T14:00:00Z', providerAccepted: true,
+      callbacks: [{ status: 'sent', errorCode: null, applied: true, signatureVerified: true, receivedAt: '2026-11-12T14:01:00Z' }, { status: 'delivered', errorCode: null, applied: true, signatureVerified: true, receivedAt: '2026-11-12T14:02:00Z' },
+        { status: 'sent', errorCode: null, applied: false, signatureVerified: true, receivedAt: '2026-11-12T14:03:00Z' }] });
+    render(<SetupActivity branches={[]} refreshKey={0} />);
+    fireEvent.click(await screen.findByTestId('ms-act-view'));
+    const trace = await screen.findByTestId('ms-trace');
+    expect(screen.getByTestId('ms-trace-accepted')).toHaveTextContent('Accepted by the provider (message SM…9f3a)');
+    const cbs = screen.getAllByTestId('ms-trace-cb');
+    expect(cbs).toHaveLength(3);
+    expect(cbs[1]).toHaveTextContent('Provider report: delivered');
+    expect(cbs[2]).toHaveTextContent('did not change the status (repeat or out of order)');
+    expect(trace).toHaveTextContent('Now: ');
   });
 });

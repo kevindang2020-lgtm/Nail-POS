@@ -177,6 +177,14 @@ describe('activity history (§14–§16)', () => {
     const d: any = await center().detail(ctxA, 'test_sms', aRow.id, null);
     expect(d).toMatchObject({ id: aRow.id, kind: 'test_sms' });
     expect(d.meaning).toMatch(/accepted is not delivered|carrier reported delivery|not delivered/);
+    // extras TEXT MESSAGING SETUP 11 (round 10): the end-to-end trace — request time, provider acceptance (a SID) and every
+    // verified callback for that SID in arrival order, with whether it moved the record
+    const sid = (await sql<any>`select provider_message_sid from sms_test_events where id = ${aRow.id}::uuid`.execute(db)).rows[0].provider_message_sid;
+    await sql`insert into notification_delivery_events (tenant_id, provider_message_sid, provider_status, applied, signature_verified, received_at) values
+      (${A}, ${sid}, 'sent', true, true, now() - interval '2 minutes'), (${A}, ${sid}, 'delivered', true, true, now() - interval '1 minute'), (${B}, ${sid}, 'failed', true, true, now())`.execute(db);
+    const t: any = await center().detail(ctxA, 'test_sms', aRow.id, null);
+    expect(t.providerAccepted).toBe(true); expect(t.requestedAt).toMatch(/^\d{4}-/);
+    expect(t.callbacks.map((c: any) => [c.status, c.applied, c.signatureVerified])).toEqual([['sent', true, true], ['delivered', true, true]]);   // never another salon's event
   });
   it('a branch-confined actor: rows of other branches are hidden; filtering another branch is 403', async () => {
     const confined: any = await center().activity(ctxA, { pageSize: 50, kind: 'test_sms' }, [BR_A]);
