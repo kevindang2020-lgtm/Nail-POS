@@ -7763,6 +7763,7 @@ export interface DB {
   money_protection_health_runs: MoneyProtectionHealthRunsTable;
   money_protection_detection_runs: MoneyProtectionDetectionRunsTable;
   money_protection_events: MoneyProtectionEventsTable;
+  money_protection_notifications: MoneyProtectionNotificationsTable;
   voice_system_health_runs: VoiceSystemHealthRunsTable;
   forecasting_health_runs: ForecastingHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
@@ -8622,6 +8623,10 @@ export interface MoneyProtectionDetectionRunsTable {   // migration 778 — ever
 export interface MoneyProtectionEventsTable {   // migration 778 — append-only human decisions on alerts, investigations and rules
   id: Generated<string>; tenant_id: string; branch_id: string | null; entity_type: string; entity_id: string; action: string; from_state: string | null; to_state: string | null;
   reason: string | null; detail: Generated<unknown>; actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface MoneyProtectionNotificationsTable {   // migration 875 — each new-alert notification decision: sent / held back (cooldown, hourly cap); append-only
+  id: Generated<string>; tenant_id: string; alert_id: string | null; dedupe_key: string; severity: string | null; outcome: string; reason: string | null;
+  owner_alert_id: string | null; held_until: TsNull; suppressed_n: Generated<number>; run_id: string | null; created_at: Generated<Ts>;
 }
 export interface MoneyProtectionHealthRunsTable {   // migration 778 — read-only "Check AI Money Protection System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;

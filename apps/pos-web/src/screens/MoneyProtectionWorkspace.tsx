@@ -246,6 +246,11 @@ export function MpOverview() {
         <KpiCard testId="mpx-kpi-dismissed" label={t('mpx.kpi.dismissed')} value={c ? fmtNumber(c.dismissed30d) : '—'} loading={!s && !err} />
       </div>
       <p className="sub" data-testid="mpx-value-hint">{t('mpx.kpi.valueHint')}</p>
+      {/* extras (AI MONEY PROTECTION 5 · 11): the documented notification limits and what they did — read from the server */}
+      {s?.notifications ? <details className="sub" data-testid="mpx-notify-limits"><summary>{t('mpx.ntf.open')}</summary>
+        <div>{t('mpx.ntf.rule', { cd: fmtNumber(s.notifications.cooldownHours), cap: fmtNumber(s.notifications.hourlyCap) })}</div>
+        <div data-testid="mpx-notify-24h">{t('mpx.ntf.last24h', { sent: fmtNumber(s.notifications.last24h.sent), cd: fmtNumber(s.notifications.last24h.heldCooldown), cap: fmtNumber(s.notifications.last24h.heldCap) })}</div>
+        <div>{t('mpx.ntf.why')}</div></details> : null}
       {s?.exposure && s.exposure.alerts > 0 ? <details className="sub" data-testid="mpx-exposure"><summary>{t('mpx.exp.open')}</summary>
         <div>{t('mpx.exp.sum', { n: fmtNumber(s.exposure.alerts), v: money(s.exposure.sumCents) })}</div>
         <div data-testid="mpx-exposure-dedup">{s.exposure.overlappingAlerts ? t('mpx.exp.overlap', { n: fmtNumber(s.exposure.overlappingAlerts), g: fmtNumber(s.exposure.groups), v: money(s.exposure.dedupedCents) }) : t('mpx.exp.none')}</div>

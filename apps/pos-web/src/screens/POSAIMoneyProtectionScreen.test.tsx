@@ -18,6 +18,21 @@ const SUM = (o: any = {}) => ({ cards: { newAlerts: 4, openAlerts: 6, critical: 
 beforeEach(() => { vi.clearAllMocks(); mc.runs.mockResolvedValue(page([{ id: 'r1', trigger: 'manual', status: 'succeeded', startedAt: '2026-11-03T05:00:00Z', created: 2, updated: 1, actor: 'Owner Kim' }])); });
 
 describe('POSAIMoneyProtectionScreen (overview)', () => {
+  it('AI MONEY PROTECTION 5 · 11: states the notification limits and what they held back in the last 24 hours, from the server', async () => {
+    mc.summary.mockResolvedValue(SUM({ notifications: { severities: ['CRITICAL', 'HIGH'], cooldownHours: 24, hourlyCap: 5, audience: 'owner', last24h: { sent: 5, heldCooldown: 2, heldCap: 3, rollUps: 1 } } }));
+    wrap(<POSAIMoneyProtectionScreen />);
+    const box = await screen.findByTestId('mpx-notify-limits');
+    expect(box).toHaveTextContent(/at most once every 24 hours/);
+    expect(box).toHaveTextContent(/at most 5 alerts are told per hour/);
+    expect(screen.getByTestId('mpx-notify-24h')).toHaveTextContent('Last 24 hours: 5 told · 2 held back by the cooldown · 3 held back by the hourly limit');
+    expect(box).toHaveTextContent(/no rule is turned off/);
+  });
+  it('no notification block when the server sends no limits (never invented)', async () => {
+    mc.summary.mockResolvedValue(SUM());
+    wrap(<POSAIMoneyProtectionScreen />);
+    await screen.findByTestId('mpx-monitoring');
+    expect(screen.queryByTestId('mpx-notify-limits')).toBeNull();
+  });
   it('explains Value Under Review: the plain sum vs counting overlapping alerts on the same transactions once', async () => {
     mc.summary.mockResolvedValue(SUM({ exposure: { alerts: 3, sumCents: 12500, groups: 2, dedupedCents: 9000, overlappingAlerts: 2, capped: false } }));
     wrap(<POSAIMoneyProtectionScreen />);

@@ -51,6 +51,9 @@ export const MC_INV_SORTS = ['updated', 'newest', 'oldest', 'severity', 'value']
 export const MC_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_month', 'last_90', 'year', 'custom'] as const;
 export const MC_PAGE_SIZES = [10, 25, 50, 100] as const;
 export const MC_ALERT_ACTIONS = ['acknowledge', 'dismiss', 'reopen'] as const;
+/** Documented Alert Rate Limits (AI MONEY PROTECTION 5 · 11): which new alerts tell the owner, and the two limits. A limit holds
+ *  back only the notification — never the alert, its evidence or its rule. */
+export const MC_NOTIFY = { severities: ['CRITICAL', 'HIGH'] as readonly string[], cooldownHours: 24, hourlyCap: 5 } as const;
 const SEV_RANK: Record<string, number> = { CRITICAL: 5, HIGH: 4, MEDIUM: 3, LOW: 2, INFO: 1 };
 const HEALTH_GAP_SECONDS = 30;
 const MANUAL_GAP_SECONDS = 120;
@@ -174,6 +177,7 @@ export class MoneyProtectionCenter {
       lastRun: run ? { id: String(run.id), trigger: run.trigger_kind, status: run.status, startedAt: iso(run.started_at), finishedAt: iso(run.finished_at),
         created: N(run.created_alerts), updated: N(run.updated_alerts), errorCode: run.error_code ?? null } : null,
       lastSuccessAt: iso(ok?.at),
+      notifications: await this.notificationLimits(T),
       canRunDetection: has(ctx, 'ai_money_protection.manage_rules'), canAct: has(ctx, 'ai_money_protection.investigate'),
       definitions: { valueUnderReview: 'sum of open alerts\' amounts under review — never a confirmed loss', open: MC_OPEN, dismissed: 'DISMISSED_FALSE_POSITIVE' },
     };
@@ -689,17 +693,94 @@ export class MoneyProtectionCenter {
       return null;
     });
     if (started) return { id: started.reused, status: started.status, reused: true };
+    let r: Awaited<ReturnType<McDeps['detect']>>;
     try {
-      const r = await this.deps.detect(T);
+      r = await this.deps.detect(T);
       await sql`update money_protection_detection_runs set status = 'succeeded', finished_at = clock_timestamp(), evaluated = ${r.evaluated}, created_alerts = ${r.created},
         updated_alerts = ${r.updated}, layers = ${JSON.stringify(r.layers)}::jsonb where id = ${runId} and tenant_id = ${T} and ${canMoveToSql(MONEY_PROTECTION_RUN, 'succeeded')}`.execute(this.db);
-      return { id: runId, status: 'succeeded', reused: false, evaluated: r.evaluated, created: r.created, updated: r.updated };
     } catch (e) {
       const code = e instanceof Error && /DISABLED/.test(e.message) ? 'module_disabled' : 'detection_failed';
       await sql`update money_protection_detection_runs set status = 'failed', finished_at = clock_timestamp(), error_code = ${code} where id = ${runId} and tenant_id = ${T} and ${canMoveToSql(MONEY_PROTECTION_RUN, 'failed')}`.execute(this.db);
       if (trigger === 'manual') throw new MoneyCenterError(code === 'module_disabled' ? 'Money Protection is not active for this salon.' : 'Detection could not finish. Run the system check.', 'MC_DETECTION_FAILED', 503, { runId });
       return { id: runId, status: 'failed', reused: false, errorCode: code };
     }
+    // extras (AI MONEY PROTECTION 5 · 11): tell the owner about this pass's new HIGH / CRITICAL alerts, within the documented
+    // limits. The pass already succeeded and is recorded; a notification problem is returned (and visible in the overview's
+    // counts), it never turns a good detection pass into a failed one.
+    let notifications: { sent: number; suppressed: number; rollUp: boolean } | { errorCode: 'notify_failed' };
+    try { notifications = await this.notifyNewAlerts(T, runId); } catch { notifications = { errorCode: 'notify_failed' }; }
+    return { id: runId, status: 'succeeded', reused: false, evaluated: r.evaluated, created: r.created, updated: r.updated, notifications };
+  }
+
+  // ── Documented Alert Rate Limits (AI MONEY PROTECTION 5 · 11; migration 875) ────────────────────────────────────
+  /** Each new open HIGH / CRITICAL alert of this salon not yet decided is told to the OWNER (owner_alerts, audience 'owner'),
+   *  unless the same rule about the same thing (rule + entity fingerprint) was told within the cooldown, or the salon already
+   *  had MC_NOTIFY.hourlyCap alert notifications in the last hour. A held-back alert keeps its own row and evidence — only the
+   *  notification waits — and every decision is a money_protection_notifications row + a line in the alert's own history.
+   *  No rule is ever turned off by a limit. Serialized per salon so two passes never both decide the same alert. */
+  async notifyNewAlerts(T: string, runId: string | null = null): Promise<{ sent: number; suppressed: number; rollUp: boolean }> {
+    return this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext('mp-notify:' || ${T}))`.execute(trx);
+      const fresh = (await sql<{ id: string; rule_id: string; severity: string; amount_cents: string | number; branch_id: string | null; entity_fingerprint: string }>`select a.id, a.rule_id, a.severity, a.amount_cents, a.branch_id, a.entity_fingerprint
+        from money_protection_alerts a where a.tenant_id = ${T} and a.severity = any(${MC_NOTIFY.severities}::text[]) and a.status = any(${MC_OPEN}::text[])
+          and a.created_at > now() - interval '48 hours'
+          and not exists (select 1 from money_protection_notifications n where n.tenant_id = a.tenant_id and n.alert_id = a.id)
+        order by case a.severity when 'CRITICAL' then 0 else 1 end, a.created_at, a.id limit 500`.execute(trx)).rows;
+      let sent = 0, suppressed = 0, capped = 0;
+      for (const a of fresh) {
+        const key = `${a.rule_id}:${a.entity_fingerprint}`;
+        const last = (await sql<{ at: Date }>`select max(created_at) as at from money_protection_notifications where tenant_id = ${T} and dedupe_key = ${key} and outcome = 'sent'
+          and created_at > now() - ${MC_NOTIFY.cooldownHours + ' hours'}::interval`.execute(trx)).rows[0]?.at;
+        const hour = N((await sql<{ n: number }>`select count(*)::int as n from money_protection_notifications where tenant_id = ${T} and outcome = 'sent' and alert_id is not null
+          and created_at > now() - interval '1 hour'`.execute(trx)).rows[0]?.n);
+        const reason: 'cooldown' | 'hourly_cap' | null = last ? 'cooldown' : hour >= MC_NOTIFY.hourlyCap ? 'hourly_cap' : null;
+        let ownerAlertId: string | null = null;
+        if (!reason) {
+          const d = RULE.get(a.rule_id);
+          const v = (N(a.amount_cents) / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+          // rule name, severity and amount only — never a customer, a staff name or a payment reference (it lands in an inbox)
+          ownerAlertId = String((await sql<{ id: string }>`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+            values (${T}, ${a.branch_id}, 'money_protection', ${a.severity === 'CRITICAL' ? 'critical' : 'high'}, 'new', ${('Money Protection: ' + (d?.name ?? a.rule_id)).slice(0, 120)},
+              ${`A ${a.severity === 'CRITICAL' ? 'critical' : 'high'} alert to review — ${v} under review. Open Money Protection → Alerts. An alert is a possible discrepancy, not a finding about anyone.`},
+              ${JSON.stringify({ moneyProtectionAlertId: a.id, ruleId: a.rule_id })}::jsonb, 'owner') returning id`.execute(trx)).rows[0].id);
+          sent++;
+        } else { suppressed++; if (reason === 'hourly_cap') capped++; }
+        const heldUntil = reason === 'cooldown' && last ? new Date(new Date(last).getTime() + MC_NOTIFY.cooldownHours * 3600e3) : null;
+        await sql`insert into money_protection_notifications (tenant_id, alert_id, dedupe_key, severity, outcome, reason, owner_alert_id, held_until, run_id)
+          values (${T}, ${a.id}::uuid, ${key}, ${a.severity}, ${reason ? 'suppressed' : 'sent'}, ${reason}, ${ownerAlertId}, ${heldUntil}, ${isUuid(runId) ? runId : null})`.execute(trx);
+        await this.event(trx, { tenantId: T, userId: null }, { branchId: a.branch_id, entityType: 'alert', entityId: a.id,
+          action: reason === 'cooldown' ? 'notify_held_cooldown' : reason === 'hourly_cap' ? 'notify_held_cap' : 'notified',
+          detail: { dedupeKey: key, reason, heldUntil: iso(heldUntil), ownerAlertId, cooldownHours: MC_NOTIFY.cooldownHours, hourlyCap: MC_NOTIFY.hourlyCap } });
+      }
+      // ONE roll-up line per hour for whatever the cap held back, so the owner still knows alerts are waiting
+      let rollUp = false;
+      if (capped > 0) {
+        const recent = (await sql<{ n: number }>`select count(*)::int as n from money_protection_notifications where tenant_id = ${T} and alert_id is null and dedupe_key = 'hourly_cap_rollup'
+          and created_at > now() - interval '1 hour'`.execute(trx)).rows[0];
+        if (!N(recent?.n)) {
+          const oa = String((await sql<{ id: string }>`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+            values (${T}, null, 'money_protection', 'high', 'new', 'Money Protection: more alerts are waiting',
+              ${`${capped} more Money Protection alert${capped === 1 ? ' was' : 's were'} raised. Notifications are limited to ${MC_NOTIFY.hourlyCap} per hour — open Money Protection → Alerts to see them all.`},
+              ${JSON.stringify({ rollUp: true, held: capped })}::jsonb, 'owner') returning id`.execute(trx)).rows[0].id);
+          await sql`insert into money_protection_notifications (tenant_id, alert_id, dedupe_key, outcome, reason, owner_alert_id, suppressed_n, run_id)
+            values (${T}, null, 'hourly_cap_rollup', 'sent', null, ${oa}, ${capped}, ${isUuid(runId) ? runId : null})`.execute(trx);
+          rollUp = true;
+        }
+      }
+      return { sent, suppressed, rollUp };
+    });
+  }
+
+  /** the overview's statement of the limits + what they did in the last 24 hours (read-only) */
+  private async notificationLimits(T: string) {
+    const r = (await sql<{ sent: number; cooldown: number; cap: number; rollups: number }>`select
+        count(*) filter (where outcome = 'sent' and alert_id is not null)::int as sent,
+        count(*) filter (where reason = 'cooldown')::int as cooldown,
+        count(*) filter (where reason = 'hourly_cap')::int as cap,
+        count(*) filter (where alert_id is null)::int as rollups
+      from money_protection_notifications where tenant_id = ${T} and created_at > now() - interval '24 hours'`.execute(this.db)).rows[0];
+    return { severities: [...MC_NOTIFY.severities], cooldownHours: MC_NOTIFY.cooldownHours, hourlyCap: MC_NOTIFY.hourlyCap, audience: 'owner' as const,
+      last24h: { sent: N(r?.sent), heldCooldown: N(r?.cooldown), heldCap: N(r?.cap), rollUps: N(r?.rollups) } };
   }
 
   async detectionRuns(ctx: McCtx, f: Record<string, unknown>) {

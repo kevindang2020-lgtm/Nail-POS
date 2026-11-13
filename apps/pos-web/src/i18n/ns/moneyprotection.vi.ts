@@ -456,4 +456,11 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.export.busy": "Đang xuất…", // DRAFT — Kevin reviews
   "mpx.export.done": "Đã xuất. Tệp ghi rõ ai tạo, lúc nào, bộ lọc, độ mới của lần dò tìm và những gì được lược bỏ.", // DRAFT — Kevin reviews
   "mpx.export.hint": "Mọi dòng khớp với bộ lọc hiện tại. Không có tên, số điện thoại khách, nội dung bằng chứng hay mã thanh toán. Lần xuất được ghi lại.", // DRAFT — Kevin reviews
+  "mpx.ntf.open": "Cách giới hạn thông báo cảnh báo", // DRAFT — Kevin reviews
+  "mpx.ntf.rule": "Chủ tiệm được báo về mỗi cảnh báo mới mức cao hoặc nghiêm trọng. Cùng một quy tắc về cùng một việc chỉ được báo tối đa một lần mỗi {cd} giờ, và tối đa {cap} cảnh báo mỗi giờ — sau đó một dòng thêm cho biết còn bao nhiêu cảnh báo đang chờ.", // DRAFT — Kevin reviews
+  "mpx.ntf.last24h": "24 giờ qua: đã báo {sent} · {cd} bị giữ lại do thời gian chờ · {cap} bị giữ lại do giới hạn mỗi giờ", // DRAFT — Kevin reviews
+  "mpx.ntf.why": "Giới hạn chỉ giữ lại thông báo: mọi cảnh báo vẫn ở trên màn hình này với bằng chứng riêng, và không quy tắc nào bị tắt.", // DRAFT — Kevin reviews
+  "mpx.ev.notified": "Đã báo chủ tiệm", // DRAFT — Kevin reviews
+  "mpx.ev.notify_held_cooldown": "Giữ lại thông báo (cùng cảnh báo đã báo trong 24 giờ qua)", // DRAFT — Kevin reviews
+  "mpx.ev.notify_held_cap": "Giữ lại thông báo (đã đạt giới hạn mỗi giờ)", // DRAFT — Kevin reviews
 };

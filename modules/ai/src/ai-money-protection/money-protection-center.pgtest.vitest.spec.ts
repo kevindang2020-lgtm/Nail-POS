@@ -3,7 +3,7 @@
 // IN = investigation timeline · RU = rules + safe settings · HL = Check AI Money Protection System.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { MoneyProtectionCenter, MoneyCenterError, type McDeps } from './money-protection-center';
+import { MoneyProtectionCenter, MoneyCenterError, MC_NOTIFY, type McDeps } from './money-protection-center';
 import { MoneyProtectionService } from './ai-money-protection.service';
 import { KyselyMoneyProtectionRepository } from './ai-money-protection.kysely.repository';
 import { InMemoryEntitlement } from './ai-money-protection-entitlement';
@@ -154,7 +154,8 @@ describe('Alerts', () => {
     expect((await mc.alerts(ctx(), { status: 'dismissed' }) as any).items.map((a: any) => a.id)).toEqual([A1]);
     await mc.alertAction(ctx(), A1, { action: 'reopen', reason: 'Bank shows two settlements' });
     const d: any = await mc.alert(ctx(), A1);
-    expect(d.history.map((h: any) => h.action)).toEqual(['reopen', 'dismiss', 'acknowledge']);
+    // the oldest line is the detection pass telling the owner about this CRITICAL alert (MP5 · 11 — no person, no reason)
+    expect(d.history.map((h: any) => h.action)).toEqual(['reopen', 'dismiss', 'acknowledge', 'notified']);
     expect(d.history[1]).toMatchObject({ reason: expect.stringContaining('webhook'), actor: 'Owner Kim', from: 'ACKNOWLEDGED', to: 'DISMISSED_FALSE_POSITIVE' });
     expect((await q(`select count(*)::int as n from audit_events where tenant_id = $1 and action like 'money_protection_alert.%'`, [T]))[0].n).toBe(3);
     expect((await q(`select count(*)::int as n from payments where tenant_id = $1`, [T]))[0].n).toBe(4);   // nothing moved
@@ -363,5 +364,89 @@ describe('Check AI Money Protection System', () => {
     expect(h.overall).toBe('FAILED');
     expect((await q(`select count(*)::int as n from money_protection_alerts where tenant_id = $1`, [T]))[0].n).toBe(before);
     expect((await mc.check(ctx()) as any).reused).toBe(true);
+  });
+});
+
+describe('Documented Alert Rate Limits (AI MONEY PROTECTION 5 · 11; migration 875)', () => {
+  const notes = async () => q(`select alert_id, dedupe_key, outcome, reason, owner_alert_id, held_until, suppressed_n, created_at from money_protection_notifications where tenant_id = $1 order by created_at, id`, [T]);
+  const addAlert = (rule: string, sev: string, fp: string, win: string, amt = 4200) => q(`insert into money_protection_alerts (tenant_id, branch_id, rule_id, alert_type, severity, status, amount_cents, entity_fingerprint, evaluation_window, evidence)
+    values ($1,$2,$3,'test',$4,'NEW',$5,$6,$7,$8::jsonb) returning id`, [T, B, rule, sev, amt, fp, win, JSON.stringify({ summary: 'evidence ' + fp + ' ' + win })]).then((r) => String(r[0].id));
+  it('NT-01 the pass told the OWNER about each new HIGH / CRITICAL alert once: owner-only inbox line with no names or payment refs; a second call decides nothing again', async () => {
+    const n = await notes();
+    const told = n.filter((x) => x.outcome === 'sent' && x.alert_id);
+    expect(told.map((x) => x.alert_id)).toContain(A1);
+    const sevs = (await q(`select id, severity from money_protection_alerts where tenant_id = $1 and id = any($2::uuid[])`, [T, n.map((x) => x.alert_id).filter(Boolean)]));
+    expect(sevs.every((a: any) => MC_NOTIFY.severities.includes(a.severity))).toBe(true);   // LOW / MEDIUM never notify
+    const inbox = await q(`select severity, audience, title, body, metadata from owner_alerts where tenant_id = $1 and category = 'money_protection' and id = any($2::uuid[])`, [T, told.map((x) => x.owner_alert_id)]);
+    expect(inbox).toHaveLength(told.length);
+    expect(inbox.every((o: any) => o.audience === 'owner')).toBe(true);
+    for (const o of inbox) for (const bad of ['Cashier', 'Lan', 'Linh', 'ptx-', '+1856']) expect(o.title + o.body).not.toContain(bad);
+    expect(inbox.find((o: any) => o.metadata.moneyProtectionAlertId === A1)).toMatchObject({ severity: 'critical' });
+    const before = n.length;
+    const drain = await mc.notifyNewAlerts(T);   // HL-01 added one fresh HIGH alert after the last pass — it is decided now
+    expect(drain.sent + drain.suppressed).toBe(1);
+    expect((await notes()).length - before).toBe(1);
+    expect(await mc.notifyNewAlerts(T)).toEqual({ sent: 0, suppressed: 0, rollUp: false });   // nothing is ever decided twice
+    expect((await notes()).filter((x) => x.alert_id && told.some((t) => t.alert_id === x.alert_id))).toHaveLength(told.length);
+  });
+  it('NT-02 cooldown: the same rule about the same thing on a new day is a NEW alert with its own evidence, held back (not sent) until 24 h after the last one; its history says so', async () => {
+    const a1 = (await q(`select rule_id, entity_fingerprint from money_protection_alerts where id = $1`, [A1]))[0];
+    const again = await addAlert(a1.rule_id, 'CRITICAL', a1.entity_fingerprint, '2099-01-01');
+    const inboxBefore = (await q(`select count(*)::int as n from owner_alerts where tenant_id = $1 and category = 'money_protection'`, [T]))[0].n;
+    const r = await mc.notifyNewAlerts(T);
+    expect(r.sent).toBe(0);
+    const row = (await notes()).find((x) => x.alert_id === again)!;
+    expect(row).toMatchObject({ outcome: 'suppressed', reason: 'cooldown', owner_alert_id: null });
+    const sentAt = (await notes()).find((x) => x.alert_id === A1)!.created_at;
+    expect(new Date(row.held_until).getTime() - new Date(sentAt).getTime()).toBe(MC_NOTIFY.cooldownHours * 3600e3);
+    expect((await q(`select count(*)::int as n from owner_alerts where tenant_id = $1 and category = 'money_protection'`, [T]))[0].n).toBe(inboxBefore);
+    const d: any = await mc.alert(ctx(), again);
+    expect(d.evidence.summary).toBe(`evidence ${a1.entity_fingerprint} 2099-01-01`);   // distinct evidence kept
+    expect(d.history.map((h: any) => h.action)).toEqual(['notify_held_cooldown']);
+    // the cooldown is over (the last send moved 25 h back) → the next new alert for the same key is told
+    await q(`set session_replication_role = replica`);
+    await q(`update money_protection_notifications set created_at = created_at - interval '25 hours' where tenant_id = $1 and dedupe_key = $2`, [T, `${a1.rule_id}:${a1.entity_fingerprint}`]);
+    await q(`set session_replication_role = origin`);
+    const third = await addAlert(a1.rule_id, 'CRITICAL', a1.entity_fingerprint, '2099-01-02');
+    await mc.notifyNewAlerts(T);
+    expect((await notes()).find((x) => x.alert_id === third)).toMatchObject({ outcome: 'sent', reason: null });
+  });
+  it('NT-03 hourly cap: at most 5 alert notifications per salon per hour; the rest are held, ONE roll-up line says how many; the rules stay on', async () => {
+    const settingsBefore = await q(`select rule_id, enabled from money_protection_rule_settings where tenant_id = $1 order by rule_id`, [T]);
+    const hour = (await q(`select count(*)::int as n from money_protection_notifications where tenant_id = $1 and outcome = 'sent' and alert_id is not null and created_at > now() - interval '1 hour'`, [T]))[0].n;
+    const ids: string[] = [];
+    for (let i = 0; i < 8; i++) ids.push(await addAlert('MP_REFUND_EXCEEDS_CAPTURE', 'HIGH', 'cap-' + i, '2099-02-01'));
+    const r = await mc.notifyNewAlerts(T);
+    const room = Math.max(0, MC_NOTIFY.hourlyCap - hour);
+    expect(r).toMatchObject({ sent: room, suppressed: 8 - room, rollUp: true });
+    const mine = (await notes()).filter((x) => ids.includes(x.alert_id));
+    expect(mine.filter((x) => x.reason === 'hourly_cap')).toHaveLength(8 - room);
+    const roll = (await notes()).filter((x) => x.alert_id === null);
+    expect(roll).toHaveLength(1);
+    expect(roll[0]).toMatchObject({ outcome: 'sent', suppressed_n: 8 - room });
+    const ra = (await q(`select body, audience from owner_alerts where id = $1`, [roll[0].owner_alert_id]))[0];
+    expect(ra.audience).toBe('owner'); expect(ra.body).toContain(`${8 - room} more`);
+    // more held in the same hour → still ONE roll-up line
+    await addAlert('MP_REFUND_EXCEEDS_CAPTURE', 'HIGH', 'cap-9', '2099-02-01');
+    expect(await mc.notifyNewAlerts(T)).toMatchObject({ sent: 0, suppressed: 1, rollUp: false });
+    expect((await notes()).filter((x) => x.alert_id === null)).toHaveLength(1);
+    const held: any = await mc.alert(ctx(), ids[7]);
+    expect(held.history.map((h: any) => h.action)).toEqual(['notify_held_cap']);
+    expect(held.alert.status).toBe('NEW');   // the alert itself is untouched
+    expect(await q(`select rule_id, enabled from money_protection_rule_settings where tenant_id = $1 order by rule_id`, [T])).toEqual(settingsBefore);
+  });
+  it('NT-04 the overview documents the limits and what they did in the last 24 hours (counts from the table); the log is append-only', async () => {
+    const s: any = await mc.summary(ctx());
+    const n = (await notes()).filter((x) => Date.now() - new Date(x.created_at).getTime() < 24 * 3600e3);
+    expect(s.notifications).toMatchObject({ severities: ['CRITICAL', 'HIGH'], cooldownHours: 24, hourlyCap: 5, audience: 'owner' });
+    expect(s.notifications.last24h).toEqual({
+      sent: n.filter((x) => x.outcome === 'sent' && x.alert_id).length, heldCooldown: n.filter((x) => x.reason === 'cooldown').length,
+      heldCap: n.filter((x) => x.reason === 'hourly_cap').length, rollUps: n.filter((x) => x.alert_id === null).length });
+    expect(s.notifications.last24h.heldCap).toBeGreaterThanOrEqual(1);
+    expect(await code(q(`update money_protection_notifications set outcome = 'sent' where tenant_id = $1`, [T]))).toMatch(/append-only/);
+    expect(await code(q(`delete from money_protection_notifications where tenant_id = $1`, [T]))).toMatch(/append-only/);
+  });
+  it('NT-05 another salon\'s alert can never be logged against this salon (B-12)', async () => {
+    expect(await code(q(`insert into money_protection_notifications (tenant_id, alert_id, dedupe_key, outcome) values ($1, $2, 'x', 'sent')`, [X, A1]))).not.toBe('ok');
   });
 });
