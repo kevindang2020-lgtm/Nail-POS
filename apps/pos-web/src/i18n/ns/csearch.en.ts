@@ -603,4 +603,5 @@ export const CSEARCH_EN: Record<string, string> = {
   "cnx.src.set": "Set source",
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Choose a note and where it came from.",
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Name the source that confirmed it.",
+  "cpf.prov.updated": "updated {at}",
 };
