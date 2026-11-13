@@ -49,7 +49,9 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
       .execute().catch(() => []);
     if (!pays.length) return [];
     const ticketIds = [...new Set(pays.map((p: any) => p.ticket_id).filter(Boolean))];
-    const tickets = ticketIds.length ? await this.scoped(this.db.selectFrom('tickets'), ctx).where('id', 'in', ticketIds).select(['id', 'customer_id', 'primary_technician_id', 'surcharge_cents', 'tax_cents', 'discount_cents', 'tip_cents']).execute().catch(() => []) : [];
+    // Team Tips P0 (Nov 13 2026): a failed ticket read is an ERROR, never "no tickets" — it used to be swallowed, which left every
+    // payment row with a $0 tip on the cards while the technician list (a separate read) still showed the tips
+    const tickets = ticketIds.length ? await this.scoped(this.db.selectFrom('tickets'), ctx).where('id', 'in', ticketIds).select(['id', 'customer_id', 'primary_technician_id', 'surcharge_cents', 'tax_cents', 'discount_cents', 'tip_cents']).execute() : [];
     const tById: Record<string, any> = {}; for (const t of tickets) tById[t.id] = t;
     const custIds = [...new Set(tickets.map((t: any) => t.customer_id).filter(Boolean))];
     const techIds = [...new Set(tickets.map((t: any) => t.primary_technician_id).filter(Boolean))];
@@ -71,8 +73,12 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
       c.sales += v; if (m.product_id || String(m.line_kind || '').toLowerCase() === 'retail') c.product += v; salesByTicket[m.ticket_id] = c;
     }
     // ONE payment row per ticket carries the ticket's own figures (its first revenue row), so a split ticket is counted once
+    // Team Tips P0 (Nov 13 2026): the carrier is the EARLIEST collected row by TIME. It was sorted by String(created_at) —
+    // "Sat Oct 31 …" < "Sun Nov 01 …" is weekday-name order — so a ticket whose legs straddled the period edge could carry its
+    // tip on the wrong row (the $0.00 cards beside a $9.60 technician row). Ties break on the row id (deterministic).
+    const at = (v: unknown) => { const d = v instanceof Date ? v : new Date(String(v)); return Number.isNaN(d.getTime()) ? 0 : d.getTime(); };
     const carrier: Record<string, string> = {};
-    for (const p of [...pays].sort((a: any, b: any) => String(a.created_at).localeCompare(String(b.created_at)))) if (p.ticket_id && !isRefund(p.status) && !carrier[p.ticket_id]) carrier[p.ticket_id] = p.id;
+    for (const p of [...pays].sort((a: any, b: any) => at(a.created_at) - at(b.created_at) || String(a.id).localeCompare(String(b.id)))) if (p.ticket_id && !isRefund(p.status) && !carrier[p.ticket_id]) carrier[p.ticket_id] = p.id;
 
     // The surcharge a card row CHARGED is on that row (payments.surcharge_cents — recorded on every path since wave 4); the
     // older ticket-level attribution only ever saw split payments. A refund row carries none.
@@ -84,7 +90,7 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
       const techId = t.primary_technician_id || '';
       const custId = t.customer_id || '';
       return {
-        id: p.id, ticketId: p.ticket_id || null, at: localYmd(p.created_at), occurredAt: new Date(p.created_at).toISOString(), customerId: custId, customer: cName[custId] || '', customerType: 'returning',
+        id: p.id, ticketId: p.ticket_id || null, carrier: !p.ticket_id || carrier[p.ticket_id] === p.id, at: localYmd(p.created_at), occurredAt: new Date(p.created_at).toISOString(), customerId: custId, customer: cName[custId] || '', customerType: 'returning',
         technicianId: techId, technician: tName[techId] || '', service: line.svcName, category: line.cat, paymentMethod: normMethod(p.method),
         bookingSource: 'walk_in', grossCents: Number(p.amount_cents || 0), surchargeCents: surchargeById[p.id] || 0, status: isRefund(p.status) ? 'refunded' : 'completed',
         // the ticket's own discount / tax / tip / sales ride on its ONE carrier row (payments rows never carried tax or
@@ -139,7 +145,10 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
     out.state.topTechnicians = rankTechnicians(facts.lines);
     out.state.revenueByService = rankCategories(facts.lines).map((c) => ({ serviceId: c.key, serviceName: c.name, revenueCents: c.grossCents, serviceCount: c.units, percentOfTop: c.percentOfTop }));
     const withLines: typeof out & { serviceLines: typeof facts; tickets: ReportTicketFact[]; returningIds?: string[] } = Object.assign(out, { serviceLines: facts, tickets: ticketFacts(inScope, facts) });
-    await this.overlayFacts(ctx, out).catch(() => undefined);
+    // Team Tips P0: the technician list covers exactly the tickets whose tip the cards count — the ticket's carrier row is in
+    // the period and collected — never a ticket that merely has some other leg in the period
+    const tipTickets = [...new Set(inScope.filter((r) => r.status === 'completed' && r.carrier && r.ticketId).map((r) => String(r.ticketId)))];
+    await this.overlayFacts(ctx, out, tipTickets).catch(() => undefined);
     // a failure leaves retention / no-show / rating null (shown N/A, never a made-up 0) and is logged, not hidden
     await this.overlayPeople(ctx, filters, out).catch((e: unknown) => { console.warn('[reports] people overlay unavailable:', e instanceof Error ? e.message : String(e)); });
     return withLines;
@@ -215,6 +224,28 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
     return { taxable, exempt, byCategory: [...by.values()].sort((a, b) => (b.taxableCents + b.exemptCents) - (a.taxableCents + a.exemptCents) || a.category.localeCompare(b.category)) };
   }
 
+  /** Team Tips P0 (Nov 13 2026): each counted ticket's tip per technician — the ticket's allocation rows (ticket_tip_allocations,
+   *  one row per ticket and technician: the ONE tip store, it cannot double) when it has any, else its compensation snapshot —
+   *  and never more than the ticket's collected tip for one technician (a historic retried snapshot carried the tip on two line
+   *  rows: $19.20 against $9.60 collected). This salon only; read-only. */
+  private async tipsByTechnician(ctx: ReportsContext, ticketIds: string[]): Promise<{ technicianId: string; name: string; tipsCents: number }[]> {
+    const T = ctx.tenantId;
+    const rows = (await sql<{ ticket_id: string; technician_id: string; cents: number | string; tip: number | string; name: string | null }>`
+      with tk as (select t.id, greatest(0, coalesce(t.tip_cents, 0)) as tip from tickets t where t.tenant_id = ${T}::uuid and t.id = any(${ticketIds}::uuid[])),
+      al as (select x.ticket_id, x.technician_id, sum(x.tip_cents) as cents from ticket_tip_allocations x join tk on tk.id = x.ticket_id where x.tenant_id = ${T}::uuid group by x.ticket_id, x.technician_id),
+      sn as (select s.ticket_id, s.technician_id, sum(coalesce(s.card_tip_cents, 0) + coalesce(s.cash_tip_cents, 0)) as cents from ticket_compensation_snapshots s join tk on tk.id = s.ticket_id
+        where s.tenant_id = ${T}::uuid and s.technician_id is not null and not exists (select 1 from al where al.ticket_id = s.ticket_id) group by s.ticket_id, s.technician_id),
+      per as (select ticket_id, technician_id, cents from al union all select ticket_id, technician_id, cents from sn)
+      select per.ticket_id, per.technician_id, per.cents, tk.tip, tc.full_name as name from per join tk on tk.id = per.ticket_id
+        left join technicians tc on tc.id = per.technician_id and tc.tenant_id = ${T}::uuid`.execute(this.db)).rows;
+    const by = new Map<string, { name: string; cents: number }>();
+    for (const r of rows) {
+      const k = String(r.technician_id); const c = by.get(k) ?? { name: String(r.name ?? ''), cents: 0 };
+      c.cents += Math.min(Math.max(0, Number(r.cents) || 0), Math.max(0, Number(r.tip) || 0)); by.set(k, c);
+    }
+    return [...by.entries()].map(([technicianId, v]) => ({ technicianId, name: v.name, tipsCents: v.cents })).filter((x) => x.tipsCents > 0).sort((a, b) => b.tipsCents - a.tipsCents || a.name.localeCompare(b.name));
+  }
+
   /** Nov 10 2026 (Daily Summary guide §10, §15): the KPIs the payment rows cannot answer, from their own sources — never a 0
    *  that stands for "unknown". Salon-local days ([from, to] inclusive) in the branch's time zone; this salon and branch only.
    *  · new vs returning: a customer with a paid ticket BEFORE the period is returning, otherwise new
@@ -283,16 +314,9 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
   /** wave 4 PILOT: the facts the pure builder cannot know — never invented. Tips by technician are the compensation
    *  snapshot's allocation (the payroll authority: a split ticket's tip is split); the tax rate and the card-surcharge %
    *  are the salon's settings; the processor status is the salon's gateway status. */
-  private async overlayFacts(ctx: ReportsContext, out: { state: any; rows: any[] }): Promise<void> {
+  private async overlayFacts(ctx: ReportsContext, out: { state: any; rows: any[] }, ticketIds: string[]): Promise<void> {
     const s = out.state;
-    const ticketIds = [...new Set((out.rows || []).filter((r: any) => r.status !== 'refunded' && r.ticketId).map((r: any) => String(r.ticketId)))];
-    if (ticketIds.length) {
-      const tips: any[] = await this.db.selectFrom('ticket_compensation_snapshots as s').leftJoin('technicians as t', 't.id', 's.technician_id')
-        .where('s.tenant_id', '=', ctx.tenantId).where('s.ticket_id', 'in', ticketIds).where('s.technician_id', 'is not', null)
-        .select(['s.technician_id as id', 't.full_name as name', (eb: any) => eb.fn.sum(eb('s.card_tip_cents', '+', eb.ref('s.cash_tip_cents'))).as('tips')])
-        .groupBy(['s.technician_id', 't.full_name']).execute();
-      if (tips.length) s.tips.byTechnician = tips.map((x) => ({ technicianId: String(x.id), name: String(x.name ?? ''), tipsCents: Number(x.tips || 0) })).sort((a, b) => b.tipsCents - a.tipsCents);
-    }
+    if (ticketIds.length) s.tips.byTechnician = await this.tipsByTechnician(ctx, ticketIds);
     const setting = async (category: string): Promise<any> => {
       const rows: any[] = await this.db.selectFrom('tenant_settings').where('tenant_id', '=', ctx.tenantId).where('category', '=', category)
         .where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId || null), eb('branch_id', 'is', null)])).select(['branch_id', 'settings_json']).execute();

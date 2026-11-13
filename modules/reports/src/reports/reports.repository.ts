@@ -18,6 +18,9 @@ export interface Tx {
   tipCents: number; status: 'completed' | 'refunded';
   /** The payment's ticket (Oct 2 2026: the POS Transactions screen refunds by ticket — Decision 20). */
   ticketId?: string | null;
+  /** Team Tips P0 (Nov 13 2026): this row carries its ticket's own figures (tip / tax / discount / sales) — the ticket's earliest
+   *  collected row. Absent (in-memory demo rows) → every row carries its own. */
+  carrier?: boolean;
   /** when the payment was recorded (ISO) — the newest-first order of the paged transactions list (Nov 10 2026) */
   occurredAt?: string;
   /** Wave 4 PILOT (Oct 13 2026): the TICKET's sales (service + retail lines, before discounts) and its retail part,

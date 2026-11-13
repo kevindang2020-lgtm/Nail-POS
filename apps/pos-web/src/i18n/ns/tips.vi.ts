@@ -99,4 +99,63 @@ export const TIPS_VI: Record<string, string> = {
   'tp.earn.ofShared': 'trên {a}, chia với {n} người', // DRAFT — Kevin reviews
   'tp.earn.payroll': 'Mở Bảng lương', // DRAFT — Kevin reviews
   'tp.earn.all': 'Mọi tip của thợ', // DRAFT — Kevin reviews
+  'tp.team.subtitle': 'Tiền tip của từng thợ trong kỳ đã chọn — đã thu, đã phân bổ, phải trả và đã trả', // DRAFT — Kevin reviews
+  'tp.team.avgLabel': 'Tip trung bình ($)', // DRAFT — Kevin reviews
+  'tp.team.avgSub': 'Mỗi phiếu có tip · tỷ lệ tip {r} trên doanh số trước tip', // DRAFT — Kevin reviews
+  'tp.team.avgNone': 'Không có phiếu nào có tip trong kỳ này', // DRAFT — Kevin reviews
+  'tp.team.cardSub': 'Chỉ thanh toán thẻ đã quyết toán', // DRAFT — Kevin reviews
+  'tp.team.cashSub': 'Vào két {d} · đưa thẳng cho thợ {t}', // DRAFT — Kevin reviews
+  'tp.team.totalSub': '{n} phiếu có tip · mỗi phiếu tính một lần', // DRAFT — Kevin reviews
+  'tp.team.def.total': 'Tiền tip khách đưa, tính một lần cho mỗi phiếu đã thanh toán, theo ngày thu. Không cộng thêm phần phân bổ cho thợ.', // DRAFT — Kevin reviews
+  'tp.team.def.card': 'Tip thẻ từ các thanh toán thẻ đã quyết toán. Lần quẹt bị từ chối, lỗi hoặc đang chờ không bao giờ được tính.', // DRAFT — Kevin reviews
+  'tp.team.def.cash': 'Tip tiền mặt ghi lúc thanh toán — vào két, hoặc đưa thẳng cho thợ (Tiền mặt cho thợ).', // DRAFT — Kevin reviews
+  'tp.team.def.avg': 'Tổng tip ÷ số phiếu có tip. Tỷ lệ là tổng tip ÷ doanh số trước tip (không gồm thuế).', // DRAFT — Kevin reviews
+  'tp.team.searchPh': 'Tìm thợ, số phiếu, mã tham chiếu…', // DRAFT — Kevin reviews
+  'tp.team.searchPhCustomer': 'Tìm thợ, khách, số điện thoại, số phiếu, mã tham chiếu…', // DRAFT — Kevin reviews
+  'tp.team.reset': 'Đặt lại', // DRAFT — Kevin reviews
+  'tp.team.results': '{n} lượt tip', // DRAFT — Kevin reviews
+  'tp.team.filtersLabel': 'Tìm kiếm và bộ lọc', // DRAFT — Kevin reviews
+  'tp.team.leaderboard': 'Tip theo thợ', // DRAFT — Kevin reviews
+  'tp.team.leaderboardHint': 'Tổng cao nhất trước · chọn một thợ để xem chi tiết', // DRAFT — Kevin reviews
+  'tp.team.unallocatedRow': 'Chưa phân bổ cho thợ', // DRAFT — Kevin reviews
+  'tp.team.recon': 'Đã thu so với đã phân bổ', // DRAFT — Kevin reviews
+  'tp.team.payable': 'Phải trả (đã duyệt, chưa trả)', // DRAFT — Kevin reviews
+  'tp.team.paid': 'Đã trả (kỳ lương đã trả)', // DRAFT — Kevin reviews
+  'tp.team.accrued': 'Đang tích lũy (kỳ mở hoặc chưa có kỳ)', // DRAFT — Kevin reviews
+  'tp.team.balanced': 'Cân khớp: đã thu = đã phân bổ + chưa phân bổ', // DRAFT — Kevin reviews
+  'tp.team.unbalanced': 'Không cân khớp — hãy chạy kiểm tra độ chính xác tip', // DRAFT — Kevin reviews
+  'tp.team.techRule': 'Tip thuộc 100% về thợ. Tỷ lệ chia hoa hồng dịch vụ (ví dụ 60/40) không bao giờ áp dụng cho tip.', // DRAFT — Kevin reviews
+  'tp.team.history': 'Giao dịch tip · mới nhất trước', // DRAFT — Kevin reviews
+  'tp.team.pageSize': 'Số dòng mỗi trang', // DRAFT — Kevin reviews
+  'tp.team.newActivity': 'Có tip mới — xem mới nhất', // DRAFT — Kevin reviews
+  'tp.team.basis.customer_selected': 'Khách chọn', // DRAFT — Kevin reviews
+  'tp.team.basis.staff_directed': 'Quầy lễ tân đặt', // DRAFT — Kevin reviews
+  'tp.team.basis.single': 'Thợ duy nhất', // DRAFT — Kevin reviews
+  'tp.team.basis.salon_policy': 'Chính sách tip của tiệm', // DRAFT — Kevin reviews
+  'tp.team.corrected': 'đã điều chỉnh', // DRAFT — Kevin reviews
+  'tp.team.readOnly': 'Chỉ xem — không có gì ở đây thay đổi tip, cách chia hay khoản chi trả.', // DRAFT — Kevin reviews
+  'tp.team.col.method': 'Hình thức', // DRAFT — Kevin reviews
+  'tp.team.col.basis': 'Cơ sở phân bổ', // DRAFT — Kevin reviews
+  'tp.team.col.ticketTip': 'Tip của phiếu', // DRAFT — Kevin reviews
+  'tp.team.acc.open': 'Kiểm tra độ chính xác tip', // DRAFT — Kevin reviews
+  'tp.team.acc.title': 'Kiểm tra độ chính xác tip', // DRAFT — Kevin reviews
+  'tp.team.acc.readOnly': 'Chỉ xem — không chuyển tiền và không sửa gì. Sửa một vấn đề từ chi tiết của tip đó.', // DRAFT — Kevin reviews
+  'tp.team.acc.k.source_coverage': 'Tip không có thanh toán đã thu', // DRAFT — Kevin reviews
+  'tp.team.acc.k.payment_tip_drift': 'Tip trên thanh toán khác tip của phiếu', // DRAFT — Kevin reviews
+  'tp.team.acc.k.period_match': 'Thanh toán đầu tiên nằm ngoài kỳ này', // DRAFT — Kevin reviews
+  'tp.team.acc.k.allocation_reconciliation': 'Tip chưa phân bổ hết', // DRAFT — Kevin reviews
+  'tp.team.acc.k.over_allocated': 'Phân bổ nhiều hơn số đã thu', // DRAFT — Kevin reviews
+  'tp.team.acc.k.snapshot_mismatch': 'Bản chụp lương khác tip', // DRAFT — Kevin reviews
+  'tp.team.acc.k.duplicate_provider_reference': 'Cùng mã thanh toán trên hai thanh toán', // DRAFT — Kevin reviews
+  'tp.team.acc.k.unsettled_tip': 'Tip trên thanh toán bị từ chối hoặc đang chờ (không tính)', // DRAFT — Kevin reviews
+  'tp.team.acc.s.ok': 'Ổn', // DRAFT — Kevin reviews
+  'tp.team.acc.s.warn': 'Cần xem', // DRAFT — Kevin reviews
+  'tp.team.acc.s.fail': 'Có vấn đề', // DRAFT — Kevin reviews
+  'tp.team.acc.count': '{n} phiếu', // DRAFT — Kevin reviews
+  'tp.team.acc.show': 'Xem phiếu', // DRAFT — Kevin reviews
+  'tp.team.acc.totals': 'Đã thu {c} · đã phân bổ {a} · chưa phân bổ {u} · tổng của thợ {t}', // DRAFT — Kevin reviews
+  'tp.team.acc.overall': 'Tổng thể: {s}', // DRAFT — Kevin reviews
+  'tp.team.overlayTotals': 'Đã phân bổ {a} · đã trả {p} · phải trả {y} · đang tích lũy {o}', // DRAFT — Kevin reviews
+  'tp.team.noTips': 'Không có tip trong kỳ này', // DRAFT — Kevin reviews
+  'tp.team.noTipsHint': 'Chọn kỳ khác hoặc xóa bộ lọc.', // DRAFT — Kevin reviews
 };

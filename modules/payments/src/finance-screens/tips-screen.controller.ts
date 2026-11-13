@@ -7,10 +7,10 @@
 import { ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, AsyncExport } from '@aipowersalon/permissions/guards';
 import { Controller, Get, Param, Query, Req, Header, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
-import { TipsScreenRepository, DIST_SORTS } from './tips-screen.repository';
+import { TipsScreenRepository, DIST_SORTS, tipsPageReq } from './tips-screen.repository';
 import { pageReq, oneOf } from './finance-scope';
 import { financeCtx, needPermission, runFinance } from './settlements-screen.controller';
-import type { TipsTechnicianEarningsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { TipsTechnicianEarningsResponse, TipsAccuracyResponse } from '@aipowersalon/api-contracts/tenant';
 
 export const TIPS_SCREEN_REPOSITORY = 'TipsScreenRepository';
 
@@ -23,12 +23,15 @@ const TIP_LIST = {
     technicianId: { type: 'text', maxLength: 64 }, minAmount: { type: 'text', maxLength: 12 }, maxAmount: { type: 'text', maxLength: 12 },
   },
   sorts: { collected_desc: null, collected_asc: null, amount_desc: null, amount_asc: null, ticket_desc: null },
-  search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'],
+  search: { params: ['search'], maxLength: 100 }, maxLimit: 100, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'],
 } as const;
 const DIST_LIST = { filters: { dateField: { type: 'enum', values: ['collected', 'checkout', 'allocation', 'adjustment', 'payout'] }, preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] } },
-  sorts: { allocated_desc: null, allocated_asc: null, name_asc: null, tickets_desc: null }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
+  sorts: { allocated_desc: null, allocated_asc: null, name_asc: null, tickets_desc: null }, maxLimit: 100, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const EARN_LIST = { filters: { dateField: { type: 'enum', values: ['collected', 'checkout', 'allocation', 'adjustment', 'payout'] }, preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] } },
-  maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
+  maxLimit: 100, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
+/** Team Tips (Nov 13 2026): the read-only Tip Accuracy check — the KPI scope (period + basis), no paging */
+const ACC_LIST = { filters: { dateField: { type: 'enum', values: ['collected', 'checkout', 'allocation', 'adjustment', 'payout'] }, preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] } },
+  maxLimit: 1, defaultLimit: 1, dateRange: { maxDays: 3700 } } as const;
 const ADJ_LIST = { filters: { kind: { type: 'enum', values: ['correction', 'reversal', 'all'] }, preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] } },
   search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 
@@ -49,7 +52,7 @@ export class TipsScreenController {
     const c = financeCtx(req); needPermission(c, 'pos.reports.view');
     return runFinance(async () => {
       const period = await this.r().period(c, { preset: q.preset, from: q.from, to: q.to }); const f = this.r().filters(period, q);
-      return { ...(await this.r().transactions(c, f, pageReq({ page: q.page, pageSize: q.pageSize }))), period, dateBasis: f.basis, sort: f.sort };
+      return { ...(await this.r().transactions(c, f, tipsPageReq({ page: q.page, pageSize: q.pageSize }))), period, dateBasis: f.basis, sort: f.sort };
     });
   }
 
@@ -58,7 +61,7 @@ export class TipsScreenController {
     const c = financeCtx(req); needPermission(c, 'pos.reports.view');
     return runFinance(async () => {
       const period = await this.r().period(c, { preset: q.preset, from: q.from, to: q.to }); const f = this.r().filters(period, { dateField: q.dateField });
-      return { ...(await this.r().distribution(c, f, pageReq({ page: q.page, pageSize: q.pageSize }), oneOf(q.sort, DIST_SORTS, 'sort') ?? 'allocated_desc')), period, dateBasis: f.basis };
+      return { ...(await this.r().distribution(c, f, tipsPageReq({ page: q.page, pageSize: q.pageSize }), oneOf(q.sort, DIST_SORTS, 'sort') ?? 'allocated_desc')), period, dateBasis: f.basis };
     });
   }
 
@@ -68,7 +71,17 @@ export class TipsScreenController {
     const c = financeCtx(req); needPermission(c, 'pos.reports.view');
     return runFinance(async () => {
       const period = await this.r().period(c, { preset: q.preset, from: q.from, to: q.to }); const f = this.r().filters(period, { dateField: q.dateField });
-      return { ...(await this.r().technicianEarnings(c, f, String(technicianId), pageReq({ page: q.page, pageSize: q.pageSize }))), period, dateBasis: f.basis };
+      return { ...(await this.r().technicianEarnings(c, f, String(technicianId), tipsPageReq({ page: q.page, pageSize: q.pageSize }))), period, dateBasis: f.basis };
+    });
+  }
+
+  /** Team Tips (Nov 13 2026) — One-Click Tip Accuracy check: READ-ONLY (no write, no money moves); same scope as the KPIs. */
+  @Get('accuracy') @RequirePermission('pos.reports.view') @ListQuery(ACC_LIST)
+  accuracy(@Req() req: any, @Query() q: Record<string, string>): Promise<TipsAccuracyResponse> {
+    const c = financeCtx(req); needPermission(c, 'pos.reports.view');
+    return runFinance(async () => {
+      const period = await this.r().period(c, { preset: q.preset, from: q.from, to: q.to }); const f = this.r().filters(period, { dateField: q.dateField });
+      return { ...(await this.r().accuracy(c, f)), period, dateBasis: f.basis };
     });
   }
 
