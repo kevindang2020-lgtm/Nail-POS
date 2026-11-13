@@ -1,6 +1,7 @@
 // posAiBusinessApi.ts — client for the AI Business Assistant (/pos/ai-business/*). The server derives tenant/branch;
 // the client never sends them. `ask` posts a bounded intent or a free-text question; the rest are read-only tools.
 import { api } from "./client";
+import type { ReportChangeResponse } from '@aipowersalon/api-contracts/tenant';
 
 type Q = Record<string, string | number | undefined | null>;
 const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Record<string, string | number>;
@@ -36,6 +37,8 @@ export const posAiBusinessApi = {
     generate: (reportType: string, preset?: string) => api.post<any>('/pos/ai-business/center/reports/generate', { reportType, ...(preset ? { preset } : {}) }),
     regenerate: (id: string) => api.post<any>(`/pos/ai-business/center/reports/${enc(id)}/regenerate`, {}),
     verify: (id: string) => api.post<any>(`/pos/ai-business/center/reports/${enc(id)}/verify`, {}),
+    /** AI Business Assistant 10: what changed between two validated reports — data corrections vs business change (read only) */
+    compare: (id: string, withId: string) => api.get<ReportChangeResponse>(`/pos/ai-business/center/reports/${enc(id)}/compare`, { with: withId }),
     reportCheck: () => api.post<any>('/pos/ai-business/center/reports/check', {}),
     alertSummary: () => api.get<any>('/pos/ai-business/center/alerts/summary'),
     rules: (q: Q = {}) => api.get<any>('/pos/ai-business/center/alerts/rules', clean(q)),

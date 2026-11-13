@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { c } = vi.hoisted(() => ({ c: { reportSummary: vi.fn(), reports: vi.fn(), report: vi.fn(), generate: vi.fn(), regenerate: vi.fn(), verify: vi.fn(), reportCheck: vi.fn() } }));
+const { c } = vi.hoisted(() => ({ c: { reportSummary: vi.fn(), reports: vi.fn(), report: vi.fn(), generate: vi.fn(), regenerate: vi.fn(), verify: vi.fn(), compare: vi.fn(), reportCheck: vi.fn() } }));
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { center: c } }));
 import { POSAiReportsScreen } from './POSAiReportsScreen';
 const row = (o: any = {}) => ({ id: 'r1', reportType: 'monthly_review', preset: 'month', status: 'completed', availability: 'viewable', period: { preset: 'month', from: '2026-11-01', to: '2026-11-03', timeZone: 'America/New_York', partial: true },
@@ -64,5 +64,22 @@ describe('POSAiReportsScreen', () => {
     wrap();
     expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
     expect(screen.queryByText('No reports yet — generate one above.')).toBeNull();
+  });
+  it('AI Business Assistant 10: What changed since… splits each difference into data corrections and the business change (from the server)', async () => {
+    c.compare.mockResolvedValue({ status: 'compared', reason: null, samePeriod: false, older: { id: 'r3', period: null, snapshotTakenAt: null }, newer: { id: 'r1', period: null, snapshotTakenAt: null }, checkedAt: 'x',
+      items: [{ metric: 'netSalesCents', olderInReport: 400000, olderNow: 401000, newerInReport: 412500, dataCorrection: 1000, businessChange: 11500 }, { metric: 'ticketsCount', olderInReport: 60, olderNow: 60, newerInReport: 61, dataCorrection: 0, businessChange: 1 }] });
+    c.reports.mockResolvedValueOnce({ items: [row(), row({ id: 'r3', reportType: 'monthly_review' })], total: 2, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' } })
+      .mockResolvedValueOnce({ items: [row(), row({ id: 'r3' })], total: 2, page: 1, pageSize: 25, totalPages: 1 });
+    wrap();
+    fireEvent.click((await screen.findAllByTestId('bzx-r-open'))[0]);
+    fireEvent.click(await screen.findByTestId('bzx-compare'));
+    const pick = await screen.findByTestId('bzx-compare-pick');
+    await within(pick).findByText(/Monthly/);
+    expect(within(pick).getAllByRole('option')).toHaveLength(2);   // '—' + the other report (never itself)
+    fireEvent.change(pick, { target: { value: 'r3' } });
+    expect(await screen.findByTestId('bzx-compare-result')).toHaveTextContent('Business change = the newer report vs those corrected days.');
+    expect(c.compare).toHaveBeenCalledWith('r1', 'r3');
+    expect(screen.getByTestId('bzx-cmp-netSalesCents').textContent).toBe('Net sales$4,000.00$10.00$4,125.00$115.00');
+    expect(screen.getByTestId('bzx-cmp-ticketsCount').textContent).toContain('✓');
   });
 });

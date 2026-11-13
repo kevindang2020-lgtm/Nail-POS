@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitKit';
 import { BzPeriodBar, BzHealthButton, bt, bzErr, bzWhen, bzNum, bzValue, bzDays, type BzPeriod } from '../components/BusinessKit';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
+import type { ReportChangeResponse } from '@aipowersalon/api-contracts/tenant';
 
 const TYPES = ['daily_brief', 'weekly_summary', 'monthly_review', 'branch_comparison'] as const;
 const PERIODS: Record<string, string[]> = { daily_brief: ['today', 'yesterday'], weekly_summary: ['week'], monthly_review: ['month', 'quarter', 'year'], branch_comparison: ['week', 'month', 'quarter'] };
@@ -127,11 +128,18 @@ function ReportDialog({ id, onClose, onNew }: { id: string; onClose: () => void;
   const [tick, setTick] = useState(0);
   useEffect(() => { let on = true; setD(null); setErr(null); setV(null); posAiBusinessApi.center.report(id).then((x) => on && setD(x)).catch((e) => on && setErr(bzErr(e))); return () => { on = false; }; }, [id, tick]);
   const verify = () => { setV('loading'); posAiBusinessApi.center.verify(id).then(setV).catch((e) => setV({ error: bzErr(e) })); };
+  // AI Business Assistant 10 — What changed since last check: pick an earlier validated report; the SERVER splits each
+  // difference into corrections to the older report's own days and the actual business change
+  const [others, setOthers] = useState<any[] | null>(null);
+  const [cmp, setCmp] = useState<ReportChangeResponse | 'loading' | { error: string } | null>(null);
+  const openCompare = () => { setOthers([]); posAiBusinessApi.center.reports({ status: 'viewable', pageSize: 25 }).then((r) => setOthers((r?.items ?? []).filter((x: any) => x.id !== id && x.status === 'completed'))).catch((e) => setCmp({ error: bzErr(e) })); };
+  const compare = (other: string) => { if (!other) return; setCmp('loading'); posAiBusinessApi.center.compare(id, other).then(setCmp).catch((e) => setCmp({ error: bzErr(e) })); };
   const regen = () => { setBusy(true); posAiBusinessApi.center.regenerate(id).then((r) => onNew(r.id)).catch((e) => setErr(bzErr(e))).finally(() => setBusy(false)); };
   return (
     <FitDialog wide testId="bzx-report" title={d ? bt('bzx.type.' + d.reportType) : bt('bzx.loading')} onClose={onClose} busy={busy}
       footer={<>
         {d?.status === 'completed' ? <button className="btn ghost" data-testid="bzx-verify" onClick={verify}>{bt('bzx.r.verify')}</button> : null}
+        {d?.status === 'completed' ? <button className="btn ghost" data-testid="bzx-compare" onClick={openCompare}>{bt('bzx.cmp.btn')}</button> : null}
         {d ? <button className="btn ghost" data-testid="bzx-regen" disabled={busy} onClick={regen}>{bt('bzx.r.regenerate')}</button> : null}
         <button className="btn ghost" onClick={onClose}>{bt('bzx.close')}</button></>}>
       {err ? <ErrorRetry message={err} onRetry={() => setTick((n) => n + 1)} /> : !d ? <div className="state">{bt('bzx.loading')}</div> : <>
@@ -152,6 +160,17 @@ function ReportDialog({ id, onClose, onNew }: { id: string; onClose: () => void;
                   <td className="num">{bzValue(x.salesReportNow, x.metric === 'ticketsCount' ? 'count' : 'cents')}</td><td className="num">{x.matched ? '✓' : bzValue(x.difference, x.metric === 'ticketsCount' ? 'count' : 'cents')}</td></tr>))}</tbody></table> : null}
             {v.sourceRoute ? <Link to="/tenant/reports/sales">{bt('bzx.r.openSales')}</Link> : null}
           </div>)) : null}
+        {others ? <div data-testid="bzx-compare-panel" style={{ marginTop: 10 }}>
+          <label className="sub">{bt('bzx.cmp.pick')} <select data-testid="bzx-compare-pick" defaultValue="" onChange={(e) => compare(e.target.value)}><option value="">—</option>
+            {others.map((o: any) => <option key={o.id} value={o.id}>{bt('bzx.type.' + o.reportType)} · {o.period ? bzDays(o.period) : bt('bzx.period.' + o.preset)} · {bzWhen(o.completedAt ?? o.createdAt)}</option>)}</select></label>
+          {cmp === 'loading' ? <div className="state">{bt('bzx.loading')}</div> : cmp && 'error' in cmp ? <div className="err">{cmp.error}</div> : cmp ? (cmp.status !== 'compared' ? <p data-testid="bzx-compare-result">{bt('bzx.cmp.cannot.' + (cmp.reason ?? 'no_snapshot'))}</p> : (
+            <div data-testid="bzx-compare-result">
+              <p className="sub">{cmp.samePeriod ? bt('bzx.cmp.same') : bt('bzx.cmp.rule')}</p>
+              <table className="tbl"><thead><tr><th>{bt('bzx.r.metric')}</th><th className="num">{bt('bzx.cmp.older')}</th><th className="num">{bt('bzx.cmp.correction')}</th><th className="num">{bt('bzx.cmp.newer')}</th><th className="num">{bt('bzx.cmp.business')}</th></tr></thead>
+                <tbody>{cmp.items.map((x) => { const u = x.metric === 'ticketsCount' ? 'count' : 'cents'; return <tr key={x.metric} data-testid={`bzx-cmp-${x.metric}`}><td>{bt('bzx.vm.' + x.metric)}</td>
+                  <td className="num">{bzValue(x.olderInReport, u)}</td><td className="num">{x.dataCorrection ? bzValue(x.dataCorrection, u) : '✓'}</td><td className="num">{bzValue(x.newerInReport, u)}</td><td className="num">{x.businessChange == null ? '—' : bzValue(x.businessChange, u)}</td></tr>; })}</tbody></table>
+            </div>)) : null}
+        </div> : null}
         <p className="sub">{bt('bzx.r.matchNote')}</p>
       </>}
     </FitDialog>

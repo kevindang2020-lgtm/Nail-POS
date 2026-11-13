@@ -658,4 +658,16 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.sp.w.sender_not_configured": "Tiệm chưa thiết lập số gửi SMS.", // DRAFT — Kevin reviews
   "bzx.sp.w.no_cooldown": "Không có thời gian chờ: mỗi lần cảnh báo kích hoạt sẽ gửi tin lại.", // DRAFT — Kevin reviews
   "bzx.sp.dirty": "Bạn đã thay đổi cài đặt — hãy lưu để cập nhật ước tính.", // DRAFT — Kevin reviews
+  "bzx.cmp.btn": "Đã thay đổi gì từ lần trước…", // DRAFT — Kevin reviews
+  "bzx.cmp.pick": "So sánh với báo cáo khác:", // DRAFT — Kevin reviews
+  "bzx.cmp.rule": "Điều chỉnh dữ liệu = những thay đổi sau đó trên chính các ngày của báo cáo cũ (hoàn tiền, sửa, phiếu nhập trễ). Thay đổi kinh doanh = báo cáo mới so với các ngày cũ đã điều chỉnh.", // DRAFT — Kevin reviews
+  "bzx.cmp.same": "Hai báo cáo cùng các ngày — mọi chênh lệch đều là điều chỉnh dữ liệu, không phải thay đổi kinh doanh.", // DRAFT — Kevin reviews
+  "bzx.cmp.older": "Báo cáo cũ", // DRAFT — Kevin reviews
+  "bzx.cmp.correction": "Điều chỉnh dữ liệu", // DRAFT — Kevin reviews
+  "bzx.cmp.newer": "Báo cáo mới", // DRAFT — Kevin reviews
+  "bzx.cmp.business": "Thay đổi kinh doanh", // DRAFT — Kevin reviews
+  "bzx.cmp.cannot.not_completed": "Cả hai báo cáo phải hoàn tất mới so sánh được.", // DRAFT — Kevin reviews
+  "bzx.cmp.cannot.no_snapshot": "Một báo cáo không có số liệu Báo cáo doanh số đã xác minh để so sánh.", // DRAFT — Kevin reviews
+  "bzx.cmp.cannot.no_permission": "Vai trò của bạn không xem được số liệu Báo cáo doanh số.", // DRAFT — Kevin reviews
+  "bzx.cmp.cannot.same_report": "Hãy chọn báo cáo khác.", // DRAFT — Kevin reviews
 };

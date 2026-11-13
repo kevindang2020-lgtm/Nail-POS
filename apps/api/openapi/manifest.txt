@@ -346,6 +346,7 @@ GET /pos/ai-business/center/branches/snapshots/{id}  realm=staff  auth=session  
 GET /pos/ai-business/center/reports  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/summary  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-business/center/reports/{id}/compare  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/customers/growth  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/daily-brief  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/metrics  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
