@@ -202,4 +202,14 @@ export const REWARDSNET_VI = {
   'rn.explain.pending': 'Các lần mua token nhà cung cấp thanh toán chưa xác minh. Chưa dùng được cho đến khi được xác minh.', // DRAFT — Kevin reviews
   'rn.explain.noWallet': 'Chưa có ví', // DRAFT — Kevin reviews
   'rn.explain.unknown': 'Dấu gạch (—) nghĩa là giá trị chưa được ghi nhận; không có gì được ước tính thay thế.', // DRAFT — Kevin reviews
+  'rn.export.btn': 'Xuất tài chính', // DRAFT — Kevin reviews
+  'rn.export.title': 'Nhật ký kiểm toán tài chính', // DRAFT — Kevin reviews
+  'rn.export.what': 'Một bảng tính gồm các lần mua token, phân bổ ví (trừ token cho điểm, hoàn trả khi hoàn tiền) và các khoản mạng lưới nợ tiệm. Mỗi dòng có bản ghi gốc, ngày làm việc của tiệm khi phát sinh và, với phân bổ, quy tắc tích điểm đã áp dụng. Các dòng cần bộ phận tài chính xem được đánh dấu là ngoại lệ.', // DRAFT — Kevin reviews
+  'rn.export.from': 'Từ (ngày của tiệm)', // DRAFT — Kevin reviews
+  'rn.export.to': 'Đến (ngày của tiệm)', // DRAFT — Kevin reviews
+  'rn.export.badRange': 'Chọn ngày bắt đầu trước hoặc bằng ngày kết thúc.', // DRAFT — Kevin reviews
+  'rn.export.audit': 'Việc xuất được ghi vào nhật ký kiểm toán. Không có tên và số điện thoại khách hàng; mã của nhà cung cấp chỉ hiện 6 ký tự cuối.', // DRAFT — Kevin reviews
+  'rn.export.go': 'Tải CSV', // DRAFT — Kevin reviews
+  'rn.export.failed': 'Không thể tạo tệp xuất.', // DRAFT — Kevin reviews
+  'rn.export.done': 'Đã tải {n} dòng ({x} ngoại lệ).', // DRAFT — Kevin reviews
 };

@@ -409,4 +409,42 @@ describe("extras GLOBAL LOYALTY REWARDS 07 + 10 — the salon's own reimbursemen
     expect(a.items.some((x) => byId[x.id])).toBe(false);
     expect(await snap()).toEqual(before);   // read-only
   });
+  it('extras GLOBAL LOYALTY REWARDS 16: the owner finance export — purchases, allocations, payables with exception flags, source ids, rule and date basis; audited; another salon sees none', async () => {
+    const svc = new GlobalRewardsService(repo, null, null);
+    const today = (await q(`select to_char(now() at time zone 'America/New_York', 'YYYY-MM-DD') d`))[0].d as string;
+    const before = await q(`select id, status, version from merchant_reimbursements order by id`);
+    const out: any = await svc.financeExport(owner(TC, BC), { from: '2026-01-01', to: today });
+    expect(out.format).toBe('csv'); expect(out.filename).toBe(`rewards-network-finance-2026-01-01-to-${today}.csv`);
+    const [head, ...lines] = out.csv.trim().split('\n');
+    expect(head).toBe('record_type,record_id,occurred_at_utc,salon_day,date_basis,status,exception,amount_usd,balance_after_usd,source_table,source_id,rule,provider_ref_last6,note');
+    expect(lines.length).toBe(out.rows);
+    const cols = (l: string) => l.split(',');
+    const nPay = Number((await q(`select count(*)::int n from merchant_reimbursements where tenant_id = $1`, [TC]))[0].n);
+    const nPur = Number((await q(`select count(*)::int n from token_purchase_intents where tenant_id = $1`, [TC]))[0].n);
+    const nLed = Number((await q(`select count(*)::int n from token_wallet_ledger where tenant_id = $1`, [TC]))[0].n);
+    expect(out.counts).toMatchObject({ payables: nPay, purchases: nPur, allocations: nLed });
+    const pay = lines.filter((l: string) => l.startsWith('reimbursement_payable,'));
+    expect(pay.length).toBe(nPay);
+    // ON_HOLD and OFFSET are exceptions; a pending payout is not
+    expect(pay.filter((l: string) => cols(l)[5] === 'ON_HOLD').every((l: string) => cols(l)[6] === 'yes')).toBe(true);
+    expect(pay.filter((l: string) => cols(l)[5] === 'PAYOUT_PENDING').every((l: string) => cols(l)[6] === 'no')).toBe(true);
+    expect(out.counts.exceptions).toBe(pay.filter((l: string) => cols(l)[6] === 'yes').length + lines.filter((l: string) => l.startsWith('token_purchase,') && cols(l)[6] === 'yes').length);
+    // the settled payable keeps only the last 6 of its settlement reference; source = its redemption
+    const settled = pay.find((l: string) => l.includes('last_payout_attempt=SETTLED') && cols(l)[5] === 'OFFSET')!;
+    expect(cols(settled)[12]).toBe('stl_1'); expect(cols(settled)[9]).toBe('reward_redemptions');
+    // a points-funded allocation names the custom rule that applied (T13: Salon C on a custom rule)
+    const alloc = lines.find((l: string) => l.startsWith('wallet_earn_allocation,'))!;
+    expect(cols(alloc)[9]).toBe('reward_earn_transactions'); expect(cols(alloc)[11]).toMatch(/^TENANT_OVERRIDE:[0-9a-f-]{36}$/);
+    expect(cols(alloc)[4]).toBe('created (America/New_York)');
+    expect(cols(alloc)[3]).toBe(today);
+    // audited, nothing else written; another salon's export holds none of C's rows; a day range before any activity is empty
+    const au = await q(`select metadata from audit_events where tenant_id = $1 and module = 'loyalty' and action = 'network_finance_exported'`, [TC]);
+    expect(au.length).toBe(1); expect(au[0].metadata).toMatchObject({ rows: out.rows, payables: nPay, timeZone: 'America/New_York' });
+    expect(await q(`select id, status, version from merchant_reimbursements order by id`)).toEqual(before);
+    const other: any = await svc.financeExport(owner(TB, BB), { from: '2026-01-01', to: today });
+    const cIds = new Set(pay.map((l: string) => cols(l)[1]));
+    expect(other.csv.split('\n').some((l: string) => cIds.has(cols(l)[1] ?? ''))).toBe(false);
+    expect((await svc.financeExport(owner(TC, BC), { from: '2020-01-01', to: '2020-01-31' })).rows).toBe(0);
+    await expect(svc.financeExport(owner(TC, BC), { from: today, to: '2020-01-01' })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
 });

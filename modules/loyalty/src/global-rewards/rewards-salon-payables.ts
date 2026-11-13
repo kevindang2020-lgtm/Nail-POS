@@ -117,3 +117,45 @@ export async function salonPayables(db: Kysely<any>, tenantId: string, q: SalonP
     }),
   };
 }
+
+// ── extras GLOBAL LOYALTY REWARDS 16 / Global Loyalty Rewards 16: the owner's finance audit trail export ──────────────────────
+// ONE CSV of this salon's backed token purchases, wallet allocations (points funded, refunds returned …), reimbursement
+// payables with their payout evidence, and an `exception` flag on rows finance must look at. Every row carries its source
+// table + id, the date basis (created time in the salon's zone), and for an allocation the earning rule that applied.
+// Provider references are cut to their last 6 characters; no customer identity is exported. Formula-injection safe. The
+// export is audited (loyalty.network_finance_exported) in the same call; nothing else is written.
+const PURCHASE_EXCEPTION = new Set(['UNKNOWN', 'FAILED', 'DECLINED', 'REVERSED', 'CHARGED_BACK']);
+const PAYABLE_EXCEPTION = new Set(['ON_HOLD', 'PAYOUT_FAILED', 'OFFSET']);
+export const FINANCE_EXPORT_COLUMNS = ['record_type', 'record_id', 'occurred_at_utc', 'salon_day', 'date_basis', 'status', 'exception', 'amount_usd', 'balance_after_usd',
+  'source_table', 'source_id', 'rule', 'provider_ref_last6', 'note'] as const;
+const csvCell = (v: unknown): string => { let s = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const usd = (c: unknown): string => { const v = Math.round(n(c)); const a = Math.abs(v); return `${v < 0 ? '-' : ''}${Math.floor(a / 100)}.${String(a % 100).padStart(2, '0')}`; };
+const last6 = (v: unknown): string => (v == null || v === '' ? '' : String(v).slice(-6));
+
+export async function salonFinanceExport(db: Kysely<any>, tenantId: string, range: { from: string; to: string }, tz: string) {
+  const start = sql`(${range.from}::date)::timestamp AT TIME ZONE ${tz}`;
+  const end = sql`((${range.to}::date + 1)::timestamp) AT TIME ZONE ${tz}`;
+  const day = (col: 'i' | 'l' | 'm') => (col === 'i' ? sql`to_char(i.created_at AT TIME ZONE ${tz}, 'YYYY-MM-DD')` : col === 'l' ? sql`to_char(l.created_at AT TIME ZONE ${tz}, 'YYYY-MM-DD')` : sql`to_char(m.created_at AT TIME ZONE ${tz}, 'YYYY-MM-DD')`);
+  const purchases = (await sql<{ id: string; created_at: Date | string; d: string; status: string; amount_cents: string | number; token_cents: string | number; provider_ref: string | null; failure_code: string | null }>`SELECT
+      i.id, i.created_at, ${day('i')} AS d, i.status, i.amount_cents, i.token_cents, i.provider_ref, i.failure_code
+    FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid AND i.created_at >= ${start} AND i.created_at < ${end} ORDER BY i.created_at, i.id LIMIT 20000`.execute(db)).rows;
+  const ledger = (await sql<{ id: string; created_at: Date | string; d: string; entry_type: string; delta_cents: string | number; balance_after_cents: string | number; source_table: string | null; source_id: string | null; rule_source: string | null; rule_version_id: string | null }>`SELECT
+      l.id, l.created_at, ${day('l')} AS d, l.entry_type, l.delta_cents, l.balance_after_cents, l.source_table, l.source_id, e.rule_source, e.rule_version_id
+    FROM token_wallet_ledger l LEFT JOIN reward_earn_transactions e ON l.source_table = 'reward_earn_transactions' AND e.id::text = l.source_id::text AND e.tenant_id = l.tenant_id
+    WHERE l.tenant_id = ${tenantId}::uuid AND l.created_at >= ${start} AND l.created_at < ${end} ORDER BY l.created_at, l.id LIMIT 20000`.execute(db)).rows;
+  const payables = (await sql<{ id: string; created_at: Date | string; d: string; status: string; amount_cents: string | number; adjusted_cents: string | number; redemption_id: string; provider_ref: string | null; paid_at: Date | string | null; hold_reason: string | null; attempt_status: string | null }>`SELECT
+      m.id, m.created_at, ${day('m')} AS d, m.status, m.amount_cents, m.adjusted_cents, m.redemption_id, m.provider_ref, m.paid_at, m.hold_reason,
+      (SELECT pa.status FROM payout_attempts pa WHERE pa.tenant_id = m.tenant_id AND pa.reimbursement_id = m.id ORDER BY pa.created_at DESC, pa.id DESC LIMIT 1) AS attempt_status
+    FROM merchant_reimbursements m WHERE m.tenant_id = ${tenantId}::uuid AND m.created_at >= ${start} AND m.created_at < ${end} ORDER BY m.created_at, m.id LIMIT 20000`.execute(db)).rows;
+  const basis = `created (${tz})`;
+  const lines: string[] = [FINANCE_EXPORT_COLUMNS.join(',')];
+  const push = (cells: unknown[]) => lines.push(cells.map(csvCell).join(','));
+  for (const p of purchases) push(['token_purchase', p.id, iso(p.created_at), p.d, basis, p.status, PURCHASE_EXCEPTION.has(p.status) ? 'yes' : 'no', usd(p.amount_cents), '', 'token_purchase_intents', p.id, '', last6(p.provider_ref),
+    [`tokens_value_usd=${usd(p.token_cents)}`, p.failure_code ? `failure=${p.failure_code}` : ''].filter(Boolean).join('; ')]);
+  for (const l of ledger) push(['wallet_' + l.entry_type, l.id, iso(l.created_at), l.d, basis, 'posted', 'no', usd(l.delta_cents), usd(l.balance_after_cents), l.source_table ?? '', l.source_id ?? '',
+    l.rule_source ? `${l.rule_source}${l.rule_version_id ? ':' + l.rule_version_id : ''}` : '', '', '']);
+  for (const m of payables) push(['reimbursement_payable', m.id, iso(m.created_at), m.d, basis, m.status, PAYABLE_EXCEPTION.has(m.status) ? 'yes' : 'no', usd(n(m.amount_cents) - n(m.adjusted_cents)), '', 'reward_redemptions', m.redemption_id, '', last6(m.provider_ref),
+    [n(m.adjusted_cents) ? `reversed_usd=${usd(m.adjusted_cents)}` : '', m.attempt_status ? `last_payout_attempt=${m.attempt_status}` : '', m.paid_at ? `paid_at=${iso(m.paid_at)}` : '', m.hold_reason ? `hold_reason=${m.hold_reason}` : ''].filter(Boolean).join('; ')]);
+  const counts = { purchases: purchases.length, allocations: ledger.length, payables: payables.length, exceptions: purchases.filter((p) => PURCHASE_EXCEPTION.has(p.status)).length + payables.filter((m) => PAYABLE_EXCEPTION.has(m.status)).length };
+  return { csv: lines.join('\n') + '\n', rows: lines.length - 1, counts };
+}

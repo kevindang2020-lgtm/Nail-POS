@@ -20,7 +20,8 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent, type RewardsNetBranchSplit, type RewardsNetPayables, type RewardsNetPayableRow } from '../../api/posRewardsNetworkApi';
 import { errorTextOf } from '../../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../../i18n/format';
-import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced } from '../../components/FitKit';
+import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, downloadText } from '../../components/FitKit';
+import { displayTimeZone } from '../../i18n/format';
 import { useStepUp, isStepUpCancelled } from '../access/accessUi';
 import { useRealtime } from '../../realtime/useRealtime';
 
@@ -57,7 +58,7 @@ const ALERT_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'gold'> = { ok: 'gold',
 /** a <input type="datetime-local"> value (the device's clock, which at the desk is the salon's) → ISO */
 const localToIso = (v: string): string | null => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
-type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' } | { kind: 'explain' };
+type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' } | { kind: 'explain' } | { kind: 'export' };
 
 /** a server-paged list whose page size is however many rows fit right now */
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
@@ -211,7 +212,7 @@ export function RewardsNetworkPanel() {
         </FitPanel>
 
         <FitPanel testId="rn-wallet" title={tx('rn.wallet.title')} bodyRef={purFit.ref}
-          actions={<><button type="button" className="fk-btn ghost" data-testid="rn-payables" onClick={() => setDlg({ kind: 'payables' })}>{tx('rn.pay.btn')}</button>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
+          actions={<><button type="button" className="fk-btn ghost" data-testid="rn-payables" onClick={() => setDlg({ kind: 'payables' })}>{tx('rn.pay.btn')}</button>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-export" onClick={() => setDlg({ kind: 'export' })}>{tx('rn.export.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
           {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
@@ -270,6 +271,7 @@ export function RewardsNetworkPanel() {
       {dlg?.kind === 'custom' && st ? <CustomRuleDialog st={st} draft={dlg.draft} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'global' && st ? <UseGlobalDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'branches' && w?.branchUsage ? <BranchUsageDialog u={w.branchUsage} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
+      {dlg?.kind === 'export' ? <FinanceExportDialog onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'explain' && st ? <KpiExplainDialog st={st} onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'payables' ? <PayablesDialog onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'levels' && st ? <LevelsDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
@@ -729,6 +731,37 @@ function KpiExplainDialog({ st, onClose }: { st: NetworkState; onClose: () => vo
         ))}
       </ul>
       <p className="fk-hint">{tx('rn.explain.unknown')}</p>
+    </FitDialog>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 16): the owner's finance audit trail — the server builds ONE audited CSV of token purchases,
+ *  wallet allocations and reimbursement payables over the salon days chosen, flags the exceptions, and names each row's source.
+ *  The screen only picks the days and saves the file; nothing is computed or changed here. */
+function FinanceExportDialog({ onClose }: { onClose: () => void }) {
+  // the salon's calendar day (its time zone), as YYYY-MM-DD — never the device's UTC date
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: displayTimeZone() || 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [from, setFrom] = useState(today.slice(0, 8) + '01');
+  const [to, setTo] = useState(today);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState<{ rows: number; exceptions: number } | null>(null);
+  const bad = !from || !to || from > to;
+  const run = async () => {
+    setBusy(true); setErr(null); setDone(null);
+    try { const r = await netApi.financeExport(from, to); downloadText(r.filename, r.csv); setDone({ rows: r.rows, exceptions: r.counts.exceptions }); }
+    catch (e) { setErr(errText(e, tx('rn.export.failed'))); } finally { setBusy(false); }
+  };
+  return (
+    <FitDialog side testId="rn-export-dlg" title={tx('rn.export.title')} busy={busy} onClose={onClose}
+      footer={<button type="button" className="fk-btn primary" data-testid="rn-export-go" disabled={busy || bad} onClick={() => void run()}>{busy ? tx('pos.loading') : tx('rn.export.go')}</button>}>
+      <p className="fk-hint">{tx('rn.export.what')}</p>
+      <label className="fk-field">{tx('rn.export.from')}<input type="date" data-testid="rn-export-from" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></label>
+      <label className="fk-field">{tx('rn.export.to')}<input type="date" data-testid="rn-export-to" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>
+      {bad ? <div className="fk-hint warn">{tx('rn.export.badRange')}</div> : null}
+      <p className="fk-hint">{tx('rn.export.audit')}</p>
+      {err ? <div className="fk-note bad" role="alert">{err}</div> : null}
+      {done ? <div className="fk-note ok" role="status" data-testid="rn-export-done">{tx('rn.export.done', { n: fmtNumber(done.rows), x: fmtNumber(done.exceptions) })}</div> : null}
     </FitDialog>
   );
 }

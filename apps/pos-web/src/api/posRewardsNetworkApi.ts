@@ -56,6 +56,8 @@ export interface RewardsNetPayables {
   totals: { status: string; stage: RewardsNetPayableStage; count: number; owedCents: number }[];
   total: number; page: number; pageSize: number; pageCount: number; items: RewardsNetPayableRow[];
 }
+/** extras GLOBAL LOYALTY REWARDS 16: the owner's finance audit trail (server-built, audited CSV) */
+export interface RewardsNetFinanceExport { format: 'csv'; filename: string; csv: string; rows: number; counts: { purchases: number; allocations: number; payables: number; exceptions: number } }
 
 const enc = encodeURIComponent;
 const B = '/pos/loyalty/network';
@@ -74,6 +76,7 @@ export const posRewardsNetworkApi = {
   ledger: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<RewardsNetLedgerRow>>(`${B}/wallet/ledger`, q),
   purchases: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<Purchase>>(`${B}/purchases`, q),
   reimbursements: (q: { page: number; pageSize: number; status?: string | null }) => api.get<RewardsNetPayables>(`${B}/reimbursements`, { page: q.page, pageSize: q.pageSize, ...(q.status ? { status: q.status } : {}) }),
+  financeExport: (from: string, to: string) => api.exportAsync<RewardsNetFinanceExport>(`${B}/finance-export`, { from, to }),
   purchase: (id: string) => api.get<Purchase & { events?: PurchaseEvent[] }>(`${B}/purchases/${enc(id)}`),
   /** step-up route + REQUIRED Idempotency-Key: the same key for every retry of one purchase */
   buyTokens: (tokens: number, idempotencyKey: string) => api.post<Purchase>(`${B}/purchases`, { tokens }, { 'Idempotency-Key': idempotencyKey }),

@@ -12,6 +12,7 @@
 //   POST pos/loyalty/network/earning/versions/:id/cancel            pos.settings.edit    (only a change not yet started)
 //   GET  pos/loyalty/network/wallet | wallet/ledger | purchases | purchases/:id
 //   GET  pos/loyalty/network/reimbursements                         pos.customers.view   what the network owes this salon (read-only)
+//   GET  pos/loyalty/network/finance-export?from&to                 pos.settings.edit    owner finance audit trail CSV (async export, audited)
 //   POST pos/loyalty/network/purchases                              pos.settings.edit + STEP-UP + Idempotency-Key
 // Super Admin (English only):                                       super_admin.billing.view / .manage (+ STEP-UP to change)
 //   GET  super-admin/loyalty-network/overview | enrollments | purchases | reconciliation
@@ -25,7 +26,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp,
 import { ListQuery, type ListQuerySpec } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
-import type { RewardsSalonPayables } from '@aipowersalon/api-contracts/tenant';
+import type { RewardsSalonPayables, RewardsNetworkFinanceExport } from '@aipowersalon/api-contracts/tenant';
 import { GlobalRewardsService } from './global-rewards.service';
 import { GlobalRewardsError, type PurchaseStatus } from './global-rewards-core';
 import type { GrCtx } from './global-rewards.repository';
@@ -93,6 +94,12 @@ export class GlobalRewardsController {
   @Get('reimbursements') @RequirePermission('pos.customers.view') @ListQuery({ filters: { status: { type: 'enum', values: ['ACCRUED_OWED', 'PAYOUT_ELIGIBLE', 'PAYOUT_PENDING', 'PAID', 'PAYOUT_FAILED', 'ON_HOLD', 'ADJUSTED', 'OFFSET'] } }, search: false, maxLimit: 25, defaultLimit: 10, params: ['page', 'pageSize'] })
   reimbursements(@Req() r: any, @Query() q: any): Promise<RewardsSalonPayables> {
     return runGr(() => this.s().reimbursements(grCtx(r), { status: q?.status || null, page: Number(q?.page) || 1, pageSize: Number(q?.pageSize) || 10 }));
+  }
+  // extras GLOBAL LOYALTY REWARDS 16: the owner's finance audit trail — purchases, allocations, payables + exceptions (ONE async export contract)
+  @AsyncExport({ kind: 'pos.loyalty-network.finance-export' })
+  @Get('finance-export') @RequirePermission('pos.settings.edit') @ListQuery({ filters: {}, search: false, dateRange: { maxDays: 400 } })
+  financeExport(@Req() r: any, @Query() q: any): Promise<RewardsNetworkFinanceExport> {
+    return runGr(() => this.s().financeExport(grCtx(r), { from: String(q?.from ?? ''), to: String(q?.to ?? '') }));
   }
   // guide §3.3 / §5.2: Owner (or a manager explicitly granted settings access), a fresh step-up, one request key per purchase
   @RequireStepUp() @Post('purchases') @RequirePermission('pos.settings.edit') @Idempotent({ required: true })

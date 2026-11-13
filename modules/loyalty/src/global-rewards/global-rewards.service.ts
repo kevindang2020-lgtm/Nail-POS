@@ -14,7 +14,9 @@ import { markPayoutEligible, holdPayable, requestPayout, type PayoutProvider } f
 import { canMoveToSql } from '@aipowersalon/database';
 import { GLOBAL_REWARDS_ACCOUNT } from './global-rewards-lifecycles';
 import { flagState } from './global-rewards-flags';
-import { salonPayables, type SalonPayablesQuery } from './rewards-salon-payables';
+import { salonPayables, salonFinanceExport, type SalonPayablesQuery } from './rewards-salon-payables';
+import { recordAuditStrict } from '@aipowersalon/audit';
+import { isValidTimeZone } from '@aipowersalon/database';
 
 export class GlobalRewardsService {
   readonly platform: GlobalRewardsPlatformRepository;
@@ -53,6 +55,19 @@ export class GlobalRewardsService {
   purchase(ctx: GrCtx, id: string) { return this.repo.purchase(ctx.tenantId, id); }
   /** what the network owes THIS salon, with provider + journal evidence (read-only; extras GLOBAL LOYALTY REWARDS 07 / 10) */
   reimbursements(ctx: GrCtx, q: SalonPayablesQuery) { return salonPayables(this.repo.database, ctx.tenantId, q); }
+  /** the owner's finance audit trail (extras GLOBAL LOYALTY REWARDS 16): purchases, allocations, payables + exceptions as ONE
+   *  CSV over salon days [from, to] in the salon's zone (its first branch, as the wallet's month uses); audited, nothing else written */
+  async financeExport(ctx: GrCtx, range: { from: string; to: string }) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to) || range.from > range.to) throw new GlobalRewardsError('Choose a From and To date (From before To).', 'VALIDATION_FAILED', 400);
+    const db = this.repo.database;
+    const tzRow = (await sql<{ timezone: string | null }>`SELECT b.timezone FROM branches b WHERE b.tenant_id = ${ctx.tenantId}::uuid AND b.deleted_at IS NULL ORDER BY b.created_at LIMIT 1`.execute(db)).rows[0];
+    const tz = tzRow?.timezone && isValidTimeZone(String(tzRow.timezone)) ? String(tzRow.timezone) : 'America/New_York';
+    const out = await salonFinanceExport(db, ctx.tenantId, range, tz);
+    await recordAuditStrict(db, { tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: ctx.userId ?? null, role: ctx.role ?? null },
+      { module: 'loyalty', action: 'network_finance_exported', summary: `Rewards network finance export ${range.from} to ${range.to} (${out.rows} rows)`, resourceType: 'tenant_token_wallet', resourceId: null,
+        metadata: { from: range.from, to: range.to, timeZone: tz, rows: out.rows, ...out.counts } });
+    return { format: 'csv' as const, filename: `rewards-network-finance-${range.from}-to-${range.to}.csv`, csv: out.csv, rows: out.rows, counts: out.counts };
+  }
 
   /**
    * Buy Tokens (guide §3.3, §5.3): one logical purchase per request key. A retry of the SAME key returns the same

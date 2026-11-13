@@ -3,9 +3,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
-const { stateMock, payMock, live } = vi.hoisted(() => ({ stateMock: vi.fn(), payMock: vi.fn(), live: { refresh: null as null | (() => void) } }));
+const { stateMock, payMock, exportMock, live } = vi.hoisted(() => ({ stateMock: vi.fn(), payMock: vi.fn(), exportMock: vi.fn(), live: { refresh: null as null | (() => void) } }));
 vi.mock('../../api/posRewardsNetworkApi', () => ({ posRewardsNetworkApi: {
-  state: stateMock, reimbursements: payMock, history: vi.fn().mockResolvedValue({ items: [] }),
+  state: stateMock, reimbursements: payMock, financeExport: exportMock, history: vi.fn().mockResolvedValue({ items: [] }),
   purchases: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
   ledger: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
 } }));
@@ -100,5 +100,34 @@ describe('RewardsNetworkPanel — KPI sources + stale-time label (extras Global 
     act(() => { live.refresh?.(); });   // a realtime nudge refetches; the refetch fails
     await waitFor(() => expect(screen.getByTestId('rn-fresh')).toHaveTextContent('Could not refresh. Numbers shown are from'));
     expect(screen.getByTestId('rn-fresh').className).toContain('warn');
+  });
+});
+
+describe('RewardsNetworkPanel — owner finance export (extras GLOBAL LOYALTY REWARDS 16)', () => {
+  it('owner picks salon days; the server-built audited CSV is saved as-is and the row / exception counts are said', async () => {
+    const base = st(undefined);
+    stateMock.mockResolvedValue({ ...base, permissions: { canEdit: true, canActivate: false, canBuyTokens: false } });
+    exportMock.mockResolvedValue({ format: 'csv', filename: 'rewards-network-finance-2026-11-01-to-2026-11-12.csv', csv: 'record_type\n', rows: 7, counts: { purchases: 1, allocations: 4, payables: 2, exceptions: 1 } });
+    const saved: string[] = [];
+    URL.createObjectURL = vi.fn(() => 'blob:x'); URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { saved.push(this.download); });
+    render(<RewardsNetworkPanel />);
+    fireEvent.click(await screen.findByTestId('rn-export'));
+    await screen.findByTestId('rn-export-dlg');
+    fireEvent.change(screen.getByTestId('rn-export-from'), { target: { value: '2026-11-01' } });
+    fireEvent.change(screen.getByTestId('rn-export-to'), { target: { value: '2026-11-12' } });
+    fireEvent.click(screen.getByTestId('rn-export-go'));
+    expect(await screen.findByTestId('rn-export-done')).toHaveTextContent('Downloaded 7 rows (1 exceptions).');
+    expect(exportMock).toHaveBeenCalledWith('2026-11-01', '2026-11-12');
+    expect(saved).toEqual(['rewards-network-finance-2026-11-01-to-2026-11-12.csv']);
+    // From after To cannot be sent
+    fireEvent.change(screen.getByTestId('rn-export-from'), { target: { value: '2026-12-01' } });
+    expect(screen.getByTestId('rn-export-go')).toBeDisabled();
+    click.mockRestore();
+  });
+  it('a staff member without settings access does not see the export', async () => {
+    render(<RewardsNetworkPanel />);
+    await screen.findByTestId('rn-kpis'); await screen.findByTestId('rn-fresh');
+    expect(screen.queryByTestId('rn-export')).toBeNull();
   });
 });

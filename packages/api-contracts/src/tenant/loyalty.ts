@@ -25,3 +25,10 @@ export interface RewardsSalonPayables {
     journal: Array<{ entryType: string; account: string; debitCents: number; creditCents: number; at: string | null }>;
   }>;
 }
+
+/** GET pos/loyalty/network/finance-export?from&to — the owner's rewards-network finance audit trail (extras GLOBAL LOYALTY REWARDS 16):
+ *  token purchases, wallet allocations and reimbursement payables with an exception flag, source ids and the date basis. Audited. */
+export interface RewardsNetworkFinanceExport {
+  format: 'csv'; filename: string; csv: string; rows: number;
+  counts: { purchases: number; allocations: number; payables: number; exceptions: number };
+}
