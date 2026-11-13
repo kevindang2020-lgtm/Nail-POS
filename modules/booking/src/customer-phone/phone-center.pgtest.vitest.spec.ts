@@ -264,3 +264,72 @@ describe('PHONE NUMBER MANAGEMENT 4 · 06 — suspicious number change review (r
     expect((await sql<any>`select id, state from customer_phone_update_sessions where tenant_id = ${T} order by id`.execute(db)).rows).toEqual(before);
   });
 });
+
+// extras round 10 (agent 5): PHONE NUMBER MANAGEMENT 4 · 11 timeline · 13 monthly report · 15 replay dry run
+describe('PHONE NUMBER MANAGEMENT 4 round 10', () => {
+  it('11: the timeline lists Requested → SMS Sent → Verified → Applied → Synced → Security Notice with each record\'s own time; unreached steps have none; provider refs only by their last four', async () => {
+    const c = await customer(num(70));
+    const id = await request(c, num(71), { state: 'customer_records_synchronized' });
+    await sql`insert into booking_verification_sessions (tenant_id, branch_id, booking_session_id, customer_id, phone_hash, phone_mask, channel, status, expires_at, last_sent_at, delivered_at, verified_at, provider_verification_sid)
+      values (${T}, ${B}, ${id}, ${c}, ${phoneKey(num(71))}, ${maskPhone(num(71))}, 'front_desk', 'verified', now() + interval '5 minutes', now() - interval '3 minutes', now() - interval '2 minutes', now() - interval '1 minute', 'VE1234567890abcdWXYZ')`.execute(db);
+    await sql`insert into notifications (tenant_id, channel, to_address, body, status, source_type, source_id, provider_id, delivered_at) values (${T}, 'sms', ${num(70)}, 'notice', 'delivered', 'phone_change', ${id}, 'SMabcdef0000Q9R8', now())`.execute(db);
+    const d: any = await center.detail(pc(), id);
+    expect(d.timeline.map((e: any) => e.key)).toEqual(['requested', 'sms_sent', 'verified', 'applied', 'synced', 'security_notice']);
+    expect(d.timeline.every((e: any) => e.reached && e.at)).toBe(true);
+    const sent = d.timeline.find((e: any) => e.key === 'sms_sent');
+    expect(sent).toMatchObject({ verified: true, detail: 'delivered', providerRef: '…WXYZ' });
+    expect(d.timeline.find((e: any) => e.key === 'security_notice')).toMatchObject({ verified: true, providerRef: '…Q9R8' });
+    expect(JSON.stringify(d.timeline)).not.toContain('VE1234567890');
+    // a pending change: only Requested is reached; nothing is given a time it does not have
+    const c2 = await customer(num(72));
+    const open: any = await center.detail(pc(), await request(c2, num(73)));
+    expect(open.timeline.filter((e: any) => e.reached).map((e: any) => e.key)).toEqual(['requested']);
+    expect(open.timeline.filter((e: any) => !e.reached).every((e: any) => e.at === null && e.verified === false)).toBe(true);
+    // a manual exception is applied but never "verified"
+    const c3 = await customer(num(74));
+    const man: any = await center.detail(pc(), await request(c3, num(75), { state: 'phone_activated', provider: 'staff_override' }));
+    expect(man.timeline.find((e: any) => e.key === 'verified').reached).toBe(false);
+    expect(man.timeline.find((e: any) => e.key === 'applied')).toMatchObject({ reached: true, detail: 'manual_exception' });
+  });
+  it('15: the replay dry run says exactly what Retry Sync would do for ONE change and writes nothing; ineligible changes and viewers get the refusal code', async () => {
+    const c = await customer(num(80));
+    const id = await request(c, num(81), { state: 'synchronization_failed' });
+    await sql`insert into jobs (job_class, job_type, tenant_id, payload, idempotency_key, status, attempts, last_error) values ('standard', ${PHONE_JOB.sync}, ${T}, '{}'::jsonb, ${'sync:' + id}, 'dead', 8, 'identity service timeout')`.execute(db);
+    const tally = async () => (await sql<any>`select (select count(*) from jobs) + (select count(*) from audit_logs) + (select count(*) from customer_phone_update_sessions where state = 'synchronization_failed') as n`.execute(db)).rows[0].n;
+    const before = await tally();
+    const d: any = await center.detail(pc(), id);
+    expect(d.replayPreview).toMatchObject({ eligible: true, refusal: null, batch: false, writesNow: false, idempotencyKey: 'sync:' + id, attemptsSoFar: 8, lastError: 'identity service timeout', wouldChange: ['customer_records', 'request_state', 'audit_row'] });
+    expect(d.replayPreview.eligible).toBe(d.actions.retrySync);          // the same rule the Retry button uses
+    const viewer: any = await center.detail(pc(['pos.customers.view']), id);
+    expect(viewer.replayPreview).toMatchObject({ eligible: false, refusal: 'PERMISSION_DENIED', wouldChange: [] });
+    const c2 = await customer(num(82));
+    const synced: any = await center.detail(pc(), await request(c2, num(83), { state: 'customer_records_synchronized' }));
+    expect(synced.replayPreview).toMatchObject({ eligible: false, refusal: 'PHONE_SYNC_NOTHING_LEFT' });
+    expect(await tally()).toEqual(before);
+  });
+  it('13: the monthly report counts requests, verified changes (manual shown apart), failed attempts, shared contacts and pending sync per month and branch — one salon only — with its denominators', async () => {
+    const T3 = 'a7420000-0000-4000-8000-000000000003', B3 = 'a7420000-0000-4000-8000-0000000000b3', B4 = 'a7420000-0000-4000-8000-0000000000b4';
+    await sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T3}, 'pc-c', 'pc-c', 'pc-c', 'PCC01', 'active')`.execute(db);
+    await sql`insert into branches (id, tenant_id, name, timezone) values (${B3}, ${T3}, 'Main', 'America/New_York'), (${B4}, ${T3}, 'Haddon', 'America/New_York')`.execute(db);
+    const mk = async (phone: string, name: string) => String((await sql<any>`insert into customers (tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values (${T3}, ${B3}, ${name}, 'M', ${name + ' M'}, ${phone}) returning id`.execute(db)).rows[0].id);
+    const sess = async (cust: string, phone: string, state: string, branch: string, provider: string | null = null) => {
+      const np = String((await sql<any>`insert into customer_phones (tenant_id, customer_id, normalized_phone, phone_mask, phone_hash, status, verification_provider, update_source)
+        values (${T3}, ${cust}, ${phone}, ${maskPhone(phone)}, ${phoneKey(phone)}, ${PROVEN.includes(state) ? (provider === 'staff_override' ? 'active_unverified' : 'active_verified') : 'pending_verification'}, ${provider}, 'staff_pos') returning id`.execute(db)).rows[0].id);
+      await sql`insert into customer_phone_update_sessions (tenant_id, branch_id, customer_id, proposed_phone, proposed_phone_hash, proposed_phone_mask, new_phone_id, state, update_source, requested_by_role)
+        values (${T3}, ${branch}, ${cust}, ${phone}, ${phoneKey(phone)}, ${maskPhone(phone)}, ${np}, ${state}, 'staff_pos', 'RECEPTION')`.execute(db);
+    };
+    const a = await mk('+18565550301', 'Ana'), b = await mk('+18565550302', 'Bo'), cc = await mk('+18565550303', 'Cy'), dd = await mk('+18565550304', 'Dee');
+    await sess(a, '+18565550311', 'customer_records_synchronized', B3, 'twilio_verify');     // verified
+    await sess(b, '+18565550312', 'synchronization_failed', B3, 'staff_override');          // verified (manual) + pending sync
+    await sess(cc, '+18565550399', 'verification_failed', B4);                              // failed (a number nobody else has)
+    await sess(dd, '+18565550302', 'pending_phone_saved', B4);                              // shared: Bo's number
+    const s: any = await center.summary({ tenantId: T3, branchId: B3, userId: U, role: 'OWNER', permissions: ALL });
+    const m = s.monthly;
+    expect(Object.keys(m.denominators).sort()).toEqual(['failedAttempts', 'pendingSync', 'requests', 'sharedContacts', 'verifiedChanges']);
+    const main = m.rows.find((r: any) => r.branchName === 'Main'), haddon = m.rows.find((r: any) => r.branchName === 'Haddon');
+    expect(main).toMatchObject({ requests: 2, verifiedChanges: 2, manualExceptions: 1, failedAttempts: 0, sharedContacts: 0, pendingSync: 1 });
+    expect(haddon).toMatchObject({ requests: 2, verifiedChanges: 0, failedAttempts: 1, sharedContacts: 1, pendingSync: 0 });
+    expect(m.rows.every((r: any) => /^\d{4}-\d{2}$/.test(r.month))).toBe(true);
+    expect(m.rows).toHaveLength(2);                                                          // this salon's rows only
+  });
+});

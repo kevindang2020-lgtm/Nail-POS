@@ -151,8 +151,9 @@ export class PhoneCenter {
         (select count(*)::int from customer_phone_update_sessions where tenant_id = ${T} and state = 'synchronization_failed') as sync_attention`.execute(this.db)).rows[0];
     const health = await this.readiness(ctx);
     const risk = await this.riskReview(ctx);
+    const monthly = await this.monthly(ctx);   // PHONE NUMBER MANAGEMENT 4 · 13 (round 10)
     return {
-      timezone: tz, generatedAt: new Date().toISOString(), risk,
+      timezone: tz, generatedAt: new Date().toISOString(), risk, monthly,
       kpis: {
         verified: { value: n(r.verified), source: 'customer_phones: customers with an SMS-verified active number' },
         pending: { value: n(r.pending), source: 'customer_phone_update_sessions: open, not yet proven, not past their deadline' },
@@ -395,11 +396,11 @@ export class PhoneCenter {
     const r: any = (await sql<any>`${this.cols()}, s.change_reason, s.duplicate_resolved_by, c.email, c.normalized_phone as current_e164 ${this.base(ctx)} and s.id = ${id}::uuid`.execute(this.db)).rows[0];
     if (!r) notFound();
     const x = this.row(r);
-    const bv: any = (await sql`select status, attempt_count, resend_count, last_sent_at, expires_at, verified_at, failure_reason, delivered_at
+    const bv: any = (await sql`select status, attempt_count, resend_count, last_sent_at, expires_at, verified_at, failure_reason, delivered_at, created_at, provider_verification_sid
       from booking_verification_sessions where tenant_id = ${ctx.tenantId} and booking_session_id = ${id}::uuid order by created_at desc limit 1`.execute(this.db)).rows[0];
     const current: any = (await sql`select phone_mask, status, verification_provider, verified_at, effective_from from customer_phones
       where tenant_id = ${ctx.tenantId} and customer_id = ${x.customerId} and status in ('active_verified', 'active_unverified') order by effective_from desc limit 1`.execute(this.db)).rows[0];
-    const notice: any = (await sql`select status, delivered_at, created_at, failure_reason from notifications
+    const notice: any = (await sql`select status, delivered_at, created_at, failure_reason, provider_id from notifications
       where tenant_id = ${ctx.tenantId} and source_type = 'phone_change' and source_id = ${id} order by created_at desc limit 1`.execute(this.db)).rows[0];
     const recent = (await sql<any>`select s.id, s.state, s.update_source, s.created_at, s.proposed_phone_mask, s.expires_at, s.completed_at from customer_phone_update_sessions s
       where s.tenant_id = ${ctx.tenantId} and s.customer_id = ${x.customerId} and s.id <> ${id}::uuid order by s.created_at desc, s.id desc limit 5`.execute(this.db)).rows;
@@ -434,7 +435,83 @@ export class PhoneCenter {
         : { state: PROVEN_STATES.includes(x.state) ? 'not_recorded' : 'not_due' },
       recent: recent.map((h: any) => ({ id: String(h.id), state: String(h.state), status: groupOf(String(h.state), h.expires_at, h.completed_at), source: h.update_source, newPhoneMasked: h.proposed_phone_mask, createdAt: iso(h.created_at) })),
       actions,
+      timeline: this.timeline(r, x, bv, notice, !!settings.notifyOldNumber),
+      replayPreview: this.replayPreview(ctx, x, r),
       message: !PROVEN_STATES.includes(x.state) ? 'The current verified phone remains active until the new phone is verified.' : x.verificationMethod === 'manual_exception' ? 'Active by a manager\'s manual exception — not SMS verified.' : 'The new phone was verified and is active.',
+    };
+  }
+
+  /** PHONE NUMBER MANAGEMENT 4 · 11 (round 10) — the Change Audit Timeline: Requested → SMS Sent → Verified → Applied → Synced,
+   *  plus the Security Notice to the old number, each with the time its OWN record carries (never inferred from another
+   *  step) and whether that time is verified by the record that proves it. Provider references are shown only as their
+   *  last four characters. Steps that have not happened are listed as not reached — never given a time. */
+  private timeline(r: any, x: ReturnType<PhoneCenter['row']>, bv: any, notice: any, noticeOn: boolean) {
+    const ref = (v: unknown) => (v ? '…' + String(v).slice(-4) : null);
+    const proven = PROVEN_STATES.includes(x.state);
+    const ev = (key: string, at: string | null, verified: boolean, detail: string | null = null, providerRef: string | null = null) => ({ key, at, reached: !!at, verified: !!at && verified, detail, providerRef });
+    const smsVerified = x.verificationMethod === 'sms_verified';
+    return [
+      ev('requested', iso(r.created_at), true, r.requested_by_name ?? null),
+      ev('sms_sent', iso(bv?.last_sent_at ?? null), !!bv?.delivered_at, bv ? (bv.delivered_at ? 'delivered' : 'submitted') : null, ref(bv?.provider_verification_sid)),
+      // a manual exception is applied without a code — it is NOT shown as verified
+      ev('verified', smsVerified ? (iso(r.verified_at) ?? iso(bv?.verified_at)) : null, smsVerified, x.verificationMethod),
+      ev('applied', proven ? iso(r.effective_from) : null, proven, x.verificationMethod),
+      ev('synced', x.state === 'customer_records_synchronized' ? iso(r.completed_at ?? r.updated_at) : null, x.state === 'customer_records_synchronized', x.sync.state),
+      noticeOn ? ev('security_notice', notice ? iso(notice.delivered_at ?? notice.created_at) : null, notice?.status === 'delivered', notice ? String(notice.status) : null, ref(notice?.provider_id)) : { key: 'security_notice', at: null, reached: false, verified: false, detail: 'off_by_policy', providerRef: null },
+    ];
+  }
+
+  /** PHONE NUMBER MANAGEMENT 4 · 15 (round 10) — the Safe Sync Replay dry run. Exactly what Retry Sync would do for THIS one
+   *  change, decided by the same rule the replay itself checks (the change is synchronization_failed; the person holds
+   *  pos.customers.phone.retry_sync; nothing is already running) — and nothing is written. One change at a time, never a
+   *  batch; the durable job key makes a second replay a no-op. */
+  private replayPreview(ctx: PcContext, x: ReturnType<PhoneCenter['row']>, r: any) {
+    const permitted = has(ctx, 'pos.customers.phone.retry_sync');
+    const refusal = x.state !== 'synchronization_failed' ? 'PHONE_SYNC_NOTHING_LEFT' : !permitted ? 'PERMISSION_DENIED' : x.sync.state === 'in_progress' ? 'PHONE_SYNC_IN_PROGRESS' : null;
+    return {
+      eligible: refusal == null, refusal, batch: false as const, writesNow: false as const,
+      idempotencyKey: `sync:${x.id}`, attemptsSoFar: x.sync.attempts, maxAttempts: SYNC_MAX_ATTEMPTS, lastError: x.sync.lastError,
+      phoneMasked: r.proposed_phone_mask ?? null,
+      // what the replay changes when it succeeds (customer-phone.kysely runSync): the customer's records are synchronised to
+      // the active number, the request becomes customer_records_synchronized and one audit row names who replayed it
+      wouldChange: refusal == null ? ['customer_records', 'request_state', 'audit_row'] : [],
+    };
+  }
+
+  /** PHONE NUMBER MANAGEMENT 4 · 13 (round 10) — the monthly report: per salon-local month and branch for the last 12 months —
+   *  requests (every change request created), verified changes (requests proven — SMS or manual — counted by when the new
+   *  number took effect), failed attempts (requests that ended failed / expired / send-failed, by when they last changed),
+   *  shared contacts (requests whose proposed number is on another customer of the salon) and pending sync (proven changes
+   *  still synchronization_failed now). Each count names its own denominator; nothing is a rate unless both sides are here. */
+  async monthly(ctx: PcContext) {
+    const T = ctx.tenantId; const tz = await this.tz(ctx);
+    const rows = (await sql<{ month: string; branch_id: string | null; branch_name: string | null; requests: number; verified: number; failed: number; shared: number; pending_sync: number; manual: number }>`
+      with s0 as (select s.*, np.effective_from as eff, np.verification_provider as vp from customer_phone_update_sessions s
+          left join customer_phones np on np.id = s.new_phone_id and np.tenant_id = s.tenant_id
+          where s.tenant_id = ${T} and s.created_at >= (date_trunc('month', (now() at time zone ${tz})) - interval '11 months') at time zone ${tz}),
+      ev as (
+        select to_char(s0.created_at at time zone ${tz}, 'YYYY-MM') as month, s0.branch_id, 1 as requests, 0 as verified, 0 as failed,
+               case when exists (select 1 from customers c2 where c2.tenant_id = s0.tenant_id and c2.id <> s0.customer_id and c2.normalized_phone = s0.proposed_phone) then 1 else 0 end as shared,
+               case when s0.state = 'synchronization_failed' then 1 else 0 end as pending_sync, 0 as manual from s0
+        union all
+        select to_char(s0.eff at time zone ${tz}, 'YYYY-MM'), s0.branch_id, 0, 1, 0, 0, 0, case when s0.vp = 'staff_override' then 1 else 0 end from s0 where s0.state in (${sql.join(PROVEN_STATES)}) and s0.eff is not null
+        union all
+        select to_char(s0.updated_at at time zone ${tz}, 'YYYY-MM'), s0.branch_id, 0, 0, 1, 0, 0, 0 from s0 where s0.state in (${sql.join(FAILURE_STATES)})
+      )
+      select ev.month, ev.branch_id::text as branch_id, b.name as branch_name, sum(ev.requests)::int as requests, sum(ev.verified)::int as verified, sum(ev.failed)::int as failed,
+             sum(ev.shared)::int as shared, sum(ev.pending_sync)::int as pending_sync, sum(ev.manual)::int as manual
+      from ev left join branches b on b.id = ev.branch_id and b.tenant_id = ${T}
+      group by ev.month, ev.branch_id, b.name order by ev.month desc, b.name nulls last`.execute(this.db)).rows;
+    return {
+      timezone: tz, months: 12,
+      rows: rows.map((x) => ({ month: x.month, branchId: x.branch_id, branchName: x.branch_name, requests: n(x.requests), verifiedChanges: n(x.verified), manualExceptions: n(x.manual), failedAttempts: n(x.failed), sharedContacts: n(x.shared), pendingSync: n(x.pending_sync) })),
+      denominators: {
+        requests: 'change requests created in the month (salon time)',
+        verifiedChanges: 'requests whose new number took effect in the month — SMS verified or by a manual exception (shown separately)',
+        failedAttempts: 'requests that ended failed, expired or send-failed, by the month they last changed',
+        sharedContacts: 'of the month\'s requests: those whose proposed number is on another customer of this salon',
+        pendingSync: 'of the month\'s requests: proven changes still waiting for synchronisation now',
+      },
     };
   }
 

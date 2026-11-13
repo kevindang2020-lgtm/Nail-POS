@@ -20,6 +20,7 @@ const page = (items: unknown[]) => ({ items, page: 1, pageSize: 10, totalItems: 
 const ui = (path = '/tenant/customers/phone-management') => render(<MemoryRouter initialEntries={[path]}><PhoneManagementCenter /></MemoryRouter>);
 
 beforeEach(() => {
+  try { sessionStorage.clear(); } catch { /* jsdom */ }   // the Update Phone draft lives in the tab's session (08)
   vi.mocked(api.summary).mockReset().mockResolvedValue(summary() as never);
   vi.mocked(api.health).mockReset().mockResolvedValue({ checkedAt: '', items: [{ key: 'sender', state: 'unchecked', message: 'never checked' }], limits: { codeDigits: 6, codeTtlSeconds: 600, maxAttempts: 5, resendCooldownSeconds: 60, syncMaxAttempts: 8 } } as never);
   vi.mocked(api.pending).mockReset().mockResolvedValue(page([row]) as never);
@@ -96,5 +97,75 @@ describe('Phone Number Management center', () => {
     ui();
     await screen.findByTestId('pm-kpi-verified');
     expect(screen.queryByTestId('pm-risk')).toBeNull();
+  });
+  // extras round 10 (agent 5): PHONE NUMBER MANAGEMENT 4 · 08 / 11 / 13 / 15
+  const detailOf = (over: Record<string, unknown>) => ({ ...row, reason: null, trustedStillActive: false, message: 'x', current: { phoneMasked: '•••• 7054', proof: 'sms_verified', since: null, verifiedAt: null },
+    verification: { status: 'verified', digits: 6, attemptsUsed: 1, attemptsLeft: 4, resends: 0, lastSentAt: null, deliveredAt: null, codeExpiresAt: null, resendAvailableInSeconds: 0, failure: null, sender: { state: 'ready', kind: 'internal_otp', lastCheckedAt: null, message: '' } },
+    oldNumberNotice: { state: 'delivered' }, recent: [], actions: { sendCode: false, verifyCode: false, cancel: false, approve: false, resolveDuplicate: false, manualException: false, retrySync: false, startNew: true }, ...over });
+  it('08: a refresh keeps the open Update Phone dialog and its safe draft (customer, reason) — never the number; a customer who meanwhile got a request opens that request instead', async () => {
+    vi.mocked(api.customers).mockResolvedValue(page([{ customerId: 'c9', name: 'Lan Tran', phoneMasked: '•••• 1111', proof: 'sms_verified', sharedWith: 0, openRequestId: null }]) as never);
+    const first = ui();
+    fireEvent.click(await screen.findByTestId('pm-update'));
+    fireEvent.click(await screen.findByTestId('pm-up-pick'));
+    fireEvent.change(screen.getByTestId('pm-up-phone'), { target: { value: '6095552222' } });
+    fireEvent.change(screen.getByLabelText(/Reason/i), { target: { value: 'new carrier' } });
+    const saved = JSON.parse(sessionStorage.getItem('aps.pmc.draft') || '{}');
+    expect(saved).toEqual({ customerId: 'c9', reason: 'new carrier', family: false });
+    expect(JSON.stringify(sessionStorage)).not.toContain('6095552222');
+    first.unmount();                                                     // "refresh"
+    ui();
+    expect(await screen.findByTestId('pm-up-restored')).toBeInTheDocument();
+    expect((screen.getByLabelText(/Reason/i) as HTMLInputElement).value).toBe('new carrier');
+    expect((screen.getByTestId('pm-up-phone') as HTMLInputElement).value).toBe('');
+    // superseded: the customer now has an open request → that request opens, the draft is dropped
+    vi.mocked(api.customers).mockResolvedValue(page([{ customerId: 'c9', name: 'Lan Tran', phoneMasked: '•••• 1111', proof: 'sms_verified', sharedWith: 0, openRequestId: 'r77' }]) as never);
+    screen.getByTestId('pm-update-dialog');
+    document.body.innerHTML = '';
+    ui();
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('r77'));
+    expect(JSON.parse(sessionStorage.getItem('aps.pmc.draft') || '{}').customerId).toBe('');
+  });
+  it('11: the overlay shows the change audit timeline from the server — reached steps with their times, unreached steps without', async () => {
+    vi.mocked(api.detail).mockResolvedValue(detailOf({ timeline: [
+      { key: 'requested', at: '2026-10-31T11:58:00Z', reached: true, verified: true, detail: 'Fiona', providerRef: null },
+      { key: 'sms_sent', at: '2026-10-31T11:59:00Z', reached: true, verified: true, detail: 'delivered', providerRef: '…WXYZ' },
+      { key: 'verified', at: null, reached: false, verified: false, detail: null, providerRef: null }] }) as never);
+    ui();
+    fireEvent.click(await screen.findByText('Hoa Nguyen'));
+    expect(await screen.findByTestId('pm-ov-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId('pm-tl-sms_sent')).toHaveTextContent('SMS sent');
+    expect(screen.getByTestId('pm-tl-sms_sent')).toHaveTextContent('provider ref …WXYZ');
+    expect(screen.getByTestId('pm-tl-verified')).toHaveTextContent('not reached');
+  });
+  it('15: Retry Sync appears only after the dry run was opened; the dry run says it changes ONE change and nothing yet', async () => {
+    vi.mocked(api.detail).mockResolvedValue(detailOf({ state: 'synchronization_failed', status: 'sync_attention', actions: { sendCode: false, verifyCode: false, cancel: false, approve: false, resolveDuplicate: false, manualException: false, retrySync: true, startNew: false },
+      replayPreview: { eligible: true, refusal: null, batch: false, writesNow: false, idempotencyKey: 'sync:r1', attemptsSoFar: 8, maxAttempts: 8, lastError: 'identity service timeout', phoneMasked: '•••• 7054', wouldChange: ['customer_records', 'request_state', 'audit_row'] } }) as never);
+    vi.mocked(posCustomersApi.phoneRetrySync).mockReset().mockResolvedValue({ state: 'customer_records_synchronized' } as never);
+    ui();
+    fireEvent.click(await screen.findByText('Hoa Nguyen'));
+    fireEvent.click(await screen.findByTestId('pm-ov-replay-preview'));
+    expect(screen.queryByTestId('pm-ov-retrysync')).not.toBeNull();
+    const p = screen.getByTestId('pm-ov-replay');
+    expect(p).toHaveTextContent('ONE change (•••• 7054)');
+    expect(p).toHaveTextContent('8 of 8');
+    expect(p).toHaveTextContent('Nothing has been changed yet');
+    expect(posCustomersApi.phoneRetrySync).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('pm-ov-retrysync'));
+    await waitFor(() => expect(posCustomersApi.phoneRetrySync).toHaveBeenCalledTimes(1));
+  });
+  it('13: the monthly report shows the server rows, narrows by branch and month, and explains each count', async () => {
+    vi.mocked(api.summary).mockResolvedValue({ ...summary(), monthly: { timezone: 'America/New_York', months: 12, denominators: {}, rows: [
+      { month: '2026-11', branchId: 'b1', branchName: 'Main', requests: 4, verifiedChanges: 3, manualExceptions: 1, failedAttempts: 1, sharedContacts: 0, pendingSync: 1 },
+      { month: '2026-11', branchId: 'b2', branchName: 'Haddon', requests: 2, verifiedChanges: 0, manualExceptions: 0, failedAttempts: 1, sharedContacts: 1, pendingSync: 0 },
+      { month: '2026-10', branchId: 'b1', branchName: 'Main', requests: 7, verifiedChanges: 6, manualExceptions: 0, failedAttempts: 0, sharedContacts: 2, pendingSync: 0 }] } } as never);
+    ui();
+    expect(await screen.findAllByTestId('pm-mo-row')).toHaveLength(3);
+    expect(screen.getAllByTestId('pm-mo-row')[0]).toHaveTextContent('3 (1 manual)');
+    fireEvent.change(screen.getByTestId('pm-mo-branch'), { target: { value: 'b2' } });
+    expect(screen.getAllByTestId('pm-mo-row')).toHaveLength(1);
+    fireEvent.change(screen.getByTestId('pm-mo-branch'), { target: { value: '' } });
+    fireEvent.change(screen.getByTestId('pm-mo-to'), { target: { value: '2026-10' } });
+    expect(screen.getAllByTestId('pm-mo-row')).toHaveLength(1);
+    expect(screen.getByTestId('pm-mo-basis')).toHaveTextContent('change requests created in the month');
   });
 });

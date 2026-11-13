@@ -8,7 +8,13 @@ export type PcSync = 'not_needed' | 'pending' | 'in_progress' | 'synced' | 'retr
 export interface PcKpi { value: number | string; source: string }
 export interface PcSummary { timezone: string; generatedAt: string; kpis: Record<'verified' | 'pending' | 'failed' | 'today' | 'shared' | 'smsHealth', PcKpi>; syncAttention: number; can: { startChange: boolean; editSettings: boolean; retrySync: boolean };
   /** PHONE NUMBER MANAGEMENT 4 · 06 — the server's suspicious-change review list (review only) */
-  risk?: { windowDays: number; items: PcRiskItem[] } }
+  risk?: { windowDays: number; items: PcRiskItem[] };
+  /** PHONE NUMBER MANAGEMENT 4 · 13 — the server's 12-month report per month and branch (older servers: absent) */
+  monthly?: { timezone: string; months: number; rows: PcMonthRow[]; denominators: Record<string, string> } }
+export interface PcMonthRow { month: string; branchId: string | null; branchName: string | null; requests: number; verifiedChanges: number; manualExceptions: number; failedAttempts: number; sharedContacts: number; pendingSync: number }
+/** PHONE NUMBER MANAGEMENT 4 · 11 / 15 — the overlay's audit timeline step and the sync replay dry run */
+export interface PcTimelineStep { key: string; at: string | null; reached: boolean; verified: boolean; detail: string | null; providerRef: string | null }
+export interface PcReplayPreview { eligible: boolean; refusal: string | null; batch: false; writesNow: false; idempotencyKey: string; attemptsSoFar: number; maxAttempts: number; lastError: string | null; phoneMasked: string | null; wouldChange: string[] }
 export interface PcRiskItem { customerId: string; customerName: string | null; changes: number; failedRequests: number; codeAttempts: number; channels: number; addresses: number; reasons: string[]; latestRequestId: string; latestAt: string | null }
 export interface PcHealthItem { key: string; state: string; message: string; [k: string]: unknown }
 export interface PcHealth { checkedAt: string; items: PcHealthItem[]; limits: { codeDigits: number; codeTtlSeconds: number; maxAttempts: number; resendCooldownSeconds: number; syncMaxAttempts: number } }
@@ -22,7 +28,7 @@ export interface PcRow {
 export interface PcPage<T> { items: T[]; page: number; pageSize: number; totalItems: number; totalPages: number; timezone?: string; order?: string;
   period?: { preset: 'today' | 'week' | 'month' | 'year' | 'custom' | 'all'; from: string | null; to: string | null; tz: string; today: string } }
 export interface PcDetail extends PcRow {
-  reason: string | null; trustedStillActive: boolean; message: string;
+  reason: string | null; trustedStillActive: boolean; message: string; timeline?: PcTimelineStep[]; replayPreview?: PcReplayPreview;
   current: { phoneMasked: string | null; proof: string; since: string | null; verifiedAt: string | null };
   verification: { status: string; digits: number; attemptsUsed: number; attemptsLeft: number; resends: number; lastSentAt: string | null; deliveredAt: string | null; codeExpiresAt: string | null;
     resendAvailableInSeconds: number; failure: string | null; sender: { state: string; kind: string | null; lastCheckedAt: string | null; message: string } };

@@ -179,4 +179,51 @@ export const PHONEMGMT_VI = {
   "phm.risk.r.cross_device": "Nhiều thiết bị hoặc kênh", // DRAFT — Kevin reviews
   "phm.risk.facts": "{c} yêu cầu, {f} lỗi hoặc hết hạn, {a} lần nhập mã, {ch} kênh", // DRAFT — Kevin reviews
   "phm.risk.review": "Xem yêu cầu mới nhất", // DRAFT — Kevin reviews
+  "phm.tl.title": "Dòng thời gian kiểm tra thay đổi", // DRAFT — Kevin reviews
+  "phm.tl.requested": "Đã yêu cầu", // DRAFT — Kevin reviews
+  "phm.tl.sms_sent": "Đã gửi SMS", // DRAFT — Kevin reviews
+  "phm.tl.verified": "Đã xác minh", // DRAFT — Kevin reviews
+  "phm.tl.applied": "Đã áp dụng", // DRAFT — Kevin reviews
+  "phm.tl.synced": "Đã đồng bộ", // DRAFT — Kevin reviews
+  "phm.tl.security_notice": "Thông báo bảo mật", // DRAFT — Kevin reviews
+  "phm.tl.notReached": "chưa tới bước này", // DRAFT — Kevin reviews
+  "phm.tl.unverified": "chưa được xác nhận", // DRAFT — Kevin reviews
+  "phm.tl.ref": "mã nhà cung cấp {r}", // DRAFT — Kevin reviews
+  "phm.rp.preview": "Xem trước đồng bộ lại", // DRAFT — Kevin reviews
+  "phm.rp.title": "Thử đồng bộ lại sẽ làm gì", // DRAFT — Kevin reviews
+  "phm.rp.would": "Đồng bộ MỘT thay đổi này ({p}) vào hồ sơ khách, đánh dấu đã đồng bộ và ghi lại người thực hiện. Không thay đổi nào khác bị ảnh hưởng.", // DRAFT — Kevin reviews
+  "phm.rp.refused.PHONE_SYNC_NOTHING_LEFT": "Không có gì để đồng bộ lại: thay đổi này không chờ đồng bộ.", // DRAFT — Kevin reviews
+  "phm.rp.refused.PERMISSION_DENIED": "Bạn không có quyền đồng bộ lại.", // DRAFT — Kevin reviews
+  "phm.rp.refused.PHONE_SYNC_IN_PROGRESS": "Đang có một lần đồng bộ cho thay đổi này.", // DRAFT — Kevin reviews
+  "phm.rp.refused.other": "Không thể đồng bộ lại thay đổi này lúc này.", // DRAFT — Kevin reviews
+  "phm.rp.facts": "Số lần tự động đã thử: {a} trên {m}", // DRAFT — Kevin reviews
+  "phm.rp.safe": "Chưa có gì bị thay đổi. Đồng bộ lại cùng một thay đổi lần thứ hai sẽ không làm gì.", // DRAFT — Kevin reviews
+  "phm.up.restored": "Thay đổi chưa lưu của khách này đã được khôi phục. Hãy nhập lại số mới — số điện thoại và mã không bao giờ được lưu lại.", // DRAFT — Kevin reviews
+  "phm.mo.title": "Báo cáo thay đổi số điện thoại theo tháng", // DRAFT — Kevin reviews
+  "phm.mo.sub": "{n} tháng gần nhất theo chi nhánh, theo giờ của tiệm ({tz}).", // DRAFT — Kevin reviews
+  "phm.mo.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "phm.mo.allBranches": "Tất cả chi nhánh", // DRAFT — Kevin reviews
+  "phm.mo.from": "Từ tháng", // DRAFT — Kevin reviews
+  "phm.mo.to": "Đến tháng", // DRAFT — Kevin reviews
+  "phm.mo.none": "Không có thay đổi số nào trong khoảng này.", // DRAFT — Kevin reviews
+  "phm.mo.noBranch": "Không có chi nhánh", // DRAFT — Kevin reviews
+  "phm.mo.month": "Tháng", // DRAFT — Kevin reviews
+  "phm.mo.requests": "Yêu cầu", // DRAFT — Kevin reviews
+  "phm.mo.verified": "Thay đổi đã xác minh", // DRAFT — Kevin reviews
+  "phm.mo.failed": "Lần thất bại", // DRAFT — Kevin reviews
+  "phm.mo.shared": "Số dùng chung", // DRAFT — Kevin reviews
+  "phm.mo.pendingSync": "Chờ đồng bộ", // DRAFT — Kevin reviews
+  "phm.mo.manual": "{n} thủ công", // DRAFT — Kevin reviews
+  "phm.mo.basis": "Cách đếm từng số", // DRAFT — Kevin reviews
+  "phm.mo.d.requests": "Yêu cầu", // DRAFT — Kevin reviews
+  "phm.mo.d.verifiedChanges": "Thay đổi đã xác minh", // DRAFT — Kevin reviews
+  "phm.mo.d.failedAttempts": "Lần thất bại", // DRAFT — Kevin reviews
+  "phm.mo.d.sharedContacts": "Số dùng chung", // DRAFT — Kevin reviews
+  "phm.mo.d.pendingSync": "Chờ đồng bộ", // DRAFT — Kevin reviews
+  "phm.mo.def.requests": "các yêu cầu thay đổi được tạo trong tháng", // DRAFT — Kevin reviews
+  "phm.mo.def.verifiedChanges": "các yêu cầu có số mới bắt đầu hiệu lực trong tháng (ngoại lệ thủ công hiển thị riêng)", // DRAFT — Kevin reviews
+  "phm.mo.def.failedAttempts": "các yêu cầu kết thúc thất bại, hết hạn hoặc gửi lỗi, theo tháng thay đổi gần nhất", // DRAFT — Kevin reviews
+  "phm.mo.def.sharedContacts": "trong các yêu cầu của tháng, những yêu cầu có số mới đang thuộc một khách khác", // DRAFT — Kevin reviews
+  "phm.mo.def.pendingSync": "trong các yêu cầu của tháng, những thay đổi đã xác minh vẫn đang chờ đồng bộ", // DRAFT — Kevin reviews
+  "phm.tl.ok": "được hồ sơ xác nhận", // DRAFT — Kevin reviews
 };

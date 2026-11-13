@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posPhoneCenterApi as pcApi, type PcDetail, type PcHealth, type PcPage, type PcRow, type PcSummary, type PcCustomer } from '../api/posPhoneCenterApi';
+import { posPhoneCenterApi as pcApi, type PcDetail, type PcHealth, type PcPage, type PcRow, type PcSummary, type PcCustomer, type PcMonthRow } from '../api/posPhoneCenterApi';
+import { readSession, writeSession, useSessionState } from '../components/useSessionState';
 import { posCustomersApi } from '../api/posCustomersApi';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtInZone, fmtNumber } from '../i18n/format';
@@ -62,7 +63,8 @@ export function PhoneManagementCenter() {
   const [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [updating, setUpdating] = useState(false);
+  // PHONE NUMBER MANAGEMENT 4 · 08: the Update Phone dialog survives a refresh (its safe draft lives in this tab's session)
+  const [updating, setUpdating] = useSessionState<boolean>('aps.pmc.updating', false);
   const refresh = () => setReload((n) => n + 1);
 
   useEffect(() => {
@@ -138,6 +140,7 @@ export function PhoneManagementCenter() {
         </section>
       </div>
 
+      {summary?.monthly ? <MonthlyReport m={summary.monthly} /> : null}
       {summary?.risk?.items.length ? (
         <section className="pm-card" data-testid="pm-risk" aria-labelledby="pm-risk-h">
           <h2 id="pm-risk-h" className="pm-h2">{tx('phm.risk.title')}</h2>
@@ -247,6 +250,7 @@ function ChangeOverlay({ id, tz, onClose, onChanged }: { id: string; tz?: string
   const [reason, setReason] = useState('');
   const [manual, setManual] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [replayOk, setReplayOk] = useState(false);   // PHONE NUMBER MANAGEMENT 4 · 15: Retry Sync only after the dry run was read
   const [tick, setTick] = useState(0);
   const load = useCallback(() => { pcApi.detail(id).then((x) => { setD(x); setErr(null); }, setErr); }, [id]);
   useEffect(load, [load]);
@@ -290,6 +294,9 @@ function ChangeOverlay({ id, tz, onClose, onChanged }: { id: string; tz?: string
             <dt>{tx('phm.ov.notice')}</dt><dd data-testid="pm-ov-notice">{tx('phm.ov.notice.' + d.oldNumberNotice.state)}{d.oldNumberNotice.at ? ` · ${when(d.oldNumberNotice.at)}` : ''}</dd>
             <dt>{tx('phm.col.sync')}</dt><dd>{tx('phm.sync.' + d.sync.state)}{d.sync.lastError ? ` · ${d.sync.lastError}` : ''}</dd>
           </dl>
+          {d.timeline?.length ? <ol className="pm-timeline" data-testid="pm-ov-timeline" aria-label={tx('phm.tl.title')}>{d.timeline.map((e) => <li key={e.key} className={e.reached ? 'on' : 'off'} data-testid={'pm-tl-' + e.key}>
+            <b>{tx('phm.tl.' + e.key)}</b> · {e.reached ? when(e.at) : tx('phm.tl.notReached')}{e.reached ? ` · ${tx(e.verified ? 'phm.tl.ok' : 'phm.tl.unverified')}` : ''}{e.providerRef ? ` · ${tx('phm.tl.ref', { r: e.providerRef })}` : ''}
+          </li>)}</ol> : null}
           {d.state === 'duplicate_conflict' ? <div className="pm-note warn">{tx('phm.ov.dupConflict')}</div> : null}
           {d.verification.sender.state === 'not_configured' && d.trustedStillActive ? <div className="pm-note warn" data-testid="pm-ov-nosender">{tx('phm.ov.noSender')}</div> : null}
 
@@ -323,11 +330,18 @@ function ChangeOverlay({ id, tz, onClose, onChanged }: { id: string; tz?: string
             </div>
           ) : null}
 
+          {replayOk && d.replayPreview ? <div className="pm-note gold" data-testid="pm-ov-replay">
+            <b>{tx('phm.rp.title')}</b>
+            <div>{d.replayPreview.eligible ? tx('phm.rp.would', { p: d.replayPreview.phoneMasked ?? '—' }) : tx('phm.rp.refused.' + (d.replayPreview.refusal ?? 'other'))}</div>
+            <div className="pm-small">{tx('phm.rp.facts', { a: fmtNumber(d.replayPreview.attemptsSoFar), m: fmtNumber(d.replayPreview.maxAttempts) })}{d.replayPreview.lastError ? ` · ${d.replayPreview.lastError}` : ''}</div>
+            <div className="pm-small">{tx('phm.rp.safe')}</div>
+          </div> : null}
           {msg ? <div className="pm-note" role="status" data-testid="pm-ov-msg">{msg}</div> : null}
 
           <div className="pm-ov-actions">
             {a?.approve ? <button type="button" className="fk-btn" disabled={busy} onClick={() => act(() => posCustomersApi.phoneApprove(d.customerId, d.id))} data-testid="pm-ov-approve">{tx('phm.ov.approve')}</button> : null}
-            {a?.retrySync ? <button type="button" className="fk-btn" disabled={busy} onClick={() => act(() => posCustomersApi.phoneRetrySync(d.customerId, d.id))} data-testid="pm-ov-retrysync">{tx('phm.ov.retrySync')}</button> : null}
+            {a?.retrySync && !replayOk ? <button type="button" className="fk-btn ghost" disabled={busy} onClick={() => setReplayOk(true)} data-testid="pm-ov-replay-preview">{tx('phm.rp.preview')}</button> : null}
+            {a?.retrySync && replayOk ? <button type="button" className="fk-btn" disabled={busy || d.replayPreview?.eligible === false} onClick={() => act(() => posCustomersApi.phoneRetrySync(d.customerId, d.id), () => setReplayOk(false))} data-testid="pm-ov-retrysync">{tx('phm.ov.retrySync')}</button> : null}
             {a?.manualException && !manual ? <button type="button" className="fk-btn ghost" disabled={busy} onClick={() => setManual(true)} data-testid="pm-ov-manual-open">{tx('phm.ov.manual')}</button> : null}
             {a?.cancel && !confirmCancel ? <button type="button" className="fk-btn ghost danger" disabled={busy} onClick={() => setConfirmCancel(true)} data-testid="pm-ov-cancel">{tx('phm.ov.cancel')}</button> : null}
             {a?.cancel && confirmCancel ? (
@@ -350,7 +364,32 @@ function ChangeOverlay({ id, tz, onClose, onChanged }: { id: string; tz?: string
   );
 }
 
+// ── PHONE NUMBER MANAGEMENT 4 · 13: the server's monthly report, narrowed here by branch and month range (a view filter only) ──
+function MonthlyReport({ m }: { m: NonNullable<PcSummary['monthly']> }) {
+  const [branch, setBranch] = useState(''); const [from, setFrom] = useState(''); const [to, setTo] = useState('');
+  const branches = useMemo(() => [...new Map(m.rows.map((r) => [r.branchId ?? '', r.branchName ?? tx('phm.mo.noBranch')])).entries()], [m]);
+  const months = useMemo(() => [...new Set(m.rows.map((r) => r.month))].sort(), [m]);
+  const rows = m.rows.filter((r: PcMonthRow) => (!branch || (r.branchId ?? '') === branch) && (!from || r.month >= from) && (!to || r.month <= to));
+  return (
+    <section className="pm-card" data-testid="pm-monthly" aria-labelledby="pm-monthly-h">
+      <h2 id="pm-monthly-h" className="pm-h2">{tx('phm.mo.title')}</h2>
+      <div className="sub">{tx('phm.mo.sub', { n: String(m.months), tz: m.timezone })}</div>
+      <div className="pm-row-inputs">
+        <select className="fk-select" aria-label={tx('phm.mo.branch')} value={branch} onChange={(e) => setBranch(e.target.value)} data-testid="pm-mo-branch"><option value="">{tx('phm.mo.allBranches')}</option>{branches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
+        <select className="fk-select" aria-label={tx('phm.mo.from')} value={from} onChange={(e) => setFrom(e.target.value)} data-testid="pm-mo-from"><option value="">{tx('phm.mo.from')}</option>{months.map((x) => <option key={x} value={x}>{x}</option>)}</select>
+        <select className="fk-select" aria-label={tx('phm.mo.to')} value={to} onChange={(e) => setTo(e.target.value)} data-testid="pm-mo-to"><option value="">{tx('phm.mo.to')}</option>{months.map((x) => <option key={x} value={x}>{x}</option>)}</select>
+      </div>
+      {rows.length === 0 ? <Empty title={tx('phm.mo.none')} /> : <table className="fk-table" data-testid="pm-mo-table"><thead><tr><th>{tx('phm.mo.month')}</th><th>{tx('phm.mo.branch')}</th><th className="num">{tx('phm.mo.requests')}</th><th className="num">{tx('phm.mo.verified')}</th><th className="num">{tx('phm.mo.failed')}</th><th className="num">{tx('phm.mo.shared')}</th><th className="num">{tx('phm.mo.pendingSync')}</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.month + (r.branchId ?? '')} data-testid="pm-mo-row"><td>{r.month}</td><td>{r.branchName ?? tx('phm.mo.noBranch')}</td><td className="num">{fmtNumber(r.requests)}</td>
+          <td className="num">{fmtNumber(r.verifiedChanges)}{r.manualExceptions ? <span className="pm-small"> ({tx('phm.mo.manual', { n: fmtNumber(r.manualExceptions) })})</span> : null}</td><td className="num">{fmtNumber(r.failedAttempts)}</td><td className="num">{fmtNumber(r.sharedContacts)}</td><td className="num">{fmtNumber(r.pendingSync)}</td></tr>)}</tbody></table>}
+      <details><summary>{tx('phm.mo.basis')}</summary><ul className="pm-small" data-testid="pm-mo-basis">{(['requests', 'verifiedChanges', 'failedAttempts', 'sharedContacts', 'pendingSync'] as const).map((k) => <li key={k}><b>{tx('phm.mo.d.' + k)}</b> — {tx('phm.mo.def.' + k)}</li>)}</ul></details>
+    </section>
+  );
+}
+
 // ── Update Phone: find the customer, enter the new number, review, save as pending ──────────────────────────
+type PhoneDraft = { customerId: string; reason: string; family: boolean };
+const PHONE_DRAFT_KEY = 'aps.pmc.draft';
 type DupGuard = { blocked: boolean; requiresManager: boolean; outcome: string; matches: { maskedName: string }[]; sessionId?: string };
 /** the server's DuplicateResult (masked names, tenant-scoped) → what the guard shows; nothing to show when no one else is on the number */
 function dupGuardOf(d: unknown, blocked: boolean): DupGuard | null {
@@ -367,12 +406,31 @@ function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (
   const [err, setErr] = useState<unknown>(null);
   const [pick, setPick] = useState<PcCustomer | null>(null);
   const [phone, setPhone] = useState('');
-  const [reason, setReason] = useState('');
-  const [family, setFamily] = useState(false);
+  // PHONE NUMBER MANAGEMENT 4 · 08: the safe part of the form (the chosen customer's id, the reason, the family tick) survives a
+  // refresh in this tab; the new number and any code are never stored, and a customer who meanwhile got an open request is
+  // never revived as a draft — the server's open request is shown instead
+  const [draft] = useState(() => readSession<PhoneDraft>(PHONE_DRAFT_KEY, { customerId: '', reason: '', family: false }));
+  const [reason, setReason] = useState(draft.reason);
+  const [family, setFamily] = useState(draft.family);
+  const [restored, setRestored] = useState(false);
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [key] = useState(() => requestId());
   useEffect(() => { setPage(1); }, [q]);
+  useEffect(() => { writeSession(PHONE_DRAFT_KEY, { customerId: pick?.customerId ?? '', reason, family }); }, [pick, reason, family]);
+  useEffect(() => {
+    if (!draft.customerId) return;
+    let live = true;
+    pcApi.customers({ q: draft.customerId, page: 1, pageSize: 10 }).then((r) => {
+      const c = r.items.find((x) => x.customerId === draft.customerId);
+      if (!live || !c) return;
+      if (c.openRequestId) { writeSession(PHONE_DRAFT_KEY, { customerId: '', reason: '', family: false }); onOpen(c.openRequestId); return; }   // superseded by a real request
+      setPick(c); setRestored(true);
+    }, () => undefined);
+    return () => { live = false; };
+  }, [draft.customerId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const done = (id: string) => { writeSession(PHONE_DRAFT_KEY, { customerId: '', reason: '', family: false }); onOpen(id); };
+  const close = () => { writeSession(PHONE_DRAFT_KEY, { customerId: '', reason: '', family: false }); onClose(); };
   useEffect(() => { let live = true; pcApi.customers({ q: q || undefined, page, pageSize: 10 }).then((r) => { if (live) { setRes(r); setErr(null); } }, (e) => { if (live) setErr(e); }); return () => { live = false; }; }, [q, page]);
   // PHONE NUMBER MANAGEMENT 4 · 05 — Duplicate and Family Identity Guard. The server's duplicate check (tenant-scoped, masked
   // names only) decides; this shows its answer BEFORE the change goes on: who else is on the number and the reminder that
@@ -384,7 +442,7 @@ function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (
     try {
       const r = await posCustomersApi.phoneStart(pick.customerId, { phone: phone.trim(), reason: reason.trim() || undefined, sharedFamilyPhone: asFamily || undefined, idempotencyKey: asFamily === family ? key : requestId() });
       const g = dupGuardOf(r?.duplicates, false);
-      if (g) setDup({ ...g, sessionId: r.sessionId }); else onOpen(r.sessionId);
+      if (g) setDup({ ...g, sessionId: r.sessionId }); else done(r.sessionId);
     }
     catch (e) {
       const x = e as { code?: string; details?: { duplicates?: unknown; requiresManager?: boolean; error?: { details?: { duplicates?: unknown } } } } | null;
@@ -394,9 +452,9 @@ function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (
     finally { setBusy(false); }
   };
   return (
-    <FitDialog title={tx('phm.up.title')} onClose={onClose} busy={busy} testId="pm-update-dialog"
+    <FitDialog title={tx('phm.up.title')} onClose={close} busy={busy} testId="pm-update-dialog"
       footer={<>
-        <button type="button" className="fk-btn ghost" onClick={review ? () => setReview(false) : onClose} disabled={busy}>{review ? tx('phm.up.back') : tx('phm.ov.close')}</button>
+        <button type="button" className="fk-btn ghost" onClick={review ? () => setReview(false) : close} disabled={busy}>{review ? tx('phm.up.back') : tx('phm.ov.close')}</button>
         {pick && !dup ? (review
           ? <button type="button" className="fk-btn" onClick={() => void save()} disabled={busy} data-testid="pm-up-confirm">{tx('phm.up.confirm')}</button>
           : <button type="button" className="fk-btn" onClick={() => setReview(true)} disabled={!phone.trim()} data-testid="pm-up-review">{tx('phm.up.review')}</button>) : null}
@@ -412,7 +470,7 @@ function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (
             {dup.blocked ? <>
               <button type="button" className="fk-btn ghost" onClick={() => { setDup(null); setPhone(''); }} disabled={busy} data-testid="pm-up-dup-other">{tx('phm.dup.other')}</button>
               {!dup.requiresManager ? <button type="button" className="fk-btn" onClick={() => { setFamily(true); setDup(null); void save(true); }} disabled={busy} data-testid="pm-up-dup-family">{tx('phm.dup.family')}</button> : null}
-            </> : <button type="button" className="fk-btn" onClick={() => dup.sessionId && onOpen(dup.sessionId)} data-testid="pm-up-dup-continue">{tx('phm.dup.continue')}</button>}
+            </> : <button type="button" className="fk-btn" onClick={() => dup.sessionId && done(dup.sessionId)} data-testid="pm-up-dup-continue">{tx('phm.dup.continue')}</button>}
           </div>
         </div>
       ) : !pick ? (
@@ -434,6 +492,7 @@ function UpdatePhoneDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (
         <div className="pm-note gold" data-testid="pm-up-reviewtext">{tx('phm.up.reviewText', { name: pick.name, old: pick.phoneMasked || '—', new: phone.trim() })}</div>
       ) : (
         <div className="pm-form">
+          {restored ? <div className="pm-note" role="status" data-testid="pm-up-restored">{tx('phm.up.restored')}</div> : null}
           <div><b>{pick.name}</b> · <span className="pm-num">{pick.phoneMasked || '—'}</span></div>
           <label>{tx('phm.up.newNumber')}<input className="fk-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="pm-up-phone" autoFocus /></label>
           <label>{tx('phm.up.reason')}<input className="fk-input" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} /></label>
