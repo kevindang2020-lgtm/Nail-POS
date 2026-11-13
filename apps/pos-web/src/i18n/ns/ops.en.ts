@@ -1892,4 +1892,9 @@ export const OPS_EN = {
   "dfx.hw.c.os.windows": "Windows",
   "dfx.hw.c.os.macos": "macOS",
   "dfx.hw.c.os.linux": "Linux",
+  "ops.sched.queue.waiting": "Waiting in the Customer Queue now: {n} (walk-ins {w} · appointments {a}).",
+  "ops.sched.queue.unknown": "The Customer Queue count could not be read right now.",
+  "ops.sched.queue.fair": "Fill with the AI Queue Assistant (fair rotation)",
+  "ops.sched.queue.open": "Open Customer Queue",
+  "ops.sched.queue.rule": "Waiting guests are assigned by the queue’s own fair rotation — the optimizer never assigns them.",
 };

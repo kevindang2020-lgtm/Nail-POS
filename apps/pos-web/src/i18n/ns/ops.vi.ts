@@ -1891,4 +1891,9 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.hw.c.os.windows": "Windows", // DRAFT — Kevin reviews
   "dfx.hw.c.os.macos": "macOS", // DRAFT — Kevin reviews
   "dfx.hw.c.os.linux": "Linux", // DRAFT — Kevin reviews
+  "ops.sched.queue.waiting": "Đang chờ trong hàng chờ khách: {n} (khách vãng lai {w} · có hẹn {a}).", // DRAFT — Kevin reviews
+  "ops.sched.queue.unknown": "Hiện không đọc được số khách trong hàng chờ.", // DRAFT — Kevin reviews
+  "ops.sched.queue.fair": "Xếp bằng Trợ lý hàng chờ AI (xoay vòng công bằng)", // DRAFT — Kevin reviews
+  "ops.sched.queue.open": "Mở hàng chờ khách", // DRAFT — Kevin reviews
+  "ops.sched.queue.rule": "Khách đang chờ được xếp theo xoay vòng công bằng của hàng chờ — trình tối ưu không bao giờ tự xếp.", // DRAFT — Kevin reviews
 };
