@@ -546,6 +546,7 @@ GET /pos/booking/day-grid  realm=staff  auth=session  domain=booking  perm=pos.b
 GET /pos/booking/drafts  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/drafts/{draftId}  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/integration-status  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/booking/kpi-cards  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/kpis  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/openings  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/permissions  realm=staff  auth=session  domain=booking  perm=pos.booking.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

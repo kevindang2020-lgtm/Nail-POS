@@ -2,19 +2,19 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (4110 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (4115 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 4110 |
+| all HTTP routes | 4115 |
 | realm `customer` | 165 |
-| realm `shared` | 289 |
-| realm `staff` | 2457 |
+| realm `shared` | 293 |
+| realm `staff` | 2458 |
 | realm `super_admin` | 1199 |
-| public (no session; each one reviewed by `check:public`) | 126 |
+| public (no session; each one reviewed by `check:public`) | 130 |
 | integration key / OAuth (`auth=api_key`) | 13 |
 | with `@RequireStepUp` (fresh password + code) | 196 |
 | with an idempotency contract | 62 |
@@ -102,24 +102,28 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | GET | `/customer/salons/nearby` | modules/customers/src/customer-salons/customer-salons.controller.ts:32 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-salons) |
 | GET | `/customer/techs/{publicSlug}` | modules/workforce/src/tech-profile/customer-tech.controller.ts:61 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
 | GET | `/customer/techs/nearby` | modules/workforce/src/tech-profile/customer-tech.controller.ts:50 | public | AnonRateLimit 30 / 1 min per IP (bucket customer-techs) |
-| GET | `/go-check-in/{slug}/config` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:32 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/{slug}/start-session` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:33 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/accept-alternate` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:51 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/check-in-appointment` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:44 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| GET | `/go-check-in/session/{sessionId}/check-in-status` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:55 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/check-in-walk-in` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:52 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/complete` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:57 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/confirm-customer` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:39 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/create-customer` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:40 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/heartbeat` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:35 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/lookup-phone` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:38 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| GET | `/go-check-in/session/{sessionId}/place-in-line` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:56 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| GET | `/go-check-in/session/{sessionId}/services` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:47 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/technician/clock-in` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:61 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/technician/clock-out` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:62 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| POST | `/go-check-in/session/{sessionId}/technician/identify` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:60 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| GET | `/go-check-in/session/{sessionId}/technicians` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:49 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
-| GET | `/go-check-in/session/{sessionId}/today-appointments` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:43 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/{slug}/config` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:33 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/{slug}/start-session` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:34 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/accept-alternate` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:52 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/check-in-appointment` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:45 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/check-in-status` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:62 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/check-in-walk-in` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:53 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/complete` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:64 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/confirm-customer` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:40 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/create-customer` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:41 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/heartbeat` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:36 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/lookup-phone` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:39 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/place-in-line` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:63 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/services` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:48 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/technician/clock-in` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:68 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/technician/clock-out` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:69 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/technician/identify` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:67 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/technicians` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:50 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/today-appointments` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:44 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/walk-in/catalog` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:56 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/walk-in/confirm` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:58 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| POST | `/go-check-in/session/{sessionId}/walk-in/preview` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:57 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
+| GET | `/go-check-in/session/{sessionId}/walk-in/status` | modules/queue/src/go-check-in/go-check-in.public.controller.ts:59 | public | kiosk: per-session caps + salon-wide 300 sessions / 600 lookups per 15 min |
 | GET | `/health` | apps/api/src/health/health.controller.ts:35 | public | probe / metrics token — not rate limited by design (edge WAF REQUIRES KEVIN) |
 | GET | `/health/live` | apps/api/src/health/health.controller.ts:42 | public | probe / metrics token — not rate limited by design (edge WAF REQUIRES KEVIN) |
 | GET | `/health/ready` | apps/api/src/health/health.controller.ts:46 | public | probe / metrics token — not rate limited by design (edge WAF REQUIRES KEVIN) |

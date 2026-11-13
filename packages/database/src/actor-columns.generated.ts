@@ -400,6 +400,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   voice_integration_keys: 'ut',
   voice_prompt_versions: 'cut',
   voice_transcription_settings: 't',
+  walkin_service_requests: 't',
   wallet_topup_intents: 'ut',
   worker_transfer_requests: 'ut',
 };
