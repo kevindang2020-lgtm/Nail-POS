@@ -257,4 +257,13 @@ export const AIUSAGE_EN = {
   'aiu.priceCmp.list': 'Today\'s catalog list price: {list}/mo.',
   'aiu.priceCmp.kept_below_list': 'Your price {yours}/mo is kept — {diff} below today\'s list price of {list}/mo.',
   'aiu.priceCmp.above_list': 'Your price {yours}/mo is {diff} above today\'s list price of {list}/mo.',
+  'aiu.ptab.none.no_version_published': 'Price table: no price set.',
+  'aiu.ptab.none.not_in_version': 'Price table (version {v}): no price set for this package.',
+  'aiu.ptab.none.kept_previous_none': 'Price table (version {v}): no price set — your salon keeps its earlier price.',
+  'aiu.ptab.version': 'Price table: {p} — version {v}, from {d}.',
+  'aiu.ptab.kept': 'Price table: {p} — version {v} is kept for your salon (current version {cur}).',
+  'aiu.ptab.override': 'Price table: {p} — set for your salon from {d}.',
+  'aiu.ptab.upcoming': 'Version {v} from {d}: {p}.',
+  'aiu.ptab.noPrice': 'no price set',
+  'aiu.ptab.perUnit': ' per unit',
 };

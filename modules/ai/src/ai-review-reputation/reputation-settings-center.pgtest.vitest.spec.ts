@@ -200,6 +200,24 @@ describe('Review & Reputation Settings — health and fail-closed', () => {
     expect(dry.detail.cost).toEqual({ state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' });   // never estimated
     expect((await q(sql`select count(*)::int as n from review_requests where tenant_id = ${T3}`))[0].n).toBe(reqBefore);   // nothing scheduled
     expect((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T3}`))[0].n).toBe(0);              // nothing sent
+    // extras Reviews Reputation 07 (round 11): the platform per-message price — blank by default (above: not available, exactly
+    // as before); a blank / null row is still blank; set → whole cents × the 3 who would be texted; an unusable value is said
+    const dryAgain = async () => ((await (rss as any).requestDryRun(ctx3, false)) as { detail: { cost: unknown; wouldAsk: number } }).detail;
+    const setPrice = async (v: string | null) => { await q(sql`delete from platform_settings where setting_key = 'sms.review_request_price_cents'`);
+      if (v !== null) await q(sql`insert into platform_settings (setting_key, setting_group, value, value_type) values ('sms.review_request_price_cents', 'global_defaults', ${v}::jsonb, 'json')`); };
+    try {
+      await setPrice('null');
+      expect((await dryAgain()).cost).toEqual({ state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' });
+      await setPrice('4');
+      const d4 = await dryAgain();
+      expect(d4.cost).toEqual({ state: 'ESTIMATE', unitPriceCents: 4, recipients: 3, estimatedCents: 12 });
+      expect(d4.wouldAsk).toBe(3);
+      await setPrice('3.5');
+      expect((await dryAgain()).cost).toEqual({ state: 'NOT_AVAILABLE', reason: 'price_setting_invalid' });   // never rounded into a price
+      await setPrice('100000');
+      expect((await dryAgain()).cost).toEqual({ state: 'NOT_AVAILABLE', reason: 'price_setting_invalid' });  // above the safety ceiling
+      expect((await q(sql`select count(*)::int as n from review_requests where tenant_id = ${T3}`))[0].n).toBe(reqBefore);   // still nothing scheduled
+    } finally { await setPrice(null); }
   });
   it('HL-03 integration freshness: the review providers\' real sync times (a later failure counts as failing) and the publish queue', async () => {
     const T4 = id(70);

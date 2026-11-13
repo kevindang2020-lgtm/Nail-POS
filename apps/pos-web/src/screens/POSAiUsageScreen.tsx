@@ -21,13 +21,16 @@ import { useCan } from '../components/usePermissions';
 import { InvoicedFigures, InvoiceTable, BranchSettings } from './aiUsageRound2';
 import { statusLabel } from '../i18n/status-label';
 import { codeLabel } from '../components/peopleLabels';
+import type { AiTablePrice } from '@aipowersalon/api-contracts/tenant';
 
 type State = 'available' | 'trial_available' | 'trialing' | 'trial_expired' | 'active' | 'cancelled' | 'expired' | 'past_due' | 'suspended' | 'disabled_by_admin' | 'unable_to_verify';
 type Level = 'ok' | 'warn_80' | 'critical_90' | 'exhausted_100' | 'unlimited' | 'not_metered' | 'unknown';
 type Action = 'view_details' | 'start_trial' | 'cancel' | 'upgrade' | 'reactivate' | 'update_billing' | 'open_module';
 export type Card = { code: string; name: string; description: string; category: string; posArea: string | null; known: boolean; state: State; storedStatus: string | null; globallyEnabled: boolean; disabledReason: string | null;
   price: { cents: number; currency: string; period: 'monthly' | 'yearly'; monthlyEquivalentCents: number; source: 'subscription' | 'catalog_list';
-    comparison?: { listMonthlyCents: number | null; storedMonthlyCents: number | null; status: 'list' | 'kept_below_list' | 'above_list' | 'no_list_price'; deltaMonthlyCents: number | null } };
+    comparison?: { listMonthlyCents: number | null; storedMonthlyCents: number | null; status: 'list' | 'kept_below_list' | 'above_list' | 'no_list_price'; deltaMonthlyCents: number | null };
+    /** extras AI Usage Limits 07 (round 11): the Super Admin price table for this package ('no price set' until a version exists) */
+    table?: AiTablePrice };
   usage: { used: number | null; limit: number; unit: string; percent: number | null; level: Level; periodStart: string | null; periodEnd: string | null; remaining: number | null;
     /** extras AI Usage Limits 03: the server's estimate of the period's end at this period's pace (never a purchase) */
     projection?: { basis: string; elapsedShare: number; projectedUsed: number | null; verdict: 'too_early' | 'fits' | 'close' | 'likely_over'; projectedOverageCents: number | null; atLimit: 'overage' | 'blocked' } | null };
@@ -67,6 +70,19 @@ const priceCompareText = (c: Card) => {
   const k = c.price.comparison;
   if (!k || k.status === 'no_list_price' || k.listMonthlyCents == null) return null;
   return tx('aiu.priceCmp.' + k.status, { list: fmtMoney(k.listMonthlyCents), yours: k.storedMonthlyCents == null ? '—' : fmtMoney(k.storedMonthlyCents), diff: k.deltaMonthlyCents == null ? '—' : fmtMoney(Math.abs(k.deltaMonthlyCents)) });
+};
+/** extras AI Usage Limits 07 (round 11): the Super Admin price table as the server resolved it (never computed here) — "no price
+ *  set" until a version is published; the kept earlier price, a salon price and a scheduled version are said in words */
+export const priceTableText = (c: Card): string | null => {
+  const k = c.price.table;
+  if (!k) return null;
+  const per = (u: string) => (u === 'year' ? tx('aiu.perYear') : u === 'month' ? tx('aiu.perMonth') : tx('aiu.ptab.perUnit'));
+  const head = k.state === 'no_price_set' ? tx('aiu.ptab.none.' + k.reason, { v: k.currentVersionNo ?? '—' })
+    : k.source === 'salon_override' ? tx('aiu.ptab.override', { p: fmtMoney(k.priceCents) + per(k.unit), d: day(k.effectiveFrom) })
+    : k.keptPrevious ? tx('aiu.ptab.kept', { p: fmtMoney(k.priceCents) + per(k.unit), v: k.versionNo ?? '—', cur: k.currentVersionNo ?? '—' })
+    : tx('aiu.ptab.version', { p: fmtMoney(k.priceCents) + per(k.unit), v: k.versionNo ?? '—', d: day(k.effectiveFrom) });
+  const up = k.upcoming ? ' ' + tx('aiu.ptab.upcoming', { v: k.upcoming.versionNo, d: day(k.upcoming.effectiveFrom), p: k.upcoming.priceCents == null ? tx('aiu.ptab.noPrice') : fmtMoney(k.upcoming.priceCents) + per(k.unit) }) : '';
+  return head + up;
 };
 const priceText = (c: Card) => c.price.cents > 0 ? `${fmtMoney(c.price.cents)}${c.price.period === 'yearly' ? tx('aiu.perYear') : tx('aiu.perMonth')}` : tx('aiu.included');
 /** the AI module's own page — from the shell's navigation (the same routes the sidebar opens) */
@@ -296,10 +312,12 @@ export function DetailDialog({ code, onClose, onChanged, openHistory, openModule
         {confirm ? <div className={'aiu-confirm ' + confirm} role="alert" data-testid="aiu-confirm-box">
           {confirm === 'start_trial' ? tx('aiu.confirmTrial', { name: c.name, days: String(c.trial.days), price: priceText(c) }) : tx('aiu.confirmCancel', { name: c.name, state: stateLabel(c.state) })}
           {confirm === 'start_trial' && priceCompareText(c) ? <div className="fk-hint" data-testid="aiu-confirm-price">{priceCompareText(c)}</div> : null}
+          {confirm === 'start_trial' && priceTableText(c) ? <div className="fk-hint" data-testid="aiu-confirm-price-table">{priceTableText(c)}</div> : null}
           {actErr ? <div className="fk-err">{actErr}</div> : null}</div> : null}
         {tab === 'overview' ? <div className="aiu-d">
           <p className="aiu-p">{c.known ? c.description : tx('aiu.unknownPackage', { code: c.code })}</p>
-          <dl className="fk-dl"><dt>{tx('aiu.posArea')}</dt><dd>{c.posArea ?? '—'}</dd><dt>{tx('aiu.price')}</dt><dd>{priceText(c)} <span className="fk-muted">· {tx('aiu.priceSource.' + c.price.source)}</span>{priceCompareText(c) ? <div className="fk-hint" data-testid="aiu-price-compare">{priceCompareText(c)}</div> : null}</dd>
+          <dl className="fk-dl"><dt>{tx('aiu.posArea')}</dt><dd>{c.posArea ?? '—'}</dd><dt>{tx('aiu.price')}</dt><dd>{priceText(c)} <span className="fk-muted">· {tx('aiu.priceSource.' + c.price.source)}</span>{priceCompareText(c) ? <div className="fk-hint" data-testid="aiu-price-compare">{priceCompareText(c)}</div> : null}
+            {priceTableText(c) ? <div className="fk-hint" data-testid="aiu-price-table">{priceTableText(c)}</div> : null}</dd>
             <dt>{tx('aiu.included')}</dt><dd>{c.usage.limit > 0 ? unitLabel(c.usage.unit, c.usage.limit) : tx('aiu.noFixedLimit')}</dd>
             <dt>{tx('aiu.next')}</dt><dd data-testid="aiu-next">{tx('aiu.nextStep.' + c.state)}</dd></dl>
           {route ? null : <div className="fk-hint">{tx('aiu.noModulePage')}</div>}

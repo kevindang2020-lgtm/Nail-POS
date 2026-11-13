@@ -56,8 +56,6 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.run.status.succeeded": "Hoàn tất",
   "mpx.run.status.failed": "Lỗi",
   "mpx.run.line": "{c} mới · {u} cập nhật",
-  "mpx.searchPh": "Mã cảnh báo, quy tắc, số hóa đơn, tên nhân viên, tên hoặc số điện thoại khách",
-  "mpx.searchPhNoCustomer": "Mã cảnh báo, quy tắc, số hóa đơn hoặc tên nhân viên",
   "mpx.statusLabel": "Trạng thái",
   "mpx.severityLabel": "Mức độ",
   "mpx.categoryLabel": "Loại",

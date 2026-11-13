@@ -88,6 +88,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<DfDevice | null>(null);
   const can = useCan(); const [labeling, setLabeling] = useState<DfDevice | null>(null);   // extras Device Health 06
+  const [assigning, setAssigning] = useState<DfDevice | null>(null);   // extras Device Health 06 (round 11)
   const [health, setHealth] = useState<DfCheckResponse | 'loading' | { error: string } | null>(null);
   const seq = useRef(0);
   const setF = (p: Partial<DeviceFleetQuery>, keepPage = false) => setFState((c) => ({ ...c, ...p, page: keepPage ? (p.page ?? c.page) : 1 }));
@@ -224,16 +225,19 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
               <thead><tr><th>{tx('pos.device')}</th><th>{tx('pos.type')}</th><th>{tx('pos.branch')}</th><th>{tx('pos.station')}</th><th>{tx('pos.status')}</th><th>{tx('pos.last_sync')}</th><th /></tr></thead>
               <tbody>{list.items.map((d) => (
                 <tr key={`${d.source}:${d.id}`} data-testid="dfx-row">
-                  <td style={{ fontWeight: 700 }}>{d.name || tt('dfx.unnamed')}{d.alias || d.assetTag ? <div className="sub" data-testid="dfx-label">{[d.alias, d.assetTag ? tt('dfx.lbl.tag', { t: d.assetTag }) : null].filter(Boolean).join(' · ')}</div> : null}</td>
+                  <td style={{ fontWeight: 700 }}>{d.name || tt('dfx.unnamed')}{d.alias || d.assetTag ? <div className="sub" data-testid="dfx-label">{[d.alias, d.assetTag ? tt('dfx.lbl.tag', { t: d.assetTag }) : null].filter(Boolean).join(' · ')}</div> : null}
+                    {d.assignedEmployee ? <div className="sub" data-testid="dfx-assignee">{tt('dfx.asg.to', { n: d.assignedEmployee.name ?? '—' })}</div> : null}</td>
                   <td className="sub">{d.source === 'station' ? tx('pos.reception_pos') : typeLabel(d.type)}</td>
                   <td>{d.branch ?? <span className="sub">{tt('dfx.noBranch')}</span>}</td>
                   <td>{d.station || <span style={{ color: 'var(--muted)' }}>{tx('pos.unassigned')}</span>}</td>
                   <td>{statusChip(d.status)}{d.reason ? <div className="sub dfx-reason">{tt('dfx.reason.' + d.reason)}</div> : null}<VersionLine st={appVersionStanding(d, newestAppVersion(list.items))} newest={newestAppVersion(list.items)} /></td>
                   <td className="sub">{d.lastSeenAt ? agoLabel(d.lastSeenAt) : '—'}</td>
                   <td className="nowrap"><button className="btn ghost sm" data-testid="dfx-view" onClick={() => setOpen(d)}>{tt('dfx.view')}</button>
-                    {can('pos.devices.manage') ? <button className="btn ghost sm" data-testid="dfx-label-edit" onClick={() => setLabeling(d)}>{tt('dfx.lbl.edit')}</button> : null}</td>
+                    {can('pos.devices.manage') ? <button className="btn ghost sm" data-testid="dfx-label-edit" onClick={() => setLabeling(d)}>{tt('dfx.lbl.edit')}</button> : null}
+                    {can('pos.devices.manage') ? <button className="btn ghost sm" data-testid="dfx-assign" onClick={() => setAssigning(d)}>{tt('dfx.asg.edit')}</button> : null}</td>
                 </tr>))}</tbody></table></div>}
           {labeling ? <LabelDialog d={labeling} onClose={() => setLabeling(null)} onSaved={() => { setLabeling(null); loadList(); }} /> : null}
+          {assigning ? <AssignDialog d={assigning} onClose={() => setAssigning(null)} onSaved={() => { setAssigning(null); loadList(); }} /> : null}
           <div className="rvw-pager">
             <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => setF({ page: p }, true)} />
             <label className="rvw-f"><span>{tt('dfx.rows')}</span><select data-testid="dfx-pagesize" value={String(f.pageSize ?? 25)} onChange={(e) => setF({ pageSize: Number(e.target.value) })}>
@@ -270,6 +274,35 @@ function LabelDialog({ d, onClose, onSaved }: { d: DfDevice; onClose: () => void
       <label className="fk-field">{tt('dfx.lbl.alias')}<input value={alias} maxLength={60} onChange={(e) => setAlias(e.target.value)} data-testid="dfx-label-alias" /></label>
       <label className="fk-field">{tt('dfx.lbl.asset')}<input value={tag} maxLength={40} onChange={(e) => setTag(e.target.value)} data-testid="dfx-label-tag" /></label>
       <p className="sub">{tt('dfx.lbl.note')}</p>
+      {err ? <div className="err">{err}</div> : null}
+    </FitDialog>
+  );
+}
+
+/** extras Device Health 06 (round 11): assign a device to an employee (optional — nobody by default, never automatic), or clear
+ *  it. The choices are the server's list of active staff of this salon (name only); the change is audited server-side. */
+function AssignDialog({ d, onClose, onSaved }: { d: DfDevice; onClose: () => void; onSaved: () => void }) {
+  const [term, setTerm] = useState(''); const [choices, setChoices] = useState<{ userId: string; name: string }[] | null>(null);
+  const [pick, setPick] = useState<string | null>(d.assignedEmployee?.userId ?? null);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    const h = setTimeout(() => { posDeviceFleetApi.staffChoices(term).then((r) => { if (live) setChoices(r.items); }).catch((e) => { if (live) setErr(reportError(e, 'devices')); }); }, term ? 250 : 0);
+    return () => { live = false; clearTimeout(h); };
+  }, [term]);
+  const save = (userId: string | null) => { setBusy(true); setErr(null); posDeviceFleetApi.setAssignment({ source: d.source, deviceId: d.id, userId })
+    .then(onSaved).catch((e) => setErr(reportError(e, 'devices'))).finally(() => setBusy(false)); };
+  return (
+    <FitDialog title={tt('dfx.asg.title', { n: d.name || tt('dfx.unnamed') })} onClose={onClose} busy={busy} testId="dfx-assign-dialog"
+      footer={<><button className="btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
+        {d.assignedEmployee ? <button className="btn ghost" onClick={() => save(null)} disabled={busy} data-testid="dfx-assign-clear">{tt('dfx.asg.clear')}</button> : null}
+        <button className="btn" onClick={() => save(pick)} disabled={busy || !pick || pick === d.assignedEmployee?.userId} data-testid="dfx-assign-save">{tt('dfx.asg.save')}</button></>}>
+      <p className="sub" data-testid="dfx-assign-current">{d.assignedEmployee ? tt('dfx.asg.to', { n: d.assignedEmployee.name ?? '—' }) : tt('dfx.asg.none')}</p>
+      <label className="fk-field">{tt('dfx.asg.search')}<input value={term} maxLength={100} onChange={(e) => setTerm(e.target.value)} data-testid="dfx-assign-search" /></label>
+      {choices === null ? <div className="state">{tt('dfx.asg.loading')}</div> : choices.length === 0 ? <div className="sub" data-testid="dfx-assign-empty">{tt('dfx.asg.noStaff')}</div>
+        : <div role="radiogroup" aria-label={tt('dfx.asg.search')}>{choices.map((c) => <label key={c.userId} className="fk-field" data-testid="dfx-assign-choice">
+          <input type="radio" name="dfx-assignee" checked={pick === c.userId} onChange={() => setPick(c.userId)} /> {c.name}</label>)}</div>}
+      <p className="sub">{tt('dfx.asg.note')}</p>
       {err ? <div className="err">{err}</div> : null}
     </FitDialog>
   );

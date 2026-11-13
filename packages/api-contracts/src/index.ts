@@ -38,3 +38,4 @@ export * from './payment-terminals';   // Oct 13 2026 (wave 3 PAYI §12/§50): t
 export * from './sms-segments';   // Oct 13 2026 (wave 3 PAYI §77/§81): SMS segment estimate + the campaign cost preview shape
 export * from './booking-drafts';   // B-22 (Oct 22 2026): POS booking drafts wire shapes
 export type { FollowUpStatus } from './follow-up-status';   // realm-neutral: tenant staff screens and the customer's own follow-up
+export * from './review-request-price';   // extras Reviews Reputation 07 (round 11): per-message review-request text price (blank by default)

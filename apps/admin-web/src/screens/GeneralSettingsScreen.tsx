@@ -42,6 +42,8 @@ function previewCurrency(cur: string, locale: string) { try { return new Intl.Nu
 function previewNumber(fmt: string) { return fmt === '1.234,56' ? '1.234,56' : fmt === '1 234,56' ? '1 234,56' : '1,234.56'; }
 
 const fmtVal = (s: Setting, v: unknown = s.value): string => {
+  // extras Reviews Reputation 07 (round 11): the review-request text price is blank by default — "Not set", never "Unlimited"
+  if (s.key === 'sms.review_request_price_cents') return v === null || v === undefined || v === '' ? 'Not set' : `${String(v)}¢ per text`;
   if (v === null || v === undefined || v === '') return s.valueType === 'json' ? 'Unlimited' : '—';
   if (s.valueType === 'boolean') return v ? 'ON' : 'OFF';
   if (s.key === 'localization.time_format') return v === '12h' ? '12-Hour (02:34 PM)' : '24-Hour (14:34)';
@@ -569,6 +571,7 @@ function EditDrawer({ group, settings, pending, onStage, onClose }: { group: str
 function Field({ s, value, onChange }: { s: Setting; value: unknown; onChange: (v: unknown) => void }) {
   const opts = (list: (string | [string, string])[]) => list.map((o) => { const [v, l] = Array.isArray(o) ? o : [o, o]; return <option key={v} value={v}>{l}</option>; });
   if (s.valueType === 'boolean') return <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}><input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} /> {value ? 'On' : 'Off'}</label>;
+  if (s.key === 'sms.review_request_price_cents') return <input className="inp" style={{ width: '100%' }} type="number" min={0} max={1000} step={1} placeholder="Not set" aria-label={s.label} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />;
   if (s.valueType === 'number') return <input className="inp" style={{ width: '100%' }} type="number" value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />;
   if (s.key === 'localization.default_language') return <select className="inp" style={{ width: '100%' }} value={String(value)} onChange={(e) => onChange(e.target.value)}>{opts(LOCALES)}</select>;
   if (s.key === 'localization.default_currency') return <select className="inp" style={{ width: '100%' }} value={String(value)} onChange={(e) => onChange(e.target.value)}>{opts(CURRENCIES)}</select>;

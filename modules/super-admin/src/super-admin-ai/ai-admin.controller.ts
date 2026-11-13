@@ -4,12 +4,15 @@ import { safeInet } from '@aipowersalon/database';
 import { SuperAdminGuard, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { AiAdminService, AiAdminError, type AdminCtx } from './ai-admin.service';
 import { isAiPackageCode } from '@aipowersalon/ai';
-import { AI_SUB_ASSIGN_BODY, AI_SUB_UPDATE_BODY, AI_PACKAGE_AVAILABILITY_BODY } from '../request-schemas-ai';   // BUILD_PLAN Phase 12 (#17)
+import { AI_SUB_ASSIGN_BODY, AI_SUB_UPDATE_BODY, AI_PACKAGE_AVAILABILITY_BODY, AI_PRICE_VERSION_BODY, AI_PRICE_OVERRIDE_BODY } from '../request-schemas-ai';   // BUILD_PLAN Phase 12 (#17)
+import { AiPriceTableError } from '../tenant-ai/ai-price-table';
+import type { AiPriceTableResponse, AiPriceVersionView, AiPriceOverrideView } from '@aipowersalon/api-contracts/platform';
 
 function ctxFrom(req: any): AdminCtx { return { userId: req?.ctx?.userId ?? req?.user?.id, ip: safeInet(req?.ip) ?? undefined }; }
 async function run<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e) {
+    if (e instanceof AiPriceTableError) { const body = { code: e.code, message: e.message }; if (e.status === 404) throw new NotFoundException(body); throw new BadRequestException(body); }
     if (e instanceof AiAdminError) { if (e.code === 'not_found') throw new NotFoundException(e.message); if (e.message === 'version_conflict') throw new ConflictException(e.message); throw new BadRequestException(e.message); }
     throw e;
   }
@@ -31,6 +34,15 @@ export class AiAdminController {
   @Put('packages/:code/availability') setAvailability(@Req() r: any, @Param('code') code: string, @Body(ValidatedBody(AI_PACKAGE_AVAILABILITY_BODY, { strict: true })) b: any) {
     if (!isAiPackageCode(code)) throw new NotFoundException('unknown_ai_package');
     return run(() => this.svc.setPackageAvailability(ctxFrom(r), code, b || {}));
+  }
+  /** extras AI Usage Limits 07 (round 11): the AI price table — EMPTY until a Super Admin publishes a version; versions and
+   *  per-salon overrides are append-only and audited; publishing must state whether existing salons keep their previous price */
+  @Get('price-table') priceTable(): Promise<AiPriceTableResponse> { return run(() => this.svc.priceTable().list()); }
+  @Post('price-table/versions') publishPriceVersion(@Req() r: any, @Body(ValidatedBody(AI_PRICE_VERSION_BODY, { strict: true })) b: any): Promise<AiPriceVersionView> {
+    return run(() => this.svc.priceTable().publish(ctxFrom(r), b || {}));
+  }
+  @Post('price-table/overrides') setPriceOverride(@Req() r: any, @Body(ValidatedBody(AI_PRICE_OVERRIDE_BODY, { strict: true })) b: any): Promise<AiPriceOverrideView> {
+    return run(() => this.svc.priceTable().setOverride(ctxFrom(r), b || {}));
   }
   @Get('usage/stats') usageStats() { return run(() => this.svc.usageStats()); }
 

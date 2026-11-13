@@ -17,6 +17,7 @@ import { displayStateOf } from './ai-usage-states';
 import { KyselyAiAccessRepo } from '../../../ai/src/ai/ai-access.kysely.repository';
 import { evaluateAiAccess } from '../../../ai/src/ai/ai-access-gate';
 import { AiAdminService, AiAdminError } from '../super-admin-ai/ai-admin.service';
+import { AiPriceTable } from './ai-price-table';
 
 const P = 'c5e84000-0000-4000-8000-0000000';
 const id = (n: string) => P + n.padStart(5, '0');
@@ -298,5 +299,32 @@ describe('Extras · AI Usage Limits 07 — price change transparency (comparison
   });
   it('pure: above list is reported with a positive difference', () => {
     expect(priceComparison(3900, 4900)).toEqual({ listMonthlyCents: 3900, storedMonthlyCents: 4900, status: 'above_list', deltaMonthlyCents: 1000, listSource: 'catalog' });
+  });
+});
+
+describe('Extras · AI Usage Limits 07 (round 11) — the Super Admin AI price table (mechanism; empty by default)', () => {
+  it('with the table empty every card says "no price set" and the price shown is exactly today\'s; after versions + an override the card shows the table price, the kept previous price for a salon that subscribed earlier, and the salon override — nothing is re-billed', async () => {
+    const before = (await repo.packages(ctx, { pageSize: 24 })).items;
+    expect(before.length).toBeGreaterThan(10);
+    for (const c of before) expect(c.price.table).toMatchObject({ state: 'no_price_set', reason: 'no_version_published', currentVersionNo: null, upcoming: null });
+    const snap = before.map((c) => [c.code, c.price.cents, c.price.source, c.price.monthlyEquivalentCents]);
+    const pt = new AiPriceTable(db);
+    const SA = { userId: id('5a') };
+    await pt.publish(SA, { effectiveFrom: new Date(Date.now() - 60_000).toISOString(), existingSalonsKeepPrevious: false,
+      rows: [{ feature: 'ai_marketing_assistant', unit: 'month', priceCents: 6100 }, { feature: 'ai_booking_assistant', unit: 'month', priceCents: 5000 }, { feature: 'ai_customer_profile_assistant', unit: 'year', priceCents: 48000 }] });
+    await pt.publish(SA, { effectiveFrom: new Date().toISOString(), existingSalonsKeepPrevious: true,
+      rows: [{ feature: 'ai_marketing_assistant', unit: 'month', priceCents: 6900 }, { feature: 'ai_booking_assistant', unit: 'month', priceCents: 5500 }] });
+    const by = Object.fromEntries((await repo.packages(ctx, { pageSize: 24 })).items.map((c) => [c.code, c]));
+    expect(by.ai_marketing_assistant!.price.table).toMatchObject({ state: 'set', priceCents: 6100, source: 'version', versionNo: 1, keptPrevious: true, currentVersionNo: 2 });   // subscribed 20 days ago → keeps v1
+    expect(by.ai_booking_assistant!.price.table).toMatchObject({ state: 'set', priceCents: 5500, versionNo: 2, keptPrevious: false });                                         // no subscription → today's version
+    expect(by.ai_customer_profile_assistant!.price.table).toMatchObject({ state: 'set', unit: 'year', priceCents: 48000, versionNo: 1, keptPrevious: true });                 // yearly plan reads the year row
+    expect(by.ai_inventory_assistant!.price.table).toMatchObject({ state: 'no_price_set', unit: 'month', reason: 'not_in_version', currentVersionNo: 2 });
+    await pt.setOverride(SA, { tenantId: T, feature: 'ai_marketing_assistant', unit: 'month', priceCents: 4500, reason: 'Pilot salon price' });
+    const by2 = Object.fromEntries((await repo.packages(ctx, { pageSize: 24 })).items.map((c) => [c.code, c]));
+    expect(by2.ai_marketing_assistant!.price.table).toMatchObject({ state: 'set', priceCents: 4500, source: 'salon_override', versionNo: null, currentVersionNo: 2 });
+    const other = Object.fromEntries((await repo.packages(ctx2, { pageSize: 24 })).items.map((c) => [c.code, c]));
+    expect(other.ai_marketing_assistant!.price.table).toMatchObject({ source: 'version', priceCents: 6100 });   // another salon's override never applies
+    // the billing price is untouched: same cents / source as before the table existed
+    expect((await repo.packages(ctx, { pageSize: 24 })).items.map((c) => [c.code, c.price.cents, c.price.source, c.price.monthlyEquivalentCents])).toEqual(snap);
   });
 });

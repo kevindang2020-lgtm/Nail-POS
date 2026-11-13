@@ -284,3 +284,59 @@ describe('extras Device Health 06 (round 10) — alias and asset tag', () => {
     expect(a[1].before_state).toMatchObject({ alias: 'Window iPad', assetTag: 'AT-0042' });
   });
 });
+
+describe('extras Device Health 06 (round 11) — optional device → employee assignment', () => {
+  const E1 = id(31), E2 = id(32), EX = id(33), EC = id(34), EI = id(35);
+  beforeAll(async () => {
+    await q(sql`insert into users (id, tenant_id, branch_id, full_name, email, status, role) values
+      (${E1}, ${T}, ${B}, 'Lan Nguyen', 'lan-df@example.test', 'active', 'TECHNICIAN'),
+      (${E2}, ${T}, null, 'Minh Tran', 'minh-df@example.test', 'active', 'FRONT_DESK'),
+      (${EI}, ${T}, ${B}, 'Old Staff', 'old-df@example.test', 'inactive', 'TECHNICIAN'),
+      (${EC}, ${T}, null, 'A Customer', 'cust-df@example.test', 'active', 'CUSTOMER'),
+      (${EX}, ${X}, ${BX}, 'Other Salon Person', 'x-df@example.test', 'active', 'TECHNICIAN')`);
+  });
+  it('by default nobody is assigned (nothing automatic); the choices are active staff of this salon only, by name', async () => {
+    const all = (await fc.list(ctx(), { class: 'all', pageSize: 100 })).items;
+    expect(all.length).toBeGreaterThan(3);
+    expect(all.every((d) => d.assignedEmployee === null)).toBe(true);
+    const names = (await fc.assignableStaff(ctx() as any, {})).items.map((i) => i.name);
+    expect(names).toEqual(expect.arrayContaining(['Lan Nguyen', 'Minh Tran', 'Kevin Owner']));
+    expect(names).not.toContain('Old Staff'); expect(names).not.toContain('A Customer'); expect(names).not.toContain('Other Salon Person');
+    expect((await fc.assignableStaff(ctx() as any, { q: 'lan' })).items).toEqual([{ userId: E1, name: 'Lan Nguyen' }]);
+    expect((await fc.assignableStaff(ctx(B2) as any, {})).items.map((i) => i.name)).not.toContain('Lan Nguyen');   // another location's staff not offered
+  });
+  it('a manager assigns a device; search finds it by the employee name; re-assign and clear are audited with before / after; labels stay intact', async () => {
+    const dev = (await fc.list(ctx(), { class: 'all', q: 'compact 1' })).items[0];
+    expect(dev).toBeTruthy();
+    await fc.setLabel(ctx() as any, { source: dev.source, deviceId: dev.id, alias: 'Bar terminal', assetTag: 'AT-7001' });
+    const r = await fc.setAssignment(ctx() as any, { source: dev.source, deviceId: dev.id, userId: E1 });
+    expect(r.assignedEmployee).toMatchObject({ userId: E1, name: 'Lan Nguyen' });
+    expect(r.assignedEmployee!.assignedAt).toBeTruthy();
+    const found = await fc.list(ctx(), { class: 'all', q: 'lan nguy' });
+    expect(found.items.map((d) => d.id)).toEqual([dev.id]);
+    expect(found.items[0]).toMatchObject({ alias: 'Bar terminal', assetTag: 'AT-7001', assignedEmployee: { userId: E1, name: 'Lan Nguyen' } });
+    await fc.setAssignment(ctx() as any, { source: dev.source, deviceId: dev.id, userId: E2 });
+    expect((await fc.list(ctx(), { class: 'all', q: 'lan nguy' })).total).toBe(0);
+    expect((await fc.list(ctx(), { class: 'all', q: 'minh tran' })).items[0]).toMatchObject({ id: dev.id, assignedEmployee: { name: 'Minh Tran' } });
+    const cleared = await fc.setAssignment(ctx() as any, { source: dev.source, deviceId: dev.id, userId: null });
+    expect(cleared.assignedEmployee).toBeNull();
+    const after = (await fc.list(ctx(), { class: 'all', q: 'at-7001' })).items[0];
+    expect(after).toMatchObject({ alias: 'Bar terminal', assetTag: 'AT-7001', assignedEmployee: null });   // clearing the assignment keeps the labels
+    // setting a label later does not touch the assignment
+    await fc.setAssignment(ctx() as any, { source: dev.source, deviceId: dev.id, userId: E1 });
+    await fc.setLabel(ctx() as any, { source: dev.source, deviceId: dev.id, alias: 'Bar terminal 2', assetTag: 'AT-7001' });
+    expect((await fc.list(ctx(), { class: 'all', q: 'at-7001' })).items[0].assignedEmployee).toMatchObject({ userId: E1 });
+    const a = await q(sql`select action, before_state, after_state from audit_events where resource_type = 'device_label' and action in ('device.assigned', 'device.unassigned') order by occurred_at`);
+    expect(a.map((x: any) => x.action)).toEqual(['device.assigned', 'device.assigned', 'device.unassigned', 'device.assigned']);
+    expect(a[1]).toMatchObject({ before_state: { assignedUserId: E1 }, after_state: { assignedUserId: E2 } });
+    expect(a[2]).toMatchObject({ before_state: { assignedUserId: E2 }, after_state: { assignedUserId: null } });
+  });
+  it('refuses a disabled person, a customer account, another salon\'s person, a malformed id, and another salon\'s device; the database refuses a cross-salon person too', async () => {
+    const dev = (await fc.list(ctx(), { class: 'all', q: 'lobby' })).items[0];
+    for (const u of [EI, EC, EX, 'not-a-uuid']) expect(await code(fc.setAssignment(ctx() as any, { source: dev.source, deviceId: dev.id, userId: u }))).toBe('DEVICE_ASSIGNEE_INVALID');
+    expect(await code(fc.setAssignment(ctx(B2) as any, { source: dev.source, deviceId: dev.id, userId: E1 }))).toBe('DEVICE_FLEET_INVALID_DEVICE');   // a device outside the caller's location
+    expect(await code(fc.setAssignment({ ...ctx(), tenantId: X, branchId: BX } as any, { source: dev.source, deviceId: dev.id, userId: EX }))).toBe('DEVICE_FLEET_INVALID_DEVICE');
+    await expect(q(sql`insert into device_labels (tenant_id, device_source, device_id, assigned_user_id) values (${T}, 'kiosk', 'b12-probe', ${EX})`)).rejects.toThrow();
+    expect((await fc.list(ctx(), { class: 'all', q: 'lobby' })).items[0].assignedEmployee).toBeNull();
+  });
+});

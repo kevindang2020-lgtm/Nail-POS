@@ -20,6 +20,7 @@ import { RetentionRepository, isUuid, salonPresetRange, type RetentionContext } 
 import { resolveSettings, PLATFORM_DEFAULTS, type ReputationConfig, type SettingsLayer } from './ai-review-reputation-settings';
 import { ReviewRequestService } from './ai-review-reputation-requests.service';
 import { KyselyRequestStore, KyselyConsent } from './ai-review-reputation.kysely';
+import { REVIEW_REQUEST_PRICE_SETTING, parseReviewRequestPriceCents } from '@aipowersalon/api-contracts';
 
 type Row = Record<string, any>;
 export type RssCtx = RetentionContext;
@@ -372,8 +373,20 @@ export class ReputationSettingsCenter {
     const channelReady = channel === 'sms' ? smsConfigured : null;
     const detail = { days: 7, visits: considered, capped: visits.length > 200, wouldAsk, skipped: considered - wouldAsk, byReason, quietHoursShifted: shifted, channel, channelReady,
       requestsEnabled: eff.enabled && eff.config.reviewRequest.enabled, basis: 'ticket_total', recipients, recipientsShown: recipients.length,
-      cost: { state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' } };
+      cost: await this.requestCost(channel, wouldAsk) };
     return { key: 'request_dry_run', state: !considered ? 'INSUFFICIENT_DATA' : channelReady === false && wouldAsk > 0 ? 'WARNING' : 'PASSED', count: wouldAsk, detail };
+  }
+
+  /** extras Reviews Reputation 07 (round 11): the platform's per-message price of a review-request text (platform_settings,
+   *  BLANK by default). Blank → NOT_AVAILABLE exactly as before; set → an ESTIMATE of whole cents × the recipients who would be
+   *  texted (SMS only); an unusable stored value is said, never guessed. Read only — nothing is billed or sent. */
+  private async requestCost(channel: string, wouldAsk: number): Promise<Record<string, unknown>> {
+    const raw = (await sql<{ value: unknown }>`select ps.value from platform_settings ps where ps.setting_key = ${REVIEW_REQUEST_PRICE_SETTING} limit 1`.execute(this.db)).rows[0]?.value;
+    const unit = parseReviewRequestPriceCents(raw);
+    if (unit === 'blank') return { state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' };
+    if (unit === 'invalid') return { state: 'NOT_AVAILABLE', reason: 'price_setting_invalid' };
+    if (channel !== 'sms') return { state: 'NOT_AVAILABLE', reason: 'not_a_text_channel', unitPriceCents: unit };
+    return { state: 'ESTIMATE', unitPriceCents: unit, recipients: wouldAsk, estimatedCents: unit * wouldAsk };
   }
 
   async check(ctx: RssCtx) {

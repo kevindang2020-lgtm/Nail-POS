@@ -56,8 +56,6 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.run.status.succeeded": "Finished",
   "mpx.run.status.failed": "Failed",
   "mpx.run.line": "{c} new · {u} refreshed",
-  "mpx.searchPh": "Alert ID, rule, ticket number, staff name, customer name or phone",
-  "mpx.searchPhNoCustomer": "Alert ID, rule, ticket number or staff name",
   "mpx.statusLabel": "Status",
   "mpx.severityLabel": "Severity",
   "mpx.categoryLabel": "Kind",

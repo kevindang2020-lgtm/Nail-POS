@@ -2,6 +2,7 @@ import { Kysely, sql } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { PlatformSettingsRepo, SettingChange } from './platform-settings.repository';
 import { SETTING_DEFS, SETTING_GROUP_ORDER, settingDef, type SettingGroup } from './platform-settings-defaults';
+import { REVIEW_REQUEST_PRICE_SETTING, REVIEW_REQUEST_PRICE_CEILING_CENTS, parseReviewRequestPriceCents } from '@aipowersalon/api-contracts';
 
 export class SettingsError extends Error {
   constructor(public code: 'invalid' | 'not_found' | 'conflict' | 'forbidden', message: string) { super(message); this.name = 'SettingsError'; }
@@ -98,7 +99,9 @@ export class SuperAdminSettingsService {
       case 'currency': if (typeof value !== 'string' || !isValidCurrency(value)) bad('must be a valid ISO 4217 currency code'); break;
       case 'color': if (typeof value !== 'string' || !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value)) bad('must be a hex color'); break;
       case 'string': if (value != null && typeof value !== 'string') bad('must be text'); if (typeof value === 'string' && /<\s*script/i.test(value)) bad('must not contain script'); break;
-      case 'json': break; // free-form (e.g. Unlimited = null)
+      case 'json':   // free-form (e.g. Unlimited = null) — except the review-request text price: blank or whole cents within the ceiling
+        if (key === REVIEW_REQUEST_PRICE_SETTING && parseReviewRequestPriceCents(value) === 'invalid') bad(`must be blank or whole cents from 0 to ${REVIEW_REQUEST_PRICE_CEILING_CENTS}`);
+        break;
       default: break;
     }
   }

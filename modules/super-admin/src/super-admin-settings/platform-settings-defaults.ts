@@ -8,7 +8,7 @@
 // tenant presets are separate versioned entities (built in later units), not scalar platform settings.
 
 import type { OverridePolicy } from './setting-override-core';
-import { DISPLAY_AD_PLATFORM_SETTINGS } from '@aipowersalon/api-contracts';
+import { DISPLAY_AD_PLATFORM_SETTINGS, REVIEW_REQUEST_PRICE_SETTING } from '@aipowersalon/api-contracts';
 
 export type SettingValueType = 'string' | 'number' | 'boolean' | 'json' | 'color' | 'url' | 'email' | 'locale' | 'currency' | 'timezone';
 
@@ -81,6 +81,10 @@ export const SETTING_DEFS: SettingDef[] = [
   // Read by the salon approvals engine (modules/workforce approvals.core parseGuardrails); null = the code baseline only.
   { key: 'approvals.tenant_guardrails', group: 'global_defaults', label: 'Salon Approval Guardrails', valueType: 'json', default: null, policy: 'mandatory', mandatory: true },
   { key: 'defaults.notifications_enabled', group: 'global_defaults', label: 'Notifications by Default', valueType: 'boolean', default: true, policy: 'overridable' },
+  // extras Reviews Reputation 07 (round 11): the per-message price of a review-request text, whole cents. BLANK by default
+  // (null): the review-request dry run then says the cost is not available, exactly as before. When set, the dry run shows
+  // an estimate = this × the recipients who would be texted. Never bills anything. Validated by parseReviewRequestPriceCents.
+  { key: REVIEW_REQUEST_PRICE_SETTING, group: 'global_defaults', label: 'Review Request Text Price (cents per message, blank = not set)', valueType: 'json', default: null, policy: 'mandatory', mandatory: true },
 
   // 9. Customer Display Advertising — 23-inch dual-screen spec §110. The defs (keys, labels, defaults, bounds) are the ONE
   // copy in packages/api-contracts, which the marketing module enforces — so this screen and the rule can't disagree.

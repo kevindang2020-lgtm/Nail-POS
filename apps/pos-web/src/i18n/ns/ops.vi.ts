@@ -2274,4 +2274,14 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "acx.applies.short_no_sender": "Chưa gửi", // DRAFT — Kevin reviews
   "acx.notif.always": "Tin bảo mật và đăng nhập luôn được gửi, bất kể các công tắc này; hộp cảnh báo trong ứng dụng luôn hiển thị cảnh báo của bạn.", // DRAFT — Kevin reviews
   "acx.dh.err.staff_pref_off": "Đã giữ lại — bạn đã tắt loại tin này", // DRAFT — Kevin reviews
+  "dfx.asg.to": "Giao cho {n}", // DRAFT — Kevin reviews
+  "dfx.asg.edit": "Giao", // DRAFT — Kevin reviews
+  "dfx.asg.title": "Giao {n} cho nhân viên", // DRAFT — Kevin reviews
+  "dfx.asg.none": "Chưa giao cho ai.", // DRAFT — Kevin reviews
+  "dfx.asg.search": "Tìm nhân viên theo tên", // DRAFT — Kevin reviews
+  "dfx.asg.loading": "Đang tải nhân viên…", // DRAFT — Kevin reviews
+  "dfx.asg.noStaff": "Không có nhân viên đang làm nào khớp.", // DRAFT — Kevin reviews
+  "dfx.asg.save": "Giao", // DRAFT — Kevin reviews
+  "dfx.asg.clear": "Bỏ giao", // DRAFT — Kevin reviews
+  "dfx.asg.note": "Không bắt buộc. Thiết bị không bao giờ được giao tự động. Việc giao không đổi cài đặt nào của thiết bị; mọi thay đổi đều được lưu trong lịch sử kiểm tra.", // DRAFT — Kevin reviews
 };

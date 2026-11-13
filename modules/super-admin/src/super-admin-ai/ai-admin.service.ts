@@ -5,6 +5,7 @@ import { sql, type Kysely } from 'kysely';
 import { catalogWithRollup, normalizeAssign, normalizeUpdate } from './ai-admin-core';
 import type { AiAdminRepo } from './ai-admin.repository';
 import { AI_PACKAGES, getAiPackage } from '@aipowersalon/ai';
+import { AiPriceTable } from '../tenant-ai/ai-price-table';
 
 export class AiAdminError extends Error { constructor(public code: 'not_found' | 'bad_request', message: string) { super(message); } }
 export interface AdminCtx { userId?: string; ip?: string }
@@ -19,6 +20,8 @@ export class AiAdminService {
     return { packages, totals };
   }
   packageTenants(code: string) { return this.repo.packageTenants(code); }
+  /** extras AI Usage Limits 07 (round 11): the Super Admin AI price table (needs the database) */
+  priceTable(): AiPriceTable { if (!this.db) throw new AiAdminError('bad_request', 'database_required'); return new AiPriceTable(this.db); }
   usageSummary() { return this.repo.usageSummary(); }
   usageStats() { return this.repo.usageStats(); }
 

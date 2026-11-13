@@ -163,6 +163,24 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     expect(screen.getByTestId('rssx-dry-cost')).toHaveTextContent('no per-message price');
     expect(rs.save).not.toHaveBeenCalled();
   });
+
+  it('extras Reviews Reputation 07 (round 11): with a platform price per text set, the dry run shows the server\'s estimate (whole cents × recipients); an unusable price is said, never estimated here', async () => {
+    const detail = (cost: Record<string, unknown>) => ({ overall: 'PASSED', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'request_dry_run', state: 'PASSED', count: 3,
+      detail: { days: 7, visits: 6, capped: false, wouldAsk: 3, skipped: 3, byReason: {}, quietHoursShifted: 0, channel: 'sms', channelReady: true, requestsEnabled: true, cost, recipients: [] } }] });
+    rs.check.mockResolvedValueOnce(detail({ state: 'ESTIMATE', unitPriceCents: 4, recipients: 3, estimatedCents: 12 }));
+    const v = mount();
+    fireEvent.click(await screen.findByTestId('tab-health'));
+    fireEvent.click(screen.getByTestId('rssx-check'));
+    expect(await screen.findByTestId('rssx-dry-cost')).toHaveTextContent('Estimated cost: $0.12 (3 texts × $0.04 each)');
+    expect(screen.getByTestId('rssx-dry-cost')).toHaveTextContent('nothing is sent or billed');
+    v.unmount();
+    rs.check.mockResolvedValueOnce(detail({ state: 'NOT_AVAILABLE', reason: 'price_setting_invalid' }));
+    mount();
+    fireEvent.click(await screen.findByTestId('tab-health'));
+    fireEvent.click(screen.getByTestId('rssx-check'));
+    expect(await screen.findByTestId('rssx-dry-cost')).toHaveTextContent('not a whole number of cents');
+    expect(rs.save).not.toHaveBeenCalled();
+  });
   it('Settings 02 + 05 (round 10): each control shows the server\'s exact lock reason; role-based security failures, the running revision and an Open Integrations shortcut are shown; nothing changes', async () => {
     const base = STATE();
     rs.state.mockResolvedValue({ ...base,

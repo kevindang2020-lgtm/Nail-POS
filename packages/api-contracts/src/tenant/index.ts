@@ -70,3 +70,4 @@ export * from './ai-recommendations';   // AI Receptionist Settings 07 salon-sid
 export * from './customer-quick-activity';   // Customer 03 Quick View receipts + activity (extras, Nov 13 2026)
 export * from './customer-unmerge';   // Customer 08 reversible merge / unmerge (extras, Nov 13 2026)
 export * from './customer-intelligence-360';   // Customer Intelligence 30 360-degree view (extras, Nov 13 2026)
+export * from './ai-price-table';   // extras AI Usage Limits 07 (round 11): the AI price table as a salon sees it
