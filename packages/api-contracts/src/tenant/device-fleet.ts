@@ -6,7 +6,10 @@ export interface DfDevice {
   id: string; source: 'station' | 'kiosk' | 'display' | 'terminal'; class: DfClass; name: string; type: string;
   branchId: string | null; branch: string | null; station: string | null; status: DfStatus; reason: string | null;
   lastSeenAt: string | null; createdAt: string | null; updatedAt: string | null; facts: Record<string, unknown>;
+  /** extras Device Health 06: the salon's own alias and asset tag (device_labels), null when none */
+  alias?: string | null; assetTag?: string | null;
 }
+export interface DfLabelResponse { source: DfDevice['source']; deviceId: string; alias: string | null; assetTag: string | null; updatedAt: string }
 export interface DfSummary {
   class: DfClass; checkedAt: string; registered: number; online: number; attention: number; unassigned: number; disabled: number; retired: number;
   extra: Record<string, unknown>;

@@ -8266,6 +8266,7 @@ export interface DB {
   token_purchase_intents: TokenPurchaseIntentsTable;
   rewards_idempotency_events: RewardsIdempotencyEventsTable;   // 922
   device_history_chain: DeviceHistoryChainTable;   // 923
+  device_labels: DeviceLabelsTable;   // 924
   token_wallet_ledger: TokenWalletLedgerTable;
   // ── drift patch Oct 30 2026: round-2 guides + migrations 730/731 ──
   ai_billing_invoice_events: AiBillingInvoiceEventsTable;
@@ -10537,6 +10538,9 @@ export interface TokenPurchaseEventsTable {
   created_at: Generated<Ts>;
 }
 
+export interface DeviceLabelsTable {   // migration 924 — Device Health 06 (alias + asset tag per fleet device)
+  id: Generated<string>; tenant_id: string; device_source: string; device_id: string; alias: string | null; asset_tag: string | null; updated_by: string | null; created_at: Ts; updated_at: Ts;
+}
 export interface DeviceHistoryChainTable {   // migration 923 — Device Assignments 25 (append-only hash chain over device audit rows)
   id: Generated<string>; tenant_id: string; seq: number; audit_log_id: string; entity_type: string; entity_id: string | null; prev_hash: string; row_hash: string; created_at: Ts;
 }

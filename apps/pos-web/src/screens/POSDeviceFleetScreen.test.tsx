@@ -3,9 +3,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn(), exportCsv: vi.fn(), download: vi.fn() }));
+const m = vi.hoisted(() => ({ perms: ['pos.devices.view'] as string[], setLabel: vi.fn(), ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn(), exportCsv: vi.fn(), download: vi.fn() }));
 vi.mock('../api/posDevicesApi', () => ({ posDevicesApi: { overview: m.ov } }));
-vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check, exportCsv: m.exportCsv } }));
+vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check, exportCsv: m.exportCsv, setLabel: m.setLabel } }));
+vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => m.perms.includes(p) }));
 vi.mock('../components/FitKit', async (orig) => ({ ...(await orig<typeof import('../components/FitKit')>()), downloadText: m.download }));
 import { POSDeviceFleetScreen } from './POSDeviceFleetScreen';
 
@@ -14,7 +15,7 @@ const listOf = (items: unknown[]) => ({ class: 'reception_pos', items, total: it
 const overview = { kpis: { connectedDevices: 3, onlineDevices: 2, onlinePct: 66.7, paymentTerminals: 1, locationsConnected: 1 }, fleet: [], terminals: [], charts: { statusMix: { online: 2, offline: 1, maintenance: 0 } }, dataQuality: {} };
 const r = (view: Parameters<typeof POSDeviceFleetScreen>[0]['view']) => render(<MemoryRouter><POSDeviceFleetScreen view={view} /></MemoryRouter>);
 beforeEach(() => {
-  Object.values(m).forEach((f) => f.mockReset());
+  Object.values(m).forEach((f) => { if (typeof f === 'function') (f as any).mockReset(); }); m.perms = ['pos.devices.view'];
   m.summary.mockResolvedValue({ class: 'reception_pos', checkedAt: '2026-11-09T10:00:00Z', registered: 3, online: 1, attention: 1, unassigned: 1, disabled: 0, retired: 1, extra: {} });
   m.devices.mockResolvedValue(listOf([dev(), dev({ id: 'd2', name: 'Back Bar', status: 'unassigned', reason: 'NO_DEDICATED_DISPLAY' })]));
   m.history.mockResolvedValue({ class: 'reception_pos', items: [{ id: 'h1', at: '2026-11-08T10:00:00Z', event: 'pos_station_created', entity: 'pos_station', deviceId: 'd2', actor: 'Kevin Owner', actorRole: 'OWNER', source: 'audit' }], total: 1, page: 1, pageSize: 25, totalPages: 1 });
@@ -179,5 +180,20 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     r('reception-pos');
     await screen.findByRole('heading', { name: 'Reception POS' });
     expect(screen.queryByTestId('dfx-hw-open')).toBeNull();
+  });
+  it('extras Device Health 06 (round 10): alias / asset tag show under the name; a manager labels a device and the list reloads; no Label without the permission', async () => {
+    m.devices.mockResolvedValue(listOf([dev({ alias: 'Window iPad', assetTag: 'AT-0042' }), dev({ id: 'd2', name: 'Back Bar' })]));
+    const v = r('reception-pos');
+    expect(await screen.findByTestId('dfx-label')).toHaveTextContent('Window iPad · Asset AT-0042');
+    expect(screen.queryByTestId('dfx-label-edit')).toBeNull();
+    v.unmount();
+    m.perms = ['pos.devices.view', 'pos.devices.manage']; m.setLabel.mockResolvedValue({ source: 'station', deviceId: 'd2', alias: 'Bar', assetTag: null, updatedAt: '2026-11-13T00:00:00Z' });
+    r('reception-pos');
+    fireEvent.click((await screen.findAllByTestId('dfx-label-edit'))[1]);
+    fireEvent.change(screen.getByTestId('dfx-label-alias'), { target: { value: ' Bar ' } });
+    const calls = m.devices.mock.calls.length;
+    fireEvent.click(screen.getByTestId('dfx-label-save'));
+    await waitFor(() => expect(m.setLabel).toHaveBeenCalledWith({ source: 'station', deviceId: 'd2', alias: 'Bar', assetTag: null }));
+    await waitFor(() => expect(m.devices.mock.calls.length).toBeGreaterThan(calls));
   });
 });

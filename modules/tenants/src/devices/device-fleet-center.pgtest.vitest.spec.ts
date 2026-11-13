@@ -229,3 +229,22 @@ describe('extras Device Assignments 25 (round 10) — tamper-evident device hist
     expect((await fc.verifyHistory(ctx() as any)).findings.every((f) => f.entityId !== id(940))).toBe(true);   // another salon's chain is never mixed in
   });
 });
+
+describe('extras Device Health 06 (round 10) — alias and asset tag', () => {
+  it('a manager labels a device; search finds it by alias or asset tag; tags are unique per salon; another salon\'s device cannot be labelled; audited', async () => {
+    const dev = (await fc.list(ctx(), { class: 'all', q: 'lobby' })).items[0];
+    expect(dev).toBeTruthy(); expect(dev.alias).toBeNull();
+    const r = await fc.setLabel(ctx() as any, { source: dev.source, deviceId: dev.id, alias: 'Window iPad', assetTag: 'AT-0042' });
+    expect(r).toMatchObject({ alias: 'Window iPad', assetTag: 'AT-0042' });
+    expect((await fc.list(ctx(), { class: 'all', q: 'window ipad' })).items.map((d) => d.id)).toEqual([dev.id]);
+    expect((await fc.list(ctx(), { class: 'all', q: 'at-0042' })).items[0]).toMatchObject({ id: dev.id, alias: 'Window iPad', assetTag: 'AT-0042' });
+    const other = (await fc.list(ctx(), { class: 'all' })).items.find((d) => d.id !== dev.id)!;
+    await expect(fc.setLabel(ctx() as any, { source: other.source, deviceId: other.id, assetTag: 'at-0042' })).rejects.toMatchObject({ code: 'DEVICE_ASSET_TAG_TAKEN' });
+    await expect(fc.setLabel({ ...ctx(), tenantId: X, branchId: BX } as any, { source: dev.source, deviceId: dev.id, alias: 'x' })).rejects.toMatchObject({ code: 'DEVICE_FLEET_INVALID_DEVICE' });
+    await fc.setLabel(ctx() as any, { source: dev.source, deviceId: dev.id, alias: null, assetTag: '' });
+    expect((await fc.list(ctx(), { class: 'all', q: 'window ipad' })).total).toBe(0);
+    const a = await q(sql`select action, before_state, after_state from audit_events where resource_type = 'device_label' order by occurred_at`);
+    expect(a.map((x: any) => x.action)).toEqual(['device.label_set', 'device.label_set']);
+    expect(a[1].before_state).toMatchObject({ alias: 'Window iPad', assetTag: 'AT-0042' });
+  });
+});

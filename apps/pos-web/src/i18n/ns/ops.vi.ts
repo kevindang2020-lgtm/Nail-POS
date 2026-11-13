@@ -2126,4 +2126,11 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.v.kind.broken": "đứt mắt xích", // DRAFT — Kevin reviews
   "dfx.v.kind.missing": "thiếu bản ghi", // DRAFT — Kevin reviews
   "dfx.v.note": "Chỉ đọc — không sửa gì. Mỗi bản ghi thiết bị được nối với bản ghi trước khi ghi; kiểm tra này tính lại các mắt xích.", // DRAFT — Kevin reviews
+  "dfx.lbl.tag": "Mã tài sản {t}", // DRAFT — Kevin reviews
+  "dfx.lbl.edit": "Nhãn", // DRAFT — Kevin reviews
+  "dfx.lbl.title": "Gắn nhãn {n}", // DRAFT — Kevin reviews
+  "dfx.lbl.alias": "Tên gọi (tên tiệm đặt)", // DRAFT — Kevin reviews
+  "dfx.lbl.asset": "Mã tài sản", // DRAFT — Kevin reviews
+  "dfx.lbl.save": "Lưu nhãn", // DRAFT — Kevin reviews
+  "dfx.lbl.note": "Nhãn chỉ để tìm thiết bị, không đổi cài đặt nào. Để trống để xóa.", // DRAFT — Kevin reviews
 };

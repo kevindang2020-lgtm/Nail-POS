@@ -2127,4 +2127,11 @@ export const OPS_EN = {
   "dfx.v.kind.broken": "chain link broken",
   "dfx.v.kind.missing": "record missing",
   "dfx.v.note": "Read only — nothing is repaired. Each device record is linked to the previous one when written; this check recomputes the links.",
+  "dfx.lbl.tag": "Asset {t}",
+  "dfx.lbl.edit": "Label",
+  "dfx.lbl.title": "Label {n}",
+  "dfx.lbl.alias": "Alias (your name for it)",
+  "dfx.lbl.asset": "Asset tag",
+  "dfx.lbl.save": "Save label",
+  "dfx.lbl.note": "Labels are for finding the device. They change no device setting. Leave a field empty to clear it.",
 };

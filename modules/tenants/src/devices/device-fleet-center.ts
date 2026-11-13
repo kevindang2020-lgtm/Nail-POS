@@ -22,7 +22,7 @@ import { sql } from 'kysely';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { DISPLAY_ONLINE_WINDOW_MS, terminalOperationalStatus } from '@aipowersalon/api-contracts';
-import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse, DfHistoryVerifyResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse, DfHistoryVerifyResponse, DfLabelResponse } from '@aipowersalon/api-contracts/tenant';
 import { evaluateDeviceAlerts, listDeviceAlerts } from './device-alert-routing';
 
 export interface DfCtx { tenantId: string; branchId: string; userId?: string | null; role?: string; permissions?: string[] }
@@ -204,6 +204,40 @@ export class DeviceFleetCenter {
     return c as DfClass;
   }
 
+  /** extras Device Health 06 (round 10): attach each device's alias / asset tag (device_labels — one read per list) */
+  private async withLabels(ctx: DfCtx, rows: DfDevice[]): Promise<DfDevice[]> {
+    if (!rows.length) return rows;
+    const labels = (await sql<{ device_source: string; device_id: string; alias: string | null; asset_tag: string | null }>`SELECT l.device_source, l.device_id, l.alias, l.asset_tag
+      FROM device_labels l WHERE l.tenant_id = ${ctx.tenantId}`.execute(this.db)).rows;
+    const by = new Map(labels.map((l) => [`${l.device_source}|${l.device_id}`, l]));
+    return rows.map((r) => { const l = by.get(`${r.source}|${r.id}`); return { ...r, alias: l?.alias ?? null, assetTag: l?.asset_tag ?? null }; });
+  }
+  /** extras Device Health 06 (round 10): set or clear a device's alias / asset tag. The device must be one of THIS salon's
+   *  (in the caller's scope); an asset tag is unique in the salon; audited with before / after. Changes no device setting. */
+  async setLabel(ctx: DfCtx, b: { source?: unknown; deviceId?: unknown; alias?: unknown; assetTag?: unknown }): Promise<DfLabelResponse> {
+    const source = String(b.source ?? ''); const deviceId = String(b.deviceId ?? '');
+    if (!['station', 'kiosk', 'display', 'terminal'].includes(source) || !/^[A-Za-z0-9_.:-]{1,80}$/.test(deviceId)) throw new DeviceFleetError('DEVICE_FLEET_INVALID_DEVICE', 'Unknown device.');
+    const clean = (v: unknown, max: number) => (v == null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
+    const alias = clean(b.alias, 60), assetTag = clean(b.assetTag, 40);
+    const dev = (await this.rows(ctx, 'all')).concat(await this.stations(ctx, this.now().getTime())).find((r) => r.source === source && r.id === deviceId);
+    if (!dev) throw new DeviceFleetError('DEVICE_FLEET_INVALID_DEVICE', 'Unknown device.', 404);
+    if (assetTag) {
+      const clash = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM device_labels l WHERE l.tenant_id = ${ctx.tenantId} AND lower(l.asset_tag) = lower(${assetTag})
+        AND NOT (l.device_source = ${source} AND l.device_id = ${deviceId})`.execute(this.db)).rows[0];
+      if (Number(clash?.n ?? 0) > 0) throw new DeviceFleetError('DEVICE_ASSET_TAG_TAKEN', 'Another device already has that asset tag.', 409);
+    }
+    const U = ctx.userId && UUID.test(ctx.userId) ? ctx.userId : null;
+    return this.db.transaction().execute(async (trx: any) => {
+      const before = (await sql<{ alias: string | null; asset_tag: string | null }>`SELECT l.alias, l.asset_tag FROM device_labels l WHERE l.tenant_id = ${ctx.tenantId} AND l.device_source = ${source} AND l.device_id = ${deviceId}`.execute(trx)).rows[0] ?? null;
+      const r = (await sql<{ updated_at: Date | string }>`INSERT INTO device_labels (tenant_id, device_source, device_id, alias, asset_tag, updated_by) VALUES (${ctx.tenantId}, ${source}, ${deviceId}, ${alias}, ${assetTag}, ${U})
+        ON CONFLICT (tenant_id, device_source, device_id) DO UPDATE SET alias = EXCLUDED.alias, asset_tag = EXCLUDED.asset_tag, updated_by = EXCLUDED.updated_by, updated_at = now() RETURNING updated_at`.execute(trx)).rows[0];
+      await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: ctx.branchId || null, userId: U, role: ctx.role ?? null },
+        { module: 'devices', action: 'device.label_set', resourceType: 'device_label', resourceId: `${source}:${deviceId}`, summary: `Device label updated (${dev.name})`,
+          before: before ? { alias: before.alias, assetTag: before.asset_tag } : null, after: { alias, assetTag } });
+      return { source: source as DfDevice['source'], deviceId, alias, assetTag, updatedAt: new Date(r.updated_at).toISOString() };
+    });
+  }
+
   async summary(ctx: DfCtx, clsIn?: string): Promise<DfSummary> {
     const cls = this.cls(clsIn);
     const rows = await this.rows(ctx, cls);
@@ -243,8 +277,9 @@ export class DeviceFleetCenter {
     if (q.branchId && !UUID.test(q.branchId)) throw new DeviceFleetError('DEVICE_FLEET_INVALID_BRANCH', 'Unknown branch.');
     const term = String(q.q ?? '').trim();
     if (term && term.length < 2) throw new DeviceFleetError('DEVICE_FLEET_SEARCH_TOO_SHORT', 'Type at least 2 characters.');
-    let rows = await this.rows(ctx, cls);
-    if (term) { const f = fold(term); rows = rows.filter((r) => [r.name, r.branch, r.station, r.type, r.id, r.facts?.hsnMasked].some((v) => fold(v).includes(f))); }
+    let rows = await this.withLabels(ctx, await this.rows(ctx, cls));
+    // extras Device Health 06 (round 10): the salon's own alias and asset tag are searched too
+    if (term) { const f = fold(term); rows = rows.filter((r) => [r.name, r.branch, r.station, r.type, r.id, r.facts?.hsnMasked, r.alias, r.assetTag].some((v) => fold(v).includes(f))); }
     if (status === 'unassigned') rows = rows.filter((r) => r.status === 'unassigned' || (r.source === 'display' && !r.station) || (r.source === 'kiosk' && !r.branchId) || (r.source === 'terminal' && !r.station));
     else if (status !== 'all') rows = rows.filter((r) => r.status === status);
     if (q.branchId) rows = rows.filter((r) => r.branchId === q.branchId);
