@@ -65,6 +65,9 @@ afterAll(async () => { await app?.close(); });
 describe('every route names its permission (the catalog keys from rbac.ts)', () => {
   const ROUTES: Record<string, [number, string, string]> = {   // handler → [RequestMethod, path, permission]
     settings: [0, 'settings', 'community.feed.view'], updateSettings: [2, 'settings', 'community.settings.manage'],
+    // round 9 (Safety Community 06 / 08 / 09): read-only corrections inbox, role preview and the sanitized diagnostics export
+    corrections: [0, 'corrections', 'community.appeal.create'], rolePreview: [0, 'role-preview', 'community.settings.manage'],
+    diagnosticsExport: [0, 'diagnostics/export', 'community.settings.manage'],
     acknowledge: [1, 'rules/acknowledge', 'community.feed.view'], feed: [0, 'feed', 'community.feed.view'], search: [0, 'search', 'community.feed.view'],
     view: [0, 'posts/:id', 'community.feed.view'], mine: [0, 'mine', 'community.advisory.draft'], mineOne: [0, 'mine/:id', 'community.advisory.draft'],
     assist: [1, 'advisories/assist', 'community.advisory.draft'], create: [1, 'advisories', 'community.advisory.draft'],

@@ -2103,4 +2103,5 @@ export const OPS_EN = {
   "ops.liveOps.kc.k.monthlyCardVolumeCents": "Card volume this month",
   "ops.liveOps.kc.k.customerRetentionPercent": "Customer retention",
   "ops.liveOps.kc.k.aiBookingConversionPercent": "AI booking conversion",
+  "ops.serving.review.vip": "VIP",
 };

@@ -840,7 +840,7 @@ export function POSServingScreen() {
       }; return (
         <OverlayBox onClose={() => setReview(null)} title={tx('ops.serving.review.title')} sub={tx(`ops.serving.review.action.${r.action}`)}>
           <div data-testid="sv-review" data-can-proceed={String(r.canProceed)} style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12.5 }}>
-            <div><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.review.guest')}: </span><b>{r.guest.customerName}</b>{r.guest.isVip ? ' · VIP' : ''} · {r.guest.ticketNumber}</div>
+            <div><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.review.guest')}: </span><b>{r.guest.customerName}</b>{r.guest.isVip ? ` · ${tx('ops.serving.review.vip')}` : ''} · {r.guest.ticketNumber}</div>
             {r.change && r.action === 'assign_technician' ? <div data-testid="sv-review-change">{tx('ops.serving.review.move', { from: r.change.fromTechnicianName || '—', to: r.change.toTechnicianName || '—' })}</div> : null}
             {r.change && r.action === 'add_service' ? <div data-testid="sv-review-change">{r.change.priceSource === 'manual' ? tx('ops.serving.review.priceManual', { price: m2(r.change.priceCents), catalog: m2(r.change.catalogPriceCents) }) : tx('ops.serving.review.priceCatalog', { price: m2(r.change.priceCents) })}</div> : null}
             <div>

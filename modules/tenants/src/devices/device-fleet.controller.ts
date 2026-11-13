@@ -3,6 +3,7 @@
 // the Devices Overview). Read-only: device actions stay on their owning endpoints (displays / registers / terminals).
 // extras Tablets 11: GET export (pos.devices.export → owners and managers) — the redacted inventory + health CSV, audited.
 import { ListQuery } from '@aipowersalon/database';
+import type { ListQuery as ListQueryParams } from '@aipowersalon/api-contracts';
 import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
@@ -43,7 +44,7 @@ export class DeviceFleetController {
    *  redacted CSV with a provenance block; never a token, pairing code, processor id or customer data; one audit row */
   @AsyncExport({ kind: 'pos.device-fleet.export' }) @Get('export') @RequirePermission('pos.devices.export') @ListQuery(LIST)
   @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="device-inventory.csv"')
-  exportFile(@Req() q: any, @Query() f: any): Promise<string> { return run(() => exportDeviceFleetCsv(this.r(), ctxFrom(q), f ?? {})); }
+  exportFile(@Req() q: any, @Query() f: ListQueryParams): Promise<string> { return run(() => exportDeviceFleetCsv(this.r(), ctxFrom(q), (f ?? {}) as Record<string, unknown>)); }
   /** Device Integration Logs 05: the routed (deduplicated) device / integration alerts — the logs page's list. Reading it
    *  may run the router once a minute (it writes only the salon's own alert feed, never a device or a log). */
   @Get('alerts') @RequirePermission('pos.logs.view')

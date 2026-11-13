@@ -192,7 +192,7 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(await screen.findByTestId('note')).toHaveTextContent(/Export ready/);
   });
 
-  it('200-Technician 08 — bulk staff actions: select rows, review only them (server ids filter), print them, export them after a confirm', async () => {
+  it('200-Technician 08 — bulk staff actions: select rows, review only them (server ids filter), export them after a confirm (no print — Kevin: no printing)', async () => {
     api.exportCsv.mockResolvedValue('\uFEFFEmployee ID,Name\r\nEMP-U-V,Vishal verma');
     (globalThis as any).URL.createObjectURL = vi.fn(() => 'blob:x'); (globalThis as any).URL.revokeObjectURL = vi.fn();
     mount(); await screen.findAllByTestId('member-row');
@@ -201,9 +201,7 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(screen.getByTestId('bulk-count')).toHaveTextContent('1 selected');
     fireEvent.click(screen.getByTestId('bulk-review'));
     await waitFor(() => expect(api.directory).toHaveBeenLastCalledWith(expect.objectContaining({ ids: 'u-v' })));
-    fireEvent.click(screen.getByTestId('bulk-print'));
-    expect(screen.getAllByTestId('bulk-print-row').map((n) => n.textContent)).toEqual([expect.stringContaining('Vishal verma')]);
-    fireEvent.click(screen.getByText('Close'));
+    expect(screen.queryByTestId('bulk-print')).toBeNull();   // printing is not part of this product (check:no-print)
     fireEvent.click(screen.getByTestId('bulk-export'));
     expect(api.exportCsv).not.toHaveBeenCalled();   // a confirm first
     expect(screen.getByTestId('bulk-confirm')).toHaveTextContent('Export 1 selected team member(s) to CSV? The export is recorded.');

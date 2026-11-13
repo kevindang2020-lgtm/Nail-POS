@@ -351,7 +351,6 @@ export const TEAMMEMBERS_VI = {
   'tmm.bulk.count': 'Đã chọn {n}', // DRAFT — Kevin reviews
   'tmm.bulk.review': 'Chỉ xem người đã chọn', // DRAFT — Kevin reviews
   'tmm.bulk.showAll': 'Xem tất cả', // DRAFT — Kevin reviews
-  'tmm.bulk.print': 'In người đã chọn', // DRAFT — Kevin reviews
   'tmm.bulk.export': 'Xuất người đã chọn', // DRAFT — Kevin reviews
   'tmm.bulk.confirmExport': 'Xuất {n} nhân viên đã chọn ra CSV? Việc xuất sẽ được ghi lại.', // DRAFT — Kevin reviews
   'tmm.bulk.exportYes': 'Đồng ý xuất', // DRAFT — Kevin reviews
@@ -359,6 +358,4 @@ export const TEAMMEMBERS_VI = {
   'tmm.bulk.rule': 'Dùng Bộ lọc thêm (chưa có tài khoản, thiếu dịch vụ) để xem các trường hợp cần xử lý trong số người đã chọn. Không phân công, thay đổi hay gửi gì.', // DRAFT — Kevin reviews
   'tmm.bulk.selectPage': 'Chọn tất cả nhân viên trên trang này', // DRAFT — Kevin reviews
   'tmm.bulk.selectRow': 'Chọn {name}', // DRAFT — Kevin reviews
-  'tmm.bulk.printTitle': 'Nhân viên đã chọn', // DRAFT — Kevin reviews
-  'tmm.bulk.printGo': 'In', // DRAFT — Kevin reviews
 };

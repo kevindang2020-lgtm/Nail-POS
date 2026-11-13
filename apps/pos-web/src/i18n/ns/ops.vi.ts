@@ -2102,4 +2102,5 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.monthlyCardVolumeCents": "Doanh số thẻ tháng này", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
+  "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
 };

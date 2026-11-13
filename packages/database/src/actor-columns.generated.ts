@@ -9,6 +9,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   advertising_global_policy: 'ut',
   ai_billing_invoice_links: 'ut',
   ai_budgets: 'ut',
+  ai_business_report_schedules: 'ut',
   ai_checkout_upsell_settings: 'ut',
   ai_control_modes: 'ut',
   ai_customer_profile_settings: 'ut',

@@ -318,7 +318,7 @@ export class BusinessCenter {
           values (${T}, ${r.branch_id ?? null}, 'ai_business_report', ${ok ? 'info' : 'warning'}, 'new',
             ${ok ? `Your ${TYPE_LABEL[type]} is ready` : `Your ${TYPE_LABEL[type]} could not be made`},
             ${ok ? `Made automatically for ${key}. Open AI Center → AI Business Reports to read it.` : 'The scheduled report failed. Open AI Center → AI Business Reports and run Check AI Business Reports System.'},
-            ${JSON.stringify({ reportId: job.id, scheduleId: String(r.id), reportType: type, occurrence: key })}::jsonb, ${String(r.role) === 'OWNER' ? 'owner' : 'all'})`.execute(this.db);
+            ${JSON.stringify({ reportId: job.id, scheduleId: String(r.id), reportType: type, occurrence: key })}::jsonb, ${has(ctx, 'settings.edit') ? 'owner' : 'all'})`.execute(this.db);
       }
       if (ok) generated++; else failed++;
     }

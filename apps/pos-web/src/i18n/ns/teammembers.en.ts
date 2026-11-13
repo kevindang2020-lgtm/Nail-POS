@@ -351,7 +351,6 @@ export const TEAMMEMBERS_EN = {
   'tmm.bulk.count': '{n} selected',
   'tmm.bulk.review': 'Review selected only',
   'tmm.bulk.showAll': 'Show everyone',
-  'tmm.bulk.print': 'Print selected',
   'tmm.bulk.export': 'Export selected',
   'tmm.bulk.confirmExport': 'Export {n} selected team member(s) to CSV? The export is recorded.',
   'tmm.bulk.exportYes': 'Yes, export',
@@ -359,6 +358,4 @@ export const TEAMMEMBERS_EN = {
   'tmm.bulk.rule': 'Use More Filters (no login, missing service mapping) to see the exceptions among the selected. Nothing is assigned, changed or sent.',
   'tmm.bulk.selectPage': 'Select every team member on this page',
   'tmm.bulk.selectRow': 'Select {name}',
-  'tmm.bulk.printTitle': 'Selected team members',
-  'tmm.bulk.printGo': 'Print',
 };

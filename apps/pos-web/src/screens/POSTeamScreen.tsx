@@ -78,7 +78,7 @@ export function POSTeamScreen() {
   // 200-Technician 08 — Quick Bulk Staff Actions: pick rows, then review only them (the server filters by id, so More Filters
   // such as 'no login' / 'missing mapping' show the exceptions AMONG the selection), print them, or export them (the audited CSV,
   // after a confirm). Nothing is assigned, notified or changed.
-  const [sel, setSel] = useState<string[]>([]); const [selOnly, setSelOnly] = useState(false); const [bulkAsk, setBulkAsk] = useState<null | 'export'>(null); const [printOpen, setPrintOpen] = useState<any[] | null>(null);
+  const [sel, setSel] = useState<string[]>([]); const [selOnly, setSelOnly] = useState(false); const [bulkAsk, setBulkAsk] = useState<null | 'export'>(null);
   const toggleSel = (id: string) => setSel((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : xs.length >= 100 ? xs : [...xs, id]));
   const pq = periodQuery(period);
   useEffect(() => setMemPage(1), [q, tab, role, status, shift, department, account, extra, sort, basis, period.preset, period.from, period.to, pageSize]);
@@ -200,7 +200,6 @@ export function POSTeamScreen() {
           {sel.length ? <div className="mos-tools" data-testid="bulk-bar" role="toolbar" aria-label={tx('tmm.bulk.aria')}>
             <b data-testid="bulk-count">{tx('tmm.bulk.count', { n: String(sel.length) })}</b>
             <button type="button" className="fk-btn ghost sm" aria-pressed={selOnly} onClick={() => setSelOnly((v) => !v)} data-testid="bulk-review">{selOnly ? tx('tmm.bulk.showAll') : tx('tmm.bulk.review')}</button>
-            <button type="button" className="fk-btn ghost sm" onClick={() => setPrintOpen(dirD.items.filter((m: any) => sel.includes(m.memberId)))} data-testid="bulk-print">{tx('tmm.bulk.print')}</button>
             {bulkAsk === 'export' ? <span data-testid="bulk-confirm">{tx('tmm.bulk.confirmExport', { n: String(sel.length) })} <button type="button" className="fk-btn sm" onClick={() => void doExport(true)} disabled={exporting} data-testid="bulk-export-yes">{tx('tmm.bulk.exportYes')}</button> <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk(null)}>{tx('pos.cancel')}</button></span>
               : <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk('export')} disabled={exporting} data-testid="bulk-export">{tx('tmm.bulk.export')}</button>}
             <button type="button" className="fk-link" onClick={() => { setSel([]); setSelOnly(false); setBulkAsk(null); }} data-testid="bulk-clear">{tx('tmm.bulk.clear')}</button>
@@ -229,12 +228,6 @@ export function POSTeamScreen() {
                 <button type="button" className="fk-btn ghost sm t-opt" onClick={() => nav('/messages')} aria-label={tx('pos.message')}>✉</button></td>
             </tr>)}</tbody></table></div>}
         <p className="fk-hint">{tx('tmm.dirRule')}</p>
-        {printOpen ? <div className="co-overlay" role="dialog" aria-modal="true" aria-label={tx('tmm.bulk.printTitle')} data-testid="bulk-print-view"><div className="co-card">
-          <h2>{tx('tmm.bulk.printTitle')}</h2>
-          <table className="fk-table"><thead><tr><th>{tx('pos.team_member')}</th><th>{tx('pos.role_2')}</th><th>{tx('pos.shift')}</th><th>{tx('pos.status')}</th></tr></thead>
-            <tbody>{printOpen.map((m: any) => <tr key={m.memberId} data-testid="bulk-print-row"><td>{m.name} <span className="mos-mono">{m.code}</span></td><td>{m.roles.map(roleName).join(' + ')}</td><td>{m.shift ? rangeText(m.shift) : '—'}</td><td>{liveName(m.live)}</td></tr>)}</tbody></table>
-          <div className="mos-tools"><button type="button" className="fk-btn" onClick={() => window.print()} data-testid="bulk-print-go">{tx('tmm.bulk.printGo')}</button><button type="button" className="fk-btn ghost" onClick={() => setPrintOpen(null)}>{tx('pos.close')}</button></div>
-        </div></div> : null}
       </FitPanel>}
 
       <div className="mos-row two cg-row">
