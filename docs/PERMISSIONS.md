@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/permissions/src/permission-registry.ts` by `tooling/permissions/generate-permission-docs.mjs`. Do not edit by hand.
 
-448 catalog keys — critical 19, high 72, medium 120, low 237; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
+448 catalog keys — critical 19, high 72, medium 120, low 237; 32 need a fresh step-up to grant or use; 184 legacy `pos.*` route keys folded in as aliases.
 
 Authorization is by PERMISSION, never by role name: a role (or template / custom role) is a set of these keys; a per-person
 ALLOW / DENY override adds or removes one; DENY always wins. Scopes say where a key applies (OWN = the person's own records,
@@ -116,7 +116,7 @@ owner's high-risk report and in every access review.
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `settings.view` | View settings | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View settings. | `pos.api_keys.view` `pos.deployments.view` `pos.devices.view` `pos.logs.view` `pos.webhooks.view` |
+| `settings.view` | View settings | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View settings. | `pos.api_keys.view` `pos.deployments.view` `pos.devices.export` `pos.devices.view` `pos.logs.view` `pos.webhooks.view` |
 | `settings.edit` | Edit settings | critical | TENANT | yes | OWNER | Change salon settings, including payment processors, devices, Twilio / SMS and receipt settings. | `payment_devices.approve` `payment_devices.manage` `payment_devices.revoke` `pos.api_keys.manage` `pos.customer_display.manage` `pos.deployments.manage` `pos.devices.manage` `pos.settings.edit` `pos.webhooks.manage` |
 
 ### ai

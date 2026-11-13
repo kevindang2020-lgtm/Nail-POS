@@ -10,5 +10,7 @@ export const posDeviceFleetApi = {
   summary: (cls: DfClass) => api.get<DfSummary>('/pos/device-fleet/summary', { class: cls }),
   devices: (q: DeviceFleetQuery) => api.get<DfListResponse>('/pos/device-fleet/devices', { ...clean(q), class: q.class }),
   history: (q: DeviceHistoryQuery) => api.get<DfHistoryResponse>('/pos/device-fleet/history', { ...clean(q), class: q.class }),
+  /** extras Tablets 11 — the redacted inventory + health CSV (owners / managers; audited); same filters as devices() */
+  exportCsv: (q: DeviceFleetQuery) => api.exportAsync<string>('/pos/device-fleet/export', { ...clean(q), class: q.class }, 'text'),
   check: (cls: DfClass) => api.post<DfCheckResponse>('/pos/device-fleet/check', { class: cls }),
 };

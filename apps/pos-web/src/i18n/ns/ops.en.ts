@@ -1944,4 +1944,8 @@ export const OPS_EN = {
   "syschk.catalog.checkout_discount_over_lines.fix": "Review the discounts on those tickets (deal, coupon, manual or membership) and who approved them.",
   "syschk.catalog.checkout_tax_without_taxable_line": "No paid ticket charged tax without a taxable line",
   "syschk.catalog.checkout_tax_without_taxable_line.fix": "Check each service’s Taxable setting and the tax on those tickets; refund the tax if it was charged by mistake.",
+  "dfx.export.btn": "Export inventory",
+  "dfx.export.hint": "Download the devices in this view (current filters) with the health check as a CSV. Tokens, pairing codes, processor ids, full serial numbers and customer data are never included.",
+  "dfx.export.busy": "Preparing…",
+  "dfx.export.done": "Device inventory downloaded.",
 };

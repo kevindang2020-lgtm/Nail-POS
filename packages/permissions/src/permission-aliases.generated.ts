@@ -89,6 +89,7 @@ export const POS_ROUTE_KEY_ALIASES: readonly string[] = [
   'pos.deals.apply',
   'pos.deployments.manage',
   'pos.deployments.view',
+  'pos.devices.export',
   'pos.devices.manage',
   'pos.devices.view',
   'pos.logs.view',

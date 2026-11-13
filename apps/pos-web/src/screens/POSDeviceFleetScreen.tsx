@@ -19,7 +19,7 @@ import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, D
 import { posDevicesApi, type DevicesOverview } from '../api/posDevicesApi';
 import { posDeviceFleetApi, type DeviceFleetQuery } from '../api/posDeviceFleetApi';
 import { reportError } from './reportsCommon';
-import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, downloadText } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { codeLabel, agoLabel } from '../components/codeLabel';
 import { fmtInZone, fmtNumber } from '../i18n/format';
@@ -100,6 +100,13 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   useEffect(loadList, [loadList]);
   const refresh = () => { loadTop(); loadList(); };
   const [hwOpen, setHwOpen] = useState(false);   // extras Device Assignments 08 — this register's hardware readiness (measured live, read only)
+  // extras Tablets 11 — Safe Export: the server builds the redacted CSV for the current filters (every page); nothing is built here
+  const [exp, setExp] = useState<{ busy: boolean; note: { ok: boolean; text: string } | null }>({ busy: false, note: null });
+  const runExport = () => {
+    setExp({ busy: true, note: null });
+    posDeviceFleetApi.exportCsv({ ...f, page: undefined, pageSize: undefined }).then((csv) => { downloadText(`device-inventory-${cfg.cls}.csv`, String(csv)); setExp({ busy: false, note: { ok: true, text: tt('dfx.export.done') } }); })
+      .catch((e) => setExp({ busy: false, note: { ok: false, text: reportError(e, 'devices') } }));
+  };
   const runCheck = () => { setHealth('loading'); posDeviceFleetApi.check(cfg.cls).then(setHealth).catch((e) => setHealth({ error: reportError(e, 'devices') })); };
 
   const n = (v: number | undefined | null) => (v == null ? '—' : fmtNumber(v));
@@ -149,8 +156,10 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
         {cfg.manage ? <button className="btn ghost" data-testid="dfx-manage" onClick={() => nav(cfg.manage!.to)}>{tt(cfg.manage.label)}</button> : null}
         {view === 'assignments' ? <button className="btn ghost" data-testid="dfx-hw-open" onClick={() => setHwOpen(true)}>{tt('dfx.hw.btn')}</button> : null}
         <button className="btn ghost" data-testid="dfx-refresh" onClick={refresh}>{tt('dfx.refresh')}</button>
+        {cfg.cls !== 'receipt' ? <button className="btn ghost" data-testid="dfx-export" disabled={exp.busy} onClick={runExport} title={tt('dfx.export.hint')} aria-label={`${tt('dfx.export.btn')} — ${tt('dfx.export.hint')}`}>{exp.busy ? tt('dfx.export.busy') : tt('dfx.export.btn')}</button> : null}
         <button className="btn" data-testid="dfx-check" onClick={runCheck}>{tt(`dfx.check.${cfg.key}`)}</button>
       </div>
+      {exp.note ? <div role="status" className={'sub' + (exp.note.ok ? '' : ' warn')} data-testid="dfx-export-note">{exp.note.text}</div> : null}
       {hwOpen ? <HardwareReadinessDialog onClose={() => setHwOpen(false)} /> : null}
       {topErr ? <ErrorRetry message={topErr} onRetry={loadTop} /> : null}
       <div className="rvw-kpis dfx-kpis" data-testid="dfx-kpis">{kpis()}</div>
