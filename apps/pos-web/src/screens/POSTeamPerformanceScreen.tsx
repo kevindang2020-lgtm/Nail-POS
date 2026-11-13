@@ -161,6 +161,12 @@ function PerformanceDetails({ id, pq, periodLabel, onClose, onComposite }: { id:
           <dt>{tx('tp.rank')}</dt><dd>{x.rank ? tx('tp.rankV', { p: nf(x.rank.position), n: nf(x.rank.of) }) : tx('tp.notRanked')}</dd>
           <dt>{tx('tp.col.services')}</dt><dd>{nf(x.services)}{x.lastServiceAt ? ` · ${tx('tp.last', { t: whenTime(x.lastServiceAt) })}` : ''}</dd>
           <dt>{tx('tp.helped')}</dt><dd data-testid="helped-tickets">{x.helpedTickets ? tx('tp.helpedV', { n: nf(x.helpedTickets) }) : tx('tp.helpedNone')}</dd>
+          {/* round 10 (TEAM PERFORMANCE 3 14): service accuracy and the configured operational metrics, each apart — never in the score */}
+          {x.accuracy ? <><dt>{tx('tp.accuracy')}</dt><dd data-testid="service-accuracy">{x.accuracy.checked
+            ? tx('tp.accuracyV', { r: String(x.accuracy.ratePct), a: nf(x.accuracy.approved), c: nf(x.accuracy.checked), i: nf(x.accuracy.issueFound) }) + (x.accuracy.lowSample ? ` · ${tx('tp.lowSample')}` : '')
+            : tx('tp.accuracyNone')}{x.accuracy.unchecked ? ` · ${tx('tp.accuracyUnchecked', { n: nf(x.accuracy.unchecked) })}` : ''}</dd></> : null}
+          {x.operational?.reliability ? <><dt>{tx('tp.opReliability')}</dt><dd data-testid="op-reliability">{tx('tp.opReliabilityV', { d: nf(x.operational.reliability.completed), f: nf(x.operational.reliability.failed) })}</dd></> : null}
+          {x.operational?.onTime ? <><dt>{tx('tp.opOnTime')}</dt><dd data-testid="op-ontime">{tx('tp.opOnTimeV', { o: nf(x.operational.onTime.onTime), l: nf(x.operational.onTime.late) })}</dd></> : null}
           <dt>{tx('tp.source')}</dt><dd>{tx('tp.sourceV')}</dd>
           <dt>{tx('tq.qualified')}</dt><dd>{x.qualifiedServices.length ? x.qualifiedServices.join(', ') : tx('tq.noQualified')}</dd>
         </dl>

@@ -135,11 +135,27 @@ export class TeamPerformanceScreenRepository {
         and t.paid_at is not null and t.removed_at is null and coalesce(t.payment_status, '') <> 'voided' and ${inPeriod(sql`t.paid_at`, per)}
         and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)`.execute(this.db)).rows[0]?.n);
     const t = (await sql<any>`select te.id, te.full_name, te.avatar_url, te.status, te.role_label, b.name as branch from technicians te left join branches b on b.id = te.branch_id and b.tenant_id = te.tenant_id where te.tenant_id = ${T} and te.id = ${id}`.execute(this.db)).rows[0];
+    // round 10 (TEAM PERFORMANCE 3 14): service accuracy and the explicitly configured operational metrics, each on its own —
+    // none of them adds to the verified-review score, the rank or pay.
+    //   accuracy    her paid tickets in the period (as the primary technician) whose Service Done quality check was recorded:
+    //               approved vs issue found; a ticket never checked (pending / needs review) is counted apart, never as accurate
+    //   operational the composite model's configured components (reliability, on-time start) from the SAME evidence the
+    //               composite uses — read here, not re-derived
+    const acc = (await sql<any>`select count(*) filter (where t.service_done_quality_status = 'approved')::int as approved,
+        count(*) filter (where t.service_done_quality_status = 'issue_found')::int as issues,
+        count(*) filter (where t.service_done_quality_status not in ('approved', 'issue_found'))::int as unchecked
+      from tickets t where t.tenant_id = ${T} and t.primary_technician_id = ${id} and t.paid_at is not null and t.removed_at is null
+        and coalesce(t.payment_status, '') <> 'voided' and ${inPeriod(sql`t.paid_at`, per)} and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)`.execute(this.db)).rows[0];
+    const checked = N(acc?.approved) + N(acc?.issues);
+    const accuracy = { source: 'service_done_quality_check' as const, checked, approved: N(acc?.approved), issueFound: N(acc?.issues), unchecked: N(acc?.unchecked),
+      ratePct: checked ? Math.round((N(acc?.approved) / checked) * 1000) / 10 : null, lowSample: checked > 0 && checked < MIN_SAMPLE };
+    const ev = (await this.evidence(ctx, [id], per)).get(id);
+    const operational = { model: COMPOSITE_MODEL_V1.version, reliability: ev?.reliability ?? null, onTime: ev?.onTime ?? null };
     return { period: per, minSample: MIN_SAMPLE, technicianId: id, name: t?.full_name ?? null, avatarUrl: t?.avatar_url ?? null, role: t?.role_label ?? null, branch: t?.branch ?? null, active: t?.status === 'active',
       qualifiedServices: svcNames.map((s: any) => String(s.name)),
       score: { rating: avg, reviews: n, tier: tierOf(avg), lowSample: n > 0 && n < MIN_SAMPLE, source: 'verified_reviews', scale: 5, allTimeRating: N(allTime?.n) ? round1(Number(allTime.avg)) : null, allTimeReviews: N(allTime?.n) },
       rank: n ? { position: N(me?.pos), of: N(me?.rated) } : null, services: N(me?.services), helpedTickets: helped, lastServiceAt: iso(me?.last_service), lastReviewAt: iso(me?.last_review),
-      previous: prev, comparable: !!prev && n >= MIN_SAMPLE && prev.reviews >= MIN_SAMPLE };
+      previous: prev, comparable: !!prev && n >= MIN_SAMPLE && prev.reviews >= MIN_SAMPLE, accuracy, operational };
   }
 
   /** her completed services in the period, newest first (ticket, service, length, who else worked the ticket) */

@@ -98,4 +98,23 @@ describe('POSTeamPerformanceScreen', () => {
     fireEvent.click(await screen.findByTestId('composite-open'));
     expect((await screen.findByTestId('composite-version-single')).textContent).toMatch(/Only one model version/);
   });
+  it('round 10 (TEAM PERFORMANCE 3 14): Performance Details shows service accuracy and the configured operational metrics apart from the score', async () => {
+    const base = await tp.technician('v', {});
+    tp.technician.mockResolvedValue({ ...base, accuracy: { source: 'service_done_quality_check', checked: 4, approved: 3, issueFound: 1, unchecked: 2, ratePct: 75, lowSample: false },
+      operational: { model: 'composite-v1', reliability: { completed: 15, failed: 1, excluded: 0 }, onTime: { onTime: 2, late: 1, excluded: 4 } } });
+    mount(); fireEvent.click((await screen.findAllByTestId('top-row'))[0]);
+    const sum = await screen.findByTestId('performance-summary');
+    expect(screen.getByTestId('service-accuracy')).toHaveTextContent('75% passed the Service Done quality check · 3 of 4 checked · 1 with an issue · 2 not checked (not counted)');
+    expect(screen.getByTestId('op-reliability')).toHaveTextContent('15 completed · 1 not completed');
+    expect(screen.getByTestId('op-ontime')).toHaveTextContent('2 on time · 1 late');
+    expect(sum).toHaveTextContent('5.0 / 5');                                       // the score is unchanged
+  });
+  it('round 10 (TEAM PERFORMANCE 3 14): no quality check recorded says so — never 0% or 100%', async () => {
+    const base = await tp.technician('v', {});
+    tp.technician.mockResolvedValue({ ...base, accuracy: { source: 'service_done_quality_check', checked: 0, approved: 0, issueFound: 0, unchecked: 0, ratePct: null, lowSample: false }, operational: { model: 'composite-v1', reliability: null, onTime: null } });
+    mount(); fireEvent.click((await screen.findAllByTestId('top-row'))[0]);
+    expect(await screen.findByTestId('service-accuracy')).toHaveTextContent('No Service Done quality check recorded in this period');
+    expect(screen.getByTestId('service-accuracy').textContent).not.toMatch(/%/);
+    expect(screen.queryByTestId('op-reliability')).toBeNull();
+  });
 });

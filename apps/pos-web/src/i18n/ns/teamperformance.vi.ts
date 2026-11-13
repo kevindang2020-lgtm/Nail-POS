@@ -64,4 +64,12 @@ export const TEAMPERFORMANCE_VI = {
   'tp.basis.completed': 'Ngày hoàn tất dịch vụ',
   'tp.byTech': 'Thợ làm: {n}',
   'tp.helper': 'Thợ phụ: {n}',
+  'tp.accuracy': 'Độ chính xác dịch vụ', // DRAFT — Kevin reviews
+  'tp.accuracyV': '{r}% đạt kiểm tra chất lượng Xong dịch vụ · {a} trên {c} đã kiểm tra · {i} có vấn đề', // DRAFT — Kevin reviews
+  'tp.accuracyNone': 'Chưa có kiểm tra chất lượng Xong dịch vụ trong kỳ này', // DRAFT — Kevin reviews
+  'tp.accuracyUnchecked': '{n} chưa kiểm tra (không tính)', // DRAFT — Kevin reviews
+  'tp.opReliability': 'Hoàn thành dịch vụ', // DRAFT — Kevin reviews
+  'tp.opReliabilityV': '{d} hoàn thành · {f} không hoàn thành', // DRAFT — Kevin reviews
+  'tp.opOnTime': 'Bắt đầu đúng giờ', // DRAFT — Kevin reviews
+  'tp.opOnTimeV': '{o} đúng giờ · {l} trễ', // DRAFT — Kevin reviews
 };
