@@ -84,3 +84,25 @@ describe('versioned composite score (F5)', () => {
     await expect(repo.composite({ ...mgr, tenantId: T2, branchId: BX }, MIA, {})).rejects.toMatchObject({ status: 404 });
   });
 });
+
+describe('round 10 — Finish the Five 12: version comparison from the saved snapshots (nothing recomputed, nothing re-ranked)', () => {
+  it('one version → nothing to compare; two versions saved for the same period → side by side with the component differences', async () => {
+    const one = (await repo.composite(mgr, LEO, { preset: 'month' })).versionComparison;
+    expect(one).toEqual({ versions: [], comparable: false, diff: null, reranked: false });
+    await repo.saveScoreSnapshot(mgr, { technicianId: LEO, preset: 'month' });
+    const v1only: any = (await repo.composite(mgr, LEO, { preset: 'month' })).versionComparison;
+    expect(v1only.versions.map((v: any) => v.version)).toEqual(['composite-v1']); expect(v1only.comparable).toBe(false);
+    // a later model version saved for the same period (written as a new immutable row, as a future model would)
+    const base = (await q(`select period_start, period_end from performance_score_snapshots where technician_id = $1 order by computed_at desc limit 1`, [LEO])).rows[0];
+    await q(`insert into performance_score_snapshots (tenant_id, branch_id, technician_id, period_start, period_end, model_version, components_json, missing_json, score, input_checksum, computed_at)
+      values ($1,$2,$3,$4,$5,'composite-v2','[{"key":"reviews","value":70},{"key":"reliability","value":90}]'::jsonb,'[]'::jsonb, 80.5,'chk-v2', now() + interval '1 minute')`, [T, B, LEO, base.period_start, base.period_end]);
+    const c: any = (await repo.composite(mgr, LEO, { preset: 'month' })).versionComparison;
+    expect(c.comparable).toBe(true); expect(c.reranked).toBe(false);
+    expect(c.versions.map((v: any) => v.version)).toEqual(['composite-v2', 'composite-v1']);
+    expect(c.diff).toMatchObject({ from: { version: 'composite-v1' }, to: { version: 'composite-v2', score: 80.5 } });
+    expect(c.diff.components.find((x: any) => x.key === 'reliability')).toMatchObject({ to: 90 });
+    // the rating ranking (Top Performers) is untouched by any snapshot
+    const r = await repo.compositeComparison(mgr, { preset: 'month' });
+    expect(r.items.map((i: any) => [i.name, i.ratingRank])).toEqual([['Mia Tran', 1], ['Leo Park', 2]]);
+  });
+});

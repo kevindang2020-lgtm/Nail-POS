@@ -56,7 +56,8 @@ export const posCommissionReviewApi = {
   detail: (id: string, q: Q = {}) => api.get<any>(`${CR}/${enc(id)}`, clean(q)),
   assignees: (q?: string) => api.get<any>(`${CR}/assignees`, clean({ q })),
   runCheck: (q: Q) => api.post<any>(`${CR}/run-check`, clean(q)),
-  setRefundPolicy: (policy: string) => api.put<any>(`${CR}/refund-policy`, { policy }),
+  // round 10 (Finish the Five 06): expectedPolicy = what the screen loaded (null = not set); a change since → 409 VERSION_CONFLICT
+  setRefundPolicy: (policy: string, expectedPolicy?: string | null) => api.put<any>(`${CR}/refund-policy`, expectedPolicy === undefined ? { policy } : { policy, expectedPolicy }),
   assign: (id: string, b: { assigneeUserId: string; expectedVersion: number; note?: string }) => api.post<any>(`${CR}/${enc(id)}/assign`, b),
   investigate: (id: string, b: { expectedVersion: number; note?: string }) => api.post<any>(`${CR}/${enc(id)}/investigate`, b),
   note: (id: string, b: { expectedVersion: number; note: string }) => api.post<any>(`${CR}/${enc(id)}/notes`, b),

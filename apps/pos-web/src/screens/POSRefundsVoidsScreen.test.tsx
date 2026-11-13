@@ -130,4 +130,11 @@ describe('POSRefundsVoidsScreen', () => {
     expect(api.list.mock.calls.length).toBe(l + 1); expect(api.summary.mock.calls.length).toBe(s0 + 1);
     expect(screen.getByTestId('reversal-row')).toBeInTheDocument();   // the rows stayed on screen while it reloaded
   });
+  it('round 10: opened from a commission finding with ?search=<ticket>, the list is searched for that ticket', async () => {
+    window.history.replaceState(null, '', '/tenant/payments/refunds-voids?search=1042');
+    mount();
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ search: '1042' })));
+    expect((screen.getByTestId('search') as HTMLInputElement).value).toBe('1042');
+    window.history.replaceState(null, '', '/');
+  });
 });

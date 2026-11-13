@@ -32,7 +32,7 @@ export class CommissionReviewController {
   run(@Req() req: any, @Body(ValidatedBody(CDR_RUN_BODY, { strict: true })) b: any) { return this.r().runCheck(teamCtx(req), per(b ?? {}), requestIdOf(req)); }
 
   @Put('refund-policy') @RequirePermission('pos.reports.view')
-  policy(@Req() req: any, @Body(ValidatedBody(CDR_POLICY_BODY, { strict: true })) b: any) { return this.r().setRefundPolicy(teamCtx(req), b?.policy, requestIdOf(req)); }
+  policy(@Req() req: any, @Body(ValidatedBody(CDR_POLICY_BODY, { strict: true })) b: any) { return this.r().setRefundPolicy(teamCtx(req), b?.policy, requestIdOf(req), b && 'expectedPolicy' in b ? (b.expectedPolicy ?? null) : undefined); }
 
   @Get(':id') @RequirePermission('pos.reports.view')
   detail(@Req() req: any, @Param('id') id: string, @Query() q: any) { return this.r().detail(teamCtx(req), id, { page: q?.page, pageSize: q?.pageSize }); }

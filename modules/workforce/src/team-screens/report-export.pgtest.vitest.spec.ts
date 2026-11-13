@@ -92,3 +92,21 @@ describe('server-side audited CSV exports', () => {
     expect((await comm.exportHistory({ tenantId: T2, branchId: BX, userId: id('e7'), role: 'MANAGER', permissions: ['audit.view'] }, {})).totalItems).toBe(0);
   });
 });
+
+describe('round 10 — Finish the Five 07: audit coverage (last verified export, last request whose outcome was never recorded)', () => {
+  it('names the last recorded success with its digest and a requested export with no recorded outcome after 5 minutes; another salon never', async () => {
+    let h: any = await comm.exportHistory(mgr, {});
+    expect(h.coverage.lastVerifiedExport).toMatchObject({ reportType: expect.any(String), sha256: expect.stringMatching(/^[0-9a-f]{64}$/), rowCount: expect.any(Number) });
+    expect(h.coverage.lastMissingOutcome).toBeNull();               // every request so far has its outcome (or was denied up front)
+    // a request that stopped: 'requested' recorded 10 minutes ago, no succeeded / failed row for its request id
+    await q(`insert into audit_events (tenant_id, branch_id, actor_user_id, module, action, resource_type, resource_id, request_id, status, severity, summary, metadata, occurred_at)
+      values ($1,$2,$3,'reports','report.export.requested','report_export','COMMISSION','req-lost-1','success','info','COMMISSION export requested','{}'::jsonb, now() - interval '10 minutes')`, [T, B, U]);
+    // and one still running (2 minutes old) — not counted yet
+    await q(`insert into audit_events (tenant_id, branch_id, actor_user_id, module, action, resource_type, resource_id, request_id, status, severity, summary, metadata, occurred_at)
+      values ($1,$2,$3,'reports','report.export.requested','report_export','COMMISSION','req-running-1','success','info','COMMISSION export requested','{}'::jsonb, now() - interval '2 minutes')`, [T, B, U]);
+    h = await comm.exportHistory(mgr, {});
+    expect(h.coverage.lastMissingOutcome).toMatchObject({ reportType: 'COMMISSION', requestId: 'req-lost-1' });
+    expect(h.coverage.missingOutcomes).toBe(1);
+    expect((await comm.exportHistory({ tenantId: T2, branchId: BX, userId: id('e7'), role: 'MANAGER', permissions: ['audit.view'] }, {})).coverage).toEqual({ lastVerifiedExport: null, lastMissingOutcome: null, missingOutcomes: 0 });
+  });
+});

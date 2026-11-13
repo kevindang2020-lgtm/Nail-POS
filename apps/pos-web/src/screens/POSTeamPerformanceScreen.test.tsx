@@ -81,4 +81,21 @@ describe('POSTeamPerformanceScreen', () => {
     fireEvent.click(screen.getByTestId('export'));
     await waitFor(() => expect(tp.exportCsv).toHaveBeenCalledWith(expect.objectContaining({ preset: 'month', tier: 'all', sort: 'score', lang: 'en', requestId: expect.any(String) })));
   });
+  it('round 10 (Finish the Five 12): two saved model versions show side by side with the change; one version says there is nothing to compare', async () => {
+    const base = await tp.composite();
+    tp.composite.mockResolvedValueOnce({ ...base, versionComparison: { versions: [{ version: 'composite-v2', snapshots: 1, latestScore: 80.5, latestAt: null }, { version: 'composite-v1', snapshots: 2, latestScore: null, latestAt: null }], comparable: true, reranked: false,
+      diff: { period: { from: '2026-10-01', to: '2026-10-31' }, from: { version: 'composite-v1', score: null, at: null }, to: { version: 'composite-v2', score: 80.5, at: null }, scoreDelta: null,
+        components: [{ key: 'reviews', from: 90, to: 70, delta: -20 }] } } });
+    const v = mount();
+    fireEvent.click(await screen.findByTestId('composite-open'));
+    expect((await screen.findByTestId('composite-versions-list')).textContent).toBe('composite-v2: 1 saved · composite-v1: 2 saved');
+    const diff = screen.getByTestId('composite-version-diff');
+    expect(diff.textContent).toMatch(/composite-v1.*composite-v2/);
+    expect(diff.querySelectorAll('tbody tr')[1].textContent).toMatch(/9070-20$/);
+    v.unmount();
+    tp.composite.mockResolvedValueOnce({ ...base, versionComparison: { versions: [{ version: 'composite-v1', snapshots: 1, latestScore: null, latestAt: null }], comparable: false, diff: null, reranked: false } });
+    mount();
+    fireEvent.click(await screen.findByTestId('composite-open'));
+    expect((await screen.findByTestId('composite-version-single')).textContent).toMatch(/Only one model version/);
+  });
 });

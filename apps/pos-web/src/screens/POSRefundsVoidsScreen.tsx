@@ -71,7 +71,8 @@ const errMsg = (e: unknown) => errorTextOf(e, tx('finance.state.loadFailed'));
 
 export function POSRefundsVoidsScreen() {
   const nav = useNavigate();
-  const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
+  // round 10 (Finish the Five 04): a link from a commission finding opens this list searched for its ticket (?search=)
+  const [search, setSearch] = useState(() => (new URLSearchParams(window.location.search).get('search') ?? '').slice(0, 100)); const q = useDebounced(search.trim(), 300);
   const [type, setType] = useState(''); const [state, setState] = useState(''); const [method, setMethod] = useState(''); const [processor, setProcessor] = useState(''); const [register, setRegister] = useState(''); const [sort, setSort] = useState('created_desc');
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' }); const [basis, setBasis] = useState('requested');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [note, setNote] = useState<Note>(null); const [exporting, setExporting] = useState(false);

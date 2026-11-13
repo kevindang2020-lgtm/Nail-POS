@@ -219,3 +219,36 @@ describe('review workflow (F1)', () => {
     expect((await repo.list(other, { age: 'overdue' })).totalItems).toBe(0);
   });
 });
+
+describe('round 10 — Finish the Five 04: Evidence Trace to the exact source records', () => {
+  it('a rate finding resolves its service line and rate snapshot; a refund finding resolves its refunds; another salon never; nothing moves', async () => {
+    const before = await ledger();
+    const rate = await findRev('RATE_CONFIG');
+    const d: any = await repo.detail(mgr, String(rate.id));
+    expect(d.sources.ticket).toMatchObject({ id: lines.wrong.tk, number: expect.stringMatching(/^T-/) });
+    expect(d.sources.serviceLine).toMatchObject({ id: lines.wrong.ln, service: 'Gel Manicure', totalCents: 10000, removed: false });
+    expect(d.sources.rateSnapshot).toMatchObject({ type: 'percent', value: 30, source: 'Salon Default', earningsCents: 3000 });
+    expect(d.sources.missing).toEqual([]);
+    const miss = (await q(`select id from commission_discrepancy_reviews where tenant_id = $1 and finding_type = 'REFUND_REVERSAL' and verification_state <> 'POLICY_NOT_CONFIGURED'`, [T])).rows[0];
+    const rd: any = await repo.detail(mgr, String(miss.id));
+    expect(rd.sources.refunds.length).toBeGreaterThanOrEqual(1);
+    expect(rd.sources.refunds.every((x: any) => x.status === 'refunded' && x.amountCents === 5000)).toBe(true);
+    expect(rd.sources.ticket.id).toBe(lines.refund.tk);
+    await expect(repo.detail(other as never, String(rate.id))).rejects.toMatchObject({ status: 404 });
+    expect(await ledger()).toEqual(before);
+  });
+});
+
+describe('round 10 — Finish the Five 06: the refund-reversal policy change is conflict-safe', () => {
+  it('a change based on a stale view is refused (409 VERSION_CONFLICT, nothing written); the current view goes through; no expectation = old behaviour', async () => {
+    const cur = await repo.refundPolicy(mgr);
+    expect(cur).toBe('PRO_RATA');
+    const audits = async () => (await one(`select count(*)::int as n from audit_events where tenant_id = $1 and action = 'compensation.refund_reversal_policy.set'`, [T])).n;
+    const a0 = await audits();
+    await expect(repo.setRefundPolicy(mgr, 'NO_REVERSAL', 'req-stale', null)).rejects.toMatchObject({ status: 409 });
+    expect(await repo.refundPolicy(mgr)).toBe('PRO_RATA'); expect(await audits()).toBe(a0);
+    expect(await repo.setRefundPolicy(mgr, 'NO_REVERSAL', 'req-fresh', 'PRO_RATA')).toEqual({ policy: 'NO_REVERSAL' });
+    expect(await repo.setRefundPolicy(mgr, 'PRO_RATA', 'req-legacy')).toEqual({ policy: 'PRO_RATA' });
+    expect(await audits()).toBe(a0 + 2);
+  });
+});

@@ -103,7 +103,21 @@ export async function exportHistory(db: Kysely<any>, ctx: TeamCtx, f: { type?: s
   const total = N((await sql<any>`select count(*)::int as n from audit_events a where a.tenant_id = ${T} and ${w}`.execute(db)).rows[0]?.n); const sp = served(page, pageSize, total);
   const rows = (await sql<any>`select a.id, a.action, a.resource_id, a.status, a.occurred_at, a.request_id, a.metadata, coalesce(nullif(u.full_name, ''), u.email) as actor
     from audit_events a left join users u on u.id = a.actor_user_id and u.tenant_id = a.tenant_id where a.tenant_id = ${T} and ${w} order by a.occurred_at desc, a.id desc limit ${pageSize} offset ${sp.offset}`.execute(db)).rows;
-  return { scope: all ? 'salon' : 'own', items: rows.map((r: any) => { const m = r.metadata ?? {}; return { id: String(r.id), event: String(r.action).replace('report.export.', ''), reportType: String(r.resource_id), result: String(r.status),
+  // round 10 (Finish the Five 07 — Audit Coverage): the last export whose success was recorded with its digest, and the last request
+  // whose outcome was never recorded (a 'requested' row with no succeeded / failed row for the same request id after 5 minutes —
+  // the export stopped, or its closing audit row could not be written). Same scope as the list; evidence only.
+  const lastOk = (await sql<any>`select a.resource_id, a.occurred_at, a.request_id, a.metadata, coalesce(nullif(u.full_name, ''), u.email) as actor from audit_events a left join users u on u.id = a.actor_user_id and u.tenant_id = a.tenant_id
+    where a.tenant_id = ${T} and ${w} and a.action = 'report.export.succeeded' order by a.occurred_at desc, a.id desc limit 1`.execute(db)).rows[0];
+  const open = (await sql<any>`select a.resource_id, a.occurred_at, a.request_id, count(*) over ()::int as n from audit_events a
+    where a.tenant_id = ${T} and ${w} and a.action = 'report.export.requested' and a.occurred_at < now() - interval '5 minutes' and a.request_id is not null
+      and not exists (select 1 from audit_events b where b.tenant_id = a.tenant_id and b.module = 'reports' and b.request_id = a.request_id and b.action in ('report.export.succeeded', 'report.export.failed'))
+    order by a.occurred_at desc, a.id desc limit 1`.execute(db)).rows[0];
+  const coverage = {
+    lastVerifiedExport: lastOk ? { reportType: String(lastOk.resource_id), at: iso(lastOk.occurred_at), requestId: lastOk.request_id ?? null, actor: lastOk.actor ?? null, rowCount: lastOk.metadata?.rowCount ?? null, sha256: lastOk.metadata?.sha256 ?? null } : null,
+    lastMissingOutcome: open ? { reportType: String(open.resource_id), at: iso(open.occurred_at), requestId: String(open.request_id) } : null,
+    missingOutcomes: N(open?.n),
+  };
+  return { coverage, scope: all ? 'salon' : 'own', items: rows.map((r: any) => { const m = r.metadata ?? {}; return { id: String(r.id), event: String(r.action).replace('report.export.', ''), reportType: String(r.resource_id), result: String(r.status),
     at: iso(r.occurred_at), requestId: r.request_id ?? null, actor: r.actor ?? null, filters: m.filters ?? null, rowCount: m.rowCount ?? null, byteCount: m.byteCount ?? null, failureCode: m.failureCode ?? null, permissionMissing: m.permissionMissing ?? null }; }),
     page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
 }

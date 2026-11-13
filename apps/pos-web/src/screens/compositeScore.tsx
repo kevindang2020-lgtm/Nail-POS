@@ -63,6 +63,16 @@ export function CompositeDetails({ id, pq, onClose }: { id: string; pq: Record<s
         <p className="fk-hint">{tx('cs.fairness')}</p>
         <h3 className="cr-h">{tx('cs.snapshots')}</h3>
         {!x.snapshots.length ? <Empty title={tx('cs.noSnapshots')} /> : <ul className="fk-list" data-testid="composite-snapshots">{x.snapshots.map((s: any) => <li key={s.id} className="fk-li"><span className="fk-li-t">{s.score == null ? tx('cs.naShort') : pts(s.score)} · {s.modelVersion}<span className="fk-li-s">{s.from} – {s.to} · {whenTime(s.computedAt)}</span></span></li>)}</ul>}
+        {/* round 10 (Finish the Five 12): versions side by side from the saved snapshots — never recomputed, never re-ranked */}
+        {x.versionComparison ? <div className="cs-versions" data-testid="composite-versions">
+          <h3 className="cr-h">{tx('cs10.title')}</h3>
+          <div className="fk-hint" data-testid="composite-versions-list">{x.versionComparison.versions.length ? x.versionComparison.versions.map((v: any) => tx('cs10.version', { v: v.version, n: String(v.snapshots) })).join(' · ') : tx('cs10.none')}</div>
+          {x.versionComparison.diff ? <table className="fk-table" data-testid="composite-version-diff"><thead><tr><th>{tx('cs10.component')}</th><th className="num">{x.versionComparison.diff.from.version}</th><th className="num">{x.versionComparison.diff.to.version}</th><th className="num">{tx('cs10.change')}</th></tr></thead>
+            <tbody><tr><td><b>{tx('cs10.score')}</b></td><td className="num">{x.versionComparison.diff.from.score == null ? tx('cs.naShort') : pts(x.versionComparison.diff.from.score)}</td><td className="num">{x.versionComparison.diff.to.score == null ? tx('cs.naShort') : pts(x.versionComparison.diff.to.score)}</td><td className="num">{x.versionComparison.diff.scoreDelta == null ? '—' : String(x.versionComparison.diff.scoreDelta)}</td></tr>
+              {x.versionComparison.diff.components.map((c: any) => <tr key={c.key}><td>{tx('cs.c.' + c.key)}</td><td className="num">{c.from == null ? '—' : String(c.from)}</td><td className="num">{c.to == null ? '—' : String(c.to)}</td><td className="num">{c.delta == null ? '—' : String(c.delta)}</td></tr>)}</tbody></table>
+            : <p className="fk-hint" data-testid="composite-version-single">{tx('cs10.single')}</p>}
+          <p className="fk-hint">{tx('cs10.noRerank')}</p>
+        </div> : null}
       </>}
     </FitDialog>
   );
