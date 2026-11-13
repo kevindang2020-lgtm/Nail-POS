@@ -222,3 +222,32 @@ describe('Payout forecast (extras Payments & Money 12)', () => {
     expect((await r.overview(other, await on('2026-10-23', other))).payoutForecast.items.map((x: any) => x.netCents)).toEqual([7000]);
   });
 });
+
+describe('One-Click Financial Accuracy (extras PAYMENTS & MONEY 01)', () => {
+  it('every KPI and all-time total beside a second full-period read: Transactions, Refunds & Voids, the trend buckets, the Payouts list, the outstanding parts; failed / tips said single-source', async () => {
+    const a = await r.accuracy(ctx, await on('2026-10-22'));
+    expect(a.checks.map((c) => c.key)).toEqual(['revenue', 'collections', 'refunds', 'outstanding', 'transactions', 'averageTicket', 'failed', 'pendingPayouts',
+      'totalRevenue', 'totalCollected', 'totalRefunds', 'totalOutstanding', 'totalTips', 'totalPayouts']);
+    const by = Object.fromEntries(a.checks.map((c) => [c.key, c]));
+    expect(by.collections).toMatchObject({ shown: 16815, checked: 16815, checker: 'transactions', state: 'match', difference: 0 });   // the photo's $168.15, both ways
+    expect(by.transactions).toMatchObject({ shown: 3, checked: 3, state: 'match' });
+    // every page of the Payouts list adds up to the KPI (earlier tests in this file add more settlements, so no fixed figure)
+    expect(by.pendingPayouts).toMatchObject({ checker: 'payouts_list', state: 'match', difference: 0 }); expect(by.pendingPayouts.shown).toBeGreaterThanOrEqual(11293);
+    expect(by.totalPayouts).toMatchObject({ checker: 'payouts_list', state: 'match', difference: 0 }); expect(by.totalPayouts.shown).toBeGreaterThanOrEqual(8730);
+    expect(by.failed).toMatchObject({ state: 'single_source', checked: null }); expect(by.totalTips.state).toBe('single_source');
+    expect(a).toMatchObject({ overall: 'match', counts: { match: 12, mismatch: 0, singleSource: 2 } });
+    const oct23 = await r.accuracy(ctx, await on('2026-10-23'));
+    expect(oct23.checks.find((c) => c.key === 'refunds')).toMatchObject({ shown: 1000, checked: 1000, checker: 'refunds_voids', state: 'match' });
+    expect(oct23.overall).toBe('match');
+  });
+  it('a real disagreement is shown with both figures and the difference, never hidden: a ticket recorded as paid in the future is in the all-time revenue but in no trend day', async () => {
+    const tf = await ticket({ num: '5099', sub: 1234, tip: 0, status: 'paid', paidAt: new Date(Date.now() + 5 * 86400000).toISOString(), at: new Date().toISOString() });
+    await line(tf, id('84'), 'Nail Art', 1234);
+    try {
+      const a = await r.accuracy(ctx, await r.period(ctx, { preset: 'all' }));
+      const tr = a.checks.find((c) => c.key === 'totalRevenue')!;
+      expect(tr).toMatchObject({ state: 'mismatch', difference: 1234 });
+      expect(a.overall).toBe('mismatch'); expect(a.counts.mismatch).toBeGreaterThanOrEqual(1);
+    } finally { await q(`delete from ticket_service_lines where ticket_id = $1`, [tf]); await q(`delete from tickets where id = $1`, [tf]); }
+  });
+});

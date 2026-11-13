@@ -31,6 +31,7 @@ import {
 } from './finance-scope';
 import { methodKey } from './split-payments-screen.repository';
 import { TransactionsScreenRepository } from './transactions-screen.repository';
+import { RefundsVoidsScreenRepository } from './refunds-voids-screen.repository';
 import { FUNDING_DAYS } from './recon-workspace.repository';
 
 const CONFIRMED = [...new Set([...REVENUE_BEARING_STATUSES, 'completed', 'succeeded', 'settled', 'partially_refunded'])];
@@ -58,7 +59,8 @@ export const MONEY_DEFINITIONS = {
 export class MoneyOverviewScreenRepository {
   private readonly log = new Logger('MoneyOverviewScreen');
   private readonly tx: TransactionsScreenRepository;
-  constructor(private readonly db: Kysely<any>) { this.tx = new TransactionsScreenRepository(db, null); }
+  private readonly rv: RefundsVoidsScreenRepository;
+  constructor(private readonly db: Kysely<any>) { this.tx = new TransactionsScreenRepository(db, null); this.rv = new RefundsVoidsScreenRepository(db, null); }
 
   async period(ctx: FinanceCtx, q: { preset?: unknown; from?: unknown; to?: unknown }): Promise<Period> {
     return resolvePeriod(q, await salonTimeZone(this.db, ctx.tenantId), { defaultPreset: 'today', allowAll: true });
@@ -190,6 +192,64 @@ export class MoneyOverviewScreenRepository {
       recentTransactions: recent, upcomingPayouts: upcoming, payoutForecast,
       definitions: MONEY_DEFINITIONS,
     };
+  }
+
+  /** extras (PAYMENTS & MONEY 01) — One-Click Financial Accuracy. Every one of the eight KPIs and six all-time totals the
+   *  Overview shows, beside the same figure read a SECOND way over the full period (never a page or a sample):
+   *    collections / transactions / total collected  ↔ the Transactions screen's own summary (its ledger rows)
+   *    refunds issued / total refunds                 ↔ the Refunds & Voids screen's own summary (completed, by completion date)
+   *    revenue / total revenue                        ↔ the revenue trend's buckets added up (a separate aggregation)
+   *    average ticket                                 ↔ revenue ÷ paid tickets recomputed from those buckets
+   *    pending payouts / total payouts                ↔ the Payouts list, every page added up
+   *    outstanding (KPI and total)                    ↔ its parts (partly paid tickets + open invoices)
+   *    failed transactions, total tips                — no second ledger records them: said ('single_source'), never "matched".
+   *  Read-only: nothing is corrected; a mismatch is shown with both figures and the difference. */
+  async accuracy(ctx: FinanceCtx, p: Period) {
+    const all = await this.period(ctx, { preset: 'all' });
+    const [ov, txP, txAll, rvP, rvAll, trAll, pend, paid] = await Promise.all([
+      this.overview(ctx, p),
+      this.tx.summary(ctx, this.tx.filters(p, { dateField: 'paid' })), this.tx.summary(ctx, this.tx.filters(all, { dateField: 'paid' })),
+      this.rv.summary(ctx, this.rv.filters(p, { dateField: 'completed' })), this.rv.summary(ctx, this.rv.filters(all, { dateField: 'completed' })),
+      this.trend(ctx, all), this.payoutTotals(ctx, 'pending'), this.payoutTotals(ctx, 'paid'),
+    ]);
+    const k = ov.kpis, t = ov.totals;
+    const sumRev = (pts: { revenueCents: number }[]) => pts.reduce((a, x) => a + x.revenueCents, 0);
+    const trP = p.from && p.to ? ov.revenueTrend : trAll;
+    const revP = sumRev(trP.points);
+    type Unit = 'cents' | 'count';
+    const check = (key: string, group: 'kpi' | 'total', unit: Unit, shown: number, checked: number | null, checker: string) => ({
+      key, group, unit, shown, checked, checker, difference: checked == null ? null : shown - checked,
+      state: checked == null ? 'single_source' as const : shown === checked ? 'match' as const : 'mismatch' as const,
+    });
+    const checks = [
+      check('revenue', 'kpi', 'cents', k.revenueCents, revP, 'revenue_trend'),
+      check('collections', 'kpi', 'cents', k.collectionsCents, txP.kpis.grossCents, 'transactions'),
+      check('refunds', 'kpi', 'cents', k.refundsIssuedCents, rvP.kpis.refundedCents, 'refunds_voids'),
+      check('outstanding', 'kpi', 'cents', k.outstandingBalanceCents, ov.outstanding.ticketsDueCents + ov.outstanding.invoicesDueCents, 'components'),
+      check('transactions', 'kpi', 'count', k.totalTransactions, txP.kpis.transactions, 'transactions'),
+      check('averageTicket', 'kpi', 'cents', k.averageTicketCents, k.paidTickets ? Math.round(revP / k.paidTickets) : 0, 'revenue_trend'),
+      check('failed', 'kpi', 'count', k.failedTransactions, null, 'single_source'),
+      check('pendingPayouts', 'kpi', 'cents', k.pendingPayoutsCents, pend.cents, 'payouts_list'),
+      check('totalRevenue', 'total', 'cents', t.totalRevenueCents, sumRev(trAll.points), 'revenue_trend'),
+      check('totalCollected', 'total', 'cents', t.totalCollectedCents, txAll.kpis.grossCents, 'transactions'),
+      check('totalRefunds', 'total', 'cents', t.totalRefundsCents, rvAll.kpis.refundedCents, 'refunds_voids'),
+      check('totalOutstanding', 'total', 'cents', t.outstandingBalanceCents, ov.outstanding.ticketsDueCents + ov.outstanding.invoicesDueCents, 'components'),
+      check('totalTips', 'total', 'cents', t.totalTipsCents, null, 'single_source'),
+      check('totalPayouts', 'total', 'cents', t.totalPayoutsCents, paid.cents, 'payouts_list'),
+    ];
+    const mism = checks.filter((c) => c.state === 'mismatch').length;
+    return { period: p, scope: ov.scope, checkedAt: new Date().toISOString(), overall: mism ? 'mismatch' as const : 'match' as const,
+      counts: { match: checks.filter((c) => c.state === 'match').length, mismatch: mism, singleSource: checks.filter((c) => c.state === 'single_source').length }, checks };
+  }
+  /** every page of the Payouts list added up (the list's own filter), for the accuracy check */
+  private async payoutTotals(ctx: FinanceCtx, status: 'pending' | 'paid') {
+    let cents = 0, n = 0;
+    for (let page = 1; page <= 400; page++) {
+      const r = await this.payoutList(ctx, { page, pageSize: 50 }, { status });
+      for (const x of r.items) { cents += N(x.netCents); n++; }
+      if (page >= r.pageCount || !r.items.length) break;
+    }
+    return { cents, n };
   }
 
   /** Revenue and collections per bucket: days up to 62 days, weeks up to ~1 year, else months; every bucket in range. */

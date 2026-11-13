@@ -7,6 +7,8 @@ const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v
 const B = '/pos/payments/money';
 export const posMoneyOverviewApi = {
   overview: (q: Q) => api.get<any>(`${B}/overview`, clean(q)),
+  /** extras (PAYMENTS & MONEY 01): One-Click Financial Accuracy — each KPI / total beside a second full-period read (read-only) */
+  accuracy: (q: Q) => api.get<any>(`${B}/overview`, clean({ ...q, verify: 'true' })),
   services: (q: Q) => api.get<any>(`${B}/services`, clean(q)),
   payouts: (q: Q) => api.get<any>(`${B}/payouts`, clean(q)),
   search: (q: Q) => api.get<any>(`${B}/search`, clean(q)),
