@@ -10143,6 +10143,7 @@ export interface TenantNumberPurchaseQuotesTable {
 }
 export interface TenantRetentionSettingsTable {
   tenant_id: string;
+  bulk_selection_warn_at: number | null;   // migration 883 (Retention Win-Back 15): NULL = the default (200)
   risk_days: Generated<number>;
   approaching_days: Generated<number>;
   observation_window_days: Generated<number>;

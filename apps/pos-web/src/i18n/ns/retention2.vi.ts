@@ -133,4 +133,14 @@ export const RETENTION2_VI = {
   'rt2.emptyAtRisk.go.approaching': 'Xem Sắp có nguy cơ ({n})', // DRAFT — Kevin reviews
   'rt2.emptyAtRisk.go.never': 'Xem Chưa từng ghé ({n})', // DRAFT — Kevin reviews
   'rt2.emptyAtRisk.go.recovered': 'Xem Đã quay lại ({n})', // DRAFT — Kevin reviews
+  'rt9.undo': 'Hoàn tác', // DRAFT — Kevin reviews
+  'rt9.large': 'Chọn nhiều: {n} khách hàng (tiệm cảnh báo khi vượt {w})', // DRAFT — Kevin reviews
+  'rt9.largeAll': 'Thao tác này chọn {n} khách hàng — nhiều hơn mức cảnh báo {w} của tiệm. Bạn sẽ phải xác nhận đúng số lượng trước khi gửi bất cứ gì.', // DRAFT — Kevin reviews
+  'rt9.confirmTitle': 'Chọn nhiều: {n} khách hàng (mức cảnh báo {w}). Hãy kiểm tra số lượng và những ai trong danh sách.', // DRAFT — Kevin reviews
+  'rt9.criteriaMatching': 'Đối tượng: tất cả khách hàng thuộc {seg}, {f} bộ lọc, tìm kiếm “{q}”, {x} người được bỏ ra thủ công.', // DRAFT — Kevin reviews
+  'rt9.criteriaPicked': 'Đối tượng: {n} khách hàng được chọn từng người.', // DRAFT — Kevin reviews
+  'rt9.typeCount': 'Nhập {n} để xác nhận', // DRAFT — Kevin reviews
+  'rt9.cancelSafe': 'Hủy hoặc Sửa tin nhắn sẽ không gửi gì — bản xem trước bị bỏ. Chiến dịch đã vào hàng chờ vẫn có thể hủy trong Chiến dịch cho đến khi tin nhắn được gửi.', // DRAFT — Kevin reviews
+  'rt9.set.bulk': 'Cảnh báo khi chọn nhiều (số khách hàng)', // DRAFT — Kevin reviews
+  'rt9.set.invalidBulk': 'Mức cảnh báo chọn nhiều phải từ 10 đến 5000 khách hàng (để trống là 200).', // DRAFT — Kevin reviews
 };

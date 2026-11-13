@@ -282,4 +282,58 @@ describe('Customer Retention — status is text + shape, not colour alone (extra
     fireEvent.click(screen.getByTestId('flt-clear'));
     await waitFor(() => expect(screen.getByTestId('flt-phonecheck')).toHaveValue(''));
   });
+
+  // ── Retention Win-Back 15: bulk selection guardrails ──────────────────────────────────────────────────────────────
+  it('Win-Back 15: a selection over the salon\'s warning size is flagged (select-all dialog + selection bar); Clear can be undone', async () => {
+    api.settings.mockResolvedValue({ riskDays: 60, approachingDays: 45, observationWindowDays: 30, bulkSelectionWarnAt: 200, bulkSelectionWarnAtIsDefault: true, version: 0, isDefault: true, canEdit: true });
+    api.customers.mockImplementation(async () => list(AT_RISK, { eligibleMatching: 250 }));
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    fireEvent.click(screen.getByTestId('select-all-matching'));
+    expect(await screen.findByTestId('select-all-large')).toHaveTextContent('This selects 250 customers — more than this salon\'s warning size of 200');
+    fireEvent.click(screen.getByTestId('select-all-confirm'));
+    expect(await screen.findByTestId('sel-large')).toHaveTextContent('Large selection: 250 customers (this salon warns above 200)');
+    fireEvent.click(screen.getByTestId('sel-clear'));
+    expect(screen.queryByTestId('sel-large')).toBeNull();
+    fireEvent.click(screen.getByTestId('sel-undo'));
+    expect(screen.getByTestId('sel-large')).toHaveTextContent('250');
+    expect(api.preview).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+  });
+  it('Win-Back 15: the preview names count + criteria; Confirm stays off until the exact count is typed, then sends it', async () => {
+    api.customers.mockImplementation(async () => list(AT_RISK, { eligibleMatching: 250 }));
+    api.preview.mockResolvedValue({ previewId: 'p9', finalBody: 'Lotus: Hi Reply STOP to opt out.', segments: { segments: 1, encoding: 'GSM-7', characters: 30 }, selected: 250, eligible: 240, excluded: 10, excludedReasons: { no_consent: 10 },
+      sender: { route: 'simulated', from: null, a2pStatus: null }, canSend: true, blockedReason: null, quietHours: null, estimatedSegments: 240, costEstimateCents: null, roster: [], expiresInMinutes: 20,
+      largeSelection: { warnAt: 200, over: true, selected: 250, criteria: { kind: 'win_back', mode: 'all_matching', segment: 'at_risk', q: null, excluded: 0, filters: { sms: 'eligible', preset: 'month' } } } });
+    api.confirm.mockResolvedValue({ campaignId: 'cmp9', queued: 240, duplicate: false });
+    api.campaign.mockResolvedValue({ campaign: { id: 'cmp9-0000-1111', label: null, status: 'completed', confirmedAt: '2026-10-20T15:00:00Z', createdAt: '2026-10-20T15:00:00Z', queued: 0, selected: 250, body: 'Hi', counts: { sent: 240 } }, recipients: { items: [], page: 1, pageSize: 8, totalItems: 0, totalPages: 1 } });
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    fireEvent.click(screen.getByTestId('select-all-matching'));
+    fireEvent.click(await screen.findByTestId('select-all-confirm'));
+    fireEvent.click(screen.getByTestId('send-sms'));
+    fireEvent.change(await screen.findByRole('textbox', { name: /message/i }), { target: { value: 'We miss you, come back soon!' } });
+    fireEvent.click(screen.getByTestId('sms-preview'));
+    const box = await screen.findByTestId('rt-large');
+    expect(box).toHaveTextContent('Large selection: 250 customers (warning size 200)');
+    expect(box).toHaveTextContent(/everyone matching .*2 filter\(s\).*0 taken out by hand/);
+    expect(box).toHaveTextContent('Cancel or Edit message sends nothing');
+    expect(screen.getByTestId('sms-confirm')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('rt-large-count'), { target: { value: '25' } });
+    expect(screen.getByTestId('sms-confirm')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('rt-large-count'), { target: { value: '250' } });
+    expect(screen.getByTestId('sms-confirm')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('sms-confirm'));
+    await waitFor(() => expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ previewId: 'p9', confirmLargeSelection: 250 })));
+  });
+  it('Win-Back 15: Settings saves the large-selection warning (empty = default; out of range refused before saving)', async () => {
+    api.settings.mockResolvedValue({ riskDays: 60, approachingDays: 45, observationWindowDays: 30, bulkSelectionWarnAt: 200, bulkSelectionWarnAtIsDefault: true, version: 3, isDefault: false, canEdit: true });
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByTestId('open-settings'));
+    const f = await screen.findByTestId('set-bulk');
+    fireEvent.change(f, { target: { value: '5' } });
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
+    fireEvent.change(f, { target: { value: '150' } });
+    fireEvent.click(screen.getByTestId('settings-save'));
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ riskDays: 60, approachingDays: 45, observationWindowDays: 30, bulkSelectionWarnAt: 150, expectedVersion: 3 }));
+  });
 });

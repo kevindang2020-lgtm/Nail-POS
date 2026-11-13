@@ -97,8 +97,8 @@ export class RetentionController {
     const c = ctxFrom(q); need(c, 'pos.settings.edit');
     return run(() => this.r().updateSettings(c, b ?? {}, (trx, before, after) => recordAuditStrict(trx, actor(c), {
       module: 'retention', action: 'retention.settings.updated', resourceType: 'tenant_retention_settings', resourceId: c.tenantId, summary: `Retention thresholds v${after.version}`,
-      before: { riskDays: before.riskDays, approachingDays: before.approachingDays, observationWindowDays: before.observationWindowDays, version: before.version },
-      after: { riskDays: after.riskDays, approachingDays: after.approachingDays, observationWindowDays: after.observationWindowDays, version: after.version } })));
+      before: { riskDays: before.riskDays, approachingDays: before.approachingDays, observationWindowDays: before.observationWindowDays, bulkSelectionWarnAt: before.bulkSelectionWarnAt, version: before.version },
+      after: { riskDays: after.riskDays, approachingDays: after.approachingDays, observationWindowDays: after.observationWindowDays, bulkSelectionWarnAt: after.bulkSelectionWarnAt, version: after.version } })));
   }
 
   // ── Win-Back guide §09 Check Retention Data (READ-ONLY; every run recorded) ─────────────────────────────────────────
@@ -184,7 +184,7 @@ export class RetentionController {
   @Post('sms/campaigns') @RequirePermission('pos.marketing.manage')
   confirm(@Req() q: any, @Body(ValidatedBody(RETENTION_SMS_CONFIRM_BODY, { strict: true })) b: any) {
     const c = ctxFrom(q); need(c, 'pos.marketing.manage');
-    return run(() => this.s().confirm(c, { previewId: String(b?.previewId ?? ''), idempotencyKey: String(b?.idempotencyKey ?? ''), acceptChanges: b?.acceptChanges === true, label: str(b?.label) }));
+    return run(() => this.s().confirm(c, { previewId: String(b?.previewId ?? ''), idempotencyKey: String(b?.idempotencyKey ?? ''), acceptChanges: b?.acceptChanges === true, label: str(b?.label), confirmLargeSelection: typeof b?.confirmLargeSelection === 'number' ? b.confirmLargeSelection : null }));
   }
 
   /** C5 audit (Nov 4 2026): stop a queued / sending campaign (texts already sent stay sent) — audited with its reason */
