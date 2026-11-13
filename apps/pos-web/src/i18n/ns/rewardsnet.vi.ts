@@ -219,4 +219,10 @@ export const REWARDSNET_VI = {
   'rn.pay.x.unreconciled': 'Hóa đơn {ticket} đã thanh toán nhưng phần thưởng {amount} vẫn đang được giữ', // DRAFT — Kevin reviews
   'rn.pay.x.disputed': 'Hoàn {amount} trên hóa đơn {ticket} sau khi đã bắt đầu chi trả · {status}', // DRAFT — Kevin reviews
   'rn.pay.x.expired': 'Lượt giữ phần thưởng {amount} trên hóa đơn {ticket} đã hết hạn', // DRAFT — Kevin reviews
+  'rn.purchase.by': 'ghi bởi {s}', // DRAFT — Kevin reviews
+  'rn.evsrc.owner': 'tiệm', // DRAFT — Kevin reviews
+  'rn.evsrc.sandbox_admin': 'hỗ trợ nền tảng (thử nghiệm)', // DRAFT — Kevin reviews
+  'rn.evsrc.test': 'một lần chạy thử', // DRAFT — Kevin reviews
+  'rn.evsrc.provider': 'nhà cung cấp nạp tiền', // DRAFT — Kevin reviews
+  'rn.evsrc.unknown': 'không ghi lại', // DRAFT — Kevin reviews
 };

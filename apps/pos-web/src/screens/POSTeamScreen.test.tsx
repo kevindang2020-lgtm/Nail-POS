@@ -129,6 +129,19 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(line).toHaveTextContent('Technician App no records');
     expect(line.textContent).toMatch(/Booking Nov 12, 2026.*Technician status Nov 12, 2026/);
   });
+  it('extras TEAM MANAGEMENT 11 (round 10): the Revenue vs earnings glossary lists the server\'s figures with what they count and their date basis', async () => {
+    api.dashboard.mockResolvedValue(dash({ glossary: [{ key: 'service_revenue', source: 'ticket_service_lines', dateBasis: 'ticket_paid_at' }, { key: 'commission_earned', source: 'ticket_compensation_snapshots', dateBasis: 'snapshot_at' },
+      { key: 'commission_paid', source: 'payroll_payouts', dateBasis: 'payout_paid_at' }] }));
+    mount();
+    fireEvent.click(await screen.findByTestId('open-glossary'));
+    expect(await screen.findByTestId('gl-service_revenue')).toHaveTextContent('Not what the technician earns'); expect(screen.getByTestId('gl-service_revenue')).toHaveTextContent('the day the ticket was paid');
+    expect(screen.getByTestId('gl-commission_paid')).toHaveTextContent('the day the payout was paid');
+    expect(screen.getByTestId('glossary-list').textContent).not.toMatch(/ticket_paid_at|snapshot_at|payroll_payouts/);
+  });
+  it('an older server without a glossary shows no glossary link', async () => {
+    mount(); await screen.findByTestId('kpi-defs');
+    expect(screen.queryByTestId('open-glossary')).toBeNull();
+  });
   it('an older server without sync freshness shows no freshness line (nothing invented)', async () => {
     mount();
     await waitFor(() => expect(screen.getByTestId('kpi-team')).toHaveTextContent('8'));

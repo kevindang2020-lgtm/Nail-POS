@@ -218,4 +218,10 @@ export const REWARDSNET_EN = {
   'rn.pay.x.unreconciled': 'Ticket {ticket} is paid but its {amount} reward is still on hold',
   'rn.pay.x.disputed': 'Refund of {amount} on ticket {ticket} after payout started · {status}',
   'rn.pay.x.expired': '{amount} reward hold on ticket {ticket} expired',
+  'rn.purchase.by': 'recorded by {s}',
+  'rn.evsrc.owner': 'the salon',
+  'rn.evsrc.sandbox_admin': 'platform support (sandbox)',
+  'rn.evsrc.test': 'a test run',
+  'rn.evsrc.provider': 'the funding provider',
+  'rn.evsrc.unknown': 'not recorded',
 };

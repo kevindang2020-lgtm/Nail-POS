@@ -162,6 +162,12 @@ export function TxDialog({ id, tick, onClose, onChanged, onNote, onCustomer, onG
         {perm.refund && t.refundableCents > 0 && tk?.id ? <button type="button" className="fk-btn" onClick={() => setRefunding(true)} data-testid="detail-refund">{tx('pos.refund')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !t ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        {/* extras TRANSACTIONS 08: the customer and the ticket at a glance (server's linked customer only; contact masked without access) */}
+        <div className="fk-preview" data-testid="txn-context">
+          <b>{d.data.customerContext ? d.data.customerContext.name ?? tx('rv.walkIn') : tx('rv.walkIn')}</b>
+          {d.data.customerContext ? <span className="fk-li-s"> · {[d.data.customerContext.phone, d.data.customerContext.email].filter(Boolean).join(' · ') || '—'} · {tx('txn.ctx.visits', { n: String(d.data.customerContext.visits) })}{d.data.customerContext.lastVisitAt ? ' · ' + tx('txn.ctx.last', { d: when(d.data.customerContext.lastVisitAt) }) : ''}</span> : null}
+          <div className="fk-li-s">{d.data.ticket ? tx('txn.ctx.ticket', { n: d.data.ticket.ticketNumber ?? short(d.data.ticket.id), l: String(d.data.ticket.lines?.length ?? 0), t: String(d.data.ticket.tenders?.length ?? 0) }) : tx('rv.notLinked')}</div>
+        </div>
         <div className="fn-statusline"><span className={'fk-chip ' + (STATE_TONE[t.state] ?? 'mut')}>{stateLbl(t.state)}</span><span className="fk-hint">{tx('txn.stateNote.' + t.state)}</span></div>
         <div className="fn-cols2">
           <dl className="fk-dl" data-testid="tender-facts">
@@ -173,7 +179,8 @@ export function TxDialog({ id, tick, onClose, onChanged, onNote, onCustomer, onG
             <dt>{tx('txn.f.paidAt')}</dt><dd>{when(t.paidAt)}</dd>
             <dt>{tx('txn.f.createdAt')}</dt><dd>{when(t.createdAt)}</dd>
             <dt>{tx('txn.col.techs')}</dt><dd>{t.technicians ?? '—'}</dd>
-            <dt>{tx('rv.f.settlement')}</dt><dd>{d.data.settlement ? <button type="button" className="fk-li-t link" onClick={() => onGo('/tenant/payments/settlements')}>{d.data.settlement.reference ?? short(d.data.settlement.id)} · {codeLabel('rv.settle.' + d.data.settlement.status, d.data.settlement.status)}</button> : <span className="fk-muted">{tx('rv.notLinked')}</span>}</dd>
+            <dt>{tx('rv.f.settlement')}</dt><dd>{d.data.settlement ? <><button type="button" className="fk-li-t link" data-testid="txn-open-settlement" onClick={() => onGo('/tenant/payments/settlements?settlement=' + encodeURIComponent(d.data.settlement.id))}>{d.data.settlement.reference ?? short(d.data.settlement.id)} · {codeLabel('rv.settle.' + d.data.settlement.status, d.data.settlement.status)}</button>
+              {' '}<button type="button" className="fk-li-s link" data-testid="txn-open-deposit" onClick={() => onGo('/tenant/payments/deposit-reconciliation?settlement=' + encodeURIComponent(d.data.settlement.id))}>{tx('txn.openDeposit')}</button></> : <span className="fk-muted">{tx('rv.notLinked')}</span>}</dd>
           </dl>
           <div>
             <h3 className="fk-h3">{tx('txn.refundTitle')}</h3>

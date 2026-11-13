@@ -199,6 +199,14 @@ describe('Transactions — detail, privacy, isolation', () => {
     expect(d.permissions).toMatchObject({ refund: true, sendReceipt: true });
     const s = await r.detail(ctx, ids.s1);
     expect(s.settlement).toMatchObject({ reference: 'BATCH-88', grossCents: 6316 });
+    // extras TRANSACTIONS 08 (round 10): the compact customer identity rides with the ticket — masked without pos.customers.view
+    if (s.tender.customer) {
+      expect(s.customerContext).toMatchObject({ id: s.tender.customer.id, name: s.tender.customer.name, contactMasked: false });
+      expect(s.customerContext!.visits).toBeGreaterThanOrEqual(1);
+      const masked = await r.detail({ ...ctx, permissions: ctx.permissions.filter((p: string) => p !== 'pos.customers.view') }, ids.s1);
+      expect(masked.customerContext).toMatchObject({ contactMasked: true });
+      expect(masked.customerContext!.phone ?? '').not.toMatch(/\(\d{3}\) \d{3}-/);
+    } else expect(s.customerContext).toBeNull();
     // extras arc (Nov 10 2026): the state timeline lists only recorded times, newest first, and names the batch
     expect(d.timeline.map((x) => x.kind)).toEqual(expect.arrayContaining(['created', 'refund_requested']));
     expect(d.timeline.some((x) => x.kind === 'settled')).toBe(false);   // no batch linked → no settlement event invented

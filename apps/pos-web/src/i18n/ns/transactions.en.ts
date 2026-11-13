@@ -116,4 +116,8 @@ export const TRANSACTIONS_EN = {
   'txn.dup.conflicting': '{n} other same-amount charge(s) on this ticket within 10 minutes',
   'txn.dup.over': 'Ticket collected {a} more than it can owe',
   'txn.dup.safe': 'Diagnosis only — nothing is voided, refunded or erased here. Verify with the processor, then correct through Refunds & Voids.',
+  'txn.openDeposit': 'Open deposit review',
+  'txn.ctx.visits': '{n} paid visits',
+  'txn.ctx.last': 'last {d}',
+  'txn.ctx.ticket': 'Ticket #{n} · {l} line(s) · {t} tender(s)',
 };

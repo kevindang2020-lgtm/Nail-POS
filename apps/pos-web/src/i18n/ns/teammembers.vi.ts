@@ -358,4 +358,24 @@ export const TEAMMEMBERS_VI = {
   'tmm.bulk.rule': 'Dùng Bộ lọc thêm (chưa có tài khoản, thiếu dịch vụ) để xem các trường hợp cần xử lý trong số người đã chọn. Không phân công, thay đổi hay gửi gì.', // DRAFT — Kevin reviews
   'tmm.bulk.selectPage': 'Chọn tất cả nhân viên trên trang này', // DRAFT — Kevin reviews
   'tmm.bulk.selectRow': 'Chọn {name}', // DRAFT — Kevin reviews
+  'tmm.gl.open': 'Bảng thuật ngữ doanh thu và thu nhập', // DRAFT — Kevin reviews
+  'tmm.gl.title': 'Doanh thu và thu nhập', // DRAFT — Kevin reviews
+  'tmm.gl.sub': 'Mỗi con số tiền tính gì và dùng ngày nào.', // DRAFT — Kevin reviews
+  'tmm.gl.date': 'Ngày', // DRAFT — Kevin reviews
+  'tmm.gl.services_completed.name': 'Dịch vụ đã hoàn thành', // DRAFT — Kevin reviews
+  'tmm.gl.services_completed.what': 'Các dòng dịch vụ có thợ trên hóa đơn đã thanh toán — không tính dịch vụ thêm, dòng đã xóa và hóa đơn đã hủy.', // DRAFT — Kevin reviews
+  'tmm.gl.service_revenue.name': 'Doanh thu dịch vụ', // DRAFT — Kevin reviews
+  'tmm.gl.service_revenue.what': 'Tiền của tiệm: tổng các dòng dịch vụ và dịch vụ thêm trên hóa đơn đã thanh toán, chưa gồm tiền tip. Không phải thu nhập của thợ.', // DRAFT — Kevin reviews
+  'tmm.gl.commission_earned.name': 'Hoa hồng đã kiếm', // DRAFT — Kevin reviews
+  'tmm.gl.commission_earned.what': 'Thu nhập của thợ: tiền công dịch vụ và hoa hồng bán lẻ trong sổ hoa hồng, cộng các điều chỉnh đã duyệt.', // DRAFT — Kevin reviews
+  'tmm.gl.tips.name': 'Tiền tip', // DRAFT — Kevin reviews
+  'tmm.gl.tips.what': 'Tip thẻ và tiền mặt chia cho thợ, cộng các điều chỉnh tip. Tip không phải doanh thu.', // DRAFT — Kevin reviews
+  'tmm.gl.commission_paid.name': 'Đã trả', // DRAFT — Kevin reviews
+  'tmm.gl.commission_paid.what': 'Các khoản trả lương đã đánh dấu đã trả — tiền đã thật sự chi ra.', // DRAFT — Kevin reviews
+  'tmm.gl.pending_payout.name': 'Chờ trả', // DRAFT — Kevin reviews
+  'tmm.gl.pending_payout.what': 'Các khoản trả lương còn chờ hoặc đang xử lý.', // DRAFT — Kevin reviews
+  'tmm.gl.basis.ticket_paid_at': 'ngày hóa đơn được thanh toán', // DRAFT — Kevin reviews
+  'tmm.gl.basis.snapshot_at': 'ngày thu nhập được ghi lúc tính tiền', // DRAFT — Kevin reviews
+  'tmm.gl.basis.payout_paid_at': 'ngày khoản trả được chi', // DRAFT — Kevin reviews
+  'tmm.gl.basis.payout_created_at': 'ngày tạo khoản trả', // DRAFT — Kevin reviews
 };
