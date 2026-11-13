@@ -22,7 +22,7 @@ const badFilter = () => withCode(new HttpException({ code: 'FOLLOWUP_QUEUE_INVAL
 const LIST_SPEC = {
   filters: {
     view: { type: 'enum', values: ['queue', 'history'] },
-    status: { type: 'enum', values: ['all', 'unsent', 'pending', 'pending_manager_approval', 'rejected', 'sent', 'skipped', 'closed', 'expired', 'customer_not_available', 'rebooked'] },
+    status: { type: 'enum', values: ['all', 'unsent', 'pending', 'pending_manager_approval', 'rejected', 'sent', 'skipped', 'closed', 'expired', 'customer_not_available', 'rebooked', 'retryable'] },
     technicianId: { type: 'uuid' },
     priority: { type: 'enum', values: ['high', 'normal', 'low'] },
     due: { type: 'enum', values: ['overdue', 'due_today', 'upcoming'] },

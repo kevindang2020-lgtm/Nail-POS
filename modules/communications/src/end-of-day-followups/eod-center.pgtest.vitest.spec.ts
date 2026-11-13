@@ -312,15 +312,24 @@ describe('cross-module reconciliation of unsent follow-ups (extras FOLLOW-UP QUE
     await task(RC(3), T1, paid, 'sent');         // already sent — not reconciled
     const before = await counts();
     const rec = await center.reconciliation(T, BR, '2026-11-12');
-    expect(rec).toEqual({ open: 5, sourceCancelled: 1, customerArchived: 1, alreadyBooked: 1, technicianInactive: 1 });
+    expect(rec).toEqual({ open: 5, sourceCancelled: 1, customerArchived: 1, alreadyBooked: 1, technicianInactive: 1, inboxReplied: 0 });
     const h = await center.health(T, BR, await repo.settingsFor(T, BR), new Date());
     const row = h.rows.find((r) => r.key === 'reconcile')!;
     expect(row.state).toBe('attention_required');
     expect(row.reconcile).toEqual(rec);
-    expect(await center.reconciliation(TX, BX, '2026-11-12')).toEqual({ open: 0, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0 });
+    expect(await center.reconciliation(TX, BX, '2026-11-12')).toEqual({ open: 0, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0, inboxReplied: 0 });
     expect(await counts()).toEqual(before);   // read only
     await q(`update service_follow_up_tasks set status = 'expired' where tenant_id = $1 and branch_id = $2 and customer_id <> $3`, [T, BR, RC(1)]);
     const clean = await center.health(T, BR, await repo.settingsFor(T, BR), new Date());
-    expect(clean.rows.find((r) => r.key === 'reconcile')).toMatchObject({ state: 'ready', reconcile: { open: 1, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0 } });
+    expect(clean.rows.find((r) => r.key === 'reconcile')).toMatchObject({ state: 'ready', reconcile: { open: 1, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0, inboxReplied: 0 } });
+    // round 10 — SMS Inbox: the intact task's customer texted the salon AFTER the task was made (an inbound on their SMS thread) → counted;
+    // an inbound from before the task, an email thread, or another salon's thread never counts
+    await q(`insert into communication_threads (tenant_id, branch_id, customer_id, channel, status, last_inbound_at) values
+      ($1,$2,$3,'sms','open', now() + interval '1 minute'), ($1,$2,$3,'email','open', now() + interval '1 minute'), ($4,$5,null,'sms','open', now() + interval '1 minute')`, [T, BR, RC(1), TX, BX]);
+    const replied = await center.reconciliation(T, BR, '2026-11-12');
+    expect(replied).toMatchObject({ open: 1, inboxReplied: 1 });
+    expect((await center.health(T, BR, await repo.settingsFor(T, BR), new Date())).rows.find((r) => r.key === 'reconcile')!.state).toBe('attention_required');
+    await q(`update communication_threads set last_inbound_at = now() - interval '400 days' where tenant_id = $1 and customer_id = $2`, [T, RC(1)]);
+    expect((await center.reconciliation(T, BR, '2026-11-12')).inboxReplied).toBe(0);
   });
 });

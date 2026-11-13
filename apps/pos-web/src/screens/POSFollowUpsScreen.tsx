@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posFollowUpQueueApi as qa, type FollowUpQueueKpis, type FollowUpQueueRow, type QueuePage, type FollowUpQueueQuery, type ContactCheck, type MissedCallRow, type QueueResults, type CustomerFollowUp, type GenerateOutcome, type FollowUpPriorityReason } from '../api/posFollowUpQueueApi';
-import { posEodFollowUpsApi as eod, type EodTaskDetail, type EodHealthRow, type EodHealthState } from '../api/posEodFollowUpsApi';
+import { posEodFollowUpsApi as eod, type EodTaskDetail, type EodHealthRow, type EodHealthState, type EodRun } from '../api/posEodFollowUpsApi';
 import { posFollowUpApi, type FollowUpTaskView } from '../api/posFollowUpApi';
 import { posCustomerNotificationsApi as cnApi, type CnTimelineItem } from '../api/posCustomerNotificationsApi';
 import { statusLabel } from '../i18n/status-label';
@@ -74,6 +74,8 @@ export function POSFollowUpsScreen() {
   const [todayTasks, setTodayTasks] = useState<FollowUpTaskView[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const [gen, setGen] = useState<GenerateOutcome | null>(null);
+  // FOLLOW-UP QUEUE 03 (round 10): the last generation run (the server's run log) — when, by what, and its counts
+  const [lastRun, setLastRun] = useState<EodRun | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -104,7 +106,8 @@ export function POSFollowUpsScreen() {
   }, [type, filters, q, mcState]);
   const loadSide = useCallback(async () => {
     const r = presetRange('month', today);
-    const [h, res, day] = await Promise.allSettled([eod.health(), qa.results({ from: filters.from ?? r.from, to: filters.to ?? r.to, technicianId: filters.technicianId || undefined }), posFollowUpApi.list({ date: today })]);
+    const [h, res, day, runs] = await Promise.allSettled([eod.health(), qa.results({ from: filters.from ?? r.from, to: filters.to ?? r.to, technicianId: filters.technicianId || undefined }), posFollowUpApi.list({ date: today }), eod.runs(1, 1)]);
+    if (runs.status === 'fulfilled') setLastRun(runs.value.items[0] ?? null);
     if (h.status === 'fulfilled') setHealth(h.value);
     if (day.status === 'fulfilled') setTodayTasks(day.value.tasks ?? []);
     if (res.status === 'fulfilled') {
@@ -155,6 +158,11 @@ export function POSFollowUpsScreen() {
         </> : null}
       </div>
 
+      {lastRun !== undefined ? <div className="s" data-testid="fuq-last-run">{lastRun ? <>
+        {tx('fuq.run.last', { date: lastRun.businessDate, status: statusLabel('state', lastRun.status), trigger: tx(`eod.run.trigger.${lastRun.trigger}`), time: when(lastRun.finishedAt ?? lastRun.startedAt, tz) })}
+        {' · '}{tx('fuq.run.counts', { found: String(lastRun.candidates), created: String(lastRun.created), skipped: String(lastRun.excluded) })}
+        {lastRun.error ? <span className="err"> · {lastRun.error}</span> : null}
+        <span> · {tx('fuq.run.idem')}</span></> : tx('fuq.run.none')}</div> : null}
       {note ? <div className="err" role="alert">{note}</div> : null}
       {gen ? (
         <section className="panel fuq-gen" data-testid="fuq-gen-result" role="status">
@@ -188,7 +196,7 @@ export function POSFollowUpsScreen() {
           {type === 'after_service' ? <>
             <select className="fk-select" aria-label={tx('fuq.f.status')} value={filters.status} onChange={(e) => setF({ status: e.target.value })} data-testid="fuq-f-status">
               <option value="">{tx('fuq.f.allStatuses')}</option>
-              {['unsent', 'sent', 'skipped', 'closed', 'rebooked'].map((v) => <option key={v} value={v}>{tx(`fuq.f.${v}`)}</option>)}
+              {['unsent', 'sent', 'skipped', 'closed', 'rebooked', 'retryable'].map((v) => <option key={v} value={v}>{tx(`fuq.f.${v}`)}</option>)}
               {['pending', 'pending_manager_approval', 'rejected', 'expired', 'customer_not_available'].map((v) => <option key={v} value={v}>{stText(v)}</option>)}
             </select>
             <select className="fk-select" aria-label={tx('fuq.f.tech')} value={filters.technicianId} onChange={(e) => setF({ technicianId: e.target.value })} data-testid="fuq-f-tech">
@@ -380,6 +388,8 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
               <div className="s">{tx('fuq.cc.channel')} {tx('fuq.cc.cooldown', { h: String(cc.cooldownHours) })}</div>
               {cc.lastFollowUp ? <div className="s">{tx('fuq.cc.lastFollowUp', { time: when(cc.lastFollowUp.at, tz), tech: cc.lastFollowUp.technicianName })}</div> : null}
               {cc.otherChannel ? <div className="s" data-testid="fuq-d-other">{tx('fuq.cc.other', { channel: cc.otherChannel.channel, purpose: cc.otherChannel.purpose ?? '', time: when(cc.otherChannel.at, tz) })}</div> : null}
+              {cc.purpose ? <div className="s" data-testid="fuq-d-purpose">{tx('fuq.cc.purpose.' + cc.purpose.code)}{cc.purpose.marketingConsentRequired ? '' : ` · ${tx('fuq.cc.noMarketingConsent')}`}</div> : null}
+              {cc.quietHours ? <div className="s" data-testid="fuq-d-quiet">{cc.quietHours.applies ? tx('fuq.cc.quietApplies') : tx('fuq.cc.quiet.' + cc.quietHours.reason)}</div> : null}
               {cc.optOuts.map((o) => <div key={o.channel} className="s" data-testid={`fuq-d-optout-${o.channel}`}>{tx(o.channel === 'sms' ? 'fuq.cc.optOutSms' : 'fuq.cc.optOut', { channel: o.channel, time: when(o.at, tz) })}</div>)}
               <h4>{tx('fuq.pr.why')} · <span className={`fuq-pr pr-${cc.priority}`}>{tx(`fuq.pr.${cc.priority}`)}</span></h4>
               <ul className="fuq-reasons" data-testid="fuq-d-reasons">{cc.priorityReasons.length ? cc.priorityReasons.map((r, i) => <li key={i}>{reasonText(r, tz)}</li>) : <li>{tx('fuq.pr.none')}</li>}</ul>

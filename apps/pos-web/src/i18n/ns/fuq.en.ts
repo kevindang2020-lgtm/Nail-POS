@@ -179,4 +179,13 @@ export const FUQ_EN = {
   'fuq.cd.note': 'From the customer timeline (texts, emails, reminders, receipts, follow-ups). Read only — nothing is sent from here.',
   'fuq.cc.source_cancelled': 'Visit cancelled (ticket voided, reopened or service removed) — cannot be sent',
   'fuq.cc.optOutSms': 'Texted STOP on {time} — no follow-up is sent to this customer on any channel, and it cannot be overridden',
+  'fuq.run.last': 'Last generation: {date} · {status} · {trigger} · {time}',
+  'fuq.run.counts': '{found} found · {created} created · {skipped} skipped',
+  'fuq.run.idem': 'Running it again for the same day creates nothing twice.',
+  'fuq.run.none': 'No generation has run yet.',
+  'fuq.cc.purpose.service_follow_up': 'Purpose: a service follow-up about this visit',
+  'fuq.cc.noMarketingConsent': 'marketing consent is not what permits it; a text STOP still blocks it',
+  'fuq.cc.quietApplies': 'Quiet hours apply to this message.',
+  'fuq.cc.quiet.in_app_inbox_only': 'Quiet hours do not apply: it goes only to the Customer App inbox — no text or call is made.',
+  'fuq.f.retryable': 'Ready to retry (failed, now sendable)',
 };

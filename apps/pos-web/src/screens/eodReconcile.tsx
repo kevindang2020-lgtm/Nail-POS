@@ -3,16 +3,16 @@
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { EodHealthRow } from '../api/posEodFollowUpsApi';
 
-const KEYS = [['sourceCancelled', 'eod.rec.source'], ['customerArchived', 'eod.rec.archived'], ['alreadyBooked', 'eod.rec.booked'], ['technicianInactive', 'eod.rec.tech']] as const;
+const KEYS = [['sourceCancelled', 'eod.rec.source'], ['customerArchived', 'eod.rec.archived'], ['alreadyBooked', 'eod.rec.booked'], ['technicianInactive', 'eod.rec.tech'], ['inboxReplied', 'eod.rec.inbox']] as const;
 
 export function EodReconcile({ rec }: { rec: NonNullable<EodHealthRow['reconcile']> }) {
   const tt = (k: string, v?: Record<string, string>) => tx(k, v as Parameters<typeof tx>[1]);
-  const issues = KEYS.filter(([f]) => rec[f] > 0);
+  const issues = KEYS.filter(([f]) => (rec[f] ?? 0) > 0);
   return (
     <div className="s" data-testid="eod-reconcile">
       <div>{tt('eod.rec.open', { n: String(rec.open) })}</div>
       {issues.length === 0 ? <div data-testid="eod-rec-ok">{tt('eod.rec.ok')}</div>
-        : issues.map(([f, k]) => <div key={f} data-testid={`eod-rec-${f}`}>{tt(k, { n: String(rec[f]) })}</div>)}
+        : issues.map(([f, k]) => <div key={f} data-testid={`eod-rec-${f}`}>{tt(k, { n: String(rec[f] ?? 0) })}</div>)}
     </div>
   );
 }

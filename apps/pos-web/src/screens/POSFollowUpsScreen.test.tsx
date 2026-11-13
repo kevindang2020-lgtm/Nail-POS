@@ -14,7 +14,9 @@ const tasks = { items: [row('t1', 'Olivia Brown', '2026-10-30', true, 'high'), r
 const missed = { items: [{ id: 'm1', type: 'missed_call', customerId: null, customerName: null, callerLast4: '9999', at: '2026-10-31T15:00:00Z', aiHandled: false, state: 'awaiting_callback', recoveredAppointmentId: null }], total: 1, page: 1, pageSize: 20, totalPages: 1 };
 const gen = { result: { businessDate: '2026-10-31', created: 0, skipped: 0, alreadyRan: false }, summary: { businessDate: '2026-10-31', status: 'completed', eligible: 4, created: 0, createdToday: 4, alreadyExisted: 4, skippedByReason: {}, failed: 0, error: null } };
 
+let runsBody: unknown = { items: [], total: 0, page: 1, pageSize: 1, totalPages: 1 };
 function route(url: string, kpiFail = false) {
+  if (url.includes('/eod-follow-ups/runs')) return { status: 200, body: runsBody };
   if (url.includes('/follow-up-queue/kpis')) return kpiFail ? { status: 500, body: { message: 'boom' } } : { status: 200, body: kpis };
   if (url.includes('/follow-up-queue/missed-calls')) return { status: 200, body: missed };
   if (url.includes('/follow-up-queue/tasks')) return { status: 200, body: tasks };
@@ -137,7 +139,8 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
       const url = String(u);
       const r = url.includes('/eod-follow-ups/tasks/t1') ? { status: 200, body: detail }
         : url.includes('/contact-check') ? { status: 200, body: { taskId: 't1', category: 'opted_out', categories: ['opted_out'], channel: 'customer_app', cooldownHours: 72, lastFollowUp: null, otherChannel: null,
-          optOuts: [{ channel: 'sms', at: '2026-10-29T15:00:00Z', enforced: true }], marketing: { sms: false, email: true }, upcomingBooking: null, priority: 'normal', priorityReasons: [], priorityVersion: 'v1' } }
+          optOuts: [{ channel: 'sms', at: '2026-10-29T15:00:00Z', enforced: true }], marketing: { sms: false, email: true }, upcomingBooking: null, priority: 'normal', priorityReasons: [], priorityVersion: 'v1',
+          purpose: { code: 'service_follow_up', marketingConsentRequired: false, blockedBySmsStop: true }, quietHours: { applies: false, reason: 'in_app_inbox_only' } } }
         : url.includes('/follow-up-queue/customers/') ? { status: 200, body: { items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 } }
         : null;
       if (!r) return base(u);
@@ -150,13 +153,16 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     expect(chip).toHaveTextContent('Opted Out'); expect(chip.className).toContain('bad');
     expect(screen.getByTestId('fuq-d-optout-sms')).toHaveTextContent(/Texted STOP on .* no follow-up is sent to this customer on any channel, and it cannot be overridden/);
     expect(screen.getByTestId('fuq-d-send')).toBeDisabled();
+    // FOLLOW-UP QUEUE 07 (round 10): the server's permitted purpose and quiet-hours statement, in words
+    expect(screen.getByTestId('fuq-d-purpose')).toHaveTextContent(/service follow-up about this visit · marketing consent is not what permits it/);
+    expect(screen.getByTestId('fuq-d-quiet')).toHaveTextContent(/Quiet hours do not apply: it goes only to the Customer App inbox/);
     expect(f.mock.calls.some((c: any[]) => (c[1]?.method ?? 'GET') !== 'GET')).toBe(false);
   });
 
   it('extras FOLLOW-UP QUEUE 09: the health panel shows the server\'s cross-module reconciliation in words (counts read, never recomputed)', async () => {
     window.history.replaceState(null, '', '/follow-ups');
     const base = mockFetch();
-    const rec = { open: 5, sourceCancelled: 1, customerArchived: 0, alreadyBooked: 2, technicianInactive: 0 };
+    const rec = { open: 5, sourceCancelled: 1, customerArchived: 0, alreadyBooked: 2, technicianInactive: 0, inboxReplied: 1 };
     globalThis.fetch = vi.fn(async (u: any) => String(u).includes('/eod-follow-ups/health')
       ? ({ ok: true, status: 200, json: async () => ({ overall: 'ready', rows: [{ key: 'reconcile', state: 'attention_required', detail: 'English detail', evidence: 'e', nextStep: null, reconcile: rec }] }), headers: { get: () => null } } as any)
       : base(u)) as any;
@@ -166,7 +172,28 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     expect(screen.getByTestId('eod-rec-sourceCancelled')).toHaveTextContent('1: the visit was voided, reopened or a service removed in Checkout');
     expect(screen.getByTestId('eod-rec-alreadyBooked')).toHaveTextContent('2: the customer already has an upcoming booking');
     expect(screen.queryByTestId('eod-rec-customerArchived')).toBeNull();
+    expect(screen.getByTestId('eod-rec-inboxReplied')).toHaveTextContent('1: the customer has texted the salon since the visit — read the SMS Inbox before sending.');   // round 10
     expect(screen.queryByText('English detail')).toBeNull();
     expect(screen.getByText('Matches other modules')).toBeInTheDocument();
+  });
+  it('extras FOLLOW-UP QUEUE 03 (round 10): the last generation run from the server log — date, status, trigger, time and counts; none yet says so', async () => {
+    globalThis.fetch = mockFetch() as any;
+    const v = view();
+    expect(await screen.findByTestId('fuq-last-run')).toHaveTextContent('No generation has run yet.');
+    v.unmount();
+    runsBody = { items: [{ id: 'r1', businessDate: '2026-10-31', status: 'completed', trigger: 'manual', startedAt: '2026-10-31T21:00:00Z', finishedAt: '2026-10-31T21:00:02Z', created: 3, skipped: 0, candidates: 5, excluded: 2, exclusions: {}, ruleVersion: 'v1', timezone: 'America/New_York', generationTime: '17:00', error: null }], total: 1, page: 1, pageSize: 1, totalPages: 1 };
+    view();
+    await waitFor(() => expect(screen.getByTestId('fuq-last-run')).toHaveTextContent('Last generation: 2026-10-31'));
+    expect(screen.getByTestId('fuq-last-run')).toHaveTextContent('5 found · 3 created · 2 skipped');
+    expect(screen.getByTestId('fuq-last-run')).toHaveTextContent('creates nothing twice');
+    runsBody = { items: [], total: 0, page: 1, pageSize: 1, totalPages: 1 };
+  });
+  it('extras FOLLOW-UP QUEUE 12 (round 10): the status filter offers the Safe Retry Console (ready to retry) and asks the server for exactly that list', async () => {
+    const f = mockFetch(); globalThis.fetch = f as any;
+    view();
+    await screen.findAllByTestId('fuq-row');
+    fireEvent.change(screen.getByTestId('fuq-f-status'), { target: { value: 'retryable' } });
+    await waitFor(() => expect(f.mock.calls.some((c: any[]) => String(c[0]).includes('/follow-up-queue/tasks') && String(c[0]).includes('status=retryable'))).toBe(true));
+    expect(screen.getByRole('option', { name: 'Ready to retry (failed, now sendable)' })).toBeInTheDocument();
   });
 });
