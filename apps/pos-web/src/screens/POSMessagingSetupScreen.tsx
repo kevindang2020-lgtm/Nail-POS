@@ -44,6 +44,7 @@ import { Pill, CapsLine, TestRows, CheckRows, RegRow, reasonText, outcomeText, w
 import { SmsReadinessPanel, SetupWizard, BranchSenders, SetupActivity } from './messagingSetupCenter';
 import { posMessagingSetupApi, type SetupOverview, type ConsentBoundaryView } from '../api/posMessagingSetupApi';
 import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
+import { posEmailCenterApi, type EmHealth } from '../api/posEmailCenterApi';
 
 const E164 = /^\+[1-9][0-9]{6,15}$/;
 /** a registration refresh run's outcome in words (literal keys — read at render) */
@@ -510,6 +511,7 @@ export function POSMessagingSetupScreen() {
           </section>
 
           {ov?.consentBoundary ? <ConsentBoundaryPanel cb={ov.consentBoundary} /> : null}
+          <EmailCallbacksPanel onOpen={() => nav('/tenant/communications/email')} />
 
           <section id="pm-test" className="fk-panel pmc-card" data-testid="pm-test">
             <div className="fk-panel-head"><h2>{t('pos.send_a_test_message')}</h2>{rd?.lastTest ? <Pill state={rd.lastTest.status} testId="pm-last-test" /> : null}</div>
@@ -622,6 +624,30 @@ export function POSMessagingSetupScreen() {
 /** Phone & Messaging 12 "Consent Boundary Checker" (Kevin, Nov 12 2026): what a customer's STOP or unsubscribe does to each
  *  message type — booking codes and account texts still go (transactional), everything else is blocked — with the salon's
  *  30-day evidence from the ledger. The rule comes from the server's send path; read-only. */
+/** extras Marketing 08 — e-mail beside text: configuration is not callback success. Reads the Email Center's own health
+ *  (GET /pos/email-center/health — the same layers Email shows): the provider configuration, and separately whether signed
+ *  delivery events are actually arriving (receiving / stale / none yet / not set up), with the last event time. Read-only;
+ *  a failed read (or no permission to view email) says so instead of guessing. */
+export function EmailCallbacksPanel({ onOpen }: { onOpen: () => void }) {
+  const [h, setH] = useState<EmHealth | null>(null); const [err, setErr] = useState(false);
+  useEffect(() => { let alive = true; posEmailCenterApi.health().then((x) => { if (alive) setH(x); }, () => { if (alive) setErr(true); }); return () => { alive = false; }; }, []);
+  const layer = (k: string) => (Array.isArray(h?.layers) ? h!.layers.find((l) => l.key === k) ?? null : null);
+  const cfg = layer('configuration'); const cb = layer('callbacks');
+  const tone = (st: string | undefined) => (st === 'receiving' || st === 'ready_to_check' ? 'ok' : st === 'not_configured' ? 'bad' : 'warn');
+  return (
+    <section className="fk-panel pmc-card" data-testid="ms-email-cb">
+      <div className="fk-panel-head"><h2>{t('ms.email.title')}</h2>{h ? <span className={'fk-chip ' + (h.overall === 'ready' ? 'ok' : h.overall === 'setup_required' ? 'bad' : 'warn')} data-testid="ms-email-overall">{t('ms.email.overall.' + h.overall)}</span> : null}</div>
+      {err ? <div className="pmc-hint" data-testid="ms-email-error">{t('ms.email.error')}</div> : !h ? <div className="pmc-hint">{t('pos.loading')}</div> : <>
+        <div className="pmc-hint">{t('ms.email.hint')}</div>
+        <div data-testid="ms-email-config"><b>{t('ms.email.config')}</b> <span className={'fk-chip ' + tone(cfg?.state)}>{t('ms.email.state.' + (cfg?.state ?? 'unknown'))}</span></div>
+        <div data-testid="ms-email-callbacks"><b>{t('ms.email.callbacks')}</b> <span className={'fk-chip ' + tone(cb?.state)} data-state={cb?.state ?? 'unknown'}>{t('ms.email.state.' + (cb?.state ?? 'unknown'))}</span>
+          {cb?.lastEventAt ? <span className="pmc-hint"> {t('ms.email.lastEvent', { t: when(cb.lastEventAt) })}</span> : null}</div>
+      </>}
+      <div><button type="button" className="fk-btn" onClick={onOpen} data-testid="ms-email-open">{t('ms.email.open')}</button></div>
+    </section>
+  );
+}
+
 export function ConsentBoundaryPanel({ cb }: { cb: ConsentBoundaryView }) {
   return (
     <section className="fk-panel" data-testid="ms-consent">

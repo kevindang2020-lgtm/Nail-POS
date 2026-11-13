@@ -165,4 +165,21 @@ export const SMSSETUP_VI = {
   "ms.trace.callback": "Báo cáo của nhà cung cấp: {status} lúc {at}", // DRAFT — Kevin reviews
   "ms.trace.notApplied": "không đổi trạng thái (lặp lại hoặc sai thứ tự)", // DRAFT — Kevin reviews
   "ms.trace.now": "Hiện tại: {s}", // DRAFT — Kevin reviews
+  "ms.email.title": "Báo cáo gửi e-mail", // DRAFT — Kevin reviews
+  "ms.email.hint": "Đã cài chưa có nghĩa là đang chạy: chỉ xác nhận đã gửi khi có sự kiện gửi có chữ ký từ nhà cung cấp e-mail.", // DRAFT — Kevin reviews
+  "ms.email.config": "Đã cài nhà cung cấp:", // DRAFT — Kevin reviews
+  "ms.email.callbacks": "Sự kiện gửi:", // DRAFT — Kevin reviews
+  "ms.email.lastEvent": "sự kiện gần nhất {t}", // DRAFT — Kevin reviews
+  "ms.email.error": "Không đọc được tình trạng e-mail ở đây. Mở E-mail để kiểm tra.", // DRAFT — Kevin reviews
+  "ms.email.open": "Mở E-mail", // DRAFT — Kevin reviews
+  "ms.email.overall.ready": "Sẵn sàng", // DRAFT — Kevin reviews
+  "ms.email.overall.setup_required": "Cần cài đặt", // DRAFT — Kevin reviews
+  "ms.email.overall.unknown": "Chưa kiểm tra", // DRAFT — Kevin reviews
+  "ms.email.overall.attention_required": "Cần xử lý", // DRAFT — Kevin reviews
+  "ms.email.state.receiving": "Đang nhận", // DRAFT — Kevin reviews
+  "ms.email.state.stale": "7 ngày không có", // DRAFT — Kevin reviews
+  "ms.email.state.unknown": "Chưa nhận được", // DRAFT — Kevin reviews
+  "ms.email.state.not_configured": "Chưa cài", // DRAFT — Kevin reviews
+  "ms.email.state.ready_to_check": "Đã cài", // DRAFT — Kevin reviews
+  "ms.email.state.incomplete": "Chỉ là người gửi thử", // DRAFT — Kevin reviews
 } as const;

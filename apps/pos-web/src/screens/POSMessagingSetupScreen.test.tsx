@@ -22,7 +22,7 @@ vi.mock('../api/posMessagingSetupApi', () => ({ posMessagingSetupApi: {
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn(async () => ({ branches: [{ id: 'b1', name: 'Main' }, { id: 'b2', name: 'Uptown' }] })) } }));
 import { api } from '../api/client';
 import { readinessFixture, regItem } from './phoneMessagingTestKit';
-import { POSMessagingSetupScreen, ConsentBoundaryPanel } from './POSMessagingSetupScreen';
+import { POSMessagingSetupScreen, ConsentBoundaryPanel, EmailCallbacksPanel } from './POSMessagingSetupScreen';
 
 const VA = 'VA' + 'a'.repeat(32);
 const view = (over: Record<string, unknown> = {}) => ({ tenantId: 't1', branchId: null, provider: 'twilio', status: 'configured', accountSid: 'AC…1111', accountSidLast4: '1111', fromNumber: '+18565550100', authTokenLast4: 'abcd',
@@ -250,5 +250,25 @@ describe('PM-03 / PM-04 registration from the provider', () => {
     expect(screen.getByTestId('ms-cb-reminder').textContent).toContain('sent although STOP should block it');
     expect(screen.getByTestId('ms-cb-overall').textContent).toBe('Needs review');
     expect(screen.getByTestId('ms-cb-optedout').textContent).toBe('2 numbers texted STOP · 1 email addresses unsubscribed');
+  });
+});
+
+describe('extras Marketing 08: e-mail delivery reports beside texting', () => {
+  it('shows the e-mail provider set up apart from delivery events actually arriving (from the Email Center health)', async () => {
+    vi.mocked(api.get).mockResolvedValue({ overall: 'attention_required', fromAddress: 'x@y', lastCheckedAt: null, lastSuccessAt: null, layers: [
+      { key: 'configuration', state: 'ready_to_check', detail: '', next: null }, { key: 'callbacks', state: 'stale', detail: '', next: 'check_webhook', lastEventAt: '2026-10-01T12:00:00Z' }] } as never);
+    const onOpen = vi.fn();
+    render(<MemoryRouter><EmailCallbacksPanel onOpen={onOpen} /></MemoryRouter>);
+    expect(await screen.findByTestId('ms-email-config')).toHaveTextContent('Provider set up: Set up');
+    expect(screen.getByTestId('ms-email-callbacks')).toHaveTextContent('Delivery events: None in 7 days');
+    expect(screen.getByTestId('ms-email-callbacks')).toHaveTextContent('last event');
+    expect(screen.getByTestId('ms-email-overall')).toHaveTextContent('Needs attention');
+    expect(vi.mocked(api.get)).toHaveBeenCalledWith('/pos/email-center/health');
+    fireEvent.click(screen.getByTestId('ms-email-open')); expect(onOpen).toHaveBeenCalled();
+  });
+  it('a failed read (e.g. no permission to view e-mail) says so', async () => {
+    vi.mocked(api.get).mockRejectedValue(Object.assign(new Error('Forbidden'), { status: 403 }) as never);
+    render(<MemoryRouter><EmailCallbacksPanel onOpen={() => {}} /></MemoryRouter>);
+    expect(await screen.findByTestId('ms-email-error')).toBeInTheDocument();
   });
 });
