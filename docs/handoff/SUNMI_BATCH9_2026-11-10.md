@@ -649,3 +649,18 @@ AI booking exceptions, refund root-cause, booking conflict timeline, lost-bookin
 alert, membership integrity checks, terminal routing guard, AI billing integrity, marketing anomaly checks, catalog
 integrity audit, team feed freshness. Real bugs fixed: services export marked every service taxable; "Not enough history"
 ignored the salon's own minimum-visits setting; forecast report windows used UTC days instead of the salon's day.
+
+## Extras backlog — round 8 (Nov 12 2026)
+TODO 90 → 41. Highlights: loyalty reimbursement drill-down + stale-provider indicator + owner finance export (async,
+audited); Money Protection CSV export (alerts + rules, provenance block, audited, uses the existing export permission);
+Split Payments read-only fallback + cross-module check; Payments overview accuracy check (second full-period read per
+KPI); forecast what-if sandbox (never stored); Live Ops trend "Why?" + Smart Priority strip; technician sync checks;
+budget-aware alert SMS plan (real provider cost or "—"); staffing heatmap; Account Finder; Service Done readiness; log
+event → support ticket; receptionist call insights; follow-up cross-module check; register hardware readiness; technician
+day notes; queue beside schedule gaps; reward liabilities; checkout-wiring checks; checkout price preview (deals engine +
+Checkout's own tax); compensation preview (the money path's own rule); notes relevance + health monitors; multi-branch
+Customer Intelligence; receipt processing queue; review-site inventory; vendor price change per receipt line.
+Real bugs fixed: dashboard revenue-trend / top-services / payment-mix returned the wrong shape (picking a period emptied
+the chart and broke the donuts); Help Center showed "submitted" when the server refused a ticket.
+Merge note: one merge commit briefly held conflict markers in live-technician-schedule.service.ts — caught before push,
+resolved and amended; the merge script now refuses to commit while any marker remains.
