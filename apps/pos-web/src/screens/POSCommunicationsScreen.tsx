@@ -32,6 +32,7 @@ import { readUrlState, writeUrlState, withFilter, listQuery, waitedFor, waitTone
 import { deviceToday } from '../lib/deviceToday';
 import { authApi } from '../api/authApi';
 import { useCan } from '../components/usePermissions';
+import { ProviderReadinessStrip } from '../components/ProviderReadinessStrip';
 
 const when = (iso: string | null | undefined) => { if (!iso) return ''; try { return fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const waitText = (iso: string | null | undefined) => { const w = waitedFor(iso); if (!w) return ''; return w.d ? tx('ci.wait.dh', { d: String(w.d), h: String(w.h) }) : w.h ? tx('ci.wait.hm', { h: String(w.h), m: String(w.m) }) : tx('ci.wait.m', { m: String(w.m) }); };
@@ -222,6 +223,9 @@ export function POSCommunicationsScreen() {
           <button type="button" className="ci-btn gold" onClick={() => setDlg('new')} data-testid="ci-new">{tx('pos.new_message')}</button>
         </div>
       </div>
+
+      {/* extras Communications 04: provider readiness (account · sender · registration · inbound · status callbacks) from the server */}
+      {can('settings.view') ? <ProviderReadinessStrip branchId={st.branch || ''} /> : null}
 
       {/* 13 KPI tiles — six activity metrics (their own sources, '—' when the source is absent) + seven conversation counts (SQL) */}
       <section className="ci-kpis" aria-label={tx('ci.kpis')} data-testid="ci-kpis">

@@ -101,4 +101,39 @@ export const COMMSINBOX_VI = {
   'ci.fr.r.simulated_sends': 'có {n} lần gửi thử không qua nhà cung cấp', // DRAFT — Kevin reviews
   'ci.fr.r.awaiting_callbacks': '{n} tin nhắn vẫn chờ cập nhật giao tin', // DRAFT — Kevin reviews
   'ci.fr.r.callbacks_stale': '{n} tin nhắn đang chờ và chưa có cập nhật giao tin nào — hãy kiểm tra webhook', // DRAFT — Kevin reviews
+  'ci.prov.title': 'Nhà cung cấp tin nhắn', // DRAFT — Kevin reviews
+  'ci.prov.error': 'Không đọc được tình trạng nhà cung cấp tin nhắn. Mở Cài đặt tin nhắn để kiểm tra.', // DRAFT — Kevin reviews
+  'ci.prov.item.account': 'Tài khoản', // DRAFT — Kevin reviews
+  'ci.prov.item.sender': 'Số gửi', // DRAFT — Kevin reviews
+  'ci.prov.item.registration': 'Đăng ký nhà mạng', // DRAFT — Kevin reviews
+  'ci.prov.item.inbound': 'Tin nhắn đến', // DRAFT — Kevin reviews
+  'ci.prov.item.status': 'Báo cáo gửi', // DRAFT — Kevin reviews
+  'ci.prov.state.ready': 'Sẵn sàng', // DRAFT — Kevin reviews
+  'ci.prov.state.connected': 'Đã kết nối', // DRAFT — Kevin reviews
+  'ci.prov.state.approved': 'Đã duyệt', // DRAFT — Kevin reviews
+  'ci.prov.state.ok': 'Ổn', // DRAFT — Kevin reviews
+  'ci.prov.state.done': 'Xong', // DRAFT — Kevin reviews
+  'ci.prov.state.not_applicable': 'Không cần', // DRAFT — Kevin reviews
+  'ci.prov.state.assigned': 'Đã gán', // DRAFT — Kevin reviews
+  'ci.prov.state.matches': 'Khớp', // DRAFT — Kevin reviews
+  'ci.prov.state.unknown': 'Chưa kiểm tra', // DRAFT — Kevin reviews
+  'ci.prov.state.pending': 'Đang chờ', // DRAFT — Kevin reviews
+  'ci.prov.state.not_started': 'Chưa bắt đầu', // DRAFT — Kevin reviews
+  'ci.prov.state.disabled': 'Đã tắt', // DRAFT — Kevin reviews
+  'ci.prov.state.unreachable': 'Không kết nối được', // DRAFT — Kevin reviews
+  'ci.prov.state.unable_to_verify': 'Không xác minh được', // DRAFT — Kevin reviews
+  'ci.prov.state.misconfigured': 'Cài đặt sai', // DRAFT — Kevin reviews
+  'ci.prov.state.invalid': 'Không hợp lệ', // DRAFT — Kevin reviews
+  'ci.prov.state.rejected': 'Bị từ chối', // DRAFT — Kevin reviews
+  'ci.prov.state.attention_required': 'Cần xử lý', // DRAFT — Kevin reviews
+  'ci.prov.state.not_set': 'Chưa đặt', // DRAFT — Kevin reviews
+  'ci.prov.state.not_owned': 'Không thuộc tài khoản này', // DRAFT — Kevin reviews
+  'ci.prov.state.not_configured': 'Chưa cài đặt', // DRAFT — Kevin reviews
+  'ci.prov.state.limited': 'Bị giới hạn', // DRAFT — Kevin reviews
+  'ci.prov.state.failed': 'Thất bại', // DRAFT — Kevin reviews
+  'ci.prov.state.warning': 'Cảnh báo', // DRAFT — Kevin reviews
+  'ci.prov.state.missing': 'Thiếu', // DRAFT — Kevin reviews
+  'ci.prov.state.missing_secret': 'Thiếu mã bí mật', // DRAFT — Kevin reviews
+  'ci.prov.state.error': 'Lỗi', // DRAFT — Kevin reviews
+  'ci.prov.state.configured': 'Đã cài, chưa có báo cáo', // DRAFT — Kevin reviews
 };
