@@ -123,7 +123,12 @@ describe('FAQ lifecycle (FAQ01–FAQ08, SYNC04)', () => {
     const d = await c.faq(own, F1);
     expect(d).toMatchObject({ status: 'approved', hasPendingChange: true, answer: 'Yes, when a technician is free — usually a 15 minute wait.', draftAnswer: 'No walk-ins this month.' });
     expect((await c.knowledge(TA, BA)).faqs[0].answer).toBe('Yes, when a technician is free — usually a 15 minute wait.');
+    // AI BUSINESS SETUP 07 (round 10): the difference view puts the pending change beside the live revision, field by field
+    expect(d.difference.find((x: any) => x.field === 'answer')).toEqual({ field: 'answer', live: 'Yes, when a technician is free — usually a 15 minute wait.', proposed: 'No walk-ins this month.', changed: true });
+    expect(d.difference.map((x: any) => x.field)).toEqual(['question', 'answer', 'category']);
+    expect(d.differenceRevisions.proposed).toBeGreaterThan(d.differenceRevisions.live);
     const v2 = (await act(F1, 'reject', v, { reason: 'Not this month after all' })).version;
+    expect((await c.faq(own, F1)).difference).toBeNull();   // nothing pending → no difference
     const d2 = await c.faq(own, F1);
     expect(d2).toMatchObject({ status: 'approved', hasPendingChange: false, answer: 'Yes, when a technician is free — usually a 15 minute wait.' });
     expect(d2.version).toBe(v2);
@@ -305,5 +310,22 @@ describe('A12 Nov 6 — holiday closures / special hours, FAQ tags, recorded hea
     const only: any = await c.history(up, { basis: 'readiness', from: ny(10), to: ny(10) });
     expect(only.items.map((x: any) => x.readiness.key)).toContain('business_hours');
     expect(only.items.every((x: any) => x.readiness.previousRunId)).toBe(true);
+  });
+  it('AI BUSINESS SETUP 03 + 04 (round 10): the scope inspector names the salon and branch and flags a branch that is not this salon\'s or is closed; each source carries its own last-changed time and is read live', async () => {
+    const r: any = await c.readiness(own);
+    expect(r.scope).toMatchObject({ tenantName: 'Salon A', branchId: BA, branchName: 'Main', mismatch: null, state: 'checked', branches: 2 });
+    const other: any = await c.readiness({ ...own, branchId: BB });                         // another salon's branch in this salon's session
+    expect(other.scope).toMatchObject({ branchId: BB, branchName: null, mismatch: 'branch_not_in_salon' });
+    await sql`update branches set status = 'inactive' where id = ${BA2}`.execute(db);
+    expect(((await c.readiness({ ...own, branchId: BA2 })) as any).scope).toMatchObject({ branchName: 'Uptown', mismatch: 'branch_inactive' });
+    await sql`update branches set status = 'active' where id = ${BA2}`.execute(db);
+    expect(((await c.readiness({ ...own, branchId: '' })) as any).scope).toMatchObject({ branchId: null, mismatch: null });
+    // freshness: the services row's own updated_at; a source never saved stays null — never a guessed time
+    const s2 = row(r, 'services');
+    const maxSvc = (await q1(sql`select max(updated_at) as m from services where tenant_id = ${TA}`)).m;
+    expect(s2.sourceUpdatedAt).toBe(maxSvc ? new Date(maxSvc).toISOString() : null);
+    expect(s2.read).toBe('live');
+    expect(row(r, 'business_hours').read).toBe('live');
+    expect(row(r, 'booking').sourceUpdatedAt).toBeUndefined();                              // not a stored source
   });
 });

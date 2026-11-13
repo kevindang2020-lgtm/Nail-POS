@@ -42,6 +42,7 @@ function ReadinessRow({ c, onGo, onRetry }: { c: any; onGo: (r: string) => void;
         {c.exclusions?.length ? <div className="ais-chips">{c.exclusions.map((x: any) => <span key={x.reason} className="ais-chip">{t(`aiset.excl.${x.reason}`)} · {x.count}</span>)}</div> : null}
         {c.warnings?.length ? <ul className="ais-warn">{c.warnings.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul> : null}
         <div className="ais-source">{t('aiset.source', { source: c.source })}</div>
+        {c.status !== 'UNKNOWN' && c.read === 'live' ? <div className="ais-source" data-testid={`ais-fresh-${c.key}`}>{c.sourceUpdatedAt ? t('aiset.fresh.updated', { at: fmtInZone(c.sourceUpdatedAt) }) : t('aiset.fresh.never')} · {t('aiset.fresh.live')}</div> : null}
       </div>
       {c.status === 'UNKNOWN' ? <button className="btn ghost" onClick={onRetry}>{t('aiset.retry')}</button>
         : c.action ? <button className="btn ghost" onClick={() => onGo(c.action.route)}>{t('aiset.edit')}</button> : null}
@@ -157,6 +158,10 @@ export function POSAIBusinessSetupScreen() {
               <div className="ais-sub-head">{t('aiset.supplemental')}</div>
               {ready.supplemental.map((c: any) => <ReadinessRow key={c.key} c={c} onGo={(r) => nav(r)} onRetry={loadReady} />)}
               <div className="ais-source">{t('aiset.checkedAt', { at: fmtInZone(ready.checkedAt) })} · {t(ready.branchScope === 'branch' ? 'aiset.scopeBranch' : 'aiset.scopeAll')}</div>
+              {ready.scope ? <div className="ais-source" data-testid="ais-scope">{ready.scope.state === 'unknown' ? t('aiset.scope.unknown', { trace: ready.scope.traceId ?? '—' })
+                : t('aiset.scope.label', { salon: ready.scope.tenantName ?? '—', branch: ready.scope.branchId ? (ready.scope.branchName ?? '—') : t('aiset.scopeAll') })}
+                {ready.scope.otherBranchFaqs ? ` · ${t('aiset.scope.otherFaqs', { n: ready.scope.otherBranchFaqs })}` : ''}</div> : null}
+              {ready.scope?.mismatch ? <div className="fk-note warn" role="alert" data-testid="ais-scope-mismatch">{t('aiset.scope.mismatch.' + ready.scope.mismatch)}</div> : null}
             </>
           )}
         </section>
@@ -323,6 +328,13 @@ function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canMana
               <h3>{t('aiset.liveAnswer')}</h3>
               {d.approvedRevision ? <div className="ais-live" data-testid="ais-live">{d.approvedRevision.answer}</div> : <div className="sub">{t('aiset.noLive')}</div>}
               {d.draftAnswer || d.status !== 'approved' ? <><h3>{t('aiset.pendingText')}</h3><div className="ais-draft" data-testid="ais-draft">{d.draftAnswer ?? d.answer}</div></> : null}
+              {Array.isArray(d.difference) ? <>
+                <h3>{t('aiset.diff.title')}</h3>
+                <table className="fk-table" data-testid="ais-diff"><thead><tr><th>{t('aiset.diff.field')}</th><th>{t('aiset.diff.live', { n: d.differenceRevisions?.live ?? '—' })}</th><th>{t('aiset.diff.proposed', { n: d.differenceRevisions?.proposed ?? '—' })}</th></tr></thead>
+                  <tbody>{d.difference.map((x: { field: string; live: string | null; proposed: string | null; changed: boolean }) => <tr key={x.field} className={x.changed ? 'ais-changed' : ''} data-testid={`ais-diff-${x.field}`}>
+                    <th scope="row">{t(`aiset.diff.f.${x.field}`)}{x.changed ? <span className="ais-chip ais-warn">{t('aiset.diff.changed')}</span> : null}</th><td>{x.live ?? '—'}</td><td>{x.proposed ?? '—'}</td></tr>)}</tbody></table>
+                <div className="sub">{t('aiset.diff.note')}</div>
+              </> : null}
             </div>
           ) : tab === 'history' ? (
             <ol className="ais-revs">{d.revisions.map((r: any) => <li key={r.id}><b>{t('aiset.revision', { n: r.revisionNo })}</b>{r.isApproved ? <span className="ais-chip ais-ok">{t('aiset.live')}</span> : null}{r.isPendingDraft ? <span className="ais-chip ais-warn">{t('aiset.pending')}</span> : null}

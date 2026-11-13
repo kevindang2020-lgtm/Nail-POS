@@ -6,6 +6,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom';
 
 const faqsOverride: { fn: null | ((q: any) => Promise<any>) } = { fn: null };
+const extra: { ready: Record<string, unknown>; faq: Record<string, unknown> } = { ready: {}, faq: {} };   // round 10 overrides
 const historyCalls: any[] = [];
 const addClosure = vi.fn((_b: any) => Promise.resolve({ id: 'c2' }));
 const closureItems: any[] = [{ id: 'c1', date: '2026-11-26', scope: 'salon', closed: true, opensAt: null, closesAt: null, note: 'Thanksgiving', createdAt: null }];
@@ -17,7 +18,7 @@ vi.mock('../api/posAiBusinessSetupApi', () => ({
         { key: 'business_hours', status: 'READY', source: 'Settings → Store hours (this branch)', rawCount: 7, eligibleCount: 6, exclusions: [], warnings: [], detail: 'Open 6 day(s) a week.', action: { label: 'Edit', route: '/settings' }, checkedAt: '', traceId: 'bs_1' },
         { key: 'services', status: 'READY', source: 'Services & Products (services)', rawCount: 4, eligibleCount: 2, exclusions: [{ reason: 'other_branch', count: 1 }], warnings: [], detail: '2 of 4 service(s) can be booked by the AI.', action: { label: 'Open', route: '/services' }, checkedAt: '', traceId: 'bs_2' },
         { key: 'technicians', status: 'UNKNOWN', source: 'Team Management', rawCount: null, eligibleCount: null, exclusions: [], warnings: [], detail: '', action: null, checkedAt: '', traceId: 'bs_3' },
-      ], supplemental: [] }),
+      ], supplemental: [], ...extra.ready }),
     faqs: (q: any) => (faqsOverride.fn ? faqsOverride.fn(q) : Promise.resolve({ items: [{ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', status: 'approved', aiServable: true, hasPendingChange: false, createdAt: '2026-10-30T12:00:00Z', approvedAt: '2026-10-30T13:00:00Z' }],
       page: 1, pageSize: 20, totalItems: 1, totalPages: 1, categories: ['General'] })),
     search: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
@@ -26,7 +27,7 @@ vi.mock('../api/posAiBusinessSetupApi', () => ({
           readiness: { key: 'business_hours', from: 'READY', to: 'FAILED', source: 'Settings → Store hours (this branch)', reason: 'monday is invalid', actor: 'Olivia Owner', runId: 'r3', previousRunId: 'r2' } }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
       : { items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }); },
     createFaq: vi.fn(), act: vi.fn(), preview: vi.fn(), health: vi.fn(), assistant: vi.fn(),
-    faq: () => Promise.resolve({ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', tags: ['policy'], status: 'approved', aiServable: true, hasPendingChange: false, version: 3, createdAt: '2026-10-01T12:00:00Z', revisions: [], events: [], previewUses: 0 }),
+    faq: () => Promise.resolve({ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', tags: ['policy'], status: 'approved', aiServable: true, hasPendingChange: false, ...extra.faq, version: 3, createdAt: '2026-10-01T12:00:00Z', revisions: [], events: [], previewUses: 0 }),
     closures: () => Promise.resolve({ timezone: 'America/New_York', items: closureItems }), addClosure: (b: any) => addClosure(b), removeClosure: vi.fn(), setTags: (id: string, t: string[]) => setTags(id, t),
     healthRun: vi.fn(), healthLast: () => Promise.resolve(null),
   },
@@ -87,6 +88,44 @@ describe('POSAIBusinessSetupScreen', () => {
     fireEvent.change(screen.getByTestId('ais-tags-input'), { target: { value: 'policy, walk-in' } });
     fireEvent.click(screen.getByTestId('ais-tags-save'));
     await waitFor(() => expect(setTags).toHaveBeenCalledWith('faq1', ['policy', 'walk-in']));
+  });
+  it('AI BUSINESS SETUP 03 (round 10): the scope inspector names salon and branch; a branch that is not this salon\'s is flagged', async () => {
+    extra.ready = { scope: { tenantName: 'Glow Bar', branchId: 'b1', branchName: 'Main', branchStatus: 'active', branches: 2, otherBranchFaqs: 3, mismatch: null, state: 'checked' } };
+    const v = render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-scope')).toHaveTextContent('Checked for Glow Bar · Main · 3 approved FAQ(s) belong to other branches');
+    expect(screen.queryByTestId('ais-scope-mismatch')).toBeNull();
+    v.unmount();
+    extra.ready = { scope: { tenantName: 'Glow Bar', branchId: 'bX', branchName: null, branchStatus: null, branches: 2, otherBranchFaqs: 0, mismatch: 'branch_not_in_salon', state: 'checked' } };
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-scope-mismatch')).toHaveTextContent('not one of this salon');
+    extra.ready = {};
+  });
+  it('AI BUSINESS SETUP 04 (round 10): each live source shows when it last changed (or that it was never saved) and that it is read live', async () => {
+    extra.ready = {};
+    const v = render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    await screen.findByTestId('ais-ready-services');
+    expect(screen.queryByTestId('ais-fresh-services')).toBeNull();          // an older server: no freshness line is invented
+    v.unmount();
+    const base = { status: 'READY', source: 's', rawCount: 1, eligibleCount: 1, exclusions: [], warnings: [], detail: 'd', action: null, checkedAt: '', traceId: 't', read: 'live' };
+    extra.ready = { core: [{ ...base, key: 'services', sourceUpdatedAt: '2026-10-30T16:00:00Z' }, { ...base, key: 'business_hours', sourceUpdatedAt: null }] };
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-fresh-services')).toHaveTextContent(/Source last changed .*Oct 30.* · read live at call time \(no copy, no sync lag\)/);
+    expect(screen.getByTestId('ais-fresh-business_hours')).toHaveTextContent('Source never saved');
+    extra.ready = {};
+  });
+  it('AI BUSINESS SETUP 07 (round 10): the Answer tab shows the pending change beside the live revision, field by field, changed fields marked', async () => {
+    extra.faq = { hasPendingChange: true, draftAnswer: 'No walk-ins this month.', approvedRevision: { id: 'r1', revisionNo: 2, question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General' },
+      difference: [{ field: 'question', live: 'Do you take walk-ins?', proposed: 'Do you take walk-ins?', changed: false }, { field: 'answer', live: 'Yes when available.', proposed: 'No walk-ins this month.', changed: true }, { field: 'category', live: 'General', proposed: 'General', changed: false }],
+      differenceRevisions: { live: 2, proposed: 3 } };
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByText('Do you take walk-ins?'));
+    fireEvent.click(await screen.findByTestId('ais-tab-answer'));
+    const diff = await screen.findByTestId('ais-diff');
+    expect(diff).toHaveTextContent('Live (revision 2)'); expect(diff).toHaveTextContent('Proposed (revision 3)');
+    expect(screen.getByTestId('ais-diff-answer')).toHaveTextContent('changed');
+    expect(screen.getByTestId('ais-diff-answer')).toHaveTextContent('No walk-ins this month.');
+    expect(screen.getByTestId('ais-diff-question')).not.toHaveTextContent('changed');
+    extra.faq = {};
   });
 });
 
