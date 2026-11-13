@@ -2136,4 +2136,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.catalog.addon_category_mismatch.fix": "Xem các dịch vụ thêm được đánh dấu trong danh sách và chuyển sang đúng dịch vụ.", // DRAFT — Kevin reviews
   "syschk.catalog.addon_live_on_voided_ticket": "Không dịch vụ thêm đã bán nào còn trên hóa đơn đã hủy", // DRAFT — Kevin reviews
   "syschk.catalog.addon_live_on_voided_ticket.fix": "Mở hóa đơn đã hủy và kiểm tra dòng dịch vụ thêm đã được đảo ngược.", // DRAFT — Kevin reviews
+  "ops.sched.match.btn": "Xem trước ghép cặp công bằng cho các khoảng trống", // DRAFT — Kevin reviews
+  "ops.sched.match.off": "Công cụ phân thợ công bằng của Hàng chờ khách không có ở đây, nên không có ghép cặp để xem.", // DRAFT — Kevin reviews
+  "ops.sched.match.none": "Hiện công cụ công bằng chưa có ghép cặp cho khách đang chờ.", // DRAFT — Kevin reviews
+  "ops.sched.match.row": "{g} → {tech} (đã chờ {m} phút)", // DRAFT — Kevin reviews
+  "ops.sched.match.fillsGap": "lấp một khoảng trống", // DRAFT — Kevin reviews
+  "ops.sched.match.note": "Bản xem trước theo vòng xoay công bằng của Hàng chờ khách — chưa phân thợ. Phân thợ trong Hàng chờ khách.", // DRAFT — Kevin reviews
+  "tpk.skill": "Kỹ năng", // DRAFT — Kevin reviews
+  "tpk.allSkills": "Mọi kỹ năng", // DRAFT — Kevin reviews
 };

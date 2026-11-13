@@ -18,6 +18,14 @@ beforeEach(() => {
 });
 
 describe('TechnicianPicker', () => {
+  it('filters by a skill the server reported and sends it as the booking skill filter (Sched 10)', async () => {
+    globalThis.fetch = vi.fn(async (url: any) => { urls.push(String(url)); const body = page(String(url)); body.technicians = body.technicians.map((t: any, i: number) => ({ ...t, skills: i % 2 ? ['Nails'] : ['Lashes'] })); return { ok: true, status: 200, headers: { get: () => null }, json: async () => body } as any; }) as any;
+    render(<TechnicianPicker value="" onChange={() => {}} debounceMs={0} />);
+    const sel = await screen.findByTestId('tech-picker-skill');
+    expect([...(sel as HTMLSelectElement).options].map((o) => o.value)).toEqual(['', 'Lashes', 'Nails']);
+    fireEvent.change(sel, { target: { value: 'Nails' } });
+    await waitFor(() => expect(urls.some((u) => u.includes('skill=Nails') && u.includes('page=1'))).toBe(true));
+  });
   it('shows one page of 12 out of 200 and walks to page 2 on the server', async () => {
     render(<TechnicianPicker value="" onChange={() => {}} debounceMs={0} />);
     await screen.findByText('Tech 1');

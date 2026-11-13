@@ -34,6 +34,9 @@ export function TechnicianPicker({ value, onChange, date, serviceIds, selectedNa
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [workingOnly, setWorkingOnly] = useState(workingOnlyDefault);
+  // round 10 (AI Scheduling Optimizer 10): a skill (service category) filter — the booking engine's own `skill` filter; the
+  // choices are the skills the server has shown on technicians so far (no list is invented)
+  const [skill, setSkill] = useState(''); const [skillsSeen, setSkillsSeen] = useState<string[]>([]);
   const [data, setData] = useState<BookingTechnicianPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,19 +47,21 @@ export function TechnicianPicker({ value, onChange, date, serviceIds, selectedNa
   // only a CHANGED search goes back to page 1 (the first debounce after mount used to reset a page the user had already moved to)
   const qNow = useRef('');
   useEffect(() => { const h = setTimeout(() => { const v = search.trim(); if (v === qNow.current) return; qNow.current = v; setQ(v); setPage(1); }, debounceMs); return () => clearTimeout(h); }, [search, debounceMs]);
-  useEffect(() => { setPage(1); }, [svcKey, date, workingOnly]);
+  useEffect(() => { setPage(1); }, [svcKey, date, workingOnly, skill]);
   useEffect(() => {
     const n = ++seq.current;
     setLoading(true);
-    posBookingApi.technicians({ date, page, pageSize: TECH_PICKER_PAGE_SIZE, search: q || undefined, serviceIds: svcKey ? svcKey.split(',') : undefined, working: workingOnly || undefined })
+    posBookingApi.technicians({ date, page, pageSize: TECH_PICKER_PAGE_SIZE, search: q || undefined, serviceIds: svcKey ? svcKey.split(',') : undefined, working: workingOnly || undefined, skill: skill || undefined })
       .then((r) => {
         if (n !== seq.current) return;
         if (!r || !Array.isArray(r.technicians)) { setData(null); setError(tx('pos.could_not_load_technicians')); return; }
         setData(r); setError(null);
+        const seen = r.technicians.flatMap((x) => (Array.isArray(x.skills) ? x.skills : []));
+        if (seen.length) setSkillsSeen((prev) => { const all = [...new Set([...prev, ...seen])].sort((a, b) => a.localeCompare(b)); return all.length === prev.length ? prev : all; });
       })
       .catch((e: any) => { if (n === seq.current) { setData(null); setError(e?.message || tx('pos.could_not_load_technicians')); } })
       .finally(() => { if (n === seq.current) setLoading(false); });
-  }, [date, page, q, svcKey, workingOnly]);
+  }, [date, page, q, svcKey, workingOnly, skill]);
 
   // A chosen technician who cannot do the NEW set of services is not silently kept: ask the server whether the selection
   // is still in the eligible set (locate) and clear it with a note when it is not.
@@ -85,6 +90,8 @@ export function TechnicianPicker({ value, onChange, date, serviceIds, selectedNa
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
           <input type="checkbox" checked={workingOnly} onChange={(e) => setWorkingOnly(e.target.checked)} /> {tx('pos.working_that_day_only')}
         </label>
+        {skillsSeen.length ? <select aria-label={tx('tpk.skill')} value={skill} onChange={(e) => setSkill(e.target.value)} data-testid="tech-picker-skill" style={{ height: 36, border: '1px solid var(--line)', borderRadius: 8, font: 'inherit', fontSize: 12.5 }}>
+          <option value="">{tx('tpk.allSkills')}</option>{skillsSeen.map((k) => <option key={k} value={k}>{k}</option>)}</select> : null}
       </div>
       {dropped ? <div role="status" style={{ fontSize: 12, color: '#B54708' }}>{tx('pos.technician_not_eligible_cleared')}</div> : null}
       {value && shownName ? <div className="s" style={{ fontSize: 12 }}>{tx('pos.selected_technician_x', { name: shownName })}</div> : null}

@@ -375,6 +375,20 @@ describe('Find a time, gaps & conflicts, approvals, insights, settings, usage', 
     expect(sent('GET', `${B}/runs/run1`).length).toBe(1);
   });
 
+  it('round 10 (AI Scheduling Optimizer 04): per-gap matching is the Customer Queue\'s fair-engine PREVIEW — proposals onto a technician with an open gap are marked; nothing is applied', async () => {
+    const td = today();
+    routes[`GET ${B}/runs/run1`] = { body: { run: run({ date: td }), gaps: [{ id: 'g1', technicianId: 't2', date: td, startTime: '13:00', endTime: '13:45', durationMin: 45, cause: 'cancellation', servicesThatFit: ['Gel Manicure'] }], conflicts: [], recommendations: [] } };
+    routes['GET /pos/queue/kpis'] = { body: { waitingGuests: 2, walkInsWaiting: 2, appointmentsWaiting: 0 } };
+    routes['POST /pos/queue/auto-balance/preview'] = { body: { available: true, proposals: [
+      { queueItemId: 'q1', customerName: 'Ava Kim', technicianId: 't2', technicianName: 'Bao', addressesWaitMinutes: 12, confidence: 0.8 },
+      { queueItemId: 'q2', customerName: 'Ben Lo', technicianId: 't9', technicianName: 'Cam', addressesWaitMinutes: 4, confidence: 0.6 }], unassignable: [], summary: { proposed: 2, guestsConsidered: 2, totalWaitAddressedMinutes: 16 } } };
+    renderScreen(); tab('Gaps & conflicts');
+    fireEvent.click(await screen.findByTestId('sched-queue-match'));
+    const rows = await screen.findAllByTestId('sched-match-row');
+    expect(rows[0]).toHaveTextContent('Ava Kim → Bao (waiting 12 min)'); expect(rows[0]).toHaveTextContent('fills an open gap');
+    expect(rows[1]).not.toHaveTextContent('fills an open gap');
+    expect(sent('POST', '/pos/queue/auto-balance/apply').length).toBe(0);   // a preview only
+  });
   it('extras AI Scheduling Optimizer 04: today\'s gaps show the guests actually waiting (the queue\'s own KPIs) and fill through the queue\'s fair rotation', async () => {
     const td = today();
     routes[`GET ${B}/runs/run1`] = { body: { run: run({ date: td }), gaps: [{ id: 'g1', technicianId: 't2', date: td, startTime: '13:00', endTime: '13:45', durationMin: 45, cause: 'cancellation', servicesThatFit: ['Gel Manicure'] }], conflicts: [], recommendations: [] } };

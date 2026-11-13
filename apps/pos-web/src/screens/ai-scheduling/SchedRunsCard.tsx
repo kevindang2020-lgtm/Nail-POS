@@ -14,6 +14,7 @@ import {
 } from './schedUi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { codedText } from '../../i18n/coded-text';
+import { errorTextOf } from '../../i18n/error-text';
 import { schedConflictCoded } from '@aipowersalon/api-contracts/tenant';
 
 export function SchedRunDetailCard({ tick, techName, runId, date, onSelectRec }: Pick<SchedCardProps, 'tick' | 'techName'> & {
@@ -35,7 +36,7 @@ export function SchedRunDetailCard({ tick, techName, runId, date, onSelectRec }:
     <section style={{ ...card, display: 'grid', gap: 12 }} aria-label={t('pos.gaps_and_conflicts')}>
       <div style={cardHead}>{t('pos.gaps_conflicts')}{' '}<span style={muted}>{t('pos.run')}{' '}{when(run.startedAt)} · {run.date ?? ''}{run.technicianId ? ` · ${techName(run.technicianId)}` : ''}</span></div>
       <div>
-        {run.date === date && gaps.length > 0 ? <QueueAwareGaps /> : null}
+        {run.date === date && gaps.length > 0 ? <QueueAwareGaps gapTechIds={gaps.map((g) => g.technicianId).filter(Boolean) as string[]} /> : null}
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{t('pos.unused_gaps')}{gaps.length})</div>
         {gaps.length === 0 ? <div style={muted}>{t('pos.no_unused_gaps_breaks_are_not_1b8l')}</div> : (
           <table style={table}><thead><tr><th style={th}>{t('pos.technician')}</th><th style={th}>{t('pos.when')}</th><th style={th}>{t('pos.length')}</th><th style={th}>{t('pos.services_that_fit')}</th></tr></thead>
@@ -99,8 +100,13 @@ export function SchedHistoryCard({ tick, techName, onOpenRun }: Pick<SchedCardPr
  *  Customer Queue now (its own KPIs — never estimated here), and the way to fill them through the queue's approved
  *  fairness logic (the AI Queue Assistant's fair rotation, or the Customer Queue itself). The optimizer never assigns a
  *  waiting guest; matching a guest to a gap stays with the queue's own engine. */
-function QueueAwareGaps() {
+function QueueAwareGaps({ gapTechIds = [] }: { gapTechIds?: string[] }) {
   const nav = useNavigate(); const can = useCan();
+  // round 10 (AI Scheduling Optimizer 04): per-gap matching of waiting guests — the Customer Queue's OWN fair engine (Auto
+  // Balance PREVIEW: nothing is assigned or saved) proposes a technician per waiting guest; proposals onto a technician who
+  // has an open gap in this run are marked. Applying stays in the Customer Queue.
+  const [pv, setPv] = useState<any | 'loading' | { error: string } | null>(null);
+  const preview = () => { setPv('loading'); posQueueApi.autoBalancePreview().then(setPv).catch((e) => setPv({ error: errorTextOf(e, t('pos.something_went_wrong')) })); };
   const [k, setK] = useState<{ waitingGuests: number; walkInsWaiting: number; appointmentsWaiting: number } | null | 'error'>(null);
   useEffect(() => { let alive = true; posQueueApi.kpis().then((r) => { if (alive) setK(r && typeof r.waitingGuests === 'number' ? r : 'error'); }).catch(() => { if (alive) setK('error'); }); return () => { alive = false; }; }, []);
   if (!k) return null;
@@ -111,6 +117,16 @@ function QueueAwareGaps() {
       {k !== 'error' && k.waitingGuests > 0 && can('ai_queue_assignment.view') ? <button type="button" style={btnGhost} data-testid="sched-queue-ai" onClick={() => nav('/tenant/ai/queue')}>{t('ops.sched.queue.fair')}</button> : null}
       {k !== 'error' && k.waitingGuests > 0 ? <button type="button" style={btnGhost} data-testid="sched-queue-open" onClick={() => nav('/queue')}>{t('ops.sched.queue.open')}</button> : null}
       <span style={muted}>{t('ops.sched.queue.rule')}</span>
+      {k !== 'error' && k.waitingGuests > 0 && can('pos.queue.assign_technician') ? <button type="button" style={btnGhost} data-testid="sched-queue-match" onClick={preview}>{t('ops.sched.match.btn')}</button> : null}
+      {pv === 'loading' ? <span style={muted}>{t('pos.loading')}</span> : pv && 'error' in pv ? <span style={muted} data-testid="sched-match-error">{pv.error}</span> : pv ? (
+        <div style={{ flexBasis: '100%' }} data-testid="sched-match">
+          {!pv.available ? <div style={muted} data-testid="sched-match-off">{t('ops.sched.match.off')}</div>
+            : !(pv.proposals ?? []).length ? <div style={muted}>{t('ops.sched.match.none')}</div>
+            : <ul style={{ margin: 0, paddingLeft: 18 }}>{(pv.proposals as Array<{ queueItemId: string; customerName: string | null; technicianId: string; technicianName: string; addressesWaitMinutes: number }>).map((x) => (
+              <li key={x.queueItemId} data-testid="sched-match-row">{t('ops.sched.match.row', { g: x.customerName || t('pos.guest'), tech: x.technicianName, m: String(x.addressesWaitMinutes) })}
+                {gapTechIds.includes(x.technicianId) ? <span style={pill('#E4F0E7', '#3B6B47')} data-testid="sched-match-gap"> {t('ops.sched.match.fillsGap')}</span> : null}</li>))}</ul>}
+          <div style={muted}>{t('ops.sched.match.note')}</div>
+        </div>) : null}
     </div>
   );
 }

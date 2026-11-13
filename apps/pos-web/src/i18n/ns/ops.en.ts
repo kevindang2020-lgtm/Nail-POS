@@ -2137,4 +2137,12 @@ export const OPS_EN = {
   "syschk.catalog.addon_category_mismatch.fix": "Review the flagged add-ons in the list and move them to the right service.",
   "syschk.catalog.addon_live_on_voided_ticket": "No sold add-on stays on a voided ticket",
   "syschk.catalog.addon_live_on_voided_ticket.fix": "Open the voided ticket and check the add-on line was reversed.",
+  "ops.sched.match.btn": "Preview fair matches for these gaps",
+  "ops.sched.match.off": "The Customer Queue’s fair assignment engine is not available here, so there are no matches to preview.",
+  "ops.sched.match.none": "The fair engine has no match for the waiting guests right now.",
+  "ops.sched.match.row": "{g} → {tech} (waiting {m} min)",
+  "ops.sched.match.fillsGap": "fills an open gap",
+  "ops.sched.match.note": "A preview from the Customer Queue’s fair rotation — nothing is assigned. Assign in the Customer Queue.",
+  "tpk.skill": "Skill",
+  "tpk.allSkills": "All skills",
 };
