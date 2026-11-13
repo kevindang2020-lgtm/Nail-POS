@@ -132,4 +132,7 @@ export const TEAMLIVESCHEDULE_EN = {
   'ls.st.cell': '{row} · {start}: {n}',
   'ls.st.who': '{row} · {start} – {end}',
   'ls.st.none': 'No one on shift this day.',
+  'ls.bp.soon': 'Break check: {who} is booked at {at} — in {n} min. Start the break anyway? The appointment is not moved.',
+  'ls.bp.inService': 'Break check: this technician is in a service now. Starting a break needs a manager override and is recorded.',
+  'ls.bp.go': 'Start break anyway',
 };

@@ -58,6 +58,13 @@ export interface LiveTechnicianDetail {
   status: LiveTechStatus; shift?: LiveShift; skills: string[]; appointments: LiveScheduleAppointment[]; openSlots: LiveScheduleOpenSlot[];
   blocks: LiveScheduleBlock[]; activeTicket?: LiveScheduleActiveTicket; nextAppointment?: LiveScheduleAppointment;
   bookedHours: number; utilizationPercent: number; salesTodayCents: number | null; tipsTodayCents: number | null; commissionPreviewCents: number | null;
+  /** round 10 (LIVE TECHNICIAN SCHEDULE 03) — Gap Quality: for each open gap, its minutes, the salon's saved booking buffer, the
+   *  minutes left for a service, how many of this location's active services fit (duration ≤ usable) and the longest one that
+   *  does. Qualification is checked by the booking engine when a time is booked (Find Next Available), not here. */
+  /** round 10 (LIVE TECHNICIAN SCHEDULE 07): minutes from now (the location's clock) to nextAppointment — for the break preview;
+   *  null when there is no next appointment today or the day shown is not today */
+  nextInMinutes?: number | null;
+  gapQuality?: { slotId: string; startTime: string; endTime: string; minutes: number; bufferMinutes: number; usableMinutes: number; servicesFit: number; servicesTotal: number; longestFit: { name: string; minutes: number } | null }[];
   /** extras LIVE TECHNICIAN SCHEDULE 12 — Technician Day Notes: the notes ALREADY written on this technician's day by their
    *  owning records (a blocked time's note, an appointment's note), oldest first. Appointment notes are customer data:
    *  only for a role holding pos.customers.view — otherwise left out and counted in dayNotesHidden (never shown blank). */

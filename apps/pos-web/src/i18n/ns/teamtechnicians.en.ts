@@ -229,4 +229,7 @@ export const TEAMTECHNICIANS_EN = {
   'tc.apptStatus.cancelled': 'Cancelled',
   'tc.apptStatus.no_show': 'No-show',
   'tc.finderWhy': 'Why is a technician not listed? Check one',
+  'tc.sync.title': 'Several specialists at once',
+  'tc.sync.sub': 'Start times when each of the {n} services has its own free, qualified technician at the same time — from the booking engine for each service. Nothing is held or booked.',
+  'tc.sync.none': 'No start time this day has a different free technician for every service. Try another day or fewer services together.',
 };

@@ -243,6 +243,9 @@ function WeekGrid({ week, selected, today, onPick, onTech }: { week: any; select
 }
 
 /** the overlay's authorized actions and history for ONE technician on the shown day */
+/** round 10 (LIVE TECHNICIAN SCHEDULE 07): a break starting this close to the next appointment is previewed first */
+const BREAK_WARN_MIN = 30;
+
 function DayActions({ x, date, today, onChanged }: { x: any; date: string; today: string; onChanged: () => void }) {
   const nav = useNavigate(); const can = useCan(); const { open: openIPad } = useIPadView();
   const [tab, setTab] = useState<'actions' | 'hours' | 'history'>('actions');
@@ -253,6 +256,12 @@ function DayActions({ x, date, today, onChanged }: { x: any; date: string; today
   const run = async (fn: () => Promise<unknown>, ok: string) => { setBusy(true); setNote(null); try { await fn(); setNote({ ok: true, text: ok }); onChanged(); } catch (e: any) { setNote({ ok: false, text: e?.message || tx('pos.action_failed') }); } finally { setBusy(false); } };
   const hist = useLoad(() => (tab === 'history' ? posLiveScheduleScreenApi.activity({ technicianId: x.technicianId, preset: 'month', pageSize: 6 }) : Promise.resolve(null)), [tab, x.technicianId]);
   const onBreak = x.status === 'on_break' || x.status === 'lunch';
+  // round 10 (LIVE TECHNICIAN SCHEDULE 07) — Protected Break Preview: a break that would run into a commitment (a service in
+  // progress, or the next appointment within BREAK_WARN_MIN on the location's clock — from the server) is named first and needs
+  // a second tap; nothing about the appointment changes
+  const [breakAsk, setBreakAsk] = useState(false);
+  const soon = typeof x.nextInMinutes === 'number' && x.nextInMinutes <= BREAK_WARN_MIN ? x.nextInMinutes as number : null;
+  const startBreak = () => run(() => api.startBreak(x.technicianId, { managerOverride: x.status === 'in_service' }), tx('ops.liveSchedule.ok.breakStarted')).then(() => setBreakAsk(false));
   return (
     <div className="ls-actions" data-testid="day-actions">
       <div className="fk-seg" role="tablist" aria-label={tx('ls.manage')}>{(['actions', 'hours', 'history'] as const).map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>{tx('ls.tab.' + t)}</button>)}</div>
@@ -261,7 +270,10 @@ function DayActions({ x, date, today, onChanged }: { x: any; date: string; today
         <div className="cg-acts">
           {edit && isToday ? (onBreak
             ? <button type="button" className="fk-btn" disabled={busy} onClick={() => run(() => api.endBreak(x.technicianId), tx('ops.liveSchedule.ok.breakEnded'))} data-testid="end-break">{tx('pos.end_break')}</button>
-            : <button type="button" className="fk-btn" disabled={busy || x.status === 'off_shift'} onClick={() => run(() => api.startBreak(x.technicianId, { managerOverride: x.status === 'in_service' }), tx('ops.liveSchedule.ok.breakStarted'))} data-testid="start-break">{tx('pos.start_break')}</button>) : null}
+            : <button type="button" className="fk-btn" disabled={busy || x.status === 'off_shift'} onClick={() => { if (soon != null || x.status === 'in_service') setBreakAsk(true); else void startBreak(); }} data-testid="start-break">{tx('pos.start_break')}</button>) : null}
+          {breakAsk ? <div className="fk-note warn" role="alert" data-testid="break-preview"><span>{x.status === 'in_service' ? tx('ls.bp.inService') : tx('ls.bp.soon', { n: String(soon ?? 0), at: x.nextAppointment?.startTime ? hm12(x.nextAppointment.startTime) : '—', who: x.nextAppointment?.customerName ?? tx('pos.guest') })}</span>
+            <button type="button" className="fk-btn sm" disabled={busy} onClick={() => { void startBreak(); }} data-testid="break-preview-go">{tx('ls.bp.go')}</button>
+            <button type="button" className="fk-btn ghost sm" onClick={() => setBreakAsk(false)} data-testid="break-preview-cancel">{tx('pos.cancel')}</button></div> : null}
           <button type="button" className="fk-btn ghost" onClick={() => nav(`/technicians/${encodeURIComponent(x.technicianId)}`)} data-testid="open-profile">{tx('ls.profile')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/tech-appointments')} data-testid="open-appointments">{tx('ls.appointments')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => openIPad(techScheduleRequest(x as TechScheduleData, date))} data-testid="open-ipad">{tx('pos.full_view')}</button>

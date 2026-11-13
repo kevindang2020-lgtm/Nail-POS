@@ -8,7 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 const { cat, book, conf } = vi.hoisted(() => ({
   cat: { services: vi.fn() },
-  book: { openings: vi.fn() },
+  book: { openings: vi.fn(), availability: vi.fn() },
   conf: { conflicts: vi.fn() },
 }));
 vi.mock('../api/posCatalogApi', () => ({ posCatalogApi: cat }));
@@ -19,11 +19,11 @@ vi.mock('../api/posLiveTechnicianScheduleApi', () => ({ posLiveTechnicianSchedul
 vi.mock('../components/TechnicianPickerButton', () => ({
   TechnicianPickerButton: ({ onChange }: { onChange: (id: string) => void }) => <button type="button" onClick={() => onChange('t2')}>pick-t2</button>,
 }));
-import { QualifiedFinder } from './technicianScreenParts';
+import { QualifiedFinder, syncStarts } from './technicianScreenParts';
 
 const TODAY = '2026-11-12';
 beforeEach(() => {
-  [cat.services, book.openings, conf.conflicts].forEach((f) => f.mockReset());
+  [cat.services, book.openings, book.availability, conf.conflicts].forEach((f) => f.mockReset());
   cat.services.mockResolvedValue({ items: [{ serviceId: 's-gel', name: 'Gel Manicure', durationMinutes: 45 }, { serviceId: 's-acr', name: 'Acrylic Full Set', durationMinutes: 75 }] });
   book.openings.mockResolvedValue({ date: TODAY, serviceIds: ['s-acr'], durationMinutes: 75, eligibleCount: 1, withOpenings: 1, openings: [{ technicianId: 't1', name: 'Linh', rosterNumber: 1, time: '13:30', openSlots: 3, rank: 1 }], hasMore: false, offset: 0, limit: 10 });
   conf.conflicts.mockResolvedValue({ technicianId: 't2', technician: 'Mai', date: TODAY, start: '13:30', end: '14:45', minutes: 75, ok: false,
@@ -49,3 +49,26 @@ describe('QualifiedFinder — why a technician is not listed (read-only)', () =>
     expect(screen.getAllByTestId('finder-row')).toHaveLength(1);
   });
 });
+
+describe('round 10 (LIVE TECHNICIAN SCHEDULE 05) — several specialists at once', () => {
+  it('syncStarts: a shared start needs a DIFFERENT free technician for every service (no double use of one person)', () => {
+    const gel = [{ technicianId: 't1', name: 'Linh', slots: ['10:00', '11:00'] }, { technicianId: 't2', name: 'Mai', slots: ['11:00'] }];
+    const ped = [{ technicianId: 't1', name: 'Linh', slots: ['10:00', '11:00'] }];
+    expect(syncStarts([gel, ped])).toEqual([{ time: '11:00', techs: [{ technicianId: 't2', name: 'Mai' }, { technicianId: 't1', name: 'Linh' }] }]);   // 10:00 only Linh is free for both → not a shared start
+    expect(syncStarts([gel, []])).toEqual([]);
+  });
+  it('with two services picked, asks the engine for each service and lists the shared start times with a technician per service', async () => {
+    book.availability.mockImplementation(async (q: { serviceIds: string[] }) => q.serviceIds[0] === 's-gel'
+      ? [{ technicianId: 't1', name: 'Linh', slots: ['13:00', '14:00'] }, { technicianId: 't2', name: 'Mai', slots: ['14:00'] }]
+      : [{ technicianId: 't1', name: 'Linh', slots: ['14:00'] }]);
+    render(<MemoryRouter><QualifiedFinder today={TODAY} onClose={() => {}} /></MemoryRouter>);
+    const picks = await screen.findAllByTestId('finder-pick');
+    fireEvent.click(picks[0]); fireEvent.click(picks[1]);
+    const rows = await screen.findAllByTestId('finder-sync-row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('2:00 PM'); expect(rows[0]).toHaveTextContent('Mai'); expect(rows[0]).toHaveTextContent('Linh');
+    expect(book.availability).toHaveBeenCalledWith({ date: TODAY, serviceIds: ['s-gel'] });
+    expect(book.availability).toHaveBeenCalledWith({ date: TODAY, serviceIds: ['s-acr'] });
+  });
+});
+

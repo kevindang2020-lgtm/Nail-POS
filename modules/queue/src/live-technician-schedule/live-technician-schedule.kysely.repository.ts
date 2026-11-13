@@ -22,7 +22,7 @@ import type { LiveScheduleRepositoryPort, LiveScheduleContext } from './live-tec
 import { CompensationSnapshotRepository } from '@aipowersalon/workforce';
 import { buildMediaUrl } from '@aipowersalon/media';
 import {
-  LiveTechnicianScheduleState, LiveTechnicianScheduleKpis, LiveTechnicianDetail, LiveTechnicianColumn, LiveScheduleAppointment,
+  LiveTechnicianScheduleState, LiveTechnicianScheduleKpis, LiveTechnicianDetail, LiveTechnicianColumn, LiveScheduleAppointment, LiveScheduleOpenSlot,
   LiveScheduleFilters, BlockTechnicianTimeRequest, LiveApptSource, LiveShift, LIVE_STATUS_LABEL, LiveTechStatus,
   lsInitials, lsDayOfWeek, lsComputeOpenSlots, lsBookedMinutes, lsShiftMinutes, lsUtilization, lsNormalizeStatus, lsRollupKpis,
   lsMinutesOf, lsToHHMM, lsMapApptStatus, type LiveClockState,
@@ -35,6 +35,9 @@ const parseServices = (v: any): any[] => { if (!v) return []; if (Array.isArray(
 
 type TechRow = { id: string; user_id: string | null; full_name: string; role_label: string | null; tech_avatar_url: string | null; gtp_avatar_url: string | null; user_avatar_url: string | null; phone_display: string | null };
 type Bundle = { techs: TechRow[]; skillsBy: Record<string, string[]>; statusBy: Record<string, string>; clockBy: Record<string, LiveClockState>; punchShift: Set<string>; shiftBy: Record<string, LiveShift | undefined>; apptsBy: Record<string, LiveScheduleAppointment[]>; blocksBy: Record<string, { blockId: string; startTime: string; endTime: string; reason: string; note?: string }[]>; nowMinutes: number };
+
+/** the booking engine's default buffer (DEFAULT_BOOKING_SETTINGS.bufferMinutes) when the salon saved none */
+const LS_DEFAULT_BUFFER_MINUTES = 5;
 
 export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort {
   constructor(private readonly db: Kysely<DB>, private readonly outbox: OutboxWriter | null = null) {}
@@ -225,12 +228,32 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
       }
     } catch { salesCents = 0; commissionCents = 0; tipsCents = 0; }
     const next = col.appointments.find((a) => lsMinutesOf(a.startTime) >= b.nowMinutes && a.status !== 'cancelled' && a.status !== 'no_show' && a.status !== 'completed');
+    const gapQuality = await this.gapQuality(ctx, col.openSlots);
     const rawPhoto = t.tech_avatar_url || t.gtp_avatar_url || t.user_avatar_url || null;
     return {
       technicianId, userId: t.user_id || undefined, fullName: t.full_name || t.id, initials: col.initials, avatarUrl: rawPhoto ? buildMediaUrl(rawPhoto) : undefined, roleLabel: t.role_label || 'Technician', phone: t.phone_display || undefined,
       status: col.status, shift: col.shift, skills: col.skills, appointments: col.appointments, openSlots: col.openSlots, blocks: col.blocks, activeTicket: col.activeTicket, nextAppointment: next,
       bookedHours: col.bookedHours, utilizationPercent: col.utilizationPercent, salesTodayCents: salesCents, tipsTodayCents: tipsCents, commissionPreviewCents: commissionCents,
+      gapQuality, nextInMinutes: next && d === (await this.today(ctx)) ? Math.max(0, lsMinutesOf(next.startTime) - b.nowMinutes) : null,
     };
+  }
+  /** round 10 (LIVE TECHNICIAN SCHEDULE 03): what each open gap can hold — the salon's SAVED booking buffer (POS Settings →
+   *  Booking & Appointments, a location row wins; the engine default 5 min otherwise) and this location's active services */
+  private async gapQuality(ctx: LiveScheduleContext, slots: LiveScheduleOpenSlot[]): Promise<NonNullable<LiveTechnicianDetail['gapQuality']>> {
+    if (!slots.length) return [];
+    const cfg = (await sql<{ branch_id: string | null; buffer: string | null }>`SELECT branch_id, settings_json->>'bufferMinutes' AS buffer FROM tenant_settings
+        WHERE tenant_id = ${ctx.tenantId} AND category = 'booking-appointments' AND (branch_id IS NULL OR branch_id::text = ${ctx.branchId ?? ''})
+        ORDER BY branch_id NULLS LAST LIMIT 1`.execute(this.db)).rows[0];
+    const raw = cfg?.buffer == null ? NaN : Number(cfg.buffer);
+    const bufferMinutes = Number.isInteger(raw) && raw >= 0 ? raw : LS_DEFAULT_BUFFER_MINUTES;
+    const svcs = (await sql<{ name: string; duration_minutes: number | null }>`SELECT s.name, s.duration_minutes FROM services s
+        WHERE s.tenant_id = ${ctx.tenantId} AND s.status = 'active' AND s.archived_at IS NULL AND (s.branch_id IS NULL OR s.branch_id::text = ${ctx.branchId ?? ''})`.execute(this.db)).rows
+      .map((r) => ({ name: String(r.name), minutes: Math.max(0, Number(r.duration_minutes ?? 0)) })).filter((r) => r.minutes > 0);
+    return slots.map((o) => {
+      const usable = Math.max(0, o.durationMinutes - bufferMinutes);
+      const fit = svcs.filter((x) => x.minutes <= usable).sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
+      return { slotId: o.slotId, startTime: o.startTime, endTime: o.endTime, minutes: o.durationMinutes, bufferMinutes, usableMinutes: usable, servicesFit: fit.length, servicesTotal: svcs.length, longestFit: fit[0] ?? null };
+    });
   }
   async appointmentNotes(ctx: LiveScheduleContext, technicianId: string, date: string) {
     const rows: { id: string; start_time: string; end_time: string; customer_name: string | null; notes: string | null }[] = await this.scoped(this.db.selectFrom('pos_tech_appointments'), ctx)

@@ -132,4 +132,7 @@ export const TEAMLIVESCHEDULE_VI = {
   'ls.st.cell': '{row} · {start}: {n}', // DRAFT — Kevin reviews
   'ls.st.who': '{row} · {start} – {end}', // DRAFT — Kevin reviews
   'ls.st.none': 'Không có ai trong ca ngày này.', // DRAFT — Kevin reviews
+  'ls.bp.soon': 'Kiểm tra nghỉ: {who} có lịch lúc {at} — còn {n} phút. Vẫn bắt đầu nghỉ? Lịch hẹn không bị dời.', // DRAFT — Kevin reviews
+  'ls.bp.inService': 'Kiểm tra nghỉ: thợ đang làm dịch vụ. Bắt đầu nghỉ cần quản lý cho phép và được ghi lại.', // DRAFT — Kevin reviews
+  'ls.bp.go': 'Vẫn bắt đầu nghỉ', // DRAFT — Kevin reviews
 };
