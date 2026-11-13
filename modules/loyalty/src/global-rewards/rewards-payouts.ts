@@ -66,11 +66,24 @@ export async function requestPayout(db: Kysely<any>, provider: PayoutProvider | 
  */
 export async function applyPayoutSettlement(trx: Transaction<any>, ev: { provider: string; providerEventId: string; providerPayoutId: string; outcome: 'SETTLED' | 'FAILED'; settlementRef: string | null; amountCents: number; signatureVerified: boolean }): Promise<{ outcome: 'paid' | 'failed' | 'duplicate' | 'mismatch' | 'unknown_payout' | 'unverified' }> {
   if (!ev.signatureVerified) return { outcome: 'unverified' };
-  const dup = (await sql<Row>`SELECT pa.id FROM payout_attempts pa WHERE pa.provider = ${ev.provider} AND pa.provider_event_id = ${ev.providerEventId}`.execute(trx)).rows[0];
-  if (dup) return { outcome: 'duplicate' };
-  const pa = (await sql<Row>`SELECT pa.id, pa.tenant_id, pa.reimbursement_id, pa.amount_cents, pa.status FROM payout_attempts pa WHERE pa.provider = ${ev.provider} AND pa.provider_payout_id = ${ev.providerPayoutId} FOR UPDATE`.execute(trx)).rows[0];
+  // extras GLOBAL LOYALTY REWARDS 09 (round 10): a REPLAYED callback still changes nothing, but one that claims something
+  // different from what was already applied (another outcome, amount or settlement reference for a payout that is final) is
+  // raised review-first as 'duplicate_callback' (dedupe per provider event) — an identical replay (an ordinary retry) is not
+  const replayConflict = async (stored: Row) => {
+    const claimed = { outcome: ev.outcome, amountCents: ev.amountCents, settlementRef: ev.settlementRef ?? null };
+    const had = { outcome: String(stored.status), amountCents: stored.settled_amount_cents == null ? n(stored.amount_cents) : n(stored.settled_amount_cents), settlementRef: stored.settlement_ref ?? null };
+    const differs = (stored.status === 'SETTLED' || stored.status === 'FAILED') && (claimed.outcome !== had.outcome || (claimed.outcome === 'SETTLED' && (claimed.amountCents !== had.amountCents || claimed.settlementRef !== had.settlementRef)));
+    if (!differs) return;
+    await sql`INSERT INTO loyalty_fraud_alerts (signal, severity, confidence, dedupe_key, tenant_id, evidence)
+      VALUES ('duplicate_callback', 'high', 0.85, ${'callback_replay:' + ev.provider + ':' + ev.providerEventId}, ${stored.tenant_id}::uuid,
+        ${JSON.stringify({ attemptId: String(stored.id), providerEventId: ev.providerEventId, applied: had, claimed })}::jsonb)
+      ON CONFLICT (dedupe_key) DO NOTHING`.execute(trx);
+  };
+  const dup = (await sql<Row>`SELECT pa.id, pa.tenant_id, pa.status, pa.amount_cents, pa.settled_amount_cents, pa.settlement_ref FROM payout_attempts pa WHERE pa.provider = ${ev.provider} AND pa.provider_event_id = ${ev.providerEventId}`.execute(trx)).rows[0];
+  if (dup) { await replayConflict(dup); return { outcome: 'duplicate' }; }
+  const pa = (await sql<Row>`SELECT pa.id, pa.tenant_id, pa.reimbursement_id, pa.amount_cents, pa.status, pa.settled_amount_cents, pa.settlement_ref FROM payout_attempts pa WHERE pa.provider = ${ev.provider} AND pa.provider_payout_id = ${ev.providerPayoutId} FOR UPDATE`.execute(trx)).rows[0];
   if (!pa) return { outcome: 'unknown_payout' };
-  if (pa.status === 'SETTLED' || pa.status === 'FAILED') return { outcome: 'duplicate' };
+  if (pa.status === 'SETTLED' || pa.status === 'FAILED') { await replayConflict(pa); return { outcome: 'duplicate' }; }
   if (ev.outcome === 'FAILED') {
     await sql`UPDATE payout_attempts pa SET status = 'FAILED', provider_event_id = ${ev.providerEventId}, updated_at = now() WHERE pa.id = ${pa.id}::uuid AND ${canMoveToSql(PAYOUT_ATTEMPT, 'FAILED', 'pa')}`.execute(trx);
     await sql`UPDATE merchant_reimbursements m SET status = 'PAYOUT_FAILED', version = m.version + 1, updated_at = now() WHERE m.id = ${pa.reimbursement_id}::uuid AND ${canMoveToSql(MERCHANT_REIMBURSEMENT, 'PAYOUT_FAILED', 'm')}`.execute(trx);

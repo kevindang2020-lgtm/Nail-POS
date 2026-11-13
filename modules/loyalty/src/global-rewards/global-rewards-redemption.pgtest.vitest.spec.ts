@@ -210,6 +210,18 @@ describe('refunds and payouts (guide §05, T15)', () => {
     expect((await settle({ providerEventId: 'evt-ok' })).outcome).toBe('paid');
     expect((await q(`select status, provider_ref from merchant_reimbursements where id = $1`, [id1]))[0]).toEqual({ status: 'PAID', provider_ref: 'stl_1' });
     expect((await settle({ providerEventId: 'evt-ok' })).outcome).toBe('duplicate');
+    // extras GLOBAL LOYALTY REWARDS 09 (round 10): an identical replay raises nothing; a replay CLAIMING something else (a
+    // FAILED for the paid payout, another amount under a new event id) changes nothing and is raised review-first, once per event
+    const alerts = async () => (await q(`select signal, severity, evidence from loyalty_fraud_alerts where signal = 'duplicate_callback' and tenant_id = $1 order by created_at`, [TC]));
+    expect(await alerts()).toEqual([]);
+    expect((await settle({ providerEventId: 'evt-ok', outcome: 'FAILED' })).outcome).toBe('duplicate');
+    expect((await settle({ providerEventId: 'evt-ok', outcome: 'FAILED' })).outcome).toBe('duplicate');   // the same replay again: still one alert
+    expect((await settle({ providerEventId: 'evt-new', amountCents: 5000 })).outcome).toBe('duplicate');
+    const al = await alerts();
+    expect(al.map((a: any) => [a.signal, a.severity])).toEqual([['duplicate_callback', 'high'], ['duplicate_callback', 'high']]);
+    expect(al[0].evidence).toMatchObject({ providerEventId: 'evt-ok', applied: { outcome: 'SETTLED', amountCents: 100, settlementRef: 'stl_1' }, claimed: { outcome: 'FAILED' } });
+    expect(al[1].evidence).toMatchObject({ providerEventId: 'evt-new', claimed: { outcome: 'SETTLED', amountCents: 5000 } });
+    expect((await q(`select status, provider_ref from merchant_reimbursements where id = $1`, [id1]))[0]).toEqual({ status: 'PAID', provider_ref: 'stl_1' });   // nothing moved
     // refund after payout: recovery claim, the payout is never rewritten
     await db.transaction().execute((trx: any) => reverseRedemptionForRefund(trx, program, { tenantId: TC, rewardPaymentId: h.paymentId, refundId: 'refund-po', refundedCents: 100 }));
     expect((await q(`select status from merchant_reimbursements where id = $1`, [id1]))[0].status).toBe('OFFSET');
