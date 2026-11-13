@@ -330,3 +330,25 @@ export interface OwnerPortfolioSalonView {
   isPrimaryOwner: boolean;
   branches: OwnerPortfolioBranchView[];
 }
+
+// ── AI PowerSalon Live Operations 04 — KPI Accuracy & Reconciliation Checker (GET pos/dashboard/kpi-check, pos.dashboard.view).
+//    Each Live Operations KPI as the screen was served it (the 30-second cached aggregate), recomputed fresh, and the
+//    authority's value for the same branch, salon day and payment-state rules (the Overview board — the floor/report
+//    definitions §25 names). A KPI with no second authority says 'not_checked' — never a fabricated pass. Read only.
+export type LiveOpsKpiCheckStatus = 'match' | 'stale_cache' | 'mismatch' | 'not_checked';
+export interface LiveOpsKpiCheckRow {
+  kpi: string; unit: 'cents' | 'count' | 'rating';
+  /** what the screen got (cached aggregate) · the same calculation right now · the authority's value (null = no authority) */
+  shown: number; fresh: number; authority: string | null; authorityValue: number | null;
+  status: LiveOpsKpiCheckStatus;
+  /** why: same_value · cache_older_than_data (shown ≠ fresh, fresh = authority) · definition_differs (fresh ≠ authority) · no_second_source */
+  reason: 'same_value' | 'cache_older_than_data' | 'definition_differs' | 'no_second_source';
+  definition: string;
+}
+export interface LiveOpsKpiCheck {
+  checkedAt: string;
+  scope: { branchId: string | null; timeZone: string | null; businessDate: string; revenueStatuses: string[]; revenueDateBasis: 'payment_created_branch_day' };
+  cacheTtlSeconds: number;
+  rows: LiveOpsKpiCheckRow[];
+  summary: { match: number; staleCache: number; mismatch: number; notChecked: number };
+}

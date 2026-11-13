@@ -1978,4 +1978,32 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.serving.review.c.MANUAL_PRICE": "Giá nhập tay {priceCents} thay cho giá niêm yết {catalogCents} (quản lý ghi đè).", // DRAFT — Kevin reviews
   "ops.serving.review.c.PRICE_OVERRIDE_NOT_PERMITTED": "Giá nhập tay cần quản lý ghi đè, vai trò của bạn không có quyền này.", // DRAFT — Kevin reviews
   "ops.serving.review.c.ALREADY_ON_TICKET": "{service} đã có trên phiếu này.", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.btn": "Kiểm tra KPI", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.title": "Kiểm tra độ chính xác KPI", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.scope": "Ngày làm việc {date} · múi giờ {tz} · doanh thu = các khoản thanh toán ở trạng thái tính doanh thu, theo ngày của chi nhánh · số trên màn hình có thể cũ tối đa {ttl} giây", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.summary": "{match} khớp · {stale} bộ nhớ đệm cũ · {mismatch} không khớp · {notChecked} chưa kiểm tra", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.kpi": "KPI", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.shown": "Trên màn hình", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.authority": "Tổng quan (nguồn chuẩn)", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.match": "Khớp", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.stale_cache": "Bộ nhớ đệm cũ hơn dữ liệu", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.mismatch": "Không khớp", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.not_checked": "Chưa kiểm tra", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.same_value": "cùng giá trị", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.cache_older_than_data": "làm mới để thấy giá trị mới", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.definition_differs": "hai cách tính không khớp nhau", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.no_second_source": "không có nguồn thứ hai để so sánh", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.todayRevenueCents": "Doanh thu hôm nay", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.averageTicketCents": "Trung bình mỗi hóa đơn", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.waitingGuests": "Khách đang chờ", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.servingNow": "Đang phục vụ", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.readyCheckout": "Sẵn sàng thanh toán", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.activeTechs": "Thợ đang làm việc", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.checkInsToday": "Lượt check-in hôm nay", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.onlineBookings": "Đặt lịch trực tuyến", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.customerSatisfactionScore": "Mức hài lòng của khách hàng", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.appointmentsToday": "Lịch hẹn hôm nay", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.monthlyCardVolumeCents": "Doanh số thẻ tháng này", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
 };

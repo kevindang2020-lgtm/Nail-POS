@@ -694,6 +694,7 @@ GET /pos/dashboard/appointments  realm=staff  auth=session  domain=analytics  pe
 GET /pos/dashboard/checkout  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/customers  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/insights  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/dashboard/kpi-check  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/kpis  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/operations  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/payment-mix  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
