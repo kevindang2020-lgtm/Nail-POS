@@ -8,6 +8,7 @@ import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpExceptio
 import { MembershipsService, ForbiddenError, ValidationError } from './memberships.service';
 import type { MembershipsContext } from './memberships.repository';
 import type { OverviewFilters, CreatePlanRequest, PublishVersionRequest } from './memberships.dto';
+import type { PlanVersionChangePreview } from '@aipowersalon/api-contracts/tenant';
 import { ListQueries } from '@aipowersalon/database';
 import { MembershipsControllerListQueries } from './memberships.list-queries';
 
@@ -60,4 +61,9 @@ export class MembershipsController {
 
   @Post('plans/:planId/versions') @RequirePermission('pos.memberships.manage')
   publishVersion(@Req() r: any, @Param('planId') id: string, @Body(ValidatedBody(PLAN_VERSION_BODY, { strict: true })) b: PublishVersionRequest) { return run(() => this.svc.publishVersion(ctxFrom(r), id, b)); }
+
+  /** extras Membership Overview 13 · 10: preview a plan change (same validation as publishing) — current vs future
+   *  subscribers; writes nothing */
+  @Post('plans/:planId/versions/preview') @RequirePermission('pos.memberships.manage')
+  previewVersion(@Req() r: any, @Param('planId') id: string, @Body(ValidatedBody(PLAN_VERSION_BODY, { strict: true })) b: PublishVersionRequest): Promise<PlanVersionChangePreview> { return run(() => this.svc.previewVersion(ctxFrom(r), id, b)); }
 }

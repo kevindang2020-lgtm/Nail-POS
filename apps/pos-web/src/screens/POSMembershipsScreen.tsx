@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { PlanChangePanel } from './MembershipPlanChange';
 import { posMembershipsApi, type MemberExportRow, type PaymentExportRow, type RedemptionExportRow } from '../api/posMembershipsApi';
 import { MembershipPlanBuilder } from './MembershipPlanBuilder';
 import { MembershipEnrollModal } from './MembershipEnrollModal';
@@ -375,7 +376,8 @@ export function POSMembershipsScreen() {
       {dlg?.kind === 'manage' ? <MembershipManageModal member={dlg.m} onClose={() => setDlg(null)} onDone={(msg) => { setDlg(null); changed(msg); }} /> : null}
       {dlg?.kind === 'detail' ? <MemberDetailsDialog id={dlg.id} rev={rev} canManage={canManage} onClose={() => setDlg(null)} onOpen={(id) => setDlg({ kind: 'detail', id })}
         onManage={(m) => setDlg({ kind: 'manage', m })} onProfile={profile} onReminder={() => setDlg({ kind: 'reminder' })} /> : null}
-      {dlg?.kind === 'plan' ? <PlanDialog plan={dlg.plan} onClose={() => setDlg(null)} onMembers={() => { setMemFilter('any'); setPlanId(dlg.plan.planId); setDlg(null); setTab('members'); }} canManage={canManage} onCreate={() => setDlg({ kind: 'create' })} /> : null}
+      {dlg?.kind === 'plan' ? <PlanDialog plan={dlg.plan} onClose={() => setDlg(null)} onMembers={() => { setMemFilter('any'); setPlanId(dlg.plan.planId); setDlg(null); setTab('members'); }} canManage={canManage} onCreate={() => setDlg({ kind: 'create' })}
+        onPublished={(v) => { setDlg(null); changed(tx('mpc.published', { name: dlg.plan.name, v: String(v) })); }} /> : null}
       {dlg?.kind === 'reminder' ? <ReminderDialog onClose={() => setDlg(null)} onSent={(msg) => { setDlg(null); changed(msg); }} /> : null}
       {dlg?.kind === 'discounts' ? <DiscountsDialog canManage={canManage} onClose={() => setDlg(null)} onCreate={() => setDlg({ kind: 'create' })} onPromotions={() => nav('/tenant/services/discounts')} /> : null}
       {dlg?.kind === 'report' ? <ReportDialog ov={o} onClose={() => setDlg(null)} onPerformance={() => setDlg({ kind: 'performance' })} /> : null}
@@ -518,7 +520,7 @@ function MemberDetailsDialog({ id, rev, canManage, onClose, onOpen, onManage, on
   );
 }
 
-function PlanDialog({ plan, onClose, onMembers, canManage, onCreate }: { plan: PlanRow; onClose: () => void; onMembers: () => void; canManage: boolean; onCreate: () => void }) {
+function PlanDialog({ plan, onClose, onMembers, canManage, onCreate, onPublished }: { plan: PlanRow; onClose: () => void; onMembers: () => void; canManage: boolean; onCreate: () => void; onPublished?: (versionNumber: number) => void }) {
   const [benefits, setBenefits] = useState<any[] | null>(null); const [perf, setPerf] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     posMembershipsApi.discounts().then((r) => setBenefits((r.items ?? []).filter((b: any) => b.planId === plan.planId))).catch((e) => setErr(errText(e, tx('people.mo.loadFailed'))));
@@ -534,6 +536,7 @@ function PlanDialog({ plan, onClose, onMembers, canManage, onCreate }: { plan: P
       <h3 className="fk-h3">{tx('people.mo.thisMonth')}</h3>
       {!perf ? <div className="fk-hint">{tx('pos.loading')}</div> : <PerfDl p={perf} />}
       <div className="fk-hint">{tx('people.mo.planEditRule')}</div>
+      {canManage && plan.status !== 'archived' && onPublished ? <PlanChangePanel planId={plan.planId} onPublished={onPublished} /> : null}
       {canManage ? <div className="fk-hint">{tx('people.mo.planStatusBlocker')} <button type="button" className="fk-link" onClick={onCreate}>{tx('pos.create_plan')}</button></div> : null}
     </FitDialog>
   );

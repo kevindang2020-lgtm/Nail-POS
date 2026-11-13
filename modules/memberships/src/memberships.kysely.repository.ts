@@ -8,7 +8,7 @@ import { MEMBERSHIP_PLAN } from './membership-machine';
 import type { MembershipsRepositoryPort, MembershipsContext } from './memberships.repository';
 import type {
   MembershipOverview, OverviewFilters, PlanRow, PlanDetail, CreatePlanRequest, PublishVersionRequest, MemberRow, ActivityRow,
-  MemberExportRow, PaymentExportRow, RedemptionExportRow,
+  MemberExportRow, PaymentExportRow, RedemptionExportRow, VersionChangeFacts,
 } from './memberships.dto';
 
 const n = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0;
@@ -316,6 +316,44 @@ export class KyselyMembershipsRepository implements MembershipsRepositoryPort {
 
       return { versionId, versionNumber };
     });
+  }
+
+  /** extras Membership Overview 13 · 10 (read-only): the current version's full terms + benefits, and live members by version */
+  async versionChangeFacts(ctx: MembershipsContext, planId: string): Promise<VersionChangeFacts | null> {
+    const p = (await sql<{ status: string; current_version_id: string | null; next_v: number }>`
+      select p.status, p.current_version_id, (select coalesce(max(v.version_number), 0) + 1 from membership_plan_versions v where v.plan_id = p.id and v.tenant_id = p.tenant_id) as next_v
+        from membership_plans p where p.tenant_id = ${ctx.tenantId} and p.id = ${planId} limit 1`.execute(this.db)).rows[0];
+    if (!p) return null;
+    let current: VersionChangeFacts['current'] = null;
+    if (p.current_version_id) {
+      const v = (await sql<Record<string, unknown>>`
+        select v.version_number, v.billing_interval, v.interval_count, v.price_cents, v.is_custom_pricing, v.enrollment_fee_cents, v.setup_fee_cents, v.trial_days, v.auto_renew,
+               v.billing_cycles, v.term_type, v.term_days, v.rollover_allowed, v.rollover_max_cycles, v.credit_expiry_days, v.tech_commission_basis, v.tech_split_pct, v.owner_split_pct,
+               v.tech_fixed_cents, v.allocation_timing, v.cancellation_policy, v.min_commitment_cycles, v.pause_max_per_year, v.pause_max_days, v.terms_version, v.auto_renew_disclosure, v.est_margin_cents
+          from membership_plan_versions v where v.tenant_id = ${ctx.tenantId} and v.id = ${p.current_version_id}`.execute(this.db)).rows[0];
+      const b = (await sql<Record<string, unknown>>`
+        select mb.benefit_type, mb.label, mb.service_id, mb.category_snapshot, mb.credits_per_cycle, mb.value_cents, mb.percent, mb.allocated_value_cents, mb.min_days_between, mb.max_per_cycle, mb.rollover_allowed, mb.sort_order
+          from membership_benefits mb where mb.tenant_id = ${ctx.tenantId} and mb.plan_version_id = ${p.current_version_id} order by mb.sort_order, mb.id`.execute(this.db)).rows;
+      const num = (x: unknown) => (x == null ? null : n(x));
+      if (v) current = {
+        versionNumber: n(v.version_number), billingInterval: String(v.billing_interval), intervalCount: n(v.interval_count), priceCents: n(v.price_cents), isCustomPricing: !!v.is_custom_pricing,
+        enrollmentFeeCents: n(v.enrollment_fee_cents), setupFeeCents: n(v.setup_fee_cents), trialDays: n(v.trial_days), autoRenew: !!v.auto_renew, billingCycles: num(v.billing_cycles),
+        termType: String(v.term_type), termDays: num(v.term_days), rolloverAllowed: !!v.rollover_allowed, rolloverMaxCycles: n(v.rollover_max_cycles), creditExpiryDays: num(v.credit_expiry_days),
+        techCommissionBasis: String(v.tech_commission_basis), techSplitPct: n(v.tech_split_pct), ownerSplitPct: n(v.owner_split_pct), techFixedCents: num(v.tech_fixed_cents),
+        allocationTiming: String(v.allocation_timing), cancellationPolicy: String(v.cancellation_policy), minCommitmentCycles: n(v.min_commitment_cycles), pauseMaxPerYear: n(v.pause_max_per_year),
+        pauseMaxDays: n(v.pause_max_days), termsVersion: (v.terms_version as string | null) ?? null, autoRenewDisclosure: (v.auto_renew_disclosure as string | null) ?? null, estMarginCents: n(v.est_margin_cents),
+        benefits: b.map((x) => ({ benefitType: String(x.benefit_type), label: String(x.label), serviceId: (x.service_id as string | null) ?? null, categorySnapshot: (x.category_snapshot as string | null) ?? null,
+          creditsPerCycle: n(x.credits_per_cycle), valueCents: n(x.value_cents), percent: n(x.percent), allocatedValueCents: n(x.allocated_value_cents), minDaysBetween: n(x.min_days_between),
+          maxPerCycle: num(x.max_per_cycle), rolloverAllowed: !!x.rollover_allowed, sortOrder: n(x.sort_order) })),
+      };
+    }
+    const subs = (await sql<{ version_id: string; version_number: number; price_cents: string; billing_interval: string; members: number }>`
+      select cm.plan_version_id as version_id, v.version_number, v.price_cents, v.billing_interval, count(*)::int as members
+        from customer_memberships cm join membership_plan_versions v on v.id = cm.plan_version_id and v.tenant_id = cm.tenant_id
+       where cm.tenant_id = ${ctx.tenantId} and cm.plan_id = ${planId} and cm.status in ('active', 'trial', 'grace', 'past_due', 'paused')
+       group by cm.plan_version_id, v.version_number, v.price_cents, v.billing_interval order by v.version_number desc`.execute(this.db)).rows;
+    return { planStatus: p.status, nextVersionNumber: n(p.next_v), current,
+      subscribers: subs.map((r) => ({ versionNumber: n(r.version_number), priceCents: n(r.price_cents), billingInterval: String(r.billing_interval), members: n(r.members), current: r.version_id === p.current_version_id })) };
   }
 
   async exportMembers(ctx: MembershipsContext, branchId?: string): Promise<MemberExportRow[]> {

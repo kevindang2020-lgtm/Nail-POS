@@ -26,6 +26,7 @@ export const PLAN_VERSION_BODY: BodySchema = obj({
   techCommissionBasis: str(32), techSplitPct: numeric, ownerSplitPct: numeric, techFixedCents: numeric, allocationTiming: str(32), cancellationPolicy: str(64),
   minCommitmentCycles: numeric, pauseMaxPerYear: numeric, pauseMaxDays: numeric, termsVersion: str(64), autoRenewDisclosure: str(4000), estMarginCents: numeric,
   benefits: S.nullable(S.array(benefit, { maxItems: 50 })),
+  carryForward: flag,   // extras Membership Overview 13 · 10: a change to an existing plan keeps every term not sent
 });
 export const ENROLL_BODY: BodySchema = obj({ customerId: id, planId: id, planVersionId: id, assignedTechnicianId: id, autoRenewConsent: flag, agreementVersion: str(64), channel: str(32) });
 export const MEMBERS_BY_CUSTOMERS_BODY: BodySchema = S.object({ customerIds: S.nullable(S.array(S.text(64), { maxItems: 500 })) });
