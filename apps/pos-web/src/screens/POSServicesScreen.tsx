@@ -270,7 +270,11 @@ export function POSServicesScreen() {
           {!sd ? <Empty title={tx('cg.pickService')} /> : <>
             <table className="fk-table fn-table cg-table" data-testid="branch-table">
               <thead><tr><th>{tx('cg.col.branch')}</th><th className="num">{tx('pos.price')}</th><th className="num">{tx('pos.duration')}</th><th>{tx('pos.status')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
-              <tbody>{sd.branches.map((b: any) => <tr key={b.branchId} data-testid="branch-row" className={b.current ? 'sel' : ''}>
+              <tbody>{sd.salonDefault ? <tr data-testid="branch-default-row" className="fk-muted">
+                <td><span className="fk-li-t">{tx('cg.def.title')}</span><span className="fk-li-s">{sd.salonDefault.source === 'platform_template' ? tx('cg.def.template', { n: sd.salonDefault.templateName }) : tx('cg.def.none')}</span></td>
+                <td className="num">{sd.salonDefault.source === 'platform_template' ? (sd.salonDefault.priceMinCents === sd.salonDefault.priceMaxCents ? fmtMoney(sd.salonDefault.priceMinCents) : `${fmtMoney(sd.salonDefault.priceMinCents)}–${fmtMoney(sd.salonDefault.priceMaxCents)}`) : '—'}</td>
+                <td className="num">{sd.salonDefault.source === 'platform_template' ? mins(sd.salonDefault.durationMinutes) : '—'}</td><td /><td /></tr> : null}
+                {sd.branches.map((b: any) => <tr key={b.branchId} data-testid="branch-row" className={b.current ? 'sel' : ''}>
                 <td><span className="fk-li-t">{b.name}</span><span className="fk-li-s">{b.current ? tx('cg.thisBranch') : !b.offered ? tx('cg.notOffered') : b.differsFromThis ? tx('cg.differs') : tx('cg.same')}</span></td>
                 <td className="num">{b.offered ? fmtMoney(b.priceCents) : '—'}</td><td className="num">{b.offered ? mins(b.durationMinutes) : '—'}</td>
                 <td>{b.offered ? <span className={'fk-chip ' + (STATUS_TONE[b.status] ?? 'mut')}>{statusText(b.status)}</span> : <span className="fk-muted">{tx('cg.notOffered')}</span>}</td>

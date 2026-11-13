@@ -61,4 +61,14 @@ describe('Products backlog · 11 — readable price history', () => {
     expect(d.priceHistory).toEqual([]);
     expect(JSON.stringify(d.audit)).not.toMatch(/1300|retailAfter|promo end/);
   });
+  // SERVICES PRODUCTS 2 · 08 (round 10): duplicate scan / import prevention, pinned on the real schema
+  it('a second product with the same SKU (any case) is refused 409 PRODUCT_SKU_TAKEN; a product import job key can be used once', async () => {
+    await inv.createProduct(manager, { name: 'Dup A', sku: 'DUP-950' });
+    await expect(inv.createProduct(manager, { name: 'Dup B', sku: 'dup-950' })).rejects.toMatchObject({ apiCode: 'PRODUCT_SKU_TAKEN' });
+    expect((await q(`select count(*)::int as n from inventory_products where tenant_id = $1 and lower(sku) = 'dup-950'`, [T]))[0].n).toBe(1);
+    const cols = (await q(`select column_name from information_schema.columns where table_name = 'product_import_jobs'`)).map((r: any) => r.column_name);
+    expect(cols).toContain('idempotency_key');
+    const idx = await q(`select indexdef from pg_indexes where indexname = 'ux_product_import_idem'`);
+    expect(idx[0].indexdef).toMatch(/UNIQUE INDEX .*product_import_jobs.*idempotency_key/i);
+  });
 });

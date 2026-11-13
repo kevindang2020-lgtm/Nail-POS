@@ -514,4 +514,7 @@ export const CATALOGSCREENS_EN = {
   "cg.ao.pf.none": "No add-ons were sold on paid tickets in this period.",
   "cg.ao.pf.noRecipeN": "{n} add-on(s) have no recipe, so no cost is shown for their {v} of sales (not counted in the cost totals).",
   "cg.ao.pf.basis": "Basis: add-on lines on tickets paid in the period (salon time); refunded or voided tickets left out. Recipe cost = units sold × the recipe at today’s product cost (not the stock actually used). Before commission, tax and labor.",
+  "cg.def.title": "Salon-wide default",
+  "cg.def.template": "From the platform template “{n}” (suggested)",
+  "cg.def.none": "None — each branch keeps its own price and duration",
 };

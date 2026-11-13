@@ -70,6 +70,17 @@ describe('Services & Products', () => {
     expect(document.cookie).not.toMatch(/branchOverrides/);
     for (const q of ['qa-addService', 'qa-addProduct', 'qa-editPricing', 'qa-createBundle', 'qa-manageInventory', 'qa-updateBooking', 'qa-importCatalog', 'qa-viewReports']) expect(screen.getByTestId(q)).toBeInTheDocument();
   });
+  it('SERVICES PRODUCTS 2 · 06 (round 10): the branch table opens with the salon-wide default — the template a branch row came from, or "none" when no salon-wide default exists', async () => {
+    cat.service.mockResolvedValue({ ...detail, salonDefault: { source: 'platform_template', templateName: 'Gel Manicure (template)', versionLabel: null, durationMinutes: 45, priceMinCents: 5000, priceMaxCents: 6500 } });
+    const v = mount(<POSServicesScreen />);
+    const row = await screen.findByTestId('branch-default-row');
+    expect(row).toHaveTextContent('Salon-wide default'); expect(row).toHaveTextContent('Gel Manicure (template)'); expect(row).toHaveTextContent('$50.00–$65.00');
+    v.unmount();
+    cat.service.mockResolvedValue({ ...detail, salonDefault: { source: 'none' } });
+    mount(<POSServicesScreen />);
+    expect(await screen.findByTestId('branch-default-row')).toHaveTextContent('None — each branch keeps its own price and duration');
+    cat.service.mockResolvedValue(detail);
+  });
   it('extras (Services & Products 2 · 11): financial labels say which basis they use — menu price, catalog cost proxy, or paid sales', async () => {
     mount(<POSServicesScreen />);
     expect(await screen.findByText('$66.33')).toBeInTheDocument();

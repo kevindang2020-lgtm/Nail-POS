@@ -259,6 +259,14 @@ export class CatalogScreensRepository {
       from branches b left join lateral (select s2.id, s2.price_cents, s2.duration_minutes, s2.status, s2.online_booking_enabled from services s2
         where s2.tenant_id = b.tenant_id and s2.branch_id = b.id and lower(s2.name) = lower(${String(r.name)}) order by (s2.status = 'archived'), s2.created_at, s2.id limit 1) x on true
       where b.tenant_id = ${T} order by b.created_at, b.id`.execute(this.db)).rows;
+    // SERVICES PRODUCTS 2 · 06 (round 10): the salon-wide default to compare the branches against. The data model keeps NO
+    // tenant-level service row (every branch owns its own), so the only salon-wide default that exists is the platform
+    // template a branch row was copied from (service_template_deployments.copied_service_id) — its suggested duration and
+    // price range. None → said so; never a made-up default.
+    const ids = [String(r.id), ...branches.map((b: any) => (b.service_id ? String(b.service_id) : null)).filter((x: string | null): x is string => !!x)];
+    const tpl = (await sql<{ name: string; dur: number; pmin: string; pmax: string; version_label: string | null }>`select st.name, st.suggested_duration_minutes as dur, st.suggested_price_min_cents as pmin, st.suggested_price_max_cents as pmax, st.version_label
+      from service_template_deployments d join service_templates st on st.id = d.template_id
+      where d.tenant_id = ${T} and d.copied_service_id::text = any(${ids}::text[]) order by d.copied_at desc limit 1`.execute(this.db)).rows[0];
     const sales = (await sql<any>`select count(*)::int as lines, coalesce(sum(l.line_total_cents), 0)::bigint as cents, max(t.paid_at) as last_at,
         (select l2.price_cents_snapshot from ticket_service_lines l2 join tickets t2 on t2.id = l2.ticket_id and t2.tenant_id = l2.tenant_id where l2.tenant_id = ${T} and l2.service_id = ${serviceId} and l2.removed_at is null and t2.paid_at is not null order by t2.paid_at desc, l2.id desc limit 1) as last_charged
       from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id where l.tenant_id = ${T} and l.service_id = ${serviceId} and l.removed_at is null and t.paid_at is not null and t.paid_at >= now() - interval '90 days'`.execute(this.db)).rows[0];
@@ -273,6 +281,8 @@ export class CatalogScreensRepository {
         priceCents: b.service_id ? N(b.price_cents) : null, durationMinutes: b.service_id ? N(b.duration_minutes) : null, onlineBookable: b.service_id ? !!b.online_booking_enabled : null,
         differsFromThis: !!b.service_id && (N(b.price_cents) !== row.priceCents || N(b.duration_minutes) !== row.durationMinutes || b.service_status !== row.status) })),
       branchMatch: 'service_name',
+      salonDefault: tpl ? { source: 'platform_template' as const, templateName: String(tpl.name), versionLabel: tpl.version_label ?? null, durationMinutes: N(tpl.dur), priceMinCents: N(tpl.pmin), priceMaxCents: N(tpl.pmax) }
+        : { source: 'none' as const },
       sales90d: { lines: N(sales?.lines), cents: N(sales?.cents), lastAt: iso(sales?.last_at), lastChargedCents: sales?.last_charged == null ? null : N(sales.last_charged) },
       changeCount: changes,
       ...(await this.scheduledFor(ctx, serviceId)),   // D4 gaps (Nov 5 2026): the scheduled (not yet current) change, if any
