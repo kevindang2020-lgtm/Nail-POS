@@ -121,6 +121,29 @@ describe('Tips & Gratuity — KPIs', () => {
     expect(v.allocatedCents).toBe(700); expect(v.manualCorrectionCents).toBe(-500); expect(a.manualCorrectionCents).toBe(500);
     expect(d.adjustments.filter((x) => x.kind === 'correction').length).toBe(2);
   });
+  it('extras TIPS 01: one technician\'s earnings overlay — own share per ticket, payout state + payroll period, totals reconcile with the Distribution row; unknown / other-salon technician is 404', async () => {
+    for (const f of [await month(), await all()]) {
+      const d = await r.distribution(ctx, f, { page: 1, pageSize: 50 });
+      for (const tech of [VISHAL, ANNA, BAO, CHI]) {
+        const row = d.items.find((x) => x.technicianId === tech)!;
+        const e = await r.technicianEarnings(ctx, f, tech, { page: 1, pageSize: 50 });
+        expect(e.totals.allocatedCents).toBe(row.allocatedCents); expect(e.totals.paidCents).toBe(row.paidOutCents); expect(e.totals.pendingCents).toBe(row.pendingCents);
+        expect(e.totals.tickets).toBe(row.tickets); expect(e.totals.netCents).toBe(row.netCents);
+        expect(e.totals.paidCents + e.totals.approvedCents + e.totals.openCents + e.totals.unscheduledCents).toBe(e.totals.allocatedCents);
+        expect(e.items.reduce((a, x) => a + x.allocatedCents, 0)).toBe(e.totals.allocatedCents);
+        expect(e.periods.reduce((a, x) => a + x.allocatedCents, 0)).toBe(e.totals.allocatedCents);
+      }
+    }
+    const v = await r.technicianEarnings(ctx, await all(), VISHAL, { page: 1, pageSize: 50 });
+    const paidRow = v.items.find((x) => x.ticketId === paidOut)!;
+    expect(paidRow).toMatchObject({ payoutState: 'paid', allocatedCents: 700, period: { id: id('81'), label: 'Sep 16–30' } });
+    expect(paidRow.sharedWith).toBeGreaterThanOrEqual(1);
+    expect(v.periods.find((p) => p.id === id('81'))).toMatchObject({ state: 'paid', allocatedCents: 700, tickets: 1 });
+    const b = await r.technicianEarnings(ctx, await month(), BAO, { page: 1, pageSize: 1 });
+    expect(b.items).toHaveLength(1); expect(b.total).toBe(2); expect(b.pageCount).toBe(2);
+    await expect(r.technicianEarnings(ctx, await all(), id('f9'), { page: 1, pageSize: 10 })).rejects.toMatchObject({ code: 'TIP_NOT_FOUND', status: 404 });   // the other salon's technician
+    await expect(r.technicianEarnings(ctx, await all(), 'nope', { page: 1, pageSize: 10 })).rejects.toMatchObject({ code: 'TIP_NOT_FOUND' });
+  });
 });
 
 describe('Tips & Gratuity — transactions, detail, search', () => {

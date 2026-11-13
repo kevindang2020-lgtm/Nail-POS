@@ -113,6 +113,7 @@ export const SEGMENT_FIXTURES = [
   ['/tenant/inventory/products/{id}', F('inventory_products')],
   ['/tenant/inventory/products/{id}/stock-preview', F('inventory_products')],   // Products Management 09 (round 10): Add Stock preview
   ['/tenant/inventory/products/{id}/reorder-draft', F('inventory_products')],   // Products Management 14 (round 10): Reorder draft prefill
+  ['/pos/payments/tips/technicians/{id}/earnings', F('technicians')],   // Tips & Gratuity 01 (round 10): technician earnings overlay
   ['/tenant/inventory/purchase-orders/{id}', F('purchase_orders')],
   ['/tenant/inventory/transfers/{id}', F('inventory_transfers')],
   ['/tenant/locations/{id}', F('branches')],

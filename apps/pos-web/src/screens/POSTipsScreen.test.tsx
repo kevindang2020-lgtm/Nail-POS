@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
+const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn(), technicianEarnings: vi.fn() }));
 const payroll = vi.hoisted(() => ({ ticketTip: vi.fn(), setTicketTip: vi.fn(), adjustTicketTip: vi.fn() }));
 vi.mock('../api/posTipsScreenApi', () => ({ posTipsScreenApi: api }));
 vi.mock('../api/posPayrollApi', () => ({ posPayrollApi: payroll }));
@@ -148,5 +148,28 @@ describe('POSTipsScreen', () => {
     fireEvent.change(screen.getByTestId('refund-impact-scenario'), { target: { value: 'chargeback' } });
     expect(screen.getByTestId('refund-impact-posting')).toHaveTextContent('waits for a manager review');
     expect(payroll.setTicketTip).not.toHaveBeenCalled(); expect(payroll.adjustTicketTip).not.toHaveBeenCalled();
+  });
+  it('extras TIPS 01: a technician on Distribution opens one earnings overlay — allocated / paid / approved / open / not in a period, the pay periods, each ticket with their share; a ticket opens its detail', async () => {
+    api.technicianEarnings.mockResolvedValue({ technician: { id: 'v', name: 'Vishal verma', active: true },
+      totals: { allocatedCents: 1660, paidCents: 700, approvedCents: 0, openCents: 960, unscheduledCents: 0, pendingCents: 960, tickets: 2, manualCorrectionCents: -500, reversedCents: 0, netCents: 1160 },
+      periods: [{ id: 'p0', label: 'Sep 16–30', state: 'paid', allocatedCents: 700, tickets: 1, paidAt: '2026-09-30T20:00:00Z' }, { id: 'p1', label: 'This period', state: 'open', allocatedCents: 960, tickets: 1, paidAt: null }],
+      items: [{ ticketId: 't1', ticketNumber: '1052', collectedAt: '2026-10-28T16:28:00Z', ticketTipCents: 960, allocatedCents: 960, sharedWith: 0, payoutState: 'open', period: { id: 'p1', label: 'This period', paidAt: null } },
+        { ticketId: 't0', ticketNumber: '0990', collectedAt: '2026-09-20T16:28:00Z', ticketTipCents: 1200, allocatedCents: 700, sharedWith: 1, payoutState: 'paid', period: { id: 'p0', label: 'Sep 16–30', paidAt: '2026-09-30T20:00:00Z' } }],
+      total: 2, page: 1, pageSize: 10, pageCount: 1, period: PERIOD, dateBasis: 'collected' });
+    api.detail.mockResolvedValue({ tip: row(), payments: [], allocations: [], adjustments: [], audit: [], permissions: { adjust: false } });
+    mount(); fireEvent.click(await screen.findByTestId('tab-distribution'));
+    fireEvent.click(await screen.findByTestId('dist-earnings'));
+    const o = await screen.findByTestId('tip-earnings');
+    expect(api.technicianEarnings).toHaveBeenCalledWith('v', expect.objectContaining({ preset: 'month', page: 1 }));
+    expect(await screen.findByTestId('earn-allocated')).toHaveTextContent('$16.60');
+    expect(screen.getByTestId('earn-paid')).toHaveTextContent('Paid $7.00'); expect(screen.getByTestId('earn-open')).toHaveTextContent('In an open pay period $9.60');
+    expect(screen.getByTestId('earn-net')).toHaveTextContent('$11.60');
+    expect(screen.getAllByTestId('earn-period-row')[0]).toHaveTextContent('Sep 16–30');
+    const rows = screen.getAllByTestId('earn-ticket-row');
+    expect(rows.map((r) => r.getAttribute('data-state'))).toEqual(['open', 'paid']);
+    expect(rows[1]).toHaveTextContent('of $12.00, shared with 1');
+    expect(o).toBeInTheDocument();
+    fireEvent.click(screen.getByText('#0990'));
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('t0'));
   });
 });

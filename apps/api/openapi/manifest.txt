@@ -955,6 +955,7 @@ GET /pos/payments/tips/distribution  realm=staff  auth=session  domain=payments 
 GET /pos/payments/tips/export  realm=staff  auth=session  domain=payments  perm=pos.reports.export  resource=BRANCH/permission  async=pos.tips.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/summary  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/technicians  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/payments/tips/technicians/{technicianId}/earnings  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/transactions  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/{ticketId}/detail  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/transactions/export  realm=staff  auth=session  domain=payments  perm=pos.reports.export  resource=BRANCH/permission  async=pos.transactions.export  guards=RolePermissionGuard,TenantAuthGuard

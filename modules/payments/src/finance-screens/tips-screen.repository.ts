@@ -16,6 +16,7 @@
 // Date bases: collected (tickets.paid_at — default), checkout (tickets.created_at), allocation (first snapshot /
 // allocation time), adjustment (compensation_adjustments.created_at — the Adjustments view), payout (payroll_periods.paid_at).
 import { TICKET_NET_SALES_T } from './ticket-money';
+import type { TipsTechnicianEarningsResponse, TipsPayoutState } from '@aipowersalon/api-contracts/tenant';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -230,6 +231,41 @@ export class TipsScreenRepository {
     items.sort(cmp);
     const pg = clampPage(pr, items.length);
     return { items: items.slice(pg.offset, pg.offset + pg.pageSize), total: items.length, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount, totals: { allocatedCents: totalAlloc, technicians: items.length } };
+  }
+
+  /** extras TIPS 01 — Technician Earnings Overlay: one technician over the period (same filters / basis as Distribution, so
+   *  the totals reconcile with that row): per ticket THIS technician's allocated share (ticket_tip_allocations), the ticket's
+   *  payout state and the payroll period it falls in; totals by state; the periods with this technician's sum. Read-only. */
+  async technicianEarnings(ctx: FinanceCtx, f: TipFilters, technicianId: string, pr: PageReq): Promise<Omit<TipsTechnicianEarningsResponse, 'period' | 'dateBasis'>> {
+    if (!isUuid(technicianId)) throw new FinanceError('That tip record could not be found.', 'TIP_NOT_FOUND', 404);
+    const T = ctx.tenantId;
+    const tech = (await sql<{ id: string; full_name: string | null; status: string | null }>`select tc.id, tc.full_name, tc.status from technicians tc where tc.tenant_id = ${T} and tc.id = ${technicianId}::uuid`.execute(this.db)).rows[0];
+    if (!tech) throw new FinanceError('That tip record could not be found.', 'TIP_NOT_FOUND', 404);
+    const w = this.where({ ...f, technicianId: undefined, status: undefined, method: undefined, minCents: undefined, maxCents: undefined, q: '' });
+    const x = sql`with a as (select ${TipsScreenRepository.ROW_COLS} from (${this.base(ctx, f.period.tz)}) a where ${w}),
+      x as (select al.ticket_id, al.tip_cents as alloc, a.ticket_number, a.paid_at, a.tip_cents, a.payout_state, a.period_id, a.period_label, a.period_paid_at, a.alloc_techs
+        from ticket_tip_allocations al join a on a.id = al.ticket_id where al.tenant_id = ${T} and al.technician_id = ${technicianId}::uuid and al.tip_cents > 0)`;
+    const tot = (await sql<any>`${x} select count(*)::int as n, coalesce(sum(alloc), 0)::bigint as allocated,
+        coalesce(sum(alloc) filter (where payout_state = 'paid'), 0)::bigint as paid, coalesce(sum(alloc) filter (where payout_state = 'approved'), 0)::bigint as approved,
+        coalesce(sum(alloc) filter (where payout_state = 'open'), 0)::bigint as open, coalesce(sum(alloc) filter (where payout_state = 'none'), 0)::bigint as unscheduled from x`.execute(this.db)).rows[0] ?? {};
+    const corr = (await sql<any>`with a as (select a.id from (${this.base(ctx, f.period.tz)}) a where ${w})
+      select coalesce(sum(j.amount_cents) filter (where j.source = 'manual'), 0)::bigint as manual, coalesce(sum(j.amount_cents) filter (where j.source <> 'manual'), 0)::bigint as reversed
+      from compensation_adjustments j join a on a.id = j.ticket_id where j.tenant_id = ${T} and j.technician_id = ${technicianId}::uuid and j.category = 'tip_correction' and j.status in (${sql.join(POSTED)})`.execute(this.db)).rows[0] ?? {};
+    const per = (await sql<any>`${x} select period_id, max(period_label) as label, max(payout_state) as state, max(period_paid_at) as paid_at, sum(alloc)::bigint as allocated, count(*)::int as tickets
+      from x group by period_id order by max(period_paid_at) desc nulls first, max(period_label) desc nulls first`.execute(this.db)).rows;
+    const total = N(tot.n); const pg = clampPage(pr, total);
+    const rows = (await sql<any>`${x} select * from x order by paid_at desc, ticket_id desc limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
+    const st = (v: unknown): TipsPayoutState => (v === 'paid' || v === 'approved' || v === 'open' ? v : 'none');
+    const allocated = N(tot.allocated), paid = N(tot.paid);
+    return {
+      technician: { id: String(tech.id), name: tech.full_name ?? null, active: tech.status !== 'archived' },
+      totals: { allocatedCents: allocated, paidCents: paid, approvedCents: N(tot.approved), openCents: N(tot.open), unscheduledCents: N(tot.unscheduled), pendingCents: allocated - paid, tickets: total,
+        manualCorrectionCents: N(corr.manual), reversedCents: N(corr.reversed), netCents: allocated + N(corr.manual) + N(corr.reversed) },
+      periods: per.map((r: any) => ({ id: r.period_id ? String(r.period_id) : null, label: r.label ?? null, state: st(r.state), allocatedCents: N(r.allocated), tickets: N(r.tickets), paidAt: iso(r.paid_at) })),
+      items: rows.map((r: any) => ({ ticketId: String(r.ticket_id), ticketNumber: r.ticket_number ?? null, collectedAt: iso(r.paid_at), ticketTipCents: N(r.tip_cents), allocatedCents: N(r.alloc), sharedWith: Math.max(0, N(r.alloc_techs) - 1),
+        payoutState: st(r.payout_state), period: r.period_id ? { id: String(r.period_id), label: r.period_label ?? null, paidAt: iso(r.period_paid_at) } : null })),
+      total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
+    };
   }
 
   /** The technicians who have tip allocations (the filter list). */

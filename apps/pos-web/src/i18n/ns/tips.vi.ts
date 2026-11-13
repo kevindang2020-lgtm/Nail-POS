@@ -83,4 +83,19 @@ export const TIPS_VI: Record<string, string> = {
   'tp.kpi.cashSourceSub': 'Ngăn kéo {d} · đưa thợ {t}', // DRAFT — Kevin reviews
   'tp.cashSource.drawer': 'vào ngăn kéo', // DRAFT — Kevin reviews
   'tp.cashSource.technician': 'đưa trực tiếp cho thợ', // DRAFT — Kevin reviews
+  'tp.earn.title': '{n} — tiền tip', // DRAFT — Kevin reviews
+  'tp.earn.sub': '{t} hóa đơn trong kỳ này', // DRAFT — Kevin reviews
+  'tp.earn.state.paid': 'Đã trả', // DRAFT — Kevin reviews
+  'tp.earn.state.approved': 'Đã duyệt lương', // DRAFT — Kevin reviews
+  'tp.earn.state.open': 'Trong kỳ lương đang mở', // DRAFT — Kevin reviews
+  'tp.earn.state.none': 'Chưa vào kỳ lương', // DRAFT — Kevin reviews
+  'tp.earn.net': 'Thực nhận', // DRAFT — Kevin reviews
+  'tp.earn.period': 'Kỳ lương', // DRAFT — Kevin reviews
+  'tp.earn.noPeriod': 'Chưa có kỳ lương', // DRAFT — Kevin reviews
+  'tp.earn.ticket': 'Hóa đơn', // DRAFT — Kevin reviews
+  'tp.earn.when': 'Ngày thu', // DRAFT — Kevin reviews
+  'tp.earn.share': 'Phần của thợ', // DRAFT — Kevin reviews
+  'tp.earn.ofShared': 'trên {a}, chia với {n} người', // DRAFT — Kevin reviews
+  'tp.earn.payroll': 'Mở Bảng lương', // DRAFT — Kevin reviews
+  'tp.earn.all': 'Mọi tip của thợ', // DRAFT — Kevin reviews
 };
