@@ -76,6 +76,10 @@ export const SETTING_DEFS: SettingDef[] = [
   // (apps/api/src/common/tenant-rate-limit.ts). Turn OFF here, or with the env TENANT_RATE_LIMIT=off, which wins.
   { key: 'rate_limit.tenant_api_enabled', group: 'global_defaults', label: 'Per-Tenant API Rate Limiting', valueType: 'boolean', default: true, policy: 'overridable' },
   { key: 'defaults.technician_limit', group: 'global_defaults', label: 'Default Technician Limit', valueType: 'json', default: null, policy: 'overridable' }, // null = Unlimited
+  // round 10 (Approvals Management 01 point 3): salon approval rules a salon setting can never loosen, per kind — e.g.
+  // { "refund": { "maxThresholdCents": 20000 }, "void": { "requireDifferentApprover": true, "maxExpiresAfterHours": 24 } }.
+  // Read by the salon approvals engine (modules/workforce approvals.core parseGuardrails); null = the code baseline only.
+  { key: 'approvals.tenant_guardrails', group: 'global_defaults', label: 'Salon Approval Guardrails', valueType: 'json', default: null, policy: 'mandatory', mandatory: true },
   { key: 'defaults.notifications_enabled', group: 'global_defaults', label: 'Notifications by Default', valueType: 'boolean', default: true, policy: 'overridable' },
 
   // 9. Customer Display Advertising — 23-inch dual-screen spec §110. The defs (keys, labels, defaults, bounds) are the ONE

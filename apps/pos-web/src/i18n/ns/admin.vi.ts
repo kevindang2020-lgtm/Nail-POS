@@ -535,4 +535,25 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   "admin.timeClock.rush.result": "{a} đã chấm công vào · {b} đã chấm công trước đó · {c} bị từ chối", // DRAFT — Kevin reviews
   "admin.timeClock.rush.code.TECHNICIAN_NOT_FOUND": "không thuộc tiệm này", // DRAFT — Kevin reviews
   "admin.timeClock.rush.code.REFUSED": "bị từ chối", // DRAFT — Kevin reviews
+  "apx.esc.btn": "Đánh dấu gấp", // DRAFT — Kevin reviews
+  "apx.esc.btnFor": "Đánh dấu gấp: {title}", // DRAFT — Kevin reviews
+  "apx.esc.explain": "Đánh dấu gấp sẽ báo cho người duyệt. Việc này không duyệt gì cả — yêu cầu vẫn cần người duyệt quyết định theo cùng quy tắc.", // DRAFT — Kevin reviews
+  "apx.esc.why": "Vì sao việc này gấp?", // DRAFT — Kevin reviews
+  "apx.esc.done": "Đã đánh dấu gấp: {title}. Người duyệt đã được báo — yêu cầu vẫn cần họ quyết định.", // DRAFT — Kevin reviews
+  "apx.esc.chip": "Gấp", // DRAFT — Kevin reviews
+  "apx.esc.by": "do {who} đánh dấu {at}", // DRAFT — Kevin reviews
+  "apx.guard.line": "Quy tắc nền tảng (không thể nới lỏng tại đây): {rules}", // DRAFT — Kevin reviews
+  "apx.guard.alwaysOn": "luôn bật", // DRAFT — Kevin reviews
+  "apx.guard.different": "không bao giờ là người yêu cầu", // DRAFT — Kevin reviews
+  "apx.guard.maxThreshold": "cần người duyệt khi vượt tối đa {a}", // DRAFT — Kevin reviews
+  "apx.guard.maxCash": "tiền mặt vượt tối đa {a}", // DRAFT — Kevin reviews
+  "apx.guard.maxLimit": "quản lý được duyệt tối đa {a}", // DRAFT — Kevin reviews
+  "apx.guard.maxHours": "hết hạn trong tối đa {n} giờ", // DRAFT — Kevin reviews
+  "apx.guard.clamped": "Quy tắc nền tảng chặt hơn cài đặt đã lưu của tiệm, nên được áp dụng thay cho: {fields}.", // DRAFT — Kevin reviews
+  "apx.guard.f.enabled": "bật / tắt", // DRAFT — Kevin reviews
+  "apx.guard.f.requireDifferentApprover": "ai được duyệt", // DRAFT — Kevin reviews
+  "apx.guard.f.thresholdCents": "hạn mức", // DRAFT — Kevin reviews
+  "apx.guard.f.cashThresholdCents": "hạn mức tiền mặt", // DRAFT — Kevin reviews
+  "apx.guard.f.approverLimitCents": "hạn mức của quản lý", // DRAFT — Kevin reviews
+  "apx.guard.f.expiresAfterHours": "thời hạn", // DRAFT — Kevin reviews
 };

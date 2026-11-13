@@ -174,6 +174,82 @@ export function cleanPolicyChange(b: any): CleanPolicyChange {
   return out;
 }
 
+// ── platform guardrails (Approvals Management 01 point 3, round 10) ─────────────────────────────────────────────────
+// ONE place for the rules a salon's own setting can never weaken. The code baseline (the protections that already existed
+// as separate checks: a refund policy is always on; bonus points always need someone other than the asker) merged with
+// what the Super Admin set in platform_settings 'approvals.tenant_guardrails' (per kind). Merging keeps the STRICTER of
+// each: a salon may always be stricter than the platform, never looser. A salon setting saved before the platform tightened
+// is read through the guardrail (clamped), never trusted as stored.
+export const APPROVAL_GUARDRAILS_SETTING = 'approvals.tenant_guardrails';
+export interface ApprovalGuardrail {
+  alwaysEnabled?: boolean; requireDifferentApprover?: boolean;
+  maxThresholdCents?: number; maxCashThresholdCents?: number; maxApproverLimitCents?: number; maxExpiresAfterHours?: number;
+}
+export type ApprovalGuardrails = Partial<Record<TenantApprovalKind, ApprovalGuardrail>>;
+export const BASELINE_GUARDRAILS: ApprovalGuardrails = { refund: { alwaysEnabled: true }, loyalty_bonus: { alwaysEnabled: true, requireDifferentApprover: true } };
+const GUARD_NUM = ['maxThresholdCents', 'maxCashThresholdCents', 'maxApproverLimitCents', 'maxExpiresAfterHours'] as const;
+/** Read the platform value defensively: unknown kinds / keys and anything that is not a whole non-negative number or `true` are ignored. */
+export function parseGuardrails(v: unknown): ApprovalGuardrails {
+  const src = typeof v === 'string' ? (() => { try { return JSON.parse(v) as unknown; } catch { return null; } })() : v;
+  const out: ApprovalGuardrails = {};
+  if (!src || typeof src !== 'object' || Array.isArray(src)) return out;
+  for (const [k, g] of Object.entries(src as Record<string, unknown>)) {
+    if (!isKind(k) || !g || typeof g !== 'object' || Array.isArray(g)) continue;
+    const r = g as Record<string, unknown>; const x: ApprovalGuardrail = {};
+    if (r.alwaysEnabled === true) x.alwaysEnabled = true;
+    if (r.requireDifferentApprover === true) x.requireDifferentApprover = true;
+    for (const f of GUARD_NUM) { const n = r[f]; if (typeof n === 'number' && Number.isSafeInteger(n) && n >= 0) x[f] = n; }
+    out[k] = x;
+  }
+  return out;
+}
+const minDef = (a?: number, b?: number) => (a == null ? b : b == null ? a : Math.min(a, b));
+export function mergeGuardrails(a: ApprovalGuardrails, b: ApprovalGuardrails): ApprovalGuardrails {
+  const out: ApprovalGuardrails = {};
+  for (const k of APPROVAL_KINDS) {
+    const x = a[k], y = b[k]; if (!x && !y) continue;
+    const m: ApprovalGuardrail = {};
+    if (x?.alwaysEnabled || y?.alwaysEnabled) m.alwaysEnabled = true;
+    if (x?.requireDifferentApprover || y?.requireDifferentApprover) m.requireDifferentApprover = true;
+    for (const f of GUARD_NUM) { const v = minDef(x?.[f], y?.[f]); if (v != null) m[f] = v; }
+    out[k] = m;
+  }
+  return out;
+}
+/** The first field where this policy is looser than the guardrail (null = within it). Null limits mean: threshold null =
+ *  ALWAYS needs approval (strictest); cash null = the any-amount limit; approver limit null = NO cap (loosest). */
+export function guardrailViolation(p: Pick<ApprovalPolicy, 'enabled' | 'thresholdCents' | 'cashThresholdCents' | 'approverLimitCents' | 'requireDifferentApprover' | 'expiresAfterHours'>, g: ApprovalGuardrail | undefined): { field: string; limit: number | boolean } | null {
+  if (!g) return null;
+  if (g.alwaysEnabled && !p.enabled) return { field: 'enabled', limit: true };
+  if (g.requireDifferentApprover && !p.requireDifferentApprover) return { field: 'requireDifferentApprover', limit: true };
+  if (g.maxThresholdCents != null && p.thresholdCents != null && p.thresholdCents > g.maxThresholdCents) return { field: 'thresholdCents', limit: g.maxThresholdCents };
+  const cash = p.cashThresholdCents ?? p.thresholdCents;
+  if (g.maxCashThresholdCents != null && cash != null && cash > g.maxCashThresholdCents) return { field: 'cashThresholdCents', limit: g.maxCashThresholdCents };
+  if (g.maxApproverLimitCents != null && (p.approverLimitCents == null || p.approverLimitCents > g.maxApproverLimitCents)) return { field: 'approverLimitCents', limit: g.maxApproverLimitCents };
+  if (g.maxExpiresAfterHours != null && p.expiresAfterHours > g.maxExpiresAfterHours) return { field: 'expiresAfterHours', limit: g.maxExpiresAfterHours };
+  return null;
+}
+/** The policy read THROUGH the guardrail: every looser field tightened to the platform's; `clamped` names them. */
+export function applyGuardrail(p: ApprovalPolicy, g: ApprovalGuardrail | undefined): { policy: ApprovalPolicy; clamped: string[] } {
+  if (!g) return { policy: p, clamped: [] };
+  const q = { ...p }; const clamped: string[] = [];
+  if (g.alwaysEnabled && !q.enabled) { q.enabled = true; clamped.push('enabled'); }
+  if (g.requireDifferentApprover && !q.requireDifferentApprover) { q.requireDifferentApprover = true; clamped.push('requireDifferentApprover'); }
+  if (g.maxThresholdCents != null && q.thresholdCents != null && q.thresholdCents > g.maxThresholdCents) { q.thresholdCents = g.maxThresholdCents; clamped.push('thresholdCents'); }
+  const cash = q.cashThresholdCents ?? q.thresholdCents;
+  if (g.maxCashThresholdCents != null && cash != null && cash > g.maxCashThresholdCents) { q.cashThresholdCents = g.maxCashThresholdCents; clamped.push('cashThresholdCents'); }
+  if (g.maxApproverLimitCents != null && (q.approverLimitCents == null || q.approverLimitCents > g.maxApproverLimitCents)) { q.approverLimitCents = g.maxApproverLimitCents; clamped.push('approverLimitCents'); }
+  if (g.maxExpiresAfterHours != null && q.expiresAfterHours > g.maxExpiresAfterHours) { q.expiresAfterHours = g.maxExpiresAfterHours; clamped.push('expiresAfterHours'); }
+  return { policy: q, clamped };
+}
+
+/** Urgent escalation body: why it is urgent (3–500 characters). */
+export function cleanEscalation(b: any): { reason: string } {
+  const reason = String(b?.reason ?? '').trim();
+  if (reason.length < 3) throw withCode(new ApprovalError('invalid_input', 400, 'Say why this is urgent (at least 3 characters).', { field: 'reason' }), 'APPROVAL_ESCALATE_REASON_REQUIRED');
+  return { reason: reason.slice(0, MAX_REASON) };
+}
+
 /** The decide body: approve / reject (+ note — required to reject), expectedVersion. */
 export function cleanDecision(b: any): { decision: 'approve' | 'reject'; note: string | null; expectedVersion: number } {
   const bad = (field: string, message: string) => new ApprovalError('invalid_input', 400, message, { field });

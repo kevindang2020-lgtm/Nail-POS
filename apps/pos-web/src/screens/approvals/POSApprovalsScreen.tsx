@@ -25,7 +25,8 @@ import { KpiCard } from '../../components/FitKit';
  *   Pending Decisions  every pending request this person may see
  *   Awaiting Owner     pending requests this person cannot decide because they need a higher approver (over the limit /
  *                      missing the approval key) — the server's own canDecide / whyNot
- *   Urgent             pending requests that expire within 24 hours
+ *   Urgent             pending requests that expire within 24 hours, or that someone marked urgent (round 10 — the
+ *                      server's escalatedAt; marking urgent never approves anything)
  *   Completed          requests carried out (executed)
  *  Counted over the newest 100 pending (the server's page cap); more than that is said, never hidden. */
 type Summary = { pending: number; awaitingOwner: number; urgent: number; completed: number | null; capped: boolean };
@@ -35,7 +36,7 @@ async function readSummary(now = Date.now()): Promise<Summary> {
   return {
     pending: p.total,
     awaitingOwner: items.filter((r) => !r.canDecide && (r.whyNot === 'over_your_limit' || r.whyNot === 'missing_permission')).length,
-    urgent: items.filter((r) => r.expiresAt && Date.parse(r.expiresAt) - now <= 24 * 3600_000).length,
+    urgent: items.filter((r) => !!r.escalatedAt || (r.expiresAt && Date.parse(r.expiresAt) - now <= 24 * 3600_000)).length,
     completed: done ? done.total : null, capped: p.total > items.length,
   };
 }
@@ -68,7 +69,7 @@ export function POSApprovalsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [noteFor, setNoteFor] = useState<{ id: string; decision: 'approve' | 'reject' | 'cancel' } | null>(null);
+  const [noteFor, setNoteFor] = useState<{ id: string; decision: 'approve' | 'reject' | 'cancel' | 'escalate' } | null>(null);
   const [note, setNote] = useState('');
   const stepUp = useStepUp();
   const [sum, setSum] = useState<Summary | null>(null); const [sumErr, setSumErr] = useState(false);
@@ -106,6 +107,16 @@ export function POSApprovalsScreen() {
     catch (e) { if (isConflict(e)) await refreshOne(r.id); setError(approvalErrorText(e, tx('pos.that_did_not_work'))); }
     finally { setBusy(null); await load(); }
   };
+
+  /** round 10 (Approvals 01 point 2): mark urgent — the request stays pending and is decided by the same rules */
+  const escalate = async (r: ApprovalRequestView, reason: string) => {
+    setBusy(r.id); setError(null); setNotice(null);
+    try { await api.escalate(r.id, { reason }); setNotice(tx('apx.esc.done', { title: r.title })); setNoteFor(null); setNote(''); }
+    catch (e) { if (isConflict(e)) await refreshOne(r.id); setError(approvalErrorText(e, tx('pos.that_did_not_work'))); }
+    finally { setBusy(null); await load(); loadSummary(); }
+  };
+  const escalateBtn = (r: ApprovalRequestView) => canAsk && r.status === 'pending' && !r.escalatedAt
+    ? <button className="btn ghost" disabled={busy === r.id} data-testid="approval-escalate" aria-label={tx('apx.esc.btnFor', { title: String(r.title) })} onClick={() => { setNoteFor({ id: r.id, decision: 'escalate' }); setNote(''); }}>{tx('apx.esc.btn')}</button> : null;
 
   const tabs: { id: Tab; label: string }[] = [
     ...(canDecideAny ? [{ id: 'inbox' as const, label: tx('pos.to_decide') }] : []),
@@ -146,6 +157,8 @@ export function POSApprovalsScreen() {
                   {r.status === 'pending' && r.expiresAt ? tx('pos.expires_expiresat', { expiresAt: String(when(r.expiresAt)) }) : ''}
                 </div>
                 <div className="s" style={{ marginTop: 6 }}>{r.reason}</div>
+                {r.escalatedAt ? <div className="s" style={{ marginTop: 4 }} data-testid="approval-urgent"><span className="fk-chip bad">{tx('apx.esc.chip')}</span>{' '}
+                  {tx('apx.esc.by', { who: r.escalatedByName ?? tx('pos.a_team_member'), at: when(r.escalatedAt) })}{r.escalationReason ? ` — “${r.escalationReason}”` : ''}</div> : null}
                 {r.decidedByName || r.decisionNote ? <div className="s muted" style={{ marginTop: 4 }}>{r.decidedByName ? tx('pos.v0_by_decidedbyname_decidedat', { v0: String(STATUS_LABEL[r.status] ?? r.status), decidedByName: String(r.decidedByName), decidedAt: String(when(r.decidedAt)) }) : ''}{r.decisionNote ? ` — “${r.decisionNote}”` : ''}</div> : null}
                 {r.status === 'pending' && tab === 'inbox' ? (
                   r.canDecide ? (
@@ -153,18 +166,19 @@ export function POSApprovalsScreen() {
                       <button className="btn primary" disabled={busy === r.id} aria-label={tx('pos.approve_title', { title: String(r.title) })} onClick={() => void decide(r, 'approve', null)}>{tx('pos.approve')}</button>
                       <button className="btn ghost" disabled={busy === r.id} aria-label={tx('pos.reject_title_2', { title: String(r.title) })} onClick={() => { setNoteFor({ id: r.id, decision: 'reject' }); setNote(''); }}>{tx('pos.reject')}</button>
                     </div>
-                  ) : <div className="s muted" style={{ marginTop: 8 }} data-testid="approval-why-not">{WHY_NOT[r.whyNot ?? ''] ?? tx('pos.you_cannot_decide_this_request')}</div>
+                  ) : <div className="s muted" style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} data-testid="approval-why-not">{WHY_NOT[r.whyNot ?? ''] ?? tx('pos.you_cannot_decide_this_request')}{escalateBtn(r)}</div>
                 ) : null}
                 {r.status === 'pending' && tab === 'mine' ? (
-                  <div style={{ marginTop: 8 }}><button className="btn ghost" disabled={busy === r.id} aria-label={tx('pos.withdraw_title_2', { title: String(r.title) })} onClick={() => { setNoteFor({ id: r.id, decision: 'cancel' }); setNote(''); }}>{tx('pos.withdraw')}</button></div>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}><button className="btn ghost" disabled={busy === r.id} aria-label={tx('pos.withdraw_title_2', { title: String(r.title) })} onClick={() => { setNoteFor({ id: r.id, decision: 'cancel' }); setNote(''); }}>{tx('pos.withdraw')}</button>{escalateBtn(r)}</div>
                 ) : null}
                 {noteFor?.id === r.id ? (
-                  <div role="group" aria-label={noteFor.decision === 'reject' ? tx('pos.reject_title', { title: String(r.title) }) : tx('pos.withdraw_title', { title: String(r.title) })} style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                    <label className="s">{noteFor.decision === 'reject' ? tx('pos.why_not_the_person_who_asked_ahkc') : tx('pos.why_are_you_withdrawing_it')}
+                  <div role="group" aria-label={noteFor.decision === 'reject' ? tx('pos.reject_title', { title: String(r.title) }) : noteFor.decision === 'escalate' ? tx('apx.esc.btnFor', { title: String(r.title) }) : tx('pos.withdraw_title', { title: String(r.title) })} style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                    {noteFor.decision === 'escalate' ? <div className="s muted" data-testid="approval-escalate-note">{tx('apx.esc.explain')}</div> : null}
+                    <label className="s">{noteFor.decision === 'reject' ? tx('pos.why_not_the_person_who_asked_ahkc') : noteFor.decision === 'escalate' ? tx('apx.esc.why') : tx('pos.why_are_you_withdrawing_it')}
                       <textarea aria-label={tx('pos.note')} value={note} onChange={(e) => setNote(e.target.value)} style={{ display: 'block', width: '100%' }} />
                     </label>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn" disabled={busy === r.id || note.trim().length < 3} onClick={() => void (noteFor.decision === 'reject' ? decide(r, 'reject', note.trim()) : withdraw(r, note.trim()))}>{noteFor.decision === 'reject' ? tx('pos.reject') : tx('pos.withdraw')}</button>
+                      <button className="btn" data-testid="approval-note-submit" disabled={busy === r.id || note.trim().length < 3} onClick={() => void (noteFor.decision === 'reject' ? decide(r, 'reject', note.trim()) : noteFor.decision === 'escalate' ? escalate(r, note.trim()) : withdraw(r, note.trim()))}>{noteFor.decision === 'reject' ? tx('pos.reject') : noteFor.decision === 'escalate' ? tx('apx.esc.btn') : tx('pos.withdraw')}</button>
                       <button className="btn ghost" onClick={() => setNoteFor(null)}>{tx('pos.cancel')}</button>
                     </div>
                   </div>
@@ -176,6 +190,15 @@ export function POSApprovalsScreen() {
       {stepUp.prompt}
     </div>
   );
+}
+
+/** The platform guardrail for a kind, in words (the server's own `guardrail`; nothing is computed here). */
+function guardText(p: ApprovalPolicyDetail): string {
+  const g = p.guardrail; if (!g) return '';
+  return [g.alwaysEnabled ? tx('apx.guard.alwaysOn') : '', g.requireDifferentApprover ? tx('apx.guard.different') : '',
+    g.maxThresholdCents != null ? tx('apx.guard.maxThreshold', { a: money(g.maxThresholdCents) }) : '', g.maxCashThresholdCents != null ? tx('apx.guard.maxCash', { a: money(g.maxCashThresholdCents) }) : '',
+    g.maxApproverLimitCents != null ? tx('apx.guard.maxLimit', { a: money(g.maxApproverLimitCents) }) : '', g.maxExpiresAfterHours != null ? tx('apx.guard.maxHours', { n: String(g.maxExpiresAfterHours) }) : '',
+  ].filter(Boolean).join(' · ');
 }
 
 /** The salon's rules per kind. Owners edit (step-up); everyone with approvals.view reads. */
@@ -209,6 +232,9 @@ function RulesPanel({ policies, canEdit, run, onSaved, onError }: { policies: Ap
             {' · '}{p.requireDifferentApprover ? tx('pos.never_the_person_who_asked') : tx('pos.the_person_who_asked_may_approve')}
             {p.approverLimitCents != null ? tx('pos.managers_up_to_approverlimitcents', { approverLimitCents: String(money(p.approverLimitCents)) }) : ''} {tx('pos.expires_after')}{' '}{p.expiresAfterHours} h
           </div>
+          {/* round 10 (Approvals 01 point 3): what the platform requires — a salon setting can be stricter, never looser */}
+          {guardText(p) ? <div className="s" style={{ marginTop: 4 }} data-testid="approval-guardrail">{tx('apx.guard.line', { rules: guardText(p) })}</div> : null}
+          {p.clampedByPlatform?.length ? <div className="s" style={{ marginTop: 4, color: 'var(--warn, #b45309)' }} data-testid="approval-clamped">{tx('apx.guard.clamped', { fields: p.clampedByPlatform.map((f) => tx('apx.guard.f.' + f)).join(', ') })}</div> : null}
           {canEdit && editing !== p.kind ? <button className="btn ghost" style={{ marginTop: 8 }} aria-label={tx('pos.change_rule_label', { label: String(p.label) })} onClick={() => start(p)}>{tx('pos.change')}</button> : null}
           {editing === p.kind ? (
             <div role="group" aria-label={tx('pos.edit_rule_label', { label: String(p.label) })} style={{ display: 'grid', gap: 6, marginTop: 8 }}>

@@ -181,6 +181,7 @@ const MONEY_STATUS: BodySchema['x-forbidden'] = ['status', 'decidedByUserId', 'a
 export const APPROVAL_CREATE_BODY: BodySchema = S.object({ kind: str(40), subjectType: str(60), subjectId: scalar(100), amountCents: looseNum, reason: str(2000), payload: free, branchId: str(64), title: str(200) }, [], { 'x-forbidden': MONEY_STATUS });
 export const APPROVAL_DECIDE_BODY: BodySchema = S.object({ decision: str(16), note: str(2000), expectedVersion: looseNum }, [], { 'x-forbidden': MONEY_STATUS });
 export const APPROVAL_CANCEL_BODY: BodySchema = S.object({ reason: str(1000) });
+export const APPROVAL_ESCALATE_BODY: BodySchema = S.object({ reason: str(1000) });   // round 10 (Approvals 01 point 2)
 export const APPROVAL_POLICY_BODY: BodySchema = S.object({
   kind: str(40), expectedVersion: looseNum, reason: str(2000), enabled: { type: ['boolean', 'string', 'number', 'null'], maxLength: 8 },
   thresholdCents: looseNum, cashThresholdCents: looseNum, approverLimitCents: looseNum,

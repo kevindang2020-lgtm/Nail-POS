@@ -1490,4 +1490,6 @@ export const ERRORS_EN = {
   'errors.WINBACK_AUDIENCE_EMPTY': 'No eligible customers match this win-back goal right now.',
   'errors.WINBACK_HEALTH_RATE_LIMITED': 'The retention data check just ran. Try again in a minute.',
   'errors.PRODUCT_CHANGED': 'This product was changed on another device since you opened it. Reload and try again.',
+  'errors.APPROVAL_ESCALATE_REASON_REQUIRED': 'Say why this is urgent (at least 3 characters).',
+  'errors.APPROVAL_POLICY_PLATFORM_FLOOR': 'The platform requires a stricter approval rule than this — a salon setting cannot loosen it.',
 };

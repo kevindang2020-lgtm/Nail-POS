@@ -1302,6 +1302,8 @@ export const ERROR_REGISTRY = {
   HELP_FROM_SELF:                 { status: 400, message: 'You cannot ask yourself for help.', domain: 'queue', retryable: false, severity: 'info', action: 'NONE' },
   // V-5 all modules (Oct 27 2026) — workforce: free-text refusals as codes (route statuses unchanged; withCode)
   REFUND_APPROVER_ALWAYS:         { status: 400, message: 'Refunds over the limit always need an approver — change the limits instead.', domain: 'workforce', retryable: false, severity: 'info', action: 'NONE' },
+  APPROVAL_ESCALATE_REASON_REQUIRED: { status: 400, message: 'Say why this is urgent (at least 3 characters).', domain: 'workforce', retryable: false, severity: 'info', action: 'NONE' },
+  APPROVAL_POLICY_PLATFORM_FLOOR: { status: 409, message: 'The platform requires a stricter approval rule than this — a salon setting cannot loosen it.', domain: 'workforce', retryable: false, severity: 'info', action: 'NONE' },
   LOYALTY_BONUS_APPROVAL_ALWAYS: { status: 400, message: "Bonus loyalty points always need the owner's approval, never the person who asked.", domain: 'workforce', retryable: false, severity: 'info', action: 'NONE' },
   LOYALTY_DIRECT_EDIT_REFUSED: { status: 400, message: "A customer's points can't be set or lowered by the salon. Ask for bonus points instead — the owner approves them.", domain: 'customers', retryable: false, severity: 'warning', action: 'NONE' },
   LOYALTY_BONUS_INVALID: { status: 400, message: 'Bonus points must be a whole number from 1 to 5,000, with a reason.', domain: 'customers', retryable: false, severity: 'info', action: 'NONE' },

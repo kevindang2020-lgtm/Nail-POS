@@ -25,6 +25,7 @@ import type { ApprovalCreateResult, ApprovalPage, ApprovalPolicyDetail, Approval
 import {
   APPROVAL_KINDS, APPROVAL_STATUSES, ApprovalError, UNLIMITED_APPROVER_KEY, amountNeedsApproval, cleanCreate, cleanDecision, cleanPolicyChange,
   defaultPolicy, isKind, whyCannotDecide, whyText, type ApprovalActor, type ApprovalPolicy, type CleanCreate,
+  APPROVAL_GUARDRAILS_SETTING, BASELINE_GUARDRAILS, applyGuardrail, cleanEscalation, guardrailViolation, mergeGuardrails, parseGuardrails, type ApprovalGuardrails,
 } from './approvals.core';
 import { canMoveToSql } from '@aipowersalon/database';
 import { APPROVAL_REQUEST } from '../workforce-lifecycles';
@@ -93,14 +94,25 @@ export class TenantApprovalsService implements TenantApprovalsPort {
   hasExecutor(kind: TenantApprovalKind): boolean { return this.executors.has(kind); }
 
   // ── policies ───────────────────────────────────────────────────────────────────────────────────────────────────────
+  /** round 10 (Approvals 01 point 3): the rules a salon setting can never weaken — the code baseline merged with the Super
+   *  Admin's platform_settings 'approvals.tenant_guardrails' (the stricter of each). */
+  async guardrails(trx?: Db): Promise<ApprovalGuardrails> {
+    if (!this.db) return BASELINE_GUARDRAILS;
+    const r = await sql<{ value: unknown }>`select value from platform_settings where setting_key = ${APPROVAL_GUARDRAILS_SETTING} limit 1`.execute(trx ?? this.db);
+    return mergeGuardrails(BASELINE_GUARDRAILS, parseGuardrails(r.rows[0]?.value ?? null));
+  }
+  /** The EFFECTIVE policy: the salon's saved rule (or the code default) read through the platform guardrail. Every caller —
+   *  needsApproval, request, decide, the views — gets the guarded one, so a looser stored value never takes effect. */
   async policy(tenantId: string, kind: TenantApprovalKind, trx?: Db): Promise<ApprovalPolicy> {
-    if (!this.db) return defaultPolicy(kind);
+    if (!this.db) return applyGuardrail(defaultPolicy(kind), BASELINE_GUARDRAILS[kind]).policy;
     const r = await sql<any>`select * from tenant_approval_policies where tenant_id = ${tenantId} and kind = ${kind} limit 1`.execute(trx ?? this.db);
-    return policyFromRow(kind, r.rows[0]);
+    return applyGuardrail(policyFromRow(kind, r.rows[0]), (await this.guardrails(trx))[kind]).policy;
   }
   async policies(actor: ApprovalActor): Promise<ApprovalPolicyDetail[]> {
     const rows = this.db ? (await sql<any>`select * from tenant_approval_policies where tenant_id = ${actor.tenantId}`.execute(this.db)).rows : [];
-    return APPROVAL_KINDS.map((k) => policyDetail(policyFromRow(k, rows.find((x: any) => x.kind === k))));
+    const g = await this.guardrails();
+    return APPROVAL_KINDS.map((k) => { const a = applyGuardrail(policyFromRow(k, rows.find((x: any) => x.kind === k)), g[k]);
+      return { ...policyDetail(a.policy), guardrail: g[k] ?? null, clampedByPlatform: a.clamped }; });
   }
   async needsApproval(tenantId: string, kind: TenantApprovalKind, amountCents: number | null, method?: string | null): Promise<boolean> {
     return amountNeedsApproval(await this.policy(tenantId, kind), amountCents, method);
@@ -120,6 +132,9 @@ export class TenantApprovalsService implements TenantApprovalsPort {
         approverLimitCents: c.approverLimitCents !== undefined ? c.approverLimitCents : cur.approverLimitCents,
         requireDifferentApprover: c.requireDifferentApprover ?? cur.requireDifferentApprover, expiresAfterHours: c.expiresAfterHours ?? cur.expiresAfterHours,
         version: cur.version + 1 };
+      // round 10 (Approvals 01 point 3): a salon may be stricter than the platform, never looser — refused, not clamped silently
+      const g = (await this.guardrails(trx))[c.kind]; const off = guardrailViolation(n, g);
+      if (off) throw withCode(new ApprovalError('policy_below_platform', 409, 'The platform requires a stricter approval rule than this — a salon setting cannot loosen it.', { field: off.field, platformLimit: off.limit }), 'APPROVAL_POLICY_PLATFORM_FLOOR');
       if (c.kind === 'refund' && n.cashThresholdCents != null && n.thresholdCents != null && n.cashThresholdCents > n.thresholdCents) {
         throw withCode(new ApprovalError('invalid_input', 400, 'The cash limit cannot be higher than the limit for any refund.', { field: 'cashThresholdCents' }), 'CASH_LIMIT_ABOVE_REFUND_LIMIT');
       }
@@ -214,7 +229,7 @@ export class TenantApprovalsService implements TenantApprovalsPort {
       : sql`(a.branch_id is null or a.branch_id = ${uuidOrNull(actor.branchId)} or a.requested_by_user_id = ${uuidOrNull(actor.userId)})`;
     const filters = sql`${statusSql} and ${kindSql} and ${mineSql} and ${scopeSql}`;
     const total = Number((await sql<any>`select count(*)::int as n from tenant_approval_requests a where a.tenant_id = ${actor.tenantId} and ${filters}`.execute(db)).rows[0]?.n ?? 0);
-    const rows = (await sql<any>`${this.selectViewSql()} where a.tenant_id = ${actor.tenantId} and ${filters} order by (a.status = 'pending') desc, a.created_at desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(db)).rows;
+    const rows = (await sql<any>`${this.selectViewSql()} where a.tenant_id = ${actor.tenantId} and ${filters} order by (a.status = 'pending') desc, (a.status = 'pending' and a.escalated_at is not null) desc, a.created_at desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(db)).rows;
     const pol = new Map<string, ApprovalPolicy>();
     for (const k of new Set(rows.map((x: any) => x.kind as TenantApprovalKind))) pol.set(k, await this.policy(actor.tenantId, k));
     return { items: rows.map((x: any) => this.view(actor, x, pol.get(x.kind)!)), page, pageSize, total, hasMore: page * pageSize < total };
@@ -309,6 +324,35 @@ export class TenantApprovalsService implements TenantApprovalsPort {
     return this.get(actor, id, true);
   }
 
+  /** round 10 (Approvals 01 point 2 — urgent escalation WITHOUT auto-approving): anyone who can see a pending request may mark
+   *  it urgent with a reason. It STAYS pending: status, version-checked decision, approver key, separation and limit are
+   *  untouched; nothing executes. The approvers hear about it in the salon's alert feed (owner_alerts 'approval_escalated',
+   *  severity high, in the request's branch). Escalating twice keeps the first (who / when / why) and adds no second alert. */
+  async escalate(actor: ApprovalActor, id: string, body: unknown): Promise<ApprovalRequestView> {
+    if (!uuidOrNull(id)) throw withCode(new ApprovalError('not_found', 404, 'Approval request not found.'), 'APPROVAL_NOT_FOUND');
+    if (!uuidOrNull(actor.userId)) throw withCode(new ApprovalError('forbidden', 403, 'A signed-in staff member is required to escalate.'), 'AUTH_REQUIRED');
+    const e = cleanEscalation(body);
+    const db = this.need();
+    await db.transaction().execute(async (trx) => {
+      const row = (await sql<any>`select id, tenant_id, branch_id, kind, subject_type, subject_id, title, amount_cents, payload, reason, requested_by_user_id, status, version, decision_note, expires_at, escalated_at
+          from tenant_approval_requests where tenant_id = ${actor.tenantId} and id = ${id} for update`.execute(trx)).rows[0];
+      if (!row || !this.visible(actor, row)) throw withCode(new ApprovalError('not_found', 404, 'Approval request not found.'), 'APPROVAL_NOT_FOUND');
+      if (row.status !== 'pending' || Date.parse(iso(row.expires_at)!) <= this.now()) throw new ApprovalError('not_pending', 409, whyText(row.status !== 'pending' ? 'not_pending' : 'expired'));
+      if (row.escalated_at) return;
+      const u = await sql<any>`update tenant_approval_requests set escalated_at = now(), escalated_by_user_id = ${actor.userId}, escalation_reason = ${e.reason}, version = version + 1, updated_at = now()
+          where tenant_id = ${actor.tenantId} and id = ${id} and status = 'pending' and escalated_at is null
+          returning id, tenant_id, branch_id, kind, subject_type, subject_id, title, amount_cents, payload, reason, requested_by_user_id, status, version, decision_note`.execute(trx);
+      if (!u.rows.length) return;
+      const r = recordOf(u.rows[0]);
+      await this.history(trx, r, 'escalated', 'pending', 'pending', actor.userId, e.reason);
+      await this.audit(trx, actor, 'approval_escalated', r.id, { kind: r.kind, subjectId: r.subjectId, amountCents: r.amountCents, reason: e.reason, autoApproved: false });
+      const meta = { approvalId: r.id, kind: r.kind, amountCents: r.amountCents, escalatedBy: actor.userId, source: 'approvals.escalate' };
+      await sql`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+          values (${r.tenantId}, ${r.branchId}, 'approval_escalated', 'high', 'new', ${('Urgent approval: ' + r.title).slice(0, 200)}, ${e.reason.slice(0, 1000)}, ${JSON.stringify(meta)}::jsonb, 'all')`.execute(trx);
+    });
+    return this.get(actor, id, true);
+  }
+
   /** Pending requests past their expiry → expired (one salon). Returns how many. Idempotent: a second process finds none. */
   async expireDue(tenantId: string): Promise<number> {
     if (!this.db || !uuidOrNull(tenantId)) return 0;
@@ -351,11 +395,13 @@ export class TenantApprovalsService implements TenantApprovalsPort {
   private selectViewSql() {
     return sql`select a.*, b.name as branch_name,
         coalesce(nullif(trim(coalesce(ru.full_name, '')), ''), nullif(trim(coalesce(ru.first_name, '') || ' ' || coalesce(ru.last_name, '')), ''), ru.email) as requested_by_name,
-        coalesce(nullif(trim(coalesce(du.full_name, '')), ''), nullif(trim(coalesce(du.first_name, '') || ' ' || coalesce(du.last_name, '')), ''), du.email) as decided_by_name
+        coalesce(nullif(trim(coalesce(du.full_name, '')), ''), nullif(trim(coalesce(du.first_name, '') || ' ' || coalesce(du.last_name, '')), ''), du.email) as decided_by_name,
+        coalesce(nullif(trim(coalesce(eu.full_name, '')), ''), nullif(trim(coalesce(eu.first_name, '') || ' ' || coalesce(eu.last_name, '')), ''), eu.email) as escalated_by_name
       from tenant_approval_requests a
       left join branches b on b.id = a.branch_id and b.tenant_id = a.tenant_id
       left join users ru on ru.id = a.requested_by_user_id and ru.tenant_id = a.tenant_id
-      left join users du on du.id = a.decided_by_user_id and du.tenant_id = a.tenant_id`;
+      left join users du on du.id = a.decided_by_user_id and du.tenant_id = a.tenant_id
+      left join users eu on eu.id = a.escalated_by_user_id and eu.tenant_id = a.tenant_id`;
   }
   private view(actor: ApprovalActor, x: any, p: ApprovalPolicy): ApprovalRequestView {
     const expiresAt = iso(x.expires_at);
@@ -370,6 +416,7 @@ export class TenantApprovalsService implements TenantApprovalsPort {
       requiredPermission: String(x.required_permission), canDecide: why === null, whyNot: why,
       expiresAt, createdAt: iso(x.created_at)!, version: Number(x.version),
       payload: { ...(x.payload ?? {}), ...(x.execution_result ? { executionResult: x.execution_result } : {}) },
+      escalatedAt: iso(x.escalated_at), escalatedByName: x.escalated_by_name ?? null, escalationReason: x.escalation_reason ?? null,
     };
   }
   private async history(trx: Db, r: ApprovalRecord, action: string, from: string | null, to: string, actorUserId: string | null, note: string | null) {

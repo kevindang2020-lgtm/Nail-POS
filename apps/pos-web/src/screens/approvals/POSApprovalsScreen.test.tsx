@@ -8,7 +8,7 @@ const perms = vi.hoisted(() => ({ deny: new Set<string>() }));
 vi.mock('../../components/usePermissions', () => ({ useCan: () => (p: string) => !perms.deny.has(p) }));
 const realtimeKeys: string[][] = vi.hoisted(() => []);
 vi.mock('../../realtime/useRealtime', () => ({ useRealtime: (keys: string[]) => { realtimeKeys.push(keys); } }));
-const api = vi.hoisted(() => ({ list: vi.fn(), one: vi.fn(), create: vi.fn(), decide: vi.fn(), cancel: vi.fn(), policies: vi.fn(), updatePolicy: vi.fn() }));
+const api = vi.hoisted(() => ({ list: vi.fn(), one: vi.fn(), create: vi.fn(), decide: vi.fn(), cancel: vi.fn(), escalate: vi.fn(), policies: vi.fn(), updatePolicy: vi.fn() }));
 vi.mock('../../api/posApprovalsApi', async (orig) => ({ ...(await orig<any>()), posApprovalsApi: api }));
 const stepUp = vi.hoisted(() => vi.fn());
 vi.mock('../../api/posStepUpApi', () => ({ posStepUpApi: { stepUp: (...a: any[]) => stepUp(...a) } }));
@@ -127,5 +127,46 @@ describe('POS Approvals', () => {
     render(<POSApprovalsScreen />);
     await screen.findAllByTestId('approval-row');
     expect(screen.queryByRole('tab', { name: 'Ask for approval' })).toBeNull();
+  });
+  it('round 10 (Approvals 01 point 2): Mark urgent asks why, says it approves nothing, and shows who marked it — the request stays pending', async () => {
+    api.list.mockImplementation(async (q: any) => (q?.mine ? page([req({ requestedByUserId: 'me', canDecide: false, whyNot: 'requester_cannot_approve' })]) : page([])));
+    api.escalate.mockResolvedValue(req({ escalatedAt: '2026-10-08T13:00:00.000Z', escalatedByName: 'Fran', escalationReason: 'Customer waiting', version: 2 }));
+    perms.deny = new Set(['approvals.decide']);                                   // front desk: Mine tab
+    render(<POSApprovalsScreen />);
+    const row = (await screen.findAllByTestId('approval-row'))[0];
+    fireEvent.click(within(row).getByTestId('approval-escalate'));
+    expect(screen.getByTestId('approval-escalate-note')).toHaveTextContent('It does not approve anything');
+    expect(screen.getByTestId('approval-note-submit')).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Customer waiting' } });
+    api.list.mockImplementation(async (q: any) => (q?.mine ? page([req({ requestedByUserId: 'me', escalatedAt: '2026-10-08T13:00:00.000Z', escalatedByName: 'Fran', escalationReason: 'Customer waiting', version: 2 })]) : page([])));
+    fireEvent.click(screen.getByTestId('approval-note-submit'));
+    await waitFor(() => expect(api.escalate).toHaveBeenCalledWith('a1', { reason: 'Customer waiting' }));
+    expect(await screen.findByTestId('approval-notice')).toHaveTextContent('it still needs their decision');
+    expect(await screen.findByTestId('approval-urgent')).toHaveTextContent(/Urgent.*marked by Fran.*Customer waiting/);
+    expect(screen.queryByTestId('approval-escalate')).toBeNull();                 // once only
+    expect(api.decide).not.toHaveBeenCalled();
+  });
+  it('round 10 (Approvals 01 point 2): an approver who cannot decide (over their limit) can mark it urgent for the owner', async () => {
+    api.list.mockResolvedValue(page([req({ canDecide: false, whyNot: 'over_your_limit' })]));
+    render(<POSApprovalsScreen />);
+    const why = await screen.findByTestId('approval-why-not');
+    expect(within(why).getByTestId('approval-escalate')).toBeInTheDocument();
+  });
+  it('round 10 (Approvals 01 point 3): Rules show the platform rule and where it overrides the salon setting; a looser save is refused in words', async () => {
+    api.policies.mockResolvedValue([policy({ kind: 'void', label: 'Void', guardrail: { requireDifferentApprover: true, maxThresholdCents: 10000, maxExpiresAfterHours: 12 }, clampedByPlatform: ['expiresAfterHours'], expiresAfterHours: 12 }), policy({ guardrail: { alwaysEnabled: true }, clampedByPlatform: [] })]);
+    perms.deny = new Set(['approvals.decide']);
+    render(<POSApprovalsScreen />);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Rules' }));
+    const rules = await screen.findAllByTestId('approval-rule');
+    expect(within(rules[0]).getByTestId('approval-guardrail')).toHaveTextContent('Platform rule (cannot be loosened here): never the person who asked · an approver is needed over $100.00 at most · expires within 12 h at most');
+    expect(within(rules[0]).getByTestId('approval-clamped')).toHaveTextContent('applies instead for: the expiry');
+    expect(within(rules[1]).getByTestId('approval-guardrail')).toHaveTextContent('always on');
+    expect(within(rules[1]).queryByTestId('approval-clamped')).toBeNull();
+    api.updatePolicy.mockRejectedValue(Object.assign(new Error('The platform requires a stricter approval rule'), { status: 409, code: 'policy_below_platform' }));
+    fireEvent.click(within(rules[0]).getByRole('button', { name: /Change/ }));
+    fireEvent.change(screen.getByLabelText('Threshold'), { target: { value: '200' } });
+    fireEvent.change(screen.getByLabelText('Reason for change'), { target: { value: 'loosen it please' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('a salon setting cannot loosen it');
   });
 });
