@@ -44,7 +44,7 @@
     "kysely": "^0.27.4",
     "multer": "^2.5.0",
     "@aipowersalon/security": "*",
-    "pdfkit": "^0.19.1",
+    "pdfkit": "^0.20.2",
     "@aipowersalon/deals": "*"
   },
   "devDependencies": {
