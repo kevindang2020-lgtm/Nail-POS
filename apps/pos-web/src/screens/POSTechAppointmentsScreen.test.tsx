@@ -122,3 +122,24 @@ describe('Tech Appointments — availability confidence (extras #02)', () => {
     await waitFor(() => expect(screen.getByTestId('ta-fresh')).toHaveTextContent(/^Refresh failed — the last good numbers are from /));
   });
 });
+
+describe('Tech Appointments — pending verification (extras #08)', () => {
+  it('online bookings waiting on the SMS code are listed as NOT booked (KPIs untouched); an appointment says how its phone was proven', async () => {
+    scr.kpis.mockResolvedValue({ date: DAY, today: DAY, tz: 'America/New_York', nowMinute: 600, kpis: K, pendingVerification: { count: 2, items: [
+      { holdId: 'h1', start: '15:00', end: '15:45', technicianId: 't1', technician: 'Mia', verification: 'sent', phone: '•••• 7788', channel: 'online', codeSentAt: null, holdExpiresAt: null },
+      { holdId: 'h2', start: '15:30', end: '16:15', technicianId: null, technician: null, verification: 'locked', phone: null, channel: 'online', codeSentAt: null, holdExpiresAt: null }] } });
+    scr.appointments.mockResolvedValue(page([{ ...ROW, phoneVerification: 'staff_override' }, { ...ROW, appointmentId: 'a2', phoneVerification: null }]));
+    mount();
+    const box = await screen.findByTestId('pending-verification');
+    expect(box).toHaveTextContent("2 online booking(s) waiting for the customer's SMS code");
+    expect(box).toHaveTextContent('Not booked yet');
+    expect(screen.getAllByTestId('pv-item').map((n) => n.textContent)).toEqual(['3:00 PM–3:45 PM · Mia · •••• 7788 Code sent — waiting', '3:30 PM–4:15 PM · Any technician Too many wrong codes']);
+    expect(screen.getByTestId('kpi-today')).toHaveTextContent('2');
+    expect((await screen.findAllByTestId('appt-phone-proof')).map((n) => n.textContent)).toEqual(['Phone confirmed by staff']);
+  });
+  it('nothing pending → no strip', async () => {
+    mount();
+    await screen.findAllByTestId('appt-row');
+    expect(screen.queryByTestId('pending-verification')).toBeNull();
+  });
+});

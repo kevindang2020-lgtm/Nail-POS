@@ -159,4 +159,13 @@ export const TEAMAPPOINTMENTS_EN = {
   'tm.dn.appointment': 'Appointment note',
   'tm.dn.blocked_time': 'Blocked time note',
   'tm.dayNotesHidden': '{n} appointment note(s) need customer access to read.',
+  'tm.pv.title': '{n} online booking(s) waiting for the customer\'s SMS code',
+  'tm.pv.rule': 'Not booked yet — these become appointments only after the customer enters the code (or staff confirm the phone).',
+  'tm.pv.state.pending': 'Code not sent yet',
+  'tm.pv.state.sent': 'Code sent — waiting',
+  'tm.pv.state.locked': 'Too many wrong codes',
+  'tm.pv.state.failed': 'Code could not be sent',
+  'tm.pv.proof.verified': 'Phone verified by SMS',
+  'tm.pv.proof.recently_verified': 'Phone verified recently',
+  'tm.pv.proof.staff_override': 'Phone confirmed by staff',
 };

@@ -159,4 +159,13 @@ export const TEAMAPPOINTMENTS_VI = {
   'tm.dn.appointment': 'Ghi chú lịch hẹn', // DRAFT — Kevin reviews
   'tm.dn.blocked_time': 'Ghi chú giờ khóa', // DRAFT — Kevin reviews
   'tm.dayNotesHidden': '{n} ghi chú lịch hẹn cần quyền xem khách hàng mới đọc được.', // DRAFT — Kevin reviews
+  'tm.pv.title': '{n} lượt đặt lịch trực tuyến đang chờ mã SMS của khách', // DRAFT — Kevin reviews
+  'tm.pv.rule': 'Chưa đặt xong — chỉ thành lịch hẹn khi khách nhập mã (hoặc nhân viên xác nhận số điện thoại).', // DRAFT — Kevin reviews
+  'tm.pv.state.pending': 'Chưa gửi mã', // DRAFT — Kevin reviews
+  'tm.pv.state.sent': 'Đã gửi mã — đang chờ', // DRAFT — Kevin reviews
+  'tm.pv.state.locked': 'Nhập sai mã quá nhiều lần', // DRAFT — Kevin reviews
+  'tm.pv.state.failed': 'Không gửi được mã', // DRAFT — Kevin reviews
+  'tm.pv.proof.verified': 'Đã xác minh số qua SMS', // DRAFT — Kevin reviews
+  'tm.pv.proof.recently_verified': 'Số đã xác minh gần đây', // DRAFT — Kevin reviews
+  'tm.pv.proof.staff_override': 'Nhân viên đã xác nhận số', // DRAFT — Kevin reviews
 };
