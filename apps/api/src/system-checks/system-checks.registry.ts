@@ -505,6 +505,25 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'queue_waiting_long', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status IN ('waiting', 'called', 'assigned', 'ready_for_tech')
         AND q.checked_in_at < now() - interval '3 hours'`) },
     { key: 'in_service_without_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status = 'in_service' AND q.ticket_id IS NULL`) },
+    // extras Serving 08 (Nov 13 2026) — per-ticket elapsed vs expected, from the ticket's own timestamps: the floor shows
+    // elapsed = wall time since serving_started_at minus accumulated pauses, and expected = the sum of its live lines'
+    // duration snapshots. Each check finds a live ticket where that comparison would be fabricated or impossible.
+    // (1) the timestamps contradict each other: started in the future, done before it started, or paused longer than it has run
+    { key: 'serving_timing_contradicts', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at IS NOT NULL
+        AND (k.serving_started_at > now() + interval '5 minutes' OR k.service_done_at < k.serving_started_at
+          OR (k.service_done_at IS NULL AND k.paid_at IS NULL AND coalesce(k.accumulated_paused_ms, 0) > extract(epoch from (coalesce(k.serving_paused_at, now()) - k.serving_started_at)) * 1000 + 60000))`) },
+    // (2) in service with no expected duration: elapsed cannot be compared, so the floor must show "—", never a percentage
+    { key: 'serving_no_estimate', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at IS NOT NULL
+        AND k.service_done_at IS NULL AND k.paid_at IS NULL AND k.payment_status IS DISTINCT FROM 'paid'
+        AND coalesce((SELECT sum(k2.duration_minutes_snapshot) FROM ticket_service_lines k2 WHERE k2.tenant_id = k.tenant_id AND k2.ticket_id = k.id AND k2.removed_at IS NULL
+          AND coalesce(k2.status, '') NOT IN ('cancelled', 'removed', 'voided')), 0) <= 0`) },
+    // (3) elapsed (pauses taken off) is more than twice the ticket's own estimate: the timer was most likely never stopped
+    { key: 'serving_far_over_estimate', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM (SELECT k.id,
+          (extract(epoch from (coalesce(k.serving_paused_at, now()) - k.serving_started_at)) * 1000 - coalesce(k.accumulated_paused_ms, 0)) / 60000.0 AS elapsed_min,
+          (SELECT sum(k2.duration_minutes_snapshot) FROM ticket_service_lines k2 WHERE k2.tenant_id = k.tenant_id AND k2.ticket_id = k.id AND k2.removed_at IS NULL
+            AND coalesce(k2.status, '') NOT IN ('cancelled', 'removed', 'voided')) AS est_min
+        FROM tickets k WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND k.serving_started_at IS NOT NULL AND k.service_done_at IS NULL AND k.paid_at IS NULL
+          AND k.payment_status IS DISTINCT FROM 'paid') sv WHERE sv.est_min > 0 AND sv.elapsed_min > 2 * sv.est_min`) },
   ] },
 
 

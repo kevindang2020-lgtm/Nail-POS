@@ -2103,4 +2103,25 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
   "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_timing_contradicts": "Không có phiếu đang làm nào có thời gian mâu thuẫn", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_timing_contradicts.fix": "Mở phiếu: bắt đầu ở tương lai, xong trước khi bắt đầu, hoặc tạm dừng lâu hơn thời gian làm. Sửa lại đồng hồ dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_no_estimate": "Mọi phiếu đang làm đều có thời lượng dự kiến", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_no_estimate.fix": "Các phiếu này không có thời lượng dịch vụ nên tiến độ hiện \"—\". Thêm dịch vụ có thời lượng.", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_far_over_estimate": "Không có phiếu nào làm quá gấp đôi thời lượng dự kiến", // DRAFT — Kevin reviews
+  "syschk.service-flow.serving_far_over_estimate.fix": "Có lẽ đồng hồ chưa được dừng. Hoàn tất, tạm dừng hoặc sửa các dịch vụ đó.", // DRAFT — Kevin reviews
+  "ops.serving.sev.danger": "Khẩn", // DRAFT — Kevin reviews
+  "ops.serving.sev.warn": "Cảnh báo", // DRAFT — Kevin reviews
+  "ops.serving.sev.info": "Thông tin", // DRAFT — Kevin reviews
+  "ops.serving.insight.unconfirmed": "{count} lịch hẹn trong 2 giờ tới chưa xác nhận (lịch đầu tiên sau {minutes} phút)", // DRAFT — Kevin reviews
+  "ops.serving.insightSub.unconfirmed": "Xác nhận với khách từ bảng Đặt lịch — không có gì được gửi tự động.", // DRAFT — Kevin reviews
+  "ops.serving.qualifiedFree": "Thợ đủ điều kiện & đang rảnh", // DRAFT — Kevin reviews
+  "ops.serving.qualifiedNone": "Không ai trong {n} thợ đang rảnh", // DRAFT — Kevin reviews
+  "ops.serving.lineClose": "Đóng", // DRAFT — Kevin reviews
+  "ops.serving.linePerformer": "Người làm", // DRAFT — Kevin reviews
+  "ops.serving.linePrimary": "thợ chính", // DRAFT — Kevin reviews
+  "ops.serving.lineKind": "Loại dòng", // DRAFT — Kevin reviews
+  "ops.serving.lineBase": "Dịch vụ chính", // DRAFT — Kevin reviews
+  "ops.serving.lineProgress": "Tiến độ", // DRAFT — Kevin reviews
+  "ops.serving.lineHistory": "Lịch sử của dòng này", // DRAFT — Kevin reviews
+  "ops.serving.lineHistoryNone": "Chưa có thay đổi nào cho dòng này.", // DRAFT — Kevin reviews
 };

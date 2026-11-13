@@ -648,4 +648,45 @@ describe('Check Technicians System — booking / queue / app sync', () => {
     expect(count(b2, 'sync_queue_tech_inactive').count).toBe(0);
     expect((await q(rows)).rows).toEqual(before);
   });
+  it('extras Serving 08: per-ticket elapsed vs expected — contradicting timestamps, no estimate, far over estimate; own salon only; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 9401..4439, agent-4 round-10 range)
+    const T4 = id(9401), X4 = id(9402), B41 = id(9403), B42 = id(9404), BX4 = id(9405);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Serve', 'sc-9401', 'SC9401', 'active'), (${X4}, 'X', 'Other', 'sc-9402', 'SC9402', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other')`);
+    const C4 = id(9406), CX4 = id(9407);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C4}, ${T4}, ${B41}, 'Ser', 'Ve', 'Ser Ve', '+15550094061'), (${CX4}, ${X4}, ${BX4}, 'Oth', 'Er', 'Oth Er', '+15550094071')`);
+    const K = (n: number) => id(9410 + n);
+    // K0 healthy (started 30 min ago, 45 min estimate); K1 paused longer than it has run; K2 done before it started;
+    // K3 in service with no line at all (no estimate); K4 started 3 h ago with a 60 min estimate (far over) in B2;
+    // K5 3 h with 60 min but paused 150 min of it (net 30 min — fine); K6 far over but already done (not live);
+    // KX the other salon's far-over ticket (never counted)
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents, serving_started_at, service_done_at, accumulated_paused_ms) values
+      (${K(0)}, ${T4}, ${B41}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '30 minutes', null, 0),
+      (${K(1)}, ${T4}, ${B41}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '20 minutes', null, 3600000),
+      (${K(2)}, ${T4}, ${B41}, ${C4}, 'completed', 0, 0, 0, 0, now() - interval '20 minutes', now() - interval '40 minutes', 0),
+      (${K(3)}, ${T4}, ${B41}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '10 minutes', null, 0),
+      (${K(4)}, ${T4}, ${B42}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '3 hours', null, 0),
+      (${K(5)}, ${T4}, ${B42}, ${C4}, 'in_service', 0, 0, 0, 0, now() - interval '3 hours', null, 9000000),
+      (${K(6)}, ${T4}, ${B42}, ${C4}, 'completed', 0, 0, 0, 0, now() - interval '5 hours', now() - interval '1 hour', 0),
+      (${id(9430)}, ${X4}, ${BX4}, ${CX4}, 'in_service', 0, 0, 0, 0, now() - interval '3 hours', null, 0)`);
+    const line = (tn: string, b: string, k: string, mins: number, removed = false) => sql`(${tn}, ${b}, ${k}, ${id(9431)}, 'Gel', 3000, ${mins}, 3000, ${removed ? sql`now()` : null})`;
+    await q(sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, removed_at) values
+      ${line(T4, B41, K(0), 45)}, ${line(T4, B41, K(1), 45)}, ${line(T4, B41, K(2), 45)}, ${line(T4, B41, K(3), 90, true)},
+      ${line(T4, B42, K(4), 60)}, ${line(T4, B42, K(5), 60)}, ${line(T4, B42, K(6), 60)}, ${line(X4, BX4, id(9430), 60)}`);
+    const before = (await q(sql`select (select count(*) from tickets) + (select count(*) from ticket_service_lines) as n`)).rows;
+    const all = await svc.run('service-flow', { tenantId: T4 });
+    expect(count(all, 'serving_timing_contradicts')).toMatchObject({ state: 'WARNING', count: 2 });   // K1 + K2
+    expect(count(all, 'serving_no_estimate')).toMatchObject({ state: 'WARNING', count: 1 });          // K3 (its only line was removed)
+    expect(count(all, 'serving_far_over_estimate')).toMatchObject({ state: 'WARNING', count: 1 });    // K4 — not K5 (paused), not K6 (done), not KX
+    const b1 = await svc.run('service-flow', { tenantId: T4, branchId: B41 });
+    expect(count(b1, 'serving_far_over_estimate')).toMatchObject({ state: 'READY', count: 0 });
+    expect(count(b1, 'serving_timing_contradicts').count).toBe(2);
+    const b2 = await svc.run('service-flow', { tenantId: T4, branchId: B42 });
+    expect(count(b2, 'serving_timing_contradicts').count).toBe(0);
+    expect(count(b2, 'serving_no_estimate').count).toBe(0);
+    const other = await svc.run('service-flow', { tenantId: X4 });
+    expect(count(other, 'serving_far_over_estimate').count).toBe(1);
+    expect((await q(sql`select (select count(*) from tickets) + (select count(*) from ticket_service_lines) as n`)).rows).toEqual(before);
+  });
 });

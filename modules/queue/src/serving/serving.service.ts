@@ -17,6 +17,8 @@ import {
 } from './serving.dto';
 import { createHash } from 'node:crypto';
 import { ServingContext, ServingRepositoryPort, SVLine } from './serving.repository';
+/** Serving 05: at most this many free technicians are run through eligibility per detail view */
+const QUALIFIED_CHECK_CAP = 20;
 import { TechnicianEligibilityError, type TechnicianEligibilityService } from '@aipowersalon/workforce';
 import { resolveManagerOverride, ManagerOverrideForbiddenError } from '@aipowersalon/appointments';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -154,7 +156,24 @@ export class ServingService {
   }
   async getKpis(ctx: ServingContext) { return (await this.getState(ctx)).kpis; }
   async tickets(ctx: ServingContext, f: ServingFilters = {}): Promise<{ items: POSServingTicketRow[]; pagination: any }> { this.need(ctx, 'pos.serving.view'); return (await this.repo.query(ctx, f)).tickets; }
-  async detail(ctx: ServingContext, id: string): Promise<POSServingTicketDetailFull> { this.need(ctx, 'pos.serving.view'); const d = await this.repo.detail(ctx, id); if (!d) throw withCode(new ValidationError('Ticket not found'), 'TICKET_NOT_FOUND'); d.addOnSuggestions = await this.buildAddOnSuggestions(ctx, d); const settings = await this.repo.settings(ctx); d.allowedActions = this.actionsFor(ctx, d.status, settings); d.serviceDoneReadiness = this.readinessFor(ctx, d, settings); this.log(ctx, 'pos_serving_ticket_viewed', 'pos_serving_ticket', id); return d; }
+  async detail(ctx: ServingContext, id: string): Promise<POSServingTicketDetailFull> { this.need(ctx, 'pos.serving.view'); const d = await this.repo.detail(ctx, id); if (!d) throw withCode(new ValidationError('Ticket not found'), 'TICKET_NOT_FOUND'); d.addOnSuggestions = await this.buildAddOnSuggestions(ctx, d); const settings = await this.repo.settings(ctx); d.allowedActions = this.actionsFor(ctx, d.status, settings); d.serviceDoneReadiness = this.readinessFor(ctx, d, settings); d.qualifiedAvailability = await this.qualifiedAvailabilityFor(ctx, d); this.log(ctx, 'pos_serving_ticket_viewed', 'pos_serving_ticket', id); return d; }
+
+  /** Serving 05 (round 10) — qualified availability: every OTHER technician who is free now, run through THE eligibility
+   *  authority (the same assert assignTechnician runs, requireNotServing, no override) for this visit's service lines. A
+   *  refusal just leaves that technician out; nothing is assigned, written or audited. null without the authority. */
+  private async qualifiedAvailabilityFor(ctx: ServingContext, d: POSServingTicketDetailFull): Promise<POSServingTicketDetailFull['qualifiedAvailability']> {
+    if (!this.eligibility) return null;
+    const serviceIds = [...new Set((d.services || []).map((l) => l.serviceId).filter((x): x is string => !!x))];
+    const free = (await this.repo.technicians(ctx)).filter((x) => x.available && x.technicianId !== d.primaryTechnician?.technicianId).slice(0, QUALIFIED_CHECK_CAP);
+    const technicians: { technicianId: string; name: string }[] = [];
+    for (const x of free) {
+      try {
+        await this.eligibility.assert({ tenantId: ctx.tenantId, branchId: ctx.branchId || null, technicianId: x.technicianId, serviceIds, requireNotServing: true, actor: { userId: ctx.userId, role: ctx.role, permissions: ctx.permissions, overrideConflicts: false } });
+        technicians.push({ technicianId: x.technicianId, name: x.name });
+      } catch (e) { if (!(e instanceof TechnicianEligibilityError)) throw e; }   // not qualified / not free → not listed
+    }
+    return { technicians, checked: free.length };
+  }
 
   /** Serving 07 — Touch Safe Action Review: what an impactful action would touch and every refusal ITS OWN gates would raise,
    *  for THIS person, before they confirm. The same checks the action runs (canMarkDone, the Service Done lock, the workflow

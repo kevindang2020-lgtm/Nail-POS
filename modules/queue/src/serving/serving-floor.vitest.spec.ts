@@ -10,7 +10,7 @@ import { ServingService } from './serving.service';
 import { InMemoryServingRepository, buildFloorProjection, type SVTicket } from './serving.repository';
 import {
   servingNextActions, canServingMove, servingTechnicianLoad, buildBalanceSuggestions, buildServingInsights, addOnLineIdFor,
-  DEFAULT_SERVING_SETTINGS, SERVING_KPI_DEFINITIONS, computeOnTimeCompletionPercent, type ServingStaffRow,
+  DEFAULT_SERVING_SETTINGS, SERVING_KPI_DEFINITIONS, computeOnTimeCompletionPercent, UNCONFIRMED_WARN_MINUTES, type ServingStaffRow,
 } from './serving.dto';
 import { createHash } from 'node:crypto';
 
@@ -214,6 +214,16 @@ describe('200-technician tenant (§62, §86–§87)', () => {
     expect(g.insights.find((i) => i.id === 'booking_conflict')?.vars).toMatchObject({ name: 'k2', minutes: 2, remaining: 15, count: 2 });
     expect(buildFloorProjection(tickets, () => 30, staff, 3).insights.some((i) => i.id === 'booking_conflict')).toBe(false);
     expect(buildFloorProjection(tickets, () => 30, staff, 3, { k2: 20 }).insights.some((i) => i.id === 'booking_conflict')).toBe(false);
+  });
+  // Extras Serving 04 (round 10): missing confirmations — bookings later today, within two hours, still 'booked'
+  it('unconfirmed bookings: a severity-labelled insight (warn ≤ 30 min, info further out), Open → /booking; none → no insight', () => {
+    const staff: ServingStaffRow[] = [{ technicianId: 'k1', name: 'Tech 1', status: 'Available' }];
+    const near = buildFloorProjection([], () => 0, staff, 1, undefined, { count: 2, firstMinutes: 25 });
+    expect(near.insights.find((i) => i.id === 'unconfirmed')).toMatchObject({ severity: 'warn', route: '/booking', vars: { count: 2, minutes: 25 } });
+    expect(buildFloorProjection([], () => 0, staff, 1, undefined, { count: 1, firstMinutes: UNCONFIRMED_WARN_MINUTES + 1 }).insights.find((i) => i.id === 'unconfirmed')?.severity).toBe('info');
+    expect(buildFloorProjection([], () => 0, staff, 1, undefined, { count: 1, firstMinutes: UNCONFIRMED_WARN_MINUTES }).insights.find((i) => i.id === 'unconfirmed')?.severity).toBe('warn');
+    expect(buildFloorProjection([], () => 0, staff, 1, undefined, null).insights.some((i) => i.id === 'unconfirmed')).toBe(false);
+    expect(buildFloorProjection([], () => 0, staff, 1).insights.some((i) => i.id === 'unconfirmed')).toBe(false);
   });
 });
 

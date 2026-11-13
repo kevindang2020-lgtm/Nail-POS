@@ -47,6 +47,8 @@ type SVDetail = {
   addOnSuggestions?: { serviceId: string; serviceName: string; priceCents: number }[];
   /** extras Serving 05 — the server's answer from THE Service Done gates + this person's permissions (never re-derived here) */
   serviceDoneReadiness?: { state: 'ready' | 'not_ready' | 'handed_off'; reasons: string[]; openServiceLines: number; via: 'mark_ready' | 'send_to_service_done' | null };
+  /** extras Serving 05 (round 10): free technicians THE eligibility authority would accept for this visit; null/absent = unknown */
+  qualifiedAvailability?: { technicians: { technicianId: string; name: string }[]; checked: number } | null;
 };
 type TechPerf = { technicianId?: string; name: string; activeGuests: number; revenueCents: number; tipsCents: number; utilizationPercent: number | null; avgMinutes: number; rating: number | null };
 type StaffRow = { technicianId?: string; name: string; specialty?: string; currentLoad?: number; nextAvailable?: string; status: string };
@@ -161,7 +163,9 @@ export function POSServingScreen() {
   const [detail, setDetail] = useState<SVDetail | null>(null);
   const detailFor = useRef<string | null>(null);
   const loadDetail = useCallback(async (tid: string) => { detailFor.current = tid; try { const d = await posServingApi.ticket(tid) as SVDetail; if (detailFor.current === tid) setDetail(d); } catch { if (detailFor.current === tid) setDetail(null); } }, []);
-  const [revisions, setRevisions] = useState<{ version: number; action: string; summary?: string | null; summaryCoded?: CodedText | null; actorRole?: string | null; createdAt: string }[]>([]);
+  const [revisions, setRevisions] = useState<{ version: number; action: string; serviceLineId?: string | null; summary?: string | null; summaryCoded?: CodedText | null; actorRole?: string | null; createdAt: string }[]>([]);
+  // extras Serving 06 (round 10): the line-ownership inspector — one service line's performer, progress, add-on flag and ITS history
+  const [openLine, setOpenLine] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<number | null>(null);
   const loadRevisions = useCallback((tid: string | null) => {
     if (!tid) { setRevisions([]); setCurrentVersion(null); return; }
@@ -516,7 +520,7 @@ export function POSServingScreen() {
             {insights.map((raw) => { const ins = { ...raw, ...floorInsight('serving', raw) }; return (
               <div key={ins.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{ width: 22, height: 22, borderRadius: 7, background: ins.severity === 'warn' || ins.severity === 'danger' ? '#FBEAE8' : '#FDEFE0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none', marginTop: 1 }}><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke={ins.severity === 'warn' || ins.severity === 'danger' ? '#A8321F' : O} strokeWidth="1.7"><circle cx="10" cy="10" r="7" /><path d="M10 6v5M10 14h.01" /></svg></span>
-                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11.5, color: 'var(--text)', lineHeight: 1.25 }}>{ins.text}</div>{ins.sub ? <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{ins.sub}</div> : null}</div>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11.5, color: 'var(--text)', lineHeight: 1.25 }}><b data-testid={`sv-insight-sev-${ins.id}`} style={{ fontSize: 9.5, textTransform: 'uppercase', marginRight: 5, color: ins.severity === 'warn' || ins.severity === 'danger' ? '#A8321F' : 'var(--muted)' }}>{ins.severity === 'danger' ? tx('ops.serving.sev.danger') : ins.severity === 'warn' ? tx('ops.serving.sev.warn') : tx('ops.serving.sev.info')}</b>{ins.text}</div>{ins.sub ? <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{ins.sub}</div> : null}</div>
                 {ins.actionText && raw.route ? <button style={ghostBtn} onClick={() => insightAct(raw)}>{ins.actionText}</button> : null}
               </div>
             ); })}
@@ -575,12 +579,23 @@ export function POSServingScreen() {
                   <div style={{ background: 'var(--page)', borderRadius: 9, padding: 7, minWidth: 0 }}>
                     <div style={{ color: 'var(--muted)', fontSize: 10, marginBottom: 3 }}>{tx('pos.current_service_stack')}</div>
                     {(detail.services || []).map((l) => { const done = l.status === 'done'; return (
-                      <div key={l.serviceLineId} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '2px 0', minWidth: 0 }}>
+                      <div key={l.serviceLineId} role="button" tabIndex={0} aria-expanded={openLine === l.serviceLineId} data-testid={`sv-line-${l.serviceLineId}`} onClick={() => setOpenLine((o) => (o === l.serviceLineId ? null : l.serviceLineId))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenLine((o) => (o === l.serviceLineId ? null : l.serviceLineId)); } }} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '2px 0', minWidth: 0, cursor: 'pointer' }}>
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${l.serviceName} · ${l.technicianName || ''}`}>{l.serviceName}{l.isAddOn ? <span style={{ color: 'var(--muted)' }}> · {tx('pos.add_ons_2')}</span> : null}<span style={{ color: 'var(--soft)' }}> · {l.technicianName || detail.primaryTechnician?.name || '—'}</span></span>
                         <span style={{ flex: 'none', fontWeight: 600 }}>{m2(l.priceCents)}</span>
                         {chip(done ? tx('ops.serving.lineDone') : l.status === 'assigned' ? tx('ops.serving.lineQueued') : tx('pos.in_service_3'), done ? { bg: '#EFEAFA', fg: '#553FB0' } : l.status === 'assigned' ? { bg: '#EEF0F2', fg: '#4F5661' } : { bg: '#E9F6EC', fg: '#1F7A3F' })}
                       </div>
                     ); })}
+                    {(() => { const l = (detail.services || []).find((x) => x.serviceLineId === openLine); if (!l) return null; const hist = revisions.filter((rv) => rv.serviceLineId === l.serviceLineId).slice().reverse(); return (
+                      <div data-testid="sv-line-drawer" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 6, margin: '3px 0', background: 'var(--card, #fff)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}><b style={{ fontSize: 11 }}>{l.serviceName}</b><button style={{ ...linkBtn, fontSize: 10 }} onClick={() => setOpenLine(null)}>{tx('ops.serving.lineClose')}</button></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.linePerformer')}</span><b data-testid="sv-line-performer">{l.technicianName || detail.primaryTechnician?.name || '—'}{!l.technicianName && detail.primaryTechnician ? ` (${tx('ops.serving.linePrimary')})` : ''}</b></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.lineKind')}</span><b>{l.isAddOn ? tx('pos.add_ons_2') : tx('ops.serving.lineBase')}</b></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.lineProgress')}</span><b>{l.status === 'done' ? tx('ops.serving.lineDone') : l.status === 'assigned' ? tx('ops.serving.lineQueued') : tx('pos.in_service_3')}</b></div>
+                        <div style={{ color: 'var(--muted)', fontSize: 10, marginTop: 3 }}>{tx('ops.serving.lineHistory')}</div>
+                        {hist.length === 0 ? <div data-testid="sv-line-history-empty" style={{ fontSize: 10, color: 'var(--soft)' }}>{tx('ops.serving.lineHistoryNone')}</div> : hist.map((rv) => (
+                          <div key={rv.version} data-testid="sv-line-history-row" style={{ fontSize: 10, padding: '1px 0' }}>v{rv.version} · {revLabel(rv.action)}{rv.summary || rv.summaryCoded ? ` — ${codedText(rv.summaryCoded, rv.summary)}` : ''} <span style={{ color: 'var(--soft)' }}>{revTime(rv.createdAt)}{rv.actorRole ? ` · ${statusLabel('role', String(rv.actorRole).toLowerCase())}` : ''}</span></div>
+                        ))}
+                      </div>); })()}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, borderTop: '1px solid var(--line)', marginTop: 3, paddingTop: 3 }}><span style={{ color: 'var(--muted)' }}>{tx('pos.total')}</span><b>{m2(detail.subtotalCents)}</b></div>
                   </div>
                   <div style={{ background: 'var(--page)', borderRadius: 9, padding: 7, fontSize: 11, minWidth: 0 }}>
@@ -593,6 +608,8 @@ export function POSServingScreen() {
                         {r.state === 'not_ready' ? r.reasons.map((c) => <div key={c} style={{ color: 'var(--soft)', fontSize: 10.5 }} data-testid={`sv-sd-why-${c}`}>{codeLabel('ops.serving.sdWhy', c)}</div>) : null}
                         {r.state !== 'handed_off' && r.openServiceLines > 0 ? <div style={{ color: 'var(--soft)', fontSize: 10.5 }} data-testid="sv-sd-open">{tx('ops.serving.sdOpen', { n: String(r.openServiceLines) })}</div> : null}
                       </div>); })() : null}
+                    {detail.qualifiedAvailability ? (() => { const qa = detail.qualifiedAvailability; return (
+                      <div data-testid="sv-qualified" style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginTop: 2 }}><span style={{ color: 'var(--muted)', flex: 'none' }}>{tx('ops.serving.qualifiedFree')}</span><b style={{ textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{qa.technicians.length ? qa.technicians.map((x) => x.name).join(', ') : tx('ops.serving.qualifiedNone', { n: String(qa.checked) })}</b></div>); })() : null}
                     {detail.delayReason ? <div style={{ color: '#A8321F', marginTop: 2 }}>⚠ {detail.delayReason}</div> : null}
                     {detail.customerVisibleNotes || detail.notes ? <div style={{ marginTop: 3, color: 'var(--soft)' }}><span style={{ color: 'var(--muted)' }}>{tx('pos.service_notes')}: </span>{detail.customerVisibleNotes || detail.notes}</div> : null}
                   </div>

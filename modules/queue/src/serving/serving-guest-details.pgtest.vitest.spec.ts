@@ -67,4 +67,18 @@ describe('Serving → next booking per technician (booking conflict input)', () 
     expect(await repo.nextBookingMinutes({ ...ctx, tenantId: id('a9') })).toEqual({});   // another salon sees none
     repo.now = Date.now;
   });
+  // Extras Serving 04 (round 10): "missing confirmations" — later today, within two hours, still 'booked'
+  it('unconfirmed bookings soon: only still-booked appointments later today within 2 h (confirmed / past / tomorrow / other salon not counted)', async () => {
+    // same rows as above: 09:30 booked (past), 10:05 cancelled, 10:10 arrived, 10:20 confirmed, 11:00 booked, tomorrow 09:00 booked
+    repo.now = () => Date.parse('2026-11-12T15:00:00Z');   // 10:00 New York
+    expect(await repo.unconfirmedBookingsSoon(ctx)).toEqual({ count: 1, firstMinutes: 60 });   // only 11:00
+    expect(await repo.unconfirmedBookingsSoon(ctx, 30)).toBeNull();                              // 11:00 is beyond 30 min
+    repo.now = () => Date.parse('2026-11-12T16:30:00Z');   // 11:30 — nothing left today
+    expect(await repo.unconfirmedBookingsSoon(ctx)).toBeNull();
+    repo.now = () => Date.parse('2026-11-12T15:00:00Z');
+    expect(await repo.unconfirmedBookingsSoon({ ...ctx, tenantId: id('a9') })).toBeNull();
+    const st: any = await repo.query(ctx, {} as any);
+    expect(st.insights.find((i: any) => i.id === 'unconfirmed')).toMatchObject({ severity: 'info', route: '/booking', vars: { count: 1, minutes: 60 } });
+    repo.now = Date.now;
+  });
 });

@@ -110,6 +110,21 @@ export class KyselyServingRepository implements ServingRepositoryPort {
     for (const r of rows) if (r.technician_id && Number.isFinite(Number(r.mins))) out[String(r.technician_id)] = Number(r.mins);
     return out;
   }
+  /** Extras Serving 04 (round 10, Nov 13 2026): "missing confirmations" — appointments later TODAY (branch day + clock)
+   *  within the next `withinMinutes` that are still 'booked' (never confirmed), from the one appointment store.
+   *  null when there are none. Read-only: nothing is confirmed, texted or moved. */
+  async unconfirmedBookingsSoon(ctx: ServingContext, withinMinutes = 120): Promise<{ count: number; firstMinutes: number } | null> {
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId ?? null);
+    const at = new Date(this.now()).toISOString(); const br = ctx.branchId || null;
+    const r = (await sql<{ n: number; first: number | null }>`select count(*)::int as n,
+        min(floor(extract(epoch from ((a.appt_date::date + a.start_time::time) - (${at}::timestamptz at time zone ${tz}))) / 60))::int as first
+      from pos_tech_appointments a
+      where a.tenant_id = ${ctx.tenantId} and (${br}::text is null or a.branch_id::text = ${br}) and a.status = 'booked'
+        and a.appt_date = (${at}::timestamptz at time zone ${tz})::date and (a.appt_date::date + a.start_time::time) >= (${at}::timestamptz at time zone ${tz})
+        and (a.appt_date::date + a.start_time::time) <= (${at}::timestamptz at time zone ${tz}) + make_interval(mins => ${withinMinutes})`.execute(this.db)).rows[0];
+    const count = Number(r?.n ?? 0);
+    return count > 0 && r?.first != null ? { count, firstMinutes: Number(r.first) } : null;
+  }
   private scoped(qb: any, ctx: ServingContext, a?: string): any {
     const col = (n: string) => (a ? `${a}.${n}` : n);
     let q = qb.where(col('tenant_id'), '=', ctx.tenantId);
@@ -410,7 +425,7 @@ export class KyselyServingRepository implements ServingRepositoryPort {
     // duty; `active=true` alone is not availability (a technician with no status row is not shown as free)
     const staffRows: ServingStaffRow[] = (techRows as Row[]).map((r) => { const raw = statBy[r.id]; const label = raw ? SV_STATUS[String(raw).toLowerCase()] : undefined; if (!label) return null; return { technicianId: r.id, name: r.full_name || r.id, specialty: specOf(skillsBy[r.id]), currentLoad: 0, nextAvailable: label === 'Available' ? 'Now' : label === 'Finishing Soon' ? 'Soon' : '—', status: label }; }).filter(Boolean) as ServingStaffRow[];
     // §62 / §17: capped panel + counts for everyone, stage counts over all tickets, line-owner-aware busy count, insights
-    const floor = buildFloorProjection(all, (t) => this.elapsed(t), staffRows, Number(kpis.techniciansTotal || 0), await this.nextBookingMinutes(ctx));
+    const floor = buildFloorProjection(all, (t) => this.elapsed(t), staffRows, Number(kpis.techniciansTotal || 0), await this.nextBookingMinutes(ctx), await this.unconfirmedBookingsSoon(ctx));
     kpis.techniciansInService = floor.techniciansInService;
     kpis.techniciansOnDuty = staffRows.length || Number(kpis.techniciansTotal || 0);
     kpis.readyToStart = floor.readyToStart;

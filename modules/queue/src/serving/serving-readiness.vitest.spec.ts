@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { TechnicianEligibilityService, InMemoryEligibilityReader, type TechnicianEligibilityRecord } from '@aipowersalon/workforce';
 import { ServingService } from './serving.service';
 import { InMemoryServingRepository, type ServingContext } from './serving.repository';
 import { serviceDoneReadiness, DEFAULT_SERVING_SETTINGS } from './serving.dto';
@@ -51,5 +52,28 @@ describe('GET serving ticket detail carries serviceDoneReadiness that agrees wit
     expect((await svc.detail(ctx([VIEW, ...SEND]), 'sv_4003')).serviceDoneReadiness).toMatchObject({ state: 'not_ready', reasons: ['NOT_STARTED'] });
     expect((await svc.detail(ctx([VIEW]), 'sv_4001')).status).toBe('in_service');
     expect(await repo.serviceDoneLock(ctx([VIEW]), 'sv_4001')).toBeNull();
+  });
+});
+
+// extras Serving 05 (round 10) — qualified availability: the OTHER free technicians THE eligibility authority would accept
+// for this visit's services; refused / busy technicians are left out; without the authority it is null (never guessed).
+describe('GET serving ticket detail carries qualifiedAvailability from THE eligibility authority', () => {
+  const rec = (id: string, name: string, over: Partial<TechnicianEligibilityRecord> = {}): TechnicianEligibilityRecord =>
+    ({ technicianId: id, fullName: name, employment: 'ACTIVE', rosterBranchId: 'br_cherryhill', branchIds: ['br_cherryhill'], approvedServiceIds: ['svc_mani', 'svc_gel', 'svc_pedi'], certifications: [], ...over } as TechnicianEligibilityRecord);
+  const svcs = { svc_mani: { name: 'Signature Manicure', requiredCertification: null }, svc_gel: { name: 'Gel Add-on', requiredCertification: null, isAddOn: true, categoryName: 'Add-on' }, svc_pedi: { name: 'Spa Pedicure', requiredCertification: null } };
+  it('lists the free, qualified others; an unapproved one and a not-free one are left out; reading assigns nothing', async () => {
+    // sv_4001 = Mia (primary) · manicure + gel. Ava is free but not approved for manicure; Leo is qualified but not free.
+    const reader = new InMemoryEligibilityReader({ tech_mia: rec('tech_mia', 'Mia'), tech_ava: rec('tech_ava', 'Ava', { approvedServiceIds: ['svc_pedi'] }), tech_leo: rec('tech_leo', 'Leo') }, svcs);
+    const repo = new InMemoryServingRepository(); const svc = new ServingService(repo, undefined, undefined, new TechnicianEligibilityService({ reader }));
+    const d = await svc.detail(ctx([VIEW]), 'sv_4001');
+    expect(d.qualifiedAvailability).toEqual({ technicians: [], checked: 1 });   // only Ava is free (Mia is the primary, Leo is busy) — and she is not approved
+    // sv_4002 = Ava (primary) · pedicure → Mia is free and approved for pedicure
+    expect((await svc.detail(ctx([VIEW]), 'sv_4002')).qualifiedAvailability).toEqual({ technicians: [{ technicianId: 'tech_mia', name: 'Mia' }], checked: 1 });
+    // sv_4003 = Leo (primary) · manicure → Mia qualifies, Ava does not
+    expect((await svc.detail(ctx([VIEW]), 'sv_4003')).qualifiedAvailability).toEqual({ technicians: [{ technicianId: 'tech_mia', name: 'Mia' }], checked: 2 });
+    expect((await repo.ticket(ctx([VIEW]), 'sv_4003'))!.primaryTechId).toBe('tech_leo');
+  });
+  it('no eligibility authority → null (unknown), not an empty list', async () => {
+    expect((await new ServingService(new InMemoryServingRepository()).detail(ctx([VIEW]), 'sv_4001')).qualifiedAvailability).toBeNull();
   });
 });
