@@ -603,4 +603,16 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.src.set": "Ghi nguồn", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Hãy chọn ghi chú và nguồn của nó.", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Hãy ghi tên nguồn đã xác nhận.", // DRAFT — Kevin reviews
+  "csx.ov.tab.retention": "Giữ chân khách", // DRAFT — Kevin reviews
+  "csx.ret.noAccess": "Bạn không có quyền xem Giữ chân khách của tiệm này.", // DRAFT — Kevin reviews
+  "csx.ret.daysAway": "Số ngày từ lần ghé hoàn tất gần nhất", // DRAFT — Kevin reviews
+  "csx.ret.lastVisit": "Lần ghé hoàn tất gần nhất", // DRAFT — Kevin reviews
+  "csx.ret.visits": "Số lần ghé hoàn tất", // DRAFT — Kevin reviews
+  "csx.ret.priority": "Mức ưu tiên mời quay lại", // DRAFT — Kevin reviews
+  "csx.ret.priorityVal": "{s} · {b}", // DRAFT — Kevin reviews
+  "csx.ret.lastOutreach": "Tin nhắn mời quay lại gần nhất", // DRAFT — Kevin reviews
+  "csx.ret.none": "Không có", // DRAFT — Kevin reviews
+  "csx.ret.upcoming": "Lịch hẹn sắp tới", // DRAFT — Kevin reviews
+  "csx.ret.source": "Từ Giữ chân khách, tính đến {d}. Ở đây không gửi tin nhắn nào.", // DRAFT — Kevin reviews
+  "csx.ret.open": "Mở trong Giữ chân khách", // DRAFT — Kevin reviews
 };

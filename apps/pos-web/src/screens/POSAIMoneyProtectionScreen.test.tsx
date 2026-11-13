@@ -27,6 +27,25 @@ describe('POSAIMoneyProtectionScreen (overview)', () => {
     expect(screen.getByTestId('mpx-notify-24h')).toHaveTextContent('Last 24 hours: 5 told · 2 held back by the cooldown · 3 held back by the hourly limit');
     expect(box).toHaveTextContent(/no rule is turned off/);
   });
+  it('AI Fraud Money Protection 09: the by-location table shows the server rows, Net Sales from the Sales report, and hides sales when financials are forbidden', async () => {
+    const rows = [{ branchId: 'b1', branch: 'Main', openAlerts: 3, critical: 1, valueUnderReviewCents: 7000, netSalesCents: 1250000, salesWindow: { from: '2026-10-05', to: '2026-11-03' } },
+      { branchId: 'b2', branch: 'North', openAlerts: 1, critical: 0, valueUnderReviewCents: 300, netSalesCents: 480000, salesWindow: { from: '2026-10-05', to: '2026-11-03' } }];
+    mc.summary.mockResolvedValueOnce(SUM({ byBranch: { rows, financials: 'included', salesSource: 'reports.sales.netSalesCents', unbranched: { openAlerts: 2, critical: 0, valueUnderReviewCents: 50 } } }));
+    const v = wrap(<POSAIMoneyProtectionScreen />);
+    const box = await screen.findByTestId('mpx-bybranch');
+    expect(screen.getAllByTestId('mpx-br-row')).toHaveLength(2);
+    expect(screen.getAllByTestId('mpx-br-sales')[0]).toHaveTextContent('$12,500.00');
+    expect(screen.getByTestId('mpx-br-unbranched')).toHaveTextContent('Salon-wide');
+    expect(screen.getByTestId('mpx-br-note')).toHaveTextContent(/Sales report/);
+    expect(box).toHaveTextContent(/not a confirmed loss/);
+    v.unmount();
+    mc.summary.mockResolvedValueOnce(SUM({ byBranch: { rows: rows.map((r) => ({ ...r, netSalesCents: null, salesWindow: null })), financials: 'forbidden', salesSource: null, unbranched: { openAlerts: 0, critical: 0, valueUnderReviewCents: 0 } } }));
+    wrap(<POSAIMoneyProtectionScreen />);
+    await screen.findByTestId('mpx-bybranch');
+    expect(screen.getAllByTestId('mpx-br-sales').map((e) => e.textContent)).toEqual(['—', '—']);
+    expect(screen.getByTestId('mpx-br-note')).toHaveTextContent(/cannot view financial reports/);
+    expect(screen.queryByTestId('mpx-br-unbranched')).toBeNull();
+  });
   it('no notification block when the server sends no limits (never invented)', async () => {
     mc.summary.mockResolvedValue(SUM());
     wrap(<POSAIMoneyProtectionScreen />);

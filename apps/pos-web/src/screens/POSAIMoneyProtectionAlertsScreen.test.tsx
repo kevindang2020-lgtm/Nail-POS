@@ -66,6 +66,35 @@ describe('POSAIMoneyProtectionAlertsScreen', () => {
     await waitFor(() => expect(screen.getByTestId('mpx-export-note')).toBeInTheDocument());
     expect(dl).not.toHaveBeenCalled();
   });
+  it('MONEY PROTECTION ALERTS 06: the combined search covers the payment reference and each row says which field matched, masked as the server sent it', async () => {
+    mc.alerts.mockImplementation(async (q: any) => q.q ? page([{ ...row, match: { field: 'customer_phone', shown: '•••• 0142' } }], { customersVisible: true }) : page([row], { customersVisible: true }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    const box = await screen.findByTestId('mpx-search');
+    expect(box).toHaveAttribute('placeholder', expect.stringMatching(/payment reference/));
+    expect(screen.queryByTestId('mpx-alert-match')).toBeNull();
+    fireEvent.change(box, { target: { value: '5550142' } });
+    fireEvent.submit(box.closest('form')!);
+    expect(await screen.findByTestId('mpx-alert-match')).toHaveTextContent('Matched on customer phone: •••• 0142');
+    expect(mc.alerts).toHaveBeenLastCalledWith(expect.objectContaining({ q: '5550142' }));
+  });
+  it('AI MONEY PROTECTION 5 · 13: on page 2, opening and closing an alert keeps the page and returns focus to the row it came from', async () => {
+    const rows = [{ ...row, id: 'mpa_1' }, { ...row, id: 'mpa_2' }];
+    mc.alerts.mockImplementation(async (q: any) => page(rows, { page: q.page ?? 1, total: 60, totalPages: 3 }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    await screen.findAllByTestId('mpx-alert-row');
+    fireEvent.click(screen.getByRole('button', { name: /^Page 2$/ }));
+    await waitFor(() => expect(mc.alerts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+    const calls = mc.alerts.mock.calls.length;
+    const view = (await screen.findAllByTestId('mpx-alert-view'))[1];
+    view.focus();
+    fireEvent.click(view);
+    await screen.findByTestId('mpx-alert');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('mpx-alert')).toBeNull());
+    expect(document.activeElement).toBe(view);
+    expect(mc.alerts.mock.calls.length).toBe(calls);                                     // closing re-reads nothing, page 2 stays
+    expect(mc.alerts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }));
+  });
   it('shows an empty state that does not claim "nothing needs review"', async () => {
     mc.alerts.mockResolvedValue(page([]));
     wrap(<POSAIMoneyProtectionAlertsScreen />);

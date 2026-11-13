@@ -38,7 +38,8 @@ export function POSAIFraudProtectionAssistantScreen() {
         rowKey={(r) => r.id}
         columns={[
           { key: 'when', label: t('mpx.col.when'), render: (r) => asWhen(r.firstSeenAt) },
-          { key: 'alert', label: t('mpx.col.alert'), render: (r) => <><b>{RULES.has(r.ruleId) ? t('mpx.rule.' + r.ruleId) : r.rule}</b><div className="sub">{t('mpx.cat.' + (CATS.includes(r.category) ? r.category : 'other'))}</div></> },
+          { key: 'alert', label: t('mpx.col.alert'), render: (r) => <><b>{RULES.has(r.ruleId) ? t('mpx.rule.' + r.ruleId) : r.rule}</b><div className="sub">{t('mpx.cat.' + (CATS.includes(r.category) ? r.category : 'other'))}</div>
+            {r.match?.field ? <div className="sub" data-testid="mpx-alert-match">{t('mpx.match.on', { field: t('mpx.match.' + r.match.field) })}{r.match.shown ? `: ${r.match.shown}` : ''}</div> : null}</> },
           { key: 'severity', label: t('mpx.col.severity'), render: (r) => <span className={'chip ' + (SEV_TONE[r.severity] ?? '')}>{t('mpx.sev.' + r.severity)}</span> },
           { key: 'amount', label: t('mpx.col.amount'), render: (r) => money(r.amountCents) },
           { key: 'status', label: t('mpx.col.status'), render: (r) => <span className="chip">{t('mpx.st.' + r.status)}</span> },
@@ -50,7 +51,7 @@ export function POSAIFraudProtectionAssistantScreen() {
         ]}
         sorts={['newest', 'oldest', 'severity', 'value'].map((v) => ({ value: v, label: t('mpx.sort.' + v) }))}
         presets={['today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_90', 'last_month', 'year']}
-        searchPlaceholder={t('mpx.searchPh')} listTitle={t('fpx.list')}
+        searchPlaceholder={t('mpx.searchPhRef')} listTitle={t('fpx.list')}
         emptyText={(filtered, s) => (filtered ? t('mpx.noMatch') : s && s.monitoring !== 'current' ? t('mpx.mon.' + s.monitoring, { at: asWhen(s.lastSuccessAt ?? s.lastRun?.startedAt) }) : t('mpx.noOpen'))}
         check={mc.check} checkLabel={t('mpx.check')}
         checkText={{ title: (k) => t('mpx.health.k.' + k), detail: (k, s) => t('mpx.health.d.' + k + '.' + s), part: (x) => (x.component ? t('mpx.health.part', { c: t('mpx.comp.' + x.component) }) : null) }}

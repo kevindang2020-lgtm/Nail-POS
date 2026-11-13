@@ -10,6 +10,7 @@
 //   POST pos/coupons/assistant/draft    §16 the owner's edited suggestion saved as a DRAFT coupon + audit row; never
 //                                       activates, never sends — Publish (owner/manager) is the separate approval step
 // Tenant pinned in every statement; a branch user sees salon-wide coupons and their branch's. Money is integer cents.
+import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one system context
 import { sql, type Kysely } from 'kysely';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
@@ -294,7 +295,7 @@ export async function runScheduledPromotionChecks(db: Kysely<any>, limit = 200):
       where d.kind = 'coupon' and not exists (select 1 from marketing_health_runs h where h.tenant_id = d.tenant_id and h.area = 'coupons' and h.trigger_type = 'scheduled' and h.created_at > now() - interval '23 hours')
       order by d.tenant_id limit ${limit}`.execute(db)).rows;
   const center = new CouponCenter(db, null as unknown as DealsService, null, 'coupon');   // health() reads the database only
-  for (const t of due) await center.runHealth({ tenantId: String(t.tenant_id), branchId: '', userId: 'system', role: 'SYSTEM', permissions: [] }, 'scheduled');
+  for (const t of due) await center.runHealth(systemContext({ tenantId: String(t.tenant_id), actor: 'deals.promotion_checks_daily' }), 'scheduled');
   return due.length;
 }
 

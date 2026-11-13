@@ -16,6 +16,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitK
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { readSession, writeSession } from '../components/useSessionState';
 import { AICustomerProfilePanel } from './AICustomerProfilePanel';
+import { posRetentionApi } from '../api/posRetentionApi';
 import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
@@ -207,18 +208,19 @@ export function POSAICustomerSearchScreen() {
         onBook={(cid) => nav(`/booking/new?customerId=${encodeURIComponent(cid)}&from=customer-search`)}
         onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)}
         onBooking={(day) => nav(`/booking?date=${encodeURIComponent(day)}`)}
-        onDuplicates={() => nav('/tenant/ai/customer-profile/duplicates')} /> : null}
+        onDuplicates={() => nav('/tenant/ai/customer-profile/duplicates')}
+        onRetention={() => nav('/tenant/customers/retention')} /> : null}
       {health ? <HealthDialog data={health} onClose={() => setHealth(null)} testId="csx-health" /> : null}
     </div>
   );
 }
 
-function ProfileOverlay({ id, onClose, onBook, onCustomer, onBooking, onDuplicates }: { id: string; onClose: () => void; onBook: (cid: string) => void; onCustomer: (cid: string) => void; onBooking: (day: string) => void; onDuplicates: () => void }) {
+function ProfileOverlay({ id, onClose, onBook, onCustomer, onBooking, onDuplicates, onRetention }: { id: string; onClose: () => void; onBook: (cid: string) => void; onCustomer: (cid: string) => void; onBooking: (day: string) => void; onDuplicates: () => void; onRetention: () => void }) {
   const [d, setD] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState('identity');
   useEffect(() => { setD(null); setErr(null); posCustomerSearchApi.profile(id).then(setD).catch((e) => setErr(errorTextOf(e, t('csx.loadFailed')))); }, [id]);
-  const tabs = ['identity', 'appointments', 'services', 'benefits', 'duplicates', 'ai'];
+  const tabs = ['identity', 'appointments', 'services', 'benefits', 'retention', 'duplicates', 'ai'];
   const p = d?.identity;
   const unavailable = d ? Object.entries(d.sources as Record<string, string>).filter(([, v]) => v === 'unavailable').map(([key]) => t('csx.src.' + key)) : [];
   const appt = (a: any) => (
@@ -270,11 +272,43 @@ function ProfileOverlay({ id, onClose, onBook, onCustomer, onBooking, onDuplicat
             <p className="sub">{t('csx.ov.dupRule')}</p>
             {d.duplicates.map((o: any) => <div key={o.id} className="rvw-ev" data-testid="ov-dup">{o.name} · {[o.samePhone ? t('csx.ov.samePhone') : '', o.sameEmail ? t('csx.ov.sameEmail') : ''].filter(Boolean).join(' + ')} · {when(o.createdAt)}{o.decision ? ` · ${t('csx.ov.decision.' + o.decision)}` : ''}</div>)}
           </> : <Empty title={t('csx.ov.noDuplicates')} />) : null}
+          {tab === 'retention' ? <RetentionTab customerId={p.id} onOpen={onRetention} /> : null}
           {tab === 'ai' ? <AICustomerProfilePanel customerId={p.id} /> : null}
         </div>
       </>}
     </FitDialog>
   );
+}
+
+/** extras (Customer Search 10 · 03): the overlay's Retention tab reads Customer Retention's own customer detail
+ *  (GET /pos/retention/customers/:id — the same segment, reason, thresholds and priority the Retention screen shows);
+ *  nothing is re-derived here and nothing sends. Loaded only when the tab opens; a 403 says so, never zeros. */
+function RetentionTab({ customerId, onOpen }: { customerId: string; onOpen: () => void }) {
+  const [r, setR] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { let alive = true; setR(null); setErr(null);
+    posRetentionApi.customer(customerId).then((x) => alive && setR(x)).catch((e) => alive && setErr(isForbidden(e) ? t('csx.ret.noAccess') : errorTextOf(e, t('csx.loadFailed'))));
+    return () => { alive = false; }; }, [customerId]);
+  if (err) return <div className="err" data-testid="ov-ret-error">{err}</div>;
+  if (!r) return <div className="state">{t('csx.loading')}</div>;
+  const th = r.thresholds ?? {};
+  const seg = r.segment === 'at_risk' ? t('rt2.seg.at_risk', { d: th.riskDays ?? '—' }) : r.segment === 'approaching' ? t('rt2.seg.approaching', { a: th.approachingDays ?? '—', d: th.riskDays != null ? th.riskDays - 1 : '—' })
+    : r.segment === 'never_visited' ? t('rt2.seg.never_visited') : t('people.retention.segment.' + r.segment);
+  const last = Array.isArray(r.outreach) && r.outreach.length ? r.outreach[0] : null;
+  const next = Array.isArray(r.upcomingBookings) && r.upcomingBookings.length ? r.upcomingBookings[0] : null;
+  return <div data-testid="ov-ret">
+    <p data-testid="ov-ret-segment"><b>{seg}</b>{r.segmentReason?.code ? ` — ${t('rt2.reason.' + r.segmentReason.code, { d: fmtNumber(r.daysAway ?? 0), r: th.riskDays ?? '—', a: th.approachingDays ?? '—' })}` : ''}</p>
+    <dl className="rvw-dl">
+      <dt>{t('csx.ret.daysAway')}</dt><dd>{r.daysAway == null ? '—' : fmtNumber(r.daysAway)}</dd>
+      <dt>{t('csx.ret.lastVisit')}</dt><dd>{r.lastVisitAt ? when(r.lastVisitAt) : t('csx.ret.none')}</dd>
+      <dt>{t('csx.ret.visits')}</dt><dd>{fmtNumber(r.visits ?? 0)}</dd>
+      <dt>{t('csx.ret.priority')}</dt><dd data-testid="ov-ret-priority">{r.priority ? t('csx.ret.priorityVal', { s: r.priority.score, b: t('rt2.band.' + r.priority.band) }) : '—'}</dd>
+      <dt>{t('csx.ret.upcoming')}</dt><dd>{next ? `${next.date} · ${next.startTime ?? ''}` : t('csx.ret.none')}</dd>
+      <dt>{t('csx.ret.lastOutreach')}</dt><dd>{last ? when(last.at) : t('csx.ret.none')}</dd>
+    </dl>
+    <p className="sub">{t('csx.ret.source', { d: r.asOf ?? '—' })}</p>
+    <button className="btn ghost sm" data-testid="ov-ret-open" onClick={onOpen}>{t('csx.ret.open')}</button>
+  </div>;
 }
 
 /** exported for Customer Profiles (SUNMI Nov 9 2026): the same read-only check over the same customer data, its own title */

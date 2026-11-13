@@ -463,4 +463,26 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.ev.notified": "Đã báo chủ tiệm", // DRAFT — Kevin reviews
   "mpx.ev.notify_held_cooldown": "Giữ lại thông báo (cùng cảnh báo đã báo trong 24 giờ qua)", // DRAFT — Kevin reviews
   "mpx.ev.notify_held_cap": "Giữ lại thông báo (đã đạt giới hạn mỗi giờ)", // DRAFT — Kevin reviews
+  "mpx.searchPhRef": "Mã cảnh báo, quy tắc, số hóa đơn, mã tham chiếu thanh toán, tên nhân viên, tên hoặc số điện thoại khách", // DRAFT — Kevin reviews
+  "mpx.searchPhRefNoCustomer": "Mã cảnh báo, quy tắc, số hóa đơn, mã tham chiếu thanh toán hoặc tên nhân viên", // DRAFT — Kevin reviews
+  "mpx.match.on": "Khớp theo {field}", // DRAFT — Kevin reviews
+  "mpx.match.alert_id": "mã cảnh báo", // DRAFT — Kevin reviews
+  "mpx.match.record_id": "mã bản ghi", // DRAFT — Kevin reviews
+  "mpx.match.rule": "quy tắc", // DRAFT — Kevin reviews
+  "mpx.match.ticket": "số hóa đơn", // DRAFT — Kevin reviews
+  "mpx.match.source_ref": "mã tham chiếu thanh toán", // DRAFT — Kevin reviews
+  "mpx.match.customer_phone": "số điện thoại khách", // DRAFT — Kevin reviews
+  "mpx.match.customer_name": "tên khách", // DRAFT — Kevin reviews
+  "mpx.match.staff": "tên nhân viên", // DRAFT — Kevin reviews
+  "mpx.br.title": "Theo chi nhánh", // DRAFT — Kevin reviews
+  "mpx.br.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "mpx.br.open": "Cảnh báo đang mở", // DRAFT — Kevin reviews
+  "mpx.br.critical": "Nghiêm trọng", // DRAFT — Kevin reviews
+  "mpx.br.review": "Giá trị đang xem xét", // DRAFT — Kevin reviews
+  "mpx.br.sales": "Doanh thu thuần (30 ngày qua)", // DRAFT — Kevin reviews
+  "mpx.br.salonWide": "Toàn tiệm (không có chi nhánh)", // DRAFT — Kevin reviews
+  "mpx.br.salesFrom": "Doanh thu thuần lấy từ báo cáo Doanh thu của từng chi nhánh (30 ngày của tiệm gần nhất).", // DRAFT — Kevin reviews
+  "mpx.br.salesHidden": "Doanh thu thuần bị ẩn vì bạn không có quyền xem báo cáo tài chính.", // DRAFT — Kevin reviews
+  "mpx.br.salesNone": "Doanh thu thuần chưa được kết nối ở đây.", // DRAFT — Kevin reviews
+  "mpx.br.why": "Chỉ hiện các chi nhánh bạn được xem. Giá trị đang xem xét không phải là khoản mất đã xác nhận.", // DRAFT — Kevin reviews
 };
