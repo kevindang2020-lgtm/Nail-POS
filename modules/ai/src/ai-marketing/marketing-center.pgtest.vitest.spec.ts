@@ -338,3 +338,42 @@ describe('Marketing Growth 09 — Reward Liability Reconciliation on the summary
     expect(await snap()).toEqual(before);
   });
 });
+
+describe('AI Marketing 12 — Permission-safe branch comparisons on the summary', () => {
+  it('each authorized branch side by side (aggregates only), salon-wide campaigns on their own row; one-branch, confined or no-report sessions see none; nothing is changed', async () => {
+    const TC = id(840), BA = id(841), BB = id(842), BC = id(843), CU = id(844), CV = id(845);
+    const cC = (o: any = {}) => ({ tenantId: TC, branchId: BA, userId: OWNER, role: 'OWNER', permissions: [...VIEW, 'pos.reports.view'], ...o });
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'C','Compare','mk-812c','MK812C','active')`, [TC]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$4,'Avenue','active','UTC'), ($2,$4,'Bridge','active','UTC'), ($3,$4,'Closed old','active','UTC')`, [BA, BB, BC, TC]);
+    await q(`update branches set deleted_at = now() where id = $1`, [BC]);
+    for (const cid of [CU, CV]) await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, created_at) values ($1,$2,$3,'C','X','C X', now() - interval '100 days')`, [cid, TC, BA]);
+    const [ca] = await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values ($1,$2,'Avenue blast','sms','in_progress',2) returning id`, [TC, BA]);
+    await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values ($1,$2,'Bridge later','sms','scheduled',0), ($1,null,'Everyone','sms','draft',0)`, [TC, BB]);
+    // Avenue: two messages sent (one delivered, one failed), 10 000 micros each; Bridge: one delivered message with no reported cost
+    let k = 0;
+    const send = async (branch: string, cust: string, st: string, cost: number | null) => {
+      const pid = `CMP${++k}`;
+      await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id, provider_cost_micros) values ($1,'sms','+1','hi',$2,$3,$4,$5)`, [TC, cust, st, pid, cost]);
+      await q(`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, status, provider_id, message_version, created_at, updated_at) values ($1,$2,$3,$4,'sms','sent',$5,$6, now(), now())`, [TC, branch, ca.id, cust, pid, k]);
+    };
+    await send(BA, CU, 'delivered', 10000); await send(BA, CV, 'failed', 10000); await send(BB, CU, 'delivered', null);
+    await q(`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, campaign_id, appointment_id, created_at) values ($1,$2,'link','BOOKING_SUCCEEDED','succeeded',$3,'cmp-a1', now())`, [TC, BB, ca.id]);
+    const before = await q(`select id, status from campaigns where tenant_id = $1 order by id`, [TC]);
+    const r: any = (await mc.summary(cC(), { preset: 'today' })).branchComparison;
+    expect(r.visible).toBe(true);
+    expect(r.branches.map((b: any) => b.name)).toEqual(['Avenue', 'Bridge']);              // the deleted branch is not compared
+    expect(r.branches[0]).toEqual({ branchId: BA, name: 'Avenue', campaigns: 1, active: 1, scheduled: 0, messagesSent: 2, delivered: 1, failed: 1, bookings: 0, associatedRevenueCents: 0, associatedTickets: 0, actualCostCents: 2 });
+    expect(r.branches[1]).toMatchObject({ branchId: BB, campaigns: 1, scheduled: 1, messagesSent: 1, delivered: 1, bookings: 1, actualCostCents: null });   // cost not reported → null, never $0
+    expect(r.salonWide).toMatchObject({ branchId: null, campaigns: 1, messagesSent: 0 });
+    expect(JSON.stringify(r)).not.toMatch(/\+1|C X/);                                       // no recipient, no customer
+    // a manager named on ONE branch, a confined session, and a viewer without reports see no comparison
+    expect((await mc.summary(cC({ authz: { scope: 'BRANCH', branchIds: [BA] } }), { preset: 'today' })).branchComparison).toEqual({ visible: false });
+    expect((await mc.summary(cC({ permissions: VIEW }), { preset: 'today' })).branchComparison).toEqual({ visible: false });
+    // a manager over both branches sees both
+    expect(((await mc.summary(cC({ authz: { scope: 'BRANCH', branchIds: [BA, BB] } }), { preset: 'today' })).branchComparison as any).branches).toHaveLength(2);
+    // the first salon (one live branch in its own scope here) never sees this salon's branches
+    const other: any = (await mc.summary(ctx({ permissions: [...VIEW, 'pos.reports.view'], authz: { scope: 'BRANCH', branchIds: [B] } }), { preset: 'today' })).branchComparison;
+    expect(other).toEqual({ visible: false });
+    expect(await q(`select id, status from campaigns where tenant_id = $1 order by id`, [TC])).toEqual(before);
+  });
+});

@@ -8,6 +8,7 @@
 //   • recommendations come from the Customer Retention rule and the Segments consent verdict, with the eligibility funnel;
 //   • the campaign library is Campaign Center's (search · status · channel · period · numbered pages, newest first);
 //   • Check AI Marketing System (read-only);
+//   • AI Marketing 12: branch comparison — aggregates for the branches the session may see (server decides; no recipients);
 //   • Marketing Growth 09: reward liabilities — points, token wallet, referral expense and gift-card balances, each from its own
 //     ledger and never summed together (shown only with pos.reports.view; the server decides).
 // Nothing here sends, schedules or approves; drafts are saved into Campaign Center from the Campaign Builder.
@@ -44,7 +45,7 @@ export function POSAIMarketingScreen() {
   const loadR = useCallback(() => { setRErr(null); setRecs(null); posAIMarketingApi.center.recommendations(channel).then(setRecs).catch((e) => setRErr(mkErr(e))); }, [channel]);
   useEffect(() => { loadR(); }, [loadR, tick]);
 
-  const k = s?.cards; const reach = s?.reach; const cost = s?.cost; const liab = s?.rewardLiability;
+  const k = s?.cards; const reach = s?.reach; const cost = s?.cost; const liab = s?.rewardLiability; const cmp = s?.branchComparison;
   const cards: { key: string; v: string; sub?: string }[] = [
     { key: 'active', v: mkNum(k?.activeCampaigns) },
     { key: 'scheduled', v: mkNum(k?.scheduledCampaigns) },
@@ -127,6 +128,7 @@ export function POSAIMarketingScreen() {
         </section>
       </div>
 
+      {cmp?.visible ? <BranchComparison c={cmp} /> : null}
       {liab?.visible ? <RewardLiability r={liab} /> : null}
 
       <CampaignLibrary tick={tick} focus={libFocus} />
@@ -160,6 +162,24 @@ function RewardLiability({ r }: { r: any }) {
       {p.driftPoints !== 0 ? <p className="sub" data-testid="amk-liab-drift">{mt('amk.liab.pointsDrift', { d: mkNum(Math.abs(p.driftPoints)) })}</p> : null}
       <p className="sub">{mt('amk.liab.pointsNoValue')}</p>
       <p className="sub">{mt('amk.liab.note')}</p>
+    </section>
+  );
+}
+
+/** AI Marketing 12 — permission-safe branch comparison: the summary's server-computed aggregates per authorized branch */
+function BranchComparison({ c }: { c: any }) {
+  const rows: any[] = [...(c.branches ?? []), ...(c.salonWide ? [c.salonWide] : [])];
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12, minWidth: 0 }} data-testid="amk-cmp">
+      <div className="p-h">{mt('amk.cmp.title')}</div>
+      <div style={{ overflowX: 'auto' }}><table className="tbl"><thead><tr>
+        <th>{mt('amk.cmp.branch')}</th><th className="num">{mt('amk.cmp.campaigns')}</th><th className="num">{mt('amk.cmp.sent')}</th><th className="num">{mt('amk.cmp.delivered')}</th>
+        <th className="num">{mt('amk.cmp.bookings')}</th><th className="num">{mt('amk.cmp.revenue')}</th><th className="num">{mt('amk.cmp.cost')}</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.branchId ?? 'salon'} data-testid={`amk-cmp-${r.branchId ?? 'salon'}`}>
+          <td>{r.branchId ? r.name : mt('amk.cmp.salonWide')}</td><td className="num">{mkNum(r.campaigns)}</td><td className="num">{mkNum(r.messagesSent)}</td>
+          <td className="num">{mkNum(r.delivered)}</td><td className="num">{mkNum(r.bookings)}</td><td className="num">{mkMoney(r.associatedRevenueCents)}</td>
+          <td className="num">{r.actualCostCents == null ? mt('amk.notReported') : mkMoney(r.actualCostCents)}</td></tr>)}</tbody></table></div>
+      <p className="sub">{mt('amk.cmp.note')}</p>
     </section>
   );
 }

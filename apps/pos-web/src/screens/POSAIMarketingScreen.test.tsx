@@ -159,4 +159,21 @@ describe('POSAIMarketingScreen', () => {
     await screen.findByTestId('amk-updated');
     expect(screen.queryByTestId('amk-liab')).toBeNull();
   });
+  it('AI Marketing 12: the branch comparison shows the server\'s per-branch aggregates (unreported cost says so); hidden when not visible', async () => {
+    c.summary.mockResolvedValue({ ...SUMMARY, branchComparison: { visible: true,
+      branches: [{ branchId: 'b1', name: 'Avenue', campaigns: 1, active: 1, scheduled: 0, messagesSent: 2, delivered: 1, failed: 1, bookings: 0, associatedRevenueCents: 0, associatedTickets: 0, actualCostCents: 2 },
+        { branchId: 'b2', name: 'Bridge', campaigns: 1, active: 0, scheduled: 1, messagesSent: 1, delivered: 1, failed: 0, bookings: 1, associatedRevenueCents: 4500, associatedTickets: 1, actualCostCents: null }],
+      salonWide: { branchId: null, name: null, campaigns: 1, active: 0, scheduled: 0, messagesSent: 0, delivered: 0, failed: 0, bookings: 0, associatedRevenueCents: 0, associatedTickets: 0, actualCostCents: 0 } } });
+    const { unmount } = wrap();
+    const box = await screen.findByTestId('amk-cmp');
+    expect(within(box).getByTestId('amk-cmp-b1')).toHaveTextContent(/Avenue\s*1\s*2\s*1\s*0\s*\$0\.00\s*\$0\.02/);
+    expect(within(box).getByTestId('amk-cmp-b2')).toHaveTextContent('$45.00');
+    expect(within(box).getByTestId('amk-cmp-b2')).toHaveTextContent(/Not reported/i);
+    expect(within(box).getByTestId('amk-cmp-salon')).toHaveTextContent('Salon-wide campaigns');
+    unmount();
+    c.summary.mockResolvedValue({ ...SUMMARY, branchComparison: { visible: false } });
+    wrap();
+    await screen.findByTestId('amk-updated');
+    expect(screen.queryByTestId('amk-cmp')).toBeNull();
+  });
 });
