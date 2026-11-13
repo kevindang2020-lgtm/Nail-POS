@@ -135,4 +135,28 @@ describe('POSAIMarketingScreen', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.getByTestId('amk-kpi-sent')).toHaveTextContent('—');
   });
+  it('Marketing Growth 09: reward liabilities are four separate lines from the server, never one total; hidden without the server saying visible', async () => {
+    const LIAB = { visible: true, scope: 'salon',
+      points: { members: 2, outstandingPoints: 160, ledgerPoints: 150, driftPoints: 10, earnedInPeriod: 180, usedInPeriod: 30, valueCents: null },
+      tokens: { wallet: true, availableCents: 4250, deficitCents: 0, fundedAllTimeCents: 5000, allocatedAllTimeCents: 750, fundedInPeriodCents: 5000, allocatedInPeriodCents: 750 },
+      referrals: { cashPaidInPeriodCents: 2000, cashPaidInPeriod: 1, pointsIssuedInPeriod: 500, vouchersRedeemedInPeriodCents: 1000, vouchersRedeemedInPeriod: 1, vouchersOpenCents: 1500, vouchersOpen: 1, vouchersPendingCents: 500, vouchersPending: 1 },
+      giftCards: { outstandingCents: 9200, cards: 3 } };
+    c.summary.mockResolvedValue({ ...SUMMARY, rewardLiability: LIAB });
+    const { unmount } = wrap();
+    const box = await screen.findByTestId('amk-liab');
+    expect(within(box).getByTestId('amk-liab-points')).toHaveTextContent('160');
+    expect(within(box).getByTestId('amk-liab-tokens')).toHaveTextContent('$42.50');
+    expect(within(box).getByTestId('amk-liab-ref-paid')).toHaveTextContent('$20.00');
+    expect(within(box).getByTestId('amk-liab-ref-redeemed')).toHaveTextContent('$10.00');
+    expect(within(box).getByTestId('amk-liab-ref-open')).toHaveTextContent('$15.00');
+    expect(within(box).getByTestId('amk-liab-gift')).toHaveTextContent('$92.00');
+    expect(within(box).getByTestId('amk-liab-drift')).toHaveTextContent('10');
+    // no grand total: $42.50 + $15.00 + $92.00 = $149.50 must not appear anywhere
+    expect(box).not.toHaveTextContent('$149.50');
+    unmount();
+    c.summary.mockResolvedValue({ ...SUMMARY, rewardLiability: { visible: false } });
+    wrap();
+    await screen.findByTestId('amk-updated');
+    expect(screen.queryByTestId('amk-liab')).toBeNull();
+  });
 });

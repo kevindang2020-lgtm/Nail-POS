@@ -7,7 +7,9 @@
 //     "$100.00 with 0 sent" was a budget summed as cost);
 //   • recommendations come from the Customer Retention rule and the Segments consent verdict, with the eligibility funnel;
 //   • the campaign library is Campaign Center's (search · status · channel · period · numbered pages, newest first);
-//   • Check AI Marketing System (read-only).
+//   • Check AI Marketing System (read-only);
+//   • Marketing Growth 09: reward liabilities — points, token wallet, referral expense and gift-card balances, each from its own
+//     ledger and never summed together (shown only with pos.reports.view; the server decides).
 // Nothing here sends, schedules or approves; drafts are saved into Campaign Center from the Campaign Builder.
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -42,7 +44,7 @@ export function POSAIMarketingScreen() {
   const loadR = useCallback(() => { setRErr(null); setRecs(null); posAIMarketingApi.center.recommendations(channel).then(setRecs).catch((e) => setRErr(mkErr(e))); }, [channel]);
   useEffect(() => { loadR(); }, [loadR, tick]);
 
-  const k = s?.cards; const reach = s?.reach; const cost = s?.cost;
+  const k = s?.cards; const reach = s?.reach; const cost = s?.cost; const liab = s?.rewardLiability;
   const cards: { key: string; v: string; sub?: string }[] = [
     { key: 'active', v: mkNum(k?.activeCampaigns) },
     { key: 'scheduled', v: mkNum(k?.scheduledCampaigns) },
@@ -125,11 +127,39 @@ export function POSAIMarketingScreen() {
         </section>
       </div>
 
+      {liab?.visible ? <RewardLiability r={liab} /> : null}
+
       <CampaignLibrary tick={tick} focus={libFocus} />
       {funnel ? <FitDialog wide testId="amk-funnel-dialog" title={mt('amk.funnelTitle', { k: mt('amk.kind.' + funnel) })} onClose={() => setFunnel(null)}
         footer={<button className="btn ghost" onClick={() => setFunnel(null)}>{mt('amk.close')}</button>}>
         <MkFunnel kind={funnel} channel="both" />
       </FitDialog> : null}
     </div>
+  );
+}
+
+/** Marketing Growth 09 — four separate obligations from the summary's rewardLiability (server-computed; nothing re-derived here) */
+function RewardLiability({ r }: { r: any }) {
+  const p = r.points, tk = r.tokens, rf = r.referrals, g = r.giftCards;
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="amk-liab">
+      <div className="p-h">{mt('amk.liab.title')}</div>
+      <table className="tbl"><tbody>
+        <tr><td>{mt('amk.liab.points')}</td><td className="num" data-testid="amk-liab-points">{mt('amk.liab.pointsVal', { p: mkNum(p.outstandingPoints), m: mkNum(p.members) })}</td></tr>
+        <tr><td className="sub">{mt('amk.liab.pointsLedger')}</td><td className="num">{mkNum(p.ledgerPoints)}</td></tr>
+        <tr><td className="sub" colSpan={2}>{mt('amk.liab.pointsMove', { e: mkNum(p.earnedInPeriod), u: mkNum(p.usedInPeriod) })}</td></tr>
+        <tr><td>{mt('amk.liab.tokens')}</td><td className="num" data-testid="amk-liab-tokens">{tk.wallet ? mkMoney(tk.availableCents) : mt('amk.liab.tokensNone')}</td></tr>
+        {tk.wallet ? <tr><td className="sub" colSpan={2}>{mt('amk.liab.tokensMove', { f: mkMoney(tk.fundedInPeriodCents), a: mkMoney(tk.allocatedInPeriodCents) })}{tk.deficitCents > 0 ? ' · ' + mt('amk.liab.deficit', { d: mkMoney(tk.deficitCents) }) : ''}</td></tr> : null}
+        <tr><td>{mt('amk.liab.refPaid')}</td><td className="num" data-testid="amk-liab-ref-paid">{mkMoney(rf.cashPaidInPeriodCents)}</td></tr>
+        <tr><td>{mt('amk.liab.refPoints')}</td><td className="num">{mkNum(rf.pointsIssuedInPeriod)}</td></tr>
+        <tr><td>{mt('amk.liab.refVouchers')}</td><td className="num" data-testid="amk-liab-ref-redeemed">{mkMoney(rf.vouchersRedeemedInPeriodCents)}</td></tr>
+        <tr><td>{mt('amk.liab.refOpen')}</td><td className="num" data-testid="amk-liab-ref-open">{mkMoney(rf.vouchersOpenCents)}</td></tr>
+        {rf.vouchersPending > 0 ? <tr><td className="sub" colSpan={2}>{mt('amk.liab.refPending', { n: mkNum(rf.vouchersPending), m: mkMoney(rf.vouchersPendingCents) })}</td></tr> : null}
+        <tr><td>{mt('amk.liab.gift')}</td><td className="num" data-testid="amk-liab-gift">{mkMoney(g.outstandingCents)}</td></tr>
+      </tbody></table>
+      {p.driftPoints !== 0 ? <p className="sub" data-testid="amk-liab-drift">{mt('amk.liab.pointsDrift', { d: mkNum(Math.abs(p.driftPoints)) })}</p> : null}
+      <p className="sub">{mt('amk.liab.pointsNoValue')}</p>
+      <p className="sub">{mt('amk.liab.note')}</p>
+    </section>
   );
 }

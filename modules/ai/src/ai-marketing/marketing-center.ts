@@ -170,8 +170,9 @@ export class MarketingCenter {
     const booked = N(conv.booked);
     const allSubmitted = N(all.submitted);
     const budgets = N(st.budgets);
+    const rewardLiability = await this.rewardLiability(ctx, p);
     return {
-      period: p, scope: B ? 'branch' : 'salon',
+      period: p, scope: B ? 'branch' : 'salon', rewardLiability,
       cards: {
         activeCampaigns: N(st.active), scheduledCampaigns: N(st.scheduled), draftCampaigns: N(st.drafts), awaitingApproval: N(st.awaiting), assistantDrafts: N(st.assistant_drafts),
         messagesSent: submitted, delivered: N(ps.delivered), failed: N(ps.failed), skippedAtSend: N(ps.skipped), queued: N(ps.queued), simulated: N(ps.simulated),
@@ -194,6 +195,58 @@ export class MarketingCenter {
         cost: 'Provider cost reported on each sent message. A campaign budget is a limit someone typed, not money spent.',
       },
       generatedAt: new Date(this.now()).toISOString(),
+    };
+  }
+
+  /**
+   * Marketing Growth 09 — Reward Liability Reconciliation. Four obligations, each from its OWN ledger and never summed into one
+   * number (they are different kinds of debt): salon loyalty POINTS (no single cash rate exists, so no dollar value is invented),
+   * the prepaid TOKEN wallet that funds global-network points, REFERRAL expense (cash payouts and salon vouchers) and GIFT-CARD
+   * balances (the canonical Decision 31 rule: active / frozen / partially redeemed cards with a positive balance). Salon-wide
+   * (customers, wallets and gift cards are salon-wide); period amounts use the same salon-local period as the cards. Read only.
+   * Money amounts need pos.reports.view (the gift-card liability report's permission); without it only `visible: false`.
+   */
+  private async rewardLiability(ctx: McCtx, p: McPeriod) {
+    if (!has(ctx, 'pos.reports.view')) return { visible: false as const };
+    const T = ctx.tenantId;
+    const one = async (q: { execute: (db: Kysely<any>) => Promise<{ rows: Row[] }> }): Promise<Row> => (await q.execute(this.db)).rows[0] ?? {};
+    const pts = await one(sql<Row>`select count(*) filter (where lp.points_balance > 0)::int as members, coalesce(sum(lp.points_balance), 0)::bigint as balance
+      from customer_loyalty_profiles lp where lp.tenant_id = ${T}`);
+    const led = await one(sql<Row>`select coalesce(sum(ll.delta), 0)::bigint as ledger,
+        coalesce(sum(ll.delta) filter (where ll.delta > 0 and ${this.inP(sql`ll.created_at`, p)}), 0)::bigint as earned,
+        coalesce(-sum(ll.delta) filter (where ll.delta < 0 and ${this.inP(sql`ll.created_at`, p)}), 0)::bigint as used
+      from loyalty_ledger ll where ll.tenant_id = ${T}`);
+    const w = await one(sql<Row>`select tw.tenant_id as wallet, tw.available_cents, tw.deficit_cents, tw.lifetime_funded_cents, tw.lifetime_allocated_cents
+      from tenant_token_wallets tw where tw.tenant_id = ${T}`);
+    const wl = await one(sql<Row>`select coalesce(-sum(tl.delta_cents) filter (where tl.entry_type = 'earn_allocation'), 0)::bigint as allocated,
+        coalesce(sum(tl.delta_cents) filter (where tl.entry_type = 'purchase_funded'), 0)::bigint as funded
+      from token_wallet_ledger tl where tl.tenant_id = ${T} and ${this.inP(sql`tl.created_at`, p)}`);
+    const rr = await one(sql<Row>`select coalesce(sum(rw.amount_cents) filter (where rw.reward_type = 'cash_payout'), 0)::bigint as cash,
+        count(*) filter (where rw.reward_type = 'cash_payout')::int as cash_n,
+        coalesce(sum(rw.points) filter (where rw.reward_type = 'loyalty_points'), 0)::bigint as points
+      from referral_rewards rw where rw.tenant_id = ${T} and rw.state = 'ISSUED' and ${this.inP(sql`rw.issued_at`, p)}`);
+    const rv = await one(sql<Row>`select coalesce(sum(v.face_cents) filter (where v.state = 'REDEEMED' and ${this.inP(sql`v.redeemed_at`, p)}), 0)::bigint as redeemed,
+        count(*) filter (where v.state = 'REDEEMED' and ${this.inP(sql`v.redeemed_at`, p)})::int as redeemed_n,
+        coalesce(sum(v.face_cents) filter (where v.state = 'AVAILABLE'), 0)::bigint as available, count(*) filter (where v.state = 'AVAILABLE')::int as available_n,
+        coalesce(sum(v.face_cents) filter (where v.state = 'PENDING'), 0)::bigint as pending, count(*) filter (where v.state = 'PENDING')::int as pending_n
+      from referral_vouchers v where v.tenant_id = ${T}`);
+    const gc = await one(sql<Row>`select coalesce(sum(g.balance_cents), 0)::bigint as outstanding, count(*)::int as cards
+      from gift_cards g where g.tenant_id = ${T} and g.status in ('active', 'frozen', 'partially_redeemed') and g.balance_cents > 0`);
+    const balance = N(pts.balance), ledger = N(led.ledger);
+    return {
+      visible: true as const, scope: 'salon' as const,
+      points: { members: N(pts.members), outstandingPoints: balance, ledgerPoints: ledger, driftPoints: balance - ledger, earnedInPeriod: N(led.earned), usedInPeriod: N(led.used), valueCents: null },
+      tokens: w.wallet == null ? { wallet: false as const } : {
+        wallet: true as const, availableCents: N(w.available_cents), deficitCents: N(w.deficit_cents),
+        fundedAllTimeCents: N(w.lifetime_funded_cents), allocatedAllTimeCents: N(w.lifetime_allocated_cents),
+        fundedInPeriodCents: N(wl.funded), allocatedInPeriodCents: N(wl.allocated),
+      },
+      referrals: {
+        cashPaidInPeriodCents: N(rr.cash), cashPaidInPeriod: N(rr.cash_n), pointsIssuedInPeriod: N(rr.points),
+        vouchersRedeemedInPeriodCents: N(rv.redeemed), vouchersRedeemedInPeriod: N(rv.redeemed_n),
+        vouchersOpenCents: N(rv.available), vouchersOpen: N(rv.available_n), vouchersPendingCents: N(rv.pending), vouchersPending: N(rv.pending_n),
+      },
+      giftCards: { outstandingCents: N(gc.outstanding), cards: N(gc.cards) },
     };
   }
 
