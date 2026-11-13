@@ -450,3 +450,34 @@ describe('Documented Alert Rate Limits (AI MONEY PROTECTION 5 · 11; migration 8
     expect(await code(q(`insert into money_protection_notifications (tenant_id, alert_id, dedupe_key, outcome) values ($1, $2, 'x', 'sent')`, [X, A1]))).not.toBe('ok');
   });
 });
+
+describe('round 10 — Money Protection Rules 05 · 10', () => {
+  it('WT-01 why it triggered: the rule condition, the recorded values, the thresholds as configured now (gates marked), the verified references', async () => {
+    const d: any = await mc.alert(ctx(), A1);
+    expect(d.whyTriggered).toMatchObject({ ruleId: 'MP_DUP_CHARGE_EXACT', condition: expect.stringMatching(/processor transaction id or idempotency key/), thresholdsNote: 'as_configured_now',
+      references: { tickets: d.sources.tickets.length, payments: 2, staff: d.sources.staff.length }, triggeredRules: expect.arrayContaining(['MP_DUP_CHARGE_EXACT']) });
+    expect(d.whyTriggered.matched).toEqual(d.evidence.currentValues ?? {});
+    // a rule with thresholds: the gate thresholds are marked, a salon override shows as custom (values recorded by the alert shown as matched)
+    await mc.saveRule(ctx(), 'MP_FAILED_PAYMENT_RETRY_LOOP', { thresholds: { minDeclines: 6 } });
+    const [al] = await q(`insert into money_protection_alerts (tenant_id, branch_id, rule_id, alert_type, severity, status, risk_score, amount_cents, entity_fingerprint, evidence, related, first_seen_at, last_seen_at, created_at, updated_at)
+      values ($1,$2,'MP_FAILED_PAYMENT_RETRY_LOOP','failed_payment_retry_loop','MEDIUM','NEW',40,0,'fp-why-1',$3::jsonb,'{}'::jsonb, now(), now(), now(), now()) returning id`,
+      [T, B, JSON.stringify({ summary: 'Repeated declines — requires review.', triggeredRules: ['MP_FAILED_PAYMENT_RETRY_LOOP'], currentValues: { declines: 7, windowMinutes: 15 }, recommendedReview: [] })]);
+    const w: any = (await mc.alert(ctx(), String(al.id))).whyTriggered;
+    expect(w.matched).toEqual({ declines: 7, windowMinutes: 15 });
+    expect(w.thresholds).toEqual(expect.arrayContaining([{ key: 'minDeclines', value: 6, custom: true, gate: true }, { key: 'windowMinutes', value: 15, custom: false, gate: true }, { key: 'highSeverityAt', value: 8, custom: false, gate: false }]));
+    expect(w.thresholdsAsOf).toEqual(expect.any(String));
+  });
+  it('CD-01 configuration diff: each change has its effective time; only the rule\'s latest change can be rolled back (restores its before, with the current version)', async () => {
+    const h: any = await mc.settingsHistory(ctx(), {});
+    const likely = h.items.filter((x: any) => x.ruleId === 'MP_DUP_CHARGE_LIKELY');
+    expect(likely.length).toBeGreaterThanOrEqual(2);
+    expect(likely[0]).toMatchObject({ effectiveAt: likely[0].at, rollback: { eligible: true, why: 'current', restores: likely[0].before, expectedUpdatedAt: expect.any(String) } });
+    expect(likely[1].rollback).toMatchObject({ eligible: false, why: 'superseded', restores: null });
+    // the rollback is the ordinary save with the before values + current version; afterwards the old latest is superseded
+    const rb = likely[0].rollback;
+    await mc.saveRule(ctx(), 'MP_DUP_CHARGE_LIKELY', { enabled: rb.restores.enabled, thresholds: rb.restores.thresholds, expectedUpdatedAt: rb.expectedUpdatedAt, reason: 'Roll back the last change' });
+    const h2: any = await mc.settingsHistory(ctx(), {});
+    const l2 = h2.items.filter((x: any) => x.ruleId === 'MP_DUP_CHARGE_LIKELY');
+    expect(l2[0].rollback.eligible).toBe(true); expect(l2[1].rollback.why).toBe('superseded');
+  });
+});

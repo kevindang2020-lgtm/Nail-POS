@@ -414,6 +414,7 @@ function AlertDialog({ id, onClose, onChanged }: { id: string; onClose: () => vo
           <p>{d.evidence?.summary ? codedText(mpTextCoded(d.evidence.summary), d.evidence.summary) : d.rule?.description ?? ''}</p>
           <div className="sub">{tx('pos.risk_score')}{' '}{a.riskScore} {tx('pos.confidence_2')}{' '}{a.confidence}</div>
           <FairnessNote ev={d.evidence} />
+          <WhyTriggered w={d.whyTriggered} />
           {Array.isArray(d.evidence?.recommendedReview) && d.evidence.recommendedReview.length ? <><b>{tx('pos.recommended_review')}</b><ul>{d.evidence.recommendedReview.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}
           {Array.isArray(d.evidence?.alternativeExplanations) && d.evidence.alternativeExplanations.length ? <><b>{tx('pos.possible_benign_explanations')}</b><ul>{d.evidence.alternativeExplanations.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}</section>
         <section style={{ marginTop: 10 }} data-testid="mpx-d-sources"><div className="p-h">{t('mpx.d.sources')}</div>
@@ -702,7 +703,8 @@ export function MpSettings() {
         <div className="p-h">{t('mpx.set.history')}</div>
         {(H.list?.items ?? []).map((h: any) => <div key={h.id} className="rvw-ev" data-testid="mpx-hist-row">
           <b>{ruleName(h.ruleId, h.rule)}</b>: {h.before ? `${h.before.enabled ? t('mpx.rules.on') : t('mpx.rules.off')} · ${t('mpx.sev.' + h.before.severity)}` : '—'} → {h.after ? `${h.after.enabled ? t('mpx.rules.on') : t('mpx.rules.off')} · ${t('mpx.sev.' + h.after.severity)}` : '—'}
-          {h.weaker ? <span className="chip warn"> {t('mpx.set.weaker')}</span> : null}<div className="sub">{h.actor ?? '—'} · {when(h.at)}{h.reason ? ` · ${h.reason}` : ''}</div></div>)}
+          {h.weaker ? <span className="chip warn"> {t('mpx.set.weaker')}</span> : null}<div className="sub">{h.actor ?? '—'} · {when(h.at)}{h.reason ? ` · ${h.reason}` : ''}</div>
+          <HistoryDiff h={h} canEdit={!!r?.canEdit} onRolledBack={() => { setTick((n) => n + 1); H.load(); }} /></div>)}
       </ListFrame>
       {edit ? <RuleEditor rule={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); setTick((n) => n + 1); }} /> : null}
     </MpShell>
@@ -812,5 +814,52 @@ function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void
       <label className="rvw-f"><span>{t('mpx.rules.reason')}</span><textarea data-testid="mpx-rule-reason" rows={2} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
       <div className="sub">{t('mpx.rules.reasonHint')}</div>
     </FitDialog>
+  );
+}
+
+/** round 10 (Money Protection Rules 05 — Explain Why Triggered): the rule's condition, the values this alert recorded, the
+ *  thresholds as configured NOW (gates that keep cases out are marked; a salon override is marked) and how many records it
+ *  rests on — all from the server's whyTriggered (nothing re-derived here). */
+export function WhyTriggered({ w }: { w: any }) {
+  if (!w) return null;
+  const kv = (o: Record<string, unknown> | null | undefined) => Object.entries(o ?? {}).map(([k, v]) => `${k} ${String(v)}`).join(' · ');
+  return (
+    <div className="fk-note" role="note" data-testid="mpx-why" style={{ margin: '6px 0' }}>
+      <b>{t('mpx10.why.title')}</b>
+      <div data-testid="mpx-why-condition">{t('mpx10.why.condition', { c: w.condition })}</div>
+      <div data-testid="mpx-why-matched">{t('mpx10.why.matched', { v: kv(w.matched) || '—' })}{w.baseline ? ` · ${t('mpx10.why.baseline', { v: kv(w.baseline) })}` : ''}</div>
+      {w.thresholds?.length ? <div data-testid="mpx-why-thresholds">{t('mpx10.why.thresholds')} {w.thresholds.map((x: any) => `${x.key} ${String(x.value)}${x.custom ? ` (${t('mpx10.why.custom')})` : ''}${x.gate ? ` — ${t('mpx10.why.gate')}` : ''}`).join(' · ')}</div>
+        : <div data-testid="mpx-why-thresholds">{t('mpx10.why.noThresholds')}</div>}
+      <div className="sub">{t('mpx10.why.asNow')}</div>
+      <div data-testid="mpx-why-refs">{t('mpx10.why.refs', { tk: fmtNumber(w.references?.tickets ?? 0), p: fmtNumber(w.references?.payments ?? 0), s: fmtNumber(w.references?.staff ?? 0) })}</div>
+    </div>
+  );
+}
+
+/** round 10 (Money Protection Rules 10 — Configuration Diff Viewer): the threshold changes of one history entry, when it took
+ *  effect, and — only while it is still the rule's current setting — a Roll back that sends the ordinary reasoned save with the
+ *  'before' values and the current version (the server refuses a stale one). */
+function HistoryDiff({ h, canEdit, onRolledBack }: { h: any; canEdit: boolean; onRolledBack: () => void }) {
+  const [reason, setReason] = useState(''); const [open, setOpen] = useState(false); const [msg, setMsg] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const bt = h.before?.thresholds ?? {}, at = h.after?.thresholds ?? {};
+  const changed = [...new Set([...Object.keys(bt), ...Object.keys(at)])].filter((k) => String(bt[k]) !== String(at[k]));
+  const rb = h.rollback;
+  const doRollback = async () => {
+    if (!rb?.eligible || reason.trim().length < 5) return;
+    setBusy(true); setMsg(null);
+    try {
+      await posAIMoneyProtectionApi.center.saveRule({ ruleId: h.ruleId, enabled: !!rb.restores.enabled, severityOverride: rb.restores.severity ?? null, thresholds: rb.restores.thresholds ?? {}, reason: reason.trim(), expectedUpdatedAt: rb.expectedUpdatedAt ?? null });
+      setMsg(t('mpx10.rb.done')); setOpen(false); onRolledBack();
+    } catch (e) { setMsg(mpErr(e)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="sub" data-testid="mpx-hist-diff">
+      {changed.length ? <div data-testid="mpx-hist-thresholds">{changed.map((k) => `${k} ${bt[k] ?? '—'} → ${at[k] ?? '—'}`).join(' · ')}</div> : null}
+      <div data-testid="mpx-hist-effective">{t('mpx10.effective', { at: when(h.effectiveAt ?? h.at) })} · {rb ? t('mpx10.rb.' + rb.why) : '—'}</div>
+      {rb?.eligible && canEdit ? (open ? <span><input className="in" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('mpx10.rb.reason')} data-testid="mpx-rb-reason" maxLength={1000} />
+          <button className="btn ghost sm" disabled={busy || reason.trim().length < 5} onClick={() => void doRollback()} data-testid="mpx-rb-confirm">{t('mpx10.rb.confirm')}</button></span>
+        : <button className="btn ghost sm" onClick={() => setOpen(true)} data-testid="mpx-rb-open">{t('mpx10.rb.open')}</button>) : null}
+      {msg ? <div role="status" data-testid="mpx-rb-msg">{msg}</div> : null}
+    </div>
   );
 }

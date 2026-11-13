@@ -463,4 +463,23 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.ev.notified": "Đã báo chủ tiệm", // DRAFT — Kevin reviews
   "mpx.ev.notify_held_cooldown": "Giữ lại thông báo (cùng cảnh báo đã báo trong 24 giờ qua)", // DRAFT — Kevin reviews
   "mpx.ev.notify_held_cap": "Giữ lại thông báo (đã đạt giới hạn mỗi giờ)", // DRAFT — Kevin reviews
+  "mpx10.why.title": "Vì sao có cảnh báo này", // DRAFT — Kevin reviews
+  "mpx10.why.condition": "Quy tắc: {c}", // DRAFT — Kevin reviews
+  "mpx10.why.matched": "Số liệu đã ghi: {v}", // DRAFT — Kevin reviews
+  "mpx10.why.baseline": "so với: {v}", // DRAFT — Kevin reviews
+  "mpx10.why.thresholds": "Ngưỡng:", // DRAFT — Kevin reviews
+  "mpx10.why.custom": "do tiệm đặt", // DRAFT — Kevin reviews
+  "mpx10.why.gate": "các trường hợp dưới hoặc ngoài ngưỡng bị loại", // DRAFT — Kevin reviews
+  "mpx10.why.noThresholds": "Quy tắc này không có ngưỡng điều chỉnh — chỉ dựa vào điều kiện.", // DRAFT — Kevin reviews
+  "mpx10.why.asNow": "Ngưỡng hiển thị theo cài đặt hiện tại; cảnh báo không lưu ngưỡng lúc phát hiện.", // DRAFT — Kevin reviews
+  "mpx10.why.refs": "Dựa trên {tk} phiếu, {p} thanh toán và {s} nhân viên tìm thấy trong bảng của chúng.", // DRAFT — Kevin reviews
+  "mpx10.effective": "Có hiệu lực từ {at}", // DRAFT — Kevin reviews
+  "mpx10.rb.current": "cài đặt hiện tại — có thể hoàn lại", // DRAFT — Kevin reviews
+  "mpx10.rb.superseded": "đã được thay bằng thay đổi sau", // DRAFT — Kevin reviews
+  "mpx10.rb.rule_retired": "quy tắc không còn", // DRAFT — Kevin reviews
+  "mpx10.rb.no_before": "không có cài đặt trước", // DRAFT — Kevin reviews
+  "mpx10.rb.open": "Hoàn lại", // DRAFT — Kevin reviews
+  "mpx10.rb.reason": "Lý do hoàn lại? (ít nhất 5 ký tự)", // DRAFT — Kevin reviews
+  "mpx10.rb.confirm": "Hoàn lại cài đặt trước", // DRAFT — Kevin reviews
+  "mpx10.rb.done": "Đã hoàn lại. Thay đổi đã được ghi kèm lý do của bạn.", // DRAFT — Kevin reviews
 };

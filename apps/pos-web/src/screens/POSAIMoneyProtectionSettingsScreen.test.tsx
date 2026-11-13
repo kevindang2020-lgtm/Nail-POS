@@ -135,4 +135,24 @@ describe('Money Protection Settings — safe recovery after a failed Save (extra
     expect(screen.queryByTestId('mpx-rec')).toBeNull();
     expect(mc.saveRule).toHaveBeenCalledTimes(2);
   });
+  it('round 10 (Rules 10): history shows threshold before → after and when it took effect; only the current change rolls back, with a reason and the current version', async () => {
+    mc.history.mockResolvedValue(page([
+      { id: 'h2', ruleId: 'MP_DUP_CHARGE_LIKELY', rule: 'Likely duplicate charge', reason: 'Wider window', actor: 'Owner Kim', at: '2026-11-03T10:00:00Z', effectiveAt: '2026-11-03T10:00:00Z',
+        before: { enabled: true, severity: 'HIGH', thresholds: { windowSeconds: 120 } }, after: { enabled: true, severity: 'HIGH', thresholds: { windowSeconds: 300 } }, weaker: false,
+        rollback: { eligible: true, why: 'current', restores: { enabled: true, severity: 'HIGH', thresholds: { windowSeconds: 120 } }, expectedUpdatedAt: '2026-11-03T10:00:00.000Z' } },
+      { id: 'h1', ruleId: 'MP_DUP_CHARGE_LIKELY', rule: 'Likely duplicate charge', reason: 'Split tenders', actor: 'Owner Kim', at: '2026-11-02T10:00:00Z', effectiveAt: '2026-11-02T10:00:00Z',
+        before: { enabled: true, severity: 'HIGH' }, after: { enabled: false, severity: 'HIGH' }, weaker: true, rollback: { eligible: false, why: 'superseded', restores: null, expectedUpdatedAt: null } }]));
+    mc.saveRule.mockResolvedValue({});
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    const diffs = await screen.findAllByTestId('mpx-hist-diff');
+    expect(diffs[0].querySelector('[data-testid="mpx-hist-thresholds"]')!.textContent).toBe('windowSeconds 120 → 300');
+    expect(diffs[0].querySelector('[data-testid="mpx-hist-effective"]')!.textContent).toMatch(/^In effect from .* · current setting — can be rolled back$/);
+    expect(diffs[1].querySelector('[data-testid="mpx-hist-effective"]')!.textContent).toMatch(/replaced by a later change$/);
+    expect(screen.getAllByTestId('mpx-rb-open')).toHaveLength(1);
+    fireEvent.click(screen.getByTestId('mpx-rb-open'));
+    expect(screen.getByTestId('mpx-rb-confirm')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('mpx-rb-reason'), { target: { value: 'Too many misses' } });
+    fireEvent.click(screen.getByTestId('mpx-rb-confirm'));
+    await waitFor(() => expect(mc.saveRule).toHaveBeenCalledWith({ ruleId: 'MP_DUP_CHARGE_LIKELY', enabled: true, severityOverride: 'HIGH', thresholds: { windowSeconds: 120 }, reason: 'Too many misses', expectedUpdatedAt: '2026-11-03T10:00:00.000Z' }));
+  });
 });
