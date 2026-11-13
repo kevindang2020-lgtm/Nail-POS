@@ -18,7 +18,14 @@ export interface LogsRepositoryPort {
   /** Device Integration Logs 08 (Nov 12 2026): the exporter's audit row, fail-closed (throws when it cannot be written).
    *  Optional — a store without it cannot export. Only the range, filters and counts are recorded, never the rows. */
   recordExport?(ctx: LogsContext, e: LogExportAudit): Promise<void>;
+  /** Device Integration Logs 09 (Nov 12 2026): the salon's rows in the platform's existing retry stores (job queue + outbound
+   *  webhook deliveries), read-only. Optional — no store, no retry view. */
+  retryQueue?(ctx: LogsContext, p: { page: number; pageSize: number; deadWindowDays: number }): Promise<RetryQueueRead>;
 }
+export interface RetryRow { id: string; store: 'job' | 'webhook'; type: string; state: 'waiting' | 'retrying' | 'running' | 'dead'; attempt: number; maxAttempts: number;
+  nextAttemptAt: string | null; lagSeconds: number | null; lastError: string | null; correlationId: string | null; createdAt: string | null; updatedAt: string | null }
+export interface RetryStoreCounts { waiting: number; retrying: number; running: number; dead: number; oldestDueLagSeconds: number | null }
+export interface RetryQueueRead { rows: RetryRow[]; total: number; jobs: RetryStoreCounts; webhooks: RetryStoreCounts }
 export interface LogExportAudit { from: string; to: string; rows: number; total: number; filters: Record<string, string> }
 /** sandbox = test / UAT traffic (never certification or production evidence); production = live merchant. `certification`
  *  is the latest recorded production validation for that processor, null when none is recorded or it cannot be told. */

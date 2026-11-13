@@ -2,7 +2,7 @@
 // Check-In Kiosks, iPads & Tablets, Receipt Devices, Device Assignments and Device Health. pos.devices.view (the same key as
 // the Devices Overview). Read-only: device actions stay on their owning endpoints (displays / registers / terminals).
 import { ListQuery } from '@aipowersalon/database';
-import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
@@ -37,6 +37,12 @@ export class DeviceFleetController {
   @Get('history') @RequirePermission('pos.devices.view')
   @ListQuery(HIST)
   history(@Req() q: any, @Query() f: any): Promise<DfHistoryResponse> { return run(() => this.r().history(ctxFrom(q), f ?? {})); }
+
+  /** Device Integration Logs 05: the routed (deduplicated) device / integration alerts — the logs page's list. Reading it
+   *  may run the router once a minute (it writes only the salon's own alert feed, never a device or a log). */
+  @Get('alerts') @RequirePermission('pos.logs.view')
+  @ListQuery({ filters: { status: { type: 'enum', values: ['open', 'closed', 'all'] } }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const)
+  alerts(@Req() q: any, @Query() f: any): Promise<DfAlertsResponse> { return run(() => this.r().alerts(ctxFrom(q), { status: f?.status, page: f?.page, pageSize: f?.pageSize })); }
 
   @Post('check') @RequirePermission('pos.devices.view')
   check(@Req() q: any, @Body(ValidatedBody(DF_CHECK_BODY, { strict: true })) b: { class: string }): Promise<DfCheckResponse> { return run(() => this.r().check(ctxFrom(q), b.class)); }

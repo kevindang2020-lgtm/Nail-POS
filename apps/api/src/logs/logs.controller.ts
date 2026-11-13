@@ -1,6 +1,7 @@
 // logs.controller.ts — read-only Device & Integration log surface (`/pos/logs`). Filters: category, severity, source,
 // search, limit. Writes are system-internal (no HTTP write path).
 import { withCode, type ListQuery } from '@aipowersalon/api-contracts';
+import type { LogRetryQueueView } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, AsyncExport } from '@aipowersalon/permissions/guards';
 import { Controller, Get, Header, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { LogsService, ForbiddenError, ValidationError, ExportUnavailableError } from './logs.service';
@@ -18,6 +19,11 @@ export class LogsController {
   @Get('') @RequirePermission('pos.logs.view')
   list(@Req() r: any, @Query() q: any) {
     return (async () => { try { return await this.svc.query(ctxFrom(r), q || {}); } catch (e) { if (e instanceof ForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN); if (e instanceof ValidationError) throw withCode(new HttpException('Pick a start date on or before the end date.', HttpStatus.BAD_REQUEST), 'LOGS_INVALID_PERIOD'); throw e; } })();
+  }
+  /** Device Integration Logs backlog · 09: the salon's work waiting in the existing retry stores (read-only) */
+  @Get('retries') @RequirePermission('pos.logs.view')
+  retries(@Req() r: any, @Query() q: ListQuery): Promise<LogRetryQueueView> {
+    return (async () => { try { return await this.svc.retryQueue(ctxFrom(r), (q || {}) as { page?: unknown; pageSize?: unknown }); } catch (e) { if (e instanceof ForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN); throw e; } })();
   }
   /** Device Integration Logs backlog · 08: the sanitized CSV of one fixed date range (from + to, at most 31 days), with
    *  the page's filters; pos.logs.view + pos.reports.export; the export is audited before the file is returned. */

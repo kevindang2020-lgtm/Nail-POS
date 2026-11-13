@@ -22,3 +22,18 @@ export interface DfCheckResponse {
   class: DfClass; overall: 'READY' | 'WARNING' | 'FAILED' | 'NOT_CONFIGURED'; checkedAt: string;
   checks: { key: string; state: 'READY' | 'WARNING' | 'FAILED' | 'NOT_CONFIGURED'; count?: number }[];
 }
+
+/** Device Integration Logs backlog · 05 (Nov 12 2026): automated, deduplicated device / integration alerts. Each rule keeps
+ *  ONE open alert per key in the salon's existing alert feed (owner_alerts, category device_integration) — a repeat detection
+ *  updates it, a resolved one is not reopened inside the cooldown (critical excepted); a rule is never switched off by
+ *  the system. Counts and device names only — never customer data, payloads or secrets. */
+export type DfAlertRule = 'device_offline' | 'terminal_unavailable' | 'sync_failures' | 'provider_critical';
+export interface DfAlert {
+  id: string; rule: DfAlertRule; severity: string; status: string; dedupeKey: string; deviceClass: string | null; source: string | null;
+  count: number; names: string[]; action: string; firstEventAt: string | null; lastEventAt: string | null; detections: number;
+  openedAt: string | null; updatedAt: string | null; resolvedAt: string | null; resolvedBy: string | null;
+}
+export interface DfAlertsResponse {
+  items: DfAlert[]; page: number; pageSize: number; totalItems: number; totalPages: number;
+  evaluatedAt: string | null; cooldownMinutes: number; canResolve: boolean;
+}

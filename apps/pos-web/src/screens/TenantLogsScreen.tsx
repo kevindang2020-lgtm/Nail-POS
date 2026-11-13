@@ -24,6 +24,7 @@ import { reportError } from './reportsCommon';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
 import { posHelpCenterApi, type HelpTicketRow } from '../api/posHelpCenterApi';
+import { RoutedAlertsDialog, RetryQueueDialog } from './TenantLogsOps';   // backlog Device Integration Logs · 05 + 09
 
 // backlog Device Integration Logs · 04 — Error Triage & Assignment: a log event becomes a support issue in THE support engine
 // (POST /tenant/help/tickets — owner = its assignee, priority, follow-up / status and audit are that engine's; help.request
@@ -100,6 +101,7 @@ export function TenantLogsScreen() {
   const [err, setErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<LogEntryView | null>(null);
+  const [ops, setOps] = useState<'alerts' | 'retry' | null>(null);
   const seq = useRef(0);
   // Device Integration Logs 08: the sanitized export (the server checks the range, redacts, and records who exported)
   const can = useCan();
@@ -128,6 +130,8 @@ export function TenantLogsScreen() {
       <div className="vh dfx-head">
         <div style={{ flex: '1 1 320px', minWidth: 0 }}><h1>{tx('pos.device_integration_logs')}</h1><div className="sub">{tt('lgx.subtitle')}</div></div>
         <button className="btn ghost" data-testid="lgx-health" onClick={() => nav('/tenant/devices/health')}>{tt('lgx.toHealth')}</button>
+        <button className="btn ghost" data-testid="lgx-alerts-open" onClick={() => setOps('alerts')}>{tt('lgx.alerts.btn')}</button>
+        <button className="btn ghost" data-testid="lgx-retry-open" onClick={() => setOps('retry')}>{tt('lgx.retry.btn')}</button>
         <button className="btn ghost" data-testid="lgx-refresh" onClick={load}>{tx('pos.refresh')}</button>
         {can('pos.reports.export') ? <button className="btn ghost" data-testid="lgx-export" disabled={exp.busy} title={tt('lgx.export.hint')} onClick={doExport}>{exp.busy ? tx('pos.exporting') : tt('lgx.export.btn')}</button> : null}
       </div>
@@ -179,6 +183,8 @@ export function TenantLogsScreen() {
         <p className="sub">{tt('lgx.foot')}</p>
       </section>
       <div><button className="btn ghost" onClick={() => nav('/tenant/devices/overview')}>{tx('pos.back_to_devices_integrations')}</button></div>
+      {ops === 'alerts' ? <RoutedAlertsDialog onClose={() => setOps(null)} onOpenLogs={(g) => { setDraft(''); setFState({ category: g.category ?? 'all', severity: g.severity ?? 'all', page: 1, pageSize: f.pageSize }); setOps(null); }} /> : null}
+      {ops === 'retry' ? <RetryQueueDialog onClose={() => setOps(null)} /> : null}
       {open ? <FitDialog wide testId="lgx-detail" title={open.message} subtitle={open.createdIso ? fmtDateTime(open.createdIso) : undefined} onClose={() => setOpen(null)} footer={<>
         {/* backlog Device Integration Logs · 03: this device's own timeline (every event that points at it, newest first) */}
         {open.category === 'device' && open.relatedId && f.relatedId !== open.relatedId ? <button className="btn" data-testid="lgx-device-history" onClick={() => { setDraft(''); setF({ category: 'device', severity: 'all', search: undefined, relatedId: open.relatedId ?? undefined }); setOpen(null); }}>{tt('lgx.deviceHistory')}</button> : null}
