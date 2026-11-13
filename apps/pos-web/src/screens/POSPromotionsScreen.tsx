@@ -28,6 +28,7 @@ import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodSt
 import { DiscountDetailsDialog, RedemptionsTable, TONE, life, pageOf, discountLabel, ticketRoute } from './POSDiscountsScreen';
 import { Actions, AssistantDialog, Campaigns, CheckDialog, DuplicateDialog, Financial, SizePicker, healthTone } from './POSCouponsScreen';
 import { posCouponsApi } from '../api/posCouponsApi';
+import { HealthRunHistory } from '../components/HealthRunHistory';
 import { DealWizard } from './deals/DealWizard';
 import { DealCouponsPanel } from './deals/DealCouponsPanel';
 import { ExpirationCalendar } from './deals/ExpirationCalendar';
@@ -247,7 +248,9 @@ export function POSPromotionsScreen() {
           <ul className="fk-list" data-testid="health-checks">{health.data.checks.map((c: any) => <li key={c.key} className="fk-li" data-testid={'health-' + c.key}>
             <span className={'fk-chip ' + healthTone(c.status)}>{tx('cp.health.' + c.status)}</span>
             <span className="fk-li-t">{tx('cp.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span></li>)}</ul>
-          <div className="fk-hint">{tx('cp.healthNote', { t: when(health.data.checkedAt) })}</div></>}
+          <div className="fk-hint">{tx('cp.healthNote', { t: when(health.data.checkedAt) })}</div>
+          <div className="fk-hint" data-testid="health-daily">{tx('promo.healthDaily')}</div>
+          <HealthRunHistory run={() => posCouponsApi.runHealth()} list={(q) => posCouponsApi.healthRuns(q)} checkLabel={(k) => tx('cp.check.' + k)} onRan={() => health.reload()} /></>}
       </FitPanel> : null}
 
       {sim ? <ConflictSimulatorDialog onClose={() => setSim(false)} /> : null}
@@ -326,8 +329,21 @@ function ChooseDialog({ onClose, onPick }: { onClose: () => void; onPick: (p: { 
   </FitDialog>;
 }
 
+/** one version row of the server's activity (extras Promotions Management 14): the immutable terms snapshot and its uses */
+interface PromoVersionRow { version: number; at: string | null; by: string | null; terms: Record<string, unknown>; redemptions: number; discountedCents: number; firstUsedAt: string | null; lastUsedAt: string | null }
+/** the stored terms in words — only the fields the snapshot holds; nothing derived */
+function versionTermsText(t: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (typeof t.title === 'string') parts.push(t.title);
+  if (t.discountType === 'percent' && t.discountPercent != null) parts.push(`${String(t.discountPercent)}%`);
+  else if (t.discountCents != null) parts.push(fmtMoney(Number(t.discountCents)));
+  if (t.maxRedemptions != null) parts.push(tx('promo.ver.cap', { n: nf(Number(t.maxRedemptions)) }));
+  if (typeof t.endsAt === 'string') parts.push(tx('promo.ver.ends', { d: when(t.endsAt) }));
+  return parts.join(' · ') || '—';
+}
+
 /** §12 Audit tab: who created / published / paused / resumed / archived it, when, and the status before → after. */
-function Activity({ dealId, tick }: { dealId: string; tick: number }) {
+export function Activity({ dealId, tick }: { dealId: string; tick: number }) {
   const a = useLoad(() => posPromotionsApi.activity(dealId), [dealId, tick]);
   if (a.error) return <StateBlock error={a.error} onRetry={a.reload} />;
   if (!a.data) return <div className="fk-loading">{tx('pos.loading')}</div>;
@@ -338,6 +354,15 @@ function Activity({ dealId, tick }: { dealId: string; tick: number }) {
     {d.items.length === 0 ? <Empty title={tx('promo.noActivity')} /> : <ul className="fk-list dense">{d.items.map((r: any) => <li key={r.id} className="fk-li" data-testid="activity-row">
       <span className="fk-li-t">{when(r.at)} · {r.actor ?? tx('promo.system')}</span>
       <span className="fk-li-s">{r.fromStatus || r.toStatus ? `${r.fromStatus ?? '—'} → ${r.toStatus ?? '—'}` : r.action}{r.version != null ? ` · v${r.version}` : ''}</span></li>)}</ul>}
+    {Array.isArray(d.versions) ? <>
+      <h4 className="fk-sub">{tx('promo.ver.title')}</h4>
+      <div className="fk-hint">{tx('promo.ver.rule')}</div>
+      {d.versions.length === 0 ? <Empty title={tx('promo.ver.none')} /> : <ul className="fk-list dense" data-testid="version-list">{d.versions.map((v: PromoVersionRow) => <li key={v.version} className="fk-li" data-testid={'version-' + v.version}>
+        <span className="fk-li-t">v{v.version} · {when(v.at)} · {v.by ?? tx('promo.system')}</span>
+        <span className="fk-li-s">{versionTermsText(v.terms)}</span>
+        <span className="fk-li-s" data-testid={'version-uses-' + v.version}>{v.redemptions ? tx('promo.ver.used', { n: nf(v.redemptions), v: fmtMoney(v.discountedCents), from: when(v.firstUsedAt), to: when(v.lastUsedAt) }) : tx('promo.ver.unused')}</span></li>)}</ul>}
+      {(d.unversionedRedemptions ?? []).length ? <div className="fk-note" data-testid="version-unversioned">{tx('promo.ver.unversioned', { n: nf((d.unversionedRedemptions as { redemptions: number }[]).reduce((a, x) => a + x.redemptions, 0)) })}</div> : null}
+    </> : null}
   </div>;
 }
 

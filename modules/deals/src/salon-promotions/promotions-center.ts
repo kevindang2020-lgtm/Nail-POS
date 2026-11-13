@@ -171,7 +171,37 @@ export class PromotionsCenter {
     const origin = (await sql<any>`select x.goal, x.method, x.edited_fields, x.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from coupon_assistant_drafts x left join users u on u.id = x.created_by_user_id and u.tenant_id = x.tenant_id
       where x.tenant_id = ${ctx.tenantId} and x.deal_id = ${dealId} order by x.created_at, x.id limit 1`.execute(this.db)).rows[0];
     const meta = (m: any) => (m && typeof m === 'object' ? m : {});
+    // extras Promotions Management 14 (round 10): the exact terms of every version (deal_versions — immutable, migration 951)
+    // and which version each redemption used (deal_redemptions.deal_version), so a redemption reads against ITS terms
+    const versions = (await sql<{ version: number; terms: unknown; created_at: unknown; actor: string | null }>`select v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor
+      from deal_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = v.tenant_id
+      where v.tenant_id = ${ctx.tenantId} and v.deal_id = ${dealId} order by v.version desc limit 50`.execute(this.db)).rows;
+    const used = (await sql<{ deal_version: number; uses: number; discounted: string; first_at: unknown; last_at: unknown }>`select r.deal_version, count(*)::int as uses,
+        coalesce(sum(r.amount_discounted_cents), 0)::bigint as discounted, min(r.created_at) as first_at, max(r.created_at) as last_at
+      from deal_redemptions r where r.tenant_id = ${ctx.tenantId} and r.deal_id = ${dealId} and r.status in ('redeemed', 'partially_reversed')
+      group by r.deal_version order by r.deal_version desc`.execute(this.db)).rows;
+    // every TERMS change writes a snapshot (create / update); a status move (submit / approve / publish / pause) bumps the
+    // version without changing terms — so a redemption at version N used the terms of the latest snapshot at or before N
+    const snapVersions = versions.map((v) => Number(v.version));
+    const termsVersionOf = (n: number) => snapVersions.filter((v) => v <= n).reduce<number | null>((m, v) => (m == null || v > m ? v : m), null);
+    const agg = new Map<number, { uses: number; discounted: number; first: unknown; last: unknown; at: number[] }>();
+    const unversioned: { version: number; redemptions: number; discountedCents: number }[] = [];
+    for (const u of used) {
+      const tv = termsVersionOf(Number(u.deal_version));
+      if (tv == null) { unversioned.push({ version: Number(u.deal_version), redemptions: N(u.uses), discountedCents: N(u.discounted) }); continue; }
+      const a = agg.get(tv) ?? { uses: 0, discounted: 0, first: null, last: null, at: [] };
+      a.uses += N(u.uses); a.discounted += N(u.discounted); a.at.push(Number(u.deal_version));
+      if (!a.first || new Date(u.first_at as string) < new Date(a.first as string)) a.first = u.first_at;
+      if (!a.last || new Date(u.last_at as string) > new Date(a.last as string)) a.last = u.last_at;
+      agg.set(tv, a);
+    }
+    const terms = (t: unknown) => (t && typeof t === 'object' ? t as Record<string, unknown> : typeof t === 'string' ? JSON.parse(t) as Record<string, unknown> : {});
     return { dealId, createdAt: iso(d.created_at), createdBy: d.creator ?? null,
+      versions: versions.map((v) => { const u = agg.get(Number(v.version));
+        return { version: Number(v.version), at: iso(v.created_at), by: v.actor ?? null, terms: terms(v.terms), redemptions: u ? u.uses : 0, discountedCents: u ? u.discounted : 0,
+          firstUsedAt: u ? iso(u.first) : null, lastUsedAt: u ? iso(u.last) : null, usedAtVersions: u ? [...u.at].sort((x, y) => x - y) : [] }; }),
+      // a redemption older than every stored snapshot (rows from before the versions table) is shown, never hidden
+      unversionedRedemptions: unversioned,
       assistantOrigin: origin ? { goal: String(origin.goal), method: String(origin.method), editedFields: origin.edited_fields ?? [], at: iso(origin.created_at), by: origin.actor ?? null } : null,
       items: rows.map((r: any) => { const m = meta(r.metadata_json); const before = meta(m.before); const after = meta(m.after);
         return { id: String(r.id), at: iso(r.created_at), action: String(r.action_type), actor: r.actor ?? null, role: r.role ?? null,

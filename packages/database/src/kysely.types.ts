@@ -7175,6 +7175,7 @@ export interface MarketingHealthRunsTable {
   checks: Generated<unknown>;
   checked_by: string | null;
   created_at: Ts;
+  trigger_type: Generated<string>;   // migration 950 — 'manual' | 'scheduled' (extras Promotions 10)
 }
 
 // platform_ad_events — generated from the migrated schema (Nov 5 2026 types sync)

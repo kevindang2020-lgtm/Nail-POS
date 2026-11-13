@@ -222,3 +222,57 @@ describe('§14 trends, §13 assistant, §12 activity, §09 legacy lifecycle', ()
     expect(audit[0].action_type).toBe('deal_paused'); expect(audit[0].metadata_json.before.status).toBe('active'); expect(audit[0].metadata_json.after.status).toBe('paused');
   });
 });
+
+// extras round 10 (agent 5): Promotions Management 03 effective terms · 10 daily reconciliation · 14 terms at each redemption
+describe('extras Promotions Management round 10', () => {
+  it('03: the read-only check returns the EFFECTIVE terms it judged against (current version, value, limits, dates) — and writes no redemption', async () => {
+    const before = Number((await q(`select count(*)::int n from deal_redemptions where tenant_id = $1`, [T]))[0].n);
+    const chk: any = await promo.check(ctx, vishal.id, { serviceIds: [S100], spendCents: 10000, codeEntered: true });
+    expect(chk.terms).toMatchObject({ discountType: 'percent', discountPercent: 20, requiresCode: true, version: (await q(`select version from deals where id = $1`, [vishal.id]))[0].version });
+    expect(chk.terms.redemptionCount).toBe(await used(vishal.id));
+    expect(chk.discountPreviewCents).toBe(2000);
+    expect(Number((await q(`select count(*)::int n from deal_redemptions where tenant_id = $1`, [T]))[0].n)).toBe(before);
+  });
+  it('14: activity lists every version with its exact terms and how many redemptions used it; versions are immutable (update refused, a used version cannot be removed)', async () => {
+    const a: any = await promo.activity(ctx, vishal.id);
+    expect(a.versions.length).toBeGreaterThanOrEqual(1);
+    const live = Number((await q(`select version from deals where id = $1`, [vishal.id]))[0].version);
+    const usedVersions = (await q(`select deal_version, count(*)::int n from deal_redemptions where tenant_id = $1 and deal_id = $2 and status in ('redeemed', 'partially_reversed') group by 1`, [T, vishal.id]));
+    const totalUsed = usedVersions.reduce((n: number, r: any) => n + Number(r.n), 0);
+    expect(a.versions.reduce((n: number, v: any) => n + v.redemptions, 0) + a.unversionedRedemptions.reduce((n: number, v: any) => n + v.redemptions, 0)).toBe(totalUsed);
+    expect(a.versions.map((v: any) => v.version)).toEqual([...a.versions.map((v: any) => v.version)].sort((x: number, y: number) => y - x));   // newest first
+    expect(a.versions[a.versions.length - 1].terms).toMatchObject({ discountPercent: 20 });
+    expect(live).toBeGreaterThanOrEqual(a.versions[0].version);
+    // immutable: no update ever; a version a redemption used can never be removed
+    const v1 = a.versions[a.versions.length - 1].version;
+    await expect(q(`update deal_versions set terms = '{}'::jsonb where deal_id = $1 and version = $2`, [vishal.id, v1])).rejects.toThrow(/immutable/);
+    const usedV = a.versions.find((v: any) => v.redemptions > 0);
+    expect(usedV).toBeTruthy();                                              // the acceptance trace's paid redemption maps to a stored snapshot
+    expect(usedV.usedAtVersions.every((n: number) => n >= usedV.version)).toBe(true);   // status bumps after the snapshot, same terms
+    expect(a.unversionedRedemptions).toEqual([]);
+    await expect(q(`delete from deal_versions where deal_id = $1 and version = $2`, [vishal.id, usedV.version])).rejects.toThrow(/used by a redemption/);
+    // a never-redeemed draft's version may still be taken back with the draft (the assistant's take-back path)
+    const draft = await svc.createDeal(ctx, { ownerType: 'salon', kind: 'coupon', title: 'gone', discountType: 'percent', discountPercent: 5, code: 'GONE5X', serviceIds: [] } as any);
+    await q(`delete from deal_versions where deal_id = $1`, [draft.id]);
+    expect(await code(promo.activity(ctxX, vishal.id))).toBe('PROMOTION_NOT_FOUND');
+  });
+  it('10: the daily reconciliation records ONE scheduled run per salon per day (the same checks), skips a salon already checked, and the history says it was scheduled', async () => {
+    const { runScheduledPromotionChecks } = await import('./coupon-center');
+    const runs = async (t: string) => (await q(`select trigger_type, checked_by from marketing_health_runs where tenant_id = $1 and area = 'coupons' order by created_at`, [t]));
+    const n0 = (await runs(T)).length;
+    const first = await runScheduledPromotionChecks(db);
+    expect(first).toBeGreaterThanOrEqual(1);
+    const after = await runs(T);
+    expect(after.length).toBe(n0 + 1);
+    expect(after[after.length - 1]).toEqual({ trigger_type: 'scheduled', checked_by: null });
+    expect(await runScheduledPromotionChecks(db)).toBe(0);                 // the same day again: nothing new
+    expect((await runs(T)).length).toBe(n0 + 1);
+    await center.runHealth(ctx);                                            // a person's run is still recorded as manual
+    const h = await center.healthRuns(ctx, { page: 1, pageSize: 10 });
+    expect(h.items[0]).toMatchObject({ trigger: 'manual' });
+    expect(h.items.some((r: any) => r.trigger === 'scheduled' && r.by === null)).toBe(true);
+    // the scheduled run is the same read-only checks the screen runs
+    const sched = h.items.find((r: any) => r.trigger === 'scheduled');
+    expect(sched.checks.map((c: any) => c.key)).toEqual((await center.health(ctxAll)).checks.map((c: any) => c.key));
+  });
+});

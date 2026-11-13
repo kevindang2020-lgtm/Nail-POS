@@ -11,7 +11,12 @@ export interface CouponCheck {
   context: { ticketId: string | null; customerId: string | null; serviceIds: string[]; spendCents: number; onTicket: number; policy: string };
   /** Extras · Coupons 06 — why this offer does / does not combine with each other benefit (the pricing engine's own rules) */
   stacking?: { mode: string; rows: { benefit: string; combines: 'yes' | 'no' | 'conditional' | 'limit' | 'none'; reason: string; message: string; value?: number | null }[] };
+  /** extras Promotions Management 03 — the effective terms the verdict was judged against (older servers: absent) */
+  terms?: CheckTermsView;
 }
+export interface CheckTermsView { version: number; discountType: string; discountPercent: number | null; discountCents: number | null; maxDiscountCents: number | null;
+  startsAt: string | null; endsAt: string | null; minSpendCents: number | null; newCustomersOnly: boolean; memberOnly: boolean; maxRedemptions: number | null; redemptionCount: number;
+  maxPerCustomer: number | null; requiresCode: boolean; serviceIds: string[]; stackable: boolean; termsText: string | null }
 export type CouponAssistGoal = 'slow_weekdays' | 'promote_service' | 'returning_visits' | 'reconnect_inactive';
 export const posCouponsApi = {
   check: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean }) => api.post<CouponCheck>(`/pos/coupons/${encodeURIComponent(dealId)}/check`, body),

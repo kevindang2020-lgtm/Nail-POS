@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 const { disc, cp, pr, deals } = vi.hoisted(() => ({
   disc: { kpis: vi.fn(), list: vi.fn(), redemptions: vi.fn(), performance: vi.fn(), detail: vi.fn(), exportList: vi.fn(), exportRedemptions: vi.fn() },
-  cp: { check: vi.fn(), campaigns: vi.fn(), health: vi.fn(), suggest: vi.fn(), draft: vi.fn(), duplicate: vi.fn() },
+  cp: { check: vi.fn(), campaigns: vi.fn(), health: vi.fn(), suggest: vi.fn(), draft: vi.fn(), duplicate: vi.fn(), runHealth: vi.fn(), healthRuns: vi.fn() },
   pr: { check: vi.fn(), checks: vi.fn(), trends: vi.fn(), suggest: vi.fn(), activity: vi.fn() },
   deals: { pause: vi.fn(), resume: vi.fn(), archive: vi.fn(), publish: vi.fn(), get: vi.fn() },
 }));
@@ -17,7 +17,7 @@ vi.mock('../api/posDealsApi', () => ({ posDealsApi: deals }));
 vi.mock('../api/posServicesApi', () => ({ posServicesApi: { list: vi.fn().mockResolvedValue([]) } }));
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ ok: true, branches: [] }) } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
-import { POSPromotionsScreen } from './POSPromotionsScreen';
+import { POSPromotionsScreen, Activity } from './POSPromotionsScreen';
 
 const period = { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-30' };
 const kpis = { today: '2026-10-30', total: 1, activeDiscounts: 1, percentOff: 1, fixedAmount: 0, redemptions: 0, expiringSoon: 0, expiringWindowDays: 7,
@@ -100,5 +100,42 @@ describe('POSPromotionsScreen', () => {
     const link = (await screen.findAllByTestId('red-ticket')).find((x) => x.textContent === '#3001')!;
     fireEvent.click(link);
     expect(await screen.findByTestId('where')).toHaveTextContent('/tenant/payments/transactions?search=3001');
+  });
+  // extras round 10 (agent 5): Promotions Management 03 / 10 / 14
+  it('03: Check shows the effective terms Checkout reads (version, value, uses of cap, who) beside the verdict', async () => {
+    pr.check.mockResolvedValue({ verdict: 'ELIGIBLE', eligible: true, action: '', reasons: [], dealId: 'd1', title: 'vishal', status: 'active', discountPreviewCents: 2000, eligibleBaseCents: 10000, checkId: 'k1', checkedAt: '2026-10-30T20:00:00Z', logged: true,
+      context: { ticketId: null, customerId: null, serviceIds: [], spendCents: 10000, onTicket: 0, policy: 'best_single' },
+      terms: { version: 4, discountType: 'percent', discountPercent: 20, discountCents: null, maxDiscountCents: null, startsAt: null, endsAt: null, minSpendCents: null, newCustomersOnly: true, memberOnly: false, maxRedemptions: 50, redemptionCount: 3, maxPerCustomer: 1, requiresCode: true, serviceIds: [], stackable: false, termsText: null } });
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('row-check'));
+    fireEvent.change(screen.getByTestId('check-spend'), { target: { value: '100' } });
+    fireEvent.click(screen.getByTestId('check-run'));
+    const t = await screen.findByTestId('check-terms');
+    expect(t).toHaveTextContent('v4');
+    expect(screen.getByTestId('check-terms-value')).toHaveTextContent('20%');
+    expect(screen.getByTestId('check-terms-uses')).toHaveTextContent('3 of 50 · 1 per customer');
+    expect(t).toHaveTextContent(/new customers only · code required/);
+    expect(t).toHaveTextContent(/saves no redemption and charges nothing/);
+  });
+  it('10: the health tab says the checks run daily and lists scheduled runs as "Daily schedule"', async () => {
+    cp.health.mockResolvedValue({ overall: 'ready', checkedAt: '2026-10-30T20:00:00Z', checks: [{ key: 'counters', status: 'ready', count: 0, detail: 'ok', sample: [] }] });
+    cp.healthRuns.mockResolvedValue({ items: [{ id: 'h1', overall: 'attention', at: '2026-10-30T09:00:00Z', by: null, trigger: 'scheduled', attention: ['paid_not_marked'] }, { id: 'h0', overall: 'ready', at: '2026-10-29T15:00:00Z', by: 'Linh Owner', trigger: 'manual', attention: [] }], page: 1, pageSize: 5, totalItems: 2, totalPages: 1 });
+    renderScreen('/tenant/marketing/promotions?scope=health');
+    expect(await screen.findByTestId('health-daily')).toBeInTheDocument();
+    const rows = await screen.findAllByTestId('health-run-row');
+    expect(rows[0]).toHaveTextContent('Daily schedule');
+    expect(rows[1]).toHaveTextContent('Linh Owner');
+  });
+  it('14: Activity lists every terms version with its stored terms and its redemptions; older un-versioned uses are shown, never hidden', async () => {
+    pr.activity.mockResolvedValue({ dealId: 'd1', createdAt: '2026-10-27T12:00:00Z', createdBy: 'Linh Owner', assistantOrigin: null, items: [],
+      versions: [{ version: 5, at: '2026-10-29T12:00:00Z', by: 'Linh Owner', terms: { title: 'vishal', discountType: 'percent', discountPercent: 25 }, redemptions: 0, discountedCents: 0, firstUsedAt: null, lastUsedAt: null },
+        { version: 1, at: '2026-10-27T12:00:00Z', by: 'Linh Owner', terms: { title: 'vishal', discountType: 'percent', discountPercent: 20, maxRedemptions: 50 }, redemptions: 3, discountedCents: 6000, firstUsedAt: '2026-10-28T15:00:00Z', lastUsedAt: '2026-10-28T18:00:00Z' }],
+      unversionedRedemptions: [{ version: 0, redemptions: 2, discountedCents: 1000 }] });
+    render(<MemoryRouter><Activity dealId="d1" tick={0} /></MemoryRouter>);
+    expect(await screen.findByTestId('version-5')).toHaveTextContent('vishal · 25%');
+    expect(screen.getByTestId('version-uses-5')).toHaveTextContent('Not used');
+    expect(screen.getByTestId('version-1')).toHaveTextContent('vishal · 20% · cap 50');
+    expect(screen.getByTestId('version-uses-1')).toHaveTextContent(/3 redemption\(s\) · \$60.00 off/);
+    expect(screen.getByTestId('version-unversioned')).toHaveTextContent('2 older redemption(s)');
   });
 });

@@ -56,6 +56,8 @@ describe('Discount details — source-based ROI and branch scorecard (read-only)
     expect(d.roi).toEqual({
       associatedRevenueCents: 8000 + 3000 + 6000 + 5000, associatedTickets: 4, discountCostCents: 2000 + 500 + 1000 + 1000, redemptions: 4,
       campaignSpend: { campaigns: 1, messagesSent: 2, messagesCosted: 2, spendCents: 2, state: 'known' }, incrementalLift: 'unverified',
+      // extras Promotions Management 12 (round 10): revenue − discount − the reported spend; explicitly NOT incremental
+      measuredContribution: { cents: 22000 - 4500 - 2, basis: 'revenue_minus_discount_and_spend', incremental: false },
     });
     expect(d.roi.discountCostCents).toBe(d.usage.savingsCents);   // the same figure the usage card shows
   });
@@ -73,6 +75,7 @@ describe('Discount details — source-based ROI and branch scorecard (read-only)
     const d2 = await repo.detail(owner, id('d2')) as any;
     expect(d2.roi.campaignSpend).toEqual({ campaigns: 1, messagesSent: 1, messagesCosted: 0, spendCents: null, state: 'cost_unknown' });
     expect(d2.roi.associatedRevenueCents).toBe(0); expect(d2.byBranch).toEqual([]);
+    expect(d2.roi.measuredContribution).toEqual({ cents: null, basis: 'spend_unknown', incremental: false });   // never guessed while spend is unknown
     await expect(repo.detail(owner, id('d9'))).rejects.toThrow();   // another salon's offer is not found
   });
 });

@@ -114,4 +114,27 @@ export const COUPONS_VI = {
   'cp.rel.sharedServices': '{n} dịch vụ chung', // DRAFT — Kevin reviews
   'cp.rel.stackable': 'Cộng gộp được', // DRAFT — Kevin reviews
   'cp.rel.note': 'Cùng quyền lợi = cùng loại và mức giảm, chi nhánh và dịch vụ trùng nhau, và ngày trùng nhau. Hãy xem lại cả hai có đúng ý không; ở đây không thay đổi gì.', // DRAFT — Kevin reviews
+  'cp.terms.version': 'Phiên bản điều khoản', // DRAFT — Kevin reviews
+  'cp.terms.value': 'Mức giảm', // DRAFT — Kevin reviews
+  'cp.terms.cap': 'tối đa {v}', // DRAFT — Kevin reviews
+  'cp.terms.dates': 'Hiệu lực', // DRAFT — Kevin reviews
+  'cp.terms.noEnd': 'không có ngày kết thúc', // DRAFT — Kevin reviews
+  'cp.terms.minSpend': 'Chi tiêu tối thiểu', // DRAFT — Kevin reviews
+  'cp.terms.uses': 'Lượt dùng', // DRAFT — Kevin reviews
+  'cp.terms.usesOf': '{n} trên {m}', // DRAFT — Kevin reviews
+  'cp.terms.perCustomer': '{n} mỗi khách', // DRAFT — Kevin reviews
+  'cp.terms.who': 'Ai và dịch vụ nào', // DRAFT — Kevin reviews
+  'cp.terms.newOnly': 'chỉ khách mới', // DRAFT — Kevin reviews
+  'cp.terms.memberOnly': 'chỉ hội viên', // DRAFT — Kevin reviews
+  'cp.terms.code': 'cần mã', // DRAFT — Kevin reviews
+  'cp.terms.services': '{n} dịch vụ', // DRAFT — Kevin reviews
+  'cp.terms.everyone': 'mọi khách, mọi dịch vụ', // DRAFT — Kevin reviews
+  'cp.terms.note': 'Đây là điều khoản mà Thanh toán đang đọc. Việc kiểm tra không lưu lượt dùng nào và không thu tiền.', // DRAFT — Kevin reviews
+  'cp.roi.contribution': 'Đóng góp đo được', // DRAFT — Kevin reviews
+  'cp.roi.contributionUnknown': 'Chưa biết — chi phí chiến dịch chưa được báo đủ', // DRAFT — Kevin reviews
+  'cp.roi.contrib.revenue_minus_discount': 'Doanh số liên quan trừ số tiền đã giảm.', // DRAFT — Kevin reviews
+  'cp.roi.contrib.revenue_minus_discount_and_spend': 'Doanh số liên quan trừ số tiền đã giảm và chi phí chiến dịch đã được báo.', // DRAFT — Kevin reviews
+  'cp.roi.contrib.spend_unknown': 'Không tính khi chưa biết chi phí chiến dịch.', // DRAFT — Kevin reviews
+  'cp.roi.notIncremental': 'Đây không phải lợi nhuận tăng thêm: các doanh số đó có thể vẫn xảy ra khi không có ưu đãi.', // DRAFT — Kevin reviews
+  'cp.healthScheduled': 'Lịch hằng ngày', // DRAFT — Kevin reviews
 } as const;
