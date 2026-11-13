@@ -4,7 +4,7 @@ import { ProductionBookingDataAdapter, type HttpClient } from '../adapters/Produ
 import { BookingDomainError } from '../domain/bookingErrors';
 import { minuteOfDay, toISO } from '../domain/time';
 import { buildFixture, FIXTURE_BRANCH, FIXTURE_DATE, FIXTURE_TENANT, FIXTURE_TZ, withForeignTenant } from '../fixtures/fixtures';
-import { LocalRealtimeBus, type ScheduleEventEnvelope } from '../realtime/events';
+import { LocalScheduleEventHub, type ScheduleEventEnvelope } from '../realtime/events';
 
 const scope = { tenantId: FIXTURE_TENANT, branchId: FIXTURE_BRANCH };
 const at = (m: number) => toISO(FIXTURE_DATE, m, FIXTURE_TZ);
@@ -237,7 +237,7 @@ describe('ProductionBookingDataAdapter — contract wiring', () => {
         return { appointmentId: 'a9', customerName: 'c', technicianId: 't', startTime: '10:00', endTime: '10:45', status: 'booked', services: [] } as never;
       },
     };
-    const bus = new LocalRealtimeBus();
+    const bus = new LocalScheduleEventHub();
     const p = new ProductionBookingDataAdapter({ http, realtime: bus, timezone: () => FIXTURE_TZ, loadServices: async () => [] });
     expect(p.pagesOnServer).toBe(true);
     await p.getScheduleRange({ ...scope, fromDate: FIXTURE_DATE, toDate: FIXTURE_DATE, statuses: ['confirmed'], page: 2, pageSize: 12, workingOnly: true });

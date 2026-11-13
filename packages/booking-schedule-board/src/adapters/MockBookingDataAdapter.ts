@@ -42,7 +42,7 @@ import type {
   Unsubscribe,
 } from '../domain/scheduleTypes';
 import { dateOf, hhmmToMinutes, minuteOfDay, toISO } from '../domain/time';
-import { LocalRealtimeBus, type ScheduleEvent, type ScheduleEventEnvelope } from '../realtime/events';
+import { LocalScheduleEventHub, type ScheduleEvent, type ScheduleEventEnvelope } from '../realtime/events';
 import type {
   BookingDataAdapter,
   CancelAppointmentInput,
@@ -86,7 +86,7 @@ export interface MockAdapterOptions {
   userId?: ID;
   /** Fixed "now" for lead-time policy; defaults to the real clock. */
   now?: () => Date;
-  bus?: LocalRealtimeBus;
+  bus?: LocalScheduleEventHub;
 }
 
 export interface AuditEntry {
@@ -103,7 +103,7 @@ export interface AuditEntry {
 const branchKey = (s: ScopeInput) => `${s.tenantId}::${s.branchId}`;
 
 export class MockBookingDataAdapter implements BookingDataAdapter {
-  readonly bus: LocalRealtimeBus;
+  readonly bus: LocalScheduleEventHub;
   readonly audit: AuditEntry[] = [];
   private data: MockStoreData;
   private readonly opts: Required<Pick<MockAdapterOptions, 'latencyMs' | 'userId' | 'now'>>;
@@ -116,7 +116,7 @@ export class MockBookingDataAdapter implements BookingDataAdapter {
 
   constructor(data: MockStoreData, opts: MockAdapterOptions = {}) {
     this.data = structuredClone(data);
-    this.bus = opts.bus ?? new LocalRealtimeBus();
+    this.bus = opts.bus ?? new LocalScheduleEventHub();
     this.opts = { latencyMs: opts.latencyMs ?? 0, userId: opts.userId ?? 'user-mock', now: opts.now ?? (() => new Date()) };
   }
 

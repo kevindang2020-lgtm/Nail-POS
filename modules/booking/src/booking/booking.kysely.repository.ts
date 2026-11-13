@@ -36,7 +36,7 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
   /** the filter facet's branch list: the session branch's own name from branches (no sample data); [] when unknown */
   private async sessionBranchFacet(ctx: { tenantId: string; branchId?: string | null }): Promise<{ branchId: string; name: string }[]> {
     if (!ctx.branchId) return [];
-    const b = await (this.db as any).selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', ctx.tenantId).where('id', '=', ctx.branchId).executeTakeFirst();
+    const b = await this.db.selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', ctx.tenantId).where('id', '=', ctx.branchId).executeTakeFirst();
     return b ? [{ branchId: String(b.id), name: String(b.name) }] : [];
   }
   private seq = Date.now() % 1000000;

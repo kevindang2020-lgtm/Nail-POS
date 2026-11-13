@@ -66,7 +66,7 @@ export function affectedTechnicians(e: ScheduleEvent): ID[] | 'all' {
 }
 
 /** Simple in-process event bus used by the mock adapter and the demo host. */
-export class LocalRealtimeBus implements RealtimeClient {
+export class LocalScheduleEventHub implements RealtimeClient {
   private handlers = new Set<{ sub: ScheduleSubscription; fn: (e: ScheduleEventEnvelope) => void }>();
 
   subscribe(sub: ScheduleSubscription, fn: (e: ScheduleEventEnvelope) => void): Unsubscribe {

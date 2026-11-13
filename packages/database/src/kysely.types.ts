@@ -8408,6 +8408,7 @@ export interface WalkinServiceRequestsTable {
   id: Generated<string>; tenant_id: string; branch_id: string; device_ref: string; checkin_request_id: string; payload_hash: string; catalog_revision: string;
   lines: Generated<unknown>; services_pending: Generated<boolean>; estimated_total_cents: Generated<number | string>; estimated_minutes: Generated<number>;
   status: Generated<string>; queue_item_id: string | null; result: unknown | null; created_at: Ts; updated_at: Ts;
+  updated_by: string | null;   // migration 991 (actor stamp; NULL for display writes)
 }
 export interface DevicePushTokensTable {
   id: Generated<string>; tenant_id: string | null; user_id: string; platform: string; token: string;
