@@ -1820,4 +1820,15 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "acx.find.k.panel-compliance": "tuân thủ a2p 10dlc nhắn tin mật khẩu", // DRAFT — Kevin reviews
   "acx.find.d.panel-backup": "Lần sao lưu trước, kế tiếp và tình trạng", // DRAFT — Kevin reviews
   "acx.find.k.panel-backup": "sao lưu dữ liệu khôi phục", // DRAFT — Kevin reviews
+  "ops.serving.sdReady": "Hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "ops.serving.sdState.ready": "Sẵn sàng", // DRAFT — Kevin reviews
+  "ops.serving.sdState.not_ready": "Chưa sẵn sàng", // DRAFT — Kevin reviews
+  "ops.serving.sdState.handed_off": "Đã chuyển sang Hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "ops.serving.sdVia.mark_ready": "Đánh dấu sẵn sàng", // DRAFT — Kevin reviews
+  "ops.serving.sdVia.send_to_service_done": "Chuyển sang Hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NOT_STARTED": "Dịch vụ chưa bắt đầu.", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NOTES_REQUIRED": "Tiệm yêu cầu ghi chú dịch vụ trước khi đánh dấu sẵn sàng.", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NO_PERMISSION": "Vai trò của bạn không thể chuyển khách này sang Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NOT_IN_SERVICE": "Lượt này không ở trạng thái có thể chuyển sang Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
+  "ops.serving.sdOpen": "{n} dòng dịch vụ chưa đánh dấu xong — không bắt buộc để hoàn tất", // DRAFT — Kevin reviews
 };

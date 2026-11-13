@@ -12,6 +12,7 @@ import {
   AssignServingHelperRequest, ReopenServiceDoneRequest, ReportDelayRequest, ClearDelayRequest, canMarkDone, canSendToServiceDone,
   buildServiceDoneIdempotencyKey, subtotalFromServingLines, ServiceOption, TechnicianOption,
   servingNextActions, SERVING_ACTION_PERMISSION, addOnLineIdFor, buildBalanceSuggestions, type ServingAction, type ServingBalanceSuggestion,
+  serviceDoneReadiness, type ServiceDoneReadiness, type ServingWorkflowSettings,
 } from './serving.dto';
 import { createHash } from 'node:crypto';
 import { ServingContext, ServingRepositoryPort, SVLine } from './serving.repository';
@@ -139,6 +140,11 @@ export class ServingService {
   private actionsFor(ctx: ServingContext, status: POSServingTicketRow['status'], settings: { allowPauseResume: boolean }): ServingAction[] {
     return servingNextActions(status, settings).filter((a) => hasPermission(ctx as Parameters<typeof hasPermission>[0], SERVING_ACTION_PERMISSION[a]));
   }
+  /** Serving 05: the Service Done readiness of one visit for THIS person — THE gates + this person's permissions (read only) */
+  private readinessFor(ctx: ServingContext, d: POSServingTicketDetailFull, settings: ServingWorkflowSettings): ServiceDoneReadiness {
+    const can = (k: string) => hasPermission(ctx as Parameters<typeof hasPermission>[0], k);
+    return serviceDoneReadiness({ status: d.status, notes: d.notes, settings, lines: d.services || [], canMarkReady: can(SERVING_ACTION_PERMISSION.mark_ready), canSend: can(SERVING_ACTION_PERMISSION.send_to_service_done) && can('pos.service_done.view') });
+  }
   // ---- read ----
   async getState(ctx: ServingContext, f: ServingFilters = {}): Promise<POSServingFullState> {
     this.need(ctx, 'pos.serving.view'); const st = await this.repo.query(ctx, f);
@@ -147,7 +153,7 @@ export class ServingService {
   }
   async getKpis(ctx: ServingContext) { return (await this.getState(ctx)).kpis; }
   async tickets(ctx: ServingContext, f: ServingFilters = {}): Promise<{ items: POSServingTicketRow[]; pagination: any }> { this.need(ctx, 'pos.serving.view'); return (await this.repo.query(ctx, f)).tickets; }
-  async detail(ctx: ServingContext, id: string): Promise<POSServingTicketDetailFull> { this.need(ctx, 'pos.serving.view'); const d = await this.repo.detail(ctx, id); if (!d) throw withCode(new ValidationError('Ticket not found'), 'TICKET_NOT_FOUND'); d.addOnSuggestions = await this.buildAddOnSuggestions(ctx, d); d.allowedActions = this.actionsFor(ctx, d.status, await this.repo.settings(ctx)); this.log(ctx, 'pos_serving_ticket_viewed', 'pos_serving_ticket', id); return d; }
+  async detail(ctx: ServingContext, id: string): Promise<POSServingTicketDetailFull> { this.need(ctx, 'pos.serving.view'); const d = await this.repo.detail(ctx, id); if (!d) throw withCode(new ValidationError('Ticket not found'), 'TICKET_NOT_FOUND'); d.addOnSuggestions = await this.buildAddOnSuggestions(ctx, d); const settings = await this.repo.settings(ctx); d.allowedActions = this.actionsFor(ctx, d.status, settings); d.serviceDoneReadiness = this.readinessFor(ctx, d, settings); this.log(ctx, 'pos_serving_ticket_viewed', 'pos_serving_ticket', id); return d; }
 
   /** Canonical add-on suggestion builder (master doc §Serving "Add-ons"): active catalog services in the 'Add-on'
    *  category that are not already on the ticket. Used by BOTH the POS detail above and the tech app read below —

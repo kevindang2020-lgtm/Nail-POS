@@ -17,6 +17,7 @@ import { statusLabel, statusLabelOrNull, humanizeCode } from '../i18n/status-lab
 import { floorLabel, floorInsight } from './opsStatus';
 import { fmtDateTime, fmtTime, fmtMoney, displayLocale } from '../i18n/format';
 import { codedText } from '../i18n/coded-text';
+import { codeLabel } from '../components/codeLabel';
 import type { CodedText } from '@aipowersalon/api-contracts';
 // POS Serving — the live service floor (Serving mandate, Oct 28 2026). One fixed 1920×1080 screen at 100 % zoom: title +
 // filters + live · 9 KPIs · Live Service Floor | Service Progress Board | AI Service Insights · Technician Service
@@ -43,6 +44,8 @@ type SVDetail = {
   primaryTechnician?: { technicianId: string; name: string }; estimatedEndAt?: string | null; elapsedMinutes?: number; estimatedDurationMinutes?: number;
   subtotalCents: number; notes?: string; customerVisibleNotes?: string; delayReason?: string;
   addOnSuggestions?: { serviceId: string; serviceName: string; priceCents: number }[];
+  /** extras Serving 05 — the server's answer from THE Service Done gates + this person's permissions (never re-derived here) */
+  serviceDoneReadiness?: { state: 'ready' | 'not_ready' | 'handed_off'; reasons: string[]; openServiceLines: number; via: 'mark_ready' | 'send_to_service_done' | null };
 };
 type TechPerf = { technicianId?: string; name: string; activeGuests: number; revenueCents: number; tipsCents: number; utilizationPercent: number | null; avgMinutes: number; rating: number | null };
 type StaffRow = { technicianId?: string; name: string; specialty?: string; currentLoad?: number; nextAvailable?: string; status: string };
@@ -573,6 +576,12 @@ export function POSServingScreen() {
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.started_at')}</span><b>{hhmm(detail.startedAt)}</b></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>{tx('pos.elapsed')}</span><b>{selTicket ? elapsedOf(selTicket) : detail.elapsedMinutes ?? 0}′ / {detail.estimatedDurationMinutes || '—'}′</b></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>{tx('pos.preferred_tech')}</span><b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{cust?.preferredTechName || '—'}</b></div>
+                    {detail.serviceDoneReadiness ? (() => { const r = detail.serviceDoneReadiness; return (
+                      <div data-testid="sv-sd-ready" data-state={r.state} style={{ marginTop: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}><span style={{ color: 'var(--muted)' }}>{tx('ops.serving.sdReady')}</span><b style={{ color: r.state === 'ready' ? '#1F7A3F' : r.state === 'handed_off' ? '#553FB0' : '#9a6a12' }}>{codeLabel('ops.serving.sdState', r.state)}{r.state === 'ready' && r.via ? ` · ${codeLabel('ops.serving.sdVia', r.via)}` : ''}</b></div>
+                        {r.state === 'not_ready' ? r.reasons.map((c) => <div key={c} style={{ color: 'var(--soft)', fontSize: 10.5 }} data-testid={`sv-sd-why-${c}`}>{codeLabel('ops.serving.sdWhy', c)}</div>) : null}
+                        {r.state !== 'handed_off' && r.openServiceLines > 0 ? <div style={{ color: 'var(--soft)', fontSize: 10.5 }} data-testid="sv-sd-open">{tx('ops.serving.sdOpen', { n: String(r.openServiceLines) })}</div> : null}
+                      </div>); })() : null}
                     {detail.delayReason ? <div style={{ color: '#A8321F', marginTop: 2 }}>⚠ {detail.delayReason}</div> : null}
                     {detail.customerVisibleNotes || detail.notes ? <div style={{ marginTop: 3, color: 'var(--soft)' }}><span style={{ color: 'var(--muted)' }}>{tx('pos.service_notes')}: </span>{detail.customerVisibleNotes || detail.notes}</div> : null}
                   </div>
