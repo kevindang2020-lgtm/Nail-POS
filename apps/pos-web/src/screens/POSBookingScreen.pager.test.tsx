@@ -4,6 +4,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSBookingScreen, boardPageCacheKey } from './POSBookingScreen';
+import { useClassicBookingBoard } from './booking/boardMode.testkit';
+// these tests pin the CLASSIC calendar (recoverable behind "Classic board" since the Booking Schedule Board merge, Nov 13 2026)
+useClassicBookingBoard();
 
 const state = {
   kpis: { totalBookingsToday: 0, confirmedBookings: 0, cancelledBookings: 0, noShowBookings: 0, onlineBookings: 0, conflictCount: 0 },

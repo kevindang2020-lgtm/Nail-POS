@@ -1,0 +1,23 @@
+/* bookingBoard.css — Booking page only: the merged schedule board inside the POS. Every rule is scoped under
+   .pos-booking-board (never header / nav / button / body / .topbar — the shared top bar and sidebar are frozen).
+   The picture's status palette (addendum §04) stays the package's; the accent, ink, lines and font map to POS tokens. */
+.pos-booking-board {
+  height: calc(100vh - 150px);   /* calendar-first: the board scrolls inside itself, the page does not grow with the day */
+  min-height: 600px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line, #dbe4ed);
+  border-radius: 12px;
+  background: #fff;
+  padding: 4px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pos-booking-board > .bsb-root { flex: 1 1 auto; min-height: 0; }
+.pos-booking-board .bsb-root {
+  --bsb-accent: var(--aps-orange, #fe5c17);
+  --bsb-ink: var(--text, #1f2430);
+  --bsb-font: inherit;
+}
+.pos-booking-board.is-fullscreen { position: fixed; inset: 0; z-index: 60; height: auto; margin: 0; border-radius: 0; }
+.pos-booking-board-switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }

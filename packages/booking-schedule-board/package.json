@@ -1,0 +1,23 @@
+{
+  "name": "@aipowersalon/booking-schedule-board",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Booking Schedule Board for the AIPowerSalon POS Booking page (merged from the standalone package, Nov 13 2026)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts",
+    "./board.css": "./src/styles/board.css"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:no-print": "node scripts/check-no-print.mjs"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

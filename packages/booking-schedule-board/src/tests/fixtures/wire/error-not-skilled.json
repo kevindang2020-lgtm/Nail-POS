@@ -1,0 +1,7 @@
+{
+  "status": 400,
+  "body": {
+    "message": "This technician is not currently approved for this service.",
+    "code": "TECHNICIAN_NOT_SKILLED_FOR_SERVICES"
+  }
+}

@@ -11,6 +11,9 @@ const perms = { deny: new Set<string>() };
 vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => !perms.deny.has(p) }));
 
 import { POSBookingScreen } from './POSBookingScreen';
+import { useClassicBookingBoard } from './booking/boardMode.testkit';
+// these tests pin the CLASSIC calendar (recoverable behind "Classic board" since the Booking Schedule Board merge, Nov 13 2026)
+useClassicBookingBoard();
 
 const state = {
   kpis: { totalBookingsToday: 2, confirmedBookings: 2, checkedInBookings: 0, waitingBookings: 0, inServiceBookings: 0, completedBookings: 0, cancelledBookings: 0, noShowBookings: 0, onlineBookings: 0, googleBookings: 0, aiBookings: 0, conflictCount: 0, depositsCollectedCents: 0 },

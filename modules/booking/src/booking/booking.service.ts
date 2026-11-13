@@ -276,7 +276,7 @@ export class BookingService {
   private async assertTechSkilled(ctx: BookingContext, technicianId: string, services: PBServiceLine[]): Promise<void> {
     if (this.skills) {
       try { await this.skills.assertSkilled({ tenantId: ctx.tenantId, branchId: ctx.branchId || null, technicianId, serviceIds: services.map((s) => s.serviceId), actor: { userId: ctx.userId, role: ctx.role, permissions: ctx.permissions } }); return; }
-      catch (e: any) { if (e instanceof TechnicianNotSkilledError || e?.name === 'TechnicianNotSkilledError') throw new ValidationError(e.message || 'Technician is not skilled for the selected services'); throw e; }
+      catch (e: any) { if (e instanceof TechnicianNotSkilledError || e?.name === 'TechnicianNotSkilledError') throw withCode(new ValidationError(e.message || 'Technician is not skilled for the selected services'), 'TECHNICIAN_NOT_SKILLED_FOR_SERVICES'); throw e; }   // merge Nov 13 2026: the board maps the CODE (it had none on this path)
     }
     if (!(await this.techSkilledFor(ctx, technicianId, services))) throw withCode(new ValidationError('Technician is not skilled for the selected services'), 'TECHNICIAN_NOT_SKILLED_FOR_SERVICES');
   }

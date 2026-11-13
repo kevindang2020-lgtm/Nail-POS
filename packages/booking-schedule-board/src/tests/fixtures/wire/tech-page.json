@@ -1,0 +1,44 @@
+{
+  "date": "2031-03-04",
+  "technicians": [
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000a1",
+      "name": "Ava Able",
+      "rosterNumber": 1,
+      "avatarUrl": null,
+      "available": true,
+      "workingToday": true,
+      "skills": [],
+      "rating": null,
+      "reviewCount": 0
+    },
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000b1",
+      "name": "Bea Bright",
+      "rosterNumber": 2,
+      "avatarUrl": null,
+      "available": true,
+      "workingToday": true,
+      "skills": [],
+      "rating": null,
+      "reviewCount": 0
+    },
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000d1",
+      "name": "Cy Calm",
+      "rosterNumber": 3,
+      "avatarUrl": null,
+      "available": true,
+      "workingToday": true,
+      "skills": [],
+      "rating": null,
+      "reviewCount": 0
+    }
+  ],
+  "total": 3,
+  "totalAll": 3,
+  "workingCount": 3,
+  "page": 1,
+  "pageSize": 12,
+  "totalPages": 1
+}

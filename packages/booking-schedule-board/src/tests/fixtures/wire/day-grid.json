@@ -1,0 +1,166 @@
+{
+  "date": "2031-03-04",
+  "openTime": "09:00",
+  "closeTime": "19:00",
+  "slotIntervalMinutes": 15,
+  "bufferMinutes": 0,
+  "defaultServiceDurationMinutes": 45,
+  "columns": [
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000a1",
+      "name": "Ava Able",
+      "available": true,
+      "skills": [],
+      "avatarUrl": null,
+      "rating": null,
+      "reviewCount": 0,
+      "windows": [
+        {
+          "start": 540,
+          "end": 1140
+        }
+      ],
+      "blocked": [],
+      "openRanges": [
+        {
+          "start": 540,
+          "end": 600,
+          "minutes": 60
+        },
+        {
+          "start": 645,
+          "end": 690,
+          "minutes": 45
+        },
+        {
+          "start": 735,
+          "end": 1140,
+          "minutes": 405
+        }
+      ],
+      "openMinutes": 510,
+      "openSlotCount": 28
+    },
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000b1",
+      "name": "Bea Bright",
+      "available": true,
+      "skills": [],
+      "avatarUrl": null,
+      "rating": null,
+      "reviewCount": 0,
+      "windows": [
+        {
+          "start": 540,
+          "end": 1140
+        }
+      ],
+      "blocked": [],
+      "openRanges": [
+        {
+          "start": 540,
+          "end": 1140,
+          "minutes": 600
+        }
+      ],
+      "openMinutes": 600,
+      "openSlotCount": 38
+    },
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000d1",
+      "name": "Cy Calm",
+      "available": true,
+      "skills": [],
+      "avatarUrl": null,
+      "rating": null,
+      "reviewCount": 0,
+      "windows": [
+        {
+          "start": 540,
+          "end": 1140
+        }
+      ],
+      "blocked": [],
+      "openRanges": [
+        {
+          "start": 540,
+          "end": 1140,
+          "minutes": 600
+        }
+      ],
+      "openMinutes": 600,
+      "openSlotCount": 38
+    }
+  ],
+  "totalOpenSlots": 104,
+  "appointments": [
+    {
+      "appointmentId": "1c8395e5-ab21-41ff-a75d-31542ad8d42f",
+      "tenantId": "b0a10000-0000-4000-8000-000000000001",
+      "branchId": "b0a10000-0000-4000-8000-000000000002",
+      "customerName": "Guest One",
+      "isVip": false,
+      "customerAvatarUrl": null,
+      "technicianId": "b0a10000-0000-4000-8000-0000000000a1",
+      "technicianName": "Ava Able",
+      "services": [
+        {
+          "serviceId": "b0a10000-0000-4000-8000-000000000051",
+          "priceCents": 4000,
+          "serviceName": "Gel Polish",
+          "durationMinutes": 45
+        }
+      ],
+      "source": "manual",
+      "startTime": "10:00",
+      "endTime": "10:45",
+      "durationMinutes": 45,
+      "version": 1,
+      "status": "booked",
+      "depositStatus": "not_required",
+      "conflictStatus": "none",
+      "notes": "",
+      "createdAt": "",
+      "updatedAt": "",
+      "date": "2031-03-04",
+      "arrivedAt": null,
+      "lateMinutes": null,
+      "lateness": null,
+      "displayStatus": "booked"
+    },
+    {
+      "appointmentId": "2424a3a2-b585-4879-b2ac-52a4fc5681b7",
+      "tenantId": "b0a10000-0000-4000-8000-000000000001",
+      "branchId": "b0a10000-0000-4000-8000-000000000002",
+      "customerName": "Guest Two",
+      "isVip": false,
+      "customerAvatarUrl": null,
+      "technicianId": "b0a10000-0000-4000-8000-0000000000a1",
+      "technicianName": "Ava Able",
+      "services": [
+        {
+          "serviceId": "b0a10000-0000-4000-8000-000000000051",
+          "priceCents": 4000,
+          "serviceName": "Gel Polish",
+          "durationMinutes": 45
+        }
+      ],
+      "source": "manual",
+      "startTime": "11:30",
+      "endTime": "12:15",
+      "durationMinutes": 45,
+      "version": 1,
+      "status": "booked",
+      "depositStatus": "not_required",
+      "conflictStatus": "none",
+      "notes": "",
+      "createdAt": "",
+      "updatedAt": "",
+      "date": "2031-03-04",
+      "arrivedAt": null,
+      "lateMinutes": null,
+      "lateness": null,
+      "displayStatus": "booked"
+    }
+  ]
+}

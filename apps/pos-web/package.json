@@ -17,6 +17,7 @@
     "react-router-dom": "^6.30.6",
     "@aipowersalon/api-client": "*",
     "@aipowersalon/ui": "*",
+    "@aipowersalon/booking-schedule-board": "*",
     "@aipowersalon/api-contracts": "*",
     "@aipowersalon/web-push": "*",
     "@aipowersalon/money": "*",

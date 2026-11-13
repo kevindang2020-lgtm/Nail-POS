@@ -16,7 +16,7 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
-    "paths": { "@aipowersalon/ui": ["../../packages/ui/src/index.ts"], "@aipowersalon/realtime-client": ["../../packages/realtime-client/src/index.ts"], "@aipowersalon/realtime-contracts": ["../../packages/realtime-contracts/src/index.ts"], "@aipowersalon/money": ["../../packages/money/src/index.ts"], "@aipowersalon/date-time": ["../../packages/date-time/src/index.ts"], "@aipowersalon/mobile-sdk/i18n": ["../../packages/mobile-sdk/src/i18n/index.ts"], "@aipowersalon/api-contracts/tenant": ["../../packages/api-contracts/src/tenant/index.ts"], "@aipowersalon/api-client": ["../../packages/api-client/src/index.ts"], "@aipowersalon/web-push": ["../../packages/web-push/src/index.ts"], "@aipowersalon/realtime-client/*": ["../../packages/realtime-client/src/*"] }
+    "paths": { "@aipowersalon/ui": ["../../packages/ui/src/index.ts"], "@aipowersalon/booking-schedule-board": ["../../packages/booking-schedule-board/src/index.ts"], "@aipowersalon/realtime-client": ["../../packages/realtime-client/src/index.ts"], "@aipowersalon/realtime-contracts": ["../../packages/realtime-contracts/src/index.ts"], "@aipowersalon/money": ["../../packages/money/src/index.ts"], "@aipowersalon/date-time": ["../../packages/date-time/src/index.ts"], "@aipowersalon/mobile-sdk/i18n": ["../../packages/mobile-sdk/src/i18n/index.ts"], "@aipowersalon/api-contracts/tenant": ["../../packages/api-contracts/src/tenant/index.ts"], "@aipowersalon/api-client": ["../../packages/api-client/src/index.ts"], "@aipowersalon/web-push": ["../../packages/web-push/src/index.ts"], "@aipowersalon/realtime-client/*": ["../../packages/realtime-client/src/*"] }
   },
   "include": ["src"]
 }

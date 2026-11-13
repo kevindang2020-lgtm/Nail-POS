@@ -1,0 +1,38 @@
+{
+  "date": "2031-03-04",
+  "serviceIds": [
+    "b0a10000-0000-4000-8000-000000000051"
+  ],
+  "durationMinutes": 45,
+  "eligibleCount": 2,
+  "withOpenings": 2,
+  "openings": [
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000b1",
+      "name": "Bea Bright",
+      "rosterNumber": 2,
+      "time": "09:00",
+      "openSlots": 38,
+      "rank": 1,
+      "branch": {
+        "branchId": "b0a10000-0000-4000-8000-000000000002",
+        "name": "Main"
+      }
+    },
+    {
+      "technicianId": "b0a10000-0000-4000-8000-0000000000a1",
+      "name": "Ava Able",
+      "rosterNumber": 1,
+      "time": "09:00",
+      "openSlots": 28,
+      "rank": 2,
+      "branch": {
+        "branchId": "b0a10000-0000-4000-8000-000000000002",
+        "name": "Main"
+      }
+    }
+  ],
+  "hasMore": false,
+  "offset": 0,
+  "limit": 10
+}
