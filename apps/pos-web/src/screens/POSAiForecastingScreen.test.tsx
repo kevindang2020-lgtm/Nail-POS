@@ -27,6 +27,23 @@ describe('POSAiForecastingScreen', () => {
     expect(await screen.findByText('11.0%')).toBeInTheDocument(); // realized WAPE strip
   });
 
+  // extras AI Analytics Forecasting 05 (round 10): the naive-baseline column — the server's seasonal-naive backtest + skill; absent → "Not evaluated"
+  it('shows the naive baseline WAPE and the model\'s skill over it; no baseline → Not evaluated (never a number)', async () => {
+    const base = { method: 'holt_linear', confidence: 'moderate', dataQuality: 'healthy', horizonDays: 1, accuracy: { wape: 0.12, folds: 30 },
+      horizon: [{ step: 1, date: '2026-03-01', point: 18, lower: 15, upper: 21 }], selectionReason: 'lowest WAPE', disclaimer: 'decision-support' };
+    apptMock.mockResolvedValue({ ...base, baseline: { method: 'seasonal_naive', wape: 0.2, mae: 3, folds: 30, selectedWape: 0.12, skill: 0.4 } });
+    const { unmount } = render(<POSAiForecastingScreen />);
+    await screen.findByText('Holt linear');
+    expect(screen.getByTestId('fc-baseline')).toHaveTextContent('Naive baseline WAPE20.0%');
+    expect(screen.getByTestId('fc-skill')).toHaveTextContent('skill vs baseline +40%');
+    unmount();
+    apptMock.mockResolvedValue({ ...base, baseline: null });
+    render(<POSAiForecastingScreen />);
+    await screen.findByText('Holt linear');
+    expect(screen.getByTestId('fc-baseline')).toHaveTextContent('Not evaluated');
+    expect(screen.queryByTestId('fc-skill')).toBeNull();
+  });
+
   it('extras row 08: each day is a tappable / focusable point read out as text, a trend sentence summarizes the chart, and a full-screen view keeps every point', async () => {
     apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 3, accuracy: { wape: 0.12, folds: 30 },
       horizon: [{ step: 1, date: '2026-03-01', point: 18, lower: 15, upper: 21 }, { step: 2, date: '2026-03-02', point: 25, lower: 20, upper: 30 }, { step: 3, date: '2026-03-03', point: 22, lower: 18, upper: 27 }], selectionReason: 'lowest WAPE', disclaimer: 'decision-support' });

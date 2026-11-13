@@ -227,6 +227,9 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
         <div className="kpi"><div className="k-l">{tx('pos.model')}</div><div className="k-v" style={{ fontSize: 18 }}>{titleCase(data.method)}</div></div>
         <div className="kpi"><div className="k-l">{tx('pos.confidence_3')}</div><div className="k-v" style={{ fontSize: 18, color: LEVEL_COLOR[data.confidence] }}>{titleCase(data.confidence)}</div></div>
         <div className="kpi"><div className="k-l">{tx('pos.backtest_wape')}</div><div className="k-v" style={{ fontSize: 18 }}>{pct(data.accuracy?.wape)}</div></div>
+        {/* extras AI Analytics Forecasting 05 (round 10): the seasonal-naive baseline's own backtest + the model's skill over it */}
+        <div className="kpi" data-testid="fc-baseline"><div className="k-l">{tx('fch.baselineWape')}</div><div className="k-v" style={{ fontSize: 18 }}>{data.baseline ? pct(data.baseline.wape) : tx('fch.notEvaluated')}</div>
+          {data.baseline ? <div className="sub" data-testid="fc-skill">{data.baseline.skill == null ? tx('fch.skillNa') : tx('fch.skill', { v: `${data.baseline.skill > 0 ? '+' : ''}${(data.baseline.skill * 100).toFixed(0)}%` })}</div> : null}</div>
         <div className="kpi"><div className="k-l">{tx('pos.data_quality')}</div><div className="k-v" style={{ fontSize: 18 }}>{titleCase(data.dataQuality)}</div></div>
         <div className="kpi"><div className="k-l">{data.horizonDays}{tx('pos.day_total')}</div><div className="k-v" style={{ fontSize: 18 }}>{fmt(total)}</div></div>
       </div>

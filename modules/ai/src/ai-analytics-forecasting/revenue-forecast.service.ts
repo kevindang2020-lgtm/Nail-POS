@@ -3,7 +3,7 @@
 // validated model by BACKTEST, and returns a point forecast with prediction intervals in CENTS. Revenue is money, so the
 // financial gate is strict and the output is explicitly labeled a forecast range — NOT guaranteed income. Accuracy is only
 // reported from a backtest. Values are cents (money-as-integer-cents invariant preserved end to end).
-import { forecast, backtest, selectModel, classifyDataQuality, classifyConfidence, type BacktestMetrics, type SeriesPoint } from './forecast-core';
+import { forecast, backtest, selectModel, naiveBaseline, classifyDataQuality, classifyConfidence, type BacktestMetrics, type BaselineComparison, type SeriesPoint } from './forecast-core';
 import { AiForecastError, AiForecastErrorCode, type AiForecastContext, type RevenueSeriesSource, type RevenueSourceTotals } from './ai-analytics-forecasting.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
@@ -22,6 +22,8 @@ export interface RevenueForecast {
   dataQuality: string;
   confidence: string;
   intervalLevel: number;
+  /** extras AI Analytics Forecasting 05: the seasonal-naive baseline's own backtest and the model's skill over it; null = not evaluated */
+  baseline: BaselineComparison | null;
   accuracy: (BacktestMetrics & { note: string }) | null;
   forecastTotalCents: number;               // sum of point forecasts over the horizon (forecasted additional revenue)
   horizon: { step: number; date: string; pointCents: number; lowerCents: number; upperCents: number }[];
@@ -126,6 +128,7 @@ export class RevenueForecastService {
       dataQuality: classifyDataQuality(series),
       confidence: classifyConfidence(series.length, horizonDays, metrics?.wape ?? null, classifyDataQuality(series)),
       intervalLevel: out.intervalLevel,
+      baseline: naiveBaseline(selection, metrics),
       accuracy: metrics ? { ...metrics, note: `Backtested over ${metrics.folds} rolling folds (WAPE ${(metrics.wape * 100).toFixed(1)}%).` } : null,
       forecastTotalCents: horizon.reduce((a, h) => a + h.pointCents, 0),
       horizon,

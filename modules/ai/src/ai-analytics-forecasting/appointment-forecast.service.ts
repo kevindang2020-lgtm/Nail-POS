@@ -3,7 +3,7 @@
 // forecast with prediction intervals, a backtest-derived confidence, and a data-quality status. It never fabricates data
 // and never claims accuracy that wasn't backtested; with too little history it returns INSUFFICIENT_HISTORY rather than a
 // confident guess. This is decision-support — the output is explicitly a forecast range, not a guaranteed outcome.
-import { forecast, backtest, selectModel, classifyDataQuality, classifyConfidence, type BacktestMetrics, type SeriesPoint } from './forecast-core';
+import { forecast, backtest, selectModel, naiveBaseline, classifyDataQuality, classifyConfidence, type BacktestMetrics, type BaselineComparison, type SeriesPoint } from './forecast-core';
 import { AiForecastError, AiForecastErrorCode, type AiForecastContext, type AppointmentSeriesSource } from './ai-analytics-forecasting.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
@@ -21,6 +21,8 @@ export interface AppointmentForecast {
   dataQuality: string;
   confidence: string;
   intervalLevel: number;
+  /** extras AI Analytics Forecasting 05: the seasonal-naive baseline's own backtest and the model's skill over it; null = not evaluated */
+  baseline: BaselineComparison | null;
   accuracy: (BacktestMetrics & { note: string }) | null; // null when not backtestable — accuracy is NEVER asserted
   horizon: { step: number; date: string; point: number; lower: number; upper: number }[];
   generatedAt: string;
@@ -166,6 +168,7 @@ export class AppointmentForecastService {
       dataQuality: classifyDataQuality(series),
       confidence: classifyConfidence(series.length, horizonDays, metrics?.wape ?? null, classifyDataQuality(series)),
       intervalLevel: out.intervalLevel,
+      baseline: naiveBaseline(selection, metrics),
       accuracy: metrics ? { ...metrics, note: `Backtested over ${metrics.folds} rolling folds (WAPE ${(metrics.wape * 100).toFixed(1)}%).` } : null,
       horizon,
       generatedAt: new Date().toISOString(),

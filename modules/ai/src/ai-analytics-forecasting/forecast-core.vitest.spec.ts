@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   movingAveragePoints, seasonalNaivePoints, holtLinearPoints, residualSigma,
-  classifyDataQuality, classifyConfidence, forecast, backtest, selectModel,
+  classifyDataQuality, classifyConfidence, forecast, backtest, selectModel, naiveBaseline,
   type SeriesPoint,
 } from './forecast-core';
 
@@ -92,5 +92,30 @@ describe('model selection', () => {
     const sel = selectModel(series(flat(5, 8)), { minTrain: 14 });
     expect(sel.selected).toBe('moving_average');
     expect(sel.reason).toMatch(/fallback/i);
+  });
+});
+
+// extras AI Analytics Forecasting 05 (round 10): the naive baseline column — the seasonal-naive backtest on the same folds, and
+// the selected model's skill over it; not evaluated → null, never a guessed number
+describe('naive baseline comparison', () => {
+  const opts = { minTrain: 21, step: 1, period: 7 };
+  it('trending data: Holt beats the seasonal-naive baseline — positive skill, baseline numbers are the candidate\'s own backtest', () => {
+    const s = series(trending(56)); const sel = selectModel(s, opts); const m = backtest(s, sel.selected, opts);
+    const b = naiveBaseline(sel, m)!;
+    expect(b.method).toBe('seasonal_naive');
+    const own = backtest(s, 'seasonal_naive', opts)!; expect([b.wape, b.mae, b.folds]).toEqual([own.wape, own.mae, own.folds]);
+    expect(b.selectedWape).toBe(m!.wape);
+    expect(b.skill).toBe(Math.round((1 - m!.wape / b.wape) * 100) / 100);
+    expect(b.skill!).toBeGreaterThan(0);
+  });
+  it('the baseline itself selected → skill 0; a perfect baseline (WAPE 0) → skill null; no baseline candidate → null', () => {
+    const w = series(weekly(56)); const sel = selectModel(w, opts);
+    const self = naiveBaseline(sel, backtest(w, sel.selected, opts));
+    expect(sel.selected).toBe('seasonal_naive');
+    expect(self!.wape).toBe(0); expect(self!.skill).toBeNull();          // weekly data is repeated exactly: WAPE 0 → no ratio
+    const short = selectModel(series(trending(10)), opts);               // under two seasons: seasonal-naive is not a candidate
+    expect(naiveBaseline(short, null)).toBeNull();
+    const noSel = naiveBaseline(selectModel(series(trending(56)), opts), null);
+    expect(noSel!.selectedWape).toBeNull(); expect(noSel!.skill).toBeNull();
   });
 });

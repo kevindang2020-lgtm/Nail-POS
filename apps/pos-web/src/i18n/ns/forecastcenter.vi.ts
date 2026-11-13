@@ -149,5 +149,9 @@ export const FORECASTCENTER_VI: Record<string, string> = {
   "fch.health.d.tenant_isolation.PASSED": "Mọi dự báo đã lưu đều thuộc chi nhánh của tiệm này.",
   "fch.health.d.tenant_isolation.FAILED": "Có dự báo đã lưu trỏ tới chi nhánh của tiệm khác. Hãy báo ngay.",
   "fch.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
-  "fch.health.d.no_side_effects.PASSED": "Dự báo chỉ để tham khảo; trang này và việc kiểm tra không đặt lịch, đổi giá hay đặt hàng."
+  "fch.health.d.no_side_effects.PASSED": "Dự báo chỉ để tham khảo; trang này và việc kiểm tra không đặt lịch, đổi giá hay đặt hàng.",
+  "fch.baselineWape": "WAPE mô hình cơ sở", // DRAFT — Kevin reviews
+  "fch.notEvaluated": "Chưa đánh giá", // DRAFT — Kevin reviews
+  "fch.skillNa": "mức cải thiện: không đo được", // DRAFT — Kevin reviews
+  "fch.skill": "cải thiện so với cơ sở {v}", // DRAFT — Kevin reviews
 };

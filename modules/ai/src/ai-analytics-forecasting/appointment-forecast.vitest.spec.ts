@@ -42,6 +42,8 @@ describe('forecast output', () => {
     for (const h of f.horizon) { expect(h.upper).toBeGreaterThanOrEqual(h.point); expect(h.lower).toBeGreaterThanOrEqual(0); }
     expect(f.accuracy).not.toBeNull();
     expect(f.accuracy!.folds).toBeGreaterThan(0);
+    // extras AI Analytics Forecasting 05 (round 10): the seasonal-naive baseline on the same folds rides along (or null = not evaluated)
+    expect(f.baseline).toMatchObject({ method: 'seasonal_naive', selectedWape: f.accuracy!.wape, skill: null });   // the baseline IS the selected model on weekly data (WAPE 0 → no ratio)
     expect(f.method).toBe('seasonal_naive'); // weekly data
     expect(f.disclaimer).toMatch(/not a guaranteed outcome/i);
   });
