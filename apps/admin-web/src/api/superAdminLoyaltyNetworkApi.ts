@@ -2,6 +2,7 @@
 // LoyaltyTokens.pdf §4, §7.5, §10.2; LoyaltyRules.pdf §1–§2). Views need super_admin.billing.view; every change needs
 // super_admin.billing.manage + a fresh step-up (the client re-prompts on STEP_UP_REQUIRED and retries once).
 import { api } from './client';
+import type { RewardsIdempotencyPage } from '@aipowersalon/api-contracts/platform';
 
 export interface Rate { spendIncrementCents: number; pointTenthsPerIncrement: number; minEligibleCents: number; perTicketCapTenths: number | null }
 export interface GlobalVersion extends Rate { versionId: string; versionNo: number; effectiveFrom: string; status: string; reason: string | null; createdAt: string | null }
@@ -80,6 +81,8 @@ export const superAdminLoyaltyNetworkApi = {
   holdPayable: (id: string, reason: string) => api.post<unknown>(`${B}/payables/${enc(id)}/hold`, { reason }),
   /** money out: one request key per attempt; no approved provider → PAYOUT_PROVIDER_UNAVAILABLE (the payable stays owed) */
   requestPayout: (id: string, key: string) => api.postOnce<unknown>(`${B}/payables/${enc(id)}/payout`, {}, key),
+  /** extras GLOBAL LOYALTY REWARDS 11: read-only idempotency conflict center */
+  idempotency: (q: { outcome?: string; page: number; pageSize: number }) => api.get<RewardsIdempotencyPage>(`${B}/idempotency`, q),
   fraudAlerts: (q: { status?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<FraudAlert>>(`${B}/fraud-alerts`, q),
   reviewFraud: (id: string, to: string, note: string) => api.post<unknown>(`${B}/fraud-alerts/${enc(id)}/review`, { to, note }),
   /** C1 audit (Nov 4 2026) §4.4: pause / lift the pause on the rewards account the alert is about (step-up, reason) */

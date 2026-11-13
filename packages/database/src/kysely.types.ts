@@ -8264,6 +8264,7 @@ export interface DB {
   tenant_token_wallets: TenantTokenWalletsTable;
   token_purchase_events: TokenPurchaseEventsTable;
   token_purchase_intents: TokenPurchaseIntentsTable;
+  rewards_idempotency_events: RewardsIdempotencyEventsTable;   // 922
   token_wallet_ledger: TokenWalletLedgerTable;
   // ── drift patch Oct 30 2026: round-2 guides + migrations 730/731 ──
   ai_billing_invoice_events: AiBillingInvoiceEventsTable;
@@ -10535,6 +10536,9 @@ export interface TokenPurchaseEventsTable {
   created_at: Generated<Ts>;
 }
 
+export interface RewardsIdempotencyEventsTable {   // migration 922 — GLOBAL LOYALTY REWARDS 11 (append-only)
+  id: Generated<string>; tenant_id: string; scope: string; outcome: string; request_key: string; resource_id: string | null; detail: Generated<unknown>; created_at: Ts;
+}
 export interface TokenPurchaseIntentsTable {
   id: Generated<string>;
   tenant_id: string;

@@ -509,3 +509,24 @@ describe('extras GLOBAL LOYALTY REWARDS 14 (round 10) — rule-change simulator:
     expect((await q(`select count(*)::int n from global_earning_rule_versions`))[0].n).toBe(before);
   });
 });
+
+describe('extras GLOBAL LOYALTY REWARDS 11 (round 10) — idempotency conflict center', () => {
+  it('a re-sent purchase key is recorded as a replay (same purchase, no second intent); a reused key for a different purchase as a conflict; the log is append-only', async () => {
+    const { listIdempotencyEvents } = await import('./global-rewards.repository');
+    const intents0 = (await q(`select count(*)::int n from token_purchase_intents where tenant_id = $1`, [TB]))[0].n;
+    const a = await repo.createPurchase(owner(TB, BB), { tokens: 5, idempotencyKey: 'idem-center-key-001', provider: 'sandbox' });
+    const b = await repo.createPurchase(owner(TB, BB), { tokens: 5, idempotencyKey: 'idem-center-key-001', provider: 'sandbox' });
+    expect(b.intentId).toBe(a.intentId);
+    await expect(repo.createPurchase(owner(TB, BB), { tokens: 7, idempotencyKey: 'idem-center-key-001', provider: 'sandbox' })).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    expect((await q(`select count(*)::int n from token_purchase_intents where tenant_id = $1`, [TB]))[0].n).toBe(intents0 + 1);
+    const all = await listIdempotencyEvents(db, {});
+    const mine = all.items.filter((x) => x.tenantId === TB && x.scope === 'token_purchase');
+    expect(mine.map((x) => x.outcome).sort()).toEqual(['conflict', 'replay']);
+    expect(mine.every((x) => x.keyRef === '…'.concat('-key-001') && x.repeats === 2 && x.resourceId === a.intentId)).toBe(true);
+    expect(mine.find((x) => x.outcome === 'conflict')!.detail).toMatchObject({ repeatedTokenCents: 700 });
+    expect((await listIdempotencyEvents(db, { outcome: 'conflict' })).items.every((x) => x.outcome === 'conflict')).toBe(true);
+    expect(all.conflicts).toBeGreaterThanOrEqual(1);
+    await expect(q(`update rewards_idempotency_events set outcome = 'replay'`)).rejects.toThrow(/append-only/);
+    await expect(q(`delete from rewards_idempotency_events`)).rejects.toThrow(/append-only/);
+  });
+});

@@ -27,6 +27,7 @@ import { ListQuery, type ListQuerySpec } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
 import type { RewardsSalonPayables, RewardsNetworkFinanceExport } from '@aipowersalon/api-contracts/tenant';
+import type { RewardsIdempotencyPage } from '@aipowersalon/api-contracts/platform';
 import { GlobalRewardsService } from './global-rewards.service';
 import { GlobalRewardsError, type PurchaseStatus } from './global-rewards-core';
 import type { GrCtx } from './global-rewards.repository';
@@ -185,6 +186,9 @@ export class SuperAdminGlobalRewardsController implements OnModuleInit {
   }
   @Get('fraud-alerts') @RequirePermission('super_admin.billing.view') @ListQuery({ filters: { status: { type: 'enum', values: ['OPEN', 'INVESTIGATING', 'DISMISSED', 'CONFIRMED'] } }, search: false, maxLimit: 100, defaultLimit: 25, params: ['page', 'pageSize'] })
   fraudAlerts(@Query() q: any) { return runGr(() => this.s().fraudAlerts({ status: q?.status || null, page: Number(q?.page) || 1, pageSize: Number(q?.pageSize) || 25 })); }
+  /** extras GLOBAL LOYALTY REWARDS 11 (round 10): the read-only idempotency conflict center — every repeated request key */
+  @Get('idempotency') @RequirePermission('super_admin.billing.view') @ListQuery({ filters: { outcome: { type: 'enum', values: ['replay', 'conflict'] }, scope: { type: 'enum', values: ['token_purchase', 'redemption'] } }, search: false, maxLimit: 100, defaultLimit: 25, params: ['page', 'pageSize'] })
+  idempotencyEvents(@Query() q: any): Promise<RewardsIdempotencyPage> { return runGr(() => this.s().idempotencyEvents({ outcome: q?.outcome || null, scope: q?.scope || null, page: Number(q?.page) || 1, pageSize: Number(q?.pageSize) || 25 })); }
   @Post('fraud-alerts/:id/review') @RequirePermission('super_admin.billing.manage')
   reviewFraud(@Req() r: any, @Param('id') aid: string, @Body(ValidatedBody(GR_REVIEW_BODY, { strict: true })) b: any) { return runGr(() => this.s().reviewFraud(id(aid), String(b?.to ?? ''), String(b?.note ?? ''), this.actor(r))); }
   @RequireStepUp() @Post('purchases/:id/sandbox-advance') @RequirePermission('super_admin.billing.manage')
