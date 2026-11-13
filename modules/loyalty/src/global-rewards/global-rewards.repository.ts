@@ -611,6 +611,26 @@ export class GlobalRewardsRepository {
     await this.auditPlatform(this.db, actorUserId, 'loyalty.global_rule.canceled', 'global_earning_rule_version', String(r.id), { versionNo: n(r.version_no) });
     return { canceled: globalRuleOf(r) };
   }
+  /** extras GLOBAL LOYALTY REWARDS 14 (round 10) — the rule-change simulator's FUNDING exposure: the sales of the last
+   *  `days` days that earned under the GLOBAL rule (reward_earn_transactions rule_source GLOBAL_DEFAULT — the salons the
+   *  change reaches), each re-priced with the SAME computeEarn the earn processor uses, under the rule in force and the
+   *  proposed one. Backing = what salons' token wallets would have funded. Read only; nothing is written. */
+  async globalExposure(current: EarningRate, proposed: EarningRate, program: ProgramPolicy, now = new Date(), days = 30) {
+    const since = new Date(now.getTime() - days * 86_400_000).toISOString();
+    const rows = (await sql<{ tenant_id: string; eligible_cents: number | string }>`SELECT e.tenant_id, e.eligible_cents FROM reward_earn_transactions e
+      WHERE e.rule_source = 'GLOBAL_DEFAULT' AND e.status IN ('EARNED', 'NOT_ELIGIBLE', 'BLOCKED_INSUFFICIENT_TOKENS', 'PARTIALLY_REVERSED')
+        AND e.effective_at >= ${since}::timestamptz AND e.effective_at < ${now.toISOString()}::timestamptz LIMIT 50000`.execute(this.db)).rows;
+    let cur = 0, next = 0, curPts = 0, nextPts = 0;
+    const salons = new Set<string>();
+    for (const r of rows) {
+      const c = computeEarn(n(r.eligible_cents), current, program), p = computeEarn(n(r.eligible_cents), proposed, program);
+      cur += c.backingCents; next += p.backingCents; curPts += c.pointTenths; nextPts += p.pointTenths; salons.add(String(r.tenant_id));
+    }
+    return { days, since, sales: rows.length, salons: salons.size, capped: rows.length >= 50000,
+      currentPointTenths: curPts, proposedPointTenths: nextPts, currentBackingCents: cur, proposedBackingCents: next, differenceCents: next - cur,
+      perDayDifferenceCents: Math.round((next - cur) / days) };
+  }
+
   /** How many salons a global change reaches (global-mode) vs. leaves alone (custom) — the editor's impact preview. */
   async globalImpact(now = new Date()) {
     const r = (await sql<Row>`WITH cur AS (

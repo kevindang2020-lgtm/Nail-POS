@@ -193,6 +193,20 @@ export async function detectFraud(db: Kysely<any>, now = new Date()): Promise<nu
       GROUP BY r.identity_id HAVING sum(r.value_cents) > 20000 LIMIT 100`.execute(db)).rows) {
     await raise('unusual_spend', 'low', 0.3, `spend:${r.identity_id}:${since.slice(0, 10)}`, String(r.identity_id), null, { redeemedCents24h: n(r.v), redemptions: n(r.c), thresholdCents: 20000 });
   }
+  // extras GLOBAL LOYALTY REWARDS 12 (round 10): employee self-awards — points EARNED in the last 24 h on a sale at a salon whose
+  // staff (an active user or technician of THAT salon) carries the same phone as the earning rewards identity. Same person
+  // earning on their own salon's tickets: flagged for review only (it can be legitimate — staff are customers too).
+  for (const r of (await sql<Row>`SELECT e.id AS earn_id, e.ticket_id, e.tenant_id, e.identity_id, e.point_tenths, e.backing_cents,
+        (SELECT 'user' FROM users u WHERE u.tenant_id = e.tenant_id AND u.normalized_phone = ci.normalized_phone AND coalesce(u.status, 'active') = 'active' AND coalesce(u.role, '') <> 'CUSTOMER' LIMIT 1) AS as_user,
+        (SELECT 'technician' FROM technicians t WHERE t.tenant_id = e.tenant_id AND t.normalized_phone = ci.normalized_phone AND coalesce(t.is_active, true) LIMIT 1) AS as_tech
+      FROM reward_earn_transactions e JOIN customer_identities ci ON ci.id = e.identity_id
+      WHERE e.status = 'EARNED' AND e.created_at > ${since}::timestamptz AND e.point_tenths > 0
+        AND (EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = e.tenant_id AND u.normalized_phone = ci.normalized_phone AND coalesce(u.status, 'active') = 'active' AND coalesce(u.role, '') <> 'CUSTOMER')
+          OR EXISTS (SELECT 1 FROM technicians t WHERE t.tenant_id = e.tenant_id AND t.normalized_phone = ci.normalized_phone AND coalesce(t.is_active, true)))
+      LIMIT 100`.execute(db)).rows) {
+    await raise('employee_self_award', 'medium', 0.5, `self:${r.earn_id}`, String(r.identity_id), String(r.tenant_id),
+      { earnId: String(r.earn_id), ticketId: String(r.ticket_id), pointTenths: n(r.point_tenths), backingCents: n(r.backing_cents), matchedStaff: [r.as_user, r.as_tech].filter(Boolean) });
+  }
   return raised;
 }
 

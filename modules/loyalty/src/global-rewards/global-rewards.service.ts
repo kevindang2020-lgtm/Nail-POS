@@ -106,7 +106,8 @@ export class GlobalRewardsService {
     const proposed = validateGlobalRate(body, program);
     const current = await this.repo.globalRuleAt(this.repo.database, new Date());
     if (!current) throw new GlobalRewardsError('No global earning rule is in force.', 'LOYALTY_DISABLED', 503);
-    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, current: { ...current, rateLabel: rateLabel(current) }, rows: previewRows(proposed, current, program), impact: await this.repo.globalImpact() };
+    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, current: { ...current, rateLabel: rateLabel(current) }, rows: previewRows(proposed, current, program), impact: await this.repo.globalImpact(),
+      exposure: await this.repo.globalExposure(current, proposed, program) };   // extras GLOBAL LOYALTY REWARDS 14: old vs new funding exposure
   }
   cancelGlobal(id: string, actorUserId: string) { return this.repo.cancelGlobalRule(id, actorUserId); }
 

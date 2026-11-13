@@ -461,3 +461,51 @@ describe("extras GLOBAL LOYALTY REWARDS 07 + 10 — the salon's own reimbursemen
     await expect(svc.financeExport(owner(TC, BC), { from: today, to: '2020-01-01' })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });
+
+describe('extras GLOBAL LOYALTY REWARDS 12 (round 10) — employee self-awards are queued for review', () => {
+  it('points earned at a salon where a staff member has the same phone raise ONE review-first alert with evidence; nothing changes on the account', async () => {
+    const { detectFraud, listFraudAlerts } = await import('./rewards-books-check');
+    const earnA = (await q(`select id from reward_earn_transactions where tenant_id = $1 and identity_id = $2 and status = 'EARNED' order by created_at limit 1`, [TA, IDV]))[0]?.id;
+    expect(earnA).toBeTruthy();
+    const before = await acct();
+    expect((await listFraudAlerts(db, {})).items.filter((x: any) => x.signal === 'employee_self_award')).toHaveLength(0);
+    // a technician at Salon A with the earning identity's phone; a customer-role user with that phone elsewhere is NOT staff
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, is_active, status) values ($1,$2,$3,'Ava','Kim','Ava Kim','+16095550142',true,'active')`, [id('ad1'), TA, BA]);
+    await q(`update users set normalized_phone = '+16095550142' where id = $1`, [id('7' + TB.slice(-2))]);
+    await detectFraud(db);
+    const al = (await listFraudAlerts(db, {})).items.filter((x: any) => x.signal === 'employee_self_award');
+    expect(al.length).toBeGreaterThanOrEqual(1);
+    const mine = al.find((x: any) => x.evidence?.earnId === earnA);
+    expect(mine).toBeTruthy(); expect(mine.evidence.matchedStaff).toEqual(['technician']); expect(mine.evidence.pointTenths).toBeGreaterThan(0);
+    expect(al.every((x: any) => x.evidence.matchedStaff.length > 0)).toBe(true);
+    await detectFraud(db);   // deduplicated by evidence: the same earn never raises twice
+    expect((await listFraudAlerts(db, {})).items.filter((x: any) => x.signal === 'employee_self_award' && x.evidence?.earnId === earnA)).toHaveLength(1);
+    expect(await acct()).toEqual(before);
+  });
+});
+
+
+describe('extras GLOBAL LOYALTY REWARDS 14 (round 10) — rule-change simulator: old vs new funding exposure', () => {
+  it('re-prices the last 30 days of GLOBAL-rule sales with the same earn function under the rule in force and the proposed one; writes nothing', async () => {
+    const { computeEarn } = await import('./global-rewards-core');
+    const program = await repo.program();
+    const current = (await repo.globalRuleAt(db, new Date()))!;
+    expect(current).toBeTruthy();
+    const rows = await q(`select eligible_cents::int as e from reward_earn_transactions where rule_source = 'GLOBAL_DEFAULT' and status in ('EARNED','NOT_ELIGIBLE','BLOCKED_INSUFFICIENT_TOKENS','PARTIALLY_REVERSED') and effective_at >= now() - interval '30 days'`);
+    expect(rows.length).toBeGreaterThan(0);
+    const same = await repo.globalExposure(current, current, program);
+    expect(same).toMatchObject({ days: 30, sales: rows.length, differenceCents: 0 });
+    expect(same.currentBackingCents).toBe(rows.reduce((a: number, r: any) => a + computeEarn(r.e, current, program).backingCents, 0));
+    const richer = { ...current, pointTenthsPerIncrement: current.pointTenthsPerIncrement * 2 };
+    const ex = await repo.globalExposure(current, richer, program);
+    expect(ex.proposedBackingCents).toBe(rows.reduce((a: number, r: any) => a + computeEarn(r.e, richer, program).backingCents, 0));
+    expect(ex.proposedBackingCents).toBeGreaterThanOrEqual(ex.currentBackingCents);
+    expect(ex.differenceCents).toBe(ex.proposedBackingCents - ex.currentBackingCents);
+    // through the Super Admin preview: the exposure rides with the $5–$100 rows and the salon impact; nothing written
+    const before = (await q(`select count(*)::int n from global_earning_rule_versions`))[0].n;
+    const svc = new GlobalRewardsService(repo, null, null);
+    const pv: any = await svc.previewGlobal({ spendIncrementCents: current.spendIncrementCents, pointTenthsPerIncrement: current.pointTenthsPerIncrement, minEligibleCents: current.minEligibleCents, perTicketCapTenths: current.perTicketCapTenths });
+    expect(pv.exposure).toMatchObject({ days: 30, differenceCents: 0, sales: rows.length });
+    expect((await q(`select count(*)::int n from global_earning_rule_versions`))[0].n).toBe(before);
+  });
+});
