@@ -136,4 +136,33 @@ export const COMMSINBOX_VI = {
   'ci.prov.state.missing_secret': 'Thiếu mã bí mật', // DRAFT — Kevin reviews
   'ci.prov.state.error': 'Lỗi', // DRAFT — Kevin reviews
   'ci.prov.state.configured': 'Đã cài, chưa có báo cáo', // DRAFT — Kevin reviews
+  'ci.consent.toggle': 'Đồng ý nhận tin: {n} loại bị chặn', // DRAFT — Kevin reviews
+  'ci.consent.since': 'Đã từ chối nhận tin {t} ({s}).', // DRAFT — Kevin reviews
+  'ci.consent.blocked': 'không gửi', // DRAFT — Kevin reviews
+  'ci.consent.allowed': 'được gửi', // DRAFT — Kevin reviews
+  'ci.consent.why.stop': 'khách đã từ chối', // DRAFT — Kevin reviews
+  'ci.consent.why.no_marketing_opt_in': 'chưa đồng ý nhận tiếp thị', // DRAFT — Kevin reviews
+  'ci.consent.why.exempt_transactional': 'khách yêu cầu, vẫn gửi sau STOP', // DRAFT — Kevin reviews
+  'ci.consent.why.allowed': 'được phép', // DRAFT — Kevin reviews
+  'ci.consent.history': 'Lịch sử đồng ý', // DRAFT — Kevin reviews
+  'ci.consent.noHistory': 'Chưa có thay đổi nào cho số này.', // DRAFT — Kevin reviews
+  'ci.consent.action.opt_out': 'Từ chối nhận tin', // DRAFT — Kevin reviews
+  'ci.consent.action.opt_in': 'Nhận tin lại', // DRAFT — Kevin reviews
+  'ci.consent.kind.booking_code': 'Mã đặt lịch', // DRAFT — Kevin reviews
+  'ci.consent.kind.account': 'Tin tài khoản & bảo mật', // DRAFT — Kevin reviews
+  'ci.consent.kind.receipt': 'Hóa đơn', // DRAFT — Kevin reviews
+  'ci.consent.kind.reminder': 'Nhắc lịch', // DRAFT — Kevin reviews
+  'ci.consent.kind.notification': 'Cập nhật lượt hẹn', // DRAFT — Kevin reviews
+  'ci.consent.kind.conversation': 'Tin nhân viên trả lời', // DRAFT — Kevin reviews
+  'ci.consent.kind.followup': 'Tin hỏi thăm', // DRAFT — Kevin reviews
+  'ci.consent.kind.marketing': 'Tiếp thị', // DRAFT — Kevin reviews
+  'ci.consent.src.inbound_stop': 'khách nhắn STOP', // DRAFT — Kevin reviews
+  'ci.consent.src.inbound_start': 'khách nhắn START', // DRAFT — Kevin reviews
+  'ci.consent.src.staff': 'do nhân viên', // DRAFT — Kevin reviews
+  'ci.consent.src.phone_change': 'đổi số điện thoại', // DRAFT — Kevin reviews
+  'ci.consent.src.system': 'hệ thống', // DRAFT — Kevin reviews
+  'ci.consent.src.provider_bounce': 'nhà mạng trả về', // DRAFT — Kevin reviews
+  'ci.consent.src.provider_complaint': 'nhà mạng báo phiền', // DRAFT — Kevin reviews
+  'ci.consent.src.email_unsubscribe': 'hủy nhận email', // DRAFT — Kevin reviews
+  'ci.consent.src.legacy_backfill': 'bản ghi cũ', // DRAFT — Kevin reviews
 };

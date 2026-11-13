@@ -13,6 +13,7 @@ import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { isValidTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { hasPermission } from '@aipowersalon/permissions';
 import { parseInboundKeyword } from '../notifications/notifications-core';
+import { CONSENT_BOUNDARY } from '../notifications/consent-boundary';
 import { COMMUNICATION_THREAD, COMMUNICATION_MESSAGE } from '../communications-lifecycles';
 import {
   InboxError, isUuid, normalizePhone, last10, maskPhone, maskEmail, preview, likeOf, deliveryState, answersCustomer, blockReasonCode,
@@ -50,6 +51,9 @@ export interface MessageView {
   authorName: string | null; createdAt: string; delivery: DeliveryState; reasonCode: string | null; providerErrorCode: string | null;
   deliveredAt: string | null; mediaCount: number;
 }
+
+/** extras Communications 07: how many consent events the conversation header shows. */
+const CONSENT_HISTORY_LIMIT = 10;
 
 export class InboxRepository {
   constructor(readonly db: Db) {}
@@ -311,8 +315,13 @@ export class InboxRepository {
     const cu: Row | null | undefined = t.customer_id ? (await sql<Row>`SELECT c.id, c.full_name, c.phone_display, c.normalized_phone, c.email, c.marketing_sms_opt_in, c.marketing_opt_in, c.archived_at
       FROM customers c WHERE c.tenant_id = ${tid} AND c.id = ${t.customer_id}::uuid`.execute(this.db)).rows[0] : null;
     const contact = t.channel === 'email' ? (t.customer_contact ?? null) : (t.contact_normalized ?? normalizePhone(t.customer_contact) ?? t.customer_contact ?? null);
-    const optedOut = contact && t.channel !== 'email'
-      ? (await sql<Row>`SELECT 1 FROM notification_opt_outs o WHERE o.tenant_id = ${tid} AND o.channel = 'sms' AND o.address = ${contact} LIMIT 1`.execute(this.db)).rows.length > 0 : false;
+    const optRow: Row | undefined = contact && t.channel !== 'email'
+      ? (await sql<Row>`SELECT o.opted_out_at, o.reason, o.scope FROM notification_opt_outs o WHERE o.tenant_id = ${tid} AND o.channel = 'sms' AND o.address = ${contact} LIMIT 1`.execute(this.db)).rows[0] : undefined;
+    const optedOut = !!optRow;
+    // extras Communications 07: the consent history of this number (append-only notification_consent_events, newest first)
+    const history: Row[] = contact && t.channel !== 'email' ? (await sql<Row>`SELECT e.action, e.source, e.purpose, e.created_at, coalesce(u.full_name, u.email) AS actor
+      FROM notification_consent_events e LEFT JOIN users u ON u.id = e.actor_user_id AND u.tenant_id = e.tenant_id
+      WHERE e.tenant_id = ${tid} AND e.channel = 'sms' AND e.address = ${contact} ORDER BY e.created_at DESC, e.id DESC LIMIT ${CONSENT_HISTORY_LIMIT}`.execute(this.db)).rows : [];
     const next: Row | null | undefined = t.customer_id ? (await sql<Row>`SELECT a.id, to_char(a.appt_date, 'YYYY-MM-DD') AS appt_date_text, a.start_time, a.status, a.branch_id FROM pos_tech_appointments a
       WHERE a.tenant_id = ${tid} AND a.customer_id = ${t.customer_id}::uuid AND a.appt_date >= (now() AT TIME ZONE ${await this.salonTimeZone(tid)})::date
         AND a.status NOT IN ('cancelled', 'canceled', 'no_show', 'completed') AND ${this.branchOk(ctx, sql`a.branch_id`)}
@@ -331,10 +340,27 @@ export class InboxRepository {
         id: String(cu.id), name: cu.full_name ?? null, phone: opts.showFullContact ? (cu.phone_display ?? cu.normalized_phone ?? null) : maskPhone(cu.normalized_phone ?? cu.phone_display),
         email: opts.showFullContact ? (cu.email ?? null) : maskEmail(cu.email), marketingSmsOptIn: !!(cu.marketing_sms_opt_in ?? cu.marketing_opt_in), archived: !!cu.archived_at,
       } : null,
-      consent: { smsOptedOut: optedOut, marketingSmsOptIn: cu ? !!(cu.marketing_sms_opt_in ?? cu.marketing_opt_in) : null },
+      consent: { smsOptedOut: optedOut, marketingSmsOptIn: cu ? !!(cu.marketing_sms_opt_in ?? cu.marketing_opt_in) : null,
+        ...this.consentPolicy(optRow, cu ? !!(cu.marketing_sms_opt_in ?? cu.marketing_opt_in) : null, t.channel === 'email'),
+        history: history.map((h) => ({ action: String(h.action), source: String(h.source), purpose: h.purpose ?? null, at: iso(h.created_at), actor: h.actor ?? null })) },
       nextAppointment: next ? { id: String(next.id), date: String(next.appt_date_text), startTime: next.start_time ?? null, status: next.status } : null,
       ambiguousCandidates: candidates,
     };
+  }
+
+  /** extras Communications 07 — what this number's consent does to each kind of text RIGHT NOW, from the ONE consent table
+   *  the send path reads (consent-boundary.ts CONSENT_BOUNDARY): STOP stops every text except the transactional ones the
+   *  customer asks for (booking codes, account / security); marketing also needs the customer's own opt-in. Email threads:
+   *  no SMS categories. Nothing here sends or changes consent. */
+  private consentPolicy(opt: Row | undefined, marketingOptIn: boolean | null, isEmail: boolean) {
+    if (isEmail) return { optedOutAt: null, optOutScope: null, optOutReason: null, categories: [] as { kind: string; basis: string; blocked: boolean; why: string }[] };
+    const all = !!opt && String(opt.scope ?? 'all') === 'all';
+    const categories = CONSENT_BOUNDARY.filter((r) => r.channel === 'sms').map((r) => {
+      const byStop = all && r.blockedByOptOut;
+      const byNoOptIn = r.basis === 'marketing' && marketingOptIn !== true;
+      return { kind: r.kind, basis: r.basis, blocked: byStop || byNoOptIn, why: byStop ? 'stop' : byNoOptIn ? 'no_marketing_opt_in' : !r.blockedByOptOut ? 'exempt_transactional' : 'allowed' };
+    });
+    return { optedOutAt: opt ? iso(opt.opted_out_at) : null, optOutScope: opt ? String(opt.scope ?? 'all') : null, optOutReason: opt?.reason ?? null, categories };
   }
 
   // ── unified customer timeline (guide §9.1 / Addendum §4.1) ───────────────────────────────────────────────────

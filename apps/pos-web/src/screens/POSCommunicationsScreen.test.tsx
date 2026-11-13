@@ -146,4 +146,20 @@ describe('POSCommunicationsScreen', () => {
     expect(branch).toBeNull();
     expect(await screen.findByTestId('ci-note')).toHaveTextContent('1 conversation(s) marked as read. 2 with newer texts stayed unread.');
   });
+  it('extras Communications 07: the conversation header lists what consent does to each kind of text (from the server) and the number\'s consent history', async () => {
+    const base: any = await (posCommunicationsApi as any).inbox.detail();
+    (posCommunicationsApi as any).inbox.detail.mockResolvedValue({ ...base, consent: { smsOptedOut: true, marketingSmsOptIn: true, optedOutAt: '2026-06-05T14:00:00Z', optOutScope: 'all', optOutReason: 'inbound_stop',
+      categories: [{ kind: 'booking_code', basis: 'transactional', blocked: false, why: 'exempt_transactional' }, { kind: 'reminder', basis: 'service', blocked: true, why: 'stop' }, { kind: 'marketing', basis: 'marketing', blocked: true, why: 'stop' }],
+      history: [{ action: 'opt_out', source: 'inbound_stop', purpose: 'all', at: '2026-06-05T14:00:00Z', actor: null }, { action: 'opt_in', source: 'staff', purpose: 'all', at: '2026-06-01T14:00:00Z', actor: 'Kim Owner' }] } });
+    render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByText('Olivia Brown'));
+    fireEvent.click(await screen.findByTestId('ci-consent-toggle'));
+    expect(screen.getByTestId('ci-consent-toggle')).toHaveTextContent('Consent: 2 kinds blocked');
+    const cats = screen.getAllByTestId('ci-consent-cat');
+    expect(cats[0]).toHaveTextContent('Booking codes · can be sent (asked for by the customer, sent even after STOP)');
+    expect(cats[1]).toHaveTextContent('Reminders · not sent (customer opted out)');
+    expect(screen.getByTestId('ci-consent-since')).toHaveTextContent('customer texted STOP');
+    expect(screen.getByTestId('ci-consent-history')).toHaveTextContent('Opted back in · by staff · Kim Owner');
+    (posCommunicationsApi as any).inbox.detail.mockResolvedValue(base);
+  });
 });

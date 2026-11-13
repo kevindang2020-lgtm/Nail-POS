@@ -33,6 +33,7 @@ import { deviceToday } from '../lib/deviceToday';
 import { authApi } from '../api/authApi';
 import { useCan } from '../components/usePermissions';
 import { ProviderReadinessStrip } from '../components/ProviderReadinessStrip';
+import { codeLabel } from '../components/peopleLabels';
 
 const when = (iso: string | null | undefined) => { if (!iso) return ''; try { return fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const waitText = (iso: string | null | undefined) => { const w = waitedFor(iso); if (!w) return ''; return w.d ? tx('ci.wait.dh', { d: String(w.d), h: String(w.h) }) : w.h ? tx('ci.wait.hm', { h: String(w.h), m: String(w.m) }) : tx('ci.wait.m', { m: String(w.m) }); };
@@ -440,6 +441,25 @@ function ThreadRow({ t, on, draft, onOpen }: { t: InboxThread; on: boolean; draf
   );
 }
 
+/** extras Communications 07 — Consent & Policy (server): per kind of text whether it can go to this number now and why
+ *  (STOP / no marketing opt-in / transactional exemption), and the number's consent history (who, how, when). Read-only. */
+function ConsentPolicy({ c }: { c: InboxDetail['consent'] }) {
+  const [open, setOpen] = useState(false);
+  const blocked = (c.categories ?? []).filter((x) => x.blocked).length;
+  return (
+    <span className="ci-consent" data-testid="ci-consent">
+      <button type="button" className="ci-link" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="ci-consent-toggle">{tx('ci.consent.toggle', { n: String(blocked) })}</button>
+      {open ? <span className="ci-consent-body" data-testid="ci-consent-body" style={{ display: 'block' }}>
+        {c.optedOutAt ? <span className="ci-small" data-testid="ci-consent-since">{tx('ci.consent.since', { t: when(c.optedOutAt), s: codeLabel('ci.consent.src.' + (c.optOutReason ?? ''), c.optOutReason ?? '') })}</span> : null}
+        <ul className="ci-consent-cats">{(c.categories ?? []).map((x) => <li key={x.kind} data-testid="ci-consent-cat" data-kind={x.kind} data-blocked={x.blocked ? '1' : '0'}>
+          <b>{tx('ci.consent.kind.' + x.kind)}</b> · {x.blocked ? tx('ci.consent.blocked') : tx('ci.consent.allowed')} <span className="ci-small">({tx('ci.consent.why.' + x.why)})</span></li>)}</ul>
+        {c.history?.length ? <><b>{tx('ci.consent.history')}</b><ul data-testid="ci-consent-history">{c.history.map((h, i) => <li key={i}>{when(h.at)} · {tx('ci.consent.action.' + h.action)} · {codeLabel('ci.consent.src.' + h.source, h.source)}{h.actor ? ' · ' + h.actor : ''}</li>)}</ul></>
+          : <span className="ci-small">{tx('ci.consent.noHistory')}</span>}
+      </span> : null}
+    </span>
+  );
+}
+
 function ConvHeader({ d, onBook, onLink, onAssign, onFollow, onUnread, onClose, onProfile, onHistory }: { d: InboxDetail; onBook: () => void; onLink: () => void; onAssign: () => void; onFollow: () => void; onUnread: () => void; onClose: () => void; onProfile: () => void; onHistory: () => void }) {
   const t = d.thread; const m = d.permissions.canManage;
   const name = d.customer?.name || (t.identity === 'ambiguous' ? tx('ci.possibleMatch') : tx('ci.unknownContact'));
@@ -457,6 +477,7 @@ function ConvHeader({ d, onBook, onLink, onAssign, onFollow, onUnread, onClose, 
           {t.assignedToName ? <span>· {tx('ci.assignedTo', { n: t.assignedToName })}</span> : null}
           {d.consent.smsOptedOut ? <span className="ci-id bad" data-testid="ci-optedout">{tx('ci.optedOut')}</span> : null}
           {d.customer ? <span className="ci-small">{d.consent.marketingSmsOptIn ? tx('ci.mktYes') : tx('ci.mktNo')}</span> : null}
+          {d.consent.categories?.length ? <ConsentPolicy c={d.consent} /> : null}
           {d.nextAppointment ? <span className="ci-id ok">{tx('ci.nextAppt', { d: d.nextAppointment.date, t: d.nextAppointment.startTime ?? '' })}</span> : null}
           {t.followUpDueAt ? <span className="ci-fu">{tx('ci.followBy', { t: when(t.followUpDueAt) })}</span> : null}
         </div>

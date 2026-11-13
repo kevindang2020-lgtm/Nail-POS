@@ -23,7 +23,11 @@ export interface InboxComposer { enabled: boolean; reasonCode: string | null; re
 export interface InboxDetail {
   thread: InboxThread & { contact: string | null; customerMatch: string | null; closedAt: string | null; lastInboundAt: string | null };
   customer: { id: string; name: string | null; phone: string | null; email: string | null; marketingSmsOptIn: boolean; archived: boolean } | null;
-  consent: { smsOptedOut: boolean; marketingSmsOptIn: boolean | null };
+  consent: { smsOptedOut: boolean; marketingSmsOptIn: boolean | null;
+    /** extras Communications 07 (server): what consent does to each kind of text now, and this number's consent history */
+    optedOutAt?: string | null; optOutScope?: string | null; optOutReason?: string | null;
+    categories?: { kind: string; basis: string; blocked: boolean; why: 'stop' | 'no_marketing_opt_in' | 'exempt_transactional' | 'allowed' | string }[];
+    history?: { action: string; source: string; purpose: string | null; at: string | null; actor: string | null }[] };
   nextAppointment: { id: string; date: string; startTime: string | null; status: string } | null;
   ambiguousCandidates: number; messages: InboxMessage[]; olderCursor: string | null;
   permissions: { canSend: boolean; canManage: boolean }; composer: InboxComposer;
