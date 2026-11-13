@@ -706,6 +706,7 @@
   "GET /pos/deals/{id}/coupons": "AADDDRRRRRRRRRRRR",
   "GET /pos/deals/{id}/versions": "AADDDRRRRRRRRRRRR",
   "GET /pos/deals/analytics": "AADDDRRRRRRRRRRRR",
+  "GET /pos/deals/conflict-simulator": "AADDDRRRRRRRRRRRR",
   "GET /pos/deals/dashboard": "AADDDRRRRRRRRRRRR",
   "GET /pos/deals/export": "AADDDRRRRRRRRRRRR",
   "GET /pos/deals/settings": "AADDDRRRRRRRRRRRR",

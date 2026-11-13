@@ -720,6 +720,7 @@ GET /pos/deals-offers/library  realm=staff  auth=session  domain=deals  perm=pos
 GET /pos/deals-offers/redemptions  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals-offers/{id}  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals/analytics  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deals/conflict-simulator  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals/dashboard  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals/export  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  async=pos.deals.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals/settings  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
