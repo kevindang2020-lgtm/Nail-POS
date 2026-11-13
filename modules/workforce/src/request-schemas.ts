@@ -116,6 +116,8 @@ export const COMP_RULE_CREATE_BODY: BodySchema = S.object({
   label: str(200), version: S.nullable(versionPayload),
 });
 export const COMP_SEED_DEFAULT_BODY: BodySchema = S.object({ technicianPercent: num });
+// Extras · Deals & Offers 12: approving a deal's commission impact carries an optional note
+export const COMP_DEAL_REVIEW_APPROVE_BODY: BodySchema = S.object({ note: str(500) });
 /** owner-web sends { version }; the handler also takes a bare version payload (b?.version ?? b) */
 export const COMP_RULE_VERSION_BODY: BodySchema = S.object({ ...versionPayload.properties!, version: S.nullable(versionPayload) });
 const band: BodySchema = S.freeObject();

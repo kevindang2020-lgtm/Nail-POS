@@ -110,3 +110,23 @@ export interface ServiceCompensationPreviewResponse {
   actual: { days: number; lines: number; techEarningsCents: number; bySource: ServiceCompensationActualSource[] };
   changesPayNow: false;
 }
+
+// ── Extras · Deals & Offers 12 — Commission Impact Review (GET /owner/compensation/deal-reviews, compensation.view_all;
+//    POST /owner/compensation/deal-reviews/:dealId/approve, compensation.manage). Every deal not yet finished, the funding
+//    allocation checkout applies to its discount today, a worked sample by THE compensation engine on the deal's first
+//    service (null = the deal names no service), the latest approval (append-only deal_commission_reviews) and a flag when
+//    it is missing, older than the deal's terms, or for another funding allocation. Read only except the approval row. Cents.
+export type DealCommissionReviewFlag = 'not_reviewed' | 'terms_changed' | 'funding_changed';
+export interface DealCommissionReviewSample {
+  serviceId: string; serviceName: string; priceCents: number; discountCents: number; technicians: number;
+  earningsFullMinCents: number; earningsFullMaxCents: number; earningsDiscountedMinCents: number; earningsDiscountedMaxCents: number;
+  changeMinCents: number; changeMaxCents: number;
+}
+export interface DealCommissionReviewItem {
+  dealId: string; title: string; kind: string; status: string; ownerType: string; technicianId: string | null; technicianName: string | null; version: number;
+  discountType: string; discountPercent: number | null; discountCents: number | null; maxDiscountCents: number | null;
+  fundingNow: string; sample: DealCommissionReviewSample | null;
+  review: { reviewedAt: string; reviewedBy: string | null; version: number; funding: string; note: string | null } | null;
+  flag: DealCommissionReviewFlag | null;
+}
+export interface DealCommissionReviewListResponse { items: DealCommissionReviewItem[]; page: number; pageSize: number; totalItems: number; totalPages: number; flaggedTotal: number; fundingNow: string }

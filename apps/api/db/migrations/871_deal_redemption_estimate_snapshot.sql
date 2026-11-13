@@ -8,7 +8,7 @@
 -- (the comparison says "not recorded" — never a guessed figure). Expand-only, idempotent; money is integer cents.
 ALTER TABLE deal_redemptions ADD COLUMN IF NOT EXISTS estimate_snapshot JSONB;
 
-CREATE OR REPLACE FUNCTION deal_redemption_estimate_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION deal_redemption_estimate_written_once() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF OLD.estimate_snapshot IS NOT NULL AND NEW.estimate_snapshot IS DISTINCT FROM OLD.estimate_snapshot THEN
     RAISE EXCEPTION 'deal_redemptions.estimate_snapshot is written once and never changed' USING ERRCODE = 'check_violation';
@@ -16,6 +16,6 @@ BEGIN
   RETURN NEW;
 END $$;
 
-DROP TRIGGER IF EXISTS trg_deal_redemption_estimate_immutable ON deal_redemptions;
-CREATE TRIGGER trg_deal_redemption_estimate_immutable BEFORE UPDATE OF estimate_snapshot ON deal_redemptions
-  FOR EACH ROW EXECUTE FUNCTION deal_redemption_estimate_immutable();
+DROP TRIGGER IF EXISTS trg_deal_redemption_estimate_written_once ON deal_redemptions;
+CREATE TRIGGER trg_deal_redemption_estimate_written_once BEFORE UPDATE OF estimate_snapshot ON deal_redemptions
+  FOR EACH ROW EXECUTE FUNCTION deal_redemption_estimate_written_once();

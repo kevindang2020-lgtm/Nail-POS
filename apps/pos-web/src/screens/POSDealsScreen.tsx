@@ -32,6 +32,7 @@ import { DealWizard } from './deals/DealWizard';
 import { DealCouponsPanel } from './deals/DealCouponsPanel';
 import { DealsDashboard } from './deals/DealsDashboard';
 import { DealsSettingsPanel } from './deals/DealsSettingsPanel';
+import { CommissionImpactPanel } from './deals/CommissionImpactPanel';
 
 type Tab = 'library' | 'approvals' | 'redemptions' | 'performance' | 'health' | 'settings';
 const TABS: Tab[] = ['library', 'approvals', 'redemptions', 'performance', 'health', 'settings'];
@@ -229,6 +230,8 @@ export function POSDealsScreen() {
             </tr>)}</tbody>
           </table>}
       </FitPanel> : null}
+
+      {tab === 'approvals' && can('compensation.view_all') ? <CommissionImpactPanel canApprove={can('compensation.manage')} /> : null}
 
       {tab === 'redemptions' ? <FitPanel testId="redemptions-list" title={<>{tx('do.tab.redemptions')}{reds.data ? <span className="fk-muted"> · {tx('dsc.matching', { n: nf(reds.data.totalItems) })} · {tx('cp.redTotals', { v: fmtMoney(reds.data.totals.savingsCents), c: nf(reds.data.totals.uniqueCustomers) })}</span> : null}</>}
         footer={<div className="cp-foot"><Pager info={pageOf(reds.data)} onPage={setRpage} label={tx('do.tab.redemptions')} /><SizePicker size={size} onSize={setSize} /></div>}>
