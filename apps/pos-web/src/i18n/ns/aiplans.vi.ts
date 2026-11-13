@@ -177,4 +177,24 @@ export const AIPLANS_VI: Record<string, string> = {
   "plx.rd.why.receptionist_not_set_up": "hãy cài đặt và thử lễ tân AI trước (AI Front Desk)", // DRAFT — Kevin reviews
   "plx.rd.why.unknown": "chưa sẵn sàng", // DRAFT — Kevin reviews
   "plx.rd.paidNote": "Gói của bạn vẫn hoạt động — đây là vấn đề cài đặt, không phải thanh toán.", // DRAFT — Kevin reviews
+  "aiux.k.assistant_evidence": "Từng trợ lý, kèm bằng chứng", // DRAFT — Kevin reviews
+  "aiux.d.assistant_evidence.PASSED": "Mọi trợ lý của tiệm khớp với kiểm tra gọi AI và không lỗi trong tháng này.", // DRAFT — Kevin reviews
+  "aiux.d.assistant_evidence.WARNING": "Có trợ lý đang lỗi hoặc đã dùng hết hạn mức — xem các dòng bên dưới.", // DRAFT — Kevin reviews
+  "aiux.d.assistant_evidence.FAILED": "Có trợ lý mà kiểm tra gọi AI không khớp với trạng thái — xem các dòng bên dưới.", // DRAFT — Kevin reviews
+  "aiux.d.assistant_evidence.INSUFFICIENT_DATA": "Tiệm chưa có trợ lý nào đang chạy hay được dùng trong tháng này.", // DRAFT — Kevin reviews
+  "aic.ev.none": "Không có trợ lý nào để hiện.", // DRAFT — Kevin reviews
+  "aic.ev.assistant": "Trợ lý", // DRAFT — Kevin reviews
+  "aic.ev.gate": "Kiểm tra gọi AI hiện tại", // DRAFT — Kevin reviews
+  "aic.ev.month": "Tháng này", // DRAFT — Kevin reviews
+  "aic.ev.last": "Gần nhất", // DRAFT — Kevin reviews
+  "aic.ev.verdict": "Kết quả", // DRAFT — Kevin reviews
+  "aic.ev.allowed": "Cho phép", // DRAFT — Kevin reviews
+  "aic.ev.refused": "Từ chối ({r})", // DRAFT — Kevin reviews
+  "aic.ev.counts": "{ok} lần chạy · {err} lỗi · {ref} bị từ chối", // DRAFT — Kevin reviews
+  "aic.ev.lastVals": "thành công {ok} · lỗi {err}", // DRAFT — Kevin reviews
+  "aic.ev.v.ok": "Ổn", // DRAFT — Kevin reviews
+  "aic.ev.v.idle": "Chưa dùng tháng này", // DRAFT — Kevin reviews
+  "aic.ev.v.failing": "Đang lỗi", // DRAFT — Kevin reviews
+  "aic.ev.v.limit": "Hết hạn mức", // DRAFT — Kevin reviews
+  "aic.ev.v.gate_mismatch": "Kiểm tra không khớp trạng thái", // DRAFT — Kevin reviews
 };

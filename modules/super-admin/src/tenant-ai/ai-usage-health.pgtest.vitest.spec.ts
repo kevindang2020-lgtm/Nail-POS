@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { AiUsageScreenRepository, catalogIntegrity } from './ai-usage-screen.repository';
+import { AiUsageScreenRepository, catalogIntegrity, assistantEvidence } from './ai-usage-screen.repository';
 import { AI_PACKAGES, AI_PLANS } from '@aipowersalon/ai';
 
 const T = 'c7720000-0000-4000-8000-000000000001', U = 'c7720000-0000-4000-8000-000000000010';
@@ -109,6 +109,23 @@ describe('Check AI Usage & Subscriptions', () => {
     const by = (k: string) => c.checks.find((x: any) => x.key === k);
     expect(by('gate_matches_state').state).toBe('PASSED');
     expect(by('feature_routes_gated').state).toBe('WARNING');
+    // extras AI Command Center 15: per-assistant evidence — the live booking assistant is listed with the gate's decision and its month
+    const ev = by('assistant_evidence');
+    const booking = ev.detail.assistants.find((a: any) => a.code === 'ai_booking_assistant');
+    expect(booking).toMatchObject({ state: 'active', gateAllowed: true });
+    expect(['ok', 'idle', 'failing']).toContain(booking.verdict);
+    expect(typeof booking.monthRuns).toBe('number'); expect(ev.detail.monthStart).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(ev.detail.assistants.every((a: any) => a.verdict !== 'gate_mismatch')).toBe(true);
+  });
+  it('extras AI Command Center 15: the per-assistant verdicts — gate mismatch, failing, limit, idle, ok; unused cancelled assistants are left out', () => {
+    const base = { name: 'X', gate: { allowed: true, reason: null }, monthEvents: 0, monthErrors: 0, monthBlocked: 0, lastSuccessAt: null, lastErrorAt: null, mismatch: false, limitReached: false };
+    const ev = assistantEvidence([
+      { ...base, code: 'a', state: 'active', mismatch: true }, { ...base, code: 'b', state: 'active', monthErrors: 3 }, { ...base, code: 'c', state: 'active', limitReached: true, gate: { allowed: false, reason: 'limit_exceeded' } },
+      { ...base, code: 'd', state: 'trialing' }, { ...base, code: 'e', state: 'active', monthEvents: 9, monthErrors: 1 }, { ...base, code: 'f', state: 'cancelled', gate: { allowed: false, reason: 'cancelled' } },
+      { ...base, code: 'g', state: 'cancelled', monthBlocked: 2, gate: { allowed: false, reason: 'cancelled' } },
+    ]);
+    expect(ev.map((a) => `${a.code}:${a.verdict}`)).toEqual(['a:gate_mismatch', 'b:failing', 'c:limit', 'd:idle', 'e:ok', 'g:ok']);
+    expect(ev.find((a) => a.code === 'g')).toMatchObject({ monthRefused: 2, gateAllowed: false, gateReason: 'cancelled' });
   });
 });
 

@@ -87,6 +87,20 @@ describe('POSAICenterScreen — honest counts (AI Center guide, Nov 3 2026)', ()
     fireEvent.click(await screen.findByText('Check AI System'));
     expect(await screen.findByText('Gate agrees with this page')).toBeInTheDocument();
   });
+  it('extras AI Command Center 15: Check AI System lists each assistant with its evidence — the AI-call check now, this month, last success / error, the result', async () => {
+    const { posAiUsageScreenApi } = await import('../api/posAiUsageApi');
+    vi.mocked(posAiUsageScreenApi.check).mockResolvedValueOnce({ checks: [{ key: 'assistant_evidence', state: 'WARNING', count: 1, detail: { monthStart: '2026-11-01', assistants: [
+      { code: 'ai_booking_assistant', name: 'AI Booking Assistant', state: 'active', gateAllowed: true, gateReason: 'ok', monthRuns: 42, monthErrors: 0, monthRefused: 0, lastSuccessAt: '2026-11-12T15:00:00Z', lastErrorAt: null, verdict: 'ok' },
+      { code: 'ai_marketing_assistant', name: 'AI Marketing Assistant', state: 'active', gateAllowed: true, gateReason: 'ok', monthRuns: 0, monthErrors: 5, monthRefused: 0, lastSuccessAt: null, lastErrorAt: '2026-11-12T16:00:00Z', verdict: 'failing' },
+    ] } }] });
+    render(<MemoryRouter><POSAICenterScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByText('Check AI System'));
+    const rows = await screen.findAllByTestId('aic-ev-row');
+    expect(rows.map((r) => r.getAttribute('data-verdict'))).toEqual(['ok', 'failing']);
+    expect(rows[0]).toHaveTextContent('AI Booking Assistant'); expect(rows[0]).toHaveTextContent('42 runs · 0 errors · 0 refused');
+    expect(rows[1]).toHaveTextContent('Failing'); expect(rows[1]).toHaveTextContent('0 runs · 5 errors');
+    expect(screen.getByText('Each assistant, with evidence')).toBeInTheDocument();
+  });
   it('§07 every assistant card opens its details overlay; Usage & history opens the activity log in place', async () => {
     const { posAiUsageScreenApi } = await import('../api/posAiUsageApi');
     render(<MemoryRouter><POSAICenterScreen /></MemoryRouter>);
