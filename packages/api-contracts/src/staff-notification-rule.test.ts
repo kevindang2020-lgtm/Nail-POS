@@ -1,7 +1,7 @@
 // staff-notification-rule.test.ts — extras round 11: the ONE staff notification-preference rule (tenant/me-prefs.ts).
 import { describe, it, expect } from 'vitest';
 import {
-  staffNotificationAllowed, staffCategoryForPush, rowToNotificationPrefs, DEFAULT_NOTIFICATION_PREFS, NOTIFICATION_SWITCH_EFFECT,
+  staffNotificationAllowed, accountNoticeCategory, staffCategoryForPush, rowToNotificationPrefs, DEFAULT_NOTIFICATION_PREFS, NOTIFICATION_SWITCH_EFFECT,
   NOTIFICATION_PREF_COLUMNS, STAFF_NOTIFY_CATEGORIES, type NotificationPrefs,
 } from './tenant/me-prefs';
 
@@ -35,12 +35,24 @@ describe('staffNotificationAllowed', () => {
     const p = all({ bookingAlerts: false, missedCallAlerts: false, lowStockAlerts: false, payrollApprovals: false, weeklyReportSummaries: false });
     expect(staffNotificationAllowed(p, 'push', 'general').allowed).toBe(true);
   });
-  it('security and account notices ALWAYS go, even with every switch off', () => {
+  it('security and URGENT account warnings ALWAYS go, even with every switch off', () => {
     const off = all({ smsNotifications: false, emailNotifications: false, pushNotifications: false, bookingAlerts: false });
     for (const ch of ['sms', 'email', 'push'] as const) {
       expect(staffNotificationAllowed(off, ch, 'security').allowed).toBe(true);
-      expect(staffNotificationAllowed(off, ch, 'account_notice').allowed).toBe(true);
+      expect(staffNotificationAllowed(off, ch, 'account_urgent').allowed).toBe(true);
     }
+  });
+  it('a low / medium Super Admin warning follows the owner\'s channel switch; high / critical always go (Nov 13 decision)', () => {
+    expect(accountNoticeCategory('critical')).toBe('account_urgent');
+    expect(accountNoticeCategory('HIGH')).toBe('account_urgent');
+    expect(accountNoticeCategory('medium')).toBe('account_notice');
+    expect(accountNoticeCategory('low')).toBe('account_notice');
+    expect(accountNoticeCategory(undefined)).toBe('account_notice');
+    const smsOff = all({ smsNotifications: false });
+    expect(staffNotificationAllowed(smsOff, 'sms', 'account_notice')).toMatchObject({ allowed: false, reason: 'staff_pref_off', switchOff: 'smsNotifications' });
+    expect(staffNotificationAllowed(smsOff, 'email', 'account_notice').allowed).toBe(true);
+    expect(staffNotificationAllowed(smsOff, 'sms', accountNoticeCategory('critical')).allowed).toBe(true);
+    expect(staffNotificationAllowed(all({ bookingAlerts: false, payrollApprovals: false }), 'email', 'account_notice').allowed).toBe(true);   // no category switch of its own
   });
   it('the channel switch is reported first when both are off', () => {
     expect(staffNotificationAllowed(all({ pushNotifications: false, bookingAlerts: false }), 'push', 'booking').switchOff).toBe('pushNotifications');

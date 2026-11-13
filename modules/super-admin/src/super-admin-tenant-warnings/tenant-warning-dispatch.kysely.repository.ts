@@ -10,8 +10,8 @@ export class KyselyTenantWarningDispatchRepo implements TenantWarningDispatchRep
 
   async listPending(limit: number): Promise<PendingWarning[]> {
     const rows: any[] = await sql`
-      select w.id, w.tenant_id, w.subject, w.message, w.send_email, w.send_sms,
-             o.email as owner_email, o.normalized_phone as owner_phone
+      select w.id, w.tenant_id, w.subject, w.message, w.send_email, w.send_sms, w.severity,
+             t.owner_user_id, o.email as owner_email, o.normalized_phone as owner_phone
       from tenant_warnings w
       join tenants t on t.id = w.tenant_id
       left join users o on o.id = t.owner_user_id
@@ -22,6 +22,7 @@ export class KyselyTenantWarningDispatchRepo implements TenantWarningDispatchRep
     return rows.map((r) => ({
       id: String(r.id), tenantId: String(r.tenant_id), subject: String(r.subject ?? ''), message: String(r.message ?? ''),
       sendEmail: !!r.send_email, sendSms: !!r.send_sms, ownerEmail: r.owner_email ?? null, ownerPhone: r.owner_phone ?? null,
+      severity: r.severity ?? null, ownerUserId: r.owner_user_id ? String(r.owner_user_id) : null,
     }));
   }
 

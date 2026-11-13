@@ -5,37 +5,54 @@
 // as real-or-null (null when creds absent), so dev/test/CI without creds honestly record 'skipped'.
 import { type EmailSender, type SmsSender } from '@aipowersalon/notifications';
 import { resolveDeliveryStatus, warningEmail, warningSmsBody, type ChannelResult } from './tenant-warning-dispatch-core';
+import { accountNoticeCategory, type StaffNotifyCategory } from '@aipowersalon/api-contracts/tenant';
+
+/** Decision Nov 13 2026: a high / critical warning always goes; a low / medium one follows the owner's own SMS / e-mail
+ *  switch (My Account → Notifications). The port answers from the ONE staff-preference reader + rule. */
+export type OwnerPrefsPort = (tenantId: string, ownerUserId: string, channel: 'sms' | 'email', category: StaffNotifyCategory) => Promise<boolean>;
 
 export interface PendingWarning {
   id: string; tenantId: string; subject: string; message: string;
   sendEmail: boolean; sendSms: boolean; ownerEmail: string | null; ownerPhone: string | null;
+  severity?: string | null; ownerUserId?: string | null;
 }
 export interface TenantWarningDispatchRepo {
   listPending(limit: number): Promise<PendingWarning[]>;
   markStatus(id: string, status: 'sent' | 'skipped' | 'failed' | 'recorded'): Promise<void>;
 }
-export interface DispatchSummary { processed: number; sent: number; skipped: number; failed: number; }
+export interface DispatchSummary { processed: number; sent: number; skipped: number; failed: number; heldForOwnerPref?: number }
 
 export class TenantWarningDispatchJob {
   constructor(
     private readonly repo: TenantWarningDispatchRepo,
     private readonly email: EmailSender | null,
     private readonly sms: SmsSender | null,
+    private readonly ownerPrefs: OwnerPrefsPort | null = null,
   ) {}
 
   async dispatchPending(limit = 50): Promise<DispatchSummary> {
     const rows = await this.repo.listPending(limit);
-    const sum: DispatchSummary = { processed: 0, sent: 0, skipped: 0, failed: 0 };
+    const sum: DispatchSummary = { processed: 0, sent: 0, skipped: 0, failed: 0 };   // heldForOwnerPref appears only when a switch held a channel
     for (const w of rows) {
       const results: { email?: ChannelResult; sms?: ChannelResult } = {};
-      if (w.sendEmail) results.email = await this.deliver('email', w);
-      if (w.sendSms) results.sms = await this.deliver('sms', w);
+      for (const ch of ['email', 'sms'] as const) {
+        if (!(ch === 'email' ? w.sendEmail : w.sendSms)) continue;
+        if (await this.heldByOwner(ch, w)) { results[ch] = 'skipped'; sum.heldForOwnerPref = (sum.heldForOwnerPref ?? 0) + 1; continue; }   // the owner switched this channel off; the dashboard notice (if chosen) still shows
+        results[ch] = await this.deliver(ch, w);
+      }
       const status = resolveDeliveryStatus(results);
       await this.repo.markStatus(w.id, status);
       sum.processed++;
       if (status === 'sent') sum.sent++; else if (status === 'failed') sum.failed++; else if (status === 'skipped') sum.skipped++;
     }
     return sum;
+  }
+
+  /** true = the owner's switch holds this low / medium warning on this channel. Unreadable prefs → send (the reader logs). */
+  private async heldByOwner(channel: 'email' | 'sms', w: PendingWarning): Promise<boolean> {
+    const category = accountNoticeCategory(w.severity);
+    if (category === 'account_urgent' || !this.ownerPrefs || !w.ownerUserId) return false;
+    return !(await this.ownerPrefs(w.tenantId, w.ownerUserId, channel, category));   // the reader sends on an unreadable row (and logs)
   }
 
   private async deliver(channel: 'email' | 'sms', w: PendingWarning): Promise<ChannelResult> {
@@ -68,7 +85,7 @@ export async function warningDispatchTick(
 ): Promise<DispatchSummary | null> {
   try {
     const s = await job.dispatchPending();
-    if (s.processed) log?.log(`Tenant-warning dispatch: processed=${s.processed} sent=${s.sent} skipped=${s.skipped} failed=${s.failed}`);
+    if (s.processed) log?.log(`Tenant-warning dispatch: processed=${s.processed} sent=${s.sent} skipped=${s.skipped} failed=${s.failed}${s.heldForOwnerPref ? ` heldForOwnerPref=${s.heldForOwnerPref}` : ""}`);
     return s;
   } catch (e: any) {
     log?.error(`Tenant-warning dispatch failed: ${e?.message ?? e}`);

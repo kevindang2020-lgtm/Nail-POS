@@ -2273,7 +2273,7 @@ export const OPS_EN = {
   "acx.applies.enforced": "Applies now — while Off, these messages to you are held",
   "acx.applies.no_sender": "Nothing of this kind is sent yet — the switch applies once it is",
   "acx.applies.short_no_sender": "Not sent yet",
-  "acx.notif.always": "Security and sign-in messages always go, whatever these switches say; the in-app alerts inbox always shows your alerts.",
+  "acx.notif.always": "Security and sign-in messages, and urgent (high or critical) platform notices about your salon's account, always go, whatever these switches say; the in-app alerts inbox always shows your alerts.",
   "acx.dh.err.staff_pref_off": "Held — you switched this kind of message off",
   "dfx.asg.to": "Assigned to {n}",
   "dfx.asg.edit": "Assign",

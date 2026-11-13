@@ -1200,6 +1200,9 @@ export function TenantsScreen() {
               <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={warn.sendSms} onChange={(e) => setWarn({ ...warn, sendSms: e.target.checked })} />Send SMS</label>
               <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={warn.showInTenantDashboard} onChange={(e) => setWarn({ ...warn, showInTenantDashboard: e.target.checked })} />Show in tenant dashboard</label>
             </div>
+            <div className="mut" style={{ fontSize: 11.5, marginTop: 6 }} data-testid="warn-pref-rule">{['high', 'critical'].includes(warn.severity)
+              ? 'High and critical warnings are always e-mailed / texted, even if the owner switched those off.'
+              : 'Low and medium warnings follow the owner’s own e-mail / SMS settings (My Account → Notifications); choose “Show in tenant dashboard” so they still see it.'}</div>
             <label style={{ display: 'block', marginTop: 8 }}>Internal note<input style={{ ...inp, width: '100%' }} value={warn.internalNote} onChange={(e) => setWarn({ ...warn, internalNote: e.target.value })} /></label>
             <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
               <button className="btn ghost" onClick={() => setWarnFor(null)}>Cancel</button>

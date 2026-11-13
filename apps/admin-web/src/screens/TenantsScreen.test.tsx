@@ -189,6 +189,10 @@ describe('Tenants / Salons', () => {
     const dialogSend = await screen.findByRole('button', { name: 'Send Warning' });
     fireEvent.click(dialogSend);                                    // empty → blocked (no call yet)
     expect(superAdminApi.sendWarning).not.toHaveBeenCalled();
+    // Nov 13 decision: the form says which warnings follow the owner's own e-mail / SMS switches
+    expect(screen.getByTestId('warn-pref-rule').textContent).toMatch(/follow the owner/);
+    fireEvent.change(screen.getByText('Severity').querySelector('select')!, { target: { value: 'critical' } });
+    expect(screen.getByTestId('warn-pref-rule').textContent).toMatch(/always e-mailed/);
     fireEvent.change(screen.getByText('Subject').querySelector('input')!, { target: { value: 'Overdue balance' } });
     fireEvent.change(screen.getByText('Message').querySelector('textarea')!, { target: { value: 'Please update billing.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send Warning' }));

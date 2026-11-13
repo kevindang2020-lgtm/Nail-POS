@@ -71,3 +71,41 @@ describe('TenantWarningDispatchJob', () => {
     expect(s?.processed).toBe(1); expect(errs).toHaveLength(0);
   });
 });
+
+describe('owner notification switches (decision Nov 13 2026: high / critical always go; low / medium follow the switch)', () => {
+  const senders = () => ({ email: { send: vi.fn().mockResolvedValue({ id: 'e1' }) }, sms: { send: vi.fn().mockResolvedValue({ id: 's1' }) } });
+  const smsOff = vi.fn(async (_t: string, _u: string, ch: 'sms' | 'email') => ch !== 'sms');   // the owner switched SMS off
+  it('a medium warning skips SMS when the owner switched SMS off, still e-mails, and counts the hold', async () => {
+    const s = senders();
+    const repo = new InMemoryTenantWarningDispatchRepo([W({ sendEmail: true, sendSms: true, severity: 'medium', ownerUserId: 'u1' })]);
+    const sum = await new TenantWarningDispatchJob(repo, s.email as any, s.sms as any, smsOff).dispatchPending();
+    expect(s.email.send).toHaveBeenCalledTimes(1);
+    expect(s.sms.send).not.toHaveBeenCalled();
+    expect(smsOff).toHaveBeenCalledWith('t1', 'u1', 'sms', 'account_notice');
+    expect(sum.heldForOwnerPref).toBe(1);
+    expect(repo.marked.w1).toBe('sent');
+  });
+  it('a low warning held on its only channel is recorded as skipped (never faked as sent)', async () => {
+    const s = senders();
+    const repo = new InMemoryTenantWarningDispatchRepo([W({ sendEmail: false, sendSms: true, severity: 'low', ownerUserId: 'u1' })]);
+    await new TenantWarningDispatchJob(repo, s.email as any, s.sms as any, smsOff).dispatchPending();
+    expect(s.sms.send).not.toHaveBeenCalled();
+    expect(repo.marked.w1).toBe('skipped');
+  });
+  it('high and critical warnings go even with the switch off — the switch is not even asked', async () => {
+    for (const severity of ['high', 'critical']) {
+      const s = senders(); const ask = vi.fn(async () => false);
+      const repo = new InMemoryTenantWarningDispatchRepo([W({ sendEmail: true, sendSms: true, severity, ownerUserId: 'u1' })]);
+      await new TenantWarningDispatchJob(repo, s.email as any, s.sms as any, ask).dispatchPending();
+      expect(s.email.send).toHaveBeenCalledTimes(1);
+      expect(s.sms.send).toHaveBeenCalledTimes(1);
+      expect(ask).not.toHaveBeenCalled();
+    }
+  });
+  it('no owner on file or no preference port → sent exactly as before', async () => {
+    const s = senders();
+    const repo = new InMemoryTenantWarningDispatchRepo([W({ sendEmail: true, sendSms: true, severity: 'low', ownerUserId: null })]);
+    await new TenantWarningDispatchJob(repo, s.email as any, s.sms as any, smsOff).dispatchPending();
+    expect(s.sms.send).toHaveBeenCalledTimes(1);
+  });
+});

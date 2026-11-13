@@ -4291,7 +4291,7 @@ Rows: 5361 · files: 77
 | 4076 | `acx.applies.enforced` | Applies now — while Off, these messages to you are held | Đang áp dụng — khi Tắt, các tin này gửi cho bạn sẽ bị giữ lại | screens/AccountKit.tsx |
 | 4077 | `acx.applies.no_sender` | Nothing of this kind is sent yet — the switch applies once it is | Hiện chưa có tin loại này được gửi — công tắc sẽ áp dụng khi có | screens/AccountKit.tsx |
 | 4078 | `acx.applies.short_no_sender` | Not sent yet | Chưa gửi | screens/AccountKit.tsx |
-| 4079 | `acx.notif.always` | Security and sign-in messages always go, whatever these switches say; the in-app alerts inbox always shows your alerts. | Tin bảo mật và đăng nhập luôn được gửi, bất kể các công tắc này; hộp cảnh báo trong ứng dụng luôn hiển thị cảnh báo của bạn. | screens/AccountKit.tsx |
+| 4079 | `acx.notif.always` | Security and sign-in messages, and urgent (high or critical) platform notices about your salon's account, always go, whatever these switches say; the in-app alerts inbox always shows your alerts. | Tin bảo mật và đăng nhập, cùng thông báo khẩn (mức cao hoặc nghiêm trọng) của nền tảng về tài khoản tiệm, luôn được gửi, bất kể các công tắc này; hộp cảnh báo trong ứng dụng luôn hiển thị cảnh báo của bạn. | screens/AccountKit.tsx |
 | 4080 | `acx.dh.err.staff_pref_off` | Held — you switched this kind of message off | Đã giữ lại — bạn đã tắt loại tin này | screens/AccountKit.tsx |
 | 4081 | `dfx.asg.to` | Assigned to {n} | Giao cho {n} | screens/POSDeviceFleetScreen.tsx |
 | 4082 | `dfx.asg.edit` | Assign | Giao | screens/POSDeviceFleetScreen.tsx |

@@ -2,13 +2,15 @@
 // only constructed when its full credential set is present, so without creds the job honestly records 'skipped' (never a
 // faked 'sent' via a Mock). Kysely repo when a DB handle exists, else the in-memory adapter (empty, never fabricated).
 import { type EmailSender, TwilioSmsSender, type SmsSender , emailSenderFromEnv as sharedEmailSender } from '@aipowersalon/notifications';
-import { Module } from '@nestjs/common';
-import { TenantWarningDispatchJob, InMemoryTenantWarningDispatchRepo, type TenantWarningDispatchRepo } from './tenant-warning-dispatch.job';
+import { Logger, Module } from '@nestjs/common';
+import { TenantWarningDispatchJob, InMemoryTenantWarningDispatchRepo, type TenantWarningDispatchRepo, type OwnerPrefsPort } from './tenant-warning-dispatch.job';
+import { staffSendDecision } from '@aipowersalon/communications';
 import { KyselyTenantWarningDispatchRepo } from './tenant-warning-dispatch.kysely.repository';
 import { TenantWarningDispatchScheduler } from './tenant-warning-dispatch.scheduler';
 import { TenantWarningDispatchCronController } from './tenant-warning-dispatch.cron.controller';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 
+const prefsLog = new Logger('TenantWarningDispatch');
 function makeEmail(): EmailSender | null {
   return sharedEmailSender();   // one factory (packages/notifications) — default sender nailsalons@aipowersalon.com
 }
@@ -25,7 +27,9 @@ function makeSms(): SmsSender | null {
       provide: TenantWarningDispatchJob,
       useFactory: (db: AppDatabase) => {
         const repo: TenantWarningDispatchRepo = db ? new KyselyTenantWarningDispatchRepo(db) : new InMemoryTenantWarningDispatchRepo();
-        return new TenantWarningDispatchJob(repo, makeEmail(), makeSms());
+        const ownerPrefs: OwnerPrefsPort | null = db ? async (tenantId, userId, channel, category) =>
+          (await staffSendDecision(db, tenantId, userId, channel, category, (m) => prefsLog.warn(m))).allowed : null;
+        return new TenantWarningDispatchJob(repo, makeEmail(), makeSms(), ownerPrefs);
       },
       inject: [DATABASE],
     },

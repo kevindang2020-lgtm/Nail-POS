@@ -45,11 +45,13 @@ export function rowToNotificationPrefs(row: Record<string, unknown>): Notificati
 export type StaffNotifyChannel = 'sms' | 'email' | 'push';
 /** What a staff-directed message is about.
  *  • 'security' — sign-in, MFA, password, new-device notices: ALWAYS sent (never held by a switch).
- *  • 'account_notice' — the platform telling a salon owner about the salon's own account (Super Admin warnings): ALWAYS sent.
+ *  • 'account_urgent' — a HIGH / CRITICAL Super Admin warning about the salon's own account: ALWAYS sent.
+ *  • 'account_notice' — a LOW / MEDIUM Super Admin warning: follows the owner's SMS / e-mail switch (it still shows on the
+ *    salon dashboard when the admin chose that). Decision Nov 13 2026 (Kevin: "pick and do it").
  *  • a category with its own switch (booking, missed_call, low_stock, payroll_approval, weekly_report): channel switch AND
  *    category switch must both be on.
  *  • 'general' — every other staff alert (queue, payment, business alerts…): only the channel switch applies. */
-export const STAFF_NOTIFY_CATEGORIES = ['security', 'account_notice', 'booking', 'missed_call', 'low_stock', 'payroll_approval', 'weekly_report', 'general'] as const;
+export const STAFF_NOTIFY_CATEGORIES = ['security', 'account_urgent', 'account_notice', 'booking', 'missed_call', 'low_stock', 'payroll_approval', 'weekly_report', 'general'] as const;
 export type StaffNotifyCategory = (typeof STAFF_NOTIFY_CATEGORIES)[number];
 /** The reason a held staff send is recorded with, wherever that send path already records outcomes. */
 export const STAFF_PREF_HOLD_REASON = 'staff_pref_off' as const;
@@ -62,7 +64,7 @@ export interface StaffNotifyDecision { allowed: boolean; reason: typeof STAFF_PR
  *  all on) — the caller decides what "unreadable" means (every send path: send, and log). Pure; the API and the POS read it. */
 export function staffNotificationAllowed(prefs: Partial<NotificationPrefs> | null | undefined, channel: StaffNotifyChannel, category: StaffNotifyCategory): StaffNotifyDecision {
   const ok: StaffNotifyDecision = { allowed: true, reason: null, switchOff: null };
-  if (category === 'security' || category === 'account_notice' || !prefs) return ok;
+  if (category === 'security' || category === 'account_urgent' || !prefs) return ok;
   const ch = CHANNEL_SWITCH[channel];
   if (!ch) return ok;
   if (prefs[ch] === false) return { allowed: false, reason: STAFF_PREF_HOLD_REASON, switchOff: ch };
@@ -71,6 +73,12 @@ export function staffNotificationAllowed(prefs: Partial<NotificationPrefs> | nul
   return ok;
 }
 const PAYROLL_APPROVAL_KINDS = new Set(['payroll_ready_for_review', 'payroll_submitted', 'payroll_returned', 'payroll_rejected']);
+/** A Super Admin warning's severity → its category: high / critical always go; low / medium (and anything unknown —
+ *  the send form defaults to medium) follow the owner's channel switch. */
+export const ACCOUNT_URGENT_SEVERITIES = ['high', 'critical'] as const;
+export function accountNoticeCategory(severity: string | null | undefined): 'account_urgent' | 'account_notice' {
+  return (ACCOUNT_URGENT_SEVERITIES as readonly string[]).includes(String(severity ?? '').toLowerCase()) ? 'account_urgent' : 'account_notice';
+}
 /** A typed push (mobile-push PUSH_CATEGORIES name + the payload's data.kind) → what it is about, for staffNotificationAllowed. */
 export function staffCategoryForPush(pushCategory: string | null | undefined, kind?: unknown): StaffNotifyCategory {
   const k = typeof kind === 'string' ? kind : '';

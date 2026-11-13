@@ -2272,7 +2272,7 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "acx.applies.enforced": "Đang áp dụng — khi Tắt, các tin này gửi cho bạn sẽ bị giữ lại", // DRAFT — Kevin reviews
   "acx.applies.no_sender": "Hiện chưa có tin loại này được gửi — công tắc sẽ áp dụng khi có", // DRAFT — Kevin reviews
   "acx.applies.short_no_sender": "Chưa gửi", // DRAFT — Kevin reviews
-  "acx.notif.always": "Tin bảo mật và đăng nhập luôn được gửi, bất kể các công tắc này; hộp cảnh báo trong ứng dụng luôn hiển thị cảnh báo của bạn.", // DRAFT — Kevin reviews
+  "acx.notif.always": "Tin bảo mật và đăng nhập, cùng thông báo khẩn (mức cao hoặc nghiêm trọng) của nền tảng về tài khoản tiệm, luôn được gửi, bất kể các công tắc này; hộp cảnh báo trong ứng dụng luôn hiển thị cảnh báo của bạn.", // DRAFT — Kevin reviews
   "acx.dh.err.staff_pref_off": "Đã giữ lại — bạn đã tắt loại tin này", // DRAFT — Kevin reviews
   "dfx.asg.to": "Giao cho {n}", // DRAFT — Kevin reviews
   "dfx.asg.edit": "Giao", // DRAFT — Kevin reviews
