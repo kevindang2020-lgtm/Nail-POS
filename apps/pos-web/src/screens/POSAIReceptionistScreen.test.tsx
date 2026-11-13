@@ -7,6 +7,9 @@ import { MemoryRouter } from 'react-router-dom';
 
 const callsFn = vi.fn((_q: any) => Promise.resolve({ agents: [{ ref: 'agent_rose', name: 'Rose front desk' }], pagination: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
   items: [{ id: 'v1', callRef: 'CA123', startedAt: '2026-11-06T15:00:00Z', callerMasked: '•••• 7711', dialedMasked: '•••• 0100', direction: 'inbound', identity: 'caller_only', status: 'missed', bookingOutcome: null, handoffOutcome: null, durationSeconds: 5 }] }));
+const KPI0 = { window: { from: '2026-10-01', to: '2026-10-31' }, calls: 0, voiceMinutes: 0, avgDurationSeconds: null,
+  booked: { confirmed: 0, requested: 0, pendingVerification: 0, ratePct: null }, handoffs: { requested: 0, completed: 0, failed: 0, ratePct: null }, abandoned: { count: 0, ratePct: null } };
+const kpisFn = vi.fn((_q: any): Promise<any> => Promise.resolve(KPI0));
 const step = (key: string, state: string) => ({ key, label: key, state, detail: `${key} detail`, route: null });
 vi.mock('../api/posAiReceptionistCenterApi', () => ({
   posAiReceptionistCenterApi: {
@@ -23,8 +26,7 @@ vi.mock('../api/posAiReceptionistCenterApi', () => ({
       ],
     }),
     lastHealth: () => Promise.resolve(null),
-    kpis: () => Promise.resolve({ window: { from: '2026-10-01', to: '2026-10-31' }, calls: 0, voiceMinutes: 0, avgDurationSeconds: null,
-      booked: { confirmed: 0, requested: 0, pendingVerification: 0, ratePct: null }, handoffs: { requested: 0, completed: 0, failed: 0, ratePct: null }, abandoned: { count: 0, ratePct: null } }),
+    kpis: (q: any) => kpisFn(q),
     calls: (q: any) => callsFn(q),
     search: () => Promise.resolve({ items: [], pagination: { page: 1, pageSize: 10, totalItems: 0, totalPages: 1 } }),
     priority: () => Promise.resolve({ items: [], pagination: { page: 1, pageSize: 10, totalItems: 0, totalPages: 1 } }),
@@ -75,5 +77,30 @@ describe('POSAIReceptionistScreen', () => {
     expect(cells(1, 'rcp-cap-configured')).toBe('No'); expect(cells(1, 'rcp-cap-tested')).toBe('Not yet');
     expect(cells(2, 'rcp-cap-tested')).toBe('—'); expect(cells(2, 'rcp-cap-allowed')).toBe('—');
     expect(screen.getByTestId('rcp-capabilities')).toHaveTextContent('a saved setting is never a test');
+  });
+
+  it('Extras AI Receptionist 08: call insights show the server\'s counts — question categories marked AI-derived, services booked, no caller data', async () => {
+    kpisFn.mockImplementation(() => Promise.resolve({ ...KPI0, calls: 4, insights: {
+      questionCategories: [{ label: 'call me at [number]', count: 2 }, { label: 'check_availability', count: 2 }], callsWithCategories: 3,
+      serviceInterests: [{ label: 'Gel manicure', count: 2 }], sources: { questionCategories: 'ai_derived', serviceInterests: 'recorded' } } }));
+    render(<MemoryRouter><POSAIReceptionistScreen /></MemoryRouter>);
+    const box = await screen.findByTestId('rcp-insights');
+    expect(screen.getByTestId('rcp-ins-ai-label')).toHaveTextContent('AI-derived labels');
+    expect(screen.getByTestId('rcp-ins-questions').querySelectorAll('li')).toHaveLength(2);
+    expect(screen.getByTestId('rcp-ins-questions')).toHaveTextContent('Check availability');
+    expect(screen.getByTestId('rcp-ins-services')).toHaveTextContent('Gel manicure · 2');
+    expect(box).toHaveTextContent('Topics the voice AI tagged on 3 call(s) in this period');
+    kpisFn.mockImplementation(() => Promise.resolve(KPI0));
+  });
+  it('Extras AI Receptionist 08: empty insights say so; no insights from the server → no card', async () => {
+    kpisFn.mockImplementation(() => Promise.resolve({ ...KPI0, insights: { questionCategories: [], callsWithCategories: 0, serviceInterests: [], sources: {} } }));
+    const { unmount } = render(<MemoryRouter><POSAIReceptionistScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('rcp-ins-questions-none')).toHaveTextContent('Nothing recorded in this period.');
+    expect(screen.getByTestId('rcp-ins-services-none')).toBeInTheDocument();
+    unmount();
+    kpisFn.mockImplementation(() => Promise.resolve(KPI0));
+    render(<MemoryRouter><POSAIReceptionistScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId('rcp-kpi-calls')).toHaveTextContent('0'));
+    expect(screen.queryByTestId('rcp-insights')).toBeNull();
   });
 });

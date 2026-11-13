@@ -23,7 +23,7 @@ import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
-import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
+import { statusLabel, humanizeCode } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const TONE: Record<string, string> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', NOT_CONFIGURED: 'warn', DISABLED: 'muted', UNKNOWN: 'bad', BLOCKED_EXTERNAL: 'muted' };
@@ -63,6 +63,31 @@ const when = (x: string | null | undefined) => (x ? fmtDateTime(x) : '—');
 function Badge({ s, tone, label }: { s: string; tone?: string; label?: string }) { return <span className={`rcp-badge rcp-${tone ?? TONE[s] ?? 'muted'}`} data-testid={`rcp-state-${s}`}>{label ?? t(`rcpt.state.${s}`)}</span>; }
 function Metric({ id, label, value, sub }: { id: string; label: string; value: string; sub?: string }) {
   return <div className="rcp-metric" data-testid={`rcp-kpi-${id}`}><div className="rcp-metric-l">{label}</div><div className="rcp-metric-v">{value}</div>{sub ? <div className="rcp-metric-s">{sub}</div> : null}</div>;
+}
+
+// Extras · AI Receptionist 08 — Consent-Safe Call Insights: the server's counts over the KPI window (no caller data). Question
+// categories are the voice AI's own labels and are marked AI-derived; service interests are recorded appointment facts.
+type RcInsightCount = { label: string; count: number };
+const intentLabel = (l: string) => { const k = `rcpt.intent.${l}`; const x = t(k); return x !== k ? x : humanizeCode(l); };
+function CallInsights({ ins }: { ins: { questionCategories: RcInsightCount[]; callsWithCategories: number; serviceInterests: RcInsightCount[] } }) {
+  const list = (rows: RcInsightCount[], label: (l: string) => string, id: string) => rows.length === 0
+    ? <div className="rcp-muted" data-testid={`rcp-ins-${id}-none`}>{t('rcpt.ins.none')}</div>
+    : <ol style={{ margin: 0, paddingLeft: 18 }} data-testid={`rcp-ins-${id}`}>{rows.map((r) => <li key={r.label}>{label(r.label)} <span className="rcp-muted">· {r.count}</span></li>)}</ol>;
+  return (
+    <div data-testid="rcp-insights" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginTop: 10 }}>
+      <div>
+        <div style={{ fontWeight: 700 }}>{t('rcpt.ins.questions')} <span className="rcp-muted" data-testid="rcp-ins-ai-label">· {t('rcpt.ins.aiDerived')}</span></div>
+        <div className="rcp-muted">{t('rcpt.ins.questionsSub', { n: ins.callsWithCategories })}</div>
+        {list(ins.questionCategories, intentLabel, 'questions')}
+      </div>
+      <div>
+        <div style={{ fontWeight: 700 }}>{t('rcpt.ins.services')}</div>
+        <div className="rcp-muted">{t('rcpt.ins.servicesSub')}</div>
+        {list(ins.serviceInterests, (l) => l, 'services')}
+      </div>
+      <div className="rcp-muted" style={{ gridColumn: '1 / -1' }}>{t('rcpt.ins.privacy')}</div>
+    </div>
+  );
 }
 
 export function POSAIReceptionistScreen() {
@@ -167,6 +192,7 @@ export function POSAIReceptionistScreen() {
           </div>
         )}
         <div className="rcp-muted rcp-def">{t('rcpt.kpi.definition')}</div>
+        {kpi?.insights ? <CallInsights ins={kpi.insights} /> : null}
       </section>
 
       <div className="rcp-grid" id="rcp-setup">
