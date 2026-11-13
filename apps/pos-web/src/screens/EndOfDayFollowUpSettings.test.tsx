@@ -61,4 +61,23 @@ describe('EndOfDayFollowUpSettings — management center', () => {
     mount();
     expect(await screen.findByTestId('eod-forbidden')).toBeInTheDocument();
   });
+  it('round 10 (EOD 03 · 09): Preview shows the generation check; the details show the revision status and replies', async () => {
+    api.preview.mockResolvedValue({ businessDate: '2026-10-31', timezone: 'America/New_York', enabled: true, nextRun: null, generatedAt: '', note: 'Preview only.', totals: { candidates: 3, wouldCreate: 1, excluded: 1, noApp: 0, reasons: { already_generated: 1, customer_archived: 0, already_booked: 1, recently_contacted: 0 } }, technicians: [], rows: [],
+      correctness: { businessDate: '2026-10-31', eligible: 3, withTask: 1, withoutTask: 1, excludedNow: { already_booked: 1 }, tasksForDay: 2, tasksNoLongerEligible: 1, customersWithSeveralTasks: 0, run: { status: 'completed', eligible: 3, created: 1, excluded: 1 }, duplicatesPossible: false } });
+    mount();
+    fireEvent.click(await screen.findByTestId('eod-preview-btn'));
+    expect((await screen.findByTestId('eod-pv-check-counts')).textContent).toBe('3 eligible service lines · 1 already have a follow-up · 1 still to create · 2 follow-ups on file for this day');
+    expect(screen.getByTestId('eod-pv-check-run').textContent).toBe('The run recorded 3 eligible · 1 created · 1 excluded');
+    expect(screen.getByTestId('eod-pv-check-issues').textContent).toMatch(/^1 follow-ups on file no longer match an eligible visit · 0 customers/);
+
+    api.task.mockResolvedValue({ id: 't1', status: 'pending_manager_approval', businessDate: '2026-10-31', customerId: 'c1', customerName: 'Ava Kim', customerPhone: null, customerHasApp: true, technicianId: 'x1', technicianName: 'Ana One',
+      serviceName: 'Gel', ticketId: 'k', ticketNumber: '1001', appointmentId: null, completedAt: null, createdAt: null, submittedAt: null, sentAt: null, expiredAt: null, rejectedAt: null, templateKey: null, draft: 'Hi', sentMessage: null,
+      reason: null, managerNote: null, overrideReason: null, approved: false, delivery: null, customerViewedAt: null, bookedAfter: null, timeline: [],
+      approval: { state: 'resubmitted', revision: 2, submissions: 2, rejections: 1, lastRejectedAt: null, lastSubmittedAt: null },
+      replies: { count: 0, lastAt: null, mappedTo: { taskId: 't1', customerId: 'c1', ticketId: 'k' }, channel: 'customer_app' } });
+    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(await screen.findByTestId('eod-row-details'));
+    expect((await screen.findByTestId('eod-d-approval')).textContent).toBe('Changed and sent back for approval (version 2) · returned 1 time(s)');
+    expect(screen.getByTestId('eod-d-replies').textContent).toBe('No reply from the customer yet');
+  });
 });

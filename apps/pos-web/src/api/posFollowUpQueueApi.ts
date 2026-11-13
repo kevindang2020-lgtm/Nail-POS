@@ -34,7 +34,7 @@ export interface QueueResults {
   byTechnician: { technicianId: string; name: string; generated: number; sent: number; skipped: number; bookedAfter: number; smallSample: boolean }[];
   queueAge: { under1Day: number; oneToThreeDays: number; overThreeDays: number };
 }
-export interface CustomerFollowUp { id: string; dueDate: string; status: string; serviceName: string; technicianName: string; createdAt: string | null; sentAt: string | null; reason: string | null; viewedAt: string | null; messagePreview: string | null; bookedAfterAt: string | null }
+export interface CustomerFollowUp { id: string; dueDate: string; status: string; serviceName: string; technicianName: string; createdAt: string | null; sentAt: string | null; reason: string | null; viewedAt: string | null; messagePreview: string | null; bookedAfterAt: string | null; /** round 10 (EOD 14) */ repliedAt?: string | null; returnedAt?: string | null }
 export interface GenerateOutcome {
   result: { businessDate: string; created: number; skipped: number; alreadyRan: boolean };
   summary: { businessDate: string; status: string; eligible: number; created: number; createdToday: number; alreadyExisted: number; skippedByReason: Record<string, number>; failed: number; error: string | null } | null;

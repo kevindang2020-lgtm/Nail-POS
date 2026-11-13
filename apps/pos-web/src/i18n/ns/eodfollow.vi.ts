@@ -168,4 +168,28 @@ export const EODFOLLOW_VI = {
   'eod.rec.archived': '{n}: khách hàng đã lưu trữ hoặc không còn trong hồ sơ — không bao giờ gửi được.', // DRAFT — Kevin reviews
   'eod.rec.booked': '{n}: khách hàng đã có lịch hẹn sắp tới — tạm giữ trừ khi quản lý cho phép.', // DRAFT — Kevin reviews
   'eod.rec.tech': '{n}: thợ không còn hoạt động — không nằm trong danh sách của thợ nào.', // DRAFT — Kevin reviews
+  'eod10.gc.title': 'Kiểm tra tạo việc', // DRAFT — Kevin reviews
+  'eod10.gc.counts': '{e} dòng dịch vụ đủ điều kiện · {w} đã có việc theo dõi · {n} còn cần tạo · {t} việc theo dõi đã có cho ngày này', // DRAFT — Kevin reviews
+  'eod10.gc.run': 'Lần chạy ghi nhận {e} đủ điều kiện · {c} đã tạo · {x} bị loại', // DRAFT — Kevin reviews
+  'eod10.gc.noRun': 'Chưa có lần tạo việc cho ngày này', // DRAFT — Kevin reviews
+  'eod10.gc.issues': '{u} việc theo dõi không còn khớp với lượt ghé đủ điều kiện · {m} khách có hơn một việc theo dõi trong ngày', // DRAFT — Kevin reviews
+  'eod10.gc.ok': 'Mọi việc theo dõi đều khớp với lượt ghé đủ điều kiện; không khách nào có hai việc trong ngày', // DRAFT — Kevin reviews
+  'eod10.gc.dupes': 'Không thể tạo việc theo dõi thứ hai cho cùng dòng dịch vụ và thợ (cơ sở dữ liệu từ chối).', // DRAFT — Kevin reviews
+  'eod10.appr.awaiting': 'Đang chờ quản lý (phiên bản {n})', // DRAFT — Kevin reviews
+  'eod10.appr.returned_for_revision': 'Đã trả lại cho thợ để sửa (phiên bản {n})', // DRAFT — Kevin reviews
+  'eod10.appr.resubmitted': 'Đã sửa và gửi duyệt lại (phiên bản {n})', // DRAFT — Kevin reviews
+  'eod10.appr.approved': 'Đã duyệt (phiên bản {n})', // DRAFT — Kevin reviews
+  'eod10.appr.closed': 'Đã đóng duyệt (phiên bản {n})', // DRAFT — Kevin reviews
+  'eod10.appr.returned': 'đã trả lại {n} lần', // DRAFT — Kevin reviews
+  'eod10.replies': '{n} phản hồi của khách trong ứng dụng · gần nhất {t}', // DRAFT — Kevin reviews
+  'eod10.noReplies': 'Khách chưa phản hồi', // DRAFT — Kevin reviews
+  'eod10.h.replied': 'đã phản hồi {t}', // DRAFT — Kevin reviews
+  'eod10.h.returned': 'đã quay lại {t} (lượt ghé đã thanh toán trong 30 ngày — không chứng minh do việc theo dõi)', // DRAFT — Kevin reviews
+  'eod10.ai.suggest': 'Gợi ý lời nhắn (AI)', // DRAFT — Kevin reviews
+  'eod10.ai.use': 'Dùng lời nhắn này', // DRAFT — Kevin reviews
+  'eod10.ai.undo': 'Quay lại bản nháp gốc', // DRAFT — Kevin reviews
+  'eod10.ai.note': 'Không bắt buộc. Gợi ý chỉ là bản nháp: không gửi gì cho đến khi bạn bấm Gửi hoặc Duyệt. Tên và số điện thoại của khách không được chia sẻ với AI.', // DRAFT — Kevin reviews
+  'eod10.ai.failed': 'Gợi ý AI hiện không dùng được.', // DRAFT — Kevin reviews
+  'eod10.ai.empty': 'AI không trả về lời nhắn.', // DRAFT — Kevin reviews
+  'eod10.ai.salonPlaceholder': 'tiệm chúng tôi', // DRAFT — Kevin reviews
 } as const;

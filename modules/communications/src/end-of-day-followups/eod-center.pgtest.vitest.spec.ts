@@ -10,6 +10,7 @@ import { MIGRATIONS_DIR } from '@aipowersalon/database';
 import { DailyFollowUpService } from './end-of-day-followups.service';
 import { KyselyDailyFollowUpRepository } from './end-of-day-followups.kysely.repository';
 import { EodCenter, loadEodCandidates, summarizeCandidates, EOD_RULE_VERSION } from './eod-center';
+import { FollowUpQueue } from './followup-queue';
 import type { FollowUpContext } from './end-of-day-followups.dto';
 
 const P = 'e7450000-0000-4000-8000-0000000';
@@ -322,5 +323,52 @@ describe('cross-module reconciliation of unsent follow-ups (extras FOLLOW-UP QUE
     await q(`update service_follow_up_tasks set status = 'expired' where tenant_id = $1 and branch_id = $2 and customer_id <> $3`, [T, BR, RC(1)]);
     const clean = await center.health(T, BR, await repo.settingsFor(T, BR), new Date());
     expect(clean.rows.find((r) => r.key === 'reconcile')).toMatchObject({ state: 'ready', reconcile: { open: 1, sourceCancelled: 0, customerArchived: 0, alreadyBooked: 0, technicianInactive: 0 } });
+  });
+});
+
+describe('round 10 — END-OF-DAY FOLLOW-UPS 03 · 09 · 14', () => {
+  it('03 generation check: eligible lines vs live tasks for the day, exclusions, unexplained tasks, customers with several tasks, the run — writes nothing', async () => {
+    const before = await counts();
+    const cands = await loadEodCandidates(db, { tenantId: T, branchId: B, tz: TZ, businessDate: '2026-10-31', cooldownHours: 24, now: GEN_NOW });
+    const sum = summarizeCandidates(cands);
+    const g = await center.generationCheck(T, B, '2026-10-31', cands);
+    const live = (await q(`select ticket_service_line_id as l, customer_id as c from service_follow_up_tasks where tenant_id = $1 and branch_id = $2 and deleted_at is null and business_date = '2026-10-31'`, [T, B]));
+    const lineSet = new Set(cands.map((c) => c.ticketServiceLineId));
+    const perCustomer = new Map<string, number>(); for (const x of live) perCustomer.set(x.c, (perCustomer.get(x.c) ?? 0) + 1);
+    expect(g).toMatchObject({ businessDate: '2026-10-31', eligible: cands.length, withTask: sum.reasons.already_generated, withoutTask: sum.wouldCreate, tasksForDay: live.length,
+      tasksNoLongerEligible: live.filter((x: any) => !lineSet.has(x.l)).length, customersWithSeveralTasks: [...perCustomer.values()].filter((n) => n > 1).length, duplicatesPossible: false, changesAnything: false });
+    expect(g.tasksNoLongerEligible).toBeGreaterThanOrEqual(1);          // Eve's earlier follow-up is not one of tonight's lines
+    expect(g.customersWithSeveralTasks).toBeGreaterThanOrEqual(1);      // Finn: two technicians, two lines
+    expect(g.run).toMatchObject({ status: 'completed' });
+    expect(g.excludedNow).not.toHaveProperty('already_generated');
+    expect(await counts()).toEqual(before);
+  });
+  it('09 approval trail: awaiting → returned for revision → resubmitted (revision 2) → approved; replies are mapped to the task, customer and visit', async () => {
+    const CN = id('d30'), AN = id('f30');
+    await q(`insert into users (id, tenant_id, full_name, email, status, role) values ($1,$2,'Nia Rev','c30@eod.test','active','CUSTOMER')`, [AN, T]);
+    await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status, user_id) values ($1,$2,$3,'Nia','Rev','Nia Rev','+16095550130','active',$4)`, [CN, T, B, AN]);
+    await repo.saveSettings(mgr, { requireManagerApproval: true, allowCustomerReplies: true } as any);
+    const t = await rawTask(CN, T1, 'pending', { app: AN });
+    await svc.techSend(tech1, t, 'Hi Nia!');
+    expect((await center.detail(T, B, t))!.approval).toMatchObject({ state: 'awaiting', revision: 1, rejections: 0 });
+    await svc.managerReject(mgr, t, 'Add the aftercare tip');
+    expect((await center.detail(T, B, t))!.approval).toMatchObject({ state: 'returned_for_revision', revision: 1, rejections: 1 });
+    await svc.techSend(tech1, t, 'Hi Nia! Oil your cuticles tonight.');
+    expect((await center.detail(T, B, t))!.approval).toMatchObject({ state: 'resubmitted', revision: 2, submissions: 2, rejections: 1 });
+    await svc.managerApprove(mgr, t);
+    const d = (await center.detail(T, B, t))!;
+    expect(d.approval.state).toBe('approved');
+    expect(d.replies).toMatchObject({ count: 0, lastAt: null, channel: 'customer_app', mappedTo: { taskId: t, customerId: CN } });
+    const cust: FollowUpContext = { tenantId: T, branchId: B, userId: AN, role: 'CUSTOMER', permissions: [] };
+    await svc.customerReply(cust, t, 'Thank you!');
+    expect((await center.detail(T, B, t))!.replies).toMatchObject({ count: 1, lastAt: expect.any(String) });
+    // 14: the customer timeline row carries the reply and the verified outcome (a paid visit within 30 days of the message)
+    const qh = new FollowUpQueue(db);
+    let h: any = await qh.customerHistory(T, B, CN, 1, 10);
+    expect(h.items.find((x: any) => x.id === t)).toMatchObject({ repliedAt: expect.any(String), returnedAt: null });
+    await q(`insert into tickets (tenant_id, branch_id, customer_id, status, paid_at, total_cents, ticket_number) values ($1,$2,$3,'paid', now() + interval '1 day', 4000, 'T-RET30')`, [T, B, CN]);
+    h = await qh.customerHistory(T, B, CN, 1, 10);
+    expect(h.items.find((x: any) => x.id === t).returnedAt).toEqual(expect.any(String));
+    await repo.saveSettings(mgr, { requireManagerApproval: false } as any);
   });
 });

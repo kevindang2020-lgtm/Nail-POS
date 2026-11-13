@@ -82,6 +82,7 @@ export class EodFollowUpCenterController {
       businessDate, timezone: st.timezone, enabled: st.enabled, nextRun: next, generatedAt: now.toISOString(),
       note: 'Preview only — nothing was created, sent or notified. Counts can change before the real run (new checkouts, bookings, replies).',
       totals: summarizeCandidates(cands), technicians: [...byTech.values()].sort((a, b) => a.technicianName.localeCompare(b.technicianName)),
+      correctness: await this.c().generationCheck(ctx.tenantId, ctx.branchId, businessDate, cands),   // round 10 (EOD 03)
       rows: cands.slice(0, 200).map((c) => ({ technicianId: c.technicianId, technicianName: c.technicianName, customerName: c.customerName, serviceName: c.serviceName,
         ticketNumber: c.ticketNumber, completedAt: c.completedAt, excluded: c.excluded, noApp: c.noApp, nextBookingDate: c.nextBookingDate })),
     };

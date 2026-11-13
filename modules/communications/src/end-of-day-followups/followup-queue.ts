@@ -327,13 +327,18 @@ export class FollowUpQueue {
     const total = n((await sql<any>`select count(*)::int as n from service_follow_up_tasks f where f.tenant_id = ${T}::uuid and ${base}`.execute(this.db)).rows[0].n);
     const rows = (await sql<any>`select f.id, f.business_date::text as business_date, f.status, f.service_name_snapshot, f.technician_name_snapshot, f.created_at, f.sent_at,
           f.skip_reason, f.customer_viewed_at, coalesce(f.sent_message, f.suggested_message) as message,
+          (select max(al.created_at) from audit_logs al where al.tenant_id = f.tenant_id and al.entity_id = f.id::text and al.action_type = 'customer_follow_up_replied') as replied_at,
+          (select min(coalesce(tv.paid_at, tv.created_at)) from tickets tv where tv.tenant_id = f.tenant_id and tv.customer_id = f.customer_id and f.sent_at is not null and tv.removed_at is null
+              and tv.status in ('paid', 'closed') and coalesce(tv.paid_at, tv.created_at) > f.sent_at and coalesce(tv.paid_at, tv.created_at) <= f.sent_at + interval '30 days') as returned_at,
           (select min(ap.created_at) from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id and f.sent_at is not null
               and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show')) as booked_at
         from service_follow_up_tasks f where f.tenant_id = ${T}::uuid and ${base} order by f.created_at desc, f.id desc limit ${ps} offset ${(pg - 1) * ps}`.execute(this.db)).rows;
     return {
       items: rows.map((r: any) => ({ id: r.id, dueDate: r.business_date, status: r.status, serviceName: r.service_name_snapshot, technicianName: r.technician_name_snapshot,
         createdAt: iso(r.created_at), sentAt: iso(r.sent_at), reason: r.skip_reason ?? null, viewedAt: iso(r.customer_viewed_at),
-        messagePreview: r.message ? String(r.message).slice(0, 160) : null, bookedAfterAt: iso(r.booked_at) })),
+        messagePreview: r.message ? String(r.message).slice(0, 160) : null, bookedAfterAt: iso(r.booked_at),
+        // round 10 (EOD 14): the customer's reply (in-app) and the verified outcome — a paid visit within 30 days of the message (association, not proof)
+        repliedAt: iso(r.replied_at), returnedAt: iso(r.returned_at) })),
       total, page: pg, pageSize: ps, totalPages: Math.max(1, Math.ceil(total / ps)),
     };
   }

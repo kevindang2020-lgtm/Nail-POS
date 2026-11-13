@@ -169,4 +169,43 @@ describe('POSFollowUpsScreen — Follow-Up Queue', () => {
     expect(screen.queryByText('English detail')).toBeNull();
     expect(screen.getByText('Matches other modules')).toBeInTheDocument();
   });
+  it('round 10 (EOD 14 · 15): history shows the reply and the verified return visit; "Suggest wording (AI)" drafts without the customer name, is used only when chosen, and goes out with Send', async () => {
+    window.history.replaceState(null, '', '/follow-ups');
+    const detail = { id: 't1', status: 'pending', businessDate: '2026-10-30', customerId: 'c-t1', customerName: 'Olivia Brown', customerPhone: null, customerHasApp: true, technicianId: 'te1', technicianName: 'Linh Tran',
+      serviceName: 'Gel Manicure', ticketId: 'k1', ticketNumber: '1001', appointmentId: null, completedAt: null, createdAt: null, submittedAt: null, sentAt: null, expiredAt: null, rejectedAt: null, templateKey: null, draft: 'Thanks for visiting!', sentMessage: null, delivery: null };
+    const hist = { items: [{ id: 'old1', dueDate: '2026-09-01', status: 'customer_replied', serviceName: 'Pedicure', technicianName: 'Linh Tran', createdAt: null, sentAt: '2026-09-01T20:00:00Z', reason: null, viewedAt: null, messagePreview: null, bookedAfterAt: null, repliedAt: '2026-09-02T15:00:00Z', returnedAt: '2026-09-20T15:00:00Z' }], total: 1, page: 1, pageSize: 10, totalPages: 1 };
+    const base = mockFetch();
+    const f = vi.fn(async (u: any, init?: any) => {
+      const url = String(u);
+      const r = url.includes('/eod-follow-ups/tasks/t1/send') ? { status: 200, body: { ok: true } }
+        : url.includes('/eod-follow-ups/tasks/t1') ? { status: 200, body: detail }
+        : url.includes('/contact-check') ? { status: 200, body: { taskId: 't1', category: 'eligible', categories: ['eligible'], channel: 'customer_app', cooldownHours: 72, lastFollowUp: null, otherChannel: null, optOuts: [], marketing: { sms: true, email: true }, upcomingBooking: null, priority: 'normal', priorityReasons: [], priorityVersion: 'v1' } }
+        : url.includes('/follow-up-queue/customers/') ? { status: 200, body: hist }
+        : url.includes('/customer-notifications/customers/c-t1/timeline') ? { status: 200, body: { items: [], page: 1, pageSize: 50, totalItems: 0, totalPages: 1 } }
+        : url.includes('/ai-marketing/content/draft') ? { status: 200, body: { text: 'Thank you for your gel manicure today! Keep your cuticles oiled tonight.' } }
+        : null;
+      if (!r) return base(u);
+      void init;
+      return { ok: r.status < 400, status: r.status, json: async () => r.body, headers: { get: () => null } } as any;
+    });
+    globalThis.fetch = f as any;
+    view();
+    fireEvent.click((await screen.findAllByTestId('fuq-row-details'))[0]);
+    expect(await screen.findByTestId('fuq-h-replied')).toHaveTextContent('replied');
+    expect(screen.getByTestId('fuq-h-returned')).toHaveTextContent('not proof the follow-up caused it');
+    expect(screen.getByTestId('fuq-d-preview')).toHaveTextContent('Thanks for visiting!');
+    fireEvent.click(screen.getByTestId('fuq-d-ai-suggest'));
+    expect(await screen.findByTestId('fuq-d-ai-text')).toHaveTextContent('Keep your cuticles oiled tonight.');
+    const aiCall = f.mock.calls.find((c: any[]) => String(c[0]).includes('/ai-marketing/content/draft'))!;
+    expect(String(aiCall[1]?.body)).not.toMatch(/Olivia|Brown/);
+    expect(String(aiCall[1]?.body)).toMatch(/Gel Manicure/);
+    expect(screen.getByTestId('fuq-d-preview')).toHaveTextContent('Thanks for visiting!');          // nothing changes until chosen
+    expect(f.mock.calls.some((c: any[]) => String(c[0]).includes('/send'))).toBe(false);              // never sent automatically
+    fireEvent.click(screen.getByTestId('fuq-d-ai-use'));
+    expect(screen.getByTestId('fuq-d-preview')).toHaveTextContent('Keep your cuticles oiled tonight.');
+    fireEvent.click(screen.getByTestId('fuq-d-send'));
+    await waitFor(() => expect(f.mock.calls.some((c: any[]) => String(c[0]).includes('/eod-follow-ups/tasks/t1/send'))).toBe(true));
+    const sendCall = f.mock.calls.find((c: any[]) => String(c[0]).includes('/eod-follow-ups/tasks/t1/send'))!;
+    expect(JSON.parse(String(sendCall[1]?.body))).toMatchObject({ message: 'Thank you for your gel manicure today! Keep your cuticles oiled tonight.' });
+  });
 });

@@ -242,6 +242,7 @@ function PreviewDialog({ p, onClose }: { p: EodPreview | null; onClose: () => vo
             <div><b>{p.totals.excluded}</b><span>{tx('eod.pv.excluded')}</span></div>
             <div><b>{p.totals.noApp}</b><span>{tx('eod.pv.noApp')}</span></div>
           </div>
+          {p.correctness ? <GenerationCheck c={p.correctness} /> : null}
           {p.totals.candidates === 0 ? <Empty title={tx('eod.pv.none')} /> : (<>
             <h4>{tx('eod.pv.reasons')}</h4>
             <div className="s" data-testid="eod-pv-reasons">{Object.entries(p.totals.reasons).map(([why, n]) => `${tx(`eod.why.${why}`)}: ${n}`).join(' · ')}</div>
@@ -313,10 +314,29 @@ function DetailDialog({ id, tz, onClose, onChanged, openCustomer, book }: { id: 
               <button type="button" className="btn ghost" disabled={busy || rejectNote.trim().length < 3} onClick={() => act(() => api.reject(d.id, rejectNote.trim()))} data-testid="eod-d-reject">{tx('eod.a.reject')}</button>
             </div>
           ) : null}
+          {d.approval && d.approval.state !== 'not_required' ? <div className="s" data-testid="eod-d-approval">{tx('eod10.appr.' + d.approval.state, { n: String(d.approval.revision) })}{d.approval.rejections ? ` · ${tx('eod10.appr.returned', { n: String(d.approval.rejections) })}` : ''}</div> : null}
+          {d.replies ? <div className="s" data-testid="eod-d-replies">{d.replies.count ? tx('eod10.replies', { n: String(d.replies.count), t: when(d.replies.lastAt, tz) }) : tx('eod10.noReplies')}</div> : null}
           <h4>{tx('eod.d.timeline')}</h4>
           <ul className="eod-timeline" data-testid="eod-d-timeline">{d.timeline.map((e, i) => <li key={i}><span className="s">{when(e.at, tz)}</span> {statusLabel(['eodAction', 'state'], e.action)}{e.role ? ` · ${e.role}` : ''}</li>)}</ul>
         </div>
       )}
     </FitDialog>
+  );
+}
+
+/** round 10 (END-OF-DAY FOLLOW-UPS 03): generation correctness for the day — the same candidate read the job uses, against the
+ *  live tasks: eligible lines, already have a task, still to create, excluded now (why), tasks no eligible line explains, customers
+ *  with more than one task, what the run recorded. Read-only. */
+function GenerationCheck({ c }: { c: NonNullable<EodPreview['correctness']> }) {
+  const issues = c.tasksNoLongerEligible + c.customersWithSeveralTasks;
+  return (
+    <div className="eod-pv-check" data-testid="eod-pv-check">
+      <h4>{tx('eod10.gc.title')}</h4>
+      <div className="s" data-testid="eod-pv-check-counts">{tx('eod10.gc.counts', { e: String(c.eligible), w: String(c.withTask), n: String(c.withoutTask), t: String(c.tasksForDay) })}</div>
+      {Object.keys(c.excludedNow).length ? <div className="s">{tx('eod.pv.reasons')}: {Object.entries(c.excludedNow).map(([k, v]) => `${tx('eod.why.' + k)} ${v}`).join(' · ')}</div> : null}
+      <div className="s" data-testid="eod-pv-check-run">{c.run ? tx('eod10.gc.run', { e: String(c.run.eligible), c: String(c.run.created), x: String(c.run.excluded) }) : tx('eod10.gc.noRun')}</div>
+      <div className={'s ' + (issues ? 'eod-warn' : '')} data-testid="eod-pv-check-issues">{issues ? tx('eod10.gc.issues', { u: String(c.tasksNoLongerEligible), m: String(c.customersWithSeveralTasks) }) : tx('eod10.gc.ok')}</div>
+      <div className="s">{tx('eod10.gc.dupes')}</div>
+    </div>
   );
 }
