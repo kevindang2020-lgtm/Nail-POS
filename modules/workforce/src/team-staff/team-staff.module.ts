@@ -9,13 +9,17 @@ import { TeamOnboardingRepository } from './team-onboarding.repository';
 import { TeamBirthdaysRepository } from './team-birthdays.repository';
 import { TeamTrainingRepository } from './team-training.repository';
 import { TeamDataNightlyScheduler } from './team-data-nightly';
+import { TeamBulkInviteController, TEAM_BULK_INVITE } from './team-bulk-invite.controller';
+import { TeamBulkInviteRepository } from './team-bulk-invite.repository';
 
 @Module({
-  controllers: [TeamOnboardingController, TeamBirthdaysController, TeamTrainingController],
+  controllers: [TeamOnboardingController, TeamBirthdaysController, TeamTrainingController, TeamBulkInviteController],
   providers: [
     { provide: TEAM_ONBOARDING, useFactory: (db: AppDatabase) => (db ? new TeamOnboardingRepository(db) : null), inject: [DATABASE] },
     { provide: TEAM_BIRTHDAYS, useFactory: (db: AppDatabase) => (db ? new TeamBirthdaysRepository(db) : null), inject: [DATABASE] },
     { provide: TEAM_TRAINING, useFactory: (db: AppDatabase) => (db ? new TeamTrainingRepository(db) : null), inject: [DATABASE] },
+    // round 11 (extras 200-Technician 08): bulk invite — OFF until the salon turns it on (and the platform has not paused it)
+    { provide: TEAM_BULK_INVITE, useFactory: (db: AppDatabase) => (db ? new TeamBulkInviteRepository(db) : null), inject: [DATABASE] },
     TeamDataNightlyScheduler,
   ],
 })

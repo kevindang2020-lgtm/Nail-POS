@@ -368,7 +368,7 @@ describe('Coupons — recorded health runs', () => {
   });
 });
 
-describe('round 10 — Deals 05 · Coupons 04: one offer completed twice on one ticket (the gap the live-use index leaves)', () => {
+describe('round 10 — Deals 05 · Coupons 04: one offer completed twice on one ticket (the gap the old live-use index left; closed by 965)', () => {
   it('a partly reversed use plus a new completed use of the same offer on the same ticket is flagged; separate tickets are not; nothing is changed', async () => {
     const key = async () => (await center.health(ctx)).checks.find((c) => c.key === 'ticket_repeat_use')!;
     expect((await key()).status).toBe('ready');
@@ -377,12 +377,18 @@ describe('round 10 — Deals 05 · Coupons 04: one offer completed twice on one 
     const ins = (tk: string, st: string, cust = C1) => q(`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, ticket_id, deal_version, status, amount_discounted_cents) values ($1,$2,$3,$4,$5,1,$6,100)`, [off.id, T, B, cust, tk, st]);
     await ins(t1, 'partially_reversed'); await ins(t2, 'redeemed', C2);
     expect((await key()).status).toBe('ready');
-    await ins(t1, 'redeemed');                                    // allowed by uq_deal_redemption_ticket_live (partially_reversed is not "live")
+    // round 11 (migration 965): a partly reversed use is live, so the database refuses the repeat outright now
+    await expect(ins(t1, 'redeemed')).rejects.toThrow(/uq_deal_redemption_ticket_live|unique/i);
+    expect((await key()).status).toBe('ready');
+    // a pair made BEFORE 965 (the old index allowed it) is still found: recreate that old state to prove the check
+    await q(`drop index uq_deal_redemption_ticket_live`);
+    await ins(t1, 'redeemed');
     const k = await key();
     expect(k).toMatchObject({ status: 'attention', count: 1, sample: [off.id] });
     expect((await redemptions(off.id)).length).toBe(3);           // flagged, not rewritten
     await q(`update deal_redemptions set status = 'reversed' where deal_id = $1`, [off.id]);
     expect((await key()).status).toBe('ready');
+    await q(`create unique index uq_deal_redemption_ticket_live on deal_redemptions (ticket_id, deal_id) where status in ('applied', 'redeemed', 'partially_reversed') and ticket_id is not null`);
   });
 });
 

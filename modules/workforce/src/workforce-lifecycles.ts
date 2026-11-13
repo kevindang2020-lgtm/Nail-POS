@@ -290,3 +290,11 @@ export const TECHNICIAN_SKILL_ASSIGNMENT = defineStateMachine({
   transitions: { APPROVED: ['REVOKED'] },
   initial: ['APPROVED'],
 });
+/** round 11 (extras 200-Technician 08): a Team Management bulk invite run — claimed 'running' (so a concurrent retry with the
+ *  same run key is refused, never sent twice), finished once 'done'; the table's trigger refuses any other change (migration 967) */
+export const STAFF_BULK_INVITE_RUN = defineStateMachine({
+  name: 'staff_bulk_invite_run', table: 'staff_bulk_invite_runs', column: 'status',
+  states: ['running', 'done'],
+  transitions: { running: ['done'] },
+  initial: ['running'],
+});

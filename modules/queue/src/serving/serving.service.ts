@@ -2,6 +2,7 @@
 // drives the timer state machine; service-line edits pull price from the catalog; mark-done + send-to-service-done
 // are gated and idempotent; delays are tracked; everything is audited.
 // ASYNC: the repository is async (Postgres/Kysely or in-memory), so every use-case awaits the repo.
+import { logException } from '@aipowersalon/observability';
 import { type RealtimeEmitter, EVENTS } from '@aipowersalon/realtime-contracts';
 import { isAddOnCategory, coded, type CodedText, withCode } from '@aipowersalon/api-contracts';
 import type { ServingActionReview, ServingActionReviewConflict, ServingReviewAction } from '@aipowersalon/api-contracts/tenant';
@@ -42,6 +43,9 @@ export interface RetailStockLike {
   /** B-17: put the units a retail line took back on the shelf (the line removed before payment). Optional: an older stock
    *  adapter without it leaves the count to a manual adjustment, as before. */
   reverseRetailSale?(ctx: any, input: { ticketId: string; lineIds: string[] | null; reason: string }): Promise<{ returned: number; byProduct: Array<{ productId: string; returned: number; onHand: number }> }>;
+  /** round 11 (ADD-ONS 06): give back what a removed add-on line's recipe took at Service Done (nothing when add-on recipes
+   *  were never on). Optional, best-effort like the retail return. */
+  reverseAddOnUsage?(ctx: any, input: { ticketId: string; lineIds: string[] | null; reason: string }): Promise<{ returnedLines: number }>;
 }
 
 export class ServingService {
@@ -659,8 +663,11 @@ export class ServingService {
     // the sale itself — the line is already gone; a stock hiccup is a ledger discrepancy, never a failed removal.
     let stockReturned = 0;
     try { stockReturned = (await this.stock?.reverseRetailSale?.(ctx, { ticketId: id, lineIds: [body.serviceLineId], reason: `line removed: ${body.reason || 'no reason given'}` }))?.returned ?? 0; } catch { /* inventory is not load-bearing */ }
+    let addOnReturned = 0;
+    try { addOnReturned = (await this.stock?.reverseAddOnUsage?.(ctx, { ticketId: id, lineIds: [body.serviceLineId], reason: `line removed: ${body.reason || 'no reason given'}` }))?.returnedLines ?? 0; }
+    catch (e) { logException(e, { where: 'serving.removeService.addOnUsageReturn', tenantId: ctx.tenantId, ticketId: id }); }   // inventory is not load-bearing: logged, never fails the removal
     await this.recordRevision(ctx, id, 'service_removed', before, null, body.serviceLineId, this.revSummary('removed', before, null));
-    this.log(ctx, 'pos_serving_service_removed', 'pos_serving_service_line', id, before, undefined, { serviceLineId: body.serviceLineId, reason: body.reason, ...(stockReturned ? { stockReturned } : {}) });
+    this.log(ctx, 'pos_serving_service_removed', 'pos_serving_service_line', id, before, undefined, { serviceLineId: body.serviceLineId, reason: body.reason, ...(stockReturned ? { stockReturned } : {}), ...(addOnReturned ? { addOnUsageReturned: addOnReturned } : {}) });
     return (await this.repo.detail(ctx, id))!;
   }
 

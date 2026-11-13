@@ -539,4 +539,17 @@ export const CATALOGSCREENS_VI = {
   "cg.tl.next": "Sắp áp dụng: {p} từ {t}", // DRAFT — Kevin reviews
   "cg.tl.noneNext": "Chưa có thay đổi được lên lịch", // DRAFT — Kevin reviews
   "cg.tl.rule": "Mỗi lần chỉ một thay đổi được lên lịch — hủy để lên lịch thay đổi khác.", // DRAFT — Kevin reviews
+  "cg.adtab.recipe": "Công thức", // DRAFT — Kevin reviews
+  "cg.aor.off": "Công thức dịch vụ thêm đang tắt ở tiệm này: không trừ kho cho dịch vụ thêm (như trước). Công thức đã lưu sẽ chờ đến khi được bật.", // DRAFT — Kevin reviews
+  "cg.aor.on": "Công thức dịch vụ thêm đang bật: khi dịch vụ thêm được đánh dấu xong, công thức được trừ kho một lần cho mỗi dòng trên phiếu; xóa dòng hoặc hủy phiếu sẽ hoàn lại.", // DRAFT — Kevin reviews
+  "cg.aor.turnOn": "Bật công thức dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.aor.turnOff": "Tắt công thức dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.aor.onConfirm": "Trừ kho theo công thức dịch vụ thêm khi xong dịch vụ cho tiệm này?", // DRAFT — Kevin reviews
+  "cg.aor.offConfirm": "Ngừng trừ kho theo công thức dịch vụ thêm? Những gì đã trừ không thay đổi.", // DRAFT — Kevin reviews
+  "cg.aor.rule": "Số lượng nguyên cho mỗi lần làm dịch vụ thêm. Dòng mà dịch vụ của nó đã có công thức dịch vụ sẽ không bị trừ hai lần — giữ công thức dịch vụ.", // DRAFT — Kevin reviews
+  "cg.aor.empty": "Công thức của dịch vụ thêm này chưa có sản phẩm nào.", // DRAFT — Kevin reviews
+  "cg.aor.qty": "SL mỗi lần", // DRAFT — Kevin reviews
+  "cg.aor.save": "Lưu công thức", // DRAFT — Kevin reviews
+  "cg.aor.savedOn": "Đã lưu công thức. Sẽ trừ kho lần tới khi dịch vụ thêm này được làm.", // DRAFT — Kevin reviews
+  "cg.aor.savedOff": "Đã lưu công thức. Không trừ kho khi công thức dịch vụ thêm đang tắt.", // DRAFT — Kevin reviews
 };

@@ -123,9 +123,10 @@ export class CouponCenter {
           or (d.max_per_customer is not null and exists (select 1 from deal_redemptions r where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed') and r.customer_id is not null
                 group by r.customer_id having count(*) > d.max_per_customer)))
         order by d.created_at, d.id limit 50`.execute(this.db)).rows);
-    // round 10 (Deals 05 · Coupons 04 — Duplicate Redemption): the live-use unique index (uq_deal_redemption_ticket_live) covers
-    // 'applied' / 'redeemed' only, so a ticket whose earlier use was PARTIALLY reversed can take the same offer again — two
-    // completed uses of one offer on one ticket. Listed for a person to investigate; no redemption or ledger row is changed.
+    // round 10 (Deals 05 · Coupons 04 — Duplicate Redemption): the live-use unique index (uq_deal_redemption_ticket_live) covered
+    // 'applied' / 'redeemed' only, so a ticket whose earlier use was PARTIALLY reversed could take the same offer again — two
+    // completed uses of one offer on one ticket. Round 11 (migration 965 + the ledger's apply) refuses new repeats; this still
+    // lists any pair made before that. Listed for a person to investigate; no redemption or ledger row is changed.
     await run('ticket_repeat_use', 'No ticket used the same offer twice.', (n) => `${n} coupon(s) were completed twice on the same ticket (an earlier use was partly reversed and the offer was applied again). Review the redemptions; nothing was changed.`,
       async () => (await sql<any>`select distinct d.id, d.created_at from deals d join deal_redemptions r on r.tenant_id = d.tenant_id and r.deal_id = d.id
         where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and r.ticket_id is not null and r.status in ('redeemed', 'partially_reversed')

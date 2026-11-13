@@ -48,6 +48,9 @@ export type RecipeServiceSummary = { id: string; name: string; price_cents: numb
 
 export type StockAlert = { id: string; product_id: string; product_name: string; color_number: string | null; status: 'low' | 'critical' | 'out_of_stock'; on_hand: number; created_at: string; acknowledged_at: string | null };
 
+/** round 11 (ADD-ONS 06) — named apart from the API contract types (InventoryAddOnRecipe*Response) */
+export interface AddOnRecipeState { key: string; name: string; deductsAtServiceDone: boolean; lines: { productId: string; productName: string; quantity: number; unit: string | null }[] }
+export interface AddOnRecipeSwitch { enabled: boolean; updatedAt: string | null }
 export const inventoryApi = {
   summary: () => api.get<{ summary: InvSummary }>('/tenant/inventory/summary'),
   alerts: () => api.get<{ alerts: any[] }>('/tenant/inventory/alerts'),
@@ -110,6 +113,12 @@ export const inventoryApi = {
   cancelCount: (id: string) => api.post(`/tenant/inventory/counts/${id}/cancel`, {}),
   serviceRecipe: (serviceId: string) => api.get<ServiceRecipe>(`/tenant/inventory/recipes/${serviceId}`),
   setServiceRecipe: (serviceId: string, lines: { productId: string; quantity: number }[]) => api.put<ServiceRecipe>(`/tenant/inventory/recipes/${serviceId}`, { lines }),
+  // round 11 (extras ADD-ONS 06): an add-on's own recipe (whole quantities) and the salon switch that decides whether Service
+  // Done deducts it (OFF unless the salon turned it on — then nothing is deducted for add-ons, as before)
+  addOnRecipe: (key: string) => api.get<AddOnRecipeState>(`/tenant/inventory/add-on-recipes/${encodeURIComponent(key)}`),
+  setAddOnRecipe: (key: string, lines: { productId: string; quantity: number }[]) => api.put<AddOnRecipeState>(`/tenant/inventory/add-on-recipes/${encodeURIComponent(key)}`, { lines }),
+  addOnRecipeSetting: () => api.get<AddOnRecipeSwitch>('/tenant/inventory/add-on-recipe-settings'),
+  setAddOnRecipeSetting: (enabled: boolean) => api.put<AddOnRecipeSwitch>('/tenant/inventory/add-on-recipe-settings', { enabled }),
   acknowledgeAlert: (id: string) => api.post<{ ok: boolean }>(`/tenant/inventory/alert-feed/${id}/acknowledge`, {}),
   saveReceiptExpense: (b: { vendor?: string | null; amountCents: number; incurredOn?: string | null; category?: string | null; description?: string | null }) =>
     api.post<{ ok: boolean; expense: { id: string; amount_cents: number; vendor: string | null } }>('/tenant/inventory/receipt-expense', b),

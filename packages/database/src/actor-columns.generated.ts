@@ -272,6 +272,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   security_incidents: 'cut',
   security_policies: 'ct',
   segment_audience_drafts: 'ut',
+  service_add_on_recipes: 'ut',
   service_add_ons: 'ut',
   service_categories: 'ut',
   service_duration_recommendations: 'ut',

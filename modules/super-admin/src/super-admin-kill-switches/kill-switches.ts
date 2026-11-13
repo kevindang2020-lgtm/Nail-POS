@@ -9,6 +9,8 @@
 //     on iPhone surface, Owner & Manager Payment App mandate §198) and 'payments.fiserv_tap_to_pay_disabled' (the Fiserv
 //     CommerceHub Tap to Pay provider only, §199); read by MobileCheckoutService (15 s cache). Clover Compact / CardPointe
 //     terminal charges are untouched by either. Toggled HERE.
+//   • staff.bulk_invites     — platform_settings 'staff.bulk_invites_disabled' (round 11, extras 200-Technician 08): pauses Team
+//     Management's bulk invite at every salon (read by TeamBulkInviteRepository); the per-person invite is untouched. Toggled HERE.
 // Every toggle requires the permission, step-up, a reason and an audit record (§34).
 import { BadRequestException, Body, ConflictException, Controller, Get, Inject, Injectable, Optional, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { Module } from '@nestjs/common';
@@ -22,7 +24,8 @@ export const MIN_KILL_REASON = 10;
 /** Switches that live in platform_settings and are toggled by this centre. */
 export const SETTING_SWITCHES: Readonly<Record<string, string>> = { 'ai.auto_actions': 'ai.auto_actions_disabled', 'deals.engine': 'deals.engine_disabled',
   'payments.cardpointe': 'payments.cardpointe_disabled', 'payments.clover': 'payments.clover_disabled',
-  'payments.tap_to_pay': 'payments.tap_to_pay_disabled', 'payments.fiserv_tap_to_pay': 'payments.fiserv_tap_to_pay_disabled' };
+  'payments.tap_to_pay': 'payments.tap_to_pay_disabled', 'payments.fiserv_tap_to_pay': 'payments.fiserv_tap_to_pay_disabled',
+  'staff.bulk_invites': 'staff.bulk_invites_disabled' };
 
 @Injectable()
 export class KillSwitchService {
@@ -30,7 +33,7 @@ export class KillSwitchService {
 
   async list(): Promise<KillSwitchView[]> {
     if (!this.db) return [];
-    const s = (await sql<any>`select setting_key, value, updated_at from platform_settings where setting_key in ('ai.auto_actions_disabled', 'sms.emergency_send_disabled', 'deals.engine_disabled', 'payments.cardpointe_disabled', 'payments.clover_disabled', 'payments.tap_to_pay_disabled', 'payments.fiserv_tap_to_pay_disabled')`.execute(this.db)).rows;
+    const s = (await sql<any>`select setting_key, value, updated_at from platform_settings where setting_key in ('ai.auto_actions_disabled', 'sms.emergency_send_disabled', 'deals.engine_disabled', 'payments.cardpointe_disabled', 'payments.clover_disabled', 'payments.tap_to_pay_disabled', 'payments.fiserv_tap_to_pay_disabled', 'staff.bulk_invites_disabled')`.execute(this.db)).rows;
     const lastReason = async (key: string) => (await sql<any>`select reason, created_at from platform_setting_changes where setting_key = ${key} order by created_at desc limit 1`.execute(this.db).catch(() => ({ rows: [] }))).rows[0] ?? null;
     const on = (k: string) => { const r = s.find((x: any) => x.setting_key === k); return { active: r ? (r.value === true || r.value === 'true') : false, at: r?.updated_at ? new Date(r.updated_at).toISOString() : null }; };
     const bv: any = (await sql<any>`select emergency_disabled, reason, updated_at from booking_verification_platform_policy where tenant_id is null limit 1`.execute(this.db).catch(() => ({ rows: [] }))).rows[0];
@@ -40,6 +43,7 @@ export class KillSwitchService {
     const pay = async (k: string) => { const x = on(k); const w = await lastReason(k); return { active: x.active, reason: x.active ? (w?.reason ?? null) : null, since: x.active ? x.at : null }; };
     const cp = await pay('payments.cardpointe_disabled'); const cl = await pay('payments.clover_disabled');
     const ttp = await pay('payments.tap_to_pay_disabled'); const fttp = await pay('payments.fiserv_tap_to_pay_disabled');
+    const bulk = await pay('staff.bulk_invites_disabled');
     return [
       { key: 'ai.auto_actions', label: 'AI automatic actions', stops: 'Automatic AI actions (assignment, scheduling automation). Read-only and suggestion AI keep working.',
         active: ai.active, reason: ai.active ? (aiWhy?.reason ?? null) : null, since: ai.active ? ai.at : null,
@@ -61,6 +65,8 @@ export class KillSwitchService {
         ...ttp, toggle: { method: 'POST', path: '/super-admin/kill-switches/payments.tap_to_pay', body: '{ active, reason }' } },
       { key: 'payments.fiserv_tap_to_pay', label: 'Tap to Pay on iPhone — Fiserv CommerceHub', stops: 'Tap to Pay on iPhone through the Fiserv CommerceHub provider only; other processors and every terminal keep working.',
         ...fttp, toggle: { method: 'POST', path: '/super-admin/kill-switches/payments.fiserv_tap_to_pay', body: '{ active, reason }' } },
+      { key: 'staff.bulk_invites', label: 'Team bulk invites', stops: 'Bulk invites from Team Management at every salon (salons that turned them on). The one-by-one invite keeps working.',
+        ...bulk, toggle: { method: 'POST', path: '/super-admin/kill-switches/staff.bulk_invites', body: '{ active, reason }' } },
     ];
   }
 

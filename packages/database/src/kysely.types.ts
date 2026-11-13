@@ -8362,6 +8362,8 @@ export interface DB {
   technician_weekly_off_rules: TechnicianWeeklyOffRulesTable;
   tenant_skill_services: TenantSkillServicesTable;
   tenant_skills: TenantSkillsTable;
+  service_add_on_recipes: ServiceAddOnRecipesTable;   // migration 966
+  staff_bulk_invite_runs: StaffBulkInviteRunsTable;   // migration 967
 }
 export interface GoCheckinDevicesTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; device_name: string;
@@ -10628,4 +10630,15 @@ export interface ReviewsHealthRunsTable {
 // referral_health_runs
 export interface ReferralHealthRunsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; overall: string; items: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
+}
+// migration 966 — an optional recipe per add-on (whole quantities); deducted at Service Done only while the salon turned it on
+export interface ServiceAddOnRecipesTable {
+  id: Generated<string>; tenant_id: string; add_on_key: string; product_id: string; quantity: number; created_by_user_id: string | null; updated_by: string | null;
+  created_at: Generated<Ts>; updated_at: Generated<Ts>;
+}
+// migration 967 — one Team Management bulk invite run (claimed 'running', finished once 'done'; never edited or removed after)
+export interface StaffBulkInviteRunsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; run_key: string; request_hash: string; requested_by_user_id: string | null;
+  selected_count: number; sent_count: Generated<number>; not_delivered_count: Generated<number>; skipped_count: Generated<number>; failed_count: Generated<number>;
+  status: Generated<string>; outcomes: Generated<unknown>; created_at: Generated<Ts>;
 }

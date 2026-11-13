@@ -1187,6 +1187,7 @@ GET /pos/system-checks/terminals  realm=staff  auth=session  domain=operations  
 GET /pos/team  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-birthdays/upcoming  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-bulk-invite/settings  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-data-alerts  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-data-alerts/assignees  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-data-alerts/{id}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -2009,6 +2010,8 @@ GET /tenant/help/tickets/{id}/attachments/{attachmentId}/download  realm=staff  
 GET /tenant/help/updates  realm=staff  auth=session  domain=support  perm=help.view  resource=BRANCH/permission
 GET /tenant/help/videos  realm=staff  auth=session  domain=support  perm=help.view  resource=BRANCH/permission
 GET /tenant/help/videos/{id}  realm=staff  auth=session  domain=support  perm=help.view  resource=BRANCH/permission
+GET /tenant/inventory/add-on-recipe-settings  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/inventory/add-on-recipes/{key}  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/alert-feed  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/alerts  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/brands  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3218,6 +3221,8 @@ POST /pos/social-posts  realm=staff  auth=session  domain=marketing  perm=pos.ma
 POST /pos/social-posts/{id}/status  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/staff-roles  realm=staff  auth=session  domain=identity  perm=roles.manage  resource=TENANT/permission  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/staff-roles/{id}/archive  realm=staff  auth=session  domain=identity  perm=roles.manage  resource=TENANT/permission  step-up  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-bulk-invite/preview  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-bulk-invite/run  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/team-data-alerts/run-check  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/team-data-alerts/{id}/assign  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/team-data-alerts/{id}/dismiss  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -4069,6 +4074,7 @@ PUT /pos/retention/settings  realm=staff  auth=session  domain=marketing  perm=p
 PUT /pos/retention/sms/pricing  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/team-bulk-invite/settings  realm=staff  auth=session  domain=workforce  perm=settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/time-clock/break-policy  realm=staff  auth=session  domain=workforce  perm=payroll.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/weekly-days-off  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /super-admin/advertising/ads/{id}  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
@@ -4093,6 +4099,8 @@ PUT /super-admin/tenants/{tenantId}/a2p/business-info  realm=super_admin  auth=s
 PUT /super-admin/tenants/{tenantId}/a2p/inputs  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.edit  resource=PLATFORM/realm  guards=SuperAdminGuard
 PUT /super-admin/tenants/{tenantId}/messaging-credentials  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.edit  resource=PLATFORM/realm  step-up  guards=SuperAdminGuard
 PUT /tenant/ai/usage-screen/packages/{code}/branches/{branchId}  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+PUT /tenant/inventory/add-on-recipe-settings  realm=staff  auth=session  domain=inventory  perm=settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
+PUT /tenant/inventory/add-on-recipes/{key}  realm=staff  auth=session  domain=inventory  perm=inventory.update  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 PUT /tenant/inventory/recipes/{serviceId}  realm=staff  auth=session  domain=inventory  perm=inventory.update  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 PUT /tenant/messaging/credentials  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  step-up  guards=TenantAuthGuard
 PUT /tenant/messaging/credentials/branches/{branchId}  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/records  step-up  guards=TenantAuthGuard

@@ -43,3 +43,18 @@ export interface TeamMemberDetail {
   skills: string[];
   access: { lastLoginAt: string | null; mfaEnabled: boolean; accountStatus: string };
 }
+
+// round 11 — extras 200-Technician Large Salon 08: bulk INVITE (a mechanism, OFF until the salon turns it on and the platform
+// has not paused it). Skip reasons and off reasons are codes; the POS words them.
+export interface TeamBulkInviteAvailabilityResponse {
+  tenantEnabled: boolean; platformPaused: boolean; available: boolean; offReason: 'salon_setting_off' | 'platform_paused' | null;
+  maxPerRun: number; recentHours: number; updatedAt: string | null;
+}
+export interface TeamBulkInvitePreviewResponse {
+  availability: TeamBulkInviteAvailabilityResponse; selected: number; willInvite: number; skipped: number; byReason: Partial<Record<string, number>>;
+  items: { memberId: string; name: string; action: 'invite' | 'skip'; channel: 'email' | 'sms' | null; contactHint: string | null; reason: string | null }[];
+}
+export interface TeamBulkInviteRunResponse {
+  runId: string; replayed: boolean; selected: number; sent: number; notDelivered: number; skipped: number; failed: number;
+  outcomes: { memberId: string; outcome: 'sent' | 'not_delivered' | 'skipped' | 'failed'; reason: string | null; channel: 'email' | 'sms' | null }[]; createdAt: string | null;
+}

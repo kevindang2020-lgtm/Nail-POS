@@ -110,6 +110,33 @@ describe('apply → paid → reversed (bug 4)', () => {
     expect(await status(a2.redemptionId)).toBe('partially_reversed');
     expect(await holdOf(a2.redemptionId)).toBe('redeemed');
   });
+  it('round 11 — live-use count: a partly reversed use stays counted and live (no second use on that ticket); a fully reversed one is not', async () => {
+    const d = await deal({ type: 'fixed', cents: 800, max: 2 });
+    const t = await ticket(await customer());
+    const c = await co.candidate(ctx, t.id, { dealId: d });
+    const a = await co.reserve(ctx, t.id, c, { id: c.offer.id, category: 'deal', description: '', appliedCents: 800, lines: [{ lineId: t.lines[0], cents: 500 }, { lineId: t.lines[1], cents: 300 }] });
+    await co.onPaid(ctx, t.id);
+    await co.onRefunded(ctx, t.id, [t.lines[0]], 'gel chipped');
+    expect(await status(a.redemptionId)).toBe('partially_reversed');
+    const count = async () => Number(((await sql`select redemption_count from deals where id = ${d}`.execute(db)).rows[0] as any).redemption_count);
+    expect(await count()).toBe(1);                                   // the partly reversed use still counts once
+    // the ticket is now partly refunded (not 'paid'), so the candidate passes; the ledger refuses a second use of the offer
+    await sql`update tickets set status = 'partially_refunded', payment_status = 'partially_refunded' where id = ${t.id}`.execute(db);
+    await expect(co.reserve(ctx, t.id, c, { id: c.offer.id, category: 'deal', description: '', appliedCents: 300, lines: [{ lineId: t.lines[1], cents: 300 }] }))
+      .rejects.toMatchObject({ status: 409, reasons: [expect.objectContaining({ code: 'used_on_ticket' })] });
+    const live = Number(((await sql`select count(*)::int as n from deal_redemptions where ticket_id = ${t.id} and deal_id = ${d} and status in ('applied','redeemed','partially_reversed')`.execute(db)).rows[0] as any).n);
+    expect(live).toBe(1);
+    // the panel does not suggest it again on this ticket
+    const p = await co.panel(ctx, t.id, []);
+    expect([...p.eligible, ...p.notEligible].map((o) => o.dealId)).not.toContain(d);
+    // the database refuses it too (migration 965: partially_reversed is inside the live-use index)
+    await expect(sql`insert into deal_redemptions (deal_id, tenant_id, branch_id, ticket_id, deal_version, status, amount_discounted_cents) values (${d}, ${T}, ${B}, ${t.id}, 1, 'applied', 100)`.execute(db)).rejects.toThrow();
+    // reversing the rest makes it fully reversed: no longer live, the count goes down, the offer may be used on that ticket again
+    await co.onRefunded(ctx, t.id, null, 'rest refunded');
+    expect(await status(a.redemptionId)).toBe('reversed');
+    expect(await count()).toBe(0);
+    await expect(co.reserve(ctx, t.id, c, { id: c.offer.id, category: 'deal', description: '', appliedCents: 300, lines: [{ lineId: t.lines[1], cents: 300 }] })).resolves.toMatchObject({ dealId: d, status: 'applied' });
+  });
   it('removing it before payment releases everything (place, budget, code use)', async () => {
     const d = await deal({ budget: 5000 }); const t = await ticket(await customer());
     const app = await apply(t.id, { dealId: d }, 1200);

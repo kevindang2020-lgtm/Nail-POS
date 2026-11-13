@@ -26,7 +26,7 @@ describe('kill switch centre (§34)', () => {
   const U = '71717171-7171-4717-8717-717171717171';
   it('lists every switch from where it lives', async () => {
     const list = await new KillSwitchService(db).list();
-    expect(list.map((k) => k.key)).toEqual(['ai.auto_actions', 'sms.emergency_send', 'booking.verification', 'deals.engine', 'payments.cardpointe', 'payments.clover', 'payments.tap_to_pay', 'payments.fiserv_tap_to_pay']);
+    expect(list.map((k) => k.key)).toEqual(['ai.auto_actions', 'sms.emergency_send', 'booking.verification', 'deals.engine', 'payments.cardpointe', 'payments.clover', 'payments.tap_to_pay', 'payments.fiserv_tap_to_pay', 'staff.bulk_invites']);
   });
   it('flipping the AI switch needs a reason; it writes the setting, an immutable history row and an audit row; the AI engine then reads it', async () => {
     const svc = new KillSwitchService(db);
@@ -49,5 +49,18 @@ describe('Deals engine switch through the centre (real schema)', () => {
     expect(list.find((k) => k.key === 'deals.engine')).toMatchObject({ active: true, reason: 'deal pricing bug found' });
     expect(await new (KyselyDealsRepository as any)(db).dealsEngineDisabled()).toBe(true);
     await expect(svc.setSettingSwitch('sms.emergency_send', { userId: null }, true, 'wrong place to toggle')).rejects.toBeTruthy();
+  });
+});
+
+describe('round 11 — Team bulk invites platform pause through the centre (extras 200-Technician 08)', () => {
+  it('not active by default; pausing needs a reason and writes the setting the bulk invite reads; releasing clears it', async () => {
+    const svc = new KillSwitchService(db); const U = '73737373-7373-4737-8737-737373737373';
+    expect((await svc.list()).find((k) => k.key === 'staff.bulk_invites')).toMatchObject({ active: false, reason: null });
+    await expect(svc.setSettingSwitch('staff.bulk_invites', { userId: U }, true, 'short')).rejects.toBeTruthy();
+    const on = await svc.setSettingSwitch('staff.bulk_invites', { userId: U }, true, 'invite messages complaint review');
+    expect(on.find((k) => k.key === 'staff.bulk_invites')).toMatchObject({ active: true, reason: 'invite messages complaint review' });
+    expect((await sql<any>`select value from platform_settings where setting_key = 'staff.bulk_invites_disabled'`.execute(db)).rows[0].value).toBe(true);
+    const off = await svc.setSettingSwitch('staff.bulk_invites', { userId: U }, false, 'review finished, resuming');
+    expect(off.find((k) => k.key === 'staff.bulk_invites')).toMatchObject({ active: false });
   });
 });

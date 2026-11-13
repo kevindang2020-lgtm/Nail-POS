@@ -89,3 +89,30 @@ describe('inventory.recipe_usage_on_service_done — a completed line deducts it
     expect((await moves(POLISH)).length).toBe(2);
   });
 });
+
+describe('round 11 — ADD-ONS 06: an add-on line deducts its add-on recipe through the same consumer, only while the salon turned it on', () => {
+  const TICKET_ADD = '3eeeeee3-eeee-eeee-eeee-eeeeeeeeeeee', L_ADD = '3fffff06-ffff-ffff-ffff-ffffffffffff', FOIL = '3ddddd03-dddd-dddd-dddd-dddddddddddd';
+  beforeAll(async () => {
+    await sql`INSERT INTO inventory_products (id, tenant_id, name, is_retail, is_service, active, retail_price_cents, cost_cents) VALUES (${FOIL}, ${T}, 'Art Foil', false, true, true, 0, 50)`.execute(db);
+    for (let i = 0; i < 3; i++) await sql`INSERT INTO inventory_units (tenant_id, branch_id, product_id, status) VALUES (${T}, ${B}, ${FOIL}, 'unopened')`.execute(db);
+    await sql`INSERT INTO service_add_ons (tenant_id, branch_id, service_id, add_on_key, name, price_cents) VALUES (${T}, ${B}, ${GEL}, 'foil-art', 'Foil Art', 800)`.execute(db);
+    await sql`INSERT INTO service_add_on_recipes (tenant_id, add_on_key, product_id, quantity) VALUES (${T}, 'foil-art', ${FOIL}, 1)`.execute(db);
+    await sql`INSERT INTO tickets (id, tenant_id, branch_id, customer_id, status) VALUES (${TICKET_ADD}, ${T}, ${B}, ${CUST}, 'service_done')`.execute(db);
+    await sql`INSERT INTO ticket_service_lines (id, tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, status, quantity, line_kind, is_add_on)
+              VALUES (${L_ADD}, ${T}, ${B}, ${TICKET_ADD}, ${PEDI}, 'Foil Art', 800, 10, 800, 'completed', 1, 'add_on', true)`.execute(db);
+  });
+  it('off (the default): Service Done of the add-on line moves no foil', async () => {
+    expect((await runner.run(consumer, completed(TICKET_ADD))).status).toBe('processed');
+    expect(await moves(FOIL)).toEqual([]);
+  });
+  it('on: the add-on recipe is deducted once, related to the add-on line; a redelivery moves nothing more', async () => {
+    await sql`INSERT INTO tenant_settings (tenant_id, branch_id, category, settings_json) VALUES (${T}, NULL, 'inventory', '{"addon_recipes_enabled": true}'::jsonb)`.execute(db);
+    await new OutboxWriter().write(db, completed(TICKET_ADD)); await publisher.tick();
+    const m = await moves(FOIL);
+    expect(m.map((x) => [x.movement_type, x.quantity_change, x.related_type, x.related_id])).toEqual([['service_usage', -1, 'ticket_line_add_on', L_ADD]]);
+    const again = createDomainEvent({ ...completed(TICKET_ADD), eventId: undefined } as any);
+    await runner.run(consumer, again);
+    expect((await moves(FOIL)).length).toBe(1);
+    expect((await moves(POLISH)).length).toBe(2);   // the service lines of the first ticket are untouched
+  });
+});

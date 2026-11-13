@@ -31,3 +31,16 @@ export const posTeamTrainingApi = {
     api.post<any>('/pos/team-training/certifications', b as unknown as Record<string, unknown>),
   verifyCertification: (id: string, b: { expectedVersion: number; decision: 'VERIFIED' | 'REJECTED' | 'REVOKED'; note: string }) => api.post<any>(`/pos/team-training/certifications/${e(id)}/verify`, b),
 };
+// round 11 (extras 200-Technician 08): bulk invite — OFF until the salon turns it on (and the platform has not paused it).
+// Shapes named apart from the API contract types (TeamBulkInvite*Response).
+export type BulkInviteState = { tenantEnabled: boolean; platformPaused: boolean; available: boolean; offReason: 'salon_setting_off' | 'platform_paused' | null; maxPerRun: number; recentHours: number; updatedAt: string | null };
+export type BulkInvitePlan = { availability: BulkInviteState; selected: number; willInvite: number; skipped: number; byReason: Record<string, number>;
+  items: { memberId: string; name: string; action: 'invite' | 'skip'; channel: 'email' | 'sms' | null; contactHint: string | null; reason: string | null }[] };
+export type BulkInviteResult = { runId: string; replayed: boolean; selected: number; sent: number; notDelivered: number; skipped: number; failed: number;
+  outcomes: { memberId: string; outcome: 'sent' | 'not_delivered' | 'skipped' | 'failed'; reason: string | null; channel: 'email' | 'sms' | null }[] };
+export const posTeamBulkInviteApi = {
+  settings: () => api.get<BulkInviteState>('/pos/team-bulk-invite/settings'),
+  saveSettings: (enabled: boolean) => api.put<BulkInviteState>('/pos/team-bulk-invite/settings', { enabled }),
+  preview: (memberIds: string[]) => api.post<BulkInvitePlan>('/pos/team-bulk-invite/preview', { memberIds }),
+  run: (memberIds: string[], runKey: string) => api.post<BulkInviteResult>('/pos/team-bulk-invite/run', { memberIds, runKey }),
+};

@@ -17,6 +17,7 @@ import { hashCode, normalizeCode, lookupBlocked, LOOKUP_WINDOW_MS, parseWalletQr
 import type { OfferSummary } from '@aipowersalon/api-contracts/tenant';
 import { couponVerdict, configReasons, type CouponVerdict } from './coupon-verdict';
 import { stackingInspector } from './stacking-inspector';
+import { LIVE_USE_STATUSES } from './deal-lifecycles';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 /** extras Promotions Management 03: the effective terms returned beside a read-only check */
@@ -168,7 +169,10 @@ export class DealsCheckoutService {
     const t = await this.ticket(ctx, ticketId);
     const policy = await this.policy(ctx);
     const apps = await this.ledger.liveApplications(ctx.tenantId, ticketId);
-    const appliedDeals = new Set(apps.map((a) => a.dealId));
+    // round 11: an offer whose use on this ticket was PARTLY reversed is still used here — never suggested again (the ledger refuses it)
+    const liveUse: readonly string[] = LIVE_USE_STATUSES;
+    const usedHere = (await this.ledger.applicationsForTicket(ctx.tenantId, ticketId)).filter((a) => liveUse.includes(a.status));
+    const appliedDeals = new Set([...apps, ...usedHere].map((a) => a.dealId));
     const lines: PricingLine[] = t.lines.map((l) => ({ lineId: l.lineId, priceCents: l.priceCents }));
     const live = await this.ledger.liveDeals(ctx.tenantId);
     const booked = t.appointmentId ? await this.ledger.appointmentHold(ctx.tenantId, t.appointmentId) : null;

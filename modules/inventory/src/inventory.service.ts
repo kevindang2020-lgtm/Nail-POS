@@ -20,6 +20,13 @@ import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's re
 
 export class InventoryError extends Error { constructor(public status: number, message: string, public extra?: any) { super(message); } }
 export interface InvCtx { tenantId: string; branchId: string; userId: string; role: string; permissions: string[] }
+/** round 11 (ADD-ONS 06): the tenant_settings category holding the salon's add-on recipe switch (addon_recipes_enabled, default off). */
+export const ADD_ON_RECIPE_SETTING_CATEGORY = 'inventory';
+const ADD_ON_KEY = /^[A-Za-z0-9_-]{1,64}$/;
+/** One add-on's recipe as the screen shows it (named apart from any API type). */
+export interface AddOnRecipeView { key: string; name: string; deductsAtServiceDone: boolean; lines: { productId: string; productName: string; quantity: number; unit: string | null }[] }
+/** What Service Done did with one add-on line. */
+export interface AddOnLineUsage { addOnKey: string | null; outcome: 'deducted' | 'already_deducted' | 'service_recipe_used' | 'no_add_on' | 'ambiguous_add_on' | 'no_recipe'; deducted: { productId: string; requested: number; deducted: number }[] }
 /** audit_logs.user_id / inventory_stock_movements.actor_user_id are UUIDs: a system context's 'system:<job>' (B-14, the ONE
  *  system-context shape) is kept as the job's NAME instead, never written into a UUID column (the insert would fail and
  *  the best-effort audit would be lost — the swallowed-catch pattern wave 4 found). */
@@ -1705,13 +1712,23 @@ export class InventoryService {
     if (!opts.exec) return this.need().transaction().execute((trx) => this.consumeServiceRecipe(ctx, serviceId, multiplier, { ...opts, exec: trx as unknown as Kysely<DB> }));
     await this.service(ctx, serviceId);
     const exec = opts.exec;
-    const expiryDay = businessDate(await branchTimeZone(exec, ctx.tenantId, ctx.branchId));   // §87: a bottle expires on the LOCATION's day
     const mult = Math.max(1, Math.floor(multiplier || 1));
     // product_id order, and the stock rows locked in that order BEFORE the first count (M4 lanes — see lockStock): the
     // "before" count is then taken after every concurrent deduction of these products has committed, so before − after
     // is exactly what THIS call emptied; and two services sharing products never lock them in opposite orders.
-    const lines = await sql<any>`SELECT product_id, quantity FROM service_product_recipes WHERE service_id = ${serviceId} AND tenant_id = ${ctx.tenantId} ORDER BY product_id`.execute(exec);
-    await this.lockStock(ctx, lines.rows.map((l: any) => String(l.product_id)), exec);
+    const lines = await sql<{ product_id: string; quantity: number | string }>`SELECT product_id, quantity FROM service_product_recipes WHERE service_id = ${serviceId} AND tenant_id = ${ctx.tenantId} ORDER BY product_id`.execute(exec);
+    const result = await this.deductRecipeLines(ctx, lines.rows, mult, exec, opts.reason ?? 'Service usage', opts.related ?? { type: 'service', id: serviceId });
+    await this.audit(ctx, opts.audit ?? 'service_recipe_consumed', null, null, { serviceId, multiplier: mult, lines: result.length, related: opts.related ?? null }, exec);
+    return { serviceId, multiplier: mult, deducted: result };
+  }
+
+  /** THE recipe deduction (service recipes and — round 11 — add-on recipes): each line's amount × the multiplier is taken
+   *  from this location's bottles under the products' stock locks (product_id order), one service_usage movement per product
+   *  carrying the exact takes. Never negative: what the bottles cannot cover is the shortfall. Caller holds the transaction. */
+  private async deductRecipeLines(ctx: InvCtx, recipe: readonly { product_id: string; quantity: number | string }[], mult: number, exec: Kysely<DB>, reason: string, related: { type: string; id: string }): Promise<{ productId: string; requested: number; deducted: number }[]> {
+    const expiryDay = businessDate(await branchTimeZone(exec, ctx.tenantId, ctx.branchId));   // §87: a bottle expires on the LOCATION's day
+    const lines = { rows: [...recipe].sort((a, b) => String(a.product_id).localeCompare(String(b.product_id))) };
+    await this.lockStock(ctx, lines.rows.map((l) => String(l.product_id)), exec);
     const result: { productId: string; requested: number; deducted: number }[] = [];
     for (const l of lines.rows) {
       // audit D9: the recipe amount (hundredths of the unit) is TAKEN from the bottles like a recorded use — the open bottle's
@@ -1729,12 +1746,11 @@ export class InventoryService {
       const before = (await this.recompute(ctx, l.product_id, exec)).onHand;
       for (const t of plan.takes) await this.applyBottle(ctx, t.unitId, t.toStatus, t.remainingAfter, t.fromStatus, exec);
       const after = (await this.recompute(ctx, l.product_id, exec)).onHand;
-      if (taken > 0) await this.move(ctx, l.product_id, plan.takes.length === 1 ? plan.takes[0].unitId : null, 'service_usage', before, after - before, after, opts.reason ?? 'Service usage', opts.related ?? { type: 'service', id: serviceId }, exec,
+      if (taken > 0) await this.move(ctx, l.product_id, plan.takes.length === 1 ? plan.takes[0].unitId : null, 'service_usage', before, after - before, after, reason, related, exec,
         { quantityHundredths: taken, requestedHundredths: want, shortHundredths: plan.short, takes: plan.takes });
       result.push({ productId: l.product_id, requested: want / HUNDREDTHS, deducted: taken / HUNDREDTHS });
     }
-    await this.audit(ctx, opts.audit ?? 'service_recipe_consumed', null, null, { serviceId, multiplier: mult, lines: result.length, related: opts.related ?? null }, exec);
-    return { serviceId, multiplier: mult, deducted: result };
+    return result;
   }
 
   /** D4 — recipes deducted at Service Done (Oct 22 2026, Kevin: "use the recommended"). Called by the service.completed
@@ -1747,15 +1763,170 @@ export class InventoryService {
     // two deliveries of the same Service Done (two consumers, a replay racing the original) used to both pass the "already
     // deducted?" check before either wrote its movement — the line was deducted twice. One transaction-scoped lock per line.
     await sql`SELECT pg_advisory_xact_lock(hashtext(${'inv-line:' + line.lineId}))`.execute(exec);
-    const done = await sql<{ n: number }>`SELECT count(*)::int AS n FROM inventory_stock_movements
-      WHERE tenant_id = ${ctx.tenantId} AND movement_type = 'service_usage' AND related_type = 'ticket_line' AND related_id = ${line.lineId}`.execute(exec);
-    if (Number(done.rows[0]?.n ?? 0) > 0) return { serviceId: line.serviceId, multiplier: 0, deducted: [], alreadyDeducted: true as const };
     // a service with no recipe (most of a menu) is nothing to deduct and nothing to audit
     const recipe = await sql<{ n: number }>`SELECT count(*)::int AS n FROM service_product_recipes WHERE tenant_id = ${ctx.tenantId} AND service_id = ${line.serviceId}`.execute(exec);
-    if (Number(recipe.rows[0]?.n ?? 0) === 0) return { serviceId: line.serviceId, multiplier: 0, deducted: [], alreadyDeducted: false as const };
+    const hasServiceRecipe = Number(recipe.rows[0]?.n ?? 0) > 0;
+    // round 11 (ADD-ONS 06): an add-on line's own recipe — only while the salon has turned add-on recipes on (default off)
+    const addOn = await this.consumeAddOnRecipeForLine(ctx, line, hasServiceRecipe, exec);
+    const extra = addOn ? { addOn } : {};
+    const done = await sql<{ n: number }>`SELECT count(*)::int AS n FROM inventory_stock_movements
+      WHERE tenant_id = ${ctx.tenantId} AND movement_type = 'service_usage' AND related_type = 'ticket_line' AND related_id = ${line.lineId}`.execute(exec);
+    if (Number(done.rows[0]?.n ?? 0) > 0) return { serviceId: line.serviceId, multiplier: 0, deducted: [], alreadyDeducted: true as const, ...extra };
+    if (!hasServiceRecipe) return { serviceId: line.serviceId, multiplier: 0, deducted: [], alreadyDeducted: false as const, ...extra };
     const r = await this.consumeServiceRecipe(ctx, line.serviceId, Math.max(1, Number(line.quantity ?? 1) || 1),
       { exec, related: { type: 'ticket_line', id: line.lineId }, reason: `Service done · ticket ${line.ticketId}`, audit: 'service_recipe_consumed_at_service_done' });
-    return { ...r, alreadyDeducted: false as const };
+    return { ...r, alreadyDeducted: false as const, ...extra };
+  }
+
+  // ── round 11 — extras ADD-ONS MANAGEMENT 06: add-ons consume inventory (a MECHANISM; Kevin decides whether it is on) ──────
+  // An optional recipe per add-on (its key on the Add-Ons screen): products + whole quantities, the shape of a service recipe.
+  // The salon switch (tenant_settings 'inventory'.addon_recipes_enabled) is OFF unless set: then nothing is deducted for add-ons
+  // — exactly today's behaviour. On: Service Done deducts a completed add-on line's recipe through deductRecipeLines (the SAME
+  // deduction a service recipe uses), once per ticket line; a removed line / voided ticket gives exactly that back.
+  // An add-on line is matched to its add-on by name (the Add-Ons screen's own rule — 'add_on_name_on_ticket_line'); a name
+  // shared by two different add-ons is ambiguous and deducts nothing. A line whose service already has a service recipe is
+  // not deducted twice: the service recipe stands.
+
+  /** The salon's add-on recipe switch. Absent / unreadable shape → off. */
+  async addOnRecipeSetting(ctx: InvCtx, exec: Kysely<DB> = this.need()): Promise<{ enabled: boolean; updatedAt: string | null }> {
+    const r = (await sql<{ enabled: boolean | null; updated_at: string | Date | null }>`SELECT (settings_json ->> 'addon_recipes_enabled')::boolean AS enabled, updated_at
+      FROM tenant_settings WHERE tenant_id = ${ctx.tenantId} AND branch_id IS NULL AND category = ${ADD_ON_RECIPE_SETTING_CATEGORY} LIMIT 1`.execute(exec)).rows[0];
+    return { enabled: r?.enabled === true, updatedAt: r?.updated_at ? new Date(r.updated_at).toISOString() : null };
+  }
+
+  /** Turn add-on recipes on or off for the salon (settings permission). Audited with before / after. */
+  async setAddOnRecipeSetting(ctx: InvCtx, body: { enabled?: unknown }): Promise<{ enabled: boolean; updatedAt: string | null }> {
+    if (typeof body?.enabled !== 'boolean') throw withCode(new InventoryError(400, 'Say whether add-ons use their recipes (on or off).'), 'VALIDATION_FAILED');
+    const db = this.need();
+    const before = await this.addOnRecipeSetting(ctx, db);
+    await db.transaction().execute(async (trx) => {
+      await sql`INSERT INTO tenant_settings (tenant_id, branch_id, category, settings_json, updated_by_user_id, updated_at)
+        VALUES (${ctx.tenantId}, NULL, ${ADD_ON_RECIPE_SETTING_CATEGORY}, ${JSON.stringify({ addon_recipes_enabled: body.enabled })}::jsonb, ${systemActorOf(ctx.userId).userId}, now())
+        ON CONFLICT (tenant_id, category) WHERE branch_id IS NULL DO UPDATE SET settings_json = tenant_settings.settings_json || excluded.settings_json, updated_by_user_id = excluded.updated_by_user_id, updated_at = now()`.execute(trx);
+      await this.audit(ctx, 'inventory_add_on_recipes_setting_changed', null, null, { before: { enabled: before.enabled }, after: { enabled: body.enabled } }, trx as unknown as Kysely<DB>);
+    });
+    return this.addOnRecipeSetting(ctx, db);
+  }
+
+  /** One add-on's recipe (its key on the Add-Ons screen) and whether the salon deducts it. */
+  async getAddOnRecipe(ctx: InvCtx, key: string): Promise<AddOnRecipeView> {
+    const db = this.need();
+    const addOn = await this.addOnByKey(ctx, key, db);
+    const lines = (await sql<{ product_id: string; product_name: string; quantity: number; unit_type: string | null }>`
+      SELECT r.product_id, p.name AS product_name, r.quantity, p.unit_type FROM service_add_on_recipes r
+        JOIN inventory_products p ON p.id = r.product_id AND p.tenant_id = r.tenant_id
+       WHERE r.tenant_id = ${ctx.tenantId} AND r.add_on_key = ${addOn.key} ORDER BY lower(p.name), r.product_id`.execute(db)).rows;
+    const setting = await this.addOnRecipeSetting(ctx, db);
+    return { key: addOn.key, name: addOn.name, deductsAtServiceDone: setting.enabled, lines: lines.map((l) => ({ productId: String(l.product_id), productName: String(l.product_name), quantity: Number(l.quantity), unit: l.unit_type ?? null })) };
+  }
+
+  /** Replace an add-on's recipe (whole quantities, one line per product). Saving never deducts anything. Audited. */
+  async setAddOnRecipe(ctx: InvCtx, key: string, b: { lines?: unknown }): Promise<AddOnRecipeView> {
+    const db = this.need();
+    const addOn = await this.addOnByKey(ctx, key, db);
+    const asked: { productId?: unknown; quantity?: unknown }[] = Array.isArray(b?.lines) ? b.lines : [];
+    if (asked.length > 100) throw withCode(new InventoryError(400, 'A recipe has at most 100 products.'), 'VALIDATION_FAILED');
+    const clean: { productId: string; quantity: number }[] = []; const seen = new Set<string>();
+    for (const l of asked) {
+      const pid = String(l?.productId ?? '');
+      if (!ACTOR_UUID.test(pid)) throw withCode(new InventoryError(400, 'A selected product no longer exists'), 'PRODUCT_NOT_FOUND');
+      if (seen.has(pid)) continue;
+      const q = Number(l?.quantity);
+      if (!Number.isInteger(q) || q < 1 || q > 1000) throw withCode(new InventoryError(400, 'Enter a whole number from 1 to 1000 for each product.'), 'USAGE_QUANTITY_INVALID');
+      const p = (await sql<{ id: string }>`SELECT id FROM inventory_products WHERE id = ${pid} AND tenant_id = ${ctx.tenantId} AND archived_at IS NULL`.execute(db)).rows[0];
+      if (!p) throw withCode(new InventoryError(400, 'A selected product no longer exists'), 'PRODUCT_NOT_FOUND');
+      seen.add(pid); clean.push({ productId: pid, quantity: q });
+    }
+    const before = (await this.getAddOnRecipe(ctx, addOn.key)).lines.map((l) => ({ productId: l.productId, quantity: l.quantity }));
+    await db.transaction().execute(async (trx) => {
+      await sql`DELETE FROM service_add_on_recipes WHERE tenant_id = ${ctx.tenantId} AND add_on_key = ${addOn.key}`.execute(trx);
+      for (const l of clean) await sql`INSERT INTO service_add_on_recipes (tenant_id, add_on_key, product_id, quantity, created_by_user_id, updated_by)
+        VALUES (${ctx.tenantId}, ${addOn.key}, ${l.productId}, ${l.quantity}, ${systemActorOf(ctx.userId).userId}, ${systemActorOf(ctx.userId).userId})`.execute(trx);
+      await this.audit(ctx, 'add_on_recipe_set', null, null, { addOnKey: addOn.key, before, after: clean }, trx as unknown as Kysely<DB>);
+    });
+    return this.getAddOnRecipe(ctx, addOn.key);
+  }
+
+  private async addOnByKey(ctx: InvCtx, key: string, exec: Kysely<DB>): Promise<{ key: string; name: string }> {
+    if (!ADD_ON_KEY.test(String(key ?? ''))) throw withCode(new InventoryError(404, 'That add-on was not found.'), 'ADD_ON_NOT_FOUND');
+    const r = (await sql<{ add_on_key: string; name: string }>`SELECT add_on_key, name FROM service_add_ons WHERE tenant_id = ${ctx.tenantId} AND add_on_key = ${key}
+      ORDER BY is_active DESC, updated_at DESC LIMIT 1`.execute(exec)).rows[0];
+    if (!r) throw withCode(new InventoryError(404, 'That add-on was not found.'), 'ADD_ON_NOT_FOUND');
+    return { key: String(r.add_on_key), name: String(r.name) };
+  }
+
+  /** Service Done, one ticket line: deduct the add-on's recipe when the switch is on and the line is an add-on. Idempotent on
+   *  the line (its own movement relation 'ticket_line_add_on'). Returns null when the switch is off or the line is no add-on. */
+  private async consumeAddOnRecipeForLine(ctx: InvCtx, line: { ticketId: string; lineId: string }, hasServiceRecipe: boolean, exec: Kysely<DB>): Promise<AddOnLineUsage | null> {
+    if (!(await this.addOnRecipeSetting(ctx, exec)).enabled) return null;   // OFF (the default): today's behaviour
+    const l = (await sql<{ is_add_on: boolean | null; line_kind: string | null; name: string | null; quantity: number | null; branch_id: string | null }>`
+      SELECT is_add_on, line_kind, service_name_snapshot AS name, quantity, branch_id FROM ticket_service_lines
+       WHERE tenant_id = ${ctx.tenantId} AND ticket_id = ${line.ticketId} AND id = ${line.lineId} AND removed_at IS NULL`.execute(exec)).rows[0];
+    if (!l || !(l.is_add_on || String(l.line_kind ?? '').toLowerCase() === 'add_on')) return null;
+    if (hasServiceRecipe) return { addOnKey: null, outcome: 'service_recipe_used', deducted: [] };
+    const done = await sql<{ n: number }>`SELECT count(*)::int AS n FROM inventory_stock_movements
+      WHERE tenant_id = ${ctx.tenantId} AND movement_type = 'service_usage' AND related_type = 'ticket_line_add_on' AND related_id = ${line.lineId}`.execute(exec);
+    if (Number(done.rows[0]?.n ?? 0) > 0) return { addOnKey: null, outcome: 'already_deducted', deducted: [] };
+    const keys = (await sql<{ add_on_key: string }>`SELECT DISTINCT add_on_key FROM service_add_ons
+      WHERE tenant_id = ${ctx.tenantId} AND (branch_id IS NULL OR branch_id = ${l.branch_id ?? ctx.branchId}) AND lower(name) = lower(${String(l.name ?? '')})`.execute(exec)).rows;
+    if (keys.length !== 1) return { addOnKey: null, outcome: keys.length ? 'ambiguous_add_on' : 'no_add_on', deducted: [] };
+    const addOnKey = String(keys[0].add_on_key);
+    const recipe = (await sql<{ product_id: string; quantity: number }>`SELECT product_id, quantity FROM service_add_on_recipes WHERE tenant_id = ${ctx.tenantId} AND add_on_key = ${addOnKey}`.execute(exec)).rows;
+    if (!recipe.length) return { addOnKey, outcome: 'no_recipe', deducted: [] };
+    const mult = Math.max(1, Math.floor(Number(l.quantity ?? 1) || 1));
+    const deducted = await this.deductRecipeLines(ctx, recipe, mult, exec, `Add-on done · ticket ${line.ticketId}`, { type: 'ticket_line_add_on', id: line.lineId });
+    await this.audit(ctx, 'add_on_recipe_consumed_at_service_done', null, null, { addOnKey, ticketId: line.ticketId, lineId: line.lineId, multiplier: mult, lines: deducted.length }, exec);
+    return { addOnKey, outcome: 'deducted', deducted };
+  }
+
+  /** A removed add-on line or a voided ticket: exactly what its add-on recipe took goes back to the bottles it came from
+   *  (lineIds null = the whole ticket). Runs whatever the switch says now — it only gives back what was really taken.
+   *  Idempotent per line + product (a 'correction' movement related to 'ticket_line_add_on_return'). A bottle sold, damaged
+   *  or disposed since cannot take stock back; that part is reported as not returned. */
+  async reverseAddOnUsage(ctx: InvCtx, input: { ticketId: string; lineIds: string[] | null; reason: string }): Promise<{ returnedLines: number; byProduct: Array<{ productId: string; returnedHundredths: number; notReturnedHundredths: number }> }> {
+    const none = { returnedLines: 0, byProduct: [] };
+    if (!ACTOR_UUID.test(String(input?.ticketId ?? ''))) return none;
+    const lineIds = (input.lineIds ?? []).filter((x) => ACTOR_UUID.test(String(x)));
+    if (input.lineIds && !lineIds.length) return none;
+    return this.need().transaction().execute(async (trx0) => {
+      const trx = trx0 as unknown as Kysely<DB>;
+      const moves = (await sql<{ id: string; branch_id: string; product_id: string; related_id: string; metadata_json: { takes?: Take[]; shortHundredths?: number; quantityHundredths?: number } | null }>`
+        SELECT m.id, m.branch_id, m.product_id, m.related_id, m.metadata_json FROM inventory_stock_movements m
+          JOIN ticket_service_lines tl ON tl.tenant_id = m.tenant_id AND tl.id = m.related_id
+         WHERE m.tenant_id = ${ctx.tenantId} AND m.movement_type = 'service_usage' AND m.related_type = 'ticket_line_add_on' AND tl.ticket_id = ${input.ticketId}
+           ${input.lineIds ? sql`AND tl.id = ANY(${lineIds}::uuid[])` : sql``}
+           AND NOT EXISTS (SELECT 1 FROM inventory_stock_movements back WHERE back.tenant_id = m.tenant_id AND back.related_type = 'ticket_line_add_on_return'
+                             AND back.related_id = m.related_id AND back.product_id = m.product_id)
+         ORDER BY m.product_id, m.created_at, m.id`.execute(trx)).rows;
+      const byProduct: Array<{ productId: string; returnedHundredths: number; notReturnedHundredths: number }> = []; const lines = new Set<string>();
+      for (const m of moves) {
+        const bctx: InvCtx = { ...ctx, branchId: String(m.branch_id) };
+        await sql`SELECT pg_advisory_xact_lock(hashtext(${'inv-line:' + m.related_id}))`.execute(trx);
+        await this.lockStock(bctx, [String(m.product_id)], trx);
+        const takes: Take[] = Array.isArray(m.metadata_json?.takes) ? m.metadata_json!.takes! : [];
+        const taken = Number(m.metadata_json?.quantityHundredths ?? takes.reduce((n, t) => n + Number(t.takenHundredths || 0), 0));
+        const plan = planRestore(takes, 0, {}, taken);
+        const bottles = (await sql<{ id: string; status: BottleStatus; estimated_remaining_percent: number | null; created_at: string }>`
+          SELECT id, status, estimated_remaining_percent, created_at::text AS created_at FROM inventory_units
+           WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${bctx.branchId} AND product_id = ${m.product_id} ORDER BY created_at, id FOR UPDATE`.execute(trx)).rows
+          .map((b): BottleRow => ({ id: b.id, status: b.status, remainingPercent: b.estimated_remaining_percent == null ? null : Number(b.estimated_remaining_percent), createdAt: String(b.created_at) }));
+        const before = (await this.recompute(bctx, m.product_id, trx)).onHand;
+        let back = 0; const applied: { unitId: string; hundredths: number }[] = [];
+        for (const r of plan.restores) {
+          const b = bottles.find((x) => x.id === r.unitId); if (!b) continue;
+          const take = takes.find((t) => t.unitId === r.unitId);
+          const next = restoredStatus(b.status, b.status === 'empty' ? 0 : remainingOf(b), r.hundredths, take?.fromStatus === 'unopened' && r.hundredths >= (take?.takenHundredths ?? 0) && (take?.remainingBefore ?? 0) >= HUNDREDTHS);
+          if (!next) continue;
+          await this.applyBottle(bctx, r.unitId, next.status, next.remaining, b.status, trx); applied.push(r); back += r.hundredths;
+        }
+        const after = (await this.recompute(bctx, m.product_id, trx)).onHand;
+        await this.move(bctx, m.product_id, null, 'correction', before, after - before, after, `add-on use given back: ${String(input.reason ?? '').slice(0, 200)}`,
+          { type: 'ticket_line_add_on_return', id: String(m.related_id) }, trx, { usageMovementId: m.id, returnedHundredths: back, notReturnedHundredths: taken - back, restores: applied });
+        await this.audit(bctx, 'add_on_recipe_usage_returned', m.product_id, null, { ticketId: input.ticketId, lineId: m.related_id, returnedHundredths: back, notReturnedHundredths: taken - back, reason: input.reason }, trx);
+        byProduct.push({ productId: String(m.product_id), returnedHundredths: back, notReturnedHundredths: taken - back }); lines.add(String(m.related_id));
+      }
+      return { returnedLines: lines.size, byProduct };
+    });
   }
 
   // ── Stock Alerts + Technician Product Usage mandate (Oct 29 2026) ─────────────────────────────────────────────────────
