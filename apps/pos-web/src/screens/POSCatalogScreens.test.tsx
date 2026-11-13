@@ -216,6 +216,44 @@ describe('Service Pricing', () => {
 });
 
 describe('Service Categories', () => {
+  it('SERVICE PRICING 04 (round 10): Edit Pricing also names technician availability conflicts and open tickets at another price', async () => {
+    cat.pricingImpact.mockResolvedValue({ upcoming: 1, quotedTotalCents: 5500, quotedDifferently: 1, wouldRunLonger: 1, availabilityConflicts: 1, staleOpenTickets: 2,
+      conflictItems: [{ appointmentId: 'a1', day: '2026-11-10', time: '10:00', nextAppointmentId: 'a2', nextTime: '10:50' }], items: [] });
+    mount(<POSServicePricingScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-edit-pricing'))[0]);
+    fireEvent.change(screen.getByTestId('pricing-duration'), { target: { value: '60' } });
+    expect(await screen.findByTestId('pricing-impact-conflicts', {}, { timeout: 2000 })).toHaveTextContent('1 booked visit(s) would then run into the same technician’s next appointment · 2026-11-10 10:00 → 10:50');
+    expect(screen.getByTestId('pricing-impact-stale')).toHaveTextContent('2 open ticket(s) already carry this service at another price');
+  });
+  it('SERVICE PRICING 10 (round 10): the details drawer shows previous → current → pending prices in one timeline', async () => {
+    cat.service.mockResolvedValue({ ...detail, scheduled: { id: 'sc1', priceCents: 6000, durationMinutes: null, effectiveAt: '2026-12-01T14:00:00Z', reason: 'New year' } });
+    cat.history.mockImplementation(async (q: any) => (q?.field === 'price' ? page([{ id: 'h2', field: 'price_cents', oldValue: '5000', newValue: '5500', changedAt: '2026-10-20T12:00:00Z', effectiveAt: null },
+      { id: 'h1', field: 'price_cents', oldValue: '4500', newValue: '5000', changedAt: '2026-09-01T12:00:00Z', effectiveAt: null }]) : page([])));
+    mount(<POSServicePricingScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-details'))[0]);
+    const tl = await screen.findByTestId('pd-timeline');
+    await waitFor(() => expect(screen.getAllByTestId('pd-tl-prev')).toHaveLength(2));
+    expect(screen.getAllByTestId('pd-tl-prev').map((x) => x.textContent)).toEqual([expect.stringContaining('$45.00 → $50.00'), expect.stringContaining('$50.00 → $55.00')]);   // oldest first
+    expect(screen.getByTestId('pd-tl-now')).toHaveTextContent('Now: $55.00');
+    expect(screen.getByTestId('pd-tl-next')).toHaveTextContent('Pending: $60.00');
+    expect(tl.parentElement).toHaveTextContent('One scheduled change at a time');
+    expect(cat.history).toHaveBeenCalledWith(expect.objectContaining({ serviceId: 's1', field: 'price', pageSize: 3 }));
+  });
+  it('SERVICE PRICING 09 (round 10): a customer-history row says why the charged price differs (server reasons, in words)', async () => {
+    cat.customerHistory.mockResolvedValue({ ...page([{ lineId: 'l1', ticketId: 't1', ticketNumber: '101', paid: true, at: '2026-10-29T12:00:00Z', customerId: 'cu1', customerName: 'Mai Le', maskedPhone: '••• 1234', item: 'Gel Manicure', kind: 'service', categoryAtSale: 'Nails', catalogPriceAtSaleCents: 5500, chargedCents: 5000, minutes: 45, technician: 'Vy Tran',
+      priceExplanation: { catalogNowCents: 5500, catalogAtSaleCents: 5500, quantity: 1, chargedCents: 5000, differenceFromCatalogNowCents: -500, reasons: [{ code: 'manual_override', cents: -500, by: 'Pat Owner', at: '2026-10-29T12:00:00Z' }, { code: 'not_recorded', cents: 0 }] } }]), needsQuery: false });
+    mount(<POSServicesScreen />);
+    fireEvent.change(await screen.findByTestId('search'), { target: { value: '(856) 555-1234' } });
+    const why = await screen.findByTestId('price-why');
+    expect(why).toHaveTextContent('price changed by Pat Owner (−$5.00)'); expect(why.textContent).not.toMatch(/manual_override|not_recorded/);
+  });
+  it('SERVICE PRICING 06 (round 10): a cross-domain finding names both domains in words', async () => {
+    cat.categorySummary.mockResolvedValue({ categories: 1, totalServices: 1, unassigned: 0, breakdown: [{ categoryId: 'c-h', name: 'Hair Studio', services: 1, sharePct: 100 }],
+      review: [{ kind: 'service_category_mismatch', categoryId: 'c-h', categoryName: 'Hair Studio', serviceId: 's9', serviceName: 'Spa Pedicure', categoryDomain: 'hair', serviceDomain: 'nails', status: 'open', lastDecision: null }] });
+    mount(<POSServiceCategoriesScreen />);
+    expect(await screen.findByTestId('review-service_category_mismatch')).toHaveTextContent('The service reads as nails but its category reads as hair');
+    expect(cat.reassign).not.toHaveBeenCalled();
+  });
   it('keeps the two cards, the chart and Breakdown, and flags (never fixes) the code-like names and the hair service', async () => {
     mount(<POSServiceCategoriesScreen />);
     expect(await screen.findByTestId('breakdown-table')).toHaveTextContent('66.7%');

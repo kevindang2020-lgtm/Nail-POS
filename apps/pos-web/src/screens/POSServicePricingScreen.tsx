@@ -162,6 +162,8 @@ function ServicePriceDetails({ serviceId, canEdit, onClose, onEdit }: { serviceI
   const [t, setT] = useState<'overview' | 'history' | 'branches'>('overview'); const [hp, setHp] = useState(1);
   const d = useLoad(() => posCatalogApi.service(serviceId), [serviceId]);
   const h = useLoad(() => (t === 'history' ? posCatalogApi.history({ serviceId, field: 'all', page: hp, pageSize: 8 }) : Promise.resolve(null)), [serviceId, t, hp]);
+  // SERVICE PRICING 10 (round 10): previous → current → pending on the overview, from the same history + schedule reads
+  const prevP = useLoad(() => (t === 'overview' ? posCatalogApi.history({ serviceId, field: 'price', page: 1, pageSize: 3 }) : Promise.resolve(null)), [serviceId, t]);
   // D4 gaps (Nov 5 2026): revert a price / duration change — a NEW revision with a reason (the history row stays)
   const [cancelSched, setCancelSched] = useState(false); const [schedWhy, setSchedWhy] = useState('');
   const doCancelSched = async () => {
@@ -192,6 +194,11 @@ function ServicePriceDetails({ serviceId, canEdit, onClose, onEdit }: { serviceI
             {canEdit ? (cancelSched ? <span style={{ display: 'flex', gap: 6, marginTop: 4 }}><input value={schedWhy} onChange={(e) => setSchedWhy(e.target.value)} placeholder={tx('cg.f.reason')} data-testid="sched-cancel-why" />
               <button type="button" className="fk-btn sm" disabled={!schedWhy.trim()} onClick={doCancelSched} data-testid="sched-cancel-save">{tx('cg.sched.cancel')}</button></span>
               : <button type="button" className="fk-btn ghost sm" onClick={() => setCancelSched(true)} data-testid="sched-cancel">{tx('cg.sched.cancel')}</button>) : null}</dd></> : null}
+          <dt>{tx('cg.tl.title')}</dt><dd><ol className="fn-notes" data-testid="pd-timeline">
+            {[...(prevP.data?.items ?? [])].reverse().map((p: any) => <li key={p.id} data-testid="pd-tl-prev">{tx('cg.tl.prev', { a: fmtMoney(Number(p.oldValue)), b: fmtMoney(Number(p.newValue)), t: day(p.effectiveAt ?? p.changedAt) })}</li>)}
+            <li data-testid="pd-tl-now"><b>{tx('cg.tl.now', { p: fmtMoney(x.priceCents) })}</b></li>
+            {x.scheduled ? <li data-testid="pd-tl-next">{tx('cg.tl.next', { p: x.scheduled.priceCents != null ? fmtMoney(x.scheduled.priceCents) : fmtMoney(x.priceCents), t: whenTime(x.scheduled.effectiveAt) })}</li> : <li className="fk-li-s" data-testid="pd-tl-none">{tx('cg.tl.noneNext')}</li>}
+          </ol><span className="fk-hint">{tx('cg.tl.rule')}</span></dd>
           <dt>{tx('cg.channels')}</dt><dd>{x.onlineBookable ? tx('cg.onlineYes') : tx('cg.onlineNo')}</dd>
           <dt>{tx('cg.lastCharged')}</dt><dd>{x.sales90d.lastChargedCents == null ? tx('cg.noSales') : `${fmtMoney(x.sales90d.lastChargedCents)} · ${day(x.sales90d.lastAt)}`}</dd>
           <dt>{tx('cg.sold90')}</dt><dd>{x.sales90d.lines ? tx('cg.sold90v', { n: nf(x.sales90d.lines), v: fmtMoney(x.sales90d.cents), d: day(x.sales90d.lastAt) }) : tx('cg.noSales')}</dd>

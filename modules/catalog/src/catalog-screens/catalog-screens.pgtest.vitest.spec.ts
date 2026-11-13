@@ -251,6 +251,22 @@ describe('Service Pricing — D4 gaps (Nov 5 2026): booking impact preview and r
     expect(imp).toMatchObject({ upcoming: 1, quotedTotalCents: 5500, atNewPriceTotalCents: 5200, quotedDifferently: 1, wouldRunLonger: 1, policy: 'booked_quotes_kept' });
     expect(imp.items[0]).toMatchObject({ appointmentId: A1, quotedCents: 5500, customer: 'Mai Le' });
     expect((await repo.pricingImpact(ctx, PEDI, {})).items[0].customer).toBeNull();   // no customers.view: no names
+    // SERVICE PRICING 04 (round 10): 45 → 60 min makes A1 (10:00–10:45) reach the same technician's 10:50 visit; 10:45 + 15 = 11:00.
+    // A later 11:30 visit is not reached; a cancelled one never counts. An open ticket still carrying the pedicure at $48 is stale.
+    const N1 = id('ad1'), N2 = id('ad2'), N3 = id('ad3');
+    await q(`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status) values
+      ($1,$4,$5,$6,'Next','[]'::jsonb, current_date + 2, '10:50','11:20',30,'confirmed'), ($2,$4,$5,$6,'Later','[]'::jsonb, current_date + 2, '11:30','12:00',30,'confirmed'),
+      ($3,$4,$5,$6,'Gone','[]'::jsonb, current_date + 2, '10:46','11:00',14,'cancelled')`, [N1, N2, N3, T, B, id('f1')]);
+    await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, line_kind, quantity, status)
+      values ($1,$2,$3,$4,$5,'Classic Pedicure',4800,50,4800,'service',1,'serving')`, [T, B, id('7a3'), PEDI, id('f1')]);
+    const longer: any = await repo.pricingImpact(ctx, PEDI, { priceCents: '5200', durationMinutes: '60' });
+    expect(longer.availabilityConflicts).toBe(1);
+    expect(longer.conflictItems).toEqual([{ appointmentId: A1, day: expect.any(String), time: '10:00', nextAppointmentId: N1, nextTime: '10:50' }]);
+    expect(longer).toMatchObject({ staleOpenTickets: 1, staleOpenLines: 1 });          // ticket 103 is open; paid ticket 102 (also $48) is history, not stale
+    const shorter: any = await repo.pricingImpact(ctx, PEDI, { priceCents: '4800', durationMinutes: '45' });
+    expect(shorter).toMatchObject({ availabilityConflicts: 0, staleOpenTickets: 0 });   // same duration, same price → nothing
+    await q(`delete from pos_tech_appointments where id = any($1::uuid[])`, [[N1, N2, N3]]);
+    await q(`delete from ticket_service_lines where ticket_id = $1 and service_id = $2`, [id('7a3'), PEDI]);
     // change the price, then revert that change: a NEW revision back to the old value; both history rows stay
     const cur: any = await repo.serviceDetail(ctx, PEDI);
     await repo.updatePricing(ctx, PEDI, { priceCents: 5200, reason: 'Promo month', expectedUpdatedAt: cur.updatedAt ?? cur.service?.updatedAt });
@@ -382,5 +398,46 @@ describe('Add-Ons — booking impact preview (07) and price reasons (14), Nov 12
     expect(row.priceReasons).toEqual(expect.arrayContaining(['quantity', 'line_reduced', 'price_varies_by_service']));
     const plain: any = (await repo.addOnUsage(ctx, { q: '#101', page: 1, pageSize: 10 })).items.find((x) => x.addOn === 'French tips');
     expect(plain.priceReasons).not.toContain('line_reduced'); expect(plain.priceReasons).not.toContain('quantity');
+  });
+});
+
+describe('SERVICE PRICING 09 (round 10) — why a charged line differs from the catalog price', () => {
+  it('names quantity, an audited manual change (who / when), a membership benefit, a catalog change since, and what no record explains', async () => {
+    const TK = id('7b1');
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, ticket_number, status, paid_at, subtotal_cents, total_cents) values ($1,$2,$3,$4,909,'paid',now(),0,0)`, [TK, T, B, id('aa1')]);
+    const L1 = id('7c1'), L2 = id('7c2');
+    const gelNow = Number((await q(`select price_cents from services where id = $1`, [GEL])).rows[0].price_cents);
+    // L1: Gel at an overridden $50 (catalog was gelNow at sale → changed by a manager), qty 1 · L2: 2 × pedicure at 4800 but charged 9000 (no record)
+    await q(`insert into ticket_service_lines (id, tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, line_kind, quantity, status) values
+      ($1,$3,$4,$5,$6,$8,'Gel Manicure',5000,45,5000,'service',1,'done'), ($2,$3,$4,$5,$7,$8,'Classic Pedicure',4800,50,9000,'service',2,'done')`, [L1, L2, T, B, TK, GEL, PEDI, id('f1')]);
+    await q(`insert into ticket_revisions (ticket_id, tenant_id, branch_id, version, action, service_line_id, actor_user_id, before, after, summary) values ($1,$2,$3,1,'service_updated',$4,$5,$6::jsonb,$7::jsonb,'price')`,
+      [TK, T, B, L1, U, JSON.stringify({ priceCents: gelNow }), JSON.stringify({ priceCents: 5000 })]);
+    const h: any = await repo.customerHistory(ctx, { q: '#909', page: 1, pageSize: 10 });
+    const e1 = h.items.find((x: any) => x.lineId === L1).priceExplanation, e2 = h.items.find((x: any) => x.lineId === L2).priceExplanation;
+    expect(e1).toMatchObject({ catalogNowCents: gelNow, catalogAtSaleCents: gelNow, chargedCents: 5000, differenceFromCatalogNowCents: 5000 - gelNow });
+    expect(e1.reasons).toEqual([{ code: 'manual_override', cents: 5000 - gelNow, by: 'Pat Owner', at: expect.any(String) }]);   // no catalog change, nothing unexplained
+    const pediNow = Number((await q(`select price_cents from services where id = $1`, [PEDI])).rows[0].price_cents);
+    expect(e2.quantity).toBe(2);
+    expect(e2.reasons).toEqual(expect.arrayContaining([{ code: 'quantity', cents: 4800 }, { code: 'not_recorded', cents: 9000 - 9600 }]));
+    if (pediNow !== 4800) expect(e2.reasons).toContainEqual({ code: 'catalog_changed_since', cents: pediNow - 4800 });
+  });
+});
+
+describe('SERVICE PRICING 06 (round 10) — category & service relationship checker across domains', () => {
+  it('flags a service that reads as another domain than its category (both ways, not only hair-in-nails); never changes the catalog', async () => {
+    const HAIRC = id('ca1'), MASS = id('ca2'), S1 = id('cb1'), S2 = id('cb2'), S3 = id('cb3'), S4 = id('cb4');
+    await q(`insert into service_categories (id, tenant_id, branch_id, name, status) values ($1,$3,$4,'Hair Studio','active'), ($2,$3,$4,'Massage','active')`, [HAIRC, MASS, T, B]);
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values
+      ($1,$5,$6,$7,'Spa Pedicure',50,5000,'active'), ($2,$5,$6,$7,'Women''s Haircut',45,6000,'active'), ($3,$5,$6,$8,'Eyebrow Wax',15,1500,'active'), ($4,$5,$6,$8,'Hot Stone Massage',60,9000,'active')`,
+      [S1, S2, S3, S4, T, B, HAIRC, MASS]);
+    const before = (await q(`select count(*)::int as n from services where tenant_id = $1 and category_id = any($2::uuid[])`, [T, [HAIRC, MASS]])).rows[0].n;
+    const s = await repo.categorySummary(ctx);
+    const mm = s.review.filter((r: any) => r.kind === 'service_category_mismatch');
+    expect(mm.find((r: any) => r.serviceId === S1)).toMatchObject({ categoryName: 'Hair Studio', categoryDomain: 'hair', serviceDomain: 'nails' });
+    expect(mm.find((r: any) => r.serviceId === S3)).toMatchObject({ categoryName: 'Massage', categoryDomain: 'massage' });
+    expect(mm.find((r: any) => r.serviceId === S2)).toBeUndefined();                  // a haircut in a hair category is right
+    expect(mm.find((r: any) => r.serviceId === S4)).toBeUndefined();
+    expect((await q(`select count(*)::int as n from services where tenant_id = $1 and category_id = any($2::uuid[])`, [T, [HAIRC, MASS]])).rows[0].n).toBe(before);
+    await q(`delete from services where id = any($1::uuid[])`, [[S1, S2, S3, S4]]); await q(`delete from service_categories where id = any($1::uuid[])`, [[HAIRC, MASS]]);
   });
 });

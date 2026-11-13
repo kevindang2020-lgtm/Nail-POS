@@ -114,7 +114,8 @@ export function POSServiceCategoriesScreen() {
           <span className="fk-li-t">{tx('cg.review.' + r.kind, { c: r.categoryName, s: r.serviceName ?? '' })}
             {r.status === 'approved' && r.lastDecision
               ? <span className="fk-li-s" data-testid="review-approved"><span className="fk-chip ok">{tx('cg.rv.approved')}</span> {tx('cg.rv.by', { who: r.lastDecision.by ?? '—', when: day(r.lastDecision.at) })} — {r.lastDecision.note}</span>
-              : <span className="fk-li-s">{tx('cg.review.' + r.kind + '.hint')}</span>}</span>
+              : <span className="fk-li-s">{r.kind === 'service_category_mismatch' && r.categoryDomain && r.serviceDomain
+                ? tx('cg.review.domainHint', { sd: tx('cg.domain.' + r.serviceDomain), cd: tx('cg.domain.' + r.categoryDomain) }) : tx('cg.review.' + r.kind + '.hint')}</span>}</span>
           <button type="button" className="fk-btn ghost sm" onClick={() => setDetail({ id: r.categoryId, tab: r.serviceId ? 'services' : 'overview' })}>{tx('cg.review.open')}</button>
           {can('services.edit') && r.status ? <button type="button" className="fk-btn ghost sm" data-testid="review-decide" onClick={() => setDeciding(r)}>{tx(r.status === 'approved' ? 'cg.rv.reopen' : 'cg.rv.approve')}</button> : null}
         </li>)}</ul>
