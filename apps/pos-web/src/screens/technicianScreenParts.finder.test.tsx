@@ -48,6 +48,21 @@ describe('QualifiedFinder — why a technician is not listed (read-only)', () =>
     // the finder's own list is untouched
     expect(screen.getAllByTestId('finder-row')).toHaveLength(1);
   });
+  it('extras TEAM MANAGEMENT 05 (round 10): a Bookable-at column from the server\'s branch per opening (salon-wide in words); an older server shows no column', async () => {
+    book.openings.mockResolvedValue({ date: TODAY, serviceIds: ['s-acr'], durationMinutes: 75, eligibleCount: 2, withOpenings: 2, hasMore: false, offset: 0, limit: 10, openings: [
+      { technicianId: 't1', name: 'Linh', rosterNumber: 1, time: '13:30', openSlots: 3, rank: 1, branch: { branchId: 'b1', name: 'Cherry Hill' } },
+      { technicianId: 't3', name: 'Vy', rosterNumber: 2, time: '14:00', openSlots: 1, rank: 2, branch: { branchId: null, name: null } }] });
+    const v = render(<MemoryRouter><QualifiedFinder today={TODAY} onClose={() => {}} /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('finder-pick'))[1]);
+    const cells = await screen.findAllByTestId('finder-branch');
+    expect(cells.map((c) => c.textContent)).toEqual(['Cherry Hill', 'Any location (salon-wide)']);
+    v.unmount();
+    book.openings.mockResolvedValue({ date: TODAY, serviceIds: ['s-acr'], durationMinutes: 75, eligibleCount: 1, withOpenings: 1, openings: [{ technicianId: 't1', name: 'Linh', rosterNumber: 1, time: '13:30', openSlots: 3, rank: 1 }], hasMore: false, offset: 0, limit: 10 });
+    render(<MemoryRouter><QualifiedFinder today={TODAY} onClose={() => {}} /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('finder-pick'))[1]);
+    await screen.findByTestId('finder-table');
+    expect(screen.queryByTestId('finder-branch')).toBeNull();
+  });
 });
 
 describe('round 10 (LIVE TECHNICIAN SCHEDULE 05) — several specialists at once', () => {

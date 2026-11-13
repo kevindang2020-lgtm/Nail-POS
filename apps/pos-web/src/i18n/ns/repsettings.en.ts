@@ -250,4 +250,12 @@ export const REPSETTINGS_EN: Record<string, string> = {
   "rssx.sec.line": "Last {d} days: {e} privilege-escalation and {c} cross-salon access attempt(s) were refused (latest {at}). Review roles in Team Management.",
   "rssx.openIntegrations": "Open Integrations",
   "rssx.applied": "Running revision v{v} (saved {at}) — drafting and checkout read it live",
+  "rssx.dry.costNa": "Cost: not available — review-request texts have no per-message price in this system, so none is estimated.",
+  "rssx.dry.recipients": "Who would be asked ({n})",
+  "rssx.dry.who": "Customer",
+  "rssx.dry.phone": "Phone",
+  "rssx.dry.outcome": "Outcome",
+  "rssx.dry.when": "Would be sent",
+  "rssx.dry.noCustomer": "No customer on the visit",
+  "rssx.dry.ask": "Would be asked by {c}",
 };

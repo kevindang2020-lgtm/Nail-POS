@@ -100,5 +100,42 @@ describe('POSAiInventoryScreen', () => {
     expect(screen.getByTestId('icx-actions').querySelectorAll('button')).toHaveLength(4);
     expect(screen.queryByTestId('icx-reasons')).toBeNull();
   });
+  it('extras AI Inventory 08 / 11 / 18 (round 10): Command Center signals, the category dropdown reaches the server, the date basis is stated, the variance list', async () => {
+    center.summary.mockResolvedValue({ scope: 'branch', cards: { products: 3, inStock: 1, low: 0, critical: 1, outOfStock: 1, overstock: 0 }, stockUpdatedAt: '2026-11-03T04:00:00Z',
+      reasons: { criticalExplicit: 1, criticalDerived: 0, noThreshold: 0, ledgerMismatch: 0 }, categories: ['Gels', 'Tools'],
+      commandCenter: { priority: [{ id: 'p9', name: 'Acetone', status: 'out_of_stock', onHand: 0, openOrderQty: 4 }], needsReorder: 1,
+        purchaseOrders: { approved: 1, ordered: 2, partial: 0, overdue: 1 }, pendingCounts: { inProgress: 0, submitted: 3 } } });
+    center.check.mockResolvedValue({ overall: 'FAILED', checkedAt: '2026-11-03T05:00:00Z', checks: [
+      { key: 'count_variance_applied', component: 'ledger', state: 'FAILED', count: 1, lastPassedAt: null, detail: { countedLines: 2, lines: [
+        { countId: 'c1', productId: 'p1', product: 'Gel base coat', sku: 'GEL-01', expected: 9, counted: 7, variance: -2, applied: -1, unexplained: -1, reconciledAt: '2026-11-02T20:00:00Z' }] } }] });
+    render(<POSAiInventoryScreen />);
+    const sig = await screen.findByTestId('icx-signals');
+    expect(screen.getByTestId('icx-cc-po')).toHaveTextContent('1 approved · 2 ordered · 0 partly received');
+    expect(screen.getByTestId('icx-cc-po')).toHaveTextContent('1 past their expected date');
+    expect(screen.getByTestId('icx-cc-counts')).toHaveTextContent('3 waiting to be reconciled');
+    expect(screen.getByTestId('icx-cc-priority')).toHaveTextContent('Acetone'); expect(sig).toHaveTextContent('4 on order');
+    fireEvent.change(screen.getByTestId('icx-category'), { target: { value: 'Tools' } });
+    await waitFor(() => expect(center.products).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'Tools', page: 1 })));
+    expect(screen.getByTestId('icx-date-basis')).toHaveTextContent('movement time');
+    fireEvent.click(screen.getByTestId('icx-check'));
+    const rows = await screen.findAllByTestId('icx-variance-row');
+    expect(rows).toHaveLength(1); expect(rows[0]).toHaveTextContent('Gel base coat'); expect(rows[0]).toHaveTextContent('-1');
+  });
+  it('extras AI Inventory 15 (round 10): Slow-Moving · Overstock · Waste views over the server findings, with units, cover and write-offs', async () => {
+    slowMock.mockResolvedValue({ branchId: 'B1', costVisible: true, windowDays: 90, items: [
+      { productId: 'a', name: 'Dead gel', onHand: 10, inventoryValueCents: 5000, daysSinceLastActivity: 200, classification: 'dead_stock', overstock: false, unitsInWindow: 0, coverageWeeks: null, wasteUnitsInWindow: 0, wasteValueCents: 0, recommendation: 'r' },
+      { productId: 'b', name: 'Too many files', onHand: 300, inventoryValueCents: 3000, daysSinceLastActivity: 2, classification: 'healthy', overstock: true, unitsInWindow: 90, coverageWeeks: 42.9, wasteUnitsInWindow: 0, wasteValueCents: 0, recommendation: 'r' },
+      { productId: 'c', name: 'Broken bottles', onHand: 5, inventoryValueCents: 500, daysSinceLastActivity: 1, classification: 'healthy', overstock: false, unitsInWindow: 30, coverageWeeks: 1.2, wasteUnitsInWindow: 4, wasteValueCents: 1000, recommendation: 'r' }] });
+    render(<POSAiInventoryScreen />);
+    fireEvent.click(await screen.findByTestId('inv-tab-slow'));
+    expect(await screen.findAllByTestId('inv-slow-row')).toHaveLength(3);
+    expect(screen.getAllByTestId('inv-slow-cover')[0]).toHaveTextContent('no movement');
+    fireEvent.click(screen.getByTestId('inv-slow-view-overstock'));
+    expect(screen.getAllByTestId('inv-slow-row')).toHaveLength(1); expect(screen.getByText('Too many files')).toBeInTheDocument();
+    expect(screen.getByTestId('inv-slow-cover')).toHaveTextContent('42.9 wk');
+    fireEvent.click(screen.getByTestId('inv-slow-view-waste'));
+    expect(screen.getAllByTestId('inv-slow-row')).toHaveLength(1);
+    expect(screen.getByTestId('inv-slow-waste')).toHaveTextContent('4'); expect(screen.getByTestId('inv-slow-waste')).toHaveTextContent('$10.00');
+    expect(slowMock).toHaveBeenCalledTimes(1);   // views filter the same read
+  });
 });
-

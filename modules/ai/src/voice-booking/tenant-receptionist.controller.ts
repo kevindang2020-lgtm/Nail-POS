@@ -4,8 +4,10 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { TenantAuthGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
-import type { ReceptionistSettingsCheckResult, ReceptionistSettingsLastCheck, ReceptionistSettingsWithMeta } from '@aipowersalon/api-contracts/tenant';
-import { RECEPTIONIST_SETTINGS_BODY, CONSENT_APPROVE_BODY } from '../request-schemas';
+import type { ReceptionistSettingsCheckResult, ReceptionistSettingsLastCheck, ReceptionistSettingsWithMeta, AiRecommendation, AiRecommendationList, AiRecommendationDecision } from '@aipowersalon/api-contracts/tenant';
+import type { Suggestion } from '@aipowersalon/api-contracts/platform';
+import { RECEPTIONIST_SETTINGS_BODY, CONSENT_APPROVE_BODY, AI_RECOMMENDATION_APPROVE_BODY } from '../request-schemas';
+import { VoiceLearningService, LearningError } from './voice-learning.service';
 import { TenantReceptionistService, type ReceptionistCtx } from './tenant-receptionist.service';
 import { AiAgentService, AgentForbiddenError, AgentNotFoundError } from './ai-agent.service';
 import { AgentValidationError } from './ai-agent-core';
@@ -34,6 +36,26 @@ async function runAgent<T>(fn: () => Promise<T> | T): Promise<T> {
   }
 }
 
+/** AI Receptionist Settings 07: the learning loop's refusals as coded errors (not found → 404; anything else it refuses → 409). */
+async function runLearning<T>(fn: () => Promise<T>): Promise<T> {
+  try { return await fn(); }
+  catch (e: unknown) {
+    if (e instanceof LearningError) {
+      if (/not found/i.test(e.message)) throw new HttpException({ code: 'AI_RECOMMENDATION_NOT_FOUND', message: e.message }, HttpStatus.NOT_FOUND);
+      if (/prompt body is required/i.test(e.message)) throw new HttpException({ code: 'AI_RECOMMENDATION_PROMPT_REQUIRED', message: e.message }, HttpStatus.BAD_REQUEST);
+      if (/Only an open/i.test(e.message)) throw new HttpException({ code: 'AI_RECOMMENDATION_NOT_OPEN', message: e.message }, HttpStatus.CONFLICT);
+      throw new HttpException({ code: 'AI_RECOMMENDATION_REFUSED', message: e.message }, HttpStatus.CONFLICT);
+    }
+    // a malformed id (Postgres invalid_text_representation) names no recommendation of this salon
+    if (typeof e === 'object' && e !== null && (e as { code?: unknown }).code === '22P02') throw new HttpException({ code: 'AI_RECOMMENDATION_NOT_FOUND', message: 'Recommendation not found' }, HttpStatus.NOT_FOUND);
+    throw e;
+  }
+}
+const RECOMMENDATION_STATUSES = ['open', 'approved', 'rejected', 'applied'] as const;
+function toRecommendation(s: Suggestion): AiRecommendation {
+  return { id: s.id, sourceCallId: s.sourceCallId, category: s.category, targetType: s.targetType, detail: s.detail, status: s.status, reviewedBy: s.reviewedBy, resultingVersionId: s.resultingVersionId, createdMs: s.createdMs };
+}
+
 @UseGuards(TenantAuthGuard)
 // Gated on the tenant's AI subscription. Ships in OBSERVE mode: the call still runs, but a tenant who is
 // unsubscribed / expired / over-limit is RECORDED as a would-be denial in ai_usage_logs. Nobody's access
@@ -44,7 +66,8 @@ async function runAgent<T>(fn: () => Promise<T> | T): Promise<T> {
 export class TenantReceptionistController {
   constructor(private readonly svc: TenantReceptionistService, private readonly _agents: AiAgentService,   // kept for DI position; the agent routes moved to pos/ai/front-desk (Oct 31 2026)
     _followUps: AiFollowUpService, _faqs: AiFaqService,   // kept for DI position; follow-ups → pos/ai/follow-ups-center, FAQs → pos/ai/business-setup (Oct 31 2026)
-    private readonly settings: AiSettingsService, private readonly provisioning: AiProvisioningService, private readonly audit: AuditService) {}
+    private readonly settings: AiSettingsService, private readonly provisioning: AiProvisioningService, private readonly audit: AuditService,
+    private readonly learning: VoiceLearningService) {}
 
   /** Emit a resilient audit event for a high-risk AI Receptionist action (never throws). */
   private aud(r: any, action: string, resourceId: string | null, summary: string, metadata?: Record<string, unknown>) {
@@ -81,4 +104,28 @@ export class TenantReceptionistController {
   @RequirePermission('ai.use') @Post('settings/check') settingsCheck(@Req() r: any): Promise<ReceptionistSettingsCheckResult> { return runAgent(() => this.settings.check(ctxFrom(r) as SettingsCtx)); }
   @RequirePermission('ai.use') @Get('settings/check/last') settingsLastCheck(@Req() r: any): Promise<ReceptionistSettingsLastCheck | null> { return runAgent(() => this.settings.lastCheck(ctxFrom(r) as SettingsCtx)); }
   @RequirePermission('ai.use') @Get('settings/history') settingsHistory(@Req() r: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) { return runAgent(() => this.settings.history(ctxFrom(r) as SettingsCtx, Number(page) || 1, Number(pageSize) || 20)); }
+
+  // AI Receptionist Settings 07 (extras, Nov 13 2026): the salon-side approval screen for the learning loop's configuration
+  // recommendations. Same human-approval rules as the platform review (voice-learning.service.ts): approving a prompt
+  // recommendation creates a DRAFT prompt version ONLY — nothing goes live here (activation stays a separate, platform-side step);
+  // operational targets (prices / hours / policies / permissions / booking validation) are refused. Every decision is audited.
+  @RequirePermission('ai.use') @Get('learning/suggestions') async listRecommendations(@Req() r: any, @Query('status') status?: string): Promise<AiRecommendationList> {
+    const c = ctxFrom(r); const vc = { tenantId: c.tenantId, branchId: c.branchId ?? '' };
+    const st = (RECOMMENDATION_STATUSES as readonly string[]).includes(status ?? '') ? status : undefined;
+    const [rows, open] = await Promise.all([this.learning.listSuggestions(vc, st), st === 'open' ? null : this.learning.listSuggestions(vc, 'open')]);
+    const items = rows.map(toRecommendation).sort((a, b) => b.createdMs - a.createdMs);
+    return { items, openCount: open ? open.length : items.length };
+  }
+  @RequirePermission('ai.manage') @Post('learning/suggestions/:id/approve') async approveRecommendation(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(AI_RECOMMENDATION_APPROVE_BODY, { strict: true })) b: any): Promise<AiRecommendationDecision> {
+    const c = ctxFrom(r); const vc = { tenantId: c.tenantId, branchId: c.branchId ?? '' };
+    const out = await runLearning(() => this.learning.approveSuggestion(vc, id, c.userId, typeof b?.newPromptBody === 'string' ? b.newPromptBody : undefined));
+    await this.aud(r, 'learning.recommendation_approved', id, 'Approved an AI configuration recommendation (draft only, not live)', { targetType: out.suggestion.targetType, draftVersionId: out.draftVersion?.id ?? null });
+    return { recommendation: toRecommendation(out.suggestion), draftVersionId: out.draftVersion?.id ?? null, draftVersionLabel: out.draftVersion?.versionLabel ?? null };
+  }
+  @RequirePermission('ai.manage') @Post('learning/suggestions/:id/reject') async rejectRecommendation(@Req() r: any, @Param('id') id: string): Promise<AiRecommendationDecision> {
+    const c = ctxFrom(r); const vc = { tenantId: c.tenantId, branchId: c.branchId ?? '' };
+    const s = await runLearning(() => this.learning.rejectSuggestion(vc, id, c.userId));
+    await this.aud(r, 'learning.recommendation_rejected', id, 'Rejected an AI configuration recommendation', { targetType: s.targetType });
+    return { recommendation: toRecommendation(s), draftVersionId: null, draftVersionLabel: null };
+  }
 }

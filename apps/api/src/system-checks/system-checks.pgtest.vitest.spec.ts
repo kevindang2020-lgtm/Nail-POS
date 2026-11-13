@@ -104,6 +104,25 @@ describe('shared read-only Check … System', () => {
     const b2 = await svc.run('technicians', { tenantId: T, branchId: B2 });
     expect(count(b2, 'clocked_in_not_active').count).toBe(0); expect(count(b2, 'certification_expired').count).toBe(1);
   });
+  it('extras TEAM MANAGEMENT 03 (round 10) — Directory Integrity: one login on two technician rows, a duplicated name, a colliding employee ID; never the other salon', async () => {
+    const before = (await svc.run('technicians', { tenantId: T })).checks;
+    const base = (k: string) => before.find((c: any) => c.key === k).count as number;
+    const U1 = id(621), U2 = id(622);
+    // two staff ids that end in the same 8 characters → the same "EMP-…" on Team (a technician without a login joins that set)
+    const COLL_A = 'c8450000-0000-4000-8000-00aa12345678', COLL_B = 'c8450000-0000-4000-8000-00bb12345678';
+    await q(sql`insert into users (id, tenant_id, full_name, email, status, role) values (${U1}, ${T}, 'Dup Login', 'dup@sc.test', 'active', 'TECHNICIAN'),
+      (${COLL_A}, ${T}, 'Coll A', 'ca@sc.test', 'active', 'FRONT_DESK'), (${U2}, ${X}, 'Other', 'o@sc.test', 'active', 'TECHNICIAN')`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, user_id) values
+      (${id(623)}, ${T}, ${B1}, 'Dup', 'Login', 'Dup Login', true, ${U1}), (${id(624)}, ${T}, ${B1}, 'Dup', 'Login', 'dup login ', true, ${U1}),
+      (${COLL_B}, ${T}, ${B1}, 'Coll', 'B', 'Coll B', true, null),
+      (${id(625)}, ${X}, ${BX}, 'Dup', 'Login', 'Dup Login', true, ${U2}), (${id(626)}, ${X}, ${BX}, 'Dup', 'Login', 'Dup Login', true, ${U2})`);
+    const tc = await svc.run('technicians', { tenantId: T });
+    expect(count(tc, 'duplicate_app_account')).toMatchObject({ state: 'FAILED', count: base('duplicate_app_account') + 1 });
+    expect(count(tc, 'duplicate_name').count).toBe(base('duplicate_name') + 1);          // 'Dup Login' / 'dup login ' — the other salon's pair never counts
+    expect(count(tc, 'employee_id_collision')).toMatchObject({ state: 'FAILED', count: base('employee_id_collision') + 1 });
+    await q(sql`update technicians set archived_at = now() where id = ${id(624)}`);
+    expect(count(await svc.run('technicians', { tenantId: T }), 'duplicate_app_account').count).toBe(base('duplicate_app_account'));   // archived rows never count
+  });
   it('the branch scope narrows the counts', async () => {
     const b1 = await svc.run('expenses', { tenantId: T, branchId: B1 });
     expect(b1.branchId).toBe(B1);

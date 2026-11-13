@@ -92,6 +92,41 @@ describe('POSCashHandoffScreen', () => {
     mount(); await screen.findAllByTestId('handoff-row');
     expect(screen.queryByTestId('reopen')).toBeNull();
   });
+  it('extras End-of-Day Cash 08 (round 10): a closed hand-off shows a disabled Count with the reason; the count dialog always says why Save is unavailable', async () => {
+    const closed = u({ technicianId: 't2', technician: 'Anna Lee', countedCents: 25000, differenceCents: 0, status: 'reconciled', state: 'balanced', version: 3 });
+    api.list.mockResolvedValue(pageOf([closed, mai]));
+    mount(); await screen.findAllByTestId('handoff-row');
+    const blocked = screen.getByTestId('count-blocked');
+    expect(blocked).toBeDisabled(); expect(blocked).toHaveAttribute('title', 'This hand-off is closed — reopen it before counting again.');
+    // Record hand-off for a CLOSED day: the dialog refuses to count it and says why
+    api.unit.mockResolvedValue({ unit: closed, lines: [], events: [], drawerMovements: [], audit: [], permissions: { count: true } });
+    fireEvent.click(screen.getByTestId('record-handoff'));
+    fireEvent.change(await screen.findByTestId('pick-tech'), { target: { value: 't1' } });
+    await screen.findByTestId('count-figures');
+    fireEvent.change(screen.getByTestId('amount'), { target: { value: '250' } });
+    expect(screen.getByTestId('save-count')).toBeDisabled();
+    expect(screen.getByTestId('save-why')).toHaveTextContent('reopen it before counting again');
+    expect(api.reconcile).not.toHaveBeenCalled();
+  });
+  it('extras End-of-Day Cash 08 (round 10): on an open hand-off the reason follows the form — amount, then the note a difference needs, then none', async () => {
+    api.unit.mockResolvedValue({ unit: mai, lines: [], events: [], drawerMovements: [], audit: [], permissions: { count: true } });
+    mount(); await screen.findAllByTestId('handoff-row');
+    fireEvent.click(screen.getAllByTestId('count')[1]); await screen.findByTestId('count-figures');
+    expect(screen.getByTestId('save-why')).toHaveTextContent('Enter the amount counted.');
+    fireEvent.change(screen.getByTestId('amount'), { target: { value: '25' } });
+    expect(screen.getByTestId('save-why')).toHaveTextContent('say why in the note');
+    fireEvent.change(screen.getByTestId('notes'), { target: { value: 'Short $15' } });
+    expect(screen.queryByTestId('save-why')).toBeNull(); expect(screen.getByTestId('save-count')).not.toBeDisabled();
+  });
+  it('extras End-of-Day Cash 02 (round 10): the detail lists that day\'s shift and the technician\'s earlier hand-offs with their difference', async () => {
+    api.unit.mockResolvedValue({ unit: u({}), lines: [], events: [], drawerMovements: [], audit: [], permissions: { count: true },
+      shifts: [{ id: 's1', start: '2026-10-29T13:00:00Z', end: null, status: 'active' }],
+      priorHandoffs: [u({ businessDate: '2026-10-28', expectedCents: 7000, countedCents: 7000, differenceCents: 0, state: 'balanced' }), u({ businessDate: '2026-10-27', expectedCents: 5000, countedCents: 4800, differenceCents: -200, state: 'short' })] });
+    mount(); await screen.findAllByTestId('handoff-row'); fireEvent.click(screen.getAllByText('Bao Tran', { selector: 'button' })[0]);
+    expect(await screen.findByTestId('unit-shifts')).toHaveTextContent('still on shift');
+    const rows = screen.getAllByTestId('unit-prior-row'); expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent('−$2.00'); expect(rows[1]).toHaveTextContent('Short');
+  });
   it('End-of-Day Cash 17: a reopened count shows who reopened it, when and why', async () => {
     const re = u({ status: 'reopened', state: 'reopened', reopen: { at: '2026-10-29T23:30:00Z', by: 'Pat Owner', reason: 'Found $10 more in the envelope', count: 1 } });
     api.unit.mockResolvedValue({ unit: re, lines: [], events: [], drawerMovements: [], audit: [], permissions: { count: true } });

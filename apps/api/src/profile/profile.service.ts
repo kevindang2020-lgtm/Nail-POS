@@ -32,7 +32,8 @@ export class AvatarError extends Error {
 // ---- Login-alert preferences (Account → Security, §19). Per-user, tenant-scoped like the avatar store,
 // accessed via raw sql (no kysely.types entry needed). Defaults are security-forward (every alert on);
 // the pure helpers below are unit-tested directly so the mapping/merge logic is covered without a live db. ----
-import type { LoginAlertPrefs, NotificationPrefs, NotificationDeliveryPage } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
+import type { LoginAlertPrefs, NotificationPrefs, NotificationDeliveryPage } from '@aipowersalon/api-contracts/tenant';
+import { isQuietHoursTime } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
 export type { LoginAlertPrefs, NotificationPrefs };
 export const DEFAULT_LOGIN_ALERTS: LoginAlertPrefs = {
   enabled: true, newDevice: true, newLocation: true, passwordChanged: true, emailChanged: true,
@@ -67,7 +68,7 @@ export function mergeLoginAlerts(base: LoginAlertPrefs, patch: Partial<LoginAler
 // Same raw-sql + pure-helper shape as login alerts; helpers are unit-tested directly. ----
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   smsNotifications: true, emailNotifications: true, pushNotifications: true, missedCallAlerts: true,
-  bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true,
+  bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true, quietHoursStart: null, quietHoursEnd: null,
 };
 const NOTIF_COLS: Array<[keyof NotificationPrefs, string]> = [
   ['smsNotifications', 'sms_notifications'], ['emailNotifications', 'email_notifications'], ['pushNotifications', 'push_notifications'],
@@ -76,14 +77,23 @@ const NOTIF_COLS: Array<[keyof NotificationPrefs, string]> = [
 ];
 export function rowToNotificationPrefs(row: Record<string, any>): NotificationPrefs {
   const out = { ...DEFAULT_NOTIFICATION_PREFS };
-  for (const [field, col] of NOTIF_COLS) if (row[col] != null) out[field] = !!row[col];
+  for (const [field, col] of NOTIF_COLS) if (row[col] != null) (out as Record<string, unknown>)[field] = !!row[col];
+  // extras Customer Notifications 08: personal quiet hours (both or neither)
+  const qs = isQuietHoursTime(row['quiet_start']) ? row['quiet_start'] : null, qe = isQuietHoursTime(row['quiet_end']) ? row['quiet_end'] : null;
+  out.quietHoursStart = qs && qe ? qs : null; out.quietHoursEnd = qs && qe ? qe : null;
   return out;
 }
 export function sanitizeNotificationPrefsPatch(patch: unknown): Partial<NotificationPrefs> {
   const out: Partial<NotificationPrefs> = {};
   if (patch && typeof patch === 'object') for (const [field] of NOTIF_COLS) {
     const v = (patch as any)[field];
-    if (typeof v === 'boolean') out[field] = v;
+    if (typeof v === 'boolean') (out as Record<string, unknown>)[field] = v;
+  }
+  // quiet hours: both 'HH:MM' (different), or both null to turn them off; anything else is ignored (never half a window)
+  if (patch && typeof patch === 'object' && ('quietHoursStart' in patch || 'quietHoursEnd' in patch)) {
+    const pq = patch as { quietHoursStart?: unknown; quietHoursEnd?: unknown }; const a = pq.quietHoursStart, b = pq.quietHoursEnd;
+    if (a === null && b === null) { out.quietHoursStart = null; out.quietHoursEnd = null; }
+    else if (isQuietHoursTime(a) && isQuietHoursTime(b) && a !== b) { out.quietHoursStart = a; out.quietHoursEnd = b; }
   }
   return out;
 }
@@ -389,12 +399,13 @@ export class ProfileService {
     try {
       await sql`
         INSERT INTO user_notification_prefs
-          (tenant_id, user_id, sms_notifications, email_notifications, push_notifications, missed_call_alerts, booking_alerts, low_stock_alerts, payroll_approvals, weekly_report_summaries, updated_at)
-        VALUES (${ctx.tenantId}, ${ctx.userId}, ${next.smsNotifications}, ${next.emailNotifications}, ${next.pushNotifications}, ${next.missedCallAlerts}, ${next.bookingAlerts}, ${next.lowStockAlerts}, ${next.payrollApprovals}, ${next.weeklyReportSummaries}, now())
+          (tenant_id, user_id, sms_notifications, email_notifications, push_notifications, missed_call_alerts, booking_alerts, low_stock_alerts, payroll_approvals, weekly_report_summaries, quiet_start, quiet_end, updated_at)
+        VALUES (${ctx.tenantId}, ${ctx.userId}, ${next.smsNotifications}, ${next.emailNotifications}, ${next.pushNotifications}, ${next.missedCallAlerts}, ${next.bookingAlerts}, ${next.lowStockAlerts}, ${next.payrollApprovals}, ${next.weeklyReportSummaries},
+          ${next.quietHoursStart ?? null}, ${next.quietHoursEnd ?? null}, now())
         ON CONFLICT (tenant_id, user_id) DO UPDATE SET
           sms_notifications = EXCLUDED.sms_notifications, email_notifications = EXCLUDED.email_notifications, push_notifications = EXCLUDED.push_notifications,
           missed_call_alerts = EXCLUDED.missed_call_alerts, booking_alerts = EXCLUDED.booking_alerts, low_stock_alerts = EXCLUDED.low_stock_alerts,
-          payroll_approvals = EXCLUDED.payroll_approvals, weekly_report_summaries = EXCLUDED.weekly_report_summaries, updated_at = now()
+          payroll_approvals = EXCLUDED.payroll_approvals, weekly_report_summaries = EXCLUDED.weekly_report_summaries, quiet_start = EXCLUDED.quiet_start, quiet_end = EXCLUDED.quiet_end, updated_at = now()
       `.execute(this.db);
     } catch {
       // Notification Preferences guide (Nov 9 2026): a toggle is only "saved" when the row is — the screen must not

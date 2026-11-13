@@ -4,7 +4,7 @@
 // extras Tablets 11: GET export (pos.devices.export → owners and managers) — the redacted inventory + health CSV, audited.
 import { ListQuery } from '@aipowersalon/database';
 import type { ListQuery as ListQueryParams } from '@aipowersalon/api-contracts';
-import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse, DfHistoryVerifyResponse, DfLabelResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Body, Controller, Get, Header, HttpException, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
@@ -12,6 +12,8 @@ import { DeviceFleetCenter, DeviceFleetError, DF_CLASSES, DF_STATUSES, exportDev
 
 export const DEVICE_FLEET_CENTER = 'DeviceFleetCenter';
 export const DF_CHECK_BODY: BodySchema = S.object({ class: S.enumOf([...DF_CLASSES]) }, ['class']);
+/** extras Device Health 06: a device's alias / asset tag (null or empty clears) */
+export const DF_LABEL_BODY: BodySchema = S.object({ source: S.enumOf(['station', 'kiosk', 'display', 'terminal']), deviceId: S.text(80), alias: S.nullable(S.text(60)), assetTag: S.nullable(S.text(40)) }, ['source', 'deviceId']);
 const FILTERS = { class: { type: 'enum', values: DF_CLASSES }, status: { type: 'enum', values: DF_STATUSES }, branchId: { type: 'uuid' }, dateField: { type: 'enum', values: ['created', 'updated', 'last_seen'] } } as const;
 const LIST = { filters: FILTERS, sorts: { newest: null, last_seen: null, name: null, status: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 const HIST = { filters: { class: { type: 'enum', values: DF_CLASSES }, deviceId: { type: 'id' } }, sorts: { newest: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
@@ -36,6 +38,9 @@ export class DeviceFleetController {
   @ListQuery(LIST)
   list(@Req() q: any, @Query() f: any): Promise<DfListResponse> { return run(() => this.r().list(ctxFrom(q), f ?? {})); }
 
+  /** extras Device Assignments 25 (round 10): read-only verification of the device-history hash chain */
+  @Get('history/verify') @RequirePermission('pos.devices.view')
+  verifyHistory(@Req() q: any): Promise<DfHistoryVerifyResponse> { return run(() => this.r().verifyHistory(ctxFrom(q))); }
   @Get('history') @RequirePermission('pos.devices.view')
   @ListQuery(HIST)
   history(@Req() q: any, @Query() f: any): Promise<DfHistoryResponse> { return run(() => this.r().history(ctxFrom(q), f ?? {})); }
@@ -51,6 +56,9 @@ export class DeviceFleetController {
   @ListQuery({ filters: { status: { type: 'enum', values: ['open', 'closed', 'all'] } }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const)
   alerts(@Req() q: any, @Query() f: any): Promise<DfAlertsResponse> { return run(() => this.r().alerts(ctxFrom(q), { status: f?.status, page: f?.page, pageSize: f?.pageSize })); }
 
+  /** extras Device Health 06 (round 10): set / clear the salon's own alias and asset tag for a device — audited */
+  @Post('labels') @RequirePermission('pos.devices.manage')
+  setLabel(@Req() q: any, @Body(ValidatedBody(DF_LABEL_BODY, { strict: true })) b: { source: string; deviceId: string; alias?: string | null; assetTag?: string | null }): Promise<DfLabelResponse> { return run(() => this.r().setLabel(ctxFrom(q), b)); }
   @Post('check') @RequirePermission('pos.devices.view')
   check(@Req() q: any, @Body(ValidatedBody(DF_CHECK_BODY, { strict: true })) b: { class: string }): Promise<DfCheckResponse> { return run(() => this.r().check(ctxFrom(q), b.class)); }
 }

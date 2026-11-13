@@ -116,4 +116,8 @@ export const TRANSACTIONS_VI = {
   'txn.dup.conflicting': '{n} lần tính tiền khác cùng số tiền trên phiếu này trong vòng 10 phút', // DRAFT — Kevin reviews
   'txn.dup.over': 'Phiếu đã thu nhiều hơn mức có thể nợ {a}', // DRAFT — Kevin reviews
   'txn.dup.safe': 'Chỉ để chẩn đoán — không hủy, hoàn tiền hay xóa gì ở đây. Xác minh với bộ xử lý, sau đó sửa qua Hoàn tiền & Hủy.', // DRAFT — Kevin reviews
+  'txn.openDeposit': 'Mở đối soát tiền gửi', // DRAFT — Kevin reviews
+  'txn.ctx.visits': '{n} lượt ghé đã thanh toán', // DRAFT — Kevin reviews
+  'txn.ctx.last': 'gần nhất {d}', // DRAFT — Kevin reviews
+  'txn.ctx.ticket': 'Hóa đơn #{n} · {l} dòng · {t} lần thanh toán', // DRAFT — Kevin reviews
 };

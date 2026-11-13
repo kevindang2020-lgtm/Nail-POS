@@ -53,6 +53,17 @@ export interface DirectoryFilters {
   preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown;
 }
 
+/** extras TEAM MANAGEMENT 11 (round 10) — Revenue vs earnings glossary: each finance figure the Team screens show, what it
+ *  counts and its date basis — written HERE beside the SQL that computes it (sales() / moneyFor()), so the words and the numbers
+ *  cannot drift apart. Codes only; the POS words them (tmm.gl.<key>.what / .date). */
+export const TEAM_FINANCE_GLOSSARY = [
+  { key: 'services_completed', source: 'ticket_service_lines', dateBasis: 'ticket_paid_at' },        // service lines (no add-ons), not removed, ticket paid
+  { key: 'service_revenue', source: 'ticket_service_lines', dateBasis: 'ticket_paid_at' },           // line totals of service + add-on lines on paid tickets — salon money, before tips
+  { key: 'commission_earned', source: 'ticket_compensation_snapshots', dateBasis: 'snapshot_at' },   // technician service earnings + retail commission + approved adjustments
+  { key: 'tips', source: 'ticket_compensation_snapshots', dateBasis: 'snapshot_at' },                // card + cash tips allocated to the technician, + tip corrections
+  { key: 'commission_paid', source: 'payroll_payouts', dateBasis: 'payout_paid_at' },                // payroll payouts with status paid
+  { key: 'pending_payout', source: 'payroll_payouts', dateBasis: 'payout_created_at' },              // payroll payouts still pending / processing
+] as const;
 export class TeamMembersScreenRepository {
   constructor(private readonly db: Kysely<any>) {}
   period(ctx: TeamCtx, q: { preset?: unknown; from?: unknown; to?: unknown }, def = 'month') { return teamPeriod(this.db, ctx, q, def); }
@@ -183,7 +194,7 @@ export class TeamMembersScreenRepository {
     const ap = approvals; const pend = ap ? N(ap.skills) + N(ap.time_off) + N(ap.profile) + N(ap.membership) : null;
     const v = <X>(x: X | null, f: (y: X) => unknown) => (x == null ? null : f(x));
     return {
-      period: per, today: today.today, tz: today.tz, asOf: new Date().toISOString(), errors, canPay: pay,
+      period: per, today: today.today, tz: today.tz, asOf: new Date().toISOString(), errors, canPay: pay, glossary: TEAM_FINANCE_GLOSSARY,
       kpis: {
         totalMembers: v(team, (t) => N(t.team)), activeAccounts: v(team, (t) => N(t.active)), inactiveAccounts: v(team, (t) => N(t.inactive)), providers: v(team, (t) => N(t.providers)),
         activeToday: v(team, (t) => N(t.active_today)), scheduledToday: v(team, (t) => N(t.scheduled)), clockedToday: v(team, (t) => N(t.clocked_today)),

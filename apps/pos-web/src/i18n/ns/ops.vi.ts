@@ -2189,4 +2189,34 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.sched10.cat": "{name}: {d} phút đã đặt · {c} phút từ {n} thợ đủ tay nghề ({s})", // DRAFT — Kevin reviews
   "ops.sched10.uncategorized": "Chưa có loại", // DRAFT — Kevin reviews
   "ops.sched10.basis": "Chỉ tính từ lịch hẹn đã xác nhận và lịch làm việc — không chia dự báo theo giờ.", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_app_account": "Không có tài khoản đăng nhập nào gắn với hai hồ sơ thợ", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_app_account.fix": "Lưu trữ hồ sơ thợ thừa để người đó chỉ hiện một lần và công việc không bị chia.", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_name": "Không có hai thợ hiện tại trùng tên", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_name.fix": "Kiểm tra xem hai hồ sơ có phải cùng một người không.", // DRAFT — Kevin reviews
+  "syschk.technicians.employee_id_collision": "Mỗi thành viên có mã nhân viên riêng", // DRAFT — Kevin reviews
+  "syschk.technicians.employee_id_collision.fix": "Hai thành viên hiện cùng mã nhân viên — nhờ bộ phận hỗ trợ xem lại hồ sơ.", // DRAFT — Kevin reviews
+  "acx.quiet.title": "Giờ yên lặng của tôi", // DRAFT — Kevin reviews
+  "acx.quiet.on": "Bật: {a} đến {b} (giờ tiệm). Thông báo đẩy tới thiết bị của bạn sẽ bị giữ lại — thông báo bảo mật vẫn đến.", // DRAFT — Kevin reviews
+  "acx.quiet.off": "Tắt — thông báo đẩy có thể đến bất cứ lúc nào.", // DRAFT — Kevin reviews
+  "acx.quiet.from": "Từ", // DRAFT — Kevin reviews
+  "acx.quiet.to": "Đến", // DRAFT — Kevin reviews
+  "acx.quiet.save": "Lưu giờ yên lặng", // DRAFT — Kevin reviews
+  "acx.quiet.turnOff": "Tắt", // DRAFT — Kevin reviews
+  "acx.quiet.rule": "Chỉ ảnh hưởng thông báo đẩy của tài khoản này; giờ yên lặng nhắc lịch cho khách hàng của tiệm là riêng.", // DRAFT — Kevin reviews
+  "dfx.v.run": "Kiểm tra lịch sử", // DRAFT — Kevin reviews
+  "dfx.v.state.INTACT": "Lịch sử còn nguyên — mọi bản ghi thiết bị vẫn khớp với mắt xích của nó.", // DRAFT — Kevin reviews
+  "dfx.v.state.TAMPERED": "Lịch sử đã bị thay đổi — một số bản ghi thiết bị không còn khớp với mắt xích.", // DRAFT — Kevin reviews
+  "dfx.v.state.EMPTY": "Chưa có lịch sử thiết bị được xâu chuỗi.", // DRAFT — Kevin reviews
+  "dfx.v.counts": "{l} mắt xích · {i} nguyên vẹn · {a} bị sửa · {b} đứt mắt xích · {m} bị mất · {r} đã xóa theo lưu trữ 365 ngày", // DRAFT — Kevin reviews
+  "dfx.v.kind.altered": "bản ghi bị sửa sau khi ghi", // DRAFT — Kevin reviews
+  "dfx.v.kind.broken": "đứt mắt xích", // DRAFT — Kevin reviews
+  "dfx.v.kind.missing": "thiếu bản ghi", // DRAFT — Kevin reviews
+  "dfx.v.note": "Chỉ đọc — không sửa gì. Mỗi bản ghi thiết bị được nối với bản ghi trước khi ghi; kiểm tra này tính lại các mắt xích.", // DRAFT — Kevin reviews
+  "dfx.lbl.tag": "Mã tài sản {t}", // DRAFT — Kevin reviews
+  "dfx.lbl.edit": "Nhãn", // DRAFT — Kevin reviews
+  "dfx.lbl.title": "Gắn nhãn {n}", // DRAFT — Kevin reviews
+  "dfx.lbl.alias": "Tên gọi (tên tiệm đặt)", // DRAFT — Kevin reviews
+  "dfx.lbl.asset": "Mã tài sản", // DRAFT — Kevin reviews
+  "dfx.lbl.save": "Lưu nhãn", // DRAFT — Kevin reviews
+  "dfx.lbl.note": "Nhãn chỉ để tìm thiết bị, không đổi cài đặt nào. Để trống để xóa.", // DRAFT — Kevin reviews
 };

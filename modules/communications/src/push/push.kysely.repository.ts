@@ -1,6 +1,6 @@
 // push.kysely.repository.ts — Postgres adapter over device_push_tokens + notification_delivery_logs.
-import type { Kysely } from 'kysely';
-import type { DB } from '@aipowersalon/database';
+import { sql, type Kysely } from 'kysely';
+import { tenantTimeZone, type DB } from '@aipowersalon/database';
 import type { PushRepositoryPort, PushContext, PushTokenRow, DeliveryLogInput } from './push.repository';
 import type { PushPlatform } from './push.types';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
@@ -23,6 +23,12 @@ export class KyselyPushRepository implements PushRepositoryPort {
   async activeTokensForUser(userId: string): Promise<PushTokenRow[]> {
     const rows = await this.db.selectFrom('device_push_tokens').select(['id', 'platform', 'token', 'app']).where('user_id', '=', userId).where('revoked_at', 'is', null).execute().catch(() => [] as any[]);
     return rows.map((r) => ({ id: r.id, platform: r.platform as PushPlatform, token: r.token, app: r.app ?? null }));
+  }
+  async quietHoursFor(tenantId: string, userId: string): Promise<{ start: string; end: string; timeZone: string } | null> {
+    const r = (await sql<{ quiet_start: string | null; quiet_end: string | null }>`select p.quiet_start, p.quiet_end from user_notification_prefs p
+      where p.tenant_id = ${tenantId} and p.user_id = ${userId} limit 1`.execute(this.db)).rows[0];
+    if (!r?.quiet_start || !r?.quiet_end) return null;
+    return { start: r.quiet_start, end: r.quiet_end, timeZone: await tenantTimeZone(this.db, tenantId) };
   }
   async logDelivery(input: DeliveryLogInput): Promise<void> {
     const write = async (db: Kysely<DB>) => (await db.insertInto('notification_delivery_logs').values({

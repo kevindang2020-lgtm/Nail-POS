@@ -366,6 +366,11 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
           <span className={'fk-chip ' + (STATUS_TONE[c.status] ?? 'mut')}>{statusLbl(c.status)}</span>
           {!tot.reconciled ? <span className="fk-chip bad" data-testid="not-reconciled">{tx('gc.notReconciled', { a: fmtMoney(tot.ledgerBalanceCents) })}</span> : null}</div>
         {c.status === 'pending_payment' ? <div className="fk-preview bad">{tx('gc.pendingNote')}</div> : null}
+        {d.data?.verification ? <div className="fk-hint" data-testid="detail-verified">{tx('gc.verifiedAt', { at: when(d.data.verification.checkedAt), last: d.data.verification.lastMovementAt ? when(d.data.verification.lastMovementAt) : '—' })}</div> : null}
+        {d.data?.eligibility ? <div className={'fk-preview' + (d.data.eligibility.canSpend ? '' : ' warn')} data-testid="detail-eligibility">
+          <b>{tx('gc.elig.' + d.data.eligibility.reason, { a: fmtMoney(d.data.eligibility.spendableCents) })}</b>
+          <div className="fk-li-s">{d.data.eligibility.locations === 'any_branch' ? tx('gc.elig.anyBranch') : tx('gc.elig.branchOnly', { b: d.data.eligibility.branch ?? '—' })}{d.data.eligibility.pinRequired ? ` · ${tx('gc.elig.pin')}` : ''}</div>
+        </div> : null}
         <div className="fn-cols2">
           <dl className="fk-dl">
             <dt>{tx('gc.col.purchaser')}</dt><dd>{c.purchaser ? `${c.purchaser.name ?? '—'}${c.purchaser.phone ? ' · ' + c.purchaser.phone : ''}${c.purchaser.email ? ' · ' + c.purchaser.email : ''}` : tx('gc.noPurchaser')}</dd>
@@ -547,6 +552,10 @@ function IssueDialog({ onClose, onIssued }: { onClose: () => void; onIssued: (r:
           <label className="fk-field"><span>{tx('gc.f.rEmail')}</span><input inputMode="email" value={rEmail} onChange={(e) => setREmail(e.target.value)} maxLength={254} /></label>
           <label className="fk-field"><span>{tx('gc.f.rMsg')}</span><input value={rMsg} onChange={(e) => setRMsg(e.target.value)} maxLength={500} /></label>
         </div> : null}
+        {!ok ? <div className="fk-hint" data-testid="issue-missing">{tx('gc.guide.missing', { list: [!cust ? tx('gc.guide.purchaser') : null, !amountOk ? tx('gc.guide.amount') : null,
+          delivery === 'physical' && !/^\d{16}$/.test(num.replace(/\s/g, '')) ? tx('gc.guide.number') : null, gift && !rName.trim() ? tx('gc.guide.recipient') : null].filter(Boolean).join(' · ') })}</div> : null}
+        <ol className="gc-steps" data-testid="issue-steps" aria-label={tx('gc.guide.steps')}>{([['purchaser', !!cust], ['amount', amountOk], ['card', delivery === 'digital' || /^\d{16}$/.test(num.replace(/\s/g, ''))], ['review', ok], ['pay', false]] as const).map(([k, doneStep]) =>
+          <li key={k} className={'fk-chip ' + (doneStep ? 'ok' : 'mut')} data-testid={'issue-step-' + k} data-done={doneStep ? 'true' : 'false'}>{tx('gc.guide.step.' + k)}</li>)}</ol>
         {ok && cust && cents != null ? <IssueReview cents={cents} purchaser={cust.fullName} delivery={delivery} numberLast4={delivery === 'physical' ? num.replace(/\s/g, '').slice(-4) : null} recipient={gift ? rName.trim() : null}
           crossBranch={s.crossBranchRedemption !== false} /> : <div className="fk-hint">{tx('gc.paymentFirst')}</div>}
       </>}

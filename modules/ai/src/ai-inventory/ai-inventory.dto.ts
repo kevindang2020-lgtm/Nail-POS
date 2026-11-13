@@ -69,6 +69,8 @@ export interface SlowMovingInputRow {
   daysSinceLastUsage: number | null;
   retailUnitsInWindow: number;
   consumptionUnitsInWindow: number;
+  /** extras (AI Inventory 15): units written off in the window (damaged / waste / expired movements); absent = 0 */
+  wasteUnitsInWindow?: number;
 }
 
 export interface ProductPosition {

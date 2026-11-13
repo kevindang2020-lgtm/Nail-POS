@@ -93,6 +93,9 @@ export interface BookingOpening {
   /** how many bookable starts the technician has left that day */
   openSlots: number;
   rank: number;
+  /** extras TEAM MANAGEMENT 05: the technician's own branch (null = salon-wide) and its name — the booking engine only offers
+   *  technicians of the session's branch scope, so this states where the opening is bookable. Absent on an older server. */
+  branch?: { branchId: string | null; name: string | null } | null;
 }
 export interface BookingOpeningsResponse {
   date: string;

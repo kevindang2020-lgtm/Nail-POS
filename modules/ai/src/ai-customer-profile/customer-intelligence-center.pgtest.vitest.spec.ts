@@ -117,6 +117,26 @@ describe('Customer Intelligence — list, search, dates, pages', () => {
     expect((await ids('lan nguyen')).length).toBeGreaterThanOrEqual(5);
     expect(await ids('(609) 555-0101')).toEqual([C.never]);                    // the other salon's same number never appears
   });
+  it('extras Customer Intelligence 07 (round 10): technician id / name finds served, assigned and preferred customers — each labelled; never the other salon', async () => {
+    const VY = id(21), XT = id(22);
+    await q(sql`set session_replication_role = replica`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values (${VY}, ${T}, ${B}, 'Vy', 'Trần', 'Vy Trần'), (${XT}, ${X}, ${BX}, 'Vy', 'Other', 'Vy Other')`);
+    // Never Served has only an upcoming booking with Vy (assigned, not served); Once Only prefers Vy (verified preference)
+    await q(sql`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status, services)
+      values (${T}, ${B}, ${VY}, ${C.never}, 'x', (now() at time zone 'America/New_York')::date + 3, '10:00', '11:00', 'booked', '[]')`);
+    await q(sql`update customers set preferred_technician_id = ${VY} where id = ${C.once}`);
+    await q(sql`update customers set preferred_technician_id = ${XT} where id = ${C.other}`);
+    await q(sql`set session_replication_role = origin`);
+    const res = async (qq: string) => (await ci.customers(ctx(), { q: qq }, { fullContact: false })).items.map((i: any) => [i.id, i.matchedVia]);
+    expect(new Map(await res('vy tran'))).toEqual(new Map([[C.never, 'assigned_technician'], [C.once, 'preferred_technician']]));
+    expect(new Map(await res(VY))).toEqual(new Map([[C.never, 'assigned_technician'], [C.once, 'preferred_technician']]));
+    // Lan served the regulars: by id → completed visits labelled as such; the customer's own name stays 'customer'
+    const byLan = new Map(await res(LAN));
+    expect(byLan.get(C.regular)).toBe('visit_technician'); expect(byLan.get(C.booked)).toBe('visit_technician');
+    expect(new Map(await res('lapsed')).get(C.lapsed)).toBe('customer');
+    expect((await res('vy other')).length).toBe(0);                              // another salon's technician never matches here
+    expect((await ci.customers(ctx(), {}, { fullContact: false })).items.every((i: any) => i.matchedVia === null)).toBe(true);
+  });
   it('LS-03 newest visit first by default, stable pages, masked contact, last-visit date range', async () => {
     const all = await ci.customers(ctx(), { pageSize: 10 }, { fullContact: false });
     const lv = all.items.filter((i: any) => i.lastVisitAt).map((i: any) => i.lastVisitAt);

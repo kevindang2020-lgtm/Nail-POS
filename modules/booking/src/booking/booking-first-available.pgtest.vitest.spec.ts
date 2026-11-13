@@ -85,3 +85,13 @@ describe('first available — a booking without a technician is assigned by the 
     expect(chosen).not.toBe(true);   // null (not marked) — only a first-available booking is flagged
   });
 });
+
+describe('extras TEAM MANAGEMENT 05 (round 10) — Find qualified & available staff names each opening\'s branch', () => {
+  it('every opening carries the technician\'s own branch from the database; unskilled technicians are never listed', async () => {
+    const r = await svc.openings(ctx as never, { date: '2026-11-09', serviceIds: [SVC] });
+    expect(r.openings.length).toBeGreaterThan(0);
+    expect(r.openings.map((o) => o.technicianId)).not.toContain(CY);
+    for (const o of r.openings) expect(o.branch).toEqual({ branchId: B, name: 'Main' });
+  });
+});
+

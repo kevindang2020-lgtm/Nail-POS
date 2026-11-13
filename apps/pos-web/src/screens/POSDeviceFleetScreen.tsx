@@ -13,9 +13,10 @@
 //     customer display), so printers show NOT CONFIGURED and the page shows the real digital-receipt history.
 // Read-only: device actions stay on the owning pages (registers & displays → Customer Displays, terminals → Payment
 // Terminals; kiosks are set up by AIPowerSalon support). No count is invented — an unreadable figure shows "—".
+import { useCan } from '../components/usePermissions';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfHistoryVerifyResponse } from '@aipowersalon/api-contracts/tenant';
 import { posDevicesApi, type DevicesOverview } from '../api/posDevicesApi';
 import { posDeviceFleetApi, type DeviceFleetQuery } from '../api/posDeviceFleetApi';
 import { reportError } from './reportsCommon';
@@ -82,6 +83,7 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   const [list, setList] = useState<DfListResponse | null>(null); const [listErr, setListErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<DfDevice | null>(null);
+  const can = useCan(); const [labeling, setLabeling] = useState<DfDevice | null>(null);   // extras Device Health 06
   const [health, setHealth] = useState<DfCheckResponse | 'loading' | { error: string } | null>(null);
   const seq = useRef(0);
   const setF = (p: Partial<DeviceFleetQuery>, keepPage = false) => setFState((c) => ({ ...c, ...p, page: keepPage ? (p.page ?? c.page) : 1 }));
@@ -218,14 +220,16 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
               <thead><tr><th>{tx('pos.device')}</th><th>{tx('pos.type')}</th><th>{tx('pos.branch')}</th><th>{tx('pos.station')}</th><th>{tx('pos.status')}</th><th>{tx('pos.last_sync')}</th><th /></tr></thead>
               <tbody>{list.items.map((d) => (
                 <tr key={`${d.source}:${d.id}`} data-testid="dfx-row">
-                  <td style={{ fontWeight: 700 }}>{d.name || tt('dfx.unnamed')}</td>
+                  <td style={{ fontWeight: 700 }}>{d.name || tt('dfx.unnamed')}{d.alias || d.assetTag ? <div className="sub" data-testid="dfx-label">{[d.alias, d.assetTag ? tt('dfx.lbl.tag', { t: d.assetTag }) : null].filter(Boolean).join(' · ')}</div> : null}</td>
                   <td className="sub">{d.source === 'station' ? tx('pos.reception_pos') : typeLabel(d.type)}</td>
                   <td>{d.branch ?? <span className="sub">{tt('dfx.noBranch')}</span>}</td>
                   <td>{d.station || <span style={{ color: 'var(--muted)' }}>{tx('pos.unassigned')}</span>}</td>
                   <td>{statusChip(d.status)}{d.reason ? <div className="sub dfx-reason">{tt('dfx.reason.' + d.reason)}</div> : null}<VersionLine st={appVersionStanding(d, newestAppVersion(list.items))} newest={newestAppVersion(list.items)} /></td>
                   <td className="sub">{d.lastSeenAt ? agoLabel(d.lastSeenAt) : '—'}</td>
-                  <td className="nowrap"><button className="btn ghost sm" data-testid="dfx-view" onClick={() => setOpen(d)}>{tt('dfx.view')}</button></td>
+                  <td className="nowrap"><button className="btn ghost sm" data-testid="dfx-view" onClick={() => setOpen(d)}>{tt('dfx.view')}</button>
+                    {can('pos.devices.manage') ? <button className="btn ghost sm" data-testid="dfx-label-edit" onClick={() => setLabeling(d)}>{tt('dfx.lbl.edit')}</button> : null}</td>
                 </tr>))}</tbody></table></div>}
+          {labeling ? <LabelDialog d={labeling} onClose={() => setLabeling(null)} onSaved={() => { setLabeling(null); loadList(); }} /> : null}
           <div className="rvw-pager">
             <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => setF({ page: p }, true)} />
             <label className="rvw-f"><span>{tt('dfx.rows')}</span><select data-testid="dfx-pagesize" value={String(f.pageSize ?? 25)} onChange={(e) => setF({ pageSize: Number(e.target.value) })}>
@@ -250,12 +254,30 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   );
 }
 
+/** extras Device Health 06 (round 10): the salon's own alias and asset tag for a device (audited server-side) */
+function LabelDialog({ d, onClose, onSaved }: { d: DfDevice; onClose: () => void; onSaved: () => void }) {
+  const [alias, setAlias] = useState(d.alias ?? ''); const [tag, setTag] = useState(d.assetTag ?? '');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const save = () => { setBusy(true); setErr(null); posDeviceFleetApi.setLabel({ source: d.source, deviceId: d.id, alias: alias.trim() || null, assetTag: tag.trim() || null })
+    .then(onSaved).catch((e) => setErr(reportError(e, 'devices'))).finally(() => setBusy(false)); };
+  return (
+    <FitDialog title={tt('dfx.lbl.title', { n: d.name || tt('dfx.unnamed') })} onClose={onClose} busy={busy} testId="dfx-label-dialog"
+      footer={<><button className="btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button className="btn" onClick={save} disabled={busy} data-testid="dfx-label-save">{tt('dfx.lbl.save')}</button></>}>
+      <label className="fk-field">{tt('dfx.lbl.alias')}<input value={alias} maxLength={60} onChange={(e) => setAlias(e.target.value)} data-testid="dfx-label-alias" /></label>
+      <label className="fk-field">{tt('dfx.lbl.asset')}<input value={tag} maxLength={40} onChange={(e) => setTag(e.target.value)} data-testid="dfx-label-tag" /></label>
+      <p className="sub">{tt('dfx.lbl.note')}</p>
+      {err ? <div className="err">{err}</div> : null}
+    </FitDialog>
+  );
+}
+
 /** History tab — the canonical audit / kiosk logs (or, for Receipt Devices, the digital receipts), newest first */
 export function FleetHistory({ cls, deviceId }: { cls: DfClass; deviceId?: string }) {
   const [q, setQ] = useState<{ q?: string; from?: string; to?: string; page: number; pageSize: number }>({ page: 1, pageSize: deviceId ? 10 : 25 });
   const [draft, setDraft] = useState('');
   const [d, setD] = useState<DfHistoryResponse | null>(null); const [err, setErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
+  const [verify, setVerify] = useState<DfHistoryVerifyResponse | 'loading' | { error: string } | null>(null);   // extras Device Assignments 25
   const load = useCallback(() => { setErr(null); posDeviceFleetApi.history({ class: cls, deviceId, ...q }).then(setD).catch((e) => setErr(reportError(e, 'devices'))); }, [cls, deviceId, q]);
   useEffect(load, [load]);
   const receipts = cls === 'receipt';
@@ -266,9 +288,17 @@ export function FleetHistory({ cls, deviceId }: { cls: DfClass; deviceId?: strin
           <input className="rvw-search" type="search" data-testid="dfx-h-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tt(receipts ? 'dfx.h.receiptPh' : 'dfx.h.searchPh')} aria-label={tt('dfx.h.searchPh')} />
           <button className="btn" type="submit">{tt('dfx.search')}</button>
         </form>
+        {!receipts ? <button className="btn ghost" data-testid="dfx-h-verify" onClick={() => { setVerify('loading'); posDeviceFleetApi.verifyHistory().then(setVerify).catch((e) => setVerify({ error: reportError(e, 'devices') })); }}>{tt('dfx.v.run')}</button> : null}
         <button className={'btn ghost' + (q.from || q.to ? ' on' : '')} data-testid="dfx-h-range" onClick={() => setCal(true)}>{q.from || q.to ? `${q.from ?? '…'} → ${q.to ?? '…'}` : tt('dfx.range')}</button>
         {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: q.from, to: q.to }} today={deviceToday()} onApply={(r) => { setQ((c) => ({ ...c, from: r.from, to: r.to, page: 1 })); setCal(false); }}
           onCancel={() => setCal(false)} onClear={() => { setQ((c) => ({ ...c, from: undefined, to: undefined, page: 1 })); setCal(false); }} /></div> : null}
+      </div> : null}
+      {verify ? <div className={'panel ' + (verify === 'loading' || 'error' in verify ? '' : verify.state === 'TAMPERED' ? 'bad' : '')} data-testid="dfx-h-verify-result" style={{ padding: 10, margin: '8px 0' }}>
+        {verify === 'loading' ? tt('dfx.loading') : 'error' in verify ? <span className="err">{verify.error}</span> : <>
+          <b>{tt('dfx.v.state.' + verify.state)}</b>
+          <div className="sub">{tt('dfx.v.counts', { l: String(verify.links), i: String(verify.intact), a: String(verify.altered), b: String(verify.broken), m: String(verify.missing), r: String(verify.prunedByRetention) })}</div>
+          {verify.findings.length ? <ul className="sub" data-testid="dfx-h-verify-findings">{verify.findings.map((f) => <li key={f.seq}>#{f.seq} · {tt('dfx.v.kind.' + f.kind)} · {tt('dfx.ent.' + f.entityType)}</li>)}</ul> : null}
+          <div className="sub">{tt('dfx.v.note')}</div></>}
       </div> : null}
       {err ? <ErrorRetry message={err} onRetry={load} /> : !d ? <div className="state">{tt('dfx.loading')}</div>
         : d.total === 0 ? <Empty title={tt(receipts ? 'dfx.h.noReceipts' : 'dfx.h.empty')} />

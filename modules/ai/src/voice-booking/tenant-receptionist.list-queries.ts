@@ -7,6 +7,7 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 export const TenantReceptionistControllerListQueries = {
   calls: { search: false },
   settingsHistory: { search: false, maxLimit: 50, params: ['page'] },
+  listRecommendations: { search: false, filters: { status: { type: 'enum', values: ['open', 'approved', 'rejected', 'applied'] } } },   // AI Receptionist Settings 07
   // listFollowUps retired with tenant/ai/receptionist/follow-ups* (AI Follow-Ups guide 26) — its spec must go too: @ListQueries
   // refuses a name that is not a method, and that refusal stopped the API from booting.
 } satisfies Record<string, ListQuerySpec>;

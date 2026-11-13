@@ -232,4 +232,6 @@ export const TEAMTECHNICIANS_VI = {
   'tc.sync.title': 'Nhiều thợ cùng lúc', // DRAFT — Kevin reviews
   'tc.sync.sub': 'Các giờ bắt đầu mà mỗi dịch vụ trong {n} dịch vụ có một thợ riêng, đủ điều kiện và đang rảnh cùng lúc — theo hệ thống đặt lịch cho từng dịch vụ. Không giữ chỗ hay đặt lịch.', // DRAFT — Kevin reviews
   'tc.sync.none': 'Ngày này không có giờ nào mà mỗi dịch vụ có một thợ rảnh khác nhau. Hãy thử ngày khác hoặc ít dịch vụ cùng lúc hơn.', // DRAFT — Kevin reviews
+  'tc.col.branch': 'Đặt được tại', // DRAFT — Kevin reviews
+  'tc.branch.salonWide': 'Mọi chi nhánh (toàn tiệm)', // DRAFT — Kevin reviews
 };

@@ -12,7 +12,8 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCustomerIntelligenceApi, type IntelligenceQuery } from '../api/posCustomerIntelligenceApi';
 import { posCustomerSearchApi } from '../api/posCustomerSearchApi';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtNumber, fmtInZone } from '../i18n/format';
+import { fmtNumber, fmtInZone, fmtMoney } from '../i18n/format';
+import { Customer360Panel } from '../components/Customer360Panel';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
@@ -24,12 +25,12 @@ const STATES = ['active', 'rebooking_soon', 'due_for_return', 'inactive', 'long_
 const STATUS_FILTERS = ['active', 'rebooking_soon', 'due_for_return', 'inactive_all', 'inactive', 'long_term_inactive', 'insufficient_history', 'never_served', 'not_scanned'];
 // Kevin, Nov 12 2026 (decision 2): churn belongs to Customer Retention — no churn flag or filter of this page's own; the card
 // shows Retention's at-risk count (summary.retention) and each row Retention's segment (row.retention), both linking there.
-const FLAGS = ['rebooking', 'upcoming', 'duplicate'];
+const FLAGS = ['rebooking', 'upcoming', 'duplicate', 'high_value'];   // high_value: Customer Intelligence 30
 const RETENTION_ROUTE = '/tenant/customers/retention';
 const RET_TONE: Record<string, string> = { at_risk: 'bad', approaching: 'warn', active: 'ok', never_visited: '' };
 const DATE_FIELDS = ['last_visit', 'created', 'next_appointment', 'profile_updated'];
 const PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'last_90', 'year'] as const;
-const SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since'];
+const SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since', 'spend'];   // spend: Customer Intelligence 30 high-value list
 const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAILED: 'bad', INSUFFICIENT_DATA: '', UNAVAILABLE: 'bad' };
 const STATUS_TONE: Record<string, string> = { active: 'ok', rebooking_soon: '', due_for_return: 'warn', inactive: 'warn', long_term_inactive: 'bad', insufficient_history: '' };
 const FRESH_TONE: Record<string, string> = { up_to_date: 'ok', stale: 'warn', failed: 'bad', never: 'warn', running: '' };
@@ -181,13 +182,13 @@ export function POSAICustomerProfileOverviewScreen() {
             <thead><tr><th>{t('cix.col.customer')}</th><th>{t('cix.col.history')}</th><th>{t('cix.col.next')}</th><th>{t('cix.col.technician')}</th><th>{t('cix.col.status')}</th><th>{t('cix.col.benefits')}</th><th /></tr></thead>
             <tbody>{list.items.map((r: any) => (
               <tr key={r.id} data-testid="cix-row" tabIndex={0} onClick={() => setOpenId(r.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpenId(r.id); }}>
-                <td><b>{r.name || '—'}</b><div className="sub">{r.phone ?? t('cix.notProvided')}</div></td>
+                <td><b>{r.name || '—'}</b><div className="sub">{r.phone ?? t('cix.notProvided')}</div>{r.matchedVia ? <div className="sub" data-testid="cix-matched">{t('cix.via.' + r.matchedVia)}</div> : null}</td>
                 <td>{r.completedVisits == null ? '—' : t('cix.visitsLine', { n: fmtNumber(r.completedVisits), last: when(r.lastVisitAt) })}</td>
                 <td className="nowrap">{r.nextAppointmentDate ?? t('cix.none')}</td>
                 <td>{r.lastTechnician ? t('cix.lastTech', { n: r.lastTechnician }) : '—'}{r.preferredTechnician ? <div className="sub">{t('cix.prefTech', { n: r.preferredTechnician })}</div> : null}</td>
                 <td>{!r.scanned ? <span className="chip">{t('cix.status.not_scanned')}</span> : <span className={'chip ' + (STATUS_TONE[r.status] ?? '')}>{t(r.neverServed ? 'cix.status.never_served' : 'cix.status.' + r.status)}</span>}
                   {r.retention ? <button type="button" className={'chip ' + (RET_TONE[r.retention.segment] ?? '')} data-testid="cix-retention" title={t('cpx.ret.open')} onClick={(e) => { e.stopPropagation(); nav(RETENTION_ROUTE); }}>{t('cpx.ret.seg.' + r.retention.segment)}</button> : null}{r.rebooking ? <span className="chip">{t('cix.flag.rebooking')}</span> : null}{r.duplicate ? <span className="chip warn">{t('cix.flag.duplicate')}</span> : null}</td>
-                <td>{r.loyalty ? t('cix.points', { n: fmtNumber(r.loyalty.points) }) : '—'}{r.member ? <span className="chip ok">{t('cix.member')}</span> : null}</td>
+                <td>{r.loyalty ? t('cix.points', { n: fmtNumber(r.loyalty.points) }) : '—'}{r.member ? <span className="chip ok">{t('cix.member')}</span> : null}{r.spendCents ? <div className="sub" data-testid="cix-spend">{t('cix.spent', { amount: fmtMoney(r.spendCents) })}</div> : null}</td>
                 <td><button className="btn ghost sm" data-testid="cix-view" onClick={(e) => { e.stopPropagation(); setOpenId(r.id); }}>{t('cix.view')}</button></td>
               </tr>))}</tbody></table></div>}
         <div className="rvw-pager">
@@ -225,8 +226,9 @@ function CustomerOverlay({ id, onClose, nav }: { id: string; onClose: () => void
   const [ci, setCi] = useState<any>(null);
   const [p, setP] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [show360, setShow360] = useState(false);   // Customer Intelligence 30
   useEffect(() => {
-    setCi(null); setP(null); setErr(null);
+    setCi(null); setP(null); setErr(null); setShow360(false);
     posCustomerIntelligenceApi.customer(id).then(setCi).catch((e) => setErr(errText(e, 'cix.loadFailed')));
     posCustomerSearchApi.profile(id).then(setP).catch(() => setP(false));
   }, [id]);
@@ -256,6 +258,7 @@ function CustomerOverlay({ id, onClose, nav }: { id: string; onClose: () => void
           <dt>{t('cix.ov.loyalty')}</dt><dd>{p.sources?.loyalty === 'unavailable' ? t('cix.unavailable') : p.loyalty?.enrolled ? t('cix.points', { n: fmtNumber(p.loyalty.points) }) : t('cix.ov.notEnrolled')}</dd>
           <dt>{t('cix.ov.membership')}</dt><dd>{p.sources?.memberships === 'unavailable' ? t('cix.unavailable') : p.memberships?.find((m: any) => m.status === 'active')?.plan ?? t('cix.none')}</dd>
         </dl> : p === false ? <p className="sub">{t('cix.ov.profileUnavailable')}</p> : null}
+        {show360 ? <Customer360Panel customerId={id} /> : <button className="btn ghost" data-testid="ov-360" onClick={() => setShow360(true)}>{t('cix.360.open')}</button>}
         <p className="sub">{t('cix.ov.readOnly')}</p>
       </>}
     </FitDialog>

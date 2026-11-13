@@ -659,4 +659,11 @@ export const STATUS_EN = {
   'status.callEvent.call_started': 'Call started',
   'status.callEvent.call_ended': 'Call ended',
   'status.callEvent.call_analyzed': 'Call summary ready',
+  'status.review_resolution.open': 'Open',
+  'status.review_resolution.in_progress': 'In progress',
+  'status.review_resolution.resolved': 'Resolved',
+  'status.review_resolution.no_action': 'No action needed',
+  'status.review_escalation.flagged': 'Flagged',
+  'status.review_escalation.escalated': 'Escalated',
+  'status.review_escalation.resolved': 'Escalation resolved',
 };

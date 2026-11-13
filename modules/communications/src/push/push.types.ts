@@ -10,4 +10,4 @@ export interface PushMessage { title: string; body?: string; data?: Record<strin
 export interface PushTarget { token: string; platform: PushPlatform; app?: string | null }
 export interface PushSendResult { ok: boolean; providerId?: string; error?: string }
 export interface PushProvider { readonly name: string; send(target: PushTarget, msg: PushMessage): Promise<PushSendResult>; }
-export interface DispatchSummary { tokens: number; sent: number; failed: number; provider: string }
+export interface DispatchSummary { tokens: number; sent: number; failed: number; provider: string; /** extras Customer Notifications 08: devices not sent to because the person is in their quiet hours */ heldForQuietHours?: number }

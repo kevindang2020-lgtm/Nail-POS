@@ -37,6 +37,7 @@ export function POSAiInventoryScreen() {
   const [low, setLow] = useState<any | null>(null);
   const [reorder, setReorder] = useState<any | null>(null);
   const [slow, setSlow] = useState<any | null>(null);
+  const [slowView, setSlowView] = useState<'all' | 'overstock' | 'waste'>('all');   // extras AI Inventory 15
 
   const load = useCallback((t: Tab) => {
     setLoading(true); setError(null);
@@ -119,27 +120,38 @@ export function POSAiInventoryScreen() {
         )
       )}
 
-      {!loading && !error && tab === 'slow' && slow && (
-        slow.items.length === 0 ? <div className="state">{tx('pos.no_slow_moving_or_dead_stock_nb0a')}</div> : (
+      {!loading && !error && tab === 'slow' && slow && (() => {
+        // extras (AI Inventory 15): Slow-Moving · Overstock · Waste are views of the SAME server findings (the server lists an item
+        // when it is slow / dead, above its maximum, or had units written off in the window) — the POS only filters by those flags
+        const items: any[] = slow.items.filter((i: any) => slowView === 'all' ? true : slowView === 'overstock' ? i.overstock : (i.wasteUnitsInWindow ?? 0) > 0);
+        return (<>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }} data-testid="inv-slow-views">
+            {(['all', 'overstock', 'waste'] as const).map((v) => <button key={v} className={'btn ghost' + (slowView === v ? ' on' : '')} aria-pressed={slowView === v} data-testid={`inv-slow-view-${v}`} onClick={() => setSlowView(v)}>{tx('growth.aiInventory.slowView.' + v)}</button>)}
+            <span className="sub" style={{ alignSelf: 'center' }}>{tx('growth.aiInventory.window', { n: String(slow.windowDays ?? '—') })}</span>
+          </div>
+          {items.length === 0 ? <div className="state">{tx(slowView === 'all' ? 'pos.no_slow_moving_or_dead_stock_nb0a' : 'growth.aiInventory.slowView.none')}</div> : (
           <section className="panel" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="overflow-x-auto w-full"><table className="tbl w-full min-w-max">
-              <thead><tr><th>{tx('pos.product')}</th><th>{tx('pos.on_hand')}</th><th>{tx('pos.value')}</th><th>{tx('pos.last_activity')}</th><th>{tx('pos.class')}</th><th>{tx('pos.recommendation')}</th></tr></thead>
+              <thead><tr><th>{tx('pos.product')}</th><th>{tx('pos.on_hand')}</th><th>{tx('pos.value')}</th><th>{tx('pos.last_activity')}</th><th>{tx('growth.aiInventory.col.units')}</th><th>{tx('growth.aiInventory.col.cover')}</th><th>{tx('growth.aiInventory.col.waste')}</th><th>{tx('pos.class')}</th><th>{tx('pos.recommendation')}</th></tr></thead>
               <tbody>
-                {slow.items.map((i: any) => (
-                  <tr key={i.productId}>
+                {items.map((i: any) => (
+                  <tr key={i.productId} data-testid="inv-slow-row">
                     <td>{i.name}<div className="sub">{dash(i.categoryName)}</div></td>
                     <td>{num(i.onHand)}</td>
                     <td>{i.inventoryValueCents == null ? '—' : money(i.inventoryValueCents)}</td>
-                    <td>{i.daysSinceLastActivity == null ? 'never' : tx('pos.dayssincelastactivity_d_ago', { daysSinceLastActivity: String(i.daysSinceLastActivity) })}</td>
+                    <td>{i.daysSinceLastActivity == null ? tx('growth.aiInventory.never') : tx('pos.dayssincelastactivity_d_ago', { daysSinceLastActivity: String(i.daysSinceLastActivity) })}</td>
+                    <td>{num(i.unitsInWindow)}</td>
+                    <td data-testid="inv-slow-cover">{i.coverageWeeks == null ? tx('growth.aiInventory.noMovement') : tx('growth.aiInventory.weeks', { n: String(i.coverageWeeks) })}</td>
+                    <td data-testid="inv-slow-waste">{i.wasteUnitsInWindow ? <>{num(i.wasteUnitsInWindow)}{i.wasteValueCents != null ? <div className="sub">{money(i.wasteValueCents)}</div> : null}</> : '—'}</td>
                     <td><Sev value={i.classification} />{i.overstock && <span className="sub"> {tx('pos.overstock_2')}</span>}</td>
                     <td><div className="sub">{i.recommendation}</div></td>
                   </tr>
                 ))}
               </tbody>
             </table></div>
-          </section>
-        )
-      )}
+          </section>)}
+        </>);
+      })()}
     </div>
   );
 }

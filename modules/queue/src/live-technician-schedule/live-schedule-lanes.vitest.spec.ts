@@ -42,3 +42,20 @@ describe('Live Technician Schedule — column paging at 200 technicians', () => 
     expect(wk.lanes?.total).toBe(1); expect(wk.days.every((d) => d.board.technicians.length === 1)).toBe(true);
   });
 });
+
+// extras 200-Technician 05 (round 10): No-Hidden-Limit Validator — every roster size, every page walked
+describe('No-Hidden-Limit Validator — Live Technician Schedule at 12 / 24 / 50 / 100 / 199 / 200 / 201', () => {
+  for (const n of [12, 24, 50, 100, 199, 200, 201]) {
+    it(`${n} technicians: ceil(n/12) pages, every technician on exactly one page, none dropped, "#${n}" finds the last`, () => {
+      const cs = Array.from({ length: n }, (_, i) => col(i + 1));
+      const b = { ...board, technicians: cs } as any;
+      const first = pageLiveScheduleBoard(b, { lanePage: 1 });
+      expect(first.lanes).toEqual({ page: 1, pageSize: 12, total: n, totalPages: Math.ceil(n / 12), totalAll: n });
+      const seen: string[] = [];
+      for (let p = 1; p <= first.lanes!.totalPages; p++) seen.push(...pageLiveScheduleBoard(b, { lanePage: p }).technicians.map((t: any) => t.technicianId));
+      expect(seen).toHaveLength(n); expect(new Set(seen).size).toBe(n);
+      expect(pageLiveScheduleBoard(b, { lanePage: first.lanes!.totalPages }).technicians).toHaveLength(n - (Math.ceil(n / 12) - 1) * 12);
+      expect(pageLiveScheduleBoard(b, { lanePage: 1, laneSearch: `#${n}` }).technicians.map((t: any) => t.fullName)).toEqual([`Tech ${String(n).padStart(3, '0')}`]);
+    });
+  }
+});

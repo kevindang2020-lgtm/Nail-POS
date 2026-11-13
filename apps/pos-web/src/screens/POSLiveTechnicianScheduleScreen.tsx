@@ -17,9 +17,10 @@
 //   I F4 (Finish the Five, Oct 30 2026): Edit Shift for Selected Date (dateShiftEditor.tsx) — a one-date override with a month
 //     calendar, baseline vs effective side by side and a server conflict check; the weekly template is never changed.
 // The board is the canonical /pos/technicians/live-schedule/* (the same ledger as Booking, Tech Appointments and the Queue).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRealtime } from '../realtime/useRealtime';
+import { useRealtime, type RefreshScope } from '../realtime/useRealtime';
+import { bookingEventScope, type BoardView } from '../realtime/bookingRelevance';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posLiveTechnicianScheduleApi as api } from '../api/posLiveTechnicianScheduleApi';
@@ -41,6 +42,14 @@ import { StaffingHeatmap } from './liveScheduleStaffing';
 
 /** 200-technician §2: technician rows a page */
 export const LS_LANE_PAGE_SIZE = 12;
+/** extras 200-Technician 15: the board's refresh scope for one realtime event. 'skip' (another date) still refreshes the cheap
+ *  reads (the activity list may gain a row), so it maps to 'partial'; the week view always reloads (it shows seven dates). */
+export function liveScheduleEventScope(event: string, payload: unknown, b: { week: boolean; view: BoardView }): RefreshScope {
+  if (b.week) return 'full';
+  const sc = bookingEventScope(event, payload, b.view);
+  return sc === 'skip' ? 'partial' : sc;
+}
+export const LS_FLASH_MS = 4000;   // extras 200-Technician 01: how long a jumped-to row stays highlighted
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const dowOf = (ymd: string) => new Date(ymd + 'T12:00:00Z').getUTCDay();
 const dayLabel = (ymd: string) => fmtYmd(ymd, { weekday: 'short', month: 'numeric', day: 'numeric' }, ymd);
@@ -61,9 +70,16 @@ export function POSLiveTechnicianScheduleScreen() {
   const [sel, setSel] = useState<string | null>(null); const [fullDay, setFullDay] = useState<{ id: string; date: string } | null>(null); const [finder, setFinder] = useState(false);
   const [aPeriod, setAPeriod] = useState<PeriodState>({ preset: 'week' }); const [aKind, setAKind] = useState('all'); const [aSearch, setASearch] = useState(''); const aq = useDebounced(aSearch.trim(), 300); const [ap, setAp] = useState(1);
   useEffect(() => setLanePage(1), [q, status, skill, view]);
-  useRealtime(['booking', 'tech-appointments', 'technicians'], reload);   // technician_schedule_updated (weekly hours, time off, F4 date shifts) reaches the 'technicians' channel
+  // extras 200-Technician 15 (round 10): Realtime Noise Guard — a coalesced burst refreshes only the projection it touches. An
+  // event about a technician NOT on this page (or another date) refreshes the cheap reads (KPIs, activity) and leaves the
+  // board alone; a visible technician, a visible appointment, the week view or an event that does not say → the full board
+  // (Booking's rule, bookingEventScope — never re-derived here)
+  const [lightTick, setLightTick] = useState(0);
+  const boardView = useRef<{ week: boolean; view: BoardView }>({ week: false, view: { date: null, visibleTechnicianIds: [] } });
+  const onSync = useCallback((_r?: unknown, scope?: RefreshScope) => { if (scope === 'partial') setLightTick((n) => n + 1); else setTick((n) => n + 1); }, []);
+  useRealtime(['booking', 'tech-appointments', 'technicians'], onSync, { relevance: (d) => liveScheduleEventScope(d.event, d.payload, boardView.current) });   // technician_schedule_updated (weekly hours, time off, F4 date shifts) reaches the 'technicians' channel
 
-  const kp = useLoad(() => posLiveScheduleScreenApi.kpis({ date: date ?? undefined }), [date, tick]);
+  const kp = useLoad(() => posLiveScheduleScreenApi.kpis({ date: date ?? undefined }), [date, tick, lightTick]);
   const day = date ?? kp.data?.date ?? (kp.data || kp.error ? localToday() : null); const today = kp.data?.today ?? (kp.data || kp.error ? localToday() : day ?? '');
   // "#n" / a name pages the board; the same words also search every record of the salon (technicians and appointments)
   const lane = q.startsWith('#') || q.length >= 2 ? q : '';
@@ -73,14 +89,22 @@ export function POSLiveTechnicianScheduleScreen() {
   useEffect(() => { if (st.data) { setUpdated(clockNow()); setReadAt(Date.now()); } }, [st.data]);
   const wk = useLoad(() => (view === 'week' && day ? api.week({ date: day, status, skill, ...paging }) : Promise.resolve(null)), [view, day, status, skill, lanePage, lane, tick]);
   const found = useLoad(() => (q.length >= 2 && !q.startsWith('#') ? posLiveScheduleScreenApi.search({ q }) : Promise.resolve(null)), [q]);
-  const act = useLoad(() => posLiveScheduleScreenApi.activity({ ...periodQuery(aPeriod), kind: aKind, q: aq || undefined, page: ap, pageSize: 8 }), [JSON.stringify(aPeriod), aKind, aq, ap, tick]);
+  const act = useLoad(() => posLiveScheduleScreenApi.activity({ ...periodQuery(aPeriod), kind: aKind, q: aq || undefined, page: ap, pageSize: 8 }), [JSON.stringify(aPeriod), aKind, aq, ap, tick, lightTick]);
   useEffect(() => setAp(1), [aq, aKind]);
 
   const s: any = st.data; const cols: any[] = s?.schedule?.technicians ?? [];
+  boardView.current = { week: view === 'week', view: { date: day, visibleTechnicianIds: cols.map((c) => c.technicianId), visibleAppointmentIds: cols.flatMap((c) => (c.appointments ?? []).map((a: any) => a.appointmentId)) } };
   const lanes = (view === 'week' ? wk.data?.lanes : undefined) ?? s?.schedule?.lanes;
   const k = kp.data?.kpis; const live = kp.data?.when === 'today';
   const selCol = cols.find((c) => c.technicianId === sel) ?? null;
   const openDay = (id: string, d?: string) => { setSel(id); setFullDay({ id, date: d ?? day ?? today }); };
+  // extras 200-Technician 01 (round 10): a temporary column highlight — a search hit (or a "#n" / name jump that lands on one
+  // technician) marks that technician's row on the board for a few seconds, then it fades back; nothing else changes
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => { if (!flash) return; const h = setTimeout(() => setFlash(null), LS_FLASH_MS); return () => clearTimeout(h); }, [flash]);
+  const soleLane = lane && cols.length === 1 ? cols[0].technicianId : null;
+  useEffect(() => { if (soleLane) setFlash(soleLane); }, [soleLane]);
+  const jumpTo = (id: string, d?: string) => { setFlash(id); openDay(id, d); };
   const na = (v: number | null | undefined) => (v == null ? '—' : nf(v));
   // One-click Schedule Health (extras #02): read-only checks over the board already read — nothing is changed
   const runHealth = () => setHealth(scheduleHealth({ cols, live, ageMinutes: readAt == null ? null : Math.floor((Date.now() - readAt) / 60000), kpis: k ?? null,
@@ -125,10 +149,10 @@ export function POSLiveTechnicianScheduleScreen() {
       {found.data ? <FitPanel testId="search-results" title={tx('ls.results', { q: found.data.q })} actions={<button type="button" className="fk-link" onClick={() => setSearch('')}>{tx('finance.clearSearch')}</button>}>
         {found.data.technicians.totalItems + found.data.appointments.totalItems === 0 ? <Empty title={tx('cg.noMatchSearch', { q: found.data.q })} /> : <div className="mos-row two cg-row">
           <div><h3 className="fk-h3">{tx('ls.resTechs', { n: nf(found.data.technicians.totalItems) })}</h3>
-            <ul className="fk-list dense">{found.data.technicians.items.map((t: any) => <li key={t.technicianId} className="fk-li"><button type="button" className="ls-hit" onClick={() => openDay(t.technicianId)} data-testid="hit-tech">
+            <ul className="fk-list dense">{found.data.technicians.items.map((t: any) => <li key={t.technicianId} className="fk-li"><button type="button" className="ls-hit" onClick={() => jumpTo(t.technicianId)} data-testid="hit-tech">
               <ProfileAvatarWithPreview name={t.name} url={t.avatarUrl} size={28} type="technician" /><span className="fk-li-t">{t.name}<span className="fk-li-s">{t.shiftToday ?? tx('tm.noShift')}{t.matchedVia ? ` · ${codeLabel('tc.via.' + t.matchedVia, t.matchedVia)}` : ''}</span></span></button></li>)}</ul></div>
           <div><h3 className="fk-h3">{tx('ls.resAppts', { n: nf(found.data.appointments.totalItems) })}</h3>
-            <ul className="fk-list dense">{found.data.appointments.items.map((a: any) => <li key={a.appointmentId} className="fk-li"><button type="button" className="ls-hit" disabled={!a.technicianId} onClick={() => a.technicianId && openDay(a.technicianId, a.date ?? undefined)} data-testid="hit-appt">
+            <ul className="fk-list dense">{found.data.appointments.items.map((a: any) => <li key={a.appointmentId} className="fk-li"><button type="button" className="ls-hit" disabled={!a.technicianId} onClick={() => a.technicianId && jumpTo(a.technicianId, a.date ?? undefined)} data-testid="hit-appt">
               <span className="fk-li-t">{a.customer ?? '—'} · {a.date} {hm12(a.start)}<span className="fk-li-s">{(a.services ?? []).join(', ')} · {a.technician ?? tx('tm.anyTech')} · {apptStatus(a.status)}{a.phone ? ` · ${a.phone}` : ''}</span></span></button></li>)}</ul></div>
         </div>}
       </FitPanel> : null}
@@ -164,7 +188,7 @@ export function POSLiveTechnicianScheduleScreen() {
         {view === 'day' ? (st.error ? <StateBlock error={st.error} onRetry={st.reload} /> : !s ? <div className="fk-loading">{tx('pos.loading')}</div>
           : cols.length === 0 ? <Empty title={tx('pos.no_technicians_scheduled_today')}><button type="button" className="fk-btn" onClick={() => nav('/technicians')}>{tx('pos.add_technician_create_shift')}</button></Empty>
           : <TechTimeline rows={cols.map((c) => ({ technicianId: c.technicianId, name: c.fullName, status: c.status, shift: c.shift ?? null, appointments: c.appointments ?? [], blocks: c.blocks ?? [], openSlots: c.openSlots ?? [] }))}
-              onTech={(id) => openDay(id)} onAppt={(aid) => { const c = cols.find((x) => (x.appointments ?? []).some((a: any) => a.appointmentId === aid)); if (c) openDay(c.technicianId); }} nowMinute={live ? kp.data?.nowMinute ?? null : null} />)
+              onTech={(id) => openDay(id)} onAppt={(aid) => { const c = cols.find((x) => (x.appointments ?? []).some((a: any) => a.appointmentId === aid)); if (c) openDay(c.technicianId); }} nowMinute={live ? kp.data?.nowMinute ?? null : null} highlightId={flash} />)
           : wk.error ? <StateBlock error={wk.error} onRetry={wk.reload} /> : !wk.data ? <div className="fk-loading">{tx('pos.loading_the_week')}</div>
           : <WeekGrid week={wk.data} selected={day ?? ''} today={today} onPick={(d) => { setDate(d); setView('day'); }} onTech={(id, d) => openDay(id, d)} />}
         <div className="fk-hint">{tx('ls.boardRule')}</div>

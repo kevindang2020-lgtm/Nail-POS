@@ -165,4 +165,13 @@ export const STOCKALERTS_EN = {
   'sa.col.restocked': 'Restocked',
   'sa.restockedQty': '+{n} received since',
   'sa.notRestocked': 'Not restocked yet',
+  'sa.sel.count': '{n} selected',
+  'sa.sel.ack': 'Acknowledge selected',
+  'sa.sel.clear': 'Clear selection',
+  'sa.sel.page': 'Select every alert on this page',
+  'sa.sel.row': 'Select {n}',
+  'sa.sel.askTitle': 'Acknowledge {n} alert(s)?',
+  'sa.sel.askSub': 'Each is acknowledged the same way as its own Acknowledge button, with your name and the time.',
+  'sa.sel.askNote': 'Acknowledging only marks the alert as seen. Stock, orders and products do not change.',
+  'sa.sel.done': '{n} acknowledged · {f} could not be acknowledged',
 };

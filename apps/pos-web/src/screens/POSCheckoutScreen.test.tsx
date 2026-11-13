@@ -298,6 +298,13 @@ describe('POSCheckoutScreen — payment method selector + inputs (were unreachab
     expect(code).toHaveAttribute('autocomplete', 'off');   // GIFT CARDS · 06: no redeemable secret in browser autocomplete
     expect(screen.getByLabelText('Gift card PIN')).toHaveAttribute('type', 'password');
     expect(screen.getByTestId('gift-readiness')).toBeInTheDocument();   // Gift Cards · 03: the readiness check sits with the code
+    // extras GIFT CARDS 04 (round 10): the customer-card finder opens over the sale and closes back to it (the code typed so far stays)
+    fireEvent.change(code, { target: { value: 'GC-1' } });
+    fireEvent.click(screen.getByTestId('gc-finder-open'));
+    expect(await screen.findByTestId('gc-finder')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('Close').slice(-1)[0]);
+    await waitFor(() => expect(screen.queryByTestId('gc-finder')).toBeNull());
+    expect(screen.getByLabelText('Gift card code')).toHaveValue('GC-1');
     fireEvent.change(code, { target: { value: 'GC-123' } });
     fireEvent.click(screen.getByText('Complete Checkout'));
     await waitFor(() => {

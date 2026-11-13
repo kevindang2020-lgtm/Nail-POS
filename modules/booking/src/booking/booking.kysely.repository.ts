@@ -133,6 +133,15 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
     });
   }
   async technicians(ctx: BookingContext, ids?: string[]) { return this._technicians(ctx, ids); }
+  async technicianBranches(ctx: BookingContext, technicianIds: string[]) {
+    const out = new Map<string, { branchId: string | null; name: string | null }>();
+    if (!technicianIds.length) return out;
+    const rows = (await sql<{ id: string; branch_id: string | null; name: string | null }>`select tech.id, tech.branch_id, br.name from technicians tech
+      left join branches br on br.id = tech.branch_id and br.tenant_id = tech.tenant_id
+      where tech.tenant_id = ${ctx.tenantId} and tech.id = any(${technicianIds}::uuid[])`.execute(this.db)).rows;
+    for (const r of rows) out.set(String(r.id), { branchId: r.branch_id ? String(r.branch_id) : null, name: r.name ?? null });
+    return out;
+  }
   /** 200-technician mandate §8: the whole branch's roster in ONE light read (no skills, ratings, avatars) — the server pages,
    *  searches and filters this; only the visible page then reads its detail. */
   async technicianRoster(ctx: BookingContext): Promise<RosterRec[]> {

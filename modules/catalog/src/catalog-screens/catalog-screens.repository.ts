@@ -439,13 +439,29 @@ export class CatalogScreensRepository {
     const tz = await tenantTimeZone(this.db, T);
     const w = sql`a.tenant_id = ${T} and e->>'serviceId' = ${serviceId} and a.appt_date >= (now() at time zone ${tz})::date
       and a.status not in ('cancelled', 'no_show', 'completed') and (${b}::uuid is null or a.branch_id = ${b} or a.branch_id is null)`;
-    const from = sql`from (select id, tenant_id, branch_id, appt_date, start_time, status, customer_name, services from pos_tech_appointments where tenant_id = ${T}) a cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e`;
+    const from = sql`from (select id, tenant_id, branch_id, technician_id, appt_date, start_time, end_time, status, customer_name, services from pos_tech_appointments where tenant_id = ${T}) a cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e`;
     const qp = sql`coalesce(nullif(e->>'priceCents', '')::int, 0)`, qm = sql`coalesce(nullif(e->>'durationMinutes', '')::int, 0)`;
     const agg = (await sql<any>`select count(*)::int as n, coalesce(sum(${qp}), 0)::bigint as quoted, count(*) filter (where ${qp} <> ${newPrice})::int as differs,
         count(*) filter (where ${newDur} > ${qm})::int as longer ${from} where ${w}`.execute(this.db)).rows[0] ?? {};
     const showCust = (ctx.permissions ?? []).some((p) => p === '*' || p === 'customers.view');
     const rows = (await sql<any>`select a.id, to_char(a.appt_date, 'YYYY-MM-DD') as day, a.start_time, a.status, a.customer_name, ${qp} as quoted, ${qm} as minutes ${from} where ${w} order by a.appt_date, a.start_time, a.id limit 20`.execute(this.db)).rows;
+    // SERVICE PRICING 04 (round 10): (a) technician availability — a booked visit that would run longer at the new duration and
+    // then reach that technician's NEXT live appointment that day (the booked visit itself is never moved: its quote stands);
+    // (b) stale pickers — open (unpaid) tickets that already carry this service at a price other than the new one
+    type CRow = { id: string; day: string; start_time: string; next_id: string; next_start: string };
+    const conflicts = (await sql<CRow>`select a.id, to_char(a.appt_date, 'YYYY-MM-DD') as day, a.start_time, nx.id as next_id, nx.start_time as next_start ${from}
+          join lateral (select b.id, b.start_time from pos_tech_appointments b where b.tenant_id = a.tenant_id and b.technician_id = a.technician_id and b.appt_date = a.appt_date and b.id <> a.id
+            and b.status not in ('cancelled', 'no_show', 'completed') and b.start_time::time >= a.start_time::time and b.start_time::time < a.end_time::time + make_interval(mins => ${newDur} - ${qm})
+            order by b.start_time::time, b.id limit 1) nx on true
+        where ${w} and ${newDur} > ${qm} order by a.appt_date, a.start_time, a.id limit 50`.execute(this.db)).rows;
+    const stale = (await sql<{ tickets: number; lines: number }>`select count(distinct l.ticket_id)::int as tickets, count(*)::int as lines from ticket_service_lines l
+        join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
+      where l.tenant_id = ${T} and l.service_id = ${serviceId} and l.removed_at is null and t.removed_at is null and t.paid_at is null
+        and t.status not in ('paid', 'closed', 'void', 'voided', 'cancelled', 'refunded') and l.price_cents_snapshot <> ${newPrice}
+        and (${b}::uuid is null or l.branch_id = ${b})`.execute(this.db)).rows[0];
     return { serviceId, currentPriceCents: N(svc.price_cents), currentDurationMinutes: N(svc.duration_minutes), newPriceCents: newPrice, newDurationMinutes: newDur,
+      availabilityConflicts: conflicts.length, conflictItems: conflicts.slice(0, 20).map((c) => ({ appointmentId: String(c.id), day: String(c.day), time: String(c.start_time).slice(0, 5), nextAppointmentId: String(c.next_id), nextTime: String(c.next_start).slice(0, 5) })),
+      staleOpenTickets: N(stale?.tickets), staleOpenLines: N(stale?.lines),
       upcoming: N(agg.n), quotedTotalCents: N(agg.quoted), atNewPriceTotalCents: N(agg.n) * newPrice, quotedDifferently: N(agg.differs), wouldRunLonger: N(agg.longer),
       policy: 'booked_quotes_kept',
       items: rows.map((r: any) => ({ appointmentId: String(r.id), day: String(r.day), time: String(r.start_time), status: String(r.status), customer: showCust ? r.customer_name ?? null : null,
@@ -482,15 +498,53 @@ export class CatalogScreensRepository {
     const total = N((await sql<any>`select count(*)::int as n ${from} where ${w}`.execute(this.db)).rows[0]?.n);
     const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select l.id, l.ticket_id, t.ticket_number, t.status as ticket_status, t.payment_status, t.paid_at, t.created_at, cu.id as customer_id, cu.full_name, cu.phone_display, cu.normalized_phone,
-        l.service_id, l.service_name_snapshot, l.category_snapshot, l.price_cents_snapshot, l.line_total_cents, l.is_add_on, l.line_kind, l.duration_minutes_snapshot,
+        l.service_id, l.service_name_snapshot, l.category_snapshot, l.price_cents_snapshot, l.line_total_cents, l.is_add_on, l.line_kind, l.duration_minutes_snapshot, l.quantity,
         coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) as technician
       ${from} where ${w} order by coalesce(t.paid_at, t.created_at) desc, l.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
-    return { period: per, needsQuery: false, items: rows.map((r: any) => ({ lineId: String(r.id), ticketId: String(r.ticket_id), ticketNumber: r.ticket_number == null ? null : String(r.ticket_number),
+    const why = await this.priceExplanations(T, rows);
+    return { period: per, needsQuery: false, items: rows.map((r: any) => ({ lineId: String(r.id), ticketId: String(r.ticket_id), ticketNumber: r.ticket_number == null ? null : String(r.ticket_number), priceExplanation: why.get(String(r.id)) ?? null,
       paid: !!r.paid_at, at: iso(r.paid_at ?? r.created_at), ticketStatus: r.ticket_status ?? null, customerId: r.customer_id ? String(r.customer_id) : null, customerName: r.full_name ?? null,
       maskedPhone: maskPhone(r.phone_display ?? r.normalized_phone), serviceId: r.service_id && UUID.test(String(r.service_id)) && !/^0{8}-/.test(String(r.service_id)) ? String(r.service_id) : null,
       item: String(r.service_name_snapshot ?? ''), categoryAtSale: r.category_snapshot ?? null, kind: r.is_add_on ? 'add_on' : String(r.line_kind ?? 'service').toLowerCase(),
       catalogPriceAtSaleCents: r.price_cents_snapshot == null ? null : N(r.price_cents_snapshot), chargedCents: N(r.line_total_cents), minutes: r.duration_minutes_snapshot == null ? null : N(r.duration_minutes_snapshot),
       technician: r.technician || null })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
+  }
+
+  /** SERVICE PRICING 09 (round 10) — why a charged line differs from the catalog price, from RECORDED facts only, for one page
+   *  of lines (three batched reads): the quantity, an add-on, how much a membership benefit paid of the line, each audited manual
+   *  price change on the line (ticket_revisions 'service_updated', with who / when), and whether the catalog price has changed
+   *  since the sale. Whatever difference no record explains is reported as not recorded — never guessed. Ticket-level
+   *  discounts / promotions apply to the ticket total, not to a line, and are said so. */
+  private async priceExplanations(T: string, rows: any[]) {
+    const out = new Map<string, { catalogNowCents: number | null; catalogAtSaleCents: number | null; quantity: number; chargedCents: number; differenceFromCatalogNowCents: number | null;
+      reasons: Array<{ code: string; cents?: number | null; by?: string | null; at?: string | null }> }>();
+    const ids = rows.map((r) => String(r.id)); if (!ids.length) return out;
+    const svcIds = [...new Set(rows.map((r) => String(r.service_id ?? '')).filter((x) => UUID.test(x)))];
+    const now = svcIds.length ? (await sql<{ id: string; price_cents: number }>`select s.id, s.price_cents from services s where s.tenant_id = ${T} and s.id = any(${svcIds}::uuid[])`.execute(this.db)).rows : [];
+    const mem = (await sql<{ service_line_id: string; cents: number }>`select mr.service_line_id, sum(mr.allocated_value_cents)::int as cents from membership_redemptions mr
+      where mr.tenant_id = ${T} and mr.service_line_id = any(${ids}::uuid[]) group by mr.service_line_id`.execute(this.db)).rows;
+    const revs = (await sql<{ service_line_id: string; before: any; after: any; created_at: Date | string; actor: string | null }>`select rv.service_line_id, rv.before, rv.after, rv.created_at,
+        nullif(coalesce(u.full_name, ''), '') as actor from ticket_revisions rv left join users u on u.id = rv.actor_user_id and u.tenant_id = rv.tenant_id
+      where rv.tenant_id = ${T} and rv.service_line_id = any(${ids}::uuid[]) and rv.action = 'service_updated' order by rv.created_at, rv.id`.execute(this.db)).rows;
+    for (const r of rows) {
+      const lid = String(r.id); const qty = Math.max(1, N(r.quantity) || 1); const snap = r.price_cents_snapshot == null ? null : N(r.price_cents_snapshot); const charged = N(r.line_total_cents);
+      const cat = now.find((x) => String(x.id) === String(r.service_id)); const catNow = cat ? N(cat.price_cents) : null;
+      const reasons: Array<{ code: string; cents?: number | null; by?: string | null; at?: string | null }> = [];
+      if (qty > 1) reasons.push({ code: 'quantity', cents: snap == null ? null : snap * (qty - 1) });
+      if (r.is_add_on) reasons.push({ code: 'add_on' });
+      let manual = 0;
+      for (const v of revs.filter((x) => String(x.service_line_id) === lid)) {
+        const b = Number(v.before?.priceCents), a = Number(v.after?.priceCents);
+        if (Number.isFinite(a) && Number.isFinite(b) && a !== b) { manual += a - b; reasons.push({ code: 'manual_override', cents: a - b, by: v.actor ?? null, at: iso(v.created_at) }); }
+      }
+      const m = mem.find((x) => String(x.service_line_id) === lid);
+      if (m && N(m.cents)) reasons.push({ code: 'membership_paid', cents: N(m.cents) });   // paid from the member's benefit — the line price stays
+      if (catNow != null && snap != null && catNow !== snap - manual) reasons.push({ code: 'catalog_changed_since', cents: catNow - (snap - manual) });
+      const expected = snap == null ? null : snap * qty;
+      if (expected != null && charged !== expected) reasons.push({ code: 'not_recorded', cents: charged - expected });
+      out.set(lid, { catalogNowCents: catNow, catalogAtSaleCents: snap == null ? null : snap - manual, quantity: qty, chargedCents: charged, differenceFromCatalogNowCents: catNow == null ? null : charged - catNow, reasons });
+    }
+    return out;
   }
 
   // ── Service Categories ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -530,14 +584,26 @@ export class CatalogScreensRepository {
     const rows = (await sql<any>`select c.id as category_id, c.name as category_name, s.id as service_id, s.name as service_name from service_categories c
       left join services s on s.category_id = c.id and s.tenant_id = c.tenant_id and s.status <> 'archived'
       where c.tenant_id = ${T} and c.status <> 'archived' and ${this.branch(ctx, 'c')} order by lower(c.name), c.id, lower(s.name)`.execute(this.db)).rows;
-    const out: Array<{ kind: string; categoryId: string; categoryName: string; serviceId?: string; serviceName?: string }> = [];
+    const out: Array<{ kind: string; categoryId: string; categoryName: string; serviceId?: string; serviceName?: string; categoryDomain?: string; serviceDomain?: string }> = [];
     const seen = new Set<string>();
-    const HAIR = /\b(hair|haircut|cut|color|colour|blowout|balayage|highlight|perm|keratin)\b/i, NAILS = /\b(nail|nails|mani|manicure|pedi|pedicure|gel|acrylic)\b/i;
+    // SERVICE PRICING 06 (round 10): the relationship check covers every salon domain, not only hair-in-nails — a category that
+    // reads as ONE domain holding a service that reads as another (and not as the category's): e.g. Haircut under Nails, a
+    // Pedicure under Hair, Eyebrow Wax under Massage. Flag only; the owner decides (approve as is / move it).
+    const DOMAINS: Array<[string, RegExp]> = [
+      ['nails', /\b(nail|nails|mani|manicure|pedi|pedicure|gel|acrylic|dip|polish)\b/i],
+      ['hair', /\b(hair|haircut|cut|color|colour|blowout|balayage|highlight|highlights|perm|keratin|trim)\b/i],
+      ['lash_brow', /\b(lash|lashes|brow|brows|eyebrow|threading|tint|lamination)\b/i],
+      ['waxing', /\b(wax|waxing|brazilian|bikini)\b/i],
+      ['massage', /\b(massage|reflexology|deep tissue|hot stone)\b/i],
+      ['skin', /\b(facial|facials|peel|microdermabrasion|hydrafacial|skin)\b/i]];
+    const domainsOf = (name: string) => DOMAINS.filter(([, re]) => re.test(name)).map(([d]) => d);
     for (const r of rows) {
       const cid = String(r.category_id);
       if (!seen.has(cid)) { seen.add(cid); if (/^[A-Z]{1,4}\s?\d{3,}$/i.test(String(r.category_name).trim())) out.push({ kind: 'code_like_name', categoryId: cid, categoryName: r.category_name }); }
       if (!r.service_id) { if (!rows.some((x: any) => String(x.category_id) === cid && x.service_id)) { if (!out.some((o) => o.kind === 'empty' && o.categoryId === cid)) out.push({ kind: 'empty', categoryId: cid, categoryName: r.category_name }); } continue; }
-      if (NAILS.test(r.category_name) && HAIR.test(r.service_name) && !NAILS.test(r.service_name)) out.push({ kind: 'service_category_mismatch', categoryId: cid, categoryName: r.category_name, serviceId: String(r.service_id), serviceName: r.service_name });
+      const cd = domainsOf(String(r.category_name)), sd = domainsOf(String(r.service_name));
+      if (cd.length === 1 && sd.length >= 1 && !sd.includes(cd[0]))
+        out.push({ kind: 'service_category_mismatch', categoryId: cid, categoryName: r.category_name, serviceId: String(r.service_id), serviceName: r.service_name, categoryDomain: cd[0], serviceDomain: sd[0] });
     }
     return this.withReviewDecisions(T, out);
   }
@@ -545,7 +611,7 @@ export class CatalogScreensRepository {
    *  latest human decision made on THESE names (catalog_category_reviews, append-only, migration 847). Approved as is →
    *  status 'approved' (kept in the list, with who/when/why); never decided, reopened, or decided on a name since changed →
    *  'open'. Open findings first. Nothing in the catalog changes. */
-  private async withReviewDecisions(T: string, out: Array<{ kind: string; categoryId: string; categoryName: string; serviceId?: string; serviceName?: string }>) {
+  private async withReviewDecisions(T: string, out: Array<{ kind: string; categoryId: string; categoryName: string; serviceId?: string; serviceName?: string; categoryDomain?: string; serviceDomain?: string }>) {
     if (!out.length) return [];
     type DecRow = { kind: string; category_id: string; service_id: string | null; category_name: string; service_name: string | null; decision: string; note: string; created_at: Date | string; reviewer: string | null };
     const rows = (await sql<DecRow>`select distinct on (r.kind, r.category_id, r.service_id) r.kind, r.category_id, r.service_id, r.category_name, r.service_name, r.decision, r.note, r.created_at,

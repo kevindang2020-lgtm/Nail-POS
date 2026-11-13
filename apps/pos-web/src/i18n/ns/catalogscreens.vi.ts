@@ -517,4 +517,26 @@ export const CATALOGSCREENS_VI = {
   "cg.def.title": "Mặc định toàn tiệm", // DRAFT — Kevin reviews
   "cg.def.template": "Từ mẫu của nền tảng “{n}” (gợi ý)", // DRAFT — Kevin reviews
   "cg.def.none": "Không có — mỗi chi nhánh giữ giá và thời lượng riêng", // DRAFT — Kevin reviews
+  "cg.review.domainHint": "Dịch vụ thuộc nhóm {sd} nhưng danh mục thuộc nhóm {cd} — chuyển nó trong Quản lý dịch vụ nếu sai.", // DRAFT — Kevin reviews
+  "cg.domain.nails": "móng", // DRAFT — Kevin reviews
+  "cg.domain.hair": "tóc", // DRAFT — Kevin reviews
+  "cg.domain.lash_brow": "mi / chân mày", // DRAFT — Kevin reviews
+  "cg.domain.waxing": "tẩy lông", // DRAFT — Kevin reviews
+  "cg.domain.massage": "mát-xa", // DRAFT — Kevin reviews
+  "cg.domain.skin": "chăm sóc da", // DRAFT — Kevin reviews
+  "cg.why.quantity": "số lượng ({v})", // DRAFT — Kevin reviews
+  "cg.why.add_on": "dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.why.manual_override": "giá được {by} đổi ({v})", // DRAFT — Kevin reviews
+  "cg.why.membership_paid": "trả bằng quyền lợi hội viên ({v})", // DRAFT — Kevin reviews
+  "cg.why.catalog_changed_since": "giá danh mục đã đổi từ đó ({v})", // DRAFT — Kevin reviews
+  "cg.why.not_recorded": "chênh lệch không được ghi lại ({v})", // DRAFT — Kevin reviews
+  "cg.why.someone": "một nhân viên", // DRAFT — Kevin reviews
+  "cg.impact.conflicts": "{n} lịch đã đặt sẽ chạm vào lịch kế tiếp của cùng thợ", // DRAFT — Kevin reviews
+  "cg.impact.stale": "{n} hóa đơn đang mở đã có dịch vụ này với giá khác — giữ nguyên đến khi được sửa", // DRAFT — Kevin reviews
+  "cg.tl.title": "Dòng thời gian giá", // DRAFT — Kevin reviews
+  "cg.tl.prev": "{t}: {a} → {b}", // DRAFT — Kevin reviews
+  "cg.tl.now": "Hiện tại: {p}", // DRAFT — Kevin reviews
+  "cg.tl.next": "Sắp áp dụng: {p} từ {t}", // DRAFT — Kevin reviews
+  "cg.tl.noneNext": "Chưa có thay đổi được lên lịch", // DRAFT — Kevin reviews
+  "cg.tl.rule": "Mỗi lần chỉ một thay đổi được lên lịch — hủy để lên lịch thay đổi khác.", // DRAFT — Kevin reviews
 };

@@ -1492,4 +1492,8 @@ export const ERRORS_EN = {
   'errors.PRODUCT_CHANGED': 'This product was changed on another device since you opened it. Reload and try again.',
   'errors.APPROVAL_ESCALATE_REASON_REQUIRED': 'Say why this is urgent (at least 3 characters).',
   'errors.APPROVAL_POLICY_PLATFORM_FLOOR': 'The platform requires a stricter approval rule than this — a salon setting cannot loosen it.',
+  'errors.AI_RECOMMENDATION_NOT_FOUND': 'That recommendation was not found.',
+  'errors.AI_RECOMMENDATION_PROMPT_REQUIRED': 'Enter the new receptionist wording before approving.',
+  'errors.AI_RECOMMENDATION_NOT_OPEN': 'This recommendation was already reviewed.',
+  'errors.AI_RECOMMENDATION_REFUSED': 'This recommendation cannot be applied from here.',
 };

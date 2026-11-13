@@ -20,6 +20,7 @@ import type { AuditService } from '@aipowersalon/audit';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
 import { normalizeCustomerLanguage, withCode } from '@aipowersalon/api-contracts';
+import type { CustomerQuickActivity } from '@aipowersalon/api-contracts/tenant';
 /** detail (Vietnamese POS §2 / §21 / §58, Oct 27 2026 — additive): a stable code / field / rule / params beside the English
  *  message, so the POS words it in the cashier's language (ns/errors) — the message stays the English fallback. */
 export interface ValidationDetail { code?: string; field?: string; rule?: string; params?: Record<string, string | number> }
@@ -206,6 +207,8 @@ export class CustomersService {
   async appointments(ctx: CustomersContext, id: string): Promise<CustomerAppointmentRow[]> { this.need(ctx, 'pos.customers.view'); return this.mustFind(await this.repo.appointments(ctx, id)); }
   async tickets(ctx: CustomersContext, id: string): Promise<CustomerTicketRow[]> { this.need(ctx, 'pos.customers.view'); return this.mustFind(await this.repo.tickets(ctx, id)); }
   async receipts(ctx: CustomersContext, id: string): Promise<CustomerReceiptRow[]> { this.need(ctx, 'pos.customers.view'); return this.mustFind(await this.repo.receipts(ctx, id)); }
+  /** extras Customer 03: the Quick View's receipts + activity — read-only, one call, the newest 10 receipts / 15 events */
+  async quickActivity(ctx: CustomersContext, id: string): Promise<CustomerQuickActivity> { this.need(ctx, 'pos.customers.view'); return this.mustFind(await this.repo.quickActivity(ctx, id, { receipts: 10, activity: 15 })); }
 
   // ---- notes (sensitive — separate view/edit permissions) + tags ----
   async getNotes(ctx: CustomersContext, id: string): Promise<CustomerNotes> { this.need(ctx, 'pos.customers.notes.view'); return this.mustFind(await this.repo.getNotes(ctx, id)); }

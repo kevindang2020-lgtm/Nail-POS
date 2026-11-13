@@ -163,7 +163,7 @@ function OverviewTab({ ov, onDone, onFail }: TabProps) {
 }
 
 // ── Global rules: versions + publish with preview / impact ─────────────────────────────────────────────────────────
-function RulesTab({ ov, onDone, onFail }: TabProps) {
+export function RulesTab({ ov, onDone, onFail }: TabProps) {   // exported for its test (extras GLOBAL LOYALTY REWARDS 14)
   const now = Date.now();
   const inForce = useMemo(() => ov.globalVersions.filter((v) => v.status === 'published' && Date.parse(v.effectiveFrom) <= now).sort((a, b) => Date.parse(b.effectiveFrom) - Date.parse(a.effectiveFrom) || b.versionNo - a.versionNo)[0] ?? null, [ov, now]);
   const [spend, setSpend] = useState('5'); const [points, setPoints] = useState('0.5'); const [min, setMin] = useState('0'); const [cap, setCap] = useState('');
@@ -198,6 +198,9 @@ function RulesTab({ ov, onDone, onFail }: TabProps) {
         {pErr ? <div role="alert" className="mt-3 text-sm text-[#9a3b1e]">{pErr}</div> : null}
         {prev ? <div className="mt-4" data-testid="sa-ln-g-preview-panel">
           <div className="mb-2 text-sm text-[#5e4d3b]">Reaches <b>{prev.impact.globalModeTenants}</b> salon(s) on the global rule · <b>{prev.impact.customModeTenants}</b> on a custom rule are not changed.</div>
+          {prev.exposure ? <div className="mb-2 text-sm text-[#5e4d3b]" data-testid="sa-ln-g-exposure">Funding exposure — the last {prev.exposure.days} days of global-rule sales ({prev.exposure.sales}{prev.exposure.capped ? '+' : ''} at {prev.exposure.salons} salon(s)) re-priced:
+            {' '}now <b>{tokens(prev.exposure.currentBackingCents)}</b> → proposed <b>{tokens(prev.exposure.proposedBackingCents)}</b>
+            {' '}(<span className={prev.exposure.differenceCents > 0 ? 'text-[#9a3b1e]' : prev.exposure.differenceCents < 0 ? 'text-[#2f6b3a]' : ''}>{prev.exposure.differenceCents === 0 ? 'no change' : `${prev.exposure.differenceCents > 0 ? '+' : '−'}${tokens(Math.abs(prev.exposure.differenceCents))}, about ${prev.exposure.perDayDifferenceCents > 0 ? '+' : prev.exposure.perDayDifferenceCents < 0 ? '−' : ''}${tokens(Math.abs(prev.exposure.perDayDifferenceCents))} a day`}</span>). Past sales are never re-priced; this is what the same sales would have cost.</div> : null}
           <table className="w-full text-sm"><thead><tr className="text-left text-xs uppercase text-[#9a8876]"><th className="py-2">Sale</th><th>New points</th><th>Tokens used</th><th>Now</th><th>Difference</th></tr></thead>
             <tbody>{prev.rows.map((r) => <tr key={r.eligibleCents} className="border-t border-[#f0e6d5]"><td className="py-2 font-semibold">{usd(r.eligibleCents)}</td><td>{pts(r.pointTenths)}</td><td>{tokens(r.tokenCostCents)}</td><td>{pts(r.globalPointTenths)} pts · {tokens(r.globalTokenCostCents)}</td>
               <td className={r.differenceCents > 0 ? 'text-[#9a3b1e]' : r.differenceCents < 0 ? 'text-[#2f6b3a]' : ''}>{r.differenceCents === 0 ? '0' : `${r.differenceCents > 0 ? '+' : '−'}${tokens(Math.abs(r.differenceCents))}`}</td></tr>)}</tbody></table>

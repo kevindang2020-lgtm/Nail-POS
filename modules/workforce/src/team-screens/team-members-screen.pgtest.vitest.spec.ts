@@ -70,6 +70,10 @@ beforeAll(async () => {
 describe('Team Management read model', () => {
   it('the eight KPIs carry their documented definitions (branch B scope)', async () => {
     const d: any = await repo.dashboard(mgr, { preset: 'month' });
+    // extras TEAM MANAGEMENT 11 (round 10): every finance figure carries its glossary entry and date basis from the server
+    expect(d.glossary.map((g: any) => g.key)).toEqual(['services_completed', 'service_revenue', 'commission_earned', 'tips', 'commission_paid', 'pending_payout']);
+    expect(d.glossary.find((g: any) => g.key === 'commission_paid')).toMatchObject({ source: 'payroll_payouts', dateBasis: 'payout_paid_at' });
+    expect(d.glossary.find((g: any) => g.key === 'service_revenue').dateBasis).toBe('ticket_paid_at');
     expect(d.errors).toEqual([]);
     const k = d.kpis;
     // Pat (all branches) · Mai · Vy · Anna · Lan · Kevin · Sue — not the archived tech, not branch Second, not the other salon

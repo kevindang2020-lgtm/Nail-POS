@@ -5,7 +5,7 @@ import { sql, type Kysely } from 'kysely';
 import { recordPlatformAuditStrict } from '@aipowersalon/audit';
 import { EVENTS, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { logException } from '@aipowersalon/observability';
-import { GlobalRewardsRepository, type GrCtx } from './global-rewards.repository';
+import { GlobalRewardsRepository, listIdempotencyEvents, type GrCtx } from './global-rewards.repository';
 import { GlobalRewardsPlatformRepository } from './global-rewards-platform.repository';
 import { GlobalRewardsError, validateGlobalRate, previewRows, rateLabel, type PurchaseStatus } from './global-rewards-core';
 import type { TokenFundingProvider } from './token-funding-provider';
@@ -106,7 +106,8 @@ export class GlobalRewardsService {
     const proposed = validateGlobalRate(body, program);
     const current = await this.repo.globalRuleAt(this.repo.database, new Date());
     if (!current) throw new GlobalRewardsError('No global earning rule is in force.', 'LOYALTY_DISABLED', 503);
-    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, current: { ...current, rateLabel: rateLabel(current) }, rows: previewRows(proposed, current, program), impact: await this.repo.globalImpact() };
+    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, current: { ...current, rateLabel: rateLabel(current) }, rows: previewRows(proposed, current, program), impact: await this.repo.globalImpact(),
+      exposure: await this.repo.globalExposure(current, proposed, program) };   // extras GLOBAL LOYALTY REWARDS 14: old vs new funding exposure
   }
   cancelGlobal(id: string, actorUserId: string) { return this.repo.cancelGlobalRule(id, actorUserId); }
 
@@ -225,6 +226,8 @@ export class GlobalRewardsService {
     return requestPayout(this.repo.database, this.payoutProvider, { reimbursementId: id, actorUserId, idempotencyKey });
   }
   fraudAlerts(q: { status?: string | null; page?: number; pageSize?: number }) { return listFraudAlerts(this.repo.database, q); }
+  /** extras GLOBAL LOYALTY REWARDS 11: the read-only idempotency conflict center */
+  idempotencyEvents(q: { outcome?: string | null; scope?: string | null; page?: number; pageSize?: number }) { return listIdempotencyEvents(this.repo.database, q); }
   async reviewFraud(id: string, to: string, note: string, actorUserId: string) {
     if (!['INVESTIGATING', 'DISMISSED', 'CONFIRMED', 'OPEN'].includes(to)) throw new GlobalRewardsError('Choose investigating, dismissed, confirmed or open.', 'VALIDATION_FAILED', 400, { field: 'to' });
     if (String(note ?? '').trim().length < 10) throw new GlobalRewardsError('Give a note of at least 10 characters.', 'VALIDATION_FAILED', 400, { field: 'note' });

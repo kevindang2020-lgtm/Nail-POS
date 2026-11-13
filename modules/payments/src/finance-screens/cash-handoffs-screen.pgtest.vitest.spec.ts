@@ -164,3 +164,19 @@ describe('End-of-Day Cash 17 — a reopened count shows who / when / why and wai
   });
 });
 
+
+describe('extras End-of-Day Cash 02 (round 10) — shifts and prior hand-offs in the detail', () => {
+  it('shows that day\'s shift(s) and the five prior hand-offs of the same technician, newest first (another technician\'s never)', async () => {
+    await cashTicket(TECH.anna, 5000, '2026-10-26T15:00:00Z', { number: '1901' });
+    await handoff(TECH.anna, '2026-10-26', { expected: 5000, counted: 4800, status: 'discrepancy', createdAt: '2026-10-26T22:00:00Z' });
+    await cashTicket(TECH.anna, 7000, '2026-10-27T15:00:00Z', { number: '1902' });
+    await handoff(TECH.anna, '2026-10-27', { expected: 7000, counted: 7000, status: 'reconciled', createdAt: '2026-10-27T22:00:00Z' });
+    await cashTicket(TECH.anna, 1000, '2026-10-30T15:00:00Z', { number: '1903' });   // a LATER day is never "prior"
+    await q(`insert into technician_shifts (tenant_id, branch_id, technician_id, shift_date, start_time, end_time, status) values ($1,$2,$3,'2026-10-28','2026-10-28T13:00:00Z','2026-10-28T22:30:00Z','completed'),
+      ($1,$2,$4,'2026-10-28','2026-10-28T13:00:00Z',null,'active')`, [T, B, TECH.anna, TECH.ben]);
+    const d: any = await r.detail(ctx, TECH.anna, '2026-10-28');
+    expect(d.shifts).toEqual([{ id: expect.any(String), start: '2026-10-28T13:00:00.000Z', end: '2026-10-28T22:30:00.000Z', status: 'completed' }]);
+    expect(d.priorHandoffs.map((x: any) => [x.businessDate, x.technicianId])).toEqual([['2026-10-27', TECH.anna], ['2026-10-26', TECH.anna]]);
+    expect(d.priorHandoffs[1].businessDate).toBe('2026-10-26');
+  });
+});

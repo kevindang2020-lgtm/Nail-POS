@@ -1883,6 +1883,7 @@ a.fk-btn{display:inline-flex;align-items:center;text-decoration:none}
 .gc-hits button{display:flex;justify-content:space-between;width:100%;min-height:44px;padding:0 10px;border:0;background:transparent;font:inherit;font-size:14px;cursor:pointer;border-radius:8px}
 .gc-hits button:hover{background:#F4EEE2}
 .gc-presets{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.gc-steps{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:6px 0;padding:0}   /* extras GIFT CARDS 07: guided issuance steps */
 .fk-btn.on{border-color:var(--aps-orange,#A96F22);box-shadow:0 0 0 1px var(--aps-orange,#A96F22) inset}
 .fn-table td.num.neg,.fk-table td.num.neg{color:var(--bad,#B4453C)}
 @media (max-height:820px){.work.fit.gc{--fk-kpi:72px}.work.fit.gc .fk-kpi-v{font-size:24px}}
@@ -2324,6 +2325,7 @@ button.ch-dif{cursor:pointer}button.ch-dif:focus-visible{outline:2px solid var(-
 .tt-head{position:relative;height:22px;margin-left:190px;font-size:11.5px;color:var(--muted)}.tt-head .tt-name{display:none}
 .tt-hour{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .tt-row{display:grid;grid-template-columns:184px minmax(0,1fr);gap:6px;align-items:stretch;min-height:52px}
+.tt-row.tt-flash{outline:2px solid var(--aps-orange,#E8833A);outline-offset:2px;border-radius:8px;background:rgba(232,131,58,.08);transition:background .6s,outline-color .6s}   /* extras 200-Technician 01: temporary jump highlight */
 .tt-name{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;border:none;background:none;text-align:left;font:inherit;cursor:pointer;min-height:44px;padding:0 4px}
 .tt-name b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .tt-track{position:relative;background:#F7F3EA;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-height:50px}
@@ -4320,3 +4322,4 @@ html[data-spacing="compact"] .tbl td { padding: 6px 8px; }
 .so-tl-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:12px}
 .so-tl-list>li{display:flex;align-items:center;gap:6px}
 .so-tl-dot{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);flex:none}
+.sa-selbar{display:inline-flex;gap:8px;align-items:center;margin-right:auto}   /* extras Stock Alerts 06 */

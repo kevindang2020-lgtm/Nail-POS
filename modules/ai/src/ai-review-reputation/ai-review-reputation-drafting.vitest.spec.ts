@@ -32,6 +32,15 @@ describe('draft safety validator', () => {
     expect(validateDraftSafety('sorry, Maria made a mistake', { employeeNames: ['Maria'] }).violations).toContain('names_employee');
     expect(validateDraftSafety('Thank you for your feedback, we would love to make this right.').safe).toBe(true);
   });
+  it('extras Reviews 04 (round 10): never invents a promise or a fact — offers, superiority / credential claims, staff discipline, "we posted this"', () => {
+    for (const bad of ['We would like to offer you a full refund.', 'Your next pedicure is complimentary!', 'Enjoy 20% off your next visit.', 'Here is a discount for you.',
+      'We will send you a voucher.', 'We are the best salon in town.', 'Our award-winning team', 'Every service is guaranteed.', 'Our licensed technicians care.',
+      'We have retrained the staff involved.']) expect(validateDraftSafety(bad).violations).toContain('invented_claim');
+    expect(validateDraftSafety('We have posted this reply on Google.').violations).toContain('claims_publication');
+    // an apology + an invitation to talk stays clean (it promises nothing it cannot keep)
+    for (const ok of ['We are sorry your visit fell short. Please reach out so we can make it right.', 'Thank you for the kind words — we hope to see you again soon!'])
+      expect(validateDraftSafety(ok)).toEqual({ safe: true, violations: [] });
+  });
 });
 
 describe('approval state machine', () => {

@@ -134,7 +134,10 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     rs.event.mockResolvedValue({ id: 'e1', level: 'tenant', type: 'settings_changed', changes: [{ key: 'responseTone', before: 'professional', after: 'warm', beforeKnown: true }], actor: 'Owner', role: 'OWNER', version: 2, reason: null,
       at: '2026-11-02T15:00:00Z', legacy: false, propagation: { mode: 'live', aiDraftsSince: 3, requestsScheduledSince: 0 } });
     rs.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'requests_sender', state: 'WARNING' }, { key: 'request_dry_run', state: 'WARNING', count: 3,
-      detail: { days: 7, visits: 6, capped: false, wouldAsk: 3, skipped: 3, byReason: { opted_out: 1, no_contact_method: 1, frequency_cap: 1 }, quietHoursShifted: 1, channel: 'sms', channelReady: false, requestsEnabled: false } }] });
+      detail: { days: 7, visits: 6, capped: false, wouldAsk: 3, skipped: 3, byReason: { opted_out: 1, no_contact_method: 1, frequency_cap: 1 }, quietHoursShifted: 1, channel: 'sms', channelReady: false, requestsEnabled: false,
+        cost: { state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' },
+        recipients: [{ ticketId: 'k1', customerId: 'c1', name: 'Linh T.', phoneLast4: '0141', wouldAsk: true, reason: null, scheduledFor: '2026-11-02T20:00:00Z', channel: 'sms' },
+          { ticketId: 'k2', customerId: 'c2', name: 'Mai N.', phoneLast4: null, wouldAsk: false, reason: 'no_contact_method', scheduledFor: null, channel: 'sms' }] } }] });
     mount();
     fireEvent.click(await screen.findByTestId('tab-history'));
     expect(await screen.findByTestId('rssx-hist-row')).toHaveTextContent('Response tone');
@@ -153,6 +156,11 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     expect(dry).toHaveTextContent('1 would be moved out of quiet hours. Channel: SMS. The salon’s SMS sender is not connected.');
     expect(dry).toHaveTextContent('Review requests are turned off');
     expect(dry.textContent).not.toMatch(/frequency_cap|no_contact_method|opted_out/);
+    // extras Reviews 07 (round 10): the exact recipients (short name, last 4 only) and the cost stated as not available
+    const rows = screen.getAllByTestId('rssx-dry-recipient'); expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('Linh T.'); expect(rows[0]).toHaveTextContent('•••0141'); expect(rows[0]).toHaveTextContent('Would be asked by SMS');
+    expect(rows[1]).toHaveTextContent('Mai N.'); expect(rows[1]).toHaveTextContent('no phone / email'); expect(rows[1].textContent).not.toMatch(/no_contact_method/);
+    expect(screen.getByTestId('rssx-dry-cost')).toHaveTextContent('no per-message price');
     expect(rs.save).not.toHaveBeenCalled();
   });
   it('Settings 02 + 05 (round 10): each control shows the server\'s exact lock reason; role-based security failures, the running revision and an Open Integrations shortcut are shown; nothing changes', async () => {

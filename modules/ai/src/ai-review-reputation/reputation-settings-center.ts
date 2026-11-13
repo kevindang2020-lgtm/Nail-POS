@@ -348,17 +348,31 @@ export class ReputationSettingsCenter {
     const byReason: Record<string, number> = {};
     let wouldAsk = 0, shifted = 0, channel = policy.channel === 'in_app' ? 'app' : String(policy.channel);
     const now = new Date(this.now());
+    // extras Reviews 07 (round 10): the exact recipients — each visit's customer (short name + last 4 of the phone only; the
+    // run is stored as evidence, so no full contact), would be asked or why not, and when. Same preview, nothing sent.
+    const custIds = [...new Set(visits.map((v) => v.customer_id).filter((x): x is string => !!x))];
+    const people = custIds.length ? (await sql<{ id: string; full_name: string | null; normalized_phone: string | null }>`select c.id, c.full_name, c.normalized_phone from customers c
+        where c.tenant_id = ${T} and c.id = any(${custIds}::uuid[])`.execute(this.db)).rows : [];
+    const shortName = (n: string | null) => { const w = String(n ?? '').trim().split(/\s+/).filter(Boolean); return !w.length ? null : w.length === 1 ? w[0] : `${w[0]} ${w[w.length - 1][0]}.`; };
+    const recipients: Array<{ ticketId: string; customerId: string | null; name: string | null; phoneLast4: string | null; wouldAsk: boolean; reason: string | null; scheduledFor: string | null; channel: string }> = [];
     for (const v of visits.slice(0, 200)) {
       const completedAt = new Date(v.paid_at).toISOString();
       const r = await svc.preview(reqCtx, { tenantId: T, branchId: v.branch_id, customerId: v.customer_id, ticketId: v.ticket_id, completedAt, visitValueCents: N(v.total_cents), timeZone: v.tz }, policy, now);
       channel = r.channel;
       if (r.eligible) { wouldAsk++; if (r.scheduledFor && new Date(r.scheduledFor).getTime() !== new Date(completedAt).getTime() + policy.delayMinutes * 60_000) shifted++; }
       else byReason[r.reason] = (byReason[r.reason] ?? 0) + 1;
+      if (recipients.length < 50) {
+        const p = people.find((x) => String(x.id) === String(v.customer_id));
+        const digits = String(p?.normalized_phone ?? '').replace(/\D/g, '');
+        recipients.push({ ticketId: String(v.ticket_id), customerId: v.customer_id ? String(v.customer_id) : null, name: shortName(p?.full_name ?? null), phoneLast4: digits.length >= 4 ? digits.slice(-4) : null,
+          wouldAsk: !!r.eligible, reason: r.eligible ? null : String(r.reason), scheduledFor: r.eligible && r.scheduledFor ? new Date(r.scheduledFor).toISOString() : null, channel: String(r.channel) });
+      }
     }
     const considered = Math.min(visits.length, 200);
     const channelReady = channel === 'sms' ? smsConfigured : null;
     const detail = { days: 7, visits: considered, capped: visits.length > 200, wouldAsk, skipped: considered - wouldAsk, byReason, quietHoursShifted: shifted, channel, channelReady,
-      requestsEnabled: eff.enabled && eff.config.reviewRequest.enabled, basis: 'ticket_total' };
+      requestsEnabled: eff.enabled && eff.config.reviewRequest.enabled, basis: 'ticket_total', recipients, recipientsShown: recipients.length,
+      cost: { state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' } };
     return { key: 'request_dry_run', state: !considered ? 'INSUFFICIENT_DATA' : channelReady === false && wouldAsk > 0 ? 'WARNING' : 'PASSED', count: wouldAsk, detail };
   }
 

@@ -66,3 +66,7 @@ export * from './access-requests';   // requestable roles policy (batch 8 decisi
 export * from './report-delivery';   // Daily Summary Email / Schedule Report (Nov 10 2026)
 export * from './ai-business-report-automation';   // AI Business Reports 14 automated reports + 15 executive summary (Nov 12 2026)
 export * from './staff-alert-reads';   // per-person alert read state + badge-sync monitor (extras round 9, Nov 12 2026)
+export * from './ai-recommendations';   // AI Receptionist Settings 07 salon-side approval (extras, Nov 13 2026)
+export * from './customer-quick-activity';   // Customer 03 Quick View receipts + activity (extras, Nov 13 2026)
+export * from './customer-unmerge';   // Customer 08 reversible merge / unmerge (extras, Nov 13 2026)
+export * from './customer-intelligence-360';   // Customer Intelligence 30 360-degree view (extras, Nov 13 2026)

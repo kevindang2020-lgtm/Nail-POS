@@ -658,4 +658,11 @@ export const STATUS_VI: Record<keyof typeof STATUS_EN, string> = {
   'status.callEvent.call_started': 'Bắt đầu cuộc gọi',
   'status.callEvent.call_ended': 'Kết thúc cuộc gọi',
   'status.callEvent.call_analyzed': 'Đã có tóm tắt cuộc gọi',
+  'status.review_resolution.open': 'Đang mở', // DRAFT — Kevin reviews
+  'status.review_resolution.in_progress': 'Đang xử lý', // DRAFT — Kevin reviews
+  'status.review_resolution.resolved': 'Đã giải quyết', // DRAFT — Kevin reviews
+  'status.review_resolution.no_action': 'Không cần xử lý', // DRAFT — Kevin reviews
+  'status.review_escalation.flagged': 'Đã gắn cờ', // DRAFT — Kevin reviews
+  'status.review_escalation.escalated': 'Đã chuyển cấp trên', // DRAFT — Kevin reviews
+  'status.review_escalation.resolved': 'Đã xử lý chuyển cấp', // DRAFT — Kevin reviews
 };

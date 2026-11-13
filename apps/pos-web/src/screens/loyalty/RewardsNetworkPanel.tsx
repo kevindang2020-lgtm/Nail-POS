@@ -577,7 +577,8 @@ function PurchaseDialog({ id, tokenValueCents, onClose }: { id: string; tokenVal
         <div className="fk-hint">{label('rn.psHelp', p.status)}</div>
         {Array.isArray(p.events) && p.events.length ? (
           <ul className="fk-list rn-mini" aria-label={tx('rn.purchase.timeline')}>
-            {p.events.map((e, i) => <li key={i} className="fk-li"><div className="fk-li-main"><span className="fk-li-t">{label('rn.ps', e.to)}</span><span className="fk-li-s">{whenTime(e.at)}</span></div></li>)}
+            {p.events.map((e, i) => <li key={i} className="fk-li" data-testid="rn-purchase-event"><div className="fk-li-main"><span className="fk-li-t">{label('rn.ps', e.to)}</span>
+              <span className="fk-li-s">{whenTime(e.at)} · {tx('rn.purchase.by', { s: label('rn.evsrc', String(e.source ?? 'unknown')) })}</span></div></li>)}
           </ul>
         ) : null}
       </>}

@@ -620,4 +620,15 @@ export const CSEARCH_VI: Record<string, string> = {
   "ahx.health.d.service_done_mismatch.READY": "Mọi lịch hẹn đã tới Xong dịch vụ đều được đánh dấu hoàn tất, và hóa đơn của mọi lịch hẹn hoàn tất đều đã tới Xong dịch vụ.", // DRAFT — Kevin reviews
   "ahx.health.d.service_done_mismatch.WARNING": "Một số lịch hẹn không khớp với hóa đơn — hóa đơn đã Xong dịch vụ nhưng lịch hẹn vẫn mở, hoặc lịch hẹn đã hoàn tất nhưng hóa đơn chưa Xong dịch vụ. Hãy mở trong Đặt lịch để xác nhận.", // DRAFT — Kevin reviews
   "ahx.health.d.service_done_mismatch.FAILED": "Không so sánh được lịch hẹn với Xong dịch vụ.", // DRAFT — Kevin reviews
+  "cpf.tab.activity": "Hóa đơn & Hoạt động", // DRAFT — Kevin reviews
+  "cpf.qa.receipts": "Hóa đơn ({n})", // DRAFT — Kevin reviews
+  "cpf.qa.noReceipts": "Chưa có hóa đơn.", // DRAFT — Kevin reviews
+  "cpf.qa.number": "Số hóa đơn", // DRAFT — Kevin reviews
+  "cpf.qa.sent": "Gửi", // DRAFT — Kevin reviews
+  "cpf.qa.channel.email": "Đã gửi email", // DRAFT — Kevin reviews
+  "cpf.qa.channel.issued": "Đã xuất", // DRAFT — Kevin reviews
+  "cpf.qa.more": "Còn {n} hóa đơn ở Xem đầy đủ", // DRAFT — Kevin reviews
+  "cpf.qa.activity": "Hoạt động gần đây", // DRAFT — Kevin reviews
+  "cpf.qa.noActivity": "Chưa có hoạt động.", // DRAFT — Kevin reviews
+  "cpf.qa.receiptIssued": "Đã xuất hóa đơn · {amount}", // DRAFT — Kevin reviews
 };

@@ -224,4 +224,22 @@ export const REVIEWS_VI: Record<string, string> = {
   "rvw.health.a.delivery_failed": "Mở Thông báo để xem vì sao các yêu cầu bị lỗi.",
   "rvw.health.k.anomalies": "Hoạt động đánh giá bất thường", // DRAFT — Kevin reviews
   "rvw.health.a.anomalies_investigate": "Mở các đánh giá bị đánh dấu và kiểm tra; không có gì bị ẩn, gộp hay xóa tự động.", // DRAFT — Kevin reviews
+  "rvw.ov.tab.timeline": "Dòng thời gian xử lý", // DRAFT — Kevin reviews
+  "rvw.tl.outcome": "Kết quả", // DRAFT — Kevin reviews
+  "rvw.tl.owner": "Người theo dõi", // DRAFT — Kevin reviews
+  "rvw.tl.none": "Chưa có gì được ghi lại.", // DRAFT — Kevin reviews
+  "rvw.tl.k.visit": "Lượt ghé đã thanh toán", // DRAFT — Kevin reviews
+  "rvw.tl.k.review": "Nhận đánh giá", // DRAFT — Kevin reviews
+  "rvw.tl.k.assigned": "Giao người theo dõi", // DRAFT — Kevin reviews
+  "rvw.tl.k.moderation": "Kiểm duyệt", // DRAFT — Kevin reviews
+  "rvw.tl.k.reply": "Bước duyệt phản hồi", // DRAFT — Kevin reviews
+  "rvw.tl.k.publication": "Đăng phản hồi", // DRAFT — Kevin reviews
+  "rvw.tl.k.technician_response": "Thợ đã phản hồi", // DRAFT — Kevin reviews
+  "rvw.tl.k.message": "Tin nhắn gửi khách hàng", // DRAFT — Kevin reviews
+  "rvw.tl.k.review_request": "Yêu cầu đánh giá", // DRAFT — Kevin reviews
+  "rvw.fair.sampleOk": "Mẫu: {n} đánh giá đã xác minh.", // DRAFT — Kevin reviews
+  "rvw.fair.sampleLow": "Mẫu nhỏ: {n} đánh giá đã xác minh (ít hơn {min}) — một đánh giá có thể làm thay đổi điểm trung bình.", // DRAFT — Kevin reviews
+  "rvw.fair.raw": "Mọi đánh giá đã nhận (gồm đánh giá ẩn, trừ spam)", // DRAFT — Kevin reviews
+  "rvw.fair.sources": "Nguồn đánh giá", // DRAFT — Kevin reviews
+  "rvw.fair.hidden": "{n} đã ẩn", // DRAFT — Kevin reviews
 };

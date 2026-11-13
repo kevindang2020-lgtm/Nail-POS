@@ -2,6 +2,7 @@
 // LoyaltyTokens.pdf §4, §7.5, §10.2; LoyaltyRules.pdf §1–§2). Views need super_admin.billing.view; every change needs
 // super_admin.billing.manage + a fresh step-up (the client re-prompts on STEP_UP_REQUIRED and retries once).
 import { api } from './client';
+import type { RewardsIdempotencyPage } from '@aipowersalon/api-contracts/platform';
 
 export interface Rate { spendIncrementCents: number; pointTenthsPerIncrement: number; minEligibleCents: number; perTicketCapTenths: number | null }
 export interface GlobalVersion extends Rate { versionId: string; versionNo: number; effectiveFrom: string; status: string; reason: string | null; createdAt: string | null }
@@ -21,7 +22,9 @@ export interface PendingApproval { ok: true; pending: true; approvalId: string; 
 export const isPendingApproval = (x: unknown): x is PendingApproval => !!x && typeof x === 'object' && (x as { pending?: unknown }).pending === true;
 export interface LoyaltyNetOverview { program: Program; globalVersions: GlobalVersion[]; impact: { globalModeTenants: number; customModeTenants: number }; reconciliation: Reconciliation; funding: { provider: string | null; sandbox: boolean } }
 interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
-export interface GlobalPreview { proposed: Rate; current: Rate; rows: PreviewRow[]; impact: { globalModeTenants: number; customModeTenants: number } }
+export interface GlobalPreview { proposed: Rate; current: Rate; rows: PreviewRow[]; impact: { globalModeTenants: number; customModeTenants: number };
+  /** extras GLOBAL LOYALTY REWARDS 14: the last 30 days of global-rule sales re-priced under the current and the proposed rule */
+  exposure?: { days: number; sales: number; salons: number; capped: boolean; currentBackingCents: number; proposedBackingCents: number; differenceCents: number; perDayDifferenceCents: number } }
 export interface Enrollment { tenantId: string; name: string | null; code: string | null; enrollment: string; earningSuspended: boolean; purchasingSuspended: boolean; enrolledAt: string | null; mode: 'GLOBAL' | 'CUSTOM'; availableCents: number; alertLevel: string; deficitCents: number }
 export interface Purchase { id: string; tenantId: string; tokenCents: number; amountCents: number; feeCents: number; status: string; pending: boolean; provider: string | null; providerRefLast6: string | null; failureCode: string | null; createdAt: string | null; confirmedAt: string | null; fundedAt: string | null }
 export interface LoyaltyNetPaged<T> { total: number; page: number; pageSize: number; pageCount: number; items: T[] }
@@ -78,6 +81,8 @@ export const superAdminLoyaltyNetworkApi = {
   holdPayable: (id: string, reason: string) => api.post<unknown>(`${B}/payables/${enc(id)}/hold`, { reason }),
   /** money out: one request key per attempt; no approved provider → PAYOUT_PROVIDER_UNAVAILABLE (the payable stays owed) */
   requestPayout: (id: string, key: string) => api.postOnce<unknown>(`${B}/payables/${enc(id)}/payout`, {}, key),
+  /** extras GLOBAL LOYALTY REWARDS 11: read-only idempotency conflict center */
+  idempotency: (q: { outcome?: string; page: number; pageSize: number }) => api.get<RewardsIdempotencyPage>(`${B}/idempotency`, q),
   fraudAlerts: (q: { status?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<FraudAlert>>(`${B}/fraud-alerts`, q),
   reviewFraud: (id: string, to: string, note: string) => api.post<unknown>(`${B}/fraud-alerts/${enc(id)}/review`, { to, note }),
   /** C1 audit (Nov 4 2026) §4.4: pause / lift the pause on the rewards account the alert is about (step-up, reason) */

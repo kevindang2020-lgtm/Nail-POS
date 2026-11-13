@@ -17,7 +17,7 @@ import { sql, type Transaction, type Kysely } from 'kysely';
 import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { GlobalRewardsError, computeEarn, redeemableBlocks, tenthsLabel, dollarsLabel, centsPerPointTenth, isOwed } from './global-rewards-core';
-import { GlobalRewardsRepository, postJournal } from './global-rewards.repository';
+import { GlobalRewardsRepository, postJournal, recordIdempotencyEvent } from './global-rewards.repository';
 import { flagState } from './global-rewards-flags';
 import { REWARD_REDEMPTION, MERCHANT_REIMBURSEMENT } from './global-rewards-lifecycles';
 
@@ -86,6 +86,9 @@ export async function holdForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
   const prior = (await sql<Row>`SELECT r.id, r.point_tenths, r.value_cents, r.expires_at, r.status FROM reward_redemptions r WHERE r.tenant_id = ${T}::uuid AND r.idempotency_key = ${a.idempotencyKey}`.execute(trx)).rows[0];
   const pointTenths = a.blocks * program.pointsPerRedeemBlock * 10;
   if (prior) {
+    // extras GLOBAL LOYALTY REWARDS 11: a replay is recorded in the same transaction (it commits with the answer). A conflicting
+    // reuse is refused (409) and rolls the whole checkout transaction back — with it any row written here, so it is not recorded
+    if (n(prior.point_tenths) === pointTenths) await recordIdempotencyEvent(trx, { tenantId: T, scope: 'redemption', outcome: 'replay', key: a.idempotencyKey, resourceId: String(prior.id), detail: { status: prior.status } });
     if (n(prior.point_tenths) !== pointTenths) throw new GlobalRewardsError('That request key was already used for a different reward.', 'IDEMPOTENCY_KEY_REUSED', 409);
     return { redemptionId: String(prior.id), pointTenths, valueCents: n(prior.value_cents), expiresAt: iso(prior.expires_at)!, replay: true };
   }

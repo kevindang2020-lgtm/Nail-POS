@@ -49,6 +49,8 @@ export interface BookingCreateOpts { bufferMinutes?: number; skipConflict?: bool
 export interface BookingRepositoryPort {
   /** Constitution 8: true when the repository writes domain events in its transactions. */
   emitsDomainEvents?(): boolean;
+  /** extras TEAM MANAGEMENT 05 (round 10): each listed technician's own branch (null = salon-wide) and its name, tenant-scoped. */
+  technicianBranches?(ctx: BookingContext, technicianIds: string[]): Promise<Map<string, { branchId: string | null; name: string | null }>>;
   settings(ctx: BookingContext): Promise<BookingSettings>;
   integrationStatus(ctx: BookingContext): Promise<BookingIntegrationStatus>;
   today(): string;

@@ -455,7 +455,11 @@ export class BookingService {
       .filter((x) => x.open.length > 0)
       .map((x) => ({ technicianId: x.r.technicianId, name: x.r.name, rosterNumber: order.get(x.r.technicianId) ?? 0, time: x.open[0], openSlots: x.open.length, rating: byId.get(x.r.technicianId)?.rating ?? 0 }))
       .sort((a, b) => a.time.localeCompare(b.time) || b.openSlots - a.openSlots || (b.rating ?? 0) - (a.rating ?? 0) || a.rosterNumber - b.rosterNumber);
-    const openings: BookingOpening[] = ranked.slice(offset, offset + limit).map((o, i) => ({ technicianId: o.technicianId, name: o.name, rosterNumber: o.rosterNumber, time: o.time, openSlots: o.openSlots, rank: offset + i + 1 }));
+    const page = ranked.slice(offset, offset + limit);
+    // extras TEAM MANAGEMENT 05 (round 10): where each opening is bookable — the technician's own branch (one read for the page)
+    const br = this.repo.technicianBranches && page.length ? await this.repo.technicianBranches(ctx, page.map((o) => o.technicianId)) : null;
+    const openings: BookingOpening[] = page.map((o, i) => ({ technicianId: o.technicianId, name: o.name, rosterNumber: o.rosterNumber, time: o.time, openSlots: o.openSlots, rank: offset + i + 1,
+      ...(br ? { branch: br.get(o.technicianId) ?? null } : {}) }));
     return { date, serviceIds: services.map((x) => x.serviceId), durationMinutes, eligibleCount: eligible.length, withOpenings: ranked.length, openings, hasMore: offset + limit < ranked.length, offset, limit };
   }
 

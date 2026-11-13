@@ -61,6 +61,24 @@ describe('POSInventoryAlertsScreen', () => {
     fireEvent.click(rows[0].querySelector('[data-testid="ack"]')!);
     await waitFor(() => expect(api.acknowledge).toHaveBeenCalledWith('p1'));
   });
+  it('extras Stock Alerts 06 (round 10): the footer counts the selection; Acknowledge selected confirms first, then uses the same acknowledge per product', async () => {
+    api.acknowledge.mockResolvedValue({ ok: true, alertId: 'a1', alreadyAcknowledged: false });
+    mount(); await screen.findAllByTestId('alert-row');
+    expect(screen.getByTestId('sel-count')).toHaveTextContent('0 selected');
+    expect(screen.queryByTestId('sel-ack')).toBeNull();
+    fireEvent.click(screen.getAllByTestId('sel-row')[1]);
+    expect(screen.getByTestId('sel-count')).toHaveTextContent('1 selected');
+    fireEvent.click(screen.getByTestId('sel-page'));
+    expect(screen.getByTestId('sel-count')).toHaveTextContent('2 selected');
+    fireEvent.click(screen.getByTestId('sel-ack'));
+    expect(await screen.findByTestId('sel-confirm')).toHaveTextContent('Stock, orders and products do not change');
+    expect(api.acknowledge).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('sel-confirm-go'));
+    await waitFor(() => expect(api.acknowledge).toHaveBeenCalledTimes(2));
+    expect(api.acknowledge.mock.calls.map((c) => c[0]).sort()).toEqual(['p1', 'p2']);
+    expect(await screen.findByTestId('note')).toHaveTextContent('2 acknowledged · 0 could not be acknowledged');
+    expect(screen.getByTestId('sel-count')).toHaveTextContent('0 selected');
+  });
   it('Record Product Use: product → yourself → 0.5 → review stock before/after → one request with a key', async () => {
     api.record.mockResolvedValue({ replay: false, event: { id: 'e1', productId: 'p1', productName: 'Rose Gel', technicianName: 'Anna Nguyen', quantity: '0.5' } });
     mount(); await screen.findAllByTestId('alert-row');

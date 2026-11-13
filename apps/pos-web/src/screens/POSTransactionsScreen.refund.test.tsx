@@ -60,3 +60,23 @@ describe('Transactions → Duplicate-payment review (TRANSACTIONS 03)', () => {
     expect(screen.queryByTestId('dup-review')).toBeNull();
   });
 });
+describe('Transactions → context preview and reconciliation shortcut (TRANSACTIONS 08 / 12, round 10)', () => {
+  it('shows the customer and ticket at a glance; a LINKED settlement opens that exact batch and its deposit review', async () => {
+    api.detail.mockResolvedValue({ ...detail(false), customerContext: { id: 'c1', name: 'Grace Kim', phone: '(•••) •••-1234', email: 'g•••@x.test', contactMasked: true, visits: 3, lastVisitAt: '2026-10-22T13:17:00Z', customerSince: null },
+      ticket: { id: 't1', ticketNumber: '4001', financials: {}, lines: [{ id: 'l1' }, { id: 'l2' }], tenders: [{ id: 'p1' }], tipAllocations: [], audit: [] },
+      settlement: { id: 'st-9', reference: 'BATCH-88', processor: 'x', status: 'settled', settledAt: '2026-10-23T12:00:00Z', grossCents: 6000, netCents: 5800, expectedDeposit: null, actualDeposit: null, reconciliation: null } });
+    render(<MemoryRouter initialEntries={['/tenant/payments/transactions']}><POSTransactionsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('view'));
+    const c = await screen.findByTestId('txn-context');
+    expect(c).toHaveTextContent('Grace Kim'); expect(c).toHaveTextContent('(•••) •••-1234'); expect(c).toHaveTextContent('3 paid visits'); expect(c).toHaveTextContent('Ticket #4001 · 2 line(s) · 1 tender(s)');
+    expect(screen.getByTestId('txn-open-settlement')).toHaveTextContent('BATCH-88');
+    expect(screen.getByTestId('txn-open-deposit')).toBeInTheDocument();
+  });
+  it('no linked settlement → no shortcut (nothing is matched by amount)', async () => {
+    api.detail.mockResolvedValue({ ...detail(false), customerContext: null });
+    render(<MemoryRouter><POSTransactionsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('view'));
+    await screen.findByTestId('txn-context');
+    expect(screen.queryByTestId('txn-open-settlement')).toBeNull(); expect(screen.queryByTestId('txn-open-deposit')).toBeNull();
+  });
+});

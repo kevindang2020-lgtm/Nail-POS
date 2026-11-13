@@ -162,4 +162,21 @@ export const INVENTORYCENTER_VI: Record<string, string> = {
   "icx.po.differs": "khác với số tồn đã ghi", // DRAFT — Kevin reviews
   "icx.po.stockUpdated": "Cập nhật số tồn lúc", // DRAFT — Kevin reviews
   "icx.po.history": "Lịch sử tồn kho của sản phẩm này (mới nhất trước)", // DRAFT — Kevin reviews
+  "icx.fresh": "Tồn kho cập nhật lần cuối {at}.", // DRAFT — Kevin reviews
+  "icx.cc.title": "Tín hiệu Trung tâm điều hành", // DRAFT — Kevin reviews
+  "icx.cc.po": "Đơn đặt hàng đang mở: {a} đã duyệt · {o} đã đặt · {p} nhận một phần", // DRAFT — Kevin reviews
+  "icx.cc.overdue": "{n} đã quá ngày dự kiến", // DRAFT — Kevin reviews
+  "icx.cc.counts": "Đợt kiểm kho còn mở: {i} đang đếm · {s} chờ đối chiếu", // DRAFT — Kevin reviews
+  "icx.cc.reorder": "{n} sản phẩm thấp / nghiêm trọng / hết hàng chưa có hàng đang đặt", // DRAFT — Kevin reviews
+  "icx.cc.onHand": "còn {n}", // DRAFT — Kevin reviews
+  "icx.cc.onOrder": "đang đặt {n}", // DRAFT — Kevin reviews
+  "icx.cc.none": "Không có sản phẩm nào thấp, nghiêm trọng hoặc hết hàng.", // DRAFT — Kevin reviews
+  "icx.categoryLabel": "Danh mục", // DRAFT — Kevin reviews
+  "icx.allCategories": "Tất cả danh mục", // DRAFT — Kevin reviews
+  "icx.dateBasis": "Ngày lọc theo thời điểm hàng xuất nhập (thời gian biến động).", // DRAFT — Kevin reviews
+  "icx.var.expected": "Dự kiến", // DRAFT — Kevin reviews
+  "icx.var.counted": "Đã đếm", // DRAFT — Kevin reviews
+  "icx.var.posted": "Đã ghi sổ", // DRAFT — Kevin reviews
+  "icx.var.unexplained": "Chưa ghi sổ", // DRAFT — Kevin reviews
+  "icx.var.when": "Đối chiếu lúc", // DRAFT — Kevin reviews
 };

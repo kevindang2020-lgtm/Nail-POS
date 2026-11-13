@@ -250,4 +250,12 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.sec.line": "{d} ngày qua: {e} lần cố vượt quyền và {c} lần truy cập tiệm khác đã bị từ chối (gần nhất {at}). Hãy xem lại vai trò trong Quản lý nhóm.", // DRAFT — Kevin reviews
   "rssx.openIntegrations": "Mở Tích hợp", // DRAFT — Kevin reviews
   "rssx.applied": "Đang chạy bản v{v} (lưu lúc {at}) — soạn trả lời và thanh toán đọc trực tiếp", // DRAFT — Kevin reviews
+  "rssx.dry.costNa": "Chi phí: không có — tin nhắn xin đánh giá chưa có giá theo từng tin trong hệ thống, nên không ước tính.", // DRAFT — Kevin reviews
+  "rssx.dry.recipients": "Những ai sẽ được hỏi ({n})", // DRAFT — Kevin reviews
+  "rssx.dry.who": "Khách hàng", // DRAFT — Kevin reviews
+  "rssx.dry.phone": "Điện thoại", // DRAFT — Kevin reviews
+  "rssx.dry.outcome": "Kết quả", // DRAFT — Kevin reviews
+  "rssx.dry.when": "Sẽ gửi lúc", // DRAFT — Kevin reviews
+  "rssx.dry.noCustomer": "Lượt ghé không có khách hàng", // DRAFT — Kevin reviews
+  "rssx.dry.ask": "Sẽ được hỏi qua {c}", // DRAFT — Kevin reviews
 };

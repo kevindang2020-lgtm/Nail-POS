@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { ci, cs, navigate } = vi.hoisted(() => ({
-  ci: { summary: vi.fn(), scan: vi.fn(), customers: vi.fn(), customer: vi.fn(), scans: vi.fn(), check: vi.fn() }, cs: { profile: vi.fn() }, navigate: vi.fn() }));
+  ci: { summary: vi.fn(), scan: vi.fn(), customers: vi.fn(), customer: vi.fn(), customer360: vi.fn(), scans: vi.fn(), check: vi.fn() }, cs: { profile: vi.fn() }, navigate: vi.fn() }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
 vi.mock('../api/posCustomerIntelligenceApi', () => ({ posCustomerIntelligenceApi: ci }));
 vi.mock('../api/posCustomerSearchApi', () => ({ posCustomerSearchApi: cs }));
@@ -70,6 +70,12 @@ describe('POSAICustomerProfileOverviewScreen', () => {
     expect(navigate).toHaveBeenCalledWith('/tenant/ai/customer-profile/duplicates');
   });
 
+  it('extras Customer Intelligence 07 (round 10): a search result says what it matched — served, booked-with, preferred technician — in words', async () => {
+    ci.customers.mockResolvedValue({ ...LIST, items: [{ ...ROW, id: 'c1', matchedVia: 'assigned_technician' }, { ...ROW, id: 'c2', matchedVia: 'preferred_technician' }, { ...ROW, id: 'c3', matchedVia: null }] });
+    render(<MemoryRouter><POSAICustomerProfileOverviewScreen /></MemoryRouter>);
+    const m = await screen.findAllByTestId('cix-matched');
+    expect(m.map((x) => x.textContent)).toEqual(['Matched: booked with this technician (not proof of service)', 'Matched: this technician is the customer’s preferred technician']);
+  });
   it('Kevin decision 2: the churn card is Customer Retention\'s at-risk count with a source line and link; rows show Retention\'s segment; no churn_watch filter of its own', async () => {
     ci.summary.mockResolvedValue(SUM({ cards: { duplicateGroups: null, active: 1, withUpcoming: 0, inactive: 0, churnWatch: 3, rebooking: 0, scanned: 15 },
       retention: { atRisk: 12, approaching: 4, active: 20, never: 2, atRiskDays: 60, source: 'customer_retention' } }));
@@ -105,6 +111,20 @@ describe('POSAICustomerProfileOverviewScreen', () => {
     expect(within(await screen.findByTestId('ov-profile')).getByText('None recorded')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('ov-timeline'));
     expect(navigate).toHaveBeenCalledWith('/tenant/ai/customer-profile/timeline?customer=c1');
+  });
+  it('Customer Intelligence 30: the overlay opens the 360° view on request (one read), and the list offers High value + Highest spend', async () => {
+    ci.customer.mockResolvedValue({ customerId: 'c1', scanned: false, duplicateGroups: [], classification: null });
+    cs.profile.mockResolvedValue(false);
+    ci.customer360.mockResolvedValue({ customerId: 'c1', identity: { name: 'Regular Rhee', phone: null, email: null, contact: 'masked', phoneVerified: false, state: 'unverified', createdAt: null, preferredLanguage: null },
+      classification: null, visits: [], visitsTotal: 0, lifetimeSpendCents: 0, preferences: { preferredTechnician: null, style: null, products: [], colors: [] }, loyalty: { points: null, tier: null, membership: null },
+      suggestions: [{ code: 'add_contact', evidence: ['no_phone', 'no_email'] }] });
+    mount();
+    expect(within(await screen.findByTestId('flt-flag')).getByRole('option', { name: 'High value' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Highest spend' })).toBeInTheDocument();
+    fireEvent.click((await screen.findAllByTestId('cix-view'))[0]);
+    fireEvent.click(await screen.findByTestId('ov-360'));
+    expect(await screen.findByTestId('cix-360-sug-add_contact')).toHaveTextContent('Add a phone or email');
+    expect(ci.customer360).toHaveBeenCalledTimes(1);
   });
 
   it('Check Customer Intelligence System spells out who is counted where', async () => {

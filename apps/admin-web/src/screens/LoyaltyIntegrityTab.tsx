@@ -6,6 +6,7 @@
 // redemption (funding → earning → hold → redemption → payable → payout). CSV export is audit-logged on the server.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { StatusBadge, ErrorState, LoadingSkeleton, Modal, Pagination, type Tone } from '@aipowersalon/ui';
+import type { RewardsIdempotencyPage } from '@aipowersalon/api-contracts/platform';
 import { superAdminLoyaltyNetworkApi as netApi, type Integrity, type LoyaltyNetFinding, type Payable, type FraudAlert, type Lineage, type LoyaltyNetPaged } from '../api/superAdminLoyaltyNetworkApi';
 
 const usd = (c: number | null | undefined) => (c == null ? '—' : (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
@@ -141,6 +142,30 @@ export function LoyaltyIntegrityTab({ onNote }: { onNote: (tone: 'ok' | 'bad', t
         onSubmit={async (to, note) => { await netApi.alertAccountStatus(dlg.a.id, to as 'suspended' | 'active', note); onNote('ok', to === 'suspended' ? 'Account suspended: it cannot earn or redeem until reactivated. Points are kept.' : 'Account reactivated.'); load(); }} /> : null}
       {dlg?.kind === 'hold' ? <ReasonDialog title="Put payable on hold" onClose={() => setDlg(null)} onSubmit={async (_to, note) => { await netApi.holdPayable(dlg.p.id, note); onNote('ok', 'Payable on hold.'); load(); }} /> : null}
       {dlg?.kind === 'lineage' ? <LineageDialog redemptionId={dlg.id} onClose={() => setDlg(null)} /> : null}
+      <IdempotencyCenter />
     </div>
+  );
+}
+
+/** extras GLOBAL LOYALTY REWARDS 11 (round 10): every repeated rewards request key — read only. A replay was answered with the
+ *  first result (no second charge or redemption); a conflict was refused. */
+export function IdempotencyCenter() {
+  const [outcome, setOutcome] = useState(''); const [page, setPage] = useState(1);
+  const [d, setD] = useState<RewardsIdempotencyPage | null>(null); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { setErr(null); netApi.idempotency({ ...(outcome ? { outcome } : {}), page, pageSize: 10 }).then(setD).catch((e: unknown) => setErr(String((e as Error)?.message ?? 'Could not load.'))); }, [outcome, page]);
+  return (
+    <section className={card} data-testid="sa-ln-idem">
+      <div className="mb-2 flex items-center justify-between gap-2"><h2 className="text-base font-bold text-[#2f2a24]">Repeated request keys</h2>
+        <select value={outcome} onChange={(e) => { setOutcome(e.target.value); setPage(1); }} data-testid="sa-ln-idem-outcome" className="rounded-lg border border-[#e2d5c1] px-2 py-1 text-sm">
+          <option value="">All</option><option value="conflict">Conflicts (refused)</option><option value="replay">Replays (no second effect)</option></select></div>
+      <p className="mb-2 text-xs text-[#7a6a58]">Read only. A replay was answered with the first result — nothing was charged or redeemed twice. A conflict reused a key for a different request and was refused.</p>
+      {err ? <div role="alert" className="text-sm text-[#9a3b1e]">{err}</div> : !d ? <LoadingSkeleton /> : d.items.length === 0 ? <div className="text-sm text-[#7a6a58]">No repeated keys.</div> : <>
+        <div className="mb-1 text-sm" data-testid="sa-ln-idem-total">{d.total} repeated · {d.conflicts} conflict(s)</div>
+        <table className="w-full text-sm"><thead><tr className="text-left text-xs uppercase text-[#9a8876]"><th className="py-2">When</th><th>Salon</th><th>What</th><th>Outcome</th><th>Key</th><th>Times seen</th></tr></thead>
+          <tbody>{d.items.map((x) => <tr key={x.id} className="border-t border-[#f0e6d5]" data-testid="sa-ln-idem-row"><td className="py-2">{new Date(x.at).toLocaleString()}</td><td>{x.salon ?? '—'}</td>
+            <td>{x.scope === 'token_purchase' ? 'Token purchase' : 'Redemption'}</td><td><StatusBadge tone={x.outcome === 'conflict' ? 'danger' : 'neutral'}>{x.outcome === 'conflict' ? 'Conflict — refused' : 'Replay — same result'}</StatusBadge></td>
+            <td className="font-mono">{x.keyRef}</td><td>{x.repeats}</td></tr>)}</tbody></table>
+        {d.pageCount > 1 ? <Pagination page={d.page} pageCount={d.pageCount} onPage={setPage} /> : null}</>}
+    </section>
   );
 }

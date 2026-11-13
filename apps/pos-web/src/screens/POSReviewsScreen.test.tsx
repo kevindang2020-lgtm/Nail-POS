@@ -106,4 +106,22 @@ describe('POSReviewsScreen', () => {
     expect(c).toHaveTextContent('Open the flagged reviews and investigate; nothing is hidden, merged or removed automatically.');
     expect(api.moderate).not.toHaveBeenCalled();
   });
+  it('extras Reviews 02 / 03 (round 10): fair distribution (sample, raw incl. hidden, source mix) and the resolution timeline with its outcome', async () => {
+    api.summary.mockResolvedValue({ ...SUM, verifiedReviews: 3, sample: { verified: 3, minimum: 10, sufficient: false },
+      rawDistribution: [5, 4, 3, 2, 1].map((star) => ({ star, count: star === 1 ? 1 : star === 5 ? 3 : 0 })), sourceMix: [{ source: 'internal', count: 3, hidden: 1 }, { source: 'google', count: 1, hidden: 0 }] });
+    mount();
+    expect(await screen.findByTestId('dist-sample')).toHaveTextContent('Small sample: 3 verified ratings (fewer than 10)');
+    expect(screen.getByTestId('dist-raw')).toHaveTextContent('1★ 1');
+    expect(screen.getByTestId('dist-sources')).toHaveTextContent('1 hidden'); expect(screen.getByTestId('dist-sources').textContent).not.toMatch(/internal|google/);
+    api.review.mockResolvedValue({ review: { ...ROW({ customer: { id: 'c1', name: 'Ava Kim' } }), tags: [], branch: { name: 'Main' } }, metric: { why: '' }, moderationScope: '', anonymous: false, assignment: null,
+      customer: { id: 'c1', name: 'Ava Kim', canBook: true, priorReviews: [] }, communications: { messages: [], reviewRequests: [] }, technician: null, visit: null,
+      response: { draft: null, versions: [], approvals: [], publications: [], publishable: 'internal_only' }, moderation: [],
+      timeline: [{ at: '2026-11-01T12:00:00Z', kind: 'visit', detail: 'Gel Manicure' }, { at: '2026-11-02T12:00:00Z', kind: 'review', detail: '2' }, { at: '2026-11-02T13:00:00Z', kind: 'assigned', detail: 'Owner One' }, { at: '2026-11-03T13:00:00Z', kind: 'message', detail: 'sms' }],
+      outcome: { resolution: 'resolved', escalation: 'none', owner: 'Owner One' } });
+    fireEvent.click((await screen.findAllByTestId('rvw-row'))[0]);
+    fireEvent.click(await screen.findByTestId('ov-tab-timeline'));
+    const items = await screen.findAllByTestId('ov-timeline-item');
+    expect(items.map((x) => x.textContent)).toEqual([expect.stringContaining('Visit paid · Gel Manicure'), expect.stringContaining('Review received · 2★'), expect.stringContaining('Assigned for follow-up · Owner One'), expect.stringContaining('Message to the customer')]);
+    expect(screen.getByTestId('ov-outcome')).toHaveTextContent('Outcome: Resolved · Follow-up owner: Owner One');
+  });
 });

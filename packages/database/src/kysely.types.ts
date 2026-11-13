@@ -2654,6 +2654,12 @@ export interface CustomerLegalHoldsTable {
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
+// migration 925 (extras Customer 08): the reversible-merge record (snapshot + fingerprints of the moved rows)
+export interface CustomerMergeSnapshotsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; group_id: string; survivor_customer_id: string;
+  source_customer_ids: string[]; merge_log_ids: Generated<unknown>; snapshot: unknown; merged_by_user_id: string | null;
+  merged_at: Generated<Ts>; status: Generated<string>; undone_at: TsNull; undone_by_user_id: string | null; undo_reason: string | null;
+}
 export interface CustomerMergeLogsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -6746,6 +6752,8 @@ export interface UserNotificationPrefsTable {
   low_stock_alerts: Generated<boolean>;
   payroll_approvals: Generated<boolean>;
   weekly_report_summaries: Generated<boolean>;
+  quiet_start: string | null;   // migration 921 — personal quiet hours 'HH:MM' (salon local time)
+  quiet_end: string | null;     // migration 921
   created_at: Ts;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
@@ -7925,6 +7933,7 @@ export interface DB {
   customer_import_rows: CustomerImportRowsTable;
   customer_legal_holds: CustomerLegalHoldsTable;
   customer_merge_logs: CustomerMergeLogsTable;
+  customer_merge_snapshots: CustomerMergeSnapshotsTable;
   customer_phone_update_sessions: CustomerPhoneUpdateSessionsTable;
   customer_phones: CustomerPhonesTable;
   customer_privacy_requests: CustomerPrivacyRequestsTable;
@@ -8264,6 +8273,9 @@ export interface DB {
   tenant_token_wallets: TenantTokenWalletsTable;
   token_purchase_events: TokenPurchaseEventsTable;
   token_purchase_intents: TokenPurchaseIntentsTable;
+  rewards_idempotency_events: RewardsIdempotencyEventsTable;   // 922
+  device_history_chain: DeviceHistoryChainTable;   // 923
+  device_labels: DeviceLabelsTable;   // 924
   token_wallet_ledger: TokenWalletLedgerTable;
   // ── drift patch Oct 30 2026: round-2 guides + migrations 730/731 ──
   ai_billing_invoice_events: AiBillingInvoiceEventsTable;
@@ -10536,6 +10548,15 @@ export interface TokenPurchaseEventsTable {
   created_at: Generated<Ts>;
 }
 
+export interface DeviceLabelsTable {   // migration 924 — Device Health 06 (alias + asset tag per fleet device)
+  id: Generated<string>; tenant_id: string; device_source: string; device_id: string; alias: string | null; asset_tag: string | null; updated_by: string | null; created_at: Ts; updated_at: Ts;
+}
+export interface DeviceHistoryChainTable {   // migration 923 — Device Assignments 25 (append-only hash chain over device audit rows)
+  id: Generated<string>; tenant_id: string; seq: number; audit_log_id: string; entity_type: string; entity_id: string | null; prev_hash: string; row_hash: string; created_at: Ts;
+}
+export interface RewardsIdempotencyEventsTable {   // migration 922 — GLOBAL LOYALTY REWARDS 11 (append-only)
+  id: Generated<string>; tenant_id: string; scope: string; outcome: string; request_key: string; resource_id: string | null; detail: Generated<unknown>; created_at: Ts;
+}
 export interface TokenPurchaseIntentsTable {
   id: Generated<string>;
   tenant_id: string;

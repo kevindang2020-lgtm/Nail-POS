@@ -78,6 +78,11 @@ export function Gauge({ pct, testId, children }: { pct: number | null; testId: s
   );
 }
 
+/** SERVICE PRICING 09: the server's recorded reasons why a charged line differs from the catalog price, in words */
+function priceWhy(e: { reasons: Array<{ code: string; cents?: number | null; by?: string | null }> }) {
+  return e.reasons.map((x) => tx('cg.why.' + x.code, { v: x.cents == null ? '' : (x.cents > 0 ? '+' : x.cents < 0 ? '−' : '') + fmtMoney(Math.abs(x.cents)), by: x.by ?? tx('cg.why.someone') })).join(' · ');
+}
+
 /** what a customer was actually charged (ticket snapshots) — PII, so the phone is masked */
 export function CustomerHistoryTable({ rows, onCustomer }: { rows: any[]; onCustomer?: (id: string, name: string) => void }) {
   return (
@@ -89,7 +94,7 @@ export function CustomerHistoryTable({ rows, onCustomer }: { rows: any[]; onCust
         <td>{r.item}<span className="fk-li-s">{tx('cg.kind.' + (['service', 'add_on', 'retail'].includes(r.kind) ? r.kind : 'service'))}{r.minutes ? ` · ${mins(r.minutes)}` : ''}</span></td>
         <td className="t-opt">{r.categoryAtSale ?? '—'}</td>
         <td className="num">{money(r.catalogPriceAtSaleCents)}</td>
-        <td className="num"><b>{fmtMoney(r.chargedCents)}</b></td>
+        <td className="num"><b>{fmtMoney(r.chargedCents)}</b>{r.priceExplanation?.reasons?.length ? <span className="fk-li-s" data-testid="price-why">{priceWhy(r.priceExplanation)}</span> : null}</td>
         <td className="t-opt">{r.technician ?? '—'}</td>
         <td>{r.ticketNumber ? `#${r.ticketNumber}` : '—'}</td>
       </tr>)}</tbody>
@@ -153,6 +158,8 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
       {impact ? <div className="fk-note info" data-testid="pricing-impact"><span>{impact.upcoming
         ? tx('cg.impact.some', { n: nf(impact.upcoming), q: fmtMoney(impact.quotedTotalCents), d: nf(impact.quotedDifferently), l: nf(impact.wouldRunLonger) })
         : tx('cg.impact.none')}</span>
+        {impact.availabilityConflicts ? <span className="warn" data-testid="pricing-impact-conflicts">{tx('cg.impact.conflicts', { n: nf(impact.availabilityConflicts) })}{(impact.conflictItems ?? []).slice(0, 3).map((c: any) => ` · ${c.day} ${c.time} → ${c.nextTime}`).join('')}</span> : null}
+        {impact.staleOpenTickets ? <span className="warn" data-testid="pricing-impact-stale">{tx('cg.impact.stale', { n: nf(impact.staleOpenTickets) })}</span> : null}
         {impact.items?.length ? <ul className="fn-notes" data-testid="pricing-impact-list">{impact.items.slice(0, 5).map((a: any) => <li key={a.appointmentId}>{a.day} {a.time} · {a.customer ?? tx('cg.impact.customerHidden')} · {fmtMoney(a.quotedCents)} · {mins(a.bookedMinutes)}</li>)}</ul> : null}</div> : null}
       {pay ? <CompensationPreviewNote pay={pay} /> : null}
       {err ? <div className="fk-note bad" role="alert" data-testid="pricing-error"><span>{err}</span></div> : null}

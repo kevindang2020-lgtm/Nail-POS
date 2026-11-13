@@ -4,6 +4,7 @@ import type { CustomerPhoneStatus } from '@aipowersalon/api-contracts';
 // /pos/customers/duplicates/:duplicateGroupId/merge with body { primaryCustomerId }. Added `duplicates()` to list the
 // server-detected duplicate groups (GET /pos/customers/duplicates → DuplicateGroup[]).
 import { api } from "./client";
+import type { CustomerQuickActivity } from "@aipowersalon/api-contracts/tenant";
 const enc = (s: string) => encodeURIComponent(s);
 export const posCustomersApi = {
   list: () => api.get(`/pos/customers`),
@@ -16,6 +17,8 @@ export const posCustomersApi = {
   create: (body: Record<string, unknown>, idempotencyKey?: string) => api.post(`/pos/customers`, body, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
   exportCsv: (q?: Record<string, unknown>) => api.exportAsync<{ format: string; filename: string; csv: string }>(`/pos/customers/export`, q),
   getDetail: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}`),
+  // extras Customer 03: the Quick View's receipts + activity (read-only staff read)
+  quickActivity: (customerId: string) => api.get<CustomerQuickActivity>(`/pos/customers/${enc(customerId)}/quick-activity`),
   appointments: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}/appointments`),
   getNotes: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}/notes`),
   setNotes: (customerId: string, notes: Record<string, unknown>) => api.patch(`/pos/customers/${enc(customerId)}/notes`, notes),

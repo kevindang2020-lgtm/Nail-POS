@@ -66,6 +66,26 @@ export const purchaseRow = (x: Row) => ({ id: String(x.id), tenantId: String(x.t
 
 export type ResolveResult = { ok: true; rule: EffectiveEarningRule; program: ProgramPolicy } | { ok: false; code: string; reason: string; program: ProgramPolicy | null };
 
+/** extras GLOBAL LOYALTY REWARDS 11 (round 10): one append-only row per repeated request key (rewards_idempotency_events). */
+export async function recordIdempotencyEvent(db: Exec, e: { tenantId: string; scope: 'token_purchase' | 'redemption'; outcome: 'replay' | 'conflict'; key: string; resourceId?: string | null; detail?: Record<string, unknown> }) {
+  await sql`INSERT INTO rewards_idempotency_events (tenant_id, scope, outcome, request_key, resource_id, detail)
+    VALUES (${e.tenantId}::uuid, ${e.scope}, ${e.outcome}, ${e.key.slice(0, 200)}, ${e.resourceId ?? null}::uuid, ${JSON.stringify(e.detail ?? {})}::jsonb)`.execute(db);
+}
+/** The Super Admin's read-only idempotency center: newest first, filter by outcome / scope, with how many times each key repeated. */
+export async function listIdempotencyEvents(db: Exec, q: { outcome?: string | null; scope?: string | null; page?: number; pageSize?: number }) {
+  const s = Math.max(1, Math.min(100, Math.floor(Number(q.pageSize) || 25))); const p = Math.max(1, Math.min(10_000, Math.floor(Number(q.page) || 1)));
+  const outcome = q.outcome === 'replay' || q.outcome === 'conflict' ? q.outcome : null; const scope = q.scope === 'token_purchase' || q.scope === 'redemption' ? q.scope : null;
+  const w = sql`${outcome ? sql`e.outcome = ${outcome}` : sql`true`} and ${scope ? sql`e.scope = ${scope}` : sql`true`}`;
+  const tot = (await sql<Row>`SELECT count(*) AS c, count(*) FILTER (WHERE e.outcome = 'conflict') AS k FROM rewards_idempotency_events e WHERE ${w}`.execute(db)).rows[0];
+  const rows = (await sql<Row>`SELECT e.id, e.tenant_id, t.display_name, e.scope, e.outcome, e.request_key, e.resource_id, e.detail, e.created_at,
+      (SELECT count(*) FROM rewards_idempotency_events x WHERE x.tenant_id = e.tenant_id AND x.scope = e.scope AND x.request_key = e.request_key) AS repeats
+    FROM rewards_idempotency_events e LEFT JOIN tenants t ON t.id = e.tenant_id WHERE ${w} ORDER BY e.created_at DESC, e.id DESC LIMIT ${s} OFFSET ${(p - 1) * s}`.execute(db)).rows;
+  const total = n(tot?.c);
+  return { total, conflicts: n(tot?.k), page: p, pageSize: s, pageCount: Math.max(1, Math.ceil(total / s)),
+    items: rows.map((r) => ({ id: String(r.id), tenantId: String(r.tenant_id), salon: r.display_name ?? null, scope: String(r.scope), outcome: String(r.outcome),
+      keyRef: '…' + String(r.request_key).slice(-8), resourceId: r.resource_id ? String(r.resource_id) : null, repeats: n(r.repeats), detail: (r.detail ?? {}) as Record<string, unknown>, at: iso(r.created_at) as string })) };
+}
+
 export class GlobalRewardsRepository {
   constructor(private readonly db: Db) {}
   get database(): Db { return this.db; }
@@ -470,7 +490,11 @@ export class GlobalRewardsRepository {
     const q = purchaseQuantity(input.tokens, program);
     const existing = (await sql<Row>`SELECT i.id, i.token_cents, i.status FROM token_purchase_intents i WHERE i.tenant_id = ${ctx.tenantId}::uuid AND i.idempotency_key = ${key}`.execute(this.db)).rows[0];
     if (existing) {
-      if (n(existing.token_cents) !== q.tokenCents) throw new GlobalRewardsError('That request key was already used for a different purchase.', 'IDEMPOTENCY_KEY_REUSED', 409);
+      // extras GLOBAL LOYALTY REWARDS 11 (round 10): every repeated key is recorded — a replay (same purchase) or a conflict
+      const conflict = n(existing.token_cents) !== q.tokenCents;
+      await recordIdempotencyEvent(this.db, { tenantId: ctx.tenantId, scope: 'token_purchase', outcome: conflict ? 'conflict' : 'replay', key, resourceId: String(existing.id),
+        detail: conflict ? { firstTokenCents: n(existing.token_cents), repeatedTokenCents: q.tokenCents, status: existing.status } : { status: existing.status } });
+      if (conflict) throw new GlobalRewardsError('That request key was already used for a different purchase.', 'IDEMPOTENCY_KEY_REUSED', 409);
       return { intentId: String(existing.id), created: false };
     }
     try {
@@ -611,6 +635,26 @@ export class GlobalRewardsRepository {
     await this.auditPlatform(this.db, actorUserId, 'loyalty.global_rule.canceled', 'global_earning_rule_version', String(r.id), { versionNo: n(r.version_no) });
     return { canceled: globalRuleOf(r) };
   }
+  /** extras GLOBAL LOYALTY REWARDS 14 (round 10) — the rule-change simulator's FUNDING exposure: the sales of the last
+   *  `days` days that earned under the GLOBAL rule (reward_earn_transactions rule_source GLOBAL_DEFAULT — the salons the
+   *  change reaches), each re-priced with the SAME computeEarn the earn processor uses, under the rule in force and the
+   *  proposed one. Backing = what salons' token wallets would have funded. Read only; nothing is written. */
+  async globalExposure(current: EarningRate, proposed: EarningRate, program: ProgramPolicy, now = new Date(), days = 30) {
+    const since = new Date(now.getTime() - days * 86_400_000).toISOString();
+    const rows = (await sql<{ tenant_id: string; eligible_cents: number | string }>`SELECT e.tenant_id, e.eligible_cents FROM reward_earn_transactions e
+      WHERE e.rule_source = 'GLOBAL_DEFAULT' AND e.status IN ('EARNED', 'NOT_ELIGIBLE', 'BLOCKED_INSUFFICIENT_TOKENS', 'PARTIALLY_REVERSED')
+        AND e.effective_at >= ${since}::timestamptz AND e.effective_at < ${now.toISOString()}::timestamptz LIMIT 50000`.execute(this.db)).rows;
+    let cur = 0, next = 0, curPts = 0, nextPts = 0;
+    const salons = new Set<string>();
+    for (const r of rows) {
+      const c = computeEarn(n(r.eligible_cents), current, program), p = computeEarn(n(r.eligible_cents), proposed, program);
+      cur += c.backingCents; next += p.backingCents; curPts += c.pointTenths; nextPts += p.pointTenths; salons.add(String(r.tenant_id));
+    }
+    return { days, since, sales: rows.length, salons: salons.size, capped: rows.length >= 50000,
+      currentPointTenths: curPts, proposedPointTenths: nextPts, currentBackingCents: cur, proposedBackingCents: next, differenceCents: next - cur,
+      perDayDifferenceCents: Math.round((next - cur) / days) };
+  }
+
   /** How many salons a global change reaches (global-mode) vs. leaves alone (custom) — the editor's impact preview. */
   async globalImpact(now = new Date()) {
     const r = (await sql<Row>`WITH cur AS (

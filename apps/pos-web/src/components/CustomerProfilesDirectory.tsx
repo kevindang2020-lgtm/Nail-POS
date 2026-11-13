@@ -23,6 +23,8 @@ import { deviceToday } from '../lib/deviceToday';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { LoyaltyBonusRequest } from './LoyaltyBonusRequest';
 import { useCan } from './usePermissions';
+import { auditActionLabel } from './codeLabel';
+import type { CustomerQuickActivity } from '@aipowersalon/api-contracts/tenant';
 
 const tt = (k: string, v?: Record<string, string | number>) => t(k, v as Parameters<typeof t>[1]);
 const VIEWS = [{ k: 'all', status: 'all', sort: 'newest' }, { k: 'active', status: 'active', sort: 'last_visit' }, { k: 'new', status: 'new', sort: 'newest' }, { k: 'review', status: 'duplicate', sort: 'newest' }] as const;
@@ -115,7 +117,7 @@ export function CustomerProfilesDirectory({ onOpen }: { onOpen: (c: CpxCard) => 
   );
 }
 
-const QV_TABS = ['overview', 'loyalty', 'visits', 'notes'] as const;
+const QV_TABS = ['overview', 'loyalty', 'visits', 'notes', 'activity'] as const;   // 'activity' = receipts + activity (extras Customer 03)
 /** Customer 360 Quick View — the same GET /pos/customers/:id the Full View reads; four tabs. */
 /** extras Customer 05 — advisory follow-up status from the server's detail read (Booking, AI Follow-Ups, the profile's contact
  *  fields). Indicators only: nothing here messages the customer or changes a booking. Unknown (no permission) shows "—". */
@@ -130,6 +132,31 @@ function FollowUpStatusStrip({ f }: { f: CpxFollowUpView }) {
     <span className={'chip ' + (contactGaps.length ? 'warn' : 'ok')} data-testid="cpx-fu-contact">{contactGaps.length ? contactGaps.join(' · ') : tt('cpf.fu.contactOk')}</span>
     <span className="hint">{tt('cpf.fu.note')}</span>
   </div>;
+}
+
+/** extras Customer 03 (Nov 13 2026): the Quick View's receipts + activity, read on first open of the tab from the read-only staff
+ *  endpoint GET /pos/customers/:id/quick-activity. No print / resend controls here — the Full View keeps those. */
+function QuickActivityPanel({ customerId, onFullView }: { customerId: string; onFullView: () => void }) {
+  const [a, setA] = useState<CustomerQuickActivity | null>(null); const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); posCustomersApi.quickActivity(customerId).then(setA).catch((e: unknown) => setErr(errText(e))); }, [customerId]);
+  useEffect(load, [load]);
+  if (err) return <ErrorRetry message={err} onRetry={load} />;
+  if (!a) return <div className="state">{tt('cpf.loading')}</div>;
+  return (
+    <div className="cpx-two" data-testid="cpx-activity">
+      <div>
+        <div className="cpx-subhead">{tt('cpf.qa.receipts', { n: a.receiptsTotal })}</div>
+        {a.receipts.length === 0 ? <Empty title={tt('cpf.qa.noReceipts')} /> : <table className="tbl rvw-table"><thead><tr><th>{tt('cpf.col.date')}</th><th>{tt('cpf.qa.number')}</th><th>{tt('cpf.qa.sent')}</th><th className="num">{tt('cpf.col.total')}</th></tr></thead>
+          <tbody>{a.receipts.map((r) => <tr key={r.receiptId} data-testid="cpx-receipt"><td className="nowrap">{day(r.date)}</td><td>{r.receiptNumber ?? '—'}</td><td>{tt('cpf.qa.channel.' + r.channel)}</td><td className="num">{money(r.totalCents)}</td></tr>)}</tbody></table>}
+        {a.receiptsTotal > a.receipts.length ? <button className="btn ghost" data-testid="cpx-receipts-more" onClick={onFullView}>{tt('cpf.qa.more', { n: a.receiptsTotal - a.receipts.length })}</button> : null}
+      </div>
+      <div>
+        <div className="cpx-subhead">{tt('cpf.qa.activity')}</div>
+        {a.activity.length === 0 ? <Empty title={tt('cpf.qa.noActivity')} /> : <ul className="cpx-feed">{a.activity.map((x, i) => (
+          <li key={i} data-testid="cpx-activity-item"><span className="nowrap">{day(x.at)}</span> · {x.kind === 'receipt' ? tt('cpf.qa.receiptIssued', { amount: money(x.amountCents ?? 0) }) : auditActionLabel(x.code)}{x.actorName ? <span className="sub"> · {x.actorName}</span> : null}</li>))}</ul>}
+      </div>
+    </div>
+  );
 }
 
 export function CustomerQuickView({ customer, onClose, onFullView }: { customer: CpxCard; onClose: () => void; onFullView: () => void }) {
@@ -204,6 +231,7 @@ export function CustomerQuickView({ customer, onClose, onFullView }: { customer:
               {field(tt('cpf.f.prefService'), n.servicePreferences || null, 'service_preference')}{field(tt('cpf.f.salonNotes'), n.salonNotes || null, 'general')}</dl>
             <button className="btn ghost cpx-wide" data-testid="cpx-edit-notes" onClick={() => nav('/tenant/customers/notes')}>{tt('cpf.act.editNotes')}</button>
           </div> : null}
+          {tab === 'activity' ? <QuickActivityPanel customerId={customer.id} onFullView={onFullView} /> : null}
         </div>
       )}
     </FitDialog>

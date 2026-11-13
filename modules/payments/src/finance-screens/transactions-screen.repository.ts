@@ -262,8 +262,19 @@ export class TransactionsScreenRepository {
     }
     timeline.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
     const duplicateReview = await this.duplicateReview(ctx, paymentId, r, ticket);
+    // extras TRANSACTIONS 08 (round 10): a compact, authorized customer identity beside the ticket — only through the ticket's
+    // real customer link; contact masked without pos.customers.view; visit counts from this salon's paid tickets
+    const cust = r.customer_id ? (await sql<{ full_name: string | null; normalized_phone: string | null; email: string | null; created_at: Date | string | null; visits: number; last_visit: Date | string | null }>`
+        select c.full_name, c.normalized_phone, c.email, c.created_at,
+          (select count(*)::int from tickets x where x.tenant_id = c.tenant_id and x.customer_id = c.id and x.paid_at is not null and x.removed_at is null) as visits,
+          (select max(x.paid_at) from tickets x where x.tenant_id = c.tenant_id and x.customer_id = c.id and x.paid_at is not null and x.removed_at is null) as last_visit
+        from customers c where c.tenant_id = ${ctx.tenantId} and c.id = ${r.customer_id}::uuid`.execute(this.db)).rows[0] : null;
+    const contactOk = can('pos.customers.view');
+    const em = (e: string | null) => (!e ? null : contactOk ? e : e.replace(/^(.).*(@.*)$/, '$1•••$2'));
+    const customerContext = cust ? { id: String(r.customer_id), name: cust.full_name ?? null, phone: contactOk ? showPhone(cust.normalized_phone) : maskPhone(cust.normalized_phone), email: em(cust.email),
+      contactMasked: !contactOk, visits: N(cust.visits), lastVisitAt: iso(cust.last_visit as never), customerSince: iso(cust.created_at as never) } : null;
     return {
-      timeline,
+      timeline, customerContext,
       duplicateReview,
       tender: { ...tender, surchargeCents: N(r.surcharge_cents), refundableCents: tender.counted ? Math.max(0, tender.grossCents - tender.refundedCents - tender.refundPendingCents) : 0 },
       refunds: refunds.map((x: any) => ({ id: String(x.id), amountCents: N(x.amount_cents), reason: x.reason ?? null, status: String(x.status), processorRefundId: x.processor_refund_id ?? null, at: iso(x.created_at), settledAt: iso(x.settled_at), actor: x.actor ?? null })),

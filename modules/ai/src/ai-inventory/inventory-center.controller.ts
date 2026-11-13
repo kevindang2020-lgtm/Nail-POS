@@ -21,7 +21,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e: any) { if (e instanceof InventoryCenterError) throw new HttpException({ code: e.code, message: e.message }, e.status); throw e; }
 }
-const PRODUCTS = { filters: { status: { type: 'enum', values: IC_STATUSES } }, search: { maxLength: 80 }, sorts: { attention: null, name: null, on_hand: null, updated: null }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
+const PRODUCTS = { filters: { status: { type: 'enum', values: IC_STATUSES }, category: { type: 'text' } }, search: { maxLength: 80 }, sorts: { attention: null, name: null, on_hand: null, updated: null }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 const ACTIVITY = { filters: { type: { type: 'enum', values: IC_MOVE_TYPES }, preset: { type: 'enum', values: IC_PRESETS } }, search: { maxLength: 80 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page', 'productId'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)

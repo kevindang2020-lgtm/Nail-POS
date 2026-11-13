@@ -9,6 +9,7 @@ import { LimitExceededError } from '@aipowersalon/platform';
 import type { CustomersContext } from './customers.repository';
 import type { CustomerFilters, CreateCustomerRequest, EditCustomerRequest } from './customers.dto';
 import { CustomerVersionConflict } from './customers.dto';
+import type { CustomerQuickActivity } from '@aipowersalon/api-contracts/tenant';
 import { ListQueries } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { CustomersControllerListQueries } from './customers.list-queries';
@@ -64,6 +65,8 @@ export class CustomersController {
   @Get(':customerId/appointments') @RequirePermission('pos.customers.view') appts(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.appointments(ctxFrom(r), id)); }
   @Get(':customerId/tickets') @RequirePermission('pos.customers.view') tickets(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.tickets(ctxFrom(r), id)); }
   @Get(':customerId/receipts') @RequirePermission('pos.customers.view') receipts(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.receipts(ctxFrom(r), id)); }
+  // extras Customer 03 (Nov 13 2026): the Quick View's receipts + activity — one read-only staff read, no printing / resend controls
+  @Get(':customerId/quick-activity') @RequirePermission('pos.customers.view') quickActivity(@Req() r: any, @Param('customerId') id: string): Promise<CustomerQuickActivity> { return run(() => this.svc.quickActivity(ctxFrom(r), id)); }
   @Get(':customerId/notes') @RequirePermission('pos.customers.notes.view') gNotes(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.getNotes(ctxFrom(r), id)); }
   @Patch(':customerId/notes') @RequirePermission('pos.customers.notes.edit') sNotes(@Req() r: any, @Param('customerId') id: string, @Body(ValidatedBody(CUSTOMER_NOTES_BODY, { strict: true })) b: any) { return run(() => this.svc.setNotes(ctxFrom(r), id, b)); }
   @Get(':customerId/tags') @RequirePermission('pos.customers.view') gTags(@Req() r: any, @Param('customerId') id: string) { return run(() => this.svc.getTags(ctxFrom(r), id)); }

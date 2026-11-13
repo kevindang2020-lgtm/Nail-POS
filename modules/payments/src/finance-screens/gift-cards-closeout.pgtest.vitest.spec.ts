@@ -97,3 +97,30 @@ describe('Gift Cards — reconciliation to daily closeout (read-only)', () => {
     expect(o.issuance.ledgerCents).toBe(5000);
   });
 });
+
+describe('extras GIFT CARDS 05 / 11 (round 10) — balance verified at, and why a card can or cannot pay', () => {
+  it('an active card with balance can pay its balance; void / redeemed / pending say why not; locations follow the gift-card setting the way checkout reads it', async () => {
+    const { resolveGiftCardSaleSettings } = await import('../../../checkout/src/checkout/checkout-settings.resolver');
+    const db = kyselyFor(pg);
+    const live = await card(T, 'GC-ELIG00001', '4444', 2500);
+    await txn(T, live, 'activate', 2500, 2500, '2026-11-11T14:00:00Z');
+    let d: any = await r.detail(ctx, live);
+    expect(d.eligibility).toMatchObject({ reason: 'active', canSpend: true, spendableCents: 2500, pinRequired: false });
+    expect(d.verification).toMatchObject({ lastMovementAt: '2026-11-11T14:00:00.000Z', source: 'live_ledger' });
+    expect(Date.parse(d.verification.checkedAt)).toBeGreaterThan(Date.parse('2026-11-11T14:00:00Z'));
+    // no setting stored → checkout's default; the screen agrees with checkout's own resolver
+    expect(d.eligibility.locations).toBe((await resolveGiftCardSaleSettings(db as never, T, B)).crossBranchRedemption ? 'any_branch' : 'issuing_branch_only');
+    await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'gift-card-settings', '{"crossBranchRedemption": false}'::jsonb)`, [T]);
+    d = await r.detail(ctx, live);
+    expect((await resolveGiftCardSaleSettings(db as never, T, B)).crossBranchRedemption).toBe(false);
+    expect(d.eligibility).toMatchObject({ locations: 'issuing_branch_only', branch: 'Cherry Hill' });
+    await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, $2, 'gift-card-settings', '{"crossBranchRedemption": true}'::jsonb)`, [T, B]);
+    expect((await r.detail(ctx, live)).eligibility.locations).toBe('any_branch');               // the branch row wins, as in checkout
+    expect((await resolveGiftCardSaleSettings(db as never, T, B)).crossBranchRedemption).toBe(true);
+    for (const [status, bal, why] of [['void', 2500, 'void'], ['redeemed', 0, 'redeemed'], ['pending_payment', 2500, 'pending_payment'], ['active', 0, 'no_balance']] as const) {
+      await q(`update gift_cards set status = $1, balance_cents = $2 where id = $3`, [status, bal, live]);
+      expect((await r.detail(ctx, live)).eligibility).toMatchObject({ reason: why, canSpend: false, spendableCents: 0 });
+    }
+    await q(`delete from tenant_settings where tenant_id = $1 and category = 'gift-card-settings'`, [T]);
+  });
+});

@@ -190,4 +190,59 @@ export const CINTEL_VI: Record<string, string> = {
   "cix.scope.all": "Tất cả chi nhánh của tôi", // DRAFT — Kevin reviews
   "cix.scope.current": "Chi nhánh này", // DRAFT — Kevin reviews
   "cix.scope.line": "Theo chi nhánh: {b} — tổng {d} khách hàng khác nhau ({o} khách ghé nhiều chi nhánh và chỉ được tính một lần).", // DRAFT — Kevin reviews
+  "cix.via.customer": "Khớp: thông tin của chính khách hàng", // DRAFT — Kevin reviews
+  "cix.via.visit_technician": "Khớp: đã được thợ này phục vụ (lượt ghé hoàn tất)", // DRAFT — Kevin reviews
+  "cix.via.assigned_technician": "Khớp: đã đặt lịch với thợ này (chưa chắc đã phục vụ)", // DRAFT — Kevin reviews
+  "cix.via.preferred_technician": "Khớp: đây là thợ khách hàng ưa thích", // DRAFT — Kevin reviews
+  "cix.via.service": "Khớp: một dịch vụ trong lượt ghé", // DRAFT — Kevin reviews
+  "cix.via.appointment": "Khớp: một lịch hẹn", // DRAFT — Kevin reviews
+  "cix.flag.high_value": "Chi tiêu cao", // DRAFT — Kevin reviews
+  "cix.sort.spend": "Chi tiêu cao nhất", // DRAFT — Kevin reviews
+  "cix.spent": "Đã chi {amount}", // DRAFT — Kevin reviews
+  "cix.360.open": "Xem toàn cảnh 360°", // DRAFT — Kevin reviews
+  "cix.360.failed": "Không tải được thông tin toàn cảnh 360°.", // DRAFT — Kevin reviews
+  "cix.360.identity": "Danh tính", // DRAFT — Kevin reviews
+  "cix.360.masked": "đã ẩn", // DRAFT — Kevin reviews
+  "cix.360.spend": "Tổng cộng", // DRAFT — Kevin reviews
+  "cix.360.spendLine": "{amount} qua {n} lượt ghé", // DRAFT — Kevin reviews
+  "cix.360.prefs": "Sở thích", // DRAFT — Kevin reviews
+  "cix.360.history": "Lịch sử dịch vụ", // DRAFT — Kevin reviews
+  "cix.360.noVisits": "Chưa có lượt ghé nào hoàn tất.", // DRAFT — Kevin reviews
+  "cix.360.col.date": "Ngày", // DRAFT — Kevin reviews
+  "cix.360.col.services": "Dịch vụ", // DRAFT — Kevin reviews
+  "cix.360.col.tech": "Thợ", // DRAFT — Kevin reviews
+  "cix.360.col.total": "Tổng", // DRAFT — Kevin reviews
+  "cix.360.suggestions": "Gợi ý cần xem xét", // DRAFT — Kevin reviews
+  "cix.360.noSuggestions": "Không có gì cần xem xét cho khách này.", // DRAFT — Kevin reviews
+  "cix.360.advisory": "Gợi ý chỉ để nhân viên xem xét. Không có gì ở đây tự đặt lịch, gửi tin, gộp hồ sơ hay đổi điểm.", // DRAFT — Kevin reviews
+  "cix.360.state.verified": "Đã xác minh số điện thoại", // DRAFT — Kevin reviews
+  "cix.360.state.unverified": "Chưa xác minh số điện thoại", // DRAFT — Kevin reviews
+  "cix.360.state.possible_duplicate": "Có thể trùng hồ sơ", // DRAFT — Kevin reviews
+  "cix.360.mem.active": "Đang hoạt động", // DRAFT — Kevin reviews
+  "cix.360.mem.paused": "Tạm dừng", // DRAFT — Kevin reviews
+  "cix.360.mem.canceled": "Đã hủy", // DRAFT — Kevin reviews
+  "cix.360.mem.cancelled": "Đã hủy", // DRAFT — Kevin reviews
+  "cix.360.mem.expired": "Hết hạn", // DRAFT — Kevin reviews
+  "cix.360.sug.rebook_review": "Xem xét đặt lịch lại", // DRAFT — Kevin reviews
+  "cix.360.sug.verify_phone": "Xác minh số điện thoại", // DRAFT — Kevin reviews
+  "cix.360.sug.add_contact": "Thêm số điện thoại hoặc email", // DRAFT — Kevin reviews
+  "cix.360.sug.review_duplicate": "Xem xét hồ sơ có thể trùng", // DRAFT — Kevin reviews
+  "cix.360.sug.retention_at_risk": "Có nguy cơ rời bỏ trong Giữ chân khách", // DRAFT — Kevin reviews
+  "cix.360.ev.kv": "{k}: {v}", // DRAFT — Kevin reviews
+  "cix.360.ev.group": "Nhóm hồ sơ trùng đang mở", // DRAFT — Kevin reviews
+  "cix.360.ev.last_visit": "Lần ghé gần nhất", // DRAFT — Kevin reviews
+  "cix.360.ev.usual_interval_days": "Chu kỳ thường lệ (ngày)", // DRAFT — Kevin reviews
+  "cix.360.ev.days_since_last": "Số ngày từ lần ghé gần nhất", // DRAFT — Kevin reviews
+  "cix.360.ev.days_away": "Số ngày vắng", // DRAFT — Kevin reviews
+  "cix.360.ev.reason": "Lý do", // DRAFT — Kevin reviews
+  "cix.360.ev.no_future_booking": "Chưa có lịch hẹn sắp tới", // DRAFT — Kevin reviews
+  "cix.360.ev.phone_on_file": "Đã có số điện thoại", // DRAFT — Kevin reviews
+  "cix.360.ev.not_verified": "Chưa xác minh", // DRAFT — Kevin reviews
+  "cix.360.ev.no_phone": "Không có số điện thoại", // DRAFT — Kevin reviews
+  "cix.360.ev.no_email": "Không có email", // DRAFT — Kevin reviews
+  "cix.360.ev.customer_retention": "Giữ chân khách", // DRAFT — Kevin reviews
+  "cix.360.evv.at_risk": "Có nguy cơ", // DRAFT — Kevin reviews
+  "cix.360.evv.phone": "Trùng số điện thoại", // DRAFT — Kevin reviews
+  "cix.360.evv.email": "Trùng email", // DRAFT — Kevin reviews
+  "cix.360.evv.name": "Trùng tên", // DRAFT — Kevin reviews
 };

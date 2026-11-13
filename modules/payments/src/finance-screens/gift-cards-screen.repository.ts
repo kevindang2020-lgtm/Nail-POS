@@ -25,6 +25,8 @@ import {
   type FinanceCtx, type PageReq, type Period, type AuditRecorder,
 } from './finance-scope';
 
+/** checkout's DEFAULT_GIFT_CARD_SALE_SETTINGS.crossBranchRedemption (pinned by gift-cards-closeout.pgtest) */
+export const GC_CROSS_BRANCH_DEFAULT = true;
 export const GC_GROUPS = ['active', 'redeemed', 'void', 'pending', 'frozen'] as const;
 export type GcGroup = (typeof GC_GROUPS)[number];
 export const GC_SORTS = ['issued_desc', 'issued_asc', 'activity_desc', 'balance_desc', 'balance_asc', 'name_asc', 'status'] as const;
@@ -352,8 +354,23 @@ export class GiftCardsScreenRepository {
     const card = this.row(ctx, r);
     const ledgerBalance = N(tot.ledger_balance);
     const deliveries = await this.deliveries(T, id);
+    // extras GIFT CARDS 11 (round 10): why this card can or cannot pay, in the redemption's own terms — checkout redeems only an
+    // ACTIVE card with enough balance (and its PIN when one is set); a branch card is redeemable only at its branch unless the
+    // salon's gift-card settings allow cross-branch redemption (the stored 'gift-card-settings' value checkout reads — branch row
+    // over salon row; pinned against checkout's resolver in gift-cards-closeout.pgtest). Read only.
+    const gs = (await sql<{ branch_id: string | null; cross: string | null }>`select ts.branch_id, ts.settings_json->>'crossBranchRedemption' as cross from tenant_settings ts
+      where ts.tenant_id = ${T} and ts.category = 'gift-card-settings' and (ts.branch_id is null ${r.branch_id ? sql`or ts.branch_id = ${r.branch_id}::uuid` : sql``})`.execute(this.db)).rows;
+    const gsRow = gs.find((x) => x.branch_id != null) ?? gs.find((x) => x.branch_id == null);
+    const cross = gsRow?.cross == null ? GC_CROSS_BRANCH_DEFAULT : gsRow.cross === 'true';
+    const st = String(r.status);
+    const reason = st === 'active' ? (N(r.balance_cents) > 0 ? 'active' : 'no_balance') : ['redeemed', 'void', 'pending_payment', 'frozen', 'suspended', 'partially_redeemed'].includes(st) ? st : 'not_active';
+    const eligibility = { reason, canSpend: reason === 'active', spendableCents: reason === 'active' ? N(r.balance_cents) : 0, pinRequired: !!r.has_pin,
+      locations: !r.branch_id || cross ? 'any_branch' as const : 'issuing_branch_only' as const, branch: r.branch_name ?? null, expiresAt: iso(r.expires_at) };
+    // extras GIFT CARDS 05 (round 10): when this balance was checked against the ledger (this read) and the last ledger movement
+    const lastMove = (await sql<{ at: Date | string | null }>`select max(t.created_at) as at from gift_card_transactions t where t.tenant_id = ${T} and t.gift_card_id = ${id}::uuid`.execute(this.db)).rows[0]?.at ?? null;
     return {
-      card, deliveries,
+      card, deliveries, eligibility,
+      verification: { checkedAt: new Date().toISOString(), lastMovementAt: iso(lastMove), source: 'live_ledger' as const },
       totals: { originalCents: card.originalCents, reloadedCents: N(tot.reloaded), redeemedCents: N(tot.redeemed), refundedBackCents: N(tot.refunded_back), adjustedCents: N(tot.adjusted),
         transferredCents: N(tot.transferred), pendingReloadCents: N(tot.pending_reload), balanceCents: card.balanceCents, transactions: N(tot.n),
         // the balance column against the ledger: a card whose rows do not add up says so (it is never silently "fixed")

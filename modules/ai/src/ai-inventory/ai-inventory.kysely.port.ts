@@ -80,7 +80,7 @@ export class KyselyInventoryRead implements InventoryReadPort {
              EXTRACT(DAY FROM (now() - p.created_at))::int AS age_days,
              EXTRACT(DAY FROM (now() - m.last_retail_sale_at))::int AS days_since_sale,
              EXTRACT(DAY FROM (now() - m.last_usage_at))::int AS days_since_usage,
-             m.retail_units, m.consumption_units
+             m.retail_units, m.consumption_units, m.waste_units
       FROM inventory_products p
       LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id AND s.branch_id = ${branchId}
       LEFT JOIN inventory_categories c ON c.id = p.category_id AND c.tenant_id = p.tenant_id
@@ -89,7 +89,9 @@ export class KyselyInventoryRead implements InventoryReadPort {
                MAX(mv.created_at) FILTER (WHERE mv.movement_type = 'service_usage') AS last_usage_at,
                COALESCE(SUM(-mv.quantity_change) FILTER (WHERE mv.movement_type = 'retail_sale'   AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS retail_units,
                -- a recipe use records its exact amount (audit D9: 0.1 bottle leaves the bottle count unchanged)
-               COALESCE(SUM(coalesce((mv.metadata_json->>'quantityHundredths')::numeric / 100, -mv.quantity_change)) FILTER (WHERE mv.movement_type = 'service_usage' AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS consumption_units
+               COALESCE(SUM(coalesce((mv.metadata_json->>'quantityHundredths')::numeric / 100, -mv.quantity_change)) FILTER (WHERE mv.movement_type = 'service_usage' AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS consumption_units,
+               -- extras (AI Inventory 15): units written off in the window
+               COALESCE(SUM(abs(mv.quantity_change)) FILTER (WHERE mv.movement_type IN ('damaged', 'waste', 'expired') AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS waste_units
         FROM inventory_stock_movements mv
         WHERE mv.tenant_id = p.tenant_id AND mv.branch_id = ${branchId} AND mv.product_id = p.id
       ) m ON true
@@ -112,6 +114,7 @@ export class KyselyInventoryRead implements InventoryReadPort {
       daysSinceLastUsage: r.days_since_usage == null ? null : Number(r.days_since_usage),
       retailUnitsInWindow: Number(r.retail_units ?? 0),
       consumptionUnitsInWindow: Number(r.consumption_units ?? 0),
+      wasteUnitsInWindow: Number(r.waste_units ?? 0),
     }));
   }
 }

@@ -1493,4 +1493,8 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.PRODUCT_CHANGED': 'Sản phẩm này đã được thay đổi trên thiết bị khác từ lúc bạn mở. Hãy tải lại rồi thử lại.', // DRAFT — Kevin reviews
   'errors.APPROVAL_ESCALATE_REASON_REQUIRED': 'Hãy cho biết vì sao việc này gấp (ít nhất 3 ký tự).', // DRAFT — Kevin reviews
   'errors.APPROVAL_POLICY_PLATFORM_FLOOR': 'Nền tảng yêu cầu quy tắc duyệt chặt hơn — cài đặt của tiệm không thể nới lỏng.', // DRAFT — Kevin reviews
+  'errors.AI_RECOMMENDATION_NOT_FOUND': 'Không tìm thấy đề xuất này.', // DRAFT — Kevin reviews
+  'errors.AI_RECOMMENDATION_PROMPT_REQUIRED': 'Nhập lời thoại mới của lễ tân trước khi duyệt.', // DRAFT — Kevin reviews
+  'errors.AI_RECOMMENDATION_NOT_OPEN': 'Đề xuất này đã được xử lý trước đó.', // DRAFT — Kevin reviews
+  'errors.AI_RECOMMENDATION_REFUSED': 'Không thể áp dụng đề xuất này từ đây.', // DRAFT — Kevin reviews
 };

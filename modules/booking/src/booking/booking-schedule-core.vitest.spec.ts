@@ -4,7 +4,7 @@
 // early leave, lunch split, blocked time, adjacent appointments, buffers, fully booked, off day, missing schedule.
 import { describe, expect, it } from 'vitest';
 import {
-  pbComputeAvailabilityInWindows, pbOpenRanges, pbTechDayWindows, pbWithinTechWindows, type PBStatus,
+  pbComputeAvailabilityInWindows, pbOpenRanges, pbTechDayWindows, pbWithinTechWindows, pbDetectTechnicianConflict, type PBStatus,
 } from './booking.dto';
 
 const A = (startTime: string, endTime: string, status: PBStatus = 'booked') => ({ startTime, endTime, status });
@@ -114,5 +114,21 @@ describe('pbOpenRanges notBeforeMinute (same-day past-time exclusion)', () => {
   });
   it('future-day ranges pass through when now is before opening', () => {
     expect(pbOpenRanges(windows, 0, [], 300)).toEqual([{ start: 540, end: 1080, minutes: 540 }]); // now 5:00 < open
+  });
+});
+
+// extras 200-Technician 59 (round 10): start + estimated duration + cleanup buffer must end at or before the next appointment
+describe('appointment protection: duration + cleanup buffer vs the next appointment', () => {
+  const next = [{ appointmentId: 'next', technicianId: 't1', startTime: '11:00', endTime: '12:00', status: 'booked' as PBStatus }];
+  it('ending exactly when the buffer reaches the next start is allowed; one minute later is refused and names the next appointment', () => {
+    expect(pbDetectTechnicianConflict(next, 't1', '10:00', '10:55', 5)).toEqual({ status: 'none' });             // 10:55 + 5 = 11:00
+    expect(pbDetectTechnicianConflict(next, 't1', '10:00', '10:56', 5)).toEqual({ status: 'conflict', conflictingAppointmentId: 'next' });
+    expect(pbDetectTechnicianConflict(next, 't1', '10:00', '10:56', 0)).toEqual({ status: 'none' });             // no buffer → fits
+  });
+  it('the buffer protects the end of the previous appointment too; another technician or a cancelled booking never blocks', () => {
+    expect(pbDetectTechnicianConflict(next, 't1', '12:04', '12:30', 5).status).toBe('conflict');
+    expect(pbDetectTechnicianConflict(next, 't1', '12:05', '12:30', 5).status).toBe('none');
+    expect(pbDetectTechnicianConflict(next, 't2', '10:00', '11:30', 5).status).toBe('none');
+    expect(pbDetectTechnicianConflict([{ ...next[0], status: 'cancelled' as PBStatus }], 't1', '10:00', '11:30', 5).status).toBe('none');
   });
 });

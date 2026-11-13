@@ -10,6 +10,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody 
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { recordAuditStrict } from '@aipowersalon/audit';
+import type { Customer360 } from '@aipowersalon/api-contracts/tenant';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { isUuid, type RetentionContext } from '@aipowersalon/customers';
 import { CustomerIntelligenceCenter, CustomerIntelligenceError, CI_STATUS_FILTERS, CI_FLAGS, CI_DATE_FIELDS, CI_PRESETS } from './customer-intelligence-center';
@@ -41,7 +42,7 @@ const LIST = {
     status: { type: 'enum', values: CI_STATUS_FILTERS }, flag: { type: 'enum', values: CI_FLAGS }, dateField: { type: 'enum', values: CI_DATE_FIELDS },
     preset: { type: 'enum', values: CI_PRESETS }, branch: { type: 'text', maxLength: 760 },   // Customer Intelligence 23: 'all' · 'current' · an id · up to 20 ids, comma-separated
   },
-  sorts: { last_visit: null, recently_added: null, name: null, visits: null, days_since: null }, search: { maxLength: 100 }, dateRange: { maxDays: 7320 },
+  sorts: { last_visit: null, recently_added: null, name: null, visits: null, days_since: null, spend: null },   // spend: Customer Intelligence 30 search: { maxLength: 100 }, dateRange: { maxDays: 7320 },
   maxLimit: 100, defaultLimit: 25, params: ['page'],
 } as const;
 const SCANS = { filters: { preset: { type: 'enum', values: CI_PRESETS } }, sorts: { newest: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
@@ -73,6 +74,14 @@ export class CustomerIntelligenceCenterController {
   customer(@Req() q: any, @Param('id') id: string) {
     const c = ctxFrom(q); need(c, VIEW);
     return run(() => this.r().customer(c, id, (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'ai', action: 'customer_intelligence.customer_viewed', resourceType: 'customer', resourceId: id, summary: 'Customer intelligence opened', metadata: meta })));
+  }
+
+  /** Customer Intelligence 30 — Customer 360-Degree Intelligence (identity · service history · preferences · loyalty / membership ·
+   *  evidence-backed review suggestions); audited fail-closed like the classification read; masked contact without export */
+  @Get('customers/:id/360') @RequirePermission('pos.ai_customer_profile.view')
+  customer360(@Req() q: any, @Param('id') id: string): Promise<Customer360> {
+    const c = ctxFrom(q); need(c, VIEW);
+    return run(() => this.r().customer360(c, id, (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'ai', action: 'customer_intelligence.customer_360_viewed', resourceType: 'customer', resourceId: id, summary: 'Customer 360 view opened', metadata: meta }), { fullContact: can(c, 'pos.customers.export') }));
   }
 
   /** scan history, newest first */

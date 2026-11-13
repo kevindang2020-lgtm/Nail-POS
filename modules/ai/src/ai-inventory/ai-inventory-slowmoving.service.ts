@@ -19,6 +19,12 @@ export interface SlowMovingItem {
   usageVelocityPerWeek: number;
   classification: MovementClass;
   overstock: boolean;
+  /** extras (AI Inventory 15): units sold + used in the window, weeks of cover at that pace (null = no movement), units
+   *  written off in the window (damaged / waste / expired) and their cost (null when cost is hidden or unknown) */
+  unitsInWindow: number;
+  coverageWeeks: number | null;
+  wasteUnitsInWindow: number;
+  wasteValueCents: number | null;
   confidence: SlowMovingConfidence;
   recommendation: string;
 }
@@ -40,9 +46,10 @@ export class AiInventorySlowMovingService {
         productAgeDays: row.productAgeDays, daysSinceLastSale: row.daysSinceLastSale, daysSinceLastUsage: row.daysSinceLastUsage,
         retailUnitsInWindow: row.retailUnitsInWindow, consumptionUnitsInWindow: row.consumptionUnitsInWindow,
         isConsumable: (row.inventoryType ?? '') !== 'retail', // retail unit_type sells; everything else is service-consumed
+        wasteUnitsInWindow: row.wasteUnitsInWindow ?? 0,
       }, this.thresholds);
 
-      const show = INCLUDE.includes(r.classification) || (opts.includeNew && r.classification === 'new_insufficient_data') || r.overstock;
+      const show = INCLUDE.includes(r.classification) || (opts.includeNew && r.classification === 'new_insufficient_data') || r.overstock || r.wasteUnitsInWindow > 0;   // extras 15: waste too
       if (!show) continue;
 
       items.push({
@@ -50,6 +57,7 @@ export class AiInventorySlowMovingService {
         onHand: row.onHand, inventoryValueCents: r.inventoryValueCents,
         daysSinceLastActivity: r.daysSinceLastActivity, salesVelocityPerWeek: r.salesVelocityPerWeek, usageVelocityPerWeek: r.usageVelocityPerWeek,
         classification: r.classification, overstock: r.overstock, confidence: r.confidence, recommendation: r.recommendation,
+        unitsInWindow: r.unitsInWindow, coverageWeeks: r.coverageWeeks, wasteUnitsInWindow: r.wasteUnitsInWindow, wasteValueCents: r.wasteValueCents,
       });
     }
     // Worst first: dead → very_slow → slow → (overstock-only healthy). Tie-break by inventory value (descending).

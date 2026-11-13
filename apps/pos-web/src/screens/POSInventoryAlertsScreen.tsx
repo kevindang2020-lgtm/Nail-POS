@@ -74,6 +74,18 @@ export function POSInventoryAlertsScreen() {
   const k = sum.data; const rows: any[] = list.data?.rows ?? [];
   const canRecord = can('inventory.product_usage.submit'); const canAdjust = can('inventory.stock.adjust');
   const refresh = () => setTick((t) => t + 1);
+  // extras Stock Alerts 06 (round 10): row selection on Active Alerts — the footer states how many are selected beside the
+  // results and the pager; the one bulk action is Acknowledge selected (the SAME audited acknowledge, one product at a time,
+  // after a confirm). Selection is cleared when the tab / filters change.
+  const [sel, setSel] = useState<string[]>([]); const [bulkAsk, setBulkAsk] = useState(false); const [bulkBusy, setBulkBusy] = useState(false);
+  useEffect(() => { setSel([]); }, [key]);
+  const toggleSel = (id: string) => setSel((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+  const ackSelected = async () => {
+    setBulkBusy(true); let ok = 0; let failed = 0;
+    for (const id of sel) { try { await posInventoryAlertsApi.acknowledge(id); ok++; } catch { failed++; } }
+    setBulkBusy(false); setBulkAsk(false); setSel([]);
+    setNote({ tone: failed ? 'bad' : 'ok', text: tx('sa.sel.done', { n: fmtNumber(ok), f: fmtNumber(failed) }) }); refresh(); window.dispatchEvent(new CustomEvent('aps:nav-counts-changed'));
+  };
   const acknowledge = async (productId: string) => {
     setBusyAck(productId);
     try { await posInventoryAlertsApi.acknowledge(productId); setNote({ tone: 'ok', text: tx('sa.acked') }); refresh(); window.dispatchEvent(new CustomEvent('aps:nav-counts-changed')); }
@@ -109,6 +121,9 @@ export function POSInventoryAlertsScreen() {
           {can('inventory.reports.view') && (tab === 'usage' || tab === 'technicians') ? <button type="button" className="fk-btn ghost" onClick={() => void doExport('events')} disabled={exporting} data-testid="export-events">{tx('sa.exportEvents')}</button> : null}
         </div>
       </header>
+      {bulkAsk ? <FitDialog title={tx('sa.sel.askTitle', { n: fmtNumber(sel.length) })} subtitle={tx('sa.sel.askSub')} onClose={() => setBulkAsk(false)} busy={bulkBusy} testId="sel-confirm"
+        footer={<><button type="button" className="fk-btn" onClick={() => setBulkAsk(false)} disabled={bulkBusy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" onClick={ackSelected} disabled={bulkBusy} data-testid="sel-confirm-go">{bulkBusy ? tx('pos.saving_2') : tx('sa.sel.ack')}</button></>}>
+        <p className="fk-hint">{tx('sa.sel.askNote')}</p></FitDialog> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>
         {note.productId ? <button type="button" className="fk-link" onClick={() => setProduct(note.productId!)} data-testid="note-view-product">{tx('sa.viewProduct')}</button> : null}
         <button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
@@ -138,14 +153,19 @@ export function POSInventoryAlertsScreen() {
         {chips.length ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div> : null}
       <FitPanel testId="sa-list" bodyRef={fit.ref} className="fn-records" title={<span className="fn-chips">{tx('sa.tab.' + tab)}{list.data ? <span className="fk-muted"> · {fmtNumber(list.data.total)}</span> : null}<span className="fk-hint">{tx('sa.hint.' + tab)}</span></span>}
-        footer={<Pager info={list.data ? { page: list.data.page, pageSize: list.data.pageSize, totalItems: list.data.total, totalPages: list.data.pages } : null} onPage={setPage} label={tx('sa.tab.' + tab)} />}>
+        footer={<>{tab === 'active' ? <span className="sa-selbar" data-testid="sel-count">{tx('sa.sel.count', { n: fmtNumber(sel.length) })}
+            {sel.length ? <> <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk(true)} disabled={bulkBusy} data-testid="sel-ack">{tx('sa.sel.ack')}</button>
+              <button type="button" className="fk-link" onClick={() => setSel([])} data-testid="sel-clear">{tx('sa.sel.clear')}</button></> : null}</span> : null}
+          <Pager info={list.data ? { page: list.data.page, pageSize: list.data.pageSize, totalItems: list.data.total, totalPages: list.data.pages } : null} onPage={setPage} label={tx('sa.tab.' + tab)} /></>}>
         {list.error ? <StateBlock error={list.error} onRetry={list.reload} /> : !list.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : rows.length === 0 ? (chips.length ? <Empty title={tx('sa.noMatches')}><button type="button" className="fk-btn" onClick={clearAll}>{tx('finance.clearFilters')}</button></Empty>
             : <Empty title={tx('sa.empty.' + tab)}>{tab !== 'active' && canRecord ? <button type="button" className="fk-btn" onClick={() => setRecording({})}>{tx('sa.recordUse')}</button> : null}</Empty>)
           : <table className="fk-table fn-table sa-table" data-testid={'table-' + tab}>
-            <thead><tr>{head.map((h, i) => <th key={i} className={['onHand', 'reorder', 'used', 'uses', 'technicians', 'products', 'onHandAt', 'services'].includes(h) ? 'num' : h === 'since' || h === 'ackBy' ? 't-opt' : ''}>{h ? tx('sa.col.' + h) : ''}</th>)}</tr></thead>
+            <thead><tr>{tab === 'active' ? <th><input type="checkbox" aria-label={tx('sa.sel.page')} data-testid="sel-page" checked={rows.length > 0 && rows.every((r: any) => sel.includes(r.productId))}
+              onChange={(e) => setSel((x) => (e.target.checked ? [...new Set([...x, ...rows.map((r: any) => String(r.productId))])] : x.filter((y) => !rows.some((r: any) => r.productId === y))))} /></th> : null}{head.map((h, i) => <th key={i} className={['onHand', 'reorder', 'used', 'uses', 'technicians', 'products', 'onHandAt', 'services'].includes(h) ? 'num' : h === 'since' || h === 'ackBy' ? 't-opt' : ''}>{h ? tx('sa.col.' + h) : ''}</th>)}</tr></thead>
             <tbody>{rows.map((r: any) => tab === 'active' ? (
               <tr key={r.productId} data-testid="alert-row" className={r.acknowledgedAt ? 'sa-acked' : ''}>
+                <td><input type="checkbox" aria-label={tx('sa.sel.row', { n: r.name })} data-testid="sel-row" checked={sel.includes(r.productId)} onChange={() => toggleSel(r.productId)} disabled={!!r.acknowledgedAt} /></td>
                 <td><button type="button" className="fk-li-t link" onClick={() => setProduct(r.productId)}>{r.name}</button><span className="fk-li-s">{[r.sku, r.brand, r.vendor].filter(Boolean).join(' · ') || '—'}</span></td>
                 <td><span className={'fk-chip ' + (SEV_TONE[r.severity] ?? 'mut')}>{sevLbl(r.severity)}</span>{r.acknowledgedAt ? <span className="fk-li-s">{tx('sa.ackBy', { who: r.acknowledgedBy ?? '—' })}</span> : null}</td>
                 <td className="num"><b>{fmtNumber(r.onHand)}</b><RestockLine r={r.restock} /></td>

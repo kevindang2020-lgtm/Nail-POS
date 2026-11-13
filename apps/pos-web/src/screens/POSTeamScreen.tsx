@@ -19,7 +19,7 @@ import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { posTeamMembersScreenApi, posTeamDataAlertsApi } from '../api/posTeamScreensApi';
 import { useCan } from '../components/usePermissions';
 import { fmtMoney } from '../i18n/format';
-import { FitPanel, KpiCard, Pager, Empty, useDebounced, downloadText, requestId } from '../components/FitKit';
+import { FitPanel, FitDialog, KpiCard, Pager, Empty, useDebounced, downloadText, requestId } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { pageOf, whenTime } from './technicianScreenParts';
 import { nf } from './teamShared';
@@ -66,6 +66,7 @@ export function POSTeamScreen() {
   const setTab = (v: string) => setU({ tab: v }); const setRole = (v: string) => setU({ role: v }); const setStatus = (v: string) => setU({ status: v }); const setShift = (v: string) => setU({ shift: v });
   const setDepartment = (v: string) => setU({ department: v }); const setAccount = (v: string) => setU({ account: v }); const setExtra = (v: string) => setU({ extra: v }); const setSort = (v: string) => setU({ sort: v });
   const [moreOpen, setMoreOpen] = useState(false);
+  const [glossary, setGlossary] = useState(false);   // extras TEAM MANAGEMENT 11: Revenue vs earnings glossary (server entries)
   // while a search is typed the page lives in memory only (the URL never carries the search, so it must not carry its page)
   const [memPage, setMemPage] = useState(1); const page = q ? memPage : u.page;
   const setPage = (p: number) => (q ? setMemPage(p) : setU({ page: p }));
@@ -170,7 +171,12 @@ export function POSTeamScreen() {
           sub={state('approvals', k?.approvals ? tx('tmm.kpi.approvalsSub', { s: nf(k.approvals.skills), t: nf(k.approvals.timeOff), p: nf(k.approvals.profile + k.approvals.membership) }) : '')} onClick={() => document.querySelector('[data-testid="approvals"]')?.scrollIntoView({ block: 'center' })} />
         <KpiCard testId="kpi-positions" label={tx('pos.open_positions')} loading={!d && !dash.error} value={d ? tx('tmm.notConfigured') : ''} sub={tx('tmm.kpi.positionsSub')} />
       </div>
-      <p className="fk-hint" data-testid="kpi-defs">{tx('tmm.kpi.defs')}</p>
+      <p className="fk-hint" data-testid="kpi-defs">{tx('tmm.kpi.defs')}{d?.glossary?.length ? <> <button type="button" className="fk-link" onClick={() => setGlossary(true)} data-testid="open-glossary">{tx('tmm.gl.open')}</button></> : null}</p>
+      {glossary && d?.glossary ? <FitDialog title={tx('tmm.gl.title')} subtitle={tx('tmm.gl.sub')} onClose={() => setGlossary(false)} testId="glossary"
+        footer={<button type="button" className="fk-btn primary" onClick={() => setGlossary(false)}>{tx('pos.close')}</button>}>
+        <dl className="fk-dl" data-testid="glossary-list">{(d.glossary as Array<{ key: string; dateBasis: string }>).map((g) => <div key={g.key} data-testid={'gl-' + g.key}>
+          <dt><b>{tx('tmm.gl.' + g.key + '.name')}</b></dt><dd>{tx('tmm.gl.' + g.key + '.what')}<span className="fk-li-s"> · {tx('tmm.gl.date')}: {tx('tmm.gl.basis.' + g.dateBasis)}</span></dd></div>)}</dl>
+      </FitDialog> : null}
       {d?.syncFreshness ? <p className="fk-hint" data-testid="sync-freshness" title={tx('tmm.sync.def')}>{tx('tmm.sync.title')}{' '}
         {(['queueAt', 'bookingAt', 'timeClockAt', 'technicianStatusAt', 'technicianAppAt'] as const).map((key) => `${tx('tmm.sync.' + key)} ${d.syncFreshness[key] ? whenTime(d.syncFreshness[key]) : tx('tmm.sync.none')}`).join(' · ')}</p> : null}
 

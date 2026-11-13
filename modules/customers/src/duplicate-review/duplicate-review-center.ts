@@ -30,6 +30,8 @@ import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
 import { toStoredCustomerPhone } from '../customer-activation-rules/customer-activation-core';
 import { RetentionRepository, isUuid, maskPhone, maskEmail, type RetentionContext, type BranchScope } from '../retention/retention.repository';
 import { mergeCustomersTx, MERGE_REASSIGN_TABLES, CustomerMergeError } from '../customers/customer-merge';
+import { loadMergeSnapshot, assessUnmerge, unmergeCustomersTx, CustomerUnmergeError } from '../customers/customer-unmerge';
+import type { CustomerMergeRecordPage, CustomerUnmergeCheck, CustomerUnmergeResult } from '@aipowersalon/api-contracts/tenant';
 import {
   DR_RULE_VERSION, DR_OPEN_STATUSES, DR_STATUS_FILTERS, DR_CONFIDENCES, DR_REASONS, DR_DATE_FIELDS, DR_PRESETS, DR_SORTS, DR_PAGE_SIZES,
   DR_EVENT_TYPES, DR_DECISIONS, DR_MAX_KEY_MEMBERS, DR_SCAN_MIN_GAP_SECONDS, DR_STALE_AFTER_MINUTES, DR_PREVIEW_TTL_MINUTES, DR_HEALTH_GAP_SECONDS,
@@ -631,6 +633,59 @@ export class DuplicateReviewCenter {
       if (e instanceof CustomerMergeError) throw new DuplicateReviewError(e.message, e.code, 409);
       if (code === 'DUPLICATE_ALREADY_MERGED') throw new DuplicateReviewError('This group was already merged.', 'DUPLICATE_ALREADY_MERGED', 409);
       throw new DuplicateReviewError('The merge could not finish. Nothing was changed.', 'DUPLICATE_MERGE_FAILED', 500);
+    }
+  }
+
+  // ── extras Customer 08 (Nov 13 2026): reversible merges ───────────────────────────────────────────────────────────
+  /** the salon's completed merges (newest first) with the people involved and whether each was undone */
+  async merges(ctx: DrCtx, f: { page?: unknown; pageSize?: unknown; status?: unknown }): Promise<CustomerMergeRecordPage> {
+    const T = ctx.tenantId;
+    const pageSize = (DR_PAGE_SIZES as readonly number[]).includes(Number(f.pageSize)) ? Number(f.pageSize) : 25;
+    const page = Math.max(1, Math.min(100000, Math.floor(Number(f.page) || 1)));
+    const st = f.status === 'active' || f.status === 'undone' ? String(f.status) : null;
+    const W = st ? sql`and m.status = ${st}` : sql``;
+    const total = Number((await sql<Row>`select count(*)::int as n from customer_merge_snapshots m where m.tenant_id = ${T} ${W}`.execute(this.db)).rows[0]?.n ?? 0);
+    const rows = (await sql<Row>`select m.id, m.group_id, m.merged_at, m.survivor_customer_id, m.source_customer_ids, m.status, m.undone_at, m.undo_reason,
+        coalesce(mu.full_name, mu.email) as merged_by, coalesce(uu.full_name, uu.email) as undone_by
+      from customer_merge_snapshots m
+      left join users mu on mu.id = m.merged_by_user_id and mu.tenant_id = ${T}
+      left join users uu on uu.id = m.undone_by_user_id and uu.tenant_id = ${T}
+      where m.tenant_id = ${T} ${W} order by m.merged_at desc, m.id desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+    const ids = [...new Set(rows.flatMap((r) => [String(r.survivor_customer_id), ...((r.source_customer_ids as string[]) ?? [])]))];
+    const names = new Map(ids.length ? (await sql<Row>`select id, coalesce(nullif(full_name, ''), trim(coalesce(first_name, '') || ' ' || coalesce(last_name, ''))) as name from customers where tenant_id = ${T} and id = any(${ids}::uuid[])`.execute(this.db)).rows.map((r) => [String(r.id), (r.name as string) || null] as const) : []);
+    const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : v == null ? null : String(v));
+    return {
+      items: rows.map((r) => ({ id: String(r.id), groupId: String(r.group_id), mergedAt: iso(r.merged_at)!, mergedBy: (r.merged_by as string) ?? null,
+        survivor: { id: String(r.survivor_customer_id), name: names.get(String(r.survivor_customer_id)) ?? null },
+        sources: ((r.source_customer_ids as string[]) ?? []).map((x) => ({ id: x, name: names.get(x) ?? null })),
+        status: r.status === 'undone' ? 'undone' as const : 'active' as const, undoneAt: iso(r.undone_at), undoneBy: (r.undone_by as string) ?? null, undoReason: (r.undo_reason as string) ?? null })),
+      total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
+  /** read-only: can this merge be undone right now? */
+  async unmergeCheck(ctx: DrCtx, id: string): Promise<CustomerUnmergeCheck> {
+    if (!isUuid(id)) throw new DuplicateReviewError('That merge was not found.', 'CUSTOMER_UNMERGE_NOT_FOUND', 404);
+    const snap = await loadMergeSnapshot(this.db, ctx.tenantId, id, false);
+    if (!snap) throw new DuplicateReviewError('That merge was not found.', 'CUSTOMER_UNMERGE_NOT_FOUND', 404);
+    return assessUnmerge(this.db, snap);
+  }
+
+  /** undo the merge from its snapshot, audited in the same transaction; refuses (409, coded) when anything changed since */
+  async unmerge(ctx: DrCtx, id: string, b: { reason?: unknown; confirm?: unknown }, audit: (trx: any, meta: Record<string, unknown>) => Promise<void>): Promise<CustomerUnmergeResult> {
+    if (!isUuid(id)) throw new DuplicateReviewError('That merge was not found.', 'CUSTOMER_UNMERGE_NOT_FOUND', 404);
+    const reason = String(b?.reason ?? '').trim();
+    if (b?.confirm !== true) throw new DuplicateReviewError('Confirm that you want to undo this merge.', 'CUSTOMER_UNMERGE_CONFIRM_REQUIRED', 400);
+    if (reason.length < 3) throw new DuplicateReviewError('Give a reason for undoing this merge.', 'CUSTOMER_UNMERGE_REASON_REQUIRED', 400);
+    try {
+      return await this.db.transaction().execute(async (trx) => {
+        const out = await unmergeCustomersTx(trx, { tenantId: ctx.tenantId, branchId: isUuid(ctx.branchId) ? ctx.branchId : null, userId: ctx.userId }, id, reason);
+        await audit(trx, { snapshotId: id, survivorId: out.survivorId, restoredCustomerIds: out.restoredCustomerIds, restored: out.restored, pointsRestored: out.pointsRestored, reason });
+        return out;
+      });
+    } catch (e) {
+      if (e instanceof CustomerUnmergeError) throw new DuplicateReviewError(e.message, e.code, e.code === 'CUSTOMER_UNMERGE_NOT_FOUND' ? 404 : 409, e.details);
+      throw e;
     }
   }
 

@@ -1,7 +1,7 @@
 // posAiApi.ts — POS access to the AI assistants. `packages` returns this tenant's per-package access state (the same
 // gate decision the backend enforces) so the UI knows whether to offer the assistant or show a locked panel; `invoke`
 // runs an assistant. Tenant scope is derived from the session server-side.
-import type { AiActivityRow, AiCenterOverview, AiCenterSection, AiRevenueSummary, CallIntelSummary, ChecklistItem, CopilotHoldRequest, CopilotHoldResult, CopilotSettings, IntentResult, Metric, ParsedReceipt, ProvisioningJob, ReceiptItem, ReceptionistOverview, ReceptionistSettings, WorkflowStat } from '@aipowersalon/api-contracts/tenant';
+import type { AiActivityRow, AiCenterOverview, AiCenterSection, AiRevenueSummary, CallIntelSummary, ChecklistItem, CopilotHoldRequest, CopilotHoldResult, CopilotSettings, IntentResult, Metric, ParsedReceipt, ProvisioningJob, ReceiptItem, ReceptionistOverview, ReceptionistSettings, WorkflowStat, AiRecommendationList, AiRecommendationDecision } from '@aipowersalon/api-contracts/tenant';
 export type { AiActivityRow, AiCenterOverview, AiCenterSection, AiRevenueSummary, CallIntelSummary, ChecklistItem, CopilotHoldResult, CopilotSettings, IntentResult, Metric, ParsedReceipt, ProvisioningJob, ReceiptItem, ReceptionistOverview, ReceptionistSettings, WorkflowStat };   // the API's own contract (Constitution 13 §15) — never re-declare it here
 import { api } from './client';
 
@@ -75,6 +75,10 @@ export const posAiApi = {
   checkReceptionistSettings: () => api.post<any>('/tenant/ai/receptionist/settings/check', {}),
   receptionistSettingsLastCheck: () => api.get<any>('/tenant/ai/receptionist/settings/check/last'),
   receptionistSettingsHistory: (page = 1, pageSize = 10) => api.get<any>('/tenant/ai/receptionist/settings/history', { page, pageSize }),
+  // AI Receptionist Settings 07: salon-side approval of the learning loop's recommendations (approve = DRAFT only, never live)
+  aiRecommendations: (status?: string) => api.get<AiRecommendationList>('/tenant/ai/receptionist/learning/suggestions', status ? { status } : {}),
+  approveAiRecommendation: (id: string, newPromptBody?: string) => api.post<AiRecommendationDecision>(`/tenant/ai/receptionist/learning/suggestions/${encodeURIComponent(id)}/approve`, newPromptBody ? { newPromptBody } : {}),
+  rejectAiRecommendation: (id: string) => api.post<AiRecommendationDecision>(`/tenant/ai/receptionist/learning/suggestions/${encodeURIComponent(id)}/reject`, {}),
   provisionReceptionistAgent: (id: string) => api.post<ProvisioningJob>(`/tenant/ai/receptionist/agents/${id}/provision`, {}),
   receptionistProvisioningJob: (jobId: string) => api.get<ProvisioningJob>(`/tenant/ai/receptionist/provisioning/${jobId}`),
   workflowRunsSummary: () => api.get<Record<string, WorkflowStat>>('/tenant/ai/workflows/runs/summary'),

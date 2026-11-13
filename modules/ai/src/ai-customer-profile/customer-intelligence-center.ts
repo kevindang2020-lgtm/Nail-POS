@@ -17,7 +17,8 @@ import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, toStoredCustomerPhone, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { summarizeVisits, classifyInactivity, rebookingOpportunity, evaluateChurnRisk, DEFAULT_TUNABLES, type ProfileTunables, type VisitRecord, type AppointmentRecord } from './ai-customer-profile-core';
-import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
+import { addDays as addYmdDays } from '@aipowersalon/date-time';
+import type { Customer360, Ci360Suggestion } from '@aipowersalon/api-contracts/tenant';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export type CiCtx = RetentionContext;
@@ -30,10 +31,10 @@ export class CustomerIntelligenceError extends Error {
 export const CI_RULE_VERSION = 'ci-2026-11-02c';   // b: + the churn rule (Churn Watch, 764) · c: + the rebooking window and opportunity date (Rebooking, 765)
 export const CI_STATES = ['active', 'rebooking_soon', 'due_for_return', 'inactive', 'long_term_inactive', 'insufficient_history'] as const;
 export const CI_STATUS_FILTERS = ['all', ...CI_STATES, 'inactive_all', 'never_served', 'not_scanned'] as const;   // inactive_all = the Inactive card (inactive + long-term)
-export const CI_FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate'] as const;
+export const CI_FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate', 'high_value'] as const;   // high_value: Customer Intelligence 30
 export const CI_DATE_FIELDS = ['last_visit', 'created', 'next_appointment', 'profile_updated'] as const;
 export const CI_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'last_90', 'year', 'custom'] as const;
-export const CI_SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since'] as const;
+export const CI_SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since', 'spend'] as const;   // spend: Customer Intelligence 30 high-value list
 export const CI_PAGE_SIZES = [10, 25, 50, 100] as const;
 const OPEN_DUP = ['pending', 'in_review', 'deferred', 'failed'];
 const VISIT = [...VISIT_TICKET_STATUSES] as string[];
@@ -91,7 +92,15 @@ export function customerSearchPredicate(T: string, q: string) {
   const digits = q.replace(/\D/g, '');
   const stored = toStoredCustomerPhone(q) ?? null;
   const conds = [];
-  if (isUuid(`${q}`)) conds.push(sql`(c.id = ${q}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${q}::uuid and a.customer_id = c.id))`);
+  if (isUuid(`${q}`)) {
+    conds.push(sql`(c.id = ${q}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${q}::uuid and a.customer_id = c.id))`);
+    // extras Customer Intelligence 07 (round 10): a TECHNICIAN id finds the customers that technician served (completed visit),
+    // was assigned to (an appointment, any status) or that the customer verified as preferred — each labelled by customerMatchVia
+    conds.push(sql`exists (select 1 from tickets t left join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null
+      where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]) and (l.technician_id = ${q}::uuid or t.primary_technician_id = ${q}::uuid))`);
+    conds.push(sql`exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = c.id and a.technician_id = ${q}::uuid)`);
+    conds.push(sql`c.preferred_technician_id = ${q}::uuid`);
+  }
   else {
     if (q.includes('@')) conds.push(sql`c.email ilike ${'%' + likeEsc(q) + '%'}`);
     if (stored) conds.push(sql`c.normalized_phone = ${stored}`);
@@ -104,6 +113,12 @@ export function customerSearchPredicate(T: string, q: string) {
           left join technicians tc on tc.id = l.technician_id and tc.tenant_id = l.tenant_id
         where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
           and (vi_fold(coalesce(l.service_name_snapshot, '')) ilike ${folded} or vi_fold(coalesce(tc.full_name, '')) ilike ${folded}))`);
+      // extras Customer Intelligence 07 (round 10): a technician the customer was ASSIGNED to (an appointment of any status — a
+      // previous booking, not proof of service) and the customer's verified PREFERRED technician
+      conds.push(sql`exists (select 1 from pos_tech_appointments a join technicians ta on ta.id = a.technician_id and ta.tenant_id = a.tenant_id
+        where a.tenant_id = ${T} and a.customer_id = c.id and vi_fold(coalesce(ta.full_name, ta.first_name || ' ' || coalesce(ta.last_name, ''))) ilike ${folded})`);
+      conds.push(sql`exists (select 1 from technicians tf where tf.tenant_id = ${T} and tf.id = c.preferred_technician_id
+        and vi_fold(coalesce(tf.full_name, tf.first_name || ' ' || coalesce(tf.last_name, ''))) ilike ${folded})`);
       // the visit's main technician (a ticket may have no service lines yet, e.g. an imported visit)
       conds.push(sql`exists (select 1 from tickets t join technicians tp on tp.id = t.primary_technician_id and tp.tenant_id = t.tenant_id
         where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
@@ -111,6 +126,28 @@ export function customerSearchPredicate(T: string, q: string) {
     }
   }
   return sql`(${sql.join(conds, sql` or `)})`;
+}
+
+/** extras Customer Intelligence 07 (round 10): WHICH kind of record a search matched, strongest first — the customer's own
+ *  identity, a completed visit with the technician, an appointment the technician was assigned to, the verified preference,
+ *  else a service from a visit. Same inputs as customerSearchPredicate; never widens what is found. */
+export function customerMatchVia(T: string, q: string) {
+  const folded = sql`${'%'} || vi_fold(${likeEsc(q)}::text) || ${'%'}`;
+  const tech = (col: 'tc' | 'ta' | 'tf') => (col === 'tc' ? sql`vi_fold(coalesce(tc.full_name, '')) ilike ${folded}` : col === 'ta'
+    ? sql`vi_fold(coalesce(ta.full_name, ta.first_name || ' ' || coalesce(ta.last_name, ''))) ilike ${folded}` : sql`vi_fold(coalesce(tf.full_name, tf.first_name || ' ' || coalesce(tf.last_name, ''))) ilike ${folded}`);
+  if (isUuid(`${q}`)) return sql<string>`(case when c.id = ${q}::uuid then 'customer'
+      when exists (select 1 from tickets t left join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null
+        and t.status = any(${VISIT}::text[]) and (l.technician_id = ${q}::uuid or t.primary_technician_id = ${q}::uuid)) then 'visit_technician'
+      when exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = c.id and a.technician_id = ${q}::uuid) then 'assigned_technician'
+      when c.preferred_technician_id = ${q}::uuid then 'preferred_technician' else 'appointment' end)`;
+  return sql<string>`(case when vi_fold(coalesce(c.full_name, c.first_name || ' ' || coalesce(c.last_name, ''))) ilike ${folded} or coalesce(c.email, '') ilike ${'%' + likeEsc(q) + '%'}
+        or regexp_replace(coalesce(c.normalized_phone, ''), '\D', '', 'g') like ${'%' + (q.replace(/\D/g, '') || '¤') + '%'} then 'customer'
+      when exists (select 1 from tickets t left join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null
+          left join technicians tc on tc.tenant_id = t.tenant_id and (tc.id = l.technician_id or tc.id = t.primary_technician_id)
+        where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]) and ${tech('tc')}) then 'visit_technician'
+      when exists (select 1 from pos_tech_appointments a join technicians ta on ta.id = a.technician_id and ta.tenant_id = a.tenant_id where a.tenant_id = ${T} and a.customer_id = c.id and ${tech('ta')}) then 'assigned_technician'
+      when exists (select 1 from technicians tf where tf.tenant_id = ${T} and tf.id = c.preferred_technician_id and ${tech('tf')}) then 'preferred_technician'
+      else 'service' end)`;
 }
 
 export interface CiQuery {
@@ -124,6 +161,9 @@ export type AuditFn = (trx: Kysely<any>, meta: Record<string, unknown>) => Promi
 
 /** Customer Intelligence 23: at most this many branches in one "selected branches" view */
 export const CI_MAX_SELECTED_BRANCHES = 20;
+
+/** Customer Intelligence 30: a customer's lifetime settled spend (the same settled-visit statuses the scan counts) */
+const spendOf = (T: string) => sql`(select coalesce(sum(t.total_cents), 0)::bigint from tickets t where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]))`;
 
 export class CustomerIntelligenceCenter {
   private readonly ret: RetentionRepository;
@@ -363,6 +403,9 @@ export class CustomerIntelligenceCenter {
     if (flag === 'rebooking') where.push(sql`sn.rebooking`);
     if (flag === 'upcoming') where.push(sql`sn.has_upcoming`);
     if (flag === 'duplicate') where.push(sql`exists (select 1 from customer_duplicate_groups g where g.tenant_id = ${T} and c.id = any(g.member_ids) and g.status = any(${OPEN_DUP}::text[]))`);
+    // Customer Intelligence 30: high value = lifetime settled spend at or above the salon's own 90th percentile (customers with visits)
+    if (flag === 'high_value') where.push(sql`${spendOf(T)} >= coalesce((select percentile_cont(0.9) within group (order by x.s) from (select sum(t.total_cents) as s from tickets t
+      where t.tenant_id = ${T} and t.removed_at is null and t.status = any(${VISIT}::text[]) and t.customer_id is not null group by t.customer_id) x), 0) and ${spendOf(T)} > 0`);
     if (per.start && per.end) {
       if (dateField === 'created') where.push(sql`c.created_at >= ${per.start} and c.created_at < ${per.end}`);
       else if (dateField === 'profile_updated') where.push(sql`c.updated_at >= ${per.start} and c.updated_at < ${per.end}`);
@@ -375,6 +418,7 @@ export class CustomerIntelligenceCenter {
       : sort === 'name' ? sql`lower(coalesce(c.full_name, c.first_name)) asc, c.id asc`
       : sort === 'visits' ? sql`coalesce(sn.completed_visits, 0) desc, sn.last_visit_at desc nulls last, c.id desc`
       : sort === 'days_since' ? sql`sn.days_since_last desc nulls last, c.id desc`
+      : sort === 'spend' ? sql`spend_cents desc, c.id desc`
       : sql`sn.last_visit_at desc nulls last, c.created_at desc, c.id desc`;
     const total = N((await sql<Row>`select count(*)::int as n from customers c left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id where c.tenant_id = ${T} and ${W}`.execute(this.db)).rows[0]?.n);
     const rows = (await sql<Row>`select c.id, c.full_name, c.first_name, c.last_name, c.normalized_phone, c.phone_display, c.email, c.created_at, c.preferred_technician_id,
@@ -383,9 +427,10 @@ export class CustomerIntelligenceCenter {
         coalesce(nullif(pt.full_name, ''), trim(coalesce(pt.first_name, '') || ' ' || coalesce(pt.last_name, ''))) as preferred_technician,
         (select coalesce(nullif(tc.full_name, ''), trim(coalesce(tc.first_name, '') || ' ' || coalesce(tc.last_name, ''))) from tickets t join technicians tc on tc.id = t.primary_technician_id and tc.tenant_id = t.tenant_id
           where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]) order by coalesce(t.paid_at, t.created_at) desc limit 1) as last_technician,
-        lp.points_balance, lp.loyalty_tier,
+        lp.points_balance, lp.loyalty_tier, ${spendOf(T)} as spend_cents,
         exists (select 1 from customer_memberships m where m.tenant_id = ${T} and m.customer_id = c.id and m.status = 'active') as member,
-        exists (select 1 from customer_duplicate_groups g where g.tenant_id = ${T} and c.id = any(g.member_ids) and g.status = any(${OPEN_DUP}::text[])) as duplicate
+        exists (select 1 from customer_duplicate_groups g where g.tenant_id = ${T} and c.id = any(g.member_ids) and g.status = any(${OPEN_DUP}::text[])) as duplicate,
+        ${q ? customerMatchVia(T, q) : sql`null`} as matched_via
       from customers c
       left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id
       left join technicians pt on pt.tenant_id = c.tenant_id and pt.id = c.preferred_technician_id
@@ -404,6 +449,8 @@ export class CustomerIntelligenceCenter {
         churnWatch: retention.get(String(r.id))?.segment === 'at_risk', rebooking: !!r.rebooking, rebookingReason: r.rebooking_reason ?? null, evidence: (r.evidence ?? []) as string[], computedAt: iso(r.computed_at),
         lastTechnician: r.last_technician ? String(r.last_technician).trim() || null : null, preferredTechnician: r.preferred_technician ? String(r.preferred_technician).trim() || null : null,
         loyalty: r.points_balance == null ? null : { points: N(r.points_balance), tier: r.loyalty_tier ?? null }, member: !!r.member, duplicate: !!r.duplicate,
+        matchedVia: r.matched_via ?? null,
+        spendCents: N(r.spend_cents),   // Customer Intelligence 30: lifetime settled spend (the high-value list)
       })),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, status, flag: flag ?? null, dateField, preset: per.preset, from: per.from, to: per.to, sort },
@@ -451,6 +498,67 @@ export class CustomerIntelligenceCenter {
         churnWatch: !!r.churn_watch, rebooking: !!r.rebooking, rebookingReason: r.rebooking_reason ?? null, evidence: (r.evidence ?? []) as string[], computedAt: iso(r.computed_at), scanId: r.scan_id,
       },
       duplicateGroups: groups.map((g) => ({ id: String(g.id), confidence: g.confidence, status: g.status, reasons: g.reasons })),
+    };
+  }
+
+  /** Customer Intelligence 30 — Customer 360-Degree Intelligence: identity, service history, preferences, loyalty / membership and
+   *  evidence-backed review suggestions in ONE read (each from its owning module). Advisory only; the open is audited (fail-closed). */
+  async customer360(ctx: CiCtx, id: string, audit: AuditFn, opts: { fullContact: boolean }): Promise<Customer360> {
+    const T = ctx.tenantId;
+    await this.tunables(ctx);
+    const s = await this.scope(ctx);
+    if (!isUuid(`${id}`)) throw new CustomerIntelligenceError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
+    const c = (await sql<Row>`select c.id, c.full_name, c.first_name, c.last_name, c.normalized_phone, c.phone_display, c.email, c.phone_verified_at, c.created_at, c.preferred_language,
+        coalesce(nullif(pt.full_name, ''), trim(coalesce(pt.first_name, '') || ' ' || coalesce(pt.last_name, ''))) as preferred_technician,
+        sn.status, sn.completed_visits, sn.last_visit_at, sn.typical_interval_days, sn.days_since_last, sn.has_upcoming, sn.next_appointment_date, sn.rebooking, sn.rebooking_reason, sn.computed_at,
+        lp.points_balance, lp.loyalty_tier, ${spendOf(T)} as spend_cents
+      from customers c
+      left join technicians pt on pt.tenant_id = c.tenant_id and pt.id = c.preferred_technician_id
+      left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id
+      left join customer_loyalty_profiles lp on lp.tenant_id = c.tenant_id and lp.customer_id = c.id
+      where c.tenant_id = ${T} and c.id = ${id}::uuid and c.archived_at is null and ${this.custVisible(s)}`.execute(this.db)).rows[0];
+    if (!c) throw new CustomerIntelligenceError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
+    const [visits, vTotal, pref, member, dups, retention] = await Promise.all([
+      sql<Row>`select t.id, coalesce(t.paid_at, t.created_at) as at, t.total_cents, b.name as branch,
+          coalesce(nullif(tc.full_name, ''), trim(coalesce(tc.first_name, '') || ' ' || coalesce(tc.last_name, ''))) as technician,
+          (select array_agg(l.service_name_snapshot order by l.service_name_snapshot) from ticket_service_lines l where l.ticket_id = t.id and l.service_name_snapshot is not null) as services
+        from tickets t left join technicians tc on tc.tenant_id = t.tenant_id and tc.id = t.primary_technician_id left join branches b on b.id = t.branch_id and b.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and t.customer_id = ${id}::uuid and t.removed_at is null and t.status = any(${VISIT}::text[]) order by coalesce(t.paid_at, t.created_at) desc, t.id desc limit 10`.execute(this.db),
+      sql<Row>`select count(*)::int as n from tickets t where t.tenant_id = ${T} and t.customer_id = ${id}::uuid and t.removed_at is null and t.status = any(${VISIT}::text[])`.execute(this.db),
+      sql<Row>`select preferred_style_notes, product_preferences_json, favorite_colors_json from customer_preferences where tenant_id = ${T} and customer_id = ${id}::uuid limit 1`.execute(this.db),
+      sql<Row>`select m.status, p.name as plan from customer_memberships m left join membership_plans p on p.id = m.plan_id and p.tenant_id = m.tenant_id
+        where m.tenant_id = ${T} and m.customer_id = ${id}::uuid order by (m.status = 'active') desc, m.created_at desc limit 1`.execute(this.db),
+      sql<Row>`select id, reasons from customer_duplicate_groups where tenant_id = ${T} and ${id}::uuid = any(member_ids) and status = any(${OPEN_DUP}::text[]) order by detected_at desc limit 3`.execute(this.db),
+      this.retentionSegments(ctx, [id]),
+    ]);
+    await this.db.transaction().execute(async (trx) => { await audit(trx as unknown as Kysely<any>, { customerId: id, view: '360' }); });
+    const list = (v: unknown): string[] => { const x = typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return v.split(',').map((y) => y.trim()); } })() : v; return Array.isArray(x) ? x.map(String).filter(Boolean).slice(0, 20) : []; };
+    const p = pref.rows[0]; const mem = member.rows[0];
+    const phoneVerified = !!c.phone_verified_at;
+    const suggestions: Ci360Suggestion[] = [];
+    if (c.rebooking && !c.has_upcoming) suggestions.push({ code: 'rebook_review', evidence: [
+      ...(c.last_visit_at ? [`last_visit:${iso(c.last_visit_at)!.slice(0, 10)}`] : []), ...(c.typical_interval_days != null ? [`usual_interval_days:${N(c.typical_interval_days)}`] : []),
+      ...(c.days_since_last != null ? [`days_since_last:${N(c.days_since_last)}`] : []), 'no_future_booking', ...(c.rebooking_reason ? [`reason:${c.rebooking_reason}`] : [])] });
+    if (c.normalized_phone && !phoneVerified) suggestions.push({ code: 'verify_phone', evidence: ['phone_on_file', 'not_verified'] });
+    if (!c.normalized_phone && !c.email) suggestions.push({ code: 'add_contact', evidence: ['no_phone', 'no_email'] });
+    for (const g of dups.rows) suggestions.push({ code: 'review_duplicate', evidence: [`group:${g.id}`, ...((g.reasons ?? []) as string[]).map((r) => `reason:${r}`)] });
+    const ret = retention.get(id);
+    if (ret?.segment === 'at_risk') suggestions.push({ code: 'retention_at_risk', evidence: ['customer_retention:at_risk', ...(ret.daysAway != null ? [`days_away:${ret.daysAway}`] : [])] });
+    return {
+      customerId: id,
+      identity: {
+        name: String(c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || '').trim() || null,
+        phone: c.normalized_phone ? (opts.fullContact ? (c.phone_display || c.normalized_phone) : maskStoredPhone(c.normalized_phone)) : null,
+        email: c.email ? (opts.fullContact ? String(c.email) : maskEmail(String(c.email))) : null, contact: opts.fullContact ? 'full' : 'masked',
+        phoneVerified, state: dups.rows.length ? 'possible_duplicate' : phoneVerified ? 'verified' : 'unverified', createdAt: iso(c.created_at), preferredLanguage: c.preferred_language ?? null,
+      },
+      classification: c.status == null ? null : { status: c.status, completedVisits: N(c.completed_visits), lastVisitAt: iso(c.last_visit_at), typicalIntervalDays: c.typical_interval_days == null ? null : N(c.typical_interval_days),
+        nextAppointmentDate: c.next_appointment_date ? String(c.next_appointment_date).slice(0, 10) : null, computedAt: iso(c.computed_at) },
+      visits: visits.rows.map((v) => ({ ticketId: String(v.id), date: iso(v.at), services: ((v.services ?? []) as string[]).filter(Boolean), technician: v.technician ? String(v.technician).trim() || null : null, totalCents: N(v.total_cents), branch: v.branch ?? null })),
+      visitsTotal: N(vTotal.rows[0]?.n), lifetimeSpendCents: N(c.spend_cents),
+      preferences: { preferredTechnician: c.preferred_technician ? String(c.preferred_technician).trim() || null : null, style: p?.preferred_style_notes ?? null, products: list(p?.product_preferences_json), colors: list(p?.favorite_colors_json) },
+      loyalty: { points: c.points_balance == null ? null : N(c.points_balance), tier: c.loyalty_tier ?? null, membership: mem ? { plan: mem.plan ?? null, status: String(mem.status) } : null },
+      suggestions,
     };
   }
 

@@ -2,9 +2,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ summary: vi.fn(), customers: vi.fn(), detail: vi.fn() }));
+const m = vi.hoisted(() => ({ summary: vi.fn(), customers: vi.fn(), detail: vi.fn(), quick: vi.fn() }));
 vi.mock('../api/posCustomerSearchApi', () => ({ posCustomerSearchApi: { summary: m.summary, customers: m.customers } }));
-vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { getDetail: m.detail } }));
+vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { getDetail: m.detail, quickActivity: m.quick } }));
 import { CustomerProfilesDirectory, CustomerQuickView } from './CustomerProfilesDirectory';
 
 const row = (i: number) => ({ id: `c${i}`, name: `Guest ${i}`, phone: '•••1234', visits: i, lastVisitAt: '2026-11-01T15:00:00Z', lifecycle: 'active', member: i === 1, nextAppointment: null, sharedContactProfiles: i === 2 ? 1 : 0 });
@@ -55,6 +55,26 @@ describe('Customer 360 Quick View', () => {
     fireEvent.click(screen.getByTestId('cpx-tab-visits')); expect(await screen.findByText('Gel Manicure')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cpx-tab-notes')); expect(within(screen.getByTestId('cpx-panel-notes')).getByText('Latex')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cpx-full')); expect(full).toHaveBeenCalled();
+  });
+  it('extras Customer 03: Receipts & Activity tab reads the read-only staff endpoint once; no print / resend controls', async () => {
+    m.detail.mockResolvedValue({ displayName: 'Ana Rivera', status: 'active', visitCount: 1, loyalty: {}, membership: {}, giftCards: [], recentVisits: [], notes: {} });
+    m.quick.mockResolvedValue({ customerId: 'c1', receiptsTotal: 12, limit: { receipts: 10, activity: 15 },
+      receipts: [{ receiptId: 'r1', receiptNumber: 'R-1', ticketId: 't1', date: '2026-11-12T15:00:00Z', totalCents: 6800, channel: 'email' }],
+      activity: [{ at: '2026-11-12T16:00:00Z', kind: 'profile', code: 'pos_customer_notes_updated', actorName: 'Owner Kim', amountCents: null, refId: null },
+        { at: '2026-11-12T15:00:00Z', kind: 'receipt', code: 'receipt_issued', actorName: null, amountCents: 6800, refId: 'r1' }] });
+    const full = vi.fn();
+    render(<MemoryRouter><CustomerQuickView customer={{ id: 'c1', name: 'Ana Rivera' }} onClose={() => {}} onFullView={full} /></MemoryRouter>);
+    await waitFor(() => expect(m.detail).toHaveBeenCalled());
+    expect(m.quick).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('cpx-tab-activity'));
+    const panel = await screen.findByTestId('cpx-activity');
+    expect(m.quick).toHaveBeenCalledWith('c1');
+    expect(within(panel).getByTestId('cpx-receipt')).toHaveTextContent('R-1');
+    expect(within(panel).getByTestId('cpx-receipt')).toHaveTextContent('Emailed');
+    const items = within(panel).getAllByTestId('cpx-activity-item');
+    expect(items[0]).toHaveTextContent('Owner Kim'); expect(items[1]).toHaveTextContent('Receipt issued · $68.00');
+    expect(within(panel).queryByText(/print|resend/i)).toBeNull();
+    fireEvent.click(within(panel).getByTestId('cpx-receipts-more')); expect(full).toHaveBeenCalled();
   });
   it('extras Customer 05: advisory follow-up status from the server — upcoming, overdue follow-ups, contact gaps; unknown stays "—"', async () => {
     const base = { displayName: 'Ana Rivera', status: 'active', visitCount: 1, loyalty: {}, membership: {}, giftCards: [], recentVisits: [], notes: {} };

@@ -95,6 +95,7 @@ export const SEGMENT_FIXTURES = [
   ['/pos/ai-scheduling-optimizer/runs/{id}', F('schedule_optimization_runs')],
   ['/pos/ai-voice-transcription/transcripts/{id}', F('call_transcripts')],
   ['/pos/approvals/{id}', F('tenant_approval_requests')],
+  ['/pos/duplicate-review/merges/{id}', F('customer_merge_snapshots')],   // extras Customer 08 (Nov 13 2026): salon A's merge record
   ['/pos/campaigns/{id}', F('campaigns')],
   ['/pos/communications/threads/{id}', F('communication_threads')],
   ['/pos/deals/{id}', F('deals')],
@@ -109,6 +110,7 @@ export const SEGMENT_FIXTURES = [
 
   ['/tech/tickets/{id}', F('tickets')],
   ['/pos/ai/front-desk/agents/{id}', F('ai_receptionist_agents')],
+  ['/tenant/ai/receptionist/learning/suggestions/{id}', F('voice_improvement_suggestions')],   // AI Receptionist Settings 07 (Nov 13 2026): salon A's recommendation
   ['/tenant/help/tickets/{id}', F('support_tickets')],
   ['/tenant/inventory/counts/{id}', F('inventory_counts')],
   ['/tenant/inventory/products/{id}', F('inventory_products')],
@@ -247,6 +249,7 @@ export const BRANCH_TABLES = {
   appointment_reminders_sent: 'branch', sms_test_events: 'branch',   // confined to a branch-scoped login's allowed locations
   // salon-wide by design
   customers: SW('one customer book per salon: a guest of location 2 walks into location 1 (cross-branch-suite.pgtest "salon-wide by design")'),
+  customer_merge_snapshots: SW('a merge of the salon-wide customer book (extras Customer 08); branch_id is only the survivor\'s home location'),
   services: SW('the menu is salon-wide; per-location prices / availability live in separate tables'),
   membership_plans: SW('a membership plan is honoured at every location of the salon'),
   customer_memberships: SW('a customer\'s membership is honoured at every location'),

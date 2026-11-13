@@ -122,6 +122,9 @@ export function POSReviewsScreen() {
               <span className="rvw-bar-n">{d.count}</span>
             </button>
           ))}
+          {k && k.sample ? <div className={'sub' + (k.sample.sufficient ? '' : ' warn')} data-testid="dist-sample">{k.sample.sufficient ? t('rvw.fair.sampleOk', { n: fmtNumber(k.sample.verified) }) : t('rvw.fair.sampleLow', { n: fmtNumber(k.sample.verified), min: fmtNumber(k.sample.minimum) })}</div> : null}
+          {k?.rawDistribution ? <div className="sub" data-testid="dist-raw">{t('rvw.fair.raw')}: {k.rawDistribution.map((x: any) => `${x.star}★ ${fmtNumber(x.count)}`).join(' · ')}</div> : null}
+          {k?.sourceMix?.length ? <div className="sub" data-testid="dist-sources">{t('rvw.fair.sources')}: {k.sourceMix.map((x: any) => `${t('rvw.src.' + x.source)} ${fmtNumber(x.count)}${x.hidden ? ` (${t('rvw.fair.hidden', { n: fmtNumber(x.hidden) })})` : ''}`).join(' · ')}</div> : null}
         </section>
         <section className="panel" data-testid="rvw-glance">
           <div className="p-h">{t('rvw.glance')}</div>
@@ -207,7 +210,7 @@ function ReviewOverlay({ id, canManage, onClose, onModerate, onBook, onProfile }
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState('review');
   useEffect(() => { setD(null); setErr(null); posReviewsCenterApi.review(id).then(setD).catch((e) => setErr(errorTextOf(e, t('rvw.loadFailed')))); }, [id]);
-  const tabs = ['review', 'customer', 'communication', 'technician', 'visit', 'response', 'moderation'];
+  const tabs = ['review', 'customer', 'communication', 'technician', 'visit', 'response', 'moderation', 'timeline'];   // extras Reviews 02: + resolution timeline
   // A17 Nov 6: assign the review to a staff member to follow up
   const [staff, setStaff] = useState<{ id: string; name: string }[]>([]); const [asgBusy, setAsgBusy] = useState(false);
   useEffect(() => { if (canManage) posReviewsCenterApi.staff().then((x) => setStaff(x.items)).catch(() => setStaff([])); }, [canManage]);
@@ -256,6 +259,10 @@ function ReviewOverlay({ id, canManage, onClose, onModerate, onBook, onProfile }
             {d.communications.messages.length ? <table className="tbl" data-testid="ov-comm-messages"><tbody>{d.communications.messages.map((m: any) => <tr key={m.id}><td>{when(m.at)}</td><td>{statusLabel('channel', m.channel)}</td><td>{statusLabel(['notification', 'status'], m.status)}</td><td>{m.preview}</td></tr>)}</tbody></table> : <div className="state">{t('rvw.comm.none')}</div>}
             {d.communications.reviewRequests.length ? <div className="sub" data-testid="ov-comm-requests">{t('rvw.comm.requests', { n: d.communications.reviewRequests.length })}</div> : null}
           </>) : null}
+          {tab === 'timeline' ? <>
+            {d.outcome ? <div className="rvw-assign" data-testid="ov-outcome">{t('rvw.tl.outcome')}: <b>{statusLabel('review_resolution', d.outcome.resolution)}</b>{d.outcome.escalation && d.outcome.escalation !== 'none' ? ` · ${statusLabel('review_escalation', d.outcome.escalation)}` : ''} · {t('rvw.tl.owner')}: {d.outcome.owner ?? t('rvw.asg.nobody')}</div> : null}
+            {(d.timeline ?? []).length ? <ol className="fk-list dense" data-testid="ov-timeline">{d.timeline.map((x: any, i: number) => <li key={i} className="fk-li" data-testid="ov-timeline-item"><span className="fk-li-t">{t('rvw.tl.k.' + (x.kind.startsWith('reply_') ? 'reply' : x.kind))}{x.kind === 'review' && x.detail ? ` · ${x.detail}★` : x.kind === 'assigned' && x.detail ? ` · ${x.detail}` : x.kind === 'visit' && x.detail ? ` · ${x.detail}` : x.kind === 'message' && x.detail ? ` · ${statusLabel('channel', x.detail)}` : ''}<span className="fk-li-s">{when(x.at)}</span></span></li>)}</ol> : <div className="state">{t('rvw.tl.none')}</div>}
+          </> : null}
           {tab === 'technician' ? (d.technician ? <dl className="rvw-dl" data-testid="ov-tech-stats">
             <dt>{t('rvw.ov.technician')}</dt><dd>{d.technician.name}</dd>
             <dt>{t('rvw.ov.verifiedRating')}</dt><dd>{d.technician.verifiedAverage == null ? t('rvw.na') : d.technician.verifiedAverage.toFixed(1)} ({t('rvw.ov.nReviews', { n: d.technician.verifiedCount })})</dd>

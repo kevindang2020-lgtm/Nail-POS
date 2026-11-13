@@ -45,11 +45,20 @@ export async function mergeCustomersTx(trx: Kysely<any>, actor: MergeActor, surv
   const live = (await sql<{ id: string }>`select id from customers where tenant_id = ${T} and id = any(${[survivorId, ...others]}::uuid[]) and archived_at is null for update`.execute(trx)).rows;
   if (live.length !== others.length + 1) throw new CustomerMergeError('One of these profiles was already merged or archived.', 'DUPLICATE_ALREADY_MERGED');
 
+  // extras Customer 08 (Nov 13 2026): the reversible-merge record — what each source owned BEFORE it moves, and how each source
+  // stood (status), so an unmerge can put back exactly these rows (customer_merge_snapshots, written at the end of this transaction)
+  const srcStatus = Object.fromEntries((await sql<{ id: string; status: string | null }>`select id, status from customers where tenant_id = ${T} and id = any(${others}::uuid[])`.execute(trx)).rows.map((r) => [r.id, r.status ?? 'active']));
+  const rowsBySource: Record<string, Record<string, string[]>> = {};
   const moved: Record<string, number> = {};
   for (const t of MERGE_REASSIGN_TABLES) {
+    const owned = (await sql<{ id: string; customer_id: string }>`select id, customer_id from ${sql.table(t)} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx)).rows;
+    for (const o of owned) ((rowsBySource[t] ??= {})[o.customer_id] ??= []).push(o.id);
     const r: any = await sql`update ${sql.table(t)} set customer_id = ${survivorId} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx);
     if (Number(r.numAffectedRows ?? 0)) moved[t] = Number(r.numAffectedRows);
   }
+  const tagRows = (await sql<{ customer_id: string; tag: string; dup: boolean }>`select s.customer_id, s.tag,
+      exists (select 1 from customer_tags p where p.tenant_id = ${T} and p.customer_id = ${survivorId} and p.tag = s.tag) as dup
+    from customer_tags s where s.tenant_id = ${T} and s.customer_id = any(${others}::uuid[])`.execute(trx)).rows;
   // tags are unique per (tenant, customer, tag): drop the ones the survivor already has, move the rest
   await sql`delete from customer_tags s where s.tenant_id = ${T} and s.customer_id = any(${others}::uuid[])
     and exists (select 1 from customer_tags p where p.tenant_id = ${T} and p.customer_id = ${survivorId} and p.tag = s.tag)`.execute(trx);
@@ -58,8 +67,9 @@ export async function mergeCustomersTx(trx: Kysely<any>, actor: MergeActor, surv
 
   // loyalty (Phase 10): the ledger is the truth, so points move as a pair of `merge` entries
   const logIds = new Map(others.map((src) => [src, randomUUID()] as const));
-  const profs: any[] = (await sql<any>`select id, customer_id, branch_id, points_balance, total_earned_points, total_redeemed_points from customer_loyalty_profiles
+  const profs: any[] = (await sql<any>`select id, customer_id, branch_id, loyalty_tier, points_balance, total_earned_points, total_redeemed_points from customer_loyalty_profiles
     where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx)).rows;
+  const survivorHadProfile = (await sql`select 1 from customer_loyalty_profiles where tenant_id = ${T} and customer_id = ${survivorId}`.execute(trx)).rows.length > 0;
   let movedPoints = 0;
   for (const p of profs) {
     const b = Number(p.points_balance || 0); const src = String(p.customer_id);
@@ -90,6 +100,21 @@ export async function mergeCustomersTx(trx: Kysely<any>, actor: MergeActor, surv
     await sql`insert into customer_merge_logs (id, tenant_id, branch_id, source_customer_id, target_customer_id, merged_by_user_id, merge_summary_json)
       values (${logIds.get(src)}, ${T}, ${prim?.branch_id ?? uuidOrNull(actor.branchId)}, ${src}, ${survivorId}, ${uuidOrNull(actor.userId)}, ${JSON.stringify({ groupId: meta.groupId, moved })}::jsonb)`.execute(trx);
   }
+  // extras Customer 08: fingerprint every moved row AS THIS MERGE LEFT IT (md5 of the whole row) — an unmerge proceeds only while
+  // every fingerprint still matches, i.e. nothing touched those rows since
+  const fingerprints: Record<string, Record<string, string>> = {};
+  for (const [t, bySrc] of Object.entries(rowsBySource)) {
+    const ids = Object.values(bySrc).flat();
+    const fp = (await sql<{ id: string; h: string }>`select x.id, md5(row_to_json(x)::text) as h from ${sql.table(t)} x where x.tenant_id = ${T} and x.id = any(${ids}::uuid[])`.execute(trx)).rows;
+    fingerprints[t] = Object.fromEntries(fp.map((r) => [r.id, r.h]));
+  }
+  const snapshot = {
+    v: 1, rowsBySource, fingerprints, sourceStatus: srcStatus, survivorHadProfile,
+    tags: others.map((src) => ({ customerId: src, moved: tagRows.filter((x) => x.customer_id === src && !x.dup).map((x) => x.tag), dropped: tagRows.filter((x) => x.customer_id === src && x.dup).map((x) => x.tag) })),
+    loyaltyProfiles: profs.map((p) => ({ id: String(p.id), customerId: String(p.customer_id), branchId: p.branch_id, tier: p.loyalty_tier ?? null, points: Number(p.points_balance || 0), earned: Number(p.total_earned_points || 0), redeemed: Number(p.total_redeemed_points || 0) })),
+  };
+  await sql`insert into customer_merge_snapshots (tenant_id, branch_id, group_id, survivor_customer_id, source_customer_ids, merge_log_ids, snapshot, merged_by_user_id)
+    values (${T}, ${prim?.branch_id ?? uuidOrNull(actor.branchId)}, ${meta.groupId}, ${survivorId}, ${others}::uuid[], ${JSON.stringify(Object.fromEntries(logIds))}::jsonb, ${JSON.stringify(snapshot)}::jsonb, ${uuidOrNull(actor.userId)})`.execute(trx);
   // BUILD_PLAN Phase 15: ONE customer.merged per merge, committed with the merge or not at all. Ids only (§95).
   if (outbox) {
     const mergedIds = [...others].sort();

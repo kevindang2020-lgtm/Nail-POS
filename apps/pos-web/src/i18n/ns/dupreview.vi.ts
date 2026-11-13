@@ -302,4 +302,39 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "dup.health.d.loyalty_repeat_entries.WARNING": "Một số mục điểm tích lũy xuất hiện hai lần cho cùng khách và cùng tham chiếu. Xem lại trong Tích điểm — điều chỉnh bằng bút toán đảo có lý do, không sửa tay.", // DRAFT — Kevin reviews
   "dup.health.d.consent_conflict.PASSED": "Không có hồ sơ nào đồng ý nhận tiếp thị trong khi nằm trong danh sách từ chối.", // DRAFT — Kevin reviews
   "dup.health.d.consent_conflict.WARNING": "Một số hồ sơ được đánh dấu đồng ý nhận tiếp thị trong khi số điện thoại hoặc email nằm trong danh sách từ chối. Xác nhận với khách; danh sách từ chối luôn được ưu tiên khi gửi.", // DRAFT — Kevin reviews
+  "dup.um.open": "Các lần gộp đã xong", // DRAFT — Kevin reviews
+  "dup.um.title": "Các lần gộp đã xong", // DRAFT — Kevin reviews
+  "dup.um.sub": "Chỉ hoàn tác được khi những gì đã chuyển trong lần gộp chưa bị thay đổi.", // DRAFT — Kevin reviews
+  "dup.um.close": "Đóng", // DRAFT — Kevin reviews
+  "dup.um.loading": "Đang tải các lần gộp…", // DRAFT — Kevin reviews
+  "dup.um.empty": "Chưa có lần gộp nào.", // DRAFT — Kevin reviews
+  "dup.um.unnamed": "Khách chưa có tên", // DRAFT — Kevin reviews
+  "dup.um.failed": "Không hoàn tác được lần gộp.", // DRAFT — Kevin reviews
+  "dup.um.col.when": "Ngày gộp", // DRAFT — Kevin reviews
+  "dup.um.col.kept": "Hồ sơ giữ lại", // DRAFT — Kevin reviews
+  "dup.um.col.merged": "Hồ sơ đã gộp vào", // DRAFT — Kevin reviews
+  "dup.um.col.by": "Người gộp", // DRAFT — Kevin reviews
+  "dup.um.col.status": "Trạng thái", // DRAFT — Kevin reviews
+  "dup.um.active": "Đã gộp", // DRAFT — Kevin reviews
+  "dup.um.undone": "Đã hoàn tác {at} bởi {by}", // DRAFT — Kevin reviews
+  "dup.um.check": "Kiểm tra hoàn tác", // DRAFT — Kevin reviews
+  "dup.um.canUndo": "Có thể hoàn tác.", // DRAFT — Kevin reviews
+  "dup.um.undo": "Hoàn tác gộp", // DRAFT — Kevin reviews
+  "dup.um.readOnly": "Chỉ người có quyền gộp khách mới được hoàn tác.", // DRAFT — Kevin reviews
+  "dup.um.confirmTitle": "Hoàn tác việc gộp {merged} vào {kept}?", // DRAFT — Kevin reviews
+  "dup.um.confirmBody": "Hồ sơ đã gộp sẽ trở lại với đúng các lượt ghé, lịch hẹn, thẻ quà tặng, nhãn và điểm đã chuyển. Những gì thêm vào hồ sơ giữ lại sau khi gộp vẫn ở đó.", // DRAFT — Kevin reviews
+  "dup.um.reason": "Lý do (bắt buộc)", // DRAFT — Kevin reviews
+  "dup.um.go": "Hoàn tác gộp", // DRAFT — Kevin reviews
+  "dup.um.working": "Đang hoàn tác…", // DRAFT — Kevin reviews
+  "dup.um.cancel": "Hủy", // DRAFT — Kevin reviews
+  "dup.um.done": "Đã hoàn tác: khôi phục {n} hồ sơ, chuyển lại {points} điểm.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_NOT_FOUND": "Không tìm thấy lần gộp này.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_ALREADY_UNDONE": "Lần gộp này đã được hoàn tác.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_SURVIVOR_CHANGED": "Hồ sơ giữ lại đã bị lưu trữ hoặc gộp tiếp, nên không thể hoàn tác.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_SOURCE_CHANGED": "Một hồ sơ đã gộp đã được khôi phục hoặc thay đổi, nên không thể hoàn tác.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_ROWS_CHANGED": "Lượt ghé, lịch hẹn hoặc dữ liệu khác của lần gộp đã thay đổi; hoàn tác sẽ làm mất những thay đổi đó.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_LOYALTY_CHANGED": "Điểm thưởng đã thay đổi sau khi gộp; hoàn tác có thể trả lại điểm đã dùng.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_UNSUPPORTED": "Lần gộp này không có bản ghi để khôi phục.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_CONFIRM_REQUIRED": "Xác nhận bạn muốn hoàn tác lần gộp này.", // DRAFT — Kevin reviews
+  "dup.um.code.CUSTOMER_UNMERGE_REASON_REQUIRED": "Nhập lý do hoàn tác lần gộp này.", // DRAFT — Kevin reviews
 };
