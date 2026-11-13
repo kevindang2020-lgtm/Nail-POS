@@ -36,6 +36,7 @@ vi.mock('../api/posAiApi', () => ({
     receptionistSettings: () => Promise.resolve(settings), receptionistSettingsHistory: () => Promise.resolve({ items: [] }),
     updateReceptionistSettings: (b: any) => updateReceptionistSettings(b),
     approveReceptionistConsent: (x: string) => approveConsent(x), checkReceptionistSettings: () => checkSettings(), receptionistSettingsLastCheck: () => Promise.resolve(null),
+    aiRecommendations: () => Promise.resolve({ items: [], openCount: 0 }), approveAiRecommendation: () => Promise.resolve({}), rejectAiRecommendation: () => Promise.resolve({}),
   },
 }));
 
