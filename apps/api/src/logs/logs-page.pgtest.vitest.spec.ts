@@ -96,6 +96,19 @@ describe('Device Integration Logs 06 (Nov 12 2026): payment environment label', 
     expect((await svc.query(ctx, { page: 1, pageSize: 10, correlationId: "x' or 1=1 --" })).total).toBe(all);   // unsafe → ignored, never interpolated
     expect((await svc.query(ctx, { limit: 50, correlationId: C })).logs).toHaveLength(3);                       // the legacy shape filters too
   });
+  // extras Device Integration Logs 02 (round 10): a terminal change recorded by THE audit service carries the request's
+  // correlation id, so it joins that trace (and shows in the device timeline); another salon's audit row never does
+  it('LG-05b a device audit event (audit_events) with the request correlation id joins the trace; pos_payment_terminal rows count as device', async () => {
+    const C = 'trm-req.7f3a:01';
+    await q(sql`insert into audit_events (tenant_id, branch_id, occurred_at, module, action, resource_type, resource_id, summary, status, severity, metadata, correlation_id) values
+      (${T}, ${B}, '2026-11-05T10:00:10Z', 'settings', 'terminal_paired', 'pos_payment_terminal', ${'c8460000-0000-4000-8000-0000000000aa'}, 'Terminal paired to register 2', 'success', 'info', '{}'::jsonb, ${C}),
+      (${X}, null, '2026-11-05T10:00:20Z', 'settings', 'terminal_paired', 'pos_payment_terminal', ${'c8460000-0000-4000-8000-0000000000bb'}, 'other salon', 'success', 'info', '{}'::jsonb, ${C})`);
+    const r = await svc.query(ctx, { page: 1, pageSize: 10, correlationId: C });
+    expect(r.logs.map((l) => l.message)).toEqual(['status inquiry: approved', 'provider response timeout', 'Terminal paired to register 2', 'sale command sent']);
+    const paired = r.logs.find((l) => l.message === 'Terminal paired to register 2')!;
+    expect(paired).toMatchObject({ category: 'device', source: 'pos_payment_terminal', correlationId: C, relatedId: 'c8460000-0000-4000-8000-0000000000aa' });
+    expect((await svc.query(ctx, { page: 1, pageSize: 10, category: 'device', relatedId: 'c8460000-0000-4000-8000-0000000000aa' })).logs.map((l) => l.message)).toEqual(['Terminal paired to register 2']);
+  });
 });
 
 // Device Integration Logs backlog · 08 (Nov 12 2026): the sanitized, role-gated, audited export of one fixed range
