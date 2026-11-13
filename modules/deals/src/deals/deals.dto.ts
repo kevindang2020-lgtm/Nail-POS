@@ -1,6 +1,6 @@
 import type { DealView } from '@aipowersalon/api-contracts/tenant';
 export type { DealView };   // owned by packages/api-contracts (Constitution 13 §13)
-import type { DealOwnerType, DiscountType, DealStatus, DealSettings } from './deals.core';
+import type { DealOwnerType, DiscountType, DealSettings } from './deals.core';
 
 // Server-derived request context (tenant/branch/user/role/permissions come from req.ctx, never the client). For a
 // technician-initiated request, technicianId is resolved server-side from the session's technician membership.

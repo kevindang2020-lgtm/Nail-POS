@@ -511,7 +511,7 @@ export class CampaignCenter {
   private async audit1(db: Kysely<any>, ctx: CampaignsContext, id: string, action: string, summary: string, metadata: Record<string, unknown> = {}) {
     await recordAuditStrict(db, { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role }, { module: 'campaigns', action, resourceType: 'campaign', resourceId: id, summary, metadata });
   }
-  private cleanText(v: unknown, max: number) { const s = typeof v === 'string' ? v.replace(/\u0000/g, '').trim() : ''; return s ? s.slice(0, max) : null; }
+  private cleanText(v: unknown, max: number) { const s = typeof v === 'string' ? v.split(String.fromCharCode(0)).join('').trim() : ''; return s ? s.slice(0, max) : null; }
   private async checkDeal(db: Kysely<any>, T: string, dealId: unknown) {
     if (dealId == null || dealId === '') return null;
     if (!UUID.test(String(dealId))) throw err('Promotion not found.', 'PROMOTION_NOT_FOUND', 404);

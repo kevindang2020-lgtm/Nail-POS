@@ -31,7 +31,6 @@ const DEFAULT_TZ = 'America/New_York';
 const iso = (v: unknown): string | null => { if (v == null || v === '') return null; const d = v instanceof Date ? v : new Date(String(v)); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 const n = (v: unknown): number => { const x = Number(v ?? 0); return Number.isFinite(x) ? x : 0; };
 const csv = (ids: string[]) => ids.join(',');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw SQL rows are mapped field by field right below
 type Row = Record<string, any>;
 /** the thread columns this read model uses (response-exposure: never a whole-row read) */
 const T_COLS = sql`t.id, t.tenant_id, t.branch_id, t.customer_id, t.customer_name, t.customer_contact, t.contact_normalized, t.customer_match, t.channel, t.status,
@@ -583,7 +582,7 @@ export class InboxRepository {
   async lookupCustomers(ctx: InboxCtx, raw: string): Promise<{ id: string; name: string | null; phoneMasked: string | null; hasPhone: boolean; emailMasked: string | null }[]> {
     const q = String(raw ?? '').trim().slice(0, 100);
     if (q.length < 2) return [];
-    const d = q.replace(/\D/g, ''); const digits = /^[\d\s()+.\-]+$/.test(q) && d.length >= 4 ? d.slice(-10) : null;
+    const d = q.replace(/\D/g, ''); const digits = /^[\d\s()+.-]+$/.test(q) && d.length >= 4 ? d.slice(-10) : null;
     const r = await sql<Row>`SELECT c.id, c.full_name, c.normalized_phone, c.phone_display, c.email FROM customers c
       WHERE c.tenant_id = ${ctx.tenantId} AND c.archived_at IS NULL AND (
         ${digits ? sql`right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) LIKE ${likeOf(digits)}` : sql`c.full_name ILIKE ${likeOf(q)} OR lower(c.email) LIKE ${likeOf(q.toLowerCase())}`}

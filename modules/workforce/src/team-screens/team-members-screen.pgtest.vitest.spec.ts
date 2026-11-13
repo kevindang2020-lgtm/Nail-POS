@@ -154,7 +154,7 @@ describe('Team Management read model', () => {
   });
   it('the CSV export is audited (requested → succeeded) and fails closed without the export permission', async () => {
     const out = await repo.exportCsv(mgr, { lang: 'en' }, 'req-tm-1');
-    const [head, ...rows] = out.csv.replace(/^﻿/, '').split('\r\n');
+    const [head, ...rows] = out.csv.replace(/^\uFEFF/, '').split('\r\n');
     expect(head.startsWith('Employee ID,Name,Roles,Department (derived)')).toBe(true); expect(rows.length).toBe(7); expect(out.csv).not.toContain('Other Salon Tech');
     const a = (await q(`select action from audit_events where request_id = 'req-tm-1' order by occurred_at, action`)).rows.map((x: any) => x.action);
     expect(a).toEqual(['report.export.requested', 'report.export.succeeded']);

@@ -1,7 +1,6 @@
 import type { Money } from '@aipowersalon/money';
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
 export type { ServingFilters } from '@aipowersalon/api-contracts/tenant';
-import type { ServingFilters } from '@aipowersalon/api-contracts/tenant';
 export type { Money };   // owned by @aipowersalon/money (Constitution 13 §86)
 // serving.dto.ts — AIPowerSalon POS Serving contracts
 // Response + request types shared by serving.controller.ts and the frontend api/posServingApi.ts.

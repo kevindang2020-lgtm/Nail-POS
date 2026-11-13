@@ -1,7 +1,6 @@
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
 import type { PlanVersionSubscribers } from '@aipowersalon/api-contracts/tenant';
 export type { MemberExportRow, PaymentExportRow, RedemptionExportRow } from '@aipowersalon/api-contracts/tenant';
-import type { MemberExportRow, PaymentExportRow, RedemptionExportRow } from '@aipowersalon/api-contracts/tenant';
 // memberships.dto.ts — request/response contracts for the Memberships surface. Re-exports the pure engine helpers from
 // memberships-core so the in-memory and Kysely repositories compute identically.
 export {

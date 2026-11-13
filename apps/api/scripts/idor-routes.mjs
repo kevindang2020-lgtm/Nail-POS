@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url';
 // idor-routes.mjs — Constitution 12 §286 / §299: the automated IDOR suite's route table, GENERATED from the OpenAPI
 // manifest (apps/api/openapi/manifest.txt), not hand-picked.
 //
@@ -12,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const API_ROOT = resolve(new URL('..', import.meta.url).pathname);
+const API_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 /** A fixture: salon A's row in `table`; the value put in the path is `col` (default id). `extra.over` pins columns the
  *  route's lookup filters on ('$owner' / '$techUser' / '$tech' = salon A's owner user, technician user, technician). */

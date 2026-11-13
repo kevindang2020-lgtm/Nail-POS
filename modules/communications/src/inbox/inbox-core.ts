@@ -79,7 +79,7 @@ export function parseSearch(raw: unknown): SearchTerm | null {
   const text = typeof raw === 'string' ? raw.trim().slice(0, 100) : '';
   if (!text) return null;
   const uuid = isUuid(text) ? text.toLowerCase() : null;
-  const onlyPhoneChars = /^[\d\s()+.\-]+$/.test(text);
+  const onlyPhoneChars = /^[\d\s()+.-]+$/.test(text);
   const d = text.replace(/\D/g, '');
   const digits = onlyPhoneChars && d.length >= 4 ? d.slice(-10) : null;
   const email = text.includes('@') ? text.toLowerCase() : null;
