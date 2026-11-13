@@ -158,4 +158,13 @@ export const STOCKALERTS_VI = {
   'sa.restock.lead': 'giao hàng {n} ngày', // DRAFT — Kevin reviews
   'sa.restock.noLead': 'chưa đặt thời gian giao hàng', // DRAFT — Kevin reviews
   'sa.restock.noUse': 'không dùng trong {n} ngày', // DRAFT — Kevin reviews
+  'sa.sel.count': 'Đã chọn {n}', // DRAFT — Kevin reviews
+  'sa.sel.ack': 'Xác nhận các mục đã chọn', // DRAFT — Kevin reviews
+  'sa.sel.clear': 'Bỏ chọn', // DRAFT — Kevin reviews
+  'sa.sel.page': 'Chọn mọi cảnh báo trên trang này', // DRAFT — Kevin reviews
+  'sa.sel.row': 'Chọn {n}', // DRAFT — Kevin reviews
+  'sa.sel.askTitle': 'Xác nhận {n} cảnh báo?', // DRAFT — Kevin reviews
+  'sa.sel.askSub': 'Mỗi cảnh báo được xác nhận giống như nút Xác nhận riêng của nó, kèm tên bạn và thời gian.', // DRAFT — Kevin reviews
+  'sa.sel.askNote': 'Xác nhận chỉ đánh dấu là đã xem. Tồn kho, đơn đặt hàng và sản phẩm không thay đổi.', // DRAFT — Kevin reviews
+  'sa.sel.done': '{n} đã xác nhận · {f} không xác nhận được', // DRAFT — Kevin reviews
 };

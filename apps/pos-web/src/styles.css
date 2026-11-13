@@ -4322,3 +4322,4 @@ html[data-spacing="compact"] .tbl td { padding: 6px 8px; }
 .so-tl-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:12px}
 .so-tl-list>li{display:flex;align-items:center;gap:6px}
 .so-tl-dot{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);flex:none}
+.sa-selbar{display:inline-flex;gap:8px;align-items:center;margin-right:auto}   /* extras Stock Alerts 06 */

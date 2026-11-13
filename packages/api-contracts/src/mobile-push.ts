@@ -69,9 +69,40 @@ export function categoryTargetsApp(category: PushCategory, app: string | null | 
 export const PUSH_FORBIDDEN_DATA_KEYS = ['customerName', 'customer_name', 'name', 'fullName', 'full_name', 'firstName', 'lastName', 'displayName',
   'phone', 'email', 'amount', 'amountCents', 'card', 'last4', 'token', 'accessToken', 'refreshToken'] as const;
 
-/** The data the server adds to every typed push: the category and the route (name + whitelisted id params). */
+/** extras Customer Notifications 01 (round 10): the payload's schema version. The server stamps it on every typed push
+ *  ('v'); a client reads a payload with no 'v' as version 1 (every push sent before the stamp), and REFUSES to route one
+ *  whose version is newer than it understands (a later shape is never guessed at — the notification still shows, the tap
+ *  just opens the app's home). Bump only for a breaking change of the data keys. */
+export const PUSH_PAYLOAD_SCHEMA_VERSION = 1;
+/** The payload's version: a missing / malformed 'v' is 1 (legacy); otherwise the positive integer sent. */
+export function pushPayloadVersion(data: Record<string, unknown> | null | undefined): number {
+  const v = data?.v; const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : NaN;
+  return Number.isInteger(n) && n >= 1 ? n : 1;
+}
+
+/** extras Customer Notifications 01 (round 10): ONE read / acknowledge contract for every app's notification inbox. "Read" is
+ *  this person seeing it; "acknowledged" is this person acting on it (e.g. tapping through); neither changes the source
+ *  record. Ids only; an SDK marks many at once and the server answers how many were newly marked (idempotent). */
+export interface NotificationReadState { notificationId: string; readAt: string | null; acknowledgedAt: string | null }
+export interface NotificationMarkRequest { notificationIds: string[]; action: 'read' | 'acknowledge' }
+export interface NotificationMarkResponse { marked: number; states: NotificationReadState[] }
+export const NOTIFICATION_MARK_MAX = 200;
+/** Validates a mark request the same way on every side: 1–200 well-formed ids (deduplicated; any malformed id refuses it) and a known action. */
+export function parseNotificationMarkRequest(v: unknown): NotificationMarkRequest | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as { notificationIds?: unknown; action?: unknown };
+  if (o.action !== 'read' && o.action !== 'acknowledge') return null;
+  if (!Array.isArray(o.notificationIds)) return null;
+  const good = o.notificationIds.filter((x): x is string => typeof x === 'string' && ROUTE_ID_RE.test(x));
+  if (good.length !== o.notificationIds.length) return null;   // one malformed id refuses the whole request
+  const ids = [...new Set(good)];
+  if (!ids.length || ids.length > NOTIFICATION_MARK_MAX) return null;
+  return { notificationIds: ids, action: o.action };
+}
+
+/** The data the server adds to every typed push: the schema version, the category and the route (name + whitelisted id params). */
 export function pushRouteData(category: PushCategory, data: Record<string, string> = {}): Record<string, string> {
-  const out: Record<string, string> = { category, route: PUSH_CATEGORIES[category].route };
+  const out: Record<string, string> = { v: String(PUSH_PAYLOAD_SCHEMA_VERSION), category, route: PUSH_CATEGORIES[category].route };
   for (const k of PUSH_ROUTE_PARAMS) { const v = data[k]; if (typeof v === 'string' && ROUTE_ID_RE.test(v)) out[k] = v; }
   return out;
 }
@@ -80,6 +111,7 @@ export function pushRouteData(category: PushCategory, data: Record<string, strin
  *  anything beyond the closed lists; an id that does not look like an id is dropped. */
 export function routeFromPushData(data: Record<string, unknown> | null | undefined): PushRoute | null {
   if (!data) return null;
+  if (pushPayloadVersion(data) > PUSH_PAYLOAD_SCHEMA_VERSION) return null;   // a newer shape than this client knows: never guess
   const cat = data.category;
   const name = typeof data.route === 'string' ? data.route : isPushCategory(cat) ? PUSH_CATEGORIES[cat].route : null;
   if (!name || !(PUSH_ROUTES as readonly string[]).includes(name)) return null;
