@@ -922,14 +922,14 @@ Decisions:
 
 | # | Recommendation | Status |
 |---|---|---|
-| 01 | Rebuild the machine. 2. Rotate credentials. 3. Revoke old/exposed Firebase key. 4. Create new Play upload keys. | TODO |
-| 02 | Fix critical backend issues first: security containment, merchant configuration, durable financial recovery, split-payment guard and exact-service eligibility. | TODO |
-| 03 | Complete OCR infrastructure, Twilio ledger, optional expense allocation, 200-tech pilot, Customer Display privacy assertion and lint/type-quality cleanup. | TODO |
-| 04 | Implement the shared SUNMI responsive shell, improve page-specific layouts and validate all modules at 100% zoom. | TODO |
-| 05 | Change PostgreSQL credentials. 6. Close public PostgreSQL port 5432. 7. Validate new environment. 8. Only then push rewritten Git history. No exposed password, JWT, Firebase, Google, Twilio, Fiserv/CardPointe, CommerceHu | TODO |
-| 06 | Close public PostgreSQL port 5432 | TODO |
-| 07 | Validate new environment | TODO |
-| 08 | Only then push rewritten Git history Claude / Developer Production Completion Mandate / 2 AI PowerSalon / Remaining Production Work & Final Completion Mandate | TODO |
+| 01 | Rebuild the machine. 2. Rotate credentials. 3. Revoke old/exposed Firebase key. 4. Create new Play upload keys. | TODO — needs Kevin: rebuild the machine, rotate every credential, revoke the old Firebase key, new Play upload key (account/console actions). Exact steps + checks: docs/K12_RUNBOOK.md steps 1–4 |
+| 02 | Fix critical backend issues first: security containment, merchant configuration, durable financial recovery, split-payment guard and exact-service eligibility. | EXISTS — merchant routing (payment-gateway.resolver NOT_CONFIGURED, branch MID, no cross-tenant fallback), app-payment recovery + split-payment guard (unsettled-tenders.ts, assertNoUnsettledCard), exact-service eligibility (serviceSkillVerdict) — REMAINING_PRODUCTION_STATUS.md §9–26 (tests run Nov 13: merchant-routing.pgtest 15/15, skip-line-recovery.pgtest 8/8, technician-eligibility-batch 63/63 + pgtest 4/4, legacy 8/8) |
+| 03 | Complete OCR infrastructure, Twilio ledger, optional expense allocation, 200-tech pilot, Customer Display privacy assertion and lint/type-quality cleanup. | EXISTS — OCR pipeline + Textract adapter behind the AI provider gateway, SMS ledger, shared-expense allocation, 200-tech pilot, Customer Display 3-second release, lint cleanup (round 10) — REMAINING_PRODUCTION_STATUS.md §27–48 (tests run Nov 13: ai-ocr-receipt-pipeline + textract 40/40, sms-segments.pgtest 5/5, expense-shared-costs.pgtest 8/8, customer-display useDisplay.test 13/13); live OCR needs S3 + scanner + Textract (K12_RUNBOOK.md, HOSTING A10–A11) |
+| 04 | Implement the shared SUNMI responsive shell, improve page-specific layouts and validate all modules at 100% zoom. | EXISTS (part) — shared SUNMI shell: displayProfile.ts density modes + Screen Check (screenCheck.ts, ScreenCheckDialog), nine SUNMI batches of page layouts (docs/handoff/SUNMI_BATCH*), POS suite 2,723/2,723 Nov 13 · STILL NEEDS: a real SUNMI FLEX 3 at 100 % zoom — open each module and press Screen Check |
+| 05 | Change PostgreSQL credentials. 6. Close public PostgreSQL port 5432. 7. Validate new environment. 8. Only then push rewritten Git history. No exposed password, JWT, Firebase, Google, Twilio, Fiserv/CardPointe, CommerceHu | TODO — needs Kevin: change the PostgreSQL password in the hosting console; verify with tooling/k12/verify-k12.mjs (OLD_DATABASE_URL refused) — docs/K12_RUNBOOK.md step 5 |
+| 06 | Close public PostgreSQL port 5432 | TODO — needs Kevin: turn off the public TCP proxy / firewall rule; verify with tooling/k12/verify-k12.mjs (DB_PUBLIC_HOST closed) — docs/K12_RUNBOOK.md step 6 |
+| 07 | Validate new environment | TODO — needs Kevin: validate the rebuilt environment (health, DB login from inside, sandbox checkout, SMS test); tooling/k12/verify-k12.mjs — docs/K12_RUNBOOK.md step 7 |
+| 08 | Only then push rewritten Git history Claude / Developer Production Completion Mandate / 2 AI PowerSalon / Remaining Production Work & Final Completion Mandate | TODO — needs Kevin: push the rewritten history only after steps 1–7, then make the CI gitleaks job blocking; verify-k12.mjs step 8 — docs/K12_RUNBOOK.md step 8 |
 
 ## AI Deposit Reconciliation (2)
 
