@@ -114,3 +114,19 @@ describe('appointment start time — the appointments domain\'s startAt (bug 2)'
     expect((await svc.recommend(ctx(), 'q1')).recommended?.technicianId).toBe('t1');
   });
 });
+
+// Customer Queue 34 (round 10): the exact rule — NOW + estimated service duration + the salon's buffer must be at or before
+// the next protected appointment; one minute short is reserved. The salon's own buffer (turnPolicy.appointmentProtectionBufferMinutes)
+// is the one passed by the service.
+describe('Customer Queue 34 — appointment protection boundary', () => {
+  it('45-min service, 10-min buffer: an appointment in 55 min fits exactly; in 54 min the technician is reserved', () => {
+    expect(reservationDecision(55, 45, 10)).toEqual({ reserved: false, reason: null });
+    expect(reservationDecision(54, 45, 10).reserved).toBe(true);
+  });
+  it('the salon buffer changes the answer (0 vs 30 minutes); an appointment already started or unknown never reserves', () => {
+    expect(reservationDecision(50, 45, 0).reserved).toBe(false);
+    expect(reservationDecision(50, 45, 30).reserved).toBe(true);
+    expect(reservationDecision(null, 45, 30).reserved).toBe(false);
+    expect(reservationDecision(-5, 45, 30).reserved).toBe(false);
+  });
+});
