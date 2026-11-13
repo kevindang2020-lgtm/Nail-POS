@@ -1766,4 +1766,45 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.redemption_line_other_ticket.fix": "Báo cho bộ phận hỗ trợ: những lần sử dụng này trỏ đến dịch vụ trên một hóa đơn khác.", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer": "Không có thẻ hội viên còn hiệu lực nào nằm trên hồ sơ khách đã lưu trữ", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer.fix": "Chuyển thẻ hội viên sang hồ sơ hiện tại của khách (gộp hồ sơ) hoặc kết thúc thẻ.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.why": "Vì sao?", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.whyAria": "Điều gì đã thay đổi trong xu hướng này", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.whyTitle": "Điều gì đã thay đổi — doanh thu & lịch hẹn", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.source": "Doanh thu: các khoản thanh toán có trạng thái {statuses}, tính theo ngày của tiệm ({tz}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.apptSource": "Lịch hẹn: các lượt đặt trên lịch của mỗi ngày (mọi trạng thái).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.window": "Hiển thị: {from} – {to} ({days} ngày). So với: {pfrom} – {pto}.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revUp": "Doanh thu {cur}, tăng {diff} so với {prev} ({pct}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revDown": "Doanh thu {cur}, giảm {diff} so với {prev} ({pct}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revSame": "Doanh thu {cur}, bằng với kỳ trước.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revNoBase": "Doanh thu {cur}; kỳ trước không có doanh thu nên không có tỷ lệ phần trăm.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.appts": "Lịch hẹn: {cur} so với {prev} ở kỳ trước.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.peak": "Ngày cao nhất: {day} ({amount}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.inProgress": "Khoảng thời gian kết thúc hôm nay, vẫn đang diễn ra — số liệu còn có thể thay đổi.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.readOnly": "Chỉ để giải thích — không thay đổi gì; quyết định và tiền vẫn do nhân viên của bạn xử lý.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.vsPrev": "so với {days} ngày trước đó", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_booking_tech_inactive": "Không có lịch hẹn sắp tới nào do thợ đã lưu trữ hoặc ngừng hoạt động giữ", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_booking_tech_inactive.fix": "Chuyển các lịch hẹn đó sang thợ đang hoạt động trên lịch đặt hẹn, hoặc khôi phục thợ.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_queue_tech_inactive": "Không có khách đang chờ nào được giao cho thợ đã lưu trữ hoặc ngừng hoạt động", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_queue_tech_inactive.fix": "Giao lại các khách đó từ Hàng chờ khách.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_workforce_role_stale": "Trạng thái trực tiếp của mọi thợ đã lưu trữ hoặc ngừng hoạt động cho biết họ không còn làm ở đây", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_workforce_role_stale.fix": "Đặt lại trạng thái của thợ từ mục Thợ (ví dụ Ngừng hoạt động) để hàng chờ và Ứng dụng Thợ nhận được.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_availability_mismatch": "Tình trạng sẵn sàng của từng thợ khớp với giờ chấm công (đã chấm công ra = ngoài ca)", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_availability_mismatch.fix": "Chấm công vào hoặc ra lại cho thợ từ Chấm công để hàng chờ và Ứng dụng Thợ khớp nhau.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_events_delayed": "Cập nhật lịch hẹn, hàng chờ và thợ đến các ứng dụng trong vòng 5 phút", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_events_delayed.fix": "Có cập nhật đang chờ hoặc gửi không thành công. Hãy làm mới màn hình; nếu vẫn còn, liên hệ hỗ trợ — không mất dữ liệu nào.", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.btn": "⚑ {n} việc cần xử lý", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.clear": "✓ Không có việc gấp", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.title": "Cần xử lý ngay", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.checkout_waiting": "Đang chờ thanh toán", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.long_wait": "Chờ lâu", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.staffing_gap": "Thiếu thợ", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.overdue_appointment": "Lịch hẹn trễ", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.message_waiting": "Tin nhắn đang chờ", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.checkout_waiting": "Sẵn sàng thanh toán nhưng chưa trả hơn {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.long_wait": "Khách trong hàng chờ hơn {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.staffing_gap": "Số khách đang chờ trừ số thợ đang rảnh", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.overdue_appointment": "Đã quá giờ hẹn hơn {m} phút mà khách chưa đến", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.message_waiting": "Tin nhắn của khách chờ trả lời hơn {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.oldest": "lâu nhất {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.open": "Mở", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.note": "Chỉ đếm số — mở một dòng sẽ đưa bạn tới mục quản lý việc đó; không thay đổi gì từ đây.", // DRAFT — Kevin reviews
 };

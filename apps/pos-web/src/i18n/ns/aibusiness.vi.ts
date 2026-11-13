@@ -636,4 +636,26 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.snap.noteRequired": "Hãy viết ghi chú ngắn (ít nhất 3 ký tự).", // DRAFT — Kevin reviews
   "bcx.snap.cannotSign": "Cần quyền xem số liệu doanh thu để xác nhận.", // DRAFT — Kevin reviews
   "bcx.snap.rule": "Ghi chú xác nhận được giữ theo thứ tự và không thể sửa hay xóa. Không có gì ở đây thay đổi doanh thu, lịch hẹn hay lịch làm việc.", // DRAFT — Kevin reviews
+  "bzx.sp.title": "Ngân sách SMS (cài đặt đã lưu)", // DRAFT — Kevin reviews
+  "bzx.sp.recipients": "Tin nhắn mỗi lần kích hoạt: {n} trên {total} người nhận có số di động", // DRAFT — Kevin reviews
+  "bzx.sp.segments": "{seg} đoạn mỗi tin · {total} đoạn mỗi lần kích hoạt", // DRAFT — Kevin reviews
+  "bzx.sp.cost": "Chi phí ước tính mỗi lần kích hoạt: {cost} (chi phí trung bình mỗi đoạn của nhà cung cấp trong 30 ngày qua)", // DRAFT — Kevin reviews
+  "bzx.sp.costUnknown": "Chi phí ước tính mỗi lần kích hoạt: — (nhà cung cấp chưa báo chi phí trong 30 ngày qua)", // DRAFT — Kevin reviews
+  "bzx.sp.sender": "Số gửi SMS: đã thiết lập (kiểm tra lần cuối {at})", // DRAFT — Kevin reviews
+  "bzx.sp.senderNoCheck": "Số gửi SMS: đã thiết lập (chưa kiểm tra)", // DRAFT — Kevin reviews
+  "bzx.sp.senderMissing": "Số gửi SMS: chưa thiết lập — chưa gửi được tin cho đến khi hoàn tất Thiết lập nhắn tin", // DRAFT — Kevin reviews
+  "bzx.sp.limits": "Giới hạn tin nhắn của tiệm: {daily} mỗi ngày · {monthly} mỗi tháng · {mode}", // DRAFT — Kevin reviews
+  "bzx.sp.noLimits": "Giới hạn tin nhắn của tiệm: chưa đặt", // DRAFT — Kevin reviews
+  "bzx.sp.unlimited": "không giới hạn", // DRAFT — Kevin reviews
+  "bzx.sp.mode.soft": "chỉ cảnh báo", // DRAFT — Kevin reviews
+  "bzx.sp.mode.hard": "chặn tin vượt mức", // DRAFT — Kevin reviews
+  "bzx.sp.mode.approval": "cần duyệt", // DRAFT — Kevin reviews
+  "bzx.sp.guards": "Chống lặp: {cooldown} · nhắc lại một lần sau {esc} phút · {quiet}", // DRAFT — Kevin reviews
+  "bzx.sp.quietOn": "có giờ yên lặng", // DRAFT — Kevin reviews
+  "bzx.sp.quietOff": "không có giờ yên lặng", // DRAFT — Kevin reviews
+  "bzx.sp.sent": "SMS cảnh báo này đã gửi trong 24 giờ qua: {rule} (tất cả cảnh báo: {salon})", // DRAFT — Kevin reviews
+  "bzx.sp.w.no_phone_recipients": "Không người nhận nào có số di động — SMS sẽ bị bỏ qua.", // DRAFT — Kevin reviews
+  "bzx.sp.w.sender_not_configured": "Tiệm chưa thiết lập số gửi SMS.", // DRAFT — Kevin reviews
+  "bzx.sp.w.no_cooldown": "Không có thời gian chờ: mỗi lần cảnh báo kích hoạt sẽ gửi tin lại.", // DRAFT — Kevin reviews
+  "bzx.sp.dirty": "Bạn đã thay đổi cài đặt — hãy lưu để cập nhật ước tính.", // DRAFT — Kevin reviews
 };

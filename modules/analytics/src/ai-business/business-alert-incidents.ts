@@ -17,6 +17,7 @@ import { hasPermission } from '@aipowersalon/permissions';
 import { assertTransition, branchTimeZone, canMoveToSql, defineStateMachine } from '@aipowersalon/database';
 import { localHour } from '@aipowersalon/date-time';
 import type { AiBusinessContext } from './ai-business.dto';
+import { estimateSmsSegments } from '@aipowersalon/api-contracts';
 
 type Row = Record<string, any>;
 export const BUSINESS_ALERT_INCIDENTS = 'BusinessAlertIncidents';
@@ -133,12 +134,60 @@ export class BusinessAlertIncidents {
   async delivery(ctx: AiBusinessContext, alertId: string) {
     this.need(ctx);
     if (!isUuid(alertId)) throw new AlertIncidentError('Alert not found.', 'BC_ALERT_NOT_FOUND', 404);
-    const r = (await sql<Row>`select a.id, a.severity, a.channels, a.recipient_user_ids, a.quiet_hours_start, a.quiet_hours_end, a.cooldown_minutes from ai_business_alerts a
+    const r = (await sql<Row>`select a.id, a.severity, a.channels, a.recipient_user_ids, a.quiet_hours_start, a.quiet_hours_end, a.cooldown_minutes,
+        a.title, a.metric_id, a.operator, a.threshold from ai_business_alerts a
       where a.tenant_id = ${ctx.tenantId} and a.id = ${alertId}::uuid and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0];
     if (!r) throw new AlertIncidentError('Alert not found.', 'BC_ALERT_NOT_FOUND', 404);
     const staff = (await sql<Row>`select u.id, u.full_name, u.role, u.email is not null as has_email, u.normalized_phone is not null as has_phone from users u
       where u.tenant_id = ${ctx.tenantId} and coalesce(u.status, 'active') = 'active' and u.role in ('OWNER', 'MANAGER', 'TENANT_ADMIN') order by u.full_name limit 200`.execute(this.db)).rows;
-    return { ...this.deliveryView(r), staff: staff.map((s) => ({ userId: String(s.id), name: s.full_name, role: s.role, hasEmail: !!s.has_email, hasPhone: !!s.has_phone })) };
+    return { ...this.deliveryView(r), staff: staff.map((s) => ({ userId: String(s.id), name: s.full_name, role: s.role, hasEmail: !!s.has_email, hasPhone: !!s.has_phone })), smsPlan: await this.smsPlan(ctx.tenantId, r) };
+  }
+
+  /** the people a trigger (or an escalation) goes to — the ONE selection both the send path and the SMS plan use */
+  private recipients(tenantId: string, ids: string[], kind: 'trigger' | 'escalation') {
+    return sql<Row>`select u.id, u.email, u.normalized_phone from users u where u.tenant_id = ${tenantId} and coalesce(u.status, 'active') = 'active'
+        and ${ids.length && kind === 'trigger' ? sql`u.id = any(${ids}::uuid[])` : kind === 'escalation' ? sql`u.role in ('OWNER', 'TENANT_ADMIN')` : sql`u.role in ('OWNER', 'MANAGER', 'TENANT_ADMIN')`}
+        order by u.id limit 20`.execute(this.db).then((x) => x.rows);
+  }
+
+  /**
+   * extras AI Business Alerts 08 — budget-aware SMS: before a manager turns SMS on, what one trigger would cost and what
+   * already stops a runaway loop. Read-only. Recipients = the send path's own selection; segments = the shared GSM-7 /
+   * UCS-2 estimate of this rule's message; cost = the salon's OWN average provider cost per segment over its last 30 days
+   * of texts (null when the provider reported none — never a guessed price); sender = the salon's messaging configuration
+   * on file; limits = the salon's messaging limits the send pipeline enforces; loop guards = cooldown, one escalation,
+   * quiet hours and the SMS this rule actually sent in the last 24 hours.
+   */
+  private async smsPlan(tenantId: string, r: Row) {
+    const people = await this.recipients(tenantId, (r.recipient_user_ids ?? []).map(String), 'trigger');
+    const withPhone = people.filter((p) => !!p.normalized_phone).length;
+    const msg = alertMessage({ title: String(r.title ?? ''), metric_id: String(r.metric_id ?? ''), operator: String(r.operator ?? ''), threshold: r.threshold, value: r.threshold, severity: String(r.severity ?? 'warning') });
+    const seg = estimateSmsSegments(msg.body);
+    const cost = (await sql<{ micros: string | null; segs: string | null }>`select sum(n.provider_cost_micros)::text as micros, sum(n.segment_count)::text as segs from notifications n
+      where n.tenant_id = ${tenantId} and n.channel = 'sms' and n.created_at > now() - interval '30 days' and n.provider_cost_micros is not null and coalesce(n.segment_count, 0) > 0`.execute(this.db)).rows[0];
+    const micros = Number(cost?.micros ?? 0), segs = Number(cost?.segs ?? 0);
+    const perSegmentMicros = segs > 0 && micros > 0 ? Math.round(micros / segs) : null;
+    const sentRows = (await sql<{ rule: number; salon: number }>`select count(*) filter (where d.alert_id = ${r.id}::uuid)::int as rule, count(*)::int as salon from ai_business_alert_deliveries d
+      where d.tenant_id = ${tenantId} and d.channel = 'sms' and d.status = 'sent' and d.created_at > ${new Date(this.now() - 86_400_000)}`.execute(this.db)).rows[0];
+    const sender = (await sql<{ configured: number; validated_at: unknown }>`select count(*)::int as configured, max(c.last_validated_at) as validated_at from tenant_messaging_credentials c
+      where c.tenant_id = ${tenantId} and c.status = 'configured' and c.offboarded_at is null`.execute(this.db)).rows[0];
+    const lim = (await sql<Row>`select l.daily_limit, l.monthly_sms, l.enforcement, l.status from tenant_messaging_limits l where l.tenant_id = ${tenantId}`.execute(this.db)).rows[0];
+    const cooldown = Number(r.cooldown_minutes);
+    return {
+      recipients: people.length, recipientsWithPhone: withPhone, recipientsWithoutPhone: people.length - withPhone,
+      segmentsPerMessage: seg.segments, encoding: seg.encoding, segmentsPerTrigger: withPhone * seg.segments,
+      costBasis: 'salon_provider_average_30d' as const, perSegmentMicros,
+      /** integer cents, rounded UP (an estimate never under-states) */
+      estimatedCostCentsPerTrigger: perSegmentMicros == null ? null : Math.ceil((withPhone * seg.segments * perSegmentMicros) / 10_000),
+      senderConfigured: Number(sender?.configured ?? 0) > 0, senderValidatedAt: iso(sender?.validated_at),
+      limits: lim ? { dailyLimit: lim.daily_limit == null ? null : Number(lim.daily_limit), monthlySms: lim.monthly_sms == null ? null : Number(lim.monthly_sms), enforcement: String(lim.enforcement), active: lim.status === 'active' } : null,
+      loopGuards: { cooldownMinutes: cooldown, escalateOnceAfterMinutes: ESCALATE_AFTER_MINUTES, quietHours: Number(r.quiet_hours_start) !== Number(r.quiet_hours_end), sentByRuleLast24h: Number(sentRows?.rule ?? 0), alertSmsSentLast24h: Number(sentRows?.salon ?? 0) },
+      warnings: [
+        ...(withPhone === 0 ? ['no_phone_recipients'] : []),
+        ...(Number(sender?.configured ?? 0) > 0 ? [] : ['sender_not_configured']),
+        ...(cooldown === 0 ? ['no_cooldown'] : []),
+      ],
+    };
   }
 
   // ── notify on a trigger ────────────────────────────────────────────────────────────────────────────────────────
@@ -176,9 +225,7 @@ export class BusinessAlertIncidents {
       const tz = await branchTimeZone(this.db, tenantId, e.branch_id ? String(e.branch_id) : null);
       const quiet = inQuiet(now, Number(e.quiet_hours_start), Number(e.quiet_hours_end), tz);
       const ids: string[] = (e.recipient_user_ids ?? []).map(String);
-      const people = (await sql<Row>`select u.id, u.email, u.normalized_phone from users u where u.tenant_id = ${tenantId} and coalesce(u.status, 'active') = 'active'
-        and ${ids.length && kind === 'trigger' ? sql`u.id = any(${ids}::uuid[])` : kind === 'escalation' ? sql`u.role in ('OWNER', 'TENANT_ADMIN')` : sql`u.role in ('OWNER', 'MANAGER', 'TENANT_ADMIN')`}
-        order by u.id limit 20`.execute(this.db)).rows;
+      const people = await this.recipients(tenantId, ids, kind);
       for (const p of people) {
         for (const ch of (['email', 'sms'] as const).filter((c) => (c === 'email' ? wantEmail : wantSms))) {
           const to = ch === 'email' ? p.email : p.normalized_phone;

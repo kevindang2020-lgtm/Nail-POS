@@ -171,3 +171,42 @@ describe('A2 — incidents', () => {
     expect(await code(inc.detail(ctx({ permissions: [] }), ev.eventId))).toBe('PERMISSION_DENIED');
   });
 });
+
+// extras AI Business Alerts 08 — budget-aware SMS: the delivery settings carry what one trigger would text and cost, the
+// sender and limits on file, and the loop guards; read-only (nothing is written by reading it).
+describe('A2 — SMS plan (budget-aware SMS protection)', () => {
+  it('SP-01 recipients and segments from the send path\'s own selection; cost from the salon\'s own provider costs (none → null); sender, limits, loop guards', async () => {
+    const { estimateSmsSegments } = await import('@aipowersalon/api-contracts');
+    const a = await rule({ title: 'Budget watch' });
+    const deliveriesBefore = (await q(`select count(*)::int as n from ai_business_alert_deliveries where tenant_id = $1`, [T]))[0].n;
+    let d: any = await inc.delivery(ctx(), a);
+    const seg = estimateSmsSegments(alertMessage({ title: 'Budget watch', metric_id: 'net_sales', operator: 'gt', threshold: 100, value: 100, severity: 'warning' }).body).segments;
+    expect(seg).toBeGreaterThan(0);
+    // default recipients: the active owners and managers — Owner Kim has a phone, Manager Lee does not; Tech Ann is not one
+    expect(d.smsPlan).toMatchObject({ recipients: 2, recipientsWithPhone: 1, recipientsWithoutPhone: 1, segmentsPerMessage: seg, segmentsPerTrigger: seg,
+      perSegmentMicros: null, estimatedCostCentsPerTrigger: null, senderConfigured: false, limits: null, costBasis: 'salon_provider_average_30d' });
+    expect(d.smsPlan.loopGuards).toMatchObject({ cooldownMinutes: 60, escalateOnceAfterMinutes: 30, quietHours: true, sentByRuleLast24h: 0 });
+    expect(d.smsPlan.warnings).toEqual(['sender_not_configured']);
+    // the salon's own texts in the last 30 days: 3 segments for 23,700 micros → 7,900 per segment; an unreported cost, a
+    // 40-day-old text and another salon's text never count
+    await q(`insert into notifications (tenant_id, channel, to_address, body, status, created_at, segment_count, provider_cost_micros) values
+      ($1,'sms','+16095550001','a','delivered', now() - interval '2 days', 2, 15800), ($1,'sms','+16095550001','b','delivered', now() - interval '1 day', 1, 7900),
+      ($1,'sms','+16095550001','c','delivered', now() - interval '1 day', 1, null), ($1,'sms','+16095550001','d','delivered', now() - interval '40 days', 1, 90000),
+      ($2,'sms','+16095550009','x','delivered', now() - interval '1 day', 1, 99999)`, [T, id(77)]);
+    await q(`insert into tenant_messaging_credentials (tenant_id, status, from_number, last_validated_at, created_at, updated_at) values ($1,'configured','+16095550100', now() - interval '1 hour', now(), now())`, [T]);
+    await q(`insert into tenant_messaging_limits (tenant_id, daily_limit, monthly_sms, enforcement) values ($1, 50, 1000, 'hard')`, [T]);
+    // texting Owner Kim and Tech Ann with no cooldown — two phones, and the plan says nothing stops a re-trigger
+    await inc.setDelivery(ctx(), a, { channels: ['in_app', 'sms'], recipientUserIds: [OWNER, TECH], cooldownMinutes: 0 });
+    d = await inc.delivery(ctx(), a);
+    expect(d.smsPlan).toMatchObject({ recipients: 2, recipientsWithPhone: 2, recipientsWithoutPhone: 0, segmentsPerTrigger: 2 * seg, perSegmentMicros: 7900,
+      estimatedCostCentsPerTrigger: Math.ceil((2 * seg * 7900) / 10_000), senderConfigured: true, limits: { dailyLimit: 50, monthlySms: 1000, enforcement: 'hard', active: true } });
+    expect(d.smsPlan.senderValidatedAt).toMatch(/^\d{4}-/);
+    expect(d.smsPlan.warnings).toEqual(['no_cooldown']);
+    expect((await q(`select count(*)::int as n from ai_business_alert_deliveries where tenant_id = $1`, [T]))[0].n).toBe(deliveriesBefore + 0);
+    // a trigger texts both; the plan then counts this rule's sent SMS over the last 24 hours
+    await bc.alertEvaluate(ctx(), a);
+    d = await inc.delivery(ctx(), a);
+    expect(d.smsPlan.loopGuards.sentByRuleLast24h).toBe(2);
+    expect(d.smsPlan.loopGuards.alertSmsSentLast24h).toBeGreaterThanOrEqual(2);
+  });
+});

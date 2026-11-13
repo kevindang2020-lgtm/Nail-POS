@@ -37,6 +37,7 @@ import { QualifiedFinder, pageOf, whenTime } from './technicianScreenParts';
 import { fmtYmd } from '../i18n/format';
 import { DateShiftEditor } from './dateShiftEditor';
 import { presenceBadge, scheduleHealth, type ScheduleHealthCheck } from './liveScheduleChecks';
+import { StaffingHeatmap } from './liveScheduleStaffing';
 
 /** 200-technician §2: technician rows a page */
 export const LS_LANE_PAGE_SIZE = 12;
@@ -56,6 +57,7 @@ export function POSLiveTechnicianScheduleScreen() {
   const [lanePage, setLanePage] = useState(1);
   const [tick, setTick] = useState(0); const [updated, setUpdated] = useState(clockNow()); const [readAt, setReadAt] = useState<number | null>(null); const [health, setHealth] = useState<ScheduleHealthCheck[] | null>(null);
   const reload = useCallback(() => { setTick((n) => n + 1); }, []);
+  const [staffOpen, setStaffOpen] = useState(false);   // 200-technician 02: Staffing by hour
   const [sel, setSel] = useState<string | null>(null); const [fullDay, setFullDay] = useState<{ id: string; date: string } | null>(null); const [finder, setFinder] = useState(false);
   const [aPeriod, setAPeriod] = useState<PeriodState>({ preset: 'week' }); const [aKind, setAKind] = useState('all'); const [aSearch, setASearch] = useState(''); const aq = useDebounced(aSearch.trim(), 300); const [ap, setAp] = useState(1);
   useEffect(() => setLanePage(1), [q, status, skill, view]);
@@ -94,6 +96,7 @@ export function POSLiveTechnicianScheduleScreen() {
           <span className="fk-hint" data-testid="updated"><span className="ls-live" aria-hidden="true" />{tx('ls.updated', { t: hm12(updated) })}</span>
           <button type="button" className="fk-btn" onClick={reload} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn ghost" onClick={runHealth} disabled={!s} data-testid="open-health">{tx('ls.health')}</button>
+          <button type="button" className="fk-btn ghost" onClick={() => setStaffOpen((v) => !v)} disabled={!s?.staffing} aria-pressed={staffOpen} data-testid="open-staffing">{tx('ls.st.open')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setFinder(true)} data-testid="open-finder">{tx('tm.findNext')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/booking')} data-testid="open-booking">{tx('ls.openBooking')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/tech-queue')} data-testid="open-queue">{tx('ls.techQueue')}</button>
@@ -142,6 +145,11 @@ export function POSLiveTechnicianScheduleScreen() {
         </>}
       </div>
       {k && !live ? <div className="fk-note info" data-testid="not-live"><span>{tx(kp.data.when === 'past' ? 'ls.pastDay' : 'ls.futureDay', { d: day ?? '' })}</span></div> : null}
+
+      {staffOpen && s?.staffing ? <FitPanel testId="staffing" title={tx('ls.st.title', { d: day ? dayLabel(day) : '' })} actions={<button type="button" className="fk-link" onClick={() => setStaffOpen(false)} data-testid="staffing-close">{tx('ls.st.close')}</button>}>
+        <p className="fk-hint">{tx('ls.st.sub')}</p>
+        <StaffingHeatmap h={s.staffing} onTech={(id) => openDay(id)} />
+      </FitPanel> : null}
 
       {health ? <FitPanel testId="health" title={tx('ls.health')} actions={<button type="button" className="fk-link" onClick={() => setHealth(null)} data-testid="health-close">{tx('ls.h.close')}</button>}>
         <p className="fk-hint">{tx('ls.healthSub')}</p>

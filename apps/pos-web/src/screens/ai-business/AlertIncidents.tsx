@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pager, Empty, ErrorRetry, FitDialog } from '../../components/FitKit';
 import { bt, bzErr, bzWhen, bzNum } from '../../components/BusinessKit';
+import { fmtMoney } from '../../i18n/format';
 import { posAiBusinessApi } from '../../api/posAiBusinessApi';
 
 const STATUSES = ['active', 'open', 'investigating', 'snoozed', 'resolved', 'all'] as const;
@@ -104,11 +105,35 @@ export function IncidentDialog({ eventId, onClose, onChanged }: { eventId: strin
   );
 }
 
+/** extras AI Business Alerts 08 — the server's SMS plan for the SAVED settings (recipients, segments, the salon's own cost,
+ *  sender, limits, loop guards); rendered as is, nothing computed here; read-only */
+function SmsPlan({ p, dirty }: { p: any; dirty: boolean }) {
+  const cd = Number(p.loopGuards?.cooldownMinutes ?? 0);
+  const cooldown = cd === 0 ? bt('bzx.d.noCooldown') : cd >= 60 ? bt('bzx.i.hours', { n: cd / 60 }) : bt('bzx.i.minutes', { n: cd });
+  const lim = p.limits;
+  return (
+    <div className="panel" data-testid="bzx-sms-plan" style={{ padding: 10 }}>
+      <b>{bt('bzx.sp.title')}</b>
+      {dirty ? <div className="sub" data-testid="bzx-sp-dirty">{bt('bzx.sp.dirty')}</div> : null}
+      <div data-testid="bzx-sp-recipients">{bt('bzx.sp.recipients', { n: p.recipientsWithPhone, total: p.recipients })}</div>
+      <div data-testid="bzx-sp-segments">{bt('bzx.sp.segments', { seg: p.segmentsPerMessage, total: p.segmentsPerTrigger })}</div>
+      <div data-testid="bzx-sp-cost">{p.estimatedCostCentsPerTrigger == null ? bt('bzx.sp.costUnknown') : bt('bzx.sp.cost', { cost: fmtMoney(p.estimatedCostCentsPerTrigger) })}</div>
+      <div data-testid="bzx-sp-sender">{!p.senderConfigured ? bt('bzx.sp.senderMissing') : p.senderValidatedAt ? bt('bzx.sp.sender', { at: bzWhen(p.senderValidatedAt) }) : bt('bzx.sp.senderNoCheck')}</div>
+      <div data-testid="bzx-sp-limits">{!lim ? bt('bzx.sp.noLimits') : bt('bzx.sp.limits', { daily: lim.dailyLimit == null ? bt('bzx.sp.unlimited') : bzNum(lim.dailyLimit), monthly: lim.monthlySms == null ? bt('bzx.sp.unlimited') : bzNum(lim.monthlySms), mode: bt('bzx.sp.mode.' + lim.enforcement) })}</div>
+      <div data-testid="bzx-sp-guards">{bt('bzx.sp.guards', { cooldown, esc: p.loopGuards?.escalateOnceAfterMinutes ?? 30, quiet: bt(p.loopGuards?.quietHours ? 'bzx.sp.quietOn' : 'bzx.sp.quietOff') })}</div>
+      <div className="sub" data-testid="bzx-sp-sent">{bt('bzx.sp.sent', { rule: p.loopGuards?.sentByRuleLast24h ?? 0, salon: p.loopGuards?.alertSmsSentLast24h ?? 0 })}</div>
+      {(p.warnings ?? []).map((w: string) => <div key={w} className="err" role="status" data-testid={'bzx-sp-w-' + w}>{bt('bzx.sp.w.' + w)}</div>)}
+    </div>
+  );
+}
+
 export function DeliveryDialog({ alert, onClose, onSaved }: { alert: { id: string; title: string }; onClose: () => void; onSaved: () => void }) {
   const [d, setD] = useState<any>(null);
+  const [saved, setSaved] = useState<any>(null);   // the settings as loaded — the SMS plan describes these
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { posAiBusinessApi.center.alertDelivery(alert.id).then(setD).catch((e) => setErr(bzErr(e))); }, [alert.id]);
+  useEffect(() => { posAiBusinessApi.center.alertDelivery(alert.id).then((x) => { setD(x); setSaved(x); }).catch((e) => setErr(bzErr(e))); }, [alert.id]);
+  const sig = (x: any) => (x ? JSON.stringify([[...x.channels].sort(), [...x.recipientUserIds].sort(), Number(x.cooldownMinutes), Number(x.quietHoursStart), Number(x.quietHoursEnd)]) : '');
   const set = (p: Record<string, unknown>) => setD({ ...d, ...p });
   const toggle = (key: 'channels' | 'recipientUserIds', v: string) => set({ [key]: d[key].includes(v) ? d[key].filter((x: string) => x !== v) : [...d[key], v] });
   const save = () => {
@@ -137,6 +162,7 @@ export function DeliveryDialog({ alert, onClose, onSaved }: { alert: { id: strin
           {d.staff.map((s: any) => <label key={s.userId} className="chk"><input type="checkbox" data-testid="bzx-d-rcpt" checked={d.recipientUserIds.includes(s.userId)} onChange={() => toggle('recipientUserIds', s.userId)} /> {s.name}
             {!s.hasEmail || !s.hasPhone ? <span className="sub"> · {!s.hasEmail ? bt('bzx.d.noEmail') : bt('bzx.d.noPhone')}</span> : null}</label>)}
         </fieldset>
+        {saved?.smsPlan && (d.channels.includes('sms') || saved.channels.includes('sms')) ? <SmsPlan p={saved.smsPlan} dirty={sig(d) !== sig(saved)} /> : null}
         <p className="sub">{bt('bzx.d.note')}</p>
       </>)}
     </FitDialog>

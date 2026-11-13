@@ -17,5 +17,16 @@ export interface AlertIncidentActionRequest { action: 'acknowledge' | 'investiga
 export interface AlertIncidentActionResponse { eventId: string; incidentStatus: AlertIncidentStatus; version: number }
 export interface AlertIncidentNoteRequest { note: string }
 export interface AlertDeliverySettings { alertId: string; severity: AlertSeverity; channels: AlertChannel[]; recipientUserIds: string[]; quietHoursStart: number; quietHoursEnd: number; cooldownMinutes: number }
-export interface AlertDeliverySettingsResponse extends AlertDeliverySettings { staff: { userId: string; name: string; role: string; hasEmail: boolean; hasPhone: boolean }[] }
+/** extras AI Business Alerts 08 — what one trigger would text and cost with the SAVED settings (read-only estimate) */
+export interface AlertSmsPlan {
+  recipients: number; recipientsWithPhone: number; recipientsWithoutPhone: number;
+  segmentsPerMessage: number; encoding: 'GSM-7' | 'UCS-2'; segmentsPerTrigger: number;
+  /** the salon's own average provider cost per segment over its last 30 days of texts; null = none reported */
+  costBasis: 'salon_provider_average_30d'; perSegmentMicros: number | null; estimatedCostCentsPerTrigger: number | null;
+  senderConfigured: boolean; senderValidatedAt: string | null;
+  limits: { dailyLimit: number | null; monthlySms: number | null; enforcement: string; active: boolean } | null;
+  loopGuards: { cooldownMinutes: number; escalateOnceAfterMinutes: number; quietHours: boolean; sentByRuleLast24h: number; alertSmsSentLast24h: number };
+  warnings: ('no_phone_recipients' | 'sender_not_configured' | 'no_cooldown')[];
+}
+export interface AlertDeliverySettingsResponse extends AlertDeliverySettings { staff: { userId: string; name: string; role: string; hasEmail: boolean; hasPhone: boolean }[]; smsPlan?: AlertSmsPlan }
 export interface AlertDeliveryUpdateRequest { severity?: AlertSeverity; channels?: AlertChannel[]; recipientUserIds?: string[]; quietHoursStart?: number; quietHoursEnd?: number; cooldownMinutes?: number }

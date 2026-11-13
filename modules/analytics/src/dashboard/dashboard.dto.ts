@@ -1,5 +1,5 @@
 import { taxCents as taxOf } from '@aipowersalon/money';
-import { centsToUsd, taxCents } from '@aipowersalon/money';
+import { centsToUsd } from '@aipowersalon/money';
 export { centsToUsd };   // owned by @aipowersalon/money (Constitution 13 §86)
 // dashboard.dto.ts — AIPowerSalon POS Dashboard contracts (§8-21).
 // Every endpoint derives tenantId/branchId/userId/role from the authenticated session — never the client (§25).
@@ -67,7 +67,39 @@ export interface CurrentTicket {
 export interface GuestSnapshot { customerId: string; totalVisits: number; lastVisitDate: string; totalSpentCents: number; loyaltyPoints: number; }
 
 // ---- §15-18 analytics ----
-export interface RevenueTrend { period: string; totalCents: number; trendPercent: number; series: { label: string; valueCents: number; apptCount: number; /** YYYY-MM-DD (the POS labels the axis in the user's language) */ date?: string }[]; }
+export interface RevenueTrend { period: string; totalCents: number; trendPercent: number; series: { label: string; valueCents: number; apptCount: number; /** YYYY-MM-DD (the POS labels the axis in the user's language) */ date?: string }[]; explain?: RevenueTrendExplain; }
+/**
+ * Operational Trend Explainability (Nov 2026): the exact source and window behind the trend card, and the same-length window
+ * right before it, so the screen can say what changed without computing anything itself. Read-only; the numbers are the
+ * card's own (same payments query, same appointment table, same branch day).
+ */
+/**
+ * Live Operations 03 — one line of the Smart Priority strip. Counts of real rows past a STATED threshold (minutes), each
+ * with the oldest one's age and the module that owns it; nothing is changed from here.
+ *   checkout_waiting  tickets ready for checkout, unpaid, for more than thresholdMinutes (the Checkout board's population)
+ *   long_wait         queue guests waiting / called / assigned / ready for a technician longer than thresholdMinutes
+ *   staffing_gap      waiting guests minus technicians available now (clocked in, queue AVAILABLE, not set unavailable)
+ *   overdue_appointment  today's booked / confirmed appointments whose start passed thresholdMinutes ago, not arrived
+ *   message_waiting   conversations awaiting a reply longer than thresholdMinutes (the inbox's own awaiting_reply_since)
+ */
+export interface LivePriority { kind: 'checkout_waiting' | 'long_wait' | 'staffing_gap' | 'overdue_appointment' | 'message_waiting'; count: number; oldestMinutes: number | null; thresholdMinutes: number | null; route: string; }
+export interface RevenueTrendExplain {
+  /** revenue = payments whose status is one of `statuses` (the shared revenue-bearing list), dated by the branch's day */
+  source: 'payments'; statuses: string[];
+  /** appointments = the booking calendar rows on each day (every status) */
+  appointmentSource: 'appointments';
+  timeZone: string;
+  /** the window shown (inclusive business dates) and the window of the same length right before it */
+  from: string; to: string; previousFrom: string; previousTo: string; days: number;
+  currentCents: number; previousCents: number; changeCents: number;
+  /** null when the previous window had no revenue (no honest percentage) */
+  changePercent: number | null;
+  currentAppointments: number; previousAppointments: number;
+  /** the window ends on today's salon day, so its last day is still being written */
+  includesToday: boolean;
+  /** the day in the window with the most revenue (null when the window has none) */
+  peakDay: { date: string; valueCents: number } | null;
+}
 export interface TopService { name: string; revenueCents: number; }
 export interface TopTechnician { technicianId: string; name: string; revenueCents: number; servicesCount: number; utilizationPercent: number | null; tipsCents: number; rating: number | null; }
 export interface PaymentMixEntry { method: "card" | "cash" | "other"; percent: number; amountCents: number; }
@@ -132,6 +164,8 @@ export interface POSDashboardState {
   todaysAppointments: TodaysAppointmentsStats;
   walkInStatus: WalkInStatus;
   operationsSnapshot: OperationsSnapshot;
+  /** Live Operations 03 — the Smart Priority strip: what needs a person now (present only for the salon's today) */
+  priorities?: LivePriority[];
   currentTicket?: CurrentTicket;
   guestSnapshot?: GuestSnapshot;
   revenueTrend: RevenueTrend;

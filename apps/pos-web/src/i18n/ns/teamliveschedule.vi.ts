@@ -118,4 +118,18 @@ export const TEAMLIVESCHEDULE_VI = {
   'ls.hr.no_kpis': 'Hàng chỉ số chưa tải được', // DRAFT — Kevin reviews
   'ls.h.staleAge': 'Đọc lần cuối {n} phút trước', // DRAFT — Kevin reviews
   'ls.h.close': 'Đóng', // DRAFT — Kevin reviews
+  'ls.st.open': 'Nhân sự theo giờ', // DRAFT — Kevin reviews
+  'ls.st.title': 'Nhân sự theo giờ · {d}', // DRAFT — Kevin reviews
+  'ls.st.close': 'Đóng', // DRAFT — Kevin reviews
+  'ls.st.sub': 'Mọi thợ trên bảng (đã áp dụng bộ lọc, tất cả các trang) theo từng giờ: trong ca, có lịch, nghỉ theo kế hoạch, sẵn sàng. Trễ và đang nghỉ chỉ tính cho giờ hiện tại của hôm nay.', // DRAFT — Kevin reviews
+  'ls.st.row.ready': 'Sẵn sàng', // DRAFT — Kevin reviews
+  'ls.st.row.booked': 'Có lịch', // DRAFT — Kevin reviews
+  'ls.st.row.onBreak': 'Nghỉ theo kế hoạch', // DRAFT — Kevin reviews
+  'ls.st.row.late': 'Trễ (lúc này)', // DRAFT — Kevin reviews
+  'ls.st.row.breakNow': 'Đang nghỉ (lúc này)', // DRAFT — Kevin reviews
+  'ls.st.row.onShift': 'Trong ca', // DRAFT — Kevin reviews
+  'ls.st.now': 'lúc này', // DRAFT — Kevin reviews
+  'ls.st.cell': '{row} · {start}: {n}', // DRAFT — Kevin reviews
+  'ls.st.who': '{row} · {start} – {end}', // DRAFT — Kevin reviews
+  'ls.st.none': 'Không có ai trong ca ngày này.', // DRAFT — Kevin reviews
 };

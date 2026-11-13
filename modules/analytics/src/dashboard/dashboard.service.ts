@@ -8,6 +8,9 @@ import {
   toPosDashboardSummary,
   type POSDashboardState,
   type POSDashboardSummary,
+  type RevenueTrend,
+  type TopService,
+  type PaymentMix,
 } from './dashboard.dto';
 import type { DashboardRepo, DashboardScope, DashboardQuery } from './dashboard.repository';
 import type { TenantCache } from '@aipowersalon/cache';
@@ -65,10 +68,13 @@ export class DashboardService {
   async getQueue(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).queue; }
   async getServing(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).serving; }
   async getCheckout(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).checkout; }
-  async getRevenueTrend(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).revenueTrend; }
-  async getTopServices(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).topServices; }
+  // The three period slices the Live Operations card dropdowns read (Today / This Week / This Month) return the card's OWN
+  // shape from the rich aggregate — they returned the flat summary projection ({points} / {items} / {cardPercent…}), which the
+  // card cannot draw, so picking a period emptied the trend chart and broke the services / payment-mix donuts (Nov 2026).
+  async getRevenueTrend(tc: TenantContext, q: DashboardQuery = {}): Promise<RevenueTrend> { return (await this.aggregate(tc, q)).revenueTrend; }
+  async getTopServices(tc: TenantContext, q: DashboardQuery = {}): Promise<TopService[]> { return (await this.aggregate(tc, q)).topServices; }
   async getTopTechnicians(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).topTechnicians; }
-  async getPaymentMix(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).paymentMix; }
+  async getPaymentMix(tc: TenantContext, q: DashboardQuery = {}): Promise<PaymentMix> { return (await this.aggregate(tc, q)).paymentMix; }
   async getCustomers(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).customers; }
   async getInsights(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).insights; }
   async getAlerts(tc: TenantContext, q: DashboardQuery = {}) { return (await this.getSummary(tc, q)).alerts; }

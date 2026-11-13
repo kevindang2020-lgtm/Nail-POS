@@ -163,6 +163,45 @@ describe('POSAiAlertsScreen', () => {
     fireEvent.click(screen.getByTestId('bzx-d-save'));
     await vi.waitFor(() => expect(c.alertSetDelivery).toHaveBeenCalledWith('a1', { severity: 'critical', channels: ['in_app', 'sms'], recipientUserIds: ['u1'], quietHoursStart: 21, quietHoursEnd: 8, cooldownMinutes: 60 }));
   });
+  it('extras 08 — SMS budget: the server plan for the saved settings (recipients, segments, cost, sender, limits, loop guards, warnings); a change says save to update; read-only', async () => {
+    const plan = { recipients: 2, recipientsWithPhone: 1, recipientsWithoutPhone: 1, segmentsPerMessage: 1, encoding: 'GSM-7', segmentsPerTrigger: 1, costBasis: 'salon_provider_average_30d', perSegmentMicros: 7900,
+      estimatedCostCentsPerTrigger: 1, senderConfigured: true, senderValidatedAt: '2026-11-03T14:00:00Z', limits: { dailyLimit: 50, monthlySms: null, enforcement: 'hard', active: true },
+      loopGuards: { cooldownMinutes: 0, escalateOnceAfterMinutes: 30, quietHours: true, sentByRuleLast24h: 4, alertSmsSentLast24h: 9 }, warnings: ['no_cooldown'] };
+    c.alertDelivery.mockResolvedValue({ ...DELIVERY, channels: ['in_app', 'sms'], cooldownMinutes: 0, smsPlan: plan });
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-a-notify'));
+    const p = await screen.findByTestId('bzx-sms-plan');
+    expect(screen.getByTestId('bzx-sp-recipients')).toHaveTextContent('Texts per trigger: 1 of 2 recipients have a mobile number');
+    expect(screen.getByTestId('bzx-sp-segments')).toHaveTextContent('1 segment(s) per text · 1 segment(s) per trigger');
+    expect(screen.getByTestId('bzx-sp-cost')).toHaveTextContent('Estimated cost per trigger: $0.01');
+    expect(screen.getByTestId('bzx-sp-sender')).toHaveTextContent('SMS sender: set up (last checked');
+    expect(screen.getByTestId('bzx-sp-limits')).toHaveTextContent('Salon text limits: 50 per day · no limit per month · blocks extra texts');
+    expect(screen.getByTestId('bzx-sp-guards')).toHaveTextContent('Loop guards: No cooldown · one escalation after 30 min · quiet hours on');
+    expect(screen.getByTestId('bzx-sp-sent')).toHaveTextContent('SMS sent by this alert in the last 24 hours: 4 (all alerts: 9)');
+    expect(screen.getByTestId('bzx-sp-w-no_cooldown')).toHaveTextContent('every time this alert triggers it texts again');
+    expect(screen.queryByTestId('bzx-sp-dirty')).toBeNull();
+    fireEvent.change(screen.getByTestId('bzx-d-cooldown'), { target: { value: '60' } });
+    expect(await screen.findByTestId('bzx-sp-dirty')).toHaveTextContent('save to update this estimate');
+    expect(p).toBeInTheDocument();
+    expect(c.alertSetDelivery).not.toHaveBeenCalled();
+  });
+  it('extras 08 — SMS budget: no reported provider cost reads "—", a missing sender is said plainly; SMS off and not saved → no panel', async () => {
+    const plan = { recipients: 1, recipientsWithPhone: 0, recipientsWithoutPhone: 1, segmentsPerMessage: 2, encoding: 'UCS-2', segmentsPerTrigger: 0, perSegmentMicros: null, estimatedCostCentsPerTrigger: null,
+      senderConfigured: false, senderValidatedAt: null, limits: null, loopGuards: { cooldownMinutes: 60, escalateOnceAfterMinutes: 30, quietHours: false, sentByRuleLast24h: 0, alertSmsSentLast24h: 0 }, warnings: ['no_phone_recipients', 'sender_not_configured'] };
+    c.alertDelivery.mockResolvedValue({ ...DELIVERY, smsPlan: plan });
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-a-notify'));
+    await screen.findByTestId('bzx-delivery');
+    expect(screen.queryByTestId('bzx-sms-plan')).toBeNull();
+    fireEvent.click(screen.getByTestId('bzx-d-ch-sms'));
+    await screen.findByTestId('bzx-sms-plan');
+    expect(screen.getByTestId('bzx-sp-cost')).toHaveTextContent('Estimated cost per trigger: — (your provider has not reported a cost in the last 30 days)');
+    expect(screen.getByTestId('bzx-sp-sender')).toHaveTextContent('SMS sender: not set up');
+    expect(screen.getByTestId('bzx-sp-limits')).toHaveTextContent('Salon text limits: none set');
+    expect(screen.getByTestId('bzx-sp-w-no_phone_recipients')).toBeInTheDocument();
+    expect(screen.getByTestId('bzx-sp-w-sender_not_configured')).toBeInTheDocument();
+    expect(screen.getByTestId('bzx-sp-dirty')).toBeInTheDocument();
+  });
   it('Saved workspace: the rules search comes back after leaving and returning (same tab)', async () => {
     const v = wrap();
     fireEvent.change(await screen.findByTestId('bzx-a-search'), { target: { value: 'ticket' } });

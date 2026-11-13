@@ -527,3 +527,57 @@ describe('shared read-only Check … System', () => {
     expect((await q(tally)).rows).toEqual(before);
   });
 });
+
+// extras Technicians Management Center 07 — Booking / Queue / Technician App sync. Own salon (ids 670–689) so no other
+// test's rows move these counts.
+describe('Check Technicians System — booking / queue / app sync', () => {
+  it('counts stale bookings, queue guests, workforce rows, availability mismatches and undelivered events — never the other salon, nothing written', async () => {
+    const T7 = id(670), X7 = id(671), B71 = id(672), B72 = id(673), BX7 = id(674);
+    const GONE = id(675), LIVE = id(676), OUT = id(677), XGONE = id(678), B2T = id(679);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T7}, 'S7', 'Sync', 'sc-sync-7', 'SCSY7', 'active'), (${X7}, 'X7', 'Other', 'sc-sync-7x', 'SCSY7X', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B71}, ${T7}, 'Main', 'America/New_York'), (${B72}, ${T7}, 'Second', 'America/New_York'), (${BX7}, ${X7}, 'Other', 'America/New_York')`);
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, archived_at, status) values
+      (${GONE}, ${T7}, ${B71}, 'Gil', 'Gone', 'Gil Gone', false, now(), 'archived'), (${LIVE}, ${T7}, ${B71}, 'Liv', 'Live', 'Liv Live', true, null, 'active'),
+      (${OUT}, ${T7}, ${B71}, 'Oz', 'Out', 'Oz Out', true, null, 'active'), (${B2T}, ${T7}, ${B72}, 'Bea', 'Two', 'Bea Two', true, null, 'active'),
+      (${XGONE}, ${X7}, ${BX7}, 'Xen', 'Gone', 'Xen Gone', false, now(), 'archived')`);
+    const day = sql`(now() AT TIME ZONE 'America/New_York')::date`;
+    // Gil (archived) still holds a booking tomorrow and one today; yesterday's and a cancelled one never count; Liv's is fine
+    await q(sql`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, source) values
+      (${T7}, ${B71}, ${GONE}, 'A', '[]', ${day} + 1, '10:00', '10:30', 30, 'booked', 'online'), (${T7}, ${B71}, ${GONE}, 'B', '[]', ${day}, '23:00', '23:30', 30, 'confirmed', 'online'),
+      (${T7}, ${B71}, ${GONE}, 'C', '[]', ${day} - 1, '10:00', '10:30', 30, 'booked', 'online'), (${T7}, ${B71}, ${GONE}, 'D', '[]', ${day} + 2, '10:00', '10:30', 30, 'cancelled', 'online'),
+      (${T7}, ${B71}, ${LIVE}, 'E', '[]', ${day} + 1, '11:00', '11:30', 30, 'booked', 'online'),
+      (${X7}, ${BX7}, ${XGONE}, 'X', '[]', ${day} + 1, '10:00', '10:30', 30, 'booked', 'online')`);
+    // a waiting guest assigned to Gil; a completed one never counts
+    await q(sql`insert into pos_queue_items (tenant_id, branch_id, customer_name, source, priority, status, assigned_technician_id, requested_services) values
+      (${T7}, ${B71}, 'Q1', 'walk_in', 'normal', 'assigned', ${GONE}, '[]'), (${T7}, ${B71}, 'Q2', 'walk_in', 'normal', 'completed', ${GONE}, '[]'),
+      (${X7}, ${BX7}, 'QX', 'walk_in', 'normal', 'waiting', ${XGONE}, '[]')`);
+    // workforce rows: Gil's still says employment 'active' (and so queue OFF_SHIFT ≠ UNAVAILABLE is not counted — employment
+    // says active); Oz is clocked out but shown AVAILABLE; Liv is consistent; Bea (branch 2) clocked in but OFF_SHIFT
+    await q(sql`insert into technician_workforce_state (tenant_id, branch_id, technician_id, employment_status, clock_status, shift_status, queue_status) values
+      (${T7}, ${B71}, ${GONE}, 'active', 'CLOCKED_OUT', 'OFF_SHIFT', 'OFF_SHIFT'), (${T7}, ${B71}, ${OUT}, 'active', 'CLOCKED_OUT', 'OFF_SHIFT', 'AVAILABLE'),
+      (${T7}, ${B71}, ${LIVE}, 'active', 'CLOCKED_IN', 'ON_SHIFT', 'AVAILABLE'), (${T7}, ${B72}, ${B2T}, 'active', 'CLOCKED_IN', 'ON_SHIFT', 'OFF_SHIFT'),
+      (${X7}, ${BX7}, ${XGONE}, 'active', 'CLOCKED_OUT', 'ON_SHIFT', 'AVAILABLE')`);
+    // events: one pending for 20 minutes, one failed, one pending for 1 minute (in flight), one published; the other salon's stuck one
+    await q(sql`insert into outbox_events (id, event_type, tenant_id, branch_id, aggregate_type, aggregate_id, correlation_id, payload_json, occurred_at, publish_status) values
+      (${id(680)}, 'booking.updated', ${T7}, ${B71}, 'booking', 'a1', 'c1', '{}'::jsonb, now() - interval '20 minutes', 'pending'),
+      (${id(681)}, 'queue.updated', ${T7}, ${B72}, 'queue', 'q1', 'c2', '{}'::jsonb, now() - interval '2 hours', 'failed'),
+      (${id(682)}, 'queue.updated', ${T7}, ${B71}, 'queue', 'q2', 'c3', '{}'::jsonb, now() - interval '1 minute', 'pending'),
+      (${id(683)}, 'queue.updated', ${T7}, ${B71}, 'queue', 'q3', 'c4', '{}'::jsonb, now() - interval '3 hours', 'published'),
+      (${id(684)}, 'queue.updated', ${X7}, ${BX7}, 'queue', 'qx', 'c5', '{}'::jsonb, now() - interval '3 hours', 'pending')`);
+    const rows = sql`select (select count(*) from pos_tech_appointments) + (select count(*) from pos_queue_items) + (select count(*) from technician_workforce_state) + (select count(*) from outbox_events) as n`;
+    const before = (await q(rows)).rows;
+    const all = await svc.run('technicians', { tenantId: T7 });
+    expect(count(all, 'sync_booking_tech_inactive')).toMatchObject({ state: 'WARNING', count: 2 });
+    expect(count(all, 'sync_queue_tech_inactive')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(all, 'sync_workforce_role_stale')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(all, 'sync_availability_mismatch')).toMatchObject({ state: 'WARNING', count: 2 });   // Oz (clocked out, AVAILABLE) + Bea (clocked in, OFF_SHIFT)
+    expect(count(all, 'sync_events_delayed')).toMatchObject({ state: 'WARNING', count: 2 });          // 20-minute pending + failed
+    const b1 = await svc.run('technicians', { tenantId: T7, branchId: B71 });
+    expect(count(b1, 'sync_availability_mismatch').count).toBe(1);
+    expect(count(b1, 'sync_events_delayed').count).toBe(1);
+    const b2 = await svc.run('technicians', { tenantId: T7, branchId: B72 });
+    expect(count(b2, 'sync_booking_tech_inactive')).toMatchObject({ state: 'READY', count: 0 });
+    expect(count(b2, 'sync_queue_tech_inactive').count).toBe(0);
+    expect((await q(rows)).rows).toEqual(before);
+  });
+});
