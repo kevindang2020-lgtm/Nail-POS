@@ -1781,4 +1781,14 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.trend.inProgress": "Khoảng thời gian kết thúc hôm nay, vẫn đang diễn ra — số liệu còn có thể thay đổi.", // DRAFT — Kevin reviews
   "ops.liveOps.trend.readOnly": "Chỉ để giải thích — không thay đổi gì; quyết định và tiền vẫn do nhân viên của bạn xử lý.", // DRAFT — Kevin reviews
   "ops.liveOps.trend.vsPrev": "so với {days} ngày trước đó", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_booking_tech_inactive": "Không có lịch hẹn sắp tới nào do thợ đã lưu trữ hoặc ngừng hoạt động giữ", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_booking_tech_inactive.fix": "Chuyển các lịch hẹn đó sang thợ đang hoạt động trên lịch đặt hẹn, hoặc khôi phục thợ.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_queue_tech_inactive": "Không có khách đang chờ nào được giao cho thợ đã lưu trữ hoặc ngừng hoạt động", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_queue_tech_inactive.fix": "Giao lại các khách đó từ Hàng chờ khách.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_workforce_role_stale": "Trạng thái trực tiếp của mọi thợ đã lưu trữ hoặc ngừng hoạt động cho biết họ không còn làm ở đây", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_workforce_role_stale.fix": "Đặt lại trạng thái của thợ từ mục Thợ (ví dụ Ngừng hoạt động) để hàng chờ và Ứng dụng Thợ nhận được.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_availability_mismatch": "Tình trạng sẵn sàng của từng thợ khớp với giờ chấm công (đã chấm công ra = ngoài ca)", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_availability_mismatch.fix": "Chấm công vào hoặc ra lại cho thợ từ Chấm công để hàng chờ và Ứng dụng Thợ khớp nhau.", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_events_delayed": "Cập nhật lịch hẹn, hàng chờ và thợ đến các ứng dụng trong vòng 5 phút", // DRAFT — Kevin reviews
+  "syschk.technicians.sync_events_delayed.fix": "Có cập nhật đang chờ hoặc gửi không thành công. Hãy làm mới màn hình; nếu vẫn còn, liên hệ hỗ trợ — không mất dữ liệu nào.", // DRAFT — Kevin reviews
 };

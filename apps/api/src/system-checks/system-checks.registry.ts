@@ -287,6 +287,30 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         AND NOT EXISTS (SELECT 1 FROM technician_services ts WHERE ts.tenant_id = x.tenant_id AND ts.technician_id = x.id)`) },
     { key: 'certification_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT DISTINCT x.id FROM technician_certifications c JOIN technicians x ON x.id = c.technician_id AND x.tenant_id = c.tenant_id
         WHERE c.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND c.revoked_reason IS NULL AND c.expires_at IS NOT NULL AND c.expires_at < ${today('x', t)}`) },
+    // extras Technicians Management Center 07 — Booking / Queue / Technician App sync: the places a technician's state is
+    // copied to (the booking calendar, the customer queue, the live workforce row, the event outbox the apps are fed from)
+    // that no longer agree with the technician record or with the clock. Counts only; nothing is moved or re-sent.
+    // an upcoming booking (from the branch's today, still open) held by a technician who is archived / inactive
+    { key: 'sync_booking_tech_inactive', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_tech_appointments a JOIN technicians x ON x.tenant_id = a.tenant_id AND x.id = a.technician_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status IN ('booked', 'confirmed', 'arrived', 'checked_in', 'waiting') AND a.appt_date >= ${today('a', t)}
+          AND (x.archived_at IS NOT NULL OR NOT coalesce(x.is_active, true) OR coalesce(x.status, 'active') <> 'active')`) },
+    // a waiting / called / assigned queue guest assigned to a technician who is archived / inactive
+    { key: 'sync_queue_tech_inactive', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_queue_items q JOIN technicians x ON x.tenant_id = q.tenant_id AND x.id = q.assigned_technician_id
+        WHERE q.tenant_id = ${t}::uuid ${br('q', b)} AND q.status IN ('waiting', 'called', 'assigned', 'ready_for_tech')
+          AND (x.archived_at IS NOT NULL OR NOT coalesce(x.is_active, true) OR coalesce(x.status, 'active') <> 'active')`) },
+    // the live workforce row still says 'active' employment for a technician the record has archived / deactivated
+    { key: 'sync_workforce_role_stale', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_workforce_state w JOIN technicians x ON x.tenant_id = w.tenant_id AND x.id = w.technician_id
+        WHERE w.tenant_id = ${t}::uuid ${br('w', b)} AND w.employment_status = 'active' AND (x.archived_at IS NOT NULL OR NOT coalesce(x.is_active, true))`) },
+    // availability the apps read disagrees with the clock: the workforce engine's own rules (workforce-status-core
+    // deriveShift / deriveQueue) — clocked out ⇒ OFF_SHIFT shift and queue; not employed ⇒ UNAVAILABLE
+    { key: 'sync_availability_mismatch', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_workforce_state w
+        WHERE w.tenant_id = ${t}::uuid ${br('w', b)} AND (
+          (w.clock_status = 'CLOCKED_OUT' AND (w.shift_status <> 'OFF_SHIFT' OR (w.employment_status = 'active' AND w.queue_status <> 'OFF_SHIFT')))
+          OR (w.clock_status IN ('CLOCKED_IN', 'ON_BREAK') AND (w.shift_status <> 'ON_SHIFT' OR w.queue_status = 'OFF_SHIFT'))
+          OR (w.employment_status <> 'active' AND w.queue_status <> 'UNAVAILABLE'))`) },
+    // an event for this salon that has not reached the apps: still pending / claimed after 5 minutes, or failed
+    { key: 'sync_events_delayed', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM outbox_events v WHERE v.tenant_id = ${t}::uuid ${br('v', b)}
+        AND (v.publish_status = 'failed' OR (v.publish_status IN ('pending', 'claimed') AND v.occurred_at < now() - interval '5 minutes'))`) },
   ] },
 
   // ── Membership Overview (/pos/memberships) ────────────────────────────────────────────────────────────────────────
