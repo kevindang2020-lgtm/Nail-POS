@@ -486,4 +486,19 @@ export const CATALOGSCREENS_VI = {
   "cg.comp.src.tenant_default_rate": "Mức mặc định của tiệm", // DRAFT — Kevin reviews
   "cg.comp.src.not_recorded": "Không ghi nguồn", // DRAFT — Kevin reviews
   "cg.comp.src.unscoped": "Quy tắc không phạm vi", // DRAFT — Kevin reviews
+  "cg.pp.open": "Xem trước khi tính tiền", // DRAFT — Kevin reviews
+  "cg.pp.title": "{name} sẽ tính tiền thế nào", // DRAFT — Kevin reviews
+  "cg.pp.sub": "Khách vãng lai tại quầy tính tiền: ưu đãi được áp dụng, thuế và tổng. Không thu tiền, không lưu gì.", // DRAFT — Kevin reviews
+  "cg.pp.price": "Giá để xem trước", // DRAFT — Kevin reviews
+  "cg.pp.addOns": "Dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.pp.notTaxed": "không chịu thuế", // DRAFT — Kevin reviews
+  "cg.pp.deal": "Ưu đãi: {t}", // DRAFT — Kevin reviews
+  "cg.pp.subtotal": "Tạm tính sau giảm giá", // DRAFT — Kevin reviews
+  "cg.pp.tax": "Thuế ({r}%)", // DRAFT — Kevin reviews
+  "cg.pp.total": "Tổng phải trả", // DRAFT — Kevin reviews
+  "cg.pp.failed": "Không tải được bản xem trước.", // DRAFT — Kevin reviews
+  "cg.pp.dealsUnavailable": "Không kiểm tra được ưu đãi ở đây nên không hiện giảm giá — quầy tính tiền vẫn áp dụng.", // DRAFT — Kevin reviews
+  "cg.pp.notForWalkIn": "{n} ưu đãi cần biết khách hoặc cần mã nên không áp dụng cho khách vãng lai.", // DRAFT — Kevin reviews
+  "cg.pp.surcharge": "Phụ phí thẻ (nếu có) được quyết định khi đọc thẻ.", // DRAFT — Kevin reviews
+  "cg.pp.note": "Chỉ xem: dùng cùng quy tắc ưu đãi và thuế như quầy tính tiền và không thay đổi gì.", // DRAFT — Kevin reviews
 };

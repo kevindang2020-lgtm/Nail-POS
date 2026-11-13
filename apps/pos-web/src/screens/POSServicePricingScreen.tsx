@@ -18,7 +18,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
-import { nf, money, mins, day, whenTime, pageOf, STATUS_TONE, statusText, saveCsv, CustomerHistoryTable, EditPricingDialog, ChangeHistoryTable } from './catalogShared';
+import { nf, money, mins, day, whenTime, pageOf, STATUS_TONE, statusText, saveCsv, CustomerHistoryTable, EditPricingDialog, ChangeHistoryTable, PricePreviewDialog } from './catalogShared';
 
 type Tab = 'list' | 'history' | 'customers';
 const TABS: Tab[] = ['list', 'history', 'customers'];
@@ -40,7 +40,7 @@ export function POSServicePricingScreen() {
   const [pages, setPages] = useState<Record<Tab, number>>({ list: 1, history: 1, customers: 1 }); const setPg = (t: Tab) => (n: number) => setPages((x) => ({ ...x, [t]: n }));
   const [tick, setTick] = useState(0); const reload = () => setTick((n) => n + 1);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
-  const [detail, setDetail] = useState<string | null>(null); const [editing, setEditing] = useState<any | null>(null);
+  const [detail, setDetail] = useState<string | null>(null); const [editing, setEditing] = useState<any | null>(null); const [previewing, setPreviewing] = useState<any | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const listScope = { q: q || undefined, categoryId: categoryId || undefined, status: status === 'catalog' ? undefined : status, online: online || undefined, sort, dateField, ...periodQuery(periods.list) };
@@ -130,6 +130,7 @@ export function POSServicePricingScreen() {
               <td className="fn-acts" onClick={(e) => e.stopPropagation()}>
                 <button type="button" className="fk-btn ghost sm" onClick={() => setDetail(s.serviceId)} data-testid="row-details">{tx('pos.details')}</button>
                 {can('services.edit') && s.status !== 'archived' ? <button type="button" className="fk-btn sm" onClick={() => setEditing(s)} data-testid="row-edit-pricing">{tx('cg.qa.editPricing')}</button> : null}
+                {s.status !== 'archived' ? <button type="button" className="fk-btn sm ghost" onClick={() => setPreviewing(s)} data-testid="row-price-preview">{tx('cg.pp.open')}</button> : null}
               </td>
             </tr>)}</tbody>
           </table>}
@@ -152,6 +153,7 @@ export function POSServicePricingScreen() {
 
       {detail ? <ServicePriceDetails serviceId={detail} canEdit={can('services.edit')} onClose={() => setDetail(null)} onEdit={(s) => { setDetail(null); setEditing(s); }} /> : null}
       {editing ? <EditPricingDialog service={editing} onClose={() => setEditing(null)} onSaved={saved} /> : null}
+      {previewing ? <PricePreviewDialog service={previewing} onClose={() => setPreviewing(null)} /> : null}
     </div>
   );
 }

@@ -40,3 +40,18 @@ export interface UnsettledTender { kind: 'payment' | 'attempt' | 'app_intent'; i
 export interface AppPaymentVerifyResult { intentId: string; ticketId: string; status: string; outcome: 'approved' | 'declined' | 'released' | 'pending' | 'unknown' | 'review'; reason?: string; paymentId?: string }
 export interface AppPaymentVerifyResponse { ticketId: string; results: AppPaymentVerifyResult[] }
 
+
+// ── SERVICE PRICING 08 — Live Price Preview (GET /pos/checkout/price-preview, pos.services.view). How a service (at its catalog
+//    price or a proposed one) with chosen add-ons would ring up at Checkout for a walk-in: the deals the ONE engine would apply
+//    under the salon's stacking policy, the tax on the taxable lines at the salon's rate, the total due. Nothing is charged,
+//    reserved, counted or written. Integer cents.
+export interface PricePreviewLine { kind: 'service' | 'add_on'; key: string | null; name: string; priceCents: number; taxable: boolean; discountCents: number; netCents: number }
+export interface PricePreviewResponse {
+  service: { id: string; name: string; catalogPriceCents: number; previewPriceCents: number };
+  lines: PricePreviewLine[];
+  addOnsAvailable: { key: string; name: string; priceCents: number; taxable: boolean }[];
+  discounts: { available: boolean; policy: string | null; totalCents: number; applied: { dealId: string; title: string; appliedCents: number }[]; notForWalkIn: { dealId: string; title: string; reason: string | null }[] };
+  tax: { ratePercent: number; taxableCents: number; taxCents: number };
+  totals: { grossCents: number; subtotalCents: number; totalDueCents: number; cardSurcharge: 'off' | 'decided_when_card_is_read' };
+  chargesAnyone: false;
+}

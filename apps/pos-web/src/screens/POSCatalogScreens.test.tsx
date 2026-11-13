@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
-  cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), compensationPreview: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
+  cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), compensationPreview: vi.fn(), pricePreview: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
     addOnSummary: vi.fn(), reviewDecision: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },
   bundles: { state: vi.fn(), create: vi.fn() }, insights: { get: vi.fn() }, alerts: { summary: vi.fn(), active: vi.fn() }, invScreen: { products: vi.fn(), product: vi.fn() },
@@ -167,6 +167,31 @@ describe('Service Pricing', () => {
     fireEvent.change(screen.getByTestId('pricing-price'), { target: { value: '59.00' } });
     await waitFor(() => expect(screen.queryByTestId('pricing-pay')).toBeNull(), { timeout: 2000 });
     expect(screen.getByTestId('pricing-save')).not.toBeDisabled();
+  });
+  it('SERVICE PRICING 08: Preview at checkout shows the server\'s lines, deal, tax and total; add-ons and a proposed price go to the server; nothing is saved', async () => {
+    const PV = (o: any = {}) => ({ service: { id: 's1', name: 'Gel Manicure', catalogPriceCents: 5500, previewPriceCents: 5500 },
+      lines: [{ kind: 'service', key: null, name: 'Gel Manicure', priceCents: 5500, taxable: true, discountCents: 550, netCents: 4950 }],
+      addOnsAvailable: [{ key: 'ao_french', name: 'French tips', priceCents: 1000, taxable: true }],
+      discounts: { available: true, policy: 'best_single', totalCents: 550, applied: [{ dealId: 'd1', title: 'Gel week 10%', appliedCents: 550 }], notForWalkIn: [{ dealId: 'd2', title: 'Newcomer', reason: 'new_customers_only' }] },
+      tax: { ratePercent: 8, taxableCents: 4950, taxCents: 396 }, totals: { grossCents: 5500, subtotalCents: 4950, totalDueCents: 5346, cardSurcharge: 'off' }, chargesAnyone: false, ...o });
+    cat.pricePreview.mockResolvedValue(PV());
+    mount(<POSServicePricingScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-price-preview'))[0]);
+    const dlg = await screen.findByTestId('dlg-price-preview');
+    await waitFor(() => expect(within(dlg).getByTestId('pp-total')).toHaveTextContent('$53.46'));
+    expect(within(dlg).getByTestId('pp-deal')).toHaveTextContent('Deal: Gel week 10%');
+    expect(within(dlg).getByTestId('pp-tax')).toHaveTextContent('$3.96');
+    expect(within(dlg).getByTestId('pp-subtotal')).toHaveTextContent('$49.50');
+    expect(within(dlg).getByText(/1 offer\(s\) need a known customer or a code/)).toBeInTheDocument();
+    expect(cat.pricePreview).toHaveBeenLastCalledWith('s1', { addOns: [], priceCents: null });
+    fireEvent.click(within(dlg).getByTestId('pp-addon-ao_french'));
+    await waitFor(() => expect(cat.pricePreview).toHaveBeenLastCalledWith('s1', { addOns: ['ao_french'], priceCents: null }));
+    fireEvent.change(within(dlg).getByTestId('pp-price'), { target: { value: '60.00' } });
+    await waitFor(() => expect(cat.pricePreview).toHaveBeenLastCalledWith('s1', { addOns: ['ao_french'], priceCents: 6000 }));
+    cat.pricePreview.mockResolvedValue(PV({ discounts: { available: false, policy: null, totalCents: 0, applied: [], notForWalkIn: [] } }));
+    fireEvent.change(within(dlg).getByTestId('pp-price'), { target: { value: '61.00' } });
+    expect(await within(dlg).findByTestId('pp-no-deals')).toHaveTextContent(/Deals could not be checked here/);
+    expect(cat.updatePricing).not.toHaveBeenCalled();
   });
   it('D4 gaps: Edit Pricing can schedule the change for a date (sent with the time; current price untouched)', async () => {
     cat.schedulePricing.mockResolvedValue({ scheduleId: 'x', scheduled: {} }); cat.pricingImpact.mockResolvedValue(null);

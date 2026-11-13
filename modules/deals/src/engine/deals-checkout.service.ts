@@ -10,7 +10,7 @@
 //   onRefunded() — void / refund: reversed (fully, or partly with the refunded lines), places come back
 import type { DealContext } from '../deals/deals.dto';
 import type { DealsService } from '../deals/deals.service';
-import { evaluateEligibility, reason, type EligibilityResult, type Reason } from './eligibility';
+import { reason, type EligibilityResult, type Reason } from './eligibility';
 import { priceTicket, type OfferRequest, type PricedOffer, type StackingPolicy, type PricingLine } from './pricing';
 import { dealRule, termsSnapshot, LedgerRefusal, type KyselyDealsLedger, type DealRecord, type LiveApplication, type TicketFacts } from './deals-ledger.kysely';
 import { hashCode, normalizeCode, lookupBlocked, LOOKUP_WINDOW_MS, parseWalletQr } from './coupons';
@@ -200,6 +200,35 @@ export class DealsCheckoutService {
         add: winners.filter((w) => w.id.startsWith('suggest-')).map((w) => { const [dealId, couponId] = w.id.slice('suggest-'.length).split(':'); return { dealId, couponId: couponId ?? null }; }),
         savingsCents: all.totalDiscountCents, currentCents: now.totalDiscountCents, better: all.totalDiscountCents > now.totalDiscountCents },
       policy,
+    };
+  }
+
+  /**
+   * SERVICE PRICING 08 — Live Price Preview: what the ONE engine would take off a HYPOTHETICAL ticket (a service and its add-ons,
+   * no customer, at the POS). The same judgement as the checkout panel — every live deal that needs no code, judged by judge()
+   * on these facts, priced together by priceTicket() under the salon's stacking policy — but nothing is reserved, counted,
+   * looked up or written. A deal that needs a customer (new-customer, once-per-customer…) is "not for a walk-in" here.
+   */
+  async previewLines(ctx: DealContext, lines: { lineId: string; serviceId: string | null; priceCents: number }[]): Promise<{
+    applied: { dealId: string; title: string; appliedCents: number }[]; notEligible: { dealId: string; title: string; reasons: Reason[] }[];
+    totalDiscountCents: number; lines: { lineId: string; priceCents: number; discountCents: number; netCents: number }[]; policy: StackingPolicy['mode'] }> {
+    const policy = await this.policy(ctx);
+    const facts: TicketFacts = { ticketId: 'preview', tenantId: ctx.tenantId, branchId: ctx.branchId ?? '', customerId: null, status: 'open', paymentStatus: 'unpaid', appointmentId: null,
+      lines: lines.map((l) => ({ lineId: l.lineId, serviceId: l.serviceId, priceCents: l.priceCents })) };
+    const priceLines: PricingLine[] = lines.map((l) => ({ lineId: l.lineId, priceCents: l.priceCents }));
+    const candidates: OfferRequest[] = []; const titles = new Map<string, string>();
+    const notEligible: { dealId: string; title: string; reasons: Reason[] }[] = [];
+    for (const d of await this.ledger.liveDeals(ctx.tenantId)) {
+      if (d.requiresCode) continue;                                      // a code-only coupon is never applied without its code
+      const judged = await this.judge(ctx, d, facts, false);
+      if (!judged.eligible) { notEligible.push({ dealId: d.id, title: d.title, reasons: judged.reasons }); continue; }
+      candidates.push(this.offerFor(d, facts, 'preview-' + d.id)); titles.set(d.id, d.title);
+    }
+    const priced = priceTicket(priceLines, candidates, policy);
+    return {
+      applied: priced.applied.filter((a) => a.dealId).map((a) => ({ dealId: String(a.dealId), title: titles.get(String(a.dealId)) ?? '', appliedCents: a.appliedCents })),
+      notEligible, totalDiscountCents: priced.totalDiscountCents, lines: priced.lines.map((l) => ({ lineId: l.lineId, priceCents: l.priceCents, discountCents: l.discountCents, netCents: l.netCents })),
+      policy: policy.mode,
     };
   }
 
