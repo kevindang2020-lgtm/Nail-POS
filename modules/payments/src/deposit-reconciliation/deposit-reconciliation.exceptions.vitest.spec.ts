@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canTransition, suggestSeverity, buildExceptionsState, validateCreateException, type ReconException } from './deposit-reconciliation.exceptions';
+import { canTransition, suggestSeverity, buildExceptionsState, validateCreateException, caseDue, EXCEPTION_REVIEW_DAYS, type ReconException } from './deposit-reconciliation.exceptions';
 import { InMemoryExceptionsRepository } from './deposit-reconciliation.exceptions.repository';
 import { ExceptionWorkflowService } from './deposit-reconciliation.exceptions.service';
 import { ReconForbiddenError, ReconValidationError } from './deposit-reconciliation.service';
@@ -27,6 +27,22 @@ describe('exceptions — KPIs (pure)', () => {
     expect(st.kpis.open).toBe(1); expect(st.kpis.resolved).toBe(1); expect(st.kpis.escalated).toBe(1);
     expect(st.kpis.critical).toBe(1);          // only the non-resolved critical
     expect(st.kpis.amountAtRiskCents).toBe(1500); // resolved excluded
+  });
+});
+
+describe('round 10 — AI Deposit Reconciliation 01: per-case review due date (pure)', () => {
+  it('due = created + the severity\'s review days; unresolved past it is overdue; resolved never overdue; counted in the KPIs', () => {
+    const mk = (o: Partial<ReconException>): ReconException => ({ id: 'e', branchId: null, kind: 'missing_deposit', severity: 'high', title: 't', detail: null, amountCents: 1000, currency: 'USD', status: 'open', sourceRef: null, assignedToUserId: null, resolutionNote: null, resolvedByUserId: null, resolvedAt: null, createdAt: '2026-11-01T12:00:00.000Z', ...o });
+    const now = new Date('2026-11-04T12:00:00.000Z');
+    const st = buildExceptionsState([mk({ id: 'crit', severity: 'critical' }), mk({ id: 'mod', severity: 'moderate' }), mk({ id: 'done', severity: 'critical', status: 'resolved' }), mk({ id: 'bad', createdAt: '' })], now);
+    const by = Object.fromEntries(st.items.map((i) => [i.id, i]));
+    expect(by.crit).toMatchObject({ dueAt: '2026-11-02T12:00:00.000Z', overdue: true });
+    expect(by.mod).toMatchObject({ dueAt: '2026-11-06T12:00:00.000Z', overdue: false });
+    expect(by.done).toMatchObject({ overdue: false });
+    expect(by.bad).toMatchObject({ dueAt: null, overdue: false });
+    expect(st.kpis.overdue).toBe(1);
+    expect(EXCEPTION_REVIEW_DAYS).toEqual({ critical: 1, high: 2, moderate: 5, low: 10, info: 14 });
+    expect(caseDue({ severity: 'low', createdAt: '2026-11-01T00:00:00.000Z', status: 'reopened' }, new Date('2026-11-20T00:00:00.000Z')).overdue).toBe(true);
   });
 });
 

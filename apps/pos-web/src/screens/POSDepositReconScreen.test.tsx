@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ kpis: vi.fn(), bankAccounts: vi.fn(), settlements: vi.fn(), deposits: vi.fn(), search: vi.fn(), recordDeposit: vi.fn(), deposit: vi.fn(), settlement: vi.fn(), allocate: vi.fn(), suggestions: vi.fn() }));
+const api = vi.hoisted(() => ({ kpis: vi.fn(), bankAccounts: vi.fn(), settlements: vi.fn(), deposits: vi.fn(), search: vi.fn(), recordDeposit: vi.fn(), deposit: vi.fn(), settlement: vi.fn(), allocate: vi.fn(), suggestions: vi.fn(), exceptions: vi.fn() }));
 vi.mock('../api/posDepositReconApi', () => ({ posDepositReconApi: api }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 vi.mock('./access/accessUi', () => ({ useStepUp: () => ({ run: (fn: () => Promise<unknown>) => fn(), prompt: null }), isStepUpCancelled: () => false }));
@@ -70,5 +70,15 @@ describe('POSDepositReconScreen', () => {
     expect(await screen.findByText(/could not be reached/i)).toBeInTheDocument();
     // the KPI strip shows the error (whose sentence mentions "$0.00") — never a $0.00 figure (a settlement row's real $0.00 matched is data)
     expect(screen.getByTestId('kpis').textContent).not.toMatch(/\$0\.00(?! until)/);
+  });
+  it('round 10 (AI Deposit Reconciliation 01): each case shows its review-by date; an overdue one says so', async () => {
+    const exc = (id: string, o: any) => ({ id, kind: 'missing_deposit', class: 'missing', severity: 'high', title: 'Missing deposit — ' + id, detail: null, amountCents: 10000, status: 'open', sourceRef: null, settlementId: null, depositId: null, settlementRef: null, processor: null,
+      depositReference: null, account: null, reviewer: null, assignedToUserId: null, resolutionNote: null, resolvedAt: null, createdAt: '2026-10-20T14:00:00Z', ageDays: 9, ...o });
+    api.exceptions.mockResolvedValue({ kpis: { total: 2, open: 2, inReview: 0, escalated: 0, resolved: 0, amountAtRiskCents: 20000, overdue: 1 }, items: [exc('e1', { dueAt: '2026-10-22T14:00:00Z', overdue: true }), exc('e2', { dueAt: '2026-11-04T14:00:00Z', overdue: false })], total: 2, page: 1, pageSize: 10, pageCount: 1 });
+    mount();
+    fireEvent.click(await screen.findByTestId('tab-exceptions'));
+    const due = await screen.findAllByTestId('exc-due');
+    expect(due[0].textContent).toMatch(/Oct 22, 2026.*Overdue$/);
+    expect(due[1].textContent).toBe('Nov 4, 2026');
   });
 });
