@@ -25,7 +25,7 @@ export function CommissionImpactPanel({ canApprove }: { canApprove: boolean }) {
   const approve = async (r: ImpactRow) => {
     setBusy(r.dealId); setErr(null);
     try { await posDealsOffersApi.approveCommission(r.dealId, null); setTick((n) => n + 1); }
-    catch (e) { setErr(errorTextOf(e)); }
+    catch (e) { setErr(errorTextOf(e, tx('cp.failed'))); }
     finally { setBusy(null); }
   };
   const d = list.data;
