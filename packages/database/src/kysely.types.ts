@@ -2975,6 +2975,7 @@ export interface DealRedemptionsTable {
   idempotency_key: string | null;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  estimate_snapshot: unknown | null;   // migration 871, the discount first priced (written once)
 }
 export interface DealSavesTable {
   deal_id: string;

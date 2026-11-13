@@ -83,6 +83,8 @@ export interface ApplyInput {
   /** the booking's consumed hold for this deal, when the ticket came from a booked appointment */
   appointmentHoldId?: string | null; appointmentId?: string | null;
   couponCodeId?: string | null; discountCents: number; lines: LineAllocation[]; terms: Record<string, unknown>; dealVersion: number; userId: string | null;
+  /** Deals & Offers 08: the ticket's lines when this discount was first priced (kept once in estimate_snapshot) */
+  estimateLines?: { lineId: string; priceCents: number }[];
 }
 
 export class KyselyDealsLedger {
@@ -243,10 +245,12 @@ export class KyselyDealsLedger {
                                     RETURNING id`.execute(trx))[0];
         if (!c) throw withCode(new LedgerRefusal('code_used', 'That code has already been used or is no longer valid.'), 'DEAL_CODE_USED');
       }
+      // Deals & Offers 08: the figure the desk first saw, kept once (migration 871 makes it immutable)
+      const estimate = i.estimateLines ? JSON.stringify({ discountCents: i.discountCents, allocations: i.lines, lines: i.estimateLines.map((l) => ({ lineId: l.lineId, priceCents: l.priceCents })) }) : null;
       const row = rowsOf(await sql`INSERT INTO deal_redemptions (deal_id, tenant_id, branch_id, customer_id, appointment_id, ticket_id, amount_discounted_cents, deal_version,
-                                      status, kind, hold_id, coupon_code_id, line_allocations, terms_snapshot, applied_by_user_id, budget_reserved_cents)
+                                      status, kind, hold_id, coupon_code_id, line_allocations, terms_snapshot, applied_by_user_id, budget_reserved_cents, estimate_snapshot)
                                     VALUES (${i.dealId}, ${i.tenantId}, ${i.branchId}, ${i.customerId}, ${i.appointmentId ?? null}, ${i.ticketId}, ${i.discountCents}, ${i.dealVersion},
-                                      'applied', ${i.kind}, ${holdId}, ${i.couponCodeId ?? null}, ${JSON.stringify(i.lines)}::jsonb, ${JSON.stringify(i.terms)}::jsonb, ${i.userId}, ${budget})
+                                      'applied', ${i.kind}, ${holdId}, ${i.couponCodeId ?? null}, ${JSON.stringify(i.lines)}::jsonb, ${JSON.stringify(i.terms)}::jsonb, ${i.userId}, ${budget}, ${estimate}::jsonb)
                                     RETURNING *`.execute(trx))[0];
       await this.event(trx, DOMAIN_EVENTS.DEAL_APPLIED, i.tenantId, i.branchId, 'deal_redemption', String(row.id), i.userId,
         { redemptionId: String(row.id), dealId: i.dealId, ticketId: i.ticketId, kind: i.kind, discountCents: i.discountCents });

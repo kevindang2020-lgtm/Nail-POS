@@ -161,4 +161,11 @@ export const DISCOUNTS_EN = {
   'dsc.exp.byBudget': 'Limited by the remaining budget',
   'dsc.exp.unlimited': 'No ceiling: unlimited uses and no budget set',
   'dsc.exp.noCap': 'No ceiling: a percent discount with no per-ticket cap and no budget',
+  'dsc.pvp.open': 'First priced {a} → paid {b}',
+  'dsc.pvp.same': 'Same as first priced',
+  'dsc.pvp.removed': 'A {p} line came off the ticket (it carried {d} off)',
+  'dsc.pvp.added': 'A {p} line was added ({d} off)',
+  'dsc.pvp.price': 'A line went from {p0} to {p1} (discount {d0} → {d1})',
+  'dsc.pvp.other': 'Other offers on the ticket, a cap or the budget changed the discount by {v}',
+  'dsc.pvp.note': 'First priced = the discount when the offer went on the ticket. Refunds after payment are shown separately.',
 };
