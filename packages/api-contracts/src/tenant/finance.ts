@@ -102,6 +102,9 @@ export interface FinanceBillsDue { today: string; until: string; days: number; c
 export interface FinanceExportPreflight {
   period: { from: string; to: string }; branchScope: 'branch' | 'all_allowed'; branchName: string | null; rows: number; totalCents: number; filtered: boolean; includeUnapproved: boolean;
   duplicates: number; uncategorized: number; missingReceipts: number; unapprovedLeftOut: number; countedTotalCents: number; reconciles: boolean | null;
+  /** extras Expenses 09 (round 10): the file's columns in order (codes), the free-text columns written formula-safe, and the
+   *  columns carrying customer contact data (none for expenses) */
+  columns?: string[]; formulaSafeColumns?: string[]; customerContactColumns?: string[];
 }
 export interface FinanceSettings {
   requireApproval: boolean; autoReady: boolean; autoCategory: boolean; learnFromCorrections: boolean; duplicateDetection: boolean;

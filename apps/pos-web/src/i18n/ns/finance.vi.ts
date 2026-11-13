@@ -456,4 +456,21 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.dup.r.sameDay": "Cùng nhà cung cấp, ngày và tổng tiền.", // DRAFT — Kevin reviews
   "finance.dup.r.oneDay": "Cùng nhà cung cấp và tổng tiền, cách nhau một ngày.", // DRAFT — Kevin reviews
   "finance.dup.r.photo": "Cùng tổng tiền và ngày, ảnh hóa đơn trông giống nhau.", // DRAFT — Kevin reviews
+  "finance.pf.columns": "{n} cột:", // DRAFT — Kevin reviews
+  "finance.pf.formulaSafe": "Công thức bảng tính được vô hiệu hóa ở: {cols}.", // DRAFT — Kevin reviews
+  "finance.pf.noContact": "Tệp này không có thông tin liên lạc của khách hàng.", // DRAFT — Kevin reviews
+  "finance.pf.col.date": "Ngày", // DRAFT — Kevin reviews
+  "finance.pf.col.vendor": "Nhà cung cấp", // DRAFT — Kevin reviews
+  "finance.pf.col.category": "Danh mục", // DRAFT — Kevin reviews
+  "finance.pf.col.accounting_code": "Mã kế toán", // DRAFT — Kevin reviews
+  "finance.pf.col.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "finance.pf.col.description": "Mô tả", // DRAFT — Kevin reviews
+  "finance.pf.col.subtotal": "Tạm tính", // DRAFT — Kevin reviews
+  "finance.pf.col.tax": "Thuế", // DRAFT — Kevin reviews
+  "finance.pf.col.total": "Tổng", // DRAFT — Kevin reviews
+  "finance.pf.col.payment_method": "Phương thức thanh toán", // DRAFT — Kevin reviews
+  "finance.pf.col.receipt_number": "Số hóa đơn", // DRAFT — Kevin reviews
+  "finance.pf.col.invoice_number": "Số hóa đơn nhà cung cấp", // DRAFT — Kevin reviews
+  "finance.pf.col.receipt_attached": "Có đính kèm hóa đơn", // DRAFT — Kevin reviews
+  "finance.pf.col.status": "Trạng thái", // DRAFT — Kevin reviews
 };

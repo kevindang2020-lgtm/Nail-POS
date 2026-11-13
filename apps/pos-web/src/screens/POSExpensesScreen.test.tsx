@@ -289,7 +289,8 @@ describe('POSExpensesScreen (Expenses guide)', () => {
   it('exports the period with the active filters after the accountant preflight', async () => {
     m.exportFile.mockResolvedValue({ filename: 'expenses.csv', contentType: 'text/csv', encoding: 'base64', content: 'YQ==', rowCount: 1, totalCents: 100 });
     m.exportPreflight.mockResolvedValue({ period: { from: '2026-10-01', to: '2026-10-31' }, branchScope: 'all_allowed', branchName: null, rows: 3, totalCents: 45000, filtered: true, includeUnapproved: false,
-      duplicates: 1, uncategorized: 0, missingReceipts: 2, unapprovedLeftOut: 4, countedTotalCents: 45000, reconciles: null });
+      duplicates: 1, uncategorized: 0, missingReceipts: 2, unapprovedLeftOut: 4, countedTotalCents: 45000, reconciles: null,
+      columns: ['date', 'vendor', 'total', 'receipt_attached'], formulaSafeColumns: ['vendor'], customerContactColumns: [] });
     renderIt(); await screen.findByTestId('expense-row');
     fireEvent.change(screen.getByTestId('category'), { target: { value: 'rent' } });
     fireEvent.click(screen.getByTestId('export-csv'));
@@ -299,6 +300,10 @@ describe('POSExpensesScreen (Expenses guide)', () => {
     expect(within(pf).getByTestId('pf-uncat').textContent).toMatch(/Every row has a category/);
     expect(within(pf).getByTestId('pf-unapproved').textContent).toMatch(/4 unapproved/);
     expect(within(pf).getByTestId('pf-reconcile').textContent).toMatch(/not meaningful/);   // filtered: never claimed to reconcile
+    // extras Expenses 09 (round 10): the file's columns, the formula-protected ones and the no-contact-data note, before generating
+    expect(within(pf).getByTestId('pf-columns').textContent).toContain('4 columns: Date · Vendor · Total · Receipt attached');
+    expect(within(pf).getByTestId('pf-formula-safe').textContent).toBe('Spreadsheet formulas are neutralised in: Vendor.');
+    expect(within(pf).getByTestId('pf-no-contact')).toBeInTheDocument();
     expect(m.exportFile).not.toHaveBeenCalled();
     fireEvent.click(within(pf).getByTestId('pf-confirm'));
     await waitFor(() => expect(m.save).toHaveBeenCalled());

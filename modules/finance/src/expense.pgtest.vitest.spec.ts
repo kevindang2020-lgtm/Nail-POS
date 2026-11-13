@@ -217,6 +217,15 @@ describe('finance — reports reconcile with the export (approved only)', () => 
     expect(pf.branchScope).toBe('all_allowed');
     const filtered = await svc.exportPreflight(owner, { period: 'month', category: 'rent' });
     expect(filtered.filtered).toBe(true); expect(filtered.reconciles).toBeNull();   // a filtered export is never claimed to reconcile
+    // extras Expenses 09 (round 10): the preflight lists the file's columns — exactly the CSV header, in order — which free-text
+    // columns are formula-protected, and that no column carries customer contact data
+    const header = new TextDecoder().decode(f.bytes).split(/\r?\n/)[0].split(',');
+    expect(pf.columns).toHaveLength(header.length);
+    expect(pf.columns).toEqual(['date', 'vendor', 'category', 'accounting_code', 'branch', 'description', 'subtotal', 'tax', 'total', 'payment_method', 'receipt_number', 'invoice_number', 'receipt_attached', 'status']);
+    expect(header[0]).toBe('Date'); expect(header[header.length - 1]).toBe('Status');
+    expect(pf.formulaSafeColumns).toEqual(expect.arrayContaining(['vendor', 'description', 'invoice_number']));
+    expect(pf.formulaSafeColumns!.every((c) => pf.columns!.includes(c))).toBe(true);
+    expect(pf.customerContactColumns).toEqual([]);
   });
   it('a CSV cell that looks like a formula is neutralised', async () => {
     await svc.create(owner, { amountCents: 1000, incurredOn: today, vendor: '=HYPERLINK("x")', category: 'other', idempotencyKey: 'csv-inj' });
