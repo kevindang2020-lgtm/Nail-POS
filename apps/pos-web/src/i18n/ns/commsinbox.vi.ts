@@ -114,7 +114,7 @@ export const COMMSINBOX_VI = {
   'ci.prov.state.ok': 'Ổn', // DRAFT — Kevin reviews
   'ci.prov.state.done': 'Xong', // DRAFT — Kevin reviews
   'ci.prov.state.not_applicable': 'Không cần', // DRAFT — Kevin reviews
-  'ci.prov.state.assigned': 'Đã gán', // DRAFT — Kevin reviews
+  'ci.prov.state.assigned': 'Đã chỉ định', // DRAFT — Kevin reviews
   'ci.prov.state.matches': 'Khớp', // DRAFT — Kevin reviews
   'ci.prov.state.unknown': 'Chưa kiểm tra', // DRAFT — Kevin reviews
   'ci.prov.state.pending': 'Đang chờ', // DRAFT — Kevin reviews
