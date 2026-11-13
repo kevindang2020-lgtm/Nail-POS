@@ -22,6 +22,8 @@ import { maskPhone, maskEmail } from '../pos-referrals/referral-program';
 import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
 import { recomputeTechRatingDenorm } from './reviews-public-denorm';
 
+/** extras Reviews 03: below this many verified ratings the average is flagged as a small sample (it can swing on one review) */
+export const RATING_SAMPLE_MIN = 10;
 export class ReviewsCenterError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details?: Record<string, unknown>) { super(message); }
 }
@@ -144,6 +146,13 @@ export class ReviewsCenter {
         count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 3)::int as d3, count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 2)::int as d2,
         count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 1)::int as d1, max(r.created_at) as last_review
       from reviews r where r.tenant_id = ${ctx.tenantId} and ${this.branchW(ctx)} and ${rw} and ${fw}`.execute(db)).rows[0] ?? {};
+    // extras Reviews 03 (round 10): Fair Rating Distribution — where the ratings came from (source mix) and the RAW distribution
+    // (every non-spam rating, hidden ones included) beside the verified one, and whether the sample is big enough to lean on
+    const mix = (await sql<{ source: string | null; n: number; hidden: number }>`select r.source, count(*)::int as n, count(*) filter (where coalesce(r.is_hidden_by_manager, false))::int as hidden
+      from reviews r where r.tenant_id = ${ctx.tenantId} and ${this.branchW(ctx)} and ${rw} and ${fw} and not coalesce(r.is_spam, false) and r.rating between 1 and 5
+      group by r.source order by count(*) desc, r.source`.execute(db)).rows;
+    const raw = (await sql<{ star: number; n: number }>`select round(r.rating)::int as star, count(*)::int as n from reviews r
+      where r.tenant_id = ${ctx.tenantId} and ${this.branchW(ctx)} and ${rw} and ${fw} and not coalesce(r.is_spam, false) and r.rating between 1 and 5 group by 1`.execute(db)).rows;
     const dist = [{ star: 5, count: N(k.d5) }, { star: 4, count: N(k.d4) }, { star: 3, count: N(k.d3) }, { star: 2, count: N(k.d2) }, { star: 1, count: N(k.d1) }];
     const verified = N(k.verified);
     return {
@@ -153,6 +162,9 @@ export class ReviewsCenter {
       withCommentCount: N(k.written), starOnlyCount: N(k.total) - N(k.written), needsAttention: N(k.attention),
       fiveStarPercent: verified ? Math.round((N(k.five) / verified) * 1000) / 10 : null,
       ratingDistribution: dist, lastReviewAt: iso(k.last_review),
+      rawDistribution: [5, 4, 3, 2, 1].map((star) => ({ star, count: N(raw.find((x) => N(x.star) === star)?.n) })),
+      sourceMix: mix.map((x) => ({ source: x.source ?? 'unknown', count: N(x.n), hidden: N(x.hidden) })),
+      sample: { verified, minimum: RATING_SAMPLE_MIN, sufficient: verified >= RATING_SAMPLE_MIN },
       scope: { rating: 'verified: rated 1–5, not hidden by a manager, not spam — the same reviews Team Performance and Technicians count',
         allReceived: 'every non-spam rating, including hidden ones', public: 'verified and the customer allowed it to be public', date: rg ? `submitted ${rg.from} – ${rg.to}` : 'all time',
         technician: tech === 'none' ? 'no technician' : tech ? 'one technician' : 'all technicians', source: src ?? 'all sources' },
@@ -282,6 +294,21 @@ export class ReviewsCenter {
       const asg = r.assigned_user_id ? (await sql<any>`select full_name from users where id = ${r.assigned_user_id} and tenant_id = ${T}`.execute(trx)).rows[0] : null;
       if (c) await opts.audit(trx, { reviewId: id, customerId: String(c.id), fullContact: opts.fullContact });
       const external = isExternal(r.source);
+      // extras Reviews 02 (round 10): Review-to-Customer Resolution Timeline — one ordered trail from the rows read above (the
+      // review, its visit, who took it on, moderation, reply approvals / publications, the technician's answer, messages and
+      // requests to this customer since the review) and the stored outcome; nothing inferred from names or amounts
+      const sub = r.submitted_at ? new Date(r.submitted_at).getTime() : 0;
+      const tl: Array<{ at: string | null; kind: string; detail: string | null }> = [];
+      if (r.paid_at) tl.push({ at: iso(r.paid_at), kind: 'visit', detail: r.service_name ?? null });
+      tl.push({ at: iso(r.submitted_at), kind: 'review', detail: String(Number(r.rating)) });
+      if (r.assigned_user_id) tl.push({ at: iso(r.assigned_at), kind: 'assigned', detail: asg?.full_name ?? null });
+      for (const e of mod) tl.push({ at: iso(e.created_at), kind: 'moderation', detail: String(e.action) });
+      for (const a of approvals) tl.push({ at: iso(a.created_at), kind: 'reply_' + String(a.action), detail: a.reason ?? null });
+      for (const p of pubs) tl.push({ at: iso(p.created_at), kind: 'publication', detail: String(p.result) });
+      if (r.technician_response_at) tl.push({ at: iso(r.technician_response_at), kind: 'technician_response', detail: null });
+      for (const m of comms) if (new Date(m.created_at).getTime() >= sub) tl.push({ at: iso(m.created_at), kind: 'message', detail: String(m.channel) });
+      for (const x of reqs) if (new Date(x.created_at).getTime() >= sub) tl.push({ at: iso(x.created_at), kind: 'review_request', detail: String(x.status) });
+      tl.sort((a, z) => String(a.at ?? '').localeCompare(String(z.at ?? '')));
       const verified = Number(r.rating) >= 1 && Number(r.rating) <= 5 && !r.is_hidden_by_manager && !r.is_spam;
       return {
         review: { id: String(r.id), rating: Number(r.rating), comment: str(r.comment, 4000) ?? null, starOnly: !str(r.comment, 4000), tags: Array.isArray(r.review_tags) ? r.review_tags.map(String) : [],
@@ -301,6 +328,7 @@ export class ReviewsCenter {
           contactMasked: !opts.fullContact, status: c.status, visits: N(c.visits), lastVisitAt: iso(c.last_visit), reviews: N(c.reviews), messages: N(c.messages),
           priorReviews: prior.map((x: any) => ({ id: String(x.id), rating: Number(x.rating), at: iso(x.at) })), canBook: c.status !== 'archived' } : null,
         anonymous: !c,
+        timeline: tl, outcome: { resolution: r.resolution_status ?? 'open', escalation: r.escalation_status ?? 'none', owner: r.assigned_user_id ? (asg?.full_name ?? null) : null },
         assignment: r.assigned_user_id ? { userId: String(r.assigned_user_id), name: asg?.full_name ?? null, at: iso(r.assigned_at) } : null,
         communications: { messages: comms.map((m: any) => ({ id: String(m.id), channel: m.channel, status: m.status, purpose: m.purpose ?? null, at: iso(m.created_at), preview: m.body ?? '' })),
           reviewRequests: reqs.map((x: any) => ({ id: String(x.id), status: x.status, at: iso(x.created_at) })) },

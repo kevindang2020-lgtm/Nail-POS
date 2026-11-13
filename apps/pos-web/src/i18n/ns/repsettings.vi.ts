@@ -244,4 +244,12 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.inv.importOff": "Không tự động nhập", // DRAFT — Kevin reviews
   "rssx.inv.internal": "Phản hồi của tiệm (tại tiệm, khảo sát, tin nhắn, nhập tay): {n} đã lưu · đã gửi {r} lời mời đánh giá.", // DRAFT — Kevin reviews
   "rssx.inv.note": "Chỉ những kết nối nền tảng hỗ trợ mới được ghi là đã kết nối; ở đây không kết nối, nhập hay đăng gì.", // DRAFT — Kevin reviews
+  "rssx.dry.costNa": "Chi phí: không có — tin nhắn xin đánh giá chưa có giá theo từng tin trong hệ thống, nên không ước tính.", // DRAFT — Kevin reviews
+  "rssx.dry.recipients": "Những ai sẽ được hỏi ({n})", // DRAFT — Kevin reviews
+  "rssx.dry.who": "Khách hàng", // DRAFT — Kevin reviews
+  "rssx.dry.phone": "Điện thoại", // DRAFT — Kevin reviews
+  "rssx.dry.outcome": "Kết quả", // DRAFT — Kevin reviews
+  "rssx.dry.when": "Sẽ gửi lúc", // DRAFT — Kevin reviews
+  "rssx.dry.noCustomer": "Lượt ghé không có khách hàng", // DRAFT — Kevin reviews
+  "rssx.dry.ask": "Sẽ được hỏi qua {c}", // DRAFT — Kevin reviews
 };

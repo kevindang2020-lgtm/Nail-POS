@@ -284,3 +284,37 @@ describe('Reviews & Reputation 05 — reputation anomaly monitor (read-only)', (
     expect(after).toEqual(before);   // flagged, never suppressed
   });
 });
+
+describe('extras round 10 — Reviews 02 / 03', () => {
+  it('Reviews 03: source mix, the RAW distribution (hidden included, spam never) beside the verified one, and the sample-size flag', async () => {
+    const win = { preset: 'custom', from: '2025-01-01', to: '2025-01-31' };
+    await review({ rating: 5, at: '2025-01-05T15:00:00Z' }); await review({ rating: 4, at: '2025-01-06T15:00:00Z' });
+    const low = await review({ rating: 1, at: '2025-01-07T15:00:00Z', comment: 'bad' });
+    await q(sql`update reviews set is_hidden_by_manager = true where id = ${low}`);
+    await review({ rating: 5, at: '2025-01-08T15:00:00Z', source: 'google', tech: null, ext: 'g-r10-1' });
+    await review({ rating: 1, at: '2025-01-09T15:00:00Z', spam: true });
+    const s: any = await rc.summary(ctx(), win);
+    expect(s.ratingDistribution).toEqual([{ star: 5, count: 2 }, { star: 4, count: 1 }, { star: 3, count: 0 }, { star: 2, count: 0 }, { star: 1, count: 0 }]);   // verified: hidden + spam out
+    expect(s.rawDistribution).toEqual([{ star: 5, count: 2 }, { star: 4, count: 1 }, { star: 3, count: 0 }, { star: 2, count: 0 }, { star: 1, count: 1 }]);     // hidden in, spam out
+    expect(s.sourceMix).toEqual([{ source: 'internal', count: 3, hidden: 1 }, { source: 'google', count: 1, hidden: 0 }]);
+    expect(s.sample).toEqual({ verified: 3, minimum: 10, sufficient: false });
+    const other: any = await rc.summary(ctx(X, BX), win);
+    expect(other.sourceMix).toEqual([]); expect(other.rawDistribution.every((x: any) => x.count === 0)).toBe(true);
+  });
+  it('Reviews 02: one ordered resolution timeline (visit → review → assigned → moderation → message after the review) and the stored outcome', async () => {
+    const tk = id(4901);
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, ticket_number, status, total_cents, paid_at) values (${tk}, ${T}, ${B}, ${C.cara}, 'R10-1', 'paid', 4500, '2025-02-01T15:00:00Z')`);
+    const rid = await review({ rating: 2, customer: C.cara, ticket: tk, tech: TECH2, at: '2025-02-02T15:00:00Z', comment: 'Chipped after a day' });
+    await q(sql`insert into notifications (tenant_id, channel, to_address, body, status, customer_id, created_at) values
+      (${T}, 'sms', '+16095550203', 'Before the review', 'sent', ${C.cara}, '2025-01-20T15:00:00Z'), (${T}, 'sms', '+16095550203', 'Sorry — can we fix it?', 'sent', ${C.cara}, now())`);
+    await rc.assign(ctx(), rid, { assignedUserId: OWNER }, audit);
+    await q(sql`update reviews set resolution_status = 'resolved' where id = ${rid}`);
+    const d: any = await rc.detail(ctx(), rid, { fullContact: false, audit });
+    const kinds = d.timeline.map((x: any) => x.kind);
+    expect(kinds.slice(0, 2)).toEqual(['visit', 'review']);
+    expect(kinds).toContain('assigned'); expect(kinds.filter((k: string) => k === 'message')).toHaveLength(1);   // the message BEFORE the review is not part of it
+    expect(d.timeline.map((x: any) => x.at)).toEqual([...d.timeline.map((x: any) => x.at)].sort());
+    expect(d.timeline.find((x: any) => x.kind === 'assigned').detail).toBe('Owner One');
+    expect(d.outcome).toEqual({ resolution: 'resolved', escalation: 'none', owner: 'Owner One' });
+  });
+});

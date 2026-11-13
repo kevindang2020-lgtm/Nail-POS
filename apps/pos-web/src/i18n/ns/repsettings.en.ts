@@ -244,4 +244,12 @@ export const REPSETTINGS_EN: Record<string, string> = {
   "rssx.inv.importOff": "Not imported automatically",
   "rssx.inv.internal": "Your own feedback (in-salon, surveys, messages, manual): {n} on record · {r} review requests sent.",
   "rssx.inv.note": "Only connections the platform supports are listed as connected; nothing here connects, imports or posts anything.",
+  "rssx.dry.costNa": "Cost: not available — review-request texts have no per-message price in this system, so none is estimated.",
+  "rssx.dry.recipients": "Who would be asked ({n})",
+  "rssx.dry.who": "Customer",
+  "rssx.dry.phone": "Phone",
+  "rssx.dry.outcome": "Outcome",
+  "rssx.dry.when": "Would be sent",
+  "rssx.dry.noCustomer": "No customer on the visit",
+  "rssx.dry.ask": "Would be asked by {c}",
 };

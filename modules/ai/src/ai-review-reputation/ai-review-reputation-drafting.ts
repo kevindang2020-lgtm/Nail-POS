@@ -35,6 +35,14 @@ const PHONE = /(\+?\d[\d\s().-]{8,}\d)/;
 const MONEY = /\$\s?\d/;
 const CARD = /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/;
 const LIABILITY = [/\bwe (admit|accept)( full)? (fault|liability|responsibility)\b/i, /\bour (mistake|negligence) (caused|led to)\b/i, /\bwe are (legally )?liable\b/i, /\bthis was our fault\b/i];
+// extras Reviews 04 (round 10): a reply may apologise and invite contact, but it must not INVENT a fact or a promise the salon
+// never approved — compensation / offers (refund, free, discount, voucher, gift card, % off), superiority or credential claims
+// (best in town, #1, award-winning, guaranteed, certified/licensed), staff discipline claims (fired, retrained, disciplined),
+// or that the reply has been posted somewhere (the publication record says that, never the text)
+const INVENTED_CLAIM = [/\b(full |partial )?refunds?\b/i, /\bfree (of charge|service|visit|manicure|pedicure|session)\b/i, /\bcomplimentary\b/i, /\b\d{1,3}\s?% off\b/i,
+  /\bdiscount(ed)?\b/i, /\bvoucher\b/i, /\bgift ?cards?\b/i, /\b(best|top|number one|#1)\b[^.]{0,20}\b(salon|in town|in the city|in the area)\b/i,
+  /\baward[- ]winning\b/i, /\bguarantee(d|s)?\b/i, /\b(fully |state[- ])?(certified|licensed)\b/i, /\bwe (have|'ve) (fired|retrained|disciplined|terminated)\b/i];
+const CLAIMS_PUBLICATION = /\b(we (have|'ve) (posted|published)|this (reply|response) (is|has been) (posted|published|live))\b/i;
 export function validateDraftSafety(text: string | null, opts?: { employeeNames?: string[] }): DraftSafetyResult {
   const t = String(text ?? '');
   const v: string[] = [];
@@ -42,6 +50,8 @@ export function validateDraftSafety(text: string | null, opts?: { employeeNames?
   if (PHONE.test(t)) v.push('contains_phone');
   if (MONEY.test(t) || CARD.test(t)) v.push('contains_payment_detail');
   if (LIABILITY.some((r) => r.test(t))) v.push('admits_liability');
+  if (INVENTED_CLAIM.some((r) => r.test(t))) v.push('invented_claim');
+  if (CLAIMS_PUBLICATION.test(t)) v.push('claims_publication');
   for (const name of opts?.employeeNames || []) { if (name && t.toLowerCase().includes(name.toLowerCase())) { v.push('names_employee'); break; } }
   return { safe: v.length === 0, violations: v };
 }

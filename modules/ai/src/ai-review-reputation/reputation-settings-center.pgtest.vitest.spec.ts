@@ -166,6 +166,13 @@ describe('Review & Reputation Settings — health and fail-closed', () => {
     expect(dry.detail).toMatchObject({ days: 7, visits: 6, capped: false, wouldAsk: 3, skipped: 3, quietHoursShifted: 1, channel: 'sms', channelReady: false, requestsEnabled: false });
     expect(dry.detail.byReason).toEqual({ opted_out: 1, no_contact_method: 1, frequency_cap: 1 });   // the service's own order: contact, consent, value, cap, cooldown
     expect(dry).toMatchObject({ state: 'WARNING', count: 3 });   // SMS would be the channel and no sender is configured
+    // extras Reviews 07 (round 10): the exact recipients — one row per considered visit, asked or why not, short name + last 4 only
+    expect(dry.detail.recipients).toHaveLength(6); expect(dry.detail.recipientsShown).toBe(6);
+    expect(dry.detail.recipients.filter((x: any) => x.wouldAsk)).toHaveLength(3);
+    expect(dry.detail.recipients.filter((x: any) => !x.wouldAsk).map((x: any) => x.reason).sort()).toEqual(['frequency_cap', 'no_contact_method', 'opted_out']);
+    for (const x of dry.detail.recipients) { expect(x.phoneLast4 == null || /^\d{4}$/.test(x.phoneLast4)).toBe(true); expect(JSON.stringify(x)).not.toMatch(/\+1609/); }
+    expect(dry.detail.recipients.filter((x: any) => x.wouldAsk).every((x: any) => typeof x.scheduledFor === 'string')).toBe(true);
+    expect(dry.detail.cost).toEqual({ state: 'NOT_AVAILABLE', reason: 'no_per_message_price_for_review_requests' });   // never estimated
     expect((await q(sql`select count(*)::int as n from review_requests where tenant_id = ${T3}`))[0].n).toBe(reqBefore);   // nothing scheduled
     expect((await q(sql`select count(*)::int as n from notifications where tenant_id = ${T3}`))[0].n).toBe(0);              // nothing sent
   });
