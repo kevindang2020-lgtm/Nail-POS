@@ -140,4 +140,26 @@ describe('POSAccountScreen', () => {
     fireEvent.click(screen.getByText('View all'));
     expect(await screen.findByTestId('acx-activity-dialog')).toBeInTheDocument();
   });
+
+  it('Account Finder (extras Account Claude Guide 15): finds Account panels and pages by keyword, gated like the sidebar', async () => {
+    render(<MemoryRouter><POSAccountScreen /></MemoryRouter>);
+    const q = await screen.findByTestId('acx-finder-q');
+    expect(screen.queryByTestId('acx-finder-results')).toBeNull();   // nothing listed until something is typed
+    fireEvent.change(q, { target: { value: 'password' } });
+    // this principal holds none of the ACCOUNT section's keys (settings.view …) → only the panels on this page are offered
+    expect(screen.getByTestId('acx-finder-hit-panel-security')).toBeInTheDocument();
+    expect(screen.getByTestId('acx-finder-hit-panel-compliance')).toBeInTheDocument();
+    expect(screen.queryByTestId('acx-finder-hit-acc-security')).toBeNull();
+    fireEvent.change(q, { target: { value: 'invoices' } });
+    expect(screen.queryByTestId('acx-finder-hit-acc-invoices')).toBeNull();   // a page this person may not open is never listed
+    expect(screen.getByTestId('acx-finder-none')).toBeInTheDocument();
+    expect(screen.queryByTestId('acx-finder-people')).toBeNull();   // the Team directory needs technicians.view — not held
+    // a hit on this page scrolls to the panel (nothing navigates, nothing is changed)
+    const scroll = vi.fn(); (window.HTMLElement.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = scroll;
+    fireEvent.change(q, { target: { value: 'backup' } });
+    fireEvent.click(screen.getByTestId('acx-finder-hit-panel-backup'));
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scroll.mock.contexts[0]).toBe(screen.getByTestId('acx-panel-backup'));
+    expect(api.patch).not.toHaveBeenCalledWith(expect.stringContaining('finder'), expect.anything());
+  });
 });

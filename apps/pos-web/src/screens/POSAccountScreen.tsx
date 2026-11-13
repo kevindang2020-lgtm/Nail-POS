@@ -21,6 +21,8 @@ import { statusLabel } from '../i18n/status-label';
 import { fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/codeLabel';
 import { serverText } from '../i18n/server-text';
+import { useTenantNavAccess } from '../shell/tenant-access';
+import { AccountFinder } from './accountFinder';
 
 // POSAccountScreen.tsx — T20 Account. Matches the Account mockup 1:1. Panels with a live tenant-scoped source render REAL
 // data (identity + avatar, business & brand + receipt branding + notifications, 2FA status, linked branches, AI sub);
@@ -86,6 +88,7 @@ const band = (s: number) => (s >= 90 ? tx('pos.excellent') : s >= 75 ? tx('statu
 export function POSAccountScreen() {
   const nav = useNavigate();
   const { principal } = useAuth();
+  const navAccess = useTenantNavAccess(principal?.role, principal?.permissions);   // the sidebar's own gate — the Account Finder lists only what this person may open
   const [settings, setSettings] = useState<Settings | null>(null);
   const [me, setMe] = useState<ProfileMe | null>(null);
   const [pkgs, setPkgs] = useState<PosAiPackage[] | null>(null);
@@ -185,6 +188,7 @@ export function POSAccountScreen() {
   return (
     <div className="work" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="vh "><h1>{tx('pos.account')}</h1><div className="sub ">{tx('pos.manage_profile_business_identity_security_billing_1k5r')}</div></div>
+      <AccountFinder access={navAccess} />
 
       <div className="kpis acx-kpis" data-testid="acx-kpis">
         {kpis.map((c) => (
@@ -201,7 +205,7 @@ export function POSAccountScreen() {
 
       {/* Row A — Profile · Business & Brand · Security */}
       <div className={grid3}>
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-profile">
           {headRow(tx('pos.account_profile'), ghost(tx('pos.edit_profile'), () => nav('/tenant/account/security')))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarUrl ? `center/cover url(${avatarUrl})` : 'var(--g7, #A96F22)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 20, flex: '0 0 auto' }}>{!avatarUrl ? (fullName || 'U').charAt(0) : ''}</div>
@@ -217,7 +221,7 @@ export function POSAccountScreen() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-business">
           {headRow(tx('pos.business_brand_details'), ghost(tx('admin.account.editDetails'), () => nav('/tenant/management/salon-profile')))}
           <div className="list">
             {kvRow(tx('pos.business_name'), biz.salonName || (overview?.business?.name || ''))}
@@ -233,7 +237,7 @@ export function POSAccountScreen() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-security">
           {headRow(tx('pos.security_access'), ghost(tx('admin.account.manageSecurity'), () => nav('/tenant/account/security')))}
           <div className="list">
             {kvRow(tx('pos.password_last_changed'), me?.passwordChangedAt ? fmtDateAgo(me.passwordChangedAt) : (overview?.security?.passwordChanged || ''))}
@@ -261,7 +265,7 @@ export function POSAccountScreen() {
       <div className={grid3}>
         <NotificationPrefsPanel rd={rd} rdKnown={rdKnown} />
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-billing">
           {headRow(tx('pos.subscription_billing'), ghost(tx('admin.account.manageBilling'), () => nav('/tenant/account/billing')))}
           <div className="row" style={{ marginBottom: 8 }}><div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}><Glyph name="gem" /><span style={{ fontWeight: 800 }}>{planName ? cap(planName) : (overview?.billing?.plan || tx('pos.plan'))} {tx('pos.plan')}</span><span className={'pill ' + (billActive ? 'ok' : 'warn')}>{billActive ? tx('pos.active_3') : billingStatus ? statusLabel(['payment', 'invoice'], billingStatus) : tx('pos.active_3')}</span></div></div>
           <div className="list" style={{ maxHeight: 'none' }}>
@@ -277,7 +281,7 @@ export function POSAccountScreen() {
           <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}><button className="btn whitespace-nowrap w-fit" onClick={() => nav('/tenant/account/subscription')}>{tx('pos.upgrade_plan')}</button>{ghost(tx('admin.account.billingHistory'), () => nav('/tenant/account/billing'))}</div>
         </section>
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-role">
           {headRow(tx('pos.role_access_overview'), ghost(tx('admin.account.manageAccess'), () => nav('/tenant/account/users-roles')))}
           <div className="list">
             {kvRow(tx('pos.your_role'), <span className="pill ok">{principal?.role ? statusLabel('role', principal.role) : tx('pos.owner')}</span>)}
@@ -299,7 +303,7 @@ export function POSAccountScreen() {
 
       {/* Row C — Recent Activity · Account Health · Compliance · Backup */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-activity">
           {headRow(tx('pos.recent_account_activity'), <span style={{ display: 'inline-flex', gap: 6 }}>{ghost(tt('acx.act.viewAll'), () => setActOpen(true), 'acx-act-open')}{ghost(tx('admin.account.fullAuditLog'), () => nav('/tenant/account/activity-logs'))}</span>)}
           {activity === null ? (
             <div className="muted" style={{ padding: '16px 4px' }}>{tx('pos.loading_activity')}</div>
@@ -322,19 +326,19 @@ export function POSAccountScreen() {
           )}
         </section>
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-health">
           {headRow(tx('pos.account_health_score'))}
           <Ring pct={healthScore} caption={band(healthScore)} blurb={healthScore >= 90 ? tx('pos.your_account_is_in_great_shape') : healthScore >= 75 ? tx('pos.a_few_items_could_be_tightened_x0yg') : tx('pos.some_account_setup_still_needs_attention')} />
           <CheckList items={healthChecks} />
         </section>
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-compliance">
           {headRow(tx('pos.compliance_score'))}
           <Ring pct={complianceScore} caption={band(complianceScore)} blurb={complianceScore >= 90 ? tx('pos.your_compliance_is_in_great_shape') : complianceScore >= 75 ? tx('pos.mostly_compliant_one_item_to_resolve') : tx('pos.resolve_the_unchecked_items_below')} />
           <CheckList items={complianceChecks} />
         </section>
 
-        <section className="panel">
+        <section className="panel" data-testid="acx-panel-backup">
           {headRow(tx('pos.backup_data_health'))}
           <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 12px' }}><span style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--cream2, #F3E7D2)', color: 'var(--g7, #A96F22)', display: 'grid', placeItems: 'center' }}><Glyph name="chart" /></span></div>
           <div className="list">

@@ -1766,4 +1766,58 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.redemption_line_other_ticket.fix": "Báo cho bộ phận hỗ trợ: những lần sử dụng này trỏ đến dịch vụ trên một hóa đơn khác.", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer": "Không có thẻ hội viên còn hiệu lực nào nằm trên hồ sơ khách đã lưu trữ", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer.fix": "Chuyển thẻ hội viên sang hồ sơ hiện tại của khách (gộp hồ sơ) hoặc kết thúc thẻ.", // DRAFT — Kevin reviews
+  "acx.find.title": "Tìm trong Tài khoản", // DRAFT — Kevin reviews
+  "acx.find.ph": "Tìm một cài đặt tài khoản — ví dụ mật khẩu, hóa đơn, điện thoại", // DRAFT — Kevin reviews
+  "acx.find.scope": "Chỉ tìm các trang và cài đặt Tài khoản bạn được mở. Không bao giờ tìm dữ liệu tiệm hay tiệm khác.", // DRAFT — Kevin reviews
+  "acx.find.none": "Không có trang hay cài đặt Tài khoản nào khớp.", // DRAFT — Kevin reviews
+  "acx.find.page": "Trang", // DRAFT — Kevin reviews
+  "acx.find.onThisPage": "Trên trang này", // DRAFT — Kevin reviews
+  "acx.find.people": "Tìm một người? Tìm nhân viên theo tên hoặc số điện thoại", // DRAFT — Kevin reviews
+  "acx.find.notifTitle": "Tùy chọn thông báo", // DRAFT — Kevin reviews
+  "acx.find.d.acc-overview": "Trang Tài khoản này: hồ sơ, doanh nghiệp, bảo mật, thanh toán và tình trạng", // DRAFT — Kevin reviews
+  "acx.find.k.acc-overview": "tổng quan tài khoản tóm tắt", // DRAFT — Kevin reviews
+  "acx.find.d.acc-subscription": "Gói của bạn, ngày gia hạn và đổi gói", // DRAFT — Kevin reviews
+  "acx.find.k.acc-subscription": "gói đăng ký nâng cấp hạ cấp gia hạn", // DRAFT — Kevin reviews
+  "acx.find.d.acc-ai": "Các gói AI đã có, có thể mua hoặc bị khóa", // DRAFT — Kevin reviews
+  "acx.find.k.acc-ai": "gói ai trí tuệ nhân tạo", // DRAFT — Kevin reviews
+  "acx.find.d.acc-usage": "Mức dùng so với giới hạn: AI, SMS và lưu trữ", // DRAFT — Kevin reviews
+  "acx.find.k.acc-usage": "mức dùng giới hạn lưu trữ sms ai", // DRAFT — Kevin reviews
+  "acx.find.d.acc-billing": "Tình trạng thanh toán, phương thức và lịch sử", // DRAFT — Kevin reviews
+  "acx.find.k.acc-billing": "thanh toán phương thức thẻ gia hạn phí", // DRAFT — Kevin reviews
+  "acx.find.d.acc-invoices": "Hóa đơn phần mềm từ AI PowerSalon", // DRAFT — Kevin reviews
+  "acx.find.k.acc-invoices": "hóa đơn phí phần mềm", // DRAFT — Kevin reviews
+  "acx.find.d.acc-access-governance": "Rà soát quyền truy cập, quyền rủi ro cao và tài khoản không hoạt động", // DRAFT — Kevin reviews
+  "acx.find.k.acc-access-governance": "quyền truy cập rủi ro rà soát kiểm tra", // DRAFT — Kevin reviews
+  "acx.find.d.acc-security": "Mật khẩu, xác thực hai lớp, thiết bị tin cậy, phiên đăng nhập và cảnh báo đăng nhập", // DRAFT — Kevin reviews
+  "acx.find.k.acc-security": "mật khẩu 2fa hai lớp phiên thiết bị cảnh báo đăng nhập hồ sơ tên email thông báo", // DRAFT — Kevin reviews
+  "acx.find.d.acc-activity": "Nhật ký đầy đủ hoạt động của tài khoản và tiệm", // DRAFT — Kevin reviews
+  "acx.find.k.acc-activity": "hoạt động nhật ký lịch sử ai đã đổi", // DRAFT — Kevin reviews
+  "acx.find.d.acc-support": "Bài hướng dẫn và yêu cầu hỗ trợ", // DRAFT — Kevin reviews
+  "acx.find.k.acc-support": "trợ giúp hỗ trợ yêu cầu liên hệ", // DRAFT — Kevin reviews
+  "acx.find.d.acc-settings": "Cài đặt tiệm: thông tin doanh nghiệp, hóa đơn, thương hiệu", // DRAFT — Kevin reviews
+  "acx.find.k.acc-settings": "cài đặt tùy chọn hóa đơn thương hiệu doanh nghiệp", // DRAFT — Kevin reviews
+  "acx.find.d.team-members": "Danh bạ nhân viên — tìm người theo tên hoặc số điện thoại trong tiệm này", // DRAFT — Kevin reviews
+  "acx.find.k.team-members": "nhân viên thợ người dùng tên điện thoại danh bạ", // DRAFT — Kevin reviews
+  "acx.find.d.team-permissions": "Các vai trò và quyền của từng vai trò", // DRAFT — Kevin reviews
+  "acx.find.k.team-permissions": "vai trò quyền truy cập người dùng", // DRAFT — Kevin reviews
+  "acx.find.d.panel-profile": "Tên, email, điện thoại, ngôn ngữ và lần đăng nhập cuối của bạn", // DRAFT — Kevin reviews
+  "acx.find.k.panel-profile": "hồ sơ tên email điện thoại ngôn ngữ đăng nhập", // DRAFT — Kevin reviews
+  "acx.find.d.panel-business": "Tên doanh nghiệp, chi nhánh, địa chỉ, điện thoại, múi giờ và màu thương hiệu", // DRAFT — Kevin reviews
+  "acx.find.k.panel-business": "doanh nghiệp tên tiệm địa chỉ điện thoại múi giờ thương hiệu logo màu", // DRAFT — Kevin reviews
+  "acx.find.d.panel-security": "Tuổi mật khẩu, hai lớp, cảnh báo đăng nhập, thiết bị tin cậy và lần đăng nhập gần đây", // DRAFT — Kevin reviews
+  "acx.find.k.panel-security": "bảo mật mật khẩu 2fa cảnh báo thiết bị đăng nhập phiên", // DRAFT — Kevin reviews
+  "acx.find.d.panel-notif": "Tài khoản này nhận những thông báo nào", // DRAFT — Kevin reviews
+  "acx.find.k.panel-notif": "thông báo cảnh báo sms email tùy chọn", // DRAFT — Kevin reviews
+  "acx.find.d.panel-billing": "Gói, ngày gia hạn, phương thức thanh toán và phí hằng tháng", // DRAFT — Kevin reviews
+  "acx.find.k.panel-billing": "gói thanh toán gia hạn phí phương thức", // DRAFT — Kevin reviews
+  "acx.find.d.panel-role": "Vai trò, phạm vi dữ liệu và quyền chi nhánh của bạn", // DRAFT — Kevin reviews
+  "acx.find.k.panel-role": "vai trò quyền phạm vi chi nhánh người dùng quản lý nhân viên", // DRAFT — Kevin reviews
+  "acx.find.d.panel-activity": "Hoạt động tài khoản mới nhất", // DRAFT — Kevin reviews
+  "acx.find.k.panel-activity": "hoạt động gần đây nhật ký", // DRAFT — Kevin reviews
+  "acx.find.d.panel-health": "Những gì đã xong và những gì còn cần thiết lập", // DRAFT — Kevin reviews
+  "acx.find.k.panel-health": "tình trạng điểm thiết lập", // DRAFT — Kevin reviews
+  "acx.find.d.panel-compliance": "Hai lớp, tuân thủ nhắn tin và vệ sinh mật khẩu", // DRAFT — Kevin reviews
+  "acx.find.k.panel-compliance": "tuân thủ a2p 10dlc nhắn tin mật khẩu", // DRAFT — Kevin reviews
+  "acx.find.d.panel-backup": "Lần sao lưu trước, kế tiếp và tình trạng", // DRAFT — Kevin reviews
+  "acx.find.k.panel-backup": "sao lưu dữ liệu khôi phục", // DRAFT — Kevin reviews
 };
