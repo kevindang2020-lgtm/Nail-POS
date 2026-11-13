@@ -12,7 +12,7 @@ const SC = { preset: 'month', range: null, financialsIncluded: true, notes: [], 
   ROW({ branchId: 'b1', branchName: 'Marlton', likeForLike: { peers: [{ branchId: 'b3', branchName: 'Cherry Hill', mixOverlapPercent: 80 }, { branchId: 'b4', branchName: 'Voorhees', mixOverlapPercent: 70 }], rankPerTechnicianHour: 2, of: 3, mix: [{ category: 'Manicure', sharePercent: 60 }], reason: null }, trendFlags: [{ family: 'revenue', metricId: 'net_sales', unit: 'cents', triggered: 2, openIncidents: 1, latestValue: 30000, threshold: 50000, operator: 'lt', latestAt: '2026-11-05T15:00:00Z', route: '/tenant/ai/business/alerts' }], netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
   ROW({ branchId: 'b2', branchName: 'Deptford', likeForLike: { peers: [], rankPerTechnicianHour: null, of: 1, mix: [], reason: 'no_opening_hours' }, netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
   advice: [{ branchId: 'b2', branchName: 'Deptford', kind: 'no_opening_hours', severity: 'info', message: 'x', basis: {}, route: '/tenant/management/locations' }] };
-beforeEach(() => { center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset();
+beforeEach(() => { try { sessionStorage.clear(); } catch { /* jsdom */ } center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset();
   center.branchSnapshots.mockReset().mockResolvedValue({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 }); center.branchSnapshot.mockReset(); center.saveBranchSnapshot.mockReset(); center.signOffBranchSnapshot.mockReset(); });
 
 describe('AI Branch Comparison screen', () => {
@@ -256,23 +256,41 @@ describe('AI Business Assistant 09 — multi-branch fairness notes', () => {
     expect(await screen.findByTestId('bcx-share-net')).toHaveTextContent('N/A');
     expect(screen.getByTestId('bcx-share-bookings')).toHaveTextContent('N/A');
   });
-  it('round 10: per-staffed-hour figures from recorded shifts (N/A without staffed time; open shifts named apart)', async () => {
-    const row = (id: string, name: string, net: number, staffing: any) => ({ branchId: id, branchName: name, status: 'active', netSalesCents: net, averageTicketCents: 5000, ticketsCount: 10, totalBookings: 20, completed: 18, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 4444, completionRate: 90, staffing });
+  it('round 10 (rows 09 · 11 · 12): the detail shows the Branch Scorecard per-hour figures and this branch\'s freshness; a delayed branch is named in the table; filters and page survive leaving the page', async () => {
+    const row = (id: string, name: string, freshness: any) => ({ branchId: id, branchName: name, status: 'active', netSalesCents: 120000, averageTicketCents: 5000, ticketsCount: 10, totalBookings: 20, completed: 18, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 4444, completionRate: 90, freshness });
     compareMock.mockReset().mockResolvedValue({ preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
-      totals: { netSalesCents: 160000, ticketsCount: 20, averageTicketCents: 8000, totalBookings: 40, completed: 36, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [],
-      branches: [row('b1', 'Marlton', 120000, { technicianCount: 2, staffMinutes: 720, openShifts: 1, netSalesPerStaffHourCents: 10000, completedPer10StaffHours: 15 }), row('b2', 'Deptford', 40000, { technicianCount: 0, staffMinutes: 0, openShifts: 0, netSalesPerStaffHourCents: null, completedPer10StaffHours: null })] });
+      totals: { netSalesCents: 240000, ticketsCount: 20, averageTicketCents: 12000, totalBookings: 40, completed: 36, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [],
+      branches: [row('b1', 'Marlton', { lastTicketAt: '2026-11-03T17:00:00Z', lastBookingAt: '2026-11-03T16:00:00Z', eventsWaiting: 0, oldestEventLagSeconds: null, delayed: false }),
+        row('b2', 'Deptford', { lastTicketAt: null, lastBookingAt: null, eventsWaiting: 3, oldestEventLagSeconds: 1800, delayed: true })] });
+    center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [{ branchId: 'b1', branchName: 'Marlton', technicianHours: 12, operatingHours: 60, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: 2000, trendFlags: [], rank: {} }], advice: [] });
     const v = render1();
+    await screen.findAllByTestId('bcx-row');
+    fireEvent.change(screen.getByTestId('bcx-size'), { target: { value: '10' } });
+    await waitFor(() => expect(compareMock).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 10 })));
+    const rows = await screen.findAllByTestId('bcx-row');
+    expect(within(rows[1]).getByTestId('bcx-delayed')).toHaveTextContent('Data delayed');
+    expect(within(rows[0]).queryByTestId('bcx-delayed')).toBeNull();
+    fireEvent.click(rows[0]);
+    const d = await screen.findByTestId('bcx-detail');
+    expect(await within(d).findByTestId('bcx-per-tech-hour')).toHaveTextContent('$100.00');
+    expect(within(d).getByTestId('bcx-per-open-hour')).toHaveTextContent('$20.00');
+    expect(within(d).getByTestId('bcx-fresh').textContent).toMatch(/checkout .* · booking /);
+    expect(within(d).getByTestId('bcx-staff-note')).toHaveTextContent('Branch Scorecard');
+    // 11: Refresh keeps the scorecard on screen while it reloads
+    fireEvent.click(within(d).getByText('Close'));
+    const sc = await screen.findAllByTestId('bcx-s-row');
+    center.branchScorecard.mockImplementationOnce(() => new Promise(() => undefined));
+    fireEvent.click(screen.getByTestId('bcx-refresh'));
+    expect(screen.getAllByTestId('bcx-s-row')).toHaveLength(sc.length);
     fireEvent.click((await screen.findAllByTestId('bcx-row'))[0]);
-    let d = await screen.findByTestId('bcx-detail');
-    expect(within(d).getByTestId('bcx-staff-hours')).toHaveTextContent('12 h · 2 technicians · 1 shifts still open');
-    expect(within(d).getByTestId('bcx-per-staff-hour')).toHaveTextContent('$100.00');
-    expect(within(d).getByTestId('bcx-done-per-hours')).toHaveTextContent('15');
-    expect(within(d).getByTestId('bcx-staff-note')).toHaveTextContent('no separate opening-hours schedule');
+    const d2 = await screen.findByTestId('bcx-detail');
+    fireEvent.click(within(d2).getByTestId('bcx-detail-report'));
+    // 12: page size chosen before leaving comes back on return (session state)
     v.unmount();
+    compareMock.mockClear();
     render1();
-    fireEvent.click((await screen.findAllByTestId('bcx-row'))[1]);
-    d = await screen.findByTestId('bcx-detail');
-    expect(within(d).getByTestId('bcx-per-staff-hour')).toHaveTextContent('N/A');
-    expect(within(d).getByTestId('bcx-done-per-hours')).toHaveTextContent('N/A');
+    await screen.findAllByTestId('bcx-row');
+    expect(compareMock).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 10 }));
+    expect((screen.getByTestId('bcx-size') as HTMLSelectElement).value).toBe('10');
   });
 });

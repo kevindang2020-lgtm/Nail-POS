@@ -6,7 +6,8 @@
 //   • N/A where a ratio has no denominator (it showed 0 % and $0.00), and an average ticket that is net ÷ tickets like Net Sales;
 //   • a row opens that branch's full figures.
 // Every number comes from GET /pos/ai-business/branches/compare (the canonical Sales Report, one authorized branch at a time).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSessionState, readSession, writeSession } from '../components/useSessionState';
 import { SavedViews, vStr, vNum, vBool, periodToView, periodFromView } from '../components/SavedViews';
 import { Link } from 'react-router-dom';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
@@ -23,8 +24,8 @@ type Row = {
   netSalesCents: number | null; averageTicketCents: number | null; ticketsCount: number | null;
   totalBookings: number; completed: number; cancelledPercent: number; noShowPercent: number;
   revenuePerCompletedAppointmentCents: number | null; completionRate: number | null;
-  /** round 10 (AI Business Assistant 09): recorded shift time — the server's per-staffed-hour figures (N/A without staffed time) */
-  staffing?: { technicianCount: number; staffMinutes: number; openShifts: number; netSalesPerStaffHourCents: number | null; completedPer10StaffHours: number | null };
+  /** round 10 (AI BRANCH COMPARISON 11): this branch's own freshness from the server (absent from an older server) */
+  freshness?: { lastTicketAt: string | null; lastBookingAt: string | null; eventsWaiting: number; oldestEventLagSeconds: number | null; delayed: boolean };
 };
 type Comparison = {
   preset: string; range: { from: string; to: string } | null; asOf: string; partialCurrentPeriod: boolean; financialsIncluded: boolean;
@@ -67,18 +68,24 @@ function branchShare(part: number | null | undefined, whole: number | null | und
 }
 
 export function POSAiBranchCompareScreen() {
-  const [period, setPeriod] = useState<{ preset?: string; from?: string; to?: string }>({ preset: 'month' });
+  // round 10 (AI BRANCH COMPARISON 12): period, search, filters, page and the open branch survive a drill-down to the report and
+  // the Back button (this tab only — useSessionState), and the scroll position comes back once the rows are shown again
+  const [period, setPeriod] = useSessionState<{ preset?: string; from?: string; to?: string }>('aps.bcx.period', { preset: 'month' });
   const [cal, setCal] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [q, setQ] = useState('');
-  const [inactive, setInactive] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [q, setQ] = useSessionState('aps.bcx.q', '');
+  const [draft, setDraft] = useState(q);
+  const [inactive, setInactive] = useSessionState('aps.bcx.inactive', false);
+  const [page, setPage] = useSessionState('aps.bcx.page', 1);
+  const [pageSize, setPageSize] = useSessionState('aps.bcx.pageSize', 25);
   const [s, setS] = useState<Comparison | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Row | null>(null);
+  // AI Business Assistant 09 (round 10): the opened branch's normalised figures from the Branch Scorecard (same server read)
+  const [fair, setFair] = useState<{ branchId: string; technicianHours: number | null; operatingHours: number | null; netPerTechnicianHourCents: number | null; netPerOperatingHourCents: number | null } | null>(null);
   const [tick, setTick] = useState(0);
-  const [cmp, setCmp] = useState(false);
+  const [cmp, setCmp] = useSessionState('aps.bcx.cmp', false);
+  const restored = useRef(false);
+  const rememberScroll = () => writeSession('aps.bcx.scroll', window.scrollY);
 
   const load = useCallback(() => {
     setError(null);
@@ -87,6 +94,19 @@ export function POSAiBranchCompareScreen() {
       .then((x) => setS(x as Comparison)).catch((e) => setError(reportError(e, bt('growth.noun.theBranchComparison'))));
   }, [period, q, inactive, page, pageSize, cmp]);
   useEffect(() => { load(); }, [load, tick]);
+  useEffect(() => {
+    if (!open) { setFair(null); return; }
+    let live = true;
+    const p = period.preset === 'custom' ? { from: period.from, to: period.to } : { preset: period.preset };
+    posAiBusinessApi.center.branchScorecard(p).then((x: any) => { if (!live) return; const r = (x?.rows ?? []).find((y: any) => y.branchId === open.branchId); setFair(r ? { branchId: r.branchId, technicianHours: r.technicianHours ?? null, operatingHours: r.operatingHours ?? null, netPerTechnicianHourCents: r.netPerTechnicianHourCents ?? null, netPerOperatingHourCents: r.netPerOperatingHourCents ?? null } : null); })
+      .catch(() => { if (live) setFair(null); });   // the scorecard is optional here: without it the detail shows the shares only
+    return () => { live = false; };
+  }, [open, period]);
+  useEffect(() => {   // once, when the first rows are back after returning from a drill-down
+    if (restored.current || !s) return; restored.current = true;
+    const y = readSession<number>('aps.bcx.scroll', 0);
+    if (y > 0) window.scrollTo(0, y);
+  }, [s]);
   const pick = (p: typeof period) => { setPeriod(p); setPage(1); };
 
   const rows = s?.branches ?? [];
@@ -146,7 +166,8 @@ export function POSAiBranchCompareScreen() {
             <th className="num">{bt('pos.completed_2')}</th><th className="num">{bt('pos.completion')}</th><th className="num">{bt('pos.rev_completed')}</th></tr></thead>
             <tbody>{rows.map((r) => (
               <tr key={r.branchId} data-testid="bcx-row" tabIndex={0} role="button" style={{ cursor: 'pointer' }} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(r); }}>
-                <td><b>{r.branchName}</b>{r.status !== 'active' ? <span className="chip" style={{ marginLeft: 6 }}>{bt('bcx.inactive')}</span> : null}</td>
+                <td><b>{r.branchName}</b>{r.status !== 'active' ? <span className="chip" style={{ marginLeft: 6 }}>{bt('bcx.inactive')}</span> : null}
+                  {r.freshness?.delayed ? <span className="chip warn" style={{ marginLeft: 6 }} data-testid="bcx-delayed" title={bt('bcx10.delayedTip', { n: bzNum(r.freshness.eventsWaiting), m: bzNum(Math.round((r.freshness.oldestEventLagSeconds ?? 0) / 60)) })}>{bt('bcx10.delayed')}</span> : null}</td>
                 <td className="num">{fin && r.netSalesCents != null ? money(r.netSalesCents) : '—'}{C && fin ? <span className="sub" style={{ display: 'block' }} data-testid="bcx-d-net">{dMoney(r.netSalesCents, C.byBranch[r.branchId]?.netSalesCents)}</span> : null}</td>
                 <td className="num">{!fin ? '—' : r.averageTicketCents == null ? bt('bcx.na') : money(r.averageTicketCents)}</td>
                 <td className="num">{bzNum(r.totalBookings)}{C ? <span className="sub" style={{ display: 'block' }} data-testid="bcx-d-bookings">{dNum(r.totalBookings, C.byBranch[r.branchId]?.totalBookings)}</span> : null}</td>
@@ -166,10 +187,10 @@ export function POSAiBranchCompareScreen() {
       <BranchInsightsPanel period={period} tick={tick} />
       {/* AI BRANCH COMPARISON 14: save this comparison (frozen by the server) and sign off on it */}
       <BranchSnapshotsPanel period={period} tick={tick} />
-      {s ? <div className="sub" style={{ marginTop: 10 }}><Link className="link-44" to={s.drilldownRoute} style={{ color: 'var(--aps-orange)' }}>{bt('pos.open_the_sales_report')}</Link></div> : null}
+      {s ? <div className="sub" style={{ marginTop: 10 }}><Link className="link-44" to={s.drilldownRoute} onClick={rememberScroll} style={{ color: 'var(--aps-orange)' }}>{bt('pos.open_the_sales_report')}</Link></div> : null}
       {s?.notes.length ? <ul className="sub" style={{ marginTop: 10, paddingLeft: 18 }}>{s.notes.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}</ul> : null}
 
-      {open ? <FitDialog testId="bcx-detail" title={open.branchName} onClose={() => setOpen(null)} footer={<><Link className="btn ghost" to={s?.drilldownRoute ?? '/tenant/reports/sales'}>{bt('pos.open_the_sales_report')}</Link><button className="btn ghost" onClick={() => setOpen(null)}>{bt('bzx.close')}</button></>}>
+      {open ? <FitDialog testId="bcx-detail" title={open.branchName} onClose={() => setOpen(null)} footer={<><Link className="btn ghost" to={s?.drilldownRoute ?? '/tenant/reports/sales'} onClick={rememberScroll} data-testid="bcx-detail-report">{bt('pos.open_the_sales_report')}</Link><button className="btn ghost" onClick={() => setOpen(null)}>{bt('bzx.close')}</button></>}>
         <p className="sub">{s?.range ? bzDays(s.range) : bt('bzx.period.' + (s?.preset ?? 'month'))}</p>
         <table className="tbl"><tbody>
           <tr><td>{bt('pos.net_sales')}</td><td className="num">{fin && open.netSalesCents != null ? money(open.netSalesCents) : '—'}</td></tr>
@@ -184,13 +205,17 @@ export function POSAiBranchCompareScreen() {
           {/* AI Business Assistant 09: share of the salon totals with the denominators shown — a bigger branch naturally has bigger totals */}
           <tr data-testid="bcx-share-net"><td>{bt('bcx.fair.shareNet')}</td><td className="num">{!fin ? '—' : (() => { const v = branchShare(open.netSalesCents, T?.netSalesCents); return v == null ? bt('bcx.na') : bt('bcx.fair.ofTotal', { pct: String(v), total: money(T?.netSalesCents) }); })()}</td></tr>
           <tr data-testid="bcx-share-bookings"><td>{bt('bcx.fair.shareBookings')}</td><td className="num">{(() => { const v = branchShare(open.totalBookings, T?.totalBookings); return v == null ? bt('bcx.na') : bt('bcx.fair.ofCount', { pct: String(v), n: bzNum(open.totalBookings), total: bzNum(T?.totalBookings ?? 0) }); })()}</td></tr>
-          {open.staffing ? <>
-            <tr data-testid="bcx-staff-hours"><td>{bt('bcx.fair.staffHours')}</td><td className="num">{bt('bcx.fair.staffHoursV', { h: bzNum(Math.round(open.staffing.staffMinutes / 6) / 10), n: bzNum(open.staffing.technicianCount) })}{open.staffing.openShifts ? ` · ${bt('bcx.fair.openShifts', { n: bzNum(open.staffing.openShifts) })}` : ''}</td></tr>
-            <tr data-testid="bcx-per-staff-hour"><td>{bt('bcx.fair.netPerHour')}</td><td className="num">{!fin ? '—' : open.staffing.netSalesPerStaffHourCents == null ? bt('bcx.na') : money(open.staffing.netSalesPerStaffHourCents)}</td></tr>
-            <tr data-testid="bcx-done-per-hours"><td>{bt('bcx.fair.donePer10')}</td><td className="num">{open.staffing.completedPer10StaffHours == null ? bt('bcx.na') : bzNum(open.staffing.completedPer10StaffHours)}</td></tr>
+          {/* AI Business Assistant 09 (round 10): the Branch Scorecard's own normalisation for this branch — technician hours and the
+              salon's opening hours, per hour (read from center.branchScorecard, never recomputed here) */}
+          {fair && fair.branchId === open.branchId ? <>
+            <tr data-testid="bcx-tech-hours"><td>{bt('bcx.s.techHours')}</td><td className="num">{fair.technicianHours == null ? bt('bcx.na') : bzNum(fair.technicianHours)}</td></tr>
+            <tr data-testid="bcx-per-tech-hour"><td>{bt('bcx.s.perTechHour')}</td><td className="num">{!fin ? '—' : fair.netPerTechnicianHourCents == null ? bt('bcx.na') : money(fair.netPerTechnicianHourCents)}</td></tr>
+            <tr data-testid="bcx-open-hours"><td>{bt('bcx.s.openHours')}</td><td className="num">{fair.operatingHours == null ? bt('bcx.na') : bzNum(fair.operatingHours)}</td></tr>
+            <tr data-testid="bcx-per-open-hour"><td>{bt('bcx.s.perOpenHour')}</td><td className="num">{!fin ? '—' : fair.netPerOperatingHourCents == null ? bt('bcx.na') : money(fair.netPerOperatingHourCents)}</td></tr>
           </> : null}
+          {open.freshness ? <tr data-testid="bcx-fresh"><td>{bt('bcx10.fresh')}</td><td className="num">{bt('bcx10.freshV', { t: open.freshness.lastTicketAt ? bzWhen(open.freshness.lastTicketAt) : '—', b: open.freshness.lastBookingAt ? bzWhen(open.freshness.lastBookingAt) : '—' })}{open.freshness.eventsWaiting ? ` · ${bt('bcx10.waiting', { n: bzNum(open.freshness.eventsWaiting) })}` : ''}</td></tr> : null}
         </tbody></table>
-        {open.staffing ? <p className="sub" data-testid="bcx-staff-note">{bt('bcx.fair.staffNote')}</p> : null}
+        {fair && fair.branchId === open.branchId ? <p className="sub" data-testid="bcx-staff-note">{bt('bcx10.fairNote')}</p> : null}
         <p className="sub" data-testid="bcx-fair-note">{bt('bcx.fair.note', { n: bzNum(T?.branches ?? 0) })}</p>
         <p className="sub">{bt('bcx.d.note')}</p>
       </FitDialog> : null}

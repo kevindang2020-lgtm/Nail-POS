@@ -44,7 +44,8 @@ export function BranchInsightsPanel({ period, tick }: { period: { preset?: strin
   const [err, setErr] = useState<string | null>(null);
   const [explain, setExplain] = useState(false);
   const p = period.preset === 'custom' ? { from: period.from, to: period.to } : { preset: period.preset };
-  const load = () => { setErr(null); setS(null); posAiBusinessApi.center.branchScorecard(p).then(setS).catch((e) => setErr(bzErr(e))); };
+  // round 10 (AI BRANCH COMPARISON 11): a refresh keeps the current scorecard on screen until the new one arrives (non-disruptive)
+  const load = () => { setErr(null); posAiBusinessApi.center.branchScorecard(p).then(setS).catch((e) => setErr(bzErr(e))); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [period.preset, period.from, period.to, tick]);
   const rows: any[] = s?.rows ?? [];

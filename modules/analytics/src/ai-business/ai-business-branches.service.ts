@@ -10,7 +10,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import { addDays } from '@aipowersalon/date-time';
 import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
 import type { BranchScopeResolver } from './ai-business-branch-scope';
-import { perStaffHour, type BranchStaffingSource } from './ai-business-branch-staffing';
+import type { BranchFreshnessSource, BranchFreshness } from './ai-business-branch-freshness';
 
 export interface BranchCompareSource {
   getSales(ctx: ReportsContext, f?: ReportFilters): Promise<{ kpis: SalesKpis; trend: SalesTrend }>;
@@ -33,8 +33,8 @@ export interface BranchComparisonRow {
   /** completed / totalBookings as a percent — null (N/A) when the branch had no bookings, never a fake 0 % */
   completionRate: number | null;
   status: string;
-  /** AI Business Assistant 09 (round 10) — staffing normalisation from recorded shifts (absent when no staffing source is wired) */
-  staffing?: { technicianCount: number; staffMinutes: number; openShifts: number; netSalesPerStaffHourCents: number | null; completedPer10StaffHours: number | null };
+  /** AI BRANCH COMPARISON 11 (round 10) — this branch's own freshness (absent when no source is wired) */
+  freshness?: BranchFreshness;
 }
 /** AI BRANCH COMPARISON 08 (Nov 12 2026): the same figures for the PREVIOUS equal period, per branch, read by the same Sales /
  *  Booking reports with the same definitions. A preset uses the Sales Report's own previous-period rule in each branch's
@@ -101,7 +101,7 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_CUSTOM_DAYS = 366;
 
 export class AiBusinessBranchesService {
-  constructor(private readonly reports: BranchCompareSource, private readonly scope: BranchScopeResolver, private readonly staffingSource: BranchStaffingSource | null = null) {}
+  constructor(private readonly reports: BranchCompareSource, private readonly scope: BranchScopeResolver, private readonly freshnessSource: BranchFreshnessSource | null = null) {}
 
   /**
    * AI Branch Comparison guide (Nov 3 2026): every authorized branch (no 20-branch cap), searched by name and paged; inactive branches
@@ -180,13 +180,9 @@ export class AiBusinessBranchesService {
           totalBookings: pBk, completed: pDone, completionRate: pBk > 0 ? Math.round((pDone / pBk) * 100) : null } };
     }
     if (!financialsIncluded) for (const r of all) { r.netSalesCents = null; r.averageTicketCents = null; r.ticketsCount = null; r.revenuePerCompletedAppointmentCents = null; }
-    if (this.staffingSource && all.length) {
-      const st = await this.staffingSource.staffing(ctx.tenantId, all.map((r) => r.branchId), range ? { preset: 'custom', from: range.from, to: range.to } : { preset });
-      for (const r of all) {
-        const x = st[r.branchId]; if (!x) continue;
-        r.staffing = { ...x, netSalesPerStaffHourCents: perStaffHour(r.netSalesCents, x.staffMinutes),
-          completedPer10StaffHours: x.staffMinutes > 0 ? Math.round((r.completed * 600 * 10) / x.staffMinutes) / 10 : null };
-      }
+    if (this.freshnessSource && all.length) {
+      const fr = await this.freshnessSource.freshness(ctx.tenantId, all.map((r) => r.branchId));
+      for (const r of all) if (fr[r.branchId]) r.freshness = fr[r.branchId];
     }
     const sum = (f: (r: BranchComparisonRow) => number | null) => all.reduce((a, r) => a + (f(r) ?? 0), 0);
     const tNet = financialsIncluded ? sum((r) => r.netSalesCents) : null, tTk = financialsIncluded ? sum((r) => r.ticketsCount) : null;

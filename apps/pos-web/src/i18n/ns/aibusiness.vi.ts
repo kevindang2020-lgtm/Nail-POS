@@ -562,7 +562,7 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.fair.shareBookings": "Tỷ lệ trong lượt đặt hẹn của tiệm", // DRAFT — Kevin reviews
   "bcx.fair.ofTotal": "{pct}% của {total}", // DRAFT — Kevin reviews
   "bcx.fair.ofCount": "{pct}% ({n} trên {total})", // DRAFT — Kevin reviews
-  "bcx.fair.note": "Tỷ lệ tính trên tổng của tất cả {n} chi nhánh trong phần so sánh này. Chi nhánh lớn hơn (nhiều ghế, nhân viên hoặc giờ mở cửa hơn) đương nhiên có tổng cao hơn — hãy so sánh các tỷ lệ (hóa đơn trung bình, tỷ lệ hoàn thành, doanh thu mỗi lượt hẹn hoàn thành) để đánh giá chi nhánh. Các tỷ lệ này không điều chỉnh theo nhân viên hay giờ — các dòng mỗi giờ làm thì có.", // DRAFT — Kevin reviews
+  "bcx.fair.note": "Tỷ lệ tính trên tổng của tất cả {n} chi nhánh trong phần so sánh này. Chi nhánh lớn hơn (nhiều ghế, nhân viên hoặc giờ mở cửa hơn) đương nhiên có tổng cao hơn — hãy so sánh các tỷ lệ (hóa đơn trung bình, tỷ lệ hoàn thành, doanh thu mỗi lượt hẹn hoàn thành) để đánh giá chi nhánh. Các tỷ lệ này không điều chỉnh theo nhân viên hay giờ — các dòng mỗi giờ từ Bảng điểm chi nhánh thì có.", // DRAFT — Kevin reviews
   "bcx.def.fair": "Công bằng — tổng phụ thuộc vào quy mô chi nhánh; mở một chi nhánh để xem tỷ lệ của nó trong tổng của tiệm và mẫu số. Các tỷ lệ tính theo hóa đơn hoặc lượt đặt hẹn, nên so sánh được các chi nhánh khác quy mô.", // DRAFT — Kevin reviews
   "bcx.ready.ready": "Sẵn sàng so sánh", // DRAFT — Kevin reviews
   "bcx.ready.limited": "So sánh thận trọng", // DRAFT — Kevin reviews
@@ -734,10 +734,10 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "aib.prov.title": "Bản ghi", // DRAFT — Kevin reviews
   "aib.prov.tool": "Trả lời bằng công cụ {tool}", // DRAFT — Kevin reviews
   "aib.prov.private": "Chỉ bạn xem được bản ghi này; nó không bao giờ bị sửa.", // DRAFT — Kevin reviews
-  "bcx.fair.staffHours": "Giờ làm có người (ca đã ghi)", // DRAFT — Kevin reviews
-  "bcx.fair.staffHoursV": "{h} giờ · {n} thợ", // DRAFT — Kevin reviews
-  "bcx.fair.openShifts": "{n} ca chưa đóng", // DRAFT — Kevin reviews
-  "bcx.fair.netPerHour": "Doanh thu thuần mỗi giờ làm", // DRAFT — Kevin reviews
-  "bcx.fair.donePer10": "Dịch vụ hoàn thành mỗi 10 giờ làm", // DRAFT — Kevin reviews
-  "bcx.fair.staffNote": "Mỗi giờ làm là chia cho thời gian ca đã chấm công tại chi nhánh này trong các ngày đó, để chi nhánh nhiều người hoặc mở lâu hơn được so sánh công bằng. Ca chưa đóng không được tính. Hệ thống không có lịch giờ mở cửa riêng nên giờ làm là cơ sở thời gian hoạt động.", // DRAFT — Kevin reviews
+  "bcx10.fresh": "Hoạt động gần nhất ở đây", // DRAFT — Kevin reviews
+  "bcx10.freshV": "thanh toán {t} · đặt lịch {b}", // DRAFT — Kevin reviews
+  "bcx10.waiting": "{n} cập nhật chưa gửi xong", // DRAFT — Kevin reviews
+  "bcx10.delayed": "Dữ liệu trễ", // DRAFT — Kevin reviews
+  "bcx10.delayedTip": "{n} cập nhật từ chi nhánh này đang chờ (lâu nhất {m} phút); số liệu có thể chưa mới nhất.", // DRAFT — Kevin reviews
+  "bcx10.fairNote": "Mỗi giờ của thợ là chia cho thời gian ca đã ghi ở đây; mỗi giờ mở cửa là chia cho giờ mở cửa của chi nhánh — cả hai lấy từ Bảng điểm chi nhánh bên dưới.", // DRAFT — Kevin reviews
 };
