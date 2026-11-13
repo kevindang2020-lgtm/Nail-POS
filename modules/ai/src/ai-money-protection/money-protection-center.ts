@@ -599,6 +599,79 @@ export class MoneyProtectionCenter {
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), period: { today: per.today, timeZone: per.tz } };
   }
 
+  // ── controlled export (extras: MONEY PROTECTION ALERTS 14 · AI MONEY PROTECTION 5 · 15 · Money Protection Rules 15) ──
+  /** GET export — a CSV of the alerts list (the SAME filters, sort and branch scope as the screen, every page) or of the
+   *  rule settings (view = rules). Needs ai_money_protection.export (+ view_alerts for alerts). The file opens with its
+   *  provenance: what it is, the salon and location scope, who generated it and when, the period with its date basis and
+   *  time zone, the filters (a search text is never written — it may be a customer's name or phone), the detection
+   *  freshness it was read at, the metric definitions and what was left out. Columns are sanitized: no customer names or
+   *  phones, no evidence text, no staff names, no payment references — only rule / evaluation fields and the linked
+   *  hóa đơn numbers of THIS salon. Every export writes one audit row (filters, rows, redaction). Read-only. */
+  async exportCsv(ctx: McCtx, f: Record<string, unknown>): Promise<string> {
+    this.need(ctx, 'ai_money_protection.export');
+    const view = f.view === 'rules' ? 'rules' : 'alerts';
+    if (view === 'alerts') this.need(ctx, 'ai_money_protection.view_alerts');
+    const T = ctx.tenantId;
+    const branchId = isUuid(ctx.branchId) ? String(ctx.branchId) : null;
+    const meta = (await sql<{ salon: string | null; branch: string | null; actor: string | null }>`select
+        (select coalesce(nullif(t.display_name, ''), t.legal_name) from tenants t where t.id = ${T}) as salon,
+        ${branchId ? sql`(select b.name from branches b where b.tenant_id = ${T} and b.id = ${branchId}::uuid)` : sql`null::text`} as branch,
+        ${isUuid(ctx.userId) ? sql`(select coalesce(nullif(u.full_name, ''), u.email) from users u where u.tenant_id = ${T} and u.id = ${ctx.userId}::uuid)` : sql`null::text`} as actor`.execute(this.db)).rows[0];
+    const monitor = await this.monitorState(T);
+    const head: string[][] = [];
+    const body: unknown[][] = [];
+    const filterParts: string[] = [];
+    if (view === 'alerts') {
+      const first = await this.alerts(ctx, { ...f, page: 1, pageSize: 100 });
+      const items = [...first.items];
+      for (let p = 2; p <= first.totalPages && p <= 1000; p++) items.push(...(await this.alerts(ctx, { ...f, page: p, pageSize: 100 })).items);
+      const ids = items.map((x) => x.id);
+      // linked hóa đơn numbers — read from this salon's tickets only (an id that is not this salon's is never written)
+      const links = ids.length ? (await sql<{ id: string; numbers: string[] | null }>`select a.id::text as id,
+          array(select tk.ticket_number from tickets tk where tk.tenant_id = ${T} and tk.id::text in (select jsonb_array_elements_text(coalesce(a.related->'ticketIds', '[]'::jsonb))) and tk.ticket_number is not null order by tk.created_at) as numbers
+        from money_protection_alerts a where a.tenant_id = ${T} and a.id = any(${ids}::uuid[])`.execute(this.db)).rows : [];
+      const linkOf = new Map(links.map((r) => [String(r.id), (r.numbers ?? []).map(String)]));
+      const ap = first.applied;
+      filterParts.push(`status=${ap.status}`);   // always: the default (open) is itself a filter
+      for (const [k, v] of [['severity', ap.severity], ['category', ap.category], ['rule', ap.rule]] as const) if (v != null && v !== 'all') filterParts.push(`${k}=${v}`);
+      if (ap.q) filterParts.push('search=given (not written)');
+      head.push(['Export', 'AI Money Protection — alerts'], ['Period', ap.from && ap.to ? `${ap.from} to ${ap.to}` : 'All dates'], ['Date basis', String(ap.dateField)],
+        ['Time zone', String(first.period.timeZone)], ['Sort', String(ap.sort)]);
+      head.push(['Definitions', 'Amount under review (cents) = the amount an alert points at, in integer cents — a possible discrepancy for review, never a confirmed loss; Risk score = 0–100 from the rule; Severity = the rule\'s or the salon\'s override; Status = the alert\'s review state']);
+      body.push(['Alert ID', 'Detected', 'Last seen', 'Updated', 'Rule ID', 'Rule', 'Category', 'Severity', 'Status', 'Risk score', 'Confidence', 'Amount under review (cents)', 'Events', 'Location', 'Investigation ID', 'Linked hóa đơn numbers']);
+      for (const x of items) body.push([x.id, x.firstSeenAt ?? '', x.lastSeenAt ?? '', x.updatedAt ?? '', x.ruleId, x.rule, x.category ?? '', x.severity, x.status, x.riskScore, x.confidence ?? '',
+        x.amountCents, x.eventCount, x.branch ?? '', x.investigationId ?? '', (linkOf.get(x.id) ?? []).join(' ')]);
+    } else {
+      const r = await this.rules(ctx);
+      head.push(['Export', 'AI Money Protection — rule settings'], ['Period', 'Alert counts: last 30 days (alerts) and 90 days (dismissed), up to the time generated'],
+        ['Definitions', 'Effective = switched on AND its detection layer is on; Thresholds = the numeric / text settings the rule evaluates with (salon values over defaults); Last checked = the last successful detection pass after the rule\'s last change']);
+      body.push(['Rule ID', 'Rule', 'Category', 'Layer', 'Enabled', 'Effective', 'Severity', 'Default severity', 'Thresholds', 'Alerts 30 days', 'Open alerts', 'Dismissed 90 days', 'Last alert', 'Last checked', 'Setting changed']);
+      // sanitized thresholds: only scalar values (numbers, booleans, short text) — never an object a future setting might carry
+      const scalar = (o: Record<string, unknown>) => Object.entries(o).filter(([, v]) => typeof v === 'number' || typeof v === 'boolean' || (typeof v === 'string' && v.length <= 40)).map(([k, v]) => `${k}=${String(v)}`).join('; ');
+      for (const x of r.rules) body.push([x.id, x.name, x.category, x.layer, x.enabled ? 'yes' : 'no', x.effective ? 'yes' : 'no', x.severity, x.defaultSeverity, scalar(x.thresholds as Record<string, unknown>),
+        x.alerts30d, x.open, x.dismissed90d, x.lastAlertAt ?? '', x.lastCheckedAt ?? '', x.updatedAt ?? '']);
+    }
+    const rows = body.length - 1;
+    const generatedAt = new Date(this.now()).toISOString();
+    const redaction = 'Not included: customer names and phone numbers, evidence text, staff names, payment and card references. Search text is not written.';
+    const scope = [
+      ...head.slice(0, 1),
+      ['Salon', meta?.salon ?? '—'], ['Location scope', branchId ? (meta?.branch ?? '—') : 'All locations'],
+      ['Generated at', generatedAt], ['Generated by', meta?.actor ?? '—'],
+      ...head.slice(1),
+      ['Filters', filterParts.join('; ') || 'none'],
+      ['Detection freshness', `${monitor.state}; last successful detection ${monitor.lastSuccessAt ?? '—'}; records evaluated ${monitor.lastEvaluated ?? '—'}`],
+      ['Redaction', redaction], ['Rows', String(rows)],
+    ];
+    await recordAuditStrict(this.db, { tenantId: T, branchId, userId: isUuid(ctx.userId) ? ctx.userId! : null, role: ctx.role ?? null },
+      { module: 'ai_money_protection', action: 'money_protection.exported', resourceType: 'money_protection_export', resourceId: view,
+        summary: `Exported ${rows} Money Protection ${view === 'alerts' ? 'alert' : 'rule'} row(s)`,
+        metadata: { view, rows, filters: filterParts, monitor: monitor.state, lastSuccessAt: monitor.lastSuccessAt, redaction: 'no_customer_no_evidence_no_staff_no_payment_refs' } });
+    // formula-safe text cells (a leading = + - @ gets a '); numbers stay numbers
+    const cell = (v: unknown) => { let x = v == null ? '' : String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(x)) x = "'" + x; return /[",\r\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+    return [...scope.map((r) => r.map(cell).join(',')), '', ...body.map((r) => r.map(cell).join(','))].join('\r\n') + '\r\n';
+  }
+
   // ── detection ──────────────────────────────────────────────────────────────────────────────────────────────
   /** one recorded detection pass. Manual: needs manage_rules and is limited to one per 2 minutes per salon. */
   async runDetection(ctx: McCtx, trigger: 'manual' | 'scheduled') {

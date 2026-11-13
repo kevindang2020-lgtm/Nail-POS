@@ -4,13 +4,15 @@
 //   ai_money_protection.view_alerts    alerts · alerts/detail
 //   ai_money_protection.investigate    alerts/action (acknowledge · dismiss · reopen — reason; never about your own activity; ids[] = batch triage: preview, then confirm: true)
 //   ai_money_protection.manage_settings rules/save (reason to turn a rule off or lower it; stale edits refused; dryRun: true = Threshold Change Preview, nothing saved)
+//   ai_money_protection.export         export (alerts: + view_alerts; view=rules: the rule settings) — CSV with provenance, audited
 //   ai_money_protection.manage_rules   detection/run (one recorded pass; once per 2 minutes)
 // Nothing here moves money: no charge, refund, reversal, settlement or write-off.
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
-import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
+import type { SavedViewFilters } from '@aipowersalon/api-contracts/tenant';
 import { S, type BodySchema } from '@aipowersalon/permissions';
-import { Controller, Get, Post, Body, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req, UseGuards, HttpException, HttpStatus, Inject, Header } from '@nestjs/common';
 import { MoneyProtectionCenter, MoneyCenterError, MC_ALERT_GROUPS, MC_SEVERITIES, MC_CATEGORIES, MC_ALERT_DATES, MC_INV_STATUS, MC_INV_DATES, MC_PRESETS, type McCtx } from './money-protection-center';
 
 export const MONEY_PROTECTION_CENTER = 'MoneyProtectionCenter';
@@ -33,6 +35,8 @@ const ALERTS = { filters: { status: { type: 'enum', values: MC_ALERT_GROUPS }, s
   search: { maxLength: 80 }, sorts: { newest: null, oldest: null, severity: null, value: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 const INVS = { filters: { status: { type: 'enum', values: MC_INV_STATUS }, severity: { type: 'enum', values: MC_SEVERITIES }, dateField: { type: 'enum', values: MC_INV_DATES }, preset: { type: 'enum', values: MC_PRESETS } },
   search: { maxLength: 80 }, sorts: { updated: null, newest: null, oldest: null, severity: null, value: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
+// the export takes the alerts list's own filters (same validation) + view; no page / limit — it is every matching row
+const EXPORT = { ...ALERTS, filters: { ...ALERTS.filters, view: { type: 'enum', values: ['alerts', 'rules'] } }, maxLimit: undefined, defaultLimit: undefined, params: [] } as const;
 const PAGED = { filters: { preset: { type: 'enum', values: MC_PRESETS } }, search: { maxLength: 80 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
@@ -56,6 +60,12 @@ export class MoneyProtectionCenterController {
   /** acknowledge · dismiss · reopen (append-only, audited) */
   @Post('alerts/action') @RequirePermission('ai_money_protection.view_alerts')
   alertAction(@Req() q: any, @Body(ValidatedBody(MC_ACTION_BODY, { strict: true })) b: any) { const c = ctxFrom(q); authed(c); if (Array.isArray(b?.ids)) return run(() => this.c().alertBatch(c, b)); return run(() => this.c().alertAction(c, String(b?.id ?? ''), b ?? {})); }
+
+  /** extras (MONEY PROTECTION ALERTS 14 · AI MONEY PROTECTION 5 · 15 · Money Protection Rules 15): the controlled export —
+   *  the filtered alerts (every page) or the rule settings, sanitized columns, a provenance block on top, one audit row */
+  @AsyncExport({ kind: 'pos.money-protection.export' }) @Get('export') @RequirePermission('ai_money_protection.export') @ListQuery(EXPORT)
+  @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="money-protection.csv"')
+  exportFile(@Req() q: any, @Query() f: SavedViewFilters): Promise<string> { const c = ctxFrom(q); authed(c); return run(() => this.c().exportCsv(c, f ?? {})); }
 
   @Get('investigations') @RequirePermission('ai_money_protection.view') @ListQuery(INVS)
   investigations(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); authed(c); return run(() => this.c().investigations(c, f ?? {})); }
