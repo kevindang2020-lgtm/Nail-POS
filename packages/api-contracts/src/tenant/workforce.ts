@@ -108,3 +108,17 @@ export interface PendingProfileChangeWithdrawResult { ok: true; withdrawn: boole
 export interface PortfolioShowcaseShareResult { ok: true; postId: string; status: string; already: boolean }
 /** DELETE /tech/profile/photos/:photoId/showcase */
 export interface PortfolioShowcaseUnshareResult { ok: true; removed: boolean }
+
+// ── 200-Technician 04 — Opening-Hour Surge Mode (GET pos/time-clock/opening-rush · POST pos/time-clock/clock-in-batch).
+//    Who is scheduled to start today (the weekly schedule, approved time off and blocked time read by THE availability core)
+//    and is not on the clock yet, earliest start first, late flagged; and a batch clock-in that runs THE single clock-in for
+//    each chosen technician (one open punch each, idempotent, audited as usual). Nothing is assigned or sent.
+export interface OpeningRushView {
+  businessDate: string; timeZone: string; nowLocal: string;
+  notClockedIn: { technicianId: string; technicianName: string | null; startTime: string; late: boolean }[];
+  onTheClock: number;
+}
+export interface ClockInBatchResult {
+  results: { technicianId: string; outcome: 'clocked_in' | 'already_clocked_in' | 'refused'; code: string | null; shiftId: string | null }[];
+  summary: { clockedIn: number; alreadyClockedIn: number; refused: number };
+}

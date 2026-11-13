@@ -247,6 +247,8 @@ export const PAYCHECK_RESOLVE_CASH_BODY: BodySchema = S.object({ action: S.enumO
 export const PAYCHECK_ADD_PAYOUT_BODY: BodySchema = S.object({ method: S.enumOf(['check', 'cash']), amountCents: S.nullable(S.integer({ minimum: 1 })) }, ['method']);
 // PAYROLL_LINE_BODY (manual payroll line) was REMOVED Oct 13 2026 (FLOW D7) with its route.
 export const TIME_CLOCK_BODY: BodySchema = S.object({ technicianId: scalar(64) });
+// 200-Technician 04: the opening-rush batch clock-in — at most 25 technicians per tap
+export const TIME_CLOCK_BATCH_BODY: BodySchema = S.object({ technicianIds: S.array(S.text(64), { maxItems: 25 }) });
 // Technician Profile merge (Oct 12 2026): breaks are part of the clock; the manager "not taking customers" flag.
 export const TIME_CLOCK_BREAK_BODY: BodySchema = S.object({ technicianId: scalar(64), kind: str(16), reason: str(500) });
 // Fair Turn Engine (wave 2): break interruption + the salon break policy (time-clock.controller.ts)

@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const { stateMock, inMock, outMock, resetMock, adjustMock, bsMock, beMock } = vi.hoisted(() => ({ bsMock: vi.fn(), beMock: vi.fn(), stateMock: vi.fn(), inMock: vi.fn(), outMock: vi.fn(), resetMock: vi.fn(), adjustMock: vi.fn() }));
-vi.mock('../api/posTimeClockApi', () => ({ posTimeClockApi: { state: stateMock, clockIn: inMock, clockOut: outMock, resetClockPin: resetMock, adjustTimecard: adjustMock, breakStart: bsMock, breakEnd: beMock } }));
+vi.mock('../api/posTimeClockApi', () => ({ posTimeClockApi: { state: stateMock, clockIn: inMock, clockOut: outMock, resetClockPin: resetMock, adjustTimecard: adjustMock, breakStart: bsMock, breakEnd: beMock, openingRush: rushMock, clockInBatch: batchMock } }));
+const { rushMock, batchMock, ovMock } = vi.hoisted(() => ({ rushMock: vi.fn(async () => null), batchMock: vi.fn(), ovMock: vi.fn(async () => null) }));
+vi.mock('../api/posOverviewApi', () => ({ posOverviewApi: { getOverview: ovMock } }));
+vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 const { rtMock } = vi.hoisted(() => ({ rtMock: vi.fn() }));
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: rtMock }));
 import { POSTimeClockScreen } from './POSTimeClockScreen';
@@ -127,5 +130,37 @@ describe('POSTimeClockScreen', () => {
     await waitFor(() => expect(inMock).toHaveBeenCalled());
     await waitFor(() => expect(stateMock).toHaveBeenCalledTimes(2));
     expect(screen.getByText('Ana')).toBeInTheDocument();
+  });
+});
+
+describe('POSTimeClockScreen — 200-Technician 04 opening rush', () => {
+  it('shows the backlog from the Overview, who is scheduled and not clocked in (late flagged), and clocks in the chosen ones after a confirm', async () => {
+    stateMock.mockResolvedValue(state([row(), row({ technicianId: 'B', technicianName: 'Bea' })]));
+    rushMock.mockResolvedValue({ businessDate: '2026-11-12', timeZone: 'America/New_York', nowLocal: '09:20', onTheClock: 1,
+      notClockedIn: [{ technicianId: 'A', technicianName: 'Ana', startTime: '09:00', late: true }, { technicianId: 'B', technicianName: 'Bea', startTime: '10:00', late: false }] } as any);
+    ovMock.mockResolvedValue({ kpis: { waitingGuests: { count: 6 } }, walkInStatus: { checkedInNotAssigned: 4, estimatedWaitMinutes: 25 } } as any);
+    batchMock.mockResolvedValue({ results: [{ technicianId: 'A', outcome: 'clocked_in', code: null, shiftId: 's1' }, { technicianId: 'B', outcome: 'refused', code: 'TECHNICIAN_NOT_FOUND', shiftId: null }], summary: { clockedIn: 1, alreadyClockedIn: 0, refused: 1 } });
+    render(<POSTimeClockScreen />);
+    expect(await screen.findByTestId('rush-backlog')).toHaveTextContent('6 guests waiting · 4 waiting for a technician · about 25 min wait');
+    const rows = screen.getAllByTestId('rush-row');
+    expect(rows.map((r) => r.getAttribute('data-late'))).toEqual(['1', '0']);
+    expect(rows[0]).toHaveTextContent('Ana · starts 09:00Late');
+    expect(screen.getAllByRole('button', { name: 'Clock In' }).length).toBeGreaterThan(0);   // the roster's own buttons stay
+    fireEvent.click(screen.getByTestId('rush-pick-all'));
+    fireEvent.click(screen.getByTestId('rush-clock-in'));
+    expect(batchMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId('rush-confirm')).toHaveTextContent('Clock in 2 technician(s) now?');
+    fireEvent.click(screen.getByTestId('rush-yes'));
+    await waitFor(() => expect(batchMock).toHaveBeenCalledWith(['A', 'B']));
+    expect(await screen.findByTestId('rush-result')).toHaveTextContent('1 clocked in · 0 were already on the clock · 1 refused');
+    expect(screen.getByTestId('rush-refused')).toHaveTextContent('Bea: not in this salon');
+  });
+  it('no backlog read → a dash, never a made-up zero; nobody pending says so', async () => {
+    stateMock.mockResolvedValue(state([row()]));
+    rushMock.mockResolvedValue({ businessDate: '2026-11-12', timeZone: 'America/New_York', nowLocal: '09:20', onTheClock: 3, notClockedIn: [] } as any);
+    ovMock.mockRejectedValue(new Error('403'));
+    render(<POSTimeClockScreen />);
+    expect(await screen.findByTestId('rush-none')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('rush-backlog')).toHaveTextContent('Queue backlog: —'));
   });
 });

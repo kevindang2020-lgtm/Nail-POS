@@ -10,6 +10,7 @@
 //   • clock-out finds the OPEN punch regardless of the date it started on (an overnight shift, a missed clock-out);
 //   • server time only — no client-supplied timestamps on this path.
 import { businessDate, addDays } from '@aipowersalon/date-time';
+import type { OpeningRushView, ClockInBatchResult } from '@aipowersalon/api-contracts/tenant';
 import { foldVi, clampPage, clampPageSize, withCode } from '@aipowersalon/api-contracts';
 import { TIME_CLOCK_PAGE_SIZE_MAX, type TimeClockStateQuery } from '@aipowersalon/api-contracts/tenant';
 import { type RealtimeEmitter, EVENTS } from '@aipowersalon/realtime-contracts';
@@ -138,6 +139,39 @@ export class TimeClockService {
   }
 
   /** Clock in. Idempotent: if the technician already has an OPEN punch the existing one is returned (`created=false`). */
+  /** 200-Technician 04 — Opening-Hour Surge: technicians scheduled to start today who are not on the clock (earliest first,
+   *  late flagged), read from the roster + THE availability facts. Read only. */
+  async openingRush(ctx: TimeClockContext): Promise<OpeningRushView> {
+    this.auth(ctx);
+    const tz = await this.zone(ctx); const now = new Date(); const businessDate = dayIn(tz, now.toISOString());
+    const nowLocal = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+    const st = await this.getState(ctx);
+    const off = st.technicians.filter((t) => t.state === 'clocked_out' || t.state === 'off');
+    const starts = this.repo.scheduledStarts ? await this.repo.scheduledStarts(ctx, businessDate, off.map((t) => t.technicianId)) : [];
+    const name = new Map(off.map((t) => [t.technicianId, t.technicianName ?? null]));
+    const notClockedIn = starts.map((x) => ({ technicianId: x.technicianId, technicianName: name.get(x.technicianId) ?? null, startTime: x.startTime, late: x.startTime < nowLocal }))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime) || String(a.technicianName).localeCompare(String(b.technicianName)));
+    return { businessDate, timeZone: tz, nowLocal, notClockedIn, onTheClock: st.technicians.filter((t) => t.state === 'clocked_in' || t.state === 'on_break').length };
+  }
+
+  /** 200-Technician 04 — batch clock-in: THE clock-in above for each technician (one open punch each — a repeat is
+   *  'already_clocked_in'); a refusal for one technician never stops the others and is reported with its code. */
+  async clockInBatch(ctx: TimeClockContext, technicianIds: string[]): Promise<ClockInBatchResult> {
+    this.auth(ctx);
+    const ids = [...new Set((Array.isArray(technicianIds) ? technicianIds : []).map((x) => String(x || '').trim()).filter(Boolean))];
+    if (!ids.length) throw withCode(new TimeClockValidationError('Choose at least one technician'), 'TECHNICIAN_REQUIRED');
+    if (ids.length > 25) throw withCode(new TimeClockValidationError('At most 25 technicians at a time'), 'VALIDATION_FAILED');
+    const results: ClockInBatchResult['results'] = [];
+    for (const technicianId of ids) {
+      try { const r = await this.clockIn(ctx, technicianId); results.push({ technicianId, outcome: r.created ? 'clocked_in' : 'already_clocked_in', code: null, shiftId: r.shiftId }); }
+      catch (e) {
+        if (!(e instanceof TimeClockValidationError || e instanceof TimeClockConflictError || e instanceof TimeClockForbiddenError)) throw e;
+        results.push({ technicianId, outcome: 'refused', code: (e as { apiCode?: string; code?: string }).apiCode ?? (e as { code?: string }).code ?? 'REFUSED', shiftId: null });
+      }
+    }
+    return { results, summary: { clockedIn: results.filter((r) => r.outcome === 'clocked_in').length, alreadyClockedIn: results.filter((r) => r.outcome === 'already_clocked_in').length, refused: results.filter((r) => r.outcome === 'refused').length } };
+  }
+
   async clockIn(ctx: TimeClockContext, technicianId: string): Promise<TechnicianClockRow & { created: boolean; shiftId: string }> {
     this.auth(ctx);
     if (!technicianId) throw new TimeClockValidationError('technicianId is required');

@@ -4,10 +4,10 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody 
 import { Controller, Get, Post, Put, Body, Req, Query, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { TimeClockService, TimeClockForbiddenError, TimeClockValidationError, TimeClockConflictError } from './time-clock.service';
 import type { TimeClockContext } from './time-clock.dto';
-import type { TimeClockBreakBody, TimeClockTechnicianRow, TimeClockBreakPolicyView } from '@aipowersalon/api-contracts/tenant';
+import type { TimeClockBreakBody, TimeClockTechnicianRow, TimeClockBreakPolicyView, OpeningRushView, ClockInBatchResult } from '@aipowersalon/api-contracts/tenant';
 import { ListQueries } from '@aipowersalon/database';
 import { TimeClockControllerListQueries } from './time-clock.list-queries';
-import { TIME_CLOCK_BODY, TIME_CLOCK_BREAK_BODY, TIME_CLOCK_INTERRUPT_BODY, BREAK_POLICY_BODY } from '../request-schemas';
+import { TIME_CLOCK_BATCH_BODY, TIME_CLOCK_BODY, TIME_CLOCK_BREAK_BODY, TIME_CLOCK_INTERRUPT_BODY, BREAK_POLICY_BODY } from '../request-schemas';
 
 function ctxFrom(req: any): TimeClockContext {
   const c = req?.ctx || {};
@@ -38,6 +38,13 @@ export class TimeClockController {
 
   @Post('clock-in') @RequirePermission('pos.technicians.manage')
   clockIn(@Req() r: any, @Body(ValidatedBody(TIME_CLOCK_BODY, { strict: true })) b: any) { return run(() => this.svc.clockIn(ctxFrom(r), String(b?.technicianId || ''))); }
+
+  /** 200-Technician 04 — opening rush: scheduled today, not on the clock yet (read only) */
+  @Get('opening-rush') @RequirePermission('pos.technicians.view')
+  openingRush(@Req() r: any): Promise<OpeningRushView> { return run(() => this.svc.openingRush(ctxFrom(r))); }
+  /** 200-Technician 04 — batch clock-in: THE clock-in per technician (≤ 25), each result reported */
+  @Post('clock-in-batch') @RequirePermission('pos.technicians.manage')
+  clockInBatch(@Req() r: any, @Body(ValidatedBody(TIME_CLOCK_BATCH_BODY, { strict: true })) b: { technicianIds: string[] }): Promise<ClockInBatchResult> { return run(() => this.svc.clockInBatch(ctxFrom(r), b?.technicianIds ?? [])); }
 
   @Post('clock-out') @RequirePermission('pos.technicians.manage')
   clockOut(@Req() r: any, @Body(ValidatedBody(TIME_CLOCK_BODY, { strict: true })) b: any) { return run(() => this.svc.clockOut(ctxFrom(r), String(b?.technicianId || ''))); }
