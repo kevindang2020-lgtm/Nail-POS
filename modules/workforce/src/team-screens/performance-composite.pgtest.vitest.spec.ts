@@ -15,7 +15,6 @@ const mgr = { tenantId: T, branchId: B, userId: U, role: 'MANAGER', permissions:
 const viewer = { ...mgr, permissions: ['pos.technicians.view'] };
 let pg: any; let repo: TeamPerformanceScreenRepository;
 const q = (s: string, p: unknown[] = []) => pg.query(s, p);
-let n = 0;
 const review = (tech: string, rating: number, o: { hidden?: boolean; spam?: boolean } = {}) =>
   q(`insert into reviews (tenant_id, branch_id, technician_id, customer_id, rating, is_hidden_by_manager, is_spam, created_at) values ($1,$2,$3,$4,$5,$6,$7, now() - interval '1 day')`, [T, B, tech, CU, rating, !!o.hidden, !!o.spam]);
 const ticket = (tech: string, status: string, appt?: string, startedMinutesAfterPlanned?: number) =>
@@ -23,7 +22,7 @@ const ticket = (tech: string, status: string, appt?: string, startedMinutesAfter
      values ($1,$2,'Guest',$3,$4,$5, now() - interval '1 day', ${startedMinutesAfterPlanned == null ? 'null' : `(select ((a.appt_date + a.start_time::time) at time zone 'America/New_York') + make_interval(mins => ${startedMinutesAfterPlanned}) from pos_tech_appointments a where a.id = $5)`})`,
     [T, B, tech, status, appt ?? null]);
 const appointment = async (tech: string, arrivedMinutesAfterPlanned: number | null) => {
-  n++; const r = await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, source)
+  const r = await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, source)
     values ($1,$2,$3,'Guest','[]'::jsonb, current_date - 1, '10:00', '11:00', 60, 'completed', 'online') returning id`, [T, B, tech]);
   const aid = String(r.rows[0].id);
   if (arrivedMinutesAfterPlanned != null) await q(`update pos_tech_appointments set arrived_at = ((appt_date + start_time::time) at time zone 'America/New_York') + make_interval(mins => $2) where id = $1`, [aid, arrivedMinutesAfterPlanned]);

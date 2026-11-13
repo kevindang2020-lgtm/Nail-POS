@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canTransition, suggestSeverity, buildExceptionsState, validateCreateException, caseDue, EXCEPTION_REVIEW_DAYS, type ReconException } from './deposit-reconciliation.exceptions';
+import { canTransition, suggestSeverity, buildExceptionsState, caseDue, EXCEPTION_REVIEW_DAYS, type ReconException } from './deposit-reconciliation.exceptions';
 import { InMemoryExceptionsRepository } from './deposit-reconciliation.exceptions.repository';
 import { ExceptionWorkflowService } from './deposit-reconciliation.exceptions.service';
 import { ReconForbiddenError, ReconValidationError } from './deposit-reconciliation.service';

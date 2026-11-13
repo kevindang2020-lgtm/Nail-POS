@@ -9,7 +9,7 @@
 // for that data. The natural-language `answer` is present only when the AI package is subscribed/available; if the
 // gate denies it, the caller still gets the real numbers (metrics-only mode, §56) plus the access decision.
 import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
-import { AI_BUSINESS_INTENTS, isIntent, resolveIntent, type AiBusinessIntent } from './ai-business-intents';
+import { isIntent, resolveIntent, type AiBusinessIntent } from './ai-business-intents';
 import { withCode } from '@aipowersalon/api-contracts';
 import { validRange, growthAdvice, AssistantExtrasError, type ConversationHistory } from './ai-business-assistant-extras';
 

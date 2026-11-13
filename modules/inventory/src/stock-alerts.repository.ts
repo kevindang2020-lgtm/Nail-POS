@@ -198,7 +198,7 @@ export class StockAlertsRepository {
 
   /** Acknowledge a live alert by product: the open workflow row, or — for a product that was already low before alert
    *  tracking (no row; the old page showed nothing) — a new row for the current episode, acknowledged at once. */
-  async acknowledge(ctx: InvCtx, productId: string, note: string | null) {
+  async acknowledge(ctx: InvCtx, productId: string, _note: string | null) {
     const b = this.branch(ctx);
     if (!UUID.test(productId)) throw withCode(new InventoryError(404, 'That alert could not be found.'), 'ALERT_NOT_FOUND');
     return this.db.transaction().execute(async (trx) => {

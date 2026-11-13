@@ -4,7 +4,6 @@
 // and the payment / refund paths call), the discounts read model (KPIs, list, redemptions) and the coupon center
 // (check, campaigns, health, assistant). "vishal" is the owner's 20% coupon from the screenshot.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyDealsRepository } from '../deals/deals.kysely.repository';
 import { DealsService } from '../deals/deals.service';

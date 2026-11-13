@@ -40,7 +40,7 @@ beforeAll(async () => {
 describe('server-side audited CSV exports', () => {
   it('Commission: requested + succeeded, the same columns and file name, only this salon, no personal data logged', async () => {
     const out = await comm.exportCsv(mgr, { preset: 'month', q: '+1 856-555-1234', lang: 'en' }, 'req-comm-1');
-    const [head, ...rows] = out.csv.replace(/^﻿/, '').split('\r\n');
+    const [head, ...rows] = out.csv.replace(/^\uFEFF/, '').split('\r\n');
     expect(head).toBe('Technician,Services,Service Revenue,Discount,Commissionable base,Commission,Adjustments,Rate,Tips,Payout,Paid');
     expect(rows).toEqual(['Mia Tran,2,150.00,0.00,150.00,60.00,0.00,40%,10.00,70.00,0.00']);
     expect(out.filename).toMatch(/^commission-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.csv$/);
@@ -56,7 +56,7 @@ describe('server-side audited CSV exports', () => {
   });
   it('Team Performance: Vietnamese headers when the screen is in Vietnamese; audited the same way', async () => {
     const out = await perf.exportCsv(mgr, { preset: 'month', lang: 'vi' }, 'req-tp-1');
-    expect(out.csv.replace(/^﻿/, '').split('\r\n')[0]).toBe('Thợ,Chi nhánh,Dịch vụ đã hoàn tất,Đánh giá xác thực,Đánh giá,Mức,Dịch vụ gần nhất');
+    expect(out.csv.replace(/^\uFEFF/, '').split('\r\n')[0]).toBe('Thợ,Chi nhánh,Dịch vụ đã hoàn tất,Đánh giá xác thực,Đánh giá,Mức,Dịch vụ gần nhất');
     expect(out.filename).toMatch(/^team-performance-/);
     expect((await audits('req-tp-1')).map((x: any) => x.action)).toEqual(['report.export.requested', 'report.export.succeeded']);
   });

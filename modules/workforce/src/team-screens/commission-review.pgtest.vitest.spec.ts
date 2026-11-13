@@ -45,7 +45,7 @@ async function paid(ticket: string, cents: number) {
 }
 const refund = (payment: string, cents: number, eventId: string, status = 'refunded') =>
   q(`insert into payment_refunds (tenant_id, branch_id, payment_id, amount_cents, status, event_id, created_at) values ($1,$2,$3,$4,$5,$6, now() - interval '2 days') returning id`, [T, B, payment, cents, status, eventId]).then((r: any) => String(r.rows[0].id));
-let lines: Record<string, { tk: string; ln: string }> = {};
+const lines: Record<string, { tk: string; ln: string }> = {};
 
 beforeAll(async () => {
   pg = await migratedPglite();

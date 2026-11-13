@@ -31,8 +31,8 @@ import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { logException } from '@aipowersalon/observability';
 import { assertTransition } from '@aipowersalon/database';
 import {
-  FinanceError, isUuid, N, iso, ymd, clampPage, pageReq, resolvePeriod, salonTimeZone, tsInPeriod, dateInPeriod, searchText, digitsOf, likeOf, prefixOf,
-  moneyToCents, positiveCents, oneOf, isValidYmd, csvDocument, usd, audit, daysBetween, type AuditRecorder, type FinanceCtx, type Period, type Paged, type PageReq,
+  FinanceError, isUuid, N, iso, ymd, clampPage, resolvePeriod, salonTimeZone, tsInPeriod, dateInPeriod, searchText, digitsOf, likeOf, prefixOf,
+  moneyToCents, positiveCents, oneOf, isValidYmd, csvDocument, usd, audit, daysBetween, type AuditRecorder, type FinanceCtx, type Period, type PageReq,
 } from './finance-scope';
 import { BANK_ACCOUNT } from '../payments-lifecycles';
 
