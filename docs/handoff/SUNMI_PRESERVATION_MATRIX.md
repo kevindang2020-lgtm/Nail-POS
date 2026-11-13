@@ -474,7 +474,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSServiceAddOnsScreen.tsx`
 - Guide: AI_PowerSalon_ADD-ONS_MANAGEMENT
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.addOn`, `posCatalogApi.addOnProfitability`, `posCatalogApi.addOnSummary`, `posCatalogApi.addOnUsage`, `posCatalogApi.addOns`, `posCatalogApi.archiveAddOn`, `posCatalogApi.compensationPreview`, `posCatalogApi.createAddOn`, `posCatalogApi.history`, `posCatalogApi.pricePreview`, `posCatalogApi.pricingImpact`, `posCatalogApi.restoreAddOn`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updateAddOn`, `posCatalogApi.updatePricing`, `posServicesApi.create`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.rows`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `inventoryApi.addOnRecipe`, `inventoryApi.products`, `inventoryApi.setAddOnRecipe`, `inventoryApi.setAddOnRecipeSetting`, `posCatalogApi.addOn`, `posCatalogApi.addOnProfitability`, `posCatalogApi.addOnSummary`, `posCatalogApi.addOnUsage`, `posCatalogApi.addOns`, `posCatalogApi.archiveAddOn`, `posCatalogApi.compensationPreview`, `posCatalogApi.createAddOn`, `posCatalogApi.history`, `posCatalogApi.pricePreview`, `posCatalogApi.pricingImpact`, `posCatalogApi.restoreAddOn`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updateAddOn`, `posCatalogApi.updatePricing`, `posServicesApi.create`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.rows`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -864,7 +864,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSTeamScreen.tsx`
 - Guide: AI_PowerSalon_TEAM_MANAGEMENT
 - Scroll: vertical page scroll allowed (Team Management SUNMI mandate: page content stays naturally vertically scrollable; eight lower panels sit two-wide below the directory; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.availability`, `posBookingApi.openings`, `posBookingApi.technicians`, `posCatalogApi.services`, `posLiveTechnicianScheduleApi.detail`, `posShiftOverrideApi.editor`, `posShiftOverrideApi.preview`, `posShiftOverrideApi.save`, `posStepUpApi.stepUp`, `posSystemChecksApi.rows`, `posSystemChecksApi.run`, `posTeamBirthdaysApi.get`, `posTeamBirthdaysApi.set`, `posTeamBirthdaysApi.upcoming`, `posTeamDataAlertsApi.assign`, `posTeamDataAlertsApi.assignees`, `posTeamDataAlertsApi.detail`, `posTeamDataAlertsApi.dismiss`, `posTeamDataAlertsApi.investigate`, `posTeamDataAlertsApi.list`, `posTeamDataAlertsApi.note`, `posTeamDataAlertsApi.reopen`, `posTeamDataAlertsApi.resolve`, `posTeamDataAlertsApi.runCheck`, `posTeamMembersScreenApi.access`, `posTeamMembersScreenApi.attendance`, `posTeamMembersScreenApi.customerLinks`, `posTeamMembersScreenApi.dashboard`, `posTeamMembersScreenApi.directory`, `posTeamMembersScreenApi.earnings`, `posTeamMembersScreenApi.exportCsv`, `posTeamMembersScreenApi.history`, `posTeamMembersScreenApi.live`, `posTeamMembersScreenApi.performance`, `posTeamMembersScreenApi.preferredCheck`, `posTeamMembersScreenApi.profile`, `posTeamMembersScreenApi.schedule`, `posTeamMembersScreenApi.skills`, `posTeamMembersScreenApi.training`, `posTeamMembersScreenApi.work`, `posTeamOnboardingApi.createStaff`, `posTeamOnboardingApi.options`, `posTeamPerformanceScreenApi.composite`, `posTeamTrainingApi.addCertification`, `posTeamTrainingApi.archiveCourse`, `posTeamTrainingApi.assign`, `posTeamTrainingApi.cancel`, `posTeamTrainingApi.complete`, `posTeamTrainingApi.courses`, `posTeamTrainingApi.createCourse`, `posTeamTrainingApi.member`, `posTeamTrainingApi.start`, `posTeamTrainingApi.summary`, `posTeamTrainingApi.verifyCertification`, `posTechAppointmentsScreenApi.conflicts`, `posTechniciansApi.create`, `posTechniciansApi.detail`, `posTechniciansApi.profileRatings`, `posTechniciansApi.setServices`, `posTechniciansApi.techProfile`, `posTechniciansApi.update`, `posTechniciansScreenApi.appointments`, `posTechniciansScreenApi.directory`, `posTechniciansScreenApi.history`, `posTechniciansScreenApi.mapping`, `posTechniciansScreenApi.serviceHistory`, `posWorkforceApi.verifyCertification`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.availability`, `posBookingApi.openings`, `posBookingApi.technicians`, `posCatalogApi.services`, `posLiveTechnicianScheduleApi.detail`, `posShiftOverrideApi.editor`, `posShiftOverrideApi.preview`, `posShiftOverrideApi.save`, `posStepUpApi.stepUp`, `posSystemChecksApi.rows`, `posSystemChecksApi.run`, `posTeamBirthdaysApi.get`, `posTeamBirthdaysApi.set`, `posTeamBirthdaysApi.upcoming`, `posTeamBulkInviteApi.preview`, `posTeamBulkInviteApi.run`, `posTeamBulkInviteApi.saveSettings`, `posTeamBulkInviteApi.settings`, `posTeamDataAlertsApi.assign`, `posTeamDataAlertsApi.assignees`, `posTeamDataAlertsApi.detail`, `posTeamDataAlertsApi.dismiss`, `posTeamDataAlertsApi.investigate`, `posTeamDataAlertsApi.list`, `posTeamDataAlertsApi.note`, `posTeamDataAlertsApi.reopen`, `posTeamDataAlertsApi.resolve`, `posTeamDataAlertsApi.runCheck`, `posTeamMembersScreenApi.access`, `posTeamMembersScreenApi.attendance`, `posTeamMembersScreenApi.customerLinks`, `posTeamMembersScreenApi.dashboard`, `posTeamMembersScreenApi.directory`, `posTeamMembersScreenApi.earnings`, `posTeamMembersScreenApi.exportCsv`, `posTeamMembersScreenApi.history`, `posTeamMembersScreenApi.live`, `posTeamMembersScreenApi.performance`, `posTeamMembersScreenApi.preferredCheck`, `posTeamMembersScreenApi.profile`, `posTeamMembersScreenApi.schedule`, `posTeamMembersScreenApi.skills`, `posTeamMembersScreenApi.training`, `posTeamMembersScreenApi.work`, `posTeamOnboardingApi.createStaff`, `posTeamOnboardingApi.options`, `posTeamPerformanceScreenApi.composite`, `posTeamTrainingApi.addCertification`, `posTeamTrainingApi.archiveCourse`, `posTeamTrainingApi.assign`, `posTeamTrainingApi.cancel`, `posTeamTrainingApi.complete`, `posTeamTrainingApi.courses`, `posTeamTrainingApi.createCourse`, `posTeamTrainingApi.member`, `posTeamTrainingApi.start`, `posTeamTrainingApi.summary`, `posTeamTrainingApi.verifyCertification`, `posTechAppointmentsScreenApi.conflicts`, `posTechniciansApi.create`, `posTechniciansApi.detail`, `posTechniciansApi.profileRatings`, `posTechniciansApi.setServices`, `posTechniciansApi.techProfile`, `posTechniciansApi.update`, `posTechniciansScreenApi.appointments`, `posTechniciansScreenApi.directory`, `posTechniciansScreenApi.history`, `posTechniciansScreenApi.mapping`, `posTechniciansScreenApi.serviceHistory`, `posWorkforceApi.verifyCertification`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2114,7 +2114,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDeviceFleetScreen.tsx`
 - Guide: AI_PowerSalon_Reception_POS
 - Scroll: vertical page scroll allowed (Reception POS SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2130,7 +2130,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDeviceFleetScreen.tsx`
 - Guide: AI_PowerSalon_CheckIn_Kiosks
 - Scroll: vertical page scroll allowed (Check-In Kiosks SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2147,7 +2147,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDeviceFleetScreen.tsx`
 - Guide: AI_PowerSalon_Tablets
 - Scroll: vertical page scroll allowed (iPads & Tablets SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2163,7 +2163,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDeviceFleetScreen.tsx`
 - Guide: AI_PowerSalon_Receipt_Devices
 - Scroll: vertical page scroll allowed (Receipt Devices SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2179,7 +2179,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDeviceFleetScreen.tsx`
 - Guide: AI_PowerSalon_Device_Assignments
 - Scroll: vertical page scroll allowed (Device Assignments SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2195,7 +2195,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDeviceFleetScreen.tsx`
 - Guide: AI_PowerSalon_Device_Health
 - Scroll: vertical page scroll allowed (Device Health SUNMI guide (Nov 9 2026): heading, four cards and filters on top; long device lists and histories page (numbered) and scroll with the page; no sideways scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2227,7 +2227,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSCustomerDisplaysScreen.tsx`
 - Guide: AI_PowerSalon_Customer_Displays
 - Scroll: vertical page scroll allowed (Customer Displays SUNMI guide: four KPI cards and the roster on top; registers, guest check-in settings and the display history follow down the page.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCustomerDisplaysApi.createStation`, `posCustomerDisplaysApi.pair`, `posCustomerDisplaysApi.refresh`, `posCustomerDisplaysApi.renameStation`, `posCustomerDisplaysApi.retireStation`, `posCustomerDisplaysApi.revoke`, `posCustomerDisplaysApi.state`, `posCustomerDisplaysApi.update`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`, `posDisplaySettingsApi.get`, `posDisplaySettingsApi.save`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCustomerDisplaysApi.createStation`, `posCustomerDisplaysApi.pair`, `posCustomerDisplaysApi.refresh`, `posCustomerDisplaysApi.renameStation`, `posCustomerDisplaysApi.retireStation`, `posCustomerDisplaysApi.revoke`, `posCustomerDisplaysApi.state`, `posCustomerDisplaysApi.update`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`, `posDisplaySettingsApi.get`, `posDisplaySettingsApi.save`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2243,7 +2243,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSPaymentGatewayScreen.tsx`
 - Guide: AI_PowerSalon_Fiserv_Payment_Gateway
 - Scroll: vertical page scroll allowed (Payment Gateway SUNMI guide: status, merchant and connector cards on top; channels, readiness checklist and history follow down the page.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`, `posPaymentChannelsApi.channels`, `posPaymentChannelsApi.check`, `posPaymentGatewayApi.status`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`, `posPaymentChannelsApi.channels`, `posPaymentChannelsApi.check`, `posPaymentGatewayApi.status`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2261,7 +2261,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSDevicesScreen.tsx`
 - Guide: AI_PowerSalon_Devices_Integrations
 - Scroll: vertical page scroll allowed (Devices & Integrations + AI & Communication SUNMI guides (Nov 9 2026): KPIs and the three panel rows first; the fleet registry, its filters and newest-first history continue in the main workspace scroll.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.packages`, `posCustomerDisplaysApi.state`, `posDeploymentsApi.advance`, `posDeploymentsApi.state`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`, `posDevicesApi.pairTerminal`, `posDevicesApi.refreshDevice`, `posDevicesApi.revokeDevice`, `posDevicesApi.setTerminalRegister`, `posDevicesApi.testTerminal`, `posDevicesApi.unpairTerminal`, `posPhoneApi.healthCheck`, `posPhoneApi.readiness`, `posSettingsApi.gatewayStatus`, `posStepUpApi.stepUp`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posAiApi.packages`, `posCustomerDisplaysApi.state`, `posDeploymentsApi.advance`, `posDeploymentsApi.state`, `posDeviceFleetApi.check`, `posDeviceFleetApi.devices`, `posDeviceFleetApi.exportCsv`, `posDeviceFleetApi.history`, `posDeviceFleetApi.setAssignment`, `posDeviceFleetApi.setLabel`, `posDeviceFleetApi.staffChoices`, `posDeviceFleetApi.summary`, `posDeviceFleetApi.verifyHistory`, `posDevicesApi.overview`, `posDevicesApi.pairTerminal`, `posDevicesApi.refreshDevice`, `posDevicesApi.revokeDevice`, `posDevicesApi.setTerminalRegister`, `posDevicesApi.testTerminal`, `posDevicesApi.unpairTerminal`, `posPhoneApi.healthCheck`, `posPhoneApi.readiness`, `posSettingsApi.gatewayStatus`, `posStepUpApi.stepUp`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|

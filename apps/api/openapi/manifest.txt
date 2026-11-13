@@ -753,6 +753,7 @@ GET /pos/deposit-reconciliation/workspace/search  realm=staff  auth=session  dom
 GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/alerts  realm=staff  auth=session  domain=operations  perm=pos.logs.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/device-fleet/assignable-staff  realm=staff  auth=session  domain=operations  perm=pos.devices.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/devices  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/export  realm=staff  auth=session  domain=operations  perm=pos.devices.export  resource=BRANCH/permission  async=pos.device-fleet.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/history  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -1347,6 +1348,7 @@ GET /super-admin/ai-usage/prompts  realm=super_admin  auth=session  domain=ai  d
 GET /super-admin/ai/package-availability  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/ai/packages  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/ai/packages/{code}/tenants  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
+GET /super-admin/ai/price-table  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/ai/readiness  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/ai/usage/stats  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
 GET /super-admin/ai/usage/summary  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  resource=PLATFORM/realm  guards=SuperAdminGuard
@@ -2956,6 +2958,7 @@ POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/reopen  real
 POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/resolve  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/review  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deposit-reconciliation/workspace/notes  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/device-fleet/assignment  realm=staff  auth=session  domain=operations  perm=pos.devices.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/device-fleet/check  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/device-fleet/labels  realm=staff  auth=session  domain=operations  perm=pos.devices.manage  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3359,6 +3362,8 @@ POST /super-admin/ai-scheduling-optimizer/tenants/{tenantId}/recommendations/{id
 POST /super-admin/ai-usage/prompts  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/ai-usage/providers  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/ai-usage/providers/status  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
+POST /super-admin/ai/price-table/overrides  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
+POST /super-admin/ai/price-table/versions  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/ai/tenants/{tenantId}/subscriptions  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/alerts/mark-all-read  realm=super_admin  auth=session  domain=support  derived=super_admin.system.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
 POST /super-admin/alerts/sync  realm=super_admin  auth=session  domain=support  derived=super_admin.system.manage  resource=PLATFORM/realm  guards=SuperAdminGuard
