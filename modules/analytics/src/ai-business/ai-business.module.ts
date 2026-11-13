@@ -117,9 +117,10 @@ import { BusinessAlertIncidents, BUSINESS_ALERT_INCIDENTS, type AlertMessenger }
     // explanations and the read-only system checks — over the same services and the canonical ReportsService.
     {
       provide: BUSINESS_CENTER,
-      useFactory: (db: AppDatabase, reports: AiBusinessReportsService, alerts: AiBusinessAlertsService, revenue: AiBusinessRevenueService, appointments: AiBusinessAppointmentsService, sales: ReportsService, incidents: BusinessAlertIncidents | null) =>
-        (db ? new BusinessCenter(db, { reports, alerts, revenue, appointments, sales, incidents }) : null),
-      inject: [DATABASE, AiBusinessReportsService, AiBusinessAlertsService, AiBusinessRevenueService, AiBusinessAppointmentsService, ReportsService, BUSINESS_ALERT_INCIDENTS],
+      useFactory: (db: AppDatabase, reports: AiBusinessReportsService, alerts: AiBusinessAlertsService, revenue: AiBusinessRevenueService, appointments: AiBusinessAppointmentsService, sales: ReportsService, incidents: BusinessAlertIncidents | null, assistant: AiAssistantService) =>
+        // extras AI Business Reports 15: executive-summary wording goes through the gated, metered assistant path (never a raw gateway)
+        (db ? new BusinessCenter(db, { reports, alerts, revenue, appointments, sales, incidents, wording: assistant }) : null),
+      inject: [DATABASE, AiBusinessReportsService, AiBusinessAlertsService, AiBusinessRevenueService, AiBusinessAppointmentsService, ReportsService, BUSINESS_ALERT_INCIDENTS, AiAssistantService],
     },
     // A2 (Nov 6 2026): incidents + notifications through the salon's messenger (TENANT_MESSENGER, by token)
     { provide: BUSINESS_ALERT_INCIDENTS, useFactory: (db: AppDatabase, messenger: AlertMessenger | null) => (db ? new BusinessAlertIncidents(db, messenger) : null),

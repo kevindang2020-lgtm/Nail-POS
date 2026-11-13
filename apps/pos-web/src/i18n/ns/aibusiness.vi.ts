@@ -699,4 +699,11 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.cmp.cannot.no_snapshot": "Một báo cáo không có số liệu Báo cáo doanh số đã xác minh để so sánh.", // DRAFT — Kevin reviews
   "bzx.cmp.cannot.no_permission": "Vai trò của bạn không xem được số liệu Báo cáo doanh số.", // DRAFT — Kevin reviews
   "bzx.cmp.cannot.same_report": "Hãy chọn báo cáo khác.", // DRAFT — Kevin reviews
+  "bzx.word.btn": "Diễn đạt bằng AI", // DRAFT — Kevin reviews
+  "bzx.word.byModel": "AI diễn đạt từ các số liệu đã xác minh ở trên; mọi con số đều đã được đối chiếu.", // DRAFT — Kevin reviews
+  "bzx.word.state.not_configured": "Chưa diễn đạt bằng AI được: chưa kết nối mô hình AI. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
+  "bzx.word.state.denied": "Gói Trợ lý Kinh doanh AI hiện không cho phép việc này. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
+  "bzx.word.state.rejected_numbers": "Không hiện bản diễn đạt: có số không nằm trong số liệu đã xác minh ({n}).", // DRAFT — Kevin reviews
+  "bzx.word.state.provider_error": "Không kết nối được AI. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
+  "bzx.word.state.unavailable": "Báo cáo này không có số liệu đã xác minh để diễn đạt.", // DRAFT — Kevin reviews
 };

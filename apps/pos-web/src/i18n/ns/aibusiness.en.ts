@@ -698,4 +698,11 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzx.cmp.cannot.no_snapshot": "One of the reports has no verified Sales Report figures to compare.",
   "bzx.cmp.cannot.no_permission": "Your role cannot read the Sales Report figures.",
   "bzx.cmp.cannot.same_report": "Pick a different report.",
+  "bzx.word.btn": "Word it with AI",
+  "bzx.word.byModel": "Worded by the AI from the verified figures above; every number was checked against them.",
+  "bzx.word.state.not_configured": "AI wording is not available: no AI model is connected. The figures above are the summary.",
+  "bzx.word.state.denied": "Your AI Business Assistant plan does not allow this right now. The figures above are the summary.",
+  "bzx.word.state.rejected_numbers": "The AI wording was not shown: it contained numbers that are not in the verified figures ({n}).",
+  "bzx.word.state.provider_error": "The AI could not be reached. The figures above are the summary.",
+  "bzx.word.state.unavailable": "There are no verified figures to word for this report.",
 };

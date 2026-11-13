@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyReportsRepository, ReportsService } from '@aipowersalon/reports';
-import { BusinessCenter, BusinessCenterError, scheduleOccurrence } from './business-center';
+import { BusinessCenter, BusinessCenterError, scheduleOccurrence, numberGuard, figureText } from './business-center';
 import { sessionPermissionsForRole } from '@aipowersalon/permissions';
 import { AiBusinessReportsService } from './ai-business-reports.service';
 import { KyselyReportsJobRepository } from './ai-business-reports.kysely.repository';
@@ -317,6 +317,33 @@ describe('AI Business Reports 15 — Executive Summary & Growth Advisor (read-on
     expect(x.verification.status).toBe('cannot_verify');
     expect(await counts()).toEqual(c0);
     expect(await code(bc.reportExecutive(ctx({ tenantId: X }), jid))).toBe('BC_REPORT_NOT_FOUND');
+  });
+  it('extras AI Business Reports 15: AI wording of the verified figures — only through the gated assistant path, a number guard drops any other number, a test provider is never shown as wording', async () => {
+    const content = { appointments: { funnel: { totalBookings: 12, noShowPercent: 25, cancelledPercent: 5, completed: 8 } }, period: { preset: 'week', from: '2026-11-09', to: '2026-11-15' } };
+    const jid = (await q(`insert into ai_business_report_jobs (tenant_id, branch_id, requested_by_user_id, report_type, preset, status, content, completed_at) values ($1,$2,$3,'weekly_summary','week','completed',$4::jsonb, now()) returning id`,
+      [T, B, OWNER, JSON.stringify(content)]))[0].id;
+    expect((await bc.reportExecutiveWording(ctx(), jid)).state).toBe('not_configured');   // no wording dependency → no wording
+    const calls: any[] = [];
+    const withModel = (answer: { ok: boolean; text?: string; provider?: string; reason?: string } | 'throw') => new BusinessCenter(db, { ...(bc as any).d, wording: { run: async (req: any) => {
+      calls.push(req); if (answer === 'throw') throw new Error('provider down');
+      return { ok: answer.ok, text: answer.text, decision: { reason: answer.reason ?? 'ok' }, usage: answer.provider ? { provider: answer.provider, model: 'm-1' } : undefined }; } } });
+    const good = await withModel({ ok: true, text: 'From 2026-11-09 to 2026-11-15 you had 12 bookings and 8 completed appointments.', provider: 'real' }).reportExecutiveWording(ctx(), jid);
+    expect(good).toMatchObject({ state: 'worded', provider: 'real', model: 'm-1', unverifiedNumbers: [], changesAnything: false });
+    expect(good.text).toContain('12 bookings');
+    expect(calls[0]).toMatchObject({ packageCode: 'ai_business_assistant', action: 'report_executive_wording', tenantId: T });
+    expect(calls[0].prompt).toContain('bookings: 12'); expect(calls[0].prompt).toContain('Do not calculate');
+    const invented = await withModel({ ok: true, text: 'You had 12 bookings, up 17% — about 14 next week.', provider: 'real' }).reportExecutiveWording(ctx(), jid);
+    expect(invented).toMatchObject({ state: 'rejected_numbers', text: null }); expect(invented.unverifiedNumbers.sort()).toEqual(['14', '17']);
+    expect((await withModel({ ok: true, text: '[mock:mock-1] word this', provider: 'mock' }).reportExecutiveWording(ctx(), jid))).toMatchObject({ state: 'not_configured', text: null });
+    expect((await withModel({ ok: false, reason: 'trial_expired' }).reportExecutiveWording(ctx(), jid))).toMatchObject({ state: 'denied', reason: 'trial_expired', text: null });
+    expect((await withModel('throw').reportExecutiveWording(ctx(), jid)).state).toBe('provider_error');
+    expect(await code(withModel({ ok: true, text: 'x', provider: 'real' }).reportExecutiveWording(ctx({ tenantId: X }), jid))).toBe('BC_REPORT_NOT_FOUND');
+  });
+  it('extras AI Business Reports 15: the number guard and figure text', () => {
+    const facts = [{ value: 123456, unit: 'cents' as const }, { value: 40, unit: 'count' as const }, { value: 12.5, unit: 'percent' as const }, { value: 300000, unit: 'cents' as const }];
+    expect(figureText(123456, 'cents')).toBe('$1,234.56'); expect(figureText(12.5, 'percent')).toBe('12.5%'); expect(figureText(40, 'count')).toBe('40');
+    expect(numberGuard('Net sales were $1,234.56 on 40 tickets (12.5%), $3,000 in total.', facts, { from: '2026-11-01', to: '2026-11-30' })).toEqual([]);
+    expect(numberGuard('Net sales were $1,235 on 41 tickets in November 2026.', facts, { from: '2026-11-01', to: '2026-11-30' })).toEqual(['1,235', '41']);
   });
 });
 
