@@ -664,3 +664,24 @@ Real bugs fixed: dashboard revenue-trend / top-services / payment-mix returned t
 the chart and broke the donuts); Help Center showed "submitted" when the server refused a ticket.
 Merge note: one merge commit briefly held conflict markers in live-technician-schedule.service.ts — caught before push,
 resolved and amended; the merge script now refuses to commit while any marker remains.
+
+## Extras backlog — round 9, the final rows (Nov 12–13 2026)
+TODO 41 → 8; every remaining TODO is PRODUCTION-READY POS 5 (Kevin's infrastructure actions). The rows earlier rounds set
+aside ("needs a table / too large / needs design") were built with the safest reading:
+- per-person alert read state + badge-sync monitor (migration 873) — Global Loyalty 08, AI Business Alerts 05, Customer
+  Notifications 04; Money Protection owner notifications with rate limits (875: one per rule+subject per 24 h, ≤5/hour,
+  never disables a rule); device/integration alert routing (874, dedupe + cooldown) + retry queue visibility;
+- automated daily/weekly/monthly AI Business reports (895, in-app only) + executive summary (verified figures); report
+  comparison (corrections vs business change); note source labels (885); win-back bulk guard (883, type the count back);
+  deal preview-vs-paid (871); deal commission impact review (881, append-only approvals, never edits pay);
+- membership plan-change preview (the publish validator itself) — found: publishing a price change reset every other
+  term and dropped benefits; publish now accepts carryForward and the preview shows what would reset;
+- AI receptionist settings restore; community corrections inbox / role preview / diagnostics export; membership check
+  source rows (money hidden from non-financial viewers — fixed at merge); serving action review; tech-appointment
+  verification state; fair-turn "why the order changed"; Live Ops KPI check; opening rush + batch clock-in (≤25, confirmed);
+  upsell loyalty redemption (one redeem rule) + missed-service record checks; add-on profitability; checkout conflict
+  simulator; front-desk usage budget; device inventory export; AI plans technical readiness.
+Partial, stated: AI Front Desk 09 provider-charge alert needs the Retell/Twilio usage-billing API + credentials;
+200-Technician 08 bulk INVITE needs Kevin's decision on SMS/email volume and consent; Promotions 15 has no POS screen.
+Merge fixes: removed a 'Print selected' control (Kevin: no printing); community checks use capabilities not role names;
+merged two report features into one business-center file; aged a test's prior jobs so the double-tap guard can't reuse them.
