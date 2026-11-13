@@ -19,6 +19,8 @@
 // cap is reported). Scope: tenant + the session branch (rows of that branch, or with no branch), exactly as the
 // Devices Overview reads. History is the canonical audit_logs + go_checkin_logs — never a second log store.
 import { sql } from 'kysely';
+import { recordAuditStrict } from '@aipowersalon/audit';
+import { hasPermission } from '@aipowersalon/permissions';
 import { DISPLAY_ONLINE_WINDOW_MS, terminalOperationalStatus } from '@aipowersalon/api-contracts';
 import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent } from '@aipowersalon/api-contracts/tenant';
 
@@ -66,6 +68,7 @@ export function duplicateNameCount(rows: Pick<DfDevice, 'name' | 'branchId'>[]):
 
 export class DeviceFleetCenter {
   constructor(readonly db: any, private readonly now: () => Date = () => new Date()) {}
+  nowIso(): string { return this.now().toISOString(); }
 
   private scope(alias: string, ctx: DfCtx, textTenant = false) {
     // the alias is always one of the code's own table aliases — mapped to literal column refs (never request data)
@@ -318,6 +321,55 @@ export class DeviceFleetCenter {
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : checks.some((c) => c.state === 'NOT_CONFIGURED') ? 'NOT_CONFIGURED' : 'READY';
     return { class: cls, overall, checkedAt: this.now().toISOString(), checks };
   }
+}
+
+/** extras Tablets 11 — Safe Export: the columns that may leave. Identity of the device, where it is, its status and health facts;
+ *  NEVER a token, pairing code, link expiry, lease holder, processor / merchant id, full terminal serial or any customer data. */
+export const DF_EXPORT_COLUMNS = ['Device ID', 'Name', 'Class', 'Type', 'Location', 'Register / station', 'Status', 'Reason', 'Last heard from', 'Registered', 'Updated',
+  'App version', 'Mode', 'Screen', 'Terminal serial (last 4)', 'Terminal state', 'Payment routing'] as const;
+const csvCell = (v: unknown) => { let x = v == null ? '' : String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(x)) x = "'" + x; return /[",\r\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+const factStr = (f: Record<string, unknown> | undefined, k: string) => { const v = f?.[k]; return typeof v === 'string' || typeof v === 'number' ? String(v) : ''; };
+
+export interface DfExportCtx extends DfCtx { salonName?: string | null }
+/** extras Tablets 11 — Safe Export & Evidence Bundle: the filtered device inventory (every page, the SAME list() the screen reads)
+ *  plus the read-only health check of that class, as one CSV: a provenance block (salon, location scope, who / when, class,
+ *  filters — a search text is never written —, health overall, redaction, rows), the health checks, then the devices with
+ *  DF_EXPORT_COLUMNS only. One audit row per export. Reads only — nothing is changed on any device. */
+export async function exportDeviceFleetCsv(center: DeviceFleetCenter, ctx: DfExportCtx, q: DfQuery): Promise<string> {
+  // the route guard asks the same; checked here too so no other caller (the async worker, a test) can skip it — before anything is read
+  if (!hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], 'pos.devices.export')) throw new DeviceFleetError('PERMISSION_DENIED', 'Your role cannot export the device inventory.', 403);
+  const first = await center.list(ctx, { ...q, page: 1, pageSize: 100 });
+  const items = [...first.items];
+  for (let p = 2; p <= first.totalPages && p <= 200; p++) items.push(...(await center.list(ctx, { ...q, page: p, pageSize: 100 })).items);
+  const health = await center.check(ctx, first.class);
+  const db = center.db;
+  const T = ctx.tenantId; const B = UUID.test(ctx.branchId || '') ? ctx.branchId : null; const U = UUID.test(String(ctx.userId ?? '')) ? String(ctx.userId) : null;
+  const meta = (await sql<{ salon: string | null; branch: string | null; actor: string | null }>`select
+      (select coalesce(nullif(t.display_name, ''), t.legal_name) from tenants t where t.id = ${T}) as salon,
+      ${B ? sql`(select b.name from branches b where b.tenant_id = ${T} and b.id = ${B}::uuid)` : sql`null::text`} as branch,
+      ${U ? sql`(select coalesce(nullif(u.full_name, ''), u.email) from users u where u.tenant_id = ${T} and u.id = ${U}::uuid)` : sql`null::text`} as actor`.execute(db)).rows[0];
+  const a = first.applied;
+  const filters: string[] = [`class=${first.class}`, `status=${a.status}`];
+  if (a.branchId) filters.push(`location=${items.find((d) => d.branchId === a.branchId)?.branch ?? a.branchId}`);
+  if (a.from || a.to) filters.push(`${a.dateField}=${a.from ?? '…'} to ${a.to ?? '…'}`);
+  if (a.q) filters.push('search=given (not written)');
+  const redaction = 'Not included: device tokens, pairing codes, link expiry, payment processor or merchant ids, who holds a terminal, full terminal serial numbers, customer data. Search text is not written.';
+  const head: unknown[][] = [
+    ['Export', 'Device inventory and health'], ['Salon', meta?.salon ?? '—'], ['Location scope', B ? (meta?.branch ?? '—') : 'All locations'],
+    ['Generated at', center.nowIso()], ['Generated by', meta?.actor ?? '—'], ['Filters', filters.join('; ')], ['Sort', a.sort],
+    ['Health check', `${health.overall} at ${health.checkedAt} (read-only)`], ['Redaction', redaction], ['Rows', items.length],
+  ];
+  const checks: unknown[][] = [['Health check', 'State', 'Count'], ...health.checks.map((c) => [c.key, c.state, c.count ?? ''])];
+  const body: unknown[][] = [[...DF_EXPORT_COLUMNS], ...items.map((d) => {
+    const f = d.facts ?? {};
+    const routing = f.routing && typeof f.routing === 'object' ? String((f.routing as { verdict?: unknown }).verdict ?? '') : '';
+    return [d.id, d.name, d.class, d.type, d.branch ?? '', d.station ?? '', d.status, d.reason ?? '', d.lastSeenAt ?? '', d.createdAt ?? '', d.updatedAt ?? '',
+      factStr(f, 'appVersion'), factStr(f, 'mode'), factStr(f, 'screen'), factStr(f, 'hsnMasked'), factStr(f, 'operational'), routing];
+  })];
+  await recordAuditStrict(db, { tenantId: T, branchId: B, userId: U, role: ctx.role ?? null },
+    { module: 'devices', action: 'device_fleet.exported', resourceType: 'device_fleet_export', resourceId: first.class, summary: `Device inventory exported (${items.length} rows)`,
+      metadata: { class: first.class, rows: items.length, filters, health: health.overall, redaction: 'no_tokens_no_pairing_no_processor_no_customer' } });
+  return [...head, [], ...checks, [], ...body].map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
 /** extras Device Assignments 09 — Payment Terminal Routing Guard (read-only). Whether a checkout could route a payment to this

@@ -3,9 +3,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn() }));
+const m = vi.hoisted(() => ({ ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn(), exportCsv: vi.fn(), download: vi.fn() }));
 vi.mock('../api/posDevicesApi', () => ({ posDevicesApi: { overview: m.ov } }));
-vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check } }));
+vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check, exportCsv: m.exportCsv } }));
+vi.mock('../components/FitKit', async (orig) => ({ ...(await orig<typeof import('../components/FitKit')>()), downloadText: m.download }));
 import { POSDeviceFleetScreen } from './POSDeviceFleetScreen';
 
 const dev = (o: Record<string, unknown> = {}) => ({ id: 'd1', source: 'station', class: 'reception_pos', name: 'Front Desk 1', type: 'reception_pos', branchId: 'b1', branch: 'Main', station: 'Front Desk 1', status: 'online', reason: null, lastSeenAt: null, createdAt: '2026-11-01T10:00:00Z', updatedAt: null, facts: { displays: 1 }, ...o });
@@ -21,6 +22,23 @@ beforeEach(() => {
 });
 
 describe('Devices sub-pages', () => {
+  it('Tablets 11: Export inventory asks the server for the redacted CSV with the current filters (no page) and downloads it; a refusal is shown; receipts have no export', async () => {
+    m.exportCsv.mockResolvedValueOnce('Export,Device inventory and health\r\n').mockRejectedValueOnce(Object.assign(new Error('no'), { status: 403, code: 'PERMISSION_DENIED' }));
+    const v = r('reception-pos');
+    fireEvent.click(await screen.findByTestId('dfx-kpi-attention'));
+    await waitFor(() => expect(m.devices).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'attention' })));
+    fireEvent.click(screen.getByTestId('dfx-export'));
+    await waitFor(() => expect(m.download).toHaveBeenCalledWith('device-inventory-reception_pos.csv', 'Export,Device inventory and health\r\n'));
+    const arg = m.exportCsv.mock.calls[0][0];
+    expect(arg).toMatchObject({ class: 'reception_pos', status: 'attention', page: undefined, pageSize: undefined });
+    expect(await screen.findByTestId('dfx-export-note')).toHaveTextContent('Device inventory downloaded.');
+    fireEvent.click(screen.getByTestId('dfx-export'));
+    await waitFor(() => expect(screen.getByTestId('dfx-export-note').className).toContain('warn'));
+    v.unmount();
+    r('receipt-devices');
+    await screen.findByTestId('dfx-check');
+    expect(screen.queryByTestId('dfx-export')).toBeNull();
+  });
   it('Reception POS reads the registers: four cards, the six columns, a reason, "connected" kept', async () => {
     r('reception-pos');
     expect(await screen.findByRole('heading', { name: 'Reception POS' })).toBeInTheDocument();

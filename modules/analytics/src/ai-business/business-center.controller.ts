@@ -5,6 +5,7 @@
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import type { AlertIncidentListResponse, AlertIncidentDetail, AlertIncidentActionRequest, AlertIncidentActionResponse, AlertIncidentNoteRequest, AlertDeliverySettings, AlertDeliverySettingsResponse, AlertDeliveryUpdateRequest,
+  BcScheduleListResponse, BcExecutiveSummaryResponse,
   BranchScorecardResponse, BranchExplainResponse, BranchDataCheckResponse, BranchSnapshotDetail, BranchSnapshotListResponse, AssistantHistoryResponse, AssistantDataCheckResponse, AssistantHistoryDeleteResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
@@ -19,6 +20,8 @@ export const BUSINESS_CENTER = 'BusinessCenter';
 const str = (max: number): BodySchema => S.nullable(S.string({ maxLength: max }));
 export const BC_EMPTY_BODY: BodySchema = S.object({});
 export const BC_GENERATE_BODY: BodySchema = S.object({ reportType: str(40), preset: str(20) });
+/** AI Business Reports 14 — the caller's own schedule of one report type */
+export const BC_SCHEDULE_BODY: BodySchema = S.object({ reportType: S.enumOf(['daily_brief', 'weekly_summary', 'monthly_review']), active: S.nullable(S.boolean()), sendHour: S.nullable(S.number()), notifyInApp: S.nullable(S.boolean()) }, ['reportType']);
 export const BC_ACK_BODY: BodySchema = S.object({ note: str(500) });
 export const BC_INCIDENT_ACTION_BODY: BodySchema = S.object({ action: str(20), expectedVersion: S.nullable(S.number()), note: str(1000), assigneeUserId: str(40), snoozeMinutes: S.nullable(S.number()) });
 export const BC_INCIDENT_NOTE_BODY: BodySchema = S.object({ note: str(1000) });
@@ -70,6 +73,14 @@ export class BusinessCenterController {
   reportSummary(@Req() q: any) { const c = ctxFrom(q); authed(c); return run(() => this.c().reportSummary(c)); }
   @Get('reports') @RequirePermission('pos.ai_business.view') @ListQuery(REPORTS)
   reports(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); authed(c); return run(() => this.c().reportList(c, f ?? {})); }
+  // AI Business Reports 14 (Nov 12 2026): the caller's own automated daily / weekly / monthly reports (declared before reports/:id)
+  @Get('reports/schedules') @RequirePermission('pos.ai_business.view')
+  reportSchedules(@Req() q: any): Promise<BcScheduleListResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportSchedules(c) as Promise<BcScheduleListResponse>); }
+  @Post('reports/schedules') @RequirePermission('pos.ai_business.view')
+  saveReportSchedule(@Req() q: any, @Body(ValidatedBody(BC_SCHEDULE_BODY, { strict: true })) b: any): Promise<BcScheduleListResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().saveReportSchedule(c, b ?? {}) as Promise<BcScheduleListResponse>); }
+  // AI Business Reports 15: executive summary (the report's verified figures) + growth advisor proposals — read-only
+  @Get('reports/:id/executive') @RequirePermission('pos.ai_business.view')
+  reportExecutive(@Req() q: any, @Param('id') id: string): Promise<BcExecutiveSummaryResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportExecutive(c, id) as Promise<BcExecutiveSummaryResponse>); }
   @Get('reports/:id') @RequirePermission('pos.ai_business.view')
   report(@Req() q: any, @Param('id') id: string) { const c = ctxFrom(q); authed(c); return run(() => this.c().reportDetail(c, id)); }
   @Post('reports/generate') @RequirePermission('pos.ai_business.view')

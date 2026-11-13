@@ -17,7 +17,13 @@ export interface CnListItem {
   customerId: string; customer: string | null; phone: string | null; category: CnCategory;
   preview: { text: string; truncated: boolean }; at: string | null; ticketId: string | null;
   review: CnReviewState; reviewedAt: string | null; safety: boolean;
+  /** Customer Notes 6 · 05 — where the note came from (not_stated when nobody said; visit notes are staff_observed) */
+  source?: CnNoteSource;
 }
+export type CnNoteSource = 'customer_reported' | 'staff_observed' | 'source_confirmed' | 'ai_suggested' | 'not_stated';
+/** Customer Notes 6 · 05 — the label of the CURRENT text (origin 'derived' = visit note written by staff at Service Done;
+ *  earlierLabel = an earlier text of this note was labelled, which does not carry over to the edit) */
+export interface CnNoteProvenance { source: CnNoteSource; origin: 'labelled' | 'derived' | 'none'; setBy: string | null; setAt: string | null; reference: string | null; earlierLabel: boolean }
 export interface CnListResponse {
   items: CnListItem[]; total: number; page: number; pageSize: number; totalPages: number;
   applied: { q: string | null; category: CnCategory | null; review: CnReviewState | null; dateField: 'updated' | 'reviewed'; sort: 'newest' | 'oldest' | 'name'; preset: string; from: string | null; to: string | null };
@@ -27,7 +33,8 @@ export interface CnDetailResponse {
   customer: { id: string; name: string | null; phone: string | null; customerVisible: boolean; updatedAt: string | null };
   entries: { category: CnCategory; text: string; hash: string; at: string | null; ticketId: string | null; review: CnReviewState; reviewedAt: string | null; safety: boolean;
     /** Customer Notes 01 — context-aware relevance: why this note is ranked where it is for the current visit (never hides a note) */
-    relevance?: { score: number; reasons: CnRelevanceReason[] } }[];
+    relevance?: { score: number; reasons: CnRelevanceReason[] };
+    provenance?: CnNoteProvenance }[];
   history: { category: 'allergy' | 'warning'; decision: 'confirmed' | 'needs_correction'; reason: string | null; at: string | null; reviewer: string | null; current: boolean }[];
   /** the context the entries were ranked for: the ticket's (or the session's) branch, its technician(s) and services */
   context?: { ticketId: string | null; branch: boolean; technicians: number; services: number };

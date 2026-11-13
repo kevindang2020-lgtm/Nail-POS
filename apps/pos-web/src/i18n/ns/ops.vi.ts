@@ -1943,4 +1943,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.catalog.checkout_discount_over_lines.fix": "Xem lại giảm giá trên các phiếu đó (ưu đãi, mã giảm giá, giảm tay hoặc thành viên) và ai đã duyệt.", // DRAFT — Kevin reviews
   "syschk.catalog.checkout_tax_without_taxable_line": "Không phiếu đã thanh toán nào tính thuế khi không có dòng chịu thuế", // DRAFT — Kevin reviews
   "syschk.catalog.checkout_tax_without_taxable_line.fix": "Kiểm tra cài đặt Chịu thuế của từng dịch vụ và tiền thuế trên các phiếu đó; hoàn lại thuế nếu tính nhầm.", // DRAFT — Kevin reviews
+  "dfx.export.btn": "Xuất danh sách thiết bị", // DRAFT — Kevin reviews
+  "dfx.export.hint": "Tải các thiết bị trong trang này (theo bộ lọc hiện tại) kèm kết quả kiểm tra dưới dạng CSV. Không bao giờ có mã token, mã ghép nối, mã bộ xử lý thanh toán, số sê-ri đầy đủ hay dữ liệu khách hàng.", // DRAFT — Kevin reviews
+  "dfx.export.busy": "Đang chuẩn bị…", // DRAFT — Kevin reviews
+  "dfx.export.done": "Đã tải danh sách thiết bị.", // DRAFT — Kevin reviews
 };

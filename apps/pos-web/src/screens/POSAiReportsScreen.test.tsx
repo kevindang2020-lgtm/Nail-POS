@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { c } = vi.hoisted(() => ({ c: { reportSummary: vi.fn(), reports: vi.fn(), report: vi.fn(), generate: vi.fn(), regenerate: vi.fn(), verify: vi.fn(), reportCheck: vi.fn() } }));
+const { c } = vi.hoisted(() => ({ c: { reportSummary: vi.fn(), reports: vi.fn(), report: vi.fn(), generate: vi.fn(), regenerate: vi.fn(), verify: vi.fn(), reportCheck: vi.fn(), schedules: vi.fn(), saveSchedule: vi.fn(), executive: vi.fn() } }));
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { center: c } }));
 import { POSAiReportsScreen } from './POSAiReportsScreen';
 const row = (o: any = {}) => ({ id: 'r1', reportType: 'monthly_review', preset: 'month', status: 'completed', availability: 'viewable', period: { preset: 'month', from: '2026-11-01', to: '2026-11-03', timeZone: 'America/New_York', partial: true },
@@ -13,10 +13,45 @@ beforeEach(() => {
   vi.clearAllMocks();
   c.reportSummary.mockResolvedValue({ total: 9, queued: 0, running: 1, failed: 0, viewable: 3, contentExpired: 5, stuck: 0, contentDays: 7 });
   c.reports.mockResolvedValue({ items: [row(), row({ id: 'r2', reportType: 'daily_brief', preset: 'today', availability: 'content_expired', period: null })], total: 2, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' } });
+  const sch = (o: any = {}) => ({ items: [
+    { id: null, reportType: 'daily_brief', preset: 'yesterday', when: 'every_day', sendHour: 7, active: false, notifyInApp: true, lastRunAt: null, lastStatus: null, lastReason: null, lastReportId: null, timeZone: 'America/New_York', ...(o.daily ?? {}) },
+    { id: null, reportType: 'weekly_summary', preset: 'week', when: 'sunday', sendHour: 21, active: false, notifyInApp: true, lastRunAt: null, lastStatus: null, lastReason: null, lastReportId: null, timeZone: 'America/New_York' },
+    { id: null, reportType: 'monthly_review', preset: 'month', when: 'last_day_of_month', sendHour: 21, active: false, notifyInApp: true, lastRunAt: null, lastStatus: null, lastReason: null, lastReportId: null, timeZone: 'America/New_York' }],
+    timeZone: 'America/New_York', note: '' });
+  c.schedules.mockResolvedValue(sch());
+  c.saveSchedule.mockImplementation(async (b: any) => sch({ daily: { id: 's1', active: b.active, sendHour: b.sendHour, lastStatus: 'generated', lastRunAt: '2026-11-12T12:00:00Z' } }));
   c.report.mockResolvedValue({ ...row(), headline: [{ key: 'net_sales', value: 412500, unit: 'cents' }, { key: 'paid_tickets', value: 61, unit: 'count' }], sections: ['revenue', 'appointments'], content: { revenue: {} } });
 });
 
 describe('POSAiReportsScreen', () => {
+  it('AI Business Reports 14: my automated reports — defaults off with when / for which period; turning one on and changing the hour is saved on the server; the last run is shown', async () => {
+    wrap();
+    const d = await screen.findByTestId('bzx-sch-daily_brief');
+    expect(d).toHaveTextContent('Every day, for Yesterday');
+    expect(screen.getByTestId('bzx-sch-weekly_summary')).toHaveTextContent('Every Sunday, for This week');
+    expect(screen.getByTestId('bzx-sch-monthly_review')).toHaveTextContent('On the last day of each month, for This month');
+    expect(screen.getByTestId('bzx-sch-last-daily_brief')).toHaveTextContent('Not made yet');
+    expect(screen.getByTestId('bzx-sch')).toHaveTextContent(/America\/New_York time/);
+    fireEvent.click(screen.getByTestId('bzx-sch-toggle-daily_brief'));
+    expect(c.saveSchedule).toHaveBeenCalledWith({ reportType: 'daily_brief', active: true, sendHour: 7 });
+    expect(await screen.findByTestId('bzx-sch-last-daily_brief')).toHaveTextContent(/Last made/);
+    expect(screen.getByTestId('bzx-sch-toggle-daily_brief')).toHaveTextContent('On');
+    fireEvent.change(screen.getByTestId('bzx-sch-hour-daily_brief'), { target: { value: '6' } });
+    expect(c.saveSchedule).toHaveBeenLastCalledWith({ reportType: 'daily_brief', active: true, sendHour: 6 });
+  });
+  it('AI Business Reports 15: Executive summary shows the verified figures with their check and the growth proposals to review (from the server)', async () => {
+    c.executive.mockResolvedValue({ id: 'r1', available: true, reportType: 'monthly_review', period: null, verification: { status: 'changed', reason: 'source_changed_since', checkedAt: '' }, changesAnything: false,
+      facts: [{ key: 'net_sales', value: 412500, unit: 'cents', source: 'sales_report_snapshot', check: 'changed_since', salesReportNow: 415000 }, { key: 'bookings', value: 12, unit: 'count', source: 'report_section', check: 'not_checkable', salesReportNow: null }],
+      opportunities: [{ kind: 'new_customers', basis: { newCustomers: 5, trendPercent: -30 }, route: '/tenant/marketing/referrals', status: 'proposed', ownerReview: true }] });
+    wrap();
+    fireEvent.click((await screen.findAllByTestId('bzx-r-open'))[0]);
+    fireEvent.click(await screen.findByTestId('bzx-exec'));
+    expect(await screen.findByTestId('bzx-exec-fact-net_sales')).toHaveTextContent(/\$4,125\.00.*Changed since — the Sales Report now shows \$4,150\.00/);
+    expect(screen.getByTestId('bzx-exec-fact-bookings')).toHaveTextContent('From the report; not re-checkable');
+    expect(screen.getByTestId('bzx-exec-opp-new_customers')).toHaveTextContent('New customers are down 30% (5 this period)');
+    expect(screen.getByTestId('bzx-exec-result')).toHaveTextContent(/Nothing is changed, sent or started from here/);
+    expect(c.executive).toHaveBeenCalledWith('r1');
+  });
   it('cards are backend counts; completed and content-expired are shown apart', async () => {
     wrap();
     expect(await screen.findByTestId('bzx-r-expired')).toHaveTextContent('5');

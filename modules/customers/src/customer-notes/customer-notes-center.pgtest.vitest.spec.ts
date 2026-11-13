@@ -175,3 +175,48 @@ describe('Customer Notes 10 — accuracy and response-time monitors from the req
     expect((await q(sql`select count(*)::int as n from telemetry_log_events`))[0].n).toBe(before);
   });
 });
+
+describe('Customer Notes 6 · 05 — source / provenance labels (migration 885)', () => {
+  it('nothing labelled → "not_stated" (never guessed); a visit note is staff-observed by how it is written', async () => {
+    const d = await cn.detail(owner(), C.mai);
+    expect(d.entries.every((e: any) => e.provenance.source === 'not_stated' && e.provenance.origin === 'none' && !e.provenance.earlierLabel)).toBe(true);
+    const bo = await cn.detail(owner(), C.bo);
+    expect(bo.entries.find((e: any) => e.category === 'visit')!.provenance).toMatchObject({ source: 'staff_observed', origin: 'derived', setBy: null });
+    expect((await cn.list(owner(), { pageSize: 100 })).items.find((i: any) => i.category === 'visit')!.source).toBe('staff_observed');
+  });
+  it('a person labels the CURRENT text; list and detail show it with who / when; a confirmed source must be named; AI-suggested and visit notes cannot be set; a stale text is refused', async () => {
+    const d0 = await cn.detail(owner(), C.mai);
+    const pref = d0.entries.find((e: any) => e.category === 'service_preference')!;
+    const tech = d0.entries.find((e: any) => e.category === 'technician_preference')!;
+    const d1 = await cn.setSource(owner(), { customerId: C.mai, category: 'service_preference', contentHash: pref.hash, source: 'customer_reported' });
+    expect(d1.entries.find((e: any) => e.category === 'service_preference')!.provenance).toMatchObject({ source: 'customer_reported', origin: 'labelled', setBy: 'Owner Kim', reference: null });
+    expect(d1.entries.find((e: any) => e.category === 'service_preference')!.provenance!.setAt).not.toBeNull();
+    expect(d1.entries.find((e: any) => e.category === 'technician_preference')!.provenance!.source).toBe('not_stated');   // per note, not per customer
+    expect(await code(cn.setSource(owner(), { customerId: C.mai, category: 'technician_preference', contentHash: tech.hash, source: 'source_confirmed' }))).toBe('CUSTOMER_NOTES_REFERENCE_REQUIRED');
+    const d2 = await cn.setSource(owner(), { customerId: C.mai, category: 'technician_preference', contentHash: tech.hash, source: 'source_confirmed', reference: '  Booking form,   Nov 2 ' });
+    expect(d2.entries.find((e: any) => e.category === 'technician_preference')!.provenance).toMatchObject({ source: 'source_confirmed', reference: 'Booking form, Nov 2' });
+    expect(await code(cn.setSource(owner(), { customerId: C.mai, category: 'service_preference', contentHash: pref.hash, source: 'ai_suggested' }))).toBe('CUSTOMER_NOTES_INVALID_SOURCE');
+    const visit = (await cn.detail(owner(), C.bo)).entries.find((e: any) => e.category === 'visit')!;
+    expect(await code(cn.setSource(owner(), { customerId: C.bo, category: 'visit', contentHash: visit.hash, source: 'customer_reported' }))).toBe('CUSTOMER_NOTES_INVALID_SOURCE');
+    expect(await code(cn.setSource(owner(), { customerId: C.mai, category: 'service_preference', contentHash: 'a'.repeat(64), source: 'staff_observed' }))).toBe('CUSTOMER_NOTES_CHANGED');
+    // the latest label of the current text wins; the older one stays as history (append-only)
+    const d3 = await cn.setSource(owner(), { customerId: C.mai, category: 'service_preference', contentHash: pref.hash, source: 'staff_observed' });
+    expect(d3.entries.find((e: any) => e.category === 'service_preference')!.provenance!.source).toBe('staff_observed');
+    expect((await q(sql`select source from customer_note_sources where tenant_id = ${T} and customer_id = ${C.mai} and category = 'service_preference' order by created_at`)).map((r) => r.source)).toEqual(['customer_reported', 'staff_observed']);
+    const li = (await cn.list(owner(), { pageSize: 100 })).items.filter((i: any) => i.customerId === C.mai);
+    expect(Object.fromEntries(li.map((i: any) => [i.category, i.source]))).toEqual({ service_preference: 'staff_observed', technician_preference: 'source_confirmed' });
+    // labelling never touches the note text or its review
+    expect((await q(sql`select notes_json->>'servicePreferences' as v from customers where id = ${C.mai}`))[0].v).toBe('Gel pedicure');
+  });
+  it('an edit of the note drops the label (it was for the earlier text) — the note says so instead of carrying it over; append-only; other salon / confined role refused', async () => {
+    await q(sql`update customers set notes_json = jsonb_set(notes_json, '{servicePreferences}', '"Gel pedicure, no polish"') where id = ${C.mai}`);
+    const p = (await cn.detail(owner(), C.mai)).entries.find((e: any) => e.category === 'service_preference')!.provenance!;
+    expect(p).toMatchObject({ source: 'not_stated', origin: 'none', earlierLabel: true });
+    expect(await code(q(sql`update customer_note_sources set source = 'ai_suggested' where tenant_id = ${T}`))).toMatch(/append-only/);
+    expect(await code(q(sql`delete from customer_note_sources where tenant_id = ${T}`))).toMatch(/append-only/);
+    const x = (await cn.detail({ ...owner(), tenantId: X }, C.xena)).entries.find((e: any) => e.category === 'warning')!;
+    expect(await code(cn.setSource(owner(), { customerId: C.xena, category: 'warning', contentHash: x.hash, source: 'customer_reported' }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+    const lan = (await cn.detail(owner(), C.lan)).entries.find((e: any) => e.category === 'allergy')!;
+    expect(await code(cn.setSource(confinedB2(), { customerId: C.lan, category: 'allergy', contentHash: lan.hash, source: 'customer_reported' }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+  });
+});

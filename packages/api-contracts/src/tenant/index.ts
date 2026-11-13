@@ -64,3 +64,4 @@ export * from './report-transactions';   // Daily Summary transactions page (bat
 export * from './system-checks';   // shared read-only Check … System (extras arc, Nov 9 2026)
 export * from './access-requests';   // requestable roles policy (batch 8 decision 6, Nov 9 2026)
 export * from './report-delivery';   // Daily Summary Email / Schedule Report (Nov 10 2026)
+export * from './ai-business-report-automation';   // AI Business Reports 14 automated reports + 15 executive summary (Nov 12 2026)

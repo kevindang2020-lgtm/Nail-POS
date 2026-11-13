@@ -1,7 +1,7 @@
 // customer-notes-center.controller.ts — Customer Notes SUNMI guide (Nov 9 2026): `/pos/customer-notes/*`.
 // Guards: TenantAuthGuard + RolePermissionGuard; tenant / branch / role come from the session (req.ctx), never the query.
 //   pos.customers.notes.view  summary · notes · notes/detail · check (read-only diagnostics)
-//   pos.customers.notes.edit  review (confirm a safety note's current text, or mark it for correction)
+//   pos.customers.notes.edit  review (confirm a safety note's current text, or mark it for correction) · source (where a note came from)
 // The note text itself is still edited where it always was: PUT /pos/customers/:id/notes.
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
@@ -21,6 +21,13 @@ export const CN_REVIEW_BODY: BodySchema = S.object({
   customerId: S.uuid(), category: S.enumOf(['allergy', 'warning']), contentHash: S.string({ minLength: 64, maxLength: 64 }),
   decision: S.enumOf(['confirmed', 'needs_correction']), reason: S.nullable(S.text(500)),
 }, ['customerId', 'category', 'contentHash', 'decision']);
+
+/** POST source (Customer Notes 6 · 05) — the profile note, the text the person read (sha256), where it came from; the source of a
+ *  source_confirmed label is required (checked in the center). 'ai_suggested' is not accepted from a person. */
+export const CN_SOURCE_BODY: BodySchema = S.object({
+  customerId: S.uuid(), category: S.enumOf(['general', 'service_preference', 'technician_preference', 'allergy', 'warning']),
+  contentHash: S.string({ minLength: 64, maxLength: 64 }), source: S.enumOf(['customer_reported', 'staff_observed', 'source_confirmed']), reference: S.nullable(S.text(200)),
+}, ['customerId', 'category', 'contentHash', 'source']);
 
 function ctxFrom(req: any): RetentionContext {
   const c = req?.ctx || {};
@@ -79,6 +86,17 @@ export class CustomerNotesCenterController {
     return run(async () => {
       const d = await this.r().review(c, b ?? {});
       await recordAuditStrict(this.r().db, actor(c), { module: 'customers', action: 'customer_notes.reviewed', resourceType: 'customer', resourceId: d.customer.id, summary: `Safety note ${b.category} ${b.decision}` });
+      return d;
+    });
+  }
+
+  /** Customer Notes 6 · 05 — state where a note came from, for its current text (append-only, audited) */
+  @Post('source') @RequirePermission('pos.customers.notes.edit')
+  source(@Req() q: any, @Body(ValidatedBody(CN_SOURCE_BODY, { strict: true })) b: any): Promise<CnDetailResponse> {
+    const c = ctxFrom(q); need(c, 'pos.customers.notes.edit');
+    return run(async () => {
+      const d = await this.r().setSource(c, b ?? {});
+      await recordAuditStrict(this.r().db, actor(c), { module: 'customers', action: 'customer_notes.source_set', resourceType: 'customer', resourceId: d.customer.id, summary: `Note ${b.category} source ${b.source}` });
       return d;
     });
   }

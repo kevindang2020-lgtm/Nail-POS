@@ -4935,6 +4935,10 @@ export interface CustomerIntelligenceScansTable {   // migration 763 — Custome
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
 }
+export interface CustomerNoteSourcesTable {   // migration 885 — where a note came from (customer / staff / confirmed source / AI), tied to the text's sha256; append-only
+  id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; source: string; reference: string | null;
+  set_by_user_id: string | null; created_at: Generated<Ts>;
+}
 export interface CustomerNoteReviewsTable {   // migration 843 — Review & Accuracy of safety notes (append-only; tied to the text's sha256)
   id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; decision: string; reason: string | null;
   reviewer_user_id: string | null; created_at: Generated<Ts>;
@@ -7613,6 +7617,7 @@ export interface DB {
   ai_business_alert_deliveries: AiBusinessAlertDeliveriesTable;
   ai_business_health_runs: AiBusinessHealthRunsTable;
   ai_business_report_jobs: AiBusinessReportJobsTable;
+  ai_business_report_schedules: AiBusinessReportSchedulesTable;
   schedule_optimization_runs: ScheduleOptimizationRunsTable;
   time_clock_break_policies: TimeClockBreakPoliciesTable;
   technician_turn_events: TechnicianTurnEventsTable;
@@ -7763,6 +7768,7 @@ export interface DB {
   money_protection_health_runs: MoneyProtectionHealthRunsTable;
   money_protection_detection_runs: MoneyProtectionDetectionRunsTable;
   money_protection_events: MoneyProtectionEventsTable;
+  money_protection_notifications: MoneyProtectionNotificationsTable;
   voice_system_health_runs: VoiceSystemHealthRunsTable;
   forecasting_health_runs: ForecastingHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
@@ -8071,6 +8077,7 @@ export interface DB {
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
+  customer_note_sources: CustomerNoteSourcesTable;
   catalog_category_reviews: CatalogCategoryReviewsTable;
   ai_branch_comparison_snapshots: AiBranchComparisonSnapshotsTable;
   ai_branch_comparison_signoffs: AiBranchComparisonSignoffsTable;
@@ -8623,6 +8630,10 @@ export interface MoneyProtectionEventsTable {   // migration 778 — append-only
   id: Generated<string>; tenant_id: string; branch_id: string | null; entity_type: string; entity_id: string; action: string; from_state: string | null; to_state: string | null;
   reason: string | null; detail: Generated<unknown>; actor_user_id: string | null; created_at: Generated<Ts>;
 }
+export interface MoneyProtectionNotificationsTable {   // migration 875 — whether each new alert was told to the owner or held back (cooldown, hourly cap); append-only
+  id: Generated<string>; tenant_id: string; alert_id: string | null; dedupe_key: string; severity: string | null; outcome: string; reason: string | null;
+  owner_alert_id: string | null; held_until: TsNull; suppressed_n: Generated<number>; run_id: string | null; created_at: Generated<Ts>;
+}
 export interface MoneyProtectionHealthRunsTable {   // migration 778 — read-only "Check AI Money Protection System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
@@ -8939,6 +8950,12 @@ export interface AiBusinessReportJobsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; requested_by_user_id: string;
   report_type: string; preset: string; status: string; content: unknown | null; error: string | null;
   created_at: Ts; started_at: TsNull; completed_at: TsNull; expires_at: Ts;
+  schedule_id: string | null;   // migration 895 — the schedule that made it (NULL = by hand)
+}
+export interface AiBusinessReportSchedulesTable {   // migration 895 — a person's own automated daily / weekly / monthly AI Business report
+  id: Generated<string>; tenant_id: string; branch_id: string | null; owner_user_id: string; report_type: string; send_hour: number;
+  active: Generated<boolean>; notify_in_app: Generated<boolean>; last_occurrence: string | null; last_run_at: TsNull; last_outcome: string | null;
+  last_reason: string | null; last_report_id: string | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
 }
 // ---- merged from branch C (five-AI-modules) ----
 export interface AiCustomerProfileSettingsTable {

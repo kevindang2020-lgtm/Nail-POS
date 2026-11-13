@@ -59,6 +59,9 @@
       ],
       "@aipowersalon/inventory": [
         "../../modules/inventory/dist/index.d.ts"
+      ],
+      "@aipowersalon/audit": [
+        "../../modules/audit/dist/index.d.ts"
       ]
     }
   },

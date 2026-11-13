@@ -37,6 +37,11 @@ export const posAiBusinessApi = {
     regenerate: (id: string) => api.post<any>(`/pos/ai-business/center/reports/${enc(id)}/regenerate`, {}),
     verify: (id: string) => api.post<any>(`/pos/ai-business/center/reports/${enc(id)}/verify`, {}),
     reportCheck: () => api.post<any>('/pos/ai-business/center/reports/check', {}),
+    /** AI Business Reports 14 — my own automated daily / weekly / monthly reports (made on the server) */
+    schedules: () => api.get<any>('/pos/ai-business/center/reports/schedules'),
+    saveSchedule: (b: { reportType: string; active?: boolean; sendHour?: number; notifyInApp?: boolean }) => api.post<any>('/pos/ai-business/center/reports/schedules', b),
+    /** AI Business Reports 15 — the report's verified figures + growth proposals (read-only) */
+    executive: (id: string) => api.get<any>(`/pos/ai-business/center/reports/${enc(id)}/executive`),
     alertSummary: () => api.get<any>('/pos/ai-business/center/alerts/summary'),
     rules: (q: Q = {}) => api.get<any>('/pos/ai-business/center/alerts/rules', clean(q)),
     history: (q: Q = {}) => api.get<any>('/pos/ai-business/center/alerts/history', clean(q)),

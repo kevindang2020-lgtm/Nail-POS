@@ -658,4 +658,32 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.sp.w.sender_not_configured": "Tiệm chưa thiết lập số gửi SMS.", // DRAFT — Kevin reviews
   "bzx.sp.w.no_cooldown": "Không có thời gian chờ: mỗi lần cảnh báo kích hoạt sẽ gửi tin lại.", // DRAFT — Kevin reviews
   "bzx.sp.dirty": "Bạn đã thay đổi cài đặt — hãy lưu để cập nhật ước tính.", // DRAFT — Kevin reviews
+  "bzx.sch.title": "Báo cáo tự động", // DRAFT — Kevin reviews
+  "bzx.sch.note": "Bật báo cáo hằng ngày, hằng tuần hoặc hằng tháng của riêng bạn. Máy chủ tạo báo cáo vào hoặc sau giờ đã chọn (giờ {tz}) — không cần mở trang này — và một dòng trong hộp Cảnh báo cho biết khi báo cáo sẵn sàng.", // DRAFT — Kevin reviews
+  "bzx.sch.when.every_day": "Mỗi ngày, cho {p}", // DRAFT — Kevin reviews
+  "bzx.sch.when.sunday": "Mỗi Chủ nhật, cho {p}", // DRAFT — Kevin reviews
+  "bzx.sch.when.last_day_of_month": "Vào ngày cuối mỗi tháng, cho {p}", // DRAFT — Kevin reviews
+  "bzx.sch.hour": "Lúc", // DRAFT — Kevin reviews
+  "bzx.sch.on": "Bật", // DRAFT — Kevin reviews
+  "bzx.sch.off": "Tắt", // DRAFT — Kevin reviews
+  "bzx.sch.never": "Chưa tạo lần nào", // DRAFT — Kevin reviews
+  "bzx.sch.last.generated": "Tạo lần cuối {at}", // DRAFT — Kevin reviews
+  "bzx.sch.last.failed": "Lần thử cuối thất bại {at}", // DRAFT — Kevin reviews
+  "bzx.sch.last.skipped": "Bỏ qua {at} — người lập lịch không còn dùng được AI Business", // DRAFT — Kevin reviews
+  "bzx.exec.btn": "Tóm tắt điều hành", // DRAFT — Kevin reviews
+  "bzx.exec.title": "Tóm tắt điều hành", // DRAFT — Kevin reviews
+  "bzx.exec.rule": "Số liệu là số của Báo cáo doanh thu lưu trong báo cáo này, được đối chiếu lại với Báo cáo doanh thu hiện tại. Không có số nào là ước tính.", // DRAFT — Kevin reviews
+  "bzx.exec.check.matches_sales_report": "Khớp với Báo cáo doanh thu hiện tại", // DRAFT — Kevin reviews
+  "bzx.exec.check.changed_since": "Đã thay đổi — Báo cáo doanh thu hiện cho thấy {now}", // DRAFT — Kevin reviews
+  "bzx.exec.check.not_checkable": "Lấy từ báo cáo; không đối chiếu lại được", // DRAFT — Kevin reviews
+  "bzx.exec.opps": "Cơ hội cần xem xét", // DRAFT — Kevin reviews
+  "bzx.exec.noOpps": "Không có cơ hội nổi bật trong số liệu của báo cáo này.", // DRAFT — Kevin reviews
+  "bzx.exec.review": "Xem", // DRAFT — Kevin reviews
+  "bzx.exec.proposals": "Đây là gợi ý để bạn xem xét. Không có gì được thay đổi, gửi đi hay bắt đầu từ đây.", // DRAFT — Kevin reviews
+  "bzx.exec.unavailable": "Nội dung báo cáo này không còn hiển thị nên không có gì để tóm tắt. Hãy tạo lại để có số liệu hiện tại.", // DRAFT — Kevin reviews
+  "bzx.opp.no_shows": "{noShowPercent}% trong {bookings} lịch hẹn là khách không đến. Tin nhắn nhắc lịch và xác nhận trước một ngày thường giảm được tình trạng này.", // DRAFT — Kevin reviews
+  "bzx.opp.cancellations": "{cancelledPercent}% lịch hẹn bị hủy. Mời khách trong danh sách chờ vào các chỗ trống để không mất thời gian.", // DRAFT — Kevin reviews
+  "bzx.opp.retention": "Chỉ {retentionRatePercent}% khách quay lại. Chiến dịch mời lại khách đã vắng 60 ngày là bước thường làm tiếp theo.", // DRAFT — Kevin reviews
+  "bzx.opp.new_customers": "Khách mới giảm {trendPercent}% ({newCustomers} trong kỳ này). Phần thưởng giới thiệu giúp có thêm bạn bè của khách quen.", // DRAFT — Kevin reviews
+  "bzx.opp.retail": "Không có hóa đơn nào trong {ticketsCount} hóa đơn đã thanh toán có sản phẩm. Gợi ý khi thanh toán có thể giới thiệu sản phẩm chăm sóc đúng lúc.", // DRAFT — Kevin reviews
 };

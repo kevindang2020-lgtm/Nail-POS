@@ -1,12 +1,13 @@
 // device-fleet.controller.ts — SUNMI batch 8 (Nov 9 2026): `/pos/device-fleet/*`, the read model behind Reception POS,
 // Check-In Kiosks, iPads & Tablets, Receipt Devices, Device Assignments and Device Health. pos.devices.view (the same key as
 // the Devices Overview). Read-only: device actions stay on their owning endpoints (displays / registers / terminals).
+// extras Tablets 11: GET export (pos.devices.export → owners and managers) — the redacted inventory + health CSV, audited.
 import { ListQuery } from '@aipowersalon/database';
 import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
-import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
-import { Body, Controller, Get, HttpException, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { DeviceFleetCenter, DeviceFleetError, DF_CLASSES, DF_STATUSES, type DfCtx } from './device-fleet-center';
+import { Body, Controller, Get, Header, HttpException, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { DeviceFleetCenter, DeviceFleetError, DF_CLASSES, DF_STATUSES, exportDeviceFleetCsv, type DfCtx } from './device-fleet-center';
 
 export const DEVICE_FLEET_CENTER = 'DeviceFleetCenter';
 export const DF_CHECK_BODY: BodySchema = S.object({ class: S.enumOf([...DF_CLASSES]) }, ['class']);
@@ -37,6 +38,12 @@ export class DeviceFleetController {
   @Get('history') @RequirePermission('pos.devices.view')
   @ListQuery(HIST)
   history(@Req() q: any, @Query() f: any): Promise<DfHistoryResponse> { return run(() => this.r().history(ctxFrom(q), f ?? {})); }
+
+  /** extras Tablets 11 — Safe Export & Evidence Bundle: the filtered inventory (every page) + the read-only health check as one
+   *  redacted CSV with a provenance block; never a token, pairing code, processor id or customer data; one audit row */
+  @AsyncExport({ kind: 'pos.device-fleet.export' }) @Get('export') @RequirePermission('pos.devices.export') @ListQuery(LIST)
+  @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="device-inventory.csv"')
+  exportFile(@Req() q: any, @Query() f: any): Promise<string> { return run(() => exportDeviceFleetCsv(this.r(), ctxFrom(q), f ?? {})); }
 
   @Post('check') @RequirePermission('pos.devices.view')
   check(@Req() q: any, @Body(ValidatedBody(DF_CHECK_BODY, { strict: true })) b: { class: string }): Promise<DfCheckResponse> { return run(() => this.r().check(ctxFrom(q), b.class)); }

@@ -456,4 +456,11 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.export.busy": "Exporting…",
   "mpx.export.done": "Exported. The file opens with who made it, when, the filters, how fresh detection was, and what was left out.",
   "mpx.export.hint": "Every matching row with the current filters. No customer names, phones, evidence text or payment references. The export is recorded.",
+  "mpx.ntf.open": "How alert notifications are limited",
+  "mpx.ntf.rule": "The owner is told about each new high or critical alert. The same rule about the same thing is told at most once every {cd} hours, and at most {cap} alerts are told per hour — one extra line then says how many more are waiting.",
+  "mpx.ntf.last24h": "Last 24 hours: {sent} told · {cd} held back by the cooldown · {cap} held back by the hourly limit",
+  "mpx.ntf.why": "A limit only holds back the notification: every alert stays on this screen with its own evidence, and no rule is turned off.",
+  "mpx.ev.notified": "Owner notified",
+  "mpx.ev.notify_held_cooldown": "Notification held back (same alert told in the last 24 hours)",
+  "mpx.ev.notify_held_cap": "Notification held back (hourly limit reached)",
 };

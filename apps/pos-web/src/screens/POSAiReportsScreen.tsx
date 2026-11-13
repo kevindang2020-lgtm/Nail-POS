@@ -9,6 +9,8 @@
 //   • View (labelled headline figures, the period, the sections), Verify Numbers (the report's figures vs the Sales Report now, same
 //     days), Regenerate (a new report; the old one is kept);
 //   • Check AI Business Reports System (read-only).
+//   • extras (AI Business Reports 14): Automated reports — my own daily / weekly / monthly schedule, made on the server (the page
+//     need not be open), with the last run's outcome; (15): Executive summary — the report's verified figures and growth proposals.
 // Before: the canonical Sales Report ignored the period, so every report showed the last 7 days — fixed at the source.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -67,6 +69,8 @@ export function POSAiReportsScreen() {
         <div className="rvw-actions" data-testid="bzx-gen-types">{TYPES.map((t) => <button key={t} type="button" className="btn" data-testid={`bzx-gen-${t}`} onClick={() => setGen(t)}>{bt('bzx.type.' + t)}</button>)}</div>
       </section>
 
+      <AutomatedReports />
+
       <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="bzx-r-history">
         <div className="p-h">{bt('bzx.r.history')}{list ? <span className="sub"> · {bt('bzx.matching', { n: bzNum(list.total) })}</span> : null}</div>
         <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
@@ -104,6 +108,38 @@ export function POSAiReportsScreen() {
   );
 }
 
+/** extras AI Business Reports 14 — my own automated reports. The server decides when each runs and makes it (as me, through the
+ *  same report path as the buttons); this only turns my schedule on / off and picks the hour. */
+function AutomatedReports() {
+  const [s, setS] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); posAiBusinessApi.center.schedules().then(setS).catch((e) => setErr(bzErr(e))); }, []);
+  useEffect(() => { load(); }, [load]);
+  const save = (reportType: string, b: { active?: boolean; sendHour?: number }) => {
+    const cur = (s?.items ?? []).find((x: any) => x.reportType === reportType);
+    setBusy(reportType); setErr(null);
+    posAiBusinessApi.center.saveSchedule({ reportType, active: b.active ?? cur?.active ?? false, sendHour: b.sendHour ?? cur?.sendHour })
+      .then(setS).catch((e) => setErr(bzErr(e))).finally(() => setBusy(null));
+  };
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="bzx-sch">
+      <div className="p-h">{bt('bzx.sch.title')}</div>
+      <p className="sub">{bt('bzx.sch.note', { tz: s?.timeZone ?? '—' })}</p>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !s ? <div className="state">{bt('bzx.loading')}</div> : (
+        <div className="rvw-table-wrap"><table className="tbl"><tbody>{s.items.map((x: any) => (
+          <tr key={x.reportType} data-testid={`bzx-sch-${x.reportType}`}>
+            <td><b>{bt('bzx.type.' + x.reportType)}</b><div className="sub">{bt('bzx.sch.when.' + x.when, { p: bt('bzx.period.' + x.preset) })}</div></td>
+            <td><label className="rvw-f"><span>{bt('bzx.sch.hour')}</span><select data-testid={`bzx-sch-hour-${x.reportType}`} value={String(x.sendHour)} disabled={busy === x.reportType}
+              onChange={(e) => save(x.reportType, { sendHour: Number(e.target.value) })}>{Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}</select></label></td>
+            <td><button type="button" className={'btn ' + (x.active ? '' : 'ghost')} data-testid={`bzx-sch-toggle-${x.reportType}`} aria-pressed={x.active} disabled={busy === x.reportType}
+              onClick={() => save(x.reportType, { active: !x.active })}>{x.active ? bt('bzx.sch.on') : bt('bzx.sch.off')}</button></td>
+            <td className="sub" data-testid={`bzx-sch-last-${x.reportType}`}>{x.lastStatus ? bt('bzx.sch.last.' + x.lastStatus, { at: bzWhen(x.lastRunAt) }) : bt('bzx.sch.never')}</td>
+          </tr>))}</tbody></table></div>)}
+    </section>
+  );
+}
+
 function GenerateDialog({ type, onClose, onDone }: { type: string; onClose: () => void; onDone: (id: string) => void }) {
   const [preset, setPreset] = useState(PERIODS[type][0]);
   const [busy, setBusy] = useState(false);
@@ -127,11 +163,14 @@ function ReportDialog({ id, onClose, onNew }: { id: string; onClose: () => void;
   const [tick, setTick] = useState(0);
   useEffect(() => { let on = true; setD(null); setErr(null); setV(null); posAiBusinessApi.center.report(id).then((x) => on && setD(x)).catch((e) => on && setErr(bzErr(e))); return () => { on = false; }; }, [id, tick]);
   const verify = () => { setV('loading'); posAiBusinessApi.center.verify(id).then(setV).catch((e) => setV({ error: bzErr(e) })); };
+  const [ex, setEx] = useState<any | 'loading' | null>(null);
+  const exec = () => { setEx('loading'); posAiBusinessApi.center.executive(id).then(setEx).catch((e) => setEx({ error: bzErr(e) })); };
   const regen = () => { setBusy(true); posAiBusinessApi.center.regenerate(id).then((r) => onNew(r.id)).catch((e) => setErr(bzErr(e))).finally(() => setBusy(false)); };
   return (
     <FitDialog wide testId="bzx-report" title={d ? bt('bzx.type.' + d.reportType) : bt('bzx.loading')} onClose={onClose} busy={busy}
       footer={<>
         {d?.status === 'completed' ? <button className="btn ghost" data-testid="bzx-verify" onClick={verify}>{bt('bzx.r.verify')}</button> : null}
+        {d?.availability === 'viewable' ? <button className="btn ghost" data-testid="bzx-exec" onClick={exec}>{bt('bzx.exec.btn')}</button> : null}
         {d ? <button className="btn ghost" data-testid="bzx-regen" disabled={busy} onClick={regen}>{bt('bzx.r.regenerate')}</button> : null}
         <button className="btn ghost" onClick={onClose}>{bt('bzx.close')}</button></>}>
       {err ? <ErrorRetry message={err} onRetry={() => setTick((n) => n + 1)} /> : !d ? <div className="state">{bt('bzx.loading')}</div> : <>
@@ -152,6 +191,19 @@ function ReportDialog({ id, onClose, onNew }: { id: string; onClose: () => void;
                   <td className="num">{bzValue(x.salesReportNow, x.metric === 'ticketsCount' ? 'count' : 'cents')}</td><td className="num">{x.matched ? '✓' : bzValue(x.difference, x.metric === 'ticketsCount' ? 'count' : 'cents')}</td></tr>))}</tbody></table> : null}
             {v.sourceRoute ? <Link to="/tenant/reports/sales">{bt('bzx.r.openSales')}</Link> : null}
           </div>)) : null}
+        {ex ? (ex === 'loading' ? <div className="state">{bt('bzx.loading')}</div> : ex.error ? <div className="err">{ex.error}</div> : !ex.available ? <div className="sub" data-testid="bzx-exec-result">{bt('bzx.exec.unavailable')}</div> : (
+          <section data-testid="bzx-exec-result" style={{ marginTop: 10 }}>
+            <div className="p-h">{bt('bzx.exec.title')}</div>
+            <p className="sub">{bt('bzx.exec.rule')}</p>
+            <table className="tbl"><tbody>{ex.facts.map((x: any) => (
+              <tr key={x.key} data-testid={`bzx-exec-fact-${x.key}`}><td>{bt('bzx.m.' + x.key)}</td><td className="num"><b>{bzValue(x.value, x.unit)}</b></td>
+                <td className="sub">{bt('bzx.exec.check.' + x.check, { now: x.salesReportNow == null ? '—' : bzValue(x.salesReportNow, x.unit) })}</td></tr>))}</tbody></table>
+            <div className="p-h" style={{ marginTop: 8 }}>{bt('bzx.exec.opps')}</div>
+            {ex.opportunities.length === 0 ? <div className="sub">{bt('bzx.exec.noOpps')}</div> : ex.opportunities.map((o: any) => (
+              <div key={o.kind} className="rvw-ev" data-testid={`bzx-exec-opp-${o.kind}`}>{bt('bzx.opp.' + o.kind, Object.fromEntries(Object.entries(o.basis ?? {}).map(([k, v]) => [k, v == null ? '—' : bzNum(k === 'trendPercent' ? Math.abs(Number(v)) : Number(v))])))}
+                {' '}<Link to={o.route}>{bt('bzx.exec.review')}</Link></div>))}
+            <p className="sub">{bt('bzx.exec.proposals')}</p>
+          </section>)) : null}
         <p className="sub">{bt('bzx.r.matchNote')}</p>
       </>}
     </FitDialog>
