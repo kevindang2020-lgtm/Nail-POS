@@ -210,3 +210,37 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     expect(screen.queryByTestId('health')).toBeNull();
   });
 });
+
+// 200-technician 02 — Shift-Aware Staffing Heatmap: the server's per-hour counts over the whole roster; a cell lists the
+// technicians behind it and each opens their full day; late / on break show only for the current hour; read-only.
+describe('POSLiveTechnicianScheduleScreen — staffing by hour', () => {
+  const ids = (o: Partial<Record<'ready' | 'booked' | 'onBreak' | 'late' | 'breakNow', string[]>> = {}) => ({ ready: [], booked: [], onBreak: [], late: [], breakNow: [], ...o });
+  const staffing = { date: DAY, live: true, nowMinute: 600, bandMinutes: 60, names: { t1: 'Trần Mỹ Linh', t2: 'Lê Văn Bảo' }, bands: [
+    { start: '09:00', end: '10:00', isNow: false, onShift: 2, ready: 2, booked: 0, onBreak: 0, late: null, breakNow: null, ids: ids({ ready: ['t1', 't2'] }) },
+    { start: '10:00', end: '11:00', isNow: true, onShift: 2, ready: 1, booked: 1, onBreak: 0, late: 1, breakNow: 0, ids: ids({ ready: ['t2'], booked: ['t1'], late: ['t2'] }) },
+  ] };
+  it('opens the heatmap, a cell lists who is behind it, and a name opens that technician', async () => {
+    live.state.mockResolvedValue({ ...state, staffing });
+    mount();
+    const open = await screen.findByTestId('open-staffing');
+    await waitFor(() => expect(open).not.toBeDisabled());
+    fireEvent.click(open);
+    const hm = await screen.findByTestId('staffing-heatmap');
+    expect(screen.getByTestId('staffing-col-10:00')).toHaveTextContent('now');
+    expect(screen.getByTestId('staffing-ready-09:00')).toHaveTextContent('2');
+    expect(screen.getByTestId('staffing-late-10:00')).toHaveTextContent('1');
+    expect(hm.querySelectorAll('[data-testid^="staffing-late-09:00"]')).toHaveLength(0);   // late only in the "now" hour
+    fireEvent.click(screen.getByTestId('staffing-booked-10:00'));
+    const who = screen.getByTestId('staffing-who');
+    expect(who).toHaveTextContent('Booked');
+    expect(screen.getAllByTestId('staffing-who-tech').map((b) => b.textContent)).toEqual(['Trần Mỹ Linh']);
+    fireEvent.click(screen.getByTestId('staffing-who-tech'));
+    await waitFor(() => expect(live.detail).toHaveBeenCalled());
+    expect(live.startBreak).not.toHaveBeenCalled(); expect(live.blockTime).not.toHaveBeenCalled();
+  });
+  it('an older server without the heatmap leaves the button disabled', async () => {
+    mount();
+    await screen.findByTestId('live-schedule-pager');
+    expect(screen.getByTestId('open-staffing')).toBeDisabled();
+  });
+});

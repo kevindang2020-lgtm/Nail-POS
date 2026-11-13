@@ -1,6 +1,5 @@
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
 export type { LiveScheduleFilters } from '@aipowersalon/api-contracts/tenant';
-import type { LiveScheduleFilters } from '@aipowersalon/api-contracts/tenant';
 // live-technician-schedule.dto.ts — types + PURE helpers for the Live Technician Schedule.
 // This is an AGGREGATION view: it does NOT own appointments (those live in pos_tech_appointments, shared with
 // tech-appointments / booking), nor shifts (technician_schedules), nor live status (technician_statuses). It composes
@@ -63,6 +62,8 @@ export interface LiveTechnicianDetail {
 export interface LiveTechnicianSchedulePageState {
   context: { tenantId: string; branchId: string; userId: string; role: string; permissions: string[] };
   kpis: LiveTechnicianScheduleKpis;
+  /** 200-technician 02 — Shift-Aware Staffing Heatmap over the WHOLE (filtered) roster, not the page of lanes */
+  staffing?: LiveStaffingHeatmap;
   schedule: LiveTechnicianScheduleState;
   filters: { statuses: { label: string; value: string }[]; skills: { label: string; value: string }[]; technicians: { label: string; value: string }[] };
   selectedTechnician?: LiveTechnicianDetail;
@@ -175,4 +176,54 @@ export function lsMapApptStatus(s: string): LiveApptStatus {
   if (v === 'booked') return 'confirmed';
   if (v === 'waiting') return 'checked_in';
   return 'confirmed';
+}
+
+// ---- 200-technician 02: Shift-Aware Staffing Heatmap ----
+/**
+ * One hour band of the day board, counted over every technician column the board built (before lane paging):
+ *   onShift  the column has a shift (scheduled, or an open punch shown as one) overlapping the band
+ *   booked   on shift with a live appointment (not cancelled / no-show) overlapping the band
+ *   onBreak  on shift with the shift's planned break overlapping the band (not booked)
+ *   ready    on shift, not booked, not on a planned break
+ *   late     ONLY in the band holding "now" on the branch's today: a SCHEDULED shift already started and not over, and
+ *            the time clock says clocked out (the board's own Shift-vs-Clock-In facts); null in every other band
+ *   breakNow ONLY in the "now" band: the time clock says on break; null elsewhere
+ * ids per bucket let the screen expand a cell to the technicians behind it.
+ */
+export interface LiveStaffingBand {
+  start: string; end: string; isNow: boolean;
+  onShift: number; ready: number; booked: number; onBreak: number; late: number | null; breakNow: number | null;
+  ids: { ready: string[]; booked: string[]; onBreak: string[]; late: string[]; breakNow: string[] };
+}
+export interface LiveStaffingHeatmap { date: string; live: boolean; nowMinute: number | null; bandMinutes: number; bands: LiveStaffingBand[]; names: Record<string, string>; }
+
+export function lsStaffingHeatmap(cols: LiveTechnicianColumn[], o: { date: string; range: { startTime: string; endTime: string }; live: boolean; nowMinute: number | null; bandMinutes?: number }): LiveStaffingHeatmap {
+  const step = o.bandMinutes ?? 60;
+  const from = lsMinutesOf(o.range.startTime), to = lsMinutesOf(o.range.endTime);
+  const overlaps = (s: string | undefined, e: string | undefined, b0: number, b1: number) => !!s && !!e && lsMinutesOf(s) < b1 && lsMinutesOf(e) > b0;
+  const names: Record<string, string> = {};
+  const bands: LiveStaffingBand[] = [];
+  for (let b0 = from; b0 < to; b0 += step) {
+    const b1 = Math.min(to, b0 + step);
+    const isNow = o.live && o.nowMinute != null && o.nowMinute >= b0 && o.nowMinute < b1;
+    const ids = { ready: [] as string[], booked: [] as string[], onBreak: [] as string[], late: [] as string[], breakNow: [] as string[] };
+    let onShift = 0;
+    for (const c of cols) {
+      const sh = c.shift;
+      if (!sh || !overlaps(sh.startTime, sh.endTime, b0, b1)) continue;
+      onShift++; names[c.technicianId] = c.fullName;
+      const booked = c.appointments.some((a) => a.status !== 'cancelled' && a.status !== 'no_show' && overlaps(a.startTime, a.endTime, b0, b1));
+      if (booked) ids.booked.push(c.technicianId);
+      else if (overlaps(sh.breakStartTime, sh.breakEndTime, b0, b1)) ids.onBreak.push(c.technicianId);
+      else ids.ready.push(c.technicianId);
+      if (isNow) {
+        const now = o.nowMinute as number;
+        if (c.clock === 'on_break') ids.breakNow.push(c.technicianId);
+        if (c.shiftScheduled !== false && c.clock === 'clocked_out' && lsMinutesOf(sh.startTime) <= now && now < lsMinutesOf(sh.endTime)) ids.late.push(c.technicianId);
+      }
+    }
+    bands.push({ start: lsToHHMM(b0), end: lsToHHMM(b1), isNow, onShift, ready: ids.ready.length, booked: ids.booked.length, onBreak: ids.onBreak.length,
+      late: isNow ? ids.late.length : null, breakNow: isNow ? ids.breakNow.length : null, ids });
+  }
+  return { date: o.date, live: o.live, nowMinute: o.live ? o.nowMinute : null, bandMinutes: step, bands, names };
 }

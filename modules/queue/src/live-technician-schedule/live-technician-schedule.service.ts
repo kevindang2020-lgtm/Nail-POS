@@ -9,7 +9,7 @@ import { AppointmentSlotConflict, resolveManagerOverride, ManagerOverrideForbidd
 import { TimeClockConflictError, TimeClockValidationError, TechnicianEligibilityError, type TimeClockService, type TechnicianEligibilityService } from '@aipowersalon/workforce';
 import {
   LiveTechnicianSchedulePageState, LiveTechnicianScheduleKpis, LiveTechnicianDetail, LiveScheduleFilters,
-  BlockTechnicianTimeRequest, BreakRequest, LiveTechnicianScheduleState,
+  BlockTechnicianTimeRequest, BreakRequest, LiveTechnicianScheduleState, lsStaffingHeatmap,
 } from './live-technician-schedule.dto';
 import { LiveScheduleContext, LiveScheduleRepositoryPort } from './live-technician-schedule.repository';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
@@ -66,12 +66,15 @@ export class LiveTechnicianScheduleService {
     this.need(ctx, 'pos.technicians.view');
     const date = f.date || (await this.repo.today(ctx));
     const [full, kpis, allFilters] = await Promise.all([this.repo.state(ctx, { ...f, date }), this.repo.kpis(ctx, date), this.repo.filtersData(ctx)]);
+    // 200-technician 02: the staffing heatmap counts every column the board built (status / skill filters applied), before paging
+    const today = await this.repo.today(ctx); const live = date === today;
+    const staffing = lsStaffingHeatmap(full.technicians, { date, range: full.timeRange, live, nowMinute: live && typeof this.repo.nowMinutes === 'function' ? await this.repo.nowMinutes(ctx) : null });
     const schedule = pageLiveScheduleBoard(full, f);
     const filters = f.roster === 'none' ? { ...allFilters, technicians: [] } : allFilters;
     this.log(ctx, 'live_technician_schedule_viewed', 'schedule', undefined, { date, view: f.view || 'day' });
     return {
       context: { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions || [] },
-      kpis, schedule, filters,
+      kpis, staffing, schedule, filters,
     };
   }
   /** Week view (merge Oct 12 2026 — the other chat's live-schedule week screen): the 7 salon-local days starting Monday of
