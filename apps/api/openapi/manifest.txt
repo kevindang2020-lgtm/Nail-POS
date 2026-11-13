@@ -957,6 +957,7 @@ GET /pos/payments/split-payments/registers  realm=staff  auth=session  domain=pa
 GET /pos/payments/split-payments/state  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/split-payments/summary  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/split-payments/{ticketId}/detail  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/payments/tips/accuracy  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/adjustments  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/distribution  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/export  realm=staff  auth=session  domain=payments  perm=pos.reports.export  resource=BRANCH/permission  async=pos.tips.export  guards=RolePermissionGuard,TenantAuthGuard

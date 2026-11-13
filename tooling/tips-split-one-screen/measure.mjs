@@ -25,6 +25,10 @@ const PAGES = {
   'tips-transactions': { url: '/tenant/payments/tips', tab: 'tab-transactions', container: '.work.fit', modules: ['kpi-total', 'kpi-notip', 'transactions', 'sort'] },
   'tips-distribution': { url: '/tenant/payments/tips', tab: 'tab-distribution', container: '.work.fit', modules: ['kpi-total', 'distribution'] },
   'tips-adjustments': { url: '/tenant/payments/tips', tab: 'tab-adjustments', container: '.work.fit', modules: ['kpi-total', 'reports', 'adjustments'] },
+  // Team → Tips (Team Tips spec, Nov 13 2026): ONE vertical scroll region is allowed (the page); never horizontal. The first
+  // viewport must show the title, the period, the four cards, the search / filter row and the START of both panels.
+  'team-tips': { url: '/tenant/team/tips', container: '.work.ttp', scroll: true, modules: ['tt-refresh', 'tt-accuracy-open', 'preset-today', 'preset-week', 'preset-month', 'preset-year', 'preset-custom', 'tt-kpi-total', 'tt-kpi-card', 'tt-kpi-cash', 'tt-kpi-avg', 'tips-search', 'tt-method', 'tt-status', 'tt-reset'],
+    starts: ['tt-leaderboard'], shots: [{ click: 'preset-custom', name: 'calendar' }, { click: 'tt-leader', name: 'detail' }, { click: 'tt-accuracy-open', name: 'accuracy' }, { scroll: true, name: 'bottom' }] },
   'split-payments': { url: '/tenant/payments/split-payments', container: '.work.fit', modules: ['refresh', 'kpi-tickets', 'kpi-total', 'kpi-avg', 'kpi-completed', 'kpi-outstanding', 'search', 'status', 'methods', 'register', 'sort', 'preset-month', 'preset-custom', 'tickets'] },
 };
 const pages = (process.argv[3] || Object.keys(PAGES).join(',')).split(',');
@@ -54,6 +58,7 @@ try {
       const se = document.scrollingElement; const vw = innerWidth, vh = innerHeight; const cp = document.querySelector(PG.container);
       const painted = (el) => { const b = el.getBoundingClientRect(); if (b.width < 2 || b.height < 2) return 'zero'; if (b.top < -0.5 || b.left < -0.5 || b.bottom > vh + 0.5 || b.right > vw + 0.5) return 'outside'; const at = document.elementFromPoint(b.left + Math.min(b.width / 2, 24), b.top + Math.min(b.height / 2, 10)); return at && (el === at || el.contains(at) || at.contains(el)) ? true : 'covered'; };
       const mods = {}; for (const t of PG.modules) { const el = document.querySelector(`[data-testid="${t}"]`); mods[t] = el ? painted(el) : 'missing'; }
+      for (const t of PG.starts ?? []) { const el = document.querySelector(`[data-testid="${t}"]`); const b = el?.getBoundingClientRect(); mods['start:' + t] = !el ? 'missing' : b.top >= -0.5 && b.top + 48 <= vh && b.left >= -0.5 && b.right <= vw + 0.5 ? true : 'below-fold'; }
       // each panel's pager (when it has one) must be visible too — a list that pages inside its panel
       const pagers = [...cp.querySelectorAll('.fk-panel .fk-pager')].map((p) => ({ panel: p.closest('[data-testid]')?.getAttribute('data-testid'), ok: painted(p) }));
       const hit = (el0) => { const el = el0.matches('input[type="checkbox"]') && el0.closest('label') ? el0.closest('label') : el0; const b = el.getBoundingClientRect();   // a checkbox's target is its label
@@ -62,14 +67,23 @@ try {
         return { w: Math.round(b.width + left + right), h: Math.round(b.height + top + bottom) }; };
       const btns = [...cp.querySelectorAll('button, select, input[type="search"], input[type="checkbox"]')].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(b).visibility !== 'hidden'; });
       const small = btns.map((b) => ({ t: (b.getAttribute('aria-label') || b.textContent || b.tagName).trim().slice(0, 30), cls: b.className.toString().split(' ')[0], ...hit(b) })).filter((x) => Math.min(x.w, x.h) < 44);
-      const font = Math.min(...[...cp.querySelectorAll('.fk-li-t, .fk-table td, .fk-kpi-l, .fk-panel-head h2, .fn-cell-v')].map((e) => parseFloat(getComputedStyle(e).fontSize)).filter(Boolean));
+      const font = Math.min(...[...cp.querySelectorAll('.fk-li-t, .fk-table td, .fk-kpi-l, .fk-panel-head h2, .fn-cell-v, .ttp-kpi-l, .ttp-kpi-s')].map((e) => parseFloat(getComputedStyle(e).fontSize)).filter(Boolean));
       return { vw, vh, docScrollY: Math.max(0, se.scrollHeight - vh), docScrollX: Math.max(0, se.scrollWidth - vw), pageScrollY: cp ? Math.max(0, cp.scrollHeight - cp.clientHeight) : null, pageScrollX: cp ? Math.max(0, cp.scrollWidth - cp.clientWidth) : null,
         box: cp ? Math.round(cp.getBoundingClientRect().height) : null, modules: mods, pagers, smallTargets: small.slice(0, 12), smallTargetCount: small.length, minFontPx: font,
         rowsPerPanel: [...cp.querySelectorAll('.fk-panel')].map((p) => `${p.getAttribute('data-testid')}:${p.querySelectorAll('.fk-li, tbody tr').length}`).join(' ') };
     }, PG);
-    const okMods = Object.values(m.modules).every((v) => v === true) && m.pagers.every((p) => p.ok === true);
-    const pass = m.docScrollY === 0 && m.docScrollX === 0 && m.pageScrollY === 0 && m.pageScrollX === 0 && okMods && errors.length === 0;
+    const okMods = Object.values(m.modules).every((v) => v === true) && (PG.scroll || m.pagers.every((p) => p.ok === true));   // a scrolling page's pagers are reached by scrolling (the 'bottom' shot)
+    const pass = (PG.scroll ? m.docScrollX === 0 && m.pageScrollX === 0 : m.docScrollY === 0 && m.docScrollX === 0 && m.pageScrollY === 0 && m.pageScrollX === 0) && okMods && errors.length === 0;
     const shot = join(OUTDIR, `${key}-${tenant}-${lang}-${w}x${h}.png`); await page.screenshot({ path: shot });
+    for (const s of PG.shots ?? []) {   // extra states: a popover / overlay open, the bottom of a scrolling page
+      if (s.scroll) await page.evaluate(() => { for (const el of [document.scrollingElement, ...document.querySelectorAll('*')]) if (el && el.scrollHeight > el.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight; });
+      else { const el = await page.$(`[data-testid="${s.click}"]`); if (!el) { errors.push('shot target missing ' + s.click); continue; } await el.click(); }
+      await page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => undefined); await page.waitForTimeout(500);
+      const ov = await page.evaluate(() => { const d = document.querySelector('[role="dialog"]'); if (!d) return null; const b = d.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), right: Math.round(b.right), vh: innerHeight, vw: innerWidth, scrollX: Math.max(0, document.scrollingElement.scrollWidth - innerWidth) }; });
+      if (ov && (ov.bottom > ov.vh + 0.5 || ov.top < -0.5 || ov.right > ov.vw + 0.5)) errors.push(`${s.name}: dialog outside the viewport ${JSON.stringify(ov)}`);
+      await page.screenshot({ path: join(OUTDIR, `${key}-${s.name}-${tenant}-${lang}-${w}x${h}.png`) });
+      if (!s.scroll) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
+    }
     rows.push({ page: key, tenant, lang, viewport: `${w}x${h}`, pass, ...m, errors });
     const bad = [...Object.entries(m.modules).filter(([, v]) => v !== true).map(([k, v]) => `${k}=${v}`), ...m.pagers.filter((p) => p.ok !== true).map((p) => `pager:${p.panel}=${p.ok}`)];
     console.log(`${pass ? 'PASS' : 'FAIL'}  ${key.padEnd(19)} ${tenant}/${lang} ${w}x${h}  doc ${m.docScrollY}/${m.docScrollX} page ${m.pageScrollY}/${m.pageScrollX}  rows[${m.rowsPerPanel}]  hidden: ${bad.join(', ') || '—'}  small targets ${m.smallTargetCount}  min font ${m.minFontPx}px${errors.length ? '  ERRORS ' + errors.join(' | ') : ''}`);

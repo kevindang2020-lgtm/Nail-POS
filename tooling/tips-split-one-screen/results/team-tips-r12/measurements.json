@@ -1,0 +1,671 @@
+{
+ "label": "team-tips-r12",
+ "at": "2026-11-13T21:57:55.727Z",
+ "rows": [
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1220,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x1080",
+   "pass": true,
+   "vw": 1920,
+   "vh": 1080,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1085,
+   "pageScrollX": 0,
+   "box": 1020,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1426,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1837,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1969,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1220,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x1080",
+   "pass": true,
+   "vw": 1920,
+   "vh": 1080,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1085,
+   "pageScrollX": 0,
+   "box": 1020,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1426,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1837,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 1969,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:5 tt-recon:0 tt-history:25",
+   "errors": []
+  },
+  {
+   "page": "team-tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 99,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:0 tt-recon:0 tt-history:0",
+   "errors": [
+    "shot target missing tt-leader"
+   ]
+  },
+  {
+   "page": "team-tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x1080",
+   "pass": true,
+   "vw": 1920,
+   "vh": 1080,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 1020,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:0 tt-recon:0 tt-history:0",
+   "errors": [
+    "shot target missing tt-leader"
+   ]
+  },
+  {
+   "page": "team-tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 305,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:0 tt-recon:0 tt-history:0",
+   "errors": [
+    "shot target missing tt-leader"
+   ]
+  },
+  {
+   "page": "team-tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 515,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:0 tt-recon:0 tt-history:0",
+   "errors": [
+    "shot target missing tt-leader"
+   ]
+  },
+  {
+   "page": "team-tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 647,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "tt-refresh": true,
+    "tt-accuracy-open": true,
+    "preset-today": true,
+    "preset-week": true,
+    "preset-month": true,
+    "preset-year": true,
+    "preset-custom": true,
+    "tt-kpi-total": true,
+    "tt-kpi-card": true,
+    "tt-kpi-cash": true,
+    "tt-kpi-avg": true,
+    "tips-search": true,
+    "tt-method": true,
+    "tt-status": true,
+    "tt-reset": true,
+    "start:tt-leaderboard": true
+   },
+   "pagers": [
+    {
+     "panel": "tt-history",
+     "ok": "outside"
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 12.5,
+   "rowsPerPanel": "tt-leaderboard:0 tt-recon:0 tt-history:0",
+   "errors": [
+    "shot target missing tt-leader"
+   ]
+  }
+ ],
+ "unhandledRoutes": [
+  {
+   "route": "POST /tenant/navigation/badges/sync",
+   "n": 15
+  },
+  {
+   "route": "POST /auth/session-activity",
+   "n": 15
+  }
+ ]
+}

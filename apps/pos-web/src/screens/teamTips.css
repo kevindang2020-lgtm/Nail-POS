@@ -1,0 +1,100 @@
+/* teamTips.css — Team → Tips only (every selector starts with .ttp). Team Tips spec (Nov 13 2026): SUNMI FLEX 3 27" 1920×1080 at
+   100 % zoom — one vertical scroll region (the page), no horizontal overflow, four equal KPI cards (2×2 when narrower), the
+   leaderboard beside the reconciliation, the history below with its pager visible. Grid tracks use minmax(0, 1fr) and every
+   child min-width:0 so nothing pushes the page wider than the content area. Touch targets ≥ 44 px; text never below 12 px. */
+.work.ttp{padding:14px 18px 24px;min-width:0;max-width:100%;overflow-x:hidden;box-sizing:border-box}
+/* the container is the page BODY, not .work.ttp: size containment makes an element the containing block of fixed children,
+   and the detail overlays (fixed backdrops) are siblings of the body so they still cover the viewport */
+.ttp .ttp-body{container:ttp / inline-size;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ttp .ttp-body>*{min-width:0}
+.ttp .ttp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ttp .ttp-title{min-width:0}
+.ttp .ttp-title h1{margin:0;font-size:24px;line-height:1.2}
+.ttp .ttp-title .sub{font-size:14px;color:var(--muted)}
+.ttp .ttp-actions{display:flex;gap:8px;flex-wrap:wrap}
+.ttp .ttp-period{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ttp .ttp-period .sub{font-size:12.5px;color:var(--muted)}
+.ttp .ttp-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ttp .ttp-kpis>.fk-error,.ttp .ttp-kpis>.fk-empty{grid-column:1/-1}
+.ttp .ttp-kpi{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;display:flex;flex-direction:column;gap:2px}
+.ttp .ttp-kpi-l{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#6E5E48;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ttp .ttp-kpi-v{font-size:30px;font-weight:800;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ttp .ttp-kpi.gold .ttp-kpi-v{color:var(--aps-orange, var(--g8))}
+.ttp .ttp-kpi-s{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ttp .ttp-kpi-d{font-size:12px;color:var(--muted);line-height:1.35;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ttp .ttp-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.ttp .ttp-search{position:relative;display:flex;align-items:center;flex:1 1 360px;min-width:220px;max-width:640px}
+.ttp .ttp-search .fk-search{width:100%;max-width:none;height:46px;font-size:14px;padding-right:40px}
+.ttp .ttp-search .fk-x{position:absolute;right:4px}
+.ttp .ttp-filters .fk-select{height:46px;font-size:14px;max-width:220px}
+.ttp .ttp-count,.ttp .ttp-active{font-size:13px;color:var(--muted);white-space:nowrap}
+.ttp .ttp-active{margin-left:auto}
+.ttp .ttp-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;align-items:start}
+.ttp .ttp-panel{min-width:0;overflow:visible}
+.ttp .ttp-panel .fk-panel-head h2{font-size:16px}
+.ttp .ttp-hint{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ttp .ttp-panel-body{padding:0 14px 12px;max-height:440px;overflow:auto;overscroll-behavior:contain}
+.ttp .fk-table{font-size:14px}
+.ttp .fk-table th{font-size:12px}
+.ttp .fk-table td{height:46px}
+.ttp .ttp-leaders .ttp-barcol{width:34%}
+.ttp .ttp-click{cursor:pointer}
+.ttp .ttp-click:hover,.ttp .ttp-click:focus-visible{background:#FFF9EE;outline:2px solid var(--g7, #B8862E);outline-offset:-2px}
+.ttp .ttp-bar{background:var(--line);border-radius:5px;height:10px;overflow:hidden;min-width:40px}
+.ttp .ttp-bar>div{height:100%;background:var(--aps-orange, var(--g7))}
+.ttp .ttp-s{font-size:12.5px;color:var(--muted);font-weight:400}
+.ttp .ttp-unalloc{display:flex;justify-content:space-between;gap:8px;padding:10px 8px 0;font-size:13.5px;color:#A0601A;border-top:1px dashed var(--line);margin-top:6px}
+.ttp .ttp-recon{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0}
+.ttp .ttp-recon>div{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid #F4EDE1;font-size:14px}
+.ttp .ttp-recon dt{color:#6E5E48;min-width:0}
+.ttp .ttp-recon dd{margin:0;font-weight:800;white-space:nowrap}
+.ttp .ttp-balance{margin-top:10px;border-radius:10px;padding:8px 10px;font-size:13.5px;border:1px solid}
+.ttp .ttp-balance.ok{background:#EEF6EC;border-color:#BCD8B5;color:#2F5A2A}
+.ttp .ttp-balance.warn{background:#FFF6E6;border-color:#E8CFA0;color:#7A4E12}
+.ttp .ttp-balance.bad{background:#FBEDEA;border-color:#E6B9AE;color:#8A2E1E}
+.ttp .ttp-rule{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.ttp .ttp-history{min-width:0;overflow:visible}
+.ttp .ttp-history .fk-panel-head h2{font-size:16px}
+.ttp .ttp-size{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.ttp .ttp-table-wrap{max-width:100%;overflow-x:auto;padding:0 14px}
+.ttp .ttp-table{table-layout:auto}
+.ttp .ttp-table thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.ttp .ttp-table td{max-width:240px}
+.ttp .ttp-table .num,.ttp .ttp-leaders .num{text-align:right}
+.ttp .ttp-n{color:var(--muted);width:48px}
+.ttp .ttp-fresh{margin:0 14px 8px;min-height:44px;border-radius:10px;border:1px solid #E8CFA0;background:#FFF6E6;color:#7A4E12;font:inherit;font-weight:700;cursor:pointer}
+.ttp .ttp-ov{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ttp-ov .ttp-ov-totals{font-size:14px;font-weight:700}
+.ttp-ov .ttp-s{font-size:12.5px;color:var(--muted)}
+.ttp-ov .ttp-table{font-size:13.5px}
+.ttp-ov .ttp-table td{height:44px}
+.ttp-ov .ttp-checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ttp-ov .ttp-check{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto auto;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid #F4EDE1;font-size:14px}
+.ttp-ov .ttp-check-i{width:24px;height:24px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.ttp-ov .ttp-check.ok .ttp-check-i{background:#EEF6EC;color:#2F5A2A}
+.ttp-ov .ttp-check.warn .ttp-check-i{background:#FFF6E6;color:#7A4E12}
+.ttp-ov .ttp-check.fail .ttp-check-i{background:#FBEDEA;color:#8A2E1E}
+.ttp-ov .ttp-check-s{font-weight:700;white-space:nowrap}
+.ttp-ov .ttp-check-n{color:var(--muted);white-space:nowrap}
+.ttp-ov .ttp-balance{border-radius:10px;padding:8px 10px;font-size:13.5px;border:1px solid}
+.ttp-ov .ttp-balance.ok{background:#EEF6EC;border-color:#BCD8B5;color:#2F5A2A}
+.ttp-ov .ttp-balance.warn{background:#FFF6E6;border-color:#E8CFA0;color:#7A4E12}
+.ttp-ov .ttp-balance.bad{background:#FBEDEA;border-color:#E6B9AE;color:#8A2E1E}
+/* short windows (a browser with its address bar and the OS taskbar on a 768-px-high screen): the KPI definitions take one line,
+   the month calendar's days are a little shorter so Apply / Cancel stay inside the viewport */
+@media (max-height:800px){
+  .ttp .ttp-kpi-d{-webkit-line-clamp:1}
+  .ttp .ttp-kpi{padding:10px 14px}
+  .ttp .fn-pop .fn-day{height:32px}
+}
+/* narrower content areas (1440×900 or 1366×768 with the sidebar open, a docked browser): KPI cards 2×2, the two panels
+   stacked. Decided by the page's own measured width (container query), not the device name. */
+@container ttp (max-width:1180px){
+  .ttp .ttp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ttp .ttp-row{grid-template-columns:minmax(0,1fr)}
+  .ttp .ttp-active{margin-left:0}
+}
+@container ttp (max-width:560px){
+  .ttp .ttp-kpis{grid-template-columns:minmax(0,1fr)}
+  .ttp .ttp-kpi-v{font-size:24px}
+}

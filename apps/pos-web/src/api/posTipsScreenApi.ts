@@ -3,7 +3,7 @@
 // scope; lists page on the server. The ONE write (a reasoned re-allocation of a paid ticket's tip) is posPayrollApi.setTicketTip
 // → POST /pos/tickets/:id/tip-allocation (tips.adjust), which the detail dialog calls.
 import { api } from './client';
-import type { TipsTechnicianEarningsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { TipsTechnicianEarningsResponse, TipsAccuracyResponse } from '@aipowersalon/api-contracts/tenant';
 type Q = Record<string, unknown>;
 const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== ''));
 const B = '/pos/payments/tips';
@@ -13,6 +13,8 @@ export const posTipsScreenApi = {
   distribution: (q: Q) => api.get<any>(`${B}/distribution`, clean(q)),
   /** extras TIPS 01: one technician's earnings overlay (same period / basis as distribution) */
   technicianEarnings: (technicianId: string, q: Q) => api.get<TipsTechnicianEarningsResponse>(`${B}/technicians/${encodeURIComponent(technicianId)}/earnings`, clean(q)),
+  /** Team Tips (Nov 13 2026): the read-only Tip Accuracy check (same scope as the KPIs; writes nothing) */
+  accuracy: (q: Q) => api.get<TipsAccuracyResponse>(`${B}/accuracy`, clean(q)),
   technicians: () => api.get<{ id: string; name: string }[]>(`${B}/technicians`),
   adjustments: (q: Q) => api.get<any>(`${B}/adjustments`, clean(q)),
   detail: (ticketId: string) => api.get<any>(`${B}/${encodeURIComponent(ticketId)}/detail`),

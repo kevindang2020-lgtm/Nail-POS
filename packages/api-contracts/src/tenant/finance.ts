@@ -184,7 +184,13 @@ export interface ReceiptProcessingResponse {
  *  allocated share, its payout state and the payroll period it is (or will be) paid in; totals by state reconcile with the
  *  Distribution row (allocated = pending + paid). */
 export type TipsPayoutState = 'paid' | 'approved' | 'open' | 'none';
-export interface TipsTechnicianEarningsTicket { ticketId: string; ticketNumber: string | null; collectedAt: string | null; ticketTipCents: number; allocatedCents: number; sharedWith: number; payoutState: TipsPayoutState; period: { id: string; label: string | null; paidAt: string | null } | null }
+/** Team Tips (Nov 13 2026): how this technician's share was decided — the customer chose it on the display, the front desk
+ *  set it, the only technician on the ticket, or the salon's tip policy (two technicians 50/50 exact-cent; three or more the
+ *  salon's configured rule). `corrected` = a posted manual tip correction exists on the ticket. */
+export type TipsAllocationBasis = 'customer_selected' | 'staff_directed' | 'single' | 'salon_policy';
+export interface TipsTechnicianEarningsTicket { ticketId: string; ticketNumber: string | null; collectedAt: string | null; ticketTipCents: number; allocatedCents: number; sharedWith: number; payoutState: TipsPayoutState; period: { id: string; label: string | null; paidAt: string | null } | null;
+  /** Team Tips: the ticket's tip method (card / cash / split) and the allocation basis (optional: older servers omit them) */
+  method?: 'card' | 'cash' | 'split' | 'none'; allocationBasis?: TipsAllocationBasis; corrected?: boolean }
 export interface TipsTechnicianEarningsPeriod { id: string | null; label: string | null; state: TipsPayoutState; allocatedCents: number; tickets: number; paidAt: string | null }
 export interface TipsTechnicianEarningsResponse {
   technician: { id: string; name: string | null; active: boolean };
@@ -192,4 +198,14 @@ export interface TipsTechnicianEarningsResponse {
   periods: TipsTechnicianEarningsPeriod[];
   items: TipsTechnicianEarningsTicket[]; total: number; page: number; pageSize: number; pageCount: number;
   period: { preset: string; from: string | null; to: string | null; tz: string; today: string }; dateBasis: string;
+}
+
+/** Team Tips (Nov 13 2026) — the read-only Tip Accuracy check (GET /pos/payments/tips/accuracy). Every check is computed over the
+ *  same scope and date basis as the KPIs; nothing is written, moved or corrected. `samples` are at most 5 ticket ids. */
+export type TipsAccuracyCheckKey = 'source_coverage' | 'payment_tip_drift' | 'period_match' | 'allocation_reconciliation' | 'over_allocated' | 'snapshot_mismatch' | 'duplicate_provider_reference' | 'unsettled_tip';
+export interface TipsAccuracyCheck { key: TipsAccuracyCheckKey; status: 'ok' | 'warn' | 'fail'; count: number; cents: number | null; samples: string[] }
+export interface TipsAccuracyResponse {
+  checks: TipsAccuracyCheck[]; overall: 'ok' | 'warn' | 'fail';
+  totals: { collectedCents: number; allocatedCents: number; unallocatedCents: number; technicianSumCents: number; tippedTickets: number };
+  period: { preset: string; from: string | null; to: string | null; tz: string; today: string }; dateBasis: string; asOf: string; readOnly: true;
 }

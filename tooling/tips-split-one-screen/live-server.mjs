@@ -83,6 +83,8 @@ async function route(method, path, query, body) {
   if (method === 'GET' && path === TP + '/distribution') return call(() => C.tp.distribution(r, Q));
   if (method === 'GET' && path === TP + '/technicians') return call(() => C.tp.technicians(r));
   if (method === 'GET' && path === TP + '/adjustments') return call(() => C.tp.adjustments(r, Q));
+  if (method === 'GET' && path === TP + '/accuracy') return call(() => C.tp.accuracy(r, Q));   // Team Tips (Nov 13 2026), read-only
+  if (method === 'GET' && (x = m(/^\/pos\/payments\/tips\/technicians\/([^/]+)\/earnings$/))) return call(() => C.tp.technicianEarnings(r, x[1], Q));
   if (method === 'GET' && path === TP + '/export') return has('pos.reports.export') ? call(() => C.tp.exportCsv(r, Q)) : denied();
   if (method === 'GET' && (x = m(/^\/pos\/payments\/tips\/([^/]+)\/detail$/))) return call(() => C.tp.detail(r, x[1]));
   // ── Split Payments (read model — real) ──
