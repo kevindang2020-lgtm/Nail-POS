@@ -11,6 +11,13 @@ import { TENANT_AI_PLAN_SUBSCRIPTION } from '../lifecycles';
 import { logException } from '@aipowersalon/observability';
 import { planReadiness, readinessFacts } from './ai-plan-readiness';
 
+/** extras AI Plans 04 — the ONE anti-duplicate rule for starting a plan (one free trial per plan per salon): the storefront's
+ *  preview and startPlanTrial both call it, so the preview can never promise what the server refuses. */
+export function planStartRefusal(prior: { status?: string | null } | null | undefined): 'trial_already_used' | 'already_subscribed' | null {
+  if (!prior) return null;
+  return prior.status === 'cancelled' || prior.status === 'expired' ? 'trial_already_used' : 'already_subscribed';
+}
+
 export class TenantAiError extends Error { constructor(public code: 'forbidden' | 'not_found' | 'bad_request', message: string) { super(message); } }
 export interface TenantCtx { tenantId?: string; userId?: string; role?: string; permissions?: string[] }
 
@@ -108,6 +115,8 @@ export class TenantAiService {
     }
     // AI Plans #05: the TECHNICAL readiness, read once for the salon and kept apart from the commercial `state` below
     const facts = await readinessFacts(this.db, tenantId);
+    // extras AI Plans 04: the salon's unused account credits (billing_credits still active) — shown before checkout, never applied here
+    const creditsRemainingCents = this.db ? Number((await sql<{ c: string | number }>`SELECT COALESCE(SUM(remaining_cents), 0)::bigint AS c FROM billing_credits WHERE tenant_id = ${tenantId} AND status = 'active' AND (expires_at IS NULL OR expires_at > now())`.execute(this.db)).rows[0]?.c ?? 0) : 0;
     const plans = AI_PLANS.filter((pl) => settings.get(pl.code)?.active ?? true).map((pl) => {
       const s = settings.get(pl.code);
       const { fullCents, effectiveCents, discountCents } = effectivePlanPriceCents(pl.code, { priceCentsOverride: s?.price_cents_override ?? null, discountType: s?.discount_type ?? null, discountValue: s?.discount_value ?? 0 });
@@ -142,6 +151,11 @@ export class TenantAiService {
         code: pl.code, name: pl.name, description: pl.description, essential: !!pl.essential,
         priceCheck,
         overlap: { owned, ownedMonthlyCents: owned.reduce((a, x) => a + (x.status === 'active' ? x.monthlyPriceCents : 0), 0) },
+        // extras AI Plans 04 — the charge effect before checkout, from the SAME guard startPlanTrial enforces (planStartRefusal):
+        // what starting the trial would be refused for, what is charged today (a trial: nothing), what the plan costs after the
+        // trial, what could be paid twice (members already live on their own, left as they are) and the credits on the account.
+        charge: { refusal: planStartRefusal(planRow), chargedTodayCents: 0, afterTrialMonthlyCents: effectiveCents,
+          possibleDoubleMonthlyCents: owned.reduce((a, x) => a + (x.status === 'active' ? x.monthlyPriceCents : 0), 0), creditsRemainingCents },
         fullCents, discountCents, effectiveCents,
         subscribed, status: planSub?.status ?? (subscribed ? 'active' : null), trialAvailable,
         state, trialEndsAt: trialEndsAt ? trialEndsAt.toISOString() : null, cancelledAt: planRow?.cancelled_at ? new Date(planRow.cancelled_at).toISOString() : null,
@@ -171,7 +185,8 @@ export class TenantAiService {
     // the plan path used to re-trial cancelled packages and re-open a cancelled plan's trial (cancel → trial again, forever)
     if (this.db) {
       const prior = (await sql<any>`SELECT status FROM tenant_ai_plan_subscriptions WHERE tenant_id = ${tenantId} AND plan_code = ${planCode}`.execute(this.db)).rows[0];
-      if (prior) throw new TenantAiError('bad_request', prior.status === 'cancelled' || prior.status === 'expired' ? 'trial_already_used' : 'already_subscribed');
+      const refusal = planStartRefusal(prior);
+      if (refusal) throw new TenantAiError('bad_request', refusal);
     }
     const existing = await this.repo.listForTenant(tenantId);
     const byCode = new Map(existing.map((x) => [x.packageCode, x]));

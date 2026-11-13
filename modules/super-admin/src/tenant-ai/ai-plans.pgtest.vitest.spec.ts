@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { TenantAiService, TenantAiError } from './tenant-ai.service';
+import { TenantAiService, TenantAiError, planStartRefusal } from './tenant-ai.service';
 import { KyselyTenantAiRepo } from './tenant-ai.repository';
 
 const T = 'c7710000-0000-4000-8000-000000000001';
@@ -65,6 +65,15 @@ describe('AI Plans', () => {
     expect(p.overlap.ownedMonthlyCents).toBe(3900);   // a trial is not yet paid
     // a plan already live has nothing "to buy", so no overlap is shown
     expect((await plan('plan_money_owner')).overlap).toEqual({ owned: [], ownedMonthlyCents: 0 });
+  });
+  it('extras AI Plans 04: before checkout each plan shows the charge effect — refusal from the same guard startPlanTrial uses, nothing charged today, the price after the trial, what could be paid twice, unused account credits', async () => {
+    await q(sql`insert into billing_credits (tenant_id, amount_cents, remaining_cents, status, created_at, expires_at) values (${T}, 5000, 2500, 'active', now(), null), (${T}, 9000, 9000, 'active', now(), now() - interval '1 day'), (${T}, 4000, 0, 'applied', now(), null)`);
+    const g = await plan('plan_client_growth');
+    expect(g.charge).toEqual({ refusal: null, chargedTodayCents: 0, afterTrialMonthlyCents: g.effectiveCents, possibleDoubleMonthlyCents: 3900, creditsRemainingCents: 2500 });   // expired / applied credits not counted
+    const m = await plan('plan_money_owner');   // cancelled in PL-03
+    expect(m.charge.refusal).toBe('trial_already_used');
+    expect(await code(svc.startPlanTrial(ctx, 'plan_money_owner'))).toBe(m.charge.refusal);   // the preview never promises what the server refuses
+    expect(planStartRefusal(null)).toBeNull(); expect(planStartRefusal({ status: 'active' })).toBe('already_subscribed'); expect(planStartRefusal({ status: 'expired' })).toBe('trial_already_used');
   });
   it('extras AI Plans #03: the price is checked against the members bought separately — a real saving is verified; an overridden list price that makes "Save" untrue is flagged; read-only', async () => {
     const p0 = await plan('plan_client_growth');

@@ -197,4 +197,11 @@ export const AIPLANS_VI: Record<string, string> = {
   "aic.ev.v.failing": "Đang lỗi", // DRAFT — Kevin reviews
   "aic.ev.v.limit": "Hết hạn mức", // DRAFT — Kevin reviews
   "aic.ev.v.gate_mismatch": "Kiểm tra không khớp trạng thái", // DRAFT — Kevin reviews
+  "plx.charge.today": "Tính tiền hôm nay: {a} (dùng thử miễn phí).", // DRAFT — Kevin reviews
+  "plx.charge.after": "Sau thời gian dùng thử: {a} mỗi tháng nếu không hủy.", // DRAFT — Kevin reviews
+  "plx.charge.double": "Trợ lý bạn đang trả riêng vẫn tính tiền riêng: có thể trả hai lần đến {a} mỗi tháng.", // DRAFT — Kevin reviews
+  "plx.charge.credits": "Tín dụng tài khoản chưa dùng: {a}. Phần thanh toán sẽ áp dụng, không phải màn hình này.", // DRAFT — Kevin reviews
+  "plx.charge.noCredits": "Không có tín dụng tài khoản chưa dùng.", // DRAFT — Kevin reviews
+  "plx.charge.refusal.trial_already_used": "Tiệm đã dùng thử gói này — bắt đầu lại sẽ bị từ chối.", // DRAFT — Kevin reviews
+  "plx.charge.refusal.already_subscribed": "Tiệm đã có gói này — bắt đầu lại sẽ bị từ chối.", // DRAFT — Kevin reviews
 };

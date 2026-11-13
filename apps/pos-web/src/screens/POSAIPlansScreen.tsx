@@ -119,6 +119,13 @@ export function POSAIPlansScreen() {
                 <div className="panel" style={{ padding: 10 }} data-testid={`plan-confirm-${p.code}`}>
                   <p style={{ fontSize: 13 }}>{confirm.action === 'cancel' ? t('plx.confirmCancel', { name: p.name }) : t('plx.confirmTrial', { name: p.name, price: money(p.effectiveCents) })}</p>
                   {confirm.action === 'trial' && p.overlap?.owned.length ? <p className="warn" style={{ fontSize: 13 }} data-testid={`plan-confirm-overlap-${p.code}`}>{t('plx.overlapConfirm')}</p> : null}
+                  {confirm.action === 'trial' && p.charge ? <ul style={{ fontSize: 12.5, margin: '4px 0 8px 16px' }} data-testid={`plan-confirm-charge-${p.code}`}>
+                    {p.charge.refusal ? <li className="warn" data-testid={`plan-charge-refusal-${p.code}`}>{t('plx.charge.refusal.' + p.charge.refusal)}</li> : null}
+                    <li>{t('plx.charge.today', { a: money(p.charge.chargedTodayCents) })}</li>
+                    <li>{t('plx.charge.after', { a: money(p.charge.afterTrialMonthlyCents) })}</li>
+                    {p.charge.possibleDoubleMonthlyCents ? <li className="warn">{t('plx.charge.double', { a: money(p.charge.possibleDoubleMonthlyCents) })}</li> : null}
+                    <li>{p.charge.creditsRemainingCents ? t('plx.charge.credits', { a: money(p.charge.creditsRemainingCents) }) : t('plx.charge.noCredits')}</li>
+                  </ul> : null}
                   <div style={{ display: 'flex', gap: 8 }}><button className="btn ghost" onClick={() => setConfirm(null)}>{t('pos.cancel')}</button>
                     <button className="btn" data-testid={`plan-confirm-go-${p.code}`} disabled={busy === p.code} onClick={() => { setConfirm(null); if (confirm.action === 'cancel') cancel(p); else startTrial(p); }}>{confirm.action === 'cancel' ? t('pos.cancel_plan') : t('pos.start_plan_trial')}</button></div>
                 </div>

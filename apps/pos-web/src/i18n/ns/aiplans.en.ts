@@ -197,4 +197,11 @@ export const AIPLANS_EN: Record<string, string> = {
   "aic.ev.v.failing": "Failing",
   "aic.ev.v.limit": "Allowance used up",
   "aic.ev.v.gate_mismatch": "Check disagrees with state",
+  "plx.charge.today": "Charged today: {a} (a free trial).",
+  "plx.charge.after": "After the trial: {a} a month unless you cancel.",
+  "plx.charge.double": "Assistants you already pay for on their own keep their own charge: up to {a} a month could be paid twice.",
+  "plx.charge.credits": "Account credits not yet used: {a}. Billing applies them, not this screen.",
+  "plx.charge.noCredits": "No unused account credits.",
+  "plx.charge.refusal.trial_already_used": "This salon already used this plan's free trial — starting it will be refused.",
+  "plx.charge.refusal.already_subscribed": "This salon already has this plan — starting it again will be refused.",
 };

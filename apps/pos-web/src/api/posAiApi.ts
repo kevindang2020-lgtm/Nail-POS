@@ -33,6 +33,8 @@ export interface PosAiPlan {
   state: string; trialEndsAt: string | null; cancelledAt: string | null; canCancel: boolean;
   /** members this salon already has on their own (SUNMI purchase-overlap preview); absent from older servers */
   overlap?: { owned: { code: string; name: string; status: string; monthlyPriceCents: number }[]; ownedMonthlyCents: number };
+  /** extras AI Plans 04 (server): the charge effect before checkout — the same guard the start uses, money in cents */
+  charge?: { refusal: 'trial_already_used' | 'already_subscribed' | null; chargedTodayCents: number; afterTrialMonthlyCents: number; possibleDoubleMonthlyCents: number; creditsRemainingCents: number };
   /** extras AI Plans #03: the server's price check against the members bought separately; absent from older servers */
   priceCheck?: { standaloneCents: number; realSavingsCents: number; claimedSavingsCents: number; state: 'verified' | 'overstated' | 'no_saving' | 'unknown' };
   /** extras AI Plans #05: TECHNICAL readiness, apart from the commercial `state` (absent from older servers) */
