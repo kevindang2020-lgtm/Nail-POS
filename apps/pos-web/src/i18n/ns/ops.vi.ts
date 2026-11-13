@@ -1943,4 +1943,36 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.catalog.checkout_discount_over_lines.fix": "Xem lại giảm giá trên các phiếu đó (ưu đãi, mã giảm giá, giảm tay hoặc thành viên) và ai đã duyệt.", // DRAFT — Kevin reviews
   "syschk.catalog.checkout_tax_without_taxable_line": "Không phiếu đã thanh toán nào tính thuế khi không có dòng chịu thuế", // DRAFT — Kevin reviews
   "syschk.catalog.checkout_tax_without_taxable_line.fix": "Kiểm tra cài đặt Chịu thuế của từng dịch vụ và tiền thuế trên các phiếu đó; hoàn lại thuế nếu tính nhầm.", // DRAFT — Kevin reviews
+  "syschk.src.show": "Xem các dòng nguồn", // DRAFT — Kevin reviews
+  "syschk.src.hide": "Ẩn các dòng nguồn", // DRAFT — Kevin reviews
+  "syschk.src.failed": "Không tải được các dòng nguồn.", // DRAFT — Kevin reviews
+  "syschk.src.none": "Không thể hiện dòng nguồn cho mục kiểm tra này.", // DRAFT — Kevin reviews
+  "syschk.src.more": "Đang hiện {n} dòng mới nhất; còn nữa.", // DRAFT — Kevin reviews
+  "syschk.src.col.source": "Nguồn", // DRAFT — Kevin reviews
+  "syschk.src.col.member": "Hội viên", // DRAFT — Kevin reviews
+  "syschk.src.col.ticket": "Phiếu", // DRAFT — Kevin reviews
+  "syschk.src.col.amount": "Số tiền", // DRAFT — Kevin reviews
+  "syschk.src.col.when": "Thời gian", // DRAFT — Kevin reviews
+  "syschk.src.col.detail": "Chi tiết", // DRAFT — Kevin reviews
+  "syschk.src.kind.membership": "Gói hội viên", // DRAFT — Kevin reviews
+  "syschk.src.kind.payment": "Thanh toán gói hội viên", // DRAFT — Kevin reviews
+  "syschk.src.kind.redemption": "Lần dùng quyền lợi", // DRAFT — Kevin reviews
+  "syschk.src.kind.ledger_entry": "Bút toán sổ tín dụng", // DRAFT — Kevin reviews
+  "syschk.src.kind.benefit_balance": "Số dư quyền lợi", // DRAFT — Kevin reviews
+  "syschk.src.kind.redemption_vs_ledger": "Lần dùng so với sổ", // DRAFT — Kevin reviews
+  "syschk.src.kind.notice": "Thông báo hội viên", // DRAFT — Kevin reviews
+  "syschk.src.credits": "Số dư {n} lượt", // DRAFT — Kevin reviews
+  "syschk.src.mismatch": "{r} bản ghi sử dụng so với {l} bút toán sổ", // DRAFT — Kevin reviews
+  "syschk.src.code.pending": "Đang chờ", // DRAFT — Kevin reviews
+  "syschk.src.code.renewal": "Gia hạn", // DRAFT — Kevin reviews
+  "syschk.src.code.installment": "Trả góp", // DRAFT — Kevin reviews
+  "syschk.src.code.invoice": "Trả bằng hóa đơn", // DRAFT — Kevin reviews
+  "syschk.src.code.voided": "Phiếu đã hủy", // DRAFT — Kevin reviews
+  "syschk.src.code.void": "Phiếu đã hủy", // DRAFT — Kevin reviews
+  "syschk.src.code.paid": "Phiếu đã thanh toán", // DRAFT — Kevin reviews
+  "syschk.src.code.canceled": "Đã hủy", // DRAFT — Kevin reviews
+  "syschk.src.code.cancelled": "Đã hủy", // DRAFT — Kevin reviews
+  "syschk.src.code.expired": "Hết hạn", // DRAFT — Kevin reviews
+  "syschk.src.code.active": "Đang hoạt động", // DRAFT — Kevin reviews
+  "syschk.src.code.grace": "Thời gian gia hạn", // DRAFT — Kevin reviews
 };

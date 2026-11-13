@@ -439,6 +439,42 @@ describe('shared read-only Check … System', () => {
     expect(count(b2, 'charged_after_cancel').count).toBe(0);
     expect((await q(tally)).rows).toEqual(before);
   });
+  it('extras Membership Overview 16·15 — Reconciliation Drill-Down: each discrepant check opens its SOURCE rows (ledger / payment / redemption), same predicate, branch-scoped, never another salon, writes nothing', async () => {
+    // the salon pair planted by the test above (ids 630..652, agent-3 range)
+    const T3 = id(630), X3 = id(631), B32 = id(633), M1 = id(643), M2 = id(644), MX = id(645), BEN = id(641), K1 = id(646), K2 = id(647);
+    const tally = sql`select (select count(*) from membership_credit_ledger) + (select count(*) from membership_redemptions) + (select count(*) from membership_payments) as n`;
+    const before = (await q(tally)).rows;
+    const all = await svc.run('memberships', { tenantId: T3 });
+    for (const c of all.checks.filter((x: any) => (x.count ?? 0) > 0 && SYSTEM_CHECKS.memberships.checks.find((d) => d.key === x.key)?.rows)) {
+      const r = await svc.rows('memberships', c.key, { tenantId: T3 });
+      expect(r.available).toBe(true);
+      expect(r.rows.length).toBe(c.count);                                   // the drill-down lists exactly what the count counted
+      expect(r.rows.every((x) => x.membershipId !== MX)).toBe(true);         // never the other salon's membership
+    }
+    const neg = await svc.rows('memberships', 'benefit_balance_negative', { tenantId: T3 });
+    expect(neg.rows).toEqual([expect.objectContaining({ membershipId: M1, source: 'benefit_balance', sourceId: BEN, customerName: 'Mem Ber', detail: '-1' })]);
+    const mis = await svc.rows('memberships', 'redemption_ledger_mismatch', { tenantId: T3 });
+    expect(mis.rows).toEqual([expect.objectContaining({ membershipId: M1, source: 'redemption_vs_ledger', ticketId: K1, detail: '1/2' })]);
+    const voided = await svc.rows('memberships', 'redeemed_on_voided_ticket', { tenantId: T3 });
+    expect(voided.rows).toEqual([expect.objectContaining({ membershipId: M2, source: 'redemption', ticketId: K2, detail: 'voided' })]);
+    const stuck = await svc.rows('memberships', 'payment_pending_stuck', { tenantId: T3 });
+    expect(stuck.rows).toEqual([expect.objectContaining({ membershipId: M2, source: 'payment', amountCents: 4900, detail: 'pending' })]);
+    const after = await svc.rows('memberships', 'charged_after_cancel', { tenantId: T3 });
+    expect(after.rows).toEqual([expect.objectContaining({ membershipId: M1, source: 'payment', amountCents: 4900, detail: 'renewal' })]);
+    // branch scope: B2 sees its own rows only
+    expect((await svc.rows('memberships', 'charged_after_cancel', { tenantId: T3, branchId: B32 })).rows).toEqual([]);
+    expect((await svc.rows('memberships', 'redeemed_on_voided_ticket', { tenantId: T3, branchId: B32 })).rows).toHaveLength(1);
+    // the other salon drills its own problems, never ours
+    const other = await svc.rows('memberships', 'payment_pending_stuck', { tenantId: X3 });
+    expect(other.rows.map((x) => x.membershipId)).toEqual([MX]);
+    // a check without a drill-down says so (no guess); an unknown key is refused
+    expect(await svc.rows('memberships', 'money_rows_other_salon', { tenantId: T3 })).toMatchObject({ available: false, rows: [] });
+    await expect(svc.rows('memberships', 'nope', { tenantId: T3 })).rejects.toMatchObject({ code: 'RESOURCE_NOT_FOUND' });
+    // the limit + truncated flag
+    const one = await svc.rows('memberships', 'payment_pending_stuck', { tenantId: T3 }, 1);
+    expect(one).toMatchObject({ limit: 1, truncated: false });
+    expect((await q(tally)).rows).toEqual(before);
+  });
   it('extras Membership Overview 13·12 — collections against the payment ledger: invoice no longer paid, over the invoice, card without a reference; branch-scoped; never another salon; writes nothing', async () => {
     // own salon pair (ids 4401..4449, agent-4 range) so nothing planted earlier in this shared DB is counted
     const T4 = id(4401), X4 = id(4402), B41 = id(4403), B42 = id(4404), BX4 = id(4405), C4 = id(4406), CX4 = id(4407), PL = id(4408), PV = id(4409), PLX = id(4410), PVX = id(4411);

@@ -13,7 +13,14 @@ import type { SystemCheckDomain } from '@aipowersalon/api-contracts/tenant';
 
 export type CheckSeverity = 'WARNING' | 'FAILED';
 /** t = tenant id, b = branch id or null (every branch). Returns one row { n }. */
-export interface CheckDef { key: string; severity: CheckSeverity; count: (t: string, b: string | null) => RawBuilder<{ n: number }> }
+export interface CheckDef { key: string; severity: CheckSeverity; count: (t: string, b: string | null) => RawBuilder<{ n: number }>;
+  /** extras Membership Overview 16 · 15 (Reconciliation Drill-Down): the SOURCE rows behind a non-zero count — the same
+   *  predicate as `count`, one row per problem, newest first (the service adds the limit). Absent = no drill-down. */
+  rows?: (t: string, b: string | null) => RawBuilder<CheckSourceRowDb> }
+/** one source row of a drill-down: the membership it belongs to and the ledger / payment / redemption / notice row itself.
+ *  detail is a code (a status / kind / processor), a credit balance (benefit_balance) or 'redemptions/ledger' counts. */
+export interface CheckSourceRowDb { membership_id: string; source: 'membership' | 'payment' | 'redemption' | 'ledger_entry' | 'benefit_balance' | 'redemption_vs_ledger' | 'notice';
+  source_id: string | null; ticket_id: string | null; amount_cents: number | null; at: string | null; detail: string | null }
 export interface DomainDef { permission: string; checks: CheckDef[] }
 
 /** each table alias's branch column, written out (no identifier is ever built from data) */
@@ -331,10 +338,12 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
 
   // ── Membership Overview (/pos/memberships) ────────────────────────────────────────────────────────────────────────
   memberships: { permission: 'pos.memberships.view', checks: [
-    { key: 'cancelled_still_billing', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('canceled', 'cancelled', 'expired', 'archived') AND m.next_billing_at > now()`) },
+    { key: 'cancelled_still_billing', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('canceled', 'cancelled', 'expired', 'archived') AND m.next_billing_at > now()`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'membership' AS source, m.id::text AS source_id, NULL::text AS ticket_id, NULL::bigint AS amount_cents, m.next_billing_at AS at, m.status::text AS detail
+        FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('canceled', 'cancelled', 'expired', 'archived') AND m.next_billing_at > now() ORDER BY m.next_billing_at DESC NULLS LAST` },
     { key: 'renew_without_consent', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.auto_renew AND m.auto_renew_consent_at IS NULL AND NOT coalesce(m.comped, false)
         AND m.status IN ('active', 'trial', 'grace', 'past_due')`) },
-    { key: 'billing_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'grace') AND m.next_billing_at < now() - interval '1 day' AND NOT coalesce(m.comped, false)`) },
+    { key: 'billing_overdue', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'grace') AND m.next_billing_at < now() - interval '1 day' AND NOT coalesce(m.comped, false)`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'membership' AS source, m.id::text AS source_id, NULL::text AS ticket_id, NULL::bigint AS amount_cents, m.next_billing_at AS at, m.status::text AS detail
+        FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status IN ('active', 'grace') AND m.next_billing_at < now() - interval '1 day' AND NOT coalesce(m.comped, false) ORDER BY m.next_billing_at DESC NULLS LAST` },
     { key: 'active_past_period', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status = 'active' AND m.current_period_end < now() - interval '1 day'`) },
     { key: 'paused_past_resume', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM customer_memberships m WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.status = 'paused' AND m.pause_resumes_at < now()`) },
     // ── benefit redemption integrity (extras Membership Overview 13 · 08 / 16 · 03): issue → reserve → redeem → release / reversal.
@@ -346,7 +355,18 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         HAVING sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.quantity WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.quantity ELSE 0 END)
                  - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.quantity WHEN l.entry_type = 'released' THEN -l.quantity WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.quantity ELSE 0 END)) < 0
             OR sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.amount_cents WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.amount_cents ELSE 0 END)
-                 - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.amount_cents WHEN l.entry_type = 'released' THEN -l.amount_cents WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.amount_cents ELSE 0 END)) < 0`) },
+                 - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.amount_cents WHEN l.entry_type = 'released' THEN -l.amount_cents WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.amount_cents ELSE 0 END)) < 0`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT l.customer_membership_id::text AS membership_id, 'benefit_balance' AS source, l.benefit_id::text AS source_id, NULL::text AS ticket_id,
+          (sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.amount_cents WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.amount_cents ELSE 0 END))::bigint AS amount_cents,
+          max(l.created_at) AS at,
+          (sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.quantity WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.quantity ELSE 0 END))::text AS detail
+        FROM membership_credit_ledger l JOIN customer_memberships m ON m.tenant_id = l.tenant_id AND m.id = l.customer_membership_id
+        WHERE l.tenant_id = ${t}::uuid ${br('m', b)} AND l.benefit_id IS NOT NULL
+        GROUP BY l.customer_membership_id, l.benefit_id
+        HAVING sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.quantity WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.quantity ELSE 0 END)
+                 - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.quantity WHEN l.entry_type = 'released' THEN -l.quantity WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.quantity ELSE 0 END)) < 0
+            OR sum(CASE WHEN l.entry_type IN ('issued', 'rolled_over', 'restored', 'adjusted') THEN l.amount_cents WHEN l.entry_type IN ('redeemed', 'expired') THEN -l.amount_cents ELSE 0 END)
+                 - greatest(0, sum(CASE WHEN l.entry_type = 'reserved' THEN l.amount_cents WHEN l.entry_type = 'released' THEN -l.amount_cents WHEN l.entry_type = 'redeemed' AND l.reservation_ref IS NOT NULL THEN -l.amount_cents ELSE 0 END)) < 0
+        ORDER BY max(l.created_at) DESC` },
     // a redeem writes BOTH an immutable redemption snapshot and a 'redeemed' ledger entry (redeemBenefit, one lock): per member,
     // benefit and ticket the two counts must agree — a snapshot with no ledger entry left the credit unspent, and the reverse
     // spent a credit with no record of the service it paid for
@@ -355,42 +375,75 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
           UNION ALL
           SELECT l.customer_membership_id, l.benefit_id, l.ticket_id, 0, count(*) FROM membership_credit_ledger l WHERE l.tenant_id = ${t}::uuid AND l.entry_type = 'redeemed' AND l.benefit_id IS NOT NULL AND l.ticket_id IS NOT NULL GROUP BY 1, 2, 3
         ) z JOIN customer_memberships m ON m.tenant_id = ${t}::uuid AND m.id = z.mid
-        WHERE true ${br('m', b)} GROUP BY z.mid, z.bid, z.tid HAVING sum(z.c) <> sum(z.l)`) },
+        WHERE true ${br('m', b)} GROUP BY z.mid, z.bid, z.tid HAVING sum(z.c) <> sum(z.l)`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT z.mid::text AS membership_id, 'redemption_vs_ledger' AS source, z.bid::text AS source_id, z.tid::text AS ticket_id, NULL::bigint AS amount_cents, NULL::timestamptz AS at,
+          sum(z.c)::text || '/' || sum(z.l)::text AS detail
+        FROM (
+          SELECT r.customer_membership_id AS mid, r.benefit_id AS bid, r.ticket_id AS tid, count(*) AS c, 0 AS l FROM membership_redemptions r WHERE r.tenant_id = ${t}::uuid AND r.benefit_id IS NOT NULL GROUP BY 1, 2, 3
+          UNION ALL
+          SELECT l.customer_membership_id, l.benefit_id, l.ticket_id, 0, count(*) FROM membership_credit_ledger l WHERE l.tenant_id = ${t}::uuid AND l.entry_type = 'redeemed' AND l.benefit_id IS NOT NULL AND l.ticket_id IS NOT NULL GROUP BY 1, 2, 3
+        ) z JOIN customer_memberships m ON m.tenant_id = ${t}::uuid AND m.id = z.mid
+        WHERE true ${br('m', b)} GROUP BY z.mid, z.bid, z.tid HAVING sum(z.c) <> sum(z.l) ORDER BY z.mid, z.tid` },
     // a hold that was never redeemed or released although its ticket is already closed (paid or voided): the credit stays held
     { key: 'reservation_open_on_closed_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_credit_ledger l
         JOIN customer_memberships m ON m.tenant_id = l.tenant_id AND m.id = l.customer_membership_id
         JOIN tickets k ON k.tenant_id = l.tenant_id AND k.id = l.ticket_id
         WHERE l.tenant_id = ${t}::uuid ${br('m', b)} AND l.entry_type = 'reserved' AND l.reservation_ref IS NOT NULL
           AND (k.paid_at IS NOT NULL OR k.status IN ('void', 'voided', 'cancelled', 'canceled'))
-          AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = l.tenant_id AND c.reservation_ref = l.reservation_ref AND c.entry_type IN ('released', 'redeemed'))`) },
+          AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = l.tenant_id AND c.reservation_ref = l.reservation_ref AND c.entry_type IN ('released', 'redeemed'))`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'ledger_entry' AS source, l.id::text AS source_id, l.ticket_id::text AS ticket_id, l.amount_cents::bigint AS amount_cents, l.created_at AS at, k.status::text AS detail
+        FROM membership_credit_ledger l
+        JOIN customer_memberships m ON m.tenant_id = l.tenant_id AND m.id = l.customer_membership_id
+        JOIN tickets k ON k.tenant_id = l.tenant_id AND k.id = l.ticket_id
+        WHERE l.tenant_id = ${t}::uuid ${br('m', b)} AND l.entry_type = 'reserved' AND l.reservation_ref IS NOT NULL
+          AND (k.paid_at IS NOT NULL OR k.status IN ('void', 'voided', 'cancelled', 'canceled'))
+          AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = l.tenant_id AND c.reservation_ref = l.reservation_ref AND c.entry_type IN ('released', 'redeemed'))
+        ORDER BY l.created_at DESC` },
     // a benefit consumed on a ticket that was later voided, with no reversal (restored / released / adjusted) for that ticket
     { key: 'redeemed_on_voided_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
         JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
         JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
         WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.status IN ('void', 'voided', 'cancelled', 'canceled')
           AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = r.tenant_id AND c.customer_membership_id = r.customer_membership_id
-                          AND c.ticket_id = r.ticket_id AND c.entry_type IN ('restored', 'released', 'adjusted'))`) },
+                          AND c.ticket_id = r.ticket_id AND c.entry_type IN ('restored', 'released', 'adjusted'))`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'redemption' AS source, r.id::text AS source_id, r.ticket_id::text AS ticket_id, NULL::bigint AS amount_cents, r.created_at AS at, k.status::text AS detail
+        FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.status IN ('void', 'voided', 'cancelled', 'canceled')
+          AND NOT EXISTS (SELECT 1 FROM membership_credit_ledger c WHERE c.tenant_id = r.tenant_id AND c.customer_membership_id = r.customer_membership_id
+                          AND c.ticket_id = r.ticket_id AND c.entry_type IN ('restored', 'released', 'adjusted'))
+        ORDER BY r.created_at DESC` },
     // ── billing (extras Membership Overview 16 · 02, part): a charge still "pending" a day later never got its provider result
     { key: 'payment_pending_stuck', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
-        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'pending' AND p.created_at < now() - interval '1 day'`) },
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'pending' AND p.created_at < now() - interval '1 day'`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'payment' AS source, p.id::text AS source_id, NULL::text AS ticket_id, p.amount_cents::bigint AS amount_cents, p.created_at AS at, p.status::text AS detail
+        FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'pending' AND p.created_at < now() - interval '1 day' ORDER BY p.created_at DESC` },
     // a renewal or installment collected AFTER the membership was cancelled
     { key: 'charged_after_cancel', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
-        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.kind IN ('renewal', 'installment') AND m.canceled_at IS NOT NULL AND p.created_at > m.canceled_at`) },
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.kind IN ('renewal', 'installment') AND m.canceled_at IS NOT NULL AND p.created_at > m.canceled_at`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'payment' AS source, p.id::text AS source_id, NULL::text AS ticket_id, p.amount_cents::bigint AS amount_cents, p.created_at AS at, p.kind::text AS detail
+        FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.kind IN ('renewal', 'installment') AND m.canceled_at IS NOT NULL AND p.created_at > m.canceled_at ORDER BY p.created_at DESC` },
     // ── finance reconciliation (extras Membership Overview 13 · 12, part): a membership collection must stand on the salon's
     // own payment ledger, never on a shadow total. A collection paid by an invoice (processor 'invoice', processor_ref = the
     // invoice id — collectFirstPayment) is only real while that invoice is still 'paid' in the Invoices ledger …
     { key: 'invoice_collection_not_paid', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
         WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.processor = 'invoice'
-          AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref AND i.status = 'paid')`) },
+          AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref AND i.status = 'paid')`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'payment' AS source, p.id::text AS source_id, NULL::text AS ticket_id, p.amount_cents::bigint AS amount_cents, p.created_at AS at, 'invoice' AS detail
+        FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'succeeded' AND p.processor = 'invoice' AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref AND i.status = 'paid') ORDER BY p.created_at DESC` },
     // … and may never claim more than that invoice collected (the enrol step refuses it; a later edit of either side is drift)
     { key: 'invoice_collection_over_invoice', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
         JOIN invoices i ON i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref
-        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor = 'invoice' AND p.amount_cents > i.total_cents`) },
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor = 'invoice' AND p.amount_cents > i.total_cents`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'payment' AS source, p.id::text AS source_id, NULL::text AS ticket_id, p.amount_cents::bigint AS amount_cents, p.created_at AS at,
+          'invoice' AS detail
+        FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        JOIN invoices i ON i.tenant_id = p.tenant_id AND i.id::text = p.processor_ref
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor = 'invoice' AND p.amount_cents > i.total_cents ORDER BY p.created_at DESC` },
     // a card collection or refund with no processor reference cannot be matched to the provider's batch or settlement
     // ('recorded' / 'manual' entries are staff-recorded and carry none by design)
     { key: 'card_collection_without_ref', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
         WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor NOT IN ('invoice', 'recorded', 'manual')
-          AND coalesce(btrim(p.processor_ref), '') = ''`) },
+          AND coalesce(btrim(p.processor_ref), '') = ''`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'payment' AS source, p.id::text AS source_id, NULL::text AS ticket_id, p.amount_cents::bigint AS amount_cents, p.created_at AS at, p.processor::text AS detail
+        FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status IN ('succeeded', 'refunded') AND p.processor NOT IN ('invoice', 'recorded', 'manual') AND coalesce(btrim(p.processor_ref), '') = '' ORDER BY p.created_at DESC` },
     // ── communication & consent (extras Membership Overview 16 · 07, part). Member notices are written once per reference
     // (membership-comms: an advisory lock + exists check); the same notice twice for one customer means that guard failed …
     { key: 'duplicate_member_notice', severity: 'WARNING', count: (t, b) => n(sql`SELECT cn.customer_id, cn.reference FROM customer_notifications cn
@@ -402,13 +455,21 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'failed_charge_not_told', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
         WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'failed' AND p.kind IN ('renewal', 'installment') AND p.created_at > now() - interval '30 days'
           AND NOT EXISTS (SELECT 1 FROM customer_notifications cn WHERE cn.tenant_id = m.tenant_id AND cn.customer_id = m.customer_id
-                          AND cn.reference LIKE 'membership-payment-failed:' || m.id::text || ':%' AND cn.created_at >= p.created_at - interval '1 minute')`) },
+                          AND cn.reference LIKE 'membership-payment-failed:' || m.id::text || ':%' AND cn.created_at >= p.created_at - interval '1 minute')`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'payment' AS source, p.id::text AS source_id, NULL::text AS ticket_id, p.amount_cents::bigint AS amount_cents, p.created_at AS at, p.kind::text AS detail
+        FROM membership_payments p JOIN customer_memberships m ON m.tenant_id = p.tenant_id AND m.id = p.customer_membership_id
+        WHERE p.tenant_id = ${t}::uuid ${br('m', b)} AND p.status = 'failed' AND p.kind IN ('renewal', 'installment') AND p.created_at > now() - interval '30 days'
+          AND NOT EXISTS (SELECT 1 FROM customer_notifications cn WHERE cn.tenant_id = m.tenant_id AND cn.customer_id = m.customer_id
+                          AND cn.reference LIKE 'membership-payment-failed:' || m.id::text || ':%' AND cn.created_at >= p.created_at - interval '1 minute') ORDER BY p.created_at DESC` },
     // ── cross-module wiring (extras Membership Overview 16 · 06, part): Membership ↔ Checkout ↔ Customers.
     // A benefit used on a ticket that belongs to a DIFFERENT customer than the member (the redeem step does not compare them) …
     { key: 'redeemed_for_other_customer', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
         JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
         JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
-        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.customer_id IS NOT NULL AND k.customer_id <> m.customer_id`) },
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.customer_id IS NOT NULL AND k.customer_id <> m.customer_id`), rows: (t, b) => sql<CheckSourceRowDb>`SELECT m.id::text AS membership_id, 'redemption' AS source, r.id::text AS source_id, r.ticket_id::text AS ticket_id, NULL::bigint AS amount_cents, r.created_at AS at, NULL::text AS detail
+        FROM membership_redemptions r
+        JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id
+        JOIN tickets k ON k.tenant_id = r.tenant_id AND k.id = r.ticket_id
+        WHERE r.tenant_id = ${t}::uuid ${br('m', b)} AND k.customer_id IS NOT NULL AND k.customer_id <> m.customer_id ORDER BY r.created_at DESC` },
     // … a redemption naming a service line that sits on another ticket than the one it was recorded against …
     { key: 'redemption_line_other_ticket', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM membership_redemptions r
         JOIN customer_memberships m ON m.tenant_id = r.tenant_id AND m.id = r.customer_membership_id

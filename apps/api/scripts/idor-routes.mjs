@@ -186,6 +186,8 @@ export const EXEMPT = [
   [/^\/pos\/project-status\/module\/\{moduleKey\}/, X('a platform module key, not a salon record')],
   [/^\/owner\/reports\/\{reportId\}\/export/, X('a report KIND name; the export is always of the caller\'s own salon')],
   [/^\/tenant\/help\/(articles|videos)\/\{id\}/, X('platform-global help content (no tenant column) — the same for every salon by design')],
+  // extras Membership Overview 16·15 (Nov 12 2026): the drill-down of one check — the KEY is from the fixed system-check registry; the rows are always the caller's own salon
+  [/^\/pos\/system-checks\/memberships\/\{checkKey\}\/rows$/, X('a check KEY from the fixed system-check registry, not a salon record; the source rows are always read for the caller\'s own salon (tenant from the session)')],
 ];
 
 // ── query strings a route needs to reach its lookup at all (else both salons get the same 400 and nothing is proved) ─
