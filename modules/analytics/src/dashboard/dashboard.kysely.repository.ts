@@ -11,7 +11,7 @@ import { businessDate, localDateTimeToEpochMs, addDays } from '@aipowersalon/dat
 import { CompensationSnapshotRepository } from '@aipowersalon/workforce';
 import type { DashboardRepo, DashboardScope, DashboardQuery } from './dashboard.repository';
 import { emptyDashboard } from './dashboard.repository';
-import type { POSDashboardState } from './dashboard.dto';
+import type { POSDashboardState, RevenueTrendExplain } from './dashboard.dto';
 import { buildAiInsights, hourWindowLabel } from './dashboard.dto';
 import { completedServiceLinesOn } from '../overview/overview.kysely.repository';
 import { OVERVIEW_WAITING_STATUSES, OVERVIEW_CLOSED_TICKET_STATUSES } from '../overview/overview-floor';
@@ -30,6 +30,26 @@ function rangeWindow(range?: string): { key: RangeKey; daysBack: number; points:
     case 'week':
     default: return { key: 'week', daysBack: 6, points: 7, label: 'week' };
   }
+}
+
+/** Trend Explainability: the card's window vs the same-length window right before it, from the rows the card already read. */
+export function explainTrend(
+  series: { valueCents: number; apptCount: number; date: string }[], revByDay: Map<string, number>, apptByDay: Map<string, number>,
+  o: { date: string; daysBack: number; tz: string; today: string; statuses: string[] },
+): RevenueTrendExplain {
+  const from = addDays(o.date, -o.daysBack), previousTo = addDays(from, -1), previousFrom = addDays(previousTo, -o.daysBack);
+  let previousCents = 0, previousAppointments = 0;
+  for (let d = previousFrom; d <= previousTo; d = addDays(d, 1)) { previousCents += revByDay.get(d) || 0; previousAppointments += apptByDay.get(d) || 0; }
+  const currentCents = series.reduce((a, x) => a + x.valueCents, 0);
+  const currentAppointments = series.reduce((a, x) => a + x.apptCount, 0);
+  const peak = series.reduce<{ date: string; valueCents: number } | null>((best, x) => (x.valueCents > 0 && (!best || x.valueCents > best.valueCents) ? { date: x.date, valueCents: x.valueCents } : best), null);
+  return {
+    source: 'payments', statuses: [...o.statuses], appointmentSource: 'appointments', timeZone: o.tz,
+    from, to: o.date, previousFrom, previousTo, days: o.daysBack + 1,
+    currentCents, previousCents, changeCents: currentCents - previousCents,
+    changePercent: previousCents > 0 ? Math.round(((currentCents - previousCents) / previousCents) * 1000) / 10 : null,
+    currentAppointments, previousAppointments, includesToday: o.date === o.today, peakDay: peak,
+  };
 }
 
 export class KyselyDashboardRepo implements DashboardRepo {
@@ -87,11 +107,13 @@ export class KyselyDashboardRepo implements DashboardRepo {
     s.walkInStatus = { waitingCount: Number(waiting?.n || 0), estimatedWaitMinutes: 0, checkedInNotAssigned: 0 };
 
     const win = rangeWindow(q.range);
+    // the window shown plus the same-length window right before it (Trend Explainability: what changed) — one read each
+    const lookback = win.daysBack * 2 + 1;
     const trend = await this.scoped(this.db.selectFrom('payments'), scope).where('status', 'in', REVENUE)
-      .where(day, '>=', sql<string>`(${date}::date - ${win.daysBack}::int)`).where(day, '<=', date)
+      .where(day, '>=', sql<string>`(${date}::date - ${lookback}::int)`).where(day, '<=', date)
       .groupBy(day).select((eb: any) => [sql`to_char(${day},'YYYY-MM-DD')`.as('d'), eb.fn.sum('amount_cents').as('cents')]).execute().catch(() => []);
     const apptByDay = await this.scoped(this.db.selectFrom('pos_tech_appointments'), scope)
-      .where('appt_date', '>=', sql<string>`(${date}::date - ${win.daysBack}::int)`).where('appt_date', '<=', date)
+      .where('appt_date', '>=', sql<string>`(${date}::date - ${lookback}::int)`).where('appt_date', '<=', date)
       .groupBy('appt_date').select((eb: any) => [sql`to_char(appt_date,'YYYY-MM-DD')`.as('d'), eb.fn.countAll().as('n')]).execute().catch(() => []);
     const revByDay = new Map<string, number>(trend.map((r: any) => [String(r.d), Number(r.cents)]));
     const apptDayMap = new Map<string, number>(apptByDay.map((r: any) => [String(r.d), Number(r.n)]));
@@ -104,6 +126,7 @@ export class KyselyDashboardRepo implements DashboardRepo {
       series.push({ label, valueCents: revByDay.get(key) || 0, apptCount: apptDayMap.get(key) || 0, date: key });
     }
     s.revenueTrend = { period: win.key, totalCents: series.reduce((a, x) => a + x.valueCents, 0), trendPercent: pct(today, yest), series };
+    s.revenueTrend.explain = explainTrend(series, revByDay, apptDayMap, { date, daysBack: win.daysBack, tz, today: businessDate(tz, new Date(this.now())), statuses: REVENUE });
 
     const topSvc = await this.scoped(this.db.selectFrom('ticket_service_lines'), scope)
       .where(day, '>=', sql<string>`(${date}::date - ${win.daysBack}::int)`).where(day, '<=', date)

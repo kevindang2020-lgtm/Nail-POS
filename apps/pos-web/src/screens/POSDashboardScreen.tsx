@@ -19,7 +19,36 @@ import { t as tx, currentLocale } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { fmtMoney, fmtMoneyCompact, fmtTime as fmtClock, fmtYmd } from '../i18n/format';
 import { opsStatusLabel } from './opsStatus';
+import { FitDialog } from '../components/FitKit';
 
+/** Operational Trend Explainability: the exact source, the window and what changed vs the period before — read-only */
+function TrendWhyBody({ e }: { e: TrendWhy }) {
+  const d = (ymd: string) => fmtYmd(ymd, { month: 'short', day: 'numeric' }, ymd);
+  const pct = e.changePercent == null ? '' : `${e.changePercent > 0 ? '+' : ''}${e.changePercent}%`;
+  const cur = fmtMoney(e.currentCents), prev = fmtMoney(e.previousCents), diff = fmtMoney(Math.abs(e.changeCents));
+  const rev = e.previousCents <= 0 ? (e.currentCents === 0 ? tx('ops.liveOps.trend.revSame', { cur }) : tx('ops.liveOps.trend.revNoBase', { cur }))
+    : e.changeCents > 0 ? tx('ops.liveOps.trend.revUp', { cur, diff, prev, pct }) : e.changeCents < 0 ? tx('ops.liveOps.trend.revDown', { cur, diff, prev, pct }) : tx('ops.liveOps.trend.revSame', { cur });
+  return (
+    <div className="lo-why" data-testid="lo-trend-why-body">
+      <p data-testid="lo-why-window">{tx('ops.liveOps.trend.window', { from: d(e.from), to: d(e.to), days: String(e.days), pfrom: d(e.previousFrom), pto: d(e.previousTo) })}</p>
+      <p data-testid="lo-why-rev"><b>{rev}</b></p>
+      <p data-testid="lo-why-appts">{tx('ops.liveOps.trend.appts', { cur: String(e.currentAppointments), prev: String(e.previousAppointments) })}</p>
+      {e.peakDay ? <p data-testid="lo-why-peak">{tx('ops.liveOps.trend.peak', { day: d(e.peakDay.date), amount: fmtMoney(e.peakDay.valueCents) })}</p> : null}
+      {e.includesToday ? <p className="sub" data-testid="lo-why-progress">{tx('ops.liveOps.trend.inProgress')}</p> : null}
+      <p className="sub" data-testid="lo-why-source">{tx('ops.liveOps.trend.source', { statuses: e.statuses.map((c) => statusLabel('payment', c)).join(', '), tz: e.timeZone })}</p>
+      <p className="sub">{tx('ops.liveOps.trend.apptSource')}</p>
+      <p className="sub">{tx('ops.liveOps.trend.readOnly')}</p>
+    </div>
+  );
+}
+
+/** the server's Trend Explainability block (source, windows and the period before) — rendered as is, never recomputed here */
+type TrendWhy = {
+  source: string; statuses: string[]; appointmentSource: string; timeZone: string;
+  from: string; to: string; previousFrom: string; previousTo: string; days: number;
+  currentCents: number; previousCents: number; changeCents: number; changePercent: number | null;
+  currentAppointments: number; previousAppointments: number; includesToday: boolean; peakDay: { date: string; valueCents: number } | null;
+};
 type DashState = {
   context: { salonName: string; branchName: string };
   kpis: { todayRevenueCents: number; todayRevenueTrendPercent: number; waitingGuests: number; servingNow: number; readyCheckout: number; activeTechs: number; totalTechs: number; onlineBookings: number; monthlyCardVolumeCents: number; checkInsToday: number; appointmentsToday: number; averageTicketCents: number; customerRetentionPercent: number; aiBookingConversionPercent: number; monthlyCardVolumeTrendPercent?: number; checkInsTodayTrendPercent?: number; appointmentsTodayTrendPercent?: number; averageTicketTrendPercent?: number; customerRetentionTrendPercent?: number; aiBookingConversionTrendPercent?: number };
@@ -27,7 +56,7 @@ type DashState = {
   todaysAppointments: { totalAppointments: number; completed: number; noShow: number; cancelled: number; remaining: number; completedPercent: number };
   walkInStatus: { waitingCount: number; estimatedWaitMinutes: number; checkedInNotAssigned: number };
   operationsSnapshot?: { waitingGuests: number; estWaitMinutes: number; walkInsToday: number; walkInPercent: number; readyCheckout: number; readyCheckoutValueCents: number; completedServices: number; noShows: number; noShowPercent: number; upcomingNext3h: number };
-  revenueTrend: { period: string; totalCents: number; trendPercent: number; series: { label: string; valueCents: number; apptCount: number; date?: string }[] };
+  revenueTrend: { period: string; totalCents: number; trendPercent: number; series: { label: string; valueCents: number; apptCount: number; date?: string }[]; explain?: TrendWhy };
   topServices?: { name: string; revenueCents: number }[];
   topTechnicians: { technicianId: string; name: string; revenueCents: number; servicesCount?: number; tipsCents?: number; utilizationPercent?: number | null; rating?: number | null }[];
   paymentMix: { period: string; entries: { method: string; percent: number; amountCents: number }[] };
@@ -128,6 +157,7 @@ export function POSDashboardScreen() {
   const [payOverride, setPayOverride] = useState<DashState['paymentMix'] | null>(null);
   const [live, setLive] = useState<RealtimeStatus>(() => realtimeStatus());
   const [syncedAt, setSyncedAt] = useState<string | null>(null);   // last successful read (Realtime Recovery Indicator)
+  const [whyOpen, setWhyOpen] = useState(false);   // Trend Explainability dialog
   useEffect(() => { const h = (e: Event) => setLive((e as CustomEvent<{ status: RealtimeStatus }>).detail.status); window.addEventListener(REALTIME_STATUS, h); return () => window.removeEventListener(REALTIME_STATUS, h); }, []);
 
   // §25: a refetch keeps the previous values on screen until the new ones arrive (no blank page, no scroll reset)
@@ -282,11 +312,12 @@ export function POSDashboardScreen() {
 
       {/* Row 2 — Revenue & appointments trend · Top technicians (§12–§13) */}
       <div className="ov-grid lo-row2">
-        <Card testId="lo-trend" title={tx('pos.revenue_appointments_trend')} right={<span className="lo-hr"><span className="dlegend"><span><i className="lg-rev" />{tx('pos.revenue')}</span><span><i className="lg-appt" />{tx('pos.appointments')}</span></span><PeriodDropdown value={revRange} onChange={pickRevRange} /></span>}
+        <Card testId="lo-trend" title={tx('pos.revenue_appointments_trend')} right={<span className="lo-hr"><span className="dlegend"><span><i className="lg-rev" />{tx('pos.revenue')}</span><span><i className="lg-appt" />{tx('pos.appointments')}</span></span>{rt?.explain ? <button type="button" className="fk-link" onClick={() => setWhyOpen(true)} aria-label={tx('ops.liveOps.trend.whyAria')} data-testid="lo-trend-why">{tx('ops.liveOps.trend.why')}</button> : null}<PeriodDropdown value={revRange} onChange={pickRevRange} /></span>}
           foot={series.length ? <div className="lo-trend-sum">
             <span>{tx('pos.total_revenue')} <b>{money(rt?.totalCents)}</b></span>
             <span>{tx('pos.appointments')} <b>{series.reduce((a, x) => a + x.apptCount, 0)}</b></span>
-            <span>{tx('pos.trend')} <b className={rt && rt.trendPercent >= 0 ? 'up' : 'dn'}>{rt ? (rt.trendPercent >= 0 ? '+' : '') + rt.trendPercent : 0}%</b></span>
+            {rt?.explain ? <span title={tx('ops.liveOps.trend.vsPrev', { days: String(rt.explain.days) })} data-testid="lo-trend-change">{tx('pos.trend')} <b className={(rt.explain.changePercent ?? 0) >= 0 ? 'up' : 'dn'}>{rt.explain.changePercent == null ? '—' : `${rt.explain.changePercent >= 0 ? '+' : ''}${rt.explain.changePercent}%`}</b></span>
+              : <span>{tx('pos.trend')} <b className={rt && rt.trendPercent >= 0 ? 'up' : 'dn'}>{rt ? (rt.trendPercent >= 0 ? '+' : '') + rt.trendPercent : 0}%</b></span>}
           </div> : undefined}>
           {!s ? loading : series.length === 0 ? <Empty msg={tx('pos.no_revenue_or_appointments_yet')} /> : (
             <div className="lo-chart">
@@ -351,6 +382,8 @@ export function POSDashboardScreen() {
           )}
         </Card>
       </div>
+
+      {whyOpen && rt?.explain ? <FitDialog title={tx('ops.liveOps.trend.whyTitle')} onClose={() => setWhyOpen(false)} testId="lo-trend-why-dialog"><TrendWhyBody e={rt.explain} /></FitDialog> : null}
 
       {/* Quick Actions (9) — one row, always visible (§15) */}
       <div className="ov-qa" data-testid="live-ops-quick-actions">

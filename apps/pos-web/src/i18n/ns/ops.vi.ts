@@ -1766,4 +1766,19 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.redemption_line_other_ticket.fix": "Báo cho bộ phận hỗ trợ: những lần sử dụng này trỏ đến dịch vụ trên một hóa đơn khác.", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer": "Không có thẻ hội viên còn hiệu lực nào nằm trên hồ sơ khách đã lưu trữ", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer.fix": "Chuyển thẻ hội viên sang hồ sơ hiện tại của khách (gộp hồ sơ) hoặc kết thúc thẻ.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.why": "Vì sao?", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.whyAria": "Điều gì đã thay đổi trong xu hướng này", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.whyTitle": "Điều gì đã thay đổi — doanh thu & lịch hẹn", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.source": "Doanh thu: các khoản thanh toán có trạng thái {statuses}, tính theo ngày của tiệm ({tz}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.apptSource": "Lịch hẹn: các lượt đặt trên lịch của mỗi ngày (mọi trạng thái).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.window": "Hiển thị: {from} – {to} ({days} ngày). So với: {pfrom} – {pto}.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revUp": "Doanh thu {cur}, tăng {diff} so với {prev} ({pct}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revDown": "Doanh thu {cur}, giảm {diff} so với {prev} ({pct}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revSame": "Doanh thu {cur}, bằng với kỳ trước.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.revNoBase": "Doanh thu {cur}; kỳ trước không có doanh thu nên không có tỷ lệ phần trăm.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.appts": "Lịch hẹn: {cur} so với {prev} ở kỳ trước.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.peak": "Ngày cao nhất: {day} ({amount}).", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.inProgress": "Khoảng thời gian kết thúc hôm nay, vẫn đang diễn ra — số liệu còn có thể thay đổi.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.readOnly": "Chỉ để giải thích — không thay đổi gì; quyết định và tiền vẫn do nhân viên của bạn xử lý.", // DRAFT — Kevin reviews
+  "ops.liveOps.trend.vsPrev": "so với {days} ngày trước đó", // DRAFT — Kevin reviews
 };

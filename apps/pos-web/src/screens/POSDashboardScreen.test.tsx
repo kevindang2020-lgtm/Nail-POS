@@ -229,3 +229,40 @@ describe('POSDashboardScreen — one-screen rules', () => {
     await waitFor(() => expect(f.mock.calls.filter((c) => String(c[0]).includes('/dashboard/state')).length).toBe(n + 1));
   });
 });
+
+// Live Operations 10 — Operational Trend Explainability: the trend card names its exact source and window and says what
+// changed vs the period before, from the server's explain block (nothing recomputed on the screen); read-only.
+describe('POSDashboardScreen — trend explanation', () => {
+  const explain = { source: 'payments', statuses: ['approved', 'captured'], appointmentSource: 'appointments', timeZone: 'America/New_York', from: '2026-09-30', to: '2026-10-06', previousFrom: '2026-09-23', previousTo: '2026-09-29', days: 7, currentCents: 8000, previousCents: 5000, changeCents: 3000, changePercent: 60, currentAppointments: 1, previousAppointments: 2, includesToday: true, peakDay: { date: '2026-10-06', valueCents: 5000 } };
+  it('Why? opens the source, both windows and what changed; the foot trend is the window change', async () => {
+    const f = dashFetch({ body: { ...state, revenueTrend: { ...state.revenueTrend, trendPercent: 18.6, explain } } }); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('lo-trend-change')).toHaveTextContent('Trend +60%');
+    expect(screen.getByTestId('lo-trend-change').getAttribute('title')).toBe('vs the previous 7 days');
+    fireEvent.click(screen.getByTestId('lo-trend-why'));
+    const dlg = await screen.findByTestId('lo-trend-why-dialog');
+    expect(within(dlg).getByTestId('lo-why-window')).toHaveTextContent('Shown: Sep 30 – Oct 6 (7 days). Compared with: Sep 23 – Sep 29.');
+    expect(within(dlg).getByTestId('lo-why-rev')).toHaveTextContent('Revenue $80.00, up $30.00 from $50.00 (+60%).');
+    expect(within(dlg).getByTestId('lo-why-appts')).toHaveTextContent('Appointments: 1 vs 2 in the period before.');
+    expect(within(dlg).getByTestId('lo-why-peak')).toHaveTextContent('Best day: Oct 6 ($50.00).');
+    expect(within(dlg).getByTestId('lo-why-progress')).toBeInTheDocument();
+    expect(within(dlg).getByTestId('lo-why-source')).toHaveTextContent('payments with status Approved, Captured, counted on the salon day (America/New_York)');
+    // read-only: opening the explanation sends nothing
+    expect((f as any).mock.calls.some(([, init]: any[]) => init && init.method && init.method !== 'GET')).toBe(false);
+  });
+  it('no revenue in the period before: no invented percentage; an older server without explain keeps the old trend', async () => {
+    globalThis.fetch = dashFetch({ body: { ...state, revenueTrend: { ...state.revenueTrend, explain: { ...explain, previousCents: 0, changeCents: 8000, changePercent: null, includesToday: false, peakDay: null } } } }) as any;
+    const { unmount } = render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('lo-trend-change')).toHaveTextContent('Trend —');
+    fireEvent.click(screen.getByTestId('lo-trend-why'));
+    expect(await screen.findByTestId('lo-why-rev')).toHaveTextContent('the period before had no revenue, so there is no percentage');
+    expect(screen.queryByTestId('lo-why-peak')).toBeNull();
+    expect(screen.queryByTestId('lo-why-progress')).toBeNull();
+    unmount();
+    globalThis.fetch = dashFetch() as any;
+    render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    await screen.findByText('Revenue & Appointments Trend');
+    expect(screen.queryByTestId('lo-trend-why')).toBeNull();
+    expect(screen.queryByTestId('lo-trend-change')).toBeNull();
+  });
+});
