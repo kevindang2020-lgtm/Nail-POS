@@ -258,4 +258,7 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.dry.when": "Sẽ gửi lúc", // DRAFT — Kevin reviews
   "rssx.dry.noCustomer": "Lượt ghé không có khách hàng", // DRAFT — Kevin reviews
   "rssx.dry.ask": "Sẽ được hỏi qua {c}", // DRAFT — Kevin reviews
+  "rssx.dry.costEst": "Chi phí ước tính: {total} ({n} tin nhắn × {unit} mỗi tin) — ước tính theo giá mỗi tin của nền tảng; không gửi hay tính tiền gì.", // DRAFT — Kevin reviews
+  "rssx.dry.costInvalid": "Chi phí: không có — giá mỗi tin của nền tảng không phải số cent nguyên, nên không ước tính.", // DRAFT — Kevin reviews
+  "rssx.dry.costNotText": "Chi phí: không có — yêu cầu sẽ không gửi bằng tin nhắn, và chỉ tin nhắn mới có giá.", // DRAFT — Kevin reviews
 };

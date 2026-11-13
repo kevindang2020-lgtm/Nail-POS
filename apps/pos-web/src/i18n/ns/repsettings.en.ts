@@ -258,4 +258,7 @@ export const REPSETTINGS_EN: Record<string, string> = {
   "rssx.dry.when": "Would be sent",
   "rssx.dry.noCustomer": "No customer on the visit",
   "rssx.dry.ask": "Would be asked by {c}",
+  "rssx.dry.costEst": "Estimated cost: {total} ({n} texts × {unit} each) — an estimate from the platform price per text; nothing is sent or billed.",
+  "rssx.dry.costInvalid": "Cost: not available — the platform price per text is not a whole number of cents, so none is estimated.",
+  "rssx.dry.costNotText": "Cost: not available — requests would not go out by text, and only texts have a price.",
 };

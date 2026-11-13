@@ -12,7 +12,7 @@ const GROUPS = [
   { group: 'platform_identity', settings: [S('platform.name', 'platform_identity', 'Platform Name', 'AI PowerSalon', { mandatory: true }), S('platform.theme', 'platform_identity', 'Active Brand Theme', 'Sunset Orange', { mandatory: true }), S('platform.legal_name', 'platform_identity', 'Legal Name', 'AI PowerSalon, Inc.', { mandatory: true })] },
   { group: 'support_contact', settings: [S('support.email', 'support_contact', 'Support Email', 'support@aipowersalon.com', { valueType: 'email', mandatory: true }), S('support.phone', 'support_contact', 'Support Phone', '+1 (855) 123-4567', { mandatory: true })] },
   { group: 'localization', settings: [S('localization.default_language', 'localization', 'Default Language', 'en-US', { valueType: 'locale' }), S('localization.default_currency', 'localization', 'Default Currency', 'USD', { valueType: 'currency' }), S('localization.default_timezone', 'localization', 'Default Time Zone', 'America/New_York', { valueType: 'timezone' }), S('localization.date_format', 'localization', 'Date Format', 'MMM dd, yyyy'), S('localization.time_format', 'localization', 'Time Format', '12h'), S('localization.number_format', 'localization', 'Number Format', '1,234.56')] },
-  { group: 'global_defaults', settings: [S('defaults.tenant_trial_days', 'global_defaults', 'Default Tenant Trial Period', 14, { valueType: 'number' }), S('defaults.notifications_enabled', 'global_defaults', 'Notifications by Default', true, { valueType: 'boolean' })] },
+  { group: 'global_defaults', settings: [S('defaults.tenant_trial_days', 'global_defaults', 'Default Tenant Trial Period', 14, { valueType: 'number' }), S('defaults.notifications_enabled', 'global_defaults', 'Notifications by Default', true, { valueType: 'boolean' }), S('sms.review_request_price_cents', 'global_defaults', 'Review Request Text Price (cents per message, blank = not set)', null, { valueType: 'json', mandatory: true, policy: 'mandatory' })] },
   { group: 'platform_urls', settings: [S('urls.main_website', 'platform_urls', 'Main Website', 'https://www.aipowersalon.com', { valueType: 'url', mandatory: true })] },
   { group: 'maintenance', settings: [S('maintenance.mode', 'maintenance', 'Maintenance Mode', false, { valueType: 'boolean', mandatory: true }), S('maintenance.message', 'maintenance', 'Maintenance Message', '', { mandatory: true }), S('maintenance.announcement_banner', 'maintenance', 'Announcement Banner', '', { mandatory: true })] },
   { group: 'customer_display_ads', settings: [S('display_ads.max_ads_per_tenant', 'customer_display_ads', 'Maximum Ads per Salon', 50, { valueType: 'number', mandatory: true, policy: 'mandatory' }), S('display_ads.max_file_size_mb', 'customer_display_ads', 'Max Image File Size (MB)', 8, { valueType: 'number', mandatory: true, policy: 'mandatory' }), S('display_ads.allowed_mime_types', 'customer_display_ads', 'Allowed File Types', 'image/jpeg,image/png,image/webp', { mandatory: true, policy: 'mandatory' }), S('display_ads.fullscreen_idle_allowed', 'customer_display_ads', 'Full-Screen Idle Ads Allowed', true, { valueType: 'boolean', mandatory: true, policy: 'mandatory' })] },
@@ -55,6 +55,14 @@ describe('GeneralSettingsScreen', () => {
     (superAdminApi.tenantPresetCreate as any).mockResolvedValue({ id: 'tp_1' });
     (superAdminApi.branding as any).mockResolvedValue({ platform_name: 'AI PowerSalon', tagline: 'Smarter Salon. Stronger Business.', primary_color: '#A96F22', secondary_color: '#84561A', accent_color: '#C9971B', surface_color: '#FBF6EC', text_color: '#2A2118', logo_full_url: '/brand/logo.png', logo_locked: true });
     (superAdminApi.brandingUpdate as any).mockResolvedValue({});
+  });
+
+  it('extras Reviews Reputation 07 (round 11): the review-request text price reads "Not set" while blank — never "Unlimited"', async () => {
+    render(<MemoryRouter><GeneralSettingsScreen /></MemoryRouter>);
+    const label = await screen.findByText('Review Request Text Price (cents per message, blank = not set) :-');
+    const row = label.parentElement as HTMLElement;
+    expect(row).toHaveTextContent('Not set');
+    expect(row).not.toHaveTextContent('Unlimited');
   });
 
   it('surfaces real brand colors and edits tagline via the branding drawer (logo locked)', async () => {

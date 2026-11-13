@@ -41,6 +41,14 @@ describe('SuperAdminSettingsService.saveSettings', () => {
     expect(hist[0]).toMatchObject({ settingKey: 'defaults.tenant_trial_days', previousValue: 14, newValue: 21, version: 1 });
   });
 
+  it('extras Reviews Reputation 07 (round 11): the review-request text price is BLANK by default and accepts only blank or whole cents within the ceiling', async () => {
+    const def = (await svc.getSettings()).groups.flatMap((g) => g.settings).find((x) => x.key === 'sms.review_request_price_cents')!;
+    expect(def).toMatchObject({ value: null, isExplicitlySet: false });
+    for (const bad of [3.5, -1, 1001, 'four', true]) await expect(svc.saveSettings(CTX, [{ key: 'sms.review_request_price_cents', value: bad }])).rejects.toBeInstanceOf(SettingsError);
+    expect((await svc.saveSettings(CTX, [{ key: 'sms.review_request_price_cents', value: 4, reason: 'Set price' }])).applied).toEqual([{ key: 'sms.review_request_price_cents', version: 1 }]);
+    expect((await svc.saveSettings(CTX, [{ key: 'sms.review_request_price_cents', value: null, reason: 'Back to blank' }])).applied).toHaveLength(1);
+  });
+
   it('skips unchanged fields (no no-op history)', async () => {
     const res = await svc.saveSettings(CTX, [{ key: 'defaults.tenant_trial_days', value: 14 }]); // same as default
     expect(res.skipped).toContain('defaults.tenant_trial_days');

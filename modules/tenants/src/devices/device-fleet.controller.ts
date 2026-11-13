@@ -4,7 +4,7 @@
 // extras Tablets 11: GET export (pos.devices.export → owners and managers) — the redacted inventory + health CSV, audited.
 import { ListQuery } from '@aipowersalon/database';
 import type { ListQuery as ListQueryParams } from '@aipowersalon/api-contracts';
-import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse, DfHistoryVerifyResponse, DfLabelResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse, DfHistoryVerifyResponse, DfLabelResponse, DfAssignmentResponse, DfAssignableStaffResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Body, Controller, Get, Header, HttpException, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
@@ -14,6 +14,8 @@ export const DEVICE_FLEET_CENTER = 'DeviceFleetCenter';
 export const DF_CHECK_BODY: BodySchema = S.object({ class: S.enumOf([...DF_CLASSES]) }, ['class']);
 /** extras Device Health 06: a device's alias / asset tag (null or empty clears) */
 export const DF_LABEL_BODY: BodySchema = S.object({ source: S.enumOf(['station', 'kiosk', 'display', 'terminal']), deviceId: S.text(80), alias: S.nullable(S.text(60)), assetTag: S.nullable(S.text(40)) }, ['source', 'deviceId']);
+/** extras Device Health 06 (round 11): assign a device to an active staff member, or clear it (userId null) — optional, never automatic */
+export const DF_ASSIGN_BODY: BodySchema = S.object({ source: S.enumOf(['station', 'kiosk', 'display', 'terminal']), deviceId: S.text(80), userId: S.nullable(S.uuid()) }, ['source', 'deviceId', 'userId']);
 const FILTERS = { class: { type: 'enum', values: DF_CLASSES }, status: { type: 'enum', values: DF_STATUSES }, branchId: { type: 'uuid' }, dateField: { type: 'enum', values: ['created', 'updated', 'last_seen'] } } as const;
 const LIST = { filters: FILTERS, sorts: { newest: null, last_seen: null, name: null, status: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 const HIST = { filters: { class: { type: 'enum', values: DF_CLASSES }, deviceId: { type: 'id' } }, sorts: { newest: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
@@ -59,6 +61,12 @@ export class DeviceFleetController {
   /** extras Device Health 06 (round 10): set / clear the salon's own alias and asset tag for a device — audited */
   @Post('labels') @RequirePermission('pos.devices.manage')
   setLabel(@Req() q: any, @Body(ValidatedBody(DF_LABEL_BODY, { strict: true })) b: { source: string; deviceId: string; alias?: string | null; assetTag?: string | null }): Promise<DfLabelResponse> { return run(() => this.r().setLabel(ctxFrom(q), b)); }
+  /** extras Device Health 06 (round 11): optional device → employee assignment (same permission as labels), audited */
+  @Get('assignable-staff') @RequirePermission('pos.devices.manage')
+  @ListQuery({ search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 50 } as const)
+  staffChoices(@Req() q: any, @Query() f: any): Promise<DfAssignableStaffResponse> { return run(() => this.r().assignableStaff(ctxFrom(q), { q: f?.q })); }
+  @Post('assignment') @RequirePermission('pos.devices.manage')
+  setAssignment(@Req() q: any, @Body(ValidatedBody(DF_ASSIGN_BODY, { strict: true })) b: { source: string; deviceId: string; userId: string | null }): Promise<DfAssignmentResponse> { return run(() => this.r().setAssignment(ctxFrom(q), b)); }
   @Post('check') @RequirePermission('pos.devices.view')
   check(@Req() q: any, @Body(ValidatedBody(DF_CHECK_BODY, { strict: true })) b: { class: string }): Promise<DfCheckResponse> { return run(() => this.r().check(ctxFrom(q), b.class)); }
 }

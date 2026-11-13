@@ -17,6 +17,8 @@ import { invoiceViewOf, invoicedAmounts, inPeriodFrom, ESTIMATE_ASSUMPTIONS, typ
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { displayStateOf, actionsFor, primaryAction, usageLevelOf, type DisplayState, type PackageAction, type UsageLevel } from './ai-usage-states';
 import { utcDate } from '@aipowersalon/date-time';
+import type { AiTablePrice } from '@aipowersalon/api-contracts/tenant';
+import { AiPriceTable, resolveAiTablePrice } from './ai-price-table';
 
 export interface UsageCtx { tenantId: string; branchId?: string | null; userId?: string; role?: string; permissions?: string[] }
 /** extras AI Command Center 15 — one evidence row per assistant the salon has (live, or used this month), from reconcile()'s
@@ -64,7 +66,10 @@ export interface PackageCard {
     /** extras AI Usage Limits 07 (Price Change Transparency): today's catalog list price beside the salon's own stored price —
      *  'list' (no subscription row, or the same as list) · 'kept_below_list' (an earlier, lower price is kept: grandfathered) ·
      *  'above_list' (the stored price is above today's list). A comparison only — nothing is re-priced. */
-    comparison?: PriceComparison };
+    comparison?: PriceComparison;
+    /** extras AI Usage Limits 07 (round 11): the Super Admin price table (migration 971) for this package and billing period —
+     *  'no_price_set' until a version is published (the table starts empty). Shown beside the price above; never bills. */
+    table?: AiTablePrice };
   usage: { used: number | null; limit: number; unit: string; percent: number | null; level: UsageLevel; periodStart: string | null; periodEnd: string | null; remaining: number | null;
     /** extras AI Usage Limits 03: an ESTIMATE of the period's end from this period's pace — never a purchase, never a limit change */
     projection?: UsageProjection | null };
@@ -156,7 +161,8 @@ export class AiUsageScreenRepository {
     const settings = (await sql<any>`select package_code, enabled, disabled_reason from platform_ai_package_settings`.execute(this.db)).rows;
     const alerts = (await sql<any>`select a.package_code, max(a.threshold)::int as t from ai_usage_alerts a join tenant_ai_subscriptions s on s.tenant_id = a.tenant_id and s.package_code = a.package_code
       and a.period_start = s.current_period_starts_at where a.tenant_id = ${T} and a.acknowledged_at is null group by a.package_code`.execute(this.db)).rows;
-    return { subs: new Map(subs.map((r: any) => [String(r.package_code), r])), settings: new Map(settings.map((r: any) => [String(r.package_code), r])), alerts: new Map(alerts.map((r: any) => [String(r.package_code), N(r.t)])) };
+    const priceTable = await new AiPriceTable(this.db).facts(T);   // round 11 (AI Usage Limits 07): empty until a version is published
+    return { subs: new Map(subs.map((r: any) => [String(r.package_code), r])), settings: new Map(settings.map((r: any) => [String(r.package_code), r])), alerts: new Map(alerts.map((r: any) => [String(r.package_code), N(r.t)])), priceTable };
   }
 
   private card(ctx: UsageCtx, code: string, f: Awaited<ReturnType<AiUsageScreenRepository['facts']>>, now = new Date()): PackageCard {
@@ -181,7 +187,8 @@ export class AiUsageScreenRepository {
       code, name: def?.name ?? code, description: def?.description ?? '', category: def?.category ?? 'unknown', posArea: def?.posArea ?? null, known: !!def, sortOrder: def?.sortOrder ?? 999,
       state, storedStatus: s ? String(s.status) : null, globallyEnabled, disabledReason: g && !g.enabled ? (g.disabled_reason ?? null) : null,
       price: { cents, currency: String(s?.currency ?? 'usd').toUpperCase(), period, monthlyEquivalentCents: period === 'yearly' ? Math.round(cents / 12) : cents, source: s && N(s.price_cents) > 0 ? 'subscription' : 'catalog_list',
-        comparison: priceComparison(def?.monthlyPriceCents ?? null, s && N(s.price_cents) > 0 ? (period === 'yearly' ? Math.round(N(s.price_cents) / 12) : N(s.price_cents)) : null) },
+        comparison: priceComparison(def?.monthlyPriceCents ?? null, s && N(s.price_cents) > 0 ? (period === 'yearly' ? Math.round(N(s.price_cents) / 12) : N(s.price_cents)) : null),
+        table: resolveAiTablePrice(f.priceTable.versions, f.priceTable.overrides, code, period === 'yearly' ? 'year' : 'month', s?.created_at ? new Date(s.created_at) : null, now) },
       usage: { used: live ? used : null, limit, unit: def?.usageUnit ?? 'units', percent: live && limit > 0 && used != null ? Math.round((used * 1000) / limit) / 10 : null, level,
         periodStart: live ? iso(s?.current_period_starts_at) : null, periodEnd: live ? iso(s?.period_end) : null, remaining: live && limit > 0 && used != null ? Math.max(0, limit - used) : null,
         projection: live && used != null && s?.current_period_starts_at && s?.period_end ? usageProjection(used, limit, new Date(s.current_period_starts_at), new Date(s.period_end), now, overEnabled, overUnit) : null },

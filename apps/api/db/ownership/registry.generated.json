@@ -8,11 +8,11 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 982,
+  "tables": 985,
   "ownership": {
-   "tenant_owned": 660,
+   "tenant_owned": 661,
    "platform_identity_tenant_relationship": 44,
-   "platform_global": 161,
+   "platform_global": 163,
    "tenant_branch_owned": 92,
    "cross_tenant_platform_data": 25
   },
@@ -37,18 +37,18 @@
    "MEMBERSHIPS": 11,
    "ANALYTICS": 20,
    "INVENTORY": 29,
-   "PLATFORM": 20,
-   "TENANTS": 29
+   "PLATFORM": 22,
+   "TENANTS": 30
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 147,
+   "HIGHLY_SENSITIVE": 148,
    "CONFIDENTIAL": 171,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 543,
+   "INTERNAL": 545,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 64,
+  "append_only": 67,
   "platform_rows": 101
  },
  "tables": {
@@ -6872,6 +6872,30 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "platform_ai_price_version_rows": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "platform_ai_price_versions": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
   "platform_announcement_targets": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -10553,6 +10577,18 @@
    "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "tenant_ai_price_overrides": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "TENANTS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
    "source": "heuristic"
   },
   "tenant_ai_reputation_settings": {

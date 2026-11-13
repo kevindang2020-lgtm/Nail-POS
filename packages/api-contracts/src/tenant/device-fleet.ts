@@ -8,8 +8,14 @@ export interface DfDevice {
   lastSeenAt: string | null; createdAt: string | null; updatedAt: string | null; facts: Record<string, unknown>;
   /** extras Device Health 06: the salon's own alias and asset tag (device_labels), null when none */
   alias?: string | null; assetTag?: string | null;
+  /** extras Device Health 06 (round 11): the employee this device is assigned to (optional; null = nobody — never automatic) */
+  assignedEmployee?: { userId: string; name: string | null; assignedAt: string | null } | null;
 }
 export interface DfLabelResponse { source: DfDevice['source']; deviceId: string; alias: string | null; assetTag: string | null; updatedAt: string }
+/** extras Device Health 06 (round 11): the device's employee assignment after POST pos/device-fleet/assignment */
+export interface DfAssignmentResponse { source: DfDevice['source']; deviceId: string; assignedEmployee: { userId: string; name: string | null; assignedAt: string | null } | null; updatedAt: string }
+/** the people a device may be assigned to — active staff of this salon (name only) */
+export interface DfAssignableStaffResponse { items: { userId: string; name: string }[] }
 export interface DfSummary {
   class: DfClass; checkedAt: string; registered: number; online: number; attention: number; unassigned: number; disabled: number; retired: number;
   extra: Record<string, unknown>;

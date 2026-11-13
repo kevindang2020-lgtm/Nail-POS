@@ -49,3 +49,13 @@ export const RELEASE_EVIDENCE_BODY: BodySchema = S.object({ kind: S.text(30), ap
 // validateBranchSettings — booleans only) and AI-01 read-only invoice reconciliation (never charges).
 export const AI_BRANCH_SETTING_BODY: BodySchema = S.object({ overrideEnabled: bool, settings: blob, expectedVersion: S.integer({ minimum: 0 }), reason: str(300) }, ['overrideEnabled', 'expectedVersion']);
 export const AI_INVOICE_RECONCILE_BODY: BodySchema = S.object({ idempotencyKey: S.text(100) }, ['idempotencyKey']);
+// extras AI Usage Limits 07 (round 11): /super-admin/ai/price-table — publish a version (existingSalonsKeepPrevious is
+// REQUIRED: no default) and set / remove one salon's price. The service re-checks every rule (ai-price-table.ts).
+export const AI_PRICE_VERSION_BODY: BodySchema = S.object({
+  effectiveFrom: S.dateTime(), existingSalonsKeepPrevious: S.boolean(), note: S.nullable(S.text(500)),
+  rows: S.array(S.object({ feature: S.text(60), unit: S.enumOf(['month', 'year', 'overage_unit']), priceCents: S.integer({ minimum: 0, maximum: 1_000_000 }) }, ['feature', 'unit', 'priceCents']), { minItems: 1, maxItems: 200 }),
+}, ['effectiveFrom', 'existingSalonsKeepPrevious', 'rows']);
+export const AI_PRICE_OVERRIDE_BODY: BodySchema = S.object({
+  tenantId: S.uuid(), feature: S.text(60), unit: S.enumOf(['month', 'year', 'overage_unit']), priceCents: S.nullable(S.integer({ minimum: 0, maximum: 1_000_000 })),
+  effectiveFrom: S.nullable(S.dateTime()), reason: S.text(500),
+}, ['tenantId', 'feature', 'unit', 'priceCents', 'reason']);

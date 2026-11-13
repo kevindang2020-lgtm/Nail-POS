@@ -2269,4 +2269,14 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.device-logs.device_event_unregistered_source.fix": "Có sự kiện từ thiết bị chưa đăng ký ở đây. Đăng ký trong Thiết bị hoặc gỡ thiết bị cũ.", // DRAFT — Kevin reviews
   "syschk.device-logs.job_stuck_running": "Không có tác vụ nền nào bị kẹt", // DRAFT — Kevin reviews
   "syschk.device-logs.job_stuck_running.fix": "Một tác vụ nền vẫn đang chạy sau khi tiến trình dừng. Thử lại trong bảng Thử lại hoặc liên hệ hỗ trợ.", // DRAFT — Kevin reviews
+  "dfx.asg.to": "Giao cho {n}", // DRAFT — Kevin reviews
+  "dfx.asg.edit": "Giao", // DRAFT — Kevin reviews
+  "dfx.asg.title": "Giao {n} cho nhân viên", // DRAFT — Kevin reviews
+  "dfx.asg.none": "Chưa giao cho ai.", // DRAFT — Kevin reviews
+  "dfx.asg.search": "Tìm nhân viên theo tên", // DRAFT — Kevin reviews
+  "dfx.asg.loading": "Đang tải nhân viên…", // DRAFT — Kevin reviews
+  "dfx.asg.noStaff": "Không có nhân viên đang làm nào khớp.", // DRAFT — Kevin reviews
+  "dfx.asg.save": "Giao", // DRAFT — Kevin reviews
+  "dfx.asg.clear": "Bỏ giao", // DRAFT — Kevin reviews
+  "dfx.asg.note": "Không bắt buộc. Thiết bị không bao giờ được giao tự động. Việc giao không đổi cài đặt nào của thiết bị; mọi thay đổi đều được lưu trong lịch sử kiểm tra.", // DRAFT — Kevin reviews
 };

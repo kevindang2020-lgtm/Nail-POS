@@ -3,6 +3,7 @@
 // the platform AI usage summary (GET /super-admin/ai/usage/summary). These are the genuinely-modelled AI surfaces;
 // ML-style insights (forecasting, recommendations, anomaly detection, model confidence) are not implemented.
 import { api } from './client';
+import type { AiPriceTableResponse, AiPriceVersionView, AiPriceOverrideView, AiPriceUnit } from '@aipowersalon/api-contracts/platform';
 
 /** POST /super-admin/tenants/:id/number/quote — what the operator confirms before a number is bought */
 export interface AdminNumberQuote {
@@ -28,6 +29,10 @@ export interface AdminTenantMessagingCreds { tenantId: string; provider: 'twilio
 
 export const superAdminAiApi = {
   catalog: () => api.get<any>('/super-admin/ai/packages'),
+  /** extras AI Usage Limits 07 (round 11): the AI price table (empty until a version is published); append-only, audited */
+  priceTable: () => api.get<AiPriceTableResponse>('/super-admin/ai/price-table'),
+  publishPriceVersion: (b: { effectiveFrom: string; existingSalonsKeepPrevious: boolean; note: string | null; rows: { feature: string; unit: AiPriceUnit; priceCents: number }[] }) => api.post<AiPriceVersionView>('/super-admin/ai/price-table/versions', b),
+  setPriceOverride: (b: { tenantId: string; feature: string; unit: AiPriceUnit; priceCents: number | null; reason: string }) => api.post<AiPriceOverrideView>('/super-admin/ai/price-table/overrides', b),
   tenantMessagingCreds: (tenantId: string) => api.get<AdminTenantMessagingCreds>(`/super-admin/tenants/${tenantId}/messaging-credentials`),
   /** PM-02: the full Account SID — step-up + audited on the server; every ordinary read is masked (AC…1234) */
   revealTenantMessagingSid: (tenantId: string) => api.post<{ accountSid: string | null; branchId: string | null }>(`/super-admin/tenants/${tenantId}/messaging-credentials/reveal-sid`, {}),

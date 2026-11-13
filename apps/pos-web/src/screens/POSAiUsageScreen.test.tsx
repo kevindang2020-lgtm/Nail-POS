@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-li
 const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), packages: vi.fn(), detail: vi.fn(), history: vi.fn(), exportHistory: vi.fn(), startTrial: vi.fn(), cancel: vi.fn(), acknowledge: vi.fn(), check: vi.fn() } }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: api, posAiUsageApi: {} }));
 import { MemoryRouter } from 'react-router-dom';
-import { POSAiUsageScreen as Screen } from './POSAiUsageScreen';
+import { POSAiUsageScreen as Screen, priceTableText } from './POSAiUsageScreen';
 // the screen navigates (Open Module / Billing), so it needs a router — this test rendered without one and failed on the untouched tree
 const POSAiUsageScreen = () => <MemoryRouter><Screen /></MemoryRouter>;
 
@@ -70,6 +70,25 @@ describe('POSAiUsageScreen', () => {
     const d = await screen.findByTestId('aiu-detail');
     fireEvent.click(within(d).getByTestId('aiu-trial'));
     expect(await within(d).findByTestId('aiu-confirm-price')).toHaveTextContent('Today\'s catalog list price: $39.00/mo.');
+  });
+
+  it('Extras · AI Usage Limits 07 (round 11): the price table line — "no price set" while the table is empty; a kept earlier version, a salon price and a scheduled version in words; no line when the server sends none', async () => {
+    const P = { cents: 5900, currency: 'USD', period: 'monthly' as const, monthlyEquivalentCents: 5900, source: 'subscription' as const };
+    expect(priceTableText(card({ price: P }) as any)).toBeNull();
+    expect(priceTableText(card({ price: { ...P, table: { state: 'no_price_set', unit: 'month', reason: 'no_version_published', currentVersionNo: null, upcoming: null } } }) as any)).toBe('Price table: no price set.');
+    expect(priceTableText(card({ price: { ...P, table: { state: 'set', unit: 'month', priceCents: 6100, source: 'version', versionNo: 1, effectiveFrom: '2026-11-01T15:00:00Z', keptPrevious: true, currentVersionNo: 2, upcoming: null } } }) as any))
+      .toBe('Price table: $61.00/mo — version 1 is kept for your salon (current version 2).');
+    expect(priceTableText(card({ price: { ...P, table: { state: 'set', unit: 'month', priceCents: 4500, source: 'salon_override', versionNo: null, effectiveFrom: '2026-11-01T15:00:00Z', keptPrevious: false, currentVersionNo: 2, upcoming: null } } }) as any))
+      .toMatch(/^Price table: \$45\.00\/mo — set for your salon from Nov 1, 2026\.$/);
+    expect(priceTableText(card({ price: { ...P, table: { state: 'no_price_set', unit: 'month', reason: 'no_version_published', currentVersionNo: null, upcoming: { versionNo: 1, effectiveFrom: '2026-12-01T15:00:00Z', priceCents: null, existingSalonsKeepPrevious: true } } } }) as any))
+      .toBe('Price table: no price set. Version 1 from Dec 1, 2026: no price set.');
+    const none = card({ price: { ...P, table: { state: 'no_price_set', unit: 'month', reason: 'no_version_published', currentVersionNo: null, upcoming: null } } });
+    api.packages.mockResolvedValue({ items: [none], page: 1, pageSize: 8, totalItems: 1, totalPages: 1, counts: { all: 1 }, sort: 'catalog', status: 'all' });
+    api.detail.mockImplementation(async () => ({ package: none, usage: { daily: [], timeZone: 'America/New_York' }, billing: { visible: true, events: [] }, history: [], alerts: [],
+      settings: { globallyEnabled: true, disabledReason: null, storedStatus: null, usageLimit: 1000, overageEnabled: false, limitSource: 'catalog' }, canManage: true, canSeeBilling: true }));
+    render(<POSAiUsageScreen />);
+    fireEvent.click((await screen.findAllByTestId('aiu-card'))[0]!);
+    expect(await screen.findByTestId('aiu-price-table')).toHaveTextContent('Price table: no price set.');
   });
 
   it('Extras · AI Usage Limits 02: Subscription tab explains why — the server gate reason and the facts behind it, in words', async () => {

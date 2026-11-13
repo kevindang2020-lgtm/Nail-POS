@@ -257,4 +257,13 @@ export const AIUSAGE_VI = {
   'aiu.priceCmp.list': 'Giá niêm yết hiện tại: {list}/tháng.', // DRAFT — Kevin reviews
   'aiu.priceCmp.kept_below_list': 'Giá của tiệm {yours}/tháng được giữ — thấp hơn {diff} so với giá niêm yết hiện tại {list}/tháng.', // DRAFT — Kevin reviews
   'aiu.priceCmp.above_list': 'Giá của tiệm {yours}/tháng cao hơn {diff} so với giá niêm yết hiện tại {list}/tháng.', // DRAFT — Kevin reviews
+  'aiu.ptab.none.no_version_published': 'Bảng giá: chưa đặt giá.', // DRAFT — Kevin reviews
+  'aiu.ptab.none.not_in_version': 'Bảng giá (phiên bản {v}): chưa đặt giá cho gói này.', // DRAFT — Kevin reviews
+  'aiu.ptab.none.kept_previous_none': 'Bảng giá (phiên bản {v}): chưa đặt giá — tiệm của bạn giữ giá cũ.', // DRAFT — Kevin reviews
+  'aiu.ptab.version': 'Bảng giá: {p} — phiên bản {v}, từ {d}.', // DRAFT — Kevin reviews
+  'aiu.ptab.kept': 'Bảng giá: {p} — tiệm của bạn được giữ phiên bản {v} (phiên bản hiện tại {cur}).', // DRAFT — Kevin reviews
+  'aiu.ptab.override': 'Bảng giá: {p} — giá riêng cho tiệm của bạn từ {d}.', // DRAFT — Kevin reviews
+  'aiu.ptab.upcoming': 'Phiên bản {v} từ {d}: {p}.', // DRAFT — Kevin reviews
+  'aiu.ptab.noPrice': 'chưa đặt giá', // DRAFT — Kevin reviews
+  'aiu.ptab.perUnit': ' mỗi đơn vị', // DRAFT — Kevin reviews
 };

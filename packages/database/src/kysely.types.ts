@@ -8278,6 +8278,9 @@ export interface DB {
   rewards_idempotency_events: RewardsIdempotencyEventsTable;   // 922
   device_history_chain: DeviceHistoryChainTable;   // 923
   device_labels: DeviceLabelsTable;   // 924
+  platform_ai_price_versions: PlatformAiPriceVersionsTable;   // 971
+  platform_ai_price_version_rows: PlatformAiPriceVersionRowsTable;   // 971
+  tenant_ai_price_overrides: TenantAiPriceOverridesTable;   // 971
   token_wallet_ledger: TokenWalletLedgerTable;
   // ── drift patch Oct 30 2026: round-2 guides + migrations 730/731 ──
   ai_billing_invoice_events: AiBillingInvoiceEventsTable;
@@ -10552,6 +10555,16 @@ export interface TokenPurchaseEventsTable {
 
 export interface DeviceLabelsTable {   // migration 924 — Device Health 06 (alias + asset tag per fleet device)
   id: Generated<string>; tenant_id: string; device_source: string; device_id: string; alias: string | null; asset_tag: string | null; updated_by: string | null; created_at: Ts; updated_at: Ts;
+  assigned_user_id: string | null; assigned_at: TsNull; assigned_by: string | null;   // migration 970 — optional employee assignment
+}
+export interface PlatformAiPriceVersionsTable {   // migration 971 — AI Usage Limits 07 (append-only AI price table versions)
+  id: Generated<string>; version_no: number; effective_from: Ts; existing_salons_keep_previous: boolean; note: string | null; published_by: string | null; published_at: Generated<Ts>;
+}
+export interface PlatformAiPriceVersionRowsTable {   // migration 971
+  version_id: string; feature: string; unit: string; price_cents: number;
+}
+export interface TenantAiPriceOverridesTable {   // migration 971 — optional per-salon AI price (append-only; NULL price removes)
+  id: Generated<string>; tenant_id: string; feature: string; unit: string; price_cents: number | null; effective_from: Ts; reason: string; set_by: string | null; created_at: Generated<Ts>;
 }
 export interface DeviceHistoryChainTable {   // migration 923 — Device Assignments 25 (append-only hash chain over device audit rows)
   id: Generated<string>; tenant_id: string; seq: number; audit_log_id: string; entity_type: string; entity_id: string | null; prev_hash: string; row_hash: string; created_at: Ts;

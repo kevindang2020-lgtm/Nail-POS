@@ -22,7 +22,7 @@ import { sql } from 'kysely';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { DISPLAY_ONLINE_WINDOW_MS, terminalOperationalStatus } from '@aipowersalon/api-contracts';
-import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse, DfHistoryVerifyResponse, DfLabelResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse, DfHistoryVerifyResponse, DfLabelResponse, DfAssignmentResponse, DfAssignableStaffResponse } from '@aipowersalon/api-contracts/tenant';
 import { evaluateDeviceAlerts, listDeviceAlerts } from './device-alert-routing';
 
 export interface DfCtx { tenantId: string; branchId: string; userId?: string | null; role?: string; permissions?: string[] }
@@ -230,10 +230,60 @@ export class DeviceFleetCenter {
   /** extras Device Health 06 (round 10): attach each device's alias / asset tag (device_labels — one read per list) */
   private async withLabels(ctx: DfCtx, rows: DfDevice[]): Promise<DfDevice[]> {
     if (!rows.length) return rows;
-    const labels = (await sql<{ device_source: string; device_id: string; alias: string | null; asset_tag: string | null }>`SELECT l.device_source, l.device_id, l.alias, l.asset_tag
-      FROM device_labels l WHERE l.tenant_id = ${ctx.tenantId}`.execute(this.db)).rows;
+    // round 11: + the optional employee assignment (name read live from users, same salon only)
+    const labels = (await sql<{ device_source: string; device_id: string; alias: string | null; asset_tag: string | null; assigned_user_id: string | null; assigned_at: Date | string | null; assignee_name: string | null }>`SELECT l.device_source, l.device_id, l.alias, l.asset_tag,
+        l.assigned_user_id, l.assigned_at, u.full_name AS assignee_name
+      FROM device_labels l LEFT JOIN users u ON u.id = l.assigned_user_id AND u.tenant_id = l.tenant_id WHERE l.tenant_id = ${ctx.tenantId}`.execute(this.db)).rows;
     const by = new Map(labels.map((l) => [`${l.device_source}|${l.device_id}`, l]));
-    return rows.map((r) => { const l = by.get(`${r.source}|${r.id}`); return { ...r, alias: l?.alias ?? null, assetTag: l?.asset_tag ?? null }; });
+    return rows.map((r) => { const l = by.get(`${r.source}|${r.id}`);
+      return { ...r, alias: l?.alias ?? null, assetTag: l?.asset_tag ?? null,
+        assignedEmployee: l?.assigned_user_id ? { userId: String(l.assigned_user_id), name: l.assignee_name ?? null, assignedAt: iso(l.assigned_at) } : null }; });
+  }
+  /** extras Device Health 06 (round 11): the people a device may be assigned to — ACTIVE staff of this salon (customer accounts
+   *  never), by name; at most 50. Name only: no phone or e-mail leaves. */
+  async assignableStaff(ctx: DfCtx, q: { q?: string }): Promise<DfAssignableStaffResponse> {
+    const term = String(q.q ?? '').trim().slice(0, 100);
+    const like = term ? `%${term.replace(/[\\%_]/g, (m) => '\\' + m)}%` : null;
+    const rows = (await sql<{ id: string; full_name: string | null }>`SELECT u.id, u.full_name FROM users u
+      WHERE u.tenant_id = ${ctx.tenantId} AND u.status = 'active' AND upper(u.role) <> 'CUSTOMER' AND u.full_name IS NOT NULL AND btrim(u.full_name) <> ''
+        ${ctx.branchId ? sql`AND (u.branch_id = ${ctx.branchId} OR u.branch_id IS NULL)` : sql``}
+        ${like ? sql`AND u.full_name ILIKE ${like}` : sql``}
+      ORDER BY u.full_name, u.id LIMIT 50`.execute(this.db)).rows;
+    return { items: rows.map((r) => ({ userId: String(r.id), name: String(r.full_name) })) };
+  }
+  /** extras Device Health 06 (round 11): assign a device to an employee, or clear it (userId null). Optional — a device starts
+   *  with nobody and is NEVER assigned automatically. The device must be one of THIS salon's (in scope); the person must be an
+   *  active staff member of this salon; audited with before / after (the assignment history). Changes no device setting. */
+  async setAssignment(ctx: DfCtx, b: { source?: unknown; deviceId?: unknown; userId?: unknown }): Promise<DfAssignmentResponse> {
+    const source = String(b.source ?? ''); const deviceId = String(b.deviceId ?? '');
+    if (!['station', 'kiosk', 'display', 'terminal'].includes(source) || !/^[A-Za-z0-9_.:-]{1,80}$/.test(deviceId)) throw new DeviceFleetError('DEVICE_FLEET_INVALID_DEVICE', 'Unknown device.');
+    const to = b.userId == null || String(b.userId).trim() === '' ? null : String(b.userId);
+    if (to && !UUID.test(to)) throw new DeviceFleetError('DEVICE_ASSIGNEE_INVALID', 'Choose an active staff member of this salon.');
+    const dev = (await this.rows(ctx, 'all')).concat(await this.stations(ctx, this.now().getTime())).find((r) => r.source === source && r.id === deviceId);
+    if (!dev) throw new DeviceFleetError('DEVICE_FLEET_INVALID_DEVICE', 'Unknown device.', 404);
+    let toName: string | null = null;
+    if (to) {
+      const u = (await sql<{ full_name: string | null }>`SELECT u.full_name FROM users u WHERE u.id = ${to} AND u.tenant_id = ${ctx.tenantId} AND u.status = 'active' AND upper(u.role) <> 'CUSTOMER'
+        ${ctx.branchId ? sql`AND (u.branch_id = ${ctx.branchId} OR u.branch_id IS NULL)` : sql``}`.execute(this.db)).rows[0];
+      if (!u) throw new DeviceFleetError('DEVICE_ASSIGNEE_INVALID', 'Choose an active staff member of this salon.');
+      toName = u.full_name ?? null;
+    }
+    const U = ctx.userId && UUID.test(ctx.userId) ? ctx.userId : null;
+    return this.db.transaction().execute(async (trx: any) => {
+      const before = (await sql<{ assigned_user_id: string | null }>`SELECT l.assigned_user_id FROM device_labels l WHERE l.tenant_id = ${ctx.tenantId} AND l.device_source = ${source} AND l.device_id = ${deviceId} FOR UPDATE`.execute(trx)).rows[0] ?? null;
+      const r = (await sql<{ updated_at: Date | string; assigned_at: Date | string | null }>`INSERT INTO device_labels (tenant_id, device_source, device_id, assigned_user_id, assigned_at, assigned_by, updated_by)
+          VALUES (${ctx.tenantId}, ${source}, ${deviceId}, ${to}, ${to ? sql`now()` : null}, ${to ? U : null}, ${U})
+        ON CONFLICT (tenant_id, device_source, device_id) DO UPDATE SET assigned_user_id = EXCLUDED.assigned_user_id,
+          assigned_at = CASE WHEN EXCLUDED.assigned_user_id IS NOT DISTINCT FROM device_labels.assigned_user_id THEN device_labels.assigned_at ELSE EXCLUDED.assigned_at END,
+          assigned_by = CASE WHEN EXCLUDED.assigned_user_id IS NOT DISTINCT FROM device_labels.assigned_user_id THEN device_labels.assigned_by ELSE EXCLUDED.assigned_by END,
+          updated_by = EXCLUDED.updated_by, updated_at = now() RETURNING updated_at, assigned_at`.execute(trx)).rows[0];
+      await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: ctx.branchId || null, userId: U, role: ctx.role ?? null },
+        { module: 'devices', action: to ? 'device.assigned' : 'device.unassigned', resourceType: 'device_label', resourceId: `${source}:${deviceId}`,
+          summary: to ? `Device assigned to an employee (${dev.name})` : `Device assignment cleared (${dev.name})`,
+          before: { assignedUserId: before?.assigned_user_id ?? null }, after: { assignedUserId: to } });
+      return { source: source as DfDevice['source'], deviceId, updatedAt: new Date(r.updated_at).toISOString(),
+        assignedEmployee: to ? { userId: to, name: toName, assignedAt: iso(r.assigned_at) } : null };
+    });
   }
   /** extras Device Health 06 (round 10): set or clear a device's alias / asset tag. The device must be one of THIS salon's
    *  (in the caller's scope); an asset tag is unique in the salon; audited with before / after. Changes no device setting. */
@@ -301,8 +351,8 @@ export class DeviceFleetCenter {
     const term = String(q.q ?? '').trim();
     if (term && term.length < 2) throw new DeviceFleetError('DEVICE_FLEET_SEARCH_TOO_SHORT', 'Type at least 2 characters.');
     let rows = await this.withLabels(ctx, await this.rows(ctx, cls));
-    // extras Device Health 06 (round 10): the salon's own alias and asset tag are searched too
-    if (term) { const f = fold(term); rows = rows.filter((r) => [r.name, r.branch, r.station, r.type, r.id, r.facts?.hsnMasked, r.alias, r.assetTag].some((v) => fold(v).includes(f))); }
+    // extras Device Health 06 (round 10): the salon's own alias and asset tag are searched too; round 11: + the assigned employee's name
+    if (term) { const f = fold(term); rows = rows.filter((r) => [r.name, r.branch, r.station, r.type, r.id, r.facts?.hsnMasked, r.alias, r.assetTag, r.assignedEmployee?.name].some((v) => fold(v).includes(f))); }
     if (status === 'unassigned') rows = rows.filter((r) => r.status === 'unassigned' || (r.source === 'display' && !r.station) || (r.source === 'kiosk' && !r.branchId) || (r.source === 'terminal' && !r.station));
     else if (status !== 'all') rows = rows.filter((r) => r.status === status);
     // round 10 (Tablets 10): the locations in this (scoped) list with their device counts — for the branch filter and the

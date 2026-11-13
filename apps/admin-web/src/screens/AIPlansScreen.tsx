@@ -5,6 +5,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { superAdminAiApi, type AdminAiPlan } from "../api/superAdminAiApi";
 import { superAdminApi } from "../api/superAdminApi";
+import { AiPriceTablePanel } from "./AiPriceTablePanel";
 
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 type DiscType = "none" | "percent" | "flat";
@@ -538,6 +539,9 @@ export function AIPlansScreen() {
           })}
         </div>
       )}
+
+      {/* extras AI Usage Limits 07 (round 11): the AI price table — empty until a version is published here */}
+      <AiPriceTablePanel packages={[...new Map(plans.flatMap((p) => p.packages).map((k) => [k.code, { code: k.code, name: k.name }])).values()]} />
 
       <div className="s muted mt-2.5">
         Subscribing a tenant to a plan activates its member assistants through

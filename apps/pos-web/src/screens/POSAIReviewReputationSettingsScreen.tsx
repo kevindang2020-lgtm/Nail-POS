@@ -18,7 +18,7 @@ import { posReputationSettingsApi as api, type ReputationSettingsValues } from '
 import { errorTextOf } from '../i18n/error-text';
 import { statusLabel } from '../i18n/status-label';
 import { codeLabel } from '../components/peopleLabels';
-import { fmtNumber, fmtInZone } from '../i18n/format';
+import { fmtNumber, fmtInZone, fmtMoney } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { useCan } from '../components/usePermissions';
@@ -334,14 +334,17 @@ function HealthTab() {
  *  visits — counts and reasons only, worded here; nothing was scheduled or sent. */
 type DryRunRecipient = { ticketId: string; customerId: string | null; name: string | null; phoneLast4: string | null; wouldAsk: boolean; reason: string | null; scheduledFor: string | null; channel: string };
 type DryRunDetail = { days: number; visits: number; capped: boolean; wouldAsk: number; skipped: number; byReason: Record<string, number>; quietHoursShifted: number; channel: string; channelReady: boolean | null; requestsEnabled: boolean;
-  recipients?: DryRunRecipient[]; cost?: { state: string; reason?: string } };
+  recipients?: DryRunRecipient[]; cost?: { state: string; reason?: string; unitPriceCents?: number; recipients?: number; estimatedCents?: number } };
 function DryRunLine({ d }: { d: DryRunDetail }) {
   const reasons = Object.entries(d.byReason).filter(([, n]) => n > 0).map(([r, n]) => `${codeLabel('rssx.dry.r.' + r, r)} ${fmtNumber(n)}`).join(' · ');
   return <div className="sub" data-testid="rssx-dry-run">
     <div>{t('rssx.dry.line', { days: fmtNumber(d.days), v: fmtNumber(d.visits) + (d.capped ? '+' : ''), a: fmtNumber(d.wouldAsk), s: fmtNumber(d.skipped) })}{reasons ? ` (${reasons})` : ''}</div>
     <div>{t('rssx.dry.quiet', { n: fmtNumber(d.quietHoursShifted) })} {t('rssx.dry.channel', { c: codeLabel('rssx.dry.ch.' + d.channel, d.channel) })}{d.channelReady === false ? ' ' + t('rssx.dry.notReady') : ''}</div>
     {!d.requestsEnabled ? <div>{t('rssx.dry.off')}</div> : null}
-    {d.cost?.state === 'NOT_AVAILABLE' ? <div data-testid="rssx-dry-cost">{t('rssx.dry.costNa')}</div> : null}
+    {/* round 11 (Reviews Reputation 07): the platform per-message price is blank by default → "not available" exactly as before;
+        when set, the server's estimate (whole cents × the recipients who would be texted) — nothing is sent or billed */}
+    {d.cost?.state === 'NOT_AVAILABLE' ? <div data-testid="rssx-dry-cost">{d.cost.reason === 'price_setting_invalid' ? t('rssx.dry.costInvalid') : d.cost.reason === 'not_a_text_channel' ? t('rssx.dry.costNotText') : t('rssx.dry.costNa')}</div>
+      : d.cost?.state === 'ESTIMATE' && d.cost.estimatedCents != null ? <div data-testid="rssx-dry-cost">{t('rssx.dry.costEst', { total: fmtMoney(d.cost.estimatedCents), n: fmtNumber(d.cost.recipients ?? 0), unit: fmtMoney(d.cost.unitPriceCents ?? 0) })}</div> : null}
     {d.recipients?.length ? <details data-testid="rssx-dry-recipients"><summary>{t('rssx.dry.recipients', { n: fmtNumber(d.recipients.length) })}</summary>
       <div style={{ overflowX: 'auto' }}><table className="tbl"><thead><tr><th>{t('rssx.dry.who')}</th><th>{t('rssx.dry.phone')}</th><th>{t('rssx.dry.outcome')}</th><th>{t('rssx.dry.when')}</th></tr></thead>
         <tbody>{d.recipients.map((x) => <tr key={x.ticketId} data-testid="rssx-dry-recipient"><td>{x.name ?? t('rssx.dry.noCustomer')}</td><td>{x.phoneLast4 ? `•••${x.phoneLast4}` : '—'}</td>

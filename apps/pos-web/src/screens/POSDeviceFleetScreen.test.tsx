@@ -3,9 +3,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ perms: ['pos.devices.view'] as string[], setLabel: vi.fn(), ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn(), exportCsv: vi.fn(), download: vi.fn() }));
+const m = vi.hoisted(() => ({ perms: ['pos.devices.view'] as string[], setLabel: vi.fn(), staffChoices: vi.fn(), setAssignment: vi.fn(), ov: vi.fn(), summary: vi.fn(), devices: vi.fn(), history: vi.fn(), check: vi.fn(), exportCsv: vi.fn(), download: vi.fn() }));
 vi.mock('../api/posDevicesApi', () => ({ posDevicesApi: { overview: m.ov } }));
-vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check, exportCsv: m.exportCsv, setLabel: m.setLabel } }));
+vi.mock('../api/posDeviceFleetApi', () => ({ posDeviceFleetApi: { summary: m.summary, devices: m.devices, history: m.history, check: m.check, exportCsv: m.exportCsv, setLabel: m.setLabel, staffChoices: m.staffChoices, setAssignment: m.setAssignment } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => m.perms.includes(p) }));
 vi.mock('../components/FitKit', async (orig) => ({ ...(await orig<typeof import('../components/FitKit')>()), downloadText: m.download }));
 import { POSDeviceFleetScreen } from './POSDeviceFleetScreen';
@@ -229,6 +229,36 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     fireEvent.click(screen.getByTestId('dfx-label-save'));
     await waitFor(() => expect(m.setLabel).toHaveBeenCalledWith({ source: 'station', deviceId: 'd2', alias: 'Bar', assetTag: null }));
     await waitFor(() => expect(m.devices.mock.calls.length).toBeGreaterThan(calls));
+  });
+  it('extras Device Health 06 (round 11): the assigned employee shows under the name; a manager assigns from the server\'s staff list or clears it; no Assign without the permission', async () => {
+    m.devices.mockResolvedValue(listOf([dev({ assignedEmployee: { userId: 'u1', name: 'Lan Nguyen', assignedAt: '2026-11-13T00:00:00Z' } }), dev({ id: 'd2', name: 'Back Bar', assignedEmployee: null })]));
+    const v = r('reception-pos');
+    expect(await screen.findByTestId('dfx-assignee')).toHaveTextContent('Lan Nguyen');
+    expect(screen.getAllByTestId('dfx-assignee')).toHaveLength(1);   // an unassigned device says nothing — nothing is invented
+    expect(screen.queryByTestId('dfx-assign')).toBeNull();
+    v.unmount();
+    m.perms = ['pos.devices.view', 'pos.devices.manage'];
+    m.staffChoices.mockResolvedValue({ items: [{ userId: 'u1', name: 'Lan Nguyen' }, { userId: 'u2', name: 'Minh Tran' }] });
+    m.setAssignment.mockResolvedValue({ source: 'station', deviceId: 'd2', assignedEmployee: { userId: 'u2', name: 'Minh Tran', assignedAt: '2026-11-13T00:00:00Z' }, updatedAt: '2026-11-13T00:00:00Z' });
+    const w = r('reception-pos');
+    fireEvent.click((await screen.findAllByTestId('dfx-assign'))[1]);
+    expect(screen.getByTestId('dfx-assign-current')).toHaveTextContent('Not assigned to anyone.');
+    expect(screen.queryByTestId('dfx-assign-clear')).toBeNull();
+    expect(screen.getByTestId('dfx-assign-save')).toBeDisabled();   // nothing picked → nothing to save
+    const choices = await screen.findAllByTestId('dfx-assign-choice');
+    expect(choices.map((c) => c.textContent?.trim())).toEqual(['Lan Nguyen', 'Minh Tran']);
+    fireEvent.click(within(choices[1]).getByRole('radio'));
+    const calls = m.devices.mock.calls.length;
+    fireEvent.click(screen.getByTestId('dfx-assign-save'));
+    await waitFor(() => expect(m.setAssignment).toHaveBeenCalledWith({ source: 'station', deviceId: 'd2', userId: 'u2' }));
+    await waitFor(() => expect(m.devices.mock.calls.length).toBeGreaterThan(calls));
+    w.unmount();
+    // clearing an existing assignment
+    r('reception-pos');
+    fireEvent.click((await screen.findAllByTestId('dfx-assign'))[0]);
+    expect(screen.getByTestId('dfx-assign-current')).toHaveTextContent('Assigned to Lan Nguyen');
+    fireEvent.click(screen.getByTestId('dfx-assign-clear'));
+    await waitFor(() => expect(m.setAssignment).toHaveBeenLastCalledWith({ source: 'station', deviceId: 'd1', userId: null }));
   });
 });
 
