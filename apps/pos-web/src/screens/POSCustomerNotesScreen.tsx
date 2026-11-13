@@ -291,7 +291,8 @@ export function POSCustomerNotesScreen() {
           <p className="sub">{t('cnx.health.readOnly')}</p>
           {health.checks.map((x) => <div key={x.key} className="rvw-check" data-testid={`cnx-chk-${x.key}`}>
             <div><span className={'chip ' + (x.state === 'READY' ? 'ok' : x.state === 'WARNING' ? 'warn' : 'bad')}>{t('cnx.health.' + x.state)}</span> <b>{t('cnx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
-            <div className="sub">{t('cnx.health.d.' + x.key + '.' + x.state)}</div></div>)}
+            <div className="sub">{t('cnx.health.d.' + x.key + '.' + x.state)}</div>
+            {x.detail ? <div className="sub" data-testid={`cnx-chk-${x.key}-m`}>{monitorText(x.key, x.detail)}</div> : null}</div>)}
         </>}
       </FitDialog> : null}
     </div>
@@ -315,6 +316,16 @@ function ReviewReceipt({ category, hash, history }: { category: string; hash: st
 }
 
 /** one customer's notes: every category, the safety review, the history */
+/** Customer Notes 10: the measured numbers behind a monitor check (from the server's request log); unmeasured says so */
+function monitorText(key: string, d: Record<string, number | boolean | null>): string {
+  if (!d.measured) return t('cnx.health.m.notMeasured');
+  const n = (v: unknown) => (v == null ? '—' : fmtNumber(Number(v)));
+  if (key === 'read_failures') return t('cnx.health.m.read_failures', { f: n(d.failed), r: n(d.reads), p: d.failedPercent == null ? '—' : String(d.failedPercent) });
+  if (key === 'warning_latency') return t('cnx.health.m.warning_latency', { n: n(d.requests), ms: n(d.p95Ms), l: n(d.limitMs) });
+  if (key === 'version_conflicts') return t('cnx.health.m.version_conflicts', { c: n(d.conflicts), w: n(d.writes) });
+  return '';
+}
+
 function NoteDetail({ customerId, onClose, onEdit, onChanged }: { customerId: string; onClose: () => void; onEdit: (c: { customerId: string; fullName: string; phone?: string | null }) => void; onChanged: () => void }) {
   const [d, setD] = useState<CnDetailResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);

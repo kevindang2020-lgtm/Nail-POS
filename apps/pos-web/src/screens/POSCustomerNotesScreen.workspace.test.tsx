@@ -126,4 +126,17 @@ describe('Customer Notes workspace', () => {
     expect(within(dlg).getByTestId('cnx-rel-note')).toHaveTextContent(/every note is still shown/);
     expect(cn.detail).toHaveBeenLastCalledWith('c1');
   });
+  it('Customer Notes 10: the monitors show what the request log measured; an unmeasured monitor says so instead of 0 %', async () => {
+    cn.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-09T10:00:00Z', checks: [
+      { key: 'read_failures', state: 'WARNING', count: 2, detail: { measured: true, reads: 20, failed: 2, failedPercent: 10 } },
+      { key: 'warning_latency', state: 'READY', detail: { measured: false, requests: 0, p95Ms: null, limitMs: 1500 } },
+      { key: 'version_conflicts', state: 'READY', count: 0, detail: { measured: true, writes: 6, conflicts: 0 } }] });
+    render(<POSCustomerNotesScreen />);
+    await screen.findAllByTestId('cnx-row');
+    fireEvent.click(screen.getByTestId('cnx-check'));
+    expect(await screen.findByTestId('cnx-chk-read_failures-m')).toHaveTextContent('2 of 20 reads failed (10%)');
+    expect(screen.getByTestId('cnx-chk-read_failures')).toHaveTextContent(/Note reads that failed/);
+    expect(screen.getByTestId('cnx-chk-warning_latency-m')).toHaveTextContent(/Not measured/);
+    expect(screen.getByTestId('cnx-chk-version_conflicts-m')).toHaveTextContent('0 of 6 saves were refused');
+  });
 });

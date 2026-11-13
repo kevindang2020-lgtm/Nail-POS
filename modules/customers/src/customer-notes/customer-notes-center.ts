@@ -41,6 +41,10 @@ export function rankByRelevance<E extends { relevance: { score: number } }>(entr
   return entries.map((e, i) => ({ e, i })).sort((a, b) => b.e.relevance.score - a.e.relevance.score || a.i - b.i).map((x) => x.e);
 }
 
+type CnCheck = CnCheckResponse['checks'][number];
+/** Customer Notes 10 thresholds: a warning needs enough traffic to mean something */
+export const CN_MONITOR = { minReads: 20, failPercent: 5, minLatencySamples: 5, p95Ms: 1500, conflicts: 5 } as const;
+
 export class CustomerNotesError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details: Record<string, unknown> = {}) { super(message); }
 }
@@ -266,10 +270,38 @@ export class CustomerNotesCenter {
   }
 
   /** Check Customer Notes System — read-only (guide §15): nothing here edits a note or a review */
+  /** Customer Notes 10 — accuracy and response-time monitors, read from the platform's own request log (telemetry_log_events,
+   *  'request.completed' lines written by HttpMetricsInterceptor: route template, status, duration — no note text, no customer).
+   *  Last 24 h, this salon only: read failure rate (5xx on GET /pos/customer-notes/*), warning retrieval latency (p95 of
+   *  notes/detail, which carries the safety notes) and version conflicts (409 on a notes save or a safety review). Search reads
+   *  the live tables (no separate index), so it has no freshness lag to measure. Nothing measured → measured: false, never 0%. */
+  private async monitors(T: string): Promise<CnCheck[]> {
+    const r = (await sql<Row>`select
+        count(*) filter (where l.route like '%/customer-notes/%' and coalesce(l.fields->>'method', 'GET') = 'GET')::int as reads,
+        count(*) filter (where l.route like '%/customer-notes/%' and coalesce(l.fields->>'method', 'GET') = 'GET' and l.status >= 500)::int as failed,
+        count(*) filter (where l.route like '%/customer-notes/notes/detail')::int as detail_n,
+        percentile_cont(0.95) within group (order by l.duration_ms) filter (where l.route like '%/customer-notes/notes/detail' and l.duration_ms is not null) as p95,
+        count(*) filter (where l.status = 409 and (l.route like '%/customer-notes/review' or l.route like '%/customers/:customerId/notes'))::int as conflicts,
+        count(*) filter (where l.route like '%/customer-notes/review' or l.route like '%/customers/:customerId/notes')::int as writes
+      from telemetry_log_events l
+      where l.tenant_id = ${T}::uuid and l.msg = 'request.completed' and l.ts >= now() - interval '24 hours'
+        and (l.route like '%/customer-notes/%' or l.route like '%/customers/:customerId/notes')`.execute(this.db)).rows[0] ?? {};
+    const reads = N(r.reads), failed = N(r.failed), detailN = N(r.detail_n), writes = N(r.writes), conflicts = N(r.conflicts);
+    const p95 = r.p95 == null ? null : Math.round(Number(r.p95));
+    const rate = reads > 0 ? Math.round((failed / reads) * 1000) / 10 : null;
+    return [
+      { key: 'read_failures', state: reads >= CN_MONITOR.minReads && (rate ?? 0) >= CN_MONITOR.failPercent ? 'WARNING' : 'READY', count: failed,
+        detail: { measured: reads > 0, reads, failed, failedPercent: rate } },
+      { key: 'warning_latency', state: detailN >= CN_MONITOR.minLatencySamples && p95 != null && p95 > CN_MONITOR.p95Ms ? 'WARNING' : 'READY',
+        detail: { measured: detailN > 0, requests: detailN, p95Ms: p95, limitMs: CN_MONITOR.p95Ms } },
+      { key: 'version_conflicts', state: conflicts >= CN_MONITOR.conflicts ? 'WARNING' : 'READY', count: conflicts,
+        detail: { measured: writes > 0, writes, conflicts } },
+    ];
+  }
+
   async check(ctx: CnCtx): Promise<CnCheckResponse> {
     const T = ctx.tenantId; const s = await this.scope(ctx);
-    type C = { key: string; state: 'READY' | 'WARNING' | 'FAILED'; count?: number };
-    const checks: C[] = [];
+    const checks: CnCheck[] = [];
     const bad = N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and c.notes_json is not null and jsonb_typeof(c.notes_json) <> 'object'`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'notes_readable', state: bad ? 'FAILED' : 'READY', count: bad });
     const drift = N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and jsonb_typeof(c.notes_json) = 'object'
@@ -279,6 +311,7 @@ export class CustomerNotesCenter {
     checks.push({ key: 'safety_review_backlog', state: stale ? 'WARNING' : 'READY', count: stale });
     const corr = N((await sql<Row>`select count(*)::int as n from ${this.entries(T, s)} e where e.review = 'needs_correction'`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'corrections_open', state: corr ? 'WARNING' : 'READY', count: corr });
+    checks.push(...await this.monitors(T));
     checks.push({ key: 'no_side_effects', state: 'READY' });
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : 'READY';
     return { overall, checkedAt: new Date(this.now()).toISOString(), checks };

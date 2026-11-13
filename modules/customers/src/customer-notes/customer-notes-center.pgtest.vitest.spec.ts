@@ -99,7 +99,10 @@ describe('Customer Notes workspace', () => {
   it('CN-07 the health check is read-only and names what it saw', async () => {
     const before = (await q(sql`select count(*)::int as n from customer_note_reviews`))[0].n;
     const h = await cn.check(owner());
-    expect(h.checks.map((c: any) => c.key)).toEqual(['notes_readable', 'legacy_mirror', 'safety_review_backlog', 'corrections_open', 'no_side_effects']);
+    expect(h.checks.map((c: any) => c.key)).toEqual(['notes_readable', 'legacy_mirror', 'safety_review_backlog', 'corrections_open', 'read_failures', 'warning_latency', 'version_conflicts', 'no_side_effects']);
+    // Customer Notes 10: nothing in the request log yet → not measured (never "0 % failures")
+    expect(h.checks.find((c: any) => c.key === 'read_failures')).toMatchObject({ state: 'READY', count: 0, detail: { measured: false, reads: 0, failedPercent: null } });
+    expect(h.checks.find((c: any) => c.key === 'warning_latency')?.detail).toMatchObject({ measured: false, p95Ms: null });
     expect(h.checks.find((c: any) => c.key === 'corrections_open')).toMatchObject({ state: 'WARNING', count: 1 });
     expect((await q(sql`select count(*)::int as n from customer_note_reviews`))[0].n).toBe(before);
   });
@@ -142,5 +145,33 @@ describe('Customer Notes 01 — context-aware relevance (nothing hidden)', () =>
     expect(await code(cn.detail(owner(), VY, { ticketId: id(900) }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
     expect(await code(cn.detail(owner(), VY, { ticketId: 'x' }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
     expect(await code(cn.detail(confinedB2(), VY, { ticketId: id(910) }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+  });
+});
+
+describe('Customer Notes 10 — accuracy and response-time monitors from the request log', () => {
+  it('read failure rate, warning retrieval latency (p95) and version conflicts over 24 h for this salon only; old rows and other salons never count; nothing is written', async () => {
+    const line = (tenant: string, route: string, status: number, ms: number, method = 'GET', ago = '1 hour') => q(sql`insert into telemetry_log_events
+      (ts, level, service, tenant_id, route, status, duration_ms, msg, fields) values (now() - ${ago}::interval, 'info', 'api', ${tenant}, ${route}, ${status}, ${ms}, 'request.completed', ${JSON.stringify({ method })}::jsonb)`);
+    // 20 reads: 18 ok + 2 failed (10 %), of them 10 detail reads — 9 fast and 1 very slow; 6 notes saves / reviews, 5 refused 409
+    for (let i = 0; i < 8; i++) await line(T, '/api/v1/pos/customer-notes/notes', 200, 80);
+    await line(T, '/api/v1/pos/customer-notes/notes', 500, 90); await line(T, '/api/v1/pos/customer-notes/summary', 503, 90);
+    for (let i = 0; i < 9; i++) await line(T, '/api/v1/pos/customer-notes/notes/detail', 200, 100 + i * 10);
+    await line(T, '/api/v1/pos/customer-notes/notes/detail', 200, 9000);
+    await line(T, '/api/v1/pos/customer-notes/review', 200, 120, 'POST');
+    for (let i = 0; i < 3; i++) await line(T, '/api/v1/pos/customer-notes/review', 409, 60, 'POST');
+    for (let i = 0; i < 2; i++) await line(T, '/api/v1/pos/customers/:customerId/notes', 409, 60, 'PATCH');
+    // never counted: an old failure, another salon's failures, an unrelated route
+    await line(T, '/api/v1/pos/customer-notes/notes', 500, 90, 'GET', '3 days');
+    for (let i = 0; i < 30; i++) await line(X, '/api/v1/pos/customer-notes/notes', 500, 5000);
+    await line(T, '/api/v1/pos/tickets', 500, 90);
+    const before = (await q(sql`select count(*)::int as n from telemetry_log_events`))[0].n;
+    const h = await cn.check(owner());
+    const by = Object.fromEntries(h.checks.map((c: any) => [c.key, c]));
+    expect(by.read_failures).toEqual({ key: 'read_failures', state: 'WARNING', count: 2, detail: { measured: true, reads: 20, failed: 2, failedPercent: 10 } });
+    expect(by.warning_latency.state).toBe('WARNING');
+    expect(by.warning_latency.detail).toMatchObject({ measured: true, requests: 10, limitMs: 1500 });
+    expect(by.warning_latency.detail.p95Ms).toBeGreaterThan(1500);
+    expect(by.version_conflicts).toEqual({ key: 'version_conflicts', state: 'WARNING', count: 5, detail: { measured: true, writes: 6, conflicts: 5 } });
+    expect((await q(sql`select count(*)::int as n from telemetry_log_events`))[0].n).toBe(before);
   });
 });

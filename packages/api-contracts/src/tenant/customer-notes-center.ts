@@ -36,7 +36,9 @@ export type CnRelevanceReason = 'safety' | 'same_service' | 'same_technician' | 
 export interface CnCheckResponse {
   overall: 'READY' | 'WARNING' | 'FAILED';
   checkedAt: string;
-  checks: { key: string; state: 'READY' | 'WARNING' | 'FAILED'; count?: number }[];
+  checks: { key: string; state: 'READY' | 'WARNING' | 'FAILED'; count?: number;
+    /** Customer Notes 10 monitors: what was measured from the request log (measured=false → the log store had nothing to read) */
+    detail?: Record<string, number | boolean | null> }[];
 }
 
 // Appointment History workspace (SUNMI guide, Nov 9 2026) — `/pos/appointment-history/*`.
