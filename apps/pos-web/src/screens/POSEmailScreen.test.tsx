@@ -4,10 +4,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ getCat: vi.fn(), update: vi.fn(), settings: vi.fn(), summary: vi.fn(), health: vi.fn(), history: vi.fn(), quick: vi.fn(), rcheck: vi.fn(), compose: vi.fn() }));
+const m = vi.hoisted(() => ({ getCat: vi.fn(), update: vi.fn(), settings: vi.fn(), summary: vi.fn(), health: vi.fn(), history: vi.fn(), quick: vi.fn(), rcheck: vi.fn(), compose: vi.fn(), testPreview: vi.fn(), test: vi.fn(), detail: vi.fn(), resend: vi.fn(), exportCsv: vi.fn() }));
 vi.mock('../api/posSettingsApi', () => ({ posSettingsApi: { getCategory: m.getCat, updateCategory: m.update } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: m.quick } }));
-vi.mock('../api/posEmailCenterApi', () => ({ posEmailCenterApi: { settings: m.settings, summary: m.summary, health: m.health, history: m.history, check: vi.fn(), detail: vi.fn(), resend: vi.fn(), test: vi.fn(), compose: m.compose, recipientCheck: m.rcheck } }));
+vi.mock('../api/posEmailCenterApi', () => ({ posEmailCenterApi: { settings: m.settings, summary: m.summary, health: m.health, history: m.history, check: vi.fn(), detail: m.detail, resend: m.resend, test: m.test, testPreview: m.testPreview, compose: m.compose, recipientCheck: m.rcheck } }));
+vi.mock('../api/posCustomerNotificationsApi', () => ({ posCustomerNotificationsApi: { exportCsv: m.exportCsv } }));
+vi.mock('../components/FitKit', async (orig) => ({ ...(await orig<typeof import('../components/FitKit')>()), downloadText: vi.fn() }));
 import { POSEmailScreen } from './POSEmailScreen';
 
 const W = { preset: 'month', from: '2026-10-01', to: '2026-10-31', tz: 'America/New_York', today: '2026-10-31' };
@@ -111,5 +113,68 @@ describe('POSEmailScreen', () => {
     m.summary.mockResolvedValue({ ...base, usage: { handedToProvider: 3, withProviderCost: null, costCents: null, state: 'not_authorized', basis: 'b' } });
     mount();
     expect((await screen.findByTestId('emc-use-cost')).textContent).toBe('Shown to managers only');
+  });
+  // extras round 10 (agent 5): Email 03 / 06 / 08 / 13 / 15
+  it('Email 03: the provider evidence timeline lists the latest provider events and the last accepted / delivered send; none → says so', async () => {
+    m.health.mockResolvedValue({ overall: 'attention_required', layers: [], fromAddress: 'x@y.z', lastCheckedAt: null, lastSuccessAt: null,
+      evidence: { lastAcceptedAt: '2026-10-30T15:00:00Z', lastDeliveredAt: '2026-10-30T15:01:00Z', events: [{ status: 'delivered', verified: true, applied: true, at: '2026-10-30T15:01:00Z', emailId: 'e1' }, { status: 'processed', verified: true, applied: false, at: '2026-10-30T15:00:30Z', emailId: 'e1' }] } });
+    mount();
+    const ev = await screen.findByTestId('emc-evidence');
+    expect(screen.getAllByTestId('emc-ev')).toHaveLength(2);
+    expect(ev.textContent).toMatch(/evidence only/);
+    expect(ev.textContent).toMatch(/Oct 30, 2026/);
+  });
+  it('Email 06: Send stays off until a preview confirms a staff recipient; the preview shows the exact email and the test history', async () => {
+    m.testPreview.mockImplementation(async (to: string) => ({ outcome: 'preview', subject: 'Test email from your salon', body: 'No customer received this message.',
+      recipient: { address: to.toLowerCase(), validAddress: true, staff: to.toLowerCase() === 'dee@glow.test' },
+      history: [{ id: 'h1', at: '2026-10-29T15:00:00Z', to: 'dee@glow.test', status: 'simulated', reason: null, deliveredAt: null, resendOf: null }] }));
+    m.test.mockResolvedValue({ outcome: 'simulated', reason: null, notificationId: 'n1', providerReference: null, replayed: false });
+    mount();
+    await screen.findByDisplayValue('Glow Bar');
+    fireEvent.change(screen.getByTestId('emc-test-to'), { target: { value: 'ava@example.com' } });
+    fireEvent.click(screen.getByTestId('emc-test-preview'));
+    expect((await screen.findByTestId('emc-test-staff')).textContent).toMatch(/not an active staff member/);
+    expect((screen.getByTestId('emc-test-confirm') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByTestId('emc-test-send') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('emc-test-to'), { target: { value: 'dee@glow.test' } });
+    fireEvent.click(screen.getByTestId('emc-test-preview'));
+    await waitFor(() => expect(screen.getByTestId('emc-test-staff').textContent).toMatch(/is a staff member/));
+    expect(screen.getByTestId('emc-test-pv').textContent).toMatch(/Test email from your salon/);
+    expect(screen.getByTestId('emc-test-history').textContent).toMatch(/dee@glow.test/);
+    expect(m.test).not.toHaveBeenCalled();                                    // previewing never sends
+    fireEvent.click(screen.getByTestId('emc-test-confirm'));
+    fireEvent.click(screen.getByTestId('emc-test-send'));
+    await waitFor(() => expect(m.test).toHaveBeenCalledTimes(1));
+    expect(m.test.mock.calls[0][0]).toBe('dee@glow.test');
+  });
+  it('Email 13 + 08: rows and details say the next step in words; Resend sends one request at a time', async () => {
+    m.history.mockResolvedValue({ items: [{ id: 'e1', createdAt: '2026-10-30T15:00:00Z', to: 'ava@example.com', customer: null, subject: 'Receipt', category: 'receipt', status: 'bounced', reason: 'bounced:550', deliveredAt: null, resendOf: null, nextAction: 'fix_address' }],
+      total: 1, page: 1, pageSize: 20, totalPages: 1, basis: 'created', window: W, masked: false });
+    m.detail.mockResolvedValue({ id: 'e2', createdAt: '2026-10-30T15:00:00Z', status: 'failed', rawStatus: 'failed', reason: 'email_failed:503', category: 'receipt', consent: 'transactional', from: { address: 'x@y.z', name: null }, replyTo: null, to: 'ava@example.com', subject: 'R', body: 'b',
+      customer: null, branch: null, links: { appointmentId: null, ticketId: null, receipts: [] }, providerReference: null, deliveredAt: null, events: [], attempts: [{ id: 'e2', at: '2026-10-30T15:00:00Z', status: 'failed', reason: null, isThis: true }], canResend: true, nextAction: 'resend' });
+    let release: (v: unknown) => void = () => {};
+    m.resend.mockImplementation(() => new Promise((r) => { release = r; }));
+    mount();
+    expect((await screen.findByTestId('emc-row-next')).textContent).toMatch(/correct the customer's email/);
+    fireEvent.click(screen.getByTestId('emc-row-view'));
+    expect((await screen.findByTestId('emc-d-next')).textContent).toMatch(/Resend it from Email Details/);
+    fireEvent.click(screen.getByTestId('emc-d-resend-confirm'));
+    fireEvent.click(screen.getByTestId('emc-d-resend'));
+    fireEvent.click(screen.getByTestId('emc-d-resend'));
+    await waitFor(() => expect((screen.getByTestId('emc-d-resend') as HTMLButtonElement).disabled).toBe(true));
+    expect(m.resend).toHaveBeenCalledTimes(1);
+    release({ outcome: 'simulated', refusalCode: null, newNotificationId: 'e3', replayed: false });
+    await waitFor(() => expect(screen.getByTestId('emc-d-msg')).toBeInTheDocument());
+  });
+  it('Email 15: Export calls the authorized notification-records export narrowed to email with this period and search', async () => {
+    m.exportCsv.mockResolvedValue('Generated at,x\n');
+    mount();
+    await screen.findByDisplayValue('Glow Bar');
+    fireEvent.change(screen.getByTestId('emc-search'), { target: { value: 'ava' } });
+    await new Promise((r) => setTimeout(r, 350));
+    fireEvent.click(screen.getByTestId('emc-export'));
+    await waitFor(() => expect(m.exportCsv).toHaveBeenCalledTimes(1));
+    expect(m.exportCsv.mock.calls[0][0]).toMatchObject({ channel: 'email', preset: 'month', q: 'ava' });
+    expect((await screen.findByTestId('emc-export-msg')).textContent).toMatch(/recorded with your name/);
   });
 });

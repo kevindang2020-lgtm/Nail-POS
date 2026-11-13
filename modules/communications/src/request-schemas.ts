@@ -207,7 +207,7 @@ export const CN_ALERT_SETTINGS_BODY: BodySchema = S.object({
 });
 
 // ── Email Management & Delivery Center (748, Email guide Oct 31 2026) ──────────────────────────────────────────────────
-export const EMAIL_TEST_BODY: BodySchema = S.object({ to: str(254), idempotencyKey: str(120), confirm: bool });
+export const EMAIL_TEST_BODY: BodySchema = S.object({ to: str(254), idempotencyKey: str(120), confirm: bool, preview: bool });   // preview: extras Email 06 (read-only wizard step)
 export const EMAIL_COMPOSE_BODY: BodySchema = S.object({ customerId: str(40), subject: str(150), body: str(5000), idempotencyKey: str(120), confirm: bool, preview: bool });
 export const EMAIL_RESEND_BODY: BodySchema = S.object({ idempotencyKey: str(200), confirm: bool });
 /** the provider's signed event batch (SendGrid posts a JSON array); bounded — the signature is checked on the raw bytes */

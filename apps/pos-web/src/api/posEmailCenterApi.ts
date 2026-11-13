@@ -17,8 +17,13 @@ export interface EmHygiene { total: number; buckets: { key: 'hard_bounce' | 'com
 /** Email 10 — the composer's recipient check (preview = true; nothing is sent) */
 export interface EmRecipientCheck { addressMasked: string | null; validAddress: boolean; sharedAddressCustomers: number; sameNameCustomers: number; suppression: string | null; confidence: 'unique' | 'shared_address' | 'similar_name' | 'no_address' }
 export interface EmLayer { key: string; state: string; detail: string; next: string | null; checkedAt?: string | null; lastSuccessAt?: string | null; lastEventAt?: string | null; lastReason?: string | null }
-export interface EmHealth { overall: string; layers: EmLayer[]; fromAddress: string; lastCheckedAt: string | null; lastSuccessAt: string | null }
-export interface EmRow { id: string; createdAt: string; to: string; customer: { id: string; name: string | null } | null; subject: string | null; category: EmCategory; status: EmStatus; reason: string | null; deliveredAt: string | null; resendOf: string | null }
+/** extras Email 03 (round 10): the provider evidence timeline the health route returns (older servers: absent) */
+export interface EmEvidence { lastAcceptedAt: string | null; lastDeliveredAt: string | null; events: { status: string; verified: boolean; applied: boolean; at: string | null; emailId: string }[] }
+export interface EmHealth { overall: string; layers: EmLayer[]; fromAddress: string; lastCheckedAt: string | null; lastSuccessAt: string | null; evidence?: EmEvidence }
+/** extras Email 06 (round 10): the test wizard's read-only preview step */
+export interface EmTestPreview { outcome: 'preview'; subject: string; body: string; recipient: { address: string; validAddress: boolean; staff: boolean | null } | null;
+  history: { id: string; at: string | null; to: string; status: EmStatus; reason: string | null; deliveredAt: string | null; resendOf: string | null }[] }
+export interface EmRow { id: string; createdAt: string; to: string; customer: { id: string; name: string | null } | null; subject: string | null; category: EmCategory; status: EmStatus; reason: string | null; deliveredAt: string | null; resendOf: string | null; nextAction?: string | null }
 export interface EmPage { items: EmRow[]; total: number; page: number; pageSize: number; totalPages: number; basis: string; window: EmWindow; masked: boolean }
 export interface EmDetail {
   id: string; createdAt: string; status: EmStatus; rawStatus: string; reason: string | null; category: EmCategory; consent: string;
@@ -27,7 +32,7 @@ export interface EmDetail {
   links: { appointmentId: string | null; ticketId: string | null; receipts: { number: string; at: string }[] };
   providerReference: string | null; deliveredAt: string | null;
   events: { status: string; code: string | null; applied: boolean; verified: boolean; at: string }[];
-  attempts: { id: string; at: string; status: EmStatus; reason: string | null; isThis: boolean }[]; canResend: boolean;
+  attempts: { id: string; at: string; status: EmStatus; reason: string | null; isThis: boolean }[]; canResend: boolean; nextAction?: string | null;
 }
 export interface EmSendResult { outcome: string; reason: string | null; notificationId: string | null; providerReference: string | null; replayed: boolean }
 export interface EmQuery { q?: string; status?: string; category?: string; basis?: string; preset?: string; from?: string; to?: string; page?: number; pageSize?: number }
@@ -43,6 +48,7 @@ export const posEmailCenterApi = {
   history: (q: EmQuery) => api.get<EmPage>(`/pos/email-center/history${qs(q as Record<string, unknown>)}`),
   detail: (id: string) => api.get<EmDetail>(`/pos/email-center/messages/${encodeURIComponent(id)}`),
   resend: (id: string, key: string) => api.post<{ outcome: string; refusalCode: string | null; newNotificationId: string | null; replayed: boolean }>(`/pos/email-center/messages/${encodeURIComponent(id)}/resend`, { idempotencyKey: key, confirm: true }, withKey(key)),
+  testPreview: (to: string) => api.post<EmTestPreview>('/pos/email-center/test', { to, preview: true }),
   test: (to: string, key: string) => api.post<EmSendResult>('/pos/email-center/test', { to, idempotencyKey: key, confirm: true }, withKey(key)),
   recipientCheck: (customerId: string) => api.post<EmSendResult & { recipient: EmRecipientCheck }>('/pos/email-center/compose', { customerId, preview: true }),
   compose: (b: { customerId: string; subject: string; body: string }, key: string) => api.post<EmSendResult>('/pos/email-center/compose', { ...b, idempotencyKey: key, confirm: true }, withKey(key)),

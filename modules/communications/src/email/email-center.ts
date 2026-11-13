@@ -40,6 +40,23 @@ export function emailDisplayStatus(r: { status: string; failure_reason?: string 
   if (s === 'failed') return /^bounced|^blocked/.test(why) ? 'bounced' : 'failed';
   return /opted_out|disabled/.test(why) ? 'suppressed' : 'blocked';
 }
+/** extras Email 13 (round 10): the next step a person can take for one email, beyond its colour badge — a code the POS words
+ *  (emc.next2.<code>). Decided here, once, from the stored status / reason, whether a resend is allowed and how old an
+ *  accepted email is (accepted for more than a day with no delivery receipt → check the delivery events). */
+export type EmailNextAction = 'await_delivery' | 'check_delivery_events' | 'resend' | 'review_reason' | 'fix_address' | 'customer_opted_out' | 'check_settings' | 'connect_provider';
+export function emailNextAction(r: { status: string; failure_reason?: string | null; created_at?: unknown }, canResend: boolean, nowMs: number): EmailNextAction | null {
+  const d = emailDisplayStatus(r);
+  if (d === 'delivered') return null;
+  if (d === 'accepted') return r.created_at && nowMs - new Date(r.created_at as string).getTime() > 24 * 3600_000 ? 'check_delivery_events' : 'await_delivery';
+  if (d === 'failed') return canResend ? 'resend' : 'review_reason';
+  if (d === 'bounced') return 'fix_address';
+  if (d === 'suppressed') return 'customer_opted_out';
+  if (d === 'simulated') return 'connect_provider';
+  return 'check_settings';
+}
+const TEST_SUBJECT = 'Test email from your salon';
+const TEST_BODY = 'This is a test email from AI PowerSalon. If you can read this, your salon email is working.\n\nNo customer received this message.';
+
 export function emailCategory(r: { purpose?: string | null; source_type?: string | null }): (typeof CATEGORIES)[number] {
   if (r.source_type === 'appointment') return 'booking';
   if (r.purpose === 'receipt') return 'receipt';
@@ -192,7 +209,16 @@ export class EmailCenter {
     ];
     // a test sender never reads Ready: nothing it 'sends' leaves this environment
     const overall = configuration === 'not_configured' ? 'setup_required' : !last ? 'unknown' : provider === 'healthy' && callbacks === 'receiving' && !degraded && !testSender ? 'ready' : 'attention_required';
-    return { overall, layers, fromAddress: emailFromAddress(this.env), lastCheckedAt: iso(last?.checked_at), lastSuccessAt: iso(lastOk?.checked_at) };
+    // extras Email 03 (round 10) — the provider evidence timeline: the latest provider events for this salon's email (signed or
+    // not, applied or evidence only) and the last REAL send (accepted / delivered — a simulated send is not evidence)
+    const evRows = (await sql<{ provider_status: string; signature_verified: boolean; applied: boolean; received_at: unknown; notification_id: string }>`select e.provider_status, e.signature_verified, e.applied, e.received_at, e.notification_id
+        from notification_delivery_events e join notifications n on n.id = e.notification_id and n.tenant_id = e.tenant_id
+        where e.tenant_id = ${T}::uuid and n.channel = 'email' order by e.received_at desc, e.id desc limit 10`.execute(this.db)).rows;
+    const sends = (await sql<{ accepted: unknown; delivered: unknown }>`select max(created_at) filter (where status in ('sent', 'delivered')) as accepted, max(delivered_at) as delivered
+        from notifications where tenant_id = ${T}::uuid and channel = 'email'`.execute(this.db)).rows[0];
+    const evidence = { lastAcceptedAt: iso(sends?.accepted), lastDeliveredAt: iso(sends?.delivered),
+      events: evRows.map((e) => ({ status: String(e.provider_status), verified: !!e.signature_verified, applied: !!e.applied, at: iso(e.received_at), emailId: String(e.notification_id) })) };
+    return { overall, layers, fromAddress: emailFromAddress(this.env), lastCheckedAt: iso(last?.checked_at), lastSuccessAt: iso(lastOk?.checked_at), evidence };
   }
 
   async checkHealth(ctx: EcContext) {
@@ -256,6 +282,7 @@ export class EmailCenter {
     return {
       items: rows.map((r: any) => ({ id: String(r.id), createdAt: iso(r.created_at), to: full ? r.to_address : mask(r.to_address), customer: r.customer_id ? { id: String(r.customer_id), name: r.full_name ?? null } : null,
         subject: r.subject ?? null, category: emailCategory(r), status: emailDisplayStatus(r), reason: r.failure_reason ?? null, deliveredAt: iso(r.delivered_at), resendOf: r.retry_of_notification_id ?? null,
+        nextAction: emailNextAction(r, full && r.status === 'failed' && !/^(bounced|blocked)/.test(String(r.failure_reason ?? '')), this.now()),
         source: r.source_type ? { type: r.source_type, id: r.source_id } : null })),
       total, page, pageSize, totalPages, sort: 'newest', basis, window: { preset: p.preset, from: p.from, to: p.to, tz: p.tz, today: p.today }, masked: !full,
     };
@@ -291,6 +318,7 @@ export class EmailCenter {
       attempts: attempts.map((a: any) => ({ id: String(a.id), at: iso(a.created_at), status: emailDisplayStatus(a), reason: a.failure_reason ?? null, isThis: String(a.id) === String(id) })),
       // a bounce / receiver block is never retried (the resend path refuses it), so the button is not offered
       canResend: full && r.status === 'failed' && !/^(bounced|blocked)/.test(String(r.failure_reason ?? '')),
+      nextAction: emailNextAction(r, full && r.status === 'failed' && !/^(bounced|blocked)/.test(String(r.failure_reason ?? '')), this.now()),
     };
   }
 
@@ -315,17 +343,32 @@ export class EmailCenter {
   }
 
   /** one-time authorized test (§06): a staff member of THIS salon only; never a customer */
-  async test(ctx: EcContext, body: { to?: unknown; idempotencyKey?: unknown; confirm?: unknown }) {
+  async test(ctx: EcContext, body: { to?: unknown; idempotencyKey?: unknown; confirm?: unknown; preview?: unknown }) {
     this.need(ctx, 'pos.communications.manage');
+    if (body?.preview === true) return this.testPreview(ctx, body?.to);
     const key = await this.sendGuard(ctx, body);
     const to = String(body?.to ?? '').trim().toLowerCase();
     if (!EMAIL_RE.test(to)) throw err('Enter a valid email address.', 'EMAIL_RECIPIENT_INVALID');
     const staff = (await sql<any>`select 1 from users where tenant_id = ${ctx.tenantId}::uuid and lower(email) = ${to} and coalesce(role, '') <> 'CUSTOMER' and coalesce(status, 'active') = 'active'`.execute(this.db)).rows.length > 0;
     if (!staff) throw err('Test emails go only to a staff member of this salon.', 'EMAIL_TEST_RECIPIENT_NOT_STAFF');
-    const r = await this.messenger!.sendEmail({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, to, subject: 'Test email from your salon', body: 'This is a test email from AI PowerSalon. If you can read this, your salon email is working.\n\nNo customer received this message.',
+    const r = await this.messenger!.sendEmail({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, to, subject: TEST_SUBJECT, body: TEST_BODY,
       purpose: 'notification', category: 'test', source: { type: 'template_test', id: String(ctx.userId) }, idempotencyKey: `test:${key}` });
     await this.audit(ctx, 'email.test_sent', r.notificationId ?? null, `Test email (${r.sent ? 'accepted' : r.status})`, { outcome: r.status, replayed: !!r.duplicate });
     return this.result(r);
+  }
+
+  /** extras Email 06 (round 10) — the test-send wizard's read-only step: the exact subject / body the test will carry, whether
+   *  the address is a staff member of THIS salon (the only allowed recipient; null when none was typed) and the full history
+   *  of test attempts (newest first, with outcome and reason, resends linked). Sends, records and audits nothing. */
+  private async testPreview(ctx: EcContext, toRaw: unknown) {
+    const to = String(toRaw ?? '').trim().toLowerCase();
+    const valid = EMAIL_RE.test(to);
+    const staff = !to ? null : !valid ? false : (await sql`select 1 from users where tenant_id = ${ctx.tenantId}::uuid and lower(email) = ${to} and coalesce(role, '') <> 'CUSTOMER' and coalesce(status, 'active') = 'active'`.execute(this.db)).rows.length > 0;
+    const hist = (await sql<{ id: string; created_at: unknown; status: string; failure_reason: string | null; to_address: string; delivered_at: unknown; retry_of_notification_id: string | null }>`
+      select id, created_at, status, failure_reason, to_address, delivered_at, retry_of_notification_id from notifications
+      where tenant_id = ${ctx.tenantId}::uuid and channel = 'email' and source_type = 'template_test' order by created_at desc, id desc limit 20`.execute(this.db)).rows;
+    return { outcome: 'preview', subject: TEST_SUBJECT, body: TEST_BODY, recipient: to ? { address: to, validAddress: valid, staff } : null,
+      history: hist.map((h) => ({ id: String(h.id), at: iso(h.created_at), to: h.to_address, status: emailDisplayStatus(h), reason: h.failure_reason ?? null, deliveredAt: iso(h.delivered_at), resendOf: h.retry_of_notification_id ?? null })) };
   }
 
   /** Email 10 — customer identity confidence, BEFORE any send: the composer asks with preview = true once a customer is

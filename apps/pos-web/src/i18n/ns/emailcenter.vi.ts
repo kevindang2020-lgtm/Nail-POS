@@ -189,4 +189,28 @@ export const EMAILCENTER_VI: Record<string, string> = {
   "emc.use.unknown": "Chưa biết — nhà cung cấp mới báo chi phí của {c} trên {n} email", // DRAFT — Kevin reviews
   "emc.use.notAuthorized": "Chỉ quản lý mới xem được", // DRAFT — Kevin reviews
   "emc.use.basis": "Trong kỳ này. Chi phí là số nhà cung cấp tự báo, chỉ hiện khi họ đã báo cho mọi email — không bao giờ ước tính.", // DRAFT — Kevin reviews
+  "emc.ev.title": "Bằng chứng từ nhà cung cấp", // DRAFT — Kevin reviews
+  "emc.ev.lastAccepted": "Email gần nhất được nhà cung cấp nhận", // DRAFT — Kevin reviews
+  "emc.ev.lastDelivered": "Lần giao được xác nhận gần nhất", // DRAFT — Kevin reviews
+  "emc.ev.unsigned": "không có chữ ký", // DRAFT — Kevin reviews
+  "emc.ev.evidenceOnly": "chỉ là bằng chứng", // DRAFT — Kevin reviews
+  "emc.ev.none": "Chưa có sự kiện nào từ nhà cung cấp.", // DRAFT — Kevin reviews
+  "emc.tw.preview": "Xem trước email thử", // DRAFT — Kevin reviews
+  "emc.tw.staff": "{a} là nhân viên của tiệm này — có thể gửi email thử đến đó.", // DRAFT — Kevin reviews
+  "emc.tw.notStaff": "{a} không phải nhân viên đang làm của tiệm này — email thử chỉ gửi cho nhân viên.", // DRAFT — Kevin reviews
+  "emc.tw.history": "Các email thử trước đây", // DRAFT — Kevin reviews
+  "emc.tw.noHistory": "Chưa gửi email thử nào.", // DRAFT — Kevin reviews
+  "emc.exp.button": "Xuất tệp", // DRAFT — Kevin reviews
+  "emc.exp.busy": "Đang xuất…", // DRAFT — Kevin reviews
+  "emc.exp.done": "Đã tải tệp xuất. Lần xuất này đã được ghi lại kèm tên bạn.", // DRAFT — Kevin reviews
+  "emc.exp.rule": "Xuất tệp ghi mọi email khớp với tìm kiếm và khoảng thời gian (tất cả các trang), kèm phạm vi, cơ sở ngày và tên bạn ở đầu tệp; địa chỉ được che trừ khi bạn quản lý liên lạc.", // DRAFT — Kevin reviews
+  "emc.d.next": "Bước tiếp theo", // DRAFT — Kevin reviews
+  "emc.next2.await_delivery": "Nhà cung cấp đã nhận — đang chờ xác nhận đã giao.", // DRAFT — Kevin reviews
+  "emc.next2.check_delivery_events": "Đã được nhận hơn một ngày mà chưa có xác nhận giao — kiểm tra sự kiện giao trong tình trạng nhà cung cấp.", // DRAFT — Kevin reviews
+  "emc.next2.resend": "Gửi lại từ Chi tiết email.", // DRAFT — Kevin reviews
+  "emc.next2.review_reason": "Xem lý do; quản lý có thể gửi lại.", // DRAFT — Kevin reviews
+  "emc.next2.fix_address": "Địa chỉ bị trả về — sửa email của khách trước khi gửi lại.", // DRAFT — Kevin reviews
+  "emc.next2.customer_opted_out": "Khách đã từ chối nhận — không gửi lại.", // DRAFT — Kevin reviews
+  "emc.next2.check_settings": "Bị chặn bởi cài đặt của tiệm hoặc địa chỉ không hợp lệ — kiểm tra cài đặt email hoặc địa chỉ.", // DRAFT — Kevin reviews
+  "emc.next2.connect_provider": "Chỉ được ghi lại (bộ gửi thử) — kết nối nhà cung cấp email để gửi thật.", // DRAFT — Kevin reviews
 };
