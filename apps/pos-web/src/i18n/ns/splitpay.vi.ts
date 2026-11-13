@@ -45,4 +45,25 @@ export const SPLITPAY_VI: Record<string, string> = {
   'sp.readOnly.stale': 'Số liệu đang hiển thị được đọc lúc {t} và có thể đã cũ.', // DRAFT — Kevin reviews
   'sp.readOnly.none': 'Không đọc được số liệu nào.', // DRAFT — Kevin reviews
   'sp.readOnly.paused': 'Xuất tệp và Hoàn tất tại quầy thanh toán tạm dừng cho đến khi kết nối lại.', // DRAFT — Kevin reviews
+  'sp.xm.title': 'Đối chiếu giữa các mục', // DRAFT — Kevin reviews
+  'sp.xm.gift': 'Thẻ quà tặng', // DRAFT — Kevin reviews
+  'sp.xm.giftLine': 'Thanh toán bằng thẻ quà tặng {t} · sổ thẻ quà tặng ghi trừ {l}', // DRAFT — Kevin reviews
+  'sp.xm.tips': 'Tiền tip', // DRAFT — Kevin reviews
+  'sp.xm.tipsLine': 'Tip trên hóa đơn {t} · đã chia cho thợ {a}', // DRAFT — Kevin reviews
+  'sp.xm.cash': 'Két tiền / chốt sổ cuối ngày', // DRAFT — Kevin reviews
+  'sp.xm.cashLine': 'Tiền mặt {a} ngày {d}', // DRAFT — Kevin reviews
+  'sp.xm.noCash': 'Hóa đơn này không có tiền mặt', // DRAFT — Kevin reviews
+  'sp.xm.checkout': 'Thanh toán so với các khoản trả', // DRAFT — Kevin reviews
+  'sp.xm.checkoutPaid': 'Hóa đơn đã đánh dấu trả xong · các khoản trả còn thiếu {d}', // DRAFT — Kevin reviews
+  'sp.xm.checkoutOpen': 'Hóa đơn chưa trả xong · còn nợ {d}', // DRAFT — Kevin reviews
+  'sp.xm.safe': 'So theo mã hóa đơn, mã thanh toán và ngày làm việc chung. Chỉ xem: không chuyển, ghi sổ hay sửa tiền ở đây.', // DRAFT — Kevin reviews
+  'sp.xm.st.matched': 'Khớp', // DRAFT — Kevin reviews
+  'sp.xm.st.differs': 'Lệch', // DRAFT — Kevin reviews
+  'sp.xm.st.not_used': 'Không dùng', // DRAFT — Kevin reviews
+  'sp.xm.st.unallocated': 'Chưa chia', // DRAFT — Kevin reviews
+  'sp.xm.st.counted': 'Két đã đếm', // DRAFT — Kevin reviews
+  'sp.xm.st.open': 'Két chưa đếm', // DRAFT — Kevin reviews
+  'sp.xm.st.not_opened': 'Không có két cho ngày đó', // DRAFT — Kevin reviews
+  'sp.xm.st.aligned': 'Khớp', // DRAFT — Kevin reviews
+  'sp.xm.st.misaligned': 'Không khớp', // DRAFT — Kevin reviews
 };

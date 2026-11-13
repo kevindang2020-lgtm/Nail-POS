@@ -35,7 +35,7 @@ async function pay(tid: string, method: string, amount: number, status = 'approv
     [pid, extra.tenant ?? T, extra.branch ?? B, tid, method, amount, status, ref, extra.surface ?? null, extra.last4 ?? null, n]);
   return pid;
 }
-let t100 = '', t120 = '', t80 = '', t150 = '', tRef = '', cardTender = '';
+let t100 = '', t120 = '', t80 = '', t150 = '', tRef = '', _cardTender = '';
 
 beforeAll(async () => {
   pg = await migratedPglite();
@@ -50,7 +50,7 @@ beforeAll(async () => {
   await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, phone_display, email) values ($1,$2,$3,'John','Smith','John Smith','+18565551234','(856) 555-1234','john.smith@example.com'), ($4,$2,$3,'Walk','In','Walk-in','+18565550000',null,null), ($5,$6,$7,'John','Smith','John Smith','+18565551234','(856) 555-1234',null)`, [id('91'), T, B, id('92'), id('99'), T2, B2]);
 
   t100 = await ticket({ total: 10000, number: '1042', customer: id('91'), daysAgo: 1 });
-  cardTender = await pay(t100, 'card', 6000, 'approved', 'RR1042', { surface: 'cardpointe_terminal', last4: '4242' }); await pay(t100, 'cash', 4000, 'approved', null, { surface: 'cash' });
+  _cardTender = await pay(t100, 'card', 6000, 'approved', 'RR1042', { surface: 'cardpointe_terminal', last4: '4242' }); await pay(t100, 'cash', 4000, 'approved', null, { surface: 'cash' });
   t120 = await ticket({ total: 12000, number: '1043', status: 'ready_checkout', locked: 12000, daysAgo: 2 });
   await pay(t120, 'card', 7000, 'approved', 'RR1043'); await pay(t120, 'card', 5000, 'declined', null);
   t80 = await ticket({ total: 8000, number: '1044', daysAgo: 3 });
@@ -172,5 +172,42 @@ describe('Split Payments 13 — duplicate event detector (diagnosis only)', () =
     expect((await q(`select (select count(*) from cash_drawer_movements where tenant_id = $1)::int as d, (select count(*) from gift_card_transactions where tenant_id = $1)::int as g, (select count(*) from payments where tenant_id = $1)::int as p`, [T])).rows[0]).toEqual(before);
     expect((await r.detail(ctx, t100)).duplicateEvents.findings).toEqual([]);
     expect((await r.detail(ctx, t80)).duplicateEvents.findings).toEqual([]);   // one gift ledger entry is normal
+  });
+});
+
+describe('Split Payments 05 — cross-module reconciliation (read-only, by shared references)', () => {
+  it('gift tenders vs the gift ledger, the tip vs its technician split, each cash tender vs that day\'s drawer count, the paid state vs what is due; nothing is written', async () => {
+    const counts = async () => (await q(`select (select count(*) from cash_drawer_sessions where tenant_id = $1)::int as s, (select count(*) from gift_card_transactions where tenant_id = $1)::int as g,
+      (select count(*) from payments where tenant_id = $1)::int as p, (select count(*) from ticket_tip_allocations where tenant_id = $1)::int as a`, [T])).rows[0];
+    // $80 = $30 gift (ledger linked, $30) + $50 card: matched; no cash, no tip
+    const a = (await r.detail(ctx, t80)).crossModule;
+    expect(a.giftCards).toEqual({ tenderCents: 3000, ledgerCents: 3000, state: 'matched' });
+    expect(a.tips.state).toBe('not_used'); expect(a.cash).toEqual([]); expect(a.checkout).toEqual({ ticketPaid: true, dueCents: 0, state: 'aligned' });
+    // $150 = $50 cash + $60 card + $40 gift (NO ledger entry) with a $20 tip nobody split yet
+    const before = await counts();
+    const b = (await r.detail(ctx, t150)).crossModule;
+    expect(b.giftCards).toEqual({ tenderCents: 4000, ledgerCents: 0, state: 'differs' });
+    expect(b.tips).toEqual({ ticketTipCents: 2000, allocatedCents: 0, state: 'unallocated' });
+    expect(b.cash).toHaveLength(1);
+    const day = (await q(`select to_char(p.created_at at time zone 'America/New_York', 'YYYY-MM-DD') as d from payments p where p.id = $1`, [b.cash[0].paymentId])).rows[0].d;
+    expect(b.cash[0]).toEqual({ paymentId: b.cash[0].paymentId, amountCents: 5000, businessDate: day, closeout: 'not_opened' });
+    expect(await counts()).toEqual(before);   // a read writes nothing
+    // the drawer for that day is opened, then counted; another branch's count does not count
+    await q(`insert into cash_drawer_sessions (tenant_id, branch_id, business_date, status) values ($1,$2,$3::date,'open')`, [T, B, day]);
+    expect((await r.detail(ctx, t150)).crossModule.cash[0].closeout).toBe('open');
+    await q(`update cash_drawer_sessions set status = 'reconciled' where tenant_id = $1 and branch_id = $2 and business_date = $3::date`, [T, B, day]);
+    expect((await r.detail(ctx, t150)).crossModule.cash[0].closeout).toBe('counted');
+    // the tip split: part of it → differs; all of it → matched
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values ($1,$2,$3,'Anna','Lee','Anna Lee')`, [id('e5'), T, B]);
+    await q(`insert into ticket_tip_allocations (tenant_id, branch_id, ticket_id, technician_id, tip_cents) values ($1,$2,$3,$4,1500)`, [T, B, t150, id('e5')]);
+    expect((await r.detail(ctx, t150)).crossModule.tips).toEqual({ ticketTipCents: 2000, allocatedCents: 1500, state: 'differs' });
+    await q(`update ticket_tip_allocations set tip_cents = 2000 where tenant_id = $1 and ticket_id = $2`, [T, t150]);
+    expect((await r.detail(ctx, t150)).crossModule.tips.state).toBe('matched');
+    // the partly paid $120 ticket: not paid, $50 due → aligned (an unpaid ticket may owe money)
+    expect((await r.detail(ctx, t120)).crossModule.checkout).toEqual({ ticketPaid: false, dueCents: 5000, state: 'aligned' });
+    // a ticket marked paid whose tenders leave money due → misaligned (Checkout says paid, Transactions say not all of it)
+    const tm = await ticket({ total: 9000, number: 'T-XM-1' }); await pay(tm, 'card', 5000, 'approved', 'RR-XM-1'); await pay(tm, 'cash', 1000);
+    const m = (await r.detail(ctx, tm)).crossModule.checkout;
+    expect(m.ticketPaid).toBe(true); expect(m.dueCents).toBeGreaterThan(0); expect(m.state).toBe('misaligned');
   });
 });

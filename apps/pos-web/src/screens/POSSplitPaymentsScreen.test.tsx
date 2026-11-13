@@ -89,6 +89,20 @@ describe('POSSplitPaymentsScreen', () => {
     await waitFor(() => expect(screen.queryAllByTestId('ticket-row').length).toBe(0));
     expect(screen.getAllByText(/could not be reached/i).length).toBeGreaterThan(0);
   });
+  it('Split Payments 05: the detail shows the server\'s cross-module check per module with its own state; nothing to press', async () => {
+    api.detail.mockResolvedValue({ ticket: t150, financials: { subtotalCents: 13000, discountCents: 0, taxCents: 0, tipCents: 2000, surchargeCents: 0, totalCents: 15000, paidCents: 15000, refundedCents: 0, balanceCents: 0 },
+      tenders: [], reversalRows: [], refunds: [], lines: [], tipAllocations: [], audit: [], permissions: { refund: true, customer: true },
+      crossModule: { giftCards: { tenderCents: 4000, ledgerCents: 0, state: 'differs' }, tips: { ticketTipCents: 2000, allocatedCents: 0, state: 'unallocated' },
+        cash: [{ paymentId: 'p9', amountCents: 5000, businessDate: '2026-10-28', closeout: 'counted' }], checkout: { ticketPaid: true, dueCents: 0, state: 'aligned' }, note: 'read_only_no_money_moved' } });
+    mount(); await screen.findAllByTestId('ticket-row');
+    fireEvent.click(screen.getAllByRole('button', { name: 'View' })[0]);
+    const xm = await screen.findByTestId('sp-xm');
+    expect(screen.getByTestId('sp-xm-gift')).toHaveTextContent('Differs'); expect(screen.getByTestId('sp-xm-gift')).toHaveTextContent('Gift-card tenders $40.00 · gift-card ledger redemptions $0.00');
+    expect(screen.getByTestId('sp-xm-tips')).toHaveTextContent('Not split yet'); expect(screen.getByTestId('sp-xm-tips')).toHaveTextContent('$20.00');
+    expect(screen.getByTestId('sp-xm-cash')).toHaveTextContent('Drawer counted'); expect(screen.getByTestId('sp-xm-cash')).toHaveTextContent('Cash $50.00 on 2026-10-28');
+    expect(screen.getByTestId('sp-xm-checkout')).toHaveTextContent('Aligned');
+    expect(xm.querySelectorAll('button')).toHaveLength(0);
+  });
   it('pending payment banner: shows only when card attempts are still waiting; says they are not counted as paid', async () => {
     mount(); await screen.findAllByTestId('ticket-row');
     expect(screen.queryByTestId('pending-banner')).toBeNull();

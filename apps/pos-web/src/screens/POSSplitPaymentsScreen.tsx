@@ -185,6 +185,7 @@ function DetailDialog({ id, readOnly, onClose, onCustomer, onTransactions, onChe
             <td className="fn-mono">{x.processorRef ?? (x.giftCard?.ledgerEntryId ? tx('sp.giftLedger') : x.drawerMovementId ? tx('sp.drawerEntry') : '—')}</td>
             <td className="num">{x.refundedCents ? fmtMoney(x.refundedCents) : '—'}{x.state === 'confirmed' && x.refundedCents ? <span className="fk-li-s">{tx('sp.t.refundable', { a: fmtMoney(x.refundableCents) })}</span> : null}</td><td>{when(x.at)}</td></tr>)}</tbody></table>
         <DuplicateEvents r={d.data.duplicateEvents} tenders={d.data.tenders} />
+        <CrossModuleCheck r={d.data.crossModule} />
         {d.data.refunds.length ? <><h3 className="fk-h3">{tx('sp.refundsTitle')}</h3><ul className="fn-notes">{d.data.refunds.map((x: any) => <li key={x.id}><span className="fk-li-s">{when(x.at)} · {x.actor ?? '—'} · {codeLabel('sp.rstate.' + x.status, x.status)}</span><div>−{fmtMoney(x.amountCents)}{x.reason ? ` — ${x.reason}` : ''}{x.processorRefundId ? ` · ${x.processorRefundId}` : ''}</div></li>)}</ul></> : null}
         {d.data.lines?.length ? <><h3 className="fk-h3">{tx('sp.linesTitle')}</h3><table className="fk-table"><tbody>{d.data.lines.map((l: any) => <tr key={l.id}><td>{l.name ?? '—'}</td><td>{l.technician ?? ''}</td><td className="num">{fmtMoney(l.cents)}</td></tr>)}</tbody></table></> : null}
         {d.data.audit?.length ? <><h3 className="fk-h3">{tx('sp.auditTitle')}</h3><ul className="fn-notes">{d.data.audit.slice(0, 8).map((a: any, i: number) => <li key={i}><span className="fk-li-s">{when(a.at)} · {a.actor ?? '—'}</span><div>{codeLabel('sp.audit.' + a.action, a.action)}</div></li>)}</ul></> : null}
@@ -207,5 +208,28 @@ export function DuplicateEvents({ r, tenders }: { r?: DupEvents | null; tenders:
       : <ul className="fn-notes">{r.findings.map((f, i) => <li key={f.paymentId + f.kind + i} data-testid="sp-dup-row"><span className="fk-chip warn">{codeLabel('sp.dup.k.' + f.kind, f.kind)}</span>{' '}
         <span>{tx('sp.dup.row', { t: tender(f.paymentId), n: fmtNumber(f.count) })}</span>{f.ref ? <span className="fk-li-s fn-mono"> {f.ref}</span> : null}</li>)}</ul>}
     <div className="fk-hint">{tx('sp.dup.safe')}</div>
+  </section>;
+}
+
+// extras (Split Payments 05) — Cross-Module Reconciliation: the server compares this ticket across modules by the references
+// they share (ticket, payment, business day): gift-card tenders vs the gift-card ledger, the tip vs its technician split, each
+// cash tender vs that day's drawer count, the ticket's paid state vs what its tenders leave due. Read-only — nothing here
+// moves, posts or corrects money. Absent from an older server → nothing.
+type CrossModule = { giftCards: { tenderCents: number; ledgerCents: number; state: string }; tips: { ticketTipCents: number; allocatedCents: number; state: string };
+  cash: Array<{ paymentId: string; amountCents: number; businessDate: string; closeout: string }>; checkout: { ticketPaid: boolean; dueCents: number; state: string } };
+const XM_TONE: Record<string, string> = { matched: 'ok', aligned: 'ok', counted: 'ok', not_used: 'mut', open: 'warn', not_opened: 'warn', unallocated: 'warn', differs: 'bad', misaligned: 'bad' };
+export function CrossModuleCheck({ r }: { r?: CrossModule | null }) {
+  if (!r) return null;
+  const chip = (st: string) => <span className={'fk-chip ' + (XM_TONE[st] ?? 'mut')}>{codeLabel('sp.xm.st.' + st, st)}</span>;
+  return <section data-testid="sp-xm">
+    <h3 className="fk-h3">{tx('sp.xm.title')}</h3>
+    <ul className="fn-notes">
+      <li data-testid="sp-xm-gift">{chip(r.giftCards.state)} <b>{tx('sp.xm.gift')}</b> <span className="fk-li-s">{tx('sp.xm.giftLine', { t: fmtMoney(r.giftCards.tenderCents), l: fmtMoney(r.giftCards.ledgerCents) })}</span></li>
+      <li data-testid="sp-xm-tips">{chip(r.tips.state)} <b>{tx('sp.xm.tips')}</b> <span className="fk-li-s">{tx('sp.xm.tipsLine', { t: fmtMoney(r.tips.ticketTipCents), a: fmtMoney(r.tips.allocatedCents) })}</span></li>
+      {r.cash.length ? r.cash.map((c) => <li key={c.paymentId} data-testid="sp-xm-cash">{chip(c.closeout)} <b>{tx('sp.xm.cash')}</b> <span className="fk-li-s">{tx('sp.xm.cashLine', { a: fmtMoney(c.amountCents), d: c.businessDate })}</span></li>)
+        : <li data-testid="sp-xm-cash-none">{chip('not_used')} <b>{tx('sp.xm.cash')}</b> <span className="fk-li-s">{tx('sp.xm.noCash')}</span></li>}
+      <li data-testid="sp-xm-checkout">{chip(r.checkout.state)} <b>{tx('sp.xm.checkout')}</b> <span className="fk-li-s">{tx(r.checkout.ticketPaid ? 'sp.xm.checkoutPaid' : 'sp.xm.checkoutOpen', { d: fmtMoney(r.checkout.dueCents) })}</span></li>
+    </ul>
+    <div className="fk-hint">{tx('sp.xm.safe')}</div>
   </section>;
 }
