@@ -227,4 +227,7 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.rc.ev.ticket_link_missing': 'Chưa gắn với phiếu', // DRAFT — Kevin reviews
   'rv.rc.ev.settlement': 'Lô kết toán', // DRAFT — Kevin reviews
   'rv.rc.ev.waiting_hours': 'Đã chờ', // DRAFT — Kevin reviews
+  'rv.inflight.text': 'Một yêu cầu {k} {a} cho {t} đang được gửi lúc {w} thì trang tải lại. Yêu cầu chỉ được gửi một lần và sẽ không gửi lại — hãy kiểm tra trạng thái trong sổ trước khi làm gì khác; yêu cầu lại cùng số tiền sẽ tiếp tục đúng yêu cầu đó.', // DRAFT — Kevin reviews
+  'rv.inflight.show': 'Xem trong sổ', // DRAFT — Kevin reviews
+  'rv.inflight.clear': 'Đã kiểm tra — xóa', // DRAFT — Kevin reviews
 };
