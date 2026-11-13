@@ -13,7 +13,7 @@
 import { sql, type Kysely } from 'kysely';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
-import { DATABASE, tenantTimeZone, ListQuery } from '@aipowersalon/database';
+import { tenantTimeZone, ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COUPON_ASSIST_BODY, COUPON_ASSIST_DRAFT_BODY, COUPON_CHECK_BODY } from '../request-schemas';
 import { DealsService, DealConflictError, DealForbiddenError, DealValidationError } from '../deals/deals.service';
