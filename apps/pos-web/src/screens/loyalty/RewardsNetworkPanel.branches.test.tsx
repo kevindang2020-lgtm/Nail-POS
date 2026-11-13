@@ -81,3 +81,24 @@ describe('RewardsNetworkPanel — smart wallet funding alert', () => {
     expect(await screen.findByTestId('rn-forecast')).toHaveTextContent('no depletion estimate');
   });
 });
+
+// extras GLOBAL LOYALTY REWARDS 06 (round 10): funding vs liability, each from its own ledger, side by side
+describe('RewardsNetworkPanel — funding vs liability', () => {
+  it('shows backed funding, points earned here with their backing, held points and what the network owes — not added together', async () => {
+    const s0: any = st(undefined);
+    s0.wallet = { ...s0.wallet, availableCents: 9695, fundingVsLiability: { backedFundingCents: 9695, pointsEarnedHereTenths: 305, earnBackingCents: 305, heldRedemptions: 1, heldPointTenths: 500, heldValueCents: 500, salonPayablesOpen: 2, salonPayablesOwedCents: 1250, combined: false } };
+    stateMock.mockResolvedValue(s0);
+    render(<RewardsNetworkPanel />);
+    expect(await screen.findByTestId('rn-fvl-backed')).toHaveTextContent('96.95');
+    expect(screen.getByTestId('rn-fvl-earned')).toHaveTextContent('30.5 points / 3.05 tokens');
+    expect(screen.getByTestId('rn-fvl-held')).toHaveTextContent('1 reward(s) · 50 points · $5.00');
+    expect(screen.getByTestId('rn-fvl-owed')).toHaveTextContent('2 open · $12.50');
+    expect(screen.getByTestId('rn-fvl')).toHaveTextContent('never added together');
+  });
+  it('an older server without it → no panel', async () => {
+    stateMock.mockResolvedValue(st(undefined));
+    render(<RewardsNetworkPanel />);
+    await screen.findByTestId('rn-forecast');
+    expect(screen.queryByTestId('rn-fvl')).toBeNull();
+  });
+});

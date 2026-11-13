@@ -222,4 +222,12 @@ export const REWARDSNET_VI = {
   'rn.forecast.days30': 'Ước tính: còn khoảng {n} ngày token theo mức dùng 30 ngày qua (~{daily} token mỗi ngày)', // DRAFT — Kevin reviews
   'rn.forecast.none30': 'Chưa dùng token trong 30 ngày qua — chưa có ước tính', // DRAFT — Kevin reviews
   'rn.forecast.need': 'Cần thêm khoảng {t} token để đủ cho {days} ngày tới theo mức đó. Không có giao dịch mua tự động.', // DRAFT — Kevin reviews
+  'rn.fvl.backed': 'Tiền đã nạp (ví)', // DRAFT — Kevin reviews
+  'rn.fvl.earned': 'Điểm tích ở đây / tiền bảo chứng', // DRAFT — Kevin reviews
+  'rn.fvl.earnedVal': '{p} điểm / {t} token', // DRAFT — Kevin reviews
+  'rn.fvl.held': 'Điểm đang giữ cho phần thưởng chưa xong', // DRAFT — Kevin reviews
+  'rn.fvl.heldVal': '{n} phần thưởng · {p} điểm · {v}', // DRAFT — Kevin reviews
+  'rn.fvl.owed': 'Mạng lưới còn nợ tiệm', // DRAFT — Kevin reviews
+  'rn.fvl.owedVal': '{n} khoản mở · {v}', // DRAFT — Kevin reviews
+  'rn.fvl.note': 'Mỗi dòng lấy từ sổ riêng. Chúng được đặt cạnh nhau và không bao giờ cộng gộp.', // DRAFT — Kevin reviews
 };

@@ -212,6 +212,15 @@ export function RewardsNetworkPanel() {
           {w ? (() => { const f = w.forecast; const d = f?.daysLeft ?? null;
             return <div className={'fk-hint' + (d != null && d <= 14 ? ' warn' : '')} data-testid="rn-forecast">{!f || d == null ? tx('rn.forecast.none30') : tx('rn.forecast.days30', { n: fmtNumber(d), daily: tokensOf(f.dailyCents ?? 0, w.tokenValueCents) })}
               {f && f.fundingNeededCents != null && f.fundingNeededCents > 0 ? <span className="fk-li-s" data-testid="rn-forecast-need">{' '}{tx('rn.forecast.need', { t: tokensOf(f.fundingNeededCents, w.tokenValueCents), days: fmtNumber(f.basisDays) })}</span> : null}</div>; })() : null}
+          {/* GLOBAL LOYALTY · 06 (round 10): funding vs liability — each figure from its own ledger, side by side, never added up */}
+          {w?.fundingVsLiability ? (() => { const v = w.fundingVsLiability; return (
+            <dl className="fk-dl" data-testid="rn-fvl" style={{ fontSize: 12, margin: '4px 0' }}>
+              <dt>{tx('rn.fvl.backed')}</dt><dd data-testid="rn-fvl-backed">{tokensOf(v.backedFundingCents, tv)}</dd>
+              <dt>{tx('rn.fvl.earned')}</dt><dd data-testid="rn-fvl-earned">{tx('rn.fvl.earnedVal', { p: fmtNumber(v.pointsEarnedHereTenths / 10, 1), t: tokensOf(v.earnBackingCents, tv) })}</dd>
+              <dt>{tx('rn.fvl.held')}</dt><dd data-testid="rn-fvl-held">{tx('rn.fvl.heldVal', { n: fmtNumber(v.heldRedemptions), p: fmtNumber(v.heldPointTenths / 10, 1), v: fmtMoney(v.heldValueCents) })}</dd>
+              <dt>{tx('rn.fvl.owed')}</dt><dd data-testid="rn-fvl-owed">{tx('rn.fvl.owedVal', { n: fmtNumber(v.salonPayablesOpen), v: fmtMoney(v.salonPayablesOwedCents) })}</dd>
+              <dd className="fk-li-s" style={{ gridColumn: '1 / -1' }}>{tx('rn.fvl.note')}</dd>
+            </dl>); })() : null}
           {purchases.err ? <ErrorRetry message={purchases.err} onRetry={purchases.refresh} /> : !purchases.data ? <div className="fk-loading">{tx('pos.loading')}</div> : purchases.data.items.length === 0 ? (
             <Empty title={tx('rn.noPurchases')}>{st && !buyBlockedReason ? <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button> : null}</Empty>
           ) : (

@@ -221,4 +221,12 @@ export const REWARDSNET_EN = {
   'rn.forecast.days30': 'Estimate: about {n} days of tokens left at the last 30 days’ pace (~{daily} tokens a day)',
   'rn.forecast.none30': 'No tokens used in the last 30 days — no depletion estimate',
   'rn.forecast.need': 'About {t} more tokens would cover the next {days} days at that pace. Nothing is bought automatically.',
+  'rn.fvl.backed': 'Backed funding (wallet)',
+  'rn.fvl.earned': 'Points earned here / their backing',
+  'rn.fvl.earnedVal': '{p} points / {t} tokens',
+  'rn.fvl.held': 'Points held on open rewards',
+  'rn.fvl.heldVal': '{n} reward(s) · {p} points · {v}',
+  'rn.fvl.owed': 'Owed to this salon by the network',
+  'rn.fvl.owedVal': '{n} open · {v}',
+  'rn.fvl.note': 'Each line comes from its own ledger. They are shown side by side and never added together.',
 };

@@ -233,6 +233,10 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
     expect(w.forecast).toEqual({ basisDays: 30, usedCents: 305, dailyCents: 11, daysLeft: Math.floor(w.availableCents / 11),
       daysToLow: Math.max(0, Math.floor((w.availableCents - w.lowBalanceCents) / 11)), fundingNeededCents: Math.max(0, 11 * 30 - w.availableCents - w.pendingCents), automaticPurchase: false });
     expect((await repo.walletSummary(TX)).forecast).toMatchObject({ usedCents: 0, dailyCents: null, daysLeft: null, fundingNeededCents: null });
+    // extras GLOBAL LOYALTY REWARDS 06 (round 10): funding vs liability side by side, each from its own ledger, never summed
+    expect(w.fundingVsLiability).toEqual({ backedFundingCents: w.availableCents, pointsEarnedHereTenths: 305, earnBackingCents: 305,
+      heldRedemptions: 0, heldPointTenths: 0, heldValueCents: 0, salonPayablesOpen: 0, salonPayablesOwedCents: 0, combined: false });
+    expect((await repo.walletSummary(TX)).fundingVsLiability).toMatchObject({ pointsEarnedHereTenths: 0, earnBackingCents: 0, heldRedemptions: 0 });
   });
   it('Nov 3 audit — the rewards liability is the platform\'s on every line (earn used to tag it to the salon, redeem did not)', async () => {
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability' and tenant_id is not null`))[0].n)).toBe(0);

@@ -15,6 +15,8 @@ export interface WalletSummary {
   /** extras GLOBAL LOYALTY REWARDS 13: this salon month's earning / redemptions per branch from the ONE wallet (server-computed) */
   branchUsage?: RewardsNetBranchSplit;
   /** extras GLOBAL LOYALTY REWARDS 03: the server's funding forecast from the last 30 days of verified wallet use (null fields = no estimate) */
+  /** extras GLOBAL LOYALTY REWARDS 06: funding vs liability — each from its own ledger, never combined (server-computed) */
+  fundingVsLiability?: { backedFundingCents: number; pointsEarnedHereTenths: number; earnBackingCents: number; heldRedemptions: number; heldPointTenths: number; heldValueCents: number; salonPayablesOpen: number; salonPayablesOwedCents: number; combined: false };
   forecast?: { basisDays: number; usedCents: number; dailyCents: number | null; daysLeft: number | null; daysToLow: number | null; fundingNeededCents: number | null; automaticPurchase: false };
 }
 export interface RewardsNetBranchSplit {

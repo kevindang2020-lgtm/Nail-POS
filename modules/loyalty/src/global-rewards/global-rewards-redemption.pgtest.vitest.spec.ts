@@ -101,6 +101,8 @@ describe('guide §04 example: 100 points, Salon B holds 50, ticket paid, no payo
     expect(await code(db.transaction().execute((trx: any) => holdForTicket(trx, repo, { tenantId: TB, branchId: BB, userId: OWNER }, { ticketId: ticket, customerId: custOf[TB], blocks: 3, dueCents: 4000, paymentId: hold.paymentId, idempotencyKey: 'k-b-1' })))).toBe('IDEMPOTENCY_KEY_REUSED');
     // one live reward per ticket
     expect(await code(applyReward(TB, BB, ticket, custOf[TB], 1, 3500, 'k-b-2'))).toBe('REWARD_RESERVATION_CONFLICT');
+    // extras GLOBAL LOYALTY REWARDS 06 (round 10): the open hold shows as HELD points / value on Salon B's funding-vs-liability
+    expect((await repo.walletSummary(TB)).fundingVsLiability).toMatchObject({ heldRedemptions: 1, heldPointTenths: 500, heldValueCents: 500, salonPayablesOwedCents: 0 });
   });
   it('an unpaid ticket finalizes nothing; ticket paid → 50 remaining / 0 held, $5 owed to Salon B (ACCRUED_OWED), books balance', async () => {
     expect((await finalize(TB, ticket)).outcome).toBe('not_paid');
@@ -113,6 +115,9 @@ describe('guide §04 example: 100 points, Salon B holds 50, ticket paid, no payo
     expect(await unbalanced()).toBe(0);
     // T13: accepting points never debits Salon B's token wallet
     expect((await q(`select count(*)::int n from token_wallet_ledger where tenant_id = $1`, [TB]))[0].n).toBe(0);
+    // extras GLOBAL LOYALTY REWARDS 06 (round 10): Salon B's funding vs liability shows the $5 owed by the network beside a
+    // wallet that funded nothing — two ledgers, side by side, never netted
+    expect((await repo.walletSummary(TB)).fundingVsLiability).toMatchObject({ backedFundingCents: 0, heldRedemptions: 0, salonPayablesOpen: 1, salonPayablesOwedCents: 500, combined: false });
   });
   it('a duplicated paid-ticket event confirms nothing twice (one redemption, one payable, one ledger row)', async () => {
     expect((await finalize(TB, ticket)).outcome).toBe('none');

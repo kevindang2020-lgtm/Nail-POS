@@ -357,7 +357,29 @@ export class GlobalRewardsRepository {
       // C1 audit §5.6: the warning levels in force (the salon's own when set) and the platform defaults
       lowBalanceCents: walletLevels(program, w).lowBalanceCents, criticalBalanceCents: walletLevels(program, w).criticalBalanceCents, levelsOwn: w?.low_balance_cents_override != null || w?.critical_balance_cents_override != null,
       platformLowBalanceCents: program.lowBalanceCents, platformCriticalBalanceCents: program.criticalBalanceCents,
-      branchUsage, forecast,
+      branchUsage, forecast, fundingVsLiability: await this.fundingVsLiability(tenantId, available, x),
+    };
+  }
+
+  /** extras GLOBAL LOYALTY REWARDS 06 (round 10) — Funding vs Liability, side by side and NEVER combined: each figure is read
+   *  from its own ledger — backed funding (this salon's token wallet balance), the points customers earned here and what
+   *  backed them (global_points_ledger earn rows at this salon vs the wallet's earn_allocation debits), points HELD on open
+   *  redemptions here (reward_redemptions HELD), and what the network still owes this salon (merchant_reimbursements not
+   *  paid / offset). Read only. */
+  async fundingVsLiability(tenantId: string, walletAvailableCents: number, x: Exec = this.db) {
+    const earned = (await sql<Row>`SELECT coalesce(sum(g.delta_tenths), 0)::bigint AS tenths FROM global_points_ledger g
+      WHERE g.tenant_id = ${tenantId}::uuid AND g.delta_tenths > 0 AND g.source_table = 'reward_earn_transactions'`.execute(x)).rows[0];
+    const backed = (await sql<Row>`SELECT coalesce(-sum(l.delta_cents), 0)::bigint AS cents FROM token_wallet_ledger l WHERE l.tenant_id = ${tenantId}::uuid AND l.entry_type = 'earn_allocation'`.execute(x)).rows[0];
+    const held = (await sql<Row>`SELECT count(*)::int AS n, coalesce(sum(r.point_tenths), 0)::bigint AS tenths, coalesce(sum(r.value_cents), 0)::bigint AS cents FROM reward_redemptions r
+      WHERE r.tenant_id = ${tenantId}::uuid AND r.status = 'HELD'`.execute(x)).rows[0];
+    const owed = (await sql<Row>`SELECT count(*)::int AS n, coalesce(sum(m.amount_cents + m.adjusted_cents), 0)::bigint AS cents FROM merchant_reimbursements m
+      WHERE m.tenant_id = ${tenantId}::uuid AND m.status NOT IN ('PAID', 'OFFSET')`.execute(x)).rows[0];
+    return {
+      backedFundingCents: walletAvailableCents,
+      pointsEarnedHereTenths: n(earned?.tenths), earnBackingCents: n(backed?.cents),
+      heldRedemptions: n(held?.n), heldPointTenths: n(held?.tenths), heldValueCents: n(held?.cents),
+      salonPayablesOpen: n(owed?.n), salonPayablesOwedCents: n(owed?.cents),
+      combined: false as const,
     };
   }
 
