@@ -9,6 +9,8 @@ export interface PushRepositoryPort {
   upsertToken(ctx: PushContext, platform: PushPlatform, token: string, app?: string): Promise<void>;
   revokeToken(token: string): Promise<void>;                 // token column is unique across users
   activeTokensForUser(userId: string): Promise<PushTokenRow[]>;
+  /** extras Customer Notifications 08 (round 10): this person's quiet hours at this salon and the salon's time zone (null = none set) */
+  quietHoursFor?(tenantId: string, userId: string): Promise<{ start: string; end: string; timeZone: string } | null>;
   logDelivery(input: DeliveryLogInput): Promise<void>;
 }
 

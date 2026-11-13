@@ -2110,4 +2110,12 @@ export const OPS_EN = {
   "syschk.technicians.duplicate_name.fix": "Check whether the two records are the same person.",
   "syschk.technicians.employee_id_collision": "Every team member has a unique employee ID",
   "syschk.technicians.employee_id_collision.fix": "Two team members show the same employee ID — ask support to review the records.",
+  "acx.quiet.title": "My quiet hours",
+  "acx.quiet.on": "On: {a} to {b} (salon time). Pushes to your devices are held then — security notices still come.",
+  "acx.quiet.off": "Off — pushes can arrive any time.",
+  "acx.quiet.from": "From",
+  "acx.quiet.to": "To",
+  "acx.quiet.save": "Save quiet hours",
+  "acx.quiet.turnOff": "Turn off",
+  "acx.quiet.rule": "Only this sign-in’s pushes are affected; the salon’s reminder quiet hours for customers are separate.",
 };

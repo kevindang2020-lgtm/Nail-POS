@@ -6745,6 +6745,8 @@ export interface UserNotificationPrefsTable {
   low_stock_alerts: Generated<boolean>;
   payroll_approvals: Generated<boolean>;
   weekly_report_summaries: Generated<boolean>;
+  quiet_start: string | null;   // migration 921 — personal quiet hours 'HH:MM' (salon local time)
+  quiet_end: string | null;     // migration 921
   created_at: Ts;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)

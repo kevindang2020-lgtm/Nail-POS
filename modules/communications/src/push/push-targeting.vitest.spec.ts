@@ -59,3 +59,33 @@ describe('register — the app id is a known one', () => {
     await expect(svc.register({ tenantId: 't1', userId: 'u1' }, 'ios', 'tok-xxxxxxxxxx', 'manager')).resolves.toEqual({ ok: true });
   });
 });
+
+// extras Customer Notifications 08 (round 10): personal quiet hours — a non-required push is held; a security notice goes
+describe('dispatchToUser — the person\'s own quiet hours', () => {
+  const withQuiet = (q: { start: string; end: string; timeZone: string } | null | 'boom') => {
+    const repo = new InMemoryPushRepository() as InMemoryPushRepository & { quietHoursFor?: (t: string, u: string) => Promise<unknown> };
+    repo.quietHoursFor = async () => { if (q === 'boom') throw new Error('db down'); return q; };
+    const rec = new Recorder(); const svc = new PushService(repo, rec);
+    return { repo, rec, svc };
+  };
+  it('22:00 → 07:00 New York: at 23:30 a booking push is held (nothing sent, the count says why); a SECURITY push still goes', async () => {
+    const { svc, rec } = withQuiet({ start: '22:00', end: '07:00', timeZone: 'America/New_York' });
+    await svc.register({ tenantId: 't1', userId: 'u1' }, 'ios', 'tok-owner-00000001', 'owner');
+    svc.now = () => new Date('2026-11-13T04:30:00Z');   // 23:30 New York
+    const held = await svc.dispatchToUser('t1', 'u1', { title: 'Booking changed', category: 'BOOKING_CHANGE', data: { appointmentId: 'a1' } });
+    expect(held).toMatchObject({ sent: 0, heldForQuietHours: 1 }); expect(rec.sent).toHaveLength(0);
+    const sec = await svc.dispatchToUser('t1', 'u1', { title: 'New sign-in', category: 'SECURITY' });
+    expect(sec.sent).toBe(1); expect(sec.heldForQuietHours).toBeUndefined();
+    svc.now = () => new Date('2026-11-13T12:30:00Z');   // 07:30 New York — outside
+    expect((await svc.dispatchToUser('t1', 'u1', { title: 'Booking changed', category: 'BOOKING_CHANGE', data: { appointmentId: 'a1' } })).sent).toBe(1);
+  });
+  it('no quiet hours, or an unreadable preference, never silences a push', async () => {
+    for (const q of [null, 'boom'] as const) {
+      const { svc, rec } = withQuiet(q);
+      await svc.register({ tenantId: 't1', userId: 'u1' }, 'ios', 'tok-owner-00000002', 'owner');
+      svc.now = () => new Date('2026-11-13T04:30:00Z');
+      expect((await svc.dispatchToUser('t1', 'u1', { title: 'Booking changed', category: 'BOOKING_CHANGE', data: { appointmentId: 'a1' } })).sent).toBe(1);
+      expect(rec.sent).toHaveLength(1);
+    }
+  });
+});

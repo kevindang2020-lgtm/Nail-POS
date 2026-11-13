@@ -10,6 +10,8 @@ export const LOGIN_ALERTS_BODY: BodySchema = S.object({
 });
 export const NOTIFICATION_PREFS_BODY: BodySchema = S.object({
   smsNotifications: bool, emailNotifications: bool, pushNotifications: bool, missedCallAlerts: bool, bookingAlerts: bool, lowStockAlerts: bool, payrollApprovals: bool, weeklyReportSummaries: bool,
+  // extras Customer Notifications 08: personal quiet hours 'HH:MM' (null + null = off)
+  quietHoursStart: S.nullable(S.string({ pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' })), quietHoursEnd: S.nullable(S.string({ pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' })),
 });
 export const UI_PREFS_BODY: BodySchema = S.object({ defaultLanding: S.nullable(S.text(80)) });
 /** ≈ 10 MB of base64 image data at most (the service's own limit is smaller and answers it) */

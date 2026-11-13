@@ -90,10 +90,35 @@ export function NotificationPrefsPanel({ rd, rdKnown }: { rd: MessagingReadiness
           {err ? <ErrorRetry message={err} onRetry={load} /> : !prefs ? <div className="state">{tx('pos.loading')}</div> : <div className="acx-ngrid">{NOTIF_ITEMS.map((it) => row(it, true))}</div>}
           {msg ? <div className={msg.tone === 'err' ? 'err' : 'sub'} style={{ marginTop: 8 }}>{msg.text}</div> : null}
           <p className="sub" style={{ marginTop: 10 }}>{tt('acx.notif.foot')}</p>
+          {prefs ? <QuietHours prefs={prefs} onSaved={(next) => { setPrefs(next); setMsg({ tone: 'ok', text: tt('acx.notif.saved') }); }} /> : null}
           <DeliveryHistory />
         </FitDialog>
       ) : null}
     </section>
+  );
+}
+
+/** extras Customer Notifications 08 (round 10): personal quiet hours — salon local time; the server holds non-required pushes
+ *  to this person inside the window (security notices always go). Both times, or Turn off. Saved only when the server answers. */
+function QuietHours({ prefs, onSaved }: { prefs: NotificationPrefs; onSaved: (p: NotificationPrefs) => void }) {
+  const on = !!prefs.quietHoursStart && !!prefs.quietHoursEnd;
+  const [a, setA] = useState(prefs.quietHoursStart ?? '22:00'); const [b, setB] = useState(prefs.quietHoursEnd ?? '07:00');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const save = (patch: Partial<NotificationPrefs>) => { setBusy(true); setErr(null); posMePrefsApi.setNotifications(patch).then(onSaved).catch((e) => setErr(reportError(e, tt('acx.quiet.title')))).finally(() => setBusy(false)); };
+  const valid = /^\d{2}:\d{2}$/.test(a) && /^\d{2}:\d{2}$/.test(b) && a !== b;
+  return (
+    <div className="panel" data-testid="acx-quiet" style={{ marginTop: 10, padding: 10 }}>
+      <div style={{ fontWeight: 700 }}>{tt('acx.quiet.title')}</div>
+      <div className="sub" data-testid="acx-quiet-state">{on ? tt('acx.quiet.on', { a: prefs.quietHoursStart ?? '', b: prefs.quietHoursEnd ?? '' }) : tt('acx.quiet.off')}</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+        <label className="sub">{tt('acx.quiet.from')} <input type="time" value={a} onChange={(e) => setA(e.target.value)} data-testid="acx-quiet-start" /></label>
+        <label className="sub">{tt('acx.quiet.to')} <input type="time" value={b} onChange={(e) => setB(e.target.value)} data-testid="acx-quiet-end" /></label>
+        <button className="btn" disabled={busy || !valid} onClick={() => save({ quietHoursStart: a, quietHoursEnd: b })} data-testid="acx-quiet-save">{tt('acx.quiet.save')}</button>
+        {on ? <button className="btn ghost" disabled={busy} onClick={() => save({ quietHoursStart: null, quietHoursEnd: null })} data-testid="acx-quiet-off">{tt('acx.quiet.turnOff')}</button> : null}
+      </div>
+      <div className="sub" style={{ marginTop: 4 }}>{tt('acx.quiet.rule')}</div>
+      {err ? <div className="err">{err}</div> : null}
+    </div>
   );
 }
 

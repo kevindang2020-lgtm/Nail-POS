@@ -60,3 +60,24 @@ describe('ProfileService notification-pref methods (fail-soft without a live db)
     expect(await new ProfileService(null as any).updateNotificationPrefs(ctx, 'x' as any)).toEqual(DEFAULT_NOTIFICATION_PREFS);
   });
 });
+
+describe('extras Customer Notifications 08 (round 10): personal quiet hours', () => {
+  it('a patch sets both times, or clears both with null; half a window, equal times or a bad format are ignored', () => {
+    expect(sanitizeNotificationPrefsPatch({ quietHoursStart: '22:00', quietHoursEnd: '07:00' })).toEqual({ quietHoursStart: '22:00', quietHoursEnd: '07:00' });
+    expect(sanitizeNotificationPrefsPatch({ quietHoursStart: null, quietHoursEnd: null })).toEqual({ quietHoursStart: null, quietHoursEnd: null });
+    for (const bad of [{ quietHoursStart: '22:00' }, { quietHoursStart: '22:00', quietHoursEnd: '22:00' }, { quietHoursStart: '25:00', quietHoursEnd: '07:00' }, { quietHoursStart: '22:00', quietHoursEnd: null }])
+      expect(sanitizeNotificationPrefsPatch(bad)).toEqual({});
+  });
+  it('rowToNotificationPrefs reads both columns or neither; the default is off', () => {
+    expect(rowToNotificationPrefs({ quiet_start: '21:30', quiet_end: '06:00' })).toMatchObject({ quietHoursStart: '21:30', quietHoursEnd: '06:00' });
+    expect(rowToNotificationPrefs({ quiet_start: '21:30', quiet_end: null })).toMatchObject({ quietHoursStart: null, quietHoursEnd: null });
+    expect(DEFAULT_NOTIFICATION_PREFS).toMatchObject({ quietHoursStart: null, quietHoursEnd: null });
+  });
+  it('the one window rule (api-contracts inQuietHours): overnight wraps midnight, the end minute is outside', async () => {
+    const { inQuietHours } = await import('@aipowersalon/api-contracts/tenant');
+    expect(inQuietHours(23 * 60, '22:00', '07:00')).toBe(true); expect(inQuietHours(6 * 60 + 59, '22:00', '07:00')).toBe(true);
+    expect(inQuietHours(7 * 60, '22:00', '07:00')).toBe(false); expect(inQuietHours(12 * 60, '22:00', '07:00')).toBe(false);
+    expect(inQuietHours(13 * 60, '12:00', '14:00')).toBe(true); expect(inQuietHours(14 * 60, '12:00', '14:00')).toBe(false);
+    expect(inQuietHours(600, null, null)).toBe(false); expect(inQuietHours(600, '10:00', '10:00')).toBe(false);
+  });
+});

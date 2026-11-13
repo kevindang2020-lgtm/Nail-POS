@@ -141,6 +141,28 @@ describe('POSAccountScreen', () => {
     expect(await screen.findByTestId('acx-activity-dialog')).toBeInTheDocument();
   });
 
+  it('extras Customer Notifications 08 (round 10): my quiet hours — saved as both times, turned off with nulls, the state from the server', async () => {
+    const get = vi.mocked(api.get);
+    const base = get.getMockImplementation()!;
+    const prefs = { smsNotifications: true, emailNotifications: true, pushNotifications: true, missedCallAlerts: true, bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true, quietHoursStart: null, quietHoursEnd: null };
+    get.mockImplementation((url: string, q?: Record<string, unknown>) => (url === '/pos/me/notification-prefs' ? Promise.resolve(prefs) as never
+      : url === '/pos/me/notification-deliveries' ? Promise.resolve({ items: [], page: 1, pageSize: 10, total: 0, totalPages: 1 }) as never : base(url, q) as never));
+    vi.mocked(api.patch).mockResolvedValue({ ...prefs, quietHoursStart: '21:30', quietHoursEnd: '06:30' } as never);
+    render(<MemoryRouter><POSAccountScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('acx-notif-manage'));
+    expect(await screen.findByTestId('acx-quiet-state')).toHaveTextContent('Off');
+    fireEvent.change(screen.getByTestId('acx-quiet-start'), { target: { value: '21:30' } });
+    fireEvent.change(screen.getByTestId('acx-quiet-end'), { target: { value: '06:30' } });
+    fireEvent.click(screen.getByTestId('acx-quiet-save'));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/pos/me/notification-prefs', { quietHoursStart: '21:30', quietHoursEnd: '06:30' }));
+    await waitFor(() => expect(screen.getByTestId('acx-quiet-state')).toHaveTextContent('On: 21:30 to 06:30'));
+    vi.mocked(api.patch).mockResolvedValue({ ...prefs } as never);
+    fireEvent.click(screen.getByTestId('acx-quiet-off'));
+    await waitFor(() => expect(api.patch).toHaveBeenLastCalledWith('/pos/me/notification-prefs', { quietHoursStart: null, quietHoursEnd: null }));
+    await waitFor(() => expect(screen.getByTestId('acx-quiet-state')).toHaveTextContent('Off'));
+    fireEvent.change(screen.getByTestId('acx-quiet-end'), { target: { value: '21:30' } });   // same as start → cannot save
+    expect(screen.getByTestId('acx-quiet-save')).toBeDisabled();
+  });
   it('Account Finder (extras Account Claude Guide 15): finds Account panels and pages by keyword, gated like the sidebar', async () => {
     render(<MemoryRouter><POSAccountScreen /></MemoryRouter>);
     const q = await screen.findByTestId('acx-finder-q');

@@ -2109,4 +2109,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.technicians.duplicate_name.fix": "Kiểm tra xem hai hồ sơ có phải cùng một người không.", // DRAFT — Kevin reviews
   "syschk.technicians.employee_id_collision": "Mỗi thành viên có mã nhân viên riêng", // DRAFT — Kevin reviews
   "syschk.technicians.employee_id_collision.fix": "Hai thành viên hiện cùng mã nhân viên — nhờ bộ phận hỗ trợ xem lại hồ sơ.", // DRAFT — Kevin reviews
+  "acx.quiet.title": "Giờ yên lặng của tôi", // DRAFT — Kevin reviews
+  "acx.quiet.on": "Bật: {a} đến {b} (giờ tiệm). Thông báo đẩy tới thiết bị của bạn sẽ bị giữ lại — thông báo bảo mật vẫn đến.", // DRAFT — Kevin reviews
+  "acx.quiet.off": "Tắt — thông báo đẩy có thể đến bất cứ lúc nào.", // DRAFT — Kevin reviews
+  "acx.quiet.from": "Từ", // DRAFT — Kevin reviews
+  "acx.quiet.to": "Đến", // DRAFT — Kevin reviews
+  "acx.quiet.save": "Lưu giờ yên lặng", // DRAFT — Kevin reviews
+  "acx.quiet.turnOff": "Tắt", // DRAFT — Kevin reviews
+  "acx.quiet.rule": "Chỉ ảnh hưởng thông báo đẩy của tài khoản này; giờ yên lặng nhắc lịch cho khách hàng của tiệm là riêng.", // DRAFT — Kevin reviews
 };
