@@ -4,6 +4,7 @@
 // preview, the human-confirmed merge (preview hash + request key + acknowledgements), history, scan and the read-only check.
 // Tenant / branch / role: the session — never sent from here.
 import { api } from './client';
+import type { CustomerMergeRecordPage, CustomerUnmergeCheck, CustomerUnmergeResult } from '@aipowersalon/api-contracts/tenant';
 const enc = encodeURIComponent;
 export type DuplicateQuery = {
   q?: string; status?: string; confidence?: string; reason?: string; branch?: string;
@@ -24,4 +25,8 @@ export const posDuplicateReviewApi = {
     api.post<any>(`/pos/duplicate-review/groups/${enc(id)}/merge`, { ...body, confirm: true }),
   history: (q: { groupId?: string; customerId?: string; eventType?: string; page?: number; pageSize?: number }) => api.get<any>(`/pos/duplicate-review/history`, clean(q)),
   check: () => api.post<any>(`/pos/duplicate-review/check`, {}),
+  // extras Customer 08: completed merges + the safe undo (refused with a CUSTOMER_UNMERGE_* code when anything changed since)
+  merges: (q: { status?: string; page?: number; pageSize?: number }) => api.get<CustomerMergeRecordPage>(`/pos/duplicate-review/merges`, clean(q)),
+  unmergeCheck: (id: string) => api.get<CustomerUnmergeCheck>(`/pos/duplicate-review/merges/${enc(id)}/unmerge-check`),
+  unmerge: (id: string, reason: string) => api.post<CustomerUnmergeResult>(`/pos/duplicate-review/merges/${enc(id)}/unmerge`, { reason, confirm: true }),
 };

@@ -11,6 +11,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
+import type { CustomerMergeRecordPage, CustomerUnmergeCheck, CustomerUnmergeResult } from '@aipowersalon/api-contracts/tenant';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { isUuid, type RetentionContext } from '../retention/retention.repository';
 import { DuplicateReviewCenter, DuplicateReviewError, DR_ACK_CODES } from './duplicate-review-center';
@@ -27,6 +28,8 @@ export const DR_MERGE_BODY: BodySchema = S.object({
   survivorId: S.uuid(), previewHash: S.text(80, { minLength: 8 }), idempotencyKey: S.text(100, { minLength: 8 }),
   acknowledged: S.array(S.enumOf(DR_ACK_CODES), { maxItems: DR_ACK_CODES.length }), confirm: S.boolean(),
 }, ['survivorId', 'previewHash', 'idempotencyKey', 'confirm']);
+/** extras Customer 08: undo a merge — a reason and an explicit confirm */
+export const DR_UNMERGE_BODY: BodySchema = S.object({ reason: S.text(500, { minLength: 3 }), confirm: S.boolean() }, ['reason', 'confirm']);
 
 function ctxFrom(req: any): RetentionContext {
   const c = req?.ctx || {};
@@ -54,6 +57,7 @@ const LIST = {
   sorts: { newest: null, oldest: null, confidence: null, members: null, updated: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 },
   maxLimit: 100, defaultLimit: 25, params: ['page'],
 } as const;
+const MERGES = { filters: { status: { type: 'enum', values: ['active', 'undone'] } }, sorts: { newest: null }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 const HISTORY = {
   filters: { groupId: { type: 'uuid' }, customerId: { type: 'uuid' }, eventType: { type: 'enum', values: DR_EVENT_TYPES }, preset: { type: 'enum', values: DR_PRESETS } },
   sorts: { newest: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'],
@@ -113,6 +117,22 @@ export class DuplicateReviewCenterController {
   merge(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(DR_MERGE_BODY, { strict: true })) b: any) {
     const c = ctxFrom(q); need(c, 'pos.customers.merge');
     return run(() => this.r().confirm(c, id, b ?? {}, this.audit(c, 'duplicate_review.merged', id, 'Duplicate profiles merged after human review')));
+  }
+
+  /** extras Customer 08: completed merges (the reversible-merge records), newest first */
+  @Get('merges') @RequirePermission('pos.customers.view')
+  @ListQuery(MERGES)
+  merges(@Req() q: any, @Query() f: any): Promise<CustomerMergeRecordPage> { const c = ctxFrom(q); need(c, 'pos.customers.view'); return run(() => this.r().merges(c, f ?? {})); }
+
+  /** extras Customer 08: read-only — can this merge be undone right now (and if not, why) */
+  @Get('merges/:id/unmerge-check') @RequirePermission('pos.customers.merge')
+  unmergeCheck(@Req() q: any, @Param('id') id: string): Promise<CustomerUnmergeCheck> { const c = ctxFrom(q); need(c, 'pos.customers.merge'); return run(() => this.r().unmergeCheck(c, id)); }
+
+  /** extras Customer 08: undo a completed merge from its snapshot — only while nothing touched the merged rows; audited */
+  @Post('merges/:id/unmerge') @RequirePermission('pos.customers.merge')
+  unmerge(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(DR_UNMERGE_BODY, { strict: true })) b: any): Promise<CustomerUnmergeResult> {
+    const c = ctxFrom(q); need(c, 'pos.customers.merge');
+    return run(() => this.r().unmerge(c, id, b ?? {}, (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'customers', action: 'customer.unmerged', resourceType: 'customer_merge', resourceId: id, summary: 'Customer merge undone from its snapshot', metadata: meta })));
   }
 
   /** review / merge history, newest first */

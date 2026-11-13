@@ -17,6 +17,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitK
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { useCan } from '../components/usePermissions';
 import { deviceToday } from '../lib/deviceToday';
+import { CompletedMergesDialog } from '../components/CompletedMergesDialog';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
@@ -57,6 +58,7 @@ export function POSAICustomerDuplicateReviewScreen() {
   const query: DuplicateQuery = { ...f, q: q || undefined, page: Number(f.page ?? 1), pageSize: Number(f.pageSize ?? 25) };
 
   const [sum, setSum] = useState<any>(null);
+  const [mergesOpen, setMergesOpen] = useState(false);   // extras Customer 08: completed merges + safe undo
   const [list, setList] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +128,7 @@ export function POSAICustomerDuplicateReviewScreen() {
             {scanning ? t('dup.fresh.scanning') : fr ? t('dup.fresh.' + fr.state, { at: when(fr.lastSuccessAt, true) }) : '…'}</span>
           <button className="btn ghost" data-testid="dup-scan" disabled={scanning} onClick={() => void scan()}>{t('dup.scanNow')}</button>
           <button className="btn ghost" data-testid="dup-refresh" onClick={() => load()}>{t('dup.refresh')}</button>
+          <button className="btn ghost" data-testid="dup-merges-open" onClick={() => setMergesOpen(true)}>{t('dup.um.open')}</button>
           <button className="btn" data-testid="dup-check" onClick={() => { setHealth('loading'); posDuplicateReviewApi.check().then(setHealth).catch((e) => setHealth({ error: errText(e, 'dup.loadFailed') })); }}>{t('dup.check')}</button>
         </div>
       </div>
@@ -224,6 +227,7 @@ export function POSAICustomerDuplicateReviewScreen() {
       {open ? <CompareOverlay groupId={open.id} initialSurvivor={open.survivorId} canEdit={can('pos.customers.edit')} canMerge={can('pos.customers.merge')}
         onClose={() => setOpen(null)} onChanged={(msg) => { if (msg) setNotice(msg); void load(true); }} /> : null}
       {health ? <HealthDialog data={health} onClose={() => setHealth(null)} /> : null}
+      {mergesOpen ? <CompletedMergesDialog onClose={() => setMergesOpen(false)} onChanged={() => load()} /> : null}
     </div>
   );
 }

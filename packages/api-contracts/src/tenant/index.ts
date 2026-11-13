@@ -68,3 +68,4 @@ export * from './ai-business-report-automation';   // AI Business Reports 14 aut
 export * from './staff-alert-reads';   // per-person alert read state + badge-sync monitor (extras round 9, Nov 12 2026)
 export * from './ai-recommendations';   // AI Receptionist Settings 07 salon-side approval (extras, Nov 13 2026)
 export * from './customer-quick-activity';   // Customer 03 Quick View receipts + activity (extras, Nov 13 2026)
+export * from './customer-unmerge';   // Customer 08 reversible merge / unmerge (extras, Nov 13 2026)
