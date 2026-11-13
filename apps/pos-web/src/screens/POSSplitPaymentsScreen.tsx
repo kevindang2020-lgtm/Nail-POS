@@ -14,6 +14,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { useStaleKeep } from './splitReadOnly';
 
 type Line = { method: string; cents: number };
 type Breakdown = { totalCents: number; lines: Line[]; paidCents: number; refundedCents: number; balanceCents: number };
@@ -61,6 +62,14 @@ export function POSSplitPaymentsScreen() {
   const sum = useLoad(() => posSplitPaymentsApi.summary({ ...periodQuery(period), dateField: basis, register: register || undefined }), [JSON.stringify(period), basis, register, tick]);
   const regs = useLoad(() => posSplitPaymentsApi.registers(), []);
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // extras Split Payments 17 — financial read-only mode during an outage: when the list or the KPIs cannot be refreshed, the
+  // last figures read for THIS SAME query stay on screen labelled with their time (never a blank, never a fresh-looking 0),
+  // and the money actions from here (Export, Finish at checkout) are paused until a read succeeds again. A different query
+  // (new filter / page / period) that fails is an error, not old rows. A 403 is an access message, not an outage.
+  const listStale = useStaleKeep(list, JSON.stringify([key, page, fit.rows]));
+  const sumStale = useStaleKeep(sum, JSON.stringify([periodQuery(period), basis, register]));
+  const readOnly = (!!list.error && !isForbidden(list.error)) || (!!sum.error && !isForbidden(sum.error));
+  const staleAt = sumStale ?? listStale;
   const k = sum.data?.kpis; const rows: Row[] = list.data?.items ?? [];
   const chips = [...(q ? [{ label: tx('sp.chip.search', { q }), clear: () => setSearch('') }] : []), ...(status ? [{ label: statusLbl(status), clear: () => setStatus('') }] : []), ...(combo ? [{ label: tx('sp.combo.' + combo), clear: () => setCombo('') }] : []),
     ...(register ? [{ label: (regs.data ?? []).find((r) => r.id === register)?.name ?? tx('sp.register'), clear: () => setRegister('') }] : [])];
@@ -77,14 +86,16 @@ export function POSSplitPaymentsScreen() {
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.split_payments')}</h1><div className="sub">{tx('sp.subtitle')}</div></div>
         <div className="fk-head-actions">
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
-          {sum.data?.permissions?.export ? <button type="button" className="fk-btn" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportCsv')}</button> : null}
+          {sum.data?.permissions?.export ? <button type="button" className="fk-btn" onClick={doExport} disabled={exporting || readOnly} title={readOnly ? tx('sp.readOnly.paused') : undefined} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportCsv')}</button> : null}
         </div>
       </header>
+      {readOnly ? <div className="fk-note warn" role="alert" data-testid="readonly-banner"><span><b>{tx('sp.readOnly.title')}</b> {staleAt ? tx('sp.readOnly.stale', { t: fmtInZone(staleAt.toISOString(), { hour: 'numeric', minute: '2-digit' }) || '—' }) : tx('sp.readOnly.none')} {tx('sp.readOnly.paused')}</span>
+        <button type="button" className="fk-btn ghost sm" data-testid="readonly-retry" onClick={() => { list.reload(); sum.reload(); }}>{tx('pos.retry')}</button></div> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
       {/* pending payment banner: card attempts still waiting for a result are NOT counted as paid — verify, never re-charge */}
       {k && k.pendingAttemptTickets > 0 ? <div className="fk-note warn" role="status" data-testid="pending-banner">{tx('sp.pendingBanner', { n: fmtNumber(k.pendingAttemptTickets) })}</div> : null}
       <div className="fk-kpis five" data-testid="kpis">
-        {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
+        {sum.error && !sumStale ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-tickets" tone="gold" label={tx('sp.kpi.tickets')} loading={!k} value={k ? fmtNumber(k.splitTickets) : ''} sub={k ? tx('sp.kpi.ticketsSub', { n: fmtNumber(k.listedTickets - k.splitTickets) }) : ''} onClick={() => setStatus('')} />
           <KpiCard testId="kpi-total" label={tx('sp.kpi.total')} loading={!k} value={k ? fmtMoney(k.splitTotalCents) : ''} sub={k ? tx('sp.kpi.totalSub', { t: fmtMoney(k.tipsCents) }) : ''} />
           <KpiCard testId="kpi-avg" label={tx('sp.kpi.avg')} loading={!k} value={k ? fmtNumber(k.avgTenders, 1) : ''} sub={tx('sp.kpi.avgSub')} />
@@ -107,7 +118,7 @@ export function POSSplitPaymentsScreen() {
       </div>
       <FitPanel testId="tickets" bodyRef={fit.ref} className="fn-records" title={<span className="fn-chips">{tx('sp.tableTitle')}{list.data ? <span className="fk-muted"> · {fmtNumber(list.data.total)}</span> : null}<span className="fk-hint sp-datenote">{tx('sp.dateShown.' + basis)}</span></span>}
         footer={<Pager info={list.data ? { page: list.data.page, pageSize: list.data.pageSize, totalItems: list.data.total, totalPages: list.data.pageCount } : null} onPage={setPage} label={tx('sp.tableTitle')} />}>
-        {list.error ? <StateBlock error={list.error} onRetry={list.reload} /> : !list.data ? <div className="fk-loading">{tx('pos.loading')}</div>
+        {list.error && !listStale ? <StateBlock error={list.error} onRetry={list.reload} /> : !list.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : rows.length === 0 ? (chips.length || period.preset !== 'all' ? <Empty title={tx('sp.noMatches')}><span className="fk-hint">{tx('sp.noMatchesHint', { p: periodText(list.data.period) })}</span>
                 <button type="button" className="fk-btn" onClick={() => setPeriod({ preset: 'all' })}>{tx('sp.tryAllTime')}</button>{chips.length ? <button type="button" className="fk-btn" onClick={clearAll}>{tx('finance.clearFilters')}</button> : null}</Empty>
               : <Empty title={tx('sp.empty')}><span className="fk-hint">{tx('sp.emptyHint')}</span><button type="button" className="fk-btn" onClick={() => nav('/checkout')}>{tx('pos.checkout')}</button></Empty>)
@@ -136,18 +147,18 @@ export function POSSplitPaymentsScreen() {
             })}</tbody>
           </table>}
       </FitPanel>
-      {detail ? <DetailDialog id={detail} onClose={() => setDetail(null)} onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} onTransactions={(n) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(n)}`)} onCheckout={(tid) => nav(`/checkout?ticket=${encodeURIComponent(tid)}`)} /> : null}
+      {detail ? <DetailDialog id={detail} readOnly={readOnly} onClose={() => setDetail(null)} onCustomer={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} onTransactions={(n) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(n)}`)} onCheckout={(tid) => nav(`/checkout?ticket=${encodeURIComponent(tid)}`)} /> : null}
     </div>
   );
 }
 
-function DetailDialog({ id, onClose, onCustomer, onTransactions, onCheckout }: { id: string; onClose: () => void; onCustomer: (id: string) => void; onTransactions: (n: string) => void; onCheckout: (tid: string) => void }) {
+function DetailDialog({ id, readOnly, onClose, onCustomer, onTransactions, onCheckout }: { id: string; readOnly?: boolean; onClose: () => void; onCustomer: (id: string) => void; onTransactions: (n: string) => void; onCheckout: (tid: string) => void }) {
   const d = useLoad(() => posSplitPaymentsApi.detail(id), [id]);
   const t: Row | undefined = d.data?.ticket; const f = d.data?.financials;
   return (
     <FitDialog wide title={t ? (t.ticketNumber ? `${tx('sp.col.ticket')} #${t.ticketNumber}` : tx('sp.noNumber')) : tx('sp.col.ticket')} subtitle={t ? `${t.customer?.name ?? tx('sp.walkIn')} · ${day(t.createdAt)}${t.register ? ' · ' + t.register : ''}` : undefined} onClose={onClose} testId="detail-dialog"
       footer={t ? <>
-        {t.balanceCents > 0 && t.status === 'partially_paid' ? <button type="button" className="fk-btn primary" onClick={() => onCheckout(t.ticketId)} data-testid="open-checkout">{tx('sp.finishAtCheckout')}</button> : null}
+        {t.balanceCents > 0 && t.status === 'partially_paid' ? <button type="button" className="fk-btn primary" onClick={() => onCheckout(t.ticketId)} disabled={readOnly} title={readOnly ? tx('sp.readOnly.paused') : undefined} data-testid="open-checkout">{tx('sp.finishAtCheckout')}</button> : null}
         {t.ticketNumber ? <button type="button" className="fk-btn" onClick={() => onTransactions(t.ticketNumber!)}>{tx('sp.openTransactions')}</button> : null}
         {t.customer?.id ? <button type="button" className="fk-btn" onClick={() => onCustomer(t.customer!.id)}>{tx('finance.openCustomer')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>

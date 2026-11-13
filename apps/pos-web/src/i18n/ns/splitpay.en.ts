@@ -41,5 +41,9 @@ export const SPLITPAY_EN = {
   'sp.dup.k.duplicate_gift_posting': 'Posted twice to gift-card ledger',
   'sp.dup.k.duplicate_drawer_posting': 'Posted twice to cash drawer',
   'sp.dup.safe': 'Diagnosis only — nothing is erased or reversed here. Verify, then correct through Refunds & Voids or the cash drawer with a reason.',
+  'sp.readOnly.title': 'Read-only — payments could not be refreshed.',
+  'sp.readOnly.stale': 'The figures shown were read at {t} and may be out of date.',
+  'sp.readOnly.none': 'No figures could be read.',
+  'sp.readOnly.paused': 'Export and Finish at checkout are paused until the connection is back.',
 } as const;
 

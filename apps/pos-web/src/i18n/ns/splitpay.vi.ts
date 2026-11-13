@@ -41,4 +41,8 @@ export const SPLITPAY_VI: Record<string, string> = {
   'sp.dup.k.duplicate_gift_posting': 'Ghi hai lần vào sổ thẻ quà tặng', // DRAFT — Kevin reviews
   'sp.dup.k.duplicate_drawer_posting': 'Ghi hai lần vào ngăn kéo tiền', // DRAFT — Kevin reviews
   'sp.dup.safe': 'Chỉ để chẩn đoán — không xóa hay đảo ngược gì ở đây. Xác minh, sau đó sửa qua Hoàn tiền & Hủy hoặc ngăn kéo tiền kèm lý do.', // DRAFT — Kevin reviews
+  'sp.readOnly.title': 'Chỉ xem — không thể làm mới dữ liệu thanh toán.', // DRAFT — Kevin reviews
+  'sp.readOnly.stale': 'Số liệu đang hiển thị được đọc lúc {t} và có thể đã cũ.', // DRAFT — Kevin reviews
+  'sp.readOnly.none': 'Không đọc được số liệu nào.', // DRAFT — Kevin reviews
+  'sp.readOnly.paused': 'Xuất tệp và Hoàn tất tại quầy thanh toán tạm dừng cho đến khi kết nối lại.', // DRAFT — Kevin reviews
 };

@@ -60,6 +60,35 @@ describe('POSSplitPaymentsScreen', () => {
     expect((await screen.findAllByText(/could not be reached/i)).length).toBeGreaterThan(0);   // each card says so (summary and list)
     expect(screen.queryByText('$0.00')).toBeNull();
   });
+  it('Split Payments 17: a failed REFRESH keeps the last figures for the same query, labelled read-only with their time; Export and Finish at checkout pause; Retry that succeeds clears it', async () => {
+    api.detail.mockResolvedValue({ ticket: t120, financials: { subtotalCents: 12000, discountCents: 0, taxCents: 0, tipCents: 0, surchargeCents: 0, totalCents: 12000, paidCents: 7000, refundedCents: 0, balanceCents: 5000 },
+      tenders: [], reversalRows: [], refunds: [], lines: [], tipAllocations: [], audit: [], permissions: { refund: true, customer: true } });
+    mount(); await screen.findAllByTestId('ticket-row');
+    expect(screen.queryByTestId('readonly-banner')).toBeNull();
+    expect(screen.getByTestId('export')).not.toBeDisabled();
+    api.summary.mockRejectedValue({ status: 503 }); api.list.mockRejectedValue({ status: 503 });
+    fireEvent.click(screen.getByTestId('refresh'));
+    const banner = await screen.findByTestId('readonly-banner');
+    expect(banner).toHaveTextContent('Read-only'); expect(banner).toHaveTextContent(/were read at/); expect(banner).toHaveTextContent('paused');
+    expect(screen.getAllByTestId('ticket-row').length).toBe(2);                     // last-known rows, not a blank
+    expect(screen.getByTestId('kpi-total')).toHaveTextContent('$250.00');            // last-known KPIs, never a fresh-looking 0
+    expect(screen.getByTestId('export')).toBeDisabled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'View' })[1]);
+    expect(await screen.findByTestId('open-checkout')).toBeDisabled();
+    { const cl = screen.getAllByRole('button', { name: 'Close' }); fireEvent.click(cl[cl.length - 1]); }
+    api.summary.mockResolvedValue(summary); api.list.mockResolvedValue(pageOf([t150, t120]));
+    fireEvent.click(screen.getByTestId('readonly-retry'));
+    await waitFor(() => expect(screen.queryByTestId('readonly-banner')).toBeNull());
+    expect(screen.getByTestId('export')).not.toBeDisabled();
+  });
+  it('Split Payments 17: a failure for a DIFFERENT query is an error (old rows would not answer it), still read-only', async () => {
+    mount(); await screen.findAllByTestId('ticket-row');
+    api.list.mockRejectedValue({ status: 503 });
+    fireEvent.change(screen.getByTestId('status'), { target: { value: 'partially_paid' } });
+    expect(await screen.findByTestId('readonly-banner')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryAllByTestId('ticket-row').length).toBe(0));
+    expect(screen.getAllByText(/could not be reached/i).length).toBeGreaterThan(0);
+  });
   it('pending payment banner: shows only when card attempts are still waiting; says they are not counted as paid', async () => {
     mount(); await screen.findAllByTestId('ticket-row');
     expect(screen.queryByTestId('pending-banner')).toBeNull();
