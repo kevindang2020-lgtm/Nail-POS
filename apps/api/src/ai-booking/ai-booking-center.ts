@@ -354,6 +354,21 @@ export class AiBookingCenter {
     return { dismissed: true, key };
   }
 
+  /** round 10 (AI Booking 14): the Support report download is AUDITED on the server before the file is handed out — who,
+   *  which request, when, and what the file holds (redacted text, no screenshots). Writes the audit row only: no booking,
+   *  message or provider is touched. The request must exist in the caller's scope (another salon's id → 404). */
+  async recordSupportReport(ctx: BkCtx, requestId: string): Promise<{ recorded: boolean; requestId: string; at: string }> {
+    this.need(ctx, 'ai_booking.view');
+    const id = String(requestId ?? '').slice(0, 100);
+    const r: any = (await sql<{ cid: string }>`select r.cid from ${this.requests(ctx)} where r.cid = ${id}`.execute(this.db)).rows[0];
+    if (!r) throw new AiBookingCenterError('That booking request could not be found.', 'NOT_FOUND', 404);
+    if (!this.audit) throw new AiBookingCenterError('The support report cannot be recorded right now — try again.', 'SERVICE_UNAVAILABLE', 503);
+    const at = new Date(this.now()).toISOString();
+    await this.audit({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: UUID.test(ctx.userId) ? ctx.userId : null, role: ctx.role ?? null },
+      { module: 'ai_booking', action: 'ai_booking_support_report_exported', resourceType: 'ai_booking_request', resourceId: id, metadata: { format: 'text', redacted: true, screenshots: false, at } });
+    return { recorded: true, requestId: id, at };
+  }
+
   // ── §9 Check AI Booking System ────────────────────────────────────────────────────────────────────────────────────
   async lastHealth(ctx: BkCtx) {
     this.need(ctx, 'ai_booking.view');

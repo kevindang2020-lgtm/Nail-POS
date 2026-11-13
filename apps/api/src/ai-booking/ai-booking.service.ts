@@ -8,10 +8,13 @@ import { ReceptionCopilotContextService } from '@aipowersalon/ai';
 import { AiBookingConversionService } from './ai-booking-conversion.service';
 import { domainSourceFor } from './ai-booking-source';
 import type { AiBookingContext } from './ai-booking-context';
+import type { BookingTechnicianSummary } from '@aipowersalon/api-contracts/tenant';
 
 const MAX_TECHNICIANS = 8;
 const MAX_SLOTS_PER_TECH = 12;
 
+/** round 10 (AI Booking 03): the qualified-technicians answer — Booking's own projection fields, nothing more */
+export interface AiBookingQualifiedTechs { technicians: Pick<BookingTechnicianSummary, 'technicianId' | 'name'>[]; total: number; bounded: boolean; correlationId: string }
 export interface AvailabilitySearchInput { date?: string; serviceIds?: string[]; technicianId?: string }
 export interface AvailabilityOption { technicianId: string; technicianName: string; slots: string[] }
 export interface AvailabilityResult { source: string; domainSource: string; branchId: string | null; options: AvailabilityOption[]; bounded: boolean; correlationId: string }
@@ -31,6 +34,15 @@ export class AiBookingService {
   /** The services this context may book (the engine's catalog — the ids create() accepts). */
   async services(ctx: AiBookingContext): Promise<{ serviceId: string; name: string; durationMinutes: number; priceCents: number }[]> {
     return this.booking.catalog(this.bctx(ctx));
+  }
+
+  /** round 10 (AI Booking 03): the technicians approved for EVERY requested service and working that day — the booking
+   *  engine's ONE eligibility authority (technicianPage serviceIds + working), one bounded page; never an own skill rule. */
+  async qualifiedTechnicians(ctx: AiBookingContext, input: { serviceIds?: string[]; date?: string }): Promise<AiBookingQualifiedTechs> {
+    const page = await this.booking.technicianPage(this.bctx(ctx), { serviceIds: input.serviceIds, date: input.date, working: true, status: 'active', page: 1, pageSize: MAX_TECHNICIANS * 3 });
+    const items = (page?.items ?? []).map((t) => ({ technicianId: t.technicianId, name: t.name }));
+    const total = Number(page?.total ?? items.length);
+    return { technicians: items, total, bounded: total > items.length, correlationId: ctx.correlationId };
   }
 
   /** Search real availability via the authoritative engine; bounded + source-stamped; records the funnel. */

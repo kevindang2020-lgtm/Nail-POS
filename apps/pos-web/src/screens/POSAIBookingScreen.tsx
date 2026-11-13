@@ -267,6 +267,7 @@ function RequestOverlay({ requestId, onClose, onBooking, onCustomer }: { request
   const [tab, setTab] = useState<typeof TABS[number]>('overview');
   const [d, setD] = useState<AibRequestDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false); const [repErr, setRepErr] = useState<string | null>(null);
   useEffect(() => { api.detail(requestId).then(setD).catch((e) => setErr(errOf(e))); }, [requestId]);
   const row = (l: string, v: ReactNode) => <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 32%) 1fr', gap: 8, padding: '5px 0', borderBottom: '1px solid #F1EAE0' }}><span className="sub">{l}</span><span>{v ?? '—'}</span></div>;
   const list = (items: ReactNode[], empty: string) => (items.length ? <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>{items.map((x, i) => <li key={i} style={{ padding: '6px 0', borderBottom: '1px solid #F1EAE0' }}>{x}</li>)}</ul> : <div className="sub">{empty}</div>);
@@ -277,13 +278,19 @@ function RequestOverlay({ requestId, onClose, onBooking, onCustomer }: { request
         {d?.customerId ? <button className="btn ghost" onClick={() => onCustomer(d.customerId!)} data-testid="bko-customer">{t('growth.aiBooking.ov.viewCustomer')}</button> : null}
         <button className="btn ghost" onClick={() => onBooking(d?.appointmentDate)} data-testid="bko-booking">{t('growth.aiBooking.openBooking')}</button>
         <button className="btn ghost" onClick={() => setTab('audit')}>{t('growth.aiQueue.ov.reviewHistory')}</button>
-        {d ? <button className="btn ghost" data-testid="bko-report" onClick={() => downloadText(`ai-booking-support-${d.requestId.slice(0, 12)}.txt`, buildSupportReport(d, new Date().toISOString()), 'text/plain;charset=utf-8')}>{t('growth.aiBooking.rep.button')}</button> : null}
+        {d ? <button className="btn ghost" data-testid="bko-report" disabled={reporting} onClick={() => {
+          // round 10 (AI Booking 14): the server records the download (audit) first; no record → no file
+          setReporting(true); setRepErr(null);
+          api.recordSupportReport(d.requestId).then((x) => downloadText(`ai-booking-support-${d.requestId.slice(0, 12)}.txt`, buildSupportReport(d, x.at), 'text/plain;charset=utf-8'))
+            .catch((e) => setRepErr(errOf(e))).finally(() => setReporting(false));
+        }}>{reporting ? t('pos.loading') : t('growth.aiBooking.rep.button')}</button> : null}
         <button className="btn" onClick={onClose}>{t('pos.close')}</button>
       </div>}>
       <div role="tablist" style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }} className="fk-seg">
         {TABS.map((k) => <button key={k} role="tab" aria-selected={tab === k} type="button" className={tab === k ? 'on' : ''} onClick={() => setTab(k)} data-testid={'bko-tab-' + k}>{t('growth.aiBooking.ov.tab.' + k)}</button>)}
       </div>
       {err ? <div className="err">{err}</div> : null}
+      {repErr ? <div className="err" data-testid="bko-report-err">{repErr}</div> : null}
       {!d && !err ? <div className="sub">{t('pos.loading')}</div> : null}
       {d ? <div role="tabpanel" data-testid={'bko-panel-' + tab}>
         {tab === 'overview' ? <>{row(t('growth.aiBooking.ov.requestId'), <code>{d.requestId.slice(0, 12)}</code>)}{row(t('growth.aiBooking.act.col.source'), word('growth.aiBooking.source.', d.source))}

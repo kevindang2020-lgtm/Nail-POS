@@ -167,3 +167,20 @@ describe('A7 Check AI Booking System', () => {
     await expect(center.activity({ ...ctx, permissions: [], role: 'TECHNICIAN' }, {})).rejects.toThrow(/permission/);
   });
 });
+
+describe('round 10 (AI Booking 14): the Support report download is audited on the server', () => {
+  it('records who / which request / what the file holds; another location\'s or an unknown request is refused; without the audit trail it refuses (never an unaudited download)', async () => {
+    const before = audited.length;
+    const r = await center.recordSupportReport(ctx, 'r1');
+    expect(r).toMatchObject({ recorded: true, requestId: 'r1' });
+    expect(audited.length).toBe(before + 1);
+    expect(audited[audited.length - 1]).toMatchObject({ tenantId: T, branchId: B, module: 'ai_booking', action: 'ai_booking_support_report_exported', resourceType: 'ai_booking_request', resourceId: 'r1', metadata: { format: 'text', redacted: true, screenshots: false } });
+    await expect(center.recordSupportReport(ctx, 'r5')).rejects.toMatchObject({ code: 'NOT_FOUND' });   // r5 is the other location's request
+    await expect(center.recordSupportReport(ctx, 'nope')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(center.recordSupportReport({ ...ctx, permissions: [] }, 'r1')).rejects.toBeTruthy();
+    expect(audited.length).toBe(before + 1);
+    const noAudit = new AiBookingCenter(kyselyFor(pg) as any, {}, () => Date.UTC(2026, 10, 4, 15, 0));
+    await expect(noAudit.recordSupportReport(ctx, 'r1')).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+  });
+});
+

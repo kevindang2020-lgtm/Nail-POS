@@ -18,6 +18,10 @@ export interface MutationResult {
   ok: boolean; requiresConfirmation?: boolean; errorCode?: string; message?: string; appointmentId?: string | null; duplicate?: boolean;
   /** PHONE_VERIFICATION_REQUIRED only: the sealed booking session to send the code for, the masked number, the hold's end. */
   bookingSessionId?: string; maskedPhone?: string; holdExpiresAt?: string | null;
+  /** round 10 (AI Booking 06): the appointment's status as the booking engine saved it, and whether that IS confirmed — a
+   *  channel says "confirmed" only when this is true; a pending / requested booking is never labelled confirmed. A replay
+   *  (duplicate) does not re-read the engine, so its status is null and confirmed is false. */
+  appointmentStatus?: string | null; confirmed?: boolean;
 }
 
 export interface CreateInput {
@@ -65,7 +69,7 @@ export class AiBookingMutationService {
   }
 
   // Shared spine: confirm-gate + idempotency replay + funnel, around a delegated domain mutation.
-  private async run(ctx: AiBookingContext, opts: { op: string; confirm?: boolean; idempotencyKey?: string; attemptStage?: FunnelStage; okStage?: FunnelStage; failStage?: FunnelStage }, exec: () => Promise<{ appointmentId: string | null }>): Promise<MutationResult> {
+  private async run(ctx: AiBookingContext, opts: { op: string; confirm?: boolean; idempotencyKey?: string; attemptStage?: FunnelStage; okStage?: FunnelStage; failStage?: FunnelStage }, exec: () => Promise<{ appointmentId: string | null; status?: string | null }>): Promise<MutationResult> {
     if (opts.confirm !== true) {
       if (opts.attemptStage) await this.conversion.record(ctx, { stage: 'CONFIRMATION_REQUESTED' });
       return { ok: false, requiresConfirmation: true, errorCode: 'HUMAN_CONFIRMATION_REQUIRED', message: 'This action changes a booking and must be explicitly confirmed.' };
@@ -73,15 +77,16 @@ export class AiBookingMutationService {
     const key = opts.idempotencyKey ? String(opts.idempotencyKey) : null;
     if (key && this.ledger) {
       const prior = await this.ledger.find(ctx.tenantId, key).catch(() => null);
-      if (prior) return { ok: prior.ok, errorCode: prior.ok ? undefined : 'IDEMPOTENCY_CONFLICT', message: 'This action was already processed.', appointmentId: prior.resourceId ?? null, duplicate: true };
+      if (prior) return { ok: prior.ok, errorCode: prior.ok ? undefined : 'IDEMPOTENCY_CONFLICT', message: 'This action was already processed.', appointmentId: prior.resourceId ?? null, duplicate: true, appointmentStatus: null, confirmed: false };
     }
     const started = Date.now();
     if (opts.attemptStage) await this.conversion.record(ctx, { stage: opts.attemptStage });
     try {
-      const { appointmentId } = await exec();
+      const { appointmentId, status } = await exec();
       if (key && this.ledger) await this.ledger.record(ctx.tenantId, ctx.branchId, key, opts.op, true, appointmentId).catch(() => undefined);
       if (opts.okStage) await this.conversion.record(ctx, { stage: opts.okStage, outcome: 'succeeded', appointmentId, latencyMs: Date.now() - started });
-      return { ok: true, appointmentId };
+      const appointmentStatus = status == null ? null : String(status);
+      return { ok: true, appointmentId, appointmentStatus, confirmed: appointmentStatus === 'confirmed' };
     } catch (e: any) {
       const { code, message, extra } = this.mapError(e);
       // An unmapped failure is a defect somewhere below — the caller gets a safe message, the log gets the cause.
@@ -131,7 +136,7 @@ export class AiBookingMutationService {
         throw e;
       }
       if (admission && row?.appointmentId) await this.verification!.complete(gctx, admission, row.appointmentId);
-      return { appointmentId: row?.appointmentId ?? null };
+      return { appointmentId: row?.appointmentId ?? null, status: row?.status ?? null };
     });
   }
 
@@ -139,7 +144,7 @@ export class AiBookingMutationService {
     const d = this.deny(ctx, 'ai_booking.reschedule'); if (d) return d;
     return this.run(ctx, { op: 'reschedule_appointment', confirm: input.confirm, idempotencyKey: input.idempotencyKey, attemptStage: 'RESCHEDULE_ATTEMPTED', okStage: 'RESCHEDULE_SUCCEEDED', failStage: 'RESCHEDULE_FAILED' }, async () => {
       const row: any = await this.booking.reschedule(this.bctx(ctx), appointmentId, { startTime: input.startTime, date: input.date, technicianId: input.technicianId } as any);
-      return { appointmentId: row?.appointmentId ?? appointmentId };
+      return { appointmentId: row?.appointmentId ?? appointmentId, status: row?.status ?? null };
     });
   }
 
@@ -147,7 +152,7 @@ export class AiBookingMutationService {
     const d = this.deny(ctx, 'ai_booking.cancel'); if (d) return d;
     return this.run(ctx, { op: 'cancel_appointment', confirm: input.confirm, idempotencyKey: input.idempotencyKey, attemptStage: 'CANCEL_INTENT', okStage: 'CANCEL_SUCCEEDED', failStage: 'CANCEL_FAILED' }, async () => {
       const row: any = await this.booking.cancel(this.bctx(ctx), appointmentId, { reason: input.reason } as any);
-      return { appointmentId: row?.appointmentId ?? appointmentId };
+      return { appointmentId: row?.appointmentId ?? appointmentId, status: row?.status ?? null };
     });
   }
 
@@ -157,7 +162,7 @@ export class AiBookingMutationService {
     const d = this.deny(ctx, 'ai_booking.confirm'); if (d) return d;
     return this.run(ctx, { op: 'confirm_appointment', confirm: input.confirm, idempotencyKey: input.idempotencyKey }, async () => {
       const row: any = await this.booking.confirm(this.bctx(ctx), appointmentId);
-      return { appointmentId: row?.appointmentId ?? appointmentId };
+      return { appointmentId: row?.appointmentId ?? appointmentId, status: row?.status ?? null };
     });
   }
 }

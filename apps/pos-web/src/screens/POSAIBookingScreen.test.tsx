@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
-const { bk, pkg } = vi.hoisted(() => ({ bk: { overview: vi.fn(), activity: vi.fn(), detail: vi.fn(), recovery: vi.fn(), dismiss: vi.fn(), lastHealth: vi.fn(), runHealth: vi.fn(), alternatives: vi.fn(), requestApproval: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
+const { bk, pkg } = vi.hoisted(() => ({ bk: { overview: vi.fn(), activity: vi.fn(), detail: vi.fn(), recovery: vi.fn(), dismiss: vi.fn(), lastHealth: vi.fn(), runHealth: vi.fn(), alternatives: vi.fn(), requestApproval: vi.fn(), recordSupportReport: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
 vi.mock('../api/posAiBookingCenterApi', () => ({ posAiBookingCenterApi: bk }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: pkg }));
 import { POSAIBookingScreen } from './POSAIBookingScreen';
@@ -82,6 +82,21 @@ describe('A7 AI Booking Assistant', () => {
     expect(screen.getByTestId('bko-panel-verification').textContent).toContain('never shown');
     expect(screen.getByTestId('bko-panel-verification').textContent).toContain('Verified');
     expect(screen.getByTestId('bko-report')).toHaveTextContent('Support report');            // extras 14: the redacted report, from this detail
+    // round 10 (AI Booking 14): the download is recorded on the server FIRST; a refused record means no file
+    const made: Blob[] = [];
+    const U = URL as unknown as { createObjectURL?: (b: Blob) => string; revokeObjectURL?: (u: string) => void };
+    const prev = { c: U.createObjectURL, r: U.revokeObjectURL };
+    U.createObjectURL = (b: Blob) => { made.push(b); return 'blob:x'; }; U.revokeObjectURL = () => {};
+    bk.recordSupportReport.mockRejectedValueOnce(new Error('The support report cannot be recorded right now — try again.'));
+    fireEvent.click(screen.getByTestId('bko-report'));
+    expect(await screen.findByTestId('bko-report-err')).toHaveTextContent('cannot be recorded');
+    expect(made).toHaveLength(0);
+    bk.recordSupportReport.mockResolvedValueOnce({ recorded: true, requestId: 'r1', at: '2026-11-13T12:00:00.000Z' });
+    fireEvent.click(screen.getByTestId('bko-report'));
+    await waitFor(() => expect(made).toHaveLength(1));
+    expect(bk.recordSupportReport).toHaveBeenLastCalledWith('r1');
+    expect(await new Promise<string>((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.readAsText(made[0]); })).toContain('2026-11-13T12:00:00.000Z');   // the report is stamped with the server's recorded time
+    U.createObjectURL = prev.c; U.revokeObjectURL = prev.r;
   });
   it('Extras · AI Booking Assistant 10: services tab separates manual prices from catalog prices, marks add-ons and totals the booking', async () => {
     bk.detail.mockResolvedValue({ ...row('r9', 'pending_confirmation', { appointmentId: 'a9', appointmentDate: '2026-11-07', appointmentTime: '10:00', appointmentStatus: 'booked', services: ['Gel Manicure', 'Nail Art'] }), branchId: 'b1',

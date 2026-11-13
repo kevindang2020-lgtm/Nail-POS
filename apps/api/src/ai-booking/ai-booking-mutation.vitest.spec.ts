@@ -29,6 +29,20 @@ describe('AiBookingMutationService', () => {
     expect(booking.create.mock.calls[0][1]).toMatchObject({ source: 'phone', serviceIds: ['s1'] });
   });
 
+  it('round 10 (AI Booking 06): a pending booking is NEVER labelled confirmed — the engine\'s saved status is returned; only "confirmed" is confirmed; a replay claims nothing', async () => {
+    const booking = { create: vi.fn(async () => ({ appointmentId: 'appt_p', status: 'pending' })), confirm: vi.fn(async () => ({ appointmentId: 'appt_p', status: 'confirmed' })) };
+    const store = new Map<string, any>();
+    const ledger = { find: async (t: string, k: string) => store.get(t + k) ?? null, record: async (t: string, _b: any, k: string, _op: string, ok: boolean, rid: string | null) => { store.set(t + k, { ok, resourceId: rid }); } };
+    const svc = new AiBookingMutationService(booking as any, conv() as any, ledger as any);
+    const made = await svc.createAppointment(ctx, { customerName: 'A', serviceIds: ['s1'], date: '2026-07-11', startTime: '11:00', confirm: true, idempotencyKey: 'idem-p' });
+    expect(made).toMatchObject({ ok: true, appointmentId: 'appt_p', appointmentStatus: 'pending', confirmed: false });
+    const replay = await svc.createAppointment(ctx, { customerName: 'A', serviceIds: ['s1'], date: '2026-07-11', startTime: '11:00', confirm: true, idempotencyKey: 'idem-p' });
+    expect(replay).toMatchObject({ duplicate: true, appointmentStatus: null, confirmed: false });
+    const conf = await svc.confirmAppointment({ ...ctx, permissions: [...ctx.permissions, 'ai_booking.confirm'] }, 'appt_p', { confirm: true });
+    expect(conf).toMatchObject({ ok: true, appointmentStatus: 'confirmed', confirmed: true });
+    const unknown = await new AiBookingMutationService({ create: vi.fn(async () => ({ appointmentId: 'appt_x' })) } as any, conv() as any, undefined).createAppointment(ctx, { customerName: 'A', serviceIds: ['s1'], date: '2026-07-11', startTime: '11:00', confirm: true });
+    expect(unknown).toMatchObject({ ok: true, appointmentStatus: null, confirmed: false });   // no status from the engine → never "confirmed"
+  });
   it('replays an idempotent request instead of creating a second appointment', async () => {
     const booking = { create: vi.fn(async () => ({ appointmentId: 'appt_1' })) };
     const store = new Map<string, any>();

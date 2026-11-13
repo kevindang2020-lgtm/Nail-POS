@@ -16,6 +16,8 @@ export const posAiBookingCenterApi = {
   activity: (f: AibActivityQuery) => http<AibActivityPage>('/activity' + qs(f as Record<string, unknown>)),
   detail: (requestId: string) => http<AibRequestDetail>('/requests/' + encodeURIComponent(requestId)),
   recovery: () => http<AibRecoveryList>('/recovery'),
+  /** round 10 (AI Booking 14): audit the Support report download on the server (the file is handed out only after this) */
+  recordSupportReport: (requestId: string) => http<{ recorded: boolean; requestId: string; at: string }>('/requests/' + encodeURIComponent(requestId) + '/support-report', { method: 'POST', headers: { 'Idempotency-Key': key() } }),
   dismiss: (caseKey: string, reason: string) => http<{ dismissed: boolean; key: string }>('/recovery/' + encodeURIComponent(caseKey) + '/dismiss', { method: 'POST', body: JSON.stringify({ reason }), headers: { 'Idempotency-Key': key() } }),
   /** guide §10 Review Alternative: POS Booking's real open times for the case day (nothing is held) */
   alternatives: (caseKey: string) => http<AibAlternatives>('/recovery/' + encodeURIComponent(caseKey) + '/alternatives'),
