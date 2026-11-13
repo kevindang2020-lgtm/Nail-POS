@@ -2142,4 +2142,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.technicians.service_link_archived.fix": "Gỡ dịch vụ đã lưu trữ khỏi danh sách dịch vụ của thợ.", // DRAFT — Kevin reviews
   "syschk.technicians.service_certification_missing": "Mọi dịch vụ cần chứng chỉ đều có chứng chỉ hợp lệ", // DRAFT — Kevin reviews
   "syschk.technicians.service_certification_missing.fix": "Dịch vụ yêu cầu chứng chỉ mà thợ chưa có (đã xác minh, còn hạn). Thêm chứng chỉ hoặc gỡ dịch vụ.", // DRAFT — Kevin reviews
+  "lgx.drill.health": "Mở trong Tình trạng thiết bị", // DRAFT — Kevin reviews
+  "lgx.drill.assign": "Phân công thiết bị", // DRAFT — Kevin reviews
+  "lgx.drill.terminals": "Mở trong Máy thanh toán", // DRAFT — Kevin reviews
+  "lgx.drill.gateway": "Mở Cổng thanh toán", // DRAFT — Kevin reviews
 };

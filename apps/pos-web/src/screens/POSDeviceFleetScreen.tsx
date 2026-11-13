@@ -14,7 +14,7 @@
 // Read-only: device actions stay on the owning pages (registers & displays → Customer Displays, terminals → Payment
 // Terminals; kiosks are set up by AIPowerSalon support). No count is invented — an unreadable figure shows "—".
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
 import { posDevicesApi, type DevicesOverview } from '../api/posDevicesApi';
 import { posDeviceFleetApi, type DeviceFleetQuery } from '../api/posDeviceFleetApi';
@@ -77,8 +77,12 @@ export function POSDeviceFleetScreen({ view, embedded = false }: { view: DeviceV
   const [sum, setSum] = useState<DfSummary | null>(null);
   const [ov, setOv] = useState<DevicesOverview | null>(null);
   const [topErr, setTopErr] = useState<string | null>(null);
-  const [f, setFState] = useState<DeviceFleetQuery>({ class: cfg.cls, status: 'all', sort: 'newest', page: 1, pageSize: 25 });
-  const [draft, setDraft] = useState('');
+  // extras Device Integration Logs 10 (round 10): a drill-through link carries a stable scope (?q=<device id / name>) — the
+  // list opens already narrowed to it (the server's own search, which matches the device id)
+  const [params] = useSearchParams();
+  const linkQ = (params.get('q') ?? '').trim().slice(0, 100);
+  const [f, setFState] = useState<DeviceFleetQuery>({ class: cfg.cls, status: 'all', sort: 'newest', page: 1, pageSize: 25, ...(linkQ.length >= 2 ? { q: linkQ } : {}) });
+  const [draft, setDraft] = useState(linkQ.length >= 2 ? linkQ : '');
   const [list, setList] = useState<DfListResponse | null>(null); const [listErr, setListErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<DfDevice | null>(null);

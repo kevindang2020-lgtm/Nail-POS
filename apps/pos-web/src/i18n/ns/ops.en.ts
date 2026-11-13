@@ -2143,4 +2143,8 @@ export const OPS_EN = {
   "syschk.technicians.service_link_archived.fix": "Remove the archived service from their service mapping.",
   "syschk.technicians.service_certification_missing": "Every mapped service that needs a certification has a valid one",
   "syschk.technicians.service_certification_missing.fix": "The service requires a certification this technician does not hold (verified, not expired). Add the certificate or remove the service.",
+  "lgx.drill.health": "Open in Device Health",
+  "lgx.drill.assign": "Device assignment",
+  "lgx.drill.terminals": "Open in Payment Terminals",
+  "lgx.drill.gateway": "Open Payment Gateway",
 };

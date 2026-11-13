@@ -189,6 +189,13 @@ export function TenantLogsScreen() {
         {/* backlog Device Integration Logs · 03: this device's own timeline (every event that points at it, newest first) */}
         {open.category === 'device' && open.relatedId && f.relatedId !== open.relatedId ? <button className="btn" data-testid="lgx-device-history" onClick={() => { setDraft(''); setF({ category: 'device', severity: 'all', search: undefined, relatedId: open.relatedId ?? undefined }); setOpen(null); }}>{tt('lgx.deviceHistory')}</button> : null}
         {/* backlog Device Integration Logs · 02: the request's trace — every event under the same correlation id (command, provider response, status inquiry) */}
+        {/* extras Device Integration Logs 10 (round 10): drill-through to the device pages, scoped to THIS device (its id) */}
+        {open.category === 'device' && open.relatedId ? <>
+          <button className="btn ghost" data-testid="lgx-to-health" onClick={() => nav(`/tenant/devices/health?q=${encodeURIComponent(open.relatedId as string)}`)}>{tt('lgx.drill.health')}</button>
+          <button className="btn ghost" data-testid="lgx-to-assign" onClick={() => nav(`/tenant/devices/assignments?q=${encodeURIComponent(open.relatedId as string)}`)}>{tt('lgx.drill.assign')}</button>
+          {open.source === 'payment_terminal' ? <button className="btn ghost" data-testid="lgx-to-terminals" onClick={() => nav(`/tenant/devices/payment-terminals?q=${encodeURIComponent(open.relatedId as string)}`)}>{tt('lgx.drill.terminals')}</button> : null}
+        </> : null}
+        {open.category === 'integration' && /payment|gateway/i.test(String(open.source ?? '')) ? <button className="btn ghost" data-testid="lgx-to-gateway" onClick={() => nav('/tenant/integrations/payment-gateway')}>{tt('lgx.drill.gateway')}</button> : null}
         {open.correlationId && f.correlationId !== open.correlationId ? <button className="btn" data-testid="lgx-trace" onClick={() => { setDraft(''); setF({ category: 'all', severity: 'all', search: undefined, relatedId: undefined, correlationId: open.correlationId ?? undefined }); setOpen(null); }}>{tt('lgx.trace')}</button> : null}
         <button className="btn ghost" onClick={() => setOpen(null)}>{tx('pos.close')}</button></>}>
         <dl className="ahx-dl">
