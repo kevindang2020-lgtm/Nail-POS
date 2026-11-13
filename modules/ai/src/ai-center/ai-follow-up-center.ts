@@ -13,6 +13,7 @@
 //   • Check Follow-Up System (read-only; 8 domains), the Priority & Escalation Assistant (recommendations only), and the
 //     overdue escalation job (one owner alert per task per rule).
 // Nothing here places a call, sends a text without the Copilot confirmation, changes a booking or resolves on its own.
+import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import type { FollowUpAlertSettings, FollowUpHandoverResult } from '@aipowersalon/api-contracts/tenant';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { utcDate } from '@aipowersalon/date-time';
@@ -118,7 +119,7 @@ export function fuDataQuality(r: Row): string[] {
 }
 
 export class AiFollowUpCenter {
-  constructor(private readonly db: Kysely<any>, private readonly text: FuTextPort | null) {}
+  constructor(private readonly db: Kysely<any>, private readonly text: FuTextPort | null, private readonly rt?: RealtimeEmitter | null) {}
 
   // ── access ────────────────────────────────────────────────────────────────────────────────────────────────────
   private can(ctx: FuCtx, p: string) { return hasPermission(ctx as Parameters<typeof hasPermission>[0], p); }
@@ -315,6 +316,7 @@ export class AiFollowUpCenter {
         on conflict (tenant_id, branch_id, category) do update set settings_json = excluded.settings_json, updated_by_user_id = excluded.updated_by_user_id, updated_at = now()`.execute(trx);
       await this.audit(ctx, trx, 'follow_up.alert_settings_changed', null, 'Overdue follow-up alert changed', { before: { enabled: before.enabled, graceMinutes: before.graceMinutes }, after: { enabled, graceMinutes: grace } });
     });
+    notifySettingsChanged(this.rt, ctx.tenantId, FU_ALERT_CATEGORY);   // after the save committed — other screens refresh the setting
     return this.alertSettings(ctx);
   }
 

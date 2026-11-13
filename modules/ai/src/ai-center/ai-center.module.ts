@@ -105,7 +105,7 @@ export class AiFollowUpEscalationJob implements OnModuleInit, OnModuleDestroy {
     // AI Calendar guide: a read layer over canonical Booking (BookingService + pos_tech_appointments) — null without a database
     { provide: AI_CALENDAR_CENTER, useFactory: (db: AppDatabase, booking: BookingService) => (db ? new AiCalendarCenter(db, booking) : null), inject: [DATABASE, BookingService] },
     // AI Follow-Ups guide: the task center over ai_receptionist_follow_ups; texts go through the Copilot center's prepare → confirm
-    { provide: AI_FOLLOW_UP_CENTER, useFactory: (db: AppDatabase, cc: ReceptionCopilotCenter | null) => (db ? new AiFollowUpCenter(db as unknown as Kysely<any>, cc as unknown as FuTextPort | null) : null), inject: [DATABASE, COPILOT_CENTER] },
+    { provide: AI_FOLLOW_UP_CENTER, useFactory: (db: AppDatabase, cc: ReceptionCopilotCenter | null, rt: RealtimeEmitter | null) => (db ? new AiFollowUpCenter(db as unknown as Kysely<any>, cc as unknown as FuTextPort | null, rt) : null), inject: [DATABASE, COPILOT_CENTER, { token: REALTIME, optional: true }] },
     AiFollowUpEscalationJob,
   ],
   exports: [AiCenterService, ReceptionCopilotContextService, ReceptionCopilotAssistService, ReceptionCopilotSessionService, ReceptionCopilotFeedbackService, ReceptionCopilotLearningService, ReceptionCopilotLiveStateService, ReceptionCopilotTakeoverService, 'CopilotActionLedger'],
