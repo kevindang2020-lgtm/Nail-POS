@@ -3,7 +3,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const m = vi.hoisted(() => ({ state: vi.fn(), breakInterrupt: vi.fn(), breakPolicy: vi.fn(), saveBreakPolicy: vi.fn(), adjustBreak: vi.fn(), breakEnd: vi.fn() }));
-vi.mock('../api/posTimeClockApi', () => ({ posTimeClockApi: { state: m.state, breakInterrupt: m.breakInterrupt, breakPolicy: m.breakPolicy, saveBreakPolicy: m.saveBreakPolicy, adjustBreak: m.adjustBreak, breakEnd: m.breakEnd, clockIn: vi.fn(), clockOut: vi.fn(), breakStart: vi.fn(), resetClockPin: vi.fn(), adjustTimecard: vi.fn() } }));
+vi.mock('../api/posTimeClockApi', () => ({ posTimeClockApi: { state: m.state, breakInterrupt: m.breakInterrupt, breakPolicy: m.breakPolicy, saveBreakPolicy: m.saveBreakPolicy, adjustBreak: m.adjustBreak, breakEnd: m.breakEnd, clockIn: vi.fn(), clockOut: vi.fn(), breakStart: vi.fn(), resetClockPin: vi.fn(), adjustTimecard: vi.fn(), openingRush: vi.fn(async () => null), clockInBatch: vi.fn() } }));
+// the Opening Rush panel (round 9) reads these on mount — nothing to show in the break tests
+vi.mock('../api/posOverviewApi', () => ({ posOverviewApi: { getOverview: vi.fn(async () => null) } }));
 import { POSTimeClockScreen } from './POSTimeClockScreen';
 
 const POLICY = { jurisdiction: 'US-FEDERAL', restBreakPaidUpToMinutes: 20, mealBreakMinMinutes: 30, interruptedMealCompensable: true, kindDefaults: { break: 'rest', lunch: 'meal' } };
