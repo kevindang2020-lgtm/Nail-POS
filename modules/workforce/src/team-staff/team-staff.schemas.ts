@@ -27,3 +27,8 @@ export const TS_CERT_BODY: BodySchema = S.object({
   memberId: S.text(64), name: S.text(120), issuer: str(120), credentialRef: str(120), issuedOn: ymd, expiresOn: ymd, assignmentId: str(64),
 }, ['memberId', 'name']);
 export const TS_CERT_VERIFY_BODY: BodySchema = S.object({ expectedVersion: S.number(), decision: S.enumOf(['VERIFIED', 'REJECTED', 'REVOKED']), note: S.text(1000) }, ['expectedVersion', 'decision', 'note']);
+/** round 11 (extras 200-Technician 08): bulk invite — the selected member ids (the ceiling of 200 is enforced in the
+ *  repository with a clear message), the run key (a retry with the same key never sends twice), and the salon switch */
+export const TS_BULK_INVITE_PREVIEW_BODY: BodySchema = S.object({ memberIds: S.array(S.text(64), { maxItems: 250 }) }, ['memberIds']);
+export const TS_BULK_INVITE_RUN_BODY: BodySchema = S.object({ memberIds: S.array(S.text(64), { maxItems: 250 }), runKey: S.text(200) }, ['memberIds', 'runKey']);
+export const TS_BULK_INVITE_SETTING_BODY: BodySchema = S.object({ enabled: S.boolean() }, ['enabled']);

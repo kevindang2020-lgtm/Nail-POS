@@ -75,3 +75,12 @@ export interface InventoryReorderDraftResponse {
   /** purchase units (packs) to put on the draft line — 0 when nothing is suggested */ purchaseUnitsToOrder: number;
   /** bottles / units that order brings in (packs × pack size) */ unitsThatArrive: number;
 }
+
+// round 11 — extras ADD-ONS MANAGEMENT 06: add-on recipes (a mechanism, OFF until the salon turns it on)
+/** GET / PUT /tenant/inventory/add-on-recipe-settings — whether Service Done deducts add-on recipes (absent = off). */
+export interface InventoryAddOnRecipeSettingResponse { enabled: boolean; updatedAt: string | null }
+/** GET / PUT /tenant/inventory/add-on-recipes/:key — one add-on's recipe (whole quantities) and whether it is deducted. */
+export interface InventoryAddOnRecipeResponse {
+  key: string; name: string; deductsAtServiceDone: boolean;
+  lines: { productId: string; productName: string; quantity: number; unit: string | null }[];
+}

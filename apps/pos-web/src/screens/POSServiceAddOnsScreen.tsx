@@ -20,6 +20,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, centsFromText, textFromCents, useFreshAt, FreshnessLine, type PeriodState } from '../components/FinanceKit';
+import { AddOnRecipePanel } from './addOnRecipe';   // round 11 (extras ADD-ONS 06): optional add-on recipe — deducted only while the salon turned it on
 import { nf, money, mins, day, whenTime, pageOf, ChangeHistoryTable } from './catalogShared';
 
 type Tab = 'catalog' | 'usage';
@@ -365,7 +366,7 @@ function ArchiveAddOn({ row, restore, onClose, onDone }: { row: any; restore: bo
   );
 }
 
-type DTab = 'overview' | 'assignments' | 'pricing' | 'usage' | 'audit';
+type DTab = 'overview' | 'assignments' | 'pricing' | 'usage' | 'audit' | 'recipe';
 function AddOnDetails({ addOnKey, initialTab, canEdit, onClose, onEdit }: { addOnKey: string; initialTab?: DTab; canEdit: boolean; onClose: () => void; onEdit: (row: any) => void }) {
   const [t, setT] = useState<DTab>(initialTab ?? 'overview'); const [up, setUp] = useState(1); const [hp, setHp] = useState(1);
   const d = useLoad(() => posCatalogApi.addOn(addOnKey), [addOnKey]);
@@ -378,7 +379,7 @@ function AddOnDetails({ addOnKey, initialTab, canEdit, onClose, onEdit }: { addO
       footer={<>{x && canEdit ? <button type="button" className="fk-btn primary" onClick={() => onEdit(undefined)} data-testid="details-edit">{tx('cg.ao.editDefinition')}</button> : null}<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !x ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="fk-seg mos-dtabs" role="tablist" aria-label={tx('pos.details')}>
-          {(['overview', 'assignments', 'pricing', 'usage', 'audit'] as const).map((k) => <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? 'on' : ''} onClick={() => setT(k)} data-testid={'ad-tab-' + k}>{tx('cg.adtab.' + k)}</button>)}
+          {(['overview', 'assignments', 'pricing', 'usage', 'audit', 'recipe'] as const).map((k) => <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? 'on' : ''} onClick={() => setT(k)} data-testid={'ad-tab-' + k}>{tx('cg.adtab.' + k)}</button>)}
         </div>
         {t === 'overview' ? <dl className="fk-dl mo-dl" data-testid="ad-overview">
           <dt>{tx('pos.name_2')}</dt><dd>{x.name}</dd>
@@ -396,6 +397,7 @@ function AddOnDetails({ addOnKey, initialTab, canEdit, onClose, onEdit }: { addO
         {t === 'pricing' ? <table className="fk-table fn-table cg-table" data-testid="ad-pricing"><thead><tr><th>{tx('pos.service_3')}</th><th className="num">{tx('pos.add_on_2')}</th><th className="num">{tx('cg.ao.plusTime')}</th><th className="num">{tx('cg.ao.withServicePrice')}</th><th className="num">{tx('cg.ao.withServiceTime')}</th></tr></thead>
           <tbody>{x.offerings.map((o: any) => <tr key={o.offeringId}><td>{o.serviceName}</td><td className="num">{fmtMoney(o.priceCents)}</td><td className="num">{plusMin(o.durationMinutes)}</td><td className="num"><b>{fmtMoney(o.withServicePriceCents)}</b></td><td className="num">{mins(o.withServiceMinutes)}</td></tr>)}</tbody></table> : null}
         {t === 'usage' ? (u.error ? <StateBlock error={u.error} onRetry={u.reload} /> : !u.data ? <div className="fk-loading">{tx('pos.loading')}</div> : u.data.items.length === 0 ? <Empty title={tx('cg.ao.noUsage')} /> : <><UsageTable rows={u.data.items} /><Pager info={pageOf(u.data)} onPage={setUp} /></>) : null}
+        {t === 'recipe' ? <AddOnRecipePanel addOnKey={x.key} /> : null}
         {t === 'audit' ? (h.error ? <StateBlock error={h.error} onRetry={h.reload} /> : !h.data ? <div className="fk-loading">{tx('pos.loading')}</div> : h.data.items.length === 0 ? <Empty title={tx('cg.noHistory')} /> : <><ChangeHistoryTable rows={h.data.items} /><Pager info={pageOf(h.data)} onPage={setHp} /></>) : null}
       </>}
     </FitDialog>

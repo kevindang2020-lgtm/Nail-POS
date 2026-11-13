@@ -18,7 +18,9 @@ import { sql } from 'kysely';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import type { AppDatabase } from '@aipowersalon/database';
 import { canMoveToSql } from '@aipowersalon/database';
-import { DEAL_REDEMPTION_HOLD, DEAL_REDEMPTION, DEAL_COUPON_CODE } from './deal-lifecycles';
+import { DEAL_REDEMPTION_HOLD, DEAL_REDEMPTION, DEAL_COUPON_CODE, LIVE_USE_STATUSES } from './deal-lifecycles';
+/** round 11: the live uses (applied / redeemed / partly reversed) — one per deal + ticket. */
+const LIVE_USES: string[] = [...LIVE_USE_STATUSES];
 import type { DealTerms, CustomerFacts } from './eligibility';
 import type { OfferRule, LineAllocation } from './pricing';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
@@ -198,7 +200,7 @@ export class KyselyDealsLedger {
     return this.d.transaction().execute(async (trx: any) => {
       const rows = rowsOf(await sql`UPDATE deal_redemption_holds h SET status = 'released', released_reason = ${reason}, updated_at = now()
                                      WHERE ${canMoveToSql(DEAL_REDEMPTION_HOLD, 'released', 'h')} AND h.tenant_id = ${tenantId} AND h.appointment_id = ${appointmentId} AND h.status IN ('held','consumed')
-                                       AND NOT EXISTS (SELECT 1 FROM deal_redemptions r WHERE r.tenant_id = ${tenantId} AND r.hold_id = h.id AND r.status IN ('applied','redeemed'))
+                                       AND NOT EXISTS (SELECT 1 FROM deal_redemptions r WHERE r.tenant_id = ${tenantId} AND r.hold_id = h.id AND r.status = ANY(${LIVE_USES}::text[]))
                                      RETURNING h.id, h.deal_id`.execute(trx));
       for (const r of rows) await this.event(trx, DOMAIN_EVENTS.DEAL_RESERVATION_RELEASED, tenantId, null, 'deal', String(r.deal_id), null, { dealId: String(r.deal_id), holdId: String(r.id), appointmentId, reason });
       return rows.length;
@@ -210,7 +212,10 @@ export class KyselyDealsLedger {
   async apply(i: ApplyInput, limits: { maxRedemptions: number | null; maxPerCustomer: number | null; budgetCents: number | null }): Promise<LiveApplication> {
     return this.d.transaction().execute(async (trx: any) => {
       await sql`SELECT pg_advisory_xact_lock(hashtextextended(${'dealhold:' + i.dealId}, 0))`.execute(trx);
-      const existing = rowsOf(await sql`SELECT * FROM deal_redemptions WHERE tenant_id = ${i.tenantId} AND ticket_id = ${i.ticketId} AND deal_id = ${i.dealId} AND status IN ('applied','redeemed') LIMIT 1`.execute(trx))[0];
+      const existing = rowsOf(await sql`SELECT * FROM deal_redemptions WHERE tenant_id = ${i.tenantId} AND ticket_id = ${i.ticketId} AND deal_id = ${i.dealId} AND status = ANY(${LIVE_USES}::text[]) ORDER BY id LIMIT 1`.execute(trx))[0];
+      // round 11 (Deals live-use count): a PARTLY reversed use is still this ticket's use of the offer — its place and count
+      // stay — so the offer cannot be applied to the same ticket a second time (it used to be: a second completed use).
+      if (existing?.status === 'partially_reversed') throw withCode(new LedgerRefusal('used_on_ticket', 'This offer was already used on this ticket (part of it was refunded).'), 'DEAL_REFUSED');
       if (existing) return toApplication(existing);   // idempotent: applying the same deal twice is one application
       const live = rowsOf(await sql`SELECT status FROM deals WHERE tenant_id = ${i.tenantId} AND id = ${i.dealId} FOR UPDATE`.execute(trx))[0];
       if (!live || live.status !== 'active') throw withCode(new LedgerRefusal('not_active', 'This deal is not available.'), 'DEAL_NOT_AVAILABLE');

@@ -50,6 +50,24 @@ describe('B-17: retail units come back on void / refund', () => {
     await (failing as any).repo.recordPayment(ctx, { paymentId: 'pay_y', ticketId: 'tk2', method: 'card', amountCents: 5000, tipCents: 0, status: 'approved', processorTransactionId: 'sbx_auth_2', createdAt: new Date().toISOString() } as any);
     expect(((await failing.void(ctx, 'pay_y', { reason: 'r' } as any)) as any).status).toBe('voided');
   });
+  it('round 11 (ADD-ONS 06): a void also gives back the add-on recipe use; a refund never does (the product was used)', async () => {
+    const addOn: Array<{ ticketId: string; lineIds: string[] | null; reason: string }> = []; const retail: typeof addOn = [];
+    const port: RetailStockReturnsPort = { reverseRetailSale: async (_c, i) => { retail.push(i); return { returned: 0, byProduct: [] }; }, reverseAddOnUsage: async (_c, i) => { addOn.push(i); return { returnedLines: 1 }; } };
+    const repo = new SandboxRepo(); const svc = new CheckoutService(repo).useStock(port);
+    await repo.recordPayment(ctx, { paymentId: 'pay_a', ticketId: 'tk9', method: 'card', amountCents: 5000, tipCents: 0, status: 'approved', processorTransactionId: 'sbx_auth_9', createdAt: new Date().toISOString() } as any);
+    expect(((await svc.void(ctx, 'pay_a', { reason: 'wrong ticket' } as any)) as any).status).toBe('voided');
+    expect(addOn).toEqual([{ ticketId: 'tk9', lineIds: null, reason: 'void: wrong ticket' }]);
+    const paidOne = new SandboxRepo(); const addOn2: typeof addOn = [];
+    const svc2 = new CheckoutService(paidOne).useStock({ reverseRetailSale: async () => ({ returned: 0, byProduct: [] }), reverseAddOnUsage: async (_c, i) => { addOn2.push(i); return { returnedLines: 0 }; } });
+    const due = (await svc2.recalculate(ctx, TK, 'cash') as any).totalDueCents;
+    await svc2.payCash(ctx, TK, { amountReceivedCents: due } as any);
+    await svc2.refundTicket(ctx, TK, { reason: 'unhappy', amountCents: await paidOne.paidTotalCents(ctx, TK) } as any);
+    expect(addOn2).toEqual([]);
+    // a failing add-on return never fails the void
+    const failing = new CheckoutService(new SandboxRepo()).useStock({ reverseRetailSale: async () => ({ returned: 0, byProduct: [] }), reverseAddOnUsage: async () => { throw new Error('inventory down'); } });
+    await (failing as any).repo.recordPayment(ctx, { paymentId: 'pay_b', ticketId: 'tk8', method: 'card', amountCents: 5000, tipCents: 0, status: 'approved', processorTransactionId: 'sbx_auth_8', createdAt: new Date().toISOString() } as any);
+    expect(((await failing.void(ctx, 'pay_b', { reason: 'r' } as any)) as any).status).toBe('voided');
+  });
   it('without a stock port nothing is attempted (a deployment without inventory)', async () => {
     const repo = new SandboxRepo(); const svc = new CheckoutService(repo);
     const due = (await svc.recalculate(ctx, TK, 'cash') as any).totalDueCents;

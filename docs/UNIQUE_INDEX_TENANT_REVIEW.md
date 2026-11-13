@@ -92,7 +92,7 @@ reviewable — key it `(tenant_id, …)`.
 | `uq_csp_customer` | `customer_social_profiles` | `(customer_id)` | GLOBAL — parent | customer_id uuid; one social profile per customer. |
 | `uq_deal_hold_idem` | `deal_redemption_holds` | `(deal_id, idempotency_key)` | GLOBAL — parent | deal_id is a tenant-owned deal (uuid). |
 | `uq_deal_redemption_idem` | `deal_redemptions` | `(deal_id, idempotency_key) WHERE (idempotency_key IS NOT NULL)` | GLOBAL — parent | deal_id is a tenant-owned deal (uuid). |
-| `uq_deal_redemption_ticket_live` | `deal_redemptions` | `(ticket_id, deal_id) WHERE ((status = ANY (ARRAY['applied'::text, 'redeemed'::text])) AND (ticket_id IS NOT NULL))` | GLOBAL — parent | ticket_id is a tenant-owned ticket (uuid). |
+| `uq_deal_redemption_ticket_live` | `deal_redemptions` | `(ticket_id, deal_id) WHERE ((status = ANY (ARRAY['applied'::text, 'redeemed'::text, 'partially_reversed'::text])) AND (ticket_id IS NOT NULL))` | GLOBAL — parent | ticket_id is a tenant-owned ticket (uuid). Round 11 (migration 965): a partly reversed use is still live. |
 | `uq_deal_saves_user` | `deal_saves` | `(deal_id, user_id)` | GLOBAL — parent | deal_id is a tenant-owned deal (uuid). |
 | `deal_versions_deal_id_version_key` | `deal_versions` | `(deal_id, version)` | GLOBAL — parent | deal_id is a tenant-owned deal (uuid). |
 | `uq_deals_legacy` | `deals` | `(legacy_source, legacy_id) WHERE (legacy_source IS NOT NULL)` | GLOBAL — parent | legacy_id is the uuid of the salon_promotions / tenant_promotions row it was carried from (522). |

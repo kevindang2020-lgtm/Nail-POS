@@ -65,6 +65,9 @@ export const INV_COUNT_CREATE_BODY: BodySchema = obj({ scopeType: str(32), scope
 export const INV_COUNT_LINES_BODY: BodySchema = obj({ lineId: id, countedQty: num, lines: lines(S.object({ lineId: id, countedQty: num }), 5000) });
 export const INV_RECIPE_BODY: BodySchema = S.object({ lines: lines(S.object({ productId: id, quantity: num }), 100) });
 export const INV_CONSUME_BODY: BodySchema = S.object({ multiplier: num });
+/** round 11 (ADD-ONS 06): an add-on's recipe — products and WHOLE quantities (the service validates 1..1000) — and the salon switch */
+export const INV_ADD_ON_RECIPE_BODY: BodySchema = S.object({ lines: lines(S.object({ productId: id, quantity: num }), 100) });
+export const INV_ADD_ON_RECIPE_SETTING_BODY: BodySchema = S.object({ enabled: S.boolean() }, ['enabled']);
 export const INV_RECEIPT_EXPENSE_BODY: BodySchema = S.object({ amountCents: num, category: str(64), description: str(1000), incurredOn: str(32), vendor: str(200) });
 export const TECH_INVENTORY_REPORT_BODY: BodySchema = obj({
   reportType: str(32), productId: id, unitId: id, serviceTicketId: id, estimatedRemainingPercent: num, reportedQuantity: num, note: str(1000), photoUrl: str(2048),

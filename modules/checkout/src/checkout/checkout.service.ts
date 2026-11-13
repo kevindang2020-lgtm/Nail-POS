@@ -12,7 +12,7 @@ import { type SmsSender, type EmailSender, type TenantMessenger, isSimulatedSend
 import { type RealtimeEmitter, EVENTS } from '@aipowersalon/realtime-contracts';
 import { secureString } from '@aipowersalon/security';
 import { InvalidStateTransitionError } from '@aipowersalon/database';
-import { recordDisplayEvent, recordPaymentEvent } from '@aipowersalon/observability';   // Dual-Screen §108; wave 3 PAYI §104 payment business counters
+import { recordDisplayEvent, recordPaymentEvent, logException } from '@aipowersalon/observability';   // Dual-Screen §108; wave 3 PAYI §104 payment business counters
 import { APPROVE_REFUND_CAPABILITY, thresholdsFromPolicy, type RefundApprovalsPort, type RefundThresholds } from './refund-approval';
 import type { ApprovalPendingResult } from '@aipowersalon/api-contracts/tenant';
 import { ERROR_REGISTRY, isRegisteredCode, customerMessageLanguage, withCode } from '@aipowersalon/api-contracts';
@@ -107,6 +107,9 @@ export class ValidationError extends Error { constructor(msg: string, public rea
  */
 export interface RetailStockReturnsPort {
   reverseRetailSale(ctx: any, input: { ticketId: string; lineIds: string[] | null; reason: string }): Promise<{ returned: number; byProduct: Array<{ productId: string; returned: number; onHand: number }> }>;
+  /** round 11 (ADD-ONS 06): a VOID gives back what the ticket's add-on recipes took at Service Done (a refund does not —
+   *  the product was used). Optional: nothing to give back when add-on recipes were never on. */
+  reverseAddOnUsage?(ctx: any, input: { ticketId: string; lineIds: string[] | null; reason: string }): Promise<{ returnedLines: number }>;
 }
 export interface CheckoutDealsPort {
   policy(ctx: any): Promise<StackingPolicy>;
@@ -1715,6 +1718,8 @@ export class CheckoutService {
         if (this.deals) await this.deals.onRefunded(ctx, ticketId, null, 'void: ' + (reason || ''));
         // B-17: nothing captured any more → every retail unit the ticket took goes back on the shelf
         if (this.stock) await this.stock.reverseRetailSale(ctx, { ticketId, lineIds: null, reason: 'void: ' + (reason || '') }).catch(() => undefined);
+        if (this.stock?.reverseAddOnUsage) await this.stock.reverseAddOnUsage(ctx, { ticketId, lineIds: null, reason: 'void: ' + (reason || '') })
+          .catch((e) => logException(e, { where: 'checkout.void.addOnUsageReturn', tenantId: ctx.tenantId, ticketId }));   // logged; the void already happened
       }
     } catch { /* best-effort: the void already happened */ }
   }

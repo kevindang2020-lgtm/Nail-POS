@@ -112,6 +112,16 @@ describe('retail stock follows the line both ways (B-17)', () => {
     await s.removeService(ctx(), ticketId, { serviceLineId: r.serviceLineId, reason: 'changed her mind' } as any);
     expect(stock.calls[1]).toEqual(['reverse', { ticketId, lineIds: [r.serviceLineId], reason: 'line removed: changed her mind' }]);
   });
+  it('round 11 (ADD-ONS 06): removing a line also asks for its add-on recipe use back; a failing return never fails the removal', async () => {
+    const calls: any[] = [];
+    const s = new ServingService(repo, undefined, { recordRetailSale: async () => ({ consumed: 1, shortBy: 0, onHand: 9 }), reverseAddOnUsage: async (_c: any, input: any) => { calls.push(input); return { returnedLines: 1 }; } });
+    const r = await s.addRetail(ctx(), ticketId, { productId: 'p_polish' });
+    await s.removeService(ctx(), ticketId, { serviceLineId: r.serviceLineId, reason: 'wrong add-on' } as any);
+    expect(calls).toEqual([{ ticketId, lineIds: [r.serviceLineId], reason: 'line removed: wrong add-on' }]);
+    const failing = new ServingService(repo, undefined, { recordRetailSale: async () => ({ consumed: 1, shortBy: 0, onHand: 9 }), reverseAddOnUsage: async () => { throw new Error('inventory down'); } });
+    const r2 = await failing.addRetail(ctx(), ticketId, { productId: 'p_polish' });
+    await expect(failing.removeService(ctx(), ticketId, { serviceLineId: r2.serviceLineId, reason: 'x' } as any)).resolves.toBeTruthy();
+  });
   it('a stock adapter without reverseRetailSale, or one that fails, never fails the removal', async () => {
     const s = new ServingService(repo, undefined, { recordRetailSale: async () => ({ consumed: 1, shortBy: 0, onHand: 9 }) });
     const r = await s.addRetail(ctx(), ticketId, { productId: 'p_polish' });

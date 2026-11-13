@@ -23,6 +23,11 @@ export const DEAL_REDEMPTION = defineStateMachine({
   initial: ['applied'],
 });
 
+/** The LIVE uses of a deal (round 11, Deals live-use count): on the ticket, paid, or paid and only PARTLY reversed (the
+ *  customer kept part of the service — its place and its count stay). Released and fully reversed uses are not live.
+ *  One live use per deal + ticket (migration 965 uq_deal_redemption_ticket_live; deals-ledger apply). */
+export const LIVE_USE_STATUSES = ['applied', 'redeemed', 'partially_reversed'] as const;
+
 /** deals.status — the lifecycle deals.core's TRANSITIONS has always validated (submit / approve / reject / publish /
  *  schedule / pause / resume / sold out / expire / cancel / archive), plus the two other writers: a salon coupon promotion
  *  (kind = 'coupon') is an owner's flag among draft / active / paused / expired, and the platform's suspension cancels a

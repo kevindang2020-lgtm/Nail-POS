@@ -2,13 +2,13 @@
 // Tenant + branch come from the session (req.ctx); never from the client.
 import { Idempotent } from '@aipowersalon/database/nest';   // D10: a double tap creates / receives once
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
-import { INV_ADD_STOCK_BODY, INV_BRAND_BODY, INV_CATEGORY_BODY, INV_CONSUME_BODY, INV_COUNT_CREATE_BODY, INV_COUNT_LINES_BODY, INV_NOTE_BODY, INV_PO_CREATE_BODY, INV_PO_RECEIVE_BODY, INV_PO_UPDATE_BODY, INV_PRODUCT_CREATE_BODY, INV_PRODUCT_UPDATE_BODY, INV_RECEIPT_EXPENSE_BODY, INV_RECIPE_BODY, INV_STOCK_OVERRIDES_BODY, INV_TRANSFER_BODY, INV_TRANSFER_RECEIVE_BODY, INV_TRANSFER_CANCEL_BODY, INV_VENDOR_BODY } from './request-schemas';
+import { INV_ADD_ON_RECIPE_BODY, INV_ADD_ON_RECIPE_SETTING_BODY, INV_ADD_STOCK_BODY, INV_BRAND_BODY, INV_CATEGORY_BODY, INV_CONSUME_BODY, INV_COUNT_CREATE_BODY, INV_COUNT_LINES_BODY, INV_NOTE_BODY, INV_PO_CREATE_BODY, INV_PO_RECEIVE_BODY, INV_PO_UPDATE_BODY, INV_PRODUCT_CREATE_BODY, INV_PRODUCT_UPDATE_BODY, INV_RECEIPT_EXPENSE_BODY, INV_RECIPE_BODY, INV_STOCK_OVERRIDES_BODY, INV_TRANSFER_BODY, INV_TRANSFER_RECEIVE_BODY, INV_TRANSFER_CANCEL_BODY, INV_VENDOR_BODY } from './request-schemas';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpException, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { InventoryService, InventoryError } from './inventory.service';
 import { ListQueries } from '@aipowersalon/database';
 import { InventoryControllerListQueries } from './inventory.list-queries';
-import type { InventoryProductDuplicatesResponse, InventoryStockPreviewResponse, InventoryReorderDraftResponse } from '@aipowersalon/api-contracts/tenant';
+import type { InventoryProductDuplicatesResponse, InventoryStockPreviewResponse, InventoryReorderDraftResponse, InventoryAddOnRecipeResponse, InventoryAddOnRecipeSettingResponse } from '@aipowersalon/api-contracts/tenant';
 
 function ctx(req: any) { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId, userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 async function run<T>(fn: () => Promise<T>): Promise<T> { try { return await fn(); } catch (e) { if (e instanceof InventoryError) throw new HttpException({ ok: false, message: e.message, ...(e.extra || {}) }, e.status); throw e; } }
@@ -99,6 +99,13 @@ export class InventoryController {
   // audit D9 (Nov 4 2026): a manual deduction had no idempotency — a retried request emptied the bottles twice. An
   // Idempotency-Key is now required; the same key replays the first answer.
   @Idempotent({ required: true }) @Post('recipes/:serviceId/consume') @RequirePermission('inventory.product_usage.submit') consumeRecipe(@Req() r: any, @Param('serviceId') id: string, @Body(ValidatedBody(INV_CONSUME_BODY, { strict: true })) b: any) { return run(() => this.svc.consumeServiceRecipe(ctx(r), id, b?.multiplier)); }
+
+  // ---- round 11 (extras ADD-ONS MANAGEMENT 06): add-on recipes — OFF until the salon turns them on (settings permission);
+  //      a recipe can be saved while off (nothing is deducted until the switch is on) ----
+  @Get('add-on-recipe-settings') @RequirePermission('inventory.view') addOnRecipeSetting(@Req() r: any): Promise<InventoryAddOnRecipeSettingResponse> { return run(() => this.svc.addOnRecipeSetting(ctx(r))); }
+  @Put('add-on-recipe-settings') @RequirePermission('settings.edit') setAddOnRecipeSetting(@Req() r: any, @Body(ValidatedBody(INV_ADD_ON_RECIPE_SETTING_BODY, { strict: true })) b: any): Promise<InventoryAddOnRecipeSettingResponse> { return run(() => this.svc.setAddOnRecipeSetting(ctx(r), b ?? {})); }
+  @Get('add-on-recipes/:key') @RequirePermission('inventory.view') addOnRecipe(@Req() r: any, @Param('key') key: string): Promise<InventoryAddOnRecipeResponse> { return run(() => this.svc.getAddOnRecipe(ctx(r), key)); }
+  @Put('add-on-recipes/:key') @RequirePermission('inventory.update') setAddOnRecipe(@Req() r: any, @Param('key') key: string, @Body(ValidatedBody(INV_ADD_ON_RECIPE_BODY, { strict: true })) b: any): Promise<InventoryAddOnRecipeResponse> { return run(() => this.svc.setAddOnRecipe(ctx(r), key, b ?? {})); }
 
   // ---- stock-threshold alert feed (§17) — persisted, acknowledgeable (distinct from live /alerts) ----
   @Get('alert-feed') @RequirePermission('inventory.view') listAlerts(@Req() r: any, @Query() q: any) { return run(() => this.svc.listAlerts(ctx(r), q?.includeAcknowledged !== 'false')); }

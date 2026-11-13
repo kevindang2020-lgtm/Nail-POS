@@ -29,6 +29,7 @@ import { useTeamLive, useNewest, TeamLiveBadge } from './teamLive';
 import { CustomerLinkedStaff } from './teamCustomerSearch';
 import { EmployeeProfileOverlay, TeamAvailableFinder, DateShiftLauncher, TeamDataAlertsPanel, LIVE_TONE, roleName, deptName, liveName, rangeText, type PTab } from './teamMembersParts';
 import { AddTeamMemberDialog, TeamBirthdaysPanel, TeamTrainingPanel, TeamTrainingCatalog } from './teamStaffParts';   // round 2: TM-06 · TM-08 · TM-09
+import { BulkInviteAction } from './teamBulkInvite';   // round 11 (extras 200-Technician 08): bulk invite — off until the salon turns it on
 
 const TABS = ['all', 'stylists', 'nail_technicians', 'receptionists', 'assistants', 'managers'] as const;
 import { deviceToday } from '../lib/deviceToday';
@@ -208,6 +209,7 @@ export function POSTeamScreen() {
             <button type="button" className="fk-btn ghost sm" aria-pressed={selOnly} onClick={() => setSelOnly((v) => !v)} data-testid="bulk-review">{selOnly ? tx('tmm.bulk.showAll') : tx('tmm.bulk.review')}</button>
             {bulkAsk === 'export' ? <span data-testid="bulk-confirm">{tx('tmm.bulk.confirmExport', { n: String(sel.length) })} <button type="button" className="fk-btn sm" onClick={() => void doExport(true)} disabled={exporting} data-testid="bulk-export-yes">{tx('tmm.bulk.exportYes')}</button> <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk(null)}>{tx('pos.cancel')}</button></span>
               : <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk('export')} disabled={exporting} data-testid="bulk-export">{tx('tmm.bulk.export')}</button>}
+            <BulkInviteAction ids={sel} />
             <button type="button" className="fk-link" onClick={() => { setSel([]); setSelOnly(false); setBulkAsk(null); }} data-testid="bulk-clear">{tx('tmm.bulk.clear')}</button>
             <span className="fk-hint">{tx('tmm.bulk.rule')}</span>
           </div> : null}

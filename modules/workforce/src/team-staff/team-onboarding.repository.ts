@@ -42,7 +42,7 @@ export interface DeliverPort { deliver(i: { invitationId: string; channel: 'emai
 export interface OnboardBody { role?: unknown; fullName?: unknown; email?: unknown; phone?: unknown; branchIds?: unknown; idempotencyKey?: unknown; channel?: unknown }
 interface Resolved { key: string; jobRole: string; label: string; base: string; template: string | null; provider: boolean; permissions: string[] }
 
-const defaultDeliver = (db: Kysely<any>): DeliverPort => ({
+export const defaultDeliver = (db: Kysely<any>): DeliverPort => ({
   async deliver(i) {
     const r = await new InvitationDelivery(new KyselyInvitationDeliverySink(db)).deliver({ ...i, baseUrl: portalUrl() });
     return { deliveryStatus: r.deliveryStatus, manualToken: r.manualToken };

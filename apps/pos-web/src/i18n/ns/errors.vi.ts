@@ -1497,4 +1497,5 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.AI_RECOMMENDATION_PROMPT_REQUIRED': 'Nhập lời thoại mới của lễ tân trước khi duyệt.', // DRAFT — Kevin reviews
   'errors.AI_RECOMMENDATION_NOT_OPEN': 'Đề xuất này đã được xử lý trước đó.', // DRAFT — Kevin reviews
   'errors.AI_RECOMMENDATION_REFUSED': 'Không thể áp dụng đề xuất này từ đây.', // DRAFT — Kevin reviews
+  'errors.dealReason.used_on_ticket': 'Ưu đãi này đã được dùng trên hóa đơn này (một phần đã được hoàn tiền).', // DRAFT — Kevin reviews
 };

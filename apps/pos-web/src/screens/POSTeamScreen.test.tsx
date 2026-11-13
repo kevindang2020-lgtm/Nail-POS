@@ -37,9 +37,11 @@ vi.mock('../api/posTeamScreensApi', () => ({
   posTechniciansScreenApi: {},
 }));
 // round 2 (TM-06 / TM-08 / TM-09): onboarding, birthdays, training
-const staff = vi.hoisted(() => ({ options: vi.fn(), createStaff: vi.fn(), upcoming: vi.fn(), bdGet: vi.fn(), bdSet: vi.fn(), summary: vi.fn(), courses: vi.fn(), member: vi.fn(), techCreate: vi.fn(), techUpdate: vi.fn() }));
+const staff = vi.hoisted(() => ({ options: vi.fn(), createStaff: vi.fn(), upcoming: vi.fn(), bdGet: vi.fn(), bdSet: vi.fn(), summary: vi.fn(), courses: vi.fn(), member: vi.fn(), techCreate: vi.fn(), techUpdate: vi.fn(),
+  binvSettings: vi.fn(), binvSave: vi.fn(), binvPreview: vi.fn(), binvRun: vi.fn() }));
 vi.mock('../api/posTeamStaffApi', () => ({
   posTeamOnboardingApi: { options: staff.options, createStaff: staff.createStaff },
+  posTeamBulkInviteApi: { settings: staff.binvSettings, saveSettings: staff.binvSave, preview: staff.binvPreview, run: staff.binvRun },
   posTeamBirthdaysApi: { upcoming: staff.upcoming, get: staff.bdGet, set: staff.bdSet },
   posTeamTrainingApi: { summary: staff.summary, courses: staff.courses, createCourse: vi.fn(), archiveCourse: vi.fn(), member: staff.member, assign: vi.fn(), start: vi.fn(), complete: vi.fn(), cancel: vi.fn(), addCertification: vi.fn(), verifyCertification: vi.fn() },
 }));
@@ -58,6 +60,7 @@ beforeEach(() => {
     { key: 'receptionist', label: 'Receptionist', base: 'RECEPTION', provider: false, custom: false, allowed: true, reason: null, flow: 'staff' },
     { key: 'manager', label: 'Manager', base: 'MANAGER', provider: false, custom: false, allowed: false, reason: 'ROLE_ABOVE_YOURS', flow: 'staff' },
     { key: 'nail_technician', label: 'Nail Technician', base: 'TECHNICIAN', provider: true, custom: false, allowed: true, reason: null, flow: 'technician' }] });
+  staff.binvSettings.mockResolvedValue({ tenantEnabled: false, platformPaused: false, available: false, offReason: 'salon_setting_off', maxPerRun: 200, recentHours: 24, updatedAt: null });
   staff.upcoming.mockResolvedValue({ recorded: false, today: '2026-10-30', days: 30, items: [], canManage: true });
   staff.bdGet.mockResolvedValue({ memberId: 'u-v', month: null, day: null, private: true, canManage: false });   // the profile overview reads the member's birthday
   staff.member.mockResolvedValue({ configured: false, canManage: false, assignments: [], certifications: [] });
@@ -232,6 +235,46 @@ describe('POSTeamScreen (Team Management)', () => {
     fireEvent.click(screen.getByTestId('export'));
     await waitFor(() => expect(api.exportCsv).toHaveBeenCalled());
     expect(api.exportCsv.mock.calls[0][0].ids).toBeUndefined();
+  });
+  it('200-Technician 08 (round 11) — bulk invite is OFF by default: the button is disabled and says why; nothing is previewed or sent; a settings editor can turn it on after a confirm', async () => {
+    staff.binvSave.mockResolvedValue({ tenantEnabled: true, platformPaused: false, available: true, offReason: null, maxPerRun: 200, recentHours: 24, updatedAt: '2026-11-13T15:00:00Z' });
+    mount(); await screen.findAllByTestId('member-row');
+    fireEvent.click(screen.getAllByTestId('bulk-select-row')[1]);
+    expect(await screen.findByTestId('bulk-invite')).toBeDisabled();
+    expect(screen.getByTestId('bulk-invite-why')).toHaveTextContent('Bulk invites are off for this salon — invite people one by one, or turn bulk invites on in settings.');
+    expect(screen.getByText(/nothing is sent unless you use Invite selected/)).toBeInTheDocument();
+    expect(staff.binvPreview).not.toHaveBeenCalled(); expect(staff.binvRun).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('bulk-invite-enable'));
+    expect(staff.binvSave).not.toHaveBeenCalled();   // a confirm first
+    fireEvent.click(screen.getByTestId('bulk-invite-enable-yes'));
+    await waitFor(() => expect(staff.binvSave).toHaveBeenCalledWith(true));
+  });
+  it('200-Technician 08 (round 11) — paused by the platform: disabled with the platform reason and no way to turn it on here', async () => {
+    staff.binvSettings.mockResolvedValue({ tenantEnabled: true, platformPaused: true, available: false, offReason: 'platform_paused', maxPerRun: 200, recentHours: 24, updatedAt: null });
+    mount(); await screen.findAllByTestId('member-row');
+    fireEvent.click(screen.getAllByTestId('bulk-select-row')[1]);
+    expect(await screen.findByTestId('bulk-invite-why')).toHaveTextContent('Bulk invites are paused for every salon by the platform. Invite people one by one.');
+    expect(screen.queryByTestId('bulk-invite-enable')).toBeNull();
+  });
+  it('200-Technician 08 (round 11) — on: the server preview first (who, which channel, who is skipped and why), then Send with one run key; the per-person outcome is shown', async () => {
+    staff.binvSettings.mockResolvedValue({ tenantEnabled: true, platformPaused: false, available: true, offReason: null, maxPerRun: 200, recentHours: 24, updatedAt: null });
+    staff.binvPreview.mockResolvedValue({ availability: { available: true }, selected: 2, willInvite: 1, skipped: 1, byReason: { already_active: 1 },
+      items: [{ memberId: 'u-v', name: 'Vishal verma', action: 'invite', channel: 'sms', contactHint: '••• 0012', reason: null }, { memberId: 'u-p', name: 'Pat Owner', action: 'skip', channel: null, contactHint: null, reason: 'already_active' }] });
+    staff.binvRun.mockResolvedValue({ runId: 'r1', replayed: false, selected: 2, sent: 0, notDelivered: 1, skipped: 1, failed: 0,
+      outcomes: [{ memberId: 'u-v', outcome: 'not_delivered', reason: 'not_connected', channel: 'sms' }, { memberId: 'u-p', outcome: 'skipped', reason: 'already_active', channel: null }] });
+    mount(); await screen.findAllByTestId('member-row');
+    fireEvent.click(screen.getByTestId('bulk-select-page'));
+    fireEvent.click(await screen.findByTestId('bulk-invite'));
+    await waitFor(() => expect(staff.binvPreview).toHaveBeenCalledWith(['u-p', 'u-v']));
+    expect(await screen.findByTestId('bulk-invite-summary')).toHaveTextContent('1 of 2 will be invited; 1 skipped.');
+    expect(screen.getByTestId('bulk-invite-will')).toHaveTextContent('Will be invited by text message (••• 0012)');
+    expect(screen.getByTestId('bulk-invite-skip')).toHaveTextContent('Skipped — already active');
+    expect(staff.binvRun).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('bulk-invite-send'));
+    await waitFor(() => expect(staff.binvRun).toHaveBeenCalledWith(['u-p', 'u-v'], expect.any(String)));
+    expect(await screen.findByTestId('bulk-invite-result')).toHaveTextContent('0 sent, 1 not delivered, 1 skipped, 0 failed.');
+    expect(screen.getAllByTestId('bulk-invite-outcome')[0]).toHaveTextContent('Vishal verma');
+    expect(screen.getAllByTestId('bulk-invite-outcome')[0]).toHaveTextContent('Invitation saved, not delivered · no e-mail / text sender connected · text message');
   });
   it('Data Accuracy Alerts shows its open count in the header', async () => {
     mount();

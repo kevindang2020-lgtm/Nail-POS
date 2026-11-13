@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 985,
+  "tables": 987,
   "ownership": {
-   "tenant_owned": 661,
+   "tenant_owned": 663,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 163,
    "tenant_branch_owned": 92,
@@ -27,9 +27,9 @@
    "SUPPORT": 57,
    "BOOKING": 43,
    "PAYMENTS": 60,
-   "WORKFORCE": 78,
+   "WORKFORCE": 79,
    "CUSTOMERS": 62,
-   "CATALOG": 22,
+   "CATALOG": 23,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 14,
    "DEALS": 19,
@@ -44,11 +44,11 @@
    "HIGHLY_SENSITIVE": 148,
    "CONFIDENTIAL": 171,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 545,
+   "INTERNAL": 547,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 67,
+  "append_only": 68,
   "platform_rows": 101
  },
  "tables": {
@@ -8956,6 +8956,18 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "service_add_on_recipes": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CATALOG",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "service_add_ons": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -9382,6 +9394,18 @@
    "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "staff_bulk_invite_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "WORKFORCE",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": true,
    "source": "heuristic"
   },
   "staff_role_assignments": {

@@ -355,7 +355,7 @@ export const TEAMMEMBERS_VI = {
   'tmm.bulk.confirmExport': 'Xuất {n} nhân viên đã chọn ra CSV? Việc xuất sẽ được ghi lại.', // DRAFT — Kevin reviews
   'tmm.bulk.exportYes': 'Đồng ý xuất', // DRAFT — Kevin reviews
   'tmm.bulk.clear': 'Bỏ chọn', // DRAFT — Kevin reviews
-  'tmm.bulk.rule': 'Dùng Bộ lọc thêm (chưa có tài khoản, thiếu dịch vụ) để xem các trường hợp cần xử lý trong số người đã chọn. Không phân công, thay đổi hay gửi gì.', // DRAFT — Kevin reviews
+  'tmm.bulk.rule': 'Dùng Bộ lọc thêm (chưa có tài khoản, thiếu dịch vụ) để xem các trường hợp cần xử lý trong số người đã chọn. Không phân công hay thay đổi gì, và không gửi gì trừ khi bạn dùng Mời người đã chọn.', // DRAFT — Kevin reviews
   'tmm.bulk.selectPage': 'Chọn tất cả nhân viên trên trang này', // DRAFT — Kevin reviews
   'tmm.bulk.selectRow': 'Chọn {name}', // DRAFT — Kevin reviews
   'tmm.gl.open': 'Bảng thuật ngữ doanh thu và thu nhập', // DRAFT — Kevin reviews
@@ -378,4 +378,35 @@ export const TEAMMEMBERS_VI = {
   'tmm.gl.basis.snapshot_at': 'ngày thu nhập được ghi lúc tính tiền', // DRAFT — Kevin reviews
   'tmm.gl.basis.payout_paid_at': 'ngày khoản trả được chi', // DRAFT — Kevin reviews
   'tmm.gl.basis.payout_created_at': 'ngày tạo khoản trả', // DRAFT — Kevin reviews
+  'tmm.binv.invite': 'Mời người đã chọn', // DRAFT — Kevin reviews
+  'tmm.binv.loadError': 'Không tải được trạng thái mời hàng loạt.', // DRAFT — Kevin reviews
+  'tmm.binv.off.salon_setting_off': 'Mời hàng loạt đang tắt ở tiệm này — hãy mời từng người, hoặc bật mời hàng loạt trong cài đặt.', // DRAFT — Kevin reviews
+  'tmm.binv.off.platform_paused': 'Nền tảng đang tạm dừng mời hàng loạt cho mọi tiệm. Hãy mời từng người.', // DRAFT — Kevin reviews
+  'tmm.binv.enable': 'Bật mời hàng loạt…', // DRAFT — Kevin reviews
+  'tmm.binv.enableConfirm': 'Bật mời hàng loạt cho tiệm này? Lời mời sẽ được gửi qua e-mail hoặc tin nhắn tới những người bạn chọn.', // DRAFT — Kevin reviews
+  'tmm.binv.enableYes': 'Bật', // DRAFT — Kevin reviews
+  'tmm.binv.title': 'Mời các nhân viên đã chọn', // DRAFT — Kevin reviews
+  'tmm.binv.rule': 'Tối đa {max} người mỗi lần. Người đã được mời trong {hours} giờ qua, đã hoạt động, hoặc không có e-mail hay số điện thoại sẽ được bỏ qua.', // DRAFT — Kevin reviews
+  'tmm.binv.stepUp': 'Nhập mật khẩu để gửi các lời mời này.', // DRAFT — Kevin reviews
+  'tmm.binv.send': 'Gửi {n} lời mời', // DRAFT — Kevin reviews
+  'tmm.binv.summary': '{invite} trên {n} người sẽ được mời; {skip} người bỏ qua.', // DRAFT — Kevin reviews
+  'tmm.binv.nothingYet': 'Chưa gửi gì. Xem lại danh sách rồi bấm Gửi.', // DRAFT — Kevin reviews
+  'tmm.binv.will': 'Sẽ được mời qua {ch} ({to})', // DRAFT — Kevin reviews
+  'tmm.binv.ch.email': 'e-mail', // DRAFT — Kevin reviews
+  'tmm.binv.ch.sms': 'tin nhắn', // DRAFT — Kevin reviews
+  'tmm.binv.reason.no_contact': 'Bỏ qua — không có e-mail hay số điện thoại', // DRAFT — Kevin reviews
+  'tmm.binv.reason.already_active': 'Bỏ qua — đã hoạt động', // DRAFT — Kevin reviews
+  'tmm.binv.reason.recently_invited': 'Bỏ qua — đã được mời trong 24 giờ qua', // DRAFT — Kevin reviews
+  'tmm.binv.reason.no_login_account': 'Bỏ qua — chưa có tài khoản đăng nhập (dùng Thêm nhân viên)', // DRAFT — Kevin reviews
+  'tmm.binv.reason.role_above_yours': 'Bỏ qua — vai trò bằng hoặc cao hơn bạn', // DRAFT — Kevin reviews
+  'tmm.binv.reason.not_current': 'Bỏ qua — không còn là nhân viên hiện tại', // DRAFT — Kevin reviews
+  'tmm.binv.reason.not_found': 'Bỏ qua — không tìm thấy ở chi nhánh này', // DRAFT — Kevin reviews
+  'tmm.binv.done': '{sent} đã gửi, {notDelivered} chưa gửi được, {skipped} bỏ qua, {failed} lỗi.', // DRAFT — Kevin reviews
+  'tmm.binv.replayed': '(đã gửi rồi — đây là kết quả lần trước)', // DRAFT — Kevin reviews
+  'tmm.binv.out.sent': 'Đã gửi', // DRAFT — Kevin reviews
+  'tmm.binv.out.not_delivered': 'Đã lưu lời mời, chưa gửi được', // DRAFT — Kevin reviews
+  'tmm.binv.out.skipped': 'Bỏ qua', // DRAFT — Kevin reviews
+  'tmm.binv.out.failed': 'Lỗi', // DRAFT — Kevin reviews
+  'tmm.binv.nd.not_connected': 'chưa kết nối dịch vụ gửi e-mail / tin nhắn', // DRAFT — Kevin reviews
+  'tmm.binv.nd.failed': 'dịch vụ gửi không nhận', // DRAFT — Kevin reviews
 };

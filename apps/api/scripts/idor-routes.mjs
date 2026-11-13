@@ -142,6 +142,7 @@ export const SEGMENT_FIXTURES = [
   ['/pos/booking-verification-center/history/{id}', F('booking_verification_sessions')],
   ['/pos/campaign-center/campaigns/{id}', F('campaigns')],                         // + /audit /events /recipients
   ['/pos/catalog/add-ons/{key}', F('service_add_ons', 'add_on_key')],              // Catalog: an add-on is addressed by its key
+  ['/tenant/inventory/add-on-recipes/{key}', F('service_add_ons', 'add_on_key')],   // round 11 (ADD-ONS 06): an add-on's recipe, by the add-on's key
   ['/pos/churn-watch/customers/{id}', F('customers')],
   ['/pos/commission-discrepancies/{id}', F('commission_discrepancy_reviews')],     // Commission Review (F1)
   ['/pos/commission-screen/technicians/{id}', F('technicians')],                   // + /lines /tips /adjustments

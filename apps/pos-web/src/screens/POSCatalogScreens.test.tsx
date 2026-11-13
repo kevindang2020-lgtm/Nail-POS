@@ -5,7 +5,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
+const { cat, svc, bundles, insights, alerts, invScreen, inv } = vi.hoisted(() => ({
+  inv: { addOnRecipe: vi.fn(), setAddOnRecipe: vi.fn(), addOnRecipeSetting: vi.fn(), setAddOnRecipeSetting: vi.fn(), products: vi.fn() },
   cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), compensationPreview: vi.fn(), pricePreview: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
     addOnSummary: vi.fn(), reviewDecision: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), addOnProfitability: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },
@@ -17,6 +18,7 @@ vi.mock('../api/posBundlesApi', () => ({ posBundlesApi: bundles }));
 vi.mock('../api/posMenuInsightsApi', () => ({ posMenuInsightsApi: insights }));
 vi.mock('../api/posInventoryAlertsApi', () => ({ posInventoryAlertsApi: alerts }));
 vi.mock('../api/posInventoryScreenApi', () => ({ posInventoryScreenApi: invScreen }));
+vi.mock('../api/inventoryApi', () => ({ inventoryApi: inv }));
 import { POSServicesScreen } from './POSServicesScreen';
 import { POSServicePricingScreen } from './POSServicePricingScreen';
 import { POSServiceCategoriesScreen } from './POSServiceCategoriesScreen';
@@ -34,7 +36,7 @@ const AO = (sid: string, sname: string, flag: string | null = null) => ({ offeri
 
 beforeEach(() => {
   try { sessionStorage.clear(); } catch { /* jsdom */ }
-  for (const g of [cat, svc, bundles, insights, alerts, invScreen]) Object.values(g).forEach((f) => (f as any).mockReset());
+  for (const g of [cat, svc, bundles, insights, alerts, invScreen, inv]) Object.values(g).forEach((f) => (f as any).mockReset());
   cat.dashboard.mockResolvedValue({ period, kpis: { totalServices: 6, activeServices: 6, inactiveServices: 0, activeProducts: 11, allProducts: 11, onlineBookable: 6, onlinePctOfActive: 100, avgServicePriceCents: 6633, pricedServices: 6,
     retailRevenueTodayCents: 1200, retailItemsToday: 1, retailTicketsToday: 1, serviceMixMargin: null, topCategory: 'Nails', topCategoryBasis: 'realized', topCategoryCents: 45600, packageSales: null, activeBundles: 0, addOnConversionPct: 50, addOnTickets: 4, serviceTickets: 8 } });
   cat.charts.mockResolvedValue({ period, serviceMix: [{ label: 'Gel Manicure', cents: 16500, count: 3 }], retailMix: [], categoryRevenue: [{ label: 'Nails', cents: 45600, count: 7 }], addOnConversion: { serviceTickets: 8, withAddOn: 4, pct: 50 } });
@@ -365,6 +367,30 @@ describe('Add-Ons', () => {
     fireEvent.change(screen.getByTestId('edit-reason'), { target: { value: 'gel tips cost more' } });
     fireEvent.click(screen.getByTestId('add-on-edit-save'));
     await waitFor(() => expect(cat.updateAddOn).toHaveBeenCalledWith('ao_french', expect.objectContaining({ scope: 'offering', serviceId: 's1', priceCents: 1200, reason: 'gel tips cost more' })));
+  });
+  it('ADD-ONS 06 (round 11): the Recipe tab says add-on recipes are OFF (nothing taken from stock), saves whole quantities without deducting, and the switch needs a confirm', async () => {
+    inv.addOnRecipe.mockResolvedValue({ key: 'ao_french', name: 'French tips', deductsAtServiceDone: false, lines: [{ productId: 'p1', productName: 'Tip Glue', quantity: 2, unit: 'piece' }] });
+    inv.products.mockResolvedValue({ products: [{ id: 'p1', name: 'Tip Glue' }, { id: 'p2', name: 'French Tips Box' }] });
+    inv.setAddOnRecipe.mockResolvedValue({ key: 'ao_french', name: 'French tips', deductsAtServiceDone: false, lines: [] });
+    inv.setAddOnRecipeSetting.mockResolvedValue({ enabled: true, updatedAt: '2026-11-13T15:00:00Z' });
+    mount(<POSServiceAddOnsScreen />);
+    fireEvent.click((await screen.findAllByTestId('add-on-row'))[0]);
+    fireEvent.click(await screen.findByTestId('ad-tab-recipe'));
+    expect(await screen.findByTestId('ad-recipe-state')).toHaveTextContent('Add-on recipes are off for this salon: nothing is taken from stock for add-ons (as before).');
+    expect(screen.getAllByTestId('ad-recipe-line')).toHaveLength(1);
+    fireEvent.change(screen.getByTestId('ad-recipe-add-pick'), { target: { value: 'p2' } });
+    fireEvent.click(screen.getByTestId('ad-recipe-add'));
+    fireEvent.change(screen.getAllByTestId('ad-recipe-qty')[1], { target: { value: '3.5' } });   // whole units only: the decimal point is dropped
+    expect(screen.getAllByTestId('ad-recipe-qty')[1]).toHaveValue('35');
+    fireEvent.change(screen.getAllByTestId('ad-recipe-qty')[1], { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('ad-recipe-save'));
+    await waitFor(() => expect(inv.setAddOnRecipe).toHaveBeenCalledWith('ao_french', [{ productId: 'p1', quantity: 2 }, { productId: 'p2', quantity: 3 }]));
+    expect(await screen.findByTestId('ad-recipe-saved')).toHaveTextContent('Nothing is taken from stock while add-on recipes are off.');
+    expect(inv.setAddOnRecipeSetting).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('ad-recipe-switch'));
+    expect(inv.setAddOnRecipeSetting).not.toHaveBeenCalled();   // a confirm first
+    fireEvent.click(screen.getByTestId('ad-recipe-switch-yes'));
+    await waitFor(() => expect(inv.setAddOnRecipeSetting).toHaveBeenCalledWith(true));
   });
   it('ADD-ONS 08: a shared-definition edit is reviewed first (server dryRun, nothing saved) — affected count, old → new per offering, undo note; the next press saves', async () => {
     cat.updateAddOn.mockImplementation(async (_k: string, b: any) => (b.dryRun ? { changed: 3, dryRun: true, changes: [

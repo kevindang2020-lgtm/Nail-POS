@@ -1496,4 +1496,5 @@ export const ERRORS_EN = {
   'errors.AI_RECOMMENDATION_PROMPT_REQUIRED': 'Enter the new receptionist wording before approving.',
   'errors.AI_RECOMMENDATION_NOT_OPEN': 'This recommendation was already reviewed.',
   'errors.AI_RECOMMENDATION_REFUSED': 'This recommendation cannot be applied from here.',
+  'errors.dealReason.used_on_ticket': 'This offer was already used on this ticket (part of it was refunded).',
 };
