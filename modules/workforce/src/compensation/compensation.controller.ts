@@ -11,7 +11,7 @@ import { CompensationPreviewService } from './compensation-preview.service';
 import { CompensationReportsService } from './compensation-reports.service';
 import { CompensationTipPolicyService } from './compensation-tip-policy.service';
 import { RetailCommissionService } from './compensation-retail-policy.service';
-import { CompensationRulesService, CompensationRulesError } from './compensation-rules.service';
+import { CompensationRulesService } from './compensation-rules.service';
 import { TierPlansService } from './compensation-tier-plans.service';
 import { BonusRulesService } from './compensation-bonus-rules.service';
 import { ComplianceService } from './compensation-compliance.service';
