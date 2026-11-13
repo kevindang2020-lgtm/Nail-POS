@@ -1831,4 +1831,13 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.serving.sdWhy.NO_PERMISSION": "Vai trò của bạn không thể chuyển khách này sang Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
   "ops.serving.sdWhy.NOT_IN_SERVICE": "Lượt này không ở trạng thái có thể chuyển sang Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
   "ops.serving.sdOpen": "{n} dòng dịch vụ chưa đánh dấu xong — không bắt buộc để hoàn tất", // DRAFT — Kevin reviews
+  "lgx.issue.title": "Báo cho bộ phận hỗ trợ", // DRAFT — Kevin reviews
+  "lgx.issue.hint": "Mở một yêu cầu hỗ trợ cho sự kiện này trong Trợ giúp & Hỗ trợ, nơi yêu cầu có người phụ trách, trạng thái và theo dõi. Chỉ gửi mã và số nhận dạng của sự kiện — không gửi chi tiết.", // DRAFT — Kevin reviews
+  "lgx.issue.priority": "Mức ưu tiên", // DRAFT — Kevin reviews
+  "lgx.issue.notePh": "Chuyện gì đã xảy ra ở tiệm (không bắt buộc)", // DRAFT — Kevin reviews
+  "lgx.issue.submit": "Mở yêu cầu hỗ trợ", // DRAFT — Kevin reviews
+  "lgx.issue.done": "Yêu cầu hỗ trợ {n} · {s}", // DRAFT — Kevin reviews
+  "lgx.issue.openSupport": "Mở Trợ giúp & Hỗ trợ", // DRAFT — Kevin reviews
+  "lgx.issue.event": "Sự kiện nhật ký", // DRAFT — Kevin reviews
+  "lgx.issue.when": "Ghi lúc", // DRAFT — Kevin reviews
 };

@@ -1832,4 +1832,13 @@ export const OPS_EN = {
   "ops.serving.sdWhy.NO_PERMISSION": "Your role cannot move this guest to Service Done.",
   "ops.serving.sdWhy.NOT_IN_SERVICE": "This visit is not in a state that can go to Service Done.",
   "ops.serving.sdOpen": "{n} service line(s) not marked done — not required to finish",
+  "lgx.issue.title": "Report to support",
+  "lgx.issue.hint": "Opens one support issue for this event in Help & Support, where it gets an owner, status and follow-up. Only the event ids and codes are sent — not its details.",
+  "lgx.issue.priority": "Priority",
+  "lgx.issue.notePh": "What happened at the salon (optional)",
+  "lgx.issue.submit": "Open support issue",
+  "lgx.issue.done": "Support issue {n} · {s}",
+  "lgx.issue.openSupport": "Open Help & Support",
+  "lgx.issue.event": "Log event",
+  "lgx.issue.when": "Recorded",
 };

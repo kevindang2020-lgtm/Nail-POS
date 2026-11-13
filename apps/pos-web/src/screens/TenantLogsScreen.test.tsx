@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { pageMock, exportMock } = vi.hoisted(() => ({ pageMock: vi.fn(), exportMock: vi.fn() }));
+const { pageMock, exportMock, postMock } = vi.hoisted(() => ({ pageMock: vi.fn(), exportMock: vi.fn(), postMock: vi.fn() }));
+vi.mock('../api/client', () => ({ api: { get: vi.fn().mockResolvedValue({}), post: postMock } }));
 vi.mock('../api/posLogsApi', () => ({ posLogsApi: { page: pageMock, exportCsv: exportMock } }));
 import { TenantLogsScreen } from './TenantLogsScreen';
 
@@ -110,5 +111,35 @@ describe('TenantLogsScreen', () => {
     fireEvent.click(screen.getByTestId('lgx-export'));
     await waitFor(() => expect(screen.getByTestId('lgx-export-note')).toHaveTextContent('Pick a start and an end date'));
     click.mockRestore();
+  });
+
+  it('Device Integration Logs · 04: an event becomes ONE support issue in the support engine — ids and codes only, never its metadata', async () => {
+    postMock.mockReset();
+    postMock.mockResolvedValue({ ok: true, ticket: { id: 'tk1', ticketNumber: 'SUP-7Q2', subject: 'x', status: 'submitted', priority: 'high' } });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[1]);   // l2: error, webhook, related wh2, metadata { status: 500 }
+    expect((screen.getByTestId('lgx-issue-priority') as HTMLSelectElement).value).toBe('high');   // error → high (critical → urgent)
+    fireEvent.change(screen.getByTestId('lgx-issue-note'), { target: { value: 'CRM sync stopped at noon' } });
+    fireEvent.click(screen.getByTestId('lgx-issue-submit'));
+    expect(await screen.findByTestId('lgx-issue-done')).toHaveTextContent('Support issue SUP-7Q2');
+    expect(postMock).toHaveBeenCalledTimes(1);
+    const [url, body] = postMock.mock.calls[0];
+    expect(url).toBe('/tenant/help/tickets');
+    expect(body).toMatchObject({ category: 'integration', affectedModule: 'device_logs', priority: 'high', idempotencyKey: 'log-event:l2' });
+    expect(body.subject).toContain('Delivery failed for CRM');
+    expect(body.description).toContain('l2');
+    expect(body.description).toContain('wh2');
+    expect(body.description).toContain('CRM sync stopped at noon');
+    expect(body.description).not.toContain('500');   // the event's metadata is never copied into the issue
+  });
+
+  it('Device Integration Logs · 04: a refused create ({ ok: false }) is shown as failed — never as a created issue', async () => {
+    postMock.mockReset();
+    postMock.mockResolvedValue({ ok: false, error: 'unavailable' });
+    render(<MemoryRouter><TenantLogsScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('lgx-view'))[0]);
+    fireEvent.click(screen.getByTestId('lgx-issue-submit'));
+    expect(await screen.findByTestId('lgx-issue-err')).toBeInTheDocument();
+    expect(screen.queryByTestId('lgx-issue-done')).toBeNull();
   });
 });
