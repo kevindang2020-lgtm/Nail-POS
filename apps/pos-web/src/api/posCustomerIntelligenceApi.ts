@@ -4,7 +4,7 @@
 // the read-only Check Customer Intelligence System. Tenant / branch: the session.
 import { api } from './client';
 const enc = encodeURIComponent;
-export type IntelligenceQuery = { q?: string; status?: string; flag?: string; dateField?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
+export type IntelligenceQuery = { q?: string; branch?: string; status?: string; flag?: string; dateField?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
 export const posCustomerIntelligenceApi = {
   summary: () => api.get<any>(`/pos/customer-intelligence/summary`),

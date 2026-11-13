@@ -39,7 +39,7 @@ const actor = (c: RetentionContext) => ({ tenantId: c.tenantId, branchId: isUuid
 const LIST = {
   filters: {
     status: { type: 'enum', values: CI_STATUS_FILTERS }, flag: { type: 'enum', values: CI_FLAGS }, dateField: { type: 'enum', values: CI_DATE_FIELDS },
-    preset: { type: 'enum', values: CI_PRESETS }, branch: { type: 'text', maxLength: 40 },
+    preset: { type: 'enum', values: CI_PRESETS }, branch: { type: 'text', maxLength: 760 },   // Customer Intelligence 23: 'all' · 'current' · an id · up to 20 ids, comma-separated
   },
   sorts: { last_visit: null, recently_added: null, name: null, visits: null, days_since: null }, search: { maxLength: 100 }, dateRange: { maxDays: 7320 },
   maxLimit: 100, defaultLimit: 25, params: ['page'],

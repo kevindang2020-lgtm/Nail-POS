@@ -167,3 +167,30 @@ describe('Customer Intelligence — security + health', () => {
     expect(by[C.regular]).toMatchObject({ segment: 'active' });
   });
 });
+
+describe('Customer Intelligence 23 — multi-branch: current, selected or all authorized branches, scope said out loud, customers counted once', () => {
+  it('a comma list of authorized branches, "current" and "all"; per-branch counts beside the distinct total; unauthorized or made-up ids refused', async () => {
+    const B3 = id(4003);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B3}, ${T}, 'Third', 'America/New_York')`);
+    await visit(C.regular, 3, { branch: B2 });                    // Regular (home Main) also visited Second → in both branches
+    const list = (f: any, c = ctx()) => ci.customers(c, f, { fullContact: false }) as Promise<any>;
+    const both = await list({ branch: `${B},${B2}`, pageSize: 100 });
+    expect(both.total).toBe(8);                                   // 7 at Main (incl. LS-04's New Comer) + Second Branch; Regular once
+    expect(both.items.filter((i: any) => i.id === C.regular)).toHaveLength(1);
+    expect(both.scope).toMatchObject({ mode: 'branches', branchIds: [B, B2], distinctCustomers: 8, countedInMoreThanOne: 1,
+      perBranch: [{ branchId: B, name: 'Main', customers: 7 }, { branchId: B2, name: 'Second', customers: 2 }] });
+    const cur = await list({ branch: 'current', pageSize: 100 });
+    expect(cur.total).toBe(7);
+    expect(cur.scope).toMatchObject({ mode: 'branches', branchIds: [B], perBranch: null, distinctCustomers: null });
+    const all = await list({ pageSize: 100 });
+    expect(all.scope).toMatchObject({ mode: 'tenant', label: 'tenant_wide', distinctCustomers: 8, countedInMoreThanOne: 1 });
+    expect(all.scope.perBranch.map((b: any) => [b.name, b.customers])).toEqual([['Main', 7], ['Second', 2], ['Third', 0]]);
+    expect(all.scope.branches.map((b: any) => b.name)).toEqual(['Main', 'Second', 'Third']);
+    // refused: a made-up id in the list, another salon's branch, a branch outside a confined role
+    expect(await code(list({ branch: `${B},nope` }))).toBe('INTELLIGENCE_INVALID_BRANCH');
+    expect(await code(list({ branch: `${B},${BX}` }))).toBe('BRANCH_NOT_AUTHORIZED');
+    expect(await code(list({ branch: `${B},${B2}` }, confinedB2()))).toBe('BRANCH_NOT_AUTHORIZED');
+    // a confined role's own scope is its branch only — no comparison across branches it cannot see
+    expect((await list({}, confinedB2())).scope).toMatchObject({ confined: true, branchIds: [B2], perBranch: null });
+  });
+});
