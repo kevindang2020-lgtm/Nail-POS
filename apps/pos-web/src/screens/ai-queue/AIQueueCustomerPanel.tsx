@@ -23,6 +23,7 @@ import { useDebounced } from '../../components/FitKit';
 import { CandidateTable } from './AIQueueCandidates';
 import { card, cardHead, input, btnGold, btnGhost, btnDanger, muted, errText, okText, pill, pct, mins, pretty, errMsg, when, FEEDBACK_CODES, DECISION_LABEL } from './aiQueueUi';
 import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
+import { codedText } from '../../i18n/coded-text';
 
 type LiveItem = { queueItemId: string; customerName: string; status: string; assignedTechnicianId?: string | null; assignedTechnicianName?: string | null; actualWaitMinutes?: number; checkedInAt?: string; isVip?: boolean; priority?: string; lock?: { technicianId: string | null } | null; version?: number;
   bestMatchMode?: 'single' | 'split'; bestMatchTechnicianNames?: string[]; sharedVisit?: boolean };
@@ -211,6 +212,9 @@ export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged, s
                       {reco.recommended.warnings.length ? <div style={{ color: '#9B6B1E', fontSize: 12 }}>{reco.recommended.warnings.join(' · ')}</div> : null}
                     </>
                   ) : <div style={errText}>{reco.conflicts.join('; ') || tx('pos.no_technician_can_take_this_guest_aoe3')}</div>}
+                  {/* LIVE TECHNICIAN SCHEDULE 14 — Queue Fairness Indicator: the engine says whether the guest's request, preference,
+                      language or the streak rule moved someone ahead of the rotation's own pick (never re-derived here) */}
+                  {reco.fairTurn?.orderChange ? <div data-testid="aiq-fairness" data-changed-by={reco.fairTurn.orderChange.changedBy} style={{ ...muted, fontSize: 12, color: reco.fairTurn.orderChange.changedBy === 'none' ? '#2E7D4F' : '#9B6B1E' }}>{reco.fairTurn.orderChange.changedBy === 'none' ? '⚖ ' : '↕ '}{codedText(reco.fairTurn.orderChange.textCoded, reco.fairTurn.orderChange.text)}</div> : null}
                   {explanation ? <div style={{ ...muted, fontStyle: 'italic' }} lang={explanation.language} data-testid="aiq-explanation">{explanation.language !== getLanguage() ? <b style={{ fontStyle: 'normal' }}>{tx(explanation.language === 'en' ? 'growth.aiQueue.explanationEnglish' : 'growth.aiQueue.explanationVietnamese')}{' '}</b> : null}{explanation.text}</div> : null}
                   {reco.alternates.length ? <div style={muted}>{tx('pos.also_possible')}{' '}{reco.alternates.map((a) => a.name).join(', ')}</div> : null}
                   <div style={{ ...muted, fontSize: 11 }}>{tx('pos.settings_version')}{' '}{reco.configVersion || reco.ruleVersion}{reco.queueVersion != null ? tx('pos.queue_version_queueversion', { queueVersion: String(reco.queueVersion) }) : ''} · {when(reco.generatedAt)}</div>

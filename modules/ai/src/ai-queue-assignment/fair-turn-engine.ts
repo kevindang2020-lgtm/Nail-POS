@@ -66,7 +66,12 @@ export interface FairTurnResult {
   skippedText: { technicianId: string; name: string; reason: SkipReason; text: string; textCoded: CodedText }[];
   eligiblePool: string[];
   warnings: string[];
+  /** LIVE TECHNICIAN SCHEDULE 14 — Queue Fairness Indicator: who the fair rotation alone would pick, and what (if anything)
+   *  moved someone else to the front — the guest's request, the preferred / previous technician (walk-in policy), the
+   *  language match, or the max-consecutive rule. 'none' = the recommendation IS the rotation's pick. */
+  orderChange: { rotationPickId: string | null; rotationPickName: string | null; changedBy: FairOrderChange; text: string; textCoded: CodedText };
 }
+export type FairOrderChange = 'none' | 'customer_request' | 'preferred_technician' | 'previous_technician' | 'language_match' | 'max_consecutive';
 
 const pronoun = 'Her';
 /** The stage-1 extension: turn-queue facts become hard fails in the engine's vocabulary. */
@@ -108,6 +113,7 @@ export function rankFairTurn(input: FairTurnInput): FairTurnResult {
 
   // stage 3: fairness order of the eligible
   let eligibleOrder = order.map((o) => o.technicianId).filter(eligible);
+  const rotationPick = eligibleOrder[0] ?? null;   // the fair rotation's own pick, before any soft rule reorders it
   // stage 2: max consecutive automatic assignments — demote the streak holder unless she is the only one
   const max = input.policy.maxConsecutiveAutomaticAssignments;
   const demoted = new Set<string>();
@@ -118,10 +124,12 @@ export function rankFairTurn(input: FairTurnInput): FairTurnResult {
   // stage 4: requested technician (§17) / preferred technician (§157) — soft, never past a hard rule
   const req = input.requestedTechnicianId ?? null;
   let requested = false;
+  let preferencePick: 'preferred_technician' | 'previous_technician' | null = null;
   if (req && eligibleOrder.includes(req)) { eligibleOrder = [req, ...eligibleOrder.filter((x) => x !== req)]; requested = true; }
   else if (!req && input.policy.walkInPolicy === 'PREFERRED_TECHNICIAN_FIRST') {
-    const pref = eligibleOrder.find((id) => byId.get(id)?.isPreferred) ?? eligibleOrder.find((id) => byId.get(id)?.isPrevious);
-    if (pref) eligibleOrder = [pref, ...eligibleOrder.filter((x) => x !== pref)];
+    const preferred = eligibleOrder.find((id) => byId.get(id)?.isPreferred);
+    const pref = preferred ?? eligibleOrder.find((id) => byId.get(id)?.isPrevious);
+    if (pref) { eligibleOrder = [pref, ...eligibleOrder.filter((x) => x !== pref)]; preferencePick = preferred ? 'preferred_technician' : 'previous_technician'; }
   }
   // stage 4 (§158 SOFT): when the next technician is known NOT to speak the guest's language and another eligible one does,
   // the first speaker takes this guest; everyone passed keeps her place with the LANGUAGE_MATCH reason
@@ -163,6 +171,8 @@ export function rankFairTurn(input: FairTurnInput): FairTurnResult {
     const c = byId.get(pick)!; const r = rankOf.get(pick);
     const name = c.name;
     if (requested) say(`${name} selected because the guest asked for ${name}.`, coded('FAIR_WHY.REQUESTED', { name }));
+    else if (preferencePick && !languagePick && pick !== rotationPick) say(preferencePick === 'preferred_technician' ? `${name} selected because ${name} is the guest's preferred technician (salon walk-in policy).` : `${name} selected because ${name} served this guest last time (salon walk-in policy).`,
+      coded(preferencePick === 'preferred_technician' ? 'FAIR_WHY.PREFERRED' : 'FAIR_WHY.PREVIOUS', { name }));
     else if (languagePick) say(`${name} selected because ${name} speaks the guest's language (${guestLanguage}) and is next among the technicians who do.`, coded('FAIR_WHY.LANGUAGE_PICK', { name, language: guestLanguage }));
     else say(`${name} selected because ${name} is next among the technicians who can take this guest.`, coded('FAIR_WHY.NEXT', { name }));
     if (guestLanguage && languageMode !== 'OFF') {
@@ -197,7 +207,21 @@ export function rankFairTurn(input: FairTurnInput): FairTurnResult {
       : coded('FAIR_SKIP.OTHER', { name: n, reason: '@srv.SKIP_REASON.' + s.reason });
     return { technicianId: s.technicianId, name: n, reason: s.reason, text, textCoded };
   });
+  // the Queue Fairness Indicator: the rotation's pick vs the recommendation, and the ONE soft rule that changed it
+  const changedBy: FairOrderChange = !pick || pick === rotationPick ? 'none' : requested ? 'customer_request' : languagePick ? 'language_match' : preferencePick ?? (demoted.size ? 'max_consecutive' : 'none');
+  const rpName = rotationPick ? byId.get(rotationPick)?.name ?? null : null; const pName = pick ? byId.get(pick)?.name ?? '' : '';
+  const ORDER_TEXT: Record<FairOrderChange, string> = {
+    none: 'Fair rotation order: the recommendation is the next technician in the rotation.',
+    customer_request: `${pName} is ahead of ${rpName} (next in rotation) because the guest asked for ${pName}.`,
+    preferred_technician: `${pName} is ahead of ${rpName} (next in rotation) because ${pName} is the guest's preferred technician.`,
+    previous_technician: `${pName} is ahead of ${rpName} (next in rotation) because ${pName} served this guest last time.`,
+    language_match: `${pName} is ahead of ${rpName} (next in rotation) because ${pName} speaks the guest's language.`,
+    max_consecutive: `${pName} is ahead of ${rpName} because ${rpName} reached the limit of automatic assignments in a row.`,
+  };
+  const orderChange = { rotationPickId: rotationPick, rotationPickName: rpName, changedBy, text: ORDER_TEXT[changedBy] + (changedBy !== 'none' ? ` ${rpName} keeps the turn position.` : ''),
+    textCoded: coded(`FAIR_ORDER.${changedBy.toUpperCase()}`, changedBy === 'none' ? {} : { name: pName, rotation: rpName ?? '' }) };
   return {
+    orderChange,
     version: FAIR_TURN_ENGINE_VERSION, mode: input.mode, assignmentMode: input.assignmentMode, policyVersion: input.policyVersion,
     recommendedTechnicianId: pick, requested, eligibleOrder, ranking, skips, why, whyCoded, skippedText,
     eligiblePool: eligibleOrder.filter((id) => byId.get(id)?.turn?.status === 'READY' || id === pick), warnings,

@@ -332,4 +332,12 @@ export const SRV_VI: Record<string, string> = {
   'srv.SYNC.FAILED_AGO_MIN': 'Không làm mới được — đang hiện dữ liệu từ {n} phút trước',
   'srv.SYNC.FAILED_AGO_H': 'Không làm mới được — đang hiện dữ liệu từ {n} giờ trước',
   'srv.SYNC.SYNCING': 'Đang đồng bộ…',
+  'srv.FAIR_WHY.PREFERRED': 'Chọn {name} vì {name} là thợ quen của khách (chính sách khách vãng lai của tiệm).', // DRAFT — Kevin reviews
+  'srv.FAIR_WHY.PREVIOUS': 'Chọn {name} vì {name} đã làm cho khách lần trước (chính sách khách vãng lai của tiệm).', // DRAFT — Kevin reviews
+  'srv.FAIR_ORDER.NONE': 'Đúng thứ tự xoay vòng: thợ được gợi ý là người kế tiếp trong vòng.', // DRAFT — Kevin reviews
+  'srv.FAIR_ORDER.CUSTOMER_REQUEST': '{name} được xếp trước {rotation} (kế tiếp trong vòng) vì khách yêu cầu {name}. {rotation} vẫn giữ lượt.', // DRAFT — Kevin reviews
+  'srv.FAIR_ORDER.PREFERRED_TECHNICIAN': '{name} được xếp trước {rotation} (kế tiếp trong vòng) vì {name} là thợ quen của khách. {rotation} vẫn giữ lượt.', // DRAFT — Kevin reviews
+  'srv.FAIR_ORDER.PREVIOUS_TECHNICIAN': '{name} được xếp trước {rotation} (kế tiếp trong vòng) vì {name} đã làm cho khách lần trước. {rotation} vẫn giữ lượt.', // DRAFT — Kevin reviews
+  'srv.FAIR_ORDER.LANGUAGE_MATCH': '{name} được xếp trước {rotation} (kế tiếp trong vòng) vì {name} nói được ngôn ngữ của khách. {rotation} vẫn giữ lượt.', // DRAFT — Kevin reviews
+  'srv.FAIR_ORDER.MAX_CONSECUTIVE': '{name} được xếp trước {rotation} vì {rotation} đã nhận tối đa số lượt tự động liên tiếp. {rotation} vẫn giữ lượt.', // DRAFT — Kevin reviews
 };

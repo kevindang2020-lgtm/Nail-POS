@@ -269,6 +269,7 @@ export class QueueAssignmentService {
       fairTurn: {
         mode: fair.mode, assignmentMode: fair.assignmentMode, policyVersion: fair.policyVersion, recommendedTechnicianId: fair.recommendedTechnicianId, requested: fair.requested,
         why: fair.why, whyCoded: fair.whyCoded, skipped: fair.skippedText, skips: fair.skips, eligiblePool: fair.eligiblePool,
+        orderChange: fair.orderChange,   // LIVE TECHNICIAN SCHEDULE 14: rotation pick vs recommendation, and what changed it
         candidates: fair.ranking.map((x) => ({ technicianId: x.technicianId, name: x.name, turnRank: x.turnRank, eligible: x.eligible, reasons: x.reasons, hardFails: x.hardFails, skipReason: x.skipReason, effectiveUnits: x.effectiveUnits, readyMinutes: x.readyMinutes, basis: x.basis })),
       },
     } as RecommendationEnvelope;
@@ -315,7 +316,7 @@ export class QueueAssignmentService {
     const requested = body?.requestedName ? cands.find((c) => c.name.toLowerCase() === String(body.requestedName).trim().toLowerCase())?.technicianId ?? null : null;
     const fair = rankFairTurn({ mode, policy, assignmentMode: eff.assignmentMode, policyVersion: eff.configVersion, nowMs, candidates: cands, requestedTechnicianId: requested, serviceLabel: body?.serviceLabel ?? null });
     const nameOf = (id: string | null) => cands.find((c) => c.technicianId === id)?.name ?? null;
-    return { mode, recommended: nameOf(fair.recommendedTechnicianId), why: fair.why, whyCoded: fair.whyCoded, skipped: fair.skippedText.map((x) => ({ name: x.name, reason: x.reason, text: x.text, textCoded: x.textCoded })),
+    return { mode, recommended: nameOf(fair.recommendedTechnicianId), orderChange: fair.orderChange, why: fair.why, whyCoded: fair.whyCoded, skipped: fair.skippedText.map((x) => ({ name: x.name, reason: x.reason, text: x.text, textCoded: x.textCoded })),
       ranking: fair.ranking.map((r) => ({ name: r.name, turnRank: r.turnRank, eligible: r.eligible, reasons: r.reasons, effectiveTurns: r.effectiveUnits == null ? null : r.effectiveUnits / 100, readyMinutes: r.readyMinutes })),
       productionStateChanged: false as const };
   }

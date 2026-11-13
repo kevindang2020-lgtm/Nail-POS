@@ -539,6 +539,7 @@ function SimulateTab() {
           <div style={{ display: 'grid', gap: 6, fontSize: 12.5 }}>
             <div><b>{tx('pos.recommended')}{' '}{res.recommended ?? tx('pos.nobody_eligible')}</b></div>
             {res.why.map((w, i) => <div key={i}>{codedText(res.whyCoded?.[i], w)}</div>)}
+            {res.orderChange ? <div data-testid="tq-sim-fairness" data-changed-by={res.orderChange.changedBy} style={muted}>{codedText(res.orderChange.textCoded, res.orderChange.text)}</div> : null}
             {res.skipped.length ? <div style={{ marginTop: 6 }}><b>{tx('pos.skipped_3')}</b>{res.skipped.map((s, i) => <div key={i} style={muted}>{codedText(s.textCoded, s.text)}</div>)}</div> : null}
           </div>
         )}

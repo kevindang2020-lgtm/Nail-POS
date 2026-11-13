@@ -75,6 +75,9 @@ export interface FairTurnExplanation {
   skips: { technicianId: string; reason: string }[];
   candidates: { technicianId: string; name: string; turnRank: number | null; eligible: boolean; reasons: string[]; hardFails?: string[]; skipReason: string | null; effectiveUnits: number | null; readyMinutes: number | null; basis: string | null }[];
   eligiblePool: string[];
+  /** LIVE TECHNICIAN SCHEDULE 14 — Queue Fairness Indicator: the fair rotation's own pick and the one soft rule (guest request,
+   *  preferred / previous technician, language match, max-consecutive) that put someone else first; 'none' = rotation order */
+  orderChange?: { rotationPickId: string | null; rotationPickName: string | null; changedBy: 'none' | 'customer_request' | 'preferred_technician' | 'previous_technician' | 'language_match' | 'max_consecutive'; text: string; textCoded: import('../text/coded-text').CodedText };
 }
 
 // ── AI queue assignment: decisions, the per-customer panel, rotation, auto-run (BUILD_PLAN Phase 6) ──────────────

@@ -72,6 +72,29 @@ describe('rankFairTurn — traditional weighted rotation', () => {
     expect(rankFairTurn({ ...base, candidates: [lisa, pref] }).recommendedTechnicianId).toBe('a');
     expect(rankFairTurn({ ...base, policy: { ...base.policy, walkInPolicy: 'PREFERRED_TECHNICIAN_FIRST' }, candidates: [lisa, pref] }).recommendedTechnicianId).toBe('b');
   });
+  it('LIVE TECHNICIAN SCHEDULE 14 — Queue Fairness Indicator: says when the guest\'s request, preference, language or the streak rule changed the rotation order', () => {
+    const plain = rankFairTurn({ ...base, candidates: [lisa, mary, anna] });
+    expect(plain.orderChange).toEqual({ rotationPickId: 'a', rotationPickName: 'Lisa', changedBy: 'none', text: 'Fair rotation order: the recommendation is the next technician in the rotation.', textCoded: { code: 'FAIR_ORDER.NONE' } });
+    const req = rankFairTurn({ ...base, requestedTechnicianId: 'c', candidates: [lisa, mary, anna] });
+    expect(req.orderChange).toMatchObject({ rotationPickId: 'a', changedBy: 'customer_request', textCoded: { code: 'FAIR_ORDER.CUSTOMER_REQUEST', vars: { name: 'Anna', rotation: 'Lisa' } } });
+    expect(req.orderChange.text).toBe('Anna is ahead of Lisa (next in rotation) because the guest asked for Anna. Lisa keeps the turn position.');
+    // the requested technician who is already next changes nothing
+    expect(rankFairTurn({ ...base, requestedTechnicianId: 'a', candidates: [lisa, mary] }).orderChange.changedBy).toBe('none');
+    const walkIn = { ...base, policy: { ...base.policy, walkInPolicy: 'PREFERRED_TECHNICIAN_FIRST' as const } };
+    const pref = rankFairTurn({ ...walkIn, candidates: [lisa, cand('b', 'Mary', mary.turn, { isPreferred: true })] });
+    expect(pref.orderChange).toMatchObject({ changedBy: 'preferred_technician', rotationPickName: 'Lisa' });
+    expect(pref.why[0]).toBe("Mary selected because Mary is the guest's preferred technician (salon walk-in policy).");   // no longer "next among"
+    expect(pref.whyCoded[0]).toEqual({ code: 'FAIR_WHY.PREFERRED', vars: { name: 'Mary' } });
+    const prev = rankFairTurn({ ...walkIn, candidates: [lisa, cand('c', 'Anna', anna.turn, { isPrevious: true })] });
+    expect(prev.orderChange.changedBy).toBe('previous_technician');
+    expect(prev.whyCoded[0].code).toBe('FAIR_WHY.PREVIOUS');
+    const lang = rankFairTurn({ ...base, guestLanguage: 'vi', candidates: [cand('a', 'Lisa', lisa.turn, { speaksGuestLanguage: false }), cand('b', 'Mary', mary.turn, { speaksGuestLanguage: true })] });
+    expect(lang.orderChange.changedBy).toBe('language_match');
+    const streak = rankFairTurn({ ...base, automatic: true, candidates: [cand('a', 'Lisa', st('a', { rotationPosition: 1, consecutiveAuto: 1 })), mary] });
+    expect(streak.orderChange).toMatchObject({ changedBy: 'max_consecutive', rotationPickName: 'Lisa' });
+    const none = rankFairTurn({ ...base, candidates: [cand('a', 'Lisa', lisa.turn, { hardFails: ['missing_skill'] })] });
+    expect(none.orderChange).toMatchObject({ rotationPickId: null, changedBy: 'none' });
+  });
   it('nobody eligible → no pick, no skips, nothing invented', () => {
     const r = rankFairTurn({ ...base, candidates: [cand('a', 'Lisa', lisa.turn, { hardFails: ['missing_skill'] })] });
     expect(r.recommendedTechnicianId).toBeNull();
