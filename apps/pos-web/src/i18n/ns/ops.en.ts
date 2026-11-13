@@ -1767,4 +1767,10 @@ export const OPS_EN = {
   "syschk.memberships.redemption_line_other_ticket.fix": "Tell support: those redemptions point at a service on a different ticket.",
   "syschk.memberships.live_membership_archived_customer": "No live membership sits on an archived customer profile",
   "syschk.memberships.live_membership_archived_customer.fix": "Move the membership to the customer's current profile (merge) or end it.",
+  "syschk.catalog.checkout_subtotal_over_lines": "No paid ticket charged a subtotal above what its lines add up to",
+  "syschk.catalog.checkout_subtotal_over_lines.fix": "Open those tickets: a line may have been removed after payment or a price changed outside the ticket. Correct it with a refund or an adjustment, never by editing the paid ticket.",
+  "syschk.catalog.checkout_discount_over_lines": "No paid ticket has a discount larger than its lines",
+  "syschk.catalog.checkout_discount_over_lines.fix": "Review the discounts on those tickets (deal, coupon, manual or membership) and who approved them.",
+  "syschk.catalog.checkout_tax_without_taxable_line": "No paid ticket charged tax without a taxable line",
+  "syschk.catalog.checkout_tax_without_taxable_line.fix": "Check each service’s Taxable setting and the tax on those tickets; refund the tax if it was charged by mistake.",
 };

@@ -1766,4 +1766,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.memberships.redemption_line_other_ticket.fix": "Báo cho bộ phận hỗ trợ: những lần sử dụng này trỏ đến dịch vụ trên một hóa đơn khác.", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer": "Không có thẻ hội viên còn hiệu lực nào nằm trên hồ sơ khách đã lưu trữ", // DRAFT — Kevin reviews
   "syschk.memberships.live_membership_archived_customer.fix": "Chuyển thẻ hội viên sang hồ sơ hiện tại của khách (gộp hồ sơ) hoặc kết thúc thẻ.", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_subtotal_over_lines": "Không phiếu đã thanh toán nào có tạm tính cao hơn tổng các dòng của phiếu", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_subtotal_over_lines.fix": "Mở các phiếu đó: có thể một dòng đã bị bỏ sau khi thanh toán hoặc giá bị đổi ngoài phiếu. Sửa bằng hoàn tiền hoặc điều chỉnh, không bao giờ sửa phiếu đã thanh toán.", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_discount_over_lines": "Không phiếu đã thanh toán nào có giảm giá lớn hơn tổng các dòng", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_discount_over_lines.fix": "Xem lại giảm giá trên các phiếu đó (ưu đãi, mã giảm giá, giảm tay hoặc thành viên) và ai đã duyệt.", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_tax_without_taxable_line": "Không phiếu đã thanh toán nào tính thuế khi không có dòng chịu thuế", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_tax_without_taxable_line.fix": "Kiểm tra cài đặt Chịu thuế của từng dịch vụ và tiền thuế trên các phiếu đó; hoàn lại thuế nếu tính nhầm.", // DRAFT — Kevin reviews
 };
