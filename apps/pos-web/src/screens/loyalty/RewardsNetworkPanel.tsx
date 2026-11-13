@@ -159,6 +159,14 @@ export function RewardsNetworkPanel() {
             sub={w ? tx('rn.kpi.pendingSub', { n: fmtNumber(w.pendingPurchases), used: tokensOf(w.usedThisMonthCents, tv) }) : ''} onClick={() => purchases.toFirst()} />
         </>}
       </div>
+      {/* GLOBAL LOYALTY · 14 (round 10): the server's per-feature readiness with its evidence — nothing claims ready by default */}
+      {st?.readiness?.length ? (
+        <div className="fk-row" data-testid="rn-readiness" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0', fontSize: 12 }}>
+          <b>{tx('rn.ready.title')}</b>
+          {st.readiness.map((f) => (
+            <span key={f.feature} data-testid={`rn-ready-${f.feature}`} className={'fk-chip ' + (f.state === 'PRODUCTION_READY' ? 'ok' : f.state === 'BLOCKED_EXTERNAL' ? 'bad' : f.state === 'SANDBOX_READY' ? 'info' : 'mut')}
+              title={f.evidence.map((e) => label('rn.ready.ev', e)).join(' · ')}>{label('rn.ready.f', f.feature)}: {label('rn.ready.s', f.state)}</span>))}
+        </div>) : null}
 
       {st ? <div className={'fk-hint rn-fresh' + (stErr ? ' warn' : '')} data-testid="rn-fresh" aria-live="polite">
         {stErr ? tx('rn.fresh.stale', { time: whenTime(st.generatedAt) }) : tx('rn.fresh.at', { time: whenTime(st.generatedAt) })}

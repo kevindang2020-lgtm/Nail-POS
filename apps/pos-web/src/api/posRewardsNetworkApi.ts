@@ -37,6 +37,8 @@ export interface NetworkState {
   flags: { engine: boolean; earn: boolean; redemption: boolean; purchases: boolean; customEarning: boolean };
   permissions: { canEdit: boolean; canActivate: boolean; canBuyTokens: boolean };
   funding: { provider: string | null; sandbox: boolean; available: boolean };
+  /** extras GLOBAL LOYALTY REWARDS 14: per-feature readiness (server-computed from flags, pauses, enrollment, providers) */
+  readiness?: { feature: string; state: 'CODE_READY' | 'SANDBOX_READY' | 'PRODUCTION_READY' | 'BLOCKED_EXTERNAL'; evidence: string[] }[];
 }
 interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
 export interface Preview { proposed: RewardsNetEarningRate; global: RewardsNetEarningRate; rows: PreviewRow[];

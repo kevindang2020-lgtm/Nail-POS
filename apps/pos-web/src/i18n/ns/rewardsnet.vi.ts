@@ -246,4 +246,29 @@ export const REWARDSNET_VI = {
   'rn.hf.pur.pending': 'Đang chờ', // DRAFT — Kevin reviews
   'rn.hf.pur.funded': 'Đã nạp', // DRAFT — Kevin reviews
   'rn.hf.pur.failed': 'Thất bại / hoàn lại', // DRAFT — Kevin reviews
+  'rn.ready.title': 'Mức sẵn sàng:', // DRAFT — Kevin reviews
+  'rn.ready.f.earning': 'Tích điểm', // DRAFT — Kevin reviews
+  'rn.ready.f.redemption': 'Đổi thưởng', // DRAFT — Kevin reviews
+  'rn.ready.f.custom_earning': 'Quy tắc riêng', // DRAFT — Kevin reviews
+  'rn.ready.f.token_purchases': 'Mua token', // DRAFT — Kevin reviews
+  'rn.ready.f.salon_payouts': 'Chi trả cho tiệm', // DRAFT — Kevin reviews
+  'rn.ready.s.CODE_READY': 'đã có, đang tắt', // DRAFT — Kevin reviews
+  'rn.ready.s.SANDBOX_READY': 'chỉ thử nghiệm', // DRAFT — Kevin reviews
+  'rn.ready.s.PRODUCTION_READY': 'sẵn sàng', // DRAFT — Kevin reviews
+  'rn.ready.s.BLOCKED_EXTERNAL': 'cần nhà cung cấp bên ngoài', // DRAFT — Kevin reviews
+  'rn.ready.ev.enabled_no_external_dependency': 'đang bật; không cần nhà cung cấp ngoài', // DRAFT — Kevin reviews
+  'rn.ready.ev.engine_off': 'mạng thưởng đang tắt', // DRAFT — Kevin reviews
+  'rn.ready.ev.earn_flag_off': 'tích điểm đang tắt', // DRAFT — Kevin reviews
+  'rn.ready.ev.earn_paused': 'nền tảng tạm dừng tích điểm', // DRAFT — Kevin reviews
+  'rn.ready.ev.redemption_flag_off': 'đổi thưởng đang tắt', // DRAFT — Kevin reviews
+  'rn.ready.ev.redeem_paused': 'nền tảng tạm dừng đổi thưởng', // DRAFT — Kevin reviews
+  'rn.ready.ev.custom_earning_flag_off': 'quy tắc riêng đang tắt', // DRAFT — Kevin reviews
+  'rn.ready.ev.purchases_flag_off': 'mua token đang tắt', // DRAFT — Kevin reviews
+  'rn.ready.ev.purchases_paused': 'nền tảng tạm dừng mua token', // DRAFT — Kevin reviews
+  'rn.ready.ev.not_enrolled': 'tiệm chưa tham gia', // DRAFT — Kevin reviews
+  'rn.ready.ev.no_funding_provider_connected': 'chưa kết nối nhà cung cấp nạp tiền được duyệt', // DRAFT — Kevin reviews
+  'rn.ready.ev.sandbox_funding_provider': 'nhà cung cấp nạp tiền thử nghiệm', // DRAFT — Kevin reviews
+  'rn.ready.ev.funding_provider_connected': 'đã kết nối nhà cung cấp nạp tiền', // DRAFT — Kevin reviews
+  'rn.ready.ev.no_payout_provider_connected': 'chưa kết nối nhà cung cấp chi trả', // DRAFT — Kevin reviews
+  'rn.ready.ev.payout_provider_connected': 'đã kết nối nhà cung cấp chi trả', // DRAFT — Kevin reviews
 };

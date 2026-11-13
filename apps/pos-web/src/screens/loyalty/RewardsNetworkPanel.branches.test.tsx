@@ -139,3 +139,18 @@ describe('RewardsNetworkPanel — history smart filter presets', () => {
     expect(viewsMock.list).toHaveBeenCalledWith('loyalty.network.history');
   });
 });
+
+// extras GLOBAL LOYALTY REWARDS 14 (round 10): the server's per-feature readiness, with its evidence
+describe('RewardsNetworkPanel — readiness control center', () => {
+  it('shows each feature with its state; a blocked one names what is missing', async () => {
+    const s0: any = st(undefined);
+    s0.readiness = [{ feature: 'earning', state: 'PRODUCTION_READY', evidence: ['enabled_no_external_dependency'] }, { feature: 'token_purchases', state: 'BLOCKED_EXTERNAL', evidence: ['no_funding_provider_connected'] },
+      { feature: 'custom_earning', state: 'CODE_READY', evidence: ['custom_earning_flag_off'] }];
+    stateMock.mockResolvedValue(s0);
+    render(<RewardsNetworkPanel />);
+    expect(await screen.findByTestId('rn-ready-earning')).toHaveTextContent('Earning: ready');
+    const buy = screen.getByTestId('rn-ready-token_purchases');
+    expect(buy).toHaveTextContent('Buy Tokens: needs an outside provider'); expect(buy.getAttribute('title')).toBe('no approved funding provider connected');
+    expect(screen.getByTestId('rn-ready-custom_earning')).toHaveTextContent('Custom rule: built, switched off');
+  });
+});

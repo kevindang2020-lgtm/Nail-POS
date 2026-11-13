@@ -478,3 +478,16 @@ describe("extras GLOBAL LOYALTY REWARDS 07 + 10 — the salon's own reimbursemen
     await expect(svc.financeExport(owner(TC, BC), { from: today, to: '2020-01-01' })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });
+
+// extras GLOBAL LOYALTY REWARDS 14 (round 10): the network state carries per-feature readiness read from the real configuration
+describe('Readiness Control Center', () => {
+  it('with no funding or payout provider connected, Buy Tokens and salon payouts are BLOCKED_EXTERNAL; earning / redemption follow the flags', async () => {
+    const st: any = await new GlobalRewardsService(repo, null, null).state({ tenantId: TB, branchId: BB, userId: OWNER, role: 'OWNER', permissions: ['pos.customers.view', 'pos.settings.edit'] });
+    const by = Object.fromEntries(st.readiness.map((f: any) => [f.feature, f]));
+    expect(Object.keys(by).sort()).toEqual(['custom_earning', 'earning', 'redemption', 'salon_payouts', 'token_purchases']);
+    expect(by.token_purchases).toEqual({ feature: 'token_purchases', state: 'BLOCKED_EXTERNAL', evidence: ['no_funding_provider_connected'] });
+    expect(by.salon_payouts.state).toBe('BLOCKED_EXTERNAL');
+    expect(by.earning.state).toBe(st.flags.engine && st.flags.earn && !st.program.earnPaused && st.enrollment.status === 'enrolled' ? 'PRODUCTION_READY' : 'CODE_READY');
+    expect(st.funding).toEqual({ provider: null, sandbox: false, available: false });
+  });
+});

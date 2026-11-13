@@ -7,10 +7,10 @@ import { EVENTS, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { logException } from '@aipowersalon/observability';
 import { GlobalRewardsRepository, type GrCtx } from './global-rewards.repository';
 import { GlobalRewardsPlatformRepository } from './global-rewards-platform.repository';
-import { GlobalRewardsError, validateGlobalRate, previewRows, rateLabel, type PurchaseStatus } from './global-rewards-core';
+import { GlobalRewardsError, validateGlobalRate, previewRows, rateLabel, networkReadiness, type PurchaseStatus } from './global-rewards-core';
 import type { TokenFundingProvider } from './token-funding-provider';
 import { runBooksCheck, integritySummary, listRuns, listFindings, reviewFinding, listPayables, lineage, listFraudAlerts, reviewFraudAlert, findingsCsv } from './rewards-books-check';
-import { markPayoutEligible, holdPayable, requestPayout, type PayoutProvider } from './rewards-payouts';
+import { markPayoutEligible, holdPayable, requestPayout, payoutProviderFromEnv, type PayoutProvider } from './rewards-payouts';
 import { canMoveToSql } from '@aipowersalon/database';
 import { GLOBAL_REWARDS_ACCOUNT } from './global-rewards-lifecycles';
 import { flagState } from './global-rewards-flags';
@@ -38,7 +38,10 @@ export class GlobalRewardsService {
 
   async state(ctx: GrCtx) {
     const v = await this.repo.policyView(ctx);
-    return { ...v, funding: { provider: this.provider?.name ?? null, sandbox: !!this.provider?.sandbox, available: !!this.provider } };
+    const funding = { provider: this.provider?.name ?? null, sandbox: !!this.provider?.sandbox, available: !!this.provider };
+    // extras GLOBAL LOYALTY REWARDS 14: per-feature readiness from the real flags, pauses, enrollment and connected providers
+    const readiness = networkReadiness({ flags: v.flags, program: v.program, enrolled: v.enrollment?.status === 'enrolled', funding, payoutProvider: payoutProviderFromEnv()?.name ?? null });
+    return { ...v, funding, readiness };
   }
   preview(ctx: GrCtx, body: Record<string, unknown>) { return this.repo.preview(ctx, body); }
   history(ctx: GrCtx) { return this.repo.history(ctx); }

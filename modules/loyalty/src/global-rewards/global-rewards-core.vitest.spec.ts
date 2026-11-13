@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computeEarn, validateCustomRate, previewRows, policyVersionAt, policyDisplay, versionDisplayState, globalVersionAt, eligibleCentsOf,
   redeemableBlocks, alertLevel, tenthsLabel, tokensLabel, rateLabel, purchaseQuantity, isSpendable, centsPerPointTenth, GlobalRewardsError,
-  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf, walletFundingForecast,
+  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf, walletFundingForecast, networkReadiness,
 } from './global-rewards-core';
 
 const program: ProgramPolicy = {
@@ -152,5 +152,26 @@ describe('walletFundingForecast', () => {
   });
   it('no verified use → no estimate (never invented)', () => {
     expect(walletFundingForecast(10_000, 0, 0, 30, 2_000)).toEqual({ basisDays: 30, usedCents: 0, dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false });
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 14 (round 10): per-feature readiness from the real configuration, with coded evidence
+describe('networkReadiness', () => {
+  const on = { engine: true, earn: true, redemption: true, purchases: true, customEarning: true };
+  const run = { earnPaused: false, redeemPaused: false, purchasesPaused: false };
+  const by = (r: ReturnType<typeof networkReadiness>) => Object.fromEntries(r.map((f) => [f.feature, f]));
+  it('no providers: earning / redemption ready, purchases and payouts BLOCKED_EXTERNAL — never pretended ready', () => {
+    const r = by(networkReadiness({ flags: on, program: run, enrolled: true, funding: { provider: null, sandbox: false }, payoutProvider: null }));
+    expect(r.earning).toEqual({ feature: 'earning', state: 'PRODUCTION_READY', evidence: ['enabled_no_external_dependency'] });
+    expect(r.token_purchases).toEqual({ feature: 'token_purchases', state: 'BLOCKED_EXTERNAL', evidence: ['no_funding_provider_connected'] });
+    expect(r.salon_payouts).toEqual({ feature: 'salon_payouts', state: 'BLOCKED_EXTERNAL', evidence: ['no_payout_provider_connected'] });
+  });
+  it('sandbox provider → SANDBOX_READY; real → PRODUCTION_READY; off / paused / not enrolled → CODE_READY with why', () => {
+    expect(by(networkReadiness({ flags: on, program: run, enrolled: true, funding: { provider: 'sandbox', sandbox: true }, payoutProvider: null })).token_purchases.state).toBe('SANDBOX_READY');
+    expect(by(networkReadiness({ flags: on, program: run, enrolled: true, funding: { provider: 'acme', sandbox: false }, payoutProvider: 'acme-pay' })).salon_payouts.state).toBe('PRODUCTION_READY');
+    const off = by(networkReadiness({ flags: { ...on, earn: false }, program: { ...run, redeemPaused: true, purchasesPaused: true }, enrolled: false, funding: { provider: 'acme', sandbox: false }, payoutProvider: null }));
+    expect(off.earning).toEqual({ feature: 'earning', state: 'CODE_READY', evidence: ['earn_flag_off', 'not_enrolled'] });
+    expect(off.redemption.evidence).toEqual(['redeem_paused', 'not_enrolled']);
+    expect(off.token_purchases).toMatchObject({ state: 'CODE_READY', evidence: ['purchases_paused', 'not_enrolled'] });
   });
 });
