@@ -288,7 +288,7 @@ export const AIFU_VI: Record<string, string> = {
   "aifu.tl.k.handoff": "Chuyển máy", // DRAFT — Kevin reviews
   "aifu.tl.k.task": "Việc cần làm", // DRAFT — Kevin reviews
   "aifu.tl.k.attempt": "Liên hệ", // DRAFT — Kevin reviews
-  "aifu.tl.k.booking": "Lịch hẹn", // DRAFT — Kevin reviews
+  "aifu.tl.k.booking": "Đặt lịch", // DRAFT — Kevin reviews
   "aifu.tl.booking": "Đã liên kết lịch hẹn", // DRAFT — Kevin reviews
   "aifu.tl.call.call_started": "Cuộc gọi bắt đầu", // DRAFT — Kevin reviews
   "aifu.tl.call.call_ended": "Cuộc gọi kết thúc", // DRAFT — Kevin reviews

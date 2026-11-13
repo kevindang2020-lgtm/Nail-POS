@@ -40,7 +40,7 @@ export class AiBookingService {
    *  engine's ONE eligibility authority (technicianPage serviceIds + working), one bounded page; never an own skill rule. */
   async qualifiedTechnicians(ctx: AiBookingContext, input: { serviceIds?: string[]; date?: string }): Promise<AiBookingQualifiedTechs> {
     const page = await this.booking.technicianPage(this.bctx(ctx), { serviceIds: input.serviceIds, date: input.date, working: true, status: 'active', page: 1, pageSize: MAX_TECHNICIANS * 3 });
-    const items = (page?.items ?? []).map((t) => ({ technicianId: t.technicianId, name: t.name }));
+    const items = (page?.technicians ?? []).map((t) => ({ technicianId: t.technicianId, name: t.name }));
     const total = Number(page?.total ?? items.length);
     return { technicians: items, total, bounded: total > items.length, correlationId: ctx.correlationId };
   }
