@@ -31,6 +31,8 @@ export interface SystemCheckSourceRow {
   detail: string | null;
 }
 export interface SystemCheckRows {
+  /** true when the viewer may not see salon financials: every amountCents is null (hidden, not zero) */
+  moneyHidden?: boolean;
   domain: SystemCheckDomain;
   key: string;
   checkedAt: string;

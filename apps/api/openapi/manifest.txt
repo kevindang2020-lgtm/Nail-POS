@@ -234,6 +234,7 @@ GET /owner/cash-summary  realm=staff  auth=session  domain=analytics  perm=owner
 GET /owner/compensation/agreements  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/bonus-rules  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/classifications  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
+GET /owner/compensation/deal-reviews  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/reports/commission  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/reports/supply  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/reports/tips  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
@@ -347,9 +348,11 @@ GET /pos/ai-business/center/branches/scorecard  realm=staff  auth=session  domai
 GET /pos/ai-business/center/branches/snapshots  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/branches/snapshots/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-business/center/reports/schedules  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/summary  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/{id}/compare  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-business/center/reports/{id}/executive  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/customers/growth  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/daily-brief  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/metrics  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -746,6 +749,7 @@ GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session
 GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/alerts  realm=staff  auth=session  domain=operations  perm=pos.logs.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/devices  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/device-fleet/export  realm=staff  auth=session  domain=operations  perm=pos.devices.export  resource=BRANCH/permission  async=pos.device-fleet.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/history  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/device-fleet/summary  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/overview  realm=staff  auth=session  domain=operations  perm=pos.devices.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -880,6 +884,7 @@ GET /pos/memberships/plans-list  realm=staff  auth=session  domain=memberships  
 GET /pos/memberships/plans/{planId}  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  resource=TENANT/records  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/redemptions  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  resource=BRANCH/permission  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/menu-insights  realm=staff  auth=session  domain=analytics  perm=pos.services.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/menu-insights/add-on-profitability  realm=staff  auth=session  domain=analytics  perm=inventory.cost.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/menu-insights/state  realm=staff  auth=session  domain=analytics  perm=pos.services.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/message-templates/connections  realm=staff  auth=session  domain=communications  perm=pos.communications.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/message-templates/summary  realm=staff  auth=session  domain=communications  perm=pos.communications.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -1162,6 +1167,7 @@ GET /pos/system-checks/expenses  realm=staff  auth=session  domain=operations  p
 GET /pos/system-checks/inventory  realm=staff  auth=session  domain=operations  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/invoices  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/memberships  realm=staff  auth=session  domain=operations  perm=pos.memberships.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/system-checks/memberships/{checkKey}/rows  realm=staff  auth=session  domain=operations  perm=pos.memberships.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/payments  realm=staff  auth=session  domain=operations  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/reports  realm=staff  auth=session  domain=operations  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/system-checks/service-flow  realm=staff  auth=session  domain=operations  perm=pos.serving.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -2054,7 +2060,9 @@ GET /tenant/messaging/setup/branches  realm=staff  auth=session  domain=communic
 GET /tenant/messaging/setup/overview  realm=staff  auth=session  domain=communications  perm=settings.view  resource=BRANCH/permission  guards=TenantAuthGuard
 GET /tenant/messaging/setup/overview/branches/{branchId}  realm=staff  auth=session  domain=communications  perm=settings.view  resource=TENANT/records  guards=TenantAuthGuard
 GET /tenant/navigation  realm=staff  auth=session  domain=tenants  perm=dashboard.view  resource=BRANCH/permission
+GET /tenant/navigation/badge-sync  realm=staff  auth=session  domain=tenants  perm=dashboard.view  resource=BRANCH/permission
 GET /tenant/navigation/badges  realm=staff  auth=session  domain=tenants  perm=dashboard.view  resource=BRANCH/permission
+GET /tenant/notifications/alerts  realm=staff  auth=session  domain=tenants  perm=owner.alerts.view  resource=BRANCH/permission
 GET /tenant/setup-health/runs  realm=staff  auth=session  domain=operations  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/setup-health/summary  realm=staff  auth=session  domain=operations  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/sms-plan  realm=staff  auth=session  domain=communications  perm=settings.view  resource=BRANCH/permission
@@ -2483,6 +2491,7 @@ POST /owner/compensation/bonus-rules/preview  realm=staff  auth=session  domain=
 POST /owner/compensation/bonus-rules/{id}/archive  realm=staff  auth=session  domain=finance  perm=compensation.manage  resource=TENANT/permission
 POST /owner/compensation/compliance-period-review  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 POST /owner/compensation/compliance-preview  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
+POST /owner/compensation/deal-reviews/{dealId}/approve  realm=staff  auth=session  domain=finance  perm=compensation.manage  resource=TENANT/records
 POST /owner/compensation/guarantee/preview  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 POST /owner/compensation/preview  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 POST /owner/compensation/rules  realm=staff  auth=session  domain=finance  perm=compensation.manage  resource=TENANT/permission
@@ -2563,6 +2572,7 @@ POST /pos/ai-business/center/branches/snapshots  realm=staff  auth=session  doma
 POST /pos/ai-business/center/branches/snapshots/{id}/signoffs  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/check  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/generate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-business/center/reports/schedules  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/{id}/regenerate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/center/reports/{id}/verify  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/reports  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -2860,6 +2870,7 @@ POST /pos/customer-intelligence/check  realm=staff  auth=session  domain=ai  per
 POST /pos/customer-intelligence/scan  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notes/check  realm=staff  auth=session  domain=customers  perm=pos.customers.notes.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notes/review  realm=staff  auth=session  domain=customers  perm=pos.customers.notes.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-notes/source  realm=staff  auth=session  domain=customers  perm=pos.customers.notes.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/health/check  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/records/{id}/retry  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-search/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -2995,6 +3006,7 @@ POST /pos/memberships/members/{membershipId}/first-payment  realm=staff  auth=se
 POST /pos/memberships/pause  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=BRANCH/permission  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/plans  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=BRANCH/permission  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/plans/{planId}/versions  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=TENANT/records  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/memberships/plans/{planId}/versions/preview  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=TENANT/records  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/redeem  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=BRANCH/permission  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/release  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=BRANCH/permission  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/reserve  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  resource=BRANCH/permission  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
@@ -3981,6 +3993,8 @@ POST /tenant/messaging/number/buy  realm=staff  auth=session  domain=communicati
 POST /tenant/messaging/number/quote  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  guards=TenantAuthGuard
 POST /tenant/messaging/number/register  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  guards=TenantAuthGuard
 POST /tenant/messaging/registration/refresh  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission  guards=TenantAuthGuard
+POST /tenant/navigation/badges/sync  realm=staff  auth=session  domain=tenants  perm=dashboard.view  resource=BRANCH/permission
+POST /tenant/notifications/alerts/read  realm=staff  auth=session  domain=tenants  perm=owner.alerts.view  resource=BRANCH/permission
 POST /tenant/setup-health/alerts/{id}/acknowledge  realm=staff  auth=session  domain=operations  perm=settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/setup-health/run  realm=staff  auth=session  domain=operations  perm=settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/sms-plan/upgrade  realm=staff  auth=session  domain=communications  perm=settings.edit  resource=TENANT/permission

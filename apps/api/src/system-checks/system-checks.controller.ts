@@ -3,6 +3,7 @@
 // GET, no body, nothing written.
 import { Controller, Get, HttpException, Param, Req, UseGuards } from '@nestjs/common';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
+import { hasPermission } from '@aipowersalon/permissions';
 import type { SystemCheckResult, SystemCheckRows } from '@aipowersalon/api-contracts/tenant';
 import { SystemChecksService, SystemCheckNotFound } from './system-checks.service';
 
@@ -46,10 +47,14 @@ export class SystemChecksController {
    *  benefit balance / membership) behind one discrepant check; same permission as the page; read-only */
   @RequirePermission('pos.memberships.view') @Get('memberships/:checkKey/rows')
   membershipCheckRows(@Req() req: any, @Param('checkKey') checkKey: string): Promise<SystemCheckRows> {
-    return this.svc.rows('memberships', String(checkKey ?? ''), ctxOf(req)).catch((e: unknown) => {
-      if (e instanceof SystemCheckNotFound) throw new HttpException({ code: e.code, message: e.message }, 404);
-      throw e;
-    });
+    // money in the source rows is shown only to a viewer of the salon's financials (a role that may open the page but not see
+    // sales figures — e.g. a technician with membership view — gets the rows with amounts hidden, never a guessed 0)
+    const money = hasPermission(req?.ctx ?? {}, 'pos.reports.financial_view');
+    return this.svc.rows('memberships', String(checkKey ?? ''), ctxOf(req)).then((r) => (money ? r : { ...r, moneyHidden: true, rows: r.rows.map((x) => ({ ...x, amountCents: null })) }))
+      .catch((e: unknown) => {
+        if (e instanceof SystemCheckNotFound) throw new HttpException({ code: e.code, message: e.message }, 404);
+        throw e;
+      });
   }
   @RequirePermission('pos.serving.view') @Get('service-flow')
   serviceFlow(@Req() req: any): Promise<SystemCheckResult> { return this.svc.run('service-flow', ctxOf(req)); }
