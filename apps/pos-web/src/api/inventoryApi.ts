@@ -66,7 +66,8 @@ export const inventoryApi = {
   setStockOverrides: (id: string, b: any) => api.patch<{ product: InvProduct }>(`/tenant/inventory/products/${id}/stock-overrides`, b),
   product: (id: string) => api.get<{ product: any; units: InvUnit[] }>(`/tenant/inventory/products/${id}`),
   createProduct: (b: any) => api.post<{ id: string }>('/tenant/inventory/products', b),
-  addStock: (id: string, b: any) => api.post<{ product: any }>(`/tenant/inventory/products/${id}/stock/add`, b),
+  /** round 10 (Inventory 10): the SAME Idempotency-Key on a retry → the server answers from the first save (never added twice) */
+  addStock: (id: string, b: any, idempotencyKey?: string) => api.post<{ product: any }>(`/tenant/inventory/products/${id}/stock/add`, b, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
   openUnit: (unitId: string) => api.post(`/tenant/inventory/units/${unitId}/open`, {}),
   markEmpty: (unitId: string) => api.post(`/tenant/inventory/units/${unitId}/mark-empty`, {}),
   markLow: (unitId: string) => api.post(`/tenant/inventory/units/${unitId}/mark-low`, {}),

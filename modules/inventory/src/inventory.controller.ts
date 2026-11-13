@@ -41,7 +41,8 @@ export class InventoryController {
   @Patch('products/:id/stock-overrides') @RequirePermission('inventory.update') setStockOverrides(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_STOCK_OVERRIDES_BODY, { strict: true })) b: any) { return run(() => this.svc.setLocationStockOverrides(ctx(r), id, b)); }
   @Post('products/:id/archive') @RequirePermission('inventory.archive') archive(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.archiveProduct(ctx(r), id)); }
 
-  @Post('products/:id/stock/add') @RequirePermission('inventory.stock.add') addStock(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_ADD_STOCK_BODY, { strict: true })) b: any) { return run(() => this.svc.addStock(ctx(r), id, b)); }
+  // round 10 (Inventory 10): a retried Add Stock with the same Idempotency-Key is answered from the first save, never added twice
+  @Idempotent() @Post('products/:id/stock/add') @RequirePermission('inventory.stock.add') addStock(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_ADD_STOCK_BODY, { strict: true })) b: any) { return run(() => this.svc.addStock(ctx(r), id, b)); }
 
   @Post('units/:unitId/open') @RequirePermission('inventory.update') open(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.openUnit(ctx(r), id)); }
   @Post('units/:unitId/mark-low') @RequirePermission('inventory.update') low(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markLow(ctx(r), id)); }

@@ -74,6 +74,33 @@ describe('POSInventoryAlertsScreen', () => {
     expect(api.record.mock.calls[0][0].technicianId).toBeUndefined();
     expect(await screen.findByTestId('note')).toHaveTextContent('Rose Gel');
   });
+  it('round 10 (Inventory 10): no answer → stays on review, says a retry is safe, and the retry sends the SAME key; a refusal goes back to editing', async () => {
+    api.record.mockRejectedValueOnce(Object.assign(new Error('Network error'), { status: 0 }))
+      .mockResolvedValueOnce({ replay: true, event: { id: 'e1', productId: 'p1', productName: 'Rose Gel', technicianName: 'Anna Nguyen', quantity: '0.5' } });
+    mount(); await screen.findAllByTestId('alert-row');
+    fireEvent.click(screen.getByTestId('record-use'));
+    fireEvent.click(await screen.findByTestId('product-pick'));
+    fireEvent.click(screen.getByTestId('qty-0.5'));
+    fireEvent.click(screen.getByTestId('review-use'));
+    fireEvent.click(screen.getByTestId('confirm-use'));
+    expect(await screen.findByTestId('use-unsure')).toHaveTextContent('Retrying is safe');
+    expect(screen.getByTestId('use-review')).toBeInTheDocument();   // still on the review step
+    expect(screen.getByTestId('confirm-use')).toHaveTextContent('Retry safely');
+    fireEvent.click(screen.getByTestId('confirm-use'));
+    await waitFor(() => expect(api.record).toHaveBeenCalledTimes(2));
+    expect(api.record.mock.calls[1][1]).toBe(api.record.mock.calls[0][1]);   // the same Idempotency-Key
+  });
+  it('round 10 (Inventory 10): a 4xx refusal is not "unknown" — back to editing, no retry note', async () => {
+    api.record.mockRejectedValueOnce(Object.assign(new Error('Not enough stock'), { status: 422 }));
+    mount(); await screen.findAllByTestId('alert-row');
+    fireEvent.click(screen.getByTestId('record-use'));
+    fireEvent.click(await screen.findByTestId('product-pick'));
+    fireEvent.click(screen.getByTestId('qty-0.5'));
+    fireEvent.click(screen.getByTestId('review-use'));
+    fireEvent.click(screen.getByTestId('confirm-use'));
+    await waitFor(() => expect(screen.queryByTestId('use-review')).toBeNull());
+    expect(screen.queryByTestId('use-unsure')).toBeNull();
+  });
   it('recording for another technician needs a reason', async () => {
     mount(); await screen.findAllByTestId('alert-row');
     fireEvent.click(screen.getByTestId('record-use')); fireEvent.click(await screen.findByTestId('product-pick'));

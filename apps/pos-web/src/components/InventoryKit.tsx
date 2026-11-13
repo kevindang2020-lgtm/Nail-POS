@@ -9,6 +9,8 @@
 //   AddStockDialog       a documented receipt: quantity, lot, expiration, cost, note — one movement, never a duplicate product
 // Usage history and Record Product Use come from the Stock Alerts screen (one usage system, never two).
 import { useMemo, useRef, useState } from 'react';
+import { createIntentKeys } from '@aipowersalon/api-client';
+import { outcomeUnknown } from './outcomeUnknown';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { inventoryApi } from '../api/inventoryApi';
 import { posInventoryScreenApi } from '../api/posInventoryScreenApi';
@@ -316,12 +318,17 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
 export function AddStockDialog({ product, onClose, onSaved }: { product: { id: string; name: string; unit?: string; onHand?: number; costCents?: number | null; trackExpiration?: boolean }; onClose: () => void; onSaved: (r: any) => void }) {
   const [qty, setQty] = useState('6'); const [lot, setLot] = useState(''); const [exp, setExp] = useState(''); const [cost, setCost] = useState(textFromCents(product.costCents ?? null)); const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const sent = useRef(false);
+  // round 10 (Inventory 10): one key per intended receipt — a retry after an unknown outcome reuses it (the server answers from
+  // the first save); changing what is being added makes a new one
+  const keys = useRef(createIntentKeys()); const [unsure, setUnsure] = useState(false);
   const n = /^\d{1,4}$/.test(qty.trim()) ? Number(qty.trim()) : 0;
   const valid = n >= 1 && n <= 1000 && (!cost || centsFromText(cost) != null) && (!exp || /^\d{4}-\d{2}-\d{2}$/.test(exp));
   const save = async () => {
     if (!valid || sent.current) return; sent.current = true; setBusy(true); setErr(null);
-    try { const r = await inventoryApi.addStock(product.id, { quantity: n, lotNumber: lot.trim() || null, expirationDate: exp || null, costCents: cost ? centsFromText(cost) : null, note: note.trim() || null }); onSaved(r); }
-    catch (e) { sent.current = false; setErr(errMsg(e)); setBusy(false); }
+    const body = { quantity: n, lotNumber: lot.trim() || null, expirationDate: exp || null, costCents: cost ? centsFromText(cost) : null, note: note.trim() || null };
+    const intent = `add:${product.id}`;
+    try { const r = await inventoryApi.addStock(product.id, body, keys.current.keyFor(intent, body)); keys.current.done(intent); setUnsure(false); onSaved(r); }
+    catch (e) { sent.current = false; setUnsure(outcomeUnknown(e)); setErr(errMsg(e)); setBusy(false); }
   };
   return (
     <FitDialog title={tx('inv.addStockTitle', { n: product.name })} subtitle={product.onHand != null ? tx('inv.addStockSub', { n: fmtNumber(product.onHand), after: fmtNumber((product.onHand ?? 0) + n), u: unitLabel(product.unit ?? 'unit') }) : undefined} busy={busy} onClose={onClose} testId="add-stock"
@@ -333,6 +340,7 @@ export function AddStockDialog({ product, onClose, onSaved }: { product: { id: s
         <label className="fk-field"><span>{tx('pos.note')}</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder={tx('pos.optional_3')} /></label></div>
       <div className="fk-hint">{tx('inv.addStockNote')}</div>
       {err ? <div className="fk-error" role="alert">{err}</div> : null}
+      {unsure ? <div className="fk-note warn" role="status" data-testid="add-stock-unsure"><span>{tx('inv.retrySafe')}</span></div> : null}
     </FitDialog>
   );
 }
