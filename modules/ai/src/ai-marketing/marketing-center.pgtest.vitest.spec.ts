@@ -377,3 +377,29 @@ describe('AI Marketing 12 — Permission-safe branch comparisons on the summary'
     expect(await q(`select id, status from campaigns where tenant_id = $1 order by id`, [TC])).toEqual(before);
   });
 });
+
+describe('round 10 — AI Marketing Assistant 08: budget variance (estimated vs actual segments and cost)', () => {
+  it('BV-01 a campaign that sent: budget vs reported cost, estimated vs reported segments; overrun only from reported figures', async () => {
+    const [c] = await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size, cost_cents) values ($1,$2,'Over','sms','completed',2,1) returning id`, [T, B]);   // a 1¢ budget
+    await q(`insert into ai_marketing_campaign_plans (campaign_id, tenant_id, branch_id, channel, body, audience_definition) values ($1,$2,$3,'sms','Hi! Come back this week for 10% off.','{}'::jsonb)`, [c.id, T, B]);
+    for (const [cid, pid, segs] of [[C.lapsed, 'BVa', 2], [C.due, 'BVb', 1]] as const) {
+      await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id, provider_cost_micros, segment_count) values ($1,'sms','+1','hi',$2,'delivered',$3,7900,$4)`, [T, cid, pid, segs]);
+      await q(`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, status, provider_id, created_at, updated_at) values ($1,$2,$3,$4,'sms','sent',$5, now(), now())`, [T, B, c.id, cid, pid]);
+    }
+    const v: any = (await mc.summary(ctx(), { preset: 'all' })).budgetVariance;
+    const over = v.items.find((i: any) => i.campaignId === c.id);
+    expect(over).toMatchObject({ sent: 2, budgetCents: 1, actualCostCents: 2, varianceCents: 1, estimatedSegments: 2, actualSegments: 3, segmentVariance: 1 });
+    expect(over.flags.sort()).toEqual(['over_budget', 'segments_over_estimate']);
+    // the earlier campaign (Fall) sent 2 with costs but no segment counts → no segment verdict, no budget → no overrun
+    const fall = v.items.find((i: any) => i.name === 'Fall');
+    expect(fall).toMatchObject({ budgetCents: null, actualSegments: null, segmentVariance: null, flags: [] });
+    expect(v.overruns).toBe(1);
+    // a sent message without a reported cost → cost_unreported, never a guessed overrun
+    await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id) values ($1,'sms','+1','hi',$2,'delivered','BVc')`, [T, C.recent]);
+    await q(`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, status, provider_id, created_at, updated_at) values ($1,$2,$3,$4,'sms','sent','BVc', now(), now())`, [T, B, c.id, C.recent]);
+    const v2: any = (await mc.summary(ctx(), { preset: 'all' })).budgetVariance;
+    expect(v2.items.find((i: any) => i.campaignId === c.id)).toMatchObject({ actualCostCents: null, varianceCents: null, flags: expect.arrayContaining(['cost_unreported']) });
+    expect(v2.items.find((i: any) => i.campaignId === c.id).flags).not.toContain('over_budget');
+    expect((await mc.summary(ctx({ tenantId: X, branchId: BX }), { preset: 'all' }) as any).budgetVariance.items).toEqual([]);
+  });
+});

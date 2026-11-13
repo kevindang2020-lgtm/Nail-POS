@@ -122,6 +122,45 @@ export class MarketingCenter {
     return sql`(${col} >= (${p.from}::date)::timestamp at time zone ${p.timeZone} and ${col} < ((${p.to}::date + 1))::timestamp at time zone ${p.timeZone})`;
   }
 
+  /** round 10 (AI Marketing Assistant 08 — Budget variance monitor): per campaign that has sent anything, the budget someone typed
+   *  (campaigns.cost_cents) and the estimated SMS segments (the plan's text × messages sent, estimateSmsSegments — the same count
+   *  the planner shows) against the provider's ACTUAL segments and cost on each sent message; an overrun is flagged only from
+   *  reported figures (cost not reported for every message → 'cost_unreported', never a guessed overrun). Read-only. */
+  async budgetVariance(ctx: McCtx) {
+    const T = ctx.tenantId; const CW = this.campaignScope(ctx);
+    const rows = (await sql<Row>`select c.id, c.name, c.channel, c.status, c.cost_cents, pl.body,
+        count(*) filter (where s.status = 'sent')::int as sent,
+        count(*) filter (where s.status = 'sent' and n.provider_cost_micros is not null)::int as costed,
+        coalesce(sum(n.provider_cost_micros) filter (where s.status = 'sent'), 0)::bigint as cost_micros,
+        count(*) filter (where s.status = 'sent' and n.segment_count is not null)::int as segmented,
+        coalesce(sum(n.segment_count) filter (where s.status = 'sent'), 0)::int as segments
+      from campaigns c
+      join ai_marketing_campaign_sends s on s.campaign_id = c.id and s.tenant_id = c.tenant_id
+      left join ai_marketing_campaign_plans pl on pl.campaign_id = c.id and pl.tenant_id = c.tenant_id
+      left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
+      where c.tenant_id = ${T} and ${CW} and c.status <> 'cancelled'
+      group by c.id, c.name, c.channel, c.status, c.cost_cents, pl.body
+      having count(*) filter (where s.status = 'sent') > 0
+      order by max(s.updated_at) desc, c.id limit 50`.execute(this.db)).rows;
+    const items = rows.map((r) => {
+      const sent = N(r.sent), costKnown = N(r.costed) === sent, segKnown = N(r.segmented) === sent;
+      const perMsg = String(r.channel) === 'sms' && r.body ? estimateSmsSegments(String(r.body)).segments : null;
+      const estimatedSegments = perMsg == null ? null : perMsg * sent;
+      const actualCostCents = costKnown ? micros(r.cost_micros) : null;
+      const actualSegments = segKnown ? N(r.segments) : null;
+      const budgetCents = N(r.cost_cents) > 0 ? N(r.cost_cents) : null;
+      const flags: string[] = [];
+      if (!costKnown) flags.push('cost_unreported');
+      if (budgetCents != null && actualCostCents != null && actualCostCents > budgetCents) flags.push('over_budget');
+      if (estimatedSegments != null && actualSegments != null && actualSegments > estimatedSegments) flags.push('segments_over_estimate');
+      return { campaignId: String(r.id), name: String(r.name ?? ''), channel: String(r.channel), status: String(r.status), sent,
+        budgetCents, actualCostCents, varianceCents: budgetCents != null && actualCostCents != null ? actualCostCents - budgetCents : null,
+        estimatedSegments, actualSegments, segmentVariance: estimatedSegments != null && actualSegments != null ? actualSegments - estimatedSegments : null, flags };
+    });
+    return { items, overruns: items.filter((i) => i.flags.includes('over_budget') || i.flags.includes('segments_over_estimate')).length,
+      note: 'Budget is the limit typed on the campaign; actual cost and segments are what the provider reported on each sent message.' };
+  }
+
   // ── the seven cards + Reach & Consent + the cost reconciliation ───────────────────────────────────────────────────────────
   async summary(ctx: McCtx, f: Record<string, unknown> = {}) {
     this.need(ctx);
@@ -172,8 +211,9 @@ export class MarketingCenter {
     const budgets = N(st.budgets);
     const rewardLiability = await this.rewardLiability(ctx, p);
     const branchComparison = await this.branchComparison(ctx, p);
+    const budgetVariance = await this.budgetVariance(ctx);
     return {
-      period: p, scope: B ? 'branch' : 'salon', rewardLiability, branchComparison,
+      period: p, scope: B ? 'branch' : 'salon', rewardLiability, branchComparison, budgetVariance,
       cards: {
         activeCampaigns: N(st.active), scheduledCampaigns: N(st.scheduled), draftCampaigns: N(st.drafts), awaitingApproval: N(st.awaiting), assistantDrafts: N(st.assistant_drafts),
         messagesSent: submitted, delivered: N(ps.delivered), failed: N(ps.failed), skippedAtSend: N(ps.skipped), queued: N(ps.queued), simulated: N(ps.simulated),

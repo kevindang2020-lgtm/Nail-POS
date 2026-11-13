@@ -176,4 +176,15 @@ describe('POSAIMarketingScreen', () => {
     await screen.findByTestId('amk-updated');
     expect(screen.queryByTestId('amk-bcmp')).toBeNull();
   });
+  it('round 10 (AI Marketing Assistant 08): budget vs actual per campaign — reported cost and segments, overruns flagged, unreported cost said so', async () => {
+    c.summary.mockResolvedValue({ ...SUMMARY, budgetVariance: { overruns: 1, note: 'x', items: [
+      { campaignId: 'k1', name: 'Over', channel: 'sms', status: 'completed', sent: 2, budgetCents: 1, actualCostCents: 2, varianceCents: 1, estimatedSegments: 2, actualSegments: 3, segmentVariance: 1, flags: ['over_budget', 'segments_over_estimate'] },
+      { campaignId: 'k2', name: 'Quiet', channel: 'sms', status: 'completed', sent: 1, budgetCents: null, actualCostCents: null, varianceCents: null, estimatedSegments: 1, actualSegments: null, segmentVariance: null, flags: ['cost_unreported'] }] } });
+    wrap();
+    const rows = await screen.findAllByTestId('amk-var-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelector('[data-testid="amk-var-flags"]')!.textContent).toBe('Over budget · More segments than estimated');
+    expect(rows[1].querySelector('[data-testid="amk-var-flags"]')!.textContent).toBe('Cost not reported for every message');
+    expect(screen.getByTestId('amk-variance').textContent).toMatch(/1 campaign\(s\) over/);
+  });
 });
