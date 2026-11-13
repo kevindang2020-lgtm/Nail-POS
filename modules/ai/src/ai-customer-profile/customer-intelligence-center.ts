@@ -290,10 +290,11 @@ export class CustomerIntelligenceCenter {
         (select max(finished_at) from customer_duplicate_scans where tenant_id = ${T} and status = 'completed') as last`.execute(this.db)).rows[0] ?? {};
     const c = (last?.counts ?? {}) as Record<string, number>;
     const scan = last ? this.scanOut(last) : null;
+    const retention = await this.retentionCounts(ctx);   // Retention's counts — also the churn card's number
     return {
       cards: scan ? {
         duplicateGroups: dup.last ? N(dup.open) : null, active: N(c.active), withUpcoming: N(c.with_upcoming),
-        inactive: N(c.inactive) + N(c.long_term_inactive), churnWatch: N(c.churn_watch), rebooking: N(c.rebooking), scanned: scan.scanned,
+        inactive: N(c.inactive) + N(c.long_term_inactive), churnWatch: retention ? retention.atRisk : null, rebooking: N(c.rebooking), scanned: scan.scanned,
       } : null,
       // the reconciliation the screenshot could not show: every scanned profile is in exactly one state
       breakdown: scan ? {
@@ -305,7 +306,7 @@ export class CustomerIntelligenceCenter {
         dueMultiplier: t.dueMultiplier, inactiveMultiplier: t.inactiveMultiplier, visitStatuses: VISIT,
       },
       duplicateReview: { lastScanAt: iso(dup.last), open: dup.last ? N(dup.open) : null },
-      retention: await this.retentionCounts(ctx),
+      retention,
       scan, freshness: await this.freshness(T),
     };
   }
@@ -356,7 +357,9 @@ export class CustomerIntelligenceCenter {
     else if (status === 'not_scanned') where.push(sql`sn.customer_id is null`);
     else if (status === 'inactive_all') where.push(sql`sn.status in ('inactive', 'long_term_inactive')`);
     else if (status !== 'all') where.push(sql`sn.status = ${status}`);
-    if (flag === 'churn_watch') where.push(sql`sn.churn_watch`);
+    // Kevin (Nov 12 2026): churn is judged by Customer Retention only — the 'churn_watch' flag lists Retention's at-risk customers
+    // (its own base(): the same rule and salon window as the Customer Retention page), never the assistant's churn rule
+    if (flag === 'churn_watch') { const k = await this.ret.window(ctx); where.push(sql`c.id in (${this.ret.base(ctx, k)} select b.id from b where b.segment = 'at_risk')`); }
     if (flag === 'rebooking') where.push(sql`sn.rebooking`);
     if (flag === 'upcoming') where.push(sql`sn.has_upcoming`);
     if (flag === 'duplicate') where.push(sql`exists (select 1 from customer_duplicate_groups g where g.tenant_id = ${T} and c.id = any(g.member_ids) and g.status = any(${OPEN_DUP}::text[]))`);
@@ -398,7 +401,7 @@ export class CustomerIntelligenceCenter {
         scanned: r.status != null, status: r.status ?? null, neverServed: r.status === 'insufficient_history' && N(r.completed_visits) === 0,
         completedVisits: r.status == null ? null : N(r.completed_visits), lastVisitAt: iso(r.last_visit_at), daysSinceLast: r.days_since_last == null ? null : N(r.days_since_last),
         typicalIntervalDays: r.typical_interval_days == null ? null : N(r.typical_interval_days), nextAppointmentDate: r.next_appointment_date ? String(r.next_appointment_date).slice(0, 10) : null,
-        churnWatch: !!r.churn_watch, rebooking: !!r.rebooking, rebookingReason: r.rebooking_reason ?? null, evidence: (r.evidence ?? []) as string[], computedAt: iso(r.computed_at),
+        churnWatch: retention.get(String(r.id))?.segment === 'at_risk', rebooking: !!r.rebooking, rebookingReason: r.rebooking_reason ?? null, evidence: (r.evidence ?? []) as string[], computedAt: iso(r.computed_at),
         lastTechnician: r.last_technician ? String(r.last_technician).trim() || null : null, preferredTechnician: r.preferred_technician ? String(r.preferred_technician).trim() || null : null,
         loyalty: r.points_balance == null ? null : { points: N(r.points_balance), tier: r.loyalty_tier ?? null }, member: !!r.member, duplicate: !!r.duplicate,
       })),

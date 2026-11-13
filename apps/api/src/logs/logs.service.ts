@@ -89,7 +89,7 @@ export class LogsService implements LogSink {
     try { await this.repo.recordExport(ctx, { from, to, rows: rows.length, total, filters }); }
     catch { throw withCode(new ExportUnavailableError('Log export is unavailable: its audit row could not be written, so no file was made'), 'SERVICE_UNAVAILABLE'); }
     const line = (cells: unknown[]) => cells.map(logCsvCell).join(',');
-    const out = [line(['Device and integration logs (sanitized)']), line(['Generated', new Date(this.now()).toISOString()]), line(['Period', `${from} to ${to} (UTC days, as on the page)`]),
+    const out = [line(['Device and integration logs (sanitized)']), line(['Generated', new Date(this.now()).toISOString()]), line(['Period', `${from} to ${to} (the salon's calendar days, as on the page)`]),
       line(['Category', filters.category]), line(['Severity', filters.severity]), line(['Source', filters.source]), line(['Search', filters.search]),
       line(['Redaction', 'metadata omitted; e-mail addresses, long numbers (last 4 digits kept) and secret / token values removed from messages']),
       line(['Rows', String(rows.length)]), line(['Matching events', String(total)]), line(['Truncated', total > rows.length ? `yes (first ${rows.length} newest)` : 'no']), '',

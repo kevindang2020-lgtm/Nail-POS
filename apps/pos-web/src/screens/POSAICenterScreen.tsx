@@ -110,8 +110,8 @@ export function POSAICenterScreen() {
       <div className="vh flex justify-between gap-3 flex-col sm:flex-row" style={{ display: 'flex', alignItems: 'flex-start' }}><div><h1>{t('pos.ai_center')}</h1>
         <div className="sub mb-3">{t('pos.manage_ai_assistants_automations_and_intelligence_1tgd')}</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/plans')} data-testid="aic-plans">{t('pos.view_plans_bundles')}</button>
-          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setTick((x) => x + 1)} data-testid="aic-refresh">{t('aic.refresh')}</button>
-          <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck} data-testid="aic-run-check">{checking ? t('aic.checking') : t('aic.check')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setTick((x) => x + 1)} data-testid="aic-refresh">{t('aicen.refresh')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck} data-testid="aic-run-check">{checking ? t('aicen.checking') : t('aicen.check')}</button>
           <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setDlg({ kind: 'history' })} data-testid="aic-history">{t('aic.history')}</button>
         </div></div>
 

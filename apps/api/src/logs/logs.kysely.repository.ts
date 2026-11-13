@@ -1,5 +1,6 @@
 // logs.kysely.repository.ts — production adapter over tenant_event_logs. Tenant + branch-or-null scoped on read.
-import { escapeLike } from '@aipowersalon/database';   // Security Deep Scan D8: wildcard-escaped LIKE input
+import { escapeLike, branchTimeZone } from '@aipowersalon/database';   // Security Deep Scan D8: wildcard-escaped LIKE input
+import { localDateTimeToEpochMs, addDays as addYmdDays } from '@aipowersalon/date-time';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { LogsContext, LogWriteCtx, LogEntryInput } from './logs.dto';
@@ -49,12 +50,16 @@ export class KyselyLogsRepository implements LogsRepositoryPort {
    *  Device Logs page is no longer empty while no device writes to tenant_event_logs. No second log store; nothing copied. */
   async page(ctx: LogsContext, f: LogPageFilters): Promise<{ rows: StoredLog[]; total: number; summary: LogSummary }> {
     const T = ctx.tenantId; const br = ctx.branchId || null;
-    const lo = f.from ? `${f.from}T00:00:00Z` : null; const hi = f.to ? `${f.to}T23:59:59.999Z` : null;
+    // the From / To dates are the SALON's calendar days (the branch time zone — the salon default when no location is chosen),
+    // not UTC days: an evening event no longer lands on tomorrow's page
+    const tz = (f.from || f.to) ? await branchTimeZone(this.db, T, br) : 'UTC';
+    const lo = f.from ? new Date(localDateTimeToEpochMs(f.from, '00:00', tz)).toISOString() : null;
+    const hi = f.to ? new Date(localDateTimeToEpochMs(addYmdDays(f.to, 1), '00:00', tz) - 1).toISOString() : null;
     // the three table aliases of this UNION, as literal column refs (never request data)
     const COLS = { a: { b: sql.ref('a.branch_id'), c: sql.ref('a.created_at') }, e: { b: sql.ref('e.branch_id'), c: sql.ref('e.created_at') }, l: { b: sql.ref('l.branch_id'), c: sql.ref('l.created_at') } } as const;
     const scope = (a: keyof typeof COLS) => br ? sql`AND (${COLS[a].b} = ${br} OR ${COLS[a].b} IS NULL)` : sql``;
     const range = (a: keyof typeof COLS) => sql`${lo ? sql`AND ${COLS[a].c} >= ${lo}` : sql``} ${hi ? sql`AND ${COLS[a].c} <= ${hi}` : sql``}`;
-    const devSev = (col: any) => sql`CASE WHEN ${col} ~* '(revoked|failed|error|offline|expired|disabled)' THEN 'warning' ELSE 'info' END`;
+    const devSev = (col: any) => sql`CASE WHEN ${col} ~* '(revoked|failed|error|offline|disconnect|expired|disabled)' THEN 'warning' ELSE 'info' END`;
     const all = sql`
       SELECT e.id::text AS id, e.category, e.severity, e.source, e.message, e.correlation_id, e.related_id, e.status, e.metadata, e.created_at
         FROM tenant_event_logs e WHERE e.tenant_id = ${T} ${scope('e')} ${range('e')}

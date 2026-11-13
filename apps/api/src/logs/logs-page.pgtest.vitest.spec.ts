@@ -171,3 +171,20 @@ describe('Device Integration Logs 09 — retry queue visibility', () => {
   });
 });
 async function auditCount(): Promise<number> { return Number((await q(sql`select count(*)::int as n from audit_events where action = 'logs_exported'`))[0].n); }
+
+describe('Device & Integration Logs — salon days and disconnects (leftovers fixed Nov 13 2026)', () => {
+  const T2 = 'c8460000-0000-4000-8000-0000000000a1', B2 = 'c8460000-0000-4000-8000-0000000000a2';
+  const ctx2 = { tenantId: T2, branchId: B2, userId: U, role: 'OWNER', permissions: ['pos.logs.view'] };
+  it('LG-10 From / To are the salon\'s calendar days (branch time zone), not UTC days; a disconnected device is a warning', async () => {
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T2}, 'W', 'West', 'lg-846w', 'LG846W', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B2}, ${T2}, 'West', 'America/Los_Angeles')`);
+    // 21:30 on Nov 11 in Los Angeles = 05:30 UTC on Nov 12
+    await q(sql`insert into tenant_event_logs (tenant_id, branch_id, category, severity, source, message, created_at) values (${T2}, ${B2}, 'integration', 'info', 'webhook', 'late evening delivery', '2026-11-12T05:30:00Z')`);
+    await q(sql`insert into audit_logs (tenant_id, branch_id, action_type, entity_type, entity_id, created_at) values (${T2}, ${B2}, 'customer_display_disconnected', 'customer_display', ${B2}, '2026-11-11T20:00:00Z')`);
+    const nov11 = await svc.query(ctx2, { page: 1, pageSize: 10, from: '2026-11-11', to: '2026-11-11' });
+    expect(nov11.logs.map((l) => l.message)).toEqual(['late evening delivery', 'customer display disconnected']);
+    expect((await svc.query(ctx2, { page: 1, pageSize: 10, from: '2026-11-12', to: '2026-11-12' })).logs).toEqual([]);
+    expect(nov11.logs.find((l) => l.message === 'customer display disconnected')!.severity).toBe('warning');
+    expect(nov11.summary!.warnings).toBe(1);
+  });
+});

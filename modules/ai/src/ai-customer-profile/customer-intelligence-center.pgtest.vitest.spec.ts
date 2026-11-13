@@ -81,7 +81,11 @@ describe('Customer Intelligence — the six cards reconcile', () => {
     const old = aggregateTenant(items, new Date(clock).toISOString(), DEFAULT_TUNABLES);
     const s: any = await ci.summary(ctx());
     expect(s.breakdown.states).toEqual({ active: old.active, rebooking_soon: old.rebookingSoon, due_for_return: old.dueForReturn, inactive: old.inactive, long_term_inactive: old.longTermInactive, insufficient_history: old.insufficientHistory });
-    expect(s.cards).toMatchObject({ churnWatch: old.coarseChurnWatch, rebooking: old.rebookingOpportunities, withUpcoming: old.withUpcomingAppointment });
+    expect(s.cards).toMatchObject({ rebooking: old.rebookingOpportunities, withUpcoming: old.withUpcomingAppointment });
+    // Kevin (Nov 12 2026): churn is judged by Customer Retention only — the card equals Retention's at-risk count
+    const ret: any = await new RetentionRepository(db).summary(ctx());
+    expect(s.cards.churnWatch).toBe(Number(ret.segments.at_risk));
+    expect(s.cards.churnWatch).toBeGreaterThan(0);
   });
   it('CI-03 Refresh inside 60 s reuses the last scan; later it rescans; a disabled assistant is refused', async () => {
     expect((await ci.scan(ctx()) as any).reused).toBe(true);
@@ -99,7 +103,11 @@ describe('Customer Intelligence — list, search, dates, pages', () => {
     expect(await ids({ status: 'never_served' })).toEqual([C.never]);
     expect(await ids({ status: 'active' })).toEqual([C.booked, C.regular].sort());
     expect(await ids({ flag: 'upcoming' })).toEqual([C.booked]);
-    expect((await ci.customers(ctx(), { flag: 'churn_watch' }, { fullContact: false })).items.every((i: any) => i.churnWatch)).toBe(true);
+    const cw = (await ci.customers(ctx(), { flag: 'churn_watch' }, { fullContact: false })).items;
+    expect(cw.length).toBeGreaterThan(0);
+    expect(cw.every((i: any) => i.churnWatch && i.retention?.segment === 'at_risk')).toBe(true);
+    const all = (await ci.customers(ctx(), {}, { fullContact: false })).items;
+    expect(all.filter((i: any) => i.churnWatch).map((i: any) => i.id).sort()).toEqual(cw.map((i: any) => i.id).sort());
   });
   it('LS-02 search: name without accents, phone in any format, technician and service from completed visits', async () => {
     const ids = async (qq: string) => (await ci.customers(ctx(), { q: qq }, { fullContact: false })).items.map((i: any) => i.id);
