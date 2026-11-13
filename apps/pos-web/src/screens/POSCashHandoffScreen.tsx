@@ -144,7 +144,8 @@ export function POSCashHandoffScreen() {
                   <td className="t-opt">{r.countedBy ?? '—'}<span className="fk-li-s">{when(r.resolvedAt ?? r.countedAt ?? r.submittedAt)}</span></td>
                   <td className="fn-acts">
                     {perms.reopen && r.status === 'reconciled' ? <button type="button" className="fk-btn sm" onClick={() => setReopening(r)} data-testid="reopen">{tx('ch.reopen')}</button> : null}
-                    {perms.count && r.status !== 'cancelled' && r.status !== 'reconciled' ? <button type="button" className="fk-btn sm" onClick={() => setCounting({ techId: r.technicianId, date: r.businessDate! })} data-testid="count">{counted ? tx('ch.recount') : tx('ch.count')}</button> : null}
+                    {perms.count && r.status !== 'cancelled' && r.status !== 'reconciled' ? <button type="button" className="fk-btn sm" onClick={() => setCounting({ techId: r.technicianId, date: r.businessDate! })} data-testid="count">{counted ? tx('ch.recount') : tx('ch.count')}</button>
+                      : perms.count ? <button type="button" className="fk-btn sm" disabled title={tx(r.status === 'cancelled' ? 'ch.why.cancelled' : 'ch.why.closed')} aria-label={tx(r.status === 'cancelled' ? 'ch.why.cancelled' : 'ch.why.closed')} data-testid="count-blocked">{tx('ch.count')}</button> : null}
                     {perms.resolve && review ? <button type="button" className="fk-btn sm" onClick={() => setResolving(r)} data-testid="review">{tx('finance.review')}</button> : null}
                     <button type="button" className="fk-btn ghost sm" onClick={() => setDetail({ techId: r.technicianId, date: r.businessDate! })}>{tx('finance.view')}</button>
                   </td>
@@ -171,7 +172,8 @@ function UnitDialog({ techId, date, tick, perms, onClose, onCount, onResolve, on
       footer={u ? <>
         {perms.resolve && u.status === 'discrepancy' ? <button type="button" className="fk-btn" onClick={() => onResolve(u)}>{tx('ch.resolve')}</button> : null}
         {perms.reopen && u.status === 'reconciled' ? <button type="button" className="fk-btn" onClick={() => onReopen(u)} data-testid="unit-reopen">{tx('ch.reopen')}</button> : null}
-        {perms.count && u.status !== 'cancelled' && u.status !== 'reconciled' ? <button type="button" className="fk-btn" onClick={onCount}>{u.countedCents != null ? tx('ch.recount') : tx('ch.count')}</button> : null}
+        {perms.count && u.status !== 'cancelled' && u.status !== 'reconciled' ? <button type="button" className="fk-btn" onClick={onCount}>{u.countedCents != null ? tx('ch.recount') : tx('ch.count')}</button>
+          : perms.count ? <><button type="button" className="fk-btn" disabled data-testid="unit-count-blocked">{tx('ch.count')}</button><span className="fk-hint" data-testid="unit-count-why">{tx(u.status === 'cancelled' ? 'ch.why.cancelled' : 'ch.why.closed')}</span></> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !u ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="fn-statusline"><span className={'fk-chip ' + (STATE_TONE[u.state] ?? 'mut')}>{stateLbl(u.state)}</span><span className="fk-hint">{tx('ch.stateNote.' + u.state)}</span></div>
@@ -197,6 +199,13 @@ function UnitDialog({ techId, date, tick, perms, onClose, onCount, onResolve, on
             {e.denominations?.length ? <div className="fk-li-s">{e.denominations.map((x: any) => `${fmtMoney(x.denominationCents)} × ${x.quantity}`).join(' · ')}</div> : null}</li>)}</ul>}
         {d.data.drawerMovements.length ? <><h3 className="fk-h3">{tx('ch.drawerTitle')}</h3><ul className="fn-notes">{d.data.drawerMovements.map((m: any) => <li key={m.id}><span className="fk-li-s">{when(m.at)} · {m.register}</span><div>{tx('ch.drawerIn', { a: fmtMoney(m.amountCents) })}{m.voided ? ' · ' + tx('ch.voided') : ''}</div></li>)}</ul></> : null}
         {d.data.audit?.length ? <><h3 className="fk-h3">{tx('ch.auditTitle')}</h3><ul className="fn-notes">{d.data.audit.slice(0, 8).map((a: any, i: number) => <li key={i}><span className="fk-li-s">{when(a.at)} · {a.actor ?? '—'}</span><div>{codeLabel('ch.audit.' + a.action, a.action)}</div></li>)}</ul></> : null}
+        {/* extras End-of-Day Cash 02: the shift that day and this technician's earlier hand-offs (server rows; read only) */}
+        {Array.isArray(d.data.shifts) ? <><h3 className="fk-h3">{tx('ch.shiftsTitle')}</h3>{d.data.shifts.length ? <ul className="fn-notes" data-testid="unit-shifts">{d.data.shifts.map((x: any) => <li key={x.id}>{when(x.start)} – {x.end ? when(x.end) : tx('ch.shiftOpen')} <span className="fk-li-s">{codeLabel('ch.shift.' + x.status, x.status)}</span></li>)}</ul>
+          : <div className="fk-hint" data-testid="unit-no-shift">{tx('ch.noShift')}</div>}</> : null}
+        {Array.isArray(d.data.priorHandoffs) ? <><h3 className="fk-h3">{tx('ch.priorTitle')}</h3>{d.data.priorHandoffs.length ? <table className="fk-table" data-testid="unit-prior"><thead><tr><th>{tx('ch.col.date')}</th><th className="num">{tx('ch.col.expected')}</th><th className="num">{tx('ch.col.counted')}</th><th className="num">{tx('ch.col.difference')}</th><th>{tx('pos.status')}</th></tr></thead>
+          <tbody>{d.data.priorHandoffs.map((p: any) => <tr key={p.businessDate} data-testid="unit-prior-row"><td>{ymdText(p.businessDate)}</td><td className="num">{fmtMoney(p.expectedCents)}</td><td className="num">{p.countedCents != null ? fmtMoney(p.countedCents) : tx('ch.notCounted')}</td>
+            <td className={'num ' + (p.differenceCents == null ? '' : p.differenceCents < 0 ? 'bad' : p.differenceCents > 0 ? 'warn' : 'ok')}>{signed(p.differenceCents)}</td><td><span className={'fk-chip ' + (STATE_TONE[p.state] ?? 'mut')}>{stateLbl(p.state)}</span></td></tr>)}</tbody></table>
+          : <div className="fk-hint" data-testid="unit-no-prior">{tx('ch.noPrior')}</div>}</> : null}
         <div className="fk-hint">{tx('ch.custodyNote')}</div>
       </>}
     </FitDialog>
@@ -219,7 +228,11 @@ function CountDialog({ techId, date, today, technicians, onClose, onSaved }: { t
   const total = cents == null ? null : mode === 'add' ? prior + cents : cents;
   const estimate = total == null || !unit ? null : total - unit.expectedCents;
   const needsNote = estimate != null && estimate !== 0 && !notes.trim();
-  const valid = !!unit && cents != null && cents >= 0 && (mode === 'replace' || cents > 0) && !needsNote;
+  // extras End-of-Day Cash 08 (round 10): a closed hand-off (reconciled / cancelled) is never counted here — it must be reopened
+  // first — and the save button always says WHY it is not available (the same conditions that disable it)
+  const closed = !!unit && (unit.status === 'reconciled' || unit.status === 'cancelled');
+  const valid = !!unit && !closed && cents != null && cents >= 0 && (mode === 'replace' || cents > 0) && !needsNote;
+  const why = busy ? 'saving' : !unit ? null : closed ? (unit.status === 'cancelled' ? 'cancelled' : 'closed') : cents == null ? 'amount' : cents < 0 ? 'amount' : mode === 'add' && cents <= 0 ? 'addPositive' : needsNote ? 'note' : null;
   const submit = async () => {
     if (!unit || cents == null) return;
     const body = { countedCents: cents, mode, date: day, notes: notes.trim() || undefined, denominations: useSheet ? DENOMS.filter((d) => Number(qty[d] || 0) > 0).map((d) => ({ denominationCents: d, quantity: Math.floor(Number(qty[d])) })) : null,
@@ -236,7 +249,8 @@ function CountDialog({ techId, date, today, technicians, onClose, onSaved }: { t
   return (
     <FitDialog wide title={unit ? tx('ch.countTitle', { who: unit.technician ?? '—' }) : tx('ch.record')} subtitle={unit ? ymdText(unit.businessDate) : tx('ch.recordSub')} onClose={onClose} busy={busy} testId="count-dialog"
       footer={<><button type="button" className="fk-btn" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
-        <button type="button" className="fk-btn primary" onClick={submit} disabled={!valid || busy} data-testid="save-count">{busy ? tx('pos.saving_2') : mode === 'add' ? tx('ch.saveAdd') : tx('ch.saveCount')}</button></>}>
+        {why ? <span className="fk-hint" data-testid="save-why">{tx('ch.why.' + why)}</span> : null}
+        <button type="button" className="fk-btn primary" onClick={submit} disabled={!valid || busy} title={why ? tx('ch.why.' + why) : undefined} data-testid="save-count">{busy ? tx('pos.saving_2') : mode === 'add' ? tx('ch.saveAdd') : tx('ch.saveCount')}</button></>}>
       {!techId ? <div className="ch-pick">
         <label className="fk-field"><span>{tx('ch.technician')}</span><select className="fk-select" value={who} onChange={(e) => setWho(e.target.value)} data-testid="pick-tech"><option value="">{tx('ch.chooseTech')}</option>{technicians.filter((x) => x.active).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
         <DateField label={tx('ch.col.date')} value={day} onChange={setDay} today={today ?? day} max={today} testId="pick-date" required />

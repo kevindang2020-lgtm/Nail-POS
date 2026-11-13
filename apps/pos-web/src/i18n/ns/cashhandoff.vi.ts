@@ -153,4 +153,19 @@ export const CASHHANDOFF_VI: Record<string, string> = {
   'ch.state.reopened': 'Đã mở lại', // DRAFT — Kevin reviews
   'ch.stateNote.reopened': 'Quản lý đã mở lại lần đếm đã đóng; đang chờ đếm lại.', // DRAFT — Kevin reviews
   'ch.audit.tech_cash_handoff_reopened': 'Đã mở lại lần đếm đã đóng', // DRAFT — Kevin reviews
+  'ch.why.saving': 'Đang lưu lần đếm trước — vui lòng chờ.', // DRAFT — Kevin reviews
+  'ch.why.closed': 'Lần bàn giao này đã đóng — mở lại trước khi đếm lại.', // DRAFT — Kevin reviews
+  'ch.why.cancelled': 'Lần bàn giao này đã hủy — không thể đếm.', // DRAFT — Kevin reviews
+  'ch.why.amount': 'Nhập số tiền đã đếm.', // DRAFT — Kevin reviews
+  'ch.why.addPositive': 'Bàn giao một phần phải lớn hơn $0.00.', // DRAFT — Kevin reviews
+  'ch.why.note': 'Số đếm khác số dự kiến — ghi lý do vào ghi chú.', // DRAFT — Kevin reviews
+  'ch.shiftsTitle': 'Ca làm ngày đó', // DRAFT — Kevin reviews
+  'ch.shiftOpen': 'vẫn đang trong ca', // DRAFT — Kevin reviews
+  'ch.noShift': 'Không có ca làm nào được ghi ngày đó.', // DRAFT — Kevin reviews
+  'ch.priorTitle': 'Các lần bàn giao trước', // DRAFT — Kevin reviews
+  'ch.noPrior': 'Thợ này chưa có lần bàn giao nào trước đó.', // DRAFT — Kevin reviews
+  'ch.shift.completed': 'Đã xong', // DRAFT — Kevin reviews
+  'ch.shift.active': 'Đang trong ca', // DRAFT — Kevin reviews
+  'ch.shift.scheduled': 'Đã lên lịch', // DRAFT — Kevin reviews
+  'ch.shift.cancelled': 'Đã hủy', // DRAFT — Kevin reviews
 };

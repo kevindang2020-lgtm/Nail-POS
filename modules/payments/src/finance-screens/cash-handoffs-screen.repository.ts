@@ -185,7 +185,16 @@ export class CashHandoffsScreenRepository {
     const movements = r.handoff_id ? (await sql<any>`select m.id, m.direction, m.amount_cents, m.register_id, m.created_at, m.voided_at, to_char(m.business_date, 'YYYY-MM-DD') as business_date from cash_drawer_movements m where m.tenant_id = ${T} and m.source_type = 'tech_cash_handoff' and m.source_id = ${String(r.handoff_id)}::uuid order by m.created_at desc`.execute(this.db)).rows : [];
     const auditRows = (await sql<any>`select a.action, a.created_at, a.role, a.metadata, coalesce(u.full_name, u.email) as actor from owner_audit_log a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.entity_type = 'tech_cash_handoff' and a.entity_id = ${technicianId} and a.metadata->>'businessDate' = ${businessDate} order by a.created_at desc limit 50`.execute(this.db)).rows;
+    // extras End-of-Day Cash 02 (round 10): the technician's shift(s) that salon day (technician_shifts — the time clock's shift
+    // rows) and the PRIOR hand-offs (the same row model, the five days before this one, newest first) with their counts and
+    // variance — so a count is read against the person's own history. Read only.
+    const shifts = (await sql<{ id: string; start_time: Date | string | null; end_time: Date | string | null; status: string }>`select sh.id, sh.start_time, sh.end_time, sh.status from technician_shifts sh
+      where sh.tenant_id = ${T} and sh.technician_id = ${technicianId}::uuid and sh.shift_date = ${businessDate}::date order by sh.start_time nulls last, sh.id`.execute(this.db)).rows;
+    const prior = (await sql<any>`select ${CashHandoffsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx, tz)}) a where a.technician_id = ${technicianId}::uuid and a.business_date < ${businessDate}::date and ${this.scope(ctx)}
+      order by a.business_date desc limit 5`.execute(this.db)).rows.map((x: any) => this.row(x));
     return {
+      shifts: shifts.map((x) => ({ id: String(x.id), start: iso(x.start_time as never), end: iso(x.end_time as never), status: String(x.status) })),
+      priorHandoffs: prior,
       unit, denominations: Array.isArray(r.denominations_json) ? r.denominations_json : (r.denominations_json ? JSON.parse(String(r.denominations_json)) : null),
       lines: lines.map((l: any) => ({ id: String(l.id), ticketId: String(l.ticket_id), ticketNumber: l.ticket_number ?? null, ticketStatus: l.ticket_status ?? null, ticketTotalCents: N(l.ticket_total_cents), tenders: N(l.tenders), amountCents: N(l.amount_cents), confirmedAt: iso(l.confirmed_at), confirmedBy: l.confirmed_by ?? null, note: l.notes ?? null,
         customer: l.customer_id ? { id: String(l.customer_id), name: l.customer_name ?? null, phone: canContact ? showPhone(l.customer_phone) : maskPhone(l.customer_phone) } : null })),
