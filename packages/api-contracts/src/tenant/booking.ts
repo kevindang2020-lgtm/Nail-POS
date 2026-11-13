@@ -112,6 +112,38 @@ export interface BookingOpeningsResponse {
   limit: number;
 }
 
+// ── booking200 addendum §08 (round 12): the Booking page's six KPI cards, each from its real source ──
+/** 'ok' = a real value; 'not_today' = the card only means something for the branch's today (Arriving soon, Waitlist,
+ *  Available now) and another date is on the board; 'unavailable' = its source could not be read — the card shows a
+ *  stale/error state, NEVER a zero. */
+export type BookingKpiState = 'ok' | 'not_today' | 'unavailable';
+export interface BookingKpiValue { state: BookingKpiState; value: number | null }
+/** GET /pos/booking/kpi-cards?date=YYYY-MM-DD&arrivingWindowMinutes=N — tenant and branch from the session. */
+export interface BookingKpiCards {
+  /** the board's date (branch-local YYYY-MM-DD) and the branch's today */
+  date: string; today: string; isToday: boolean; timeZone: string;
+  /** when the server computed these (ISO) */
+  asOf: string;
+  /** the Arriving-soon window actually used (default 60, bounded 5–240) */
+  arrivingWindowMinutes: number;
+  /** canonical appointments of the date (one per appointment, never per service line), cancelled / no-show excluded */
+  appointments: BookingKpiValue & { awaitingConfirmation: number | null; confirmed: number | null; inSalon: number | null; completed: number | null };
+  /** booked / confirmed appointments starting within the window from now — today only */
+  arrivingSoon: BookingKpiValue;
+  /** walk-in appointments of the date (not cancelled / no-show) + Customer Queue walk-in visits checked in that day that
+   *  are not an appointment's queue entry */
+  walkIns: BookingKpiValue & { fromAppointments: number | null; fromQueue: number | null };
+  /** guests WAITING in the live Customer Queue right now — today only */
+  waitlist: BookingKpiValue;
+  /** active technicians inside a working window now and not in a chair-holding appointment — today only; workingCount =
+   *  technicians scheduled to work on the date (any date) */
+  availableNow: BookingKpiValue & { workingCount: number | null };
+  /** projected booked service subtotal in integer cents: the price on each appointment's service lines (incl. add-ons and
+   *  approved price overrides) of non-cancelled, non-no-show appointments; excludes tax, tips, surcharges, discounts and
+   *  deposits. "Booked", never "collected". */
+  bookedRevenue: BookingKpiValue & { basis: 'booked_service_subtotal' };
+}
+
 /** AI Calendar · AI booking provenance & exception review (Extras · AI Calendar 10): AI-origin failures, incomplete
  *  verification and source attribution that does not hold up, each with its stored source ids — read only, redacted */
 export interface AiCalendarProvenanceReview {

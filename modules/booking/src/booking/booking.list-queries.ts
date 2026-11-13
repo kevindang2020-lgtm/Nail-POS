@@ -12,5 +12,7 @@ export const BookingControllerListQueries = {
   technicianPage: { filters: { date: { type: 'date' }, serviceIds: { type: 'id', multi: true }, working: { type: 'text' }, status: { type: 'text' }, skill: { type: 'text' }, locate: { type: 'id' } }, limitParams: ['pageSize'], search: { params: ['search'], maxLength: 80 }, params: ['page'] },
   openings: { filters: { date: { type: 'date' }, serviceIds: { type: 'id', multi: true } }, limitParams: ['limit'], search: false, params: ['offset'] },
   changes: { filters: { since: { type: 'date' } }, search: false },
+  // booking200 §08 (round 12): the KPI strip — one date, the Arriving-soon window (minutes, bounded 5–240 by the service)
+  kpiCards: { filters: { date: { type: 'date' } }, search: false, params: ['arrivingWindowMinutes'] },
   dayGrid: { filters: { date: { type: 'date' }, technicianIds: { type: 'id', multi: true }, status: { type: 'text' }, source: { type: 'text' }, serviceCategory: { type: 'text' }, conflictOnly: { type: 'text' }, depositStatus: { type: 'text' } }, search: { params: ['search'] } },
 } satisfies Record<string, ListQuerySpec>;

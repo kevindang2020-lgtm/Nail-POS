@@ -11,7 +11,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuard
 import { BookingService, ForbiddenError, ValidationError, ConflictError } from './booking.service';
 import type { BookingContext } from './booking.repository';
 import type { BookingFilters, PBAvailabilityQuery } from './booking.dto';
-import type { BookingTechnicianPage, BookingTechnicianQuery, BookingOpeningsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { BookingTechnicianPage, BookingTechnicianQuery, BookingOpeningsResponse, BookingKpiCards } from '@aipowersalon/api-contracts/tenant';
 import { ListQueries } from '@aipowersalon/database';
 import { BookingControllerListQueries } from './booking.list-queries';
 
@@ -54,6 +54,10 @@ export class BookingController {
 
   @Get('state') @RequirePermission('pos.booking.view') state(@Req() r: any, @Query() q: any) { return run(() => this.svc.getState(ctxFrom(r), filtersFrom(q))); }
   @Get('kpis') @RequirePermission('pos.booking.view') kpis(@Req() r: any) { return run(() => this.svc.getKpis(ctxFrom(r))); }
+  // booking200 addendum §08 (round 12): the six KPI cards for the board's date, each from its real source (read-only)
+  @Get('kpi-cards') @RequirePermission('pos.booking.view') kpiCards(@Req() r: any, @Query() q: any): Promise<BookingKpiCards> {
+    return run(() => this.svc.kpiCards(ctxFrom(r), { date: q.date ? String(q.date) : undefined, arrivingWindowMinutes: q.arrivingWindowMinutes != null ? Number(q.arrivingWindowMinutes) : undefined }));
+  }
   @Get('appointments') @RequirePermission('pos.booking.view') list(@Req() r: any, @Query() q: any) { return run(() => this.svc.appointments(ctxFrom(r), filtersFrom(q))); }
   // mandate §31: durable Idempotency-Key (api_idempotency) — a network retry of a "first available" booking used to be able to
   // book a SECOND technician (the EXCLUDE constraint only stops the same technician / time). The POS sends a key per intent.

@@ -1,4 +1,5 @@
 import SourceBadge from './SourceBadge';
+import { BookingKpiStrip } from './booking/BookingKpiStrip';   // booking200 §08 (round 12): the six KPI cards
 import { ImeSafeInput } from '../components/ImeSafeInput';
 import { viIncludes } from '@aipowersalon/api-contracts';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -1355,37 +1356,7 @@ export function POSBookingScreen() {
       setBest((prev) => (offset > 0 && prev ? { ...r, openings: [...prev.openings, ...r.openings] } : r));
     } catch (e: any) { setBestNote(e?.message || tx('pos.opening_search_failed')); }
   };
-  const nonCancelledAppts = s.bookings.items.filter((a) => !['cancelled', 'no_show'].includes(a.status));
-  // whole-day numbers from the SERVER (the board holds one page of technicians and one page of the list)
-  const apptCount = Math.max(0, k.totalBookingsToday - k.cancelledBookings - k.noShowBookings);
-  const todayDateStr = deviceToday();
-  const currentBoardDate = calDate || grid?.date || s.dateRange.from || todayDateStr;
-  const isDateToday = currentBoardDate === todayDateStr;
-  const curMin = new Date().getHours() * 60 + new Date().getMinutes();
-
-  void curMin;
-  const arrivingSoonCount = isDateToday ? ((k as { arrivingSoonBookings?: number }).arrivingSoonBookings ?? 0) : 0;
-  const walkinCount = agg?.walkInsToday ?? nonCancelledAppts.filter((a) => a.source === 'walk_in').length;
-  const waitlistCount = waitlist ? waitlist.length : null;   // unknown → "—" (it used to show a made-up 4)
-
-  // the whole roster's "free right now" (server), else the working count for another day
-  const availableNowCount = isDateToday ? (techPageData?.availableNowCount ?? 0) : (techPageData?.workingCount ?? 0);
-
-  const bookedRevenueDisplay = agg?.bookedRevenueCents != null
-    ? money(agg.bookedRevenueCents)
-    : money(nonCancelledAppts.reduce((sum, a) => {
-        const lineTotal = (a.services || []).reduce((ls, sv) => ls + ((sv as any).priceCents || (sv as any).price || 0), 0);
-        return sum + (lineTotal || (a as any).priceCents || 0);
-      }, 0));
-
-  const metricCards: { label: string; value: string; sub: React.ReactNode; note?: React.ReactNode; onClick?: () => void }[] = [
-    { label: tx('pos.appointments'), value: String(apptCount), sub: <span>{tx('pos.appointments_today')}</span>, onClick: () => setStatus('') },
-    { label: tx('pos.arriving_soon_2'), value: isDateToday ? String(arrivingSoonCount) : '—', sub: isDateToday ? tx('pos.next_60_min') : tx('pos.future_date'), onClick: () => setStatus('confirmed') },
-    { label: tx('pos.walk_ins'), value: String(walkinCount), sub: tx('pos.walk_in_visits'), onClick: () => setSource('walk_in') },
-    { label: tx('pos.waitlist'), value: waitlistCount == null ? '—' : String(waitlistCount), sub: tx('pos.active_requests'), onClick: () => nav('/queue') },
-    { label: tx('pos.available_now_2'), value: isDateToday ? String(availableNowCount) : tx('pos.availablenowcount_staff', { availableNowCount: String(availableNowCount) }), sub: <span>{grid ? tx('pos.from_live_schedule') : (isDateToday ? tx('pos.ready_for_work') : tx('pos.scheduled_staff'))}</span>, note: <span>{tx('pos.tech_utilization')}</span> },
-    { label: tx('pos.booked_revenue'), value: bookedRevenueDisplay, sub: tx('pos.projected_value') },
-  ];
+  // the six KPI cards are server-computed per card (BookingKpiStrip ← GET /pos/booking/kpi-cards, booking200 §08)
 
   const ACTIVE_ST = ['booked', 'confirmed', 'arrived', 'checked_in', 'waiting', 'in_service'];
   // the technicians on the board's page (server-paged) — never the whole roster as one list
@@ -1521,24 +1492,12 @@ export function POSBookingScreen() {
           calendar gets the full viewport — see BOOKING_VIEWALL_KPI_GAP_REPORT.md §1. */}
       {/* 6 Metric Cards (Section B2 of specifications) */}
       {fs !== 'all' ? (
-        <div className="kpis" data-module-id="booking-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-          {metricCards.map((c) => (
-            <div
-              className="kpi"
-              key={c.label}
-              onClick={c.onClick}
-              role={c.onClick ? 'button' : undefined}
-              tabIndex={c.onClick ? 0 : undefined}
-              style={{ background: '#FFFDF8', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', cursor: c.onClick ? 'pointer' : 'default', transition: 'box-shadow 0.15s' }}
-            >
-              <div className="l" style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{c.label}</div>
-              <div className="v" style={{ fontSize: 22, fontWeight: 800, color: '#1f1b16', margin: '4px 0 2px' }}>{c.value}</div>
-              <div className="s" style={{ fontSize: 11, color: 'var(--muted)' }}>
-                {c.sub}
-                {c.note ? <span style={{ display: 'none' }}>{c.note}</span> : null}
-              </div>
-            </div>
-          ))}
+        <div className="kpis" data-module-id="booking-kpis" style={{ display: 'block', margin: '0 0 16px' }}>
+          <BookingKpiStrip
+            date={calDate || grid?.date || s.dateRange.from || undefined}
+            refreshKey={s}
+            onOpen={{ appointments: () => setStatus(''), arrivingSoon: () => setStatus('confirmed'), walkIns: () => setSource('walk_in'), waitlist: () => nav('/queue') }}
+          />
         </div>
       ) : null}
 

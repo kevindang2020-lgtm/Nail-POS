@@ -74,6 +74,8 @@ export class KyselyHoldRepository implements HoldPort {
     // The time filter is deliberately WIDER than the requested window (any hold that starts before the window
     // ends and ends after it starts), because a hold that merely OVERLAPS is a conflict; one that is merely
     // "inside" is not the only case.
+    // booking200 §13 / 200-technician §51 (round 12): no hidden cap. This read decides which slots are held; it carried
+    // LIMIT 200, so in a large salon hold #201+ silently stopped blocking its slot. The window bounds the set; ordered.
     const res: any = await sql`
       SELECT id, tenant_id, branch_id, technician_id, start_time, end_time, expires_at,
              booking_session_id, released_at, converted_appointment_id
@@ -86,7 +88,7 @@ export class KyselyHoldRepository implements HoldPort {
         AND expires_at > now()
         AND start_time < to_timestamp(${toMs} / 1000.0)
         AND end_time   > to_timestamp(${fromMs} / 1000.0)
-      LIMIT 200`.execute(this.db as any).catch(() => ({ rows: [] }));
+      ORDER BY start_time, id`.execute(this.db as any).catch(() => ({ rows: [] }));
     return (res.rows ?? []).map(toHold);
   }
 

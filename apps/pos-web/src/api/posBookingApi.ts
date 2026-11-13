@@ -1,6 +1,6 @@
 // posBookingApi.ts — tenant POS Booking API client (canonical, master appointment module). Same-origin; tenant/branch/
 import type { BookingDraftView } from '@aipowersalon/api-contracts';
-import type { BookingFilters, BookingTechnicianQuery, BookingTechnicianPage, BookingOpeningsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { BookingFilters, BookingTechnicianQuery, BookingTechnicianPage, BookingOpeningsResponse, BookingKpiCards } from '@aipowersalon/api-contracts/tenant';
 import { t } from '@aipowersalon/mobile-sdk/i18n';   // the wire contract (Constitution 13 §15)
 // role from session. Supersedes the earlier four-method stub on wrong paths. Create/reschedule may return 409 with a
 // conflict payload; move/start endpoints are idempotent server-side.
@@ -81,6 +81,8 @@ type BookingDraft = BookingDraftView;
 export const posBookingApi = {
   state: (f: BookingFilters = {}) => http<any>('/state' + qs(f as Record<string, unknown>)),
   kpis: () => http<any>('/kpis'),
+  /** booking200 §08 (round 12): the six KPI cards for the board's date, each from its real source ('unavailable' → never 0). */
+  kpiCards: (q: { date?: string; arrivingWindowMinutes?: number } = {}) => http<BookingKpiCards>('/kpi-cards' + qs({ date: q.date, arrivingWindowMinutes: q.arrivingWindowMinutes })),
   appointments: (f: BookingFilters = {}) => http<any>('/appointments' + qs(f as Record<string, unknown>)),
   appointment: (aid: string) => http<any>('/appointments/' + id(aid)),
   // mandate §31: Idempotency-Key per intent (createIntentKeys) — a retry of the same booking replays, never books twice
