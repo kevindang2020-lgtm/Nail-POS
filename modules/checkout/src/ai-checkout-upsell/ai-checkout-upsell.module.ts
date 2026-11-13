@@ -21,7 +21,7 @@ import {
   LoyaltyProgramRecoAdapter, LoyaltyProgramMutationAdapter,
 } from './ai-checkout-upsell.adapters';
 import { LoyaltyProgramRepository } from '@aipowersalon/customers';
-import { KyselyUpsellSettings, KyselyDismissals, KyselyIdempotencyStore, KyselyRecords, KyselyTechnicianSchedule } from './ai-checkout-upsell.kysely';
+import { KyselyUpsellSettings, KyselyDismissals, KyselyIdempotencyStore, KyselyRecords, KyselyTechnicianSchedule, KyselyRequestedServices } from './ai-checkout-upsell.kysely';
 import { InMemoryIdempotencyStore } from './ai-checkout-upsell.idempotency';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { AuditService } from '@aipowersalon/audit';
@@ -74,6 +74,7 @@ const emptyNextAppt: NextAppointmentPort = { async context() { return null; } };
           read, new ServicesAddOnCatalogAdapter(services), emptyProducts, new MembershipRecoAdapter(memberships, enroll), db && loyaltyRepo ? new LoyaltyProgramRecoAdapter(loyaltyRepo, db) : dormantLoyaltyReco, emptyGiftCard, emptyNextAppt,
           settings, dismissals, cache, auditPort, mut, db ? new KyselyRecords(db) : undefined,
           db ? new KyselyTechnicianSchedule(db) : undefined,   // Decision 27: add-ons never run into the next appointment
+          db ? new KyselyRequestedServices(db) : undefined,    // Checkout Upsell 09: requested-but-not-on-ticket record checks
         );
       },
       inject: [ServingService, ServicesService, CheckoutService, MembershipEnrollService, MembershipsService, DATABASE, AuditService],

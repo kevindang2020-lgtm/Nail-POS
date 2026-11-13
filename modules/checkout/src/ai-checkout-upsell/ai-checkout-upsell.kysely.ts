@@ -11,7 +11,8 @@ import type { DB } from '@aipowersalon/database';
 import type { AiCheckoutUpsellContext } from './ai-checkout-upsell.dto';
 import type { IdempotencyStore, BeginResult } from './ai-checkout-upsell.idempotency';
 import { rowsToLayers, cleanTunablesPatch, type SettingsRow } from './ai-checkout-upsell-settings';
-import type { UpsellSettingsPort, TechnicianSchedulePort } from './ai-checkout-upsell.service';
+import type { UpsellSettingsPort, TechnicianSchedulePort, RequestedServicesPort } from './ai-checkout-upsell.service';
+import type { RequestedService } from './ai-checkout-upsell-core';
 import { CHAIR_HOLDING_STATUSES } from '@aipowersalon/api-contracts';
 import { businessDate, zonedParts } from '@aipowersalon/date-time';
 import { branchTimeZone } from '@aipowersalon/database';
@@ -219,4 +220,27 @@ export class KyselyTechnicianSchedule implements TechnicianSchedulePort {
     const [h, m] = String(r.start_time).split(':').map(Number);
     return { startsInMinutes: h * 60 + m - nowMin, startTime: String(r.start_time).slice(0, 5) };
   }
+}
+
+/** Checkout Upsell 09: the services the customer asked for on the queue entry (booking or walk-in check-in) this ticket
+ *  came from — `pos_queue_items.requested_services`, linked by tickets.queue_item_id (or the entry's ticket_id). Tenant
+ *  and branch scoped. A ticket with no queue entry asked for nothing we can compare (empty list). */
+export class KyselyRequestedServices implements RequestedServicesPort {
+  constructor(private readonly db: Kysely<DB>) {}
+  async requested(ctx: AiCheckoutUpsellContext, checkoutId: string): Promise<RequestedService[]> {
+    const r = (await sql<{ requested_services: unknown }>`select qi.requested_services from tickets tk
+        join pos_queue_items qi on qi.tenant_id = tk.tenant_id and (qi.id = tk.queue_item_id or qi.ticket_id = tk.id)
+      where tk.tenant_id = ${ctx.tenantId} and tk.branch_id = ${ctx.branchId} and tk.id = ${checkoutId}::uuid
+      order by (qi.id = tk.queue_item_id) desc limit 1`.execute(this.db)).rows[0];
+    return requestedList(r?.requested_services);
+  }
+}
+/** requested_services is a JSON list of { serviceId, serviceName | name } (booking copies appointment.services). */
+export function requestedList(v: unknown): RequestedService[] {
+  const raw: unknown = typeof v === 'string' && v.trim() ? JSON.parse(v) : v;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object').map((x) => ({
+    serviceId: x.serviceId != null ? String(x.serviceId) : x.service_id != null ? String(x.service_id) : null,
+    name: String(x.serviceName ?? x.name ?? x.service_name ?? ''),
+  }));
 }

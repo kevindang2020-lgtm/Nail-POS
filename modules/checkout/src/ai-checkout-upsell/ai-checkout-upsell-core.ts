@@ -261,3 +261,27 @@ export function enforceAddedValueCap(cards: RecommendationCard[], capCents: numb
   return out;
 }
 
+
+// ---------------- missed-service detection: TWO distinct workflows (Checkout Upsell 09) ----------------
+// A service the customer asked for (booking / check-in) that is NOT on the ticket may have been PERFORMED and not recorded:
+// that is a record discrepancy for a person to resolve — never a sales opportunity, never priced, never added or charged
+// by the assistant. Sales suggestions (add-ons etc.) stay a separate list, and a service under record check is never
+// offered back as an add-on card (that would bill the customer for a gap in our own records as if it were an upsell).
+export interface RequestedService { serviceId: string | null; name: string }
+export interface RecordCheck { kind: 'requested_not_on_ticket'; serviceId: string | null; serviceName: string; nextStep: 'confirm_with_technician' }
+const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+export function detectRecordChecks(requested: RequestedService[], onTicket: { serviceIds: string[]; serviceNames: string[] }): RecordCheck[] {
+  const ids = new Set(onTicket.serviceIds.map(String));
+  const names = new Set(onTicket.serviceNames.map(norm).filter(Boolean));
+  const out: RecordCheck[] = []; const seen = new Set<string>();
+  for (const r of requested) {
+    const name = String(r.name ?? '').trim();
+    if (!r.serviceId && !name) continue;
+    if (r.serviceId ? ids.has(String(r.serviceId)) : names.has(norm(name))) continue;
+    if (r.serviceId && !ids.has(String(r.serviceId)) && name && names.has(norm(name))) continue;   // same service on the ticket under an older id
+    const k = r.serviceId ? 'id:' + r.serviceId : 'name:' + norm(name);
+    if (seen.has(k)) continue; seen.add(k);
+    out.push({ kind: 'requested_not_on_ticket', serviceId: r.serviceId ? String(r.serviceId) : null, serviceName: name || '—', nextStep: 'confirm_with_technician' });
+  }
+  return out;
+}

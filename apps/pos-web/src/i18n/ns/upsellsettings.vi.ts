@@ -173,4 +173,8 @@ export const UPSELLSETTINGS_VI: Record<string, string> = {
   "ucx.st.runNo": "Không — {why}", // DRAFT — Kevin reviews
   "ucx.st.pay": "Quyền thanh toán:", // DRAFT — Kevin reviews
   "ucx.st.payNone": "Không có. Gợi ý không bao giờ thu tiền, giảm giá hay sửa phiếu; thu ngân thêm món và khách thanh toán khi tính tiền.", // DRAFT — Kevin reviews
+  "ucx.rc.title": "Kiểm tra hồ sơ — không phải bán thêm", // DRAFT — Kevin reviews
+  "ucx.rc.lead": "Khách đã yêu cầu khi đặt lịch hoặc check-in nhưng chưa có trên hóa đơn này. Nếu đã làm, hãy thêm vào hóa đơn; nếu chưa làm thì không cần gì. Ở đây không thêm hay tính tiền gì cả.", // DRAFT — Kevin reviews
+  "ucx.rc.item": "{name} — hỏi thợ xem đã làm chưa", // DRAFT — Kevin reviews
+  "ucx.rc.region": "Dịch vụ cần kiểm tra trên hóa đơn này", // DRAFT — Kevin reviews
 };
