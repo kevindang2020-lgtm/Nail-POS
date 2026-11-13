@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyReportsRepository, ReportsService } from '@aipowersalon/reports';
-import { BusinessCenter, BusinessCenterError } from './business-center';
+import { BusinessCenter, BusinessCenterError, scheduleOccurrence } from './business-center';
+import { sessionPermissionsForRole } from '@aipowersalon/permissions';
 import { AiBusinessReportsService } from './ai-business-reports.service';
 import { KyselyReportsJobRepository } from './ai-business-reports.kysely.repository';
 import { AiBusinessAlertsService } from './ai-business-alerts.service';
@@ -227,5 +228,94 @@ describe('scheduled evaluation', () => {
       const f = await q(`select source, state_change, reason from ai_business_alert_events where alert_id = $1 order by evaluated_at desc limit 1`, [r.id]);
       expect(f[0]).toMatchObject({ source: 'scheduled', state_change: 'failed' }); expect(f[0].reason).toMatch(/no longer works here/);
     } finally { await q(`update users set status = 'active' where id = $1`, [OWNER]); }
+  });
+});
+
+describe('AI Business Reports 14 — automated daily / weekly / monthly reports (migration 895)', () => {
+  const DAY = 86_400_000;
+  const realToday = () => new Date().toISOString().slice(0, 10);
+  const at = (ymd: string, hour: number) => Date.parse(`${ymd}T${String(hour).padStart(2, '0')}:10:00Z`);
+  const tomorrow = () => new Date(Date.now() + DAY).toISOString().slice(0, 10);
+  const bcAt = (ms: number) => new BusinessCenter(db, (bc as any).d, () => ms);
+  it('SC-01 when an occurrence comes: daily at / after the hour; weekly only on Sunday; monthly only on the last day of the month (salon time)', () => {
+    expect(scheduleOccurrence('daily_brief', 7, new Date('2026-11-12T06:59:00Z'), 'UTC')).toBeNull();
+    expect(scheduleOccurrence('daily_brief', 7, new Date('2026-11-12T07:00:00Z'), 'UTC')).toBe('2026-11-12');
+    expect(scheduleOccurrence('daily_brief', 7, new Date('2026-11-12T07:30:00Z'), 'America/New_York')).toBeNull();   // 02:30 in New York
+    expect(scheduleOccurrence('weekly_summary', 21, new Date('2026-11-14T22:00:00Z'), 'UTC')).toBeNull();            // Saturday
+    expect(scheduleOccurrence('weekly_summary', 21, new Date('2026-11-15T21:05:00Z'), 'UTC')).toBe('2026-11-15');    // Sunday
+    expect(scheduleOccurrence('monthly_review', 21, new Date('2026-11-29T22:00:00Z'), 'UTC')).toBeNull();
+    expect(scheduleOccurrence('monthly_review', 21, new Date('2026-11-30T21:00:00Z'), 'UTC')).toBe('2026-11-30');
+    expect(scheduleOccurrence('monthly_review', 21, new Date('2026-12-01T02:00:00Z'), 'America/New_York')).toBe('2026-11-30');   // still Nov 30, 21:00 in NY
+  });
+  it('SC-02 my own schedules: defaults off; turning one on after today\'s hour does not make a report on the spot; the next occurrence makes ONE report through the same path, as me, with an inbox line without figures', async () => {
+    const list: any = await bc.reportSchedules(ctx());
+    expect(list.items.map((x: any) => [x.reportType, x.active, x.sendHour])).toEqual([['daily_brief', false, 7], ['weekly_summary', false, 21], ['monthly_review', false, 21]]);
+    const nowMs = at(realToday(), 9);
+    const saved: any = await bcAt(nowMs).saveReportSchedule(ctx(), { reportType: 'daily_brief', active: true, sendHour: 7 });
+    expect(saved.items[0]).toMatchObject({ reportType: 'daily_brief', active: true, sendHour: 7, preset: 'yesterday', lastStatus: null });
+    expect(await bcAt(nowMs).reportScheduleSweep(sessionPermissionsForRole)).toEqual({ generated: 0, failed: 0, skipped: 0 });
+    expect(await code(bc.saveReportSchedule(ctx(), { reportType: 'daily_brief', sendHour: 24 }))).toBe('VALIDATION_FAILED');
+    expect(await code(bc.saveReportSchedule(ctx({ permissions: [] }), { reportType: 'daily_brief' }))).toBe('PERMISSION_DENIED');
+    // the next morning (salon time): yesterday = today's real sales
+    const jobsBefore = (await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n;
+    const next = at(tomorrow(), 8);
+    expect(await bcAt(next).reportScheduleSweep(sessionPermissionsForRole)).toEqual({ generated: 1, failed: 0, skipped: 0 });
+    const job = (await q(`select id, report_type, preset, status, requested_by_user_id, schedule_id, content from ai_business_report_jobs where tenant_id = $1 order by created_at desc limit 1`, [T]))[0];
+    expect(job).toMatchObject({ report_type: 'daily_brief', preset: 'yesterday', status: 'completed', requested_by_user_id: OWNER });
+    expect(job.schedule_id).toBe(saved.items[0].id);
+    expect(job.content.period).toMatchObject({ from: realToday(), to: realToday() });
+    const canonical = (await (bc as any).d.sales.getSales({ tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: PERMS }, { from: realToday(), to: realToday() })).kpis.netSalesCents;
+    expect(canonical).toBeGreaterThan(0);
+    expect(job.content.snapshot.netSalesCents).toBe(canonical);   // the canonical Sales Report figure, same as the button
+    expect((await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n).toBe(jobsBefore + 1);
+    const inbox = (await q(`select title, body, audience, metadata from owner_alerts where tenant_id = $1 and category = 'ai_business_report' order by created_at desc limit 1`, [T]))[0];
+    expect(inbox).toMatchObject({ title: 'Your daily brief is ready', audience: 'owner' });
+    expect(inbox.metadata).toMatchObject({ reportId: job.id, occurrence: tomorrow() });
+    expect(inbox.body).not.toMatch(/\$/); expect(inbox.body).not.toContain(String(canonical / 100));   // no figures in an inbox line
+    const mine: any = await bc.reportSchedules(ctx());
+    expect(mine.items[0]).toMatchObject({ lastStatus: 'generated', lastReportId: job.id });
+    // a second process / retry of the same occurrence never makes a second report
+    await q(`update ai_business_report_schedules set last_run_at = now() - interval '2 hours' where tenant_id = $1`, [T]);
+    expect(await bcAt(next + 3600e3).reportScheduleSweep(sessionPermissionsForRole)).toEqual({ generated: 0, failed: 0, skipped: 0 });
+    expect((await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n).toBe(jobsBefore + 1);
+  });
+  it('SC-03 a schedule whose owner left is skipped (recorded) — never run as anyone else; a turned-off schedule makes nothing', async () => {
+    const M = id(11);
+    await q(`insert into users (id, tenant_id, full_name, email, status, role) values ($1,$2,'Gone Manager','g@bc.test','inactive','MANAGER')`, [M, T]);
+    await q(`insert into ai_business_report_schedules (tenant_id, branch_id, owner_user_id, report_type, send_hour, active) values ($1,$2,$3,'daily_brief',7,true)`, [T, B, M]);
+    await q(`update ai_business_report_schedules set active = false where tenant_id = $1 and owner_user_id = $2`, [T, OWNER]);
+    const before = (await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n;
+    const r = await bcAt(at(tomorrow(), 10) + 2 * DAY).reportScheduleSweep(sessionPermissionsForRole);
+    expect(r).toEqual({ generated: 0, failed: 0, skipped: 1 });
+    expect((await q(`select last_outcome, last_reason from ai_business_report_schedules where owner_user_id = $1`, [M]))[0]).toEqual({ last_outcome: 'skipped', last_reason: 'owner_not_active' });
+    expect((await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n).toBe(before);
+  });
+});
+
+describe('AI Business Reports 15 — Executive Summary & Growth Advisor (read-only)', () => {
+  it('EXS-01 the official figures are the report\'s stored Sales Report snapshot, each re-checked by Verify; a change since is shown with the Sales Report figure now', async () => {
+    const r: any = await bc.reportGenerate(ctx(), { reportType: 'monthly_review', preset: 'year' });
+    expect(r.duplicate).toBe(false);
+    const x: any = await bc.reportExecutive(ctx(), r.id);
+    expect(x).toMatchObject({ available: true, reportType: 'monthly_review', changesAnything: false, verification: { status: 'matched' } });
+    expect(x.facts.find((f: any) => f.key === 'net_sales')).toMatchObject({ value: r.headline.find((h: any) => h.key === 'net_sales').value, source: 'sales_report_snapshot', check: 'matches_sales_report', salesReportNow: null });
+    const before = r.headline.find((h: any) => h.key === 'net_sales').value;
+    await paid(1000);   // a sale lands in the period after the report was made
+    const y: any = await bc.reportExecutive(ctx(), r.id);
+    expect(y.verification.status).toBe('changed');
+    expect(y.facts.find((f: any) => f.key === 'net_sales')).toMatchObject({ value: before, check: 'changed_since', salesReportNow: before + 1000 });
+  });
+  it('EXS-02 opportunities come from the one growth advisor over the report\'s own sections, as proposals to review; nothing is written; another salon\'s report is not found', async () => {
+    const content = { appointments: { funnel: { totalBookings: 12, noShowPercent: 25, cancelledPercent: 5, completed: 8 } }, customers: { available: false, reason: 'restricted' }, period: { preset: 'week', from: '2026-11-09', to: '2026-11-15' } };
+    const jid = (await q(`insert into ai_business_report_jobs (tenant_id, branch_id, requested_by_user_id, report_type, preset, status, content, completed_at) values ($1,$2,$3,'weekly_summary','week','completed',$4::jsonb, now()) returning id`,
+      [T, B, OWNER, JSON.stringify(content)]))[0].id;
+    const counts = async () => (await q(`select (select count(*) from ai_business_report_jobs where tenant_id = $1)::int as j, (select count(*) from owner_alerts where tenant_id = $1)::int as o, (select count(*) from ai_business_report_schedules where tenant_id = $1)::int as s`, [T]))[0];
+    const c0 = await counts();
+    const x: any = await bc.reportExecutive(ctx(), jid);
+    expect(x.opportunities).toEqual([{ kind: 'no_shows', basis: { noShowPercent: 25, bookings: 12 }, route: '/tenant/ai/receptionist/follow-ups', status: 'proposed', ownerReview: true }]);
+    expect(x.facts.find((f: any) => f.key === 'bookings')).toMatchObject({ value: 12, source: 'report_section', check: 'not_checkable' });
+    expect(x.verification.status).toBe('cannot_verify');
+    expect(await counts()).toEqual(c0);
+    expect(await code(bc.reportExecutive(ctx({ tenantId: X }), jid))).toBe('BC_REPORT_NOT_FOUND');
   });
 });

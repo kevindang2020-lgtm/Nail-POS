@@ -7617,6 +7617,7 @@ export interface DB {
   ai_business_alert_deliveries: AiBusinessAlertDeliveriesTable;
   ai_business_health_runs: AiBusinessHealthRunsTable;
   ai_business_report_jobs: AiBusinessReportJobsTable;
+  ai_business_report_schedules: AiBusinessReportSchedulesTable;
   schedule_optimization_runs: ScheduleOptimizationRunsTable;
   time_clock_break_policies: TimeClockBreakPoliciesTable;
   technician_turn_events: TechnicianTurnEventsTable;
@@ -8629,7 +8630,7 @@ export interface MoneyProtectionEventsTable {   // migration 778 — append-only
   id: Generated<string>; tenant_id: string; branch_id: string | null; entity_type: string; entity_id: string; action: string; from_state: string | null; to_state: string | null;
   reason: string | null; detail: Generated<unknown>; actor_user_id: string | null; created_at: Generated<Ts>;
 }
-export interface MoneyProtectionNotificationsTable {   // migration 875 — each new-alert notification decision: sent / held back (cooldown, hourly cap); append-only
+export interface MoneyProtectionNotificationsTable {   // migration 875 — whether each new alert was told to the owner or held back (cooldown, hourly cap); append-only
   id: Generated<string>; tenant_id: string; alert_id: string | null; dedupe_key: string; severity: string | null; outcome: string; reason: string | null;
   owner_alert_id: string | null; held_until: TsNull; suppressed_n: Generated<number>; run_id: string | null; created_at: Generated<Ts>;
 }
@@ -8949,6 +8950,12 @@ export interface AiBusinessReportJobsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; requested_by_user_id: string;
   report_type: string; preset: string; status: string; content: unknown | null; error: string | null;
   created_at: Ts; started_at: TsNull; completed_at: TsNull; expires_at: Ts;
+  schedule_id: string | null;   // migration 895 — the schedule that made it (NULL = by hand)
+}
+export interface AiBusinessReportSchedulesTable {   // migration 895 — a person's own automated daily / weekly / monthly AI Business report
+  id: Generated<string>; tenant_id: string; branch_id: string | null; owner_user_id: string; report_type: string; send_hour: number;
+  active: Generated<boolean>; notify_in_app: Generated<boolean>; last_occurrence: string | null; last_run_at: TsNull; last_outcome: string | null;
+  last_reason: string | null; last_report_id: string | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null;
 }
 // ---- merged from branch C (five-AI-modules) ----
 export interface AiCustomerProfileSettingsTable {

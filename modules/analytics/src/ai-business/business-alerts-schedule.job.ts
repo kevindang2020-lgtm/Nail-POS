@@ -2,6 +2,8 @@
 // exist ("rules are evaluated by hand"). Every 5 minutes, the rules due on their own schedule (hourly / daily) are evaluated
 // as their creator (BusinessCenter.scheduledSweep), one process at a time (runAsSingleOwner), recorded with source
 // 'scheduled'. AI_BUSINESS_ALERTS_SCHEDULE=off stops it.
+// AI Business Reports 14 (Nov 12 2026): the same tick also makes the automated daily / weekly / monthly reports that have come
+// due (BusinessCenter.reportScheduleSweep) — one background worker, no second scheduler.
 import { Injectable, Inject, Optional, type OnModuleInit, type OnModuleDestroy } from '@nestjs/common';
 import type { Kysely } from 'kysely';
 import { runAsSingleOwner, DATABASE, type AppDatabase } from '@aipowersalon/database';
@@ -30,7 +32,8 @@ export class BusinessAlertsScheduleJob implements OnModuleInit, OnModuleDestroy 
           const r = await (this.center as BusinessCenter).scheduledSweep(sessionPermissionsForRole);
           // A2 (Nov 6 2026): wake snoozed incidents, escalate critical ones still open after 30 minutes
           const inc = this.incidents ? await this.incidents.sweep() : { woke: 0, escalated: 0 };
-          return { ...r, ...inc };
+          const reports = await (this.center as BusinessCenter).reportScheduleSweep(sessionPermissionsForRole);
+          return { ...r, ...inc, reports };
         }))
         .catch((e) => logException(e, { where: 'ai-business.alerts.schedule.tick' }));
     }, every);

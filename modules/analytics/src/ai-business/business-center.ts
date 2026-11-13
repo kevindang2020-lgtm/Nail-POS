@@ -35,7 +35,8 @@ import type { AiBusinessAlertsService } from './ai-business-alerts.service';
 import type { BusinessAlertIncidents } from './business-alert-incidents';
 import type { AiBusinessRevenueService } from './ai-business-revenue.service';
 import type { AiBusinessAppointmentsService } from './ai-business-appointments.service';
-import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
+import { addDays as addYmdDays, businessDate, localHour } from '@aipowersalon/date-time';   // §87: one calendar helper
+import { growthAdvice } from './ai-business-assistant-extras';
 
 type Row = Record<string, any>;
 export class BusinessCenterError extends Error {
@@ -50,6 +51,22 @@ export const BC_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month
 export const BC_EVENT_STATES = ['all', 'triggered', 'recovered', 'unchanged', 'not_evaluated', 'failed', 'unacknowledged'] as const;
 export const BC_RULE_STATUSES = ['all', 'active', 'paused', 'triggered', 'needs_review', 'never_evaluated'] as const;
 export const BC_PAGE_SIZES = [10, 25, 50, 100] as const;
+/** AI Business Reports 14 — automated reports: which report each schedule makes, for which period, on which salon day */
+export const BC_SCHEDULE_TYPES = ['daily_brief', 'weekly_summary', 'monthly_review'] as const;
+export const BC_SCHEDULE_RULE: Record<typeof BC_SCHEDULE_TYPES[number], { preset: string; defaultHour: number; when: 'every_day' | 'sunday' | 'last_day_of_month' }> = {
+  daily_brief: { preset: 'yesterday', defaultHour: 7, when: 'every_day' },
+  weekly_summary: { preset: 'week', defaultHour: 21, when: 'sunday' },
+  monthly_review: { preset: 'month', defaultHour: 21, when: 'last_day_of_month' },
+};
+/** is this salon-local moment an occurrence of the schedule? → its claim key (the salon date), else null */
+export function scheduleOccurrence(type: typeof BC_SCHEDULE_TYPES[number], sendHour: number, now: Date, tz: string): string | null {
+  const day = businessDate(tz, now);
+  if (localHour(now, tz) < sendHour) return null;
+  const rule = BC_SCHEDULE_RULE[type].when;
+  if (rule === 'sunday' && new Date(day + 'T12:00:00Z').getUTCDay() !== 0) return null;
+  if (rule === 'last_day_of_month' && addYmdDays(day, 1).slice(8, 10) !== '01') return null;
+  return day;
+}
 const HEALTH_GAP_SECONDS = 30;
 const DEDUPE_SECONDS = 15;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -229,6 +246,108 @@ export class BusinessCenter {
     const status = items.every((x) => x.matched) ? 'matched' : 'changed';
     return { id, status, reason: status === 'changed' ? (period.partial ? 'period_was_in_progress' : 'source_changed_since') : null, period, snapshotTakenAt: snap.takenAt ?? null,
       checkedAt: new Date(this.now()).toISOString(), items, sourceRoute: `/tenant/reports/sales?from=${period.from}&to=${period.to}` };
+  }
+
+  // ═════════════════════════════ AUTOMATED REPORTS (AI Business Reports 14; migration 895) ═════════════════════════════
+  private scheduleView(r: Row, tz: string) {
+    const type = r.report_type as typeof BC_SCHEDULE_TYPES[number];
+    return { id: r.id ? String(r.id) : null, reportType: type, preset: BC_SCHEDULE_RULE[type].preset, when: BC_SCHEDULE_RULE[type].when, sendHour: N(r.send_hour), active: !!r.active,
+      notifyInApp: r.notify_in_app == null ? true : !!r.notify_in_app, lastRunAt: iso(r.last_run_at), lastStatus: r.last_outcome ?? null, lastReason: r.last_reason ?? null,
+      lastReportId: r.last_report_id ? String(r.last_report_id) : null, timeZone: tz };
+  }
+  /** the caller's OWN schedules (one per report type for this location scope); a type never turned on shows its defaults, off */
+  async reportSchedules(ctx: AiBusinessContext) {
+    this.need(ctx);
+    const { tz } = await this.today(ctx);
+    const rows = (await sql<Row>`select s.id, s.report_type, s.send_hour, s.active, s.notify_in_app, s.last_run_at, s.last_outcome, s.last_reason, s.last_report_id from ai_business_report_schedules s
+      where s.tenant_id = ${ctx.tenantId} and s.owner_user_id = ${ctx.userId}::uuid and s.branch_id is not distinct from ${this.branch(ctx)}::uuid`.execute(this.db)).rows;
+    return { items: BC_SCHEDULE_TYPES.map((t) => this.scheduleView(rows.find((r) => r.report_type === t) ?? { report_type: t, send_hour: BC_SCHEDULE_RULE[t].defaultHour, active: false }, tz)),
+      timeZone: tz, note: 'Reports are made on the server at or after the hour, salon time — the page does not need to be open.' };
+  }
+  /** turn the caller's own schedule of one report type on / off, or change its hour (self-consented: only for yourself) */
+  async saveReportSchedule(ctx: AiBusinessContext, b: { reportType?: unknown; active?: unknown; sendHour?: unknown; notifyInApp?: unknown }) {
+    this.need(ctx);
+    const type = pick(BC_SCHEDULE_TYPES, b.reportType);
+    if (!type) throw new BusinessCenterError('Choose a report.', 'BC_REPORT_TYPE_INVALID');
+    const hour = b.sendHour == null ? BC_SCHEDULE_RULE[type].defaultHour : Number(b.sendHour);
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) throw new BusinessCenterError('Choose an hour from 0 to 23.', 'VALIDATION_FAILED');
+    const active = b.active == null ? true : b.active === true;
+    const notify = b.notifyInApp == null ? true : b.notifyInApp === true;
+    const B = this.branch(ctx);
+    // an occurrence that has already come today is not made on the spot: the first report is the NEXT occurrence
+    const { tz } = await this.today(ctx);
+    const passed = scheduleOccurrence(type, hour, new Date(this.now()), tz);
+    await sql`insert into ai_business_report_schedules (tenant_id, branch_id, owner_user_id, report_type, send_hour, active, notify_in_app, last_occurrence, updated_by)
+      values (${ctx.tenantId}, ${B}::uuid, ${ctx.userId}::uuid, ${type}, ${hour}, ${active}, ${notify}, ${passed}, ${ctx.userId}::uuid)
+      on conflict (tenant_id, owner_user_id, report_type, branch_id) do update set send_hour = excluded.send_hour, active = excluded.active, notify_in_app = excluded.notify_in_app,
+        last_occurrence = coalesce(excluded.last_occurrence, ai_business_report_schedules.last_occurrence), updated_at = now(), updated_by = excluded.updated_by`.execute(this.db);
+    return this.reportSchedules(ctx);
+  }
+  /** the background tick (the alerts job's tick, every 5 minutes): every active schedule whose occurrence has come makes ONE
+   *  report through the same path as the button, as its owner with the owner's CURRENT role; claimed per occurrence so a second
+   *  process or a retry never makes two. An owner who left / lost AI Business → skipped (recorded), never run as anyone else. */
+  async reportScheduleSweep(permissionsForRole: (role: string) => string[], limit = 50): Promise<{ generated: number; failed: number; skipped: number }> {
+    const rows = (await sql<Row>`select s.id, s.tenant_id, s.branch_id, s.owner_user_id, s.report_type, s.send_hour, s.notify_in_app, s.last_occurrence, u.role, u.status as user_status, u.tenant_id as user_tenant
+      from ai_business_report_schedules s left join users u on u.id = s.owner_user_id
+      where s.active and (s.last_run_at is null or s.last_run_at < now() - interval '50 minutes')
+      order by s.last_run_at asc nulls first, s.id limit ${Math.max(1, Math.min(500, limit))}`.execute(this.db)).rows;
+    let generated = 0, failed = 0, skipped = 0;
+    for (const r of rows) {
+      const T = String(r.tenant_id); const type = r.report_type as typeof BC_SCHEDULE_TYPES[number];
+      const tz = await branchTimeZone(this.db, T, r.branch_id ? String(r.branch_id) : null);
+      const key = scheduleOccurrence(type, N(r.send_hour), new Date(this.now()), tz);
+      if (!key || key === r.last_occurrence) continue;
+      const claimed = (await sql<Row>`update ai_business_report_schedules set last_occurrence = ${key}, last_run_at = now() where id = ${String(r.id)}::uuid and active
+        and last_occurrence is distinct from ${key} returning id`.execute(this.db)).rows[0];
+      if (!claimed) continue;
+      const ctx: AiBusinessContext = { tenantId: T, branchId: r.branch_id ? String(r.branch_id) : '', userId: String(r.owner_user_id), role: String(r.role ?? ''), permissions: r.role ? permissionsForRole(String(r.role)) : [] };
+      const employed = !!r.user_tenant && String(r.user_tenant) === T && String(r.user_status ?? 'active') === 'active';
+      if (!employed || !has(ctx, 'pos.ai_business.view')) {
+        await sql`update ai_business_report_schedules set last_outcome = 'skipped', last_reason = ${!employed ? 'owner_not_active' : 'owner_lost_access'} where id = ${String(r.id)}::uuid`.execute(this.db);
+        skipped++; continue;
+      }
+      const job = await this.d.reports.create(ctx, type, BC_SCHEDULE_RULE[type].preset, this.snapshotFor(ctx));
+      await sql`update ai_business_report_jobs set schedule_id = ${String(r.id)}::uuid where tenant_id = ${T} and id = ${job.id}::uuid`.execute(this.db);
+      const ok = job.status === 'completed';
+      await sql`update ai_business_report_schedules set last_outcome = ${ok ? 'generated' : 'failed'}, last_reason = ${ok ? null : String(job.error ?? 'generation_failed').slice(0, 300)}, last_report_id = ${job.id}::uuid
+        where id = ${String(r.id)}::uuid`.execute(this.db);
+      if (r.notify_in_app) {
+        // the inbox line names the report and where to open it — never a figure (it can be read on a shared screen)
+        await sql`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+          values (${T}, ${r.branch_id ?? null}, 'ai_business_report', ${ok ? 'info' : 'warning'}, 'new',
+            ${ok ? `Your ${TYPE_LABEL[type]} is ready` : `Your ${TYPE_LABEL[type]} could not be made`},
+            ${ok ? `Made automatically for ${key}. Open AI Center → AI Business Reports to read it.` : 'The scheduled report failed. Open AI Center → AI Business Reports and run Check AI Business Reports System.'},
+            ${JSON.stringify({ reportId: job.id, scheduleId: String(r.id), reportType: type, occurrence: key })}::jsonb, ${String(r.role) === 'OWNER' ? 'owner' : 'all'})`.execute(this.db);
+      }
+      if (ok) generated++; else failed++;
+    }
+    return { generated, failed, skipped };
+  }
+
+  // ═════════════════════════ EXECUTIVE SUMMARY & GROWTH ADVISOR (AI Business Reports 15) ═════════════════════════
+  /** Read-only. The official figures are the report's own stored canonical Sales Report snapshot (headline()) — re-checked by
+   *  the SAME reportVerify the Verify button uses, and each figure says whether it still matches. Opportunities come from the
+   *  ONE growth advisor (growthAdvice, also used by the assistant) over the report's own sections; each is a proposal for the
+   *  owner to review — nothing is changed, sent or started from here, and no number is computed outside the report. */
+  async reportExecutive(ctx: AiBusinessContext, id: string) {
+    this.need(ctx);
+    const d = await this.reportDetail(ctx, id);
+    if (d.availability !== 'viewable' || !d.content) return { id, available: false, reason: d.availability, reportType: d.reportType, period: d.period, facts: [], opportunities: [], verification: null, changesAnything: false as const };
+    const v = await this.reportVerify(ctx, id);
+    const matchedBy = new Map((v.items ?? []).map((x: Row) => [String(x.metric), x]));
+    const METRIC: Record<string, string> = { net_sales: 'netSalesCents', paid_tickets: 'ticketsCount', average_ticket: 'averageTicketCents', refunds: 'refundsCents' };
+    const c = d.content as Row;
+    const facts = headline(c).map((h) => {
+      const m = METRIC[h.key] && c.snapshot ? matchedBy.get(METRIC[h.key]) : undefined;
+      return { ...h, source: METRIC[h.key] && c.snapshot ? 'sales_report_snapshot' : 'report_section',
+        check: m ? (m.matched ? 'matches_sales_report' : 'changed_since') : 'not_checkable', salesReportNow: m && !m.matched ? N(m.salesReportNow) : null };
+    });
+    const usable = (x: unknown) => (x && typeof x === 'object' && (x as Row).available !== false ? x as Row : null);
+    const tips = growthAdvice({ customers: usable(c.customers), appointments: usable(c.appointments), revenue: usable(c.revenue) });
+    return { id, available: true, reportType: d.reportType, period: d.period,
+      verification: { status: v.status, reason: v.reason ?? null, checkedAt: (v as Row).checkedAt ?? null },
+      facts, opportunities: tips.map((t) => ({ kind: t.kind, basis: t.basis, route: t.route, status: 'proposed' as const, ownerReview: true })),
+      changesAnything: false as const, rule: 'Figures are the report\'s stored canonical Sales Report numbers; nothing is estimated. Opportunities are suggestions to review.' };
   }
 
   // ═════════════════════════════════════════════ ALERTS ═════════════════════════════════════════════
