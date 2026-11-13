@@ -16,10 +16,11 @@ const { ls, live, techs } = vi.hoisted(() => ({
 vi.mock('../api/posTeamScreensApi', () => ({ posShiftOverrideApi: so, posLiveScheduleScreenApi: ls, posTechAppointmentsScreenApi: { conflicts: vi.fn() }, posTechniciansScreenApi: { directory: vi.fn(async () => ({ items: [], page: 1, pageSize: 100, totalItems: 0, totalPages: 1 })) } }));
 vi.mock('../api/posLiveTechnicianScheduleApi', () => ({ posLiveTechnicianScheduleApi: live }));
 vi.mock('../api/posTechniciansApi', () => ({ posTechniciansApi: techs }));
-vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
+const rt = vi.hoisted(() => ({ last: null as null | { cb: (r?: string, s?: string) => unknown; o?: { relevance?: (d: any) => string } } }));
+vi.mock('../realtime/useRealtime', () => ({ useRealtime: (_s: unknown, cb: any, o: any) => { rt.last = { cb, o }; } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => (k: string) => k !== 'technicians.view_pay' }));
 vi.mock('../components/IPadViewProvider', () => ({ useIPadView: () => ({ open: vi.fn() }), registerIPadModule: vi.fn() }));
-import { POSLiveTechnicianScheduleScreen, LS_LANE_PAGE_SIZE } from './POSLiveTechnicianScheduleScreen';
+import { POSLiveTechnicianScheduleScreen, LS_LANE_PAGE_SIZE, LS_FLASH_MS, liveScheduleEventScope } from './POSLiveTechnicianScheduleScreen';
 
 const DAY = '2026-10-30';   // a Friday
 const period = { preset: 'week', from: '2026-10-26', to: DAY, tz: 'America/New_York', today: DAY };
@@ -54,6 +55,35 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     expect(await screen.findAllByText('Trần Mỹ Linh')).not.toHaveLength(0);
     expect(live.state).toHaveBeenCalledWith(expect.objectContaining({ date: DAY, lanePageSize: LS_LANE_PAGE_SIZE, roster: 'none' }));
     expect(await screen.findAllByTestId('activity-row')).toHaveLength(1);
+  });
+  it('extras 200-Technician 01 (round 10): a search jump highlights the technician\'s row for a few seconds, then it fades; no search → no highlight', async () => {
+    mount(); await screen.findByTestId('live-schedule-pager');
+    expect((await screen.findAllByTestId('timeline-row'))[0]).not.toHaveAttribute('data-highlight');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'linh' } });
+    await waitFor(() => expect(live.state).toHaveBeenLastCalledWith(expect.objectContaining({ laneSearch: 'linh', lanePage: 1 })));
+    await waitFor(() => expect(screen.getAllByTestId('timeline-row')[0]).toHaveAttribute('data-highlight', 'true'));
+    expect(screen.getAllByTestId('timeline-row')[0].className).toContain('tt-flash');
+    await waitFor(() => expect(screen.getAllByTestId('timeline-row')[0]).not.toHaveAttribute('data-highlight'), { timeout: LS_FLASH_MS + 2000 });
+    fireEvent.click(await screen.findByTestId('hit-tech'));   // a hit flashes it again and opens the full day
+    expect(screen.getAllByTestId('timeline-row')[0]).toHaveAttribute('data-highlight', 'true');
+    expect(await screen.findByTestId('dlg-full-day')).toBeInTheDocument();
+  }, 15000);
+  it('extras 200-Technician 15 (round 10): Realtime Noise Guard — an off-page technician / another date refreshes KPIs + activity only; a visible one reloads the board', async () => {
+    mount(); await screen.findByTestId('live-schedule-pager'); await screen.findAllByTestId('timeline-row');
+    const rel = rt.last!.o!.relevance!;
+    expect(rel({ event: 'appointment_updated', payload: { technicianId: 't999', date: DAY } })).toBe('partial');
+    expect(rel({ event: 'appointment_updated', payload: { technicianId: 't1', date: DAY } })).toBe('full');
+    expect(rel({ event: 'appointment_updated', payload: { appointmentId: 'a1', technicianId: 't999' } })).toBe('full');   // it may have just moved off a visible column
+    expect(rel({ event: 'appointment_updated', payload: { technicianId: 't1', date: '2026-11-02' } })).toBe('partial');
+    expect(rel({ event: 'technician_schedule_updated', payload: {} })).toBe('full');                                     // does not say → full
+    const k0 = ls.kpis.mock.calls.length, s0 = live.state.mock.calls.length, a0 = ls.activity.mock.calls.length;
+    await act(async () => { await rt.last!.cb('manual', 'partial'); });
+    await waitFor(() => expect(ls.kpis.mock.calls.length).toBe(k0 + 1));
+    expect(ls.activity.mock.calls.length).toBe(a0 + 1);
+    expect(live.state.mock.calls.length).toBe(s0);                                   // the board is not reloaded
+    await act(async () => { await rt.last!.cb('manual', 'full'); });
+    await waitFor(() => expect(live.state.mock.calls.length).toBe(s0 + 1));
+    expect(liveScheduleEventScope('appointment_updated', { technicianId: 't999', date: DAY }, { week: true, view: { date: DAY, visibleTechnicianIds: [] } })).toBe('full');   // week view: seven dates
   });
   it('a past day shows no live counts and says so; utilization N/A with nothing scheduled', async () => {
     mount(); await screen.findByTestId('kpi-utilization');

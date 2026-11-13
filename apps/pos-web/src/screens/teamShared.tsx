@@ -33,7 +33,7 @@ export type TeamTimelineRow = { technicianId: string; name: string; status?: str
   blocks?: { blockId: string; startTime: string; endTime: string; reason?: string }[]; openSlots?: { slotId: string; startTime: string; endTime: string; durationMinutes?: number }[] };
 
 /** technician rows on one day's time axis; `from`/`to` in minutes (defaults 8 AM – 8 PM, widened to fit the data) */
-export function TechTimeline({ rows, onTech, onAppt, testId = 'timeline', nowMinute }: { rows: TeamTimelineRow[]; onTech?: (id: string) => void; onAppt?: (id: string) => void; testId?: string; nowMinute?: number | null }) {
+export function TechTimeline({ rows, onTech, onAppt, testId = 'timeline', nowMinute, highlightId }: { rows: TeamTimelineRow[]; onTech?: (id: string) => void; onAppt?: (id: string) => void; testId?: string; nowMinute?: number | null; highlightId?: string | null }) {
   let lo = 8 * 60, hi = 20 * 60;
   for (const r of rows) for (const t of [r.shift?.startTime, r.shift?.endTime, ...r.appointments.flatMap((a) => [a.startTime, a.endTime])]) { const m = minOf(t); if (m != null) { lo = Math.min(lo, Math.floor(m / 60) * 60); hi = Math.max(hi, Math.ceil(m / 60) * 60); } }
   const span = Math.max(60, hi - lo); const pct = (m: number) => `${((m - lo) / span) * 100}%`; const w = (a: number, b: number) => `${(Math.max(0, b - a) / span) * 100}%`;
@@ -47,7 +47,7 @@ export function TechTimeline({ rows, onTech, onAppt, testId = 'timeline', nowMin
       {rows.map((r) => {
         const ss = minOf(r.shift?.startTime), se = minOf(r.shift?.endTime), bs = minOf(r.shift?.breakStartTime), be = minOf(r.shift?.breakEndTime);
         return (
-          <div key={r.technicianId} className="tt-row" role="row" data-testid={testId + '-row'}>
+          <div key={r.technicianId} className={'tt-row' + (highlightId === r.technicianId ? ' tt-flash' : '')} role="row" data-testid={testId + '-row'} data-highlight={highlightId === r.technicianId ? 'true' : undefined}>
             <button type="button" className="tt-name" onClick={() => onTech?.(r.technicianId)} title={tx('tm.viewDay')}><b>{r.name}</b>{r.status ? <span className={'fk-chip ' + liveTone(r.status)}>{liveStatus(r.status)}</span> : null}</button>
             <div className="tt-track">
               {Array.from({ length: Math.floor(span / 15) }, (_, i) => <i key={i} className={'tt-tick' + (i % 4 === 0 ? ' h' : '')} style={{ left: pct(lo + i * 15) }} />)}

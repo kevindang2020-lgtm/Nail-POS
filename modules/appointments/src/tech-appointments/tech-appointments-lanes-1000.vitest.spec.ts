@@ -43,3 +43,21 @@ describe('pageTechApptLanes at 1,000 technicians', () => {
     expect(r.technicians).toHaveLength(N); expect(r.filters.technicians).toEqual([]); expect(r.lanes).toBeUndefined();
   });
 });
+
+// extras 200-Technician 05 (round 10): No-Hidden-Limit Validator — every roster size, every page walked, appointments kept
+describe('No-Hidden-Limit Validator — Tech Appointments lanes at 12 / 24 / 50 / 100 / 199 / 200 / 201', () => {
+  for (const n of [12, 24, 50, 100, 199, 200, 201]) {
+    it(`${n} technicians: ceil(n/12) pages, each technician and each of their appointments appears on exactly one page`, () => {
+      const ts = techs.slice(0, n).map((t, i) => ({ ...t, displayName: `Tech ${pad(i + 1)}` }));
+      const as = ts.flatMap((t, i) => [{ appointmentId: `x${i}a`, technicianId: t.technicianId }, { appointmentId: `x${i}b`, technicianId: t.technicianId }]) as any[];
+      const st = (): POSTechAppointmentsFullState => ({ ...state(), technicians: ts, appointments: as, kpis: { totalAppointmentsToday: as.length } as any });
+      const first = pageTechApptLanes(st(), { lanePage: 1 });
+      expect(first.lanes).toEqual({ page: 1, pageSize: TECH_APPT_LANE_PAGE_SIZE, total: n, totalPages: Math.ceil(n / TECH_APPT_LANE_PAGE_SIZE), totalAll: n });
+      const techSeen: string[] = []; const apptSeen: string[] = [];
+      for (let p = 1; p <= first.lanes!.totalPages; p++) { const r = pageTechApptLanes(st(), { lanePage: p }); techSeen.push(...r.technicians.map((t) => t.technicianId)); apptSeen.push(...r.appointments.map((a: any) => a.appointmentId)); }
+      expect(new Set(techSeen).size).toBe(n); expect(techSeen).toHaveLength(n);
+      expect(new Set(apptSeen).size).toBe(2 * n); expect(apptSeen).toHaveLength(2 * n);
+      expect(first.kpis.totalAppointmentsToday).toBe(2 * n);
+    });
+  }
+});
