@@ -2125,4 +2125,8 @@ export const OPS_EN = {
   "ops.serving.lineProgress": "Progress",
   "ops.serving.lineHistory": "This line's history",
   "ops.serving.lineHistoryNone": "No change recorded for this line.",
+  "syschk.inventory.po_receipt_vs_ledger": "Every purchase-order receipt is in the stock ledger exactly once",
+  "syschk.inventory.po_receipt_vs_ledger.fix": "What the order says it received does not match the stock movements written for it. Open the purchase order and recount the product.",
+  "syschk.inventory.transfer_vs_ledger": "Every transfer is in the stock ledger exactly once",
+  "syschk.inventory.transfer_vs_ledger.fix": "What the transfer says it moved does not match its stock movements. Open the transfer and recount both locations.",
 };

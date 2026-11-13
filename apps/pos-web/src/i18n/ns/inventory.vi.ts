@@ -465,4 +465,25 @@ export const INVENTORY_VI = {
   'inv.price.receiptsKeep': 'Hóa đơn cũ giữ nguyên giá đã tính lúc bán — đổi giá không bao giờ sửa lại hóa đơn cũ.', // DRAFT — Kevin reviews
   'inv.price.reasonLabel': 'Vì sao đổi giá? (không bắt buộc)', // DRAFT — Kevin reviews
   'inv.price.reasonPh': 'vd: nhà cung cấp tăng giá vốn', // DRAFT — Kevin reviews
+  'inv.dup.check': 'Kiểm tra trùng lặp', // DRAFT — Kevin reviews
+  'inv.dup.none': 'Không thấy sản phẩm nào có thể trùng.', // DRAFT — Kevin reviews
+  'inv.dup.title': '{n} sản phẩm có thể trùng — vui lòng xem lại', // DRAFT — Kevin reviews
+  'inv.dup.saveAnyway': 'Chưa tạo gì. Nếu đây là sản phẩm khác, bấm Tạo lần nữa.', // DRAFT — Kevin reviews
+  'inv.dup.reason.sku_exact': 'trùng SKU (sẽ bị từ chối)', // DRAFT — Kevin reviews
+  'inv.dup.reason.sku_near': 'SKU gần giống', // DRAFT — Kevin reviews
+  'inv.dup.reason.barcode': 'trùng mã vạch (sẽ bị từ chối)', // DRAFT — Kevin reviews
+  'inv.dup.reason.supplier_sku': 'SKU nhà cung cấp', // DRAFT — Kevin reviews
+  'inv.dup.reason.name_size': 'cùng tên và kích cỡ', // DRAFT — Kevin reviews
+  'inv.pv.title': 'Xem trước cho {b} (theo {u})', // DRAFT — Kevin reviews
+  'inv.pv.now': 'Tồn kho hiện tại', // DRAFT — Kevin reviews
+  'inv.pv.after': 'Sau lần nhập này', // DRAFT — Kevin reviews
+  'inv.pv.afterIncoming': 'Sau lần này + hàng đang đặt', // DRAFT — Kevin reviews
+  'inv.pv.incoming': 'Còn đang về theo đơn đặt hàng', // DRAFT — Kevin reviews
+  'inv.pv.levels': 'Đặt lại ở {r} · nguy cấp ở {c} · tối đa {m}', // DRAFT — Kevin reviews
+  'inv.pv.clears': 'Lần nhập này đưa tồn kho lên trên mức đặt lại.', // DRAFT — Kevin reviews
+  'inv.pv.over': 'Lần nhập này làm tồn kho vượt mức tối đa.', // DRAFT — Kevin reviews
+  'inv.reorderDraft.mapped': 'Theo liên kết nhà cung cấp đã xác minh: {v} · SKU nhà cung cấp {sku} · gói {pack} — {n} gói = {units} đơn vị.', // DRAFT — Kevin reviews
+  'inv.reorderDraft.unmapped': 'Sản phẩm này chưa có liên kết nhà cung cấp đã xác minh — hãy chọn nhà cung cấp và kiểm tra số lượng (đề xuất {units} đơn vị).', // DRAFT — Kevin reviews
+  'inv.reorderDraft.stock': 'Tồn {h}, đang đặt {o}, đặt lại ở {r}.', // DRAFT — Kevin reviews
+  'inv.reorderDraft.approval': 'Đây là bản nháp: chưa đặt hàng cho đến khi được tạo và duyệt.', // DRAFT — Kevin reviews
 };

@@ -689,4 +689,36 @@ describe('Check Technicians System — booking / queue / app sync', () => {
     expect(count(other, 'serving_far_over_estimate').count).toBe(1);
     expect((await q(sql`select (select count(*) from tickets) + (select count(*) from ticket_service_lines) as n`)).rows).toEqual(before);
   });
+  it('extras Products Management 04: a PO receipt or a transfer that does not equal its ledger rows is counted; own salon only; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 9450..9479, agent-4 round-10 range)
+    const T4 = id(9450), X4 = id(9451), B41 = id(9452), B42 = id(9453), BX4 = id(9454), PR = id(9455), PRX = id(9456), BX5 = id(9457);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Stock', 'sc-9450', 'SC9450', 'active'), (${X4}, 'X', 'Other', 'sc-9451', 'SC9451', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${B42}, ${T4}, 'Second'), (${BX4}, ${X4}, 'Other'), (${BX5}, ${X4}, 'Other 2')`);
+    await q(sql`insert into inventory_products (id, tenant_id, name) values (${PR}, ${T4}, 'Gel'), (${PRX}, ${X4}, 'Gel X')`);
+    // PO1 (B1): 2 packs of 3 received = 6 bottles, ledger 6 → fine. PO2 (B2): 1 pack of 4 received, ledger only 3 → counted.
+    // PO3 (B1): received 2 but NO ledger row → counted. POX: the other salon's mismatch → never counted
+    const PO1 = id(9460), PO2 = id(9461), PO3 = id(9462), POX = id(9463);
+    await q(sql`insert into purchase_orders (id, tenant_id, branch_id, status) values (${PO1}, ${T4}, ${B41}, 'received'), (${PO2}, ${T4}, ${B42}, 'partial'), (${PO3}, ${T4}, ${B41}, 'received'), (${POX}, ${X4}, ${BX4}, 'received')`);
+    await q(sql`insert into purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, quantity_received, units_per_purchase_unit) values
+      (${T4}, ${PO1}, ${PR}, 2, 2, 3), (${T4}, ${PO2}, ${PR}, 2, 1, 4), (${T4}, ${PO3}, ${PR}, 2, 2, 1), (${X4}, ${POX}, ${PRX}, 1, 1, 5)`);
+    const mv = (tn: string, b: string, p: string, type: string, change: number, rt: string, rid: string) => sql`(${tn}, ${b}, ${p}, ${type}, 0, ${change}, ${change}, ${rt}, ${rid})`;
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_before, quantity_change, quantity_after, related_type, related_id) values
+      ${mv(T4, B41, PR, 'purchase_received', 4, 'purchase_order', PO1)}, ${mv(T4, B41, PR, 'purchase_received', 2, 'purchase_order', PO1)}, ${mv(T4, B42, PR, 'purchase_received', 3, 'purchase_order', PO2)},
+      ${mv(T4, B41, PR, 'damaged', -1, 'purchase_order', PO1)}`);
+    // transfers: TR1 B1→B2 moved 3, ledger out -3 → fine; TR2 B2→B1 moved 2, ledger out -1 → counted; TRX other salon (no ledger) → never
+    const TR1 = id(9470), TR2 = id(9471), TRX = id(9472);
+    await q(sql`insert into inventory_transfers (id, tenant_id, from_branch_id, to_branch_id, status) values (${TR1}, ${T4}, ${B41}, ${B42}, 'completed'), (${TR2}, ${T4}, ${B42}, ${B41}, 'completed'), (${TRX}, ${X4}, ${BX4}, ${BX5}, 'completed')`);
+    await q(sql`insert into inventory_transfer_lines (tenant_id, transfer_id, product_id, quantity_requested, quantity_moved) values (${T4}, ${TR1}, ${PR}, 3, 3), (${T4}, ${TR2}, ${PR}, 2, 2), (${X4}, ${TRX}, ${PRX}, 1, 1)`);
+    await q(sql`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_before, quantity_change, quantity_after, related_type, related_id) values
+      ${mv(T4, B41, PR, 'transfer_out', -3, 'transfer', TR1)}, ${mv(T4, B42, PR, 'transfer_in', 3, 'transfer', TR1)}, ${mv(T4, B42, PR, 'transfer_out', -1, 'transfer', TR2)}`);
+    const before = (await q(sql`select (select count(*) from inventory_stock_movements) + (select count(*) from purchase_order_lines) as n`)).rows;
+    const all = await svc.run('inventory', { tenantId: T4 });
+    expect(count(all, 'po_receipt_vs_ledger')).toMatchObject({ state: 'FAILED', count: 2 });   // PO2 + PO3
+    expect(count(all, 'transfer_vs_ledger')).toMatchObject({ state: 'FAILED', count: 1 });     // TR2
+    expect(count(await svc.run('inventory', { tenantId: T4, branchId: B41 }), 'po_receipt_vs_ledger').count).toBe(1);   // PO3 only
+    expect(count(await svc.run('inventory', { tenantId: T4, branchId: B42 }), 'po_receipt_vs_ledger').count).toBe(1);   // PO2 only
+    expect(count(await svc.run('inventory', { tenantId: X4 }), 'po_receipt_vs_ledger').count).toBe(1);
+    expect(count(await svc.run('inventory', { tenantId: X4 }), 'transfer_vs_ledger').count).toBe(1);
+    expect((await q(sql`select (select count(*) from inventory_stock_movements) + (select count(*) from purchase_order_lines) as n`)).rows).toEqual(before);
+  });
 });

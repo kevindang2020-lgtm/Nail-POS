@@ -66,7 +66,11 @@ export const inventoryApi = {
   setStockOverrides: (id: string, b: any) => api.patch<{ product: InvProduct }>(`/tenant/inventory/products/${id}/stock-overrides`, b),
   product: (id: string) => api.get<{ product: any; units: InvUnit[] }>(`/tenant/inventory/products/${id}`),
   createProduct: (b: any) => api.post<{ id: string }>('/tenant/inventory/products', b),
+  /** Products Management 07: the live products a new / edited product may duplicate, and why (read only) */
+  productDuplicates: (q: Record<string, unknown>) => api.get<InvDuplicatesResult>('/tenant/inventory/products/duplicates', q),
   addStock: (id: string, b: any) => api.post<{ product: any }>(`/tenant/inventory/products/${id}/stock/add`, b),
+  /** Products Management 09: current / incoming / after / threshold impact before Add Stock (read only, server-computed) */
+  stockPreview: (id: string, quantity: number) => api.get<InvStockPreview>(`/tenant/inventory/products/${id}/stock-preview`, { quantity }),
   openUnit: (unitId: string) => api.post(`/tenant/inventory/units/${unitId}/open`, {}),
   markEmpty: (unitId: string) => api.post(`/tenant/inventory/units/${unitId}/mark-empty`, {}),
   markLow: (unitId: string) => api.post(`/tenant/inventory/units/${unitId}/mark-low`, {}),
@@ -83,6 +87,8 @@ export const inventoryApi = {
   purchaseOrders: (status?: string) => api.get<{ purchaseOrders: PurchaseOrderSummary[] }>('/tenant/inventory/purchase-orders', status ? { status } : undefined),
   purchaseOrder: (id: string) => api.get<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}`),
   updatePurchaseOrder: (id: string, b: any) => api.patch<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}`, b),   // D9 gaps: change a draft
+  /** Products Management 14: the Reorder draft prefill from the verified supplier mapping (read only, server-computed) */
+  reorderDraft: (productId: string) => api.get<InvReorderDraft>(`/tenant/inventory/products/${productId}/reorder-draft`),
   createPurchaseOrder: (b: any, idempotencyKey?: string) => api.post<{ id: string; poNumber: string }>('/tenant/inventory/purchase-orders', b, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
   approvePurchaseOrder: (id: string) => api.post<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}/approve`, {}),
   receivePurchaseOrder: (id: string, b: any, idempotencyKey?: string) => api.post<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}/receive`, b, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
@@ -108,3 +114,14 @@ export const inventoryApi = {
     api.post<{ ok: boolean; expense: { id: string; amount_cents: number; vendor: string | null } }>('/tenant/inventory/receipt-expense', b),
 };
 export type { ServiceRecipe, ServiceRecipeLine };
+
+/** Products Management 07 — possible duplicates of a product being added / edited (the server decides; the POS only shows) */
+export interface InvDuplicatesResult { candidates: { productId: string; name: string; sku: string | null; barcode: string | null; reasons: string[]; supplierSku: string | null; supplierName: string | null }[]; checked: Record<string, boolean> }
+
+/** Products Management 09 — the server's Add Stock preview for this location */
+export interface InvStockPreview { productId: string; branch: { id: string; name: string | null }; unit: string; quantity: number; onHand: number; incoming: number; afterAdd: number; afterAddAndIncoming: number; reorderLevel: number; criticalLevel: number; maximumStock: number | null; statusNow: string; statusAfter: string; statusAfterIncoming: string; clearsReorder: boolean; overMaximum: boolean }
+
+/** Products Management 14 — what the server prefills a Reorder draft purchase order with */
+export interface InvReorderDraft { productId: string; productName: string; branchId: string; unit: string; onHand: number; onOrder: number; reorderLevel: number; reorderQuantity: number; suggestedUnits: number;
+  mapping: { vendorId: string; vendorName: string; supplierSku: string | null; unitCostCents: number | null; purchaseUnit: string | null; unitsPerPurchaseUnit: number; minimumOrderQty: number | null; leadTimeDays: number | null } | null;
+  purchaseUnitsToOrder: number; unitsThatArrive: number }

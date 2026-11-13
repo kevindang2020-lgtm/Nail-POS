@@ -2,7 +2,7 @@
 // (never the client). Stock counts are recomputed from the authoritative bottle rows after every change
 // (no blind increments → safe under concurrency). Every mutation writes an immutable movement + audit.
 import { OutboxWriter, DOMAIN_EVENTS, createDomainEvent } from '@aipowersalon/events';
-import type { ServiceRecipe } from '@aipowersalon/api-contracts/tenant';
+import type { ServiceRecipe, InventoryReorderDraftResponse, InventoryReorderMapping, InventoryStockPreviewResponse, InventoryProductDuplicatesResponse, InventoryDuplicateCandidate, InventoryDuplicateReason } from '@aipowersalon/api-contracts/tenant';
 import { utcDate, businessDate } from '@aipowersalon/date-time';
 import { sql, type Kysely } from 'kysely';
 import { transitionStatus, canMoveToSql, type DB, branchTimeZone } from '@aipowersalon/database';
@@ -525,6 +525,53 @@ export class InventoryService {
     return { ok: true };
   }
 
+  /** Extras Products Management 07 (round 10) — Duplicate product warning, read only: the live products a new (or edited,
+   *  exceptId) product may duplicate, and why. sku_exact / barcode are what uniqueCodes refuses on save; sku_near = the same
+   *  SKU once case, spaces, dashes, dots and slashes are ignored; supplier_sku = a supplier SKU another product is already
+   *  linked under (inventory_vendor_products), or the new SKU equals one; name_size = the same name (case / spaces) and size.
+   *  Nothing is written; archived products never appear. At most 10 candidates, exact reasons first. */
+  async productDuplicates(ctx: InvCtx, q: { name?: unknown; sku?: unknown; barcode?: unknown; supplierSku?: unknown; sizeValue?: unknown; sizeUnit?: unknown; exceptId?: unknown }): Promise<InventoryProductDuplicatesResponse> {
+    const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+    const norm = (v: string) => v.toLowerCase().replace(/[\s\-_./]+/g, '');
+    const sku = str(q?.sku, 64), bc = str(q?.barcode, 64), ssku = str(q?.supplierSku, 64), name = str(q?.name, 160);
+    const nsku = norm(sku), nssku = norm(ssku), nname = name.toLowerCase().replace(/\s+/g, ' ');
+    const size = q?.sizeValue != null && q.sizeValue !== '' && Number.isFinite(Number(q.sizeValue)) ? Number(q.sizeValue) : null;
+    const sizeUnit = str(q?.sizeUnit, 16).toLowerCase();
+    const exceptId = typeof q?.exceptId === 'string' && /^[0-9a-f-]{36}$/i.test(q.exceptId) ? q.exceptId : null;
+    const checked = { sku: !!nsku, barcode: !!bc, supplierSku: !!nssku, name: nname.length >= 3 };
+    if (!checked.sku && !checked.barcode && !checked.supplierSku && !checked.name) return { candidates: [], checked };
+    const rows = (await sql<{ id: string; name: string; sku: string | null; barcode: string | null; sku_exact: boolean; sku_near: boolean; bc_hit: boolean; ss_hit: boolean; name_hit: boolean; supplier_sku: string | null; supplier_name: string | null }>`
+      SELECT p.id, p.name, p.sku, p.barcode,
+        (${sku} <> '' AND lower(trim(coalesce(p.sku, ''))) = lower(${sku})) AS sku_exact,
+        (${nsku} <> '' AND regexp_replace(lower(coalesce(p.sku, '')), '[[:space:]_./-]+', '', 'g') = ${nsku}) AS sku_near,
+        (${bc} <> '' AND (trim(coalesce(p.barcode, '')) = ${bc} OR trim(coalesce(p.upc, '')) = ${bc})) AS bc_hit,
+        (vp.id IS NOT NULL) AS ss_hit,
+        (${checked.name} AND regexp_replace(lower(trim(p.name)), '[[:space:]]+', ' ', 'g') = ${nname}
+          AND (${size}::numeric IS NULL OR p.size_value IS NULL OR p.size_value = ${size}::numeric)
+          AND (${sizeUnit} = '' OR p.size_unit IS NULL OR lower(p.size_unit) = ${sizeUnit})) AS name_hit,
+        vp.supplier_sku, vd.name AS supplier_name
+      FROM inventory_products p
+      LEFT JOIN LATERAL (SELECT vx.id, vx.supplier_sku, vx.vendor_id FROM inventory_vendor_products vx
+        WHERE vx.tenant_id = p.tenant_id AND vx.product_id = p.id AND vx.active AND coalesce(vx.supplier_sku, '') <> ''
+          AND ((${nssku} <> '' AND regexp_replace(lower(vx.supplier_sku), '[[:space:]_./-]+', '', 'g') = ${nssku})
+            OR (${nsku} <> '' AND regexp_replace(lower(vx.supplier_sku), '[[:space:]_./-]+', '', 'g') = ${nsku}))
+        ORDER BY vx.created_at LIMIT 1) vp ON true
+      LEFT JOIN inventory_vendors vd ON vd.id = vp.vendor_id AND vd.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ${ctx.tenantId} AND p.archived_at IS NULL AND (${exceptId}::uuid IS NULL OR p.id <> ${exceptId}::uuid)`.execute(this.need())).rows;
+    const candidates: InventoryDuplicateCandidate[] = [];
+    for (const r of rows) {
+      const reasons: InventoryDuplicateReason[] = [];
+      if (r.sku_exact) reasons.push('sku_exact'); else if (r.sku_near) reasons.push('sku_near');
+      if (r.bc_hit) reasons.push('barcode');
+      if (r.ss_hit) reasons.push('supplier_sku');
+      if (r.name_hit) reasons.push('name_size');
+      if (reasons.length) candidates.push({ productId: String(r.id), name: r.name, sku: r.sku ?? null, barcode: r.barcode ?? null, reasons, supplierSku: r.ss_hit ? r.supplier_sku ?? null : null, supplierName: r.ss_hit ? r.supplier_name ?? null : null });
+    }
+    const rank = (c: InventoryDuplicateCandidate) => (c.reasons.includes('sku_exact') || c.reasons.includes('barcode') ? 0 : 1);
+    candidates.sort((a, b) => rank(a) - rank(b) || b.reasons.length - a.reasons.length || a.name.localeCompare(b.name));
+    return { candidates: candidates.slice(0, 10), checked };
+  }
+
   // ---- products ----
   async listProducts(ctx: InvCtx, q: any) {
     const branchId = await this.resolveBranchId(ctx);
@@ -724,6 +771,65 @@ export class InventoryService {
   /** One transaction: the bottles, the cost, the movement and the audit row land together or not at all (a failure part-way
    *  used to leave bottles without their movement). A purchase-order receipt comes only from receivePurchaseOrder (`fromPo`):
    *  a caller naming a purchaseOrderId here used to label a manual add "purchase received" against any id, unchecked. */
+  /** Extras Products Management 09 (round 10) — the stock status preview before Add Stock, read only: this location's on hand
+   *  (inventory_location_stock, what every list shows), what is still coming on committed purchase orders (onOrderSql),
+   *  the effective thresholds (this location's overrides over the product's levels, critical defaulting to ceil(reorder / 2)
+   *  exactly as liveAlertState) and THE stock status (stockStatus) now / after this receipt / after it + incoming. */
+  async stockPreview(ctx: InvCtx, productId: string, quantity: unknown): Promise<InventoryStockPreviewResponse> {
+    const p = await this.product(ctx, productId);
+    const qty = Math.max(0, Math.min(1000, parseInt(String(quantity ?? '0'), 10) || 0));
+    const branchId = await this.resolveBranchId(ctx);
+    if (!branchId) throw withCode(new InventoryError(400, 'No location is selected.'), 'BRANCH_REQUIRED');
+    const r = (await sql<{ on_hand: number; reorder_level: number; critical_level: number; maximum_stock: number | null; incoming: number; branch_name: string | null }>`
+      SELECT coalesce(s.quantity_on_hand, 0)::int AS on_hand,
+             coalesce(s.reorder_level_override, ip.reorder_level, 0)::int AS reorder_level,
+             CASE WHEN coalesce(s.critical_level_override, ip.critical_level, 0) > 0 THEN coalesce(s.critical_level_override, ip.critical_level)::int
+                  ELSE ceil(coalesce(s.reorder_level_override, ip.reorder_level, 0) / 2.0)::int END AS critical_level,
+             ip.maximum_stock, ${onOrderSql(ctx.tenantId, branchId, sql`ip.id`)} AS incoming,
+             (SELECT bn.name FROM branches bn WHERE bn.tenant_id = ip.tenant_id AND bn.id = ${branchId}::uuid) AS branch_name
+        FROM inventory_products ip
+        LEFT JOIN inventory_location_stock s ON s.product_id = ip.id AND s.tenant_id = ip.tenant_id AND s.branch_id = ${branchId}::uuid
+       WHERE ip.tenant_id = ${ctx.tenantId} AND ip.id = ${productId}`.execute(this.need())).rows[0];
+    const onHand = Number(r?.on_hand ?? 0), incoming = Number(r?.incoming ?? 0), reorder = Number(r?.reorder_level ?? 0), critical = Number(r?.critical_level ?? 0);
+    const max = r?.maximum_stock == null ? null : Number(r.maximum_stock);
+    const status = (n: number) => stockStatus(n, reorder, max, critical);
+    return { productId, branch: { id: branchId, name: r?.branch_name ?? null }, unit: String(p.unit_type ?? 'unit'), quantity: qty,
+      onHand, incoming, afterAdd: onHand + qty, afterAddAndIncoming: onHand + qty + incoming, reorderLevel: reorder, criticalLevel: critical, maximumStock: max,
+      statusNow: status(onHand), statusAfter: status(onHand + qty), statusAfterIncoming: status(onHand + qty + incoming),
+      clearsReorder: reorder > 0 && onHand <= reorder && onHand + qty > reorder, overMaximum: max != null && max > 0 && onHand + qty > max };
+  }
+
+  /** Extras Products Management 14 (round 10) — the prefill of a Reorder DRAFT purchase order, read only: THE reorder rule
+   *  (reorderSuggestion, committed on-order subtracted) for this location, and the product's VERIFIED supplier mapping — an
+   *  active inventory_vendor_products link to an active supplier (the product's preferred supplier first, then the link
+   *  marked preferred, then the oldest). The quantity is in that supplier's packs (at least its minimum order). No mapping →
+   *  mapping null and one unit per pack: nothing guessed. Nothing is created or ordered here. */
+  async reorderDraft(ctx: InvCtx, productId: string): Promise<InventoryReorderDraftResponse> {
+    const p = await this.product(ctx, productId);
+    const branchId = await this.resolveBranchId(ctx);
+    if (!branchId) throw withCode(new InventoryError(400, 'No location is selected.'), 'BRANCH_REQUIRED');
+    const k = (await sql<{ on_hand: number; rl: number; rq: number; on_order: number }>`
+      SELECT coalesce(s.quantity_on_hand, 0)::int AS on_hand, coalesce(s.reorder_level_override, ip.reorder_level, 0)::int AS rl,
+             coalesce(s.reorder_quantity_override, ip.reorder_quantity, 0)::int AS rq, ${onOrderSql(ctx.tenantId, branchId, sql`ip.id`)} AS on_order
+        FROM inventory_products ip LEFT JOIN inventory_location_stock s ON s.product_id = ip.id AND s.tenant_id = ip.tenant_id AND s.branch_id = ${branchId}::uuid
+       WHERE ip.tenant_id = ${ctx.tenantId} AND ip.id = ${productId}`.execute(this.need())).rows[0];
+    const preferredVendor = (await sql<{ v: string | null }>`SELECT coalesce(s.preferred_vendor_id_override, ip.preferred_vendor_id) AS v FROM inventory_products ip
+      LEFT JOIN inventory_location_stock s ON s.product_id = ip.id AND s.tenant_id = ip.tenant_id AND s.branch_id = ${branchId}::uuid WHERE ip.tenant_id = ${ctx.tenantId} AND ip.id = ${productId}`.execute(this.need())).rows[0]?.v ?? null;
+    const m = (await sql<{ vendor_id: string; vendor_name: string; supplier_sku: string | null; last_cost_cents: number | null; purchase_unit: string | null; units_per_purchase_unit: number; minimum_order_qty: number | null; lead_time_days: number | null }>`
+      SELECT vp.vendor_id, vd.name AS vendor_name, vp.supplier_sku, vp.last_cost_cents, vp.purchase_unit, vp.units_per_purchase_unit, vp.minimum_order_qty, coalesce(vp.lead_time_days, vd.lead_time_days) AS lead_time_days
+        FROM inventory_vendor_products vp JOIN inventory_vendors vd ON vd.id = vp.vendor_id AND vd.tenant_id = vp.tenant_id AND vd.active
+       WHERE vp.tenant_id = ${ctx.tenantId} AND vp.product_id = ${productId} AND vp.active
+       ORDER BY (vp.vendor_id = ${preferredVendor}::uuid) DESC NULLS LAST, vp.is_preferred DESC, vp.created_at ASC LIMIT 1`.execute(this.need())).rows[0];
+    const onHand = Number(k?.on_hand ?? 0), onOrder = Number(k?.on_order ?? 0), rl = Number(k?.rl ?? 0), rq = Number(k?.rq ?? 0);
+    const suggestedUnits = reorderSuggestion(onHand, rl, rq, onOrder);
+    const mapping: InventoryReorderMapping | null = m ? { vendorId: String(m.vendor_id), vendorName: m.vendor_name, supplierSku: m.supplier_sku ?? null, unitCostCents: m.last_cost_cents == null ? null : Number(m.last_cost_cents),
+      purchaseUnit: m.purchase_unit ?? null, unitsPerPurchaseUnit: Math.max(1, Number(m.units_per_purchase_unit) || 1), minimumOrderQty: m.minimum_order_qty == null ? null : Number(m.minimum_order_qty), leadTimeDays: m.lead_time_days == null ? null : Number(m.lead_time_days) } : null;
+    const pack = mapping?.unitsPerPurchaseUnit ?? 1;
+    const purchaseUnitsToOrder = suggestedUnits > 0 ? Math.max(Math.ceil(suggestedUnits / pack), mapping?.minimumOrderQty ?? 0) : 0;
+    return { productId, productName: String(p.name), branchId, unit: String(p.unit_type ?? 'unit'), onHand, onOrder, reorderLevel: rl, reorderQuantity: rq, suggestedUnits,
+      mapping, purchaseUnitsToOrder, unitsThatArrive: purchaseUnitsToOrder * pack };
+  }
+
   async addStock(ctx: InvCtx, productId: string, b: any, opts: { fromPo?: boolean; exec?: Kysely<DB> } = {}) {
     await this.product(ctx, productId);
     const qty = Math.max(0, parseInt(b?.quantity, 10) || 0);

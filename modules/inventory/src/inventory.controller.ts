@@ -8,6 +8,7 @@ import { Body, Controller, Get, HttpException, Param, Patch, Post, Put, Query, R
 import { InventoryService, InventoryError } from './inventory.service';
 import { ListQueries } from '@aipowersalon/database';
 import { InventoryControllerListQueries } from './inventory.list-queries';
+import type { InventoryProductDuplicatesResponse, InventoryStockPreviewResponse, InventoryReorderDraftResponse } from '@aipowersalon/api-contracts/tenant';
 
 function ctx(req: any) { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId, userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 async function run<T>(fn: () => Promise<T>): Promise<T> { try { return await fn(); } catch (e) { if (e instanceof InventoryError) throw new HttpException({ ok: false, message: e.message, ...(e.extra || {}) }, e.status); throw e; } }
@@ -35,12 +36,18 @@ export class InventoryController {
   @Post('vendors/:id/archive') @RequirePermission('inventory.vendor.manage') archVendor(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.archiveVendor(ctx(r), id)); }
 
   @Get('products') @RequirePermission('inventory.view') products(@Req() r: any, @Query() q: any) { return run(() => this.svc.listProducts(ctx(r), q)); }
+  // Extras Products Management 07 (round 10): the live products a new / edited product may duplicate, and why — read only
+  @Get('products/duplicates') @RequirePermission('inventory.view') productDuplicates(@Req() r: any, @Query() q: any): Promise<InventoryProductDuplicatesResponse> { return run(() => this.svc.productDuplicates(ctx(r), q ?? {})); }
   @Get('products/:id') @RequirePermission('inventory.view') product(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.getProduct(ctx(r), id)); }
   @Post('products') @RequirePermission('inventory.create') create(@Req() r: any, @Body(ValidatedBody(INV_PRODUCT_CREATE_BODY, { strict: true })) b: any) { return run(() => this.svc.createProduct(ctx(r), b)); }
   @Patch('products/:id') @RequirePermission('inventory.update') update(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_PRODUCT_UPDATE_BODY, { strict: true })) b: any) { return run(() => this.svc.updateProduct(ctx(r), id, b)); }
   @Patch('products/:id/stock-overrides') @RequirePermission('inventory.update') setStockOverrides(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_STOCK_OVERRIDES_BODY, { strict: true })) b: any) { return run(() => this.svc.setLocationStockOverrides(ctx(r), id, b)); }
   @Post('products/:id/archive') @RequirePermission('inventory.archive') archive(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.archiveProduct(ctx(r), id)); }
 
+  // Extras Products Management 09 (round 10): current / incoming / after / threshold impact before Add Stock — read only
+  @Get('products/:id/stock-preview') @RequirePermission('inventory.view') stockPreview(@Req() r: any, @Param('id') id: string, @Query() q: any): Promise<InventoryStockPreviewResponse> { return run(() => this.svc.stockPreview(ctx(r), id, q?.quantity)); }
+  // Extras Products Management 14 (round 10): the Reorder draft's prefill from the verified supplier mapping — read only
+  @Get('products/:id/reorder-draft') @RequirePermission('inventory.purchase_order.create') reorderDraft(@Req() r: any, @Param('id') id: string): Promise<InventoryReorderDraftResponse> { return run(() => this.svc.reorderDraft(ctx(r), id)); }
   @Post('products/:id/stock/add') @RequirePermission('inventory.stock.add') addStock(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_ADD_STOCK_BODY, { strict: true })) b: any) { return run(() => this.svc.addStock(ctx(r), id, b)); }
 
   @Post('units/:unitId/open') @RequirePermission('inventory.update') open(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.openUnit(ctx(r), id)); }

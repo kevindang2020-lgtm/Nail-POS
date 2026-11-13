@@ -2124,4 +2124,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.serving.lineProgress": "Tiến độ", // DRAFT — Kevin reviews
   "ops.serving.lineHistory": "Lịch sử của dòng này", // DRAFT — Kevin reviews
   "ops.serving.lineHistoryNone": "Chưa có thay đổi nào cho dòng này.", // DRAFT — Kevin reviews
+  "syschk.inventory.po_receipt_vs_ledger": "Mỗi lần nhận hàng theo đơn đặt hàng đều được ghi vào sổ kho đúng một lần", // DRAFT — Kevin reviews
+  "syschk.inventory.po_receipt_vs_ledger.fix": "Số lượng đơn ghi đã nhận không khớp với các biến động kho đã ghi. Mở đơn đặt hàng và đếm lại sản phẩm.", // DRAFT — Kevin reviews
+  "syschk.inventory.transfer_vs_ledger": "Mỗi lần chuyển kho đều được ghi vào sổ kho đúng một lần", // DRAFT — Kevin reviews
+  "syschk.inventory.transfer_vs_ledger.fix": "Số lượng chuyển không khớp với các biến động kho. Mở phiếu chuyển và đếm lại ở cả hai chi nhánh.", // DRAFT — Kevin reviews
 };

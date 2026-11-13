@@ -2006,7 +2006,9 @@ GET /tenant/inventory/categories  realm=staff  auth=session  domain=inventory  p
 GET /tenant/inventory/counts  realm=staff  auth=session  domain=inventory  perm=inventory.stock.count  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/counts/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.stock.count  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/products  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/inventory/products/duplicates  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/products/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/inventory/products/{id}/stock-preview  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/purchase-orders  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/purchase-orders/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/recipes  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

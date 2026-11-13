@@ -111,6 +111,8 @@ export const SEGMENT_FIXTURES = [
   ['/tenant/help/tickets/{id}', F('support_tickets')],
   ['/tenant/inventory/counts/{id}', F('inventory_counts')],
   ['/tenant/inventory/products/{id}', F('inventory_products')],
+  ['/tenant/inventory/products/{id}/stock-preview', F('inventory_products')],   // Products Management 09 (round 10): Add Stock preview
+  ['/tenant/inventory/products/{id}/reorder-draft', F('inventory_products')],   // Products Management 14 (round 10): Reorder draft prefill
   ['/tenant/inventory/purchase-orders/{id}', F('purchase_orders')],
   ['/tenant/inventory/transfers/{id}', F('inventory_transfers')],
   ['/tenant/locations/{id}', F('branches')],

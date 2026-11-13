@@ -8,9 +8,9 @@
 //                        a duplicate SKU / barcode is refused by the server and said so here
 //   AddStockDialog       a documented receipt: quantity, lot, expiration, cost, note — one movement, never a duplicate product
 // Usage history and Record Product Use come from the Stock Alerts screen (one usage system, never two).
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { inventoryApi } from '../api/inventoryApi';
+import { inventoryApi, type InvDuplicatesResult, type InvStockPreview } from '../api/inventoryApi';
 import { posInventoryScreenApi } from '../api/posInventoryScreenApi';
 import { posInventoryAlertsApi } from '../api/posInventoryAlertsApi';
 import { fmtMoney, fmtNumber, fmtInZone, fmtYmd } from '../i18n/format';
@@ -238,6 +238,17 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
   const [priceReason, setPriceReason] = useState('');
   const priceChanged = edit && (centsFromText(f.cost) !== (product?.costCents ?? null) || centsFromText(f.retail) !== (product?.retailCents ?? null));
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  // Products Management 07: possible duplicates (near SKU, barcode, supplier SKU, same name + size) — the server's answer, for
+  // review; a NEW product shows them once before it is created and a second Save creates it anyway (an exact SKU / barcode
+  // is still refused by the server)
+  const [dups, setDups] = useState<InvDuplicatesResult['candidates'] | null>(null);
+  const dupKey = `${f.name.trim()}|${f.sku.trim()}|${f.barcode.trim()}`;
+  const [dupSeenFor, setDupSeenFor] = useState<string | null>(null);
+  const checkDups = async (): Promise<InvDuplicatesResult['candidates']> => {
+    const r = await inventoryApi.productDuplicates({ name: f.name.trim(), sku: f.sku.trim(), barcode: f.barcode.trim(), ...(edit ? { exceptId: product.id } : {}) });
+    const c = Array.isArray(r?.candidates) ? r.candidates : [];
+    setDups(c); setDupSeenFor(dupKey); return c;
+  };
   const int = (s: string) => (s.trim() === '' ? null : /^\d{1,6}$/.test(s.trim()) ? Number(s.trim()) : NaN);
   const problems = useMemo(() => {
     const out: string[] = [];
@@ -251,6 +262,10 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
   const save = async () => {
     if (problems.length) { setErr(problems[0]); return; }
     setBusy(true); setErr(null);
+    if (!edit && dupSeenFor !== dupKey) {
+      try { if ((await checkDups()).length) { setBusy(false); return; } }   // shown for review — Save again creates it anyway
+      catch (e) { setErr(errMsg(e)); setBusy(false); return; }
+    }
     const body: Record<string, unknown> = {
       name: f.name.trim(), brandId: f.brandId || null, categoryId: f.categoryId || null, colorNumber: f.colorNumber.trim() || null, colorName: f.colorName.trim() || null, finish: f.finish.trim() || null,
       sku: f.sku.trim() || null, barcode: f.barcode.trim() || null, upc: f.upc.trim() || null, unitType: f.unitType, trackingMode: f.trackingMode,
@@ -289,6 +304,13 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
           </div>
           <div className="inv-row3">{input('colorNumber', tx('pos.color_number'), { ph: '428' })}{input('colorName', tx('pos.color_name'))}{input('finish', tx('pos.finish'))}</div>
           <div className="inv-row3">{input('sku', 'SKU', { testId: 'pf-sku' })}{input('barcode', tx('pos.barcode'), { testId: 'pf-barcode' })}{input('upc', 'UPC')}</div>
+          <button type="button" className="fk-btn" data-testid="pf-dup-check" disabled={busy} onClick={() => { checkDups().catch((e) => setErr(errMsg(e))); }}>{tx('inv.dup.check')}</button>
+          {dups && dupSeenFor === dupKey ? (dups.length === 0 ? <div className="fk-li-s" data-testid="pf-dups-none">{tx('inv.dup.none')}</div> : (
+            <div data-testid="pf-dups" role="status" style={{ border: "1px solid #E8C48A", background: "#FFF7E8", borderRadius: 8, padding: 8, margin: "6px 0", fontSize: 12 }}>
+              <b>{tx('inv.dup.title', { n: String(dups.length) })}</b>
+              {dups.map((c) => <div key={c.productId} data-testid={`pf-dup-${c.productId}`}>{c.name}{c.sku ? ` · SKU ${c.sku}` : ''} — {c.reasons.map((r) => codeLabel(`inv.dup.reason.${r}`, r) + (r === 'supplier_sku' && c.supplierSku ? ` ${c.supplierSku}${c.supplierName ? ` (${c.supplierName})` : ''}` : '')).join(', ')}</div>)}
+              {!edit ? <div className="fk-li-s">{tx('inv.dup.saveAnyway')}</div> : null}
+            </div>)) : null}
           <div className="inv-row2">
             <label className="fk-field"><span>{tx('inv.form.unit')}</span><select className="fk-select" value={f.unitType} onChange={(e) => set('unitType')(e.target.value)}>{['bottle', 'jar', 'tube', 'piece', 'pair', 'pack', 'box', 'ml', 'g'].map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}</select></label>
             <label className="fk-field"><span>{tx('pos.tracking')}</span><select className="fk-select" value={f.trackingMode} onChange={(e) => set('trackingMode')(e.target.value)}><option value="bottle">{tx('pos.individual_bottles')}</option><option value="quantity">{tx('pos.quantity_only')}</option></select></label>
@@ -318,6 +340,15 @@ export function AddStockDialog({ product, onClose, onSaved }: { product: { id: s
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const sent = useRef(false);
   const n = /^\d{1,4}$/.test(qty.trim()) ? Number(qty.trim()) : 0;
   const valid = n >= 1 && n <= 1000 && (!cost || centsFromText(cost) != null) && (!exp || /^\d{4}-\d{2}-\d{2}$/.test(exp));
+  // Products Management 09: the server's preview for this location — now / coming / after / after + coming and the status of
+  // each by THE stock status rule (never re-derived here); unavailable → the simple before → after subtitle only
+  const [pv, setPv] = useState<InvStockPreview | null>(null);
+  useEffect(() => {
+    if (n < 1 || n > 1000) { setPv(null); return; }
+    let live = true;
+    const h = setTimeout(() => { inventoryApi.stockPreview(product.id, n).then((r) => { if (live) setPv(r ?? null); }).catch(() => { if (live) setPv(null); }); }, 250);
+    return () => { live = false; clearTimeout(h); };
+  }, [product.id, n]);
   const save = async () => {
     if (!valid || sent.current) return; sent.current = true; setBusy(true); setErr(null);
     try { const r = await inventoryApi.addStock(product.id, { quantity: n, lotNumber: lot.trim() || null, expirationDate: exp || null, costCents: cost ? centsFromText(cost) : null, note: note.trim() || null }); onSaved(r); }
@@ -331,6 +362,16 @@ export function AddStockDialog({ product, onClose, onSaved }: { product: { id: s
         <label className="fk-field"><span>{tx('pos.expiration')}</span><input type="date" value={exp} onChange={(e) => setExp(e.target.value)} data-testid="add-stock-exp" /></label></div>
       <div className="inv-row2"><label className="fk-field"><span>{tx('inv.unitCost')}</span><input inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} /></label>
         <label className="fk-field"><span>{tx('pos.note')}</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder={tx('pos.optional_3')} /></label></div>
+      {pv && pv.quantity === n ? (
+        <div data-testid="add-stock-preview" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 8, margin: '6px 0', fontSize: 12 }}>
+          <b>{tx('inv.pv.title', { b: pv.branch.name || '—', u: unitLabel(pv.unit) })}</b>
+          {([['now', pv.onHand, pv.statusNow], ['after', pv.afterAdd, pv.statusAfter], ['afterIncoming', pv.afterAddAndIncoming, pv.statusAfterIncoming]] as const).map(([k, v, st]) => (
+            <div key={k} data-testid={`add-stock-pv-${k}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}><span>{tx('inv.pv.' + k)}</span><span><b>{fmtNumber(v)}</b> <StockChip severity={st} /></span></div>))}
+          <div data-testid="add-stock-pv-incoming" style={{ display: 'flex', justifyContent: 'space-between' }}><span>{tx('inv.pv.incoming')}</span><b>{fmtNumber(pv.incoming)}</b></div>
+          <div className="fk-li-s" data-testid="add-stock-pv-levels">{tx('inv.pv.levels', { r: fmtNumber(pv.reorderLevel), c: fmtNumber(pv.criticalLevel), m: pv.maximumStock != null ? fmtNumber(pv.maximumStock) : '—' })}</div>
+          {pv.clearsReorder ? <div data-testid="add-stock-pv-clears">{tx('inv.pv.clears')}</div> : null}
+          {pv.overMaximum ? <div data-testid="add-stock-pv-over" style={{ color: '#A8321F' }}>{tx('inv.pv.over')}</div> : null}
+        </div>) : null}
       <div className="fk-hint">{tx('inv.addStockNote')}</div>
       {err ? <div className="fk-error" role="alert">{err}</div> : null}
     </FitDialog>

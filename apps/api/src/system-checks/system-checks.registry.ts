@@ -211,6 +211,18 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'duplicate_usage_movement', severity: 'FAILED', count: (t, b) => n(sql`SELECT m.related_type, m.related_id, m.product_id, m.movement_type FROM inventory_stock_movements m
         WHERE m.tenant_id = ${t}::uuid ${br('m', b)} AND m.related_type = 'ticket_line' AND m.movement_type = 'service_usage'   -- a usage EVENT is already one movement (uq_inv_movements_usage_source, 716)
         GROUP BY m.related_type, m.related_id, m.product_id, m.movement_type HAVING count(*) > 1`) },
+    // extras Products Management 04 (round 10) — every stock movement posts ONCE to the canonical ledger: what a purchase
+    // order says it received, and what a transfer says it moved, must equal the ledger rows written for it (per product)
+    { key: 'po_receipt_vs_ledger', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM purchase_orders po
+        JOIN (SELECT pl.purchase_order_id, pl.product_id, sum(pl.quantity_received * greatest(1, coalesce(pl.units_per_purchase_unit, 1)))::int AS units
+                FROM purchase_order_lines pl WHERE pl.tenant_id = ${t}::uuid GROUP BY pl.purchase_order_id, pl.product_id) rl ON rl.purchase_order_id = po.id
+        WHERE po.tenant_id = ${t}::uuid ${b ? sql`AND po.branch_id::text = ${b}` : sql``}
+          AND rl.units <> coalesce((SELECT sum(mv.quantity_change) FROM inventory_stock_movements mv WHERE mv.tenant_id = po.tenant_id AND mv.related_type = 'purchase_order'
+            AND mv.related_id::text = po.id::text AND mv.product_id = rl.product_id AND mv.movement_type = 'purchase_received'), 0)`) },
+    { key: 'transfer_vs_ledger', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM inventory_transfer_lines tl JOIN inventory_transfers tr ON tr.id = tl.transfer_id AND tr.tenant_id = tl.tenant_id
+        WHERE tl.tenant_id = ${t}::uuid ${b ? sql`AND (tr.from_branch_id::text = ${b} OR tr.to_branch_id::text = ${b})` : sql``}
+          AND coalesce(tl.quantity_moved, 0) <> coalesce((SELECT -sum(mv.quantity_change) FROM inventory_stock_movements mv WHERE mv.tenant_id = tl.tenant_id AND mv.related_type = 'transfer'
+            AND mv.related_id::text = tl.transfer_id::text AND mv.product_id = tl.product_id AND mv.movement_type = 'transfer_out'), 0)`) },
     // extras (Services & Products 2 · 04 inventory alert reconciliation): the dashboard's inventory card counts every live
     // low product; the sidebar badge / Open Alerts leave out the ones acknowledged in this episode; the persisted alert rows
     // keep the workflow. These two name the rows where those surfaces can disagree with the canonical stock.

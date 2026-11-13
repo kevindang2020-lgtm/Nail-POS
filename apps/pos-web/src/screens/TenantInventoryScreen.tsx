@@ -19,7 +19,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createIntentKeys } from '@aipowersalon/api-client';
 import { useInlineConfirm, useEventCallback } from '@aipowersalon/ui';
 import { parseDollarsToCents } from '@aipowersalon/ui';
-import { inventoryApi, type InvProduct, type PurchaseOrderLine, type InvVendor, type TransferBranch, type CountDetail, type ServiceRecipe, type TransferDetail } from '../api/inventoryApi';
+import { inventoryApi, type InvProduct, type PurchaseOrderLine, type InvVendor, type TransferBranch, type CountDetail, type ServiceRecipe, type TransferDetail, type InvReorderDraft } from '../api/inventoryApi';
 import { posInventoryScreenApi } from '../api/posInventoryScreenApi';
 import { posInventoryAlertsApi } from '../api/posInventoryAlertsApi';
 import { colorContrastWarning, readableTextColor } from '../lib/contrast';
@@ -517,6 +517,22 @@ function CreatePOModal({ products, onClose, onSaved, edit, prefill }: { products
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => { inventoryApi.vendors().then((r) => setVendors(r?.vendors ?? [])).catch(() => setVendors([])); }, []);
+  // Products Management 14: a Reorder draft is prefilled by the SERVER from the product's verified supplier mapping (supplier,
+  // packs to order — THE reorder rule, on-order subtracted — and the supplier's last cost); without a mapping nothing is
+  // guessed. It is still only a draft: created by Create, ordered after approval.
+  const [basis, setBasis] = useState<InvReorderDraft | null>(null);
+  const prefillProduct = !edit ? prefill?.productId ?? '' : '';
+  useEffect(() => {
+    if (!prefillProduct) return;
+    let live = true;
+    inventoryApi.reorderDraft(prefillProduct).then((r) => {
+      if (!live || !r || typeof r.purchaseUnitsToOrder !== 'number') return;
+      setBasis(r);
+      if (r.mapping) setVendorId(r.mapping.vendorId);
+      setLines((p) => p.map((l, i) => (i === 0 && l.productId === prefillProduct ? { ...l, quantity: r.purchaseUnitsToOrder > 0 ? String(r.purchaseUnitsToOrder) : l.quantity, costDollars: r.mapping?.unitCostCents != null ? centsToDollars(r.mapping.unitCostCents) : l.costDollars } : l)));
+    }).catch(() => { if (live) setBasis(null); });
+    return () => { live = false; };
+  }, [prefillProduct]);
   const setLine = (i: number, k: keyof DraftLine, v: string) => setLines((p) => p.map((l, idx) => (idx === i ? { ...l, [k]: v } : l)));
   const addLine = () => setLines((p) => [...p, { productId: '', quantity: '12', costDollars: '' }]);
   const removeLine = (i: number) => setLines((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
@@ -548,6 +564,14 @@ function CreatePOModal({ products, onClose, onSaved, edit, prefill }: { products
         <div className="im-b">
           {error && <div className="inv-err">{error}</div>}
           {edit ? <div className="fk-hint" data-testid="po-edit-note">{tx('inv.editPoNote')}</div> : null}
+          {basis ? (
+            <div className="fk-hint" data-testid="po-reorder-basis">
+              {basis.mapping
+                ? tx('inv.reorderDraft.mapped', { v: basis.mapping.vendorName, sku: basis.mapping.supplierSku || '—', pack: String(basis.mapping.unitsPerPurchaseUnit), n: String(basis.purchaseUnitsToOrder), units: String(basis.unitsThatArrive) })
+                : tx('inv.reorderDraft.unmapped', { units: String(basis.suggestedUnits) })}
+              {' '}{tx('inv.reorderDraft.stock', { h: String(basis.onHand), o: String(basis.onOrder), r: String(basis.reorderLevel) })}
+              {' '}{tx('inv.reorderDraft.approval')}
+            </div>) : null}
           <div className="if-row">
             <label className="if"><span>{tx('pos.vendor')}</span>
               <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} disabled={!!edit}>
