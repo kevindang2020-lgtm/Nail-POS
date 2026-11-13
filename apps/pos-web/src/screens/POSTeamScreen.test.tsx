@@ -211,7 +211,7 @@ describe('POSTeamScreen (Team Management)', () => {
     await waitFor(() => expect(api.exportCsv).toHaveBeenCalledWith(expect.objectContaining({ ids: 'u-v', lang: 'en' })));
     fireEvent.click(screen.getByTestId('bulk-clear'));
     expect(screen.queryByTestId('bulk-bar')).toBeNull();
-    await waitFor(() => expect(api.directory.mock.calls.at(-1)?.[0]?.ids).toBeUndefined());
+    await waitFor(() => expect(api.directory.mock.calls[api.directory.mock.calls.length - 1]?.[0]?.ids).toBeUndefined());
   });
   it('200-Technician 08 — the page checkbox selects every row on the page; the plain Export never sends ids', async () => {
     api.exportCsv.mockResolvedValue('x'); (globalThis as any).URL.createObjectURL = vi.fn(() => 'blob:x'); (globalThis as any).URL.revokeObjectURL = vi.fn();
