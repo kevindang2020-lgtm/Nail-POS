@@ -1497,4 +1497,6 @@ export const ERRORS_EN = {
   'errors.AI_RECOMMENDATION_NOT_OPEN': 'This recommendation was already reviewed.',
   'errors.AI_RECOMMENDATION_REFUSED': 'This recommendation cannot be applied from here.',
   'errors.dealReason.used_on_ticket': 'This offer was already used on this ticket (part of it was refunded).',
+  'errors.WALK_IN_SELECTION_CHANGED': 'Some of your services changed. Please review them and confirm again.',
+  'errors.WALK_IN_SERVICE_UNAVAILABLE': 'One of your services is no longer available. Please remove it and confirm again.',
 };

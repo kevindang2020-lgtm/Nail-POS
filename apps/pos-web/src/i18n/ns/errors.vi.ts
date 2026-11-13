@@ -1498,4 +1498,6 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.AI_RECOMMENDATION_NOT_OPEN': 'Đề xuất này đã được xử lý trước đó.', // DRAFT — Kevin reviews
   'errors.AI_RECOMMENDATION_REFUSED': 'Không thể áp dụng đề xuất này từ đây.', // DRAFT — Kevin reviews
   'errors.dealReason.used_on_ticket': 'Ưu đãi này đã được dùng trên hóa đơn này (một phần đã được hoàn tiền).', // DRAFT — Kevin reviews
+  'errors.WALK_IN_SELECTION_CHANGED': 'Một số dịch vụ của bạn đã thay đổi. Vui lòng xem lại và xác nhận lần nữa.', // DRAFT — Kevin reviews
+  'errors.WALK_IN_SERVICE_UNAVAILABLE': 'Một dịch vụ của bạn không còn nữa. Vui lòng bỏ dịch vụ đó và xác nhận lần nữa.', // DRAFT — Kevin reviews
 };

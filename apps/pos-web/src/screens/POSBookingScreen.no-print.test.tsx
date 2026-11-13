@@ -77,7 +77,7 @@ describe('Booking Overview analytics stay out of the 12-column calendar (booking
     globalThis.fetch = vi.fn(async (u: any) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => respond(String(u)) } as any)) as any;
     const { container } = render(<MemoryRouter><POSBookingScreen /></MemoryRouter>);
     await screen.findByTestId('booking-kpi-strip');
-    const schedule = await waitFor(() => { const el = container.querySelector('[data-module-id="booking-schedule"]'); expect(el).not.toBeNull(); return el!; });
+    const schedule = await waitFor(() => { const el = container.querySelector('[data-module-id="booking-schedule"], [data-module-id="booking-schedule-board"]'); expect(el).not.toBeNull(); return el!; });
     const analytics = ['booking-status-list', 'booking-mix', 'booking-upcoming', 'booking-team', 'booking-quick-actions'];
     for (const id of analytics) {
       const el = container.querySelector(`[data-module-id="${id}"]`);

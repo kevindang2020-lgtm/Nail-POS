@@ -13,6 +13,11 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage, getLanguage, t } from '@aipowersalon/mobile-sdk/i18n';
 import { REALTIME_EVENT, REALTIME_RECONCILE } from '../realtime/realtime-client';
+import { boardModeKey } from '../screens/booking/boardMode';
+// the Booking case pins the classic calendar's scroll container (still recoverable behind "Classic board"); the new board's
+// state restore is covered by POSBookingScreen.board.test.tsx
+beforeEach(() => { localStorage.setItem(boardModeKey('tn1', 'u1'), 'classic'); });
+afterEach(() => { localStorage.removeItem(boardModeKey('tn1', 'u1')); });
 
 const PERMS = vi.hoisted(() => ['dashboard.view', 'booking.view', 'customers.edit', 'customers.view', 'queue.view', 'checkout.view', 'serving.view', 'checkin.view', 'queue.manage']);
 const AUTH = { principal: { userId: 'u1', tenantId: 'tn1', branchId: 'b1', role: 'OWNER', permissions: PERMS }, loading: false, offline: false, setPrincipal: () => {}, logout: async () => {} };
