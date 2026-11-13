@@ -105,6 +105,14 @@ export function FullDayOverlay({ technicianId, date: date0, today, canPay, onClo
           {i.kind === 'appt' && onAppt ? <button type="button" className="fk-btn ghost sm" onClick={() => onAppt(i.id)}>{tx('pos.details')}</button> : null}</li>)}</ul>}
         {gaps.length ? <><h3 className="fk-h3">{tx('tm.gaps')}</h3><div className="cg-chips" data-testid="full-day-gaps">{gaps.map((g) => <span key={g.s} className="fk-chip info">{hm12(h(g.s))} – {hm12(h(g.e))} · {tx('cg.min', { n: nf(g.e - g.s) })}</span>)}</div></>
           : x.shift ? <p className="fk-hint" data-testid="full-day-full">{tx('tm.noGap')}</p> : null}
+        {/* extras LIVE TECHNICIAN SCHEDULE 12 — Technician Day Notes: the notes already on this day's records, from the server
+            (appointment notes only for a role with customer access — the server leaves them out otherwise and counts them) */}
+        {Array.isArray(x.dayNotes) ? <><h3 className="fk-h3">{tx('tm.dayNotes')}</h3>
+          {x.dayNotes.length === 0 && !x.dayNotesHidden ? <p className="fk-hint" data-testid="day-notes-none">{tx('tm.dayNotesNone')}</p>
+            : <ul className="fk-list dense" data-testid="day-notes">{x.dayNotes.map((n: any) => <li key={n.kind + n.sourceId} className="fk-li" data-testid={`day-note-${n.kind}`}>
+              <span className="tt-time">{hm12(n.startTime)} – {hm12(n.endTime)}</span>
+              <span className="fk-li-t">{n.text}<span className="fk-li-s">{n.kind === 'appointment' ? `${tx('tm.dn.appointment')}${n.customerName ? ` · ${n.customerName}` : ''}` : `${tx('tm.dn.blocked_time')}${n.reason ? ` · ${codeLabel(`status.scheduleBlock.${n.reason}`, n.reason)}` : ''}`}</span></span></li>)}</ul>}
+          {x.dayNotesHidden ? <p className="fk-hint" data-testid="day-notes-hidden">{tx('tm.dayNotesHidden', { n: nf(x.dayNotesHidden) })}</p> : null}</> : null}
         {children ? children(x, date, d.reload) : null}
       </>}
     </FitDialog>

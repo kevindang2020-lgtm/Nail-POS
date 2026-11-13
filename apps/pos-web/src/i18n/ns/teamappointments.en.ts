@@ -154,4 +154,9 @@ export const TEAMAPPOINTMENTS_EN = {
   'tm.tipsV': 'tips {v}',
   'tm.commissionV': 'commission est. {v}',
   'tm.exactTime': '{d} · scheduled {s} – {e} ({n} min)',
+  'tm.dayNotes': 'Day notes',
+  'tm.dayNotesNone': 'No notes on this day’s records.',
+  'tm.dn.appointment': 'Appointment note',
+  'tm.dn.blocked_time': 'Blocked time note',
+  'tm.dayNotesHidden': '{n} appointment note(s) need customer access to read.',
 };

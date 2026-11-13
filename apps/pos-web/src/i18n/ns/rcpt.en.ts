@@ -283,4 +283,11 @@ export const RCPT_EN: Record<string, string> = {
   "rcpt.cap.k.sms": "Texts (codes and confirmations)",
   "rcpt.cap.k.handoff": "Hand off to the front desk",
   "rcpt.cap.note": "Configured = the salon set it up. Tested = a real call used it successfully in the last 90 days (a saved setting is never a test). Active = the receptionist is activated, set up and allowed. Allowed = the plan includes the AI phone package; booking changes also need the platform switch. — = not known from the evidence here.",
+  "rcpt.ins.questions": "What callers ask about",
+  "rcpt.ins.aiDerived": "AI-derived labels",
+  "rcpt.ins.questionsSub": "Topics the voice AI tagged on {n} call(s) in this period",
+  "rcpt.ins.services": "Services callers booked",
+  "rcpt.ins.servicesSub": "Services on appointments the AI booked in this period (recorded)",
+  "rcpt.ins.none": "Nothing recorded in this period.",
+  "rcpt.ins.privacy": "Counts only, from call records the salon still keeps. No caller names, phone numbers or call summaries are shown; contact details inside a label are masked.",
 };

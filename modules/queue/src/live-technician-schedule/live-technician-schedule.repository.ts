@@ -26,6 +26,8 @@ export interface LiveScheduleRepositoryPort {
   state(ctx: LiveScheduleContext, f: LiveScheduleFilters): Promise<LiveTechnicianScheduleState>;
   kpis(ctx: LiveScheduleContext, date: string): Promise<LiveTechnicianScheduleKpis>;
   detail(ctx: LiveScheduleContext, technicianId: string, date: string): Promise<LiveTechnicianDetail | null>;
+  /** extras LIVE TECHNICIAN SCHEDULE 12: the non-empty notes on this technician's appointments of that day (not cancelled / no-show) */
+  appointmentNotes?(ctx: LiveScheduleContext, technicianId: string, date: string): Promise<{ appointmentId: string; startTime: string; endTime: string; customerName: string | null; notes: string }[]>;
   filtersData(ctx: LiveScheduleContext): Promise<{ statuses: { label: string; value: string }[]; skills: { label: string; value: string }[]; technicians: { label: string; value: string }[] }>;
   technicianExists(ctx: LiveScheduleContext, technicianId: string): Promise<boolean>;
   hasActiveService(ctx: LiveScheduleContext, technicianId: string): Promise<boolean>;

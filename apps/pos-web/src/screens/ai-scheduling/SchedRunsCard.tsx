@@ -3,6 +3,9 @@
 //    conflicts / understaffing with severity, and the recommendations it produced. Defaults to the latest run of the day.
 //  • SchedHistoryCard ("History"): every run — who / what triggered it, status, latency, counts, versions.
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { posQueueApi } from '../../api/posQueueApi';
+import { useCan } from '../../components/usePermissions';
 import type { SchedRun, SchedRunDetail } from '@aipowersalon/api-contracts/tenant';
 import { posAiSchedulingOptimizerApi as api } from '../../api/posAiSchedulingOptimizerApi';
 import {
@@ -32,6 +35,7 @@ export function SchedRunDetailCard({ tick, techName, runId, date, onSelectRec }:
     <section style={{ ...card, display: 'grid', gap: 12 }} aria-label={t('pos.gaps_and_conflicts')}>
       <div style={cardHead}>{t('pos.gaps_conflicts')}{' '}<span style={muted}>{t('pos.run')}{' '}{when(run.startedAt)} · {run.date ?? ''}{run.technicianId ? ` · ${techName(run.technicianId)}` : ''}</span></div>
       <div>
+        {run.date === date && gaps.length > 0 ? <QueueAwareGaps /> : null}
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{t('pos.unused_gaps')}{gaps.length})</div>
         {gaps.length === 0 ? <div style={muted}>{t('pos.no_unused_gaps_breaks_are_not_1b8l')}</div> : (
           <table style={table}><thead><tr><th style={th}>{t('pos.technician')}</th><th style={th}>{t('pos.when')}</th><th style={th}>{t('pos.length')}</th><th style={th}>{t('pos.services_that_fit')}</th></tr></thead>
@@ -90,3 +94,24 @@ export function SchedHistoryCard({ tick, techName, onOpenRun }: Pick<SchedCardPr
     </section>
   );
 }
+
+/** extras AI Scheduling Optimizer 04 — Queue-Aware Gap Filling: today's open gaps beside the guests ACTUALLY waiting in the
+ *  Customer Queue now (its own KPIs — never estimated here), and the way to fill them through the queue's approved
+ *  fairness logic (the AI Queue Assistant's fair rotation, or the Customer Queue itself). The optimizer never assigns a
+ *  waiting guest; matching a guest to a gap stays with the queue's own engine. */
+function QueueAwareGaps() {
+  const nav = useNavigate(); const can = useCan();
+  const [k, setK] = useState<{ waitingGuests: number; walkInsWaiting: number; appointmentsWaiting: number } | null | 'error'>(null);
+  useEffect(() => { let alive = true; posQueueApi.kpis().then((r) => { if (alive) setK(r && typeof r.waitingGuests === 'number' ? r : 'error'); }).catch(() => { if (alive) setK('error'); }); return () => { alive = false; }; }, []);
+  if (!k) return null;
+  return (
+    <div data-testid="sched-queue-aware" style={{ ...row, flexWrap: 'wrap', gap: 8, marginBottom: 8, fontSize: 12.5 }}>
+      {k === 'error' ? <span style={muted} data-testid="sched-queue-unknown">{t('ops.sched.queue.unknown')}</span>
+        : <span data-testid="sched-queue-waiting">{t('ops.sched.queue.waiting', { n: String(k.waitingGuests), w: String(k.walkInsWaiting), a: String(k.appointmentsWaiting) })}</span>}
+      {k !== 'error' && k.waitingGuests > 0 && can('ai_queue_assignment.view') ? <button type="button" style={btnGhost} data-testid="sched-queue-ai" onClick={() => nav('/tenant/ai/queue')}>{t('ops.sched.queue.fair')}</button> : null}
+      {k !== 'error' && k.waitingGuests > 0 ? <button type="button" style={btnGhost} data-testid="sched-queue-open" onClick={() => nav('/queue')}>{t('ops.sched.queue.open')}</button> : null}
+      <span style={muted}>{t('ops.sched.queue.rule')}</span>
+    </div>
+  );
+}
+

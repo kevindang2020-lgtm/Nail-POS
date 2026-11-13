@@ -9,7 +9,7 @@ import { AppointmentSlotConflict, resolveManagerOverride, ManagerOverrideForbidd
 import { TimeClockConflictError, TimeClockValidationError, TechnicianEligibilityError, type TimeClockService, type TechnicianEligibilityService } from '@aipowersalon/workforce';
 import {
   LiveTechnicianSchedulePageState, LiveTechnicianScheduleKpis, LiveTechnicianDetail, LiveScheduleFilters,
-  BlockTechnicianTimeRequest, BreakRequest, LiveTechnicianScheduleState, lsStaffingHeatmap,
+  BlockTechnicianTimeRequest, BreakRequest, LiveTechnicianScheduleState, lsStaffingHeatmap, type LiveDayNote, lsMinutesOf,
 } from './live-technician-schedule.dto';
 import { LiveScheduleContext, LiveScheduleRepositoryPort } from './live-technician-schedule.repository';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
@@ -103,8 +103,21 @@ export class LiveTechnicianScheduleService {
     // Live Schedule guide §10/§17 (Oct 30 2026): a technician's sales, tips and commission only for a role that may see pay
     // — redacted on the SERVER (null, never a made-up 0), not just hidden by the screen
     const pc = ctx as unknown as Parameters<typeof hasPermission>[0];
-    if (!hasPermission(pc, 'technicians.view_pay') && !hasPermission(pc, 'payroll.view')) return { ...d, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null };
-    return d;
+    const withNotes = { ...d, ...(await this.dayNotes(ctx, d, technicianId, date || (await this.repo.today(ctx)))) };
+    if (!hasPermission(pc, 'technicians.view_pay') && !hasPermission(pc, 'payroll.view')) return { ...withNotes, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null };
+    return withNotes;
+  }
+
+  /** extras LIVE TECHNICIAN SCHEDULE 12 — see LiveTechnicianDetail.dayNotes. Reads notes their owners already keep (and
+   *  audit when written); writes nothing. The appointment notes need pos.customers.view (the privacy guard, on the server). */
+  private async dayNotes(ctx: LiveScheduleContext, d: LiveTechnicianDetail, technicianId: string, date: string): Promise<{ dayNotes: LiveDayNote[]; dayNotesHidden: number }> {
+    const notes: LiveDayNote[] = (d.blocks || []).filter((b) => (b.note || '').trim())
+      .map((b) => ({ kind: 'blocked_time' as const, sourceId: b.blockId, startTime: b.startTime, endTime: b.endTime, text: String(b.note).trim(), reason: b.reason || null }));
+    const appt = this.repo.appointmentNotes ? await this.repo.appointmentNotes(ctx, technicianId, date) : [];
+    const canCustomers = hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], 'pos.customers.view');
+    if (canCustomers) for (const a of appt) notes.push({ kind: 'appointment', sourceId: a.appointmentId, startTime: a.startTime, endTime: a.endTime, text: a.notes, customerName: a.customerName });
+    notes.sort((x, y) => lsMinutesOf(x.startTime) - lsMinutesOf(y.startTime));
+    return { dayNotes: notes, dayNotesHidden: canCustomers ? 0 : appt.length };
   }
 
   // ---- block time ----

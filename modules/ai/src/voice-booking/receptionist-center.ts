@@ -33,6 +33,16 @@ import { AI_RECEPTIONIST_ACTION } from '../ai-lifecycles';
 import { voiceWriteToolsEnabled } from './voice-tools';
 
 type Row = Record<string, any>;
+/** AI Receptionist 08: a label the voice AI wrote may carry contact details — an email or a phone-like number is masked */
+export function maskInsightLabel(label: string): string {
+  return String(label ?? '').trim().slice(0, 60).replace(/[^\s@]+@[^\s@]+/g, '[email]').replace(/\+?\(?\d[\d\s().-]{5,}\d/g, '[number]');
+}
+/** labels merged after masking (two masked labels are one), most first, then by label; at most 8 */
+export function topCounts(rows: { label: string; n: number }[], max = 8): { label: string; count: number }[] {
+  const m = new Map<string, number>();
+  for (const r of rows) { if (!r.label) continue; m.set(r.label, (m.get(r.label) ?? 0) + r.n); }
+  return [...m.entries()].map(([label, count]) => ({ label, count })).sort((a, c) => c.count - a.count || a.label.localeCompare(c.label)).slice(0, max);
+}
 export interface RcCtx { tenantId: string; branchId: string | null; userId: string; role?: string; permissions?: string[] }
 export interface RcAccessRepo { loadSnapshot(tenantId: string, packageCode: string, userId: string | null, opts?: { branchId?: string | null }): Promise<AiAccessSnapshot> }
 export interface RcBusinessReadiness { readiness(ctx: RcCtx): Promise<{ core: { key: string; status: string; detail: string }[] }>
@@ -394,15 +404,52 @@ export class ReceptionistCenter {
     const pend: Row = (await sql<Row>`select count(*)::int n from booking_verification_sessions where tenant_id = ${ctx.tenantId} and channel = 'ai_receptionist'
         and (${b}::uuid is null or branch_id = ${b}) and status in ('pending', 'sent') and expires_at > now()`.execute(this.db)).rows[0];
     const calls = N(r.calls);
+    const insights = await this.callInsights(ctx, w, b);
     return {
       window: w,
       calls,
+      insights,
       booked: { confirmed: N(r.booked), requested: N(r.booking_requested), pendingVerification: pend?.n == null ? null : N(pend.n), ratePct: calls ? Math.round((1000 * N(r.booked)) / calls) / 10 : null },
       handoffs: { requested: N(r.handoff_requested), completed: N(r.handoff_completed), failed: N(r.handoff_failed), ratePct: calls ? Math.round((1000 * N(r.handoff_requested)) / calls) / 10 : null },
       abandoned: { count: N(r.abandoned), ratePct: calls ? Math.round((1000 * N(r.abandoned)) / calls) / 10 : null, rule: 'Counted only when the voice provider reports the caller hung up before the agent finished (abandoned = true). Never inferred from a missing booking.' },
       avgDurationSeconds: N(r.dur_n) ? Math.round(Number(r.avg_dur)) : null,
       voiceMinutes: calls ? Math.round(N(r.minutes_s) / 6) / 10 : null,   // no calls → N/A, not 0
       definitions: { calls: 'Calls the voice provider recorded for this salon in the window (by call start, salon time).', booked: 'Bookings the AI completed (booking outcome "booked"); requests and code-pending bookings are counted separately.', handoffs: 'Requested = the AI asked for a person; Completed = the transfer connected; Failed = the transfer did not connect.', avgDuration: 'Mean of ended calls with a recorded duration; — when there are none.' },
+    };
+  }
+
+  /** Extras · AI Receptionist 08 — Consent-Safe Call Insights, over the SAME window as the KPIs and only from call records
+   *  the salon still keeps (rows the retention sweep removed are gone). Two families, each labelled by where it comes from:
+   *  questionCategories = the call's intents as the voice AI labelled them (AI-derived — never a transcript or a summary);
+   *  serviceInterests = the services on appointments the AI booked and the tool ledger links to (recorded facts). Counts
+   *  only; no caller, phone, name or summary is returned; a label that carries an email or a phone-like number is masked. */
+  private async callInsights(ctx: RcCtx, w: { from: string; to: string; tz: string }, b: string | null) {
+    const T = ctx.tenantId;
+    const qc = (await sql<{ label: string; n: number }>`select i.label, count(*)::int n
+        from voice_call_outcomes o
+        cross join lateral jsonb_array_elements_text(case when jsonb_typeof(o.intents) = 'array' then o.intents else '[]'::jsonb end) as i(label)
+      where o.tenant_id = ${T} and (${b}::uuid is null or o.branch_id = ${b})
+        and coalesce(o.started_at, o.created_at) >= (${w.from}::date)::timestamp at time zone ${w.tz}
+        and coalesce(o.started_at, o.created_at) < ((${w.to}::date + 1))::timestamp at time zone ${w.tz}
+      group by i.label`.execute(this.db)).rows;
+    const withIntents: Row = (await sql<Row>`select count(*)::int n from voice_call_outcomes o
+      where o.tenant_id = ${T} and (${b}::uuid is null or o.branch_id = ${b}) and jsonb_typeof(o.intents) = 'array' and jsonb_array_length(o.intents) > 0
+        and coalesce(o.started_at, o.created_at) >= (${w.from}::date)::timestamp at time zone ${w.tz}
+        and coalesce(o.started_at, o.created_at) < ((${w.to}::date + 1))::timestamp at time zone ${w.tz}`.execute(this.db)).rows[0];
+    const si = (await sql<{ name: string; n: number }>`select sv.name, count(distinct a.id)::int n
+        from voice_tool_executions x
+        join pos_tech_appointments a on a.tenant_id = x.tenant_id and a.id::text = x.related_id
+        cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) as e(svc)
+        join services sv on sv.tenant_id = a.tenant_id and sv.id::text = e.svc->>'serviceId'
+      where x.tenant_id = ${T} and (${b}::uuid is null or x.branch_id = ${b}) and x.related_type = 'appointment' and x.status = 'succeeded'
+        and x.requested_at >= (${w.from}::date)::timestamp at time zone ${w.tz}
+        and x.requested_at < ((${w.to}::date + 1))::timestamp at time zone ${w.tz}
+      group by sv.name`.execute(this.db)).rows;
+    return {
+      questionCategories: topCounts(qc.map((x) => ({ label: maskInsightLabel(x.label), n: N(x.n) }))),
+      callsWithCategories: N(withIntents?.n),
+      serviceInterests: topCounts(si.map((x) => ({ label: String(x.name ?? ''), n: N(x.n) }))),
+      sources: { questionCategories: 'ai_derived', serviceInterests: 'recorded' } as const,
     };
   }
 

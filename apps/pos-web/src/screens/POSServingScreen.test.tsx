@@ -107,6 +107,41 @@ describe('POSServingScreen', () => {
     // the Guest Service Details action that POSTs send-to-service-done says what it does (it read "Send Update")
     expect(screen.getByRole('button', { name: 'Send to Service Done' })).toBeEnabled();
   });
+
+  it('extras Serving 05: Guest Service Details shows the server\'s Service Done readiness and why not (never re-derived)', async () => {
+    const withTickets = {
+      kpis: { servingNow: 1, activeTickets: 1, delayedServices: 0, nearingCompletion: 0, averageServiceDurationMinutes: 40, totalInServiceSalesCents: 6000, techniciansInService: 1, servicesCompletedToday: 0, addOnAttachRatePercent: 0, addOnRevenueCents: 0, customerSatisfactionAvg: 0, onTimeCompletionPercent: 0 },
+      tickets: { items: [{ ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', serviceNames: ['Gel X'], primaryTechnicianName: 'Mia', elapsedMinutes: 10, estimatedDurationMinutes: 45, subtotalCents: 6000, status: 'in_service' }], pagination: { totalItems: 1 } },
+      filters: { statuses: [], technicians: [], serviceCategories: [], stations: [], delayStatuses: [] },
+    };
+    // the line statuses say 'serving' but the server says not ready for NOTES_REQUIRED with 1 open line — the screen shows the server's answer
+    const detail = { ticketId: 't1', status: 'in_service', allowedActions: ['mark_ready'], customer: { fullName: 'Jessica Miller' }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'serving' }], subtotalCents: 6000, estimatedEndAt: null,
+      serviceDoneReadiness: { state: 'not_ready', reasons: ['NOTES_REQUIRED'], openServiceLines: 1, via: null } };
+    globalThis.fetch = mockByUrl({ '/pos/serving/tickets/t1/revisions': { ticketId: 't1', currentVersion: 0, revisions: [] }, '/pos/serving/tickets/t1': detail, '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    const box = await screen.findByTestId('sv-sd-ready');
+    expect(box.getAttribute('data-state')).toBe('not_ready');
+    expect(box.textContent).toContain('Not ready');
+    expect(screen.getByTestId('sv-sd-why-NOTES_REQUIRED').textContent).toBe('Your salon requires a service note before Mark Ready.');
+    expect(screen.getByTestId('sv-sd-open').textContent).toBe('1 service line(s) not marked done — not required to finish');
+  });
+
+  it('extras Serving 05: a ready visit says which move; no readiness from the server → nothing invented', async () => {
+    const withTickets = { kpis: {}, tickets: { items: [{ ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', serviceNames: ['Gel X'], elapsedMinutes: 10, subtotalCents: 6000, status: 'in_service' }], pagination: { totalItems: 1 } }, filters: { statuses: [], technicians: [], serviceCategories: [], stations: [], delayStatuses: [] } };
+    const detail = { ticketId: 't1', status: 'in_service', customer: { fullName: 'Jessica Miller' }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'done' }], subtotalCents: 6000, estimatedEndAt: null,
+      serviceDoneReadiness: { state: 'ready', reasons: [], openServiceLines: 0, via: 'send_to_service_done' } };
+    globalThis.fetch = mockByUrl({ '/pos/serving/tickets/t1/revisions': { ticketId: 't1', currentVersion: 0, revisions: [] }, '/pos/serving/tickets/t1': detail, '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    const { unmount } = render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    const box = await screen.findByTestId('sv-sd-ready');
+    expect(box.textContent).toContain('Ready · Send to Service Done');
+    expect(screen.queryByTestId('sv-sd-open')).toBeNull();
+    unmount();
+    const { serviceDoneReadiness: _drop, ...older } = detail;
+    globalThis.fetch = mockByUrl({ '/pos/serving/tickets/t1/revisions': { ticketId: 't1', currentVersion: 0, revisions: [] }, '/pos/serving/tickets/t1': older, '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    expect(await screen.findByText('Change History')).toBeInTheDocument();
+    expect(screen.queryByTestId('sv-sd-ready')).toBeNull();
+  });
 });
 
 // ── 2026-07-03 restored surfaces: header search/service/delay filters (state existed but had no controls or a dead

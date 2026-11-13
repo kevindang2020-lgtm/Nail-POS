@@ -283,4 +283,11 @@ export const RCPT_VI: Record<string, string> = {
   "rcpt.cap.k.sms": "Tin nhắn (mã và xác nhận)", // DRAFT — Kevin reviews
   "rcpt.cap.k.handoff": "Chuyển cho quầy lễ tân", // DRAFT — Kevin reviews
   "rcpt.cap.note": "Đã thiết lập = tiệm đã cài đặt. Đã thử = một cuộc gọi thật đã dùng thành công trong 90 ngày qua (một cài đặt đã lưu không phải là một lần thử). Đang hoạt động = trợ lý đã được kích hoạt, đã thiết lập và được phép. Được phép = gói dịch vụ có gói điện thoại AI; thay đổi lịch hẹn còn cần công tắc của nền tảng. — = không biết từ dữ liệu ở đây.", // DRAFT — Kevin reviews
+  "rcpt.ins.questions": "Khách gọi hỏi về gì", // DRAFT — Kevin reviews
+  "rcpt.ins.aiDerived": "Nhãn do AI gắn", // DRAFT — Kevin reviews
+  "rcpt.ins.questionsSub": "Chủ đề AI giọng nói gắn cho {n} cuộc gọi trong kỳ này", // DRAFT — Kevin reviews
+  "rcpt.ins.services": "Dịch vụ khách đã đặt", // DRAFT — Kevin reviews
+  "rcpt.ins.servicesSub": "Dịch vụ trong các lịch hẹn AI đã đặt trong kỳ này (đã ghi nhận)", // DRAFT — Kevin reviews
+  "rcpt.ins.none": "Không có dữ liệu trong kỳ này.", // DRAFT — Kevin reviews
+  "rcpt.ins.privacy": "Chỉ hiển thị số lượng, từ các bản ghi cuộc gọi tiệm còn lưu. Không hiển thị tên, số điện thoại hay tóm tắt cuộc gọi; thông tin liên lạc trong nhãn được che.", // DRAFT — Kevin reviews
 };

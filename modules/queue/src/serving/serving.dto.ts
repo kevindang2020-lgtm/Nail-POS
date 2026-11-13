@@ -318,6 +318,8 @@ export interface POSServingTicketDetailFull {
   delayStatus: DelayStatus; delayReason?: string; notes?: string; customerVisibleNotes?: string; subtotalCents: Money; estimatedCommissionCents?: Money | null;
   status: ServingTicketStatus; auditSummary: { lastAction: string; lastActorRole: string; lastAt: string }[];
   allowedActions?: ServingAction[];
+  /** Serving 05: whether this visit can go to Service Done now, for this person, and why not (serviceDoneReadiness) */
+  serviceDoneReadiness?: ServiceDoneReadiness;
 }
 
 export interface ServingTechPerformance { technicianId?: string; name: string; activeGuests: number; revenueCents: Money; tipsCents: Money; utilizationPercent: number | null; avgMinutes: number; rating: number | null; }
@@ -386,6 +388,25 @@ export function canSendToServiceDone(status: ServingTicketStatus): { ok: boolean
   if (status === "sent_to_service_done") return { ok: false, reason: "ALREADY_SENT" };
   if (!["completed", "in_service", "paused", "delayed"].includes(status)) return { ok: false, reason: "NOT_READY" };
   return { ok: true };
+}
+/** Serving 05 (extras) — "why a Visit is or is not ready for Service Done", answered from THE gates above (canMarkDone /
+ *  canSendToServiceDone) and the actor's permissions; never a second rule. state: ready (a move to Service Done is open to
+ *  this person now) · not_ready (reasons say why) · handed_off (already at Service Done). openServiceLines is information
+ *  only — the gates do not require every line to be done, so it is never a reason. Read-only: nothing moves. */
+export type ServiceDoneReadinessReason = 'NOT_STARTED' | 'NOTES_REQUIRED' | 'NO_PERMISSION' | 'NOT_IN_SERVICE';
+export interface ServiceDoneReadiness { state: 'ready' | 'not_ready' | 'handed_off'; reasons: ServiceDoneReadinessReason[]; openServiceLines: number; via: 'mark_ready' | 'send_to_service_done' | null }
+export function serviceDoneReadiness(input: { status: ServingTicketStatus; notes?: string; settings: ServingWorkflowSettings; lines: { status: ServiceLineStatus | string }[]; canMarkReady: boolean; canSend: boolean }): ServiceDoneReadiness {
+  const openServiceLines = input.lines.filter((l) => l.status !== 'done').length   // retail lines are born done;
+  if (input.status === 'sent_to_service_done') return { state: 'handed_off', reasons: [], openServiceLines, via: null };
+  if (input.status === 'not_started') return { state: 'not_ready', reasons: ['NOT_STARTED'], openServiceLines, via: null };
+  const mark = canMarkDone(input.status, input.notes, input.settings);
+  const send = canSendToServiceDone(input.status);
+  // send_to_service_done also completes the visit (the service converges both on the same transition) — it is not gated by notes
+  if (send.ok && input.canSend) return { state: 'ready', reasons: [], openServiceLines, via: 'send_to_service_done' };
+  if (mark.ok && input.canMarkReady) return { state: 'ready', reasons: [], openServiceLines, via: 'mark_ready' };
+  // not ready: the notes rule (when this person could otherwise Mark Ready), else no legal move, else no permission
+  const reasons: ServiceDoneReadinessReason[] = [mark.reason === 'NOTES_REQUIRED' && input.canMarkReady ? 'NOTES_REQUIRED' : !send.ok ? 'NOT_IN_SERVICE' : 'NO_PERMISSION'];
+  return { state: 'not_ready', reasons, openServiceLines, via: null };
 }
 export function buildServiceDoneIdempotencyKey(ticketId: string, subtotalCents: Money): string { return ticketId + ":send_to_service_done:" + subtotalCents; }
 export function subtotalFromServingLines(lines: { priceCents: Money }[]): Money { return lines.reduce((a, l) => a + l.priceCents, 0); }

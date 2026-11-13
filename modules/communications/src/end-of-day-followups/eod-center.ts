@@ -194,7 +194,15 @@ export async function expireUnsent(db: Kysely<any>, tenantId: string, branchId: 
 
 // ── read models ───────────────────────────────────────────────────────────────────────────────────────────────────
 export type HealthState = 'ready' | 'pending' | 'attention_required' | 'failed' | 'unknown' | 'not_used' | 'off';
-export interface HealthRow { key: string; state: HealthState; detail: string; evidence: string; nextStep: string | null }
+export interface HealthRow { key: string; state: HealthState; detail: string; evidence: string; nextStep: string | null;
+  /** extras FOLLOW-UP QUEUE 09 — only on the 'reconcile' row: the unsent tasks each owning module now disagrees with */
+  reconcile?: FollowUpReconciliation }
+/** extras FOLLOW-UP QUEUE 09 — the unsent tasks (pending / awaiting approval / rejected) re-read against the modules that own
+ *  their facts, with the SAME rules the send path applies: Checkout (sourceCancelledSql — the send refuses, no override),
+ *  Customer Profile (archived or no longer on file — refused), Booking (an upcoming booking from the salon's today,
+ *  UPCOMING_BOOKING_STATUSES — suppressed unless a manager overrides), Technician app (the task's technician is archived or
+ *  inactive — the task is in no technician's list). Counts only; reading changes nothing. SMS Inbox replies are not read here. */
+export interface FollowUpReconciliation { open: number; sourceCancelled: number; customerArchived: number; alreadyBooked: number; technicianInactive: number }
 export const TASK_SORTS = ['newest', 'due'] as const;
 export const DATE_BASES = ['generated', 'due', 'sent', 'expired'] as const;
 const PAGE_SIZES = [10, 20, 50];
@@ -282,10 +290,31 @@ export class EodCenter {
     rows.push(q.awaiting > 0
       ? { key: 'queue', state: 'attention_required', detail: `${q.awaiting} follow-up(s) wait for a manager.`, evidence: q.oldest ? `oldest submitted ${iso(q.oldest)}` : 'awaiting approval', nextStep: 'Open the Awaiting approval filter.' }
       : { key: 'queue', state: 'ready', detail: 'Nothing waits for approval.', evidence: 'awaiting approval 0', nextStep: null });
+    const rec = await this.reconciliation(T, B, localDateInTz(now, s.timezone));
+    const recIssues = rec.sourceCancelled + rec.customerArchived + rec.alreadyBooked + rec.technicianInactive;
+    rows.push({ key: 'reconcile', state: recIssues > 0 ? 'attention_required' : 'ready', reconcile: rec,
+      detail: recIssues > 0 ? `${recIssues} unsent follow-up(s) no longer match Checkout, Customer Profile, Booking or the technician list.` : 'Every unsent follow-up still matches its visit, customer, bookings and technician.',
+      evidence: `open ${rec.open} · source changed ${rec.sourceCancelled} · customer archived ${rec.customerArchived} · already booked ${rec.alreadyBooked} · technician inactive ${rec.technicianInactive}`,
+      nextStep: recIssues > 0 ? 'Open each task: the contact check says why it cannot be sent.' : null });
     const order: HealthState[] = ['failed', 'attention_required', 'unknown', 'pending'];
     const core = rows.filter((r) => ['scheduler', 'generation', 'template', 'channel', 'queue', 'expiry'].includes(r.key));
     const overall: HealthState = !s.enabled ? 'off' : order.find((st) => core.some((r) => r.state === st)) ?? 'ready';
     return { overall, rows };
+  }
+
+  /** extras FOLLOW-UP QUEUE 09 — see FollowUpReconciliation. `today` is the branch-local salon day. */
+  async reconciliation(T: string, B: string, today: string): Promise<FollowUpReconciliation> {
+    const r = (await sql<{ open: number; source_cancelled: number; customer_archived: number; already_booked: number; technician_inactive: number }>`select count(*)::int as open,
+        count(*) filter (where ${sourceCancelledSql('f')})::int as source_cancelled,
+        count(*) filter (where c.id is null or c.status = 'archived')::int as customer_archived,
+        count(*) filter (where exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id
+            and ap.appt_date >= ${today}::date and ap.status = any(${UPCOMING_BOOKING_STATUSES}::text[])))::int as already_booked,
+        count(*) filter (where te.id is null or te.archived_at is not null or te.is_active = false)::int as technician_inactive
+      from service_follow_up_tasks f
+      left join customers c on c.id = f.customer_id and c.tenant_id = f.tenant_id
+      left join technicians te on te.id = f.technician_id and te.tenant_id = f.tenant_id
+     where f.tenant_id = ${T}::uuid and f.branch_id = ${B}::uuid and f.deleted_at is null and f.status = any(${[...UNSENT_STATES]}::text[])`.execute(this.db)).rows[0];
+    return { open: Number(r?.open ?? 0), sourceCancelled: Number(r?.source_cancelled ?? 0), customerArchived: Number(r?.customer_archived ?? 0), alreadyBooked: Number(r?.already_booked ?? 0), technicianInactive: Number(r?.technician_inactive ?? 0) };
   }
 
   async runs(T: string, B: string, page = 1, pageSize = 10) {

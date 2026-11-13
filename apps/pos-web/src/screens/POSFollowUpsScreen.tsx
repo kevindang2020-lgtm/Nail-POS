@@ -19,6 +19,7 @@ import { money } from './reportsCommon';
 import { errorTextOf } from '../i18n/error-text';
 import { useRealtime } from '../realtime/useRealtime';
 import { deviceToday } from '../lib/deviceToday';
+import { EodReconcile } from './eodReconcile';
 
 /** Extras (Follow-Up Queue row 11): the contact cooldown window shown in the task details */
 const COOLDOWN_TIMELINE_DAYS = 14;
@@ -271,7 +272,7 @@ export function POSFollowUpsScreen() {
           {!health ? <div className="muted">…</div> : (
             <ul className="fuq-health">{health.rows.map((r) => (
               <li key={r.key}><span className={`eod-chip ${r.state === 'ready' ? 'ok' : r.state === 'failed' ? 'bad' : r.state === 'attention_required' ? 'warn' : ''}`}>{tx(`eod.state.${r.state}`)}</span> <b>{tx(`eod.hk.${r.key}`)}</b>
-                <div className="s">{r.detail}</div></li>))}</ul>
+                {r.reconcile ? <EodReconcile rec={r.reconcile} /> : <div className="s">{r.detail}</div>}</li>))}</ul>
           )}
         </section>
         <section className="panel" data-testid="fuq-results">

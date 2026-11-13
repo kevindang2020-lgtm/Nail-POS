@@ -1807,4 +1807,134 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.prio.oldest": "lâu nhất {m} phút", // DRAFT — Kevin reviews
   "ops.liveOps.prio.open": "Mở", // DRAFT — Kevin reviews
   "ops.liveOps.prio.note": "Chỉ đếm số — mở một dòng sẽ đưa bạn tới mục quản lý việc đó; không thay đổi gì từ đây.", // DRAFT — Kevin reviews
+  "acx.find.title": "Tìm trong Tài khoản", // DRAFT — Kevin reviews
+  "acx.find.ph": "Tìm một cài đặt tài khoản — ví dụ mật khẩu, hóa đơn, điện thoại", // DRAFT — Kevin reviews
+  "acx.find.scope": "Chỉ tìm các trang và cài đặt Tài khoản bạn được mở. Không bao giờ tìm dữ liệu tiệm hay tiệm khác.", // DRAFT — Kevin reviews
+  "acx.find.none": "Không có trang hay cài đặt Tài khoản nào khớp.", // DRAFT — Kevin reviews
+  "acx.find.page": "Trang", // DRAFT — Kevin reviews
+  "acx.find.onThisPage": "Trên trang này", // DRAFT — Kevin reviews
+  "acx.find.people": "Tìm một người? Tìm nhân viên theo tên hoặc số điện thoại", // DRAFT — Kevin reviews
+  "acx.find.notifTitle": "Tùy chọn thông báo", // DRAFT — Kevin reviews
+  "acx.find.d.acc-overview": "Trang Tài khoản này: hồ sơ, doanh nghiệp, bảo mật, thanh toán và tình trạng", // DRAFT — Kevin reviews
+  "acx.find.k.acc-overview": "tổng quan tài khoản tóm tắt", // DRAFT — Kevin reviews
+  "acx.find.d.acc-subscription": "Gói của bạn, ngày gia hạn và đổi gói", // DRAFT — Kevin reviews
+  "acx.find.k.acc-subscription": "gói đăng ký nâng cấp hạ cấp gia hạn", // DRAFT — Kevin reviews
+  "acx.find.d.acc-ai": "Các gói AI đã có, có thể mua hoặc bị khóa", // DRAFT — Kevin reviews
+  "acx.find.k.acc-ai": "gói ai trí tuệ nhân tạo", // DRAFT — Kevin reviews
+  "acx.find.d.acc-usage": "Mức dùng so với giới hạn: AI, SMS và lưu trữ", // DRAFT — Kevin reviews
+  "acx.find.k.acc-usage": "mức dùng giới hạn lưu trữ sms ai", // DRAFT — Kevin reviews
+  "acx.find.d.acc-billing": "Tình trạng thanh toán, phương thức và lịch sử", // DRAFT — Kevin reviews
+  "acx.find.k.acc-billing": "thanh toán phương thức thẻ gia hạn phí", // DRAFT — Kevin reviews
+  "acx.find.d.acc-invoices": "Hóa đơn phần mềm từ AI PowerSalon", // DRAFT — Kevin reviews
+  "acx.find.k.acc-invoices": "hóa đơn phí phần mềm", // DRAFT — Kevin reviews
+  "acx.find.d.acc-access-governance": "Rà soát quyền truy cập, quyền rủi ro cao và tài khoản không hoạt động", // DRAFT — Kevin reviews
+  "acx.find.k.acc-access-governance": "quyền truy cập rủi ro rà soát kiểm tra", // DRAFT — Kevin reviews
+  "acx.find.d.acc-security": "Mật khẩu, xác thực hai lớp, thiết bị tin cậy, phiên đăng nhập và cảnh báo đăng nhập", // DRAFT — Kevin reviews
+  "acx.find.k.acc-security": "mật khẩu 2fa hai lớp phiên thiết bị cảnh báo đăng nhập hồ sơ tên email thông báo", // DRAFT — Kevin reviews
+  "acx.find.d.acc-activity": "Nhật ký đầy đủ hoạt động của tài khoản và tiệm", // DRAFT — Kevin reviews
+  "acx.find.k.acc-activity": "hoạt động nhật ký lịch sử ai đã đổi", // DRAFT — Kevin reviews
+  "acx.find.d.acc-support": "Bài hướng dẫn và yêu cầu hỗ trợ", // DRAFT — Kevin reviews
+  "acx.find.k.acc-support": "trợ giúp hỗ trợ yêu cầu liên hệ", // DRAFT — Kevin reviews
+  "acx.find.d.acc-settings": "Cài đặt tiệm: thông tin doanh nghiệp, hóa đơn, thương hiệu", // DRAFT — Kevin reviews
+  "acx.find.k.acc-settings": "cài đặt tùy chọn hóa đơn thương hiệu doanh nghiệp", // DRAFT — Kevin reviews
+  "acx.find.d.team-members": "Danh bạ nhân viên — tìm người theo tên hoặc số điện thoại trong tiệm này", // DRAFT — Kevin reviews
+  "acx.find.k.team-members": "nhân viên thợ người dùng tên điện thoại danh bạ", // DRAFT — Kevin reviews
+  "acx.find.d.team-permissions": "Các vai trò và quyền của từng vai trò", // DRAFT — Kevin reviews
+  "acx.find.k.team-permissions": "vai trò quyền truy cập người dùng", // DRAFT — Kevin reviews
+  "acx.find.d.panel-profile": "Tên, email, điện thoại, ngôn ngữ và lần đăng nhập cuối của bạn", // DRAFT — Kevin reviews
+  "acx.find.k.panel-profile": "hồ sơ tên email điện thoại ngôn ngữ đăng nhập", // DRAFT — Kevin reviews
+  "acx.find.d.panel-business": "Tên doanh nghiệp, chi nhánh, địa chỉ, điện thoại, múi giờ và màu thương hiệu", // DRAFT — Kevin reviews
+  "acx.find.k.panel-business": "doanh nghiệp tên tiệm địa chỉ điện thoại múi giờ thương hiệu logo màu", // DRAFT — Kevin reviews
+  "acx.find.d.panel-security": "Tuổi mật khẩu, hai lớp, cảnh báo đăng nhập, thiết bị tin cậy và lần đăng nhập gần đây", // DRAFT — Kevin reviews
+  "acx.find.k.panel-security": "bảo mật mật khẩu 2fa cảnh báo thiết bị đăng nhập phiên", // DRAFT — Kevin reviews
+  "acx.find.d.panel-notif": "Tài khoản này nhận những thông báo nào", // DRAFT — Kevin reviews
+  "acx.find.k.panel-notif": "thông báo cảnh báo sms email tùy chọn", // DRAFT — Kevin reviews
+  "acx.find.d.panel-billing": "Gói, ngày gia hạn, phương thức thanh toán và phí hằng tháng", // DRAFT — Kevin reviews
+  "acx.find.k.panel-billing": "gói thanh toán gia hạn phí phương thức", // DRAFT — Kevin reviews
+  "acx.find.d.panel-role": "Vai trò, phạm vi dữ liệu và quyền chi nhánh của bạn", // DRAFT — Kevin reviews
+  "acx.find.k.panel-role": "vai trò quyền phạm vi chi nhánh người dùng quản lý nhân viên", // DRAFT — Kevin reviews
+  "acx.find.d.panel-activity": "Hoạt động tài khoản mới nhất", // DRAFT — Kevin reviews
+  "acx.find.k.panel-activity": "hoạt động gần đây nhật ký", // DRAFT — Kevin reviews
+  "acx.find.d.panel-health": "Những gì đã xong và những gì còn cần thiết lập", // DRAFT — Kevin reviews
+  "acx.find.k.panel-health": "tình trạng điểm thiết lập", // DRAFT — Kevin reviews
+  "acx.find.d.panel-compliance": "Hai lớp, tuân thủ nhắn tin và vệ sinh mật khẩu", // DRAFT — Kevin reviews
+  "acx.find.k.panel-compliance": "tuân thủ a2p 10dlc nhắn tin mật khẩu", // DRAFT — Kevin reviews
+  "acx.find.d.panel-backup": "Lần sao lưu trước, kế tiếp và tình trạng", // DRAFT — Kevin reviews
+  "acx.find.k.panel-backup": "sao lưu dữ liệu khôi phục", // DRAFT — Kevin reviews
+  "ops.serving.sdReady": "Hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "ops.serving.sdState.ready": "Sẵn sàng", // DRAFT — Kevin reviews
+  "ops.serving.sdState.not_ready": "Chưa sẵn sàng", // DRAFT — Kevin reviews
+  "ops.serving.sdState.handed_off": "Đã chuyển sang Hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "ops.serving.sdVia.mark_ready": "Đánh dấu sẵn sàng", // DRAFT — Kevin reviews
+  "ops.serving.sdVia.send_to_service_done": "Chuyển sang Hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NOT_STARTED": "Dịch vụ chưa bắt đầu.", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NOTES_REQUIRED": "Tiệm yêu cầu ghi chú dịch vụ trước khi đánh dấu sẵn sàng.", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NO_PERMISSION": "Vai trò của bạn không thể chuyển khách này sang Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
+  "ops.serving.sdWhy.NOT_IN_SERVICE": "Lượt này không ở trạng thái có thể chuyển sang Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
+  "ops.serving.sdOpen": "{n} dòng dịch vụ chưa đánh dấu xong — không bắt buộc để hoàn tất", // DRAFT — Kevin reviews
+  "lgx.issue.title": "Báo cho bộ phận hỗ trợ", // DRAFT — Kevin reviews
+  "lgx.issue.hint": "Mở một yêu cầu hỗ trợ cho sự kiện này trong Trợ giúp & Hỗ trợ, nơi yêu cầu có người phụ trách, trạng thái và theo dõi. Chỉ gửi mã và số nhận dạng của sự kiện — không gửi chi tiết.", // DRAFT — Kevin reviews
+  "lgx.issue.priority": "Mức ưu tiên", // DRAFT — Kevin reviews
+  "lgx.issue.notePh": "Chuyện gì đã xảy ra ở tiệm (không bắt buộc)", // DRAFT — Kevin reviews
+  "lgx.issue.submit": "Mở yêu cầu hỗ trợ", // DRAFT — Kevin reviews
+  "lgx.issue.done": "Yêu cầu hỗ trợ {n} · {s}", // DRAFT — Kevin reviews
+  "lgx.issue.openSupport": "Mở Trợ giúp & Hỗ trợ", // DRAFT — Kevin reviews
+  "lgx.issue.event": "Sự kiện nhật ký", // DRAFT — Kevin reviews
+  "lgx.issue.when": "Ghi lúc", // DRAFT — Kevin reviews
+  "dfx.hw.btn": "Mức sẵn sàng của máy này", // DRAFT — Kevin reviews
+  "dfx.hw.title": "Mức sẵn sàng phần cứng của máy POS này", // DRAFT — Kevin reviews
+  "dfx.hw.sub": "Đo ngay trong trình duyệt này. Không thay đổi hay gửi gì; điều trình duyệt không báo được sẽ ghi rõ.", // DRAFT — Kevin reviews
+  "dfx.hw.again": "Đo lại", // DRAFT — Kevin reviews
+  "dfx.hw.k.screen": "Màn hình", // DRAFT — Kevin reviews
+  "dfx.hw.k.viewport": "Vùng sử dụng", // DRAFT — Kevin reviews
+  "dfx.hw.k.touch": "Cảm ứng", // DRAFT — Kevin reviews
+  "dfx.hw.k.browser": "Trình duyệt", // DRAFT — Kevin reviews
+  "dfx.hw.k.os": "Hệ điều hành", // DRAFT — Kevin reviews
+  "dfx.hw.k.mode": "Chế độ hiển thị", // DRAFT — Kevin reviews
+  "dfx.hw.k.network": "Mạng", // DRAFT — Kevin reviews
+  "dfx.hw.k.reconnect": "Cập nhật trực tiếp", // DRAFT — Kevin reviews
+  "dfx.hw.k.agent": "Phần mềm cài trên máy", // DRAFT — Kevin reviews
+  "dfx.hw.k.peripherals": "Thiết bị ngoại vi", // DRAFT — Kevin reviews
+  "dfx.hw.s.ok": "Tốt", // DRAFT — Kevin reviews
+  "dfx.hw.s.warn": "Cần kiểm tra", // DRAFT — Kevin reviews
+  "dfx.hw.s.info": "Thông tin", // DRAFT — Kevin reviews
+  "dfx.hw.s.not_reported": "Không có dữ liệu", // DRAFT — Kevin reviews
+  "dfx.hw.d.screen.ok": "Đủ lớn cho bố cục SUNMI 27 inch đã chứng nhận.", // DRAFT — Kevin reviews
+  "dfx.hw.d.screen.warn": "Nhỏ hơn màn hình SUNMI 27 inch đã chứng nhận — các trang dùng bố cục gọn.", // DRAFT — Kevin reviews
+  "dfx.hw.d.viewport.ok": "Vùng trình duyệt sử dụng được vừa với bố cục đã chứng nhận.", // DRAFT — Kevin reviews
+  "dfx.hw.d.viewport.warn": "Vùng sử dụng nhỏ hơn chuẩn — đóng thanh trình duyệt hoặc dùng toàn màn hình.", // DRAFT — Kevin reviews
+  "dfx.hw.d.touch.ok": "Có cảm ứng.", // DRAFT — Kevin reviews
+  "dfx.hw.d.touch.warn": "Không phát hiện cảm ứng trên máy này.", // DRAFT — Kevin reviews
+  "dfx.hw.d.browser.ok": "Trình duyệt Chromium, loại các màn hình đã được chứng nhận.", // DRAFT — Kevin reviews
+  "dfx.hw.d.browser.warn": "Không phải trình duyệt đã chứng nhận — hãy dùng Chrome trên máy này.", // DRAFT — Kevin reviews
+  "dfx.hw.d.browser.not_reported": "Trình duyệt không báo tên.", // DRAFT — Kevin reviews
+  "dfx.hw.d.os.info": "Theo thông tin trình duyệt báo.", // DRAFT — Kevin reviews
+  "dfx.hw.d.os.not_reported": "Trình duyệt không báo hệ điều hành.", // DRAFT — Kevin reviews
+  "dfx.hw.d.mode.info": "Toàn màn hình hoặc chế độ ứng dụng sẽ ẩn thanh trình duyệt.", // DRAFT — Kevin reviews
+  "dfx.hw.d.network.ok": "Trình duyệt báo có kết nối mạng.", // DRAFT — Kevin reviews
+  "dfx.hw.d.network.warn": "Trình duyệt báo không có kết nối mạng.", // DRAFT — Kevin reviews
+  "dfx.hw.d.reconnect.ok": "Đã kết nối cập nhật trực tiếp.", // DRAFT — Kevin reviews
+  "dfx.hw.d.reconnect.warn": "Hiện chưa kết nối cập nhật trực tiếp — ứng dụng tự thử lại.", // DRAFT — Kevin reviews
+  "dfx.hw.d.agent.not_reported": "AI PowerSalon chạy trong trình duyệt và không ghi nhận phần mềm cài trên máy này.", // DRAFT — Kevin reviews
+  "dfx.hw.d.peripherals.not_reported": "Không khẳng định hỗ trợ trình điều khiển nào ở đây. Máy quẹt thẻ và màn hình khách được kiểm tra ở dòng riêng của chúng trên trang này.", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.comfortable": "Lớn", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.compact": "Kích thước chuẩn", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.tight": "Nhỏ hơn", // DRAFT — Kevin reviews
+  "dfx.hw.c.density.fallback": "Nhỏ", // DRAFT — Kevin reviews
+  "dfx.hw.c.mode.browser": "Cửa sổ trình duyệt", // DRAFT — Kevin reviews
+  "dfx.hw.c.mode.fullscreen": "Toàn màn hình", // DRAFT — Kevin reviews
+  "dfx.hw.c.mode.standalone": "Ứng dụng đã cài", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.CONNECTED": "Đã kết nối", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.RECONNECTING": "Đang kết nối lại", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.OFFLINE": "Ngoại tuyến", // DRAFT — Kevin reviews
+  "dfx.hw.c.rt.DEGRADED": "Suy giảm", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.android": "Android", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.windows": "Windows", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.macos": "macOS", // DRAFT — Kevin reviews
+  "dfx.hw.c.os.linux": "Linux", // DRAFT — Kevin reviews
+  "ops.sched.queue.waiting": "Đang chờ trong hàng chờ khách: {n} (khách vãng lai {w} · có hẹn {a}).", // DRAFT — Kevin reviews
+  "ops.sched.queue.unknown": "Hiện không đọc được số khách trong hàng chờ.", // DRAFT — Kevin reviews
+  "ops.sched.queue.fair": "Xếp bằng Trợ lý hàng chờ AI (xoay vòng công bằng)", // DRAFT — Kevin reviews
+  "ops.sched.queue.open": "Mở hàng chờ khách", // DRAFT — Kevin reviews
+  "ops.sched.queue.rule": "Khách đang chờ được xếp theo xoay vòng công bằng của hàng chờ — trình tối ưu không bao giờ tự xếp.", // DRAFT — Kevin reviews
 };

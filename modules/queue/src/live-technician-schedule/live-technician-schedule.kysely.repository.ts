@@ -232,6 +232,13 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
       bookedHours: col.bookedHours, utilizationPercent: col.utilizationPercent, salesTodayCents: salesCents, tipsTodayCents: tipsCents, commissionPreviewCents: commissionCents,
     };
   }
+  async appointmentNotes(ctx: LiveScheduleContext, technicianId: string, date: string) {
+    const rows: { id: string; start_time: string; end_time: string; customer_name: string | null; notes: string | null }[] = await this.scoped(this.db.selectFrom('pos_tech_appointments'), ctx)
+      .where('technician_id', '=', technicianId).where('appt_date', '=', date).where('status', 'not in', ['cancelled', 'no_show'])
+      .where('notes', 'is not', null).where('notes', '<>', '')
+      .select(['id', 'start_time', 'end_time', 'customer_name', 'notes']).orderBy('start_time').limit(50).execute();
+    return rows.map((r) => ({ appointmentId: r.id, startTime: r.start_time, endTime: r.end_time, customerName: r.customer_name ?? null, notes: String(r.notes ?? '').trim() })).filter((r) => r.notes);
+  }
   async filtersData(ctx: LiveScheduleContext) {
     const b = await this.load(ctx, (await this.today(ctx)));
     const skills = [...new Set(Object.values(b.skillsBy).flat())].sort();

@@ -23,6 +23,55 @@ import { deviceToday } from '../lib/deviceToday';
 import { reportError } from './reportsCommon';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
+import { posHelpCenterApi, type HelpTicketRow } from '../api/posHelpCenterApi';
+
+// backlog Device Integration Logs · 04 — Error Triage & Assignment: a log event becomes a support issue in THE support engine
+// (POST /tenant/help/tickets — owner = its assignee, priority, follow-up / status and audit are that engine's; help.request
+// to open, help.triage to assign). One issue per event (idempotency key = the event id: asking again answers the same
+// ticket). The issue text carries the event's ids and codes only — never its metadata, so nothing private is copied.
+const ISSUE_PRIORITIES = ['normal', 'high', 'urgent'] as const;
+const PRIORITY_KEY: Record<string, string> = { normal: 'pos.normal_priority', high: 'pos.high_priority', urgent: 'pos.urgent' };   // the Help Center's own labels
+const defaultPriority = (sev: string) => (sev === 'critical' ? 'urgent' : sev === 'error' ? 'high' : 'normal');
+export function logIssueInput(e: LogEntryView, priority: string, note: string) {
+  const lines = [
+    `${tx('lgx.issue.event')}: ${e.id}`, e.createdIso ? `${tx('lgx.issue.when')}: ${e.createdIso}` : '',
+    `${tt('lgx.category')}: ${e.category} · ${tt('lgx.source')}: ${e.source} · ${tx('pos.severity_2')}: ${e.severity}${e.status ? ` · ${tx('pos.status')}: ${e.status}` : ''}`,
+    e.relatedId ? `${tt('lgx.related')}: ${e.relatedId}` : '', e.correlationId ? `${tt('lgx.correlation')}: ${e.correlationId}` : '',
+    note.trim() ? `\n${note.trim()}` : '',
+  ].filter(Boolean);
+  return { subject: `${codeLabel('admin.logs.category', e.category)}: ${e.message}`.slice(0, 200), description: lines.join('\n'), priority,
+    category: e.category === 'device' ? 'device' : 'integration', affectedModule: 'device_logs', idempotencyKey: `log-event:${e.id}` };
+}
+function LogIssuePanel({ entry, onOpenSupport }: { entry: LogEntryView; onOpenSupport: () => void }) {
+  const [priority, setPriority] = useState(defaultPriority(entry.severity));
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState<HelpTicketRow | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true); setErr(null);
+    try { setTicket(await posHelpCenterApi.createTicket(logIssueInput(entry, priority, note))); }
+    catch (e) { reportError(e, 'logs'); setErr(errorTextOf(e, tx('pos.the_ticket_could_not_be_submitted'))); }
+    finally { setBusy(false); }
+  };
+  if (ticket) return (
+    <div className="fk-note ok" role="status" data-testid="lgx-issue-done" style={{ marginTop: 10 }}>
+      <span>{tt('lgx.issue.done', { n: ticket.ticketNumber || ticket.id, s: codeLabel('admin.help.ticketStatus', ticket.status, ['payment', 'drawer']) })}</span>
+      <button className="btn ghost sm" data-testid="lgx-issue-open" onClick={onOpenSupport}>{tx('lgx.issue.openSupport')}</button>
+    </div>
+  );
+  return (
+    <div data-testid="lgx-issue" style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 8, display: 'grid', gap: 6 }}>
+      <div style={{ fontWeight: 700 }}>{tx('lgx.issue.title')}</div>
+      <div className="sub">{tx('lgx.issue.hint')}</div>
+      <label className="rvw-f"><span>{tx('lgx.issue.priority')}</span>
+        <select data-testid="lgx-issue-priority" value={priority} onChange={(e) => setPriority(e.target.value)}>{ISSUE_PRIORITIES.map((p) => <option key={p} value={p}>{tx(PRIORITY_KEY[p])}</option>)}</select></label>
+      <textarea data-testid="lgx-issue-note" value={note} maxLength={2000} rows={2} onChange={(e) => setNote(e.target.value)} placeholder={tx('lgx.issue.notePh')} aria-label={tx('lgx.issue.notePh')} />
+      {err ? <div className="fk-note bad" role="alert" data-testid="lgx-issue-err"><span>{err}</span></div> : null}
+      <div><button className="btn" data-testid="lgx-issue-submit" disabled={busy} onClick={submit}>{busy ? tx('pos.submitting') : tx('lgx.issue.submit')}</button></div>
+    </div>
+  );
+}
 
 const dash = '—';
 const tt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
@@ -146,6 +195,7 @@ export function TenantLogsScreen() {
           <dt>{tt('lgx.correlation')}</dt><dd>{open.correlationId ?? dash}</dd>
           {open.metadata && typeof open.metadata === 'object' ? Object.entries(open.metadata as Record<string, unknown>).slice(0, 12).map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{String(v)}</dd></Fragment>) : null}
         </dl>
+        {can('help.request') ? <LogIssuePanel key={open.id} entry={open} onOpenSupport={() => nav('/tenant/account/support')} /> : null}
       </FitDialog> : null}
     </div>
   );

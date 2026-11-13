@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { ReceptionistCenter, stageOf, maskPhone, capabilityMatrix, type RcCtx, type RcAccessRepo } from './receptionist-center';
+import { ReceptionistCenter, stageOf, maskPhone, capabilityMatrix, maskInsightLabel, topCounts, type RcCtx, type RcAccessRepo } from './receptionist-center';
 
 const P = 'c7540000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -295,5 +295,47 @@ describe('AI Agent Capability Matrix (extras AI Receptionist 04)', () => {
     const sw = Object.fromEntries((await mk({ ...ENV_FULL, VOICE_WRITE_TOOLS_ENABLED: '' }).readiness(own)).capabilities.map((c: any) => [c.key, c]));
     expect(sw.reschedule.allowed).toBe(false); expect(sw.services.allowed).toBe(true);
     expect(N(await q1(sql`select count(*)::int n from voice_tool_executions`))).toBe(before);   // read-only
+  });
+});
+
+describe('Extras · AI Receptionist 08 — Consent-Safe Call Insights (counts only, same window as the KPIs)', () => {
+  it('question categories = the AI\'s intent labels (masked, merged, counted); service interests = services on AI-booked appointments the tool ledger links to; another salon never counts', async () => {
+    const day = '2024-03-12T15:00:00Z';   // its own window — no other test writes calls on Mar 12 2024
+    await call(TA, BA, 'ins1', { started: day, intents: ['check_availability', 'book_appointment'] });
+    await call(TA, BA, 'ins2', { started: day, intents: ['check_availability', 'call me at 609-555-0142'] });
+    await call(TA, BA, 'ins3', { started: day, intents: ['call me at (856) 555 0101'] });
+    await call(TA, BA, 'ins4', { started: day, intents: [] });
+    await call(TB, BB, 'insB', { started: day, intents: ['check_availability', 'pricing'] });
+    const CAT = id('f1'), SVC = id('f2'), SVC2 = id('f3'), TECH = id('f4'), AP1 = id('f5'), AP2 = id('f6');
+    await sql`insert into service_categories (id, tenant_id, branch_id, name) values (${CAT}, ${TA}, ${BA}, 'Nails')`.execute(db);
+    await sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values (${SVC}, ${TA}, ${BA}, ${CAT}, 'Gel manicure', 45, 4500, 'active'), (${SVC2}, ${TA}, ${BA}, ${CAT}, 'Spa pedicure', 50, 5500, 'active')`.execute(db);
+    await sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active) values (${TECH}, ${TA}, ${BA}, 'Lan', 'Tran', 'Lan Tran', 'active', true)`.execute(db);
+    for (const [ap, svcs] of [[AP1, [SVC, SVC2]], [AP2, [SVC]]] as const) {
+      await sql`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_name, appt_date, start_time, end_time, duration_minutes, status, services)
+        values (${ap}, ${TA}, ${BA}, ${TECH}, 'Guest', '2024-03-14'::date, '10:00', '10:45', 45, 'booked', ${JSON.stringify(svcs.map((x) => ({ serviceId: x })))}::jsonb)`.execute(db);
+    }
+    await sql`insert into voice_tool_executions (tenant_id, branch_id, provider_call_id, invocation_key, tool_name, tool_kind, status, related_type, related_id, requested_at) values
+      (${TA}, ${BA}, 'ins1', 'ins1-book', 'book_appointment', 'write', 'succeeded', 'appointment', ${AP1}, ${day}),
+      (${TA}, ${BA}, 'ins2', 'ins2-book', 'book_appointment', 'write', 'succeeded', 'appointment', ${AP2}, ${day}),
+      (${TA}, ${BA}, 'ins3', 'ins3-book', 'book_appointment', 'write', 'failed', 'appointment', ${AP2}, ${day})`.execute(db);
+    const k = await mk(ENV_FULL).kpis(own, { period: 'custom', from: '2024-03-12', to: '2024-03-12' });
+    expect(k.calls).toBe(4);
+    expect(k.insights.questionCategories).toEqual([
+      { label: 'call me at [number]', count: 2 },   // two different phone numbers → one masked label, never the number
+      { label: 'check_availability', count: 2 },
+      { label: 'book_appointment', count: 1 },
+    ]);
+    expect(k.insights.callsWithCategories).toBe(3);   // ins4 had none
+    expect(k.insights.serviceInterests).toEqual([{ label: 'Gel manicure', count: 2 }, { label: 'Spa pedicure', count: 1 }]);   // the failed tool run never counts
+    expect(k.insights.sources).toEqual({ questionCategories: 'ai_derived', serviceInterests: 'recorded' });
+    expect(JSON.stringify(k.insights)).not.toMatch(/609|856|555|Guest/);
+    const empty = await mk(ENV_FULL).kpis(own, { period: 'custom', from: '2024-03-20', to: '2024-03-20' });
+    expect(empty.insights).toMatchObject({ questionCategories: [], serviceInterests: [], callsWithCategories: 0 });
+  });
+  it('the masking and merging rules', () => {
+    expect(maskInsightLabel('email ava@x.test please')).toBe('email [email] please');
+    expect(maskInsightLabel('+1 609 555 0142')).toBe('[number]');
+    expect(maskInsightLabel('book 2 services')).toBe('book 2 services');
+    expect(topCounts([{ label: 'a', n: 1 }, { label: 'b', n: 3 }, { label: 'a', n: 2 }, { label: '', n: 9 }])).toEqual([{ label: 'a', count: 3 }, { label: 'b', count: 3 }]);
   });
 });

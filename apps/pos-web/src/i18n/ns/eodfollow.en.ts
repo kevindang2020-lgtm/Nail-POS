@@ -162,4 +162,11 @@ export const EODFOLLOW_EN = {
   'eod.a.done': 'Done.',
   'eod.loadError': 'Could not load follow-ups.',
   'eod.noPermission': 'You do not have permission to manage follow-ups.',
+  'eod.hk.reconcile': 'Matches other modules',
+  'eod.rec.open': '{n} unsent follow-up(s) checked against Checkout, Customer Profile, Booking and the technician list.',
+  'eod.rec.ok': 'All of them still match.',
+  'eod.rec.source': '{n}: the visit was voided, reopened or a service removed in Checkout — it can never be sent.',
+  'eod.rec.archived': '{n}: the customer is archived or no longer on file — it can never be sent.',
+  'eod.rec.booked': '{n}: the customer already has an upcoming booking — held back unless a manager overrides.',
+  'eod.rec.tech': '{n}: the technician is no longer active — it is in no technician’s list.',
 } as const;

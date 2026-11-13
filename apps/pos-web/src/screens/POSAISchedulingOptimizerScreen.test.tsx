@@ -13,6 +13,7 @@ vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => !p
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ principal: { role: 'OWNER' } }) }));
 
 import { POSAISchedulingOptimizerScreen } from './POSAISchedulingOptimizerScreen';
+import { today } from './ai-scheduling/schedUi';
 
 type Call = { url: string; method: string; body?: any };
 type Reply = { status?: number; body?: any; raw?: string };
@@ -372,6 +373,29 @@ describe('Find a time, gaps & conflicts, approvals, insights, settings, usage', 
     expect((await screen.findByTestId('sched-gap')).textContent).toContain('Gel Manicure');
     expect(screen.getByTestId('sched-conflict').textContent).toContain('Mia has two guests at 10:00');
     expect(sent('GET', `${B}/runs/run1`).length).toBe(1);
+  });
+
+  it('extras AI Scheduling Optimizer 04: today\'s gaps show the guests actually waiting (the queue\'s own KPIs) and fill through the queue\'s fair rotation', async () => {
+    const td = today();
+    routes[`GET ${B}/runs/run1`] = { body: { run: run({ date: td }), gaps: [{ id: 'g1', technicianId: 't2', date: td, startTime: '13:00', endTime: '13:45', durationMin: 45, cause: 'cancellation', servicesThatFit: ['Gel Manicure'] }], conflicts: [], recommendations: [] } };
+    routes['GET /pos/queue/kpis'] = { body: { waitingGuests: 3, walkInsWaiting: 2, appointmentsWaiting: 1 } };
+    renderScreen(); tab('Gaps & conflicts');
+    expect(await screen.findByTestId('sched-queue-waiting')).toHaveTextContent('Waiting in the Customer Queue now: 3 (walk-ins 2 · appointments 1).');
+    expect(screen.getByTestId('sched-queue-ai')).toHaveTextContent('Fill with the AI Queue Assistant (fair rotation)');
+    expect(sent('POST', '/pos/queue').length).toBe(0);   // the optimizer never assigns a waiting guest
+    cleanup();
+    perms.deny = new Set(['ai_queue_assignment.view']);
+    routes['GET /pos/queue/kpis'] = { status: 500, body: { message: 'boom' } };
+    renderScreen(); tab('Gaps & conflicts');
+    expect(await screen.findByTestId('sched-queue-unknown')).toBeInTheDocument();   // unreadable → said so, never a 0
+    expect(screen.queryByTestId('sched-queue-ai')).toBeNull();
+  });
+
+  it('extras AI Scheduling Optimizer 04: a past day\'s run shows no live queue line', async () => {
+    routes['GET /pos/queue/kpis'] = { body: { waitingGuests: 3, walkInsWaiting: 2, appointmentsWaiting: 1 } };
+    renderScreen(); tab('Gaps & conflicts');
+    await screen.findByTestId('sched-gap');
+    expect(screen.queryByTestId('sched-queue-aware')).toBeNull();
   });
 
   it('Customer approvals: phone decision sends approved + expectedVersion', async () => {
