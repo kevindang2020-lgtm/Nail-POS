@@ -813,8 +813,10 @@ GET /pos/loyalty/bonus-requests/preview  realm=staff  auth=session  domain=loyal
 GET /pos/loyalty/ledger  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/members  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/earning/history  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/finance-export  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  resource=TENANT/permission  feature=loyalty  async=pos.loyalty-network.finance-export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/purchases  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/purchases/{id}  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=TENANT/records  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/reimbursements  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/state  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/wallet  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/wallet/ledger  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  resource=BRANCH/permission  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
@@ -880,6 +882,7 @@ GET /pos/message-templates/usage  realm=staff  auth=session  domain=communicatio
 GET /pos/money-protection-center/alerts  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view_alerts  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/alerts/detail  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view_alerts  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/detection/runs  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/money-protection-center/export  realm=staff  auth=session  domain=ai  perm=ai_money_protection.export  resource=BRANCH/permission  async=pos.money-protection.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/investigations  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/investigations/timeline  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/rules  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

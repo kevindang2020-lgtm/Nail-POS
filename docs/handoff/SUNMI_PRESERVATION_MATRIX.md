@@ -301,7 +301,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAIOcrReceiptScreen.tsx`
 - Guide: AI_PowerSalon_Receipt_Expense_OCR_Accounting
 - Scroll: one screen
-- API calls on this page: `posExpensesApi.attachReceipt`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posExpensesApi.attachReceipt`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -336,7 +336,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSLoyaltyScreen.tsx`
 - Guide: AI_PowerSalon_Loyalty__Rewards
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `netApi.activate`, `netApi.buyTokens`, `netApi.cancelScheduled`, `netApi.discardDraft`, `netApi.history`, `netApi.ledger`, `netApi.preview`, `netApi.purchase`, `netApi.purchases`, `netApi.saveDraft`, `netApi.setWalletLevels`, `netApi.state`, `netApi.useGlobal`, `posCustomersApi.quickSearch`, `posLoyaltyApi.bonusHealth`, `posLoyaltyApi.bonusPreview`, `posLoyaltyApi.bonusRequest`, `posLoyaltyApi.bonusRequests`, `posLoyaltyApi.createReward`, `posLoyaltyApi.createTier`, `posLoyaltyApi.enroll`, `posLoyaltyApi.ledger`, `posLoyaltyApi.members`, `posLoyaltyApi.overview`, `posLoyaltyApi.redeem`, `posLoyaltyApi.redemption`, `posLoyaltyApi.redemptions`, `posLoyaltyApi.rewards`, `posLoyaltyApi.setMemberTier`, `posLoyaltyApi.tiers`, `posLoyaltyApi.updateReward`, `posLoyaltyApi.updateTier`, `posLoyaltyApi.voidRedemption`, `posStepUpApi.stepUp`
+- API calls on this page: `authApi.logout`, `authApi.me`, `netApi.activate`, `netApi.buyTokens`, `netApi.cancelScheduled`, `netApi.discardDraft`, `netApi.financeExport`, `netApi.history`, `netApi.ledger`, `netApi.preview`, `netApi.purchase`, `netApi.purchases`, `netApi.reimbursements`, `netApi.saveDraft`, `netApi.setWalletLevels`, `netApi.state`, `netApi.useGlobal`, `posCustomersApi.quickSearch`, `posLoyaltyApi.bonusHealth`, `posLoyaltyApi.bonusPreview`, `posLoyaltyApi.bonusRequest`, `posLoyaltyApi.bonusRequests`, `posLoyaltyApi.createReward`, `posLoyaltyApi.createTier`, `posLoyaltyApi.enroll`, `posLoyaltyApi.ledger`, `posLoyaltyApi.members`, `posLoyaltyApi.overview`, `posLoyaltyApi.redeem`, `posLoyaltyApi.redemption`, `posLoyaltyApi.redemptions`, `posLoyaltyApi.rewards`, `posLoyaltyApi.setMemberTier`, `posLoyaltyApi.tiers`, `posLoyaltyApi.updateReward`, `posLoyaltyApi.updateTier`, `posLoyaltyApi.voidRedemption`, `posStepUpApi.stepUp`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -417,7 +417,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSServicesScreen.tsx`
 - Guide: AI_PowerSalon_SERVICES__PRODUCTS_2
 - Scroll: vertical page scroll allowed (Services & Products SUNMI addendum §01: "a long dashboard intentionally uses ONE main vertical scroll, with independent pagination in the two catalog lists" — no sideways scroll; every module present.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `inventoryApi.addStock`, `inventoryApi.brands`, `inventoryApi.categories`, `inventoryApi.createProduct`, `inventoryApi.dispose`, `inventoryApi.markDamaged`, `inventoryApi.markEmpty`, `inventoryApi.markExpired`, `inventoryApi.markFound`, `inventoryApi.markLow`, `inventoryApi.markMissing`, `inventoryApi.openUnit`, `inventoryApi.setStockOverrides`, `inventoryApi.updateProduct`, `inventoryApi.vendors`, `posBundlesApi.create`, `posBundlesApi.state`, `posCatalogApi.categories`, `posCatalogApi.charts`, `posCatalogApi.customerHistory`, `posCatalogApi.dashboard`, `posCatalogApi.pricingImpact`, `posCatalogApi.schedulePricing`, `posCatalogApi.service`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posInventoryAlertsApi.acknowledge`, `posInventoryAlertsApi.active`, `posInventoryAlertsApi.adjust`, `posInventoryAlertsApi.cause`, `posInventoryAlertsApi.exportCsv`, `posInventoryAlertsApi.history`, `posInventoryAlertsApi.ledger`, `posInventoryAlertsApi.pickers`, `posInventoryAlertsApi.record`, `posInventoryAlertsApi.summary`, `posInventoryAlertsApi.technicians`, `posInventoryAlertsApi.usage`, `posInventoryScreenApi.movements`, `posInventoryScreenApi.product`, `posInventoryScreenApi.products`, `posInventoryScreenApi.recountProduct`, `posInventoryScreenApi.restoreProduct`, `posMenuInsightsApi.get`, `posServicesApi.create`, `posServicesApi.importCommit`, `posServicesApi.importPreview`, `posServicesApi.list`, `posServicesApi.reactivate`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.run`, `posTechniciansApi.qualified`
+- API calls on this page: `authApi.logout`, `authApi.me`, `inventoryApi.addStock`, `inventoryApi.brands`, `inventoryApi.categories`, `inventoryApi.createProduct`, `inventoryApi.dispose`, `inventoryApi.markDamaged`, `inventoryApi.markEmpty`, `inventoryApi.markExpired`, `inventoryApi.markFound`, `inventoryApi.markLow`, `inventoryApi.markMissing`, `inventoryApi.openUnit`, `inventoryApi.setStockOverrides`, `inventoryApi.updateProduct`, `inventoryApi.vendors`, `posBundlesApi.create`, `posBundlesApi.state`, `posCatalogApi.categories`, `posCatalogApi.charts`, `posCatalogApi.compensationPreview`, `posCatalogApi.customerHistory`, `posCatalogApi.dashboard`, `posCatalogApi.pricePreview`, `posCatalogApi.pricingImpact`, `posCatalogApi.schedulePricing`, `posCatalogApi.service`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posInventoryAlertsApi.acknowledge`, `posInventoryAlertsApi.active`, `posInventoryAlertsApi.adjust`, `posInventoryAlertsApi.cause`, `posInventoryAlertsApi.exportCsv`, `posInventoryAlertsApi.history`, `posInventoryAlertsApi.ledger`, `posInventoryAlertsApi.pickers`, `posInventoryAlertsApi.record`, `posInventoryAlertsApi.summary`, `posInventoryAlertsApi.technicians`, `posInventoryAlertsApi.usage`, `posInventoryScreenApi.movements`, `posInventoryScreenApi.product`, `posInventoryScreenApi.products`, `posInventoryScreenApi.recountProduct`, `posInventoryScreenApi.restoreProduct`, `posMenuInsightsApi.get`, `posServicesApi.create`, `posServicesApi.importCommit`, `posServicesApi.importPreview`, `posServicesApi.list`, `posServicesApi.reactivate`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.run`, `posTechniciansApi.qualified`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -442,7 +442,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSServiceCategoriesScreen.tsx`
 - Guide: AI_PowerSalon_SERVICE_CATEGORIES
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.categories`, `posCatalogApi.category`, `posCatalogApi.categorySummary`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.reassign`, `posCatalogApi.reviewDecision`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posServicesApi.archiveCategory`, `posServicesApi.create`, `posServicesApi.createCategory`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posServicesApi.updateCategory`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.categories`, `posCatalogApi.category`, `posCatalogApi.categorySummary`, `posCatalogApi.compensationPreview`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricePreview`, `posCatalogApi.pricingImpact`, `posCatalogApi.reassign`, `posCatalogApi.reviewDecision`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`, `posServicesApi.archiveCategory`, `posServicesApi.create`, `posServicesApi.createCategory`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posServicesApi.updateCategory`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -459,7 +459,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSServicePricingScreen.tsx`
 - Guide: AI_PowerSalon_SERVICE_PRICING
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.cancelScheduledPricing`, `posCatalogApi.categories`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.revertPricing`, `posCatalogApi.schedulePricing`, `posCatalogApi.service`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posServicesApi.create`, `posServicesApi.exportCsv`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.cancelScheduledPricing`, `posCatalogApi.categories`, `posCatalogApi.compensationPreview`, `posCatalogApi.customerHistory`, `posCatalogApi.history`, `posCatalogApi.pricePreview`, `posCatalogApi.pricingImpact`, `posCatalogApi.revertPricing`, `posCatalogApi.schedulePricing`, `posCatalogApi.service`, `posCatalogApi.services`, `posCatalogApi.updatePricing`, `posServicesApi.create`, `posServicesApi.exportCsv`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -474,7 +474,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSServiceAddOnsScreen.tsx`
 - Guide: AI_PowerSalon_ADD-ONS_MANAGEMENT
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.addOn`, `posCatalogApi.addOnSummary`, `posCatalogApi.addOnUsage`, `posCatalogApi.addOns`, `posCatalogApi.archiveAddOn`, `posCatalogApi.createAddOn`, `posCatalogApi.history`, `posCatalogApi.pricingImpact`, `posCatalogApi.restoreAddOn`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updateAddOn`, `posCatalogApi.updatePricing`, `posServicesApi.create`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.run`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCatalogApi.addOn`, `posCatalogApi.addOnSummary`, `posCatalogApi.addOnUsage`, `posCatalogApi.addOns`, `posCatalogApi.archiveAddOn`, `posCatalogApi.compensationPreview`, `posCatalogApi.createAddOn`, `posCatalogApi.history`, `posCatalogApi.pricePreview`, `posCatalogApi.pricingImpact`, `posCatalogApi.restoreAddOn`, `posCatalogApi.schedulePricing`, `posCatalogApi.services`, `posCatalogApi.updateAddOn`, `posCatalogApi.updatePricing`, `posServicesApi.create`, `posServicesApi.list`, `posServicesApi.setTaxable`, `posServicesApi.update`, `posSystemChecksApi.run`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -577,7 +577,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSPaymentsOverviewScreen.tsx`
 - Guide: AI_PowerSalon_PAYMENTS__MONEY
 - Scroll: one screen
-- API calls on this page: `authApi.logout`, `authApi.me`, `posCheckoutApi.receiptSendAll`, `posCheckoutApi.refundPreview`, `posCheckoutApi.refundTicket`, `posCheckoutApi.settleRefund`, `posCheckoutApi.unsettledRefunds`, `posDiscountsApi.refundImpact`, `posMoneyOverviewApi.overview`, `posMoneyOverviewApi.payouts`, `posMoneyOverviewApi.search`, `posMoneyOverviewApi.services`, `posStepUpApi.stepUp`, `posSystemChecksApi.run`, `posTransactionsApi.detail`, `posTransactionsApi.exportCsv`, `posTransactionsApi.list`, `posTransactionsApi.summary`, `posTransactionsApi.technicians`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posCheckoutApi.receiptSendAll`, `posCheckoutApi.refundPreview`, `posCheckoutApi.refundTicket`, `posCheckoutApi.settleRefund`, `posCheckoutApi.unsettledRefunds`, `posDiscountsApi.refundImpact`, `posMoneyOverviewApi.accuracy`, `posMoneyOverviewApi.overview`, `posMoneyOverviewApi.payouts`, `posMoneyOverviewApi.search`, `posMoneyOverviewApi.services`, `posStepUpApi.stepUp`, `posSystemChecksApi.run`, `posTransactionsApi.detail`, `posTransactionsApi.exportCsv`, `posTransactionsApi.list`, `posTransactionsApi.summary`, `posTransactionsApi.technicians`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1028,7 +1028,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/loyalty/RewardsNetworkPanel.tsx`
 - Guide: AI_PowerSalon_GLOBAL_LOYALTY__REWARDS + Global__Tenant_Earning_Rules
 - Scroll: vertical page scroll allowed (Earning Rules SUNMI section: main content scrolls vertically when needed; bounded inner-panel scrolling for history and long tables; no page-wide sideways scroll.)
-- API calls on this page: `netApi.activate`, `netApi.buyTokens`, `netApi.cancelScheduled`, `netApi.discardDraft`, `netApi.history`, `netApi.ledger`, `netApi.preview`, `netApi.purchase`, `netApi.purchases`, `netApi.saveDraft`, `netApi.setWalletLevels`, `netApi.state`, `netApi.useGlobal`, `posStepUpApi.stepUp`
+- API calls on this page: `netApi.activate`, `netApi.buyTokens`, `netApi.cancelScheduled`, `netApi.discardDraft`, `netApi.financeExport`, `netApi.history`, `netApi.ledger`, `netApi.preview`, `netApi.purchase`, `netApi.purchases`, `netApi.reimbursements`, `netApi.saveDraft`, `netApi.setWalletLevels`, `netApi.state`, `netApi.useGlobal`, `posStepUpApi.stepUp`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1477,7 +1477,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAISchedulingOptimizerScreen.tsx`
 - Guide: AI_PowerSalon_AI_Scheduling_Optimizer
 - Scroll: vertical page scroll allowed (Scheduling Optimizer addendum: section content scrolls within the page; tabs keep every module reachable.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.state`, `posBookingApi.technicians`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posBookingApi.state`, `posBookingApi.technicians`, `posQueueApi.kpis`, `posSavedViewsApi.create`, `posSavedViewsApi.list`, `posSavedViewsApi.remove`, `posSavedViewsApi.update`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -1769,7 +1769,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/POSAiForecastingScreen.tsx`, `screens/ForecastHistory.tsx`
 - Guide: AI_PowerSalon_AI_Analytics_Forecasting
 - Scroll: vertical page scroll allowed (AI Analytics & Forecasting SUNMI addendum: charts and the history list keep meaningful height; explicit page scrolling is allowed; no sideways scroll.)
-- API calls on this page: `posAiForecastingApi.accuracy`, `posAiForecastingApi.appointments`, `posAiForecastingApi.noShowRisk`, `posAiForecastingApi.readiness`, `posAiForecastingApi.revenue`, `posAiForecastingApi.serviceDemand`
+- API calls on this page: `posAiForecastingApi.accuracy`, `posAiForecastingApi.appointments`, `posAiForecastingApi.appointmentsWhatIf`, `posAiForecastingApi.noShowRisk`, `posAiForecastingApi.readiness`, `posAiForecastingApi.revenue`, `posAiForecastingApi.serviceDemand`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
@@ -2211,7 +2211,7 @@ Pages: 142 · modules: 929
 - Screen: `screens/TenantLogsScreen.tsx`
 - Guide: AI_PowerSalon_Device_Integration_Logs
 - Scroll: vertical page scroll allowed (Device Logs SUNMI guide: cards and filters on top; the event list pages (numbered) and scrolls with the page.)
-- API calls on this page: `authApi.logout`, `authApi.me`, `posLogsApi.exportCsv`, `posLogsApi.page`
+- API calls on this page: `authApi.logout`, `authApi.me`, `posHelpCenterApi.createTicket`, `posLogsApi.exportCsv`, `posLogsApi.page`
 
 | Module (original feature) | id | Component file | Status | Regression evidence |
 |---|---|---|---|---|
