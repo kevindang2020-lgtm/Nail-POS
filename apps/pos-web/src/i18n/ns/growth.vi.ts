@@ -1248,4 +1248,7 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.community.corr.appealStatus.upheld": "giữ nguyên quyết định", // DRAFT — Kevin reviews
   "growth.community.corr.appealStatus.overturned": "đã đảo ngược quyết định", // DRAFT — Kevin reviews
   "growth.community.corr.appealStatus.withdrawn": "đã rút", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.off": "Đã trừ nghỉ phép được duyệt {o} · giờ chặn {b}", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.skills": "Không thợ nào đang làm được duyệt cho: {s}", // DRAFT — Kevin reviews
+  "growth.aiForecast.cap.top": "Kỹ năng được đối chiếu với các dịch vụ đặt nhiều nhất: {s}", // DRAFT — Kevin reviews
 };

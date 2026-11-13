@@ -105,6 +105,16 @@ describe('POSAiForecastingScreen', () => {
     expect(screen.getByTestId('fc-cap-optimizer').getAttribute('href')).toBe('/tenant/ai/scheduling-optimizer');
     expect(panel.querySelectorAll('button')).toHaveLength(0);   // nothing to press but the link: no shift is created here
   });
+  it('extras AI Analytics Forecasting 20: each day shows the approved time off / blocked time already removed and the most-booked services nobody working is approved for (from the server)', async () => {
+    window.history.replaceState(null, '', '/');
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 1, accuracy: null, horizon: horizon(10).slice(0, 1), selectionReason: 'x', disclaimer: 'd',
+      capacity: { avgAppointmentMinutes: 45, durationSample: 120, durationWindowDays: 56, basis: 'b', topServices: ['Gel X', 'Pedicure'], days: [
+        { date: '2026-03-01', expectedMinutes: 540, lowerMinutes: 450, upperMinutes: 630, scheduledMinutes: 420, technicians: 1, gapMinutes: -120, state: 'short', timeOffMinutes: 240, blockedMinutes: 60, uncoveredServices: ['Gel X'] }] } });
+    render(<POSAiForecastingScreen />);
+    expect(await screen.findByTestId('fc-cap-top')).toHaveTextContent('most-booked services: Gel X, Pedicure');
+    expect(screen.getByTestId('fc-cap-off')).toHaveTextContent('Approved time off 4 h · blocked 1 h already removed');
+    expect(screen.getByTestId('fc-cap-skills')).toHaveTextContent('No one working is approved for: Gel X');
+  });
   it('extras AI Analytics Forecasting 07: the what-if asks the SERVER with the typed assumptions and shows its labelled sandbox beside the real gap (which is not replaced)', async () => {
     window.history.replaceState(null, '', '/');
     const cap = { avgAppointmentMinutes: 45, durationSample: 120, durationWindowDays: 56, basis: 'b', days: [

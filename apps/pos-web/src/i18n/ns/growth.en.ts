@@ -1247,4 +1247,7 @@ export const GROWTH_EN = {
   "growth.community.corr.appealStatus.upheld": "decision kept",
   "growth.community.corr.appealStatus.overturned": "decision reversed",
   "growth.community.corr.appealStatus.withdrawn": "withdrawn",
+  "growth.aiForecast.cap.off": "Approved time off {o} · blocked {b} already removed",
+  "growth.aiForecast.cap.skills": "No one working is approved for: {s}",
+  "growth.aiForecast.cap.top": "Skills checked against the most-booked services: {s}",
 };
