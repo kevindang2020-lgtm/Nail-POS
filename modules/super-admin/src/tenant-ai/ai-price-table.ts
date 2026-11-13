@@ -12,6 +12,7 @@
 //   4. a version published for a future date is returned as `upcoming` (Price Change Transparency: shown before it applies)
 // Super Admin publishing: existing_salons_keep_previous is REQUIRED (no default — Kevin decides per version); prices are
 // integer cents within a hard safety ceiling; versions and overrides are append-only and audited.
+import { recordPlatformAuditStrict } from '@aipowersalon/audit';
 import { sql, type Kysely } from 'kysely';
 import { getAiPackage } from '@aipowersalon/ai';
 import type { AiTablePrice, AiPriceUnit } from '@aipowersalon/api-contracts/tenant';
@@ -119,9 +120,8 @@ export class AiPriceTable {
       const v = (await sql<{ id: string; published_at: Date | string }>`insert into platform_ai_price_versions (version_no, effective_from, existing_salons_keep_previous, note, published_by)
         values (${no}, ${eff.toISOString()}, ${b.existingSalonsKeepPrevious as boolean}, ${note}, ${by}) returning id, published_at`.execute(trx)).rows[0];
       for (const r of rows) await sql`insert into platform_ai_price_version_rows (version_id, feature, unit, price_cents) values (${v.id}, ${r.feature}, ${r.unit}, ${r.priceCents})`.execute(trx);
-      await sql`insert into audit_logs (id, tenant_id, user_id, role, action_type, entity_type, entity_id, metadata_json)
-        values (gen_random_uuid(), null, ${by}, 'SUPER_ADMIN', 'super_admin_ai_price_version_published', 'platform_ai_price_version', ${v.id},
-          ${JSON.stringify({ versionNo: no, effectiveFrom: eff.toISOString(), existingSalonsKeepPrevious: b.existingSalonsKeepPrevious, rows })}::jsonb)`.execute(trx);
+      await recordPlatformAuditStrict(trx, { userId: by, role: 'SUPER_ADMIN' }, { module: 'super_admin', action: 'ai_price_version_published', resourceType: 'platform_ai_price_version', resourceId: v.id,
+        metadata: { versionNo: no, effectiveFrom: eff.toISOString(), existingSalonsKeepPrevious: b.existingSalonsKeepPrevious, rows } });   // fail-closed: no audit row, no version
       return { versionNo: no, effectiveFrom: eff.toISOString(), existingSalonsKeepPrevious: b.existingSalonsKeepPrevious as boolean, note, publishedAt: new Date(v.published_at).toISOString(), inEffect: eff.getTime() <= this.now().getTime(), rows };
     });
   }
@@ -145,9 +145,8 @@ export class AiPriceTable {
     return this.db.transaction().execute(async (trx) => {
       const r = (await sql<{ id: string; created_at: Date | string }>`insert into tenant_ai_price_overrides (tenant_id, feature, unit, price_cents, effective_from, reason, set_by)
         values (${tenantId}, ${feature}, ${unit}, ${price}, ${eff.toISOString()}, ${reason}, ${by}) returning id, created_at`.execute(trx)).rows[0];
-      await sql`insert into audit_logs (id, tenant_id, user_id, role, action_type, entity_type, entity_id, metadata_json)
-        values (gen_random_uuid(), ${tenantId}, ${by}, 'SUPER_ADMIN', ${price == null ? 'super_admin_ai_price_override_removed' : 'super_admin_ai_price_override_set'}, 'tenant_ai_price_override', ${r.id},
-          ${JSON.stringify({ feature, unit, priceCents: price, effectiveFrom: eff.toISOString(), reason })}::jsonb)`.execute(trx);
+      await recordPlatformAuditStrict(trx, { userId: by, role: 'SUPER_ADMIN' }, { module: 'super_admin', action: price == null ? 'ai_price_override_removed' : 'ai_price_override_set', resourceType: 'tenant_ai_price_override', resourceId: r.id,
+        metadata: { tenantId, feature, unit, priceCents: price, effectiveFrom: eff.toISOString(), reason } });   // fail-closed
       return { tenantId, salon: t.display_name ?? null, feature, unit: unit as AiPriceUnit, priceCents: price, effectiveFrom: eff.toISOString(), reason, createdAt: new Date(r.created_at).toISOString() };
     });
   }

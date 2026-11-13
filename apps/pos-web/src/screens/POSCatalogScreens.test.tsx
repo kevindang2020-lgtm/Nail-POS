@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen, inv } = vi.hoisted(() => ({
-  inv: { addOnRecipe: vi.fn(), setAddOnRecipe: vi.fn(), addOnRecipeSetting: vi.fn(), setAddOnRecipeSetting: vi.fn(), products: vi.fn() },
+  inv: { addOnRecipe: vi.fn(), setAddOnRecipe: vi.fn(), setAddOnRecipeSetting: vi.fn(), products: vi.fn() },
   cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), compensationPreview: vi.fn(), pricePreview: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
     addOnSummary: vi.fn(), reviewDecision: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), addOnProfitability: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },

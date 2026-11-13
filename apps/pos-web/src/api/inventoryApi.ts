@@ -117,7 +117,6 @@ export const inventoryApi = {
   // Done deducts it (OFF unless the salon turned it on — then nothing is deducted for add-ons, as before)
   addOnRecipe: (key: string) => api.get<AddOnRecipeState>(`/tenant/inventory/add-on-recipes/${encodeURIComponent(key)}`),
   setAddOnRecipe: (key: string, lines: { productId: string; quantity: number }[]) => api.put<AddOnRecipeState>(`/tenant/inventory/add-on-recipes/${encodeURIComponent(key)}`, { lines }),
-  addOnRecipeSetting: () => api.get<AddOnRecipeSwitch>('/tenant/inventory/add-on-recipe-settings'),
   setAddOnRecipeSetting: (enabled: boolean) => api.put<AddOnRecipeSwitch>('/tenant/inventory/add-on-recipe-settings', { enabled }),
   acknowledgeAlert: (id: string) => api.post<{ ok: boolean }>(`/tenant/inventory/alert-feed/${id}/acknowledge`, {}),
   saveReceiptExpense: (b: { vendor?: string | null; amountCents: number; incurredOn?: string | null; category?: string | null; description?: string | null }) =>

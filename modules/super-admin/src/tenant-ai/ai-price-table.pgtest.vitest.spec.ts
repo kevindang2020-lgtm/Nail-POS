@@ -80,7 +80,7 @@ describe('AiPriceTable on the real schema', () => {
     expect(r2.versionNo).toBe(2);
     const l = await pt.list();
     expect(l.versions.map((x) => [x.versionNo, x.existingSalonsKeepPrevious, x.rows.length])).toEqual([[2, true, 1], [1, false, 2]]);
-    const a = await q(sql`select action_type, entity_type, metadata_json from audit_logs where action_type = 'super_admin_ai_price_version_published' order by created_at`);
+    const a = await q(sql`select action_type, entity_type, metadata_json from audit_logs where action_type = 'super_admin.ai_price_version_published' order by created_at`);
     expect(a).toHaveLength(2); expect(a[0].metadata_json).toMatchObject({ versionNo: 1, existingSalonsKeepPrevious: false });
     await expect(q(sql`update platform_ai_price_version_rows set price_cents = 1`)).rejects.toThrow(/append-only/);
     await expect(q(sql`delete from platform_ai_price_versions`)).rejects.toThrow(/append-only/);
@@ -99,7 +99,7 @@ describe('AiPriceTable on the real schema', () => {
     const f2 = await pt.facts(T);
     expect(resolveAiTablePrice(f2.versions, f2.overrides, 'ai_marketing_assistant', 'month', null, new Date())).toMatchObject({ state: 'no_price_set', reason: 'no_version_published' });   // the versions above are scheduled, not in effect
     expect((await pt.list()).overrides.map((o) => o.priceCents)).toEqual([null, 4500]);
-    expect((await q(sql`select action_type from audit_logs where entity_type = 'tenant_ai_price_override' order by created_at`)).map((x) => x.action_type)).toEqual(['super_admin_ai_price_override_set', 'super_admin_ai_price_override_removed']);
+    expect((await q(sql`select action_type from audit_logs where entity_type = 'tenant_ai_price_override' order by created_at`)).map((x) => x.action_type)).toEqual(['super_admin.ai_price_override_set', 'super_admin.ai_price_override_removed']);
     await expect(q(sql`delete from tenant_ai_price_overrides`)).rejects.toThrow(/append-only/);
   });
 });
