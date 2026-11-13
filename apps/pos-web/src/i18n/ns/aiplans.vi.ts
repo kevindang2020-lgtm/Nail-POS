@@ -166,4 +166,15 @@ export const AIPLANS_VI: Record<string, string> = {
   "aiux.cat.switchesUnknownToCatalog": "Công tắc nền tảng cho mã không có trong danh mục", // DRAFT — Kevin reviews
   "aiux.cat.prices": "Giá đã lưu khác với giá hiện tại (liệt kê để xem lại — giữ giá cũ là được phép):", // DRAFT — Kevin reviews
   "aiux.cat.priceLine": "đã lưu {stored}/tháng · hiện tại {current}/tháng", // DRAFT — Kevin reviews
+  "plx.rd.access": "Quyền dùng: {s}", // DRAFT — Kevin reviews
+  "plx.rd.setup": "Cài đặt: {s}", // DRAFT — Kevin reviews
+  "plx.rd.st.ready": "Sẵn sàng", // DRAFT — Kevin reviews
+  "plx.rd.st.setup_required": "Cần cài đặt", // DRAFT — Kevin reviews
+  "plx.rd.st.provider_down": "Nhà cung cấp gián đoạn", // DRAFT — Kevin reviews
+  "plx.rd.why.no_provider_connected": "chưa kết nối nhà cung cấp AI cho nền tảng", // DRAFT — Kevin reviews
+  "plx.rd.why.provider_error": "nhà cung cấp AI đang báo lỗi", // DRAFT — Kevin reviews
+  "plx.rd.why.turned_off_by_platform": "tạm tắt trên toàn nền tảng", // DRAFT — Kevin reviews
+  "plx.rd.why.receptionist_not_set_up": "hãy cài đặt và thử lễ tân AI trước (AI Front Desk)", // DRAFT — Kevin reviews
+  "plx.rd.why.unknown": "chưa sẵn sàng", // DRAFT — Kevin reviews
+  "plx.rd.paidNote": "Gói của bạn vẫn hoạt động — đây là vấn đề cài đặt, không phải thanh toán.", // DRAFT — Kevin reviews
 };

@@ -83,5 +83,23 @@ describe('POSAIPlansScreen', () => {
     expect(screen.getByTestId('plan-pricecheck-p_none')).toHaveTextContent('costs $20/mo more than buying them separately');
     expect(screen.queryByTestId('plan-pricecheck-p_old')).toBeNull();   // an older server sends no check: nothing is invented
   });
+  it('extras AI Plans #05: Access (commercial) and Setup (technical) are shown apart; a not-ready member says why', async () => {
+    api.plans.mockResolvedValue({ plans: [
+      plan({ code: 'plan_booking_calls', name: 'Booking & Calls', state: 'active', status: 'active', subscribed: true, canCancel: true,
+        packages: [{ code: 'ai_booking_assistant', name: 'AI Booking Assistant', monthlyPriceCents: 4900, usageUnit: 'messages', posArea: null }, { code: 'ai_phone_call_assistant', name: 'AI Phone Call Assistant', monthlyPriceCents: 9900, usageUnit: 'minutes', posArea: null }],
+        readiness: { state: 'setup_required', provider: { state: 'connected', reason: null }, checkedAt: '2026-11-12T15:00:00Z', packages: [{ code: 'ai_booking_assistant', state: 'ready', reason: null }, { code: 'ai_phone_call_assistant', state: 'setup_required', reason: 'receptionist_not_set_up' }] } }),
+      plan({ code: 'plan_checkin_queue', name: 'Check-In & Queue', readiness: { state: 'provider_down', provider: { state: 'not_connected', reason: 'no_provider_connected' }, checkedAt: '2026-11-12T15:00:00Z', packages: [{ code: 'ai_ocr_receipt_scanner', state: 'provider_down', reason: 'no_provider_connected' }] } }),
+      plan({ code: 'plan_money_owner', readiness: { state: 'ready', provider: { state: 'connected', reason: null }, checkedAt: '2026-11-12T15:00:00Z', packages: [{ code: 'ai_ocr_receipt_scanner', state: 'ready', reason: null }] } }),
+    ] });
+    mount();
+    expect(await screen.findByTestId('plan-access-plan_booking_calls')).toHaveTextContent('Access: Active');
+    expect(screen.getByTestId('plan-ready-plan_booking_calls')).toHaveTextContent('Setup: Setup required');
+    expect(screen.getByTestId('plan-ready-why-plan_booking_calls')).toHaveTextContent('AI Phone Call Assistant: set up and test the AI receptionist first');
+    expect(screen.getByTestId('plan-ready-why-plan_booking_calls')).toHaveTextContent('Your plan stays active — this is about setup, not billing.');
+    expect(screen.getByTestId('plan-ready-plan_checkin_queue')).toHaveTextContent('Setup: Provider down');
+    expect(screen.getByTestId('plan-ready-why-plan_checkin_queue')).toHaveTextContent('no AI provider is connected');
+    expect(screen.getByTestId('plan-ready-why-plan_checkin_queue')).not.toHaveTextContent('Your plan stays active');   // not subscribed
+    expect(screen.getByTestId('plan-ready-plan_money_owner')).toHaveTextContent('Setup: Ready');
+    expect(screen.queryByTestId('plan-ready-why-plan_money_owner')).toBeNull();
+  });
 });
-

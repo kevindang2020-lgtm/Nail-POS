@@ -55,3 +55,10 @@ export function validateProviderInput(input: ProviderInput, opts: { requireKey?:
   if (input.status && !['active', 'inactive', 'error', 'disabled'].includes(String(input.status))) errors.push('Invalid status.');
   return { errors };
 }
+
+/** AI Plans #05 (extras round 9): how many runtime AI provider keys are present — booleans only, never the values. The AI
+ *  gateway (modules/ai ai-providers.ts) reads these same environment names, so this is what decides whether it can reach a
+ *  provider at all. */
+export function aiProviderKeysPresent(env: Record<string, string | undefined> = process.env): number {
+  return ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'].filter((k) => !!env[k]).length;
+}
