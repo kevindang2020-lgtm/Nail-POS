@@ -1,8 +1,8 @@
 // posDealsApi.ts — tenant Deals Marketplace administration (manager/owner). Server-gated by pos.marketing.view (reads)
 // and pos.marketing.manage (writes) on /pos/deals. Salon deals + technician-deal approval + the tenant technician-deal
 // policy. Money is integer cents; the backend recomputes the final price — the client never sends it.
-import type { DealAnalyticsRow, DealSettings, DealStatus, DealView } from '@aipowersalon/api-contracts/tenant';
-export type { DealAnalyticsRow, DealSettings, DealStatus, DealView };   // the API's own contract (Constitution 13 §15) — never re-declare it here
+import type { DealAnalyticsRow, DealSettings, DealStatus, DealView, CheckoutConflictSimulation, CheckoutConflictCase } from '@aipowersalon/api-contracts/tenant';
+export type { DealAnalyticsRow, DealSettings, DealStatus, DealView, CheckoutConflictSimulation, CheckoutConflictCase };   // the API's own contract (Constitution 13 §15) — never re-declare it here
 import { api } from './client';
 
 
@@ -34,6 +34,8 @@ export const posDealsApi = {
   coupons: (id: string) => api.get(`/pos/deals/${id}/coupons`),
   generateCodes: (id: string, body: Record<string, unknown>) => api.post(`/pos/deals/${id}/coupons/generate`, body),
   revokeCode: (id: string, codeId: string, reason: string) => api.post(`/pos/deals/${id}/coupons/${codeId}/revoke`, { reason }),
+  /** Extras · Promotions 15: staging fixtures through the real engines — read-only, hypothetical tickets */
+  conflictSimulator: () => api.get<CheckoutConflictSimulation>(`/pos/deals/conflict-simulator`),
 };
 
 export interface DealsDashboard {

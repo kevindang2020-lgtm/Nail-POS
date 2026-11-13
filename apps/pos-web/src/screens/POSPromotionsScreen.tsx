@@ -31,6 +31,7 @@ import { posCouponsApi } from '../api/posCouponsApi';
 import { DealWizard } from './deals/DealWizard';
 import { DealCouponsPanel } from './deals/DealCouponsPanel';
 import { ExpirationCalendar } from './deals/ExpirationCalendar';
+import { ConflictSimulatorDialog } from './deals/ConflictSimulatorDialog';
 
 type Tab = 'library' | 'redemptions' | 'checks' | 'insights' | 'health';
 const TABS: Tab[] = ['library', 'redemptions', 'checks', 'insights', 'health'];
@@ -75,7 +76,7 @@ export function POSPromotionsScreen() {
   useEffect(() => { if ((P('q') ?? '') !== q) setP({ q: q || null }); }, [q]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const [tick, setTick] = useState(0); const refresh = () => setTick((n) => n + 1);
-  const [detail, setDetail] = useState<{ id: string; tab?: string } | null>(null); const [expCal, setExpCal] = useState(false);
+  const [detail, setDetail] = useState<{ id: string; tab?: string } | null>(null); const [expCal, setExpCal] = useState(false); const [sim, setSim] = useState(false);
   const [checking, setChecking] = useState<{ id: string; name: string } | null>(null);
   const [choose, setChoose] = useState(false);
   const [wizard, setWizard] = useState<{ editing: DealView | null } | null>(null);
@@ -149,6 +150,7 @@ export function POSPromotionsScreen() {
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           {canManage && (tab === 'library' || tab === 'redemptions') ? <button type="button" className="fk-btn" disabled={exporting} onClick={() => void exportCsv()} data-testid="export">{exporting ? tx('pos.loading') : tx('cp.exportCsv')}</button> : null}
           <button type="button" className="fk-btn ghost" onClick={() => setChoose(true)} data-testid="check-promotion">{tx('promo.checkPromotion')}</button>
+          <button type="button" className="fk-btn ghost" onClick={() => setSim(true)} data-testid="conflict-simulator">{tx('promo.sim.open')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setP({ scope: 'redemptions' })} data-testid="view-history">{tx('promo.viewHistory')}</button>
           {canManage ? <button type="button" className="fk-btn ghost" onClick={() => setAssistant(true)} data-testid="assistant">{tx('promo.assistant')}</button> : null}
           {canManage ? <button type="button" className="fk-btn primary" onClick={() => setWizard({ editing: null })} data-testid="new-promotion">{tx('pos.new_promotion')}</button> : null}
@@ -248,6 +250,7 @@ export function POSPromotionsScreen() {
           <div className="fk-hint">{tx('cp.healthNote', { t: when(health.data.checkedAt) })}</div></>}
       </FitPanel> : null}
 
+      {sim ? <ConflictSimulatorDialog onClose={() => setSim(false)} /> : null}
       {expCal && k ? <ExpirationCalendar today={k.today} onClose={() => setExpCal(false)} onOpen={(id) => { setExpCal(false); setDetail({ id }); }} /> : null}
       {detail ? <DiscountDetailsDialog id={detail.id} initialTab={detail.tab} tick={tick} onClose={() => setDetail(null)} onCustomer={openCustomer} onTicket={openTicket}
         extras={{

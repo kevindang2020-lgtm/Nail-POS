@@ -121,3 +121,23 @@ export interface DiscountRefundImpact {
     outcome: 'release' | 'keep' | 'reverse' | 'partial' | 'none'; reverseCents: number; placeReturned: boolean;
     lines: { lineId: string; cents: number; refunded: boolean }[] }[];
 }
+
+/** Checkout Conflict Simulator (Extras · Promotions 15): the staging fixtures run through the real pricing / refund engines —
+ *  hypothetical tickets only; nothing is charged, redeemed or refunded. Money in integer cents. */
+export type CheckoutConflictCode = 'offer_rejected' | 'tenders_short' | 'tenders_over' | 'negative_tender' | 'refund_reverses_offer' | 'refund_partial_offer';
+export interface CheckoutConflictCase {
+  name: string;
+  lines: { lineId: string; priceCents: number }[];
+  offers: { id: string; category: string; description: string }[];
+  policy: { mode: string; allowWithMembership: boolean; allowWithLoyalty: boolean; priceFloorPercent: number; maxTotalDiscountPercent: number | null };
+  tenders: { kind: 'card' | 'cash' | 'gift_card'; cents: number }[];
+  refund: 'none' | 'whole_ticket' | string[];
+  result: {
+    subtotalCents: number; totalDiscountCents: number; dueCents: number; tenderedCents: number;
+    applied: { id: string; category: string; description: string; appliedCents: number }[];
+    rejected: { id: string; reason: string }[];
+    refund: { offerId: string; kind: string; shareCents: number | null }[] | null;
+    conflicts: { code: CheckoutConflictCode; offerId?: string; reason?: string; cents?: number }[];
+  };
+}
+export interface CheckoutConflictSimulation { readOnly: true; cases: CheckoutConflictCase[] }

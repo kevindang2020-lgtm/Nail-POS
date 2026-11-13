@@ -72,3 +72,30 @@ export const CHECKOUT_CONFLICT_FIXTURES: ConflictFixture[] = [
   { name: 'refund_one_line_partial', lines: L2, offers: [COUPON20], policy: POL(), tenders: [{ kind: 'card', cents: 6400 }], refundLineIds: ['pedi'] },
   { name: 'refund_whole_ticket_reverses', lines: L2, offers: [COUPON20], policy: POL(), tenders: [{ kind: 'card', cents: 6400 }], refundLineIds: null },
 ];
+
+/** The read-only view the POS shows (GET pos/deals/conflict-simulator): every staging fixture with its engine result.
+ *  The POS never re-derives an outcome — it only renders these. */
+export function conflictSimulation(fixtures: ConflictFixture[] = CHECKOUT_CONFLICT_FIXTURES) {
+  return {
+    readOnly: true as const,
+    cases: fixtures.map((f) => {
+      const r = simulateConflicts(f);
+      return {
+        name: f.name,
+        lines: f.lines.map((l) => ({ lineId: l.lineId, priceCents: l.priceCents })),
+        offers: f.offers.map((o) => ({ id: o.id, category: String(o.category), description: o.description ?? o.id })),
+        policy: { mode: String(f.policy.mode), allowWithMembership: !!f.policy.allowWithMembership, allowWithLoyalty: !!f.policy.allowWithLoyalty,
+          priceFloorPercent: Number(f.policy.priceFloorPercent ?? 0), maxTotalDiscountPercent: f.policy.maxTotalDiscountPercent ?? null },
+        tenders: f.tenders.map((t) => ({ kind: t.kind, cents: t.cents })),
+        refund: f.refundLineIds === undefined ? 'none' as const : f.refundLineIds === null ? 'whole_ticket' as const : [...f.refundLineIds],
+        result: {
+          subtotalCents: r.pricing.subtotalCents, totalDiscountCents: r.pricing.totalDiscountCents, dueCents: r.dueCents, tenderedCents: r.tenderedCents,
+          applied: r.pricing.applied.map((a) => ({ id: a.id, category: String(a.category), description: a.description, appliedCents: a.appliedCents })),
+          rejected: r.pricing.rejected.map((x) => ({ id: x.id, reason: String(x.reason) })),
+          refund: r.refund ? r.refund.map((x) => ({ offerId: x.offerId, kind: x.outcome.kind, shareCents: x.outcome.shareCents })) : null,
+          conflicts: r.conflicts,
+        },
+      };
+    }),
+  };
+}

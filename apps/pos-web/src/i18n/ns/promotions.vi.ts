@@ -41,4 +41,57 @@ export const PROMOTIONS_VI: Record<keyof typeof PROMOTIONS_EN, string> = {
   'promo.exp.days': '{n} ngày tới', // DRAFT — Kevin reviews
   'promo.exp.none': 'Không có khuyến mãi nào kết thúc trong khoảng này.', // DRAFT — Kevin reviews
   'promo.exp.capped': 'Đang hiện {n} đầu tiên trong {total} — thu hẹp khoảng thời gian để xem phần còn lại.', // DRAFT — Kevin reviews
+  'promo.sim.open': 'Mô phỏng xung đột', // DRAFT — Kevin reviews
+  'promo.sim.title': 'Mô phỏng xung đột khi thanh toán', // DRAFT — Kevin reviews
+  'promo.sim.sub': 'Vé thử chạy qua quy tắc tính giá và hoàn tiền thật', // DRAFT — Kevin reviews
+  'promo.sim.readOnly': 'Chỉ là vé thử — không trừ tiền, không dùng ưu đãi, không hoàn tiền, không lưu gì, và không liên quan khách thật.', // DRAFT — Kevin reviews
+  'promo.sim.none': 'Không có vé thử để hiển thị.', // DRAFT — Kevin reviews
+  'promo.sim.summary': '{n} vé thử · {c} vé có xung đột', // DRAFT — Kevin reviews
+  'promo.sim.col.case': 'Vé thử', // DRAFT — Kevin reviews
+  'promo.sim.col.subtotal': 'Tạm tính', // DRAFT — Kevin reviews
+  'promo.sim.col.discount': 'Giảm giá', // DRAFT — Kevin reviews
+  'promo.sim.col.due': 'Phải trả', // DRAFT — Kevin reviews
+  'promo.sim.col.tendered': 'Đã trả', // DRAFT — Kevin reviews
+  'promo.sim.col.conflicts': 'Xung đột', // DRAFT — Kevin reviews
+  'promo.sim.clean': 'Không', // DRAFT — Kevin reviews
+  'promo.sim.offers': 'Ưu đãi:', // DRAFT — Kevin reviews
+  'promo.sim.policy': 'Cộng dồn:', // DRAFT — Kevin reviews
+  'promo.sim.tenders': 'Trả bằng:', // DRAFT — Kevin reviews
+  'promo.sim.refund': 'Hoàn tiền:', // DRAFT — Kevin reviews
+  'promo.sim.applied': 'Đã áp dụng:', // DRAFT — Kevin reviews
+  'promo.sim.noConflicts': 'Không có xung đột — ưu đãi, thanh toán và hoàn tiền khớp nhau.', // DRAFT — Kevin reviews
+  'promo.sim.floor': 'giá sàn {p}%', // DRAFT — Kevin reviews
+  'promo.sim.mode.best_single': 'Một ưu đãi tốt nhất', // DRAFT — Kevin reviews
+  'promo.sim.mode.stack_all': 'Cộng dồn mọi ưu đãi được phép', // DRAFT — Kevin reviews
+  'promo.sim.mode.stack_groups': 'Cộng dồn giữa các nhóm', // DRAFT — Kevin reviews
+  'promo.sim.mode.exclusive': 'Chỉ một ưu đãi độc quyền', // DRAFT — Kevin reviews
+  'promo.sim.tender.card': 'Thẻ', // DRAFT — Kevin reviews
+  'promo.sim.tender.cash': 'Tiền mặt', // DRAFT — Kevin reviews
+  'promo.sim.tender.gift_card': 'Thẻ quà tặng', // DRAFT — Kevin reviews
+  'promo.sim.refund.none': 'Không hoàn tiền', // DRAFT — Kevin reviews
+  'promo.sim.refund.whole': 'Cả vé', // DRAFT — Kevin reviews
+  'promo.sim.refund.lines': 'Dòng: {lines}', // DRAFT — Kevin reviews
+  'promo.sim.code.offer_rejected': '{offer} không được áp dụng', // DRAFT — Kevin reviews
+  'promo.sim.code.tenders_short': 'Thanh toán thiếu {cents} so với số phải trả', // DRAFT — Kevin reviews
+  'promo.sim.code.tenders_over': 'Thanh toán dư {cents} so với số phải trả', // DRAFT — Kevin reviews
+  'promo.sim.code.negative_tender': 'Số tiền thanh toán không hợp lệ ({cents})', // DRAFT — Kevin reviews
+  'promo.sim.code.refund_reverses_offer': 'Hoàn tiền hủy {offer} ({cents})', // DRAFT — Kevin reviews
+  'promo.sim.code.refund_partial_offer': 'Hoàn tiền hủy một phần {offer} ({cents})', // DRAFT — Kevin reviews
+  'promo.sim.reason.not_best': 'ưu đãi khác tiết kiệm hơn', // DRAFT — Kevin reviews
+  'promo.sim.reason.not_stackable': 'không cộng dồn được', // DRAFT — Kevin reviews
+  'promo.sim.reason.same_stack_group': 'cùng nhóm với ưu đãi khác', // DRAFT — Kevin reviews
+  'promo.sim.reason.not_with_membership': 'không dùng chung với giảm giá hội viên', // DRAFT — Kevin reviews
+  'promo.sim.reason.not_with_loyalty': 'không dùng chung với phần thưởng tích điểm', // DRAFT — Kevin reviews
+  'promo.sim.reason.price_floor': 'sẽ thấp hơn giá sàn', // DRAFT — Kevin reviews
+  'promo.sim.reason.no_value': 'không tiết kiệm thêm', // DRAFT — Kevin reviews
+  'promo.sim.reason.too_many': 'quá nhiều ưu đãi', // DRAFT — Kevin reviews
+  'promo.sim.case.coupon_alone_card': 'Chỉ phiếu giảm giá, trả bằng thẻ', // DRAFT — Kevin reviews
+  'promo.sim.case.coupon_vs_deal_best_single': 'Phiếu giảm giá so với ưu đãi (một tốt nhất)', // DRAFT — Kevin reviews
+  'promo.sim.case.coupon_with_membership_blocked': 'Phiếu giảm giá + hội viên (không cho phép)', // DRAFT — Kevin reviews
+  'promo.sim.case.coupon_with_membership_allowed': 'Phiếu giảm giá + hội viên (cho phép), tiền mặt', // DRAFT — Kevin reviews
+  'promo.sim.case.coupon_with_loyalty_split_gift_card': 'Phiếu giảm giá + tích điểm, thẻ quà tặng + thẻ', // DRAFT — Kevin reviews
+  'promo.sim.case.price_floor_caps_stack': 'Ưu đãi cộng dồn bị giới hạn bởi giá sàn', // DRAFT — Kevin reviews
+  'promo.sim.case.split_tenders_short': 'Trả nhiều cách nhưng thiếu', // DRAFT — Kevin reviews
+  'promo.sim.case.refund_one_line_partial': 'Hoàn một dịch vụ (một phần)', // DRAFT — Kevin reviews
+  'promo.sim.case.refund_whole_ticket_reverses': 'Hoàn cả vé', // DRAFT — Kevin reviews
 };

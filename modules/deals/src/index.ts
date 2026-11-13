@@ -14,6 +14,7 @@ export { KyselyDealsRepository } from './deals/deals.kysely.repository';   // us
 export { DealsService } from './deals/deals.service';   // used by the API today
 // BUILD_PLAN Phase 5 (deals_engine): the one pricing engine, eligibility, coupons and the ticket-offer service
 export * from './engine/pricing';
+export { simulateConflicts, conflictSimulation, CHECKOUT_CONFLICT_FIXTURES, type ConflictFixture, type SimResult, type SimConflict, type ConflictCode } from './engine/conflict-simulator';   // Extras · Promotions 15
 export * from './engine/eligibility';
 export * from './engine/coupons';
 export { DealsCheckoutService, DealRefusedError, applicationOffer, type TicketOfferRequest, type OfferCandidate, type OfferSummary } from './engine/deals-checkout.service';

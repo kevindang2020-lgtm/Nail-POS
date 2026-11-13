@@ -10,6 +10,8 @@ import { DealsService, DealForbiddenError, DealValidationError, DealConflictErro
 import type { DealContext } from './deals.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { DealsControllerListQueries } from './deals.list-queries';
+import { conflictSimulation } from '../engine/conflict-simulator';
+import type { CheckoutConflictSimulation } from '@aipowersalon/api-contracts/tenant';
 
 function ctxFrom(req: any): DealContext {
   const c = req?.ctx || {};
@@ -48,6 +50,11 @@ export class DealsController {
   // BUILD_PLAN Phase 5 — the dashboard (daily stats), the simulator (preview), versions, editing, coupons
   @Get('dashboard') @RequirePermission('pos.marketing.view')
   dashboard(@Req() r: any, @Query('days') days?: string) { return run(() => this.svc.dashboard(ctxFrom(r), Number(days) || 30)); }
+
+  // Extras · Promotions 15 — Checkout Conflict Simulator: the staging fixtures through the real pricing / refund engines.
+  // Hypothetical tickets only: no database, no ticket, no ledger, no provider — nothing is charged, redeemed or refunded.
+  @Get('conflict-simulator') @RequirePermission('pos.marketing.view')
+  conflictSimulator(): CheckoutConflictSimulation { return conflictSimulation(); }
 
   // reports/exports: same JSON envelope as the other POS exports ({ format, filename, csv }) — the app saves the file
   @AsyncExport({ kind: 'pos.deals.export' }) @Get('export') @RequirePermission('pos.marketing.view')

@@ -1,7 +1,7 @@
 // conflict-simulator.vitest.spec — Promotions Management 15: every staging fixture runs through the REAL engines
 // (priceTicket, refundOutcome) and the outcome is pinned; the simulator itself writes nothing (pure).
 import { describe, it, expect } from 'vitest';
-import { simulateConflicts, CHECKOUT_CONFLICT_FIXTURES } from './conflict-simulator';
+import { simulateConflicts, conflictSimulation, CHECKOUT_CONFLICT_FIXTURES } from './conflict-simulator';
 import { priceTicket } from './pricing';
 
 const run = (name: string) => simulateConflicts(CHECKOUT_CONFLICT_FIXTURES.find((f) => f.name === name)!);
@@ -38,5 +38,25 @@ describe('Promotions 15 — checkout conflict simulator (staging fixtures)', () 
       expect(simulateConflicts(f).pricing.totalDiscountCents).toBe(priceTicket(f.lines, f.offers, f.policy).totalDiscountCents);
       expect(JSON.stringify(f)).toBe(before);
     }
+  });
+});
+
+describe('conflictSimulation — the read-only view the POS renders (GET pos/deals/conflict-simulator)', () => {
+  it('one case per fixture, carrying the engine result unchanged; refund mode is spelled out', () => {
+    const v = conflictSimulation();
+    expect(v.readOnly).toBe(true);
+    expect(v.cases.map((c) => c.name)).toEqual(CHECKOUT_CONFLICT_FIXTURES.map((f) => f.name));
+    v.cases.forEach((c, i) => {
+      const r = simulateConflicts(CHECKOUT_CONFLICT_FIXTURES[i]);
+      expect(c.result.dueCents).toBe(r.dueCents);
+      expect(c.result.conflicts).toEqual(r.conflicts);
+      expect(c.result.applied.map((a) => a.appliedCents)).toEqual(r.pricing.applied.map((a) => a.appliedCents));
+      expect(Number.isInteger(c.result.dueCents) && Number.isInteger(c.result.tenderedCents)).toBe(true);
+    });
+    const by = Object.fromEntries(v.cases.map((c) => [c.name, c]));
+    expect(by.coupon_alone_card.refund).toBe('none');
+    expect(by.refund_whole_ticket_reverses.refund).toBe('whole_ticket');
+    expect(by.refund_one_line_partial.refund).toEqual(['pedi']);
+    expect(by.split_tenders_short.result.conflicts.some((x) => x.code === 'tenders_short')).toBe(true);
   });
 });
