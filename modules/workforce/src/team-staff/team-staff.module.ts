@@ -1,5 +1,6 @@
 // team-staff.module.ts — Team Management round 2 (30 Oct 2026): all-role onboarding, optional birthdays, training &
 // certification, and the nightly data-accuracy job. Raw SQL repositories; null (503) without a database.
+import { REALTIME, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { Module } from '@nestjs/common';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { TeamOnboardingController, TEAM_ONBOARDING } from './team-onboarding.controller';
@@ -19,7 +20,7 @@ import { TeamBulkInviteRepository } from './team-bulk-invite.repository';
     { provide: TEAM_BIRTHDAYS, useFactory: (db: AppDatabase) => (db ? new TeamBirthdaysRepository(db) : null), inject: [DATABASE] },
     { provide: TEAM_TRAINING, useFactory: (db: AppDatabase) => (db ? new TeamTrainingRepository(db) : null), inject: [DATABASE] },
     // round 11 (extras 200-Technician 08): bulk invite — OFF until the salon turns it on (and the platform has not paused it)
-    { provide: TEAM_BULK_INVITE, useFactory: (db: AppDatabase) => (db ? new TeamBulkInviteRepository(db) : null), inject: [DATABASE] },
+    { provide: TEAM_BULK_INVITE, useFactory: (db: AppDatabase, rt?: RealtimeEmitter | null) => (db ? new TeamBulkInviteRepository(db, undefined, rt ?? null) : null), inject: [DATABASE, { token: REALTIME, optional: true }] },
     TeamDataNightlyScheduler,
   ],
 })

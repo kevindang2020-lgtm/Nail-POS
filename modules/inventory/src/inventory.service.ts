@@ -1,6 +1,7 @@
 // inventory.service.ts — canonical tenant Inventory service. ALWAYS tenant+branch scoped from the session
 // (never the client). Stock counts are recomputed from the authoritative bottle rows after every change
 // (no blind increments → safe under concurrency). Every mutation writes an immutable movement + audit.
+import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { OutboxWriter, DOMAIN_EVENTS, createDomainEvent } from '@aipowersalon/events';
 import type { ServiceRecipe, InventoryReorderDraftResponse, InventoryReorderMapping, InventoryStockPreviewResponse, InventoryProductDuplicatesResponse, InventoryDuplicateCandidate, InventoryDuplicateReason } from '@aipowersalon/api-contracts/tenant';
 import { utcDate, businessDate } from '@aipowersalon/date-time';
@@ -105,7 +106,7 @@ export interface ReceiptExpenseWriter {
 export class InventoryService {
   /** the finance module's expense writer for a scanned receipt, bound by apps/api (finance-wiring.ts) — see saveReceiptExpense */
   receiptExpenses: ReceiptExpenseWriter | null = null;
-  constructor(private readonly db: Kysely<DB> | null, private readonly clock: { iso(): string } = { iso: () => new Date().toISOString() }, private readonly outbox: OutboxWriter | null = null) {}
+  constructor(private readonly db: Kysely<DB> | null, private readonly clock: { iso(): string } = { iso: () => new Date().toISOString() }, private readonly outbox: OutboxWriter | null = null, private readonly rt: RealtimeEmitter | null = null) {}
 
   // ── BUILD_PLAN Phase 9: purchase-order approvals on the salon's ONE approvals engine ────────────────────────────────
   // A new PO the salon's policy says needs approval (default: every PO; the owner may set a threshold) files a
@@ -1805,6 +1806,7 @@ export class InventoryService {
         ON CONFLICT (tenant_id, category) WHERE branch_id IS NULL DO UPDATE SET settings_json = tenant_settings.settings_json || excluded.settings_json, updated_by_user_id = excluded.updated_by_user_id, updated_at = now()`.execute(trx);
       await this.audit(ctx, 'inventory_add_on_recipes_setting_changed', null, null, { before: { enabled: before.enabled }, after: { enabled: body.enabled } }, trx as unknown as Kysely<DB>);
     });
+    notifySettingsChanged(this.rt, ctx.tenantId, ADD_ON_RECIPE_SETTING_CATEGORY);   // after the switch committed
     return this.addOnRecipeSetting(ctx, db);
   }
 

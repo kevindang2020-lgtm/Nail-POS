@@ -102,9 +102,9 @@ export class InventoryController {
 
   // ---- round 11 (extras ADD-ONS MANAGEMENT 06): add-on recipes — OFF until the salon turns them on (settings permission);
   //      a recipe can be saved while off (nothing is deducted until the switch is on) ----
-  @Get('add-on-recipe-settings') @RequirePermission('inventory.view') addOnRecipeSetting(@Req() r: any): Promise<InventoryAddOnRecipeSettingResponse> { return run(() => this.svc.addOnRecipeSetting(ctx(r))); }
+  @Get('add-on-recipe-settings') @RequirePermission('inventory.view') viewAddOnRecipeSetting(@Req() r: any): Promise<InventoryAddOnRecipeSettingResponse> { return run(() => this.svc.addOnRecipeSetting(ctx(r))); }
   @Put('add-on-recipe-settings') @RequirePermission('settings.edit') setAddOnRecipeSetting(@Req() r: any, @Body(ValidatedBody(INV_ADD_ON_RECIPE_SETTING_BODY, { strict: true })) b: any): Promise<InventoryAddOnRecipeSettingResponse> { return run(() => this.svc.setAddOnRecipeSetting(ctx(r), b ?? {})); }
-  @Get('add-on-recipes/:key') @RequirePermission('inventory.view') addOnRecipe(@Req() r: any, @Param('key') key: string): Promise<InventoryAddOnRecipeResponse> { return run(() => this.svc.getAddOnRecipe(ctx(r), key)); }
+  @Get('add-on-recipes/:key') @RequirePermission('inventory.view') viewAddOnRecipe(@Req() r: any, @Param('key') key: string): Promise<InventoryAddOnRecipeResponse> { return run(() => this.svc.getAddOnRecipe(ctx(r), key)); }
   @Put('add-on-recipes/:key') @RequirePermission('inventory.update') setAddOnRecipe(@Req() r: any, @Param('key') key: string, @Body(ValidatedBody(INV_ADD_ON_RECIPE_BODY, { strict: true })) b: any): Promise<InventoryAddOnRecipeResponse> { return run(() => this.svc.setAddOnRecipe(ctx(r), key, b ?? {})); }
 
   // ---- stock-threshold alert feed (§17) — persisted, acknowledgeable (distinct from live /alerts) ----

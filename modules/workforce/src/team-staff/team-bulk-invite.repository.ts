@@ -12,6 +12,7 @@
 //               send); each person goes through the existing invite sender (user_invitations — a pending invitation gets a
 //               fresh token, otherwise a new one — then InvitationDelivery); the outcome per person is recorded on the run
 //               (migration 967) and the run is audited. No token and no full contact ever leaves in the answer.
+import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { createHash } from 'node:crypto';
 import { sql, type Kysely } from 'kysely';
 import { mintInvitationToken, invitationExpiry } from '@aipowersalon/identity';
@@ -43,7 +44,7 @@ const maskEmail = (e: string) => { const [u, d] = e.split('@'); return d ? `${u.
 
 export class TeamBulkInviteRepository {
   private readonly deliverer: DeliverPort;
-  constructor(private readonly db: Kysely<any>, deliverer?: DeliverPort) { this.deliverer = deliverer ?? defaultDeliver(db); }
+  constructor(private readonly db: Kysely<any>, deliverer?: DeliverPort, private readonly rt: RealtimeEmitter | null = null) { this.deliverer = deliverer ?? defaultDeliver(db); }
   private level(ctx: TeamCtx) { return canAny(ctx, 'ownership.transfer') ? 4 : canAny(ctx, 'roles.manage') ? 3 : 0; }
   private need(ctx: TeamCtx) { if (this.level(ctx) < 3) throw err(403, 'PERMISSION_DENIED', 'You do not have permission to invite team members.'); }
 
@@ -68,6 +69,7 @@ export class TeamBulkInviteRepository {
       await writeAuditRow(trx, ctx, { module: 'workforce', action: 'team.bulk_invite.setting_changed', resourceType: 'tenant_setting', resourceId: null,
         summary: `Bulk invites turned ${body.enabled ? 'on' : 'off'}`, before: { enabled: before.tenantEnabled }, after: { enabled: body.enabled } });
     });
+    notifySettingsChanged(this.rt, ctx.tenantId, BULK_INVITE_SETTING_CATEGORY);   // after the switch committed
     return this.availability(ctx);
   }
 
