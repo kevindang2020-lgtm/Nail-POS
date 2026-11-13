@@ -318,6 +318,29 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         WHERE w.tenant_id = ${t}::uuid ${br('x', b)} AND w.clock_status IN ('CLOCKED_IN', 'ON_BREAK') AND (x.archived_at IS NOT NULL OR NOT coalesce(x.is_active, true) OR coalesce(x.status, 'active') <> 'active')`) },
     { key: 'punch_open_past_day', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_shifts x WHERE x.tenant_id = ${t}::uuid ${br('x', b)}
         AND x.start_time IS NOT NULL AND x.end_time IS NULL AND x.shift_date < ${today('x', t)}`) },
+    // extras TECHNICIANS MANAGEMENT CENTER 02 (round 10) — record integrity: duplicate / foreign account references, the app
+    // account that can no longer sign in or has not been used, and a technician working at a branch that is not open
+    { key: 'duplicate_app_account', severity: 'FAILED', count: (t, b) => n(sql`SELECT x.user_id FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND x.user_id IS NOT NULL
+        GROUP BY x.user_id HAVING count(*) > 1`) },
+    { key: 'app_account_foreign', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN users u ON u.id = x.user_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.archived_at IS NULL AND u.tenant_id IS DISTINCT FROM x.tenant_id`) },
+    { key: 'app_account_not_active', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN users u ON u.id = x.user_id AND u.tenant_id = x.tenant_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND coalesce(u.status, '') <> 'active'`) },
+    { key: 'app_not_used_90d', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN users u ON u.id = x.user_id AND u.tenant_id = x.tenant_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND u.status = 'active' AND coalesce(u.last_login_at, u.created_at) < now() - interval '90 days'`) },
+    { key: 'branch_not_open', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x JOIN branches bx ON bx.id = x.branch_id AND bx.tenant_id = x.tenant_id
+        WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND coalesce(bx.status, 'active') <> 'active'`) },
+    // extras TECHNICIANS MANAGEMENT CENTER 05 (round 10) — service mapping: an approval for a service that is archived /
+    // inactive, and an approval the eligibility authority would refuse because the service requires a certification the
+    // technician does not hold verified, unrevoked and unexpired (the catalog and the mapping contradict each other)
+    { key: 'service_link_archived', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_services ts JOIN technicians x ON x.id = ts.technician_id AND x.tenant_id = ts.tenant_id
+        JOIN services sx ON sx.id = ts.service_id AND sx.tenant_id = ts.tenant_id
+        WHERE ts.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND (sx.archived_at IS NOT NULL OR coalesce(sx.status, 'active') <> 'active')`) },
+    { key: 'service_certification_missing', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technician_services ts JOIN technicians x ON x.id = ts.technician_id AND x.tenant_id = ts.tenant_id
+        JOIN services sx ON sx.id = ts.service_id AND sx.tenant_id = ts.tenant_id
+        WHERE ts.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL AND sx.archived_at IS NULL AND nullif(btrim(sx.required_certification), '') IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM technician_certifications c WHERE c.tenant_id = ts.tenant_id AND c.technician_id = x.id AND lower(btrim(c.name)) = lower(btrim(sx.required_certification))
+            AND c.verification_status = 'VERIFIED' AND c.revoked_reason IS NULL AND (c.expires_at IS NULL OR c.expires_at >= ${today('x', t)}))`) },
     { key: 'no_service_mapping', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM technicians x WHERE x.tenant_id = ${t}::uuid ${br('x', b)} AND x.is_active AND x.archived_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM technician_services ts WHERE ts.tenant_id = x.tenant_id AND ts.technician_id = x.id)`) },
     { key: 'certification_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT DISTINCT x.id FROM technician_certifications c JOIN technicians x ON x.id = c.technician_id AND x.tenant_id = c.tenant_id

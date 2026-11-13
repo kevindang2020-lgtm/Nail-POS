@@ -2128,4 +2128,18 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.inventory.po_receipt_vs_ledger.fix": "Số lượng đơn ghi đã nhận không khớp với các biến động kho đã ghi. Mở đơn đặt hàng và đếm lại sản phẩm.", // DRAFT — Kevin reviews
   "syschk.inventory.transfer_vs_ledger": "Mỗi lần chuyển kho đều được ghi vào sổ kho đúng một lần", // DRAFT — Kevin reviews
   "syschk.inventory.transfer_vs_ledger.fix": "Số lượng chuyển không khớp với các biến động kho. Mở phiếu chuyển và đếm lại ở cả hai chi nhánh.", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_app_account": "Không có hai thợ dùng chung một tài khoản ứng dụng", // DRAFT — Kevin reviews
+  "syschk.technicians.duplicate_app_account.fix": "Hai hồ sơ thợ đăng nhập cùng một tài khoản. Giữ một và gỡ liên kết hồ sơ kia.", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_foreign": "Mọi tài khoản ứng dụng của thợ thuộc về tiệm này", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_foreign.fix": "Một thợ được liên kết với tài khoản của tiệm khác. Gỡ liên kết và mời lại.", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_not_active": "Mọi thợ đang làm đều đăng nhập được ứng dụng", // DRAFT — Kevin reviews
+  "syschk.technicians.app_account_not_active.fix": "Tài khoản ứng dụng bị tạm ngưng hoặc chưa kích hoạt. Kích hoạt lại hoặc gửi lời mời mới.", // DRAFT — Kevin reviews
+  "syschk.technicians.app_not_used_90d": "Mọi thợ đang làm đã dùng ứng dụng trong 90 ngày qua", // DRAFT — Kevin reviews
+  "syschk.technicians.app_not_used_90d.fix": "Kết nối ứng dụng có vẻ đã cũ. Kiểm tra thợ vẫn làm ở đây và đăng nhập được.", // DRAFT — Kevin reviews
+  "syschk.technicians.branch_not_open": "Mọi thợ đang làm đều ở chi nhánh đang mở", // DRAFT — Kevin reviews
+  "syschk.technicians.branch_not_open.fix": "Chuyển thợ sang chi nhánh đang mở hoặc ngừng hoạt động thợ.", // DRAFT — Kevin reviews
+  "syschk.technicians.service_link_archived": "Không thợ nào được gán dịch vụ đã lưu trữ", // DRAFT — Kevin reviews
+  "syschk.technicians.service_link_archived.fix": "Gỡ dịch vụ đã lưu trữ khỏi danh sách dịch vụ của thợ.", // DRAFT — Kevin reviews
+  "syschk.technicians.service_certification_missing": "Mọi dịch vụ cần chứng chỉ đều có chứng chỉ hợp lệ", // DRAFT — Kevin reviews
+  "syschk.technicians.service_certification_missing.fix": "Dịch vụ yêu cầu chứng chỉ mà thợ chưa có (đã xác minh, còn hạn). Thêm chứng chỉ hoặc gỡ dịch vụ.", // DRAFT — Kevin reviews
 };

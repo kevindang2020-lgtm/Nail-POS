@@ -721,4 +721,44 @@ describe('Check Technicians System — booking / queue / app sync', () => {
     expect(count(await svc.run('inventory', { tenantId: X4 }), 'transfer_vs_ledger').count).toBe(1);
     expect((await q(sql`select (select count(*) from inventory_stock_movements) + (select count(*) from purchase_order_lines) as n`)).rows).toEqual(before);
   });
+  it('extras TECHNICIANS MANAGEMENT CENTER 02 / 05: account references, app account, branch, archived service links, missing required certification; own salon; branch-scoped; writes nothing', async () => {
+    // own salon pair (ids 9480..9499, agent-4 round-10 range)
+    const T4 = id(9480), X4 = id(9481), B41 = id(9482), B42 = id(9483), BX4 = id(9484);
+    const U1 = id(9485), U2 = id(9486), UX = id(9487), U3 = id(9488);
+    const A = id(9490), Bt = id(9491), C = id(9492), D = id(9493), E = id(9494);
+    const CAT = id(9495), S1 = id(9496), S2 = id(9497), S3 = id(9498);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Team', 'sc-9480', 'SC9480', 'active'), (${X4}, 'X', 'Other', 'sc-9481', 'SC9481', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, status) values (${B41}, ${T4}, 'Main', 'active'), (${B42}, ${T4}, 'Closed one', 'inactive'), (${BX4}, ${X4}, 'Other', 'active')`);
+    // U1 active, used yesterday; U2 suspended; U3 active but last signed in 200 days ago; UX belongs to the other salon
+    await q(sql`insert into users (id, tenant_id, email, full_name, role, status, last_login_at) values
+      (${U1}, ${T4}, 'u1@t.test', 'U1', 'TECHNICIAN', 'active', now() - interval '1 day'), (${U2}, ${T4}, 'u2@t.test', 'U2', 'TECHNICIAN', 'suspended', now()),
+      (${U3}, ${T4}, 'u3@t.test', 'U3', 'TECHNICIAN', 'active', now() - interval '200 days'), (${UX}, ${X4}, 'ux@t.test', 'UX', 'TECHNICIAN', 'active', now())`);
+    // A + Bt share U1 (duplicate reference); C → U2 (suspended) at the closed branch; D → UX (another salon's account); E → U3 (stale)
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, user_id) values
+      (${A}, ${T4}, ${B41}, 'A', 'A', 'Tech A', true, ${U1}), (${Bt}, ${T4}, ${B41}, 'B', 'B', 'Tech B', true, ${U1}), (${C}, ${T4}, ${B42}, 'C', 'C', 'Tech C', true, ${U2}),
+      (${D}, ${T4}, ${B41}, 'D', 'D', 'Tech D', true, ${UX}), (${E}, ${T4}, ${B41}, 'E', 'E', 'Tech E', true, ${U3})`);
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name) values (${CAT}, ${T4}, ${B41}, 'Nails')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, archived_at, required_certification) values
+      (${S1}, ${T4}, ${B41}, ${CAT}, 'Gel', 30, 3000, 'active', null, null), (${S2}, ${T4}, ${B41}, ${CAT}, 'Old art', 30, 3000, 'archived', now(), null),
+      (${S3}, ${T4}, ${B41}, ${CAT}, 'Pedicure (licensed)', 45, 5000, 'active', null, 'Pedicure License')`);
+    // A: Gel + archived Old art; E: licensed pedicure WITH a verified licence; Bt: licensed pedicure with an EXPIRED licence; D: licensed pedicure, no licence
+    await q(sql`insert into technician_services (tenant_id, branch_id, technician_id, service_id, is_primary) values
+      (${T4}, ${B41}, ${A}, ${S1}, true), (${T4}, ${B41}, ${A}, ${S2}, false), (${T4}, ${B41}, ${E}, ${S3}, true), (${T4}, ${B41}, ${Bt}, ${S3}, true), (${T4}, ${B41}, ${D}, ${S3}, true)`);
+    await q(sql`insert into technician_certifications (tenant_id, technician_id, name, verification_status, expires_at) values
+      (${T4}, ${E}, 'pedicure license', 'VERIFIED', current_date + 100), (${T4}, ${Bt}, 'Pedicure License', 'VERIFIED', current_date - 5)`);
+    const before = (await q(sql`select (select count(*) from technicians) + (select count(*) from technician_services) + (select count(*) from users) as n`)).rows;
+    const all = await svc.run('technicians', { tenantId: T4 });
+    expect(count(all, 'duplicate_app_account')).toMatchObject({ state: 'FAILED', count: 1 });       // U1 on A + Bt
+    expect(count(all, 'app_account_foreign')).toMatchObject({ state: 'FAILED', count: 1 });         // D → the other salon's user
+    expect(count(all, 'app_account_not_active')).toMatchObject({ state: 'WARNING', count: 1 });     // C (suspended)
+    expect(count(all, 'app_not_used_90d')).toMatchObject({ state: 'WARNING', count: 1 });           // E
+    expect(count(all, 'branch_not_open')).toMatchObject({ state: 'WARNING', count: 1 });            // C at the inactive branch
+    expect(count(all, 'service_link_archived')).toMatchObject({ state: 'WARNING', count: 1 });      // A → Old art
+    expect(count(all, 'service_certification_missing')).toMatchObject({ state: 'WARNING', count: 2 });   // Bt (expired) + D (none); E holds it
+    const b2 = await svc.run('technicians', { tenantId: T4, branchId: B42 });
+    expect(count(b2, 'duplicate_app_account').count).toBe(0); expect(count(b2, 'branch_not_open').count).toBe(1); expect(count(b2, 'service_certification_missing').count).toBe(0);
+    const other = await svc.run('technicians', { tenantId: X4 });
+    expect(count(other, 'app_account_foreign').count).toBe(0); expect(count(other, 'service_certification_missing').count).toBe(0);
+    expect((await q(sql`select (select count(*) from technicians) + (select count(*) from technician_services) + (select count(*) from users) as n`)).rows).toEqual(before);
+  });
 });
