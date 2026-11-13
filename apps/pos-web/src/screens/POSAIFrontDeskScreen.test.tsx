@@ -118,3 +118,20 @@ describe('POSAIFrontDeskScreen', () => {
     drift.value = undefined;
   });
 });
+
+// Extras · AI Front Desk 09 — the server's usage & error budget alerts are shown as sent; charges are never estimated
+describe('POSAIFrontDeskScreen — usage & error budget (AI Front Desk 09)', () => {
+  it('shows usage, each alert and the owner-approval spend rule from the monitor', async () => {
+    const { posAiFrontDeskApi } = await import('../api/posAiFrontDeskApi');
+    (posAiFrontDeskApi.monitor as any).mockResolvedValueOnce({ providerRoute: { state: 'DISABLED', liveAgent: null, drift: false, routedAt: null, routedAgentRef: null }, agentHealth: { state: 'UNKNOWN', calls24h: 0, failed24h: 0 },
+      callSuccess: { answered24h: 0, abandoned24h: 0, handoffs24h: 0 }, bookingActions: { succeeded24h: 0, refusedOrFailed24h: 0, armed: false }, fallback: { state: 'DISABLED' }, subscription: { state: 'READY' },
+      budget: { usage: { used: 950, limit: 1000, percent: 95, overageEnabled: false }, calls24h: 10, failed24h: 2, charges: 'NOT_AVAILABLE', spendRule: 'STOPS_AT_LIMIT',
+        alerts: [{ key: 'quota_90', severity: 'WARNING', value: 95 }, { key: 'call_failures', severity: 'WARNING', value: 2 }] } });
+    render(<MemoryRouter><POSAIFrontDeskScreen /></MemoryRouter>);
+    const box = await screen.findByTestId('fd-budget');
+    expect(box.textContent).toContain('950 of 1000 included this period (95%)');
+    expect(screen.getAllByTestId('fd-budget-alert').map((a) => a.textContent)).toEqual(['90% of included usage used (95%)', '2 failed call(s) in 24 hours']);
+    expect(screen.getByTestId('fd-budget-spend').textContent).toMatch(/needs the owner to turn on overage/);
+    expect(box.textContent).toContain('not shown or estimated');
+  });
+});

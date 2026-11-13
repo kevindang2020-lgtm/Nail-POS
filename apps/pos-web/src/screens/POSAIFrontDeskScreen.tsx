@@ -32,6 +32,16 @@ const when = (x: string | null | undefined) => (x ? fmtDateTime(x) : '—');
 const BIZ_KEYS = ['business_hours', 'services', 'technicians', 'staff_schedule', 'approved_faqs', 'agent_knowledge', 'knowledge_sync', 'tenant_branch', 'audit_jobs', 'hours', 'faqs', 'booking'];
 const bizLabel = (k: string) => (BIZ_KEYS.includes(k) ? t('aifd.biz.' + k) : k);
 const tone = (s: string) => (['READY', 'active', 'ok'].includes(s) ? 'fd-ok' : ['FAILED', 'degraded'].includes(s) ? 'fd-bad' : ['WARNING', 'setup_required', 'UNKNOWN', 'BLOCKED_EXTERNAL', 'NOT_CONFIGURED'].includes(s) ? 'fd-warn' : 'fd-muted');
+/** AI Front Desk 09 — the server's usage & error budget alerts (read-only; nothing here spends, sends or switches off) */
+type FdBudget = { usage: { used: number; limit: number | null; percent: number | null; overageEnabled: boolean } | null; charges: string; spendRule: string; alerts: { key: string; severity: string; value: number | null }[] };
+function BudgetRow({ b }: { b: FdBudget }) {
+  return <><dt>{t('aifd.bud.title')}</dt><dd data-testid="fd-budget">
+    <div>{b.usage ? (b.usage.limit == null ? t('aifd.bud.used_nolimit', { u: String(b.usage.used) }) : t('aifd.bud.used', { u: String(b.usage.used), l: String(b.usage.limit), p: String(b.usage.percent ?? 0) })) : t('aifd.bud.used_unknown')}</div>
+    {b.alerts.map((a) => <div key={a.key} data-testid="fd-budget-alert"><Badge s={a.severity} label={t('aifd.bud.a.' + a.key, { v: a.value == null ? '—' : String(a.value) })} /></div>)}
+    <div className="fd-muted" data-testid="fd-budget-spend">{t('aifd.bud.spend.' + b.spendRule)}</div>
+    <div className="fd-muted">{t('aifd.bud.charges_na')}</div>
+  </dd></>;
+}
 const Badge = ({ s, label }: { s: string; label?: string }) => <span className={'fd-badge ' + tone(s)}>{label ?? t('aifd.state.' + s)}</span>;
 type Act = { kind: 'pause' | 'resume' | 'archive' | 'restore' | 'rollback' | 'activate'; agent: any };
 
@@ -159,7 +169,8 @@ export function POSAIFrontDeskScreen() {
                 <dt>{t('aifd.mon.success')}</dt><dd>{t('aifd.mon.success_v', { a: monitor.callSuccess.answered24h, x: monitor.callSuccess.abandoned24h, h: monitor.callSuccess.handoffs24h, c: monitor.callSuccess.transfersCompleted24h ?? 0, f: monitor.callSuccess.transfersFailed24h ?? 0 })}</dd>
                 <dt>{t('aifd.mon.booking')}</dt><dd>{t('aifd.mon.booking_v', { ok: monitor.bookingActions.succeeded24h, p: monitor.bookingActions.awaitingCode24h ?? 0, bad: monitor.bookingActions.refusedOrFailed24h })} · {monitor.bookingActions.armed ? t('aifd.armed') : t('aifd.handoff_only')}<div className="fd-muted">{t('aifd.pending_rule')}</div></dd>
                 <dt>{t('aifd.mon.fallback')}</dt><dd><Badge s={monitor.fallback.state} /> <span className="fd-muted">{t('aifd.mon.fallback_note')}</span></dd>
-                <dt>{t('aifd.mon.subscription')}</dt><dd><Badge s={monitor.subscription.state} /> <span className="fd-muted">{t('aifd.mon.quota_na')}</span></dd>
+                <dt>{t('aifd.mon.subscription')}</dt><dd><Badge s={monitor.subscription.state} /> <span className="fd-muted">{monitor.budget ? null : t('aifd.mon.quota_na')}</span></dd>
+                {monitor.budget ? <BudgetRow b={monitor.budget} /> : null}
               </dl>)}
           </section>
           <section className="panel fd-card" data-testid="fd-alerts">

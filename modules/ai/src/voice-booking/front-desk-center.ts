@@ -66,6 +66,31 @@ const AG_A = sql.raw('a.id, a.tenant_id, a.branch_id, a.name, a.description, a.s
 /** provider references are shown as a suffix only — never the full id in a list */
 export const refSuffix = (v: unknown) => { const s = String(v ?? ''); return s ? '…' + s.slice(-6) : null; };
 
+/** AI Front Desk 09 — the alerts for quota pressure, provider webhook / call failures and provider charges, and the spend
+ *  rule. PURE. Quota comes from the entitlement snapshot (80 / 90 / 100 % — Functional Decision 30); a stale provider
+ *  callback is the receptionist's own 'op.events' check; failed calls are the last 24 hours' recorded outcomes. Provider
+ *  charges are NOT recorded anywhere in this system, so they are reported NOT_AVAILABLE — never estimated from usage.
+ *  Spending past the included usage needs a person: the access gate stops the package at 100 % unless the owner turned
+ *  overage on (that owner setting is the approval); nothing here enables overage or spends anything. */
+export type FdBudgetAlert = { key: 'quota_80' | 'quota_90' | 'quota_100' | 'quota_unknown' | 'events_stale' | 'call_failures'; severity: 'WARNING' | 'FAILED' | 'UNKNOWN'; value: number | null };
+export function budgetAlerts(i: { usage: { used: number; limit: number; overageEnabled: boolean; level: string | null; percent: number | null } | null; usageReadFailed: boolean; eventsState: string | null; failed24h: number; calls24h: number }) {
+  const alerts: FdBudgetAlert[] = [];
+  if (i.usageReadFailed || !i.usage) alerts.push({ key: 'quota_unknown', severity: 'UNKNOWN', value: null });
+  else if (i.usage.level === 'limit_reached') alerts.push({ key: 'quota_100', severity: 'FAILED', value: i.usage.percent });
+  else if (i.usage.level === 'warn_90') alerts.push({ key: 'quota_90', severity: 'WARNING', value: i.usage.percent });
+  else if (i.usage.level === 'warn_80') alerts.push({ key: 'quota_80', severity: 'WARNING', value: i.usage.percent });
+  if (i.eventsState === 'FAILED') alerts.push({ key: 'events_stale', severity: 'FAILED', value: null });
+  if (i.failed24h > 0) alerts.push({ key: 'call_failures', severity: 'WARNING', value: i.failed24h });
+  const unlimited = !!i.usage && i.usage.limit <= 0;
+  return {
+    usage: i.usage ? { used: i.usage.used, limit: unlimited ? null : i.usage.limit, percent: i.usage.percent, overageEnabled: i.usage.overageEnabled } : null,
+    calls24h: i.calls24h, failed24h: i.failed24h,
+    charges: 'NOT_AVAILABLE' as const,
+    spendRule: !i.usage ? 'UNKNOWN' as const : unlimited ? 'NO_LIMIT' as const : i.usage.overageEnabled ? 'OVERAGE_APPROVED_BY_OWNER' as const : 'STOPS_AT_LIMIT' as const,
+    alerts,
+  };
+}
+
 export class FrontDeskError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details?: Record<string, unknown>) { super(message); }
 }
@@ -796,7 +821,12 @@ export class FrontDeskCenter {
       from voice_tool_executions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and requested_at > now() - interval '24 hours'`.execute(this.db)).rows[0];
     const ent = r.checks.find((c) => c.id === 'ent.package');
     const drift = !!live && route.routed.length > 0 && !routeReaches({ providerAgentId: live.provider_agent_id ?? null, branchId: live.branch_id ? String(live.branch_id) : null }, route);
+    // AI Front Desk 09 — Usage & Error Budget Alerts (read-only; computed live, nothing is sent, nothing switched off)
+    const usageRead = await this.rc.phoneUsage(ctx).then((u) => ({ ok: true as const, u }), (e: unknown) => ({ ok: false as const, code: (e as { code?: string })?.code ?? 'QUERY_FAILED' }));
+    const budget = budgetAlerts({ usage: usageRead.ok ? usageRead.u : null, usageReadFailed: !usageRead.ok, eventsState: (r.checks.find((c) => c.id === 'op.events')?.state ?? null) as string | null,
+      failed24h: N(calls.failed), calls24h: N(calls.total) });
     return {
+      budget,
       providerRoute: { liveAgent: live ? { id: live.id, name: live.name, providerRef: refSuffix(live.provider_agent_id) } : null, routedAgentRef: refSuffix(route.routedAgentRef),
         routedAt: route.routedAt, drift, verifiedAt: iso(live?.last_verified_at ?? null), state: !live ? 'DISABLED' : drift || !route.salonLive ? 'FAILED' : 'READY' },
       agentHealth: { calls24h: N(calls.total), failed24h: N(calls.failed), interrupted24h: N(calls.interrupted), state: N(calls.failed) > 0 ? 'WARNING' : N(calls.total) ? 'READY' : 'UNKNOWN' },

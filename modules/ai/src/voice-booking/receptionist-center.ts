@@ -28,7 +28,7 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { canMoveToSql, branchTimeZone } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
-import { evaluateAiAccess, type AiAccessSnapshot } from '../ai/ai-access-gate';
+import { evaluateAiAccess, usageWarningLevel, type AiAccessSnapshot, type UsageWarning } from '../ai/ai-access-gate';
 import { AI_RECEPTIONIST_ACTION } from '../ai-lifecycles';
 import { voiceWriteToolsEnabled } from './voice-tools';
 
@@ -173,6 +173,16 @@ export class ReceptionistCenter {
     // fail CLOSED: a read error means "not armed" (handoff-only), never "armed"; the error is logged, not hidden
     try { return !!(await this.control({ tenantId, branchId, userId: 'voice' }))?.booking_armed; }
     catch (e) { console.warn(`[receptionist-center] booking-armed read failed for tenant ${tenantId}; handoff-only: ${(e as Error)?.message ?? e}`); return false; }
+  }
+
+  /** AI Front Desk 09: the AI phone package's metered usage this period, read through the SAME entitlement snapshot the
+   *  access gate decides with (used / limit / overage) and its 80 / 90 / 100 % level. null = could not be read (unknown). */
+  async phoneUsage(ctx: RcCtx): Promise<{ used: number; limit: number; overageEnabled: boolean; level: UsageWarning | null; percent: number | null } | null> {
+    if (!this.access) return null;
+    const s = await this.access.loadSnapshot(ctx.tenantId, RC_PACKAGE, ctx.userId, { branchId: this.branch(ctx) });
+    if (!s.subscription) return null;
+    const used = Number(s.usage.used) || 0; const limit = Number(s.usage.limit) || 0;
+    return { used, limit, overageEnabled: !!s.usage.overageEnabled, level: usageWarningLevel(used, limit), percent: limit > 0 ? Math.floor((used * 100) / limit) : null };
   }
 
   // ── dependency checks (guide §09 groups) ───────────────────────────────────────────────────────────────────────────────
