@@ -225,6 +225,7 @@ export function PaymentTimeline({ items }: { items: Array<{ kind: string; at: st
     <ul className="fk-list dense" data-testid="payment-timeline" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
       {items.map((e, i) => <li key={e.kind + i} data-testid="payment-timeline-row" style={{ padding: '4px 0', borderBottom: '1px solid var(--line, #eee)' }}>
         <b>{tx('ptl.k.' + e.kind)}</b>
+        {e.kind === 'callback' && e.status ? <span className={'fk-chip ' + (e.status === 'processed' ? 'ok' : 'warn')} data-testid="payment-timeline-cb">{codeLabel('ptl.cb.' + e.status, e.status)}</span> : null}
         <span className="fk-muted"> · {fmtInZone(e.at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}{e.amountCents != null ? ` · ${fmtMoney(e.amountCents)}` : ''}{e.ref ? ` · ${e.ref}` : ''}</span>
       </li>)}
     </ul>

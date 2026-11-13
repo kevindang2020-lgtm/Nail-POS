@@ -17,6 +17,7 @@ import { sql } from 'kysely';
 import type { PcChannel, PcChannelKey, PcChannelState, PcCheckResponse, PcResponse, PcTicketStatus } from '@aipowersalon/api-contracts/tenant';
 import { KyselyCheckoutRepository } from '../checkout/checkout.kysely.repository';
 import { SURFACE_TAP_TO_PAY_IPHONE, isTerminalSurface } from '@aipowersalon/payments';
+import { resolveGiftCardSaleSettings } from '../checkout/checkout-settings.resolver';
 
 export interface PcCtx { tenantId: string; branchId: string; userId?: string | null; role?: string; permissions?: string[] }
 
@@ -45,6 +46,8 @@ const mask = (s: string | null | undefined): string | null => { const x = String
 export const PC_ATTEMPT_IN_FLIGHT = ['created', 'readiness_checking', 'ready', 'reader_initializing', 'awaiting_customer_tap', 'card_detected', 'authorization_pending', 'authorized', 'confirmation_pending', 'processing'] as const;
 export const PC_ATTEMPT_UNKNOWN = ['unknown', 'reconciliation_required', 'needs_review'] as const;
 const PAID_STATUSES = ['approved', 'partial', 'captured', 'settled'];
+/** gift card statuses a card can still be spent in (a balance is still required) */
+export const PC_GIFT_REDEEMABLE = ['active', 'partially_redeemed', 'delivered', 'claimed'] as const;
 const surfaceChannel = (s: string | null | undefined, method?: string | null): PcChannelKey | null =>
   s === SURFACE_TAP_TO_PAY_IPHONE ? 'tap_to_pay_iphone' : isTerminalSurface(s) ? 'clover_compact' : method === 'customer_app' ? 'customer_app' : null;
 const TERMINAL_RECENT_MS = 15 * 60_000;
@@ -259,6 +262,20 @@ export class PaymentChannelsCenter {
       const a = Number(appStuck.rows[0]?.n ?? 0);
       push('app_payments_unsettled', 'shared', a ? 'WARNING' : 'PASSED', a ? 'APP_PAYMENTS_NEED_VERIFY' : null, a);
     } catch { push('unknown_payments', 'shared', 'INSUFFICIENT_DATA', 'LEDGER_UNREADABLE'); }
+    // round 10 (Split Payments 02): processor callback (webhook) processing health for this salon, last 24 hours — from the
+    // recorded payment_gateway_events only (this location's events, plus the salon's events not tied to a location). A
+    // callback that arrived with a valid signature but was never processed after 15 minutes is "stuck"; a bad signature is
+    // counted (and was never applied). No callbacks recorded is "not enough data", never a pass.
+    try {
+      const w = (await sql<{ received: number; processed: number; bad_sig: number; stuck: number }>`select count(*)::int as received,
+          count(*) filter (where processed_at is not null)::int as processed,
+          count(*) filter (where signature_valid = false)::int as bad_sig,
+          count(*) filter (where signature_valid and processed_at is null and created_at < now() - interval '15 minutes')::int as stuck
+        from payment_gateway_events where tenant_id = ${ctx.tenantId} and (branch_id = ${ctx.branchId} or branch_id is null) and created_at > now() - interval '24 hours'`.execute(this.db)).rows[0];
+      const rec = Number(w?.received ?? 0), stuck = Number(w?.stuck ?? 0), bad = Number(w?.bad_sig ?? 0);
+      push('webhook_processing', 'shared', !rec ? 'INSUFFICIENT_DATA' : stuck ? 'WARNING' : 'PASSED', !rec ? 'NO_CALLBACKS_24H' : stuck ? 'CALLBACKS_NOT_PROCESSED' : null, rec ? (stuck || Number(w?.processed ?? 0)) : undefined);
+      push('webhook_signatures', 'shared', bad ? 'WARNING' : rec ? 'PASSED' : 'INSUFFICIENT_DATA', bad ? 'CALLBACK_SIGNATURE_FAILURES' : rec ? null : 'NO_CALLBACKS_24H', bad || undefined);
+    } catch { push('webhook_processing', 'shared', 'INSUFFICIENT_DATA', 'LEDGER_UNREADABLE'); }
     const lane = (key: string, area: 'clover' | 'iphone' | 'saved_card', c?: PcChannel) => {
       if (!c) return push(key, area, 'UNAVAILABLE', 'CHANNELS_UNREADABLE');
       const state = c.state === 'ready' ? (c.mode === 'uat' ? 'WARNING' : 'PASSED') : c.state === 'provider_pending' ? 'PROVIDER_APPROVAL_PENDING' : c.state === 'blocked' ? 'FAILED' : c.state === 'unavailable' ? 'UNAVAILABLE' : 'WARNING';
@@ -269,6 +286,19 @@ export class PaymentChannelsCenter {
     if (term && term.state === 'ready') push('terminal_ping', 'clover', term.facts.lastSuccessfulPingAt ? 'PASSED' : 'INSUFFICIENT_DATA', term.facts.lastSuccessfulPingAt ? null : 'NO_SUCCESSFUL_PING_ON_RECORD');
     lane('tap_to_pay_iphone', 'iphone', r?.channels[1]);
     lane('customer_app', 'saved_card', r?.channels[2]);
+    // round 10 (Split Payments 15): the two non-card split methods per location, read through the SAME rules Checkout uses.
+    // Cash has no switch in Checkout (always accepted). Gift card REDEMPTION has no on/off switch either — its scope comes
+    // from this location's gift-card settings (crossBranchRedemption: cards of every location vs this location's + salon-wide
+    // cards); gift card SALES follow enabled + posSalesEnabled (Checkout refuses a sale with GIFT_CARDS_DISABLED /
+    // GIFT_CARD_SALES_DISABLED). The count is the live cards with money this location would accept.
+    push('cash_method', 'shared', 'PASSED', 'CASH_ALWAYS_ACCEPTED');
+    try {
+      const gc = await resolveGiftCardSaleSettings(this.db, ctx.tenantId, ctx.branchId);
+      const cards = await sql<{ n: number }>`select count(*)::int as n from gift_cards where tenant_id = ${ctx.tenantId} and status = any(${[...PC_GIFT_REDEEMABLE]}::text[]) and balance_cents > 0
+          ${gc.crossBranchRedemption ? sql`` : sql`and (branch_id = ${ctx.branchId} or branch_id is null)`}`.execute(this.db);
+      push('gift_card_method', 'shared', 'PASSED', gc.crossBranchRedemption ? 'GIFT_CARD_REDEEM_ALL_LOCATIONS' : 'GIFT_CARD_REDEEM_THIS_LOCATION', Number(cards.rows[0]?.n ?? 0));
+      push('gift_card_sales', 'shared', gc.enabled && gc.posSalesEnabled ? 'PASSED' : 'WARNING', !gc.enabled ? 'GIFT_CARDS_DISABLED' : !gc.posSalesEnabled ? 'GIFT_CARD_SALES_DISABLED' : null);
+    } catch { push('gift_card_method', 'shared', 'INSUFFICIENT_DATA', 'SETTINGS_UNREADABLE'); }
     // compliance: production money stays off until processor approval; card fees are never a flat local percentage
     push('live_mode', 'compliance', r?.liveMode ? 'PASSED' : 'PROVIDER_APPROVAL_PENDING', r?.liveMode ? null : 'PRODUCTION_PAYMENTS_DISABLED');
     try {

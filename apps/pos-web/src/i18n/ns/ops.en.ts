@@ -2104,4 +2104,8 @@ export const OPS_EN = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Customer retention",
   "ops.liveOps.kc.k.aiBookingConversionPercent": "AI booking conversion",
   "ops.serving.review.vip": "VIP",
+  "ptl.k.callback": "Processor callback",
+  "ptl.cb.processed": "Processed",
+  "ptl.cb.not_processed": "Not processed",
+  "ptl.cb.signature_failed": "Signature failed — ignored",
 };

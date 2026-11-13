@@ -46,6 +46,14 @@ describe('POSPaymentTerminalsScreen', () => {
     expect(screen.getAllByText('Never tested').length).toBeGreaterThan(0);
     expect(api.physical.mock.calls[0][0]).toMatchObject({ sort: 'created_desc', page: 1 });
   });
+  it('round 10 (Split Payments 11): a register or merchant account of another location is warned about in the row and the KPI', async () => {
+    api.summary.mockResolvedValue({ ...summary, physical: { ...summary.physical, reasons: { register_other_location: 1, merchant_other_location: 1 } } });
+    api.physical.mockResolvedValue(page([term({ attention: ['register_other_location', 'merchant_other_location'], registerName: null, status: 'ONLINE' })]));
+    mount();
+    expect(await screen.findByText('Front Desk Clover')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-attention')).toHaveTextContent('1 register of another location · 1 merchant account mismatch');
+    expect(screen.getByText(/Assigned to a register of another location · Linked merchant account is not this location’s/)).toBeInTheDocument();
+  });
   it('searches on the server and offers Clear filters when nothing matches', async () => {
     mount(); await screen.findByText('Front Desk Clover');
     api.physical.mockResolvedValue(page([]));

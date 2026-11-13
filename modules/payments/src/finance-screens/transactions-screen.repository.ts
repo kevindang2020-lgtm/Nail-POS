@@ -249,6 +249,17 @@ export class TransactionsScreenRepository {
       push('settled', settlement.settled_at, { ref: settlement.settlement_id ?? null });
       if (settlement.actual_deposit_date) push('deposited', `${String(settlement.actual_deposit_date).slice(0, 10)}T12:00:00Z`, { ref: settlement.settlement_id ?? null });
     }
+    // round 10 (Split Payments 07): the processor callbacks recorded for this payment (matched payment or its reference),
+    // each one a row: when it arrived, its outcome (processed / not processed / signature failed) and the processor event id
+    // as a MASKED correlation id (last 4 only). Another salon's callbacks are never read (tenant-scoped).
+    const cbRef: string | null = pt.processor_transaction_id ?? null;
+    const callbacks = (await sql<{ event_id: string | null; signature_valid: boolean | null; processed_at: unknown; created_at: unknown }>`select e.event_id, e.signature_valid, e.processed_at, e.created_at
+        from payment_gateway_events e where e.tenant_id = ${ctx.tenantId} and (e.matched_payment_id = ${paymentId}::uuid ${cbRef ? sql`or e.processor_transaction_id = ${cbRef}` : sql``})
+        order by e.created_at desc limit 50`.execute(this.db)).rows;
+    for (const e of callbacks) {
+      const ev = String(e.event_id ?? '').replace(/\s/g, '');
+      push('callback', e.created_at, { status: e.processed_at ? 'processed' : e.signature_valid === false ? 'signature_failed' : 'not_processed', ref: ev ? '••••' + ev.slice(-4) : null });
+    }
     timeline.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
     const duplicateReview = await this.duplicateReview(ctx, paymentId, r, ticket);
     return {

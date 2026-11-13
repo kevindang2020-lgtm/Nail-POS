@@ -139,6 +139,24 @@ describe('Split Payments — detail, isolation, errors', () => {
     expect(() => r.filters({ preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-29' }, { minAmount: '50', maxAmount: '10' })).toThrow(FinanceError);
     const csv = await r.exportCsv(ctx, await all()); expect(csv).toContain('Tickets,5'); expect(csv).not.toContain('(856) 555-1234'); expect(csv).toContain('150.00');
   });
+  it('round 10 (Split Payments 10): the export is the list — same filters, same time basis, same order, every page, the matching count stated', async () => {
+    const nums = (csv: string) => csv.split(/\r?\n/).map((l) => l.split(',')[0].replace(/"/g, '')).filter((x) => /^10\d\d$/.test(x));
+    const listAll = async (f: Awaited<ReturnType<typeof all>>) => { const out: string[] = []; for (let p = 1; ; p++) { const pg = await r.list(ctx, f, { page: p, pageSize: 2 }); out.push(...pg.items.map((x) => String(x.ticketNumber))); if (p >= pg.pageCount) return { out, total: pg.total }; } };
+    for (const extra of <Array<Record<string, string>>>[{ sort: 'total_asc' }, { sort: 'total_desc', dateField: 'created' }, { methods: 'any_cash', sort: 'created_asc' }, { minAmount: '100', sort: 'total_desc' }]) {
+      const f = await all(extra);
+      const { out, total } = await listAll(f);
+      const csv = await r.exportCsv(ctx, f);
+      expect(out.length).toBe(total); if (!extra.methods && !extra.minAmount) expect(total).toBe(5);
+      expect(nums(csv)).toEqual(out);   // the same records in the same order as paging through the list
+      expect(csv).toContain(`Matching records,${total}`);
+      expect(csv).toContain(`Rows in this file,${total}`);
+      expect(csv).toContain(`Sort,${f.sort}`);
+    }
+    const f = await all({ minAmount: '100', due: '1' });
+    const csv = await r.exportCsv(ctx, f);
+    expect(csv).toContain('Minimum total,100.00'); expect(csv).toContain('Balance due only,yes');
+    expect(nums(csv)).toEqual((await listAll(f)).out);
+  });
 });
 
 describe('Split Payments — pending card outcomes (banner count)', () => {
@@ -211,3 +229,28 @@ describe('Split Payments 05 — cross-module reconciliation (read-only, by share
     expect(m.ticketPaid).toBe(true); expect(m.dueCents).toBeGreaterThan(0); expect(m.state).toBe('misaligned');
   });
 });
+
+describe('round 10 (Split Payments 16) — method is not device: several devices never add a tender', () => {
+  it('a card retried on a second device (declined on Tap to Pay, approved on the terminal) is ONE card tender; the method breakdown counts its money once; the detail keeps method and channel apart', async () => {
+    const before = (await r.summary(ctx, await all())).kpis;
+    const t = await ticket({ total: 9000, number: 'T-DEV-1' });
+    await pay(t, 'cash', 4000);
+    await pay(t, 'card', 5000, 'declined', null, { surface: 'tap_to_pay_iphone', last4: '4242' });
+    const card = await pay(t, 'card', 5000, 'approved', 'RR-DEV-1', { surface: 'cardpointe_terminal', last4: '4242' });
+    const row = (await r.list(ctx, await all(), { page: 1, pageSize: 50 })).items.find((x) => x.ticketId === t)!;
+    expect(row).toBeTruthy();
+    expect(row.tenders).toBe(2);   // cash + card — the declined Tap to Pay try is an attempt, never a tender
+    expect(row.attempts).toBe(3); expect(row.failedAttempts).toBe(1);
+    expect([...row.methods].sort()).toEqual(['card', 'cash']);   // methods are financial methods, not devices
+    expect(row.breakdown.lines.find((l) => l.method === 'card')?.cents).toBe(5000);
+    const after = (await r.summary(ctx, await all())).kpis;
+    expect(after.splitTickets - before.splitTickets).toBe(1);
+    expect(after.byMethod.cardCents - before.byMethod.cardCents).toBe(5000);   // once, not once per device
+    expect(after.byMethod.cashCents - before.byMethod.cashCents).toBe(4000);
+    const d = await r.detail(ctx, t);
+    const tenders = d.tenders.map((x) => [x.method, x.channel, x.state]);
+    expect(tenders).toEqual(expect.arrayContaining([['cash', null, 'confirmed'], ['card', 'tap_to_pay_iphone', 'failed'], ['card', 'cardpointe_terminal', 'confirmed']]));
+    expect(d.tenders.filter((x) => x.state === 'confirmed').map((x) => x.id)).toContain(card);
+  });
+});
+

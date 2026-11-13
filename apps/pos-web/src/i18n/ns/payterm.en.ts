@@ -133,4 +133,10 @@ export const PAYTERM_EN = {
   'pt.sharedPhone': 'Shared phone (not tied to one staff member)', 'pt.addPhoneNote': 'The phone appears as Pending until a manager approves it.',
   "pt.reenable": "Turn back on",
   "pt.reenabled": "{label} can take payments again.",
+  "pt.reason.register_other_location": "register of another location",
+  "pt.reason.merchant_other_location": "merchant account mismatch",
+  "pt.why.register_other_location": "Assigned to a register of another location",
+  "pt.why.merchant_other_location": "Linked merchant account is not this location’s — it will not charge here",
+  "pt.fix.register_other_location": "Assign the terminal to one of this location’s registers.",
+  "pt.fix.merchant_other_location": "Re-pair the terminal at this location so it uses this location’s merchant account.",
 } as const;

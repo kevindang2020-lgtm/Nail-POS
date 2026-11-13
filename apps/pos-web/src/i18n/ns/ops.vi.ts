@@ -2103,4 +2103,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
   "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
+  "ptl.k.callback": "Phản hồi từ bộ xử lý thanh toán", // DRAFT — Kevin reviews
+  "ptl.cb.processed": "Đã xử lý", // DRAFT — Kevin reviews
+  "ptl.cb.not_processed": "Chưa xử lý", // DRAFT — Kevin reviews
+  "ptl.cb.signature_failed": "Chữ ký không hợp lệ — đã bỏ qua", // DRAFT — Kevin reviews
 };

@@ -27,7 +27,7 @@ import {
 const INVENTORY_CAP = 2000;
 const DEVICE_ONLINE_WINDOW_MS = 2 * 60_000;   // the mobile-checkout service's own window (a phone "online" = seen in 2 minutes)
 
-export type AttentionReason = 'offline' | 'stale' | 'never_tested' | 'pairing_incomplete' | 'no_serial' | 'register_retired';
+export type AttentionReason = 'offline' | 'stale' | 'never_tested' | 'pairing_incomplete' | 'no_serial' | 'register_retired' | 'register_other_location' | 'merchant_other_location';
 export type PhysicalGroup = 'online' | 'attention' | 'disabled' | 'in_use';
 
 export interface PhysicalRow {
@@ -84,7 +84,10 @@ export class TerminalsScreenRepository {
     const rows = (await sql<any>`select t.id, t.label, t.station_id, t.status, t.paired_at, t.hsn, t.provider, t.terminal_type, t.serial_number, t.connection_type, t.merchant_account_id,
           t.disabled_at, t.disabled_reason, t.last_seen_at, t.last_ping_at, t.last_ping_ok, t.last_transaction_at, t.updated_at, t.branch_id,
           (select l.holder from payment_terminal_leases l where l.tenant_id::text = t.tenant_id and l.terminal_id::text = t.id and l.expires_at > now() limit 1) as lease_holder,
-          (select s.name from pos_stations s where s.tenant_id::text = t.tenant_id and s.id::text = t.station_id and s.retired_at is null limit 1) as register_name,
+          (select s.name from pos_stations s where s.tenant_id::text = t.tenant_id and s.id::text = t.station_id and s.retired_at is null
+             and (t.branch_id is null or s.branch_id::text = t.branch_id::text) limit 1) as register_name,
+          (select s.branch_id::text from pos_stations s where s.tenant_id::text = t.tenant_id and s.id::text = t.station_id limit 1) as register_branch_id,
+          (select m.branch_id::text from payment_merchant_accounts m where m.tenant_id::text = t.tenant_id and m.id::text = t.merchant_account_id::text limit 1) as merchant_branch_id,
           (select b.name from branches b where b.tenant_id::text = t.tenant_id and b.id::text = t.branch_id limit 1) as branch_name
         from pos_payment_terminals t
         where t.tenant_id = ${T} ${B ? sql`and (t.branch_id = ${B} or t.branch_id is null)` : sql``}
@@ -99,7 +102,12 @@ export class TerminalsScreenRepository {
         else if (status === 'DEGRADED') attention.push('stale');
         else if (status === 'UNKNOWN') attention.push('never_tested');
         if (paired && !r.hsn) attention.push('no_serial');
-        if (r.station_id && !r.register_name) attention.push('register_retired');
+        // round 10 (Split Payments 11): a register or merchant account that belongs to ANOTHER location of this salon (or is
+        // not this salon's at all) is a mismatch — named as such, never with the other location's register / merchant details
+        const registerElsewhere = !!r.station_id && !!r.branch_id && !!r.register_branch_id && String(r.register_branch_id) !== String(r.branch_id);
+        if (registerElsewhere) attention.push('register_other_location');
+        else if (r.station_id && !r.register_name) attention.push('register_retired');
+        if (r.merchant_account_id && (!r.merchant_branch_id || (r.branch_id && String(r.merchant_branch_id) !== String(r.branch_id)))) attention.push('merchant_other_location');
       }
       const group = status === 'DISABLED' ? 'disabled' : attention.length ? 'attention' : groupOf(status);
       return {
@@ -233,7 +241,7 @@ export class TerminalsScreenRepository {
   // ── KPIs (live inventory — never redefined by an activity date range) ───────────────────────────────────────────
   async summary(ctx: FinanceCtx) {
     const [phys, phones] = await Promise.all([this.physicalInventory(ctx), this.phoneInventory(ctx)]);
-    const reasons: Record<AttentionReason, number> = { offline: 0, stale: 0, never_tested: 0, pairing_incomplete: 0, no_serial: 0, register_retired: 0 };
+    const reasons: Record<AttentionReason, number> = { offline: 0, stale: 0, never_tested: 0, pairing_incomplete: 0, no_serial: 0, register_retired: 0, register_other_location: 0, merchant_other_location: 0 };
     for (const t of phys) for (const r of t.attention) reasons[r] += 1;
     const by = (s: string) => phones.filter((p) => p.status === s).length;
     const activeBranch = phones.filter((p) => p.status === 'active' && (!ctx.branchId || !p.branchId || p.branchId === ctx.branchId || p.allowedBranchIds.includes(String(ctx.branchId))));

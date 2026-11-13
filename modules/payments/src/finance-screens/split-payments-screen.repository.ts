@@ -99,6 +99,8 @@ export class SplitPaymentsScreenRepository {
       left join technicians tc on tc.id = t.primary_technician_id and tc.tenant_id = t.tenant_id
       where t.tenant_id = ${T} and ${this.scope(ctx)} and (pay.attempts >= 2 or (pay.confirmed >= 1 and t.status <> 'paid'))`;
   }
+  /** the most rows one export file carries; a cut is stated in the file header (round 10, Split Payments 10) */
+  static readonly EXPORT_CAP = 20000;
   private static readonly DUE = sql`a.owed_cents`;
   private static readonly STATUS = sql`(case when a.removed_at is not null or a.ticket_status in ('void', 'voided', 'canceled', 'cancelled') then 'void'
       when a.refunded_cents > 0 and a.refunded_cents >= a.paid_cents then 'refunded' when a.refunded_cents > 0 then 'partially_refunded'
@@ -170,12 +172,17 @@ export class SplitPaymentsScreenRepository {
     };
   }
 
+  /** the list's order — ONE definition, used by the on-screen list and the export (round 10, Split Payments 10) */
+  private order(f: SpFilters): RawBuilder<unknown> {
+    return { created_desc: sql`a.created_at desc, a.id desc`, created_asc: sql`a.created_at asc, a.id asc`, completed_desc: sql`coalesce(a.paid_at, a.last_confirmed_at) desc nulls last, a.id desc`,
+      total_desc: sql`a.total_cents desc, a.id desc`, total_asc: sql`a.total_cents asc, a.id desc`, tenders_desc: sql`a.confirmed desc, a.created_at desc, a.id desc`, due_desc: sql`${SplitPaymentsScreenRepository.DUE} desc, a.created_at desc, a.id desc` }[f.sort];
+  }
+
   async list(ctx: FinanceCtx, f: SpFilters, pr: PageReq): Promise<Paged<ReturnType<SplitPaymentsScreenRepository['row']>>> {
     const w = this.where(f); const s = this.search(f.q);
     const total = N((await sql<any>`select count(*)::int as n from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w}`.execute(this.db)).rows[0]?.n);
     const pg = clampPage(pr, total);
-    const order = { created_desc: sql`a.created_at desc, a.id desc`, created_asc: sql`a.created_at asc, a.id asc`, completed_desc: sql`coalesce(a.paid_at, a.last_confirmed_at) desc nulls last, a.id desc`,
-      total_desc: sql`a.total_cents desc, a.id desc`, total_asc: sql`a.total_cents asc, a.id desc`, tenders_desc: sql`a.confirmed desc, a.created_at desc, a.id desc`, due_desc: sql`${SplitPaymentsScreenRepository.DUE} desc, a.created_at desc, a.id desc` }[f.sort];
+    const order = this.order(f);
     const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, ${f.q ? s.rank : sql`0`} as rank from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w}
       order by ${f.q ? sql`rank desc, ` : sql``}${order} limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
     return { items: rows.map((r: any) => this.row(ctx, r)), total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount };
@@ -322,15 +329,24 @@ export class SplitPaymentsScreenRepository {
 
   /** CSV of every matching ticket (all pages): one row per ticket, the breakdown per method; masked contact; audited. */
   async exportCsv(ctx: FinanceCtx, f: SpFilters): Promise<string> {
-    const w = this.where(f);
-    const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w} order by a.created_at desc, a.id desc limit 20000`.execute(this.db)).rows.map((r: any) => this.row({ ...ctx, permissions: ctx.permissions.filter((p) => p !== 'pos.customers.view') }, r));
+    // round 10 (Split Payments 10): the export is the list — the SAME where (filters + search + time basis), the SAME order
+    // (search rank first, then the chosen sort), every page; the header names every filter in force and the matching count
+    // the list shows, and a cut at the row cap is stated, never silent.
+    const w = this.where(f); const s = this.search(f.q);
+    const rel = (await this.dues(ctx)).rel;
+    const matching = N((await sql<any>`select count(*)::int as n from (${this.base(ctx, rel)}) a where ${w}`.execute(this.db)).rows[0]?.n);
+    const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, ${f.q ? s.rank : sql`0`} as rank from (${this.base(ctx, rel)}) a where ${w}
+      order by ${f.q ? sql`rank desc, ` : sql``}${this.order(f)} limit ${SplitPaymentsScreenRepository.EXPORT_CAP}`.execute(this.db)).rows.map((r: any) => this.row({ ...ctx, permissions: ctx.permissions.filter((p) => p !== 'pos.customers.view') }, r));
     const sum = await this.summary(ctx, f);
     const bd = (x: ReturnType<SplitPaymentsScreenRepository['row']>, m: string) => usd(x.breakdown.lines.find((l) => l.method === m)?.cents ?? 0);
-    const doc = csvDocument('Split payments', [['Generated', new Date().toISOString()], ['Period', f.period.from ? `${f.period.from} to ${f.period.to} (${f.basis} date, ${f.period.tz})` : 'All time'], ['Search', f.q || '—'], ['Status', f.status ?? 'all'], ['Currency', 'USD'], ['Contact', 'masked']],
+    const doc = csvDocument('Split payments', [['Generated', new Date().toISOString()], ['Period', f.period.from ? `${f.period.from} to ${f.period.to} (${f.basis} date, ${f.period.tz})` : 'All time'], ['Search', f.q || '—'], ['Status', f.status ?? 'all'],
+        ['Methods', f.combo ?? 'all'], ['Register', f.registerId ?? 'all'], ['Minimum total', f.minCents != null ? usd(f.minCents) : '—'], ['Maximum total', f.maxCents != null ? usd(f.maxCents) : '—'],
+        ['Balance due only', f.dueOnly ? 'yes' : 'no'], ['Sort', f.sort], ['Matching records', String(matching)],
+        ['Rows in this file', rows.length < matching ? `${rows.length} (cut at ${SplitPaymentsScreenRepository.EXPORT_CAP} — narrow the filters)` : String(rows.length)], ['Currency', 'USD'], ['Contact', 'masked']],
       ['Ticket', 'Customer', 'Created', 'Completed', 'Methods', 'Tenders', 'Total', 'Cash', 'Card', 'Gift card', 'Other', 'Paid', 'Refunded', 'Balance', 'Status', 'Register'],
       rows.map((x) => [x.ticketNumber ?? '', x.customer?.name ?? '', x.createdAt ?? '', x.completedAt ?? '', x.methods.join(' + '), x.tenders, usd(x.totalCents), bd(x, 'cash'), bd(x, 'card'), bd(x, 'gift_card'), bd(x, 'other'), usd(x.paidCents), usd(x.refundedCents), usd(x.balanceCents), x.status, x.register ?? '']),
       [['Tickets', String(rows.length)], ['Total of these tickets', usd(rows.reduce((a, x) => a + x.totalCents, 0))], ['Split tickets (period)', String(sum.kpis.splitTickets)], ['Split total (period)', usd(sum.kpis.splitTotalCents)]]);
-    await audit(this.auditor, ctx, 'split_payments', 'split_payments_exported', 'ticket', null, { rows: rows.length, status: f.status ?? 'all', search: f.q ? 'yes' : 'no' }, (e) => this.log.warn(`split payments export audit failed: ${(e as Error).message}`));
+    await audit(this.auditor, ctx, 'split_payments', 'split_payments_exported', 'ticket', null, { rows: rows.length, matching, status: f.status ?? 'all', search: f.q ? 'yes' : 'no' }, (e) => this.log.warn(`split payments export audit failed: ${(e as Error).message}`));
     return doc;
   }
 }

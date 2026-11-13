@@ -366,4 +366,17 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   "payment.giftReady.blocker.offline": "Mất kết nối — tạm dừng thanh toán", // DRAFT — Kevin reviews
   "payment.giftReady.blocker.phone_claim": "Một điện thoại thanh toán đang giữ hóa đơn này", // DRAFT — Kevin reviews
   "payment.giftReady.blocker.disabled": "Thanh toán bằng thẻ quà tặng đang tắt trong Cài đặt thanh toán", // DRAFT — Kevin reviews
+  "ways.hk.webhook_processing": "Phản hồi từ bộ xử lý đã xử lý (24 giờ qua)", // DRAFT — Kevin reviews
+  "ways.hk.webhook_signatures": "Chữ ký phản hồi từ bộ xử lý (24 giờ qua)", // DRAFT — Kevin reviews
+  "ways.reason.NO_CALLBACKS_24H": "Không có phản hồi nào từ bộ xử lý trong 24 giờ qua.", // DRAFT — Kevin reviews
+  "ways.reason.CALLBACKS_NOT_PROCESSED": "Một số phản hồi từ bộ xử lý đã đến nhưng chưa được xử lý sau 15 phút. Kiểm tra các thanh toán đó trong Giao dịch.", // DRAFT — Kevin reviews
+  "ways.reason.CALLBACK_SIGNATURE_FAILURES": "Một số phản hồi không qua được kiểm tra chữ ký và đã bị bỏ qua. Hỏi bộ phận hỗ trợ AIPowerSalon nếu việc này lặp lại.", // DRAFT — Kevin reviews
+  "ways.hk.cash_method": "Tiền mặt", // DRAFT — Kevin reviews
+  "ways.hk.gift_card_method": "Thẻ quà tặng — thanh toán bằng thẻ", // DRAFT — Kevin reviews
+  "ways.hk.gift_card_sales": "Thẻ quà tặng — bán thẻ tại POS", // DRAFT — Kevin reviews
+  "ways.reason.CASH_ALWAYS_ACCEPTED": "Luôn được nhận khi thanh toán — tiền mặt không có công tắc bật/tắt.", // DRAFT — Kevin reviews
+  "ways.reason.GIFT_CARD_REDEEM_ALL_LOCATIONS": "Được nhận khi thanh toán — thẻ của mọi chi nhánh trong tiệm. Con số là số thẻ đang hoạt động còn tiền.", // DRAFT — Kevin reviews
+  "ways.reason.GIFT_CARD_REDEEM_THIS_LOCATION": "Được nhận khi thanh toán — chỉ thẻ của chi nhánh này và thẻ dùng chung toàn tiệm. Con số là số thẻ đang hoạt động còn tiền.", // DRAFT — Kevin reviews
+  "ways.reason.GIFT_CARDS_DISABLED": "Thẻ quà tặng đang tắt trong cài đặt thẻ quà tặng — không bán được thẻ mới. Vẫn thanh toán được bằng thẻ đã có.", // DRAFT — Kevin reviews
+  "ways.reason.GIFT_CARD_SALES_DISABLED": "Bán thẻ quà tặng tại POS đang tắt trong cài đặt thẻ quà tặng. Vẫn thanh toán được bằng thẻ đã có.", // DRAFT — Kevin reviews
 };
