@@ -11,6 +11,8 @@ import type { PublicationPort, DraftingCtx } from './ai-review-reputation-drafti
 
 export const SOURCE_TO_PROVIDER: Record<string, string> = { google: 'google_business_profile', facebook: 'facebook_pages' };
 const API_PUBLISHABLE = new Set(['google_business_profile']);   // facebook_pages: review replies not available via API
+/** Review Reputation 08: may a reply to this provider's reviews be published through its API (the one publish rule) */
+export function providerRepliesByApi(providerKey: string | null | undefined): boolean { return !!providerKey && API_PUBLISHABLE.has(providerKey); }
 
 export interface ResolvedCredential { accessToken: string; providerAccount: string | null; }
 export interface ConnectionCredentialResolver { resolve(tenantId: string, providerKey: string): Promise<ResolvedCredential | null>; }
