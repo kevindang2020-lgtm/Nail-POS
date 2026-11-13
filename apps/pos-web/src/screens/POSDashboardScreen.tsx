@@ -65,6 +65,7 @@ type DashState = {
   customerRetention?: { returningPercent: number; returningCount: number; newPercent: number; newCount: number; inactivePercent: number; inactiveCount: number; totalCustomers: number };
   multiLocation?: { branchId: string; branchName: string; revenueCents: number; checkIns: number; trendPercent: number }[];
   quickInsights: { kind: string; text: string; tone: 'info' | 'success' | 'warning' | 'danger' }[];
+  priorities?: { kind: string; count: number; oldestMinutes: number | null; thresholdMinutes: number | null; route: string }[];
   aiInsights?: { id: string; icon: string; primary: string; secondary: string; tone: 'info' | 'success' | 'warning' | 'danger'; action?: { label: string; kind: string }; vars?: Record<string, string | number> }[];
 };
 
@@ -158,6 +159,7 @@ export function POSDashboardScreen() {
   const [live, setLive] = useState<RealtimeStatus>(() => realtimeStatus());
   const [syncedAt, setSyncedAt] = useState<string | null>(null);   // last successful read (Realtime Recovery Indicator)
   const [whyOpen, setWhyOpen] = useState(false);   // Trend Explainability dialog
+  const [prioOpen, setPrioOpen] = useState(false);   // Smart Priority dialog
   useEffect(() => { const h = (e: Event) => setLive((e as CustomEvent<{ status: RealtimeStatus }>).detail.status); window.addEventListener(REALTIME_STATUS, h); return () => window.removeEventListener(REALTIME_STATUS, h); }, []);
 
   // §25: a refetch keeps the previous values on screen until the new ones arrive (no blank page, no scroll reset)
@@ -227,6 +229,9 @@ export function POSDashboardScreen() {
   const SVC_COLOR = ['#C9971B', '#E0843B', '#2E7D32', '#2C5B93', '#B23B3B', '#5B4B93'];
   const ret = s?.customerRetention;
   const ops = s?.operationsSnapshot;
+  // Live Operations 03 — Smart Priority strip: the server's counts past each stated threshold (nothing computed here)
+  const prio = s?.priorities;
+  const prioHot = (prio ?? []).filter((p) => p.count > 0).length;
   const stars = (r?: number | null) => (r == null ? '—' : '★ ' + r.toFixed(1));
   const loading = <div className="sk sk-fill" />;
   const legend = (rows: { k: string; c: string; l: string; pct: number; amt?: string }[], max = 3) => (
@@ -266,7 +271,9 @@ export function POSDashboardScreen() {
       {/* Row 1 — Operations snapshot · Live salon activity · AI insights (§9–§11) */}
       <div className="ov-grid ov-3 lo-row1">
         <Card testId="lo-snapshot" title={tx('pos.today_s_operations_snapshot')} right={<span className="live" data-testid="live-ops-live" data-live={live} style={{ color: LIVE_TONE[live] }}>● {tx(`payment.board.live.${live}`)}{syncedAt ? <span className="sub" data-testid="live-ops-synced"> · {tx('ops.liveOps.updatedAt', { t: fmtTime(syncedAt) })}</span> : null}
-          <button type="button" className="fk-link" onClick={load} aria-label={tx('ops.liveOps.refresh')} title={tx('ops.liveOps.refresh')} data-testid="live-ops-refresh">↻</button></span>}>
+          <button type="button" className="fk-link" onClick={load} aria-label={tx('ops.liveOps.refresh')} title={tx('ops.liveOps.refresh')} data-testid="live-ops-refresh">↻</button>
+          {prio ? (prioHot > 0 ? <button type="button" className="fk-link" style={{ color: '#B23B3B', fontWeight: 700 }} onClick={() => setPrioOpen(true)} data-testid="live-ops-prio">{tx('ops.liveOps.prio.btn', { n: String(prioHot) })}</button>
+            : <button type="button" className="fk-link" onClick={() => setPrioOpen(true)} data-testid="live-ops-prio">{tx('ops.liveOps.prio.clear')}</button>) : null}</span>}>
           {!s ? loading : (
             <div className="lo-tiles">
               {tile(tx('pos.waiting_guests'), ops?.waitingGuests ?? 0, `${tx('pos.est_wait')} ${ops?.estWaitMinutes ?? 0} ${tx('pos.min')}`, 'people', '#5B4B93', '/queue')}
@@ -383,6 +390,15 @@ export function POSDashboardScreen() {
         </Card>
       </div>
 
+      {prioOpen && prio ? <FitDialog title={tx('ops.liveOps.prio.title')} onClose={() => setPrioOpen(false)} testId="live-ops-prio-dialog">
+        <ul className="fk-list dense">{prio.map((p) => { const g = quickActionGate(p.route, can); return (
+          <li key={p.kind} className="fk-li" data-testid={'prio-' + p.kind} data-count={p.count}>
+            <span className="fk-li-t"><b>{p.count}</b> · {tx('ops.liveOps.prio.k.' + p.kind)}{p.oldestMinutes != null && p.count > 0 ? ` · ${tx('ops.liveOps.prio.oldest', { m: String(p.oldestMinutes) })}` : ''}
+              <span className="fk-li-s">{tx('ops.liveOps.prio.d.' + p.kind, { m: String(p.thresholdMinutes ?? '') })}</span></span>
+            <button type="button" className="mini" disabled={!g.ok} title={g.ok ? undefined : tx('ops.qa.needsPermission', { p: g.missing.join(', ') })} onClick={() => { if (g.ok) nav(p.route); }} data-testid={'prio-open-' + p.kind}>{tx('ops.liveOps.prio.open')}</button>
+          </li>); })}</ul>
+        <p className="sub">{tx('ops.liveOps.prio.note')}</p>
+      </FitDialog> : null}
       {whyOpen && rt?.explain ? <FitDialog title={tx('ops.liveOps.trend.whyTitle')} onClose={() => setWhyOpen(false)} testId="lo-trend-why-dialog"><TrendWhyBody e={rt.explain} /></FitDialog> : null}
 
       {/* Quick Actions (9) — one row, always visible (§15) */}

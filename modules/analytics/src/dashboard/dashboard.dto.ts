@@ -73,6 +73,16 @@ export interface RevenueTrend { period: string; totalCents: number; trendPercent
  * right before it, so the screen can say what changed without computing anything itself. Read-only; the numbers are the
  * card's own (same payments query, same appointment table, same branch day).
  */
+/**
+ * Live Operations 03 — one line of the Smart Priority strip. Counts of real rows past a STATED threshold (minutes), each
+ * with the oldest one's age and the module that owns it; nothing is changed from here.
+ *   checkout_waiting  tickets ready for checkout, unpaid, for more than thresholdMinutes (the Checkout board's population)
+ *   long_wait         queue guests waiting / called / assigned / ready for a technician longer than thresholdMinutes
+ *   staffing_gap      waiting guests minus technicians available now (clocked in, queue AVAILABLE, not set unavailable)
+ *   overdue_appointment  today's booked / confirmed appointments whose start passed thresholdMinutes ago, not arrived
+ *   message_waiting   conversations awaiting a reply longer than thresholdMinutes (the inbox's own awaiting_reply_since)
+ */
+export interface LivePriority { kind: 'checkout_waiting' | 'long_wait' | 'staffing_gap' | 'overdue_appointment' | 'message_waiting'; count: number; oldestMinutes: number | null; thresholdMinutes: number | null; route: string; }
 export interface RevenueTrendExplain {
   /** revenue = payments whose status is one of `statuses` (the shared revenue-bearing list), dated by the branch's day */
   source: 'payments'; statuses: string[];
@@ -154,6 +164,8 @@ export interface POSDashboardState {
   todaysAppointments: TodaysAppointmentsStats;
   walkInStatus: WalkInStatus;
   operationsSnapshot: OperationsSnapshot;
+  /** Live Operations 03 — the Smart Priority strip: what needs a person now (present only for the salon's today) */
+  priorities?: LivePriority[];
   currentTicket?: CurrentTicket;
   guestSnapshot?: GuestSnapshot;
   revenueTrend: RevenueTrend;

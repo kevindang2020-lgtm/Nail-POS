@@ -11,7 +11,7 @@ import { businessDate, localDateTimeToEpochMs, addDays } from '@aipowersalon/dat
 import { CompensationSnapshotRepository } from '@aipowersalon/workforce';
 import type { DashboardRepo, DashboardScope, DashboardQuery } from './dashboard.repository';
 import { emptyDashboard } from './dashboard.repository';
-import type { POSDashboardState, RevenueTrendExplain } from './dashboard.dto';
+import type { POSDashboardState, RevenueTrendExplain, LivePriority } from './dashboard.dto';
 import { buildAiInsights, hourWindowLabel } from './dashboard.dto';
 import { completedServiceLinesOn } from '../overview/overview.kysely.repository';
 import { OVERVIEW_WAITING_STATUSES, OVERVIEW_CLOSED_TICKET_STATUSES } from '../overview/overview-floor';
@@ -60,6 +60,36 @@ export class KyselyDashboardRepo implements DashboardRepo {
     let q = qb.where('tenant_id', '=', scope.tenantId);
     if (scope.branchId) q = q.where((eb: any) => eb.or([eb('branch_id', '=', scope.branchId), eb('branch_id', 'is', null)]));
     return q;
+  }
+
+  /** Live Operations 03 — each priority is a count of real rows past its stated threshold, with the oldest one's age. */
+  private async priorities(scope: DashboardScope, tz: string, waitingGuests: number): Promise<LivePriority[]> {
+    const now = new Date(this.now());
+    const before = (min: number) => new Date(now.getTime() - min * 60_000);
+    const age = (v: unknown) => (v ? Math.max(0, Math.floor((now.getTime() - new Date(String(v instanceof Date ? v.toISOString() : v)).getTime()) / 60_000)) : null);
+    const CHECKOUT = 15, WAIT = 30, LATE = 15, MSG = 30;
+    const co = await this.scoped(this.db.selectFrom('tickets'), scope).where('ready_checkout_at', 'is not', null).where('paid_at', 'is', null).where('removed_at', 'is', null)
+      .where('status', 'not in', [...OVERVIEW_CLOSED_TICKET_STATUSES]).where('ready_checkout_at', '<', before(CHECKOUT))
+      .select((eb: any) => [eb.fn.countAll().as('n'), eb.fn.min('ready_checkout_at').as('oldest')]).executeTakeFirst();
+    const wt = await this.scoped(this.db.selectFrom('pos_queue_items'), scope).where('status', 'in', [...OVERVIEW_WAITING_STATUSES]).where('checked_in_at', '<', before(WAIT))
+      .select((eb: any) => [eb.fn.countAll().as('n'), eb.fn.min('checked_in_at').as('oldest')]).executeTakeFirst();
+    const av = await this.scoped(this.db.selectFrom('technician_workforce_state'), scope).where('employment_status', '=', 'active').where('clock_status', '=', 'CLOCKED_IN')
+      .where('queue_status', '=', 'AVAILABLE').where('manual_unavailable', '=', false).select((eb: any) => eb.fn.countAll().as('n')).executeTakeFirst();
+    // the appointment's start as an instant in the branch's zone (start_time is 'HH:MM' text; a malformed one is skipped)
+    const startAt = sql`((appt_date + substring(start_time from '^[0-9]{1,2}:[0-9]{2}')::time) AT TIME ZONE ${tz})`;
+    const ov = await this.scoped(this.db.selectFrom('pos_tech_appointments'), scope).where('appt_date', '=', businessDate(tz, now)).where('status', 'in', ['booked', 'confirmed'])
+      .where('arrived_at', 'is', null).where(sql`start_time ~ '^[0-9]{1,2}:[0-9]{2}'`).where(startAt, '<', before(LATE))
+      .select((eb: any) => [eb.fn.countAll().as('n'), eb.fn.min(startAt).as('oldest')]).executeTakeFirst();
+    const mg = await this.scoped(this.db.selectFrom('communication_threads'), scope).where('status', '<>', 'closed').where('awaiting_reply_since', '<', before(MSG))
+      .select((eb: any) => [eb.fn.countAll().as('n'), eb.fn.min('awaiting_reply_since').as('oldest')]).executeTakeFirst();
+    const available = Number(av?.n || 0);
+    return [
+      { kind: 'checkout_waiting', count: Number(co?.n || 0), oldestMinutes: age(co?.oldest), thresholdMinutes: CHECKOUT, route: '/checkout' },
+      { kind: 'long_wait', count: Number(wt?.n || 0), oldestMinutes: age(wt?.oldest), thresholdMinutes: WAIT, route: '/queue' },
+      { kind: 'staffing_gap', count: Math.max(0, waitingGuests - available), oldestMinutes: null, thresholdMinutes: null, route: '/tech-queue' },
+      { kind: 'overdue_appointment', count: Number(ov?.n || 0), oldestMinutes: age(ov?.oldest), thresholdMinutes: LATE, route: '/booking' },
+      { kind: 'message_waiting', count: Number(mg?.n || 0), oldestMinutes: age(mg?.oldest), thresholdMinutes: MSG, route: '/messages' },
+    ];
   }
 
   async getAggregate(scope: DashboardScope, q: DashboardQuery): Promise<POSDashboardState> {
@@ -240,6 +270,9 @@ export class KyselyDashboardRepo implements DashboardRepo {
       noShowPercent: s.todaysAppointments.totalAppointments > 0 ? Math.round((s.todaysAppointments.noShow / s.todaysAppointments.totalAppointments) * 100) : 0,
       upcomingNext3h: Number(upcoming?.n || 0),
     };
+
+    // Live Operations 03 — Smart Priority strip (the salon's today only; a past/future day has no "now")
+    if (date === businessDate(tz, new Date(this.now()))) s.priorities = await this.priorities(scope, tz, s.kpis.waitingGuests);
 
     // Live Salon Activity — tickets currently being served, with guest/service/technician + elapsed minutes.
     // Filter on qualified tk.* columns: customers/technicians joins also expose tenant_id/branch_id (ambiguous otherwise).

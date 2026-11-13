@@ -82,3 +82,43 @@ describe('POS Dashboard → period slices return the card shapes', () => {
     expect(Array.isArray(await svc.getTopServices(tc, { date: '2026-10-06', range: 'week' }))).toBe(true);
   });
 });
+
+// Live Operations 03 — Smart Priority strip: counts of real rows past each stated threshold, with the oldest one's age;
+// only for the salon's today. Own tenant (no other test's rows).
+describe('POS Dashboard → priorities', () => {
+  it('blocked checkouts, long waits, staffing gap, overdue appointments and waiting messages — thresholds and oldest age', async () => {
+    const T2 = id('f1'), B2 = id('f2'), C2 = id('f3'), K2 = id('f4');
+    const exec = (s: string, p: unknown[] = []) => db.executeQuery({ sql: s, parameters: p, query: { kind: 'RawNode' } } as any);
+    await exec(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Prio LLC','Prio','dash-prio','DPRIO1','active')`, [T2]);
+    await exec(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','America/New_York')`, [B2, T2]);
+    await exec(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name) values ($1,$2,$3,'Pia','P','Pia P')`, [C2, T2, B2]);
+    await exec(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active) values ($1,$2,$3,'Kai','K','Kai K','active',true)`, [K2, T2, B2]);
+    const NOW = Date.parse('2026-10-06T18:00:00Z');   // 14:00 in New York
+    const ago = (m: number) => new Date(NOW - m * 60_000).toISOString();
+    // checkout: ready 25 min ago (counts), ready 5 min ago (not yet), ready 40 min ago but paid (never)
+    await exec(`insert into tickets (tenant_id, branch_id, customer_id, status, ticket_number, total_cents, ready_checkout_at, paid_at) values
+      ($1,$2,$3,'ready_for_checkout','P1',1000,$4,null), ($1,$2,$3,'ready_for_checkout','P2',1000,$5,null), ($1,$2,$3,'paid','P3',1000,$6,$5)`, [T2, B2, C2, ago(25), ago(5), ago(40)]);
+    // queue: waiting 45 min (counts), waiting 10 min (not yet) → 2 waiting guests; one technician available → gap 1
+    await exec(`insert into pos_queue_items (tenant_id, branch_id, customer_name, source, priority, status, checked_in_at, requested_services) values
+      ($1,$2,'Q1','walk_in','normal','waiting',$3,'[]'), ($1,$2,'Q2','walk_in','normal','waiting',$4,'[]')`, [T2, B2, ago(45), ago(10)]);
+    await exec(`insert into technician_workforce_state (tenant_id, branch_id, technician_id, employment_status, clock_status, shift_status, queue_status) values ($1,$2,$3,'active','CLOCKED_IN','ON_SHIFT','AVAILABLE')`, [T2, B2, K2]);
+    // appointments today: 13:20 booked (40 min late, counts), 13:30 arrived (never), 14:30 booked (future), 13:50 booked (10 min — not yet)
+    for (const [t, end, st, arrived] of [['13:20', '13:29', 'booked', null], ['13:30', '13:39', 'confirmed', ago(30)], ['14:30', '14:39', 'booked', null], ['13:50', '13:59', 'booked', null]] as const) {
+      await exec(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, source, arrived_at) values ($1,$2,$3,$4,'Pia P','[]','2026-10-06',$5,$6,9,$7,'online',$8)`, [T2, B2, K2, C2, t, end, st, arrived]);
+    }
+    // messages: awaiting a reply for 50 min (counts), 10 min (not yet), a closed one waiting for 3 hours (never)
+    await exec(`insert into communication_threads (tenant_id, branch_id, status, awaiting_reply_since) values ($1,$2,'open',$3), ($1,$2,'open',$4), ($1,$2,'closed',$5)`, [T2, B2, ago(50), ago(10), ago(180)]);
+    const repo = new KyselyDashboardRepo(db); repo.now = () => NOW;
+    const st: any = await repo.getAggregate({ tenantId: T2, branchId: B2 }, { date: '2026-10-06' } as any);
+    const by = Object.fromEntries(st.priorities.map((p: any) => [p.kind, p]));
+    expect(by.checkout_waiting).toEqual({ kind: 'checkout_waiting', count: 1, oldestMinutes: 25, thresholdMinutes: 15, route: '/checkout' });
+    expect(by.long_wait).toEqual({ kind: 'long_wait', count: 1, oldestMinutes: 45, thresholdMinutes: 30, route: '/queue' });
+    expect(st.kpis.waitingGuests).toBe(2);
+    expect(by.staffing_gap).toEqual({ kind: 'staffing_gap', count: 1, oldestMinutes: null, thresholdMinutes: null, route: '/tech-queue' });
+    expect(by.overdue_appointment).toEqual({ kind: 'overdue_appointment', count: 1, oldestMinutes: 40, thresholdMinutes: 15, route: '/booking' });
+    expect(by.message_waiting).toEqual({ kind: 'message_waiting', count: 1, oldestMinutes: 50, thresholdMinutes: 30, route: '/messages' });
+    // a past day has no "now": no strip
+    const past: any = await repo.getAggregate({ tenantId: T2, branchId: B2 }, { date: '2026-10-05' } as any);
+    expect(past.priorities).toBeUndefined();
+  });
+});

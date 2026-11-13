@@ -266,3 +266,46 @@ describe('POSDashboardScreen — trend explanation', () => {
     expect(screen.queryByTestId('lo-trend-change')).toBeNull();
   });
 });
+
+// Live Operations 03 — Smart Priority strip: one compact control in the snapshot card; the dialog lists the server's counts
+// with the stated threshold, the oldest age and a link gated by the same permissions as the sidebar; read-only.
+describe('POSDashboardScreen — smart priority strip', () => {
+  const priorities = [
+    { kind: 'checkout_waiting', count: 2, oldestMinutes: 25, thresholdMinutes: 15, route: '/checkout' },
+    { kind: 'long_wait', count: 0, oldestMinutes: null, thresholdMinutes: 30, route: '/queue' },
+    { kind: 'staffing_gap', count: 1, oldestMinutes: null, thresholdMinutes: null, route: '/tech-queue' },
+    { kind: 'overdue_appointment', count: 0, oldestMinutes: null, thresholdMinutes: 15, route: '/booking' },
+    { kind: 'message_waiting', count: 3, oldestMinutes: 50, thresholdMinutes: 30, route: '/messages' },
+  ];
+  it('says how many need attention; the dialog lists each with its rule, oldest age and a permission-gated Open', async () => {
+    const checkoutKeys = requiredPermissions({ id: 'checkout' });
+    checkoutKeys.forEach((k) => perm.deny.add(k));
+    const f = dashFetch({ body: { ...state, priorities } }); globalThis.fetch = f as any;
+    try {
+      render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+      const btn = await screen.findByTestId('live-ops-prio');
+      expect(btn).toHaveTextContent('⚑ 3 need attention');
+      fireEvent.click(btn);
+      const dlg = await screen.findByTestId('live-ops-prio-dialog');
+      expect(within(dlg).getByTestId('prio-checkout_waiting')).toHaveTextContent('2 · Waiting to pay · oldest 25 min');
+      expect(within(dlg).getByTestId('prio-checkout_waiting')).toHaveTextContent('Ready for checkout and unpaid for more than 15 min');
+      expect(within(dlg).getByTestId('prio-staffing_gap')).toHaveTextContent('Waiting guests minus technicians available now');
+      expect(within(dlg).getByTestId('prio-long_wait')).toHaveTextContent('0 · Long waits');
+      expect(within(dlg).getByTestId('prio-long_wait')).not.toHaveTextContent('oldest');
+      expect(within(dlg).getByTestId('prio-message_waiting')).toHaveTextContent('3 · Messages waiting · oldest 50 min');
+      expect(within(dlg).getByTestId('prio-open-checkout_waiting')).toBeDisabled();
+      expect(within(dlg).getByTestId('prio-open-message_waiting')).not.toBeDisabled();
+      expect((f as any).mock.calls.some(([, init]: any[]) => init && init.method && init.method !== 'GET')).toBe(false);
+    } finally { perm.deny.clear(); }
+  });
+  it('nothing past a threshold reads "Nothing urgent"; an older server without priorities shows no control', async () => {
+    globalThis.fetch = dashFetch({ body: { ...state, priorities: priorities.map((p) => ({ ...p, count: 0, oldestMinutes: null })) } }) as any;
+    const { unmount } = render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('live-ops-prio')).toHaveTextContent('✓ Nothing urgent');
+    unmount();
+    globalThis.fetch = dashFetch() as any;
+    render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    await screen.findByText("Today's Operations Snapshot");
+    expect(screen.queryByTestId('live-ops-prio')).toBeNull();
+  });
+});

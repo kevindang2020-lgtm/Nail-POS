@@ -1791,4 +1791,20 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.technicians.sync_availability_mismatch.fix": "Chấm công vào hoặc ra lại cho thợ từ Chấm công để hàng chờ và Ứng dụng Thợ khớp nhau.", // DRAFT — Kevin reviews
   "syschk.technicians.sync_events_delayed": "Cập nhật lịch hẹn, hàng chờ và thợ đến các ứng dụng trong vòng 5 phút", // DRAFT — Kevin reviews
   "syschk.technicians.sync_events_delayed.fix": "Có cập nhật đang chờ hoặc gửi không thành công. Hãy làm mới màn hình; nếu vẫn còn, liên hệ hỗ trợ — không mất dữ liệu nào.", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.btn": "⚑ {n} việc cần xử lý", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.clear": "✓ Không có việc gấp", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.title": "Cần xử lý ngay", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.checkout_waiting": "Đang chờ thanh toán", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.long_wait": "Chờ lâu", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.staffing_gap": "Thiếu thợ", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.overdue_appointment": "Lịch hẹn trễ", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.k.message_waiting": "Tin nhắn đang chờ", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.checkout_waiting": "Sẵn sàng thanh toán nhưng chưa trả hơn {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.long_wait": "Khách trong hàng chờ hơn {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.staffing_gap": "Số khách đang chờ trừ số thợ đang rảnh", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.overdue_appointment": "Đã quá giờ hẹn hơn {m} phút mà khách chưa đến", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.d.message_waiting": "Tin nhắn của khách chờ trả lời hơn {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.oldest": "lâu nhất {m} phút", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.open": "Mở", // DRAFT — Kevin reviews
+  "ops.liveOps.prio.note": "Chỉ đếm số — mở một dòng sẽ đưa bạn tới mục quản lý việc đó; không thay đổi gì từ đây.", // DRAFT — Kevin reviews
 };
