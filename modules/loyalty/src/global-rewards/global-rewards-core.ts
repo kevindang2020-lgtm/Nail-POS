@@ -264,6 +264,8 @@ export type HoldStatus = (typeof HOLD_STATUSES)[number];
  *  level; fundingNeededCents = what would cover the next `basisDays` at that pace beyond what is available and already being
  *  purchased (pending). No use in the window → every estimate null (never invented). Nothing is ever bought automatically. */
 export const FORECAST_BASIS_DAYS = 30;
+/** extras GLOBAL LOYALTY REWARDS 04: the earning rule's expected effect is replayed over this many days of the salon's own earnings */
+export const IMPACT_BASIS_DAYS = 30;
 export function walletFundingForecast(availableCents: number, pendingCents: number, usedInBasisCents: number, basisDays: number, lowBalanceCents: number) {
   if (!(usedInBasisCents > 0) || !(basisDays > 0)) return { basisDays, usedCents: Math.max(0, usedInBasisCents), dailyCents: null, daysLeft: null, daysToLow: null, fundingNeededCents: null, automaticPurchase: false as const };
   const daily = Math.ceil(usedInBasisCents / basisDays);

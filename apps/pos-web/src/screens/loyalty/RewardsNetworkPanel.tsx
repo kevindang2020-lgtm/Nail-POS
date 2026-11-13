@@ -391,7 +391,7 @@ function CustomRuleDialog({ st, draft, stepUpRun, onClose, onDone }: { st: Netwo
 
 function PreviewTable({ preview, tokenValueCents }: { preview: Preview | null; tokenValueCents: number }) {
   if (!preview) return <div className="fk-loading rn-preview-wait">{tx('rn.preview.wait')}</div>;
-  return (
+  return (<>
     <table className="rn-table" data-testid="rn-preview">
       <caption>{tx('rn.preview.caption')}</caption>
       <thead><tr><th scope="col">{tx('rn.preview.sale')}</th><th scope="col">{tx('rn.preview.points')}</th><th scope="col">{tx('rn.preview.cost')}</th><th scope="col">{tx('rn.preview.global')}</th><th scope="col">{tx('rn.preview.diff')}</th></tr></thead>
@@ -405,7 +405,17 @@ function PreviewTable({ preview, tokenValueCents }: { preview: Preview | null; t
         </tr>
       ))}</tbody>
     </table>
-  );
+    {/* GLOBAL LOYALTY · 04 (round 10): the server's impact preview — where it applies, the expected effect on this salon's own
+        last-30-days earnings (THE earn rule replayed), and the approval it needs; past earnings keep their rule */}
+    {preview.scope || preview.expected || preview.approval ? (
+      <div className="fk-hint" data-testid="rn-impact" style={{ marginTop: 6 }}>
+        {preview.scope ? <div data-testid="rn-impact-scope">{tx('rn.impact.scope', { n: fmtNumber(preview.scope.branches.length), names: preview.scope.branches.map((b) => b.name ?? '—').join(', ') })}</div> : null}
+        {preview.expected ? <div data-testid="rn-impact-expected">{preview.expected.earnings > 0 && preview.expected.proposedBackingCents != null && preview.expected.actualBackingCents != null
+          ? tx('rn.impact.expected', { n: fmtNumber(preview.expected.earnings), days: fmtNumber(preview.expected.basisDays), actual: tokensOf(preview.expected.actualBackingCents, tokenValueCents), proposed: tokensOf(preview.expected.proposedBackingCents, tokenValueCents) })
+          : tx('rn.impact.noHistory', { days: fmtNumber(preview.expected.basisDays) })}</div> : null}
+        {preview.approval ? <div data-testid="rn-impact-approval">{preview.approval.canActivate ? tx('rn.impact.approvalYou') : tx('rn.impact.approvalOther')}{' '}{tx('rn.impact.immutable')}</div> : null}
+      </div>) : null}
+  </>);
 }
 
 // ── return to the AI PowerSalon global rules (explicit confirmation) ───────────────────────────────────────────────────

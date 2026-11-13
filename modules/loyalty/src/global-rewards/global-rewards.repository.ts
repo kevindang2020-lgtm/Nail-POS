@@ -15,7 +15,7 @@ import { monthStartMs } from '@aipowersalon/date-time';
 import { logException } from '@aipowersalon/observability';
 import {
   GlobalRewardsError, alertLevel, walletLevels, clampRateToPolicy, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
-  purchaseQuantity, isPending, rateLabel, tokensLabel, walletFundingForecast, FORECAST_BASIS_DAYS,
+  purchaseQuantity, isPending, rateLabel, tokensLabel, walletFundingForecast, FORECAST_BASIS_DAYS, IMPACT_BASIS_DAYS,
   type EarningRate, type EffectiveEarningRule, type PolicyVersion, type ProgramPolicy, type PurchaseStatus,
 } from './global-rewards-core';
 import { TENANT_EARNING_POLICY_VERSION, TOKEN_PURCHASE_INTENT, GLOBAL_EARNING_RULE_VERSION, GLOBAL_REWARDS_ENROLLMENT, TENANT_TOKEN_WALLET } from './global-rewards-lifecycles';
@@ -179,7 +179,27 @@ export class GlobalRewardsRepository {
     const proposed = validateCustomRate(input, program);
     const g = await this.globalRuleAt(this.db, now);
     if (!g) throw new GlobalRewardsError('No global earning rule is in force.', 'LOYALTY_DISABLED', 503);
-    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, global: { ...g, rateLabel: rateLabel(g) }, rows: previewRows(proposed, g, program).map((r) => ({ ...r, tokenCost: tokensLabel(r.tokenCostCents, program.tokenValueCents), globalTokenCost: tokensLabel(r.globalTokenCostCents, program.tokenValueCents) })) };
+    return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, global: { ...g, rateLabel: rateLabel(g) }, rows: previewRows(proposed, g, program).map((r) => ({ ...r, tokenCost: tokensLabel(r.tokenCostCents, program.tokenValueCents), globalTokenCost: tokensLabel(r.globalTokenCostCents, program.tokenValueCents) })),
+      ...(await this.previewImpact(ctx, proposed, g, program, now)) };
+  }
+
+  /** extras GLOBAL LOYALTY REWARDS 04 (round 10) — Policy Impact Preview, read only: WHERE the rule applies (salon-wide, every
+   *  branch of this salon — one wallet), the EXPECTED effect replayed with THE earn rule (computeEarn) over this salon's own
+   *  earnings of the last IMPACT_BASIS_DAYS (what was actually funded vs what the proposed and the global rule would have
+   *  funded for the same eligible amounts), and the human approval it needs (pos.settings.edit + a fresh step-up; a change
+   *  only applies from its effective time — earnings already made keep their own rule and backing). Writes nothing. */
+  private async previewImpact(ctx: GrCtx, proposed: EarningRate, global: EarningRate, program: ProgramPolicy, now: Date) {
+    const branches = (await sql<Row>`SELECT b.id, b.name FROM branches b WHERE b.tenant_id = ${ctx.tenantId}::uuid AND b.deleted_at IS NULL ORDER BY b.created_at`.execute(this.db)).rows;
+    const since = new Date(now.getTime() - IMPACT_BASIS_DAYS * 86_400_000).toISOString();
+    const earns = (await sql<Row>`SELECT e.eligible_cents, e.backing_cents FROM reward_earn_transactions e
+      WHERE e.tenant_id = ${ctx.tenantId}::uuid AND e.status = 'EARNED' AND e.effective_at >= ${since}::timestamptz AND e.effective_at <= ${now.toISOString()}::timestamptz`.execute(this.db)).rows;
+    let actual = 0, prop = 0, glob = 0;
+    for (const e of earns) { const c = n(e.eligible_cents); actual += n(e.backing_cents); prop += computeEarn(c, proposed, program).backingCents; glob += computeEarn(c, global, program).backingCents; }
+    return {
+      scope: { appliesTo: 'all_branches' as const, branches: branches.map((b) => ({ id: String(b.id), name: b.name ?? null })), wallet: 'one_salon_wallet' as const },
+      expected: earns.length ? { basisDays: IMPACT_BASIS_DAYS, earnings: earns.length, actualBackingCents: actual, proposedBackingCents: prop, globalBackingCents: glob, differenceVsActualCents: prop - actual } : { basisDays: IMPACT_BASIS_DAYS, earnings: 0, actualBackingCents: null, proposedBackingCents: null, globalBackingCents: null, differenceVsActualCents: null },
+      approval: { permission: 'pos.settings.edit', stepUp: true, canActivate: canEditSettings(ctx), historyImmutable: true },
+    };
   }
 
   private async mustEditCustom(ctx: GrCtx): Promise<{ program: ProgramPolicy; flags: GrFlagState }> {

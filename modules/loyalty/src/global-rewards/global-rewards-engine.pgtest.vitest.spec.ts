@@ -238,6 +238,26 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
       heldRedemptions: 0, heldPointTenths: 0, heldValueCents: 0, salonPayablesOpen: 0, salonPayablesOwedCents: 0, combined: false });
     expect((await repo.walletSummary(TX)).fundingVsLiability).toMatchObject({ pointsEarnedHereTenths: 0, earnBackingCents: 0, heldRedemptions: 0 });
   });
+  // extras GLOBAL LOYALTY REWARDS 04 (round 10): the policy impact preview — scope, the expected effect replayed with THE earn
+  // rule over this salon's own last-30-days earnings, and the approval it needs; writes nothing
+  it('extras GLOBAL LOYALTY REWARDS 04: preview shows the salon-wide scope, the expected effect from real earnings, and the approval', async () => {
+    const before = (await q(`select (select count(*) from tenant_earning_policy_versions)::int + (select count(*) from reward_earn_transactions)::int + (select count(*) from token_wallet_ledger)::int as n`))[0].n;
+    const p: any = await repo.preview(owner(TA, BA), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20 });
+    expect(p.scope).toMatchObject({ appliesTo: 'all_branches', wallet: 'one_salon_wallet' });
+    expect(p.scope.branches.map((b: any) => b.id).sort()).toEqual([BA, id('b7')].sort());
+    const earns = await q(`select eligible_cents::int c, backing_cents::int b from reward_earn_transactions where tenant_id = $1 and status = 'EARNED'`, [TA]);
+    expect(p.expected.earnings).toBe(earns.length);
+    expect(p.expected.actualBackingCents).toBe(earns.reduce((a: number, e: any) => a + e.b, 0));
+    // the proposed rule (2 points per $10) replayed: floor(eligible / 1000) × 20 tenths, 1 tenth = 1¢ of backing here
+    const replay = earns.reduce((a: number, e: any) => a + Math.floor(e.c / 1000) * 20, 0);
+    expect(p.expected.proposedBackingCents).toBe(replay);
+    expect(p.expected.differenceVsActualCents).toBe(replay - p.expected.actualBackingCents);
+    expect(p.approval).toEqual({ permission: 'pos.settings.edit', stepUp: true, canActivate: true, historyImmutable: true });
+    expect((await repo.preview(owner(TA, BA, ['pos.customers.view']), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20 }) as any).approval.canActivate).toBe(false);
+    const none: any = await repo.preview(owner(TX, id('bx')), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20 });
+    expect(none.expected).toMatchObject({ earnings: 0, actualBackingCents: null, proposedBackingCents: null });   // no history → no estimate
+    expect((await q(`select (select count(*) from tenant_earning_policy_versions)::int + (select count(*) from reward_earn_transactions)::int + (select count(*) from token_wallet_ledger)::int as n`))[0].n).toBe(before);
+  });
   it('Nov 3 audit — the rewards liability is the platform\'s on every line (earn used to tag it to the salon, redeem did not)', async () => {
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability' and tenant_id is not null`))[0].n)).toBe(0);
     expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability'`))[0].n)).toBeGreaterThan(0);

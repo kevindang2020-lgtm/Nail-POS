@@ -39,7 +39,11 @@ export interface NetworkState {
   funding: { provider: string | null; sandbox: boolean; available: boolean };
 }
 interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
-export interface Preview { proposed: RewardsNetEarningRate; global: RewardsNetEarningRate; rows: PreviewRow[] }
+export interface Preview { proposed: RewardsNetEarningRate; global: RewardsNetEarningRate; rows: PreviewRow[];
+  /** extras GLOBAL LOYALTY REWARDS 04: scope, expected effect on the salon's own last-30-days earnings, approval (server-computed) */
+  scope?: { appliesTo: 'all_branches'; branches: { id: string; name: string | null }[]; wallet: 'one_salon_wallet' };
+  expected?: { basisDays: number; earnings: number; actualBackingCents: number | null; proposedBackingCents: number | null; globalBackingCents: number | null; differenceVsActualCents: number | null };
+  approval?: { permission: string; stepUp: boolean; canActivate: boolean; historyImmutable: boolean } }
 export interface HistoryItem { id: string; versionNo: number; mode: 'GLOBAL' | 'CUSTOM'; state: 'DRAFT' | 'DISCARDED' | 'CANCELED' | 'SCHEDULED' | 'ACTIVE' | 'SUPERSEDED'; effectiveFrom: string | null; rate: RewardsNetEarningRate | null; reason: string | null; activatedAt: string | null; createdAt: string | null }
 export interface RewardsNetLedgerRow { id: string; entryType: string; deltaCents: number; balanceAfterCents: number; sourceTable: string | null; sourceId: string; reason: string | null; at: string | null }
 export interface Purchase { id: string; tokenCents: number; amountCents: number; feeCents: number; status: string; pending: boolean; provider: string | null; providerRefLast6: string | null; failureCode: string | null; createdAt: string | null; confirmedAt: string | null; fundedAt: string | null; created?: boolean }

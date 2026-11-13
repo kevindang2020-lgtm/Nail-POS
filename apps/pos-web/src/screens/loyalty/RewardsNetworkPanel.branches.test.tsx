@@ -2,9 +2,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-const { stateMock } = vi.hoisted(() => ({ stateMock: vi.fn() }));
+const { stateMock, previewMock } = vi.hoisted(() => ({ stateMock: vi.fn(), previewMock: vi.fn() }));
 vi.mock('../../api/posRewardsNetworkApi', () => ({ posRewardsNetworkApi: {
-  state: stateMock, history: vi.fn().mockResolvedValue({ items: [] }),
+  state: stateMock, preview: previewMock, history: vi.fn().mockResolvedValue({ items: [] }),
   purchases: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
   ledger: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
 } }));
@@ -100,5 +100,22 @@ describe('RewardsNetworkPanel — funding vs liability', () => {
     render(<RewardsNetworkPanel />);
     await screen.findByTestId('rn-forecast');
     expect(screen.queryByTestId('rn-fvl')).toBeNull();
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 04 (round 10): the custom-rule preview shows the server's scope, expected effect and approval
+describe('RewardsNetworkPanel — policy impact preview', () => {
+  it('shows where the rule applies, its expected effect on real earnings and who can activate it; nothing is saved', async () => {
+    const s0: any = st(undefined); s0.permissions = { canEdit: true, canActivate: true, canBuyTokens: false };
+    stateMock.mockResolvedValue(s0);
+    previewMock.mockResolvedValue({ proposed: rate, global: rate, rows: [{ eligibleCents: 1000, pointTenths: 20, tokenCostCents: 20, globalPointTenths: 10, globalTokenCostCents: 10, differenceCents: 10 }],
+      scope: { appliesTo: 'all_branches', branches: [{ id: 'b1', name: 'Main' }, { id: 'b2', name: 'A North' }], wallet: 'one_salon_wallet' },
+      expected: { basisDays: 30, earnings: 6, actualBackingCents: 305, proposedBackingCents: 560, globalBackingCents: 305, differenceVsActualCents: 255 },
+      approval: { permission: 'pos.settings.edit', stepUp: true, canActivate: true, historyImmutable: true } });
+    render(<RewardsNetworkPanel />);
+    fireEvent.click(await screen.findByTestId('rn-kpi-mode'));
+    expect(await screen.findByTestId('rn-impact-scope', {}, { timeout: 3000 })).toHaveTextContent('Applies to all 2 location(s) of this salon (one wallet): Main, A North.');
+    expect(screen.getByTestId('rn-impact-expected')).toHaveTextContent('On your last 30 days (6 earnings) this rule would have used 5.6 tokens instead of the 3.05 actually used.');
+    expect(screen.getByTestId('rn-impact-approval')).toHaveTextContent('Activating needs settings permission and a fresh verification (you can). Earnings already made keep their own rule.');
   });
 });

@@ -229,4 +229,10 @@ export const REWARDSNET_EN = {
   'rn.fvl.owed': 'Owed to this salon by the network',
   'rn.fvl.owedVal': '{n} open · {v}',
   'rn.fvl.note': 'Each line comes from its own ledger. They are shown side by side and never added together.',
+  'rn.impact.scope': 'Applies to all {n} location(s) of this salon (one wallet): {names}.',
+  'rn.impact.expected': 'On your last {days} days ({n} earnings) this rule would have used {proposed} tokens instead of the {actual} actually used.',
+  'rn.impact.noHistory': 'No earnings in the last {days} days — no expected effect can be estimated.',
+  'rn.impact.approvalYou': 'Activating needs settings permission and a fresh verification (you can).',
+  'rn.impact.approvalOther': 'Activating needs a person with settings permission and a fresh verification.',
+  'rn.impact.immutable': 'Earnings already made keep their own rule.',
 };

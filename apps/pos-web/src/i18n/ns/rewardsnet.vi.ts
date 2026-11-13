@@ -230,4 +230,10 @@ export const REWARDSNET_VI = {
   'rn.fvl.owed': 'Mạng lưới còn nợ tiệm', // DRAFT — Kevin reviews
   'rn.fvl.owedVal': '{n} khoản mở · {v}', // DRAFT — Kevin reviews
   'rn.fvl.note': 'Mỗi dòng lấy từ sổ riêng. Chúng được đặt cạnh nhau và không bao giờ cộng gộp.', // DRAFT — Kevin reviews
+  'rn.impact.scope': 'Áp dụng cho cả {n} chi nhánh của tiệm (một ví): {names}.', // DRAFT — Kevin reviews
+  'rn.impact.expected': 'Trên {days} ngày qua ({n} lần tích điểm) quy tắc này sẽ dùng {proposed} token thay vì {actual} token đã dùng thực tế.', // DRAFT — Kevin reviews
+  'rn.impact.noHistory': 'Không có lượt tích điểm trong {days} ngày qua — chưa ước tính được tác động.', // DRAFT — Kevin reviews
+  'rn.impact.approvalYou': 'Kích hoạt cần quyền cài đặt và xác minh lại (bạn có quyền).', // DRAFT — Kevin reviews
+  'rn.impact.approvalOther': 'Kích hoạt cần người có quyền cài đặt và xác minh lại.', // DRAFT — Kevin reviews
+  'rn.impact.immutable': 'Các lượt tích điểm đã có giữ nguyên quy tắc cũ.', // DRAFT — Kevin reviews
 };
