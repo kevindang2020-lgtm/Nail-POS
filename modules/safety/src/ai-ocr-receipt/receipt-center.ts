@@ -18,6 +18,8 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { addDays as addYmdDays, dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
+import type { ReceiptProcessingResponse, ReceiptProcessingPhase } from '@aipowersalon/api-contracts/tenant';
+import { transition, type PipelineState } from './ai-ocr-receipt-pipeline';
 
 type Row = Record<string, any>;
 export interface RcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -74,6 +76,16 @@ export function tracks(r: { pipeline_status?: unknown; duplicate_status?: string
   const duplicate = r.duplicate_status && r.duplicate_status !== 'none' ? String(r.duplicate_status) : 'none';
   return { reading, expense, receiving, duplicate };
 }
+
+/** Receipt Document Recognition 03 — the phases of a receipt not yet read, from the pipeline's own states */
+export const RC_PROCESSING_PHASES: Record<ReceiptProcessingPhase, readonly string[]> = {
+  queue: ['uploaded', 'scanning'], ocr: ['extracting'], validation: ['validating'], failed: ['extraction_failed'],
+};
+export const RC_PROCESSING_SORTS = ['oldest', 'newest', 'attempts', 'phase'] as const;
+/** a receipt in queue / OCR / validation with no change and no provider job for this long is "stale" (needs a look) */
+export const RC_PROCESSING_STALE_MINUTES = 15;
+const RC_PROCESSING_LIMIT = 50;
+const phaseOf = (state: string): ReceiptProcessingPhase => (Object.entries(RC_PROCESSING_PHASES).find(([, v]) => v.includes(state))?.[0] ?? 'queue') as ReceiptProcessingPhase;
 
 export class ReceiptCenter {
   constructor(private readonly db: Kysely<any>, private readonly scope: ScopeFn, private readonly entitlement: EntitlementFn,
@@ -202,6 +214,50 @@ export class ReceiptCenter {
   }
 
   // ── one receipt, read-only ────────────────────────────────────────────────────────────────────────────────────
+  /** Receipt Document Recognition 03 — the Extracting queue: phase cards, then each waiting receipt with its attempts, the latest
+   *  provider job (status, attempt, error CODE — never the raw provider text) and whether the pipeline would allow 'retry' from
+   *  its state (transition(state, 'retry') — the same state machine retry-extract obeys). Read only; never extracts or retries. */
+  async processing(ctx: RcCtx, f: { sort?: unknown } = {}): Promise<ReceiptProcessingResponse> {
+    const T = ctx.tenantId; const { w } = await this.inScope(ctx, sql`d.branch_id`);
+    const states = Object.values(RC_PROCESSING_PHASES).flat();
+    const sort = pick(RC_PROCESSING_SORTS, f.sort) ?? 'oldest';
+    const order = sort === 'newest' ? sql`d.updated_at desc, d.id desc` : sort === 'attempts' ? sql`d.extraction_attempts desc, d.updated_at asc, d.id asc`
+      : sort === 'phase' ? sql`array_position(${states}::text[], d.pipeline_status), d.updated_at asc, d.id asc` : sql`d.updated_at asc, d.id asc`;
+    const base = sql`from ocr_documents d where d.tenant_id = ${T} and d.deleted_at is null and d.pipeline_status = any(${states}::text[]) and ${w}`;
+    const agg = (await sql<Row>`select d.pipeline_status as state, count(*)::int as n, min(d.updated_at) as oldest, coalesce(sum(d.extraction_attempts), 0)::int as attempts ${base} group by 1`.execute(this.db)).rows;
+    const rows = (await sql<Row>`select d.id, d.vendor, d.pipeline_status, d.extraction_attempts, d.next_extraction_at, d.updated_at, br.name as branch,
+        greatest(0, floor(extract(epoch from (now() - d.updated_at)) / 60))::int as waiting,
+        j.provider_key, j.status as job_status, j.attempt as job_attempt, j.error_code, j.requested_at, j.completed_at
+      from ocr_documents d
+      left join branches br on br.id = d.branch_id and br.tenant_id = d.tenant_id
+      left join lateral (select oj.provider_key, oj.status, oj.attempt, oj.error_code, oj.requested_at, oj.completed_at from ocr_jobs oj
+          where oj.tenant_id = d.tenant_id and oj.document_id = d.id order by oj.requested_at desc limit 1) j on true
+      where d.tenant_id = ${T} and d.deleted_at is null and d.pipeline_status = any(${states}::text[]) and ${w}
+      order by ${order} limit ${RC_PROCESSING_LIMIT}`.execute(this.db)).rows;
+    const fresh = (await sql<Row>`select max(greatest(oj.requested_at, coalesce(oj.completed_at, oj.requested_at))) as last from ocr_jobs oj
+      join ocr_documents d on d.id = oj.document_id and d.tenant_id = oj.tenant_id where oj.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0] ?? {};
+    const staleAt = (r: Row) => {
+      const p = phaseOf(String(r.pipeline_status)); if (p === 'failed') return false;
+      const lastJob = r.completed_at ?? r.requested_at;
+      const quietMin = lastJob ? Math.floor((this.now() - new Date(lastJob).getTime()) / 60000) : N(r.waiting);
+      return N(r.waiting) >= RC_PROCESSING_STALE_MINUTES && quietMin >= RC_PROCESSING_STALE_MINUTES;
+    };
+    const items = rows.map((r) => ({
+      documentId: String(r.id), vendor: r.vendor ?? null, branch: r.branch ?? null, state: String(r.pipeline_status), phase: phaseOf(String(r.pipeline_status)),
+      attempts: N(r.extraction_attempts), nextAttemptAt: iso(r.next_extraction_at), waitingMinutes: N(r.waiting), stale: staleAt(r),
+      job: r.provider_key ? { provider: String(r.provider_key), status: String(r.job_status), attempt: N(r.job_attempt), error: r.error_code ?? null, requestedAt: iso(r.requested_at), completedAt: iso(r.completed_at) } : null,
+      retryEligible: (() => { const t = transition(String(r.pipeline_status) as PipelineState, 'retry'); return t.ok && t.state === 'extracting'; })(),
+    }));
+    const phases = (Object.keys(RC_PROCESSING_PHASES) as ReceiptProcessingPhase[]).map((phase) => {
+      const mine = agg.filter((a) => RC_PROCESSING_PHASES[phase].includes(String(a.state)));
+      const oldest = mine.map((a) => a.oldest).filter(Boolean).map((v) => new Date(v).getTime());
+      return { phase, count: mine.reduce((a, x) => a + N(x.n), 0), oldestAt: oldest.length ? new Date(Math.min(...oldest)).toISOString() : null, attempts: mine.reduce((a, x) => a + N(x.attempts), 0) };
+    });
+    const total = phases.reduce((a, p) => a + p.count, 0);
+    return { phases, items, total, shown: items.length, sort, freshness: { lastJobAt: iso(fresh.last), staleAfterMinutes: RC_PROCESSING_STALE_MINUTES, stale: items.filter((i) => i.stale).length },
+      generatedAt: new Date(this.now()).toISOString() };
+  }
+
   async document(ctx: RcCtx, id: string) {
     const T = ctx.tenantId;
     if (!isUuid(id)) throw new ReceiptCenterError('Receipt not found.', 'RC_NOT_FOUND', 404);

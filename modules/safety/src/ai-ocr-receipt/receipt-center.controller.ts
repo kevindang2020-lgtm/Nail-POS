@@ -8,6 +8,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
+import type { ReceiptProcessingResponse } from '@aipowersalon/api-contracts/tenant';
 import { ReceiptCenter, ReceiptCenterError, RC_GROUPS, RC_DATE_FIELDS, RC_PRESETS, type RcCtx } from './receipt-center';
 
 export const RECEIPT_CENTER = 'ReceiptCenter';
@@ -30,6 +31,8 @@ const SUMMARY = { filters: PERIOD, dateRange: { maxDays: 3660 } } as const;
 const DOCS = { filters: { ...PERIOD, group: { type: 'enum', values: RC_GROUPS }, dateField: { type: 'enum', values: RC_DATE_FIELDS } }, search: { maxLength: 80 },
   sorts: { newest: null, oldest: null, purchase_date: null, total_high: null, total_low: null, vendor: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
+const PROCESSING = { sorts: { oldest: null, newest: null, attempts: null, phase: null }, maxLimit: 50, defaultLimit: 50 } as const;
+
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/receipt-center')
 export class ReceiptCenterController {
@@ -43,6 +46,10 @@ export class ReceiptCenterController {
   /** receipt history: search · status group · which date · presets / range · sort · pages (newest first) */
   @Get('documents') @RequirePermission('pos.ai_ocr_receipt.view') @ListQuery(DOCS)
   documents(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c); return run(() => this.r().documents(c, f ?? {})); }
+
+  /** Receipt Document Recognition 03: the Extracting queue — phase cards, waiting receipts with attempts / latest job / retry eligibility */
+  @Get('processing') @RequirePermission('pos.ai_ocr_receipt.view') @ListQuery(PROCESSING)
+  processing(@Req() q: any, @Query() f: any): Promise<ReceiptProcessingResponse> { const c = ctxFrom(q); need(c); return run(() => this.r().processing(c, f ?? {})); }
 
   /** one receipt, read-only: fields, lines, checks, duplicates, the expense / receiving links, the approval trail */
   @Get('documents/:id') @RequirePermission('pos.ai_ocr_receipt.view')

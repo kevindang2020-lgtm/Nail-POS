@@ -245,5 +245,31 @@ export const RECEIPTSCANNER_VI: Record<string, string> = {
   "rrx.recent": "Chứng từ mới nhất",
   "rrx.loadFailed": "Không tải được chứng từ. Hãy thử lại hoặc chạy kiểm tra — đây không phải là \"không có chứng từ\".",
   "rrx.reason.reject": "Vì sao từ chối? (lưu trong lịch sử)",
-  "rrx.reason.return": "Cần sửa gì? (lưu trong lịch sử)"
+  "rrx.reason.return": "Cần sửa gì? (lưu trong lịch sử)",
+  "rrx.proc.title": "Hàng chờ đọc hóa đơn", // DRAFT — Kevin reviews
+  "rrx.proc.loading": "Đang tải hàng chờ đọc…", // DRAFT — Kevin reviews
+  "rrx.proc.empty": "Không có hóa đơn nào đang chờ đọc.", // DRAFT — Kevin reviews
+  "rrx.proc.phase.queue": "Chờ bắt đầu", // DRAFT — Kevin reviews
+  "rrx.proc.phase.ocr": "Đang đọc (OCR)", // DRAFT — Kevin reviews
+  "rrx.proc.phase.validation": "Đang kiểm tra số liệu", // DRAFT — Kevin reviews
+  "rrx.proc.phase.failed": "Đọc thất bại", // DRAFT — Kevin reviews
+  "rrx.proc.oldest": "lâu nhất từ {at}", // DRAFT — Kevin reviews
+  "rrx.proc.fresh": "Hoạt động gần nhất của dịch vụ đọc: {at}", // DRAFT — Kevin reviews
+  "rrx.proc.staleCount": "{n} không tiến triển hơn {m} phút", // DRAFT — Kevin reviews
+  "rrx.proc.stale": "Không tiến triển", // DRAFT — Kevin reviews
+  "rrx.proc.minutes": "{n} phút", // DRAFT — Kevin reviews
+  "rrx.proc.hours": "{n} giờ", // DRAFT — Kevin reviews
+  "rrx.proc.noJob": "Chưa gửi", // DRAFT — Kevin reviews
+  "rrx.proc.unnamed": "Hóa đơn", // DRAFT — Kevin reviews
+  "rrx.proc.retry": "Đọc lại", // DRAFT — Kevin reviews
+  "rrx.proc.more": "Còn {n} hóa đơn đang chờ (hiện cái chờ lâu nhất trước).", // DRAFT — Kevin reviews
+  "rrx.proc.sort.oldest": "Chờ lâu nhất", // DRAFT — Kevin reviews
+  "rrx.proc.sort.newest": "Mới nhất", // DRAFT — Kevin reviews
+  "rrx.proc.sort.attempts": "Thử nhiều nhất", // DRAFT — Kevin reviews
+  "rrx.proc.sort.phase": "Theo bước", // DRAFT — Kevin reviews
+  "rrx.proc.col.receipt": "Hóa đơn", // DRAFT — Kevin reviews
+  "rrx.proc.col.phase": "Bước", // DRAFT — Kevin reviews
+  "rrx.proc.col.waiting": "Đã chờ", // DRAFT — Kevin reviews
+  "rrx.proc.col.attempts": "Số lần thử", // DRAFT — Kevin reviews
+  "rrx.proc.col.job": "Dịch vụ đọc", // DRAFT — Kevin reviews
 };

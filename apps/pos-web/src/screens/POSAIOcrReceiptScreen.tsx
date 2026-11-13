@@ -10,6 +10,8 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtInZone } from '../i18n/format';
 import { FitDialog, Pager } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { useCan } from '../components/usePermissions';
+import { codeLabel } from '../components/codeLabel';
 import { posExpensesApi } from '../api/posExpensesApi';
 import { isOfflineFailure } from '../api/offline-drafts';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -50,6 +52,47 @@ const money = (c: number | null | undefined) => (c == null ? '—' : `$${(Math.a
 function Empty({ msg }: { msg: string }) { return <div style={{ ...card, color: MUTED, textAlign: 'center', padding: 28, fontSize: 13 }}>{msg}</div>; }
 function Kpi({ label, value, tone, onClick }: { label: string; value: string | number; tone?: 'danger' | 'default'; onClick?: () => void }) {
   return <div style={{ ...card, cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}><div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>{label}</div><div style={{ font: '700 22px/1 "Playfair Display",serif', color: tone === 'danger' ? '#B0413E' : 'var(--text,#2B2118)' }}>{value}</div></div>;
+}
+/** Receipt Document Recognition 03 — the Extracting queue: phase cards, the oldest wait, stale receipts and each receipt's attempts /
+ *  latest job / retry eligibility, all from GET /pos/receipt-center/processing. Retry only where the server says the pipeline
+ *  allows it (and the person may manage receipts); the retry itself is the existing retry-extract action. */
+function ProcessingPanel({ tick, onOpen, onRetry, busy }: { tick: number; onOpen: (id: string) => void; onRetry: (id: string) => void; busy: boolean }) {
+  const [sort, setSort] = useState('oldest');
+  const [d, setD] = useState<any>(null);
+  const [e, setE] = useState<string | null>(null);
+  const can = useCan();
+  useEffect(() => { setE(null); rc.processing(sort).then(setD).catch((x) => setE(errorTextOf(x, tx('rrx.loadFailed')))); }, [sort, tick]);
+  const wait = (m: number) => (m >= 120 ? tx('rrx.proc.hours', { n: String(Math.floor(m / 60)) }) : tx('rrx.proc.minutes', { n: String(m) }));
+  if (e) return <div role="alert" style={{ ...card, borderColor: '#B0413E55', color: '#B0413E', marginBottom: 10 }}>{e}</div>;
+  if (!d) return <div style={{ ...card, color: MUTED, marginBottom: 10 }}>{tx('rrx.proc.loading')}</div>;
+  return (
+    <div style={{ ...card, marginBottom: 12, display: 'grid', gap: 10 }} data-testid="rrx-proc">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <div style={h2}>{tx('rrx.proc.title')}</div>
+        <select data-testid="rrx-proc-sort" aria-label={tx('rcsx.sortLabel')} value={sort} onChange={(x) => setSort(x.target.value)}>{['oldest', 'newest', 'attempts', 'phase'].map((x) => <option key={x} value={x}>{tx('rrx.proc.sort.' + x)}</option>)}</select>
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {d.phases.map((p: any) => <div key={p.phase} style={{ ...card, padding: 10 }} data-testid={`rrx-proc-${p.phase}`}>
+          <div style={{ fontSize: 11, color: MUTED }}>{tx('rrx.proc.phase.' + p.phase)}</div>
+          <div style={{ font: '700 20px/1 "Playfair Display",serif', color: p.phase === 'failed' && p.count ? '#B0413E' : 'var(--text,#2B2118)' }}>{p.count}</div>
+          <div style={{ fontSize: 11, color: MUTED }}>{p.oldestAt ? tx('rrx.proc.oldest', { at: fmtInZone(p.oldestAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }) : '—'}</div>
+        </div>)}
+      </div>
+      <div style={{ fontSize: 12, color: MUTED }} data-testid="rrx-proc-fresh">{tx('rrx.proc.fresh', { at: d.freshness.lastJobAt ? fmtInZone(d.freshness.lastJobAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—' })}
+        {d.freshness.stale ? ` · ${tx('rrx.proc.staleCount', { n: String(d.freshness.stale), m: String(d.freshness.staleAfterMinutes) })}` : ''}</div>
+      {d.items.length === 0 ? <div style={{ color: MUTED, fontSize: 13 }}>{tx('rrx.proc.empty')}</div> : (
+        <div style={{ overflowX: 'auto' }}><table className="tbl" style={{ width: '100%', fontSize: 12 }}><thead><tr>
+          <th>{tx('rrx.proc.col.receipt')}</th><th>{tx('rrx.proc.col.phase')}</th><th>{tx('rrx.proc.col.waiting')}</th><th className="num">{tx('rrx.proc.col.attempts')}</th><th>{tx('rrx.proc.col.job')}</th><th /></tr></thead>
+          <tbody>{d.items.map((r: any) => <tr key={r.documentId} data-testid="rrx-proc-row">
+            <td><button type="button" className="aic-link" onClick={() => onOpen(r.documentId)}>{r.vendor || tx('rrx.proc.unnamed')}</button>{r.branch ? <div style={{ color: MUTED }}>{r.branch}</div> : null}</td>
+            <td>{tx('rrx.proc.phase.' + r.phase)}{r.stale ? <> <Badge text={tx('rrx.proc.stale')} tone="danger" /></> : null}</td>
+            <td>{wait(r.waitingMinutes)}</td><td className="num">{r.attempts}</td>
+            <td>{r.job ? <>{codeLabel('rrx.proc.job', r.job.status)}{r.job.error ? <div style={{ color: '#B0413E' }}>{codeLabel('rrx.proc.err', r.job.error)}</div> : null}</> : tx('rrx.proc.noJob')}</td>
+            <td>{r.retryEligible && can('pos.ai_ocr_receipt.manage') ? <button type="button" style={btn(GOLD, false)} disabled={busy} data-testid="rrx-proc-retry" onClick={() => onRetry(r.documentId)}>{tx('rrx.proc.retry')}</button> : null}</td>
+          </tr>)}</tbody></table></div>)}
+      {d.total > d.shown ? <div style={{ fontSize: 12, color: MUTED }}>{tx('rrx.proc.more', { n: String(d.total - d.shown) })}</div> : null}
+    </div>
+  );
 }
 function Badge({ text, tone }: { text: string; tone: 'gold' | 'danger' | 'muted' | 'ok' }) {
   const c = tone === 'danger' ? '#B0413E' : tone === 'ok' ? '#3E7A52' : tone === 'gold' ? GOLD : MUTED;
@@ -141,6 +184,8 @@ export function POSAIOcrReceiptScreen() {
             <Kpi label={tx('pos.quarantined')} value={kpi(st('quarantined'))} onClick={() => setTab('quarantined')} />
           </div>
         )}
+
+        {tab === 'extracting' && <ProcessingPanel tick={tick} onOpen={(id) => void openReview(id)} onRetry={(id) => void act(() => apiO.retryExtract(id))} busy={busy} />}
 
         {tab === 'upload' && <UploadPanel onUploaded={() => { setTick((n) => n + 1); setTab('review'); }} onError={setErr} />}
 

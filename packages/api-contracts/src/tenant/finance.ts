@@ -158,3 +158,21 @@ export interface OcrPageAppendResult { documentId: string; pageCount: number; pi
 /** POST …/extract and …/retry-extract (§115: a person restarts the ladder of a reading that gave up) */
 export interface OcrExtractionResult { pipelineState: string; providerKey: string | null; unavailable: boolean }
 
+
+// ── Receipt Document Recognition 03 — the Extracting queue (GET /pos/receipt-center/processing, pos.ai_ocr_receipt.view). Read only:
+//    receipts not yet read, by phase (queue = uploaded/scanning · ocr = extracting · validation = validating · failed =
+//    extraction_failed), how long each has waited, its attempts and the latest provider job; retryEligible is the pipeline's own
+//    state machine answering "may 'retry' run from here" (retry stays on POST /pos/ai-ocr-receipt/documents/:id/retry-extract).
+export type ReceiptProcessingPhase = 'queue' | 'ocr' | 'validation' | 'failed';
+export interface ReceiptProcessingRow {
+  documentId: string; vendor: string | null; branch: string | null; state: string; phase: ReceiptProcessingPhase;
+  attempts: number; nextAttemptAt: string | null; waitingMinutes: number; stale: boolean;
+  job: { provider: string; status: string; attempt: number; error: string | null; requestedAt: string | null; completedAt: string | null } | null;
+  retryEligible: boolean;
+}
+export interface ReceiptProcessingResponse {
+  phases: { phase: ReceiptProcessingPhase; count: number; oldestAt: string | null; attempts: number }[];
+  items: ReceiptProcessingRow[]; total: number; shown: number; sort: 'oldest' | 'newest' | 'attempts' | 'phase';
+  freshness: { lastJobAt: string | null; staleAfterMinutes: number; stale: number };
+  generatedAt: string;
+}

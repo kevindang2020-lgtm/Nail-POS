@@ -3,10 +3,10 @@
 // `status`, which the API ignored, so every tab showed every document — and "in review" documents had no tab at all); a failed
 // read is an error, never an empty queue; Return / Reject ask for the reason; a receipt opened from the scanner page opens here.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const m = vi.hoisted(() => ({ detail: vi.fn(), previewUrl: vi.fn(), approve: vi.fn(), reject: vi.fn(), returnForCorrection: vi.fn(), startReview: vi.fn(), post: vi.fn(), correctField: vi.fn() }));
-const rc = vi.hoisted(() => ({ summary: vi.fn(), documents: vi.fn(), document: vi.fn(), check: vi.fn() }));
+const m = vi.hoisted(() => ({ retryExtract: vi.fn(), detail: vi.fn(), previewUrl: vi.fn(), approve: vi.fn(), reject: vi.fn(), returnForCorrection: vi.fn(), startReview: vi.fn(), post: vi.fn(), correctField: vi.fn() }));
+const rc = vi.hoisted(() => ({ summary: vi.fn(), documents: vi.fn(), document: vi.fn(), check: vi.fn(), processing: vi.fn() }));
 vi.mock('../api/posAiOcrReceiptApi', () => ({ posAiOcrReceiptApi: m }));
 vi.mock('../api/posReceiptCenterApi', () => ({ posReceiptCenterApi: rc }));
 vi.mock('../api/posExpensesApi', () => ({ posExpensesApi: { attachReceipt: vi.fn() } }));
@@ -101,5 +101,31 @@ describe('POSAIOcrReceiptScreen — queues', () => {
     mount('/tenant/ai/ocr-receipt?doc=d1');
     await waitFor(() => expect(m.previewUrl).toHaveBeenCalledWith('d1', 'tenants/t/documents/d1/original.png'));
     expect(screen.queryByTestId('rrx-preview-blocked')).toBeNull();
+  });
+  it('Receipt Document Recognition 03: the Extracting tab shows phase cards, waiting receipts with attempts and the latest job, stale ones, and Retry only where the server allows it', async () => {
+    rc.processing.mockResolvedValue({ phases: [{ phase: 'queue', count: 1, oldestAt: '2026-11-02T14:58:00Z', attempts: 0 }, { phase: 'ocr', count: 2, oldestAt: '2026-11-02T14:00:00Z', attempts: 2 },
+      { phase: 'validation', count: 0, oldestAt: null, attempts: 0 }, { phase: 'failed', count: 1, oldestAt: '2026-11-02T13:00:00Z', attempts: 3 }],
+      items: [
+        { documentId: 'f1', vendor: 'Failed thrice', branch: 'Main', state: 'extraction_failed', phase: 'failed', attempts: 3, nextAttemptAt: null, waitingMinutes: 120, stale: false,
+          job: { provider: 'textract', status: 'failed', attempt: 3, error: 'PROVIDER_TIMEOUT', requestedAt: '2026-11-02T13:00:00Z', completedAt: '2026-11-02T13:00:00Z' }, retryEligible: true },
+        { documentId: 's1', vendor: 'Stuck OCR', branch: 'Main', state: 'extracting', phase: 'ocr', attempts: 1, nextAttemptAt: null, waitingMinutes: 60, stale: true,
+          job: { provider: 'textract', status: 'running', attempt: 1, error: null, requestedAt: '2026-11-02T14:00:00Z', completedAt: null }, retryEligible: false }],
+      total: 4, shown: 2, sort: 'oldest', freshness: { lastJobAt: '2026-11-02T14:57:00Z', staleAfterMinutes: 15, stale: 1 }, generatedAt: '2026-11-02T15:00:00Z' });
+    m.retryExtract.mockResolvedValue({ pipelineState: 'extracting', providerKey: 'textract', unavailable: false });
+    mount();
+    fireEvent.click(await screen.findByRole('tab', { name: /Extracting/ }));
+    const box = await screen.findByTestId('rrx-proc');
+    expect(within(box).getByTestId('rrx-proc-ocr')).toHaveTextContent('Being read (OCR)2');
+    expect(within(box).getByTestId('rrx-proc-failed')).toHaveTextContent('Reading failed1');
+    expect(within(box).getByTestId('rrx-proc-fresh')).toHaveTextContent('1 quiet for over 15 minutes');
+    const rows = within(box).getAllByTestId('rrx-proc-row');
+    expect(rows[0]).toHaveTextContent('Failed thrice'); expect(rows[0]).toHaveTextContent('2 h'); expect(rows[0]).toHaveTextContent(/Provider timeout/i);
+    expect(rows[1]).toHaveTextContent('No progress'); expect(rows[1]).toHaveTextContent('60 min');
+    expect(within(rows[1]).queryByTestId('rrx-proc-retry')).toBeNull();          // the pipeline does not allow retry while reading
+    expect(within(box).getByText('2 more receipts are waiting (oldest are shown first).')).toBeInTheDocument();
+    fireEvent.click(within(rows[0]).getByTestId('rrx-proc-retry'));
+    await waitFor(() => expect(m.retryExtract).toHaveBeenCalledWith('f1'));
+    fireEvent.change(within(box).getByTestId('rrx-proc-sort'), { target: { value: 'attempts' } });
+    await waitFor(() => expect(rc.processing).toHaveBeenLastCalledWith('attempts'));
   });
 });

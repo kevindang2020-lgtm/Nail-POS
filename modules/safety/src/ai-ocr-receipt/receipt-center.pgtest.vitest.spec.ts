@@ -9,7 +9,7 @@ const P = 'c7700000-0000-4000-8000-';
 const id = (n: number) => P + String(n).padStart(12, '0');
 const T = id(1), B1 = id(2), B2 = id(3), X = id(4), BX = id(5), OWNER = id(10);
 const ctx = (o: any = {}) => ({ tenantId: T, branchId: B1, userId: OWNER, role: 'OWNER', permissions: ['pos.ai_ocr_receipt.view'], ...o });
-let db: any; let rc: ReceiptCenter; let scope: string[] | null = null; let providers: string[] = [];
+let db: any; let rc: ReceiptCenter; let scope: string[] | null = null; const providers: string[] = [];
 const q = async (s: any) => (await s.execute(db)).rows as any[];
 async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e) { return e instanceof ReceiptCenterError ? e.code : (e as Error).message; } }
 let n = 100;
@@ -122,5 +122,54 @@ describe('Receipt scanner — detail and health', () => {
     expect(c.overall).toBe('FAILED');
     expect((await rc.check(ctx())).reused).toBe(true);
     expect((await q(sql`select count(*)::int as n from ocr_postings where tenant_id = ${T}`))[0].n).toBe(before);
+  });
+});
+
+describe('Receipt Document Recognition 03 — the Extracting queue', () => {
+  it('phase cards, waiting receipts with attempts, the latest job (error code only) and the pipeline\'s retry answer; stale is called out; sorts; scope; nothing is written', async () => {
+    const B3 = id(4100);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B3}, ${T}, 'Queue branch', 'America/New_York')`);
+    const mk = async (state: string, minutesAgo: number, attempts = 0, vendor: string | null = null) => {
+      const D = id(++n);
+      await q(sql`insert into ocr_documents (id, tenant_id, branch_id, uploaded_by_user_id, vendor, pipeline_status, extraction_attempts, last_extraction_error, created_at, updated_at)
+        values (${D}, ${T}, ${B3}, ${OWNER}, ${vendor}, ${state}, ${attempts}, ${attempts ? 'Provider said: secret raw text' : null}, now() - make_interval(mins => ${minutesAgo}), now() - make_interval(mins => ${minutesAgo}))`);
+      return D;
+    };
+    const up = await mk('uploaded', 2, 0, 'Fresh upload');
+    const stuck = await mk('extracting', 60, 1, 'Stuck OCR');
+    const busy = await mk('extracting', 30, 1, 'Working OCR');
+    const val = await mk('validating', 5, 1, 'Validating');
+    const bad = await mk('extraction_failed', 120, 3, 'Failed thrice');
+    await mk('review_required', 300, 1, 'Not in this queue');
+    const job = (doc: string, status: string, attempt: number, err: string | null, minutesAgo: number, done: boolean) => q(sql`insert into ocr_jobs (tenant_id, document_id, provider_key, status, attempt, error_code, requested_at, completed_at)
+      values (${T}, ${doc}, 'textract', ${status}, ${attempt}, ${err}, now() - make_interval(mins => ${minutesAgo}), ${done ? sql`now() - make_interval(mins => ${minutesAgo})` : null})`);
+    await job(stuck, 'running', 1, null, 59, false);          // asked an hour ago, no answer since → stale
+    await job(busy, 'running', 1, null, 3, false);            // asked 3 minutes ago → working, not stale
+    await job(bad, 'failed', 2, 'PROVIDER_TIMEOUT', 150, true); await job(bad, 'failed', 3, 'PROVIDER_TIMEOUT', 125, true);
+    scope = [B3];
+    try {
+      const before = await q(sql`select id, pipeline_status, extraction_attempts from ocr_documents where branch_id = ${B3} order by id`);
+      const r: any = await rc.processing(ctx(), {});
+      expect(r.phases).toEqual([
+        { phase: 'queue', count: 1, oldestAt: expect.any(String), attempts: 0 }, { phase: 'ocr', count: 2, oldestAt: expect.any(String), attempts: 2 },
+        { phase: 'validation', count: 1, oldestAt: expect.any(String), attempts: 1 }, { phase: 'failed', count: 1, oldestAt: expect.any(String), attempts: 3 }]);
+      expect(r.total).toBe(5);
+      expect(r.items.map((i: any) => i.documentId)).toEqual([bad, stuck, busy, val, up]);                 // oldest first
+      const by = Object.fromEntries(r.items.map((i: any) => [i.documentId, i]));
+      expect(by[bad]).toMatchObject({ phase: 'failed', attempts: 3, retryEligible: true, stale: false, job: { provider: 'textract', status: 'failed', attempt: 3, error: 'PROVIDER_TIMEOUT' } });
+      expect(by[stuck]).toMatchObject({ phase: 'ocr', stale: true, retryEligible: false });
+      expect(by[busy]).toMatchObject({ phase: 'ocr', stale: false, retryEligible: false });
+      expect(by[up]).toMatchObject({ phase: 'queue', job: null, stale: false });
+      expect(by[stuck].waitingMinutes).toBeGreaterThanOrEqual(59);
+      expect(r.freshness).toMatchObject({ staleAfterMinutes: 15, stale: 1 });
+      expect(r.freshness.lastJobAt).not.toBeNull();
+      expect(JSON.stringify(r)).not.toContain('secret raw text');                                          // provider text never leaves the server
+      expect((await rc.processing(ctx(), { sort: 'attempts' })).items[0].documentId).toBe(bad);
+      expect((await rc.processing(ctx(), { sort: 'newest' })).items[0].documentId).toBe(up);
+      expect((await rc.processing(ctx(), { sort: 'phase' })).items.map((i: any) => i.phase)).toEqual(['queue', 'ocr', 'ocr', 'validation', 'failed']);
+      scope = [B2];                                                                                            // another branch: none of these
+      expect((await rc.processing(ctx(), {})).items.some((i: any) => i.documentId === stuck)).toBe(false);
+      expect(await q(sql`select id, pipeline_status, extraction_attempts from ocr_documents where branch_id = ${B3} order by id`)).toEqual(before);
+    } finally { scope = null; }
   });
 });
