@@ -66,6 +66,20 @@ export const purchaseRow = (x: Row) => ({ id: String(x.id), tenantId: String(x.t
 
 export type ResolveResult = { ok: true; rule: EffectiveEarningRule; program: ProgramPolicy } | { ok: false; code: string; reason: string; program: ProgramPolicy | null };
 
+/** extras GLOBAL LOYALTY REWARDS 11: the wallet ledger's entry types (its CHECK list) — the only values the type filter accepts */
+const LEDGER_TYPES = ['purchase_funded', 'earn_allocation', 'earn_reversal', 'purchase_reversal', 'adjustment'] as const;
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+/** the history filters, validated: unknown type / malformed date / non-uuid branch → null (ignored); a reversed range is swapped */
+export function histFilters(f: { entryType?: unknown; branchId?: unknown; from?: unknown; to?: unknown }, types: readonly string[]) {
+  const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const type = types.includes(s(f.entryType)) ? s(f.entryType) : null;
+  const branchId = UUID.test(s(f.branchId)) ? s(f.branchId) : null;
+  let from = YMD.test(s(f.from)) && !Number.isNaN(Date.parse(s(f.from))) ? s(f.from) : null;
+  let to = YMD.test(s(f.to)) && !Number.isNaN(Date.parse(s(f.to))) ? s(f.to) : null;
+  if (from && to && from > to) [from, to] = [to, from];
+  return { type, branchId, from, to };
+}
+
 export class GlobalRewardsRepository {
   constructor(private readonly db: Db) {}
   get database(): Db { return this.db; }
@@ -488,13 +502,24 @@ export class GlobalRewardsRepository {
     return { ok: true, balanceAfterCents: after, duplicate: false };
   }
 
-  async walletLedger(tenantId: string, page = 1, pageSize = 20) {
+  /** extras GLOBAL LOYALTY REWARDS 11 (round 10): the history filters a person can save as a preset — entry type, branch and
+   *  a salon-local date range; newest first, server-paged. An invalid value is ignored (and not echoed in `applied`); a
+   *  branch of another salon simply matches nothing (the tenant scope is always applied). */
+  async walletLedger(tenantId: string, page = 1, pageSize = 20, f: { entryType?: unknown; branchId?: unknown; from?: unknown; to?: unknown } = {}) {
     const size = Math.max(1, Math.min(50, Math.floor(pageSize) || 20)); const p = Math.max(1, Math.min(10_000, Math.floor(page) || 1));
-    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_wallet_ledger l WHERE l.tenant_id = ${tenantId}::uuid`.execute(this.db)).rows[0]?.c);
+    const ok = histFilters(f, LEDGER_TYPES); const tz = await this.salonTz(tenantId);
+    const W = sql`l.tenant_id = ${tenantId}::uuid ${ok.type ? sql`AND l.entry_type = ${ok.type}` : sql``} ${ok.branchId ? sql`AND l.branch_id = ${ok.branchId}::uuid` : sql``}
+      ${ok.from ? sql`AND (l.created_at AT TIME ZONE ${tz})::date >= ${ok.from}::date` : sql``} ${ok.to ? sql`AND (l.created_at AT TIME ZONE ${tz})::date <= ${ok.to}::date` : sql``}`;
+    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_wallet_ledger l WHERE ${W}`.execute(this.db)).rows[0]?.c);
     const r = await sql<Row>`SELECT l.id, l.entry_type, l.delta_cents, l.balance_after_cents, l.source_table, l.source_id, l.branch_id, l.reason, l.created_at FROM token_wallet_ledger l
-      WHERE l.tenant_id = ${tenantId}::uuid ORDER BY l.created_at DESC, l.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
+      WHERE ${W} ORDER BY l.created_at DESC, l.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
     return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map((x) => ({ id: String(x.id), entryType: x.entry_type, deltaCents: n(x.delta_cents),
-      balanceAfterCents: n(x.balance_after_cents), sourceTable: x.source_table, sourceId: String(x.source_id), branchId: x.branch_id ?? null, reason: x.reason ?? null, at: iso(x.created_at) })) };
+      balanceAfterCents: n(x.balance_after_cents), sourceTable: x.source_table, sourceId: String(x.source_id), branchId: x.branch_id ?? null, reason: x.reason ?? null, at: iso(x.created_at) })),
+      applied: { entryType: ok.type, branchId: ok.branchId, from: ok.from, to: ok.to, timeZone: tz } };
+  }
+  private async salonTz(tenantId: string): Promise<string> {
+    const tzRow = (await sql<Row>`SELECT b.timezone FROM branches b WHERE b.tenant_id = ${tenantId}::uuid AND b.deleted_at IS NULL ORDER BY b.created_at LIMIT 1`.execute(this.db)).rows[0];
+    return tzRow?.timezone && isValidTimeZone(String(tzRow.timezone)) ? String(tzRow.timezone) : 'America/New_York';
   }
 
   // ── Buy Tokens (guide §5.2–§5.4) ───────────────────────────────────────────────────────────────────────────────
@@ -609,12 +634,20 @@ export class GlobalRewardsRepository {
       { resourceType: 'token_purchase_intent', resourceId: a.intentId, metadata: { clawedCents: clawed, shortfallCents: shortfall, walletLocked: shortfall > 0 } });
   }
 
-  async purchases(tenantId: string, page = 1, pageSize = 20) {
+  /** extras GLOBAL LOYALTY REWARDS 11 (round 10): purchase history filters (status group pending / funded / failed and a
+   *  salon-local date range) — newest first, server-paged; invalid values ignored */
+  async purchases(tenantId: string, page = 1, pageSize = 20, f: { status?: unknown; from?: unknown; to?: unknown } = {}) {
     const size = Math.max(1, Math.min(50, Math.floor(pageSize) || 20)); const p = Math.max(1, Math.min(10_000, Math.floor(page) || 1));
-    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid`.execute(this.db)).rows[0]?.c);
+    const ok = histFilters({ entryType: f.status, from: f.from, to: f.to }, ['pending', 'funded', 'failed']); const tz = await this.salonTz(tenantId);
+    const st = ok.type === 'pending' ? sql`AND i.status IN ('REQUESTED', 'PROCESSING', 'UNKNOWN', 'PAYMENT_CONFIRMED', 'SETTLEMENT_PENDING')`
+      : ok.type === 'funded' ? sql`AND i.status = 'FUNDS_VERIFIED'`
+      : ok.type === 'failed' ? sql`AND i.status IN ('FAILED', 'DECLINED', 'REVERSED', 'CHARGED_BACK', 'CANCELED')` : sql``;
+    const W = sql`i.tenant_id = ${tenantId}::uuid ${st} ${ok.from ? sql`AND (i.created_at AT TIME ZONE ${tz})::date >= ${ok.from}::date` : sql``} ${ok.to ? sql`AND (i.created_at AT TIME ZONE ${tz})::date <= ${ok.to}::date` : sql``}`;
+    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_purchase_intents i WHERE ${W}`.execute(this.db)).rows[0]?.c);
     const r = await sql<Row>`SELECT i.id, i.tenant_id, i.token_cents, i.amount_cents, i.fee_cents, i.status, i.provider, i.provider_ref, i.failure_code, i.initiated_by, i.created_at, i.confirmed_at, i.funded_at
-      FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid ORDER BY i.created_at DESC, i.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
-    return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map(purchaseRow) };
+      FROM token_purchase_intents i WHERE ${W} ORDER BY i.created_at DESC, i.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
+    return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map(purchaseRow),
+      applied: { status: ok.type, from: ok.from, to: ok.to, timeZone: tz } };
   }
   async purchase(tenantId: string, id: string) {
     const r = (await sql<Row>`SELECT i.id, i.tenant_id, i.token_cents, i.amount_cents, i.fee_cents, i.status, i.provider, i.provider_ref, i.failure_code, i.created_at, i.confirmed_at, i.funded_at

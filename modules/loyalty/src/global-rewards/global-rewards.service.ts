@@ -50,8 +50,8 @@ export class GlobalRewardsService {
 
   wallet(ctx: GrCtx) { return this.repo.walletSummary(ctx.tenantId); }
   async setWalletLevels(ctx: GrCtx, body: Record<string, unknown>) { const r = await this.repo.setWalletLevels(ctx, body); await this.emit(ctx.tenantId, 'wallet'); return r; }
-  ledger(ctx: GrCtx, page: number, pageSize: number) { return this.repo.walletLedger(ctx.tenantId, page, pageSize); }
-  purchases(ctx: GrCtx, page: number, pageSize: number) { return this.repo.purchases(ctx.tenantId, page, pageSize); }
+  ledger(ctx: GrCtx, page: number, pageSize: number, f: Record<string, unknown> = {}) { return this.repo.walletLedger(ctx.tenantId, page, pageSize, f); }
+  purchases(ctx: GrCtx, page: number, pageSize: number, f: Record<string, unknown> = {}) { return this.repo.purchases(ctx.tenantId, page, pageSize, f); }
   purchase(ctx: GrCtx, id: string) { return this.repo.purchase(ctx.tenantId, id); }
   /** what the network owes THIS salon, with provider + journal evidence (read-only; extras GLOBAL LOYALTY REWARDS 07 / 10) */
   reimbursements(ctx: GrCtx, q: SalonPayablesQuery) { return salonPayables(this.repo.database, ctx.tenantId, q); }

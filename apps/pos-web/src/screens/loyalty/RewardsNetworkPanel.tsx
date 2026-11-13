@@ -24,6 +24,7 @@ import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, req
 import { displayTimeZone } from '../../i18n/format';
 import { useStepUp, isStepUpCancelled } from '../access/accessUi';
 import { useRealtime } from '../../realtime/useRealtime';
+import { SavedViews, vStr } from '../../components/SavedViews';
 
 // ── wording helpers (client-side, so Vietnamese never shows the server's English labels) ─────────────────────────────
 const errText = (e: unknown, fb: string) => errorTextOf(e, fb);
@@ -54,6 +55,10 @@ const localToIso = (v: string): string | null => { if (!v) return null; const d 
 type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' } | { kind: 'explain' } | { kind: 'export' };
 
 /** a server-paged list whose page size is however many rows fit right now */
+/** extras GLOBAL LOYALTY REWARDS 11: the savable history filters (values only; the server validates and applies them) */
+type HistFilters = { purStatus: string; ledType: string; branchId: string; from: string; to: string };
+const HF_EMPTY: HistFilters = { purStatus: '', ledType: '', branchId: '', from: '', to: '' };
+const LEDGER_TYPE_CODES = ['purchase_funded', 'earn_allocation', 'earn_reversal', 'purchase_reversal', 'adjustment'] as const;
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<RewardsNetPaged<T> | null>(null);
@@ -84,8 +89,16 @@ export function RewardsNetworkPanel() {
   const purFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const ledFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const histFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
-  const purchases = usePaged<Purchase>((q) => netApi.purchases(q), purFit.rows);
-  const ledger = usePaged<RewardsNetLedgerRow>((q) => netApi.ledger(q), ledFit.rows);
+  // extras GLOBAL LOYALTY REWARDS 11 (round 10): history filters the server applies (newest first, paged) — savable as presets
+  const [hf, setHf] = useState<HistFilters>(HF_EMPTY);
+  const hfq = (k: 'pur' | 'led') => { const d = { ...(hf.from ? { from: hf.from } : {}), ...(hf.to ? { to: hf.to } : {}) };
+    return k === 'pur' ? { ...d, ...(hf.purStatus ? { status: hf.purStatus } : {}) } : { ...d, ...(hf.ledType ? { entryType: hf.ledType } : {}), ...(hf.branchId ? { branchId: hf.branchId } : {}) }; };
+  const purchases = usePaged<Purchase>((q) => netApi.purchases({ ...q, ...hfq('pur') }), purFit.rows);
+  const ledger = usePaged<RewardsNetLedgerRow>((q) => netApi.ledger({ ...q, ...hfq('led') }), ledFit.rows);
+  const applyHf = (next: HistFilters) => { setHf(next); };
+  const hfKey = JSON.stringify(hf);
+  const firstHf = useRef(true);
+  useEffect(() => { if (firstHf.current) { firstHf.current = false; return; } purchases.toFirst(); ledger.toFirst(); }, [hfKey]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void loadState(); void loadHist(); }, [loadState, loadHist]);
   const refreshAll = useCallback(() => { void loadState(); void loadHist(); purchases.refresh(); ledger.refresh(); }, [loadState, loadHist]);   // eslint-disable-line react-hooks/exhaustive-deps
   // addendum §6.2: another POS, the owner app or Super Admin changed the rule / wallet → every till refetches (ids only)
@@ -237,6 +250,17 @@ export function RewardsNetworkPanel() {
         </FitPanel>
       </div>
 
+      <div className="fk-row" data-testid="rn-hist-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'end', margin: '6px 0' }}>
+        <label className="fk-field"><span>{tx('rn.hf.purStatus')}</span><select className="fk-select" data-testid="rn-hf-pur" value={hf.purStatus} onChange={(e) => applyHf({ ...hf, purStatus: e.target.value })}>
+          <option value="">{tx('rn.hf.all')}</option>{(['pending', 'funded', 'failed'] as const).map((v) => <option key={v} value={v}>{tx('rn.hf.pur.' + v)}</option>)}</select></label>
+        <label className="fk-field"><span>{tx('rn.hf.ledType')}</span><select className="fk-select" data-testid="rn-hf-led" value={hf.ledType} onChange={(e) => applyHf({ ...hf, ledType: e.target.value })}>
+          <option value="">{tx('rn.hf.all')}</option>{LEDGER_TYPE_CODES.map((v) => <option key={v} value={v}>{label('rn.le', v)}</option>)}</select></label>
+        {w?.branchUsage && w.branchUsage.rows.some((r) => r.branchId) ? <label className="fk-field"><span>{tx('rn.hf.branch')}</span><select className="fk-select" data-testid="rn-hf-branch" value={hf.branchId} onChange={(e) => applyHf({ ...hf, branchId: e.target.value })}>
+          <option value="">{tx('rn.hf.allBranches')}</option>{w.branchUsage.rows.filter((r) => r.branchId).map((r) => <option key={r.branchId as string} value={r.branchId as string}>{r.branchName ?? '—'}</option>)}</select></label> : null}
+        <label className="fk-field"><span>{tx('rn.hf.from')}</span><input type="date" data-testid="rn-hf-from" value={hf.from} onChange={(e) => applyHf({ ...hf, from: e.target.value })} /></label>
+        <label className="fk-field"><span>{tx('rn.hf.to')}</span><input type="date" data-testid="rn-hf-to" value={hf.to} onChange={(e) => applyHf({ ...hf, to: e.target.value })} /></label>
+        <SavedViews surface="loyalty.network.history" current={hf} onApply={(v) => applyHf({ purStatus: vStr(v, 'purStatus'), ledType: vStr(v, 'ledType'), branchId: vStr(v, 'branchId'), from: vStr(v, 'from'), to: vStr(v, 'to') })} testId="rn-hf-views" />
+      </div>
       <div className="fk-row two">
         <FitPanel testId="rn-ledger" title={tx('rn.ledger.title')} bodyRef={ledFit.ref} footer={<Pager compact info={ledger.data} onPage={ledger.setPage} />}>
           {ledger.err ? <ErrorRetry message={ledger.err} onRetry={ledger.refresh} /> : !ledger.data ? <div className="fk-loading">{tx('pos.loading')}</div> : ledger.data.items.length === 0 ? <Empty title={tx('rn.noLedger')} /> : (

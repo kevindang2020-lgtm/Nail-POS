@@ -1,13 +1,14 @@
 // Extras (GLOBAL LOYALTY REWARDS 13): the wallet's per-branch attribution, as the server computed it — read-only.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-const { stateMock, previewMock } = vi.hoisted(() => ({ stateMock: vi.fn(), previewMock: vi.fn() }));
+const { stateMock, previewMock, purchasesMock, ledgerMock, viewsMock } = vi.hoisted(() => ({ stateMock: vi.fn(), previewMock: vi.fn(), purchasesMock: vi.fn(), ledgerMock: vi.fn(), viewsMock: { list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() } }));
 vi.mock('../../api/posRewardsNetworkApi', () => ({ posRewardsNetworkApi: {
   state: stateMock, preview: previewMock, history: vi.fn().mockResolvedValue({ items: [] }),
-  purchases: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
-  ledger: vi.fn().mockResolvedValue({ total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] }),
+  purchases: purchasesMock, ledger: ledgerMock,
 } }));
+vi.mock('../../api/posSavedViewsApi', () => ({ posSavedViewsApi: viewsMock }));
+const EMPTY_PAGE = { total: 0, page: 1, pageSize: 5, pageCount: 1, totalItems: 0, totalPages: 1, items: [] };
 vi.mock('../../realtime/useRealtime', () => ({ useRealtime: () => undefined }));
 import { RewardsNetworkPanel } from './RewardsNetworkPanel';
 
@@ -22,7 +23,7 @@ const st = (branchUsage: unknown) => ({
   permissions: { canEdit: false, canActivate: false, canBuyTokens: false }, funding: { provider: null, sandbox: false, available: false },
 });
 
-beforeEach(() => { stateMock.mockReset(); });
+beforeEach(() => { stateMock.mockReset(); purchasesMock.mockReset().mockResolvedValue(EMPTY_PAGE); ledgerMock.mockReset().mockResolvedValue(EMPTY_PAGE); viewsMock.list.mockReset().mockResolvedValue({ items: [] }); });
 
 describe('RewardsNetworkPanel — wallet use by branch', () => {
   it('opens the per-branch split; says the rows add up to the wallet and nothing was funded twice', async () => {
@@ -117,5 +118,24 @@ describe('RewardsNetworkPanel — policy impact preview', () => {
     expect(await screen.findByTestId('rn-impact-scope', {}, { timeout: 3000 })).toHaveTextContent('Applies to all 2 location(s) of this salon (one wallet): Main, A North.');
     expect(screen.getByTestId('rn-impact-expected')).toHaveTextContent('On your last 30 days (6 earnings) this rule would have used 5.6 tokens instead of the 3.05 actually used.');
     expect(screen.getByTestId('rn-impact-approval')).toHaveTextContent('Activating needs settings permission and a fresh verification (you can). Earnings already made keep their own rule.');
+  });
+});
+
+// extras GLOBAL LOYALTY REWARDS 11 (round 10): history filters go to the server (newest first, paged) and can be saved as presets
+describe('RewardsNetworkPanel — history smart filter presets', () => {
+  it('purchase status, token activity type, location and dates are sent to the server; changing a filter goes back to page 1', async () => {
+    stateMock.mockResolvedValue(st({ since: '2026-11-01T04:00:00.000Z', totalFundedCents: 305, walletUsedCents: 305, matchesWallet: true, doubleFunded: 0, rows: [
+      { branchId: 'b1', branchName: 'Main', earnings: 5, pointTenths: 285, fundedCents: 285, redemptions: 0, redeemedValueCents: 0 },
+      { branchId: 'b2', branchName: 'A North', earnings: 1, pointTenths: 20, fundedCents: 20, redemptions: 0, redeemedValueCents: 0 }] }));
+    render(<RewardsNetworkPanel />);
+    fireEvent.change(await screen.findByTestId('rn-hf-pur'), { target: { value: 'funded' } });
+    await waitFor(() => expect(purchasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, status: 'funded' })));
+    fireEvent.change(screen.getByTestId('rn-hf-led'), { target: { value: 'earn_allocation' } });
+    fireEvent.change(await screen.findByTestId('rn-hf-branch'), { target: { value: 'b2' } });
+    fireEvent.change(screen.getByTestId('rn-hf-from'), { target: { value: '2026-11-01' } });
+    await waitFor(() => expect(ledgerMock).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, entryType: 'earn_allocation', branchId: 'b2', from: '2026-11-01' })));
+    expect(purchasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'funded', from: '2026-11-01' }));
+    expect(screen.getByTestId('rn-hf-views')).toBeInTheDocument();   // the saved-views control (pos/me/saved-views) is offered for these filters
+    expect(viewsMock.list).toHaveBeenCalledWith('loyalty.network.history');
   });
 });

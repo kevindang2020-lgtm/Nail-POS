@@ -236,4 +236,14 @@ export const REWARDSNET_VI = {
   'rn.impact.approvalYou': 'Kích hoạt cần quyền cài đặt và xác minh lại (bạn có quyền).', // DRAFT — Kevin reviews
   'rn.impact.approvalOther': 'Kích hoạt cần người có quyền cài đặt và xác minh lại.', // DRAFT — Kevin reviews
   'rn.impact.immutable': 'Các lượt tích điểm đã có giữ nguyên quy tắc cũ.', // DRAFT — Kevin reviews
+  'rn.hf.purStatus': 'Lượt mua', // DRAFT — Kevin reviews
+  'rn.hf.ledType': 'Hoạt động token', // DRAFT — Kevin reviews
+  'rn.hf.branch': 'Chi nhánh', // DRAFT — Kevin reviews
+  'rn.hf.all': 'Tất cả', // DRAFT — Kevin reviews
+  'rn.hf.allBranches': 'Tất cả chi nhánh', // DRAFT — Kevin reviews
+  'rn.hf.from': 'Từ', // DRAFT — Kevin reviews
+  'rn.hf.to': 'Đến', // DRAFT — Kevin reviews
+  'rn.hf.pur.pending': 'Đang chờ', // DRAFT — Kevin reviews
+  'rn.hf.pur.funded': 'Đã nạp', // DRAFT — Kevin reviews
+  'rn.hf.pur.failed': 'Thất bại / hoàn lại', // DRAFT — Kevin reviews
 };
