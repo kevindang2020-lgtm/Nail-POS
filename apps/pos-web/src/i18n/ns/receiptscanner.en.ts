@@ -272,4 +272,6 @@ export const RECEIPTSCANNER_EN: Record<string, string> = {
   "rrx.proc.col.waiting": "Waiting",
   "rrx.proc.col.attempts": "Attempts",
   "rrx.proc.col.job": "Reading service",
+  "rcsx.ov.prev": "Last approved price {p} ({d}) · change {c} ({pc})",
+  "rcsx.ov.prevNote": "{n} line(s) compared with this vendor's last approved, posted receipt: {u} cost more, {w} cost less. Nothing here changes a cost or a report.",
 };

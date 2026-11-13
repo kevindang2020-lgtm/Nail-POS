@@ -258,13 +258,33 @@ export class ReceiptCenter {
       generatedAt: new Date(this.now()).toISOString() };
   }
 
+  /** OCR Receipt Scanner 05 — what this vendor charged last time: for each line, the unit price on the most recent EARLIER receipt
+   *  from the same vendor that was approved and posted to the books (ocr_documents.pipeline_status = 'posted'), matched by SKU, or by
+   *  the same description when the line has no SKU. Only receipts this person may see. Read only — it explains, it never edits a
+   *  cost, an expense or the reports (their formulas stay the finance module's). */
+  private async lastApprovedCosts(ctx: RcCtx, d: Row): Promise<Map<number, { unitCents: number; documentId: string; date: string | null; uploadedAt: string | null }>> {
+    const T = ctx.tenantId; const S = (await this.inScope(ctx, sql`po.branch_id`)).w;
+    const vendorMatch = d.vendor_id ? sql`po.vendor_id = ${d.vendor_id}::uuid` : d.vendor ? sql`lower(btrim(po.vendor)) = lower(btrim(${String(d.vendor)}))` : sql`false`;
+    const rows = (await sql<Row>`select li.line_number, prev.unit_price_cents, prev.document_id, prev.doc_date, prev.uploaded_at
+      from ocr_line_items li
+      join lateral (select pl.unit_price_cents, po.id as document_id, po.document_date as doc_date, po.created_at as uploaded_at
+          from ocr_line_items pl join ocr_documents po on po.id = pl.document_id and po.tenant_id = pl.tenant_id
+          where pl.tenant_id = ${T} and po.id <> ${d.id}::uuid and po.pipeline_status = 'posted' and po.deleted_at is null and po.created_at < ${d.created_at}::timestamptz
+            and ${vendorMatch} and ${S} and pl.unit_price_cents is not null
+            and ((nullif(btrim(coalesce(li.sku, '')), '') is not null and pl.sku = li.sku)
+              or (nullif(btrim(coalesce(li.sku, '')), '') is null and nullif(btrim(coalesce(li.description, '')), '') is not null and lower(btrim(pl.description)) = lower(btrim(li.description))))
+          order by po.created_at desc, pl.line_number asc limit 1) prev on true
+      where li.tenant_id = ${T} and li.document_id = ${d.id}::uuid`.execute(this.db)).rows;
+    return new Map(rows.map((r) => [N(r.line_number), { unitCents: N(r.unit_price_cents), documentId: String(r.document_id), date: day(r.doc_date), uploadedAt: iso(r.uploaded_at) }]));
+  }
+
   async document(ctx: RcCtx, id: string) {
     const T = ctx.tenantId;
     if (!isUuid(id)) throw new ReceiptCenterError('Receipt not found.', 'RC_NOT_FOUND', 404);
     const S = (await this.inScope(ctx, sql`d.branch_id`)).w;
     const d = (await sql<Row>`select d.id, d.vendor, d.document_number, d.document_date, d.date_ambiguous, d.currency, d.subtotal_cents, d.tax_cents, d.fees_cents, d.discount_cents,
         d.total_cents, d.is_credit_or_refund, d.document_type, d.page_count, d.created_at, d.source_channel, d.pipeline_status, d.review_status, d.validation_status, d.quality_flags,
-        d.last_extraction_error, d.extraction_attempts, d.duplicate_status, b.name as branch, coalesce(u.full_name, u.email) as uploader from ocr_documents d left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id
+        d.last_extraction_error, d.extraction_attempts, d.duplicate_status, d.vendor_id, b.name as branch, coalesce(u.full_name, u.email) as uploader from ocr_documents d left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id
       left join users u on u.id = d.uploaded_by_user_id and u.tenant_id = d.tenant_id where d.tenant_id = ${T} and d.id = ${id}::uuid and d.deleted_at is null and ${S}`.execute(this.db)).rows[0];
     if (!d) throw new ReceiptCenterError('Receipt not found.', 'RC_NOT_FOUND', 404);   // another branch / salon answers like a missing one
     const [fields, lines, validation, dupes, postings, approvals, jobs, category, expense] = await Promise.all([
@@ -284,6 +304,13 @@ export class ReceiptCenter {
     ]);
     const post = postings.rows[0];
     const v = validation.rows[0];
+    const prev = await this.lastApprovedCosts(ctx, d);
+    const priced = lines.rows.map((x) => {
+      const p = prev.get(N(x.line_number));
+      const unit = x.unit_price_cents == null ? null : N(x.unit_price_cents);
+      return p && unit != null ? { unitCents: p.unitCents, documentId: p.documentId, date: p.date, uploadedAt: p.uploadedAt, changeCents: unit - p.unitCents,
+        changePercent: p.unitCents > 0 ? Math.round(((unit - p.unitCents) / p.unitCents) * 1000) / 10 : null } : null;
+    });
     return {
       id: String(d.id), vendor: d.vendor ?? null, number: d.document_number ?? null, purchaseDate: day(d.document_date), dateAmbiguous: !!d.date_ambiguous, currency: d.currency ?? 'USD',
       amounts: { subtotalCents: d.subtotal_cents == null ? null : N(d.subtotal_cents), taxCents: d.tax_cents == null ? null : N(d.tax_cents), feesCents: d.fees_cents == null ? null : N(d.fees_cents),
@@ -295,8 +322,11 @@ export class ReceiptCenter {
       // confidence stays a reading of the text; "unknown" when the provider gave none — never an invented number
       fields: fields.rows.map((x) => ({ key: x.field_key, value: x.corrected_value ?? x.value_text ?? null, cents: x.value_cents == null ? null : N(x.value_cents), state: x.state,
         confidence: x.confidence == null || Number(x.confidence) === 0 ? null : Number(x.confidence), page: x.source_page ?? null, corrected: !!x.corrected_at })),
-      lines: lines.rows.map((x) => ({ n: N(x.line_number), description: x.description ?? null, sku: x.sku ?? null, quantity: x.quantity == null ? null : Number(x.quantity), unit: x.unit ?? null,
-        unitCents: x.unit_price_cents == null ? null : N(x.unit_price_cents), totalCents: x.line_total_cents == null ? null : N(x.line_total_cents), reconciles: x.reconciles ?? null })),
+      lines: lines.rows.map((x, i) => ({ n: N(x.line_number), description: x.description ?? null, sku: x.sku ?? null, quantity: x.quantity == null ? null : Number(x.quantity), unit: x.unit ?? null,
+        unitCents: x.unit_price_cents == null ? null : N(x.unit_price_cents), totalCents: x.line_total_cents == null ? null : N(x.line_total_cents), reconciles: x.reconciles ?? null,
+        previous: priced[i] })),
+      priceChanges: { compared: priced.filter(Boolean).length, up: priced.filter((p) => p && p.changeCents > 0).length, down: priced.filter((p) => p && p.changeCents < 0).length,
+        basis: 'last_posted_receipt_same_vendor' },
       checks: v ? { status: v.status, blocksPosting: !!v.blocks_posting, flags: v.flags ?? [], missing: v.missing_fields ?? [], at: iso(v.created_at) } : null,
       duplicates: dupes.rows.map((x) => ({ status: x.status, reason: x.reason ?? null, dismissed: !!x.dismissed, documentId: String(x.matched_document_id), vendor: x.vendor ?? null,
         totalCents: x.total_cents == null ? null : N(x.total_cents), purchaseDate: day(x.document_date), pipeline: x.pipeline_status })),

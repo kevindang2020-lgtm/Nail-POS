@@ -272,4 +272,6 @@ export const RECEIPTSCANNER_VI: Record<string, string> = {
   "rrx.proc.col.waiting": "Đã chờ", // DRAFT — Kevin reviews
   "rrx.proc.col.attempts": "Số lần thử", // DRAFT — Kevin reviews
   "rrx.proc.col.job": "Dịch vụ đọc", // DRAFT — Kevin reviews
+  "rcsx.ov.prev": "Giá đã duyệt lần trước {p} ({d}) · chênh {c} ({pc})", // DRAFT — Kevin reviews
+  "rcsx.ov.prevNote": "{n} dòng được so với hóa đơn đã duyệt và ghi sổ gần nhất của nhà cung cấp này: {u} dòng đắt hơn, {w} dòng rẻ hơn. Ở đây không đổi giá vốn hay báo cáo nào.", // DRAFT — Kevin reviews
 };

@@ -173,3 +173,35 @@ describe('Receipt Document Recognition 03 — the Extracting queue', () => {
     } finally { scope = null; }
   });
 });
+
+describe('OCR Receipt Scanner 05 — what this vendor charged last time (approved, posted receipts only)', () => {
+  it('each line shows the last posted unit price from the same vendor (by SKU, else by description) and the change; unposted, later, other-vendor or other-branch receipts never count', async () => {
+    const B4 = id(4200), B5 = id(4201);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B4}, ${T}, 'Cost branch', 'America/New_York'), (${B5}, ${T}, 'Hidden branch', 'America/New_York')`);
+    const rec = async (vendor: string, state: string, minutesAgo: number, branch = B4, purchase: string | null = null) => {
+      const D = id(++n);
+      await q(sql`insert into ocr_documents (id, tenant_id, branch_id, uploaded_by_user_id, vendor, pipeline_status, document_date, created_at, updated_at)
+        values (${D}, ${T}, ${branch}, ${OWNER}, ${vendor}, ${state}, ${purchase}, now() - make_interval(mins => ${minutesAgo}), now() - make_interval(mins => ${minutesAgo}))`);
+      return D;
+    };
+    const line = (doc: string, ln: number, desc: string, sku: string | null, unit: number) => q(sql`insert into ocr_line_items (tenant_id, document_id, line_number, description, sku, quantity, unit_price_cents, line_total_cents)
+      values (${T}, ${doc}, ${ln}, ${desc}, ${sku}, 1, ${unit}, ${unit})`);
+    const older = await rec('Sally Beauty', 'posted', 600, B4, '2026-10-01'); await line(older, 1, 'Acetone 16oz', 'ACE-16', 900); await line(older, 2, 'Cotton pads', null, 300);
+    const newer = await rec('Sally Beauty', 'posted', 300, B4, '2026-10-20'); await line(newer, 1, 'Acetone 16 oz bottle', 'ACE-16', 1000);
+    const unposted = await rec('Sally Beauty', 'review_required', 200); await line(unposted, 1, 'Acetone', 'ACE-16', 50);           // not approved → never a basis
+    const otherVendor = await rec('OPI Supply', 'posted', 250); await line(otherVendor, 1, 'Cotton pads', null, 100);
+    const hidden = await rec('Sally Beauty', 'posted', 150, B5); await line(hidden, 1, 'Acetone', 'ACE-16', 10);                     // a branch this person cannot see
+    const cur = await rec('sally beauty ', 'review_required', 100);
+    await line(cur, 1, 'ACETONE 16OZ', 'ACE-16', 1150); await line(cur, 2, ' cotton pads ', null, 330); await line(cur, 3, 'Brand new item', 'NEW-1', 500);
+    const later = await rec('Sally Beauty', 'posted', 10); await line(later, 1, 'Acetone', 'ACE-16', 1);                               // after this receipt → never a basis
+    scope = [B4];
+    try {
+      const d: any = await rc.document(ctx(), cur);
+      expect(d.lines[0].previous).toMatchObject({ unitCents: 1000, documentId: newer, date: '2026-10-20', changeCents: 150, changePercent: 15 });
+      expect(d.lines[1].previous).toMatchObject({ unitCents: 300, documentId: older, changeCents: 30, changePercent: 10 });          // no SKU → same description (case / spaces ignored)
+      expect(d.lines[2].previous).toBeNull();                                                                                          // never bought before: nothing invented
+      expect(d.priceChanges).toEqual({ compared: 2, up: 2, down: 0, basis: 'last_posted_receipt_same_vendor' });
+    } finally { scope = null; }
+    void unposted; void otherVendor; void hidden; void later;
+  });
+});

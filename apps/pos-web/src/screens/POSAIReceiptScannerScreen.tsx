@@ -160,7 +160,10 @@ function ReceiptOverlay({ id, onClose }: { id: string; onClose: () => void }) {
           <td>{t('rcsx.field.' + (FIELDS.includes(x.key) ? x.key : 'other'))}</td><td>{x.cents != null ? cents(x.cents) : (x.value ?? '—')}</td><td className="sub">{t('rcsx.fstate.' + x.state)}{x.confidence == null ? '' : ` · ${Math.round(x.confidence * 100)}%`}{x.corrected ? ` · ${t('rcsx.ov.corrected')}` : ''}</td></tr>)}</tbody></table>}
         {d.lines.length ? <><h4>{t('rcsx.ov.lines')}</h4><table className="tbl w-full" data-testid="rcsx-lines"><tbody>{d.lines.map((x: any) => <tr key={x.n}>
           <td>{x.description ?? '—'}{x.sku ? <div className="sub">{x.sku}</div> : null}</td><td className="num">{x.quantity ?? '—'} {x.unit ?? ''}</td><td className="num">{cents(x.unitCents)}</td><td className="num">{cents(x.totalCents)}</td>
-          <td>{x.reconciles === false ? <span className="chip warn">{t('rcsx.ov.lineMismatch')}</span> : null}</td></tr>)}</tbody></table></> : null}
+          <td>{x.reconciles === false ? <span className="chip warn">{t('rcsx.ov.lineMismatch')}</span> : null}
+            {x.previous ? <div className={'sub' + (x.previous.changeCents > 0 ? ' warn' : '')} data-testid="rcsx-line-prev">{t('rcsx.ov.prev', { p: cents(x.previous.unitCents), d: x.previous.date ?? when(x.previous.uploadedAt),
+              c: (x.previous.changeCents > 0 ? '+' : x.previous.changeCents < 0 ? '−' : '') + cents(Math.abs(x.previous.changeCents)), pc: x.previous.changePercent == null ? '—' : `${x.previous.changePercent > 0 ? '+' : ''}${x.previous.changePercent}%` })}</div> : null}</td></tr>)}</tbody></table>
+          {d.priceChanges?.compared ? <p className="sub" data-testid="rcsx-price-note">{t('rcsx.ov.prevNote', { n: String(d.priceChanges.compared), u: String(d.priceChanges.up), w: String(d.priceChanges.down) })}</p> : null}</> : null}
         {d.duplicates.length ? <><h4>{t('rcsx.ov.duplicates')}</h4>{d.duplicates.map((x: any) => <div key={x.documentId} className="rvw-ev" data-testid="rcsx-dupe">
           <span className="chip warn">{t('rcsx.trk.duplicate.' + x.status)}</span> {x.vendor ?? '—'} · {cents(x.totalCents)} · {x.purchaseDate ?? '—'}{x.dismissed ? ` · ${t('rcsx.ov.dismissed')}` : ''}</div>)}</> : null}
         <h4>{t('rcsx.ov.links')}</h4>

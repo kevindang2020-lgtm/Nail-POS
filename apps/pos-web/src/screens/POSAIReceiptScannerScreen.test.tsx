@@ -68,6 +68,21 @@ describe('POSAIReceiptScannerScreen', () => {
     expect(screen.getByTestId('rcsx-review-link')).toHaveAttribute('href', '/tenant/ai/ocr-receipt?doc=d1');
   });
 
+  it('OCR Receipt Scanner 05: a line shows this vendor\'s last approved price and the change (from the server); a line never bought before shows nothing invented', async () => {
+    rc.document.mockResolvedValue({ id: 'd1', vendor: 'Sally Beauty', number: 'INV-7', purchaseDate: '2026-10-30', dateAmbiguous: false, currency: 'USD', amounts: { subtotalCents: 1480, taxCents: 0, feesCents: null, discountCents: null, totalCents: 1480, creditOrRefund: false },
+      pages: 1, branch: 'Main', uploader: 'Owner', uploadedAt: '2026-11-02T15:00:00Z', pipeline: 'review_required', tracks: ROW.tracks, checks: null, fields: [],
+      lines: [{ n: 1, description: 'Acetone 16oz', sku: 'ACE-16', quantity: 1, unit: null, unitCents: 1150, totalCents: 1150, reconciles: true,
+          previous: { unitCents: 1000, documentId: 'd0', date: '2026-10-20', uploadedAt: '2026-10-20T15:00:00Z', changeCents: 150, changePercent: 15 } },
+        { n: 2, description: 'Brand new item', sku: 'NEW-1', quantity: 1, unit: null, unitCents: 330, totalCents: 330, reconciles: true, previous: null }],
+      priceChanges: { compared: 1, up: 1, down: 0, basis: 'last_posted_receipt_same_vendor' }, duplicates: [], category: null, expense: null, postings: [], trail: [], jobs: [] });
+    mount();
+    fireEvent.click(await screen.findByTestId('rcsx-row'));
+    const prev = await screen.findAllByTestId('rcsx-line-prev');
+    expect(prev).toHaveLength(1);
+    expect(prev[0]).toHaveTextContent('Last approved price $10.00 (2026-10-20) · change +$1.50 (+15%)');
+    expect(screen.getByTestId('rcsx-price-note')).toHaveTextContent("1 line(s) compared with this vendor's last approved, posted receipt: 1 cost more, 0 cost less.");
+  });
+
   it('a failed history read is an error with retry, not "no receipts"', async () => {
     rc.documents.mockRejectedValue({ status: 500 });
     mount();
