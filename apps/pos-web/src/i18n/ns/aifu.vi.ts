@@ -273,4 +273,41 @@ export const AIFU_VI: Record<string, string> = {
   "aifu.orph.kind.handoff_requested": "Khách muốn gặp nhân viên", // DRAFT — Kevin reviews
   "aifu.orph.kind.complaint": "Khiếu nại", // DRAFT — Kevin reviews
   "aifu.orph.kind.transfer_attempted": "Đã thử chuyển máy", // DRAFT — Kevin reviews
+  "aifu.tab.timeline": "Dòng thời gian", // DRAFT — Kevin reviews
+  "aifu.lc.attempted": "Đã liên hệ / đã gặp", // DRAFT — Kevin reviews
+  "aifu.lc.counts": "{a} lần liên hệ · {r} lần thật sự gặp được", // DRAFT — Kevin reviews
+  "aifu.lc.lastAttempt": "Lần liên hệ gần nhất", // DRAFT — Kevin reviews
+  "aifu.lc.lastReached": "Lần gặp được gần nhất", // DRAFT — Kevin reviews
+  "aifu.lc.neverReached": "Chưa gặp được", // DRAFT — Kevin reviews
+  "aifu.lc.texts": "Tin nhắn", // DRAFT — Kevin reviews
+  "aifu.lc.textCounts": "{t} đã gửi · {s} đã nộp (chưa xác nhận) · {p} nhà cung cấp đã nhận · {d} đã đến · {f} thất bại", // DRAFT — Kevin reviews
+  "aifu.lc.verified": "Kết quả đã xác minh gần nhất", // DRAFT — Kevin reviews
+  "aifu.lc.noneVerified": "Chưa có — cuộc gọi và ghi chú do nhân viên ghi; chỉ báo cáo tin nhắn đã đến mới được xác minh", // DRAFT — Kevin reviews
+  "aifu.tl.what": "Việc đã xảy ra", // DRAFT — Kevin reviews
+  "aifu.tl.k.call": "Cuộc gọi AI", // DRAFT — Kevin reviews
+  "aifu.tl.k.handoff": "Chuyển máy", // DRAFT — Kevin reviews
+  "aifu.tl.k.task": "Việc cần làm", // DRAFT — Kevin reviews
+  "aifu.tl.k.attempt": "Liên hệ", // DRAFT — Kevin reviews
+  "aifu.tl.k.booking": "Lịch hẹn", // DRAFT — Kevin reviews
+  "aifu.tl.booking": "Đã liên kết lịch hẹn", // DRAFT — Kevin reviews
+  "aifu.tl.call.call_started": "Cuộc gọi bắt đầu", // DRAFT — Kevin reviews
+  "aifu.tl.call.call_ended": "Cuộc gọi kết thúc", // DRAFT — Kevin reviews
+  "aifu.tl.empty": "Chưa có gì được ghi lại.", // DRAFT — Kevin reviews
+  "aifu.ho.button": "Bàn giao việc cần làm của tôi", // DRAFT — Kevin reviews
+  "aifu.ho.title": "Bàn giao cuối ca", // DRAFT — Kevin reviews
+  "aifu.ho.sub": "Mọi việc cần làm đang mở giao cho bạn sẽ chuyển sang người bạn chọn. Họ nhận một thông báo; mỗi việc ghi lại ghi chú bàn giao.", // DRAFT — Kevin reviews
+  "aifu.ho.to": "Bàn giao cho", // DRAFT — Kevin reviews
+  "aifu.ho.choose": "Chọn đồng nghiệp", // DRAFT — Kevin reviews
+  "aifu.ho.note": "Ghi chú bàn giao", // DRAFT — Kevin reviews
+  "aifu.ho.go": "Bàn giao", // DRAFT — Kevin reviews
+  "aifu.ho.done": "Đã bàn giao {n} việc cần làm.", // DRAFT — Kevin reviews
+  "aifu.al.button": "Cảnh báo quá hạn", // DRAFT — Kevin reviews
+  "aifu.al.title": "Cảnh báo gọi lại quá hạn", // DRAFT — Kevin reviews
+  "aifu.al.sub": "Khi một việc cần làm quá giờ hẹn gọi lại, quản lý nhận một cảnh báo. Cài đặt cho chi nhánh này.", // DRAFT — Kevin reviews
+  "aifu.al.on": "Báo cho quản lý khi việc cần làm quá hạn", // DRAFT — Kevin reviews
+  "aifu.al.grace": "Số phút sau giờ hẹn trước khi báo", // DRAFT — Kevin reviews
+  "aifu.al.save": "Lưu", // DRAFT — Kevin reviews
+  "aifu.al.scope.branch": "Đã cài cho chi nhánh này.", // DRAFT — Kevin reviews
+  "aifu.al.scope.tenant": "Đang dùng cài đặt chung của tiệm — lưu sẽ cài cho chi nhánh này.", // DRAFT — Kevin reviews
+  "aifu.al.scope.default": "Đang dùng mặc định (báo đúng giờ hẹn) — lưu sẽ cài cho chi nhánh này.", // DRAFT — Kevin reviews
 };

@@ -236,6 +236,27 @@ describe('assignment, lifecycle, escalation, contact (T23–T26, T34–T37)', ()
     await fc.confirmText(own, t, { body: 'Again', token: p.token, idempotencyKey: 'sms-key-0003', overrideReason: 'Customer asked for the address' });
     expect((await q1(sql`select action from audit_events where resource_id = ${t} and action = 'follow_up.duplicate_text_override'`)).action).toBeTruthy();
   });
+  it('round 10 (AI Follow Ups 04/09): Last-Contact Truth keeps attempted vs reached and submitted vs delivered apart; ONE chronological timeline', async () => {
+    await fc.recordAttempt(desk, t, { channel: 'phone_call', outcome: 'reached', note: 'Spoke to Ava', idempotencyKey: 'att-key-r10-1' });
+    let d = await fc.detail(own, t);
+    expect(d.lastContact).toMatchObject({ attempted: 4, reached: 1, lastAttempt: { channel: 'phone_call', outcome: 'reached', attestation: true }, lastReached: { channel: 'phone_call', attestation: true },
+      texts: { total: 2, submitted: 2, providerAccepted: 0, delivered: 0 }, lastVerified: null });   // a staff call is an attestation; a submitted text is not verified
+    await sql`insert into ai_follow_up_contact_attempts (tenant_id, follow_up_id, channel, actor_user_id, outcome, idempotency_key, created_at) values (${TA}, ${t}, 'sms', ${FD}, 'delivered', 'sms:r10-delivered', now() + interval '1 second')`.execute(db);
+    d = await fc.detail(own, t);
+    expect(d.lastContact.texts).toMatchObject({ total: 3, delivered: 1 });
+    expect(d.lastContact.lastVerified).toMatchObject({ channel: 'sms', outcome: 'delivered' });
+    expect(d.lastContact.reached).toBe(1);   // a delivered text is not "reached"
+    // one merged timeline, oldest first: task events + every attempt, each with its kind
+    const at = d.timeline.map((x: any) => x.at);
+    expect([...at].sort()).toEqual(at);
+    expect(d.timeline.filter((x: any) => x.kind === 'attempt')).toHaveLength(d.attempts.length);
+    expect(d.timeline.some((x: any) => x.kind === 'task' && x.type === 'created')).toBe(true);
+    expect(d.timeline.some((x: any) => x.type === 'contact_attempt' || x.type === 'text_submitted')).toBe(false);   // not double-listed
+    const cb = (await tasksFor('call_fail')).find((x) => x.reason === 'CALLBACK')!;
+    const withCall = await fc.detail(own, cb.id);
+    expect(withCall.timeline.map((x: any) => x.kind)).toEqual(expect.arrayContaining(['call', 'handoff', 'task']));
+    expect(withCall.timeline.filter((x: any) => x.kind === 'handoff').map((x: any) => x.type)).toEqual(expect.arrayContaining(['transfer_failed']));
+  });
 });
 
 describe('overlay, health, assistant, security (T33, T40–T46)', () => {
@@ -404,3 +425,49 @@ describe('stale event reconciler (AI Follow Ups Human Handoff extras #07)', () =
     expect((row2.items ?? []).map((i) => i.providerCallId)).not.toContain('call_orphan');
   });
 });
+
+describe('round 10 (AI Follow Ups 02 / 06): configurable overdue alert, shift handover', () => {
+  const mk = async (key: string, desc: string, assigned: string | null = null) => {
+    const r = await fc.create(desk, { reason: 'CALLBACK', description: desc, customerId: C1, idempotencyKey: key, ...(assigned ? { assignedUserId: assigned } : {}) });
+    return r.id as string;
+  };
+  it('02: the location can turn the overdue manager alert off or give it grace; the job honours it; only a manager changes it (audited)', async () => {
+    expect(await fc.alertSettings(desk)).toMatchObject({ enabled: true, graceMinutes: 0, scope: 'default' });
+    expect(await code(fc.saveAlertSettings(desk, { enabled: false, graceMinutes: 0 }))).toBe('PERMISSION_DENIED');
+    expect(await code(fc.saveAlertSettings(own, { enabled: true, graceMinutes: 5000 }))).toBe('VALIDATION_FAILED');
+    const a = await mk('r10-alert-0001', 'R10 overdue A');
+    await sql`update ai_receptionist_follow_ups set due_at = now() - interval '30 minutes' where id = ${a}`.execute(db);
+    const alerts = async () => N((await q1(sql`select count(*)::int n from owner_alerts where category = 'ai_follow_up' and metadata->>'followUpId' = ${a}`)).n);
+    expect(await fc.saveAlertSettings(own, { enabled: false, graceMinutes: 0 })).toMatchObject({ enabled: false, scope: 'branch' });
+    await escalateOverdueFollowUps(db); expect(await alerts()).toBe(0);   // off at this location
+    await fc.saveAlertSettings(own, { enabled: true, graceMinutes: 60 });
+    await escalateOverdueFollowUps(db); expect(await alerts()).toBe(0);   // 30 min late, 60 min grace
+    await fc.saveAlertSettings(own, { enabled: true, graceMinutes: 15 });
+    await escalateOverdueFollowUps(db); expect(await alerts()).toBe(1);   // past the grace → ONE alert
+    await escalateOverdueFollowUps(db); expect(await alerts()).toBe(1);
+    expect(await fc.alertSettings(desk)).toMatchObject({ enabled: true, graceMinutes: 15, scope: 'branch' });
+    expect(N((await q1(sql`select count(*)::int n from audit_events where action = 'follow_up.alert_settings_changed' and tenant_id = ${TA}`)).n)).toBe(3);
+    const other = { ...own, branchId: BA2 };
+    expect(await fc.alertSettings(other)).toMatchObject({ scope: 'default', enabled: true });   // another location keeps the default
+  });
+  it('06: hand over every open follow-up of mine to one active colleague in this location — one alert, an activity + audit row each; resolved and others\' tasks stay', async () => {
+    const x = await mk('r10-hand-0001', 'R10 handover X', FD), y = await mk('r10-hand-0002', 'R10 handover Y', FD), z = await mk('r10-hand-0003', 'R10 handover Z', MGR);
+    expect(await code(fc.handover(desk, { toUserId: FD, note: 'end of shift' }))).toBe('VALIDATION_FAILED');
+    expect(await code(fc.handover(desk, { toUserId: MGR, note: '' }))).toBe('REASON_REQUIRED');
+    expect(await code(fc.handover(desk, { toUserId: GONE, note: 'end of shift' }))).not.toBe('ok');      // inactive staff
+    expect(await code(fc.handover(desk, { toUserId: OTHERB, note: 'end of shift' }))).not.toBe('ok');    // another location's staff
+    expect(await code(fc.handover(viewer, { toUserId: MGR, note: 'end of shift' }))).toBe('PERMISSION_DENIED');
+    const mineBefore = (await sql`select id from ai_receptionist_follow_ups where tenant_id = ${TA} and assigned_user_id = ${FD} and status = any(${['open', 'assigned', 'in_progress', 'waiting']}::text[])`.execute(db)).rows.map((r: any) => String(r.id));
+    expect(mineBefore).toEqual(expect.arrayContaining([x, y]));
+    const alertsBefore = N((await q1(sql`select count(*)::int n from owner_alerts where category = 'ai_follow_up_assigned' and tenant_id = ${TA}`)).n);
+    const r = await fc.handover(desk, { toUserId: MGR, note: 'Going home — Mark has these' });
+    expect(r.moved).toBe(mineBefore.length); expect(r.followUpIds.sort()).toEqual([...mineBefore].sort());
+    expect(N((await q1(sql`select count(*)::int n from ai_receptionist_follow_ups where id in (${x}, ${y}) and assigned_user_id = ${MGR}`)).n)).toBe(2);
+    expect(N((await q1(sql`select count(*)::int n from owner_alerts where category = 'ai_follow_up_assigned' and tenant_id = ${TA}`)).n)).toBe(alertsBefore + 1);   // ONE alert
+    expect((await q1(sql`select note from ai_follow_up_activity where follow_up_id = ${x} and event_type = 'reassigned' order by created_at desc limit 1`)).note).toBe('Shift handover: Going home — Mark has these');
+    expect(N((await q1(sql`select count(*)::int n from audit_events where resource_id = ${y} and action = 'follow_up.assigned'`)).n)).toBeGreaterThan(0);
+    expect((await q1(sql`select assigned_user_id from ai_receptionist_follow_ups where id = ${z}`)).assigned_user_id).toBe(MGR);   // someone else's task untouched
+    expect((await fc.handover(desk, { toUserId: MGR, note: 'again' })).moved).toBe(0);   // nothing left
+  });
+});
+

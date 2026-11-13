@@ -13,6 +13,7 @@
 //   • Check Follow-Up System (read-only; 8 domains), the Priority & Escalation Assistant (recommendations only), and the
 //     overdue escalation job (one owner alert per task per rule).
 // Nothing here places a call, sends a text without the Copilot confirmation, changes a booking or resolves on its own.
+import type { FollowUpAlertSettings, FollowUpHandoverResult } from '@aipowersalon/api-contracts/tenant';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { utcDate } from '@aipowersalon/date-time';
 import { randomUUID } from 'node:crypto';
@@ -37,6 +38,9 @@ export const FU_ATTEMPT_CHANNELS = ['phone_call', 'in_person', 'email'] as const
 export const FU_ATTEMPT_OUTCOMES = ['reached', 'no_answer', 'voicemail', 'wrong_number', 'requested_later', 'resolved', 'escalated'] as const;
 export const FU_PERIODS = ['all', 'today', 'week', 'month', 'year', 'custom'] as const;
 const ACTIVE = ['open', 'assigned', 'in_progress', 'waiting'];
+/** round 10 (AI Follow Ups 02): the per-location overdue-alert setting (tenant_settings category) and its bounds */
+export const FU_ALERT_CATEGORY = 'ai-follow-up-alerts';
+export const FU_ALERT_MAX_GRACE = 1440;
 const ASSIGNABLE_ROLES = ['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION'];
 /** the task columns every read uses (no whole-row reads) */
 /** The overdue alert key: one alert per due time and per reopening. A task whose due time is moved, or that is reopened, and then
@@ -282,6 +286,65 @@ export class AiFollowUpCenter {
           and callback_required and follow_up_id is null returning id`.execute(trx)).rows.length : 0;
       await this.audit(ctx, trx, 'follow_up.created', ins.id, `Follow-up created (${b.reason})`, { after: { status, priority, reason: b.reason }, ...(linked ? { linkedHandoffEvents: linked } : {}) });
       return { id: String(ins.id), duplicate: false, linkedHandoffEvents: linked };
+    });
+  }
+
+  // ── round 10 (AI Follow Ups 02): configurable manager alert for overdue callbacks ───────────────────────────────
+  // One setting per location (falls back to the salon-wide row, then the product default: on, alert at the due time). The
+  // 5-minute escalation job reads it: no alert while the grace has not passed; none at all where the salon turned it off.
+  // The SLA itself is never invented — the due time is the task's own promised callback time.
+  async alertSettings(ctx: FuCtx): Promise<FollowUpAlertSettings> {
+    this.needView(ctx);
+    const b = this.branch(ctx);
+    const r: Row | undefined = (await sql<Row>`select branch_id, settings_json, updated_at from tenant_settings where tenant_id = ${ctx.tenantId} and category = ${FU_ALERT_CATEGORY}
+        and (branch_id is null ${b ? sql`or branch_id = ${b}` : sql``}) order by branch_id nulls last limit 1`.execute(this.db)).rows[0];
+    const j: Row = r?.settings_json && typeof r.settings_json === 'object' ? r.settings_json : {};
+    return { enabled: j.enabled !== false, graceMinutes: Math.max(0, Math.min(FU_ALERT_MAX_GRACE, Math.trunc(Number(j.graceMinutes ?? 0)) || 0)),
+      scope: !r ? 'default' : r.branch_id ? 'branch' : 'tenant', updatedAt: iso(r?.updated_at ?? null) };
+  }
+  async saveAlertSettings(ctx: FuCtx, body: { enabled?: unknown; graceMinutes?: unknown }): Promise<FollowUpAlertSettings> {
+    this.needManager(ctx);
+    const b = this.branch(ctx);
+    if (!b) throw fail('Choose a location first — the alert is set per location.', 'BRANCH_REQUIRED', 400);
+    const grace = Number(body.graceMinutes ?? 0);
+    if (!Number.isInteger(grace) || grace < 0 || grace > FU_ALERT_MAX_GRACE) throw fail(`Enter whole minutes from 0 to ${FU_ALERT_MAX_GRACE}.`, 'VALIDATION_FAILED', 400, { field: 'graceMinutes' });
+    const enabled = body.enabled !== false;
+    const before = await this.alertSettings(ctx);
+    await this.db.transaction().execute(async (trx) => {
+      await sql`insert into tenant_settings (tenant_id, branch_id, category, settings_json, updated_by_user_id, updated_at) values (${ctx.tenantId}, ${b}, ${FU_ALERT_CATEGORY}, ${JSON.stringify({ enabled, graceMinutes: grace })}::jsonb, ${ctx.userId}, now())
+        on conflict (tenant_id, branch_id, category) do update set settings_json = excluded.settings_json, updated_by_user_id = excluded.updated_by_user_id, updated_at = now()`.execute(trx);
+      await this.audit(ctx, trx, 'follow_up.alert_settings_changed', null, 'Overdue follow-up alert changed', { before: { enabled: before.enabled, graceMinutes: before.graceMinutes }, after: { enabled, graceMinutes: grace } });
+    });
+    return this.alertSettings(ctx);
+  }
+
+  // ── round 10 (AI Follow Ups 06): shift handover — every open task of mine to one colleague, in one step ─────────────
+  // The SAME rules as a single reassignment (only active staff of this location; every task row-locked; an activity row with
+  // the handover note and an audit row per task) — ONE in-app alert to the new owner (not one per task). Nothing is sent outside.
+  async handover(ctx: FuCtx, body: { toUserId?: string | null; note?: string | null }): Promise<FollowUpHandoverResult> {
+    this.needWork(ctx);
+    const to = String(body.toUserId ?? '');
+    if (!UUIDRE.test(to)) throw fail('Choose who takes over your follow-ups.', 'VALIDATION_FAILED', 400, { field: 'toUserId' });
+    if (to === ctx.userId) throw fail('Choose someone else to take over your follow-ups.', 'VALIDATION_FAILED', 400, { field: 'toUserId' });
+    const note = String(body.note ?? '').trim().slice(0, 500);
+    if (note.length < 3) throw fail('Write a short handover note.', 'REASON_REQUIRED', 400, { field: 'note' });
+    return this.db.transaction().execute(async (trx) => {
+      await this.assertAssignable(ctx, trx, to);
+      const mine: Row[] = (await sql<Row>`select ${FU_COLS} from ai_receptionist_follow_ups f where f.tenant_id = ${ctx.tenantId} and ${this.branchScope(ctx)}
+          and f.assigned_user_id = ${ctx.userId} and f.status = any(${ACTIVE}::text[]) order by f.due_at nulls last, f.created_at for update`.execute(trx)).rows;
+      for (const cur of mine) {
+        await sql`update ai_receptionist_follow_ups set assigned_user_id = ${to}, assigned_at = now(), version = version + 1, updated_at = now(), updated_by = ${ctx.userId}
+          where id = ${cur.id} and tenant_id = ${ctx.tenantId}`.execute(trx);
+        await this.activity(trx, ctx, ctx.tenantId, String(cur.id), 'reassigned', ctx.userId, to, `Shift handover: ${note}`, { handover: true });
+        await this.audit(ctx, trx, 'follow_up.assigned', String(cur.id), 'Follow-up handed over at shift change', { before: { assignedUserId: ctx.userId, status: cur.status }, after: { assignedUserId: to, status: cur.status }, metadata: { handover: true } });
+      }
+      if (mine.length) {
+        const who: Row | undefined = (await sql<Row>`select full_name from users where id = ${to} and tenant_id = ${ctx.tenantId}`.execute(trx)).rows[0];
+        await sql`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+          values (${ctx.tenantId}, ${this.branch(ctx)}, 'ai_follow_up_assigned', 'info', 'new', ${`${mine.length} follow-up(s) handed over to ${who?.full_name ?? 'a staff member'}`}, ${note},
+            ${JSON.stringify({ handover: true, followUpIds: mine.map((m) => String(m.id)).slice(0, 200), assignedUserId: to, fromUserId: ctx.userId })}::jsonb, 'all')`.execute(trx);
+      }
+      return { moved: mine.length, toUserId: to, followUpIds: mine.map((m) => String(m.id)) };
     });
   }
 
@@ -554,7 +617,37 @@ export class AiFollowUpCenter {
       if (String(a.n_provider_id ?? '').startsWith('SM-MOCK-')) return 'submitted';
       return ['queued', 'accepted', 'sending', 'sent'].includes(ps) ? 'provider_accepted' : a.outcome;
     };
+    const attemptsOut = attempts.map((a) => ({ id: a.id, channel: a.channel, outcome: smsState(a), recordedBy: a.actor_name ?? null, recipient: a.recipient_ref ?? null, note: a.note ?? null,
+      nextAttemptAt: iso(a.next_attempt_at), at: iso(a.created_at), attestation: a.channel !== 'sms' }));
+    // round 10 (AI Follow Ups 04) — Last-Contact Truth: attempted vs actually reached, provider accepted vs delivered, and the
+    // last VERIFIED outcome — all from the recorded attempts (newest first). A staff call / note is an attestation; only a text
+    // whose provider reported delivered / failed is verified by the system. Nothing is inferred.
+    const REACHED = ['reached', 'resolved'];
+    const lastAttempt = attemptsOut[0] ?? null;
+    const lastReached = attemptsOut.find((a) => REACHED.includes(String(a.outcome))) ?? null;
+    const texts = attemptsOut.filter((a) => a.channel === 'sms');
+    const lastVerified = attemptsOut.find((a) => !a.attestation && ['delivered', 'failed'].includes(String(a.outcome))) ?? null;
+    const lastContact = {
+      attempted: attemptsOut.length, reached: attemptsOut.filter((a) => REACHED.includes(String(a.outcome))).length,
+      lastAttempt: lastAttempt ? { at: lastAttempt.at, channel: lastAttempt.channel, outcome: lastAttempt.outcome, attestation: lastAttempt.attestation } : null,
+      lastReached: lastReached ? { at: lastReached.at, channel: lastReached.channel, attestation: lastReached.attestation } : null,
+      texts: { total: texts.length, submitted: texts.filter((a) => a.outcome === 'submitted').length, providerAccepted: texts.filter((a) => a.outcome === 'provider_accepted').length, delivered: texts.filter((a) => a.outcome === 'delivered').length,
+        failed: texts.filter((a) => a.outcome === 'failed' || a.outcome === 'blocked').length, unknown: texts.filter((a) => a.outcome === 'unknown').length },
+      lastVerified: lastVerified ? { at: lastVerified.at, channel: lastVerified.channel, outcome: lastVerified.outcome } : null,
+    };
+    // round 10 (AI Follow Ups 09) — Readable Call Timeline: ONE chronological list (oldest first) of what actually happened —
+    // the AI call (start / end), transfers and hand-offs, the task's own events (created, assigned, notified, alerts, status,
+    // notes), contact attempts with their verified state, and the linked booking. Each row names its kind; nothing is invented.
+    const timeline: Array<{ at: string; kind: 'call' | 'handoff' | 'task' | 'attempt' | 'booking'; type: string; detail: string | null; actor: string | null }> = [];
+    const tpush = (at: string | null, kind: (typeof timeline)[number]['kind'], type: string, detail: string | null, actor: string | null) => { if (at) timeline.push({ at, kind, type, detail, actor }); };
+    if (call) { tpush(iso(call.started_at), 'call', 'call_started', null, null); tpush(iso(call.ended_at), 'call', 'call_ended', call.disconnection_reason ?? null, null); }
+    for (const h of handoffs) tpush(iso(h.created_at), 'handoff', String(h.kind), h.reason ?? null, null);
+    for (const a of activity) if (a.event_type !== 'contact_attempt' && a.event_type !== 'text_submitted') tpush(iso(a.created_at), 'task', String(a.event_type), a.to_value ?? null, a.actor_name ?? (a.event_type === 'created' ? 'AI receptionist' : null));
+    for (const a of attemptsOut) tpush(a.at, 'attempt', String(a.channel), String(a.outcome), a.recordedBy);
+    if (linkedAppt) tpush(iso((await sql<Row>`select created_at from pos_tech_appointments where id = ${linkedAppt.id} and tenant_id = ${T}`.execute(this.db)).rows[0]?.created_at ?? null), 'booking', 'appointment_linked', String(linkedAppt.status), null);
+    timeline.sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
     return {
+      lastContact, timeline,
       overview: { ...this.rowOut({ ...f, assignee_name: f.assignee_name, c_phone: phone }), resolution: f.resolution ?? null, resolutionCategory: f.resolution_category ?? null, notes: f.notes ?? null,
         createdBy: f.created_by_user_id ? (f.creator_name ?? 'Staff') : 'AI receptionist', branchId: f.branch_id ?? null, dueTimeZone: f.due_tz ?? null, reopenedCount: n(f.reopened_count), waitingUntil: iso(f.waiting_until) },
       customer: c ? { id: c.id, name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' '), phone: phone ? (fullContact ? phone : maskPhone(String(phone))) : null, email: c.email ? (fullContact ? c.email : String(c.email).replace(/^(.).*(@.*)$/, '$1•••$2')) : null,
@@ -563,8 +656,7 @@ export class AiFollowUpCenter {
       call: call ? { providerCallId: call.provider_call_id, agent: call.agent_ref ?? null, startedAt: iso(call.started_at), endedAt: iso(call.ended_at), durationSeconds: call.duration_seconds ?? null,
         transfer: call.handoff_outcome === 'transferred' ? 'completed' : handoffs.some((h) => h.kind === 'transfer_failed') ? 'failed' : 'none_reported', disconnection: call.disconnection_reason ?? null,
         error: call.error_category ?? null, summary: call.summary ?? null, sentiment: call.sentiment ?? null, handoffs: handoffs.map((h) => ({ kind: h.kind, source: h.source, callbackRequired: !!h.callback_required, reason: h.reason, at: iso(h.created_at) })) } : null,
-      attempts: attempts.map((a) => ({ id: a.id, channel: a.channel, outcome: smsState(a), recordedBy: a.actor_name ?? null, recipient: a.recipient_ref ?? null, note: a.note ?? null,
-        nextAttemptAt: iso(a.next_attempt_at), at: iso(a.created_at), attestation: a.channel !== 'sms' })),
+      attempts: attemptsOut,
       recentContacts: recentContacts.map((r) => ({ source: String(r.source) as 'ai_follow_up' | 'end_of_day', at: iso(r.at), channel: String(r.channel), outcome: r.outcome ?? null, by: r.by_name ?? null, ref: String(r.ref) })),
       booking: { linked: linkedAppt ? { id: linkedAppt.id, date: linkedAppt.d, start: linkedAppt.start_time, status: linkedAppt.status, source: linkedAppt.source } : null, upcoming: upcoming.length },
       activity: activity.map((a) => ({ type: a.event_type, from: a.from_value, to: a.to_value, note: a.note, actor: a.actor_name ?? (a.event_type === 'created' && !a.actor_name ? 'AI receptionist' : null), at: iso(a.created_at) })),
@@ -715,8 +807,13 @@ export class AiFollowUpCenter {
 
 /** overdue escalation: one owner alert per overdue period of a task; urgent overdue → high severity. Idempotent. */
 export async function escalateOverdueFollowUps(db: Kysely<any>, now = new Date()): Promise<{ escalated: number }> {
+  // round 10 (AI Follow Ups 02): the location's alert setting (its own row, else the salon's, else on with no grace)
   const rows: Row[] = (await sql<Row>`select f.id, f.tenant_id, f.branch_id, f.priority, f.reason, ${OVERDUE_RULE} as rule from ai_receptionist_follow_ups f
-    where f.status = any(${ACTIVE}::text[]) and f.due_at < ${now.toISOString()}
+    left join lateral (select ts.settings_json from tenant_settings ts where ts.tenant_id = f.tenant_id and ts.category = ${FU_ALERT_CATEGORY}
+        and (ts.branch_id is null or ts.branch_id = f.branch_id) order by ts.branch_id nulls last limit 1) cfg on true
+    where f.status = any(${ACTIVE}::text[])
+      and coalesce((cfg.settings_json->>'enabled')::boolean, true)
+      and f.due_at + make_interval(mins => least(greatest(coalesce((cfg.settings_json->>'graceMinutes')::int, 0), 0), ${FU_ALERT_MAX_GRACE})) < ${now.toISOString()}
       and not exists (select 1 from ai_follow_up_escalations e where e.tenant_id = f.tenant_id and e.follow_up_id = f.id and e.rule = ${OVERDUE_RULE}) limit 500`.execute(db)).rows;
   let escalated = 0;
   for (const r of rows) {

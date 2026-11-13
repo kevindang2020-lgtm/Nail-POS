@@ -2,7 +2,7 @@
 // come from the session only. NOT gated on the AI package: existing and manual follow-ups must stay workable when the AI
 // receptionist subscription lapses (guide T40/T41) — new AI-generated tasks stop at the source because the paid voice side
 // stops. Writes need ai.use + communications.manage (Front Desk holds both); overrides need ai.manage.
-import type { FollowUpImportResult, FollowUpRecommendedAssignee, FollowUpHealthHistory } from '@aipowersalon/api-contracts/tenant';
+import type { FollowUpImportResult, FollowUpRecommendedAssignee, FollowUpHealthHistory, FollowUpAlertSettings, FollowUpHandoverResult } from '@aipowersalon/api-contracts/tenant';
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
@@ -31,6 +31,10 @@ export const FU_ATTEMPT_BODY: BodySchema = S.object({
 export const FU_TEXT_PREPARE_BODY: BodySchema = S.object({ body: S.text(640), overrideReason: S.nullable(S.text(300)) }, ['body']);
 export const FU_TEXT_CONFIRM_BODY: BodySchema = S.object({ body: S.text(640), token: S.text(2000), idempotencyKey: S.text(120), overrideReason: S.nullable(S.text(300)) }, ['body', 'token', 'idempotencyKey']);
 export const FU_DECIDE_BODY: BodySchema = S.object({ taskId: S.text(64), signal: S.text(40), decision: S.enumOf(['accept', 'dismiss', 'escalate']), note: S.nullable(S.text(300)), version: S.nullable(S.integer({ minimum: 1, maximum: 1_000_000 })) }, ['taskId', 'signal', 'decision']);
+
+/** round 10 (AI Follow Ups 02 / 06) */
+export const FU_ALERT_SETTINGS_BODY: BodySchema = S.object({ enabled: S.boolean(), graceMinutes: S.integer({ minimum: 0, maximum: 1440 }) }, ['enabled', 'graceMinutes']);
+export const FU_HANDOVER_BODY: BodySchema = S.object({ toUserId: S.text(64), note: S.text(500) }, ['toUserId', 'note']);
 
 const LIST = {
   filters: {
@@ -115,6 +119,15 @@ export class AiFollowUpCenterController {
   /** A13 Nov 6: every recorded Check Follow-Up System run, newest first */
   @Get('health/history') @RequirePermission('ai.use') @ListQuery(HEALTH_HISTORY_LIST)
   healthHistory(@Req() q: any, @Query() p: any): Promise<FollowUpHealthHistory> { return run(() => this.c().healthHistory(ctxFrom(q), { page: p?.page, pageSize: p?.pageSize })); }
+
+  /** round 10 (AI Follow Ups 02): this location's overdue-callback manager alert (read: ai.use; change: ai.manage, audited) */
+  @Get('alert-settings') @RequirePermission('ai.use')
+  alertSettings(@Req() q: any): Promise<FollowUpAlertSettings> { return run(() => this.c().alertSettings(ctxFrom(q))); }
+  @Post('alert-settings') @RequirePermission('ai.manage')
+  saveAlertSettings(@Req() q: any, @Body(ValidatedBody(FU_ALERT_SETTINGS_BODY, { strict: true })) b: any): Promise<FollowUpAlertSettings> { return run(() => this.c().saveAlertSettings(ctxFrom(q), b)); }
+  /** round 10 (AI Follow Ups 06): hand every open follow-up of mine to one colleague at shift change (one alert to them) */
+  @Post('tasks/handover') @RequirePermission('ai.use')
+  handover(@Req() q: any, @Body(ValidatedBody(FU_HANDOVER_BODY, { strict: true })) b: any): Promise<FollowUpHandoverResult> { return run(() => this.c().handover(ctxFrom(q), b)); }
 
   @Get('priorities') @RequirePermission('ai.use')
   priorities(@Req() q: any) { return run(() => this.c().priorities(ctxFrom(q))); }

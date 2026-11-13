@@ -22,9 +22,13 @@ const detail = vi.fn((_id: string) => Promise.resolve({ overview: { ...row, reso
 const priorities = vi.fn(() => Promise.resolve({ items: [] as any[], asOf: undefined as string | undefined, bookingsAwaitingVerification: 0, note: '' }));
 const importSources = vi.fn(() => Promise.resolve({ createdFromMissedCalls: 2, createdFromCopilot: 1 }));
 const healthHistory = vi.fn(() => Promise.resolve({ items: [{ overall: 'WARNING', at: '2026-11-06T15:00:00Z', by: 'Olivia Owner', failed: 1 }], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 }));
+const handover = vi.fn((_b: any) => Promise.resolve({ moved: 2, toUserId: 'u9', followUpIds: ['a', 'b'] }));
+const alertSettings = vi.fn(() => Promise.resolve({ enabled: true, graceMinutes: 0, scope: 'default', updatedAt: null }));
+const saveAlertSettings = vi.fn((b: any) => Promise.resolve({ ...b, scope: 'branch', updatedAt: '2026-11-13T12:00:00Z' }));
 vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: {
+  handover: (b: any) => handover(b), alertSettings: () => alertSettings(), saveAlertSettings: (b: any) => saveAlertSettings(b),
   importSources: () => importSources(), healthHistory: () => healthHistory(), recommendedAssignee: () => Promise.resolve({ userId: 'u9', name: 'Fran Desk', role: 'FRONT_DESK', openTasks: 0, reason: 'x' }),
-  list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [] }), priorities: () => priorities(),
+  list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [{ id: 'u9', name: 'Fran Desk', role: 'FRONT_DESK' }] }), priorities: () => priorities(),
   create: (b: any) => create(b), detail: (id: string) => detail(id), prepareText: (id: string, b: any) => prepareText(id, b), confirmText: (...a: any[]) => confirmText(...a),
   edit: (id: string, b: any) => edit(id, b), health: () => healthRun(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
 } }));
@@ -81,6 +85,46 @@ describe('POSAIFollowUpsScreen', () => {
     fireEvent.click(screen.getByTestId('aifu-tx-prepare'));
     await waitFor(() => expect(screen.getByTestId('aifu-tx-preview')).toBeInTheDocument());
     expect(confirmText).not.toHaveBeenCalled();
+  });
+  it('round 10 (AI Follow Ups 04/09): Last-Contact Truth keeps reached / delivered apart; the Timeline tab lists everything in order', async () => {
+    detail.mockImplementationOnce(() => Promise.resolve({ overview: { ...row, resolution: null, resolutionCategory: null, notes: null, createdBy: 'AI receptionist', branchId: null, dueTimeZone: null, reopenedCount: 0, waitingUntil: null },
+      customer: { id: null, name: null, phone: '•••0000', unmatched: true, match: 'unmatched', smsOptedOut: false, sharedPhoneProfiles: 0 }, call: null, attempts: [], booking: { linked: null, upcoming: 0 }, activity: [],
+      permissions: { canWork: true, canManage: false, canText: true, canBook: true },
+      lastContact: { attempted: 3, reached: 0, lastAttempt: { at: '2026-11-12T15:00:00Z', channel: 'sms', outcome: 'submitted', attestation: false }, lastReached: null,
+        texts: { total: 2, submitted: 1, providerAccepted: 0, delivered: 1, failed: 0, unknown: 0 }, lastVerified: { at: '2026-11-12T14:00:00Z', channel: 'sms', outcome: 'delivered' } },
+      timeline: [{ at: '2026-11-12T13:00:00Z', kind: 'call', type: 'call_started', detail: null, actor: null }, { at: '2026-11-12T13:02:00Z', kind: 'handoff', type: 'transfer_failed', detail: null, actor: null },
+        { at: '2026-11-12T13:03:00Z', kind: 'task', type: 'created', detail: null, actor: 'AI receptionist' }, { at: '2026-11-12T14:00:00Z', kind: 'attempt', type: 'sms', detail: 'delivered', actor: 'Fiona Desk' }] } as any));
+    mount();
+    await waitFor(() => expect(screen.getAllByTestId('aifu-row')).toHaveLength(1));
+    fireEvent.click(screen.getAllByTestId('aifu-row')[0]);
+    await waitFor(() => expect(screen.getByTestId('aifu-d-close')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('aifu-tab-attempts'));
+    expect(screen.getByTestId('aifu-lc-counts')).toHaveTextContent('3 attempts · 0 actually reached');
+    expect(screen.getByTestId('aifu-lc-texts')).toHaveTextContent('1 submitted (not confirmed) · 0 accepted by the provider · 1 delivered');
+    expect(screen.getByTestId('aifu-lc-verified')).toHaveTextContent('Delivered');
+    fireEvent.click(screen.getByTestId('aifu-tab-timeline'));
+    const rows = screen.getAllByTestId('aifu-tl-row');
+    expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining('Call started'), expect.stringContaining('Transfer failed'), expect.stringContaining('Created'), expect.stringContaining('Delivered')]);
+  });
+  it('round 10 (AI Follow Ups 06 / 02): shift handover needs a colleague and a note; the overdue alert setting saves on/off + grace', async () => {
+    mount();
+    fireEvent.click(await screen.findByTestId('aifu-handover'));
+    expect(screen.getByTestId('aifu-ho-go')).toBeDisabled();
+    await waitFor(() => expect(screen.getByTestId('aifu-ho-to').querySelectorAll('option').length).toBe(2));
+    fireEvent.change(screen.getByTestId('aifu-ho-to'), { target: { value: 'u9' } });
+    expect(screen.getByTestId('aifu-ho-go')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('aifu-ho-note'), { target: { value: 'Going home' } });
+    fireEvent.click(screen.getByTestId('aifu-ho-go'));
+    await waitFor(() => expect(handover).toHaveBeenCalledWith({ toUserId: 'u9', note: 'Going home' }));
+    expect(await screen.findByText('2 follow-up(s) handed over.')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('aifu-alerts'));
+    expect(await screen.findByTestId('aifu-al-scope')).toHaveTextContent('Using the default');
+    fireEvent.change(screen.getByTestId('aifu-al-grace'), { target: { value: '30' } });
+    fireEvent.click(screen.getByTestId('aifu-al-save'));
+    await waitFor(() => expect(saveAlertSettings).toHaveBeenCalledWith({ enabled: true, graceMinutes: 30 }));
+    expect(await screen.findByTestId('aifu-al-scope')).toHaveTextContent('Set for this location.');
+    fireEvent.click(screen.getByTestId('aifu-al-on'));
+    expect(screen.getByTestId('aifu-al-grace')).toBeDisabled();
   });
   it('Edit details sends only the changed fields with the row version', async () => {
     mount();
