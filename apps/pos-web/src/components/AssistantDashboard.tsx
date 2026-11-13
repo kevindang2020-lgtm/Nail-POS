@@ -19,6 +19,22 @@ const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAIL
 function toErr(e: unknown, custom?: (e: unknown) => string | null): string {
   return custom?.(e) ?? (isForbidden(e) ? t('asx.forbidden') : errorTextOf(e, t('asx.loadFailed')));
 }
+/** a dropped connection (no status) or a server error (5xx) is worth another try; a 4xx answer is final */
+export function isTransient(e: unknown): boolean {
+  const st = (e as { status?: unknown } | null)?.status;
+  return st == null || (typeof st === 'number' && st >= 500);
+}
+export const AS_RETRY_DELAYS_MS = [800, 2000];
+/** run fn; on a transient failure wait and try again, at most AS_RETRY_DELAYS_MS.length more times, then give up with the last error */
+export async function withRetry<T>(fn: () => Promise<T>, delays: readonly number[] = AS_RETRY_DELAYS_MS): Promise<T> {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) {
+      if (i >= delays.length || !isTransient(e)) throw e;
+      await new Promise((r) => setTimeout(r, delays[i]));
+    }
+  }
+}
 const DEFAULT_PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_month', 'year'];
 
 export type AsKpi = { key: string; label: string; value: (s: any) => string; tone?: (s: any) => 'warn' | 'bad' | 'gold' | undefined; hint?: string };
@@ -66,9 +82,13 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
   const custom = useRef(p.errText); custom.current = p.errText;
   const errText = (e: unknown) => toErr(e, custom.current);
   const { summary, list: fetchList } = p;
-  const loadSum = useCallback(() => { setSumErr(null); summary().then(setSum).catch((e) => setSumErr(toErr(e, custom.current))); }, [summary]);
+  // Customer Profile Assistant 05 (slow network): a dropped connection or a 5xx is retried a bounded number of times with a
+  // growing pause before the error + Retry shows; a 4xx (permission, validation) is never retried. The cards keep their
+  // skeletons meanwhile, and the summary and the list fail independently (one never hides the other). A newer load wins.
+  const sumSeq = useRef(0); const listSeq = useRef(0);
+  const loadSum = useCallback(() => { const n = ++sumSeq.current; setSumErr(null); withRetry(summary).then((v) => { if (n === sumSeq.current) setSum(v); }).catch((e) => { if (n === sumSeq.current) setSumErr(toErr(e, custom.current)); }); }, [summary]);
   useEffect(() => { loadSum(); }, [loadSum, tick]);
-  const load = useCallback(() => { setErr(null); fetchList({ ...f, ...period }).then(setList).catch((e) => setErr(toErr(e, custom.current))); }, [f, period, fetchList]);
+  const load = useCallback(() => { const n = ++listSeq.current; setErr(null); withRetry(() => fetchList({ ...f, ...period })).then((v) => { if (n === listSeq.current) setList(v); }).catch((e) => { if (n === listSeq.current) setErr(toErr(e, custom.current)); }); }, [f, period, fetchList]);
   useEffect(() => { load(); }, [load, tick]);
   const set = (x: Record<string, any>, keepPage = false) => setF((y) => ({ ...y, ...x, page: keepPage ? (x.page ?? y.page) : 1 }));
   const setPer = (x: { preset?: string; from?: string; to?: string }) => { setPeriod(x); setF((y) => ({ ...y, page: 1 })); };

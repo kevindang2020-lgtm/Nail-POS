@@ -50,14 +50,16 @@ describe('AI Review / Reputation Assistant', () => {
     fireEvent.click(screen.getByTestId('as-clear'));
     await waitFor(() => expect(rp.reviews).toHaveBeenLastCalledWith(expect.objectContaining({ response: '', rating: '', q: undefined })));
   });
-  it('RA-03 empty says why; a failed read is an error, not "no reviews"', async () => {
+  it('RA-03 empty says why; a failed read is an error, not "no reviews"', { timeout: 15000 }, async () => {
     rp.reviews.mockResolvedValueOnce(page([]));
     const { unmount } = wrap();
     expect(await screen.findByText(/No reviews are on record yet/)).toBeInTheDocument();
     unmount();
-    rp.reviews.mockRejectedValue({ status: 500 });
+    rp.reviews.mockReset(); rp.reviews.mockRejectedValue({ status: 500 });
     wrap();
-    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
+    // Customer Profile Assistant 05: a 5xx is retried twice (bounded) before the error shows
+    expect((await screen.findAllByRole('alert', {}, { timeout: 6000 })).length).toBeGreaterThan(0);
+    expect(rp.reviews).toHaveBeenCalledTimes(3);
     expect(screen.queryByText(/No reviews are on record yet/)).toBeNull();
   });
   it('RA-04 Check AI Review System renders the module\'s localized checks; a refused check is an error, never a pass', async () => {
