@@ -292,4 +292,13 @@ export const CAMPAIGNS_EN = {
   "cc.h.sys.content": "Message content",
   "cc.h.sys.consent": "Audience consent",
   "cc.h.sys.costs": "Cost vs budget",
+  "cc.attr.exposure": "Exposure",
+  "cc.attr.exposureVal": "{d} delivered of {s} sent",
+  "cc.attr.exposureHint": "People the message reached. Reaching someone is not a result.",
+  "cc.attr.associated": "Associated booking",
+  "cc.attr.associatedVal": "{n} bookings after the campaign",
+  "cc.attr.associatedHint": "Booked after the message. The timing matches; it does not prove the message caused it.",
+  "cc.attr.validated": "Validated outcome",
+  "cc.attr.validatedVal": "{n} campaign codes redeemed · {a} on paid tickets",
+  "cc.attr.validatedHint": "A paid visit used a code issued for this campaign. Linked to the campaign, not proof the visit was extra.",
 };

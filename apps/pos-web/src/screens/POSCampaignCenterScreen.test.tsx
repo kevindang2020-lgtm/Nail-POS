@@ -132,4 +132,15 @@ describe('Campaign Center', () => {
     expect(b).toHaveTextContent('1 repeated booking record(s) for an appointment already counted were ignored');
     expect(b).toHaveTextContent('Counted bookings made');
   });
+  it('extras Marketing 11: the overview keeps exposure, associated booking and validated outcome apart, each with what it does and does not prove', async () => {
+    api.detail.mockResolvedValue({ ...spring, counts: { ...spring.counts, attribution: { exposure: { delivered: 6, submitted: 8 }, associated: { bookings: 3 }, validated: { redemptions: 2, revenueCents: 9000 } } },
+      exclusionReasons: [], sendTimeReasons: [], providerErrors: [], readiness: null, definitions: {} });
+    mount();
+    fireEvent.click(await screen.findByTestId('cc-row-c1'));
+    expect(await screen.findByTestId('cc-attr-exposure')).toHaveTextContent('Exposure6 delivered of 8 sent');
+    expect(screen.getByTestId('cc-attr-associated')).toHaveTextContent('3 bookings after the campaign');
+    expect(screen.getByTestId('cc-attr-associated')).toHaveTextContent('does not prove the message caused it');
+    expect(screen.getByTestId('cc-attr-validated')).toHaveTextContent('2 campaign codes redeemed · $90.00 on paid tickets');
+    expect(screen.getByTestId('cc-attr-validated')).toHaveTextContent('not proof the visit was extra');
+  });
 });

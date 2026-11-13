@@ -239,6 +239,9 @@ describe('Campaign Results 17 — comparison ratios come from the server', () =>
     expect(countsOf({ ...snap, submitted: 3, delivered: 1, costed: 3, cost_micros: 0, booked: 0 })).toMatchObject({ deliveryRatePercent: 33.3, costPerBookingCents: null });
     expect(countsOf({ ...snap, submitted: 4, delivered: 4, costed: 2, cost_micros: 20_000, booked: 2 })).toMatchObject({ actualCostCents: null, costPerBookingCents: null });   // cost not reported for every message
     expect(countsOf({ ...snap, submitted: 0 })).toMatchObject({ deliveryRatePercent: null, costPerBookingCents: null });
+    // extras Marketing 11: exposure / associated booking / validated (code redeemed on a paid ticket) are kept apart
+    expect(countsOf({ ...snap, submitted: 8, delivered: 6, booked: 3, redemptions: 2, revenue_cents: 9000 }).attribution)
+      .toEqual({ exposure: { delivered: 6, submitted: 8 }, associated: { bookings: 3 }, validated: { redemptions: 2, revenueCents: 9000 } });
   });
 });
 

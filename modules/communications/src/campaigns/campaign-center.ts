@@ -143,6 +143,12 @@ export interface CampaignCounts {
   deliveryRatePercent: number | null; costPerBookingCents: number | null;
   /** AI Marketing Assistant 05 — repeated conversion events for an appointment already counted, and the span of the counted bookings */
   bookedDuplicatesIgnored: number; firstBookedAt: string | null; lastBookedAt: string | null;
+  /** extras Marketing 11 — Journey Attribution Labels: the three levels kept apart, each from its own source.
+   *  exposure   — messages that reached people (delivered by the provider's report; submitted is the upper bound)
+   *  associated — bookings recorded after the campaign (ai_booking_conversion_events) — a timing association, not proof
+   *  validated  — paid tickets that redeemed a code issued for THIS campaign — a proven link to the campaign (still not proof
+   *               the visit would not have happened anyway: never called incremental). */
+  attribution: { exposure: { delivered: number; submitted: number }; associated: { bookings: number }; validated: { redemptions: number; revenueCents: number } };
 }
 /** provider error codes that mean the destination number itself is bad (invalid, not a mobile, unknown / unreachable
  *  handset, landline) — a contact problem to fix on the customer profile, not a delivery outage */
@@ -167,6 +173,7 @@ export function countsOf(r: any): CampaignCounts {
     deliveryRatePercent: submitted > 0 ? Math.round((delivered / submitted) * 1000) / 10 : null,
     costPerBookingCents: actualCostCents != null && N(r.booked) > 0 ? Math.round(actualCostCents / N(r.booked)) : null,
     bookedDuplicatesIgnored: N(r.booked_dupes), firstBookedAt: iso(r.booked_first ?? null), lastBookedAt: iso(r.booked_last ?? null),
+    attribution: { exposure: { delivered, submitted }, associated: { bookings: N(r.booked) }, validated: { redemptions: N(r.redemptions), revenueCents: revenue } },
   };
 }
 
