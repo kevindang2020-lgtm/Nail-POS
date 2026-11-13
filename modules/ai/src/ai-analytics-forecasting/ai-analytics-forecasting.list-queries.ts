@@ -8,7 +8,7 @@ export const AiAnalyticsForecastingControllerListQueries = {
   businessAnomalies: { search: false, dateRange: { maxDays: 'analytics', days: ['windowDays'] } },
   productForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
   noShowRisk: { search: false, dateRange: { maxDays: 'analytics', days: ['days'] } },
-  appointmentForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
+  appointmentForecast: { filters: { horizonDays: { type: 'number' }, scenarioDemandPct: { type: 'int', min: -50, max: 100 }, scenarioExtraMinutes: { type: 'int', min: 0, max: 960 } }, search: false },   // extras 07: what-if sandbox
   revenueForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
   serviceDemandForecast: { filters: { horizonDays: { type: 'number' } }, search: false },
   accuracy: { filters: { domain: { type: 'text' } }, search: false },

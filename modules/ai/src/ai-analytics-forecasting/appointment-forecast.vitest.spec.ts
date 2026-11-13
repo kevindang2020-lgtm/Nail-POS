@@ -61,3 +61,52 @@ describe('tenant isolation', () => {
     expect(f.horizon.every((h) => h.point < 500)).toBe(true);
   });
 });
+
+// extras (AI Analytics Forecasting 07): the what-if sandbox over the capacity gap
+import { capacityGap, capacityScenario, parseCapacityScenario, CAPACITY_SCENARIO_VERSION } from './appointment-forecast.service';
+import { AiAnalyticsForecastingController } from './ai-analytics-forecasting.controller';
+describe('Non-mutating Scenario (what-if sandbox)', () => {
+  const horizon = [{ date: '2026-03-02', point: 10, lower: 8, upper: 12 }, { date: '2026-03-03', point: 10, lower: 8, upper: 12 }, { date: '2026-03-04', point: 4, lower: 2, upper: 6 }];
+  const cap = { days: [{ date: '2026-03-02', scheduledMinutes: 600, technicians: 2 }, { date: '2026-03-03', scheduledMinutes: 480, technicians: 1 }, { date: '2026-03-04', scheduledMinutes: 0, technicians: 0 }],
+    avgAppointmentMinutes: 50, durationSample: 40, durationWindowDays: 90 };
+  it('parses only whole numbers in range; nothing given = no scenario; out of range is refused, never clamped', () => {
+    expect(parseCapacityScenario(undefined, '')).toBeNull();
+    expect(parseCapacityScenario('20', undefined)).toEqual({ demandChangePct: 20, extraMinutesPerDay: 0 });
+    expect(parseCapacityScenario('-50', '960')).toEqual({ demandChangePct: -50, extraMinutesPerDay: 960 });
+    for (const [d, e] of [['101', '0'], ['-51', '0'], ['10', '961'], ['10', '-5'], ['2.5', '0'], ['abc', '0']]) expect(() => parseCapacityScenario(d, e)).toThrow(AiForecastError);
+  });
+  it('scales the workload and adds scheduled minutes with the same state rule; the real gap is untouched; labelled sandbox, versioned, not stored', () => {
+    const gap = capacityGap(horizon, cap);
+    const before = JSON.stringify(gap);
+    expect(gap.days.map((d) => d.state)).toEqual(['ok', 'short', 'no_schedule']);   // 500/600 (upper 600) · 500 > 480 · nobody scheduled
+    const s = capacityScenario(gap, { demandChangePct: 20, extraMinutesPerDay: 120 });
+    expect(JSON.stringify(gap)).toBe(before);
+    expect(s).toMatchObject({ version: CAPACITY_SCENARIO_VERSION, sandbox: true, stored: false, assumptions: { demandChangePct: 20, extraMinutesPerDay: 120 } });
+    // day 1: 500×1.2 = 600 workload, upper 600×1.2 = 720 vs 720 scheduled → ok; day 2: 600 vs 600 → upper 720 > 600 → tight; day 3: 240 vs 120 → short
+    expect(s.days.map((d) => [d.expectedMinutes, d.scheduledMinutes, d.gapMinutes, d.state, d.baselineState])).toEqual([
+      [600, 720, 120, 'ok', 'ok'], [600, 600, 0, 'tight', 'short'], [240, 120, -120, 'short', 'no_schedule']]);
+    expect(s.counts).toEqual({ short: 1, tight: 1, noSchedule: 0, changed: 2 });
+    expect(s.note).toMatch(/Nothing is saved/);
+  });
+  it('a day without duration history stays unknown in the sandbox', () => {
+    const s = capacityScenario(capacityGap(horizon, { ...cap, avgAppointmentMinutes: null }), { demandChangePct: 50, extraMinutesPerDay: 0 });
+    expect(s.days.every((d) => d.state === 'unknown' && d.expectedMinutes == null)).toBe(true);
+  });
+  it('the endpoint records ONLY the real forecast; the scenario rides beside it; a bad scenario is refused before any read or record', async () => {
+    const src = new InMemoryAppointmentSource(); src.seed('T1', 'B1', series(weekly(60)));
+    const reader = { getCapacity: async (_c: AiForecastContext, dates: string[]) => ({ days: dates.map((date) => ({ date, scheduledMinutes: 480, technicians: 1 })), avgAppointmentMinutes: 30, durationSample: 10, durationWindowDays: 90 }) };
+    const recorded: any[] = [];
+    const runs = { recordForecast: async (_c: unknown, _d: string, f: unknown) => { recorded.push(f); } };
+    const ctl = new (AiAnalyticsForecastingController as any)(new AppointmentForecastService(src, reader), null, null, null, runs, null, null, null, null);
+    const req = { ctx: ctx() };
+    const out: any = await ctl.appointmentForecast(req, '7', '25', '60');
+    expect(out.scenario).toMatchObject({ sandbox: true, stored: false, assumptions: { demandChangePct: 25, extraMinutesPerDay: 60 } });
+    expect(out.capacity.days[0].scheduledMinutes).toBe(480);                      // the real gap is unchanged
+    expect(out.scenario.days[0].scheduledMinutes).toBe(540);
+    expect(recorded).toHaveLength(1); expect(recorded[0]).not.toHaveProperty('scenario');
+    const plain: any = await ctl.appointmentForecast(req, '7');
+    expect(plain).not.toHaveProperty('scenario');
+    await expect(ctl.appointmentForecast(req, '7', '500')).rejects.toMatchObject({ status: 400 });
+    expect(recorded).toHaveLength(2);                                              // the refused call recorded nothing
+  });
+});

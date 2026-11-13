@@ -5,6 +5,9 @@ import type { AiServiceDemandForecast } from "@aipowersalon/api-contracts/tenant
 
 export const posAiForecastingApi = {
   appointments: (horizonDays = 14) => api.get<any>(`/pos/ai-analytics/forecast/appointments`, { horizonDays }),
+  /** extras (AI Analytics Forecasting 07): the same forecast + a what-if sandbox over its capacity gap (never stored) */
+  appointmentsWhatIf: (horizonDays: number, demandPct: number, extraMinutes: number) =>
+    api.get<any>(`/pos/ai-analytics/forecast/appointments`, { horizonDays, scenarioDemandPct: demandPct, scenarioExtraMinutes: extraMinutes }),
   revenue: (horizonDays = 14) => api.get<any>(`/pos/ai-analytics/forecast/revenue`, { horizonDays }),
   /** extras (AI Analytics Forecasting 21): service demand per category from the paid tickets' service lines */
   serviceDemand: (horizonDays = 7) => api.get<AiServiceDemandForecast>(`/pos/ai-analytics/forecast/service-demand`, { horizonDays }),

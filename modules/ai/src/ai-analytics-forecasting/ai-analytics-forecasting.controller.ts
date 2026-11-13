@@ -5,7 +5,7 @@
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
 import { Controller, Get, Param, Query, Req, UseGuards, HttpException } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
-import { AppointmentForecastService } from './appointment-forecast.service';
+import { AppointmentForecastService, parseCapacityScenario, capacityScenario } from './appointment-forecast.service';
 import { RevenueForecastService } from './revenue-forecast.service';
 import { NoShowRiskService } from './noshow-risk.service';
 import { ProductDemandForecastService } from './product-demand-forecast.service';
@@ -87,13 +87,15 @@ export class AiAnalyticsForecastingController {
 
   @Get('forecast/appointments')
   @RequirePermission('pos.ai_analytics.view')
-  appointmentForecast(@Req() r: any, @Query('horizonDays') horizonDays?: string) {
+  appointmentForecast(@Req() r: any, @Query('horizonDays') horizonDays?: string, @Query('scenarioDemandPct') scenarioDemandPct?: string, @Query('scenarioExtraMinutes') scenarioExtraMinutes?: string) {
     const h = horizonDays ? Math.max(1, Math.min(90, parseInt(horizonDays, 10) || 7)) : 7;
     return run(async () => {
       const ctx = ctxFrom(r);
+      const scenario = parseCapacityScenario(scenarioDemandPct, scenarioExtraMinutes);   // extras 07: refused before any work
       const out = await this.appointments.getAppointmentForecast(ctx, h);
-      await this.runs.recordForecast(ctx, 'appointments', out); // best-effort, once/day
-      return out;
+      await this.runs.recordForecast(ctx, 'appointments', out); // best-effort, once/day — the REAL forecast only
+      // the what-if sandbox rides beside the real answer, computed after the record and never stored
+      return scenario ? { ...out, scenario: out.capacity ? capacityScenario(out.capacity, scenario) : null } : out;
     });
   }
 

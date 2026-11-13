@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-const { apptMock, revMock, nsMock, accMock, readyMock, svcMock } = vi.hoisted(() => ({ apptMock: vi.fn(), revMock: vi.fn(), nsMock: vi.fn(), accMock: vi.fn(), readyMock: vi.fn(), svcMock: vi.fn() }));
-vi.mock('../api/posAiForecastingApi', () => ({ posAiForecastingApi: { appointments: apptMock, revenue: revMock, noShowRisk: nsMock, serviceDemand: svcMock, accuracy: accMock, readiness: readyMock,
+const { apptMock, revMock, nsMock, accMock, readyMock, svcMock, whatIfMock } = vi.hoisted(() => ({ apptMock: vi.fn(), revMock: vi.fn(), nsMock: vi.fn(), accMock: vi.fn(), readyMock: vi.fn(), svcMock: vi.fn(), whatIfMock: vi.fn() }));
+vi.mock('../api/posAiForecastingApi', () => ({ posAiForecastingApi: { appointments: apptMock, appointmentsWhatIf: whatIfMock, revenue: revMock, noShowRisk: nsMock, serviceDemand: svcMock, accuracy: accMock, readiness: readyMock,
   center: { summary: vi.fn().mockResolvedValue({ counters: { runs: 0, runs30d: 0, awaitingActual: 0, evaluatedDays: 0 }, lastRun: {}, domains: ['appointments'] }), runs: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 25, totalPages: 1, domains: ['appointments'] }), run: vi.fn(), check: vi.fn() } } }));
 import { POSAiForecastingScreen } from './POSAiForecastingScreen';
 
@@ -87,6 +87,37 @@ describe('POSAiForecastingScreen', () => {
     expect(rows[1]).toHaveTextContent('+6 h'); expect(rows[1]).toHaveTextContent('Covered'); expect(rows[1]).toHaveTextContent('2 technicians');
     expect(screen.getByTestId('fc-cap-optimizer').getAttribute('href')).toBe('/tenant/ai/scheduling-optimizer');
     expect(panel.querySelectorAll('button')).toHaveLength(0);   // nothing to press but the link: no shift is created here
+  });
+  it('extras AI Analytics Forecasting 07: the what-if asks the SERVER with the typed assumptions and shows its labelled sandbox beside the real gap (which is not replaced)', async () => {
+    window.history.replaceState(null, '', '/');
+    const cap = { avgAppointmentMinutes: 45, durationSample: 120, durationWindowDays: 56, basis: 'b', days: [
+      { date: '2026-03-01', expectedMinutes: 540, lowerMinutes: 450, upperMinutes: 630, scheduledMinutes: 420, technicians: 1, gapMinutes: -120, state: 'short' }] };
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 1, accuracy: null, horizon: horizon(12).slice(0, 1), selectionReason: 'x', disclaimer: 'd', capacity: cap });
+    whatIfMock.mockResolvedValue({ capacity: cap, scenario: { version: 'capacity-scenario-v1', sandbox: true, stored: false, assumptions: { demandChangePct: -10, extraMinutesPerDay: 120 },
+      days: [{ date: '2026-03-01', expectedMinutes: 486, upperMinutes: 567, scheduledMinutes: 540, gapMinutes: 54, state: 'tight', baselineState: 'short' }], counts: { short: 0, tight: 1, noSchedule: 0, changed: 1 }, note: 'n' } });
+    render(<POSAiForecastingScreen />);
+    await screen.findByTestId('fc-whatif');
+    fireEvent.change(screen.getByTestId('fc-whatif-demand'), { target: { value: '200' } });
+    expect(screen.getByTestId('fc-whatif-run')).toBeDisabled(); expect(screen.getByTestId('fc-whatif-invalid')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('fc-whatif-demand'), { target: { value: '-10' } });
+    fireEvent.change(screen.getByTestId('fc-whatif-extra'), { target: { value: '120' } });
+    fireEvent.click(screen.getByTestId('fc-whatif-run'));
+    await waitFor(() => expect(whatIfMock).toHaveBeenCalledWith(1, -10, 120));
+    expect(await screen.findByTestId('fc-whatif-label')).toHaveTextContent('Sandbox — your assumptions: demand -10 %, +120 scheduled minutes a day (capacity-scenario-v1). Not a forecast; nothing saved.');
+    const row = screen.getByTestId('fc-whatif-row');
+    expect(row).toHaveTextContent('Tight'); expect(row).toHaveTextContent('Short'); expect(row).toHaveTextContent('+1 h');
+    expect(screen.getByTestId('fc-whatif-summary')).toHaveTextContent('0 day(s) short, 1 tight; 1 day(s) differ');
+    expect(screen.getByTestId('fc-cap-row')).toHaveTextContent('Short');   // the real gap stays as the server answered it
+  });
+  it('extras AI Analytics Forecasting 07: no capacity in the what-if answer says so (never a made-up table)', async () => {
+    window.history.replaceState(null, '', '/');
+    apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 1, accuracy: null, horizon: horizon(12).slice(0, 1), selectionReason: 'x', disclaimer: 'd',
+      capacity: { avgAppointmentMinutes: 45, durationSample: 1, durationWindowDays: 56, days: [{ date: '2026-03-01', expectedMinutes: 540, lowerMinutes: 450, upperMinutes: 630, scheduledMinutes: 420, technicians: 1, gapMinutes: -120, state: 'short' }] } });
+    whatIfMock.mockResolvedValue({ scenario: null });
+    render(<POSAiForecastingScreen />);
+    fireEvent.click(await screen.findByTestId('fc-whatif-run'));
+    expect(await screen.findByTestId('fc-whatif-none')).toBeInTheDocument();
+    expect(screen.queryByTestId('fc-whatif-row')).toBeNull();
   });
   it('extras AI Analytics Forecasting 03: without duration history the hours are "—" and the state is Unknown; no capacity → no panel', async () => {
     window.history.replaceState(null, '', '/');
