@@ -11,6 +11,7 @@
 //   POST pos/loyalty/network/earning/use-global                     pos.settings.edit + explicit confirm
 //   POST pos/loyalty/network/earning/versions/:id/cancel            pos.settings.edit    (only a change not yet started)
 //   GET  pos/loyalty/network/wallet | wallet/ledger | purchases | purchases/:id
+//   GET  pos/loyalty/network/reimbursements                         pos.customers.view   what the network owes this salon (read-only)
 //   POST pos/loyalty/network/purchases                              pos.settings.edit + STEP-UP + Idempotency-Key
 // Super Admin (English only):                                       super_admin.billing.view / .manage (+ STEP-UP to change)
 //   GET  super-admin/loyalty-network/overview | enrollments | purchases | reconciliation
@@ -24,6 +25,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp,
 import { ListQuery, type ListQuerySpec } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
+import type { RewardsSalonPayables } from '@aipowersalon/api-contracts/tenant';
 import { GlobalRewardsService } from './global-rewards.service';
 import { GlobalRewardsError, type PurchaseStatus } from './global-rewards-core';
 import type { GrCtx } from './global-rewards.repository';
@@ -87,6 +89,11 @@ export class GlobalRewardsController {
   purchases(@Req() r: any, @Query() q: any) { const p = pg(q); return runGr(() => this.s().purchases(grCtx(r), p.page, p.size)); }
   @Get('purchases/:id') @RequirePermission('pos.customers.view')
   purchase(@Req() r: any, @Param('id') pid: string) { return runGr(() => this.s().purchase(grCtx(r), id(pid))); }
+  // extras GLOBAL LOYALTY REWARDS 07 / 10: this salon's payables with provider + journal evidence and settlement freshness (read-only)
+  @Get('reimbursements') @RequirePermission('pos.customers.view') @ListQuery({ filters: { status: { type: 'enum', values: ['ACCRUED_OWED', 'PAYOUT_ELIGIBLE', 'PAYOUT_PENDING', 'PAID', 'PAYOUT_FAILED', 'ON_HOLD', 'ADJUSTED', 'OFFSET'] } }, search: false, maxLimit: 25, defaultLimit: 10, params: ['page', 'pageSize'] })
+  reimbursements(@Req() r: any, @Query() q: any): Promise<RewardsSalonPayables> {
+    return runGr(() => this.s().reimbursements(grCtx(r), { status: q?.status || null, page: Number(q?.page) || 1, pageSize: Number(q?.pageSize) || 10 }));
+  }
   // guide §3.3 / §5.2: Owner (or a manager explicitly granted settings access), a fresh step-up, one request key per purchase
   @RequireStepUp() @Post('purchases') @RequirePermission('pos.settings.edit') @Idempotent({ required: true })
   buy(@Req() r: any, @Body(ValidatedBody(GR_BUY_TOKENS_BODY, { strict: true })) b: any) {

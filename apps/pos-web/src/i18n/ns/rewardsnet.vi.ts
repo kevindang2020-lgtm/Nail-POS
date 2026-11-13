@@ -116,4 +116,74 @@ export const REWARDSNET_VI = {
   'rn.branches.mismatch': 'Các chi nhánh cộng lại {a} token nhưng ví ghi đã dùng {b} tháng này — hãy nhờ hỗ trợ kiểm tra.', // DRAFT — Kevin reviews
   'rn.branches.noDouble': 'Không có lượt tích điểm nào bị trừ token hai lần.', // DRAFT — Kevin reviews
   'rn.branches.double': '{n} lượt tích điểm bị trừ token nhiều hơn một lần — hãy nhờ hỗ trợ kiểm tra.', // DRAFT — Kevin reviews
+  'rn.pay.btn': 'Tiền hoàn trả', // DRAFT — Kevin reviews
+  'rn.pay.title': 'Tiền mạng lưới nợ tiệm', // DRAFT — Kevin reviews
+  'rn.pay.sub': 'Điểm của mạng lưới thưởng mà tiệm đã nhận khi thanh toán. Chỉ xem: mạng lưới chi trả, không bao giờ chi trả từ đây.', // DRAFT — Kevin reviews
+  'rn.pay.providerOn': 'Đã kết nối nhà cung cấp chi trả.', // DRAFT — Kevin reviews
+  'rn.pay.providerOff': 'Chưa kết nối nhà cung cấp chi trả nên chưa thể chi trả. Mọi khoản vẫn được ghi nợ cho tiệm.', // DRAFT — Kevin reviews
+  'rn.pay.lastVerified': 'Lần quyết toán đã xác minh gần nhất: {date}', // DRAFT — Kevin reviews
+  'rn.pay.noVerified': 'Chưa có lần quyết toán nào được xác minh.', // DRAFT — Kevin reviews
+  'rn.pay.waiting': 'Đang chờ: {n} lệnh chi trả đã gửi nhà cung cấp, đang chờ quyết toán (lâu nhất từ {date}).', // DRAFT — Kevin reviews
+  'rn.pay.noWaiting': 'Đang chờ: không có lệnh chi trả nào chờ nhà cung cấp.', // DRAFT — Kevin reviews
+  'rn.pay.unknown': 'Không rõ: {n} lệnh chi trả không nhận được trả lời từ nhà cung cấp (lâu nhất từ {date}). Không tính là đã trả hay thất bại.', // DRAFT — Kevin reviews
+  'rn.pay.noUnknown': 'Không rõ: không có.', // DRAFT — Kevin reviews
+  'rn.pay.all': 'Tất cả ({n})', // DRAFT — Kevin reviews
+  'rn.pay.totalChip': '{label} · {n} · {amount}', // DRAFT — Kevin reviews
+  'rn.pay.none': 'Chưa có khoản hoàn trả nào', // DRAFT — Kevin reviews
+  'rn.pay.line': '{amount} · {status}', // DRAFT — Kevin reviews
+  'rn.pay.amount': 'Số tiền', // DRAFT — Kevin reviews
+  'rn.pay.adjusted': '{amount} bị trừ do hoàn tiền', // DRAFT — Kevin reviews
+  'rn.pay.holdReason': 'Lý do tạm giữ', // DRAFT — Kevin reviews
+  'rn.pay.paidAt': 'Đã trả', // DRAFT — Kevin reviews
+  'rn.pay.ref': 'mã quyết toán {ref}', // DRAFT — Kevin reviews
+  'rn.pay.attempts': 'Các lần chi trả (trả lời của nhà cung cấp)', // DRAFT — Kevin reviews
+  'rn.pay.noAttempts': 'Chưa có lần chi trả nào.', // DRAFT — Kevin reviews
+  'rn.pay.attemptLine': '{amount} yêu cầu lúc {date}', // DRAFT — Kevin reviews
+  'rn.pay.verified': 'chữ ký đã xác minh', // DRAFT — Kevin reviews
+  'rn.pay.settledAt': 'quyết toán lúc {date}', // DRAFT — Kevin reviews
+  'rn.pay.adjustments': 'Điều chỉnh', // DRAFT — Kevin reviews
+  'rn.pay.journal': 'Bút toán trên tài khoản của tiệm', // DRAFT — Kevin reviews
+  'rn.pay.j.entry': 'Bút toán', // DRAFT — Kevin reviews
+  'rn.pay.j.account': 'Tài khoản', // DRAFT — Kevin reviews
+  'rn.pay.j.debit': 'Nợ', // DRAFT — Kevin reviews
+  'rn.pay.j.credit': 'Có', // DRAFT — Kevin reviews
+  'rn.pay.j.at': 'Lúc', // DRAFT — Kevin reviews
+  'rn.pay.st.ACCRUED_OWED': 'Đang nợ', // DRAFT — Kevin reviews
+  'rn.pay.st.PAYOUT_ELIGIBLE': 'Sẵn sàng chi trả', // DRAFT — Kevin reviews
+  'rn.pay.st.PAYOUT_PENDING': 'Đang chi trả', // DRAFT — Kevin reviews
+  'rn.pay.st.PAID': 'Đã trả', // DRAFT — Kevin reviews
+  'rn.pay.st.PAYOUT_FAILED': 'Chi trả thất bại', // DRAFT — Kevin reviews
+  'rn.pay.st.ON_HOLD': 'Tạm giữ', // DRAFT — Kevin reviews
+  'rn.pay.st.ADJUSTED': 'Đã đảo (hoàn tiền)', // DRAFT — Kevin reviews
+  'rn.pay.st.OFFSET': 'Yêu cầu thu hồi', // DRAFT — Kevin reviews
+  'rn.pay.stage.PAYABLE': 'Phải trả', // DRAFT — Kevin reviews
+  'rn.pay.stage.PROCESSING': 'Đang xử lý', // DRAFT — Kevin reviews
+  'rn.pay.stage.PAID': 'Đã trả', // DRAFT — Kevin reviews
+  'rn.pay.stage.EXCEPTION': 'Ngoại lệ', // DRAFT — Kevin reviews
+  'rn.pay.stage.CLOSED': 'Đã đóng', // DRAFT — Kevin reviews
+  'rn.pay.why.owed_awaiting_review': 'Đang nợ; chờ mạng lưới kiểm tra sổ sách trước khi chi trả.', // DRAFT — Kevin reviews
+  'rn.pay.why.owed_no_provider': 'Đang nợ; chưa kết nối nhà cung cấp chi trả.', // DRAFT — Kevin reviews
+  'rn.pay.why.eligible_awaiting_payout': 'Đã duyệt chi trả; đang chờ gửi.', // DRAFT — Kevin reviews
+  'rn.pay.why.eligible_no_provider': 'Đã duyệt chi trả nhưng chưa kết nối nhà cung cấp chi trả.', // DRAFT — Kevin reviews
+  'rn.pay.why.pending_provider_answer': 'Đã gửi nhà cung cấp; đang chờ quyết toán.', // DRAFT — Kevin reviews
+  'rn.pay.why.pending_provider_unknown': 'Đã gửi nhưng nhà cung cấp không trả lời. Chưa trả cho đến khi có quyết toán đã xác minh.', // DRAFT — Kevin reviews
+  'rn.pay.why.paid_verified_settlement': 'Đã trả: quyết toán của nhà cung cấp đã được xác minh và khớp số tiền.', // DRAFT — Kevin reviews
+  'rn.pay.why.payout_failed_still_owed': 'Chi trả thất bại; khoản tiền vẫn được ghi nợ.', // DRAFT — Kevin reviews
+  'rn.pay.why.on_hold_finance_review': 'Tạm giữ để bộ phận tài chính xem xét; khoản tiền vẫn được ghi nợ.', // DRAFT — Kevin reviews
+  'rn.pay.why.adjusted_refund_before_payout': 'Đã đảo: phần thưởng được hoàn tiền trước khi chi trả.', // DRAFT — Kevin reviews
+  'rn.pay.why.offset_refund_after_payout': 'Hoàn tiền sau khi đã chi trả: mạng lưới ghi một yêu cầu thu hồi.', // DRAFT — Kevin reviews
+  'rn.pay.at.REQUESTED': 'Đã yêu cầu', // DRAFT — Kevin reviews
+  'rn.pay.at.SUBMITTED': 'Đang chờ', // DRAFT — Kevin reviews
+  'rn.pay.at.SETTLED': 'Đã quyết toán', // DRAFT — Kevin reviews
+  'rn.pay.at.FAILED': 'Thất bại', // DRAFT — Kevin reviews
+  'rn.pay.at.UNKNOWN': 'Không rõ', // DRAFT — Kevin reviews
+  'rn.pay.fail.PROVIDER_NO_ANSWER': 'nhà cung cấp không trả lời', // DRAFT — Kevin reviews
+  'rn.pay.adj.ADJUSTMENT': 'Hoàn tiền trước khi chi trả', // DRAFT — Kevin reviews
+  'rn.pay.adj.OFFSET_CLAIM': 'Yêu cầu thu hồi sau khi chi trả', // DRAFT — Kevin reviews
+  'rn.pay.je.redemption_committed': 'Nhận điểm', // DRAFT — Kevin reviews
+  'rn.pay.je.redemption_reversed': 'Hoàn tiền đảo điểm', // DRAFT — Kevin reviews
+  'rn.pay.je.reimbursement_paid': 'Chi trả đã quyết toán', // DRAFT — Kevin reviews
+  'rn.pay.je.reimbursement_offset': 'Yêu cầu thu hồi', // DRAFT — Kevin reviews
+  'rn.pay.acct.reimbursement_payable': 'Nợ tiệm', // DRAFT — Kevin reviews
+  'rn.pay.acct.merchant_recovery_receivable': 'Thu hồi từ tiệm', // DRAFT — Kevin reviews
 };

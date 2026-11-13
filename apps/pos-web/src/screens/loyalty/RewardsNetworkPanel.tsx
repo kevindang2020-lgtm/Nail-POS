@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent, type RewardsNetBranchSplit } from '../../api/posRewardsNetworkApi';
+import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent, type RewardsNetBranchSplit, type RewardsNetPayables, type RewardsNetPayableRow } from '../../api/posRewardsNetworkApi';
 import { errorTextOf } from '../../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced } from '../../components/FitKit';
@@ -57,7 +57,7 @@ const ALERT_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'gold'> = { ok: 'gold',
 /** a <input type="datetime-local"> value (the device's clock, which at the desk is the salon's) → ISO */
 const localToIso = (v: string): string | null => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
-type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' };
+type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' } | { kind: 'branches' } | { kind: 'payables' };
 
 /** a server-paged list whose page size is however many rows fit right now */
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
@@ -207,7 +207,7 @@ export function RewardsNetworkPanel() {
         </FitPanel>
 
         <FitPanel testId="rn-wallet" title={tx('rn.wallet.title')} bodyRef={purFit.ref}
-          actions={<>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
+          actions={<><button type="button" className="fk-btn ghost" data-testid="rn-payables" onClick={() => setDlg({ kind: 'payables' })}>{tx('rn.pay.btn')}</button>{w?.branchUsage ? <button type="button" className="fk-btn ghost" data-testid="rn-branches" onClick={() => setDlg({ kind: 'branches' })}>{tx('rn.branches.btn')}</button> : null}{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
           {w ? (() => { const d = walletForecastDays(w.availableCents, w.usedThisMonthCents, new Date().getDate());
@@ -266,6 +266,7 @@ export function RewardsNetworkPanel() {
       {dlg?.kind === 'custom' && st ? <CustomRuleDialog st={st} draft={dlg.draft} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'global' && st ? <UseGlobalDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'branches' && w?.branchUsage ? <BranchUsageDialog u={w.branchUsage} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
+      {dlg?.kind === 'payables' ? <PayablesDialog onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'levels' && st ? <LevelsDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'buy' && st ? <BuyTokensDialog st={st} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={(msg, id) => { done(msg); if (id) setDlg({ kind: 'purchase', id }); }} /> : null}
       {dlg?.kind === 'purchase' ? <PurchaseDialog id={dlg.id} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
@@ -604,5 +605,94 @@ function BranchUsageDialog({ u, tokenValueCents, onClose }: { u: RewardsNetBranc
         : tx('rn.branches.mismatch', { a: tokensOf(u.totalFundedCents, tokenValueCents), b: tokensOf(u.walletUsedCents, tokenValueCents) })}</p>
       <p className={'fk-hint' + (u.doubleFunded ? ' warn' : '')} data-testid="rn-branches-double">{u.doubleFunded ? tx('rn.branches.double', { n: fmtNumber(u.doubleFunded) }) : tx('rn.branches.noDouble')}</p>
     </FitDialog>
+  );
+}
+
+/** Extras (GLOBAL LOYALTY REWARDS 07 + 10): what the rewards network owes THIS salon for points it accepted. Every stage, reason,
+ *  provider answer and journal line is the server's record — read-only; payouts are never requested from here. The strip on top
+ *  says whether a payout provider is connected, the last VERIFIED settlement, and provider answers still awaited (pending)
+ *  apart from answers that never came (unknown). */
+const STAGE_TONE: Record<string, string> = { PAYABLE: 'info', PROCESSING: 'warn', PAID: 'ok', EXCEPTION: 'bad', CLOSED: 'mut' };
+const ATTEMPT_TONE: Record<string, string> = { SETTLED: 'ok', SUBMITTED: 'info', REQUESTED: 'info', UNKNOWN: 'warn', FAILED: 'bad' };
+function PayablesDialog({ onClose }: { onClose: () => void }) {
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<string>('');
+  const [data, setData] = useState<RewardsNetPayables | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    let live = true; setErr(null);
+    netApi.reimbursements({ page, pageSize: 8, status: status || null }).then((d) => { if (live) setData(d); }).catch((e) => { if (live) setErr(errText(e, tx('rn.err.load'))); });
+    return () => { live = false; };
+  }, [page, status, reload]);
+  const s = data?.settlement;
+  const info = data ? { page: data.page, pageSize: data.pageSize, totalItems: data.total, totalPages: data.pageCount } : null;
+  return (
+    <FitDialog wide testId="rn-pay-dlg" title={tx('rn.pay.title')} subtitle={tx('rn.pay.sub')} onClose={onClose} footer={<Pager compact info={info} onPage={setPage} />}>
+      {err ? <ErrorRetry message={err} onRetry={() => setReload((n) => n + 1)} /> : !data ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        <div className="rn-banner" role="note" data-testid="rn-pay-fresh">
+          <div data-testid="rn-pay-provider">{data.provider.connected ? tx('rn.pay.providerOn') : tx('rn.pay.providerOff')}</div>
+          <div data-testid="rn-pay-last">{s?.lastVerifiedAt ? tx('rn.pay.lastVerified', { date: whenTime(s.lastVerifiedAt) }) : tx('rn.pay.noVerified')}</div>
+          <div data-testid="rn-pay-waiting">{s && s.waitingOnProvider > 0 ? tx('rn.pay.waiting', { n: fmtNumber(s.waitingOnProvider), date: whenTime(s.oldestWaitingSince) }) : tx('rn.pay.noWaiting')}</div>
+          <div data-testid="rn-pay-unknown" className={s && s.unknownAnswer > 0 ? 'warn' : ''}>{s && s.unknownAnswer > 0 ? tx('rn.pay.unknown', { n: fmtNumber(s.unknownAnswer), date: whenTime(s.oldestUnknownSince) }) : tx('rn.pay.noUnknown')}</div>
+        </div>
+        <div className="fk-seg" role="group" aria-label={tx('rn.status')} data-testid="rn-pay-filter">
+          <button type="button" className={status === '' ? 'on' : ''} onClick={() => { setStatus(''); setPage(1); }}>{tx('rn.pay.all', { n: fmtNumber(data.totals.reduce((a, t) => a + t.count, 0)) })}</button>
+          {data.totals.map((t) => (
+            <button key={t.status} type="button" className={status === t.status ? 'on' : ''} data-testid={'rn-pay-total-' + t.status} onClick={() => { setStatus(t.status); setPage(1); }}>
+              {tx('rn.pay.totalChip', { label: label('rn.pay.st', t.status), n: fmtNumber(t.count), amount: fmtMoney(t.owedCents) })}</button>
+          ))}
+        </div>
+        {data.items.length === 0 ? <Empty title={tx('rn.pay.none')} /> : (
+          <ul className="fk-list" data-testid="rn-pay-list">
+            {data.items.map((r) => (
+              <li key={r.id} className="fk-li clickable" data-testid="rn-pay-row" onClick={() => setOpen(open === r.id ? null : r.id)}>
+                <div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.line', { amount: fmtMoney(r.owedCents), status: label('rn.pay.st', r.status) })}</span>
+                  <span className="fk-li-s">{whenTime(r.createdAt)} · {label('rn.pay.why', r.why)}</span>
+                  {open === r.id ? <PayableEvidence r={r} /> : null}</div>
+                <span className={'fk-chip ' + (STAGE_TONE[r.stage] ?? 'mut')}>{label('rn.pay.stage', r.stage)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>}
+    </FitDialog>
+  );
+}
+function PayableEvidence({ r }: { r: RewardsNetPayableRow }) {
+  return (
+    <div className="rn-evidence" data-testid="rn-pay-evidence" onClick={(e) => e.stopPropagation()}>
+      <dl className="rn-review">
+        <dt>{tx('rn.pay.amount')}</dt><dd>{fmtMoney(r.amountCents)}{r.adjustedCents ? ` · ${tx('rn.pay.adjusted', { amount: fmtMoney(r.adjustedCents) })}` : ''}</dd>
+        {r.holdReason ? <><dt>{tx('rn.pay.holdReason')}</dt><dd data-testid="rn-pay-hold">{r.holdReason}</dd></> : null}
+        {r.paidAt ? <><dt>{tx('rn.pay.paidAt')}</dt><dd>{whenTime(r.paidAt)}{r.settlementRef ? ` · ${tx('rn.pay.ref', { ref: r.settlementRef })}` : ''}</dd></> : null}
+      </dl>
+      <div className="fk-hint">{tx('rn.pay.attempts')}</div>
+      {r.attempts.length === 0 ? <div className="fk-hint" data-testid="rn-pay-no-attempts">{tx('rn.pay.noAttempts')}</div> : (
+        <ul className="fk-list rn-mini">
+          {r.attempts.map((a) => (
+            <li key={a.id} className="fk-li" data-testid="rn-pay-attempt">
+              <div className="fk-li-main"><span className="fk-li-t">{tx('rn.pay.attemptLine', { amount: fmtMoney(a.amountCents), date: whenTime(a.requestedAt) })}</span>
+                <span className="fk-li-s">{[a.settlementRef ? tx('rn.pay.ref', { ref: a.settlementRef }) : null, a.signatureVerified ? tx('rn.pay.verified') : null,
+                  a.settledAt ? tx('rn.pay.settledAt', { date: whenTime(a.settledAt) }) : null, a.failureCode ? label('rn.pay.fail', a.failureCode) : null].filter(Boolean).join(' · ') || '—'}</span></div>
+              <span className={'fk-chip ' + (ATTEMPT_TONE[a.status] ?? 'mut')}>{label('rn.pay.at', a.status)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {r.adjustments.length ? <ul className="fk-list rn-mini" aria-label={tx('rn.pay.adjustments')}>
+        {r.adjustments.map((a, i) => <li key={i} className="fk-li" data-testid="rn-pay-adjustment"><div className="fk-li-main"><span className="fk-li-t">{label('rn.pay.adj', a.kind)} · {fmtMoney(a.amountCents)}</span><span className="fk-li-s">{whenTime(a.at)}</span></div></li>)}
+      </ul> : null}
+      <div className="fk-hint">{tx('rn.pay.journal')}</div>
+      {r.journal.length === 0 ? <div className="fk-hint">—</div> : (
+        <table className="rn-table" data-testid="rn-pay-journal">
+          <thead><tr><th>{tx('rn.pay.j.entry')}</th><th>{tx('rn.pay.j.account')}</th><th>{tx('rn.pay.j.debit')}</th><th>{tx('rn.pay.j.credit')}</th><th>{tx('rn.pay.j.at')}</th></tr></thead>
+          <tbody>{r.journal.map((j, i) => (
+            <tr key={i}><td>{label('rn.pay.je', j.entryType)}</td><td>{label('rn.pay.acct', j.account)}</td><td>{j.debitCents ? fmtMoney(j.debitCents) : '—'}</td><td>{j.creditCents ? fmtMoney(j.creditCents) : '—'}</td><td>{whenTime(j.at)}</td></tr>
+          ))}</tbody>
+        </table>
+      )}
+    </div>
   );
 }

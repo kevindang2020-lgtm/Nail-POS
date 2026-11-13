@@ -355,3 +355,58 @@ describe('earning estimate at checkout', () => {
     expect(Number((await q(`select count(*)::int n from reward_earn_transactions`))[0].n)).toBe(before);
   });
 });
+
+describe("extras GLOBAL LOYALTY REWARDS 07 + 10 — the salon's own reimbursements: drill-down evidence + stale-provider indicator", () => {
+  it('each payable says its stage and why, with provider attempts, adjustments and journal lines; waiting vs unknown provider answers; own salon only; writes nothing', async () => {
+    const { salonPayables } = await import('./rewards-salon-payables');
+    // two more payouts at Salon C: one the provider accepted (still waiting for settlement), one with NO answer (UNKNOWN)
+    const mk = async (key: string) => {
+      const t = await openTicket(TC, BC, custOf[TC], 1000); const h = await applyReward(TC, BC, t, custOf[TC], 1, 1000, key); await payRest(TC, BC, t, 900); await finalize(TC, t);
+      const pid = (await q(`select id from merchant_reimbursements where redemption_id = $1`, [h.redemptionId]))[0].id;
+      await db.transaction().execute((trx: any) => markPayoutEligible(trx, { reimbursementId: pid, actorUserId: SA }));
+      return pid as string;
+    };
+    const waitingId = await mk('sp-wait'); const unknownId = await mk('sp-unknown');
+    await requestPayout(db, { name: 'test-verified-provider', submit: async (p) => ({ status: 'SUBMITTED', providerPayoutId: 'po_' + p.attemptId }) }, { reimbursementId: waitingId, actorUserId: SA, idempotencyKey: 'sp-wait-1' });
+    await requestPayout(db, { name: 'test-verified-provider', submit: async () => { throw new Error('timeout'); } }, { reimbursementId: unknownId, actorUserId: SA, idempotencyKey: 'sp-unknown-1' });
+    const snap = async () => q(`select id, status, version from merchant_reimbursements order by id`);
+    const before = await snap();
+
+    const r = await salonPayables(db, TC, { pageSize: 25 }, false);
+    expect(r.provider).toEqual({ connected: false, state: 'BLOCKED_EXTERNAL' });
+    expect(r.settlement.lastVerifiedAt).not.toBeNull();             // the one verified settlement (stl_1)
+    // waiting = attempts the provider accepted but never settled: the new one + the earlier mismatched one (its payable is ON_HOLD,
+    // its attempt is still SUBMITTED — the provider's amount did not match, so nothing settled)
+    expect(r.settlement.waitingOnProvider).toBe(2);
+    expect(r.settlement.unknownAnswer).toBe(1);
+    expect(r.settlement.oldestUnknownSince).not.toBeNull();
+    const byId = Object.fromEntries(r.items.map((x) => [x.id, x]));
+    expect(byId[waitingId]).toMatchObject({ status: 'PAYOUT_PENDING', stage: 'PROCESSING', why: 'pending_provider_answer' });
+    expect(byId[unknownId]).toMatchObject({ status: 'PAYOUT_PENDING', stage: 'PROCESSING', why: 'pending_provider_unknown' });
+    expect(byId[unknownId].attempts[0]).toMatchObject({ status: 'UNKNOWN', failureCode: 'PROVIDER_NO_ANSWER', settlementRef: null });
+    // the paid-then-refunded payable: settled attempt with its reference, the offset claim, and the salon-side journal lines
+    const paid = r.items.find((x) => x.attempts.some((a) => a.settlementRef === 'stl_1'))!;
+    expect(paid).toMatchObject({ status: 'OFFSET', stage: 'CLOSED', why: 'offset_refund_after_payout', settlementRef: 'stl_1', owedCents: 100 });
+    expect(paid.attempts[0]).toMatchObject({ status: 'SETTLED', signatureVerified: true, amountCents: 100 });
+    expect(paid.adjustments).toEqual([expect.objectContaining({ kind: 'OFFSET_CLAIM', amountCents: 100 })]);
+    expect(paid.journal.map((j) => [j.entryType, j.account, j.debitCents, j.creditCents])).toEqual([
+      ['redemption_committed', 'reimbursement_payable', 0, 100], ['reimbursement_paid', 'reimbursement_payable', 100, 0], ['reimbursement_offset', 'merchant_recovery_receivable', 100, 0]]);
+    // the mismatched settlement is an exception with its hold reason, never PAID
+    const held = r.items.filter((x) => x.status === 'ON_HOLD');
+    expect(held.length).toBe(2); expect(held.every((x) => x.stage === 'EXCEPTION' && x.why === 'on_hold_finance_review' && !!x.holdReason)).toBe(true);
+    // totals per status agree with the rows; status filter
+    expect(r.totals.reduce((s, t) => s + t.count, 0)).toBe(r.total);
+    const onHold = await salonPayables(db, TC, { status: 'ON_HOLD' }, false);
+    expect(onHold.total).toBe(2); expect(onHold.items.every((x) => x.status === 'ON_HOLD')).toBe(true);
+    // own salon only: B sees none of C's payables or attempts; A has none and no verified settlement
+    const b = await salonPayables(db, TB, { pageSize: 25 }, false);
+    expect(b.items.some((x) => byId[x.id])).toBe(false);
+    expect(b.settlement).toMatchObject({ lastVerifiedAt: null, waitingOnProvider: 0, unknownAnswer: 0 });
+    expect(b.items.find((x) => x.status === 'PAYOUT_ELIGIBLE')).toMatchObject({ stage: 'PAYABLE', why: 'eligible_no_provider', owedCents: 500 });
+    expect(b.items.find((x) => x.status === 'ADJUSTED')).toMatchObject({ stage: 'CLOSED', why: 'adjusted_refund_before_payout', owedCents: 0 });
+    const a = await salonPayables(db, TA, {}, false);   // T13: A accepted $2 and has one owed payable
+    expect(a.items).toEqual([expect.objectContaining({ status: 'ACCRUED_OWED', stage: 'PAYABLE', why: 'owed_no_provider', owedCents: 200, attempts: [] })]);
+    expect(a.items.some((x) => byId[x.id])).toBe(false);
+    expect(await snap()).toEqual(before);   // read-only
+  });
+});

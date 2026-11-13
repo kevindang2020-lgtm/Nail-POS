@@ -14,6 +14,7 @@ import { markPayoutEligible, holdPayable, requestPayout, type PayoutProvider } f
 import { canMoveToSql } from '@aipowersalon/database';
 import { GLOBAL_REWARDS_ACCOUNT } from './global-rewards-lifecycles';
 import { flagState } from './global-rewards-flags';
+import { salonPayables, type SalonPayablesQuery } from './rewards-salon-payables';
 
 export class GlobalRewardsService {
   readonly platform: GlobalRewardsPlatformRepository;
@@ -50,6 +51,8 @@ export class GlobalRewardsService {
   ledger(ctx: GrCtx, page: number, pageSize: number) { return this.repo.walletLedger(ctx.tenantId, page, pageSize); }
   purchases(ctx: GrCtx, page: number, pageSize: number) { return this.repo.purchases(ctx.tenantId, page, pageSize); }
   purchase(ctx: GrCtx, id: string) { return this.repo.purchase(ctx.tenantId, id); }
+  /** what the network owes THIS salon, with provider + journal evidence (read-only; extras GLOBAL LOYALTY REWARDS 07 / 10) */
+  reimbursements(ctx: GrCtx, q: SalonPayablesQuery) { return salonPayables(this.repo.database, ctx.tenantId, q); }
 
   /**
    * Buy Tokens (guide §3.3, §5.3): one logical purchase per request key. A retry of the SAME key returns the same
