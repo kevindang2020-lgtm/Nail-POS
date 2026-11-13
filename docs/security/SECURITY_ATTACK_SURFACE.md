@@ -2,22 +2,22 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (4071 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (4096 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 4071 |
+| all HTTP routes | 4096 |
 | realm `customer` | 165 |
-| realm `shared` | 288 |
-| realm `staff` | 2423 |
-| realm `super_admin` | 1195 |
+| realm `shared` | 289 |
+| realm `staff` | 2446 |
+| realm `super_admin` | 1196 |
 | public (no session; each one reviewed by `check:public`) | 126 |
 | integration key / OAuth (`auth=api_key`) | 13 |
-| with `@RequireStepUp` (fresh password + code) | 193 |
-| with an idempotency contract | 59 |
+| with `@RequireStepUp` (fresh password + code) | 195 |
+| with an idempotency contract | 62 |
 | webhooks | 9 |
 | multipart uploads | 9 |
 | server-sent event streams | 13 |
@@ -432,7 +432,9 @@ Service callers present a short-lived scoped service token (`SERVICE_TOKEN_SECRE
 | PUT | `/tenant/messaging/credentials` | staff |
 | DELETE | `/tenant/messaging/credentials/branches/{branchId}` | staff |
 | PUT | `/tenant/messaging/credentials/branches/{branchId}` | staff |
+| POST | `/tenant/messaging/credentials/branches/{branchId}/preflight` | staff |
 | POST | `/tenant/messaging/credentials/branches/{branchId}/reveal-sid` | staff |
+| POST | `/tenant/messaging/credentials/preflight` | staff |
 | POST | `/tenant/messaging/credentials/reveal-sid` | staff |
 | POST | `/tenant/messaging/number/buy` | staff |
 

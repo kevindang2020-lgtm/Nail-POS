@@ -48,7 +48,7 @@
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 63,
+  "append_only": 64,
   "platform_rows": 101
  },
  "tables": {
@@ -3702,7 +3702,7 @@
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": false,
-   "append_only": false,
+   "append_only": true,
    "source": "heuristic"
   },
   "deals": {

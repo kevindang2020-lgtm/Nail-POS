@@ -112,6 +112,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   deal_redemptions: 'ut',
   deal_settings: 'ut',
   deals: 'ut',
+  device_labels: 'ut',
   device_maintenance: 'ut',
   device_push_tokens: 'ut',
   device_security_alerts: 'ut',

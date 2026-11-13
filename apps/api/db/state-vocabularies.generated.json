@@ -839,6 +839,10 @@
    "suspended",
    "trial"
   ],
+  "customer_merge_snapshots.status": [
+   "active",
+   "undone"
+  ],
   "customer_phones.status": [
    "active_unverified",
    "active_verified",
